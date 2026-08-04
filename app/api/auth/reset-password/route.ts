@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isValidPassword, isValidPhone, verifyCode, hashSecret, normalizePhone } from "@/lib/invite";
+import { isValidPassword, isValidPhone, verifyCode, setPasswordFields, normalizePhone } from "@/lib/invite";
 
 // POST /api/auth/reset-password  { phone, code, new_password }
 // forgot-password bilan yuborilgan kodni tekshirib, active foydalanuvchiga
@@ -37,8 +37,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
   }
 
-  const passwordHash = await hashSecret(body.new_password!);
-  await users.updateOne({ _id: user._id }, { $set: { passwordHash, passwordUpdatedAt: new Date() } });
+  const { passwordHash, passwordEnc } = await setPasswordFields(body.new_password!);
+  await users.updateOne({ _id: user._id }, { $set: { passwordHash, passwordEnc, passwordUpdatedAt: new Date() } });
 
   return NextResponse.json({ ok: true });
 }

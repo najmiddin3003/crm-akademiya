@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isValidPassword, verifyCode, hashSecret, normalizePhone } from "@/lib/invite";
+import { isValidPassword, verifyCode, setPasswordFields, normalizePhone } from "@/lib/invite";
 
 // POST /api/auth/activate
 // Ikki xil kirish: { token, new_password }  YOKI  { phone, code, new_password }.
@@ -50,11 +50,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Token yoki telefon+kod kerak" }, { status: 400 });
   }
 
-  const passwordHash = await hashSecret(newPassword!);
+  const { passwordHash, passwordEnc } = await setPasswordFields(newPassword!);
   await users.updateOne(
     { _id: user._id },
     {
-      $set: { status: "active", passwordHash, activatedAt: new Date() },
+      $set: { status: "active", passwordHash, passwordEnc, activatedAt: new Date() },
       $unset: { invite: "" }, // token bir martalik — o'chiramiz
     }
   );

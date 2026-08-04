@@ -91,6 +91,7 @@ export const SIDEBAR_ITEMS = [
         { label: "Onlayn kurs", href: "/online-courses", icon: "i-monitor" },
         { label: "Kategoriya", href: "/edu-category", icon: "i-grid" },
         { label: "📚 Baholash", href: "/baholash-gradebook", icon: "i-bar-chart" },
+        { label: "Mavsumiy baholash", href: "/seasonal-assessment", icon: "i-calendar" },
         { label: "O'quv dasturi", href: "/curriculum", icon: "i-book" },
         { label: "Imtihonlar", href: "/exams", icon: "i-graduation-cap" },
         { label: "🏆 Sertifikatlar", href: "/certificates", icon: "i-graduation-cap" },
@@ -179,6 +180,7 @@ export const SIDEBAR_ITEMS = [
             { label: "Turniket analitikasi", href: "/nazorat-turnstile" },
             { label: "🟢 Real-time monitoring", href: "/nazorat-live", icon: "i-monitor", iconClass: "text-cyan-500", bold: true },
             { label: "Turniket kirish-chiqish analitikasi", href: "/nazorat-turnstile-io" },
+            { label: "Support analitikasi", href: "/nazorat-support-analytics" },
           ],
         },
       ],
@@ -250,8 +252,11 @@ export const SIDEBAR_ITEMS = [
             { type: "action", label: "🧠 Smart analitika", href: "/reports-insights", icon: "i-zap", iconClass: "text-primary" },
             { type: "action", label: "⏰ Rejalashtirilgan", href: "/reports-scheduled", icon: "i-calendar", iconClass: "text-primary" },
             { type: "text", label: "Balans", href: "/reports-balance" },
-            { type: "text", label: "Kirim chiqim", href: "/reports-cashflow" },
-            { type: "text", label: "Tushum rejasi", href: "/reports-revenue-plan" },
+            // Referensda bu ikkisi Moliya bo'limidagi sahifalarning
+            // AYNAN O'ZI (faqat /reports/ prefiksi bilan) — shuning uchun
+            // yangi sahifa emas, mavjud route'ga havola.
+            { type: "text", label: "Kirim chiqim", href: "/finance-cashflow" },
+            { type: "text", label: "Tushum rejasi", href: "/finance-revenue-plan" },
             { type: "text", label: "O'quvchining umumiy to'lanmag...", href: "/reports-unpaid", truncate: true },
             { type: "text", label: "Kurs narxidan farqli to'lovlar tra...", href: "/reports-diff-payments", truncate: true },
             { type: "text", label: "Bekor qilingan to'lovlar", href: "/reports-cancelled" },
@@ -272,9 +277,11 @@ export const SIDEBAR_ITEMS = [
         {
           title: "Nazorat",
           items: [
-            { type: "text", label: "Filiallar holati", href: "/reports-branches-status" },
-            { type: "text", label: "Xodimlar reytingi", href: "/reports-staff-rating" },
-            { type: "text", label: "Davomat qilinmagan guruhlar", href: "/reports-missed-groups" },
+            // Uchalasi ham Nazorat bo'limidagi sahifalarning aynan o'zi
+            // (referensda /reports/ prefiksi bilan takrorlangan).
+            { type: "text", label: "Filiallar holati", href: "/nazorat-branches" },
+            { type: "text", label: "Xodimlar reytingi", href: "/nazorat-staff-rating" },
+            { type: "text", label: "Davomat qilinmagan guruhlar", href: "/nazorat-missed-groups" },
           ],
         },
       ],
@@ -302,6 +309,7 @@ export const SIDEBAR_ITEMS = [
         { label: "Sotuv va marketing", href: "/settings-sales" },
         { label: "Boshqaruv", href: "/settings-management" },
         { label: "Integratsiyalar", href: "/settings-integrations" },
+        { label: "Ilova sozlamalari", href: "/settings-app" },
         { label: "Gamifikatsiya", href: "/settings-gamification" },
       ],
     },

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
 
 // Sidebar (chap navigatsiya) — barcha matn/havolalar constants/sidebar.js dagi
@@ -52,7 +53,7 @@ const ITEMS = SIDEBAR_ITEMS as SidebarItem[];
 // mavjud). Qolgan barcha havolalar hozircha "qurilmagan" — qulflanadi: hover
 // bo'lganda flyout menyu baribir chiqaveradi, lekin bosilganda hech qayerga
 // o'tmaydi va xiraroq ko'rinadi.
-const IMPLEMENTED_ROUTES = new Set(["/tasks", "/orders-list", "/first-lessons", "/management-xodimlar"]);
+const IMPLEMENTED_ROUTES = new Set(["/tasks", "/orders-list", "/first-lessons", "/management-xodimlar", "/offline-courses", "/online-courses", "/edu-category", "/seasonal-assessment", "/contract", "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll", "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow", "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract", "/groups", "/groups-tasks", "/groups-schedule", "/groups-rooms", "/groups-students", "/new-students", "/active-students", "/archive-students", "/students-list", "/parents", "/expiring-subs", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating", "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile"]);
 
 export interface SidebarProps {
   mobileOpen: boolean;
@@ -64,6 +65,26 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
   const triggerRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const panelRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Joriy sahifaga mos elementni yorug' ko'rsatish uchun (masalan hozir
+  // "Lidlar" > "Buyurtmalar ro'yxati"da bo'lsangiz, ikkalasi ham yorug'
+  // ko'rinadi — ilgari bu yerda umuman route-solishtirish yo'q edi, faqat
+  // constants/sidebar.js'dagi statik primary/mobileActive bayroqlariga
+  // tayanardi, shu sabab boshqa sahifada ham bir xil element yorug' bo'lib
+  // qolardi).
+  const pathname = usePathname();
+  const isPathActive = useCallback(
+    (href?: string) => !!href && (pathname === href || pathname.startsWith(`${href}/`)),
+    [pathname],
+  );
+  const isMenuActive = useCallback(
+    (menu?: SidebarMenu) => {
+      if (!menu) return false;
+      const flat = menu.items ?? menu.columns?.flatMap((c) => c.items) ?? [];
+      return flat.some((it) => isPathActive(it.href));
+    },
+    [isPathActive],
+  );
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimer.current) {
@@ -147,6 +168,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
 
   const renderListItem = (it: SidebarMenuItem, i: number) => {
     const { locked, title, style } = lockedProps(it.href);
+    const active = isPathActive(it.href);
     return it.icon ? (
       <Link
         key={i}
@@ -154,9 +176,9 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
         onClick={locked ? (e) => e.preventDefault() : closeNow}
         title={title}
         style={style}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors ${it.medium ? "font-medium" : ""}`}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-left transition-colors ${it.medium ? "font-medium" : ""} ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
       >
-        <svg className={`icon icon-sm ${it.iconClass ?? "text-muted-foreground"} flex-shrink-0`}><use href={`#${it.icon}`} /></svg>
+        <svg className={`icon icon-sm ${active ? "text-primary" : (it.iconClass ?? "text-muted-foreground")} flex-shrink-0`}><use href={`#${it.icon}`} /></svg>
         <span className="flex-1" style={it.bold ? { fontWeight: 600 } : undefined}>{it.label}</span>
         {locked ? lockIcon : it.count && <span className="text-[11px] text-muted-foreground tabular-nums font-medium">{it.count}</span>}
       </Link>
@@ -167,7 +189,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
         onClick={locked ? (e) => e.preventDefault() : closeNow}
         title={title}
         style={style}
-        className={`w-full text-left px-3 py-2 rounded-md text-[13px] flex items-center gap-2 ${it.semibold ? "font-semibold" : ""} ${it.medium ? "font-medium" : ""} ${it.primary ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
+        className={`w-full text-left px-3 py-2 rounded-md text-[13px] flex items-center gap-2 ${it.semibold ? "font-semibold" : ""} ${it.medium ? "font-medium" : ""} ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
       >
         <span className="flex-1">{it.label}</span>
         {locked && lockIcon}
@@ -177,6 +199,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
 
   const renderGridItem = (it: SidebarMenuItem, i: number) => {
     const { locked, title, style } = lockedProps(it.href);
+    const active = isPathActive(it.href);
     return it.icon ? (
       <Link
         key={i}
@@ -184,9 +207,9 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
         onClick={locked ? (e) => e.preventDefault() : closeNow}
         title={title}
         style={style}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors"
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-left transition-colors ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
       >
-        <svg className={`icon icon-sm ${it.iconClass ?? "text-muted-foreground"} flex-shrink-0`}><use href={`#${it.icon}`} /></svg>
+        <svg className={`icon icon-sm ${active ? "text-primary" : (it.iconClass ?? "text-muted-foreground")} flex-shrink-0`}><use href={`#${it.icon}`} /></svg>
         <span className="flex-1" style={it.bold ? { fontWeight: 600 } : undefined}>{it.label}</span>
         {locked && lockIcon}
       </Link>
@@ -197,7 +220,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
         onClick={locked ? (e) => e.preventDefault() : closeNow}
         title={title}
         style={style}
-        className={`w-full text-left px-2 py-2 rounded-md hover:bg-secondary text-sm flex items-center gap-2 ${it.medium ? "font-medium" : ""} ${it.primary ? "text-primary" : ""}`}
+        className={`w-full text-left px-2 py-2 rounded-md text-sm flex items-center gap-2 ${it.medium ? "font-medium" : ""} ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
       >
         <span className="flex-1">{it.label}</span>
         {locked && lockIcon}
@@ -321,7 +344,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
         </defs>
       </svg>
 
-      <aside id="sidebar" className="hidden lg:flex w-[200px] flex-col border-r border-border bg-sidebar shrink-0">
+      <aside id="sidebar" className="hidden lg:flex w-60 flex-col border-r border-border bg-sidebar shrink-0">
         <Link href="/tasks" className="flex h-16 items-center gap-2 border-b border-border px-5 w-full hover:bg-secondary transition-colors group" title="Asosiy sahifaga qaytish">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white group-hover:scale-110 transition-transform">
             <svg className="icon icon-sm"><use href="#i-graduation-cap" /></svg>
@@ -335,10 +358,11 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
               const hasMenu = !!item.menu;
               const showChevron = hasMenu && !item.href;
               const topLocked = !!item.href && !IMPLEMENTED_ROUTES.has(item.href);
-              const rowClass = "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary";
+              const itemActive = isPathActive(item.href) || isMenuActive(item.menu);
+              const rowClass = `flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${itemActive ? "bg-primary/10 text-primary" : "text-foreground/70 hover:bg-secondary"}`;
               const inner = (
                 <>
-                  <svg className="icon icon-sm text-muted-foreground"><use href={`#${item.icon}`} /></svg>
+                  <svg className={`icon icon-sm ${itemActive ? "text-primary" : "text-muted-foreground"}`}><use href={`#${item.icon}`} /></svg>
                   <span className="flex-1">{item.label}</span>
                   {topLocked && lockIcon}
                   {item.badge && (

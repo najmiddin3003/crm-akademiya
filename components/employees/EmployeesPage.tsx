@@ -3,20 +3,32 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Button from "@/components/ui/Button";
 import PhoneField, { formatPhoneDigits } from "@/components/auth/PhoneField";
+import EmployeeEditModal from "@/components/employees/EmployeeEditModal";
 
 interface EmployeeRow {
   id: string;
   fullName: string;
   phone: string;
   position: string | null;
-  status: "invited" | "active" | "blocked";
+  status: "invited" | "active" | "frozen" | "blocked";
   createdAt: string;
 }
 
 const STATUS_META: Record<EmployeeRow["status"], { label: string; cls: string }> = {
   invited: { label: "Taklif yuborildi", cls: "bg-amber-50 text-amber-700" },
   active: { label: "Faol", cls: "bg-emerald-50 text-emerald-700" },
-  blocked: { label: "Bloklangan", cls: "bg-secondary text-red-600" },
+  frozen: { label: "Muzlatilgan", cls: "emp-badge-frozen" },
+  blocked: { label: "Bloklangan", cls: "emp-badge-blocked" },
+};
+
+// Holatga mos qator foni — muzlatilgan/bloklangan xodimlar ro'yxatda darrov
+// ko'zga tashlanadi. (globals.css statik bo'lgani uchun qo'lda yozilgan
+// .emp-row-* klasslar ishlatiladi, Tailwind arbitrary opacity emas.)
+const ROW_TINT: Record<EmployeeRow["status"], string> = {
+  invited: "",
+  active: "",
+  frozen: "emp-row-frozen",
+  blocked: "emp-row-blocked",
 };
 
 // 998901234567 -> +998 (90) 123-45-67
@@ -25,9 +37,40 @@ function displayPhone(stored: string) {
   return `+998 ${formatPhoneDigits(local)}`;
 }
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+
 // Boshqaruv > Xodimlar: admin yangi xodim qo'shadi -> POST /api/employees
 // (users status='invited' + SMS taklif). Ro'yxatda holat ko'rinadi, taklif
-// yetib bormasa "Qayta yuborish" bilan qayta SMS jo'natiladi.
+// yetib bormasa qayta jo'natish, tahrirlash va o'chirish ikonkalar orqali.
 export default function EmployeesPage() {
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +84,8 @@ export default function EmployeesPage() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingRow, setEditingRow] = useState<EmployeeRow | null>(null);
 
   // Ro'yxatni yuklaydi. setState har doim await'dan keyin ishlaydi.
   const load = useCallback(async () => {
@@ -148,8 +193,25 @@ export default function EmployeesPage() {
     }
   };
 
+  const remove = async (row: EmployeeRow) => {
+    if (!confirm(`${row.fullName} butunlay o'chirilsinmi? Bu amalni orqaga qaytarib bo'lmaydi.`)) return;
+    setDeletingId(row.id);
+    setNotice("");
+    try {
+      const res = await fetch(`/api/employees/${row.id}`, { method: "DELETE" });
+      const data = await res.json();
+      setNotice(res.ok && data.ok ? "Xodim o'chirildi" : data.error || "O'chirilmadi");
+      if (res.ok && data.ok) load();
+    } catch {
+      setNotice("Serverga ulanib bo'lmadi");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const inputCls =
     "h-9 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-primary";
+  const iconBtnCls = "!h-10 !w-10 border-border text-muted-foreground emp-icon-btn";
 
   return (
     <div className="p-4 sm:p-6">
@@ -218,7 +280,7 @@ export default function EmployeesPage() {
                 {rows.map((r) => {
                   const meta = STATUS_META[r.status] ?? STATUS_META.invited;
                   return (
-                    <tr key={r.id} className="border-b border-border last:border-0">
+                    <tr key={r.id} className={`border-b border-border last:border-0 ${ROW_TINT[r.status]}`}>
                       <td className="px-4 py-2.5 font-medium">{r.fullName}</td>
                       <td className="px-4 py-2.5 tabular-nums">{displayPhone(r.phone)}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{r.position || "—"}</td>
@@ -228,19 +290,39 @@ export default function EmployeesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
-                        {r.status === "invited" ? (
+                        <div className="flex items-center gap-1.5">
                           <Button
-                            variant="outline"
+                            variant="icon"
                             type="button"
-                            className="h-8 px-3 text-[13px]"
-                            disabled={resendingId === r.id}
-                            onClick={() => resend(r.id)}
+                            className={`${iconBtnCls} emp-icon-btn-danger`}
+                            title="Xodimni o'chirish"
+                            disabled={deletingId === r.id}
+                            onClick={() => remove(r)}
                           >
-                            {resendingId === r.id ? "..." : "Qayta yuborish"}
+                            <TrashIcon />
                           </Button>
-                        ) : (
-                          <span className="text-[13px] text-muted-foreground">—</span>
-                        )}
+                          <Button
+                            variant="icon"
+                            type="button"
+                            className={iconBtnCls}
+                            title="Tahrirlash"
+                            onClick={() => setEditingRow(r)}
+                          >
+                            <EditIcon />
+                          </Button>
+                          {r.status === "invited" && (
+                            <Button
+                              variant="icon"
+                              type="button"
+                              className={iconBtnCls}
+                              title="Qayta yuborish"
+                              disabled={resendingId === r.id}
+                              onClick={() => resend(r.id)}
+                            >
+                              <RetryIcon />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -250,6 +332,18 @@ export default function EmployeesPage() {
           </div>
         )}
       </div>
+
+      {editingRow && (
+        <EmployeeEditModal
+          employee={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSaved={() => {
+            setEditingRow(null);
+            setNotice("Xodim ma'lumotlari saqlandi ✅");
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }

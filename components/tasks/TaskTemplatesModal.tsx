@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { TASK_TEMPLATES } from "@/lib/tasksData";
+import { STUDENT_NAMES } from "@/constants";
 
 export interface TaskTemplatesModalProps {
   open: boolean;
@@ -32,13 +33,20 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
             <div className="text-sm">
               <strong>{pendingTpl.name}</strong> shablonini qaysi o&apos;quvchi uchun qo&apos;llaymiz?
             </div>
-            <input
-              autoFocus
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              placeholder="Ism Familiya"
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="h-[400px] w-full overflow-y-auto rounded-lg border border-border">
+              {STUDENT_NAMES.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setStudentName(name)}
+                  className={`block w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-secondary ${
+                    studentName === name ? "bg-primary/10 font-medium text-primary" : ""
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setPendingId(null)} className="inline-flex items-center h-9 px-3.5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
                 Orqaga

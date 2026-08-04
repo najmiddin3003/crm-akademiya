@@ -35,6 +35,18 @@ export const TEACHERS = [
 export const MODERATORS = ["Dilmurod Komilov", "Nilufar Sharipova", "Abdulloh Raxmatullayev"];
 export const WEEKDAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"];
 
+// Yig'ilayotgan guruhlar — hozircha backend/Guruh sahifasi ulanmagani uchun
+// buyurtma qo'shish formasidagi tegishli tanlov uchun demo ro'yxat.
+export const GROUPS = [
+  "Ingliz tili — 1-guruh (Dush/Chor/Juma, 09:00)",
+  "Ingliz tili — 2-guruh (Sesh/Pay/Shan, 15:00)",
+  "Arab tili — 1-guruh (Dush/Chor/Juma, 10:00)",
+  "Rus tili — 1-guruh (Sesh/Pay, 14:00)",
+  "Matematika — 1-guruh (Dush/Chor/Juma, 16:00)",
+];
+
+export const STUDENT_CATEGORIES = ["Kichik (1-4-sinf)", "O'rta (5-9-sinf)", "Katta (10-sinf+)"];
+
 export const STUDENTS = [
   { id: 3000, name: "Hilola Ahmadjanov", phone: "90 100 00 00", created: "10.04.2025 | 11:21", firstLesson: "01.01.2025 | 08:00", teacher: "Abdushukur Abdug'aniyev", course: "Ingliz tili", level: "1-bosqich", day: "Dushanba", moderator: "Dilmurod Komilov", status: "YOZILDI" },
   { id: 3001, name: "Jahongir Olimova", phone: "91 137 11 23", created: "13.09.2025 | 12:28", firstLesson: "04.06.2025 | 09:07", teacher: "Yaxyoxo'ja Yigitaliyev", course: "Arab tili", level: "2-bosqich", day: "Seshanba", moderator: "Nilufar Sharipova", status: "ESLATILDI" },
@@ -87,3 +99,7 @@ export const STUDENTS = [
   { id: 3048, name: "Dilfuza Shodmanov", phone: "90 976 28 04", created: "14.04.2025 | 09:57", firstLesson: "05.01.2025 | 16:36", teacher: "Abdushukur Abdug'aniyev", course: "Ingliz tili", level: "1-bosqich", day: "Yakshanba", moderator: "Dilmurod Komilov", status: "YOZILDI" },
   { id: 3049, name: "Mohira Yusupova", phone: "91 113 39 27", created: "17.09.2025 | 10:04", firstLesson: "08.06.2025 | 17:43", teacher: "Yaxyoxo'ja Yigitaliyev", course: "Arab tili", level: "2-bosqich", day: "Dushanba", moderator: "Nilufar Sharipova", status: "ESLATILDI" },
 ];
+
+// Tayyor shablon (task) qo'llashda o'quvchini tanlash uchun ism-familiyalar
+// ro'yxati — STUDENTS massividan olinadi.
+export const STUDENT_NAMES = STUDENTS.map((s) => s.name);

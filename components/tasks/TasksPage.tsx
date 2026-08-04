@@ -189,28 +189,29 @@ export default function TasksPage() {
     const tpl = TASK_TEMPLATES.find((t) => t.id === templateId);
     if (!tpl) return;
     const now = Date.now();
-    const newTasks = await Promise.all(
-      tpl.items.map(async (item) => {
-        const payload: Omit<Task, "id"> = {
-          student: studentName,
-          date: new Date(now + item.offsetHours * 3600000).toISOString().slice(0, 16),
-          description: item.description,
-          type: item.type,
-          priority: item.priority,
-          recurring: "none",
-          state: "yangi",
-          staff: "Siz",
-        };
-        const res = await fetch("/api/tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        return data.ok ? (data.task as Task) : null;
-      }),
-    );
-    setTasks((prev) => [...newTasks.filter((t): t is Task => t != null), ...prev]);
+    // Ketma-ket yuboriladi (Promise.all emas) — /api/tasks POST'dagi id hisoblash
+    // atomik emas, parallel so'rovlar bir xil id'ga urinib duplicate key xatosi berardi.
+    const newTasks: Task[] = [];
+    for (const item of tpl.items) {
+      const payload: Omit<Task, "id"> = {
+        student: studentName,
+        date: new Date(now + item.offsetHours * 3600000).toISOString().slice(0, 16),
+        description: item.description,
+        type: item.type,
+        priority: item.priority,
+        recurring: "none",
+        state: "yangi",
+        staff: "Siz",
+      };
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.ok) newTasks.push(data.task as Task);
+    }
+    setTasks((prev) => [...newTasks, ...prev]);
     setTemplatesOpen(false);
   };
 

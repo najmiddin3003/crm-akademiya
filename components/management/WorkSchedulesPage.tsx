@@ -1,0 +1,278 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
+import { useToast } from "@/components/ui/Toast";
+import type { WorkSchedule } from "@/lib/workSchedules";
+
+// Boshqaruv → Ish jadvali (sidebar: Boshqaruv > Ish jadvali, href
+// /management-ish-jadvali). Ma'lumot HAQIQIY — /api/work-schedules
+// (MongoDB `work_schedules`). Qo'shish/tahrirlash — oyna, o'chirish —
+// loyihaning standart tasdiqlash oynasi.
+
+const inputCls =
+  "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+
+export default function WorkSchedulesPage() {
+  const { showSuccess, showError } = useToast();
+  const [rows, setRows] = useState<WorkSchedule[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<WorkSchedule | null>(null);
+  const [form, setForm] = useState({ name: "", code: "", active: true });
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<WorkSchedule | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/work-schedules")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setRows(d.schedules); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const start = (page - 1) * pageSize;
+  const slice = rows.slice(start, start + pageSize);
+
+  function openAdd() {
+    setForm({ name: "", code: "", active: true });
+    setAddOpen(true);
+  }
+  function openEdit(s: WorkSchedule) {
+    setForm({ name: s.name, code: s.code, active: s.active });
+    setEditTarget(s);
+  }
+  function closeForm() {
+    setAddOpen(false);
+    setEditTarget(null);
+  }
+
+  async function save() {
+    const name = form.name.trim();
+    if (!name) {
+      showError("Nomini kiriting");
+      return;
+    }
+    setSaving(true);
+    try {
+      const editing = editTarget !== null;
+      const res = await fetch(editing ? `/api/work-schedules/${editTarget.id}` : "/api/work-schedules", {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, code: form.code, active: form.active }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Saqlanmadi");
+        return;
+      }
+      if (editing) {
+        setRows((prev) => prev.map((x) => (x.id === data.schedule.id ? data.schedule : x)));
+        showSuccess("Ish jadvali yangilandi");
+      } else {
+        setRows((prev) => [...prev, data.schedule]);
+        showSuccess("Ish jadvali qo'shildi");
+      }
+      closeForm();
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/work-schedules/${deleteTarget.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "O'chirilmadi");
+        return;
+      }
+      setRows((prev) => prev.filter((x) => x.id !== deleteTarget.id));
+      showSuccess("Ish jadvali o'chirildi");
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
+
+  const formOpen = addOpen || editTarget !== null;
+
+  return (
+    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={openAdd}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
+        >
+          <span>+ Qo&apos;shish</span>
+        </button>
+      </div>
+
+      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+        <div className="flex items-center justify-end px-5 py-3 border-b border-border">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
+            <span>Umumiy soni:</span>
+            <span className="tabular-nums">{rows.length}</span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="bg-secondary/20">
+              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                <th className="px-5 py-3 text-left w-12">№</th>
+                <th className="px-5 py-3 text-left">Nomi</th>
+                <th className="px-5 py-3 text-left">Kod</th>
+                <th className="px-5 py-3 text-left">Holati</th>
+                <th className="px-5 py-3 text-right pr-5 w-28" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {slice.map((s, i) => (
+                <tr key={s.id} className="hover:bg-secondary/30 transition-colors">
+                  <td className="px-5 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
+                  <td className="px-5 py-3 font-medium">{s.name}</td>
+                  <td className="px-5 py-3 text-[13px] font-mono text-muted-foreground">{s.code || "-"}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        s.active ? "text-emerald-700 bg-emerald-100" : "text-muted-foreground bg-secondary"
+                      }`}
+                    >
+                      {s.active ? "Faol" : "Nofaol"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 pr-5">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(s)}
+                        className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                        title="Tahrirlash"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(s)}
+                        className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
+                        title="O'chirish"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {slice.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                    {loading ? "Yuklanmoqda…" : "Ma'lumotlar topilmadi"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          totalItems={rows.length}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+        />
+      </div>
+
+      {formOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeForm()} />
+          <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+            <h3 className="text-[16px] font-semibold">
+              {editTarget ? "Ish jadvalini tahrirlash" : "Ish jadvali qo'shish"}
+            </h3>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Nomi</label>
+              <input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className={inputCls}
+                placeholder="Masalan: To'liq stavka (09:00 - 18:00)"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Kod</label>
+              <input
+                value={form.code}
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                className={inputCls}
+                placeholder="Masalan: FULL"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+                className="h-4 w-4 rounded border-border accent-[var(--primary)]"
+              />
+              <span>Faol</span>
+            </label>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={closeForm}
+                disabled={saving}
+                className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                {saving ? "Saqlanmoqda…" : "Saqlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)} />
+          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <div className="flex items-center justify-center gap-2 mt-5">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
+              >
+                Yo&apos;q
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? "O'chirilmoqda…" : "Ha"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

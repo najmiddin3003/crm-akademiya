@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import NavigationHistoryProvider from "@/components/shared/NavigationHistory";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
   title: "Tizimli",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="uz">
       <body>
-        <NavigationHistoryProvider>{children}</NavigationHistoryProvider>
+        <ToastProvider>
+          <NavigationHistoryProvider>{children}</NavigationHistoryProvider>
+        </ToastProvider>
       </body>
     </html>
   );

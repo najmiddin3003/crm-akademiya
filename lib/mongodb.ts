@@ -1,4 +1,5 @@
 import { MongoClient, Db } from "mongodb";
+import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 
 // MongoDB ulanishi — dev rejimida HMR har safar yangi ulanish ochib
 // yubormasligi uchun global keshda saqlaymiz.
@@ -52,6 +53,62 @@ export async function ensureIndexes(): Promise<Db> {
     // purgeAt vaqti kelganda hujjat avtomatik o'chadi (TTL).
     await db.collection("verification_codes").createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 });
     await db.collection("tasks").createIndex({ id: 1 }, { unique: true });
+    await db.collection("orders").createIndex({ id: 1 }, { unique: true });
+    await db.collection("pupils").createIndex({ id: 1 }, { unique: true });
+    await db.collection("offline_courses").createIndex({ id: 1 }, { unique: true });
+    await db.collection("groups").createIndex({ id: 1 }, { unique: true });
+    await db.collection("group_tasks").createIndex({ id: 1 }, { unique: true });
+    await db.collection("group_tasks").createIndex({ groupId: 1 });
+    // hr_employees — edutizim dizaynidagi to'liq xodim roster (invite oqimidagi
+    // `employees` kolleksiyasidan ALOHIDA; ular turli shakl/vazifada).
+    await db.collection("hr_employees").createIndex({ id: 1 }, { unique: true });
+    await db.collection("edu_categories").createIndex({ id: 1 }, { unique: true });
+    await db.collection("seasonal_assessments").createIndex({ id: 1 }, { unique: true });
+    await db.collection("contracts").createIndex({ id: 1 }, { unique: true });
+    await db.collection("cashboxes").createIndex({ id: 1 }, { unique: true });
+    await db.collection("bonuses").createIndex({ id: 1 }, { unique: true });
+    await db.collection("penalties").createIndex({ id: 1 }, { unique: true });
+    await db.collection("salary_runs").createIndex({ id: 1 }, { unique: true });
+    await db.collection("transactions").createIndex({ id: 1 }, { unique: true });
+    await db.collection("transactions").createIndex({ date: 1 });
+    await db.collection("transaction_types").createIndex({ id: 1 }, { unique: true });
+    await db.collection("transaction_entries").createIndex({ id: 1 }, { unique: true });
+    await db.collection("planned_expenses").createIndex({ id: 1 }, { unique: true });
+    await db.collection("finance_contracts").createIndex({ id: 1 }, { unique: true });
+    await db.collection("turnstile_io").createIndex({ id: 1 }, { unique: true });
+    await db.collection("turnstile_io").createIndex({ date: 1 });
+    await db.collection("support_analytics").createIndex({ id: 1 }, { unique: true });
+    await db.collection("roles").createIndex({ id: 1 }, { unique: true });
+    // `branches` — Boshqaruv > Filiallar (CRUD ro'yxati). Nazorat >
+    // "Filiallar holati" bundan foydalanmaydi, u constants'dan hisoblaydi.
+    await db.collection("branches").createIndex({ id: 1 }, { unique: true });
+    await db.collection("work_schedules").createIndex({ id: 1 }, { unique: true });
+    await db.collection("surveys").createIndex({ id: 1 }, { unique: true });
+    await db.collection("news").createIndex({ id: 1 }, { unique: true });
+    await db.collection("stories").createIndex({ id: 1 }, { unique: true });
+    await db.collection("sms_templates").createIndex({ id: 1 }, { unique: true });
+    await db.collection("sms_messages").createIndex({ id: 1 }, { unique: true });
+    await db.collection("sms_messages").createIndex({ date: 1 });
+    // Plan moderator ISMI bo'yicha kalitlanadi — lib/salesPlan.ts izohiga qarang.
+    await db.collection("sales_plans").createIndex({ moderatorName: 1 }, { unique: true });
+    await db.collection("settings").createIndex({ key: 1 }, { unique: true });
+    // Sozlamalardagi CRUD ro'yxatlari — kolleksiya nomlari SETTINGS_LIST_KINDS
+    // dan olinadi, shunda yangi ro'yxat qo'shilganda bu yer o'zi yangilanadi.
+    for (const c of Object.values(SETTINGS_LIST_KINDS)) {
+      await db.collection(c).createIndex({ id: 1 }, { unique: true });
+    }
+    // Hisobotlar bo'limidagi o'quvchi to'lov/davomat hisobotlari
+    // (app/api/student-reports/route.ts).
+    for (const c of [
+      "unpaid_students",
+      "price_differences",
+      "cancelled_payments",
+      "student_discounts",
+      "cancelled_attendance",
+      "leave_reasons",
+    ]) {
+      await db.collection(c).createIndex({ id: 1 }, { unique: true });
+    }
   } catch (e) {
     indexesEnsured = false;
     throw e;

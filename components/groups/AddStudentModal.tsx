@@ -1,0 +1,101 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
+import { useEscapeClose } from "@/hooks/useEscapeClose";
+import type { Pupil } from "@/lib/pupilsData";
+
+// "O'quvchini tanlang" modali (skrinshot 5). Serverdagi o'quvchilar
+// (/api/pupils) ro'yxatidan birini tanlab, guruhga qo'shadi
+// (POST /api/groups/:id/students). Allaqachon guruhda bo'lganlar ro'yxatda
+// ko'rsatilmaydi.
+export interface AddStudentModalProps {
+  groupId: number;
+  existingIds: number[];
+  onClose: () => void;
+  onAdded: (pupil: Pupil) => void;
+}
+
+export default function AddStudentModal({ groupId, existingIds, onClose, onAdded }: AddStudentModalProps) {
+  useEscapeClose(onClose);
+  const { showSuccess, showError } = useToast();
+  const [pupils, setPupils] = useState<Pupil[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pupils")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setPupils(d.pupils); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const available = useMemo(() => pupils.filter((p) => !existingIds.includes(p.id)), [pupils, existingIds]);
+
+  async function save() {
+    const pupilId = Number(selected);
+    if (!pupilId) {
+      showError("O'quvchini tanlang");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/groups/${groupId}/students`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pupilId }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Qo'shilmadi");
+        setSaving(false);
+        return;
+      }
+      onAdded(data.student as Pupil);
+      showSuccess("O'quvchi guruhga qo'shildi");
+      onClose();
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl">
+        <div className="px-6 pt-5 pb-2 text-center">
+          <h3 className="text-[17px] font-bold tracking-tight">O&apos;quvchini tanlang</h3>
+        </div>
+        <div className="px-6 py-4">
+          <label className="block text-[13px] font-medium mb-1.5">O&apos;quvchini tanlang</label>
+          <div className="relative">
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              disabled={loading}
+              className="w-full h-11 appearance-none rounded-lg border border-border bg-card px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            >
+              <option value="">{loading ? "Yuklanmoqda…" : available.length ? "Tanlang" : "O'quvchilar yo'q"}</option>
+              {available.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.firstName} {p.lastName}{p.phone ? ` — ${p.phone}` : ""}
+                </option>
+              ))}
+            </select>
+            <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+          </div>
+          {!loading && available.length === 0 && (
+            <p className="mt-2 text-[12px] text-muted-foreground">Serverda qo&apos;shiladigan o&apos;quvchi yo&apos;q. Avval Lidlar → &quot;O&apos;quvchi qo&apos;shish&quot; orqali o&apos;quvchi qo&apos;shing.</p>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
+          <button onClick={save} disabled={saving || loading} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}

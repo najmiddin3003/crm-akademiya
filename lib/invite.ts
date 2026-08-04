@@ -2,6 +2,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ensureIndexes } from "./mongodb";
 import { sendSms, normalizePhone } from "./eskiz";
+import { encryptSecret } from "./crypto";
 
 export type Purpose = "activate" | "reset";
 
@@ -26,6 +27,15 @@ export async function hashSecret(value: string): Promise<string> {
 
 export async function compareSecret(value: string, hash: string): Promise<boolean> {
   return bcrypt.compare(value, hash);
+}
+
+// Parol o'rnatilganda ikkalasini ham qaytaradi: login tekshiruvi uchun
+// bcrypt hash (asosiy) + admin panelida ko'rsatish uchun shifrlangan nusxa.
+export async function setPasswordFields(password: string) {
+  return {
+    passwordHash: await hashSecret(password),
+    passwordEnc: encryptSecret(password),
+  };
 }
 
 export function isValidPassword(pw: unknown): pw is string {

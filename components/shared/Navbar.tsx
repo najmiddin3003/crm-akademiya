@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
+import { useBranches } from "@/hooks/useBranches";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 
@@ -59,7 +60,15 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const [isDark, setIsDark] = useState(false);
   const [lang, setLangCode] = useState<"uz" | "en" | "ru">("uz");
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
-  const [branch, setBranch] = useState("Akademiya");
+  // Filial ro'yxati Boshqaruv → Filiallar sahifasi bilan BIR XIL manbadan.
+  const { branches } = useBranches();
+  // `branch` — foydalanuvchi aniq tanlagani. Ko'rsatiladigan qiymat render
+  // vaqtida hisoblanadi: tanlangani ro'yxatda bo'lmasa (hali yuklanmagan yoki
+  // filial o'chirilgan) birinchisiga tushadi, shunda select hech qachon
+  // ro'yxatda yo'q qiymatda "osilib" qolmaydi (effekt/sinxronizatsiya shart emas).
+  const [branch, setBranch] = useState("");
+  const selectedBranch =
+    branch && branches.some((b) => b.name === branch) ? branch : (branches[0]?.name ?? "");
   const [filialModalOpen, setFilialModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchResults = useMemo(() => searchAll(searchQuery), [searchQuery]);
@@ -174,7 +183,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
         <div className="relative">
           <select
-            value={branch}
+            value={selectedBranch}
             onChange={(e) => {
               if (e.target.value === FILIAL_ADD_OPTION) {
                 setFilialModalOpen(true);
@@ -184,9 +193,10 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
             }}
             className="h-9 w-36 appearance-none rounded-lg border border-border bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option>Akademiya</option>
-            <option>Yunusobod filial</option>
-            <option>Sergeli filial</option>
+            {branches.length === 0 && <option value="">Filial…</option>}
+            {branches.map((b) => (
+              <option key={b.id} value={b.name}>{b.name}</option>
+            ))}
             <option>{FILIAL_ADD_OPTION}</option>
           </select>
           <svg className="icon icon-sm pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
@@ -403,13 +413,25 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold">Filial biriktirish</h3>
-            <p className="text-sm text-muted-foreground">Filial biriktirish qismi bo&apos;ladi.</p>
-            <button
-              onClick={() => setFilialModalOpen(false)}
-              className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
-            >
-              Tushunarli
-            </button>
+            <p className="text-sm text-muted-foreground">
+              Filiallar Boshqaruv &rarr; Filiallar sahifasida boshqariladi. U yerda qo&apos;shilgan
+              filial shu ro&apos;yxatda ham paydo bo&apos;ladi.
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setFilialModalOpen(false)}
+                className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
+              >
+                Yopish
+              </button>
+              <Link
+                href="/management-filiallar"
+                onClick={() => setFilialModalOpen(false)}
+                className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
+              >
+                Filiallar sahifasi
+              </Link>
+            </div>
           </div>
         </div>
       )}

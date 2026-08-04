@@ -20,7 +20,16 @@ export async function POST(req: Request) {
   const db = await ensureIndexes();
   const user = await db.collection("users").findOne({ phone });
 
-  if (!user || !user.passwordHash || user.status !== "active") {
+  if (!user || !user.passwordHash) {
+    return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
+  }
+  if (user.status === "frozen") {
+    return NextResponse.json({ ok: false, error: "Hisobingiz vaqtincha muzlatilgan. Administratorga murojaat qiling." }, { status: 403 });
+  }
+  if (user.status === "blocked") {
+    return NextResponse.json({ ok: false, error: "Hisobingiz bloklangan. Administratorga murojaat qiling." }, { status: 403 });
+  }
+  if (user.status !== "active") {
     return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
   }
 

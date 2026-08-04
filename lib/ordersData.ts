@@ -4,6 +4,8 @@
 // _augmentOrders (~line 23074), ORDER_STAGES + _augmentOrdersKanban (~line 24065),
 // getPageButtons (~line 22910).
 
+import { MANAGEMENT_BRANCH_NAMES } from "@/constants/managementBranches";
+
 export type OrderStageKey = "bir_oylay" | "jaylang_e" | "rahmaaaat" | "ketdim";
 
 export interface Order {
@@ -30,6 +32,9 @@ export interface Order {
   stage: OrderStageKey;
   dayPattern: string;
   taskStatus: string;
+  referral: string;
+  lessonDay: string;
+  lessonStartTime: string;
 }
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];
@@ -43,11 +48,40 @@ const PREFIX = ["90","91","93","94","95","97","98","99","88"];
 export const STATUSES = ["Yangi", "Qabul qilindi", "Kelmoqda", "Kutilmoqda", "Bekor qilindi", "Yakunlandi", "O'tkazildi"];
 const SOURCES = ["Instagram", "Telegram", "Tanish", "Facebook", "YouTube", "Sayt"];
 export const SUBSOURCES = ["Reklama", "Post", "Story", "Taklif", "Boshqa"];
-const BRANCHES = ["Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Sergeli", "Yashnobod"];
+// Filial nomlari Boshqaruv → Filiallar bilan BIR XIL manbadan
+// (constants/managementBranches.js). Bu funksiya sinxron va klient
+// komponentlaridan chaqiriladi, shuning uchun /api/branches dan o'qiy
+// olmaydi — kanonik boshlang'ich ro'yxat ishlatiladi.
+const BRANCHES = MANAGEMENT_BRANCH_NAMES;
 export const CATEGORIES = ["VIP", "Standart", "Imtiyozli"];
 export const SURVEYS = ["Asosiy", "Qo'shimcha"];
 export const SUBCOURSES = ["1-bosqich", "2-bosqich", "3-bosqich", "4-bosqich", "5-bosqich", "6-bosqich"];
 export const WEEKDAY_NAMES = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+
+// AddOrderModal'dagi "Dars kunini tanlang" uchun — production reference'dagi
+// (akademiya.edutizim.uz) haqiqiy variantlar ro'yxati bilan bir xil: oddiy
+// bitta hafta kuni emas, balki juft/toq yoki bir nechta kunning
+// qisqartmalari kombinatsiyasi (Du=Dushanba, Se=Seshanba, Ch=Chorshanba,
+// Pa=Payshanba, Ju=Juma, Sh=Shanba, Ya=Yakshanba).
+export const LESSON_DAY_PATTERNS = [
+  "Juft kunlar",
+  "Toq kunlar",
+  "Ch,Ya",
+  "Du,Ch",
+  "Du,Ch,Ju,Ya",
+  "Du,Ju",
+  "Du,Se,Ch,Pa,Ju",
+  "Du,Se,Ch,Pa,Ju,Sh",
+  "Pa,Ya",
+  "Se,Pa",
+  "Se,Pa,Sh,Ya",
+  "Se,Sh",
+  "Ya,Ch",
+  "Ya,Du,Ch,Ju",
+  "Ya,Du,Se,Ch,Pa,Ju,Sh",
+  "Ya,Pa",
+  "Boshqa kunlar",
+];
 
 export const ORDER_STAGES: { key: OrderStageKey; label: string; uppercase: string; emoji: string }[] = [
   { key: "bir_oylay", label: "Bir o'ylay", uppercase: "BIR O'YLAY", emoji: "🙄" },
@@ -143,13 +177,19 @@ function augment(raw: RawOrder, i: number): Order {
     source: SOURCES[i % SOURCES.length],
     subsource: SUBSOURCES[i % SUBSOURCES.length],
     fromBranch: BRANCHES[i % BRANCHES.length],
-    toBranch: BRANCHES[(i + 2) % BRANCHES.length],
+    // Ofset +1: ilgari +2 edi va ro'yxat 2 ta filialdan iborat bo'lganda
+    // (i+2)%2 === i%2 — ya'ni "qayerdan" va "qayerga" doim bir xil filial
+    // chiqardi. +1 har qanday uzunlikda (>=2) ikkalasini farqli qiladi.
+    toBranch: BRANCHES[(i + 1) % BRANCHES.length],
     category: CATEGORIES[i % CATEGORIES.length],
     survey: SURVEYS[i % SURVEYS.length],
     subcourse: SUBCOURSES[i % SUBCOURSES.length],
     stage: r < 12 ? "bir_oylay" : "rahmaaaat",
     dayPattern: i % 2 === 0 ? "Juft kunlar" : "Toq kunlar",
     taskStatus: "Topshiriq yo'q",
+    referral: "",
+    lessonDay: "",
+    lessonStartTime: "",
   };
 }
 
@@ -157,6 +197,85 @@ export const ORDERS_TOTAL = 502;
 
 export function createInitialOrders(): Order[] {
   return buildOrders(ORDERS_TOTAL).map(augment);
+}
+
+// Add/edit-order drawer (components/orders/AddOrderModal.tsx) form values +
+// the pure Order-building logic. buildOrderFromValues runs server-side
+// (app/api/orders/route.ts, POST) and applyOrderValues runs client-side
+// (components/orders/OrdersContext.tsx, before PATCHing the merged order) —
+// both shared so the field mapping is defined exactly once.
+export interface NewOrderValues {
+  studentName: string;
+  phone: string;
+  referral: string;
+  course: string;
+  lessonDay: string;
+  lessonStartTime: string;
+  teacher: string;
+  group: string;
+  firstLessonDate: string;
+  firstLessonTime: string;
+  note: string;
+  /** Only set by the Kanban "Qo'shish" full-page flow (components/orders/AddOrderPage.tsx) — the
+   * side-drawer flow (AddOrderModal.tsx) leaves these unset and gets the defaults below. */
+  moderator?: string;
+  stage?: OrderStageKey;
+}
+
+function firstLessonFromValues(values: NewOrderValues): string {
+  return values.firstLessonDate
+    ? `${values.firstLessonDate.split("-").reverse().join(".")}${values.firstLessonTime ? ` | ${values.firstLessonTime}` : ""}`
+    : "";
+}
+
+export function buildOrderFromValues(nextId: number, values: NewOrderValues): Order {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const created = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} | ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return {
+    id: nextId,
+    name: values.studentName,
+    phone: values.phone,
+    referral: values.referral,
+    course: values.course,
+    lessonDay: values.lessonDay,
+    lessonStartTime: values.lessonStartTime,
+    teacher: values.teacher,
+    moderator: values.moderator ?? "",
+    note: values.note,
+    created,
+    firstLesson: firstLessonFromValues(values),
+    level: "",
+    group: values.group,
+    isNew: true,
+    stage: values.stage ?? "bir_oylay",
+    dayPattern: "Juft kunlar",
+    taskStatus: "Topshiriq yo'q",
+    status: "Yangi",
+    source: "Sayt",
+    subsource: "",
+    fromBranch: "",
+    toBranch: "",
+    category: "",
+    survey: "",
+    subcourse: "",
+  };
+}
+
+export function applyOrderValues(order: Order, values: NewOrderValues): Order {
+  return {
+    ...order,
+    name: values.studentName,
+    phone: values.phone,
+    referral: values.referral,
+    course: values.course,
+    lessonDay: values.lessonDay,
+    lessonStartTime: values.lessonStartTime,
+    teacher: values.teacher,
+    group: values.group,
+    note: values.note,
+    firstLesson: firstLessonFromValues(values),
+  };
 }
 
 export interface OrdersFilters {

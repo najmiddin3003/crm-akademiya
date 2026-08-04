@@ -24,7 +24,6 @@ export async function GET() {
           fullName: 1,
           phone: 1,
           position: 1,
-          department: 1,
           createdAt: 1,
           status: { $ifNull: [{ $arrayElemAt: ["$user.status", 0] }, "invited"] },
         },
@@ -51,7 +50,7 @@ export async function GET() {
 // DIQQAT: hozircha admin sessiyasi/autentifikatsiyasi yo'q — backend ulanganda
 // bu endpointni admin roli bilan himoyalash kerak (TODO).
 export async function POST(req: Request) {
-  let body: { fullName?: string; phone?: string; position?: string; department?: string };
+  let body: { fullName?: string; phone?: string; position?: string };
   try {
     body = await req.json();
   } catch {
@@ -60,7 +59,6 @@ export async function POST(req: Request) {
 
   const fullName = (body.fullName || "").trim();
   const position = (body.position || "").trim();
-  const department = (body.department || "").trim();
 
   if (!fullName) {
     return NextResponse.json({ ok: false, error: "Xodim F.I.Sh. kiritilishi shart" }, { status: 400 });
@@ -82,7 +80,6 @@ export async function POST(req: Request) {
     fullName,
     phone,
     position: position || null,
-    department: department || null,
     createdAt: now,
   };
   const empRes = await db.collection("employees").insertOne(employee);

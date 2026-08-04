@@ -1,0 +1,145 @@
+"use client";
+
+import { useState } from "react";
+import Button from "@/components/ui/Button";
+import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
+import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
+
+// "Tahrirlash" modal for a single custom field definition, opened by clicking
+// a field row under the "Sozlamalar" tab (AddOrderPage.tsx) — reference:
+// akademiya.edutizim.uz/orders/add > Sozlamalar > click an existing field.
+// Configures the field's name/type/which pipeline stages require it/whether
+// it's API-only. Like the rest of the Sozlamalar tab, this is visual/local
+// only — there's no backend schema for arbitrary custom fields yet.
+
+export type CustomFieldType = "text" | "number" | "switch" | "date" | "datetime" | "select" | "multiselect";
+
+export interface CustomField {
+  id: string;
+  label: string;
+  type: CustomFieldType;
+  stages: OrderStageKey[];
+  apiOnly: boolean;
+}
+
+const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
+  { value: "text", label: "Matn" },
+  { value: "number", label: "Raqam" },
+  { value: "switch", label: "Switch" },
+  { value: "date", label: "Sana" },
+  { value: "datetime", label: "Sana va vaqt" },
+  { value: "select", label: "Tanlash" },
+  { value: "multiselect", label: "Ko'p tanlovli funksiya" },
+];
+
+export interface CustomFieldEditModalProps {
+  field: CustomField;
+  onClose: () => void;
+  onSave: (field: CustomField) => void;
+}
+
+export default function CustomFieldEditModal({ field, onClose, onSave }: CustomFieldEditModalProps) {
+  const [label, setLabel] = useState(field.label);
+  const [type, setType] = useState<CustomFieldType>(field.type);
+  const [stages, setStages] = useState<OrderStageKey[]>(field.stages);
+  const [apiOnly, setApiOnly] = useState(field.apiOnly);
+  const [stagesOpen, setStagesOpen] = useState(false);
+  useEscapeClose(onClose);
+
+  const toggleStage = (key: OrderStageKey) => {
+    setStages((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
+
+  const handleSave = () => {
+    onSave({ ...field, label: label.trim(), type, stages, apiOnly });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-2xl font-semibold">Tahrirlash</h3>
+
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Maydon nomi"
+          className="w-full h-11 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+
+        <div className="relative">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as CustomFieldType)}
+            className="w-full h-11 appearance-none border border-border rounded-lg bg-background px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {FIELD_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <use href="#i-chevron-down" />
+          </svg>
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setStagesOpen((o) => !o)}
+            className="w-full h-11 flex items-center justify-between rounded-lg border border-border bg-background px-3 text-sm"
+          >
+            <span>{stages.length} ta bosqichda majburiy</span>
+            <svg className="icon icon-sm text-muted-foreground">
+              <use href="#i-chevron-down" />
+            </svg>
+          </button>
+          {stagesOpen && (
+            <div className="absolute z-30 mt-1 w-full rounded-lg border border-border shadow-xl overflow-hidden">
+              {ORDER_STAGES.map((st) => (
+                <label
+                  key={st.key}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm cursor-pointer text-white"
+                  style={{ backgroundColor: STAGE_COLORS[st.key] }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={stages.includes(st.key)}
+                    onChange={() => toggleStage(st.key)}
+                    className="h-4 w-4"
+                  />
+                  <span>
+                    {st.emoji} {st.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer pt-2 border-t border-border">
+          <input
+            type="checkbox"
+            checked={apiOnly}
+            onChange={(e) => setApiOnly(e.target.checked)}
+            className="h-4 w-4 rounded border-border"
+          />
+          Faqat api bilan
+        </label>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={onClose}>
+            Orqaga
+          </Button>
+          <Button variant="primary" onClick={handleSave}>
+            Saqlash
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
