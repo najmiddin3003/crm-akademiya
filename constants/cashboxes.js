@@ -47,4 +47,36 @@ export const CASHBOX_SEED = [
     isPrimary: false,
     methodTotals: zero(),
   },
+  // To'lov turi bo'yicha umumiy (filialga bog'liq bo'lmagan) "kassalar" —
+  // moderatorsiz, Kassalar ro'yxatida "mas'ul belgilanmagan" ko'rinadi.
+  {
+    id: 5,
+    name: "Plastik karta",
+    balance: 950000,
+    moderator: "",
+    onlinePayment: false,
+    archived: false,
+    isPrimary: false,
+    methodTotals: { ...zero(), plastik: 950000 },
+  },
+  {
+    id: 6,
+    name: "Click / Payme",
+    balance: 900000,
+    moderator: "",
+    onlinePayment: false,
+    archived: false,
+    isPrimary: false,
+    methodTotals: { ...zero(), ilovaClick: 900000 },
+  },
+  {
+    id: 7,
+    name: "Bank hisobi",
+    balance: 14953000,
+    moderator: "",
+    onlinePayment: false,
+    archived: false,
+    isPrimary: false,
+    methodTotals: { ...zero(), hisobRaqam: 14953000 },
+  },
 ];

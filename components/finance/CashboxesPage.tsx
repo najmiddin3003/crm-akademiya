@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Crown, Eye, EyeOff, FileSpreadsheet, FileText, MoreVertical, Pencil } from "lucide-react";
+import { Bell, ChevronDown, Eye, EyeOff, FileSpreadsheet, FileText, MoreVertical, Star } from "lucide-react";
 import * as XLSX from "xlsx";
+import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
 import { GROUP_TEACHERS } from "@/constants/groups";
+import { STUDENTS_LIST } from "@/constants/studentsList";
 import CashboxDrawer from "./CashboxDrawer";
 import CashboxTransferDrawer from "./CashboxTransferDrawer";
 import CashboxTransferToDrawer from "./CashboxTransferToDrawer";
@@ -14,6 +16,7 @@ import CashboxAdjustDrawer from "./CashboxAdjustDrawer";
 import CashboxKirimDrawer from "./CashboxKirimDrawer";
 import CashboxDividendDrawer from "./CashboxDividendDrawer";
 import CashboxInvestmentDrawer from "./CashboxInvestmentDrawer";
+import TransactionDetailDrawer from "./TransactionDetailDrawer";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
 import type { TransactionEntry } from "@/lib/transactionEntries";
@@ -167,12 +170,27 @@ export default function CashboxesPage() {
   }
 
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
+  const [detailEntry, setDetailEntry] = useState<TransactionEntry | null>(null);
 
   function refreshEntries() {
     fetch("/api/transaction-entries")
       .then((r) => r.json())
       .then((d) => { if (d.ok) setEntries(d.entries); });
   }
+
+  function refreshCashboxes() {
+    fetch("/api/cashboxes")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setCashboxes(d.cashboxes); });
+  }
+
+  // "Kim" ustunini /student-edit/[id] ga bog'lash uchun — TransactionEntry
+  // faqat ismni saqlaydi (id emas), shu sabab STUDENTS_LIST bo'yicha qidiramiz.
+  const studentIdByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of STUDENTS_LIST) if (!map.has(s.name)) map.set(s.name, s.id);
+    return map;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -321,70 +339,78 @@ export default function CashboxesPage() {
         </div>
 
         <div className="space-y-2">
-          {filteredList.map((c) =>
-            c.id === selectedId ? (
-              <div key={c.id} className="rounded-xl bg-primary text-white p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="font-semibold">{c.name}</div>
-                      {c.isPrimary && (
-                        <button onClick={() => setPrimaryConfirmTarget(c)} className="text-amber-300 hover:text-amber-200" title="Bosh kassa">
-                          <Crown className="w-3.5 h-3.5" fill="currentColor" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-[15px] font-bold tabular-nums mt-0.5">{mask(c.balance)}</div>
-                    <div className="text-[12px] text-white/80 mt-0.5">{c.moderator}</div>
-                  </div>
-                  <div className="flex flex-col gap-1.5 shrink-0">
-                    <button onClick={() => setKirimTarget(c)} className="h-7 px-3 rounded-md bg-emerald-500 hover:bg-emerald-600 text-[12px] font-medium">+ Kirim</button>
-                    <button onClick={() => setAdjustState({ cashbox: c, mode: "chiqim" })} className="h-7 px-3 rounded-md bg-rose-500 hover:bg-rose-600 text-[12px] font-medium">- Chiqim</button>
-                    <button onClick={() => setTransferToTarget(c)} className="h-7 px-3 rounded-md bg-cyan-500 hover:bg-cyan-600 text-[12px] font-medium">Ko&apos;chirish</button>
-                    {moreOpenId === c.id && (
-                      <>
-                        <button onClick={() => setDividendTarget(c)} className="h-7 px-3 rounded-md bg-amber-500 hover:bg-amber-600 text-[12px] font-medium">Divident</button>
-                        <button onClick={() => setInvestmentTarget(c)} className="h-7 px-3 rounded-md bg-blue-500 hover:bg-blue-600 text-[12px] font-medium">Sarmoya</button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 pt-1 border-t border-white/20">
-                  <button onClick={() => setEditTarget(c)} className="h-7 w-7 rounded-md hover:bg-white/15 inline-flex items-center justify-center" title="Tahrirlash">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => setPrimaryConfirmTarget(c)} className="h-7 w-7 rounded-md hover:bg-white/15 inline-flex items-center justify-center" title="Bosh kassa qilish">
-                    <Crown className="w-3.5 h-3.5" fill={c.isPrimary ? "currentColor" : "none"} />
-                  </button>
-                  <button
-                    onClick={() => setMoreOpenId((id) => (id === c.id ? null : c.id))}
-                    className="ml-auto text-[12px] text-white/80 hover:text-white underline-offset-2 hover:underline"
-                  >
-                    {moreOpenId === c.id ? "Kamroq" : "More"}
-                  </button>
-                </div>
-              </div>
-            ) : (
+          {filteredList.map((c) => {
+            const isSelected = c.id === selectedId;
+            return (
               <div
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
-                className="relative w-full text-left rounded-xl bg-primary/40 hover:bg-primary p-4 transition-colors cursor-pointer"
+                className={`rounded-2xl border bg-card p-4 cursor-pointer transition-colors ${
+                  isSelected ? "border-primary shadow-sm" : "border-border hover:border-primary/40"
+                }`}
               >
-                {c.isPrimary && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setPrimaryConfirmTarget(c); }}
-                    className="absolute top-3 right-3 text-amber-300 hover:text-amber-200"
-                    title="Bosh kassa"
-                  >
-                    <Crown className="w-4 h-4" fill="currentColor" />
-                  </button>
-                )}
-                <div className="font-semibold text-[14px] text-white pr-6">{c.name}</div>
-                <div className="text-[14px] font-bold tabular-nums mt-0.5 text-white">{mask(c.balance)}</div>
-                <div className="text-[12px] text-white/80 mt-0.5">{c.moderator}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {c.isPrimary && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
+                      <div className="font-semibold text-[14px] truncate">{c.name}</div>
+                    </div>
+                    <div className="text-[12.5px] text-muted-foreground mt-0.5 truncate">{c.moderator || "mas'ul belgilanmagan"}</div>
+                    <div className="text-[18px] font-bold tabular-nums mt-1">{mask(c.balance)}</div>
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-muted-foreground shrink-0 mt-1 transition-transform duration-300 ${isSelected ? "rotate-180" : ""}`}
+                  />
+                </div>
+
+                <div
+                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isSelected ? "max-h-[600px]" : "max-h-0"}`}
+                >
+                  <div className="mt-3 pt-3 border-t border-border space-y-3" onClick={(e) => e.stopPropagation()}>
+                    <div>
+                      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                        To&apos;lov turi bo&apos;yicha qoldiq
+                      </div>
+                      <div className="space-y-1.5">
+                        {orderedMethods.map((m) => (
+                          <div key={m.key} className="flex items-center justify-between text-[13px]">
+                            <span className="text-muted-foreground">{m.name}</span>
+                            <span className="font-medium tabular-nums">{mask(c.methodTotals[m.key] ?? 0)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setKirimTarget(c)} className="flex-1 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[12.5px] font-medium">+ Kirim</button>
+                      <button onClick={() => setAdjustState({ cashbox: c, mode: "chiqim" })} className="flex-1 h-8 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[12.5px] font-medium">- Chiqim</button>
+                      <button onClick={() => setTransferToTarget(c)} className="flex-1 h-8 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-[12.5px] font-medium">Ko&apos;chirish</button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setEditTarget(c)} className="flex-1 h-8 rounded-lg border border-border hover:bg-secondary text-[12.5px] font-medium">Tahrirlash</button>
+                      {!c.isPrimary && (
+                        <button onClick={() => setPrimaryConfirmTarget(c)} className="flex-1 h-8 rounded-lg border border-border hover:bg-secondary text-[12.5px] font-medium">Asosiy qilish</button>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setMoreOpenId((id) => (id === c.id ? null : c.id))}
+                      className="text-[12px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    >
+                      {moreOpenId === c.id ? "Kamroq" : "Yana…"}
+                    </button>
+                    {moreOpenId === c.id && (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => setDividendTarget(c)} className="flex-1 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[12.5px] font-medium">Divident</button>
+                        <button onClick={() => setInvestmentTarget(c)} className="flex-1 h-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12.5px] font-medium">Sarmoya</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            ),
-          )}
+            );
+          })}
           {filteredList.length === 0 && (
             <div className="text-center text-sm text-muted-foreground py-8">{loading ? "Yuklanmoqda…" : "Kassa topilmadi"}</div>
           )}
@@ -393,7 +419,7 @@ export default function CashboxesPage() {
 
       {/* O'ng qism — tanlangan kassa */}
       <div className="flex-1 min-w-0 space-y-3">
-        <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
+        <div className="flex gap-3 overflow-x-auto pb-1">
           {orderedMethods.map((m) => (
             <div
               key={m.key}
@@ -402,7 +428,7 @@ export default function CashboxesPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => reorderMethod(m.key)}
               onDragEnd={() => setDragKey(null)}
-              className={`rounded-xl bg-primary text-white p-4 cursor-grab active:cursor-grabbing transition-opacity ${dragKey === m.key ? "opacity-50" : ""}`}
+              className={`shrink-0 w-[160px] rounded-xl bg-primary text-white p-4 cursor-grab active:cursor-grabbing transition-opacity ${dragKey === m.key ? "opacity-50" : ""}`}
             >
               <div className="text-[13px] font-medium">{m.name}</div>
               <div className="text-[15px] font-bold tabular-nums mt-1">{selected ? mask(selected.methodTotals[m.key]) : mask(0)}</div>
@@ -529,8 +555,21 @@ export default function CashboxesPage() {
                 {entrySlice.map((e, i) => (
                   <tr key={e.id} className={`border-b border-border/50 ${e.status === "cancelled" ? "bg-rose-50" : ""}`}>
                     <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{entryStart + i + 1}</td>
-                    <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtEntryDate(e)}</td>
-                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">{e.studentName || e.moderator || "—"}</td>
+                    <td
+                      onClick={() => setDetailEntry(e)}
+                      className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap cursor-pointer hover:text-primary hover:underline"
+                    >
+                      {fmtEntryDate(e)}
+                    </td>
+                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">
+                      {e.studentName && studentIdByName.has(e.studentName) ? (
+                        <Link href={`/student-edit/${studentIdByName.get(e.studentName)}`} className="text-primary hover:underline">
+                          {e.studentName}
+                        </Link>
+                      ) : (
+                        e.studentName || e.moderator || "—"
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">{e.note || "—"}</td>
                     <td className="px-3 py-3 text-[13px]">{e.txName || "—"}</td>
                     <td className={`px-3 py-3 text-[13px] tabular-nums font-medium ${e.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtSignedUZS(e.amount)}</td>
@@ -616,6 +655,19 @@ export default function CashboxesPage() {
           onSaved={({ from, to }) => {
             setCashboxes((prev) => prev.map((x) => (x.id === from.id ? from : x.id === to.id ? to : x)));
             refreshEntries();
+          }}
+        />
+      )}
+      {detailEntry && (
+        <TransactionDetailDrawer
+          entry={detailEntry}
+          cashboxName={cashboxes.find((c) => c.id === detailEntry.cashboxId)?.name || ""}
+          studentId={detailEntry.studentName ? studentIdByName.get(detailEntry.studentName) : undefined}
+          onClose={() => setDetailEntry(null)}
+          onCancelled={(updated) => {
+            setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+            setDetailEntry(updated);
+            refreshCashboxes();
           }}
         />
       )}

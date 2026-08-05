@@ -226,6 +226,13 @@ export default function ActivatePage() {
         </>
       )}
 
+      <div>
+        <h1>Kassalar</h1>
+        <img src="/images/cashiers.jpg" alt="Kassalar" />
+
+      </div>
+
+
       {step === "password" && (
         <>
           <h1 className="text-lg font-semibold tracking-tight">Parol o&apos;rnating</h1>

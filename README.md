@@ -16,6 +16,56 @@ Ro'yxatlar bo'sh bo'lsa `constants/*.js` dagi seed'lardan to'ldiriladi.
 
 ---
 
+# Qolgan ishlar — umumiy ro'yxat
+
+`akademiya.edutizim.uz`ning sidebar submenyularini (har bo'limni hover qilib) va Sozlamalar
+tablarini local bilan solishtirib chiqilgan holat (2026-08-04). `constants/sidebar.js`dagi
+referensda umuman yo'q ~38 ta "kelajakdagi" band (Moliya/Nazorat/Sotuv/Boshqaruv/Hisobotlar
+dashboard'lari va h.k.) bu ro'yxatga kirmagan — ular referensning o'zida yo'q, demak nusxa
+oladigan joy yo'q.
+
+## 1. Butun bir modul yo'q — "Blok test"
+
+Referensda alohida top-level sidebar bo'limi, ichida 2 ta sahifa:
+- **Blok test turlari**
+- **Blok testlar**
+
+Bizda: na `constants/sidebar.js`da, na `app/(app)/`da — hech qanday iz yo'q. Kerak:
+1. `constants/sidebar.js`ga yangi top-level band (`key: "blok-test"`, ikkita submenyu bandi bilan)
+2. `app/(app)/blok-test-turlari/page.tsx` va `app/(app)/blok-testlar/page.tsx` (yoki mos nomlar)
+3. Tegishli `components/blokTest/*` va kerak bo'lsa `app/api/blok-test*` route'lari
+
+> Referens sahifalarining ichki tuzilishi hali o'rganilmagan — keyingi qadam sifatida saytdagi
+> shu ikki sahifani ochib, maydonlarini hujjatlashtirish kerak.
+
+## 2. ✅ "O'quvchilar manzillari" — qilindi (2026-08-04)
+
+`O'quvchilar` bo'limida referensda 7-band sifatida bor edi: **O'quvchilar manzillari**
+(referens route: `/students/locations`) — to'liq ekranli Leaflet/OpenStreetMap xaritasi,
+har bir pin bitta o'quvchi manzili.
+
+Qilingan: `leaflet` + `react-leaflet` o'rnatildi, `app/(app)/student-addresses/page.tsx` +
+`components/students/StudentAddressesPage.tsx` (sarlavha, filial filtri) +
+`components/students/StudentAddressesMap.tsx` (xarita, `next/dynamic({ ssr:false })` bilan
+faqat client'da yuklanadi) + `constants/studentAddresses.js` (140 ta seed manzil, id 9000-9199).
+
+> Tekshirilgani: `tsc --noEmit` va `eslint` toza, route 500'siz compile bo'ldi (login'ga
+> 307 redirect — kutilgan holat). Ilova login talab qilgani uchun brauzerda vizual tasdiqlab
+> bo'lmadi — birinchi ochganda `/student-addresses`ni ko'rib, xaritada muammo bo'lsa ayting.
+
+## 3. Sozlamalar — 6 ta tab
+
+Batafsil pastda, "Sozlamalar bo'limi — holat va qolgan ishlar" bo'limida. Qisqacha: **Chek**,
+**Obuna**, **Ommaviy oferta** (Umumiy sozlamalar) + **So'raladigan bo'limlar**, **Avto sms**,
+**Bot eslatmalari** (Sotuv va marketing).
+
+## 4. Qurilmaydi — Gamifikatsiya
+
+Sababi pastda, "Qurilmaydigan" bo'limida — pullik qo'shimcha modul, referens akkauntda
+yoqilmagan.
+
+---
+
 # Sozlamalar bo'limi — holat va qolgan ishlar
 
 Referens marshruti: `/settings/<bo'lim>?status=<tab>`
