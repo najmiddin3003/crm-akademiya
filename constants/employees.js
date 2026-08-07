@@ -97,7 +97,29 @@ function buildRest() {
   return out;
 }
 
-export const EMPLOYEES_DATA = [...BASE_EMPLOYEES, ...buildRest()];
+// Loyihaning boshqa joylarida "xodim" sifatida ishlatiladigan, ammo yuqoridagi
+// demo ro'yxatga tushmay qolgan odamlar: GROUP_TEACHERS (guruh o'qituvchilari,
+// Moliya → Kassalar'dagi "Moderator" tanlovi ham shu ro'yxatdan) va kassa
+// seed'idagi moderatorlar. Ular shu yerda bo'lmasa, ism bo'yicha xodim profiliga
+// (/management-xodimlar/[id]) o'tadigan havolalar ishlamaydi. Id'lar 50 dan
+// boshlanadi — 1–49 o'zgarmay qolishi uchun.
+const STAFF_EXTRA = [
+  { id: 50, name: "Jasurbek O'rinboyev",     gender: "male",   aktivOq: 24, groups: 1, turi: "teacher",   filial: "Akademiya", phone: "90 112 47 63", kurs: "Ingliz tili", created: "02.06.2026 | 09:40", lastActive: "", archReason: "" },
+  { id: 51, name: "Mohinur Abdurahimova",    gender: "female", aktivOq: 7,  groups: 1, turi: "teacher",   filial: "Akademiya", phone: "93 208 55 14", kurs: "Matematika",  created: "02.09.2025 | 10:12", lastActive: "", archReason: "" },
+  { id: 52, name: "Odina Ahmedova",          gender: "female", aktivOq: 6,  groups: 1, turi: "teacher",   filial: "Akademiya", phone: "94 371 09 28", kurs: "Rus tili",    created: "03.06.2025 | 11:05", lastActive: "", archReason: "" },
+  { id: 53, name: "Odina Yuldasheva",        gender: "female", aktivOq: 24, groups: 2, turi: "teacher",   filial: "Akademiya", phone: "97 640 12 77", kurs: "Ingliz tili", created: "03.09.2025 | 09:58", lastActive: "", archReason: "" },
+  { id: 54, name: "Musoxon Maxamadaliyev",   gender: "male",   aktivOq: 13, groups: 1, turi: "teacher",   filial: "Akademiya", phone: "91 505 33 46", kurs: "Arab tili",   created: "02.09.2025 | 14:20", lastActive: "", archReason: "" },
+  { id: 55, name: "Abdushukur Abdug'aniyev", gender: "male",   aktivOq: 20, groups: 2, turi: "teacher",   filial: "Akademiya", phone: "88 219 74 05", kurs: "Arab tili",   created: "09.03.2025 | 16:34", lastActive: "", archReason: "" },
+  { id: 56, name: "Shahnoza Abduqahharova",  gender: "female", aktivOq: 10, groups: 1, turi: "teacher",   filial: "Akademiya", phone: "99 483 26 91", kurs: "Ona tili",    created: "03.09.2025 | 08:47", lastActive: "", archReason: "" },
+  { id: 57, name: "Zebunniso Kukibayeva",    gender: "female", aktivOq: 3,  groups: 1, turi: "teacher",   filial: "Akademiya", phone: "95 127 60 38", kurs: "Ingliz tili", created: "07.09.2025 | 15:26", lastActive: "", archReason: "" },
+  { id: 58, name: "Azizbek Mahmudov",        gender: "male",   aktivOq: 9,  groups: 1, turi: "teacher",   filial: "Akademiya", phone: "90 854 71 19", kurs: "Matematika",  created: "03.09.2025 | 12:03", lastActive: "", archReason: "" },
+  { id: 59, name: "Ibrohim Dadaxojayev",     gender: "male",   aktivOq: 18, groups: 1, turi: "teacher",   filial: "Akademiya", phone: "93 706 48 52", kurs: "Biologiya",   created: "03.09.2025 | 13:41", lastActive: "", archReason: "" },
+  { id: 60, name: "Abdulloh Raxmatullayev",  gender: "male",   aktivOq: 0,  groups: 0, turi: "admin",     filial: "Akademiya", phone: "94 155 88 55", kurs: "",            created: "01.09.2025 | 09:00", lastActive: "", archReason: "" },
+  { id: 61, name: "Nilufar Sharipova",       gender: "female", aktivOq: 0,  groups: 0, turi: "moderator", filial: "Akademiya", phone: "97 312 05 64", kurs: "",            created: "01.09.2025 | 09:05", lastActive: "", archReason: "" },
+  { id: 62, name: "Dilmurod Komilov",        gender: "male",   aktivOq: 0,  groups: 0, turi: "moderator", filial: "Akademiya", phone: "91 448 90 27", kurs: "",            created: "01.09.2025 | 09:10", lastActive: "", archReason: "" },
+];
+
+export const EMPLOYEES_DATA = [...BASE_EMPLOYEES, ...buildRest(), ...STAFF_EXTRA];
 
 // Qo'shish modalidagi "Maxsus maydon" drawer'i uchun maydon turi variantlari.
 export const CUSTOM_FIELD_TYPES = ["Matn", "Raqam", "Sana", "Tanlov (select)", "Belgi (checkbox)"];

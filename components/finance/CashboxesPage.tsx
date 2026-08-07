@@ -19,6 +19,7 @@ import CashboxInvestmentDrawer from "./CashboxInvestmentDrawer";
 import TransactionDetailDrawer from "./TransactionDetailDrawer";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
+import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 
 const TX_TYPE_MAP: Record<string, string> = { kirim: "payIn", chiqim: "payOut", kochirish: "transfer" };
@@ -44,6 +45,8 @@ function fmtEntryDate(e: TransactionEntry): string {
 // `transaction_entries` kolleksiyasiga ham haqiqiy yozuv qo'shadi — shu
 // jadval, "Tranzaksiyalar" va "Moliya hisobotlari/analitikasi" sahifalari
 // bilan BIR XIL manbadan (lib/transactionLog.ts) foydalanadi.
+// Kartadagi mas'ul (moderator) ismi bosilsa — xodim profiliga
+// (/management-xodimlar/[id]) o'tadi.
 
 const METHOD_ORDER_KEY = "financeCashMethodOrder";
 
@@ -80,6 +83,15 @@ export default function CashboxesPage() {
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Accordion: `selectedId` — o'ngdagi statistika/jadval qaysi kassaniki,
+  // `expandedId` esa faqat kartaning ochiq/yopiqligi. Ochiq kartani qayta
+  // bosish uni yopadi, tanlov esa o'zgarmaydi — o'ng tomondagi ma'lumot
+  // yo'qolib qolmasligi uchun.
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  function toggleCashbox(id: number) {
+    setSelectedId(id);
+    setExpandedId((cur) => (cur === id ? null : id));
+  }
   const [statusFilter, setStatusFilter] = useState<"active" | "archived">("active");
   const [hideBalances, setHideBalances] = useState(false);
 
@@ -192,6 +204,49 @@ export default function CashboxesPage() {
     return map;
   }, []);
 
+  // Kassa kartasidagi mas'ul (moderator) ismini xodim profiliga
+  // (/management-xodimlar/[id]) bog'lash uchun. Kassada ham faqat ism
+  // saqlanadi, shuning uchun xodimlar ro'yxatidan ism bo'yicha qidiramiz.
+  const [employees, setEmployees] = useState<HrEmployee[]>([]);
+  const employeeIdByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of employees) {
+      const key = e.name.trim().toLowerCase();
+      if (!map.has(key)) map.set(key, e.id);
+    }
+    return map;
+  }, [employees]);
+  function moderatorProfileId(name: string): number | undefined {
+    return employeeIdByName.get(name.trim().toLowerCase());
+  }
+
+  // Jadvaldagi "Kim" ustuni: o'quvchi bo'lsa /student-edit/[id] ga, xodim
+  // (moderator) bo'lsa /management-xodimlar/[id] ga o'tadi. Qatorning o'zi
+  // bosilganda tranzaksiya oynasi ochilgani uchun havola propagatsiyani
+  // to'xtatadi — ism bosilganda faqat profilga o'tiladi.
+  function renderWhoCell(e: TransactionEntry) {
+    const linkCls = "text-primary hover:underline";
+    if (e.studentName) {
+      const studentId = studentIdByName.get(e.studentName);
+      if (studentId === undefined) return e.studentName;
+      return (
+        <Link href={`/student-edit/${studentId}`} onClick={(ev) => ev.stopPropagation()} className={linkCls}>
+          {e.studentName}
+        </Link>
+      );
+    }
+    if (e.moderator) {
+      const employeeId = moderatorProfileId(e.moderator);
+      if (employeeId === undefined) return e.moderator;
+      return (
+        <Link href={`/management-xodimlar/${employeeId}`} onClick={(ev) => ev.stopPropagation()} className={linkCls}>
+          {e.moderator}
+        </Link>
+      );
+    }
+    return "—";
+  }
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/cashboxes")
@@ -199,10 +254,16 @@ export default function CashboxesPage() {
       .then((d) => {
         if (cancelled || !d.ok) return;
         setCashboxes(d.cashboxes);
-        if (d.cashboxes.length > 0) setSelectedId(d.cashboxes[0].id);
+        if (d.cashboxes.length > 0) {
+          setSelectedId(d.cashboxes[0].id);
+          setExpandedId(d.cashboxes[0].id);
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     refreshEntries();
+    fetch("/api/hr-employees")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); });
     return () => { cancelled = true; };
   }, []);
 
@@ -313,7 +374,7 @@ export default function CashboxesPage() {
   return (
     <div className="p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
       {/* Chap panel — kassalar ro'yxati */}
-      <aside className="w-full md:w-[30%] shrink-0 space-y-3">
+      <aside className="w-full md:w-[20%] shrink-0 space-y-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAddOpen(true)}
@@ -341,10 +402,11 @@ export default function CashboxesPage() {
         <div className="space-y-2">
           {filteredList.map((c) => {
             const isSelected = c.id === selectedId;
+            const isExpanded = c.id === expandedId;
             return (
               <div
                 key={c.id}
-                onClick={() => setSelectedId(c.id)}
+                onClick={() => toggleCashbox(c.id)}
                 className={`rounded-2xl border bg-card p-4 cursor-pointer transition-colors ${
                   isSelected ? "border-primary shadow-sm" : "border-border hover:border-primary/40"
                 }`}
@@ -355,27 +417,49 @@ export default function CashboxesPage() {
                       {c.isPrimary && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
                       <div className="font-semibold text-[14px] truncate">{c.name}</div>
                     </div>
-                    <div className="text-[12.5px] text-muted-foreground mt-0.5 truncate">{c.moderator || "mas'ul belgilanmagan"}</div>
+                    <div className="text-[12.5px] text-muted-foreground mt-0.5 truncate">
+                      {!c.moderator ? (
+                        "mas'ul belgilanmagan"
+                      ) : moderatorProfileId(c.moderator) ? (
+                        <Link
+                          href={`/management-xodimlar/${moderatorProfileId(c.moderator)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-primary hover:underline"
+                        >
+                          {c.moderator}
+                        </Link>
+                      ) : (
+                        c.moderator
+                      )}
+                    </div>
                     <div className="text-[18px] font-bold tabular-nums mt-1">{mask(c.balance)}</div>
                   </div>
                   <ChevronDown
-                    className={`w-4 h-4 text-muted-foreground shrink-0 mt-1 transition-transform duration-300 ${isSelected ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 text-muted-foreground shrink-0 mt-1 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
                   />
                 </div>
 
                 <div
-                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isSelected ? "max-h-[600px]" : "max-h-0"}`}
+                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? "max-h-[600px]" : "max-h-0"}`}
                 >
                   <div className="mt-3 pt-3 border-t border-border space-y-3" onClick={(e) => e.stopPropagation()}>
                     <div>
                       <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                         To&apos;lov turi bo&apos;yicha qoldiq
                       </div>
-                      <div className="space-y-1.5">
-                        {orderedMethods.map((m) => (
-                          <div key={m.key} className="flex items-center justify-between text-[13px]">
-                            <span className="text-muted-foreground">{m.name}</span>
-                            <span className="font-medium tabular-nums">{mask(c.methodTotals[m.key] ?? 0)}</span>
+                      {/* Har bir to'lov turi alohida qator: yupqa ajratuvchi
+                          chiziq + navbatma-navbat fon — tor panelda ham qaysi
+                          summa qaysi turga tegishli ekani darrov ko'rinadi. */}
+                      <div className="rounded-xl border border-border overflow-hidden">
+                        {orderedMethods.map((m, i) => (
+                          <div
+                            key={m.key}
+                            className={`flex items-center justify-between gap-2 px-2.5 py-1.5 text-[13px] ${
+                              i > 0 ? "border-t border-border" : ""
+                            } ${i % 2 === 1 ? "bg-secondary/70" : ""}`}
+                          >
+                            <span className="text-muted-foreground truncate">{m.name}</span>
+                            <span className="font-medium tabular-nums shrink-0">{mask(c.methodTotals[m.key] ?? 0)}</span>
                           </div>
                         ))}
                       </div>
@@ -428,14 +512,14 @@ export default function CashboxesPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => reorderMethod(m.key)}
               onDragEnd={() => setDragKey(null)}
-              className={`shrink-0 w-[160px] rounded-xl bg-primary text-white p-4 cursor-grab active:cursor-grabbing transition-opacity ${dragKey === m.key ? "opacity-50" : ""}`}
+              className={`shrink-0 w-[160px] relative rounded-xl bg-primary text-white p-4 cursor-grab active:cursor-grabbing transition-opacity ${dragKey === m.key ? "opacity-50" : ""}`}
             >
               <div className="text-[13px] font-medium">{m.name}</div>
               <div className="text-[15px] font-bold tabular-nums mt-1">{selected ? mask(selected.methodTotals[m.key]) : mask(0)}</div>
               <button
                 onClick={() => selected && setTransferState({ cashbox: selected, from: m.key })}
                 disabled={!selected}
-                className="text-[12px] text-white/80 hover:text-white mt-1 underline-offset-2 hover:underline disabled:opacity-60 disabled:no-underline"
+                className="text-[12px] text-white/80 hover:text-white mt-1 underline-offset-2 hover:underline disabled:opacity-60 disabled:no-underline absolute top-3 right-3"
               >
                 Ko&apos;chirish
               </button>
@@ -553,23 +637,18 @@ export default function CashboxesPage() {
               </thead>
               <tbody>
                 {entrySlice.map((e, i) => (
-                  <tr key={e.id} className={`border-b border-border/50 ${e.status === "cancelled" ? "bg-rose-50" : ""}`}>
+                  // Qatorning istalgan joyiga bosilsa — tranzaksiya oynasi
+                  // (to'lovni bekor qilish) ochiladi. Faqat "Kim" ustunidagi
+                  // ism bundan mustasno: u profil sahifasiga o'tadi
+                  // (renderWhoCell).
+                  <tr
+                    key={e.id}
+                    onClick={() => setDetailEntry(e)}
+                    className={`border-b border-border/50 cursor-pointer hover:bg-secondary/40 ${e.status === "cancelled" ? "bg-rose-50" : ""}`}
+                  >
                     <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{entryStart + i + 1}</td>
-                    <td
-                      onClick={() => setDetailEntry(e)}
-                      className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap cursor-pointer hover:text-primary hover:underline"
-                    >
-                      {fmtEntryDate(e)}
-                    </td>
-                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">
-                      {e.studentName && studentIdByName.has(e.studentName) ? (
-                        <Link href={`/student-edit/${studentIdByName.get(e.studentName)}`} className="text-primary hover:underline">
-                          {e.studentName}
-                        </Link>
-                      ) : (
-                        e.studentName || e.moderator || "—"
-                      )}
-                    </td>
+                    <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtEntryDate(e)}</td>
+                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">{renderWhoCell(e)}</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">{e.note || "—"}</td>
                     <td className="px-3 py-3 text-[13px]">{e.txName || "—"}</td>
                     <td className={`px-3 py-3 text-[13px] tabular-nums font-medium ${e.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtSignedUZS(e.amount)}</td>
@@ -594,7 +673,7 @@ export default function CashboxesPage() {
       </div>
 
       {addOpen && (
-        <CashboxDrawer onClose={() => setAddOpen(false)} onSaved={(c) => { setCashboxes((prev) => [...prev, c]); setSelectedId(c.id); }} />
+        <CashboxDrawer onClose={() => setAddOpen(false)} onSaved={(c) => { setCashboxes((prev) => [...prev, c]); setSelectedId(c.id); setExpandedId(c.id); }} />
       )}
       {editTarget && (
         <CashboxDrawer
@@ -605,6 +684,7 @@ export default function CashboxesPage() {
             setCashboxes((prev) => {
               const next = prev.filter((x) => x.id !== id);
               if (selectedId === id) setSelectedId(next.length > 0 ? next[0].id : null);
+              if (expandedId === id) setExpandedId(next.length > 0 ? next[0].id : null);
               return next;
             });
           }}

@@ -222,6 +222,7 @@ export default function BonusesPage() {
               title="Filtr (sana oralig'i)"
             >
               <Filter className="w-4 h-4" />
+              
             </button>
             {filterOpen && (
               <div className="absolute top-full right-0 mt-2 z-50">
