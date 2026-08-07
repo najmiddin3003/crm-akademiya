@@ -53,7 +53,42 @@ const ITEMS = SIDEBAR_ITEMS as SidebarItem[];
 // mavjud). Qolgan barcha havolalar hozircha "qurilmagan" — qulflanadi: hover
 // bo'lganda flyout menyu baribir chiqaveradi, lekin bosilganda hech qayerga
 // o'tmaydi va xiraroq ko'rinadi.
-const IMPLEMENTED_ROUTES = new Set(["/tasks", "/orders-list", "/first-lessons", "/management-xodimlar", "/offline-courses", "/online-courses", "/edu-category", "/seasonal-assessment", "/contract", "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll", "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow", "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract", "/groups", "/groups-tasks", "/groups-schedule", "/groups-rooms", "/groups-students", "/new-students", "/active-students", "/archive-students", "/students-list", "/parents", "/expiring-subs", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating", "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile"]);
+//
+// Ro'yxat constants/sidebar.js dagi har bir href'ni app/(app)/ papkasi bilan
+// solishtirib chiqarilgan — shu sabab bo'lim tartibida guruhlangan. Yangi
+// sahifa qo'shilganda shu yerga ham qo'shilishi kerak (aks holda sidebar'da
+// qulflangan ko'rinadi, garchi sahifa ishlasa ham).
+const IMPLEMENTED_ROUTES = new Set([
+  // Topshiriqlar
+  "/tasks",
+  // Lidlar
+  "/orders-list", "/first-lessons",
+  // Guruh
+  "/groups", "/groups-tasks", "/groups-schedule", "/groups-rooms", "/groups-equipments", "/groups-students",
+  // O'quvchilar
+  "/new-students", "/active-students", "/archive-students", "/students-list", "/parents", "/expiring-subs", "/student-addresses",
+  // O'quv bo'limi (dashboard/baholash/o'quv dasturi/imtihonlar/sertifikatlar — referensda yo'q, qurilmagan)
+  "/offline-courses", "/online-courses", "/edu-category", "/seasonal-assessment", "/contract",
+  // Blok test
+  "/blok-test-turlari", "/blok-testlar",
+  // Moliya (dashboard/qarzdorlar/audit/xarajatlar/hisobotlar markazi/prognoz/ruxsatlar — referensda yo'q)
+  "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll",
+  "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow",
+  "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract",
+  // Nazorat (dashboard/feedback tahlili/ko'p faktorli skor/qoplash/branch health/live — referensda yo'q)
+  "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating",
+  "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile", "/nazorat-turnstile-io", "/nazorat-support-analytics",
+  // Boshqaruv (dashboard/ruxsat matritsasi/jadval tahlili — referensda yo'q)
+  "/management-xodimlar", "/management-rollar", "/management-filiallar", "/management-ish-jadvali",
+  // Sotuv va marketing (dashboard/ROI/kampaniyalar/moderatorlar/pipeline/xabar shablonlari — referensda yo'q)
+  "/sales-marketing", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages",
+  // Hisobotlar (dashboard/executive/smart analitika/rejalashtirilgan — referensda yo'q; finance-*/nazorat-* takrorlari yuqorida bor)
+  "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
+  "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",
+  // Sozlamalar (markaz/tema/profil/bildirishnomalar/xavfsizlik/backup — referensda yo'q)
+  "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
+  "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
+]);
 
 export interface SidebarProps {
   mobileOpen: boolean;

@@ -53,6 +53,7 @@ export const SIDEBAR_ITEMS = [
         { label: "Barcha vazifalar", href: "/groups-tasks", icon: "i-list-todo" },
         { label: "Dars jadvali", href: "/groups-schedule", icon: "i-calendar" },
         { label: "Xonalar", href: "/groups-rooms", icon: "i-monitor" },
+        { label: "Jihozlar", href: "/groups-equipments", icon: "i-grid" },
         { label: "Guruh o'quvchilari", href: "/groups-students", icon: "i-user" },
       ],
     },
@@ -96,6 +97,20 @@ export const SIDEBAR_ITEMS = [
         { label: "Imtihonlar", href: "/exams", icon: "i-graduation-cap" },
         { label: "🏆 Sertifikatlar", href: "/certificates", icon: "i-graduation-cap" },
         { label: "Shartnoma", href: "/contract", icon: "i-file-plus" },
+      ],
+    },
+  },
+  {
+    key: "blok-test",
+    icon: "i-file-text",
+    label: "Blok test",
+    mobileHref: "/blok-test-turlari",
+    menu: {
+      variant: "list",
+      width: 224,
+      items: [
+        { label: "Blok test turlari", href: "/blok-test-turlari", icon: "i-list-todo" },
+        { label: "Blok testlar", href: "/blok-testlar", icon: "i-file-text" },
       ],
     },
   },
