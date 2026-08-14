@@ -24,19 +24,29 @@ referensda umuman yo'q ~38 ta "kelajakdagi" band (Moliya/Nazorat/Sotuv/Boshqaruv
 dashboard'lari va h.k.) bu ro'yxatga kirmagan — ular referensning o'zida yo'q, demak nusxa
 oladigan joy yo'q.
 
-## 1. Butun bir modul yo'q — "Blok test"
+## 1. ✅ Butun bir modul yo'q edi — "Blok test" — qilindi (2026-08-07)
 
-Referensda alohida top-level sidebar bo'limi, ichida 2 ta sahifa:
-- **Blok test turlari**
-- **Blok testlar**
+Referensda alohida top-level sidebar bo'limi, ichida 2 ta sahifa: **Blok test turlari**
+(`/block-test/types`) va **Blok testlar** (`/block-test/exams`). Referens saytdan ichki
+tuzilishi (forma maydonlari) hujjatlashtirilib, to'liq qurildi:
 
-Bizda: na `constants/sidebar.js`da, na `app/(app)/`da — hech qanday iz yo'q. Kerak:
-1. `constants/sidebar.js`ga yangi top-level band (`key: "blok-test"`, ikkita submenyu bandi bilan)
-2. `app/(app)/blok-test-turlari/page.tsx` va `app/(app)/blok-testlar/page.tsx` (yoki mos nomlar)
-3. Tegishli `components/blokTest/*` va kerak bo'lsa `app/api/blok-test*` route'lari
+- `constants/sidebar.js` — yangi top-level band (`key: "blok-test"`, O'quv bo'limi bilan
+  Moliya orasida — referensdagi joyi bilan bir xil)
+- `app/(app)/blok-test-turlari/page.tsx` + `components/blockTest/BlockTestTypesPage.tsx` +
+  `BlockTestTypeModal.tsx` — Nomi, Turi (Haftalik/Oylik/Choraklik/Sinov (mock)/Mavzu
+  bo'yicha/Kirish/Chiqish/Boshqa), Davomiyligi (daqiqa), Fanlar (dinamik ro'yxat: Fan +
+  Savollar soni + Har bir to'g'ri javob uchun ball), Faol
+- `app/(app)/blok-testlar/page.tsx` + `components/blockTest/BlockTestExamsPage.tsx` +
+  `BlockTestExamModal.tsx` — Nomi, Tur (turlardan tanlanadi), Sana, Boshlanish vaqti,
+  Guruhlar (ko'p tanlov), Mas'ul xodim, Izoh; Holati sanaga qarab hisoblanadi
+  (Rejalashtirilgan/Bugun/Tugagan — rangi Topshiriqlar sahifasining "O'tib
+  ketgan/Bugun/Keyinchalik keladigan" ustunlari bilan bir xil: qizil/yashil/ko'k)
+- `lib/blockTestTypes.ts`, `lib/blockTestExams.ts`, `constants/blockTest.js`,
+  `app/api/block-test-types/*`, `app/api/block-test-exams/*` — MongoDB
+  `block_test_types`/`block_test_exams`
 
-> Referens sahifalarining ichki tuzilishi hali o'rganilmagan — keyingi qadam sifatida saytdagi
-> shu ikki sahifani ochib, maydonlarini hujjatlashtirish kerak.
+> Tekshirilgani: brauzerda qo'shish/ro'yxatlash to'liq sinaldi (turlar, testlar, guruh
+> ko'p tanlovi, mas'ul xodim tanlovi). `tsc --noEmit` va `eslint` toza.
 
 ## 2. ✅ "O'quvchilar manzillari" — qilindi (2026-08-04)
 
@@ -63,6 +73,89 @@ Batafsil pastda, "Sozlamalar bo'limi — holat va qolgan ishlar" bo'limida. Qisq
 
 Sababi pastda, "Qurilmaydigan" bo'limida — pullik qo'shimcha modul, referens akkauntda
 yoqilmagan.
+
+## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
+
+Referensda Guruh submenyusida 6 ta band bor edi (bizda 5 ta — **Jihozlar** yo'q edi, Xonalar
+bilan Guruh o'quvchilari orasida). Qo'shildi: `app/(app)/groups-equipments/page.tsx` +
+`components/groups/EquipmentListPage.tsx` + `EquipmentModal.tsx` — Jihoz nomi, Inventar kodi
+(bo'sh qoldirilsa avtomatik: `INV-0001`), Narxi (dona uchun). `lib/equipment.ts`,
+`constants/equipment.js`, `app/api/equipment/*` (MongoDB `equipment`).
+
+## 6. ✅ Sidebar'dagi "Hali tayyor emas" qulflari eskirgan edi — tuzatildi (2026-08-07)
+
+`components/shared/Sidebar.tsx` dagi `IMPLEMENTED_ROUTES` ro'yxati eskirib qolgan edi —
+Sotuv va marketing, Hisobotlar, Sozlamalar, Nazorat → Turniket kirish-chiqish/Support
+analitikasi kabi allaqachon qurilgan ko'plab sahifalar sidebarda xiraroq va bosilmaydigan
+("Hali tayyor emas") ko'rinib turardi. `constants/sidebar.js` dagi har bir href
+`app/(app)/` papkasi bilan solishtirilib, ro'yxat to'liq (76 ta) qayta tuzildi, bo'lim
+bo'yicha guruhlangan izohlar bilan. Referensda yo'q "kelajakdagi" ~38 stub band hamon
+to'g'ri qulflangan qoldi.
+
+## 7. ✅ Diagrammalar haqiqiy kutubxonaga o'tkazildi — recharts (2026-08-07)
+
+`components/ui/DonutChart.tsx` qo'lda SVG (`stroke-dasharray`/`stroke-dashoffset`) bilan
+yozilgan edi — hech qanday kutubxonasiz. `recharts` o'rnatildi, komponent uning
+`Pie`/`Cell`/`Tooltip`'i asosida qayta yozildi (tashqi interfeys — `slices`/`centerLabel`/
+`size`/`showLabels` — o'zgarmadi, shuning uchun barcha 5 ta chaqiruvchi joy — Moliya →
+Kirim chiqim, Moliya hisobotlari, Moliya analitikasi, Nazorat → Turniket kirish-chiqish —
+avtomatik yangi kutubxonaga o'tdi, boshqa fayl tegilmadi). Yon foyda: bepul hover-tooltip
+qo'shildi; bo'sh holat (`total===0`) rangidagi eski xato ham tuzatildi (`stroke="var(--secondary)"`
+— bu loyihada CSS o'zgaruvchilar HSL uchlik sifatida saqlanadi, `hsl(var(--secondary))`
+shaklida ishlatilishi kerak edi).
+
+> Tekshirilgani: bitta segmentli, bo'sh holat, va 3 segmentli (oralarida bo'shliq bilan)
+> holatlar brauzerda vizual sinaldi. `tsc`/`eslint` toza.
+
+## 8. ✅ Boshqaruv → Xodimlar: filtrlar ishlamas edi — tuzatildi (2026-08-07)
+
+`components/employees/EmployeesListPage.tsx`:
+- **Holat** (Aktiv/Arxiv) va **Ketish sababi** filtrlari — state bor edi, lekin filtrlash
+  mantig'ida ishlatilmagan edi (tanlash hech narsani o'zgartirmasdi). Endi `archReason`
+  maydoniga qarab ishlaydi (bo'sh = aktiv, to'ldirilgan = arxiv).
+- **Faollik sanasi** / **Ketish sanasi** — oddiy, hech narsaga bog'lanmagan matn maydonlari
+  edi. Endi umumiy `components/ui/DateRangePicker.tsx` (kalendar + Bugun/Kecha/Bu hafta va
+  h.k. presetlar) — `lastActive`/`archDate` maydonlari bo'yicha haqiqiy oraliq filtri.
+- Jadval qatoriga bosish (avval faqat "To'liq nomi" ustuni ishlardi) — endi istalgan
+  katakka bosilsa ham xodim profiliga (`/management-xodimlar/:id`) o'tadi.
+- Yon ta'sir: `DateRangePicker` to'liq kenglikka cho'zilmas edi (`inline-flex` ota-div
+  kontent kengligiga qisilib qolardi) — tuzatildi, boshqa sahifalarda ham to'g'ri ko'rinadi.
+
+> Tekshirilgani: uchala tuzatish ham DOM darajasida (JS orqali, chunki avtomatlashtirilgan
+> hover/click koordinatasi bu sessiyada bir necha marta noto'g'ri ishladi) va vizual
+> brauzerda sinaldi — Holat filtri 63↔0 orasida to'g'ri almashdi, sana oralig'i tanlansa
+> mos ravishda filtrladi, qatorga bosish profilga olib bordi.
+
+## 9. ✅ Xodim qo'shishda faollashtirish SMS'i yo'q edi — ulandi (2026-08-07)
+
+Loyihada mavjud invite/SMS zanjiri (`lib/invite.ts` + `lib/eskiz.ts` — Eskiz.uz'ga haqiqiy
+HTTP integratsiya) faqat eski `components/employees/EmployeesPage.tsx` (`employees`/`users`
+kolleksiyasi) oqimiga ulangan edi. Boshqaruv → Xodimlar'dagi haqiqiy "Xodim qo'shish"
+(`AddEmployeeModal` → `POST /api/hr-employees`, `hr_employees` kolleksiyasi) unga umuman
+tegmasdi — ikkala kolleksiya orasida bog'lovchi kalit ham yo'q edi.
+
+Qilingan (`app/api/hr-employees/route.ts` POST):
+- Telefon tekshiriladi/normallashtiriladi (`isValidPhone`/`normalizePhone`, `lib/invite.ts`)
+- `users` kolleksiyasida shu raqam allaqachon bo'lsa — `409`, hech narsa yaratilmaydi
+  (dublikat himoyasi — foydalanuvchi tanlovi bilan)
+- `hr_employees` qatori + bog'langan `users` yozuvi yaratiladi (`users.hrEmployeeId` →
+  `hr_employees.id`; `employees` kolleksiyasiga alohida yozuv YARATILMAYDI — activate/
+  verify-token/resend-invite faqat `users`ga qaraydi, shuning uchun bu farq ularga
+  ta'sir qilmaydi), `status: "invited"`
+- 72 soatlik faollashtirish tokeni + 6 xonali kod generatsiya qilinadi, SMS yuboriladi
+  (`activationMessage` — havola + kod)
+- `components/employees/AddEmployeeModal.tsx`: telefon formatiga klient tomon tekshiruv
+  qo'shildi (avval umuman yo'q edi), muvaffaqiyat/xatolik toast'i SMS holatiga
+  (`smsSent`) qarab ko'rsatiladi
+
+> Tekshirilgani: API darajasida haqiqiy (simulated emas) SMS so'rovi Eskiz'ga jonli
+> yuborildi (`smsSent:true, smsSimulated:false`) — foydalanuvchining o'z raqamiga test
+> yozuv qo'shib sinaldi (fizik yetib borgani alohida tasdiqlanishi kerak). Dublikat
+> raqam bilan qayta urinish `409` qaytardi va qo'shimcha yozuv yaratmadi (63→64→64,
+> "Dublikat" qatori paydo bo'lmadi). `tsc`/`eslint` toza.
+>
+> Ochiq qolgan: `POST /api/hr-employees`da admin-auth yo'q (eski `POST /api/employees`da
+> ham xuddi shunday TODO bor) — ataylab tegilmadi, alohida masala.
 
 ---
 

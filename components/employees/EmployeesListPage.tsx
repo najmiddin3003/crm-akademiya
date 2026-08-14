@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowDown, Filter, MoreVertical, Plus, Settings } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
+import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
 import AddEmployeeModal from "./AddEmployeeModal";
 import type { HrEmployee } from "@/lib/hrEmployees";
@@ -27,6 +29,25 @@ import {
 const inputCls = "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const selectCls = "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
+const EMPTY_RANGE: DateRange = { start: null, end: null };
+
+// "DD.MM.YYYY | HH:mm" (yoki shunga o'xshash, faqat kun aniqligida kerak) →
+// Date. created/lastActive/archDate uchun bir xil format ishlatiladi.
+function parseStoredDate(s: string): Date | null {
+  const m = s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+}
+function inDateRange(d: Date | null, range: DateRange): boolean {
+  if (!range.start && !range.end) return true;
+  if (!d) return false;
+  if (range.start && d < range.start) return false;
+  if (range.end) {
+    const endOfDay = new Date(range.end.getFullYear(), range.end.getMonth(), range.end.getDate(), 23, 59, 59, 999);
+    if (d > endOfDay) return false;
+  }
+  return true;
+}
+
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
   return `"${s.replace(/"/g, '""')}"`;
@@ -45,6 +66,7 @@ function downloadBlob(blob: Blob, filename: string) {
 const EXPORT_HEADERS = ["№", "To'liq nomi", "Jinsi", "Aktiv o'quvchilar", "Guruhlar", "Turi", "Filiallar", "Telefon raqam", "Kurs", "Yaratilgan sana"];
 
 export default function EmployeesListPage() {
+  const router = useRouter();
   const { showSuccess } = useToast();
 
   const [search, setSearch] = useState("");
@@ -52,6 +74,8 @@ export default function EmployeesListPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
   const [reasonFilter, setReasonFilter] = useState("");
+  const [activeDateRange, setActiveDateRange] = useState<DateRange>(EMPTY_RANGE);
+  const [leaveDateRange, setLeaveDateRange] = useState<DateRange>(EMPTY_RANGE);
 
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -100,9 +124,16 @@ export default function EmployeesListPage() {
       if (q && !e.name.toLowerCase().includes(q) && !e.phone.includes(q) && !(e.kurs && e.kurs.toLowerCase().includes(q))) return false;
       if (roleFilter && e.turi !== roleFilter) return false;
       if (courseFilter && e.kurs !== courseFilter) return false;
+      // Holat: archReason bo'lsa — arxiv, bo'lmasa — aktiv (alohida "holat"
+      // maydoni yo'q, shu belgi orqali chiqarib olinadi).
+      if (stateFilter === "active" && e.archReason) return false;
+      if (stateFilter === "archive" && !e.archReason) return false;
+      if (reasonFilter && e.archReason !== reasonFilter) return false;
+      if (!inDateRange(parseStoredDate(e.lastActive), activeDateRange)) return false;
+      if (!inDateRange(parseStoredDate(e.archDate || ""), leaveDateRange)) return false;
       return true;
     });
-  }, [rows, search, roleFilter, courseFilter]);
+  }, [rows, search, roleFilter, courseFilter, stateFilter, reasonFilter, activeDateRange, leaveDateRange]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -139,7 +170,7 @@ export default function EmployeesListPage() {
     switch (colId) {
       case "num": return <span className="text-muted-foreground tabular-nums">{start + i + 1}</span>;
       case "name": return (
-        <Link href={`/management-xodimlar/${e.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+        <Link href={`/management-xodimlar/${e.id}`} onClick={(ev) => ev.stopPropagation()} className="font-medium text-foreground hover:text-primary hover:underline">
           {e.name}
         </Link>
       );
@@ -159,7 +190,7 @@ export default function EmployeesListPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* i-list sprite Pagination "qator" ikonkasi uchun (global sprite'da yo'q) */}
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <defs>
@@ -220,14 +251,24 @@ export default function EmployeesListPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidiruv" className={inputCls} />
           <div className="relative">
-            <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className={selectCls}>
+            <select value={stateFilter} onChange={(e) => { setStateFilter(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">Holat</option>
               {EMP_STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
             <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
-          <input type="text" placeholder="Faollik sanasi" className={inputCls} />
-          <input type="text" placeholder="Ketish sanasi" className={inputCls} />
+          <DateRangePicker
+            value={activeDateRange}
+            onChange={(r) => { setActiveDateRange(r); setPage(1); }}
+            placeholder="Faollik sanasi"
+            className="w-full"
+          />
+          <DateRangePicker
+            value={leaveDateRange}
+            onChange={(r) => { setLeaveDateRange(r); setPage(1); }}
+            placeholder="Ketish sanasi"
+            className="w-full"
+          />
           <div className="relative">
             <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">Rol</option>
@@ -243,7 +284,7 @@ export default function EmployeesListPage() {
             <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
           <div className="relative">
-            <select value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)} className={selectCls}>
+            <select value={reasonFilter} onChange={(e) => { setReasonFilter(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">Ketish sababi</option>
               {EMP_LEAVE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -253,16 +294,16 @@ export default function EmployeesListPage() {
       )}
 
       {/* Table card */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
             <span>Umumiy soni:</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[1700px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 {visibleCols.map((c) => (
                   <th key={c.id} className="px-3 py-3 text-left whitespace-nowrap">
@@ -276,7 +317,11 @@ export default function EmployeesListPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {slice.map((e, i) => (
-                <tr key={e.id} className="hover:bg-secondary/30 transition-colors">
+                <tr
+                  key={e.id}
+                  onClick={() => router.push(`/management-xodimlar/${e.id}`)}
+                  className="hover:bg-secondary/30 transition-colors cursor-pointer"
+                >
                   {visibleCols.map((c) => (
                     <td key={c.id} className="px-3 py-3 whitespace-nowrap">{renderCell(e, c.id, i)}</td>
                   ))}

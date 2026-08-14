@@ -97,9 +97,21 @@ export interface SidebarProps {
 
 export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps) {
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // Bir menyudan ikkinchisiga o'tishda fade/translate animatsiyasini o'chirish
+  // uchun. Aks holda eski panel so'nib turganda yangisi BOSHQA balandlikda
+  // paydo bo'ladi — ikki panel bir vaqtda harakatlanib, sichqonchani sidebar
+  // bo'ylab yurgizganda "titrash" bo'lib ko'rinadi.
+  const [instantSwitch, setInstantSwitch] = useState(false);
   const triggerRefs = useRef<Record<string, HTMLLIElement | null>>({});
   const panelRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // `openKey` ning eng so'nggi qiymati — setState asinxron bo'lgani uchun
+  // "hozir biror menyu ochiqmi?" degan savolga darhol javob berish kerak.
+  const openKeyRef = useRef<string | null>(null);
+  // Sichqoncha shunchaki ustidan o'tib ketayotgan bo'lsa menyu ochilmasligi
+  // uchun kichik kechikish (faqat hech narsa ochiq bo'lmaganda qo'llanadi).
+  const OPEN_DELAY_MS = 90;
 
   // Joriy sahifaga mos elementni yorug' ko'rsatish uchun (masalan hozir
   // "Lidlar" > "Buyurtmalar ro'yxati"da bo'lsangiz, ikkalasi ham yorug'
@@ -128,31 +140,73 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
     }
   }, []);
 
+  const clearOpenTimer = useCallback(() => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+  }, []);
+
+  const applyOpen = useCallback((key: string, instant: boolean) => {
+    openKeyRef.current = key;
+    setInstantSwitch(instant);
+    setOpenKey(key);
+  }, []);
+
   const openMenu = useCallback(
     (key: string) => {
       clearCloseTimer();
+      clearOpenTimer();
       if (typeof document !== "undefined" && document.body.classList.contains("sidebar-hidden")) return;
-      setOpenKey(key);
+      if (openKeyRef.current !== null) {
+        // Allaqachon biror menyu ochiq — kechikmasdan va ANIMATSIYASIZ
+        // almashtiramiz. Aynan shu joy ilgari titrashga sabab bo'lardi.
+        applyOpen(key, openKeyRef.current !== key);
+        return;
+      }
+      // Hech narsa ochiq emas — qisqa kechikishdan keyin, odatdagi fade bilan.
+      openTimer.current = setTimeout(() => {
+        openTimer.current = null;
+        applyOpen(key, false);
+      }, OPEN_DELAY_MS);
     },
-    [clearCloseTimer],
+    [applyOpen, clearCloseTimer, clearOpenTimer],
   );
 
+  const reallyClose = useCallback(() => {
+    openKeyRef.current = null;
+    setInstantSwitch(false);
+    setOpenKey(null);
+  }, []);
+
   const scheduleClose = useCallback(() => {
+    clearOpenTimer();
     clearCloseTimer();
-    closeTimer.current = setTimeout(() => setOpenKey(null), 240);
-  }, [clearCloseTimer]);
+    closeTimer.current = setTimeout(reallyClose, 240);
+  }, [clearCloseTimer, clearOpenTimer, reallyClose]);
 
   const closeNow = useCallback(() => {
+    clearOpenTimer();
     clearCloseTimer();
-    setOpenKey(null);
-  }, [clearCloseTimer]);
+    reallyClose();
+  }, [clearCloseTimer, clearOpenTimer, reallyClose]);
+
+  // Komponent yo'q qilinganda osilib qolgan taymerlarni tozalash.
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (openTimer.current) clearTimeout(openTimer.current);
+  }, []);
 
   const positionPanel = useCallback((key: string) => {
     const trigger = triggerRefs.current[key];
     const panel = panelRefs.current[key];
     if (!trigger || !panel) return;
     const rect = trigger.getBoundingClientRect();
-    panel.style.left = rect.right + 8 + "px";
+    // Referensda flyout SIDEBAR chetidan 3px narida turadi — element chetidan
+    // emas. Element chetini olsak, sidebar padding'i va scrollbar kengligi
+    // qo'shilib, panel sidebar ustiga chiqib qolardi.
+    const asideRight = document.getElementById("sidebar")?.getBoundingClientRect().right ?? rect.right;
+    panel.style.left = asideRight + 3 + "px";
     panel.style.top = rect.top + "px";
     const subHeight = panel.offsetHeight || 140;
     const maxTop = window.innerHeight - subHeight - 8;
@@ -170,7 +224,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
       const t = e.target as Node;
       if (panelRefs.current[openKey]?.contains(t)) return;
       if (triggerRefs.current[openKey]?.contains(t)) return;
-      setOpenKey(null);
+      reallyClose();
     };
     window.addEventListener("resize", onResize);
     document.addEventListener("click", onDocClick);
@@ -178,7 +232,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
       window.removeEventListener("resize", onResize);
       document.removeEventListener("click", onDocClick);
     };
-  }, [openKey, positionPanel]);
+  }, [openKey, positionPanel, reallyClose]);
 
   const closeMobile = () => onMobileOpenChange(false);
 
@@ -191,159 +245,59 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
   // ko'rinish inline style orqali berilib, hech qanday CSS sinfiga bog'liq
   // qolmaydi.
   const LOCKED_STYLE = { opacity: 0.45, cursor: "not-allowed", pointerEvents: "none" } as const;
-  const lockedProps = (href: string) =>
-    !IMPLEMENTED_ROUTES.has(href)
-      ? { locked: true, title: "Hali tayyor emas", style: LOCKED_STYLE }
-      : { locked: false, title: undefined, style: undefined };
+  const lockedProps = (href: string) => ({
+    locked: !IMPLEMENTED_ROUTES.has(href),
+    title: !IMPLEMENTED_ROUTES.has(href) ? "Hali tayyor emas" : undefined,
+  });
   const lockIcon = (
     <svg className="icon" style={{ width: 12, height: 12, opacity: 0.7 }} aria-label="Qulflangan">
       <use href="#i-lock" />
     </svg>
   );
 
-  const renderListItem = (it: SidebarMenuItem, i: number) => {
-    const { locked, title, style } = lockedProps(it.href);
+  // Referensda flyout elementlari IKONKASIZ — faqat matn (va bor bo'lsa,
+  // o'ngda kichik son). Shu sabab bu yerda `it.icon` umuman chizilmaydi.
+  const renderFlyoutItem = (it: SidebarMenuItem, key: string) => {
+    const { locked, title } = lockedProps(it.href);
     const active = isPathActive(it.href);
-    return it.icon ? (
-      <Link
-        key={i}
-        href={it.href}
-        onClick={locked ? (e) => e.preventDefault() : closeNow}
-        title={title}
-        style={style}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-left transition-colors ${it.medium ? "font-medium" : ""} ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
-      >
-        <svg className={`icon icon-sm ${active ? "text-primary" : (it.iconClass ?? "text-muted-foreground")} flex-shrink-0`}><use href={`#${it.icon}`} /></svg>
-        <span className="flex-1" style={it.bold ? { fontWeight: 600 } : undefined}>{it.label}</span>
-        {locked ? lockIcon : it.count && <span className="text-[11px] text-muted-foreground tabular-nums font-medium">{it.count}</span>}
-      </Link>
-    ) : (
-      <Link
-        key={i}
-        href={it.href}
-        onClick={locked ? (e) => e.preventDefault() : closeNow}
-        title={title}
-        style={style}
-        className={`w-full text-left px-3 py-2 rounded-md text-[13px] flex items-center gap-2 ${it.semibold ? "font-semibold" : ""} ${it.medium ? "font-medium" : ""} ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
-      >
-        <span className="flex-1">{it.label}</span>
-        {locked && lockIcon}
-      </Link>
-    );
-  };
-
-  const renderGridItem = (it: SidebarMenuItem, i: number) => {
-    const { locked, title, style } = lockedProps(it.href);
-    const active = isPathActive(it.href);
-    return it.icon ? (
-      <Link
-        key={i}
-        href={it.href}
-        onClick={locked ? (e) => e.preventDefault() : closeNow}
-        title={title}
-        style={style}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-left transition-colors ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
-      >
-        <svg className={`icon icon-sm ${active ? "text-primary" : (it.iconClass ?? "text-muted-foreground")} flex-shrink-0`}><use href={`#${it.icon}`} /></svg>
-        <span className="flex-1" style={it.bold ? { fontWeight: 600 } : undefined}>{it.label}</span>
-        {locked && lockIcon}
-      </Link>
-    ) : (
-      <Link
-        key={i}
-        href={it.href}
-        onClick={locked ? (e) => e.preventDefault() : closeNow}
-        title={title}
-        style={style}
-        className={`w-full text-left px-2 py-2 rounded-md text-sm flex items-center gap-2 ${it.medium ? "font-medium" : ""} ${active ? "text-primary bg-primary/10 hover:bg-primary/15" : "hover:bg-secondary"}`}
-      >
-        <span className="flex-1">{it.label}</span>
-        {locked && lockIcon}
-      </Link>
-    );
-  };
-
-  const renderReportsColumn = (col: SidebarMenuColumn, ci: number) => {
-    const actions = col.items.filter((it) => it.type === "action");
-    const rest = col.items.filter((it) => it.type !== "action");
     return (
-      <div key={ci}>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-2">{col.title}</div>
-        {actions.map((it, i) => {
-          const { locked, title, style } = lockedProps(it.href);
-          return (
-            <Link
-              key={`a${i}`}
-              href={it.href}
-              onClick={locked ? (e) => e.preventDefault() : closeNow}
-              title={title}
-              className="w-full text-left flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold text-foreground hover:bg-secondary transition-colors"
-              style={{ marginBottom: 6, ...style }}
-            >
-              {it.icon && <svg className={`icon icon-sm ${it.iconClass ?? "text-primary"}`}><use href={`#${it.icon}`} /></svg>}
-              <span className="flex-1">{it.label}</span>
-              {locked && lockIcon}
-            </Link>
-          );
-        })}
-        <div className="space-y-0.5">
-          {rest.map((it, i) => {
-            const { locked, title, style } = lockedProps(it.href);
-            return it.type === "highlight" ? (
-              <Link
-                key={`h${i}`}
-                href={it.href}
-                onClick={locked ? (e) => e.preventDefault() : closeNow}
-                title={title}
-                style={style}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary text-[13px] text-left font-medium text-primary bg-primary/10"
-              >
-                <span className="flex-1">{it.label}</span>
-                {locked && lockIcon}
-              </Link>
-            ) : (
-              <Link
-                key={`t${i}`}
-                href={it.href}
-                onClick={locked ? (e) => e.preventDefault() : closeNow}
-                title={title}
-                style={style}
-                className={`w-full text-left px-3 py-2 rounded-md hover:bg-secondary text-[13px] flex items-center gap-2 ${it.truncate ? "truncate" : ""}`}
-              >
-                <span className={it.truncate ? "flex-1 truncate" : "flex-1"}>{it.label}</span>
-                {locked && lockIcon}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+      <Link
+        key={key}
+        href={it.href}
+        onClick={locked ? (e) => e.preventDefault() : closeNow}
+        title={title}
+        className={`flyout-item ${active ? "is-active" : ""} ${locked ? "is-locked" : ""}`}
+      >
+        <span className={it.truncate ? "flex-1 truncate" : "flex-1"}>{it.label}</span>
+        {locked ? lockIcon : it.count && <span className="text-[11px] tabular-nums opacity-50">{it.count}</span>}
+      </Link>
     );
   };
+
+  const renderColumn = (col: SidebarMenuColumn, ci: number) => (
+    <div key={ci} className="flyout-col">
+      {col.title && <div className="flyout-colhead">{col.title}</div>}
+      {col.items.map((it, i) => renderFlyoutItem(it, `${ci}-${i}`))}
+    </div>
+  );
 
   const renderPanelBody = (menu: SidebarMenu) => {
     if (menu.variant === "list") {
-      return menu.items?.map((it, i) => renderListItem(it, i));
+      // Bitta ustunli variantda ustun panelning butun kengligini egallaydi
+      // (grid variantidagi qat'iy 204px emas).
+      return <div className="flyout-col flyout-col-full">{menu.items?.map((it, i) => renderFlyoutItem(it, String(i)))}</div>;
     }
-    if (menu.variant === "grid") {
-      return menu.columns?.map((col, ci) => (
-        <div key={ci}>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pb-2 mb-1 border-b border-border">{col.title}</div>
-          {col.items.map((it, i) => renderGridItem(it, i))}
-        </div>
-      ));
-    }
-    // reports
-    return (
-      <div className="grid grid-cols-4 gap-5">
-        {menu.columns?.map((col, ci) => renderReportsColumn(col, ci))}
-      </div>
-    );
+    return menu.columns?.map((col, ci) => renderColumn(col, ci));
   };
 
-  const panelClass = (menu: SidebarMenu) => {
-    if (menu.variant === "list") return "p-1";
-    if (menu.variant === "grid") return `p-4 grid gap-x-6 gap-y-1 ${menu.cols === 3 ? "grid-cols-3" : "grid-cols-2"}`;
-    return "p-4";
+  // Referensda flyout kengligi ustun soniga qarab hisoblanadi: har bir ustun
+  // 204px, ustunlar orasi 10px (bitta ustunli "list" varianti esa 220px).
+  // constants/sidebar.js dagi `width` maydoni endi ishlatilmaydi — o'sha
+  // qiymatlar eski dizayndan qolgan va referensga mos kelmaydi.
+  const panelWidth = (menu: SidebarMenu) => {
+    if (menu.variant === "list") return 220;
+    const cols = menu.variant === "reports" ? 4 : (menu.cols ?? 2);
+    return cols * 204 + (cols - 1) * 10;
   };
 
   return (
@@ -379,33 +333,26 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
         </defs>
       </svg>
 
-      <aside id="sidebar" className="hidden lg:flex w-60 flex-col border-r border-border bg-sidebar shrink-0">
-        <Link href="/tasks" className="flex h-16 items-center gap-2 border-b border-border px-5 w-full hover:bg-secondary transition-colors group" title="Asosiy sahifaga qaytish">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white group-hover:scale-110 transition-transform">
-            <svg className="icon icon-sm"><use href="#i-graduation-cap" /></svg>
-          </div>
-          <div className="text-[17px] font-bold tracking-tight">Tizimli</div>
-        </Link>
-
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="space-y-0.5">
+      {/* Logo endi bu yerda emas — referensdagidek Navbar ichiga ko'chirildi. */}
+      <aside id="sidebar" className="shell-sidebar hidden lg:flex flex-col border-r shrink-0" style={{ borderColor: "var(--shell-line)" }}>
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden">
+          <ul className="space-y-[2px]">
             {ITEMS.map((item) => {
               const hasMenu = !!item.menu;
-              const showChevron = hasMenu && !item.href;
               const topLocked = !!item.href && !IMPLEMENTED_ROUTES.has(item.href);
               const itemActive = isPathActive(item.href) || isMenuActive(item.menu);
-              const rowClass = `flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${itemActive ? "bg-primary/10 text-primary" : "text-foreground/70 hover:bg-secondary"}`;
+              // Referensda o'ngda chevron YO'Q — ochiq/yopiqligi faqat fon
+              // rangi bilan bildiriladi.
+              const rowClass = `side-item ${itemActive ? "is-active" : ""} ${openKey === item.key ? "is-open" : ""} ${topLocked ? "is-locked" : ""}`;
               const inner = (
                 <>
-                  <svg className={`icon icon-sm ${itemActive ? "text-primary" : "text-muted-foreground"}`}><use href={`#${item.icon}`} /></svg>
-                  <span className="flex-1">{item.label}</span>
+                  {/* Badge referensda ikonkaning yuqori-o'ng burchagida turadi */}
+                  <span className="side-badge-wrap">
+                    <svg className="icon"><use href={`#${item.icon}`} /></svg>
+                    {item.badge && <span className="side-badge">{item.badge}</span>}
+                  </span>
+                  <span className="flex-1 truncate">{item.label}</span>
                   {topLocked && lockIcon}
-                  {item.badge && (
-                    <span className="inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">{item.badge}</span>
-                  )}
-                  {showChevron && (
-                    <svg className="icon" style={{ width: 10, height: 10, opacity: 0.5 }}><use href="#i-chevron-down" /></svg>
-                  )}
                 </>
               );
               return (
@@ -425,7 +372,13 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
                   ) : (
                     <a
                       href="#"
-                      onClick={(e) => { e.preventDefault(); setOpenKey((prev) => (prev === item.key ? null : item.key)); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        // openKeyRef orqali — setState asinxron bo'lgani uchun
+                        // holatni to'g'ridan-to'g'ri o'qiymiz.
+                        if (openKeyRef.current === item.key) closeNow();
+                        else { clearOpenTimer(); clearCloseTimer(); applyOpen(item.key, openKeyRef.current !== null); }
+                      }}
                       className={rowClass}
                     >
                       {inner}
@@ -437,9 +390,10 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
           </ul>
         </nav>
 
-        <div className="border-t border-border p-3">
-          <button className="flex w-full items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-[12px] font-medium text-blue-600 hover:bg-blue-100">
-            <svg className="icon icon-sm"><use href="#i-life-buoy" /></svg><span>TEXNIK YORDAM</span>
+        <div className="p-2">
+          <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[11px] font-semibold" style={{ color: "var(--shell-blue)" }}>
+            <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-life-buoy" /></svg>
+            <span>TEXNIK YORDAM</span>
           </button>
         </div>
       </aside>
@@ -451,8 +405,8 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
           <div
             key={item.key}
             ref={(el) => { panelRefs.current[item.key] = el; }}
-            className={`flyout ${openKey === item.key ? "flyout-open" : ""} ${panelClass(menu)}`}
-            style={{ width: menu.width }}
+            className={`flyout ${openKey === item.key ? "flyout-open" : ""} ${instantSwitch ? "flyout-instant" : ""} flex gap-[10px]`}
+            style={{ width: panelWidth(menu) }}
             onMouseEnter={() => openMenu(item.key)}
             onMouseLeave={scheduleClose}
           >

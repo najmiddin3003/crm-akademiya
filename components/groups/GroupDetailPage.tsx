@@ -4,15 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  BookOpen, Calendar, CalendarCheck, CalendarPlus, Clock, ClipboardList, Download, GraduationCap,
-  History, Inbox, LayoutGrid, List, MapPin, MessageSquare, MoreVertical, Pencil, Plus, Timer,
-  Trash2, Upload, User, UserPlus, Users,
+  Archive, BookOpen, Calendar, CalendarCheck, CalendarPlus, Clock, ClipboardList, GraduationCap,
+  History, Inbox, LayoutGrid, List, MapPin, MessageSquare, MoreVertical, PanelLeft, PanelLeftClose,
+  Pencil, Plus, Timer, Upload, User, UserPlus, Users,
 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import AddStudentModal from "./AddStudentModal";
 import AddTaskModal from "./AddTaskModal";
+import AttendanceTab from "./AttendanceTab";
 import EditGroupModal from "./EditGroupModal";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
@@ -90,6 +91,10 @@ export default function GroupDetailPage({ id }: { id: number }) {
   const [membersLoading, setMembersLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState("students");
+  // Chap "Guruh ma'lumotlari" kartasi yig'ilganmi. Yig'ilganda u tor ikonka
+  // ustuniga aylanadi va o'ngdagi jadval bo'shagan joyni egallaydi — davomat
+  // jadvali keng bo'lgani uchun bu ayniqsa foydali.
+  const [infoCollapsed, setInfoCollapsed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -192,12 +197,66 @@ export default function GroupDetailPage({ id }: { id: number }) {
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
       {/* i-search sprite global (Navbar) — bor. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-        {/* LEFT: Guruh ma'lumotlari */}
+      <div className={`group-detail-grid ${infoCollapsed ? "is-collapsed" : ""}`}>
+        {/* LEFT: Guruh ma'lumotlari — yig'ilganda tor ikonka ustuni bo'ladi */}
+        {infoCollapsed ? (
+          <aside
+            className="hidden lg:flex w-12 flex-col items-center gap-1 rounded-2xl border border-border bg-card py-3"
+            style={{ alignSelf: "start" }}
+          >
+            <button
+              onClick={() => setInfoCollapsed(false)}
+              title="Guruh ma'lumotlarini ochish"
+              className="h-8 w-8 rounded-lg text-primary hover:bg-secondary inline-flex items-center justify-center"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+            <div className="my-1 h-px w-6 bg-border" />
+            {[
+              { icon: LayoutGrid, label: "Guruh ma'lumotlari" },
+              { icon: Calendar, label: "Dars jadvali" },
+              { icon: BookOpen, label: "Akademik ma'lumot" },
+              { icon: History, label: "Guruh faoliyat muddati" },
+            ].map(({ icon: Icon, label }) => (
+              <button
+                key={label}
+                onClick={() => setInfoCollapsed(false)}
+                title={label}
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary inline-flex items-center justify-center"
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            ))}
+            <div className="flex-1" />
+            <div className="my-1 h-px w-6 bg-border" />
+            <button
+              onClick={() => setArchiveConfirm(true)}
+              title="Guruhni arxivlash"
+              className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-500/10 inline-flex items-center justify-center"
+            >
+              <Archive className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setEditOpen(true)}
+              title="Tahrirlash"
+              className="h-8 w-8 rounded-lg text-primary hover:bg-secondary inline-flex items-center justify-center"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          </aside>
+        ) : (
         <aside className="rounded-2xl bg-card border border-border p-5" style={{ alignSelf: "start" }}>
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-primary" />
             <h2 className="text-[15px] font-bold tracking-tight">Guruh ma&apos;lumotlari</h2>
+            <div className="flex-1" />
+            <button
+              onClick={() => setInfoCollapsed(true)}
+              title="Yig'ish"
+              className="hidden lg:inline-flex h-7 w-7 shrink-0 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary items-center justify-center"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
           </div>
           <div className="divide-y divide-border">
             <InfoRow icon={Users} label="Guruh nomi">{group.name}</InfoRow>
@@ -244,6 +303,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
             <button onClick={() => setEditOpen(true)} className="flex-1 inline-flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-white text-[13px] font-medium hover:opacity-90"><Pencil className="w-3.5 h-3.5" />Tahrirlash</button>
           </div>
         </aside>
+        )}
 
         {/* RIGHT */}
         <div className="space-y-4">
@@ -392,54 +452,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
 
             {/* ===== DAVOMAT ===== */}
             {activeTab === "attendance" && (
-              <>
-                <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
-                  <div className="text-[13px]"><span className="text-muted-foreground">Guruh nomi</span> <span className="font-semibold">{group.name}</span></div>
-                  <button onClick={() => showSuccess("Export (demo)")} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"><Download className="w-4 h-4" />Export</button>
-                  <div className="flex-1" />
-                  <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card p-0.5 gap-0.5 text-[13px]">
-                    <button className="h-8 px-3 rounded-md text-muted-foreground hover:bg-secondary">Ism bo&apos;yicha</button>
-                    <button className="h-8 px-3 rounded-md bg-primary text-white">Qo&apos;shilgan sana bo&apos;yicha</button>
-                  </div>
-                </div>
-                <div className="px-4 py-2 flex items-center gap-2">
-                  <span className="text-primary font-semibold text-[14px]">Aktiv o&apos;quvchi</span>
-                  <span className="inline-flex items-center justify-center h-6 px-2 rounded-full bg-primary/10 text-primary text-[12px] font-bold tabular-nums">{members.length}</span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-secondary/40 border-b border-border">
-                      <tr>
-                        <th className={`${thCls} w-10`}>№</th>
-                        <th className={thCls}>Ism</th>
-                        <th className={thCls}>Telefon raqam</th>
-                        <th className={thCls}>Balans</th>
-                        <th className={thCls}>To&apos;lov sanasi</th>
-                        <th className={`${thCls} text-center`}>Davomatni bekor qilish</th>
-                        <th className={`${thCls} text-center`}>O&apos;rtacha baho</th>
-                        <th className={`${thCls} text-center`}>Izoh</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {members.map((m, i) => (
-                        <tr key={m.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                          <td className="px-4 py-3 text-[13px] font-medium">{pupilName(m)}</td>
-                          <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{m.phone}</td>
-                          <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{demoBalance(m).toLocaleString("ru-RU").replace(/,/g, " ")}</td>
-                          <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
-                          <td className="px-4 py-3 text-center"><button className="h-7 w-7 rounded-md hover:bg-rose-500/10 text-rose-500 inline-flex items-center justify-center" title="Davomatni bekor qilish"><Trash2 className="w-4 h-4" /></button></td>
-                          <td className="px-4 py-3 text-center text-muted-foreground">—</td>
-                          <td className="px-4 py-3 text-center"><button className="h-7 w-7 rounded-md hover:bg-secondary text-muted-foreground inline-flex items-center justify-center hover:text-primary" title="Izoh"><MessageSquare className="w-4 h-4" /></button></td>
-                        </tr>
-                      ))}
-                      {members.length === 0 && (
-                        <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">{membersLoading ? "Yuklanmoqda…" : "Guruhga o'quvchi qo'shilmagan"}</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+              <AttendanceTab group={group} members={members} membersLoading={membersLoading} />
             )}
           </div>
         </div>

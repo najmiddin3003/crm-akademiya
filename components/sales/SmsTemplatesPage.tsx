@@ -123,7 +123,7 @@ export default function SmsTemplatesPage() {
   const formOpen = addOpen || editTarget !== null;
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2">
         <button
           onClick={openAdd}
@@ -133,7 +133,7 @@ export default function SmsTemplatesPage() {
         </button>
       </div>
 
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
             <span>Umumiy soni:</span>
@@ -141,9 +141,9 @@ export default function SmsTemplatesPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[800px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 <th className="px-5 py-3 text-left">Sarlavha</th>

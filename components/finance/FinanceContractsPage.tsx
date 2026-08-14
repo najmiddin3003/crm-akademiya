@@ -121,7 +121,7 @@ export default function FinanceContractsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => setAddOpen(true)}
@@ -159,10 +159,10 @@ export default function FinanceContractsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="table-scroll">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/40">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi</th>

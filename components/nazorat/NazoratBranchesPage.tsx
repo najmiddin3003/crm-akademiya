@@ -100,11 +100,18 @@ export default function NazoratBranchesPage() {
         </div>
       </div>
 
-      {/* Asosiy keng jadval */}
+      {/* Asosiy keng jadval.
+          Bu sahifada paginatsiya yo'q va pastda yana bitta to'liq jadval
+          ("Umumiy natija") turadi — shu sabab boshqa ro'yxat sahifalaridagi
+          `page-frame` + `table-frame` zanjiri qo'llanmaydi: ustunli flex'da
+          pastdagi blok kontentidan kichrayolmaydi va asosiy jadvalga deyarli
+          balandlik qolmasdi. Buning o'rniga scroll qutisiga aniq balandlik
+          beriladi — sarlavha shu quti ichida qotib turadi, sahifaning o'zi esa
+          odatdagidek scroll bo'laveradi. */}
       <div className="rounded-2xl bg-card border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="table-scroll" style={{ maxHeight: "62vh" }}>
           <table className="w-full text-sm min-w-[2400px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-3 py-3 text-left w-12 sticky left-0 bg-secondary/20 z-10">№</th>
                 <th className="px-3 py-3 text-left sticky left-12 bg-secondary/20 z-10 min-w-[140px]">Filial</th>

@@ -100,7 +100,7 @@ export default function PnlReportsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-[18px] font-semibold">Moliya hisobotlari (P&amp;L)</h1>
         <div className="flex items-center gap-2">
@@ -113,8 +113,8 @@ export default function PnlReportsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">

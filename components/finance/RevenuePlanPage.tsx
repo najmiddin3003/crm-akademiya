@@ -121,7 +121,7 @@ export default function RevenuePlanPage() {
   ];
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-2">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <DatePicker value={date} onChange={setDate} />
 
@@ -160,25 +160,27 @@ export default function RevenuePlanPage() {
         {fmtDotted(range.start)} - {fmtDotted(range.end)}
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-              <th className="text-left px-4 py-3 whitespace-nowrap">Tushum rejasi</th>
-              <th className="text-left px-4 py-3 whitespace-nowrap">O&apos;quvchi soni</th>
-              <th className="text-left px-4 py-3 whitespace-nowrap">Umumiy kutilayotgan summa</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-b border-border/50">
-                <td className="px-4 py-3 text-[13px] font-medium text-primary">{r.label === "__DATE__" ? fmtDDMMYYYY(date) : r.label}</td>
-                <td className="px-4 py-3 text-[13px] tabular-nums">{r.students != null ? r.students.toLocaleString("ru-RU") : ""}</td>
-                <td className="px-4 py-3 text-[13px] tabular-nums">{fmtAmount(r.amount)}</td>
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                <th className="text-left px-4 py-3 whitespace-nowrap">Tushum rejasi</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">O&apos;quvchi soni</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Umumiy kutilayotgan summa</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.label} className="border-b border-border/50">
+                  <td className="px-4 py-3 text-[13px] font-medium text-primary">{r.label === "__DATE__" ? fmtDDMMYYYY(date) : r.label}</td>
+                  <td className="px-4 py-3 text-[13px] tabular-nums">{r.students != null ? r.students.toLocaleString("ru-RU") : ""}</td>
+                  <td className="px-4 py-3 text-[13px] tabular-nums">{fmtAmount(r.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

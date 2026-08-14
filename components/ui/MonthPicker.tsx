@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useLang } from "@/components/shared/Language";
+import { MONTHS_SHORT } from "@/lib/i18n";
 
 // Faqat oy tanlash uchun qayta ishlatiladigan tanlagich (Mavsumiy baholash
 // skrinshotidagi kabi: yil navigatsiyasi + 12 oylik 3x4 katakcha). Qiymat —
 // oy raqami (1-12), yil faqat panelni ko'rib chiqish uchun (tanlangan
 // qiymatga kirmaydi — manba ilovada ham shunday: URL faqat ?month= saqlaydi).
 
-const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Qisqa oy nomlari navbardagi til tanloviga qarab olinadi (lib/i18n.ts).
 
 export interface MonthPickerProps {
   value: number | null;
@@ -19,6 +21,8 @@ export interface MonthPickerProps {
 }
 
 export default function MonthPicker({ value, onChange, onClear, placeholder = "Oy", className = "" }: MonthPickerProps) {
+  const [lang] = useLang();
+  const MONTH_LABELS = MONTHS_SHORT[lang];
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [pos, setPos] = useState({ top: 0, left: 0 });

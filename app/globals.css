@@ -2557,7 +2557,7 @@ textarea.ao-input { height: auto; padding: 9px 12px; resize: vertical; min-heigh
 #view-settings-appearance.hidden { display: none; }
 
 /* Accent rang variantlari — primary o'zgaruvchisini override */
-:root[data-accent="blue"]   { --primary: 217 100% 56%; --primary-2: 250 95% 65%; }
+:root[data-accent="blue"]   { --primary: 227 100% 62%; --primary-2: 250 95% 65%; }
 :root[data-accent="violet"] { --primary: 262 83% 58%; --primary-2: 280 90% 65%; }
 :root[data-accent="green"]  { --primary: 142 71% 45%; --primary-2: 160 80% 45%; }
 :root[data-accent="orange"] { --primary: 25 95% 53%;  --primary-2: 38 95% 55%; }
@@ -7802,12 +7802,12 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     /* Dimmed surface — ~30% darker than --card (for submenus, dropdowns) */
     --card-dim: 220 18% 88%;
     /* Semantic */
-    --primary: 217 100% 56%;          /* iOS-style blue */
+    --primary: 227 100% 62%;          /* #3D68FF — referens akademiya.edutizim.uz */
     --primary-2: 250 95% 65%;         /* gradient companion */
     --secondary: 220 30% 96%;
     --muted: 220 30% 94%;
     --muted-foreground: 222 14% 45%;
-    --border: 220 35% 92%;
+    --border: 213 18% 88%;            /* #DBE0E6 — referens */
     /* Radius — larger, more rounded */
     --radius: 1rem;
   }
@@ -7831,8 +7831,10 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   body {
     min-height: 100vh;
     color: hsl(var(--foreground));
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, -apple-system, sans-serif;
-    letter-spacing: -0.011em;
+    /* Referens sayt (akademiya.edutizim.uz) Nunito ishlatadi — next/font orqali
+       app/layout.tsx da yuklanadi va --font-nunito o'zgaruvchisiga yoziladi. */
+    font-family: var(--font-nunito), 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    letter-spacing: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -7898,9 +7900,13 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     background: hsl(var(--sidebar) / 0.96);
   }
 
-  /* Header — fully opaque so page content never shows through it */
-  header.sticky {
-    background: hsl(var(--background)) !important;
+  /* Header — fully opaque so page content never shows through it.
+     Ilgari selektor `header.sticky` edi va foni `hsl(var(--background))`
+     (#F5F8FF) ni `!important` bilan majburlardi — bu referensdagi OQ header
+     bilan to'qnashardi. Endi shell klassiga yo'naltirilgan va rangni
+     `.shell-header` bilan bir manbadan (`--shell-surface`) oladi. */
+  header.shell-header {
+    background: var(--shell-surface) !important;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -9099,7 +9105,7 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
 
   /* ---------- Fullscreen mode ---------- */
   body.fullscreen-mode aside,
-  body.fullscreen-mode header.sticky,
+  body.fullscreen-mode header.shell-header,
   body.fullscreen-mode .non-fullscreen {
     display: none !important;
   }
@@ -9120,6 +9126,11 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   }
   body.sidebar-hidden #sidebar {
     width: 0 !important;
+    /* `box-sizing: border-box` da width:0 ham yon padding'dan pastga tusha
+       olmaydi, shuning uchun `.shell-sidebar` ning 5px paddingi yig'ilgan
+       sidebar'ni 10px bo'lib qoldirardi — uni ham nolga tushiramiz. */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     border-right-width: 0 !important;
     opacity: 0;
   }
@@ -9367,44 +9378,15 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   .tabular-nums, [class*="text-2xl"], [class*="text-xl"] { font-variant-numeric: tabular-nums; }
 
 
-/* ================== KEYINGI STYLE BLOK ================== */
+/* ================== KEYINGI STYLE BLOK ==================
+   Bu yerda ilgari `body{font-family:Calibri,Arial,sans-serif;font-size:11pt}`
+   qatori TO'QQIZ marta takrorlangan holda turardi (tashqi HTML eksportidan
+   nusxalanib qolgan). U yuqoridagi dizayn-tizim `body` qoidasidan KEYIN
+   turgani uchun butun ilovaning shriftini Calibri 11pt ga majburlab,
+   `--font-nunito` ni ham bosib ketardi. Faqat kerakli `table` qoidasi
+   qoldirildi. */
 
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-
-  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
-  table { border-collapse: collapse; }
-
-
-/* ================== KEYINGI STYLE BLOK ================== */
-
-body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}
+table { border-collapse: collapse; }
 /* ============ AUTH (login / register) — custom, since new arbitrary
    Tailwind utilities aren't in the pre-compiled CSS blob ============ */
 .auth-phone {
@@ -9483,17 +9465,175 @@ body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:
   .otp-cell { width: 2.5rem; height: 2.85rem; font-size: 1rem; }
 }
 
-/* ============ SIDEBAR FLYOUT (hover submenus) ============
-   Oldingi versiya display:none (hidden) ishlatgani uchun transition ishlamas
-   va rang blend bo'lib "shaffof" ko'rinardi. Endi opacity/visibility bilan
-   silliq fade + kuchli soya + to'liq opaque fon. */
+/* ============ APP SHELL — referens: akademiya.edutizim.uz ============
+   Navbar + Sidebar ning barcha o'lchamlari va ranglari jonli referens
+   saytdan getComputedStyle bilan o'lchab olingan (2026-08-14).
+
+   Nega Tailwind utility'lari emas, balki shu yerda alohida klasslar:
+   bu faylning ichida `@import "tailwindcss"` dan KEYIN Tailwind v3.4.6 ning
+   kompilyatsiya qilingan katta bloki turibdi. Bir xil spesifiklikda keyingi
+   qoida ustun kelgani uchun v4 JIT generatsiya qilgan utility'ni o'sha eski
+   blok bosib ketishi mumkin. Aniq piksel talab qiladigan shell qismi shu
+   sabab bitta joyda, o'z klasslari bilan saqlanadi. */
+
+:root {
+  --shell-header-h: 56px;
+  --shell-sidebar-w: 173px;
+  --shell-line: #dbe0e6;   /* referens border rangi */
+  --shell-blue: #3d68ff;   /* referens primary */
+  --shell-text: #333333;   /* referens matn rangi */
+  --shell-hover: #e6eaea;  /* referens sidebar hover foni */
+  --shell-surface: #ffffff;
+}
+html.dark {
+  --shell-line: hsl(var(--border));
+  --shell-text: hsl(var(--foreground));
+  --shell-hover: hsl(var(--secondary));
+  --shell-surface: hsl(var(--card));
+}
+
+/* ---------- Header (butun kenglikda, sidebar ustidan) ---------- */
+.shell-header {
+  height: var(--shell-header-h);
+  background-color: var(--shell-surface);
+  border-bottom: 1px solid var(--shell-line);
+  box-shadow: rgba(0, 0, 0, 0.04) 0 1px 2px 0;
+}
+/* Logo zonasi — sidebar kengligiga tekislanadi */
+.shell-logo {
+  width: var(--shell-sidebar-w);
+  padding: 0 20px;
+}
+
+/* ---------- Navbar boshqaruvlari ---------- */
+.nav-btn {                 /* o'ngdagi ikonka tugmalar: 32x32, radius 8 */
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--shell-blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+/* Ikonka o'lchamini shu yerda majburlaymiz, shunda JSX'da har bir tugmaga
+   alohida `icon-sm`/inline style yozish shart bo'lmaydi. */
+.nav-btn svg { width: 20px; height: 20px; }
+.nav-btn:hover { background-color: rgba(61, 104, 255, 0.08); }
+.nav-btn.is-open { background-color: rgba(61, 104, 255, 0.12); }
+.nav-btn-back {            /* "Orqaga" — referensda faqat ikonka */
+  background-color: rgba(61, 104, 255, 0.1);
+  border-color: rgba(61, 104, 255, 0.2);
+}
+.nav-btn-back:hover { background-color: rgba(61, 104, 255, 0.18); }
+.nav-btn-back:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.nav-field {               /* filial select + qidiruv maydoni */
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--shell-line);
+  background-color: var(--shell-surface);
+  font-size: 14px;
+  color: var(--shell-text);
+}
+.nav-field:focus-within { border-color: var(--shell-blue); }
+.nav-kbd {                 /* "Ctrl K" chip */
+  font-size: 11px;
+  font-weight: 600;
+  color: #98a2b3;
+  border: 1px solid var(--shell-line);
+  border-radius: 5px;
+  padding: 1px 5px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.nav-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: #ecf0ff;
+  color: var(--shell-blue);
+  border: 2px solid var(--shell-line);
+  font-size: 20px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+html.dark .nav-avatar { background-color: rgba(61, 104, 255, 0.18); }
+
+/* ---------- Sidebar ---------- */
+.shell-sidebar {
+  width: var(--shell-sidebar-w);
+  padding: 10px 5px 0;
+  background-color: var(--shell-surface);
+}
+.side-item {               /* menyu elementi: 44px balandlik, radius 10 */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--shell-text);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.side-item:hover,
+.side-item.is-open {
+  background-color: var(--shell-hover);
+  color: var(--shell-blue);
+}
+.side-item.is-active {
+  background-color: rgba(61, 104, 255, 0.1);
+  color: var(--shell-blue);
+}
+.side-item .icon {         /* ikonka referensda HAR DOIM ko'k, 20x20 */
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  stroke: var(--shell-blue);
+  color: var(--shell-blue);
+}
+.side-item.is-locked { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+/* Badge — referensda ikonkaning yuqori-o'ng burchagida turadi */
+.side-badge-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.side-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background-color: #d32f2f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* ---------- Sidebar flyout (hover submenu) ----------
+   Silliq fade uchun display:none emas, opacity/visibility ishlatiladi. */
 .flyout {
   position: fixed;
   z-index: 90;
-  background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.12);
+  background-color: var(--shell-surface);
+  border: 1px solid var(--shell-line);
+  border-radius: 12px;
+  padding: 6px 0;
+  box-shadow: rgba(24, 39, 75, 0.08) 0 6px 20px -4px,
+              rgba(24, 39, 75, 0.1) 0 12px 48px -4px;
+  /* Eng baland menyu (Hisobotlar — 4 ustun) past ekranda sig'masligi mumkin:
+     positionPanel() faqat yuqori chetini suradi, balandlikni cheklamaydi. */
+  max-height: calc(100vh - var(--shell-header-h) - 16px);
+  overflow-y: auto;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
@@ -9508,7 +9648,230 @@ body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:
   transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s;
 }
 html.dark .flyout {
-  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px hsl(var(--border));
+  box-shadow: rgba(0, 0, 0, 0.6) 0 12px 40px -8px, 0 0 0 1px hsl(var(--border));
+}
+/* Sichqonchani sidebar bo'ylab yurgizganda bir menyudan ikkinchisiga o'tiladi.
+   Animatsiya qolsa: eski panel so'nib turganda yangisi boshqa balandlikda
+   paydo bo'ladi va bu "titrash" bo'lib ko'rinadi. Almashish paytida panel
+   darhol, harakatsiz ko'chadi.
+
+   `!important` ATAYIN: `transform: none` CSS ning boshlang'ich qiymati va
+   `transition: none` ham `duration: 0s` ga tushadi, shuning uchun Lightning CSS
+   (Tailwind v4 optimizatori) ikkala e'lonni "ortiqcha" deb tashlab, qoida bo'sh
+   qolgani uchun uni butunlay o'chirib yuborardi — brauzerga umuman yetib
+   kelmasdi. `!important` shu bilan birga `.flyout-open` dagi transition'ni ham
+   bosib o'tadi. */
+.flyout-instant {
+  transition: none !important;
+  transform: none !important;
+}
+
+.flyout-col { width: 204px; padding: 0 12px; }
+.flyout-col-full { width: auto; flex: 1; }
+.flyout-colhead {          /* "AMALLAR" kabi ustun sarlavhasi */
+  font-size: 11px;
+  font-weight: 600;
+  color: #999999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 0;
+}
+.flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--shell-text);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.flyout-item:hover { background-color: var(--shell-hover); color: var(--shell-blue); }
+.flyout-item.is-active { background-color: rgba(61, 104, 255, 0.1); color: var(--shell-blue); }
+.flyout-item.is-locked { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+/* ---------- Responsiv ko'rinish ----------
+   Tailwind'ning odatiy `hidden sm:block` juftligi bu loyihada ISHONCHSIZ.
+   Sabab: shu faylning 7-qatorida Tailwind v3.4.6 ning kompilyatsiya qilingan
+   bloki bor va u `@import "tailwindcss"` (1-qator) dan KEYIN turadi. O'sha
+   blok `.hidden{display:none}` ni qayta e'lon qilgani uchun, v4 generatsiya
+   qilgan `.sm\:block` / `.md\:block` media-qoidalari undan OLDIN turib
+   qoladi va yutqazadi. `.lg\:flex` esa o'sha eski blokda mavjud — shuning
+   uchun `hidden lg:flex` ishlaydi, `hidden sm:block` esa yo'q. Natija
+   klassdan klassga o'zgargani uchun shell qismi o'z klasslariga tayanadi.
+
+   Bular `.nav-btn` / `.nav-field` dan KEYIN turishi shart — aks holda
+   ularning `display` qiymati ustun kelib qoladi. */
+.shell-only-mobile { display: inline-flex; }
+@media (min-width: 1024px) { .shell-only-mobile { display: none; } }
+
+.shell-from-sm { display: none; }
+@media (min-width: 640px) { .shell-from-sm { display: inline-flex; } }
+
+.shell-from-lg { display: none; }
+@media (min-width: 1024px) { .shell-from-lg { display: inline-flex; } }
+
+.shell-field-sm { display: none; }
+@media (min-width: 640px) { .shell-field-sm { display: block; } }
+
+.shell-field-md { display: none; }
+@media (min-width: 768px) { .shell-field-md { display: block; } }
+
+/* ---------- Dars jadvali: KPI kartalari ----------
+   Referensda jadval ustida 12 ta karta, keng ekranda 6 tadan ikki qatorda.
+   Ustunlar Tailwind'ning `xl:grid-cols-6` klassi bilan emas, shu yerda
+   beriladi — bu loyihada responsiv grid klasslari ishonchsiz (yuqoridagi
+   izohga qarang: eski v3 bloki `.grid-cols-*` ni qayta e'lon qiladi). */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 640px) { .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1440px) { .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+.kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+a.kpi-card:hover {
+  box-shadow: 0 4px 14px -6px rgba(24, 39, 75, 0.25);
+  transform: translateY(-1px);
+}
+.kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+}
+.kpi-icon svg { width: 16px; height: 16px; }
+
+/* ---------- Guruh tafsiloti: chap panelni yig'ish ----------
+   Yig'ilganda "Guruh ma'lumotlari" kartasi tor ikonka ustuniga aylanadi va
+   jadval bo'shagan joyni egallaydi. Kenglik Tailwind'ning dinamik klassi
+   bilan emas, shu yerda beriladi — `lg:grid-cols-[...]` kabi arbitrary
+   klasslar bu faylda ishonchsiz (yuqoridagi izohga qarang). */
+.group-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 1024px) {
+  .group-detail-grid { grid-template-columns: 320px minmax(0, 1fr); }
+  .group-detail-grid.is-collapsed { grid-template-columns: 48px minmax(0, 1fr); }
+}
+
+/* ============ RO'YXAT SAHIFALARI: QOTIB TURADIGAN JADVAL ============
+   Talab: jadval sarlavhasi (thead) tepada, paginatsiya pastda qotib tursin,
+   faqat o'rtadagi qatorlar scroll bo'lsin.
+
+   Balandlik zanjiri (AppShell'dan boshlab) shunday bo'lishi SHART:
+     .h-screen.flex-col  →  .flex.flex-1.overflow-hidden  →  main.flex-1.overflow-y-auto
+       →  .page-frame (sahifa ildizi)  →  .table-frame (karta)  →  .table-scroll
+   Har bir bo'g'inda `min-height: 0` kerak, aks holda flex element o'z
+   kontentidan kichrayolmaydi va scroll ichki emas, tashqi (main) bo'lib qoladi.
+
+   Paginatsiya kartadan TASHQARIDA qolaversa ham pastda qotib turadi: sahifa
+   ildizi ustunli flex bo'lgani va karta `flex: 1` olgani uchun paginatsiyaga
+   qolgan joy ajratiladi. */
+.page-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.table-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---------- Ikki ustunli sahifalar (masalan Moliya → Kassalar) ----------
+   Bunday sahifalarda ildiz `flex-col md:flex-row` bo'ladi: mobil qurilmada
+   ustma-ust, desktopda yonma-yon. `.page-frame` bu yerda YARAMAYDI — u
+   `flex-direction: column` ni majburlab, desktopdagi joylashuvni buzadi.
+   Shuning uchun bu klass yo'nalishga TEGMAYDI, faqat balandlik beradi va
+   faqat desktopda (mobil ustma-ust ko'rinishda sahifa odatdagidek scroll
+   bo'lishi kerak). */
+.page-frame-row { min-height: 0; }
+@media (min-width: 768px) {
+  .page-frame-row {
+    height: 100%;
+    /* Ustunlar to'liq balandlikka cho'zilishi SHART. Tailwind'ning
+       `md:items-stretch` klassi bu loyihada ishonchsiz — `.items-start`
+       eski v3 blokida bor va uni bosib ketadi (yuqoridagi izohga qarang). */
+    align-items: stretch;
+  }
+  /* Jadval turgan ustun — ichida `.table-frame` flex-1 ola olishi uchun. */
+  .page-frame-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  /* Yon panel o'zi alohida scroll bo'ladi, sahifani cho'zmaydi. */
+  .page-frame-aside {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+/* ---------- Yon panel + jadval GRID bilan joylashgan sahifalar ----------
+   (masalan Nazorat → Turniket kirish-chiqish: chapda statistika kartasi,
+   o'ngda jadval.) Bu yerda ham `.page-frame` ni to'g'ridan-to'g'ri qo'llab
+   bo'lmaydi: mobil ko'rinishda kartalar ustma-ust tushadi va balandlikni
+   cheklash ularni ezib qo'yadi. Shuning uchun ramka FAQAT desktopda yoqiladi. */
+.page-frame-lg { min-height: 0; }
+@media (min-width: 1024px) {
+  .page-frame-lg {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  /* Grid konteyneri qolgan balandlikni oladi va katakchalar cho'ziladi —
+     `items-start` bo'lsa jadval kartasi cho'zilmay, ichki scroll hosil
+     bo'lmasdi. */
+  .grid-frame {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+    /* Ustunlar `--cols` orqali beriladi (JSX da inline style). Tailwind'ning
+       `lg:grid-cols-[380px_1fr]` klassi bu loyihada ISHLAMAYDI: eski v3
+       blokidagi `.grid-cols-1` undan keyin turadi va bosib ketadi — sahifa
+       bitta ustunda qolib ketardi. */
+    grid-template-columns: var(--cols, minmax(0, 1fr));
+    /* Yagona qator konteynerning butun balandligini olsin. Aks holda qator
+       `auto` bo'lib kontent balandligida qoladi va jadval kartasi cho'zilmaydi
+       — ichki scroll ham hosil bo'lmaydi. */
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+/* Sticky `<thead>` emas, `<th>` — `border-collapse: collapse` bilan thead'ning
+   o'zi ba'zi brauzerlarda fon/chegara chizmaydi, `th` esa ishonchli ishlaydi. */
+.table-scroll table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  /* Shaffof fon bo'lsa, ostidan siljiyotgan qatorlar ko'rinib qoladi. */
+  background-color: color-mix(in srgb, hsl(var(--secondary)) 40%, hsl(var(--card)));
 }
 
 /* ============ XODIMLAR: MUZLATILGAN/BLOKLANGAN HOLAT RANGLARI ============

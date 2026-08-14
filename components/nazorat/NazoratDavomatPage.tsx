@@ -87,7 +87,7 @@ export default function NazoratDavomatPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* Header qatori */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
@@ -184,7 +184,7 @@ export default function NazoratDavomatPage() {
       </div>
 
       {/* Jadval */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
             <span>Umumiy soni:</span>
@@ -192,9 +192,9 @@ export default function NazoratDavomatPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[1300px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-10">
                   <input type="checkbox" checked={allPageChecked} onChange={(e) => toggleAll(e.target.checked)} className="w-4 h-4 rounded border-border accent-primary" />

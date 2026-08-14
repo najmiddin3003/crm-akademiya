@@ -30,7 +30,7 @@ export default function Page() {
   const total = useMemo(() => visible.reduce((s, r) => s + r.count, 0), [visible]);
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="inline-flex items-center rounded-lg border border-border bg-card p-1 flex-wrap">
           {LEAVE_TABS.map((t) => (
@@ -55,11 +55,11 @@ export default function Page() {
         <div className="text-[24px] font-semibold tabular-nums">{total.toLocaleString("ru-RU")}</div>
       </div>
 
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="px-5 py-3 border-b border-border text-[13px] font-semibold">Sababi</div>
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[600px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 <th className="px-5 py-3 text-left">Sabab nomi</th>

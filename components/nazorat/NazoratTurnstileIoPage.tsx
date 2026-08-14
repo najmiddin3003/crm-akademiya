@@ -103,7 +103,7 @@ export default function NazoratTurnstileIoPage() {
   );
 
   return (
-    <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
+    <div className="page-frame-lg container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* Sarlavha + filtrlar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-[18px] font-semibold tracking-tight">Turniket kirish-chiqish analitikasi</h2>
@@ -131,7 +131,12 @@ export default function NazoratTurnstileIoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 items-start">
+      {/* Ustun kengliklari `--cols` orqali (globals.css → .grid-frame):
+          `lg:grid-cols-[...]` klassi bu loyihada ishlamaydi. */}
+      <div
+        className="grid-frame grid gap-4"
+        style={{ "--cols": "380px minmax(0, 1fr)" } as React.CSSProperties}
+      >
         {/* Statistika */}
         <div className="rounded-2xl bg-card border border-border p-5">
           <h3 className="text-[15px] font-semibold mb-4">Bugungi statistika</h3>
@@ -152,10 +157,10 @@ export default function NazoratTurnstileIoPage() {
         </div>
 
         {/* Jadval */}
-        <div className="rounded-2xl bg-card border border-border overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="table-scroll">
             <table className="w-full text-sm min-w-[700px]">
-              <thead className="bg-secondary/20">
+              <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="px-5 py-3 text-left">To&apos;liq ismi</th>
                   <th className="px-5 py-3 text-left">Kirgan vaqti</th>

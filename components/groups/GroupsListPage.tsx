@@ -31,6 +31,19 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 const HEADERS = ["№", "Guruh nomi", "Kurs", "Darajasi", "Kun", "Dars vaqti", "Guruh vaqti", "O'quvchi", "O'qituvchi", "Xona", "Telegram", "Holati"];
 
+/** "08:30" → 510 (yarim tundan boshlab daqiqalar). */
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":");
+  return Number(h) * 60 + Number(m || 0);
+}
+
+/** "06:00 - 08:00" → [360, 480]. Format mos kelmasa [null, null]. */
+function parseTimeRange(range: string): [number | null, number | null] {
+  const m = (range || "").match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  if (!m) return [null, null];
+  return [toMinutes(m[1]), toMinutes(m[2])];
+}
+
 export default function GroupsListPage() {
   const router = useRouter();
   const { showSuccess } = useToast();
@@ -81,9 +94,17 @@ export default function GroupsListPage() {
       if (day && g.day !== day) return false;
       if (status && g.status !== status) return false;
       if (oddEven && !g.day.toLowerCase().includes(oddEven.toLowerCase())) return false;
+      // Dars vaqti bo'yicha (referensdagi "Boshlanish vaqti" / "Tugash vaqti").
+      // g.time formati: "06:00 - 08:00".
+      if (startTime || endTime) {
+        const [gs, ge] = parseTimeRange(g.time);
+        if (gs === null || ge === null) return false;
+        if (startTime && gs < toMinutes(startTime)) return false;
+        if (endTime && ge > toMinutes(endTime)) return false;
+      }
       return true;
     });
-  }, [groups, search, teacher, course, room, day, status, oddEven]);
+  }, [groups, search, teacher, course, room, day, status, oddEven, startTime, endTime]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -108,7 +129,7 @@ export default function GroupsListPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       {/* i-list sprite (Pagination "qator" ikonkasi uchun) */}
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <defs>
@@ -133,13 +154,13 @@ export default function GroupsListPage() {
 
         <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-3 gap-1.5 text-sm">
           <span className="text-muted-foreground text-[12px]">Boshlanish vaqti</span>
-          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="bg-transparent outline-none text-[13px] tabular-nums w-16" />
-          <button onClick={() => setStartTime("")} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
+          <input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); setPage(1); }} className="bg-transparent outline-none text-[13px] tabular-nums w-16" />
+          <button onClick={() => { setStartTime(""); setPage(1); }} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
         </div>
         <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-3 gap-1.5 text-sm">
           <span className="text-muted-foreground text-[12px]">Tugash vaqti</span>
-          <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="bg-transparent outline-none text-[13px] tabular-nums w-16" />
-          <button onClick={() => setEndTime("")} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
+          <input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); setPage(1); }} className="bg-transparent outline-none text-[13px] tabular-nums w-16" />
+          <button onClick={() => { setEndTime(""); setPage(1); }} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
         </div>
 
         <div className="relative">
@@ -223,10 +244,10 @@ export default function GroupsListPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="table-scroll">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/40">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Guruh nomi</th>

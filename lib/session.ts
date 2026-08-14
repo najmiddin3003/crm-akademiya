@@ -10,6 +10,24 @@ export interface SessionPayload {
   phone: string;
   role: string;
   exp: number;
+  /**
+   * Sessiya (qurilma) identifikatori — "Aktiv qurilmalar" ro'yxati shu orqali
+   * ishlaydi: har bir login alohida `sid` oladi va `user_sessions` kolleksiyasiga
+   * yozuv qo'shiladi. Sessiyani uzish = o'sha yozuvni o'chirish.
+   *
+   * Ixtiyoriy: bu maydon qo'shilishidan oldin berilgan cookie'larda u yo'q.
+   * Bunday eski sessiyalar amal qilaveradi (foydalanuvchi tizimdan chiqarib
+   * yuborilmaydi), faqat qurilmalar ro'yxatida ko'rinmaydi — keyingi loginda
+   * o'zi to'g'rilanadi.
+   */
+  sid?: string;
+}
+
+/** Yangi sessiya (qurilma) identifikatori. */
+export function newSessionId(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
 }
 
 const encoder = new TextEncoder();

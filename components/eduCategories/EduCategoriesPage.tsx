@@ -53,7 +53,7 @@ export default function EduCategoriesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div>
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
@@ -61,8 +61,8 @@ export default function EduCategoriesPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-dashed border-border">

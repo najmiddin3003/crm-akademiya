@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useLang } from "@/components/shared/Language";
+import { MONTHS, WEEKDAYS_SHORT } from "@/lib/i18n";
 
 // Qayta ishlatiladigan sana-oralig'i tanlagich (skrinshotdagi kabi): chapda
 // oy kalendari (oldinga/orqaga o'tish, oraliqni ajratib ko'rsatish), o'ngda
@@ -20,8 +22,7 @@ export interface DateRangePickerProps {
   className?: string;
 }
 
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+// Oy/hafta kuni nomlari navbardagi til tanloviga qarab olinadi (lib/i18n.ts).
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -54,6 +55,9 @@ function presets(): { key: string; label: string; range: () => DateRange }[] {
 }
 
 export default function DateRangePicker({ value, onChange, placeholder = "Sana oralig'i", className = "" }: DateRangePickerProps) {
+  const [lang] = useLang();
+  const monthNames = MONTHS[lang];
+  const weekdayNames = WEEKDAYS_SHORT[lang];
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<Date>(() => startOfDay(value.start ?? new Date()));
   const [pendingStart, setPendingStart] = useState<Date | null>(null);
@@ -131,7 +135,7 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
 
   return (
     <div className={`relative ${className}`} ref={rootRef}>
-      <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-3 gap-2 text-[13px]">
+      <div className="flex items-center justify-between h-9 w-full rounded-lg border border-border bg-card px-3 gap-2 text-[13px]">
         <button type="button" onClick={toggleOpen} className="inline-flex items-center gap-2">
           <Calendar className="w-4 h-4 text-primary" />
           <span className={label ? "text-foreground tabular-nums" : "text-muted-foreground"}>{label || placeholder}</span>
@@ -151,13 +155,13 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
               <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="text-[14px] font-semibold text-primary">{MONTHS[view.getMonth()]} {view.getFullYear()}</div>
+              <div className="text-[14px] font-semibold text-primary">{monthNames[view.getMonth()]} {view.getFullYear()}</div>
               <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
             <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
-              {WEEKDAYS.map((w) => (
+              {weekdayNames.map((w) => (
                 <div key={w} className="h-8 flex items-center justify-center text-[11px] font-medium text-muted-foreground">{w}</div>
               ))}
               {cells.map((day, i) => {

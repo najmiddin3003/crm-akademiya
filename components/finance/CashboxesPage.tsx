@@ -372,9 +372,9 @@ export default function CashboxesPage() {
   }
 
   return (
-    <div className="p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
+    <div className="page-frame-row p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
       {/* Chap panel — kassalar ro'yxati */}
-      <aside className="w-full md:w-[20%] shrink-0 space-y-3">
+      <aside className="page-frame-aside w-full md:w-[20%] shrink-0 space-y-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAddOpen(true)}
@@ -502,7 +502,7 @@ export default function CashboxesPage() {
       </aside>
 
       {/* O'ng qism — tanlangan kassa */}
-      <div className="flex-1 min-w-0 space-y-3">
+      <div className="page-frame-col flex-1 min-w-0 space-y-3">
         <div className="flex gap-3 overflow-x-auto pb-1">
           {orderedMethods.map((m) => (
             <div
@@ -619,10 +619,10 @@ export default function CashboxesPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+        <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="table-scroll">
             <table className="w-full text-sm">
-              <thead className="bg-secondary/40">
+              <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>

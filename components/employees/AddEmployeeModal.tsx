@@ -30,6 +30,15 @@ function Chevron() {
 const TURI_MAP: Record<string, string> = { "O'qituvchi": "teacher", Moderator: "moderator", Administrator: "admin" };
 const GENDER_MAP: Record<string, string> = { Erkak: "male", Ayol: "female" };
 
+// lib/invite.ts dagi isValidPhone/normalizePhone bilan bir xil qoida —
+// u yerdagi funksiyalarni to'g'ridan-to'g'ri import qilmaymiz (crypto/bcryptjs
+// ishlatadi, klient tomonga mos emas), shuning uchun shu yerda takrorlangan.
+function isValidPhoneClient(input: string): boolean {
+  const digits = input.replace(/\D/g, "");
+  const normalized = digits.length === 9 ? "998" + digits : digits;
+  return /^998\d{9}$/.test(normalized);
+}
+
 export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () => void; onCreated?: (emp: HrEmployee) => void }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
@@ -53,6 +62,11 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
       showError("Ism va familiyani kiriting");
       return;
     }
+    const trimmedPhone = phone.trim();
+    if (!isValidPhoneClient(trimmedPhone)) {
+      showError("Telefon raqamini to'g'ri kiriting (masalan +998 90 123 45 67)");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/hr-employees", {
@@ -60,7 +74,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          phone: phone.trim(),
+          phone: trimmedPhone,
           turi: TURI_MAP[vazifa] || "",
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
@@ -73,7 +87,11 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
         return;
       }
       onCreated?.(data.employee as HrEmployee);
-      showSuccess(`Xodim qo'shildi — ${name}`);
+      if (data.smsSent) {
+        showSuccess(`Xodim qo'shildi — ${name}. Faollashtirish SMS'i yuborildi.`);
+      } else {
+        showError(`Xodim qo'shildi — ${name}, lekin faollashtirish SMS'i yuborilmadi. Birozdan so'ng qayta urinib ko'ring.`);
+      }
       onClose();
     } catch {
       showError("Serverga ulanib bo'lmadi");

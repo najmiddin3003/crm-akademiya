@@ -50,7 +50,7 @@ export default function GroupTasksPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       {/* i-list sprite (Pagination "qator" ikonkasi uchun) */}
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <defs>
@@ -64,16 +64,16 @@ export default function GroupTasksPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="flex items-center justify-end px-4 py-2.5 border-b border-border">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
             <span className="text-muted-foreground">Umumiy soni:</span>
             <span className="font-bold tabular-nums">{tasks.length}</span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/40 border-b border-border">
+            <thead className="border-b border-border">
               <tr>
                 <th className={thCls}>№</th>
                 <th className={thCls}>Turi</th>

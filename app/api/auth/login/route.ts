@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { compareSecret, isValidPhone, normalizePhone } from "@/lib/invite";
-import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE_SEC } from "@/lib/session";
+import { createSessionToken, newSessionId, SESSION_COOKIE, SESSION_MAX_AGE_SEC } from "@/lib/session";
+import { describeUserAgent, type UserSession } from "@/lib/userSessions";
+
+/** "15.08.2026 | 00:22" — loyihadagi boshqa sanalar bilan bir xil format. */
+function fmtNow(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 // POST /api/auth/login — telefon + parol bilan kirish, sessiya cookie o'rnatadi.
 export async function POST(req: Request) {
@@ -38,7 +45,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
   }
 
-  const token = await createSessionToken({ uid: user._id.toString(), phone: user.phone, role: user.role || "employee" });
+  // Har bir login alohida sessiya (qurilma) yozuvini oladi — "Aktiv qurilmalar"
+  // ro'yxati va sessiyani uzish shu orqali ishlaydi.
+  const sid = newSessionId();
+  const ua = req.headers.get("user-agent") || "";
+  const now = fmtNow(new Date());
+  const session: UserSession = {
+    sid,
+    userId: user._id.toString(),
+    userAgent: ua,
+    label: describeUserAgent(ua),
+    ip: req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "",
+    createdAt: now,
+    lastSeenAt: now,
+  };
+  await db.collection<UserSession>("user_sessions").insertOne(session);
+
+  const token = await createSessionToken({ uid: user._id.toString(), phone: user.phone, role: user.role || "employee", sid });
 
   const res = NextResponse.json({ ok: true, role: user.role || "employee" });
   res.cookies.set(SESSION_COOKIE, token, {

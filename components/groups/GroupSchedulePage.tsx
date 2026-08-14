@@ -11,8 +11,10 @@
 // layoutda tanlanadi.
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
+import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
+import { computeScheduleKpis } from "@/lib/scheduleStats";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
@@ -71,8 +73,13 @@ export default function GroupSchedulePage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("room");
   const [layout, setLayout] = useState<Layout>("grid");
   const [filtersVisible, setFiltersVisible] = useState(false);
+  // Referensda KPI kartalari boshlang'ich holatda ko'rinib turadi.
+  const [statsVisible, setStatsVisible] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [fullscreen, setFullscreen] = useState(false);
+  // Guruhlar soni HAQIQIY (/api/groups), qolgan ko'rsatkichlar tegishli
+  // sahifalar bilan bir xil mantiqdan hisoblanadi — lib/scheduleStats.ts.
+  const kpis = useMemo(() => computeScheduleKpis(groups.length), [groups.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,6 +165,17 @@ export default function GroupSchedulePage() {
             Export
           </Button>
           <button
+            onClick={() => setStatsVisible((v) => !v)}
+            title="Statistika kartalarini ko'rsatish/yashirish"
+            className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium transition-colors ${
+              statsVisible ? "bg-primary text-white hover:opacity-90" : "border border-border bg-card hover:bg-secondary"
+            }`}
+          >
+            <BarChart3 className="icon icon-sm" />
+            <span>Statistika</span>
+          </button>
+
+          <button
             onClick={() => setFiltersVisible((v) => !v)}
             className={`relative inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-shadow${
               filtersVisible ? " ring-2 ring-blue-300" : ""
@@ -173,6 +191,27 @@ export default function GroupSchedulePage() {
           </button>
         </div>
       </div>
+
+      {/* KPI kartalari — referensda jadval ustida turadi. "Statistika"
+          tugmasi ularni yashiradi/ko'rsatadi (boshlang'ich holat — ochiq,
+          referensdagi kabi). */}
+      {statsVisible && (
+        <div className="kpi-grid non-fullscreen">
+          {kpis.map((k) => (
+            <Link key={k.key} href={k.href} className="kpi-card">
+              <span className="kpi-icon" style={{ backgroundColor: k.bg, color: k.fg }}>
+                <svg className="icon"><use href={`#${k.icon}`} /></svg>
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[11px] leading-tight text-muted-foreground">{k.label}</span>
+                <span className="block text-[17px] font-bold tabular-nums leading-tight">
+                  {k.value.toLocaleString("ru-RU").replace(/,/g, " ")}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Filtr paneli */}
       {filtersVisible && (

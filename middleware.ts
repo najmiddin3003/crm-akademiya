@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LOCK_COOKIE } from "@/lib/lock";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 // Login qilmagan foydalanuvchi hech qaysi CRM sahifasiga kira olmaydi —
@@ -20,6 +21,20 @@ export async function middleware(req: NextRequest) {
   if (!isPublic && !session) {
     const url = req.nextUrl.clone();
     url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  // Ekran qulflangan bo'lsa — sessiya saqlanadi, lekin hamma sahifa /lock ga
+  // yo'naltiriladi. Parol kiritilgach qulf ochiladi (/api/auth/unlock).
+  const locked = session && req.cookies.get(LOCK_COOKIE)?.value === "1";
+  if (locked && pathname !== "/lock") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/lock";
+    return NextResponse.redirect(url);
+  }
+  if (!locked && pathname === "/lock") {
+    const url = req.nextUrl.clone();
+    url.pathname = session ? "/tasks" : "/";
     return NextResponse.redirect(url);
   }
 

@@ -48,10 +48,10 @@ export default function ReportTablePage<T extends { id: number }>({
   const slice = useMemo(() => rows.slice(start, start + pageSize), [rows, start, pageSize]);
 
   return (
-    <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {summary && summary(rows)}
 
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
             <span>Umumiy soni:</span>
@@ -59,9 +59,9 @@ export default function ReportTablePage<T extends { id: number }>({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm" style={{ minWidth }}>
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 {columns.map((c) => (

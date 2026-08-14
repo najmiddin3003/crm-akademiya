@@ -61,7 +61,7 @@ export default function PlannedExpensesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-[18px] font-semibold">Rejalashtirilgan xarajatlar</h1>
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
@@ -69,16 +69,16 @@ export default function PlannedExpensesPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="flex justify-end px-3 pt-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
             <span className="text-muted-foreground">Umumiy soni:</span>
             <span className="font-bold tabular-nums">{activeCount}</span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/40">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Nomi</th>

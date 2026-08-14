@@ -50,6 +50,10 @@ export async function ensureIndexes(): Promise<Db> {
     await db.collection("users").createIndex({ "invite.token": 1 }, { sparse: true });
     await db.collection("employees").createIndex({ phone: 1 });
     await db.collection("verification_codes").createIndex({ phone: 1, purpose: 1 });
+    // user_sessions — "Aktiv qurilmalar". Bitta yozuv = bitta qurilmadagi login;
+    // yozuv o'chirilsa, o'sha qurilma keyingi sahifada tizimdan chiqariladi.
+    await db.collection("user_sessions").createIndex({ sid: 1 }, { unique: true });
+    await db.collection("user_sessions").createIndex({ userId: 1 });
     // purgeAt vaqti kelganda hujjat avtomatik o'chadi (TTL).
     await db.collection("verification_codes").createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 });
     await db.collection("tasks").createIndex({ id: 1 }, { unique: true });
@@ -59,6 +63,21 @@ export async function ensureIndexes(): Promise<Db> {
     await db.collection("groups").createIndex({ id: 1 }, { unique: true });
     await db.collection("group_tasks").createIndex({ id: 1 }, { unique: true });
     await db.collection("group_tasks").createIndex({ groupId: 1 });
+    // attendance — guruh davomati. Bitta yozuv = (guruh, o'quvchi, sana)
+    // uchligi, shuning uchun kalit unique. `date` — "YYYY-MM-DD" satri, oy
+    // bo'yicha so'rov shu indeksdan prefiks sifatida foydalanadi.
+    await db.collection("attendance").createIndex(
+      { groupId: 1, pupilId: 1, date: 1 },
+      { unique: true },
+    );
+    await db.collection("attendance").createIndex({ groupId: 1, date: 1 });
+    // attendance_history — Davomat katakchasi bo'yicha o'zgarishlar tarixi
+    // ("Tarixi" bo'limi). Yozuvlar hech qachon o'chirilmaydi.
+    await db.collection("attendance_history").createIndex({ id: 1 }, { unique: true });
+    await db.collection("attendance_history").createIndex({ groupId: 1, pupilId: 1, date: 1 });
+    // group_notes — Davomat > "Izoh" ustunidagi o'quvchiga yozilgan xabarlar.
+    await db.collection("group_notes").createIndex({ id: 1 }, { unique: true });
+    await db.collection("group_notes").createIndex({ groupId: 1, pupilId: 1 });
     // hr_employees — edutizim dizaynidagi to'liq xodim roster (invite oqimidagi
     // `employees` kolleksiyasidan ALOHIDA; ular turli shakl/vazifada).
     await db.collection("hr_employees").createIndex({ id: 1 }, { unique: true });

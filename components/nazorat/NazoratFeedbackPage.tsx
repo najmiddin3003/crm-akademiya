@@ -38,7 +38,7 @@ export default function NazoratFeedbackPage() {
   const slice = filtered.slice(start, start + pageSize);
 
   return (
-    <div className="container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
       {/* Filtrlar/qidirish qatori */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 max-w-md min-w-[200px]">
@@ -75,7 +75,7 @@ export default function NazoratFeedbackPage() {
       </div>
 
       {/* Jadval */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
             <span>Umumiy soni:</span>
@@ -83,9 +83,9 @@ export default function NazoratFeedbackPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[1200px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 <th className="px-5 py-3 text-left">Filial</th>

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { useLang } from "@/components/shared/Language";
+import { MONTHS, WEEKDAYS_SHORT } from "@/lib/i18n";
 
 // Qayta ishlatiladigan YAKKA sana tanlagich (DateRangePicker'ning oraliq
 // emas, bitta kun tanlaydigan varianti — Moliya → Tushum rejasi skrinshotidagi
@@ -13,8 +15,8 @@ export interface DatePickerProps {
   className?: string;
 }
 
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+// Oy/hafta kuni nomlari navbardagi til tanloviga qarab olinadi (lib/i18n.ts).
+// Ilgari ular shu yerda inglizcha qattiq yozilgan edi.
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -28,6 +30,9 @@ function fmt(d: Date): string {
 }
 
 export default function DatePicker({ value, onChange, className = "" }: DatePickerProps) {
+  const [lang] = useLang();
+  const monthNames = MONTHS[lang];
+  const weekdayNames = WEEKDAYS_SHORT[lang];
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<Date>(() => startOfDay(value ?? new Date()));
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -93,13 +98,13 @@ export default function DatePicker({ value, onChange, className = "" }: DatePick
             <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="text-[14px] font-semibold text-primary">{MONTHS[view.getMonth()]} {view.getFullYear()}</div>
+            <div className="text-[14px] font-semibold text-primary">{monthNames[view.getMonth()]} {view.getFullYear()}</div>
             <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
-            {WEEKDAYS.map((w) => (
+            {weekdayNames.map((w) => (
               <div key={w} className="h-8 flex items-center justify-center text-[11px] font-medium text-muted-foreground">{w}</div>
             ))}
             {cells.map((day, i) => {

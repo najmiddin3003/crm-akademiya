@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
+import { useLang } from "@/components/shared/Language";
+import type { Lang } from "@/lib/i18n";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
 import { useBranches } from "@/hooks/useBranches";
+import { HELP_TOPICS } from "@/constants/helpTopics";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 
@@ -17,12 +20,14 @@ const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 // i-settings, i-monitor, i-megaphone, i-file-plus) are assumed mounted alongside
 // this component; only icons unique to the header are defined below.
 
-type OpenMenu = "lang" | "news" | "create" | "notifications" | "profile" | null;
+type OpenMenu = "lang" | "news" | "help" | "create" | "notifications" | "profile" | null;
 
-const LANGUAGES: Record<string, { flag: string; name: string }> = {
-  uz: { flag: "🇺🇿", name: "O'zbekcha" },
-  en: { flag: "🇺🇸", name: "English" },
-  ru: { flag: "🇷🇺", name: "Русский" },
+// `short` — navbar tugmasida ko'rinadigan qisqa nom (referensda "O'zb"),
+// `name` esa ochilgan ro'yxatdagi to'liq nom.
+const LANGUAGES: Record<string, { flag: string; name: string; short: string }> = {
+  uz: { flag: "🇺🇿", name: "O'zbekcha", short: "O'zb" },
+  en: { flag: "🇺🇸", name: "English", short: "Eng" },
+  ru: { flag: "🇷🇺", name: "Русский", short: "Рус" },
 };
 
 interface NotificationItem {
@@ -58,7 +63,9 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const router = useRouter();
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [isDark, setIsDark] = useState(false);
-  const [lang, setLangCode] = useState<"uz" | "en" | "ru">("uz");
+  // Til endi butun ilova bo'ylab umumiy (components/shared/Language.tsx) —
+  // sana tanlagichlar ham shu qiymatga qarab oy/kun nomlarini almashtiradi.
+  const [lang, setLangCode] = useLang();
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   // Filial ro'yxati Boshqaruv → Filiallar sahifasi bilan BIR XIL manbadan.
   const { branches } = useBranches();
@@ -102,7 +109,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     setOpenMenu((prev) => (prev === menu ? null : menu));
   };
 
-  const setLang = (code: "uz" | "en" | "ru") => {
+  const setLang = (code: Lang) => {
     setLangCode(code);
     setOpenMenu(null);
   };
@@ -122,19 +129,25 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     }, 220);
   };
 
-  const onProfileAction = (kind: "devices" | "lock" | "logout") => {
+  const onProfileAction = async (kind: "devices" | "lock" | "logout") => {
     setOpenMenu(null);
     if (kind === "devices") {
-      alert("Aktiv qurilmalar ro'yxati ochilishi kerak.\n\n(Haqiqiy loyihada bu yerda foydalanuvchining barcha qurilmalari ro'yxati va sessiyalarni boshqarish dialogi ochiladi.)");
-    } else if (kind === "lock") {
-      alert("Tizim qulflandi.\n\n(Haqiqiy loyihada login ekraniga qaytaradi, ammo sessiyani saqlab qoladi.)");
-    } else if (kind === "logout") {
-      if (confirm("Tizimdan chiqishni xohlaysizmi?")) {
-        fetch("/api/auth/logout", { method: "POST" }).finally(() => {
-          router.push("/");
-          router.refresh();
-        });
-      }
+      router.push("/settings-devices");
+      return;
+    }
+    if (kind === "lock") {
+      // Sessiya saqlanadi — faqat ekran qulflanadi. Middleware shundan keyin
+      // hamma sahifani /lock ga yo'naltiradi.
+      await fetch("/api/auth/lock", { method: "POST" }).catch(() => {});
+      router.replace("/lock");
+      router.refresh();
+      return;
+    }
+    if (kind === "logout") {
+      if (!confirm("Tizimdan chiqishni xohlaysizmi?")) return;
+      await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+      router.push("/");
+      router.refresh();
     }
   };
 
@@ -156,6 +169,10 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
           <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></symbol>
           <symbol id="i-frown" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 16s-1.5-2-4-2-4 2-4 2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></symbol>
           <symbol id="i-help-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></symbol>
+          {/* Referensdagi "Qanday ishlaydi?" — video kamera */}
+          <symbol id="i-video" viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8z" /><rect x="2" y="6" width="14" height="12" rx="2" /></symbol>
+          {/* Referensdagi "Tezkor bo'limlar" — doira ichida plyus */}
+          <symbol id="i-circle-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></symbol>
           <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></symbol>
           <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></symbol>
           <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
@@ -163,25 +180,40 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         </defs>
       </svg>
 
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-md md:px-5">
-        <button onClick={onOpenMobileMenu} className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary">
-          <svg className="icon icon-sm"><use href="#i-menu" /></svg>
+      {/* `sticky` ATAYIN ishlatilmagan: globals.css da `header.sticky` qoidasi
+          bor va u `hsl(var(--background))` fonini majburlaydi — spesifikligi
+          (0,1,1) `.shell-header` (0,1,0) dan yuqori bo'lgani uchun oq fonni
+          bosib ketardi. Yangi tuzilishda header allaqachon ustunli flex'ning
+          eng tepasida turadi, ya'ni scroll bilan siljimaydi. */}
+      <header className="shell-header relative z-30 flex shrink-0 items-center gap-2 pr-1.5">
+        {/* Logo — referensda sidebar ichida emas, HEADER ichida turadi va
+            kengligi sidebar kengligiga tekislanadi. */}
+        <Link href="/tasks" className="shell-logo flex shrink-0 items-center gap-2" title="Asosiy sahifaga qaytish">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white" style={{ backgroundColor: "var(--shell-blue)" }}>
+            <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-graduation-cap" /></svg>
+          </span>
+          <span className="text-[15px] font-extrabold tracking-tight" style={{ color: "var(--shell-blue)" }}>Tizimli</span>
+        </Link>
+
+        <button onClick={onOpenMobileMenu} className="nav-btn shell-only-mobile" title="Menyu">
+          <svg className="icon"><use href="#i-menu" /></svg>
         </button>
 
         <button
           id="sidebar-toggle"
           onClick={toggleSidebar}
-          className="hidden lg:inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary transition-colors"
+          className="nav-btn shell-from-lg"
           title={sidebarHidden ? "Menyuni ko'rsatish" : "Menyuni yashirish"}
         >
-          <svg className="icon icon-sm"><use href="#i-panel-left" /></svg>
+          <svg className="icon"><use href="#i-panel-left" /></svg>
         </button>
 
-        <button onClick={goBack} disabled={!canGoBack} className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-white text-sm font-medium shadow-sm hover:opacity-90 transition-opacity disabled:bg-primary/40 disabled:cursor-not-allowed">
-          <svg className="icon icon-sm text-white"><use href="#i-arrow-left" /></svg> <span>Orqaga</span>
+        {/* Referensda "Orqaga" — matnsiz, faqat ikonkali 32x32 tugma */}
+        <button onClick={goBack} disabled={!canGoBack} title="Orqaga" className="nav-btn nav-btn-back shell-from-sm">
+          <svg className="icon"><use href="#i-arrow-left" /></svg>
         </button>
 
-        <div className="relative">
+        <div className="nav-field shell-field-sm relative shrink-0" style={{ width: 200 }}>
           <select
             value={selectedBranch}
             onChange={(e) => {
@@ -191,7 +223,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
               }
               setBranch(e.target.value);
             }}
-            className="h-9 w-36 appearance-none rounded-lg border border-border bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-full w-full appearance-none bg-transparent pl-2 pr-7 text-sm focus:outline-none"
           >
             {branches.length === 0 && <option value="">Filial…</option>}
             {branches.map((b) => (
@@ -199,23 +231,25 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
             ))}
             <option>{FILIAL_ADD_OPTION}</option>
           </select>
-          <svg className="icon icon-sm pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
+          <svg className="icon icon-xs pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--shell-blue)" }}><use href="#i-chevron-down" /></svg>
         </div>
 
-        <div className="relative ml-2 max-w-md flex-1" id="global-search-wrapper">
-          <svg className="icon icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10"><use href="#i-search" /></svg>
+        <div className="nav-field shell-field-md relative ml-1 w-full" style={{ maxWidth: 340 }} id="global-search-wrapper">
+          <svg className="icon icon-sm pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 z-10" style={{ color: "#98a2b3" }}><use href="#i-search" /></svg>
           <input
             id="global-search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Qidirish ..."
+            placeholder="Qidirish..."
             autoComplete="off"
-            className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-full w-full bg-transparent pl-9 pr-16 text-sm focus:outline-none"
           />
-          {searchQuery.length > 0 && (
+          {searchQuery.length > 0 ? (
             <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground" title="Tozalash">
               <svg className="icon icon-xs"><use href="#i-x-circle" /></svg>
             </button>
+          ) : (
+            <span className="nav-kbd pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">Ctrl K</span>
           )}
           {searchQuery.trim().length > 0 && (
             <div
@@ -258,18 +292,18 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
           )}
         </div>
 
-        <div className="hidden md:flex items-center gap-1 ml-auto">
+        <div className="hidden md:flex items-center ml-auto">
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("lang"); }} className="dropdown-trigger inline-flex items-center gap-1.5 h-9 px-2.5 rounded-md text-sm hover:bg-secondary">
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("lang"); }} className="dropdown-trigger inline-flex items-center gap-1.5 h-9 px-2 rounded-lg text-sm hover:bg-secondary" style={{ color: "var(--shell-text)" }}>
               <span className="text-base leading-none">{LANGUAGES[lang].flag}</span>
-              <span className="text-sm">{LANGUAGES[lang].name}</span>
-              <svg className="icon icon-xs text-muted-foreground"><use href="#i-chevron-down" /></svg>
+              <span className="text-sm">{LANGUAGES[lang].short}</span>
+              <svg className="icon icon-xs" style={{ color: "var(--shell-blue)" }}><use href="#i-chevron-down" /></svg>
             </button>
             <div className={`${openMenu === "lang" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-44 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1`}>
               {(Object.keys(LANGUAGES) as Array<keyof typeof LANGUAGES>).map((code) => (
                 <button
                   key={code}
-                  onClick={() => setLang(code as "uz" | "en" | "ru")}
+                  onClick={() => setLang(code as Lang)}
                   className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm font-medium hover:bg-secondary text-left ${lang === code ? "bg-blue-50 text-primary font-semibold" : ""}`}
                 >
                   <span className="text-base leading-none">{LANGUAGES[code].flag}</span><span>{LANGUAGES[code].name}</span>
@@ -279,18 +313,19 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-0.5">
-          <button onClick={toggleTheme} className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary">
-            <svg className="icon icon-sm"><use href={isDark ? "#i-sun" : "#i-moon"} /></svg>
+        {/* Referensda o'ngdagi ikonka tugmalar 32x32, oralig'i 4px */}
+        <div className="flex items-center gap-1">
+          <button onClick={toggleTheme} className="nav-btn" title={isDark ? "Yorug' rejim" : "Tungi rejim"}>
+            <svg className="icon"><use href={isDark ? "#i-sun" : "#i-moon"} /></svg>
           </button>
-          <Link href="/birthdays" className="hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary transition-colors">
-            <svg className="icon icon-sm"><use href="#i-calendar" /></svg>
+          <Link href="/birthdays" className="nav-btn shell-from-sm" title="Tug'ilgan kunlar">
+            <svg className="icon"><use href="#i-calendar" /></svg>
           </Link>
 
           {/* News (Yangiliklar) */}
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("news"); }} className={`dropdown-trigger hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary transition-colors ${openMenu === "news" ? "bg-secondary text-primary" : ""}`}>
-              <svg className="icon icon-sm"><use href="#i-smile" /></svg>
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("news"); }} title="Yangiliklar" className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "news" ? "is-open" : ""}`}>
+              <svg className="icon"><use href="#i-megaphone" /></svg>
             </button>
             <div className={`${openMenu === "news" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[340px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="px-4 py-3 border-b border-border">
@@ -305,12 +340,55 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
             </div>
           </div>
 
-          <button className="hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary"><svg className="icon icon-sm"><use href="#i-help-circle" /></svg></button>
+          {/* "Qanday ishlaydi?" — video qo'llanmalar ro'yxati (referens) */}
+          <div className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleMenu("help"); }}
+              title="Qanday ishlaydi?"
+              className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "help" ? "is-open" : ""}`}
+            >
+              <svg className="icon"><use href="#i-video" /></svg>
+            </button>
+            <div className={`${openMenu === "help" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[380px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
+              <div className="px-4 py-3 border-b border-border">
+                <h3 className="font-semibold text-base">Qanday ishlaydi?</h3>
+              </div>
+              <div className="max-h-[420px] overflow-y-auto p-1">
+                {HELP_TOPICS.map((t, i) => {
+                  const inner = (
+                    <>
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <svg className="icon icon-xs"><use href="#i-video" /></svg>
+                      </span>
+                      <span className="flex-1 text-[13px] leading-snug">{t.title}</span>
+                    </>
+                  );
+                  // Havola bo'lmasa — bosilmaydigan qator (manzillar hali yo'q).
+                  return t.url ? (
+                    <a
+                      key={i}
+                      href={t.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setOpenMenu(null)}
+                      className="flex items-start gap-2.5 w-full px-2.5 py-2 rounded-lg hover:bg-secondary text-left"
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <div key={i} className="flex items-start gap-2.5 w-full px-2.5 py-2 rounded-lg text-left">
+                      {inner}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
           {/* Create action (Buyurtma / Moliya) */}
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("create"); }} className={`dropdown-trigger hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary transition-colors ${openMenu === "create" ? "bg-secondary text-primary" : ""}`}>
-              <svg className="icon icon-sm"><use href="#i-file-plus" /></svg>
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("create"); }} title="Tezkor bo'limlar" className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "create" ? "is-open" : ""}`}>
+              <svg className="icon"><use href="#i-circle-plus" /></svg>
             </button>
             <div className={`${openMenu === "create" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-52 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1`}>
               <Link href="/orders-new" className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left" onClick={() => setOpenMenu(null)}>
@@ -330,9 +408,9 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
           {/* Notifications */}
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("notifications"); }} className={`dropdown-trigger relative inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-secondary transition-colors ${openMenu === "notifications" ? "bg-secondary text-primary" : ""}`}>
-              <svg className="icon icon-sm"><use href="#i-bell" /></svg>
-              {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />}
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("notifications"); }} className={`dropdown-trigger nav-btn relative ${openMenu === "notifications" ? "is-open" : ""}`} title="Bildirishnomalar">
+              <svg className="icon"><use href="#i-bell" /></svg>
+              {unreadCount > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ backgroundColor: "#d32f2f" }} />}
             </button>
             <div className={`${openMenu === "notifications" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[400px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -370,7 +448,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
           {/* Profile */}
           <div className="relative ml-1" onMouseEnter={onProfileHoverEnter} onMouseLeave={onProfileHoverLeave}>
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("profile"); }} className={`dropdown-trigger flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-semibold hover:ring-2 hover:ring-blue-200 transition-shadow ${openMenu === "profile" ? "ring-2 ring-blue-300" : ""}`}>
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("profile"); }} className={`dropdown-trigger nav-avatar transition-shadow ${openMenu === "profile" ? "ring-2 ring-blue-300" : ""}`}>
               A
             </button>
             <div className={`${openMenu === "profile" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[280px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
@@ -382,19 +460,19 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
                 </div>
               </div>
               <div className="p-1">
-                <button onClick={() => onProfileAction("devices")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
+                <button onClick={() => void onProfileAction("devices")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <svg className="icon icon-sm"><use href="#i-monitor" /></svg>
                   </span>
                   <span>Aktiv qurilmalar</span>
                 </button>
-                <button onClick={() => onProfileAction("lock")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
+                <button onClick={() => void onProfileAction("lock")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <svg className="icon icon-sm"><use href="#i-lock" /></svg>
                   </span>
                   <span>Qulflash</span>
                 </button>
-                <button onClick={() => onProfileAction("logout")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-50 text-left">
+                <button onClick={() => void onProfileAction("logout")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-50 text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
                     <svg className="icon icon-sm"><use href="#i-log-out" /></svg>
                   </span>

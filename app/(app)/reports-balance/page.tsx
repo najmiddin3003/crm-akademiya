@@ -54,15 +54,15 @@ export default function Page() {
   const slice = rows.slice(start, start + pageSize);
 
   return (
-    <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
+    <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-end">
         <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
       </div>
 
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
+        <div className="table-scroll">
           <table className="w-full text-sm min-w-[1100px]">
-            <thead className="bg-secondary/20">
+            <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 <th className="px-5 py-3 text-left">To&apos;liq ismi</th>

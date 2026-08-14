@@ -3,6 +3,15 @@ import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { EMPLOYEES_DATA } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import {
+  isValidPhone,
+  issueCode,
+  generateToken,
+  activationMessage,
+  sendSms,
+  normalizePhone,
+  INVITE_TTL_MS,
+} from "@/lib/invite";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
 // Kolleksiya bo'sh bo'lsa — 49 ta demo xodimni bir marta seed qilamiz.
@@ -28,6 +37,11 @@ export async function GET() {
   return NextResponse.json({ ok: true, employees });
 }
 
+// Xodim qo'shilganda faollashtirish taklifi (users + 72 soatlik token + SMS)
+// app/api/employees/route.ts dagi bilan bir xil naqsh — farqi shu: bu yerda
+// alohida `employees` yozuvi yaratilmaydi, `users.hrEmployeeId` bevosita
+// `hr_employees.id`ga ishora qiladi (activate/verify-token/resend-invite
+// faqat `users`ga qaraydi, shuning uchun bu farq ularga ta'sir qilmaydi).
 export async function POST(req: Request) {
   let body: Partial<HrEmployee>;
   try {
@@ -40,8 +54,18 @@ export async function POST(req: Request) {
   if (!name) {
     return NextResponse.json({ ok: false, error: "Ism va familiyani kiriting" }, { status: 400 });
   }
+  if (!isValidPhone(body.phone)) {
+    return NextResponse.json({ ok: false, error: "Telefon raqami noto'g'ri" }, { status: 400 });
+  }
+  const phone = normalizePhone(body.phone!);
 
   const db = await ensureIndexes();
+
+  const existingUser = await db.collection("users").findOne({ phone });
+  if (existingUser) {
+    return NextResponse.json({ ok: false, error: "Bu telefon raqami allaqachon ro'yxatdan o'tgan" }, { status: 409 });
+  }
+
   const col = db.collection("hr_employees");
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
@@ -54,7 +78,7 @@ export async function POST(req: Request) {
     groups: 0,
     turi: body.turi || "",
     filial: body.filial || "Akademiya",
-    phone: body.phone || "",
+    phone,
     kurs: body.kurs || "",
     created: fmtNow(new Date()),
     lastActive: "",
@@ -63,5 +87,35 @@ export async function POST(req: Request) {
     email: body.email || "",
   };
   await col.insertOne({ ...employee });
-  return NextResponse.json({ ok: true, employee });
+
+  const now = new Date();
+  const token = generateToken();
+  await db.collection("users").insertOne({
+    phone,
+    hrEmployeeId: nextId,
+    fullName: name,
+    role: employee.turi || "employee",
+    status: "invited",
+    passwordHash: null,
+    invite: { token, expiresAt: new Date(now.getTime() + INVITE_TTL_MS) },
+    createdAt: now,
+    activatedAt: null,
+  });
+
+  // Taklif kodini yaratamiz (rate-limit ichida) va SMS yuboramiz. SMS
+  // muvaffaqiyatsiz bo'lsa ham xodim ro'yxatda qoladi — frontend smsSent
+  // bayrog'iga qarab tegishli xabar ko'rsatadi.
+  const code = await issueCode(phone, "activate");
+  let smsSent = false;
+  let smsSimulated = false;
+  if (code.ok && code.code) {
+    const sms = await sendSms(phone, activationMessage(token, code.code));
+    smsSent = sms.ok;
+    smsSimulated = Boolean(sms.simulated);
+    if (!sms.ok) {
+      console.error("[hr-employees] SMS yuborilmadi:", sms.error, sms.raw);
+    }
+  }
+
+  return NextResponse.json({ ok: true, employee, smsSent, smsSimulated });
 }
