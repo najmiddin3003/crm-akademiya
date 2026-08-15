@@ -157,6 +157,192 @@ Qilingan (`app/api/hr-employees/route.ts` POST):
 > Ochiq qolgan: `POST /api/hr-employees`da admin-auth yo'q (eski `POST /api/employees`da
 > ham xuddi shunday TODO bor) — ataylab tegilmadi, alohida masala.
 
+## 10. ✅ Navbar + Sidebar referens dizayniga o'tkazildi (2026-08-15)
+
+Struktura teskari edi: sidebar to'liq balandlikda chapda turib, logoni o'zida saqlardi,
+header esa faqat o'ngdagi joyni egallardi. Referensda **header butun kenglikda tepada**
+(56px), logo uning ichida, sidebar header **ostidan** boshlanadi.
+
+O'lchamlar jonli referensdan `getComputedStyle` bilan olingan: sidebar `173px`, element
+`44px`/radius `10px`, ikonka `20px` `#3D68FF` (har doim ko'k), badge ikonka ustida,
+flyout `220px` va sidebar chetidan `+3px`. Primary `#3D68FF`, border `#DBE0E6`,
+shrift **Nunito** (`next/font`).
+
+Navbar ikonkalari referensdagi vazifalarga moslandi: `Yangiliklar`, `Qanday ishlaydi?`
+(video qo'llanmalar ro'yxati — `constants/helpTopics.js`), `Tezkor bo'limlar`.
+
+Sidebar flyouti sichqoncha yurgizilganda titrardi — ikkita panel bir vaqtda animatsiya
+qilardi. Yechim: 90ms ochilish kechikishi + menyular orasida animatsiyasiz almashish
+(`.flyout-instant`).
+
+## 11. ✅ Jadvallar: thead tepada, paginatsiya pastda qotib turadi (2026-08-15)
+
+49 sahifada qo'llandi. CSS zanjiri (`app/globals.css`):
+
+```
+.page-frame → .table-frame → .table-scroll → th { position: sticky }
+```
+
+Har bo'g'inda `min-height: 0` SHART, aks holda flex element kontentidan kichrayolmaydi
+va scroll ichki emas, tashqi (`main`) bo'lib qoladi.
+
+Sticky `<thead>` emas, **`<th>`** — `border-collapse: collapse` bilan `thead` ba'zi
+brauzerlarda fon/chegara chizmaydi.
+
+Grid va ikki ustunli sahifalar uchun alohida klasslar: `.page-frame-row` /
+`.page-frame-col` (yo'nalishga tegmaydi, faqat balandlik beradi) va `.page-frame-lg` /
+`.grid-frame` (ramka faqat desktopda).
+
+Ataylab tegilmagan: `FinanceAnalyticsPage`, `SalesFunnelPage` — bular ro'yxat emas,
+dashboarddagi kichik xulosa jadvallari.
+
+## 12. ✅ Davomat moduli — yangi (2026-08-15)
+
+Guruh → Davomat tabi. Ustunlar **qattiq yozilmagan**: guruhning dars kunlaridan
+(`group.day`) tanlangan yil+oy ichida hisoblanadi — `"Toq kunlar"` → Du/Ch/Ju.
+
+- 4 holat: Keldi / Birinchi dars / Sababli / Sababsiz (ranglar referensdan)
+- 1..5 baho — holatdan mustaqil, menyu ochiq qoladi
+- `Sababli` → sabab + izoh oynasi
+- `O'rtacha baho` ustuni, o'quvchiga xabar paneli, katakcha o'zgarishlari tarixi
+
+Fayllar: `lib/attendance.ts`, `components/groups/AttendanceTab.tsx`,
+`app/api/groups/[id]/attendance/`, `.../notes/`.
+Kolleksiyalar: `attendance`, `attendance_history`, `group_notes`.
+
+## 13. ✅ Profil menyusi va sessiyalar (2026-08-15)
+
+Ilgari uchalasi ham `alert()` chiqarardi.
+
+- **Aktiv qurilmalar** — `/settings-devices`, `user_sessions` kolleksiyasi. Sessiya
+  cookie'si holatsiz (HMAC), shuning uchun qurilmani uzish uchun alohida ro'yxat
+  kerak: cookie'dagi `sid` ro'yxatda bo'lmasa, keyingi sahifada chiqarib yuboriladi.
+- **Qulflash** — sessiya saqlanadi, `locked` cookie qo'yiladi, middleware hamma
+  sahifani `/lock` ga yo'naltiradi, parol bilan ochiladi.
+- **Chiqish** — endi qurilma yozuvini ham o'chiradi.
+
+`sid` yo'q eski cookie'lar amal qilaveradi (hamma birdan chiqib ketmasligi uchun) —
+keyingi loginda o'zi to'g'rilanadi.
+
+## 14. ✅ Interfeys tili sana tanlagichlarga ham ta'sir qiladi (2026-08-15)
+
+Sana komponentlari oy/kun nomlarini **inglizcha qattiq yozgan** edi (`January`,
+`Su/Mo/Tu`), navbar esa "O'zbekcha"da turardi.
+
+`lib/i18n.ts` (uz/en/ru) + `components/shared/Language.tsx`. Til `localStorage`da,
+`useSyncExternalStore` orqali — SSR bilan to'g'ri ishlaydi va effekt ichida
+`setState` chaqirishni talab qilmaydi (loyihadagi lint qoidasi buni taqiqlaydi).
+
+---
+
+# Referens bilan solishtirish — davom etayotgan ish
+
+## Sidebar manzillari
+
+Referensning barcha submenyu havolalari yig'ib olingan — 12 bo'lim, ~70 havola.
+To'liq jadval loyiha ildizidagi [`reference-urls.md`](./reference-urls.md) da.
+Eng kerakli bir nechtasi:
+
+| Referens | Bizda |
+|---|---|
+| `/home` (BOSH sahifa) | `/groups-schedule` |
+| `/orders/order-list/table` | `/orders-list` |
+| `/group/groups` | `/groups` |
+| `/students/student-list` | `/students-list` |
+| `/students/attendance` | `/nazorat-davomat` |
+| `/finance/cash` | `/finance-cash` |
+| `/hr/employees` | `/management-xodimlar` |
+
+**Manzilni qanday olish kerak.** Referens tabi ba'zan render bo'lmaydi
+(`window.innerWidth === 0`) — u holda sichqoncha koordinatalari ishlamaydi. MUI
+flyoutini sintetik hodisalar bilan ochish mumkin:
+
+```js
+for (const t of ['pointerover','pointerenter','mouseover','mouseenter'])
+  el.dispatchEvent(new MouseEvent(t, {bubbles:true, cancelable:true, view:window}));
+```
+
+Yopilgan menyular DOM'da qolib ketadi — har bo'lim uchun hoverdan OLDIN va KEYIN
+anchor to'plamini olib, **farqini** hisoblash kerak, aks holda ro'yxatlar aralashadi.
+
+## Solishtirilgan sahifalar
+
+| Sahifa | Natija |
+|---|---|
+| **Dars jadvali** | 12 KPI kartasi va `Statistika` tugmasi yo'q edi → **qo'shildi** (`lib/scheduleStats.ts`) |
+| **Guruhlar** | vaqt filtrlari ko'rinardi-yu, filtrlashga ulanmagan edi → **ulandi** |
+| **O'quvchilar ro'yxati** | filtr 4 ta edi, referensda 20 ta → model kengaytirilib **14 taga** chiqarildi |
+| **Buyurtmalar ro'yxati** | referens tomonida ustunlar yashirilgan — solishtirib bo'lmadi |
+| **Davomat** | filtrlar aynan mos; `Eng ko'p dars qoldirganlar bo'yicha` yo'q edi → **qo'shildi** |
+
+`lib/studentsData.ts` — o'quvchi endi haqiqiy guruhga bog'lanadi (`GROUP_SEED`),
+`Kurs`/`O'qituvchi`/`Kun`/`Toq-Juft` o'shandan kelib chiqadi. Bog'lash `id` dan
+deterministik. `GURUHLAR` ustuni ilgari 5909 qatorning hammasida `-` edi.
+
+Referensning 6 ta filtri **ataylab** qo'shilmadi (`Teglar`, `Bloklanganlar`, `Oferta`,
+`Ilova holati`, `Ranglar bo'yicha`, `Referal`, `Shartnoma`) — ular uchun maydon yo'q,
+ishlamaydigan tugma qo'yishdan ko'ra yo'qligi ma'qul.
+
+## Keyingi qadamlar
+
+1. Qolgan sahifalarni solishtirish: `Kassalar`, `Xodimlar`, `Birinchi darsga keladiganlar`
+2. Referensda ustunlari yashirin sahifalarda (`Buyurtmalar`, `Guruhlar`, `Davomat`)
+   ustunlarni yoqib, qayta solishtirish
+3. `constants/sidebar.js`dagi qurilmagan 37 ta havola — bular referensda YO'Q, bizning
+   qo'shimchalarimiz. Yozish yoki sidebardan olib tashlash kerak
+
+---
+
+# ⚠️ Ish jarayonidagi tuzoqlar
+
+Bularni bilmasangiz vaqt yo'qotasiz.
+
+## `globals.css` o'zgarishi yetib bormaydi
+
+Hot-reload ishlamaydi va **oddiy restart ham yetarli emas**. Har safar:
+
+```bash
+rmdir /s /q .next & npm run dev
+```
+
+Sabab — fayl 345KB va Turbopack uning keshini to'g'ri yangilamaydi. Bitta sessiyada
+6 marta shunday qilishga to'g'ri keldi. CSS "ishlamayotgandek" tuyulsa — birinchi
+navbatda shuni qiling.
+
+## Tailwind'ning ba'zi klasslari ishlamaydi
+
+`app/globals.css` ning 1-qatorida `@import "tailwindcss"` (v4, JIT ishlaydi), lekin
+undan **keyin** Tailwind v3.4.6 ning kompilyatsiya qilingan katta bloki turibdi.
+Bir xil spesifiklikda keyingi qoida ustun kelgani uchun eski blok v4 utility'sini
+bosib ketadi.
+
+Shu sabab ishlamagan klasslar: `hidden sm:block`, `lg:grid-cols-[380px_1fr]`,
+`md:items-stretch`. Shell va ramka qismlari o'z klasslariga o'tkazilgan — aniq
+piksel kerak bo'lsa Tailwind'ga emas, `globals.css`dagi klassga tayaning.
+
+## Lightning CSS bo'sh qoidani o'chiradi
+
+```css
+.flyout-instant { transition: none; transform: none; }   /* brauzerga YETIB BORMAYDI */
+```
+
+`transform: none` — boshlang'ich qiymat, `transition: none` ham `0s` ga tushadi.
+Optimizator ikkalasini "ortiqcha" deb tashlaydi, qoida bo'sh qolib butunlay o'chadi.
+`!important` qo'shilsa saqlanadi.
+
+## Yangi lucide ikonkasi Turbopack keshini buzishi mumkin
+
+"module factory is not available" xatosi chiqsa — kod aybdor emas, `.next` ni tozalang.
+
+## Brauzerdan o'lchashda ehtiyot bo'ling
+
+- Tab **fonda** turganda CSS animatsiyalari yurmaydi: `width`/`opacity` kabi
+  transition bilan o'zgaradigan qiymatlar eski holatda qotib qoladi va noto'g'ri
+  xulosa chiqarasiz. `offsetWidth` bilan tekshiring yoki skrinshot oling.
+- Faqat `<select>` va `placeholder` bo'yicha qidirish **yolg'on "kamchilik"** beradi:
+  `<input type="time">` ikkalasiga ham kirmaydi. Guruhlar sahifasida shu sabab
+  "3 ta filtr yo'q" deb xato xulosa qilingan edi — aslida hammasi bor edi.
+
 ---
 
 # Sozlamalar bo'limi — holat va qolgan ishlar

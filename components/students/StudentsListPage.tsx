@@ -7,6 +7,21 @@ import Pagination from "@/components/ui/Pagination";
 import Button from "@/components/ui/Button";
 import AddStudentModal from "@/components/orders/AddStudentModal";
 import { STUDENTS_LIST } from "@/constants/studentsList";
+import {
+  applyStudentFilters,
+  enrichStudent,
+  EMPTY_STUDENT_FILTERS,
+  STUDENT_CATEGORIES,
+  STUDENT_COURSES,
+  STUDENT_DAYS,
+  STUDENT_GROUP_IDS,
+  STUDENT_STATUSES,
+  STUDENT_SUBCOURSES,
+  STUDENT_TEACHERS,
+  type EnrichedStudent,
+  type StudentFilters,
+  type StudentRow,
+} from "@/lib/studentsData";
 import type { Pupil } from "@/lib/pupilsData";
 
 // O'quvchilar → O'quvchilar ro'yxati (crm-akademiya #view-students-list,
@@ -22,25 +37,8 @@ import type { Pupil } from "@/lib/pupilsData";
 // manbada ham har doim bo'sh/statik (haqiqiy hisoblanmaydi), shu holicha
 // ko'chirildi.
 
-interface StudentRow {
-  id: number;
-  name: string;
-  phone: string;
-  balance: number;
-  coin: number;
-  createdAt: string;
-  moderator: string;
-  source: string;
-  groups: string;
-}
-
-interface StudentFilters {
-  moderator: string;
-  source: string;
-  coinFrom: string;
-  coinTo: string;
-}
-const EMPTY_FILTERS: StudentFilters = { moderator: "", source: "", coinFrom: "", coinTo: "" };
+// StudentRow / StudentFilters endi lib/studentsData.ts da — filtrlash mantiqi
+// bilan birga, chunki ular bir-biriga bog'liq.
 
 const MODERATORS = ["Dilmurod Komilov", "Nilufar Sharipova"];
 const SOURCES = ["Instagram", "Telegram", "Tavsiya", "Facebook"];
@@ -78,11 +76,44 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
   return <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className={checkboxCls} />;
 }
 
+/** Filtr paneli uchun yorliqli select — 13 marta takrorlanmasligi uchun. */
+function FilterSelect({ label, value, onChange, options }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: readonly string[];
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[12px] text-muted-foreground">{label}</label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="">Hammasi</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+      </div>
+    </div>
+  );
+}
+
 export default function StudentsListPage() {
-  const [rows, setRows] = useState<StudentRow[]>(() => STUDENTS_LIST as StudentRow[]);
+  // Yozuvlar kengaytiriladi: har bir o'quvchi haqiqiy guruhga bog'lanadi va
+  // kurs/o'qituvchi/dars kunlari o'sha guruhdan kelib chiqadi (lib/studentsData.ts).
+  const [rows, setRows] = useState<EnrichedStudent[]>(() =>
+    (STUDENTS_LIST as StudentRow[]).map(enrichStudent),
+  );
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<StudentFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Drawer o'z QORALAMASI bilan ishlaydi: maydonlar o'zgarganda jadval darhol
+  // qayta filtrlanmaydi. "Saqlash" bosilgandagina qo'llanadi, "Orqaga" esa
+  // o'zgarishlarni tashlab yuboradi — referensdagi bilan bir xil xatti-harakat.
+  const [draft, setDraft] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -99,21 +130,12 @@ export default function StudentsListPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
 
-  function setFilter<K extends keyof StudentFilters>(key: K, value: StudentFilters[K]) {
-    setFilters((f) => ({ ...f, [key]: value }));
-    setPage(1);
-  }
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (q && !`${r.name} ${r.phone} ${r.id}`.toLowerCase().includes(q)) return false;
-      if (filters.moderator && r.moderator !== filters.moderator) return false;
-      if (filters.source && r.source !== filters.source) return false;
-      if (filters.coinFrom && r.coin < Number(filters.coinFrom)) return false;
-      if (filters.coinTo && r.coin > Number(filters.coinTo)) return false;
-      return true;
-    });
+    const byQuery = q
+      ? rows.filter((r) => `${r.name} ${r.phone} ${r.id}`.toLowerCase().includes(q))
+      : rows;
+    return applyStudentFilters(byQuery, filters);
   }, [rows, search, filters]);
 
   const { debt, credit } = useMemo(() => {
@@ -191,7 +213,8 @@ export default function StudentsListPage() {
       source: "",
       groups: "-",
     };
-    setRows((prev) => [newRow, ...prev]);
+    // Yangi o'quvchi ham kengaytiriladi — aks holda filtrlar uni ko'rmaydi.
+    setRows((prev) => [enrichStudent(newRow), ...prev]);
     setAddOpen(false);
     setPage(1);
   }
@@ -217,7 +240,7 @@ export default function StudentsListPage() {
         <Button
           variant="primary"
           lucideIcon={Filter}
-          onClick={() => setFiltersOpen((v) => !v)}
+          onClick={() => { setDraft(filters); setFiltersOpen(true); }}
           className={filtersOpen ? "ring-2 ring-blue-300" : ""}
         >
           Filtr
@@ -253,47 +276,88 @@ export default function StudentsListPage() {
         </div>
       </div>
 
-      {/* Filtr paneli */}
-      {filtersOpen && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className="h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-44">
-              <option value="">Moderator</option>
-              {MODERATORS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+      {/* Filtr paneli — referensdagi maydonlar. Faqat ma'lumoti bor filtrlar
+          chizilgan; qolganlari (Teglar, Bloklanganlar, Oferta, Ilova holati,
+          Ranglar, Referal, Shartnoma) uchun o'quvchi modelida maydon yo'q,
+          shuning uchun ataylab qo'shilmagan — ishlamaydigan tugma qo'yishdan
+          ko'ra yo'qligi ma'qul. */}
+      {filtersOpen && (() => {
+        const setD = <K extends keyof StudentFilters>(k: K, v: StudentFilters[K]) =>
+          setDraft((d) => ({ ...d, [k]: v }));
+        const numInput = "h-9 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+        return (
+          <div className="fixed inset-0 z-[200]" onClick={() => setFiltersOpen(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <aside
+              className="absolute right-0 top-0 flex h-full w-full max-w-[400px] flex-col border-l border-border bg-card shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <h3 className="text-[15px] font-semibold">Filter</h3>
+                <button
+                  onClick={() => setDraft(EMPTY_STUDENT_FILTERS)}
+                  className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-secondary"
+                >
+                  <X className="icon icon-xs" /> Tozalash
+                </button>
+              </div>
+
+              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+                <div>
+                  <label className="mb-1 block text-[12px] text-muted-foreground">Balans oralig&apos;i</label>
+                  <div className="flex items-center gap-2">
+                    <input value={draft.balanceFrom} onChange={(e) => setD("balanceFrom", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="dan" className={numInput} />
+                    <span className="text-muted-foreground">—</span>
+                    <input value={draft.balanceTo} onChange={(e) => setD("balanceTo", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="gacha" className={numInput} />
+                  </div>
+                </div>
+
+                <FilterSelect label="Kurs" value={draft.course} onChange={(v) => setD("course", v)} options={STUDENT_COURSES} />
+                <FilterSelect label="Guruh" value={draft.group} onChange={(v) => setD("group", v)} options={STUDENT_GROUP_IDS.map(String)} />
+                <FilterSelect label="Subkurs" value={draft.subcourse} onChange={(v) => setD("subcourse", v)} options={STUDENT_SUBCOURSES} />
+                <FilterSelect label="Manba" value={draft.source} onChange={(v) => setD("source", v)} options={SOURCES} />
+                <FilterSelect label="Moderator" value={draft.moderator} onChange={(v) => setD("moderator", v)} options={MODERATORS} />
+                <FilterSelect label="O'qituvchi" value={draft.teacher} onChange={(v) => setD("teacher", v)} options={STUDENT_TEACHERS} />
+
+                <div>
+                  <label className="mb-1 block text-[12px] text-muted-foreground">O&apos;quvchi</label>
+                  <input value={draft.name} onChange={(e) => setD("name", e.target.value)} placeholder="Ism bo'yicha" className={numInput} />
+                </div>
+
+                <FilterSelect label="Kategoriya" value={draft.category} onChange={(v) => setD("category", v)} options={STUDENT_CATEGORIES} />
+                <FilterSelect label="Guruhlar soni" value={draft.groupCount} onChange={(v) => setD("groupCount", v)} options={["0", "1", "2"]} />
+                <FilterSelect label="Kun" value={draft.day} onChange={(v) => setD("day", v)} options={STUDENT_DAYS} />
+                <FilterSelect label="Toq/Juft kunlar" value={draft.oddEven} onChange={(v) => setD("oddEven", v)} options={["Toq", "Juft"]} />
+                <FilterSelect label="Holati" value={draft.status} onChange={(v) => setD("status", v)} options={STUDENT_STATUSES} />
+
+                <div>
+                  <label className="mb-1 block text-[12px] text-muted-foreground">Coin oralig&apos;i</label>
+                  <div className="flex items-center gap-2">
+                    <input value={draft.coinFrom} onChange={(e) => setD("coinFrom", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="dan" className={numInput} />
+                    <span className="text-muted-foreground">—</span>
+                    <input value={draft.coinTo} onChange={(e) => setD("coinTo", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="gacha" className={numInput} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-border p-3">
+                <button
+                  onClick={() => setFiltersOpen(false)}
+                  className="h-10 flex-1 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
+                >
+                  Orqaga
+                </button>
+                <button
+                  onClick={() => { setFilters(draft); setPage(1); setFiltersOpen(false); }}
+                  className="h-10 flex-1 rounded-lg bg-primary text-sm font-medium text-white hover:opacity-90"
+                >
+                  Saqlash
+                </button>
+              </div>
+            </aside>
           </div>
-          <div className="relative">
-            <select value={filters.source} onChange={(e) => setFilter("source", e.target.value)} className="h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-36">
-              <option value="">Manba</option>
-              {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <input
-            value={filters.coinFrom}
-            onChange={(e) => setFilter("coinFrom", e.target.value.replace(/\D/g, ""))}
-            type="text"
-            inputMode="numeric"
-            placeholder="Coin dan"
-            className="w-28 h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <input
-            value={filters.coinTo}
-            onChange={(e) => setFilter("coinTo", e.target.value.replace(/\D/g, ""))}
-            type="text"
-            inputMode="numeric"
-            placeholder="Coin gacha"
-            className="w-28 h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <button
-            onClick={() => setFilters(EMPTY_FILTERS)}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
-          >
-            <X className="icon icon-xs" /> Tozalash
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Qarzdor/Haqdor + Umumiy soni */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -366,7 +430,7 @@ export default function StudentsListPage() {
                     <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.createdAt}</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">{r.source || "—"}</td>
                     <td className="px-3 py-3 text-[13px] whitespace-nowrap">{r.moderator || "—"}</td>
-                    <td className="px-3 py-3 text-[13px] text-muted-foreground">{r.groups || "-"}</td>
+                    <td className="px-3 py-3 text-[13px] text-muted-foreground">{r.groupNames}</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                     <td className="px-3 py-3 text-[13px]"><X className="h-4 w-4 text-rose-500" /></td>

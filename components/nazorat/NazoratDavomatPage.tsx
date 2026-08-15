@@ -16,7 +16,7 @@ import {
   DAVOMAT_GROUPS,
   DAVOMAT_GROUP_STATUSES,
 } from "@/constants/davomat";
-import { formatDavomatBalance, type DavomatStudent } from "@/lib/davomat";
+import { davomatMissedCount, formatDavomatBalance, type DavomatStudent } from "@/lib/davomat";
 
 // Nazorat > Davomat (crm-akademiya #view-nazorat-davomat, app.js renderDavomat()
 // ~line 28324). "O'quvchilarni davomatini ko'rish" tugmasi/qatorga bosish
@@ -50,17 +50,21 @@ export default function NazoratDavomatPage() {
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [search, setSearch] = useState("");
   const [checked, setChecked] = useState<Set<number>>(new Set());
+  // Referensdagi "Eng ko'p dars qoldirganlar bo'yicha" checkbox'i.
+  const [byMostMissed, setByMostMissed] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return (DAVOMAT_STUDENTS as DavomatStudent[]).filter((s) => {
+    const res = (DAVOMAT_STUDENTS as DavomatStudent[]).filter((s) => {
       if (s.state !== state) return false;
       if (q && !(s.name.toLowerCase().includes(q) || s.phone.includes(q) || s.ident.includes(q))) return false;
       return true;
     });
-  }, [state, search]);
+    if (!byMostMissed) return res;
+    return [...res].sort((a, b) => davomatMissedCount(b.id) - davomatMissedCount(a.id));
+  }, [state, search, byMostMissed]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -169,6 +173,18 @@ export default function NazoratDavomatPage() {
           )}
         </div>
         <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
+
+        {/* Referensdagi checkbox — ro'yxatni qoldirilgan darslar soni bo'yicha
+            kamayish tartibida saralaydi. */}
+        <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[13px]">
+          <input
+            type="checkbox"
+            checked={byMostMissed}
+            onChange={(e) => { setByMostMissed(e.target.checked); setPage(1); }}
+            className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+          />
+          <span>Eng ko&apos;p dars qoldirganlar bo&apos;yicha</span>
+        </label>
       </div>
 
       {/* Qidirish */}
