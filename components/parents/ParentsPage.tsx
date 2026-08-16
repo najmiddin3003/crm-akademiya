@@ -194,8 +194,8 @@ export default function ParentsPage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">Onasining ismi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Otasi ilovani yuklab olish</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Onasi ilovani yuklab olish</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Otasi ilovani yuklab olish sanasi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Onasi ilovani yuklab olish sanasi</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap w-20" />
               </tr>
             </thead>

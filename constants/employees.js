@@ -16,6 +16,12 @@ export const EMP_COLUMNS = [
   { id: "filial", label: "Filiallar" },
   { id: "phone", label: "Telefon raqam" },
   { id: "kurs", label: "Kurs" },
+  // Referensda "Kurs" dan keyin shu uchtasi turadi. Demo yozuvlarda bu
+  // maydonlar yo'q (manba massivida ham yo'q edi), shuning uchun hozircha
+  // bo'sh ko'rsatiladi — maydon qo'shilgach renderCell'da to'ldiriladi.
+  { id: "lavozim", label: "Lavozim" },
+  { id: "birthDate", label: "Tug'ilgan sana" },
+  { id: "salaryCalc", label: "Maosh hisoblanadi" },
   { id: "created", label: "Yaratilgan sanasi", sortable: true },
   { id: "lastActive", label: "Oxirgi faol bo'lgan" },
   { id: "archReason", label: "Arxivlash sababi" },

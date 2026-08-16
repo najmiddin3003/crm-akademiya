@@ -31,6 +31,10 @@ const ALL_COLUMNS: { key: string; label: string }[] = [
   { key: "reason", label: "Sababi" },
   { key: "status", label: "Holat" },
   { key: "date", label: "Sana" },
+  // Referensda oxirgi ustun shu. Bonus modelida to'lov tranzaksiyasiga
+  // bog'lanish yo'q (faqat `cashboxId` bor), shuning uchun "Sababi"/"Holat"
+  // kabi hozircha bo'sh chiqadi — maydon qo'shilgach shu yerda ko'rsatiladi.
+  { key: "paymentTx", label: "To'lov tranzaksiyasi" },
 ];
 
 function fmtUZS(n: number): string {
@@ -321,6 +325,7 @@ export default function BonusesPage() {
                 {!hiddenCols.has("reason") && <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>}
                 {!hiddenCols.has("status") && <th className="text-left px-3 py-3 whitespace-nowrap">Holat</th>}
                 {!hiddenCols.has("date") && <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>}
+                {!hiddenCols.has("paymentTx") && <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;lov tranzaksiyasi</th>}
                 <th className="px-3 py-3 w-16" />
               </tr>
             </thead>
@@ -338,6 +343,7 @@ export default function BonusesPage() {
                   {!hiddenCols.has("reason") && <td className="px-3 py-3 text-[13px] text-muted-foreground">{b.reason || "—"}</td>}
                   {!hiddenCols.has("status") && <td className="px-3 py-3 text-[13px] text-muted-foreground">{b.status || "—"}</td>}
                   {!hiddenCols.has("date") && <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{b.createdAt}</td>}
+                  {!hiddenCols.has("paymentTx") && <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>}
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <button onClick={() => setDeleteTarget(b)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish">
                       <Trash2 className="w-4 h-4" />

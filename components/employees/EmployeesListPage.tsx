@@ -181,6 +181,12 @@ export default function EmployeesListPage() {
       case "filial": return e.filial;
       case "phone": return <span className="tabular-nums text-[13px]">{e.phone}</span>;
       case "kurs": return <span className="text-[13px]">{e.kurs || "-"}</span>;
+      // Bu uch maydon demo yozuvlarda yo'q — constants/employees.js dagi
+      // izohga qarang. Ustunlar referensga moslik uchun turadi.
+      case "lavozim":
+      case "birthDate":
+      case "salaryCalc":
+        return <span className="text-muted-foreground">-</span>;
       case "created": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.created}</span>;
       case "lastActive": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.lastActive || "-"}</span>;
       case "archReason": return <span className="text-muted-foreground">{e.archReason || "-"}</span>;

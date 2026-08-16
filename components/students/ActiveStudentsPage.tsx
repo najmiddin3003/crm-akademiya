@@ -65,7 +65,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const checkboxCls = "h-4 w-4 rounded border-border accent-primary cursor-pointer";
-const HEADERS = ["№", "O'quvchi ismi", "Telefon raqam", "Balans", "To'lov sanasi", "Yaratilgan sanasi", "Moderator", "Taklif qilganlari", "Ilovani yuklab olish sanasi", "Sababi"];
+const HEADERS = ["№", "O'quvchi ismi", "Telefon raqam", "Balans", "To'lov sanasi", "Yaratilgan sanasi", "Moderator", "Taklif qilganlari", "Ilovani yuklab olish sanasi", "Sababi", "Shartnoma"];
 
 function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean; indeterminate: boolean; onChange: (v: boolean) => void }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -163,6 +163,7 @@ export default function ActiveStudentsPage() {
       "",
       "",
       "",
+      "", // Shartnoma
     ]);
   }
   function exportCSV() {
@@ -285,6 +286,7 @@ export default function ActiveStudentsPage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">Taklif qilganlari</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Ilovani yuklab olish sanasi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
               </tr>
             </thead>
             <tbody>
@@ -312,11 +314,13 @@ export default function ActiveStudentsPage() {
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  {/* Shartnoma — modelda maydon yo'q, referensda ham bo'sh chiqadi. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
                 </tr>
               )}
             </tbody>

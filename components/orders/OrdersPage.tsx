@@ -630,9 +630,10 @@ export default function OrdersPage() {
                   <th className="text-left px-3 py-3 whitespace-nowrap">
                     Yaratilgan sanasi
                   </th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Birinchi dars guni
-                  </th>
+                  {/* Referensning buyurtmalar jadvalida "Birinchi dars guni"
+                      ustuni yo'q — u faqat "Birinchi darsga keladiganlar"
+                      sahifasida ko'rsatiladi. Maydonning o'zi (o.firstLesson)
+                      saqlanib qoldi, faqat bu jadvalda chiqarilmaydi. */}
                   <th className="text-left px-3 py-3 whitespace-nowrap">
                     O&apos;qituvchi
                   </th>
@@ -724,9 +725,6 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">
                       {o.created}
-                    </td>
-                    <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">
-                      {o.firstLesson || "—"}
                     </td>
                     <td className="px-3 py-3 text-[13px]">
                       {o.teacher || "—"}

@@ -302,15 +302,67 @@ Bular kamchilik emas — ma'lumot yo'qligi sababli ongli ravishda qoldirilgan:
 - **Xonalar → Analitika** — "Xonalar bo'yicha" jadvali bo'sh: jihozga xona biriktirish
   maydoni **referensda ham** yo'q (uning "Jihoz qo'shish" formasi bizniki bilan bir xil).
 
-### Solishtirib bo'lmaydigan sahifalar
+### ✅ Ustunlari yashirin sahifalar — hal qilindi
 
-Referens hisobida ustunlar **yashirilgan** — jadval faqat `№` (yoki `№ + 1 ustun`)
-ko'rsatadi. Ustunlarni referensda yoqmaguncha solishtirib bo'lmaydi:
+Referens hisobida quyidagi jadvallarda ustunlar **yashirilgan** — ekranda faqat `№`
+(yoki `№ + 1 ustun`) ko'rinadi. Ilgari shu sabab solishtirib bo'lmasdi; endi
+ustunlarni yoqmasdan o'qish yo'li topildi (pastdagi bo'limga qarang):
 
 `Buyurtmalar ro'yxati` (576 qator, filtrlari ham o'chirilgan) · `Guruh o'quvchilari` (4221) ·
 `O'quvchining umumiy to'lanmagani` (118) · `Bekor qilingan to'lovlar` · `Umumiy chegirmalar` ·
 `Kurs narxidan farqli to'lovlar` · `Davomati bekor qilinganlar` · `Feedback` ·
 `Yangi/Aktiv/Arxiv o'quvchilar` · `Ota-onalar` · `Jihozlar` · `Rollar` · `Yangiliklar` · `Hikoyalar`
+
+### Yashirin ustunlarni o'qish — usul (2026-08-16)
+
+Referens hisobida ko'p jadvalda ustunlar yashirilgan (faqat `№` ko'rinadi).
+Ularni **yoqmasdan** o'qish mumkin — ikki yo'l bor:
+
+1. **Ustun menyusi** (faqat ba'zi sahifalarda): sarlavha ustiga hover →
+   menyu ikonkasi → `Ustunlarni boshqarish`. Panel barcha ustun nomlarini
+   ro'yxat qiladi.
+2. **React fiber** (hamma joyda ishlaydi) — MUI DataGrid'ning `columns`
+   propini o'qish:
+
+```js
+const fiberOf = el => { const k = Object.keys(el).find(k => k.startsWith('__reactFiber$')); return k ? el[k] : null; };
+let f = fiberOf(document.querySelector('.MuiDataGrid-root')), d = 0;
+while (f && d < 60) { const p = f.memoizedProps;
+  if (p && Array.isArray(p.columns) && p.columns.length) { console.log(p.columns.map(c => c.headerName || c.field)); break; }
+  f = f.return; d++; }
+```
+
+Ikkinchi usul `disableColumnMenu` qilingan jadvallarda ham ishlaydi.
+
+### Ustunlar bo'yicha natija
+
+**Aynan mos (18 sahifa):** `Guruhlar` 12/12 · `Guruh o'quvchilari` 6/6 ·
+`Tranzaksiyalar` 15/15 · `Davomati bekor qilinganlar` 7/7 · `Feedback` 8/8 ·
+`Jarima` 11/11 · `Yangi o'quvchilar` 10/10 · `O'quvchining umumiy to'lanmagani` ·
+`Kurs narxidan farqli to'lovlar` · `Bekor qilingan to'lovlar` · `Umumiy chegirmalar` ·
+`Jihozlar` · `Rollar` · `Yangiliklar` · `Hikoyalar` · `Shartnoma` ·
+`Xodimlar reytingi` · `Support analitikasi`
+
+**Tuzatilgan (5 sahifa):**
+
+| Sahifa | Nima qilindi |
+|---|---|
+| Xodimlar | `Lavozim`, `Tug'ilgan sana`, `Maosh hisoblanadi` qo'shildi → 16/16 |
+| Bonus | `To'lov tranzaksiyasi` qo'shildi → 12/12 |
+| Aktiv o'quvchilar | `Shartnoma` qo'shildi (eksport ro'yxati ham) |
+| Ota-onalar | yorliq `… yuklab olish` → `… yuklab olish sanasi` |
+| Buyurtmalar ro'yxati | **ortiqcha** `Birinchi dars guni` olib tashlandi → 10/10 |
+
+Yangi qo'shilgan ustunlar demo ma'lumotda bo'sh (`—`) chiqadi — modelda mos
+maydon yo'q, referensda ham shu ustunlar bo'sh. CSV/Excel eksport ro'yxatlari
+jadvaldan alohida kuratsiya qilingan (ularda `Kurs darajasi`/`Izoh` ham yo'q),
+shuning uchun `Birinchi dars guni` eksportda qoldirildi.
+
+**Qolgan:** `Arxiv o'quvchilar` — referensda arxivga xos 14 ustun
+(`Arxivlangan guruh`, `Arxiv o'qituvchisi`, `Pro arxivlangan sana`,
+`Arxivlangan sana`, `Oldingi holati`, `Shartnoma`…), bizda esa aktiv
+o'quvchilar ustunlari takrorlanadi. Model kengaytirish kerak.
+
 
 ## Keyingi qadamlar
 
