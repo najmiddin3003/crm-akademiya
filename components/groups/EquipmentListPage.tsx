@@ -38,6 +38,9 @@ export default function EquipmentListPage() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
+  // Referensda qidiruv yonida "Sana" yorlig'i va "Dan"/"Gacha" maydonlari bor.
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
@@ -66,11 +69,23 @@ export default function EquipmentListPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
 
+  // `createdAt` — "DD.MM.YYYY | HH:mm". Sana filtri uchun faqat kun qismi
+  // kerak, shuning uchun YYYY-MM-DD ga aylantiramiz (input[type=date] shakli).
+  function createdDay(v: string): string {
+    const [d, m, y] = v.split("|")[0].trim().split(".");
+    return y && m && d ? `${y}-${m}-${d}` : "";
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((r) => r.name.toLowerCase().includes(q) || r.inventoryCode.toLowerCase().includes(q));
-  }, [items, search]);
+    return items.filter((r) => {
+      if (q && !r.name.toLowerCase().includes(q) && !r.inventoryCode.toLowerCase().includes(q)) return false;
+      const day = createdDay(r.createdAt);
+      if (from && day && day < from) return false;
+      if (to && day && day > to) return false;
+      return true;
+    });
+  }, [items, search, from, to]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -131,7 +146,12 @@ export default function EquipmentListPage() {
           </div>
           <div className="relative">
             <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"><use href="#i-search" /></svg>
-            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidirish" className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidiruv" className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+          </div>
+          <div className="inline-flex items-center gap-1.5">
+            <span className="text-[13px] text-muted-foreground">Sana</span>
+            <input value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} type="date" placeholder="Dan" title="Dan" className="h-9 rounded-lg border border-border bg-card px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <input value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} type="date" placeholder="Gacha" title="Gacha" className="h-9 rounded-lg border border-border bg-card px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div className="relative" ref={moreRef}>
             <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">

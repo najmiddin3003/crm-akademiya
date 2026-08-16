@@ -6,6 +6,8 @@ import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import RoomModal from "./RoomModal";
 import type { Room } from "@/lib/rooms";
+import type { Equipment } from "@/lib/equipment";
+import { roomEquipmentStats, conditionStats, brokenCount, totalValue } from "@/lib/roomAnalytics";
 
 // Guruh → Xonalar (crm-akademiya #view-groups-rooms, sidebar: Guruh > Xonalar,
 // href /groups-rooms). Ma'lumot /api/rooms dan (constants/rooms.js ROOM_SEED
@@ -34,6 +36,10 @@ export default function RoomsListPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Referensda sahifa ikki tabga bo'lingan: "Xonalar" (jadval) va "Analitika".
+  const [tab, setTab] = useState<"rooms" | "analytics">("rooms");
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -53,6 +59,17 @@ export default function RoomsListPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // Analitika jihozlar ro'yxatidan hisoblanadi — faqat tab ochilganda yuklanadi.
+  useEffect(() => {
+    if (tab !== "analytics") return;
+    let cancelled = false;
+    fetch("/api/equipment")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setEquipment(d.equipment ?? []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [tab]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -114,8 +131,23 @@ export default function RoomsListPage() {
 
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+      {/* Tab almashtirgich — referensdagi "Xonalar / Analitika" */}
+      <div className="inline-flex items-center gap-1.5 rounded-xl bg-card border border-border p-1.5">
+        {([["rooms", "Xonalar"], ["analytics", "Analitika"]] as const).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`h-8 px-3.5 rounded-lg text-[13px] font-medium transition-colors ${
+              tab === k ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Amallar qatori */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className={`items-center justify-between gap-2 flex-wrap ${tab === "rooms" ? "flex" : "hidden"}`}>
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
           <span>Xona qo&apos;shish</span>
@@ -150,8 +182,83 @@ export default function RoomsListPage() {
         </div>
       </div>
 
+      {tab === "analytics" && (
+        <div className="space-y-4">
+          <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(190px,1fr))]">
+            {[
+              { t: "JAMI XONALAR", v: `${rooms.length} xona` },
+              { t: "JAMI JIHOZLAR SONI", v: `${equipment.length} dona` },
+              { t: "TA'MIRTALAB & SINGAN", v: `${brokenCount(equipment)} dona` },
+              { t: "UMUMIY QIYMATI", v: `${totalValue(equipment).toLocaleString("ru-RU")} UZS` },
+            ].map((c) => (
+              <div key={c.t} className="rounded-2xl bg-card border border-border p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{c.t}</div>
+                <div className="text-[20px] font-semibold tabular-nums">{c.v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl bg-card border border-border p-5">
+            <h3 className="text-[15px] font-semibold mb-3">Texnik holati bo&apos;yicha</h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[12px] uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">Texnik holati</th>
+                  <th className="px-3 py-2 font-medium">Soni</th>
+                  <th className="px-3 py-2 font-medium">Taxminiy qiymati</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {conditionStats(equipment).map((s) => (
+                  <tr key={s.condition}>
+                    <td className="px-3 py-2.5 text-[13px]">{s.condition}</td>
+                    <td className="px-3 py-2.5 text-[13px] tabular-nums">{s.count} dona</td>
+                    <td className="px-3 py-2.5 text-[13px] tabular-nums">{s.value.toLocaleString("ru-RU")} UZS</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="rounded-2xl bg-card border border-border p-5">
+            <h3 className="text-[15px] font-semibold mb-3">Xonalar bo&apos;yicha</h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[12px] uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">Xonalar</th>
+                  <th className="px-3 py-2 font-medium">Jihozlar soni</th>
+                  <th className="px-3 py-2 font-medium">Taxminiy qiymati</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {roomEquipmentStats(equipment, rooms).length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                      Jihozlar mavjud emas
+                    </td>
+                  </tr>
+                ) : (
+                  roomEquipmentStats(equipment, rooms).map((s) => (
+                    <tr key={s.room}>
+                      <td className="px-3 py-2.5 text-[13px]">{s.room}</td>
+                      <td className="px-3 py-2.5 text-[13px] tabular-nums">{s.count} dona</td>
+                      <td className="px-3 py-2.5 text-[13px] tabular-nums">{s.value.toLocaleString("ru-RU")} UZS</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Jadval */}
-      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      {/* `hidden` yordam bermaydi — .table-frame ning o'z `display` i uni
+          bosib ketadi, shuning uchun inline uslub. */}
+      <div
+        style={tab === "rooms" ? undefined : { display: "none" }}
+        className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm"
+      >
         <div className="table-scroll">
           <table className="w-full text-sm">
             <thead>
