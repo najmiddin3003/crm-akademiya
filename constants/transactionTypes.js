@@ -5,7 +5,9 @@
 export const MAIN_TYPES = [
   { key: "kirim", label: "Kirim" },
   { key: "chiqim", label: "Chiqim" },
-  { key: "voucher", label: "Voucher" },
+  // Yorliq referensdagidek "Vaucher" (inglizcha "Voucher" emas) — kalit
+  // o'zgarmaydi, chunki saqlangan yozuvlar shu kalitga bog'langan.
+  { key: "voucher", label: "Vaucher" },
   { key: "jarima", label: "Jarima" },
 ];
 
