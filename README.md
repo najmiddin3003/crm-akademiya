@@ -265,31 +265,59 @@ for (const t of ['pointerover','pointerenter','mouseover','mouseenter'])
 Yopilgan menyular DOM'da qolib ketadi — har bo'lim uchun hoverdan OLDIN va KEYIN
 anchor to'plamini olib, **farqini** hisoblash kerak, aks holda ro'yxatlar aralashadi.
 
-## Solishtirilgan sahifalar
+## Solishtirilgan bo'limlar (2026-08-16 holati)
 
-| Sahifa | Natija |
-|---|---|
-| **Dars jadvali** | 12 KPI kartasi va `Statistika` tugmasi yo'q edi → **qo'shildi** (`lib/scheduleStats.ts`) |
-| **Guruhlar** | vaqt filtrlari ko'rinardi-yu, filtrlashga ulanmagan edi → **ulandi** |
-| **O'quvchilar ro'yxati** | filtr 4 ta edi, referensda 20 ta → model kengaytirilib **14 taga** chiqarildi |
-| **Buyurtmalar ro'yxati** | referens tomonida ustunlar yashirilgan — solishtirib bo'lmadi |
-| **Davomat** | filtrlar aynan mos; `Eng ko'p dars qoldirganlar bo'yicha` yo'q edi → **qo'shildi** |
+Referensning **9 ta bo'limi** sahifama-sahifa solishtirildi. Har bir sahifada
+ustunlar, filtrlar, tugmalar va jamlanma ko'rsatkichlar tekshirildi.
 
-`lib/studentsData.ts` — o'quvchi endi haqiqiy guruhga bog'lanadi (`GROUP_SEED`),
-`Kurs`/`O'qituvchi`/`Kun`/`Toq-Juft` o'shandan kelib chiqadi. Bog'lash `id` dan
-deterministik. `GURUHLAR` ustuni ilgari 5909 qatorning hammasida `-` edi.
+| Bo'lim | Sahifa | Natija |
+|---|---|---|
+| Sozlamalar | 31 tab | 23 ta qurilgan edi → **6 tasi qurildi** (29/31). Qolgan 2 tasi — Gamifikatsiya, qurib bo'lmaydi |
+| Hisobotlar | 12 | 7 tasi to'liq mos. Sotuv voronkasida **lid holati filtri qo'shildi** (`Hammasi`/`Hozir ishlanayotgan lidlar`/`Yopilganlar`) |
+| Moliya | 14 | Hammasi mos. `Voucher` → **`Vaucher`** |
+| Nazorat | 9 | Hammasi mos. `Filter` → **`Filtr`** |
+| Lidlar | 2 | Kanban topildi va mos chiqdi. `Ketdim` emojisi 😠 → **🤬**, kanban kartasidagi sana ajratgichi olib tashlandi |
+| Guruh | 6 | Xonalarda **`Analitika` tabi qo'shildi**, Jihozlarga **sana filtri** va `Qidirish` → `Qidiruv` |
+| O'quvchilar | 7 | **Farq yo'q** |
+| O'quv bo'limi | 5 | Bo'sh holat emojisi 😞 → **☹️** |
+| Boshqaruv | 4 | **Farq yo'q** |
 
-Referensning 6 ta filtri **ataylab** qo'shilmadi (`Teglar`, `Bloklanganlar`, `Oferta`,
-`Ilova holati`, `Ranglar bo'yicha`, `Referal`, `Shartnoma`) — ular uchun maydon yo'q,
-ishlamaydigan tugma qo'yishdan ko'ra yo'qligi ma'qul.
+Aniq mos chiqqan yirik jadvallar: `Filiallar holati` 17/17, `Turniket analitikasi` 12/12,
+`Oylik chiqarish` 10/10, `Shartnoma` 9/9, `O'qituvchilar samaradorligi` (3 guruh × 4 holat,
+belgima-belgi), `So'rovnomalar` 6/6, `Vazifalar` 9/9.
+
+### Ataylab qilingan farqlar
+
+Bular kamchilik emas — ma'lumot yo'qligi sababli ongli ravishda qoldirilgan:
+
+- **O'quvchilar ro'yxati** — referensning 6 filtri qo'yilmadi (`Teglar`, `Bloklanganlar`,
+  `Oferta`, `Ilova holati`, `Referal`, `Shartnoma`): maydon yo'q.
+- **Xabarlar ro'yxati** — `Integratsiyalar` va `SMS qurilmalar` filtrlari qo'yilmadi:
+  loyiha bitta shlyuz bilan ishlaydi (`lib/eskiz.ts`), `SMS_DEVICES_SEED` bo'sh
+  (referensda ham qurilma sozlanmagan). Izoh `SmsMessagesPage.tsx` boshida.
+- **Chek / Ommaviy oferta** — fayl yuklash backend'i yo'q, faqat fayl nomi saqlanadi.
+- **Obuna** — `To'lash` haqiqiy to'lov qilmaydi.
+- **Xonalar → Analitika** — "Xonalar bo'yicha" jadvali bo'sh: jihozga xona biriktirish
+  maydoni **referensda ham** yo'q (uning "Jihoz qo'shish" formasi bizniki bilan bir xil).
+
+### Solishtirib bo'lmaydigan sahifalar
+
+Referens hisobida ustunlar **yashirilgan** — jadval faqat `№` (yoki `№ + 1 ustun`)
+ko'rsatadi. Ustunlarni referensda yoqmaguncha solishtirib bo'lmaydi:
+
+`Buyurtmalar ro'yxati` (576 qator, filtrlari ham o'chirilgan) · `Guruh o'quvchilari` (4221) ·
+`O'quvchining umumiy to'lanmagani` (118) · `Bekor qilingan to'lovlar` · `Umumiy chegirmalar` ·
+`Kurs narxidan farqli to'lovlar` · `Davomati bekor qilinganlar` · `Feedback` ·
+`Yangi/Aktiv/Arxiv o'quvchilar` · `Ota-onalar` · `Jihozlar` · `Rollar` · `Yangiliklar` · `Hikoyalar`
 
 ## Keyingi qadamlar
 
-1. Qolgan sahifalarni solishtirish: `Kassalar`, `Xodimlar`, `Birinchi darsga keladiganlar`
-2. Referensda ustunlari yashirin sahifalarda (`Buyurtmalar`, `Guruhlar`, `Davomat`)
-   ustunlarni yoqib, qayta solishtirish
+1. **Qolgan bo'limlar:** `Blok test` (2 sahifa), `Topshiriqlar` (`/tasks` —
+   `reference-urls.md` da xaritalanmagan)
+2. Referensda ustunlari yashirin sahifalarda ustunlarni yoqib, qayta solishtirish
 3. `constants/sidebar.js`dagi qurilmagan 37 ta havola — bular referensda YO'Q, bizning
    qo'shimchalarimiz. Yozish yoki sidebardan olib tashlash kerak
+
 
 ---
 
