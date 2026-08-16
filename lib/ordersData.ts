@@ -84,9 +84,10 @@ export const LESSON_DAY_PATTERNS = [
 ];
 
 export const ORDER_STAGES: { key: OrderStageKey; label: string; uppercase: string; emoji: string }[] = [
-  { key: "bir_oylay", label: "Bir o'ylay", uppercase: "BIR O'YLAY", emoji: "🙄" },
+  // Emojilar referensdan olingan (lid voronkasida shular chiqadi).
+  { key: "bir_oylay", label: "Bir o'ylay", uppercase: "BIR O'YLAY", emoji: "🤔" },
   { key: "jaylang_e", label: "Jaylang-e!", uppercase: "JAYLANG-E!", emoji: "🤝" },
-  { key: "rahmaaaat", label: "Rahmaaaat!", uppercase: "RAHMAAAAT!", emoji: "😊" },
+  { key: "rahmaaaat", label: "Rahmaaaat!", uppercase: "RAHMAAAAT!", emoji: "🤗" },
   { key: "ketdim", label: "Ketdim", uppercase: "KETDIM", emoji: "😠" },
 ];
 

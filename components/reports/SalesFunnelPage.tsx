@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { COURSES, MODERATORS, SUBCOURSES, TEACHERS, createInitialOrders } from "@/lib/ordersData";
+import { COURSES, MODERATORS, SUBCOURSES, TEACHERS, createInitialOrders, type Order } from "@/lib/ordersData";
 import { buildFunnelReport, buildFunnelSteps, buildStageSummary } from "@/lib/salesFunnel";
 
 // Hisobotlar → Sotuv voronkasi (href /reports-funnel). Ma'lumot mavjud
@@ -16,6 +16,23 @@ const selectCls =
   "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 const SOURCES = ["Instagram", "Telegram", "Tanish", "Facebook", "YouTube", "Sayt"];
+
+// Referensda lid voronkasi ustida shu uch filtr turadi. "Yopilgan" lid —
+// yakuniy holatga yetgani (bekor/yakun/o'tkazma) yoki "Ketdim" bosqichidagisi;
+// qolganlari hali ishlanmoqda.
+const LEAD_STATES = [
+  { key: "all", label: "Hammasi" },
+  { key: "active", label: "Hozir ishlanayotgan lidlar" },
+  { key: "closed", label: "Yopilganlar" },
+] as const;
+
+type LeadStateKey = (typeof LEAD_STATES)[number]["key"];
+
+const CLOSED_STATUSES = new Set(["Bekor qilindi", "Yakunlandi", "O'tkazildi"]);
+
+function isClosedLead(o: Order): boolean {
+  return o.stage === "ketdim" || CLOSED_STATUSES.has(o.status);
+}
 
 function fmt(n: number): string {
   return n.toLocaleString("ru-RU");
@@ -31,6 +48,7 @@ export default function SalesFunnelPage() {
   const [teacher, setTeacher] = useState("");
   const [source, setSource] = useState("");
   const [funnelMode, setFunnelMode] = useState<"student" | "course">("student");
+  const [leadState, setLeadState] = useState<LeadStateKey>("all");
 
   const orders = useMemo(
     () =>
@@ -47,7 +65,16 @@ export default function SalesFunnelPage() {
 
   const rows = useMemo(() => buildFunnelReport(orders), [orders]);
   const steps = useMemo(() => buildFunnelSteps(rows), [rows]);
-  const stages = useMemo(() => buildStageSummary(orders), [orders]);
+  // Lid bosqichlari bloki qo'shimcha ravishda "Hammasi / ishlanayotgan /
+  // yopilgan" filtri bilan toraytiriladi — yuqoridagi filtrlar esa butun
+  // sahifaga ta'sir qiladi.
+  const leadOrders = useMemo(() => {
+    if (leadState === "all") return orders;
+    const closed = leadState === "closed";
+    return orders.filter((o) => isClosedLead(o) === closed);
+  }, [orders, leadState]);
+
+  const stages = useMemo(() => buildStageSummary(leadOrders), [leadOrders]);
 
   // "Kurslar kesimida buyurtmalar taqsimoti" — eng ko'p buyurtmali 8 ta kurs.
   const courseBreakdown = useMemo(() => {
@@ -164,8 +191,21 @@ export default function SalesFunnelPage() {
       {/* Lid bosqichlari + kurslar taqsimoti */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="rounded-2xl bg-card border border-border p-5">
+          <div className="flex items-center gap-1.5 flex-wrap mb-4">
+            {LEAD_STATES.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setLeadState(s.key)}
+                className={`h-8 px-3.5 rounded-lg text-[13px] font-medium transition-colors ${
+                  leadState === s.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
           <div className="text-[14px] font-semibold mb-1">Lidlar soni</div>
-          <div className="text-[13px] text-muted-foreground mb-4">{fmt(orders.length)} ta</div>
+          <div className="text-[13px] text-muted-foreground mb-4">{fmt(leadOrders.length)} ta</div>
           <div className="space-y-3">
             {stages.map((s) => (
               <div key={s.key}>
