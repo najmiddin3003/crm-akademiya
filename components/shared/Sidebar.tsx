@@ -58,6 +58,11 @@ const ITEMS = SIDEBAR_ITEMS as SidebarItem[];
 // solishtirib chiqarilgan — shu sabab bo'lim tartibida guruhlangan. Yangi
 // sahifa qo'shilganda shu yerga ham qo'shilishi kerak (aks holda sidebar'da
 // qulflangan ko'rinadi, garchi sahifa ishlasa ham).
+//
+// 2026-08-16: referensda mavjud bo'lmagan 35 ta o'ylab topilgan havola
+// constants/sidebar.js dan olib tashlandi (bo'lim dashboardlari, qo'shimcha
+// analitika sahifalari va h.k.) — ular hech qachon qurilmagan va sidebarda
+// faqat qulf bo'lib turardi. Endi har bir havolaning sahifasi bor.
 const IMPLEMENTED_ROUTES = new Set([
   // Topshiriqlar
   "/tasks",
@@ -67,27 +72,28 @@ const IMPLEMENTED_ROUTES = new Set([
   "/groups", "/groups-tasks", "/groups-schedule", "/groups-rooms", "/groups-equipments", "/groups-students",
   // O'quvchilar
   "/new-students", "/active-students", "/archive-students", "/students-list", "/parents", "/expiring-subs", "/student-addresses",
-  // O'quv bo'limi (dashboard/baholash/o'quv dasturi/imtihonlar/sertifikatlar — referensda yo'q, qurilmagan)
+  // O'quv bo'limi
   "/offline-courses", "/online-courses", "/edu-category", "/seasonal-assessment", "/contract",
   // Blok test
   "/blok-test-turlari", "/blok-testlar",
-  // Moliya (dashboard/qarzdorlar/audit/xarajatlar/hisobotlar markazi/prognoz/ruxsatlar — referensda yo'q)
+  // Moliya
   "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll",
   "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow",
   "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract",
-  // Nazorat (dashboard/feedback tahlili/ko'p faktorli skor/qoplash/branch health/live — referensda yo'q)
+  // Nazorat
   "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating",
   "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile", "/nazorat-turnstile-io", "/nazorat-support-analytics",
-  // Boshqaruv (dashboard/ruxsat matritsasi/jadval tahlili — referensda yo'q)
+  // Boshqaruv
   "/management-xodimlar", "/management-rollar", "/management-filiallar", "/management-ish-jadvali",
-  // Sotuv va marketing (dashboard/ROI/kampaniyalar/moderatorlar/pipeline/xabar shablonlari — referensda yo'q)
+  // Sotuv va marketing
   "/sales-marketing", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages",
-  // Hisobotlar (dashboard/executive/smart analitika/rejalashtirilgan — referensda yo'q; finance-*/nazorat-* takrorlari yuqorida bor)
+  // Hisobotlar (finance-*/nazorat-* takrorlari yuqorida bor)
   "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
   "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",
-  // Sozlamalar (markaz/tema/profil/bildirishnomalar/xavfsizlik/backup — referensda yo'q)
+  // Sozlamalar
   "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
   "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
+  "/settings-profile", "/settings-security",
 ]);
 
 export interface SidebarProps {

@@ -318,9 +318,25 @@ Barcha bo'lim tekshirib chiqildi. Qolgan ishlar:
 
 1. Referensda ustunlari yashirin sahifalarda ustunlarni yoqib, qayta solishtirish
    (ro'yxat yuqorida)
-2. `constants/sidebar.js`dagi qurilmagan 37 ta havola — bular referensda YO'Q, bizning
-   qo'shimchalarimiz. Yozish yoki sidebardan olib tashlash kerak
-3. `Gamifikatsiya` moduli referensda sotib olinmagan — yoqilsa, 2 ta tab qurilishi mumkin
+2. `Gamifikatsiya` moduli referensda sotib olinmagan — yoqilsa, 2 ta tab qurilishi mumkin
+
+### ✅ Qurilmagan 37 ta havola — hal qilindi (2026-08-16)
+
+`constants/sidebar.js` da referensda mavjud bo'lmagan 37 ta havola bor edi (bo'lim
+dashboardlari, qo'shimcha analitika sahifalari va h.k.) — hech biri qurilmagan,
+sidebarda faqat **qulf** bo'lib turardi.
+
+- **35 tasi olib tashlandi.** Sidebar endi referens tuzilishiga mos; har bir
+  havolaning ishlaydigan sahifasi bor (83 havola, 83 sahifa).
+- **2 tasi qurildi** — `Profil` (`/settings-profile`) va `Xavfsizlik`
+  (`/settings-security`). Bular mavjud sessiya/qurilma ishimizning davomi:
+  `Profil` — o'z ismini tahrirlash (telefon va rol o'zgarmaydi);
+  `Xavfsizlik` — parol almashtirish (`POST /api/auth/change-password`,
+  `lib/invite.ts` yordamchilari orqali), `Aktiv qurilmalar` ga o'tish va
+  `Ekranni qulflash`.
+
+Tekshirish: `node` bilan `constants/sidebar.js` ni `IMPLEMENTED_ROUTES` bilan
+solishtirish — farq bo'lmasligi kerak.
 
 
 ---

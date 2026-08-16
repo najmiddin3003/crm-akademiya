@@ -87,15 +87,10 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 240,
       items: [
-        { label: "📊 O'quv Dashboard", href: "/oquv-dashboard", icon: "i-bar-chart", iconClass: "text-primary", bold: true },
         { label: "Oflayn kurslar", href: "/offline-courses", icon: "i-book" },
         { label: "Onlayn kurs", href: "/online-courses", icon: "i-monitor" },
         { label: "Kategoriya", href: "/edu-category", icon: "i-grid" },
-        { label: "📚 Baholash", href: "/baholash-gradebook", icon: "i-bar-chart" },
         { label: "Mavsumiy baholash", href: "/seasonal-assessment", icon: "i-calendar" },
-        { label: "O'quv dasturi", href: "/curriculum", icon: "i-book" },
-        { label: "Imtihonlar", href: "/exams", icon: "i-graduation-cap" },
-        { label: "🏆 Sertifikatlar", href: "/certificates", icon: "i-graduation-cap" },
         { label: "Shartnoma", href: "/contract", icon: "i-file-plus" },
       ],
     },
@@ -127,13 +122,6 @@ export const SIDEBAR_ITEMS = [
         {
           title: "Amallar",
           items: [
-            { label: "💰 Moliya Dashboard", href: "/finance-dashboard", icon: "i-bar-chart", iconClass: "text-primary", bold: true },
-            { label: "🚨 Qarzdorlar", href: "/finance-debtors", icon: "i-flag", iconClass: "text-rose-500", bold: true },
-            { label: "Kassa audit log", href: "/finance-audit", icon: "i-list-todo" },
-            { label: "Xarajatlar", href: "/finance-expenses", icon: "i-file-plus" },
-            { label: "Hisobotlar markazi", href: "/finance-report-hub", icon: "i-bar-chart" },
-            { label: "Analitika va prognoz", href: "/finance-forecast", icon: "i-zap" },
-            { label: "Moliya ruxsatlari", href: "/finance-permissions", icon: "i-grid" },
             { label: "Kassalar", href: "/finance-cash", medium: true, primary: true },
             { label: "Bonus", href: "/finance-bonus" },
             { label: "Jarima", href: "/finance-penalty" },
@@ -176,24 +164,18 @@ export const SIDEBAR_ITEMS = [
         {
           title: "Amallar",
           items: [
-            { label: "📡 Nazorat Dashboard", href: "/nazorat-dashboard", icon: "i-bar-chart", iconClass: "text-primary", bold: true },
             { label: "Davomat", href: "/nazorat-davomat", medium: true },
             { label: "Davomat analitikasi", href: "/nazorat-davomat-analytics" },
-            { label: "📊 Feedback tahlili", href: "/nazorat-feedback-analytics", icon: "i-bar-chart", iconClass: "text-pink-500", bold: true },
             { label: "Fikr-mulohaza", href: "/nazorat-feedback" },
           ],
         },
         {
           title: "Hisobotlar",
           items: [
-            { label: "⭐ Ko'p faktorli skor", href: "/nazorat-staff-score", icon: "i-star", iconClass: "text-amber-500", bold: true },
             { label: "Xodimlar reytingi", href: "/nazorat-staff-rating" },
-            { label: "Qoplash (makeup)", href: "/nazorat-makeup", icon: "i-calendar" },
             { label: "Davomat qilinmagan guruhlar", href: "/nazorat-missed-groups" },
-            { label: "Filial health score", href: "/nazorat-branch-health", icon: "i-grid" },
             { label: "Filiallar holati", href: "/nazorat-branches" },
             { label: "Turniket analitikasi", href: "/nazorat-turnstile" },
-            { label: "🟢 Real-time monitoring", href: "/nazorat-live", icon: "i-monitor", iconClass: "text-cyan-500", bold: true },
             { label: "Turniket kirish-chiqish analitikasi", href: "/nazorat-turnstile-io" },
             { label: "Support analitikasi", href: "/nazorat-support-analytics" },
           ],
@@ -210,12 +192,9 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 240,
       items: [
-        { label: "🏛 Boshqaruv Dashboard", href: "/management-dashboard", icon: "i-bar-chart", iconClass: "text-primary", bold: true },
         { label: "Xodimlar", href: "/management-xodimlar", icon: "i-users-group", medium: true },
-        { label: "Ruxsat matritsasi", href: "/management-role-perms", icon: "i-grid" },
         { label: "Rollar", href: "/management-rollar", icon: "i-shield" },
         { label: "Filiallar", href: "/management-filiallar", icon: "i-grid" },
-        { label: "Jadval tahlili", href: "/management-schedule-analysis", icon: "i-bar-chart" },
         { label: "Ish jadvali", href: "/management-ish-jadvali", icon: "i-calendar" },
       ],
     },
@@ -229,16 +208,10 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 240,
       items: [
-        { label: "📣 Sotuv Dashboard", href: "/sales-dashboard", icon: "i-bar-chart", iconClass: "text-primary", bold: true },
-        { label: "Manba ROI tahlili", href: "/sales-source-roi", icon: "i-zap" },
-        { label: "Kampaniyalar", href: "/sales-campaigns", icon: "i-monitor" },
-        { label: "Moderatorlar", href: "/sales-moderators", icon: "i-star" },
-        { label: "Lid pipeline (CRM)", href: "/sales-pipeline", icon: "i-grid" },
         { label: "Marketing", href: "/sales-marketing", icon: "i-trending-up", medium: true },
         { label: "Savdo plani", href: "/sales-plan", icon: "i-bar-chart" },
         { label: "Yangiliklar", href: "/sales-news", icon: "i-file-plus" },
         { label: "Hikoya", href: "/sales-stories", icon: "i-book" },
-        { label: "Xabar shablonlari", href: "/sales-templates", icon: "i-edit" },
         { label: "SMS shablonlari", href: "/sales-sms", icon: "i-monitor" },
         { label: "Xabarlar ro'yhati", href: "/sales-messages", icon: "i-list-todo" },
       ],
@@ -262,10 +235,6 @@ export const SIDEBAR_ITEMS = [
         {
           title: "Moliya",
           items: [
-            { type: "action", label: "📊 Hisobotlar markazi", href: "/reports-dashboard", icon: "i-bar-chart", iconClass: "text-primary" },
-            { type: "action", label: "📋 Executive summary", href: "/reports-executive", icon: "i-file-text", iconClass: "text-primary" },
-            { type: "action", label: "🧠 Smart analitika", href: "/reports-insights", icon: "i-zap", iconClass: "text-primary" },
-            { type: "action", label: "⏰ Rejalashtirilgan", href: "/reports-scheduled", icon: "i-calendar", iconClass: "text-primary" },
             { type: "text", label: "Balans", href: "/reports-balance" },
             // Referensda bu ikkisi Moliya bo'limidagi sahifalarning
             // AYNAN O'ZI (faqat /reports/ prefiksi bilan) — shuning uchun
@@ -312,12 +281,8 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 224,
       items: [
-        { label: "⚙ Sozlamalar markazi", href: "/settings-hub", semibold: true },
-        { label: "🎨 Tema va ko'rinish", href: "/settings-appearance", medium: true },
         { label: "🪪 Profil", href: "/settings-profile", medium: true },
-        { label: "🔔 Bildirishnomalar", href: "/settings-notifications", medium: true },
         { label: "🛡 Xavfsizlik", href: "/settings-security", medium: true },
-        { label: "💾 Backup va ma'lumot", href: "/settings-data", medium: true },
         { label: "Umumiy sozlamalar", href: "/settings-general", medium: true, primary: true },
         { label: "Moliya", href: "/settings-finance" },
         { label: "O'quv", href: "/settings-academic" },
