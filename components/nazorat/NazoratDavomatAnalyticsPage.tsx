@@ -74,7 +74,8 @@ export default function NazoratDavomatAnalyticsPage() {
         {/* Filtr paneli */}
         <div className="rounded-2xl bg-card border border-border p-5 self-start" style={{ alignSelf: "start" }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[15px] font-semibold">Filter</h3>
+            {/* Referensda panel sarlavhasi "Filtr" (inglizcha "Filter" emas). */}
+            <h3 className="text-[15px] font-semibold">Filtr</h3>
             <button type="button" className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground" title="Yig'ish">
               <svg className="icon icon-sm"><use href="#i-trending-up" /></svg>
             </button>
