@@ -67,7 +67,8 @@ export default function OnlineCoursesList() {
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center text-2xl md:text-3xl font-bold text-primary py-16">
             <span>Afsuski kurs mavjud emas</span>
-            <span className="ml-3" style={{ fontSize: "1.1em" }}>😞</span>
+            {/* Referensda aynan shu emoji ishlatiladi (U+2639 U+FE0F). */}
+            <span className="ml-3" style={{ fontSize: "1.1em" }}>☹️</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
