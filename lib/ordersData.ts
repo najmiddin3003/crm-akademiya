@@ -88,7 +88,7 @@ export const ORDER_STAGES: { key: OrderStageKey; label: string; uppercase: strin
   { key: "bir_oylay", label: "Bir o'ylay", uppercase: "BIR O'YLAY", emoji: "🤔" },
   { key: "jaylang_e", label: "Jaylang-e!", uppercase: "JAYLANG-E!", emoji: "🤝" },
   { key: "rahmaaaat", label: "Rahmaaaat!", uppercase: "RAHMAAAAT!", emoji: "🤗" },
-  { key: "ketdim", label: "Ketdim", uppercase: "KETDIM", emoji: "😠" },
+  { key: "ketdim", label: "Ketdim", uppercase: "KETDIM", emoji: "🤬" },
 ];
 
 function pad2(n: number): string {

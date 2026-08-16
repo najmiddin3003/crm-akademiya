@@ -11,6 +11,7 @@ parametrlarni qo'shadi (masalan `?limit=50&page=1&sortBy=...`).
 |---|---|
 | **Lidlar** | |
 | `/orders/order-list/table` | `/orders-list` |
+| `/orders/order-list/kanban` | `/orders-list?layout=kanban` |
 | `/orders/come-orders` | `/first-lessons` |
 | **Guruh** | |
 | `/group/groups` | `/groups` |

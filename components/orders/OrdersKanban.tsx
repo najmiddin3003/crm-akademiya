@@ -59,7 +59,10 @@ export default function OrdersKanban({ orders, onDropStage }: OrdersKanbanProps)
                   </div>
                   <div className="ok-card-teacher">{o.teacher || "—"}</div>
                   <div className="ok-card-row3">
-                    <span>{o.created}</span>
+                    {/* Referens kartasida sana va vaqt oddiy probel bilan
+                        ajratiladi ("03.10.2025 15:04"), jadvaldagi kabi "|"
+                        bilan emas — manba ma'lumoti o'zgarmaydi. */}
+                    <span>{o.created.replace(" | ", " ")}</span>
                     <span className="ok-card-task-status">{o.taskStatus}</span>
                   </div>
                 </div>
