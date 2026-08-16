@@ -210,12 +210,17 @@ export default function FirstLessonsPage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Birinchi dars guni</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Birinchi darsga kelish sanasi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;qituvchi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Kurs</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Kurs darajasi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Status</th>
+                {/* Referensda oxirgi ustun — "Izoh". Manbada bunday maydon yo'q
+                    va referensda ham qatorlarda bo'sh turadi; ustun tuzilishi
+                    mos bo'lishi uchun shu holicha ko'chirildi (README'dagi
+                    "To'lov sanasi"/"Taklif qilganlari" bilan bir xil holat). */}
+                <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap" />
               </tr>
             </thead>
@@ -240,6 +245,10 @@ export default function FirstLessonsPage() {
                   <td className="px-3 py-3">
                     <span className={`fl-status fl-status-${s.status}`}>{STATUS_LABELS[s.status as keyof typeof STATUS_LABELS]}</span>
                   </td>
+                  {/* Manbada (constants/index.js → STUDENTS) izoh maydoni yo'q,
+                      referensda ham bu ustun qatorlarda bo'sh turadi. Maydon
+                      qo'shilgach shu yerda `s.note` o'qiladi. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <button type="button" className="fl-row-actions-btn" title="Amallar">⋮</button>
                   </td>

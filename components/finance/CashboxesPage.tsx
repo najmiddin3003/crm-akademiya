@@ -168,6 +168,7 @@ export default function CashboxesPage() {
 
   const [dateRange, setDateRange] = useState<DateRange>(() => todayRange());
   const [txType, setTxType] = useState("");
+  const [txName, setTxName] = useState("");
   const [student, setStudent] = useState("");
   const [payType, setPayType] = useState("");
   const [teacher, setTeacher] = useState("");
@@ -282,6 +283,16 @@ export default function CashboxesPage() {
     [entries],
   );
 
+  // Referensdagi "Tranzaksiya turi" filtri. `txName` — tranzaksiya turlari
+  // katalogidan keladigan nom ("O'quvchi to'ladi", "Hodimga avans", ...),
+  // yuqoridagi "Tranzaksiya" filtri esa Kirim/Chiqim/Ko'chirish amali bo'yicha.
+  // Variantlar mavjud yozuvlardan olinadi — bu faylda studentOptions/teacher
+  // ham shunday, va ro'yxatda hech qachon bo'sh natija beradigan band chiqmaydi.
+  const txNameOptions = useMemo(
+    () => Array.from(new Set(entries.map((e) => e.txName).filter(Boolean))).sort(),
+    [entries],
+  );
+
   const filteredEntries = useMemo(() => {
     if (!selectedId) return [];
     const wantedType = txType ? TX_TYPE_MAP[txType] : "";
@@ -293,6 +304,7 @@ export default function CashboxesPage() {
       if (startIso && e.date < startIso) return false;
       if (endIso && e.date > endIso) return false;
       if (wantedType && e.txType !== wantedType) return false;
+      if (txName && e.txName !== txName) return false;
       if (student && e.studentName !== student) return false;
       if (wantedPayLabel && e.paymentType !== wantedPayLabel) return false;
       if (teacher && e.moderator !== teacher) return false;
@@ -300,7 +312,7 @@ export default function CashboxesPage() {
     });
     // `paymentMethods` ham bog'liqlikda: to'lov turlari asinxron yuklanadi,
     // ular kelgach "To'lov turi" filtri qayta hisoblanishi kerak.
-  }, [entries, selectedId, dateRange, txType, student, payType, teacher, paymentMethods]);
+  }, [entries, selectedId, dateRange, txType, txName, student, payType, teacher, paymentMethods]);
 
   const entryTotals = useMemo(() => {
     let income = 0;
@@ -568,6 +580,13 @@ export default function CashboxesPage() {
               <option value="kirim">Kirim</option>
               <option value="chiqim">Chiqim</option>
               <option value="kochirish">Ko&apos;chirish</option>
+            </select>
+            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+          </div>
+          <div className="relative">
+            <select value={txName} onChange={(e) => { setTxName(e.target.value); setPage(1); }} className={`${selectCls} w-40`}>
+              <option value="">Tranzaksiya turi</option>
+              {txNameOptions.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
