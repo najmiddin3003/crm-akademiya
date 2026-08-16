@@ -6,6 +6,12 @@ import FunctionalityTab from "./FunctionalityTab";
 import SettingsListTab from "./SettingsListTab";
 import SettingsForm from "./SettingsForm";
 import IntegrationsTab from "./IntegrationsTab";
+import CheckTab from "./CheckTab";
+import BillingTab from "./BillingTab";
+import PublicOfertaTab from "./PublicOfertaTab";
+import FieldSettingsTab from "./FieldSettingsTab";
+import AutoSmsTab from "./AutoSmsTab";
+import BotNotesTab from "./BotNotesTab";
 import { LEAVE_REASON_TYPES } from "@/lib/settingsLists";
 import {
   USER_FILTER_SETTINGS_GROUPS,
@@ -29,6 +35,10 @@ const BUILT: Record<string, () => ReactNode> = {
   // ── Umumiy sozlamalar ────────────────────────────────────────────────
   "system:general": () => <FunctionalityTab />,
 
+  "system:check": () => <CheckTab />,
+
+  "system:billing": () => <BillingTab />,
+
   "system:holidays": () => (
     <SettingsListTab
       kind="holidays"
@@ -40,6 +50,8 @@ const BUILT: Record<string, () => ReactNode> = {
       ]}
     />
   ),
+
+  "system:public-oferta": () => <PublicOfertaTab />,
 
   "system:user-filter-settings": () => (
     <SettingsForm storageKey="system.user-filter" groups={USER_FILTER_SETTINGS_GROUPS as SettingsGroup[]} />
@@ -169,6 +181,12 @@ const BUILT: Record<string, () => ReactNode> = {
       fields={[{ key: "name", label: "Ism", input: "text" }]}
     />
   ),
+
+  "sale-marketing:field": () => <FieldSettingsTab />,
+
+  "sale-marketing:auto-sms": () => <AutoSmsTab />,
+
+  "sale-marketing:bot-notes": () => <BotNotesTab />,
 
   "sale-marketing:sms-device": () => (
     <SettingsListTab

@@ -350,7 +350,7 @@ Optimizator ikkalasini "ortiqcha" deb tashlaydi, qoida bo'sh qolib butunlay o'ch
 Referens marshruti: `/settings/<bo'lim>?status=<tab>`
 Bu loyihada: `/settings-<bo'lim>?tab=<tab>` (`constants/settings.js` — 8 bo'lim, 32 tab).
 
-**Hozir: 32 tabdan 24 tasi qurilgan.** Kalitlar mosligini tekshirish:
+**Hozir: 31 tabdan 29 tasi qurilgan** (qolgan 2 tasi — Gamifikatsiya, pastga qarang). Kalitlar mosligini tekshirish:
 
 ```bash
 node -e "const f=require('fs'),p=f.readFileSync('components/settings/SettingsSectionPage.tsx','utf8');console.log([...p.matchAll(/^  \"([^\"]+)\":/gm)].length+' ta tab ro\\'yxatda')"
@@ -374,109 +374,40 @@ node -e "const f=require('fs'),p=f.readFileSync('components/settings/SettingsSec
 
 ---
 
-## Qolgan 8 ta tab
+## Qurilgan 6 ta tab (2026-08-16)
 
-Quyidagi tuzilishlar referens saytdan aynan ko'chirilgan (2026-08-03).
+Tuzilishlar referens saytdan **jonli o'lchab** olingan (yorliqlar, boshlang'ich
+holatlar, o'zgaruvchilar ro'yxati) — taxmin qilinmagan.
 
-### 1. Chek — `system:check`
+| Tab | Kalit | Fayllar | Saqlash kaliti |
+|---|---|---|---|
+| So'raladigan bo'limlar | `sale-marketing:field` | `constants/settingsFields.js` · `components/settings/FieldSettingsTab.tsx` | `sale-marketing.field` |
+| Chek | `system:check` | `constants/settingsCheck.js` · `components/settings/CheckTab.tsx` | `system.check` |
+| Bot eslatmalari | `sale-marketing:bot-notes` | `constants/settingsBotNotes.js` · `components/settings/BotNotesTab.tsx` | `sale-marketing.bot-notes` |
+| Avto sms | `sale-marketing:auto-sms` | `constants/settingsAutoSms.js` · `components/settings/AutoSmsTab.tsx` | `sale-marketing.auto-sms` |
+| Ommaviy oferta | `system:public-oferta` | `constants/settingsOferta.js` · `components/settings/PublicOfertaTab.tsx` | `system.public-oferta` |
+| Obuna | `system:billing` | `constants/settingsBilling.js` · `components/settings/BillingTab.tsx` | `system.billing` |
 
-Referens: `/settings/system?status=check` · Bizda: `/settings-general?tab=check`
+Backend qo'shilmagan — hammasi mavjud generic `/api/settings` (`{key, values}`)
+ustida ishlaydi, `values` ichida massiv/obyekt ham bo'laveradi.
 
-Ikkita ichki tab: **Moliya** va **Buyurtma**. Chapda sozlamalar, o'ngda **jonli chek namunasi**.
+**Referensdan ataylab farq qiladigan joylar:**
 
-Sozlamalar:
-- `Logo` (fayl yuklash)
-- **Sarlavha**: `Matni` (text) · `Hajmi (px)` (number) · `Bold` (toggle)
-- **Chek tag yozuvi**: `Matni` · `Hajmi (px)` · `Bold`
-- `Chek tili` (select — O'zbekcha)
-- `Auto Print` · `QR kodini ko'rsatish` · `Guruh va guruh darslarini vaqtini ko'rsatish` · `O'qituvchi ismini ko'rsatish` (toggle)
-- `E'lon` (text)
-- **Chekning sarlavhasi** (checkbox guruhi): Filial nomi · Sarlavha · Logotip
-- **Tranzaksiya ma'lumotlari** (checkbox guruhi): Kassir Nomi · Kassir Raqami · O'quvchi Nomi · Sana · Kassa · Miqdor · To'lov Turi · Transaktsiya Turi · Izoh · Qolgan Qarzdorlik
+- `Chek` → `Chek tili` referensda avtoto'ldiruvchi input, bizda oddiy `select`
+  (O'zbekcha / Ruscha / Inglizcha).
+- `Chek` → `Logo` va `Ommaviy oferta` → PDF: fayl yuklash backend'i yo'q,
+  shuning uchun faqat **fayl nomi** saqlanadi.
+- `Obuna` → `To'lash` haqiqiy to'lov qilmaydi, «To'lov tizimi hali ulanmagan»
+  xabarini chiqaradi. Amal qilish sanasi qattiq yozilmagan — tanlangan tarif
+  (+ bonus oylar) bo'yicha hisoblanadi.
+- `Avto sms` → referensda «Avto sms yoqish» **sarlavha**, umumiy kalit emas;
+  har bir ssenariy o'z toggle'i bilan mustaqil yoqiladi.
 
-Namuna ("To'lov ruxsatnomasi"): O'quvchi · Sana · To'lov turi · Izoh · To'lov · Guruh jadvali (Kurs kunlari) · O'qituvchi + Tel.
+**Tuzoq (ikki marta uchradi):** JSX'da `{expr} matn&apos;li-so'z` shaklida
+yozilganda son bilan matn orasidagi **probel yo'qoladi** (`x 2000o'quvchi`,
+`0ta bo'lim`). Yagona shablon-satrga o'tkazish kerak:
+`{`x ${n} o'quvchi uchun`}`. Yangi kod yozganda shu shakldan qochiladi.
 
-> Kerak: yangi `CheckSettingsTab.tsx` (jonli namuna bilan). Saqlash kalitlari: `system.check.finance`, `system.check.order`.
-
-### 2. So'raladigan bo'limlar — `sale-marketing:field`
-
-Referens: `/settings/sale-marketing?status=field` · Bizda: `/settings-sales?tab=field`
-
-**Qolganlarining eng yengili** — mavjud `SettingsForm` ustiga ichki tab almashtirgich va `Qaytarish` tugmasi qo'shilsa yetadi.
-
-Uchta ichki tab: `O'quvchi` · `Buyurtma` · `Birinchi darsga keladiganlar`.
-Har birida bir xil 19 ta toggle:
-
-Izoh · Familiya · Telefon raqam · Elektron pochta · Rasm · Kategoriya · Tug'ilgan sana · So'rovnoma · Til · To'lov sanasi · Uy manzili · Maqsad qilgan universitet · Tashkilot · Otasining ismi · Otasining telefon raqami · Otasining elektron pochtasi · Onasining ismi · Onasining telefon raqami · Onasining elektron pochtasi
-
-Tugmalar: `Qaytarish` (standartga qaytarish) · `Saqlash`.
-Saqlash kalitlari: `sales.field.student`, `sales.field.order`, `sales.field.first-lesson`.
-
-### 3. Avto sms — `sale-marketing:auto-sms`
-
-Referens: `/settings/sale-marketing?status=auto-sms` · Bizda: `/settings-sales?tab=auto-sms`
-
-**Eng katta tab.** Yuqorida: `Avto sms yoqish` (toggle) · `Filiallar` (ko'p tanlov — `/api/branches` ga ulanadi).
-
-Sakkizta stsenariy, har birida SMS matni + o'zgaruvchilar jadvali (`Key` / `Tavsif`):
-
-| Stsenariy | Qo'shimcha sozlamalari | O'zgaruvchilar |
-|---|---|---|
-| Kurs puli to'lansa | — | `{name}` `{oldBalance}` `{balance}` `{amount}` |
-| Darsga kelmasa | `Davomat holati` (select: Sababsiz) · «Yo'qlama qilgandan __ minut keyin» · «Ketma-ket __ marta kelmasa» · qabul qiluvchi: `Bolaga` / `Ota-onaga` | bola: `{name}` `{groupName}` `{teacherName}` · ota-ona: `{parentName}` + o'shalar |
-| Tug'ilgan kunida | — | `{name}` |
-| Yangi guruxga qo'shilganda | — | `{name}` `{groupName}` `{teacherName}` `{courseName}` `{days}` `{hours}` `{branchName}` `{subCourseName}` |
-| Birinchi darsga kelish vaqti | «Nechi soat qolganda sms yuborilsin?» — `3` / `24` | `{name}` `{hours}` |
-| Qarzdorlar | — | `{name}` `{balance}` |
-| OTP | — | `{name}` `{otp}` `{phoneNumber}` |
-| Ketma-ket davomat | — | `{name}` `{groupName}` `{teacherName}` `{consecutiveAttendanceCount}` |
-
-Tugmalar: `Bekor qilish` · `Saqlash`.
-
-> Kerak: `AutoSmsTab.tsx` — akkordeon + har stsenariy uchun matn maydoni va o'zgaruvchilar jadvali. Saqlash kaliti: `sales.auto-sms` (stsenariy kaliti bo'yicha ichma-ich obyekt).
-
-### 4. Bot eslatmalari — `sale-marketing:bot-notes`
-
-Referens: `/settings/sale-marketing?status=bot-notes` · Bizda: `/settings-sales?tab=bot-notes`
-
-Chapda shablon formasi, o'ngda **jonli Telegram namunasi**, pastda mavjud shablonlar kartalari.
-
-Forma: `Shablon nomi` · `Shablon turi` (select) · `Yuborish vaqti (minutda)` (number) · `Xabar matni` (textarea) · `Shablonni faollashtirish` (toggle) · `Orqaga` / `Saqlash`
-
-Shablon turlari: `Dars boshlanishidan oldin` · `Dars davomida` · `Darsdan tugagandan keyin`
-
-O'zgaruvchilar: `{groupName}` `{teacherName}` `{courseName}` `{days}` `{hours}` `{branchName}` `{subCourseName}`
-
-Mavjud shablonlar (referensdagi 3 ta karta — nomi, Aktiv belgisi, vaqti, turi, `Tahrirlash` / `O'chirish`):
-`Oldin - 10 daqiqa` (10 daq, dars boshlanishidan oldin) · `Keyin - 1 daqiqa` (1 daq, darsdan keyin) · `davomida - 60 daqiqa` (60 daq, dars davomida)
-
-> Kerak: `BotNotesTab.tsx` + `settings-lists` ga `bot-templates` turi (matn maydoni uzun bo'lgani uchun `textarea` input turi qo'shilishi kerak).
-
-### 5. Obuna — `system:billing`
-
-Referens: `/settings/system?status=billing` · Bizda: `/settings-general?tab=billing`
-
-Ikkita ichki tab: `Obuna` · `Gamifikatsiya to'lovi`.
-
-Holat matni: «Hisobingiz `<sana>` yilgacha cheklovlarsiz sinov obunasida» · `O'quvchilar soni: 2000`
-
-Tarif kartalari (o'quvchi soniga ko'paytiriladi): `1 oy` 1 500 000 · `3 oy` 4 500 000 · `6 oy (+1 oy)` 9 000 000 · `12 oy (+3 oy)` 18 000 000 UZS
-
-O'ngda xulosa paneli: tanlangan muddat · amal qilish sanasi · `x 2000 o'quvchi uchun` · `Summa` · `To'lash` tugmasi.
-
-> Asosan ko'rsatish sahifasi — haqiqiy to'lov integratsiyasi yo'q, tanlov va summa hisobi yetarli.
-
-### 6. Ommaviy oferta — `system:public-oferta`
-
-Referens: `/settings/system?status=public-oferta` · Bizda: `/settings-general?tab=public-oferta`
-
-- **PDF fayl (zaxira nusxa)** — `Oferta fayli`, `Almashtirish`. «To'liq hujjatni ko'rish» havolasida ishlatiladi.
-- **Bo'limlar** — CRUD ro'yxat, har bo'limda sarlavha + matn + `Majburiy` / `Ixtiyoriy`. Yuqorida `N ta bo'lim` hisoblagichi, `Yangi bo'lim qo'shish` tugmasi, bo'sh holatda «Hozircha bo'lim qo'shilmagan».
-- Izoh: majburiy bo'limlarning barchasi tasdiqlanmaguncha o'quvchi ilovaga kira olmaydi.
-
-> Kerak: `settings-lists` ga `oferta-sections` turi (`textarea` + `Majburiy/Ixtiyoriy` select) + fayl yuklash maydoni.
-
----
 
 ## Qurilmaydigan
 
