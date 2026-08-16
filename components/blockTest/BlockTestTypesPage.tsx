@@ -13,7 +13,9 @@ import type { BlockTestType } from "@/lib/blockTestTypes";
 // /api/block-test-types dan. "Tur qo'shish"/tahrirlash — BlockTestTypeModal,
 // o'chirish — pastdagi oddiy tasdiqlash oynasi (Ha/Yo'q).
 
-const HEADERS = ["№", "Nomi", "Kodi", "Davomiyligi (daqiqa)", "Fanlar", "Holati", "Qo'shilgan sana"];
+// Referensda jadval ustuni "Kurslar" deyiladi, forma yorlig'i esa "Fanlar" —
+// nomuvofiqlik referensning o'zida, shuning uchun modalga tegilmadi.
+const HEADERS = ["№", "Nomi", "Kodi", "Davomiyligi (daqiqa)", "Kurslar", "Holati", "Qo'shilgan sana"];
 
 function kindLabel(kind: string): string {
   return BLOCK_TEST_KINDS.find((k) => k.value === kind)?.label || "—";
@@ -163,7 +165,7 @@ export default function BlockTestTypesPage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">Nomi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Kodi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Davomiyligi (daqiqa)</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Fanlar</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Kurslar</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Qo&apos;shilgan sana</th>
                 <th className="px-3 py-3 w-24" />

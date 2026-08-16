@@ -267,7 +267,7 @@ anchor to'plamini olib, **farqini** hisoblash kerak, aks holda ro'yxatlar aralas
 
 ## Solishtirilgan bo'limlar (2026-08-16 holati)
 
-Referensning **9 ta bo'limi** sahifama-sahifa solishtirildi. Har bir sahifada
+Referensning **hamma bo'limi** sahifama-sahifa solishtirildi. Har bir sahifada
 ustunlar, filtrlar, tugmalar va jamlanma ko'rsatkichlar tekshirildi.
 
 | Bo'lim | Sahifa | Natija |
@@ -281,6 +281,8 @@ ustunlar, filtrlar, tugmalar va jamlanma ko'rsatkichlar tekshirildi.
 | O'quvchilar | 7 | **Farq yo'q** |
 | O'quv bo'limi | 5 | Bo'sh holat emojisi 😞 → **☹️** |
 | Boshqaruv | 4 | **Farq yo'q** |
+| Blok test | 2 | `Blok testlar` 10/10 mos. Turlar jadvalida `Fanlar` → **`Kurslar`** |
+| Topshiriqlar | 1 | **Farq yo'q** — bizniki kengroq (KPI qatori, `Vaqt/Kanban/Kalendar`, `Shablon`) |
 
 Aniq mos chiqqan yirik jadvallar: `Filiallar holati` 17/17, `Turniket analitikasi` 12/12,
 `Oylik chiqarish` 10/10, `Shartnoma` 9/9, `O'qituvchilar samaradorligi` (3 guruh × 4 holat,
@@ -312,11 +314,13 @@ ko'rsatadi. Ustunlarni referensda yoqmaguncha solishtirib bo'lmaydi:
 
 ## Keyingi qadamlar
 
-1. **Qolgan bo'limlar:** `Blok test` (2 sahifa), `Topshiriqlar` (`/tasks` —
-   `reference-urls.md` da xaritalanmagan)
-2. Referensda ustunlari yashirin sahifalarda ustunlarni yoqib, qayta solishtirish
-3. `constants/sidebar.js`dagi qurilmagan 37 ta havola — bular referensda YO'Q, bizning
+Barcha bo'lim tekshirib chiqildi. Qolgan ishlar:
+
+1. Referensda ustunlari yashirin sahifalarda ustunlarni yoqib, qayta solishtirish
+   (ro'yxat yuqorida)
+2. `constants/sidebar.js`dagi qurilmagan 37 ta havola — bular referensda YO'Q, bizning
    qo'shimchalarimiz. Yozish yoki sidebardan olib tashlash kerak
+3. `Gamifikatsiya` moduli referensda sotib olinmagan — yoqilsa, 2 ta tab qurilishi mumkin
 
 
 ---

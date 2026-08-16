@@ -9,6 +9,8 @@ parametrlarni qo'shadi (masalan `?limit=50&page=1&sortBy=...`).
 
 | Referens | Bizda |
 |---|---|
+| **Topshiriqlar** | |
+| `/tasks/list` | `/tasks` |
 | **Lidlar** | |
 | `/orders/order-list/table` | `/orders-list` |
 | `/orders/order-list/kanban` | `/orders-list?layout=kanban` |
