@@ -352,16 +352,19 @@ Ikkinchi usul `disableColumnMenu` qilingan jadvallarda ham ishlaydi.
 | Aktiv o'quvchilar | `Shartnoma` qo'shildi (eksport ro'yxati ham) |
 | Ota-onalar | yorliq `… yuklab olish` → `… yuklab olish sanasi` |
 | Buyurtmalar ro'yxati | **ortiqcha** `Birinchi dars guni` olib tashlandi → 10/10 |
+| Arxiv o'quvchilar | arxivga xos 14 ustunga to'liq qayta qurildi → 14/14 |
 
 Yangi qo'shilgan ustunlar demo ma'lumotda bo'sh (`—`) chiqadi — modelda mos
 maydon yo'q, referensda ham shu ustunlar bo'sh. CSV/Excel eksport ro'yxatlari
 jadvaldan alohida kuratsiya qilingan (ularda `Kurs darajasi`/`Izoh` ham yo'q),
 shuning uchun `Birinchi dars guni` eksportda qoldirildi.
 
-**Qolgan:** `Arxiv o'quvchilar` — referensda arxivga xos 14 ustun
-(`Arxivlangan guruh`, `Arxiv o'qituvchisi`, `Pro arxivlangan sana`,
-`Arxivlangan sana`, `Oldingi holati`, `Shartnoma`…), bizda esa aktiv
-o'quvchilar ustunlari takrorlanadi. Model kengaytirish kerak.
+**Arxiv o'quvchilar** ham moslandi (14/14). Referensda bu jadval aktiv
+o'quvchilarnikidan butunlay farq qiladi. Yetishmagan maydonlar (`Arxivlangan
+guruh`, `Arxiv o'qituvchisi`, `Pro arxivlangan sana`, `Arxivlangan sana`,
+`Oldingi holati`) `lib/archiveStudents.ts` da `order.id` dan DETERMINISTIK
+hisoblanadi — o'quvchi haqiqiy `GROUP_SEED` guruhiga bog'lanadi, arxiv sanalari
+esa yaratilgan sanadan keyin keladi (yaratilgan < pro arxiv < arxiv).
 
 
 ## Keyingi qadamlar

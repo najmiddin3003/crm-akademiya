@@ -14,6 +14,7 @@ import {
   type Order,
   type OrdersFilters,
 } from "@/lib/ordersData";
+import { archiveExtras, PREV_STATE_CLS, type ArchiveExtras } from "@/lib/archiveStudents";
 
 // O'quvchilar → Arxiv o'quvchilar (crm-akademiya #view-archive-students,
 // sidebar: O'quvchilar > Arxiv o'quvchilar, href /archive-students). Aktiv
@@ -31,6 +32,7 @@ interface Row {
   order: Order;
   balance: number;
   reason: string;
+  extras: ArchiveExtras;
 }
 
 function genBalance(seed: number): number {
@@ -53,7 +55,7 @@ const REASON_CLS: Record<string, string> = {
 function buildRows(): Row[] {
   return createInitialOrders()
     .filter((o) => ARCHIVE_STATUSES.includes(o.status))
-    .map((o) => ({ order: o, balance: genBalance(o.id), reason: archiveReason(o.status) }));
+    .map((o) => ({ order: o, balance: genBalance(o.id), reason: archiveReason(o.status), extras: archiveExtras(o) }));
 }
 
 function fmtUZS(n: number): string {
@@ -78,7 +80,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const checkboxCls = "h-4 w-4 rounded border-border accent-primary cursor-pointer";
-const HEADERS = ["№", "O'quvchi ismi", "Telefon raqam", "Balans", "To'lov sanasi", "Yaratilgan sanasi", "Moderator", "Taklif qilganlari", "Ilovani yuklab olish sanasi", "Sababi"];
+const HEADERS = ["№", "ID", "O'quvchini ismi", "Telefon raqam", "Balans", "Arxivlangan guruh", "Arxiv o'qituvchisi", "Yaratilgan sanasi", "Moderator", "Pro arxivlangan sana", "Arxivlangan sana", "Sababi", "Oldingi holati", "Shartnoma"];
 
 function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean; indeterminate: boolean; onChange: (v: boolean) => void }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -168,15 +170,19 @@ export default function ArchiveStudentsPage() {
   function exportRows() {
     return rowsToExport().map((r, i) => [
       i + 1,
+      r.order.id,
       r.order.name,
       r.order.phone,
       r.balance,
-      "",
+      r.extras.group,
+      r.extras.teacher,
       r.order.created,
       r.order.moderator,
-      "",
-      "",
+      r.extras.proArchivedAt,
+      r.extras.archivedAt,
       r.reason,
+      r.extras.prevState,
+      "", // Shartnoma
     ]);
   }
   function exportCSV() {
@@ -297,15 +303,19 @@ export default function ArchiveStudentsPage() {
                   <HeaderCheckbox checked={allPageSelected} indeterminate={somePageSelected} onChange={toggleAllOnPage} />
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi ismi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;lov sanasi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Arxivlangan guruh</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Arxiv o&apos;qituvchisi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Taklif qilganlari</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ilovani yuklab olish sanasi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Pro arxivlangan sana</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Arxivlangan sana</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Oldingi holati</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
               </tr>
             </thead>
             <tbody>
@@ -320,6 +330,7 @@ export default function ArchiveStudentsPage() {
                     />
                   </td>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground">{r.order.id}</td>
                   <td className="px-3 py-3 text-[13px]">
                     <Link href={`/student-edit/${r.order.id}`} className="font-medium hover:text-primary hover:underline">
                       {r.order.name}
@@ -327,17 +338,21 @@ export default function ArchiveStudentsPage() {
                   </td>
                   <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{r.order.phone || "—"}</td>
                   <td className={`px-3 py-3 text-[13px] tabular-nums whitespace-nowrap ${r.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtUZS(r.balance)}</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  <td className="px-3 py-3 text-[13px]">{r.extras.group}</td>
+                  <td className="px-3 py-3 text-[13px]">{r.extras.teacher}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.order.created}</td>
                   <td className="px-3 py-3 text-[13px]">{r.order.moderator || "—"}</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.extras.proArchivedAt}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.extras.archivedAt}</td>
                   <td className={`px-3 py-3 text-[13px] font-medium ${REASON_CLS[r.reason] || ""}`}>{r.reason}</td>
+                  <td className={`px-3 py-3 text-[13px] font-medium ${PREV_STATE_CLS[r.extras.prevState] || ""}`}>{r.extras.prevState}</td>
+                  {/* Shartnoma — modelda maydon yo'q, referensda ham bo'sh. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={15} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
                 </tr>
               )}
             </tbody>
