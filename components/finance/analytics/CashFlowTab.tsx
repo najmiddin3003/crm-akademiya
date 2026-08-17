@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Download, BarChart3, List } from "lucide-react";
 import DonutChart from "@/components/ui/DonutChart";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
 import { INCOME_CATS, EXPENSE_CATS } from "@/constants/transactions";
 import type { Transaction } from "@/lib/transactions";
@@ -79,7 +80,7 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
   const maxAbs = Math.max(1, ...monthStats.flatMap((m) => [m.income, m.expense, Math.abs(m.endBalance)]));
 
   if (loading) {
-    return <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>;
   }
 
   return (

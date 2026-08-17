@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Copy, Settings, Trash2 } from "lucide-react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { surveyBotLink, surveyTildaLink, surveyWebLink, type Survey } from "@/lib/surveys";
 
@@ -196,7 +197,7 @@ export default function SurveysPage() {
               {surveys.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "So'rovnoma topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "So'rovnoma topilmadi"}
                   </td>
                 </tr>
               )}

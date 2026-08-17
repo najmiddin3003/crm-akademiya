@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import { FIELD_MODES } from "@/constants/settingsFields";
 
@@ -128,8 +129,8 @@ export default function FieldSettingsTab() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">
-          Yuklanmoqda…
+        <div className="rounded-2xl bg-card border border-border p-8">
+          <SpinnerBlock />
         </div>
       ) : (
         <div className="rounded-2xl bg-card border border-border p-5">

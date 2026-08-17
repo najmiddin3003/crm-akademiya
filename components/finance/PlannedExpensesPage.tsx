@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import PlannedExpenseDrawer from "./PlannedExpenseDrawer";
 import type { PlannedExpense } from "@/lib/plannedExpenses";
 
@@ -114,7 +115,7 @@ export default function PlannedExpensesPage() {
               ))}
               {expenses.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Ma'lumot topilmadi"}</td>
+                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}</td>
                 </tr>
               )}
             </tbody>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { ListFieldKey, SettingsListItem } from "@/lib/settingsLists";
 
 // Sozlamalardagi barcha oddiy CRUD ro'yxatlari uchun umumiy komponent
@@ -241,7 +242,7 @@ export default function SettingsListTab({
               {items.length === 0 && (
                 <tr>
                   <td colSpan={fields.length + 2} className="px-5 py-12 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Ma'lumot topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
               )}

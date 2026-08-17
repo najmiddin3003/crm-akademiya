@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SalaryRun } from "@/lib/salary";
 
 // Moliya → Oylik chiqarish (sidebar: Moliya > Oylik chiqarish, href
@@ -82,7 +83,7 @@ export default function SalaryRunsPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Ma'lumot topilmadi"}</td>
+                  <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}</td>
                 </tr>
               )}
             </tbody>

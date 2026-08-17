@@ -673,3 +673,25 @@ violet, purple, slate, sky, cyan.
 (`.next` tozalab) — aks holda brauzer eski CSS'ni ko'rsatadi. Bundan tashqari
 eski DOM tugunlari yangi CSS bilan yangilanmay qolishi mumkin; o'lchashdan
 oldin sahifani toza yuklang.
+
+## Yuklanish indikatori (2026-08-17)
+
+Ilgari yuklanish holati hamma joyda "Yuklanmoqda…" matni edi. Referensda esa
+aylanadigan doira ko'rsatiladi. Qo'shildi:
+
+- `components/ui/Spinner.tsx` — `<Spinner size={28} />` va markazlashgan
+  `<SpinnerBlock size={28} />`
+- `globals.css` da `.spinner` + `@keyframes tz-spin`. Tailwind'ning
+  `animate-spin` i ishlatilmadi — u eski v3 blobi bilan to'qnashadi.
+  Ranglar tokenlardan: yoy `--primary`, halqa `--border` (tungi rejimda
+  avtomatik moslashadi). `prefers-reduced-motion` da sekinlashadi.
+- **`app/(app)/loading.tsx`** — bitta fayl `(app)` guruhidagi BARCHA
+  sahifalarni qamrab oladi (Next.js uni Suspense chegarasi sifatida
+  ishlatadi): sahifadan sahifaga o'tganda markazda spinner chiqadi.
+- 63 faylda ichki yuklanish matni `<SpinnerBlock />` ga o'tkazildi.
+
+**Ataylab tegilmagan 2 joy** — u yerda komponent ishlatib bo'lmaydi, chunki
+matn satri kerak:
+- `EmployeeEditModal.tsx` — `value={passwordLoading ? "Yuklanmoqda..." : …}`
+  (input qiymati)
+- `AddStudentModal.tsx` — `<option>{loading ? "Yuklanmoqda…" : …}</option>`

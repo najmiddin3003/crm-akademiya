@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Monitor, ShieldCheck } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 
 // Profil menyusi → "Aktiv qurilmalar".
 // Foydalanuvchining ochiq sessiyalari: qaysi qurilma/brauzer, qachon kirgan,
@@ -158,7 +159,7 @@ export default function DevicesPage() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Aktiv qurilma topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Aktiv qurilma topilmadi"}
                   </td>
                 </tr>
               )}

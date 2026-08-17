@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import RoomModal from "./RoomModal";
 import type { Room } from "@/lib/rooms";
 import type { Equipment } from "@/lib/equipment";
@@ -291,7 +292,7 @@ export default function RoomsListPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Xona topilmadi"}</td>
+                  <td colSpan={5} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Xona topilmadi"}</td>
                 </tr>
               )}
             </tbody>

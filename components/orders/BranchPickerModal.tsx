@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useBranches } from "@/hooks/useBranches";
 
@@ -50,7 +51,7 @@ export default function BranchPickerModal({ onClose, onSelect }: BranchPickerMod
           <div className="max-h-72 overflow-y-auto divide-y divide-border">
             {filtered.length === 0 ? (
               <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                {loading ? "Yuklanmoqda…" : "Topilmadi"}
+                {loading ? <SpinnerBlock size={22} /> : "Topilmadi"}
               </div>
             ) : (
               filtered.map((branch) => (

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import { OFERTA_DEFAULTS, OFERTA_NEW_SECTION, OFERTA_TEXTS } from "@/constants/settingsOferta";
 
@@ -116,8 +117,8 @@ export default function PublicOfertaTab() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">
-        Yuklanmoqda…
+      <div className="rounded-2xl bg-card border border-border p-8">
+        <SpinnerBlock />
       </div>
     );
   }

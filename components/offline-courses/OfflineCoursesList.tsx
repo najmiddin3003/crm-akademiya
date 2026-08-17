@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -251,7 +252,7 @@ export default function OfflineCoursesList() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Kurs topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Kurs topilmadi"}
                   </td>
                 </tr>
               )}

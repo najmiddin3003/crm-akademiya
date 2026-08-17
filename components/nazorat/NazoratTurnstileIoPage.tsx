@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DonutChart from "@/components/ui/DonutChart";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import Spinner from "@/components/ui/Spinner";
 import {
   TURNSTILE_IO_PERSON_TYPES,
   TURNSTILE_IO_STATUSES,
@@ -189,7 +190,7 @@ export default function NazoratTurnstileIoPage() {
                 <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-archive" /></svg>
               </div>
               <h3 className="text-[15px] font-semibold mb-1">
-                {loading ? "Yuklanmoqda…" : "Ma'lumotlar topilmadi"}
+                {loading ? <Spinner size={22} /> : "Ma'lumotlar topilmadi"}
               </h3>
               {!loading && (
                 <p className="text-[13px] text-muted-foreground max-w-sm">

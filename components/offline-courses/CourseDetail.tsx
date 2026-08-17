@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -30,7 +31,7 @@ export default function CourseDetail({ id }: { id: number }) {
   const course = getCourse(id);
 
   if (loading && !course) {
-    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5"><SpinnerBlock /></div>;
   }
 
   if (!course) {

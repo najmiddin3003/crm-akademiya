@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useBranches } from "@/hooks/useBranches";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
@@ -16,7 +17,7 @@ export default function LevelForm({ courseId, levelId }: { courseId: number; lev
   const editing = levelId != null ? course?.levels.find((l) => l.id === levelId) : undefined;
 
   if (loading) {
-    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5"><SpinnerBlock /></div>;
   }
   if (!course) {
     return (
@@ -163,7 +164,7 @@ function LevelFormBody({ courseId, editing }: { courseId: number; editing?: Cour
             {branches.length === 0 && (
               <tr className="border-t border-border">
                 <td colSpan={3} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                  {branchesLoading ? "Yuklanmoqda…" : "Filial topilmadi"}
+                  {branchesLoading ? <SpinnerBlock size={22} /> : "Filial topilmadi"}
                 </td>
               </tr>
             )}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { SMS_AUDIENCES, SMS_PLACEHOLDERS, type SmsTemplate } from "@/lib/smsTemplates";
 
@@ -182,7 +183,7 @@ export default function SmsTemplatesPage() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Shablon topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Shablon topilmadi"}
                   </td>
                 </tr>
               )}

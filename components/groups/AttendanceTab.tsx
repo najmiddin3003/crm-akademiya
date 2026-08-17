@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronLeft, Download, MessageSquare, Send, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import {
   ABSENCE_REASONS,
   ATTENDANCE_COLOR,
@@ -532,7 +533,7 @@ export default function AttendanceTab({ group, members, membersLoading }: Attend
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6 + lessons.length} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                    {membersLoading ? "Yuklanmoqda…" : "Guruhga o'quvchi qo'shilmagan"}
+                    {membersLoading ? <SpinnerBlock size={22} /> : "Guruhga o'quvchi qo'shilmagan"}
                   </td>
                 </tr>
               )}

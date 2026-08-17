@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MoreVertical, Plus, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import AddGroupModal from "./AddGroupModal";
 import type { Group } from "@/lib/groups";
 import { GROUP_COURSES, GROUP_DAYS, GROUP_ROOMS, GROUP_TEACHERS } from "@/constants/groups";
@@ -288,7 +289,7 @@ export default function GroupsListPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Guruh topilmadi"}</td>
+                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Guruh topilmadi"}</td>
                 </tr>
               )}
             </tbody>

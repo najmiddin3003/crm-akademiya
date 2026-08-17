@@ -7,6 +7,7 @@ import { ArrowDown, Filter, MoreVertical, Plus, Settings } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import AddEmployeeModal from "./AddEmployeeModal";
 import type { HrEmployee } from "@/lib/hrEmployees";
@@ -335,7 +336,7 @@ export default function EmployeesListPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={visibleCols.length} className="px-3 py-10 text-center text-sm text-muted-foreground">{loadingRows ? "Yuklanmoqda…" : "Xodim topilmadi"}</td>
+                  <td colSpan={visibleCols.length} className="px-3 py-10 text-center text-sm text-muted-foreground">{loadingRows ? <SpinnerBlock size={22} /> : "Xodim topilmadi"}</td>
                 </tr>
               )}
             </tbody>

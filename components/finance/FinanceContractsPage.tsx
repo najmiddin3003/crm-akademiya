@@ -7,6 +7,7 @@ import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { createInitialOrders } from "@/lib/ordersData";
 import { contractPartsTotal, type FinanceContract } from "@/lib/financeContracts";
 import FinanceContractDrawer from "./FinanceContractDrawer";
@@ -226,7 +227,7 @@ export default function FinanceContractsPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Shartnoma topilmadi"}</td>
+                  <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Shartnoma topilmadi"}</td>
                 </tr>
               )}
             </tbody>

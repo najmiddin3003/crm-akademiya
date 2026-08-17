@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AreaChart, ArrowDown, ArrowUp, BarChart3 } from "lucide-react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import DonutChart from "@/components/ui/DonutChart";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import DailyAreaChart, { type DailyPoint } from "@/components/finance/reports/DailyAreaChart";
 import BreakdownBars from "@/components/finance/reports/BreakdownBars";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
@@ -176,7 +177,7 @@ export default function FinanceReportsPage() {
   const chiqimStatSlices = categoryBreakdown(current, EXPENSE_CATS, false).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[(i + 1) % CHART_COLORS.length] }));
 
   if (loading) {
-    return <div className="p-5 text-center text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="p-5"><SpinnerBlock /></div>;
   }
 
   return (

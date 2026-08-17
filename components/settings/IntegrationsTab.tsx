@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { INTEGRATIONS, INTEGRATION_CATEGORIES } from "@/constants/integrations";
 
 // Sozlamalar → Integratsiyalar. Referensdagidek: yuqorida kategoriya
@@ -99,8 +100,8 @@ export default function IntegrationsTab() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl bg-card border border-border p-10 text-center text-sm text-muted-foreground">
-          Yuklanmoqda…
+        <div className="rounded-2xl bg-card border border-border p-10">
+          <SpinnerBlock />
         </div>
       ) : grouped.length === 0 ? (
         <div className="rounded-2xl bg-card border border-border p-10 text-center text-sm text-muted-foreground">

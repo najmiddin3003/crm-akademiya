@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { SalesPlanRow } from "@/lib/salesPlan";
 
@@ -97,7 +98,7 @@ export default function SalesPlanPage() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Moderator topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Moderator topilmadi"}
                   </td>
                 </tr>
               )}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { History, MoreVertical, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import MonthPicker from "@/components/ui/MonthPicker";
 import SeasonalAssessmentEditModal from "./SeasonalAssessmentEditModal";
@@ -225,7 +226,7 @@ export default function SeasonalAssessmentsPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Baho topilmadi"}</td>
+                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Baho topilmadi"}</td>
                 </tr>
               )}
             </tbody>

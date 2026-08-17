@@ -6,6 +6,7 @@ import {
   Archive, ArrowLeft, Briefcase, Check, ChevronDown, Copy, CreditCard, DollarSign,
   Edit, Frown, Lock, MoreVertical, Percent, Phone, Settings, Users, XCircle,
 } from "lucide-react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
@@ -89,7 +90,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   }, [id]);
 
   if (loading) {
-    return <div className="container mx-auto max-w-[1900px] p-4 md:p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="container mx-auto max-w-[1900px] p-4 md:p-5"><SpinnerBlock /></div>;
   }
   if (!emp) {
     return (

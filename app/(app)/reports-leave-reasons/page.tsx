@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LEAVE_TABS, type LeaveCategory, type LeaveReason } from "@/lib/studentReports";
 
 // Hisobotlar → Ketish sabablari (href /reports-leave-reasons).
@@ -77,7 +78,7 @@ export default function Page() {
               {visible.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Ma'lumot topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
               )}

@@ -7,6 +7,7 @@ import { Filter, FileSpreadsheet, FileText, MoreVertical, Settings, Share2, XCir
 import * as XLSX from "xlsx";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import OrdersKanban from "@/components/orders/OrdersKanban";
 import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import AddOrderModal, { type NewOrderValues } from "@/components/orders/AddOrderModal";
@@ -656,7 +657,7 @@ export default function OrdersPage() {
                 {loading && (
                   <tr>
                     <td colSpan={12} className="px-3 py-6 text-center text-sm text-muted-foreground">
-                      Yuklanmoqda...
+                      <SpinnerBlock size={22} />
                     </td>
                   </tr>
                 )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SettingsGroup } from "@/lib/settings";
 
 // Sozlamalardagi oddiy "maydonlar + Saqlash" formasi uchun umumiy komponent.
@@ -91,8 +92,8 @@ export default function SettingsForm({
       {header}
 
       {loading ? (
-        <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">
-          Yuklanmoqda…
+        <div className="rounded-2xl bg-card border border-border p-8">
+          <SpinnerBlock />
         </div>
       ) : (
         groups.map((g, gi) => (

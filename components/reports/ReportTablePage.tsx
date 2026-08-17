@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 
 // Hisobotlar bo'limidagi sof jadvalli hisobotlar uchun umumiy qobiq
 // (To'lanmagan / Farqli to'lovlar / Bekor qilingan to'lovlar / Chegirmalar /
@@ -85,7 +86,7 @@ export default function ReportTablePage<T extends { id: number }>({
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={columns.length + 1} className="px-5 py-12 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : emptyText}
+                    {loading ? <SpinnerBlock size={22} /> : emptyText}
                   </td>
                 </tr>
               )}

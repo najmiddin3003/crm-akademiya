@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import EquipmentModal from "./EquipmentModal";
 import type { Equipment } from "@/lib/equipment";
 
@@ -209,7 +210,7 @@ export default function EquipmentListPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Ma'lumotlar topilmadi"}</td>
+                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Ma'lumotlar topilmadi"}</td>
                 </tr>
               )}
             </tbody>

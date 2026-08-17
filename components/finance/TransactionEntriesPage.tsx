@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { Cashbox } from "@/lib/cashboxes";
@@ -168,7 +169,7 @@ export default function TransactionEntriesPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={15} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Tranzaksiya topilmadi"}</td>
+                  <td colSpan={15} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Tranzaksiya topilmadi"}</td>
                 </tr>
               )}
             </tbody>

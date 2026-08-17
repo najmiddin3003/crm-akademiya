@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { CUSTOMER_TYPES, CATEGORY_OPTIONS } from "@/constants/transactionTypes";
 import type { TransactionType } from "@/lib/transactionTypes";
 
@@ -85,7 +86,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
   }
 
   if (typeId != null && !loaded) {
-    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5"><SpinnerBlock /></div>;
   }
   if (notFound) {
     return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">Tranzaksiya turi topilmadi.</div>;

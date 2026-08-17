@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 
 // Sozlamalar → "Profil".
 // Joriy foydalanuvchining o'z ma'lumotlari (/api/profile). Faqat to'liq ism
@@ -92,8 +93,8 @@ export default function ProfilePage() {
       <h1 className="text-[18px] font-bold tracking-tight">Profil</h1>
 
       {loading ? (
-        <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">
-          Yuklanmoqda…
+        <div className="rounded-2xl bg-card border border-border p-8">
+          <SpinnerBlock />
         </div>
       ) : !profile ? (
         <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">

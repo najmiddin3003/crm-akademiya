@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { MAIN_TYPES } from "@/constants/transactionTypes";
 import type { TransactionType } from "@/lib/transactionTypes";
 
@@ -103,7 +104,7 @@ export default function TransactionTypesPage() {
             </div>
           ))}
           {visible.length === 0 && (
-            <div className="py-10 text-center text-sm text-muted-foreground -ml-4">{loading ? "Yuklanmoqda…" : "Tranzaksiya turi topilmadi"}</div>
+            <div className="py-10 text-center text-sm text-muted-foreground -ml-4">{loading ? <SpinnerBlock size={22} /> : "Tranzaksiya turi topilmadi"}</div>
           )}
         </div>
       </div>

@@ -5,6 +5,7 @@ import { FileSpreadsheet, FileText, Search } from "lucide-react";
 import * as XLSX from "xlsx";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import Spinner from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { formatSupportTime, type SupportRecord } from "@/lib/supportAnalytics";
 
@@ -205,7 +206,7 @@ export default function NazoratSupportAnalyticsPage() {
               <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-archive" /></svg>
             </div>
             <h3 className="text-[15px] font-semibold mb-1">
-              {loading ? "Yuklanmoqda…" : "Ma'lumotlar topilmadi"}
+              {loading ? <Spinner size={22} /> : "Ma'lumotlar topilmadi"}
             </h3>
             {!loading && (
               <p className="text-[13px] text-muted-foreground max-w-sm">

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import { BOT_NOTE_DEFAULTS, BOT_NOTE_TYPES, BOT_NOTE_VARIABLES } from "@/constants/settingsBotNotes";
 
@@ -152,8 +153,8 @@ export default function BotNotesTab() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">
-        Yuklanmoqda…
+      <div className="rounded-2xl bg-card border border-border p-8">
+        <SpinnerBlock />
       </div>
     );
   }

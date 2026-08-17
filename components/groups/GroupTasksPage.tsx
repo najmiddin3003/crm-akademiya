@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import TaskModal from "./TaskModal";
 import type { GroupTask } from "@/lib/groupTasks";
 
@@ -108,7 +109,7 @@ export default function GroupTasksPage() {
                 </tr>
               ))}
               {slice.length === 0 && (
-                <tr><td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Vazifa yo'q"}</td></tr>
+                <tr><td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Vazifa yo'q"}</td></tr>
               )}
             </tbody>
           </table>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import EduCategoryModal from "./EduCategoryModal";
 import type { EduCategory } from "@/lib/eduCategories";
@@ -90,7 +91,7 @@ export default function EduCategoriesPage() {
               ))}
               {categories.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Kategoriya topilmadi"}</td>
+                  <td colSpan={3} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Kategoriya topilmadi"}</td>
                 </tr>
               )}
             </tbody>

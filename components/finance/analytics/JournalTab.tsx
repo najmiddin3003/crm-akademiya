@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
 
@@ -85,7 +86,7 @@ export default function JournalTab({
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Ma'lumot topilmadi"}</td>
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}</td>
                 </tr>
               )}
             </tbody>

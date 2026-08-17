@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { BONUS_TYPES } from "@/constants/bonuses";
 import BonusDrawer from "./BonusDrawer";
 import type { Bonus } from "@/lib/bonuses";
@@ -353,7 +354,7 @@ export default function BonusesPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={visibleColCount + 2} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Bonus topilmadi"}</td>
+                  <td colSpan={visibleColCount + 2} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Bonus topilmadi"}</td>
                 </tr>
               )}
             </tbody>

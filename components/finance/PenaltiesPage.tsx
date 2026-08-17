@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { PENALTY_CANCEL_REASONS } from "@/constants/penalties";
 import PenaltyDrawer from "./PenaltyDrawer";
 import type { Penalty } from "@/lib/penalties";
@@ -123,7 +124,7 @@ export default function PenaltiesPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Jarima topilmadi"}</td>
+                  <td colSpan={11} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Jarima topilmadi"}</td>
                 </tr>
               )}
             </tbody>

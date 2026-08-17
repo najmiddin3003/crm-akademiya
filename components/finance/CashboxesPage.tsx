@@ -7,6 +7,7 @@ import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { GROUP_TEACHERS } from "@/constants/groups";
 import { STUDENTS_LIST } from "@/constants/studentsList";
 import CashboxDrawer from "./CashboxDrawer";
@@ -508,7 +509,7 @@ export default function CashboxesPage() {
             );
           })}
           {filteredList.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-8">{loading ? "Yuklanmoqda…" : "Kassa topilmadi"}</div>
+            <div className="text-center text-sm text-muted-foreground py-8">{loading ? <SpinnerBlock size={22} /> : "Kassa topilmadi"}</div>
           )}
         </div>
       </aside>

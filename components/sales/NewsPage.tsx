@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Search, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { NewsItem } from "@/lib/news";
 
@@ -203,7 +204,7 @@ export default function NewsPage() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Yangilik topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Yangilik topilmadi"}
                   </td>
                 </tr>
               )}

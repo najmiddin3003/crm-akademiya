@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import MonthPicker from "@/components/ui/MonthPicker";
 import type { Group } from "@/lib/groups";
@@ -214,7 +215,7 @@ export default function AddSeasonalAssessmentPage() {
                 {(students === null || students.length === 0) && (
                   <tr>
                     <td colSpan={4} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                      {!groupId ? "Avval oy, kurs va guruhni tanlang" : students === null ? "Yuklanmoqda…" : "Bu guruhda o'quvchi yo'q"}
+                      {!groupId ? "Avval oy, kurs va guruhni tanlang" : students === null ? <SpinnerBlock size={22} /> : "Bu guruhda o'quvchi yo'q"}
                     </td>
                   </tr>
                 )}

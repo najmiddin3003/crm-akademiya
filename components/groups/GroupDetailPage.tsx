@@ -11,6 +11,7 @@ import {
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import AddStudentModal from "./AddStudentModal";
 import AddTaskModal from "./AddTaskModal";
 import AttendanceTab from "./AttendanceTab";
@@ -140,7 +141,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
   }, [tasks, dateRange]);
 
   if (loading) {
-    return <div className="container mx-auto max-w-[1900px] p-4 md:p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="container mx-auto max-w-[1900px] p-4 md:p-5 text-sm text-muted-foreground"><SpinnerBlock /></div>;
   }
   if (!group) {
     return (
@@ -364,7 +365,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                         </tr>
                       ))}
                       {slice.length === 0 && (
-                        <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">{membersLoading ? "Yuklanmoqda…" : "Guruhga o'quvchi qo'shilmagan"}</td></tr>
+                        <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">{membersLoading ? <SpinnerBlock size={22} /> : "Guruhga o'quvchi qo'shilmagan"}</td></tr>
                       )}
                     </tbody>
                   </table>

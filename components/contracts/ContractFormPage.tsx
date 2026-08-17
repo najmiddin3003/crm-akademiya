@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Copy } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import RichTextEditor from "@/components/ui/RichTextEditor";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { CONTRACT_TYPES, CONTRACT_FIELDS } from "@/constants/contracts";
 import type { Contract } from "@/lib/contracts";
 import type { RichTextEditorField } from "@/components/ui/RichTextEditor";
@@ -86,7 +87,7 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
   }
 
   if (contractId != null && !loaded) {
-    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5"><SpinnerBlock /></div>;
   }
   if (notFound) {
     return (

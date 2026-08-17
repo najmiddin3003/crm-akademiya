@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Button from "@/components/ui/Button";
 import PhoneField, { formatPhoneDigits } from "@/components/auth/PhoneField";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import EmployeeEditModal from "@/components/employees/EmployeeEditModal";
 
 interface EmployeeRow {
@@ -259,7 +260,7 @@ export default function EmployeesPage() {
           Xodimlar ro&apos;yxati {rows.length > 0 && <span className="text-muted-foreground">({rows.length})</span>}
         </div>
         {loading ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">Yuklanmoqda...</div>
+          <div className="px-4 py-8"><SpinnerBlock /></div>
         ) : loadError ? (
           <div className="px-4 py-8 text-center text-sm text-red-500">{loadError}</div>
         ) : rows.length === 0 ? (

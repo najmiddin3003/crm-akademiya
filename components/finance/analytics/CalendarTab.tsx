@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, BarChart3, LayoutGrid } from "lucide-react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { Transaction } from "@/lib/transactions";
 
 const WEEKDAYS = ["Dush", "Sesh", "Chor", "Pay", "Jum", "Shan", "Yak"];
@@ -89,7 +90,7 @@ export default function CalendarTab({ transactions, loading }: { transactions: T
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">Yuklanmoqda…</div>
+        <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>
       ) : view === "grid" ? (
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
           <div className="grid grid-cols-7 border-b border-border bg-secondary/40">

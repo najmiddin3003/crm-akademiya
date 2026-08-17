@@ -16,6 +16,7 @@ import type { LucideIcon } from "lucide-react";
 import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
 import { computeScheduleKpis } from "@/lib/scheduleStats";
 import Button from "@/components/ui/Button";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
 import { GROUP_COURSES, GROUP_DAYS, GROUP_ROOMS } from "@/constants/groups";
@@ -288,7 +289,7 @@ export default function GroupSchedulePage() {
 
       {/* Jadval */}
       {loading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Yuklanmoqda…</div>
+        <div className="py-16 text-center text-sm text-muted-foreground"><SpinnerBlock /></div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground">
           {SCHEDULE_DAY_LONG[SCHEDULE_DAY_ORDER.indexOf(day)]} kuni uchun dars topilmadi.

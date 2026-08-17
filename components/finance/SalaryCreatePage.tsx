@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Wallet } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { EmployeePayroll } from "@/lib/salary";
 
 // Moliya → Oylik chiqarish → xodim tanlash (/finance-payroll/create,
@@ -147,7 +148,7 @@ export default function SalaryCreatePage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Xodim topilmadi"}</td>
+                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Xodim topilmadi"}</td>
                 </tr>
               )}
             </tbody>

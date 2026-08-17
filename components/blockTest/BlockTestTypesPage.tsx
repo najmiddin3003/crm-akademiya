@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import BlockTestTypeModal from "./BlockTestTypeModal";
 import { BLOCK_TEST_KINDS } from "@/constants/blockTest";
@@ -204,7 +205,7 @@ export default function BlockTestTypesPage() {
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Yuklanmoqda…" : "Ma'lumotlar topilmadi"}</td>
+                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Ma'lumotlar topilmadi"}</td>
                 </tr>
               )}
             </tbody>

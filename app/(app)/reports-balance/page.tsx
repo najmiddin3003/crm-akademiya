@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 
 // Hisobotlar → Balans (href /reports-balance). Ma'lumot /api/reports/balance
 // dan — xodimlar bo'yicha Bonus/Jarima/Avans jamlanmasi va shundan kelib
@@ -88,7 +89,7 @@ export default function Page() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Ma'lumot topilmadi"}
+                    {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
               )}

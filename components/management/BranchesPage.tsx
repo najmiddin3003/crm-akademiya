@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { ManagementBranch } from "@/lib/managementBranches";
 
@@ -139,7 +140,7 @@ export default function BranchesPage() {
         ))}
         {branches.length === 0 && (
           <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-            {loading ? "Yuklanmoqda…" : "Filial topilmadi"}
+            {loading ? <SpinnerBlock size={22} /> : "Filial topilmadi"}
           </div>
         )}
       </div>

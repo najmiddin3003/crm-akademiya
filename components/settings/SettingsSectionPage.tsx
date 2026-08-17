@@ -12,6 +12,7 @@ import PublicOfertaTab from "./PublicOfertaTab";
 import FieldSettingsTab from "./FieldSettingsTab";
 import AutoSmsTab from "./AutoSmsTab";
 import BotNotesTab from "./BotNotesTab";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LEAVE_REASON_TYPES } from "@/lib/settingsLists";
 import {
   USER_FILTER_SETTINGS_GROUPS,
@@ -258,7 +259,7 @@ function NotBuilt({ label }: { label: string }) {
 
 export default function SettingsSectionPage({ sectionKey }: { sectionKey: string }) {
   return (
-    <Suspense fallback={<div className="p-5 text-sm text-muted-foreground">Yuklanmoqda…</div>}>
+    <Suspense fallback={<div className="p-5"><SpinnerBlock /></div>}>
       <SettingsShell sectionKey={sectionKey}>
         {(tab) => {
           const built = BUILT[`${sectionKey}:${tab}`];
