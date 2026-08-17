@@ -572,3 +572,28 @@ viewport'ini kichraytirib bo'lmadi (o'lchash nosozligi), shuning uchun chekma
 menyu DOM darajasida tekshirildi (barcha 8 boshqaruv joyida) va mavzu do'koni
 brauzerda sinaldi (klass + localStorage + tugma sarlavhasi almashadi).
 
+
+## Tug'ilgan kunlar sahifasi (2026-08-16)
+
+Navbardagi "Tug'ilgan kunlar" tugmasi `/birthdays` ga havola qilardi, lekin
+sahifa yo'q edi. Referens: `/hr/birthdays?type=monthly&month=N`.
+
+Qurildi — `components/birthdays/BirthdaysPage.tsx` + `lib/birthdays.ts`:
+
+- Filtr: `Hammasi` / `O'quvchilar` / `Xodimlar`
+- Ko'rinish: **Oylik** (dushanbadan boshlanadigan kalendar to'ri; har katakda
+  kun raqami va 3 tagacha ism, qolgani `+N Ko'proq`) va **Yillik** (12 oy
+  kartasi, bo'shida `Ma'lumot yo'q`)
+- Yil va oy tanlagichlari
+- Oy/kun nomlari navbardagi tilga qarab o'zgaradi (`lib/i18n.ts`)
+
+**Ma'lumot:** o'quvchilar `createInitialOrders()` dan, xodimlar
+`EMPLOYEES_DATA` dan olinadi. Ikkala to'plamda ham tug'ilgan sana maydoni
+yo'q, shuning uchun sana `id` dan DETERMINISTIK hisoblanadi (loyihadagi
+odat). Haqiqiy maydon paydo bo'lsa faqat `birthOf()` almashtiriladi.
+29-fevral chetlab o'tiladi — sana har yili takrorlanishi kerak.
+
+`lib/i18n.ts` ga `WEEKDAYS_FULL` qo'shildi (dushanbadan boshlanadi — mavjud
+`WEEKDAYS_SHORT` esa yakshanbadan boshlanadi va sana tanlagichlarda
+ishlatiladi, ikkalasini aralashtirmang). Shu bilan birga oy imlosi
+referensga moslandi: `Sentabr` -> `Sentyabr`, `Oktabr` -> `Oktyabr`.
