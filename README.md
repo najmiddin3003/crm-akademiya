@@ -622,3 +622,36 @@ qoidalari) va `app/globals.css` dagi `.bd-*` klasslariga ko'chirildi:
 Tailwind utilitasi emas, alohida klass — aniq piksel va `:hover` kerak
 bo'lgani uchun (loyihadagi odat). Xodim chipi sariq rangda: referensda
 hammasi ko'k, bizda esa o'quvchi va xodim bitta kalendarga birlashtirilgan.
+
+## Tungi rejim — tekshiruv (2026-08-16)
+
+Tug'ilgan kunlar kalendari dastlab faqat yorug' rejimga moslangan edi
+(`#f0f2f2` katak, oq chip, `#f2fbff`). Tuzatildi:
+
+- `.bd-chip` foni `hsl(var(--card))` ga o'tkazildi (ikkala rejimda to'g'ri)
+- `.dark .bd-cell` -> `--card-dim`, `.dark .bd-more` -> `--primary / .16`,
+  `.dark .bd-chip.is-employee` -> ochiqroq sariq
+
+Tekshirilgani (tungi rejimda o'lchandi): katak `rgb(18,21,28)`, chip
+`rgb(27,30,40)` fonda `rgb(71,142,255)` matn, `+N Ko'proq`
+`rgba(71,142,255,.16)`.
+
+### Butun loyiha bo'yicha audit
+
+| Tekshiruv | Natija |
+|---|---|
+| Qattiq quyuq matn klasslari (`text-black`, `text-slate-900` …) | **yo'q** |
+| `bg-white` (15 fayl) | hammasi toggle tugmachasi yoki rangli fon ustidagi `hover:bg-white/15` — to'g'ri |
+| `globals.css` dagi qattiq oq fon (9 ta) | 8 tasi toggle tugmachasi, 1 tasi sertifikat shabloni (qog'oz) — to'g'ri |
+| Inline hex ranglar (5 ta) | aksent ranglar, ikkala rejimda o'qiladi |
+| Yuzalar (`kpi-card`, `shell-header`, `bg-card`, `bg-secondary`) | tokenlardan, tungi rejimda to'g'ri qorayadi |
+
+**Qolgan yagona nuqson:** holat belgilari (`bg-emerald-100 text-emerald-600`
+kabi, ~167 joyda) tungi rejimda ham ochiq pastel bo'lib qoladi. O'qiladi,
+lekin quyuq fonda yorqin ko'rinadi. Tuzatish uchun `bg-<rang>-500/15` +
+`text-<rang>-400` ko'rinishiga o'tkazish kerak.
+
+**Diqqat:** `globals.css` o'zgargach dev serverni qayta ishga tushirish shart
+(`.next` tozalab) — aks holda brauzer eski CSS'ni ko'rsatadi. Bundan tashqari
+eski DOM tugunlari yangi CSS bilan yangilanmay qolishi mumkin; o'lchashdan
+oldin sahifani toza yuklang.

@@ -9951,6 +9951,7 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
   border-radius: 8px;
   padding: 8px;
   background-color: #f0f2f2;
+  /* Dark: kartadan bir pog'ona quyuqroq yuza. */
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -9983,7 +9984,7 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
 
 .bd-chip {
   display: block;
-  background-color: #fff;
+  background-color: hsl(var(--card));
   color: hsl(var(--primary));
   padding: 4px 8px;
   border-radius: 4px;
@@ -10009,3 +10010,11 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
   border-radius: 4px;
   align-self: flex-start;
 }
+
+/* Tug'ilgan kunlar — tungi rejim. Yuzalar tokenlardan, qattiq yozilgan
+   ochiq ranglar (#f0f2f2, #f2fbff) faqat yorug' rejimga mos edi. */
+.dark .bd-cell { background-color: hsl(var(--card-dim)); }
+.dark .bd-cell.is-blank { background-color: transparent; }
+.dark .bd-more { background-color: hsl(var(--primary) / 0.16); }
+.dark .bd-chip.is-employee { color: #fbbf24; }
+.dark .bd-chip.is-employee:hover { background-color: #b45309; color: #fff; }
