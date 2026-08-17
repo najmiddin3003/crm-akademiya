@@ -10086,3 +10086,26 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 2s; }
 }
+
+/* ---------- Sidebarni yig'adigan tugma ----------
+   Referensda u header ichida emas, SIDEBARNING O'NG CHEGARASIDA turadi —
+   markazi aynan chegara chizig'ida (o'lchangan: tugma markazi x=174,
+   chegara x=173), header bilan sidebar tutashgan joyda.
+   28x28, radius 8, z-index 99999 — hammasi referensdan. */
+#sidebar-toggle {
+  position: fixed;
+  top: 42px;
+  left: calc(var(--shell-sidebar-w) - 14px);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--shell-line);
+  background-color: var(--shell-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  z-index: 99999;
+  transition: left .28s cubic-bezier(.4, 0, .2, 1), background-color .15s;
+}
+#sidebar-toggle:hover { background-color: var(--shell-hover); }
+/* Sidebar yig'ilganda tugma chap chekkaga suriladi. */
+body.sidebar-hidden #sidebar-toggle { left: 6px; }

@@ -130,6 +130,8 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         <defs>
           <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></symbol>
           <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></symbol>
+          {/* Filial tanlagichdagi bino ikonkasi — referensda ham shunday */}
+          <symbol id="i-landmark" viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22" /><line x1="6" y1="18" x2="6" y2="11" /><line x1="10" y1="18" x2="10" y2="11" /><line x1="14" y1="18" x2="14" y2="11" /><line x1="18" y1="18" x2="18" y2="11" /><polygon points="12 2 20 7 4 7" /></symbol>
           <symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></symbol>
           <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></symbol>
           <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></symbol>
@@ -183,6 +185,13 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
         </button>
 
         <div className="nav-field shell-field-sm relative shrink-0" style={{ width: 200 }}>
+          {/* Referensdagi kabi chapda bino ikonkasi */}
+          <svg
+            className="icon icon-sm pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--shell-blue)" }}
+          >
+            <use href="#i-landmark" />
+          </svg>
           <select
             value={selectedBranch}
             onChange={(e) => {
@@ -192,7 +201,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
               }
               setBranch(e.target.value);
             }}
-            className="h-full w-full appearance-none bg-transparent pl-2 pr-7 text-sm focus:outline-none"
+            className="h-full w-full appearance-none bg-transparent pl-9 pr-7 text-sm focus:outline-none"
           >
             {branches.length === 0 && <option value="">Filial…</option>}
             {branches.map((b) => (

@@ -695,3 +695,20 @@ matn satri kerak:
 - `EmployeeEditModal.tsx` — `value={passwordLoading ? "Yuklanmoqda..." : …}`
   (input qiymati)
 - `AddStudentModal.tsx` — `<option>{loading ? "Yuklanmoqda…" : …}</option>`
+
+## Qobiq (shell) — referens bilan aniqlangan farqlar (2026-08-17)
+
+**Sidebarni yig'adigan tugma.** Bizda u header ichida, logo yonida turardi.
+Referensda esa **sidebarning o'ng chegarasida**, markazi aynan chegara
+chizig'ida. O'lchangan: tugma markazi `x=174`, sidebar chegarasi `x=173`,
+o'lchami `28x28`, `border-radius: 8px`, `position: absolute`,
+`z-index: 99999`.
+
+Bizda `#sidebar-toggle` `globals.css` da `position: fixed` +
+`left: calc(var(--shell-sidebar-w) - 14px)` bilan qo'yildi — markaz `x=173`.
+Sidebar yig'ilganda tugma `left: 6px` ga suriladi (mavjud collapse
+animatsiyasi bilan bir xil `transition` egri chizig'i).
+
+**Filial tanlagich.** Referensda matn oldida bino ikonkasi bor edi, bizda
+yo'q edi. `i-landmark` sprite'ga qo'shildi va select'ning chap paddingi
+`pl-2` -> `pl-9` ga o'zgardi.
