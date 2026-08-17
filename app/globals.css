@@ -10018,3 +10018,54 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
 .dark .bd-more { background-color: hsl(var(--primary) / 0.16); }
 .dark .bd-chip.is-employee { color: #fbbf24; }
 .dark .bd-chip.is-employee:hover { background-color: #b45309; color: #fff; }
+
+/* ============================================================
+   Tungi rejim — holat belgilari (badge) ranglari
+   ============================================================
+   Loyihada holat belgilari Tailwind'ning ochiq tintlaridan yasalgan
+   (masalan `bg-emerald-100 text-emerald-600`). Tungi rejimda ular
+   o'zgarmasdan qolib, quyuq fonda pastel dog' bo'lib ko'rinardi.
+
+   Tailwind'ning `dark:` varianti bu loyihada generatsiya bo'lmaydi
+   (sinab ko'rilgan — `dark:bg-*` hech qanday qoida bermaydi), shuning
+   uchun tuzatish shu yerda markazlashgan holda yozilgan. `.dark .bg-…`
+   spesifikligi (0,2,0) Tailwind'nikidan (0,1,0) yuqori — ustun keladi.
+
+   Qoida: fon = mos 500 tusning ~16% shaffofi, matn = 400 tus.
+   Matn ranglari alohida (fonsiz) ham ishlatiladi — u holda ham 400 tus
+   quyuq fonda 600/700 dan yaxshiroq o'qiladi. */
+
+/* ---- Fonlar ---- */
+.dark .bg-emerald-50,
+.dark .bg-emerald-100 { background-color: rgb(16 185 129 / 0.16); }
+.dark .bg-blue-50,
+.dark .bg-blue-100    { background-color: rgb(59 130 246 / 0.16); }
+.dark .bg-rose-50,
+.dark .bg-rose-100    { background-color: rgb(244 63 94 / 0.16); }
+.dark .bg-red-50,
+.dark .bg-red-100     { background-color: rgb(239 68 68 / 0.16); }
+.dark .bg-amber-50,
+.dark .bg-amber-100   { background-color: rgb(245 158 11 / 0.16); }
+.dark .bg-violet-100  { background-color: rgb(139 92 246 / 0.16); }
+.dark .bg-purple-50   { background-color: rgb(168 85 247 / 0.16); }
+.dark .bg-slate-100   { background-color: rgb(100 116 139 / 0.16); }
+
+/* ---- Matn ---- */
+.dark .text-emerald-600,
+.dark .text-emerald-700 { color: #34d399; }
+.dark .text-blue-600,
+.dark .text-blue-700    { color: #60a5fa; }
+.dark .text-rose-500,
+.dark .text-rose-600,
+.dark .text-rose-700    { color: #fb7185; }
+.dark .text-red-500,
+.dark .text-red-600     { color: #f87171; }
+.dark .text-amber-600,
+.dark .text-amber-700   { color: #fbbf24; }
+.dark .text-violet-600,
+.dark .text-violet-700  { color: #a78bfa; }
+.dark .text-slate-500,
+.dark .text-slate-600,
+.dark .text-slate-700   { color: #94a3b8; }
+.dark .text-sky-600     { color: #38bdf8; }
+.dark .text-cyan-600    { color: #22d3ee; }

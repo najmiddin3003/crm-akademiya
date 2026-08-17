@@ -646,10 +646,28 @@ Tekshirilgani (tungi rejimda o'lchandi): katak `rgb(18,21,28)`, chip
 | Inline hex ranglar (5 ta) | aksent ranglar, ikkala rejimda o'qiladi |
 | Yuzalar (`kpi-card`, `shell-header`, `bg-card`, `bg-secondary`) | tokenlardan, tungi rejimda to'g'ri qorayadi |
 
-**Qolgan yagona nuqson:** holat belgilari (`bg-emerald-100 text-emerald-600`
-kabi, ~167 joyda) tungi rejimda ham ochiq pastel bo'lib qoladi. O'qiladi,
-lekin quyuq fonda yorqin ko'rinadi. Tuzatish uchun `bg-<rang>-500/15` +
-`text-<rang>-400` ko'rinishiga o'tkazish kerak.
+### ✅ Holat belgilari ham tuzatildi
+
+Belgilar (`bg-emerald-100 text-emerald-600` kabi, ~167 joyda) tungi rejimda
+ochiq pastel bo'lib qolardi. 167 joyni tahrirlash o'rniga `globals.css` ga
+markazlashgan blok yozildi:
+
+- fon → mos **500** tusning ~16% shaffofi
+- matn → **400** tus
+
+Tailwind'ning `dark:` varianti bu loyihada **generatsiya bo'lmaydi** (sinab
+ko'rilgan: `dark:bg-emerald-500/15` hech qanday qoida bermaydi), shuning
+uchun markazlashgan yechim tanlandi. `.dark .bg-…` spesifikligi (0,2,0)
+Tailwind'nikidan (0,1,0) yuqori, shu sabab ustun keladi.
+
+Matn ranglari fonsiz ham ishlatiladi (masalan manfiy balans `text-rose-600`) —
+u holda ham 400 tus quyuq fonda 600/700 dan yaxshiroq o'qiladi.
+
+Tekshirilgani: **yorug' rejim o'zgarmadi** (`bg-emerald-100` hamon
+`rgb(209,250,229)`), tungi rejimda `rgba(16,185,129,.16)` fonda
+`rgb(52,211,153)` matn. Qamrab olingan: emerald, blue, rose, red, amber,
+violet, purple, slate, sky, cyan.
+
 
 **Diqqat:** `globals.css` o'zgargach dev serverni qayta ishga tushirish shart
 (`.next` tozalab) — aks holda brauzer eski CSS'ni ko'rsatadi. Bundan tashqari
