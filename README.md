@@ -712,3 +712,17 @@ animatsiyasi bilan bir xil `transition` egri chizig'i).
 **Filial tanlagich.** Referensda matn oldida bino ikonkasi bor edi, bizda
 yo'q edi. `i-landmark` sprite'ga qo'shildi va select'ning chap paddingi
 `pl-2` -> `pl-9` ga o'zgardi.
+
+### Kalendar tartibi — skrinshot bilan solishtirilgan (2026-08-18)
+
+Chrome kengaytmasiga sayt ruxsati berilgach skrinshot ishlay boshladi va
+referens bilan yonma-yon solishtirildi. Uchta farq topilib tuzatildi:
+
+| | Referens | Bizda edi |
+|---|---|---|
+| Boshqaruv tartibi | yil → oy → `Hammasi/O'quvchilar/Xodimlar` → `Oylik/Yillik` | teskari: tablar oldin, sana keyin |
+| Hafta sarlavhalari | alohida ramkali blok (radius 10, padding 20, karta foni) | oddiy matn, umumiy karta ichida |
+| `+N Ko'proq` | katakning to'liq kengligi, matn markazda | kontentga yopishgan kichik chip |
+
+Kun kataklari referensda umumiy kartasiz — to'g'ridan-to'g'ri sahifa fonida
+turadi (har birining o'z ramkasi bor). Bizda ham shunday qilindi.

@@ -10008,7 +10008,10 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
   background-color: #f2fbff;
   padding: 4px 8px;
   border-radius: 4px;
-  align-self: flex-start;
+  /* Referensda katakning butun kengligini egallaydi, matn markazda. */
+  width: 100%;
+  text-align: center;
+  margin-top: auto;
 }
 
 /* Tug'ilgan kunlar — tungi rejim. Yuzalar tokenlardan, qattiq yozilgan

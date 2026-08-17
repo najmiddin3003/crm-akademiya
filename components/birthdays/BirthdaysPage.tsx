@@ -75,20 +75,8 @@ export default function BirthdaysPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-[18px] font-semibold">Tug&apos;ilgan kunlar</h1>
 
+        {/* Tartib referensdagidek: yil → oy → kim → ko'rinish */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">
-            {KIND_TABS.map((t) => (
-              <button key={t.key} onClick={() => setKind(t.key)} className={tabCls(kind === t.key)}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">
-            <button onClick={() => setView("monthly")} className={tabCls(view === "monthly")}>Oylik</button>
-            <button onClick={() => setView("yearly")} className={tabCls(view === "yearly")}>Yillik</button>
-          </div>
-
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
@@ -106,12 +94,27 @@ export default function BirthdaysPage() {
               {MONTHS[lang].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
           )}
+
+          <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">
+            {KIND_TABS.map((t) => (
+              <button key={t.key} onClick={() => setKind(t.key)} className={tabCls(kind === t.key)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">
+            <button onClick={() => setView("monthly")} className={tabCls(view === "monthly")}>Oylik</button>
+            <button onClick={() => setView("yearly")} className={tabCls(view === "yearly")}>Yillik</button>
+          </div>
         </div>
       </div>
 
+      {/* Referensda hafta sarlavhalari ALOHIDA ramkali blokda, kun kataklari
+          esa to'g'ridan-to'g'ri sahifa fonida (umumiy karta yo'q). */}
       {view === "monthly" ? (
-        <div className="rounded-2xl bg-card border border-border p-3">
-          <div className="bd-week mb-2">
+        <div className="space-y-3">
+          <div className="bd-week rounded-[10px] bg-card border border-border p-5">
             {WEEKDAYS_FULL[lang].map((d) => (
               <div key={d} className="bd-head truncate">{d}</div>
             ))}
