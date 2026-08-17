@@ -46,6 +46,7 @@ const tabCls = (active: boolean) =>
 export default function BirthdaysPage() {
   const [lang] = useLang();
   const now = new Date();
+  const today = now;
 
   const [kind, setKind] = useState<PersonKind | "all">("all");
   const [view, setView] = useState<"monthly" | "yearly">("monthly");
@@ -110,40 +111,36 @@ export default function BirthdaysPage() {
 
       {view === "monthly" ? (
         <div className="rounded-2xl bg-card border border-border p-3">
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="bd-week mb-2">
             {WEEKDAYS_FULL[lang].map((d) => (
-              <div key={d} className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground text-center truncate">
-                {d}
-              </div>
+              <div key={d} className="bd-head truncate">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-2">
+          <div className="bd-week">
             {cells.map((day, i) => {
-              if (day === null) return <div key={`b${i}`} className="min-h-[104px] rounded-xl bg-secondary/30" />;
+              if (day === null) return <div key={`b${i}`} className="bd-cell is-blank" />;
               const list = dayMap.get(day) ?? [];
               const shown = list.slice(0, MAX_PER_DAY);
               const rest = list.length - shown.length;
+              const isToday =
+                day === today.getDate() && month === today.getMonth() + 1 && year === today.getFullYear();
               return (
                 <div
                   key={day}
                   onClick={() => list.length > 0 && setOpenDay(day)}
-                  className={`min-h-[104px] rounded-xl border border-border p-2 flex flex-col gap-1 ${
-                    list.length ? "cursor-pointer hover:border-primary/50 hover:bg-secondary/30 transition-colors" : ""
-                  }`}
+                  className={`bd-cell${list.length ? " is-clickable" : ""}`}
                 >
-                  <div className="text-[12px] font-semibold text-muted-foreground">{day}</div>
+                  <span className={`bd-day${isToday ? " is-today" : ""}`}>{day}</span>
                   {shown.map((p) => (
-                    <div
+                    <span
                       key={`${p.kind}-${p.id}`}
                       title={`${p.name} — ${p.kind === "employee" ? "Xodim" : "O'quvchi"}`}
-                      className={`text-[11px] leading-tight truncate ${p.kind === "employee" ? "text-amber-600" : "text-primary"}`}
+                      className={`bd-chip${p.kind === "employee" ? " is-employee" : ""}`}
                     >
                       {p.name}
-                    </div>
+                    </span>
                   ))}
-                  {rest > 0 && (
-                    <span className="text-[11px] text-muted-foreground">+{rest} Ko&apos;proq</span>
-                  )}
+                  {rest > 0 && <span className="bd-more">{`+${rest} Ko'proq`}</span>}
                 </div>
               );
             })}

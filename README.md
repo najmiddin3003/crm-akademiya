@@ -605,3 +605,20 @@ qolgani `+N Ko'proq` bo'lib ko'rsatiladi — modalda esa hammasi chiqadi.
 Kartaga bosilsa profilga o'tadi: o'quvchi `/student-edit/[id]`, xodim
 `/management-xodimlar/[id]`. Modal `Orqaga`, tashqariga bosish va Escape
 bilan yopiladi.
+
+Dizayn referensdan o'lchab olindi (`getComputedStyle` + styled-components
+qoidalari) va `app/globals.css` dagi `.bd-*` klasslariga ko'chirildi:
+
+| Element | Qiymat |
+|---|---|
+| Katak | 140px qat'iy balandlik, fon `#F0F2F2`, ramka `1px` border rangi, radius 8px, padding 8px |
+| Katak hover | ramka `--primary` + `0 2px 4px rgba(0,0,0,.1)` soya |
+| Ism chipi | oq fon, matn `--primary`, 12px/500, padding `4px 8px`, radius 4px, `text-overflow: ellipsis` |
+| Ism hover | fon `--primary`, matn oq |
+| Kun raqami | 28×28 doira, 14px/600; bugungi kun `--primary` fonda oq matn |
+| `+N Ko'proq` | 11px/600, fon `#F2FBFF`, radius 4px |
+| Hafta sarlavhasi | 14px/600, markazda, katta harfsiz |
+
+Tailwind utilitasi emas, alohida klass — aniq piksel va `:hover` kerak
+bo'lgani uchun (loyihadagi odat). Xodim chipi sariq rangda: referensda
+hammasi ko'k, bizda esa o'quvchi va xodim bitta kalendarga birlashtirilgan.

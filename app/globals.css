@@ -9926,3 +9926,86 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
 @media (min-width:1024px){.lg\:flex-row{flex-direction:row}.lg\:w-72{width:18rem}.lg\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.lg\:grid-cols-\[1fr_360px\]{grid-template-columns:1fr 360px}}
 
 @media (min-width:640px){.sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* ---------- Tug'ilgan kunlar kalendari ----------
+   O'lchamlar referensdan (akademiya.edutizim.uz/hr/birthdays) getComputedStyle
+   va styled-components qoidalari orqali olingan. Tailwind utilitalari emas,
+   chunki bu yerda aniq piksel va :hover kerak. */
+.bd-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.bd-head {
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  text-align: center;
+}
+.bd-cell {
+  height: 140px;
+  min-height: 140px;
+  max-height: 140px;
+  box-sizing: border-box;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 8px;
+  background-color: #f0f2f2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+.bd-cell.is-clickable { cursor: pointer; }
+.bd-cell.is-clickable:hover {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+/* Oy boshidagi bo'sh kataklar — ramkasiz, faqat joy egallaydi. */
+.bd-cell.is-blank { background-color: transparent; border-color: transparent; }
+
+.bd-day {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  flex-shrink: 0;
+}
+.bd-day.is-today {
+  background-color: hsl(var(--primary));
+  color: #fff;
+}
+
+.bd-chip {
+  display: block;
+  background-color: #fff;
+  color: hsl(var(--primary));
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color .12s, color .12s;
+}
+.bd-chip:hover { background-color: hsl(var(--primary)); color: #fff; }
+/* Xodimni o'quvchidan ajratish uchun — referensda hammasi ko'k, bizda
+   ikki manba birlashgani uchun xodim boshqa rangda. */
+.bd-chip.is-employee { color: #b45309; }
+.bd-chip.is-employee:hover { background-color: #b45309; color: #fff; }
+
+.bd-more {
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  background-color: #f2fbff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
