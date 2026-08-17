@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
 
 // Sidebar (chap navigatsiya) — barcha matn/havolalar constants/sidebar.js dagi
@@ -126,6 +126,29 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
   // tayanardi, shu sabab boshqa sahifada ham bir xil element yorug' bo'lib
   // qolardi).
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Navbar'dagi profil menyusi `hidden md:flex` blokida — 768px dan pastda
+  // butunlay yashirinadi. Shu sabab telefondan chiqish/qulflash imkoni
+  // yo'q edi; mobil chekma menyuning pastiga o'sha amallar qo'yildi.
+  // Mantiq Navbar.onProfileAction bilan bir xil.
+  const onProfileAction = async (kind: "devices" | "lock" | "logout") => {
+    onMobileOpenChange(false);
+    if (kind === "devices") {
+      router.push("/settings-devices");
+      return;
+    }
+    if (kind === "lock") {
+      await fetch("/api/auth/lock", { method: "POST" }).catch(() => {});
+      router.replace("/lock");
+      router.refresh();
+      return;
+    }
+    if (!confirm("Tizimdan chiqishni xohlaysizmi?")) return;
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    router.push("/");
+    router.refresh();
+  };
   const isPathActive = useCallback(
     (href?: string) => !!href && (pathname === href || pathname.startsWith(`${href}/`)),
     [pathname],
@@ -450,6 +473,32 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
               ))}
             </ul>
           </nav>
+
+          {/* Profil amallari — desktopda bular Navbar'ning o'ng blokida turadi,
+              u esa mobilda yashirin. */}
+          <div className="border-t border-border px-3 py-3 space-y-0.5">
+            <button
+              onClick={() => void onProfileAction("devices")}
+              className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
+            >
+              <svg className="icon icon-sm text-muted-foreground"><use href="#i-monitor" /></svg>
+              <span>Aktiv qurilmalar</span>
+            </button>
+            <button
+              onClick={() => void onProfileAction("lock")}
+              className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
+            >
+              <svg className="icon icon-sm text-muted-foreground"><use href="#i-lock" /></svg>
+              <span>Qulflash</span>
+            </button>
+            <button
+              onClick={() => void onProfileAction("logout")}
+              className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-rose-600 hover:bg-rose-50 text-left"
+            >
+              <svg className="icon icon-sm"><use href="#i-log-out" /></svg>
+              <span>Chiqish</span>
+            </button>
+          </div>
         </aside>
       </div>
     </>

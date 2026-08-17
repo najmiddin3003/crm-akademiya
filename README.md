@@ -412,16 +412,38 @@ Sabab — fayl 345KB va Turbopack uning keshini to'g'ri yangilamaydi. Bitta sess
 6 marta shunday qilishga to'g'ri keldi. CSS "ishlamayotgandek" tuyulsa — birinchi
 navbatda shuni qiling.
 
-## Tailwind'ning ba'zi klasslari ishlamaydi
+## Tailwind responsive prefikslari — qachon ishlaydi, qachon yo'q
 
-`app/globals.css` ning 1-qatorida `@import "tailwindcss"` (v4, JIT ishlaydi), lekin
-undan **keyin** Tailwind v3.4.6 ning kompilyatsiya qilingan katta bloki turibdi.
-Bir xil spesifiklikda keyingi qoida ustun kelgani uchun eski blok v4 utility'sini
-bosib ketadi.
+**Ular O'LIK EMAS.** 2026-08-16 da brauzerda o'lchab tekshirildi:
 
-Shu sabab ishlamagan klasslar: `hidden sm:block`, `lg:grid-cols-[380px_1fr]`,
-`md:items-stretch`. Shell va ramka qismlari o'z klasslariga o'tkazilgan — aniq
-piksel kerak bo'lsa Tailwind'ga emas, `globals.css`dagi klassga tayaning.
+| Sinov | 1280px | 375px |
+|---|---|---|
+| `hidden md:flex` | `flex` | `none` |
+| `p-4 md:p-5` | `20px` | `16px` |
+| `grid-cols-1 md:grid-cols-3` | 3 ustun | 1 ustun |
+
+Breakpointlar standart: `sm`=640px, `md`=768px, `lg`=1024px.
+
+**Haqiqiy cheklov tor:** `app/globals.css` ning 1-qatorida `@import "tailwindcss"`
+(v4 JIT), undan **keyin** esa Tailwind v3.4.6 ning kompilyatsiya qilingan bloki va
+loyihaning maxsus klasslari (`.nav-btn`, `.table-frame`, `.page-frame` …) turibdi.
+Bir xil spesifiklikda **keyingi** qoida ustun keladi, media so'rov esa spesifiklikni
+oshirmaydi. Shuning uchun:
+
+- `hidden md:flex` — **ishlaydi** (ikkalasi ham v4 utility, tartib to'g'ri)
+- lekin `.nav-btn md:flex` kabi aralashma — **ishlamaydi**, chunki `.nav-btn` ning
+  o'z `display` qiymati keyinroq turadi va utility'ni bosib ketadi
+
+Shu sabab shell qismida maxsus klasslar yaratilgan: `.shell-only-mobile`,
+`.shell-from-sm`, `.shell-from-lg`. `globals.css` dagi izoh buni aniq aytadi:
+*"Bular `.nav-btn` / `.nav-field` dan KEYIN turishi shart"*.
+
+**Amaliy qoida:** oddiy elementlarda `md:`/`lg:` bemalol ishlating. Agar element
+allaqachon `globals.css` dagi maxsus klassga ega bo'lsa (`.nav-btn`, `.table-frame`
+va h.k.) va siz o'sha klass belgilaydigan xususiyatni (`display`, `padding`,
+`grid-template-columns`) o'zgartirmoqchi bo'lsangiz — utility emas, o'sha klassning
+yoniga media so'rov yozing.
+
 
 ## Lightning CSS bo'sh qoidani o'chiradi
 
@@ -515,3 +537,23 @@ yozilganda son bilan matn orasidagi **probel yo'qoladi** (`x 2000o'quvchi`,
 ## Qurilmaydigan
 
 **Gamifikatsiya** (`gamification:general`, `gamification:auto-coin`) — referensda ikkala tab ham butunlay bo'sh render bo'ladi. Obuna sahifasida «Gamifikatsiya to'lovi» alohida qator sifatida turibdi: bu **pullik qo'shimcha modul** va referens akkauntda yoqilmagan. Yoqilmaguncha xaritalab ham, qurib ham bo'lmaydi.
+
+## Mobil ko'rinish (2026-08-16)
+
+Tekshirilgani: breakpointlar brauzerda o'lchandi (yuqoridagi jadval), login
+sahifasi 375px'da gorizontal toshishsiz, jadvallar `.table-scroll`
+(`overflow: auto`) ichida siljiydi, desktop sidebar 1024px'dan pastda
+yashirinib o'rniga chekma menyu chiqadi.
+
+**Tuzatilgan kamchilik:** Navbar'ning o'ng bloki `hidden md:flex` bilan
+o'ralgan — 768px'dan pastda til tanlash, yangiliklar, bildirishnomalar,
+mavzu va **profil menyusi** butunlay yashirinardi. Mobil chekma menyuda esa
+faqat navigatsiya bor edi, ya'ni **telefondan tizimdan chiqib bo'lmasdi**.
+`components/shared/Sidebar.tsx` dagi mobil chekma menyu pastiga profil
+amallari qo'shildi (`Aktiv qurilmalar` / `Qulflash` / `Chiqish`) — mantiq
+`Navbar.onProfileAction` bilan bir xil.
+
+**Hali tekshirilmagan:** ilova ichidagi sahifalarning 375px'dagi ko'rinishi —
+ular login talab qiladi, sessiyali brauzer esa o'sha paytda uzilgan edi.
+Til/bildirishnoma/mavzu boshqaruvlari ham mobilda hamon yo'q (faqat profil
+amallari qo'shildi).
