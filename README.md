@@ -726,3 +726,56 @@ referens bilan yonma-yon solishtirildi. Uchta farq topilib tuzatildi:
 
 Kun kataklari referensda umumiy kartasiz — to'g'ridan-to'g'ri sahifa fonida
 turadi (har birining o'z ramkasi bor). Bizda ham shunday qilindi.
+
+---
+
+# Dizayn solishtiruvi — qayerda to'xtadik (2026-08-18)
+
+## Bajarilgani
+
+Referensning **hamma bo'limi** sahifama-sahifa solishtirilgan (ustunlar,
+filtrlar, tugmalar) — natijasi yuqoridagi "Solishtirilgan bo'limlar"
+bo'limida. Undan keyin **dizayn/piksel** darajasidagi solishtiruv boshlandi:
+
+| Bo'lim | Holat |
+|---|---|
+| Tug'ilgan kunlar | ✅ tugadi — kalendar dizayni, modal, tungi rejim, tartib |
+| Qobiq (navbar/sidebar) | ✅ sidebar tugmasi chegaraga ko'chirildi, filial select'iga ikonka |
+| Topshiriqlar | ✅ ustunlar kartasizga o'tkazildi (rangli chiziq tepada) |
+| Lidlar va qolganlari | ⏳ **keyingi safar shu yerdan** |
+
+Yo'l-yo'lakay tuzatilgan umumiy nuqsonlar:
+- yorug' rejim chaqnashi (`app/layout.tsx` da bloklovchi skript)
+- butun ilovaga aylanadigan yuklanish indikatori (`loading.tsx` + 63 sahifa)
+- tungi rejimda holat belgilari ranglari (~167 joy, markazlashgan yechim)
+
+## Keyingi safar uchun
+
+**Qolgan bo'limlar:** Lidlar, Guruh, O'quvchilar, O'quv bo'limi, Blok test,
+Moliya, Nazorat, Boshqaruv, Sotuv va marketing, Hisobotlar, Sozlamalar.
+
+**Ochiq savol:** Topshiriqlar sahifasida bizda referensda YO'Q qo'shimchalar
+bor — 5 ta KPI kartasi, `Shablon` tugmasi, uchinchi ustun (`Keyinchalik
+keladigan`) va `Vaqt/Kanban/Kalendar` almashtirgichi. Hozircha qoldirildi
+(ishlaydi, zarar qilmaydi). Referensga qat'iy moslik kerak bo'lsa —
+olib tashlanadi.
+
+## ⚠️ Brauzer bilan ishlash — muhim eslatma
+
+Skrinshot **faqat oldinda turgan (active) tabda** ishlaydi. Ikki saytni
+navbatma-navbat ko'rganda biri "hidden" bo'lib qoladi va:
+- `computer{action:"screenshot"}` -> `Failed to deserialize params.clip.scale`
+- o'lchamlar `0x0`, `visibilityState: "hidden"`
+
+Bundan tashqari bu sessiyada renderer tez-tez muzladi (45s CDP timeout) va
+tab ID'lari har necha daqiqada almashdi — `tabs_context_mcp` ni har safar
+qayta chaqirish kerak.
+
+**Eng samarali usul bo'lgani:** foydalanuvchi skrinshot yuboradi, men
+o'zimizni brauzerdan/koddan o'lchab solishtiraman. Filial select, sidebar
+tugmasi va kalendar farqlari aynan shu yo'l bilan tez topildi.
+
+Yana bir tuzoq: `globals.css` o'zgargach dev serverni `.next` tozalab qayta
+ishga tushirish shart, VA sahifani toza yuklash kerak — eski DOM tugunlari
+yangi CSS bilan yangilanmay qolib, `getComputedStyle` yolg'on qiymat
+qaytarishi mumkin (bu sessiyada bir marta chalg'itgan).
