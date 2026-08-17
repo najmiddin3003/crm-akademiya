@@ -4,6 +4,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
+import { useLang } from "@/components/shared/Language";
+import { useTheme } from "@/components/shared/Theme";
+import { LANGS, NOTIFS } from "@/lib/navbar";
+import type { Lang } from "@/lib/i18n";
 
 // Sidebar (chap navigatsiya) — barcha matn/havolalar constants/sidebar.js dagi
 // SIDEBAR_ITEMS massividan keladi (kod ichida qattiq yozilmagan). Hover
@@ -127,6 +131,13 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
   // qolardi).
   const pathname = usePathname();
   const router = useRouter();
+  // Navbar'ning o'ng bloki 768px dan pastda yashirinadi, shuning uchun til /
+  // bildirishnoma / mavzu boshqaruvlari mobil chekma menyuda takrorlanadi.
+  // Holat umumiy do'konlardan keladi — Navbar bilan doim sinxron.
+  const [lang, setLang] = useLang();
+  const [isDark, toggleTheme] = useTheme();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const unreadCount = NOTIFS.filter((n) => n.unread).length;
 
   // Navbar'dagi profil menyusi `hidden md:flex` blokida — 768px dan pastda
   // butunlay yashirinadi. Shu sabab telefondan chiqish/qulflash imkoni
@@ -473,6 +484,55 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
               ))}
             </ul>
           </nav>
+
+          {/* Til / bildirishnoma / mavzu — desktopda Navbar'ning o'ng blokida. */}
+          <div className="border-t border-border px-3 py-3 space-y-2">
+            <div className="flex items-center gap-1">
+              {(Object.keys(LANGS) as Lang[]).map((code) => (
+                <button
+                  key={code}
+                  onClick={() => setLang(code)}
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-colors ${
+                    lang === code ? "bg-primary text-white" : "text-foreground/70 hover:bg-secondary"
+                  }`}
+                >
+                  <span className="text-sm leading-none">{LANGS[code].flag}</span>
+                  <span>{LANGS[code].short}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setNotifOpen((v) => !v)}
+              className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
+            >
+              <svg className="icon icon-sm text-muted-foreground"><use href="#i-bell" /></svg>
+              <span className="flex-1">Bildirishnomalar</span>
+              {unreadCount > 0 && (
+                <span className="inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <ul className="space-y-1 pb-1">
+                {NOTIFS.map((n, i) => (
+                  <li key={i} className={`rounded-lg px-3 py-2 ${n.unread ? "bg-primary/5" : ""}`}>
+                    <div className="text-[12px] font-medium">{n.title}</div>
+                    <div className="text-[11px] text-muted-foreground">{n.time}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
+            >
+              <svg className="icon icon-sm text-muted-foreground"><use href={isDark ? "#i-sun" : "#i-moon"} /></svg>
+              <span>{isDark ? "Yorug' rejim" : "Tungi rejim"}</span>
+            </button>
+          </div>
 
           {/* Profil amallari — desktopda bular Navbar'ning o'ng blokida turadi,
               u esa mobilda yashirin. */}

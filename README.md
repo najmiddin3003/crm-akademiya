@@ -553,7 +553,22 @@ faqat navigatsiya bor edi, ya'ni **telefondan tizimdan chiqib bo'lmasdi**.
 amallari qo'shildi (`Aktiv qurilmalar` / `Qulflash` / `Chiqish`) — mantiq
 `Navbar.onProfileAction` bilan bir xil.
 
-**Hali tekshirilmagan:** ilova ichidagi sahifalarning 375px'dagi ko'rinishi —
-ular login talab qiladi, sessiyali brauzer esa o'sha paytda uzilgan edi.
-Til/bildirishnoma/mavzu boshqaruvlari ham mobilda hamon yo'q (faqat profil
-amallari qo'shildi).
+**Mobil chekma menyu to'liq:** navigatsiyadan tashqari til tanlash
+(🇺🇿/🇺🇸/🇷🇺), bildirishnomalar (o'qilmagan soni bilan), mavzu almashtirgichi va
+profil amallari (`Aktiv qurilmalar` / `Qulflash` / `Chiqish`).
+
+Buning uchun ikkita umumiy manba yaratildi — aks holda Navbar bilan mobil menyu
+holati rassinxron bo'lardi:
+
+- `constants/navbar.js` + `lib/navbar.ts` — LANGUAGES / NOTIFICATIONS /
+  NOTIF_STYLES (ilgari Navbar ichida yopiq edi)
+- `components/shared/Theme.tsx` — mavzu do'koni, `Language.tsx` bilan bir xil
+  namunada (`useSyncExternalStore` + localStorage). Yon foyda: mavzu endi
+  sahifa yangilanganda ham saqlanadi — ilgari `useState(false)` edi va
+  yo'qolib ketardi.
+
+**Hali tekshirilmagan:** ilova sahifalarining 375px'dagi ko'rinishi — Chrome
+viewport'ini kichraytirib bo'lmadi (o'lchash nosozligi), shuning uchun chekma
+menyu DOM darajasida tekshirildi (barcha 8 boshqaruv joyida) va mavzu do'koni
+brauzerda sinaldi (klass + localStorage + tugma sarlavhasi almashadi).
+

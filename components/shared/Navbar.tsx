@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
 import { useLang } from "@/components/shared/Language";
+import { useTheme } from "@/components/shared/Theme";
+import { LANGS as LANGUAGES, NOTIFS as NOTIFICATIONS, NOTIF_STYLE as NOTIF_STYLES } from "@/lib/navbar";
 import type { Lang } from "@/lib/i18n";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
@@ -24,35 +26,8 @@ type OpenMenu = "lang" | "news" | "help" | "create" | "notifications" | "profile
 
 // `short` — navbar tugmasida ko'rinadigan qisqa nom (referensda "O'zb"),
 // `name` esa ochilgan ro'yxatdagi to'liq nom.
-const LANGUAGES: Record<string, { flag: string; name: string; short: string }> = {
-  uz: { flag: "🇺🇿", name: "O'zbekcha", short: "O'zb" },
-  en: { flag: "🇺🇸", name: "English", short: "Eng" },
-  ru: { flag: "🇷🇺", name: "Русский", short: "Рус" },
-};
-
-interface NotificationItem {
-  title: string;
-  body: string;
-  time: string;
-  type: string;
-  unread?: boolean;
-}
-
-const NOTIFICATIONS: NotificationItem[] = [
-  { title: "Yangi to'lov qabul qilindi", body: "Dilnavoz Zokirjonova — 850 000 UZS (Click)", time: "5 daqiqa oldin", type: "payment", unread: true },
-  { title: "Yangi lid", body: "Bekzod Karimov telefon orqali murojaat qildi (+998 90 123 45 67)", time: "23 daqiqa oldin", type: "lead", unread: true },
-  { title: "Eslatma", body: "Bugun 5 ta o'quvchining obunasi muddati tugaydi", time: "1 soat oldin", type: "reminder", unread: true },
-  { title: "Yangi o'quvchi qabul qilindi", body: "Sardor To'xtayev — General English guruhiga qo'shildi", time: "2 soat oldin", type: "student" },
-  { title: "Tizim yangilanishi", body: "Tug'ilgan kunlar kalendari yangi versiyasi joriy etildi", time: "Kecha", type: "system" },
-];
-
-const NOTIF_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
-  payment: { bg: "bg-emerald-100", text: "text-emerald-600", icon: "i-credit-card" },
-  lead: { bg: "bg-blue-100", text: "text-blue-600", icon: "i-megaphone" },
-  student: { bg: "bg-purple-100", text: "text-purple-600", icon: "i-user-plus" },
-  reminder: { bg: "bg-amber-100", text: "text-amber-600", icon: "i-bell" },
-  system: { bg: "bg-slate-100", text: "text-slate-600", icon: "i-settings" },
-};
+// LANGUAGES / NOTIFICATIONS / NOTIF_STYLES — constants/navbar.js da
+// (mobil chekma menyu ham xuddi shulardan foydalanadi).
 
 export interface NavbarProps {
   onOpenMobileMenu: () => void;
@@ -62,7 +37,7 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const { canGoBack, goBack } = useNavHistory();
   const router = useRouter();
   const [sidebarHidden, setSidebarHidden] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, toggleTheme] = useTheme();
   // Til endi butun ilova bo'ylab umumiy (components/shared/Language.tsx) —
   // sana tanlagichlar ham shu qiymatga qarab oy/kun nomlarini almashtiradi.
   const [lang, setLangCode] = useLang();
@@ -97,12 +72,6 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     const next = !sidebarHidden;
     setSidebarHidden(next);
     document.body.classList.toggle("sidebar-hidden", next);
-  };
-
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
   };
 
   const toggleMenu = (menu: OpenMenu) => {
