@@ -471,12 +471,15 @@ export default function TasksPage() {
             {columns.map((col) => (
               <div
                 key={col.status}
-                className={`task-column rounded-2xl bg-card border border-border p-3 flex flex-col ${isDraggingTime && sourceStatus !== col.status ? "drop-eligible" : ""} ${timeDragOverStatus === col.status ? "drag-over" : ""}`}
+                /* Referensda ustunlar kartasiz — faqat tepasida rangli chiziq.
+                   Ramka SHAFFOF qoldirildi: sudrab tashlash holatlari
+                   (.drop-eligible/.drag-over) uning rangini o'zgartiradi. */
+                className={`task-column rounded-2xl border border-transparent p-3 flex flex-col ${isDraggingTime && sourceStatus !== col.status ? "drop-eligible" : ""} ${timeDragOverStatus === col.status ? "drag-over" : ""}`}
                 onDragOver={(e) => onTimeDragOver(e, col.status)}
                 onDragLeave={() => onTimeDragLeave(col.status)}
                 onDrop={(e) => onTimeDrop(e, col.status)}
               >
-                <div className={`text-center pb-2.5 mb-3 border-b-[3px] ${col.border}`}>
+                <div className={`text-center pt-3 mb-3 border-t-[3px] ${col.border}`}>
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{col.label}</div>
                   <div className="text-2xl font-bold mt-1 tabular-nums">{col.items.length}</div>
                 </div>
