@@ -597,3 +597,11 @@ odat). Haqiqiy maydon paydo bo'lsa faqat `birthOf()` almashtiriladi.
 `WEEKDAYS_SHORT` esa yakshanbadan boshlanadi va sana tanlagichlarda
 ishlatiladi, ikkalasini aralashtirmang). Shu bilan birga oy imlosi
 referensga moslandi: `Sentabr` -> `Sentyabr`, `Oktabr` -> `Oktyabr`.
+
+Katak bosilganda modal ochiladi (referensdagidek): sarlavha
+`4 Avgust 2026 - Tug'ilgan kunlar`, ichida har bir odam uchun ism +
+`Telefon: ...` kartasi, pastda `Orqaga`. Katakka 3 tagacha ism sig'adi,
+qolgani `+N Ko'proq` bo'lib ko'rsatiladi — modalda esa hammasi chiqadi.
+Kartaga bosilsa profilga o'tadi: o'quvchi `/student-edit/[id]`, xodim
+`/management-xodimlar/[id]`. Modal `Orqaga`, tashqariga bosish va Escape
+bilan yopiladi.

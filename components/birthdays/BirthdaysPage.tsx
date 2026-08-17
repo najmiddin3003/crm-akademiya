@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useLang } from "@/components/shared/Language";
+import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { MONTHS, WEEKDAYS_FULL } from "@/lib/i18n";
 import {
   allBirthdays,
@@ -11,7 +13,13 @@ import {
   firstWeekdayOffset,
   daysInMonth,
   type PersonKind,
+  type BirthdayPerson,
 } from "@/lib/birthdays";
+
+/** Ism bosilganda ochiladigan profil sahifasi. */
+function profileHref(p: BirthdayPerson): string {
+  return p.kind === "employee" ? `/management-xodimlar/${p.id}` : `/student-edit/${p.id}`;
+}
 
 // Navbardagi "Tug'ilgan kunlar" tugmasi shu sahifaga olib keladi
 // (referens: /hr/birthdays?type=monthly&month=N).
@@ -43,7 +51,10 @@ export default function BirthdaysPage() {
   const [view, setView] = useState<"monthly" | "yearly">("monthly");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  // Katak bosilganda o'sha kunning to'liq ro'yxati modalda ochiladi
+  // (referensda ham shunday — katakda faqat 3 ta ism sig'adi).
   const [openDay, setOpenDay] = useState<number | null>(null);
+  useEscapeClose(openDay !== null ? () => setOpenDay(null) : () => {});
 
   const rows = useMemo(() => filterByKind(allBirthdays(), kind), [kind]);
   const dayMap = useMemo(() => byDay(rows, month), [rows, month]);
@@ -110,10 +121,16 @@ export default function BirthdaysPage() {
             {cells.map((day, i) => {
               if (day === null) return <div key={`b${i}`} className="min-h-[104px] rounded-xl bg-secondary/30" />;
               const list = dayMap.get(day) ?? [];
-              const shown = openDay === day ? list : list.slice(0, MAX_PER_DAY);
+              const shown = list.slice(0, MAX_PER_DAY);
               const rest = list.length - shown.length;
               return (
-                <div key={day} className="min-h-[104px] rounded-xl border border-border p-2 flex flex-col gap-1">
+                <div
+                  key={day}
+                  onClick={() => list.length > 0 && setOpenDay(day)}
+                  className={`min-h-[104px] rounded-xl border border-border p-2 flex flex-col gap-1 ${
+                    list.length ? "cursor-pointer hover:border-primary/50 hover:bg-secondary/30 transition-colors" : ""
+                  }`}
+                >
                   <div className="text-[12px] font-semibold text-muted-foreground">{day}</div>
                   {shown.map((p) => (
                     <div
@@ -125,20 +142,7 @@ export default function BirthdaysPage() {
                     </div>
                   ))}
                   {rest > 0 && (
-                    <button
-                      onClick={() => setOpenDay(day)}
-                      className="text-[11px] text-muted-foreground hover:text-primary text-left"
-                    >
-                      +{rest} Ko&apos;proq
-                    </button>
-                  )}
-                  {openDay === day && list.length > MAX_PER_DAY && (
-                    <button
-                      onClick={() => setOpenDay(null)}
-                      className="text-[11px] text-muted-foreground hover:text-primary text-left"
-                    >
-                      Yig&apos;ish
-                    </button>
+                    <span className="text-[11px] text-muted-foreground">+{rest} Ko&apos;proq</span>
                   )}
                 </div>
               );
@@ -170,6 +174,53 @@ export default function BirthdaysPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Kun modali — referensdagidek: sarlavhada to'liq sana, ichida ism +
+          telefon kartalari, pastda "Orqaga". Ism bosilsa profilga o'tadi. */}
+      {openDay !== null && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setOpenDay(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3">
+              {/* Yagona shablon-satr: JSX'da `{expr} matn&apos;li-so'z`
+                  shaklida yozilsa probel yo'qoladi (README'dagi tuzoq). */}
+              <h2 className="text-[17px] font-semibold">
+                {`${openDay} ${MONTHS[lang][month - 1]} ${year} - Tug'ilgan kunlar`}
+              </h2>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 space-y-2">
+              {(dayMap.get(openDay) ?? []).map((p) => (
+                <Link
+                  key={`${p.kind}-${p.id}`}
+                  href={profileHref(p)}
+                  onClick={() => setOpenDay(null)}
+                  className="block rounded-xl bg-secondary/50 hover:bg-secondary px-4 py-3 transition-colors"
+                >
+                  <div className="text-[14px] font-medium">{p.name}</div>
+                  <div className="text-[12px] text-muted-foreground">
+                    Telefon: {p.phone || "—"}
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <div className="flex justify-end px-5 py-4">
+              <button
+                onClick={() => setOpenDay(null)}
+                className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
+              >
+                Orqaga
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

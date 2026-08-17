@@ -14,6 +14,7 @@ export type PersonKind = "student" | "employee";
 export interface BirthdayPerson {
   id: number;
   name: string;
+  phone: string;
   kind: PersonKind;
   /** 1..12 */
   month: number;
@@ -25,6 +26,7 @@ export interface BirthdayPerson {
 interface EmployeeRow {
   id: number;
   name: string;
+  phone?: string;
 }
 
 // Har bir oyning kun soni — 29-fevral chetlab o'tiladi (har yili takrorlanadigan
@@ -51,11 +53,11 @@ export function allBirthdays(): BirthdayPerson[] {
 
   const students: BirthdayPerson[] = createInitialOrders()
     .filter((o) => o.name)
-    .map((o) => ({ id: o.id, name: o.name, kind: "student" as const, ...birthOf(o.id, "student") }));
+    .map((o) => ({ id: o.id, name: o.name, phone: o.phone || "", kind: "student" as const, ...birthOf(o.id, "student") }));
 
   const employees: BirthdayPerson[] = (EMPLOYEES_DATA as EmployeeRow[])
     .filter((e) => e.name)
-    .map((e) => ({ id: e.id, name: e.name, kind: "employee" as const, ...birthOf(e.id, "employee") }));
+    .map((e) => ({ id: e.id, name: e.name, phone: e.phone || "", kind: "employee" as const, ...birthOf(e.id, "employee") }));
 
   cache = [...students, ...employees];
   return cache;
