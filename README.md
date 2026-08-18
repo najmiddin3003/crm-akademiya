@@ -870,6 +870,34 @@ ikonka — **akkordeon**: bosilganda jadval yig'iladi, faqat sarlavha qoladi.
    maydonga yoziladi — referensda ham "KIM" ustuni ikkalasini ko'rsatadi.
    `moderator` maydoniga tegilmadi: u kassa mas'ulini bildiradi.
 
+### Akkordeon animatsiyasi — ikki usul ishlamadi
+
+"Xodimlar" modali silliq ochilib-yopiladi (300 ms). Yo'lda ikkita odatiy
+usul brauzerda o'lchab rad etildi — qaytarib urinmaslik uchun:
+
+1. **Tailwind klasslari** — `rotate-180` ham, `duration-300` ham bu loyihada
+   CSS'da MAVJUD EMAS (yuklangan stillar ichida qidirib tekshirildi). CSS
+   kompilyatsiya qilingan blobdan keladi, yangi utilitalar generatsiya
+   bo'lmaydi. Shu sabab animatsiya inline `style` bilan yozilgan.
+2. **`grid-template-rows: 1fr → 0fr`** — zamonaviy usul, lekin bu brauzerda
+   interpolatsiya QILINMAYDI. O'lchov: 150 ms da hali to'liq balandlik
+   (400px), so'ng birdan 0 ga sakraydi.
+
+Ishlagan usul — `scrollHeight` dan o'lchangan px balandlikni animatsiya
+qilish. Ikki nozik joyi bor:
+
+- Yig'ishda `auto` dan animatsiya bo'lmaydi: avval aniq balandlik qo'yiladi,
+  `void el.offsetHeight` bilan reflow majburlanadi, keyin 0 ga tushiriladi.
+  `requestAnimationFrame` ATAYIN ishlatilmadi — oyna fonda bo'lsa u
+  chaqirilmaydi va akkordeon ochiq holda qotib qolardi (kuzatildi).
+- Ochilgach balandlik `auto` ga qaytariladi (kontent yoki oyna kengligi
+  o'zgarsa kesilmasin). `transitionend` ga tayanilmaydi — u ham fondagi
+  oynada yetkazilmasligi kuzatildi; zaxira taymer qo'yilgan.
+
+`hooks/useReducedMotion.ts` — tizimda animatsiya kamaytirilgan bo'lsa
+davomiylik 0 ga tushadi. `useSyncExternalStore` orqali (Theme.tsx naqshi),
+effekt ichida setState qilinmaydi.
+
 ### Tegilmagani
 
 `CashboxKirimDrawer.tsx` da ham xuddi shu naqsh bor (doim o'quvchi
