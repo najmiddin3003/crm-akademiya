@@ -544,10 +544,35 @@ ustida ishlaydi, `values` ichida massiv/obyekt ham bo'laveradi.
 - `Avto sms` → referensda «Avto sms yoqish» **sarlavha**, umumiy kalit emas;
   har bir ssenariy o'z toggle'i bilan mustaqil yoqiladi.
 
-**Tuzoq (ikki marta uchradi):** JSX'da `{expr} matn&apos;li-so'z` shaklida
-yozilganda son bilan matn orasidagi **probel yo'qoladi** (`x 2000o'quvchi`,
-`0ta bo'lim`). Yagona shablon-satrga o'tkazish kerak:
-`{`x ${n} o'quvchi uchun`}`. Yangi kod yozganda shu shakldan qochiladi.
+**Tuzoq (to'rt marta uchradi):** JSX matni ifoda bilan yonma-yon yozilganda
+ular orasidagi **probel yo'qoladi** (`x 2000o'quvchi`, `0ta bo'lim`,
+`Ziyamovaarxivga`).
+
+Aniq qoida (2026-08-19 da o'lchandi): kompilyator har bir JSX matn tugunini
+qatorma-qator **trim** qiladi va qatorlarni bitta probel bilan qo'shadi.
+Agar matn tuguni **ko'p qatorli** bo'lsa — uning eng boshidagi va eng
+oxiridagi probel ham qirqiladi. Ya'ni:
+
+```jsx
+{/* YOMON — ko'p qatorli, probel yo'qoladi */}
+<span>{name}</span> arxivga o'tkaziladi.
+U ro'yxatdan yo'qolmaydi.
+```
+
+Ikkita ishonchli yechim:
+
+```jsx
+{/* 1. Yagona shablon-satr */}
+{`${n} ta o'quvchi uchun`}
+
+{/* 2. Matnni JSX matni emas, satr IFODASI qilib yozish */}
+<span>{name}</span>
+{" arxivga o'tkaziladi. U ro'yxatdan yo'qolmaydi."}
+```
+
+Bitta qatorda turgan matn (`<b>{n}</b> ta`) shikastlanmaydi — muammo faqat
+matn bir necha qatorga cho'zilganda paydo bo'ladi. Yangi kod yozganda shu
+ikki shakldan biri ishlatiladi.
 
 
 ## Qurilmaydigan
@@ -744,6 +769,66 @@ Kun kataklari referensda umumiy kartasiz — to'g'ridan-to'g'ri sahifa fonida
 turadi (har birining o'z ramkasi bor). Bizda ham shunday qilindi.
 
 ---
+
+## Xodimni arxivlash (2026-08-19)
+
+Referensda (`akademiya.edutizim.uz`) xodimni **o'chirish yo'q** — faqat
+arxivlash bor, va u qaytariladi. Bu brauzerda tekshirildi (hech narsa
+bosilmasdan, React props va DOM o'qib):
+
+| Nima | Referensdagi joyi |
+|---|---|
+| Tugma | `/hr/employees/profile/:id` — kartochkadagi 4 ikonkadan **2-chisi** |
+| Tooltip | `Moderatorni arxivlash` (rolga qarab o'zgaradi) |
+| Modal maydonlari | `reasonResignId` (sabab) + `dateResign` (sana) |
+| Saqlash | `POST hr/employee/archive` |
+| Teskarisi | `POST /hr/employee/activate` |
+| Tekshiruv | `hasOrders`, `hasStudents` |
+| Arxivdagilar | o'sha `/hr/employees` jadvali, `Holat` filtri: `active` / `archive` |
+
+Ro'yxat sahifasida amallar ustuni, checkbox yoki o'ng-tugma menyusi **yo'q**
+(16 ustunning hammasi ma'lumot) — arxivlash faqat profildan.
+
+### Bizdagi amalga oshirilishi
+
+- `components/employees/EmployeeArchiveModal.tsx` — bitta komponent ikkala
+  amalni bajaradi (`mode: "archive" | "activate"`).
+- `components/employees/EmployeeProfilePage.tsx` — 4 ta amal tugmasi
+  referens tartibida: `[Parol qo'shish] [<Rol>ni arxivlash] [Qo'ng'iroq
+  qilish] [Tahrirlash]`. Ilgari birinchisi "Guruhlar" edi — referensda
+  bunday tugma yo'q. Arxivdagi xodimda tugma "arxivdan chiqarish"ga
+  aylanadi va kartochkada sabab/sana bandi chiqadi.
+- Saqlash: mavjud `PATCH /api/hr-employees/:id` (Partial<HrEmployee>) —
+  yangi endpoint kerak emas.
+
+### Nega alohida "holat" maydoni qo'shilmadi
+
+`archReason` bo'sh emasligi arxiv belgisi — `EmployeesListPage` dagi
+"Holat" filtri (`:128`) allaqachon shunga qaraydi. Alohida `state` maydoni
+qo'shilsa ikkita manba paydo bo'lardi va ular uch joyda mos kelishi kerak
+bo'lardi, ustiga eski hujjatlarni to'ldirish (backfill) talab qilinardi.
+
+### Nega sabablar `EMP_LEAVE_REASONS` dan olinadi
+
+`constants/employees.js:51` — `["Shaxsiy", "Ish o'zgarishi", "Boshqa"]`.
+Ro'yxat sahifasidagi "Ketish sababi" filtri aynan shu massivdan yasaladi va
+`archReason` bilan **satrma-satr** solishtiradi. Modal boshqa manbadan
+yozsa, saqlangan sabab filtrda hech qachon topilmasdi. Sozlamalardagi
+`reasons` ro'yxati bunga to'g'ri kelmaydi — u o'quvchilarga oid
+(`LEAVE_REASON_TYPES = ["Ketdi", "Bekor qilindi", "Davomat"]`).
+
+### Tekshirilgani
+
+`PATCH` → `GET` → ro'yxatda `archive` filtriga tushishi → `PATCH` (tiklash)
+zanjiri curl bilan, so'ng brauzerda modal orqali to'liq o'tkazildi; ma'lumot
+asl holiga qaytarildi. Yorug' va tungi rejim ham ko'rildi.
+
+### Ochiq savol
+
+`app/api/hr-employees/[id]/route.ts` da `DELETE` handleri bor, lekin uni
+**hech qayerdan chaqirilmaydi** va referensda ham qattiq o'chirish yo'q.
+Olib tashlanadimi — hal qilinmagan.
+
 
 # Dizayn solishtiruvi — qayerda to'xtadik (2026-08-18)
 

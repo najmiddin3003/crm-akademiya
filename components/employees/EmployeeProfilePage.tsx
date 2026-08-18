@@ -3,11 +3,12 @@
 import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
 import {
-  Archive, ArrowLeft, Briefcase, Check, ChevronDown, Copy, CreditCard, DollarSign,
-  Edit, Frown, Lock, MoreVertical, Percent, Phone, Settings, Users, XCircle,
+  Archive, ArchiveRestore, ArrowLeft, Briefcase, Check, ChevronDown, Copy, CreditCard,
+  DollarSign, Edit, Frown, KeyRound, Lock, MoreVertical, Percent, Phone, Settings, XCircle,
 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
 
@@ -57,12 +58,16 @@ const ROLE_BADGE: Record<string, string> = {
   admin: "bg-slate-400",
 };
 
-const ACTION_BTNS = [
-  { icon: Users, title: "Guruhlar", cls: "bg-blue-50 hover:bg-blue-100 text-blue-700" },
-  { icon: Archive, title: "Arxiv", cls: "bg-amber-50 hover:bg-amber-100 text-amber-700" },
-  { icon: Phone, title: "Qo'ng'iroq", cls: "bg-emerald-50 hover:bg-emerald-200 text-emerald-700" },
-  { icon: Edit, title: "Tahrirlash", cls: "bg-secondary hover:bg-secondary/80 text-foreground" },
-];
+// Kartochka ostidagi to'rtta amal — referensdagi tartib va tooltiplar:
+// [Parol qo'shish] [<Rol>ni arxivlash] [Qo'ng'iroq qilish] [Tahrirlash].
+// Ilgari birinchisi "Guruhlar" edi — referensda unaqasi yo'q.
+const ACTION_CLS = {
+  key: "bg-blue-50 hover:bg-blue-100 text-blue-700",
+  archive: "bg-amber-50 hover:bg-amber-100 text-amber-700",
+  restore: "bg-emerald-50 hover:bg-emerald-100 text-emerald-700",
+  call: "bg-emerald-50 hover:bg-emerald-200 text-emerald-700",
+  edit: "bg-secondary hover:bg-secondary/80 text-foreground",
+};
 
 export default function EmployeeProfilePage({ id }: { id: number }) {
   const { showSuccess } = useToast();
@@ -70,6 +75,8 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("transactions");
   const [moreOpen, setMoreOpen] = useState(false);
+  // null — modal yopiq; aks holda qaysi amal so'ralayotgani.
+  const [archiveMode, setArchiveMode] = useState<ArchiveMode | null>(null);
   const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
   const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
 
@@ -104,6 +111,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const initials = emp.name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
   const phone = emp.phone.startsWith("+") ? emp.phone : "+998" + (emp.phone || "").replace(/\s/g, "");
   const roleLabel = ROLE_LABELS[emp.turi as keyof typeof ROLE_LABELS] ?? emp.turi;
+
+  // Alohida "holat" maydoni yo'q: `archReason` to'lgan bo'lsa — arxivda.
+  // EmployeesListPage dagi "Holat" filtri ham aynan shu belgiga qaraydi.
+  const archived = Boolean(emp.archReason);
 
   function selectTab(tabId: string) {
     setActiveTab(tabId);
@@ -144,12 +155,53 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   <Copy className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {archived && (
+                <div className="mt-3 w-full rounded-lg bg-amber-50 px-3 py-2 text-left text-[12px] text-amber-700">
+                  <div className="font-semibold">Arxivlangan</div>
+                  {/* Yagona shablon-satr — JSX matni ifoda bilan yonma-yon
+                      yozilsa probel yo'qoladi (README'dagi tuzoq). */}
+                  <div className="mt-0.5">
+                    {`Sabab: ${emp.archReason}${emp.archDate ? ` · ${emp.archDate}` : ""}`}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-3 grid grid-cols-4 gap-1.5 w-full">
-                {ACTION_BTNS.map((b) => (
-                  <button key={b.title} className={`aspect-square rounded-lg inline-flex items-center justify-center ${b.cls}`} title={b.title}>
-                    <b.icon className="icon icon-sm" />
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={() => showSuccess("Parol qo'shish (demo)")}
+                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.key}`}
+                  title="Parol qo'shish"
+                >
+                  <KeyRound className="icon icon-sm" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setArchiveMode(archived ? "activate" : "archive")}
+                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${archived ? ACTION_CLS.restore : ACTION_CLS.archive}`}
+                  title={archived ? `${roleLabel}ni arxivdan chiqarish` : `${roleLabel}ni arxivlash`}
+                >
+                  {archived ? <ArchiveRestore className="icon icon-sm" /> : <Archive className="icon icon-sm" />}
+                </button>
+
+                {/* Referensda bu "Qo'ng'iroq qilish" — telefon ilovasini ochamiz. */}
+                <a
+                  href={`tel:${phone.replace(/\s/g, "")}`}
+                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.call}`}
+                  title="Qo'ng'iroq qilish"
+                >
+                  <Phone className="icon icon-sm" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => showSuccess("Tahrirlash (demo)")}
+                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.edit}`}
+                  title="Tahrirlash"
+                >
+                  <Edit className="icon icon-sm" />
+                </button>
               </div>
             </div>
           </div>
@@ -260,6 +312,21 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           </div>
         </div>
       </div>
+
+      {archiveMode && (
+        <EmployeeArchiveModal
+          employee={emp}
+          mode={archiveMode}
+          onClose={() => setArchiveMode(null)}
+          onDone={(updated) => {
+            // Server qaytargan yozuvni to'g'ridan-to'g'ri qo'yamiz — qayta
+            // so'rov kerak emas, PATCH `returnDocument: "after"` bilan ishlaydi.
+            setEmp(updated);
+            setArchiveMode(null);
+            showSuccess(updated.archReason ? "Xodim arxivlandi" : "Xodim arxivdan chiqarildi");
+          }}
+        />
+      )}
     </div>
   );
 }

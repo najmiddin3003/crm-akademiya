@@ -15,7 +15,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
   }
   const { _id, ...employee } = row;
-  return NextResponse.json({ ok: true, employee: employee as unknown as HrEmployee });
+  // `archDate` keyin qo'shilgan — eski hujjatlarda yo'q. Ro'yxat route'i
+  // (app/api/hr-employees/route.ts) uni bo'sh satrga to'ldiradi; profil
+  // ham xuddi shunday qilsin, aks holda tip `string` deganda `undefined`
+  // qaytadi.
+  return NextResponse.json({ ok: true, employee: { archDate: "", ...employee } as unknown as HrEmployee });
 }
 
 // PATCH /api/hr-employees/:id — xodim maydonlarini qisman yangilaydi.
