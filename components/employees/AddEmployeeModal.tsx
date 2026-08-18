@@ -130,7 +130,9 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
 
   // ── Profil rasmi ────────────────────────────────────────────────────────
   const photoRef = useRef<HTMLInputElement>(null);
-  const [photo, setPhoto] = useState<{ name: string; url: string } | null>(null);
+  // `file` saqlanadi — saqlash bosilganda Cloudinary'ga yuboriladi.
+  // `url` faqat ko'rinish uchun (blob:), serverga bormaydi.
+  const [photo, setPhoto] = useState<{ name: string; url: string; file: File } | null>(null);
 
   function pickPhoto(file: File | undefined) {
     if (!file) return;
@@ -144,7 +146,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
     }
     // Oldingi ko'rinish uchun yaratilgan URL bo'shatiladi (xotira oqmasin).
     if (photo) URL.revokeObjectURL(photo.url);
-    setPhoto({ name: file.name, url: URL.createObjectURL(file) });
+    setPhoto({ name: file.name, url: URL.createObjectURL(file), file });
   }
   function clearPhoto() {
     if (photo) URL.revokeObjectURL(photo.url);
@@ -174,6 +176,36 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
     }
     setSaving(true);
     try {
+      // Rasm avval Cloudinary'ga yuklanadi. Yuklanmasa saqlashni TO'XTATAMIZ —
+      // xodim rasmsiz yaratilib, foydalanuvchi buni sezmay qolmasin.
+      let photoUrl = "";
+      if (photo) {
+        const fd = new FormData();
+        fd.append("file", photo.file);
+        fd.append("folder", "xodimlar");
+        const up = await fetch("/api/upload/image", { method: "POST", body: fd });
+        const upData = await up.json();
+        if (!up.ok || !upData.ok) {
+          showError(upData.error || "Rasm yuklanmadi");
+          setSaving(false);
+          return;
+        }
+        photoUrl = upData.url as string;
+      }
+
+      // Faqat galochka qo'yilgan filiallar yuboriladi.
+      const branchAssignments = branches
+        .filter((b) => rowOf(b.id).checked)
+        .map((b) => {
+          const r = rowOf(b.id);
+          return {
+            branchId: b.id,
+            roleId: r.roleId ? Number(r.roleId) : null,
+            scheduleId: r.scheduleId ? Number(r.scheduleId) : null,
+            salary: Number(r.salary) || 0,
+          };
+        });
+
       const res = await fetch("/api/hr-employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -187,6 +219,8 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
           kurs,
           percent,
           degree: daraja,
+          photoUrl,
+          branchAssignments,
         }),
       });
       const data = await res.json();

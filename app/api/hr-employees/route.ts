@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { EMPLOYEES_DATA } from "@/constants/employees";
-import type { HrEmployee } from "@/lib/hrEmployees";
+import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
 import {
   isValidPhone,
   issueCode,
@@ -19,6 +19,28 @@ async function seedIfEmpty(col: Collection) {
   if ((await col.countDocuments()) === 0) {
     await col.insertMany(JSON.parse(JSON.stringify(EMPLOYEES_DATA)));
   }
+}
+
+/** Mijozdan kelgan filial biriktiruvlarini xavfsiz ko'rinishga keltiradi. */
+function sanitizeAssignments(raw: unknown): EmployeeBranchAssignment[] {
+  if (!Array.isArray(raw)) return [];
+  const out: EmployeeBranchAssignment[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    const branchId = Number(r.branchId);
+    if (!Number.isFinite(branchId)) continue;
+    const roleId = Number(r.roleId);
+    const scheduleId = Number(r.scheduleId);
+    const salary = Number(r.salary);
+    out.push({
+      branchId,
+      roleId: Number.isFinite(roleId) && roleId > 0 ? roleId : null,
+      scheduleId: Number.isFinite(scheduleId) && scheduleId > 0 ? scheduleId : null,
+      salary: Number.isFinite(salary) && salary > 0 ? Math.trunc(salary) : 0,
+    });
+  }
+  return out;
 }
 
 function fmtNow(d: Date): string {
@@ -88,6 +110,10 @@ export async function POST(req: Request) {
     // Faqat o'qituvchida to'ldiriladi (Xodim qo'shish modalining 3-qatori).
     percent: body.percent || "",
     degree: body.degree || "",
+    photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : "",
+    // Mijozdan kelgan qatorlarni tozalaymiz — faqat kutilgan maydonlar,
+    // to'g'ri turda va faqat filialId bor bo'lganlari saqlanadi.
+    branchAssignments: sanitizeAssignments(body.branchAssignments),
   };
   await col.insertOne({ ...employee });
 

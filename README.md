@@ -1001,6 +1001,74 @@ tekshiring.** Tekshirish usuli:
 Yo'q bo'lsa — inline `style` ishlating.
 
 
+## Profil rasmi (Cloudinary) va filial biriktiruvlari (2026-08-19)
+
+### Cloudinary sozlash — QILISH KERAK
+
+`.env.local` ga uchta kalit qo'shiladi (Cloudinary Dashboard →
+Product Environment Credentials):
+
+```
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+`.env.local` `.gitignore` da (`.env*`), ya'ni commit bo'lmaydi.
+**API Secret'ni hech qayerga — chat, commit, skrinshot — chiqarmang.**
+
+Diqqat: `.env.example` ham `.env*` qoidasiga tushadi va git'da
+kuzatilmaydi, shuning uchun kalitlar shu yerda hujjatlashtirildi.
+
+Sozlanmagan bo'lsa ilova ishlayveradi — faqat rasm tanlab saqlashga
+urinilganda aniq xato chiqadi: "Cloudinary sozlanmagan (.env.local dagi
+CLOUDINARY_* kalitlarini to'ldiring)".
+
+### `lib/cloudinary.ts` + `POST /api/upload/image`
+
+`cloudinary` npm paketi ATAYIN qo'shilmadi — imzolangan yuklash oddiy REST
+so'rovi, `fetch` va `crypto` yetarli (loyihadagi `lib/invite.ts` naqshi).
+Imzo: `file`/`api_key`/`resource_type`/`cloud_name` dan tashqari barcha
+parametrlar alifbo tartibida ulanadi, oxiriga API secret qo'shiladi, SHA-1.
+
+Endpoint himoyasi (middleware `/api/` ni tekshirmaydi, shuning uchun
+qo'lda qilingan):
+
+| Tekshiruv | Natija |
+|---|---|
+| Sessiyasiz | `401 Avtorizatsiya talab qilinadi` |
+| PNG/JPG/WEBP emas | `400 Faqat PNG, JPG yoki WEBP` |
+| 5 MB dan katta | `400 Rasm hajmi 5 MB dan oshmasin` |
+| `folder` mijozdan | E'tiborsiz — faqat "xodimlar" yoki "boshqa" |
+
+Oxirgisi muhim: papkani mijozdan olsak, uni o'zgartirib boshqa joyga
+yozib yuborish mumkin bo'lardi.
+
+Rasm yuklanmasa saqlash TO'XTAYDI — xodim rasmsiz yaratilib, foydalanuvchi
+buni sezmay qolmasligi uchun.
+
+### Filial biriktiruvlari
+
+`HrEmployee` ga ikkita ixtiyoriy maydon qo'shildi (eski hujjatlar buzilmasin):
+
+```ts
+photoUrl?: string;                                 // Cloudinary secure_url
+branchAssignments?: EmployeeBranchAssignment[];    // { branchId, roleId, scheduleId, salary }
+```
+
+Faqat galochka qo'yilgan filiallar yuboriladi. Server tomonda
+`sanitizeAssignments()` mijozdan kelganini tozalaydi — sinovdan o'tkazildi:
+satrlar songa o'giriladi, yaroqsiz `branchId` tashlanadi, manfiy maosh 0
+bo'ladi, kasr kesiladi, ortiqcha maydonlar olib tashlanadi.
+
+### Tekshirilmagani
+
+Xodim YARATISH oqimi (POST /api/hr-employees) uchidan uchiga
+ishlatilmadi: u haqiqiy yozuv yaratadi va real raqamga SMS yuboradi.
+So'rov tanasi ushlab tekshirildi, server tozalagichi alohida sinaldi,
+lekin to'liq yaratish sinovi qilinmadi.
+
+
 # Dizayn solishtiruvi — qayerda to'xtadik (2026-08-18)
 
 ## Bajarilgani
