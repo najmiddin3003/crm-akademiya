@@ -412,6 +412,22 @@ Sabab — fayl 345KB va Turbopack uning keshini to'g'ri yangilamaydi. Bitta sess
 6 marta shunday qilishga to'g'ri keldi. CSS "ishlamayotgandek" tuyulsa — birinchi
 navbatda shuni qiling.
 
+## Tungi rejim skripti gidratatsiya xatosini keltirib chiqaradi
+
+`app/layout.tsx` dagi bloklovchi skript yorug' rejim chaqnashini yo'qotadi, lekin
+u `dark` klassini `<html>` ga React gidratatsiyasidan OLDIN qo'shadi. Server
+HTML'ida esa u klass yo'q — natijada konsolda:
+
+> A tree hydrated but some attributes of the server rendered HTML didn't match
+
+Yechim — `<html>` ga `suppressHydrationWarning` qo'yish (2026-08-19 da qo'shildi).
+Bu atribut FAQAT o'sha elementning o'z atributlariga tegishli, ichidagi daraxtga
+tarqalmaydi — ya'ni boshqa haqiqiy nomuvofiqliklar baribir ko'rinadi.
+`next-themes` ham aynan shu usuldan foydalanadi.
+
+Klass keyin `components/shared/Theme.tsx` dagi effektda ham qayta qo'yiladi,
+shuning uchun React uni hech qachon o'chirib yubormaydi.
+
 ## Tailwind responsive prefikslari — qachon ishlaydi, qachon yo'q
 
 **Ular O'LIK EMAS.** 2026-08-16 da brauzerda o'lchab tekshirildi:

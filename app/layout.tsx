@@ -23,7 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="uz" className={nunito.variable}>
+    // `suppressHydrationWarning` — pastdagi skript `dark` klassini gidratatsiyadan
+    // OLDIN qo'shadi, server HTML'ida esa u yo'q. React buni nomuvofiqlik deb
+    // hisoblaydi; bu atribut aynan shu holat uchun (faqat shu elementga tegishli).
+    <html lang="uz" className={nunito.variable} suppressHydrationWarning>
       <head>
         {/* Mavzu `useTheme` da effekt orqali qo'llanadi — ya'ni gidratatsiyadan
             KEYIN. Shu sabab tungi rejimda har sahifa yuklanganda bir lahza
