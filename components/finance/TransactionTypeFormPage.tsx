@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import MoneyInput from "@/components/ui/MoneyInput";
 import { CUSTOMER_TYPES, CATEGORY_OPTIONS } from "@/constants/transactionTypes";
 import type { TransactionType } from "@/lib/transactionTypes";
 
@@ -115,22 +116,18 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Minimal miqdor</label>
-            <input
+            <MoneyInput
               value={minAmount}
-              onChange={(e) => setMinAmount(e.target.value)}
-              type="number"
-              min="0"
-              className="w-full h-11 rounded-lg border border-border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              onChange={setMinAmount}
+              className="w-full h-11 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Maksimal miqdor</label>
-            <input
+            <MoneyInput
               value={maxAmount}
-              onChange={(e) => setMaxAmount(e.target.value)}
-              type="number"
-              min="0"
-              className="w-full h-11 rounded-lg border border-border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              onChange={setMaxAmount}
+              className="w-full h-11 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import MonthYearPicker, { type MonthYearValue } from "@/components/ui/MonthYearPicker";
+import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
 
@@ -120,13 +121,11 @@ export default function CashboxInvestmentDrawer({
               <div key={row.id} className="flex items-end gap-2">
                 <div className="flex-1">
                   <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
-                  <input
+                  <MoneyInput
                     value={row.amount}
-                    onChange={(e) => updateRow(row.id, { amount: e.target.value })}
-                    type="number"
-                    min="1"
+                    onChange={(v) => updateRow(row.id, { amount: v })}
                     placeholder="Qiymat"
-                    className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
                 <div className="flex-1">
@@ -160,7 +159,7 @@ export default function CashboxInvestmentDrawer({
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Umumiy summa</label>
             <input
-              value={total}
+              value={groupNumber(total)}
               readOnly
               type="text"
               className="w-full h-10 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums"

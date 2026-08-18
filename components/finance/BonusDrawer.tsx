@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
+import MoneyInput from "@/components/ui/MoneyInput";
 import { BONUS_TYPES } from "@/constants/bonuses";
 import { STUDENTS_LIST } from "@/constants/studentsList";
 import type { HrEmployee } from "@/lib/hrEmployees";
@@ -141,12 +142,10 @@ export default function BonusDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
-            <input
+            <MoneyInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              type="number"
-              min="1"
-              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              onChange={setAmount}
+              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 

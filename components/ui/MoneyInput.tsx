@@ -23,6 +23,27 @@ export function onlyDigits(s: string): string {
   return s.replace(/\D/g, "");
 }
 
+/**
+ * Tashqaridan kelgan qiymatni butun songa keltiradi.
+ *
+ * DIQQAT: bu yerda `onlyDigits` ni to'g'ridan-to'g'ri ishlatib bo'lmaydi —
+ * u nuqtani olib tashlab, raqamlarni YOPISHTIRIB yuboradi: "1200.5" → "12005",
+ * ya'ni summa 10 barobar shishadi. Kasr qismi KESIB tashlanishi kerak.
+ * (Bazadagi eski yozuvlarda kasrli summa uchrashi mumkin.)
+ */
+export function toDigits(value: string): string {
+  return stripLeadingZeros(onlyDigits(String(value).split(/[.,]/)[0]));
+}
+
+/**
+ * Bosh nollarni olib tashlaydi, lekin yolg'iz "0" ni saqlaydi.
+ * Kerak, chunki ba'zi oynalar summani "0" bilan boshlaydi (masalan
+ * CashboxKirimDrawer) — usiz yozganda "01 234 567" ko'rinardi.
+ */
+function stripLeadingZeros(digits: string): string {
+  return digits.replace(/^0+(?=\d)/, "");
+}
+
 /** Sonni ko'rinish uchun ajratadi (readOnly maydonlar uchun qulay). */
 export function groupNumber(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -46,7 +67,7 @@ export default function MoneyInput({ value, onChange, ...rest }: Props) {
     // joylashgandan keyin kursorni o'sha raqamdan keyinga qaytaramiz.
     const digitsBefore = onlyDigits(el.value.slice(0, caret)).length;
 
-    const digits = onlyDigits(el.value);
+    const digits = stripLeadingZeros(onlyDigits(el.value));
     const shown = groupDigits(digits);
 
     // DOM'ni o'zimiz yangilaymiz: agar foydalanuvchi harf kiritsa, `digits`
@@ -79,9 +100,9 @@ export default function MoneyInput({ value, onChange, ...rest }: Props) {
       ref={ref}
       type="text"
       inputMode="numeric"
-      // `onlyDigits` himoya uchun: ota-komponent bazadan kelgan "1200.50"
-      // kabi qiymat bersa ham ko'rinish buzilmasin.
-      value={groupDigits(onlyDigits(value))}
+      // `toDigits` himoya uchun: ota-komponent bazadan kelgan "1200.50" kabi
+      // qiymat bersa ham summa shishib ketmasin (kasr qismi kesiladi).
+      value={groupDigits(toDigits(value))}
       onChange={handle}
     />
   );

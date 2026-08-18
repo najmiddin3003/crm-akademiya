@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import DatePicker from "@/components/ui/DatePicker";
+import MoneyInput from "@/components/ui/MoneyInput";
 import type { Order } from "@/lib/ordersData";
 import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
 
@@ -17,7 +18,12 @@ import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
 // tushunchasi yo'q, shu sabab "joriy foydalanuvchi"ni aniqlab bo'lmaydi).
 const DEFAULT_MODERATOR = { id: 2, name: "Husanboy Sotiboldiyev" };
 
-function nextPartId(parts: ContractPart[]): number {
+// Formada Qiymat faqat raqamlardan iborat SATR sifatida saqlanadi (MoneyInput
+// shuni qaytaradi), saqlashda songa qaytariladi — bazadagi
+// ContractPart.amount son bo'lib qoladi (contractPartsTotal shunga tayanadi).
+type PartDraft = Omit<ContractPart, "amount"> & { amount: string };
+
+function nextPartId(parts: PartDraft[]): number {
   return parts.reduce((max, p) => Math.max(max, p.id), 0) + 1;
 }
 
@@ -42,16 +48,17 @@ export default function FinanceContractDrawer({
 
   const [studentOption, setStudentOption] = useState(initialStudentOption);
   const [comment, setComment] = useState(contract?.comment ?? "");
-  const [parts, setParts] = useState<ContractPart[]>(
-    contract?.parts ?? [{ id: 1, amount: 0, date: null, comment: "" }],
+  const [parts, setParts] = useState<PartDraft[]>(
+    contract?.parts.map((p) => ({ ...p, amount: p.amount ? String(p.amount) : "" })) ??
+      [{ id: 1, amount: "", date: null, comment: "" }],
   );
   const [saving, setSaving] = useState(false);
 
-  function updatePart(id: number, patch: Partial<ContractPart>) {
+  function updatePart(id: number, patch: Partial<PartDraft>) {
     setParts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
   function addPart() {
-    setParts((prev) => [...prev, { id: nextPartId(prev), amount: 0, date: null, comment: "" }]);
+    setParts((prev) => [...prev, { id: nextPartId(prev), amount: "", date: null, comment: "" }]);
   }
   function removePart(id: number) {
     setParts((prev) => (prev.length > 1 ? prev.filter((p) => p.id !== id) : prev));
@@ -76,7 +83,7 @@ export default function FinanceContractDrawer({
           moderatorId: contract?.moderatorId ?? DEFAULT_MODERATOR.id,
           moderatorName: contract?.moderatorName ?? DEFAULT_MODERATOR.name,
           comment,
-          parts,
+          parts: parts.map((p) => ({ ...p, amount: Number(p.amount) || 0 })),
         }),
       });
       const data = await res.json();
@@ -146,11 +153,10 @@ export default function FinanceContractDrawer({
 
                 <div>
                   <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
-                  <input
-                    value={part.amount || ""}
-                    onChange={(e) => updatePart(part.id, { amount: Number(e.target.value) || 0 })}
-                    type="number"
-                    className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  <MoneyInput
+                    value={part.amount}
+                    onChange={(v) => updatePart(part.id, { amount: v })}
+                    className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
 

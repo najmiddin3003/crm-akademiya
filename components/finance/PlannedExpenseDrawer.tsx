@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
+import MoneyInput from "@/components/ui/MoneyInput";
 import { EXPENSE_TYPES, EXPENSE_STATUSES } from "@/constants/plannedExpenses";
 import type { PlannedExpense } from "@/lib/plannedExpenses";
 
@@ -100,12 +101,10 @@ export default function PlannedExpenseDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Miqdori</label>
-            <input
+            <MoneyInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              type="number"
-              min="0"
-              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              onChange={setAmount}
+              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
