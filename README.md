@@ -830,6 +830,54 @@ asl holiga qaytarildi. Yorug' va tungi rejim ham ko'rildi.
 Olib tashlanadimi — hal qilinmagan.
 
 
+## Kassa → Chiqim: kim tanlanishi turga bog'liq (2026-08-19)
+
+Ilgari Chiqim oynasida tranzaksiya turidan qat'i nazar doim "O'quvchini
+tanlang" chiqardi — hatto "Hodimga oylik" yoki "Printer" tanlanganda ham.
+Referensda esa:
+
+| Tranzaksiya turi | Pastda nima chiqadi |
+|---|---|
+| `Hodimga oylik`, `Hodimga avans` | **Xodimlar** ro'yxati |
+| `O'quvchiga pul qaytarildi` | **O'quvchilar** ro'yxati |
+| `List`, `Printer`, `Suv`, `Arenda`, … | hech narsa |
+
+Xodim tanlanganda ostida `Oylik: … UZS` va **Xodim ma'lumotlarini ko'rish**
+tugmasi chiqadi; tugma "Xodimlar" modalini ochadi. Modal sarlavhasidagi
+ikonka — **akkordeon**: bosilganda jadval yig'iladi, faqat sarlavha qoladi.
+
+### Fayllar
+
+- `lib/txTarget.ts` — tur nomiga qarab `"employee" | "student" | null`.
+  Tranzaksiya turlari admin boshqaradi (/finance-tx-types), ya'ni nomlar
+  o'zgarishi mumkin — shuning uchun qat'iy satr emas, kalit so'z bo'yicha
+  ("hodim"/"xodim", "o'quvchi"), apostrof variantlari normallashtiriladi.
+- `lib/employeeSalary.ts` — oylik hisobi. Backend yo'q, qiymatlar xodim
+  `id` sidan deterministik. Referens arifmetikasi saqlangan:
+  `Davomatdan foizi = Davomat × 50%`, `Oylik = foizi + Bonus + Akladi −
+  Avans − Jarima`, `Balans = Oylik`.
+- `components/finance/EmployeeSalaryModal.tsx` — akkordeonli modal
+  (z-300, chekmadan tepada).
+- `components/finance/CashboxAdjustDrawer.tsx` — ulanishi.
+
+### Ikki nozik joy
+
+1. **Escape.** Chekma ham, modal ham `useEscapeClose` ishlatadi va ikkalasi
+   ham `window` ni tinglaydi. Modal ochiq bo'lganda chekmanikini o'chirib
+   qo'yamiz: `useEscapeClose(salaryOpen ? () => {} : onClose)`.
+2. **Jurnalning "KIM" ustuni** `studentName` maydonidan o'qiladi
+   (`TransactionEntriesPage.tsx:155`). Xodim tanlanganda ham nom o'sha
+   maydonga yoziladi — referensda ham "KIM" ustuni ikkalasini ko'rsatadi.
+   `moderator` maydoniga tegilmadi: u kassa mas'ulini bildiradi.
+
+### Tegilmagani
+
+`CashboxKirimDrawer.tsx` da ham xuddi shu naqsh bor (doim o'quvchi
+tanlanadi). Lekin kirim turlari orasida `Oylik imtihon` va `Olimpiada` bor
+— ular o'quvchi to'lovimi yoki yo'qmi noaniq, shuning uchun taxmin
+qilinmadi. Hal qilinishi kerak.
+
+
 # Dizayn solishtiruvi — qayerda to'xtadik (2026-08-18)
 
 ## Bajarilgani

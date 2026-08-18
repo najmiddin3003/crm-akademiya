@@ -7,10 +7,14 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import MonthYearPicker, { type MonthYearValue } from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
+import EmployeeSalaryModal from "./EmployeeSalaryModal";
 import { STUDENTS_LIST } from "@/constants/studentsList";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
+import type { HrEmployee } from "@/lib/hrEmployees";
+import { txTarget, txTargetLabel } from "@/lib/txTarget";
+import { salaryOf } from "@/lib/employeeSalary";
 
 const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
 
@@ -54,12 +58,14 @@ export default function CashboxAdjustDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
-  useEscapeClose(onClose);
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
   const [category, setCategory] = useState("");
-  const [studentName, setStudentName] = useState("");
+  // Tanlangan KIM — tranzaksiya turiga qarab o'quvchi yoki xodim.
+  const [personName, setPersonName] = useState("");
+  const [employees, setEmployees] = useState<HrEmployee[]>([]);
+  const [salaryOpen, setSalaryOpen] = useState(false);
   const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "", month: defaultMonth() }]);
   const [nextRowId, setNextRowId] = useState(2);
   const [method, setMethod] = useState("");
@@ -67,6 +73,10 @@ export default function CashboxAdjustDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+
+  // Maosh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda ikkala
+  // tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
+  useEscapeClose(salaryOpen ? () => {} : onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +89,24 @@ export default function CashboxAdjustDrawer({
       });
     return () => { cancelled = true; };
   }, []);
+
+  // Xodimlar ro'yxati faqat kerak bo'lganda (xodimga oylik/avans) yuklanadi.
+  const target = txTarget(category);
+  useEffect(() => {
+    if (target !== "employee" || employees.length > 0) return;
+    let cancelled = false;
+    fetch("/api/hr-employees")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.ok) setEmployees(d.employees as HrEmployee[]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [target, employees.length]);
+
+  // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
+  const activeEmployees = employees.filter((e) => !e.archReason);
+  const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
@@ -121,7 +149,9 @@ export default function CashboxAdjustDrawer({
           method,
           amount: total,
           category,
-          studentName,
+          // Jurnaldagi "KIM" ustuni shu maydondan o'qiladi (o'quvchi ham,
+          // xodim ham shu yerda ko'rsatiladi — referensda ham shunday).
+          studentName: personName,
           date: date ? toIso(date) : undefined,
           note,
         }),
@@ -161,7 +191,12 @@ export default function CashboxAdjustDrawer({
             <div className="relative">
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  // Tur o'zgarsa avval tanlangan kishi kerak bo'lmay qolishi
+                  // mumkin (o'quvchi → xodim yoki umuman tanlovsiz tur).
+                  if (txTarget(e.target.value) !== txTarget(category)) setPersonName("");
+                  setCategory(e.target.value);
+                }}
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Tanlang</option>
@@ -171,13 +206,36 @@ export default function CashboxAdjustDrawer({
             </div>
           </div>
 
-          <StudentSearchSelect
-            label="O'quvchini tanlang"
-            value={studentName}
-            onChange={setStudentName}
-            options={STUDENT_NAMES}
-            placeholder="Tanlang"
-          />
+          {/* Kim tanlanishi tranzaksiya turiga bog'liq (lib/txTarget.ts):
+              xodimga oylik/avans → xodimlar, o'quvchiga pul qaytarildi →
+              o'quvchilar, qolgan turlarda (List, Printer, Suv…) tanlov
+              umuman ko'rsatilmaydi. */}
+          {target !== null && (
+            <div className="space-y-2">
+              <StudentSearchSelect
+                label={txTargetLabel(target)}
+                value={personName}
+                onChange={setPersonName}
+                options={target === "employee" ? activeEmployees.map((e) => e.name) : STUDENT_NAMES}
+                placeholder="Tanlang"
+              />
+
+              {selectedEmployee && (
+                <>
+                  <div className="text-[13px] text-muted-foreground">
+                    {`Oylik: ${fmtUZS(salaryOf(selectedEmployee.id).oylik)}`}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSalaryOpen(true)}
+                    className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
+                  >
+                    Xodim ma&apos;lumotlarini ko&apos;rish
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="space-y-3">
             {rows.map((row, i) => (
@@ -274,6 +332,15 @@ export default function CashboxAdjustDrawer({
           </button>
         </div>
       </div>
+
+      {/* Modal chekmadan (z-110) tepada turishi kerak — z-300. */}
+      {salaryOpen && selectedEmployee && (
+        <EmployeeSalaryModal
+          employeeId={selectedEmployee.id}
+          employeeName={selectedEmployee.name}
+          onClose={() => setSalaryOpen(false)}
+        />
+      )}
     </div>
   );
 }
