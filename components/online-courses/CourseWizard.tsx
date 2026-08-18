@@ -230,7 +230,13 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
           <label className="flex items-center gap-3 cursor-pointer">
             <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${free ? "bg-primary" : "bg-secondary"}`}>
               <input type="checkbox" checked={free} onChange={(e) => onFreeToggle(e.target.checked)} className="sr-only" />
-              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${free ? "translate-x-5" : ""}`} />
+              {/* Siljish INLINE: `translate-x-5` bu loyihada ishlamaydi —
+                  qatlamsiz v3 blobi `--tw-translate-x` ni 0 ga tushiradi
+                  (README: "qatlamsiz v3 blobi..."). Tugmacha qimirlamasdi. */}
+              <span
+                className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm"
+                style={{ transform: `translateX(${free ? 20 : 0}px)`, transition: "transform .2s cubic-bezier(.4,0,.2,1)" }}
+              />
             </span>
             <span className="text-[14px] font-medium">Tekin</span>
           </label>

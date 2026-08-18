@@ -172,7 +172,13 @@ export default function BlockTestTypeModal({
               onClick={() => setActive((a) => !a)}
               className={`relative w-9 h-5 rounded-full transition-colors ${active ? "bg-primary" : "bg-secondary"}`}
             >
-              <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${active ? "translate-x-4" : ""}`} />
+              {/* Siljish INLINE: `translate-x-4` bu loyihada ishlamaydi —
+                  qatlamsiz v3 blobi `--tw-translate-x` ni 0 ga tushiradi
+                  (README: "qatlamsiz v3 blobi..."). Tugmacha qimirlamasdi. */}
+              <span
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow"
+                style={{ transform: `translateX(${active ? 16 : 0}px)`, transition: "transform .2s cubic-bezier(.4,0,.2,1)" }}
+              />
             </button>
             <span className="text-sm">Faol</span>
           </label>

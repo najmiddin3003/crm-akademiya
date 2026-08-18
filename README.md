@@ -978,49 +978,73 @@ yuklash endpointi kerak (loyihada hali yo'q).
 
 ### ⚠️ Tailwind: qatlamsiz v3 blobi v4 utilitalarini bosib ketadi
 
-**Diqqat: bu bo'lim 2026-08-19 da TUZATILDI. Undan oldin bu yerda "bu
-klasslar umuman mavjud emas" deb yozilgan edi — bu XATO edi.** Sabab
-boshqa, quyida.
+**2026-08-19 da brauzerda o'lchab TEKSHIRILDI.** Undan oldin bu yerda
+"`opacity-50`, `cursor-not-allowed`, `rotate-180` kabi klasslar mavjud
+emas" deb yozilgan edi — **XATO**. Ular bor va ishlaydi. Haqiqiy muammo
+tor va aniq: faqat **transform oilasi**.
 
-Loyihada CSS ikki manbadan keladi:
+#### Sabab
 
-1. `globals.css` boshidagi **kompilyatsiya qilingan Tailwind v3 blobi** —
-   oddiy, QATLAMSIZ (unlayered) CSS.
-2. `@import "tailwindcss"` — **Tailwind v4**, utilitalari
-   `@layer utilities` ichida.
+`globals.css` ikki manbadan iborat:
 
-CSS qoidasiga ko'ra **qatlamsiz CSS har doim qatlamli CSS'dan ustun
-turadi** — spesifiklikdan qat'i nazar. Shuning uchun v3 blobidagi qoidalar
-v4 utilitalarini bosib ketadi. Ikki aniq holat o'lchandi:
+1. Kompilyatsiya qilingan **Tailwind v3 blobi** — oddiy, **qatlamsiz** CSS.
+2. `@import "tailwindcss"` — **v4**, utilitalari `@layer utilities` ichida.
 
-| Holat | Nima bo'ladi |
-|---|---|
-| `<img className="w-24 h-24">` | Blobdagi preflight `img, video { height: auto }` `.h-24` ni bosadi → rasm **96x64** bo'lib cho'ziladi |
-| `<span className="transform translate-x-5">` | Blobdagi `.transform` bo'sh `var(--tw-translate-x)` ni o'qiydi → element **qimirlamaydi** |
+CSS qoidasi: **qatlamsiz CSS qatlamlidan har doim ustun**, spesifiklikdan
+qat'i nazar. Blobda universal reset bor:
 
-Ikkinchisi toggle tugmachasining surilmasligiga sabab bo'lgan edi.
+```css
+*, ::backdrop, ::after, ::before { --tw-translate-x: 0; --tw-skew-x: 0; ... }
+```
 
-**Yechim:** shunday holatlarda inline `style` ishlating — u ikkala manbadan
-ham ustun. Masalan `style={{ width: 96, height: 96, objectFit: "cover" }}`.
+v4 ning `.translate-x-5` esa `--tw-translate-x` ni `@layer utilities`
+ichida o'rnatadi — ya'ni **reset g'olib chiqadi** va siljish nolga aylanadi.
 
-**Tekshirish usuli** (avvalgi noto'g'ri xulosam shundan chiqqan edi:
-skanerim `@media` va `@layer` ICHIGA kirmagan, shu sabab klasslarni
-"yo'q" deb topgan):
+#### O'lchangan natija
+
+| Klass | Holat | Sabab |
+|---|---|---|
+| `opacity-50` / `opacity-60` | ✅ ishlaydi | to'g'ridan-to'g'ri `opacity` |
+| `disabled:opacity-40/50/60` | ✅ ishlaydi | — |
+| `cursor-not-allowed` | ✅ ishlaydi | — |
+| `pointer-events-none` | ✅ ishlaydi | — |
+| `object-cover` | ✅ ishlaydi | — |
+| `duration-300` | ✅ ishlaydi | — |
+| `rounded-*`, `gap-*`, `text-center` | ✅ ishlaydi | — |
+| `ring-2` | ✅ ishlaydi | blobdan keladi |
+| `rotate-180` | ✅ ishlaydi | v4 `rotate:` xossasini beradi |
+| **`translate-x-*`** | ❌ **ishlamaydi** | `--tw-translate-x` reset bilan 0 ga tushadi |
+| **`scale-*`** | ❌ **ishlamaydi** | juft o'zgaruvchi yo'q, `scale` yaroqsiz |
+| **`skew-*`** | ❌ **ishlamaydi** | `--tw-skew-x` reset bilan 0 |
+| **`h-*` `<img>` da** | ❌ **ishlamaydi** | preflight `img,video{height:auto}` |
+
+**Qoida:** to'g'ridan-to'g'ri CSS xossasini qo'yadigan utilitalar ishlaydi.
+`--tw-*` o'zgaruvchisi orqali ishlaydigan **transform oilasi** ishlamaydi —
+u yerda inline `style` ishlating.
+
+Yana bir nozik joy: `rotate-180` ishlaydi, lekin u `rotate` XOSSASINI
+qo'yadi, `transform` ni emas. Shuning uchun `transition-transform` uni
+animatsiya QILMAYDI — burilish sakrab o'tadi. Animatsiya kerak bo'lsa
+inline `transform: rotate(...)` + `transition: transform ...` yozing.
+
+#### To'g'ri tekshirish usuli
+
+Qoida bor-yo'qligiga qaramang — **natijani o'lchang**:
+
+```js
+const el = document.createElement('div');
+el.className = 'KLASS';
+document.body.appendChild(el);
+getComputedStyle(el).XOSSA;   // haqiqiy natija
+el.remove();
+```
+
+Qoidalarni ko'rish kerak bo'lsa, `@media`/`@layer` ICHIGA ham kiring
+(avvalgi xato xulosa aynan shundan chiqqan edi):
 
 ```js
 function* barcha(rs){ for (const r of rs) { yield r; if (r.cssRules) yield* barcha(r.cssRules); } }
-const qoidalar = [];
-for (const ss of document.styleSheets) {
-  let rs; try { rs = ss.cssRules } catch { continue }
-  for (const r of barcha(rs)) if (r.selectorText === '.KLASS') qoidalar.push(r.cssText);
-}
-qoidalar   // hammasi — oxirgisi emas, BARCHASI ko'rinsin
 ```
-
-Shuni ham unutmang: bitta klass IKKI joyda (blobda ham, v4 da ham)
-bo'lishi mumkin va qaysi biri g'alaba qozonishi qatlamga bog'liq.
-Eng ishonchli tekshiruv — `getComputedStyle` bilan HAQIQIY natijani
-o'lchash, qoida bor-yo'qligiga qaramaslik.
 
 ## Profil rasmi (Cloudinary) va filial biriktiruvlari (2026-08-19)
 
