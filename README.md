@@ -949,6 +949,58 @@ ishlatishdan oldin uning CSS'da borligini tekshiring** — yo'q bo'lsa
 inline uslub ishlating.
 
 
+### 3. Rollar, filial qatorlari va profil rasmi
+
+- **Rollar** endi Boshqaruv → Rollar dan (`/api/roles`): IT, Nazorotchi,
+  O'qituvchi, Administrator, Filial direktori.
+- **Ish jadvali** — Boshqaruv → Ish jadvali (`/api/work-schedules`), faqat
+  `active: true` bo'lganlari.
+- **Filial qatorlari** endi mustaqil holatga ega. Galochka qo'yilmaguncha
+  o'sha qatordagi Rol / Ish jadvali / Ish haqi O'CHIQ turadi
+  (`disabled`, `opacity: 0.4`). Bitta filialni belgilash boshqasiga
+  ta'sir qilmaydi.
+- **Ish haqi** maydoni `MoneyInput` ga o'tkazildi — uch xonadan ajratiladi.
+- **Profil rasmi** endi haqiqiy fayl tanlagich: yashirin
+  `<input type="file" accept="image/png,image/jpeg">` + ko'rinadigan tugma
+  (loyihadagi naqsh, `PenaltyDrawer.tsx` dagidek). Tanlangach dumaloq
+  ko'rinish (preview), fayl nomi va olib tashlash tugmasi chiqadi.
+  PNG/JPG va 5 MB cheklovi bor; `URL.revokeObjectURL` bilan xotira
+  bo'shatiladi.
+
+**Hali yuborilmaydi:** filial/rol/jadval/ish haqi biriktiruvlari va profil
+rasmi POST tanasiga qo'shilmagan — buning uchun backendda sxema va rasm
+yuklash endpointi kerak (loyihada hali yo'q).
+
+### ⚠️ O'lik Tailwind klasslari — ro'yxat
+
+Bu sessiyada TO'RT marta shu sabab uchradi. Brauzerda o'lchab aniqlangan
+holat:
+
+| Klass | Bormi |
+|---|---|
+| `rotate-180`, `duration-300` | ❌ |
+| `translate-x-0/1/5` | ❌ |
+| `opacity-50`, `opacity-60` | ❌ |
+| `cursor-not-allowed`, `pointer-events-none` | ❌ |
+| `border-amber-300` | ❌ |
+| `opacity-0/30/80/90` | ✅ |
+| **`disabled:opacity-40`** | ✅ (yagona disabled-opacity) |
+| `transition-transform`, `transition-opacity`, `hover:opacity-90` | ✅ |
+
+Loyihada `disabled:opacity-60` / `opacity-50` / `cursor-not-allowed`
+ishlatilgan **142 ta** joy bor — hammasi ta'sirsiz. Tozalanmagan.
+
+**Qoida: yangi Tailwind utilitasi ishlatishdan oldin uni brauzerda
+tekshiring.** Tekshirish usuli:
+
+```js
+[...document.styleSheets].flatMap(s=>{try{return [...s.cssRules]}catch{return []}})
+  .filter(r=>r.selectorText && r.selectorText.includes('KLASS-NOMI'))
+```
+
+Yo'q bo'lsa — inline `style` ishlating.
+
+
 # Dizayn solishtiruvi — qayerda to'xtadik (2026-08-18)
 
 ## Bajarilgani

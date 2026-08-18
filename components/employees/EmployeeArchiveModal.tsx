@@ -158,11 +158,11 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
 
         <div className="flex items-center justify-end gap-2 pt-1">
           {/* `components/ui/Button.tsx` da disabled uslubi yo'q — loyihadagi
-              boshqa modallar kabi `disabled:opacity-60` qo'lda qo'shiladi. */}
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="disabled:opacity-60">
+              boshqa modallar kabi `disabled:opacity-40` qo'lda qo'shiladi. */}
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="disabled:opacity-40">
             Bekor qilish
           </Button>
-          <Button type="button" variant="primary" onClick={submit} disabled={saving} className="disabled:opacity-60">
+          <Button type="button" variant="primary" onClick={submit} disabled={saving} className="disabled:opacity-40">
             {saving ? "Saqlanmoqda..." : isArchive ? "Arxivlash" : "Arxivdan chiqarish"}
           </Button>
         </div>

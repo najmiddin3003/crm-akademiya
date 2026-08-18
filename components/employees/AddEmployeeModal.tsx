@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Upload, X } from "lucide-react";
+import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useBranches } from "@/hooks/useBranches";
@@ -26,6 +27,16 @@ function Chevron() {
     </svg>
   );
 }
+
+// Bitta filial qatorining holati. Galochka qo'yilmaguncha qolgan uchtasi
+// o'chiq turadi (referensdagidek).
+interface BranchRow {
+  checked: boolean;
+  roleId: string;
+  scheduleId: string;
+  salary: string;
+}
+const EMPTY_ROW: BranchRow = { checked: false, roleId: "", scheduleId: "", salary: "" };
 
 const TURI_MAP: Record<string, string> = { "O'qituvchi": "teacher", Moderator: "moderator", Administrator: "admin" };
 const GENDER_MAP: Record<string, string> = { Erkak: "male", Ayol: "female" };
@@ -87,6 +98,59 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
     });
     return () => { cancelled = true; };
   }, [isTeacher]);
+
+  // ── Filial qatorlari ────────────────────────────────────────────────────
+  // Referensda har filial qatori mustaqil: galochka QO'YILGAN filialdagina
+  // Rol / Ish jadvali / Ish haqi tanlanadi, qolganlari o'chiq turadi.
+  // Rollar — Boshqaruv → Rollar (/api/roles), ish jadvallari —
+  // Boshqaruv → Ish jadvali (/api/work-schedules, faqat faollari).
+  const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
+  const [schedules, setSchedules] = useState<{ id: number; name: string }[]>([]);
+  const [branchRows, setBranchRows] = useState<Record<number, BranchRow>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const get = (u: string) => fetch(u).then((r) => r.json()).catch(() => null);
+    Promise.all([get("/api/roles"), get("/api/work-schedules")]).then(([r, s]) => {
+      if (cancelled) return;
+      if (r?.ok) setRoles(r.roles as { id: number; name: string }[]);
+      if (s?.ok) {
+        setSchedules((s.schedules as { id: number; name: string; active: boolean }[]).filter((x) => x.active));
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  function rowOf(id: number): BranchRow {
+    return branchRows[id] ?? EMPTY_ROW;
+  }
+  function updateRow(id: number, patch: Partial<BranchRow>) {
+    setBranchRows((p) => ({ ...p, [id]: { ...(p[id] ?? EMPTY_ROW), ...patch } }));
+  }
+
+  // ── Profil rasmi ────────────────────────────────────────────────────────
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [photo, setPhoto] = useState<{ name: string; url: string } | null>(null);
+
+  function pickPhoto(file: File | undefined) {
+    if (!file) return;
+    if (!/^image\/(png|jpeg)$/.test(file.type)) {
+      showError("Faqat PNG yoki JPG rasm tanlang");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError("Rasm hajmi 5 MB dan oshmasin");
+      return;
+    }
+    // Oldingi ko'rinish uchun yaratilgan URL bo'shatiladi (xotira oqmasin).
+    if (photo) URL.revokeObjectURL(photo.url);
+    setPhoto({ name: file.name, url: URL.createObjectURL(file) });
+  }
+  function clearPhoto() {
+    if (photo) URL.revokeObjectURL(photo.url);
+    setPhoto(null);
+    if (photoRef.current) photoRef.current.value = "";
+  }
 
   async function save() {
     const name = `${ism.trim()} ${familiya.trim()}`.trim();
@@ -272,23 +336,57 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
                 </label>
               </div>
             </div>
-            {branches.map((branch) => (
-              <div key={branch.id} className="grid grid-cols-4 gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded border-border accent-primary" />
-                  <span className="text-sm">{branch.name}</span>
-                </label>
-                <div className="relative">
-                  <select className={selectCls} defaultValue=""><option value="">Rolni tanlang</option></select>
-                  <Chevron />
+            {branches.map((branch) => {
+              const row = rowOf(branch.id);
+              // `disabled:opacity-40` — loyihada MAVJUD bo'lgan yagona
+              // disabled-opacity klassi (brauzerda tekshirildi; opacity-50 va
+              // disabled:opacity-60 umuman generatsiya bo'lmagan).
+              const off = !row.checked;
+              return (
+                <div key={branch.id} className="grid grid-cols-4 gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={row.checked}
+                      onChange={(e) => updateRow(branch.id, { checked: e.target.checked })}
+                      className="w-4 h-4 rounded border-border accent-primary"
+                    />
+                    <span className="text-sm">{branch.name}</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      className={`${selectCls} disabled:opacity-40`}
+                      disabled={off}
+                      value={row.roleId}
+                      onChange={(e) => updateRow(branch.id, { roleId: e.target.value })}
+                    >
+                      <option value="">Rolni tanlang</option>
+                      {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
+                    </select>
+                    <Chevron />
+                  </div>
+                  <div className="relative">
+                    <select
+                      className={`${selectCls} disabled:opacity-40`}
+                      disabled={off}
+                      value={row.scheduleId}
+                      onChange={(e) => updateRow(branch.id, { scheduleId: e.target.value })}
+                    >
+                      <option value="">Ish jadvali</option>
+                      {schedules.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                    </select>
+                    <Chevron />
+                  </div>
+                  <MoneyInput
+                    value={row.salary}
+                    onChange={(v) => updateRow(branch.id, { salary: v })}
+                    disabled={off}
+                    placeholder="Ish haqini kiriting"
+                    className={`${inputCls} tabular-nums disabled:opacity-40`}
+                  />
                 </div>
-                <div className="relative">
-                  <select className={selectCls} defaultValue=""><option value="">Ish jadvali</option></select>
-                  <Chevron />
-                </div>
-                <input type="text" placeholder="Ish haqini kiriting" className={inputCls} />
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Izoh */}
@@ -305,10 +403,39 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
             </div>
             <div>
               <label className={labelCls}>Profil rasmi</label>
-              <button type="button" className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm text-left flex items-center justify-between hover:bg-secondary/30">
-                <span className="inline-flex items-center gap-2 text-muted-foreground"><Upload className="icon icon-sm" /> Profil rasmi</span>
-                <span className="text-[10px] font-semibold text-muted-foreground">PNG, JPG</span>
-              </button>
+              {/* Yashirin fayl maydoni + ko'rinadigan tugma — loyihadagi
+                  naqsh (components/finance/PenaltyDrawer.tsx dagidek). */}
+              <input
+                ref={photoRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={(e) => pickPhoto(e.target.files?.[0])}
+              />
+              {photo ? (
+                <div className="w-full h-10 rounded-lg border border-border bg-card px-2 text-sm flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+                  <span className="flex-1 truncate text-[13px]">{photo.name}</span>
+                  <button
+                    type="button"
+                    onClick={clearPhoto}
+                    title="Rasmni olib tashlash"
+                    className="h-7 w-7 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => photoRef.current?.click()}
+                  className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm text-left flex items-center justify-between hover:bg-secondary/30"
+                >
+                  <span className="inline-flex items-center gap-2 text-muted-foreground"><Upload className="icon icon-sm" /> Profil rasmi</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground">PNG, JPG</span>
+                </button>
+              )}
             </div>
             <div className="flex items-end">
               <EmployeeToggle checked={twoFactor} onChange={setTwoFactor} label="Ikki bosqichli tasdiqlash" />
