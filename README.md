@@ -875,10 +875,11 @@ ikonka — **akkordeon**: bosilganda jadval yig'iladi, faqat sarlavha qoladi.
 "Xodimlar" modali silliq ochilib-yopiladi (300 ms). Yo'lda ikkita odatiy
 usul brauzerda o'lchab rad etildi — qaytarib urinmaslik uchun:
 
-1. **Tailwind klasslari** — `rotate-180` ham, `duration-300` ham bu loyihada
-   CSS'da MAVJUD EMAS (yuklangan stillar ichida qidirib tekshirildi). CSS
-   kompilyatsiya qilingan blobdan keladi, yangi utilitalar generatsiya
-   bo'lmaydi. Shu sabab animatsiya inline `style` bilan yozilgan.
+1. **Tailwind klasslari ishonchsiz.** (TUZATISH: dastlab bu yerda "bu
+   klasslar mavjud emas" deb yozilgan edi — xato. Ular BOR, lekin
+   qatlamsiz v3 blobi ularni bosib ketishi mumkin — pastdagi
+   "qatlamsiz v3 blobi" bo'limiga qarang.) Shu sabab animatsiya inline
+   `style` bilan yozilgan — u ikkala manbadan ham ustun.
 2. **`grid-template-rows: 1fr → 0fr`** — zamonaviy usul, lekin bu brauzerda
    interpolatsiya QILINMAYDI. O'lchov: 150 ms da hali to'liq balandlik
    (400px), so'ng birdan 0 ga sakraydi.
@@ -933,11 +934,15 @@ ro'yxatdagi "KURS" ustuni ham bitta qiymat ko'rsatadi. Referensda ko'plik
 
 ### 2. Toggle surilmasdi — yana o'sha CSS sababi
 
-`EmployeeToggle` tugmachani `translate-x-1` / `translate-x-5` bilan
-surardi. Bu klasslar loyihada MAVJUD EMAS (brauzerda tekshirildi), shu
-sabab `.transform` qoidasi `var(--tw-translate-x)` ni o'qir edi-yu, u
-hech qachon o'rnatilmagani uchun tugmacha JOYIDAN QIMIRLAMASDI —
-bosilganda faqat fon rangi o'zgarardi.
+`EmployeeToggle` tugmachani `transform` + `translate-x-1` /
+`translate-x-5` bilan surardi va tugmacha QIMIRLAMASDI.
+
+TUZATISH: dastlab sababni "bu klasslar mavjud emas" deb yozgan edim — bu
+xato. Haqiqiy sabab: `translate-x-*` Tailwind v4 da bor va u
+`--tw-translate-x` ni o'rnatadi, lekin QATLAMSIZ v3 blobidagi
+`.transform` qoidasi undan ustun turib, o'zining bo'sh
+`var(--tw-translate-x)` ini qo'llaydi. Natijada siljish nolga teng
+bo'lardi. Batafsil — "qatlamsiz v3 blobi" bo'limida.
 
 Endi holat inline uslub bilan: `translateX(4px)` ↔ `translateX(24px)`.
 Toggle 4 joyda ishlatiladi (xodim qo'shish modali, maxsus maydon
@@ -971,35 +976,51 @@ inline uslub ishlating.
 rasmi POST tanasiga qo'shilmagan — buning uchun backendda sxema va rasm
 yuklash endpointi kerak (loyihada hali yo'q).
 
-### ⚠️ O'lik Tailwind klasslari — ro'yxat
+### ⚠️ Tailwind: qatlamsiz v3 blobi v4 utilitalarini bosib ketadi
 
-Bu sessiyada TO'RT marta shu sabab uchradi. Brauzerda o'lchab aniqlangan
-holat:
+**Diqqat: bu bo'lim 2026-08-19 da TUZATILDI. Undan oldin bu yerda "bu
+klasslar umuman mavjud emas" deb yozilgan edi — bu XATO edi.** Sabab
+boshqa, quyida.
 
-| Klass | Bormi |
+Loyihada CSS ikki manbadan keladi:
+
+1. `globals.css` boshidagi **kompilyatsiya qilingan Tailwind v3 blobi** —
+   oddiy, QATLAMSIZ (unlayered) CSS.
+2. `@import "tailwindcss"` — **Tailwind v4**, utilitalari
+   `@layer utilities` ichida.
+
+CSS qoidasiga ko'ra **qatlamsiz CSS har doim qatlamli CSS'dan ustun
+turadi** — spesifiklikdan qat'i nazar. Shuning uchun v3 blobidagi qoidalar
+v4 utilitalarini bosib ketadi. Ikki aniq holat o'lchandi:
+
+| Holat | Nima bo'ladi |
 |---|---|
-| `rotate-180`, `duration-300` | ❌ |
-| `translate-x-0/1/5` | ❌ |
-| `opacity-50`, `opacity-60` | ❌ |
-| `cursor-not-allowed`, `pointer-events-none` | ❌ |
-| `border-amber-300` | ❌ |
-| `opacity-0/30/80/90` | ✅ |
-| **`disabled:opacity-40`** | ✅ (yagona disabled-opacity) |
-| `transition-transform`, `transition-opacity`, `hover:opacity-90` | ✅ |
+| `<img className="w-24 h-24">` | Blobdagi preflight `img, video { height: auto }` `.h-24` ni bosadi → rasm **96x64** bo'lib cho'ziladi |
+| `<span className="transform translate-x-5">` | Blobdagi `.transform` bo'sh `var(--tw-translate-x)` ni o'qiydi → element **qimirlamaydi** |
 
-Loyihada `disabled:opacity-60` / `opacity-50` / `cursor-not-allowed`
-ishlatilgan **142 ta** joy bor — hammasi ta'sirsiz. Tozalanmagan.
+Ikkinchisi toggle tugmachasining surilmasligiga sabab bo'lgan edi.
 
-**Qoida: yangi Tailwind utilitasi ishlatishdan oldin uni brauzerda
-tekshiring.** Tekshirish usuli:
+**Yechim:** shunday holatlarda inline `style` ishlating — u ikkala manbadan
+ham ustun. Masalan `style={{ width: 96, height: 96, objectFit: "cover" }}`.
+
+**Tekshirish usuli** (avvalgi noto'g'ri xulosam shundan chiqqan edi:
+skanerim `@media` va `@layer` ICHIGA kirmagan, shu sabab klasslarni
+"yo'q" deb topgan):
 
 ```js
-[...document.styleSheets].flatMap(s=>{try{return [...s.cssRules]}catch{return []}})
-  .filter(r=>r.selectorText && r.selectorText.includes('KLASS-NOMI'))
+function* barcha(rs){ for (const r of rs) { yield r; if (r.cssRules) yield* barcha(r.cssRules); } }
+const qoidalar = [];
+for (const ss of document.styleSheets) {
+  let rs; try { rs = ss.cssRules } catch { continue }
+  for (const r of barcha(rs)) if (r.selectorText === '.KLASS') qoidalar.push(r.cssText);
+}
+qoidalar   // hammasi — oxirgisi emas, BARCHASI ko'rinsin
 ```
 
-Yo'q bo'lsa — inline `style` ishlating.
-
+Shuni ham unutmang: bitta klass IKKI joyda (blobda ham, v4 da ham)
+bo'lishi mumkin va qaysi biri g'alaba qozonishi qatlamga bog'liq.
+Eng ishonchli tekshiruv — `getComputedStyle` bilan HAQIQIY natijani
+o'lchash, qoida bor-yo'qligiga qaramaslik.
 
 ## Profil rasmi (Cloudinary) va filial biriktiruvlari (2026-08-19)
 

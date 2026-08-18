@@ -77,6 +77,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [moreOpen, setMoreOpen] = useState(false);
   // null — modal yopiq; aks holda qaysi amal so'ralayotgani.
   const [archiveMode, setArchiveMode] = useState<ArchiveMode | null>(null);
+  // Cloudinary'dagi rasm o'chirilgan yoki havola buzilgan bo'lsa, singan
+  // rasm belgisi o'rniga harflarga qaytamiz.
+  const [photoFailed, setPhotoFailed] = useState(false);
   const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
   const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
 
@@ -115,6 +118,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // Alohida "holat" maydoni yo'q: `archReason` to'lgan bo'lsa — arxivda.
   // EmployeesListPage dagi "Holat" filtri ham aynan shu belgiga qaraydi.
   const archived = Boolean(emp.archReason);
+  const showPhoto = Boolean(emp.photoUrl) && !photoFailed;
 
   function selectTab(tabId: string) {
     setActiveTab(tabId);
@@ -141,9 +145,29 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           <div className="rounded-2xl bg-card border border-border p-5">
             <div className="flex flex-col items-center text-center">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-700 via-blue-500 to-cyan-300 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                  <span>{initials}</span>
-                </div>
+                {/* Cloudinary'ga rasm yuklangan bo'lsa — o'sha; bo'lmasa
+                    (yoki havola ishlamasa) avvalgidek bosh harflar. */}
+                {showPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={emp.photoUrl}
+                    alt={emp.name}
+                    onError={() => setPhotoFailed(true)}
+                    // O'lcham INLINE berilgan. Sabab: Tailwind preflight'idagi
+                    // `img, video { height: auto }` qoidasi qatlamsiz (unlayered)
+                    // CSS'dan keladi va u `@layer utilities` ichidagi `.h-24`
+                    // dan HAR DOIM ustun turadi — spesifiklikdan qat'i nazar.
+                    // Natijada `w-24 h-24` bilan rasm 96x64 bo'lib cho'zilardi
+                    // (brauzerda o'lchangan). Harfli variant esa <div> bo'lgani
+                    // uchun bu qoidaga tushmaydi va 96x96 bo'lib qolaveradi.
+                    style={{ width: 96, height: 96, objectFit: "cover" }}
+                    className="rounded-full shadow-lg"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-700 via-blue-500 to-cyan-300 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                    <span>{initials}</span>
+                  </div>
+                )}
                 <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-white shadow ${ROLE_BADGE[emp.turi] ?? "bg-slate-400"}`}>
                   {roleLabel}
                 </span>

@@ -449,7 +449,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
               {photo ? (
                 <div className="w-full h-10 rounded-lg border border-border bg-card px-2 text-sm flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+                  <img src={photo.url} alt="" style={{ width: 28, height: 28, objectFit: "cover" }} className="rounded-full shrink-0" />
                   <span className="flex-1 truncate text-[13px]">{photo.name}</span>
                   <button
                     type="button"
