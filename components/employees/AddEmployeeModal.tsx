@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Upload } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -56,6 +56,38 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   const [showCustomField, setShowCustomField] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Referensda vazifa "O'qituvchi" tanlanganda pastda yana uchta maydon
+  // ochiladi. Uchalasining ro'yxati ham BACKENDDAN keladi:
+  //   Oladigan foizi — Sozlamalar → Moliya → Oylik foizlari (monthly-percents)
+  //   Darajasi       — Sozlamalar → Boshqaruv → O'qituvchi darajalari
+  //   Kurslar        — O'quv bo'limi → Kurslar (/api/offline-courses)
+  const isTeacher = vazifa === "O'qituvchi";
+  const [percent, setPercent] = useState("");
+  const [daraja, setDaraja] = useState("");
+  const [kurs, setKurs] = useState("");
+  const [percentOpts, setPercentOpts] = useState<{ name: string; percent: string }[]>([]);
+  const [darajaOpts, setDarajaOpts] = useState<string[]>([]);
+  const [kursOpts, setKursOpts] = useState<string[]>([]);
+
+  // Ro'yxatlar faqat kerak bo'lganda yuklanadi — moderator/administrator
+  // tanlansa bu so'rovlar umuman ketmaydi.
+  useEffect(() => {
+    if (!isTeacher) return;
+    let cancelled = false;
+    const get = (url: string) => fetch(url).then((r) => r.json()).catch(() => null);
+    Promise.all([
+      get("/api/settings-lists?kind=monthly-percents"),
+      get("/api/settings-lists?kind=degrees-teacher"),
+      get("/api/offline-courses"),
+    ]).then(([p, d, c]) => {
+      if (cancelled) return;
+      if (p?.ok) setPercentOpts((p.items as { name: string; percent: string }[]).map((i) => ({ name: i.name, percent: i.percent })));
+      if (d?.ok) setDarajaOpts((d.items as { name: string }[]).map((i) => i.name));
+      if (c?.ok) setKursOpts((c.courses as { name: string }[]).map((i) => i.name));
+    });
+    return () => { cancelled = true; };
+  }, [isTeacher]);
+
   async function save() {
     const name = `${ism.trim()} ${familiya.trim()}`.trim();
     if (!name) {
@@ -65,6 +97,15 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
     const trimmedPhone = phone.trim();
     if (!isValidPhoneClient(trimmedPhone)) {
       showError("Telefon raqamini to'g'ri kiriting (masalan +998 90 123 45 67)");
+      return;
+    }
+    // Referensda bu ikkisi yulduzcha bilan — faqat o'qituvchi uchun majburiy.
+    if (isTeacher && !percent) {
+      showError("Oladigan foizini tanlang");
+      return;
+    }
+    if (isTeacher && !kurs) {
+      showError("Kursni tanlang");
       return;
     }
     setSaving(true);
@@ -78,6 +119,10 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
           turi: TURI_MAP[vazifa] || "",
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
+          // Faqat o'qituvchida to'ldiriladi; boshqasida bo'sh ketadi.
+          kurs,
+          percent,
+          degree: daraja,
         }),
       });
       const data = await res.json();
@@ -134,7 +179,20 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
             <div>
               <label className={labelCls}>O&apos;quv markazidagi vazifasi<span className="text-rose-500">*</span></label>
               <div className="relative">
-                <select className={selectCls} value={vazifa} onChange={(e) => setVazifa(e.target.value)}>
+                <select
+                  className={selectCls}
+                  value={vazifa}
+                  onChange={(e) => {
+                    // O'qituvchidan boshqasiga o'tilsa, faqat o'qituvchiga
+                    // tegishli maydonlar tozalanadi.
+                    if (e.target.value !== "O'qituvchi") {
+                      setPercent("");
+                      setDaraja("");
+                      setKurs("");
+                    }
+                    setVazifa(e.target.value);
+                  }}
+                >
                   <option value="">Tanlang</option>
                   <option>O&apos;qituvchi</option>
                   <option>Moderator</option>
@@ -159,6 +217,44 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
               <input type="date" className={inputCls} />
             </div>
           </div>
+
+          {/* Row 3 — FAQAT o'qituvchi uchun (referensdagidek). */}
+          {isTeacher && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className={labelCls}>Oladigan foizi<span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <select className={selectCls} value={percent} onChange={(e) => setPercent(e.target.value)}>
+                    <option value="">Foizni tanlang</option>
+                    {percentOpts.map((p) => (
+                      <option key={p.name} value={p.name}>{`${p.name} (${p.percent}%)`}</option>
+                    ))}
+                  </select>
+                  <Chevron />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Darajasi</label>
+                <div className="relative">
+                  <select className={selectCls} value={daraja} onChange={(e) => setDaraja(e.target.value)}>
+                    <option value="">Darajani tanlang</option>
+                    {darajaOpts.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <Chevron />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Kurslar<span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <select className={selectCls} value={kurs} onChange={(e) => setKurs(e.target.value)}>
+                    <option value="">Tanlang</option>
+                    {kursOpts.map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                  <Chevron />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Ish haqi chiqarish toggle */}
           <EmployeeToggle checked={payroll} onChange={setPayroll} label="Ish haqi chiqarish" />

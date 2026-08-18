@@ -16,4 +16,8 @@ export interface HrEmployee {
   archReason: string;
   archDate: string; // "Sana" ustuni — arxivlash sababi qayd etilgan sana
   email?: string;
+  // Faqat o'qituvchida to'ldiriladi (Xodim qo'shish modalidagi 3-qator).
+  // Ixtiyoriy: eski hujjatlarda bu maydonlar yo'q.
+  percent?: string; // Oladigan foizi — Sozlamalar > Moliya > Oylik foizlari
+  degree?: string;  // Darajasi — Sozlamalar > Boshqaruv > O'qituvchi darajalari
 }

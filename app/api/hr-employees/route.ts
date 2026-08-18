@@ -85,6 +85,9 @@ export async function POST(req: Request) {
     archReason: "",
     archDate: "",
     email: body.email || "",
+    // Faqat o'qituvchida to'ldiriladi (Xodim qo'shish modalining 3-qatori).
+    percent: body.percent || "",
+    degree: body.degree || "",
   };
   await col.insertOne({ ...employee });
 

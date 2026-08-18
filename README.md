@@ -906,6 +906,49 @@ tanlanadi). Lekin kirim turlari orasida `Oylik imtihon` va `Olimpiada` bor
 qilinmadi. Hal qilinishi kerak.
 
 
+## Xodim qo'shish — o'qituvchi maydonlari va toggle (2026-08-19)
+
+### 1. Vazifa "O'qituvchi" bo'lsa yana 3 maydon
+
+Referensda vazifa `O'qituvchi` tanlangandagina pastda qo'shimcha qator
+ochiladi. Uchala ro'yxat ham BACKENDDAN keladi va bizda allaqachon mavjud
+edi — faqat ulanmagan edi:
+
+| Maydon | Manba | Qiymatlar |
+|---|---|---|
+| `Oladigan foizi*` | `/api/settings-lists?kind=monthly-percents` | Yashil (40%), Sariq (50%), Qizil (60%), Qora (70%)… |
+| `Darajasi` | `/api/settings-lists?kind=degrees-teacher` | Yordamchi o'qituvchi, O'qituvchi, Katta o'qituvchi |
+| `Kurslar*` | `/api/offline-courses` | 16 ta kurs |
+
+Foizlar ro'yxati referens skrinshotidagi bilan AYNAN bir xil chiqdi —
+demak sozlamalar ma'lumoti to'g'ri ko'chirilgan ekan.
+
+So'rovlar faqat o'qituvchi tanlanganda ketadi. Boshqa vazifaga o'tilsa
+uchala maydon tozalanadi. `HrEmployee` ga `percent?` va `degree?`
+IXTIYORIY maydon sifatida qo'shildi (eski hujjatlar buzilmasin).
+
+`Kurslar` hozircha BITTA kurs tanlaydi — `HrEmployee.kurs` bitta satr va
+ro'yxatdagi "KURS" ustuni ham bitta qiymat ko'rsatadi. Referensda ko'plik
+("Kurslar") — bir nechta tanlash kerakmi, aniqlanmagan.
+
+### 2. Toggle surilmasdi — yana o'sha CSS sababi
+
+`EmployeeToggle` tugmachani `translate-x-1` / `translate-x-5` bilan
+surardi. Bu klasslar loyihada MAVJUD EMAS (brauzerda tekshirildi), shu
+sabab `.transform` qoidasi `var(--tw-translate-x)` ni o'qir edi-yu, u
+hech qachon o'rnatilmagani uchun tugmacha JOYIDAN QIMIRLAMASDI —
+bosilganda faqat fon rangi o'zgarardi.
+
+Endi holat inline uslub bilan: `translateX(4px)` ↔ `translateX(24px)`.
+Toggle 4 joyda ishlatiladi (xodim qo'shish modali, maxsus maydon
+drawer'i, guruh o'quvchilari sahifasi), ya'ni hammasi tuzaldi.
+
+Bu SESSIYADA UCHINCHI marta shu sabab uchradi (shevron `rotate-180`,
+`duration-300`, endi `translate-x-*`). **Yangi Tailwind utilitasi
+ishlatishdan oldin uning CSS'da borligini tekshiring** — yo'q bo'lsa
+inline uslub ishlating.
+
+
 # Dizayn solishtiruvi — qayerda to'xtadik (2026-08-18)
 
 ## Bajarilgani
