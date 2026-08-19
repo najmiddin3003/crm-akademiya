@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, Filter, MoreVertical, Plus, Settings } from "lucide-react";
+import { ArrowDown, CalendarCheck, Filter, LayoutGrid, List, MoreVertical, Plus, Settings, UserCog } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
@@ -11,6 +11,8 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import AddEmployeeModal from "./AddEmployeeModal";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import { payrollBase, payrollDue, payrollEarned, payrollPeriod } from "@/lib/salary";
+import { demoAvans, demoAkladi, demoCarryOver, demoCollected, demoPercent } from "@/constants/salary";
 import {
   EMP_COLUMNS,
   EMP_COURSES,
@@ -66,6 +68,35 @@ function downloadBlob(blob: Blob, filename: string) {
 
 const EXPORT_HEADERS = ["№", "To'liq nomi", "Jinsi", "Aktiv o'quvchilar", "Guruhlar", "Turi", "Filiallar", "Telefon raqam", "Kurs", "Yaratilgan sana"];
 
+function fmtNum(n: number): string {
+  return Math.round(n).toLocaleString("ru-RU");
+}
+
+// Xodim uchun oylik-komponentlar (Moliya → Oylik hisob-kitob bilan bir xil
+// mantiq — API/klient orasida takrorlanadigan formulani bir joyda ushlash).
+function salaryFor(emp: HrEmployee, p: ReturnType<typeof payrollPeriod>) {
+  const fixedSalary = (emp.branchAssignments ?? []).reduce((s: number, b: any) => s + (b.salary ?? 0), 0);
+  const salaryType: "fixed" | "foiz" = fixedSalary > 0 ? "fixed" : "foiz";
+  const percent = emp.percent ? Number(String(emp.percent).replace(/[^\d.]/g, "")) || demoPercent(emp.id) : demoPercent(emp.id);
+  const collected = salaryType === "foiz" ? demoCollected(emp.id) : 0;
+  const paidAvans = demoAvans(emp.id);
+  const paidOylik = demoAkladi(emp.id);
+  const carryOver = demoCarryOver(emp.id);
+  const row = {
+    id: emp.id, name: emp.name, phone: emp.phone, turi: emp.turi ?? "teacher",
+    salaryType, fixedSalary, percent, collected, futureCollected: 0,
+    bonus: 0, jarima: 0, paidAvans, paidOylik, carryOver, carryNote: "",
+  };
+  return {
+    salaryType, percent, fixedSalary,
+    base: payrollBase(row, p),
+    jamiOylik: payrollEarned(row, p),
+    jamiAvans: paidAvans,
+    tolanganOylik: paidOylik,
+    qolganOylik: payrollDue(row, p),
+  };
+}
+
 export default function EmployeesListPage() {
   const router = useRouter();
   const { showSuccess } = useToast();
@@ -86,9 +117,12 @@ export default function EmployeesListPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const [rows, setRows] = useState<HrEmployee[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
+
+  const period = useMemo(() => payrollPeriod(), []);
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -171,14 +205,61 @@ export default function EmployeesListPage() {
     switch (colId) {
       case "num": return <span className="text-muted-foreground tabular-nums">{start + i + 1}</span>;
       case "name": return (
-        <Link href={`/management-xodimlar/${e.id}`} onClick={(ev) => ev.stopPropagation()} className="font-medium text-foreground hover:text-primary hover:underline">
+        <Link href={`/management-xodimlar/${e.id}`} onClick={(ev) => ev.stopPropagation()} className="font-semibold text-amber-600 hover:text-amber-700 hover:underline">
           {e.name}
         </Link>
       );
       case "gender": return <span className="text-[13px] text-muted-foreground">{GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS]}</span>;
       case "aktivOq": return <span className="tabular-nums">{e.aktivOq}</span>;
       case "groups": return <span className="tabular-nums">{e.groups}</span>;
-      case "turi": return <span className="text-[13px]">{ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? e.turi}</span>;
+      case "turi": {
+        const turiBadge = e.turi === "teacher"
+          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+          : e.turi === "moderator"
+          ? "bg-sky-500/10 text-sky-600 border-sky-500/20"
+          : "bg-violet-500/10 text-violet-600 border-violet-500/20";
+        return (
+          <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${turiBadge} whitespace-nowrap`}>
+            {e.turi}
+          </span>
+        );
+      }
+      case "ishTuri": {
+        const s = salaryFor(e, period);
+        const isFoiz = s.salaryType === "foiz";
+        const cls = isFoiz
+          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+          : "bg-sky-500/10 text-sky-600 border-sky-500/20";
+        return (
+          <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${cls} whitespace-nowrap`}>
+            {isFoiz ? `Foiz ${s.percent}%` : "Oklad"}
+          </span>
+        );
+      }
+      case "jamiOylik": {
+        const v = salaryFor(e, period).jamiOylik;
+        return v > 0
+          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(v)}</span>
+          : <span className="tabular-nums text-muted-foreground">0</span>;
+      }
+      case "jamiAvans": {
+        const v = salaryFor(e, period).jamiAvans;
+        return v > 0
+          ? <span className="tabular-nums text-[13px] font-medium text-amber-600">{fmtNum(v)}</span>
+          : <span className="tabular-nums text-muted-foreground">0</span>;
+      }
+      case "tolanganOylik": {
+        const v = salaryFor(e, period).tolanganOylik;
+        return v > 0
+          ? <span className="tabular-nums text-[13px]">{fmtNum(v)}</span>
+          : <span className="tabular-nums text-muted-foreground">0</span>;
+      }
+      case "qolganOylik": {
+        const v = salaryFor(e, period).qolganOylik;
+        return v !== 0
+          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(v)}</span>
+          : <span className="tabular-nums text-muted-foreground">0</span>;
+      }
       case "filial": return e.filial;
       case "phone": return <span className="tabular-nums text-[13px]">{e.phone}</span>;
       case "kurs": return <span className="text-[13px]">{e.kurs || "-"}</span>;
@@ -211,6 +292,40 @@ export default function EmployeesListPage() {
           Xodim qo&apos;shish
         </Button>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => showSuccess("Ishga qabul / bo'shatish (demo)")}
+            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
+          >
+            <UserCog className="w-4 h-4 text-primary" />
+            Ishga qabul / bo&apos;shatish
+          </button>
+          <button
+            type="button"
+            onClick={() => showSuccess("HR davomat / ta'til (demo)")}
+            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
+          >
+            <CalendarCheck className="w-4 h-4 text-emerald-600" />
+            HR davomat / ta&apos;til
+          </button>
+          <div className="inline-flex items-center h-10 rounded-lg border border-border bg-card overflow-hidden">
+            <button
+              type="button"
+              title="Ro'yxat ko'rinishi"
+              onClick={() => setViewMode("list")}
+              className={`h-full w-10 inline-flex items-center justify-center ${viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              title="Karta ko'rinishi"
+              onClick={() => setViewMode("grid")}
+              className={`h-full w-10 inline-flex items-center justify-center border-l border-border ${viewMode === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
           <div className="relative" ref={settingsRef}>
             <Button variant="outline" lucideIcon={Settings} title="Sozlash" onClick={() => { setSettingsOpen((o) => !o); setMoreOpen(false); }} />
             {settingsOpen && (
@@ -300,7 +415,7 @@ export default function EmployeesListPage() {
         </div>
       )}
 
-      {/* Table card */}
+      {/* Table / grid card */}
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
@@ -308,40 +423,89 @@ export default function EmployeesListPage() {
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
-        <div className="table-scroll">
-          <table className="w-full text-sm min-w-[1700px]">
-            <thead>
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                {visibleCols.map((c) => (
-                  <th key={c.id} className="px-3 py-3 text-left whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1">
-                      {c.label}
-                      {c.sortable && <ArrowDown className="h-3 w-3" />}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {slice.map((e, i) => (
-                <tr
-                  key={e.id}
-                  onClick={() => router.push(`/management-xodimlar/${e.id}`)}
-                  className="hover:bg-secondary/30 transition-colors cursor-pointer"
-                >
+        {viewMode === "list" ? (
+          <div className="table-scroll">
+            <table className="w-full text-sm min-w-[1700px]">
+              <thead>
+                <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   {visibleCols.map((c) => (
-                    <td key={c.id} className="px-3 py-3 whitespace-nowrap">{renderCell(e, c.id, i)}</td>
+                    <th key={c.id} className="px-3 py-3 text-left whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">
+                        {c.label}
+                        {c.sortable && <ArrowDown className="h-3 w-3" />}
+                      </span>
+                    </th>
                   ))}
                 </tr>
-              ))}
-              {slice.length === 0 && (
-                <tr>
-                  <td colSpan={visibleCols.length} className="px-3 py-10 text-center text-sm text-muted-foreground">{loadingRows ? <SpinnerBlock size={22} /> : "Xodim topilmadi"}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {slice.map((e, i) => (
+                  <tr
+                    key={e.id}
+                    onClick={() => router.push(`/management-xodimlar/${e.id}`)}
+                    className="hover:bg-secondary/30 transition-colors cursor-pointer"
+                  >
+                    {visibleCols.map((c) => (
+                      <td key={c.id} className="px-3 py-3 whitespace-nowrap">{renderCell(e, c.id, i)}</td>
+                    ))}
+                  </tr>
+                ))}
+                {slice.length === 0 && (
+                  <tr>
+                    <td colSpan={visibleCols.length} className="px-3 py-10 text-center text-sm text-muted-foreground">{loadingRows ? <SpinnerBlock size={22} /> : "Xodim topilmadi"}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-4">
+            {slice.length === 0 ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">{loadingRows ? <SpinnerBlock size={22} /> : "Xodim topilmadi"}</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {slice.map((e) => {
+                  const s = salaryFor(e, period);
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => router.push(`/management-xodimlar/${e.id}`)}
+                      className="text-left rounded-xl border border-border bg-card hover:bg-secondary/30 hover:border-primary/40 transition-colors p-4"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-semibold text-amber-600">{e.name}</div>
+                        <span className={`inline-flex items-center h-5 px-2 rounded-md border text-[10.5px] font-medium ${e.turi === "teacher" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : e.turi === "moderator" ? "bg-sky-500/10 text-sky-600 border-sky-500/20" : "bg-violet-500/10 text-violet-600 border-violet-500/20"}`}>
+                          {e.turi}
+                        </span>
+                      </div>
+                      <div className="text-[12.5px] text-muted-foreground tabular-nums">{e.phone}</div>
+                      <div className="text-[12.5px] text-muted-foreground mt-0.5">{e.kurs || "—"}</div>
+                      <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2 text-[12px]">
+                        <div>
+                          <div className="text-muted-foreground">Ish turi</div>
+                          <div className="font-medium">{s.salaryType === "foiz" ? `Foiz ${s.percent}%` : "Oklad"}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Jami oylik</div>
+                          <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.jamiOylik)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Jami avans</div>
+                          <div className="font-medium text-amber-600 tabular-nums">{fmtNum(s.jamiAvans)}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Qolgan</div>
+                          <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.qolganOylik)}</div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         <Pagination
           totalItems={filtered.length}
           page={page}

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { SALARY_RUN_SEED, demoAvans, demoAkladi } from "@/constants/salary";
-import type { SalaryRun } from "@/lib/salary";
+import { SALARY_RUN_SEED, demoAvans, demoAkladi, demoCollected, demoPercent, demoCarryOver } from "@/constants/salary";
+import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
+import { payrollBase, payrollEarned, payrollDue, payrollMonthKey, payrollPeriod } from "@/lib/salary";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
@@ -53,22 +54,35 @@ export async function POST(req: Request) {
     db.collection<Penalty>("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
   ]);
 
+  const period = payrollPeriod();
+  let oylik = 0;
   let bonus = 0;
   let jarima = 0;
   let avans = 0;
   let akladi = 0;
   let tolanmagan = 0;
+  const items: SalaryRunItem[] = [];
   for (const emp of employees) {
     const empBonus = bonusRows.filter((b) => b.recipientName === emp.name).reduce((s, b) => s + b.amount, 0);
     const empJarima = penaltyRows.filter((p) => p.recipientName === emp.name).reduce((s, p) => s + p.amount, 0);
     const empAvans = demoAvans(emp.id);
     const empAkladi = demoAkladi(emp.id);
-    const ishHaqi = empAkladi - empAvans + empBonus - empJarima;
+    const fixedSalary = (emp.branchAssignments ?? []).reduce((s: number, b: any) => s + (b.salary ?? 0), 0);
+    const salaryType: "fixed" | "foiz" = fixedSalary > 0 ? "fixed" : "foiz";
+    const percent = emp.percent ? Number(String(emp.percent).replace(/[^\d.]/g, "")) || demoPercent(emp.id) : demoPercent(emp.id);
+    const collected = salaryType === "foiz" ? demoCollected(emp.id) : 0;
+    const carryOver = demoCarryOver(emp.id);
+    const ep = { id: emp.id, name: emp.name, phone: emp.phone, turi: emp.turi ?? "teacher", salaryType, fixedSalary, percent, collected, futureCollected: 0, bonus: empBonus, jarima: empJarima, paidAvans: empAvans, paidOylik: empAkladi, carryOver, carryNote: "" };
+    const empOylik = payrollEarned(ep, period); // asos + bonus - jarima
+    const empDue = payrollDue(ep, period); // qolgan to'lanadigan
+
+    oylik += empOylik;
     bonus += empBonus;
     jarima += empJarima;
     avans += empAvans;
     akladi += empAkladi;
-    tolanmagan += Math.max(ishHaqi, 0);
+    tolanmagan += Math.max(empDue, 0);
+    items.push({ employeeId: emp.id, amount: Math.max(empDue, 0) });
   }
 
   const col = db.collection("salary_runs");
@@ -78,7 +92,7 @@ export async function POST(req: Request) {
   const run: SalaryRun = {
     id: nextId,
     employeeCount: employees.length,
-    oylik: 0,
+    oylik,
     davomat: 0,
     davomatFoizi: 0,
     bonus,
@@ -87,6 +101,8 @@ export async function POST(req: Request) {
     akladi,
     tolanmagan,
     createdAt: fmtNow(new Date()),
+    month: payrollMonthKey(period),
+    items,
   };
   await col.insertOne({ ...run });
   return NextResponse.json({ ok: true, run });

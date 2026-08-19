@@ -193,6 +193,7 @@ export const SIDEBAR_ITEMS = [
       width: 240,
       items: [
         { label: "Xodimlar", href: "/management-xodimlar", icon: "i-users-group", medium: true },
+        { label: "Ishga chaqiruv (CV)", href: "/management-cv", icon: "i-file-plus" },
         { label: "Rollar", href: "/management-rollar", icon: "i-shield" },
         { label: "Filiallar", href: "/management-filiallar", icon: "i-grid" },
         { label: "Ish jadvali", href: "/management-ish-jadvali", icon: "i-calendar" },

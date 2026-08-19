@@ -20,6 +20,27 @@ export function demoAkladi(employeeId) {
   return h % 5 === 0 ? h % 60000000 : 0;
 }
 
+// Foizli xodim orqali shu oyda tushgan pul (o'z oyi uchun asos). Real
+// tushum trekingi hali yo'q — deterministik demo.
+export function demoCollected(employeeId) {
+  const h = hash(employeeId + 131);
+  return Math.round((h % 60) * 100000) * 10; // 0..60_000_000, 100k aniqligida
+}
+
+// Foizli xodimning oladigan foizi. HrEmployee.percent bo'lsa, uni
+// parselaymiz. Aks holda deterministik demo (25..50%).
+export function demoPercent(employeeId) {
+  const opts = [30, 35, 40, 45, 50];
+  return opts[hash(employeeId + 41) % opts.length];
+}
+
+// O'tgan oydan qolgan qarz (har 3-xodimda). Faqat "Iyul oyidan qolgan"
+// izohli qismni ko'rsatish uchun demo.
+export function demoCarryOver(employeeId) {
+  const h = hash(employeeId + 17);
+  return h % 3 === 0 ? Math.round((h % 20) * 100000) : 0;
+}
+
 export const SALARY_RUN_SEED = [
   {
     id: 1,

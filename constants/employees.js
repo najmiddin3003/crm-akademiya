@@ -13,6 +13,13 @@ export const EMP_COLUMNS = [
   { id: "aktivOq", label: "Aktiv o'quvchilar soni" },
   { id: "groups", label: "Guruhlar" },
   { id: "turi", label: "Turi" },
+  // Oylik hisob-kitob ustunlari (Moliya → Oylik hisob-kitob bilan bir manba).
+  // ISH TURI — "Foiz X%" yoki "Oklad" (xodim kartasi filiallar/foiz asosida).
+  { id: "ishTuri", label: "Ish turi" },
+  { id: "jamiOylik", label: "Jami oylik" },
+  { id: "jamiAvans", label: "Jami avans" },
+  { id: "tolanganOylik", label: "To'langan oylik" },
+  { id: "qolganOylik", label: "Qolgan oylik" },
   { id: "filial", label: "Filiallar" },
   { id: "phone", label: "Telefon raqam" },
   { id: "kurs", label: "Kurs" },

@@ -22,6 +22,9 @@ const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
 }
+function fmtSum(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " so'm";
+}
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -112,6 +115,14 @@ export default function CashboxAdjustDrawer({
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
 
+  // "Hodimga avans" turida umumiy summa xodimning qolgan oyligidan oshmasligi
+  // kerak (referens qoida: avans oylikdan bo'lib beriladi). Kategoriya nomida
+  // "avans" so'zi bo'lsa shu tekshiruv yoqiladi — nomlar admin
+  // boshqaradigan ro'yxatdan olinadi, shuning uchun so'zga qaraymiz.
+  const isAvansCategory = /avans/i.test(category);
+  const employeeOylik = selectedEmployee ? salaryOf(selectedEmployee.id).oylik : 0;
+  const avansExceeds = isAvansCategory && !!selectedEmployee && total > employeeOylik;
+
   function addRow() {
     setRows((prev) => [...prev, { id: nextRowId, amount: "", month: defaultMonth() }]);
     setNextRowId((n) => n + 1);
@@ -138,6 +149,10 @@ export default function CashboxAdjustDrawer({
     }
     if (available != null && total > available) {
       showError("Mablag' yetarli emas");
+      return;
+    }
+    if (avansExceeds) {
+      showError(`Avans oylikdan ko'p bo'lishi mumkin emas (qolgan oylik: ${fmtUZS(employeeOylik)})`);
       return;
     }
     setSaving(true);
@@ -224,8 +239,13 @@ export default function CashboxAdjustDrawer({
               {selectedEmployee && (
                 <>
                   <div className="text-[13px] text-muted-foreground">
-                    {`Oylik: ${fmtUZS(salaryOf(selectedEmployee.id).oylik)}`}
+                    {`Oylik: ${fmtUZS(employeeOylik)}`}
                   </div>
+                  {isAvansCategory && avansExceeds && (
+                    <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
+                      Avans xodimning qolgan oyligidan ({fmtUZS(employeeOylik)}) ko&apos;p bo&apos;lishi mumkin emas.
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSalaryOpen(true)}
@@ -297,7 +317,12 @@ export default function CashboxAdjustDrawer({
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Tanlang</option>
-                {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
+                {paymentMethods
+                  .map((m) => ({ m, bal: cashbox.methodTotals[m.key as keyof CashboxMethodTotals] ?? 0 }))
+                  .filter(({ bal }) => bal > 0)
+                  .map(({ m, bal }) => (
+                    <option key={m.key} value={m.key}>{`${m.name} (${fmtSum(bal)})`}</option>
+                  ))}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>
@@ -326,7 +351,11 @@ export default function CashboxAdjustDrawer({
           <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
-          <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
+          <button
+            onClick={save}
+            disabled={saving || avansExceeds}
+            className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>

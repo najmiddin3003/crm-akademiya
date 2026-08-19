@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { demoAvans, demoAkladi } from "@/constants/salary";
+import { demoAvans, demoAkladi, demoCollected, demoPercent, demoCarryOver } from "@/constants/salary";
+import { prevMonthName, payrollPeriod } from "@/lib/salary";
 import type { EmployeePayroll } from "@/lib/salary";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
@@ -9,9 +10,8 @@ import type { Penalty } from "@/lib/penalties";
 // GET /api/salary-runs/employees-payroll — Oylik chiqarish → xodim tanlash
 // jadvali uchun har bir xodimning joriy hisoblangan qatori (skrinshot 3).
 // BONUS/JARIMA — real (Moliya → Bonus/Jarima'dagi bekor qilinmagan
-// yozuvlar yig'indisi); AVANS/AKLADI — demo (xodim id'sidan deterministik,
-// loyihada hali alohida real "avans" kuzatuvi yo'q); ISH HAQI = AKLADI -
-// AVANS + BONUS - JARIMA (POST /api/salary-runs bilan bir xil formula).
+// yozuvlar yig'indisi); PAIDAVANS/PAIDOYLIK — demo (xodim id'sidan
+// deterministik, loyihada hali alohida real "avans" kuzatuvi yo'q).
 export async function GET() {
   const db = await ensureIndexes();
   const [employeeRows, bonusRows, penaltyRows] = await Promise.all([
@@ -20,24 +20,38 @@ export async function GET() {
     db.collection<Penalty>("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
   ]);
 
+  const p = payrollPeriod();
+  const prevMonth = prevMonthName(p);
+
   const employees: EmployeePayroll[] = employeeRows.map((emp) => {
     const bonus = bonusRows.filter((b) => b.recipientName === emp.name).reduce((s, b) => s + b.amount, 0);
     const jarima = penaltyRows.filter((p) => p.recipientName === emp.name).reduce((s, p) => s + p.amount, 0);
-    const avans = demoAvans(emp.id);
-    const akladi = demoAkladi(emp.id);
-    const ishHaqi = akladi - avans + bonus - jarima;
+    const paidAvans = demoAvans(emp.id);
+    const paidOylik = demoAkladi(emp.id);
+
+    // Xodim kartasidagi filiallar bo'yicha ish haqi yig'indisi (fixed).
+    const fixedSalary = (emp.branchAssignments ?? []).reduce((s: number, b: any) => s + (b.salary ?? 0), 0);
+    const salaryType: "fixed" | "foiz" = fixedSalary > 0 ? "fixed" : "foiz";
+    const percent = emp.percent ? Number(String(emp.percent).replace(/[^\d.]/g, "")) || demoPercent(emp.id) : demoPercent(emp.id);
+    const collected = salaryType === "foiz" ? demoCollected(emp.id) : 0;
+    const carryOver = demoCarryOver(emp.id);
+
     return {
       id: emp.id,
       name: emp.name,
       phone: emp.phone,
-      ishHaqi,
-      davomat: 0,
-      davomatFoizi: 0,
+      turi: emp.turi ?? "teacher",
+      salaryType,
+      fixedSalary,
+      percent,
+      collected,
+      futureCollected: 0,
       bonus,
-      avans,
       jarima,
-      akladi,
-      tolanmagan: Math.max(ishHaqi, 0),
+      paidAvans,
+      paidOylik,
+      carryOver,
+      carryNote: carryOver > 0 ? `${prevMonth} oyidan qolgan` : "",
     };
   });
 
