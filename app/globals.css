@@ -10112,3 +10112,26 @@ html.dark .emp-icon-btn-danger:hover { background-color: rgba(220, 38, 38, 0.18)
 #sidebar-toggle:hover { background-color: var(--shell-hover); }
 /* Sidebar yig'ilganda tugma chap chekkaga suriladi. */
 body.sidebar-hidden #sidebar-toggle { left: 6px; }
+
+/* ============ MOLIYA → KASSALAR (gradient kartalar) ============
+   Chap ustun kengligi va karta ichidagi ikonka-tugmalar. Bu fayldagi eski
+   Tailwind v3 dump ba'zi utility'larni bosib ketgani uchun (yuqoridagi
+   izohlarga qarang) kassa kartasiga xos o'lchov/ranglar qo'lda yozilgan. */
+@media (min-width: 768px) {
+  .fc-aside { width: clamp(320px, 26%, 440px); }
+}
+.fc-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.375rem;
+  transition: background-color .15s;
+}
+.fc-card-dark .fc-card-btn:hover { background-color: rgba(255, 255, 255, .15); }
+.fc-card-light .fc-card-btn:hover { background-color: rgba(15, 23, 42, .08); }
+/* Sana oralig'i tanlagichi qatordagi `h-10` select'lar bilan bir tekisda
+   turishi uchun (komponentning o'zi h-9). Faqat birinchi bola — ochilgan
+   kalendar `position: fixed` bilan alohida joylashadi. */
+.fc-range > div:first-child { height: 2.5rem; }

@@ -1,14 +1,32 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, ChevronDown, Eye, EyeOff, FileSpreadsheet, FileText, MoreVertical, Star } from "lucide-react";
+import {
+  Archive,
+  ArrowDownLeft,
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpRight,
+  ChevronDown,
+  CircleCheckBig,
+  CircleX,
+  Crown,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
+  FileText,
+  LayoutGrid,
+  Pencil,
+  Plus,
+  Printer,
+  UserCheck,
+} from "lucide-react";
 import * as XLSX from "xlsx";
 import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { GROUP_TEACHERS } from "@/constants/groups";
 import { STUDENTS_LIST } from "@/constants/studentsList";
 import CashboxDrawer from "./CashboxDrawer";
 import CashboxTransferDrawer from "./CashboxTransferDrawer";
@@ -26,32 +44,51 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 const TX_TYPE_MAP: Record<string, string> = { kirim: "payIn", chiqim: "payOut", kochirish: "transfer" };
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 
-function fmtSignedUZS(n: number): string {
-  const sign = n < 0 ? "-" : "";
-  return sign + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
-}
-function fmtEntryDate(e: TransactionEntry): string {
-  const [y, m, d] = e.date.split("-");
-  return `${d}.${m}.${y} | ${e.time}`;
-}
-
 // Moliya → Kassalar (sidebar: Moliya > Kassalar, href /finance-cash).
-// Chapda kassalar ro'yxati (tanlangani kengaytirilgan holda — Kirim/Chiqim/
-// Ko'chirish tugmalari bilan), o'ngda tanlangan kassaning to'lov turlari
-// bo'yicha statistikasi (drag-and-drop bilan qayta tartiblanadigan, tartib
-// localStorage'da saqlanadi) + filtr/tab/jadval. Kassa qo'shish/tahrirlash,
-// Kirim/Chiqim (/api/cashboxes/:id/adjust — balans ham o'zgaradi) va
-// to'lov turlari/kassalar orasida Ko'chirish (transfer, transfer-to —
-// taqsimot o'zgaradi) barchasi HAQIQIY (MongoDB). Har bir amal MongoDB
-// `transaction_entries` kolleksiyasiga ham haqiqiy yozuv qo'shadi — shu
-// jadval, "Tranzaksiyalar" va "Moliya hisobotlari/analitikasi" sahifalari
-// bilan BIR XIL manbadan (lib/transactionLog.ts) foydalanadi.
-// Kartadagi mas'ul (moderator) ismi bosilsa — xodim profiliga
-// (/management-xodimlar/[id]) o'tadi.
+//
+// Dizayn referensi: chapda gradient kassa kartalari (tanlangani va bosh
+// kassa — to'q ko'k, qolganlari — och ko'k), tanlangan kartaning ICHIDA
+// Kirim/Chiqim/Ko'chirish tugmalari, to'lov turlari bo'yicha qoldiq va
+// tahrirlash / asosiy qilish / hisobot yuklab olish satri. O'ngda ikki
+// qatorli filtrlar + tranzaksiyalar jadvali.
+//
+// Barcha amallar HAQIQIY (MongoDB): kassa qo'shish/tahrirlash, Kirim/Chiqim
+// (/api/cashboxes/:id/adjust — balans ham o'zgaradi), to'lov turlari orasida
+// (transfer) va kassalar orasida (transfer-to) ko'chirish. Har bir amal
+// `transaction_entries` kolleksiyasiga yozuv qo'shadi — shu jadval,
+// "Tranzaksiyalar" va "Moliya hisobotlari/analitikasi" sahifalari BIR XIL
+// manbadan (lib/transactionLog.ts) foydalanadi.
+//
+// Kartadagi mas'ul (moderator) ismi va jadvaldagi "Kim" ustuni profil
+// sahifalariga (/management-xodimlar/[id], /student-edit/[id]) o'tadi.
+
+// Karta fonlari — referens dizayndagi gradientlar. Tailwind'ning arbitrary
+// klasslari bu loyihada ishonchsiz (globals.css dagi eski v3 dump bosib
+// ketadi), shuning uchun kartaga xos ranglar inline style bilan beriladi.
+const CARD_DARK = "linear-gradient(135deg,#1e40af,#172554)";
+const CARD_LIGHT = "linear-gradient(135deg,#7dd3fc,#60a5fa)";
+
+// To'lov turi yonidagi rangli nuqta. Kalitlar Sozlamalar → Moliya → To'lov
+// turlaridan keladi; ro'yxatga yangi tur qo'shilsa, u zaxira palitradan rang
+// oladi (rang faqat bezak — hisob-kitobga ta'sir qilmaydi).
+const METHOD_DOT: Record<string, string> = {
+  naqd: "#34d399",
+  inkassa: "#fbbf24",
+  terminal: "#38bdf8",
+  plastik: "#c4b5fd",
+  korporativKarta: "#94a3b8",
+  ilovaClick: "#7dd3fc",
+  yagonaQr: "#f472b6",
+  hisobRaqam: "#a3e635",
+};
+const DOT_FALLBACK = ["#34d399", "#fbbf24", "#38bdf8", "#c4b5fd", "#94a3b8", "#7dd3fc", "#f472b6", "#a3e635"];
+function methodDot(key: string, i: number): string {
+  return METHOD_DOT[key] ?? DOT_FALLBACK[i % DOT_FALLBACK.length];
+}
 
 const METHOD_ORDER_KEY = "financeCashMethodOrder";
 
-// Foydalanuvchi tanlagan kartalar tartibi (localStorage). Ro'yxatga
+// Foydalanuvchi tanlagan to'lov turlari tartibi (localStorage). Ro'yxatga
 // solishtirish render vaqtida bo'ladi — to'lov turlari Sozlamalardan
 // asinxron kelgani uchun bu yerda faqat xom massiv o'qiladi.
 function readSavedOrder(): string[] {
@@ -64,10 +101,18 @@ function readSavedOrder(): string[] {
   }
 }
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+const selectCls =
+  "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-function fmtUZS(n: number): string {
-  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
+function fmtNum(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+function fmtSom(n: number): string {
+  return fmtNum(n) + " so'm";
+}
+function fmtEntryDate(e: TransactionEntry): string {
+  const [y, m, d] = e.date.split("-");
+  return `${d}.${m}.${y} | ${e.time}`;
 }
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -79,21 +124,161 @@ function todayRange(): DateRange {
   return { start, end: start };
 }
 
+function escHtml(s: string): string {
+  const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+  return s.replace(/[&<>"]/g, (c) => map[c]);
+}
+
+// Chek chiqarish — yashirin iframe ichida bosma sahifa yasab, brauzerning
+// bosma oynasini ochadi. Alohida chek route'i kerak emas va sahifadagi
+// holat (drawer, filtrlar) buzilmaydi.
+function printReceipt(e: TransactionEntry, cashboxName: string) {
+  const rows: [string, string][] = [
+    ["Sana", fmtEntryDate(e)],
+    ["Kim", e.studentName || e.moderator || "—"],
+    ["Tranzaksiya nomi", e.txName || "—"],
+    ["Tranzaksiya turi", TX_TYPE_LABELS[e.txType] || e.txType],
+    ["To'lov turi", e.paymentType],
+    ["Izoh", e.note || "—"],
+  ];
+  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
+    body{font:13px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;margin:0;padding:18px;width:280px;color:#0f172a}
+    h1{font-size:15px;margin:0 0 2px}
+    .sub{color:#64748b;font-size:11px;margin-bottom:12px}
+    .r{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed #e2e8f0}
+    .r span:first-child{color:#64748b}
+    .r span:last-child{text-align:right;font-weight:500}
+    .total{display:flex;justify-content:space-between;margin-top:12px;font-size:16px;font-weight:700}
+  </style></head><body>
+    <h1>Chek #${e.id}</h1>
+    <div class="sub">${escHtml(cashboxName)}</div>
+    ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
+    <div class="total"><span>Miqdori</span><span>${fmtSom(Math.abs(e.amount))}</span></div>
+  </body></html>`;
+
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc) {
+    frame.remove();
+    return;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  frame.contentWindow?.focus();
+  frame.contentWindow?.print();
+  window.setTimeout(() => frame.remove(), 1000);
+}
+
+// "O'quvchini qidiring..." / "O'qituvchini qidiring..." — yozib qidiriladigan
+// filtr. Qiymat erkin matn (qismiy moslik bo'yicha filtrlaydi), ro'yxatdan
+// tanlansa to'liq ism qo'yiladi.
+function SearchFilter({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (ev: MouseEvent) => {
+      if (ref.current && !ref.current.contains(ev.target as Node)) setOpen(false);
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [open]);
+
+  const q = value.trim().toLowerCase();
+  const list = options.filter((o) => !q || o.toLowerCase().includes(q)).slice(0, 40);
+
+  return (
+    <div className="relative flex-1 min-w-[150px]" ref={ref}>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        className="w-full h-10 rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => { onChange(""); setOpen(false); }}
+          title="Tozalash"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+        >
+          ×
+        </button>
+      )}
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-lg border border-border bg-card shadow-xl">
+          {list.length === 0 ? (
+            <div className="px-3 py-3 text-[13px] text-muted-foreground text-center">Topilmadi</div>
+          ) : (
+            list.map((o) => (
+              <button
+                key={o}
+                type="button"
+                onClick={() => { onChange(o); setOpen(false); }}
+                className="w-full text-left px-3 py-2 hover:bg-secondary text-[13px] truncate"
+              >
+                {o}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Jadvaldagi "Holati" ustuni. Manbadagi qiymatlar: "" (qabul qilindi),
+// "waiting" (kutilmoqda), "cancelled" (bekor qilingan).
+function StatusCell({ status }: { status: string }) {
+  if (status === "cancelled") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[13px] text-rose-500 font-medium">
+        <CircleX className="w-3.5 h-3.5" /> Bekor qilingan
+      </span>
+    );
+  }
+  if (status === "waiting") {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px]">×</span>
+        <span className="text-[13px] text-rose-600 font-medium">Kutilmoqda</span>
+        <span className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600">
+          <UserCheck style={{ width: 11, height: 11 }} />
+        </span>
+      </span>
+    );
+  }
+  return <span className="text-[13px] text-emerald-600 font-medium">Qabul qilindi</span>;
+}
+
 export default function CashboxesPage() {
   const { showSuccess, showError } = useToast();
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
+  // Tanlangan karta ochiq holatda ko'rinadi (amal tugmalari + to'lov turlari
+  // bo'yicha qoldiq), qolganlari yig'ilgan. "More" esa faqat qo'shimcha
+  // Divident/Sarmoya tugmalarini ochadi.
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  // Accordion: `selectedId` — o'ngdagi statistika/jadval qaysi kassaniki,
-  // `expandedId` esa faqat kartaning ochiq/yopiqligi. Ochiq kartani qayta
-  // bosish uni yopadi, tanlov esa o'zgarmaydi — o'ng tomondagi ma'lumot
-  // yo'qolib qolmasligi uchun.
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  function toggleCashbox(id: number) {
-    setSelectedId(id);
-    setExpandedId((cur) => (cur === id ? null : id));
-  }
-  const [statusFilter, setStatusFilter] = useState<"active" | "archived">("active");
+  const [cardMoreId, setCardMoreId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"active" | "archived" | "all">("active");
   const [hideBalances, setHideBalances] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -106,7 +291,6 @@ export default function CashboxesPage() {
   const [investmentTarget, setInvestmentTarget] = useState<Cashbox | null>(null);
   const [primaryConfirmTarget, setPrimaryConfirmTarget] = useState<Cashbox | null>(null);
   const [settingPrimary, setSettingPrimary] = useState(false);
-  const [moreOpenId, setMoreOpenId] = useState<number | null>(null);
 
   async function confirmSetPrimary() {
     if (!primaryConfirmTarget) return;
@@ -123,8 +307,9 @@ export default function CashboxesPage() {
     }
   }
 
-  // Jadval kartalari uchun BARCHA turlar (nofaol qilingani ham) — eski
-  // summalar ko'rinib turishi kerak; tanlash ro'yxatlarida esa faqat faollari.
+  // Kartadagi qoldiq ro'yxati uchun BARCHA turlar (nofaol qilingani ham) —
+  // eski summalar ko'rinib turishi kerak; tanlash ro'yxatlarida esa faqat
+  // faollari.
   const { methods: paymentMethods } = usePaymentMethods();
   const [methodOrder, setMethodOrder] = useState<string[]>([]);
   useEffect(() => {
@@ -158,7 +343,7 @@ export default function CashboxesPage() {
     const next = current.filter((k) => k !== dragKey);
     // Dropping past the target in the drag direction: land right after it
     // when moving forward, right before it when moving backward — so a
-    // single drag can move a card any number of positions, not just one.
+    // single drag can move a row any number of positions, not just one.
     let insertAt = next.indexOf(target);
     if (sourceIndex < targetIndex) insertAt += 1;
     next.splice(insertAt, 0, dragKey);
@@ -173,7 +358,6 @@ export default function CashboxesPage() {
   const [student, setStudent] = useState("");
   const [payType, setPayType] = useState("");
   const [teacher, setTeacher] = useState("");
-  const [tab, setTab] = useState<"tx" | "app">("tx");
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -256,10 +440,7 @@ export default function CashboxesPage() {
       .then((d) => {
         if (cancelled || !d.ok) return;
         setCashboxes(d.cashboxes);
-        if (d.cashboxes.length > 0) {
-          setSelectedId(d.cashboxes[0].id);
-          setExpandedId(d.cashboxes[0].id);
-        }
+        if (d.cashboxes.length > 0) setSelectedId(d.cashboxes[0].id);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     refreshEntries();
@@ -270,13 +451,18 @@ export default function CashboxesPage() {
   }, []);
 
   const filteredList = useMemo(
-    () => cashboxes.filter((c) => (statusFilter === "archived" ? c.archived : !c.archived)),
+    () =>
+      cashboxes.filter((c) => {
+        if (statusFilter === "active") return !c.archived;
+        if (statusFilter === "archived") return c.archived;
+        return true;
+      }),
     [cashboxes, statusFilter],
   );
   const selected = useMemo(() => cashboxes.find((c) => c.id === selectedId) || null, [cashboxes, selectedId]);
 
   function mask(n: number): string {
-    return hideBalances ? "••• ••• •••" : fmtUZS(n);
+    return hideBalances ? "*** *** ***" : fmtNum(n);
   }
 
   const studentOptions = useMemo(
@@ -284,11 +470,16 @@ export default function CashboxesPage() {
     [entries],
   );
 
+  // O'qituvchi/mas'ul variantlari ham mavjud yozuvlardan olinadi — ro'yxatda
+  // hech qachon bo'sh natija beradigan band chiqmaydi.
+  const teacherOptions = useMemo(
+    () => Array.from(new Set(entries.map((e) => e.moderator).filter(Boolean))).sort(),
+    [entries],
+  );
+
   // Referensdagi "Tranzaksiya turi" filtri. `txName` — tranzaksiya turlari
   // katalogidan keladigan nom ("O'quvchi to'ladi", "Hodimga avans", ...),
   // yuqoridagi "Tranzaksiya" filtri esa Kirim/Chiqim/Ko'chirish amali bo'yicha.
-  // Variantlar mavjud yozuvlardan olinadi — bu faylda studentOptions/teacher
-  // ham shunday, va ro'yxatda hech qachon bo'sh natija beradigan band chiqmaydi.
   const txNameOptions = useMemo(
     () => Array.from(new Set(entries.map((e) => e.txName).filter(Boolean))).sort(),
     [entries],
@@ -300,15 +491,17 @@ export default function CashboxesPage() {
     const wantedPayLabel = payType ? paymentMethods.find((m) => m.key === payType)?.name : "";
     const startIso = dateRange.start ? toIso(dateRange.start) : null;
     const endIso = dateRange.end ? toIso(dateRange.end) : null;
+    const studentQ = student.trim().toLowerCase();
+    const teacherQ = teacher.trim().toLowerCase();
     return entries.filter((e) => {
       if (e.cashboxId !== selectedId) return false;
       if (startIso && e.date < startIso) return false;
       if (endIso && e.date > endIso) return false;
       if (wantedType && e.txType !== wantedType) return false;
       if (txName && e.txName !== txName) return false;
-      if (student && e.studentName !== student) return false;
+      if (studentQ && !e.studentName.toLowerCase().includes(studentQ)) return false;
       if (wantedPayLabel && e.paymentType !== wantedPayLabel) return false;
-      if (teacher && e.moderator !== teacher) return false;
+      if (teacherQ && !e.moderator.toLowerCase().includes(teacherQ)) return false;
       return true;
     });
     // `paymentMethods` ham bog'liqlikda: to'lov turlari asinxron yuklanadi,
@@ -328,6 +521,7 @@ export default function CashboxesPage() {
   const entryStart = (page - 1) * pageSize;
   const entrySlice = filteredEntries.slice(entryStart, entryStart + pageSize);
 
+  // Hisobotni yuklab olish menyusi — tanlangan kassa kartasi ichida.
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -384,60 +578,84 @@ export default function CashboxesPage() {
     }
   }
 
+  const segBase = "h-9 rounded-md inline-flex items-center justify-center gap-1.5 text-[13px] font-medium";
+  function segCls(v: "active" | "archived" | "all") {
+    return `${segBase} ${statusFilter === v ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-secondary"}`;
+  }
+
   return (
     <div className="page-frame-row p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
-      {/* Chap panel — kassalar ro'yxati */}
-      <aside className="page-frame-aside w-full md:w-[20%] shrink-0 space-y-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAddOpen(true)}
-            className="flex-1 inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
-          >
-            <span>+ Yangi kassa qo&apos;shish</span>
-          </button>
-          <button
-            onClick={() => setHideBalances((h) => !h)}
-            className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-            title={hideBalances ? "Balanslarni ko'rsatish" : "Balanslarni yashirish"}
-          >
-            {hideBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
+      {/* Chap panel — kassa kartalari */}
+      <aside className="page-frame-aside fc-aside w-full shrink-0 space-y-3">
+        <button
+          onClick={() => setAddOpen(true)}
+          className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Yangi kassa qo&apos;shish</span>
+        </button>
 
-        <div className="relative">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "active" | "archived")} className={`${selectCls} w-full`}>
-            <option value="active">Aktiv</option>
-            <option value="archived">Arxiv</option>
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+        {/* Holat filtri — segmentli tugmalar */}
+        <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1">
+          <button onClick={() => setStatusFilter("active")} className={segCls("active")}>
+            <CircleCheckBig className="w-3.5 h-3.5" /> Aktiv
+          </button>
+          <button onClick={() => setStatusFilter("archived")} className={segCls("archived")}>
+            <Archive className="w-3.5 h-3.5" /> Arxiv
+          </button>
+          <button onClick={() => setStatusFilter("all")} className={segCls("all")}>
+            <LayoutGrid className="w-3.5 h-3.5" /> Barchasi
+          </button>
         </div>
 
         <div className="space-y-2">
           {filteredList.map((c) => {
             const isSelected = c.id === selectedId;
-            const isExpanded = c.id === expandedId;
+            const isDark = isSelected || c.isPrimary;
+            // Arxivdagi kassada amaliyot qilinmaydi — faqat ko'rish.
+            const showActions = isSelected && !c.archived;
+            const showMore = cardMoreId === c.id;
+            const labelMuted = isDark ? "text-white/70" : "text-slate-700";
+            const textMuted = isDark ? "text-white/85" : "text-slate-700";
+            const line = isDark ? "rgba(255,255,255,.22)" : "rgba(15,23,42,.14)";
+            // Faqat puli bor to'lov turlari ko'rinadi — yangi turga kirim
+            // bo'lishi bilan o'zi qo'shiladi (referens dizayndagi kabi).
+            const methodRows = orderedMethods
+              .map((m, i) => ({ m, dot: methodDot(m.key, i), val: c.methodTotals[m.key] ?? 0 }))
+              .filter((r) => r.val > 0);
+
             return (
               <div
                 key={c.id}
-                onClick={() => toggleCashbox(c.id)}
-                className={`rounded-2xl border bg-card p-4 cursor-pointer transition-colors ${
-                  isSelected ? "border-primary shadow-sm" : "border-border hover:border-primary/40"
-                }`}
+                onClick={() => setSelectedId(c.id)}
+                className={`fc-card ${isDark ? "fc-card-dark" : "fc-card-light"} rounded-xl p-5 shadow-md cursor-pointer hover:shadow-lg transition-shadow relative`}
+                style={{ background: isDark ? CARD_DARK : CARD_LIGHT, color: isDark ? "#fff" : "#0f172a" }}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {c.isPrimary && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
-                      <div className="font-semibold text-[14px] truncate">{c.name}</div>
+                {c.isPrimary && !showActions && (
+                  <Crown className="absolute top-4 right-4 w-8 h-8" style={{ color: "#f59e0b", fill: "#fde68a" }} />
+                )}
+
+                <div className="min-w-0" style={c.isPrimary && !showActions ? { paddingRight: 46 } : undefined}>
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`text-[14px] font-semibold truncate min-w-0 ${labelMuted}`}>{c.name}</div>
+                      {c.archived && (
+                        <span
+                          className={`text-[11px] font-medium shrink-0 ${labelMuted}`}
+                          style={{ padding: "1px 8px", borderRadius: 9999, background: isDark ? "rgba(255,255,255,.18)" : "rgba(15,23,42,.10)" }}
+                        >
+                          Arxiv
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[12.5px] text-muted-foreground mt-0.5 truncate">
+                    <div className={`text-[12px] font-medium truncate min-w-0 ${textMuted}`} style={{ maxWidth: "60%" }}>
                       {!c.moderator ? (
                         "mas'ul belgilanmagan"
                       ) : moderatorProfileId(c.moderator) ? (
                         <Link
                           href={`/management-xodimlar/${moderatorProfileId(c.moderator)}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="hover:text-primary hover:underline"
+                          className="hover:underline"
                         >
                           {c.moderator}
                         </Link>
@@ -445,197 +663,219 @@ export default function CashboxesPage() {
                         c.moderator
                       )}
                     </div>
-                    <div className="text-[18px] font-bold tabular-nums mt-1">{mask(c.balance)}</div>
                   </div>
-                  <ChevronDown
-                    className={`w-4 h-4 text-muted-foreground shrink-0 mt-1 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-                  />
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setHideBalances((h) => !h); }}
+                        title={hideBalances ? "Summalarni ko'rsatish" : "Summalarni yashirish"}
+                        className="fc-card-btn shrink-0"
+                        style={{ opacity: 0.75, height: 28, width: 28 }}
+                      >
+                        {hideBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <div className="text-2xl font-bold tabular-nums truncate">{mask(c.balance)} so&apos;m</div>
+                    </div>
+                    {!isSelected && <ChevronDown className="w-4 h-4 shrink-0" style={{ opacity: 0.55 }} />}
+                  </div>
                 </div>
 
-                <div
-                  className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isExpanded ? "max-h-[600px]" : "max-h-0"}`}
-                >
-                  <div className="mt-3 pt-3 border-t border-border space-y-3" onClick={(e) => e.stopPropagation()}>
-                    <div>
-                      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                        To&apos;lov turi bo&apos;yicha qoldiq
-                      </div>
-                      {/* Har bir to'lov turi alohida qator: yupqa ajratuvchi
-                          chiziq + navbatma-navbat fon — tor panelda ham qaysi
-                          summa qaysi turga tegishli ekani darrov ko'rinadi. */}
-                      <div className="rounded-xl border border-border overflow-hidden">
-                        {orderedMethods.map((m, i) => (
-                          <div
-                            key={m.key}
-                            className={`flex items-center justify-between gap-2 px-2.5 py-1.5 text-[13px] ${
-                              i > 0 ? "border-t border-border" : ""
-                            } ${i % 2 === 1 ? "bg-secondary/70" : ""}`}
-                          >
-                            <span className="text-muted-foreground truncate">{m.name}</span>
-                            <span className="font-medium tabular-nums shrink-0">{mask(c.methodTotals[m.key] ?? 0)}</span>
-                          </div>
-                        ))}
-                      </div>
+                {showActions && (
+                  <>
+                    <div className="flex items-center gap-1.5 mt-4" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setKirimTarget(c)}
+                        className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Kirim
+                      </button>
+                      <button
+                        onClick={() => setAdjustState({ cashbox: c, mode: "chiqim" })}
+                        className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                      >
+                        <span className="font-bold">−</span> Chiqim
+                      </button>
+                      <button
+                        onClick={() => setTransferToTarget(c)}
+                        className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-sky-400 hover:bg-sky-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                      >
+                        Ko&apos;chirish
+                      </button>
                     </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setKirimTarget(c)} className="flex-1 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[12.5px] font-medium">+ Kirim</button>
-                      <button onClick={() => setAdjustState({ cashbox: c, mode: "chiqim" })} className="flex-1 h-8 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-[12.5px] font-medium">- Chiqim</button>
-                      <button onClick={() => setTransferToTarget(c)} className="flex-1 h-8 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-[12.5px] font-medium">Ko&apos;chirish</button>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => setEditTarget(c)} className="flex-1 h-8 rounded-lg border border-border hover:bg-secondary text-[12.5px] font-medium">Tahrirlash</button>
-                      {!c.isPrimary && (
-                        <button onClick={() => setPrimaryConfirmTarget(c)} className="flex-1 h-8 rounded-lg border border-border hover:bg-secondary text-[12.5px] font-medium">Asosiy qilish</button>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => setMoreOpenId((id) => (id === c.id ? null : c.id))}
-                      className="text-[12px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-                    >
-                      {moreOpenId === c.id ? "Kamroq" : "Yana…"}
-                    </button>
-                    {moreOpenId === c.id && (
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => setDividendTarget(c)} className="flex-1 h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[12.5px] font-medium">Divident</button>
-                        <button onClick={() => setInvestmentTarget(c)} className="flex-1 h-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[12.5px] font-medium">Sarmoya</button>
+                    {showMore && (
+                      <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setDividendTarget(c)}
+                          className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-amber-400 hover:bg-amber-500 text-amber-900 text-[13px] font-medium shadow-sm whitespace-nowrap"
+                        >
+                          Divident
+                        </button>
+                        <button
+                          onClick={() => setInvestmentTarget(c)}
+                          className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-blue-400 hover:bg-blue-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                        >
+                          Sarmoya
+                        </button>
                       </div>
                     )}
+                  </>
+                )}
+
+                {/* To'lov turlari bo'yicha qoldiq. Qatorni bosish — shu turdan
+                    boshqa turga ko'chirish; sudrab tashlash tartibni o'zgartiradi
+                    (tartib localStorage'da saqlanadi). */}
+                {isSelected && methodRows.length > 0 && (
+                  <div className="mt-4 pt-3 space-y-1.5" style={{ borderTop: `1px solid ${line}` }}>
+                    {methodRows.map(({ m, dot, val }) => (
+                      <div
+                        key={m.key}
+                        draggable={!c.archived}
+                        onDragStart={() => setDragKey(m.key)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => reorderMethod(m.key)}
+                        onDragEnd={() => setDragKey(null)}
+                        onClick={(e) => { e.stopPropagation(); if (!c.archived) setTransferState({ cashbox: c, from: m.key }); }}
+                        title={c.archived ? m.name : `${m.name} — boshqa to'lov turiga ko'chirish`}
+                        className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md ${c.archived ? "" : "cursor-grab active:cursor-grabbing"} ${dragKey === m.key ? "opacity-50" : ""}`}
+                        style={{ background: isDark ? "rgba(255,255,255,.15)" : "rgba(15,23,42,.05)" }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="shrink-0" style={{ width: 6, height: 6, borderRadius: 9999, background: dot }} />
+                          <span className={`text-[12px] truncate ${labelMuted}`}>{m.name}</span>
+                        </div>
+                        <span className="text-[13px] font-semibold tabular-nums shrink-0">{mask(val)}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
+
+                {showActions && (
+                  <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: `1px solid ${line}` }}>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => setEditTarget(c)} title="Tahrirlash" className="fc-card-btn">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => { if (!c.isPrimary) setPrimaryConfirmTarget(c); }}
+                        title={c.isPrimary ? "Bosh kassa" : "Asosiy kassa qilish"}
+                        className="fc-card-btn"
+                        style={{ color: "#fbbf24" }}
+                      >
+                        <Crown className="w-4 h-4" style={c.isPrimary ? { fill: "#fbbf24" } : undefined} />
+                      </button>
+                      <div className="relative" ref={exportRef}>
+                        <button onClick={() => setExportMenuOpen((o) => !o)} title="Hisobotni yuklab olish" className="fc-card-btn">
+                          <ArrowDownToLine className="w-4 h-4" />
+                        </button>
+                        {exportMenuOpen && (
+                          <div className="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl border border-border bg-card text-foreground shadow-xl overflow-hidden p-1">
+                            <button
+                              type="button"
+                              onClick={() => { exportEntriesCsv(); setExportMenuOpen(false); }}
+                              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left"
+                            >
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                                <FileText className="w-4 h-4" />
+                              </span>
+                              <span>CSV faylini yuklab olish</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { exportEntriesExcel(); setExportMenuOpen(false); }}
+                              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left"
+                            >
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                                <FileSpreadsheet className="w-4 h-4" />
+                              </span>
+                              <span>EXCEL faylini yuklab olish</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCardMoreId(showMore ? null : c.id); }}
+                      className="text-[12px] text-white/80 hover:text-white"
+                    >
+                      {showMore ? "Less" : "More"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
           {filteredList.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-8">{loading ? <SpinnerBlock size={22} /> : "Kassa topilmadi"}</div>
+            <div className="rounded-xl border border-border bg-card p-6 text-center text-[13px] text-muted-foreground">
+              {loading ? <SpinnerBlock size={22} /> : "Bu bo'limda kassa yo'q"}
+            </div>
           )}
         </div>
       </aside>
 
-      {/* O'ng qism — tanlangan kassa */}
+      {/* O'ng qism — filtrlar + tanlangan kassaning tranzaksiyalari */}
       <div className="page-frame-col flex-1 min-w-0 space-y-3">
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {orderedMethods.map((m) => (
-            <div
-              key={m.key}
-              draggable
-              onDragStart={() => setDragKey(m.key)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => reorderMethod(m.key)}
-              onDragEnd={() => setDragKey(null)}
-              className={`shrink-0 w-[160px] relative rounded-xl bg-primary text-white p-4 cursor-grab active:cursor-grabbing transition-opacity ${dragKey === m.key ? "opacity-50" : ""}`}
-            >
-              <div className="text-[13px] font-medium">{m.name}</div>
-              <div className="text-[15px] font-bold tabular-nums mt-1">{selected ? mask(selected.methodTotals[m.key]) : mask(0)}</div>
-              <button
-                onClick={() => selected && setTransferState({ cashbox: selected, from: m.key })}
-                disabled={!selected}
-                className="text-[12px] text-white/80 hover:text-white mt-1 underline-offset-2 hover:underline disabled:opacity-60 disabled:no-underline absolute top-3 right-3"
-              >
-                Ko&apos;chirish
-              </button>
-            </div>
-          ))}
-        </div>
-
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative" ref={exportRef}>
-            <button
-              onClick={() => setExportMenuOpen((o) => !o)}
-              className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-              title="Sozlamalar"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </button>
-            {exportMenuOpen && (
-              <div className="absolute top-full left-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
-                <button
-                  type="button"
-                  onClick={() => { exportEntriesCsv(); setExportMenuOpen(false); }}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                    <FileText className="icon icon-sm" />
-                  </span>
-                  <span>CSV faylini yuklab olish</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { exportEntriesExcel(); setExportMenuOpen(false); }}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                    <FileSpreadsheet className="icon icon-sm" />
-                  </span>
-                  <span>EXCEL faylini yuklab olish</span>
-                </button>
-              </div>
-            )}
-          </div>
-          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} className="w-56" />
-          <div className="relative">
-            <select value={txType} onChange={(e) => { setTxType(e.target.value); setPage(1); }} className={`${selectCls} w-36`}>
+          <DateRangePicker
+            value={dateRange}
+            onChange={(r) => { setDateRange(r); setPage(1); }}
+            className="fc-range flex-1 min-w-[210px] max-w-[280px]"
+          />
+          <div className="relative flex-1 min-w-[140px]">
+            <select value={txType} onChange={(e) => { setTxType(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">Tranzaksiya</option>
               <option value="kirim">Kirim</option>
               <option value="chiqim">Chiqim</option>
               <option value="kochirish">Ko&apos;chirish</option>
             </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
-          <div className="relative">
-            <select value={txName} onChange={(e) => { setTxName(e.target.value); setPage(1); }} className={`${selectCls} w-40`}>
+          <div className="relative flex-1 min-w-[150px]">
+            <select value={txName} onChange={(e) => { setTxName(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">Tranzaksiya turi</option>
               {txNameOptions.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
-          <div className="relative">
-            <select value={student} onChange={(e) => { setStudent(e.target.value); setPage(1); }} className={`${selectCls} w-36`}>
-              <option value="">O&apos;quvchi</option>
-              {studentOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            <select value={payType} onChange={(e) => { setPayType(e.target.value); setPage(1); }} className={`${selectCls} w-36`}>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <SearchFilter
+            value={student}
+            onChange={(v) => { setStudent(v); setPage(1); }}
+            options={studentOptions}
+            placeholder="O'quvchini qidiring..."
+          />
+          <div className="relative flex-1 min-w-[140px]">
+            <select value={payType} onChange={(e) => { setPayType(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">To&apos;lov turi</option>
               {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
             </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
+            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
-          <div className="relative">
-            <select value={teacher} onChange={(e) => { setTeacher(e.target.value); setPage(1); }} className={`${selectCls} w-40`}>
-              <option value="">O&apos;qituvchi</option>
-              {GROUP_TEACHERS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <SearchFilter
+            value={teacher}
+            onChange={(v) => { setTeacher(v); setPage(1); }}
+            options={teacherOptions}
+            placeholder="O'qituvchini qidiring..."
+          />
         </div>
 
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="inline-flex items-center rounded-lg border border-border bg-card p-1">
-            <button onClick={() => setTab("tx")} className={`h-8 px-4 rounded-md text-sm font-medium ${tab === "tx" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}>
-              Tranzaksiya
-            </button>
-            <button onClick={() => setTab("app")} className={`h-8 px-4 rounded-md text-sm font-medium ${tab === "app" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}>
-              Ilova Orqali To&apos;lov
-            </button>
-          </div>
-          <div className="flex items-center gap-3 text-[13px]">
-            <span className="text-emerald-600 font-medium tabular-nums">↙ {fmtUZS(entryTotals.income)}</span>
-            <span className="text-rose-600 font-medium tabular-nums">↗ {fmtUZS(entryTotals.expense)}</span>
-            <span className="relative text-muted-foreground">
-              <Bell className="w-4 h-4" />
+          <span className="inline-flex items-center px-4 h-9 rounded-full bg-secondary/80 text-foreground text-[13px] font-medium">
+            Tranzaksiya
+          </span>
+          <div className="flex items-center gap-3 text-sm flex-wrap">
+            <span className="inline-flex items-center gap-1 text-emerald-500 font-medium tabular-nums">
+              <ArrowDownLeft className="w-3.5 h-3.5" /> {mask(entryTotals.income)} so&apos;m
             </span>
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-            <span className="text-muted-foreground">Umumiy soni:</span>
-            <span className="font-bold tabular-nums">{filteredEntries.length}</span>
+            <span className="inline-flex items-center gap-1 text-rose-500 font-medium tabular-nums">
+              <ArrowUpRight className="w-3.5 h-3.5" /> {mask(entryTotals.expense)} so&apos;m
+            </span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
+              <span className="text-muted-foreground">Umumiy soni:</span>
+              <span className="font-bold tabular-nums">{filteredEntries.length}</span>
+            </div>
           </div>
         </div>
 
@@ -649,37 +889,64 @@ export default function CashboxesPage() {
                   <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Tranzaksiya nomi</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Miqdori</th>
+                  <th className="text-right px-3 py-3 whitespace-nowrap">Miqdori</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Tranzaksiya turi</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Turi</th>
+                  <th className="text-right px-3 py-3 w-20"></th>
                 </tr>
               </thead>
               <tbody>
-                {entrySlice.map((e, i) => (
+                {entrySlice.map((e, i) => {
                   // Qatorning istalgan joyiga bosilsa — tranzaksiya oynasi
-                  // (to'lovni bekor qilish) ochiladi. Faqat "Kim" ustunidagi
-                  // ism bundan mustasno: u profil sahifasiga o'tadi
-                  // (renderWhoCell).
-                  <tr
-                    key={e.id}
-                    onClick={() => setDetailEntry(e)}
-                    className={`border-b border-border/50 cursor-pointer hover:bg-secondary/40 ${e.status === "cancelled" ? "bg-rose-50" : ""}`}
-                  >
-                    <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{entryStart + i + 1}</td>
-                    <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtEntryDate(e)}</td>
-                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">{renderWhoCell(e)}</td>
-                    <td className="px-3 py-3 text-[13px] text-muted-foreground">{e.note || "—"}</td>
-                    <td className="px-3 py-3 text-[13px]">{e.txName || "—"}</td>
-                    <td className={`px-3 py-3 text-[13px] tabular-nums font-medium ${e.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtSignedUZS(e.amount)}</td>
-                    <td className="px-3 py-3 text-[13px]">{e.status || "—"}</td>
-                    <td className="px-3 py-3 text-[13px]">{TX_TYPE_LABELS[e.txType] || e.txType}</td>
-                    <td className="px-3 py-3 text-[13px]">{e.paymentType}</td>
-                  </tr>
-                ))}
+                  // (to'lovni bekor qilish) ochiladi. "Kim" ustunidagi ism va
+                  // o'ngdagi chek tugmasi bundan mustasno.
+                  const dir = e.txType === "transfer" ? "transfer" : e.amount >= 0 ? "in" : "out";
+                  const cancelled = e.status === "cancelled";
+                  return (
+                    <tr
+                      key={e.id}
+                      onClick={() => setDetailEntry(e)}
+                      className="border-b border-border/50 cursor-pointer hover:bg-secondary/30 transition-colors"
+                      style={cancelled ? { opacity: 0.65 } : undefined}
+                    >
+                      <td className="px-3 py-3 text-foreground/70 tabular-nums text-[13px]">{entryStart + i + 1}</td>
+                      <td className="px-3 py-3 text-foreground/80 text-[12px] tabular-nums whitespace-nowrap">{fmtEntryDate(e)}</td>
+                      <td className="px-3 py-3 text-[13px] whitespace-nowrap">{renderWhoCell(e)}</td>
+                      <td className="px-3 py-3">
+                        <span title={e.note || "Izoh yo'q"} className="inline-flex items-center px-3 h-7 rounded-md bg-secondary/60 text-[12px]">
+                          Izoh
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">{e.txName || "—"}</td>
+                      <td className="px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap text-[13px]">
+                        <span style={cancelled ? { textDecoration: "line-through" } : undefined}>{mask(Math.abs(e.amount))}</span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap"><StatusCell status={e.status} /></td>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80">{TX_TYPE_LABELS[e.txType] || e.txType}</td>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80">{e.paymentType}</td>
+                      <td className="px-3 py-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          {dir === "in" && <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />}
+                          {dir === "out" && <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />}
+                          {dir === "transfer" && <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />}
+                          {!cancelled && (
+                            <button
+                              onClick={(ev) => { ev.stopPropagation(); printReceipt(e, selected?.name || ""); }}
+                              title="Chek chiqarish"
+                              className="h-7 w-7 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {entrySlice.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-16 text-center">
+                    <td colSpan={10} className="px-3 py-16 text-center">
                       <div className="text-[14px] font-semibold">Ma&apos;lumotlar topilmadi</div>
                       <div className="text-[12px] text-muted-foreground mt-1">Filterni o&apos;zgartirib ko&apos;ring.</div>
                     </td>
@@ -693,7 +960,7 @@ export default function CashboxesPage() {
       </div>
 
       {addOpen && (
-        <CashboxDrawer onClose={() => setAddOpen(false)} onSaved={(c) => { setCashboxes((prev) => [...prev, c]); setSelectedId(c.id); setExpandedId(c.id); }} />
+        <CashboxDrawer onClose={() => setAddOpen(false)} onSaved={(c) => { setCashboxes((prev) => [...prev, c]); setSelectedId(c.id); }} />
       )}
       {editTarget && (
         <CashboxDrawer
@@ -704,7 +971,7 @@ export default function CashboxesPage() {
             setCashboxes((prev) => {
               const next = prev.filter((x) => x.id !== id);
               if (selectedId === id) setSelectedId(next.length > 0 ? next[0].id : null);
-              if (expandedId === id) setExpandedId(next.length > 0 ? next[0].id : null);
+              if (cardMoreId === id) setCardMoreId(null);
               return next;
             });
           }}
@@ -764,7 +1031,7 @@ export default function CashboxesPage() {
           cashboxName={cashboxes.find((c) => c.id === detailEntry.cashboxId)?.name || ""}
           studentId={detailEntry.studentName ? studentIdByName.get(detailEntry.studentName) : undefined}
           onClose={() => setDetailEntry(null)}
-          onCancelled={(updated) => {
+          onChanged={(updated) => {
             setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
             setDetailEntry(updated);
             refreshCashboxes();

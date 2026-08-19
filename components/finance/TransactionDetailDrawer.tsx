@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Pencil, X } from "lucide-react";
 import Link from "next/link";
+import MoneyInput, { toDigits } from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TransactionEntry } from "@/lib/transactionEntries";
@@ -28,29 +29,70 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-// Kassalar sahifasidagi jadvalda "Sana" ustuniga bosilganda ochiladigan
-// tafsilot oynasi (referens saytdagi kabi) — "Tranzaksiyani bekor qilish"
-// faqat Kirim/Chiqim yozuvlari uchun ko'rinadi va haqiqiy /cancel route'ini
-// chaqiradi (kassa balansini ham teskari o'zgartiradi).
+// Kassalar sahifasidagi jadvalda qatorga bosilganda ochiladigan tafsilot
+// oynasi (referens saytdagi kabi). Pastda ikkita amal — ikkalasi ham faqat
+// Kirim/Chiqim yozuvlari uchun va ikkalasi ham HAQIQIY (kassa balansini
+// o'zgartiradi):
+//   • qalam tugmasi — miqdorni tahrirlash (/amount route'i, farq miqdoricha),
+//   • "Tranzaksiyani bekor qilish" (/cancel route'i, teskari o'zgartiradi).
 export default function TransactionDetailDrawer({
   entry,
   cashboxName,
   studentId,
   onClose,
-  onCancelled,
+  onChanged,
 }: {
   entry: TransactionEntry;
   cashboxName: string;
   studentId?: number;
   onClose: () => void;
-  onCancelled: (entry: TransactionEntry) => void;
+  /** Bekor qilish yoki miqdor tahriri — yangilangan yozuv qaytariladi. */
+  onChanged: (entry: TransactionEntry) => void;
 }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [amountDigits, setAmountDigits] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const canCancel = (entry.txType === "payIn" || entry.txType === "payOut") && entry.status !== "cancelled";
+  const canModify = (entry.txType === "payIn" || entry.txType === "payOut") && entry.status !== "cancelled";
+
+  function openEdit() {
+    // Maydonga faqat kattaligi kiritiladi — yo'nalish (Kirim/Chiqim)
+    // o'zgarmaydi, serverda ham asl yozuvning ishorasi saqlanadi.
+    setAmountDigits(toDigits(String(Math.abs(entry.amount))));
+    setEditOpen(true);
+  }
+
+  async function saveAmount() {
+    const value = Number(amountDigits);
+    if (!value) {
+      showError("Qiymatni to'g'ri kiriting");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/transaction-entries/${entry.id}/amount`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: value }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Saqlanmadi");
+        return;
+      }
+      onChanged(data.entry as TransactionEntry);
+      showSuccess("Miqdor o'zgartirildi");
+      setEditOpen(false);
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function confirmCancel() {
     setCancelling(true);
@@ -59,10 +101,9 @@ export default function TransactionDetailDrawer({
       const data = await res.json();
       if (!data.ok) {
         showError(data.error || "Bekor qilinmadi");
-        setCancelling(false);
         return;
       }
-      onCancelled(data.entry as TransactionEntry);
+      onChanged(data.entry as TransactionEntry);
       showSuccess("Tranzaksiya bekor qilindi");
       setConfirmOpen(false);
     } catch {
@@ -108,17 +149,52 @@ export default function TransactionDetailDrawer({
           </Row>
         </div>
 
-        {canCancel && (
-          <div className="px-5 py-4 border-t border-border">
+        {canModify && (
+          <div className="px-5 py-4 border-t border-border flex items-center gap-2">
+            <button
+              onClick={openEdit}
+              title="Miqdorni tahrirlash"
+              className="h-9 w-9 shrink-0 rounded-lg border border-border bg-card hover:bg-secondary inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
             <button
               onClick={() => setConfirmOpen(true)}
-              className="w-full h-9 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90"
+              className="flex-1 h-9 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90"
             >
               Tranzaksiyani bekor qilish
             </button>
           </div>
         )}
       </div>
+
+      {editOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setEditOpen(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+            <p className="text-center text-[15px] font-semibold">Miqdorni tahrirlash</p>
+            <p className="text-center text-[13px] text-muted-foreground mt-1.5">
+              Kassa balansi farq miqdoricha o&apos;zgaradi.
+            </p>
+            <label className="block text-[13px] font-medium mt-4" htmlFor="tx-amount">Miqdori</label>
+            <MoneyInput
+              id="tx-amount"
+              value={amountDigits}
+              onChange={setAmountDigits}
+              autoFocus
+              className="w-full h-10 mt-2 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <div className="flex items-center justify-center gap-2 mt-5">
+              <button onClick={() => setEditOpen(false)} disabled={saving} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+                Bekor qilish
+              </button>
+              <button onClick={saveAmount} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
+                {saving ? "Saqlanmoqda…" : "Saqlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
