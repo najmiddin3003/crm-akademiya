@@ -24,7 +24,9 @@ import {
 import * as XLSX from "xlsx";
 import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
-import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import DateRangePicker, {
+  type DateRange,
+} from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -42,8 +44,16 @@ import { type Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 
-const TX_TYPE_MAP: Record<string, string> = { kirim: "payIn", chiqim: "payOut", kochirish: "transfer" };
-const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
+const TX_TYPE_MAP: Record<string, string> = {
+  kirim: "payIn",
+  chiqim: "payOut",
+  kochirish: "transfer",
+};
+const TX_TYPE_LABELS: Record<string, string> = {
+  payIn: "Kirim",
+  payOut: "Chiqim",
+  transfer: "Ko'chirish",
+};
 
 // Moliya → Kassalar (sidebar: Moliya > Kassalar, href /finance-cash).
 //
@@ -82,7 +92,16 @@ const METHOD_DOT: Record<string, string> = {
   yagonaQr: "#f472b6",
   hisobRaqam: "#a3e635",
 };
-const DOT_FALLBACK = ["#34d399", "#fbbf24", "#38bdf8", "#c4b5fd", "#94a3b8", "#7dd3fc", "#f472b6", "#a3e635"];
+const DOT_FALLBACK = [
+  "#34d399",
+  "#fbbf24",
+  "#38bdf8",
+  "#c4b5fd",
+  "#94a3b8",
+  "#7dd3fc",
+  "#f472b6",
+  "#a3e635",
+];
 function methodDot(key: string, i: number): string {
   return METHOD_DOT[key] ?? DOT_FALLBACK[i % DOT_FALLBACK.length];
 }
@@ -106,7 +125,9 @@ const selectCls =
   "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function fmtNum(n: number): string {
-  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return Math.round(n)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 function fmtSom(n: number): string {
   return fmtNum(n) + " so'm";
@@ -126,7 +147,12 @@ function todayRange(): DateRange {
 }
 
 function escHtml(s: string): string {
-  const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+  const map: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+  };
   return s.replace(/[&<>"]/g, (c) => map[c]);
 }
 
@@ -165,7 +191,8 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
 
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
-  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  frame.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
   document.body.appendChild(frame);
   const doc = frame.contentDocument;
   if (!doc) {
@@ -196,9 +223,11 @@ function ReceiptPreviewModal({
 }) {
   useEscapeClose(onClose);
   const title =
-    entry.txType === "payIn" ? "KIRIM CHEKI" :
-    entry.txType === "payOut" ? "CHIQIM CHEKI" :
-    "KO'CHIRISH CHEKI";
+    entry.txType === "payIn"
+      ? "KIRIM CHEKI"
+      : entry.txType === "payOut"
+        ? "CHIQIM CHEKI"
+        : "KO'CHIRISH CHEKI";
   const rows: [string, string][] = [
     ["Sana", fmtEntryDate(entry)],
     ["Kim", entry.studentName || entry.moderator || "—"],
@@ -212,9 +241,15 @@ function ReceiptPreviewModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-xs bg-white border border-border rounded-2xl shadow-2xl overflow-hidden">
         <div className="px-6 pt-6 pb-4">
-          <div className="text-center text-[13px] font-bold tracking-[0.15em]">TIZIMLI</div>
-          <div className="text-center text-[12px] text-muted-foreground mt-0.5">{cashboxName}</div>
-          <div className="text-center text-[15px] font-bold mt-3 tracking-wide">{title}</div>
+          <div className="text-center text-[13px] font-bold tracking-[0.15em]">
+            TIZIMLI
+          </div>
+          <div className="text-center text-[12px] text-muted-foreground mt-0.5">
+            {cashboxName}
+          </div>
+          <div className="text-center text-[15px] font-bold mt-3 tracking-wide">
+            {title}
+          </div>
           <div className="my-3 border-t border-dashed border-border" />
           <div className="space-y-1.5 text-[13px]">
             <div className="flex justify-between gap-3">
@@ -230,11 +265,17 @@ function ReceiptPreviewModal({
           </div>
           <div className="my-3 border-t border-dashed border-border" />
           <div className="flex justify-between items-baseline">
-            <span className="text-[13px] italic text-muted-foreground">JAMI</span>
-            <span className="text-[18px] font-bold tabular-nums">{fmtSom(Math.abs(entry.amount))}</span>
+            <span className="text-[13px] italic text-muted-foreground">
+              JAMI
+            </span>
+            <span className="text-[18px] font-bold tabular-nums">
+              {fmtSom(Math.abs(entry.amount))}
+            </span>
           </div>
           <div className="my-3 border-t border-dashed border-border" />
-          <div className="text-center text-[12px] italic text-muted-foreground">Xizmatingizdamiz. Rahmat!</div>
+          <div className="text-center text-[12px] italic text-muted-foreground">
+            Xizmatingizdamiz. Rahmat!
+          </div>
         </div>
         <div className="flex gap-2 px-4 py-3 border-t border-border bg-secondary/30">
           <button
@@ -276,14 +317,17 @@ function SearchFilter({
   useEffect(() => {
     if (!open) return;
     const onDocClick = (ev: MouseEvent) => {
-      if (ref.current && !ref.current.contains(ev.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(ev.target as Node))
+        setOpen(false);
     };
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
 
   const q = value.trim().toLowerCase();
-  const list = options.filter((o) => !q || o.toLowerCase().includes(q)).slice(0, 40);
+  const list = options
+    .filter((o) => !q || o.toLowerCase().includes(q))
+    .slice(0, 40);
 
   return (
     <div className="relative flex-1 min-w-[150px]" ref={ref}>
@@ -292,14 +336,20 @@ function SearchFilter({
         value={value}
         placeholder={placeholder}
         autoComplete="off"
-        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
         onFocus={() => setOpen(true)}
         className="w-full h-10 rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
       {value && (
         <button
           type="button"
-          onClick={() => { onChange(""); setOpen(false); }}
+          onClick={() => {
+            onChange("");
+            setOpen(false);
+          }}
           title="Tozalash"
           className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
         >
@@ -309,13 +359,18 @@ function SearchFilter({
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-lg border border-border bg-card shadow-xl">
           {list.length === 0 ? (
-            <div className="px-3 py-3 text-[13px] text-muted-foreground text-center">Topilmadi</div>
+            <div className="px-3 py-3 text-[13px] text-muted-foreground text-center">
+              Topilmadi
+            </div>
           ) : (
             list.map((o) => (
               <button
                 key={o}
                 type="button"
-                onClick={() => { onChange(o); setOpen(false); }}
+                onClick={() => {
+                  onChange(o);
+                  setOpen(false);
+                }}
                 className="w-full text-left px-3 py-2 hover:bg-secondary text-[13px] truncate"
               >
                 {o}
@@ -341,15 +396,23 @@ function StatusCell({ status }: { status: string }) {
   if (status === "waiting") {
     return (
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px]">×</span>
-        <span className="text-[13px] text-rose-600 font-medium">Kutilmoqda</span>
+        <span className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px]">
+          ×
+        </span>
+        <span className="text-[13px] text-rose-600 font-medium">
+          Kutilmoqda
+        </span>
         <span className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600">
           <UserCheck style={{ width: 11, height: 11 }} />
         </span>
       </span>
     );
   }
-  return <span className="text-[13px] text-emerald-600 font-medium">Qabul qilindi</span>;
+  return (
+    <span className="text-[13px] text-emerald-600 font-medium">
+      Qabul qilindi
+    </span>
+  );
 }
 
 export default function CashboxesPage() {
@@ -361,29 +424,52 @@ export default function CashboxesPage() {
   // Divident/Sarmoya tugmalarini ochadi.
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [cardMoreId, setCardMoreId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"active" | "archived" | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "archived" | "all"
+  >("active");
   const [hideBalances, setHideBalances] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Cashbox | null>(null);
-  const [transferState, setTransferState] = useState<{ cashbox: Cashbox; from: string } | null>(null);
-  const [transferToTarget, setTransferToTarget] = useState<Cashbox | null>(null);
-  const [adjustState, setAdjustState] = useState<{ cashbox: Cashbox; mode: "chiqim" } | null>(null);
+  const [transferState, setTransferState] = useState<{
+    cashbox: Cashbox;
+    from: string;
+  } | null>(null);
+  const [transferToTarget, setTransferToTarget] = useState<Cashbox | null>(
+    null,
+  );
+  const [adjustState, setAdjustState] = useState<{
+    cashbox: Cashbox;
+    mode: "chiqim";
+  } | null>(null);
   const [kirimTarget, setKirimTarget] = useState<Cashbox | null>(null);
   const [dividendTarget, setDividendTarget] = useState<Cashbox | null>(null);
-  const [investmentTarget, setInvestmentTarget] = useState<Cashbox | null>(null);
-  const [primaryConfirmTarget, setPrimaryConfirmTarget] = useState<Cashbox | null>(null);
+  const [investmentTarget, setInvestmentTarget] = useState<Cashbox | null>(
+    null,
+  );
+  const [primaryConfirmTarget, setPrimaryConfirmTarget] =
+    useState<Cashbox | null>(null);
   const [settingPrimary, setSettingPrimary] = useState(false);
-  const [receiptEntry, setReceiptEntry] = useState<TransactionEntry | null>(null);
+  const [receiptEntry, setReceiptEntry] = useState<TransactionEntry | null>(
+    null,
+  );
 
   async function confirmSetPrimary() {
     if (!primaryConfirmTarget) return;
     setSettingPrimary(true);
     try {
-      const res = await fetch(`/api/cashboxes/${primaryConfirmTarget.id}/set-primary`, { method: "POST" });
+      const res = await fetch(
+        `/api/cashboxes/${primaryConfirmTarget.id}/set-primary`,
+        { method: "POST" },
+      );
       const data = await res.json();
       if (data.ok) {
-        setCashboxes((prev) => prev.map((x) => ({ ...x, isPrimary: x.id === primaryConfirmTarget.id })));
+        setCashboxes((prev) =>
+          prev.map((x) => ({
+            ...x,
+            isPrimary: x.id === primaryConfirmTarget.id,
+          })),
+        );
       }
     } finally {
       setSettingPrimary(false);
@@ -409,7 +495,9 @@ export default function CashboxesPage() {
   const orderedMethods = useMemo(() => {
     const known = new Set(paymentMethods.map((m) => m.key));
     const kept = methodOrder.filter((k) => known.has(k));
-    const missing = paymentMethods.map((m) => m.key).filter((k) => !kept.includes(k));
+    const missing = paymentMethods
+      .map((m) => m.key)
+      .filter((k) => !kept.includes(k));
     return [...kept, ...missing]
       .map((k) => paymentMethods.find((m) => m.key === k))
       .filter((m): m is (typeof paymentMethods)[number] => !!m);
@@ -432,7 +520,8 @@ export default function CashboxesPage() {
     if (sourceIndex < targetIndex) insertAt += 1;
     next.splice(insertAt, 0, dragKey);
 
-    if (typeof window !== "undefined") window.localStorage.setItem(METHOD_ORDER_KEY, JSON.stringify(next));
+    if (typeof window !== "undefined")
+      window.localStorage.setItem(METHOD_ORDER_KEY, JSON.stringify(next));
     setMethodOrder(next);
   }
 
@@ -457,13 +546,17 @@ export default function CashboxesPage() {
   function refreshEntries() {
     fetch("/api/transaction-entries")
       .then((r) => r.json())
-      .then((d) => { if (d.ok) setEntries(d.entries); });
+      .then((d) => {
+        if (d.ok) setEntries(d.entries);
+      });
   }
 
   function refreshCashboxes() {
     fetch("/api/cashboxes")
       .then((r) => r.json())
-      .then((d) => { if (d.ok) setCashboxes(d.cashboxes); });
+      .then((d) => {
+        if (d.ok) setCashboxes(d.cashboxes);
+      });
   }
 
   // "Kim" ustunini /student-edit/[id] ga bog'lash uchun — TransactionEntry
@@ -500,7 +593,11 @@ export default function CashboxesPage() {
       const studentId = studentIdByName.get(e.studentName);
       if (studentId === undefined) return e.studentName;
       return (
-        <Link href={`/student-edit/${studentId}`} onClick={(ev) => ev.stopPropagation()} className={linkCls}>
+        <Link
+          href={`/student-edit/${studentId}`}
+          onClick={(ev) => ev.stopPropagation()}
+          className={linkCls}
+        >
           {e.studentName}
         </Link>
       );
@@ -509,7 +606,11 @@ export default function CashboxesPage() {
       const employeeId = moderatorProfileId(e.moderator);
       if (employeeId === undefined) return e.moderator;
       return (
-        <Link href={`/management-xodimlar/${employeeId}`} onClick={(ev) => ev.stopPropagation()} className={linkCls}>
+        <Link
+          href={`/management-xodimlar/${employeeId}`}
+          onClick={(ev) => ev.stopPropagation()}
+          className={linkCls}
+        >
           {e.moderator}
         </Link>
       );
@@ -526,12 +627,18 @@ export default function CashboxesPage() {
         setCashboxes(d.cashboxes);
         if (d.cashboxes.length > 0) setSelectedId(d.cashboxes[0].id);
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     refreshEntries();
     fetch("/api/hr-employees")
       .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); });
-    return () => { cancelled = true; };
+      .then((d) => {
+        if (!cancelled && d.ok) setEmployees(d.employees);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filteredList = useMemo(
@@ -543,21 +650,30 @@ export default function CashboxesPage() {
       }),
     [cashboxes, statusFilter],
   );
-  const selected = useMemo(() => cashboxes.find((c) => c.id === selectedId) || null, [cashboxes, selectedId]);
+  const selected = useMemo(
+    () => cashboxes.find((c) => c.id === selectedId) || null,
+    [cashboxes, selectedId],
+  );
 
   function mask(n: number): string {
     return hideBalances ? "*** *** ***" : fmtNum(n);
   }
 
   const studentOptions = useMemo(
-    () => Array.from(new Set(entries.map((e) => e.studentName).filter(Boolean))).sort(),
+    () =>
+      Array.from(
+        new Set(entries.map((e) => e.studentName).filter(Boolean)),
+      ).sort(),
     [entries],
   );
 
   // O'qituvchi/mas'ul variantlari ham mavjud yozuvlardan olinadi — ro'yxatda
   // hech qachon bo'sh natija beradigan band chiqmaydi.
   const teacherOptions = useMemo(
-    () => Array.from(new Set(entries.map((e) => e.moderator).filter(Boolean))).sort(),
+    () =>
+      Array.from(
+        new Set(entries.map((e) => e.moderator).filter(Boolean)),
+      ).sort(),
     [entries],
   );
 
@@ -565,14 +681,17 @@ export default function CashboxesPage() {
   // katalogidan keladigan nom ("O'quvchi to'ladi", "Hodimga avans", ...),
   // yuqoridagi "Tranzaksiya" filtri esa Kirim/Chiqim/Ko'chirish amali bo'yicha.
   const txNameOptions = useMemo(
-    () => Array.from(new Set(entries.map((e) => e.txName).filter(Boolean))).sort(),
+    () =>
+      Array.from(new Set(entries.map((e) => e.txName).filter(Boolean))).sort(),
     [entries],
   );
 
   const filteredEntries = useMemo(() => {
     if (!selectedId) return [];
     const wantedType = txType ? TX_TYPE_MAP[txType] : "";
-    const wantedPayLabel = payType ? paymentMethods.find((m) => m.key === payType)?.name : "";
+    const wantedPayLabel = payType
+      ? paymentMethods.find((m) => m.key === payType)?.name
+      : "";
     const startIso = dateRange.start ? toIso(dateRange.start) : null;
     const endIso = dateRange.end ? toIso(dateRange.end) : null;
     const studentQ = student.trim().toLowerCase();
@@ -583,14 +702,26 @@ export default function CashboxesPage() {
       if (endIso && e.date > endIso) return false;
       if (wantedType && e.txType !== wantedType) return false;
       if (txName && e.txName !== txName) return false;
-      if (studentQ && !e.studentName.toLowerCase().includes(studentQ)) return false;
+      if (studentQ && !e.studentName.toLowerCase().includes(studentQ))
+        return false;
       if (wantedPayLabel && e.paymentType !== wantedPayLabel) return false;
-      if (teacherQ && !e.moderator.toLowerCase().includes(teacherQ)) return false;
+      if (teacherQ && !e.moderator.toLowerCase().includes(teacherQ))
+        return false;
       return true;
     });
     // `paymentMethods` ham bog'liqlikda: to'lov turlari asinxron yuklanadi,
     // ular kelgach "To'lov turi" filtri qayta hisoblanishi kerak.
-  }, [entries, selectedId, dateRange, txType, txName, student, payType, teacher, paymentMethods]);
+  }, [
+    entries,
+    selectedId,
+    dateRange,
+    txType,
+    txName,
+    student,
+    payType,
+    teacher,
+    paymentMethods,
+  ]);
 
   const entryTotals = useMemo(() => {
     let income = 0;
@@ -611,20 +742,27 @@ export default function CashboxesPage() {
   useEffect(() => {
     if (!exportMenuOpen) return;
     const onDocClick = (e: MouseEvent) => {
-      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportMenuOpen(false);
+      if (exportRef.current && !exportRef.current.contains(e.target as Node))
+        setExportMenuOpen(false);
     };
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [exportMenuOpen]);
 
-  const exportCols: { label: string; get: (e: TransactionEntry) => string | number }[] = [
+  const exportCols: {
+    label: string;
+    get: (e: TransactionEntry) => string | number;
+  }[] = [
     { label: "Sana", get: fmtEntryDate },
     { label: "Kim", get: (e) => e.studentName || e.moderator || "" },
     { label: "Izoh", get: (e) => e.note || "" },
     { label: "Tranzaksiya nomi", get: (e) => e.txName || "" },
     { label: "Miqdori", get: (e) => e.amount },
     { label: "Holati", get: (e) => e.status || "" },
-    { label: "Tranzaksiya turi", get: (e) => TX_TYPE_LABELS[e.txType] || e.txType },
+    {
+      label: "Tranzaksiya turi",
+      get: (e) => TX_TYPE_LABELS[e.txType] || e.txType,
+    },
     { label: "Turi", get: (e) => e.paymentType },
   ];
 
@@ -632,9 +770,15 @@ export default function CashboxesPage() {
     try {
       const rows = [
         exportCols.map((c) => c.label).join(","),
-        ...filteredEntries.map((e) => exportCols.map((c) => `"${String(c.get(e)).replace(/"/g, '""')}"`).join(",")),
+        ...filteredEntries.map((e) =>
+          exportCols
+            .map((c) => `"${String(c.get(e)).replace(/"/g, '""')}"`)
+            .join(","),
+        ),
       ];
-      const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([rows.join("\n")], {
+        type: "text/csv;charset=utf-8;",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const date = new Date().toISOString().slice(0, 10);
@@ -650,7 +794,9 @@ export default function CashboxesPage() {
 
   function exportEntriesExcel() {
     try {
-      const rows = filteredEntries.map((e) => Object.fromEntries(exportCols.map((c) => [c.label, c.get(e)])));
+      const rows = filteredEntries.map((e) =>
+        Object.fromEntries(exportCols.map((c) => [c.label, c.get(e)])),
+      );
       const worksheet = XLSX.utils.json_to_sheet(rows);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Tranzaksiyalar");
@@ -662,7 +808,8 @@ export default function CashboxesPage() {
     }
   }
 
-  const segBase = "h-9 rounded-md inline-flex items-center justify-center gap-1.5 text-[13px] font-medium";
+  const segBase =
+    "h-9 rounded-md inline-flex items-center justify-center gap-1.5 text-[13px] font-medium";
   function segCls(v: "active" | "archived" | "all") {
     return `${segBase} ${statusFilter === v ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-secondary"}`;
   }
@@ -681,13 +828,22 @@ export default function CashboxesPage() {
 
         {/* Holat filtri — segmentli tugmalar */}
         <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1">
-          <button onClick={() => setStatusFilter("active")} className={segCls("active")}>
+          <button
+            onClick={() => setStatusFilter("active")}
+            className={segCls("active")}
+          >
             <CircleCheckBig className="w-3.5 h-3.5" /> Aktiv
           </button>
-          <button onClick={() => setStatusFilter("archived")} className={segCls("archived")}>
+          <button
+            onClick={() => setStatusFilter("archived")}
+            className={segCls("archived")}
+          >
             <Archive className="w-3.5 h-3.5" /> Arxiv
           </button>
-          <button onClick={() => setStatusFilter("all")} className={segCls("all")}>
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={segCls("all")}
+          >
             <LayoutGrid className="w-3.5 h-3.5" /> Barchasi
           </button>
         </div>
@@ -701,11 +857,17 @@ export default function CashboxesPage() {
             const showMore = cardMoreId === c.id;
             const labelMuted = isDark ? "text-white/70" : "text-slate-700";
             const textMuted = isDark ? "text-white/85" : "text-slate-700";
-            const line = isDark ? "rgba(255,255,255,.22)" : "rgba(15,23,42,.14)";
+            const line = isDark
+              ? "rgba(255,255,255,.22)"
+              : "rgba(15,23,42,.14)";
             // Faqat puli bor to'lov turlari ko'rinadi — yangi turga kirim
             // bo'lishi bilan o'zi qo'shiladi (referens dizayndagi kabi).
             const methodRows = orderedMethods
-              .map((m, i) => ({ m, dot: methodDot(m.key, i), val: c.methodTotals[m.key] ?? 0 }))
+              .map((m, i) => ({
+                m,
+                dot: methodDot(m.key, i),
+                val: c.methodTotals[m.key] ?? 0,
+              }))
               .filter((r) => r.val > 0);
 
             return (
@@ -713,26 +875,52 @@ export default function CashboxesPage() {
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
                 className={`fc-card ${isDark ? "fc-card-dark" : "fc-card-light"} rounded-xl p-5 shadow-md cursor-pointer hover:shadow-lg transition-shadow relative`}
-                style={{ background: isDark ? CARD_DARK : CARD_LIGHT, color: isDark ? "#fff" : "#0f172a" }}
+                style={{
+                  background: isDark ? CARD_DARK : CARD_LIGHT,
+                  color: isDark ? "#fff" : "#0f172a",
+                }}
               >
                 {c.isPrimary && !showActions && (
-                  <Crown className="absolute top-4 right-4 w-8 h-8" style={{ color: "#f59e0b", fill: "#fde68a" }} />
+                  <Crown
+                    className="absolute top-4 right-4 w-8 h-8"
+                    style={{ color: "#f59e0b", fill: "#fde68a" }}
+                  />
                 )}
 
-                <div className="min-w-0" style={c.isPrimary && !showActions ? { paddingRight: 46 } : undefined}>
+                <div
+                  className="min-w-0"
+                  style={
+                    c.isPrimary && !showActions
+                      ? { paddingRight: 46 }
+                      : undefined
+                  }
+                >
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`text-[14px] font-semibold truncate min-w-0 ${labelMuted}`}>{c.name}</div>
+                      <div
+                        className={`text-[14px] font-semibold truncate min-w-0 ${labelMuted}`}
+                      >
+                        {c.name}
+                      </div>
                       {c.archived && (
                         <span
                           className={`text-[11px] font-medium shrink-0 ${labelMuted}`}
-                          style={{ padding: "1px 8px", borderRadius: 9999, background: isDark ? "rgba(255,255,255,.18)" : "rgba(15,23,42,.10)" }}
+                          style={{
+                            padding: "1px 8px",
+                            borderRadius: 9999,
+                            background: isDark
+                              ? "rgba(255,255,255,.18)"
+                              : "rgba(15,23,42,.10)",
+                          }}
                         >
                           Arxiv
                         </span>
                       )}
                     </div>
-                    <div className={`text-[12px] font-medium truncate min-w-0 ${textMuted}`} style={{ maxWidth: "60%" }}>
+                    <div
+                      className={`text-[12px] font-medium truncate min-w-0 ${textMuted}`}
+                      style={{ maxWidth: "60%" }}
+                    >
                       {!c.moderator ? (
                         "mas'ul belgilanmagan"
                       ) : moderatorProfileId(c.moderator) ? (
@@ -752,22 +940,43 @@ export default function CashboxesPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setHideBalances((h) => !h); }}
-                        title={hideBalances ? "Summalarni ko'rsatish" : "Summalarni yashirish"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHideBalances((h) => !h);
+                        }}
+                        title={
+                          hideBalances
+                            ? "Summalarni ko'rsatish"
+                            : "Summalarni yashirish"
+                        }
                         className="fc-card-btn shrink-0"
                         style={{ opacity: 0.75, height: 28, width: 28 }}
                       >
-                        {hideBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {hideBalances ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
-                      <div className="text-2xl font-bold tabular-nums truncate">{mask(c.balance)} so&apos;m</div>
+                      <div className="text-2xl font-bold tabular-nums truncate">
+                        {mask(c.balance)} so&apos;m
+                      </div>
                     </div>
-                    {!isSelected && <ChevronDown className="w-4 h-4 shrink-0" style={{ opacity: 0.55 }} />}
+                    {!isSelected && (
+                      <ChevronDown
+                        className="w-4 h-4 shrink-0"
+                        style={{ opacity: 0.55 }}
+                      />
+                    )}
                   </div>
                 </div>
 
                 {showActions && (
                   <>
-                    <div className="flex items-center gap-1.5 mt-4" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex items-center gap-1.5 mt-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => setKirimTarget(c)}
                         className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
@@ -775,7 +984,9 @@ export default function CashboxesPage() {
                         <Plus className="w-3.5 h-3.5" /> Kirim
                       </button>
                       <button
-                        onClick={() => setAdjustState({ cashbox: c, mode: "chiqim" })}
+                        onClick={() =>
+                          setAdjustState({ cashbox: c, mode: "chiqim" })
+                        }
                         className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
                         <span className="font-bold">−</span> Chiqim
@@ -788,7 +999,10 @@ export default function CashboxesPage() {
                       </button>
                     </div>
                     {showMore && (
-                      <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex items-center gap-1.5 mt-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           onClick={() => setDividendTarget(c)}
                           className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-amber-400 hover:bg-amber-500 text-amber-900 text-[13px] font-medium shadow-sm whitespace-nowrap"
@@ -810,7 +1024,10 @@ export default function CashboxesPage() {
                     boshqa turga ko'chirish; sudrab tashlash tartibni o'zgartiradi
                     (tartib localStorage'da saqlanadi). */}
                 {isSelected && methodRows.length > 0 && (
-                  <div className="mt-4 pt-3 space-y-1.5" style={{ borderTop: `1px solid ${line}` }}>
+                  <div
+                    className="mt-4 pt-3 space-y-1.5"
+                    style={{ borderTop: `1px solid ${line}` }}
+                  >
                     {methodRows.map(({ m, dot, val }) => (
                       <div
                         key={m.key}
@@ -819,44 +1036,94 @@ export default function CashboxesPage() {
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => reorderMethod(m.key)}
                         onDragEnd={() => setDragKey(null)}
-                        onClick={(e) => { e.stopPropagation(); if (!c.archived) setTransferState({ cashbox: c, from: m.key }); }}
-                        title={c.archived ? m.name : `${m.name} — boshqa to'lov turiga ko'chirish`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!c.archived)
+                            setTransferState({ cashbox: c, from: m.key });
+                        }}
+                        title={
+                          c.archived
+                            ? m.name
+                            : `${m.name} — boshqa to'lov turiga ko'chirish`
+                        }
                         className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md ${c.archived ? "" : "cursor-grab active:cursor-grabbing"} ${dragKey === m.key ? "opacity-50" : ""}`}
-                        style={{ background: isDark ? "rgba(255,255,255,.15)" : "rgba(15,23,42,.05)" }}
+                        style={{
+                          background: isDark
+                            ? "rgba(255,255,255,.15)"
+                            : "rgba(15,23,42,.05)",
+                        }}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="shrink-0" style={{ width: 6, height: 6, borderRadius: 9999, background: dot }} />
-                          <span className={`text-[12px] truncate ${labelMuted}`}>{m.name}</span>
+                          <span
+                            className="shrink-0"
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 9999,
+                              background: dot,
+                            }}
+                          />
+                          <span
+                            className={`text-[12px] truncate ${labelMuted}`}
+                          >
+                            {m.name}
+                          </span>
                         </div>
-                        <span className="text-[13px] font-semibold tabular-nums shrink-0">{mask(val)}</span>
+                        <span className="text-[13px] font-semibold tabular-nums shrink-0">
+                          {mask(val)}
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {showActions && (
-                  <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: `1px solid ${line}` }}>
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => setEditTarget(c)} title="Tahrirlash" className="fc-card-btn">
+                  <div
+                    className="flex items-center justify-between mt-3 pt-3"
+                    style={{ borderTop: `1px solid ${line}` }}
+                  >
+                    <div
+                      className="flex items-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => setEditTarget(c)}
+                        title="Tahrirlash"
+                        className="fc-card-btn"
+                      >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => { if (!c.isPrimary) setPrimaryConfirmTarget(c); }}
-                        title={c.isPrimary ? "Bosh kassa" : "Asosiy kassa qilish"}
+                        onClick={() => {
+                          if (!c.isPrimary) setPrimaryConfirmTarget(c);
+                        }}
+                        title={
+                          c.isPrimary ? "Bosh kassa" : "Asosiy kassa qilish"
+                        }
                         className="fc-card-btn"
                         style={{ color: "#fbbf24" }}
                       >
-                        <Crown className="w-4 h-4" style={c.isPrimary ? { fill: "#fbbf24" } : undefined} />
+                        <Crown
+                          className="w-4 h-4"
+                          style={c.isPrimary ? { fill: "#fbbf24" } : undefined}
+                        />
                       </button>
                       <div className="relative" ref={exportRef}>
-                        <button onClick={() => setExportMenuOpen((o) => !o)} title="Hisobotni yuklab olish" className="fc-card-btn">
+                        <button
+                          onClick={() => setExportMenuOpen((o) => !o)}
+                          title="Hisobotni yuklab olish"
+                          className="fc-card-btn"
+                        >
                           <ArrowDownToLine className="w-4 h-4" />
                         </button>
                         {exportMenuOpen && (
                           <div className="absolute left-0 top-full mt-1 z-50 w-60 rounded-xl border border-border bg-card text-foreground shadow-xl overflow-hidden p-1">
                             <button
                               type="button"
-                              onClick={() => { exportEntriesCsv(); setExportMenuOpen(false); }}
+                              onClick={() => {
+                                exportEntriesCsv();
+                                setExportMenuOpen(false);
+                              }}
                               className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left"
                             >
                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
@@ -866,7 +1133,10 @@ export default function CashboxesPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => { exportEntriesExcel(); setExportMenuOpen(false); }}
+                              onClick={() => {
+                                exportEntriesExcel();
+                                setExportMenuOpen(false);
+                              }}
                               className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left"
                             >
                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
@@ -879,7 +1149,10 @@ export default function CashboxesPage() {
                       </div>
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setCardMoreId(showMore ? null : c.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCardMoreId(showMore ? null : c.id);
+                      }}
                       className="text-[12px] text-white/80 hover:text-white"
                     >
                       {showMore ? "Less" : "More"}
@@ -902,11 +1175,21 @@ export default function CashboxesPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <DateRangePicker
             value={dateRange}
-            onChange={(r) => { setDateRange(r); setPage(1); }}
+            onChange={(r) => {
+              setDateRange(r);
+              setPage(1);
+            }}
             className="fc-range flex-1 min-w-[210px] max-w-[280px]"
           />
           <div className="relative flex-1 min-w-[140px]">
-            <select value={txType} onChange={(e) => { setTxType(e.target.value); setPage(1); }} className={selectCls}>
+            <select
+              value={txType}
+              onChange={(e) => {
+                setTxType(e.target.value);
+                setPage(1);
+              }}
+              className={selectCls}
+            >
               <option value="">Tranzaksiya</option>
               <option value="kirim">Kirim</option>
               <option value="chiqim">Chiqim</option>
@@ -915,9 +1198,20 @@ export default function CashboxesPage() {
             <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
           <div className="relative flex-1 min-w-[150px]">
-            <select value={txName} onChange={(e) => { setTxName(e.target.value); setPage(1); }} className={selectCls}>
+            <select
+              value={txName}
+              onChange={(e) => {
+                setTxName(e.target.value);
+                setPage(1);
+              }}
+              className={selectCls}
+            >
               <option value="">Tranzaksiya turi</option>
-              {txNameOptions.map((n) => <option key={n} value={n}>{n}</option>)}
+              {txNameOptions.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
@@ -926,20 +1220,37 @@ export default function CashboxesPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <SearchFilter
             value={student}
-            onChange={(v) => { setStudent(v); setPage(1); }}
+            onChange={(v) => {
+              setStudent(v);
+              setPage(1);
+            }}
             options={studentOptions}
             placeholder="O'quvchini qidiring..."
           />
           <div className="relative flex-1 min-w-[140px]">
-            <select value={payType} onChange={(e) => { setPayType(e.target.value); setPage(1); }} className={selectCls}>
+            <select
+              value={payType}
+              onChange={(e) => {
+                setPayType(e.target.value);
+                setPage(1);
+              }}
+              className={selectCls}
+            >
               <option value="">To&apos;lov turi</option>
-              {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
+              {paymentMethods.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.name}
+                </option>
+              ))}
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
           </div>
           <SearchFilter
             value={teacher}
-            onChange={(v) => { setTeacher(v); setPage(1); }}
+            onChange={(v) => {
+              setTeacher(v);
+              setPage(1);
+            }}
             options={teacherOptions}
             placeholder="O'qituvchini qidiring..."
           />
@@ -951,14 +1262,18 @@ export default function CashboxesPage() {
           </span>
           <div className="flex items-center gap-3 text-sm flex-wrap">
             <span className="inline-flex items-center gap-1 text-emerald-500 font-medium tabular-nums">
-              <ArrowDownLeft className="w-3.5 h-3.5" /> {mask(entryTotals.income)} so&apos;m
+              <ArrowDownLeft className="w-3.5 h-3.5" />{" "}
+              {mask(entryTotals.income)} so&apos;m
             </span>
             <span className="inline-flex items-center gap-1 text-rose-500 font-medium tabular-nums">
-              <ArrowUpRight className="w-3.5 h-3.5" /> {mask(entryTotals.expense)} so&apos;m
+              <ArrowUpRight className="w-3.5 h-3.5" />{" "}
+              {mask(entryTotals.expense)} so&apos;m
             </span>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
               <span className="text-muted-foreground">Umumiy soni:</span>
-              <span className="font-bold tabular-nums">{filteredEntries.length}</span>
+              <span className="font-bold tabular-nums">
+                {filteredEntries.length}
+              </span>
             </div>
           </div>
         </div>
@@ -968,15 +1283,31 @@ export default function CashboxesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                  <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap w-14">
+                    №
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Sana
+                  </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Tranzaksiya nomi</th>
-                  <th className="text-right px-3 py-3 whitespace-nowrap">Miqdori</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Tranzaksiya turi</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Turi</th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Izoh
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Tranzaksiya nomi
+                  </th>
+                  <th className="text-right px-3 py-3 whitespace-nowrap">
+                    Miqdori
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Holati
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Tranzaksiya turi
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Turi
+                  </th>
                   <th className="text-right px-3 py-3 w-20"></th>
                 </tr>
               </thead>
@@ -985,7 +1316,12 @@ export default function CashboxesPage() {
                   // Qatorning istalgan joyiga bosilsa — tranzaksiya oynasi
                   // (to'lovni bekor qilish) ochiladi. "Kim" ustunidagi ism va
                   // o'ngdagi chek tugmasi bundan mustasno.
-                  const dir = e.txType === "transfer" ? "transfer" : e.amount >= 0 ? "in" : "out";
+                  const dir =
+                    e.txType === "transfer"
+                      ? "transfer"
+                      : e.amount >= 0
+                        ? "in"
+                        : "out";
                   const cancelled = e.status === "cancelled";
                   return (
                     <tr
@@ -994,29 +1330,63 @@ export default function CashboxesPage() {
                       className="border-b border-border/50 cursor-pointer hover:bg-secondary/30 transition-colors"
                       style={cancelled ? { opacity: 0.65 } : undefined}
                     >
-                      <td className="px-3 py-3 text-foreground/70 tabular-nums text-[13px]">{entryStart + i + 1}</td>
-                      <td className="px-3 py-3 text-foreground/80 text-[12px] tabular-nums whitespace-nowrap">{fmtEntryDate(e)}</td>
-                      <td className="px-3 py-3 text-[13px] whitespace-nowrap">{renderWhoCell(e)}</td>
+                      <td className="px-3 py-3 text-foreground/70 tabular-nums text-[13px]">
+                        {entryStart + i + 1}
+                      </td>
+                      <td className="px-3 py-3 text-foreground/80 text-[12px] tabular-nums whitespace-nowrap">
+                        {fmtEntryDate(e)}
+                      </td>
+                      <td className="px-3 py-3 text-[13px] whitespace-nowrap">
+                        {renderWhoCell(e)}
+                      </td>
                       <td className="px-3 py-3">
-                        <span title={e.note || "Izoh yo'q"} className="inline-flex items-center px-3 h-7 rounded-md bg-secondary/60 text-[12px]">
+                        <span
+                          title={e.note || "Izoh yo'q"}
+                          className="inline-flex items-center px-3 h-7 rounded-md bg-secondary/60 text-[12px]"
+                        >
                           Izoh
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">{e.txName || "—"}</td>
-                      <td className="px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap text-[13px]">
-                        <span style={cancelled ? { textDecoration: "line-through" } : undefined}>{mask(Math.abs(e.amount))}</span>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">
+                        {e.txName || "—"}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap"><StatusCell status={e.status} /></td>
-                      <td className="px-3 py-3 text-[13px] text-foreground/80">{TX_TYPE_LABELS[e.txType] || e.txType}</td>
-                      <td className="px-3 py-3 text-[13px] text-foreground/80">{e.paymentType}</td>
+                      <td className="px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap text-[13px]">
+                        <span
+                          style={
+                            cancelled
+                              ? { textDecoration: "line-through" }
+                              : undefined
+                          }
+                        >
+                          {mask(Math.abs(e.amount))}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <StatusCell status={e.status} />
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80">
+                        {TX_TYPE_LABELS[e.txType] || e.txType}
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80">
+                        {e.paymentType}
+                      </td>
                       <td className="px-3 py-3 text-right">
                         <div className="inline-flex items-center gap-1">
-                          {dir === "in" && <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />}
-                          {dir === "out" && <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />}
-                          {dir === "transfer" && <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />}
+                          {dir === "in" && (
+                            <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
+                          )}
+                          {dir === "out" && (
+                            <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />
+                          )}
+                          {dir === "transfer" && (
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />
+                          )}
                           {!cancelled && (
                             <button
-                              onClick={(ev) => { ev.stopPropagation(); setReceiptEntry(e); }}
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setReceiptEntry(e);
+                              }}
                               title="Chek chiqarish"
                               className="h-7 w-7 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary"
                             >
@@ -1031,30 +1401,52 @@ export default function CashboxesPage() {
                 {entrySlice.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-3 py-16 text-center">
-                      <div className="text-[14px] font-semibold">Ma&apos;lumotlar topilmadi</div>
-                      <div className="text-[12px] text-muted-foreground mt-1">Filterni o&apos;zgartirib ko&apos;ring.</div>
+                      <div className="text-[14px] font-semibold">
+                        Ma&apos;lumotlar topilmadi
+                      </div>
+                      <div className="text-[12px] text-muted-foreground mt-1">
+                        Filterni o&apos;zgartirib ko&apos;ring.
+                      </div>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          <Pagination totalItems={filteredEntries.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
+          <Pagination
+            totalItems={filteredEntries.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
 
       {addOpen && (
-        <CashboxDrawer onClose={() => setAddOpen(false)} onSaved={(c) => { setCashboxes((prev) => [...prev, c]); setSelectedId(c.id); }} />
+        <CashboxDrawer
+          onClose={() => setAddOpen(false)}
+          onSaved={(c) => {
+            setCashboxes((prev) => [...prev, c]);
+            setSelectedId(c.id);
+          }}
+        />
       )}
       {editTarget && (
         <CashboxDrawer
           cashbox={editTarget}
           onClose={() => setEditTarget(null)}
-          onSaved={(c) => setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
+          onSaved={(c) =>
+            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)))
+          }
           onDeleted={(id) => {
             setCashboxes((prev) => {
               const next = prev.filter((x) => x.id !== id);
-              if (selectedId === id) setSelectedId(next.length > 0 ? next[0].id : null);
+              if (selectedId === id)
+                setSelectedId(next.length > 0 ? next[0].id : null);
               if (cardMoreId === id) setCardMoreId(null);
               return next;
             });
@@ -1066,7 +1458,10 @@ export default function CashboxesPage() {
           cashbox={transferState.cashbox}
           initialFrom={transferState.from}
           onClose={() => setTransferState(null)}
-          onSaved={(c) => { setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x))); refreshEntries(); }}
+          onSaved={(c) => {
+            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            refreshEntries();
+          }}
         />
       )}
       {adjustState && (
@@ -1074,28 +1469,40 @@ export default function CashboxesPage() {
           cashbox={adjustState.cashbox}
           mode={adjustState.mode}
           onClose={() => setAdjustState(null)}
-          onSaved={(c) => { setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x))); refreshEntries(); }}
+          onSaved={(c) => {
+            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            refreshEntries();
+          }}
         />
       )}
       {kirimTarget && (
         <CashboxKirimDrawer
           cashbox={kirimTarget}
           onClose={() => setKirimTarget(null)}
-          onSaved={(c) => { setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x))); refreshEntries(); }}
+          onSaved={(c) => {
+            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            refreshEntries();
+          }}
         />
       )}
       {dividendTarget && (
         <CashboxDividendDrawer
           cashbox={dividendTarget}
           onClose={() => setDividendTarget(null)}
-          onSaved={(c) => { setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x))); refreshEntries(); }}
+          onSaved={(c) => {
+            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            refreshEntries();
+          }}
         />
       )}
       {investmentTarget && (
         <CashboxInvestmentDrawer
           cashbox={investmentTarget}
           onClose={() => setInvestmentTarget(null)}
-          onSaved={(c) => { setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x))); refreshEntries(); }}
+          onSaved={(c) => {
+            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            refreshEntries();
+          }}
         />
       )}
       {transferToTarget && (
@@ -1104,7 +1511,11 @@ export default function CashboxesPage() {
           cashboxes={cashboxes}
           onClose={() => setTransferToTarget(null)}
           onSaved={({ from, to }) => {
-            setCashboxes((prev) => prev.map((x) => (x.id === from.id ? from : x.id === to.id ? to : x)));
+            setCashboxes((prev) =>
+              prev.map((x) =>
+                x.id === from.id ? from : x.id === to.id ? to : x,
+              ),
+            );
             refreshEntries();
           }}
         />
@@ -1112,11 +1523,19 @@ export default function CashboxesPage() {
       {detailEntry && (
         <TransactionDetailDrawer
           entry={detailEntry}
-          cashboxName={cashboxes.find((c) => c.id === detailEntry.cashboxId)?.name || ""}
-          studentId={detailEntry.studentName ? studentIdByName.get(detailEntry.studentName) : undefined}
+          cashboxName={
+            cashboxes.find((c) => c.id === detailEntry.cashboxId)?.name || ""
+          }
+          studentId={
+            detailEntry.studentName
+              ? studentIdByName.get(detailEntry.studentName)
+              : undefined
+          }
           onClose={() => setDetailEntry(null)}
           onChanged={(updated) => {
-            setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+            setEntries((prev) =>
+              prev.map((x) => (x.id === updated.id ? updated : x)),
+            );
             setDetailEntry(updated);
             refreshCashboxes();
           }}
@@ -1125,11 +1544,14 @@ export default function CashboxesPage() {
       {receiptEntry && (
         <ReceiptPreviewModal
           entry={receiptEntry}
-          cashboxName={cashboxes.find((c) => c.id === receiptEntry.cashboxId)?.name || ""}
+          cashboxName={
+            cashboxes.find((c) => c.id === receiptEntry.cashboxId)?.name || ""
+          }
           onClose={() => setReceiptEntry(null)}
           onPrint={() => {
             const e = receiptEntry;
-            const name = cashboxes.find((c) => c.id === e.cashboxId)?.name || "";
+            const name =
+              cashboxes.find((c) => c.id === e.cashboxId)?.name || "";
             setReceiptEntry(null);
             // Modal yopilib bo'lgach print oynasi ochilishi uchun bir tick kutamiz —
             // aks holda ba'zi brauzerlarda modal ostiga tushib qoladi.
@@ -1139,14 +1561,27 @@ export default function CashboxesPage() {
       )}
       {primaryConfirmTarget && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !settingPrimary && setPrimaryConfirmTarget(null)} />
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => !settingPrimary && setPrimaryConfirmTarget(null)}
+          />
           <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
-            <p className="text-center text-[15px] font-semibold">Bosh kassa qilmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">
+              Bosh kassa qilmoqchimisiz?
+            </p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setPrimaryConfirmTarget(null)} disabled={settingPrimary} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+              <button
+                onClick={() => setPrimaryConfirmTarget(null)}
+                disabled={settingPrimary}
+                className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
+              >
                 Yo&apos;q
               </button>
-              <button onClick={confirmSetPrimary} disabled={settingPrimary} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
+              <button
+                onClick={confirmSetPrimary}
+                disabled={settingPrimary}
+                className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
                 {settingPrimary ? "Saqlanmoqda…" : "Ha"}
               </button>
             </div>
