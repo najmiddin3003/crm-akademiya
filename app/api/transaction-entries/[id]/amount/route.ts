@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const db = await ensureIndexes();
-  const entriesCol = db.collection("transaction_entries");
+  const entriesCol = db.collection<TransactionEntry>("transaction_entries");
   const entry = (await entriesCol.findOne({ id: entryId })) as (TransactionEntry & { _id: unknown }) | null;
   if (!entry) {
     return NextResponse.json({ ok: false, error: "Tranzaksiya topilmadi" }, { status: 404 });
