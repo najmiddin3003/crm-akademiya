@@ -160,32 +160,48 @@ function escHtml(s: string): string {
 // bosma oynasini ochadi. Alohida chek route'i kerak emas va sahifadagi
 // holat (drawer, filtrlar) buzilmaydi.
 function printReceipt(e: TransactionEntry, cashboxName: string) {
+  const title =
+    e.txType === "payIn" ? "KIRIM CHEKI" :
+    e.txType === "payOut" ? "CHIQIM CHEKI" :
+    "KO'CHIRISH CHEKI";
   const rows: [string, string][] = [
+    ["Chek №", String(e.id)],
     ["Sana", fmtEntryDate(e)],
     ["Kim", e.studentName || e.moderator || "—"],
-    ["Tranzaksiya nomi", e.txName || "—"],
-    ["Tranzaksiya turi", TX_TYPE_LABELS[e.txType] || e.txType],
+    ["Kassa", cashboxName || "—"],
+    ["Tranzaksiya", e.txName || "—"],
     ["To'lov turi", e.paymentType],
-    ["Izoh", e.note || "—"],
   ];
+  if (e.note) rows.push(["Izoh", e.note]);
+
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
     @page{size:58mm auto;margin:3mm}
     html,body{margin:0;padding:0}
     body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;display:flex;justify-content:center}
-    .wrap{width:52mm;text-align:center}
-    h1{font-size:13px;margin:0 0 1px;text-align:center}
-    .sub{color:#64748b;font-size:10px;margin-bottom:8px;text-align:center}
-    .r{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px dashed #cbd5e1;text-align:left}
+    .wrap{width:52mm}
+    .brand{text-align:center;font-size:12px;font-weight:700;letter-spacing:.15em}
+    .sub{text-align:center;color:#64748b;font-size:10px;margin-top:1px}
+    .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:.05em;margin-top:8px}
+    .divider{border-top:1px dashed #94a3b8;margin:8px 0}
+    .r{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
     .r span:first-child{color:#64748b}
-    .r span:last-child{text-align:right;font-weight:500}
-    .total{display:flex;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px solid #0f172a;font-size:13px;font-weight:700}
+    .r span:last-child{text-align:right;font-weight:500;word-break:break-word}
+    .total{display:flex;justify-content:space-between;align-items:baseline}
+    .total .lbl{font-size:11px;font-style:italic;color:#64748b}
+    .total .val{font-size:15px;font-weight:700}
+    .thanks{text-align:center;font-style:italic;color:#64748b;font-size:10px}
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
     <div class="wrap">
-      <h1>Chek #${e.id}</h1>
+      <div class="brand">TIZIMLI</div>
       <div class="sub">${escHtml(cashboxName)}</div>
+      <div class="title">${title}</div>
+      <div class="divider"></div>
       ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
-      <div class="total"><span>Miqdori</span><span>${fmtSom(Math.abs(e.amount))}</span></div>
+      <div class="divider"></div>
+      <div class="total"><span class="lbl">JAMI</span><span class="val">${fmtSom(Math.abs(e.amount))}</span></div>
+      <div class="divider"></div>
+      <div class="thanks">Xizmatingizdamiz. Rahmat!</div>
     </div>
   </body></html>`;
 
@@ -231,6 +247,7 @@ function ReceiptPreviewModal({
   const rows: [string, string][] = [
     ["Sana", fmtEntryDate(entry)],
     ["Kim", entry.studentName || entry.moderator || "—"],
+    ["Kassa", cashboxName || "—"],
     ["Tranzaksiya", entry.txName || "—"],
     ["To'lov turi", entry.paymentType],
   ];
