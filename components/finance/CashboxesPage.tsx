@@ -144,19 +144,22 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
     @page{size:58mm auto;margin:3mm}
     html,body{margin:0;padding:0}
-    body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;width:52mm}
-    h1{font-size:13px;margin:0 0 1px}
-    .sub{color:#64748b;font-size:10px;margin-bottom:8px}
-    .r{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px dashed #cbd5e1}
+    body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;display:flex;justify-content:center}
+    .wrap{width:52mm;text-align:center}
+    h1{font-size:13px;margin:0 0 1px;text-align:center}
+    .sub{color:#64748b;font-size:10px;margin-bottom:8px;text-align:center}
+    .r{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px dashed #cbd5e1;text-align:left}
     .r span:first-child{color:#64748b}
     .r span:last-child{text-align:right;font-weight:500}
     .total{display:flex;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px solid #0f172a;font-size:13px;font-weight:700}
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
-    <h1>Chek #${e.id}</h1>
-    <div class="sub">${escHtml(cashboxName)}</div>
-    ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
-    <div class="total"><span>Miqdori</span><span>${fmtSom(Math.abs(e.amount))}</span></div>
+    <div class="wrap">
+      <h1>Chek #${e.id}</h1>
+      <div class="sub">${escHtml(cashboxName)}</div>
+      ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
+      <div class="total"><span>Miqdori</span><span>${fmtSom(Math.abs(e.amount))}</span></div>
+    </div>
   </body></html>`;
 
   const frame = document.createElement("iframe");
