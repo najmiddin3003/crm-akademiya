@@ -115,13 +115,45 @@ export default function CashboxAdjustDrawer({
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
 
-  // "Hodimga avans" turida umumiy summa xodimning qolgan oyligidan oshmasligi
-  // kerak (referens qoida: avans oylikdan bo'lib beriladi). Kategoriya nomida
-  // "avans" so'zi bo'lsa shu tekshiruv yoqiladi — nomlar admin
-  // boshqaradigan ro'yxatdan olinadi, shuning uchun so'zga qaraymiz.
-  const isAvansCategory = /avans/i.test(category);
+  // "Hodimga oylik" va "Hodimga avans" turlarida umumiy summa xodimning shu
+  // oyda qolgan oyligidan oshmasligi kerak (referens qoida: avans oylikdan
+  // ayrilib beriladi, tugasa keyingi oygacha yana chiqarilmaydi). Nomlar
+  // admin boshqaradigan ro'yxatdan olinadi, shuning uchun so'zga qaraymiz.
+  const isSalaryPayoutCategory = target === "employee" && /avans|oylik/i.test(category);
   const employeeOylik = selectedEmployee ? salaryOf(selectedEmployee.id).oylik : 0;
-  const avansExceeds = isAvansCategory && !!selectedEmployee && total > employeeOylik;
+
+  // Tanlangan sana kimga tegishli oy — shu oyda xodimga necha marta oylik/
+  // avans chiqarilgani serverdan olinadi. Sana yoki xodim o'zgarsa qayta
+  // yuklanadi. Avval yozilgan tranzaksiyalarning yig'indisi `alreadyPaid`.
+  const monthKey = (() => {
+    if (!date) return "";
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${p(date.getMonth() + 1)}`;
+  })();
+  const [alreadyPaid, setAlreadyPaid] = useState(0);
+  const [paidLoading, setPaidLoading] = useState(false);
+  useEffect(() => {
+    if (!isSalaryPayoutCategory || !selectedEmployee || !monthKey) {
+      setAlreadyPaid(0);
+      return;
+    }
+    let cancelled = false;
+    setPaidLoading(true);
+    const q = new URLSearchParams({ name: selectedEmployee.name, month: monthKey });
+    fetch(`/api/employee-salary-summary?${q}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        setAlreadyPaid(d.ok ? Number(d.paid) || 0 : 0);
+      })
+      .catch(() => { if (!cancelled) setAlreadyPaid(0); })
+      .finally(() => { if (!cancelled) setPaidLoading(false); });
+    return () => { cancelled = true; };
+  }, [isSalaryPayoutCategory, selectedEmployee, monthKey]);
+
+  const remainingSalary = Math.max(0, employeeOylik - alreadyPaid);
+  const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && remainingSalary <= 0;
+  const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && total > remainingSalary;
 
   function addRow() {
     setRows((prev) => [...prev, { id: nextRowId, amount: "", month: defaultMonth() }]);
@@ -151,8 +183,12 @@ export default function CashboxAdjustDrawer({
       showError("Mablag' yetarli emas");
       return;
     }
-    if (avansExceeds) {
-      showError(`Avans oylikdan ko'p bo'lishi mumkin emas (qolgan oylik: ${fmtUZS(employeeOylik)})`);
+    if (salaryExhausted) {
+      showError("Bu oyga xodim oyligi to'liq chiqarib bo'lingan — keyingi oygacha qo'shimcha pul chiqarib bo'lmaydi");
+      return;
+    }
+    if (salaryExceeds) {
+      showError(`Summa qolgan oylikdan (${fmtUZS(remainingSalary)}) ko'p bo'lishi mumkin emas`);
       return;
     }
     setSaving(true);
@@ -239,11 +275,18 @@ export default function CashboxAdjustDrawer({
               {selectedEmployee && (
                 <>
                   <div className="text-[13px] text-muted-foreground">
-                    {`Oylik: ${fmtUZS(employeeOylik)}`}
+                    {isSalaryPayoutCategory
+                      ? `Qolgan oylik: ${fmtUZS(remainingSalary)} / ${fmtUZS(employeeOylik)}${paidLoading ? " …" : ""}`
+                      : `Oylik: ${fmtUZS(employeeOylik)}`}
                   </div>
-                  {isAvansCategory && avansExceeds && (
+                  {isSalaryPayoutCategory && salaryExhausted && (
                     <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
-                      Avans xodimning qolgan oyligidan ({fmtUZS(employeeOylik)}) ko&apos;p bo&apos;lishi mumkin emas.
+                      Bu oyga xodim oyligi to&apos;liq chiqarib bo&apos;lingan — keyingi oygacha qo&apos;shimcha pul chiqarib bo&apos;lmaydi.
+                    </div>
+                  )}
+                  {isSalaryPayoutCategory && !salaryExhausted && salaryExceeds && (
+                    <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
+                      Summa qolgan oylikdan ({fmtUZS(remainingSalary)}) ko&apos;p bo&apos;lishi mumkin emas.
                     </div>
                   )}
                   <button
@@ -353,7 +396,7 @@ export default function CashboxAdjustDrawer({
           </button>
           <button
             onClick={save}
-            disabled={saving || avansExceeds}
+            disabled={saving || salaryExceeds || salaryExhausted}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "Saqlanmoqda…" : "Saqlash"}

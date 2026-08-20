@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
+import { salaryOf } from "@/lib/employeeSalary";
 
 // POST /api/cashboxes/:id/adjust — kassaning bitta to'lov turiga Kirim
 // qo'shadi yoki undan Chiqim oladi. Ko'chirishdan farqi — bu safar umumiy
@@ -53,6 +54,44 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const before = (current.methodTotals as CashboxMethodTotals)[chosen.key] ?? 0;
   if (mode === "chiqim" && before < amount) {
     return NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 });
+  }
+
+  // Xodimga oylik/avans chiqarilsa — shu oyda ushbu xodim uchun oldin
+  // chiqarilgan oylik+avans yig'indisi bilan birga uning oyligidan
+  // oshib ketmasligi kerak. Frontendda ham tekshiriladi, backend zaxira.
+  if (mode === "chiqim" && studentName && /avans|oylik/i.test(category || "")) {
+    const employees = await db.collection("hr_employees").find({ name: studentName }).toArray();
+    const employee = employees.find((e) => !e.archReason) || employees[0];
+    if (employee && typeof employee.id === "number") {
+      const oylik = salaryOf(employee.id).oylik;
+      const dateIso = date || todayIso();
+      const month = dateIso.slice(0, 7);
+      const prior = await db
+        .collection("transaction_entries")
+        .find({
+          studentName,
+          txType: "payOut",
+          date: { $regex: `^${month}-` },
+          status: { $ne: "cancelled" },
+        })
+        .toArray();
+      const paid = prior
+        .filter((r) => /avans|oylik/i.test(String(r.txName ?? "")))
+        .reduce((s, r) => s + Math.abs(Number(r.amount) || 0), 0);
+      const remaining = Math.max(0, oylik - paid);
+      if (remaining <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "Bu oyga xodim oyligi to'liq chiqarib bo'lingan — keyingi oygacha qo'shimcha pul chiqarib bo'lmaydi" },
+          { status: 400 },
+        );
+      }
+      if (amount > remaining) {
+        return NextResponse.json(
+          { ok: false, error: `Summa qolgan oylikdan ko'p bo'lmasin (qolgan: ${remaining})` },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   const res = await col.findOneAndUpdate(

@@ -26,6 +26,7 @@ import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
+import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { STUDENTS_LIST } from "@/constants/studentsList";
 import CashboxDrawer from "./CashboxDrawer";
@@ -179,6 +180,82 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
   window.setTimeout(() => frame.remove(), 1000);
 }
 
+// Chek chiqarish tugmasi bosilganda avval shu ko'rinishdagi ("kirim cheki"
+// referens skrinshoti) modal chiqadi — foydalanuvchi mazmunni ko'rib "Chop
+// etish" bosgandagina brauzerning haqiqiy bosma oynasi ochiladi.
+function ReceiptPreviewModal({
+  entry,
+  cashboxName,
+  onClose,
+  onPrint,
+}: {
+  entry: TransactionEntry;
+  cashboxName: string;
+  onClose: () => void;
+  onPrint: () => void;
+}) {
+  useEscapeClose(onClose);
+  const title =
+    entry.txType === "payIn" ? "KIRIM CHEKI" :
+    entry.txType === "payOut" ? "CHIQIM CHEKI" :
+    "KO'CHIRISH CHEKI";
+  const rows: [string, string][] = [
+    ["Sana", fmtEntryDate(entry)],
+    ["Kim", entry.studentName || entry.moderator || "—"],
+    ["Tranzaksiya", entry.txName || "—"],
+    ["To'lov turi", entry.paymentType],
+  ];
+  if (entry.note) rows.push(["Izoh", entry.note]);
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-xs bg-white border border-border rounded-2xl shadow-2xl overflow-hidden">
+        <div className="px-6 pt-6 pb-4">
+          <div className="text-center text-[13px] font-bold tracking-[0.15em]">TIZIMLI</div>
+          <div className="text-center text-[12px] text-muted-foreground mt-0.5">{cashboxName}</div>
+          <div className="text-center text-[15px] font-bold mt-3 tracking-wide">{title}</div>
+          <div className="my-3 border-t border-dashed border-border" />
+          <div className="space-y-1.5 text-[13px]">
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Chek №</span>
+              <span className="font-medium tabular-nums">{entry.id}</span>
+            </div>
+            {rows.map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-3">
+                <span className="text-muted-foreground">{k}</span>
+                <span className="text-right font-medium break-words">{v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="my-3 border-t border-dashed border-border" />
+          <div className="flex justify-between items-baseline">
+            <span className="text-[13px] italic text-muted-foreground">JAMI</span>
+            <span className="text-[18px] font-bold tabular-nums">{fmtSom(Math.abs(entry.amount))}</span>
+          </div>
+          <div className="my-3 border-t border-dashed border-border" />
+          <div className="text-center text-[12px] italic text-muted-foreground">Xizmatingizdamiz. Rahmat!</div>
+        </div>
+        <div className="flex gap-2 px-4 py-3 border-t border-border bg-secondary/30">
+          <button
+            onClick={onClose}
+            className="h-9 flex-1 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
+          >
+            Yopish
+          </button>
+          <button
+            onClick={onPrint}
+            className="h-9 flex-1 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 inline-flex items-center justify-center gap-1.5"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Chop etish
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // "O'quvchini qidiring..." / "O'qituvchini qidiring..." — yozib qidiriladigan
 // filtr. Qiymat erkin matn (qismiy moslik bo'yicha filtrlaydi), ro'yxatdan
 // tanlansa to'liq ism qo'yiladi.
@@ -297,6 +374,7 @@ export default function CashboxesPage() {
   const [investmentTarget, setInvestmentTarget] = useState<Cashbox | null>(null);
   const [primaryConfirmTarget, setPrimaryConfirmTarget] = useState<Cashbox | null>(null);
   const [settingPrimary, setSettingPrimary] = useState(false);
+  const [receiptEntry, setReceiptEntry] = useState<TransactionEntry | null>(null);
 
   async function confirmSetPrimary() {
     if (!primaryConfirmTarget) return;
@@ -938,7 +1016,7 @@ export default function CashboxesPage() {
                           {dir === "transfer" && <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />}
                           {!cancelled && (
                             <button
-                              onClick={(ev) => { ev.stopPropagation(); printReceipt(e, selected?.name || ""); }}
+                              onClick={(ev) => { ev.stopPropagation(); setReceiptEntry(e); }}
                               title="Chek chiqarish"
                               className="h-7 w-7 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary"
                             >
@@ -1041,6 +1119,21 @@ export default function CashboxesPage() {
             setEntries((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
             setDetailEntry(updated);
             refreshCashboxes();
+          }}
+        />
+      )}
+      {receiptEntry && (
+        <ReceiptPreviewModal
+          entry={receiptEntry}
+          cashboxName={cashboxes.find((c) => c.id === receiptEntry.cashboxId)?.name || ""}
+          onClose={() => setReceiptEntry(null)}
+          onPrint={() => {
+            const e = receiptEntry;
+            const name = cashboxes.find((c) => c.id === e.cashboxId)?.name || "";
+            setReceiptEntry(null);
+            // Modal yopilib bo'lgach print oynasi ochilishi uchun bir tick kutamiz —
+            // aks holda ba'zi brauzerlarda modal ostiga tushib qoladi.
+            setTimeout(() => printReceipt(e, name), 0);
           }}
         />
       )}
