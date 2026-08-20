@@ -39,12 +39,14 @@ export default function TransactionDetailDrawer({
   entry,
   cashboxName,
   studentId,
+  employeeId,
   onClose,
   onChanged,
 }: {
   entry: TransactionEntry;
   cashboxName: string;
   studentId?: number;
+  employeeId?: number;
   onClose: () => void;
   /** Bekor qilish yoki miqdor tahriri — yangilangan yozuv qaytariladi. */
   onChanged: (entry: TransactionEntry) => void;
@@ -55,6 +57,7 @@ export default function TransactionDetailDrawer({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [amountDigits, setAmountDigits] = useState("");
+  const [editReason, setEditReason] = useState("");
   const [saving, setSaving] = useState(false);
 
   const canModify = (entry.txType === "payIn" || entry.txType === "payOut") && entry.status !== "cancelled";
@@ -63,6 +66,7 @@ export default function TransactionDetailDrawer({
     // Maydonga faqat kattaligi kiritiladi — yo'nalish (Kirim/Chiqim)
     // o'zgarmaydi, serverda ham asl yozuvning ishorasi saqlanadi.
     setAmountDigits(toDigits(String(Math.abs(entry.amount))));
+    setEditReason("");
     setEditOpen(true);
   }
 
@@ -72,12 +76,17 @@ export default function TransactionDetailDrawer({
       showError("Qiymatni to'g'ri kiriting");
       return;
     }
+    const reason = editReason.trim();
+    if (!reason) {
+      showError("Tahrir sababini kiriting");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/transaction-entries/${entry.id}/amount`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: value }),
+        body: JSON.stringify({ amount: value, reason }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -134,6 +143,14 @@ export default function TransactionDetailDrawer({
               <Link href={`/student-edit/${studentId}`} className="text-primary hover:underline">
                 {entry.studentName}
               </Link>
+            ) : entry.studentName && employeeId ? (
+              <Link href={`/management-xodimlar/${employeeId}`} className="text-primary hover:underline">
+                {entry.studentName}
+              </Link>
+            ) : entry.moderator && employeeId ? (
+              <Link href={`/management-xodimlar/${employeeId}`} className="text-primary hover:underline">
+                {entry.moderator}
+              </Link>
             ) : (
               entry.studentName || entry.moderator || "—"
             )}
@@ -183,6 +200,17 @@ export default function TransactionDetailDrawer({
               onChange={setAmountDigits}
               autoFocus
               className="w-full h-10 mt-2 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <label className="block text-[13px] font-medium mt-3" htmlFor="tx-edit-reason">
+              Sababi<span className="text-rose-500"> *</span>
+            </label>
+            <textarea
+              id="tx-edit-reason"
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+              rows={3}
+              placeholder="Nima uchun tahrirlanmoqda?"
+              className="w-full mt-2 rounded-lg border border-border bg-card px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={() => setEditOpen(false)} disabled={saving} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">

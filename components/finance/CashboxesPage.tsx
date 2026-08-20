@@ -401,34 +401,105 @@ function SearchFilter({
 }
 
 // Jadvaldagi "Holati" ustuni. Manbadagi qiymatlar: "" (qabul qilindi),
-// "waiting" (kutilmoqda), "cancelled" (bekor qilingan).
-function StatusCell({ status }: { status: string }) {
-  if (status === "cancelled") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[13px] text-rose-500 font-medium">
-        <CircleX className="w-3.5 h-3.5" /> Bekor qilingan
-      </span>
-    );
-  }
-  if (status === "waiting") {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px]">
-          ×
+// "waiting" (kutilmoqda), "cancelled" (bekor qilingan). Miqdor tahrirlangan
+// bo'lsa "Tahrirlangan" belgisi qo'shiladi — ustiga bosilganda tahrirlar
+// tarixi ochiladi.
+function StatusCell({
+  entry,
+  onShowHistory,
+}: {
+  entry: TransactionEntry;
+  onShowHistory: () => void;
+}) {
+  const status = entry.status;
+  const edited = Array.isArray(entry.editHistory) && entry.editHistory.length > 0;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      {status === "cancelled" ? (
+        <span className="inline-flex items-center gap-1 text-[13px] text-rose-500 font-medium">
+          <CircleX className="w-3.5 h-3.5" /> Bekor qilingan
         </span>
-        <span className="text-[13px] text-rose-600 font-medium">
-          Kutilmoqda
+      ) : status === "waiting" ? (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px]">
+            ×
+          </span>
+          <span className="text-[13px] text-rose-600 font-medium">
+            Kutilmoqda
+          </span>
+          <span className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600">
+            <UserCheck style={{ width: 11, height: 11 }} />
+          </span>
         </span>
-        <span className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600">
-          <UserCheck style={{ width: 11, height: 11 }} />
+      ) : (
+        <span className="text-[13px] text-emerald-600 font-medium">
+          Qabul qilindi
         </span>
-      </span>
-    );
+      )}
+      {edited && (
+        <button
+          type="button"
+          onClick={(ev) => { ev.stopPropagation(); onShowHistory(); }}
+          className="inline-flex items-center h-5 px-1.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-700 hover:bg-amber-500/25"
+          title="Tahrirlar tarixini ko'rish"
+        >
+          Tahrirlangan
+        </button>
+      )}
+    </span>
+  );
+}
+
+// Miqdor tahrirlanish tarixini ko'rsatuvchi modal — jadvaldagi "Tahrirlangan"
+// belgisi bosilganda ochiladi.
+function EditHistoryModal({
+  entry,
+  onClose,
+}: {
+  entry: TransactionEntry;
+  onClose: () => void;
+}) {
+  useEscapeClose(onClose);
+  const items = Array.isArray(entry.editHistory) ? entry.editHistory : [];
+  function fmtAt(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
   return (
-    <span className="text-[13px] text-emerald-600 font-medium">
-      Qabul qilindi
-    </span>
+    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <div className="text-[15px] font-semibold">Tahrirlar tarixi</div>
+          <button
+            onClick={onClose}
+            className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+          >
+            ×
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-3">
+          {items.length === 0 && (
+            <div className="text-[13px] text-muted-foreground text-center py-6">
+              Hozircha tahrir kiritilmagan.
+            </div>
+          )}
+          {items.map((h, i) => (
+            <div key={i} className="rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
+              <div className="flex items-center justify-between text-[12px] text-muted-foreground">
+                <span>{fmtAt(h.at)}</span>
+                <span className="tabular-nums">
+                  {fmtNum(Math.abs(h.from))} → <span className="text-foreground font-medium">{fmtNum(Math.abs(h.to))}</span> so&apos;m
+                </span>
+              </div>
+              <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{h.reason || "—"}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -468,6 +539,9 @@ export default function CashboxesPage() {
     useState<Cashbox | null>(null);
   const [settingPrimary, setSettingPrimary] = useState(false);
   const [receiptEntry, setReceiptEntry] = useState<TransactionEntry | null>(
+    null,
+  );
+  const [historyEntry, setHistoryEntry] = useState<TransactionEntry | null>(
     null,
   );
 
@@ -608,16 +682,32 @@ export default function CashboxesPage() {
     const linkCls = "text-primary hover:underline";
     if (e.studentName) {
       const studentId = studentIdByName.get(e.studentName);
-      if (studentId === undefined) return e.studentName;
-      return (
-        <Link
-          href={`/student-edit/${studentId}`}
-          onClick={(ev) => ev.stopPropagation()}
-          className={linkCls}
-        >
-          {e.studentName}
-        </Link>
-      );
+      if (studentId !== undefined) {
+        return (
+          <Link
+            href={`/student-edit/${studentId}`}
+            onClick={(ev) => ev.stopPropagation()}
+            className={linkCls}
+          >
+            {e.studentName}
+          </Link>
+        );
+      }
+      // O'quvchilar orasidan topilmasa — xodim (masalan "Hodimga avans"
+      // yozuvida ismi shu maydonda saqlanadi) profiliga o'tishga urinamiz.
+      const empId = moderatorProfileId(e.studentName);
+      if (empId !== undefined) {
+        return (
+          <Link
+            href={`/management-xodimlar/${empId}`}
+            onClick={(ev) => ev.stopPropagation()}
+            className={linkCls}
+          >
+            {e.studentName}
+          </Link>
+        );
+      }
+      return e.studentName;
     }
     if (e.moderator) {
       const employeeId = moderatorProfileId(e.moderator);
@@ -1379,7 +1469,7 @@ export default function CashboxesPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
-                        <StatusCell status={e.status} />
+                        <StatusCell entry={e} onShowHistory={() => setHistoryEntry(e)} />
                       </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80">
                         {TX_TYPE_LABELS[e.txType] || e.txType}
@@ -1548,6 +1638,13 @@ export default function CashboxesPage() {
               ? studentIdByName.get(detailEntry.studentName)
               : undefined
           }
+          employeeId={
+            detailEntry.studentName && !studentIdByName.get(detailEntry.studentName)
+              ? moderatorProfileId(detailEntry.studentName)
+              : detailEntry.moderator
+              ? moderatorProfileId(detailEntry.moderator)
+              : undefined
+          }
           onClose={() => setDetailEntry(null)}
           onChanged={(updated) => {
             setEntries((prev) =>
@@ -1556,6 +1653,12 @@ export default function CashboxesPage() {
             setDetailEntry(updated);
             refreshCashboxes();
           }}
+        />
+      )}
+      {historyEntry && (
+        <EditHistoryModal
+          entry={historyEntry}
+          onClose={() => setHistoryEntry(null)}
         />
       )}
       {receiptEntry && (

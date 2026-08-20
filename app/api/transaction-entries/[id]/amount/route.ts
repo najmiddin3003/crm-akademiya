@@ -25,7 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
 
-  let body: { amount?: number };
+  let body: { amount?: number; reason?: string };
   try {
     body = await req.json();
   } catch {
@@ -35,6 +35,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const magnitude = Math.trunc(Number(body.amount));
   if (!Number.isFinite(magnitude) || magnitude <= 0) {
     return NextResponse.json({ ok: false, error: "Qiymatni to'g'ri kiriting" }, { status: 400 });
+  }
+  const reason = String(body.reason ?? "").trim();
+  if (!reason) {
+    return NextResponse.json({ ok: false, error: "Tahrir sababini kiriting" }, { status: 400 });
   }
 
   const db = await ensureIndexes();
@@ -97,7 +101,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // qayta hisoblanadi.
   const set: Record<string, number> = { amount: newAmount };
   if (entry.after !== null && entry.after !== undefined) set.after = entry.before + newAmount;
-  await entriesCol.updateOne({ id: entryId }, { $set: set });
+  const historyEntry = {
+    at: new Date().toISOString(),
+    from: entry.amount,
+    to: newAmount,
+    reason,
+  };
+  await entriesCol.updateOne(
+    { id: entryId },
+    { $set: set, $push: { editHistory: historyEntry } },
+  );
 
   const updated = await entriesCol.findOne({ id: entryId });
   const { _id, ...rest } = updated as TransactionEntry & { _id: unknown };

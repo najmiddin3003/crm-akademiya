@@ -4,6 +4,13 @@
 // hisoblanishi bilan bir xil g'oya). Foydalanuvchi bilan kelishilgan qamrov:
 // manba saytida 22 979 ta haqiqiy yozuv bor edi — bu yerda shunga o'xshash,
 // lekin ancha kichikroq (~25-30 ta) demo to'plami.
+export interface AmountEdit {
+  at: string;      // ISO datetime yozuv qachon tahrirlangani
+  from: number;    // avvalgi ishorali summa
+  to: number;      // yangi ishorali summa
+  reason: string;  // foydalanuvchi ko'rsatgan sabab
+}
+
 export interface TransactionEntry {
   id: number;
   date: string; // "YYYY-MM-DD"
@@ -22,4 +29,6 @@ export interface TransactionEntry {
   note: string;
   status: string; // "" | "waiting" | "cancelled"
   cashboxId: number;
+  /** Miqdor har tahrirlanganda shu massivga bitta yangi yozuv qo'shiladi. */
+  editHistory?: AmountEdit[];
 }
