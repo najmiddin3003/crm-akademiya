@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Order } from "@/lib/ordersData";
+import type { TransactionEntry } from "@/lib/transactionEntries";
 import TahrirlashTabButton from "@/components/shared/TahrirlashTabButton";
 import ParolTabButton from "@/components/shared/ParolTabButton";
 import ModeratorTabButton from "@/components/shared/ModeratorTabButton";
@@ -79,9 +80,34 @@ export default function StudentEditPage({ order }: { order: Order }) {
   const familiya = rest.join(" ");
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "+998";
 
-  const qolganDarslar = 0;
-  const tolanishKerak = 0;
-  const balans = 210000;
+  // O'quvchining HAQIQIY to'lovlari (MongoDB `transaction_entries`).
+  // Bog'lanish kaliti — ism satri: to'lov yozuvida o'quvchining raqamli
+  // id'si saqlanmaydi (lib/transactionEntries.ts). Shu bois bir xil ismli
+  // o'quvchilar bir-birining to'lovini ko'rishi mumkin — bu ma'lumot
+  // sxemasidagi cheklov, keyinchalik yozuvga studentId qo'shilsa yopiladi.
+  const [entries, setEntries] = useState<TransactionEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setEntriesLoading(true);
+    fetch(`/api/transaction-entries?studentName=${encodeURIComponent(order.name)}&txType=payIn`)
+      .then((r) => r.json())
+      .then((d) => { if (alive && d.ok) setEntries(d.entries as TransactionEntry[]); })
+      .catch(() => {})
+      .finally(() => { if (alive) setEntriesLoading(false); });
+    return () => { alive = false; };
+  }, [order.name]);
+
+  // Balans — bekor qilinganlardan tashqari to'lovlar yig'indisi
+  // (app/api/employee-salary-summary/route.ts dagi bilan bir xil qoida).
+  const balans = entries
+    .filter((e) => e.status !== "cancelled")
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  // Qolgan darslar va to'lanishi kerak bo'lgan summa uchun tizimda hali
+  // dars/majburiyat hisobi yo'q — soxta 0 o'rniga "—" ko'rsatamiz.
+  const qolganDarslar: number | null = null;
+  const tolanishKerak: number | null = null;
 
   const [activeTab, setActiveTab] = useState("tahrirlash");
   const [sozlashOpen, setSozlashOpen] = useState(false);
@@ -143,7 +169,7 @@ export default function StudentEditPage({ order }: { order: Order }) {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] text-muted-foreground">Qolgan darslar soni</div>
-                <div className="text-[15px] font-bold tabular-nums">{qolganDarslar}</div>
+                <div className="text-[15px] font-bold tabular-nums">{qolganDarslar ?? "—"}</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4">
@@ -152,7 +178,7 @@ export default function StudentEditPage({ order }: { order: Order }) {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] text-muted-foreground">To&apos;lanish kerak</div>
-                <div className="text-[15px] font-bold tabular-nums">{fmtSpace(tolanishKerak)} UZS</div>
+                <div className="text-[15px] font-bold tabular-nums">{tolanishKerak === null ? "—" : `${fmtSpace(tolanishKerak)} UZS`}</div>
               </div>
             </div>
             <div className="flex items-center gap-3 p-4">
@@ -161,7 +187,7 @@ export default function StudentEditPage({ order }: { order: Order }) {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] text-muted-foreground">Balans</div>
-                <div className="text-[15px] font-bold tabular-nums">{fmtSpace(balans)} UZS</div>
+                <div className="text-[15px] font-bold tabular-nums">{entriesLoading ? "…" : `${fmtSpace(balans)} UZS`}</div>
               </div>
             </div>
           </div>
@@ -201,7 +227,7 @@ export default function StudentEditPage({ order }: { order: Order }) {
           {activeTab === "vazifa" && <VazifaTabContent />}
           {activeTab === "coin" && <CoinTabContent />}
           {activeTab === "blok" && <BlokTabContent />}
-          {activeTab === "tranzaksiya" && <TranzaksiyaTabContent order={order} balans={balans} />}
+          {activeTab === "tranzaksiya" && <TranzaksiyaTabContent entries={entries} loading={entriesLoading} />}
           {activeTab === "buyurtma" && <BuyurtmaTabContent />}
           {activeTab === "harakatlar" && <HarakatlarTabContent order={order} balans={balans} />}
           {activeTab === "ltv" && <LtvTabContent />}

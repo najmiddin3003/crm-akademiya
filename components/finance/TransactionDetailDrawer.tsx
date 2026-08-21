@@ -140,7 +140,7 @@ export default function TransactionDetailDrawer({
           <Row label="Sana">{fmtEntryDate(entry)}</Row>
           <Row label="Kim">
             {entry.studentName && studentId ? (
-              <Link href={`/student-edit/${studentId}`} className="text-primary hover:underline">
+              <Link href={`/student-edit/${studentId}?src=list`} className="text-primary hover:underline">
                 {entry.studentName}
               </Link>
             ) : entry.studentName && employeeId ? (

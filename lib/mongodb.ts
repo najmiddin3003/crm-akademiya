@@ -101,6 +101,10 @@ export async function ensureIndexes(): Promise<Db> {
     await db.collection("transactions").createIndex({ date: 1 });
     await db.collection("transaction_types").createIndex({ id: 1 }, { unique: true });
     await db.collection("transaction_entries").createIndex({ id: 1 }, { unique: true });
+    // O'quvchi va xodim profillari har ochilganda shu ikki maydon bo'yicha
+    // so'rov ketadi (app/api/transaction-entries/route.ts).
+    await db.collection("transaction_entries").createIndex({ studentName: 1, date: -1 });
+    await db.collection("transaction_entries").createIndex({ moderator: 1, date: -1 });
     await db.collection("planned_expenses").createIndex({ id: 1 }, { unique: true });
     await db.collection("finance_contracts").createIndex({ id: 1 }, { unique: true });
     await db.collection("turnstile_io").createIndex({ id: 1 }, { unique: true });

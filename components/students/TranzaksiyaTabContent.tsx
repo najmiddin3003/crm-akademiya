@@ -1,17 +1,63 @@
-import type { Order } from "@/lib/ordersData";
-import Button from "@/components/ui/Button";
+"use client";
 
-// Ported from the real site's Tranzaksiyalar tarixi tab: filter row + 3
-// toolbar icon buttons + a transactions table. Since there's no real
-// transactions backend yet, the single row shown mirrors the balance already
-// displayed in the left sidebar card (so the two stay consistent) instead of
-// an empty state.
+import { useMemo, useState } from "react";
+import Button from "@/components/ui/Button";
+import type { TransactionEntry } from "@/lib/transactionEntries";
+
+// O'quvchi profili → "Tranzaksiyalar tarixi".
+// Ma'lumot HAQIQIY: MongoDB `transaction_entries` dan
+// /api/transaction-entries?studentName=…&txType=payIn orqali olinadi
+// (StudentEditPage yuklaydi). Bu yerda faqat ko'rsatish va filtrlash.
 
 function fmtSpace(n: number): string {
-  return n.toLocaleString("ru-RU").replace(/,/g, " ");
+  const sign = n < 0 ? "-" : "";
+  return sign + Math.abs(n).toLocaleString("ru-RU").replace(/,/g, " ");
 }
 
-export default function TranzaksiyaTabContent({ order, balans }: { order: Order; balans: number }) {
+const TX_TYPE_LABEL: Record<string, string> = {
+  payIn: "Daromad",
+  payOut: "Xarajat",
+  transfer: "Ko'chirish",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  "": "Tasdiqlangan",
+  waiting: "Kutilmoqda",
+  cancelled: "Bekor qilingan",
+};
+
+const STATUS_CLS: Record<string, string> = {
+  "": "bg-emerald-500/10 text-emerald-600",
+  waiting: "bg-amber-500/10 text-amber-600",
+  cancelled: "bg-rose-500/10 text-rose-600",
+};
+
+export default function TranzaksiyaTabContent({
+  entries,
+  loading = false,
+}: {
+  entries: TransactionEntry[];
+  loading?: boolean;
+}) {
+  const [paymentType, setPaymentType] = useState("");
+  // Holat qiymati "" ham haqiqiy holat (tasdiqlangan) bo'lgani uchun
+  // "hammasi" alohida sentinel bilan ajratiladi.
+  const [status, setStatus] = useState("all");
+
+  // Filtr variantlari mavjud yozuvlardan yig'iladi — bo'sh <select>
+  // qoldirmaymiz.
+  const paymentTypes = useMemo(
+    () => [...new Set(entries.map((e) => e.paymentType).filter(Boolean))].sort(),
+    [entries],
+  );
+
+  const rows = useMemo(
+    () => entries.filter((e) =>
+      (!paymentType || e.paymentType === paymentType) &&
+      (status === "all" || (e.status || "") === (status === "ok" ? "" : status))),
+    [entries, paymentType, status],
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end gap-2">
@@ -19,35 +65,30 @@ export default function TranzaksiyaTabContent({ order, balans }: { order: Order;
           <svg viewBox="0 0 24 24" className="icon icon-sm"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
         </Button>
         <Button variant="icon" icon="i-settings" title="Sozlash" />
-        <button type="button" className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary" title="Ustunlar">
-          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="4" y1="6" x2="20" y2="6" /><circle cx="9" cy="6" r="1.8" fill="currentColor" stroke="none" />
-            <line x1="4" y1="12" x2="20" y2="12" /><circle cx="15" cy="12" r="1.8" fill="currentColor" stroke="none" />
-            <line x1="4" y1="18" x2="20" y2="18" /><circle cx="11" cy="18" r="1.8" fill="currentColor" stroke="none" />
-          </svg>
-        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-        <button type="button" className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-left inline-flex items-center gap-2 text-muted-foreground">
-          <svg className="icon icon-sm"><use href="#i-calendar" /></svg>
-          Sana
-        </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="relative">
-          <select className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="">Tranzaksiya turi</option>
+          <select
+            value={paymentType}
+            onChange={(e) => setPaymentType(e.target.value)}
+            className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="">To&apos;lov turi — hammasi</option>
+            {paymentTypes.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
           <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
         <div className="relative">
-          <select className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="">Holat</option>
-          </select>
-          <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="">Guruh</option>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="all">Holat — hammasi</option>
+            <option value="ok">Tasdiqlangan</option>
+            <option value="waiting">Kutilmoqda</option>
+            <option value="cancelled">Bekor qilingan</option>
           </select>
           <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
@@ -55,7 +96,9 @@ export default function TranzaksiyaTabContent({ order, balans }: { order: Order;
 
       <div className="rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex justify-end p-3 border-b border-border">
-          <span className="inline-flex items-center h-7 px-3 rounded-md bg-secondary/50 text-[12px] font-medium tabular-nums">Umumiy soni: 1</span>
+          <span className="inline-flex items-center h-7 px-3 rounded-md bg-secondary/50 text-[12px] font-medium tabular-nums">
+            Umumiy soni: {loading ? "…" : rows.length}
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -69,21 +112,35 @@ export default function TranzaksiyaTabContent({ order, balans }: { order: Order;
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya turi</th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">To&apos;lov turi</th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya nomi</th>
-                <th className="px-4 py-3 text-left font-medium">Guruh</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Qabul qilgan</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Holati</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-border/50 last:border-0">
-                <td className="px-4 py-3 text-[13px]">1</td>
-                <td className="px-4 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{order.created}</td>
-                <td className="px-4 py-3 text-[13px] tabular-nums">{fmtSpace(balans)}</td>
-                <td className="px-4 py-3 text-[13px] text-muted-foreground tabular-nums">0</td>
-                <td className="px-4 py-3 text-[13px] tabular-nums">{fmtSpace(balans)}</td>
-                <td className="px-4 py-3 text-[13px]">Daromad</td>
-                <td className="px-4 py-3 text-[13px]">Naqd</td>
-                <td className="px-4 py-3 text-[13px]">O&apos;quvchi to&apos;ladi</td>
-                <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
-              </tr>
+              {loading ? (
+                <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">To&apos;lovlar topilmadi</td></tr>
+              ) : (
+                rows.map((e, i) => (
+                  <tr key={e.id} className="border-b border-border/50 last:border-0">
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground tabular-nums">{i + 1}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{e.date}{e.time ? ` | ${e.time}` : ""}</td>
+                    <td className={`px-4 py-3 text-[13px] tabular-nums font-medium whitespace-nowrap ${e.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSpace(e.amount)}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{fmtSpace(e.before)}</td>
+                    <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{e.after === null ? "—" : fmtSpace(e.after)}</td>
+                    <td className="px-4 py-3 text-[13px] whitespace-nowrap">{TX_TYPE_LABEL[e.txType] ?? e.txType}</td>
+                    <td className="px-4 py-3 text-[13px] whitespace-nowrap">{e.paymentType || "—"}</td>
+                    <td className="px-4 py-3 text-[13px]">{e.txName || "—"}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground whitespace-nowrap">{e.moderator || "—"}</td>
+                    <td className="px-4 py-3 text-[13px] whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${STATUS_CLS[e.status || ""] ?? "bg-secondary text-foreground/70"}`}>
+                        {STATUS_LABEL[e.status || ""] ?? e.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -11,6 +11,8 @@ import { useToast } from "@/components/ui/Toast";
 import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import type { TransactionEntry } from "@/lib/transactionEntries";
+import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
@@ -23,17 +25,6 @@ function nf(n: number): string {
   return sign + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
 }
 
-// Demo tranzaksiyalar (skrinshot 4 qiymatlari) — barcha xodimlar uchun bir xil.
-const TX = [
-  { date: "20.07.2026 | 17:22", amount: -100000, next: -1400000, prev: -1300000 },
-  { date: "15.07.2026 | 09:11", amount: -300000, next: -1300000, prev: -1000000 },
-  { date: "11.07.2026 | 14:57", amount: -600000, next: -1000000, prev: -400000 },
-  { date: "10.07.2026 | 14:39", amount: -100000, next: -400000, prev: -300000 },
-  { date: "08.07.2026 | 11:57", amount: -50000, next: -300000, prev: -250000 },
-  { date: "07.07.2026 | 15:56", amount: -50000, next: -250000, prev: -200000 },
-  { date: "04.07.2026 | 16:54", amount: -200000, next: -200000, prev: 0 },
-];
-
 interface Stat {
   label: string;
   value: string;
@@ -41,16 +32,36 @@ interface Stat {
   wrap: string;
   valueCls?: string;
 }
-const STATS: Stat[] = [
-  { label: "Davomat", value: "0 UZS", icon: Check, wrap: "bg-emerald-100 text-emerald-600" },
-  { label: "Davomatdan foizi", value: "0 UZS", icon: Percent, wrap: "bg-blue-100 text-blue-600" },
-  { label: "Bonus", value: "0 UZS", icon: Lock, wrap: "bg-violet-100 text-violet-700" },
-  { label: "Avans", value: "1 400 000 UZS", icon: XCircle, wrap: "bg-rose-100 text-rose-600" },
-  { label: "Jarima", value: "0 UZS", icon: Frown, wrap: "bg-amber-100 text-amber-600" },
-  { label: "Akladi", value: "0 UZS", icon: Briefcase, wrap: "bg-secondary text-foreground/70" },
-  { label: "Oylik", value: "-1 400 000 UZS", icon: CreditCard, wrap: "bg-blue-100 text-blue-700", valueCls: "text-rose-600" },
-  { label: "To'lanmagan", value: "0 UZS", icon: DollarSign, wrap: "bg-emerald-100 text-emerald-700" },
-];
+
+// Chap kartadagi moliyaviy ko'rsatkichlar. Manbasi bor uchtasi haqiqiy
+// hisoblanadi (Bonus, Jarima, Avans); qolganlari uchun tizimda hali
+// dars/majburiyat hisobi yo'q — soxta "0 UZS" o'rniga "—" ko'rsatamiz,
+// aks holda raqam bor-u, ortida hech narsa yo'qdek tuyuladi.
+function buildStats(bonus: number, jarima: number, avans: number, oylik: number, ready: boolean): Stat[] {
+  const v = (n: number) => (ready ? nf(n) : "…");
+  const none = ready ? "—" : "…";
+  return [
+    { label: "Davomat", value: none, icon: Check, wrap: "bg-emerald-100 text-emerald-600" },
+    { label: "Davomatdan foizi", value: none, icon: Percent, wrap: "bg-blue-100 text-blue-600" },
+    { label: "Bonus", value: v(bonus), icon: Lock, wrap: "bg-violet-100 text-violet-700" },
+    { label: "Avans", value: v(avans), icon: XCircle, wrap: "bg-rose-100 text-rose-600", valueCls: avans > 0 ? "text-rose-600" : "" },
+    { label: "Jarima", value: v(jarima), icon: Frown, wrap: "bg-amber-100 text-amber-600" },
+    { label: "Akladi", value: none, icon: Briefcase, wrap: "bg-secondary text-foreground/70" },
+    { label: "Oylik", value: v(oylik), icon: CreditCard, wrap: "bg-blue-100 text-blue-700" },
+    { label: "To'lanmagan", value: none, icon: DollarSign, wrap: "bg-emerald-100 text-emerald-700" },
+  ];
+}
+
+const TX_STATUS_LABEL: Record<string, string> = {
+  "": "Tasdiqlangan",
+  waiting: "Kutilmoqda",
+  cancelled: "Bekor qilingan",
+};
+const TX_STATUS_CLS: Record<string, string> = {
+  "": "bg-emerald-500/10 text-emerald-600",
+  waiting: "bg-amber-500/10 text-amber-600",
+  cancelled: "bg-rose-500/10 text-rose-600",
+};
 
 const ROLE_BADGE: Record<string, string> = {
   teacher: "bg-primary",
@@ -80,6 +91,14 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // Cloudinary'dagi rasm o'chirilgan yoki havola buzilgan bo'lsa, singan
   // rasm belgisi o'rniga harflarga qaytamiz.
   const [photoFailed, setPhotoFailed] = useState(false);
+  // Moliyaviy ma'lumot (haqiqiy, backend'dan).
+  const [studentPayments, setStudentPayments] = useState<TransactionEntry[]>([]);
+  const [ownEntries, setOwnEntries] = useState<TransactionEntry[]>([]);
+  const [students, setStudents] = useState<TeacherStudent[]>([]);
+  const [bonusTotal, setBonusTotal] = useState(0);
+  const [penaltyTotal, setPenaltyTotal] = useState(0);
+  const [finLoading, setFinLoading] = useState(true);
+  const [fStudent, setFStudent] = useState("");
   const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
   const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
 
@@ -98,6 +117,50 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       cancelled = true;
     };
   }, [id]);
+
+  // Xodim ismi ma'lum bo'lgach — HAQIQIY moliyaviy ma'lumot.
+  //
+  // "O'quvchilar to'lovlari": to'lov yozuviga qabul qilgan xodimning ISMI
+  // yoziladi (app/api/cashboxes/[id]/adjust/route.ts — Kirim oynasidagi
+  // "O'qituvchini tanlang"). Shu bois o'qituvchining o'quvchilari to'lovi
+  // `moderator` bo'yicha topiladi. `transaction_entries.group` hech qachon
+  // to'ldirilmaydi, shuning uchun "Guruh" ustuni guruh ro'yxatidan olinadi.
+  //
+  // "Tranzaksiyalar tarixi": xodimning O'ZIGA tegishli chiqimlar (avans va
+  // h.k.) — bunda ism `studentName` maydonida turadi
+  // (components/finance/CashboxAdjustDrawer.tsx shunday yozadi).
+  useEffect(() => {
+    const name = emp?.name?.trim();
+    if (!name) return;
+    let cancelled = false;
+    setFinLoading(true);
+    const q = encodeURIComponent(name);
+    Promise.all([
+      fetch(`/api/transaction-entries?moderator=${q}&txType=payIn`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/transaction-entries?studentName=${q}&txType=payOut`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/hr-employees/${id}/students`).then((r) => r.json()).catch(() => null),
+      fetch("/api/bonuses").then((r) => r.json()).catch(() => null),
+      fetch("/api/penalties").then((r) => r.json()).catch(() => null),
+    ]).then(([pay, own, roster, bon, pen]) => {
+      if (cancelled) return;
+      if (pay?.ok) setStudentPayments(pay.entries as TransactionEntry[]);
+      if (own?.ok) setOwnEntries(own.entries as TransactionEntry[]);
+      if (roster?.ok) setStudents(roster.students as TeacherStudent[]);
+      const mine = (rows: unknown): number =>
+        (Array.isArray(rows) ? rows : [])
+          .filter((r) => {
+            const x = r as { type?: string; recipientName?: string; status?: string; amount?: number };
+            return x.type === "employee"
+              && (x.recipientName ?? "").trim().toLowerCase() === name.toLowerCase()
+              && x.status !== "cancelled";
+          })
+          .reduce((s, r) => s + (Number((r as { amount?: number }).amount) || 0), 0);
+      setBonusTotal(mine(bon?.bonuses));
+      setPenaltyTotal(mine(pen?.penalties));
+      setFinLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [id, emp?.name]);
 
   if (loading) {
     return <div className="container mx-auto max-w-[1900px] p-4 md:p-5"><SpinnerBlock /></div>;
@@ -123,7 +186,32 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   function selectTab(tabId: string) {
     setActiveTab(tabId);
     setMoreOpen(false);
+    // Ikkala tranzaksiya tabining "Talaba" ro'yxati butunlay boshqacha
+    // (birida o'quvchilar, ikkinchisida xodimning o'z ismi). Filtrni
+    // tozalamasak, tab almashgach u ko'rinmay turib jadvalni bo'shatadi.
+    setFStudent("");
   }
+
+  // Xodimga yoziladigan chiqimlar bir nechta turda bo'ladi ("Hodimga avans",
+  // "Hodimga oylik", …) va hammasi bir xil shaklda yoziladi. Shu bois
+  // TURINI ajratish shart — aks holda oylik ham avansga qo'shilib ketadi va
+  // Hisobotlar > Balans bilan ziddiyat chiqadi (u yerda faqat
+  // txName "Hodimga avans" hisoblanadi).
+  const sumByName = (re: RegExp) => ownEntries
+    .filter((e) => e.status !== "cancelled" && re.test(e.txName || ""))
+    .reduce((s, e) => s + Math.abs(Number(e.amount) || 0), 0);
+  const avansTotal = sumByName(/avans/i);
+  const oylikTotal = sumByName(/oylik/i);
+  const stats = buildStats(bonusTotal, penaltyTotal, avansTotal, oylikTotal, !finLoading);
+
+  // Ikkala tab ham bir xil jadvalni ko'rsatadi, faqat manbasi boshqa.
+  const isTxTab = activeTab === "transactions" || activeTab === "student-payments";
+  const tabRows = activeTab === "student-payments" ? studentPayments : ownEntries;
+  const rows = fStudent ? tabRows.filter((e) => e.studentName === fStudent) : tabRows;
+  // "Guruh" ustuni to'lov yozuvidan olinmaydi (u yerda doim bo'sh) —
+  // o'qituvchining guruh ro'yxatidan ism bo'yicha topiladi.
+  const groupByStudent = new Map(students.map((s) => [s.name, s.groupName]));
+  const studentOptions = [...new Set(tabRows.map((e) => e.studentName).filter(Boolean))].sort();
 
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
@@ -232,7 +320,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
 
           <div className="rounded-2xl bg-card border border-border p-2">
             <ul className="divide-y divide-border">
-              {STATS.map((s) => (
+              {stats.map((s) => (
                 <li key={s.label} className="flex items-center gap-3 px-3 py-3">
                   <span className={`flex h-9 w-9 items-center justify-center rounded-full flex-shrink-0 ${s.wrap}`}>
                     <s.icon className="w-4 h-4" />
@@ -280,21 +368,32 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           </div>
 
           <div className="p-4 md:p-5 min-h-[500px]">
-            {activeTab === "transactions" ? (
+            {isTxTab ? (
               <>
                 <div className="flex flex-wrap items-center gap-2.5 mb-4">
-                  <input type="text" placeholder="Sana" className="h-9 w-44 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
-                  {["Tranzaksiya turi", "Talaba", "Guruh"].map((ph) => (
-                    <div key={ph} className="relative">
-                      <select className="h-9 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" defaultValue="">
-                        <option value="">{ph}</option>
+                  {/* Filtr faqat tanlash mantiqan bor bo'lganda — xodimning
+                      o'z chiqimlari tabida ism doim bitta. */}
+                  {studentOptions.length > 1 && (
+                    <div className="relative">
+                      <select
+                        value={fStudent}
+                        onChange={(e) => setFStudent(e.target.value)}
+                        className="h-9 w-52 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      >
+                        <option value="">Talaba — hammasi</option>
+                        {studentOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                       <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     </div>
-                  ))}
+                  )}
+                  <span className="text-[12px] text-muted-foreground">
+                    {activeTab === "student-payments"
+                      ? "Shu xodim qabul qilgan o'quvchi to'lovlari"
+                      : "Xodimning o'ziga yozilgan chiqimlar (avans va h.k.)"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-end mb-2">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{TX.length}</span></span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : rows.length}</span></span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -306,18 +405,26 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {TX.map((t, i) => (
-                        <tr key={i} className="hover:bg-secondary/30 transition-colors">
+                      {finLoading ? (
+                        <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
+                      ) : rows.length === 0 ? (
+                        <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Ma&apos;lumotlar topilmadi</td></tr>
+                      ) : rows.map((t, i) => (
+                        <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.date}</td>
-                          <td className="px-4 py-3">-</td>
-                          <td className="px-4 py-3">-</td>
-                          <td className="px-4 py-3 whitespace-nowrap">Oldindan to&apos;lash</td>
-                          <td className="px-4 py-3">-</td>
-                          <td className="px-4 py-3">iyul</td>
-                          <td className="px-4 py-3 tabular-nums text-rose-600 font-medium whitespace-nowrap">{nf(t.amount)}</td>
-                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{nf(t.next)}</td>
-                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{nf(t.prev)}</td>
+                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.date}{t.time ? ` | ${t.time}` : ""}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">{t.studentName || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">{groupByStudent.get(t.studentName) || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">{t.txName || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${TX_STATUS_CLS[t.status || ""] ?? "bg-secondary text-foreground/70"}`}>
+                              {TX_STATUS_LABEL[t.status || ""] ?? t.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">{t.note || "—"}</td>
+                          <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${t.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{nf(t.amount)}</td>
+                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.after === null ? "—" : nf(t.after)}</td>
+                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{nf(t.before)}</td>
                         </tr>
                       ))}
                     </tbody>

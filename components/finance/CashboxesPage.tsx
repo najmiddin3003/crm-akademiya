@@ -654,7 +654,12 @@ export default function CashboxesPage() {
   // faqat ismni saqlaydi (id emas), shu sabab STUDENTS_LIST bo'yicha qidiramiz.
   const studentIdByName = useMemo(() => {
     const map = new Map<string, number>();
-    for (const s of STUDENTS_LIST) if (!map.has(s.name)) map.set(s.name, s.id);
+    // Xodimlar xaritasi (pastda) bilan bir xil qoida — katta-kichik harf va
+    // ortiqcha bo'shliq farq qilmasin.
+    for (const s of STUDENTS_LIST) {
+      const key = s.name.trim().toLowerCase();
+      if (!map.has(key)) map.set(key, s.id);
+    }
     return map;
   }, []);
 
@@ -681,11 +686,11 @@ export default function CashboxesPage() {
   function renderWhoCell(e: TransactionEntry) {
     const linkCls = "text-primary hover:underline";
     if (e.studentName) {
-      const studentId = studentIdByName.get(e.studentName);
+      const studentId = studentIdByName.get(e.studentName.trim().toLowerCase());
       if (studentId !== undefined) {
         return (
           <Link
-            href={`/student-edit/${studentId}`}
+            href={`/student-edit/${studentId}?src=list`}
             onClick={(ev) => ev.stopPropagation()}
             className={linkCls}
           >
@@ -1635,11 +1640,11 @@ export default function CashboxesPage() {
           }
           studentId={
             detailEntry.studentName
-              ? studentIdByName.get(detailEntry.studentName)
+              ? studentIdByName.get(detailEntry.studentName.trim().toLowerCase())
               : undefined
           }
           employeeId={
-            detailEntry.studentName && !studentIdByName.get(detailEntry.studentName)
+            detailEntry.studentName && !studentIdByName.get(detailEntry.studentName.trim().toLowerCase())
               ? moderatorProfileId(detailEntry.studentName)
               : detailEntry.moderator
               ? moderatorProfileId(detailEntry.moderator)
