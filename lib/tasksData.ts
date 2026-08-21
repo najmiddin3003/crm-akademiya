@@ -67,6 +67,28 @@ export const RECURRENCE_OPTIONS: { value: TaskRecurring; label: string }[] = [
   { value: "monthly", label: "Har oy" },
 ];
 
+// Tashqaridan kelgan qiymatlar uchun tekshiruvchilar. Bazaga faqat shu
+// ro'yxatlardagi qiymatlar tushishi SHART: yaroqsiz `state` kanban guruhlashini
+// (TasksPage `kanbanGroups`), yaroqsiz `priority` esa saralashni
+// (`compareTasksForSort` → PRIORITY_META[...]) undefined'ga urib, butun
+// sahifani render bo'lmay qoldiradi.
+export function isTaskState(v: unknown): v is TaskState {
+  return KANBAN_STATES.some((s) => s.key === v);
+}
+
+export function isTaskPriority(v: unknown): v is TaskPriority {
+  return Object.keys(PRIORITY_META).includes(String(v));
+}
+
+export function isTaskRecurring(v: unknown): v is TaskRecurring {
+  return RECURRENCE_OPTIONS.some((o) => o.value === v);
+}
+
+/** `new Date(...)` o'qiy oladigan sana satrimi (masalan "2026-08-21T09:00:00"). */
+export function isTaskDate(v: unknown): v is string {
+  return typeof v === "string" && v.trim() !== "" && !Number.isNaN(new Date(v).getTime());
+}
+
 export function getRecurrenceLabel(r: TaskRecurring): string {
   return r !== "none" ? RECURRENCE_OPTIONS.find((o) => o.value === r)?.label ?? "" : "";
 }
