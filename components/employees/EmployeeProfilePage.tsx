@@ -13,12 +13,25 @@ import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
+import type { Bonus } from "@/lib/bonuses";
+import type { Penalty } from "@/lib/penalties";
+import type { TurnstileIoRecord } from "@/lib/turnstileIo";
+import type { EmployeeNote } from "@/lib/employeeNotes";
+import type { Order } from "@/lib/ordersData";
+import { buildPerformanceRows } from "@/lib/performanceReport";
+import {
+  BalanceTab, EmptyState, KpiTab, NotesTab, PayoutHistoryTab, TeacherReportTab,
+  UnpaidHistoryTab, UnpaidTab, WorkHoursTab, buildLedger, type UnpaidRow,
+} from "./EmployeeProfileTabs";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
-// Backend yo'q: chap kartadagi moliyaviy ko'rsatkichlar va "Tranzaksiyalar
-// tarixi" jadvali demo. Faqat "Tranzaksiyalar tarixi" tabi to'ldirilgan;
-// qolganlari bo'sh holat ("Ma'lumotlar topilmadi") ko'rsatadi.
+//
+// Ma'lumot HAQIQIY backend'dan keladi. Tablar mazmuni
+// components/employees/EmployeeProfileTabs.tsx da.
+//
+// Manbasi bo'lmagan tablar (NO_SOURCE ro'yxati) soxta raqam ko'rsatmaydi —
+// nima yetishmayotganini yozib, bo'sh turadi.
 
 function nf(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -52,6 +65,16 @@ function buildStats(bonus: number, jarima: number, avans: number, oylik: number,
   ];
 }
 
+// Manbasi bo'lmagan tablar — nima uchun bo'shligini aniq aytamiz, chunki
+// "Ma'lumotlar topilmadi" o'zi hech narsa tushuntirmaydi.
+const NO_SOURCE: Record<string, string> = {
+  rating: "Reyting uchun baholash yig'ilmaydi — tizimda xodim reytingini yozadigan joy yo'q.",
+  calls: "Qo'ng'iroqlar tarixi uchun telefoniya integratsiyasi ulanmagan (Sozlamalar > Integratsiyalar).",
+  actions: "Xodim harakatlarini qayd qiladigan audit jurnali hali yuritilmaydi.",
+  "actions-audit": "Xodim harakatlarini qayd qiladigan audit jurnali hali yuritilmaydi.",
+  "work-hours-log": "Ish soati bo'yicha yagona manba — turniket, u \"Ish soati\" tabida to'liq ko'rsatilgan.",
+};
+
 const TX_STATUS_LABEL: Record<string, string> = {
   "": "Tasdiqlangan",
   waiting: "Kutilmoqda",
@@ -81,7 +104,7 @@ const ACTION_CLS = {
 };
 
 export default function EmployeeProfilePage({ id }: { id: number }) {
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const [emp, setEmp] = useState<HrEmployee | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("transactions");
@@ -95,9 +118,16 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [studentPayments, setStudentPayments] = useState<TransactionEntry[]>([]);
   const [ownEntries, setOwnEntries] = useState<TransactionEntry[]>([]);
   const [students, setStudents] = useState<TeacherStudent[]>([]);
-  const [bonusTotal, setBonusTotal] = useState(0);
-  const [penaltyTotal, setPenaltyTotal] = useState(0);
+  const [bonuses, setBonuses] = useState<Bonus[]>([]);
+  const [penalties, setPenalties] = useState<Penalty[]>([]);
+  const [turnstile, setTurnstile] = useState<TurnstileIoRecord[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [unpaid, setUnpaid] = useState<UnpaidRow[]>([]);
+  const [cashboxNames, setCashboxNames] = useState<Record<number, string>>({});
+  const [notes, setNotes] = useState<EmployeeNote[]>([]);
+  const [noteBusy, setNoteBusy] = useState(false);
   const [finLoading, setFinLoading] = useState(true);
+  const [finError, setFinError] = useState(false);
   const [fStudent, setFStudent] = useState("");
   const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
   const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
@@ -133,34 +163,92 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     const name = emp?.name?.trim();
     if (!name) return;
     let cancelled = false;
-    setFinLoading(true);
+    // `finLoading` boshlanishida allaqachon true — bu yerda qayta
+    // o'rnatilsa, effekt tanasidagi setState ortiqcha render zanjirini
+    // keltirib chiqaradi (react-hooks qoidasi).
     const q = encodeURIComponent(name);
+    const get = (u: string) => fetch(u).then((r) => r.json()).catch(() => null);
     Promise.all([
-      fetch(`/api/transaction-entries?moderator=${q}&txType=payIn`).then((r) => r.json()).catch(() => null),
-      fetch(`/api/transaction-entries?studentName=${q}&txType=payOut`).then((r) => r.json()).catch(() => null),
-      fetch(`/api/hr-employees/${id}/students`).then((r) => r.json()).catch(() => null),
-      fetch("/api/bonuses").then((r) => r.json()).catch(() => null),
-      fetch("/api/penalties").then((r) => r.json()).catch(() => null),
-    ]).then(([pay, own, roster, bon, pen]) => {
+      get(`/api/transaction-entries?moderator=${q}&txType=payIn`),
+      get(`/api/transaction-entries?studentName=${q}&txType=payOut`),
+      get(`/api/hr-employees/${id}/students`),
+      get("/api/bonuses"),
+      get("/api/penalties"),
+      get("/api/turnstile-io"),
+      get("/api/orders"),
+      get("/api/student-reports?kind=unpaid"),
+      get("/api/cashboxes"),
+      get(`/api/hr-employees/${id}/notes`),
+    ]).then(([pay, own, roster, bon, pen, turn, ord, unp, cash, nts]) => {
       if (cancelled) return;
+      // Hech biri kelmagan bo'lsa — bu "ma'lumot yo'q" emas, so'rov
+      // muvaffaqiyatsiz. Bo'sh holatda soxta sabab yozmasligimiz uchun.
+      if (!pay && !own && !turn) {
+        setFinError(true);
+        setFinLoading(false);
+        return;
+      }
       if (pay?.ok) setStudentPayments(pay.entries as TransactionEntry[]);
       if (own?.ok) setOwnEntries(own.entries as TransactionEntry[]);
       if (roster?.ok) setStudents(roster.students as TeacherStudent[]);
-      const mine = (rows: unknown): number =>
-        (Array.isArray(rows) ? rows : [])
-          .filter((r) => {
-            const x = r as { type?: string; recipientName?: string; status?: string; amount?: number };
-            return x.type === "employee"
-              && (x.recipientName ?? "").trim().toLowerCase() === name.toLowerCase()
-              && x.status !== "cancelled";
-          })
-          .reduce((s, r) => s + (Number((r as { amount?: number }).amount) || 0), 0);
-      setBonusTotal(mine(bon?.bonuses));
-      setPenaltyTotal(mine(pen?.penalties));
+      if (Array.isArray(bon?.bonuses)) setBonuses(bon.bonuses as Bonus[]);
+      if (Array.isArray(pen?.penalties)) setPenalties(pen.penalties as Penalty[]);
+      // Turniket yozuvlari faqat shu xodimniki (ism bo'yicha, `personType`
+      // "employee" — o'quvchilar bilan bir kolleksiyada turadi).
+      if (Array.isArray(turn?.records)) {
+        const lc = name.toLowerCase();
+        setTurnstile((turn.records as TurnstileIoRecord[])
+          .filter((r) => r.personType === "employee" && (r.personName || "").trim().toLowerCase() === lc)
+          .sort((a, b) => b.date.localeCompare(a.date)));
+      }
+      if (Array.isArray(ord?.orders)) setOrders(ord.orders as Order[]);
+      if (Array.isArray(unp?.rows)) setUnpaid(unp.rows as UnpaidRow[]);
+      if (Array.isArray(cash?.cashboxes)) {
+        setCashboxNames(Object.fromEntries(
+          (cash.cashboxes as { id: number; name: string }[]).map((c) => [c.id, c.name]),
+        ));
+      }
+      if (Array.isArray(nts?.notes)) setNotes(nts.notes as EmployeeNote[]);
       setFinLoading(false);
     });
     return () => { cancelled = true; };
   }, [id, emp?.name]);
+
+  // true qaytarsa NotesTab kiritish maydonini tozalaydi — saqlanmagan matn
+  // yo'qolib ketmasligi uchun.
+  async function addNote(text: string): Promise<boolean> {
+    setNoteBusy(true);
+    try {
+      const res = await fetch(`/api/hr-employees/${id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setNotes((p) => [...p, data.note as EmployeeNote]);
+        return true;
+      }
+      showError(data.error || "Eslatma saqlanmadi");
+      return false;
+    } catch {
+      showError("Tarmoq xatosi — eslatma saqlanmadi");
+      return false;
+    } finally {
+      setNoteBusy(false);
+    }
+  }
+
+  async function removeNote(noteId: number) {
+    try {
+      const res = await fetch(`/api/hr-employees/${id}/notes?noteId=${noteId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.ok) setNotes((p) => p.filter((n) => n.id !== noteId));
+      else showError(data.error || "O'chirilmadi");
+    } catch {
+      showError("Tarmoq xatosi — o'chirilmadi");
+    }
+  }
 
   if (loading) {
     return <div className="container mx-auto max-w-[1900px] p-4 md:p-5"><SpinnerBlock /></div>;
@@ -202,7 +290,35 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     .reduce((s, e) => s + Math.abs(Number(e.amount) || 0), 0);
   const avansTotal = sumByName(/avans/i);
   const oylikTotal = sumByName(/oylik/i);
+
+  // Bonus/jarima — faqat shu xodimniki, bekor qilinganlarsiz.
+  const lcName = emp.name.trim().toLowerCase();
+  const mineOf = <T extends { type?: string; recipientName?: string; status?: string; amount?: number }>(rows: T[]) =>
+    rows.filter((r) => r.type === "employee"
+      && (r.recipientName ?? "").trim().toLowerCase() === lcName
+      && r.status !== "cancelled");
+  const sumAmount = (rows: { amount?: number }[]) => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const bonusTotal = sumAmount(mineOf(bonuses));
+  const penaltyTotal = sumAmount(mineOf(penalties));
   const stats = buildStats(bonusTotal, penaltyTotal, avansTotal, oylikTotal, !finLoading);
+
+  const cashboxName = (cid: number) => cashboxNames[cid] ?? (cid ? `Kassa ${cid}` : "—");
+  const ledger = buildLedger(emp.name, bonuses, penalties, ownEntries);
+
+  // "To'lanmagan to'lovlar" — o'qituvchining guruhlaridagi o'quvchilar qarzi.
+  const rosterNames = new Set(students.map((s) => s.name.trim().toLowerCase()));
+  const unpaidMine = unpaid.filter((r) => rosterNames.has((r.studentName || "").trim().toLowerCase()));
+
+  // "To'lanmagan tarixi" — qabul qilingan, lekin oxiriga yetmagan to'lovlar.
+  const unfinished = studentPayments.filter((e) => e.status === "cancelled" || e.status === "waiting");
+
+  // O'qituvchining hisoboti — buyurtmalardan. `teacher` bazada null bo'lishi
+  // mumkin (tip `string` desa ham), shuning uchun String(... ?? "") shart.
+  const perfRow = buildPerformanceRows(
+    orders,
+    (o) => String((emp.turi === "teacher" ? o.teacher : o.moderator) ?? ""),
+    { start: null, end: null },
+  ).find((r) => r.name === emp.name) ?? null;
 
   // Ikkala tab ham bir xil jadvalni ko'rsatadi, faqat manbasi boshqa.
   const isTxTab = activeTab === "transactions" || activeTab === "student-payments";
@@ -431,14 +547,47 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   </table>
                 </div>
               </>
+            ) : finLoading ? (
+              <div className="py-20 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</div>
+            ) : finError ? (
+              <EmptyState text="Ma'lumot yuklanmadi" hint="Serverga ulanishda xato yuz berdi. Sahifani yangilab ko'ring." />
+            ) : activeTab === "advances" ? (
+              <PayoutHistoryTab
+                entries={ownEntries.filter((e) => /avans/i.test(e.txName || ""))}
+                cashboxName={cashboxName}
+                caption="Xodimga to'langan avanslar (Kassa > Chiqim orqali yozilgan)."
+              />
+            ) : activeTab === "salary-log" ? (
+              <PayoutHistoryTab
+                entries={ownEntries.filter((e) => /oylik/i.test(e.txName || ""))}
+                cashboxName={cashboxName}
+                caption="Xodimga to'langan oyliklar (Kassa > Chiqim orqali yozilgan)."
+              />
+            ) : activeTab === "balance" ? (
+              <BalanceTab rows={ledger} />
+            ) : activeTab === "unpaid-payments" ? (
+              <UnpaidTab rows={unpaidMine} rosterEmpty={students.length === 0} />
+            ) : activeTab === "unpaid-history" ? (
+              <UnpaidHistoryTab entries={unfinished} />
+            ) : activeTab === "work-hours" ? (
+              <WorkHoursTab records={turnstile} />
+            ) : activeTab === "kpi" ? (
+              <KpiTab
+                payments={studentPayments}
+                avans={avansTotal}
+                oylik={oylikTotal}
+                bonus={bonusTotal}
+                jarima={penaltyTotal}
+                students={students}
+              />
+            ) : activeTab === "teacher-report" ? (
+              <TeacherReportTab row={perfRow} />
+            ) : activeTab === "notes" ? (
+              <NotesTab notes={notes} onAdd={addNote} onDelete={removeNote} busy={noteBusy} />
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <span className="w-12 h-12 rounded-xl bg-secondary/60 inline-flex items-center justify-center mb-3 text-muted-foreground">
-                  <Archive className="w-6 h-6" />
-                </span>
-                <div className="text-[14px] font-semibold">Ma&apos;lumotlar topilmadi</div>
-                <div className="text-[12px] text-muted-foreground mt-1">Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.</div>
-              </div>
+              // Qolgan tablar uchun tizimda ma'lumot manbasi YO'Q. Soxta
+              // raqam ko'rsatmaymiz — nima yetishmayotganini aytamiz.
+              <EmptyState hint={NO_SOURCE[activeTab] ?? "Bu bo'lim uchun hali ma'lumot yig'ilmaydi."} />
             )}
           </div>
         </div>

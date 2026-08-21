@@ -89,8 +89,9 @@ export default function StudentEditPage({ order }: { order: Order }) {
   const [entriesLoading, setEntriesLoading] = useState(true);
 
   useEffect(() => {
+    // `entriesLoading` boshlanishida true — effekt tanasida qayta
+    // o'rnatilsa, ortiqcha render zanjiri chiqadi (react-hooks qoidasi).
     let alive = true;
-    setEntriesLoading(true);
     fetch(`/api/transaction-entries?studentName=${encodeURIComponent(order.name)}&txType=payIn`)
       .then((r) => r.json())
       .then((d) => { if (alive && d.ok) setEntries(d.entries as TransactionEntry[]); })
