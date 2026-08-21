@@ -80,6 +80,8 @@ const IMPLEMENTED_ROUTES = new Set([
   "/offline-courses", "/online-courses", "/edu-category", "/seasonal-assessment", "/contract",
   // Blok test
   "/blok-test-turlari", "/blok-testlar",
+  // Imtihon (Oylik imtihon | UzBMB — ikkalasi ham /imtihon, tab `?tab=` da)
+  "/imtihon",
   // Moliya
   "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll",
   "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow",
@@ -285,10 +287,12 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
   // ko'rinish inline style orqali berilib, hech qanday CSS sinfiga bog'liq
   // qolmaydi.
   const LOCKED_STYLE = { opacity: 0.45, cursor: "not-allowed", pointerEvents: "none" } as const;
-  const lockedProps = (href: string) => ({
-    locked: !IMPLEMENTED_ROUTES.has(href),
-    title: !IMPLEMENTED_ROUTES.has(href) ? "Hali tayyor emas" : undefined,
-  });
+  // Havolada so'rov qismi bo'lishi mumkin (masalan "/imtihon?tab=uzbmb") —
+  // qulf ro'yxati faqat sahifa yo'li bilan solishtiriladi.
+  const lockedProps = (href: string) => {
+    const locked = !IMPLEMENTED_ROUTES.has(href.split("?")[0]);
+    return { locked, title: locked ? "Hali tayyor emas" : undefined };
+  };
   const lockIcon = (
     <svg className="icon" style={{ width: 12, height: 12, opacity: 0.7 }} aria-label="Qulflangan">
       <use href="#i-lock" />
@@ -368,6 +372,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
           <symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></symbol>
           <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
           <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+          <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></symbol>
           <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></symbol>
           <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
         </defs>
@@ -379,7 +384,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
           <ul className="space-y-[2px]">
             {ITEMS.map((item) => {
               const hasMenu = !!item.menu;
-              const topLocked = !!item.href && !IMPLEMENTED_ROUTES.has(item.href);
+              const topLocked = !!item.href && !IMPLEMENTED_ROUTES.has(item.href.split("?")[0]);
               const itemActive = isPathActive(item.href) || isMenuActive(item.menu);
               // Referensda o'ngda chevron YO'Q — ochiq/yopiqligi faqat fon
               // rangi bilan bildiriladi.

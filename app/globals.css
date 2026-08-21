@@ -10135,3 +10135,64 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
    turishi uchun (komponentning o'zi h-9). Faqat birinchi bola — ochilgan
    kalendar `position: fixed` bilan alohida joylashadi. */
 .fc-range > div:first-child { height: 2.5rem; }
+
+/* ============================================================
+   Ommaviy ariza sahifasi (/ariza) — referens HTML'dagi
+   "OMMAVIY ARIZA SAHIFASI (#ariza)" bo'limi bilan bir xil.
+   Sahifa CRM qobig'idan tashqarida (sidebar/navbar yo'q), o'z
+   ranglari bilan — tungi rejimda ham oq kartochka ko'rinadi.
+   ============================================================ */
+.pa-root { min-height: 100vh; overflow-y: auto; position: relative;
+  background: linear-gradient(140deg, #1e3a8a 0%, #2b38ff 45%, #7c3aed 100%); }
+.pa-root::before { content:''; position: fixed; inset:0; pointer-events:none;
+  background: radial-gradient(600px 300px at 15% 10%, rgba(255,255,255,.14), transparent 60%),
+              radial-gradient(500px 260px at 85% 90%, rgba(255,255,255,.10), transparent 60%); }
+.pa-wrap { position: relative; max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; }
+.pa-card { background: #fff; border-radius: 22px; box-shadow: 0 30px 60px -20px rgba(2,6,23,.45); overflow: hidden; }
+.pa-hero { padding: 26px 28px 20px; background: linear-gradient(135deg, #f8faff 0%, #eef2ff 100%); border-bottom: 1px solid #e5e9f5; }
+.pa-logo { width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(135deg,#2b38ff,#7c3aed);
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:20px; box-shadow: 0 8px 18px -6px rgba(43,56,255,.5); }
+.pa-steps { display:flex; align-items:center; gap:0; margin: 18px 28px 0; }
+.pa-step { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; }
+.pa-step .dot { width: 30px; height: 30px; border-radius: 999px; display:flex; align-items:center; justify-content:center;
+  font-size: 13px; font-weight: 700; background:#eef1f8; color:#8a93a6; border: 2px solid #e2e7f2; transition: all .2s; }
+.pa-step .lbl { font-size: 11px; font-weight: 600; color:#8a93a6; text-align:center; }
+.pa-step.active .dot { background: #2b38ff; color:#fff; border-color:#2b38ff; box-shadow: 0 0 0 5px rgba(43,56,255,.14); }
+.pa-step.active .lbl { color:#2b38ff; }
+.pa-step.done .dot { background:#10b981; color:#fff; border-color:#10b981; }
+.pa-step:not(:first-child)::before { content:''; position:absolute; top:15px; right:50%; width:100%; height:2px; background:#e2e7f2; z-index:-1; }
+.pa-step.done:not(:first-child)::before, .pa-step.active:not(:first-child)::before { background:#c7d2fe; }
+.pa-body { padding: 22px 28px 26px; }
+.pa-field label { display:block; font-size: 13px; font-weight: 600; color:#1f2937; margin-bottom: 6px; }
+.pa-field input, .pa-field select, .pa-field textarea { width:100%; border:1.5px solid #e2e7f2; border-radius: 12px;
+  padding: 11px 13px; font-size: 14px; background:#fbfcff; color:#0f172a; outline:none; transition: border .15s, box-shadow .15s; }
+.pa-field input:focus, .pa-field select:focus, .pa-field textarea:focus { border-color:#2b38ff; box-shadow: 0 0 0 4px rgba(43,56,255,.12); background:#fff; }
+.pa-field input.pa-invalid, .pa-field select.pa-invalid, .pa-field textarea.pa-invalid { border-color:#f43f5e; }
+.pa-grid2 { display:grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 640px) { .pa-grid2 { grid-template-columns: 1fr 1fr; } }
+.pa-chk { display:flex; align-items:center; gap:9px; padding: 9px 12px; border:1.5px solid #e2e7f2; border-radius: 11px;
+  font-size: 13px; cursor:pointer; transition: all .15s; background:#fbfcff; color:#0f172a; }
+.pa-chk:hover { border-color:#c7d2fe; }
+.pa-chk.on { border-color:#2b38ff; background:#eef2ff; color:#1e3a8a; font-weight:600; }
+.pa-btn { height: 46px; padding: 0 22px; border-radius: 13px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; }
+.pa-btn-primary { background: linear-gradient(135deg,#2b38ff,#4f46e5); color:#fff; box-shadow: 0 10px 22px -8px rgba(43,56,255,.55); }
+.pa-btn-primary:hover { transform: translateY(-1px); }
+.pa-btn-ghost { background:#f1f4fb; color:#334155; }
+.pa-btn-submit { background: linear-gradient(135deg,#059669,#10b981); color:#fff; box-shadow: 0 10px 22px -8px rgba(16,185,129,.55); }
+.pa-btn:disabled { opacity: .6; cursor: default; transform: none; }
+.pa-success { text-align:center; padding: 46px 28px 50px; }
+.pa-success .big { width: 84px; height: 84px; border-radius: 999px; margin: 0 auto 18px; display:flex; align-items:center; justify-content:center;
+  background: linear-gradient(135deg,#059669,#34d399); color:#fff; font-size: 40px; box-shadow: 0 16px 34px -10px rgba(16,185,129,.55); }
+.pa-note { font-size: 12px; color:#64748b; }
+
+/* `md:grid-cols-4` — Tailwind v4 uni generatsiya qiladi, lekin bu fayldagi
+   eski v3 blokning `.grid-cols-2` qoidasi keyinroq turgani uchun bir xil
+   spesifiklikda uni bosib ketadi (fayl boshidagi izohga qarang).
+   Faqat takrorlash yordam bermaydi — minifikator bir xil qoidalarni
+   birlashtirib, birinchi joyida qoldiradi. Shu sabab spesifiklik bir pog'ona
+   yuqori (`.grid` bilan birga) yoziladi. Imtihon bo'limidagi 4 ta statistika
+   kartasi va Topshiriqlar risk paneli shunga tayanadi. */
+@media (min-width: 48rem) {
+  .grid.md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+

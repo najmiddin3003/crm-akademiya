@@ -110,6 +110,20 @@ export const SIDEBAR_ITEMS = [
     },
   },
   {
+    key: "imtihon",
+    icon: "i-award",
+    label: "Imtihon",
+    mobileHref: "/imtihon",
+    menu: {
+      variant: "list",
+      width: 256,
+      items: [
+        { label: "Oylik imtihon", href: "/imtihon", icon: "i-calendar" },
+        { label: "UzBMB", href: "/imtihon?tab=uzbmb", icon: "i-award", count: "189" },
+      ],
+    },
+  },
+  {
     key: "finance",
     icon: "i-wallet",
     label: "Moliya",
@@ -193,7 +207,7 @@ export const SIDEBAR_ITEMS = [
       width: 240,
       items: [
         { label: "Xodimlar", href: "/management-xodimlar", icon: "i-users-group", medium: true },
-        { label: "Ishga chaqiruv (CV)", href: "/management-cv", icon: "i-file-plus" },
+        { label: "Ishga qabul (CV)", href: "/management-cv", icon: "i-file-text" },
         { label: "Rollar", href: "/management-rollar", icon: "i-shield" },
         { label: "Filiallar", href: "/management-filiallar", icon: "i-grid" },
         { label: "Ish jadvali", href: "/management-ish-jadvali", icon: "i-calendar" },

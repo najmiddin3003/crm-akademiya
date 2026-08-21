@@ -5,7 +5,10 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 // Login qilmagan foydalanuvchi hech qaysi CRM sahifasiga kira olmaydi —
 // bunday holatda login sahifasiga ("/") qaytariladi. Login/faollashtirish/
 // ro'yxatdan o'tish sahifalari ochiq qoladi.
-const PUBLIC_PATHS = ["/", "/activate", "/register"];
+//
+// `/ariza` — ish arizasi anketasi: havolasi tashqi nomzodlarga yuboriladi,
+// shuning uchun u ham ochiq (Boshqaruv → Ishga qabul (CV)).
+const PUBLIC_PATHS = ["/", "/activate", "/register", "/ariza"];
 
 export const config = {
   matcher: ["/((?!_next/|api/|favicon.ico).*)"],

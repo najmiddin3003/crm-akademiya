@@ -81,6 +81,15 @@ export async function ensureIndexes(): Promise<Db> {
     // hr_employees — edutizim dizaynidagi to'liq xodim roster (invite oqimidagi
     // `employees` kolleksiyasidan ALOHIDA; ular turli shakl/vazifada).
     await db.collection("hr_employees").createIndex({ id: 1 }, { unique: true });
+    // Imtihon bo'limi — Oylik imtihon va UzBMB natijalari.
+    await db.collection("monthly_exams").createIndex({ id: 1 }, { unique: true });
+    await db.collection("monthly_exams").createIndex({ month: 1 });
+    await db.collection("uzbmb_exams").createIndex({ id: 1 }, { unique: true });
+    await db.collection("uzbmb_exams").createIndex({ month: 1 });
+    // cv_applications — Boshqaruv > Ishga qabul (CV). `sid` ommaviy /ariza
+    // sahifasi va Google Sheets'dan kelgan yozuvlarni takrorlamaslik uchun.
+    await db.collection("cv_applications").createIndex({ id: 1 }, { unique: true });
+    await db.collection("cv_applications").createIndex({ sid: 1 }, { sparse: true });
     await db.collection("edu_categories").createIndex({ id: 1 }, { unique: true });
     await db.collection("seasonal_assessments").createIndex({ id: 1 }, { unique: true });
     await db.collection("contracts").createIndex({ id: 1 }, { unique: true });
