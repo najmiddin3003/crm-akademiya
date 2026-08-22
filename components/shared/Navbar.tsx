@@ -10,6 +10,7 @@ import { LANGS as LANGUAGES, NOTIFS as NOTIFICATIONS, NOTIF_STYLE as NOTIF_STYLE
 import type { Lang } from "@/lib/i18n";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
+import { useStudents } from "@/hooks/useStudents";
 import { useBranches } from "@/hooks/useBranches";
 import { HELP_TOPICS } from "@/constants/helpTopics";
 
@@ -53,7 +54,9 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     branch && branches.some((b) => b.name === branch) ? branch : (branches[0]?.name ?? "");
   const [filialModalOpen, setFilialModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchResults = useMemo(() => searchAll(searchQuery), [searchQuery]);
+  // O'quvchilar qidiruv uchun bazadan (/api/pupils).
+  const { students } = useStudents();
+  const searchResults = useMemo(() => searchAll(searchQuery, students), [searchQuery, students]);
   const rootRef = useRef<HTMLDivElement>(null);
   const profileHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

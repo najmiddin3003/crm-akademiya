@@ -1,27 +1,31 @@
 import StudentEditPage from "@/components/students/StudentEditPage";
 import { createInitialOrders, type Order } from "@/lib/ordersData";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { ensureIndexes } from "@/lib/mongodb";
+import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 
 // O'quvchi profili ikki xil ro'yxatdan ochilishi mumkin:
-//   • Buyurtmalar (lib/ordersData.ts, id 2098-6013)
-//   • O'quvchilar ro'yxati / Kassalar to'lov qatorlari
-//     (constants/studentsList.js, id 823-6731)
+//   • Buyurtmalar (lib/ordersData.ts demo generatori, id 2098-6013)
+//   • O'quvchilar ro'yxati / Kassalar to'lov qatorlari — BAZADAGI o'quvchilar
+//     (MongoDB `pupils`)
 // Ikki id fazosi KESISHADI, shuning uchun havolaga `?src=list` qo'shiladi —
-// shunda 4206 kabi id ikkala ro'yxatda ham bo'lsa, mo'ljallangani ochiladi
+// shunda bir xil id ikkala ro'yxatda ham bo'lsa, mo'ljallangani ochiladi
 // (aks holda noto'g'ri odam ochilib, buni hech kim sezmaydi).
-function orderFromStudentsList(id: number): Order | null {
-  const s = STUDENTS_LIST.find((x) => x.id === id);
-  if (!s) return null;
+async function orderFromPupil(id: number): Promise<Order | null> {
+  if (!Number.isFinite(id)) return null;
+  const db = await ensureIndexes();
+  const doc = await db.collection("pupils").findOne({ id });
+  if (!doc) return null;
+  const p = doc as unknown as Pupil;
   // StudentEditPage `Order` kutadi — mavjud maydonlarni ko'chiramiz,
   // qolganini bo'sh qoldiramiz (o'ylab topilgan qiymat yozmaymiz).
   return {
-    id: s.id,
-    name: s.name,
-    phone: s.phone,
-    created: s.createdAt,
-    moderator: s.moderator,
-    source: s.source,
-    group: s.groups === "-" ? "" : s.groups,
+    id: p.id,
+    name: pupilFullName(p),
+    phone: p.phone ?? "",
+    created: p.createdAt ?? "",
+    moderator: p.moderator ?? "",
+    source: p.source ?? "",
+    group: "",
     firstLesson: "",
     teacher: "",
     course: "",
@@ -31,7 +35,7 @@ function orderFromStudentsList(id: number): Order | null {
     subsource: "",
     fromBranch: "",
     toBranch: "",
-    category: "",
+    category: p.category ?? "",
     survey: "",
     subcourse: "",
     // O'quvchilar ro'yxatida bosqich tushunchasi yo'q — birinchisini
@@ -58,8 +62,8 @@ export default async function Page({
 
   const fromOrders = () => createInitialOrders().find((o) => String(o.id) === id) ?? null;
   const order = src === "list"
-    ? orderFromStudentsList(numId) ?? fromOrders()
-    : fromOrders() ?? orderFromStudentsList(numId);
+    ? (await orderFromPupil(numId)) ?? fromOrders()
+    : fromOrders() ?? (await orderFromPupil(numId));
 
   if (!order) {
     return (

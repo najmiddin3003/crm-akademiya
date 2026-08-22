@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { BONUS_SEED } from "@/constants/bonuses";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { pupilBalanceByName } from "@/lib/pupilsDb";
 import type { Bonus } from "@/lib/bonuses";
 
 // Moliya → Bonus backend'i (MongoDB `bonuses`). Bo'sh bo'lsa demo bonusni
@@ -29,7 +29,7 @@ export async function GET() {
 
 // POST — "Bonus yaratish": "oldingi miqdor" shu odamga oldin berilgan
 // SO'NGGI bonus yozuvidagi "keyingi miqdor"dan davom etadi; birinchi bonus
-// bo'lsa — o'quvchi uchun STUDENTS_LIST'dagi haqiqiy balansidan, xodim
+// bo'lsa — o'quvchi uchun bazadagi (MongoDB pupils) kartasidagi balansdan, xodim
 // uchun 0'dan boshlanadi (xodimda mos balans maydoni yo'q).
 export async function POST(req: Request) {
   let body: { type?: string; recipientName?: string; amount?: number; note?: string; cashboxId?: number | null };
@@ -60,8 +60,7 @@ export async function POST(req: Request) {
   if (prior[0]) {
     before = Number(prior[0].after) || 0;
   } else if (type === "student") {
-    const student = STUDENTS_LIST.find((s) => s.name === recipientName);
-    before = student ? student.balance : 0;
+    before = await pupilBalanceByName(db, recipientName);
   } else {
     before = 0;
   }

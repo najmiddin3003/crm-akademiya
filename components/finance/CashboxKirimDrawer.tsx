@@ -9,18 +9,10 @@ import DatePicker from "@/components/ui/DatePicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { GROUP_TEACHERS } from "@/constants/groups";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { useStudents } from "@/hooks/useStudents";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
-
-const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
-// Ism → o'quvchi kartasi (telefon va profil havolasi uchun). Bir xil ismli
-// o'quvchilarda birinchisi olinadi — to'lov yozuvida id saqlanmaydi.
-type StudentRow = (typeof STUDENTS_LIST)[number];
-const STUDENT_BY_NAME = new Map<string, StudentRow>(
-  STUDENTS_LIST.map((s): [string, StudentRow] => [s.name.trim().toLowerCase(), s]).reverse(),
-);
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -67,14 +59,17 @@ export default function CashboxKirimDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  // O'quvchilar bazadan (/api/pupils). Ism → o'quvchi kartasi (telefon va
+  // profil havolasi uchun): to'lov yozuvida faqat ism saqlanadi, id emas.
+  const { names: studentNames, byName: studentByName } = useStudents();
 
   const key = (n: string) => n.trim().toLowerCase();
   const phoneOf = (n: string) => {
-    const s = STUDENT_BY_NAME.get(key(n));
+    const s = studentByName.get(key(n));
     return s?.phone ? `+998 ${s.phone}` : "";
   };
   const balanceOf = (n: string) => balances[key(n)] ?? 0;
-  const selectedStudent = studentName ? STUDENT_BY_NAME.get(key(studentName)) : undefined;
+  const selectedStudent = studentName ? studentByName.get(key(studentName)) : undefined;
   const selectedBalance = studentName ? balanceOf(studentName) : 0;
 
   useEffect(() => {
@@ -195,7 +190,7 @@ export default function CashboxKirimDrawer({
               label="O'quvchini tanlang"
               value={studentName}
               onChange={setStudentName}
-              options={STUDENT_NAMES}
+              options={studentNames}
               placeholder="Ism yoki telefon bo'yicha qidiring…"
               subtitleOf={(n) => phoneOf(n)}
               trailingOf={(n) => {

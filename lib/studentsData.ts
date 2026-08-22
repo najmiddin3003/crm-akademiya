@@ -1,23 +1,21 @@
 // O'quvchilar ro'yxati uchun kengaytirilgan model.
 //
-// constants/studentsList.js dagi 5909 ta yozuvda faqat shu maydonlar bor:
-//   id, name, phone, balance, coin, createdAt, moderator, source, groups
-// va `groups` hamma yozuvda "-" — ya'ni bo'sh. Shu sababli referensdagi
-// filtrlarning ko'pi (Kurs, O'qituvchi, Kategoriya, Holati, Kun ...) uchun
-// ma'lumot yo'q edi.
+// Manba — MongoDB `pupils` (lib/pupilsData.ts). Yozuvda faqat shu maydonlar
+// bor: id, ism/familiya, telefon, kategoriya, tug'ilgan sana, balans, coin,
+// moderator, manba. Kurs / o'qituvchi / dars kunlari o'quvchining o'zida
+// saqlanmaydi — ular u o'qiyotgan GURUHdan kelib chiqadi (MongoDB `groups`,
+// `studentIds` maydoni orqali bog'langan). Bu haqiqiy CRM mantiqiga mos:
+// o'quvchining kursi mustaqil maydon emas.
 //
-// Bu yerda har bir o'quvchi HAQIQIY guruhga bog'lanadi (constants/groups.js →
-// GROUP_SEED, 91 ta guruh) va qolgan maydonlar o'sha guruhdan kelib chiqadi:
-// kurs, o'qituvchi, dars kunlari. Bu haqiqiy CRM mantiqiga mos — o'quvchining
-// kursi mustaqil maydon emas, u qaysi guruhda o'qishidan kelib chiqadi.
-//
-// Bog'lash `id` dan DETERMINISTIK hisoblanadi: sahifa har safar ochilganda
-// bir xil natija chiqadi va boshqa sahifalar bilan ziddiyat bo'lmaydi.
-// (Loyihada bu yondashuv allaqachon ishlatiladi — masalan ActiveStudentsPage
-// dagi genBalance/isFrozen.)
+// Ilgari bu yerda o'quvchi id'sidan DETERMINISTIK ravishda "o'ylab topilgan"
+// guruh biriktiriladi (pickGroupIds/GROUP_SEED) va statuslar id'ning
+// qoldig'idan hisoblanardi — statik constants/studentsList.js demo ro'yxati
+// bilan birga u ham olib tashlandi. Endi guruhi bo'lmagan o'quvchida bu
+// maydonlar BO'SH turadi (soxta qiymat yozilmaydi).
 
-import { GROUP_SEED } from "@/constants/groups";
-import { CATEGORIES, SUBCOURSES } from "@/lib/ordersData";
+import type { Group } from "@/lib/groups";
+import type { Pupil } from "@/lib/pupilsData";
+import { pupilFullName } from "@/lib/pupilsData";
 
 export interface StudentRow {
   id: number;
@@ -29,6 +27,8 @@ export interface StudentRow {
   moderator: string;
   source: string;
   groups: string;
+  /** O'quvchi kartasidagi kategoriya (Kichik / O'rta / Katta). */
+  category: string;
 }
 
 export type StudentStatus = "Aktiv" | "Muzlatilgan" | "Arxiv";
@@ -37,7 +37,7 @@ export const STUDENT_STATUSES: StudentStatus[] = ["Aktiv", "Muzlatilgan", "Arxiv
 export type OddEven = "Toq" | "Juft" | "";
 
 export interface EnrichedStudent extends StudentRow {
-  /** Bog'langan guruhlar (GROUP_SEED.id). Bo'sh bo'lishi mumkin. */
+  /** Bog'langan guruhlar (groups.id). Bo'sh bo'lishi mumkin. */
   groupIds: number[];
   /** "36, 104" ko'rinishida; guruh yo'q bo'lsa "-". */
   groupNames: string;
@@ -47,9 +47,25 @@ export interface EnrichedStudent extends StudentRow {
   /** Guruhning dars kunlari, masalan "Toq kunlar" yoki "Se,Sh". */
   day: string;
   oddEven: OddEven;
+  /** Guruh darajasi ("Kurs darajasi" ustuni/filtri). */
   subcourse: string;
-  category: string;
   status: StudentStatus;
+}
+
+/** MongoDB'dagi o'quvchi hujjatidan jadval qatori. */
+export function studentRowFromPupil(p: Pupil): StudentRow {
+  return {
+    id: p.id,
+    name: pupilFullName(p),
+    phone: p.phone ?? "",
+    balance: Number(p.balance) || 0,
+    coin: Number(p.coin) || 0,
+    createdAt: p.createdAt ?? "",
+    moderator: p.moderator ?? "",
+    source: p.source ?? "",
+    groups: "-",
+    category: p.category ?? "",
+  };
 }
 
 /** "Toq kunlar" → "Toq", "Juft kunlar" → "Juft", qolganlari → "". */
@@ -60,56 +76,50 @@ function toOddEven(day: string): OddEven {
   return "";
 }
 
-/**
- * O'quvchi qaysi guruhlarda o'qiydi. Taqsimot ataylab notekis: bir qism
- * o'quvchilar hali guruhga biriktirilmagan (referensda ham GURUHLAR ustuni
- * ko'p qatorda bo'sh turadi), ba'zilari ikkita guruhda.
- */
-function pickGroupIds(id: number): number[] {
-  if (id % 5 === 0) return []; // ~20% — guruhga biriktirilmagan
-  const first = GROUP_SEED[(id * 31) % GROUP_SEED.length];
-  if (id % 7 === 0) {
-    const second = GROUP_SEED[(id * 17 + 5) % GROUP_SEED.length];
-    if (second.id !== first.id) return [first.id, second.id];
+/** pupils.id → o'sha o'quvchi a'zo bo'lgan guruhlar. */
+function groupsByStudent(groups: Group[]): Map<number, Group[]> {
+  const map = new Map<number, Group[]>();
+  for (const g of groups) {
+    for (const sid of g.studentIds ?? []) {
+      const list = map.get(sid);
+      if (list) list.push(g);
+      else map.set(sid, [g]);
+    }
   }
-  return [first.id];
+  return map;
 }
 
-function pickStatus(id: number): StudentStatus {
-  if (id % 13 === 0) return "Muzlatilgan";
-  if (id % 17 === 0) return "Arxiv";
-  return "Aktiv";
-}
-
-const BY_ID = new Map(GROUP_SEED.map((g) => [g.id, g]));
-
-/** Bitta o'quvchini kengaytiradi. */
-export function enrichStudent(r: StudentRow): EnrichedStudent {
-  const groupIds = pickGroupIds(r.id);
-  const first = groupIds.length ? BY_ID.get(groupIds[0]) : undefined;
-  return {
-    ...r,
-    groupIds,
-    groupNames: groupIds.length ? groupIds.join(", ") : "-",
-    course: first?.course ?? "",
-    teacher: first?.teacher ?? "",
-    day: first?.day ?? "",
-    oddEven: toOddEven(first?.day ?? ""),
-    subcourse: SUBCOURSES[r.id % SUBCOURSES.length],
-    category: CATEGORIES[r.id % CATEGORIES.length],
-    status: pickStatus(r.id),
-  };
+/**
+ * O'quvchilarni HAQIQIY guruh a'zoligi bilan kengaytiradi. Guruhga
+ * biriktirilmagan o'quvchida kurs/o'qituvchi/kun bo'sh qoladi.
+ */
+export function enrichStudents(rows: StudentRow[], groups: Group[]): EnrichedStudent[] {
+  const byStudent = groupsByStudent(groups);
+  return rows.map((r) => {
+    const mine = byStudent.get(r.id) ?? [];
+    const first = mine[0];
+    return {
+      ...r,
+      groupIds: mine.map((g) => g.id),
+      groupNames: mine.length ? mine.map((g) => g.name || String(g.id)).join(", ") : "-",
+      course: first?.course ?? "",
+      teacher: first?.teacher ?? "",
+      day: first?.day ?? "",
+      oddEven: toOddEven(first?.day ?? ""),
+      subcourse: first?.level ?? "",
+      // Alohida "holat" maydoni hali yo'q — bazadagi har bir o'quvchi aktiv.
+      status: "Aktiv",
+    };
+  });
 }
 
 // ---------- Filtrlar ----------
 
 export interface StudentFilters {
-  /** Mavjud filtrlar (ilgari ham bor edi). */
   moderator: string;
   source: string;
   coinFrom: string;
   coinTo: string;
-  /** Referensdagi qolgan filtrlar. */
   balanceFrom: string;
   balanceTo: string;
   course: string;
@@ -155,9 +165,7 @@ export function applyStudentFilters(rows: EnrichedStudent[], f: StudentFilters):
   });
 }
 
-/** Filtr ro'yxatlarini to'ldirish uchun — faqat haqiqatda uchraydigan qiymatlar. */
-export const STUDENT_COURSES = [...new Set(GROUP_SEED.map((g) => g.course))].filter(Boolean).sort();
-export const STUDENT_TEACHERS = [...new Set(GROUP_SEED.map((g) => g.teacher))].filter(Boolean).sort();
-export const STUDENT_DAYS = [...new Set(GROUP_SEED.map((g) => g.day))].filter(Boolean).sort();
-export const STUDENT_GROUP_IDS = GROUP_SEED.map((g) => g.id).sort((a, b) => a - b);
-export { CATEGORIES as STUDENT_CATEGORIES, SUBCOURSES as STUDENT_SUBCOURSES };
+/** Filtr ro'yxatlarini faqat HAQIQATDA uchraydigan qiymatlar bilan to'ldirish. */
+export function uniqueSorted(values: (string | undefined)[]): string[] {
+  return [...new Set(values.filter((v): v is string => Boolean(v)))].sort();
+}

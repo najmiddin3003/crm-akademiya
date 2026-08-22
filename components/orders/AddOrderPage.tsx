@@ -11,7 +11,8 @@ import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePicke
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { FormRowSelect, FormRowText } from "@/components/orders/FormRow";
 import CustomFieldEditModal, { type CustomField } from "@/components/orders/CustomFieldEditModal";
-import { COURSES, MODERATORS, ORDER_STAGES, TEACHERS, type OrderStageKey } from "@/lib/ordersData";
+import { COURSES, MODERATORS, ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
+import { useTeachers } from "@/hooks/useTeachers";
 
 // Full-page "Buyurtma qo'shish" flow reached from the Kanban toolbar's
 // "Qo'shish" button (akademiya.edutizim.uz/orders/add reference) — a
@@ -33,6 +34,9 @@ export default function AddOrderPage() {
   const router = useRouter();
   const { createOrder } = useOrders();
   const { pupils } = usePupils();
+  // "O'qituvchi" ro'yxati — /api/teachers (Boshqaruv → Xodimlardagi haqiqiy
+  // o'qituvchilar), AddOrderModal bilan bir xil manba.
+  const { names: teacherNames } = useTeachers();
   const { showSuccess, showError } = useToast();
   const pupilNames = pupils.map((p) => `${p.firstName} ${p.lastName}`.trim());
   const [activeTab, setActiveTab] = useState<"asosiy" | "sozlamalar">("asosiy");
@@ -241,7 +245,7 @@ export default function AddOrderPage() {
                 }}
                 options={COURSES}
               />
-              <FormRowSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={TEACHERS.filter(Boolean)} />
+              <FormRowSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherNames} />
               <StudentSearchSelect
                 variant="row"
                 label="Referal bergan o'quvchi"

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { PENALTY_SEED } from "@/constants/penalties";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { pupilBalanceByName } from "@/lib/pupilsDb";
 import type { Penalty } from "@/lib/penalties";
 
 // Moliya → Jarima backend'i (MongoDB `penalties`). Bo'sh bo'lsa demo
@@ -31,7 +31,7 @@ export async function GET() {
 // ayirib boradi. "Oldingi miqdor" shu odamga oldin berilgan SO'NGGI jarima
 // yozuvidagi "keyingi miqdor"dan davom etadi (bekor qilingan bo'lsa ham —
 // bekor qilish faqat holat belgisi, zanjirni qayta hisoblamaydi); birinchi
-// jarima bo'lsa — o'quvchi uchun STUDENTS_LIST balansidan, xodim uchun 0'dan.
+// jarima bo'lsa — o'quvchi uchun bazadagi (MongoDB pupils) kartasidagi balansdan, xodim uchun 0'dan.
 export async function POST(req: Request) {
   let body: { type?: string; recipientName?: string; amount?: number; note?: string; image?: string; cashboxId?: number | null };
   try {
@@ -61,8 +61,7 @@ export async function POST(req: Request) {
   if (prior[0]) {
     before = Number(prior[0].after) || 0;
   } else if (type === "student") {
-    const student = STUDENTS_LIST.find((s) => s.name === recipientName);
-    before = student ? student.balance : 0;
+    before = await pupilBalanceByName(db, recipientName);
   } else {
     before = 0;
   }

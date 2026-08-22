@@ -1,11 +1,14 @@
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import type { StudentRow } from "@/lib/studentsData";
 
 // O'quvchilar → Ota-ona (crm-akademiya #view-parents, sidebar: O'quvchilar >
-// Ota-ona, href /parents). Manbada bu sahifa o'zining seed massiviga ega
-// emas — STUDENTS_LIST'ning o'zini indeks bo'yicha aylanib, har bir qatorga
-// _prGetParents(index) orqali ota-ona ma'lumotini "yopishtiradi" (deterministik,
-// lekin haqiqatan keshlanmaydi — har chaqiriqda qayta hisoblanadi). Shu
-// yondashuvni saqlab qoldik: alohida "parents" massiv o'rniga shu funksiya.
+// Ota-ona, href /parents). Qatorlar BAZADAGI o'quvchilardan quriladi
+// (/api/pupils → hooks/useStudents), manbadagi kabi har bir qatorga
+// _prGetParents(index) orqali ota-ona ma'lumoti "yopishtiriladi".
+//
+// DIQQAT (oshkora kamchilik): ota-ona ma'lumotining o'zi hali backendda yo'q —
+// quyidagi ism/telefonlar indeksdan deterministik yasaladi, ya'ni DEMO. O'quvchi
+// ismi/balansi/moderatori esa haqiqiy. Ota-ona modeli qo'shilgach getParentInfo
+// o'rniga shu ma'lumot o'qiladi.
 
 export interface ParentInfo {
   fatherName: string;
@@ -54,8 +57,8 @@ export function getParentInfo(index: number): ParentInfo {
   return { fatherName, fatherPhone, motherName, motherPhone, fatherApp, motherApp };
 }
 
-export function buildParentRows(): ParentRow[] {
-  return STUDENTS_LIST.map((s: { id: number; name: string; balance: number; moderator: string }, i: number) => {
+export function buildParentRows(students: StudentRow[]): ParentRow[] {
+  return students.map((s, i) => {
     const p = getParentInfo(i);
     return {
       id: s.id,

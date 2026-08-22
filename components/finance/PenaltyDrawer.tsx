@@ -7,12 +7,10 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { PENALTY_TYPES } from "@/constants/penalties";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { useStudents } from "@/hooks/useStudents";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Penalty } from "@/lib/penalties";
 import type { Cashbox } from "@/lib/cashboxes";
-
-const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
 
 // "Jarima qo'shish" — Moliya → Jarima sahifasidagi o'ng tomondan ochiladigan
 // panel. Bonus bilan bir xil "Tranzaksiya turi" → Xodim/O'quvchi mantig'i
@@ -27,6 +25,7 @@ export default function PenaltyDrawer({
   onSaved: (p: Penalty) => void;
 }) {
   useEscapeClose(onClose);
+  const { names: studentNames } = useStudents();
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState("");
   const [employeeName, setEmployeeName] = useState("");
@@ -130,7 +129,7 @@ export default function PenaltyDrawer({
               label="O'quvchi"
               value={studentName}
               onChange={setStudentName}
-              options={STUDENT_NAMES}
+              options={studentNames}
               placeholder="O'quvchini qidirish"
             />
           )}

@@ -30,7 +30,7 @@ import DateRangePicker, {
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { useStudents } from "@/hooks/useStudents";
 import CashboxDrawer from "./CashboxDrawer";
 import CashboxTransferDrawer from "./CashboxTransferDrawer";
 import CashboxTransferToDrawer from "./CashboxTransferToDrawer";
@@ -660,17 +660,16 @@ export default function CashboxesPage() {
   }
 
   // "Kim" ustunini /student-edit/[id] ga bog'lash uchun — TransactionEntry
-  // faqat ismni saqlaydi (id emas), shu sabab STUDENTS_LIST bo'yicha qidiramiz.
+  // faqat ismni saqlaydi (id emas), shu sabab bazadagi o'quvchilar
+  // (/api/pupils) ichidan ism bo'yicha qidiramiz. Xodimlar xaritasi (pastda)
+  // bilan bir xil qoida — katta-kichik harf va ortiqcha bo'shliq farq
+  // qilmasin (hooks/useStudents.ts → byName).
+  const { byName: studentByName } = useStudents();
   const studentIdByName = useMemo(() => {
     const map = new Map<string, number>();
-    // Xodimlar xaritasi (pastda) bilan bir xil qoida — katta-kichik harf va
-    // ortiqcha bo'shliq farq qilmasin.
-    for (const s of STUDENTS_LIST) {
-      const key = s.name.trim().toLowerCase();
-      if (!map.has(key)) map.set(key, s.id);
-    }
+    for (const [key, s] of studentByName) map.set(key, s.id);
     return map;
-  }, []);
+  }, [studentByName]);
 
   // Kassa kartasidagi mas'ul (moderator) ismini xodim profiliga
   // (/management-xodimlar/[id]) bog'lash uchun. Kassada ham faqat ism

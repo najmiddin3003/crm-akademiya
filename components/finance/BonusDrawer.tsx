@@ -6,17 +6,15 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { BONUS_TYPES } from "@/constants/bonuses";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { useStudents } from "@/hooks/useStudents";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
 import type { Cashbox } from "@/lib/cashboxes";
 
-const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
-
 // "Bonus yaratish" — Moliya → Bonus sahifasidagi o'ng tomondan ochiladigan
 // panel (skrinshot 2/3). "Tranzaksiya turi"ga qarab pastda "Xodim" (oddiy
 // tanlov, /api/hr-employees'dan) yoki "O'quvchi" (qidiruvli tanlov,
-// STUDENTS_LIST'dan — 5909 ta haqiqiy demo o'quvchi) maydoni chiqadi.
+// /api/pupils'dan — bazadagi haqiqiy o'quvchilar) maydoni chiqadi.
 export default function BonusDrawer({
   onClose,
   onSaved,
@@ -34,6 +32,7 @@ export default function BonusDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const { names: studentNames } = useStudents();
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   useEffect(() => {
@@ -120,7 +119,7 @@ export default function BonusDrawer({
               label="O'quvchi"
               value={studentName}
               onChange={setStudentName}
-              options={STUDENT_NAMES}
+              options={studentNames}
               placeholder="O'quvchini qidirish"
             />
           )}

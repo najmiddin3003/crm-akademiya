@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { TASK_TEMPLATES } from "@/lib/tasksData";
-import { STUDENT_NAMES } from "@/constants";
+import { useStudents } from "@/hooks/useStudents";
 
 export interface TaskTemplatesModalProps {
   open: boolean;
@@ -14,6 +14,9 @@ export interface TaskTemplatesModalProps {
 export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTemplatesModalProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
+  // O'quvchilar bazadan (/api/pupils) — ilgari constants/index.js dagi
+  // STUDENT_NAMES statik ro'yxati edi.
+  const { names: studentNames, loading: studentsLoading } = useStudents();
   useEscapeClose(open ? onClose : () => {});
 
   if (!open) return null;
@@ -34,7 +37,12 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
               <strong>{pendingTpl.name}</strong> shablonini qaysi o&apos;quvchi uchun qo&apos;llaymiz?
             </div>
             <div className="h-[400px] w-full overflow-y-auto rounded-lg border border-border">
-              {STUDENT_NAMES.map((name) => (
+              {studentNames.length === 0 && (
+                <div className="px-3 py-3 text-sm text-muted-foreground">
+                  {studentsLoading ? "Yuklanmoqda…" : "O'quvchi topilmadi"}
+                </div>
+              )}
+              {studentNames.map((name) => (
                 <button
                   key={name}
                   type="button"

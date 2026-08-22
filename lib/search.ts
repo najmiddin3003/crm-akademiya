@@ -1,12 +1,15 @@
-// Global qidiruv (navbar). Hozircha backend yo'q, shu bois qidiruv loyihadagi
-// demo ma'lumotlar ustidan ishlaydi: o'quvchilar (constants/STUDENTS) va
-// buyurtmalar (ordersData). Har qanday matn — ism, familiya, telefon, ID,
-// kurs, o'qituvchi, status va h.k. — bo'yicha qidiradi (registrga bog'liq emas,
-// bir nechta so'z kiritilsa hammasi mos kelishi kerak). Backend ulanganda
-// buni real qidiruv API'siga almashtiramiz.
+// Global qidiruv (navbar). Har qanday matn — ism, familiya, telefon, ID,
+// kurs, o'qituvchi, status va h.k. — bo'yicha qidiradi (registrga bog'liq
+// emas, bir nechta so'z kiritilsa hammasi mos kelishi kerak).
+//
+// O'quvchilar HAQIQIY bazadan keladi: chaqiruvchi (Navbar → hooks/useStudents)
+// ro'yxatni uzatadi, chunki bu funksiya klientda sinxron ishlaydi. Ilgari
+// bu yerda constants/STUDENTS statik demo massivi o'qilardi.
+// Buyurtmalar qismi hozircha eski demo generatordan (createInitialOrders) —
+// u alohida ish, buyurtmalar sahifasining o'zi bazadan o'qiydi.
 
-import { STUDENTS } from "@/constants";
 import { createInitialOrders } from "@/lib/ordersData";
+import type { StudentRow } from "@/lib/studentsData";
 
 export interface SearchResult {
   id: string;
@@ -21,26 +24,25 @@ interface SearchRecord {
   haystack: string;
 }
 
+function studentRecords(students: StudentRow[]): SearchRecord[] {
+  return students.map((s) => ({
+    result: {
+      id: `student-${s.id}`,
+      title: s.name,
+      subtitle: `O'quvchi · ${s.phone || "telefon yo'q"}`,
+      category: "O'quvchi",
+      href: `/student-edit/${s.id}?src=list`,
+    },
+    haystack: [s.name, s.phone, s.id, s.moderator, s.source, s.category].join(" ").toLowerCase(),
+  }));
+}
+
 let cache: SearchRecord[] | null = null;
 
+/** Buyurtmalar indeksi — o'zgarmaydi, shu bois bir marta quriladi. */
 function buildIndex(): SearchRecord[] {
   if (cache) return cache;
   const recs: SearchRecord[] = [];
-
-  for (const s of STUDENTS) {
-    recs.push({
-      result: {
-        id: `student-${s.id}`,
-        title: s.name,
-        subtitle: `Birinchi dars · ${s.course} · ${s.phone}`,
-        category: "O'quvchi",
-        href: "/first-lessons",
-      },
-      haystack: [s.name, s.phone, s.id, s.teacher, s.course, s.level, s.moderator, s.day, s.status]
-        .join(" ")
-        .toLowerCase(),
-    });
-  }
 
   for (const o of createInitialOrders()) {
     recs.push({
@@ -61,12 +63,12 @@ function buildIndex(): SearchRecord[] {
   return recs;
 }
 
-export function searchAll(query: string, limit = 12): SearchResult[] {
+export function searchAll(query: string, students: StudentRow[] = [], limit = 12): SearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const terms = q.split(/\s+/);
   const out: SearchResult[] = [];
-  for (const rec of buildIndex()) {
+  for (const rec of [...studentRecords(students), ...buildIndex()]) {
     if (terms.every((t) => rec.haystack.includes(t))) {
       out.push(rec.result);
       if (out.length >= limit) break;

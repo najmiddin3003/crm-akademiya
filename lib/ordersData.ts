@@ -39,7 +39,12 @@ export interface Order {
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];
 const NAMES_L = ["Rahmatullayeva","Ahmadjanov","Yoldasheva","Mansurova","Olimova","Bahriddinova","Dedahanova","Tursunxojayeva","Mamadjanova","Jakbaraliyeva","Shodmanov","Rasulov","Karimov","Yusupova","Saidov","Ortiqova","Toshpo'latova","Mamadhanova","Turdaliyev","Muhammadjonov","Malikjanov","Bahodirjanova","Xolmirzayeva","Sobithanova","Sddiqova","Nasriddinova","Akmalova","Halimov","Orinboyeva","Ismoilova","Jumaboyeva","Abdulazizova","Akbaraliyeva","Karimjanova","Tumanova","Rahimjanov","Toshpolatov","Salimov","Rahmonov","Yusupov","Tursunov","Komilov","Saidova","Tashkentov","Buxoriy"];
-export const TEACHERS = ["Abdushukur Abdug'aniyev","Yaxyoxo'ja Yigitaliyev","Jasurbek O'rinboyev","Hasanboy Obidov","Sevinch Madaminova","Ilhomjon Sharabidinov","Gulbahor Jo'raboyeva","Jasurbek Komiljonov","Mahmud Toshmatov","Dilnoza Nabijanova","Rayxona To'lqinova","Musoxon Maxamadaliyev",""];
+// DIQQAT: bu ro'yxat TANLOV uchun emas. O'qituvchilar bazadan keladi
+// (/api/teachers → MongoDB hr_employees, klientda hooks/useTeachers.ts).
+// Quyidagi nomlar faqat eski demo buyurtmalar generatori (buildOrders, 502 ta
+// soxta yozuv) qatorlarini to'ldirish uchun qolgan — hech bir forma yoki
+// filtr bundan o'qimaydi.
+const DEMO_ORDER_TEACHERS = ["Abdushukur Abdug'aniyev","Yaxyoxo'ja Yigitaliyev","Jasurbek O'rinboyev","Hasanboy Obidov","Sevinch Madaminova","Ilhomjon Sharabidinov","Gulbahor Jo'raboyeva","Jasurbek Komiljonov","Mahmud Toshmatov","Dilnoza Nabijanova","Rayxona To'lqinova","Musoxon Maxamadaliyev",""];
 export const COURSES = ["Ingliz tili","Arab tili","Rus tili","Matematika","Fizika","Biologiya","Kimyo","Tarix","Turk tili"];
 const LEVELS = ["1-bosqich","2-bosqich","3-bosqich","5-bosqich (CEFR / IELTS)","10 - 11 - sinf","7 - 9 - sinf","2 - bosqich (7-sinf+)","3 - bosqich (7-sinf+)","6-bosqich","Начальный (1-bosqich)",""];
 export const MODERATORS = ["Dilmurod Komilov","Nilufar Sharipova","Abdulloh Raxmatullayev"];
@@ -58,30 +63,65 @@ export const SURVEYS = ["Asosiy", "Qo'shimcha"];
 export const SUBCOURSES = ["1-bosqich", "2-bosqich", "3-bosqich", "4-bosqich", "5-bosqich", "6-bosqich"];
 export const WEEKDAY_NAMES = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
 
-// AddOrderModal'dagi "Dars kunini tanlang" uchun — production reference'dagi
-// (akademiya.edutizim.uz) haqiqiy variantlar ro'yxati bilan bir xil: oddiy
-// bitta hafta kuni emas, balki juft/toq yoki bir nechta kunning
-// qisqartmalari kombinatsiyasi (Du=Dushanba, Se=Seshanba, Ch=Chorshanba,
-// Pa=Payshanba, Ju=Juma, Sh=Shanba, Ya=Yakshanba).
-export const LESSON_DAY_PATTERNS = [
-  "Juft kunlar",
-  "Toq kunlar",
-  "Ch,Ya",
-  "Du,Ch",
-  "Du,Ch,Ju,Ya",
-  "Du,Ju",
-  "Du,Se,Ch,Pa,Ju",
-  "Du,Se,Ch,Pa,Ju,Sh",
-  "Pa,Ya",
-  "Se,Pa",
-  "Se,Pa,Sh,Ya",
-  "Se,Sh",
-  "Ya,Ch",
-  "Ya,Du,Ch,Ju",
-  "Ya,Du,Se,Ch,Pa,Ju,Sh",
-  "Ya,Pa",
-  "Boshqa kunlar",
+// AddOrderModal'dagi "Dars kunini tanlang" — bir nechta kun tanlanadi va
+// buyurtmada production reference'dagi (akademiya.edutizim.uz) ko'rinishda
+// saqlanadi: qisqartmalar vergul bilan, masalan "Du,Ch,Ju".
+export interface LessonDayOption {
+  /** Buyurtmada saqlanadigan qisqartma. */
+  code: string;
+  label: string;
+}
+
+export const LESSON_DAYS: LessonDayOption[] = [
+  { code: "Du", label: "Dushanba" },
+  { code: "Se", label: "Seshanba" },
+  { code: "Ch", label: "Chorshanba" },
+  { code: "Pa", label: "Payshanba" },
+  { code: "Ju", label: "Juma" },
+  { code: "Sh", label: "Shanba" },
+  { code: "Ya", label: "Yakshanba" },
 ];
+
+/** Tez tanlash uchun ikkita odatiy jadval (referensda alohida variant edi). */
+export const LESSON_DAY_PRESETS: { label: string; codes: string[] }[] = [
+  { label: "Toq kunlar", codes: ["Du", "Ch", "Ju"] },
+  { label: "Juft kunlar", codes: ["Se", "Pa", "Sh"] },
+];
+
+const DAY_ORDER = LESSON_DAYS.map((d) => d.code);
+
+/**
+ * Buyurtmadagi `lessonDay` satrini tanlangan kunlar ro'yxatiga aylantiradi.
+ * Eski yozuvlar turli ko'rinishda bo'lishi mumkin — qisqartma ("Du,Ch"),
+ * to'liq nom ("Dushanba") yoki naqsh nomi ("Toq kunlar"); hammasi tushuniladi.
+ */
+export function parseLessonDays(value: string | undefined | null): string[] {
+  const raw = String(value ?? "").trim();
+  if (!raw) return [];
+  const preset = LESSON_DAY_PRESETS.find((p) => p.label.toLowerCase() === raw.toLowerCase());
+  if (preset) return [...preset.codes];
+
+  const out = new Set<string>();
+  for (const part of raw.split(",").map((s) => s.trim()).filter(Boolean)) {
+    const hit = LESSON_DAYS.find(
+      (d) => d.code.toLowerCase() === part.toLowerCase() || d.label.toLowerCase() === part.toLowerCase(),
+    );
+    if (hit) out.add(hit.code);
+  }
+  return DAY_ORDER.filter((c) => out.has(c));
+}
+
+/** Tanlangan kunlarni saqlanadigan satrga: ["Ch","Du"] → "Du,Ch". */
+export function formatLessonDays(codes: string[]): string {
+  return DAY_ORDER.filter((c) => codes.includes(c)).join(",");
+}
+
+/** Ko'rsatish uchun to'liq nomlar: "Du,Ch" → "Dushanba, Chorshanba". */
+export function lessonDaysLabel(codes: string[]): string {
+  return DAY_ORDER.filter((c) => codes.includes(c))
+    .map((c) => LESSON_DAYS.find((d) => d.code === c)?.label ?? c)
+    .join(", ");
+}
 
 export const ORDER_STAGES: { key: OrderStageKey; label: string; uppercase: string; emoji: string }[] = [
   // Emojilar referensdan olingan (lid voronkasida shular chiqadi).
@@ -147,7 +187,7 @@ function buildOrders(total: number): RawOrder[] {
   for (let i = out.length; i < total; i++) {
     const f = NAMES_F[(i * 3 + 7) % NAMES_F.length];
     const l = NAMES_L[(i * 5 + 11) % NAMES_L.length];
-    const t = TEACHERS[(i * 7) % TEACHERS.length];
+    const t = DEMO_ORDER_TEACHERS[(i * 7) % DEMO_ORDER_TEACHERS.length];
     const c = COURSES[(i * 11 + 2) % COURSES.length];
     const lv = LEVELS[(i * 13) % LEVELS.length];
     const m = MODERATORS[(i * 17 + 3) % MODERATORS.length];

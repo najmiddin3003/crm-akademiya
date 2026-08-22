@@ -6,7 +6,7 @@ import { ArrowDownSquare, ChevronDown, FilePlus, Search, Share2, Trash2, XCircle
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { useStudents } from "@/hooks/useStudents";
 import { IM_LEVELS, IM_SUBJECTS } from "@/constants/imtihon";
 import { imMonthLabel, imPct, normalizeMonth, type MonthlyExam } from "@/lib/imtihon";
 import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "./importUtils";
@@ -170,12 +170,14 @@ export default function ImtihonPage() {
   const best = items.length ? items[0] : null;
   const green = items.filter((r) => r.pct >= 80).length;
 
+  // O'quvchilar bazadan (/api/pupils) + imtihon yozuvlarida uchraganlari
+  // (o'quvchi keyin o'chirilgan bo'lishi mumkin).
+  const { names: pupilNames } = useStudents();
   const studentNames = useMemo(() => {
-    const names = new Set<string>();
-    STUDENTS_LIST.slice(0, 150).forEach((s: { name: string }) => names.add(s.name));
+    const names = new Set<string>(pupilNames);
     exams.forEach((r) => names.add(r.student));
     return [...names];
-  }, [exams]);
+  }, [exams, pupilNames]);
 
   /* ---- Natija kiritish ---- */
   function openEntry() {

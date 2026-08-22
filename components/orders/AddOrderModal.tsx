@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { GROUPS } from "@/constants";
-import { COURSES, LESSON_DAY_PATTERNS, TEACHERS, type NewOrderValues, type Order } from "@/lib/ordersData";
+import { COURSES, formatLessonDays, parseLessonDays, type NewOrderValues, type Order } from "@/lib/ordersData";
+import { useTeachers } from "@/hooks/useTeachers";
 import { usePupils } from "@/components/orders/PupilsContext";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import PanelSelect from "@/components/orders/PanelSelect";
-import PanelTimeField from "@/components/orders/PanelTimeField";
+import PanelDaysField from "@/components/orders/PanelDaysField";
+import PanelTimeField, { normalizeTime } from "@/components/orders/PanelTimeField";
 import AddStudentModal from "@/components/orders/AddStudentModal";
 
 // Redesigned (2026-07-16) to match the current production "Yangi buyurtma"
@@ -36,7 +38,7 @@ function parseFirstLesson(firstLesson: string): { date: string; time: string } {
   if (!firstLesson) return { date: "", time: "" };
   const [datePart, timePart] = firstLesson.split("|").map((s) => s.trim());
   const m = datePart.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-  return { date: m ? `${m[3]}-${m[2]}-${m[1]}` : "", time: timePart || "" };
+  return { date: m ? `${m[3]}-${m[2]}-${m[1]}` : "", time: normalizeTime(timePart) };
 }
 
 export default function AddOrderModal({ initialOrder, initialStudentName, initialStudentPhone, onClose, onSave }: AddOrderModalProps) {
@@ -44,8 +46,10 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   const [studentName, setStudentName] = useState(initialOrder?.name ?? initialStudentName ?? "");
   const [referral, setReferral] = useState(initialOrder?.referral ?? "");
   const [course, setCourse] = useState(initialOrder?.course ?? "");
-  const [lessonDay, setLessonDay] = useState(initialOrder?.lessonDay ?? "");
-  const [lessonStartTime, setLessonStartTime] = useState(initialOrder?.lessonStartTime ?? "");
+  // Kunlar "Du,Ch,Ju" ko'rinishida saqlanadi; eski yozuvdagi naqsh nomi
+  // ("Toq kunlar") ham shu ko'rinishga yoyiladi.
+  const [lessonDay, setLessonDay] = useState(() => formatLessonDays(parseLessonDays(initialOrder?.lessonDay)));
+  const [lessonStartTime, setLessonStartTime] = useState(() => normalizeTime(initialOrder?.lessonStartTime));
   const [teacher, setTeacher] = useState(initialOrder?.teacher ?? "");
   const [group, setGroup] = useState(initialOrder?.group ?? "");
   const [firstLessonDate, setFirstLessonDate] = useState(() => parseFirstLesson(initialOrder?.firstLesson ?? "").date);
@@ -60,6 +64,9 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   // shared PupilsContext orqali, shu bois avvalgi sessiyalarda qo'shilganlar
   // ham qidiruvda ko'rinadi.
   const { pupils } = usePupils();
+  // "O'qituvchi" ro'yxati — Boshqaruv → Xodimlardagi HAQIQIY o'qituvchilar
+  // (/api/teachers), avvalgi qattiq yozilgan TEACHERS massivi emas.
+  const { names: teacherNames } = useTeachers();
 
   useEscapeClose(onClose);
 
@@ -82,6 +89,14 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
     return Array.from(new Set(names));
   }, [pupils, initialOrder, initialStudentName]);
 
+  // Buyurtma tahrirlanayotganda unda yozilgan o'qituvchi endi ro'yxatda
+  // bo'lmasligi mumkin (arxivlangan yoki eski demo nom) — u ham ko'rinsin,
+  // aks holda tanlov jimgina bo'shab qoladi.
+  const teacherOptions = useMemo(() => {
+    if (teacher && !teacherNames.includes(teacher)) return [teacher, ...teacherNames];
+    return teacherNames;
+  }, [teacherNames, teacher]);
+
   const phoneFor = (name: string): string => {
     if (initialOrder && name === initialOrder.name) return initialOrder.phone;
     if (initialStudentName && name === initialStudentName) return initialStudentPhone ?? "";
@@ -100,6 +115,12 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
     }
     if (!lessonDay) {
       setError("Dars kunini tanlang majburiy");
+      return;
+    }
+    // Vaqt sanasiz saqlanmaydi (lib/ordersData.ts → firstLessonFromValues),
+    // shuning uchun jimgina yo'qotmasdan ogohlantiramiz.
+    if (firstLessonTime && !firstLessonDate) {
+      setError("Birinchi darsga kelish sanasini tanlang");
       return;
     }
     setSaving(true);
@@ -170,7 +191,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             error={error === "Kurs majburiy"}
           />
 
-          <PanelSelect
+          <PanelDaysField
             label="Dars kunini tanlang"
             required
             value={lessonDay}
@@ -178,13 +199,12 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               setLessonDay(v);
               setError(null);
             }}
-            options={LESSON_DAY_PATTERNS}
             error={error === "Dars kunini tanlang majburiy"}
           />
 
           <PanelTimeField label="Darsning boshlanish vaqtini tanlang" value={lessonStartTime} onChange={setLessonStartTime} />
 
-          <PanelSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={TEACHERS.filter(Boolean)} placeholder="Ustozni tanlang" />
+          <PanelSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherOptions} placeholder="Ustozni tanlang" />
 
           <PanelSelect
             label="Yig'ilayotgan guruhni tanlang"
@@ -195,25 +215,38 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
           />
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Birinchi darsga kelish sanasi</label>
+            <label className="block text-[13px] font-medium mb-1.5">
+              Birinchi darsga kelish sanasi
+              {firstLessonTime && <span className="text-red-500"> *</span>}
+            </label>
             <input
               type="date"
               value={firstLessonDate}
-              onChange={(e) => setFirstLessonDate(e.target.value)}
-              className="w-full h-11 px-3 rounded-lg border border-border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              onChange={(e) => {
+                setFirstLessonDate(e.target.value);
+                setError(null);
+              }}
+              className={`w-full h-11 px-3 rounded-lg border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${error === "Birinchi darsga kelish sanasini tanlang" ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
             />
           </div>
 
-          <PanelTimeField label="Birinchi darsga kelish vaqti" value={firstLessonTime} onChange={setFirstLessonTime} />
+          <PanelTimeField
+            label="Birinchi darsga kelish vaqti"
+            value={firstLessonTime}
+            onChange={(v) => {
+              setFirstLessonTime(v);
+              setError(null);
+            }}
+          />
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
-            <input
-              type="text"
+            <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Izoh"
-              className="w-full h-11 px-3 rounded-lg border border-border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              rows={4}
+              className="w-full min-h-24 px-3 py-2 rounded-lg border border-border bg-secondary/30 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 

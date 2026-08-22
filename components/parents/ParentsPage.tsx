@@ -7,10 +7,11 @@ import Pagination from "@/components/ui/Pagination";
 import Button from "@/components/ui/Button";
 import ParentsFilterModal, { EMPTY_PARENTS_FILTERS, type ParentsFilters } from "@/components/parents/ParentsFilterModal";
 import { buildParentRows, fmtBalanceUZS, type ParentRow } from "@/lib/parentsData";
+import { useStudents } from "@/hooks/useStudents";
 
 // O'quvchilar → Ota-ona (crm-akademiya #view-parents, sidebar: O'quvchilar >
-// Ota-ona, href /parents). STUDENTS_LIST'ning o'zidan (students-list bilan
-// bir xil massiv) + har bir qatorga ota-ona ma'lumoti biriktiriladi
+// Ota-ona, href /parents). Bazadagi o'quvchilardan (students-list bilan bir
+// xil manba, /api/pupils) + har bir qatorga ota-ona ma'lumoti biriktiriladi
 // (lib/parentsData.ts, manbadagi _prGetParents(index) bilan bir xil g'oya).
 // "O'quvchi qo'shish" tugmasi yo'q va Qarzdor/Haqdor satri yo'q — manbada ham
 // yo'q. Filtr — haqiqiy modal (ParentsFilterModal), inline panel emas.
@@ -52,7 +53,8 @@ function AppStatusIcon({ yes }: { yes: boolean }) {
 }
 
 export default function ParentsPage() {
-  const [rows] = useState<ParentRow[]>(() => buildParentRows());
+  const { students, loading } = useStudents();
+  const rows = useMemo(() => buildParentRows(students), [students]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<ParentsFilters>(EMPTY_PARENTS_FILTERS);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -240,7 +242,9 @@ export default function ParentsPage() {
               })}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    {loading ? "Yuklanmoqda…" : "O'quvchi topilmadi"}
+                  </td>
                 </tr>
               )}
             </tbody>

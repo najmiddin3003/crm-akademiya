@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { COURSES, MODERATORS, SUBCOURSES, TEACHERS, createInitialOrders, type Order } from "@/lib/ordersData";
+import { COURSES, MODERATORS, SUBCOURSES, createInitialOrders, type Order } from "@/lib/ordersData";
+import { useTeachers } from "@/hooks/useTeachers";
 import { buildFunnelReport, buildFunnelSteps, buildStageSummary } from "@/lib/salesFunnel";
 
 // Hisobotlar → Sotuv voronkasi (href /reports-funnel). Ma'lumot mavjud
@@ -40,6 +41,8 @@ function fmt(n: number): string {
 
 export default function SalesFunnelPage() {
   const allOrders = useMemo(() => createInitialOrders(), []);
+  // O'qituvchi filtri bazadagi haqiqiy o'qituvchilardan (/api/teachers).
+  const { names: teacherNames } = useTeachers();
 
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [course, setCourse] = useState("");
@@ -113,7 +116,7 @@ export default function SalesFunnelPage() {
         </select>
         <select value={teacher} onChange={(e) => setTeacher(e.target.value)} className={`${selectCls} w-48`}>
           <option value="">O&apos;qituvchi</option>
-          {TEACHERS.filter(Boolean).map((t) => <option key={t} value={t}>{t}</option>)}
+          {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 

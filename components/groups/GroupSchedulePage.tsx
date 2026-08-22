@@ -78,9 +78,28 @@ export default function GroupSchedulePage() {
   const [statsVisible, setStatsVisible] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [fullscreen, setFullscreen] = useState(false);
-  // Guruhlar soni HAQIQIY (/api/groups), qolgan ko'rsatkichlar tegishli
-  // sahifalar bilan bir xil mantiqdan hisoblanadi — lib/scheduleStats.ts.
-  const kpis = useMemo(() => computeScheduleKpis(groups.length), [groups.length]);
+  // "Birinchi darsga keladiganlar" — /first-lessons sahifasi bilan bir xil
+  // shart: birinchi dars sanasi belgilangan buyurtmalar.
+  const [firstLessonCount, setFirstLessonCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/orders")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        setFirstLessonCount(
+          (d.orders as { firstLesson?: string }[]).filter((o) => (o.firstLesson || "").trim()).length,
+        );
+      });
+    return () => { cancelled = true; };
+  }, []);
+  // Guruhlar soni va birinchi darsga yozilganlar HAQIQIY (/api/groups,
+  // /api/orders), qolgan ko'rsatkichlar tegishli sahifalar bilan bir xil
+  // mantiqdan hisoblanadi — lib/scheduleStats.ts.
+  const kpis = useMemo(
+    () => computeScheduleKpis(groups.length, firstLessonCount),
+    [groups.length, firstLessonCount],
+  );
 
   useEffect(() => {
     let cancelled = false;

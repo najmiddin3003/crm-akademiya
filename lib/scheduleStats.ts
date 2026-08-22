@@ -8,7 +8,6 @@
 // yonida qaysi sahifadan olingani yozilgan.
 
 import { createInitialOrders, type Order } from "@/lib/ordersData";
-import { STUDENTS } from "@/constants";
 
 export interface ScheduleKpi {
   key: string;
@@ -41,11 +40,13 @@ function isNewStudent(o: Order, i: number): boolean {
 }
 
 /**
- * 12 ta KPI. `groupCount` — /api/groups dan keladigan HAQIQIY guruhlar soni
- * (qolganlari hozircha demo generatordan, chunki o'quvchilar uchun status/balans
- * maydonlari backendda hali yo'q).
+ * 12 ta KPI. `groupCount` — /api/groups dan keladigan HAQIQIY guruhlar soni,
+ * `firstLessonCount` — /api/orders dagi birinchi darsga yozilganlar soni
+ * (/first-lessons sahifasi bilan bir xil shart). Qolganlari hozircha demo
+ * generatordan, chunki o'quvchilar uchun status/balans maydonlari backendda
+ * hali yo'q.
  */
-export function computeScheduleKpis(groupCount: number): ScheduleKpi[] {
+export function computeScheduleKpis(groupCount: number, firstLessonCount: number): ScheduleKpi[] {
   const orders = createInitialOrders();
 
   const active = orders.filter((o, i) => !isFrozen(i) && !isNewStudent(o, i));
@@ -60,7 +61,7 @@ export function computeScheduleKpis(groupCount: number): ScheduleKpi[] {
 
   return [
     { key: "orders", label: "Buyurtmalar", value: orders.length, bg: "#dcfce7", fg: "#16a34a", icon: "i-user-plus", href: "/orders-list" },
-    { key: "first-lesson", label: "Birinchi darsga keladiganlar", value: STUDENTS.length, bg: "#dbeafe", fg: "#2563eb", icon: "i-users-group", href: "/first-lessons" },
+    { key: "first-lesson", label: "Birinchi darsga keladiganlar", value: firstLessonCount, bg: "#dbeafe", fg: "#2563eb", icon: "i-users-group", href: "/first-lessons" },
     { key: "new", label: "Yangi o'quvchilar", value: newStudents.length, bg: "#f3e8ff", fg: "#9333ea", icon: "i-user", href: "/new-students" },
     { key: "active", label: "Aktiv o'quvchilar", value: active.length, bg: "#dcfce7", fg: "#16a34a", icon: "i-users-group", href: "/active-students" },
     { key: "left-order", label: "Buyurtmadan ketganlar", value: cancelled.length, bg: "#fee2e2", fg: "#dc2626", icon: "i-file-text", href: "/orders-list" },

@@ -1,33 +1,43 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
-import { COURSES, LEVELS, MODERATORS, STATUS_LABELS, STUDENTS, TEACHERS, WEEKDAYS } from "@/constants";
+import { useTeachers } from "@/hooks/useTeachers";
+import type { Order } from "@/lib/ordersData";
 
 // Ported from crm-akademiya/index-dev.html lines 1129-1266 (id="view-first-lessons")
 // + src/app.js (renderFirstLessons family, ~line 23283).
+//
+// Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
+// "birinchi darsga kelish sanasi" belgilangan buyurtmalar aynan shu sahifada
+// ko'rinadi. Ilgari bu yerda constants/index.js dagi statik 50 ta demo
+// o'quvchi turardi (va sahifalash ham soxta edi) — u olib tashlandi.
+//
 // Scope cuts (disclosed, not bugs):
 // - the "Conversion dashboard" stat cards (fl-dashboard) and quick-filter tabs
 //   (fl-quick-tabs) aren't ported — those depend on richer status-history data
 //   we don't have yet.
 // - the never-wired custom date-range popover is replaced with two native
 //   date inputs (same treatment as Tasks/Orders).
-// - the status pill and the row's 3-dot menu are display-only stubs (no
-//   backend to persist a status change against yet).
-// - there is no real backend, so the list always comes from the 50-item
-//   STUDENTS array in constants/index.js. Pagination below is therefore
-//   cosmetic: it shows up to 20 page buttons (matching the original's visual
-//   footprint for a much larger dataset) but every page renders the same
-//   (filtered) 50 records — this is the intended, temporary behavior until a
-//   real API replaces constants/index.js.
+// - the row's 3-dot menu is a display-only stub (no backend to persist a
+//   status change against yet).
 
-const FAKE_PAGE_COUNT = 20;
+/** "29.08.2026 | 10:00" → "2026-08-29" (date inputlari bilan solishtirish uchun). */
+function firstLessonIso(firstLesson: string): string {
+  const m = (firstLesson || "").match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
 
+/** Buyurtmadagi dars kunlari naqshi ("Toq kunlar", "Du,Ch") bo'yicha. */
 function oddEvenOf(day: string): "toq" | "juft" | "boshqa" {
-  if (day === "Dushanba" || day === "Chorshanba" || day === "Juma") return "toq";
-  if (day === "Seshanba" || day === "Payshanba" || day === "Shanba") return "juft";
+  const d = (day || "").toLowerCase();
+  if (d.includes("toq")) return "toq";
+  if (d.includes("juft")) return "juft";
   return "boshqa";
 }
+
+const uniq = (values: (string | undefined)[]): string[] =>
+  [...new Set(values.filter((v): v is string => Boolean(v)))].sort();
 
 export default function FirstLessonsPage() {
   const [dateFilter, setDateFilter] = useState("");
@@ -45,22 +55,55 @@ export default function FirstLessonsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/orders")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setOrders(d.orders); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Birinchi darsga YOZILGANLAR — sanasi belgilangan buyurtmalar.
+  const rows = useMemo(() => orders.filter((o) => (o.firstLesson || "").trim()), [orders]);
+
+  // Tanlov ro'yxatlari ma'lumotning o'zidan; o'qituvchilar esa bazadagi
+  // to'liq ro'yxatdan (/api/teachers) — hali birorta darsi bo'lmagan
+  // o'qituvchi ham tanlanishi mumkin.
+  const { names: allTeachers } = useTeachers();
+  const courseOptions = useMemo(() => uniq(rows.map((o) => o.course)), [rows]);
+  const levelOptions = useMemo(() => uniq(rows.map((o) => o.level)), [rows]);
+  const statusOptions = useMemo(() => uniq(rows.map((o) => o.status)), [rows]);
+  const dayOptions = useMemo(() => uniq(rows.map((o) => o.lessonDay)), [rows]);
+  const moderatorOptions = useMemo(() => uniq(rows.map((o) => o.moderator)), [rows]);
+  const teacherOptions = useMemo(
+    () => uniq([...allTeachers, ...rows.map((o) => o.teacher)]),
+    [allTeachers, rows],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return STUDENTS.filter((s) => {
-      if (courseFilter && s.course !== courseFilter) return false;
-      if (levelFilter && s.level !== levelFilter) return false;
-      if (statusFilter && s.status !== statusFilter) return false;
-      if (dayFilter && s.day !== dayFilter) return false;
-      if (oddEvenFilter && oddEvenOf(s.day) !== oddEvenFilter) return false;
-      if (moderatorFilter && s.moderator !== moderatorFilter) return false;
-      if (teacherFilter && s.teacher !== teacherFilter) return false;
-      if (q && !s.name.toLowerCase().includes(q) && !s.phone.includes(q) && String(s.id).includes(q) === false) return false;
+    return rows.filter((o) => {
+      const iso = firstLessonIso(o.firstLesson);
+      if (dateFilter && iso !== dateFilter) return false;
+      if (rangeStart && (!iso || iso < rangeStart)) return false;
+      if (rangeEnd && (!iso || iso > rangeEnd)) return false;
+      if (courseFilter && o.course !== courseFilter) return false;
+      if (levelFilter && o.level !== levelFilter) return false;
+      if (statusFilter && o.status !== statusFilter) return false;
+      if (dayFilter && o.lessonDay !== dayFilter) return false;
+      if (oddEvenFilter && oddEvenOf(o.lessonDay) !== oddEvenFilter) return false;
+      if (moderatorFilter && o.moderator !== moderatorFilter) return false;
+      if (teacherFilter && o.teacher !== teacherFilter) return false;
+      if (q && !`${o.name} ${o.phone} ${o.id}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [courseFilter, levelFilter, statusFilter, dayFilter, oddEvenFilter, moderatorFilter, teacherFilter, search]);
+  }, [rows, dateFilter, rangeStart, rangeEnd, courseFilter, levelFilter, statusFilter, dayFilter, oddEvenFilter, moderatorFilter, teacherFilter, search]);
 
-  const fakeTotalItems = pageSize * FAKE_PAGE_COUNT;
+  const start = (page - 1) * pageSize;
+  const slice = filtered.slice(start, start + pageSize);
 
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
@@ -98,7 +141,7 @@ export default function FirstLessonsPage() {
             className="w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">Kurs</option>
-            {COURSES.map((c) => (
+            {courseOptions.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -110,7 +153,7 @@ export default function FirstLessonsPage() {
             className="w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">Daraja</option>
-            {LEVELS.map((l) => (
+            {levelOptions.map((l) => (
               <option key={l} value={l}>{l}</option>
             ))}
           </select>
@@ -122,8 +165,8 @@ export default function FirstLessonsPage() {
             className="w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">Status bo&apos;yicha</option>
-            {Object.entries(STATUS_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
+            {statusOptions.map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
         </div>
@@ -138,7 +181,7 @@ export default function FirstLessonsPage() {
             className="w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">Kun</option>
-            {WEEKDAYS.map((d) => (
+            {dayOptions.map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
@@ -162,7 +205,7 @@ export default function FirstLessonsPage() {
             className="w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">Moderator</option>
-            {MODERATORS.map((m) => (
+            {moderatorOptions.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
@@ -174,7 +217,7 @@ export default function FirstLessonsPage() {
             className="w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">O&apos;qituvchi</option>
-            {TEACHERS.map((t) => (
+            {teacherOptions.map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
@@ -225,10 +268,10 @@ export default function FirstLessonsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((s, i) => (
+              {slice.map((s, i) => (
                 <tr key={s.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                   <td className="px-3 py-3"><input type="checkbox" className="rounded border-border" /></td>
-                  <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
+                  <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 tabular-nums font-medium text-[13px]">{s.id}</td>
                   <td className="px-3 py-3 text-[13px]">
                     <span className="text-foreground">{s.name}</span>
@@ -243,23 +286,27 @@ export default function FirstLessonsPage() {
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{s.level || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">{s.moderator || "—"}</td>
                   <td className="px-3 py-3">
-                    <span className={`fl-status fl-status-${s.status}`}>{STATUS_LABELS[s.status as keyof typeof STATUS_LABELS]}</span>
+                    {s.status ? <span className="fl-status">{s.status}</span> : <span className="text-muted-foreground">—</span>}
                   </td>
-                  {/* Manbada (constants/index.js → STUDENTS) izoh maydoni yo'q,
-                      referensda ham bu ustun qatorlarda bo'sh turadi. Maydon
-                      qo'shilgach shu yerda `s.note` o'qiladi. */}
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">{s.note || "—"}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <button type="button" className="fl-row-actions-btn" title="Amallar">⋮</button>
                   </td>
                 </tr>
               ))}
+              {slice.length === 0 && (
+                <tr>
+                  <td colSpan={14} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    {loading ? "Yuklanmoqda…" : "Birinchi darsga yozilgan o'quvchi yo'q"}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         <Pagination
-          totalItems={fakeTotalItems}
+          totalItems={filtered.length}
           page={page}
           pageSize={pageSize}
           onPageChange={setPage}

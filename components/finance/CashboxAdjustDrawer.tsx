@@ -9,7 +9,7 @@ import MonthYearPicker, { type MonthYearValue } from "@/components/ui/MonthYearP
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { useStudents } from "@/hooks/useStudents";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
@@ -17,8 +17,6 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
 import { payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import { ROLE_LABELS } from "@/constants/employees";
-
-const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -118,6 +116,8 @@ export default function CashboxAdjustDrawer({
 
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
+  // O'quvchilar tanlovi bazadan (/api/pupils).
+  const { names: studentNames } = useStudents();
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
@@ -289,7 +289,7 @@ export default function CashboxAdjustDrawer({
                 label={txTargetLabel(target)}
                 value={personName}
                 onChange={setPersonName}
-                options={target === "employee" ? activeEmployees.map((e) => e.name) : STUDENT_NAMES}
+                options={target === "employee" ? activeEmployees.map((e) => e.name) : studentNames}
                 placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
                 subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
                 trailingOf={target === "employee" ? (n) => {

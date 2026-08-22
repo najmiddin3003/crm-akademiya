@@ -6,42 +6,39 @@ import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, P
 import Pagination from "@/components/ui/Pagination";
 import Button from "@/components/ui/Button";
 import AddStudentModal from "@/components/orders/AddStudentModal";
-import { STUDENTS_LIST } from "@/constants/studentsList";
+import { usePupils } from "@/components/orders/PupilsContext";
+import { STUDENT_CATEGORIES } from "@/constants";
 import {
   applyStudentFilters,
-  enrichStudent,
+  enrichStudents,
   EMPTY_STUDENT_FILTERS,
-  STUDENT_CATEGORIES,
-  STUDENT_COURSES,
-  STUDENT_DAYS,
-  STUDENT_GROUP_IDS,
   STUDENT_STATUSES,
-  STUDENT_SUBCOURSES,
-  STUDENT_TEACHERS,
-  type EnrichedStudent,
+  studentRowFromPupil,
+  uniqueSorted,
   type StudentFilters,
   type StudentRow,
 } from "@/lib/studentsData";
-import type { Pupil } from "@/lib/pupilsData";
+import type { Group } from "@/lib/groups";
 
-// O'quvchilar → O'quvchilar ro'yxati (crm-akademiya #view-students-list,
-// sidebar: O'quvchilar > O'quvchilar ro'yxati, href /students-list). Yangi/
-// Aktiv/Arxiv o'quvchilar sahifalaridan farqli o'laroq (ular umumiy Orders
-// havzasidan hosil bo'ladi), bu — BARCHA o'quvchilarning yagona ro'yxati,
-// manbadagi kabi o'zining alohida STUDENTS_LIST massividan (constants/
-// studentsList.js, ~5909 yozuv, coin/manba maydonlari bilan). "O'quvchi
-// qo'shish" — orders-list'dagi bilan bir xil AddStudentModal+PupilsContext
-// (haqiqiy /api/pupils backend'iga saqlanadi, layout.tsx orqali ulanadi);
-// qo'shilgan o'quvchi ro'yxat boshiga qo'shiladi. "To'lov sanasi"/"Taklif
-// qilganlari"/"Ilovani yuklab olish sanasi"/"Kelmagan davri"/"Shartnoma" —
-// manbada ham har doim bo'sh/statik (haqiqiy hisoblanmaydi), shu holicha
-// ko'chirildi.
+// O'quvchilar → O'quvchilar ro'yxati (sidebar: O'quvchilar > O'quvchilar
+// ro'yxati, href /students-list). Yangi/Aktiv/Arxiv o'quvchilar
+// sahifalaridan farqli o'laroq (ular umumiy Orders havzasidan hosil bo'ladi),
+// bu — BAZADAGI barcha o'quvchilarning yagona ro'yxati: MongoDB `pupils` →
+// /api/pupils, sahifaga PupilsContext orqali keladi. Ilgari bu yerda
+// constants/studentsList.js dagi generator bilan yasalgan 5909 ta demo yozuv
+// ko'rinardi — u olib tashlandi.
+//
+// "O'quvchi qo'shish" — orders-list'dagi bilan bir xil AddStudentModal +
+// PupilsContext (haqiqiy /api/pupils'ga saqlanadi, layout.tsx orqali
+// ulanadi); qo'shilgan o'quvchi darhol ro'yxat boshida paydo bo'ladi.
+//
+// "To'lov sanasi" / "Taklif qilganlari" / "Ilovani yuklab olish sanasi" /
+// "Kelmagan davri" / "Shartnoma" ustunlari uchun o'quvchi modelida maydon
+// yo'q — referensdagidek bo'sh turadi.
 
 // StudentRow / StudentFilters endi lib/studentsData.ts da — filtrlash mantiqi
 // bilan birga, chunki ular bir-biriga bog'liq.
 
-const MODERATORS = ["Dilmurod Komilov", "Nilufar Sharipova"];
-const SOURCES = ["Instagram", "Telegram", "Tavsiya", "Facebook"];
 const HEADERS = ["№", "ID", "Ism", "Coin", "Telefon raqam", "Balans", "Yaratilgan sanasi", "Manba", "Moderator"];
 
 function fmtNum(n: number): string {
@@ -102,10 +99,21 @@ function FilterSelect({ label, value, onChange, options }: {
 }
 
 export default function StudentsListPage() {
-  // Yozuvlar kengaytiriladi: har bir o'quvchi haqiqiy guruhga bog'lanadi va
-  // kurs/o'qituvchi/dars kunlari o'sha guruhdan kelib chiqadi (lib/studentsData.ts).
-  const [rows, setRows] = useState<EnrichedStudent[]>(() =>
-    (STUDENTS_LIST as StudentRow[]).map(enrichStudent),
+  // O'quvchilar — bazadan (PupilsProvider, app/(app)/students-list/layout.tsx).
+  // Guruhlar ham bazadan: o'quvchining kursi/o'qituvchisi/dars kunlari u a'zo
+  // bo'lgan guruhdan kelib chiqadi (lib/studentsData.ts → enrichStudents).
+  const { pupils, loading } = usePupils();
+  const [groups, setGroups] = useState<Group[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/groups")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); });
+    return () => { cancelled = true; };
+  }, []);
+  const rows = useMemo(
+    () => enrichStudents(pupils.map(studentRowFromPupil), groups),
+    [pupils, groups],
   );
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
@@ -129,6 +137,15 @@ export default function StudentsListPage() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
+
+  // Filtr tanlovlari — faqat ma'lumotda HAQIQATDA uchraydigan qiymatlar.
+  const moderatorOptions = useMemo(() => uniqueSorted(rows.map((r) => r.moderator)), [rows]);
+  const sourceOptions = useMemo(() => uniqueSorted(rows.map((r) => r.source)), [rows]);
+  const courseOptions = useMemo(() => uniqueSorted(groups.map((g) => g.course)), [groups]);
+  const teacherOptions = useMemo(() => uniqueSorted(groups.map((g) => g.teacher)), [groups]);
+  const dayOptions = useMemo(() => uniqueSorted(groups.map((g) => g.day)), [groups]);
+  const subcourseOptions = useMemo(() => uniqueSorted(groups.map((g) => g.level)), [groups]);
+  const groupIdOptions = useMemo(() => groups.map((g) => String(g.id)), [groups]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -201,20 +218,10 @@ export default function StudentsListPage() {
     setMoreOpen(false);
   }
 
-  function handlePupilSaved(pupil: Pupil) {
-    const newRow: StudentRow = {
-      id: pupil.id,
-      name: `${pupil.firstName} ${pupil.lastName}`.trim(),
-      phone: pupil.phone,
-      balance: 0,
-      coin: 0,
-      createdAt: pupil.createdAt,
-      moderator: "",
-      source: "",
-      groups: "-",
-    };
-    // Yangi o'quvchi ham kengaytiriladi — aks holda filtrlar uni ko'rmaydi.
-    setRows((prev) => [enrichStudent(newRow), ...prev]);
+  // Yangi o'quvchini ro'yxatga qo'shish kerak emas: PupilsContext uni
+  // /api/pupils javobidan darhol o'z holatiga qo'shadi va `rows` shundan
+  // hisoblanadi.
+  function handlePupilSaved() {
     setAddOpen(false);
     setPage(1);
   }
@@ -312,12 +319,12 @@ export default function StudentsListPage() {
                   </div>
                 </div>
 
-                <FilterSelect label="Kurs" value={draft.course} onChange={(v) => setD("course", v)} options={STUDENT_COURSES} />
-                <FilterSelect label="Guruh" value={draft.group} onChange={(v) => setD("group", v)} options={STUDENT_GROUP_IDS.map(String)} />
-                <FilterSelect label="Subkurs" value={draft.subcourse} onChange={(v) => setD("subcourse", v)} options={STUDENT_SUBCOURSES} />
-                <FilterSelect label="Manba" value={draft.source} onChange={(v) => setD("source", v)} options={SOURCES} />
-                <FilterSelect label="Moderator" value={draft.moderator} onChange={(v) => setD("moderator", v)} options={MODERATORS} />
-                <FilterSelect label="O'qituvchi" value={draft.teacher} onChange={(v) => setD("teacher", v)} options={STUDENT_TEACHERS} />
+                <FilterSelect label="Kurs" value={draft.course} onChange={(v) => setD("course", v)} options={courseOptions} />
+                <FilterSelect label="Guruh" value={draft.group} onChange={(v) => setD("group", v)} options={groupIdOptions} />
+                <FilterSelect label="Subkurs" value={draft.subcourse} onChange={(v) => setD("subcourse", v)} options={subcourseOptions} />
+                <FilterSelect label="Manba" value={draft.source} onChange={(v) => setD("source", v)} options={sourceOptions} />
+                <FilterSelect label="Moderator" value={draft.moderator} onChange={(v) => setD("moderator", v)} options={moderatorOptions} />
+                <FilterSelect label="O'qituvchi" value={draft.teacher} onChange={(v) => setD("teacher", v)} options={teacherOptions} />
 
                 <div>
                   <label className="mb-1 block text-[12px] text-muted-foreground">O&apos;quvchi</label>
@@ -326,7 +333,7 @@ export default function StudentsListPage() {
 
                 <FilterSelect label="Kategoriya" value={draft.category} onChange={(v) => setD("category", v)} options={STUDENT_CATEGORIES} />
                 <FilterSelect label="Guruhlar soni" value={draft.groupCount} onChange={(v) => setD("groupCount", v)} options={["0", "1", "2"]} />
-                <FilterSelect label="Kun" value={draft.day} onChange={(v) => setD("day", v)} options={STUDENT_DAYS} />
+                <FilterSelect label="Kun" value={draft.day} onChange={(v) => setD("day", v)} options={dayOptions} />
                 <FilterSelect label="Toq/Juft kunlar" value={draft.oddEven} onChange={(v) => setD("oddEven", v)} options={["Toq", "Juft"]} />
                 <FilterSelect label="Holati" value={draft.status} onChange={(v) => setD("status", v)} options={STUDENT_STATUSES} />
 
@@ -449,7 +456,9 @@ export default function StudentsListPage() {
               })}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={17} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={17} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    {loading ? "Yuklanmoqda…" : "O'quvchi topilmadi"}
+                  </td>
                 </tr>
               )}
             </tbody>
