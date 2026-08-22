@@ -1,11 +1,32 @@
 // Ported from crm-akademiya/src/app.js (TASKS seed array ~line 899,
 // _augmentTasksWithPriority ~line 1926, PRIORITY_META/KANBAN_STATES ~line 1875,
-// TASK_TEMPLATES ~line 2325, RECURRENCE_OPTIONS ~line 2506, TASK_TYPES ~line 3759).
+// TASK_TEMPLATES ~line 2325, RECURRENCE_OPTIONS ~line 2506).
+// Topshiriq turlari bu yerda emas — ular bazada (lib/taskTypes.ts,
+// /api/task-types) va foydalanuvchi boshqaradi.
 
 export type TaskState = "yangi" | "jarayonda" | "kutilmoqda" | "bajarilgan";
 export type TaskPriority = "kritik" | "yuqori" | "orta" | "past";
 export type TaskRecurring = "none" | "daily" | "weekly" | "monthly";
 export type TaskRisk = "overdue" | "danger" | "warning" | "completed" | "normal";
+
+/**
+ * Topshiriq KIMGA/NIMAGA biriktirilgani. Oynada avval shu tanlanadi, so'ng
+ * yonidagi ro'yxat shunga qarab to'ladi (referens: akademiya.edutizim.uz):
+ *   student — bazadagi o'quvchilar
+ *   group   — bazadagi guruhlar (raqami bo'yicha)
+ *   order   — tizimdagi barcha odamlar (o'quvchilar + xodimlar)
+ */
+export type TaskTargetKind = "student" | "group" | "order";
+
+export const TASK_TARGET_KINDS: { value: TaskTargetKind; label: string }[] = [
+  { value: "student", label: "O'quvchi" },
+  { value: "group", label: "Guruh" },
+  { value: "order", label: "Buyurtma" },
+];
+
+export function isTaskTargetKind(v: unknown): v is TaskTargetKind {
+  return v === "student" || v === "group" || v === "order";
+}
 
 export interface Task {
   id: number;
@@ -15,6 +36,8 @@ export interface Task {
   staff?: string;
   type?: string;
   group?: string;
+  /** `student` / `group` qaysi tanlovdan to'lganini eslab qoladi. */
+  targetKind?: TaskTargetKind;
   state: TaskState;
   priority: TaskPriority;
   recurring: TaskRecurring;
@@ -33,17 +56,6 @@ export const STAFF = [
   "Durdona Yoldasheva",
   "Gulnoza Abdurahimova",
   "Ilhomjon Sharabidinov",
-];
-
-export const TASK_TYPES = [
-  { id: 1, name: "O'quvchi guruhdan chiqarish", color: "#e11d48", icon: "i-user-x" },
-  { id: 2, name: "To'lov eslatmasi", color: "#10b981", icon: "i-dollar-sign" },
-  { id: 3, name: "Sinov darsi belgilash", color: "#3b82f6", icon: "i-calendar" },
-  { id: 4, name: "Davomat tekshiruvi", color: "#f59e0b", icon: "i-user-check" },
-  { id: 5, name: "Konsultatsiya", color: "#8b5cf6", icon: "i-help-circle" },
-  { id: 6, name: "Daraja imtihoni", color: "#06b6d4", icon: "i-bar-chart" },
-  { id: 7, name: "Yangi guruhga qabul", color: "#16a34a", icon: "i-user-plus" },
-  { id: 8, name: "Qarzdorlik bilan ishlash", color: "#ef4444", icon: "i-wallet" },
 ];
 
 export const PRIORITY_META: Record<TaskPriority, { label: string; order: number }> = {

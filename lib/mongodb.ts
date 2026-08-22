@@ -57,6 +57,8 @@ export async function ensureIndexes(): Promise<Db> {
     // purgeAt vaqti kelganda hujjat avtomatik o'chadi (TTL).
     await db.collection("verification_codes").createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 });
     await db.collection("tasks").createIndex({ id: 1 }, { unique: true });
+    // task_types — Topshiriqlar sahifasidagi "Topshiriq turi" boshqaruvi.
+    await db.collection("task_types").createIndex({ id: 1 }, { unique: true });
     await db.collection("orders").createIndex({ id: 1 }, { unique: true });
     await db.collection("pupils").createIndex({ id: 1 }, { unique: true });
     await db.collection("offline_courses").createIndex({ id: 1 }, { unique: true });

@@ -12,12 +12,19 @@ export interface StudentSearchSelectProps {
   error?: boolean;
   /** "boxed" (default) = AddOrderModal drawer style (stacked label + bordered
    * field). "row" = the compact /orders-list/add page style (inline label
-   * left, value+chevron right, bottom border only). */
-  variant?: "boxed" | "row";
+   * left, value+chevron right, bottom border only). "compact" = boxed'ning
+   * pastroq (h-9) varianti — Topshiriq oynasidagi maydonlarga mos. */
+  variant?: "boxed" | "row" | "compact";
   /** Ro'yxatdagi qatorga qo'shimcha satr (masalan telefon / lavozim). */
   subtitleOf?: (name: string) => ReactNode;
   /** Qatorning o'ng chekkasi (masalan balans / oylik). */
   trailingOf?: (name: string) => ReactNode;
+  /**
+   * Bir vaqtda ko'rsatiladigan maksimal qator. Ro'yxat uzun bo'lsa (masalan
+   * tizimdagi barcha odamlar) hammasini DOM'ga chizish shart emas — qolganini
+   * qidiruv orqali topiladi. Berilmasa cheklov yo'q.
+   */
+  limit?: number;
 }
 
 export default function StudentSearchSelect({
@@ -31,6 +38,7 @@ export default function StudentSearchSelect({
   variant = "boxed",
   subtitleOf,
   trailingOf,
+  limit,
 }: StudentSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -45,7 +53,26 @@ export default function StudentSearchSelect({
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
 
-  const filtered = options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()));
+  // Qidiruv nom bo'yicha ham, qatorning kichik satri bo'yicha ham ishlaydi
+  // (u yerda odatda TELEFON raqam turadi). Raqam kiritilsa faqat raqamlar
+  // solishtiriladi — "+998 90 469 51 20" ni "904695120" deb ham topsa bo'ladi.
+  //
+  // Qidiruv BUTUN ro'yxat bo'yicha ketadi; `limit` faqat ekranga chiziladigan
+  // qatorlarga tegishli, shu bois qidirilgan yozuv doim topiladi.
+  const haystackOf = (name: string): string => {
+    const sub = subtitleOf?.(name);
+    return typeof sub === "string" || typeof sub === "number" ? `${name} ${sub}` : name;
+  };
+  const q = query.trim().toLowerCase();
+  const qDigits = query.replace(/\D/g, "");
+  const filtered = options.filter((o) => {
+    if (!q) return true;
+    const hay = haystackOf(o);
+    if (hay.toLowerCase().includes(q)) return true;
+    return qDigits.length >= 3 && hay.replace(/\D/g, "").includes(qDigits);
+  });
+  const shown = limit && filtered.length > limit ? filtered.slice(0, limit) : filtered;
+  const hidden = filtered.length - shown.length;
 
   const dropdown = open && (
     <div className="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-xl overflow-hidden">
@@ -78,7 +105,7 @@ export default function StudentSearchSelect({
         {filtered.length === 0 ? (
           <div className="px-3 py-3 text-sm text-muted-foreground">Topilmadi</div>
         ) : (
-          filtered.map((name, i) => (
+          shown.map((name, i) => (
             <button
               key={`${name}-${i}`}
               type="button"
@@ -104,6 +131,11 @@ export default function StudentSearchSelect({
               )}
             </button>
           ))
+        )}
+        {hidden > 0 && (
+          <div className="border-t border-border px-3 py-2 text-[11.5px] text-muted-foreground">
+            Yana {hidden} ta — qidiruvdan foydalaning
+          </div>
         )}
       </div>
     </div>
@@ -135,16 +167,17 @@ export default function StudentSearchSelect({
     );
   }
 
+  const compact = variant === "compact";
   return (
     <div ref={ref} className="relative">
-      <label className="block text-[13px] font-medium mb-1.5">
+      <label className={compact ? "text-xs font-medium text-muted-foreground mb-1 block" : "block text-[13px] font-medium mb-1.5"}>
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full h-11 px-3 rounded-lg border bg-secondary/30 text-sm flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-primary/40 ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
+        className={`w-full px-3 rounded-lg border text-sm flex items-center justify-between text-left focus:outline-none focus:ring-2 ${compact ? "h-9 bg-background focus:ring-blue-500" : "h-11 bg-secondary/30 focus:ring-primary/40"} ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
       >
         <span className={value ? "" : "text-muted-foreground"}>{value || placeholder}</span>
         <svg className="icon icon-sm text-muted-foreground shrink-0">

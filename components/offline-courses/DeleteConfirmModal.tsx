@@ -10,14 +10,16 @@ export interface DeleteConfirmModalProps {
   name: string;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Qatlam — drawer (z-index 1001) ustidan ochilishi kerak bo'lsa oshiriladi. */
+  zIndexClass?: string;
 }
 
-export default function DeleteConfirmModal({ title, message, name, onCancel, onConfirm }: DeleteConfirmModalProps) {
+export default function DeleteConfirmModal({ title, message, name, onCancel, onConfirm, zIndexClass = "z-[120]" }: DeleteConfirmModalProps) {
   useEscapeClose(onCancel);
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+      className={`fixed inset-0 ${zIndexClass} flex items-center justify-center p-4`}
       style={{ background: "rgba(15,23,42,.55)", backdropFilter: "blur(4px)" }}
       onClick={onCancel}
     >

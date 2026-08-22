@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isTaskDate, isTaskPriority, isTaskRecurring, isTaskState, type Task } from "@/lib/tasksData";
+import { isTaskDate, isTaskPriority, isTaskRecurring, isTaskState, isTaskTargetKind, type Task } from "@/lib/tasksData";
 
 // PATCH /api/tasks/:id — mavjud topshiriqni yangilaydi (holat, sana, va h.k.).
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -47,6 +47,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   for (const k of ["student", "description", "staff", "type", "group"] as const) {
     if (typeof body[k] === "string") set[k] = body[k];
+  }
+  if (body.targetKind !== undefined && isTaskTargetKind(body.targetKind)) {
+    set.targetKind = body.targetKind;
   }
   if (body.dependsOn !== undefined && Number.isFinite(Number(body.dependsOn))) {
     set.dependsOn = Number(body.dependsOn);

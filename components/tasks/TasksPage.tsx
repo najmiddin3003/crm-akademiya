@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MoreVertical } from "lucide-react";
 import Button from "@/components/ui/Button";
 import TaskCard from "@/components/tasks/TaskCard";
 import KanbanCard from "@/components/tasks/KanbanCard";
@@ -10,6 +11,9 @@ import TaskDashboardWidgets, { type DashboardFilter } from "@/components/tasks/T
 import TaskModal, { type TaskModalValues } from "@/components/tasks/TaskModal";
 import TaskTemplatesModal from "@/components/tasks/TaskTemplatesModal";
 import MoveTaskModal from "@/components/tasks/MoveTaskModal";
+import TaskTypesDrawer from "@/components/tasks/TaskTypesDrawer";
+import TaskTypeIcon from "@/components/tasks/TaskTypeIcon";
+import { useTaskTypes } from "@/hooks/useTaskTypes";
 import {
   getTaskStatus,
   isTaskBlocked,
@@ -17,7 +21,6 @@ import {
   KANBAN_STATES,
   STAFF,
   TASK_TEMPLATES,
-  TASK_TYPES,
   TODAY_DATE,
   type Task,
   type TaskState,
@@ -29,8 +32,11 @@ import {
 // - bulk-selection/grading, submission-state (checked/late) badges, and activity
 //   log/comments tabs are not ported.
 // - the custom date-range calendar popover is replaced with two native date inputs.
-// - the 3-dot "more" menu (custom task-type manager) isn't ported; only the
-//   3 view modes + filters + add/edit modal + templates are here.
+//
+// "⋮" menyusi → "Topshiriq turi": chap tomondan ochiladigan panel
+// (TaskTypesDrawer) orqali topshiriq turlari boshqariladi. Turlar bazadan
+// keladi (/api/task-types) va shu sahifadagi filtr hamda Topshiriq oynasidagi
+// tanlov o'shandan to'ladi.
 
 type ViewMode = "time" | "kanban" | "calendar";
 
@@ -74,6 +80,11 @@ export default function TasksPage() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverState, setDragOverState] = useState<TaskState | null>(null);
+  // Topshiriq turlari — bazadan (/api/task-types).
+  const taskTypes = useTaskTypes();
+  const [typesDrawerOpen, setTypesDrawerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const [timeDraggingId, setTimeDraggingId] = useState<number | null>(null);
   const [timeDragOverStatus, setTimeDragOverStatus] = useState<"overdue" | "today" | "upcoming" | null>(null);
   const [moveTaskId, setMoveTaskId] = useState<number | null>(null);
@@ -86,6 +97,15 @@ export default function TasksPage() {
     () => Array.from(new Set(tasks.map((t) => t.group).filter((g): g is string => !!g))),
     [tasks],
   );
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [moreOpen]);
 
   const baseFiltered = useMemo(() => {
     return tasks.filter((t) => {
@@ -148,6 +168,9 @@ export default function TasksPage() {
 
   const handleSaveModal = async (values: TaskModalValues) => {
     const isoDate = `${values.date}T${values.time || "09:00"}:00`;
+    // Topshiriq kimga biriktirilgani: kartada sarlavha sifatida `student`
+    // ko'rinadi, guruh tanlansa qo'shimcha ravishda `group` ham to'ladi.
+    const target = values.targetValue.trim();
     if (modalTaskId != null) {
       const patch = {
         date: isoDate,
@@ -156,6 +179,9 @@ export default function TasksPage() {
         type: values.type || undefined,
         priority: values.priority,
         recurring: values.recurring,
+        student: target,
+        group: values.targetKind === "group" ? target : "",
+        targetKind: values.targetKind,
       };
       setTasks((prev) => prev.map((t) => (t.id === modalTaskId ? { ...t, ...patch, description: patch.description || t.description, staff: patch.staff || t.staff, type: patch.type || t.type } : t)));
       fetch(`/api/tasks/${modalTaskId}`, {
@@ -165,7 +191,9 @@ export default function TasksPage() {
       }).catch(() => {});
     } else {
       const newTask: Omit<Task, "id"> = {
-        student: values.student.trim() || "Nomsiz o'quvchi",
+        student: target,
+        group: values.targetKind === "group" ? target : undefined,
+        targetKind: values.targetKind,
         date: isoDate,
         description: values.note || values.type || "Yangi topshiriq",
         staff: values.staff || undefined,
@@ -195,6 +223,7 @@ export default function TasksPage() {
     for (const item of tpl.items) {
       const payload: Omit<Task, "id"> = {
         student: studentName,
+        targetKind: "student",
         date: new Date(now + item.offsetHours * 3600000).toISOString().slice(0, 16),
         description: item.description,
         type: item.type,
@@ -327,6 +356,31 @@ export default function TasksPage() {
           <Button variant="primary" icon="i-file-plus" onClick={() => openAddModal()}>
             Qo&apos;shish
           </Button>
+
+          <div className="relative" ref={moreRef}>
+            <button
+              type="button"
+              title="Qo'shimcha amallar"
+              onClick={() => setMoreOpen((o) => !o)}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary ${moreOpen ? "bg-secondary" : ""}`}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {moreOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => { setMoreOpen(false); setTypesDrawerOpen(true); }}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors hover:bg-secondary"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <TaskTypeIcon icon="list-checks" className="h-4 w-4" />
+                  </span>
+                  <span>Topshiriq turi</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -413,7 +467,7 @@ export default function TasksPage() {
               className="filter-select h-9 w-40 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Topshiriq turi</option>
-              {TASK_TYPES.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
+              {taskTypes.types.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
             </select>
           </div>
           {groupOptions.length > 0 && (
@@ -509,6 +563,17 @@ export default function TasksPage() {
       {modalOpen && (
         <TaskModal task={editingTask} initialDate={modalInitialDate} onClose={() => setModalOpen(false)} onSave={handleSaveModal} />
       )}
+      {typesDrawerOpen && (
+        <TaskTypesDrawer
+          types={taskTypes.types}
+          loading={taskTypes.loading}
+          onCreate={taskTypes.create}
+          onUpdate={taskTypes.update}
+          onRemove={taskTypes.remove}
+          onClose={() => setTypesDrawerOpen(false)}
+        />
+      )}
+
       <TaskTemplatesModal open={templatesOpen} onClose={() => setTemplatesOpen(false)} onApply={handleApplyTemplate} />
 
       {moveTaskTarget && (

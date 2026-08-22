@@ -5286,6 +5286,37 @@ textarea.ao-input { height: auto; padding: 9px 12px; resize: vertical; min-heigh
   overflow: hidden;
 }
 .st-drawer.visible { transform: translateX(0); }
+
+/* Chap tomondan ochiladigan variant (Topshiriqlar > Topshiriq turlari).
+   O'ngdagi drawer'dan farqi: bu yerda .visible klassi KERAK EMAS — panel
+   mount bo'lishi bilan CSS animatsiyasi bilan chiqadi. Sabab: .visible ni
+   requestAnimationFrame orqali qo'shish fon tabda (rAF to'xtatilgan bo'ladi)
+   ishlamay qoladi va panel ekrandan tashqarida qotib turadi. Animatsiyada
+   ataylab fill-mode YO'Q: tinch holat — ochiq holat, animatsiya faqat
+   bezak. Shu sabab kadr chizilmasa ham panel joyida turadi. */
+.st-drawer-left {
+  right: auto;
+  left: 0;
+  border-left: none;
+  border-right: 1px solid hsl(var(--border));
+  box-shadow: 16px 0 40px rgba(0,0,0,0.15);
+  transform: translateX(0);
+  animation: st-drawer-slide-left .25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes st-drawer-slide-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+/* Shu drawer uchun fon ham darhol ko'rinadi (o'tish emas, animatsiya). */
+.st-drawer-backdrop.instant {
+  opacity: 1;
+  pointer-events: auto;
+  animation: st-drawer-fade-in .2s ease;
+}
+@keyframes st-drawer-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @media (max-width: 480px) {
   .st-drawer { width: 100vw; }
 }

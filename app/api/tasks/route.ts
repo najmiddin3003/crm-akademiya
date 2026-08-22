@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isTaskDate, isTaskPriority, isTaskRecurring, isTaskState, type Task } from "@/lib/tasksData";
+import { isTaskDate, isTaskPriority, isTaskRecurring, isTaskState, isTaskTargetKind, type Task } from "@/lib/tasksData";
 
 // GET /api/tasks — barcha topshiriqlar ro'yxati.
 export async function GET() {
@@ -18,6 +18,7 @@ export async function GET() {
     staff: r.staff ?? undefined,
     type: r.type ?? undefined,
     group: r.group ?? undefined,
+    targetKind: isTaskTargetKind(r.targetKind) ? r.targetKind : undefined,
     state: isTaskState(r.state) ? r.state : "yangi",
     priority: isTaskPriority(r.priority) ? r.priority : "orta",
     recurring: isTaskRecurring(r.recurring) ? r.recurring : "none",
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
     staff: typeof body.staff === "string" ? body.staff : undefined,
     type: typeof body.type === "string" ? body.type : undefined,
     group: typeof body.group === "string" ? body.group : undefined,
+    targetKind: isTaskTargetKind(body.targetKind) ? body.targetKind : undefined,
     state: body.state,
     priority: body.priority,
     recurring: isTaskRecurring(body.recurring) ? body.recurring : "none",

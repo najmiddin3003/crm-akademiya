@@ -16,7 +16,9 @@ const VARIANT_CLASSES: Record<NonNullable<ButtonProps["variant"]>, string> = {
 export default function Button({ variant = "primary", icon, lucideIcon: Icon, className = "", children, ...rest }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium ${VARIANT_CLASSES[variant]} ${className}`}
+      // disabled:* — o'chirilgan tugma KO'RINIB ham turishi kerak (masalan
+      // Topshiriq oynasida barcha maydonlar to'lmaguncha "Saqlash" so'nib turadi).
+      className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium disabled:opacity-50 disabled:pointer-events-none ${VARIANT_CLASSES[variant]} ${className}`}
       {...rest}
     >
       {Icon ? <Icon className="icon icon-sm" /> : icon && <svg className="icon icon-sm"><use href={`#${icon}`} /></svg>}
