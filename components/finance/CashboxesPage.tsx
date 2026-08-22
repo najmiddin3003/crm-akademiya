@@ -159,6 +159,12 @@ function escHtml(s: string): string {
 // Chek chiqarish — yashirin iframe ichida bosma sahifa yasab, brauzerning
 // bosma oynasini ochadi. Alohida chek route'i kerak emas va sahifadagi
 // holat (drawer, filtrlar) buzilmaydi.
+// Yozuv o'qituvchi oyligiga QO'SHILADIMI yoki undan AYRILADIMI — chek va
+// jadvalda shu farq ko'rinib turishi kerak.
+function salaryTargetLabel(e: TransactionEntry): string {
+  return e.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi";
+}
+
 function printReceipt(e: TransactionEntry, cashboxName: string) {
   const title =
     e.txType === "payIn" ? "KIRIM CHEKI" :
@@ -172,6 +178,8 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
     ["Tranzaksiya", e.txName || "—"],
     ["To'lov turi", e.paymentType],
   ];
+  // Yozuv qaysi o'qituvchining oyligiga tegishli ekani.
+  if (e.teacherName) rows.push([salaryTargetLabel(e), e.teacherName]);
   if (e.note) rows.push(["Izoh", e.note]);
 
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
@@ -251,6 +259,7 @@ function ReceiptPreviewModal({
     ["Tranzaksiya", entry.txName || "—"],
     ["To'lov turi", entry.paymentType],
   ];
+  if (entry.teacherName) rows.push([salaryTargetLabel(entry), entry.teacherName]);
   if (entry.note) rows.push(["Izoh", entry.note]);
 
   return (
@@ -867,6 +876,7 @@ export default function CashboxesPage() {
   }[] = [
     { label: "Sana", get: fmtEntryDate },
     { label: "Kim", get: (e) => e.studentName || e.moderator || "" },
+    { label: "Oyligiga", get: (e) => e.teacherName || "" },
     { label: "Izoh", get: (e) => e.note || "" },
     { label: "Tranzaksiya nomi", get: (e) => e.txName || "" },
     { label: "Miqdori", get: (e) => e.amount },
@@ -1403,6 +1413,9 @@ export default function CashboxesPage() {
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Oyligiga
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
                     Izoh
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
@@ -1450,6 +1463,18 @@ export default function CashboxesPage() {
                       </td>
                       <td className="px-3 py-3 text-[13px] whitespace-nowrap">
                         {renderWhoCell(e)}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        {e.teacherName ? (
+                          <span
+                            title={salaryTargetLabel(e)}
+                            className={`inline-flex items-center gap-1 text-[12px] ${e.txType === "payIn" ? "text-emerald-600" : "text-rose-600"}`}
+                          >
+                            {e.txType === "payIn" ? "+" : "−"} {e.teacherName}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <span
@@ -1512,7 +1537,7 @@ export default function CashboxesPage() {
                 })}
                 {entrySlice.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-16 text-center">
+                    <td colSpan={11} className="px-3 py-16 text-center">
                       <div className="text-[14px] font-semibold">
                         Ma&apos;lumotlar topilmadi
                       </div>

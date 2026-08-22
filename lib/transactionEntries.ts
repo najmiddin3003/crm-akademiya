@@ -25,6 +25,21 @@ export interface TransactionEntry {
   group: string;
   lessonDate: string;
   moderator: string;
+  /**
+   * Shu yozuv QAYSI O'QITUVCHINING oyligiga ta'sir qiladi.
+   *
+   * • Kirim (o'quvchi to'ladi) — to'lagan o'quvchining ustozi. Uning
+   *   oyligiga shu summadan foiz qo'shiladi.
+   * • Chiqim (hodimga avans / hodimga oylik) — puli chiqarilayotgan
+   *   xodimning o'zi. Uning oyligidan shu summa ayriladi.
+   *
+   * `moderator` dan FARQ QILADI: u yozuvni qayd etgan kassa mas'uli.
+   * Ilgari ikkalasi bitta maydonda edi va o'qituvchi tanlanmaganda kassa
+   * mas'uli o'qituvchi o'rniga tushib qolardi.
+   *
+   * Ixtiyoriy: bu maydon qo'shilishidan oldingi yozuvlarda yo'q.
+   */
+  teacherName?: string;
   reason: string;
   note: string;
   status: string; // "" | "waiting" | "cancelled"

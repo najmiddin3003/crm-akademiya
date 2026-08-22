@@ -10,7 +10,8 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
-import type { HrEmployee } from "@/lib/hrEmployees";
+import { isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
+import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 import type { Bonus } from "@/lib/bonuses";
@@ -128,6 +129,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [noteBusy, setNoteBusy] = useState(false);
   const [finLoading, setFinLoading] = useState(true);
   const [finError, setFinError] = useState(false);
+  const [salaryOpen, setSalaryOpen] = useState(false);
   const [fStudent, setFStudent] = useState("");
   const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
   const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
@@ -302,6 +304,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const penaltyTotal = sumAmount(mineOf(penalties));
   const stats = buildStats(bonusTotal, penaltyTotal, avansTotal, oylikTotal, !finLoading);
 
+  const salaryConfigured = isSalaryConfigured(emp);
   const cashboxName = (cid: number) => cashboxNames[cid] ?? (cid ? `Kassa ${cid}` : "—");
   const ledger = buildLedger(emp.name, bonuses, penalties, ownEntries);
 
@@ -424,13 +427,24 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
 
                 <button
                   type="button"
-                  onClick={() => showSuccess("Tahrirlash (demo)")}
+                  onClick={() => setSalaryOpen(true)}
                   className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.edit}`}
-                  title="Tahrirlash"
+                  title="Ish haqini sozlash"
                 >
                   <Edit className="icon icon-sm" />
                 </button>
               </div>
+              {/* Oylik sozlanmagan bo'lsa buni ochiq aytamiz — chap
+                  kartadagi "—" larning sababi shu. */}
+              {!finLoading && !salaryConfigured && (
+                <button
+                  type="button"
+                  onClick={() => setSalaryOpen(true)}
+                  className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-500/20 text-left"
+                >
+                  <strong>Ish haqi sozlanmagan.</strong> Oylik hisobi shu xodim uchun ko&apos;rsatilmaydi — sozlash uchun bosing.
+                </button>
+              )}
             </div>
           </div>
 
@@ -592,6 +606,17 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           </div>
         </div>
       </div>
+
+      {salaryOpen && (
+        <EmployeeSalaryConfigModal
+          employee={emp}
+          onClose={() => setSalaryOpen(false)}
+          onSaved={(updated) => {
+            setEmp(updated);
+            setSalaryOpen(false);
+          }}
+        />
+      )}
 
       {archiveMode && (
         <EmployeeArchiveModal

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { EMPLOYEES_DATA } from "@/constants/employees";
-import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
+import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 import {
   isValidPhone,
   issueCode,
@@ -21,27 +21,8 @@ async function seedIfEmpty(col: Collection) {
   }
 }
 
-/** Mijozdan kelgan filial biriktiruvlarini xavfsiz ko'rinishga keltiradi. */
-function sanitizeAssignments(raw: unknown): EmployeeBranchAssignment[] {
-  if (!Array.isArray(raw)) return [];
-  const out: EmployeeBranchAssignment[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const r = item as Record<string, unknown>;
-    const branchId = Number(r.branchId);
-    if (!Number.isFinite(branchId)) continue;
-    const roleId = Number(r.roleId);
-    const scheduleId = Number(r.scheduleId);
-    const salary = Number(r.salary);
-    out.push({
-      branchId,
-      roleId: Number.isFinite(roleId) && roleId > 0 ? roleId : null,
-      scheduleId: Number.isFinite(scheduleId) && scheduleId > 0 ? scheduleId : null,
-      salary: Number.isFinite(salary) && salary > 0 ? Math.trunc(salary) : 0,
-    });
-  }
-  return out;
-}
+// sanitizeAssignments lib/hrEmployees.ts ga ko'chirildi — PATCH route ham
+// aynan shu tozalagichdan foydalanadi.
 
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");

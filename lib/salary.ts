@@ -85,6 +85,12 @@ export interface EmployeePayroll {
   phone: string;
   /** "teacher" | "moderator" | "admin" — filtr uchun. */
   turi: string;
+  /**
+   * Xodimning ish haqi SOZLANGANMI (xodim kartasida filial bo'yicha oklad
+   * kiritilganmi). false bo'lsa hisoblangan raqamlar ma'nosiz — interfeys
+   * "Oylik sozlanmagan" ko'rsatishi kerak, soxta 0 emas.
+   */
+  configured: boolean;
   /** "foiz" — o'qituvchi tushumdan foiz oladi; "fixed" — oklad. */
   salaryType: "foiz" | "fixed";
   /** Oklad (xodim kartasidagi filiallar bo'yicha ish haqi yig'indisi). */

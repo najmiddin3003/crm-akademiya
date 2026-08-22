@@ -3,7 +3,8 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
-import { salaryOf } from "@/lib/employeeSalary";
+import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
+import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 
 // POST /api/cashboxes/:id/adjust — kassaning bitta to'lov turiga Kirim
 // qo'shadi yoki undan Chiqim oladi. Ko'chirishdan farqi — bu safar umumiy
@@ -62,8 +63,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (mode === "chiqim" && studentName && /avans|oylik/i.test(category || "")) {
     const employees = await db.collection("hr_employees").find({ name: studentName }).toArray();
     const employee = employees.find((e) => !e.archReason) || employees[0];
-    if (employee && typeof employee.id === "number") {
-      const oylik = salaryOf(employee.id).oylik;
+    // Chegara xodimning HAQIQIY oyligiga tayanadi (xodim kartasidagi
+    // filiallar bo'yicha ish haqi). Ilgari bu yerda xodim id'sidan
+    // hisoblanadigan demo funksiya turardi — ya'ni o'ylab topilgan raqam
+    // haqiqiy pulning chiqishini to'sar yoki ortiqcha chiqishiga yo'l
+    // qo'yardi.
+    //
+    // Oyligi SOZLANMAGAN xodimga chegara qo'llanmaydi: aks holda 0 deb
+    // o'qilib, hamma to'lov rad etilgan bo'lardi. Sozlanmagani "0 oylik"
+    // degani emas.
+    const empRec = employee as unknown as HrEmployee | undefined;
+    if (empRec && typeof empRec.id === "number" && isSalaryConfigured(empRec)) {
+      const oylik = fixedSalaryOf(empRec);
       const dateIso = date || todayIso();
       const month = dateIso.slice(0, 7);
       const prior = await db
@@ -106,6 +117,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const methodLabel = chosen.name;
   const entryDate = date || todayIso();
   const txName = category || (mode === "kirim" ? "O'quvchi to'ladi" : "Boshqa");
+
+  // Yozuv qaysi o'qituvchining oyligiga tegishli.
+  //   • chiqim + "hodimga avans/oylik" → puli chiqarilayotgan xodim
+  //   • kirim → oynada tanlangan o'qituvchi, tanlanmagan bo'lsa
+  //     o'quvchining guruhidagi ustoz
+  // Topilmasa bo'sh qoladi — taxmin qilinmaydi.
+  let salaryTarget = "";
+  if (mode === "chiqim" && isEmployeePayoutCategory(category)) {
+    salaryTarget = (studentName || "").trim();
+  } else if (mode === "kirim") {
+    salaryTarget = (teacherName || "").trim() || (await findTeacherOfStudent(db, studentName || "")) || "";
+  }
   await logEntry(db, {
     date: entryDate,
     time: nowTime(),
@@ -118,7 +141,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     paymentType: methodLabel,
     group: "",
     lessonDate: "",
-    moderator: teacherName || current.moderator || "",
+    // `moderator` — yozuvni qayd etgan kassa mas'uli.
+    moderator: current.moderator || "",
+    // `teacherName` — yozuv KIMNING oyligiga ta'sir qilishi:
+    //   kirim  → to'lagan o'quvchining ustozi (qo'lda tanlangan bo'lsa
+    //            o'sha, aks holda guruhidan topiladi),
+    //   chiqim → puli chiqarilayotgan xodimning o'zi.
+    teacherName: salaryTarget,
     reason: "-",
     note: note || "",
     status: "",

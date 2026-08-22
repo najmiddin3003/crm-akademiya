@@ -17,10 +17,17 @@ import {
 } from "@/lib/salary";
 
 // Moliya → Oylik chiqarish → xodim tanlash (/finance-payroll/create).
-// Har bir qator /api/salary-runs/employees-payroll'dan (real BONUS/JARIMA +
-// demo AVANS/AKLADI/tushum). Yuqorida davr yorlig'i, 4 ta stat karta va
-// filtrlar; jadval tanlangan qatorlarni belgilaydi. "Oylik chiqarish"
-// tugmasi bosilsa tasdiqlash oynasi chiqadi, "Ha" → /api/salary-runs POST.
+//
+// Har bir qator /api/salary-runs/employees-payroll'dan keladi va HAMMA
+// qiymat haqiqiy (lib/payrollSources.ts):
+//   oklad   ← xodim kartasidagi filial bo'yicha ish haqi
+//   tushum  ← o'quvchilari to'lagan pul (transaction_entries.teacherName)
+//   foiz    ← Sozlamalar > Moliya > Oylik foizlari
+//   avans / to'langan oylik ← kassadan chiqarilgan yozuvlar
+//   bonus / jarima ← o'z kolleksiyalari
+//
+// Ish haqi sozlanmagan xodimda raqam KO'RSATILMAYDI — "Sozlanmagan" deb
+// turadi va uni tanlab oylik chiqarib bo'lmaydi (server ham rad etadi).
 
 function fmtNum(n: number): string {
   return Math.round(n).toLocaleString("ru-RU");
@@ -73,14 +80,19 @@ export default function SalaryCreatePage() {
   const period = useMemo(() => payrollPeriod(), []);
   const periodLabel = useMemo(() => payrollPeriodLabel(period), [period]);
 
-  function load() {
-    setLoading(true);
-    fetch("/api/salary-runs/employees-payroll")
+  function fetchRows() {
+    return fetch("/api/salary-runs/employees-payroll")
       .then((r) => r.json())
       .then((d) => { if (d.ok) setEmployees(d.employees); })
       .finally(() => setLoading(false));
   }
-  useEffect(() => { load(); }, []);
+  /** "Qayta hisoblash" tugmasi — spinnerni qayta yoqadi. */
+  function load() {
+    setLoading(true);
+    fetchRows();
+  }
+  // Effekt tanasida setState chaqirilmaydi (`loading` boshlanishida true).
+  useEffect(() => { fetchRows(); }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -92,18 +104,21 @@ export default function SalaryCreatePage() {
     });
   }, [employees, query, turiFilter, hisoblash]);
 
-  const allSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.id));
+  const allSelected = filtered.filter((e) => e.configured).length > 0
+    && filtered.filter((e) => e.configured).every((e) => selected.has(e.id));
   const someSelected = selected.size > 0 && !allSelected;
 
   useEffect(() => {
     if (headerCheckboxRef.current) headerCheckboxRef.current.indeterminate = someSelected;
   }, [someSelected]);
 
+  // "Hammasini tanlash" ham faqat sozlanganlarni oladi.
+  const selectable = useMemo(() => filtered.filter((e) => e.configured), [filtered]);
   function toggleAll() {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allSelected) { filtered.forEach((e) => next.delete(e.id)); }
-      else { filtered.forEach((e) => next.add(e.id)); }
+      if (allSelected) { selectable.forEach((e) => next.delete(e.id)); }
+      else { selectable.forEach((e) => next.add(e.id)); }
       return next;
     });
   }
@@ -116,9 +131,12 @@ export default function SalaryCreatePage() {
     });
   }
 
+  // Faqat ish haqi SOZLANGAN xodimlar jamlanadi — sozlanmaganning
+  // "hisoblangan"i 0 bo'ladi va uni yig'indiga qo'shish jami summani
+  // haqiqatdan kichik ko'rsatgan bo'lardi.
   const stats = useMemo(() => {
     let hisoblangan = 0, avans = 0, tolangan = 0, qolgan = 0, otganOydan = 0;
-    for (const e of employees) {
+    for (const e of employees.filter((x) => x.configured)) {
       hisoblangan += payrollEarned(e, period);
       avans += e.paidAvans;
       tolangan += e.paidOylik;
@@ -332,7 +350,9 @@ export default function SalaryCreatePage() {
                         type="checkbox"
                         checked={selected.has(e.id)}
                         onChange={() => toggleOne(e.id)}
-                        className="rounded border-border w-4 h-4"
+                        disabled={!e.configured}
+                        title={e.configured ? undefined : "Ish haqi sozlanmagan — oylik chiqarib bo'lmaydi"}
+                        className="rounded border-border w-4 h-4 disabled:opacity-40 disabled:cursor-not-allowed"
                       />
                     </td>
                     <td className="px-3 py-3 align-top text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
@@ -341,16 +361,23 @@ export default function SalaryCreatePage() {
                       <div className="text-[11px] text-muted-foreground tabular-nums">{e.phone}</div>
                     </td>
                     <td className="px-3 py-3 align-top">
-                      <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${badgeCls} whitespace-nowrap`}>
-                        {isFoiz ? `Foiz ${e.percent}%` : "Oklad"}
-                      </span>
+                      {e.configured ? (
+                        <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${badgeCls} whitespace-nowrap`}>
+                          {isFoiz ? `Foiz ${e.percent}%` : "Oklad"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium bg-amber-500/10 text-amber-700 border-amber-500/20 whitespace-nowrap">
+                          Sozlanmagan
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3 align-top text-[12.5px] tabular-nums">
-                      <div className="whitespace-nowrap">{formula}</div>
-                      {isFoiz && e.futureCollected > 0 && (
-                        <div className="text-[11px] text-muted-foreground mt-0.5">
-                          + kelgusi oylar uchun tushum {fmtNum(e.futureCollected)} so&apos;m (o&apos;z oyida hisoblanadi)
-                        </div>
+                      {e.configured ? (
+                        <div className="whitespace-nowrap">{formula}</div>
+                      ) : (
+                        <Link href={`/management-xodimlar/${e.id}`} className="text-[12px] text-primary hover:underline">
+                          Ish haqi kiritilmagan — sozlash
+                        </Link>
                       )}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
@@ -360,7 +387,7 @@ export default function SalaryCreatePage() {
                       {e.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(e.jarima)}</span> : <span className="text-muted-foreground">0</span>}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
-                      {fmtNum(earned)}
+                      {e.configured ? fmtNum(earned) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {e.paidAvans > 0 ? <span className="text-amber-600 font-medium">{fmtNum(e.paidAvans)}</span> : <span className="text-muted-foreground">0</span>}
@@ -379,7 +406,7 @@ export default function SalaryCreatePage() {
                       )}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-bold whitespace-nowrap">
-                      {fmtNum(due)}
+                      {e.configured ? fmtNum(due) : <span className="text-muted-foreground font-normal">—</span>}
                     </td>
                   </tr>
                 );

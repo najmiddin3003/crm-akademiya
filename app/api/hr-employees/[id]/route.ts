@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { HrEmployee } from "@/lib/hrEmployees";
+import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -35,9 +35,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   } catch {
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
-  // id/_id ni tashqaridan o'zgartirishga yo'l qo'ymaymiz.
-  const { id: _ignore, ...set } = body as Partial<HrEmployee> & { _id?: unknown };
-  delete (set as { _id?: unknown })._id;
+  // Faqat ruxsat etilgan maydonlar yoziladi. Ilgari bu yerda mijoz yuborgan
+  // JSON to'g'ridan-to'g'ri $set qilinardi — `salary` satr ko'rinishida
+  // kelib qolsa, oylik yig'indisi qo'shilish o'rniga birikib ketardi va
+  // o'sha qiymat kassadagi chiqim chegarasini boshqargan bo'lardi.
+  const set: Record<string, unknown> = {};
+  for (const k of ["name", "gender", "turi", "filial", "phone", "kurs", "email", "degree", "photoUrl", "archReason", "archDate", "lastActive", "percent"] as const) {
+    if (typeof body[k] === "string") set[k] = body[k];
+  }
+  for (const k of ["aktivOq", "groups"] as const) {
+    if (Number.isFinite(Number(body[k]))) set[k] = Number(body[k]);
+  }
+  // Ish haqi — POST bilan bir xil tozalagichdan o'tadi (lib/hrEmployees.ts).
+  if (body.branchAssignments !== undefined) {
+    set.branchAssignments = sanitizeAssignments(body.branchAssignments);
+  }
+
+  if (Object.keys(set).length === 0) {
+    return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
+  }
 
   const db = await ensureIndexes();
   const res = await db.collection("hr_employees").findOneAndUpdate(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export interface StudentSearchSelectProps {
   label: string;
@@ -14,6 +14,10 @@ export interface StudentSearchSelectProps {
    * field). "row" = the compact /orders-list/add page style (inline label
    * left, value+chevron right, bottom border only). */
   variant?: "boxed" | "row";
+  /** Ro'yxatdagi qatorga qo'shimcha satr (masalan telefon / lavozim). */
+  subtitleOf?: (name: string) => ReactNode;
+  /** Qatorning o'ng chekkasi (masalan balans / oylik). */
+  trailingOf?: (name: string) => ReactNode;
 }
 
 export default function StudentSearchSelect({
@@ -25,6 +29,8 @@ export default function StudentSearchSelect({
   placeholder = "O'quvchini qidirish",
   error,
   variant = "boxed",
+  subtitleOf,
+  trailingOf,
 }: StudentSearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -83,7 +89,19 @@ export default function StudentSearchSelect({
               }}
               className={`block w-full px-3 py-2 text-left text-sm hover:bg-secondary ${value === name ? "bg-primary/10 font-medium text-primary" : ""}`}
             >
-              {name}
+              {subtitleOf || trailingOf ? (
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{name}</span>
+                    {subtitleOf && (
+                      <span className="block text-[11.5px] text-muted-foreground truncate">{subtitleOf(name)}</span>
+                    )}
+                  </span>
+                  {trailingOf && <span className="shrink-0 text-[12px] tabular-nums">{trailingOf(name)}</span>}
+                </span>
+              ) : (
+                name
+              )}
             </button>
           ))
         )}

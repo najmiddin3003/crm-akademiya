@@ -156,6 +156,16 @@ export default function TransactionDetailDrawer({
             )}
           </Row>
           <Row label="Kassa">{cashboxName || "—"}</Row>
+          {/* Yozuv qaysi o'qituvchining oyligiga qo'shilishi yoki undan
+              ayrilishi — kirimda o'quvchining ustozi, chiqimda puli
+              chiqarilayotgan xodimning o'zi. */}
+          <Row label={entry.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi"}>
+            {entry.teacherName ? (
+              <span className={entry.txType === "payIn" ? "text-emerald-600" : "text-rose-600"}>
+                {entry.txType === "payIn" ? "+" : "−"} {entry.teacherName}
+              </span>
+            ) : "—"}
+          </Row>
           <Row label="Izoh">{entry.note || "—"}</Row>
           <Row label="Tranzaksiya nomi">{entry.txName || "—"}</Row>
           <Row label="To'lov turi">{entry.paymentType || "—"}</Row>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -14,6 +15,17 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
 
 const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
+// Ism → o'quvchi kartasi (telefon va profil havolasi uchun). Bir xil ismli
+// o'quvchilarda birinchisi olinadi — to'lov yozuvida id saqlanmaydi.
+type StudentRow = (typeof STUDENTS_LIST)[number];
+const STUDENT_BY_NAME = new Map<string, StudentRow>(
+  STUDENTS_LIST.map((s): [string, StudentRow] => [s.name.trim().toLowerCase(), s]).reverse(),
+);
+
+function fmtSom(n: number): string {
+  const sign = n < 0 ? "-" : "";
+  return sign + Math.abs(Math.round(n)).toLocaleString("ru-RU") + " so'm";
+}
 
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -44,15 +56,30 @@ export default function CashboxKirimDrawer({
   const [category, setCategory] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [studentName, setStudentName] = useState("");
-  const [amount, setAmount] = useState("0");
+  // Bo'sh boshlanadi — ilgari maydonda "0" turar va uni har safar
+  // o'chirishga to'g'ri kelardi.
+  const [amount, setAmount] = useState("");
+  // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — tanlash
+  // ro'yxatida va tanlangandan keyin ko'rsatiladi.
+  const [balances, setBalances] = useState<Record<string, number>>({});
   const [method, setMethod] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
 
+  const key = (n: string) => n.trim().toLowerCase();
+  const phoneOf = (n: string) => {
+    const s = STUDENT_BY_NAME.get(key(n));
+    return s?.phone ? `+998 ${s.phone}` : "";
+  };
+  const balanceOf = (n: string) => balances[key(n)] ?? 0;
+  const selectedStudent = studentName ? STUDENT_BY_NAME.get(key(studentName)) : undefined;
+  const selectedBalance = studentName ? balanceOf(studentName) : 0;
+
   useEffect(() => {
     let cancelled = false;
+    fetch("/api/students/balances").then((r)=>r.json()).then((d)=>{ if(!cancelled && d.ok) setBalances(d.balances); }).catch(()=>{});
     fetch("/api/transaction-types")
       .then((r) => r.json())
       .then((d) => {
@@ -163,13 +190,36 @@ export default function CashboxKirimDrawer({
             </div>
           </div>
 
-          <StudentSearchSelect
-            label="O'quvchini tanlang"
-            value={studentName}
-            onChange={setStudentName}
-            options={STUDENT_NAMES}
-            placeholder="Tanlang"
-          />
+          <div>
+            <StudentSearchSelect
+              label="O'quvchini tanlang"
+              value={studentName}
+              onChange={setStudentName}
+              options={STUDENT_NAMES}
+              placeholder="Ism yoki telefon bo'yicha qidiring…"
+              subtitleOf={(n) => phoneOf(n)}
+              trailingOf={(n) => {
+                const b = balanceOf(n);
+                return <span className={b < 0 ? "text-rose-600" : "text-muted-foreground"}>{fmtSom(b)}</span>;
+              }}
+            />
+            {/* Tanlangandan keyin — balans va telefon. */}
+            {selectedStudent && (
+              <div className="mt-2 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-[12px]">
+                <div>
+                  Balans:{" "}
+                  <strong className={selectedBalance < 0 ? "text-rose-600" : "text-emerald-600"}>{fmtSom(selectedBalance)}</strong>
+                  {selectedStudent.phone && <span className="text-muted-foreground"> · +998 {selectedStudent.phone}</span>}
+                </div>
+                <Link
+                  href={`/student-edit/${selectedStudent.id}?src=list`}
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-primary hover:underline"
+                >
+                  O&apos;quvchi profilini ko&apos;rish
+                </Link>
+              </div>
+            )}
+          </div>
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>

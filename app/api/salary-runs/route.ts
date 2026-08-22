@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { SALARY_RUN_SEED, demoAvans, demoAkladi, demoCollected, demoPercent, demoCarryOver } from "@/constants/salary";
 import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
-import { payrollBase, payrollEarned, payrollDue, payrollMonthKey, payrollPeriod } from "@/lib/salary";
-import type { HrEmployee } from "@/lib/hrEmployees";
-import type { Bonus } from "@/lib/bonuses";
-import type { Penalty } from "@/lib/penalties";
+import { payrollEarned, payrollDue, payrollMonthKey, payrollPeriod } from "@/lib/salary";
+import { buildPayrollRows } from "@/lib/payrollSources";
 
-// Moliya → Oylik chiqarish backend'i (MongoDB `salary_runs`). Bo'sh bo'lsa
-// demo yozuvni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(SALARY_RUN_SEED)));
-  }
-}
+// Moliya → Oylik chiqarish backend'i (MongoDB `salary_runs`).
+//
+// Demo seed OLIB TASHLANDI: SALARY_RUN_SEED o'ylab topilgan oylik hisoboti
+// edi va u haqiqiy yozuvlar bilan yonma-yon, ajratib bo'lmaydigan holda
+// turardi. Bo'sh ro'yxat — haqiqat, soxta tarix emas.
 
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -24,16 +18,18 @@ function fmtNow(d: Date): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("salary_runs");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const runs = rows.map(({ _id, ...rest }) => rest as unknown as SalaryRun);
   return NextResponse.json({ ok: true, runs });
 }
 
-// POST — "Oylik chiqarish": tanlangan xodimlar bo'yicha OYLIK/DAVOMAT (hali
-// real manba yo'q — 0) + BONUS/JARIMA (real, Moliya → Bonus/Jarima'dan, bekor
-// qilinmagan yozuvlar) + AVANS/AKLADI (demo, xodim id'sidan deterministik)
-// umumlashtirilib bitta hisobot yozuvi yaratiladi.
+// POST — "Oylik chiqarish": tanlangan xodimlar bo'yicha bitta hisobot
+// yozuvi yaratiladi. Hamma had HAQIQIY manbadan (lib/payrollSources.ts):
+// oklad xodim kartasidan, bonus/jarima o'z kolleksiyalaridan, avans/oylik
+// esa kassadan chiqarilgan yozuvlardan.
+//
+// DAVOMAT va AKLADI 0 bo'lib qoladi — tizimda ular uchun manba yo'q va
+// o'ylab topilmaydi.
 export async function POST(req: Request) {
   let body: { employeeIds?: number[] };
   try {
@@ -48,11 +44,27 @@ export async function POST(req: Request) {
   }
 
   const db = await ensureIndexes();
-  const employees = await db.collection<HrEmployee>("hr_employees").find({ id: { $in: employeeIds } }).toArray();
-  const [bonusRows, penaltyRows] = await Promise.all([
-    db.collection<Bonus>("bonuses").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
-    db.collection<Penalty>("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
-  ]);
+  // Hamma qiymat bitta haqiqiy manbadan (lib/payrollSources.ts) — shu
+  // bois Oylik chiqarish, Xodimlar ro'yxati va xodim profili bir xil
+  // raqam ko'rsatadi.
+  const all = await buildPayrollRows(db);
+  const chosen = all.filter((e) => employeeIds.includes(e.id));
+  if (chosen.length === 0) {
+    return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+  }
+  // Oyligi sozlanmagan xodimni hisobga qo'shib bo'lmaydi — uning
+  // "hisoblangan"i 0 bo'lardi va bu haqiqat emas, sozlama yo'qligi.
+  const unconfigured = chosen.filter((e) => !e.configured);
+  if (unconfigured.length > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Oyligi sozlanmagan xodim(lar): ${unconfigured.map((e) => e.name).join(", ")}`,
+        unconfigured: unconfigured.map((e) => e.id),
+      },
+      { status: 400 },
+    );
+  }
 
   const period = payrollPeriod();
   let oylik = 0;
@@ -62,27 +74,15 @@ export async function POST(req: Request) {
   let akladi = 0;
   let tolanmagan = 0;
   const items: SalaryRunItem[] = [];
-  for (const emp of employees) {
-    const empBonus = bonusRows.filter((b) => b.recipientName === emp.name).reduce((s, b) => s + b.amount, 0);
-    const empJarima = penaltyRows.filter((p) => p.recipientName === emp.name).reduce((s, p) => s + p.amount, 0);
-    const empAvans = demoAvans(emp.id);
-    const empAkladi = demoAkladi(emp.id);
-    const fixedSalary = (emp.branchAssignments ?? []).reduce((s: number, b: any) => s + (b.salary ?? 0), 0);
-    const salaryType: "fixed" | "foiz" = fixedSalary > 0 ? "fixed" : "foiz";
-    const percent = emp.percent ? Number(String(emp.percent).replace(/[^\d.]/g, "")) || demoPercent(emp.id) : demoPercent(emp.id);
-    const collected = salaryType === "foiz" ? demoCollected(emp.id) : 0;
-    const carryOver = demoCarryOver(emp.id);
-    const ep = { id: emp.id, name: emp.name, phone: emp.phone, turi: emp.turi ?? "teacher", salaryType, fixedSalary, percent, collected, futureCollected: 0, bonus: empBonus, jarima: empJarima, paidAvans: empAvans, paidOylik: empAkladi, carryOver, carryNote: "" };
-    const empOylik = payrollEarned(ep, period); // asos + bonus - jarima
-    const empDue = payrollDue(ep, period); // qolgan to'lanadigan
-
-    oylik += empOylik;
-    bonus += empBonus;
-    jarima += empJarima;
-    avans += empAvans;
-    akladi += empAkladi;
+  for (const ep of chosen) {
+    const empDue = payrollDue(ep, period);
+    oylik += payrollEarned(ep, period);
+    bonus += ep.bonus;
+    jarima += ep.jarima;
+    avans += ep.paidAvans;
+    akladi += ep.paidOylik;
     tolanmagan += Math.max(empDue, 0);
-    items.push({ employeeId: emp.id, amount: Math.max(empDue, 0) });
+    items.push({ employeeId: ep.id, amount: Math.max(empDue, 0) });
   }
 
   const col = db.collection("salary_runs");
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 
   const run: SalaryRun = {
     id: nextId,
-    employeeCount: employees.length,
+    employeeCount: chosen.length,
     oylik,
     davomat: 0,
     davomatFoizi: 0,

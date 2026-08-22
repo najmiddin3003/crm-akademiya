@@ -11,8 +11,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import AddEmployeeModal from "./AddEmployeeModal";
 import type { HrEmployee } from "@/lib/hrEmployees";
-import { payrollBase, payrollDue, payrollEarned, payrollPeriod } from "@/lib/salary";
-import { demoAvans, demoAkladi, demoCarryOver, demoCollected, demoPercent } from "@/constants/salary";
+import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import {
   EMP_COLUMNS,
   EMP_COURSES,
@@ -72,29 +71,45 @@ function fmtNum(n: number): string {
   return Math.round(n).toLocaleString("ru-RU");
 }
 
-// Xodim uchun oylik-komponentlar (Moliya → Oylik hisob-kitob bilan bir xil
-// mantiq — API/klient orasida takrorlanadigan formulani bir joyda ushlash).
-function salaryFor(emp: HrEmployee, p: ReturnType<typeof payrollPeriod>) {
-  const fixedSalary = (emp.branchAssignments ?? []).reduce((s: number, b: any) => s + (b.salary ?? 0), 0);
-  const salaryType: "fixed" | "foiz" = fixedSalary > 0 ? "fixed" : "foiz";
-  const percent = emp.percent ? Number(String(emp.percent).replace(/[^\d.]/g, "")) || demoPercent(emp.id) : demoPercent(emp.id);
-  const collected = salaryType === "foiz" ? demoCollected(emp.id) : 0;
-  const paidAvans = demoAvans(emp.id);
-  const paidOylik = demoAkladi(emp.id);
-  const carryOver = demoCarryOver(emp.id);
-  const row = {
-    id: emp.id, name: emp.name, phone: emp.phone, turi: emp.turi ?? "teacher",
-    salaryType, fixedSalary, percent, collected, futureCollected: 0,
-    bonus: 0, jarima: 0, paidAvans, paidOylik, carryOver, carryNote: "",
-  };
+// Oylik-komponentlar backend'dan (/api/salary-runs/employees-payroll)
+// olinadi. Ilgari bu yerda alohida hisob bor edi va u xodim id'sidan
+// hisoblanadigan demo generatorlarni ishlatardi — natijada bu ro'yxat
+// bilan Oylik chiqarish sahifasi bir odam haqida turlicha raqam
+// ko'rsatardi. Endi manba bitta.
+//
+// Oyligi sozlanmagan xodim uchun null qaytadi: bunday xodimda hisoblangan
+// raqam yo'q, "0" esa yolg'on bo'lardi.
+interface SalaryView {
+  salaryType: "foiz" | "fixed";
+  percent: number;
+  fixedSalary: number;
+  jamiOylik: number;
+  jamiAvans: number;
+  tolanganOylik: number;
+  qolganOylik: number;
+}
+
+function salaryFor(
+  emp: HrEmployee,
+  p: ReturnType<typeof payrollPeriod>,
+  payrollById: Map<number, EmployeePayroll>,
+): SalaryView | null {
+  const row = payrollById.get(emp.id);
+  if (!row || !row.configured) return null;
   return {
-    salaryType, percent, fixedSalary,
-    base: payrollBase(row, p),
+    salaryType: row.salaryType,
+    percent: row.percent,
+    fixedSalary: row.fixedSalary,
     jamiOylik: payrollEarned(row, p),
-    jamiAvans: paidAvans,
-    tolanganOylik: paidOylik,
+    jamiAvans: row.paidAvans,
+    tolanganOylik: row.paidOylik,
     qolganOylik: payrollDue(row, p),
   };
+}
+
+/** Sozlanmagan xodim uchun bir xil ko'rinish — hamma ustunda. */
+function NotConfigured() {
+  return <span className="text-[12px] text-muted-foreground" title="Xodim kartasida ish haqi kiritilmagan">Sozlanmagan</span>;
 }
 
 export default function EmployeesListPage() {
@@ -120,6 +135,7 @@ export default function EmployeesListPage() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const [rows, setRows] = useState<HrEmployee[]>([]);
+  const [payrollById, setPayrollById] = useState<Map<number, EmployeePayroll>>(new Map());
   const [loadingRows, setLoadingRows] = useState(true);
 
   const period = useMemo(() => payrollPeriod(), []);
@@ -127,13 +143,22 @@ export default function EmployeesListPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Xodimlar ro'yxatini backend'dan yuklaymiz (/api/hr-employees).
+  // Xodimlar ro'yxati va ularning oylik qatorlari — ikkalasi ham backend'dan.
+  // Oylik hisobi shu sahifada TAKRORLANMAYDI: u /api/salary-runs/
+  // employees-payroll dan keladi, shunda Oylik chiqarish sahifasi bilan
+  // bir xil raqam chiqadi.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/hr-employees")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && data.ok) setRows(data.employees);
+    Promise.all([
+      fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
+      fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
+    ])
+      .then(([emps, pay]) => {
+        if (cancelled) return;
+        if (emps?.ok) setRows(emps.employees);
+        if (pay?.ok) {
+          setPayrollById(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.id, e])));
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingRows(false);
@@ -225,7 +250,8 @@ export default function EmployeesListPage() {
         );
       }
       case "ishTuri": {
-        const s = salaryFor(e, period);
+        const s = salaryFor(e, period, payrollById);
+        if (!s) return <NotConfigured />;
         const isFoiz = s.salaryType === "foiz";
         const cls = isFoiz
           ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
@@ -237,27 +263,31 @@ export default function EmployeesListPage() {
         );
       }
       case "jamiOylik": {
-        const v = salaryFor(e, period).jamiOylik;
-        return v > 0
-          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(v)}</span>
+        const s = salaryFor(e, period, payrollById);
+        if (!s) return <NotConfigured />;
+        return s.jamiOylik > 0
+          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(s.jamiOylik)}</span>
           : <span className="tabular-nums text-muted-foreground">0</span>;
       }
       case "jamiAvans": {
-        const v = salaryFor(e, period).jamiAvans;
-        return v > 0
-          ? <span className="tabular-nums text-[13px] font-medium text-amber-600">{fmtNum(v)}</span>
+        const s = salaryFor(e, period, payrollById);
+        if (!s) return <NotConfigured />;
+        return s.jamiAvans > 0
+          ? <span className="tabular-nums text-[13px] font-medium text-amber-600">{fmtNum(s.jamiAvans)}</span>
           : <span className="tabular-nums text-muted-foreground">0</span>;
       }
       case "tolanganOylik": {
-        const v = salaryFor(e, period).tolanganOylik;
-        return v > 0
-          ? <span className="tabular-nums text-[13px]">{fmtNum(v)}</span>
+        const s = salaryFor(e, period, payrollById);
+        if (!s) return <NotConfigured />;
+        return s.tolanganOylik > 0
+          ? <span className="tabular-nums text-[13px]">{fmtNum(s.tolanganOylik)}</span>
           : <span className="tabular-nums text-muted-foreground">0</span>;
       }
       case "qolganOylik": {
-        const v = salaryFor(e, period).qolganOylik;
-        return v !== 0
-          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(v)}</span>
+        const s = salaryFor(e, period, payrollById);
+        if (!s) return <NotConfigured />;
+        return s.qolganOylik !== 0
+          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(s.qolganOylik)}</span>
           : <span className="tabular-nums text-muted-foreground">0</span>;
       }
       case "filial": return e.filial;
@@ -465,7 +495,7 @@ export default function EmployeesListPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {slice.map((e) => {
-                  const s = salaryFor(e, period);
+                  const s = salaryFor(e, period, payrollById);
                   return (
                     <button
                       key={e.id}
@@ -482,22 +512,28 @@ export default function EmployeesListPage() {
                       <div className="text-[12.5px] text-muted-foreground tabular-nums">{e.phone}</div>
                       <div className="text-[12.5px] text-muted-foreground mt-0.5">{e.kurs || "—"}</div>
                       <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2 text-[12px]">
-                        <div>
-                          <div className="text-muted-foreground">Ish turi</div>
-                          <div className="font-medium">{s.salaryType === "foiz" ? `Foiz ${s.percent}%` : "Oklad"}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Jami oylik</div>
-                          <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.jamiOylik)}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Jami avans</div>
-                          <div className="font-medium text-amber-600 tabular-nums">{fmtNum(s.jamiAvans)}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Qolgan</div>
-                          <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.qolganOylik)}</div>
-                        </div>
+                        {!s ? (
+                          <div className="col-span-2"><NotConfigured /></div>
+                        ) : (
+                          <>
+                            <div>
+                              <div className="text-muted-foreground">Ish turi</div>
+                              <div className="font-medium">{s.salaryType === "foiz" ? `Foiz ${s.percent}%` : "Oklad"}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Jami oylik</div>
+                              <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.jamiOylik)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Jami avans</div>
+                              <div className="font-medium text-amber-600 tabular-nums">{fmtNum(s.jamiAvans)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Qolgan</div>
+                              <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.qolganOylik)}</div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </button>
                   );

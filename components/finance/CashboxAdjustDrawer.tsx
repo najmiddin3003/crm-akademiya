@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -15,7 +15,8 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
-import { salaryOf } from "@/lib/employeeSalary";
+import { payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
+import { ROLE_LABELS } from "@/constants/employees";
 
 const STUDENT_NAMES = STUDENTS_LIST.map((s) => s.name);
 
@@ -77,6 +78,9 @@ export default function CashboxAdjustDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan.
+  const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
+  const period = useMemo(() => payrollPeriod(), []);
 
   // Maosh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda ikkala
   // tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
@@ -99,17 +103,22 @@ export default function CashboxAdjustDrawer({
   useEffect(() => {
     if (target !== "employee" || employees.length > 0) return;
     let cancelled = false;
-    fetch("/api/hr-employees")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && d.ok) setEmployees(d.employees as HrEmployee[]);
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
+      fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
+    ]).then(([emps, pay]) => {
+      if (cancelled) return;
+      if (emps?.ok) setEmployees(emps.employees as HrEmployee[]);
+      if (pay?.ok) {
+        setPayroll(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.name.trim().toLowerCase(), e])));
+      }
+    });
     return () => { cancelled = true; };
   }, [target, employees.length]);
 
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
+  const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
@@ -120,7 +129,18 @@ export default function CashboxAdjustDrawer({
   // ayrilib beriladi, tugasa keyingi oygacha yana chiqarilmaydi). Nomlar
   // admin boshqaradigan ro'yxatdan olinadi, shuning uchun so'zga qaraymiz.
   const isSalaryPayoutCategory = target === "employee" && /avans|oylik/i.test(category);
-  const employeeOylik = selectedEmployee ? salaryOf(selectedEmployee.id).oylik : 0;
+
+  // Xodimning HAQIQIY oylik qatori (/api/salary-runs/employees-payroll).
+  // Ilgari bu yerda xodim id'sidan hisoblanadigan demo funksiya turardi va
+  // o'ylab topilgan raqam haqiqiy pulning chiqishini boshqarardi.
+  const payrollOf = (name: string) => payroll.get(name.trim().toLowerCase());
+  const selectedPayroll = selectedEmployee ? payrollOf(selectedEmployee.name) : undefined;
+  const salaryConfigured = !!selectedPayroll?.configured;
+  // Hisoblangan oylik = asos + bonus - jarima (lib/salary.ts).
+  const employeeOylik = selectedPayroll && selectedPayroll.configured
+    ? payrollEarned(selectedPayroll, period)
+    : 0;
+  const carryOver = selectedPayroll?.carryOver ?? 0;
 
   // Tanlangan sana kimga tegishli oy — shu oyda xodimga necha marta oylik/
   // avans chiqarilgani serverdan olinadi. Sana yoki xodim o'zgarsa qayta
@@ -131,14 +151,13 @@ export default function CashboxAdjustDrawer({
     return `${date.getFullYear()}-${p(date.getMonth() + 1)}`;
   })();
   const [alreadyPaid, setAlreadyPaid] = useState(0);
-  const [paidLoading, setPaidLoading] = useState(false);
   useEffect(() => {
     if (!isSalaryPayoutCategory || !selectedEmployee || !monthKey) {
-      setAlreadyPaid(0);
+      // Shart bajarilmasa qiymat allaqachon 0 — qayta o'rnatish shart emas
+      // (effekt tanasidagi setState ortiqcha render zanjirini keltiradi).
       return;
     }
     let cancelled = false;
-    setPaidLoading(true);
     const q = new URLSearchParams({ name: selectedEmployee.name, month: monthKey });
     fetch(`/api/employee-salary-summary?${q}`)
       .then((r) => r.json())
@@ -147,13 +166,15 @@ export default function CashboxAdjustDrawer({
         setAlreadyPaid(d.ok ? Number(d.paid) || 0 : 0);
       })
       .catch(() => { if (!cancelled) setAlreadyPaid(0); })
-      .finally(() => { if (!cancelled) setPaidLoading(false); });
     return () => { cancelled = true; };
   }, [isSalaryPayoutCategory, selectedEmployee, monthKey]);
 
-  const remainingSalary = Math.max(0, employeeOylik - alreadyPaid);
-  const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && remainingSalary <= 0;
-  const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && total > remainingSalary;
+  // Chiqarish mumkin = hisoblangan oylik + o'tgan oydan qolgan − olingan.
+  const remainingSalary = Math.max(0, employeeOylik + carryOver - alreadyPaid);
+  // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) —
+  // aks holda 0 deb o'qilib, hamma to'lov rad etilgan bo'lardi.
+  const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
+  const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && total > remainingSalary;
 
   function addRow() {
     setRows((prev) => [...prev, { id: nextRowId, amount: "", month: defaultMonth() }]);
@@ -269,16 +290,38 @@ export default function CashboxAdjustDrawer({
                 value={personName}
                 onChange={setPersonName}
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : STUDENT_NAMES}
-                placeholder="Tanlang"
+                placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
+                subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
+                trailingOf={target === "employee" ? (n) => {
+                  const p = payrollOf(n);
+                  if (!p?.configured) return <span className="text-muted-foreground">Sozlanmagan</span>;
+                  return <span className="text-emerald-600">{fmtUZS(payrollEarned(p, period))}</span>;
+                } : undefined}
               />
 
               {selectedEmployee && (
                 <>
-                  <div className="text-[13px] text-muted-foreground">
-                    {isSalaryPayoutCategory
-                      ? `Qolgan oylik: ${fmtUZS(remainingSalary)} / ${fmtUZS(employeeOylik)}${paidLoading ? " …" : ""}`
-                      : `Oylik: ${fmtUZS(employeeOylik)}`}
-                  </div>
+                  {/* Xodim tanlangach — nimadan qancha chiqarish mumkinligi. */}
+                  {isSalaryPayoutCategory ? (
+                    salaryConfigured ? (
+                      <div className="text-[12.5px] text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2.5 py-2">
+                        Chiqarish mumkin: <strong>{fmtUZS(remainingSalary)}</strong>
+                        <span className="text-muted-foreground">
+                          {" "}(Jami oylik {fmtUZS(employeeOylik)}
+                          {carryOver > 0 ? ` + o'tgan oydan ${fmtUZS(carryOver)}` : ""}
+                          {" "}− olingan {fmtUZS(alreadyPaid)})
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-[12.5px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-md px-2.5 py-2">
+                        Ish haqi sozlanmagan — chegara qo&apos;llanmaydi. Xodim profilida oylikni kiriting.
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-[13px] text-muted-foreground">
+                      {salaryConfigured ? `Oylik: ${fmtUZS(employeeOylik)}` : "Ish haqi sozlanmagan"}
+                    </div>
+                  )}
                   {isSalaryPayoutCategory && salaryExhausted && (
                     <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
                       Bu oyga xodim oyligi to&apos;liq chiqarib bo&apos;lingan — keyingi oygacha qo&apos;shimcha pul chiqarib bo&apos;lmaydi.
