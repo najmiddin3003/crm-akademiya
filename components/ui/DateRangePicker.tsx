@@ -5,10 +5,10 @@ import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useLang } from "@/components/shared/Language";
 import { MONTHS, WEEKDAYS_SHORT } from "@/lib/i18n";
 
-// Qayta ishlatiladigan sana-oralig'i tanlagich (skrinshotdagi kabi): chapda
-// oy kalendari (oldinga/orqaga o'tish, oraliqni ajratib ko'rsatish), o'ngda
-// tez tanlash tugmalari (Bugun / Kecha / Bu hafta / O'tgan hafta / Bu oy /
-// O'tgan oy). Boshqariladigan (controlled): value + onChange.
+// Qayta ishlatiladigan sana-oralig'i tanlagich (referens: akademiya.edutizim.uz):
+// CHAPDA tez tanlash tugmalari (Bugun / Kecha / Bu hafta / O'tgan hafta /
+// Bu oy / O'tgan oy), o'ngda KETMA-KET IKKI OY kalendari — oraliqni ikki oy
+// orasida tanlash uchun. Boshqariladigan (controlled): value + onChange.
 
 export interface DateRange {
   start: Date | null;
@@ -69,7 +69,9 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
   const reposition = useCallback(() => {
     if (rootRef.current) {
       const r = rootRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 8, left: r.left });
+      // Panel ~720px — o'ng chekkadan chiqib ketmasligi uchun siljitamiz.
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - 736));
+      setPos({ top: r.bottom + 8, left });
     }
   }, []);
 
@@ -99,16 +101,21 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
   }
 
   // Ko'rsatiladigan oy kunlari (boshida bo'sh kataklar).
-  const cells = useMemo(() => {
-    const year = view.getFullYear();
-    const month = view.getMonth();
+  const cellsOf = (base: Date): (Date | null)[] => {
+    const year = base.getFullYear();
+    const month = base.getMonth();
     const lead = new Date(year, month, 1).getDay();
     const total = new Date(year, month + 1, 0).getDate();
     const arr: (Date | null)[] = [];
     for (let i = 0; i < lead; i++) arr.push(null);
     for (let d = 1; d <= total; d++) arr.push(new Date(year, month, d));
     return arr;
-  }, [view]);
+  };
+  // Chapda joriy oy, o'ngda keyingi oy.
+  const months = useMemo(
+    () => [view, new Date(view.getFullYear(), view.getMonth() + 1, 1)],
+    [view],
+  );
 
   // Ajratib ko'rsatish uchun oraliq (tanlash jarayonida — faqat boshi).
   const rangeStart = pendingStart ?? value.start;
@@ -149,51 +156,57 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
 
       {open && (
         <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 50 }} className="flex rounded-xl border border-border bg-card shadow-xl overflow-hidden">
-          {/* Kalendar */}
-          <div className="p-3" style={{ width: 280 }}>
-            <div className="flex items-center justify-between mb-2">
-              <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="text-[14px] font-semibold text-primary">{monthNames[view.getMonth()]} {view.getFullYear()}</div>
-              <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
-              {weekdayNames.map((w) => (
-                <div key={w} className="h-8 flex items-center justify-center text-[11px] font-medium text-muted-foreground">{w}</div>
-              ))}
-              {cells.map((day, i) => {
-                if (!day) return <div key={`e${i}`} />;
-                const isStart = sameDay(day, rangeStart);
-                const isEnd = sameDay(day, rangeEnd);
-                const inRange = !!rangeStart && !!rangeEnd && day > rangeStart && day < rangeEnd;
-                const endpoint = isStart || isEnd;
-                return (
-                  <button
-                    key={day.toISOString()}
-                    type="button"
-                    onClick={() => pickDay(day)}
-                    className={`h-9 w-9 mx-auto inline-flex items-center justify-center text-[13px] tabular-nums transition-colors ${
-                      endpoint ? "bg-primary text-white rounded-full font-semibold" : inRange ? "bg-primary/10 text-foreground rounded-md" : "text-foreground hover:bg-secondary rounded-full"
-                    }`}
-                  >
-                    {day.getDate()}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Presetlar */}
-          <div className="border-l border-border p-2 w-40 flex flex-col gap-0.5">
+          {/* Presetlar — chapda */}
+          <div className="border-r border-border p-2 w-40 flex flex-col gap-0.5 shrink-0">
             {presets().map((p) => (
               <button key={p.key} type="button" onClick={() => applyPreset(p.range())} className="w-full text-left px-3 py-2 rounded-md hover:bg-secondary text-[13px]">
                 {p.label}
               </button>
             ))}
           </div>
+
+          {/* Ketma-ket ikki oy */}
+          {months.map((mDate, idx) => (
+            <div key={`${mDate.getFullYear()}-${mDate.getMonth()}`} className={`p-3 ${idx === 1 ? "border-l border-border" : ""}`} style={{ width: 280 }}>
+              <div className="flex items-center justify-between mb-2">
+                {idx === 0 ? (
+                  <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                ) : <span className="h-7 w-7" />}
+                <div className="text-[14px] font-semibold text-primary">{monthNames[mDate.getMonth()]} {mDate.getFullYear()}</div>
+                {idx === 1 ? (
+                  <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : <span className="h-7 w-7" />}
+              </div>
+              <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+                {weekdayNames.map((w) => (
+                  <div key={w} className="h-8 flex items-center justify-center text-[11px] font-medium text-muted-foreground">{w}</div>
+                ))}
+                {cellsOf(mDate).map((day, i) => {
+                  if (!day) return <div key={`e${idx}-${i}`} />;
+                  const isStart = sameDay(day, rangeStart);
+                  const isEnd = sameDay(day, rangeEnd);
+                  const inRange = !!rangeStart && !!rangeEnd && day > rangeStart && day < rangeEnd;
+                  const endpoint = isStart || isEnd;
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      type="button"
+                      onClick={() => pickDay(day)}
+                      className={`h-9 w-9 mx-auto inline-flex items-center justify-center text-[13px] tabular-nums transition-colors ${
+                        endpoint ? "bg-primary text-white rounded-full font-semibold" : inRange ? "bg-primary/10 text-foreground rounded-md" : "text-foreground hover:bg-secondary rounded-full"
+                      }`}
+                    >
+                      {day.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

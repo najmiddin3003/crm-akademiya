@@ -14,13 +14,20 @@ import AddOrderModal, { type NewOrderValues } from "@/components/orders/AddOrder
 import OrderMessagePanel from "@/components/orders/OrderMessagePanel";
 import { useOrders } from "@/components/orders/OrdersContext";
 import { useToast } from "@/components/ui/Toast";
+import DateRangePicker from "@/components/ui/DateRangePicker";
+import DateField from "@/components/ui/DateField";
+import { useBranches } from "@/hooks/useBranches";
+import { useTeachers } from "@/hooks/useTeachers";
+import { STUDENT_CATEGORIES } from "@/constants";
+import type { Group } from "@/lib/groups";
+import type { HrEmployee } from "@/lib/hrEmployees";
 import {
   applyOrdersFilters,
-  CATEGORIES,
   EMPTY_ORDERS_FILTERS,
+  ORDER_SOURCES,
+  ORDER_STAGES,
+  STATUSES,
   SUBCOURSES,
-  SURVEYS,
-  SUBSOURCES,
   WEEKDAY_NAMES,
   type Order,
   type OrderStageKey,
@@ -37,8 +44,24 @@ import { Menu } from "lucide-react";
 // - the 3-dot menu's Import and "Ko'p tanlovli funksiya" actions are stubs
 //   (close the menu, no-op) — everything else in that menu is wired.
 // - the never-wired date-range popover + stray single date input from the
-//   source are replaced with two functional date inputs (same treatment as
-//   the Tasks page's date range).
+//   source are replaced with a real range picker + a single-date field.
+//
+// Filtr maydonlarining manbalari (referens: akademiya.edutizim.uz):
+//   Qidiruv      — buyurtmaning hamma maydoni bo'yicha (lib/ordersData.ts)
+//   Sana         — ikki oylik oraliq tanlagich + tez tanlash (Bugun, Kecha…)
+//   Birinchi dars— yakka sana (components/ui/DateField.tsx)
+//   Holatlar     — STATUSES
+//   Kurs         — /api/offline-courses + buyurtmalarda uchraganlari
+//   Ichki kurs   — referensda ham O'CHIRILGAN (disabled)
+//   Guruh        — /api/groups
+//   O'qituvchi   — /api/teachers
+//   Moderator    — /api/hr-employees (turi: "moderator")
+//   Status       — ORDER_STAGES (lid voronkasi bosqichlari, emoji bilan)
+//   Manba        — ORDER_SOURCES (hozircha qo'lda; README'ga qarang)
+//   Ichki manba / So'rovnoma — referensda ham bo'sh
+//   Filiallar    — /api/branches
+//   Kun          — hafta kunlari
+//   Kategoriya   — STUDENT_CATEGORIES
 
 type Layout = "list" | "kanban";
 
@@ -122,15 +145,52 @@ export default function OrdersPage() {
 
   const filtered = useMemo(() => applyOrdersFilters(orders, filters), [orders, filters]);
 
-  const courseOptions = useMemo(() => Array.from(new Set(orders.map((o) => o.course).filter(Boolean))).sort(), [orders]);
-  const teacherOptions = useMemo(() => Array.from(new Set(orders.map((o) => o.teacher).filter(Boolean))).sort(), [orders]);
-  const moderatorOptions = useMemo(() => Array.from(new Set(orders.map((o) => o.moderator).filter(Boolean))).sort(), [orders]);
-  const statusOptions = useMemo(() => Array.from(new Set(orders.map((o) => o.status).filter(Boolean))).sort(), [orders]);
-  const sourceOptions = useMemo(() => Array.from(new Set(orders.map((o) => o.source).filter(Boolean))).sort(), [orders]);
-  const branchOptions = useMemo(
-    () => Array.from(new Set(orders.flatMap((o) => [o.fromBranch, o.toBranch]).filter(Boolean))).sort(),
-    [orders],
+  // --- Filtr ro'yxatlari bazadan ---
+  const { branches } = useBranches();
+  const { names: teacherOptions } = useTeachers();
+  const [dbCourses, setDbCourses] = useState<string[]>([]);
+  const [dbGroups, setDbGroups] = useState<Group[]>([]);
+  const [dbEmployees, setDbEmployees] = useState<HrEmployee[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/offline-courses").then((r) => r.json()).catch(() => null),
+      fetch("/api/groups").then((r) => r.json()).catch(() => null),
+      fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
+    ]).then(([c, g, e]) => {
+      if (cancelled) return;
+      if (c?.ok) setDbCourses((c.courses as { name: string }[]).map((x) => x.name));
+      if (g?.ok) setDbGroups(g.groups);
+      if (e?.ok) setDbEmployees(e.employees);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Kurslar — bazadagi kurslar VA buyurtmalarda haqiqatda uchragan kurslar
+  // birlashmasi: kurs ro'yxati hali to'ldirilmagan bo'lsa ham filtr ishlaydi.
+  const courseOptions = useMemo(
+    () => Array.from(new Set([...dbCourses, ...orders.map((o) => o.course)].filter(Boolean))).sort(),
+    [dbCourses, orders],
   );
+  const groupOptions = useMemo(
+    () => Array.from(new Set(dbGroups.map((g) => g.name || String(g.id)).filter(Boolean))).sort(),
+    [dbGroups],
+  );
+  const moderatorOptions = useMemo(
+    () => dbEmployees.filter((e) => e.turi === "moderator" && !e.archReason).map((e) => e.name).sort(),
+    [dbEmployees],
+  );
+  const branchOptions = useMemo(() => branches.map((b) => b.name), [branches]);
+
+  // Sana oralig'i tanlagichi Date bilan ishlaydi, filtr esa "YYYY-MM-DD" bilan.
+  const toIso = (d: Date) => {
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+  const fromIso = (s: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  };
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -383,27 +443,26 @@ export default function OrdersPage() {
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
                 type="text"
-                placeholder="Qidiruv (ism, telefon, ID)"
+                placeholder="Qidiruv"
                 className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           )}
           {visibleFields.from && (
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(e) => setFilter("from", e.target.value)}
-              title="Boshlanish sanasi"
-              className="h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            <DateRangePicker
+              placeholder="Sana"
+              value={{ start: fromIso(filters.from), end: fromIso(filters.to) }}
+              onChange={(r) => {
+                setFilters((f) => ({ ...f, from: r.start ? toIso(r.start) : "", to: r.end ? toIso(r.end) : "" }));
+                setPage(1);
+              }}
             />
           )}
           {visibleFields.to && (
-            <input
-              type="date"
-              value={filters.to}
-              onChange={(e) => setFilter("to", e.target.value)}
-              title="Tugash sanasi"
-              className="h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            <DateField
+              value={filters.firstLessonDate}
+              onChange={(iso) => setFilter("firstLessonDate", iso)}
+              placeholder="Birinchi dars sanasi"
             />
           )}
           {visibleFields.status1 && (
@@ -413,7 +472,7 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Holatlar</option>
-              {statusOptions.map((s) => (
+              {STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -435,10 +494,14 @@ export default function OrdersPage() {
             </select>
           )}
           {visibleFields.subcourse && (
+            /* Referensda ham bu maydon o'chirilgan (disabled) — ichki kurs
+               ro'yxati hali hech qayerdan kelmaydi. */
             <select
               value={filters.subcourse}
               onChange={(e) => setFilter("subcourse", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              disabled
+              title="Hozircha mavjud emas"
+              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-secondary/40 px-3 pr-8 text-sm text-muted-foreground cursor-not-allowed focus:outline-none"
             >
               <option value="">Ichki kurs</option>
               {SUBCOURSES.map((s) => (
@@ -455,6 +518,11 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Guruh</option>
+              {groupOptions.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
             </select>
           )}
           {visibleFields.teacher && (
@@ -492,9 +560,9 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Status</option>
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {ORDER_STAGES.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.emoji} {s.label}
                 </option>
               ))}
             </select>
@@ -506,7 +574,7 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Manba</option>
-              {sourceOptions.map((s) => (
+              {ORDER_SOURCES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -519,12 +587,8 @@ export default function OrdersPage() {
               onChange={(e) => setFilter("subsource", e.target.value)}
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
+              {/* Referensda ham ro'yxat bo'sh — ichki manba hali yuritilmaydi. */}
               <option value="">Ichki manba</option>
-              {SUBSOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
             </select>
           )}
           {visibleFields.fromBranch && (
@@ -577,12 +641,8 @@ export default function OrdersPage() {
               onChange={(e) => setFilter("survey", e.target.value)}
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
+              {/* Referensda ham ro'yxat bo'sh. */}
               <option value="">So&apos;rovnoma</option>
-              {SURVEYS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
             </select>
           )}
           {visibleFields.category && (
@@ -592,7 +652,7 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Kategoriya</option>
-              {CATEGORIES.map((c) => (
+              {STUDENT_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

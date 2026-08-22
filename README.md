@@ -11,8 +11,32 @@ npm run dev
 
 `.env.local` da kerak: `MONGODB_URI`, `MONGODB_DB` (standart — `crm_akademiya`).
 
-Kolleksiya indekslari `lib/mongodb.ts` dagi `ensureIndexes()` da bir marta yaratiladi.
-Ro'yxatlar bo'sh bo'lsa `constants/*.js` dagi seed'lardan to'ldiriladi.
+Kolleksiya indekslari `lib/mongodb.ts` dagi `ensureIndexes()` da bir marta
+yaratiladi.
+
+**Demo seed YO'Q.** Ilgari har bir `app/api/*/route.ts` "kolleksiya bo'sh
+bo'lsa demo bilan to'ldir" qilardi — bu olib tashlandi. Har bir ro'yxat bo'sh
+holatdan boshlanadi. Test uchun `scripts/seed-test-*.js` skriptlari bor
+(o'quvchilar, o'qituvchilar, guruhlar, moderatorlar).
+
+## Keyinchalik qilinadigan ishlar
+
+### Buyurtma MANBASI qayerdan kelishi (2026-08-22)
+
+Buyurtmalar ro'yxatidagi **Manba** filtrida referens saytda quyidagi qiymatlar
+turadi: `bot`, `interface`, `kommo`, `survey`, `tilda`.
+
+Bular hech qaysi sozlamalar sahifasidan boshqarilmaydi — lid qaysi KANALDAN
+tushganini bildiradi (Telegram bot, CRM interfeysi, Kommo integratsiyasi,
+so'rovnoma, Tilda sayti). Ya'ni ular tashqi integratsiyalar bilan birga
+keladi.
+
+Hozircha `lib/ordersData.ts` dagi `ORDER_SOURCES` da QO'LDA yozib qo'yilgan.
+Integratsiyalar ulanganda bu ro'yxat o'sha manbadan (yoki sozlamalar
+ro'yxatidan) olinishi kerak.
+
+Xuddi shunday hali bo'sh: **Ichki manba** va **So'rovnoma** filtrlari —
+referensda ham ular bo'sh (ma'lumot manbai yo'q).
 
 ---
 

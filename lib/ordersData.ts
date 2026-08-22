@@ -8,6 +8,30 @@ import { MANAGEMENT_BRANCH_NAMES } from "@/constants/managementBranches";
 
 export type OrderStageKey = "bir_oylay" | "jaylang_e" | "rahmaaaat" | "ketdim";
 
+/**
+ * "Birinchi darsga yozilganlar" sahifasidagi HOLAT — buyurtmaning o'z
+ * `status`idan alohida. Lid birinchi darsga yozilgandan keyin shu yerda
+ * kuzatiladi: eslatildimi, keldimi, kelmadimi, guruhga qo'shildimi...
+ */
+export type FirstLessonStatus =
+  | "YOZILDI" | "ESLATILDI" | "KELDI" | "KELMADI"
+  | "QAYTA_BELGILANDI" | "GURUHGA_QOSHILDI" | "RAD_ETDI" | "ALOQA_KERAK";
+
+export const FIRST_LESSON_STATUSES: { value: FirstLessonStatus; label: string }[] = [
+  { value: "YOZILDI", label: "Yozildi" },
+  { value: "ESLATILDI", label: "Eslatildi" },
+  { value: "KELDI", label: "Keldi" },
+  { value: "KELMADI", label: "Kelmadi" },
+  { value: "QAYTA_BELGILANDI", label: "Qayta belgilandi" },
+  { value: "GURUHGA_QOSHILDI", label: "Guruhga qo'shildi" },
+  { value: "RAD_ETDI", label: "Rad etdi" },
+  { value: "ALOQA_KERAK", label: "Aloqa kerak" },
+];
+
+export function firstLessonStatusLabel(v: string | undefined): string {
+  return FIRST_LESSON_STATUSES.find((s) => s.value === v)?.label ?? "";
+}
+
 export interface Order {
   id: number;
   name: string;
@@ -35,6 +59,8 @@ export interface Order {
   referral: string;
   lessonDay: string;
   lessonStartTime: string;
+  /** Birinchi darsga yozilganlar sahifasidagi holat. Kiritilmagan bo'lishi mumkin. */
+  firstLessonStatus?: FirstLessonStatus;
 }
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];
@@ -50,8 +76,16 @@ const LEVELS = ["1-bosqich","2-bosqich","3-bosqich","5-bosqich (CEFR / IELTS)","
 export const MODERATORS = ["Dilmurod Komilov","Nilufar Sharipova","Abdulloh Raxmatullayev"];
 const PREFIX = ["90","91","93","94","95","97","98","99","88"];
 
-export const STATUSES = ["Yangi", "Qabul qilindi", "Kelmoqda", "Kutilmoqda", "Bekor qilindi", "Yakunlandi", "O'tkazildi"];
-const SOURCES = ["Instagram", "Telegram", "Tanish", "Facebook", "YouTube", "Sayt"];
+// Buyurtma HOLATLARI — referensdagi (akademiya.edutizim.uz) ro'yxat bilan
+// bir xil so'z shakllarida.
+export const STATUSES = ["Yangi", "Qabul qilingan", "Kelmoqda", "Kutilmoqda", "Bekor qilingan", "Yakunlangan", "O'tkazilgan"];
+
+// Buyurtma MANBALARI. Referensda bu qiymatlar boshqa tizimdan (bot / sayt
+// integratsiyasi) keladi — bizda hali o'sha manba ulanmagan, shu bois
+// hozircha qo'lda yozilgan. README dagi "Keyinchalik qilinadigan ishlar"ga
+// qarang.
+export const ORDER_SOURCES = ["bot", "interface", "kommo", "survey", "tilda"];
+const SOURCES = ORDER_SOURCES;
 export const SUBSOURCES = ["Reklama", "Post", "Story", "Taklif", "Boshqa"];
 // Filial nomlari Boshqaruv → Filiallar bilan BIR XIL manbadan
 // (constants/managementBranches.js). Bu funksiya sinxron va klient
@@ -286,6 +320,8 @@ export function buildOrderFromValues(nextId: number, values: NewOrderValues): Or
     note: values.note,
     created,
     firstLesson: firstLessonFromValues(values),
+    // Birinchi dars belgilangan bo'lsa lid darhol "Yozildi" holatida boshlanadi.
+    firstLessonStatus: values.firstLessonDate ? "YOZILDI" : undefined,
     level: "",
     group: values.group,
     isNew: true,
@@ -335,14 +371,17 @@ export interface OrdersFilters {
   survey: string;
   category: string;
   search: string;
+  /** "Yaratilgan sanasi" oralig'i (Sana tanlagichi). */
   from: string;
   to: string;
+  /** Birinchi darsga kelish sanasi (alohida yakka sana maydoni). */
+  firstLessonDate: string;
 }
 
 export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
   course: "", subcourse: "", group: "", teacher: "", moderator: "", status: "", status1: "",
   source: "", subsource: "", fromBranch: "", toBranch: "", day: "", survey: "", category: "",
-  search: "", from: "", to: "",
+  search: "", from: "", to: "", firstLessonDate: "",
 };
 
 function parseCreated(s: string): Date | null {
@@ -362,7 +401,9 @@ export function applyOrdersFilters(items: Order[], f: OrdersFilters): Order[] {
   if (f.group) res = res.filter((o) => o.group === f.group);
   if (f.teacher) res = res.filter((o) => o.teacher === f.teacher);
   if (f.moderator) res = res.filter((o) => o.moderator === f.moderator);
-  if (f.status) res = res.filter((o) => o.status === f.status);
+  // "Status" — lid voronkasidagi BOSQICH (ORDER_STAGES), "Holatlar" esa
+  // buyurtmaning o'z holati (STATUSES). Referensda ham shunday ikki xil.
+  if (f.status) res = res.filter((o) => o.stage === f.status);
   if (f.status1) res = res.filter((o) => o.status === f.status1);
   if (f.source) res = res.filter((o) => o.source === f.source);
   if (f.subsource) res = res.filter((o) => o.subsource === f.subsource);
@@ -393,11 +434,26 @@ export function applyOrdersFilters(items: Order[], f: OrdersFilters): Order[] {
     });
   }
 
+  if (f.firstLessonDate) {
+    // `firstLesson` — "DD.MM.YYYY | HH:mm" ko'rinishida saqlanadi.
+    const [y, m, d] = f.firstLessonDate.split("-");
+    const wanted = `${d}.${m}.${y}`;
+    res = res.filter((o) => (o.firstLesson || "").startsWith(wanted));
+  }
+
   if (f.search) {
     const q = f.search.trim().toLowerCase();
     if (q) {
       res = res.filter((o) => {
-        const hay = [o.name, o.phone, String(o.id), o.course, o.teacher, o.moderator].join(" ").toLowerCase();
+        // Qidiruv buyurtmaning HAMMA ko'rinadigan maydoni bo'yicha: ism,
+        // telefon, ID, kurs, guruh, o'qituvchi, moderator, holat, manba,
+        // filial, kategoriya, izoh va h.k.
+        const hay = [
+          o.name, o.phone, String(o.id), o.course, o.subcourse, o.level,
+          o.group, o.teacher, o.moderator, o.status, o.source, o.subsource,
+          o.fromBranch, o.toBranch, o.category, o.survey, o.note,
+          o.lessonDay, o.created, o.firstLesson,
+        ].join(" ").toLowerCase();
         return hay.includes(q);
       });
     }
