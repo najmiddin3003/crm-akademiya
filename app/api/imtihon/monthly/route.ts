@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { buildMonthlySeed, sanitizeMonthly, type MonthlyExam } from "@/lib/imtihon";
+import { sanitizeMonthly, type MonthlyExam } from "@/lib/imtihon";
 
 // Imtihon → Oylik imtihon backend'i (MongoDB `monthly_exams`).
-// Kolleksiya bo'sh bo'lsa — referensdagi demo natijalar bir marta seed qilinadi.
-
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(buildMonthlySeed().map((r) => ({ ...r })));
-  }
-}
+// Demo seed YO'Q — natijalar faqat kiritilganda paydo bo'ladi.
 
 async function readAll(col: Collection): Promise<MonthlyExam[]> {
   const rows = await col.find({}).sort({ id: 1 }).toArray();
@@ -20,7 +14,6 @@ async function readAll(col: Collection): Promise<MonthlyExam[]> {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("monthly_exams");
-  await seedIfEmpty(col);
   return NextResponse.json({ ok: true, exams: await readAll(col) });
 }
 
@@ -46,7 +39,6 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
   const col = db.collection("monthly_exams");
-  await seedIfEmpty(col);
 
   const existing = await readAll(col);
   let nextId = Math.max(0, ...existing.map((r) => r.id)) + 1;

@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { TRANSACTION_ENTRY_SEED } from "@/constants/transactionEntries";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 
 // Moliya → Tranzaksiyalar backend'i (MongoDB `transaction_entries`, faqat
-// o'qish uchun — bu sahifada qo'shish/tahrirlash/o'chirish yo'q). Bo'sh
-// bo'lsa demo tranzaksiyalarni (foydalanuvchi bilan kelishilgan yengil
-// qamrov — ~28 ta) bir marta seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(TRANSACTION_ENTRY_SEED)));
-  }
-}
-
+// o'qish uchun — bu sahifada qo'shish/tahrirlash/o'chirish yo'q). Demo seed
+// YO'Q — yozuvlar kassa amallaridan (Kirim/Chiqim) kelib chiqadi.
 const TX_TYPES = ["payIn", "payOut", "transfer"];
 
 /** Foydalanuvchi kiritgan matnni $regex ichiga xavfsiz qo'yish uchun. */
@@ -41,7 +32,6 @@ function nameFilter(value: string) {
 export async function GET(req: Request) {
   const db = await ensureIndexes();
   const col = db.collection("transaction_entries");
-  await seedIfEmpty(col);
 
   const sp = new URL(req.url).searchParams;
   const filter: Record<string, unknown> = {};

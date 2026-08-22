@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { SEASONAL_ASSESSMENT_SEED } from "@/constants/seasonalAssessments";
 import type { SeasonalAssessment, SeasonalAssessmentEntry } from "@/lib/seasonalAssessments";
 
 // O'quv bo'limi → Mavsumiy baholash backend'i (MongoDB `seasonal_assessments`).
-// Bo'sh bo'lsa demo baholarni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(SEASONAL_ASSESSMENT_SEED)));
-  }
-}
-
+// Demo seed YO'Q — baholarni foydalanuvchi o'zi kiritadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("seasonal_assessments");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const assessments = rows.map(({ _id, ...rest }) => rest as unknown as SeasonalAssessment);
   return NextResponse.json({ ok: true, assessments });

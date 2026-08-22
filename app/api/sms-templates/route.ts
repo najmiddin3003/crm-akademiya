@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { SMS_TEMPLATE_SEED } from "@/constants/smsTemplates";
 import type { SmsTemplate } from "@/lib/smsTemplates";
 
 // Sotuv va marketing → SMS shablonlari backend'i (MongoDB `sms_templates`).
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(SMS_TEMPLATE_SEED)));
-  }
-}
-
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("sms_templates");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const templates = rows.map(({ _id, ...rest }) => rest as unknown as SmsTemplate);
   return NextResponse.json({ ok: true, templates });

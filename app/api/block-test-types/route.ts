@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { BLOCK_TEST_TYPE_SEED } from "@/constants/blockTest";
 import type { BlockTestType, BlockTestSubject } from "@/lib/blockTestTypes";
 
 // Blok test turlari backend'i (MongoDB `block_test_types`).
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0 && BLOCK_TEST_TYPE_SEED.length > 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(BLOCK_TEST_TYPE_SEED)));
-  }
-}
-
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -30,7 +22,6 @@ function normalizeSubjects(input: unknown): BlockTestSubject[] {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("block_test_types");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const types = rows.map(({ _id, ...rest }) => rest as unknown as BlockTestType);
   return NextResponse.json({ ok: true, types });

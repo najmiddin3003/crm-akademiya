@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
 import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { buildUzbmbSeed, sanitizeUzbmb, type UzbmbExam } from "@/lib/imtihon";
+import { sanitizeUzbmb, type UzbmbExam } from "@/lib/imtihon";
 
 // Imtihon → UzBMB backend'i (MongoDB `uzbmb_exams`).
 // Ballar serverda qayta hisoblanadi (`sanitizeUzbmb` → `ubCalc`), shuning
 // uchun mijozdan kelgan `total` ga ishonilmaydi.
-
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(buildUzbmbSeed().map((r) => ({ ...r })));
-  }
-}
 
 async function readAll(col: Collection): Promise<UzbmbExam[]> {
   const rows = await col.find({}).sort({ id: 1 }).toArray();
@@ -21,7 +15,6 @@ async function readAll(col: Collection): Promise<UzbmbExam[]> {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("uzbmb_exams");
-  await seedIfEmpty(col);
   return NextResponse.json({ ok: true, exams: await readAll(col) });
 }
 
@@ -45,7 +38,6 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
   const col = db.collection("uzbmb_exams");
-  await seedIfEmpty(col);
 
   const existing = await readAll(col);
   let nextId = Math.max(0, ...existing.map((r) => r.id)) + 1;

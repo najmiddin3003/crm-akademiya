@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { EDU_CATEGORY_SEED } from "@/constants/eduCategories";
 import type { EduCategory } from "@/lib/eduCategories";
 
-// O'quv bo'limi → Kategoriya backend'i (MongoDB `edu_categories`). Bo'sh
-// bo'lsa demo kategoriyani seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(EDU_CATEGORY_SEED)));
-  }
-}
-
+// O'quv bo'limi → Kategoriya backend'i (MongoDB `edu_categories`). Demo seed
+// YO'Q — kategoriyalarni foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("edu_categories");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const categories = rows.map(({ _id, ...rest }) => rest as unknown as EduCategory);
   return NextResponse.json({ ok: true, categories });

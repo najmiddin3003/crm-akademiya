@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { CONTRACT_SEED } from "@/constants/contracts";
 import type { Contract } from "@/lib/contracts";
 
-// O'quv bo'limi → Shartnoma backend'i (MongoDB `contracts`). Bo'sh bo'lsa
-// demo shartnomani seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(CONTRACT_SEED)));
-  }
-}
-
+// O'quv bo'limi → Shartnoma backend'i (MongoDB `contracts`). Demo seed YO'Q —
+// kolleksiya bo'sh bo'lsa ro'yxat ham bo'sh qaytadi.
 function todayUz(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -21,7 +13,6 @@ function todayUz(): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("contracts");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const contracts = rows.map(({ _id, ...rest }) => rest as unknown as Contract);
   return NextResponse.json({ ok: true, contracts });

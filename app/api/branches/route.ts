@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { MANAGEMENT_BRANCH_SEED } from "@/constants/managementBranches";
 import type { ManagementBranch } from "@/lib/managementBranches";
 
-// Boshqaruv → Filiallar backend'i (MongoDB `branches`). Bo'sh bo'lsa demo
-// filiallarni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(MANAGEMENT_BRANCH_SEED)));
-  }
-}
-
+// Boshqaruv → Filiallar backend'i (MongoDB `branches`). Demo seed YO'Q —
+// filiallarni foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("branches");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const branches = rows.map(({ _id, ...rest }) => rest as unknown as ManagementBranch);
   return NextResponse.json({ ok: true, branches });

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { OFFLINE_COURSES } from "@/constants/offlineCourses";
 import type { CourseBranch, OfflineCourse } from "@/components/offline-courses/OfflineCoursesProvider";
 
 // Oflayn kurslar backend'i (MongoDB `offline_courses` kolleksiyasi).
@@ -9,20 +7,10 @@ import type { CourseBranch, OfflineCourse } from "@/components/offline-courses/O
 // levels:[{id,name,color,branches:[{id,name,enabled,summa}]}] }.
 // Darajalar hujjat ichida (embedded) saqlanadi.
 
-// Kolleksiya bo'sh bo'lsa — 16 ta standart kursni bir marta seed qilamiz
-// (constants/offlineCourses.js dan). Shunda backendga ulangач ro'yxat bo'sh
-// chiqmaydi. (Barcha kurslar o'chirilsa keyingi GET'da qayta seed bo'ladi — bu
-// demo uchun kutilgan xatti-harakat.)
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(OFFLINE_COURSES)));
-  }
-}
-
+// Demo seed YO'Q — kurslarni foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("offline_courses");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const courses = rows.map(({ _id, ...rest }) => rest as unknown as OfflineCourse);
   return NextResponse.json({ ok: true, courses });

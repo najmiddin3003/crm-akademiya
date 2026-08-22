@@ -1,39 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { CONTRACT_SEED } from "@/constants/financeContracts";
-import { EMPLOYEES_DATA } from "@/constants/employees";
-import { createInitialOrders } from "@/lib/ordersData";
-import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
+import type { FinanceContract } from "@/lib/financeContracts";
 
-// Moliya → Shartnoma backend'i (MongoDB `finance_contracts`). Bo'sh bo'lsa
-// CONTRACT_SEED'ni to'liq FinanceContract'ga aylantirib (studentName/
-// moderatorName createInitialOrders()/EMPLOYEES_DATA'dan topiladi) seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) > 0) return;
-  const orders = createInitialOrders();
-  const seeded: FinanceContract[] = CONTRACT_SEED.map((s, i) => {
-    const order = orders.find((o) => o.id === s.studentOrderId);
-    const moderator = EMPLOYEES_DATA.find((e) => e.id === s.moderatorId);
-    return {
-      id: i + 1,
-      studentOrderId: s.studentOrderId,
-      studentName: order?.name ?? "—",
-      moderatorId: s.moderatorId,
-      moderatorName: moderator?.name ?? "—",
-      comment: s.comment,
-      archived: s.archived,
-      createdAt: s.createdAt,
-      parts: s.parts as ContractPart[],
-    };
-  });
-  await col.insertMany(JSON.parse(JSON.stringify(seeded)));
-}
-
+// Moliya → Shartnoma backend'i (MongoDB `finance_contracts`). Demo seed YO'Q —
+// shartnomalar faqat foydalanuvchi qo'shganda paydo bo'ladi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("finance_contracts");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const contracts = rows.map(({ _id, ...rest }) => rest as unknown as FinanceContract);
   return NextResponse.json({ ok: true, contracts });

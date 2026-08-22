@@ -1,28 +1,6 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import {
-  REASONS_SEED,
-  PAYMENT_METHODS_SEED,
-  PARTNERS_SEED,
-  HOLIDAYS_SEED,
-  THIRD_PERSONS_SEED,
-  MONTHLY_PERCENTS_SEED,
-  ASSESSMENT_LEVELS_SEED,
-  ACTIVITIES_SEED,
-  DEGREES_MANAGER_SEED,
-  DEGREES_TEACHER_SEED,
-  HASHTAGS_SEED,
-  STUDENT_CATEGORIES_SEED,
-  SMS_DEVICES_SEED,
-  LEAD_COLORS_SEED,
-} from "@/constants/settingsLists";
-import {
-  SETTINGS_LIST_KINDS,
-  pickListFields,
-  type SettingsListItem,
-  type SettingsListKind,
-} from "@/lib/settingsLists";
+import { SETTINGS_LIST_KINDS, pickListFields, type SettingsListItem, type SettingsListKind } from "@/lib/settingsLists";
 import { slugifyMethod } from "@/lib/paymentMethods";
 
 // Sozlamalar ro'yxatlari backend'i — `?kind=` bilan barcha oddiy CRUD
@@ -30,34 +8,8 @@ import { slugifyMethod } from "@/lib/paymentMethods";
 // grading tizimi, Hashtag …). Hammasi bir xil shaklda bo'lgani uchun
 // har biriga alohida route yozilmadi.
 
-const SEEDS: Record<SettingsListKind, unknown[]> = {
-  reasons: REASONS_SEED,
-  "payment-methods": PAYMENT_METHODS_SEED,
-  partners: PARTNERS_SEED,
-  holidays: HOLIDAYS_SEED,
-  "third-persons": THIRD_PERSONS_SEED,
-  "monthly-percents": MONTHLY_PERCENTS_SEED,
-  "assessment-levels": ASSESSMENT_LEVELS_SEED,
-  activities: ACTIVITIES_SEED,
-  "degrees-manager": DEGREES_MANAGER_SEED,
-  "degrees-teacher": DEGREES_TEACHER_SEED,
-  hashtags: HASHTAGS_SEED,
-  "student-categories": STUDENT_CATEGORIES_SEED,
-  "sms-devices": SMS_DEVICES_SEED,
-  "lead-colors": LEAD_COLORS_SEED,
-};
-
 function isKind(v: string | null): v is SettingsListKind {
   return !!v && v in SETTINGS_LIST_KINDS;
-}
-
-async function seedIfEmpty(col: Collection, kind: SettingsListKind) {
-  const seed = SEEDS[kind];
-  // Seed bo'sh bo'lishi mumkin (masalan Bayram kunlari) — insertMany([])
-  // MongoDB'da xato beradi, shuning uchun oldindan tekshiramiz.
-  if (seed.length > 0 && (await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(seed)));
-  }
 }
 
 export async function GET(req: Request) {
@@ -70,7 +22,6 @@ export async function GET(req: Request) {
   }
   const db = await ensureIndexes();
   const col = db.collection(SETTINGS_LIST_KINDS[kind]);
-  await seedIfEmpty(col, kind);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const items = rows.map(({ _id, ...rest }) => rest as unknown as SettingsListItem);
   return NextResponse.json({ ok: true, items });

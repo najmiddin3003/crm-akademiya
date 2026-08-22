@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { ROLE_SEED } from "@/constants/roles";
 import type { Role } from "@/lib/roles";
 
-// Boshqaruv → Rollar backend'i (MongoDB `roles`). Bo'sh bo'lsa demo
-// rollarni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(ROLE_SEED)));
-  }
-}
-
+// Boshqaruv → Rollar backend'i (MongoDB `roles`). Demo seed YO'Q — rollarni
+// foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("roles");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const roles = rows.map(({ _id, ...rest }) => rest as unknown as Role);
   return NextResponse.json({ ok: true, roles });

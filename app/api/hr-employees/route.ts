@@ -1,26 +1,11 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { EMPLOYEES_DATA } from "@/constants/employees";
 import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
-import {
-  isValidPhone,
-  issueCode,
-  generateToken,
-  activationMessage,
-  sendSms,
-  normalizePhone,
-  INVITE_TTL_MS,
-} from "@/lib/invite";
+import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
-// Kolleksiya bo'sh bo'lsa — 49 ta demo xodimni bir marta seed qilamiz.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(EMPLOYEES_DATA)));
-  }
-}
-
+// Demo seed YO'Q — xodimlar faqat qo'shilganda (yoki scripts/seed-test-*
+// skriptlari orqali) paydo bo'ladi; ro'yxat bo'sh bo'lishi mumkin.
 // sanitizeAssignments lib/hrEmployees.ts ga ko'chirildi — PATCH route ham
 // aynan shu tozalagichdan foydalanadi.
 
@@ -32,7 +17,6 @@ function fmtNow(d: Date): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("hr_employees");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   // `archDate` ("Sana" ustuni) keyin qo'shilgan — eski hujjatlarda yo'q,
   // shuning uchun bo'sh satrga to'ldiramiz (jadval `undefined` olmasligi uchun).

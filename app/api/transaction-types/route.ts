@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { TRANSACTION_TYPE_SEED } from "@/constants/transactionTypes";
 import type { TransactionType } from "@/lib/transactionTypes";
 
-// Moliya → Tranzaksiya turi backend'i (MongoDB `transaction_types`). Bo'sh
-// bo'lsa manba skrinshotidagi 26 ta demo turini seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(TRANSACTION_TYPE_SEED)));
-  }
-}
-
+// Moliya → Tranzaksiya turi backend'i (MongoDB `transaction_types`). Demo
+// seed YO'Q — turlarni foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("transaction_types");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const types = rows.map(({ _id, ...rest }) => rest as unknown as TransactionType);
   return NextResponse.json({ ok: true, types });

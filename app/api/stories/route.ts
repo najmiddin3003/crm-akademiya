@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { STORY_SEED } from "@/constants/stories";
 import type { Story } from "@/lib/stories";
 
 // Sotuv va marketing → Hikoya backend'i (MongoDB `stories`).
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(STORY_SEED)));
-  }
-}
-
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -19,7 +11,6 @@ function fmtNow(d: Date): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("stories");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const stories = rows.map(({ _id, ...rest }) => rest as unknown as Story);
   return NextResponse.json({ ok: true, stories });

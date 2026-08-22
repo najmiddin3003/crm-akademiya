@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { BLOCK_TEST_EXAM_SEED } from "@/constants/blockTest";
 import type { BlockTestExam } from "@/lib/blockTestExams";
 
 // Blok testlar backend'i (MongoDB `block_test_exams`).
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0 && BLOCK_TEST_EXAM_SEED.length > 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(BLOCK_TEST_EXAM_SEED)));
-  }
-}
-
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -24,7 +16,6 @@ function toIdArray(input: unknown): number[] {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("block_test_exams");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const exams = rows.map(({ _id, ...rest }) => rest as unknown as BlockTestExam);
   return NextResponse.json({ ok: true, exams });

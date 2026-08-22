@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { ROOM_SEED } from "@/constants/rooms";
 import type { Room } from "@/lib/rooms";
 
-// Xonalar backend'i (MongoDB `rooms`). Bo'sh bo'lsa demo xonalarni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(ROOM_SEED)));
-  }
-}
-
+// Xonalar backend'i (MongoDB `rooms`). Demo seed YO'Q — xonalarni
+// foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("rooms");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const rooms = rows.map(({ _id, ...rest }) => rest as unknown as Room);
   return NextResponse.json({ ok: true, rooms });

@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { SURVEY_SEED } from "@/constants/surveys";
 import type { Survey } from "@/lib/surveys";
 
 // Sotuv va marketing → Marketing (so'rovnomalar) backend'i
-// (MongoDB `surveys`). Bo'sh bo'lsa 4 ta demo manbani seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(SURVEY_SEED)));
-  }
-}
-
+// (MongoDB `surveys`). Demo seed YO'Q — manbalarni foydalanuvchi qo'shadi.
 // Keyingi kod: mavjud "s26" ko'rinishidagi kodlarning eng kattasidan +1.
 function nextCode(existing: string[]): string {
   const max = existing.reduce((acc, c) => {
@@ -24,7 +16,6 @@ function nextCode(existing: string[]): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("surveys");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const surveys = rows.map(({ _id, ...rest }) => rest as unknown as Survey);
   return NextResponse.json({ ok: true, surveys });

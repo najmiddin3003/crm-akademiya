@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { WORK_SCHEDULE_SEED } from "@/constants/workSchedules";
 import type { WorkSchedule } from "@/lib/workSchedules";
 
-// Boshqaruv → Ish jadvali backend'i (MongoDB `work_schedules`). Bo'sh bo'lsa
-// demo rejimlarni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(WORK_SCHEDULE_SEED)));
-  }
-}
-
+// Boshqaruv → Ish jadvali backend'i (MongoDB `work_schedules`). Demo seed
+// YO'Q — jadvallarni foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("work_schedules");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const schedules = rows.map(({ _id, ...rest }) => rest as unknown as WorkSchedule);
   return NextResponse.json({ ok: true, schedules });

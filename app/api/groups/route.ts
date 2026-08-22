@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { GROUP_SEED } from "@/constants/groups";
 import type { Group } from "@/lib/groups";
 
-// Guruh backend'i (MongoDB `groups`). Bo'sh bo'lsa 91 ta demo guruhni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(GROUP_SEED)));
-  }
-}
-
+// Guruh backend'i (MongoDB `groups`). Demo seed YO'Q — guruhlarni
+// foydalanuvchi o'zi qo'shadi.
 // "2025-09-03" → "03.09.2025"
 function fmtDate(iso?: string): string {
   if (!iso) return "";
@@ -22,7 +15,6 @@ function fmtDate(iso?: string): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("groups");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const groups = rows.map(({ _id, ...rest }) => rest as unknown as Group);
   return NextResponse.json({ ok: true, groups });

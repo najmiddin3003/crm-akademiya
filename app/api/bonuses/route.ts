@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { BONUS_SEED } from "@/constants/bonuses";
 import { pupilBalanceByName } from "@/lib/pupilsDb";
 import type { Bonus } from "@/lib/bonuses";
 
-// Moliya → Bonus backend'i (MongoDB `bonuses`). Bo'sh bo'lsa demo bonusni
-// seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(BONUS_SEED)));
-  }
-}
-
+// Moliya → Bonus backend'i (MongoDB `bonuses`). Demo seed YO'Q — kolleksiya
+// bo'sh bo'lsa ro'yxat ham bo'sh qaytadi.
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -21,7 +13,6 @@ function fmtNow(d: Date): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("bonuses");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const bonuses = rows.map(({ _id, ...rest }) => rest as unknown as Bonus);
   return NextResponse.json({ ok: true, bonuses });

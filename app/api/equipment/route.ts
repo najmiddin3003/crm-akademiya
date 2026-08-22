@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { EQUIPMENT_SEED } from "@/constants/equipment";
 import type { Equipment } from "@/lib/equipment";
 
-// Jihozlar backend'i (MongoDB `equipment`). Referensda seed bo'sh — bo'sh
-// kolleksiyani EQUIPMENT_SEED (hozircha []) bilan bir marta to'ldiradi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0 && EQUIPMENT_SEED.length > 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(EQUIPMENT_SEED)));
-  }
-}
-
+// Jihozlar backend'i (MongoDB `equipment`). Demo seed YO'Q — jihozlarni
+// foydalanuvchi o'zi qo'shadi.
 function fmtNow(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -20,7 +12,6 @@ function fmtNow(d: Date): string {
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("equipment");
-  await seedIfEmpty(col);
   const rows = await col.find({}).sort({ id: -1 }).toArray();
   const equipment = rows.map(({ _id, ...rest }) => rest as unknown as Equipment);
   return NextResponse.json({ ok: true, equipment });

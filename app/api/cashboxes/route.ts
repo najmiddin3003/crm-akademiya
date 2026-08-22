@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
-import type { Collection } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { CASHBOX_SEED } from "@/constants/cashboxes";
 import { normalizeCashbox, zeroMethodTotals, type Cashbox } from "@/lib/cashboxes";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 
-// Moliya → Kassalar backend'i (MongoDB `cashboxes`). Bo'sh bo'lsa demo
-// kassalarni seed qiladi.
-async function seedIfEmpty(col: Collection) {
-  if ((await col.countDocuments()) === 0) {
-    await col.insertMany(JSON.parse(JSON.stringify(CASHBOX_SEED)));
-  }
-}
-
+// Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
+// kassalarni foydalanuvchi o'zi qo'shadi.
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("cashboxes");
-  await seedIfEmpty(col);
   const keys = await loadPaymentMethodKeys(db);
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   const cashboxes = rows.map(({ _id, ...rest }) => normalizeCashbox({ isPrimary: false, ...rest }, keys));
