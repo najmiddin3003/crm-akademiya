@@ -63,27 +63,36 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         </defs>
       </svg>
 
+      {/* Toastlar O'NG YUQORIDA. Navbar taxminan 56px — uning ostidan
+          boshlanadi, shunda sarlavhadagi tugmalarni to'smaydi. */}
       <div
         className="fixed flex flex-col gap-2"
-        style={{ bottom: 20, right: 20, zIndex: 400, width: 340, maxWidth: "calc(100vw - 40px)" }}
+        style={{ top: 72, right: 20, zIndex: 400, width: 340, maxWidth: "calc(100vw - 40px)" }}
       >
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            role="alert"
-            onClick={() => dismiss(t.id)}
-            className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm shadow-xl cursor-pointer ${
-              t.variant === "success"
-                ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                : "bg-rose-50 border-rose-300 text-rose-700"
-            }`}
-          >
-            <svg className="icon icon-sm shrink-0" style={{ marginTop: 1 }}>
-              <use href={t.variant === "success" ? "#i-toast-check" : "#i-toast-x"} />
-            </svg>
-            <span className="flex-1">{t.message}</span>
-          </div>
-        ))}
+        {toasts.map((t) => {
+          const accent = t.variant === "success" ? "#10b981" : "#f43f5e";
+          return (
+            <div
+              key={t.id}
+              role="alert"
+              onClick={() => dismiss(t.id)}
+              // Fon QAT'IY berilgan: loyihadagi bg-* klasslari bu yerda
+              // yarim shaffof chiqib, orqadagi jadval ko'rinib qolardi.
+              style={{
+                backgroundColor: "hsl(var(--card))",
+                borderColor: accent,
+                borderLeftWidth: 4,
+                backdropFilter: "none",
+              }}
+              className="flex cursor-pointer items-start gap-2.5 rounded-xl border text-sm shadow-2xl px-4 py-3"
+            >
+              <svg className="icon icon-sm shrink-0" style={{ marginTop: 1, color: accent }}>
+                <use href={t.variant === "success" ? "#i-toast-check" : "#i-toast-x"} />
+              </svg>
+              <span className="flex-1 text-foreground">{t.message}</span>
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

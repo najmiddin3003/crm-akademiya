@@ -155,7 +155,20 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
       </div>
 
       {open && (
-        <div style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 50 }} className="flex rounded-xl border border-border bg-card shadow-xl overflow-hidden">
+        <div
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            zIndex: 50,
+            // Loyihadagi .bg-card yarim shaffof ("shishasimon") — jadval
+            // ustidagi bu oynada orqa fon ko'rinib qolmasligi uchun rang
+            // inline beriladi va backdrop-filter o'chiriladi.
+            backgroundColor: "hsl(var(--card))",
+            backdropFilter: "none",
+          }}
+          className="flex rounded-xl border border-border shadow-xl overflow-hidden"
+        >
           {/* Presetlar — chapda */}
           <div className="border-r border-border p-2 w-40 flex flex-col gap-0.5 shrink-0">
             {presets().map((p) => (
@@ -167,7 +180,9 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
 
           {/* Ketma-ket ikki oy */}
           {months.map((mDate, idx) => (
-            <div key={`${mDate.getFullYear()}-${mDate.getMonth()}`} className={`p-3 ${idx === 1 ? "border-l border-border" : ""}`} style={{ width: 280 }}>
+            // Kenglik: 7×36 katak + 6×4 oraliq + 2×12 ichki bo'shliq = 300px.
+            // 280px da o'ngdagi ustun sig'may qirqilib qolardi.
+            <div key={`${mDate.getFullYear()}-${mDate.getMonth()}`} className={`p-3 ${idx === 1 ? "border-l border-border" : ""}`} style={{ width: 300 }}>
               <div className="flex items-center justify-between mb-2">
                 {idx === 0 ? (
                   <button type="button" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">

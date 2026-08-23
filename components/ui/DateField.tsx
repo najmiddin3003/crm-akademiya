@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Calendar } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Calendar, X } from "lucide-react";
 import CalendarPanel, { startOfDay } from "@/components/ui/CalendarPanel";
 
 // Forma ichidagi sana maydoni — brauzerning o'z <input type="date"> emas,
@@ -22,6 +23,9 @@ export interface DateFieldProps {
   placeholder?: string;
   error?: boolean;
   className?: string;
+  /** "compact" (default) — Topshiriq oynasidagi h-9 o'lcham. "panel" —
+   * Yangi buyurtma panelidagi qolgan maydonlar bilan bir xil h-11 o'lcham. */
+  variant?: "compact" | "panel";
 }
 
 function isoToText(iso: string): string {
@@ -61,11 +65,13 @@ export default function DateField({
   placeholder = "DD/MM/YYYY",
   error,
   className = "",
+  variant = "compact",
 }: DateFieldProps) {
   const [text, setText] = useState(() => isoToText(value));
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
 
   // Tashqaridan kelgan qiymat o'zgarsa (masalan forma tozalanganda) — matnni
   // moslaymiz. Effekt emas, render paytida to'g'rilash: React tavsiya qilgan
@@ -76,18 +82,36 @@ export default function DateField({
     if (textToIso(text) !== value) setText(isoToText(value));
   }
 
+  // Kalendarning taxminiy o'lchami — birinchi ochilishda u hali chizilmagan
+  // bo'ladi, shu bois joyni shu raqamlar bo'yicha mo'ljallaymiz; chizilgach
+  // quyidagi effekt haqiqiy o'lcham bilan qayta hisoblaydi.
   const reposition = useCallback(() => {
     if (!rootRef.current) return;
     const r = rootRef.current.getBoundingClientRect();
-    // Kalendar taxminan 280px — ekrandan chiqib ketmasin.
-    const left = Math.min(r.left, Math.max(8, window.innerWidth - 296));
-    setPos({ top: r.bottom + 6, left });
+    const w = popRef.current?.offsetWidth || 302;
+    const h = popRef.current?.offsetHeight || 334;
+    const gap = 6;
+    const edge = 8; // ekran chetidan qoldiriladigan bo'shliq
+    // Gorizontal: maydonning chap cheti bo'yicha, o'ngdan chiqsa — suriladi.
+    const left = Math.max(edge, Math.min(r.left, window.innerWidth - w - edge));
+    // Vertikal: odatda maydon TAGIDA. Pastda joy yetmasa (masalan maydon
+    // panelning quyi qismida bo'lsa) — maydon USTIGA chiqariladi.
+    const below = r.bottom + gap;
+    const top = below + h + edge <= window.innerHeight ? below : Math.max(edge, r.top - h - gap);
+    setPos({ top, left });
   }, []);
 
   useEffect(() => {
     if (!open) return;
+    // Endi kalendar DOM'da bor — haqiqiy o'lchami bo'yicha aniq joylashamiz.
+    reposition();
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      // Kalendar portal orqali <body> ichida turadi, ya'ni maydonning DOM
+      // farzandi emas — uni ham "ichkarida" deb hisoblaymiz, aks holda kun
+      // bosilishi bilan panel yopilib, tanlov yo'qoladi.
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t) || popRef.current?.contains(t)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     window.addEventListener("scroll", reposition, true);
@@ -101,6 +125,19 @@ export default function DateField({
 
   const selected = toDate(value);
 
+  // "Tozalash" tugmasi faqat maydonda sana turganda ko'rinadi — bo'sh
+  // maydonda tozalaydigan narsa yo'q.
+  const clearable = text !== "";
+
+  // Kalendar faqat yonidagi tugmadan emas, maydonning istalgan yeriga
+  // bosilganda ham ochiladi. Ochiq turganda qayta bosish uni yopmaydi —
+  // aks holda kursorni joyiga qo'yish uchun bosish kalendarni yo'qotardi.
+  const openCalendar = () => {
+    if (open) return;
+    setOpen(true);
+    reposition();
+  };
+
   return (
     <div className={`relative ${className}`} ref={rootRef}>
       <input
@@ -113,12 +150,34 @@ export default function DateField({
           // maydon "bo'sh" hisoblanadi (saqlashda tekshiruvga tushadi).
           if (iso !== value) onChange(iso);
         }}
+        onClick={openCalendar}
         inputMode="numeric"
         placeholder={placeholder}
-        className={`h-9 w-full rounded-lg border bg-background pl-3 pr-9 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-          error ? "border-red-400 ring-2 ring-red-400" : "border-border"
-        }`}
+        // Eslatma: globals.css ichida eski Tailwind v3 dump'i bor va uning
+        // "input{padding:0}" reset'i @layer'dan TASHQARIDA — shu bois
+        // Tailwind v4 yangi generatsiya qiladigan padding klasslari (pr-14
+        // kabi) inputda ishlamaydi. Faqat o'sha dumpda mavjud bo'lgan
+        // pr-9 / pr-16 ishlatiladi.
+        className={`w-full rounded-lg border pl-3 text-sm tabular-nums focus:outline-none focus:ring-2 ${
+          clearable ? "pr-16" : "pr-9"
+        } ${
+          variant === "panel" ? "h-11 bg-secondary/30 focus:ring-primary/40" : "h-9 bg-background focus:ring-blue-500"
+        } ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
       />
+      {clearable && (
+        <button
+          type="button"
+          title="Sanani tozalash"
+          onClick={() => {
+            setText("");
+            if (value !== "") onChange("");
+            setOpen(false);
+          }}
+          className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
       <button
         type="button"
         title="Kalendardan tanlash"
@@ -132,24 +191,33 @@ export default function DateField({
         <Calendar className="w-4 h-4" />
       </button>
 
-      {open && (
-        <div
-          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 300 }}
-          className="rounded-xl border border-border bg-card shadow-xl overflow-hidden p-3"
-        >
-          <CalendarPanel
-            value={selected}
-            initialView={selected ?? startOfDay(new Date())}
-            onPick={(d) => {
-              const p = (n: number) => String(n).padStart(2, "0");
-              const iso = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-              setText(isoToText(iso));
-              onChange(iso);
-              setOpen(false);
-            }}
-          />
-        </div>
-      )}
+      {/* Kalendar <body>ga portal qilinadi. Sababi: "position: fixed"
+          o'zidan yuqorida "transform" qo'llangan element bo'lsa, ekranga
+          emas, o'sha elementga nisbatan joylashadi (CSS containing block
+          qoidasi). Yangi buyurtma paneli — .st-drawer — aynan shunday
+          (transform: translateX(0)), shu bois portalsiz kalendar ekrandan
+          tashqarida chizilardi. zIndex drawer'dan (1001) balandroq. */}
+      {open &&
+        createPortal(
+          <div
+            ref={popRef}
+            style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 1200 }}
+            className="rounded-xl border border-border bg-card shadow-xl overflow-hidden p-3"
+          >
+            <CalendarPanel
+              value={selected}
+              initialView={selected ?? startOfDay(new Date())}
+              onPick={(d) => {
+                const p = (n: number) => String(n).padStart(2, "0");
+                const iso = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+                setText(isoToText(iso));
+                onChange(iso);
+                setOpen(false);
+              }}
+            />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

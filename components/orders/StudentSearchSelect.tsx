@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CONTROL_CLS, ROW_CLS_TIGHT, RowChevron, RowLabel } from "@/components/orders/FormRow";
 
 export interface StudentSearchSelectProps {
   label: string;
@@ -9,6 +10,9 @@ export interface StudentSearchSelectProps {
   onChange: (value: string) => void;
   options: string[];
   placeholder?: string;
+  /** Ro'yxat ichidagi qidiruv maydonining matni. Berilmasa `placeholder`
+   * ishlatiladi (o'quvchi tanlashda ikkalasi ham "O'quvchini qidirish"). */
+  searchPlaceholder?: string;
   error?: boolean;
   /** "boxed" (default) = AddOrderModal drawer style (stacked label + bordered
    * field). "row" = the compact /orders-list/add page style (inline label
@@ -34,6 +38,7 @@ export default function StudentSearchSelect({
   onChange,
   options,
   placeholder = "O'quvchini qidirish",
+  searchPlaceholder,
   error,
   variant = "boxed",
   subtitleOf,
@@ -84,7 +89,7 @@ export default function StudentSearchSelect({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={placeholder}
+          placeholder={searchPlaceholder ?? placeholder}
           className="w-full h-9 pl-9 pr-3 text-sm bg-transparent focus:outline-none"
         />
       </div>
@@ -142,27 +147,23 @@ export default function StudentSearchSelect({
   );
 
   if (variant === "row") {
+    // /orders-list/add sahifasidagi qator — o'lchamlari FormRow bilan bir xil
+    // (referens: akademiya.edutizim.uz/orders/add).
     return (
-      <div ref={ref} className="relative">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="w-full flex items-center justify-between py-3 border-none border-b border-border bg-transparent text-left"
-        >
-          <span className="text-sm font-medium">
-            {label}
-            {required && <span className="text-red-500">*</span>}:
-          </span>
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            <span className="truncate" style={{ maxWidth: 160 }}>
-              {value || placeholder}
-            </span>
-            <svg className="icon icon-xs shrink-0">
-              <use href="#i-chevron-down" />
-            </svg>
-          </span>
-        </button>
-        {dropdown}
+      <div ref={ref} className={ROW_CLS_TIGHT}>
+        <RowLabel label={label} required={required} />
+        <div className={CONTROL_CLS}>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            style={{ paddingLeft: 11, paddingRight: 29 }}
+            className={`block h-8 w-full rounded-md border-0 bg-secondary text-left text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${error ? "ring-2 ring-red-400" : ""}`}
+          >
+            <span className={`block truncate ${value ? "" : "text-muted-foreground"}`}>{value || placeholder}</span>
+          </button>
+          <RowChevron />
+          {dropdown}
+        </div>
       </div>
     );
   }
