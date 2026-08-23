@@ -62,6 +62,7 @@ export async function ensureIndexes(): Promise<Db> {
     await db.collection("orders").createIndex({ id: 1 }, { unique: true });
     await db.collection("pupils").createIndex({ id: 1 }, { unique: true });
     await db.collection("offline_courses").createIndex({ id: 1 }, { unique: true });
+    await db.collection("online_courses").createIndex({ id: 1 }, { unique: true });
     await db.collection("groups").createIndex({ id: 1 }, { unique: true });
     await db.collection("group_tasks").createIndex({ id: 1 }, { unique: true });
     await db.collection("group_tasks").createIndex({ groupId: 1 });

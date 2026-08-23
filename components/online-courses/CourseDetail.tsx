@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Archive, Calendar, Edit, Plus } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
 import BindCourseDrawer from "./BindCourseDrawer";
 
@@ -16,10 +18,21 @@ const CLIENT_COLS = ["№", "O'quvchi ismi", "Sotib olgan vaqti", "Yakunlagan qi
 const ASSIGNMENT_COLS = ["№", "O'quvchi ismi", "Topshirilgan vaqti", "Bo'lim nomi", "Topshiriq nomi"];
 
 export default function CourseDetail({ courseId }: { courseId: number }) {
-  const { getCourse, togglePublish } = useOnlineCourses();
+  const { getCourse, loading, togglePublish } = useOnlineCourses();
+  const { showError } = useToast();
   const course = getCourse(courseId);
   const [tab, setTab] = useState<"clients" | "assignments">("clients");
   const [bindOpen, setBindOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  // Kurslar API'dan kelguncha "topilmadi" deb xulosa qilmaymiz.
+  if (loading) {
+    return (
+      <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
+        <SpinnerBlock />
+      </div>
+    );
+  }
 
   if (!course) {
     return (
@@ -64,8 +77,14 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
           <span className="text-muted-foreground">Oraliqni tanlang</span>
         </button>
         <button
-          onClick={() => togglePublish(course.id)}
-          className={`inline-flex items-center h-9 px-4 rounded-lg text-white text-sm font-medium hover:opacity-90 ${course.published ? "bg-emerald-600" : "bg-primary"}`}
+          disabled={publishing}
+          onClick={async () => {
+            setPublishing(true);
+            const error = await togglePublish(course.id);
+            setPublishing(false);
+            if (error) showError(error);
+          }}
+          className={`inline-flex items-center h-9 px-4 rounded-lg text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 ${course.published ? "bg-emerald-600" : "bg-primary"}`}
         >
           {course.published ? "Published" : "Unpublished"}
         </button>

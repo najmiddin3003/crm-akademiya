@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DollarSign, Monitor, Pencil, Plus, Trash2 } from "lucide-react";
 import DeleteConfirmModal from "@/components/offline-courses/DeleteConfirmModal";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import CourseCover from "./CourseCover";
 import OnlineCoursesIcons from "./OnlineCoursesIcons";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
@@ -23,17 +24,21 @@ const TABS = [
 ];
 
 export default function OnlineCoursesList() {
-  const { courses, deleteCourse } = useOnlineCourses();
-  const { showSuccess } = useToast();
+  const { courses, loading, deleteCourse } = useOnlineCourses();
+  const { showSuccess, showError } = useToast();
   const [tab, setTab] = useState<"active" | "incomplete">("active");
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const filtered = courses.filter((c) => (tab === "active" ? c.published : !c.published));
   const deleting = deletingId != null ? courses.find((c) => c.id === deletingId) : undefined;
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleting) return;
-    deleteCourse(deleting.id);
+    const error = await deleteCourse(deleting.id);
+    if (error) {
+      showError(error);
+      return;
+    }
     showSuccess(`Onlayn kurs o'chirildi — ${deleting.name}`);
     setDeletingId(null);
   }
@@ -64,7 +69,9 @@ export default function OnlineCoursesList() {
       </div>
 
       <div className="pt-16">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <SpinnerBlock />
+        ) : filtered.length === 0 ? (
           <div className="flex items-center justify-center text-2xl md:text-3xl font-bold text-primary py-16">
             <span>Afsuski kurs mavjud emas</span>
             {/* Referensda aynan shu emoji ishlatiladi (U+2639 U+FE0F). */}

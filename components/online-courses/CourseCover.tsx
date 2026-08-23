@@ -3,6 +3,19 @@
 // yaratilgan kurslar `cover` qiymatiga ega bo'lmaydi (manbada ham shunday) —
 // shuning uchun har doim standart bo'limga tushadi.
 export default function CourseCover({ cover }: { cover?: string }) {
+  // G'ilofchida yuklangan kurs rasmi — Cloudinary URL'i. Balandlik INLINE
+  // beriladi: preflight `img { height: auto }` qo'ygani uchun `h-full`
+  // klassi bu loyihada rasmga ta'sir qilmaydi.
+  if (cover?.startsWith("http")) {
+    return (
+      <img
+        src={cover}
+        alt=""
+        className="absolute inset-0"
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    );
+  }
   if (cover === "cosmic") {
     return (
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-blue-500 to-cyan-300">

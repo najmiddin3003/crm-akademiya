@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { safeFolder, uploadImage } from "@/lib/cloudinary";
+import { safeFolder, uploadVideo } from "@/lib/cloudinary";
 
-// POST /api/upload/image — rasmni Cloudinary'ga yuklaydi va URL qaytaradi.
+// POST /api/upload/video — videoni Cloudinary'ga yuklaydi va URL qaytaradi.
+// Rasm endpointi (../image/route.ts) bilan bir xil qolip; farqi — MIME
+// ro'yxati, hajm chegarasi va Cloudinary'dagi `video/upload` yo'li.
 //
-// `crypto` ishlatilgani uchun Node ish muhiti kerak (Edge'da emas).
+// Onlayn kurs g'ilofchisidagi "Reklama video" uchun qo'shildi.
+
 export const runtime = "nodejs";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = ["image/png", "image/jpeg", "image/webp"];
+// 50 MB — reklama roligi uchun yetarli, ayni paytda so'rov tanasi butunlay
+// xotiraga o'qilgani uchun bundan kattasi serverni bo'g'ib qo'yadi.
+const MAX_BYTES = 50 * 1024 * 1024;
+const ALLOWED = ["video/mp4", "video/webm", "video/quicktime"];
 
 export async function POST(req: Request) {
   // Middleware `/api/` ni tekshirmaydi, shuning uchun sessiyani shu yerda
@@ -30,13 +35,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Fayl tanlanmagan" }, { status: 400 });
   }
   if (!ALLOWED.includes(file.type)) {
-    return NextResponse.json({ ok: false, error: "Faqat PNG, JPG yoki WEBP" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Faqat MP4, WEBM yoki MOV" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ ok: false, error: "Rasm hajmi 5 MB dan oshmasin" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Video hajmi 50 MB dan oshmasin" }, { status: 400 });
   }
 
-  const res = await uploadImage(file, safeFolder(form.get("folder")));
+  const res = await uploadVideo(file, safeFolder(form.get("folder")));
   if (!res.ok) {
     return NextResponse.json({ ok: false, error: res.error }, { status: 502 });
   }

@@ -1,25 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Monitor, Plus, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useOnlineCourses, type CourseSection, type OnlineCourse } from "./OnlineCoursesProvider";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useEduCategories } from "@/hooks/useEduCategories";
+import { COURSE_LANGUAGES, COURSE_LEVELS, type CourseSection, type OnlineCourse } from "@/lib/onlineCourses";
+import { useOnlineCourses } from "./OnlineCoursesProvider";
 
 // Kurs qo'shish/tahrirlash — crm-akademiya #view-online-course-add (4 bosqichli
-// "wizard"). Manbada ~15 maydondan atigi 6 tasi haqiqatan saqlanadi: nomi/
-// tavsifi/"nima o'rgatiladi" (1-bosqich), narx+tekin belgisi (3-bosqich),
-// bo'limlar ro'yxati (4-bosqich). Til/bosqich/kategoriya/subkategoriya
-// select'lari, rasm/video yuklash va 2-bosqichning 3 ta matni — manbada ham
-// hech qayerga saqlanmaydi (id yo'q, o'qilmaydi) — shu holicha faqat vizual
-// qoldirildi, soxta funksional qo'shilmadi. "Saqlash" oxirgi bosqichda kursni
-// har doim published:true qiladi ("Aktivlash") — CourseForm.tsx'dagi bilan
-// bir xil optional-id + key-remount patterni.
+// "wizard"). Manba klonida bu sahifaning yarmi bezak edi: ikkala "Yuklash"
+// tugmasi, to'rtala select va 2-bosqichning uchala matni hech qayerga
+// bormasdi. Endi hammasi haqiqiy:
+//
+//   * Kurs rasmi / Reklama video — tanlangan fayl darhol Cloudinary'ga
+//     yuklanadi (/api/upload/image, /api/upload/video), qaytgan URL kursga
+//     yoziladi va o'sha yerda ko'rinadi. Rasm kurs kartasining muqovasiga
+//     tushadi (CourseCover.tsx).
+//   * Kurs tili / Kurs bosqichi — referensdagi ro'yxatlar (lib/onlineCourses.ts).
+//   * Kategoriya — /api/edu-categories dan (O'quv bo'limi → Kategoriya).
+//   * 2-bosqichning uchala matni — kursga saqlanadi va tahrirlashda qaytadi.
+//
+// OLIB TASHLANGANI: "Sub kategoriya" (tizimda subkategoriya tushunchasi yo'q —
+// EduCategory faqat {id, name}, uni to'ldirishning iloji yo'q edi) va matn
+// maydonlari ustidagi B/I/U tugmalari (oddiy textarea'da formatlash ishlamaydi,
+// tavsif esa hech qayerda HTML sifatida ko'rsatilmaydi).
+
+const STEPS = [
+  { n: 1, label: "Kurs yaratish" },
+  { n: 2, label: "Kurs talablari" },
+  { n: 3, label: "Narxlash" },
+  { n: 4, label: "Kurs materiallari" },
+];
+
+// 2-bosqich savollari. `key` — OnlineCourse maydoni.
+const REQUIREMENT_FIELDS = [
+  {
+    key: "learn" as const,
+    q: "Kursingizda o'quvchilar nimani o'rganadilar?",
+    hint: "Kursni tugatgandan so'ng o'quvchilar erishishi mumkin bo'lgan o'quv maqsadlari yoki natijalarini kiritishingiz kerak.",
+  },
+  {
+    key: "requirements" as const,
+    q: "Kursga kirish uchun qanday talablar yoki old shartlar mavjud?",
+    hint: "Kursni o'tashdan oldin o'quvchilar ega bo'lishi kerak bo'lgan kerakli ko'nikma, tajriba, yoki jihozlarni sanab o'tish.",
+  },
+  {
+    key: "audience" as const,
+    q: "Bu kurs kim uchun?",
+    hint: "Kursingiz mazmunini qimmatli deb topadigan kursingiz uchun mo'ljallangan o'quvchilarning aniq tavsifini yozing.",
+  },
+];
+
+const selectCls = "filter-select w-full h-10 mt-1 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+const textareaCls = "w-full min-h-[120px] mt-2 rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y";
+
+/** Yuklangan fayl URL'idan ko'rsatish uchun nom ajratadi. */
+function fileNameFromUrl(url: string): string {
+  try {
+    return decodeURIComponent(new URL(url).pathname.split("/").pop() || url);
+  } catch {
+    return url;
+  }
+}
 
 export default function CourseWizard({ courseId }: { courseId?: number }) {
-  const { getCourse } = useOnlineCourses();
+  const { getCourse, loading } = useOnlineCourses();
   const editing = courseId != null ? getCourse(courseId) : undefined;
+
+  // Kurslar API'dan kelguncha "topilmadi" deb xulosa qilmaymiz.
+  if (courseId != null && loading) {
+    return (
+      <div className="container mx-auto max-w-[1100px] p-4 md:p-5">
+        <SpinnerBlock />
+      </div>
+    );
+  }
 
   if (courseId != null && !editing) {
     return (
@@ -33,28 +91,42 @@ export default function CourseWizard({ courseId }: { courseId?: number }) {
   return <CourseWizardBody key={editing?.id ?? "new"} editing={editing} />;
 }
 
-const STEPS = [
-  { n: 1, label: "Kurs yaratish" },
-  { n: 2, label: "Kurs talablari" },
-  { n: 3, label: "Narxlash" },
-  { n: 4, label: "Kurs materiallari" },
-];
-
 function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { addCourse, updateCourse } = useOnlineCourses();
+  const { categories, loading: categoriesLoading } = useEduCategories();
 
   const [step, setStep] = useState(1);
   const [name, setName] = useState(editing?.name ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [what, setWhat] = useState(editing?.what ?? "");
+  const [language, setLanguage] = useState(editing?.language ?? "");
+  const [level, setLevel] = useState(editing?.level ?? "");
+  // Select'ning DOM qiymati har doim satr — raqamga faqat saqlashda o'giramiz.
+  const [categoryId, setCategoryId] = useState(editing?.categoryId != null ? String(editing.categoryId) : "");
+  const [texts, setTexts] = useState<Record<string, string>>({
+    learn: editing?.learn ?? "",
+    requirements: editing?.requirements ?? "",
+    audience: editing?.audience ?? "",
+  });
   const [price, setPrice] = useState(String(editing?.price ?? 0));
   const [free, setFree] = useState(editing?.free ?? false);
   const [sections, setSections] = useState<CourseSection[]>(editing?.sections ?? []);
   const [sectionEditorOpen, setSectionEditorOpen] = useState(false);
   const [sectionName, setSectionName] = useState("");
   const [sectionOutcome, setSectionOutcome] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Muqova: 'cosmic' kabi seed kalitlari ham bo'lishi mumkin — yuklangan
+  // rasmni faqat http(s) bo'lganda ko'rsatamiz.
+  const [cover, setCover] = useState(editing?.cover ?? "");
+  const [video, setVideo] = useState(editing?.video ?? "");
+  const [uploading, setUploading] = useState<"cover" | "video" | null>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+
+  const coverUrl = cover.startsWith("http") ? cover : "";
 
   function onFreeToggle(checked: boolean) {
     setFree(checked);
@@ -62,7 +134,10 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
   }
 
   function saveSection() {
-    if (!sectionName.trim() || !sectionOutcome.trim()) return;
+    if (!sectionName.trim() || !sectionOutcome.trim()) {
+      showError("Bo'lim nomi va natijani to'ldiring");
+      return;
+    }
     setSections((prev) => [...prev, { name: sectionName.trim(), outcome: sectionOutcome.trim() }]);
     setSectionName("");
     setSectionOutcome("");
@@ -72,7 +147,53 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
     setSections((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  function saveAndNext() {
+  /** Tanlangan faylni darhol yuklaydi — tugma "Yuklash" deb atalgan. */
+  async function upload(kind: "cover" | "video", file: File | undefined) {
+    if (!file) return;
+
+    // Server ham tekshiradi, lekin oldindan to'sib qo'yamiz — aks holda
+    // 60 MB lik rolik bekorga to'liq yuborilib, keyin rad javobi kelardi
+    // (AddEmployeeModal.tsx dagi bilan bir xil ehtiyot).
+    const rules = kind === "cover"
+      ? { types: ["image/png", "image/jpeg"], max: 5 * 1024 * 1024, wrong: "Faqat JPG yoki PNG", big: "Rasm hajmi 5 MB dan oshmasin" }
+      : { types: ["video/mp4", "video/webm", "video/quicktime"], max: 50 * 1024 * 1024, wrong: "Faqat MP4, WEBM yoki MOV", big: "Video hajmi 50 MB dan oshmasin" };
+    if (!rules.types.includes(file.type)) {
+      showError(rules.wrong);
+      return;
+    }
+    if (file.size > rules.max) {
+      showError(rules.big);
+      return;
+    }
+
+    setUploading(kind);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("folder", "kurslar");
+    const endpoint = kind === "cover" ? "/api/upload/image" : "/api/upload/video";
+    const data = await fetch(endpoint, { method: "POST", body: fd })
+      .then((r) => r.json())
+      .catch(() => null);
+    setUploading(null);
+
+    if (!data?.ok) {
+      showError(data?.error || (kind === "cover" ? "Rasm yuklanmadi" : "Video yuklanmadi"));
+      return;
+    }
+    if (kind === "cover") setCover(data.url as string);
+    else setVideo(data.url as string);
+    showSuccess(kind === "cover" ? "Kurs rasmi yuklandi" : "Reklama video yuklandi");
+  }
+
+  function gotoStep(n: number) {
+    if (n > 1 && !name.trim()) {
+      showError("Kurs nomini kiriting");
+      return;
+    }
+    setStep(n);
+  }
+
+  async function saveAndNext() {
     if (step === 1 && !name.trim()) {
       showError("Kurs nomini kiriting");
       return;
@@ -81,9 +202,31 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
       setStep(step + 1);
       return;
     }
-    const values = { name: name.trim(), description, what, price: parseInt(price, 10) || 0, free, sections };
-    if (editing) updateCourse(editing.id, values);
-    else addCourse(values);
+
+    const values = {
+      name: name.trim(),
+      description,
+      what,
+      language,
+      level,
+      categoryId: categoryId ? Number(categoryId) : null,
+      learn: texts.learn,
+      requirements: texts.requirements,
+      audience: texts.audience,
+      price: parseInt(price, 10) || 0,
+      free,
+      sections,
+      cover,
+      video,
+    };
+
+    setSaving(true);
+    const error = editing ? await updateCourse(editing.id, values) : await addCourse(values);
+    setSaving(false);
+    if (error) {
+      showError(error);
+      return;
+    }
     showSuccess(editing ? `Kurs yangilandi — ${values.name}` : "Kurs aktivlandi");
     router.push("/online-courses");
   }
@@ -110,16 +253,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
 
           <div>
             <label className="text-[13px] font-medium text-foreground">Kurs tavsifi</label>
-            <div className="mt-2 rounded-lg border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-secondary/30 text-muted-foreground text-[12px]">
-                {["B", "I", "U"].map((l) => <button key={l} type="button" className="h-7 w-7 rounded hover:bg-secondary inline-flex items-center justify-center font-bold">{l}</button>)}
-              </div>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full min-h-[120px] border-0 bg-transparent px-3 py-2 text-sm focus:outline-none resize-y"
-              />
-            </div>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className={textareaCls} />
           </div>
 
           <div>
@@ -127,33 +261,36 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
               <div>
                 <label className="text-[12px] font-medium text-foreground/80">Kurs tili</label>
-                <select defaultValue="" className="filter-select w-full h-10 mt-1 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <select value={language} onChange={(e) => setLanguage(e.target.value)} className={selectCls}>
                   <option value="">Kurs tili</option>
-                  <option>O&apos;zbek</option>
-                  <option>Ingliz</option>
-                  <option>Rus</option>
+                  {COURSE_LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[12px] font-medium text-foreground/80">Kurs bosqichi</label>
-                <select defaultValue="" className="filter-select w-full h-10 mt-1 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <select value={level} onChange={(e) => setLevel(e.target.value)} className={selectCls}>
                   <option value="">Kurs bosqichi</option>
-                  <option>Boshlang&apos;ich</option>
-                  <option>O&apos;rta</option>
-                  <option>Yuqori</option>
+                  {COURSE_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[12px] font-medium text-foreground/80">Kategoriya</label>
-                <select defaultValue="" className="filter-select w-full h-10 mt-1 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  disabled={!categoriesLoading && categories.length === 0}
+                  className={`${selectCls} disabled:opacity-60`}
+                >
                   <option value="">Kategoriya</option>
+                  {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-foreground/80">Sub kategoriya</label>
-                <select defaultValue="" className="filter-select w-full h-10 mt-1 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-                  <option value="">Tanlang</option>
-                </select>
+                {!categoriesLoading && categories.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    Kategoriya yo&apos;q —{" "}
+                    <Link href="/edu-category" className="text-primary hover:underline">O&apos;quv bo&apos;limi → Kategoriya</Link>
+                    {" "}da qo&apos;shing
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -168,45 +305,126 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
             />
           </div>
 
-          {[
-            { label: "Kurs rasmi", hint: "O'lcham: 750x422 piksel", sub: "(jpg, jpeg, png)" },
-            { label: "Reklama video", hint: "Sizning reklama videoingiz o'quvchilar uchun kursingizda nimani o'rganishini oldindan ko'rishning tez va jozibali usulidir.", sub: null },
-          ].map((f) => (
-            <div key={f.label} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-[13px] font-medium text-foreground">{f.label}</label>
-                <div className="mt-2 rounded-lg border-2 border-dashed border-border bg-secondary/20 aspect-[750/422] flex items-center justify-center text-muted-foreground">
+          {/* Kurs rasmi */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-[13px] font-medium text-foreground">Kurs rasmi</label>
+              <div className="mt-2 rounded-lg border-2 border-dashed border-border bg-secondary/20 aspect-[750/422] flex items-center justify-center text-muted-foreground overflow-hidden">
+                {coverUrl ? (
+                  // Balandlik INLINE: preflight `img { height: auto }` qo'yadi,
+                  // shuning uchun `h-full` klassi bu yerda ishlamaydi.
+                  <img src={coverUrl} alt="Kurs rasmi" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
                   <Monitor style={{ width: 64, height: 64, opacity: 0.3 }} />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <p className={f.sub ? "text-[13px] font-semibold mt-2" : "text-[13px] mt-2"}>{f.hint}</p>
-                {f.sub && <p className="text-[12px] text-muted-foreground">{f.sub}</p>}
-                <input type="text" placeholder="File yuklanmagan" readOnly className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm" />
-                <button type="button" className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">Yuklash</button>
+                )}
               </div>
             </div>
-          ))}
+            <div className="space-y-3">
+              <p className="text-[13px] font-semibold mt-2">O&apos;lcham: 750x422 piksel</p>
+              <p className="text-[12px] text-muted-foreground">(jpg, jpeg, png)</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={coverUrl ? fileNameFromUrl(coverUrl) : ""}
+                  placeholder="File yuklanmagan"
+                  readOnly
+                  className="w-full h-10 rounded-lg border border-border bg-card pl-3 pr-9 text-sm"
+                />
+                {coverUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setCover("")}
+                    title="Olib tashlash"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={coverRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload("cover", f); }}
+              />
+              <button
+                type="button"
+                disabled={uploading !== null}
+                onClick={() => coverRef.current?.click()}
+                className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                {uploading === "cover" ? "Yuklanmoqda..." : "Yuklash"}
+              </button>
+            </div>
+          </div>
+
+          {/* Reklama video */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-[13px] font-medium text-foreground">Reklama video</label>
+              <div className="mt-2 rounded-lg border-2 border-dashed border-border bg-secondary/20 aspect-[750/422] flex items-center justify-center text-muted-foreground overflow-hidden">
+                {video ? (
+                  <video src={video} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <Monitor style={{ width: 64, height: 64, opacity: 0.3 }} />
+                )}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <p className="text-[13px] mt-2">Sizning reklama videoingiz o&apos;quvchilar uchun kursingizda nimani o&apos;rganishini oldindan ko&apos;rishning tez va jozibali usulidir.</p>
+              <p className="text-[12px] text-muted-foreground">(mp4, webm, mov — 50 MB gacha)</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={video ? fileNameFromUrl(video) : ""}
+                  placeholder="File yuklanmagan"
+                  readOnly
+                  className="w-full h-10 rounded-lg border border-border bg-card pl-3 pr-9 text-sm"
+                />
+                {video && (
+                  <button
+                    type="button"
+                    onClick={() => setVideo("")}
+                    title="Olib tashlash"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={videoRef}
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload("video", f); }}
+              />
+              <button
+                type="button"
+                disabled={uploading !== null}
+                onClick={() => videoRef.current?.click()}
+                className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                {uploading === "video" ? "Yuklanmoqda..." : "Yuklash"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {step === 2 && (
         <div className="space-y-6">
           <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">Kurs talablari</h1>
-          {[
-            { q: "Kursingizda o'quvchilar nimani o'rganadilar?", hint: "Kursni tugatgandan so'ng o'quvchilar erishishi mumkin bo'lgan o'quv maqsadlari yoki natijalarini kiritishingiz kerak." },
-            { q: "Kursga kirish uchun qanday talablar yoki old shartlar mavjud?", hint: "Kursni o'tashdan oldin o'quvchilar ega bo'lishi kerak bo'lgan kerakli ko'nikma, tajriba, yoki jihozlarni sanab o'tish." },
-            { q: "Bu kurs kim uchun?", hint: "Kursingiz mazmunini qimmatli deb topadigan kursingiz uchun mo'ljallangan o'quvchilarning aniq tavsifini yozing." },
-          ].map((f) => (
-            <div key={f.q}>
+          {REQUIREMENT_FIELDS.map((f) => (
+            <div key={f.key}>
               <h3 className="text-base font-semibold">{f.q}</h3>
               <p className="text-[13px] mt-1.5">{f.hint}</p>
-              <div className="mt-3 rounded-lg border border-border bg-card overflow-hidden">
-                <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-secondary/30 text-muted-foreground text-[12px]">
-                  {["B", "I", "U"].map((l) => <button key={l} type="button" className="h-7 w-7 rounded hover:bg-secondary inline-flex items-center justify-center font-bold">{l}</button>)}
-                </div>
-                <textarea className="w-full min-h-[100px] border-0 bg-transparent px-3 py-2 text-sm focus:outline-none resize-y" />
-              </div>
+              <textarea
+                value={texts[f.key]}
+                onChange={(e) => setTexts((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                className={`${textareaCls} min-h-[100px]`}
+              />
             </div>
           ))}
         </div>
@@ -309,7 +527,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
             <div className="flex items-center gap-1 flex-1">
               {STEPS.map((s, i) => (
                 <div key={s.n} className="flex items-center gap-1 flex-1 last:flex-initial">
-                  <button type="button" onClick={() => setStep(s.n)} className="flex flex-col items-center gap-1 cursor-pointer">
+                  <button type="button" onClick={() => gotoStep(s.n)} className="flex flex-col items-center gap-1 cursor-pointer">
                     <div className={`h-8 w-8 rounded-full text-[13px] font-semibold flex items-center justify-center ${s.n <= step ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
                       {s.n < step ? <Check className="h-4 w-4" /> : s.n}
                     </div>
@@ -320,8 +538,12 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
               ))}
             </div>
           </div>
-          <button onClick={saveAndNext} className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm shrink-0">
-            {step < 4 ? "Saqlash" : "Aktivlash"}
+          <button
+            onClick={saveAndNext}
+            disabled={saving || uploading !== null}
+            className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm shrink-0 disabled:opacity-60"
+          >
+            {saving ? "Saqlanmoqda..." : step < 4 ? "Saqlash" : "Aktivlash"}
           </button>
         </div>
       </div>

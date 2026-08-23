@@ -1,74 +1,109 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { ONLINE_COURSES } from "@/constants/onlineCourses";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { NewCourseValues, OnlineCourse } from "@/lib/onlineCourses";
 
-// O'quv bo'limi → Onlayn kurs uchun umumiy holat. Manbada (crm-akademiya)
-// bu butunlay xotirada (localStorage'siz) — reload'da ONLINE_COURSES qayta
-// boshlanadi; shu xatti-harakat shu holicha saqlandi (Oflayn kurslar'dan
-// farqli o'laroq, bu yerda haqiqiy backend yo'q — manbaning o'zida ham yo'q).
-// List/Wizard/Detail sahifalari orasida holatni saqlab turish uchun bitta
-// Context, app/(app)/online-courses/layout.tsx'da o'raladi.
-
-export interface CourseSection {
-  name: string;
-  outcome: string;
-}
-export interface OnlineCourse {
-  id: number;
-  name: string;
-  description: string;
-  what: string;
-  price: number;
-  free: boolean;
-  published: boolean;
-  sections: CourseSection[];
-  cover?: string;
-}
-export type NewCourseValues = Omit<OnlineCourse, "id" | "published" | "cover">;
+// O'quv bo'limi → Onlayn kurs uchun umumiy holat, endi MongoDB backend'iga
+// (/api/online-courses) ulangan — Oflayn kurslar provideri bilan bir xil
+// qolip (OfflineCoursesProvider.tsx).
+//
+// Ilgari bu butunlay xotirada edi (manbadagidek) va sahifa yangilansa
+// kurslar yo'qolardi. G'ilofchi endi kurs rasmi va reklama videosini
+// haqiqatan Cloudinary'ga yuklaydi — yuklangan faylga ishora qiluvchi kurs
+// yozuvi F5 dan keyin yo'qolib ketmasligi uchun bazaga ko'chirildi.
+//
+// CRUD amallari API'ga so'rov yuboradi va xato matnini (yoki muvaffaqiyatda
+// `null`) qaytaradi — toast'ni chaqiruvchi ko'rsatadi (hooks/useTaskTypes.ts
+// bilan bir xil kelishuv).
 
 interface OnlineCoursesContextValue {
   courses: OnlineCourse[];
+  loading: boolean;
   getCourse: (id: number) => OnlineCourse | undefined;
-  addCourse: (values: NewCourseValues) => void;
-  updateCourse: (id: number, values: NewCourseValues) => void;
-  deleteCourse: (id: number) => void;
-  togglePublish: (id: number) => void;
+  addCourse: (values: NewCourseValues) => Promise<string | null>;
+  updateCourse: (id: number, values: NewCourseValues) => Promise<string | null>;
+  deleteCourse: (id: number) => Promise<string | null>;
+  togglePublish: (id: number) => Promise<string | null>;
 }
 
 const OnlineCoursesContext = createContext<OnlineCoursesContextValue | null>(null);
 
+async function send(url: string, method: string, body?: unknown) {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return await res.json();
+  } catch {
+    return { ok: false, error: "Serverga ulanib bo'lmadi" };
+  }
+}
+
 export function OnlineCoursesProvider({ children }: { children: ReactNode }) {
-  const [courses, setCourses] = useState<OnlineCourse[]>(() => ONLINE_COURSES as OnlineCourse[]);
+  const [courses, setCourses] = useState<OnlineCourse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/online-courses")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.ok) setCourses(d.courses);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const getCourse = useCallback((id: number) => courses.find((c) => c.id === id), [courses]);
 
-  // Manbadagi ocwSaveAndNext() bilan bir xil: g'ilofchi (wizard) 4-bosqichni
-  // yakunlaganda kurs har doim published:true bo'lib saqlanadi ("Aktivlash").
-  const addCourse = useCallback((values: NewCourseValues) => {
-    setCourses((prev) => {
-      const newId = (prev[0]?.id ?? 0) + 1;
-      return [{ id: newId, ...values, published: true }, ...prev];
-    });
+  const addCourse = useCallback(async (values: NewCourseValues) => {
+    const d = await send("/api/online-courses", "POST", values);
+    if (!d.ok) return (d.error as string) || "Saqlashda xatolik";
+    setCourses((prev) => [d.course as OnlineCourse, ...prev]);
+    return null;
   }, []);
 
-  const updateCourse = useCallback((id: number, values: NewCourseValues) => {
-    setCourses((prev) => prev.map((c) => (c.id === id ? { ...c, ...values, published: true } : c)));
+  const updateCourse = useCallback(async (id: number, values: NewCourseValues) => {
+    // G'ilofchi 4-bosqichni yakunlaganda kurs har doim aktiv bo'lib saqlanadi
+    // ("Aktivlash") — POST yo'lidagi qoida bilan bir xil. Shusiz muzlatilgan
+    // kursni tahrirlab "Aktivlash" bosilsa ham u aktiv bo'lmasdi.
+    const d = await send(`/api/online-courses/${id}`, "PATCH", { ...values, published: true });
+    if (!d.ok) return (d.error as string) || "Saqlashda xatolik";
+    setCourses((prev) => prev.map((c) => (c.id === id ? (d.course as OnlineCourse) : c)));
+    return null;
   }, []);
 
-  const deleteCourse = useCallback((id: number) => {
+  const deleteCourse = useCallback(async (id: number) => {
+    const d = await send(`/api/online-courses/${id}`, "DELETE");
+    if (!d.ok) return (d.error as string) || "O'chirishda xatolik";
     setCourses((prev) => prev.filter((c) => c.id !== id));
+    return null;
   }, []);
 
-  const togglePublish = useCallback((id: number) => {
-    setCourses((prev) => prev.map((c) => (c.id === id ? { ...c, published: !c.published } : c)));
-  }, []);
-
-  return (
-    <OnlineCoursesContext.Provider value={{ courses, getCourse, addCourse, updateCourse, deleteCourse, togglePublish }}>
-      {children}
-    </OnlineCoursesContext.Provider>
+  const togglePublish = useCallback(
+    async (id: number) => {
+      const current = courses.find((c) => c.id === id);
+      if (!current) return "Kurs topilmadi";
+      const d = await send(`/api/online-courses/${id}`, "PATCH", { published: !current.published });
+      if (!d.ok) return (d.error as string) || "Saqlashda xatolik";
+      setCourses((prev) => prev.map((c) => (c.id === id ? (d.course as OnlineCourse) : c)));
+      return null;
+    },
+    [courses],
   );
+
+  const value = useMemo<OnlineCoursesContextValue>(
+    () => ({ courses, loading, getCourse, addCourse, updateCourse, deleteCourse, togglePublish }),
+    [courses, loading, getCourse, addCourse, updateCourse, deleteCourse, togglePublish],
+  );
+
+  return <OnlineCoursesContext.Provider value={value}>{children}</OnlineCoursesContext.Provider>;
 }
 
 export function useOnlineCourses(): OnlineCoursesContextValue {

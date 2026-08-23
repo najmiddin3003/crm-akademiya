@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-// Cloudinary'ga rasm yuklash. `cloudinary` npm paketi ATAYIN qo'shilmadi —
+// Cloudinary'ga rasm/video yuklash. `cloudinary` npm paketi ATAYIN qo'shilmadi —
 // imzolangan yuklash oddiy REST so'rovi, `fetch` va `crypto` yetarli
 // (loyihada `lib/invite.ts`, `lib/crypto.ts` ham shu yondashuvda).
 //
@@ -44,11 +44,26 @@ export interface UploadResult {
   error?: string;
 }
 
+// Papka mijozdan olinadi, lekin oq ro'yxat orqali — aks holda uni
+// o'zgartirib boshqa joyga yozib yuborish mumkin bo'lardi.
+const UPLOAD_FOLDERS: readonly string[] = ["xodimlar", "kurslar"];
+
+/** Ruxsat etilgan papka nomini qaytaradi, notanishi uchun — "boshqa". */
+export function safeFolder(v: unknown): string {
+  return typeof v === "string" && UPLOAD_FOLDERS.includes(v) ? v : "boshqa";
+}
+
+/** Cloudinary `resource_type` — URL yo'lida ham shu so'z ishlatiladi. */
+type ResourceKind = "image" | "video";
+
 /**
  * Faylni Cloudinary'ga yuklaydi va `secure_url` ni qaytaradi.
  * `folder` — Cloudinary ichidagi papka (masalan "xodimlar").
+ * `kind` — "image" yoki "video"; imzoga kirmaydi (Cloudinary hujjati:
+ * `resource_type` imzolanadigan parametrlar ro'yxatida yo'q), faqat
+ * so'rov manzilini belgilaydi.
  */
-export async function uploadImage(file: File, folder: string): Promise<UploadResult> {
+async function upload(file: File, folder: string, kind: ResourceKind): Promise<UploadResult> {
   const cfg = cloudinaryConfig();
   if (!cfg) {
     return { ok: false, error: "Cloudinary sozlanmagan (.env.local dagi CLOUDINARY_* kalitlarini to'ldiring)" };
@@ -63,18 +78,27 @@ export async function uploadImage(file: File, folder: string): Promise<UploadRes
   for (const [k, v] of Object.entries(signed)) form.append(k, v);
   form.append("signature", sign(signed, cfg.apiSecret));
 
+  const failed = kind === "video" ? "Video yuklanmadi" : "Rasm yuklanmadi";
   try {
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/${kind}/upload`, {
       method: "POST",
       body: form,
     });
     const data = await res.json();
     if (!res.ok || !data.secure_url) {
       // Cloudinary xatosi odatda { error: { message } } ko'rinishida keladi.
-      return { ok: false, error: data?.error?.message || "Rasm yuklanmadi" };
+      return { ok: false, error: data?.error?.message || failed };
     }
     return { ok: true, url: data.secure_url as string, publicId: data.public_id as string };
   } catch {
     return { ok: false, error: "Cloudinary'ga ulanib bo'lmadi" };
   }
+}
+
+export function uploadImage(file: File, folder: string): Promise<UploadResult> {
+  return upload(file, folder, "image");
+}
+
+export function uploadVideo(file: File, folder: string): Promise<UploadResult> {
+  return upload(file, folder, "video");
 }
