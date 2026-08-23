@@ -8,10 +8,10 @@ import { COURSES, formatLessonDays, parseLessonDays, type NewOrderValues, type O
 import { useTeachers } from "@/hooks/useTeachers";
 import { usePupils } from "@/components/orders/PupilsContext";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
-import PanelSelect from "@/components/orders/PanelSelect";
 import PanelDaysField from "@/components/orders/PanelDaysField";
 import PanelTimeField, { normalizeTime } from "@/components/orders/PanelTimeField";
 import AddStudentModal from "@/components/orders/AddStudentModal";
+import DateField from "@/components/ui/DateField";
 
 // Redesigned (2026-07-16) to match the current production "Yangi buyurtma"
 // side panel (akademiya.edutizim.uz), which has moved on from the
@@ -57,6 +57,10 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   const [note, setNote] = useState(initialOrder?.note ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Buyurtma detali sahifasidagi "Buyurtma yaratish" tugmasi o'quvchini
+  // oldindan beradi — bunday holatda o'quvchi qat'iy, almashtirib bo'lmaydi.
+  const studentLocked = Boolean(initialStudentName);
 
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   // O'quvchi qo'shish orqali MongoDB'ga saqlangan haqiqiy o'quvchilar
@@ -160,25 +164,41 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <Button variant="primary" className="w-full justify-center" onClick={() => setAddStudentOpen(true)}>
-            O&apos;quvchi qo&apos;shish
-          </Button>
+          {/* O'quvchi detal sahifasidan ("Buyurtma yaratish") kelganda buyurtma
+              FAQAT o'sha o'quvchiga yaratiladi — boshqasini tanlash ham,
+              yangi o'quvchi qo'shish ham mumkin emas. */}
+          {!studentLocked && (
+            <Button variant="primary" className="w-full justify-center" onClick={() => setAddStudentOpen(true)}>
+              O&apos;quvchi qo&apos;shish
+            </Button>
+          )}
 
-          <StudentSearchSelect
-            label="O'quvchi"
-            required
-            value={studentName}
-            onChange={(v) => {
-              setStudentName(v);
-              setError(null);
-            }}
-            options={studentOptions}
-            error={error === "O'quvchi majburiy"}
-          />
+          {studentLocked ? (
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">
+                O&apos;quvchi<span className="text-red-500"> *</span>
+              </label>
+              <div className="flex h-11 w-full items-center rounded-lg border border-border bg-secondary/30 px-3 text-sm text-muted-foreground">
+                {studentName}
+              </div>
+            </div>
+          ) : (
+            <StudentSearchSelect
+              label="O'quvchi"
+              required
+              value={studentName}
+              onChange={(v) => {
+                setStudentName(v);
+                setError(null);
+              }}
+              options={studentOptions}
+              error={error === "O'quvchi majburiy"}
+            />
+          )}
 
           <StudentSearchSelect label="Referal bergan o'quvchi" value={referral} onChange={setReferral} options={studentOptions} />
 
-          <PanelSelect
+          <StudentSearchSelect
             label="Kurs"
             required
             value={course}
@@ -188,6 +208,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             }}
             options={COURSES}
             placeholder="Kursni tanlang"
+            searchPlaceholder="Kursni qidirish"
             error={error === "Kurs majburiy"}
           />
 
@@ -204,14 +225,26 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
 
           <PanelTimeField label="Darsning boshlanish vaqtini tanlang" value={lessonStartTime} onChange={setLessonStartTime} />
 
-          <PanelSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherOptions} placeholder="Ustozni tanlang" />
+          {/* O'qituvchi va guruh — brauzerning o'z <select> ro'yxati emas,
+              yuqoridagi "O'quvchi" maydoni bilan bir xil qidiruvli tanlov
+              (StudentSearchSelect): ro'yxat uzun bo'lsa ham yozib topiladi va
+              ko'rinishi CRM'ning qolgan qismiga mos tushadi. */}
+          <StudentSearchSelect
+            label="O'qituvchi"
+            value={teacher}
+            onChange={setTeacher}
+            options={teacherOptions}
+            placeholder="Ustozni tanlang"
+            searchPlaceholder="Ustozni qidirish"
+          />
 
-          <PanelSelect
+          <StudentSearchSelect
             label="Yig'ilayotgan guruhni tanlang"
             value={group}
             onChange={setGroup}
             options={GROUPS}
             placeholder="Yig'ilayotgan guruhni tanlang"
+            searchPlaceholder="Guruhni qidirish"
           />
 
           <div>
@@ -219,14 +252,17 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               Birinchi darsga kelish sanasi
               {firstLessonTime && <span className="text-red-500"> *</span>}
             </label>
-            <input
-              type="date"
+            {/* Nativ <input type="date"> brauzer tiliga qarab "дд.мм.гггг"
+                ko'rinishini beradi — o'rniga Topshiriq oynasidagi kalendar
+                (components/ui/DateField). */}
+            <DateField
+              variant="panel"
               value={firstLessonDate}
-              onChange={(e) => {
-                setFirstLessonDate(e.target.value);
+              onChange={(iso) => {
+                setFirstLessonDate(iso);
                 setError(null);
               }}
-              className={`w-full h-11 px-3 rounded-lg border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${error === "Birinchi darsga kelish sanasini tanlang" ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
+              error={error === "Birinchi darsga kelish sanasini tanlang"}
             />
           </div>
 

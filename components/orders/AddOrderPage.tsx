@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { ClipboardList, Plus, Users } from "lucide-react";
 import { useOrders } from "@/components/orders/OrdersContext";
 import { usePupils } from "@/components/orders/PupilsContext";
@@ -10,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { FormRowSelect, FormRowText } from "@/components/orders/FormRow";
+import SectionHeader from "@/components/orders/SectionHeader";
 import CustomFieldEditModal, { type CustomField } from "@/components/orders/CustomFieldEditModal";
 import { COURSES, MODERATORS, ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 import { useTeachers } from "@/hooks/useTeachers";
@@ -113,35 +113,36 @@ export default function AddOrderPage() {
     }
   };
 
+  // Tab tugmasi — referensda ikkalasi ham fon bilan: faoli ko'k, ikkinchisi
+  // xira (--secondary). Balandligi 32, radius 8, ichki bo'shliq 4/20.
+  const tabCls = (on: boolean) =>
+    `h-8 rounded-lg text-sm ${on ? "bg-primary text-white font-semibold" : "bg-secondary text-muted-foreground font-medium"}`;
+
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <div className="inline-flex items-center gap-1 p-1 rounded-lg border border-border bg-card mb-5">
-            <button
-              type="button"
-              onClick={() => setActiveTab("asosiy")}
-              className={`h-8 px-3 rounded-md text-sm font-medium ${activeTab === "asosiy" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
-            >
+    // Referens (akademiya.edutizim.uz/orders/add): chapda qat'iy 514px
+    // ustun va uning o'ng chekkasida to'liq balandlikdagi ajratgich;
+    // o'ngdagi bo'sh joyning PASTIGA "Eslatma" paneli yopishtirilgan.
+    <div className="flex h-full min-h-0">
+      <div className="flex w-[514px] shrink-0 flex-col border-r border-border px-2">
+        {/* Tab paneli — referensda 12px radius, 4px ichki bo'shliq, 4px oraliq
+            va panelning to'liq kengligi (aylantiriladigan qismdan tashqarida) */}
+        <div className="shrink-0">
+          <div className="flex gap-1 rounded-xl border border-border bg-background p-1">
+            <button type="button" onClick={() => setActiveTab("asosiy")} style={{ paddingLeft: 20, paddingRight: 20 }} className={tabCls(activeTab === "asosiy")}>
               Asosiy
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("sozlamalar")}
-              className={`h-8 px-3 rounded-md text-sm font-medium ${activeTab === "sozlamalar" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
-            >
+            <button type="button" onClick={() => setActiveTab("sozlamalar")} style={{ paddingLeft: 20, paddingRight: 20 }} className={tabCls(activeTab === "sozlamalar")}>
               Sozlamalar
             </button>
           </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
 
           {activeTab === "sozlamalar" ? (
             <div className="space-y-6">
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                    <ClipboardList size={16} />
-                  </span>
-                  <span className="text-sm font-semibold">Buyurtma maydonlari</span>
+                <div className="mb-3">
+                  <SectionHeader icon={ClipboardList} title="Buyurtma maydonlari" />
                 </div>
                 <div className="space-y-2">
                   {orderCustomFields.map((f) => (
@@ -165,11 +166,8 @@ export default function AddOrderPage() {
               </div>
 
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                    <Users size={16} />
-                  </span>
-                  <span className="text-sm font-semibold">O&apos;quvchi maydonlari</span>
+                <div className="mb-3">
+                  <SectionHeader icon={Users} title="O'quvchi maydonlari" />
                 </div>
                 <div className="space-y-2">
                   {studentCustomFields.map((f) => (
@@ -194,25 +192,28 @@ export default function AddOrderPage() {
             </div>
           ) : (
             <>
-              <div className="relative mb-6">
+              {/* Referens: sarlavha 16px/600 va undan 4px pastda 8px'lik
+                  chiziq — bo'laklar oralig'i YO'Q, bosqich tanlanmaguncha
+                  hammasi kulrang (#dadada). */}
+              <div className="relative py-2">
                 <button
                   type="button"
                   onClick={() => setStagePickerOpen((o) => !o)}
-                  className="w-full flex items-center justify-between py-1.5"
+                  className="mb-1 flex h-6 w-full items-center justify-between"
                 >
-                  <span className="text-sm font-semibold">
+                  <span className="text-base font-semibold">
                     {activeStage ? `${activeStage.emoji} ${activeStage.label}` : "Bosqichni tanlang"}
                   </span>
                   <svg className="icon icon-sm text-muted-foreground">
                     <use href="#i-chevron-down" />
                   </svg>
                 </button>
-                <div className="flex h-1 w-full gap-0.5 overflow-hidden rounded-full">
+                <div className="flex h-2 w-full overflow-hidden rounded-full">
                   {ORDER_STAGES.map((st) => (
                     <div
                       key={st.key}
                       className="flex-1"
-                      style={{ backgroundColor: STAGE_COLORS[st.key], opacity: !stage || stage === st.key ? 1 : 0.25 }}
+                      style={{ backgroundColor: stage === st.key ? STAGE_COLORS[st.key] : "#dadada" }}
                     />
                   ))}
                 </div>
@@ -228,12 +229,7 @@ export default function AddOrderPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 mb-1">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                  <ClipboardList size={16} />
-                </span>
-                <span className="text-sm font-semibold">Buyurtma ma&apos;lumotlari</span>
-              </div>
+              <SectionHeader icon={ClipboardList} title="Buyurtma ma'lumotlari" />
               <FormRowSelect label="Mas'ul shaxs" value={moderator} onChange={setModerator} options={MODERATORS} />
               <FormRowSelect
                 label="Kurs"
@@ -252,14 +248,14 @@ export default function AddOrderPage() {
                 value={referral}
                 onChange={setReferral}
                 options={pupilNames}
+                placeholder="..."
+                searchPlaceholder="O'quvchini qidirish"
               />
 
-              <div className="flex items-center gap-2 mt-6 mb-1">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                  <Users size={16} />
-                </span>
-                <span className="text-sm font-semibold">O&apos;quvchi ma&apos;lumotlari</span>
-              </div>
+              {/* Referensda ikki bo'lim orasida 48px bo'shliq va 1px ajratgich bor */}
+              <div className="mb-12" />
+              <div className="border-t border-border" />
+              <SectionHeader icon={Users} title="O'quvchi ma'lumotlari" className="pt-1 pb-px" />
               <FormRowText
                 label="Ism"
                 value={firstName}
@@ -272,35 +268,37 @@ export default function AddOrderPage() {
               <FormRowText label="Telefon" value={phone} onChange={setPhone} />
 
               {error && <div className="mt-3 text-sm text-red-600">⚠ {error}</div>}
-
-              <div className="flex justify-end gap-2 mt-6">
-                <Link
-                  href="/orders-list?layout=kanban"
-                  className="inline-flex items-center h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60"
-                >
-                  Orqaga
-                </Link>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={handleSave}
-                  className="inline-flex items-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
-                >
-                  {saving ? "Saqlanmoqda..." : "Saqlash"}
-                </button>
-              </div>
             </>
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 flex flex-col">
-          <label className="text-sm font-semibold underline mb-2">Eslatma:</label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={6}
-            className="w-full flex-1 resize-none rounded-lg border border-border bg-secondary/20 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+        {/* Referensda "Saqlash" chap panelning eng pastida, chapga tekislangan
+            va yolg'iz turadi (orqaga qaytish header'dagi strelka orqali). */}
+        <div className="shrink-0 pb-2">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={handleSave}
+            style={{ paddingLeft: 20, paddingRight: 20 }}
+            className="inline-flex h-9 items-center rounded-lg bg-primary text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+          >
+            {saving ? "Saqlanmoqda..." : "Saqlash"}
+          </button>
+        </div>
+      </div>
+
+      {/* O'ng tomon — referensda faqat pastga yopishtirilgan "Eslatma" paneli */}
+      <div className="flex min-w-0 flex-1 flex-col px-3 pt-3 pb-2">
+        <div className="mt-auto rounded-md border border-border">
+          <div className="flex items-start gap-2.5 rounded-[5px] bg-secondary p-2">
+            <span className="shrink-0 text-[15px] leading-[23px] text-primary underline">Eslatma:</span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              style={{ padding: 0 }}
+              className="min-h-20 w-full flex-1 resize-none border-0 bg-transparent text-sm leading-[23px] focus:outline-none"
+            />
+          </div>
         </div>
       </div>
 
