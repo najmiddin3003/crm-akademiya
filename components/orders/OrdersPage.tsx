@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Filter, FileSpreadsheet, FileText, MoreVertical, Settings, Share2, XCircle, Zap } from "lucide-react";
+import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Settings, Share2, XCircle, Zap } from "lucide-react";
 import * as XLSX from "xlsx";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
@@ -298,7 +298,11 @@ export default function OrdersPage() {
         </defs>
       </svg>
 
+      {/* Referens (akademiya.edutizim.uz): sarlavha CHAPDA, barcha tugmalar
+          O'NGDA bitta qatorda. Kanban ko'rinishidagi keng qidiruv maydoni
+          olib tashlandi — qidiruv filtrlar panelida. */}
       <div className="flex items-center flex-wrap gap-2 shrink-0">
+        <h1 className="mr-auto text-xl font-semibold tracking-tight">Buyurtmalar ro&apos;yxati</h1>
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg border border-border bg-card shrink-0">
           <button
             onClick={() => setLayout("list")}
@@ -316,29 +320,8 @@ export default function OrdersPage() {
           </button>
         </div>
 
-        {/* Kanban ko'rinishida bosh sahifadagi Sozlash/Filtr/Eksport o'rniga bitta
-            keng qidiruv maydoni ko'rsatiladi (production'dagi kabi) — ikkalasi
-            ham bir xil filters.search state'ini boshqaradi. */}
-        {layout === "kanban" ? (
-          <div className="relative flex-1 min-w-[140px]">
-            <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-              <use href="#i-search" />
-            </svg>
-            <input
-              value={filters.search}
-              onChange={(e) => setFilter("search", e.target.value)}
-              type="text"
-              placeholder="Qidirish"
-              className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
-
         <div className="flex items-center gap-2 shrink-0">
-          {layout === "list" && (
-            <div className="relative" ref={settingsRef}>
+          <div className="relative" ref={settingsRef}>
               <Button
                 variant="outline"
                 lucideIcon={Settings}
@@ -367,16 +350,19 @@ export default function OrdersPage() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-          {layout === "list" && (
-            <Button
-              variant="outline"
-              lucideIcon={Filter}
-              onClick={() => setFiltersOpen((o) => !o)}
-              title="Filtrlar"
-            />
-          )}
+          </div>
+          <Button
+            variant="outline"
+            lucideIcon={Filter}
+            onClick={() => setFiltersOpen((o) => !o)}
+            title="Filtrlar"
+          />
+          <Button
+            variant="outline"
+            lucideIcon={XCircle}
+            onClick={clearFilters}
+            title="Filtrlarni tozalash"
+          />
           <div className="relative" ref={exportRef}>
             <Button
               variant="outline"
@@ -426,9 +412,6 @@ export default function OrdersPage() {
         </div>
       </div>
 
-        <h1 className="text-xl font-semibold tracking-tight shrink-0">
-          Buyurtmalar ro&apos;yxati
-        </h1>
       <div
         id="orders-filter-bar"
         className={`shrink-0 space-y-2.5${filtersOpen ? "" : " collapsed"}`}
@@ -759,9 +742,13 @@ export default function OrdersPage() {
                         className="rounded-md"
                       >
                         {o.phone ? (
+                          // Bosqich hali berilmagan bo'lsa — betaraf kulrang
+                          // chip (referensdagi standart holat).
                           <span
-                            className="px-2 py-0.5 rounded-md text-xs font-medium tabular-nums text-white hover:opacity-90 transition-opacity"
-                            style={{ backgroundColor: STAGE_COLORS[o.stage] }}
+                            className={`px-2 py-0.5 rounded-md text-xs font-medium tabular-nums transition-opacity hover:opacity-90 ${
+                              o.stage ? "text-white" : "bg-secondary text-foreground"
+                            }`}
+                            style={o.stage ? { backgroundColor: STAGE_COLORS[o.stage] } : undefined}
                           >
                             {o.phone}
                           </span>
@@ -801,30 +788,29 @@ export default function OrdersPage() {
                       {o.note}
                     </td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1">
+                      {/* Ikonkalar kattalashtirildi (28→32px, ikonka 12→16px).
+                          Ikkinchisi karnay emas — vazifasi o'quvchiga izoh
+                          yozish, shu bois xabar (chat) ikonkasi. */}
+                      <div className="inline-flex items-center gap-1.5">
                         <button
-                          className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           title="Tahrirlash"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOrderModal({ mode: "edit", order: o });
                           }}
                         >
-                          <svg className="icon icon-xs">
-                            <use href="#i-edit" />
-                          </svg>
+                          <Pencil size={16} />
                         </button>
                         <button
-                          className="h-7 w-7 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground"
-                          title="Izoh"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          title="Izoh yozish"
                           onClick={(e) => {
                             e.stopPropagation();
                             setMessageFor(o);
                           }}
                         >
-                          <svg className="icon icon-xs">
-                            <use href="#i-megaphone" />
-                          </svg>
+                          <MessageSquare size={16} />
                         </button>
                       </div>
                     </td>

@@ -8882,6 +8882,26 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     background-color: rgba(127, 29, 29, 0.28);
   }
 
+  /* First lessons — birinchi dars sanasi/vaqti O'TIB KETGAN qator.
+     .lessons-row (pushti) dan kuchliroq qizil; ikkalasi bir vaqtda
+     berilsa ham shu yutadi (aniqlik darajasi yuqoriroq). */
+  .fl-overdue,
+  .lessons-row.fl-overdue {
+    background-color: rgba(239, 68, 68, 0.14);
+  }
+  html.dark .fl-overdue,
+  html.dark .lessons-row.fl-overdue {
+    background-color: rgba(239, 68, 68, 0.18);
+  }
+  .fl-overdue:hover,
+  .lessons-row.fl-overdue:hover {
+    background-color: rgba(239, 68, 68, 0.22);
+  }
+  html.dark .fl-overdue:hover,
+  html.dark .lessons-row.fl-overdue:hover {
+    background-color: rgba(239, 68, 68, 0.28);
+  }
+
   /* Leads submenu pop-in */
   #leads-submenu {
     animation: leadsSubIn 0.18s ease-out;
@@ -10226,4 +10246,5 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
 @media (min-width: 48rem) {
   .grid.md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
 

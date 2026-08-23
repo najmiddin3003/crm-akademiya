@@ -5,16 +5,19 @@ import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 
 // "✗ Rad etish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
-// akademiya.edutizim.uz referensiga mos: "Izoh qoldiring" sarlavha, "Reason"
+// akademiya.edutizim.uz referensiga mos: "Izoh qoldiring" sarlavha, "Sabab"
 // yorlig'i + qidiruv maydoni + har doim ko'rinib turadigan sabablar ro'yxati
 // (GroupPickerModal bilan bir xil andoza). Sabablar hozircha qattiq yozilgan
-// (backend yo'q) — "Other" tanlansa erkin matn maydoni ochiladi.
+// (backend yo'q) — "Boshqa" tanlansa erkin matn maydoni ochiladi.
+
+/** Erkin matn yozish uchun ochiladigan variant. */
+const OTHER = "Boshqa";
 
 const REJECT_REASONS = [
   "Uyidagilar ruxsat bermabdi",
   "Boshqa o'quv markaziga boradigan bo'libdi",
   "Telefoni noto'g'ri ekan",
-  "Other",
+  OTHER,
 ];
 
 export interface RejectReasonModalProps {
@@ -31,8 +34,8 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
   const filtered = REJECT_REASONS.filter((r) => r.toLowerCase().includes(query.trim().toLowerCase()));
 
   const handlePick = (reason: string) => {
-    if (reason === "Other") {
-      setSelected("Other");
+    if (reason === OTHER) {
+      setSelected(OTHER);
       return;
     }
     onConfirm(reason);
@@ -49,13 +52,13 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
         </div>
 
         <div className="p-5 space-y-2">
-          <label className="block text-sm font-medium">Reason</label>
+          <label className="block text-sm font-medium">Sabab</label>
           <div className="relative">
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search reason"
+              placeholder="Sababni qidirish"
               className="w-full h-11 rounded-lg border border-border bg-secondary/20 px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -80,7 +83,7 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
             )}
           </div>
 
-          {selected === "Other" && (
+          {selected === OTHER && (
             <div className="pt-2 space-y-2">
               <textarea
                 autoFocus
@@ -94,7 +97,7 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
                 <Button variant="outline" onClick={onClose}>
                   Orqaga
                 </Button>
-                <Button variant="primary" onClick={() => onConfirm(customReason.trim() || "Other")}>
+                <Button variant="primary" onClick={() => onConfirm(customReason.trim() || OTHER)}>
                   Saqlash
                 </Button>
               </div>

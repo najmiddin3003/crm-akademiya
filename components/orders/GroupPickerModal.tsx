@@ -2,26 +2,35 @@
 
 import { useState } from "react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { DEMO_GROUPS, type GroupOption } from "@/lib/groupsData";
+import { useGroups } from "@/hooks/useGroups";
+import type { Group } from "@/lib/groups";
 
 // "Guruhga qo'shish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx)
 // — akademiya.edutizim.uz referensiga mos: "Guruh shaklini tanlang" sarlavha,
 // qidiruv maydoni + har doim ko'rinib turadigan (popover emas) guruhlar
-// ro'yxati, har biri raqam + bosqich/kun/vaqt/o'qituvchi qatori bilan.
+// ro'yxati, har biri nom + bosqich/kun/vaqt/o'qituvchi qatori bilan.
+//
+// Guruhlar BAZADAN keladi (/api/groups) — ilgari qattiq yozilgan DEMO_GROUPS
+// ro'yxati ishlatilardi va u Guruh sahifasidagi haqiqiy guruhlar bilan
+// bog'liq emas edi.
 
 export interface GroupPickerModalProps {
   onClose: () => void;
-  onSelect: (group: GroupOption) => void;
+  onSelect: (group: Group) => void;
+}
+
+/** Ro'yxatdagi ikkinchi satr: bo'sh maydonlar tushirib qoldiriladi. */
+function subtitleOf(g: Group): string {
+  return [g.course, g.level, g.day, g.time, g.teacher].filter(Boolean).join(" • ");
 }
 
 export default function GroupPickerModal({ onClose, onSelect }: GroupPickerModalProps) {
   const [query, setQuery] = useState("");
+  const { groups, loading } = useGroups();
   useEscapeClose(onClose);
 
-  const filtered = DEMO_GROUPS.filter((g) => {
-    const haystack = `${g.id} ${g.level} ${g.dayPattern} ${g.timeRange} ${g.teacher}`.toLowerCase();
-    return haystack.includes(query.trim().toLowerCase());
-  });
+  const q = query.trim().toLowerCase();
+  const filtered = groups.filter((g) => `${g.id} ${g.name} ${subtitleOf(g)}`.toLowerCase().includes(q));
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
@@ -40,7 +49,7 @@ export default function GroupPickerModal({ onClose, onSelect }: GroupPickerModal
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search group"
+              placeholder="Guruhni qidirish"
               className="w-full h-11 rounded-lg border border-border bg-secondary/20 px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -49,8 +58,12 @@ export default function GroupPickerModal({ onClose, onSelect }: GroupPickerModal
           </div>
 
           <div className="max-h-72 overflow-y-auto divide-y divide-border">
-            {filtered.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-muted-foreground text-center">Topilmadi</div>
+            {loading ? (
+              <div className="px-2 py-4 text-sm text-muted-foreground text-center">Yuklanmoqda…</div>
+            ) : filtered.length === 0 ? (
+              <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                {groups.length === 0 ? "Guruhlar yo'q — avval Guruh sahifasida qo'shing" : "Topilmadi"}
+              </div>
             ) : (
               filtered.map((g) => (
                 <button
@@ -59,10 +72,8 @@ export default function GroupPickerModal({ onClose, onSelect }: GroupPickerModal
                   onClick={() => onSelect(g)}
                   className="w-full text-left px-2 py-3 hover:bg-secondary/50"
                 >
-                  <div className="font-semibold">{g.id}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {g.level} • {g.dayPattern} • {g.timeRange} • {g.teacher}
-                  </div>
+                  <div className="font-semibold">{g.name || g.id}</div>
+                  <div className="text-sm text-muted-foreground">{subtitleOf(g) || "—"}</div>
                 </button>
               ))
             )}

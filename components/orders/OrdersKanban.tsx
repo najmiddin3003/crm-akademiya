@@ -16,7 +16,10 @@ export default function OrdersKanban({ orders, onDropStage }: OrdersKanbanProps)
   const [dropTarget, setDropTarget] = useState<OrderStageKey | null>(null);
 
   const byStage: Record<OrderStageKey, Order[]> = { bir_oylay: [], jaylang_e: [], rahmaaaat: [], ketdim: [] };
-  for (const o of orders) (byStage[o.stage] || byStage.bir_oylay).push(o);
+  // Bosqichi hali tanlanmagan lid hech qaysi ustunga tushmaydi (referensda
+  // ham shunday) — moderator uni ro'yxatdan telefon raqami orqali
+  // bosqichga qo'shadi.
+  for (const o of orders) if (o.stage) byStage[o.stage].push(o);
 
   return (
     <div className="orders-kanban-grid">

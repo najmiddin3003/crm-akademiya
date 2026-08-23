@@ -12,12 +12,24 @@ import DateRangePicker from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTeachers } from "@/hooks/useTeachers";
+import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
+import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
+import GroupPickerModal from "@/components/orders/GroupPickerModal";
+import PanelDaysField from "@/components/orders/PanelDaysField";
+import { enrollOrderInGroup, findPupilForOrder } from "@/lib/enrollStudent";
+import type { Group } from "@/lib/groups";
+import type { Pupil } from "@/lib/pupilsData";
 import {
   FIRST_LESSON_STATUSES,
+  LESSON_DAYS,
+  ORDER_STAGES,
   firstLessonStatusLabel,
+  parseLessonDays,
   type FirstLessonStatus,
   type Order,
+  type OrderStageKey,
 } from "@/lib/ordersData";
+import type { HrEmployee } from "@/lib/hrEmployees";
 
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
@@ -49,6 +61,17 @@ function createdIso(created: string): string {
   const m = (created || "").match(/^(\d{2})\.(\d{2})\.(\d{4})/);
   return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
 }
+/**
+ * "24.08.2026 | 10:00" → Date. Vaqt ko'rsatilmagan bo'lsa kunning oxiri
+ * olinadi — ya'ni sana bugun bo'lsa kun tugagunicha "o'tgan" sanalmaydi.
+ */
+function firstLessonAt(firstLesson: string): Date | null {
+  const m = (firstLesson || "").match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s*\|\s*(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const [, d, mo, y, hh, mm] = m;
+  return new Date(Number(y), Number(mo) - 1, Number(d), hh ? Number(hh) : 23, mm ? Number(mm) : 59);
+}
+
 function todayIso(): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
@@ -95,7 +118,9 @@ export default function FirstLessonsPage() {
   const [range, setRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [courseFilter, setCourseFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // "Ranglar bo'yicha" — lid voronkasidagi bosqich (ORDER_STAGES). Bu
+  // yuqoridagi tablardagi "birinchi dars holati"dan ALOHIDA narsa.
+  const [stageFilter, setStageFilter] = useState("");
   const [dayFilter, setDayFilter] = useState("");
   const [oddEvenFilter, setOddEvenFilter] = useState("");
   const [moderatorFilter, setModeratorFilter] = useState("");
@@ -110,6 +135,37 @@ export default function FirstLessonsPage() {
   const [statusFor, setStatusFor] = useState<Order | null>(null);
   const [rescheduleFor, setRescheduleFor] = useState<Order | null>(null);
   const [noteFor, setNoteFor] = useState<Order | null>(null);
+  // Telefon raqam bosilganda ochiladigan bosqich ("rang") tanlagichi —
+  // Buyurtmalar ro'yxatidagi bilan bir xil.
+  const [stagePickerFor, setStagePickerFor] = useState<number | null>(null);
+  // "⋮" menyusidagi qolgan amallar
+  const [reminderFor, setReminderFor] = useState<Order | null>(null);
+  const [groupPickerFor, setGroupPickerFor] = useState<Order | null>(null);
+  const [printFor, setPrintFor] = useState<Order | null>(null);
+
+  // "Guruhga qo'shish" va "Profilni ochish" uchun o'quvchilar ro'yxati.
+  const [pupils, setPupils] = useState<Pupil[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pupils")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setPupils(d.pupils); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // "Hozir" holatda saqlanadi va daqiqada bir yangilanadi — shunda vaqt
+  // o'tishi bilan qator sahifani yangilamasdan ham o'zi qizarib qoladi.
+  // (Render ichida to'g'ridan-to'g'ri Date.now() chaqirish mumkin emas —
+  // React compiler uni "nopok" deb rad etadi.)
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Moderator filtri uchun xodimlar (Boshqaruv → Xodimlar).
+  const [employees, setEmployees] = useState<HrEmployee[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,6 +173,15 @@ export default function FirstLessonsPage() {
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setOrders(d.orders); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/hr-employees")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -147,14 +212,54 @@ export default function FirstLessonsPage() {
     }
   }, []);
 
+  /**
+   * "Profilni ochish" manzili — o'quvchi bazada topilsa uning profili,
+   * aks holda buyurtma detali.
+   */
+  const profileHref = (o: Order): string => {
+    const pupil = findPupilForOrder(o, pupils);
+    return pupil ? `/student-edit/${pupil.id}?src=list` : `/orders-list/${o.id}`;
+  };
+
+  /** "⋮ → Guruhga qo'shish": o'quvchini tanlangan guruhga yozadi. */
+  const handleAddToGroup = useCallback(async (order: Order, group: Group) => {
+    const label = group.name || String(group.id);
+    const res = await enrollOrderInGroup(order, group.id, pupils);
+    if (!res.ok) {
+      showError(res.error || "Guruhga qo'shishda xatolik yuz berdi");
+      return;
+    }
+    const ok = await patchOrder(order.id, {
+      firstLessonStatus: "GURUHGA_QOSHILDI",
+      status: "Qabul qilindi",
+      group: label,
+      groupId: group.id,
+    });
+    setGroupPickerFor(null);
+    if (ok) showSuccess(`O'quvchi "${label}" guruhiga qo'shildi`);
+    else showError("Buyurtma holatini saqlashda xatolik yuz berdi");
+  }, [pupils, patchOrder, showSuccess, showError]);
+
+  /** Telefon raqamdagi bosqich ("rang") tanlagichidan chaqiriladi. */
+  const setOrderStage = useCallback(async (orderId: number, stage: OrderStageKey) => {
+    setStagePickerFor(null);
+    const ok = await patchOrder(orderId, { stage });
+    if (ok) showSuccess("Bosqich o'zgartirildi");
+    else showError("Bosqichni o'zgartirib bo'lmadi");
+  }, [patchOrder, showSuccess, showError]);
+
   // Birinchi darsga YOZILGANLAR — sanasi belgilangan buyurtmalar.
   const rows = useMemo(() => orders.filter((o) => (o.firstLesson || "").trim()), [orders]);
 
   const { names: allTeachers } = useTeachers();
   const courseOptions = useMemo(() => uniq(rows.map((o) => o.course)), [rows]);
   const levelOptions = useMemo(() => uniq(rows.map((o) => o.level)), [rows]);
-  const dayOptions = useMemo(() => uniq(rows.map((o) => o.lessonDay)), [rows]);
-  const moderatorOptions = useMemo(() => uniq(rows.map((o) => o.moderator)), [rows]);
+  // Moderatorlar ro'yxati BAZADAN (/api/hr-employees, turi: "moderator") —
+  // ilgari buyurtmalarda uchragan har qanday nom chiqardi.
+  const moderatorOptions = useMemo(
+    () => employees.filter((e) => e.turi === "moderator" && !e.archReason).map((e) => e.name).sort(),
+    [employees],
+  );
   const teacherOptions = useMemo(
     () => uniq([...allTeachers, ...rows.map((o) => o.teacher)]),
     [allTeachers, rows],
@@ -176,11 +281,14 @@ export default function FirstLessonsPage() {
       }
       if (courseFilter && o.course !== courseFilter) return false;
       if (levelFilter && o.level !== levelFilter) return false;
-      if (dayFilter && o.lessonDay !== dayFilter) return false;
+      // Kun filtri to'liq nom bo'yicha ("Dushanba"), buyurtmada esa
+      // qisqartma turadi ("Du,Ch,Ju") — parseLessonDays ikkalasini ham
+      // tushunadi.
+      if (dayFilter && !parseLessonDays(o.lessonDay).includes(dayFilter)) return false;
       if (oddEvenFilter && oddEvenOf(o.lessonDay) !== oddEvenFilter) return false;
       if (moderatorFilter && o.moderator !== moderatorFilter) return false;
       if (teacherFilter && o.teacher !== teacherFilter) return false;
-      if (statusFilter && o.firstLessonStatus !== statusFilter) return false;
+      if (stageFilter && o.stage !== stageFilter) return false;
       if (q) {
         const hay = [o.name, o.phone, o.id, o.course, o.level, o.teacher, o.moderator, o.note]
           .join(" ").toLowerCase();
@@ -189,7 +297,7 @@ export default function FirstLessonsPage() {
       }
       return true;
     });
-  }, [rows, dateFilter, range, courseFilter, levelFilter, dayFilter, oddEvenFilter, moderatorFilter, teacherFilter, statusFilter, search]);
+  }, [rows, dateFilter, range, courseFilter, levelFilter, dayFilter, oddEvenFilter, moderatorFilter, teacherFilter, stageFilter, search]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: beforeTab.length, none: 0 };
@@ -284,22 +392,35 @@ export default function FirstLessonsPage() {
           value={range}
           onChange={(r) => { setRange(r); setPage(1); }}
         />
-        <select value={courseFilter} onChange={(e) => { setCourseFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Kurs</option>
-          {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        {/* Kurs va Moderator ro'yxatlari uzun bo'lishi mumkin — nativ
+            <select> emas, qidiruvli tanlov (referensdagidek). */}
+        <StudentSearchSelect
+          label=""
+          variant="compact"
+          value={courseFilter}
+          onChange={(v) => { setCourseFilter(v); setPage(1); }}
+          options={courseOptions}
+          placeholder="Kurs"
+          searchPlaceholder="Qidirish"
+        />
         <select value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setPage(1); }} className={selectCls}>
           <option value="">Daraja</option>
           {levelOptions.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Status bo&apos;yicha</option>
-          {FIRST_LESSON_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        {/* "Ranglar bo'yicha" — lid voronkasi bosqichlari, emoji bilan
+            (referens). Birinchi dars holati yuqoridagi tablarda. */}
+        <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setPage(1); }} className={selectCls}>
+          <option value="">Ranglar bo&apos;yicha</option>
+          {ORDER_STAGES.map((st) => (
+            <option key={st.key} value={st.key}>{st.emoji} {st.label}</option>
+          ))}
         </select>
 
+        {/* Hafta kunlari to'liq nom bilan (referens), buyurtmadagi
+            qisqartmaga filtrlashda moslashtiriladi. */}
         <select value={dayFilter} onChange={(e) => { setDayFilter(e.target.value); setPage(1); }} className={selectCls}>
           <option value="">Kun</option>
-          {dayOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+          {LESSON_DAYS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}
         </select>
         <select value={oddEvenFilter} onChange={(e) => { setOddEvenFilter(e.target.value); setPage(1); }} className={selectCls}>
           <option value="">Toq/Juft kunlar</option>
@@ -307,10 +428,15 @@ export default function FirstLessonsPage() {
           <option value="juft">Juft kunlar (Se-Pa-Sh)</option>
           <option value="boshqa">Boshqa kunlar</option>
         </select>
-        <select value={moderatorFilter} onChange={(e) => { setModeratorFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Moderator</option>
-          {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
+        <StudentSearchSelect
+          label=""
+          variant="compact"
+          value={moderatorFilter}
+          onChange={(v) => { setModeratorFilter(v); setPage(1); }}
+          options={moderatorOptions}
+          placeholder="Moderator"
+          searchPlaceholder="Qidirish"
+        />
         <select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setPage(1); }} className={selectCls}>
           <option value="">O&apos;qituvchi</option>
           {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -356,17 +482,23 @@ export default function FirstLessonsPage() {
               </tr>
             </thead>
             <tbody>
-              {slice.map((o, i) => (
+              {slice.map((o, i) => {
+                // Birinchi dars vaqti o'tib ketgan bo'lsa qator qizil bo'ladi.
+                const at = firstLessonAt(o.firstLesson);
+                const overdue = at !== null && at.getTime() < now;
+                return (
                 <tr
                   key={o.id}
                   /* Qator foni holatga qarab (globals.css): natija kiritilmagan —
                      sarg'ish, kelmagan/rad etgan — pushti, qolganlari oddiy. */
                   className={`border-b border-border/50 transition-colors hover:bg-secondary/30 ${
-                    !o.firstLessonStatus
-                      ? "lessons-row fl-needs-result"
-                      : o.firstLessonStatus === "KELMADI" || o.firstLessonStatus === "RAD_ETDI"
-                        ? "lessons-row"
-                        : ""
+                    overdue
+                      ? "fl-overdue"
+                      : !o.firstLessonStatus
+                        ? "lessons-row fl-needs-result"
+                        : o.firstLessonStatus === "KELMADI" || o.firstLessonStatus === "RAD_ETDI"
+                          ? "lessons-row"
+                          : ""
                   }`}
                 >
                   <td className="px-3 py-3"><input type="checkbox" className="rounded border-border" /></td>
@@ -377,8 +509,37 @@ export default function FirstLessonsPage() {
                       {o.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-3">
-                    <span className="px-2 py-0.5 rounded-md bg-secondary/60 text-xs font-medium tabular-nums">{o.phone || "—"}</span>
+                  {/* Telefon raqam bosilsa lid bosqichi ("rang") tanlanadi —
+                      Buyurtmalar ro'yxatidagi bilan bir xil xatti-harakat. */}
+                  <td className="px-3 py-3 relative">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStagePickerFor(stagePickerFor === o.id ? null : o.id);
+                      }}
+                      className="rounded-md"
+                    >
+                      {o.phone ? (
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-xs font-medium tabular-nums transition-opacity hover:opacity-90 ${
+                            o.stage ? "text-white" : "bg-secondary text-foreground"
+                          }`}
+                          style={o.stage ? { backgroundColor: STAGE_COLORS[o.stage] } : undefined}
+                        >
+                          {o.phone}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-secondary/60 text-xs font-medium">—</span>
+                      )}
+                    </button>
+                    {stagePickerFor === o.id && (
+                      <StagePickerPopover
+                        value={o.stage}
+                        onChange={(stage) => setOrderStage(o.id, stage)}
+                        onClose={() => setStagePickerFor(null)}
+                      />
+                    )}
                   </td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{o.created}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{o.firstLesson}</td>
@@ -411,7 +572,8 @@ export default function FirstLessonsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={14} className="px-3 py-10 text-center text-sm text-muted-foreground">
@@ -451,17 +613,7 @@ export default function FirstLessonsPage() {
           >
             <Send /> Telegram yozish
           </a>
-          <button
-            type="button"
-            className="fl-action-btn-row"
-            onClick={async () => {
-              const o = menuFor.order;
-              setMenuFor(null);
-              const ok = await patchOrder(o.id, { firstLessonStatus: "ESLATILDI" });
-              if (ok) showSuccess(`${o.name} — eslatma yuborildi deb belgilandi`);
-              else showError("Belgilab bo'lmadi");
-            }}
-          >
+          <button type="button" className="fl-action-btn-row" onClick={() => { setReminderFor(menuFor.order); setMenuFor(null); }}>
             <Bell /> Eslatma yuborish
           </button>
 
@@ -473,16 +625,22 @@ export default function FirstLessonsPage() {
           <button type="button" className="fl-action-btn-row" onClick={() => { setRescheduleFor(menuFor.order); setMenuFor(null); }}>
             <CalendarX2 /> Qayta dars belgilash
           </button>
+          <button type="button" className="fl-action-btn-row" onClick={() => { setGroupPickerFor(menuFor.order); setMenuFor(null); }}>
+            <Users /> Guruhga qo&apos;shish
+          </button>
 
           <div className="fl-action-divider" />
 
-          <Link className="fl-action-btn-row" href={`/orders-list/${menuFor.order.id}`} onClick={() => setMenuFor(null)}>
+          {/* O'quvchi bazada bo'lsa uning profiliga, bo'lmasa buyurtma
+              detaliga o'tiladi (buyurtma va o'quvchi id fazolari boshqacha —
+              shu bois ?src=list qo'shiladi, app/(app)/student-edit izohiga q.). */}
+          <Link className="fl-action-btn-row" href={profileHref(menuFor.order)} onClick={() => setMenuFor(null)}>
             <User /> Profilni ochish
           </Link>
           <button type="button" className="fl-action-btn-row" onClick={() => { setNoteFor(menuFor.order); setMenuFor(null); }}>
             <StickyNote /> Izoh qo&apos;shish
           </button>
-          <button type="button" className="fl-action-btn-row" onClick={() => { setMenuFor(null); window.print(); }}>
+          <button type="button" className="fl-action-btn-row" onClick={() => { setPrintFor(menuFor.order); setMenuFor(null); }}>
             <Printer /> Chop etish
           </button>
         </div>
@@ -504,9 +662,10 @@ export default function FirstLessonsPage() {
       {rescheduleFor && (
         <RescheduleModal
           order={rescheduleFor}
+          teachers={allTeachers}
           onClose={() => setRescheduleFor(null)}
-          onSave={async (firstLesson) => {
-            const ok = await patchOrder(rescheduleFor.id, { firstLesson, firstLessonStatus: "QAYTA_BELGILANDI" });
+          onSave={async (patch) => {
+            const ok = await patchOrder(rescheduleFor.id, { ...patch, firstLessonStatus: "QAYTA_BELGILANDI" });
             setRescheduleFor(null);
             if (ok) showSuccess("Dars qayta belgilandi");
             else showError("Saqlab bo'lmadi");
@@ -515,7 +674,7 @@ export default function FirstLessonsPage() {
       )}
 
       {noteFor && (
-        <NoteModal
+        <NotePanel
           order={noteFor}
           onClose={() => setNoteFor(null)}
           onSave={async (note) => {
@@ -526,6 +685,29 @@ export default function FirstLessonsPage() {
           }}
         />
       )}
+
+      {reminderFor && (
+        <ReminderModal
+          order={reminderFor}
+          onClose={() => setReminderFor(null)}
+          onSend={async (text) => {
+            const o = reminderFor;
+            setReminderFor(null);
+            const ok = await patchOrder(o.id, { firstLessonStatus: "ESLATILDI" });
+            if (ok) showSuccess(`${o.name} — eslatma yuborildi: "${text}"`);
+            else showError("Belgilab bo'lmadi");
+          }}
+        />
+      )}
+
+      {groupPickerFor && (
+        <GroupPickerModal
+          onClose={() => setGroupPickerFor(null)}
+          onSelect={(group) => handleAddToGroup(groupPickerFor, group)}
+        />
+      )}
+
+      {printFor && <PrintPreviewModal order={printFor} onClose={() => setPrintFor(null)} />}
     </div>
   );
 }
@@ -570,20 +752,42 @@ function StatusModal({ order, onClose, onPick }: { order: Order; onClose: () => 
   );
 }
 
-function RescheduleModal({ order, onClose, onSave }: { order: Order; onClose: () => void; onSave: (firstLesson: string) => void }) {
+/**
+ * "Qayta dars belgilash" — birinchi dars sanasi/vaqtidan tashqari darsning
+ * o'zini ham qayta belgilash mumkin: o'qituvchi, dars kunlari va darsning
+ * boshlanish vaqti.
+ */
+function RescheduleModal({
+  order,
+  teachers,
+  onClose,
+  onSave,
+}: {
+  order: Order;
+  teachers: string[];
+  onClose: () => void;
+  onSave: (patch: Partial<Order>) => void;
+}) {
   const parsed = (order.firstLesson || "").split("|").map((s) => s.trim());
   const [date, setDate] = useState(() => firstLessonIso(order.firstLesson));
   const [time, setTime] = useState(() => (parsed[1] || "").slice(0, 5));
+  const [teacher, setTeacher] = useState(order.teacher || "");
+  const [lessonDay, setLessonDay] = useState(order.lessonDay || "");
+  const [lessonStartTime, setLessonStartTime] = useState((order.lessonStartTime || "").slice(0, 5));
   const canSave = Boolean(date);
+
+  // Buyurtmada bo'lgan, ammo ro'yxatda yo'q o'qituvchi ham ko'rinsin.
+  const teacherOptions = teacher && !teachers.includes(teacher) ? [teacher, ...teachers] : teachers;
+
   return (
     <ModalShell title={`Qayta dars belgilash — ${order.name}`} onClose={onClose}>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Sana</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Birinchi dars sanasi</label>
           <DateField value={date} onChange={setDate} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Vaqt</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Birinchi dars vaqti</label>
           <input
             type="time"
             step={60}
@@ -593,6 +797,30 @@ function RescheduleModal({ order, onClose, onSave }: { order: Order; onClose: ()
           />
         </div>
       </div>
+
+      <StudentSearchSelect
+        variant="compact"
+        label="O'qituvchi"
+        value={teacher}
+        onChange={setTeacher}
+        options={teacherOptions}
+        placeholder="Ustozni tanlang"
+        searchPlaceholder="Ustozni qidirish"
+      />
+
+      <PanelDaysField label="Dars kunlari" value={lessonDay} onChange={setLessonDay} />
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Darsning boshlanish vaqti</label>
+        <input
+          type="time"
+          step={60}
+          value={lessonStartTime}
+          onChange={(e) => setLessonStartTime(e.target.value)}
+          className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
           Bekor qilish
@@ -602,7 +830,12 @@ function RescheduleModal({ order, onClose, onSave }: { order: Order; onClose: ()
           disabled={!canSave}
           onClick={() => {
             const [y, m, d] = date.split("-");
-            onSave(`${d}.${m}.${y}${time ? ` | ${time}` : ""}`);
+            onSave({
+              firstLesson: `${d}.${m}.${y}${time ? ` | ${time}` : ""}`,
+              teacher,
+              lessonDay,
+              lessonStartTime,
+            });
           }}
           className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 disabled:pointer-events-none hover:opacity-90"
         >
@@ -613,24 +846,196 @@ function RescheduleModal({ order, onClose, onSave }: { order: Order; onClose: ()
   );
 }
 
-function NoteModal({ order, onClose, onSave }: { order: Order; onClose: () => void; onSave: (note: string) => void }) {
+/**
+ * "Izoh qo'shish" — markazdagi modal emas, EKRANNING O'NG PASTKI BURCHAGIDAN
+ * ochiladigan panel (o'lchamlari OrderMessagePanel bilan bir xil). Izoh
+ * buyurtmaning `note` maydoniga saqlanadi.
+ *
+ * O'lcham/joylashuv inline style bilan — globals.css dagi tayyor Tailwind
+ * blobida w-80/h-96/bottom-5 kabi utilitylar yo'q.
+ */
+function NotePanel({ order, onClose, onSave }: { order: Order; onClose: () => void; onSave: (note: string) => void }) {
   const [note, setNote] = useState(order.note || "");
+  useEscapeClose(onClose);
   return (
-    <ModalShell title={`Izoh — ${order.name}`} onClose={onClose}>
-      <textarea
-        autoFocus
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        rows={4}
-        placeholder="Izoh"
-        className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-      />
-      <div className="flex justify-end gap-2">
+    <div
+      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+      style={{ position: "fixed", bottom: 20, right: 20, width: 340, maxWidth: "calc(100vw - 40px)", zIndex: 300 }}
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+        <span className="truncate text-sm font-semibold">Izoh — {order.name}</span>
+        <button type="button" onClick={onClose} title="Yopish" className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary">
+          <svg className="icon icon-sm"><use href="#i-x-circle" /></svg>
+        </button>
+      </div>
+      <div className="p-3">
+        <textarea
+          autoFocus
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={6}
+          placeholder="Izoh qoldirish"
+          className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-border p-3">
         <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
           Bekor qilish
         </button>
         <button type="button" onClick={() => onSave(note.trim())} className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90">
           Saqlash
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Eslatma yuborish" — tayyor eslatma matnlaridan birini tanlaydi.
+ * Matnlar DEMO: backendda saqlanmaydi (foydalanuvchi shunday so'radi),
+ * shu bois shu yerda konstanta sifatida turadi.
+ */
+const REMINDER_TEMPLATES = [
+  "Assalomu alaykum! Ertangi sinov darsingizni eslatib o'tamiz.",
+  "To'lov qiling — kurs uchun to'lov muddati yaqinlashdi.",
+  "Darsga keling — bugungi darsni o'tkazib yubormang.",
+  "Aloqaga chiqing — siz bilan bog'lana olmadik.",
+];
+
+function ReminderModal({ order, onClose, onSend }: { order: Order; onClose: () => void; onSend: (text: string) => void }) {
+  const [picked, setPicked] = useState(REMINDER_TEMPLATES[0]);
+  return (
+    <ModalShell title={`Eslatma — ${order.name}`} onClose={onClose}>
+      <div className="space-y-2">
+        {REMINDER_TEMPLATES.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setPicked(t)}
+            className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors hover:bg-secondary ${
+              picked === t ? "border-primary bg-primary/10 font-medium" : "border-border"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+          Bekor qilish
+        </button>
+        <button type="button" onClick={() => onSend(picked)} className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90">
+          Yuborish
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* ---------- "Chop etish" — avval ko'rib chiqish, keyin bosma ---------- */
+
+function escHtml(s: string): string {
+  const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+  return s.replace(/[&<>"]/g, (c) => map[c]);
+}
+
+/** Chekda ko'rsatiladigan barcha maydonlar — oynada ham, bosmada ham shu. */
+function receiptRows(order: Order): [string, string][] {
+  const rows: [string, string][] = [
+    ["ID", String(order.id)],
+    ["O'quvchi", order.name || "—"],
+    ["Telefon", order.phone || "—"],
+    ["Yaratilgan", order.created || "—"],
+    ["Birinchi dars", order.firstLesson || "—"],
+    ["Dars kunlari", order.lessonDay || "—"],
+    ["Dars vaqti", order.lessonStartTime || "—"],
+    ["O'qituvchi", order.teacher || "—"],
+    ["Kurs", order.course || "—"],
+    ["Kurs darajasi", order.level || "—"],
+    ["Guruh", order.group || "—"],
+    ["Moderator", order.moderator || "—"],
+    ["Status", order.firstLessonStatus ? firstLessonStatusLabel(order.firstLessonStatus) : "Natija kiritilmagan"],
+  ];
+  if (order.note) rows.push(["Izoh", order.note]);
+  return rows;
+}
+
+/** Yashirin iframe orqali bosmaga yuboradi (CashboxesPage bilan bir xil naqsh). */
+function printReceipt(order: Order) {
+  const rows = receiptRows(order);
+  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Birinchi dars #${order.id}</title><style>
+    @page{size:58mm auto;margin:3mm}
+    html,body{margin:0;padding:0}
+    body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;display:flex;justify-content:center}
+    .wrap{width:52mm}
+    .brand{text-align:center;font-size:12px;font-weight:700;letter-spacing:.15em}
+    .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:.05em;margin-top:8px}
+    .divider{border-top:1px dashed #94a3b8;margin:8px 0}
+    .r{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
+    .r span:first-child{color:#64748b}
+    .r span:last-child{text-align:right;font-weight:500;word-break:break-word}
+    .thanks{text-align:center;font-style:italic;color:#64748b;font-size:10px}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body>
+    <div class="wrap">
+      <div class="brand">TIZIMLI</div>
+      <div class="title">BIRINCHI DARSGA YOZILISH</div>
+      <div class="divider"></div>
+      ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
+      <div class="divider"></div>
+      <div class="thanks">Xizmatingizdamiz. Rahmat!</div>
+    </div>
+  </body></html>`;
+
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc) {
+    frame.remove();
+    return;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  frame.contentWindow?.focus();
+  frame.contentWindow?.print();
+  window.setTimeout(() => frame.remove(), 1000);
+}
+
+// "Chop etish" bosilganda AVVAL shu oyna chiqadi — foydalanuvchi barcha
+// ma'lumotni ko'rib "Chop etish" bosgandagina brauzerning bosma oynasi
+// ochiladi.
+function PrintPreviewModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  const rows = receiptRows(order);
+  return (
+    <ModalShell title="Chek — ko'rib chiqish" onClose={onClose}>
+      <div className="rounded-xl border border-border bg-background p-4">
+        <div className="text-center text-[13px] font-bold tracking-[0.15em]">TIZIMLI</div>
+        <div className="mt-1 text-center text-sm font-bold">BIRINCHI DARSGA YOZILISH</div>
+        <div className="my-3 border-t border-dashed border-border" />
+        <div className="max-h-72 overflow-y-auto">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-3 py-1 text-[13px]">
+              <span className="text-muted-foreground">{k}</span>
+              <span className="text-right font-medium break-words">{v}</span>
+            </div>
+          ))}
+        </div>
+        <div className="my-3 border-t border-dashed border-border" />
+        <div className="text-center text-xs italic text-muted-foreground">Xizmatingizdamiz. Rahmat!</div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+          Bekor qilish
+        </button>
+        <button
+          type="button"
+          onClick={() => { printReceipt(order); onClose(); }}
+          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90"
+        >
+          Chop etish
         </button>
       </div>
     </ModalShell>

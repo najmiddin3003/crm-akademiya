@@ -13,7 +13,7 @@ import { useOfflineCourses, type OfflineCourse } from "./OfflineCoursesProvider"
 // Tashqi komponent — kontekst yuklanishini kutadi; ichki `CourseFormBody`
 // faqat ma'lumot tayyor bo'lgach mount bo'ladi (shuning uchun useState boshlang'ich
 // qiymatlari to'g'ri — to'g'ridan-to'g'ri URL/reload'da ham).
-export default function CourseForm({ courseId }: { courseId?: number }) {
+export default function CourseForm({ courseId, initialName }: { courseId?: number; initialName?: string }) {
   const { loading, getCourse } = useOfflineCourses();
   const editing = courseId != null ? getCourse(courseId) : undefined;
 
@@ -31,7 +31,7 @@ export default function CourseForm({ courseId }: { courseId?: number }) {
     }
   }
 
-  return <CourseFormBody key={editing?.id ?? "new"} editing={editing} />;
+  return <CourseFormBody key={editing?.id ?? "new"} editing={editing} initialName={initialName} />;
 }
 
 interface BranchRow {
@@ -50,12 +50,15 @@ function initialRows(existing?: { id: number; enabled: boolean; price: number }[
   );
 }
 
-function CourseFormBody({ editing }: { editing?: OfflineCourse }) {
+// `initialName` — yangi kurs uchun oldindan to'ldiriladigan nom. Buyurtma
+// detalidagi fan hali kurslar ro'yxatida bo'lmasa, o'sha nom bilan ochiladi
+// va "Saqlash" uni bazaga yozadi.
+function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; initialName?: string }) {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { addCourse, updateCourse } = useOfflineCourses();
 
-  const [name, setName] = useState(editing?.name ?? "");
+  const [name, setName] = useState(editing?.name ?? initialName ?? "");
   const [color, setColor] = useState(editing?.color ?? "#000000");
   const { branches, loading: branchesLoading } = useBranches();
   const [rows, setRows] = useState<Record<number, BranchRow>>(() => initialRows(editing?.branches));

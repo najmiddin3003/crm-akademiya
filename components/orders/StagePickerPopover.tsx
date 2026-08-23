@@ -18,7 +18,8 @@ export default function StagePickerPopover({
   onChange,
   onClose,
 }: {
-  value: OrderStageKey;
+  /** Hali tanlanmagan bo'lishi mumkin — u holda hech biri ajratilmaydi. */
+  value?: OrderStageKey;
   onChange: (stage: OrderStageKey) => void;
   onClose: () => void;
 }) {

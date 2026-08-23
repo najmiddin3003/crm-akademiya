@@ -53,7 +53,14 @@ export interface Order {
   category: string;
   survey: string;
   subcourse: string;
-  stage: OrderStageKey;
+  /**
+   * Lid voronkasidagi bosqich ("rang"). Yangi buyurtmada BO'SH bo'ladi —
+   * telefon raqam chipi betaraf kulrang turadi, moderator raqamni bosib
+   * bosqich tanlagach rangga kiradi. Bosqichsiz lid Kanban ustunlariga
+   * tushmaydi (referensda ham shunday: ro'yxatdagi lidlar soni Kanbandagi
+   * ustunlar yig'indisidan ko'p).
+   */
+  stage?: OrderStageKey;
   dayPattern: string;
   taskStatus: string;
   referral: string;
@@ -61,6 +68,16 @@ export interface Order {
   lessonStartTime: string;
   /** Birinchi darsga yozilganlar sahifasidagi holat. Kiritilmagan bo'lishi mumkin. */
   firstLessonStatus?: FirstLessonStatus;
+  /**
+   * O'quvchi HAQIQATDA qo'shilgan guruhning id'si — "Guruhga qo'shish"
+   * amali bajarilganda yoziladi (/api/groups/:id/students ga qo'shilgach).
+   *
+   * Yuqoridagi `group` maydonidan farqi: u buyurtma formasidagi
+   * "Yig'ilayotgan guruh" tanlovi, ya'ni shunchaki niyat. `groupId` esa
+   * lid o'quvchiga aylanganini bildiradi va buyurtma detali sahifasida
+   * bunday qatorlar boshqa ko'rsatilmaydi.
+   */
+  groupId?: number;
 }
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];
@@ -325,7 +342,7 @@ export function buildOrderFromValues(nextId: number, values: NewOrderValues): Or
     level: "",
     group: values.group,
     isNew: true,
-    stage: values.stage ?? "bir_oylay",
+    stage: values.stage,
     dayPattern: "Juft kunlar",
     taskStatus: "Topshiriq yo'q",
     status: "Yangi",
