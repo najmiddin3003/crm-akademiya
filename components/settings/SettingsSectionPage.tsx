@@ -12,6 +12,7 @@ import PublicOfertaTab from "./PublicOfertaTab";
 import FieldSettingsTab from "./FieldSettingsTab";
 import AutoSmsTab from "./AutoSmsTab";
 import BotNotesTab from "./BotNotesTab";
+import ModuleNotEnabledTab from "./ModuleNotEnabledTab";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LEAVE_REASON_TYPES } from "@/lib/settingsLists";
 import {
@@ -243,6 +244,13 @@ const BUILT: Record<string, () => ReactNode> = {
   "app-settings:student": () => (
     <SettingsForm storageKey="app.student" groups={APP_STUDENT_GROUPS as SettingsGroup[]} />
   ),
+
+  // ── Gamifikatsiya ────────────────────────────────────────────────────
+  // Modul sotib olinmagani uchun referensda ikkala tab ham bo'sh —
+  // ModuleNotEnabledTab.tsx dagi izohga qarang.
+  "gamification:general": () => <ModuleNotEnabledTab title="Funksionallik" />,
+
+  "gamification:auto-coin": () => <ModuleNotEnabledTab title="Auto coin" />,
 };
 
 function NotBuilt({ label }: { label: string }) {

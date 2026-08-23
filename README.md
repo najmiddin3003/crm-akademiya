@@ -603,6 +603,30 @@ ikki shakldan biri ishlatiladi.
 
 **Gamifikatsiya** (`gamification:general`, `gamification:auto-coin`) — referensda ikkala tab ham butunlay bo'sh render bo'ladi. Obuna sahifasida «Gamifikatsiya to'lovi» alohida qator sifatida turibdi: bu **pullik qo'shimcha modul** va referens akkauntda yoqilmagan. Yoqilmaguncha xaritalab ham, qurib ham bo'lmaydi.
 
+Bu ikki tab endi umumiy «hali qurilmagan» belgisi o'rniga aynan shu sababni
+ko'rsatadi (`components/settings/ModuleNotEnabledTab.tsx`) — «maydonlari
+referensdan ko'chirilishi kerak» degani noto'g'ri edi, ko'chiriladigan maydon
+umuman yo'q.
+
+**Statik klondagi gamifikatsiya sahifasi spesifikatsiya EMAS.**
+`crm-akademiya/index.html:18853` da 4 bo'limli (`tangalar` / `yutuqlar` /
+`darajalar` / `dokon`) chiroyli sahifa bor, lekin u referensdan ko'chirilmagan —
+qo'lda chizilgan maket:
+
+* Uning bo'lim kalitlari o'zbekcha, holbuki mahsulotning barcha 31 ta haqiqiy
+  tab kaliti inglizcha kebab-case (`general`, `auto-coin`, `check`, …) —
+  bu kalitlar mahsulotning o'z `assets/tabItems-*.js` bandlidan olingan.
+* Klonning hech bir joyida «Auto coin» so'zi uchramaydi.
+* Klonda tugatilmagan tugmalar odatda `showToast()` chaqiradi (butun faylda
+  260 marta), gamifikatsiya blokida esa bittasi ham yo'q: «Saqlash»,
+  «Yutuq qo'shish», «Daraja qo'shish», «Sovrin qo'shish», «Tahrirlash» —
+  hammasida ishlov beruvchi umuman yozilmagan, qo'shish formasi ham yo'q.
+
+Ya'ni undan forma yasash = maydonlarni ham, ular qaysi tabda turishini ham
+to'qib chiqarish. Tizimda tangani hisoblaydigan mexanizm ham yo'q:
+`pupils.coin` faqat e'lon qilingan (`lib/pupilsData.ts:19`), yaratishda 0
+qo'yiladi va hech qachon o'zgartirilmaydi.
+
 ## Mobil ko'rinish (2026-08-16)
 
 Tekshirilgani: breakpointlar brauzerda o'lchandi (yuqoridagi jadval), login
