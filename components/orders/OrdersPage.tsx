@@ -301,8 +301,12 @@ export default function OrdersPage() {
       {/* Referens (akademiya.edutizim.uz): sarlavha CHAPDA, barcha tugmalar
           O'NGDA bitta qatorda. Kanban ko'rinishidagi keng qidiruv maydoni
           olib tashlandi — qidiruv filtrlar panelida. */}
-      <div className="flex items-center flex-wrap gap-2 shrink-0">
-        <h1 className="mr-auto text-xl font-semibold tracking-tight">Buyurtmalar ro&apos;yxati</h1>
+      <div className="flex items-center flex-wrap justify-between gap-2 shrink-0">
+        <h1 className="text-xl font-semibold tracking-tight">Buyurtmalar ro&apos;yxati</h1>
+        {/* O'ngdagi hammasi BITTA blokda — shunda justify-between sarlavha
+            bilan tugmalarni ikki chekkaga ajratadi. (mr-auto bilan bo'lmadi:
+            u klass loyihaning CSS'ida umuman yo'q.) */}
+        <div className="flex items-center gap-2">
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg border border-border bg-card shrink-0">
           <button
             onClick={() => setLayout("list")}
@@ -409,6 +413,7 @@ export default function OrdersPage() {
           >
             {layout === "list" ? "Buyurtma qo'shish" : "Qo'shish"}
           </Button>
+        </div>
         </div>
       </div>
 
