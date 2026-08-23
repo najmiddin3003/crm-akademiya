@@ -22,6 +22,32 @@ export interface Pupil {
   moderator?: string;
   /** Qayerdan keldi (Instagram, Telegram, Tavsiya...). */
   source?: string;
+
+  // --- O'quvchi profilidagi ("Tahrirlash" tabi) qo'shimcha maydonlar ---
+  // Hammasi ixtiyoriy: eski yozuvlarda yo'q va forma bo'sh qoldirilishi mumkin.
+  email?: string;
+  tags?: string;
+  /** Dars shakli/vaqti. */
+  lessonTime?: string;
+  /** O'quvchining pul to'lash sanasi ("YYYY-MM-DD"). */
+  paymentDate?: string;
+  /** O'qish tili. */
+  language?: string;
+  /** Marketing so'rovnomasi. */
+  survey?: string;
+  /** Maqsadidagi universitet. */
+  targetUniversity?: string;
+  fatherName?: string;
+  fatherPhone?: string;
+  fatherWork?: string;
+  motherName?: string;
+  motherPhone?: string;
+  motherWork?: string;
+  /** Uy manzili. */
+  address?: string;
+  /** O'qish joyi (maktab/litsey). */
+  studyPlace?: string;
+  note?: string;
 }
 
 export interface NewPupilValues {

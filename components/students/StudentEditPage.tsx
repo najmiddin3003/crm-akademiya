@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
+import { STUDENT_CATEGORIES } from "@/constants";
+import type { Pupil } from "@/lib/pupilsData";
 import type { Order } from "@/lib/ordersData";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import TahrirlashTabButton from "@/components/shared/TahrirlashTabButton";
@@ -50,6 +54,11 @@ import DateField from "@/components/students/fields/DateField";
 // component (real per-tab content is a later step). The 17 tabs + "Ko'proq" are
 // separate components (components/shared/*TabButton.tsx), coordinated here so
 // only one is active at a time.
+
+// Tanlov ro'yxatlari — hozircha shu yerda (referensda ular sozlamalardan
+// keladi; alohida backend qo'shilganda shu joydan olinadi).
+const LESSON_TIMES = ["Ertalabki", "Kunduzgi", "Kechki", "Dam olish kunlari"];
+const LANGUAGES = ["O'zbek", "Rus", "Ingliz"];
 
 function fmtSpace(n: number): string {
   return n.toLocaleString("ru-RU").replace(/,/g, " ");
@@ -112,6 +121,87 @@ export default function StudentEditPage({ order }: { order: Order }) {
 
   const [activeTab, setActiveTab] = useState("tahrirlash");
   const [sozlashOpen, setSozlashOpen] = useState(false);
+
+  // --- "Tahrirlash" formasi ------------------------------------------------
+  // Ilgari maydonlar faqat `defaultValue` bilan chizilardi va "Saqlash"
+  // tugmasi hech qanday so'rov yubormasdi — yozilgan narsa jimgina
+  // yo'qolardi. Endi forma o'quvchining BAZADAGI yozuvidan to'ldiriladi va
+  // PATCH /api/pupils/:id ga yuboriladi.
+  const router = useRouter();
+  const { showSuccess, showError } = useToast();
+  const [pupil, setPupil] = useState<Pupil | null>(null);
+  const [loadingPupil, setLoadingPupil] = useState(true);
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const fillForm = useCallback((p: Pupil) => {
+    setForm({
+      firstName: p.firstName ?? "", lastName: p.lastName ?? "",
+      phone: p.phone ?? "", email: p.email ?? "", tags: p.tags ?? "",
+      birthDate: p.birthDate ?? "", lessonTime: p.lessonTime ?? "",
+      category: p.category ?? "", paymentDate: p.paymentDate ?? "",
+      language: p.language ?? "", survey: p.survey ?? "",
+      targetUniversity: p.targetUniversity ?? "",
+      fatherName: p.fatherName ?? "", fatherPhone: p.fatherPhone ?? "", fatherWork: p.fatherWork ?? "",
+      motherName: p.motherName ?? "", motherPhone: p.motherPhone ?? "", motherWork: p.motherWork ?? "",
+      address: p.address ?? "", studyPlace: p.studyPlace ?? "", note: p.note ?? "",
+    });
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/pupils/${order.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive || !d.ok) return;
+        setPupil(d.pupil as Pupil);
+        fillForm(d.pupil as Pupil);
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setLoadingPupil(false); });
+    return () => { alive = false; };
+  }, [order.id, fillForm]);
+
+  const set = (k: string) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!pupil) return;
+    if (!form.firstName?.trim()) {
+      showError("Ism majburiy");
+      return;
+    }
+    setSaving(true);
+    const res = await fetch(`/api/pupils/${pupil.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    }).then((r) => r.json()).catch(() => null);
+    setSaving(false);
+    if (!res?.ok) {
+      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      return;
+    }
+    setPupil(res.pupil as Pupil);
+    fillForm(res.pupil as Pupil);
+    showSuccess("O'quvchi ma'lumotlari saqlandi");
+  };
+
+  const handleDelete = async () => {
+    if (!pupil) return;
+    setDeleting(true);
+    const res = await fetch(`/api/pupils/${pupil.id}`, { method: "DELETE" })
+      .then((r) => r.json()).catch(() => null);
+    setDeleting(false);
+    setConfirmDelete(false);
+    if (!res?.ok) {
+      showError(res?.error || "O'chirishda xatolik yuz berdi");
+      return;
+    }
+    showSuccess("O'quvchi o'chirildi");
+    router.push("/students-list");
+  };
 
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
@@ -241,61 +331,95 @@ export default function StudentEditPage({ order }: { order: Order }) {
           {activeTab === "tahrirlash" && (
           <>
           <div className="rounded-2xl bg-card border border-border p-5 space-y-5">
+            {!loadingPupil && !pupil && (
+              <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
+                Bu yozuv o&apos;quvchilar bazasida topilmadi — maydonlarni saqlab bo&apos;lmaydi.
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Ism" defaultValue={ism} />
-              <TextField label="Familiya" defaultValue={familiya} />
-              <PhoneField label="Telefon raqam" defaultValue={phone} />
+              <TextField label="Ism" value={form.firstName ?? ism} onChange={set("firstName")} />
+              <TextField label="Familiya" value={form.lastName ?? familiya} onChange={set("lastName")} />
+              <PhoneField label="Telefon raqam" value={form.phone ?? phone} onChange={set("phone")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SelectField label="Teglar" />
-              <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" />
-              <DateField label="Tug'ilgan sanasi" />
+              <TextField label="Teglar" value={form.tags ?? ""} onChange={set("tags")} />
+              <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" value={form.email ?? ""} onChange={set("email")} />
+              <DateField label="Tug'ilgan sanasi" value={form.birthDate ?? ""} onChange={set("birthDate")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" />
-              <SelectField label="O'quvchi kategoriyasi" />
-              <DateField label="O'quvchining pul to'lash sanasi" />
+              <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
+              <SelectField label="O'quvchi kategoriyasi" options={STUDENT_CATEGORIES} value={form.category ?? ""} onChange={set("category")} />
+              <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SelectField label="O'qish tili" />
-              <SelectField label="Marketing so'rovnomasi" />
-              <TextField label="Maqsadidagi universiteti" />
+              <SelectField label="O'qish tili" options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
+              <TextField label="Marketing so'rovnomasi" value={form.survey ?? ""} onChange={set("survey")} />
+              <TextField label="Maqsadidagi universiteti" value={form.targetUniversity ?? ""} onChange={set("targetUniversity")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Otasining ismi" />
-              <PhoneField label="Telefon raqam" />
-              <TextField label="Otasining ish joyi" />
+              <TextField label="Otasining ismi" value={form.fatherName ?? ""} onChange={set("fatherName")} />
+              <PhoneField label="Telefon raqam" value={form.fatherPhone ?? ""} onChange={set("fatherPhone")} />
+              <TextField label="Otasining ish joyi" value={form.fatherWork ?? ""} onChange={set("fatherWork")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Onasining ismi" />
-              <PhoneField label="Telefon raqam" />
-              <TextField label="Onasining ish joyi" />
+              <TextField label="Onasining ismi" value={form.motherName ?? ""} onChange={set("motherName")} />
+              <PhoneField label="Telefon raqam" value={form.motherPhone ?? ""} onChange={set("motherPhone")} />
+              <TextField label="Onasining ish joyi" value={form.motherWork ?? ""} onChange={set("motherWork")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Uy adresi" />
-              <TextField label="O'qish joyi" />
-              <TextField label="Izoh" />
-            </div>
-
-            <div>
-              <button type="button" className="inline-flex items-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">
-                Maxsus maydon qo&apos;shish
-              </button>
+              <TextField label="Uy adresi" value={form.address ?? ""} onChange={set("address")} />
+              <TextField label="O'qish joyi" value={form.studyPlace ?? ""} onChange={set("studyPlace")} />
+              <TextField label="Izoh" value={form.note ?? ""} onChange={set("note")} />
             </div>
           </div>
 
           {/* Bottom action buttons */}
           <div className="flex items-center justify-end gap-2">
-            <button type="button" className="inline-flex items-center h-10 px-5 rounded-lg bg-rose-500 text-white text-sm font-medium hover:opacity-90">O&apos;chirish</button>
-            <Link href="/orders-list" className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">Orqaga</Link>
-            <button type="button" className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">Saqlash</button>
+            <button
+              type="button"
+              disabled={!pupil || deleting}
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex items-center h-10 px-5 rounded-lg bg-rose-500 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              O&apos;chirish
+            </button>
+            <Link href="/students-list" className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">Orqaga</Link>
+            <button
+              type="button"
+              disabled={!pupil || saving}
+              onClick={handleSave}
+              className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {saving ? "Saqlanmoqda..." : "Saqlash"}
+            </button>
           </div>
+
+          {confirmDelete && pupil && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmDelete(false)}>
+              <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold">O&apos;quvchini o&apos;chirish</h3>
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">{`${pupil.firstName} ${pupil.lastName}`.trim()}</strong>
+                  {" "}o&apos;chiriladi va barcha guruhlardan chiqariladi. Bu amalni qaytarib bo&apos;lmaydi.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setConfirmDelete(false)} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+                    Bekor qilish
+                  </button>
+                  <button type="button" disabled={deleting} onClick={handleDelete} className="h-9 rounded-lg bg-rose-500 px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+                    {deleting ? "O'chirilmoqda..." : "O'chirish"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           </>
           )}
         </main>
