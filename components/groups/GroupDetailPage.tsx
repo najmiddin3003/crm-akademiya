@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import {
   Archive, BookOpen, Calendar, CalendarCheck, CalendarPlus, Clock, ClipboardList, GraduationCap,
   History, Inbox, LayoutGrid, List, MapPin, MessageSquare, MoreVertical, PanelLeft, PanelLeftClose,
-  Pencil, Plus, Timer, Upload, User, UserPlus, Users,
+  Pencil, Plus, Timer, User, UserMinus, UserPlus, Users,
 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import AddStudentModal from "./AddStudentModal";
+import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import AddTaskModal from "./AddTaskModal";
 import AttendanceTab from "./AttendanceTab";
 import EditGroupModal from "./EditGroupModal";
@@ -89,6 +90,10 @@ export default function GroupDetailPage({ id }: { id: number }) {
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [members, setMembers] = useState<Pupil[]>([]);
+  // Qator amallari: boshqa guruhga koʻchirish / guruhdan chiqarish.
+  const [moveFor, setMoveFor] = useState<Pupil | null>(null);
+  const [removeFor, setRemoveFor] = useState<Pupil | null>(null);
+  const [rowBusy, setRowBusy] = useState(false);
   const [membersLoading, setMembersLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState("students");
@@ -355,11 +360,32 @@ export default function GroupDetailPage({ id }: { id: number }) {
                           <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
                           <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
                           <td className="px-4 py-3 text-right whitespace-nowrap">
+                            {/* "Ko'chirish" — boshqa guruhga o'tkazadi (shu
+                                guruhdan chiqarib, tanlanganiga qo'shadi).
+                                "Izoh" o'quvchi profilini ochadi. Sertifikat
+                                uchun tizimda hali manba yo'q. */}
                             <div className="inline-flex items-center gap-1 text-muted-foreground">
-                              <button className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary" title="Sertifikat"><Upload className="w-4 h-4" /></button>
-                              <button className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary" title="Ko'chirish"><UserPlus className="w-4 h-4" /></button>
-                              <button className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary" title="Izoh"><MessageSquare className="w-4 h-4" /></button>
-                              <button className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary" title="Ko'proq"><MoreVertical className="w-4 h-4" /></button>
+                              <button
+                                onClick={() => setMoveFor(m)}
+                                className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary"
+                                title="Boshqa guruhga ko'chirish"
+                              >
+                                <UserPlus className="w-4 h-4" />
+                              </button>
+                              <Link
+                                href={`/student-edit/${m.id}?src=list`}
+                                className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary"
+                                title="O'quvchi profili"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setRemoveFor(m)}
+                                className="h-7 w-7 rounded-md hover:bg-rose-500/10 inline-flex items-center justify-center hover:text-rose-600"
+                                title="Guruhdan chiqarish"
+                              >
+                                <UserMinus className="w-4 h-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -466,6 +492,77 @@ export default function GroupDetailPage({ id }: { id: number }) {
           onClose={() => setAddOpen(false)}
           onAdded={(pupil) => setMembers((prev) => [...prev, pupil])}
         />
+      )}
+
+      {/* Boshqa guruhga ko'chirish: yangisiga qo'shib, shu guruhdan chiqaramiz. */}
+      {moveFor && (
+        <GroupPickerModal
+          onClose={() => setMoveFor(null)}
+          onSelect={async (target) => {
+            if (target.id === id) {
+              showError("O'quvchi allaqachon shu guruhda");
+              return;
+            }
+            setRowBusy(true);
+            const add = await fetch(`/api/groups/${target.id}/students`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pupilId: moveFor.id }),
+            }).then((r) => r.json()).catch(() => null);
+            if (!add?.ok) {
+              setRowBusy(false);
+              showError(add?.error || "Yangi guruhga qo'shib bo'lmadi");
+              return;
+            }
+            const del = await fetch(`/api/groups/${id}/students?pupilId=${moveFor.id}`, { method: "DELETE" })
+              .then((r) => r.json()).catch(() => null);
+            setRowBusy(false);
+            if (!del?.ok) {
+              showError("Yangi guruhga qo'shildi, ammo eskisidan chiqarib bo'lmadi");
+              return;
+            }
+            setMembers((prev) => prev.filter((p) => p.id !== moveFor.id));
+            showSuccess(`${pupilName(moveFor)} — "${target.name || target.id}" guruhiga ko'chirildi`);
+            setMoveFor(null);
+          }}
+        />
+      )}
+
+      {removeFor && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={() => setRemoveFor(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">Guruhdan chiqarish</h3>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{pupilName(removeFor)}</strong>
+              {" "}shu guruhdan chiqariladi. O&apos;quvchining o&apos;zi o&apos;chirilmaydi.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setRemoveFor(null)} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                disabled={rowBusy}
+                onClick={async () => {
+                  setRowBusy(true);
+                  const res = await fetch(`/api/groups/${id}/students?pupilId=${removeFor.id}`, { method: "DELETE" })
+                    .then((r) => r.json()).catch(() => null);
+                  setRowBusy(false);
+                  if (!res?.ok) {
+                    showError(res?.error || "Chiqarishda xatolik yuz berdi");
+                    return;
+                  }
+                  setMembers((prev) => prev.filter((p) => p.id !== removeFor.id));
+                  showSuccess("O'quvchi guruhdan chiqarildi");
+                  setRemoveFor(null);
+                }}
+                className="h-9 rounded-lg bg-rose-500 px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {rowBusy ? "Chiqarilmoqda..." : "Chiqarish"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {taskModalOpen && (

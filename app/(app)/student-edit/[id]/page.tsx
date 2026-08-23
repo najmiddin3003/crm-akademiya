@@ -54,10 +54,10 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ src?: string }>;
+  searchParams: Promise<{ src?: string; tab?: string }>;
 }) {
   const { id } = await params;
-  const { src } = await searchParams;
+  const { src, tab } = await searchParams;
   const numId = Number(id);
 
   const fromOrders = () => createInitialOrders().find((o) => String(o.id) === id) ?? null;
@@ -75,5 +75,5 @@ export default async function Page({
     );
   }
 
-  return <StudentEditPage order={order} />;
+  return <StudentEditPage order={order} initialTab={tab} />;
 }

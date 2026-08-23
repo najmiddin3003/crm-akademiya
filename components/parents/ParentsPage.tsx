@@ -228,13 +228,23 @@ export default function ParentsPage() {
                     <td className="px-3 py-3 text-center"><AppStatusIcon yes={r.fatherApp} /></td>
                     <td className="px-3 py-3 text-center"><AppStatusIcon yes={r.motherApp} /></td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">
+                      {/* Ikkalasi ham o'quvchining o'z profilidagi tegishli
+                          tabga olib boradi — ota-onaning alohida profili yo'q. */}
                       <div className="inline-flex items-center gap-1">
-                        <button title="Tarix" className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground">
+                        <Link
+                          title="Tarix"
+                          href={`/student-edit/${r.id}?src=list&tab=harakatlar`}
+                          className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                        >
                           <History className="h-4 w-4" />
-                        </button>
-                        <button title="Izoh" className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground">
+                        </Link>
+                        <Link
+                          title="Izoh"
+                          href={`/student-edit/${r.id}?src=list&tab=tahrirlash`}
+                          className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                        >
                           <MessageSquare className="h-4 w-4" />
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>

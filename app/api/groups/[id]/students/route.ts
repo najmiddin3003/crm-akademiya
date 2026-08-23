@@ -63,3 +63,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { _id, ...student } = pupil;
   return NextResponse.json({ ok: true, student: student as unknown as Pupil });
 }
+
+// DELETE /api/groups/:id/students?pupilId=11 — o'quvchini guruhdan chiqaradi.
+//
+// Ilgari bunday endpoint yo'q edi: guruhga qo'shish bor edi, chiqarish esa
+// faqat o'quvchining o'zini o'chirish orqali bo'lardi.
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const groupId = Number(id);
+  if (!Number.isFinite(groupId)) {
+    return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
+  }
+  const pupilId = Number(new URL(req.url).searchParams.get("pupilId"));
+  if (!Number.isFinite(pupilId)) {
+    return NextResponse.json({ ok: false, error: "O'quvchini tanlang" }, { status: 400 });
+  }
+
+  const db = await ensureIndexes();
+  const res = await db
+    .collection<{ id: number; studentIds?: number[] }>("groups")
+    .updateOne({ id: groupId }, { $pull: { studentIds: pupilId } });
+  if (res.matchedCount === 0) {
+    return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true, removed: res.modifiedCount > 0 });
+}

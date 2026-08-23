@@ -6,6 +6,9 @@ import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, P
 import Pagination from "@/components/ui/Pagination";
 import Button from "@/components/ui/Button";
 import AddStudentModal from "@/components/orders/AddStudentModal";
+import GroupPickerModal from "@/components/orders/GroupPickerModal";
+import SmsModal from "@/components/orders/SmsModal";
+import { useToast } from "@/components/ui/Toast";
 import { usePupils } from "@/components/orders/PupilsContext";
 import { STUDENT_CATEGORIES } from "@/constants";
 import {
@@ -127,6 +130,10 @@ export default function StudentsListPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  // Qator ikonkalari: guruhga qoʻshish va SMS oynasi.
+  const [groupFor, setGroupFor] = useState<{ id: number; name: string } | null>(null);
+  const [smsFor, setSmsFor] = useState<{ id: number; name: string; phone: string } | null>(null);
+  const { showSuccess: toastOk, showError: toastErr } = useToast();
   const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -443,12 +450,33 @@ export default function StudentsListPage() {
                     <td className="px-3 py-3 text-[13px]"><X className="h-4 w-4 text-rose-500" /></td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">-</td>
                     <td className="px-3 py-3">
+                      {/* Ilgari beshtasi ham hech nima qilmasdi. Uchtasi
+                          o'quvchi profilining kerakli tabini ochadi, biri
+                          guruhga qo'shadi, biri SMS oynasini chiqaradi. */}
                       <div className="flex items-center gap-1 text-primary">
-                        <button title="Qo'shish" className="p-1.5 rounded-md hover:bg-secondary"><CirclePlus className="h-4 w-4" /></button>
-                        <button title="Vazifalar" className="p-1.5 rounded-md hover:bg-secondary"><ListChecks className="h-4 w-4" /></button>
-                        <button title="Tarix" className="p-1.5 rounded-md hover:bg-secondary"><History className="h-4 w-4" /></button>
-                        <button title="Xabar" className="p-1.5 rounded-md hover:bg-secondary"><MessageSquare className="h-4 w-4" /></button>
-                        <button title="Guruhlar" className="p-1.5 rounded-md hover:bg-secondary"><Users className="h-4 w-4" /></button>
+                        <button
+                          title="Guruhga qo'shish"
+                          onClick={() => setGroupFor({ id: r.id, name: r.name })}
+                          className="p-1.5 rounded-md hover:bg-secondary"
+                        >
+                          <CirclePlus className="h-4 w-4" />
+                        </button>
+                        <Link title="Vazifalar" href={`/student-edit/${r.id}?src=list&tab=vazifa`} className="p-1.5 rounded-md hover:bg-secondary">
+                          <ListChecks className="h-4 w-4" />
+                        </Link>
+                        <Link title="Tarix" href={`/student-edit/${r.id}?src=list&tab=harakatlar`} className="p-1.5 rounded-md hover:bg-secondary">
+                          <History className="h-4 w-4" />
+                        </Link>
+                        <button
+                          title="Xabar"
+                          onClick={() => setSmsFor({ id: r.id, name: r.name, phone: r.phone })}
+                          className="p-1.5 rounded-md hover:bg-secondary"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </button>
+                        <Link title="Guruhlar" href={`/student-edit/${r.id}?src=list&tab=guruh`} className="p-1.5 rounded-md hover:bg-secondary">
+                          <Users className="h-4 w-4" />
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -474,6 +502,39 @@ export default function StudentsListPage() {
       </div>
 
       {addOpen && <AddStudentModal onClose={() => setAddOpen(false)} onSave={handlePupilSaved} />}
+
+      {groupFor && (
+        <GroupPickerModal
+          onClose={() => setGroupFor(null)}
+          onSelect={async (group) => {
+            const res = await fetch(`/api/groups/${group.id}/students`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pupilId: groupFor.id }),
+            }).then((r) => r.json()).catch(() => null);
+            if (!res?.ok) {
+              toastErr(res?.error || "Guruhga qo'shishda xatolik yuz berdi");
+              return;
+            }
+            toastOk(`${groupFor.name} — "${group.name || group.id}" guruhiga qo'shildi`);
+            setGroupFor(null);
+          }}
+        />
+      )}
+
+      {smsFor && (
+        <SmsModal
+          studentName={smsFor.name}
+          phone={smsFor.phone}
+          onClose={() => setSmsFor(null)}
+          onSent={({ simulated }) => {
+            if (simulated) toastErr("SMS jo'natilmadi: Eskiz sozlanmagan (jurnalga yozildi)");
+            else toastOk("SMS yuborildi");
+            setSmsFor(null);
+          }}
+          onError={toastErr}
+        />
+      )}
     </div>
   );
 }

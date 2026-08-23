@@ -84,7 +84,7 @@ const TABS: { key: string; label: string }[] = [
   { key: "shartnomalar", label: "Shartnomalar" },
 ];
 
-export default function StudentEditPage({ order }: { order: Order }) {
+export default function StudentEditPage({ order, initialTab }: { order: Order; initialTab?: string }) {
   const [ism, ...rest] = order.name.trim().split(/\s+/);
   const familiya = rest.join(" ");
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "+998";
@@ -119,7 +119,11 @@ export default function StudentEditPage({ order }: { order: Order }) {
   const qolganDarslar: number | null = null;
   const tolanishKerak: number | null = null;
 
-  const [activeTab, setActiveTab] = useState("tahrirlash");
+  // Boshlangʻich tab ?tab= dan keladi — oʻquvchilar roʻyxatidagi qator
+  // ikonkalari toʻgʻridan-toʻgʻri kerakli tabga olib boradi.
+  const [activeTab, setActiveTab] = useState(
+    initialTab && TABS.some((t) => t.key === initialTab) ? initialTab : "tahrirlash",
+  );
   const [sozlashOpen, setSozlashOpen] = useState(false);
 
   // --- "Tahrirlash" formasi ------------------------------------------------
