@@ -17,6 +17,16 @@ const EDITABLE = [
   "moderator", "source",
 ] as const;
 
+/**
+ * Parol xeshlari HECH QACHON klientga chiqmaydi. "Parol o'rnatilganmi"
+ * degan holatni /api/pupils/:id/password aytadi.
+ */
+function stripSecrets(doc: Record<string, unknown>) {
+  const { _id, studentPasswordHash, parentPasswordHash, ...rest } = doc;
+  void _id; void studentPasswordHash; void parentPasswordHash;
+  return rest;
+}
+
 function parseId(id: string): number | null {
   const n = Number(id);
   return Number.isFinite(n) ? n : null;
@@ -33,8 +43,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!doc) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
-  const { _id, ...pupil } = doc;
-  return NextResponse.json({ ok: true, pupil: pupil as unknown as Pupil });
+  return NextResponse.json({ ok: true, pupil: stripSecrets(doc) as unknown as Pupil });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -58,6 +67,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (key in body) set[key] = typeof body[key] === "string" ? (body[key] as string).trim() : body[key];
   }
 
+  if (Number.isFinite(Number(body.debtLimit))) set.debtLimit = Number(body.debtLimit);
+  if (Array.isArray(body.addresses)) {
+    // Faqat kutilgan shakl saqlanadi — klient yuborgan boshqa maydonlar tushib qoladi.
+    set.addresses = (body.addresses as Record<string, unknown>[]).map((x, i) => ({
+      id: Number(x.id) || i + 1,
+      name: String(x.name ?? "").trim(),
+      type: String(x.type ?? "").trim(),
+    })).filter((x) => x.name);
+  }
+
   if (typeof set.firstName === "string" && !set.firstName) {
     return NextResponse.json({ ok: false, error: "Ism majburiy" }, { status: 400 });
   }
@@ -74,8 +93,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!res) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
-  const { _id, ...pupil } = res;
-  return NextResponse.json({ ok: true, pupil: pupil as unknown as Pupil });
+  return NextResponse.json({ ok: true, pupil: stripSecrets(res) as unknown as Pupil });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

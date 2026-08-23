@@ -12,6 +12,7 @@ import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
+import EmployeeProfileEditModal from "./EmployeeProfileEditModal";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 import type { Bonus } from "@/lib/bonuses";
@@ -130,6 +131,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [finLoading, setFinLoading] = useState(true);
   const [finError, setFinError] = useState(false);
   const [salaryOpen, setSalaryOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [fStudent, setFStudent] = useState("");
   const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
   const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
@@ -398,11 +400,14 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               )}
 
               <div className="mt-3 grid grid-cols-4 gap-1.5 w-full">
+                {/* Ilgari bu tugma faqat "(demo)" toast chiqarardi. Xodimga
+                    tizim paroli Boshqaruv → Xodimlar sahifasidan beriladi,
+                    shu bois bu yerda u ish haqi sozlamasini ochadi. */}
                 <button
                   type="button"
-                  onClick={() => showSuccess("Parol qo'shish (demo)")}
+                  onClick={() => setSalaryOpen(true)}
                   className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.key}`}
-                  title="Parol qo'shish"
+                  title="Ish haqini sozlash"
                 >
                   <KeyRound className="icon icon-sm" />
                 </button>
@@ -425,11 +430,12 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   <Phone className="icon icon-sm" />
                 </a>
 
+                {/* Referensdagidek to'rtinchi tugma — xodimni TAHRIRLASH. */}
                 <button
                   type="button"
-                  onClick={() => setSalaryOpen(true)}
+                  onClick={() => setEditOpen(true)}
                   className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.edit}`}
-                  title="Ish haqini sozlash"
+                  title="Tahrirlash"
                 >
                   <Edit className="icon icon-sm" />
                 </button>
@@ -606,6 +612,14 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           </div>
         </div>
       </div>
+
+      {editOpen && (
+        <EmployeeProfileEditModal
+          employee={emp}
+          onClose={() => setEditOpen(false)}
+          onSaved={(updated) => setEmp(updated)}
+        />
+      )}
 
       {salaryOpen && (
         <EmployeeSalaryConfigModal

@@ -310,11 +310,11 @@ export default function StudentEditPage({ order }: { order: Order }) {
           </div>
 
           {/* Tab content — every tab now renders its own component */}
-          {activeTab === "parol" && <ParolTabContent login={phone} />}
-          {activeTab === "moderator" && <ModeratorTabContent initialModerator={order.moderator} />}
+          {activeTab === "parol" && <ParolTabContent login={phone} pupilId={pupil?.id} />}
+          {activeTab === "moderator" && <ModeratorTabContent initialModerator={pupil?.moderator ?? order.moderator} pupilId={pupil?.id} />}
           {activeTab === "qongiroqlar" && <QongiroqlarTabContent />}
           {activeTab === "guruh" && <GuruhTabContent />}
-          {activeTab === "qarzdorlik" && <QarzdorlikTabContent />}
+          {activeTab === "qarzdorlik" && <QarzdorlikTabContent pupilId={pupil?.id} initialLimit={pupil?.debtLimit} />}
           {activeTab === "vazifa" && <VazifaTabContent />}
           {activeTab === "coin" && <CoinTabContent />}
           {activeTab === "blok" && <BlokTabContent />}
@@ -324,7 +324,7 @@ export default function StudentEditPage({ order }: { order: Order }) {
           {activeTab === "ltv" && <LtvTabContent />}
           {activeTab === "sms" && <SmsTabContent order={order} />}
           {activeTab === "shartnoma-biriktirish" && <ShartnomaBiriktirishTabContent ism={ism} familiya={familiya} phone={phone} />}
-          {activeTab === "manzil" && <ManzilTabContent />}
+          {activeTab === "manzil" && <ManzilTabContent pupilId={pupil?.id} initialAddresses={pupil?.addresses} />}
           {activeTab === "shartnomalar" && <ShartnomalarTabContent />}
 
           {/* Tab content — "Tahrirlash" */}

@@ -2,14 +2,41 @@
 
 import { useState } from "react";
 import { MODERATORS } from "@/lib/ordersData";
+import { useToast } from "@/components/ui/Toast";
 
 // Ported from crm-akademiya/src/app.js renderStudentEditModerator() (~line 34547),
 // upgraded to a searchable dropdown (matches the real site's moderator picker)
 // instead of the source's plain <select>.
 
-export default function ModeratorTabContent({ initialModerator }: { initialModerator: string }) {
+export default function ModeratorTabContent({
+  initialModerator,
+  pupilId,
+}: {
+  initialModerator: string;
+  pupilId?: number;
+}) {
+  const { showSuccess, showError } = useToast();
   const [moderator, setModerator] = useState(initialModerator || MODERATORS[0]);
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Ilgari "Saqlash" hech nima qilmasdi — tanlangan moderator faqat
+  // oynada qolib ketardi.
+  const save = async () => {
+    if (!pupilId) return;
+    setSaving(true);
+    const res = await fetch(`/api/pupils/${pupilId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moderator }),
+    }).then((r) => r.json()).catch(() => null);
+    setSaving(false);
+    if (!res?.ok) {
+      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      return;
+    }
+    showSuccess("Moderator saqlandi");
+  };
 
   return (
     <div className="rounded-2xl bg-card border border-border p-5">
@@ -62,8 +89,20 @@ export default function ModeratorTabContent({ initialModerator }: { initialModer
             )}
           </div>
         </div>
+        {!pupilId && (
+          <p className="text-[12px] text-muted-foreground">
+            Bu yozuv o&apos;quvchilar bazasida topilmadi — moderatorni saqlab bo&apos;lmaydi.
+          </p>
+        )}
         <div className="flex justify-end">
-          <button type="button" className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">Saqlash</button>
+          <button
+            type="button"
+            disabled={!pupilId || saving}
+            onClick={save}
+            className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {saving ? "Saqlanmoqda..." : "Saqlash"}
+          </button>
         </div>
       </div>
     </div>

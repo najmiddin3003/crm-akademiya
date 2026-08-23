@@ -48,7 +48,31 @@ export interface Pupil {
   /** O'qish joyi (maktab/litsey). */
   studyPlace?: string;
   note?: string;
+
+  /** Qarzdorlik limiti (UZS) — "Qarzdorlik limiti" tabi. */
+  debtLimit?: number;
+  /** "Manzil" tabida qo'shilgan manzillar. */
+  addresses?: PupilAddress[];
+
+  // --- Kirish ma'lumotlari ("Parol o'rnatish" tabi) ---
+  // Parolning O'ZI hech qachon saqlanmaydi — faqat bcrypt xesh, va u
+  // hech qachon klientga qaytarilmaydi.
+  studentLogin?: string;
+  studentPasswordHash?: string;
+  parentLogin?: string;
+  parentPasswordHash?: string;
 }
+
+export interface PupilAddress {
+  id: number;
+  /** Manzil nomi/matni. */
+  name: string;
+  /** Manzil turi (Uy, Ish, Maktab...). */
+  type: string;
+}
+
+/** "Manzil" tabidagi tanlov. */
+export const ADDRESS_TYPES = ["Uy", "Ish", "Maktab", "Boshqa"];
 
 export interface NewPupilValues {
   firstName: string;

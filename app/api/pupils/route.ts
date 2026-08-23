@@ -7,7 +7,11 @@ import { buildPupilFromValues, type NewPupilValues, type Pupil } from "@/lib/pup
 export async function GET() {
   const db = await ensureIndexes();
   const rows = await db.collection("pupils").find({}).sort({ id: -1 }).toArray();
-  const pupils: Pupil[] = rows.map(({ _id, ...rest }) => rest as Pupil);
+  // Parol xeshlari hech qachon klientga chiqmaydi.
+  const pupils: Pupil[] = rows.map(({ _id, studentPasswordHash, parentPasswordHash, ...rest }) => {
+    void _id; void studentPasswordHash; void parentPasswordHash;
+    return rest as Pupil;
+  });
   return NextResponse.json({ ok: true, pupils });
 }
 
