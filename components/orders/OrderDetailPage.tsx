@@ -15,7 +15,7 @@ import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useToast } from "@/components/ui/Toast";
 import type { Order } from "@/lib/ordersData";
 import type { Group } from "@/lib/groups";
-import { enrollOrderInGroup } from "@/lib/enrollStudent";
+import { enrollOrderInGroup, findPupilForOrder } from "@/lib/enrollStudent";
 
 // Per-order detail page reached by clicking a row in the orders-list table
 // (akademiya.edutizim.uz/orders/order-list/edit/... reference): student
@@ -27,19 +27,26 @@ import { enrollOrderInGroup } from "@/lib/enrollStudent";
 // OrdersContext exists — both AddOrderModal invocations below write through
 // the same createOrder/updateOrder as the list page's drawer.
 
-// No real birthDate field exists anywhere (AddStudentModal captures one but
-// it's never persisted onto Order) — this is a deterministic placeholder,
-// same convention as genPhone/genDate elsewhere in this project for fields
-// with no backend source yet.
-function birthInfoFor(orderId: number): { date: string; age: number } {
-  const today = new Date(2026, 6, 17);
-  const age = 10 + (orderId % 40);
-  const birthYear = today.getFullYear() - age;
-  const month = orderId % 12;
-  const day = 1 + (orderId % 28);
-  const birth = new Date(birthYear, month, day);
+// Tug'ilgan sana o'quvchi kartasidan (`pupils.birthDate`, "YYYY-MM-DD" —
+// AddStudentModal kiritadi). Buyurtma o'quvchiga telefon/ism orqali
+// bog'lanadi (findPupilForOrder). Ilgari bu yerda sana buyurtma id'sidan
+// o'ylab topilardi (`10 + orderId % 40` yosh), ya'ni ekranda hech kimga
+// tegishli bo'lmagan tug'ilgan kun turardi.
+function birthInfoOf(birthDate: string | undefined): { date: string; age: number | null } | null {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const beforeBirthday =
+    now.getMonth() < birth.getMonth() ||
+    (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate());
+  if (beforeBirthday) age -= 1;
   const pad = (n: number) => String(n).padStart(2, "0");
-  return { date: `${pad(birth.getDate())}.${pad(birth.getMonth() + 1)}.${birth.getFullYear()} | 00:00`, age };
+  const date = `${pad(birth.getDate())}.${pad(birth.getMonth() + 1)}.${birth.getFullYear()}`;
+  // Kelajakdagi sana kiritilgan bo'lsa yosh ma'nosiz ("-1 yosh") — sanani
+  // ko'rsatamiz, yoshni esa yashiramiz.
+  return { date, age: age < 0 ? null : age };
 }
 
 const digitsOf = (s: string) => (s || "").replace(/\D/g, "");
@@ -138,7 +145,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
     setGroupPickerId(null);
   };
 
-  const { date: birthDate, age } = birthInfoFor(order.id);
+  const birthInfo = birthInfoOf(findPupilForOrder(order, pupils)?.birthDate);
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "—";
 
   return (
@@ -162,7 +169,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
         <div>
           <span className="text-muted-foreground">Tug&apos;ilgan sanasi:</span>{" "}
           <span className="font-medium">
-            {age} yosh ({birthDate})
+            {!birthInfo ? "—" : birthInfo.age === null ? birthInfo.date : `${birthInfo.age} yosh (${birthInfo.date})`}
           </span>
         </div>
         <div className="flex items-center gap-3">
