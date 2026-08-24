@@ -668,7 +668,7 @@ export default function CashboxesPage() {
   // (/api/pupils) ichidan ism bo'yicha qidiramiz. Xodimlar xaritasi (pastda)
   // bilan bir xil qoida — katta-kichik harf va ortiqcha bo'shliq farq
   // qilmasin (hooks/useStudents.ts → byName).
-  const { byName: studentByName } = useStudents();
+  const { names: dbStudents, byName: studentByName } = useStudents();
   const studentIdByName = useMemo(() => {
     const map = new Map<string, number>();
     for (const [key, s] of studentByName) map.set(key, s.id);
@@ -783,12 +783,18 @@ export default function CashboxesPage() {
     return hideBalances ? "*** *** ***" : fmtNum(n);
   }
 
+  // O'quvchilar ro'yxati BAZADAN (/api/pupils) — ilgari faqat shu kassada
+  // to'lov QILGAN o'quvchilar chiqardi, ya'ni hali to'lov qilmagan
+  // o'quvchini qidirib topib bo'lmasdi. Yozuvlarda uchraydigan, lekin
+  // bazada yo'q ismlar ham qo'shiladi (o'chirilgan o'quvchi).
   const studentOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(entries.map((e) => e.studentName).filter(Boolean)),
-      ).sort(),
-    [entries],
+    () => [
+      ...new Set([
+        ...dbStudents,
+        ...entries.map((e) => e.studentName).filter(Boolean),
+      ]),
+    ].sort(),
+    [dbStudents, entries],
   );
 
   // O'qituvchilar ro'yxati XODIMLARDAN (/api/teachers) — ilgari bu yerda
