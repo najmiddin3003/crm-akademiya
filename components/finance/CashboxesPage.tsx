@@ -40,6 +40,8 @@ import CashboxDividendDrawer from "./CashboxDividendDrawer";
 import CashboxInvestmentDrawer from "./CashboxInvestmentDrawer";
 import TransactionDetailDrawer from "./TransactionDetailDrawer";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useTeachers } from "@/hooks/useTeachers";
+import { useTransactionTypes } from "@/hooks/useTransactionTypes";
 import { type Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
@@ -631,6 +633,8 @@ export default function CashboxesPage() {
   const [student, setStudent] = useState("");
   const [payType, setPayType] = useState("");
   const [teacher, setTeacher] = useState("");
+  const { names: dbTeachers } = useTeachers();
+  const { names: txTypeNames } = useTransactionTypes();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -787,23 +791,35 @@ export default function CashboxesPage() {
     [entries],
   );
 
-  // O'qituvchi/mas'ul variantlari ham mavjud yozuvlardan olinadi — ro'yxatda
-  // hech qachon bo'sh natija beradigan band chiqmaydi.
+  // O'qituvchilar ro'yxati XODIMLARDAN (/api/teachers) — ilgari bu yerda
+  // yozuvlarning `moderator` maydoni ishlatilardi, ya'ni "O'qituvchini
+  // qidiring" deb turib aslida kassa mas'uli bo'yicha filtrlanardi.
+  // Yozuvlarda uchraydigan, lekin ro'yxatda yo'q ismlar ham qo'shiladi
+  // (arxivlangan yoki o'chirilgan xodim).
   const teacherOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(entries.map((e) => e.moderator).filter(Boolean)),
-      ).sort(),
-    [entries],
+    () => [
+      ...new Set([
+        ...dbTeachers,
+        ...entries.map((e) => e.teacherName).filter((n): n is string => Boolean(n)),
+      ]),
+    ].sort(),
+    [dbTeachers, entries],
   );
 
   // Referensdagi "Tranzaksiya turi" filtri. `txName` — tranzaksiya turlari
   // katalogidan keladigan nom ("O'quvchi to'ladi", "Hodimga avans", ...),
   // yuqoridagi "Tranzaksiya" filtri esa Kirim/Chiqim/Ko'chirish amali bo'yicha.
+  // Ro'yxat Moliya → Tranzaksiya turi sahifasidagi BARCHA turlardan
+  // (Kirim/Chiqim/Vaucher/Jarima) iborat; katalogda yo'q, lekin eski
+  // yozuvlarda uchraydigan nomlar oxiriga qo'shiladi.
   const txNameOptions = useMemo(
-    () =>
-      Array.from(new Set(entries.map((e) => e.txName).filter(Boolean))).sort(),
-    [entries],
+    () => [
+      ...txTypeNames,
+      ...[...new Set(entries.map((e) => e.txName).filter(Boolean))]
+        .filter((n) => !txTypeNames.includes(n))
+        .sort(),
+    ],
+    [txTypeNames, entries],
   );
 
   const filteredEntries = useMemo(() => {
@@ -825,7 +841,7 @@ export default function CashboxesPage() {
       if (studentQ && !e.studentName.toLowerCase().includes(studentQ))
         return false;
       if (wantedPayLabel && e.paymentType !== wantedPayLabel) return false;
-      if (teacherQ && !e.moderator.toLowerCase().includes(teacherQ))
+      if (teacherQ && !(e.teacherName || "").toLowerCase().includes(teacherQ))
         return false;
       return true;
     });
@@ -1564,6 +1580,7 @@ export default function CashboxesPage() {
 
       {addOpen && (
         <CashboxDrawer
+          cashboxes={cashboxes}
           onClose={() => setAddOpen(false)}
           onSaved={(c) => {
             setCashboxes((prev) => [...prev, c]);
@@ -1574,6 +1591,7 @@ export default function CashboxesPage() {
       {editTarget && (
         <CashboxDrawer
           cashbox={editTarget}
+          cashboxes={cashboxes}
           onClose={() => setEditTarget(null)}
           onSaved={(c) =>
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)))

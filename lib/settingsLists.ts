@@ -35,6 +35,12 @@ export interface SettingsListItem {
   imei?: string; // SMS qurilmalar
   moderator?: string; // SMS qurilmalar
   online?: boolean; // SMS qurilmalar — Online / Offline
+  // To'lov turi (Sozlamalar → Moliya → To'lov turlari) — referensdagi
+  // qo'shish oynasidagi uchta belgi. Ular to'lov turi qaysi moliyaviy
+  // amallarda tanlash uchun chiqishini boshqaradi.
+  showInIncomeExpense?: boolean; // "Daromad xarajatlarini ko'rsatish"
+  showInTransfer?: boolean; // "Transferda ko'rsatish"
+  showInInvestment?: boolean; // "Sarmoya va dividentda ko'rsatish"
   halfRate?: string; // Grading tizimi — yarim stavka
   fullRate?: string; // Grading tizimi — bir stavka
 }
@@ -67,6 +73,9 @@ export const LIST_FIELD_TYPES = {
   imei: "string",
   moderator: "string",
   online: "boolean",
+  showInIncomeExpense: "boolean",
+  showInTransfer: "boolean",
+  showInInvestment: "boolean",
   halfRate: "string",
   fullRate: "string",
 } as const;

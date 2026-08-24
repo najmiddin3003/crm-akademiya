@@ -24,6 +24,15 @@ export interface StudentSearchSelectProps {
   /** Qatorning o'ng chekkasi (masalan balans / oylik). */
   trailingOf?: (name: string) => ReactNode;
   /**
+   * Tanlab bo'lmaydigan variantlar (masalan boshqa kassaga allaqachon
+   * biriktirilgan moderator). Ro'yxatda hira ko'rinadi, kursor "no-drop"
+   * bo'ladi va bosilmaydi — yashirib qo'ymaymiz, chunki nega yo'qligini
+   * tushunish qiyin bo'lardi.
+   */
+  disabledOptions?: string[];
+  /** Hira variant ustida ko'rinadigan izoh (title). */
+  disabledHint?: string;
+  /**
    * Bir vaqtda ko'rsatiladigan maksimal qator. Ro'yxat uzun bo'lsa (masalan
    * tizimdagi barcha odamlar) hammasini DOM'ga chizish shart emas — qolganini
    * qidiruv orqali topiladi. Berilmasa cheklov yo'q.
@@ -43,8 +52,11 @@ export default function StudentSearchSelect({
   variant = "boxed",
   subtitleOf,
   trailingOf,
+  disabledOptions,
+  disabledHint,
   limit,
 }: StudentSearchSelectProps) {
+  const isDisabled = (name: string) => Boolean(disabledOptions?.includes(name));
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -114,12 +126,20 @@ export default function StudentSearchSelect({
             <button
               key={`${name}-${i}`}
               type="button"
+              disabled={isDisabled(name)}
+              title={isDisabled(name) ? disabledHint : undefined}
+              style={isDisabled(name) ? { cursor: "no-drop" } : undefined}
               onClick={() => {
+                if (isDisabled(name)) return;
                 onChange(name);
                 setQuery("");
                 setOpen(false);
               }}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-secondary ${value === name ? "bg-primary/10 font-medium text-primary" : ""}`}
+              className={`block w-full px-3 py-2 text-left text-sm ${
+                isDisabled(name)
+                  ? "opacity-40"
+                  : `hover:bg-secondary ${value === name ? "bg-primary/10 font-medium text-primary" : ""}`
+              }`}
             >
               {subtitleOf || trailingOf ? (
                 <span className="flex items-start justify-between gap-3">

@@ -29,6 +29,21 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
   const col = db.collection("cashboxes");
+
+  // Bitta moderator — bitta kassa. Oynada band moderatorlar hira turadi,
+  // ammo tekshiruv shu yerda ham kerak: aks holda so'rovni to'g'ridan-to'g'ri
+  // yuborib ikkita kassaga bir odamni biriktirib qo'yish mumkin bo'lardi.
+  const moderator = (body.moderator || "").trim();
+  if (moderator) {
+    const taken = await col.findOne({ moderator });
+    if (taken) {
+      return NextResponse.json(
+        { ok: false, error: `${moderator} allaqachon "${taken.name}" kassasiga biriktirilgan` },
+        { status: 400 },
+      );
+    }
+  }
+
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
@@ -36,7 +51,7 @@ export async function POST(req: Request) {
     id: nextId,
     name,
     balance: 0,
-    moderator: body.moderator || "",
+    moderator,
     onlinePayment: !!body.onlinePayment,
     archived: !!body.archived,
     isPrimary: false,

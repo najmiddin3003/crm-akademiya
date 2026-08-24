@@ -84,13 +84,19 @@ const BUILT: Record<string, () => ReactNode> = {
     />
   ),
 
+  // Maydonlar referensdagi "To'lov turi qo'shish" oynasidan: Nomi + Aktiv
+  // va to'lov turi qaysi amallarda tanlash uchun chiqishini belgilovchi
+  // uchta belgi.
   "finance:payment-methods": () => (
     <SettingsListTab
       kind="payment-methods"
       addLabel="To'lov turi"
       fields={[
         { key: "name", label: "Nomi", input: "text" },
-        { key: "active", label: "Holati", input: "toggle" },
+        { key: "active", label: "Aktiv", input: "toggle" },
+        { key: "showInIncomeExpense", label: "Daromad xarajatlarini ko'rsatish", input: "toggle" },
+        { key: "showInTransfer", label: "Transferda ko'rsatish", input: "toggle" },
+        { key: "showInInvestment", label: "Sarmoya va dividentda ko'rsatish", input: "toggle" },
       ]}
     />
   ),

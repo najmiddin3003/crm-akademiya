@@ -20,11 +20,14 @@ import type { Cashbox } from "@/lib/cashboxes";
 // maydoni uchun mutlaqo noto'g'ri manba edi.
 export default function CashboxDrawer({
   cashbox,
+  cashboxes = [],
   onClose,
   onSaved,
   onDeleted,
 }: {
   cashbox?: Cashbox;
+  /** Barcha kassalar — band moderatorlarni aniqlash uchun. */
+  cashboxes?: Cashbox[];
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
   onDeleted?: (id: number) => void;
@@ -37,6 +40,12 @@ export default function CashboxDrawer({
   const [onlinePayment, setOnlinePayment] = useState(cashbox?.onlinePayment ?? false);
   const [archived, setArchived] = useState(cashbox?.archived ?? false);
   const [saving, setSaving] = useState(false);
+  // Bitta moderator bitta kassaga biriktiriladi: boshqa kassada band
+  // bo'lganlari ro'yxatda hira turadi va tanlanmaydi (o'zining kassasini
+  // tahrirlayotganda o'z moderatori hisobga olinmaydi).
+  const takenModerators = cashboxes
+    .filter((c) => c.id !== cashbox?.id && c.moderator)
+    .map((c) => c.moderator);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -123,6 +132,8 @@ export default function CashboxDrawer({
             value={moderator}
             onChange={setModerator}
             options={moderatorNames}
+            disabledOptions={takenModerators}
+            disabledHint="Bu moderator boshqa kassaga biriktirilgan"
             placeholder={loadingModerators ? "Yuklanmoqda…" : "Moderatorni tanlang"}
             searchPlaceholder="Moderatorni qidirish"
           />

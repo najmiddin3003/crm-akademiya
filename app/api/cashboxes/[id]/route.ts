@@ -24,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!name) return NextResponse.json({ ok: false, error: "Kassa nomini kiriting" }, { status: 400 });
     set.name = name;
   }
-  if (typeof body.moderator === "string") set.moderator = body.moderator;
+  if (typeof body.moderator === "string") set.moderator = body.moderator.trim();
   if (typeof body.onlinePayment === "boolean") set.onlinePayment = body.onlinePayment;
   if (typeof body.archived === "boolean") set.archived = body.archived;
   if (Object.keys(set).length === 0) {
@@ -32,6 +32,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const db = await ensureIndexes();
+
+  // Bitta moderator — bitta kassa (POST yo'lidagi bilan bir xil qoida).
+  if (typeof set.moderator === "string" && set.moderator) {
+    const taken = await db.collection("cashboxes").findOne({
+      moderator: set.moderator,
+      id: { $ne: cashboxId },
+    });
+    if (taken) {
+      return NextResponse.json(
+        { ok: false, error: `${set.moderator} allaqachon "${taken.name}" kassasiga biriktirilgan` },
+        { status: 400 },
+      );
+    }
+  }
+
   const res = await db.collection("cashboxes").findOneAndUpdate(
     { id: cashboxId },
     { $set: set },

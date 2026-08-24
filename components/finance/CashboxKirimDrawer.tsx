@@ -84,7 +84,11 @@ export default function CashboxKirimDrawer({
       .then((d) => {
         if (cancelled || !d.ok) return;
         const names = (d.types as TransactionType[]).filter((t) => t.mainType === "kirim").map((t) => t.name);
-        setCategories(Array.from(new Set(names)));
+        const uniq = Array.from(new Set(names));
+        setCategories(uniq);
+        // Moliya → Tranzaksiya turi sahifasining "Kirim" tabida BIRINCHI
+        // turgan tur avtomatik tanlanadi (tartib API'dagi id bo'yicha).
+        if (uniq.length > 0) setCategory((cur) => cur || uniq[0]);
       });
     return () => { cancelled = true; };
   }, []);
