@@ -4,11 +4,29 @@ import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { SALARY_ROWS, salaryOf } from "@/lib/employeeSalary";
+import {
+  payrollBase,
+  payrollDue,
+  payrollEarned,
+  type EmployeePayroll,
+  type PayrollPeriod,
+} from "@/lib/salary";
 
 // Kassa → Chiqim oynasidagi "Xodim ma'lumotlarini ko'rish" tugmasi ochadigan
 // modal (referens skrinshoti). Sarlavhasi "Xodimlar", yonidagi ikonka —
 // AKKORDEON: bosilganda jadval silliq yig'iladi va faqat sarlavha qoladi.
+//
+// Raqamlar BAZADAN: /api/salary-runs/employees-payroll qatoridan (Xodimlar
+// ro'yxati va Oylik chiqarish sahifasi o'qiydigan bitta manba). Ilgari ular
+// xodim `id` sidan hosil qilingan soxta sonlar edi — ya'ni modal chiroyli
+// ko'rinardi-yu, hech qanday haqiqiy oylikni ko'rsatmasdi.
+//
+// Qatorlarning referensdagi arifmetikasi saqlangan:
+//   Davomatdan foizi = Davomat × foiz
+//   Oylik  = Davomatdan foizi + Bonus + Akladi − Jarima
+//   Balans = Oylik − Avans − Olingan oylik   (ya'ni QOLGAN oylik)
+// "Olingan oylik" qatori referensda yo'q, lekin bizda alohida hisoblanadi —
+// usiz Balans qayerdan kelganini tushunib bo'lmasdi.
 //
 // ── Animatsiya haqida ────────────────────────────────────────────────────
 // 1. Tailwind klasslari ISHLATILMAYDI. Bu loyihada CSS kompilyatsiya qilingan
@@ -25,15 +43,49 @@ import { SALARY_ROWS, salaryOf } from "@/lib/employeeSalary";
 
 function fmtUZS(n: number): string {
   const sign = n < 0 ? "-" : "";
-  return sign + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
+  return sign + Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
+}
+
+interface Row {
+  label: string;
+  value: number;
+  /** Izoh — qiymat qayerdan kelgani (masalan foiz). */
+  hint?: string;
+  strong?: boolean;
+}
+
+function rowsOf(e: EmployeePayroll, p: PayrollPeriod): Row[] {
+  const base = payrollBase(e, p);
+  const earned = payrollEarned(e, p);
+  const due = payrollDue(e, p);
+  return [
+    // Foizli o'qituvchida asos — shu oyda u orqali tushgan pul; oklad
+    // oladigan xodimda tushum oyligiga ta'sir qilmaydi, shuning uchun 0.
+    { label: "Davomat", value: e.salaryType === "foiz" ? e.collected : 0 },
+    {
+      label: e.salaryType === "foiz" ? "Davomatdan foizi" : "Oklad (shu kungacha)",
+      value: base,
+      hint: e.salaryType === "foiz" ? `${e.percent}%` : undefined,
+    },
+    { label: "Bonus", value: e.bonus },
+    { label: "Jarima", value: e.jarima },
+    { label: "Akladi", value: e.carryOver, hint: "o'tgan oydan" },
+    { label: "Oylik", value: earned, strong: true },
+    { label: "Avans", value: e.paidAvans },
+    { label: "Olingan oylik", value: e.paidOylik },
+    { label: "Balans", value: due, hint: "qolgan", strong: true },
+  ];
 }
 
 export default function EmployeeSalaryModal({
-  employeeId,
+  payroll,
+  period,
   employeeName,
   onClose,
 }: {
-  employeeId: number;
+  /** Xodimning oylik qatori; sozlanmagan bo'lsa `undefined`. */
+  payroll: EmployeePayroll | undefined;
+  period: PayrollPeriod;
   employeeName: string;
   onClose: () => void;
 }) {
@@ -43,9 +95,9 @@ export default function EmployeeSalaryModal({
   const reduceMotion = useReducedMotion();
   useEscapeClose(onClose);
 
-  const s = salaryOf(employeeId);
   const duration = reduceMotion ? "0s" : ".3s";
   const ease = `${duration} cubic-bezier(.4,0,.2,1)`;
+  const rows = payroll?.configured ? rowsOf(payroll, period) : null;
 
   /** Ochilib bo'lgach balandlikni `auto` ga qaytaradi — kontent o'zgarsa
    *  yoki oyna kengligi o'zgarib qator ikkiga bo'linsa kesilmasin. */
@@ -110,15 +162,35 @@ export default function EmployeeSalaryModal({
           <div className="border-t border-border">
             {/* Xodim ismi referens modalida ko'rsatilmaydi, lekin qaysi
                 xodim ekani aniq bo'lishi uchun mayda sarlavha qoldirildi. */}
-            <div className="px-6 pt-3 text-[12px] text-muted-foreground">{employeeName}</div>
-            <ul className="px-6 pb-2 divide-y divide-border">
-              {SALARY_ROWS.map((r) => (
-                <li key={r.key} className="flex items-center justify-between gap-4 py-3.5">
-                  <span className="text-[14px]">{r.label}</span>
-                  <span className="text-[14px] font-medium tabular-nums">{fmtUZS(s[r.key])}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="px-6 pt-3 text-[12px] text-muted-foreground">
+              {employeeName}
+              {payroll?.configured && (
+                <span> · {period.month}.{period.year}</span>
+              )}
+            </div>
+
+            {rows ? (
+              <ul className="px-6 pb-2 divide-y divide-border">
+                {rows.map((r) => (
+                  <li key={r.label} className="flex items-center justify-between gap-4 py-3.5">
+                    <span className="text-[14px]">
+                      {r.label}
+                      {r.hint && <span className="text-[12px] text-muted-foreground"> ({r.hint})</span>}
+                    </span>
+                    <span className={`text-[14px] tabular-nums ${r.strong ? "font-semibold" : "font-medium"}`}>
+                      {fmtUZS(r.value)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="px-6 py-10 text-center">
+                <p className="text-[14px] font-medium">Oylik sozlanmagan</p>
+                <p className="text-[12px] text-muted-foreground mt-1">
+                  Xodim kartasida ish haqi kiritilmagan — hisoblanadigan raqam yo&apos;q.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

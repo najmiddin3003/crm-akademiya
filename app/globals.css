@@ -7923,17 +7923,19 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
      Note: backdrop-filter can report as CSS-supported (@supports passes)
      while the compositor still doesn't actually blur (common with GPU
      acceleration disabled, remote desktops, some VMs) — that combination
-     leaves background content sharply readable through a translucent
-     panel. So the base opacity here is kept high enough to stay legible
-     on its own; backdrop-filter is a bonus frost effect where it renders,
-     not something legibility depends on. */
+     used to leave background content sharply readable through a
+     translucent panel (0.94 alpha wasn't enough on its own). Panellar/
+     modallar (masalan Kassa → Chiqim, Guruhlar, Xodimlar) shu sabab
+     "shaffof" ko'rinardi — endi baza TO'LIQ xira (opaque), backdrop-filter
+     esa faqat qo'shimcha "frost" effekt, ko'rinishga hech narsa bog'liq
+     emas. */
   .bg-card {
-    background: hsl(var(--card) / 0.94);
+    background: hsl(var(--card));
     backdrop-filter: blur(28px) saturate(180%);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
   }
   html.dark .bg-card {
-    background: hsl(var(--card) / 0.94);
+    background: hsl(var(--card));
   }
 
   /* Add subtle glow + bevel to rounded glass cards */

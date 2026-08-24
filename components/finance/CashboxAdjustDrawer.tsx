@@ -8,6 +8,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import MonthYearPicker, { type MonthYearValue } from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
+import StudentGroupsModal from "./StudentGroupsModal";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { useStudents } from "@/hooks/useStudents";
 import type { TransactionType } from "@/lib/transactionTypes";
@@ -15,7 +16,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
-import { payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
+import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import { ROLE_LABELS } from "@/constants/employees";
 
 function fmtUZS(n: number): string {
@@ -69,6 +70,10 @@ export default function CashboxAdjustDrawer({
   const [personName, setPersonName] = useState("");
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [salaryOpen, setSalaryOpen] = useState(false);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — Kirim oynasidagi
+  // bilan bir xil manba (/api/students/balances).
+  const [balances, setBalances] = useState<Record<string, number>>({});
   const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "", month: defaultMonth() }]);
   const [nextRowId, setNextRowId] = useState(2);
   const [method, setMethod] = useState("");
@@ -80,9 +85,9 @@ export default function CashboxAdjustDrawer({
   const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
   const period = useMemo(() => payrollPeriod(), []);
 
-  // Maosh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda ikkala
-  // tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
-  useEscapeClose(salaryOpen ? () => {} : onClose);
+  // Maosh/guruh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda
+  // ikkala tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
+  useEscapeClose(salaryOpen || groupsOpen ? () => {} : onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,9 +122,26 @@ export default function CashboxAdjustDrawer({
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
   // O'quvchilar tanlovi bazadan (/api/pupils).
-  const { names: studentNames } = useStudents();
+  const { names: studentNames, byName: studentByName } = useStudents();
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
+
+  // O'quvchi balansi — faqat "o'quvchiga pul qaytarildi" turidagi
+  // chiqimlarda kerak (target === "student"da har doim shu ma'no).
+  const studentKey = (n: string) => n.trim().toLowerCase();
+  const balanceOf = (n: string) => balances[studentKey(n)] ?? 0;
+  const selectedStudent = target === "student" ? studentByName.get(studentKey(personName)) : undefined;
+  const studentBalance = selectedStudent ? balanceOf(selectedStudent.name) : 0;
+
+  useEffect(() => {
+    if (target !== "student") return;
+    let cancelled = false;
+    fetch("/api/students/balances")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [target]);
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
@@ -176,6 +198,9 @@ export default function CashboxAdjustDrawer({
   const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
   const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && total > remainingSalary;
 
+  // O'quvchiga qaytariladigan summa uning balansidan oshmasligi kerak.
+  const studentBalanceExceeds = target === "student" && !!selectedStudent && total > studentBalance;
+
   function addRow() {
     setRows((prev) => [...prev, { id: nextRowId, amount: "", month: defaultMonth() }]);
     setNextRowId((n) => n + 1);
@@ -210,6 +235,10 @@ export default function CashboxAdjustDrawer({
     }
     if (salaryExceeds) {
       showError(`Summa qolgan oylikdan (${fmtUZS(remainingSalary)}) ko'p bo'lishi mumkin emas`);
+      return;
+    }
+    if (studentBalanceExceeds) {
+      showError(`Summa o'quvchi balansidan (${fmtUZS(studentBalance)}) ko'p bo'lishi mumkin emas`);
       return;
     }
     setSaving(true);
@@ -292,12 +321,41 @@ export default function CashboxAdjustDrawer({
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : studentNames}
                 placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
                 subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
+                // Ism yonida QOLGAN oylik: shu oynada aynan shuncha pul
+                // chiqarish mumkin (jami hisoblangan emas).
                 trailingOf={target === "employee" ? (n) => {
                   const p = payrollOf(n);
                   if (!p?.configured) return <span className="text-muted-foreground">Sozlanmagan</span>;
-                  return <span className="text-emerald-600">{fmtUZS(payrollEarned(p, period))}</span>;
+                  const due = Math.max(0, payrollDue(p, period));
+                  return <span className={due > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(due)}</span>;
+                } : target === "student" ? (n) => {
+                  const b = balanceOf(n);
+                  return <span className={b > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(b)}</span>;
                 } : undefined}
               />
+
+              {selectedStudent && (
+                <div className="space-y-2">
+                  <div className="text-[13px] rounded-md border border-border bg-secondary/20 px-2.5 py-2">
+                    Balans:{" "}
+                    <strong className={studentBalance > 0 ? "text-emerald-600" : "text-muted-foreground"}>
+                      {fmtUZS(studentBalance)}
+                    </strong>
+                  </div>
+                  {studentBalanceExceeds && (
+                    <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
+                      Summa o&apos;quvchi balansidan ({fmtUZS(studentBalance)}) ko&apos;p bo&apos;lishi mumkin emas.
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setGroupsOpen(true)}
+                    className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
+                  >
+                    O&apos;quvchi guruhlarini ko&apos;rish
+                  </button>
+                </div>
+              )}
 
               {selectedEmployee && (
                 <>
@@ -439,7 +497,7 @@ export default function CashboxAdjustDrawer({
           </button>
           <button
             onClick={save}
-            disabled={saving || salaryExceeds || salaryExhausted}
+            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "Saqlanmoqda…" : "Saqlash"}
@@ -450,9 +508,18 @@ export default function CashboxAdjustDrawer({
       {/* Modal chekmadan (z-110) tepada turishi kerak — z-300. */}
       {salaryOpen && selectedEmployee && (
         <EmployeeSalaryModal
-          employeeId={selectedEmployee.id}
+          payroll={selectedPayroll}
+          period={period}
           employeeName={selectedEmployee.name}
           onClose={() => setSalaryOpen(false)}
+        />
+      )}
+      {groupsOpen && selectedStudent && (
+        <StudentGroupsModal
+          pupilId={selectedStudent.id}
+          studentName={selectedStudent.name}
+          balance={studentBalance}
+          onClose={() => setGroupsOpen(false)}
         />
       )}
     </div>
