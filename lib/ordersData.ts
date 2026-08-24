@@ -93,9 +93,23 @@ const LEVELS = ["1-bosqich","2-bosqich","3-bosqich","5-bosqich (CEFR / IELTS)","
 export const MODERATORS = ["Dilmurod Komilov","Nilufar Sharipova","Abdulloh Raxmatullayev"];
 const PREFIX = ["90","91","93","94","95","97","98","99","88"];
 
-// Buyurtma HOLATLARI — referensdagi (akademiya.edutizim.uz) ro'yxat bilan
-// bir xil so'z shakllarida.
-export const STATUSES = ["Yangi", "Qabul qilingan", "Kelmoqda", "Kutilmoqda", "Bekor qilingan", "Yakunlangan", "O'tkazilgan"];
+// Buyurtma HOLATLARI. Yorliqlar referensdagi (akademiya.edutizim.uz)
+// ro'yxat bilan bir xil, QIYMATLAR esa bazaga haqiqatan yoziladigan
+// satrlar — ular boshqa so'z shaklida ("Qabul qilindi", "Bekor qilindi";
+// OrderDetailPage va FirstLessonsPage shularni PATCH qiladi).
+//
+// Ilgari bu oddiy satrlar massivi edi va yorliq qiymat sifatida ham
+// ishlatilardi, ya'ni /orders-list dagi "Holatlar" filtri "Yangi" dan
+// boshqa hech qachon hech narsani topmasdi.
+export const STATUSES: { value: string; label: string }[] = [
+  { value: "Yangi", label: "Yangi" },
+  { value: "Qabul qilindi", label: "Qabul qilingan" },
+  { value: "Kelmoqda", label: "Kelmoqda" },
+  { value: "Kutilmoqda", label: "Kutilmoqda" },
+  { value: "Bekor qilindi", label: "Bekor qilingan" },
+  { value: "Yakunlandi", label: "Yakunlangan" },
+  { value: "O'tkazildi", label: "O'tkazilgan" },
+];
 
 // Buyurtma MANBALARI. Referensda bu qiymatlar boshqa tizimdan (bot / sayt
 // integratsiyasi) keladi — bizda hali o'sha manba ulanmagan, shu bois
@@ -265,7 +279,7 @@ function augment(raw: RawOrder, i: number): Order {
   return {
     ...raw,
     group: "",
-    status: STATUSES[i % STATUSES.length],
+    status: STATUSES[i % STATUSES.length].value,
     source: SOURCES[i % SOURCES.length],
     subsource: SUBSOURCES[i % SUBSOURCES.length],
     fromBranch: BRANCHES[i % BRANCHES.length],

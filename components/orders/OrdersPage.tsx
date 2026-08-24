@@ -461,8 +461,8 @@ export default function OrdersPage() {
             >
               <option value="">Holatlar</option>
               {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+                <option key={s.value} value={s.value}>
+                  {s.label}
                 </option>
               ))}
             </select>
