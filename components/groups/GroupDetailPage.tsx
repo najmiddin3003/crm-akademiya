@@ -42,10 +42,6 @@ function nf(n: number): string {
 function pupilName(p: Pupil): string {
   return `${p.firstName} ${p.lastName || ""}`.trim();
 }
-// Balans Pupil'da yo'q — demo (id'dan deterministik).
-function demoBalance(p: Pupil): number {
-  return ((p.id * 137) % 6000) * 1000;
-}
 
 // "DD.MM.YYYY | HH:mm" (yoki "DD.MM.YYYY") → Date (faqat kun).
 function parseUzDate(s: string): Date | null {
@@ -109,6 +105,10 @@ export default function GroupDetailPage({ id }: { id: number }) {
   const [tasks, setTasks] = useState<GroupTask[]>([]);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+  // O'quvchilarning HAQIQIY balansi — ism bo'yicha kalitlangan
+  // (/api/students/balances, `transaction_entries` dan hisoblanadi).
+  // `pupils.balance` maydoni hech qaysi API tomonidan yangilanmaydi.
+  const [balances, setBalances] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -123,8 +123,14 @@ export default function GroupDetailPage({ id }: { id: number }) {
     fetch(`/api/groups/${id}/tasks`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setTasks(d.tasks); });
+    fetch("/api/students/balances")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [id]);
+
+  const balanceOf = (p: Pupil) => balances[pupilName(p).trim().toLowerCase()] ?? 0;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -355,9 +361,11 @@ export default function GroupDetailPage({ id }: { id: number }) {
                           <td className="px-4 py-3 text-[13px] font-medium">{pupilName(m)}</td>
                           <td className="px-4 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{m.createdAt}</td>
                           <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{m.phone}</td>
-                          <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{nf(demoBalance(m))}</td>
-                          <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{nf(270000)}</td>
+                          <td className={`px-4 py-3 text-[13px] tabular-nums whitespace-nowrap ${balanceOf(m) < 0 ? "text-rose-600" : ""}`}>{nf(balanceOf(m))}</td>
+                          {/* Narxi: guruh/kurs narxi sxemada yo'q — qattiq
+                              yozilgan 270 000 o'rniga "—" (soxta son emas). */}
                           <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
+                          <td className="px-4 py-3 text-[13px] tabular-nums">{m.coin ?? 0}</td>
                           <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
                           <td className="px-4 py-3 text-right whitespace-nowrap">
                             {/* "Ko'chirish" — boshqa guruhga o'tkazadi (shu
@@ -479,7 +487,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
 
             {/* ===== DAVOMAT ===== */}
             {activeTab === "attendance" && (
-              <AttendanceTab group={group} members={members} membersLoading={membersLoading} />
+              <AttendanceTab group={group} members={members} membersLoading={membersLoading} balanceOf={balanceOf} />
             )}
           </div>
         </div>

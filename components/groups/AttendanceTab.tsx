@@ -47,15 +47,14 @@ export interface AttendanceTabProps {
   group: Group;
   members: Pupil[];
   membersLoading: boolean;
+  /** O'quvchining HAQIQIY balansi — ota komponent /api/students/balances dan oladi. */
+  balanceOf: (p: Pupil) => number;
 }
 
 type SortMode = "name" | "joined";
 
 function pupilName(p: Pupil): string {
   return `${p.firstName} ${p.lastName || ""}`.trim();
-}
-function demoBalance(p: Pupil): number {
-  return ((p.id * 137) % 6000) * 1000;
 }
 function nf(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -95,7 +94,7 @@ function StatusDot({ status }: { status: AttendanceStatus | null }) {
   );
 }
 
-export default function AttendanceTab({ group, members, membersLoading }: AttendanceTabProps) {
+export default function AttendanceTab({ group, members, membersLoading, balanceOf }: AttendanceTabProps) {
   // Dars qoldirish sabablari — Sozlamalar → O'quv → Sabablar ("Davomat"
   // turi). Sozlamada ro'yxat bo'sh bo'lsa lib/attendance.ts dagi standart
   // ro'yxat ishlatiladi (aks holda select butunlay bo'sh bo'lardi).
@@ -480,7 +479,7 @@ export default function AttendanceTab({ group, members, membersLoading }: Attend
                   <tr key={p.id} className="hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
                     <td className="px-4 py-3 text-[13px] font-medium whitespace-nowrap">{pupilName(p)}</td>
-                    <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{nf(demoBalance(p))}</td>
+                    <td className={`px-4 py-3 text-[13px] tabular-nums whitespace-nowrap ${balanceOf(p) < 0 ? "text-rose-600" : ""}`}>{nf(balanceOf(p))}</td>
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => clearPupil(p.id)}
