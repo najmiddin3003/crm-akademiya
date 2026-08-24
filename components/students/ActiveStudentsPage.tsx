@@ -5,47 +5,75 @@ import Link from "next/link";
 import { Filter, MoreVertical, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useStudents } from "@/hooks/useStudents";
+import { useGroups } from "@/hooks/useGroups";
 import {
-  createInitialOrders,
-  applyOrdersFilters,
-  EMPTY_ORDERS_FILTERS,
-  MODERATORS,
-  COURSES,
-  type Order,
-  type OrdersFilters,
-} from "@/lib/ordersData";
+  applyStudentFilters,
+  enrichStudents,
+  EMPTY_STUDENT_FILTERS,
+  studentRowFromPupil,
+  uniqueSorted,
+  type EnrichedStudent,
+  type StudentFilters,
+} from "@/lib/studentsData";
 
 // O'quvchilar → Aktiv o'quvchilar (crm-akademiya #view-active-students,
-// sidebar: O'quvchilar > Aktiv o'quvchilar, href /active-students). Har
-// o'quvchining "aktiv/yangi/muzlatilgan" holati indeks bo'yicha deterministik
-// hisoblanadi (Guruh o'quvchilari sahifasidagi bilan bir xil formula) — bu
-// yerda faqat "active" bo'lganlar ko'rsatiladi. Ism ustiga bosilsa
-// /student-edit/[id] ga o'tadi. Qator checkboxlari CSV/Excel eksportni
-// tanlangan qatorlar bilan cheklaydi (hech narsa tanlanmasa — hammasi).
+// sidebar: O'quvchilar > Aktiv o'quvchilar, href /active-students).
+//
+// Ilgari bu sahifa BAZAGA umuman murojaat qilmasdi: qatorlarni lib/ordersData.ts
+// dagi 502 ta demo buyurtma generatoridan (createInitialOrders) olardi va kim
+// "aktiv" ekanini INDEKS ARIFMETIKASI bilan hisoblardi — `i % 13` muzlatilgan,
+// `i % 5 === 1` yangi. Balans ham genBalance(seed) funksiyasi bilan o'ylab
+// topilardi. Ya'ni ro'yxatdagi hech bir raqam haqiqiy emas edi.
+//
+// Endi hamma narsa haqiqiy manbadan:
+//   • o'quvchilar — /api/pupils (hooks/useStudents.ts) + /api/groups
+//     (hooks/useGroups.ts), enrichStudents() bilan birlashtiriladi: kurs va
+//     guruh o'quvchining o'zida emas, u a'zo bo'lgan GURUHda saqlanadi;
+//   • "aktiv" — endi HAQIQIY maydon: pupils.status === "Aktiv"
+//     (lib/pupilsData.ts, PATCH /api/pupils/:id/status o'zgartiradi);
+//   • balans — /api/students/balances (transaction_entries payIn yig'indisi),
+//     chunki pupils.balance maydonini hech bir API yangilamaydi.
+//
+// Modelda manbasi bo'lmagan ustunlar ("Taklif qilganlari", "Ilovani yuklab
+// olish sanasi", "Shartnoma") "—" bo'lib qoladi — soxta qiymat yozilmaydi.
+// Ism ustiga bosilsa /student-edit/[id] ga o'tadi. Qator checkboxlari
+// CSV/Excel eksportni tanlangan qatorlar bilan cheklaydi (hech narsa
+// tanlanmasa — hammasi).
 
 interface Row {
-  order: Order;
+  student: EnrichedStudent;
+  /** /api/students/balances dan (ism bo'yicha) — haqiqiy to'lovlar yig'indisi. */
   balance: number;
-}
-
-function genBalance(seed: number): number {
-  const magnitude = 1_000_000 + ((seed * 137) % 6_000_000);
-  return seed % 5 === 0 ? magnitude : -magnitude;
-}
-
-function buildRows(): Row[] {
-  return createInitialOrders()
-    .filter((o, i) => {
-      const isFrozen = i % 13 === 0;
-      const isNew = o.isNew || i % 5 === 1;
-      return !isFrozen && !isNew;
-    })
-    .map((o) => ({ order: o, balance: genBalance(o.id) }));
+  /** pupils.paymentDate ("YYYY-MM-DD") — profil formasidagi haqiqiy maydon. */
+  paymentDate: string;
 }
 
 function fmtUZS(n: number): string {
   const sign = n < 0 ? "-" : "";
   return `${sign}${Math.abs(n).toLocaleString("ru-RU").replace(/,/g, " ")} UZS`;
+}
+
+// pupils.createdAt "DD.MM.YYYY | HH:mm" ko'rinishida saqlanadi
+// (lib/pupilsData.ts → buildPupilFromValues). `new Date(...)` bu formatni
+// tushunmaydi, shuning uchun sana oralig'i filtri uni o'zi ajratadi.
+function parseCreated(s: string): Date | null {
+  const m = (s || "").match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2] - 1, +m[1]);
+}
+
+// DateField "YYYY-MM-DD" saqlaydi, jadvalning qolgan sanalari esa
+// "DD.MM.YYYY" ko'rinishida — bir xil bo'lishi uchun o'giriladi.
+function fmtIsoDate(s: string): string {
+  const m = (s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
+}
+
+/** Moliya yozuvlarida o'quvchining id'si emas, ISMI saqlanadi (CashboxKirimDrawer bilan bir xil kalit). */
+function balanceKey(name: string): string {
+  return name.trim().toLowerCase();
 }
 
 function csvCell(v: string | number): string {
@@ -76,8 +104,27 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
 }
 
 export default function ActiveStudentsPage() {
-  const [rows] = useState<Row[]>(() => buildRows());
-  const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
+  const { pupils, loading: pupilsLoading } = useStudents();
+  const { groups, loading: groupsLoading } = useGroups();
+  // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
+  // haqiqiy summa faqat transaction_entries dan yig'iladi.
+  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balancesLoading, setBalancesLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/students/balances")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+      .finally(() => { if (!cancelled) setBalancesLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
+  // Toolbardagi qidiruv StudentFilters.name dan ALOHIDA: `name` faqat ism
+  // bo'yicha tekshiradi, bu maydon esa (ilgarigi applyOrdersFilters kabi)
+  // ko'rinadigan hamma ustun bo'yicha qidiradi.
+  const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -85,6 +132,8 @@ export default function ActiveStudentsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const moreRef = useRef<HTMLDivElement>(null);
+
+  const loading = pupilsLoading || groupsLoading || balancesLoading;
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -95,22 +144,68 @@ export default function ActiveStudentsPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
 
-  function setFilter<K extends keyof OrdersFilters>(key: K, value: OrdersFilters[K]) {
+  function setFilter<K extends keyof StudentFilters>(key: K, value: StudentFilters[K]) {
     setFilters((f) => ({ ...f, [key]: value }));
     setPage(1);
   }
 
-  const filtered = useMemo(() => {
-    const withDates: OrdersFilters = {
-      ...filters,
-      from: dateRange.start ? dateRange.start.toISOString().slice(0, 10) : "",
-      to: dateRange.end ? dateRange.end.toISOString().slice(0, 10) : "",
-    };
-    const orders = applyOrdersFilters(rows.map((r) => r.order), withDates);
-    const ids = new Set(orders.map((o) => o.id));
-    return rows.filter((r) => ids.has(r.order.id));
-  }, [rows, filters, dateRange]);
+  const rows = useMemo<Row[]>(() => {
+    // "To'lov sanasi" StudentRow'da yo'q, lekin pupils hujjatida bor —
+    // shuning uchun xom o'quvchi yozuvidan id bo'yicha olinadi.
+    const paymentDateById = new Map(pupils.map((p) => [p.id, p.paymentDate ?? ""]));
+    return enrichStudents(pupils.map(studentRowFromPupil), groups)
+      // "Aktiv o'quvchilar" = holati "Aktiv" bo'lganlar. Boshqa hech qanday
+      // shart yo'q (ilgari bu yerda indeks arifmetikasi turardi).
+      .filter((s) => s.status === "Aktiv")
+      .map((s) => ({
+        student: s,
+        balance: balances[balanceKey(s.name)] ?? 0,
+        paymentDate: paymentDateById.get(s.id) ?? "",
+      }));
+  }, [pupils, groups, balances]);
 
+  // Filtr ro'yxatlari faqat HAQIQATDA uchraydigan qiymatlardan quriladi —
+  // ilgari ular ordersData.ts dagi qattiq yozilgan MODERATORS/COURSES
+  // konstantalari edi va bazadagi ma'lumot bilan bog'liq emasdi.
+  const moderatorOptions = useMemo(() => uniqueSorted(rows.map((r) => r.student.moderator)), [rows]);
+  const courseOptions = useMemo(() => uniqueSorted(rows.map((r) => r.student.course)), [rows]);
+
+  const filtered = useMemo(() => {
+    const ids = new Set(applyStudentFilters(rows.map((r) => r.student), filters).map((s) => s.id));
+    // Oraliq chegaralari MAHALLIY vaqtda quriladi: ilgari sana
+    // toISOString().slice(0,10) bilan UTC'ga o'girilar va +5 mintaqada
+    // chegaradagi kun bir kunga surilib ketardi.
+    const from = dateRange.start
+      ? new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), dateRange.start.getDate())
+      : null;
+    const to = dateRange.end
+      ? new Date(dateRange.end.getFullYear(), dateRange.end.getMonth(), dateRange.end.getDate(), 23, 59, 59)
+      : null;
+    const q = search.trim().toLowerCase();
+
+    return rows.filter((r) => {
+      if (!ids.has(r.student.id)) return false;
+      if (from || to) {
+        const dt = parseCreated(r.student.createdAt);
+        if (!dt) return false;
+        if (from && dt < from) return false;
+        if (to && dt > to) return false;
+      }
+      if (q) {
+        const hay = [
+          r.student.name, r.student.phone, String(r.student.id), r.student.moderator,
+          r.student.course, r.student.groupNames, r.student.category, r.student.source,
+          r.student.createdAt, fmtIsoDate(r.paymentDate),
+        ].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, filters, dateRange, search]);
+
+  // Qarzdor/Haqdor endi HAQIQIY balanslardan yig'iladi. Balans — to'langan
+  // pul yig'indisi (tizimda "to'lanishi kerak" summasi yuritilmaydi), shuning
+  // uchun manfiy qiymat faqat tuzatuvchi yozuvlar bo'lganda paydo bo'ladi.
   const { debt, credit } = useMemo(() => {
     let debt = 0;
     let credit = 0;
@@ -124,7 +219,7 @@ export default function ActiveStudentsPage() {
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
 
-  const pageIds = useMemo(() => slice.map((r) => r.order.id), [slice]);
+  const pageIds = useMemo(() => slice.map((r) => r.student.id), [slice]);
   const pageSelectedCount = pageIds.filter((id) => selected.has(id)).length;
   const allPageSelected = pageIds.length > 0 && pageSelectedCount === pageIds.length;
   const somePageSelected = pageSelectedCount > 0 && !allPageSelected;
@@ -149,21 +244,21 @@ export default function ActiveStudentsPage() {
   }
 
   function rowsToExport(): Row[] {
-    return selected.size > 0 ? filtered.filter((r) => selected.has(r.order.id)) : filtered;
+    return selected.size > 0 ? filtered.filter((r) => selected.has(r.student.id)) : filtered;
   }
   function exportRows() {
     return rowsToExport().map((r, i) => [
       i + 1,
-      r.order.name,
-      r.order.phone,
+      r.student.name,
+      r.student.phone,
       r.balance,
-      "",
-      r.order.created,
-      r.order.moderator,
-      "",
-      "",
-      "",
-      "", // Shartnoma
+      fmtIsoDate(r.paymentDate),
+      r.student.createdAt,
+      r.student.moderator,
+      "", // Taklif qilganlari — pupils modelida referral maydoni yo'q.
+      "", // Ilovani yuklab olish sanasi — bunday maydon ham hech qayerda yozilmaydi.
+      r.student.statusReason,
+      "", // Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan.
     ]);
   }
   function exportCSV() {
@@ -200,8 +295,8 @@ export default function ActiveStudentsPage() {
           <div className="relative">
             <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"><use href="#i-search" /></svg>
             <input
-              value={filters.search}
-              onChange={(e) => setFilter("search", e.target.value)}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               type="text"
               placeholder="Qidirish"
               className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -233,20 +328,22 @@ export default function ActiveStudentsPage() {
           <div className="relative">
             <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className={`${selectCls} w-44`}>
               <option value="">Moderator</option>
-              {MODERATORS.map((m) => <option key={m} value={m}>{m}</option>)}
+              {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
           <div className="relative">
+            {/* Kurs o'quvchining o'zida emas — u a'zo bo'lgan guruhdan keladi
+                (enrichStudents), shuning uchun ro'yxat ham shundan quriladi. */}
             <select value={filters.course} onChange={(e) => setFilter("course", e.target.value)} className={`${selectCls} w-36`}>
               <option value="">Kurs</option>
-              {COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
           <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" />
           <button
-            onClick={() => { setFilters(EMPTY_ORDERS_FILTERS); setDateRange({ start: null, end: null }); }}
+            onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setSearch(""); setDateRange({ start: null, end: null }); setPage(1); }}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             <X className="icon icon-xs" /> Tozalash
@@ -290,35 +387,49 @@ export default function ActiveStudentsPage() {
               </tr>
             </thead>
             <tbody>
-              {slice.map((r, i) => (
-                <tr key={r.order.id} className={`border-b border-border/50 transition-colors hover:bg-secondary/30${selected.has(r.order.id) ? " bg-primary/5" : ""}`}>
+              {!loading && slice.map((r, i) => (
+                <tr key={r.student.id} className={`border-b border-border/50 transition-colors hover:bg-secondary/30${selected.has(r.student.id) ? " bg-primary/5" : ""}`}>
                   <td className="px-3 py-3">
                     <input
                       type="checkbox"
-                      checked={selected.has(r.order.id)}
-                      onChange={(e) => toggleRow(r.order.id, e.target.checked)}
+                      checked={selected.has(r.student.id)}
+                      onChange={(e) => toggleRow(r.student.id, e.target.checked)}
                       className={checkboxCls}
                     />
                   </td>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 text-[13px]">
-                    <Link href={`/student-edit/${r.order.id}`} className="font-medium hover:text-primary hover:underline">
-                      {r.order.name}
+                    {/* ?src=list — bazadagi o'quvchi id'lari demo buyurtma id'lari bilan
+                        kesishadi, bu belgisiz profil sahifasi boshqa odamni ochib yuborishi mumkin. */}
+                    <Link href={`/student-edit/${r.student.id}?src=list`} className="font-medium hover:text-primary hover:underline">
+                      {r.student.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{r.order.phone || "—"}</td>
-                  <td className={`px-3 py-3 text-[13px] tabular-nums whitespace-nowrap ${r.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtUZS(r.balance)}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{r.student.phone || "—"}</td>
+                  <td className={`px-3 py-3 text-[13px] tabular-nums whitespace-nowrap ${r.balance < 0 ? "text-rose-600" : r.balance > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>{fmtUZS(r.balance)}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.paymentDate ? fmtIsoDate(r.paymentDate) : "—"}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.student.createdAt || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]">{r.student.moderator || "—"}</td>
+                  {/* Taklif qilganlari — pupils modelida taklif/referral maydoni yo'q. */}
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.order.created}</td>
-                  <td className="px-3 py-3 text-[13px]">{r.order.moderator || "—"}</td>
+                  {/* Ilovani yuklab olish sanasi — mobil ilova hodisalari bazada yozilmaydi. */}
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
-                  {/* Shartnoma — modelda maydon yo'q, referensda ham bo'sh chiqadi. */}
+                  {/* Sababi — pupils.statusReason haqiqiy maydon, lekin "Aktiv" ga
+                      o'tkazilganda status API uni bo'shatadi, shuning uchun bu
+                      sahifada deyarli doim "—" bo'ladi. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">{r.student.statusReason || "—"}</td>
+                  {/* Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan (studentId yo'q). */}
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                 </tr>
               ))}
-              {slice.length === 0 && (
+              {loading && (
+                <tr>
+                  <td colSpan={12} className="px-3">
+                    <SpinnerBlock />
+                  </td>
+                </tr>
+              )}
+              {!loading && slice.length === 0 && (
                 <tr>
                   <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
                 </tr>

@@ -2,51 +2,66 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Filter, MessageSquare, MoreVertical, Users as UsersIcon, X } from "lucide-react";
+import { Filter, MoreVertical, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import {
-  createInitialOrders,
   applyOrdersFilters,
   EMPTY_ORDERS_FILTERS,
-  MODERATORS,
-  COURSES,
   type Order,
   type OrdersFilters,
 } from "@/lib/ordersData";
-import { GROUP_SEED } from "@/constants/groups";
+import { findPupilForOrder } from "@/lib/enrollStudent";
+import type { Pupil } from "@/lib/pupilsData";
 
 // O'quvchilar → Yangi o'quvchilar (crm-akademiya #view-new-students, sidebar:
-// O'quvchilar > Yangi o'quvchilar, href /new-students). order.status==="Yangi"
-// bo'lgan buyurtmalar (createInitialOrders(), lib/ordersData.ts — /orders-list
-// bilan bir xil manba) shu yerda ro'yxat sifatida ko'rsatiladi. Guruh/O'qituvchi
-// GROUP_SEED'dan indeks bo'yicha biriktiriladi (Guruh o'quvchilari sahifasidagi
-// bilan bir xil yondashuv), Balans esa demo ko'rsatish uchun deterministik
-// hisoblab chiqiladi (Order tipida bunday maydon yo'q). Ism ustiga bosilsa
-// /student-edit/[id] (mavjud profil) ga o'tadi — OrdersPage/OrderDetailPage
-// bilan bir xil havola.
+// O'quvchilar > Yangi o'quvchilar, href /new-students).
+//
+// MANBA: HAQIQIY buyurtmalar — /api/orders (MongoDB `orders`), status "Yangi".
+// "Yangi" — bazaga chindan yoziladigan qiymat: lib/ordersData.ts dagi
+// buildOrderFromValues() har bir yangi buyurtmaga status: "Yangi" beradi
+// (POST /api/orders).
+//
+// Ilgari bu sahifa createInitialOrders() — 502 ta SOXTA yozuv generatori —
+// ustidan filtrlar edi, Guruh/O'qituvchi ustunlarini GROUP_SEED dan indeks
+// bo'yicha biriktirar, Balansni esa genBalance(id) bilan "o'ylab topar" edi.
+// Ya'ni ro'yxatda haqiqiy lidlar umuman ko'rinmasdi va har bir raqam yolg'on
+// edi. Endi hamma ustun buyurtmaning o'z maydonidan yoki haqiqiy balans
+// API'sidan keladi; ma'lumot yo'q joyda "—" turadi.
+//
+// Bu sahifa OrdersProvider ICHIDA emas (provider faqat /orders-list segmentiga
+// o'ralgan — app/(app)/orders-list/layout.tsx; app/(app)/new-students/page.tsx
+// esa uni ishlatmaydi), shuning uchun /api/orders shu yerda to'g'ridan-to'g'ri
+// o'qiladi. Yagona sahifa uchun butun (app) guruhiga provider qo'shish ortiqcha
+// bo'lardi.
+//
+// Ism ustidagi havola o'quvchi profiliga olib boradi, lekin buyurtma id'si
+// bilan EMAS: buyurtmalar va o'quvchilar id'lari alohida ketma-ketliklar va
+// ikkalasi ham 1 dan boshlanadi, ya'ni /student-edit/<buyurtma id> boshqa
+// odamni ochib yuborardi. O'quvchi findPupilForOrder() bilan telefon/ism
+// bo'yicha topiladi, topilmasa buyurtma detali ochiladi
+// (FirstLessonsPage dagi bilan bir xil qoida).
 
 interface Row {
   order: Order;
-  groupId: number;
-  teacher: string;
+  /**
+   * Guruh ustuni uchun ko'rsatiladigan qiymat. Buyurtmada ikkita bog'liq
+   * maydon bor: `group` — formada tanlangan "yig'ilayotgan guruh" nomi,
+   * `groupId` — o'quvchi HAQIQATDA qo'shilgan guruh id'si. Nomi ustunroq,
+   * chunki u ko'proq ma'lumot beradi; ikkalasi ham bo'sh bo'lsa "—".
+   */
+  group: string;
+  /** Haqiqiy balans — /api/students/balances (transaction_entries, payIn). */
   balance: number;
-}
-
-function genBalance(seed: number): number {
-  return -(1_000_000 + ((seed * 137) % 6_000_000));
-}
-
-function buildRows(): Row[] {
-  return createInitialOrders()
-    .filter((o) => o.status === "Yangi")
-    .map((o, i) => {
-      const group = GROUP_SEED[(o.id + i) % GROUP_SEED.length];
-      return { order: o, groupId: group.id, teacher: group.teacher, balance: genBalance(o.id) };
-    });
 }
 
 function fmtUZS(n: number): string {
   return `${n.toLocaleString("ru-RU").replace(/,/g, " ")} UZS`;
+}
+
+/** Balans kaliti — CashboxKirimDrawer bilan bir xil: kichik harf + trim. */
+function balanceKey(name: string): string {
+  return String(name ?? "").trim().toLowerCase();
 }
 
 function csvCell(v: string | number): string {
@@ -68,7 +83,14 @@ const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card p
 const HEADERS = ["№", "ID", "O'quvchi ismi", "Telefon raqam", "Balans", "Guruh", "O'qituvchi", "Moderator"];
 
 export default function NewStudentsPage() {
-  const [rows] = useState<Row[]>(() => buildRows());
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [balances, setBalances] = useState<Record<string, number>>({});
+  // Buyurtma id'si bilan o'quvchi id'si BOSHQA-BOSHQA ketma-ketliklar —
+  // ikkalasi ham 1 dan boshlanadi. Shuning uchun ism ustidagi havolani
+  // buyurtma id'si bilan yasab bo'lmaydi: u boshqa odamning profilini
+  // ochib yuborardi. O'quvchi telefon/ism bo'yicha topiladi.
+  const [pupils, setPupils] = useState<Pupil[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -76,7 +98,70 @@ export default function NewStudentsPage() {
   const [pageSize, setPageSize] = useState(50);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  const teacherOptions = useMemo(() => [...new Set(rows.map((r) => r.teacher).filter(Boolean))].sort(), [rows]);
+  // Ikkala so'rov birga kutiladi: balanslar kechikib kelsa jadval avval
+  // "0 UZS" ni ko'rsatib, keyin sakrab o'zgarardi.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/orders").then((r) => r.json()).catch(() => null),
+      fetch("/api/students/balances").then((r) => r.json()).catch(() => null),
+      fetch("/api/pupils").then((r) => r.json()).catch(() => null),
+    ])
+      .then(([o, b, p]) => {
+        if (cancelled) return;
+        if (o?.ok) setOrders(o.orders as Order[]);
+        if (b?.ok) setBalances(b.balances as Record<string, number>);
+        if (p?.ok) setPupils(p.pupils as Pupil[]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Ism ustidagi havola — o'quvchi bazada topilsa uning profili, aks holda
+   * buyurtma detali (FirstLessonsPage dagi bilan bir xil qoida).
+   */
+  const profileHref = (o: Order): string => {
+    const pupil = findPupilForOrder(o, pupils);
+    return pupil ? `/student-edit/${pupil.id}?src=list` : `/orders-list/${o.id}`;
+  };
+
+  const rows = useMemo<Row[]>(
+    () =>
+      orders
+        // Sahifaning butun mazmuni shu shart: hali guruhga joylashtirilmagan,
+        // yangi kelgan lidlar.
+        .filter((o) => o.status === "Yangi")
+        .map((o) => ({
+          order: o,
+          group: o.group || (o.groupId ? String(o.groupId) : ""),
+          // Buyurtmada o'quvchi id'si yo'q, faqat ism bor — balans API'si ham
+          // aynan ism bo'yicha kalitlangan, shuning uchun mos tushadi.
+          balance: balances[balanceKey(o.name)] ?? 0,
+        })),
+    [orders, balances],
+  );
+
+  // Filtr ro'yxatlari buyurtmalarning O'ZIDAN yig'iladi. Ilgari bu yerda
+  // MODERATORS/COURSES qattiq yozilgan konstantalari ishlatilardi — ular
+  // bazadagi haqiqiy qiymatlar bilan mos kelmagani uchun tanlangan variant
+  // ko'pincha hech nima topmasdi.
+  const teacherOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.order.teacher).filter(Boolean))].sort(),
+    [rows],
+  );
+  const moderatorOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.order.moderator).filter(Boolean))].sort(),
+    [rows],
+  );
+  const courseOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.order.course).filter(Boolean))].sort(),
+    [rows],
+  );
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -93,15 +178,18 @@ export default function NewStudentsPage() {
   }
 
   const filtered = useMemo(() => {
-    // "O'qituvchi" ustunida guruhning o'qituvchisi (r.teacher) ko'rsatiladi,
-    // order.teacher emas (ko'p buyurtmalarda bo'sh) — shu sababli bu filtr
-    // applyOrdersFilters'ga emas, to'g'ridan-to'g'ri r.teacher'ga qo'llanadi.
-    const orders = applyOrdersFilters(rows.map((r) => r.order), { ...filters, teacher: "" });
-    const ids = new Set(orders.map((o) => o.id));
-    return rows.filter((r) => ids.has(r.order.id) && (!filters.teacher || r.teacher === filters.teacher));
+    // Endi "O'qituvchi" ustuni buyurtmaning o'z `teacher` maydoni, shuning
+    // uchun filtr to'liq applyOrdersFilters'ga topshiriladi. Ilgari o'qituvchi
+    // GROUP_SEED'dan kelgani sababli bu filtr qo'lda, alohida qo'llanardi.
+    const ids = new Set(applyOrdersFilters(rows.map((r) => r.order), filters).map((o) => o.id));
+    return rows.filter((r) => ids.has(r.order.id));
   }, [rows, filters]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  // Qarzdor/Haqdor — faqat haqiqiy balanslar yig'indisi. DIQQAT: balans API'si
+  // TO'LANGAN pulni sanaydi (app/api/students/balances/route.ts izohiga q.),
+  // tizimda "to'lashi kerak" summasi yuritilmaydi — shuning uchun Qarzdor
+  // odatda 0 chiqadi va bu qiymat o'ylab topilmaydi.
   const { debt, credit } = useMemo(() => {
     let debt = 0;
     let credit = 0;
@@ -116,7 +204,16 @@ export default function NewStudentsPage() {
   const slice = filtered.slice(start, start + pageSize);
 
   function exportRows() {
-    return filtered.map((r, i) => [i + 1, r.order.id, r.order.name, r.order.phone, r.balance, r.groupId, r.teacher, r.order.moderator]);
+    return filtered.map((r, i) => [
+      i + 1,
+      r.order.id,
+      r.order.name,
+      r.order.phone,
+      r.balance,
+      r.group,
+      r.order.teacher,
+      r.order.moderator,
+    ]);
   }
   function exportCSV() {
     const csv = [HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
@@ -194,14 +291,14 @@ export default function NewStudentsPage() {
           <div className="relative">
             <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className={`${selectCls} w-44`}>
               <option value="">Moderator</option>
-              {MODERATORS.map((m) => <option key={m} value={m}>{m}</option>)}
+              {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
           <div className="relative">
             <select value={filters.course} onChange={(e) => setFilter("course", e.target.value)} className={`${selectCls} w-36`}>
               <option value="">Kurs</option>
-              {COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
@@ -251,29 +348,38 @@ export default function NewStudentsPage() {
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 tabular-nums text-[13px] text-muted-foreground">{r.order.id}</td>
                   <td className="px-3 py-3 text-[13px]">
-                    <Link href={`/student-edit/${r.order.id}`} className="font-medium hover:text-primary hover:underline">
+                    <Link href={profileHref(r.order)} className="font-medium hover:text-primary hover:underline">
                       {r.order.name}
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{r.order.phone || "—"}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap text-rose-600">{fmtUZS(r.balance)}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{r.groupId}</td>
-                  <td className="px-3 py-3 text-[13px]">{r.teacher || "—"}</td>
+                  {/* Rang balansning ishorasiga qarab: manfiy — qarz (rose),
+                      musbat — haqdor (emerald), 0 — betaraf. Ilgari hamma
+                      qator rose edi, chunki soxta balans doim manfiy edi. */}
+                  <td
+                    className={`px-3 py-3 text-[13px] tabular-nums whitespace-nowrap ${
+                      r.balance < 0 ? "text-rose-600" : r.balance > 0 ? "text-emerald-600" : "text-muted-foreground"
+                    }`}
+                  >
+                    {fmtUZS(r.balance)}
+                  </td>
+                  <td className="px-3 py-3 text-[13px]">{r.group || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]">{r.order.teacher || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">{r.order.moderator || "—"}</td>
-                  <td className="px-3 py-3">
-                    <X className="w-4 h-4 text-rose-500" />
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="inline-flex items-center gap-2 text-primary">
-                      <MessageSquare className="w-4 h-4" />
-                      <UsersIcon className="w-4 h-4" />
-                    </div>
-                  </td>
+                  {/* Ilovani yuklab olish sanasi: mobil ilova hali ulanmagan,
+                      Order'da ham, bazada ham bunday maydon yo'q — "—". */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  {/* Shartnoma alohida to'plamda saqlanadi
+                      (/api/finance-contracts, studentOrderId → Order.id) va bu
+                      sahifada o'qilmaydi, shu bois qiymat o'ylab topilmaydi. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    {loading ? <SpinnerBlock size={22} /> : "O'quvchi topilmadi"}
+                  </td>
                 </tr>
               )}
             </tbody>

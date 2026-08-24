@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, Plus, Share2, Users, X } from "lucide-react";
+import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, Plus, Share2, UserCog, Users, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import Button from "@/components/ui/Button";
 import AddStudentModal from "@/components/orders/AddStudentModal";
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import SmsModal from "@/components/orders/SmsModal";
+import StudentStatusModal from "@/components/students/StudentStatusModal";
 import { useToast } from "@/components/ui/Toast";
 import { usePupils } from "@/components/orders/PupilsContext";
 import { useSettingsListNames } from "@/hooks/useSettingsList";
@@ -23,6 +24,7 @@ import {
   type StudentRow,
 } from "@/lib/studentsData";
 import type { Group } from "@/lib/groups";
+import type { Pupil } from "@/lib/pupilsData";
 
 // O'quvchilar → O'quvchilar ro'yxati (sidebar: O'quvchilar > O'quvchilar
 // ro'yxati, href /students-list). Yangi/Aktiv/Arxiv o'quvchilar
@@ -111,16 +113,43 @@ export default function StudentsListPage() {
   // bo'lgan guruhdan kelib chiqadi (lib/studentsData.ts → enrichStudents).
   const { pupils, loading } = usePupils();
   const [groups, setGroups] = useState<Group[]>([]);
+  // Balans /api/students/balances dan (transaction_entries bo'yicha
+  // hisoblangan HAQIQIY to'lovlar). `pupils.balance` maydonini hech bir API
+  // yangilamaydi — u faqat seed skriptidagi qiymatlarni saqlaydi, ya'ni
+  // ustunda ham, Qarzdor/Haqdor jamida ham, eksportda ham soxta son
+  // ko'rinardi (Kassa Kirim oynasi bilan bir xil manba endi).
+  const [balances, setBalances] = useState<Record<string, number>>({});
   useEffect(() => {
     let cancelled = false;
     fetch("/api/groups")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); });
+    fetch("/api/students/balances")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances as Record<string, number>); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+  // Holat o'zgarishlarining mahalliy ustma-usti. PupilsContext faqat
+  // `createPupil` ni biladi — bazadagi o'quvchini YANGILASH usuli unda yo'q,
+  // shuning uchun PATCH .../status dan qaytgan hujjatni shu yerda ustiga
+  // qo'yamiz. Aks holda holat bazada o'zgargani bilan jadval sahifa qayta
+  // yuklanmaguncha eski holatni ko'rsatib turardi.
+  const [statusPatch, setStatusPatch] = useState<
+    Record<number, Pick<Pupil, "status" | "statusReason" | "statusChangedAt">>
+  >({});
   const rows = useMemo(
-    () => enrichStudents(pupils.map(studentRowFromPupil), groups),
-    [pupils, groups],
+    () =>
+      enrichStudents(
+        pupils.map((p) => {
+          const row = studentRowFromPupil(statusPatch[p.id] ? { ...p, ...statusPatch[p.id] } : p);
+          return { ...row, balance: balances[row.name.trim().toLowerCase()] ?? 0 };
+        }),
+        groups,
+      ),
+    // `statusPatch` ham bog'liqlikda: u o'zgarganda qatorlar (va ular ustidan
+    // ishlaydigan "Holati" filtri) qayta hisoblanishi kerak.
+    [pupils, groups, statusPatch, balances],
   );
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
@@ -134,9 +163,10 @@ export default function StudentsListPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  // Qator ikonkalari: guruhga qoʻshish va SMS oynasi.
+  // Qator ikonkalari: guruhga qoʻshish, SMS oynasi va holatni o'zgartirish.
   const [groupFor, setGroupFor] = useState<{ id: number; name: string } | null>(null);
   const [smsFor, setSmsFor] = useState<{ id: number; name: string; phone: string } | null>(null);
+  const [statusFor, setStatusFor] = useState<{ id: number; name: string; status: string; statusReason?: string } | null>(null);
   const { showSuccess: toastOk, showError: toastErr } = useToast();
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -235,6 +265,33 @@ export default function StudentsListPage() {
   function handlePupilSaved() {
     setAddOpen(false);
     setPage(1);
+  }
+
+  /** PATCH /api/pupils/:id/status muvaffaqiyatli tugagach jadvalni yangilash. */
+  function handleStatusSaved(pupil: Pupil) {
+    setStatusPatch((prev) => ({
+      ...prev,
+      [pupil.id]: {
+        status: pupil.status,
+        statusReason: pupil.statusReason,
+        statusChangedAt: pupil.statusChangedAt,
+      },
+    }));
+    // Arxivlashda API o'quvchini `groups.studentIds` dan ham chiqaradi.
+    // Mahalliy `groups` nusxasi bir marta yuklanadi va o'z-o'zidan
+    // yangilanmaydi, shuning uchun uni ham qo'lda tozalaymiz — aks holda
+    // "Guruhlar" ustuni hamda "Guruh"/"Guruhlar soni"/"Kurs" filtrlari
+    // allaqachon uzilgan a'zolikni ko'rsatib turardi.
+    if (pupil.status === "Arxiv") {
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.studentIds?.includes(pupil.id)
+            ? { ...g, studentIds: g.studentIds.filter((sid) => sid !== pupil.id) }
+            : g,
+        ),
+      );
+    }
+    setStatusFor(null);
   }
 
   return (
@@ -346,6 +403,11 @@ export default function StudentsListPage() {
                 <FilterSelect label="Guruhlar soni" value={draft.groupCount} onChange={(v) => setD("groupCount", v)} options={["0", "1", "2"]} />
                 <FilterSelect label="Kun" value={draft.day} onChange={(v) => setD("day", v)} options={dayOptions} />
                 <FilterSelect label="Toq/Juft kunlar" value={draft.oddEven} onChange={(v) => setD("oddEven", v)} options={["Toq", "Juft"]} />
+                {/* "Holati" — applyStudentFilters `r.status` bilan solishtiradi,
+                    u esa pupilStatusOf() orqali BAZADAGI holatdan keladi (ilgari
+                    enrichStudents hammaga "Aktiv" yozib qo'yardi). Qator ikonkasi
+                    orqali holat o'zgargach `statusPatch` qatorni yangilaydi, shu
+                    sababli filtr darhol yangi holatga qarab ishlaydi. */}
                 <FilterSelect label="Holati" value={draft.status} onChange={(v) => setD("status", v)} options={STUDENT_STATUSES} />
 
                 <div>
@@ -434,6 +496,23 @@ export default function StudentsListPage() {
                     </td>
                     <td className="px-3 py-3 text-[13px] font-medium whitespace-nowrap">
                       <Link href={`/student-edit/${r.id}`} className="hover:text-primary hover:underline">{r.name}</Link>
+                      {/* Referensda alohida "Holati" ustuni yo'q, shuning uchun
+                          jadval tuzilishini o'zgartirmaymiz. Lekin holat faqat
+                          filtrda ko'rinsa, uni o'zgartirgan foydalanuvchi
+                          natijani umuman ko'rmasdi — nishon shu bo'shliqni
+                          to'ldiradi. "Aktiv" — odatiy holat, shovqin
+                          qilmasligi uchun nishonsiz qoladi. */}
+                      {r.status !== "Aktiv" && (
+                        <span
+                          title={r.statusReason ? `Sabab: ${r.statusReason}` : undefined}
+                          // Ranglar loyihadagi mavjud konvensiya bilan bir xil:
+                          // Muzlatilgan — moviy (GroupStudentsPage va Dars
+                          // jadvalidagi "Muzlatilgan" kartasi), Arxiv — betaraf.
+                          className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium ${r.status === "Muzlatilgan" ? "bg-cyan-100 text-cyan-700" : "bg-secondary text-muted-foreground"}`}
+                        >
+                          {r.status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-[13px]">
                       {r.coin > 0 && (
@@ -453,10 +532,11 @@ export default function StudentsListPage() {
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                     <td className="px-3 py-3 text-[13px]"><X className="h-4 w-4 text-rose-500" /></td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">-</td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 whitespace-nowrap">
                       {/* Ilgari beshtasi ham hech nima qilmasdi. Uchtasi
                           o'quvchi profilining kerakli tabini ochadi, biri
-                          guruhga qo'shadi, biri SMS oynasini chiqaradi. */}
+                          guruhga qo'shadi, biri SMS oynasini chiqaradi,
+                          oxirgisi esa holatni o'zgartiradi. */}
                       <div className="flex items-center gap-1 text-primary">
                         <button
                           title="Guruhga qo'shish"
@@ -481,6 +561,17 @@ export default function StudentsListPage() {
                         <Link title="Guruhlar" href={`/student-edit/${r.id}?src=list&tab=guruh`} className="p-1.5 rounded-md hover:bg-secondary">
                           <Users className="h-4 w-4" />
                         </Link>
+                        {/* Holatni o'zgartirishning YAGONA joyi: PATCH
+                            /api/pupils/:id/status ni boshqa hech qaysi UI
+                            chaqirmaydi, shu sababli har bir o'quvchi abadiy
+                            "Aktiv" bo'lib qolar edi. */}
+                        <button
+                          title="Holatni o'zgartirish"
+                          onClick={() => setStatusFor({ id: r.id, name: r.name, status: r.status, statusReason: r.statusReason })}
+                          className="p-1.5 rounded-md hover:bg-secondary"
+                        >
+                          <UserCog className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -537,6 +628,14 @@ export default function StudentsListPage() {
             setSmsFor(null);
           }}
           onError={toastErr}
+        />
+      )}
+
+      {statusFor && (
+        <StudentStatusModal
+          student={statusFor}
+          onClose={() => setStatusFor(null)}
+          onSaved={handleStatusSaved}
         />
       )}
     </div>

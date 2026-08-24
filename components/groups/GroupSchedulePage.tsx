@@ -19,8 +19,10 @@ import Button from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
+import type { Order } from "@/lib/ordersData";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
+import { useStudents } from "@/hooks/useStudents";
 import { GROUP_DAYS } from "@/constants/groups";
 import {
   SCHEDULE_DAY_LABELS,
@@ -82,27 +84,36 @@ export default function GroupSchedulePage() {
   const [statsVisible, setStatsVisible] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [fullscreen, setFullscreen] = useState(false);
-  // "Birinchi darsga keladiganlar" — /first-lessons sahifasi bilan bir xil
-  // shart: birinchi dars sanasi belgilangan buyurtmalar.
-  const [firstLessonCount, setFirstLessonCount] = useState(0);
+  // KPI kartalari uchun HAQIQIY manbalar. Ilgari bu yerdan faqat birinchi
+  // darsga yozilganlar soni olinardi, qolgan 10 ta karta esa
+  // lib/scheduleStats.ts ichidagi demo generatordan (502 ta soxta buyurtma)
+  // va o'ylab topilgan balansdan chiqardi. Endi hammasi bazadan keladi.
+  const [orders, setOrders] = useState<Order[]>([]);
+  // O'quvchilar (holat maydoni bilan) — /api/pupils, hooks/useStudents.ts.
+  const { pupils } = useStudents();
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/orders")
       .then((r) => r.json())
-      .then((d) => {
-        if (cancelled || !d.ok) return;
-        setFirstLessonCount(
-          (d.orders as { firstLesson?: string }[]).filter((o) => (o.firstLesson || "").trim()).length,
-        );
-      });
+      .then((d) => { if (!cancelled && d.ok) setOrders(d.orders as Order[]); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
-  // Guruhlar soni va birinchi darsga yozilganlar HAQIQIY (/api/groups,
-  // /api/orders), qolgan ko'rsatkichlar tegishli sahifalar bilan bir xil
-  // mantiqdan hisoblanadi — lib/scheduleStats.ts.
+
+  // "Birinchi darsga keladiganlar" — /first-lessons sahifasi bilan AYNAN bir
+  // xil shart (components/leads/FirstLessonsPage.tsx → rows): birinchi dars
+  // sanasi belgilangan buyurtmalar.
+  const firstLessonCount = useMemo(
+    () => orders.filter((o) => (o.firstLesson || "").trim()).length,
+    [orders],
+  );
+
+  // Har bir karta o'zi havola qiladigan sahifa qanday sanasa, shunday
+  // hisoblanadi — lib/scheduleStats.ts.
   const kpis = useMemo(
-    () => computeScheduleKpis(groups.length, firstLessonCount),
-    [groups.length, firstLessonCount],
+    () => computeScheduleKpis({ orders, pupils, groupCount: groups.length, firstLessonCount }),
+    [orders, pupils, groups.length, firstLessonCount],
   );
 
   useEffect(() => {
@@ -228,19 +239,31 @@ export default function GroupSchedulePage() {
           referensdagi kabi). */}
       {statsVisible && (
         <div className="kpi-grid non-fullscreen">
-          {kpis.map((k) => (
-            <Link key={k.key} href={k.href} className="kpi-card">
-              <span className="kpi-icon" style={{ backgroundColor: k.bg, color: k.fg }}>
-                <svg className="icon"><use href={`#${k.icon}`} /></svg>
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[11px] leading-tight text-muted-foreground">{k.label}</span>
-                <span className="block text-[17px] font-bold tabular-nums leading-tight">
-                  {k.value.toLocaleString("ru-RU").replace(/,/g, " ")}
+          {kpis.map((k) => {
+            const body = (
+              <>
+                <span className="kpi-icon" style={{ backgroundColor: k.bg, color: k.fg }}>
+                  <svg className="icon"><use href={`#${k.icon}`} /></svg>
                 </span>
-              </span>
-            </Link>
-          ))}
+                <span className="min-w-0">
+                  <span className="block truncate text-[11px] leading-tight text-muted-foreground">{k.label}</span>
+                  <span className="block text-[17px] font-bold tabular-nums leading-tight">
+                    {k.value === null ? "—" : k.value.toLocaleString("ru-RU").replace(/,/g, " ")}
+                  </span>
+                </span>
+              </>
+            );
+            // Manbasi yo'q ko'rsatkich "—" bilan chiziladi va BOSILMAYDI:
+            // bosilsa foydalanuvchi kartadagi son bilan hech qanday
+            // aloqasi yo'q sahifaga tushardi. globals.css'da hover faqat
+            // `a.kpi-card` uchun yozilgan — shu bois <div> bir xil
+            // ko'rinadi, lekin bosiladigandek tuyulmaydi.
+            return k.value === null ? (
+              <div key={k.key} className="kpi-card" title={k.note}>{body}</div>
+            ) : (
+              <Link key={k.key} href={k.href} className="kpi-card">{body}</Link>
+            );
+          })}
         </div>
       )}
 

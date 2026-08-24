@@ -5,62 +5,74 @@ import Link from "next/link";
 import { Filter, MoreVertical, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useStudents } from "@/hooks/useStudents";
+import { useGroups } from "@/hooks/useGroups";
 import {
-  createInitialOrders,
-  applyOrdersFilters,
-  EMPTY_ORDERS_FILTERS,
-  MODERATORS,
-  COURSES,
-  type Order,
-  type OrdersFilters,
-} from "@/lib/ordersData";
-import { archiveExtras, PREV_STATE_CLS, type ArchiveExtras } from "@/lib/archiveStudents";
+  applyStudentFilters,
+  enrichStudents,
+  EMPTY_STUDENT_FILTERS,
+  studentRowFromPupil,
+  uniqueSorted,
+  type EnrichedStudent,
+  type StudentFilters,
+} from "@/lib/studentsData";
 
 // O'quvchilar → Arxiv o'quvchilar (crm-akademiya #view-archive-students,
-// sidebar: O'quvchilar > Arxiv o'quvchilar, href /archive-students). Aktiv
-// o'quvchilar sahifasi bilan bir xil qatlam — farqi: bu yerda o'quv jarayonini
-// tark etgan (order.status: Bekor qilindi / Yakunlandi / O'tkazildi) buyurtmalar
-// ko'rsatiladi, "Sababi" ustuni esa shu status'dan kelib chiqqan holda
-// mazmunli to'ldiriladi (Aktiv sahifasida bu ustun ma'lumot yo'qligi uchun
-// bo'sh edi). Ism ustiga bosilsa /student-edit/[id] ga o'tadi. Checkboxlar
-// (Aktiv sahifasidagi bilan bir xil) CSV/Excel eksportni tanlangan qatorlar
-// bilan cheklaydi.
-
-const ARCHIVE_STATUSES = ["Bekor qilindi", "Yakunlandi", "O'tkazildi"];
+// sidebar: O'quvchilar > Arxiv o'quvchilar, href /archive-students).
+//
+// Ilgari bu sahifa BAZAGA umuman murojaat qilmasdi: qatorlarni lib/ordersData.ts
+// dagi 502 ta demo buyurtma generatoridan (createInitialOrders) olib, "arxiv"
+// deb buyurtma statusini ("Bekor qilindi"/"Yakunlandi"/"O'tkazildi") sanardi.
+// Qolgan hamma ustun lib/archiveStudents.ts dagi archiveExtras() dan kelardi va
+// u butunlay O'YLAB TOPILGAN edi: guruh/o'qituvchi GROUP_SEED[(id*31)%n] dan,
+// "Oldingi holati" id%13 dan, arxiv sanalari esa id'dan hisoblangan kun
+// siljishlaridan. Balans ham genBalance(id) edi. Ya'ni jadvaldagi birorta raqam
+// ham haqiqiy emas edi.
+//
+// Endi manba HAQIQIY: arxiv — pupils hujjatidagi status maydoni
+// (lib/pupilsData.ts, PATCH /api/pupils/:id/status uni o'zgartiradi):
+//   • o'quvchilar — /api/pupils (hooks/useStudents.ts) + /api/groups
+//     (hooks/useGroups.ts), enrichStudents() bilan birlashtiriladi;
+//   • "arxiv" — status === "Arxiv";
+//   • "Sababi" — pupils.statusReason (arxivlashda majburiy so'raladi);
+//   • "Arxivlangan sana" — pupils.statusChangedAt ("YYYY-MM-DD");
+//   • balans — /api/students/balances (transaction_entries payIn yig'indisi),
+//     chunki pupils.balance maydonini hech bir API yangilamaydi.
+//
+// Manbasi bo'lmagan ustunlar "—" bo'lib qoladi (har birining tepasida nima
+// yetishmayotgani yozilgan) — soxta qiymat yozilmaydi.
 
 interface Row {
-  order: Order;
+  student: EnrichedStudent;
+  /** /api/students/balances dan (ism bo'yicha) — haqiqiy to'lovlar yig'indisi. */
   balance: number;
-  reason: string;
-  extras: ArchiveExtras;
-}
-
-function genBalance(seed: number): number {
-  const magnitude = 1_000_000 + ((seed * 137) % 6_000_000);
-  return seed % 5 === 0 ? magnitude : -magnitude;
-}
-
-function archiveReason(status: string): string {
-  if (status === "Bekor qilindi") return "Bekor qilindi";
-  if (status === "Yakunlandi") return "Kursni yakunladi";
-  if (status === "O'tkazildi") return "Boshqa filialga o'tkazildi";
-  return "—";
-}
-const REASON_CLS: Record<string, string> = {
-  "Bekor qilindi": "text-rose-600",
-  "Kursni yakunladi": "text-emerald-600",
-  "Boshqa filialga o'tkazildi": "text-blue-600",
-};
-
-function buildRows(): Row[] {
-  return createInitialOrders()
-    .filter((o) => ARCHIVE_STATUSES.includes(o.status))
-    .map((o) => ({ order: o, balance: genBalance(o.id), reason: archiveReason(o.status), extras: archiveExtras(o) }));
 }
 
 function fmtUZS(n: number): string {
   const sign = n < 0 ? "-" : "";
   return `${sign}${Math.abs(n).toLocaleString("ru-RU").replace(/,/g, " ")} UZS`;
+}
+
+// statusChangedAt "YYYY-MM-DD" ko'rinishida saqlanadi (PATCH /api/pupils/:id/
+// status), jadvalning qolgan sanalari esa "DD.MM.YYYY" — bir xil bo'lishi
+// uchun o'giriladi.
+function fmtIsoDate(s: string): string {
+  const m = (s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
+}
+
+// "YYYY-MM-DD" → MAHALLIY Date. `new Date("2026-08-24")` UTC yarim tunini
+// beradi va +5 mintaqada sana bir kunga surilib ketardi, shuning uchun
+// bo'laklab quriladi.
+function parseIsoDate(s: string): Date | null {
+  const m = (s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
+/** Moliya yozuvlarida o'quvchining id'si emas, ISMI saqlanadi (CashboxKirimDrawer bilan bir xil kalit). */
+function balanceKey(name: string): string {
+  return name.trim().toLowerCase();
 }
 
 function csvCell(v: string | number): string {
@@ -91,16 +103,36 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
 }
 
 export default function ArchiveStudentsPage() {
-  const [rows] = useState<Row[]>(() => buildRows());
-  const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
-  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+  const { pupils, loading: pupilsLoading } = useStudents();
+  const { groups, loading: groupsLoading } = useGroups();
+  // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
+  // haqiqiy summa faqat transaction_entries dan yig'iladi.
+  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balancesLoading, setBalancesLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/students/balances")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+      .finally(() => { if (!cancelled) setBalancesLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
+  // "Sababi" StudentFilters da yo'q (u erkin matn maydoni), shuning uchun
+  // alohida holatda saqlanadi va qo'lda solishtiriladi.
   const [reason, setReason] = useState("");
+  const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const moreRef = useRef<HTMLDivElement>(null);
+
+  const loading = pupilsLoading || groupsLoading || balancesLoading;
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -111,22 +143,65 @@ export default function ArchiveStudentsPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
 
-  function setFilter<K extends keyof OrdersFilters>(key: K, value: OrdersFilters[K]) {
+  function setFilter<K extends keyof StudentFilters>(key: K, value: StudentFilters[K]) {
     setFilters((f) => ({ ...f, [key]: value }));
     setPage(1);
   }
 
-  const filtered = useMemo(() => {
-    const withDates: OrdersFilters = {
-      ...filters,
-      from: dateRange.start ? dateRange.start.toISOString().slice(0, 10) : "",
-      to: dateRange.end ? dateRange.end.toISOString().slice(0, 10) : "",
-    };
-    const orders = applyOrdersFilters(rows.map((r) => r.order), withDates);
-    const ids = new Set(orders.map((o) => o.id));
-    return rows.filter((r) => ids.has(r.order.id) && (!reason || r.reason === reason));
-  }, [rows, filters, dateRange, reason]);
+  const rows = useMemo<Row[]>(
+    () =>
+      enrichStudents(pupils.map(studentRowFromPupil), groups)
+        // "Arxiv o'quvchilar" = holati "Arxiv" bo'lganlar. Boshqa hech qanday
+        // shart yo'q (ilgari bu yerda demo buyurtma statusi turardi).
+        .filter((s) => s.status === "Arxiv")
+        .map((s) => ({ student: s, balance: balances[balanceKey(s.name)] ?? 0 })),
+    [pupils, groups, balances],
+  );
 
+  // Filtr ro'yxatlari faqat HAQIQATDA uchraydigan qiymatlardan quriladi —
+  // ilgari ular ordersData.ts dagi qattiq yozilgan MODERATORS/COURSES
+  // konstantalari edi va bazadagi ma'lumot bilan bog'liq emasdi. "Kurs"
+  // filtri esa umuman olib tashlandi: kurs o'quvchining guruhidan keladi,
+  // arxivlashda esa o'quvchi hamma guruhdan chiqariladi — ya'ni u hech qachon
+  // hech nima topa olmaydi.
+  const moderatorOptions = useMemo(() => uniqueSorted(rows.map((r) => r.student.moderator)), [rows]);
+  const reasonOptions = useMemo(() => uniqueSorted(rows.map((r) => r.student.statusReason)), [rows]);
+
+  const filtered = useMemo(() => {
+    const ids = new Set(applyStudentFilters(rows.map((r) => r.student), filters).map((s) => s.id));
+    // Oraliq endi ARXIVLANGAN sanaga qo'llanadi (ilgari demo buyurtmaning
+    // yaratilgan sanasiga qo'llanardi) — arxiv sahifasida mazmunlisi shu.
+    const from = dateRange.start
+      ? new Date(dateRange.start.getFullYear(), dateRange.start.getMonth(), dateRange.start.getDate())
+      : null;
+    const to = dateRange.end
+      ? new Date(dateRange.end.getFullYear(), dateRange.end.getMonth(), dateRange.end.getDate())
+      : null;
+    const q = search.trim().toLowerCase();
+
+    return rows.filter((r) => {
+      if (!ids.has(r.student.id)) return false;
+      if (reason && r.student.statusReason !== reason) return false;
+      if (from || to) {
+        const dt = parseIsoDate(r.student.statusChangedAt);
+        if (!dt) return false;
+        if (from && dt < from) return false;
+        if (to && dt > to) return false;
+      }
+      if (q) {
+        const hay = [
+          r.student.name, r.student.phone, String(r.student.id), r.student.moderator,
+          r.student.statusReason, fmtIsoDate(r.student.statusChangedAt), r.student.createdAt,
+        ].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, filters, reason, dateRange, search]);
+
+  // Qarzdor/Haqdor endi HAQIQIY balanslardan yig'iladi. Balans — to'langan
+  // pul yig'indisi (tizimda "to'lanishi kerak" summasi yuritilmaydi), shuning
+  // uchun manfiy qiymat faqat tuzatuvchi yozuvlar bo'lganda paydo bo'ladi.
   const { debt, credit } = useMemo(() => {
     let debt = 0;
     let credit = 0;
@@ -140,7 +215,7 @@ export default function ArchiveStudentsPage() {
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
 
-  const pageIds = useMemo(() => slice.map((r) => r.order.id), [slice]);
+  const pageIds = useMemo(() => slice.map((r) => r.student.id), [slice]);
   const pageSelectedCount = pageIds.filter((id) => selected.has(id)).length;
   const allPageSelected = pageIds.length > 0 && pageSelectedCount === pageIds.length;
   const somePageSelected = pageSelectedCount > 0 && !allPageSelected;
@@ -165,24 +240,24 @@ export default function ArchiveStudentsPage() {
   }
 
   function rowsToExport(): Row[] {
-    return selected.size > 0 ? filtered.filter((r) => selected.has(r.order.id)) : filtered;
+    return selected.size > 0 ? filtered.filter((r) => selected.has(r.student.id)) : filtered;
   }
   function exportRows() {
     return rowsToExport().map((r, i) => [
       i + 1,
-      r.order.id,
-      r.order.name,
-      r.order.phone,
+      r.student.id,
+      r.student.name,
+      r.student.phone,
       r.balance,
-      r.extras.group,
-      r.extras.teacher,
-      r.order.created,
-      r.order.moderator,
-      r.extras.proArchivedAt,
-      r.extras.archivedAt,
-      r.reason,
-      r.extras.prevState,
-      "", // Shartnoma
+      "", // Arxivlangan guruh — arxivlashda o'quvchi hamma guruhdan chiqariladi, guruh eslab qolinmaydi.
+      "", // Arxiv o'qituvchisi — o'qituvchi guruhdan kelardi, guruh esa yo'q.
+      r.student.createdAt,
+      r.student.moderator,
+      "", // Pro arxivlangan sana — bazada bunday oraliq holat ham, sanasi ham yo'q.
+      fmtIsoDate(r.student.statusChangedAt),
+      r.student.statusReason,
+      "", // Oldingi holati — status tarixi saqlanmaydi, faqat joriy status bor.
+      "", // Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan.
     ]);
   }
   function exportCSV() {
@@ -219,8 +294,8 @@ export default function ArchiveStudentsPage() {
           <div className="relative">
             <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"><use href="#i-search" /></svg>
             <input
-              value={filters.search}
-              onChange={(e) => setFilter("search", e.target.value)}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               type="text"
               placeholder="Qidirish"
               className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -250,29 +325,25 @@ export default function ArchiveStudentsPage() {
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
+            {/* Sababi ro'yxati arxivlangan o'quvchilarning HAQIQIY statusReason
+                qiymatlaridan yig'iladi — ilgari u statusdan kelib chiqib
+                to'qib chiqarilgan uchta iboradan iborat edi. */}
             <select value={reason} onChange={(e) => { setReason(e.target.value); setPage(1); }} className={`${selectCls} w-52`}>
               <option value="">Sababi</option>
-              {[...new Set(rows.map((r) => r.reason))].map((r) => <option key={r} value={r}>{r}</option>)}
+              {reasonOptions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
           <div className="relative">
             <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className={`${selectCls} w-44`}>
               <option value="">Moderator</option>
-              {MODERATORS.map((m) => <option key={m} value={m}>{m}</option>)}
+              {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
-          <div className="relative">
-            <select value={filters.course} onChange={(e) => setFilter("course", e.target.value)} className={`${selectCls} w-36`}>
-              <option value="">Kurs</option>
-              {COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" />
+          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Arxivlangan sana oralig'i" />
           <button
-            onClick={() => { setFilters(EMPTY_ORDERS_FILTERS); setDateRange({ start: null, end: null }); setReason(""); }}
+            onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setReason(""); setSearch(""); setDateRange({ start: null, end: null }); setPage(1); }}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             <X className="icon icon-xs" /> Tozalash
@@ -319,38 +390,60 @@ export default function ArchiveStudentsPage() {
               </tr>
             </thead>
             <tbody>
-              {slice.map((r, i) => (
-                <tr key={r.order.id} className={`border-b border-border/50 transition-colors hover:bg-secondary/30${selected.has(r.order.id) ? " bg-primary/5" : ""}`}>
+              {!loading && slice.map((r, i) => (
+                <tr key={r.student.id} className={`border-b border-border/50 transition-colors hover:bg-secondary/30${selected.has(r.student.id) ? " bg-primary/5" : ""}`}>
                   <td className="px-3 py-3">
                     <input
                       type="checkbox"
-                      checked={selected.has(r.order.id)}
-                      onChange={(e) => toggleRow(r.order.id, e.target.checked)}
+                      checked={selected.has(r.student.id)}
+                      onChange={(e) => toggleRow(r.student.id, e.target.checked)}
                       className={checkboxCls}
                     />
                   </td>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground">{r.order.id}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground">{r.student.id}</td>
                   <td className="px-3 py-3 text-[13px]">
-                    <Link href={`/student-edit/${r.order.id}`} className="font-medium hover:text-primary hover:underline">
-                      {r.order.name}
+                    {/* ?src=list — bazadagi o'quvchi id'lari demo buyurtma id'lari bilan
+                        kesishadi, bu belgisiz profil sahifasi boshqa odamni ochib yuborishi mumkin. */}
+                    <Link href={`/student-edit/${r.student.id}?src=list`} className="font-medium hover:text-primary hover:underline">
+                      {r.student.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{r.order.phone || "—"}</td>
-                  <td className={`px-3 py-3 text-[13px] tabular-nums whitespace-nowrap ${r.balance < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtUZS(r.balance)}</td>
-                  <td className="px-3 py-3 text-[13px]">{r.extras.group}</td>
-                  <td className="px-3 py-3 text-[13px]">{r.extras.teacher}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.order.created}</td>
-                  <td className="px-3 py-3 text-[13px]">{r.order.moderator || "—"}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.extras.proArchivedAt}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.extras.archivedAt}</td>
-                  <td className={`px-3 py-3 text-[13px] font-medium ${REASON_CLS[r.reason] || ""}`}>{r.reason}</td>
-                  <td className={`px-3 py-3 text-[13px] font-medium ${PREV_STATE_CLS[r.extras.prevState] || ""}`}>{r.extras.prevState}</td>
-                  {/* Shartnoma — modelda maydon yo'q, referensda ham bo'sh. */}
+                  <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{r.student.phone || "—"}</td>
+                  <td className={`px-3 py-3 text-[13px] tabular-nums whitespace-nowrap ${r.balance < 0 ? "text-rose-600" : r.balance > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>{fmtUZS(r.balance)}</td>
+                  {/* Arxivlangan guruh — PATCH /api/pupils/:id/status arxivlashda
+                      o'quvchini hamma guruhdan chiqaradi va qaysi guruhda bo'lganini
+                      hech qayerda yozib qo'ymaydi, ya'ni enrichStudents() ham bo'sh
+                      qaytaradi. Qiymat o'ylab topilmaydi. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  {/* Arxiv o'qituvchisi — o'qituvchi o'quvchida emas, guruhda saqlanadi
+                      (groups.teacher); guruh aloqasi uzilgani uchun manba yo'q. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.student.createdAt || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]">{r.student.moderator || "—"}</td>
+                  {/* Pro arxivlangan sana — "pro arxiv" degan oraliq holat pupils
+                      modelida umuman yo'q (PUPIL_STATUSES: Aktiv/Muzlatilgan/Arxiv),
+                      demak sanasi ham yo'q. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  {/* Arxivlangan sana — haqiqiy pupils.statusChangedAt. */}
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.student.statusChangedAt ? fmtIsoDate(r.student.statusChangedAt) : "—"}</td>
+                  {/* Sababi — haqiqiy pupils.statusReason (arxivlashda majburiy). */}
+                  <td className="px-3 py-3 text-[13px]">{r.student.statusReason || "—"}</td>
+                  {/* Oldingi holati — status tarixi saqlanmaydi: hujjatda faqat
+                      joriy status bor, o'zgarishlar jurnali yo'q. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  {/* Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan (studentId yo'q). */}
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                 </tr>
               ))}
-              {slice.length === 0 && (
+              {loading && (
+                <tr>
+                  <td colSpan={15} className="px-3">
+                    <SpinnerBlock />
+                  </td>
+                </tr>
+              )}
+              {!loading && slice.length === 0 && (
                 <tr>
                   <td colSpan={15} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
                 </tr>

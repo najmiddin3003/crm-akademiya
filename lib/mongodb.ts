@@ -66,6 +66,10 @@ export async function ensureIndexes(): Promise<Db> {
     await db.collection("groups").createIndex({ id: 1 }, { unique: true });
     await db.collection("group_tasks").createIndex({ id: 1 }, { unique: true });
     await db.collection("group_tasks").createIndex({ groupId: 1 });
+    // group_lessons — Guruh tafsiloti > "Mashg'ulot qo'shish" tabi.
+    // `id` global ketma-ket (group_tasks kabi), so'rov esa doim groupId bo'yicha.
+    await db.collection("group_lessons").createIndex({ id: 1 }, { unique: true });
+    await db.collection("group_lessons").createIndex({ groupId: 1 });
     // attendance — guruh davomati. Bitta yozuv = (guruh, o'quvchi, sana)
     // uchligi, shuning uchun kalit unique. `date` — "YYYY-MM-DD" satri, oy
     // bo'yicha so'rov shu indeksdan prefiks sifatida foydalanadi.
