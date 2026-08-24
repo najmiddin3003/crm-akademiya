@@ -57,17 +57,6 @@ export function todayStart(): Date {
   return d;
 }
 
-export const STAFF = [
-  "Abdulloh Raxmatullayev",
-  "Sevinch Madaminova",
-  "Mashxura Kutupova",
-  "Nodira Teshaboyeva",
-  "Jasurbek O'rinboyev",
-  "Durdona Yoldasheva",
-  "Gulnoza Abdurahimova",
-  "Ilhomjon Sharabidinov",
-];
-
 export const PRIORITY_META: Record<TaskPriority, { label: string; order: number }> = {
   kritik: { label: "KRITIK", order: 0 },
   yuqori: { label: "YUQORI", order: 1 },

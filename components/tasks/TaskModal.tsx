@@ -7,9 +7,9 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import { useTaskTargets } from "@/hooks/useTaskTargets";
+import { useStaff } from "@/hooks/useStaff";
 import {
   RECURRENCE_OPTIONS,
-  STAFF,
   TASK_TARGET_KINDS,
   type Task,
   type TaskPriority,
@@ -99,6 +99,7 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
   const [dateError, setDateError] = useState(false);
   const { types: taskTypes } = useTaskTypes();
   const { byKind, loading: targetsLoading } = useTaskTargets();
+  const { names: staffNames } = useStaff();
   useEscapeClose(onClose);
 
   const targetOptions = byKind[values.targetKind] ?? [];
@@ -162,7 +163,7 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
               className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tanlang</option>
-              {STAFF.map((s) => (
+              {staffNames.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

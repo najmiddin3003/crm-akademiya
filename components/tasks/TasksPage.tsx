@@ -14,12 +14,12 @@ import MoveTaskModal from "@/components/tasks/MoveTaskModal";
 import TaskTypesDrawer from "@/components/tasks/TaskTypesDrawer";
 import TaskTypeIcon from "@/components/tasks/TaskTypeIcon";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
+import { useStaff } from "@/hooks/useStaff";
 import {
   getTaskStatus,
   isTaskBlocked,
   compareTasksForSort,
   KANBAN_STATES,
-  STAFF,
   TASK_TEMPLATES,
   todayStart,
   type Task,
@@ -69,6 +69,8 @@ export default function TasksPage() {
       })
       .catch(() => {});
   }, []);
+  // "Mas'ul shaxs" ro'yxati bazadagi aktiv xodimlardan.
+  const { names: staffNames } = useStaff();
   const [viewMode, setViewMode] = useState<ViewMode>("time");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -448,7 +450,7 @@ export default function TasksPage() {
               className="filter-select h-9 w-36 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Mas&apos;ul shaxs</option>
-              {STAFF.map((s) => <option key={s} value={s}>{s}</option>)}
+              {staffNames.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="relative">
