@@ -1212,3 +1212,88 @@ Yana bir tuzoq: `globals.css` o'zgargach dev serverni `.next` tozalab qayta
 ishga tushirish shart, VA sahifani toza yuklash kerak — eski DOM tugunlari
 yangi CSS bilan yangilanmay qolib, `getComputedStyle` yolg'on qiymat
 qaytarishi mumkin (bu sessiyada bir marta chalg'itgan).
+
+---
+
+# Soxta ma'lumot auditi (2026-08-24)
+
+Butun kod bazasi bo'lim-bo'lim tekshirildi, har bir topilma alohida
+tasdiqlandi. **117 ta topilmadan 102 tasi tuzatildi**; qolgan 15 tasi xato
+emas — bazada mos maydon yo'qligi uchun ataylab qoldirilgan cheklovlar,
+har biri kodda izoh bilan yozilgan.
+
+Commitlar: `4036500` (olti bo'lim), `90be153` (xodimlar hisoblagichi),
+`7dc262a` (oxirgi sahifalar va profil tablari).
+
+## Amal qiladigan qoida
+
+Bu qoida butun loyihaga tegishli va keyingi ishda ham saqlanishi kerak:
+
+1. Ma'lumot bazadan kelsa ko'rsatiladi; kelmasa **`—`** turadi.
+2. **`0` hech qachon "noma'lum" o'rniga ishlatilmaydi** — nol bu faktik
+   da'vo ("bu o'qituvchining guruhi yo'q", "bu xodimning balansi nol").
+3. Hech narsa qilmaydigan tugma **ishlatiladi yoki olib tashlanadi**.
+   `(demo)` yozuvli toast qolmasligi kerak.
+4. Yozuv `id` sidan yoki massiv indeksidan son hosil qilish taqiqlanadi
+   (`(p.id * 137) % 6000`, `i % 13`, LCG generatorlar).
+
+## ⚠️ Hech qachon o'qilmasligi kerak bo'lgan maydonlar
+
+Bular bazada bor, lekin **hech bir API ularni yangilamaydi** — ya'ni
+ko'rsatilsa yolg'on chiqadi. Har biri bir marta haqiqiy xatoga sabab
+bo'lgan:
+
+| Maydon | Nima o'rniga |
+|---|---|
+| `pupils.balance` | `/api/students/balances` (bekor qilinmagan `payIn` yig'indisi, ism bo'yicha) |
+| `groups.students` | `groups.studentIds.length` |
+| `hr_employees.groups` | `/api/groups` dan `teacher` bo'yicha sanash |
+| `hr_employees.aktivOq` | shu guruhlarning `studentIds` i, takrorsiz |
+
+## Yozuv tomoni yetishmaydigan ikki joy
+
+Ikkalasi ham **ko'rinadi va o'qiydi, lekin to'lmaydi** — o'qish tomoni
+tayyor, yozadigan kod yo'q:
+
+### 1. Harakatlar tarixi (o'quvchi profili)
+
+- Tayyor: `app/api/pupils/[id]/activity/route.ts` (GET), tab, va
+  `lib/mongodb.ts` dagi `pupil_activity` indekslari.
+- Yetishmaydi: `PATCH /api/pupils/[id]` o'zgargan har bir maydon uchun
+  bitta yozuv qo'shishi kerak:
+  `{ id, pupilId, field, from, to, staff, kind, device, date: "YYYY-MM-DD", time: "HH:mm" }`
+- Shu yozuv qo'shilsa tab o'zi ishlab ketadi, tabga tegish shart emas.
+  Hozircha u jurnal bo'shligini halol aytadi.
+
+### 2. Shartnoma andozasi (o'quvchi profili)
+
+- Tanlangan andoza **saqlanmaydi**: na `contracts` (title/type/content),
+  na `finance_contracts` (moderator/izoh/summalar) da o'quvchiga
+  biriktirilgan shartnoma nusxasi uchun maydon yo'q.
+- Hozir ekranda shu ochiq yozilgan, aks holda Saqlash tugmasi uni ham
+  saqlagandek tuyulardi. Formaning qolgan 21 maydoni esa haqiqiy
+  `pupils` maydonlari va `PATCH /api/pupils/:id` orqali saqlanadi.
+- Kerak bo'lsa: `lib/financeContracts.ts` + `app/api/finance-contracts/route.ts`
+  ga `contractId`/`content` maydoni qo'shilishi kerak.
+
+## Boshqa ochiq nuqtalar
+
+- **Ism bo'yicha bog'lanish.** `tasks.student`, `sms_messages.recipientName`,
+  `transaction_entries.studentName` — hammasi ism satri, `pupilId` emas.
+  Bir xil ismli ikki o'quvchi bir-birining yozuvini ko'radi. Yozuvga
+  `pupilId` qo'shilsa hammasi hal bo'ladi.
+- **`?src=list` majburiy.** `/student-edit/:id` havolasi bu parametrsiz
+  noto'g'ri odamni ochishi mumkin — buyurtma va o'quvchi id fazolari
+  ustma-ust tushadi. Yangi havola yozganda unutmang.
+- **Marketing havolalari.** `lib/surveys.ts` dagi lid manbasi havolalari
+  klon qilingan production saytga ishora qilardi; tuzatildi, lekin
+  `?survey=` kodini lid yaratishda **o'qiydigan kod hali yo'q** — ya'ni
+  lid manbasini kuzatish to'liq ishlamaydi.
+- **`tsc` xotirasi.** To'liq `npx tsc --noEmit` bu mashinada RAM bo'sh
+  bo'lmasa "Zone Allocation failed" beradi. Bu kod xatosi emas — dev
+  serverni to'xtatib qayta urinib ko'ring.
+
+## Yakuniy hisobot
+
+Bo'lim-bo'lim ro'yxat va qolgan 15 ta cheklov:
+<https://claude.ai/code/artifact/fb38bf60-66c1-4479-98ac-103abcd67b31>
