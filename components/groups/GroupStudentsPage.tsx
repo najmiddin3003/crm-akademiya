@@ -5,47 +5,28 @@ import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import EmployeeToggle from "@/components/employees/EmployeeToggle";
-import { createInitialOrders } from "@/lib/ordersData";
-import { GROUP_SEED } from "@/constants/groups";
+import Spinner from "@/components/ui/Spinner";
+import { useStudents } from "@/hooks/useStudents";
+import { useGroups } from "@/hooks/useGroups";
+import {
+  enrichStudents,
+  studentRowFromPupil,
+  uniqueSorted,
+  STUDENT_STATUSES,
+  type EnrichedStudent,
+} from "@/lib/studentsData";
 
-// Guruh → Guruh o'quvchilari (crm-akademiya #view-groups-students, sidebar:
-// Guruh > Guruh o'quvchilari, href /groups-students). Har bir qator — bitta
-// buyurtma (createInitialOrders(), 502 ta) qaysidir guruhga (GROUP_SEED)
-// deterministik biriktirilgan holda; shu sababli ism ustiga bosilganda
-// /student-edit/[id] (mavjud profil sahifasi) har doim topiladi — chunki id
-// aynan shu createInitialOrders() massividan olingan.
-
-type StudentStatus = "active" | "new" | "frozen";
-
-interface StudentRow {
-  id: number;
-  name: string;
-  groupId: number;
-  teacher: string;
-  status: StudentStatus;
-  created: string;
-}
-
-const STATUS_OPTIONS: { value: StudentStatus; label: string }[] = [
-  { value: "active", label: "Aktiv" },
-  { value: "new", label: "Yangi" },
-  { value: "frozen", label: "Muzlatilgan" },
-];
-const STATUS_LABEL: Record<StudentStatus, string> = { active: "active", new: "new", frozen: "frozen" };
-const STATUS_CLS: Record<StudentStatus, string> = {
-  active: "text-emerald-600",
-  new: "text-blue-600",
-  frozen: "text-cyan-600",
-};
-
-function buildStudentRows(): StudentRow[] {
-  const orders = createInitialOrders();
-  return orders.map((o, i) => {
-    const group = GROUP_SEED[i % GROUP_SEED.length];
-    const status: StudentStatus = i % 13 === 0 ? "frozen" : o.isNew || i % 5 === 1 ? "new" : "active";
-    return { id: o.id, name: o.name, groupId: group.id, teacher: group.teacher, status, created: o.created };
-  });
-}
+// Guruh → Guruh o'quvchilari (sidebar: Guruh > Guruh o'quvchilari,
+// href /groups-students). Referens: akademiya.edutizim.uz/group/group-students
+// — № | ID | Ism | Guruhlar | O'qituvchi | Holati, tepasida Muzlatilgan
+// toggle'i, O'qituvchi va Guruh holati tanlovlari.
+//
+// Ma'lumot HAQIQIY: /api/pupils + /api/groups, ular lib/studentsData.ts
+// dagi enrichStudents() bilan birlashtiriladi (o'quvchi ↔ guruh bog'lanishi
+// `groups.studentIds` orqali — sxemadagi yagona haqiqiy raqamli bog'lanish).
+// Ilgari butun sahifa createInitialOrders() demo generatori va GROUP_SEED
+// konstantasidan qurilardi: har bir qatordagi guruh, o'qituvchi va holat
+// `i % ...` bilan o'ylab topilgan edi va bazadagi hech narsaga mos kelmasdi.
 
 // "20.05.2026 | 17:54" → Date
 function parseCreated(s: string): Date | null {
@@ -54,27 +35,41 @@ function parseCreated(s: string): Date | null {
   return new Date(+m[3], +m[2] - 1, +m[1]);
 }
 
+const STATUS_CLS: Record<string, string> = {
+  Aktiv: "text-emerald-600",
+  Muzlatilgan: "text-cyan-600",
+  Arxiv: "text-muted-foreground",
+};
+
 const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function GroupStudentsPage() {
-  const [rows] = useState<StudentRow[]>(() => buildStudentRows());
+  const { pupils, loading: pupilsLoading } = useStudents();
+  const { groups, loading: groupsLoading } = useGroups();
+  const loading = pupilsLoading || groupsLoading;
+
+  const rows = useMemo<EnrichedStudent[]>(
+    () => enrichStudents(pupils.map(studentRowFromPupil), groups),
+    [pupils, groups],
+  );
 
   const [frozenOnly, setFrozenOnly] = useState(false);
   const [teacher, setTeacher] = useState("");
-  const [status, setStatus] = useState<StudentStatus | "">("");
+  const [status, setStatus] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  const teacherOptions = useMemo(() => [...new Set(rows.map((r) => r.teacher).filter(Boolean))].sort(), [rows]);
+  // Tanlov ro'yxatlari — faqat guruhlarda HAQIQATDA uchraydigan o'qituvchilar.
+  const teacherOptions = useMemo(() => uniqueSorted(groups.map((g) => g.teacher)), [groups]);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
-      if (frozenOnly && r.status !== "frozen") return false;
+      if (frozenOnly && r.status !== "Muzlatilgan") return false;
       if (teacher && r.teacher !== teacher) return false;
       if (status && r.status !== status) return false;
       if (dateRange.start || dateRange.end) {
-        const dt = parseCreated(r.created);
+        const dt = parseCreated(r.createdAt);
         if (!dt) return false;
         if (dateRange.start && dt < dateRange.start) return false;
         if (dateRange.end) {
@@ -114,10 +109,10 @@ export default function GroupStudentsPage() {
         </div>
 
         <div className="relative">
-          <select value={status} onChange={(e) => resetPage(setStatus)(e.target.value as StudentStatus | "")} className={`${selectCls} w-40`}>
+          <select value={status} onChange={(e) => resetPage(setStatus)(e.target.value)} className={`${selectCls} w-40`}>
             <option value="">Guruh holati</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
+            {STUDENT_STATUSES.map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
           <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
@@ -157,16 +152,18 @@ export default function GroupStudentsPage() {
                       {r.name}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{r.groupId}</td>
+                  <td className="px-3 py-3 text-[13px]">{r.groupNames}</td>
                   <td className="px-3 py-3 text-[13px]">{r.teacher || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">
-                    <span className={`font-medium ${STATUS_CLS[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                    <span className={`font-medium ${STATUS_CLS[r.status] ?? ""}`}>{r.status}</span>
                   </td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                    {loading ? <Spinner size={22} /> : "O'quvchi topilmadi"}
+                  </td>
                 </tr>
               )}
             </tbody>
