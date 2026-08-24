@@ -15,6 +15,14 @@ function todayRange(): DateRange {
   const now = new Date();
   return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth(), now.getDate()) };
 }
+// Sanani MAHALLIY vaqt bo'yicha "YYYY-MM-DD" ga aylantiradi. Ilgari filtr
+// `toISOString().slice(0,10)` ishlatardi — u UTC'ga o'tkazadi, shuning uchun
+// Toshkent vaqtida (UTC+5) tanlangan kun bir kun oldingi kunga tushib,
+// oyning birinchi kunidagi tranzaksiyalar ro'yxatdan chiqib ketardi.
+function toIso(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 export default function JournalTab({
   transactions,
@@ -37,8 +45,8 @@ export default function JournalTab({
   const filtered = useMemo(() => {
     return transactions
       .filter((t) => {
-        if (dateRange.start && t.date < dateRange.start.toISOString().slice(0, 10)) return false;
-        if (dateRange.end && t.date > dateRange.end.toISOString().slice(0, 10)) return false;
+        if (dateRange.start && t.date < toIso(dateRange.start)) return false;
+        if (dateRange.end && t.date > toIso(dateRange.end)) return false;
         return true;
       })
       .sort((a, b) => (a.date === b.date ? b.id - a.id : b.date.localeCompare(a.date)));

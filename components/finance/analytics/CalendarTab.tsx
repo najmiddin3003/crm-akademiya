@@ -66,8 +66,11 @@ export default function CalendarTab({ transactions, loading }: { transactions: T
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
+          {/* YIL tanlagichi: chap strelka ilgari `prevMonth`ni chaqirar edi —
+              ya'ni yil tugmasi yilni emas, OYni orqaga surardi (o'ng strelka
+              esa to'g'ri ishlardi). Endi ikkalasi ham yilni o'zgartiradi. */}
           <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-2 gap-1">
-            <button onClick={prevMonth} className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-secondary text-muted-foreground"><ChevronLeft className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setYear((y) => y - 1)} className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-secondary text-muted-foreground"><ChevronLeft className="w-3.5 h-3.5" /></button>
             <Calendar className="w-3.5 h-3.5 text-primary" />
             <span className="text-[13px] tabular-nums w-10 text-center">{year}</span>
             <button onClick={() => setYear((y) => y + 1)} className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-secondary text-muted-foreground"><ChevronRight className="w-3.5 h-3.5" /></button>

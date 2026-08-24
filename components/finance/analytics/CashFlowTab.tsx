@@ -2,11 +2,27 @@
 
 import { useMemo, useState } from "react";
 import { Download, BarChart3, List } from "lucide-react";
+import * as XLSX from "xlsx";
 import DonutChart from "@/components/ui/DonutChart";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
-import { INCOME_CATS, EXPENSE_CATS } from "@/constants/transactions";
+import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
 import type { Transaction } from "@/lib/transactions";
+
+// Moliya analitikasi → "Pul oqimi" tab'i. Hammasi /api/transactions dan.
+//
+// ILGARI IKKITA MUAMMO BOR EDI:
+//   1. Kategoriya qatorlari `constants/transactions.js` dagi qattiq yozilgan
+//      INCOME_CATS/EXPENSE_CATS ro'yxatidan olinardi — o'sha fayl demo
+//      generator uchun yozilgan va admin "Tranzaksiya turi" sahifasida
+//      qo'shgan yangi tur bu yerda hech qachon ko'rinmasdi (o'chirilgani esa
+//      ko'rinib turardi). Endi ro'yxat /api/transaction-types dan.
+//   2. Yuqoridagi eksport tugmasi `onClick`siz edi — bosilsa hech narsa
+//      bo'lmasdi. Loyihada PDF kutubxonasi yo'q, boshqa hamma Moliya
+//      sahifasi esa Excel/CSV eksport qiladi (xlsx), shuning uchun tugma
+//      HAQIQIY Excel eksportiga aylantirildi va yorlig'i shunga moslandi —
+//      ishlamaydigan "PDF" tugmasini qoldirish yolg'on bo'lardi.
 
 const MONTH_LABELS = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
 
@@ -33,6 +49,11 @@ function trailingMonths(): { year: number; month: number; key: string; label: st
 
 export default function CashFlowTab({ transactions, loading }: { transactions: Transaction[]; loading: boolean }) {
   const [view, setView] = useState<"chart" | "table">("chart");
+  const { showSuccess, showError } = useToast();
+  // Kategoriyalar admin boshqaradigan HAQIQIY ro'yxatdan.
+  const { types } = useTransactionTypes();
+  const incomeCats = useMemo(() => transactionTypeNames(types, "kirim"), [types]);
+  const expenseCats = useMemo(() => transactionTypeNames(types, "chiqim"), [types]);
 
   const months = useMemo(() => trailingMonths(), []);
 
@@ -63,14 +84,14 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
   const incomeByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of transactions) if (t.amount > 0) map[t.category] = (map[t.category] || 0) + t.amount;
-    return INCOME_CATS.map((c) => ({ label: c, value: map[c] || 0 })).sort((a, b) => b.value - a.value);
-  }, [transactions]);
+    return incomeCats.map((c) => ({ label: c, value: map[c] || 0 })).sort((a, b) => b.value - a.value);
+  }, [transactions, incomeCats]);
 
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of transactions) if (t.amount < 0) map[t.category] = (map[t.category] || 0) - t.amount;
-    return EXPENSE_CATS.map((c) => ({ label: c, value: map[c] || 0 })).sort((a, b) => b.value - a.value).slice(0, 5);
-  }, [transactions]);
+    return expenseCats.map((c) => ({ label: c, value: map[c] || 0 })).sort((a, b) => b.value - a.value).slice(0, 5);
+  }, [transactions, expenseCats]);
 
   const incomeSlices = incomeByCategory.map((c, i) => ({ ...c, color: CHART_COLORS[i % CHART_COLORS.length] }));
   const expenseSlices = expenseByCategory.map((c, i) => ({ ...c, color: CHART_COLORS[(i + 1) % CHART_COLORS.length] }));
@@ -79,6 +100,36 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
 
   const maxAbs = Math.max(1, ...monthStats.flatMap((m) => [m.income, m.expense, Math.abs(m.endBalance)]));
 
+  // Eksport — ekrandagi AYNAN shu raqamlar: 12 oylik jadval har doim, va
+  // grafik ko'rinishida ko'rinadigan taqsimotlar alohida varaqlarda.
+  function exportExcel() {
+    try {
+      const workbook = XLSX.utils.book_new();
+
+      const monthRows = monthStats.map((m) => ({
+        Oy: `${m.label} ${m.year}`,
+        "Oy boshidagi qoldiq": Math.round(m.startBalance),
+        Tushumlar: Math.round(m.income),
+        Chiqimlar: Math.round(-m.expense),
+        "Sof pul oqimi": Math.round(m.income - m.expense),
+        "Oy oxiridagi qoldiq": Math.round(m.endBalance),
+      }));
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(monthRows), "Pul oqimi");
+
+      if (view === "chart") {
+        const incomeRows = incomeSlices.map((s) => ({ Kategoriya: s.label, Summa: Math.round(s.value) }));
+        const expenseRows = expenseSlices.map((s) => ({ Kategoriya: s.label, Summa: Math.round(s.value) }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(incomeRows), "Kirim taqsimoti");
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(expenseRows), "Chiqim top 5");
+      }
+
+      XLSX.writeFile(workbook, `pul-oqimi-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      showSuccess("Excel fayl yuklab olindi");
+    } catch {
+      showError("Excel faylni yuklab bo'lmadi");
+    }
+  }
+
   if (loading) {
     return <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>;
   }
@@ -86,9 +137,9 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <button className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
+        <button onClick={exportExcel} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Download className="w-4 h-4" />
-          {view === "chart" ? "Grafiklarni PDF da eksport qilish" : "Jadvalni PDF da eksport qilish"}
+          {view === "chart" ? "Grafiklarni Excel da eksport qilish" : "Jadvalni Excel da eksport qilish"}
         </button>
         <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
           <button onClick={() => setView("chart")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "chart" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title="Grafik">

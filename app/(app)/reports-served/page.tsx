@@ -1,79 +1,180 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { GROUP_SEED, GROUP_TEACHERS } from "@/constants/groups";
-import { OFFLINE_COURSES } from "@/constants/offlineCourses";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useGroups } from "@/hooks/useGroups";
+import { useTeachers } from "@/hooks/useTeachers";
+import type { Group } from "@/lib/groups";
+import type { TransactionEntry } from "@/lib/transactionEntries";
 
 // Hisobotlar → O'quv markazga ishlab berilgan (href /reports-served).
 // Referensdagi sarlavha: "O'qituvchilar oylik to'lov analitikasi".
 //
-// Yangi backend YO'Q — mavjud guruhlar (constants/groups.js) va oflayn kurs
-// narxlaridan (constants/offlineCourses.js) hisoblanadi:
-//   o'qituvchi ishlab bergan summa = Σ (guruh o'quvchilari × kurs narxi)
-// Kurs narxi topilmasa, o'sha guruh 0 bilan hisoblanadi (narx jadvalida
-// yo'q kurslar bor — masalan "Tarix").
-
-const DIVIDES = [
-  { key: "day", label: "Kun", factor: 1 },
-  { key: "week", label: "Hafta", factor: 7 },
-  { key: "month", label: "Oy", factor: 30 },
-] as const;
-
-type DivideKey = (typeof DIVIDES)[number]["key"];
-
-interface SeedGroup {
-  course?: string;
-  students?: number;
-  teacher?: string;
-  status?: string;
-}
-interface SeedCourse {
-  name: string;
-  branches: { enabled: boolean; price: number }[];
-}
+// ILGARI: "Ishlab berilgan summa" ustuni SOXTA edi. U demo guruhlar massivi
+// (constants/groups.js GROUP_SEED) va demo kurs narxlaridan
+// (constants/offlineCourses.js) shunday chiqarilardi:
+//     summa = guruh o'quvchilari × kursning eng qimmat filial narxi × (1|7|30)
+// Har uch ko'paytuvchi ham asossiz edi: guruhlar bazadan emas demo massivdan
+// olinardi; guruhning qaysi FILIALGA tegishli ekani hech qayerda saqlanmaydi,
+// shuning uchun "eng yuqori narxni olamiz" degan tanlov o'ylab topilgan edi;
+// "Kun / Hafta / Oy" tugmasi esa summani shunchaki 7 yoki 30 ga ko'paytirardi.
+// Natijada sahifa hech qachon to'lanmagan pulni "ishlab berilgan" deb
+// ko'rsatardi. O'qituvchilar ro'yxati ham qattiq yozilgan GROUP_TEACHERS dan
+// kelardi.
+//
+// HOZIR: summa HAQIQATDA TO'LANGAN pul — `transaction_entries` dagi kirim
+// yozuvlari (/api/transaction-entries?txType=payIn&excludeCancelled=1).
+// Har bir kirim yozuvida `teacherName` bor — bu "shu to'lov qaysi
+// o'qituvchining oyligiga tegishli" degani (lib/transactionEntries.ts;
+// to'lov qabul qilinganda lib/teacherOfStudent.ts o'quvchining guruhi orqali
+// aniqlaydi). Ya'ni o'qituvchi bo'yicha yig'indi — bu o'sha o'qituvchining
+// o'quvchilari markazga to'lagan pul. Sana oralig'i yozuvning O'Z sanasi
+// (`date`, "YYYY-MM-DD") bo'yicha filtrlaydi, ya'ni tanlagich haqiqiy ishlaydi.
+//
+// "Guruhlar" va "O'quvchilar" ustunlari /api/groups dan — BUGUNGI holat
+// (guruhda sana kesimidagi tarix saqlanmaydi), summa esa oraliqqa bog'liq.
+// O'quvchilar soni guruhning `studentIds` ro'yxatidan sanaladi (pastdagi
+// rosterSize izohiga qarang).
 
 const fmtUZS = (n: number) => Math.round(n).toLocaleString("ru-RU") + " UZS";
 
+/** Standart oraliq — joriy oy (sarlavhadagi "oylik" shunga mos). */
+function currentMonth(): DateRange {
+  const now = new Date();
+  return {
+    start: new Date(now.getFullYear(), now.getMonth(), 1),
+    end: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+  };
+}
+
+function toIso(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+const nameKey = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+/**
+ * Guruhdagi o'quvchilar soni — `studentIds` massivining uzunligi.
+ *
+ * NEGA `g.students` EMAS: `Group.students` — hech qaysi yozuv yo'li
+ * yangilamaydigan denormalizatsiya qilingan hisoblagich. Guruh yaratilganda
+ * app/api/groups/route.ts va app/api/groups/import/route.ts uni `students: 0`
+ * qilib yozadi, EditGroupModal esa uni hech qachon PATCH qilmaydi. Shu bois
+ * UI orqali yaratilgan guruhlar uchun "O'quvchilar" ustuni har bir
+ * o'qituvchida 0 chiqardi, ya'ni "bu o'qituvchining o'quvchisi yo'q" degan
+ * yolg'on da'vo qilardi.
+ *
+ * `studentIds` esa haqiqatda yuritiladi: guruhga o'quvchi qo'shilganda
+ * app/api/groups/[id]/students/route.ts $addToSet, chiqarilganda $pull qiladi.
+ * Massiv umuman bo'lmasa — bu ham haqiqiy fakt: guruhga hali birorta o'quvchi
+ * qo'shilmagan, ya'ni 0 nafar.
+ */
+const rosterSize = (g: Group): number => g.studentIds?.length ?? 0;
+
+interface Row {
+  name: string;
+  groups: number;
+  students: number;
+  /** null — to'lovlarda o'qituvchi umuman ko'rsatilmagan, hisoblab bo'lmaydi. */
+  earned: number | null;
+}
+
 export default function Page() {
+  const { groups, loading: groupsLoading } = useGroups();
+  const { names: teacherNames } = useTeachers();
+  const [entries, setEntries] = useState<TransactionEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
   const [teacher, setTeacher] = useState("");
-  const [divide, setDivide] = useState<DivideKey>("day");
-  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+  const [dateRange, setDateRange] = useState<DateRange>(currentMonth);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  const factor = DIVIDES.find((d) => d.key === divide)!.factor;
-
-  // Kurs nomi → bitta dars narxi (yoqilgan filiallar orasidan eng yuqorisi).
-  const priceByCourse = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of OFFLINE_COURSES as SeedCourse[]) {
-      const prices = c.branches.filter((b) => b.enabled).map((b) => b.price);
-      map.set(c.name, prices.length > 0 ? Math.max(...prices) : 0);
-    }
-    return map;
+  // Bekor qilingan yozuv tushumga qo'shilmaydi — /api/reports/balance va
+  // /api/employee-salary-summary dagi bilan bir xil qoida.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/transaction-entries?txType=payIn&excludeCancelled=1")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setEntries(d.entries as TransactionEntry[]); })
+      .finally(() => { if (!cancelled) setEntriesLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
-  const rows = useMemo(() => {
-    const byTeacher = new Map<string, { groups: number; students: number; earned: number }>();
-    for (const g of GROUP_SEED as SeedGroup[]) {
-      if (!g.teacher || g.status !== "active") continue;
-      const price = priceByCourse.get(g.course ?? "") ?? 0;
-      const students = g.students ?? 0;
-      const cur = byTeacher.get(g.teacher) ?? { groups: 0, students: 0, earned: 0 };
-      cur.groups += 1;
-      cur.students += students;
-      cur.earned += students * price * factor;
-      byTeacher.set(g.teacher, cur);
-    }
-    return Array.from(byTeacher.entries())
-      .map(([name, v]) => ({ name, ...v }))
-      .filter((r) => !teacher || r.name === teacher)
-      .sort((a, b) => b.earned - a.earned);
-  }, [priceByCourse, factor, teacher]);
+  const loading = groupsLoading || entriesLoading;
 
-  const total = useMemo(() => rows.reduce((s, r) => s + r.earned, 0), [rows]);
+  // Oraliqqa tushgan kirimlar. Oraliq tozalangan bo'lsa — hamma yozuv.
+  const rangeEntries = useMemo(() => {
+    const from = dateRange.start ? toIso(dateRange.start) : "";
+    const to = dateRange.end ? toIso(dateRange.end) : "";
+    return entries.filter((e) => {
+      const d = String(e.date ?? "");
+      if (!d) return false;
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [entries, dateRange]);
+
+  // `teacherName` — ixtiyoriy maydon: u qo'shilishidan oldingi yozuvlarda
+  // yo'q. Agar oraliqdagi HECH BIR to'lovda o'qituvchi ko'rsatilmagan bo'lsa,
+  // hech kimga 0 yozib bo'lmaydi — 0 "hech kim to'lamagan" degan da'vo,
+  // haqiqat esa "bog'lanish saqlanmagan". Bunday holda ustun "—" bo'ladi.
+  const attributed = useMemo(
+    () => rangeEntries.filter((e) => nameKey(e.teacherName) !== ""),
+    [rangeEntries],
+  );
+  const hasAttribution = attributed.length > 0;
+
+  const earnedByTeacher = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of attributed) {
+      const k = nameKey(e.teacherName);
+      map.set(k, (map.get(k) ?? 0) + (e.amount || 0));
+    }
+    return map;
+  }, [attributed]);
+
+  // O'qituvchisi ko'rsatilmagan kirimlar jadvalga tushmaydi — summani
+  // yashirib qo'ymaslik uchun pastda alohida ko'rsatiladi.
+  const unattributedTotal = useMemo(
+    () => rangeEntries.filter((e) => nameKey(e.teacherName) === "").reduce((s, e) => s + (e.amount || 0), 0),
+    [rangeEntries],
+  );
+
+  const rows = useMemo<Row[]>(() => {
+    // Qatorlar: guruhi bor o'qituvchilar + to'lovi bog'langan o'qituvchilar.
+    const byKey = new Map<string, Row>();
+    const take = (name: string) => {
+      const k = nameKey(name);
+      if (!byKey.has(k)) byKey.set(k, { name: name.trim(), groups: 0, students: 0, earned: hasAttribution ? 0 : null });
+      return byKey.get(k)!;
+    };
+
+    for (const g of groups) {
+      const name = String(g.teacher ?? "").trim();
+      if (!name) continue;
+      const row = take(name);
+      row.groups += 1;
+      row.students += rosterSize(g);
+    }
+    for (const e of attributed) take(String(e.teacherName ?? ""));
+
+    for (const [k, row] of byKey) {
+      if (hasAttribution) row.earned = earnedByTeacher.get(k) ?? 0;
+    }
+
+    return Array.from(byKey.values())
+      .filter((r) => !teacher || nameKey(r.name) === nameKey(teacher))
+      .sort((a, b) => (b.earned ?? 0) - (a.earned ?? 0) || a.name.localeCompare(b.name));
+  }, [groups, attributed, earnedByTeacher, hasAttribution, teacher]);
+
+  const total = useMemo(
+    () => (hasAttribution ? rows.reduce((s, r) => s + (r.earned ?? 0), 0) : null),
+    [rows, hasAttribution],
+  );
 
   const start = (page - 1) * pageSize;
   const slice = rows.slice(start, start + pageSize);
@@ -83,34 +184,39 @@ export default function Page() {
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="text-[18px] font-semibold tracking-tight">O&apos;qituvchilar oylik to&apos;lov analitikasi</h2>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
+          <DateRangePicker
+            value={dateRange}
+            onChange={(r) => { setDateRange(r); setPage(1); }}
+            placeholder="Oraliqni tanlang"
+          />
+          {/* O'qituvchilar bazadan (/api/teachers), qattiq yozilgan
+              GROUP_TEACHERS ro'yxatidan emas. */}
           <select
             value={teacher}
             onChange={(e) => { setTeacher(e.target.value); setPage(1); }}
             className="h-10 w-52 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="">O&apos;qituvchi</option>
-            {(GROUP_TEACHERS as string[]).map((t) => <option key={t} value={t}>{t}</option>)}
+            {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <div className="inline-flex items-center rounded-lg border border-border bg-card p-1">
-            {DIVIDES.map((d) => (
-              <button
-                key={d.key}
-                onClick={() => setDivide(d.key)}
-                className={`h-8 px-4 rounded-md text-sm font-medium ${
-                  divide === d.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
       <div className="rounded-2xl bg-card border border-border p-5">
         <div className="text-[13px] text-muted-foreground">Jami ishlab berilgan</div>
-        <div className="text-[22px] font-semibold tabular-nums">{fmtUZS(total)}</div>
+        <div className="text-[22px] font-semibold tabular-nums">{total === null ? "—" : fmtUZS(total)}</div>
+        {total === null ? (
+          <div className="text-[12px] text-muted-foreground mt-1">
+            Tanlangan oraliqdagi kirim yozuvlarida o&apos;qituvchi ko&apos;rsatilmagan
+            (<code>transaction_entries.teacherName</code> bo&apos;sh) — summani o&apos;qituvchilarga
+            taqsimlab bo&apos;lmaydi.
+          </div>
+        ) : unattributedTotal > 0 ? (
+          <div className="text-[12px] text-muted-foreground mt-1">
+            Bundan tashqari o&apos;qituvchisi ko&apos;rsatilmagan {fmtUZS(unattributedTotal)} kirim bor —
+            u quyidagi jadvalga tushmaydi.
+          </div>
+        ) : null}
       </div>
 
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
@@ -139,13 +245,15 @@ export default function Page() {
                   <td className="px-5 py-3 font-medium">{r.name}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{r.groups}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{r.students}</td>
-                  <td className="px-5 py-3 pr-5 text-right tabular-nums font-medium">{fmtUZS(r.earned)}</td>
+                  <td className="px-5 py-3 pr-5 text-right tabular-nums font-medium">
+                    {r.earned === null ? "—" : fmtUZS(r.earned)}
+                  </td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-5 py-12 text-center text-sm text-muted-foreground">
-                    Ma&apos;lumot topilmadi
+                    {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
               )}

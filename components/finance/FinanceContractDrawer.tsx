@@ -7,16 +7,23 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput from "@/components/ui/MoneyInput";
-import type { Order } from "@/lib/ordersData";
+import { useModerators } from "@/hooks/useModerators";
+import type { StudentRow } from "@/lib/studentsData";
 import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
 
 // "Shartnoma yaratish" — Moliya → Shartnoma sahifasidagi o'ng tomondan
-// ochiladigan panel (skrinshot 3). `contract` berilsa — tahrirlash (PATCH
+// ochiladigan panel. `contract` berilsa — tahrirlash (PATCH
 // /api/finance-contracts/:id), aks holda qo'shish (POST /api/finance-contracts).
-// Moderator maydoni manba oynasida yo'q edi — yangi shartnoma har doim
-// joriy (demo) moderatorga biriktiriladi (loyihada haqiqiy login/sessiya
-// tushunchasi yo'q, shu sabab "joriy foydalanuvchi"ni aniqlab bo'lmaydi).
-const DEFAULT_MODERATOR = { id: 2, name: "Husanboy Sotiboldiyev" };
+//
+// ILGARI NIMA NOTO'G'RI EDI:
+//   • O'quvchi ro'yxati `createInitialOrders()` — 502 ta o'ylab topilgan
+//     buyurtmadan kelardi, ya'ni bazada mavjud bo'lmagan odamga shartnoma
+//     tuzish mumkin edi. Endi ro'yxat /api/pupils dan (sahifadagi
+//     useStudents) uzatiladi.
+//   • Moderator qattiq yozilgan DEFAULT_MODERATOR = "Husanboy Sotiboldiyev"
+//     edi — har bir yangi shartnoma o'sha odamga biriktirilardi. Endi
+//     moderator /api/moderators dagi HAQIQIY ro'yxatdan tanlanadi
+//     (hr_employees, turi: "moderator").
 
 // Formada Qiymat faqat raqamlardan iborat SATR sifatida saqlanadi (MoneyInput
 // shuni qaytaradi), saqlashda songa qaytariladi — bazadagi
@@ -29,24 +36,38 @@ function nextPartId(parts: PartDraft[]): number {
 
 export default function FinanceContractDrawer({
   contract,
-  orders,
+  students,
   onClose,
   onSaved,
 }: {
   contract?: FinanceContract;
-  orders: Order[];
+  students: StudentRow[];
   onClose: () => void;
   onSaved: (c: FinanceContract) => void;
 }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
+  const { moderators } = useModerators();
 
-  const studentOptions = useMemo(() => orders.map((o) => `${o.name} — ${o.phone}`), [orders]);
-  const initialStudentOption = contract
-    ? studentOptions.find((opt) => opt.startsWith(`${contract.studentName} —`)) ?? ""
-    : "";
-
-  const [studentOption, setStudentOption] = useState(initialStudentOption);
+  // Tanlash ro'yxatida ism va telefon — bir xil ismli o'quvchilarni ajratish
+  // uchun (telefonsiz o'quvchida faqat ism turadi).
+  const optionOf = (s: StudentRow) => (s.phone ? `${s.name} — ${s.phone}` : s.name);
+  const studentOptions = useMemo(() => students.map(optionOf), [students]);
+  // Tahrirlashda tanlangan o'quvchi ro'yxatdan HISOBLANADI, state'ga nusxa
+  // qilinmaydi: `students` propi birinchi renderda bo'sh bo'lib, keyin
+  // /api/pupils dan kelgach ro'yxat to'ladi — nusxa qilinganda maydon bo'sh
+  // qolib ketardi (effekt bilan sinxronlash esa ortiqcha render zanjiri).
+  const savedStudentOption = useMemo(
+    () => (contract
+      ? studentOptions.find((opt) => opt === contract.studentName || opt.startsWith(`${contract.studentName} —`)) ?? ""
+      : ""),
+    [contract, studentOptions],
+  );
+  // `null` — foydalanuvchi hali o'zi tanlamagan (saqlangani ko'rinadi).
+  const [picked, setPicked] = useState<string | null>(null);
+  const studentOption = picked ?? savedStudentOption;
+  const setStudentOption = setPicked;
+  const [moderatorId, setModeratorId] = useState(contract?.moderatorId ? String(contract.moderatorId) : "");
   const [comment, setComment] = useState(contract?.comment ?? "");
   const [parts, setParts] = useState<PartDraft[]>(
     contract?.parts.map((p) => ({ ...p, amount: p.amount ? String(p.amount) : "" })) ??
@@ -65,9 +86,14 @@ export default function FinanceContractDrawer({
   }
 
   async function save() {
-    const order = orders.find((o) => studentOption.startsWith(`${o.name} — ${o.phone}`));
-    if (!order) {
+    const student = students.find((s) => optionOf(s) === studentOption);
+    if (!student) {
       showError("O'quvchini tanlang");
+      return;
+    }
+    const moderator = moderators.find((m) => m.id === Number(moderatorId));
+    if (!moderator) {
+      showError("Moderatorni tanlang");
       return;
     }
     setSaving(true);
@@ -78,10 +104,13 @@ export default function FinanceContractDrawer({
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentOrderId: order.id,
-          studentName: order.name,
-          moderatorId: contract?.moderatorId ?? DEFAULT_MODERATOR.id,
-          moderatorName: contract?.moderatorName ?? DEFAULT_MODERATOR.name,
+          // `studentOrderId` nomi eski (Order.id davridan qolgan), qiymati
+          // esa endi HAQIQIY pupils.id — jadvaldagi profil havolasi shunga
+          // tayanadi.
+          studentOrderId: student.id,
+          studentName: student.name,
+          moderatorId: moderator.id,
+          moderatorName: moderator.name,
           comment,
           parts: parts.map((p) => ({ ...p, amount: Number(p.amount) || 0 })),
         }),
@@ -124,6 +153,23 @@ export default function FinanceContractDrawer({
             options={studentOptions}
             placeholder="O'quvchini tanlang"
           />
+
+          <div>
+            <label className="block text-[13px] font-medium mb-1.5">
+              Moderator<span className="text-red-500"> *</span>
+            </label>
+            <div className="relative">
+              <select
+                value={moderatorId}
+                onChange={(e) => setModeratorId(e.target.value)}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">Tanlang</option>
+                {moderators.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
+            </div>
+          </div>
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Izoh</label>

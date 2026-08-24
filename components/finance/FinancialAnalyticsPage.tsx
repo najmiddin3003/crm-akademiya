@@ -14,13 +14,19 @@ import type { Cashbox } from "@/lib/cashboxes";
 // panel — filial/kassalar bo'yicha umumiy balans + to'lov usuli taqsimoti;
 // o'ngda 3 tab: Kalendar (kunlik balans), Journal (alohida tranzaksiyalar),
 // Pul oqimi (12 oylik grafik/jadval + top-5 taqsimot). Hammasi BIR XIL
-// /api/transactions ma'lumotidan hisoblanadi (ichki mos keladi). Foydalanuvchi
-// bilan kelishilgan yengil qamrov: faqat Iyul 2026 uchun to'liq generatsiya
-// qilingan (constants/transactions.js), boshqa oylar bo'sh — Pul oqimi
-// grafigida faqat Iyulda cho'qqi bo'ladi. Loyihada faqat bitta haqiqiy filial
-// bor ("Akademiya", header'dagi filial-tanlagichda ko'ringan boshqalari hali
-// real emas), shuning uchun "Umumiy filiallar summasi" = shu bitta filialning
-// o'zi (fabrikatsiya qilinmagan ko'p filial emas).
+// /api/transactions ma'lumotidan hisoblanadi (ichki mos keladi) — bu
+// kolleksiyaga yozuvlar Kassalar sahifasidagi Kirim/Chiqim amallaridan
+// tushadi, demo seed yo'q (izoh ilgari constants/transactions.js dagi
+// "Iyul 2026 generatori"ga ishora qilardi — u generator endi bu sahifaga
+// hech qanday aloqasi yo'q, /api/transactions faqat haqiqiy yozuvlarni
+// qaytaradi).
+//
+// Loyihada faqat bitta haqiqiy filial bor ("Akademiya"), shuning uchun
+// "Umumiy filiallar summasi" = shu bitta filialning o'zi (fabrikatsiya
+// qilingan ko'p filial emas). Shu sababli yuqoridagi "Barcha filiallar"
+// nomli o'chirilgan (disabled) tanlov ham olib tashlandi: u hech qachon
+// hech narsani filtrlay olmasdi — tranzaksiya yozuvida `branchId` maydoni
+// umuman yo'q.
 
 type TabKey = "kalendar" | "journal" | "pulOqimi";
 
@@ -65,11 +71,15 @@ export default function FinancialAnalyticsPage() {
     <div className="p-4 md:p-5 flex flex-col lg:flex-row gap-4 items-start">
       {/* Chap panel */}
       <aside className="w-full lg:w-72 shrink-0 space-y-4">
+        {/* Tugma faqat Kalendar tab'iga qaytaradi. Ilgari title'da
+            "filtrlarni asl holatga qaytarish" deb yozilgan edi — u hech
+            qanday filtrni tozalamaydi (filtrlar tab komponentlari ichida),
+            ya'ni yozuv va'da qilgan ish bajarilmasdi. */}
         <div className="flex justify-end">
           <button
             onClick={() => setTab("kalendar")}
             className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-            title="Markazlashtirish (filtrlarni asl holatga qaytarish)"
+            title="Kalendar ko'rinishiga qaytish"
           >
             <Target className="w-4 h-4" />
           </button>
@@ -116,13 +126,6 @@ export default function FinancialAnalyticsPage() {
                 {t.label}
               </button>
             ))}
-          </div>
-
-          <div className="relative">
-            <select disabled className="h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-muted-foreground">
-              <option>Barcha filiallar</option>
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
         </div>
 

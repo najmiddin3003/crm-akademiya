@@ -14,9 +14,15 @@ import type { Cashbox } from "@/lib/cashboxes";
 
 // "Jarima qo'shish" — Moliya → Jarima sahifasidagi o'ng tomondan ochiladigan
 // panel. Bonus bilan bir xil "Tranzaksiya turi" → Xodim/O'quvchi mantig'i
-// (BonusDrawer'ga qarang), farqi — oxirida "Rasm" (fayl) maydoni bor. Fayl
-// mahalliy tanlanadi, serverga yuklanmaydi — faqat NOMI saqlanadi (loyihadagi
-// mavjud "Fayl tanlang" konventsiyasi, masalan groups/AddTaskModal'da).
+// (BonusDrawer'ga qarang), farqi — oxirida "Rasm" (fayl) maydoni bor.
+//
+// ILGARI rasm HECH QAYERGA yuklanmasdi: faqat faylning NOMI ("dalil.jpg")
+// bazaga yozilardi, ya'ni jadvaldagi "Rasm" ustuni ochib bo'lmaydigan matn
+// edi — jarimaga dalil biriktirdim degan yolg'on. Endi fayl haqiqatan
+// /api/upload/image orqali Cloudinary'ga yuklanadi va `image` maydonida
+// URL saqlanadi (components/employees/AddEmployeeModal.tsx bilan bir xil
+// qolip). Yuklash muvaffaqiyatsiz bo'lsa saqlash TO'XTAYDI — jarima
+// rasmsiz yozilib, foydalanuvchi buni sezmay qolmasin.
 export default function PenaltyDrawer({
   onClose,
   onSaved,
@@ -33,7 +39,8 @@ export default function PenaltyDrawer({
   const [cashboxId, setCashboxId] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  const [imageName, setImageName] = useState("");
+  // Faylning o'zi saqlanadi (nomi emas) — saqlashda u yuklanadi.
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -68,10 +75,26 @@ export default function PenaltyDrawer({
     }
     setSaving(true);
     try {
+      // Rasm avval yuklanadi; xato bo'lsa jarima umuman yozilmaydi.
+      let imageUrl = "";
+      if (imageFile) {
+        const fd = new FormData();
+        fd.append("file", imageFile);
+        fd.append("folder", "jarimalar");
+        const up = await fetch("/api/upload/image", { method: "POST", body: fd });
+        const upData = await up.json();
+        if (!up.ok || !upData.ok) {
+          showError(upData.error || "Rasm yuklanmadi");
+          setSaving(false);
+          return;
+        }
+        imageUrl = upData.url as string;
+      }
+
       const res = await fetch("/api/penalties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, recipientName, amount: amountNum, note, image: imageName, cashboxId: cashboxId ? Number(cashboxId) : null }),
+        body: JSON.stringify({ type, recipientName, amount: amountNum, note, image: imageUrl, cashboxId: cashboxId ? Number(cashboxId) : null }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -170,14 +193,23 @@ export default function PenaltyDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Rasm</label>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setImageName(e.target.files?.[0]?.name || "")} />
+            {/* Endpoint faqat PNG/JPG/WEBP va 5 MB gacha qabul qiladi
+                (app/api/upload/image/route.ts) — tanlash oynasi ham shu
+                turlar bilan cheklanadi. */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+            />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               className="w-full h-10 flex items-center justify-between rounded-lg border border-border bg-card px-3 text-sm hover:bg-secondary"
             >
-              <span className={imageName ? "" : "text-muted-foreground"}>{imageName || "Faylni tanlash"}</span>
-              <Upload className="w-4 h-4 text-muted-foreground" />
+              <span className={imageFile ? "truncate" : "text-muted-foreground"}>{imageFile?.name || "Faylni tanlash"}</span>
+              <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
           </div>
         </div>

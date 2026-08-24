@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Settings, Share2, XCircle, Zap } from "lucide-react";
+import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Settings, Share2, XCircle } from "lucide-react";
 import * as XLSX from "xlsx";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
@@ -58,7 +58,6 @@ import { Menu } from "lucide-react";
 //   Moderator    — /api/hr-employees (turi: "moderator")
 //   Status       — ORDER_STAGES (lid voronkasi bosqichlari, emoji bilan)
 //   Manba        — ORDER_SOURCES (hozircha qo'lda; README'ga qarang)
-//   Ichki manba / So'rovnoma — referensda ham bo'sh
 //   Filiallar    — /api/branches
 //   Kun          — hafta kunlari
 //   Kategoriya   — STUDENT_CATEGORIES
@@ -77,13 +76,17 @@ const FILTER_FIELDS: { key: string; label: string }[] = [
   { key: "moderator", label: "Moderator" },
   { key: "status", label: "Status" },
   { key: "source", label: "Manba" },
-  { key: "subsource", label: "Ichki manba" },
   { key: "fromBranch", label: "Qaysi filialdan o'tkazilgan" },
   { key: "toBranch", label: "Qaysi filialga o'tkazilgan" },
   { key: "day", label: "Kun" },
-  { key: "survey", label: "So'rovnoma" },
   { key: "category", label: "Kategoriya" },
 ];
+// OLIB TASHLANDI: "Ichki manba" va "So'rovnoma" filtrlari. Ikkalasi ham faqat
+// o'z placeholder variantidan iborat bo'sh <select> edi — tanlash uchun hech
+// narsa yo'q edi, chunki `orders` hujjatidagi `subsource`/`survey` maydonlarini
+// hech bir forma to'ldirmaydi (lib/ordersData.ts → buildOrderFromValues ularni
+// doim "" qilib yozadi). Ya'ni bu ikki filtr hech qachon hech narsani topa
+// olmasdi. Maydonlar to'ldiriladigan bo'lsa, filtrlar qaytariladi.
 const DEFAULT_VISIBLE_FIELDS: Record<string, boolean> = Object.fromEntries(FILTER_FIELDS.map((f) => [f.key, true]));
 
 export default function OrdersPage() {
@@ -96,7 +99,6 @@ export default function OrdersPage() {
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [orderModal, setOrderModal] = useState<{ mode: "add" } | { mode: "edit"; order: Order } | null>(null);
   const [messageFor, setMessageFor] = useState<Order | null>(null);
   const [stagePickerFor, setStagePickerFor] = useState<number | null>(null);
@@ -569,16 +571,6 @@ export default function OrdersPage() {
               ))}
             </select>
           )}
-          {visibleFields.subsource && (
-            <select
-              value={filters.subsource}
-              onChange={(e) => setFilter("subsource", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              {/* Referensda ham ro'yxat bo'sh — ichki manba hali yuritilmaydi. */}
-              <option value="">Ichki manba</option>
-            </select>
-          )}
           {visibleFields.fromBranch && (
             <select
               value={filters.fromBranch}
@@ -621,16 +613,6 @@ export default function OrdersPage() {
                     {d}
                   </option>
                 ))}
-            </select>
-          )}
-          {visibleFields.survey && (
-            <select
-              value={filters.survey}
-              onChange={(e) => setFilter("survey", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              {/* Referensda ham ro'yxat bo'sh. */}
-              <option value="">So&apos;rovnoma</option>
             </select>
           )}
           {visibleFields.category && (
@@ -858,9 +840,10 @@ export default function OrdersPage() {
           order={messageFor}
           messages={messagesByOrder[messageFor.id] ?? []}
           onClose={() => setMessageFor(null)}
-          onSend={(text) => {
-            addMessage(messageFor.id, text);
-            showSuccess("Izoh qo'shildi");
+          onSend={async (text) => {
+            // Muvaffaqiyat toasti FAQAT izoh haqiqatan saqlangandan keyin
+            // (ilgari POST umuman yo'q edi va toast har doim chiqardi).
+            if (await addMessage(messageFor.id, text)) showSuccess("Izoh qo'shildi");
           }}
         />
       )}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
+import SettingsNote from "./SettingsNote";
 import { FIELD_MODES } from "@/constants/settingsFields";
 
 // Sozlamalar → Sotuv va marketing → "So'raladigan bo'limlar".
@@ -127,6 +128,16 @@ export default function FieldSettingsTab() {
           </button>
         ))}
       </div>
+
+      {/* Sozlama bazaga to'g'ri yoziladi, lekin "sale-marketing.field" hujjatini
+          o'qiydigan forma yo'q: o'quvchi kartochkasi, buyurtma va birinchi dars
+          formalari o'z maydonlarini o'zgarmas ro'yxatdan chizadi. Ya'ni bu
+          yerdagi belgi hozircha hech qaysi formaning ko'rinishini o'zgartirmaydi —
+          shuni yashirmaymiz. */}
+      <SettingsNote>
+        Tanlov saqlanadi, lekin o&apos;quvchi kartochkasi va buyurtma / birinchi dars formalari
+        hozircha uni o&apos;qimaydi &mdash; ular maydonlarni o&apos;zgarmas ro&apos;yxat bo&apos;yicha ko&apos;rsatadi.
+      </SettingsNote>
 
       {loading ? (
         <div className="rounded-2xl bg-card border border-border p-8">

@@ -18,6 +18,21 @@ import type { Bonus } from "@/lib/bonuses";
 // sana oralig'i, Sozlama — CSV/Excel eksport, Ustunlar — jadval ustunlarini
 // yashirish/ko'rsatish.
 
+// /api/bonuses qaytaradigan qatorning ANIQ shakli.
+//
+// NIMA O'ZGARDI: "Oldingi/Keyingi miqdor" endi haqiqiy manba bo'lmaganda
+// (xodimning balansini tizimda hech nima yuritmaydi) `null` keladi, "Kim
+// tomonidan" esa sessiya bo'lmasa bo'sh keladi. Ilgari bu ustunlarda,
+// jumladan CSV/Excel eksportida ham, o'ylab topilgan son va har safar bir
+// xil o'ylab topilgan ism turardi. lib/bonuses.ts (bu guruh egaligida emas)
+// ularni hali `number`/`string` deb e'lon qiladi — shu bois shu yerda
+// kengaytirilgan tur bilan o'qiymiz.
+type BonusRow = Omit<Bonus, "before" | "after" | "givenBy"> & {
+  before: number | null;
+  after: number | null;
+  givenBy?: string | null;
+};
+
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(BONUS_TYPES.map((t) => [t.value, t.tableLabel]));
 const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
@@ -52,7 +67,7 @@ function parseCreatedAt(s: string): Date | null {
 
 export default function BonusesPage() {
   const { showSuccess, showError } = useToast();
-  const [rows, setRows] = useState<Bonus[]>([]);
+  const [rows, setRows] = useState<BonusRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [typeFilter, setTypeFilter] = useState("");
@@ -62,7 +77,7 @@ export default function BonusesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [addOpen, setAddOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Bonus | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BonusRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [filterOpen, setFilterOpen] = useState(false);
@@ -123,13 +138,15 @@ export default function BonusesPage() {
     });
   }
 
-  const exportCols: { label: string; get: (b: Bonus) => string | number }[] = [
+  // Eksportda ham jadvaldagi bilan AYNAN bir xil qiymat chiqadi: noma'lum
+  // maydon 0 yoki o'ylab topilgan ism emas, "—" bo'lib tushadi.
+  const exportCols: { label: string; get: (b: BonusRow) => string | number }[] = [
     { label: "Bonus turi", get: (b) => TYPE_LABEL[b.type] || b.type },
     { label: "To'liq ismi", get: (b) => b.recipientName },
-    { label: "Kim tomonidan", get: (b) => b.givenBy },
-    { label: "Oldingi miqdor", get: (b) => b.before },
+    { label: "Kim tomonidan", get: (b) => b.givenBy || "—" },
+    { label: "Oldingi miqdor", get: (b) => b.before ?? "—" },
     { label: "Miqdor", get: (b) => b.amount },
-    { label: "Keyingi miqdor", get: (b) => b.after },
+    { label: "Keyingi miqdor", get: (b) => b.after ?? "—" },
     { label: "Izoh", get: (b) => b.note || "" },
     { label: "Sababi", get: (b) => b.reason || "" },
     { label: "Holat", get: (b) => b.status || "" },
@@ -213,12 +230,10 @@ export default function BonusesPage() {
           </select>
           <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
-        <div className="relative">
-          <select disabled className={`${selectCls} w-36 text-muted-foreground`}>
-            <option value="">To&apos;lov</option>
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        {/* Bu yerda "To'lov" nomli o'chirilgan (disabled), hech qachon
+            ishlamaydigan tanlov turardi — Bonus yozuvida to'lovga bog'lanish
+            maydoni yo'q, shuning uchun u hech qachon filtrlay olmasdi.
+            Ishlamaydigan boshqaruvni qoldirgandan ko'ra olib tashlandi. */}
         <div className="flex items-center gap-1.5 ml-auto">
           <div className="relative" ref={filterRef}>
             <button
@@ -336,10 +351,12 @@ export default function BonusesPage() {
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   {!hiddenCols.has("type") && <td className="px-3 py-3 text-[13px] font-medium text-emerald-600">{TYPE_LABEL[b.type] || b.type}</td>}
                   {!hiddenCols.has("recipient") && <td className="px-3 py-3 text-[13px]">{b.recipientName}</td>}
-                  {!hiddenCols.has("givenBy") && <td className="px-3 py-3 text-[13px]">{b.givenBy}</td>}
-                  {!hiddenCols.has("before") && <td className="px-3 py-3 text-[13px] tabular-nums">{b.before.toLocaleString("ru-RU")}</td>}
+                  {/* Manbasi yo'q qiymat "—": 0 yoki qandaydir ism yozish
+                      soxta faktik da'vo bo'lardi. */}
+                  {!hiddenCols.has("givenBy") && <td className="px-3 py-3 text-[13px]">{b.givenBy || "—"}</td>}
+                  {!hiddenCols.has("before") && <td className="px-3 py-3 text-[13px] tabular-nums">{b.before == null ? "—" : b.before.toLocaleString("ru-RU")}</td>}
                   {!hiddenCols.has("amount") && <td className="px-3 py-3 text-[13px] tabular-nums font-semibold">{b.amount.toLocaleString("ru-RU")}</td>}
-                  {!hiddenCols.has("after") && <td className="px-3 py-3 text-[13px] tabular-nums">{b.after.toLocaleString("ru-RU")}</td>}
+                  {!hiddenCols.has("after") && <td className="px-3 py-3 text-[13px] tabular-nums">{b.after == null ? "—" : b.after.toLocaleString("ru-RU")}</td>}
                   {!hiddenCols.has("note") && <td className="px-3 py-3 text-[13px] text-muted-foreground">{b.note || "—"}</td>}
                   {!hiddenCols.has("reason") && <td className="px-3 py-3 text-[13px] text-muted-foreground">{b.reason || "—"}</td>}
                   {!hiddenCols.has("status") && <td className="px-3 py-3 text-[13px] text-muted-foreground">{b.status || "—"}</td>}

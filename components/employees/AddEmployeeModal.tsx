@@ -1,19 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Trash2, Upload, X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useBranches } from "@/hooks/useBranches";
 import EmployeeToggle from "./EmployeeToggle";
-import CustomFieldDrawer from "./CustomFieldDrawer";
-import type { HrEmployee } from "@/lib/hrEmployees";
+import CustomFieldDrawer, { type CustomFieldDraft } from "./CustomFieldDrawer";
+import {
+  EMPLOYEE_CUSTOM_FIELDS_KEY,
+  readCustomFieldDefs,
+  type EmployeeCustomFieldDef,
+  type HrEmployeeFull,
+} from "./employeeExtras";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
-// Saqlash → POST /api/hr-employees (asosiy maydonlar: ism+familiya, telefon,
-// vazifa→turi, jinsi→gender, email); ish haqi/rollar/maxsus maydonlar hozircha
-// yuborilmaydi. "Maxsus maydon qo'shish" o'ngdan CustomFieldDrawer'ni ochadi.
+// Saqlash → POST /api/hr-employees.
+//
+// NIMA NOTO'G'RI EDI: shaklda yig'ilgan bir nechta qiymat hech qayerga
+// yuborilmasdi — tug'ilgan sanasi (boshqarilmaydigan input edi), Izoh,
+// "Ish haqi chiqarish" va "Ikki bosqichli tasdiqlash" toggle'lari, hamda
+// "Maxsus maydon qo'shish" drawer'i (u faqat toast chiqarardi).
+// "Hammasiga bir xil" galochkasi ham hech narsaga ta'sir qilmasdi.
+// Hozir hammasi saqlanadi; maxsus maydon TA'RIFLARI esa `settings`
+// kolleksiyasida (management.employee-custom-fields) turadi, ya'ni bir marta
+// yaratilgan maydon keyingi xodimlarda ham chiqadi.
+//
+// DIQQAT: saqlanish — ishlash degani EMAS. "Ikki bosqichli tasdiqlash"
+// bazaga yoziladi, lekin login oqimi (app/api/auth/login/route.ts) uni
+// o'qimaydi; shuning uchun toggle ostida buni ochiq aytadigan izoh turadi.
 const selectCls =
   "w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls =
@@ -50,7 +66,52 @@ function isValidPhoneClient(input: string): boolean {
   return /^998\d{9}$/.test(normalized);
 }
 
-export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () => void; onCreated?: (emp: HrEmployee) => void }) {
+/**
+ * Maxsus maydon turiga mos kiritish elementi. Qiymat HAR DOIM satr bo'lib
+ * saqlanadi — belgi (checkbox) uchun "Ha" / bo'sh, chunki hujjatdagi
+ * `customFields` — Record<string, string>.
+ */
+function renderCustomInput(
+  def: EmployeeCustomFieldDef,
+  value: string,
+  onChange: (v: string) => void,
+) {
+  if (def.type === "Belgi (checkbox)") {
+    return (
+      <label className="flex items-center gap-2 h-10 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={value === "Ha"}
+          onChange={(e) => onChange(e.target.checked ? "Ha" : "")}
+          className="w-4 h-4 rounded border-border accent-primary"
+        />
+        <span className="text-sm text-muted-foreground">Ha</span>
+      </label>
+    );
+  }
+  if (def.type === "Tanlov (select)") {
+    return (
+      <div className="relative">
+        <select className={selectCls} value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Tanlang</option>
+          {def.options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <Chevron />
+      </div>
+    );
+  }
+  const type = def.type === "Raqam" ? "number" : def.type === "Sana" ? "date" : "text";
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={inputCls}
+    />
+  );
+}
+
+export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () => void; onCreated?: (emp: HrEmployeeFull) => void }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   // Filial qatorlari Boshqaruv → Filiallar bilan bir xil manbadan.
@@ -61,11 +122,79 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   const [vazifa, setVazifa] = useState("");
   const [jinsi, setJinsi] = useState("");
   const [email, setEmail] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [comment, setComment] = useState("");
   const [payroll, setPayroll] = useState(false);
   const [twoFactor, setTwoFactor] = useState(false);
   const [sameForAll, setSameForAll] = useState(true);
   const [showCustomField, setShowCustomField] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // ── Maxsus maydonlar ────────────────────────────────────────────────────
+  // Ta'riflar sozlamalarda (barcha xodimlar uchun umumiy), qiymatlar esa
+  // shu xodim hujjatida (`customFields`) saqlanadi.
+  const [customDefs, setCustomDefs] = useState<EmployeeCustomFieldDef[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  const [savingField, setSavingField] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/settings?key=${encodeURIComponent(EMPLOYEE_CUSTOM_FIELDS_KEY)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.ok) return;
+        setCustomDefs(readCustomFieldDefs(d.values));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  /** Ta'riflar ro'yxatini sozlamalarga yozadi (butun ro'yxat qayta yoziladi). */
+  async function persistDefs(next: EmployeeCustomFieldDef[]): Promise<boolean> {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: EMPLOYEE_CUSTOM_FIELDS_KEY, values: { fields: next } }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Maxsus maydon saqlanmadi");
+        return false;
+      }
+      setCustomDefs(next);
+      return true;
+    } catch {
+      showError("Serverga ulanib bo'lmadi — maxsus maydon saqlanmadi");
+      return false;
+    }
+  }
+
+  async function addCustomField(draft: CustomFieldDraft) {
+    if (customDefs.some((f) => f.name.toLowerCase() === draft.name.toLowerCase())) {
+      showError(`"${draft.name}" nomli maydon allaqachon bor`);
+      return;
+    }
+    setSavingField(true);
+    const nextId = customDefs.reduce((max, f) => Math.max(max, f.id), 0) + 1;
+    const ok = await persistDefs([...customDefs, { id: nextId, ...draft }]);
+    setSavingField(false);
+    if (!ok) return;
+    setShowCustomField(false);
+    showSuccess(`Maxsus maydon qo'shildi — ${draft.name}`);
+  }
+
+  async function removeCustomField(def: EmployeeCustomFieldDef) {
+    const ok = await persistDefs(customDefs.filter((f) => f.id !== def.id));
+    if (!ok) return;
+    // Kiritilgan qiymat ham qoldirilmaydi — maydonning o'zi endi yo'q.
+    setCustomValues((prev) => {
+      const next = { ...prev };
+      delete next[def.name];
+      return next;
+    });
+    showSuccess(`Maxsus maydon o'chirildi — ${def.name}`);
+  }
 
   // Referensda vazifa "O'qituvchi" tanlanganda pastda yana uchta maydon
   // ochiladi. Uchalasining ro'yxati ham BACKENDDAN keladi:
@@ -125,7 +254,31 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
     return branchRows[id] ?? EMPTY_ROW;
   }
   function updateRow(id: number, patch: Partial<BranchRow>) {
-    setBranchRows((p) => ({ ...p, [id]: { ...(p[id] ?? EMPTY_ROW), ...patch } }));
+    setBranchRows((p) => {
+      const next: Record<number, BranchRow> = { ...p, [id]: { ...(p[id] ?? EMPTY_ROW), ...patch } };
+      // "Hammasiga bir xil" — galochka aynan shuni va'da qiladi: bitta
+      // qatorga yozilgan ish haqi qolgan filiallarga ham ko'chiriladi.
+      // Ilgari bu holat hech qayerda o'qilmasdi, ya'ni galochka o'lik edi.
+      if (sameForAll && patch.salary !== undefined) {
+        for (const b of branches) {
+          if (b.id === id) continue;
+          next[b.id] = { ...(next[b.id] ?? EMPTY_ROW), salary: patch.salary };
+        }
+      }
+      return next;
+    });
+  }
+  /** Galochka YOQILGANDA mavjud ish haqilarni darhol tenglashtiramiz. */
+  function toggleSameForAll(on: boolean) {
+    setSameForAll(on);
+    if (!on) return;
+    setBranchRows((p) => {
+      const first = branches.map((b) => p[b.id]?.salary).find((s) => s);
+      if (!first) return p;
+      const next: Record<number, BranchRow> = { ...p };
+      for (const b of branches) next[b.id] = { ...(next[b.id] ?? EMPTY_ROW), salary: first };
+      return next;
+    });
   }
 
   // ── Profil rasmi ────────────────────────────────────────────────────────
@@ -174,6 +327,13 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
       showError("Kursni tanlang");
       return;
     }
+    // Drawer'da "Majburiy maydon" yoqilgan bo'lsa — u haqiqatan majburiy
+    // bo'lsin, aks holda toggle yana bir bo'sh va'da bo'lib qolardi.
+    const missing = customDefs.find((f) => f.required && !(customValues[f.name] || "").trim());
+    if (missing) {
+      showError(`"${missing.name}" maydonini to'ldiring`);
+      return;
+    }
     setSaving(true);
     try {
       // Rasm avval Cloudinary'ga yuklanadi. Yuklanmasa saqlashni TO'XTATAMIZ —
@@ -215,6 +375,16 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
           turi: TURI_MAP[vazifa] || "",
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
+          birthDate,
+          comment: comment.trim(),
+          payroll,
+          twoFactor,
+          // Faqat to'ldirilgan maxsus maydonlar yuboriladi.
+          customFields: Object.fromEntries(
+            customDefs
+              .map((f) => [f.name, (customValues[f.name] || "").trim()] as const)
+              .filter(([, v]) => v !== ""),
+          ),
           // Faqat o'qituvchida to'ldiriladi; boshqasida bo'sh ketadi.
           kurs,
           percent,
@@ -229,7 +399,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
         setSaving(false);
         return;
       }
-      onCreated?.(data.employee as HrEmployee);
+      onCreated?.(data.employee as HrEmployeeFull);
       if (data.smsSent) {
         showSuccess(`Xodim qo'shildi — ${name}. Faollashtirish SMS'i yuborildi.`);
       } else {
@@ -312,7 +482,12 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
             </div>
             <div>
               <label className={labelCls}>Tug&apos;ilgan sanasi</label>
-              <input type="date" className={inputCls} />
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className={inputCls}
+              />
             </div>
           </div>
 
@@ -366,7 +541,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
               <div className="flex items-center justify-between">
                 <span>Ish haqi</span>
                 <label className="flex items-center gap-1 font-normal text-[12px] cursor-pointer">
-                  <input type="checkbox" checked={sameForAll} onChange={(e) => setSameForAll(e.target.checked)} className="w-4 h-4 rounded accent-primary" /> Hammasiga bir xil
+                  <input type="checkbox" checked={sameForAll} onChange={(e) => toggleSameForAll(e.target.checked)} className="w-4 h-4 rounded accent-primary" /> Hammasiga bir xil
                 </label>
               </div>
             </div>
@@ -426,7 +601,12 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
           {/* Izoh */}
           <div>
             <label className={labelCls}>Izoh</label>
-            <textarea rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <textarea
+              rows={2}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
           </div>
 
           {/* Elektron pochta / Profil rasmi / Ikki bosqichli tasdiqlash */}
@@ -471,10 +651,48 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
                 </button>
               )}
             </div>
-            <div className="flex items-end">
+            <div className="flex flex-col justify-end gap-1.5">
               <EmployeeToggle checked={twoFactor} onChange={setTwoFactor} label="Ikki bosqichli tasdiqlash" />
+              {/* Toggle qiymati bazaga rost yoziladi (hr_employees.twoFactor),
+                  ammo uni O'QIYDIGAN kod yo'q: app/api/auth/login/route.ts
+                  faqat telefon + parolni tekshiradi va hech qanday ikkinchi
+                  bosqich so'ramaydi. Uni "ishlaydigan xavfsizlik sozlamasi"
+                  qilib ko'rsatish yolg'on va'da bo'lardi, o'chirib tashlash
+                  esa saqlangan haqiqiy qiymatni yo'qotardi — shu bois
+                  Sozlamalar bo'limidagi kabi qisqa, xira rost izoh
+                  (components/settings/SettingsNote.tsx qoidasi). */}
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Belgi xodim kartasiga saqlanadi, lekin hozircha amal qilmaydi &mdash; tizimga
+                kirishda faqat telefon raqam va parol tekshiriladi.
+              </p>
             </div>
           </div>
+
+          {/* Maxsus maydonlar — sozlamalarda saqlangan ta'riflar bo'yicha. */}
+          {customDefs.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {customDefs.map((f) => (
+                <div key={f.id}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[13px] font-medium">
+                      {f.name}
+                      {f.required && <span className="text-rose-500">*</span>}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeCustomField(f)}
+                      title="Maydonni o'chirish"
+                      className="h-6 w-6 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {renderCustomInput(f, customValues[f.name] ?? "", (v) =>
+                    setCustomValues((prev) => ({ ...prev, [f.name]: v })))}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Maxsus maydon qo'shish */}
           <button
@@ -497,10 +715,8 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
       {showCustomField && (
         <CustomFieldDrawer
           onClose={() => setShowCustomField(false)}
-          onSave={(name) => {
-            setShowCustomField(false);
-            showSuccess(name ? `Maxsus maydon qo'shildi — ${name}` : "Maxsus maydon qo'shildi (demo)");
-          }}
+          onSave={addCustomField}
+          saving={savingField}
         />
       )}
     </div>

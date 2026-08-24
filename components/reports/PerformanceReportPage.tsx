@@ -1,15 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { createInitialOrders } from "@/lib/ordersData";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import type { Order } from "@/lib/ordersData";
 import { STATE_KEYS, STATE_LABELS, buildPerformanceRows, type StateCounts } from "@/lib/performanceReport";
 
 // Hisobotlar → O'qituvchilar / Adminstratorlar samaradorligi.
 // Ikkala sahifa ham AYNAN shu komponentdan foydalanadi, farqi faqat qaysi
 // maydon bo'yicha guruhlanishida (o'qituvchi yoki moderator) — referensda
 // ham ikkala jadval bir xil tuzilishga ega.
+//
+// ILGARI: butun jadval createInitialOrders() dan qurilardi — bu 502 ta SOXTA
+// buyurtma generatori (ism/telefon/sana/o'qituvchi/moderator hammasi indeks
+// arifmetikasidan: `i % 7`, `(i*37+13) % 100` va h.k.). Ya'ni sahifa bazada
+// bitta ham buyurtma bo'lmasa ham to'la jadval ko'rsatardi va undagi hech bir
+// o'qituvchi yoki moderator haqiqiy xodim emas edi.
+// HOZIR: buyurtmalar /api/orders dan (MongoDB `orders`) — /orders-list,
+// /first-lessons va /new-students bilan bir xil manba.
 
 const GROUP_HEADERS = ["Davr boshidagi holati", "O'zgarishlar", "Davr oxiridagi holati"];
 
@@ -36,10 +45,20 @@ export default function PerformanceReportPage({
   groupBy: "teacher" | "moderator";
   firstColumnLabel: string;
 }) {
-  const allOrders = useMemo(() => createInitialOrders(), []);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/orders")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setAllOrders(d.orders as Order[]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const rows = useMemo(
     () => buildPerformanceRows(allOrders, (o) => (groupBy === "teacher" ? o.teacher : o.moderator), dateRange),
@@ -109,7 +128,7 @@ export default function PerformanceReportPage({
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={14} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                    Ma&apos;lumot topilmadi
+                    {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
               )}

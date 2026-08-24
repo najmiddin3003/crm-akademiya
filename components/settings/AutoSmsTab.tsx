@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { Toggle } from "./SettingsForm";
+import SettingsNote from "./SettingsNote";
 import { useBranches } from "@/hooks/useBranches";
 import {
   AUTO_SMS_ABSENT_STATUSES,
@@ -71,7 +72,21 @@ interface AutoSmsData {
 
 const SCENARIOS = AUTO_SMS_SCENARIOS as unknown as ScenarioDef[];
 const SUBS = AUTO_SMS_ABSENT_SUBS as unknown as SubDef[];
-const DEFAULTS = AUTO_SMS_DEFAULTS as unknown as AutoSmsData;
+
+// AUTO_SMS_DEFAULTS.branch — AUTO_SMS_BRANCHES[0], ya'ni "Tanlang" degan
+// o'rinbosar satr (constants/settingsAutoSms.js). Filiallar ro'yxati endi
+// bazadan kelgani uchun bu satr HECH QACHON birorta haqiqiy filial nomiga
+// to'g'ri kelmaydi: controlled <select> da mos <option> topilmay
+// selectedIndex -1 bo'lardi va maydon birinchi ochilishda BO'SH ko'rinardi —
+// go'yo hech narsa tanlanmagandek, lekin "Tanlang" o'rinbosari ham
+// ko'rinmasdi. Bo'sh satr esa "tanlanmagan" ning to'g'ri ifodasi va pastdagi
+// <option value=""> bilan aniq mos tushadi.
+// (Bu o'rinbosar constants/settingsAutoSms.js da — u fayl bu ishning
+//  egaligiga kirmagani uchun qiymat shu yerda tozalanadi.)
+const DEFAULTS: AutoSmsData = {
+  ...(AUTO_SMS_DEFAULTS as unknown as AutoSmsData),
+  branch: "",
+};
 
 // `scenarios` ichma-ich obyekt bo'lgani uchun yuza merge yetmaydi: har bir
 // ssenariy, undan keyin ost-bloklar ham alohida birlashtiriladi — yangi
@@ -102,7 +117,7 @@ function withDefaults(saved?: Partial<AutoSmsData>): AutoSmsData {
 export default function AutoSmsTab() {
   // Filiallar bazadan — ilgari bu ro'yxat faqat ["Tanlang"] edi, ya'ni
   // birorta haqiqiy filialni tanlab bo'lmasdi.
-  const { branches } = useBranches();
+  const { branches, loading: branchesLoading } = useBranches();
   const branchNames = branches.map((b) => b.name).filter(Boolean);
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<AutoSmsData>(withDefaults);
@@ -188,14 +203,42 @@ export default function AutoSmsTab() {
             saqlash shaklida qoldirilgan, lekin UI'da ko'rsatilmaydi. */}
         <h3 className="text-[15px] font-semibold">Avto sms yoqish</h3>
 
+        {/* NEGA BU IZOH BOR: sahifa nomi "Avto sms", lekin tizimda hodisani
+            kutib turadigan rejalashtiruvchi (cron/queue) yo'q — toggle,
+            filial, "necha minutdan keyin" va "ketma-ket necha kun" qiymatlari
+            saqlanadi-yu, ularni o'qib SMS yuboradigan kod yo'q. Yagona
+            haqiqiy foydalanuvchi — SmsModal (Buyurtma → SMS yuborish): u shu
+            yerdagi XABAR MATNLARINI qo'lda yuborish uchun shablon sifatida
+            oladi. Shuni ochiq aytmasak, sozlagan odam sms avtomatik ketyapti
+            deb o'ylab qoladi. */}
+        <div className="pt-3">
+          <SettingsNote>
+            Xabar matnlari &quot;SMS yuborish&quot; oynasida tayyor shablon bo&apos;lib chiqadi va
+            shu yerdan qo&apos;lda yuboriladi. Avtomatik yuborish esa hali ishlamaydi: belgilar,
+            filial va vaqt qiymatlari saqlanadi, lekin ularni kutib turadigan xizmat yo&apos;q.
+          </SettingsNote>
+        </div>
+
         <div className="pt-3">
           <label className="block text-[13px] font-medium mb-1.5">Filiallar</label>
           <div className="relative">
+            {/* Saqlangan filial ro'yxatda topilmasa (hali yuklanmagan yoki
+                Boshqaruv → Filiallar dan o'chirilgan) o'rinbosar ko'rsatiladi:
+                yo'q filial nomini chizib turish "shu filial tanlangan" degan
+                yolg'on bo'lardi, bo'sh maydon esa nima bo'layotganini
+                umuman tushuntirmasdi. */}
             <select
-              value={data.branch}
+              value={branchNames.includes(data.branch) ? data.branch : ""}
               onChange={(e) => setData((p) => ({ ...p, branch: e.target.value }))}
               className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
+              <option value="">
+                {branchesLoading
+                  ? "Yuklanmoqda…"
+                  : branchNames.length === 0
+                    ? "Filial qo'shilmagan"
+                    : "Tanlang"}
+              </option>
               {branchNames.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}

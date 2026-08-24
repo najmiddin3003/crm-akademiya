@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
+import SettingsNote from "./SettingsNote";
 import {
   CHECK_FIELDS,
   CHECK_LANGUAGES,
@@ -23,7 +24,15 @@ const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 interface CheckSettings {
+  /** Tanlangan faylning nomi — faqat ko'rsatish uchun. */
   logoName: string;
+  /**
+   * Cloudinary'dagi rasmning haqiqiy manzili. Ilgari bu maydon umuman yo'q
+   * edi: fayl tanlansa faqat NOMI saqlanardi, rasm esa hech qayerga
+   * yuborilmasdi — ya'ni chekka logo hech qachon chiqmasdi. Endi rasm
+   * /api/upload/image orqali yuklanadi va manzili shu yerda turadi.
+   */
+  logoUrl: string;
   titleText: string;
   titleSize: number | "";
   titleBold: boolean;
@@ -41,7 +50,13 @@ type CheckData = Record<string, CheckSettings>;
 const MODES = CHECK_MODES as { key: string; label: string }[];
 const TOGGLES = CHECK_TOGGLES as { key: string; label: string }[];
 const FIELDS = CHECK_FIELDS as { key: string; label: string }[];
-const MODE_DEFAULTS = CHECK_MODE_DEFAULTS as unknown as CheckSettings;
+// `logoUrl` shu yerda qo'shiladi: constants/settingsCheck.js boshqa
+// egalikda, shu bois yangi maydonning boshlang'ich qiymati komponent
+// tomonda beriladi.
+const MODE_DEFAULTS: CheckSettings = {
+  ...(CHECK_MODE_DEFAULTS as unknown as CheckSettings),
+  logoUrl: "",
+};
 
 // `fields` ichki obyekt bo'lgani uchun yuza merge yetmaydi — uni alohida
 // qo'shamiz, aks holda yangi maydon qo'shilganda eski hujjatda u yo'qoladi.
@@ -63,6 +78,7 @@ export default function CheckTab() {
   const [data, setData] = useState<CheckData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +105,32 @@ export default function CheckTab() {
       ...prev,
       [mode]: { ...prev[mode], fields: { ...prev[mode].fields, [key]: v } },
     }));
+  }
+
+  // Logotip HAQIQATAN yuklanadi (Cloudinary → /api/upload/image), keyin
+  // qaytgan manzil joriy rejimga yoziladi. Yuklash muvaffaqiyatsiz bo'lsa
+  // holat umuman o'zgarmaydi — "tanlangan fayl" ko'rinib, aslida hech narsa
+  // saqlanmagan vaziyat bo'lmasin.
+  async function uploadLogo(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      // `folder` yubormaymiz: lib/cloudinary.ts dagi oq ro'yxatda chek
+      // logosi uchun papka yo'q, notanish nom "boshqa" ga tushadi.
+      const res = await fetch("/api/upload/image", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showError(data.error || "Rasm yuklanmadi");
+        return;
+      }
+      set({ logoUrl: String(data.url), logoName: file.name });
+      showSuccess("Logotip yuklandi");
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function save() {
@@ -122,6 +164,16 @@ export default function CheckTab() {
 
   return (
     <div className="space-y-4">
+      {/* Logotip endi haqiqatan yuklanadi, ammo "system.check" hujjatini
+          o'qiydigan chek chop etish ekrani repoda yo'q (grep bilan
+          tekshirildi). Shu bois sozlamalar rost saqlanadi-yu, hozircha
+          hech qanday bosma chekka aylanmaydi — buni yashirmaymiz. */}
+      <SettingsNote>
+        Sozlamalar saqlanadi, lekin chekni chop etadigan ekran hali qo&apos;shilmagan &mdash;
+        bu yerdagi matn, o&apos;lcham va maydon tanlovlari hozircha hech qanday bosma chekka
+        ta&apos;sir qilmaydi.
+      </SettingsNote>
+
       <div className="rounded-2xl bg-card border border-border p-5">
         <div className="flex items-center justify-between gap-4 mb-2">
           <h3 className="text-[15px] font-semibold">Chek sozlamalari</h3>
@@ -143,17 +195,49 @@ export default function CheckTab() {
         <div className="divide-y divide-border">
           <div className="py-3">
             <label className="block text-[13px] font-medium mb-1.5">Logo</label>
-            {/* Fayl yuklash backend'i hali yo'q — rasmning o'zi yuborilmaydi,
-                faqat tanlangan fayl nomi saqlanadi. */}
             <input
               type="file"
-              accept="image/*"
-              onChange={(e) => set({ logoName: e.target.files?.[0]?.name ?? "" })}
-              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              // /api/upload/image faqat shu uch turni qabul qiladi — brauzer
+              // oynasida ham aynan shular ko'rinsin.
+              accept="image/png,image/jpeg,image/webp"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                // Qiymatni tozalaymiz — aks holda ayni fayl qayta tanlansa
+                // change hodisasi umuman kelmaydi.
+                e.target.value = "";
+                if (file) void uploadLogo(file);
+              }}
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
             />
-            {cur.logoName && (
-              <div className="mt-1.5 text-[12px] text-muted-foreground">
-                Tanlangan fayl: {cur.logoName}
+            <div className="mt-1.5 text-[12px] text-muted-foreground">
+              PNG, JPG yoki WEBP; 5 MB gacha.
+            </div>
+
+            {uploading && (
+              <div className="mt-2 text-[12px] text-muted-foreground">Yuklanmoqda…</div>
+            )}
+
+            {/* Yuklangan rasmning O'ZINI ko'rsatamiz: fayl nomi ko'rinib
+                turgani rasm saqlanganini bildirmaydi. */}
+            {cur.logoUrl && (
+              <div className="mt-2 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary manzili tashqi va o'lchami oldindan noma'lum */}
+                <img
+                  src={cur.logoUrl}
+                  alt={cur.logoName || "Chek logotipi"}
+                  className="h-12 w-auto max-w-[160px] rounded-lg border border-border bg-card object-contain p-1"
+                />
+                <span className="text-[12px] text-muted-foreground truncate min-w-0">
+                  {cur.logoName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => set({ logoUrl: "", logoName: "" })}
+                  className="h-8 px-3 shrink-0 rounded-lg border border-border text-[13px] font-medium text-rose-600 hover:bg-rose-500/10"
+                >
+                  O&apos;chirish
+                </button>
               </div>
             )}
           </div>

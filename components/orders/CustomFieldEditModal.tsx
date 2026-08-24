@@ -10,8 +10,12 @@ import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 // a field row under the "Sozlamalar" tab (AddOrderPage.tsx) — reference:
 // akademiya.edutizim.uz/orders/add > Sozlamalar > click an existing field.
 // Configures the field's name/type/which pipeline stages require it/whether
-// it's API-only. Like the rest of the Sozlamalar tab, this is visual/local
-// only — there's no backend schema for arbitrary custom fields yet.
+// it's API-only.
+//
+// Ta'rifning O'ZI endi bazaga saqlanadi — chaqiruvchi (AddOrderPage.tsx) uni
+// sozlamalar API'siga ("orders.custom-fields") yozadi. Shu bois bu yerdagi
+// "Saqlash" haqiqiy: modal yopilishidan oldin so'rov yuboriladi va xato
+// bo'lsa modal ochiq qoladi.
 
 export type CustomFieldType = "text" | "number" | "switch" | "date" | "datetime" | "select" | "multiselect";
 
@@ -36,23 +40,35 @@ const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
 export interface CustomFieldEditModalProps {
   field: CustomField;
   onClose: () => void;
-  onSave: (field: CustomField) => void;
+  onSave: (field: CustomField) => void | Promise<void>;
+  /** Faqat mavjud (allaqachon saqlangan) maydon uchun beriladi. */
+  onDelete?: () => void | Promise<void>;
 }
 
-export default function CustomFieldEditModal({ field, onClose, onSave }: CustomFieldEditModalProps) {
+export default function CustomFieldEditModal({ field, onClose, onSave, onDelete }: CustomFieldEditModalProps) {
   const [label, setLabel] = useState(field.label);
   const [type, setType] = useState<CustomFieldType>(field.type);
   const [stages, setStages] = useState<OrderStageKey[]>(field.stages);
   const [apiOnly, setApiOnly] = useState(field.apiOnly);
   const [stagesOpen, setStagesOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   useEscapeClose(onClose);
 
   const toggleStage = (key: OrderStageKey) => {
     setStages((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   };
 
-  const handleSave = () => {
-    onSave({ ...field, label: label.trim(), type, stages, apiOnly });
+  const handleSave = async () => {
+    setBusy(true);
+    await onSave({ ...field, label: label.trim(), type, stages, apiOnly });
+    setBusy(false);
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setBusy(true);
+    await onDelete();
+    setBusy(false);
   };
 
   return (
@@ -131,13 +147,30 @@ export default function CustomFieldEditModal({ field, onClose, onSave }: CustomF
           Faqat api bilan
         </label>
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={onClose}>
-            Orqaga
-          </Button>
-          <Button variant="primary" onClick={handleSave}>
-            Saqlash
-          </Button>
+        {/* DIQQAT: `mr-auto` bu loyihaning oldindan tayyorlangan Tailwind
+            blobida yo'q — chapdagi tugmani ajratish uchun justify-between va
+            bo'sh <span> ishlatiladi (OrdersPage.tsx dagi izohga qarang). */}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={busy}
+              className="h-9 rounded-lg border border-border px-4 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              O&apos;chirish
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Orqaga
+            </Button>
+            <Button variant="primary" onClick={handleSave} disabled={busy}>
+              {busy ? "Saqlanmoqda..." : "Saqlash"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { BLOCK_TEST_KINDS, BLOCK_TEST_SUBJECTS } from "@/constants/blockTest";
+import { BLOCK_TEST_KINDS } from "@/constants/blockTest";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import type { BlockTestType, BlockTestSubject } from "@/lib/blockTestTypes";
 
 // "Tur qo'shish" / tahrirlash modali (Blok test → Blok test turlari, referens
@@ -33,6 +34,12 @@ export default function BlockTestTypeModal({
 }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
+  // "Fan" tanlovi BAZADAN — /api/offline-courses (loyihadagi kurs/fan
+  // ro'yxatining yagona manbasi, hooks/useOfflineCourseList.ts). Ilgari bu
+  // constants/blockTest.js dagi qattiq yozilgan 12 ta maktab fani edi: ular
+  // akademiyada haqiqatan o'qitiladigan fanlarga mos kelmasdi, ya'ni blok
+  // test turiga bazada mavjud bo'lmagan fan biriktirilardi.
+  const { names: subjectOptions } = useOfflineCourseList();
   const [name, setName] = useState(type?.name || "");
   const [kind, setKind] = useState(type?.kind || "");
   const [durationMinutes, setDurationMinutes] = useState(type ? String(type.durationMinutes) : "0");
@@ -133,8 +140,12 @@ export default function BlockTestTypeModal({
                     <label className="block text-[12px] text-muted-foreground mb-1">Fan</label>
                     <div className="relative">
                       <select value={s.subject} onChange={(e) => updateSubject(i, { subject: e.target.value })} className={`${selectCls} h-10`}>
-                        <option value="">Tanlang</option>
-                        {BLOCK_TEST_SUBJECTS.map((f) => <option key={f} value={f}>{f}</option>)}
+                        <option value="">{subjectOptions.length ? "Tanlang" : "Kurs qo'shilmagan"}</option>
+                        {/* Avval saqlangan fan kurslar ro'yxatidan o'chirilgan
+                            bo'lsa ham ko'rinsin — aks holda tahrirlashda
+                            jimgina bo'shab qolardi. */}
+                        {(s.subject && !subjectOptions.includes(s.subject) ? [s.subject, ...subjectOptions] : subjectOptions)
+                          .map((f) => <option key={f} value={f}>{f}</option>)}
                       </select>
                       <Chevron />
                     </div>

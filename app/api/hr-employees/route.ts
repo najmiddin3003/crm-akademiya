@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
+// Qo'shimcha maydonlar tipi vaqtincha komponentlar yonida turadi — sabab
+// components/employees/employeeExtras.ts izohida. `import type` bo'lgani
+// uchun bu bog'lanish kompilyatsiyada butunlay yo'qoladi.
+import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
@@ -20,7 +24,7 @@ export async function GET() {
   const rows = await col.find({}).sort({ id: 1 }).toArray();
   // `archDate` ("Sana" ustuni) keyin qo'shilgan — eski hujjatlarda yo'q,
   // shuning uchun bo'sh satrga to'ldiramiz (jadval `undefined` olmasligi uchun).
-  const employees = rows.map(({ _id, ...rest }) => ({ archDate: "", ...rest }) as unknown as HrEmployee);
+  const employees = rows.map(({ _id, ...rest }) => ({ archDate: "", ...rest }) as unknown as HrEmployee & HrEmployeeExtra);
   return NextResponse.json({ ok: true, employees });
 }
 
@@ -29,8 +33,35 @@ export async function GET() {
 // alohida `employees` yozuvi yaratilmaydi, `users.hrEmployeeId` bevosita
 // `hr_employees.id`ga ishora qiladi (activate/verify-token/resend-invite
 // faqat `users`ga qaraydi, shuning uchun bu farq ularga ta'sir qilmaydi).
+/**
+ * "Xodim qo'shish" modali yig'adigan, ammo `HrEmployee` da hali yo'q
+ * maydonlarni tozalaydi. Ilgari bular POST tanasiga umuman kirmasdi —
+ * foydalanuvchi to'ldirgan tug'ilgan sana, izoh, toggle'lar va maxsus
+ * maydonlar shaklni yopgan zahoti yo'qolardi.
+ */
+function pickExtras(body: HrEmployeeExtra): Required<HrEmployeeExtra> {
+  const customFields: Record<string, string> = {};
+  if (body.customFields && typeof body.customFields === "object") {
+    for (const [k, v] of Object.entries(body.customFields)) {
+      const key = k.trim();
+      // Bo'sh qiymat SAQLANMAYDI: "to'ldirilmagan" bilan "bo'sh deb yozilgan"
+      // farqi yo'qolmasin.
+      const val = String(v ?? "").trim().slice(0, 500);
+      if (key && val) customFields[key] = val;
+    }
+  }
+  return {
+    // `<input type="date">` faqat "YYYY-MM-DD" beradi; boshqasi kelsa — bo'sh.
+    birthDate: typeof body.birthDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.birthDate) ? body.birthDate : "",
+    comment: typeof body.comment === "string" ? body.comment.trim().slice(0, 2000) : "",
+    payroll: Boolean(body.payroll),
+    twoFactor: Boolean(body.twoFactor),
+    customFields,
+  };
+}
+
 export async function POST(req: Request) {
-  let body: Partial<HrEmployee>;
+  let body: Partial<HrEmployee> & HrEmployeeExtra;
   try {
     body = await req.json();
   } catch {
@@ -48,16 +79,28 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
 
-  const existingUser = await db.collection("users").findOne({ phone });
-  if (existingUser) {
+  const col = db.collection("hr_employees");
+
+  // Telefon IKKALA kolleksiyada ham tekshiriladi. Ilgari faqat `users`
+  // qaralardi, ammo app/api/hr-employees/import/route.ts ataylab `users`
+  // yozuvisiz xodim qo'shadi (ommaviy importda o'nlab odamga faollashtirish
+  // SMS'i ketmasligi uchun) — natijada import qilingan xodimning raqami bu
+  // tekshiruvga ko'rinmasdi va aynan o'sha raqam bilan ikkinchi xodim
+  // yaratilib ketaverardi. Importning o'zi ham `hr_employees` va `users` ni
+  // birga tekshiradi, ya'ni endi ikkala yo'l bir xil qoidada.
+  const [existingUser, existingEmployee] = await Promise.all([
+    db.collection("users").findOne({ phone }, { projection: { _id: 1 } }),
+    col.findOne({ phone }, { projection: { _id: 1 } }),
+  ]);
+  if (existingUser || existingEmployee) {
     return NextResponse.json({ ok: false, error: "Bu telefon raqami allaqachon ro'yxatdan o'tgan" }, { status: 409 });
   }
 
-  const col = db.collection("hr_employees");
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
-  const employee: HrEmployee = {
+  const employee: HrEmployee & HrEmployeeExtra = {
+    ...pickExtras(body),
     id: nextId,
     name,
     gender: body.gender || "",

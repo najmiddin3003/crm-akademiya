@@ -28,6 +28,14 @@ import type { FinanceContract } from "@/lib/financeContracts";
 // DIQQAT: 2- va 3-qatorning biznes-ta'rifi referens saytda hujjatlashtirilmagan,
 // shuning uchun mavjud ma'lumotdan eng mantiqiy tarzda olingan — buxgalteriya
 // ta'rifi boshqacha bo'lsa shu joyni moslash kerak.
+//
+// HOLAT (Aktiv/Arxiv) filtri ILGARI O'LIK BOSHQARUV edi: chip tanlanardi,
+// lekin hisob-kitobga umuman ta'sir qilmasdi — jadval har doim bir xil
+// qolardi. Endi u shartnomaning HAQIQIY `archived` maydoni bo'yicha
+// filtrlaydi: "Aktiv" — arxivlanmagan shartnomalar, "Arxiv" — arxivdagilar.
+// constants/revenuePlan.js dagi uchinchi variant ("Yangi") ro'yxatdan olib
+// tashlandi: `finance_contracts` da shartnomani "yangi" deb belgilaydigan
+// maydon yo'q, ya'ni u hech qachon boshqacha natija bera olmasdi.
 
 function fmtDDMMYYYY(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -52,16 +60,20 @@ function monthRange(d: Date): { start: Date; end: Date } {
   };
 }
 
+// Shartnomaning `archived` maydoniga MOS keladigan variantlargina —
+// qolgani filtrlay olmaydi (yuqoridagi izohga qarang).
+const STATUS_OPTIONS = REVENUE_PLAN_STATUSES.filter((s) => s === "Aktiv" || s === "Arxiv");
+
 export default function RevenuePlanPage() {
   const [date, setDate] = useState<Date>(() => new Date());
-  const [status, setStatus] = useState<string | null>(REVENUE_PLAN_STATUSES[0]);
+  const [status, setStatus] = useState<string | null>(STATUS_OPTIONS[0]);
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
   const [contracts, setContracts] = useState<FinanceContract[]>([]);
 
   const range = monthRange(date);
-  const otherStatuses = REVENUE_PLAN_STATUSES.filter((s) => s !== status);
+  const otherStatuses = STATUS_OPTIONS.filter((s) => s !== status);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,8 +110,15 @@ export default function RevenuePlanPage() {
   const paidBeforeAmount = paidBeforeEntries.reduce((s, e) => s + e.amount, 0);
   const paidBeforeStudents = new Set(paidBeforeEntries.map((e) => e.studentName)).size;
 
-  // Shartnoma qismlari — muddati shu oyda / oy boshigacha
-  const parts = contracts.flatMap((c) =>
+  // Shartnoma qismlari — muddati shu oyda / oy boshigacha. Holat chipi
+  // tanlangan bo'lsa faqat mos shartnomalar hisobga olinadi (chip olib
+  // tashlansa — hammasi).
+  const visibleContracts = contracts.filter((c) => {
+    if (status === "Aktiv") return !c.archived;
+    if (status === "Arxiv") return c.archived;
+    return true;
+  });
+  const parts = visibleContracts.flatMap((c) =>
     c.parts.map((p) => ({ student: c.studentName, date: p.date, amount: p.amount })),
   );
   const dueThisMonth = parts.filter((p) => p.date && p.date >= startIso && p.date <= endIso);
@@ -141,7 +160,7 @@ export default function RevenuePlanPage() {
           </div>
           {statusOpen && (
             <div className="absolute top-full left-0 mt-1 z-50 w-32 rounded-lg border border-border bg-card shadow-xl overflow-hidden p-1">
-              {(status ? otherStatuses : REVENUE_PLAN_STATUSES).map((s) => (
+              {(status ? otherStatuses : STATUS_OPTIONS).map((s) => (
                 <button
                   key={s}
                   type="button"

@@ -1,41 +1,92 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
-import { FEEDBACKS, FB_TYPE_COLORS, FB_FILIALS, FB_TYPES, FB_FROM_OPTIONS } from "@/constants/feedback";
-import type { Feedback } from "@/lib/feedback";
+import Spinner from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { useBranches } from "@/hooks/useBranches";
+import FeedbackFormModal from "./FeedbackFormModal";
+import {
+  FEEDBACK_FROM_OPTIONS,
+  FEEDBACK_TYPES,
+  formatFeedbackCreatedAt,
+  type FeedbackRecord,
+} from "./feedbackTypes";
 
-// Nazorat > Fikr-mulohaza (crm-akademiya #view-nazorat-feedback,
-// app.js renderFeedback()/openFbModal() ~line 28568). Sidebar: Nazorat >
-// Fikr-mulohaza, href /nazorat-feedback.
+// Nazorat > Fikr-mulohaza (sidebar: Nazorat > Fikr-mulohaza, /nazorat-feedback).
+//
+// ILGARI: sahifa `constants/feedback.js` dagi 8 ta QO'LDA YOZILGAN yozuvni
+// ko'rsatardi — bazada `feedback` kolleksiyasi ham, API route ham yo'q edi,
+// ya'ni jadval hech qachon haqiqiy fikr-mulohazani ko'rsatolmasdi.
+// HOZIR: ma'lumot /api/feedback (MongoDB `feedback`) dan keladi, "Fikr
+// qo'shish" tugmasi yangi yozuv yaratadi, bo'sh bo'lsa halol bo'sh holat
+// ko'rinadi. Filial ro'yxati ham /api/branches dan (useBranches).
+
+const FB_TYPE_COLORS: Record<string, string> = {
+  Shikoyat: "text-rose-700 bg-rose-100",
+  Taklif: "text-blue-700 bg-blue-100",
+  Maqtov: "text-emerald-700 bg-emerald-100",
+  Boshqa: "text-slate-700 bg-slate-100",
+};
 
 function typeColor(type: string): string {
-  return (FB_TYPE_COLORS as Record<string, string>)[type] || "text-slate-700 bg-slate-100";
+  return FB_TYPE_COLORS[type] || "text-slate-700 bg-slate-100";
 }
 
 export default function NazoratFeedbackPage() {
+  const { showSuccess } = useToast();
+  const { branches } = useBranches();
+
+  const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [filial, setFilial] = useState("");
   const [type, setType] = useState("");
   const [from, setFrom] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [selected, setSelected] = useState<Feedback | null>(null);
+  const [selected, setSelected] = useState<FeedbackRecord | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/feedback")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setFeedbacks(d.feedbacks); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Filial tanlovi bazadagi filiallardan + yozuvlarda uchragan nomlardan
+  // (filial keyinchalik o'chirilgan bo'lsa ham eski yozuv filtrlansin).
+  const filialOptions = useMemo(() => {
+    const set = new Set<string>(branches.map((b) => b.name));
+    for (const f of feedbacks) if (f.filial) set.add(f.filial);
+    return [...set].sort();
+  }, [branches, feedbacks]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return (FEEDBACKS as Feedback[]).filter((f) => {
+    return feedbacks.filter((f) => {
       if (filial && f.filial !== filial) return false;
       if (type && f.type !== type) return false;
       if (from && f.from !== from) return false;
       if (q && !(f.name.toLowerCase().includes(q) || f.phone.includes(q) || f.izoh.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [search, filial, type, from]);
+  }, [feedbacks, search, filial, type, from]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
+
+  function onSaved(fb: FeedbackRecord) {
+    setFeedbacks((prev) => [fb, ...prev]);
+    setAdding(false);
+    setPage(1);
+    showSuccess("Fikr-mulohaza saqlandi");
+  }
 
   return (
     <div className="page-frame container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
@@ -54,24 +105,33 @@ export default function NazoratFeedbackPage() {
         <div className="relative">
           <select value={filial} onChange={(e) => { setFilial(e.target.value); setPage(1); }} className="h-10 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
             <option value="">Filial — barchasi</option>
-            {FB_FILIALS.map((f) => <option key={f} value={f}>{f}</option>)}
+            {filialOptions.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
           <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
         <div className="relative">
           <select value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} className="h-10 w-36 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
             <option value="">Turi — barchasi</option>
-            {FB_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {FEEDBACK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
         <div className="relative">
           <select value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className="h-10 w-36 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
             <option value="">Kimdan</option>
-            {FB_FROM_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+            {FEEDBACK_FROM_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
           <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="ml-auto inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
+        >
+          <Plus className="icon icon-sm" />
+          <span>Fikr qo&apos;shish</span>
+        </button>
       </div>
 
       {/* Jadval */}
@@ -101,15 +161,15 @@ export default function NazoratFeedbackPage() {
               {slice.map((f, i) => (
                 <tr key={f.id} onClick={() => setSelected(f)} className="hover:bg-secondary/30 transition-colors cursor-pointer">
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
-                  <td className="px-5 py-3 text-[13px]">{f.filial}</td>
-                  <td className="px-5 py-3 text-[13px]">{f.from}</td>
-                  <td className="px-5 py-3 font-medium">{f.name}</td>
-                  <td className="px-5 py-3 tabular-nums text-[13px]">{f.phone}</td>
+                  <td className="px-5 py-3 text-[13px]">{f.filial || "—"}</td>
+                  <td className="px-5 py-3 text-[13px]">{f.from || "—"}</td>
+                  <td className="px-5 py-3 font-medium">{f.name || "—"}</td>
+                  <td className="px-5 py-3 tabular-nums text-[13px]">{f.phone || "—"}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${typeColor(f.type)}`}>{f.type}</span>
                   </td>
                   <td className="px-5 py-3 text-[13px] max-w-xs truncate">{f.izoh}</td>
-                  <td className="px-5 py-3 pr-5 tabular-nums text-[12px] text-muted-foreground">{f.createdAt}</td>
+                  <td className="px-5 py-3 pr-5 tabular-nums text-[12px] text-muted-foreground">{formatFeedbackCreatedAt(f.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -121,8 +181,16 @@ export default function NazoratFeedbackPage() {
             <div className="h-16 w-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-4">
               <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-archive" /></svg>
             </div>
-            <h3 className="text-[15px] font-semibold mb-1">Ma&apos;lumotlar topilmadi</h3>
-            <p className="text-[13px] text-muted-foreground max-w-sm">Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.</p>
+            <h3 className="text-[15px] font-semibold mb-1">
+              {loading ? <Spinner size={22} /> : "Ma'lumotlar topilmadi"}
+            </h3>
+            {!loading && (
+              <p className="text-[13px] text-muted-foreground max-w-sm">
+                {feedbacks.length === 0
+                  ? "Hozircha fikr-mulohaza yo'q. «Fikr qo'shish» orqali birinchisini qo'shing."
+                  : "Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring."}
+              </p>
+            )}
           </div>
         )}
 
@@ -134,6 +202,8 @@ export default function NazoratFeedbackPage() {
           onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
         />
       </div>
+
+      {adding && <FeedbackFormModal onClose={() => setAdding(false)} onSaved={onSaved} />}
 
       {/* Tafsilot modali */}
       {selected && (
@@ -149,18 +219,18 @@ export default function NazoratFeedbackPage() {
             <div className="p-5 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${typeColor(selected.type)}`}>{selected.type}</span>
-                <span className="text-[12px] text-muted-foreground tabular-nums">{selected.createdAt}</span>
+                <span className="text-[12px] text-muted-foreground tabular-nums">{formatFeedbackCreatedAt(selected.createdAt)}</span>
               </div>
               <div className="space-y-2 pt-2">
                 <div className="grid grid-cols-3 gap-2 text-[13px]">
                   <div className="text-muted-foreground">Filial:</div>
-                  <div className="col-span-2 font-medium">{selected.filial}</div>
+                  <div className="col-span-2 font-medium">{selected.filial || "—"}</div>
                   <div className="text-muted-foreground">Kimdan:</div>
-                  <div className="col-span-2 font-medium">{selected.from}</div>
+                  <div className="col-span-2 font-medium">{selected.from || "—"}</div>
                   <div className="text-muted-foreground">Ism:</div>
-                  <div className="col-span-2 font-medium">{selected.name}</div>
+                  <div className="col-span-2 font-medium">{selected.name || "—"}</div>
                   <div className="text-muted-foreground">Telefon:</div>
-                  <div className="col-span-2 font-medium tabular-nums">{selected.phone}</div>
+                  <div className="col-span-2 font-medium tabular-nums">{selected.phone || "—"}</div>
                 </div>
                 <div className="pt-2">
                   <div className="text-muted-foreground text-[13px] mb-1">Izoh:</div>

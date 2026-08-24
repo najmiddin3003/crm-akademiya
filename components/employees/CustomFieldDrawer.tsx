@@ -2,23 +2,68 @@
 
 import { useState } from "react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { useToast } from "@/components/ui/Toast";
 import { CUSTOM_FIELD_TYPES } from "@/constants/employees";
 import EmployeeToggle from "./EmployeeToggle";
 
 // "Yangi maydon qo'shish" — xodim qo'shish modalidagi "Maxsus maydon qo'shish"
-// tugmasi bosilganda o'ng tomondan ochiladigan drawer (skrinshot 3). Demo:
-// Saqlash bosilganda maydon nomini yuqoriga qaytaradi va yopiladi.
-export interface CustomFieldDrawerProps {
-  onClose: () => void;
-  onSave: (name: string) => void;
+// tugmasi bosilganda o'ng tomondan ochiladigan drawer (skrinshot 3).
+//
+// NIMA NOTO'G'RI EDI: drawer maydon turini, "majburiy" va "so'rovnomada
+// ko'rinishi" toggle'larini yig'ardi, lekin `onSave` faqat NOMNI uzatardi —
+// qolgani yo'qolardi. Pastdagi "O'chirish" tugmasi esa doim o'chiq turardi
+// (yangi maydon yaratilayotganda o'chiradigan narsa yo'q), ya'ni yolg'on
+// boshqaruv edi va olib tashlandi: mavjud maydon modaldagi ro'yxatidan
+// o'chiriladi.
+//
+// "Tanlov (select)" turi variantlarsiz ma'nosiz — shu tur tanlanganda
+// variantlar maydoni ochiladi (ilgari variant so'ralmasdi, ya'ni bunday
+// maydonni yasab bo'lmasdi).
+export interface CustomFieldDraft {
+  name: string;
+  type: string;
+  required: boolean;
+  inSurvey: boolean;
+  options: string[];
 }
 
-export default function CustomFieldDrawer({ onClose, onSave }: CustomFieldDrawerProps) {
+export interface CustomFieldDrawerProps {
+  onClose: () => void;
+  onSave: (draft: CustomFieldDraft) => void;
+  /** Sozlamalarga yozilayotgan payt — tugma bloklanadi. */
+  saving?: boolean;
+}
+
+const SELECT_TYPE = "Tanlov (select)";
+
+export default function CustomFieldDrawer({ onClose, onSave, saving = false }: CustomFieldDrawerProps) {
   useEscapeClose(onClose);
+  const { showError } = useToast();
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [required, setRequired] = useState(false);
   const [inSurvey, setInSurvey] = useState(false);
+  const [optionsText, setOptionsText] = useState("");
+
+  function submit() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      showError("Maydon nomini kiriting");
+      return;
+    }
+    if (!type) {
+      showError("Maydon turini tanlang");
+      return;
+    }
+    const options = type === SELECT_TYPE
+      ? optionsText.split(",").map((o) => o.trim()).filter(Boolean)
+      : [];
+    if (type === SELECT_TYPE && options.length === 0) {
+      showError("Tanlov variantlarini vergul bilan ajratib kiriting");
+      return;
+    }
+    onSave({ name: trimmed, type, required, inSurvey, options });
+  }
 
   return (
     <div className="fixed inset-0 z-[110]">
@@ -35,7 +80,7 @@ export default function CustomFieldDrawer({ onClose, onSave }: CustomFieldDrawer
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Maydon nomi</label>
+            <label className="block text-[13px] font-medium mb-1.5">Maydon nomi<span className="text-rose-500">*</span></label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -44,12 +89,12 @@ export default function CustomFieldDrawer({ onClose, onSave }: CustomFieldDrawer
             />
           </div>
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Maydon turi</label>
+            <label className="block text-[13px] font-medium mb-1.5">Maydon turi<span className="text-rose-500">*</span></label>
             <div className="relative">
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Maydon turi</option>
                 {CUSTOM_FIELD_TYPES.map((t) => (
@@ -59,6 +104,18 @@ export default function CustomFieldDrawer({ onClose, onSave }: CustomFieldDrawer
               <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>
           </div>
+          {type === SELECT_TYPE && (
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Variantlar (vergul bilan)<span className="text-rose-500">*</span></label>
+              <textarea
+                rows={2}
+                value={optionsText}
+                onChange={(e) => setOptionsText(e.target.value)}
+                placeholder="Birinchi, Ikkinchi, Uchinchi"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          )}
           <div>
             <div className="text-[13px] font-medium mb-2">Majburiy maydon</div>
             <EmployeeToggle checked={required} onChange={setRequired} />
@@ -73,17 +130,18 @@ export default function CustomFieldDrawer({ onClose, onSave }: CustomFieldDrawer
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
           <button
             type="button"
-            disabled
-            className="h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed"
+            onClick={onClose}
+            className="h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
           >
-            O&apos;chirish
+            Bekor qilish
           </button>
           <button
             type="button"
-            onClick={() => onSave(name.trim())}
-            className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
+            onClick={submit}
+            disabled={saving}
+            className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
           >
-            Saqlash
+            {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
       </div>

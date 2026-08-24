@@ -1,20 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Pagination from "@/components/ui/Pagination";
-import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { SR_TEACHERS, SR_STUDENTS, SR_COURSES, SR_ALL_GROUPS, SR_RATING_OPTIONS } from "@/constants/staffRating";
-import { STAFF_RATINGS } from "@/lib/staffRating";
+import { Info } from "lucide-react";
 
-// Nazorat > Xodimlar reytingi (crm-akademiya #view-nazorat-staff-rating,
-// app.js renderStaffRating() ~line 28751). Manbadagi kabi Izoh/Guruh/Kurs/
-// O'qituvchi/Reyting — haqiqiy filtrlaydi; "Oraliqni tanlang" va O'quvchi
-// tanlagichi manbada ham dekorativ edi (id/onchange yo'q) — shu holicha
-// qoldirildi. Guruh ro'yxati manbadagidan farqli — u faqat "Ingliz tili"
-// guruhlarini ko'rsatgan edi (kod xatosi), bu yerda barcha kurslarning
-// guruhlari qo'shildi, shunda filtr haqiqatan ham to'liq ishlaydi.
-
-const selectCls = "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+// Nazorat > Xodimlar reytingi (/nazorat-staff-rating).
+//
+// ILGARI: `lib/staffRating.ts` modul yuklanishida LCG generator bilan 61 ta
+// SOXTA baho yozuvi yasardi (o'qituvchilar "weight" bo'yicha tanlanar,
+// baho `seed % 100` dan chiqar edi), "O'rtacha reyting" ham o'sha
+// yozuvlardan hisoblanardi.
+//
+// KEYIN (oraliq holat): generator olib tashlandi, lekin uning o'rniga
+// `useMemo<StaffRating[]>(() => [], [])` — ya'ni HECH QACHON to'lmaydigan
+// bo'sh massiv qoldi. Sana oralig'i tanlagichi, yettita select, qator
+// chizadigan blok va Pagination o'sha bo'sh massivni filtrlab, sahifalab
+// turardi: foydalanuvchi bosadi, tanlaydi — natija esa hech qachon
+// o'zgarmaydi. Bu ishlaydigan boshqaruvga o'xshab ko'rinadigan O'LIK
+// boshqaruv edi.
+//
+// HOZIR: ishlay olmaydigan boshqaruvlar butunlay OLIB TASHLANDI. Yozuvlar
+// yo'q, chunki manba yo'q: `staff_ratings` kolleksiyasi ham, API route ham,
+// darsdan keyin baho so'raydigan forma ham mavjud emas. Sahifada nima
+// yetishmayotgani ochiq yozib qo'yilgan, "O'rtacha reyting" va "Umumiy soni"
+// o'rnida esa CHIZIQCHA turadi — 0.0 yoki 0 yozish "hamma nol baho oldi",
+// "nol ta baho qo'yilgan" degan yolg'on da'vo bo'lardi. Jadval sarlavhalari
+// qoldirildi: hisobot manba paydo bo'lganda qanday ustunlardan iborat
+// bo'lishini ko'rsatib turadi.
 
 function StarIcon({ size = 16 }: { size?: number }) {
   return (
@@ -25,83 +35,41 @@ function StarIcon({ size = 16 }: { size?: number }) {
 }
 
 export default function NazoratStaffRatingPage() {
-  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
-  const [izoh, setIzoh] = useState("");
-  const [group, setGroup] = useState("");
-  const [course, setCourse] = useState("");
-  const [teacher, setTeacher] = useState("");
-  const [rating, setRating] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
-
-  const filtered = useMemo(() => {
-    return STAFF_RATINGS.filter((r) => {
-      if (izoh === "hasNote" && !r.izoh) return false;
-      if (izoh === "noNote" && r.izoh) return false;
-      if (group && r.group !== group) return false;
-      if (course && r.course !== course) return false;
-      if (teacher && r.teacher !== teacher) return false;
-      if (rating && r.rating !== Number(rating)) return false;
-      return true;
-    });
-  }, [izoh, group, course, teacher, rating]);
-
-  const avg = filtered.length > 0 ? (filtered.reduce((s, r) => s + r.rating, 0) / filtered.length).toFixed(1) : "0.0";
-  const start = (page - 1) * pageSize;
-  const slice = filtered.slice(start, start + pageSize);
-
-  function setFilter(setter: (v: string) => void, v: string) {
-    setter(v);
-    setPage(1);
-  }
-
   return (
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
-      {/* Filtrlar */}
-      <div className="flex items-center justify-end gap-2 flex-wrap">
-        <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
-        <select value={izoh} onChange={(e) => setFilter(setIzoh, e.target.value)} className={`${selectCls} w-28`}>
-          <option value="">Izoh</option>
-          <option value="hasNote">Izoh bor</option>
-          <option value="noNote">Izohsiz</option>
-        </select>
-        <select value={group} onChange={(e) => setFilter(setGroup, e.target.value)} className={`${selectCls} w-36`}>
-          <option value="">Guruh</option>
-          {SR_ALL_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
-        </select>
-        <select value={course} onChange={(e) => setFilter(setCourse, e.target.value)} className={`${selectCls} w-32`}>
-          <option value="">Kurs</option>
-          {SR_COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={teacher} onChange={(e) => setFilter(setTeacher, e.target.value)} className={`${selectCls} w-44`}>
-          <option value="">O&apos;qituvchi</option>
-          {SR_TEACHERS.map((t) => <option key={t.name} value={t.name}>{t.name}</option>)}
-        </select>
-        <select defaultValue="" className={`${selectCls} w-32`}>
-          <option value="">O&apos;quvchi</option>
-          {SR_STUDENTS.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={rating} onChange={(e) => setFilter(setRating, e.target.value)} className={`${selectCls} w-28`}>
-          <option value="">Reyting</option>
-          {SR_RATING_OPTIONS.map((r) => <option key={r} value={r}>{r} ⭐</option>)}
-        </select>
-      </div>
-
-      {/* O'rtacha reyting */}
+      {/* O'rtacha reyting — yozuv yo'q, shuning uchun CHIZIQCHA. */}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">O&apos;rtacha reyting:</span>
         <span className="inline-flex items-center gap-1.5 font-bold tabular-nums">
-          <span>{avg}</span>
+          <span>—</span>
           <StarIcon />
         </span>
       </div>
 
-      {/* Jadval */}
+      {/* Ma'lumot manbasi yo'qligini ochiq aytamiz — bo'sh jadval "xatolik"
+          emas, hali baho yig'iladigan joy yo'qligini bildiradi. */}
+      <div className="flex items-start gap-2 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-[13px] text-muted-foreground">
+        <Info className="icon icon-sm shrink-0 mt-0.5" />
+        <p>
+          Baholar hali yig&apos;ilmaydi: tizimda o&apos;quvchi o&apos;qituvchiga baho qo&apos;yadigan
+          forma ham, bahoni saqlaydigan kolleksiya ham yo&apos;q. Shu sabab ro&apos;yxat bo&apos;sh,
+          o&apos;rtacha reyting va umumiy son o&apos;rnida chiziqcha turadi. Filtrlar ham
+          ko&apos;rsatilmaydi — filtrlaydigan yozuvning o&apos;zi yo&apos;q.
+        </p>
+      </div>
+
+      {/* Jadval — faqat sarlavhalar: hisobot qanday ustunlardan iborat
+          bo'lishini ko'rsatadi. */}
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
+          {/* "0" emas, chiziqcha: nol baho qo'yilgan degan da'vo emas,
+              baho umuman yig'ilmaydi. */}
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium"
+            title="Baho yozuvlari uchun manba yo'q — sonni hisoblab bo'lmaydi."
+          >
             <span>Umumiy soni:</span>
-            <span className="tabular-nums">{filtered.length}</span>
+            <span className="tabular-nums">—</span>
           </div>
         </div>
 
@@ -121,40 +89,14 @@ export default function NazoratStaffRatingPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {slice.map((r, i) => (
-                <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
-                  <td className="px-5 py-3 font-medium">{r.teacher}</td>
-                  <td className="px-5 py-3 text-[13px]">{r.student}</td>
-                  <td className="px-5 py-3 text-[13px]">{r.course}</td>
-                  <td className="px-5 py-3 text-[13px] font-mono">{r.group}</td>
-                  <td className="px-5 py-3 tabular-nums text-[13px] text-muted-foreground">{r.lessonDate}</td>
-                  <td className="px-5 py-3 text-[13px]">{r.izoh || "-"}</td>
-                  <td className="px-5 py-3 tabular-nums text-[13px] text-muted-foreground">{r.ratingDate}</td>
-                  <td className="px-5 py-3 pr-5 text-center">
-                    <div className="inline-flex flex-col items-center gap-0.5">
-                      <StarIcon />
-                      <span className="text-[12px] font-semibold tabular-nums">{r.rating}</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {slice.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="py-16 text-center text-muted-foreground">Ma&apos;lumotlar topilmadi</td>
-                </tr>
-              )}
+              <tr>
+                <td colSpan={9} className="py-16 text-center text-muted-foreground">
+                  Baho yozuvlari tizimga kelmaydi
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-
-        <Pagination
-          totalItems={filtered.length}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
-        />
       </div>
     </div>
   );

@@ -4,8 +4,17 @@ import { useState } from "react";
 
 // Nazorat > Davomat jadvalidagi "Sharh" ikonkasi ochadigan oyna.
 // Sharh o'quvchining davomati bo'yicha eslatma — `settings` kolleksiyasida
-// `nazorat.davomat` kaliti ostida saqlanadi (sahifa o'zi statik demo
-// ma'lumotda ishlaydi, shuning uchun alohida kolleksiya ochilmadi).
+// `nazorat.davomat.v2` kaliti ostida, pupils.id bo'yicha saqlanadi
+// (NazoratDavomatPage.tsx dagi SETTINGS_KEY). Bu davomat belgisining o'ziga
+// (`attendance.note`) tegmaydi: u bitta darsga tegishli, bu esa o'quvchi
+// bo'yicha umumiy eslatma — shuning uchun alohida turadi.
+//
+// DIQQAT: kalitdagi ".v2" ATAYLAB. Bazada eski `nazorat.davomat` hujjati
+// hamon yotibdi, lekin undagi id'lar demo davridagi DAVOMAT_STUDENTS ning
+// o'ylab topilgan 1..16 raqamlari — haqiqiy pupils.id emas. Bu izoh ilgari
+// o'sha eski kalitni ko'rsatib turardi va kelajakdagi o'quvchini xato
+// hujjatga olib borardi: uni o'qish tasodifiy o'quvchilarning sharhlarini
+// ko'rsatib, ba'zilarini ro'yxatdan yashirib qo'yadi.
 
 export default function DavomatCommentModal({
   studentName,

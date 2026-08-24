@@ -5,7 +5,6 @@ import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
-import MonthYearPicker, { type MonthYearValue } from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
 import StudentGroupsModal from "./StudentGroupsModal";
@@ -29,29 +28,31 @@ function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-function defaultMonth(): MonthYearValue {
-  const now = new Date();
-  return { month: now.getMonth() + 1, year: now.getFullYear() };
-}
 
 interface Row {
   id: number;
   amount: string;
-  month: MonthYearValue | null;
 }
 
 // Kassalar sahifasidagi "- Chiqim" — referens saytdagi oyna: Tranzaksiya
-// (xarajat turi), O'quvchini tanlang, so'ng bir nechta (Qiymat + Oyni
-// tanlang) qatorlari — "+" bosilsa yana bir qator qo'shiladi (masalan bir
-// xarajatni bir nechta oyga bo'lib yozish uchun), ularning yig'indisi
-// "Umumiy summa"da avtomatik ko'rsatiladi. Pul harakati (methodTotals/
-// balance) shu umumiy summa bo'yicha /api/cashboxes/:id/adjust orqali
-// HAQIQIY, kategoriya/o'quvchi/sana/izoh bilan birga — "Tranzaksiyalar" va
-// "Moliya hisobotlari/analitikasi" ko'radigan haqiqiy jurnalga yoziladi
-// (har bir qatorning oyi hozircha faqat shu oynada — xarajat bitta yagona
-// yozuv sifatida jurnalga tushadi). "Tranzaksiya" ro'yxati — Moliya →
-// Tranzaksiya turi (/finance-tx-types) sahifasidagi HAQIQIY, admin
-// boshqaradigan ro'yxatdan (mainType: "chiqim").
+// (xarajat turi), O'quvchini/Xodimni tanlang, so'ng bir nechta Qiymat
+// qatori — "+" bosilsa yana bir qator qo'shiladi (bitta xarajatni bir
+// nechta band qilib yozish uchun), ularning yig'indisi "Umumiy summa"da
+// avtomatik ko'rsatiladi. Pul harakati (methodTotals/balance) shu umumiy
+// summa bo'yicha /api/cashboxes/:id/adjust orqali HAQIQIY, kategoriya/
+// o'quvchi/sana/izoh bilan birga — "Tranzaksiyalar" va "Moliya hisobotlari/
+// analitikasi" ko'radigan haqiqiy jurnalga yoziladi. "Tranzaksiya" ro'yxati
+// — Moliya → Tranzaksiya turi (/finance-tx-types) sahifasidagi HAQIQIY,
+// admin boshqaradigan ro'yxatdan (mainType: "chiqim").
+//
+// OLIB TASHLANGAN: har bir qatorda "Oyni tanlang" degan, hatto yulduzcha
+// bilan MAJBURIY deb belgilangan tanlagich turardi. Tanlangan oy hech
+// qachon hech qayerga yuborilmasdi — /api/cashboxes/:id/adjust so'rov
+// tanasida bunday maydon yo'q, `transaction_entries` yozuvida ham xarajat
+// qaysi OYGA tegishli ekanini saqlaydigan maydon yo'q. Ya'ni foydalanuvchi
+// "iyul oyiga" deb belgilab saqlardi, natijada esa hech qanday farq
+// bo'lmasdi. Qayta tiklash uchun avval jurnal yozuviga davr maydoni
+// (masalan `periodMonth`) qo'shilishi kerak.
 export default function CashboxAdjustDrawer({
   cashbox,
   onClose,
@@ -74,7 +75,7 @@ export default function CashboxAdjustDrawer({
   // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — Kirim oynasidagi
   // bilan bir xil manba (/api/students/balances).
   const [balances, setBalances] = useState<Record<string, number>>({});
-  const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "", month: defaultMonth() }]);
+  const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "" }]);
   const [nextRowId, setNextRowId] = useState(2);
   const [method, setMethod] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
@@ -202,7 +203,7 @@ export default function CashboxAdjustDrawer({
   const studentBalanceExceeds = target === "student" && !!selectedStudent && total > studentBalance;
 
   function addRow() {
-    setRows((prev) => [...prev, { id: nextRowId, amount: "", month: defaultMonth() }]);
+    setRows((prev) => [...prev, { id: nextRowId, amount: "" }]);
     setNextRowId((n) => n + 1);
   }
   function removeRow(id: number) {
@@ -413,12 +414,6 @@ export default function CashboxAdjustDrawer({
                     placeholder="Qiymat"
                     className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-[13px] font-medium mb-1.5">
-                    Oyni tanlang<span className="text-red-500"> *</span>
-                  </label>
-                  <MonthYearPicker value={row.month} onChange={(v) => updateRow(row.id, { month: v })} />
                 </div>
                 {i > 0 && (
                   <button

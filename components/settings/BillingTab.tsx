@@ -3,21 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useStudents } from "@/hooks/useStudents";
+import SettingsNote from "./SettingsNote";
 import {
   BILLING_CURRENCY,
   BILLING_DEFAULTS,
   BILLING_PLANS,
   BILLING_TABS,
   BILLING_TEXTS,
-  BILLING_TRIAL_UNTIL,
 } from "@/constants/settingsBilling";
 
 // Umumiy sozlamalar → Obuna. Bu tab asosan KO'RSATUV sahifasi: haqiqiy to'lov
 // integratsiyasi (Click/Payme va h.k.) ulanmagan, shu bois "To'lash" hech qanday
-// tranzaksiya yaratmaydi — faqat xabar chiqaradi.
+// tranzaksiya yaratmaydi va buni XATO uslubida aytadi (ilgari yashil
+// "muvaffaqiyat" toastida chiqardi).
 //
-// Saqlanadigan yagona narsa — tanlangan tarif va o'quvchilar soni:
-// { plan, studentCount } → "system.billing".
+// Saqlanadigan yagona narsa — tanlangan tarif: { plan } → "system.billing".
+// O'quvchilar soni saqlanmaydi, u har ochilganda /api/pupils dan sanaladi.
 
 const STORAGE_KEY = "system.billing";
 
@@ -32,7 +34,6 @@ interface Plan {
 
 interface BillingData {
   plan: string;
-  studentCount: number;
 }
 
 const PLANS = BILLING_PLANS as Plan[];
@@ -45,20 +46,24 @@ function formatSum(n: number) {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
-// dd.MM.yyyy ga oy qo'shadi. Date.UTC oy oshib ketsa yilni o'zi ko'taradi;
-// boshlang'ich sana 9-kun bo'lgani uchun oy uzunligi bilan muammo yo'q.
-function addMonths(base: string, months: number) {
-  const [d, m, y] = base.split(".").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1 + months, d));
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(dt.getUTCDate())}.${p(dt.getUTCMonth() + 1)}.${dt.getUTCFullYear()}`;
-}
+// OBUNA TUGASH SANASI HISOBLANMAYDI — shu bois bu yerda addMonths() yo'q.
+// Ilgari u `addMonths(BILLING_TRIAL_UNTIL, months + bonusMonths)` deb
+// chaqirilardi, ya'ni sana qo'lda yozib qo'yilgan "09.09.2026" dan
+// chiqarilardi. Bazada obuna boshlanish/tugash sanasi umuman saqlanmaydi,
+// ya'ni hisobning boshlang'ich nuqtasi yo'q — o'ylab topilgan sanadan
+// hisoblangan sana ham xuddi shunday o'ylab topilgan bo'lardi. Endi muddat
+// "—" bo'lib turadi (BILLING_TEXTS.untilUnknown).
 
 export default function BillingTab() {
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<BillingData>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<string>(TABS[0]);
+  // O'quvchilar sonining YAGONA haqiqiy manbasi — `pupils` kolleksiyasi.
+  // Arxivdagilar ham sanaladi: yorliq shunchaki "O'quvchilar soni" deydi,
+  // holat bo'yicha filtrlash esa yorliqda aytilmagan da'vo bo'lardi.
+  const { pupils, loading: pupilsLoading } = useStudents();
+  const studentCount = pupils.length;
 
   useEffect(() => {
     let cancelled = false;
@@ -77,11 +82,6 @@ export default function BillingTab() {
   const selected = useMemo(
     () => PLANS.find((p) => p.key === data.plan) ?? PLANS[0],
     [data.plan]
-  );
-
-  const until = useMemo(
-    () => addMonths(BILLING_TRIAL_UNTIL, selected.months + selected.bonusMonths),
-    [selected]
   );
 
   // Tarif tanlanishi darrov saqlanadi — bu tabda alohida "Saqlash" tugmasi yo'q.
@@ -143,7 +143,11 @@ export default function BillingTab() {
             <div className="divide-y divide-border mt-2">
               <div className="flex items-center justify-between gap-4 py-3">
                 <span className="text-[13px]">{BILLING_TEXTS.studentsLabel}</span>
-                <span className="text-[13px] font-medium">{data.studentCount}</span>
+                {/* Hali sanalmagan bo'lsa raqam ko'rsatilmaydi — o'rniga 0
+                    yoki eski nusxa qo'yish soxta son bo'lardi. */}
+                <span className="text-[13px] font-medium tabular-nums">
+                  {pupilsLoading ? "…" : studentCount}
+                </span>
               </div>
             </div>
           </div>
@@ -180,8 +184,11 @@ export default function BillingTab() {
               <div className="flex items-center justify-between gap-4 py-3">
                 <div className="min-w-0">
                   <div className="text-[13px] font-medium">{BILLING_TEXTS.summaryTitle}</div>
+                  {/* Ilgari bu yerda "09.12.2026 gacha" kabi sana turardi va
+                      u qattiq yozilgan sinov sanasidan hisoblanardi. Muddat
+                      bazada saqlanmaydi, shuning uchun sana o'rniga "—". */}
                   <div className="text-[12px] text-muted-foreground">
-                    {until} {BILLING_TEXTS.untilSuffix}
+                    {BILLING_TEXTS.untilUnknown}
                   </div>
                 </div>
                 <div className="text-right">
@@ -190,9 +197,13 @@ export default function BillingTab() {
                     {selected.bonus ? ` ${selected.bonus}` : ""}
                   </div>
                   {/* Yagona shablon-satr: JSX matn tugunlariga bo'linganda
-                      son bilan matn orasidagi probel yo'qolib qolgan edi. */}
+                      son bilan matn orasidagi probel yo'qolib qolgan edi.
+                      Oldingi "x 2000" ko'rinishi ikki marta yolg'on edi:
+                      2000 o'ylab topilgan son edi, "x" esa narx o'quvchi
+                      soniga ko'paytiriladi deb da'vo qilardi — aslida tarif
+                      narxi qat'iy. Endi son haqiqiy, "x" esa olib tashlandi. */}
                   <div className="text-[12px] text-muted-foreground">
-                    {`x ${data.studentCount} o'quvchi uchun`}
+                    {pupilsLoading ? "" : `${studentCount} o'quvchi uchun`}
                   </div>
                 </div>
               </div>
@@ -205,11 +216,21 @@ export default function BillingTab() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex items-center justify-between gap-4 pt-4">
+              {/* Tugma hech qanday tranzaksiya yaratmaydi — buni tugmani
+                  bosishdan OLDIN ham aytamiz, keyin ham (xato toasti). */}
+              <SettingsNote>
+                To&apos;lov tizimi (Click, Payme va h.k.) bu tizimga ulanmagan &mdash; tugma
+                tranzaksiya yaratmaydi. Obunani hozircha markaz administratori orqali
+                to&apos;lang.
+              </SettingsNote>
               <button
                 type="button"
-                onClick={() => showSuccess(BILLING_TEXTS.payNote)}
-                className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+                // showSuccess emas: to'lov amalga oshmayapti, ya'ni bu
+                // muvaffaqiyat emas. Ilgari yashil toast chiqib, foydalanuvchi
+                // to'lov o'tdi deb o'ylashi mumkin edi.
+                onClick={() => showError(BILLING_TEXTS.payNote)}
+                className="h-10 px-6 shrink-0 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
                 {BILLING_TEXTS.payButton}
               </button>

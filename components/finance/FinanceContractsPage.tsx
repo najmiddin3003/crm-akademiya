@@ -8,7 +8,8 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { createInitialOrders } from "@/lib/ordersData";
+import { useStudents } from "@/hooks/useStudents";
+import { useGroups } from "@/hooks/useGroups";
 import { contractPartsTotal, type FinanceContract } from "@/lib/financeContracts";
 import FinanceContractDrawer from "./FinanceContractDrawer";
 
@@ -18,19 +19,24 @@ import FinanceContractDrawer from "./FinanceContractDrawer";
 // loyihaning boshqa hech bir sahifasida bunday pattern yo'q, shu sabab
 // mavjud select-based konventsiyaga moslashtirildi).
 //
+// ILGARI BU SAHIFA SOXTA EDI, endi tuzatildi:
+//   • BALANS ustuni `genBalance(seed)` — o'quvchi id'sidan `(id*137)%6000000`
+//     formulasi bilan "o'ylab topilgan" pul edi. Endi HAQIQIY manba:
+//     /api/students/balances (transaction_entries'dagi bekor qilinmagan
+//     payIn yozuvlari yig'indisi — loyihadagi yagona haqiqiy balans).
+//   • O'quvchi/guruh ro'yxatlari `createInitialOrders()` — 502 ta soxta
+//     buyurtma generatoridan olinardi. Endi o'quvchilar /api/pupils dan
+//     (useStudents), guruhlar /api/groups dan (useGroups) keladi va guruh
+//     filtri `group.studentIds` orqali HAQIQIY bog'lanish bo'yicha ishlaydi.
+//   • TO'LANGAN MIQDOR har qatorda literal `0` chizilardi. Bu fakt da'vosi:
+//     "bu shartnoma bo'yicha hech narsa to'lanmagan". Aslida schema'da
+//     shartnoma qismini to'lovga bog'laydigan maydon YO'Q
+//     (transaction_entries yozuvida contractId/partId yo'q), shuning uchun
+//     endi "—" chiziladi.
+//
 // MIQDORI/KUTILAYOTGAN TO'LOV MIQDORI ustunlari shartnoma qismlaridan
-// hisoblanadi, TO'LANGAN MIQDOR har doim 0 (to'lov yozib borish oynasi bu
-// portda yo'q — add-shartnoma formasida ham ko'rsatilmagan). BALANS —
-// boshqa o'quvchi ro'yxati sahifalaridagi (Active/ArchiveStudentsPage) bilan
-// bir xil deterministik `genBalance(seed)` formula, o'quvchi id'siga bog'liq.
-// "Guruh" filtri — Order.group maydoniga bog'liq (ko'p seed buyurtmalarda
-// bo'sh, faqat AddOrderModal orqali qo'shilganlarda to'ldiriladi) — manba
-// saytidagi filtrlash mantig'i ko'rsatilmagani uchun to'liq join qilinmagan.
+// hisoblanadi (haqiqiy: qismlar soni va ularning yig'indisi).
 
-function genBalance(seed: number): number {
-  const magnitude = 1_000_000 + ((seed * 137) % 6_000_000);
-  return seed % 5 === 0 ? magnitude : -magnitude;
-}
 function fmtNum(n: number): string {
   const sign = n < 0 ? "-" : "";
   return sign + Math.abs(Math.round(n)).toLocaleString("ru-RU").replace(/,/g, " ");
@@ -43,9 +49,12 @@ function parseCreatedAt(s: string): Date | null {
 
 export default function FinanceContractsPage() {
   const { showSuccess, showError } = useToast();
-  const orders = useMemo(() => createInitialOrders(), []);
+  // O'quvchilar bazadan: ism → karta (id, profil havolasi uchun).
+  const { students, byName: studentByName } = useStudents();
+  const { groups } = useGroups();
 
   const [contracts, setContracts] = useState<FinanceContract[]>([]);
+  const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"active" | "archived">("active");
   const [group, setGroup] = useState("");
@@ -65,24 +74,52 @@ export default function FinanceContractsPage() {
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setContracts(d.contracts); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    // Balanslar alohida — jadval shartnomalarsiz ham chiziladi, balans esa
+    // kechroq kelsa faqat shu ustun yangilanadi.
+    fetch("/api/students/balances")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
+  const nameKey = (n: string) => n.trim().toLowerCase();
+
+  // Guruh ro'yxati — bazadagi haqiqiy guruhlar (nomi bo'sh bo'lganini
+  // ko'rsatishdan ma'no yo'q).
   const groupOptions = useMemo(
-    () => Array.from(new Set(orders.map((o) => o.group).filter(Boolean))).sort(),
-    [orders],
+    () => Array.from(new Set(groups.map((g) => g.name).filter(Boolean))).sort(),
+    [groups],
   );
+  // O'quvchi filtri — shartnomasi bor o'quvchilar (jadvalda ko'rinadiganlar).
   const studentOptions = useMemo(
     () => Array.from(new Set(contracts.map((c) => c.studentName))).sort(),
     [contracts],
   );
 
+  // Tanlangan guruhdagi o'quvchilar (pupils.id) — guruh filtri shu to'plam
+  // orqali ishlaydi. Ilgari filtr soxta `Order.group` maydoniga qarardi.
+  const groupPupilIds = useMemo(() => {
+    if (!group) return null;
+    const ids = new Set<number>();
+    for (const g of groups) {
+      if (g.name !== group) continue;
+      for (const id of g.studentIds ?? []) ids.add(id);
+    }
+    return ids;
+  }, [group, groups]);
+
+  // Shartnomadagi o'quvchi kartasi ismi bo'yicha topiladi (yozuvda ism
+  // saqlanadi; `studentOrderId` — o'quvchi profiliga havola uchun id).
+  const pupilOf = (c: FinanceContract) => studentByName.get(nameKey(c.studentName));
+
   const filtered = useMemo(() => {
     return contracts.filter((c) => {
       if (statusFilter === "archived" ? !c.archived : c.archived) return false;
-      if (group) {
-        const order = orders.find((o) => o.id === c.studentOrderId);
-        if (!order || order.group !== group) return false;
+      if (groupPupilIds) {
+        const pupil = studentByName.get(nameKey(c.studentName));
+        const pupilId = pupil?.id ?? c.studentOrderId;
+        if (!groupPupilIds.has(pupilId)) return false;
       }
       if (student && c.studentName !== student) return false;
       if (dateRange.start || dateRange.end) {
@@ -93,7 +130,7 @@ export default function FinanceContractsPage() {
       }
       return true;
     });
-  }, [contracts, statusFilter, group, student, dateRange, orders]);
+  }, [contracts, statusFilter, groupPupilIds, student, dateRange, studentByName]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -178,53 +215,68 @@ export default function FinanceContractsPage() {
               </tr>
             </thead>
             <tbody>
-              {slice.map((c, i) => (
-                <tr key={c.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
-                  <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 text-[13px] whitespace-nowrap">
-                    <Link href={`/student-edit/${c.studentOrderId}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                      {c.studentName}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(genBalance(c.studentOrderId))}</td>
-                  <td className="px-3 py-3 text-[13px] whitespace-nowrap">
-                    <Link href={`/management-xodimlar/${c.moderatorId}`} className="font-medium text-foreground hover:text-primary hover:underline">
-                      {c.moderatorName}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{c.parts.length}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(contractPartsTotal(c))}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(0)}</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{c.createdAt}</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground max-w-[220px] truncate" title={c.comment}>{c.comment || "—"}</td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1">
-                      <button onClick={() => setEditTarget(c)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title="Tahrirlash">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      {c.archived ? (
-                        <button
-                          onClick={() => toggleArchive(c)}
-                          disabled={archiveBusyId === c.id}
-                          className="h-8 w-8 rounded-md hover:bg-emerald-500/10 hover:text-emerald-600 flex items-center justify-center text-muted-foreground disabled:opacity-50"
-                          title="Arxivdan chiqarish"
-                        >
-                          <ArrowDownToLine className="w-4 h-4" />
-                        </button>
+              {slice.map((c, i) => {
+                const pupil = pupilOf(c);
+                return (
+                  <tr key={c.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
+                    <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
+                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">
+                      {/* `?src=list` — profil sahifasi id'ni MongoDB `pupils`
+                          dan qidirsin (o'quvchi kartasi shu yerda). */}
+                      <Link href={`/student-edit/${pupil?.id ?? c.studentOrderId}?src=list`} className="font-medium text-foreground hover:text-primary hover:underline">
+                        {c.studentName}
+                      </Link>
+                    </td>
+                    {/* Ro'yxatda yo'q o'quvchi = hali birorta to'lov yozuvi
+                        yo'q, ya'ni 0 — bu taxmin emas, hisoblangan qiymat
+                        (Kirim oynasidagi bilan bir xil qoida). */}
+                    <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(balances[nameKey(c.studentName)] ?? 0)}</td>
+                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">
+                      {c.moderatorId ? (
+                        <Link href={`/management-xodimlar/${c.moderatorId}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                          {c.moderatorName}
+                        </Link>
                       ) : (
-                        <button
-                          onClick={() => toggleArchive(c)}
-                          disabled={archiveBusyId === c.id}
-                          className="h-8 w-8 rounded-md hover:bg-amber-500/10 hover:text-amber-600 flex items-center justify-center text-muted-foreground disabled:opacity-50"
-                          title="Arxivga o'tkazish"
-                        >
-                          <ArrowUpToLine className="w-4 h-4" />
-                        </button>
+                        <span className="text-muted-foreground">{c.moderatorName || "—"}</span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-3 text-[13px] tabular-nums">{c.parts.length}</td>
+                    <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(contractPartsTotal(c))}</td>
+                    {/* To'lovni shartnomaga bog'laydigan maydon schema'da yo'q
+                        (transaction_entries'da contractId yo'q) — 0 yozish
+                        "to'lanmagan" degan yolg'on da'vo bo'lardi. */}
+                    <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                    <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{c.createdAt}</td>
+                    <td className="px-3 py-3 text-[13px] text-muted-foreground max-w-[220px] truncate" title={c.comment}>{c.comment || "—"}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1">
+                        <button onClick={() => setEditTarget(c)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title="Tahrirlash">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        {c.archived ? (
+                          <button
+                            onClick={() => toggleArchive(c)}
+                            disabled={archiveBusyId === c.id}
+                            className="h-8 w-8 rounded-md hover:bg-emerald-500/10 hover:text-emerald-600 flex items-center justify-center text-muted-foreground disabled:opacity-50"
+                            title="Arxivdan chiqarish"
+                          >
+                            <ArrowDownToLine className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => toggleArchive(c)}
+                            disabled={archiveBusyId === c.id}
+                            className="h-8 w-8 rounded-md hover:bg-amber-500/10 hover:text-amber-600 flex items-center justify-center text-muted-foreground disabled:opacity-50"
+                            title="Arxivga o'tkazish"
+                          >
+                            <ArrowUpToLine className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Shartnoma topilmadi"}</td>
@@ -243,12 +295,12 @@ export default function FinanceContractsPage() {
       </div>
 
       {addOpen && (
-        <FinanceContractDrawer orders={orders} onClose={() => setAddOpen(false)} onSaved={(c) => setContracts((prev) => [c, ...prev])} />
+        <FinanceContractDrawer students={students} onClose={() => setAddOpen(false)} onSaved={(c) => setContracts((prev) => [c, ...prev])} />
       )}
       {editTarget && (
         <FinanceContractDrawer
           contract={editTarget}
-          orders={orders}
+          students={students}
           onClose={() => setEditTarget(null)}
           onSaved={(c) => setContracts((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
         />

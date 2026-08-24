@@ -30,12 +30,30 @@ export interface CourseLevel {
   branches: LevelBranch[];
 }
 
+/**
+ * Kurs tafsilotidagi "Kitoblar"/"Mavzular" tablarining yozuvi. Ikkalasi bir
+ * xil shaklda: `extra` kitoblarda muallif, mavzularda qisqa izoh sifatida
+ * ko'rsatiladi. Kurs hujjatining ichida saqlanadi (levels kabi) —
+ * app/api/offline-courses/[id]/lists/route.ts.
+ */
+export interface CourseListItem {
+  id: number;
+  name: string;
+  extra: string;
+}
+
+export type CourseListKind = "books" | "topics";
+
 export interface OfflineCourse {
   id: number;
   name: string;
   color: string;
   branches: CourseBranch[];
   levels: CourseLevel[];
+  /** "Kitoblar" tabi. Eski yozuvlarda yo'q — shuning uchun ixtiyoriy. */
+  books?: CourseListItem[];
+  /** "Mavzular" tabi. */
+  topics?: CourseListItem[];
 }
 
 export type CourseInput = Pick<OfflineCourse, "name" | "color" | "branches">;
@@ -51,6 +69,11 @@ interface OfflineCoursesContextValue {
   addLevel: (courseId: number, data: LevelInput) => Promise<boolean>;
   updateLevel: (courseId: number, levelId: number, data: LevelInput) => Promise<boolean>;
   deleteLevel: (courseId: number, levelId: number) => Promise<boolean>;
+  /** "Kitoblar"/"Mavzular" ro'yxatiga yozuv qo'shadi. */
+  addListItem: (courseId: number, kind: CourseListKind, data: { name: string; extra: string }) => Promise<boolean>;
+  deleteListItem: (courseId: number, kind: CourseListKind, itemId: number) => Promise<boolean>;
+  /** Import qilingandan keyin ro'yxatni bazadan qayta o'qish. */
+  reload: () => Promise<void>;
 }
 
 const OfflineCoursesContext = createContext<OfflineCoursesContextValue | null>(null);
@@ -133,9 +156,43 @@ export function OfflineCoursesProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const addListItem = useCallback(
+    async (courseId: number, kind: CourseListKind, data: { name: string; extra: string }) => {
+      const d = await postJson(`/api/offline-courses/${courseId}/lists?kind=${kind}`, "POST", data);
+      if (!d.ok) return false;
+      setCourses((prev) =>
+        prev.map((c) => (c.id === courseId ? { ...c, [kind]: [...(c[kind] ?? []), d.item as CourseListItem] } : c)),
+      );
+      return true;
+    },
+    [],
+  );
+
+  const deleteListItem = useCallback(async (courseId: number, kind: CourseListKind, itemId: number) => {
+    const d = await postJson(`/api/offline-courses/${courseId}/lists?kind=${kind}&itemId=${itemId}`, "DELETE");
+    if (!d.ok) return false;
+    setCourses((prev) =>
+      prev.map((c) => (c.id === courseId ? { ...c, [kind]: (c[kind] ?? []).filter((x) => x.id !== itemId) } : c)),
+    );
+    return true;
+  }, []);
+
+  // Ommaviy import bir so'rovda ko'p kurs yaratadi — mahalliy holatni
+  // qo'shib-qo'yish o'rniga bazadan qayta o'qigan xavfsizroq.
+  const reload = useCallback(async () => {
+    const d = await fetch("/api/offline-courses").then((r) => r.json()).catch(() => null);
+    if (d?.ok) setCourses(d.courses as OfflineCourse[]);
+  }, []);
+
   const value = useMemo<OfflineCoursesContextValue>(
-    () => ({ courses, loading, getCourse, addCourse, updateCourse, deleteCourse, addLevel, updateLevel, deleteLevel }),
-    [courses, loading, getCourse, addCourse, updateCourse, deleteCourse, addLevel, updateLevel, deleteLevel],
+    () => ({
+      courses, loading, getCourse, addCourse, updateCourse, deleteCourse,
+      addLevel, updateLevel, deleteLevel, addListItem, deleteListItem, reload,
+    }),
+    [
+      courses, loading, getCourse, addCourse, updateCourse, deleteCourse,
+      addLevel, updateLevel, deleteLevel, addListItem, deleteListItem, reload,
+    ],
   );
 
   return <OfflineCoursesContext.Provider value={value}>{children}</OfflineCoursesContext.Provider>;

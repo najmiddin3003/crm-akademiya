@@ -16,14 +16,31 @@ export interface ListFieldDef {
   label: string;
   input: "text" | "select" | "toggle" | "date" | "color";
   options?: string[];
-  // Hisoblanadigan ustun (masalan "Bog'langan xodim soni") — jadvalda
-  // ko'rinadi, lekin formada tahrirlanmaydi.
-  readOnly?: boolean;
   // Toggle ustuni matnlari; standart — Faol / Nofaol.
   onLabel?: string;
   offLabel?: string;
   // Qiymatdan keyin ko'rinadigan birlik: "%", "UZS".
   suffix?: string;
+}
+
+/**
+ * Yozuvda SAQLANMAYDIGAN, boshqa kolleksiyadan hisoblanadigan ustun
+ * (hozircha yagona foydalanuvchisi — Oylik foizlaridagi "Bog'langan xodim
+ * soni", u xodim kartochkalaridan sanaladi).
+ *
+ * Ilgari bunday ustun oddiy `readOnly` maydon edi: qiymat yozuv ichida
+ * yotardi va uni hech kim yangilamasdi. Endi u umuman maydon emas — shuning
+ * uchun uni tasodifan formadan yoki POST tanasidan yozib bo'lmaydi.
+ */
+export interface ComputedColumnDef {
+  label: string;
+  /** Shu maydondan keyin chiziladi — referensdagi ustun tartibi saqlansin. */
+  afterKey: ListFieldKey;
+  /**
+   * Yozuv nomi (trim + kichik harf) → son. Barqaror (modul darajasidagi)
+   * funksiya bo'lishi shart: u useEffect bog'lanishida turadi.
+   */
+  load: () => Promise<Map<string, number>>;
 }
 
 const inputCls =
@@ -33,14 +50,19 @@ export default function SettingsListTab({
   kind,
   addLabel,
   fields,
+  computed,
 }: {
   kind: string;
   addLabel: string;
   fields: ListFieldDef[];
+  computed?: ComputedColumnDef;
 }) {
   const { showSuccess, showError } = useToast();
   const [items, setItems] = useState<SettingsListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // `null` — hali yuklanmoqda yoki olinmadi; bunday paytda 0 KO'RSATILMAYDI,
+  // chunki 0 ("bitta ham xodim yo'q") — bu ham bir da'vo.
+  const [counts, setCounts] = useState<Map<string, number> | null>(null);
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<SettingsListItem | null>(null);
@@ -60,13 +82,22 @@ export default function SettingsListTab({
     return () => { cancelled = true; };
   }, [kind]);
 
-  // Hisoblanadigan ustunlar formada umuman qatnashmaydi — ularni serverga
-  // yubormaymiz ham, aks holda mavjud qiymat bo'sh satr bilan yozib ketardi.
-  const editable = fields.filter((f) => !f.readOnly);
+  // Hisoblanadigan ustun bazadan emas, boshqa kolleksiyadan keladi.
+  const load = computed?.load;
+  useEffect(() => {
+    if (!load) return;
+    let cancelled = false;
+    load()
+      // Xato bo'lsa `counts` `null` bo'lib qoladi va ustunda "—" turadi —
+      // soxta 0 ko'rsatgandan ko'ra "noma'lum" rost.
+      .then((m) => { if (!cancelled) setCounts(m); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [load]);
 
   function blank(): Record<string, string | boolean> {
     const o: Record<string, string | boolean> = {};
-    for (const f of editable) {
+    for (const f of fields) {
       if (f.input === "toggle") o[f.key] = true;
       else if (f.input === "color") o[f.key] = "#3b82f6";
       else o[f.key] = f.options?.[0] ?? "";
@@ -80,7 +111,7 @@ export default function SettingsListTab({
   }
   function openEdit(it: SettingsListItem) {
     const o: Record<string, string | boolean> = {};
-    for (const f of editable) {
+    for (const f of fields) {
       const v = it[f.key];
       o[f.key] = f.input === "toggle" ? Boolean(v) : String(v ?? "");
     }
@@ -186,6 +217,21 @@ export default function SettingsListTab({
     );
   }
 
+  // Hisoblangan ustun katakchasi. Manba hali kelmagan bo'lsa "—" — o'sha
+  // paytda 0 yozish "hech kim bog'lanmagan" degan yolg'on da'vo bo'lardi.
+  function computedCell(it: SettingsListItem) {
+    if (!counts) return <span className="text-[13px] text-muted-foreground">—</span>;
+    return <span className="text-[13px] tabular-nums">{counts.get(it.name.trim().toLowerCase()) ?? 0}</span>;
+  }
+
+  // Ustunlar ro'yxati: hisoblanadigan ustun o'z joyiga (afterKey dan keyin)
+  // qo'shiladi, shunda referensdagi tartib saqlanadi.
+  const columns: ({ field: ListFieldDef } | { computed: ComputedColumnDef })[] = [];
+  for (const f of fields) {
+    columns.push({ field: f });
+    if (computed && computed.afterKey === f.key) columns.push({ computed });
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -203,9 +249,13 @@ export default function SettingsListTab({
             <thead className="bg-secondary/20">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                {fields.map((f) => (
-                  <th key={f.key} className="px-5 py-3 text-left whitespace-nowrap">{f.label}</th>
-                ))}
+                {columns.map((c) =>
+                  "field" in c ? (
+                    <th key={c.field.key} className="px-5 py-3 text-left whitespace-nowrap">{c.field.label}</th>
+                  ) : (
+                    <th key="__computed" className="px-5 py-3 text-left whitespace-nowrap">{c.computed.label}</th>
+                  ),
+                )}
                 <th className="px-5 py-3 text-right pr-5 w-28" />
               </tr>
             </thead>
@@ -213,9 +263,13 @@ export default function SettingsListTab({
               {items.map((it, i) => (
                 <tr key={it.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                  {fields.map((f) => (
-                    <td key={f.key} className="px-5 py-3">{cell(it, f)}</td>
-                  ))}
+                  {columns.map((c) =>
+                    "field" in c ? (
+                      <td key={c.field.key} className="px-5 py-3">{cell(it, c.field)}</td>
+                    ) : (
+                      <td key="__computed" className="px-5 py-3">{computedCell(it)}</td>
+                    ),
+                  )}
                   <td className="px-5 py-3 pr-5">
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -241,7 +295,7 @@ export default function SettingsListTab({
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={fields.length + 2} className="px-5 py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={columns.length + 2} className="px-5 py-12 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
@@ -256,7 +310,7 @@ export default function SettingsListTab({
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeForm()} />
           <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">{editTarget ? "Tahrirlash" : addLabel}</h3>
-            {editable.map((f) => (
+            {fields.map((f) => (
               <div key={f.key}>
                 {f.input === "toggle" ? (
                   <label className="flex items-center gap-2 text-[13px] cursor-pointer">

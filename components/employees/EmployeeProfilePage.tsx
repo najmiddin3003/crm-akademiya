@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import {
   Archive, ArchiveRestore, ArrowLeft, Briefcase, Check, ChevronDown, Copy, CreditCard,
@@ -9,8 +9,9 @@ import {
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
+import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
-import { isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
+import { isSalaryConfigured } from "@/lib/hrEmployees";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import EmployeeProfileEditModal from "./EmployeeProfileEditModal";
 import type { TransactionEntry } from "@/lib/transactionEntries";
@@ -88,6 +89,12 @@ const TX_STATUS_CLS: Record<string, string> = {
   cancelled: "bg-rose-500/10 text-rose-600",
 };
 
+/** "1998-04-17" → "17.04.1998" — sahifadagi qolgan sanalar bilan bir xil. */
+function fmtBirthDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
+
 const ROLE_BADGE: Record<string, string> = {
   teacher: "bg-primary",
   moderator: "bg-purple-500",
@@ -107,9 +114,13 @@ const ACTION_CLS = {
 
 export default function EmployeeProfilePage({ id }: { id: number }) {
   const { showSuccess, showError } = useToast();
-  const [emp, setEmp] = useState<HrEmployee | null>(null);
+  // HrEmployeeFull — asosiy maydonlar + modal saqlaydigan qo'shimchalar
+  // (tug'ilgan sana, izoh, maxsus maydonlar). Ilgari ular bu yerda ko'rinmasdi.
+  const [emp, setEmp] = useState<HrEmployeeFull | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("transactions");
+  // `rawActiveTab` — foydalanuvchi bosgan tab. Ko'rinadigan tab esa quyida
+  // RENDER paytida hisoblanadi (pastdagi izohga qarang).
+  const [rawActiveTab, setActiveTab] = useState("transactions");
   const [moreOpen, setMoreOpen] = useState(false);
   // null — modal yopiq; aks holda qaysi amal so'ralayotgani.
   const [archiveMode, setArchiveMode] = useState<ArchiveMode | null>(null);
@@ -133,8 +144,69 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [fStudent, setFStudent] = useState("");
-  const visibleTabs = EP_TABS.filter((t) => !EP_MORE_IDS.includes(t.id));
-  const moreTabs = EP_TABS.filter((t) => EP_MORE_IDS.includes(t.id));
+
+  // ── "Tablarni sozlash" ──────────────────────────────────────────────────
+  // Ilgari bu tugma faqat "(demo)" toast chiqarardi. Endi yashiriladigan
+  // tablar ro'yxati `settings` kolleksiyasida saqlanadi (Sozlamalar
+  // bo'limidagi boshqa tablar bilan bir xil naqsh), ya'ni tanlov sahifa
+  // yangilangandan keyin ham qoladi va hamma foydalanuvchida bir xil.
+  const [tabsCfgOpen, setTabsCfgOpen] = useState(false);
+  const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(new Set());
+  const tabsCfgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/settings?key=${encodeURIComponent(EMPLOYEE_PROFILE_TABS_KEY)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.ok) return;
+        const hidden = (d.values as { hidden?: unknown } | null)?.hidden;
+        if (Array.isArray(hidden)) setHiddenTabs(new Set(hidden.map((h) => String(h))));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!tabsCfgOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (tabsCfgRef.current && !tabsCfgRef.current.contains(e.target as Node)) setTabsCfgOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [tabsCfgOpen]);
+
+  async function toggleTabVisible(tabId: string) {
+    const next = new Set(hiddenTabs);
+    if (next.has(tabId)) next.delete(tabId);
+    else next.add(tabId);
+    if (next.size >= EP_TABS.length) {
+      showError("Kamida bitta tab ochiq qolishi kerak");
+      return;
+    }
+    const before = hiddenTabs;
+    setHiddenTabs(next); // darhol ko'rinsin
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: EMPLOYEE_PROFILE_TABS_KEY, values: { hidden: [...next] } }),
+    }).then((r) => r.json()).catch(() => null);
+    if (!res?.ok) {
+      // Saqlanmagan o'zgarishni ekranda qoldirib bo'lmaydi — qaytaramiz.
+      setHiddenTabs(before);
+      showError(res?.error || "Tab sozlamasi saqlanmadi");
+    }
+  }
+
+  const shownTabs = EP_TABS.filter((t) => !hiddenTabs.has(t.id));
+  const visibleTabs = shownTabs.filter((t) => !EP_MORE_IDS.includes(t.id));
+  const moreTabs = shownTabs.filter((t) => EP_MORE_IDS.includes(t.id));
+
+  // Tanlangan tab yashirib qo'yilgan bo'lsa — birinchi ochiq tabga tushamiz.
+  // Buni effekt ichida setState bilan qilish zanjirli render keltirib
+  // chiqaradi (react-hooks/set-state-in-effect), shuning uchun shunchaki
+  // render paytida hisoblaymiz.
+  const activeTab = hiddenTabs.has(rawActiveTab) ? (shownTabs[0]?.id ?? rawActiveTab) : rawActiveTab;
 
   // Xodim ma'lumotini backend'dan (/api/hr-employees/:id) yuklaymiz.
   useEffect(() => {
@@ -342,10 +414,30 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           <ArrowLeft className="icon icon-sm" />
           <span>Orqaga</span>
         </Link>
-        <button onClick={() => showSuccess("Tablarni sozlash (demo)")} className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
-          <Settings className="icon icon-sm text-primary" />
-          <span>Tablarni sozlash</span>
-        </button>
+        <div className="relative" ref={tabsCfgRef}>
+          <button onClick={() => setTabsCfgOpen((o) => !o)} className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
+            <Settings className="icon icon-sm text-primary" />
+            <span>Tablarni sozlash</span>
+          </button>
+          {tabsCfgOpen && (
+            <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border bg-card shadow-xl p-3 z-40">
+              <div className="text-[13px] font-semibold mb-2">Ko&apos;rinadigan tablar</div>
+              <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                {EP_TABS.map((t) => (
+                  <label key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!hiddenTabs.has(t.id)}
+                      onChange={() => toggleTabVisible(t.id)}
+                      className="w-4 h-4 rounded border-border accent-primary"
+                    />
+                    <span className="text-[13px]">{t.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
@@ -469,6 +561,36 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               ))}
             </ul>
           </div>
+
+          {/* Xodim qo'shish modalida to'ldiriladigan qo'shimcha ma'lumot.
+              Ilgari bu qiymatlar hech qayerda saqlanmasdi ham, ko'rinmasdi
+              ham. Bo'sh bo'lsa karta umuman chizilmaydi — bo'sh "—" lar
+              qatorini ko'rsatishdan ma'no yo'q. */}
+          {(emp.birthDate || emp.comment || Object.keys(emp.customFields ?? {}).length > 0) && (
+            <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Qo&apos;shimcha ma&apos;lumot
+              </div>
+              {emp.birthDate && (
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Tug&apos;ilgan sanasi</div>
+                  <div className="text-[13px] tabular-nums">{fmtBirthDate(emp.birthDate)}</div>
+                </div>
+              )}
+              {Object.entries(emp.customFields ?? {}).map(([k, v]) => (
+                <div key={k}>
+                  <div className="text-[11px] text-muted-foreground">{k}</div>
+                  <div className="text-[13px]">{v}</div>
+                </div>
+              ))}
+              {emp.comment && (
+                <div>
+                  <div className="text-[11px] text-muted-foreground">Izoh</div>
+                  <div className="text-[13px] whitespace-pre-wrap">{emp.comment}</div>
+                </div>
+              )}
+            </div>
+          )}
         </aside>
 
         {/* RIGHT */}
@@ -484,22 +606,26 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   {t.label}
                 </button>
               ))}
-              <div className="relative">
-                <button onClick={() => setMoreOpen((o) => !o)} className="h-9 px-4 rounded-full text-[13px] font-medium bg-secondary/50 text-foreground/80 hover:bg-secondary inline-flex items-center gap-1.5">
-                  Ko&apos;proq
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                {moreOpen && (
-                  <div className="absolute right-0 top-11 w-56 rounded-xl border border-border bg-card shadow-xl p-1 z-30">
-                    {moreTabs.map((t) => (
-                      <button key={t.id} onClick={() => selectTab(t.id)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
-                        <MoreVertical className="icon icon-xs text-muted-foreground" />
-                        <span>{t.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* "Ko'proq" faqat unda tab qolganda — hammasi yashirilgan
+                  bo'lsa, bo'sh menyu ochadigan tugma ortiqcha. */}
+              {moreTabs.length > 0 && (
+                <div className="relative">
+                  <button onClick={() => setMoreOpen((o) => !o)} className="h-9 px-4 rounded-full text-[13px] font-medium bg-secondary/50 text-foreground/80 hover:bg-secondary inline-flex items-center gap-1.5">
+                    Ko&apos;proq
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {moreOpen && (
+                    <div className="absolute right-0 top-11 w-56 rounded-xl border border-border bg-card shadow-xl p-1 z-30">
+                      {moreTabs.map((t) => (
+                        <button key={t.id} onClick={() => selectTab(t.id)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
+                          <MoreVertical className="icon icon-xs text-muted-foreground" />
+                          <span>{t.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

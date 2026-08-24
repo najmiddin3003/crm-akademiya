@@ -1,16 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
-import { OFERTA_DEFAULTS, OFERTA_NEW_SECTION, OFERTA_TEXTS } from "@/constants/settingsOferta";
+import SettingsNote from "./SettingsNote";
+import { OFERTA_NEW_SECTION, OFERTA_TEXTS } from "@/constants/settingsOferta";
 
-// Umumiy sozlamalar → Ommaviy oferta. Oferta ikki ko'rinishda yashaydi:
-// PDF fayl (zaxira nusxa) va bo'limlarga bo'lingan matn. Mobil ilova
-// bo'limlarni alohida kartochka + "Tanishdim" switch'i bilan chiqaradi,
-// shuning uchun har bir bo'limda "Majburiy" bayrog'i bor.
+// Umumiy sozlamalar → Ommaviy oferta. Oferta bo'limlarga bo'lingan matn
+// ko'rinishida saqlanadi. Mobil ilova bo'limlarni alohida kartochka +
+// "Tanishdim" switch'i bilan chiqaradi, shuning uchun har bir bo'limda
+// "Majburiy" bayrog'i bor.
+//
+// PDF YUKLASH KARTASI OLIB TASHLANDI. U fayl tanlagichi ko'rinishida edi,
+// lekin faylni hech qayerga yubormasdi — faqat `fileName` ni saqlardi.
+// Ya'ni "Oferta fayli: shartnoma.pdf" deb turardi-yu, o'sha PDF tizimda
+// umuman yo'q edi va uni ochib bo'lmasdi. Haqiqiy yuklash uchun endpoint
+// yo'q: /api/upload/image faqat PNG/JPG/WEBP, /api/upload/video faqat
+// video qabul qiladi, PDF (Cloudinary `raw`) uchun yo'l yo'q. Yolg'on
+// tugmani qoldirgandan ko'ra olib tashlash to'g'ri — oferta matni
+// pastdagi bo'limlar orqali to'liq kiritiladi.
 
 interface OfertaSection {
   id: string;
@@ -20,13 +30,11 @@ interface OfertaSection {
 }
 
 interface OfertaData {
-  fileName: string;
   sections: OfertaSection[];
 }
 
 const STORAGE_KEY = "system.public-oferta";
 const T = OFERTA_TEXTS as Record<string, string>;
-const DEFAULTS = OFERTA_DEFAULTS as OfertaData;
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -53,10 +61,9 @@ function normalizeSection(s: Partial<OfertaSection> | null): OfertaSection {
 
 export default function PublicOfertaTab() {
   const { showSuccess, showError } = useToast();
-  const [data, setData] = useState<OfertaData>(() => ({ ...DEFAULTS, sections: [] }));
+  const [data, setData] = useState<OfertaData>(() => ({ sections: [] }));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,12 +71,12 @@ export default function PublicOfertaTab() {
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.ok) return;
-        // Defaultlar ustiga yozamiz — yangi maydon qo'shilganda eski hujjat buzilmaydi.
-        const merged = { ...DEFAULTS, ...d.values } as Partial<OfertaData>;
+        const saved = (d.values ?? {}) as Partial<OfertaData>;
+        // Eski hujjatda sections yo'q yoki noto'g'ri turda bo'lishi mumkin.
+        // Eskirgan `fileName` esa o'qilmaydi va birinchi saqlashda hujjatdan
+        // butunlay yo'qoladi (PUT `values` ni to'liq almashtiradi).
         setData({
-          fileName: typeof merged.fileName === "string" ? merged.fileName : "",
-          // Eski hujjatda sections yo'q yoki noto'g'ri turda bo'lishi mumkin.
-          sections: Array.isArray(merged.sections) ? merged.sections.map(normalizeSection) : [],
+          sections: Array.isArray(saved.sections) ? saved.sections.map(normalizeSection) : [],
         });
       })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -130,47 +137,17 @@ export default function PublicOfertaTab() {
         <p className="text-[13px] text-muted-foreground mt-1 max-w-3xl">{T.description}</p>
       </div>
 
-      {/* KARTA 1 — PDF nusxa. Yuklash backend'i yo'q: fayl hech qayerga
-          yuborilmaydi, faqat tanlangan fayl NOMI saqlanadi. */}
-      <div className="rounded-2xl bg-card border border-border p-5">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-          {T.fileTitle}
-        </div>
-        <p className="text-[12px] text-muted-foreground">{T.fileHint}</p>
+      {/* Sahifa matni "mobil ilovada 'Tanishdim' bilan ko'rsatiladi" deb
+          va'da beradi, pastdagi izoh esa "tasdiqlanmaguncha kira olmaydi"
+          deydi. Aslida "system.public-oferta" hujjatini o'qiydigan kod
+          repoda yo'q. Bo'limlar rost saqlanadi, lekin va'da hali
+          bajarilmayotganini ochiq aytamiz. */}
+      <SettingsNote>
+        Bo&apos;limlar saqlanadi, lekin ularni ko&apos;rsatadigan mobil ilova bu tizimga hali
+        ulanmagan &mdash; &quot;Tanishdim&quot; tasdig&apos;i hozircha hech qayerda so&apos;ralmaydi.
+      </SettingsNote>
 
-        <div className="divide-y divide-border mt-2">
-          <div className="flex items-center justify-between gap-4 py-3">
-            <span className="text-[13px]">{T.fileRowLabel}</span>
-            <div className="flex items-center gap-3 min-w-0">
-              <span className={`text-[13px] truncate ${data.fileName ? "" : "text-muted-foreground"}`}>
-                {data.fileName || T.fileEmpty}
-              </span>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const name = e.target.files?.[0]?.name ?? "";
-                  // Qiymatni tozalaymiz — aks holda ayni fayl qayta tanlansa
-                  // change hodisasi umuman kelmaydi.
-                  e.target.value = "";
-                  if (name) setData((prev) => ({ ...prev, fileName: name }));
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="h-8 px-3.5 rounded-lg border border-border text-[13px] font-medium shrink-0 hover:bg-secondary"
-              >
-                {T.fileButton}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* KARTA 2 — bo'limlar. Ro'yxat faqat "Saqlash"da serverga ketadi. */}
+      {/* Bo'limlar kartasi. Ro'yxat faqat "Saqlash"da serverga ketadi. */}
       <div className="rounded-2xl bg-card border border-border p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

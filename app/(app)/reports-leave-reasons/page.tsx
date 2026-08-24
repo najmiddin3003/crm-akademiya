@@ -1,19 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LEAVE_TABS, type LeaveCategory, type LeaveReason } from "@/lib/studentReports";
 
 // Hisobotlar → Ketish sabablari (href /reports-leave-reasons).
 // Referensdagi kabi 4 tab, tanlangan tab bo'yicha jami ketganlar soni va
 // sabablar jadvali.
+//
+// SANA ORALIG'I TANLAGICHI OLIB TASHLANDI. U hech narsa qilmasdi: qatorlar
+// bir marta, hech qanday parametrsiz olinardi va tanlangan oraliq faqat
+// state'da yotardi. Asosiy sabab esa ma'lumotning O'ZIDA: `leave_reasons`
+// kolleksiyasi allaqachon JAMLANGAN qator saqlaydi (LeaveReason:
+// id/category/reason/count) — unda ketish SANASI yo'q, ya'ni "shu oraliqda
+// necha kishi ketgan" degan savolga javob beradigan maydon mavjud emas.
+// Oraliqni yuborish ham foydasiz: /api/student-reports faqat `kind` ni
+// tushunadi. Har bir ketish hodisasi sanasi bilan yozilgan yangi model
+// paydo bo'lgandagina bu tanlagichni qaytarish mantiqiy bo'ladi.
 
 export default function Page() {
   const [rows, setRows] = useState<LeaveReason[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<LeaveCategory>("umumiy");
-  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -45,9 +53,6 @@ export default function Page() {
               {t.label}
             </button>
           ))}
-        </div>
-        <div className="ml-auto">
-          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
         </div>
       </div>
 

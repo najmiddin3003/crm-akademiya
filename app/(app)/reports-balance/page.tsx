@@ -2,12 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
-import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 
 // Hisobotlar → Balans (href /reports-balance). Ma'lumot /api/reports/balance
 // dan — xodimlar bo'yicha Bonus/Jarima/Avans jamlanmasi va shundan kelib
 // chiqadigan "Ish haqi" qoldig'i. Pastda referensdagi kabi "Jami" qatori.
+//
+// SANA ORALIG'I TANLAGICHI OLIB TASHLANDI. Ilgari sahifada DateRangePicker
+// turardi, lekin tanlangan oraliq hech qayerga ketmasdi: /api/reports/balance
+// na `from`, na `to` parametrini qabul qiladi va qaytargan qatorda (BalanceRow:
+// id/name/phone/salary/bonus/advance/penalty) umuman SANA MAYDONI YO'Q — ya'ni
+// qatorlarni klientda ham ajratib bo'lmasdi. Foydalanuvchi oraliq tanlagach
+// jadval o'zgarmasdi, lekin filtrlangandek ko'rinardi — bu yolg'on edi.
+//
+// Oraliq bo'yicha filtrlash TEXNIK JIHATDAN mumkin: jamlanma manbalarining
+// hammasida sana bor (`bonuses.createdAt`, `penalties.createdAt` —
+// "DD.MM.YYYY HH:mm"; `transaction_entries.date` — "YYYY-MM-DD"). Buning uchun
+// app/api/reports/balance/route.ts ga from/to qo'shilishi kerak; u fayl bu
+// bo'limga tegishli emas, shuning uchun bu yerda tanlagich shunchaki olib
+// tashlandi (ishlamaydigan boshqaruvni qoldirgandan ko'ra yaxshiroq).
 
 interface BalanceRow {
   id: number;
@@ -24,7 +37,6 @@ const fmtUZS = (n: number) => n.toLocaleString("ru-RU") + " UZS";
 export default function Page() {
   const [rows, setRows] = useState<BalanceRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
@@ -56,10 +68,6 @@ export default function Page() {
 
   return (
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
-      <div className="flex items-center justify-end">
-        <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
-      </div>
-
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="table-scroll">
           <table className="w-full text-sm min-w-[1100px]">

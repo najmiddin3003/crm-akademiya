@@ -26,7 +26,11 @@ export interface SettingsListItem {
   // ko'rsatiladi — bu ro'yxatlarda ular ustida hisob-kitob qilinmaydi.
   balance?: string; // 3-shaxs
   percent?: string; // Oylik foizlari
-  staffCount?: number; // Oylik foizlari — bog'langan xodim soni (hisoblanadi)
+  // DIQQAT: "Bog'langan xodim soni" bu yerda YO'Q va bo'lmasligi ham kerak.
+  // Ilgari u `staffCount` maydoni sifatida yozuvda saqlanardi, lekin uni
+  // hech kim yangilamasdi — jadvalda seed'dan kelgan qotib qolgan son
+  // turardi. Endi u har safar xodim kartochkalaridan hisoblanadi:
+  // components/settings/monthlyPercentStaff.ts ga qarang.
   minPercent?: string; // Baholash darajalari
   maxPercent?: string; // Baholash darajalari
   color?: string; // Baholash darajalari, lid ranglari — "#rrggbb"
@@ -64,7 +68,6 @@ export const LIST_FIELD_TYPES = {
   endDate: "string",
   balance: "string",
   percent: "string",
-  staffCount: "number",
   minPercent: "string",
   maxPercent: "string",
   color: "string",
@@ -90,11 +93,11 @@ export function pickListFields(body: Record<string, unknown>): Record<string, un
   for (const [field, type] of Object.entries(LIST_FIELD_TYPES)) {
     if (!(field in body)) continue;
     const v = body[field];
+    // Faqat "string" va "boolean" qoldi: yagona son maydon `staffCount` edi,
+    // u endi umuman saqlanmaydi (hisoblanadi), shu bois son tarmog'i ham
+    // olib tashlandi — hech qachon bajarilmaydigan kod turmasin.
     if (type === "boolean") {
       if (typeof v === "boolean") out[field] = v;
-    } else if (type === "number") {
-      const n = Number(v);
-      if (Number.isFinite(n)) out[field] = n;
     } else if (typeof v === "string") {
       out[field] = v.trim();
     }

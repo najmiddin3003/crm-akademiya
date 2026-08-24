@@ -1,22 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { COURSES, MODERATORS, SUBCOURSES, createInitialOrders, type Order } from "@/lib/ordersData";
-import { useTeachers } from "@/hooks/useTeachers";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import type { Order } from "@/lib/ordersData";
 import { buildFunnelReport, buildFunnelSteps, buildStageSummary } from "@/lib/salesFunnel";
 
-// Hisobotlar → Sotuv voronkasi (href /reports-funnel). Ma'lumot mavjud
-// buyurtmalardan (lib/ordersData.ts) hisoblanadi — yangi backend yo'q,
-// O'quvchilar/Guruh sahifalari bilan bir xil manba.
+// Hisobotlar → Sotuv voronkasi (href /reports-funnel).
 //
-// Chapda 11 qatorli "Hisobot turlari" jadvali, o'ngda voronka (bosqichma-
-// bosqich toraya boradigan shakl) va lid bosqichlari taqsimoti.
+// ILGARI: sahifadagi HAR BIR son createInitialOrders() dan chiqardi — 502 ta
+// soxta buyurtma generatori (lib/ordersData.ts). Voronka bosqichlari,
+// 11 qatorli hisobot jadvali, lid bosqichlari taqsimoti va kurslar kesimi —
+// hammasi indeks arifmetikasidan yasalgan yozuvlarni sanardi, ya'ni bazada
+// bitta buyurtma bo'lmasa ham "to'la" hisobot ko'rinardi.
+// HOZIR: buyurtmalar /api/orders dan (MongoDB `orders`) — /orders-list bilan
+// bir xil manba, shuning uchun hisobot ro'yxat bilan doim izchil.
+//
+// Filtr ro'yxatlari ham qattiq yozilgan konstantalardan (COURSES / SUBCOURSES /
+// MODERATORS va sahifa ichidagi SOURCES massivi) EMAS, yuklangan
+// buyurtmalarning O'ZIDAN yig'iladi. Ilgari, masalan, "Marketing" ro'yxatida
+// "Instagram / Telegram / Facebook" turardi, bazadagi haqiqiy qiymatlar esa
+// butunlay boshqacha ("bot", "interface", "kommo", "survey", "tilda", "Sayt") —
+// ya'ni tanlangan variant deyarli hech qachon hech nima topmasdi.
 
 const selectCls =
   "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-
-const SOURCES = ["Instagram", "Telegram", "Tanish", "Facebook", "YouTube", "Sayt"];
 
 // Referensda lid voronkasi ustida shu uch filtr turadi. "Yopilgan" lid —
 // yakuniy holatga yetgani (bekor/yakun/o'tkazma) yoki "Ketdim" bosqichidagisi;
@@ -39,10 +47,36 @@ function fmt(n: number): string {
   return n.toLocaleString("ru-RU");
 }
 
+// Buyurtmaning yaratilgan sanasi "DD.MM.YYYY | HH:mm" ko'rinishida saqlanadi.
+// Solishtirish MAHALLIY yarim tunda bo'lishi kerak (lib/performanceReport.ts
+// dagi inRange bilan bir xil) — aks holda oraliqning birinchi kunidagi
+// buyurtmalar vaqt mintaqasi farqi tufayli tushib qolardi.
+function parseCreated(s: string): Date | null {
+  const [datePart] = String(s ?? "").split(" ");
+  const [d, m, y] = (datePart || "").split(".").map(Number);
+  if (!d || !m || !y) return null;
+  return new Date(y, m - 1, d);
+}
+
+function inRange(d: Date | null, range: DateRange): boolean {
+  if (!range.start && !range.end) return true;
+  // Sana o'qib bo'lmasa oraliqqa tushmaydi — "bilmayman" ni "tushadi" deb
+  // hisoblash jamlanmani shishirardi.
+  if (!d) return false;
+  const { start, end } = range;
+  if (start && d < new Date(start.getFullYear(), start.getMonth(), start.getDate())) return false;
+  if (end && d > new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59)) return false;
+  return true;
+}
+
+/** Buyurtmalarda haqiqatan uchraydigan qiymatlar — filtr ro'yxati uchun. */
+function optionsOf(orders: Order[], pick: (o: Order) => string): string[] {
+  return [...new Set(orders.map((o) => String(pick(o) ?? "").trim()).filter(Boolean))].sort();
+}
+
 export default function SalesFunnelPage() {
-  const allOrders = useMemo(() => createInitialOrders(), []);
-  // O'qituvchi filtri bazadagi haqiqiy o'qituvchilardan (/api/teachers).
-  const { names: teacherNames } = useTeachers();
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [course, setCourse] = useState("");
@@ -53,6 +87,21 @@ export default function SalesFunnelPage() {
   const [funnelMode, setFunnelMode] = useState<"student" | "course">("student");
   const [leadState, setLeadState] = useState<LeadStateKey>("all");
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/orders")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setAllOrders(d.orders as Order[]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const sourceOptions = useMemo(() => optionsOf(allOrders, (o) => o.source), [allOrders]);
+  const courseOptions = useMemo(() => optionsOf(allOrders, (o) => o.course), [allOrders]);
+  const subcourseOptions = useMemo(() => optionsOf(allOrders, (o) => o.subcourse), [allOrders]);
+  const moderatorOptions = useMemo(() => optionsOf(allOrders, (o) => o.moderator), [allOrders]);
+  const teacherOptions = useMemo(() => optionsOf(allOrders, (o) => o.teacher), [allOrders]);
+
   const orders = useMemo(
     () =>
       allOrders.filter((o) => {
@@ -61,13 +110,24 @@ export default function SalesFunnelPage() {
         if (moderator && o.moderator !== moderator) return false;
         if (teacher && o.teacher !== teacher) return false;
         if (source && o.source !== source) return false;
+        // Sana oralig'i — buyurtmaning yaratilgan sanasi bo'yicha. Ilgari bu
+        // tanlagich faqat state'da yotardi va hech narsani filtrlamasdi.
+        if (!inRange(parseCreated(o.created), dateRange)) return false;
         return true;
       }),
-    [allOrders, course, subcourse, moderator, teacher, source],
+    [allOrders, course, subcourse, moderator, teacher, source, dateRange],
   );
 
   const rows = useMemo(() => buildFunnelReport(orders), [orders]);
   const steps = useMemo(() => buildFunnelSteps(rows), [rows]);
+  // Voronka bosqichi ↔ hisobot qatori bog'lanishi YORLIQ bo'yicha.
+  // Ilgari "Kurs" rejimida qator indeks bo'yicha olinardi (rows[i]), lekin
+  // buildFunnelReport() 11 qator, buildFunnelSteps() esa 4 bosqich qaytaradi
+  // va ularning TARTIBI boshqacha — natijada 4 bosqichdan 3 tasi BEGONA
+  // qatorning "Kurslar soni" ustunini ko'rsatardi (masalan "Sinov darsiga
+  // yozilganlar" o'rniga "Buyurtmadan ketganlar" ning soni chiqardi).
+  const rowByLabel = useMemo(() => new Map(rows.map((r) => [r.label, r])), [rows]);
+
   // Lid bosqichlari bloki qo'shimcha ravishda "Hammasi / ishlanayotgan /
   // yopilgan" filtri bilan toraytiriladi — yuqoridagi filtrlar esa butun
   // sahifaga ta'sir qiladi.
@@ -93,6 +153,14 @@ export default function SalesFunnelPage() {
       .map(([label, value]) => ({ label, value, percent: (value / total) * 100 }));
   }, [orders]);
 
+  if (loading) {
+    return (
+      <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
+        <SpinnerBlock size={26} />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* Filtrlar */}
@@ -100,23 +168,23 @@ export default function SalesFunnelPage() {
         <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
         <select value={source} onChange={(e) => setSource(e.target.value)} className={`${selectCls} w-40`}>
           <option value="">Marketing</option>
-          {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+          {sourceOptions.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <select value={course} onChange={(e) => setCourse(e.target.value)} className={`${selectCls} w-40`}>
           <option value="">Kurs</option>
-          {COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+          {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={subcourse} onChange={(e) => setSubcourse(e.target.value)} className={`${selectCls} w-40`}>
           <option value="">Subkurs</option>
-          {SUBCOURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+          {subcourseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={moderator} onChange={(e) => setModerator(e.target.value)} className={`${selectCls} w-44`}>
           <option value="">Moderator</option>
-          {MODERATORS.map((m) => <option key={m} value={m}>{m}</option>)}
+          {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
         <select value={teacher} onChange={(e) => setTeacher(e.target.value)} className={`${selectCls} w-48`}>
           <option value="">O&apos;qituvchi</option>
-          {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
+          {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
@@ -173,7 +241,7 @@ export default function SalesFunnelPage() {
                 <div key={s.label} className="flex items-center gap-4">
                   <div className="w-44 shrink-0 text-right">
                     <div className="text-[18px] font-semibold tabular-nums leading-tight">
-                      {fmt(funnelMode === "course" ? rows[i]?.courses ?? 0 : s.count)}
+                      {fmt(funnelMode === "course" ? rowByLabel.get(s.label)?.courses ?? 0 : s.count)}
                     </div>
                     <div className="text-[12px] text-primary">{s.label}</div>
                     <div className="text-[12px] text-muted-foreground tabular-nums">{s.percent.toFixed(1)}%</div>

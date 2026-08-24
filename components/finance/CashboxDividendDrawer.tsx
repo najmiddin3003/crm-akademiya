@@ -5,7 +5,6 @@ import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
-import MonthYearPicker, { type MonthYearValue } from "@/components/ui/MonthYearPicker";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
@@ -17,23 +16,22 @@ function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-function defaultMonth(): MonthYearValue {
-  const now = new Date();
-  return { month: now.getMonth() + 1, year: now.getFullYear() };
-}
-
 interface Row {
   id: number;
   amount: string;
-  month: MonthYearValue | null;
 }
 
 // Kassalar sahifasidagi "More" → "Divident" — referens saytdagi oyna:
-// to'g'ridan-to'g'ri (Qiymat + Oyni tanlang) qatorlari — Chiqim oynasidagi
-// bilan bir xil "+" qator qo'shish mantig'i, lekin Tranzaksiya turi/
-// O'quvchi maydonlarisiz. Pul harakati Chiqim bilan bir xil — umumiy summa
-// bo'yicha /api/cashboxes/:id/adjust (mode: "chiqim", category: "Divident")
-// orqali HAQIQIY, jurnalga ham yoziladi.
+// to'g'ridan-to'g'ri Qiymat qatorlari — Chiqim oynasidagi bilan bir xil "+"
+// qator qo'shish mantig'i, lekin Tranzaksiya turi/O'quvchi maydonlarisiz.
+// Pul harakati Chiqim bilan bir xil — umumiy summa bo'yicha
+// /api/cashboxes/:id/adjust (mode: "chiqim", category: "Divident") orqali
+// HAQIQIY, jurnalga ham yoziladi.
+//
+// OLIB TASHLANGAN: har bir qatorda majburiy (*) deb belgilangan "Oyni
+// tanlang" tanlagichi turardi, lekin tanlangan oy so'rov tanasiga umuman
+// qo'shilmasdi — adjust endpointi ham, `transaction_entries` yozuvi ham
+// bunday maydonni bilmaydi. CashboxAdjustDrawer'dagi bilan bir xil sabab.
 export default function CashboxDividendDrawer({
   cashbox,
   onClose,
@@ -46,8 +44,23 @@ export default function CashboxDividendDrawer({
   useEscapeClose(onClose);
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods } = usePaymentMethods();
+  // TUZATILDI: Sozlamalardagi "Sarmoya va dividentda ko'rsatish" tugmasi
+  // (lib/settingsLists.ts → showInInvestment) hech qanday ta'sir qilmasdi —
+  // bu oyna uni umuman o'qimasdi, ya'ni ishlamaydigan boshqaruv edi. Endi
+  // o'chirilgan turlar ro'yxatga chiqmaydi (Sarmoya oynasi bilan bir xil).
+  //
+  // Belgi UMUMAN yo'q bo'lsa (seed'dagi va sozlama qo'shilishidan oldingi
+  // yozuvlarda u yo'q) tur ko'rsatilaveradi — aks holda ro'yxat butunlay
+  // bo'shab qolardi. Faqat aniq `false` yashiradi.
+  //
+  // `showInInvestment` lib/paymentMethods.ts dagi PaymentMethod
+  // interfeysida e'lon qilinmagan (u fayl bu guruh egaligida emas), shu
+  // bois shu yerda tor tur bilan o'qiladi.
+  const investmentMethods = paymentMethods.filter(
+    (m) => (m as { showInInvestment?: boolean }).showInInvestment !== false,
+  );
   const { showSuccess, showError } = useToast();
-  const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "", month: defaultMonth() }]);
+  const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "" }]);
   const [nextRowId, setNextRowId] = useState(2);
   const [method, setMethod] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
@@ -58,7 +71,7 @@ export default function CashboxDividendDrawer({
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
 
   function addRow() {
-    setRows((prev) => [...prev, { id: nextRowId, amount: "", month: defaultMonth() }]);
+    setRows((prev) => [...prev, { id: nextRowId, amount: "" }]);
     setNextRowId((n) => n + 1);
   }
   function removeRow(id: number) {
@@ -137,12 +150,6 @@ export default function CashboxDividendDrawer({
                     className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
-                <div className="flex-1">
-                  <label className="block text-[13px] font-medium mb-1.5">
-                    Oyni tanlang<span className="text-red-500"> *</span>
-                  </label>
-                  <MonthYearPicker value={row.month} onChange={(v) => updateRow(row.id, { month: v })} />
-                </div>
                 {i > 0 && (
                   <button
                     type="button"
@@ -184,7 +191,7 @@ export default function CashboxDividendDrawer({
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Tanlang</option>
-                {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
+                {investmentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>

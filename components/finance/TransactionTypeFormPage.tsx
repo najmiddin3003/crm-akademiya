@@ -15,6 +15,14 @@ const chipCls = (active: boolean) =>
 // berilsa — mavjud turni tahrirlaydi (PATCH), aks holda yangi yaratadi
 // (POST) — yangisi ro'yxat sahifasida faol bo'lgan tab (?type=) ostida
 // ko'rinadi.
+//
+// ILGARI: "Ism" maydoni yonida rang tanlagich turardi — tanlangan rang
+// hech qayerga yuborilmasdi (`TransactionType` da `color` maydoni yo'q,
+// POST/PATCH route'lari ham uni qabul qilmaydi) va ro'yxat sahifasi ham
+// rangni ko'rsatmasdi. Ya'ni foydalanuvchi rang tanlab "Saqlash" bosardi,
+// keyin qaytib kelganda tanlovi yo'qolgan bo'lardi. Bunday boshqaruv
+// yolg'on — shuning uchun olib tashlandi (rang kerak bo'lsa avval
+// schema'ga `color` maydonini qo'shish kerak).
 export default function TransactionTypeFormPage({ typeId }: { typeId?: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,7 +31,6 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
   const [loaded, setLoaded] = useState(typeId == null);
   const [notFound, setNotFound] = useState(false);
   const [name, setName] = useState("");
-  const [color, setColor] = useState("#000000");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [customerType, setCustomerType] = useState(CUSTOMER_TYPES[0]);
@@ -100,17 +107,12 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
 
         <div>
           <label className="block text-[13px] font-medium mb-1.5">Ism</label>
-          <div className="flex items-center gap-3">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              type="text"
-              className="flex-1 h-11 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            <label className="relative h-9 w-9 rounded-full shrink-0 cursor-pointer border border-border" style={{ backgroundColor: color }} title="Rang">
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
-            </label>
-          </div>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            type="text"
+            className="w-full h-11 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

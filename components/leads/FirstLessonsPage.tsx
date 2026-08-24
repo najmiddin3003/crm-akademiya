@@ -17,6 +17,7 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import PanelDaysField from "@/components/orders/PanelDaysField";
+import SmsModal from "@/components/orders/SmsModal";
 import { enrollOrderInGroup, findPupilForOrder } from "@/lib/enrollStudent";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
@@ -129,6 +130,15 @@ export default function FirstLessonsPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+
+  // Jadvaldagi belgilash katakchalari. Ilgari ular boshqarilmaydigan
+  // (uncontrolled) edi va ortida hech qanday ommaviy amal yo'q edi — bosish
+  // mumkin, lekin hech narsa bo'lmasdi. Endi tanlov haqiqiy va uning ustida
+  // haqiqatan mavjud amal bajariladi: tanlangan lidlarning birinchi dars
+  // holatini birdaniga o'zgartirish (PATCH /api/orders/:id).
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // "⋮" menyusi va u ochadigan oynalar
   const [menuFor, setMenuFor] = useState<{ order: Order; top: number; left: number } | null>(null);
@@ -303,6 +313,40 @@ export default function FirstLessonsPage() {
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
 
+  // Tanlov filtrdan tashqarida qolgan qatorlarni HISOBGA OLMAYDI — filtr
+  // o'zgarganda ko'rinmaydigan qatorlar ustida amal bajarilib qolmasin.
+  const selectedVisible = useMemo(
+    () => filtered.filter((o) => selectedIds.includes(o.id)),
+    [filtered, selectedIds],
+  );
+  const allOnPageSelected = slice.length > 0 && slice.every((o) => selectedIds.includes(o.id));
+
+  const toggleRow = (id: number) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const togglePage = () => {
+    const pageIds = slice.map((o) => o.id);
+    setSelectedIds((prev) =>
+      allOnPageSelected ? prev.filter((id) => !pageIds.includes(id)) : [...new Set([...prev, ...pageIds])],
+    );
+  };
+
+  /** Tanlangan lidlarning birinchi dars holatini birdaniga o'zgartiradi. */
+  const applyBulkStatus = async (status: FirstLessonStatus) => {
+    setBulkBusy(true);
+    const targets = selectedVisible.map((o) => o.id);
+    const results = await Promise.all(targets.map((id) => patchOrder(id, { firstLessonStatus: status })));
+    setBulkBusy(false);
+    setBulkStatusOpen(false);
+    const okCount = results.filter(Boolean).length;
+    if (okCount === targets.length) {
+      setSelectedIds([]);
+      showSuccess(`${okCount} ta lid holati o'zgartirildi`);
+    } else {
+      showError(`${okCount}/${targets.length} ta lid holati o'zgartirildi`);
+    }
+  };
+
   // --- KPI kartalari ---
   const stats = useMemo(() => {
     const today = todayIso();
@@ -435,7 +479,30 @@ export default function FirstLessonsPage() {
         />
       </div>
 
-      <div className="flex items-center justify-end">
+      {/* Ommaviy amal paneli — faqat tanlov bo'lganda ko'rinadi. */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        {selectedVisible.length > 0 ? (
+          <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
+            <span className="text-[13px] font-medium tabular-nums">{selectedVisible.length} ta tanlandi</span>
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => setBulkStatusOpen(true)}
+              className="h-8 rounded-lg bg-primary px-3 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              Status o&apos;zgartirish
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="h-8 rounded-lg border border-border px-3 text-[13px] hover:bg-secondary"
+            >
+              Tanlovni bekor qilish
+            </button>
+          </div>
+        ) : (
+          <span />
+        )}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
           <span className="text-muted-foreground">Umumiy soni:</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
@@ -449,7 +516,17 @@ export default function FirstLessonsPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-8">
-                  <input type="checkbox" className="rounded border-border" />
+                  <input
+                    type="checkbox"
+                    className="rounded border-border"
+                    aria-label="Sahifadagi hammasini tanlash"
+                    checked={allOnPageSelected}
+                    onChange={togglePage}
+                    // Sahifaning bir qismi tanlangan bo'lsa — "aralash" holat.
+                    ref={(el) => {
+                      if (el) el.indeterminate = !allOnPageSelected && slice.some((o) => selectedIds.includes(o.id));
+                    }}
+                  />
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
@@ -486,7 +563,15 @@ export default function FirstLessonsPage() {
                           : ""
                   }`}
                 >
-                  <td className="px-3 py-3"><input type="checkbox" className="rounded border-border" /></td>
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      aria-label={`${o.name} — tanlash`}
+                      checked={selectedIds.includes(o.id)}
+                      onChange={() => toggleRow(o.id)}
+                    />
+                  </td>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 tabular-nums font-medium text-[13px]">{o.id}</td>
                   <td className="px-3 py-3 text-[13px]">
@@ -633,7 +718,8 @@ export default function FirstLessonsPage() {
 
       {statusFor && (
         <StatusModal
-          order={statusFor}
+          title={`Status — ${statusFor.name}`}
+          current={statusFor.firstLessonStatus}
           onClose={() => setStatusFor(null)}
           onPick={async (s) => {
             const ok = await patchOrder(statusFor.id, { firstLessonStatus: s });
@@ -641,6 +727,14 @@ export default function FirstLessonsPage() {
             if (ok) showSuccess("Status o'zgartirildi");
             else showError("Statusni o'zgartirib bo'lmadi");
           }}
+        />
+      )}
+
+      {bulkStatusOpen && (
+        <StatusModal
+          title={`Status — ${selectedVisible.length} ta lid`}
+          onClose={() => setBulkStatusOpen(false)}
+          onPick={applyBulkStatus}
         />
       )}
 
@@ -671,17 +765,36 @@ export default function FirstLessonsPage() {
         />
       )}
 
+      {/* "Eslatma yuborish" — loyihadagi YAGONA haqiqiy xabar yo'li orqali:
+          SmsModal → POST /api/sms-messages (Eskiz + `sms_messages` jurnali),
+          Buyurtma detali va O'quvchilar ro'yxatidagi "SMS yuborish" bilan
+          aynan bir xil. Ilgari bu yerda o'z ichiga yopiq ReminderModal bor
+          edi: qattiq yozilgan 4 ta matndan birini tanlatib "yuborildi" deb
+          xabar berardi, ammo hech qanday so'rov yubormasdi. */}
       {reminderFor && (
-        <ReminderModal
-          order={reminderFor}
+        <SmsModal
+          studentName={reminderFor.name}
+          phone={reminderFor.phone}
           onClose={() => setReminderFor(null)}
-          onSend={async (text) => {
+          onSent={async ({ simulated }) => {
             const o = reminderFor;
             setReminderFor(null);
+            // `simulated` = Eskiz sozlanmagan (ESKIZ_EMAIL/ESKIZ_PASSWORD
+            // yo'q), ya'ni /api/sms-messages xabarni faqat jurnalga yozdi —
+            // tizimdan HECH QANDAY SMS chiqmadi. Ilgari holat shu holatda ham
+            // "ESLATILDI" deb belgilanardi: operatorga "jo'natilmadi" deb
+            // aytilar, lid esa bazada eslatilgan bo'lib qolardi va keyin hech
+            // kim unga qayta qo'ng'iroq qilmasdi. Endi xabar haqiqatan
+            // ketmagan bo'lsa holatga TEGILMAYDI.
+            if (simulated) {
+              showError("SMS jo'natilmadi: Eskiz sozlanmagan (faqat jurnalga yozildi) — holat \"Eslatildi\" ga o'zgartirilmadi");
+              return;
+            }
             const ok = await patchOrder(o.id, { firstLessonStatus: "ESLATILDI" });
-            if (ok) showSuccess(`${o.name} — eslatma yuborildi: "${text}"`);
-            else showError("Belgilab bo'lmadi");
+            if (ok) showSuccess(`${o.name} — eslatma yuborildi`);
+            else showError("Eslatma yuborildi, ammo holatni belgilab bo'lmadi");
           }}
+          onError={showError}
         />
       )}
 
@@ -711,9 +824,24 @@ function ModalShell({ title, children, onClose }: { title: string; children: Rea
   );
 }
 
-function StatusModal({ order, onClose, onPick }: { order: Order; onClose: () => void; onPick: (s: FirstLessonStatus) => void }) {
+/**
+ * Bitta lid uchun ham, tanlangan bir nechta lid uchun ham ishlatiladi —
+ * shu bois `order` emas, sarlavha va joriy holat alohida beriladi (ommaviy
+ * o'zgartirishda "joriy holat" degan yagona qiymat yo'q).
+ */
+function StatusModal({
+  title,
+  current,
+  onClose,
+  onPick,
+}: {
+  title: string;
+  current?: FirstLessonStatus;
+  onClose: () => void;
+  onPick: (s: FirstLessonStatus) => void;
+}) {
   return (
-    <ModalShell title={`Status — ${order.name}`} onClose={onClose}>
+    <ModalShell title={title} onClose={onClose}>
       <div className="grid grid-cols-2 gap-2">
         {FIRST_LESSON_STATUSES.map((s) => (
           <button
@@ -721,7 +849,7 @@ function StatusModal({ order, onClose, onPick }: { order: Order; onClose: () => 
             type="button"
             onClick={() => onPick(s.value)}
             className={`rounded-lg border px-3 py-2.5 text-left text-sm transition-colors hover:bg-secondary ${
-              order.firstLessonStatus === s.value ? "border-primary bg-primary/10 font-medium text-primary" : "border-border"
+              current === s.value ? "border-primary bg-primary/10 font-medium text-primary" : "border-border"
             }`}
           >
             <span className={`fl-status fl-status-${s.value}`}>{s.label}</span>
@@ -875,47 +1003,10 @@ function NotePanel({ order, onClose, onSave }: { order: Order; onClose: () => vo
   );
 }
 
-/**
- * "Eslatma yuborish" — tayyor eslatma matnlaridan birini tanlaydi.
- * Matnlar DEMO: backendda saqlanmaydi (foydalanuvchi shunday so'radi),
- * shu bois shu yerda konstanta sifatida turadi.
- */
-const REMINDER_TEMPLATES = [
-  "Assalomu alaykum! Ertangi sinov darsingizni eslatib o'tamiz.",
-  "To'lov qiling — kurs uchun to'lov muddati yaqinlashdi.",
-  "Darsga keling — bugungi darsni o'tkazib yubormang.",
-  "Aloqaga chiqing — siz bilan bog'lana olmadik.",
-];
-
-function ReminderModal({ order, onClose, onSend }: { order: Order; onClose: () => void; onSend: (text: string) => void }) {
-  const [picked, setPicked] = useState(REMINDER_TEMPLATES[0]);
-  return (
-    <ModalShell title={`Eslatma — ${order.name}`} onClose={onClose}>
-      <div className="space-y-2">
-        {REMINDER_TEMPLATES.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setPicked(t)}
-            className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors hover:bg-secondary ${
-              picked === t ? "border-primary bg-primary/10 font-medium" : "border-border"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-          Bekor qilish
-        </button>
-        <button type="button" onClick={() => onSend(picked)} className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90">
-          Yuborish
-        </button>
-      </div>
-    </ModalShell>
-  );
-}
+// OLIB TASHLANDI: ReminderModal va REMINDER_TEMPLATES. Shablonlar qattiq
+// yozilgan 4 ta matn edi va "Yuborish" hech qanday so'rov yubormasdi —
+// endi bu amal SmsModal orqali haqiqiy SMS yo'liga ulangan (yuqoriga qarang),
+// shablonlar esa /api/sms-templates va Sozlamalar → Avto sms dan keladi.
 
 /* ---------- "Chop etish" — avval ko'rib chiqish, keyin bosma ---------- */
 

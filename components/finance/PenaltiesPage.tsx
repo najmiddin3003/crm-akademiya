@@ -14,12 +14,26 @@ import type { Penalty } from "@/lib/penalties";
 // trash ikonkasi O'CHIRMAYDI — "bekor qilish": Sababi tanlab "Ha" bosilsa
 // yozuv PATCH bilan status="cancelled" qilinadi, jadvalda qoladi (foydalanuvchi
 // aniq talabi). Bekor qilingan qatorda amal tugmasi endi ko'rinmaydi.
+
+// /api/penalties qaytaradigan qatorning ANIQ shakli.
+//
+// NIMA O'ZGARDI: "Oldingi/Keyingi miqdor" ilgari `pupils.balance` dan
+// (hech qachon yangilanmaydigan maydon) yoki xodim uchun 0 dan kelardi —
+// ya'ni jadvalda o'ylab topilgan son odamning balansi deb ko'rsatilardi.
+// Endi o'quvchi uchun haqiqiy to'lovlar yig'indisi, manba bo'lmaganda esa
+// `null` keladi. lib/penalties.ts (bu guruh egaligida emas) ularni hali
+// `number` deb e'lon qiladi — shu bois tur shu yerda kengaytiriladi.
+type PenaltyRow = Omit<Penalty, "before" | "after"> & {
+  before: number | null;
+  after: number | null;
+};
+
 export default function PenaltiesPage() {
   const { showSuccess, showError } = useToast();
-  const [rows, setRows] = useState<Penalty[]>([]);
+  const [rows, setRows] = useState<PenaltyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [cancelTarget, setCancelTarget] = useState<Penalty | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<PenaltyRow | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [page, setPage] = useState(1);
@@ -37,7 +51,7 @@ export default function PenaltiesPage() {
     return () => { cancelled = true; };
   }, []);
 
-  function openCancel(p: Penalty) {
+  function openCancel(p: PenaltyRow) {
     setCancelReason("");
     setCancelTarget(p);
   }
@@ -58,7 +72,7 @@ export default function PenaltiesPage() {
         setCancelling(false);
         return;
       }
-      setRows((prev) => prev.map((x) => (x.id === p.id ? (data.penalty as Penalty) : x)));
+      setRows((prev) => prev.map((x) => (x.id === p.id ? (data.penalty as PenaltyRow) : x)));
       showSuccess("Jarima bekor qilindi");
     } catch {
       showError("Serverga ulanib bo'lmadi");
@@ -105,14 +119,26 @@ export default function PenaltiesPage() {
                 <tr key={p.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 text-[13px] font-medium">{p.recipientName}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{p.before.toLocaleString("ru-RU")}</td>
+                  {/* Manbasi yo'q balans "—", 0 emas: 0 "balansi nol" degan
+                      faktik da'vo bo'lardi. */}
+                  <td className="px-3 py-3 text-[13px] tabular-nums">{p.before == null ? "—" : p.before.toLocaleString("ru-RU")}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums font-semibold">{p.amount.toLocaleString("ru-RU")}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{p.after.toLocaleString("ru-RU")}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums">{p.after == null ? "—" : p.after.toLocaleString("ru-RU")}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{p.note || "—"}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{p.reason || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">{p.status || "—"}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{p.createdAt}</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">{p.image || "-"}</td>
+                  {/* `image` endi Cloudinary URL (PenaltyDrawer haqiqatan
+                      yuklaydi) — ochib ko'rish mumkin. Eski yozuvlarda faqat
+                      fayl NOMI turishi mumkin, u havola emas: shuning uchun
+                      "http" bilan boshlanmaganini oddiy matn qilib qoldiramiz. */}
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">
+                    {p.image
+                      ? (p.image.startsWith("http")
+                          ? <a href={p.image} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ko&apos;rish</a>
+                          : p.image)
+                      : "—"}
+                  </td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     {p.status !== "cancelled" && (
                       <button onClick={() => openCancel(p)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="Bekor qilish">

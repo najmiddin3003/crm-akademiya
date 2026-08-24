@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import SettingsNote from "./SettingsNote";
 import { INTEGRATIONS, INTEGRATION_CATEGORIES } from "@/constants/integrations";
 
 // Sozlamalar → Integratsiyalar. Referensdagidek: yuqorida kategoriya
@@ -76,7 +77,10 @@ export default function IntegrationsTab() {
         setInstalled(installed); // qaytarib qo'yamiz
         return;
       }
-      showSuccess(next[key] ? "O'rnatildi" : "O'chirildi");
+      // Ilgari bu yerda "O'rnatildi" chiqardi — bu yolg'on da'vo edi: hech
+      // narsa o'rnatilmaydi, faqat belgi saqlanadi. Toast endi aynan sodir
+      // bo'lgan ishni aytadi.
+      showSuccess(next[key] ? "Belgilandi" : "Belgi olib tashlandi");
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setInstalled(installed);
@@ -98,6 +102,16 @@ export default function IntegrationsTab() {
           </button>
         ))}
       </div>
+
+      {/* Kartani bosish faqat "integration.installed" hujjatidagi belgini
+          o'zgartiradi: hisob ma'lumoti (kalit, token, telefon) so'ralmaydi,
+          ulanish tekshirilmaydi va bu belgini o'qiydigan boshqa kod yo'q.
+          Shu bois bu ro'yxat — reja/belgi taxtasi, ishlaydigan do'kon emas. */}
+      <SettingsNote>
+        Bu yerda faqat qaysi xizmatdan foydalanish rejalashtirilgani belgilanadi. Haqiqiy
+        ulanish yo&apos;q: hisob ma&apos;lumotlari so&apos;ralmaydi, aloqa tekshirilmaydi va belgi
+        tizimning boshqa bo&apos;limlariga ta&apos;sir qilmaydi.
+      </SettingsNote>
 
       {loading ? (
         <div className="rounded-2xl bg-card border border-border p-10">
@@ -128,7 +142,9 @@ export default function IntegrationsTab() {
                       }`}
                     >
                       {on ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                      {on ? "O'rnatilgan" : "O'rnatish"}
+                      {/* "O'rnatilgan" emas: hech qanday provayder o'rnatilmaydi,
+                          faqat shu karta belgilanadi. */}
+                      {on ? "Belgilangan" : "Belgilash"}
                     </button>
                   </div>
                 );

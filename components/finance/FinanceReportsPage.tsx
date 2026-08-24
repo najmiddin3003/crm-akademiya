@@ -8,8 +8,8 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import DailyAreaChart, { type DailyPoint } from "@/components/finance/reports/DailyAreaChart";
 import BreakdownBars from "@/components/finance/reports/BreakdownBars";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
-import { INCOME_CATS, EXPENSE_CATS } from "@/constants/transactions";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
 import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
 
@@ -21,9 +21,30 @@ import type { Cashbox } from "@/lib/cashboxes";
 // uchun alohida "Tranzaksiya turi"/"To'lov usuli" taqsimoti panellari. Sof
 // hisobot — add/edit/delete yo'q. "Kassa" va "To'lov turi" filtrlari REAL
 // (har bir tranzaksiyada shu maydonlar bor).
+//
+// ILGARI "Tranzaksiya turi" taqsimotidagi kategoriyalar `constants/
+// transactions.js` dagi qattiq yozilgan INCOME_CATS/EXPENSE_CATS ro'yxatidan
+// olinardi — u demo generator uchun yozilgan ro'yxat edi va admin
+// "Tranzaksiya turi" sahifasida qo'shgan yangi tur bu hisobotga hech qachon
+// tushmasdi. Endi ro'yxat /api/transaction-types dan (useTransactionTypes),
+// ya'ni Kassalar oynalari bilan bir xil manba.
+//
+// TUZATILDI — SAHIFA O'ZINI O'ZI INKOR QILARDI: taqsimotlar faqat hozir
+// ro'yxatda turgan tranzaksiya turlari (va to'lov turlari) bo'yicha
+// yig'ilardi, yuqoridagi Kirim/Chiqim/Qoldiq kartalari esa BARCHA
+// tranzaksiyani qo'shardi. Admin turni o'chirsa yoki nomini o'zgartirsa,
+// o'sha pul donut va ustunlardan tushib qolardi — donut markazidagi jami
+// o'zi turgan kartadan kichik chiqardi. Endi ikkalasi ham bir xil
+// to'plamni o'qiydi: ro'yxatda yo'q kategoriya/usul "Boshqa" qatorida.
 
 function fmtUZS(n: number): string {
   return Math.round(n).toLocaleString("ru-RU") + " UZS";
+}
+// Ro'yxatda yo'q kategoriya/to'lov usuli shu nom ostida yig'iladi. Agar
+// aynan shu nomli haqiqiy tur mavjud bo'lsa — nom aniqlashtiriladi, ikki
+// xil pul bir qatorda aralashib ketmasin.
+function otherLabel(known: string[]): string {
+  return known.includes("Boshqa") ? "Boshqa (ro'yxatda yo'q)" : "Boshqa";
 }
 function monthToDateRange(): DateRange {
   const now = new Date();
@@ -76,6 +97,10 @@ export default function FinanceReportsPage() {
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan. Taqsimotda
   // barchasi (eski summalar ko'rinsin), filtrda faqat faollari.
   const { methods: paymentMethods, active: activeMethods } = usePaymentMethods();
+  // Kategoriyalar Moliya → Tranzaksiya turi sahifasidagi haqiqiy ro'yxatdan.
+  const { types } = useTransactionTypes();
+  const incomeCats = useMemo(() => transactionTypeNames(types, "kirim"), [types]);
+  const expenseCats = useMemo(() => transactionTypeNames(types, "chiqim"), [types]);
   const [chartVariant, setChartVariant] = useState<"area" | "bar">("area");
   const [kirimMode, setKirimMode] = useState<"category" | "method">("category");
   const [chiqimMode, setChiqimMode] = useState<"category" | "method">("category");
@@ -149,32 +174,45 @@ export default function FinanceReportsPage() {
     });
   }, [current, dateRange]);
 
+  // Ro'yxatdagi turlar avvalgi tartibda, ulardan tashqarisi oxirida bitta
+  // "Boshqa" qatorida — hech bir tranzaksiya tashlanmaydi, shuning uchun
+  // yig'indi yuqoridagi karta bilan mos tushadi.
   function categoryBreakdown(rows: Transaction[], cats: string[], positive: boolean) {
     const map: Record<string, number> = {};
     for (const t of rows) {
       if (positive ? t.amount <= 0 : t.amount >= 0) continue;
       map[t.category] = (map[t.category] || 0) + Math.abs(t.amount);
     }
-    return cats.map((c) => ({ label: c, amount: map[c] || 0 })).filter((r) => r.amount > 0);
+    const known = new Set(cats);
+    const other = Object.entries(map).reduce((s, [c, v]) => (known.has(c) ? s : s + v), 0);
+    const out = cats.map((c) => ({ label: c, amount: map[c] || 0 })).filter((r) => r.amount > 0);
+    if (other > 0) out.push({ label: otherLabel(cats), amount: other });
+    return out;
   }
+  // Bir xil sabab: Sozlamalardan o'chirilgan to'lov turidagi pul ham
+  // "To'lov usuli" taqsimotidan tushib qolmasligi kerak.
   function methodBreakdown(rows: Transaction[], positive: boolean) {
     const map: Record<string, number> = {};
     for (const t of rows) {
       if (positive ? t.amount <= 0 : t.amount >= 0) continue;
       map[t.method] = (map[t.method] || 0) + Math.abs(t.amount);
     }
-    return paymentMethods.map((m) => ({ label: m.name, amount: map[m.key] || 0 })).filter((r) => r.amount > 0);
+    const known = new Set(paymentMethods.map((m) => m.key));
+    const other = Object.entries(map).reduce((s, [k, v]) => (known.has(k) ? s : s + v), 0);
+    const out = paymentMethods.map((m) => ({ label: m.name, amount: map[m.key] || 0 })).filter((r) => r.amount > 0);
+    if (other > 0) out.push({ label: otherLabel(paymentMethods.map((m) => m.name)), amount: other });
+    return out;
   }
 
-  const kirimRows = kirimMode === "category" ? categoryBreakdown(current, INCOME_CATS, true) : methodBreakdown(current, true);
-  const chiqimRows = chiqimMode === "category" ? categoryBreakdown(current, EXPENSE_CATS, false) : methodBreakdown(current, false);
+  const kirimRows = kirimMode === "category" ? categoryBreakdown(current, incomeCats, true) : methodBreakdown(current, true);
+  const chiqimRows = chiqimMode === "category" ? categoryBreakdown(current, expenseCats, false) : methodBreakdown(current, false);
 
-  const flowDonutRows = donutFlow === "income" ? categoryBreakdown(current, INCOME_CATS, true) : categoryBreakdown(current, EXPENSE_CATS, false);
+  const flowDonutRows = donutFlow === "income" ? categoryBreakdown(current, incomeCats, true) : categoryBreakdown(current, expenseCats, false);
   const flowDonutSlices = flowDonutRows.map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[i % CHART_COLORS.length] }));
   const flowDonutTotal = flowDonutSlices.reduce((s, x) => s + x.value, 0);
 
-  const kirimStatSlices = categoryBreakdown(current, INCOME_CATS, true).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[i % CHART_COLORS.length] }));
-  const chiqimStatSlices = categoryBreakdown(current, EXPENSE_CATS, false).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[(i + 1) % CHART_COLORS.length] }));
+  const kirimStatSlices = categoryBreakdown(current, incomeCats, true).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[i % CHART_COLORS.length] }));
+  const chiqimStatSlices = categoryBreakdown(current, expenseCats, false).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[(i + 1) % CHART_COLORS.length] }));
 
   if (loading) {
     return <div className="p-5"><SpinnerBlock /></div>;

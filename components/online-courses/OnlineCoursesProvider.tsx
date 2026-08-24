@@ -16,14 +16,27 @@ import type { NewCourseValues, OnlineCourse } from "@/lib/onlineCourses";
 // `null`) qaytaradi — toast'ni chaqiruvchi ko'rsatadi (hooks/useTaskTypes.ts
 // bilan bir xil kelishuv).
 
+/**
+ * Kursga biriktirilgan guruhlar (`groupIds`) lib/onlineCourses.ts dagi
+ * `OnlineCourse` tipida e'lon qilinmagan — u fayl boshqa bo'limga tegishli.
+ * Maydon "Kurs biriktirish" oynasi orqali yoziladi
+ * (app/api/online-courses/[id]/bind/route.ts) va GET butun hujjatni
+ * qaytargani uchun amalda keladi.
+ */
+export type BoundOnlineCourse = OnlineCourse & { groupIds?: number[] };
+
 interface OnlineCoursesContextValue {
-  courses: OnlineCourse[];
+  courses: BoundOnlineCourse[];
   loading: boolean;
-  getCourse: (id: number) => OnlineCourse | undefined;
+  getCourse: (id: number) => BoundOnlineCourse | undefined;
   addCourse: (values: NewCourseValues) => Promise<string | null>;
   updateCourse: (id: number, values: NewCourseValues) => Promise<string | null>;
   deleteCourse: (id: number) => Promise<string | null>;
   togglePublish: (id: number) => Promise<string | null>;
+  /** "Kurs biriktirish" — guruhni yoki kategoriyani kursga biriktiradi. */
+  bindCourse: (id: number, payload: { groupId?: number; categoryId?: number }) => Promise<string | null>;
+  /** Biriktirishni bekor qiladi (groupId berilmasa — kategoriya). */
+  unbindCourse: (id: number, groupId?: number) => Promise<string | null>;
 }
 
 const OnlineCoursesContext = createContext<OnlineCoursesContextValue | null>(null);
@@ -42,7 +55,7 @@ async function send(url: string, method: string, body?: unknown) {
 }
 
 export function OnlineCoursesProvider({ children }: { children: ReactNode }) {
-  const [courses, setCourses] = useState<OnlineCourse[]>([]);
+  const [courses, setCourses] = useState<BoundOnlineCourse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -98,9 +111,27 @@ export function OnlineCoursesProvider({ children }: { children: ReactNode }) {
     [courses],
   );
 
+  // Biriktirish server javobidagi to'liq kurs hujjati bilan yangilanadi —
+  // shunda `groupIds`/`categoryId` darhol UI'da ko'rinadi va "biriktirildi"
+  // degan xabar haqiqatan sodir bo'lgan ishga mos keladi.
+  const bindCourse = useCallback(async (id: number, payload: { groupId?: number; categoryId?: number }) => {
+    const d = await send(`/api/online-courses/${id}/bind`, "POST", payload);
+    if (!d.ok) return (d.error as string) || "Biriktirib bo'lmadi";
+    setCourses((prev) => prev.map((c) => (c.id === id ? (d.course as BoundOnlineCourse) : c)));
+    return null;
+  }, []);
+
+  const unbindCourse = useCallback(async (id: number, groupId?: number) => {
+    const qs = groupId === undefined ? "" : `?groupId=${groupId}`;
+    const d = await send(`/api/online-courses/${id}/bind${qs}`, "DELETE");
+    if (!d.ok) return (d.error as string) || "Biriktirishni bekor qilib bo'lmadi";
+    setCourses((prev) => prev.map((c) => (c.id === id ? (d.course as BoundOnlineCourse) : c)));
+    return null;
+  }, []);
+
   const value = useMemo<OnlineCoursesContextValue>(
-    () => ({ courses, loading, getCourse, addCourse, updateCourse, deleteCourse, togglePublish }),
-    [courses, loading, getCourse, addCourse, updateCourse, deleteCourse, togglePublish],
+    () => ({ courses, loading, getCourse, addCourse, updateCourse, deleteCourse, togglePublish, bindCourse, unbindCourse }),
+    [courses, loading, getCourse, addCourse, updateCourse, deleteCourse, togglePublish, bindCourse, unbindCourse],
   );
 
   return <OnlineCoursesContext.Provider value={value}>{children}</OnlineCoursesContext.Provider>;

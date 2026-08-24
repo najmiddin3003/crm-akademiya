@@ -303,9 +303,17 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           order={messageOrder}
           messages={messagesByOrder[messageOrder.id] ?? []}
           onClose={() => setMessageId(null)}
-          onSend={(text) => {
-            addMessage(messageOrder.id, text);
-            showSuccess("Izoh qo'shildi");
+          onSend={async (text) => {
+            // addMessage HAQIQIY so'rov (POST /api/orders/:id/comments) va u
+            // muvaffaqiyatsiz tugashi mumkin (404, 400, tarmoq uzilishi).
+            // Ilgari u await QILINMASDI va "Izoh qo'shildi" toasti SHARTSIZ
+            // chiqardi: yozuv tushmagan holatda foydalanuvchi bir vaqtda ham
+            // kontekstning xato toastini, ham muvaffaqiyat toastini ko'rardi.
+            // Endi natija kutiladi va muvaffaqiyat faqat izoh haqiqatan
+            // saqlangandagina aytiladi (xato xabarini OrdersContext o'zi
+            // ko'rsatadi, shu bois bu yerda takrorlanmaydi).
+            const saved = await addMessage(messageOrder.id, text);
+            if (saved) showSuccess("Izoh qo'shildi");
           }}
         />
       )}

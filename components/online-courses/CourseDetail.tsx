@@ -1,29 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Archive, Calendar, Edit, Plus } from "lucide-react";
+import { Archive, Edit, Plus, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
 import BindCourseDrawer from "./BindCourseDrawer";
+import type { EduCategory } from "@/lib/eduCategories";
+import type { Group } from "@/lib/groups";
 
 // Onlayn kurs detail sahifasi (crm-akademiya #view-online-course-detail).
-// Manbada 2 tab bor: "Sotib olganlar"/"Topshiriqlar" — ikkalasi ham HAR DOIM
-// bo'sh render qilinadi (tbody.innerHTML='' shartsiz) — Oflayn kurslar'ning
-// "6 tab, faqat Darajalar ishlaydi" chuqurligidan farqli, bu yerda hech
-// qaysi tab haqiqiy ma'lumot ko'rsatmaydi (manbaning o'zida ham shunday).
-
-const CLIENT_COLS = ["№", "O'quvchi ismi", "Sotib olgan vaqti", "Yakunlagan qismi"];
-const ASSIGNMENT_COLS = ["№", "O'quvchi ismi", "Topshirilgan vaqti", "Bo'lim nomi", "Topshiriq nomi"];
+//
+// NIMA O'ZGARDI:
+//  • "Sotib olganlar" va "Topshiriqlar" tablari ilgari ustun sarlavhalari
+//    bilan JADVAL chizardi va tbody'sini doim bo'sh qoldirardi, pastida esa
+//    "Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring" deb yozardi —
+//    go'yo qidiruv bo'lgan-u, natija chiqmagandek. Aslida komponent hech
+//    narsa yuklamaydi va yuklaydigan joyi ham yo'q: bazada onlayn kurs
+//    XARIDLARI (`online_course_purchases` kabi) va TOPSHIRIQ TOPSHIRISHLARI
+//    uchun kolleksiya mavjud emas. Endi tablar shuni ochiq aytadi.
+//  • "Umumiy soni" qattiq yozilgan 0 edi. 0 — bu "hech kim sotib olmagan"
+//    degan tasdiq; biz buni bilmaymiz, shu bois "—" ko'rsatiladi.
+//  • "Oraliqni tanlang" tugmasi onClick'siz va holatsiz edi (hech qachon
+//    ochilmaydigan sana tanlagich). Filtrlaydigan ma'lumot yo'q — tugma
+//    butunlay olib tashlandi.
+//  • Yangi: "Biriktirilgan" bo'limi — "Kurs biriktirish" oynasi endi
+//    haqiqatan saqlaydi, natija shu yerda ko'rinadi va bekor qilinadi.
 
 export default function CourseDetail({ courseId }: { courseId: number }) {
-  const { getCourse, loading, togglePublish } = useOnlineCourses();
-  const { showError } = useToast();
+  const { getCourse, loading, togglePublish, unbindCourse } = useOnlineCourses();
+  const { showSuccess, showError } = useToast();
   const course = getCourse(courseId);
   const [tab, setTab] = useState<"clients" | "assignments">("clients");
   const [bindOpen, setBindOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  // Biriktirilgan guruh/kategoriya NOMINI ko'rsatish uchun — hujjatda faqat
+  // id'lar saqlanadi.
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [categories, setCategories] = useState<EduCategory[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/groups").then((r) => r.json()).catch(() => null),
+      fetch("/api/edu-categories").then((r) => r.json()).catch(() => null),
+    ]).then(([g, c]) => {
+      if (cancelled) return;
+      if (g?.ok) setGroups(g.groups as Group[]);
+      if (c?.ok) setCategories(c.categories as EduCategory[]);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Kurslar API'dan kelguncha "topilmadi" deb xulosa qilmaymiz.
   if (loading) {
@@ -43,7 +71,15 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
     );
   }
 
-  const cols = tab === "clients" ? CLIENT_COLS : ASSIGNMENT_COLS;
+  const boundGroups = (course.groupIds ?? [])
+    .map((id) => groups.find((g) => g.id === id) ?? ({ id, name: `#${id}` } as Group));
+  const boundCategory = course.categoryId != null ? categories.find((c) => c.id === course.categoryId) : undefined;
+
+  const removeBinding = async (groupId?: number) => {
+    const error = await unbindCourse(course.id, groupId);
+    if (error) showError(error);
+    else showSuccess("Biriktirish bekor qilindi");
+  };
 
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
@@ -72,10 +108,6 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
           <Plus className="icon icon-sm" />
           <span>Kurs biriktirish</span>
         </button>
-        <button type="button" className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
-          <Calendar className="icon icon-sm text-muted-foreground" />
-          <span className="text-muted-foreground">Oraliqni tanlang</span>
-        </button>
         <button
           disabled={publishing}
           onClick={async () => {
@@ -90,32 +122,53 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
         </button>
       </div>
 
+      {/* Biriktirilganlar — kurs hujjatidagi haqiqiy `groupIds`/`categoryId`. */}
+      {(boundGroups.length > 0 || boundCategory) && (
+        <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Biriktirilgan</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {boundCategory && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary/60 px-2.5 py-1 text-[13px]">
+                Kurs: {boundCategory.name}
+                <button type="button" onClick={() => removeBinding()} title="Biriktirishni bekor qilish" className="text-muted-foreground hover:text-rose-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
+            {boundGroups.map((g) => (
+              <span key={g.id} className="inline-flex items-center gap-1.5 rounded-lg bg-secondary/60 px-2.5 py-1 text-[13px]">
+                Guruh: {g.name || `#${g.id}`}
+                <button type="button" onClick={() => removeBinding(g.id)} title="Biriktirishni bekor qilish" className="text-muted-foreground hover:text-rose-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
           <span className="text-muted-foreground">Umumiy soni:</span>
-          <span className="font-bold tabular-nums">0</span>
+          {/* "—" ataylab: xaridlar/topshiriqlar kolleksiyasi yo'q, ya'ni son
+              noma'lum. 0 yozish "hech kim yo'q" degan yolg'on tasdiq bo'lardi. */}
+          <span className="font-bold tabular-nums">—</span>
         </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/40">
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                {cols.map((c, i) => <th key={c} className={`text-left px-3 py-3 ${i === 0 ? "w-16" : ""}`}>{c}</th>)}
-              </tr>
-            </thead>
-            <tbody />
-          </table>
-        </div>
         <div className="py-16 text-center">
           <Archive className="mx-auto mb-3" style={{ width: 48, height: 48, opacity: 0.3 }} />
-          <p className="text-base font-medium text-muted-foreground">Ma&apos;lumotlar topilmadi</p>
-          <p className="text-[12px] text-muted-foreground mt-1">Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.</p>
+          <p className="text-base font-medium text-muted-foreground">Ma&apos;lumot manbai yo&apos;q</p>
+          <p className="text-[12px] text-muted-foreground mt-1">
+            {tab === "clients"
+              ? "Onlayn kurs xaridlari bazada yuritilmaydi — bunday kolleksiya hali yo'q."
+              : "Topshiriq topshirishlari bazada yuritilmaydi — bunday kolleksiya hali yo'q."}
+          </p>
         </div>
       </div>
 
-      {bindOpen && <BindCourseDrawer onClose={() => setBindOpen(false)} />}
+      {bindOpen && <BindCourseDrawer courseId={course.id} onClose={() => setBindOpen(false)} />}
     </div>
   );
 }

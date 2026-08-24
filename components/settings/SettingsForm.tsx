@@ -38,10 +38,15 @@ export default function SettingsForm({
   storageKey,
   groups,
   header,
+  note,
 }: {
   storageKey: string;
   groups: SettingsGroup[];
   header?: React.ReactNode;
+  // Qiymatlari bazaga yozilsa ham, mahsulotda ularni o'qiydigan kod hali
+  // bo'lmagan formalar uchun rost izoh (SettingsNote). Sababi shu
+  // komponentda tushuntirilgan.
+  note?: React.ReactNode;
 }) {
   const { showSuccess, showError } = useToast();
   const [values, setValues] = useState<Record<string, unknown>>(() => defaultsOfGroups(groups));
@@ -90,6 +95,8 @@ export default function SettingsForm({
   return (
     <div className="space-y-4">
       {header}
+
+      {note}
 
       {loading ? (
         <div className="rounded-2xl bg-card border border-border p-8">

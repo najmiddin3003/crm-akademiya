@@ -13,6 +13,8 @@ import FieldSettingsTab from "./FieldSettingsTab";
 import AutoSmsTab from "./AutoSmsTab";
 import BotNotesTab from "./BotNotesTab";
 import ModuleNotEnabledTab from "./ModuleNotEnabledTab";
+import { loadMonthlyPercentStaffCounts } from "./monthlyPercentStaff";
+import SettingsNote from "./SettingsNote";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LEAVE_REASON_TYPES } from "@/lib/settingsLists";
 import {
@@ -32,6 +34,34 @@ import type { SettingsGroup } from "@/lib/settings";
 // ko'rsatmaymiz, chunki maydonlari referensdan hali ko'chirilmagan.
 //
 // Kalit: "<bo'lim>:<tab>" — ikkalasi ham constants/settings.js dagi slug.
+
+// Quyidagi formalar qiymatni bazaga to'g'ri yozadi, ammo mahsulotda uni
+// O'QIYDIGAN kod hali yo'q (grep bilan tekshirildi: "finance.payment-manager",
+// "finance.kpi-manager", "finance.kpi", "finance.student-discount",
+// "app.content", "app.teacher", "app.student" kalitlariga faqat shu sahifa
+// murojaat qiladi). Tab o'chirilmaydi — sozlama haqiqiy va saqlanadi — lekin
+// foydalanuvchi "yoqdim, ishladi" deb o'ylamasligi uchun rost izoh qo'yiladi.
+const PAYROLL_NOT_WIRED_NOTE = (
+  <SettingsNote>
+    Bu qiymatlar saqlanadi, lekin oylik hisobi (Moliya &rarr; Oylik) hozircha ularni
+    o&apos;qimaydi: bonus va jarima qatorlari faqat qo&apos;lda kiritiladi. Ya&apos;ni bu yerdagi
+    o&apos;zgarish hech qanday hisob-kitobga ta&apos;sir qilmaydi.
+  </SettingsNote>
+);
+
+const DISCOUNT_NOT_WIRED_NOTE = (
+  <SettingsNote>
+    Bu qiymatlar saqlanadi, lekin chegirmani avtomatik qo&apos;llaydigan kod hali yo&apos;q:
+    o&apos;quvchi nechta guruhga qatnashidan qat&apos;i nazar, to&apos;lov summasi o&apos;zgarmaydi.
+  </SettingsNote>
+);
+
+const APP_NOT_WIRED_NOTE = (
+  <SettingsNote>
+    Bu sozlamalar saqlanadi, lekin ularni o&apos;qiydigan mobil ilova bu tizimga hali
+    ulanmagan &mdash; hozircha veb-panel xulqiga ham ta&apos;sir qilmaydi.
+  </SettingsNote>
+);
 
 const BUILT: Record<string, () => ReactNode> = {
   // ── Umumiy sozlamalar ────────────────────────────────────────────────
@@ -55,8 +85,19 @@ const BUILT: Record<string, () => ReactNode> = {
 
   "system:public-oferta": () => <PublicOfertaTab />,
 
+  // "system.user-filter" ham xuddi shu holatda: jadval sahifalari filtr
+  // ko'rinishini o'z ichida hal qiladi va bu hujjatni o'qimaydi.
   "system:user-filter-settings": () => (
-    <SettingsForm storageKey="system.user-filter" groups={USER_FILTER_SETTINGS_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="system.user-filter"
+      groups={USER_FILTER_SETTINGS_GROUPS as SettingsGroup[]}
+      note={
+        <SettingsNote>
+          Tanlov saqlanadi, lekin jadval sahifalari filtr ko&apos;rinishini hozircha shu
+          sozlamadan olmaydi &mdash; har bir sahifa o&apos;z ko&apos;rinishini o&apos;zi belgilaydi.
+        </SettingsNote>
+      }
+    />
   ),
 
   // ── Moliya ───────────────────────────────────────────────────────────
@@ -102,30 +143,56 @@ const BUILT: Record<string, () => ReactNode> = {
   ),
 
   "finance:payment-manager": () => (
-    <SettingsForm storageKey="finance.payment-manager" groups={MANAGER_PAYMENT_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="finance.payment-manager"
+      groups={MANAGER_PAYMENT_GROUPS as SettingsGroup[]}
+      note={PAYROLL_NOT_WIRED_NOTE}
+    />
   ),
 
   "finance:kpi-manager": () => (
-    <SettingsForm storageKey="finance.kpi-manager" groups={FINANCE_KPI_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="finance.kpi-manager"
+      groups={FINANCE_KPI_GROUPS as SettingsGroup[]}
+      note={PAYROLL_NOT_WIRED_NOTE}
+    />
   ),
 
-  "finance:kvi": () => <SettingsForm storageKey="finance.kpi" groups={KPI_GROUPS as SettingsGroup[]} />,
+  "finance:kvi": () => (
+    <SettingsForm
+      storageKey="finance.kpi"
+      groups={KPI_GROUPS as SettingsGroup[]}
+      note={PAYROLL_NOT_WIRED_NOTE}
+    />
+  ),
 
+  // "Bog'langan xodim soni" — yozuvda saqlanadigan maydon EMAS. Xodim
+  // kartochkasidagi "Oladigan foizi" shu daraja nomini ko'rsatadi, shuning
+  // uchun son har safar /api/hr-employees dan sanaladi
+  // (monthlyPercentStaff.ts). Ilgari u yozuvdagi qotib qolgan `staffCount`
+  // dan o'qirdi va xodim qo'shilsa ham o'zgarmasdi.
   "finance:monthly": () => (
     <SettingsListTab
       kind="monthly-percents"
       addLabel="Foiz qo'shish"
       fields={[
         { key: "name", label: "Foiz nomi", input: "text" },
-        // Xodim soni xodim kartochkasidan kelib chiqadi — bu yerda faqat ko'rsatiladi.
-        { key: "staffCount", label: "Bog'langan xodim soni", input: "text", readOnly: true },
         { key: "percent", label: "Foiz", input: "text", suffix: "%" },
       ]}
+      computed={{
+        label: "Bog'langan xodim soni",
+        afterKey: "name",
+        load: loadMonthlyPercentStaffCounts,
+      }}
     />
   ),
 
   "finance:payment-student": () => (
-    <SettingsForm storageKey="finance.student-discount" groups={STUDENT_DISCOUNT_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="finance.student-discount"
+      groups={STUDENT_DISCOUNT_GROUPS as SettingsGroup[]}
+      note={DISCOUNT_NOT_WIRED_NOTE}
+    />
   ),
 
   // ── O'quv ────────────────────────────────────────────────────────────
@@ -240,15 +307,27 @@ const BUILT: Record<string, () => ReactNode> = {
 
   // ── Ilova sozlamalari ────────────────────────────────────────────────
   "app-settings:content": () => (
-    <SettingsForm storageKey="app.content" groups={APP_CONTENT_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="app.content"
+      groups={APP_CONTENT_GROUPS as SettingsGroup[]}
+      note={APP_NOT_WIRED_NOTE}
+    />
   ),
 
   "app-settings:teacher": () => (
-    <SettingsForm storageKey="app.teacher" groups={APP_TEACHER_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="app.teacher"
+      groups={APP_TEACHER_GROUPS as SettingsGroup[]}
+      note={APP_NOT_WIRED_NOTE}
+    />
   ),
 
   "app-settings:student": () => (
-    <SettingsForm storageKey="app.student" groups={APP_STUDENT_GROUPS as SettingsGroup[]} />
+    <SettingsForm
+      storageKey="app.student"
+      groups={APP_STUDENT_GROUPS as SettingsGroup[]}
+      note={APP_NOT_WIRED_NOTE}
+    />
   ),
 
   // ── Gamifikatsiya ────────────────────────────────────────────────────

@@ -1,18 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
-import { DAVOMAT_STUDENTS } from "@/constants/davomat";
-import type { DavomatStudent } from "@/lib/davomat";
+import Spinner from "@/components/ui/Spinner";
+import { useStudents } from "@/hooks/useStudents";
+import type { TurnstileIoRecord } from "@/lib/turnstileIo";
+import { dateToIso, isoToLabel } from "./useNazoratAttendance";
 
-// Nazorat > Davomat > "O'quvchilarni davomatini ko'rish" (crm-akademiya
-// #view-nazorat-davomat-view, app.js setDvvTab() ~line 28421). Manbadagi
-// izoh aynan shunday deydi: "Render — empty by default (matches reference)" —
-// ya'ni Keldi/Ketdi tab qaysi bo'lishidan qat'iy nazar jadval har doim bo'sh
-// (haqiqiy turniket/davomat backendi yo'q). Shu xatti-harakat shu yerda ham
-// ataylab saqlangan.
+// Nazorat > Davomat > "O'quvchilarni davomatini ko'rish" (/nazorat-davomat/viewing).
+//
+// ILGARI: sahifa hech qachon birorta qator ko'rsatmasdi — `tbody` bo'sh
+// teg edi, "Umumiy soni" doim qattiq yozilgan 0 turardi va hech qanday
+// fetch yo'q edi. Ya'ni ekran butunlay dekorativ edi.
+// HOZIR: kelish/ketish vaqtlari HAQIQIY manbadan — /api/turnstile-io
+// (MongoDB `turnstile_io`). O'sha kolleksiya har bir odam uchun kunlik
+// birinchi kirish va oxirgi chiqish vaqtini saqlaydi, ya'ni bu jadvalning
+// "Kelish sanasi"/"Ketish sanasi" ustunlariga aynan mos keladi.
+//
+// Faqat o'quvchilar ko'rsatiladi (`personType === "student"`) — sahifa
+// nomi ham shuni aytadi; xodimlar Nazorat > Turniket kirish-chiqish
+// analitikasi sahifasida ko'rinadi.
+//
+// OLIB TASHLANGAN: qizil "Hammasi ketdi" tugmasi. Unda onClick yo'q edi va
+// turniket yozuvini o'zgartiradigan endpoint ham yo'q (/api/turnstile-io
+// faqat GET) — ishlamaydigan tugmani qoldirgandan ko'ra olib tashlash to'g'ri.
 
 type Tab = "keldi" | "ketdi";
 
@@ -20,21 +33,55 @@ export default function NazoratDavomatViewingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const studentId = searchParams.get("studentId");
-  const student = useMemo(
-    () => (studentId ? (DAVOMAT_STUDENTS as DavomatStudent[]).find((s) => String(s.id) === studentId) ?? null : null),
-    [studentId],
-  );
+  const { students, loading: studentsLoading } = useStudents();
+
+  const [records, setRecords] = useState<TurnstileIoRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<Tab>("keldi");
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/turnstile-io")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setRecords(d.records); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const student = useMemo(
+    () => (studentId ? students.find((s) => String(s.id) === studentId) ?? null : null),
+    [studentId, students],
+  );
+
+  const filtered = useMemo(() => {
+    const startIso = dateRange.start ? dateToIso(dateRange.start) : null;
+    const endIso = dateRange.end ? dateToIso(dateRange.end) : null;
+    // Turniket yozuvida o'quvchining id'si emas, faqat ISMI bor — shuning
+    // uchun tanlangan o'quvchi ism bo'yicha solishtiriladi (loyihada
+    // moliya yozuvlari ham shu qoida bilan bog'lanadi).
+    const wantName = student?.name.trim().toLowerCase() ?? null;
+    return records.filter((r) => {
+      if (r.personType !== "student") return false;
+      if (tab === "keldi" && !r.enterTime) return false;
+      if (tab === "ketdi" && !r.exitTime) return false;
+      if (startIso && r.date < startIso) return false;
+      if (endIso && r.date > endIso) return false;
+      if (wantName && r.personName.trim().toLowerCase() !== wantName) return false;
+      return true;
+    });
+  }, [records, tab, dateRange, student]);
 
   function clearStudent() {
     router.push("/nazorat-davomat/viewing");
   }
 
+  const busy = loading || studentsLoading;
+
   return (
     <div className="container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
-      {/* Yuqori qator: holat tablari + Hammasi ketdi + filtrlar */}
+      {/* Yuqori qator: holat tablari + filtrlar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <button
@@ -55,10 +102,6 @@ export default function NazoratDavomatViewingPage() {
           </button>
         </div>
 
-        <button type="button" className="inline-flex items-center justify-center h-9 px-5 rounded-md bg-rose-500 text-white text-sm font-medium hover:bg-rose-600 shadow-sm">
-          Hammasi ketdi
-        </button>
-
         <div className="flex items-center gap-2 flex-wrap">
           {student ? (
             <div className="relative inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card text-sm">
@@ -75,7 +118,7 @@ export default function NazoratDavomatViewingPage() {
                 className="filter-select h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">O&apos;quvchi</option>
-                {(DAVOMAT_STUDENTS as DavomatStudent[]).map((s) => (
+                {students.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
@@ -91,7 +134,7 @@ export default function NazoratDavomatViewingPage() {
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
             <span>Umumiy soni:</span>
-            <span className="tabular-nums">0</span>
+            <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
 
@@ -106,18 +149,40 @@ export default function NazoratDavomatViewingPage() {
                 <th className="px-5 py-3 text-left">Ketish sanasi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border" />
+            <tbody className="divide-y divide-border">
+              {filtered.map((r, i) => (
+                <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
+                  <td className="px-5 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
+                  <td className="px-5 py-3 text-[12px] font-mono text-muted-foreground">{r.id}</td>
+                  <td className="px-5 py-3 font-medium">{r.personName}</td>
+                  <td className="px-5 py-3 tabular-nums text-[13px]">
+                    {r.enterTime ? `${isoToLabel(r.date)} | ${r.enterTime}` : "—"}
+                  </td>
+                  <td className="px-5 py-3 tabular-nums text-[13px]">
+                    {r.exitTime ? `${isoToLabel(r.date)} | ${r.exitTime}` : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
 
         {/* Bo'sh holat */}
-        <div className="flex flex-col items-center justify-center text-center py-16">
-          <div className="h-16 w-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-4">
-            <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-archive" /></svg>
+        {filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center text-center py-16">
+            <div className="h-16 w-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-4">
+              <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-archive" /></svg>
+            </div>
+            <h3 className="text-[15px] font-semibold mb-1">
+              {busy ? <Spinner size={22} /> : "Ma'lumotlar topilmadi"}
+            </h3>
+            {!busy && (
+              <p className="text-[13px] text-muted-foreground max-w-sm">
+                Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.
+              </p>
+            )}
           </div>
-          <h3 className="text-[15px] font-semibold mb-1">Ma&apos;lumotlar topilmadi</h3>
-          <p className="text-[13px] text-muted-foreground max-w-sm">Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.</p>
-        </div>
+        )}
       </div>
     </div>
   );

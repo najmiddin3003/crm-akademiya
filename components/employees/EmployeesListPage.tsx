@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, CalendarCheck, Filter, LayoutGrid, List, MoreVertical, Plus, Settings, UserCog } from "lucide-react";
+import { ArrowDown, ArrowUp, Filter, LayoutGrid, List, MoreVertical, Plus, Settings } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
@@ -11,7 +11,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import AddEmployeeModal from "./AddEmployeeModal";
-import type { HrEmployee } from "@/lib/hrEmployees";
+import type { HrEmployeeFull } from "./employeeExtras";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import {
   EMP_COLUMNS,
@@ -25,8 +25,9 @@ import {
 // Boshqaruv → Xodimlar ro'yxati (crm-akademiya #view-management-xodimlar).
 // Toolbar ikonkalari (Sozlash / Filtr / 3-nuqta) Lidlar → Buyurtmalar ro'yxati
 // sahifasidagi kabi lucide + Button (variant="outline") bilan. Ma'lumot
-// HAQIQIY — /api/hr-employees (MongoDB `hr_employees`, bo'sh bo'lsa 49 ta
-// demo yozuvdan seed qilinadi). Ism ustiga bosilsa xodim profiliga o'tadi.
+// HAQIQIY — /api/hr-employees (MongoDB `hr_employees`). Demo seed YO'Q:
+// xodim qo'shilmagan bo'lsa ro'yxat bo'sh turadi. Ism ustiga bosilsa xodim
+// profiliga o'tadi.
 
 const inputCls = "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const selectCls = "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -54,6 +55,45 @@ function csvCell(v: string | number): string {
   const s = String(v ?? "");
   return `"${s.replace(/"/g, '""')}"`;
 }
+/**
+ * CSV matnini qatorlarga ajratadi — eksport yozgan qoidalar bo'yicha
+ * (qo'shtirnoq ichidagi vergul/yangi qator ajratmaydi, "" bitta qo'shtirnoq).
+ * components/groups/GroupsListPage.tsx dagi bilan bir xil, chunki import
+ * ham aynan shu sahifaning eksportini qaytarib o'qishi kerak.
+ */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  // BOM eksport tomonidan qo'shiladi — olib tashlanmasa birinchi ustun buziladi.
+  const s = text.replace(/^﻿/, "");
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { cell += '"'; i++; }
+        else inQuotes = false;
+      } else cell += c;
+      continue;
+    }
+    if (c === '"') inQuotes = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((v) => v.trim() !== ""));
+}
+/** "1998-04-17" → "17.04.1998" (jadvalda qolgan sanalar bilan bir xil ko'rinish). */
+function fmtBirthDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
+/** Manbasi yo'q katak — 0 emas, chunki 0 ham da'vo bo'lardi. */
+function Dash() {
+  return <span className="text-muted-foreground">—</span>;
+}
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -66,6 +106,20 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 const EXPORT_HEADERS = ["№", "To'liq nomi", "Jinsi", "Aktiv o'quvchilar", "Guruhlar", "Turi", "Filiallar", "Telefon raqam", "Kurs", "Yaratilgan sana"];
+// Eksportdagi ustun tartibi = importda o'qiladigan indekslar. "№",
+// "Aktiv o'quvchilar" va "Guruhlar" import qilinmaydi (backend izohiga qarang).
+const IMPORT_IDX = { name: 1, gender: 2, turi: 5, filial: 6, phone: 7, kurs: 8, created: 9 };
+
+// Saralanadigan ustunlar. Bu ro'yxat constants/employees.js dagi `sortable`
+// bayrog'idan MUSTAQIL: u yerda faqat bitta ustun belgilangan edi va hech
+// qayerda o'qilmasdi (strelka chizilardi, bosilganda hech narsa bo'lmasdi).
+// "№" saralanmaydi — u qator raqami, ya'ni tartibning O'ZI.
+const SORTABLE = new Set([
+  "name", "gender", "aktivOq", "groups", "turi", "ishTuri", "jamiOylik", "jamiAvans",
+  "tolanganOylik", "qolganOylik", "filial", "phone", "kurs", "lavozim", "birthDate",
+  "salaryCalc", "created", "lastActive", "archReason", "archDate",
+]);
+type SortDir = "asc" | "desc";
 
 function fmtNum(n: number): string {
   return Math.round(n).toLocaleString("ru-RU");
@@ -90,7 +144,7 @@ interface SalaryView {
 }
 
 function salaryFor(
-  emp: HrEmployee,
+  emp: HrEmployeeFull,
   p: ReturnType<typeof payrollPeriod>,
   payrollById: Map<number, EmployeePayroll>,
 ): SalaryView | null {
@@ -114,7 +168,7 @@ function NotConfigured() {
 
 export default function EmployeesListPage() {
   const router = useRouter();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   // Kurs filtri bazadan (ilgari constants'dagi uchinchi, boshqalariga mos
   // kelmaydigan EMP_COURSES ro'yxati edi).
   const { names: courseNames } = useOfflineCourseList();
@@ -136,15 +190,22 @@ export default function EmployeesListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  // Ustun saralash: bo'sh `sortKey` — saralanmagan (bazadan kelgan tartib).
+  const [sortKey, setSortKey] = useState("");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [importing, setImporting] = useState(false);
 
-  const [rows, setRows] = useState<HrEmployee[]>([]);
+  const [rows, setRows] = useState<HrEmployeeFull[]>([]);
   const [payrollById, setPayrollById] = useState<Map<number, EmployeePayroll>>(new Map());
+  // Rol nomlari — "Lavozim" ustuni uchun (xodimda faqat roleId saqlanadi).
+  const [roleNameById, setRoleNameById] = useState<Map<number, string>>(new Map());
   const [loadingRows, setLoadingRows] = useState(true);
 
   const period = useMemo(() => payrollPeriod(), []);
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Xodimlar ro'yxati va ularning oylik qatorlari — ikkalasi ham backend'dan.
   // Oylik hisobi shu sahifada TAKRORLANMAYDI: u /api/salary-runs/
@@ -155,12 +216,16 @@ export default function EmployeesListPage() {
     Promise.all([
       fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
       fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
+      fetch("/api/roles").then((r) => r.json()).catch(() => null),
     ])
-      .then(([emps, pay]) => {
+      .then(([emps, pay, rls]) => {
         if (cancelled) return;
         if (emps?.ok) setRows(emps.employees);
         if (pay?.ok) {
           setPayrollById(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.id, e])));
+        }
+        if (rls?.ok) {
+          setRoleNameById(new Map((rls.roles as { id: number; name: string }[]).map((r) => [r.id, r.name])));
         }
       })
       .finally(() => {
@@ -198,8 +263,82 @@ export default function EmployeesListPage() {
     });
   }, [rows, search, roleFilter, courseFilter, stateFilter, reasonFilter, activeDateRange, leaveDateRange]);
 
+  /** Xodimga biriktirilgan rol nomlari (filiallar bo'yicha, takrorsiz). */
+  function roleNamesOf(e: HrEmployeeFull): string[] {
+    return [...new Set(
+      (e.branchAssignments ?? [])
+        .map((b) => (b.roleId != null ? roleNameById.get(b.roleId) : undefined))
+        .filter((n): n is string => Boolean(n)),
+    )];
+  }
+
+  // Ustun bo'yicha saralash. Ilgari sarlavhalarda strelka chizilardi, lekin
+  // na holat, na taqqoslagich, na onClick bor edi — ya'ni bezak edi.
+  // Qiymati yo'q qatorlar ("Sozlanmagan", bo'sh sana) HAR DOIM oxirida
+  // turadi, aks holda ular haqiqiy eng kichik qiymatdek ko'rinardi.
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+
+    const dateVal = (s: string) => parseStoredDate(s || "")?.getTime() ?? null;
+    const value = (e: HrEmployeeFull): string | number | null => {
+      switch (sortKey) {
+        case "name": return e.name.toLowerCase();
+        case "gender": return GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS] ?? null;
+        case "aktivOq": return e.aktivOq;
+        case "groups": return e.groups;
+        // `e.turi` bo'sh satr bo'lishi mumkin (import qilingan yoki vazifasi
+        // tanlanmagan xodim). `?? e.turi` bunda "" qaytarardi — bu null EMAS,
+        // shuning uchun qiymatsiz qatorlar oxirida emas, BOSHIDA turib
+        // qolardi. `|| null` bo'sh satrni ham "qiymat yo'q" deb sanaydi,
+        // ya'ni qolgan matnli ustunlar bilan bir xil qoida.
+        case "turi": return ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? (e.turi || null);
+        case "filial": return (e.filial || "").toLowerCase() || null;
+        case "phone": return e.phone || null;
+        case "kurs": return (e.kurs || "").toLowerCase() || null;
+        case "lavozim": return roleNamesOf(e).join(", ").toLowerCase() || null;
+        case "birthDate": return e.birthDate || null; // ISO — leksikografik tartib = xronologik
+        case "salaryCalc": return e.payroll === undefined ? null : Number(e.payroll);
+        case "created": return dateVal(e.created);
+        case "lastActive": return dateVal(e.lastActive);
+        case "archDate": return dateVal(e.archDate);
+        case "archReason": return (e.archReason || "").toLowerCase() || null;
+        default: {
+          const s = salaryFor(e, period, payrollById);
+          if (!s) return null;
+          if (sortKey === "ishTuri") return s.salaryType === "foiz" ? `Foiz ${String(s.percent).padStart(3, "0")}` : "Oklad";
+          if (sortKey === "jamiOylik") return s.jamiOylik;
+          if (sortKey === "jamiAvans") return s.jamiAvans;
+          if (sortKey === "tolanganOylik") return s.tolanganOylik;
+          if (sortKey === "qolganOylik") return s.qolganOylik;
+          return null;
+        }
+      }
+    };
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const va = value(a);
+      const vb = value(b);
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), "uz") * dir;
+    });
+    // roleNamesOf faqat roleNameById dan bog'liq — shuning uchun deps'da o'sha.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortDir, period, payrollById, roleNameById]);
+
+  /** Sarlavhaga bosish: o'sish → kamayish → saralashsiz. */
+  function toggleSort(colId: string) {
+    setPage(1);
+    if (sortKey !== colId) { setSortKey(colId); setSortDir("asc"); return; }
+    if (sortDir === "asc") { setSortDir("desc"); return; }
+    setSortKey("");
+  }
+
   const start = (page - 1) * pageSize;
-  const slice = filtered.slice(start, start + pageSize);
+  const slice = sorted.slice(start, start + pageSize);
   const visibleCols = EMP_COLUMNS.filter((c) => !hiddenCols.has(c.id));
 
   function toggleCol(id: string) {
@@ -211,8 +350,55 @@ export default function EmployeesListPage() {
     });
   }
 
+  // Eksport ekrandagi TARTIBDA chiqadi — saralab, keyin yuklab olish
+  // kutilgan natijani bersin.
   function exportRows() {
-    return filtered.map((e, i) => [i + 1, e.name, GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS], e.aktivOq, e.groups, ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? e.turi, e.filial, e.phone, e.kurs, e.created]);
+    return sorted.map((e, i) => [i + 1, e.name, GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS], e.aktivOq, e.groups, ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? e.turi, e.filial, e.phone, e.kurs, e.created]);
+  }
+
+  // Import — eksport bilan bir xil ustunlar (eksport → tahrir → import).
+  // Ilgari bu tugma faqat "Import funksiyasi (demo)" toast'ini chiqarardi.
+  // Naqsh components/groups/GroupsListPage.tsx dan olingan.
+  async function importCsv(file: File) {
+    setImporting(true);
+    try {
+      const parsed = parseCsv(await file.text());
+      if (parsed.length < 2) {
+        showError("Faylda sarlavhadan boshqa qator yo'q");
+        return;
+      }
+      const body = parsed.slice(1).map((r) => ({
+        name: r[IMPORT_IDX.name],
+        gender: r[IMPORT_IDX.gender],
+        turi: r[IMPORT_IDX.turi],
+        filial: r[IMPORT_IDX.filial],
+        phone: r[IMPORT_IDX.phone],
+        kurs: r[IMPORT_IDX.kurs],
+        created: r[IMPORT_IDX.created],
+      }));
+      const res = await fetch("/api/hr-employees/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employees: body }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Import qilinmadi");
+        return;
+      }
+      const fresh = await fetch("/api/hr-employees").then((r) => r.json()).catch(() => null);
+      if (fresh?.ok) setRows(fresh.employees);
+      const skipped = (data.skipped as { reason: string }[]).length;
+      showSuccess(
+        skipped > 0
+          ? `${data.created} ta xodim qo'shildi, ${skipped} tasi o'tkazib yuborildi`
+          : `${data.created} ta xodim qo'shildi`,
+      );
+    } catch {
+      showError("Faylni o'qib bo'lmadi");
+    } finally {
+      setImporting(false);
+    }
   }
   function exportCSV() {
     const csv = [EXPORT_HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
@@ -229,7 +415,7 @@ export default function EmployeesListPage() {
     setMoreOpen(false);
   }
 
-  function renderCell(e: HrEmployee, colId: string, i: number) {
+  function renderCell(e: HrEmployeeFull, colId: string, i: number) {
     switch (colId) {
       case "num": return <span className="text-muted-foreground tabular-nums">{start + i + 1}</span>;
       case "name": return (
@@ -296,12 +482,38 @@ export default function EmployeesListPage() {
       case "filial": return e.filial;
       case "phone": return <span className="tabular-nums text-[13px]">{e.phone}</span>;
       case "kurs": return <span className="text-[13px]">{e.kurs || "-"}</span>;
-      // Bu uch maydon demo yozuvlarda yo'q — constants/employees.js dagi
-      // izohga qarang. Ustunlar referensga moslik uchun turadi.
-      case "lavozim":
+      case "lavozim": {
+        // "Lavozim" = xodimga biriktirilgan ROL (Boshqaruv → Rollar). Xodim
+        // hujjatida faqat `branchAssignments[].roleId` bor, shuning uchun
+        // nomi /api/roles dan olinadi. Rol biriktirilmagan bo'lsa — "—".
+        const names = roleNamesOf(e);
+        return names.length ? <span className="text-[13px]">{names.join(", ")}</span> : <Dash />;
+      }
       case "birthDate":
-      case "salaryCalc":
-        return <span className="text-muted-foreground">-</span>;
+        // Xodim qo'shish modalidagi "Tug'ilgan sanasi". Eski hujjatlarda bu
+        // maydon yo'q — bunday xodimda "—" turadi.
+        return e.birthDate ? <span className="tabular-nums text-[13px]">{fmtBirthDate(e.birthDate)}</span> : <Dash />;
+      case "salaryCalc": {
+        // "Maosh hisoblanadi" = modaldagi "Ish haqi chiqarish" toggle'i.
+        // undefined ("hech qachon so'ralmagan") bilan false ("yo'q deb
+        // belgilangan") ni ajratamiz — "Yo'q" ham da'vo bo'lardi.
+        //
+        // "Ha" / "Yo'q" ham DA'VO edi, va u YOLG'ON edi: bu bayroqni hech kim
+        // o'qimaydi — lib/payrollSources.ts dagi buildPayrollRows()
+        // `hr_employees` ni filtrsiz oladi va `payroll` maydoniga umuman
+        // qaramaydi, ya'ni Oylik chiqarish sahifasi belgidan qat'i nazar
+        // HAMMANI hisoblaydi. Shu bois ustun endi tizim xulqi haqida emas,
+        // SAQLANGAN TANLOV haqida gapiradi.
+        if (e.payroll === undefined) return <Dash />;
+        return (
+          <span
+            className="text-[13px] text-muted-foreground"
+            title="Xodim kartasidagi saqlangan tanlov. Oylik chiqarish hozircha bu belgini o'qimaydi — hisobga barcha xodimlar kiradi."
+          >
+            {e.payroll ? "Belgilangan" : "Belgilanmagan"}
+          </span>
+        );
+      }
       case "created": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.created}</span>;
       case "lastActive": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.lastActive || "-"}</span>;
       case "archReason": return <span className="text-muted-foreground">{e.archReason || "-"}</span>;
@@ -324,23 +536,12 @@ export default function EmployeesListPage() {
         <Button variant="primary" lucideIcon={Plus} onClick={() => setAddOpen(true)}>
           Xodim qo&apos;shish
         </Button>
+        {/* "Ishga qabul / bo'shatish" va "HR davomat / ta'til" tugmalari OLIB
+            TASHLANDI: ikkalasi ham faqat "(demo)" toast chiqarardi, ortida esa
+            butun boshli HR quyi tizimi kerak (buyruqlar, ta'til balansi, ish
+            kunlari kalendari) — bunday narsani soxta qilib qo'yish yolg'on
+            bo'lardi. Xodimni arxivlash/qaytarish profil sahifasida ishlaydi. */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => showSuccess("Ishga qabul / bo'shatish (demo)")}
-            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
-          >
-            <UserCog className="w-4 h-4 text-primary" />
-            Ishga qabul / bo&apos;shatish
-          </button>
-          <button
-            type="button"
-            onClick={() => showSuccess("HR davomat / ta'til (demo)")}
-            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
-          >
-            <CalendarCheck className="w-4 h-4 text-emerald-600" />
-            HR davomat / ta&apos;til
-          </button>
           <div className="inline-flex items-center h-10 rounded-lg border border-border bg-card overflow-hidden">
             <button
               type="button"
@@ -380,12 +581,28 @@ export default function EmployeesListPage() {
           </div>
           <Button variant="outline" lucideIcon={Filter} title="Filtrlar" onClick={() => setFiltersOpen((o) => !o)} />
           <div className="relative" ref={moreRef}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                // Bir xil faylni ketma-ket ikki marta tanlash mumkin bo'lsin.
+                e.target.value = "";
+                if (f) importCsv(f);
+              }}
+            />
             <Button variant="outline" lucideIcon={MoreVertical} title="Ko'proq" onClick={() => { setMoreOpen((o) => !o); setSettingsOpen(false); }} />
             {moreOpen && (
               <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-card shadow-xl p-1 z-30">
-                <button onClick={() => { showSuccess("Import funksiyasi (demo)"); setMoreOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
+                <button
+                  onClick={() => { fileRef.current?.click(); setMoreOpen(false); }}
+                  disabled={importing}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left disabled:opacity-60"
+                >
                   <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">IN</span>
-                  <span>Import</span>
+                  <span>{importing ? "Import qilinmoqda…" : "Import (CSV)"}</span>
                 </button>
                 <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100 text-[9px] font-bold text-blue-700">CSV</span>
@@ -461,14 +678,29 @@ export default function EmployeesListPage() {
             <table className="w-full text-sm min-w-[1700px]">
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                  {visibleCols.map((c) => (
-                    <th key={c.id} className="px-3 py-3 text-left whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1">
-                        {c.label}
-                        {c.sortable && <ArrowDown className="h-3 w-3" />}
-                      </span>
-                    </th>
-                  ))}
+                  {visibleCols.map((c) => {
+                    const canSort = SORTABLE.has(c.id);
+                    const active = sortKey === c.id;
+                    return (
+                      <th key={c.id} className="px-3 py-3 text-left whitespace-nowrap">
+                        {canSort ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(c.id)}
+                            title={active ? (sortDir === "asc" ? "O'sish bo'yicha — bosing: kamayish" : "Kamayish bo'yicha — bosing: bekor qilish") : "Saralash"}
+                            className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-foreground ${active ? "text-primary" : ""}`}
+                          >
+                            {c.label}
+                            {active && sortDir === "desc"
+                              ? <ArrowUp className="h-3 w-3" />
+                              : <ArrowDown className={`h-3 w-3 ${active ? "" : "opacity-30"}`} />}
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">{c.label}</span>
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

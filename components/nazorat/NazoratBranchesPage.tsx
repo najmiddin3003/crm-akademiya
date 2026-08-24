@@ -1,41 +1,61 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MoreVertical } from "lucide-react";
-import DatePicker from "@/components/ui/DatePicker";
-import { BRANCHES_METRICS, BRANCHES_DATA } from "@/constants/branches";
-import { branchTotals, fmtBranchVal, type BranchMetric, type BranchRow } from "@/lib/branches";
+import { Info, MoreVertical } from "lucide-react";
+import Spinner from "@/components/ui/Spinner";
+import { useBranches } from "@/hooks/useBranches";
+import { downloadTableCsv, downloadTableExcel, type Cell } from "@/lib/exportTable";
 
-// Nazorat > Filiallar holati (crm-akademiya #view-nazorat-branches,
-// app.js renderBranches()/exportBranches() ~line 28966). Sana filtri
-// standart holatda bugungi kunni ko'rsatadi (har mount'da yangilanadi) —
-// manbada bu tugma dekorativ edi (funksiyasiz statik matn), bu yerda
-// mavjud DatePicker komponenti ulandi. Jadval qatorlari/ustunlari va
-// "Jami"/"Umumiy natija" hisob-kitobi manbadan 1:1 portlandi.
+// Nazorat > Filiallar holati (/nazorat-branches).
+//
+// ILGARI: jadval `constants/branches.js` dagi 3 ta QO'LDA YOZILGAN filial va
+// ularning 15 ta o'ylab topilgan ko'rsatkichidan (505 buyurtma, 1414 birinchi
+// darsga keladigan, 19.8% qarzdorlik...) chizilardi. Ular hech qanday bazaga
+// bog'lanmagan sonlar edi, "Jami" qatori esa o'sha uydirmalarni qo'shardi.
+//
+// HOZIR: filiallar ro'yxati HAQIQIY — /api/branches (MongoDB `branches`,
+// Boshqaruv → Filiallar sahifasi boshqaradi).
+//
+// KO'RSATKICHLAR esa CHIZIQCHA. Sabab: hisobotning har bir ustuni yozuvni
+// filialga bog'lashni talab qiladi, bazada esa bunday bog'lanish yo'q —
+// `pupils` da ham, `groups` da ham, `orders` da ham filial (branchId)
+// maydoni yo'q (filial faqat `hr_employees.branchAssignments` da, ya'ni
+// xodimlarda bor). Umumiy sonni bitta filialga yozib qo'yish yoki 0 chiqarish
+// yolg'on da'vo bo'lardi, shuning uchun "—" turadi.
+//
+// OLIB TASHLANGAN: sana tanlagich — hech qanday sonni filtrlamas edi.
 
-const METRICS = BRANCHES_METRICS as BranchMetric[];
-const DATA = BRANCHES_DATA as BranchRow[];
-
-function csvCell(v: string | number): string {
-  const s = String(v ?? "");
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+interface BranchMetric {
+  id: string;
+  label: string;
 }
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+
+// Ustunlar — hisobotning tuzilishi (referensdagi bilan bir xil tartibda).
+const METRICS: BranchMetric[] = [
+  { id: "buyurtma", label: "Buyurtma" },
+  { id: "birinchi", label: "Birinchi darsga keladiganlar" },
+  { id: "yangi", label: "Yangi o'quvchi" },
+  { id: "aktiv", label: "Aktiv o'quvchilar" },
+  { id: "jamiReal", label: "Jami real bor" },
+  { id: "guruhOq", label: "Guruh o'quvchilari" },
+  { id: "buyKetgan", label: "Buyurtmadan ketganlar" },
+  { id: "yangiKetgan", label: "Yangi o'quvchidan ketganlar" },
+  { id: "aktivKetgan", label: "Aktiv o'quvchidan ketganlar" },
+  { id: "qarzdor", label: "Qarzdorlar" },
+  { id: "guruh", label: "Guruh" },
+  { id: "birTolov", label: "Birinchi to'lovni qilganlar" },
+  { id: "jamiOq", label: "Jami o'quvchi" },
+  { id: "jamiAktiv", label: "Jami aktiv" },
+  { id: "qarzFoiz", label: "Qarzdorlarning aktivga nisbatan foizi" },
+];
+
+/** Hisoblab bo'lmaydigan ko'rsatkich — nol emas, chiziqcha. */
+const NA = "—";
 
 export default function NazoratBranchesPage() {
-  const [date, setDate] = useState<Date>(() => new Date());
+  const { branches, loading } = useBranches();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const totals = branchTotals();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -46,32 +66,34 @@ export default function NazoratBranchesPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [menuOpen]);
 
-  function exportRows() {
-    const headers = ["№", "Filial", ...METRICS.map((m) => m.label)];
-    const rows: (string | number)[][] = [headers];
-    DATA.forEach((b, i) => rows.push([i + 1, b.name, ...METRICS.map((m) => b.vals[m.id])]));
-    rows.push(["", "Jami", ...METRICS.map((m) => totals[m.id])]);
-    return rows;
+  const headers = ["№", "Filial", ...METRICS.map((m) => m.label)];
+  function exportRows(): Cell[][] {
+    return branches.map((b, i) => [i + 1, b.name, ...METRICS.map(() => NA)]);
   }
+
   function exportCSV() {
-    const csv = exportRows().map((r) => r.map(csvCell).join(",")).join("\r\n");
-    downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "filiallar-holati.csv");
+    downloadTableCsv(headers, exportRows(), "filiallar-holati.csv");
     setMenuOpen(false);
   }
   function exportExcel() {
-    const rows = exportRows();
-    const head = "<tr>" + rows[0].map((h) => `<th style="background:#dbeafe;color:#1e3a8a;font-weight:bold;border:1px solid #94a3b8;padding:8px 10px;text-align:left;">${h}</th>`).join("") + "</tr>";
-    const body = rows.slice(1).map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${body}</tbody></table></body></html>`;
-    downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "filiallar-holati.xls");
+    downloadTableExcel(headers, exportRows(), "filiallar-holati.xls");
     setMenuOpen(false);
   }
 
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
-      {/* Sana + eksport */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <DatePicker value={date} onChange={setDate} />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-start gap-2 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-[13px] text-muted-foreground max-w-3xl">
+          <Info className="icon icon-sm shrink-0 mt-0.5" />
+          <p>
+            Filial kesimidagi ko&apos;rsatkichlar hisoblanmaydi: o&apos;quvchi, guruh va
+            buyurtma yozuvlari qaysi filialga tegishli ekani bazada saqlanmaydi
+            (filial faqat xodimlar kartasida bor). Shu sabab ustunlarda son
+            o&apos;rniga &laquo;—&raquo; turadi — nol yozish &laquo;hech narsa yo&apos;q&raquo; degan
+            noto&apos;g&apos;ri da&apos;vo bo&apos;lardi.
+          </p>
+        </div>
+
         <div className="relative" ref={menuRef}>
           <button
             type="button"
@@ -121,26 +143,24 @@ export default function NazoratBranchesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {DATA.map((b, i) => (
+              {branches.map((b, i) => (
                 <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-3 py-3 text-muted-foreground tabular-nums sticky left-0 bg-card z-10">{i + 1}</td>
                   <td className="px-3 py-3 font-medium sticky left-12 bg-card z-10">{b.name}</td>
                   {METRICS.map((m, k) => (
-                    <td key={m.id} className={`px-3 py-3 text-right tabular-nums ${k === METRICS.length - 1 ? "pr-5" : ""}`}>
-                      {fmtBranchVal(b.vals[m.id], m.decimal)}
+                    <td key={m.id} className={`px-3 py-3 text-right text-muted-foreground ${k === METRICS.length - 1 ? "pr-5" : ""}`}>
+                      {NA}
                     </td>
                   ))}
                 </tr>
               ))}
-              <tr className="bg-primary/5 font-semibold">
-                <td className="px-3 py-3 sticky left-0 bg-primary/5 z-10" />
-                <td className="px-3 py-3 sticky left-12 bg-primary/5 z-10">Jami</td>
-                {METRICS.map((m, k) => (
-                  <td key={m.id} className={`px-3 py-3 text-right tabular-nums font-semibold ${k === METRICS.length - 1 ? "pr-5" : ""}`}>
-                    {fmtBranchVal(totals[m.id], m.decimal)}
+              {branches.length === 0 && (
+                <tr>
+                  <td colSpan={METRICS.length + 2} className="py-16 text-center text-muted-foreground">
+                    {loading ? <Spinner size={22} /> : "Filiallar qo'shilmagan"}
                   </td>
-                ))}
-              </tr>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -160,20 +180,21 @@ export default function NazoratBranchesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {DATA.map((b, i) => (
+              {branches.map((b, i) => (
                 <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
                   <td className="px-5 py-3 font-medium">{b.name}</td>
-                  <td className="px-5 py-3 text-right tabular-nums">{fmtBranchVal(b.vals.aktiv)}</td>
-                  <td className="px-5 py-3 pr-5 text-right tabular-nums">{fmtBranchVal(b.vals.jamiReal)}</td>
+                  <td className="px-5 py-3 text-right text-muted-foreground">{NA}</td>
+                  <td className="px-5 py-3 pr-5 text-right text-muted-foreground">{NA}</td>
                 </tr>
               ))}
-              <tr className="bg-primary/5 font-semibold">
-                <td className="px-5 py-3" />
-                <td className="px-5 py-3">Jami</td>
-                <td className="px-5 py-3 text-right tabular-nums">{fmtBranchVal(totals.aktiv)}</td>
-                <td className="px-5 py-3 pr-5 text-right tabular-nums">{fmtBranchVal(totals.jamiReal)}</td>
-              </tr>
+              {branches.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-10 text-center text-muted-foreground">
+                    {loading ? <Spinner size={22} /> : "Filiallar qo'shilmagan"}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

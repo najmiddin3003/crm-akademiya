@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Plus, Users } from "lucide-react";
 import { useOrders } from "@/components/orders/OrdersContext";
@@ -28,9 +28,32 @@ import { useTeachers } from "@/hooks/useTeachers";
 // akademiya.edutizim.uz/orders/add reference): each row is a field
 // definition (name/type/which pipeline stages require it/API-only), edited
 // via CustomFieldEditModal — not a place to fill in values for this order.
-// Scope cut (disclosed): these definitions are visual/local only — there's
-// no schema for arbitrary custom fields on Order yet, so they aren't sent to
-// POST /api/orders when saving.
+//
+// Maydon ta'riflari BAZAGA saqlanadi: sozlamalar API'sining
+// "orders.custom-fields" kaliti (GET/PUT /api/settings, MongoDB `settings`).
+// Ilgari ular faqat React holatida yashardi — "Maydon sozlamalari saqlandi"
+// toasti chiqardi, lekin sahifadan chiqish bilanoq yo'q bo'lardi.
+// Eslatma: ta'riflar hozircha faqat SAQLANADI — buyurtmaning o'zida bunday
+// maydonlar uchun sxema yo'q (lib/ordersData.ts dagi `Order`), shu bois ular
+// POST /api/orders tanasiga qo'shilmaydi.
+
+/** Sozlamalardagi kalit — ikkala ro'yxat bitta hujjatda saqlanadi. */
+const CUSTOM_FIELDS_KEY = "orders.custom-fields";
+
+/** Bazadan kelgan qiymatni ehtiyotkorlik bilan CustomField[] ga aylantiradi. */
+function parseFields(raw: unknown): CustomField[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((f): f is Record<string, unknown> => Boolean(f) && typeof f === "object")
+    .map((f) => ({
+      id: String(f.id ?? crypto.randomUUID()),
+      label: String(f.label ?? ""),
+      type: (f.type ?? "text") as CustomField["type"],
+      stages: Array.isArray(f.stages) ? (f.stages as CustomField["stages"]) : [],
+      apiOnly: Boolean(f.apiOnly),
+    }))
+    .filter((f) => f.label);
+}
 
 export default function AddOrderPage() {
   const router = useRouter();
@@ -59,29 +82,95 @@ export default function AddOrderPage() {
   const [saving, setSaving] = useState(false);
   const [orderCustomFields, setOrderCustomFields] = useState<CustomField[]>([]);
   const [studentCustomFields, setStudentCustomFields] = useState<CustomField[]>([]);
-  const [editingField, setEditingField] = useState<{ scope: "order" | "student"; field: CustomField } | null>(null);
+  // `isNew` — modal bekor qilinsa ro'yxatga hech narsa qo'shilmasin: ilgari
+  // maydon avval qo'shilib, keyin tahrirlanardi va "Bekor qilish" bosilganda
+  // "Yangi maydon" nomli bo'sh yozuv qolib ketardi.
+  const [editingField, setEditingField] = useState<{ scope: "order" | "student"; field: CustomField; isNew: boolean } | null>(null);
 
   const activeStage = stage ? ORDER_STAGES.find((s) => s.key === stage) : null;
 
+  // Saqlangan ta'riflarni bazadan yuklaymiz (hooks/ dagi naqsh: cancelled bayrog'i).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/settings?key=${CUSTOM_FIELDS_KEY}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        setOrderCustomFields(parseFields(d.values?.order));
+        setStudentCustomFields(parseFields(d.values?.student));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  /** Ikkala ro'yxatni bitta sozlama hujjatiga yozadi. */
+  const persistFields = useCallback(
+    async (order: CustomField[], student: CustomField[]): Promise<boolean> => {
+      try {
+        const res = await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: CUSTOM_FIELDS_KEY, values: { order, student } }),
+        });
+        const data = await res.json();
+        return Boolean(data.ok);
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
   const addCustomField = (scope: "order" | "student") => {
-    const field: CustomField = {
-      id: crypto.randomUUID(),
-      label: "Yangi maydon",
-      type: "text",
-      stages: ORDER_STAGES.map((s) => s.key),
-      apiOnly: false,
-    };
-    const setter = scope === "order" ? setOrderCustomFields : setStudentCustomFields;
-    setter((prev) => [...prev, field]);
-    setEditingField({ scope, field });
+    setEditingField({
+      scope,
+      isNew: true,
+      field: {
+        id: crypto.randomUUID(),
+        label: "Yangi maydon",
+        type: "text",
+        stages: ORDER_STAGES.map((s) => s.key),
+        apiOnly: false,
+      },
+    });
   };
 
-  const saveCustomField = (updated: CustomField) => {
+  const saveCustomField = async (updated: CustomField) => {
     if (!editingField) return;
-    const setter = editingField.scope === "order" ? setOrderCustomFields : setStudentCustomFields;
-    setter((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+    const isOrder = editingField.scope === "order";
+    const current = isOrder ? orderCustomFields : studentCustomFields;
+    const next = editingField.isNew
+      ? [...current, updated]
+      : current.map((f) => (f.id === updated.id ? updated : f));
+    const ok = await persistFields(
+      isOrder ? next : orderCustomFields,
+      isOrder ? studentCustomFields : next,
+    );
+    if (!ok) {
+      showError("Maydon sozlamalarini saqlab bo'lmadi");
+      return;
+    }
+    (isOrder ? setOrderCustomFields : setStudentCustomFields)(next);
     setEditingField(null);
     showSuccess("Maydon sozlamalari saqlandi");
+  };
+
+  const deleteCustomField = async () => {
+    if (!editingField || editingField.isNew) return;
+    const isOrder = editingField.scope === "order";
+    const current = isOrder ? orderCustomFields : studentCustomFields;
+    const next = current.filter((f) => f.id !== editingField.field.id);
+    const ok = await persistFields(
+      isOrder ? next : orderCustomFields,
+      isOrder ? studentCustomFields : next,
+    );
+    if (!ok) {
+      showError("Maydonni o'chirib bo'lmadi");
+      return;
+    }
+    (isOrder ? setOrderCustomFields : setStudentCustomFields)(next);
+    setEditingField(null);
+    showSuccess("Maydon o'chirildi");
   };
 
   const handleSave = async () => {
@@ -154,7 +243,7 @@ export default function AddOrderPage() {
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setEditingField({ scope: "order", field: f })}
+                      onClick={() => setEditingField({ scope: "order", field: f, isNew: false })}
                       className="w-full h-10 flex items-center rounded-lg border border-border bg-secondary/20 px-3 text-sm text-left hover:bg-secondary/30"
                     >
                       {f.label}
@@ -179,7 +268,7 @@ export default function AddOrderPage() {
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setEditingField({ scope: "student", field: f })}
+                      onClick={() => setEditingField({ scope: "student", field: f, isNew: false })}
                       className="w-full h-10 flex items-center rounded-lg border border-border bg-secondary/20 px-3 text-sm text-left hover:bg-secondary/30"
                     >
                       {f.label}
@@ -312,6 +401,7 @@ export default function AddOrderPage() {
           field={editingField.field}
           onClose={() => setEditingField(null)}
           onSave={saveCustomField}
+          onDelete={editingField.isNew ? undefined : deleteCustomField}
         />
       )}
     </div>
