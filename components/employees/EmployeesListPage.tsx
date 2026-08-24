@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import AddEmployeeModal from "./AddEmployeeModal";
 import type { HrEmployeeFull } from "./employeeExtras";
+import type { Group } from "@/lib/groups";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import {
   EMP_COLUMNS,
@@ -196,6 +197,13 @@ export default function EmployeesListPage() {
   const [importing, setImporting] = useState(false);
 
   const [rows, setRows] = useState<HrEmployeeFull[]>([]);
+  // Guruhlar — "Guruhlar" va "Aktiv o'quvchilar soni" ustunlari SHU YERDAN
+  // hisoblanadi. `hr_employees` hujjatidagi `groups`/`aktivOq` maydonlari
+  // xodim yaratilganda 0 qilib yoziladi va HECH QACHON yangilanmaydi
+  // (app/api/hr-employees/route.ts), ya'ni ular guruhga biriktirilgan
+  // o'qituvchida ham 0 bo'lib qolaverardi — jadval "bu o'qituvchining
+  // guruhi yo'q" deb yolg'on da'vo qilardi.
+  const [groups, setGroups] = useState<Group[]>([]);
   const [payrollById, setPayrollById] = useState<Map<number, EmployeePayroll>>(new Map());
   // Rol nomlari — "Lavozim" ustuni uchun (xodimda faqat roleId saqlanadi).
   const [roleNameById, setRoleNameById] = useState<Map<number, string>>(new Map());
@@ -217,8 +225,9 @@ export default function EmployeesListPage() {
       fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
       fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
       fetch("/api/roles").then((r) => r.json()).catch(() => null),
+      fetch("/api/groups").then((r) => r.json()).catch(() => null),
     ])
-      .then(([emps, pay, rls]) => {
+      .then(([emps, pay, rls, grps]) => {
         if (cancelled) return;
         if (emps?.ok) setRows(emps.employees);
         if (pay?.ok) {
@@ -227,6 +236,7 @@ export default function EmployeesListPage() {
         if (rls?.ok) {
           setRoleNameById(new Map((rls.roles as { id: number; name: string }[]).map((r) => [r.id, r.name])));
         }
+        if (grps?.ok) setGroups(grps.groups as Group[]);
       })
       .finally(() => {
         if (!cancelled) setLoadingRows(false);
@@ -263,6 +273,32 @@ export default function EmployeesListPage() {
     });
   }, [rows, search, roleFilter, courseFilter, stateFilter, reasonFilter, activeDateRange, leaveDateRange]);
 
+  // Xodim ISMI bo'yicha guruhlari va ulardagi o'quvchilar soni. Bog'lanish
+  // ismga tayanadi, chunki `groups` hujjatida `teacherId` yo'q — faqat
+  // `teacher` satri (app/api/hr-employees/[id]/students/route.ts da ham
+  // xuddi shu zanjir). O'quvchilar takrorsiz sanaladi: bitta o'quvchi
+  // xodimning bir nechta guruhida bo'lishi mumkin.
+  const groupStatsByName = useMemo(() => {
+    const acc = new Map<string, { groups: number; pupils: Set<number> }>();
+    for (const g of groups) {
+      const key = String(g.teacher ?? "").trim().toLowerCase();
+      if (!key) continue;
+      let entry = acc.get(key);
+      if (!entry) {
+        entry = { groups: 0, pupils: new Set<number>() };
+        acc.set(key, entry);
+      }
+      entry.groups += 1;
+      for (const id of g.studentIds ?? []) entry.pupils.add(id);
+    }
+    return new Map(
+      [...acc].map(([key, v]) => [key, { groups: v.groups, students: v.pupils.size }]),
+    );
+  }, [groups]);
+
+  const statsOf = (e: HrEmployeeFull) =>
+    groupStatsByName.get(e.name.trim().toLowerCase()) ?? { groups: 0, students: 0 };
+
   /** Xodimga biriktirilgan rol nomlari (filiallar bo'yicha, takrorsiz). */
   function roleNamesOf(e: HrEmployeeFull): string[] {
     return [...new Set(
@@ -284,8 +320,8 @@ export default function EmployeesListPage() {
       switch (sortKey) {
         case "name": return e.name.toLowerCase();
         case "gender": return GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS] ?? null;
-        case "aktivOq": return e.aktivOq;
-        case "groups": return e.groups;
+        case "aktivOq": return statsOf(e).students;
+        case "groups": return statsOf(e).groups;
         // `e.turi` bo'sh satr bo'lishi mumkin (import qilingan yoki vazifasi
         // tanlanmagan xodim). `?? e.turi` bunda "" qaytarardi — bu null EMAS,
         // shuning uchun qiymatsiz qatorlar oxirida emas, BOSHIDA turib
@@ -353,7 +389,7 @@ export default function EmployeesListPage() {
   // Eksport ekrandagi TARTIBDA chiqadi — saralab, keyin yuklab olish
   // kutilgan natijani bersin.
   function exportRows() {
-    return sorted.map((e, i) => [i + 1, e.name, GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS], e.aktivOq, e.groups, ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? e.turi, e.filial, e.phone, e.kurs, e.created]);
+    return sorted.map((e, i) => [i + 1, e.name, GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS], statsOf(e).students, statsOf(e).groups, ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? e.turi, e.filial, e.phone, e.kurs, e.created]);
   }
 
   // Import — eksport bilan bir xil ustunlar (eksport → tahrir → import).
@@ -424,8 +460,8 @@ export default function EmployeesListPage() {
         </Link>
       );
       case "gender": return <span className="text-[13px] text-muted-foreground">{GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS]}</span>;
-      case "aktivOq": return <span className="tabular-nums">{e.aktivOq}</span>;
-      case "groups": return <span className="tabular-nums">{e.groups}</span>;
+      case "aktivOq": return <span className="tabular-nums">{statsOf(e).students}</span>;
+      case "groups": return <span className="tabular-nums">{statsOf(e).groups}</span>;
       case "turi": {
         const turiBadge = e.turi === "teacher"
           ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
