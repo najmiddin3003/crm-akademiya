@@ -4,15 +4,20 @@ import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { GROUP_TEACHERS } from "@/constants/groups";
+import { useModerators } from "@/hooks/useModerators";
+import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { Cashbox } from "@/lib/cashboxes";
 
 // "Yangi kassa qo'shish" / "Kassani o'zgartirish" — Moliya → Kassalar
 // sahifasidagi o'ng tomondan ochiladigan panel. `cashbox` berilsa —
 // tahrirlash (PATCH /api/cashboxes/:id) va o'chirish (DELETE, tasdiqlash
 // oynasi bilan — TransactionTypesPage'dagi kabi konvensiya), aks holda
-// qo'shish (POST /api/cashboxes). Moderator ro'yxati — loyihadagi haqiqiy
-// o'qituvchilar ro'yxati (GROUP_TEACHERS).
+// qo'shish (POST /api/cashboxes).
+//
+// Moderator ro'yxati BAZADAN keladi (/api/moderators — Boshqaruv →
+// Xodimlar'dagi `turi: "moderator"` xodimlar). Ilgari bu yerda qattiq
+// yozilgan O'QITUVCHILAR ro'yxati (GROUP_TEACHERS) chiqardi — moderator
+// maydoni uchun mutlaqo noto'g'ri manba edi.
 export default function CashboxDrawer({
   cashbox,
   onClose,
@@ -26,6 +31,7 @@ export default function CashboxDrawer({
 }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
+  const { names: moderatorNames, loading: loadingModerators } = useModerators();
   const [name, setName] = useState(cashbox?.name || "");
   const [moderator, setModerator] = useState(cashbox?.moderator || "");
   const [onlinePayment, setOnlinePayment] = useState(cashbox?.onlinePayment ?? false);
@@ -109,30 +115,23 @@ export default function CashboxDrawer({
             />
           </div>
 
-          <div>
-            <label className="block text-[13px] font-medium mb-1.5">Moderator</label>
-            <div className="relative">
-              <select
-                value={moderator}
-                onChange={(e) => setModerator(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Moderatorni tanlang</option>
-                {GROUP_TEACHERS.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              {moderator && (
-                <button
-                  type="button"
-                  onClick={() => setModerator("")}
-                  className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  title="Tozalash"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
-          </div>
+          {/* Moderatorlar BAZADAN (/api/moderators) — qidiruvli tanlov.
+              Tanlangan qiymatni tozalash ro'yxat ichidagi "Tozalash" qatori
+              orqali. */}
+          <StudentSearchSelect
+            label="Moderator"
+            value={moderator}
+            onChange={setModerator}
+            options={moderatorNames}
+            placeholder={loadingModerators ? "Yuklanmoqda…" : "Moderatorni tanlang"}
+            searchPlaceholder="Moderatorni qidirish"
+          />
+          {!loadingModerators && moderatorNames.length === 0 && (
+            <p className="-mt-2 text-[11px] text-muted-foreground">
+              Moderator yo&apos;q — Boshqaruv → Xodimlar&apos;da turi
+              &quot;moderator&quot; bo&apos;lgan xodim qo&apos;shing.
+            </p>
+          )}
 
           <label className="flex items-center gap-2.5 text-[13px] cursor-pointer">
             <input type="checkbox" checked={onlinePayment} onChange={(e) => setOnlinePayment(e.target.checked)} className="rounded border-border w-4 h-4" />

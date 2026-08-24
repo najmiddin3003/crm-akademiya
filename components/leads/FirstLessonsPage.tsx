@@ -12,6 +12,7 @@ import DateRangePicker from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTeachers } from "@/hooks/useTeachers";
+import { useModerators } from "@/hooks/useModerators";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
@@ -29,7 +30,6 @@ import {
   type Order,
   type OrderStageKey,
 } from "@/lib/ordersData";
-import type { HrEmployee } from "@/lib/hrEmployees";
 
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
@@ -164,24 +164,12 @@ export default function FirstLessonsPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Moderator filtri uchun xodimlar (Boshqaruv → Xodimlar).
-  const [employees, setEmployees] = useState<HrEmployee[]>([]);
-
   useEffect(() => {
     let cancelled = false;
     fetch("/api/orders")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setOrders(d.orders); })
       .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/hr-employees")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); })
-      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -254,12 +242,9 @@ export default function FirstLessonsPage() {
   const { names: allTeachers } = useTeachers();
   const courseOptions = useMemo(() => uniq(rows.map((o) => o.course)), [rows]);
   const levelOptions = useMemo(() => uniq(rows.map((o) => o.level)), [rows]);
-  // Moderatorlar ro'yxati BAZADAN (/api/hr-employees, turi: "moderator") —
-  // ilgari buyurtmalarda uchragan har qanday nom chiqardi.
-  const moderatorOptions = useMemo(
-    () => employees.filter((e) => e.turi === "moderator" && !e.archReason).map((e) => e.name).sort(),
-    [employees],
-  );
+  // Moderatorlar ro'yxati BAZADAN (/api/moderators) — ilgari buyurtmalarda
+  // uchragan har qanday nom chiqardi.
+  const { names: moderatorOptions } = useModerators();
   const teacherOptions = useMemo(
     () => uniq([...allTeachers, ...rows.map((o) => o.teacher)]),
     [allTeachers, rows],
