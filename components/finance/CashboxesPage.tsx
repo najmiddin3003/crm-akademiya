@@ -414,7 +414,9 @@ function SearchFilter({
 // Jadvaldagi "Holati" ustuni. Manbadagi qiymatlar: "" (qabul qilindi),
 // "waiting" (kutilmoqda), "cancelled" (bekor qilingan). Miqdor tahrirlangan
 // bo'lsa "Tahrirlangan" belgisi qo'shiladi — ustiga bosilganda tahrirlar
-// tarixi ochiladi.
+// tarixi ochiladi. "Qabul qilindi" faqat tahrirlanmagan holatda ko'rinadi —
+// tahrirlangan bo'lsa uning o'rnini "Tahrirlangan" egallaydi (bekor
+// qilingan holatda esa ikkalasi birga: "Bekor qilingan" + "Tahrirlangan").
 function StatusCell({
   entry,
   onShowHistory,
@@ -442,7 +444,7 @@ function StatusCell({
             <UserCheck style={{ width: 11, height: 11 }} />
           </span>
         </span>
-      ) : (
+      ) : edited ? null : (
         <span className="text-[13px] text-emerald-600 font-medium">
           Qabul qilindi
         </span>
