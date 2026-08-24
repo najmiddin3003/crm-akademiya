@@ -19,7 +19,9 @@ import Button from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
-import { GROUP_COURSES, GROUP_DAYS, GROUP_ROOMS } from "@/constants/groups";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { useRooms } from "@/hooks/useRooms";
+import { GROUP_DAYS } from "@/constants/groups";
 import {
   SCHEDULE_DAY_LABELS,
   SCHEDULE_DAY_LONG,
@@ -68,6 +70,8 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function GroupSchedulePage() {
   const { showSuccess } = useToast();
+  const { names: roomNames } = useRooms();
+  const { names: courseNames } = useOfflineCourseList();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [day, setDay] = useState(() => SCHEDULE_DAY_ORDER[new Date().getDay()]);
@@ -147,13 +151,20 @@ export default function GroupSchedulePage() {
       for (const g of filtered) if (g.teacher && !seen.includes(g.teacher)) seen.push(g.teacher);
       return seen;
     }
-    return GROUP_ROOMS;
-  }, [filtered, groupBy]);
+    // Xona ustunlari BAZADAN (/api/rooms). Ilgari constants'dagi
+    // "201 - xona … 219 - xona" ro'yxati edi va foydalanuvchi yaratgan
+    // xonadagi guruh jadvalda UMUMAN ko'rinmasdi (indexOf → -1 → continue).
+    // Ro'yxatda yo'q, lekin guruhlarda uchraydigan xonalar ham qo'shiladi.
+    const extra = filtered
+      .map((g) => g.room)
+      .filter((r): r is string => Boolean(r) && !roomNames.includes(r));
+    return [...roomNames, ...new Set(extra)];
+  }, [filtered, groupBy, roomNames]);
 
   const placed: Placed[] = useMemo(() => {
     const out: Placed[] = [];
     for (const g of filtered) {
-      const col = groupBy === "teacher" ? columns.indexOf(g.teacher) : GROUP_ROOMS.indexOf(g.room);
+      const col = columns.indexOf(groupBy === "teacher" ? g.teacher : g.room);
       if (col < 0) continue;
       const { startSlot, span } = parseTimeRange(g.time);
       if (startSlot < 0) continue;
@@ -248,7 +259,7 @@ export default function GroupSchedulePage() {
             onChange={(v) => setFilters((f) => ({ ...f, course: v }))}
             placeholder="Kurs"
             width="w-36"
-            options={GROUP_COURSES.map((c) => [c, c] as [string, string])}
+            options={courseNames.map((c) => [c, c] as [string, string])}
           />
           <FilterSelect
             value={filters.room}

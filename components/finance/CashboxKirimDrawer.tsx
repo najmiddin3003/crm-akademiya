@@ -8,7 +8,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
-import { GROUP_TEACHERS } from "@/constants/groups";
+import { useTeachers } from "@/hooks/useTeachers";
 import { useStudents } from "@/hooks/useStudents";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
@@ -45,6 +45,10 @@ export default function CashboxKirimDrawer({
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
+  // O'qituvchi ro'yxati bazadan — bu qiymat tranzaksiyaga yoziladi va
+  // ISM bo'yicha oylik hisobiga ulanadi (lib/payrollSources.ts), shu bois
+  // qattiq ro'yxatdagi ism tushumni hech kimga biriktirmasdi.
+  const { names: teacherNames } = useTeachers();
   const [category, setCategory] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -179,7 +183,7 @@ export default function CashboxKirimDrawer({
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Tanlang</option>
-                {GROUP_TEACHERS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>

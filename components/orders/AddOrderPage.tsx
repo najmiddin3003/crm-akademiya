@@ -11,7 +11,9 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { FormRowSelect, FormRowText } from "@/components/orders/FormRow";
 import SectionHeader from "@/components/orders/SectionHeader";
 import CustomFieldEditModal, { type CustomField } from "@/components/orders/CustomFieldEditModal";
-import { COURSES, MODERATORS, ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
+import { useModerators } from "@/hooks/useModerators";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 import { useTeachers } from "@/hooks/useTeachers";
 
 // Full-page "Buyurtma qo'shish" flow reached from the Kanban toolbar's
@@ -38,6 +40,9 @@ export default function AddOrderPage() {
   // o'qituvchilar), AddOrderModal bilan bir xil manba.
   const { names: teacherNames } = useTeachers();
   const { showSuccess, showError } = useToast();
+  // Mas'ul shaxs va kurs ro'yxatlari bazadan.
+  const { names: moderatorNames } = useModerators();
+  const { names: courseNames } = useOfflineCourseList();
   const pupilNames = pupils.map((p) => `${p.firstName} ${p.lastName}`.trim());
   const [activeTab, setActiveTab] = useState<"asosiy" | "sozlamalar">("asosiy");
   const [stage, setStage] = useState<OrderStageKey | null>(null);
@@ -230,7 +235,7 @@ export default function AddOrderPage() {
               </div>
 
               <SectionHeader icon={ClipboardList} title="Buyurtma ma'lumotlari" />
-              <FormRowSelect label="Mas'ul shaxs" value={moderator} onChange={setModerator} options={MODERATORS} />
+              <FormRowSelect label="Mas'ul shaxs" value={moderator} onChange={setModerator} options={moderatorNames} />
               <FormRowSelect
                 label="Kurs"
                 required
@@ -239,7 +244,7 @@ export default function AddOrderPage() {
                   setCourse(v);
                   setError(null);
                 }}
-                options={COURSES}
+                options={courseNames}
               />
               <FormRowSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherNames} />
               <StudentSearchSelect

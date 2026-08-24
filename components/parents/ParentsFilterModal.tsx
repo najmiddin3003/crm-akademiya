@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Calendar, XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { useModerators } from "@/hooks/useModerators";
 
 // crm-akademiya #pr-filter-modal (index-dev.html 2448-2490) — 10 ta select/
 // tugma + 2 ta sana input, grid-cols-3. Manbada applyPrFilters() hech narsani
@@ -20,7 +21,8 @@ export interface ParentsFilters {
 }
 export const EMPTY_PARENTS_FILTERS: ParentsFilters = { moderator: "", olderDate: "", youngerDate: "" };
 
-const MODERATORS = ["Dilmurod Komilov", "Nilufar Sharipova"];
+// Moderatorlar bazadan (/api/moderators) — ilgari shu yerda ikkita
+// ismdan iborat qattiq nusxa turardi.
 const selectCls = "filter-select h-10 w-full appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export interface ParentsFilterModalProps {
@@ -30,6 +32,7 @@ export interface ParentsFilterModalProps {
 }
 
 export default function ParentsFilterModal({ initialFilters, onClose, onApply }: ParentsFilterModalProps) {
+  const { names: moderatorNames } = useModerators();
   const [draft, setDraft] = useState<ParentsFilters>(initialFilters);
   useEscapeClose(onClose);
 
@@ -77,7 +80,7 @@ export default function ParentsFilterModal({ initialFilters, onClose, onApply }:
           </select>
           <select className={selectCls} value={draft.moderator} onChange={(e) => set("moderator", e.target.value)}>
             <option value="">Moderator</option>
-            {MODERATORS.map((m) => <option key={m} value={m}>{m}</option>)}
+            {moderatorNames.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
           <select className={selectCls} defaultValue="">
             <option value="">Kategoriya</option>

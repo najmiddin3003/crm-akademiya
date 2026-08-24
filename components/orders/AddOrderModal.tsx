@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { GROUPS } from "@/constants";
-import { COURSES, formatLessonDays, parseLessonDays, type NewOrderValues, type Order } from "@/lib/ordersData";
+import { useGroups } from "@/hooks/useGroups";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { formatLessonDays, parseLessonDays, type NewOrderValues, type Order } from "@/lib/ordersData";
 import { useTeachers } from "@/hooks/useTeachers";
 import { usePupils } from "@/components/orders/PupilsContext";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
@@ -42,6 +43,11 @@ function parseFirstLesson(firstLesson: string): { date: string; time: string } {
 }
 
 export default function AddOrderModal({ initialOrder, initialStudentName, initialStudentPhone, onClose, onSave }: AddOrderModalProps) {
+  // Kurs va guruh ro'yxatlari bazadan — ilgari constants'dagi qattiq
+  // ro'yxatlar edi, ya'ni haqiqiy guruhga yozib bo'lmasdi.
+  const { names: courseNames } = useOfflineCourseList();
+  const { groups } = useGroups();
+  const groupNames = useMemo(() => groups.map((g) => g.name).filter(Boolean), [groups]);
   const [mounted, setMounted] = useState(false);
   const [studentName, setStudentName] = useState(initialOrder?.name ?? initialStudentName ?? "");
   const [referral, setReferral] = useState(initialOrder?.referral ?? "");
@@ -206,7 +212,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               setCourse(v);
               setError(null);
             }}
-            options={COURSES}
+            options={courseNames}
             placeholder="Kursni tanlang"
             searchPlaceholder="Kursni qidirish"
             error={error === "Kurs majburiy"}
@@ -242,7 +248,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             label="Yig'ilayotgan guruhni tanlang"
             value={group}
             onChange={setGroup}
-            options={GROUPS}
+            options={groupNames}
             placeholder="Yig'ilayotgan guruhni tanlang"
             searchPlaceholder="Guruhni qidirish"
           />

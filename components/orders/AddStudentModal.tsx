@@ -6,6 +6,7 @@ import PanelSelect from "@/components/orders/PanelSelect";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { usePupils } from "@/components/orders/PupilsContext";
 import { useToast } from "@/components/ui/Toast";
+import { useSettingsListNames } from "@/hooks/useSettingsList";
 import { STUDENT_CATEGORIES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 
@@ -56,6 +57,9 @@ export interface AddStudentModalProps {
 }
 
 export default function AddStudentModal({ onClose, onSave }: AddStudentModalProps) {
+  // O'quvchi kategoriyalari — Sozlamalar → Sotuv va marketing → Kategoriya.
+  // Sozlamada ro'yxat bo'sh bo'lsa constants'dagi standart uchlik ishlatiladi.
+  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -139,7 +143,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
 
         <PhoneInput label="Telefon raqam" value={phone} onChange={setPhone} />
 
-        <PanelSelect label="Kategoriyani tanlang" value={category} onChange={setCategory} options={STUDENT_CATEGORIES} placeholder="Kategoriyani tanlang" />
+        <PanelSelect label="Kategoriyani tanlang" value={category} onChange={setCategory} options={categoryNames} placeholder="Kategoriyani tanlang" />
 
         <div>
           <label className="block text-[13px] font-medium mb-1.5">Tug&apos;ilgan sanasi</label>

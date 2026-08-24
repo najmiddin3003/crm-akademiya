@@ -10,6 +10,7 @@ import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import SmsModal from "@/components/orders/SmsModal";
 import { useToast } from "@/components/ui/Toast";
 import { usePupils } from "@/components/orders/PupilsContext";
+import { useSettingsListNames } from "@/hooks/useSettingsList";
 import { STUDENT_CATEGORIES } from "@/constants";
 import {
   applyStudentFilters,
@@ -102,6 +103,9 @@ function FilterSelect({ label, value, onChange, options }: {
 }
 
 export default function StudentsListPage() {
+  // O'quvchi kategoriyalari — Sozlamalar → Sotuv va marketing → Kategoriya.
+  // Sozlamada ro'yxat bo'sh bo'lsa constants'dagi standart uchlik ishlatiladi.
+  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
   // O'quvchilar — bazadan (PupilsProvider, app/(app)/students-list/layout.tsx).
   // Guruhlar ham bazadan: o'quvchining kursi/o'qituvchisi/dars kunlari u a'zo
   // bo'lgan guruhdan kelib chiqadi (lib/studentsData.ts → enrichStudents).
@@ -338,7 +342,7 @@ export default function StudentsListPage() {
                   <input value={draft.name} onChange={(e) => setD("name", e.target.value)} placeholder="Ism bo'yicha" className={numInput} />
                 </div>
 
-                <FilterSelect label="Kategoriya" value={draft.category} onChange={(v) => setD("category", v)} options={STUDENT_CATEGORIES} />
+                <FilterSelect label="Kategoriya" value={draft.category} onChange={(v) => setD("category", v)} options={categoryNames} />
                 <FilterSelect label="Guruhlar soni" value={draft.groupCount} onChange={(v) => setD("groupCount", v)} options={["0", "1", "2"]} />
                 <FilterSelect label="Kun" value={draft.day} onChange={(v) => setD("day", v)} options={dayOptions} />
                 <FilterSelect label="Toq/Juft kunlar" value={draft.oddEven} onChange={(v) => setD("oddEven", v)} options={["Toq", "Juft"]} />

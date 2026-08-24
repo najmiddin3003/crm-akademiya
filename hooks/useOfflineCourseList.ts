@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { OfflineCourse } from "@/components/offline-courses/OfflineCoursesProvider";
 
 // Oflayn kurslarni OfflineCoursesProvider'dan TASHQARIDA o'qish uchun yengil
@@ -20,5 +20,10 @@ export function useOfflineCourseList() {
     return () => { cancelled = true; };
   }, []);
 
-  return { courses, loading };
+  // Kurs TANLANADIGAN joylar uchun — ilgari ular constants'dagi bir-biriga
+  // mos kelmaydigan uchta qattiq ro'yxatdan (GROUP_COURSES, COURSES,
+  // EMP_COURSES) o'qir edi.
+  const names = useMemo(() => courses.map((c) => c.name).filter(Boolean), [courses]);
+
+  return { courses, names, loading };
 }

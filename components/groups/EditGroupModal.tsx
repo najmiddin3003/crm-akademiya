@@ -4,17 +4,35 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { GROUP_COURSES, GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS, GROUP_ROOMS, GROUP_TEACHERS } from "@/constants/groups";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { useRooms } from "@/hooks/useRooms";
+import { useTeachers } from "@/hooks/useTeachers";
+import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
 import type { Group } from "@/lib/groups";
 
 // Guruhni tahrirlash modali (skrinshot 1). Guruh maydonlari bilan to'ldirilgan;
 // Saqlash → PATCH /api/groups/:id.
+//
+// Kurs, o'qituvchi va xona ro'yxatlari BAZADAN (/api/offline-courses,
+// /api/teachers, /api/rooms) — ilgari constants'dagi qattiq ro'yxatlardan
+// kelardi, ya'ni foydalanuvchi qo'shgan o'qituvchi yoki xonani bu yerda
+// tanlab bo'lmasdi. Guruhning o'qituvchisi ISM bo'yicha oylik hisobiga
+// ulanadi (lib/payrollSources.ts), shu bois ro'yxatdan tashqari ism
+// tushum-taqsimotini ham buzardi.
 const selectCls = "w-full h-10 appearance-none rounded-lg border border-border bg-card px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
 function Chevron() {
   return <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>;
+}
+/**
+ * Guruhda saqlangan qiymat bazadagi ro'yxatda bo'lmasligi mumkin (eski
+ * yozuvlar, o'chirilgan xona/o'qituvchi). Uni ro'yxat boshiga qo'shamiz —
+ * aks holda select bo'sh ko'rinib, saqlashda qiymat jimgina yo'qolardi.
+ */
+function withCurrent(list: string[], current: string): string[] {
+  return current && !list.includes(current) ? [current, ...list] : list;
 }
 function dmyToIso(s: string): string {
   const m = s.trim().match(/(\d{2})\.(\d{2})\.(\d{4})/);
@@ -28,6 +46,9 @@ function isoToDmy(s: string): string {
 export default function EditGroupModal({ group, onClose, onSaved }: { group: Group; onClose: () => void; onSaved: (g: Group) => void }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
+  const { names: courseNames } = useOfflineCourseList();
+  const { names: teacherNames } = useTeachers();
+  const { names: roomNames } = useRooms();
 
   const [t0, t1] = (group.time || " - ").split(" - ");
   const [p0, p1] = (group.period || " - ").split(" - ");
@@ -108,7 +129,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
             <div className="relative">
               <select value={course} onChange={(e) => setCourse(e.target.value)} className={selectCls}>
                 <option value="">Tanlang</option>
-                {GROUP_COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {withCurrent(courseNames, course).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <Chevron />
             </div>
@@ -152,7 +173,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
             <div className="relative">
               <select value={teacher} onChange={(e) => setTeacher(e.target.value)} className={selectCls}>
                 <option value="">Tanlang</option>
-                {GROUP_TEACHERS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {withCurrent(teacherNames, teacher).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <Chevron />
             </div>
@@ -162,7 +183,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
             <div className="relative">
               <select value={assistant} onChange={(e) => setAssistant(e.target.value)} className={selectCls}>
                 <option value="">Tanlang</option>
-                {GROUP_TEACHERS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {withCurrent(teacherNames, assistant).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <Chevron />
             </div>
@@ -181,7 +202,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
             <div className="relative">
               <select value={room} onChange={(e) => setRoom(e.target.value)} className={selectCls}>
                 <option value="">Tanlang</option>
-                {GROUP_ROOMS.map((r) => <option key={r} value={r}>{r}</option>)}
+                {withCurrent(roomNames, room).map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
               <Chevron />
             </div>

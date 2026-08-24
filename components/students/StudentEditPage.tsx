@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { useSettingsListNames } from "@/hooks/useSettingsList";
 import { STUDENT_CATEGORIES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 import type { Order } from "@/lib/ordersData";
@@ -85,6 +86,9 @@ const TABS: { key: string; label: string }[] = [
 ];
 
 export default function StudentEditPage({ order, initialTab }: { order: Order; initialTab?: string }) {
+  // O'quvchi kategoriyalari — Sozlamalar → Sotuv va marketing → Kategoriya.
+  // Sozlamada ro'yxat bo'sh bo'lsa constants'dagi standart uchlik ishlatiladi.
+  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
   const [ism, ...rest] = order.name.trim().split(/\s+/);
   const familiya = rest.join(" ");
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "+998";
@@ -355,7 +359,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
-              <SelectField label="O'quvchi kategoriyasi" options={STUDENT_CATEGORIES} value={form.category ?? ""} onChange={set("category")} />
+              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} />
               <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
             </div>
 

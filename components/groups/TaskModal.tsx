@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { TASK_TYPES } from "@/constants/groups";
+import { useTaskTypes } from "@/hooks/useTaskTypes";
 import type { GroupTask } from "@/lib/groupTasks";
 
 // Vazifa qo'shish / tahrirlash modali (skrinshot 2). `task` berilsa — tahrirlash
@@ -21,6 +21,10 @@ function deadlineToInput(s: string): string {
 }
 
 export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask; onClose: () => void; onSaved: (task: GroupTask) => void }) {
+  // Topshiriq turlari — Topshiriqlar sahifasidagi bilan bir manba
+  // (/api/task-types), ilgari constants'dagi qattiq ro'yxat edi.
+  const { types } = useTaskTypes();
+  const typeNames = types.map((t) => t.name).filter(Boolean);
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState(task?.type || "Imtihon");
@@ -72,7 +76,7 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
             <label className={labelCls}>Turi<span className="text-rose-500">*</span></label>
             <div className="relative">
               <select value={type} onChange={(e) => setType(e.target.value)} className={`${inputCls} appearance-none pr-9`}>
-                {TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                {typeNames.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>

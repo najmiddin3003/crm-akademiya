@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { Toggle } from "./SettingsForm";
+import { useBranches } from "@/hooks/useBranches";
 import {
   AUTO_SMS_ABSENT_STATUSES,
   AUTO_SMS_ABSENT_SUBS,
-  AUTO_SMS_BRANCHES,
   AUTO_SMS_DEFAULTS,
   AUTO_SMS_SCENARIOS,
 } from "@/constants/settingsAutoSms";
@@ -100,6 +100,10 @@ function withDefaults(saved?: Partial<AutoSmsData>): AutoSmsData {
 }
 
 export default function AutoSmsTab() {
+  // Filiallar bazadan — ilgari bu ro'yxat faqat ["Tanlang"] edi, ya'ni
+  // birorta haqiqiy filialni tanlab bo'lmasdi.
+  const { branches } = useBranches();
+  const branchNames = branches.map((b) => b.name).filter(Boolean);
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<AutoSmsData>(withDefaults);
   const [loading, setLoading] = useState(true);
@@ -192,7 +196,7 @@ export default function AutoSmsTab() {
               onChange={(e) => setData((p) => ({ ...p, branch: e.target.value }))}
               className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
-              {(AUTO_SMS_BRANCHES as string[]).map((b) => (
+              {branchNames.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>

@@ -4,11 +4,18 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { GROUP_COURSES, GROUP_EDU_TYPES } from "@/constants/groups";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { GROUP_FORMATS } from "@/constants/groups";
 import type { Group } from "@/lib/groups";
 
 // Yangi guruh qo'shish modali (crm-akademiya #group-add-modal, skrinshot 2).
 // Saqlash → POST /api/groups.
+//
+// Kurslar bazadan (/api/offline-courses). "Ta'lim turi" esa ilgari
+// GROUP_EDU_TYPES — ya'ni BOSQICHLAR ro'yxatini ("1-bosqich", "Kids 2")
+// ko'rsatardi va o'sha qiymat guruhning ta'lim TURI sifatida saqlanardi.
+// Tahrirlash modali xuddi shu maydonga Oflayn/Onlayn beradi — endi ikkalasi
+// bir xil (GROUP_FORMATS).
 const selectCls = "filter-select w-full h-10 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
@@ -20,6 +27,7 @@ function Chevron() {
 export default function AddGroupModal({ onClose, onCreated }: { onClose: () => void; onCreated?: (g: Group) => void }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
+  const { names: courseNames } = useOfflineCourseList();
   const [name, setName] = useState("");
   const [status, setStatus] = useState("");
   const [course, setCourse] = useState("");
@@ -93,7 +101,7 @@ export default function AddGroupModal({ onClose, onCreated }: { onClose: () => v
             <div className="relative">
               <select value={course} onChange={(e) => setCourse(e.target.value)} className={selectCls}>
                 <option value="">Tanlang</option>
-                {GROUP_COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {courseNames.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <Chevron />
             </div>
@@ -103,7 +111,7 @@ export default function AddGroupModal({ onClose, onCreated }: { onClose: () => v
             <div className="relative">
               <select value={eduType} onChange={(e) => setEduType(e.target.value)} className={selectCls}>
                 <option value="">Tanlang</option>
-                {GROUP_EDU_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                {GROUP_FORMATS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <Chevron />
             </div>

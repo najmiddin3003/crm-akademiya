@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { useReasons } from "@/hooks/useSettingsList";
 
 // "✗ Rad etish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: "Izoh qoldiring" sarlavha, "Sabab"
@@ -31,7 +32,11 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
   const [customReason, setCustomReason] = useState("");
   useEscapeClose(onClose);
 
-  const filtered = REJECT_REASONS.filter((r) => r.toLowerCase().includes(query.trim().toLowerCase()));
+  // Sabablar Sozlamalar → O'quv → Sabablar'dan ("Bekor qilindi" turi);
+  // sozlamada bo'sh bo'lsa quyidagi standart ro'yxat ishlatiladi.
+  const { names: reasons } = useReasons("Bekor qilindi");
+  const list = reasons.length > 0 ? [...reasons, OTHER] : REJECT_REASONS;
+  const filtered = list.filter((r) => r.toLowerCase().includes(query.trim().toLowerCase()));
 
   const handlePick = (reason: string) => {
     if (reason === OTHER) {

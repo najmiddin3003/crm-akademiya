@@ -20,6 +20,7 @@ import {
   type AttendanceStatus,
   type LessonDate,
 } from "@/lib/attendance";
+import { useReasons } from "@/hooks/useSettingsList";
 import { useLang } from "@/components/shared/Language";
 import { MONTHS } from "@/lib/i18n";
 import type { Group } from "@/lib/groups";
@@ -95,6 +96,11 @@ function StatusDot({ status }: { status: AttendanceStatus | null }) {
 }
 
 export default function AttendanceTab({ group, members, membersLoading }: AttendanceTabProps) {
+  // Dars qoldirish sabablari — Sozlamalar → O'quv → Sabablar ("Davomat"
+  // turi). Sozlamada ro'yxat bo'sh bo'lsa lib/attendance.ts dagi standart
+  // ro'yxat ishlatiladi (aks holda select butunlay bo'sh bo'lardi).
+  const { names: settingsReasons } = useReasons("Davomat");
+  const reasonNames = settingsReasons.length > 0 ? settingsReasons : ABSENCE_REASONS;
   const { showError } = useToast();
   const [lang] = useLang();
   const monthNames = MONTHS[lang];
@@ -696,7 +702,7 @@ export default function AttendanceTab({ group, members, membersLoading }: Attend
               className="mb-4 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Tanlang</option>
-              {ABSENCE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              {reasonNames.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
 
             <label className="mb-1.5 block text-[13px] font-medium">Izoh</label>

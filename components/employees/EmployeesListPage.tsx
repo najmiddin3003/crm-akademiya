@@ -9,12 +9,12 @@ import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import AddEmployeeModal from "./AddEmployeeModal";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import {
   EMP_COLUMNS,
-  EMP_COURSES,
   EMP_LEAVE_REASONS,
   EMP_ROLES,
   EMP_STATES,
@@ -115,6 +115,9 @@ function NotConfigured() {
 export default function EmployeesListPage() {
   const router = useRouter();
   const { showSuccess } = useToast();
+  // Kurs filtri bazadan (ilgari constants'dagi uchinchi, boshqalariga mos
+  // kelmaydigan EMP_COURSES ro'yxati edi).
+  const { names: courseNames } = useOfflineCourseList();
 
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("");
@@ -431,7 +434,7 @@ export default function EmployeesListPage() {
           <div className="relative">
             <select value={courseFilter} onChange={(e) => { setCourseFilter(e.target.value); setPage(1); }} className={selectCls}>
               <option value="">Kurs</option>
-              {EMP_COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {courseNames.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>

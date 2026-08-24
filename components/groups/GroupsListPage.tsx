@@ -8,7 +8,10 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import AddGroupModal from "./AddGroupModal";
 import type { Group } from "@/lib/groups";
-import { GROUP_COURSES, GROUP_DAYS, GROUP_ROOMS, GROUP_TEACHERS } from "@/constants/groups";
+import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { useRooms } from "@/hooks/useRooms";
+import { useTeachers } from "@/hooks/useTeachers";
+import { GROUP_DAYS } from "@/constants/groups";
 
 // Guruhlar ro'yxati (crm-akademiya #view-groups). SARIQ qator = bugun davomat
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
@@ -30,6 +33,10 @@ function downloadBlob(blob: Blob, filename: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+/** Bazadagi ro'yxat + guruhlarda amalda uchraydigan qiymatlar. */
+function unionWithGroups(fromDb: string[], groups: Group[], pick: (g: Group) => string | undefined): string[] {
+  return [...new Set([...fromDb, ...groups.map(pick).filter((v): v is string => Boolean(v))])];
+}
 const HEADERS = ["№", "Guruh nomi", "Kurs", "Darajasi", "Kun", "Dars vaqti", "Guruh vaqti", "O'quvchi", "O'qituvchi", "Xona", "Telegram", "Holati"];
 
 /** "08:30" → 510 (yarim tundan boshlab daqiqalar). */
@@ -48,6 +55,11 @@ function parseTimeRange(range: string): [number | null, number | null] {
 export default function GroupsListPage() {
   const router = useRouter();
   const { showSuccess } = useToast();
+  // Filtr ro'yxatlari bazadan — ilgari constants'dagi qattiq ro'yxatlar
+  // edi, ya'ni haqiqiy o'qituvchi/kurs/xona bo'yicha filtrlab bo'lmasdi.
+  const { names: dbTeachers } = useTeachers();
+  const { names: dbCourses } = useOfflineCourseList();
+  const { names: dbRooms } = useRooms();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,6 +96,14 @@ export default function GroupsListPage() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
+
+  // Filtr variantlari: bazadagi ro'yxat + guruhlarda AMALDA uchraydigan
+  // qiymatlar. Ikkinchisi kerak, chunki xonalar ro'yxati bo'sh bo'lishi
+  // mumkin (seed yo'q), guruhlarda esa xona yozilgan bo'lishi mumkin —
+  // aks holda filtrda tanlanadigan narsa qolmasdi.
+  const teacherNames = useMemo(() => unionWithGroups(dbTeachers, groups, (g) => g.teacher), [dbTeachers, groups]);
+  const courseNames = useMemo(() => unionWithGroups(dbCourses, groups, (g) => g.course), [dbCourses, groups]);
+  const roomNames = useMemo(() => unionWithGroups(dbRooms, groups, (g) => g.room), [dbRooms, groups]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -148,7 +168,7 @@ export default function GroupsListPage() {
         <div className="relative">
           <select value={teacher} onChange={(e) => { setTeacher(e.target.value); setPage(1); }} className={`${selectCls} w-36`}>
             <option value="">O&apos;qituvchi</option>
-            {GROUP_TEACHERS.map((t) => <option key={t} value={t}>{t}</option>)}
+            {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
@@ -174,14 +194,14 @@ export default function GroupsListPage() {
         <div className="relative">
           <select value={course} onChange={(e) => { setCourse(e.target.value); setPage(1); }} className={`${selectCls} w-32`}>
             <option value="">Kurs</option>
-            {GROUP_COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {courseNames.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
         <div className="relative">
           <select value={room} onChange={(e) => { setRoom(e.target.value); setPage(1); }} className={`${selectCls} w-28`}>
             <option value="">Xona</option>
-            {GROUP_ROOMS.map((r) => <option key={r} value={r}>{r}</option>)}
+            {roomNames.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
           <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>

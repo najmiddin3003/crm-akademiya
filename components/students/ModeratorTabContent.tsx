@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MODERATORS } from "@/lib/ordersData";
+import { useModerators } from "@/hooks/useModerators";
 import { useToast } from "@/components/ui/Toast";
 
 // Ported from crm-akademiya/src/app.js renderStudentEditModerator() (~line 34547),
@@ -16,7 +16,10 @@ export default function ModeratorTabContent({
   pupilId?: number;
 }) {
   const { showSuccess, showError } = useToast();
-  const [moderator, setModerator] = useState(initialModerator || MODERATORS[0]);
+  const { names: moderatorNames } = useModerators();
+  // Ro'yxat bazadan kelgani uchun boshlang'ich qiymat sifatida "birinchi
+  // moderator" ni qo'yib bo'lmaydi — bo'sh qoldiramiz.
+  const [moderator, setModerator] = useState(initialModerator);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -70,7 +73,7 @@ export default function ModeratorTabContent({
 
             {open && (
               <div className="absolute left-0 right-0 mt-1 rounded-lg border border-border bg-card shadow-lg z-10 overflow-hidden">
-                {MODERATORS.map((m) => (
+                {moderatorNames.map((m) => (
                   <button
                     key={m}
                     type="button"
