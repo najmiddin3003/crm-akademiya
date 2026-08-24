@@ -1,204 +1,306 @@
 "use client";
 
-import { useRef } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TextField from "@/components/students/fields/TextField";
 import PhoneField from "@/components/students/fields/PhoneField";
 import SelectField from "@/components/students/fields/SelectField";
 import DateField from "@/components/students/fields/DateField";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { useSettingsListNames } from "@/hooks/useSettingsList";
+import { useProfilePupil } from "@/hooks/useProfilePupil";
+import { STUDENT_CATEGORIES } from "@/constants";
+import type { Contract } from "@/lib/contracts";
+import type { Pupil } from "@/lib/pupilsData";
 
-// Ported from the real site's Shartnoma biriktirish tab: a left form (same
-// field set as the Tahrirlash tab, single-column, "Shartnoma turi" prepended
-// and "Teglar" moved to the end) + a right rich-text editor for the contract
-// text. There's no rich-text library in this project yet, so the editor is a
-// lightweight contentEditable + document.execCommand — enough for real
-// bold/italic/underline/lists/undo-redo/print without adding a dependency.
-// The remaining toolbar buttons (font/size/paragraph pickers, table, link,
-// image, video, embed, code view, mention) are visual-only for now.
+// O'quvchi profili → "Shartnoma biriktirish".
+//
+// ILGARI NIMA NOTO'G'RI EDI: 22 maydonli forma butunlay BOSHQARILMAYDIGAN
+// edi (faqat `defaultValue`), barcha SelectField'lar BIRORTA variantsiz
+// chizilardi, va sahifada umuman "Saqlash" tugmasi YO'Q edi — yozilgan
+// har qanday narsa jimgina yo'qolardi. O'ng tomondagi muharrirga terilgan
+// shartnoma matni ham hech qayerga bormasdi.
+//
+// ENDI NIMA QILINDI:
+//   • Formadagi maydonlar o'quvchining BAZADAGI yozuvidan to'ladi va
+//     "Saqlash" ularni PATCH /api/pupils/:id ga yuboradi (Tahrirlash tabi
+//     bilan bir xil yo'l — maydon to'plami ham o'sha, manba saytda ham shu
+//     tabda takrorlanadi). Ya'ni endi HAMMA maydon haqiqatan saqlanadi.
+//   • "Shartnoma turi" — /api/contracts dagi HAQIQIY shartnoma andozalari
+//     (O'quv bo'limi → Shartnoma sahifasi boshqaradi). Ilgari bo'sh edi.
+//   • O'ng tomondagi bo'sh muharrir o'rniga tanlangan andozaning matni
+//     ko'rsatiladi va undagi {{ism}}, {{familiya}}, {{telefon}} kabi
+//     birlashtirish (mail-merge) tokenlari shu o'quvchining haqiqiy
+//     ma'lumotlari bilan almashtiriladi (tokenlar ro'yxati:
+//     constants/contracts.js CONTRACT_FIELDS).
+//
+// SAQLANMAYDIGAN QISM (ochiq aytilgan): shartnomaning O'QUVCHIGA
+// BIRIKTIRILGAN NUSXASI bazaga yozilmaydi — `contracts` kolleksiyasida
+// faqat andoza (title/type/content) bor, `finance_contracts` esa summa va
+// qismlardan iborat bo'lib, matn uchun maydoni yo'q. Shu bois o'ng taraf
+// FAQAT KO'RISH uchun: unga yozib bo'lmaydi (yozilgani yo'qolmasin).
 
-function ToolbarButton({
-  onClick,
-  title,
-  active,
-  children,
-}: {
-  onClick?: () => void;
-  title: string;
-  active?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={`h-8 w-8 flex-shrink-0 inline-flex items-center justify-center rounded-md text-sm ${
-        active ? "bg-primary/10 text-primary" : "hover:bg-secondary/60 text-foreground/80"
-      }`}
-    >
-      {children}
-    </button>
-  );
+// Dars vaqti / o'qish tili ro'yxatlari — Tahrirlash tabidagi bilan bir xil
+// (StudentEditPage.tsx da ham shunday e'lon qilingan; sozlamalarga alohida
+// ro'yxat qo'shilsa, ikkalasi ham o'sha yerdan olishi kerak).
+const LESSON_TIMES = ["Ertalabki", "Kunduzgi", "Kechki", "Dam olish kunlari"];
+const LANGUAGES = ["O'zbek", "Rus", "Ingliz"];
+
+/** PATCH /api/pupils/:id qabul qiladigan maydonlar (route'dagi EDITABLE). */
+const FIELD_KEYS = [
+  "firstName", "lastName", "phone", "email", "birthDate", "lessonTime",
+  "category", "language", "paymentDate", "survey", "targetUniversity",
+  "fatherName", "fatherPhone", "fatherWork",
+  "motherName", "motherPhone", "motherWork",
+  "address", "studyPlace", "note", "tags",
+] as const;
+
+type FormState = Record<string, string>;
+
+function formFromPupil(p: Pupil): FormState {
+  return {
+    firstName: p.firstName ?? "", lastName: p.lastName ?? "", phone: p.phone ?? "",
+    email: p.email ?? "", birthDate: p.birthDate ?? "", lessonTime: p.lessonTime ?? "",
+    category: p.category ?? "", language: p.language ?? "", paymentDate: p.paymentDate ?? "",
+    survey: p.survey ?? "", targetUniversity: p.targetUniversity ?? "",
+    fatherName: p.fatherName ?? "", fatherPhone: p.fatherPhone ?? "", fatherWork: p.fatherWork ?? "",
+    motherName: p.motherName ?? "", motherPhone: p.motherPhone ?? "", motherWork: p.motherWork ?? "",
+    address: p.address ?? "", studyPlace: p.studyPlace ?? "", note: p.note ?? "", tags: p.tags ?? "",
+  };
 }
 
-function ToolbarDivider() {
-  return <div className="w-px h-5 bg-border mx-1 flex-shrink-0" />;
+/**
+ * Andozadagi {{token}} → o'quvchining haqiqiy qiymati.
+ *
+ * Faqat yozuvda HAQIQATAN bor maydonlar bog'langan. `kategoriya_id`,
+ * `sorov_id`, `teg_idlari`, `takliflar_soni`, `keys.ofertaAcceptances`
+ * tokenlariga mos ma'lumot bazada yo'q (kategoriya nomi saqlanadi, id
+ * emas; takliflar hisobi umuman yuritilmaydi) — ular o'ylab topilgan son
+ * bilan emas, "—" bilan almashtiriladi.
+ */
+function tokenValue(token: string, f: FormState): string {
+  switch (token) {
+    case "ism": return f.firstName;
+    case "familiya": return f.lastName;
+    case "telefon": return f.phone;
+    case "email": return f.email;
+    case "tugilgan_sana": return f.birthDate;
+    case "dars_turi": return f.lessonTime;
+    case "til": return f.language;
+    case "tolov_sanasi": return f.paymentDate;
+    case "otasining_ismi": return f.fatherName;
+    case "otasining_telefon": return f.fatherPhone;
+    case "onasining_ismi": return f.motherName;
+    case "onasining_telefon": return f.motherPhone;
+    default: return "";
+  }
+}
+
+/** Andoza HTML ichiga qo'yiladigan qiymatlar ekranlanadi (ism ichidagi
+ *  "<" belgisi bilan sahifa buzilmasin). */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function mergeTokens(html: string, f: FormState): string {
+  return html.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, token: string) => {
+    const v = tokenValue(token, f).trim();
+    return v ? escapeHtml(v) : "—";
+  });
 }
 
 export default function ShartnomaBiriktirishTabContent({
   ism,
   familiya,
   phone,
+  pupilId: pupilIdProp,
 }: {
   ism: string;
   familiya: string;
   phone: string;
+  /** StudentEditPage hali uzatmaydi — u holda id URL'dan olinadi. */
+  pupilId?: number;
 }) {
-  const editorRef = useRef<HTMLDivElement>(null);
+  const { showSuccess, showError } = useToast();
+  const { pupilId, pupil, loading } = useProfilePupil(pupilIdProp);
+  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
 
-  const exec = (command: string, value?: string) => {
-    editorRef.current?.focus();
-    document.execCommand(command, false, value);
+  // Forma qiymati HISOBLANADI, nusxalanmaydi: `base` — bazadagi yozuv,
+  // `edits` — foydalanuvchi yozgani. Effekt bilan sinxronlash (setForm)
+  // ortiqcha render zanjirini keltirib chiqaradi (react-hooks qoidasi),
+  // shuning uchun ustma-ust qo'yiladi. Saqlangandan keyin serverdan
+  // qaytgan yozuv `savedPupil` ga tushadi va `edits` tozalanadi.
+  const [edits, setEdits] = useState<FormState>({});
+  const [savedPupil, setSavedPupil] = useState<Pupil | null>(null);
+  const [templates, setTemplates] = useState<Contract[]>([]);
+  const [templateId, setTemplateId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const current = savedPupil ?? pupil;
+  // Yozuv topilmasa profil sarlavhasidagi ism/telefon ko'rinadi. PhoneField
+  // "+998" ni o'zi chizadi, prop esa u bilan keladi — takrorlanmasin.
+  const base = useMemo<FormState>(
+    () => (current
+      ? formFromPupil(current)
+      : { firstName: ism, lastName: familiya, phone: phone.replace(/^\+998\s*/, "") }),
+    [current, ism, familiya, phone],
+  );
+  const form = useMemo<FormState>(() => ({ ...base, ...edits }), [base, edits]);
+
+  // Andozalar yuklanmagunicha "Andoza yo'q" deyish mumkin emas — bu javob
+  // kelmasdan turib "hech narsa yo'q" deb da'vo qilish bo'lardi.
+  const [templatesLoading, setTemplatesLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/contracts")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setTemplates(d.contracts as Contract[]); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setTemplatesLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const set = (k: string) => (v: string) => setEdits((e) => ({ ...e, [k]: v }));
+
+  const template = useMemo(
+    () => templates.find((t) => String(t.id) === templateId) ?? null,
+    [templates, templateId],
+  );
+  const mergedHtml = useMemo(
+    () => (template ? mergeTokens(template.content || "", form) : ""),
+    [template, form],
+  );
+
+  const save = async () => {
+    if (!pupil || pupilId === undefined) return;
+    if (!form.firstName?.trim()) {
+      showError("Ism majburiy");
+      return;
+    }
+    setSaving(true);
+    const payload: FormState = {};
+    for (const k of FIELD_KEYS) payload[k] = form[k] ?? "";
+    const res = await fetch(`/api/pupils/${pupilId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then((r) => r.json()).catch(() => null);
+    setSaving(false);
+    if (!res?.ok) {
+      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      return;
+    }
+    setSavedPupil(res.pupil as Pupil);
+    setEdits({});
+    // Faqat o'quvchi maydonlari saqlanadi — "Shartnoma turi" tanlovi emas
+    // (uni saqlaydigan maydon yo'q). Xabar shuni aniq aytadi.
+    showSuccess("O'quvchi ma'lumotlari saqlandi");
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-      <div className="rounded-2xl bg-card border border-border p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "70vh" }}>
-        <SelectField label="Shartnoma turi" />
-        <TextField label="Ism" defaultValue={ism} />
-        <TextField label="Familiya" defaultValue={familiya} />
-        <PhoneField label="Telefon raqam" defaultValue={phone} />
-        <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" />
-        <DateField label="Tug'ilgan sanasi" />
-        <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" />
-        <SelectField label="O'quvchi kategoriyasi" />
-        <SelectField label="O'qish tili" />
-        <DateField label="O'quvchining pul to'lash sanasi" />
-        <SelectField label="Marketing so'rovnomasi" />
-        <TextField label="Maqsadidagi universiteti" />
-        <TextField label="Otasining ismi" />
-        <PhoneField label="Telefon raqam" />
-        <TextField label="Otasining ish joyi" />
-        <TextField label="Onasining ismi" />
-        <PhoneField label="Telefon raqam" />
-        <TextField label="Onasining ish joyi" />
-        <TextField label="Uy adresi" />
-        <TextField label="O'qish joyi" />
-        <TextField label="Izoh" />
-        <SelectField label="Teglar" />
+    <div className="space-y-4">
+      {!loading && !pupil && (
+        <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
+          Bu yozuv o&apos;quvchilar bazasida topilmadi — maydonlarni saqlab bo&apos;lmaydi.
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="rounded-2xl bg-card border border-border p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "70vh" }}>
+          {loading ? (
+            <SpinnerBlock />
+          ) : (
+            <>
+              {/* Andozalar bazadan; ro'yxat bo'sh bo'lsa buni ochiq aytamiz. */}
+              <div>
+                <label className="block text-[13px] font-medium mb-1.5">Shartnoma turi</label>
+                <div className="relative">
+                  <select
+                    value={templateId}
+                    onChange={(e) => setTemplateId(e.target.value)}
+                    className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">
+                      {templatesLoading ? "Yuklanmoqda…" : templates.length ? "Andozani tanlang" : "Andoza yo'q"}
+                    </option>
+                    {templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                  </select>
+                  <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
+                </div>
+                {/* Tanlangan andoza SAQLANMAYDI: `pupils` hujjatida ham,
+                    shartnoma modellarida ham o'quvchiga biriktirilgan
+                    andozani saqlaydigan maydon yo'q. Shuning uchun buni
+                    ochiq aytamiz — aks holda Saqlash tugmasi uni ham
+                    saqlagandek tuyulardi. */}
+                <p className="mt-1.5 text-[12px] text-muted-foreground">
+                  Andoza faqat quyidagi ko&apos;rinishni hosil qilish uchun — u o&apos;quvchiga
+                  biriktirilib saqlanmaydi (bazada mos maydon yo&apos;q).
+                </p>
+              </div>
+
+              <TextField label="Ism" value={form.firstName ?? ""} onChange={set("firstName")} />
+              <TextField label="Familiya" value={form.lastName ?? ""} onChange={set("lastName")} />
+              <PhoneField label="Telefon raqam" value={form.phone ?? ""} onChange={set("phone")} />
+              <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" value={form.email ?? ""} onChange={set("email")} />
+              <DateField label="Tug'ilgan sanasi" value={form.birthDate ?? ""} onChange={set("birthDate")} />
+              <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
+              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} />
+              <SelectField label="O'qish tili" options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
+              <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
+              {/* Marketing so'rovnomasi va Teglar — bazada erkin matn
+                  (pupils.survey / pupils.tags), shuning uchun variantsiz
+                  tanlov emas, matn maydoni. */}
+              <TextField label="Marketing so'rovnomasi" value={form.survey ?? ""} onChange={set("survey")} />
+              <TextField label="Maqsadidagi universiteti" value={form.targetUniversity ?? ""} onChange={set("targetUniversity")} />
+              <TextField label="Otasining ismi" value={form.fatherName ?? ""} onChange={set("fatherName")} />
+              <PhoneField label="Telefon raqam" value={form.fatherPhone ?? ""} onChange={set("fatherPhone")} />
+              <TextField label="Otasining ish joyi" value={form.fatherWork ?? ""} onChange={set("fatherWork")} />
+              <TextField label="Onasining ismi" value={form.motherName ?? ""} onChange={set("motherName")} />
+              <PhoneField label="Telefon raqam" value={form.motherPhone ?? ""} onChange={set("motherPhone")} />
+              <TextField label="Onasining ish joyi" value={form.motherWork ?? ""} onChange={set("motherWork")} />
+              <TextField label="Uy adresi" value={form.address ?? ""} onChange={set("address")} />
+              <TextField label="O'qish joyi" value={form.studyPlace ?? ""} onChange={set("studyPlace")} />
+              <TextField label="Izoh" value={form.note ?? ""} onChange={set("note")} />
+              <TextField label="Teglar" value={form.tags ?? ""} onChange={set("tags")} />
+            </>
+          )}
+        </div>
+
+        <div className="rounded-2xl bg-card border border-border overflow-hidden flex flex-col" style={{ maxHeight: "70vh" }}>
+          <div className="border-b border-border px-4 py-3">
+            <h3 className="text-[14px] font-semibold">Shartnoma matni</h3>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
+              Andoza matni O&apos;quv bo&apos;limi &rarr; Shartnoma bo&apos;limida tahrirlanadi.
+              Bu yerda u faqat ko&apos;rish uchun: {"{{ism}}"} kabi tokenlar o&apos;quvchining
+              ma&apos;lumotlari bilan to&apos;ldiriladi.
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 text-sm">
+            {!template ? (
+              <div className="py-16 text-center text-muted-foreground text-[13px]">
+                {templates.length
+                  ? "Chapdan shartnoma andozasini tanlang."
+                  : "Shartnoma andozalari yo'q — O'quv bo'limi → Shartnoma bo'limida qo'shiladi."}
+              </div>
+            ) : (
+              // Matn o'z bazamizdagi andozadan keladi; ichiga qo'yiladigan
+              // o'quvchi qiymatlari mergeTokens'da ekranlanadi.
+              <div dangerouslySetInnerHTML={{ __html: mergedHtml }} />
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-2xl bg-card border border-border overflow-hidden flex flex-col" style={{ maxHeight: "70vh" }}>
-        <div className="border-b border-border p-2 flex flex-wrap items-center gap-1">
-          <ToolbarButton title="Bekor qilish" onClick={() => exec("undo")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Qaytarish" onClick={() => exec("redo")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6" /><path d="M21 13a9 9 0 1 1-3-7" /></svg>
-          </ToolbarButton>
-
-          <ToolbarDivider />
-
-          <select className="h-8 px-2 rounded-md border border-border bg-card text-xs" defaultValue="Nunito">
-            <option>Nunito</option>
-          </select>
-          <select className="h-8 px-2 rounded-md border border-border bg-card text-xs" defaultValue="13px">
-            <option>13px</option>
-          </select>
-          <select className="h-8 px-2 rounded-md border border-border bg-card text-xs" defaultValue="Paragraph">
-            <option>Paragraph</option>
-          </select>
-
-          <ToolbarDivider />
-
-          <ToolbarButton title="Qalin" onClick={() => exec("bold")}><span className="font-bold">B</span></ToolbarButton>
-          <ToolbarButton title="Tagiga chizilgan" onClick={() => exec("underline")}><span className="underline">U</span></ToolbarButton>
-          <ToolbarButton title="Qiya" onClick={() => exec("italic")}><span className="italic">I</span></ToolbarButton>
-          <ToolbarButton title="Ustidan chizilgan" onClick={() => exec("strikeThrough")}><span className="line-through">S</span></ToolbarButton>
-          <ToolbarButton title="Pastki indeks" onClick={() => exec("subscript")}>X<sub>2</sub></ToolbarButton>
-          <ToolbarButton title="Yuqori indeks" onClick={() => exec("superscript")}>X<sup>2</sup></ToolbarButton>
-
-          <ToolbarDivider />
-
-          <ToolbarButton title="Formatni tozalash" onClick={() => exec("removeFormat")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7V4h16v3" /><path d="M9 20h6" /><path d="M12 4L9 20" /><line x1="3" y1="21" x2="21" y2="3" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Chekinish" onClick={() => exec("indent")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6" /><line x1="9" y1="12" x2="21" y2="12" /><line x1="9" y1="18" x2="21" y2="18" /><polyline points="3 10 6 12 3 14" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Chekinishni bekor qilish" onClick={() => exec("outdent")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6" /><line x1="9" y1="12" x2="21" y2="12" /><line x1="9" y1="18" x2="21" y2="18" /><polyline points="6 10 3 12 6 14" /></svg>
-          </ToolbarButton>
-        </div>
-
-        <div className="border-b border-border p-2 flex flex-wrap items-center gap-1">
-          <ToolbarButton title="Chapga tekislash" onClick={() => exec("justifyLeft")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="15" y2="12" /><line x1="3" y1="18" x2="18" y2="18" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Chiziq qo'shish" onClick={() => exec("insertHorizontalRule")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Raqamli ro'yxat" onClick={() => exec("insertOrderedList")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
-              <text x="2.5" y="8" fontSize="7" fill="currentColor" stroke="none">1</text>
-              <text x="2.5" y="14" fontSize="7" fill="currentColor" stroke="none">2</text>
-              <text x="2.5" y="20" fontSize="7" fill="currentColor" stroke="none">3</text>
-            </svg>
-          </ToolbarButton>
-          <ToolbarButton title="Belgili ro'yxat" onClick={() => exec("insertUnorderedList")}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="9" y1="6" x2="21" y2="6" /><line x1="9" y1="12" x2="21" y2="12" /><line x1="9" y1="18" x2="21" y2="18" />
-              <circle cx="4" cy="6" r="1.3" fill="currentColor" stroke="none" />
-              <circle cx="4" cy="12" r="1.3" fill="currentColor" stroke="none" />
-              <circle cx="4" cy="18" r="1.3" fill="currentColor" stroke="none" />
-            </svg>
-          </ToolbarButton>
-
-          <ToolbarDivider />
-
-          <ToolbarButton title="Jadval">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line x1="12" y1="3" x2="12" y2="21" /></svg>
-          </ToolbarButton>
-          <ToolbarButton
-            title="Havola"
-            onClick={() => {
-              const url = window.prompt("Havola manzili:");
-              if (url) exec("createLink", url);
-            }}
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Rasm">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Video">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="14" height="14" rx="2" /><polygon points="22 8 16 12 22 16 22 8" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Kengaytirish">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="O'rnatish">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Kod">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Eslatish">
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4" /><path d="M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1" /></svg>
-          </ToolbarButton>
-          <ToolbarButton title="Chop etish" onClick={() => window.print()}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
-          </ToolbarButton>
-        </div>
-
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          className="flex-1 p-4 text-sm focus:outline-none overflow-y-auto"
-          style={{ minHeight: 240 }}
-        />
+      {/* Ilgari bu sahifada "Saqlash" umuman yo'q edi. */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          disabled={!pupil || saving}
+          onClick={save}
+          className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          {saving ? "Saqlanmoqda..." : "Saqlash"}
+        </button>
       </div>
     </div>
   );

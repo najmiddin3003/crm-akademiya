@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Pencil, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pencil, Search, Trash2, Upload, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -9,9 +9,31 @@ import type { Story } from "@/lib/stories";
 
 // Sotuv va marketing → Hikoya (sidebar: Sotuv va marketing > Hikoya,
 // href /sales-stories). Ma'lumot HAQIQIY — /api/stories (MongoDB `stories`).
+//
+// "Fayl" maydoni ilgari ODDIY MATN kiritish edi ("masalan: qabul-2026.jpg"):
+// hech qanday yuklash bo'lmasdi, kiritilgan satr jadvalda oddiy matn bo'lib
+// turardi — hikoya hech qachon media olib yura olmasdi. Loyihada yuklash
+// endpointlari BOR (app/api/upload/image, app/api/upload/video →
+// Cloudinary), shu bois maydon endi HAQIQIY fayl tanlaydi va bazaga
+// Cloudinary qaytargan URL yoziladi; jadvalda esa u havola bo'lib ochiladi.
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+
+// Endpointlar shu turlarni qabul qiladi (app/api/upload/*/route.ts):
+// rasm — PNG/JPG/WEBP, 5 MB gacha; video — MP4/WEBM/MOV, 50 MB gacha.
+const ACCEPT_FILES = "image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime";
+
+/** Saqlangan qiymat haqiqiy havolami (eski yozuvlarda shunchaki fayl nomi turibdi). */
+function isUrl(v: string): boolean {
+  return /^https?:\/\//i.test(v);
+}
+
+/** "https://res.cloudinary.com/.../qabul-2026.jpg" → "qabul-2026.jpg" */
+function fileLabel(url: string): string {
+  const tail = url.split("?")[0].split("/").pop();
+  return tail || url;
+}
 
 export default function StoriesPage() {
   const { showSuccess, showError } = useToast();
@@ -25,6 +47,11 @@ export default function StoriesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Story | null>(null);
   const [form, setForm] = useState({ title: "", image: "", file: "" });
+  // Tanlangan, lekin hali yuklanmagan fayl. Yuklash "Saqlash" bosilganda
+  // bo'ladi — shunda muvaffaqiyatsiz yuklashdan keyin bazada bo'sh havola
+  // qolib ketmaydi (PenaltyDrawer'dagi bilan bir xil tartib).
+  const [fileUpload, setFileUpload] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Story | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -49,15 +76,18 @@ export default function StoriesPage() {
 
   function openAdd() {
     setForm({ title: "", image: "", file: "" });
+    setFileUpload(null);
     setAddOpen(true);
   }
   function openEdit(s: Story) {
     setForm({ title: s.title, image: s.image, file: s.file });
+    setFileUpload(null);
     setEditTarget(s);
   }
   function closeForm() {
     setAddOpen(false);
     setEditTarget(null);
+    setFileUpload(null);
   }
 
   async function save() {
@@ -68,11 +98,31 @@ export default function StoriesPage() {
     }
     setSaving(true);
     try {
+      // Yangi fayl tanlangan bo'lsa avval yuklanadi; yuklanmasa hikoya
+      // umuman saqlanmaydi — aks holda "saqlandi" deyilib, fayl yo'qolardi.
+      let fileUrl = form.file;
+      if (fileUpload) {
+        const isVideo = fileUpload.type.startsWith("video/");
+        const fd = new FormData();
+        fd.append("file", fileUpload);
+        fd.append("folder", "hikoyalar");
+        const up = await fetch(isVideo ? "/api/upload/video" : "/api/upload/image", {
+          method: "POST",
+          body: fd,
+        });
+        const upData = await up.json().catch(() => null);
+        if (!up.ok || !upData?.ok) {
+          showError(upData?.error || "Fayl yuklanmadi");
+          return;
+        }
+        fileUrl = upData.url as string;
+      }
+
       const editing = editTarget !== null;
       const res = await fetch(editing ? `/api/stories/${editTarget.id}` : "/api/stories", {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, image: form.image, file: form.file }),
+        body: JSON.stringify({ title, image: form.image, file: fileUrl }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -168,7 +218,30 @@ export default function StoriesPage() {
                   </td>
                   <td className="px-5 py-3 font-medium">{s.title}</td>
                   <td className="px-5 py-3 tabular-nums text-[12px] text-muted-foreground whitespace-nowrap">{s.createdAt}</td>
-                  <td className="px-5 py-3 text-[13px] text-muted-foreground truncate">{s.file || "-"}</td>
+                  <td className="px-5 py-3 text-[13px] max-w-[224px]">
+                    {/* Yuklangan fayl — ochiladigan havola. Eski yozuvlarda
+                        bu maydonda qo'lda yozilgan matn turishi mumkin: u
+                        havola emas, shuning uchun havola qilib ko'rsatilmaydi. */}
+                    {s.file ? (
+                      isUrl(s.file) ? (
+                        <a
+                          href={s.file}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline truncate block"
+                          title={s.file}
+                        >
+                          {fileLabel(s.file)}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground truncate block" title="Eski yozuv: bu shunchaki matn, yuklangan fayl emas">
+                          {s.file}
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 pr-5">
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -237,11 +310,39 @@ export default function StoriesPage() {
             <div>
               <label className="block text-[13px] font-medium mb-1.5">Fayl</label>
               <input
-                value={form.file}
-                onChange={(e) => setForm((f) => ({ ...f, file: e.target.value }))}
-                className={inputCls}
-                placeholder="masalan: qabul-2026.jpg"
+                ref={fileRef}
+                type="file"
+                accept={ACCEPT_FILES}
+                className="hidden"
+                onChange={(e) => setFileUpload(e.target.files?.[0] ?? null)}
               />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={saving}
+                  className="flex-1 h-10 flex items-center justify-between rounded-lg border border-border bg-card px-3 text-sm hover:bg-secondary disabled:opacity-60"
+                >
+                  <span className={fileUpload || form.file ? "truncate" : "text-muted-foreground"}>
+                    {fileUpload?.name || (form.file ? (isUrl(form.file) ? fileLabel(form.file) : form.file) : "Faylni tanlash")}
+                  </span>
+                  <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+                {(fileUpload || form.file) && (
+                  <button
+                    type="button"
+                    onClick={() => { setFileUpload(null); setForm((f) => ({ ...f, file: "" })); if (fileRef.current) fileRef.current.value = ""; }}
+                    disabled={saving}
+                    className="h-10 w-10 shrink-0 rounded-lg border border-border bg-card hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-60"
+                    title="Faylni olib tashlash"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <p className="text-[12px] text-muted-foreground mt-1.5">
+                Rasm: PNG, JPG yoki WEBP (5 MB gacha). Video: MP4, WEBM yoki MOV (50 MB gacha).
+              </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <button

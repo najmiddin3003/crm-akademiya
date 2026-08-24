@@ -4,22 +4,33 @@ import { useEffect, useState } from "react";
 import { Copy, Settings, Trash2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { surveyBotLink, surveyTildaLink, surveyWebLink, type Survey } from "@/lib/surveys";
+import type { Survey } from "@/lib/surveys";
 
 // Sotuv va marketing → Marketing (sidebar: Sotuv va marketing > Marketing,
 // href /sales-marketing). Ma'lumot HAQIQIY — /api/surveys (MongoDB `surveys`).
 //
-// Bu lid MANBALARI so'rovnomasi: har manba uchun kod, koddan veb/bot/Tilda
-// havolalari hosil qilinadi. Har havola yonida nusxalash tugmasi bor
-// (referensdagidek), qatordagi sozlama ikonkasi tahrirlash oynasini ochadi.
+// Bu lid MANBALARI so'rovnomasi: har manba uchun kod beriladi.
+//
+// VEB/BOT/TILDA HAVOLALARI USTUNLARI OLIB TASHLANDI. Ular koddan yasalgan
+// uchta yolg'on manzil edi: birinchisi bu loyiha KLON qilayotgan begona
+// saytga, ikkinchisi mavjud bo'lmagan Telegram botga, uchinchisi umuman
+// mavjud bo'lmagan Tilda formasiga ishora qilardi. Ustiga-ustak, loyihada
+// `?survey=` kodini qayta o'qiydigan joy yo'q — ommaviy lid formasi ham,
+// endpoint ham yo'q — ya'ni manba biriktirish hech qachon ishlamagan
+// (batafsil: lib/surveys.ts).
+//
+// O'rniga HAQIQIY narsa ko'rsatiladi: kodning o'zi. Uni nusxalab
+// buyurtmaning "So'rovnoma" maydoniga qo'yish mumkin — buyurtmalar
+// ro'yxatidagi so'rovnoma filtri shu qiymat bo'yicha ishlaydi.
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-function LinkCell({ value, onCopy }: { value: string; onCopy: (v: string) => void }) {
+function CodeCell({ value, onCopy }: { value: string; onCopy: (v: string) => void }) {
+  if (!value) return <span className="text-muted-foreground">—</span>;
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <span className="truncate text-[12px] text-muted-foreground">{value}</span>
+      <span className="truncate text-[12px] font-medium tabular-nums">{value}</span>
       <button
         onClick={() => onCopy(value)}
         className="shrink-0 h-7 w-7 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground"
@@ -55,7 +66,7 @@ export default function SurveysPage() {
   async function copy(value: string) {
     try {
       await navigator.clipboard.writeText(value);
-      showSuccess("Havola nusxalandi");
+      showSuccess("Kod nusxalandi");
     } catch {
       showError("Nusxalab bo'lmadi");
     }
@@ -144,17 +155,27 @@ export default function SurveysPage() {
         </button>
       </div>
 
+      {/* Rost izoh: manba havolalari hali yasalmaydi. Ilgari bu yerda uchta
+          "tayyor" havola turardi — begona saytga, mavjud bo'lmagan botga va
+          mavjud bo'lmagan Tilda formasiga. */}
+      <div className="rounded-xl border border-dashed border-border bg-secondary/20 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
+        Manba havolalari (veb / bot / Tilda) hozircha yasalmaydi: bu ilovada lid
+        qabul qiladigan ommaviy forma ham, Telegram bot ham, Tilda integratsiyasi
+        ham yo&apos;q va <span className="tabular-nums">?survey=</span> kodini
+        qayta o&apos;qiydigan joy yo&apos;q. Kod esa haqiqiy — uni nusxalab
+        buyurtmaning &quot;So&apos;rovnoma&quot; maydoniga qo&apos;ying, buyurtmalar
+        ro&apos;yxatidagi filtr shu bo&apos;yicha ishlaydi.
+      </div>
+
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="table-scroll">
-          <table className="w-full text-sm min-w-[1200px]">
+          <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 <th className="px-5 py-3 text-left">Sarlavha</th>
                 <th className="px-5 py-3 text-left w-24">Rasm</th>
-                <th className="px-5 py-3 text-left">Veb havolasi</th>
-                <th className="px-5 py-3 text-left">Bot havolasi</th>
-                <th className="px-5 py-3 text-left">Tilda havolasi</th>
+                <th className="px-5 py-3 text-left w-40">Kod</th>
                 <th className="px-5 py-3 text-right pr-5 w-28" />
               </tr>
             </thead>
@@ -171,9 +192,7 @@ export default function SurveysPage() {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 max-w-[280px]"><LinkCell value={surveyWebLink(s)} onCopy={copy} /></td>
-                  <td className="px-5 py-3 max-w-[280px]"><LinkCell value={surveyBotLink(s)} onCopy={copy} /></td>
-                  <td className="px-5 py-3 max-w-[240px]"><LinkCell value={surveyTildaLink(s)} onCopy={copy} /></td>
+                  <td className="px-5 py-3 max-w-[160px]"><CodeCell value={s.code} onCopy={copy} /></td>
                   <td className="px-5 py-3 pr-5">
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -196,7 +215,7 @@ export default function SurveysPage() {
               ))}
               {surveys.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={5} className="px-5 py-10 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "So'rovnoma topilmadi"}
                   </td>
                 </tr>
@@ -240,7 +259,8 @@ export default function SurveysPage() {
                 placeholder={editTarget ? "s30" : "Bo'sh qoldirilsa avtomatik beriladi"}
               />
               <p className="text-[12px] text-muted-foreground mt-1.5">
-                Havolalar shu koddan hosil qilinadi.
+                Manbaning kodi — buyurtmadagi &quot;So&apos;rovnoma&quot; maydoniga
+                shu qiymat yoziladi.
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">

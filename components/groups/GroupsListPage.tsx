@@ -10,7 +10,9 @@ import AddGroupModal from "./AddGroupModal";
 import type { Group } from "@/lib/groups";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
+import { useStudents } from "@/hooks/useStudents";
 import { useTeachers } from "@/hooks/useTeachers";
+import { pupilStatusOf } from "@/lib/pupilsData";
 import { GROUP_DAYS } from "@/constants/groups";
 
 // Guruhlar ro'yxati (crm-akademiya #view-groups). SARIQ qator = bugun davomat
@@ -82,6 +84,19 @@ function parseTimeRange(range: string): [number | null, number | null] {
   return [toMinutes(m[1]), toMinutes(m[2])];
 }
 
+/**
+ * Guruhdagi o'quvchilar soni — HAQIQIY a'zolik ro'yxatidan (`studentIds`).
+ *
+ * NEGA: `Group.students` — bazada yotgan o'lik hisoblagich. U guruh
+ * yaratilganda 0 qilib yoziladi va /api/groups/:id/students (POST/DELETE)
+ * uni HECH QACHON yangilamaydi — faqat `studentIds` massivini
+ * o'zgartiradi. Ya'ni ustunda va "Jami o'quvchilar soni" da ilgari
+ * o'quvchilar qo'shilgan guruhlar uchun ham 0 turardi.
+ */
+function groupStudentCount(g: Group): number {
+  return g.studentIds?.length ?? 0;
+}
+
 export default function GroupsListPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
@@ -90,6 +105,10 @@ export default function GroupsListPage() {
   const { names: dbTeachers } = useTeachers();
   const { names: dbCourses } = useOfflineCourseList();
   const { names: dbRooms } = useRooms();
+  // O'quvchilar HOLATI (Aktiv/Muzlatilgan/Arxiv) faqat `pupils` da bor —
+  // guruh hujjatida yo'q. "Muzlatilgan o'quvchilar soni" ni hisoblash uchun
+  // guruhlarning `studentIds` ro'yxati shu ro'yxatga ulanadi.
+  const { pupils, loading: pupilsLoading } = useStudents();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -161,7 +180,26 @@ export default function GroupsListPage() {
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
-  const totalStudents = groups.reduce((sum, g) => sum + (g.students || 0), 0);
+
+  // Guruhlarga qo'shilgan o'quvchilarning TAKRORLANMAS id'lari. Bitta
+  // o'quvchi bir nechta guruhda bo'lishi mumkin — guruhlar bo'yicha oddiy
+  // yig'indi uni bir necha marta sanardi, shuning uchun Set ishlatilgan.
+  const memberIds = useMemo(() => {
+    const set = new Set<number>();
+    for (const g of groups) for (const id of g.studentIds ?? []) set.add(id);
+    return set;
+  }, [groups]);
+
+  // Muzlatilganlar soni — HAQIQIY holat bo'yicha (lib/pupilsData.ts
+  // pupilStatusOf). Ilgari bu yerda qattiq `0` yozilgan edi, ya'ni bir
+  // nechta o'quvchi muzlatilgan bo'lsa ham sahifa "0" deb yolg'on aytardi.
+  const frozenStudents = useMemo(
+    () => pupils.filter((p) => memberIds.has(p.id) && pupilStatusOf(p) === "Muzlatilgan").length,
+    [pupils, memberIds],
+  );
+
+  // "1 234" ko'rinishida (referensdagidek probel bilan).
+  const fmtCount = (n: number) => n.toLocaleString("ru-RU").replace(/,/g, " ");
 
   // Import — eksport bilan bir xil ustunlar (eksport → tahrir → import).
   // "№" va "O'quvchi" o'qilmaydi: biri qator raqami, ikkinchisi guruhga
@@ -204,7 +242,7 @@ export default function GroupsListPage() {
   }
 
   function exportRows() {
-    return filtered.map((g, i) => [i + 1, g.name, g.course, g.level || "", g.day, g.time, g.period, g.students, g.teacher, g.room, g.telegram || "", g.status]);
+    return filtered.map((g, i) => [i + 1, g.name, g.course, g.level || "", g.day, g.time, g.period, groupStudentCount(g), g.teacher, g.room, g.telegram || "", g.status]);
   }
   function exportCSV() {
     const csv = [HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
@@ -342,10 +380,11 @@ export default function GroupsListPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — javob kelmaguncha "—": bo'sh ro'yxat ustidan hisoblangan 0
+          ham xuddi qattiq yozilgan 0 kabi noto'g'ri da'vo bo'lardi. */}
       <div className="flex items-center gap-4 text-[13px]">
-        <span className="text-muted-foreground">Jami o&apos;quvchilar soni: <span className="font-semibold text-foreground tabular-nums">{totalStudents.toLocaleString("ru-RU").replace(/,/g, " ")}</span></span>
-        <span className="text-muted-foreground">Muzlatilgan o&apos;quvchilar soni: <span className="font-semibold text-foreground tabular-nums">0</span></span>
+        <span className="text-muted-foreground">Jami o&apos;quvchilar soni: <span className="font-semibold text-foreground tabular-nums">{loading ? "—" : fmtCount(memberIds.size)}</span></span>
+        <span className="text-muted-foreground">Muzlatilgan o&apos;quvchilar soni: <span className="font-semibold text-foreground tabular-nums">{loading || pupilsLoading ? "—" : fmtCount(frozenStudents)}</span></span>
         <div className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
           <span className="text-muted-foreground">Umumiy soni:</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
@@ -388,7 +427,7 @@ export default function GroupsListPage() {
                       <span className={g.periodExpired ? "inline-flex items-center px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 text-[12px] font-medium tabular-nums" : "text-muted-foreground tabular-nums text-[13px]"}>{g.period}</span>
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{g.students}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums">{groupStudentCount(g)}</td>
                   <td className="px-3 py-3 text-[13px]">{g.teacher || "—"}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{g.room || "—"}</td>
                   <td className="px-3 py-3 text-[12px]">{g.telegram ? <a href={g.telegram} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-primary hover:underline">{g.telegram}</a> : <span className="text-muted-foreground">—</span>}</td>

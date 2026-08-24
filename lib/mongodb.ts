@@ -134,6 +134,11 @@ export async function ensureIndexes(): Promise<Db> {
     // Plan moderator ISMI bo'yicha kalitlanadi — lib/salesPlan.ts izohiga qarang.
     await db.collection("sales_plans").createIndex({ moderatorName: 1 }, { unique: true });
     await db.collection("settings").createIndex({ key: 1 }, { unique: true });
+    // O'quvchi profilidagi "Harakatlar tarixi" tabi shu kolleksiyadan o'qiydi
+    // (app/api/pupils/[id]/activity). Yozuvlar o'quvchi va sana bo'yicha
+    // olinadi, shuning uchun qo'shma indeks.
+    await db.collection("pupil_activity").createIndex({ pupilId: 1, date: -1 });
+    await db.collection("pupil_activity").createIndex({ id: 1 }, { unique: true });
     // Sozlamalardagi CRUD ro'yxatlari — kolleksiya nomlari SETTINGS_LIST_KINDS
     // dan olinadi, shunda yangi ro'yxat qo'shilganda bu yer o'zi yangilanadi.
     for (const c of Object.values(SETTINGS_LIST_KINDS)) {

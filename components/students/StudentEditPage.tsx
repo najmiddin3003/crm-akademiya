@@ -321,9 +321,9 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           {activeTab === "parol" && <ParolTabContent login={phone} pupilId={pupil?.id} />}
           {activeTab === "moderator" && <ModeratorTabContent initialModerator={pupil?.moderator ?? order.moderator} pupilId={pupil?.id} />}
           {activeTab === "qongiroqlar" && <QongiroqlarTabContent />}
-          {activeTab === "guruh" && <GuruhTabContent />}
+          {activeTab === "guruh" && <GuruhTabContent pupilId={pupil?.id} />}
           {activeTab === "qarzdorlik" && <QarzdorlikTabContent pupilId={pupil?.id} initialLimit={pupil?.debtLimit} />}
-          {activeTab === "vazifa" && <VazifaTabContent />}
+          {activeTab === "vazifa" && <VazifaTabContent pupilId={pupil?.id} />}
           {activeTab === "coin" && <CoinTabContent />}
           {activeTab === "blok" && <BlokTabContent />}
           {activeTab === "tranzaksiya" && <TranzaksiyaTabContent entries={entries} loading={entriesLoading} />}
@@ -331,7 +331,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           {activeTab === "harakatlar" && <HarakatlarTabContent order={order} balans={balans} />}
           {activeTab === "ltv" && <LtvTabContent />}
           {activeTab === "sms" && <SmsTabContent order={order} />}
-          {activeTab === "shartnoma-biriktirish" && <ShartnomaBiriktirishTabContent ism={ism} familiya={familiya} phone={phone} />}
+          {activeTab === "shartnoma-biriktirish" && <ShartnomaBiriktirishTabContent ism={ism} familiya={familiya} phone={phone} pupilId={pupil?.id} />}
           {activeTab === "manzil" && <ManzilTabContent pupilId={pupil?.id} initialAddresses={pupil?.addresses} />}
           {activeTab === "shartnomalar" && <ShartnomalarTabContent />}
 

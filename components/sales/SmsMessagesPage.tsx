@@ -18,6 +18,21 @@ import { SMS_STATUSES, SMS_TABS, formatSmsDate, type SmsKind, type SmsMessage } 
 const selectCls =
   "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
+/**
+ * "Avto sms" va "Guruhlangan sms" tablari NEGA doim bo'sh.
+ *
+ * Jurnalga yozuvni faqat bitta joy yaratadi — POST /api/sms-messages, va u
+ * har doim `kind: "manual"` yozadi. Ya'ni bu ikki tab hech qachon birorta
+ * qator ko'rsatmaydi. Ilgari bunda hech qanday izoh yo'q edi: foydalanuvchi
+ * "Ma'lumotlar topilmadi, filterni o'zgartirib ko'ring" degan yozuvni ko'rib,
+ * o'zining filtri yoki bazasi aybdor deb o'ylardi. Tablar referensdagidek
+ * joyida qoldi, lekin endi rostini aytadi.
+ */
+const EMPTY_KIND_NOTE: Partial<Record<SmsKind, string>> = {
+  auto: "Avtomatik SMS hali yuborilmaydi: Sozlamalar → Avto sms sahifasi matn va shartlarni faqat SAQLAYDI, ularni belgilangan vaqtda jo'natadigan fon jarayoni loyihada yo'q. Shu sababli bu turdagi yozuv umuman yaratilmaydi.",
+  grouped: "Guruhga bir yo'la yuborish oqimi hali yo'q: mavjud SMS oynasi har bir raqamga alohida so'rov yuboradi va jurnalga \"qo'lda yuborilgan\" turi bilan yozadi. Shu sababli bu turdagi yozuv hozircha yaratilmaydi.",
+};
+
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -75,6 +90,7 @@ export default function SmsMessagesPage() {
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
+  const kindNote = tab === "all" ? undefined : EMPTY_KIND_NOTE[tab];
 
   function setFilter(setter: (v: string) => void, v: string) {
     setter(v);
@@ -120,6 +136,14 @@ export default function SmsMessagesPage() {
         </div>
       </div>
 
+      {/* Bo'sh tabning ROST sababi — jadval ustida, filtr aybdor emasligi
+          darrov ko'rinsin. */}
+      {kindNote && (
+        <div className="rounded-xl border border-dashed border-border bg-secondary/20 px-4 py-3 text-[12px] leading-relaxed text-muted-foreground">
+          {kindNote}
+        </div>
+      )}
+
       {/* Jadval */}
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
@@ -157,7 +181,13 @@ export default function SmsMessagesPage() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? <SpinnerBlock size={22} /> : "Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring."}
+                    {loading
+                      ? <SpinnerBlock size={22} />
+                      : kindNote
+                        // Filtrni o'zgartirish yordam bermaydi — bu turdagi
+                        // xabar umuman yozilmaydi, sababi yuqorida.
+                        ? "Bu turdagi xabarlar hali yaratilmaydi"
+                        : "Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring."}
                   </td>
                 </tr>
               )}

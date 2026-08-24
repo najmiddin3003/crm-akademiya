@@ -1,13 +1,23 @@
-import { createInitialOrders } from "./ordersData";
-import { EMPLOYEES_DATA } from "@/constants/employees";
-
-// Navbardagi "Tug'ilgan kunlar" (referens: /hr/birthdays).
+// Navbardagi "Tug'ilgan kunlar" (href /birthdays).
 //
-// Referens sahifa o'quvchilar va xodimlarni BIRGA ko'rsatadi, `Hammasi /
-// O'quvchilar / Xodimlar` filtri bilan. Bizda ikkala demo to'plamda ham
-// tug'ilgan sana maydoni yo'q (`EMPLOYEES_DATA` da ham, buyurtmalarda ham),
-// shuning uchun sana `id` dan DETERMINISTIK hisoblanadi — loyihadagi odat.
-// Haqiqiy maydon paydo bo'lgach faqat `birthOf()` almashtiriladi.
+// ILGARI NIMA NOTO'G'RI EDI: bu fayl har bir odamning tug'ilgan sanasini
+// YOZUV ID'SIDAN XESHLAB o'ylab topardi — `id * 2654435761`, so'ng oy/kun/yil
+// qoldiqlardan olinardi. Odamlarning o'zi ham haqiqiy emas edi: o'quvchilar
+// lib/ordersData.ts dagi demo buyurtma generatoridan, xodimlar esa statik
+// constants/employees.js massividan kelardi. Ya'ni kalendardagi har bir
+// katak yolg'on edi va u yerdagi "tug'ilgan kun" hech kimning haqiqiy
+// tug'ilgan kuni emasdi.
+//
+// ENDI: ikkala to'plamda ham HAQIQIY `birthDate` maydoni bor va u faqat
+// shundan o'qiladi:
+//   • o'quvchilar — pupils.birthDate (lib/pupilsData.ts; o'quvchi profilidagi
+//     "Tahrirlash" tabi va "O'quvchi qo'shish" modali saqlaydi);
+//   • xodimlar — hr_employees.birthDate (components/employees/employeeExtras.ts;
+//     "Xodim qo'shish" modali saqlaydi, POST /api/hr-employees tekshiradi).
+// Ikkalasi ham "YYYY-MM-DD" ko'rinishida saqlanadi.
+//
+// Sanasi kiritilmagan odam ro'yxatga UMUMAN kirmaydi — sanani taxmin qilish
+// yoki "01.01" qo'yish soxta ma'lumot bo'lardi.
 
 export type PersonKind = "student" | "employee";
 
@@ -23,44 +33,51 @@ export interface BirthdayPerson {
   year: number;
 }
 
-interface EmployeeRow {
+/** Faqat kerakli maydonlar — chaqiruvchi to'liq Pupil/HrEmployee uzatishi mumkin. */
+export interface BirthdaySource {
   id: number;
   name: string;
   phone?: string;
+  /** "YYYY-MM-DD" yoki bo'sh/aniqlanmagan. */
+  birthDate?: string;
 }
 
-// Har bir oyning kun soni — 29-fevral chetlab o'tiladi (har yili takrorlanadigan
-// sana kerak, kabisa yiliga bog'lanib qolmasin).
-const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-function birthOf(id: number, kind: PersonKind): { month: number; day: number; year: number } {
-  // Turli to'plamlar bir xil `id` ga ega bo'lishi mumkin — aralashib
-  // ketmasligi uchun xodimlar boshqa siljish bilan hisoblanadi.
-  const seed = kind === "employee" ? id * 7919 + 13 : id * 2654435761;
-  const h = Math.abs(seed % 1_000_003);
-  const month = (h % 12) + 1;
-  const day = ((h >>> 3) % DAYS_IN_MONTH[month - 1]) + 1;
-  // O'quvchilar asosan yosh, xodimlar kattaroq — ro'yxat ishonarli ko'rinsin.
-  const year = kind === "employee" ? 1975 + ((h >>> 5) % 25) : 2000 + ((h >>> 5) % 18);
-  return { month, day, year };
+/**
+ * "YYYY-MM-DD" → { year, month, day }. Format buzilgan yoki sana mavjud
+ * bo'lmagan bo'lsa (masalan "2011-02-30") — null, ya'ni qator chiqmaydi.
+ */
+function parseIsoBirth(raw: string | undefined): { year: number; month: number; day: number } | null {
+  const m = (raw ?? "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1) return null;
+  // Oyning haqiqiy kun soni (kabisa yili hisobga olinadi).
+  if (day > new Date(year, month, 0).getDate()) return null;
+  return { year, month, day };
 }
 
-let cache: BirthdayPerson[] | null = null;
-
-/** O'quvchilar + xodimlar, tug'ilgan sanasi bilan. Natija keshlanadi. */
-export function allBirthdays(): BirthdayPerson[] {
-  if (cache) return cache;
-
-  const students: BirthdayPerson[] = createInitialOrders()
-    .filter((o) => o.name)
-    .map((o) => ({ id: o.id, name: o.name, phone: o.phone || "", kind: "student" as const, ...birthOf(o.id, "student") }));
-
-  const employees: BirthdayPerson[] = (EMPLOYEES_DATA as EmployeeRow[])
-    .filter((e) => e.name)
-    .map((e) => ({ id: e.id, name: e.name, phone: e.phone || "", kind: "employee" as const, ...birthOf(e.id, "employee") }));
-
-  cache = [...students, ...employees];
-  return cache;
+/**
+ * O'quvchilar + xodimlardan tug'ilgan kunlar ro'yxati.
+ * Kesh YO'Q: ilgari natija modul darajasida keshlanardi (chunki u
+ * generatordan kelardi), endi ma'lumot bazadan keladi va har safar yangi.
+ */
+export function buildBirthdays(pupils: BirthdaySource[], employees: BirthdaySource[]): BirthdayPerson[] {
+  const out: BirthdayPerson[] = [];
+  const add = (rows: BirthdaySource[], kind: PersonKind) => {
+    for (const r of rows) {
+      const name = (r.name ?? "").trim();
+      if (!name) continue;
+      const birth = parseIsoBirth(r.birthDate);
+      // Sanasi yo'q odam kalendarda ko'rinmaydi — o'ylab topilmaydi.
+      if (!birth) continue;
+      out.push({ id: r.id, name, phone: (r.phone ?? "").trim(), kind, ...birth });
+    }
+  };
+  add(pupils, "student");
+  add(employees, "employee");
+  return out;
 }
 
 export function filterByKind(rows: BirthdayPerson[], kind: PersonKind | "all"): BirthdayPerson[] {

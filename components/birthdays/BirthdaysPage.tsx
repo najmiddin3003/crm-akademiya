@@ -4,9 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useLang } from "@/components/shared/Language";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { useStudents } from "@/hooks/useStudents";
+import { useStaff } from "@/hooks/useStaff";
 import { MONTHS, WEEKDAYS_FULL } from "@/lib/i18n";
+import { pupilFullName } from "@/lib/pupilsData";
+import type { HrEmployeeFull } from "@/components/employees/employeeExtras";
 import {
-  allBirthdays,
+  buildBirthdays,
   filterByKind,
   byDay,
   byMonth,
@@ -23,6 +27,16 @@ function profileHref(p: BirthdayPerson): string {
 
 // Navbardagi "Tug'ilgan kunlar" tugmasi shu sahifaga olib keladi
 // (referens: /hr/birthdays?type=monthly&month=N).
+//
+// ILGARI: kalendardagi hamma sana lib/birthdays.ts dagi xesh-generatordan
+// kelardi (`id * 2654435761` dan oy/kun/yil), odamlar esa demo buyurtma
+// ro'yxati va statik xodimlar massividan olinardi — ya'ni birorta ham
+// haqiqiy tug'ilgan kun ko'rsatilmasdi.
+//
+// ENDI: o'quvchilar /api/pupils dan (pupils.birthDate), xodimlar
+// /api/hr-employees dan (hr_employees.birthDate) o'qiladi va faqat sanasi
+// HAQIQATAN kiritilganlar chiqadi. Bazada sana kiritilmagan bo'lsa kalendar
+// bo'sh turadi va buning sababi ekranda yozib qo'yiladi.
 //
 // Ikki ko'rinish: OYLIK — dushanbadan boshlanadigan kalendar to'ri, har
 // katakda kun raqami va o'sha kuni tug'ilganlar; YILLIK — 12 oy kartasi.
@@ -48,6 +62,10 @@ export default function BirthdaysPage() {
   const now = new Date();
   const today = now;
 
+  const { pupils, loading: pupilsLoading } = useStudents();
+  const { employees, loading: staffLoading } = useStaff();
+  const loading = pupilsLoading || staffLoading;
+
   const [kind, setKind] = useState<PersonKind | "all">("all");
   const [view, setView] = useState<"monthly" | "yearly">("monthly");
   const [year, setYear] = useState(now.getFullYear());
@@ -57,7 +75,23 @@ export default function BirthdaysPage() {
   const [openDay, setOpenDay] = useState<number | null>(null);
   useEscapeClose(openDay !== null ? () => setOpenDay(null) : () => {});
 
-  const rows = useMemo(() => filterByKind(allBirthdays(), kind), [kind]);
+  const all = useMemo(() => {
+    const studentSources = pupils.map((p) => ({
+      id: p.id,
+      name: pupilFullName(p),
+      phone: p.phone,
+      birthDate: p.birthDate,
+    }));
+    // `birthDate` hujjatda bor, ammo `HrEmployee` interfeysida hali e'lon
+    // qilinmagan (components/employees/employeeExtras.ts izohiga qarang).
+    // Arxivdagi xodim ro'yxatda ko'rinmaydi.
+    const employeeSources = (employees as HrEmployeeFull[])
+      .filter((e) => !e.archReason)
+      .map((e) => ({ id: e.id, name: e.name, phone: e.phone, birthDate: e.birthDate }));
+    return buildBirthdays(studentSources, employeeSources);
+  }, [pupils, employees]);
+
+  const rows = useMemo(() => filterByKind(all, kind), [all, kind]);
   const dayMap = useMemo(() => byDay(rows, month), [rows, month]);
   const monthLists = useMemo(() => byMonth(rows), [rows]);
 
@@ -110,6 +144,22 @@ export default function BirthdaysPage() {
         </div>
       </div>
 
+      {/* Ma'lumot kelmasdan turib "hech kim yo'q" deyilmaydi: avval
+          yuklanmoqda, javob kelgach — rostdan bo'sh bo'lsa sababi bilan. */}
+      {loading ? (
+        <div className="rounded-[10px] border border-border bg-card px-4 py-3 text-[13px] text-muted-foreground">
+          Yuklanmoqda…
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
+          {kind === "employee"
+            ? "Hech bir xodimga tug'ilgan sana kiritilmagan — sanani \"Xodim qo'shish\" oynasida yoki xodim profilida saqlang."
+            : kind === "student"
+              ? "Hech bir o'quvchiga tug'ilgan sana kiritilmagan — sanani o'quvchi profilidagi \"Tahrirlash\" tabida saqlang."
+              : "Bazada hali birorta tug'ilgan sana yo'q. O'quvchiniki — profildagi \"Tahrirlash\" tabida, xodimniki — xodim kartasida saqlanadi."}
+        </div>
+      ) : null}
+
       {/* Referensda hafta sarlavhalari ALOHIDA ramkali blokda, kun kataklari
           esa to'g'ridan-to'g'ri sahifa fonida (umumiy karta yo'q). */}
       {view === "monthly" ? (
@@ -157,7 +207,9 @@ export default function BirthdaysPage() {
               <div key={name} className="rounded-2xl bg-card border border-border p-4">
                 <div className="text-[14px] font-semibold mb-2">{name}</div>
                 {list.length === 0 ? (
-                  <div className="text-[12px] text-muted-foreground">Ma&apos;lumot yo&apos;q</div>
+                  <div className="text-[12px] text-muted-foreground">
+                    {loading ? "Yuklanmoqda…" : "Ma'lumot yo'q"}
+                  </div>
                 ) : (
                   <ul className="space-y-1">
                     {list.slice(0, 8).map((p) => (

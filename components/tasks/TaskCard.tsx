@@ -8,19 +8,31 @@ import {
   type Task,
 } from "@/lib/tasksData";
 
+// "Vaqt" ko'rinishidagi topshiriq kartasi.
+//
+// MUDDAT CHIPI: ilgari uning tooltipi "Muddat — yakunlash uchun bosing"
+// deb turardi, bosilganda esa faqat tahrirlash oynasini ochardi — ya'ni
+// karta bajarib bo'lmaydigan narsani va'da qilardi. Endi chip ROSTINI
+// aytadi: `onComplete` berilgan bo'lsa topshiriqni "bajarilgan" holatiga
+// o'tkazadi, berilmagan bo'lsa tooltip ham shunchaki "ochish" deydi.
+// Allaqachon bajarilgan topshiriqni qayta yakunlash mumkin emas — u
+// holda chip yana oynani ochadi.
 export interface TaskCardProps {
   task: Task;
   blocked: boolean;
   isDragging: boolean;
   onOpen: (id: number) => void;
+  /** Berilsa — muddat chipi topshiriqni yakunlaydi (state → "bajarilgan"). */
+  onComplete?: (id: number) => void;
   onDragStart: (e: React.DragEvent, id: number) => void;
   onDragEnd: (e: React.DragEvent) => void;
 }
 
-export default function TaskCard({ task, blocked, isDragging, onOpen, onDragStart, onDragEnd }: TaskCardProps) {
+export default function TaskCard({ task, blocked, isDragging, onOpen, onComplete, onDragStart, onDragEnd }: TaskCardProps) {
   const pri = PRIORITY_META[task.priority];
   const risk = computeTaskRisk(task);
   const urgency = taskUrgency(task.date);
+  const complete = onComplete && task.state !== "bajarilgan" ? onComplete : null;
 
   return (
     <div
@@ -53,9 +65,9 @@ export default function TaskCard({ task, blocked, isDragging, onOpen, onDragStar
 
       <div className="mt-2 flex items-center gap-1.5 flex-wrap">
         <button
-          onClick={() => onOpen(task.id)}
+          onClick={() => (complete ? complete(task.id) : onOpen(task.id))}
           className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-medium t-urgency-${urgency} tabular-nums cursor-pointer hover:opacity-80 transition-opacity`}
-          title="Muddat — yakunlash uchun bosing"
+          title={complete ? "Muddat — yakunlash uchun bosing" : "Muddat — topshiriqni ochish uchun bosing"}
         >
           {formatTaskDate(task.date)}
         </button>

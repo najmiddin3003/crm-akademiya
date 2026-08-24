@@ -175,9 +175,15 @@ export default function NewsPage() {
                     <span className="line-clamp-2">{n.content || "-"}</span>
                   </td>
                   <td className="px-5 py-3">
-                    <span className="flex items-center justify-center gap-1.5 text-muted-foreground tabular-nums">
+                    {/* Ko'rishlar HISOBLANMAYDI: `news.views` faqat yozuv
+                        yaratilganda 0 qilib qo'yiladi va uni oshiradigan kod
+                        yo'q — o'quvchi/mijoz yangilikni ko'radigan ommaviy
+                        sahifa ham yo'q. Shu bois bu yerda "0" chizish soxta
+                        da'vo bo'lardi ("hech kim ko'rmagan"), "—" esa rost:
+                        o'lchov yo'q. */}
+                    <span className="flex items-center justify-center gap-1.5 text-muted-foreground" title="Ko'rishlar hisoblanmaydi — yangiliklarni ko'rsatadigan ommaviy sahifa yo'q">
                       <Eye className="w-4 h-4" />
-                      {n.views}
+                      —
                     </span>
                   </td>
                   <td className="px-5 py-3 tabular-nums text-[12px] text-muted-foreground whitespace-nowrap">{n.createdAt}</td>

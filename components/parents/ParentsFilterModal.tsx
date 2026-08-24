@@ -1,37 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, XCircle } from "lucide-react";
+import { XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useModerators } from "@/hooks/useModerators";
+import { PUPIL_STATUSES } from "@/lib/pupilsData";
+import { EMPTY_PARENTS_FILTERS, PARENT_KINDS, type ParentsFilters } from "@/lib/parentsData";
 
-// crm-akademiya #pr-filter-modal (index-dev.html 2448-2490) — 10 ta select/
-// tugma + 2 ta sana input, grid-cols-3. Manbada applyPrFilters() hech narsani
-// filtrlamaydi (faqat modalni yopib toast chiqaradi) — bu yerda ham faqat
-// Moderator maydoni haqiqiy ma'lumotga ega bo'lgani uchun ishlaydi, qolganlari
-// (Balans oralig'i/Kurs/Subkurs/O'qituvchi/Kategoriya/Ranglar bo'yicha/Holati/
-// Ilova holati/Oraliqni tanlang) manbada ham hech qachon variant/mantiq bilan
-// ulanmagan — shu holicha faqat vizual saqlandi.
+// Ota-ona sahifasining filtr modali.
+//
+// ILGARI: bu yerda 10 ta <select> va 2 ta sana maydoni bor edi, lekin faqat
+// "Moderator" haqiqatan filtrlardi. Qolganlari (Balans oralig'i / Kurs /
+// Subkurs / O'qituvchi / Kategoriya / Ranglar bo'yicha / Holati / Ilova
+// holati / "Oraliqni tanlang") bo'sh variantli, hech qayerga ulanmagan
+// bezak edi — bosilsa ham ro'yxat o'zgarmasdi.
+//
+// ENDI: har bir maydon HAQIQIY pupils maydoniga ulangan va rostdan ham
+// filtrlaydi. Manbasi bo'lmagan tanlovlar (Ranglar bo'yicha, Ilova holati)
+// OLIB TASHLANDI — ishlamaydigan boshqaruv qoldirilmaydi. Kurs / Subkurs /
+// O'qituvchi ham olib tashlandi: ular o'quvchining o'zida emas, u a'zo
+// bo'lgan GURUHda saqlanadi va bu sahifada bunday ustun ko'rinmaydi —
+// ko'rinmaydigan ustun bo'yicha filtr chalg'itadi.
 
-export interface ParentsFilters {
-  moderator: string;
-  olderDate: string;
-  youngerDate: string;
-}
-export const EMPTY_PARENTS_FILTERS: ParentsFilters = { moderator: "", olderDate: "", youngerDate: "" };
-
-// Moderatorlar bazadan (/api/moderators) — ilgari shu yerda ikkita
-// ismdan iborat qattiq nusxa turardi.
 const selectCls = "filter-select h-10 w-full appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+const inputCls = "modal-input h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export interface ParentsFilterModalProps {
   initialFilters: ParentsFilters;
+  /** Bazadagi o'quvchilarda HAQIQATDA uchraydigan kategoriyalar. */
+  categoryOptions: string[];
   onClose: () => void;
   onApply: (filters: ParentsFilters) => void;
 }
 
-export default function ParentsFilterModal({ initialFilters, onClose, onApply }: ParentsFilterModalProps) {
+export default function ParentsFilterModal({ initialFilters, categoryOptions, onClose, onApply }: ParentsFilterModalProps) {
   const { names: moderatorNames } = useModerators();
   const [draft, setDraft] = useState<ParentsFilters>(initialFilters);
   useEscapeClose(onClose);
@@ -62,54 +65,64 @@ export default function ParentsFilterModal({ initialFilters, onClose, onApply }:
         </div>
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
-          <button type="button" className="h-10 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm text-left flex items-center gap-2">
-            <Calendar className="icon icon-sm text-muted-foreground" />
-            <span className="text-muted-foreground">Oraliqni tanlang</span>
-          </button>
-          <select className={selectCls} defaultValue="">
-            <option value="">Balans oralig&apos;i</option>
+          <select className={selectCls} value={draft.kind} onChange={(e) => set("kind", e.target.value)}>
+            <option value="">Qarindoshligi</option>
+            {PARENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <select className={selectCls} defaultValue="">
-            <option value="">Kurs</option>
-          </select>
-          <select className={selectCls} defaultValue="">
-            <option value="">Subkurs</option>
-          </select>
-          <select className={selectCls} defaultValue="">
-            <option value="">O&apos;qituvchi</option>
-          </select>
+
           <select className={selectCls} value={draft.moderator} onChange={(e) => set("moderator", e.target.value)}>
             <option value="">Moderator</option>
             {moderatorNames.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select className={selectCls} defaultValue="">
+
+          <select className={selectCls} value={draft.category} onChange={(e) => set("category", e.target.value)}>
             <option value="">Kategoriya</option>
+            {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select className={selectCls} defaultValue="">
-            <option value="">Ranglar bo&apos;yicha</option>
+
+          <select className={selectCls} value={draft.status} onChange={(e) => set("status", e.target.value)}>
+            <option value="">O&apos;quvchi holati</option>
+            {PUPIL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select className={selectCls} defaultValue="">
-            <option value="">Holati</option>
-          </select>
-          <select className={selectCls} defaultValue="">
-            <option value="">Ilova holati</option>
-          </select>
+
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Katta yosh</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Balans (dan)</span>
             <input
-              type="date"
-              value={draft.olderDate}
-              onChange={(e) => set("olderDate", e.target.value)}
-              className="modal-input date-input flex-1 h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              type="number"
+              value={draft.balanceFrom}
+              onChange={(e) => set("balanceFrom", e.target.value)}
+              className={inputCls}
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Kichik yosh</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Balans (gacha)</span>
+            <input
+              type="number"
+              value={draft.balanceTo}
+              onChange={(e) => set("balanceTo", e.target.value)}
+              className={inputCls}
+            />
+          </div>
+
+          {/* Ilgari bu ikki sana "Katta yosh" / "Kichik yosh" deb nomlanardi va
+              hech narsa qilmasdi. Endi ular farzandning HAQIQIY tug'ilgan
+              sanasi (pupils.birthDate) bo'yicha oraliq — nomi ham shunga mos. */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Tug&apos;ilgan (dan)</span>
             <input
               type="date"
-              value={draft.youngerDate}
-              onChange={(e) => set("youngerDate", e.target.value)}
-              className="modal-input date-input flex-1 h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              value={draft.birthFrom}
+              onChange={(e) => set("birthFrom", e.target.value)}
+              className={`${inputCls} date-input`}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Tug&apos;ilgan (gacha)</span>
+            <input
+              type="date"
+              value={draft.birthTo}
+              onChange={(e) => set("birthTo", e.target.value)}
+              className={`${inputCls} date-input`}
             />
           </div>
         </div>
