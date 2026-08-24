@@ -1,4 +1,4 @@
-import { getTaskStatus, TODAY_DATE, type Task } from "@/lib/tasksData";
+import { getTaskStatus, todayStart, type Task } from "@/lib/tasksData";
 
 export type DashboardFilter = "all" | "today" | "late" | "soon" | "done";
 
@@ -16,7 +16,7 @@ export default function TaskDashboardWidgets({ tasks, active, onChange }: TaskDa
   const total = tasks.length;
   const dueToday = tasks.filter((t) => getTaskStatus(t) === "today").length;
   const late = tasks.filter((t) => getTaskStatus(t) === "overdue").length;
-  const soonEnd = new Date(TODAY_DATE.getTime() + 3 * 86400000);
+  const soonEnd = new Date(todayStart().getTime() + 3 * 86400000);
   const dueSoon = tasks.filter((t) => {
     const d = new Date(t.date);
     return getTaskStatus(t) === "upcoming" && d.getTime() <= soonEnd.getTime();

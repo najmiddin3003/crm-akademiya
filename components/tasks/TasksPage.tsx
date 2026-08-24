@@ -21,7 +21,7 @@ import {
   KANBAN_STATES,
   STAFF,
   TASK_TEMPLATES,
-  TODAY_DATE,
+  todayStart,
   type Task,
   type TaskState,
 } from "@/lib/tasksData";
@@ -73,7 +73,7 @@ export default function TasksPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dashFilter, setDashFilter] = useState<DashboardFilter>("all");
-  const [calendarMonth, setCalendarMonth] = useState(() => new Date(TODAY_DATE));
+  const [calendarMonth, setCalendarMonth] = useState(() => todayStart());
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTaskId, setModalTaskId] = useState<number | null>(null);
   const [modalInitialDate, setModalInitialDate] = useState<string | undefined>(undefined);
@@ -130,7 +130,7 @@ export default function TasksPage() {
       if (dashFilter === "today") return getTaskStatus(t) === "today";
       if (dashFilter === "late") return getTaskStatus(t) === "overdue";
       if (dashFilter === "soon") {
-        const soonEnd = new Date(TODAY_DATE.getTime() + 3 * 86400000);
+        const soonEnd = new Date(todayStart().getTime() + 3 * 86400000);
         return getTaskStatus(t) === "upcoming" && new Date(t.date).getTime() <= soonEnd.getTime();
       }
       if (dashFilter === "done") return t.state === "bajarilgan";
@@ -299,7 +299,8 @@ export default function TasksPage() {
       return;
     }
     const existing = new Date(task.date);
-    const anchor = targetStatus === "today" ? TODAY_DATE.getTime() : TODAY_DATE.getTime() - 86400000;
+    const today = todayStart().getTime();
+    const anchor = targetStatus === "today" ? today : today - 86400000;
     const newDate = new Date(anchor);
     newDate.setHours(existing.getHours() || 9, existing.getMinutes() || 0, 0, 0);
     const isoDate = newDate.toISOString();
@@ -429,7 +430,7 @@ export default function TasksPage() {
           month={calendarMonth}
           tasks={baseFiltered}
           onNavigate={(delta) => setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))}
-          onToday={() => setCalendarMonth(new Date(TODAY_DATE.getFullYear(), TODAY_DATE.getMonth(), 1))}
+          onToday={() => { const t = todayStart(); setCalendarMonth(new Date(t.getFullYear(), t.getMonth(), 1)); }}
           onDayClick={(year, month, day) => {
             const dt = new Date(year, month, day);
             openAddModal(dt.toISOString().slice(0, 10));

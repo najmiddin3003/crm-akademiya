@@ -44,8 +44,18 @@ export interface Task {
   dependsOn?: number;
 }
 
-export const TODAY_DATE = new Date("2026-05-22");
-TODAY_DATE.setHours(0, 0, 0, 0);
+/**
+ * Bugungi kun (00:00). Har chaqirilganda YANGI Date qaytaradi — ilgari bu
+ * modul darajasidagi `TODAY_DATE = new Date("2026-05-22")` konstantasi edi
+ * va butun sahifa (Bugun/Kechikkan ustunlari, "48 soat ichida" kartasi,
+ * kalendarning "Bugun" tugmasi, topshiriq ko'chirish tekshiruvi) o'sha
+ * qotib qolgan sanaga nisbatan hisoblanardi.
+ */
+export function todayStart(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 export const STAFF = [
   "Abdulloh Raxmatullayev",
@@ -185,8 +195,9 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
 export function getTaskStatus(task: Task): "overdue" | "today" | "upcoming" {
   const d = new Date(task.date);
   d.setHours(0, 0, 0, 0);
-  if (d.getTime() < TODAY_DATE.getTime()) return "overdue";
-  if (d.getTime() === TODAY_DATE.getTime()) return "today";
+  const today = todayStart().getTime();
+  if (d.getTime() < today) return "overdue";
+  if (d.getTime() === today) return "today";
   return "upcoming";
 }
 

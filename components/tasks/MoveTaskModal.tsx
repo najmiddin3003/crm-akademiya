@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { TODAY_DATE, type Task } from "@/lib/tasksData";
+import { todayStart, type Task } from "@/lib/tasksData";
 
 // Ported from crm-akademiya/src/app.js openMoveTaskModal()/confirmMoveTask() (~line 3676).
 // Shown when a task card is dropped onto the "Keyinchalik keladigan" (upcoming)
@@ -25,7 +25,7 @@ export interface MoveTaskModalProps {
 }
 
 export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModalProps) {
-  const tomorrow = new Date(TODAY_DATE.getTime() + 86400000);
+  const tomorrow = new Date(todayStart().getTime() + 86400000);
   const existing = new Date(task.date);
   const [date, setDate] = useState(toDateInputValue(tomorrow));
   const [time, setTime] = useState(`${pad(existing.getHours() || 9)}:${pad(existing.getMinutes() || 0)}`);
@@ -39,7 +39,7 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
     }
     const newDate = new Date(`${date}T${time || "09:00"}:00`);
     const newDateZero = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
-    if (newDateZero.getTime() <= TODAY_DATE.getTime()) {
+    if (newDateZero.getTime() <= todayStart().getTime()) {
       setError("Iltimos, bugundan keyingi sanani tanlang!");
       return;
     }
