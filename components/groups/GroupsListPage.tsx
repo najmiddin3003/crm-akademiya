@@ -33,6 +33,36 @@ function downloadBlob(blob: Blob, filename: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+/**
+ * CSV matnini qatorlarga ajratadi. Qo'shtirnoq ichidagi vergul va yangi
+ * qator ajratuvchi sifatida qaralmaydi (eksport ham shu qoida bilan
+ * yozadi), "" esa bitta qo'shtirnoq bo'ladi.
+ */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  // BOM eksport tomonidan qo'shiladi — bo'lmasa birinchi ustun nomi buziladi.
+  const s = text.replace(/^﻿/, "");
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { cell += '"'; i++; }
+        else inQuotes = false;
+      } else cell += c;
+      continue;
+    }
+    if (c === '"') inQuotes = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((v) => v.trim() !== ""));
+}
+
 /** Bazadagi ro'yxat + guruhlarda amalda uchraydigan qiymatlar. */
 function unionWithGroups(fromDb: string[], groups: Group[], pick: (g: Group) => string | undefined): string[] {
   return [...new Set([...fromDb, ...groups.map(pick).filter((v): v is string => Boolean(v))])];
@@ -54,7 +84,7 @@ function parseTimeRange(range: string): [number | null, number | null] {
 
 export default function GroupsListPage() {
   const router = useRouter();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   // Filtr ro'yxatlari bazadan — ilgari constants'dagi qattiq ro'yxatlar
   // edi, ya'ni haqiqiy o'qituvchi/kurs/xona bo'yicha filtrlab bo'lmasdi.
   const { names: dbTeachers } = useTeachers();
@@ -77,7 +107,9 @@ export default function GroupsListPage() {
   const [pageSize, setPageSize] = useState(50);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +162,46 @@ export default function GroupsListPage() {
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
   const totalStudents = groups.reduce((sum, g) => sum + (g.students || 0), 0);
+
+  // Import — eksport bilan bir xil ustunlar (eksport → tahrir → import).
+  // "№" va "O'quvchi" o'qilmaydi: biri qator raqami, ikkinchisi guruhga
+  // qo'shilgan o'quvchilardan hisoblanadi.
+  async function importCsv(file: File) {
+    setImporting(true);
+    try {
+      const rows = parseCsv(await file.text());
+      if (rows.length < 2) {
+        showError("Faylda sarlavhadan boshqa qator yo'q");
+        return;
+      }
+      const body = rows.slice(1).map((r) => ({
+        name: r[1], course: r[2], level: r[3], day: r[4], time: r[5],
+        period: r[6], teacher: r[8], room: r[9], telegram: r[10], status: r[11],
+      }));
+      const res = await fetch("/api/groups/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groups: body }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Import qilinmadi");
+        return;
+      }
+      const fresh = await fetch("/api/groups").then((r) => r.json());
+      if (fresh.ok) setGroups(fresh.groups);
+      const skipped = (data.skipped as { reason: string }[]).length;
+      showSuccess(
+        skipped > 0
+          ? `${data.created} ta guruh qo'shildi, ${skipped} tasi o'tkazib yuborildi`
+          : `${data.created} ta guruh qo'shildi`,
+      );
+    } catch {
+      showError("Faylni o'qib bo'lmadi");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   function exportRows() {
     return filtered.map((g, i) => [i + 1, g.name, g.course, g.level || "", g.day, g.time, g.period, g.students, g.teacher, g.room, g.telegram || "", g.status]);
@@ -220,14 +292,30 @@ export default function GroupsListPage() {
         </div>
 
         <div className="relative" ref={moreRef}>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              // Bir xil faylni ketma-ket ikki marta tanlash mumkin bo'lsin.
+              e.target.value = "";
+              if (f) importCsv(f);
+            }}
+          />
           <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
             <MoreVertical className="icon icon-sm" />
           </button>
           {moreOpen && (
             <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
-              <button onClick={() => { showSuccess("Import (demo)"); setMoreOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
+              <button
+                onClick={() => { fileRef.current?.click(); setMoreOpen(false); }}
+                disabled={importing}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left disabled:opacity-60"
+              >
                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-[10px] font-bold text-primary">IN</span>
-                <span>Import</span>
+                <span>{importing ? "Import qilinmoqda…" : "Import (CSV)"}</span>
               </button>
               <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
