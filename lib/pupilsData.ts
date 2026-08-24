@@ -5,6 +5,23 @@
 // va constants/studentsList.js (STUDENTS_LIST, 5909 ta) statik demo ro'yxatlari
 // turardi — ular olib tashlandi, endi hamma joy /api/pupils dan o'qiydi.
 
+/**
+ * O'quvchining holati. Ilgari bunday maydon umuman yo'q edi va
+ * "Aktiv o'quvchilar" / "Muzlatilgan" / "Arxiv" sahifalari bilan KPI
+ * kartalari sonni `i % 13` kabi indeks arifmetikasidan o'ylab topardi.
+ */
+export const PUPIL_STATUSES = ["Aktiv", "Muzlatilgan", "Arxiv"] as const;
+export type PupilStatus = (typeof PUPIL_STATUSES)[number];
+
+/** Yozuvda holat bo'lmasa (eski o'quvchilar) — "Aktiv". */
+export function pupilStatusOf(p: Pick<Pupil, "status">): PupilStatus {
+  return p.status && PUPIL_STATUSES.includes(p.status) ? p.status : "Aktiv";
+}
+
+export function isPupilStatus(v: unknown): v is PupilStatus {
+  return PUPIL_STATUSES.includes(v as PupilStatus);
+}
+
 export interface Pupil {
   id: number;
   firstName: string;
@@ -22,6 +39,17 @@ export interface Pupil {
   moderator?: string;
   /** Qayerdan keldi (Instagram, Telegram, Tavsiya...). */
   source?: string;
+
+  /**
+   * O'quvchining holati. Yozuvda yo'q bo'lsa "Aktiv" hisoblanadi (eski
+   * yozuvlar shu maydonsiz yaratilgan). Faqat /api/pupils/:id/status
+   * o'zgartiradi — oddiy profil formasi orqali emas.
+   */
+  status?: PupilStatus;
+  /** "Muzlatilgan"/"Arxiv" ga o'tkazilgan sana ("YYYY-MM-DD"). */
+  statusChangedAt?: string;
+  /** Muzlatish/arxivlash sababi (ro'yxatlarda va hisobotlarda ko'rinadi). */
+  statusReason?: string;
 
   // --- O'quvchi profilidagi ("Tahrirlash" tabi) qo'shimcha maydonlar ---
   // Hammasi ixtiyoriy: eski yozuvlarda yo'q va forma bo'sh qoldirilishi mumkin.
@@ -94,5 +122,5 @@ export function buildPupilFromValues(nextId: number, values: NewPupilValues): Pu
   const createdAt = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} | ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   // balance/coin/moderator/source qo'shish formasida so'ralmaydi — nol/bo'sh
   // holatda boshlanadi, keyin moliya amallari (bonus/jarima/to'lov) o'zgartiradi.
-  return { id: nextId, ...values, createdAt, balance: 0, coin: 0, moderator: "", source: "" };
+  return { id: nextId, ...values, createdAt, balance: 0, coin: 0, moderator: "", source: "", status: "Aktiv" };
 }

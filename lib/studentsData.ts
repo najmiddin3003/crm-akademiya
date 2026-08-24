@@ -14,8 +14,8 @@
 // maydonlar BO'SH turadi (soxta qiymat yozilmaydi).
 
 import type { Group } from "@/lib/groups";
-import type { Pupil } from "@/lib/pupilsData";
-import { pupilFullName } from "@/lib/pupilsData";
+import type { Pupil, PupilStatus } from "@/lib/pupilsData";
+import { pupilFullName, pupilStatusOf, PUPIL_STATUSES } from "@/lib/pupilsData";
 
 export interface StudentRow {
   id: number;
@@ -29,10 +29,16 @@ export interface StudentRow {
   groups: string;
   /** O'quvchi kartasidagi kategoriya (Kichik / O'rta / Katta). */
   category: string;
+  /** Bazadagi holat (yozuvda yo'q bo'lsa "Aktiv"). */
+  status: StudentStatus;
+  /** Muzlatish/arxivlash sababi — bo'sh bo'lishi mumkin. */
+  statusReason: string;
+  /** Holat o'zgargan sana ("YYYY-MM-DD") — bo'sh bo'lishi mumkin. */
+  statusChangedAt: string;
 }
 
-export type StudentStatus = "Aktiv" | "Muzlatilgan" | "Arxiv";
-export const STUDENT_STATUSES: StudentStatus[] = ["Aktiv", "Muzlatilgan", "Arxiv"];
+export type StudentStatus = PupilStatus;
+export const STUDENT_STATUSES: StudentStatus[] = [...PUPIL_STATUSES];
 
 export type OddEven = "Toq" | "Juft" | "";
 
@@ -65,6 +71,9 @@ export function studentRowFromPupil(p: Pupil): StudentRow {
     source: p.source ?? "",
     groups: "-",
     category: p.category ?? "",
+    status: pupilStatusOf(p),
+    statusReason: p.statusReason ?? "",
+    statusChangedAt: p.statusChangedAt ?? "",
   };
 }
 
@@ -107,8 +116,6 @@ export function enrichStudents(rows: StudentRow[], groups: Group[]): EnrichedStu
       day: first?.day ?? "",
       oddEven: toOddEven(first?.day ?? ""),
       subcourse: first?.level ?? "",
-      // Alohida "holat" maydoni hali yo'q — bazadagi har bir o'quvchi aktiv.
-      status: "Aktiv",
     };
   });
 }
