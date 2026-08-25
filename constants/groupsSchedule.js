@@ -32,6 +32,7 @@ const DAY_PATTERN_MAP = {
   "Chor": ["chorshanba"],
   "Du,Ju": ["dushanba", "juma"],
   "Se,Sh": ["seshanba", "shanba"],
+  "Ya,Du,Ch,Ju": ["yakshanba", "dushanba", "chorshanba", "juma"],
 };
 
 export function weekdaysForDayPattern(pattern) {

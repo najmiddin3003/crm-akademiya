@@ -19,7 +19,12 @@ export const GROUP_EDU_TYPES = ["1-bosqich", "2-bosqich", "3-bosqich", "4-bosqic
 export const GROUP_FORMATS = ["Oflayn", "Onlayn"];
 // Topshiriq/vazifa turlari (Barcha vazifalar + guruh Topshiriqlar).
 export const TASK_TYPES = ["Imtihon", "Vazifa", "Manba", "Test", "Loyiha"];
-export const GROUP_DAYS = ["Toq kunlar", "Juft kunlar", "Hafta kunlari", "Ya,Ch", "Ya,Pa", "Chor", "Du,Ju", "Se,Sh"];
+// "Ya,Du,Ch,Ju" — edutizimdan ko'chirilgan haqiqiy jadval (haftada 4 kun).
+// Ro'yxatda yo'q edi; qo'shilmasa o'sha guruh "Dars jadvali" gridiga umuman
+// tushmasdi (constants/groupsSchedule.js DAY_PATTERN_MAP aniq kalit bo'yicha
+// qidiradi). Davomat ustunlari esa allaqachon to'g'ri chiqardi, chunki
+// lib/attendance.ts groupWeekdays() vergulli qisqartmalarni o'zi ajratadi.
+export const GROUP_DAYS = ["Toq kunlar", "Juft kunlar", "Hafta kunlari", "Ya,Ch", "Ya,Pa", "Chor", "Du,Ju", "Se,Sh", "Ya,Du,Ch,Ju"];
 export const GROUP_TIMES = ["06:00 - 08:00", "08:00 - 10:00", "10:00 - 12:00", "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"];
 export const GROUP_TEACHERS = [
   "Jasurbek O'rinboyev", "Mohinur Abdurahimova", "Odina Ahmedova", "Odina Yuldasheva",
