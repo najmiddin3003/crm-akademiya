@@ -34,6 +34,14 @@ function datePart(createdAt: string): string {
   return (createdAt || "").split(" ")[0] ?? createdAt;
 }
 
+// Chiqarishdagi umumiy XODIM QARZDORLIGI (musbat son). Yangi yozuvlarda
+// tayyor maydon bor; undan oldingilarida items[] dagi manfiy qoldiqlardan
+// yig'iladi. Ikkalasi ham bo'lmasa — 0, ya'ni qarzdorlik qayd etilmagan.
+function debtOf(r: SalaryRun): number {
+  if (typeof r.qarzdorlik === "number") return r.qarzdorlik;
+  return (r.items ?? []).reduce((s, it) => s + Math.max(-(Number(it.amount) || 0), 0), 0);
+}
+
 function periodFor(r: SalaryRun) {
   if (r.month) {
     const [y, m] = r.month.split("-").map(Number);
@@ -55,6 +63,10 @@ export default function SalaryRunsPage() {
   const [detail, setDetail] = useState<SalaryRun | null>(null);
   const [confirmDel, setConfirmDel] = useState<SalaryRun | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Xodim ismlari — tafsilot oynasidagi kesim uchun. Yangi chiqarishlar
+  // ismni o'z ichida saqlaydi (audit-log), eski yozuvlarda esa faqat
+  // employeeId bor, shuning uchun ro'yxatdan qidiriladi.
+  const [empNames, setEmpNames] = useState<Map<number, string>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +74,20 @@ export default function SalaryRunsPage() {
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setRows(d.runs); })
       .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/hr-employees")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        const m = new Map<number, string>();
+        for (const e of d.employees as { id: number; name: string }[]) m.set(e.id, e.name);
+        setEmpNames(m);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -165,6 +191,7 @@ export default function SalaryRunsPage() {
                 <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Akladi</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;lanmagan</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">Qarzdorlik</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap w-24">Amallar</th>
               </tr>
@@ -184,6 +211,13 @@ export default function SalaryRunsPage() {
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.akladi > 0 ? fmtNum(r.akladi) : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       <span className={r.tolanmagan > 0 ? "text-rose-600" : "text-muted-foreground"}>{fmtSum(r.tolanmagan)}</span>
+                    </td>
+                    {/* Xodimlarning akademiyaga qarzi — to'lanmaganning
+                        teskarisi. Keyingi oy hisobidan ushlab qolinadi. */}
+                    <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
+                      {debtOf(r) > 0
+                        ? <span className="text-amber-600">{fmtSum(debtOf(r))}</span>
+                        : <span className="text-muted-foreground">0</span>}
                     </td>
                     <td className="px-3 py-3 text-[12.5px] text-muted-foreground whitespace-nowrap">
                       {datePart(r.createdAt)}
@@ -212,7 +246,7 @@ export default function SalaryRunsPage() {
               })}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
@@ -257,7 +291,53 @@ export default function SalaryRunsPage() {
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Akladi</div>
                 <div className="mt-1 tabular-nums">{fmtNum(detail.akladi)}</div>
               </div>
+              <div className="col-span-2 rounded-lg border border-border p-3">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Xodim qarzdorligi</div>
+                <div className={`mt-1 font-semibold tabular-nums ${debtOf(detail) > 0 ? "text-amber-600" : ""}`}>
+                  {fmtSum(debtOf(detail))}
+                </div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  keyingi oy hisobidan ushlab qolinadi
+                </div>
+              </div>
             </div>
+
+            {/* Xodimlar kesimi — ism bosilganda xodim profiliga o'tiladi. */}
+            {(detail.items?.length ?? 0) > 0 && (
+              <div className="mt-4">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Xodimlar kesimi
+                </div>
+                <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
+                  {detail.items!.map((it) => {
+                    const name = it.name || empNames.get(it.employeeId) || `Xodim #${it.employeeId}`;
+                    const debt = Math.max(-it.amount, 0);
+                    return (
+                      <div key={it.employeeId} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <Link
+                          href={`/management-xodimlar/${it.employeeId}`}
+                          className="text-[13px] font-medium text-primary hover:underline truncate"
+                        >
+                          {name}
+                        </Link>
+                        {debt > 0 ? (
+                          <span className="text-[13px] tabular-nums font-semibold text-amber-600 whitespace-nowrap">
+                            −{fmtSum(debt)} <span className="font-normal text-muted-foreground">qarzdor</span>
+                          </span>
+                        ) : (
+                          <span className="text-[13px] tabular-nums whitespace-nowrap">
+                            {it.amount > 0
+                              ? <span className="text-rose-600 font-semibold">{fmtSum(it.amount)}</span>
+                              : <span className="text-muted-foreground">0 so&apos;m</span>}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end mt-5">
               <button
                 onClick={() => setDetail(null)}

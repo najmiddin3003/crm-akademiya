@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import {
   payrollBase,
+  payrollDebt,
   payrollDue,
   payrollEarned,
   payrollPaid,
@@ -135,15 +136,19 @@ export default function SalaryCreatePage() {
   // "hisoblangan"i 0 bo'ladi va uni yig'indiga qo'shish jami summani
   // haqiqatdan kichik ko'rsatgan bo'lardi.
   const stats = useMemo(() => {
-    let hisoblangan = 0, avans = 0, tolangan = 0, qolgan = 0, otganOydan = 0;
+    let hisoblangan = 0, avans = 0, tolangan = 0, qolgan = 0, otganOydan = 0, qarzdorlik = 0;
     for (const e of employees.filter((x) => x.configured)) {
       hisoblangan += payrollEarned(e, period);
       avans += e.paidAvans;
       tolangan += e.paidOylik;
-      qolgan += payrollDue(e, period);
+      // To'lanadigan va qarzdorlik ALOHIDA yig'iladi — ishorali yig'indi
+      // bo'lganda bir xodimning qarzi boshqasiga to'lanadigan pulni
+      // "yeb" qo'yardi va karta jamini haqiqatdan kichik ko'rsatardi.
+      qolgan += Math.max(payrollDue(e, period), 0);
+      qarzdorlik += payrollDebt(e, period);
       otganOydan += e.carryOver;
     }
-    return { hisoblangan, avans, tolangan, qolgan, otganOydan };
+    return { hisoblangan, avans, tolangan, qolgan, otganOydan, qarzdorlik };
   }, [employees, period]);
 
   async function confirmPayout() {
@@ -245,7 +250,11 @@ export default function SalaryCreatePage() {
           tone="rose"
           label="Qolgan to'lanadigan"
           value={fmtSum(stats.qolgan)}
-          hint={`shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}`}
+          hint={
+            stats.qarzdorlik > 0
+              ? `o'tgan oydan: ${fmtSum(stats.otganOydan)} · xodim qarzi: ${fmtSum(stats.qarzdorlik)}`
+              : `shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}`
+          }
         />
       </div>
 
@@ -357,7 +366,14 @@ export default function SalaryCreatePage() {
                     </td>
                     <td className="px-3 py-3 align-top text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
                     <td className="px-3 py-3 align-top whitespace-nowrap">
-                      <div className="text-[13px] font-medium">{e.name}</div>
+                      {/* Ism — xodim profiliga havola (qaysi hisob-kitob
+                          qaysi odamga tegishli ekanini tekshirish uchun). */}
+                      <Link
+                        href={`/management-xodimlar/${e.id}`}
+                        className="text-[13px] font-medium text-primary hover:underline"
+                      >
+                        {e.name}
+                      </Link>
                       <div className="text-[11px] text-muted-foreground tabular-nums">{e.phone}</div>
                     </td>
                     <td className="px-3 py-3 align-top">
@@ -395,10 +411,15 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {paid > e.paidAvans ? fmtNum(paid - e.paidAvans) : <span className="text-muted-foreground">0</span>}
                     </td>
+                    {/* O'tgan oydan qolgan qoldiq ISHORALI: musbat —
+                        akademiya qarzi, manfiy — xodimning qarzdorligi
+                        (o'tgan oyda ortiqcha olgan pul). */}
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
-                      {e.carryOver > 0 ? (
+                      {e.carryOver !== 0 ? (
                         <div>
-                          <div>{fmtNum(e.carryOver)}</div>
+                          <div className={e.carryOver < 0 ? "text-amber-600 font-medium" : ""}>
+                            {fmtNum(e.carryOver)}
+                          </div>
                           {e.carryNote && <div className="text-[11px] text-muted-foreground">{e.carryNote}</div>}
                         </div>
                       ) : (
@@ -406,7 +427,18 @@ export default function SalaryCreatePage() {
                       )}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-bold whitespace-nowrap">
-                      {e.configured ? fmtNum(due) : <span className="text-muted-foreground font-normal">—</span>}
+                      {e.configured ? (
+                        due < 0 ? (
+                          <div>
+                            <div className="text-amber-600">{fmtNum(due)}</div>
+                            <div className="text-[11px] font-normal text-muted-foreground">qarzdor</div>
+                          </div>
+                        ) : (
+                          fmtNum(due)
+                        )
+                      ) : (
+                        <span className="text-muted-foreground font-normal">—</span>
+                      )}
                     </td>
                   </tr>
                 );

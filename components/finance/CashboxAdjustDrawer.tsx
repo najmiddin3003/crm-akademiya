@@ -368,6 +368,7 @@ export default function CashboxAdjustDrawer({
                         <span className="text-muted-foreground">
                           {" "}(Jami oylik {fmtUZS(employeeOylik)}
                           {carryOver > 0 ? ` + o'tgan oydan ${fmtUZS(carryOver)}` : ""}
+                          {carryOver < 0 ? ` − o'tgan oy qarzdorligi ${fmtUZS(-carryOver)}` : ""}
                           {" "}− olingan {fmtUZS(alreadyPaid)})
                         </span>
                       </div>

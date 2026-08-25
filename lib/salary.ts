@@ -3,7 +3,21 @@
 // umumlashtirilgan hisobot, audit-log — o'chirilmaydi/tahrirlanmaydi).
 export interface SalaryRunItem {
   employeeId: number;
-  /** Shu chiqarishda xodimga to'langan summa. */
+  /**
+   * Xodimning shu chiqarish paytidagi ismi. Hisobot — audit-log, shuning
+   * uchun ism o'sha ondagi holicha muzlatiladi (xodim keyin nomini
+   * o'zgartirsa yoki o'chirilsa ham tarix o'qilishli qoladi). Eski
+   * yozuvlarda yo'q.
+   */
+  name?: string;
+  /**
+   * Chiqarishdan keyingi QOLDIQ, ishorali:
+   *   musbat — akademiya xodimga qarzdor (to'lanmagan qism),
+   *   manfiy — XODIM akademiyaga qarzdor (masalan, avans olgan, ammo
+   *            uni qoplagan tushum keyin bekor qilingan).
+   * Ikkala tomon ham keyingi oyga o'tadi (lib/payrollSources.ts →
+   * loadCarryOver).
+   */
   amount: number;
 }
 
@@ -18,10 +32,15 @@ export interface SalaryRun {
   jarima: number;
   akladi: number;
   tolanmagan: number;
+  /**
+   * Xodimlarning akademiyaga qarzdorligi (manfiy qoldiqlar yig'indisi,
+   * musbat son sifatida). Eski yozuvlarda yo'q — 0 deb o'qiladi.
+   */
+  qarzdorlik?: number;
   createdAt: string; // "DD.MM.YYYY | HH:mm"
   /** "YYYY-MM" — qaysi oy uchun chiqarilgani. Eski yozuvlarda yo'q. */
   month?: string;
-  /** Xodim kesimida to'langan summalar. Eski yozuvlarda yo'q. */
+  /** Xodim kesimidagi qoldiqlar. Eski yozuvlarda yo'q. */
   items?: SalaryRunItem[];
 }
 
@@ -108,7 +127,12 @@ export interface EmployeePayroll {
   paidAvans: number;
   /** Shu oyda kassadan chiqarilgan oylik. */
   paidOylik: number;
-  /** O'tgan oydan qolgan to'lanmagan qism. */
+  /**
+   * O'tgan oydan o'tgan qoldiq, ishorali: musbat — to'lanmagan qism,
+   * MANFIY — xodimning akademiyaga qarzdorligi (o'tgan oyda avans olgan,
+   * lekin uni qoplagan tushum bekor qilingan). Manfiysi shu oyning
+   * hisobidan ushlab qolinadi.
+   */
   carryOver: number;
   carryNote: string;
 }
@@ -130,7 +154,20 @@ export function payrollPaid(e: EmployeePayroll): number {
   return e.paidAvans + e.paidOylik;
 }
 
-/** Qolgan: hisoblangan + o'tgan oydan - to'langanlar. */
+/**
+ * Qolgan qoldiq, ishorali: hisoblangan + o'tgan oydan − to'langanlar.
+ * Manfiy chiqishi MUMKIN va bu xato emas: xodim hisoblangan oyligidan
+ * ko'proq olgan (masalan, avans berilgan, keyin uni qoplagan o'quvchi
+ * to'lovi bekor qilingan) — o'sha farq uning qarzdorligi.
+ */
 export function payrollDue(e: EmployeePayroll, p: PayrollPeriod): number {
   return payrollEarned(e, p) + e.carryOver - payrollPaid(e);
+}
+
+/**
+ * Xodimning akademiyaga qarzdorligi (musbat son sifatida) — `payrollDue`
+ * manfiy bo'lgandagi kattaligi. Qarzdorlik yo'q bo'lsa 0.
+ */
+export function payrollDebt(e: EmployeePayroll, p: PayrollPeriod): number {
+  return Math.max(-payrollDue(e, p), 0);
 }

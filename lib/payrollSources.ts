@@ -108,16 +108,38 @@ export function resolvePercent(raw: unknown, byTier: Map<string, number>): numbe
 }
 
 /**
- * O'tgan oyda yopilgan hisobdan qolgan qarz.
- * Manba: `salary_runs` — o'tgan oy yozuvidagi items[].amount.
+ * O'tgan oyda yopilgan hisobdan o'tadigan qoldiq, ISHORALI:
+ *   musbat — akademiya xodimga qarzdor (to'lanmagan oylik),
+ *   manfiy — XODIM akademiyaga qarzdor.
+ *
+ * NIMA NOTO'G'RI EDI: bu yerda `amount > 0` sharti turardi, ya'ni faqat
+ * akademiyaning qarzi o'tardi. Xodimning qarzi (manfiy qoldiq) esa
+ * o'tmasdi va butunlay yo'qolardi. Amaldagi holat: o'qituvchiga avans
+ * berilgan, keyin uni qoplagan o'quvchi to'lovi bekor qilingan —
+ * o'qituvchida olingan, lekin ishlanmagan pul qoladi. Endi u manfiy
+ * `carryOver` sifatida keyingi oyga o'tadi va o'sha oyning hisobidan
+ * ushlab qolinadi.
+ *
+ * Bir oyda bir necha marta oylik chiqarilgan bo'lsa, xodim uchun ENG
+ * OXIRGI chiqarishdagi qoldiq olinadi (avvalgisi allaqachon eskirgan).
+ * Ilgari `findOne` ishlatilardi — u tartibsiz bitta yozuvni olardi va
+ * boshqa chiqarishlardagi xodimlar umuman tushib qolardi.
  */
 export async function loadCarryOver(db: Db, p: PayrollPeriod): Promise<Map<number, number>> {
-  const prev = await db.collection("salary_runs").findOne({ month: prevMonthKey(p) });
+  const prevRuns = await db
+    .collection("salary_runs")
+    .find({ month: prevMonthKey(p) })
+    .sort({ id: 1 })
+    .toArray();
+
   const map = new Map<number, number>();
-  for (const it of (prev?.items ?? []) as { employeeId?: number; amount?: number }[]) {
-    const id = Number(it?.employeeId);
-    const amount = Number(it?.amount);
-    if (Number.isFinite(id) && Number.isFinite(amount) && amount > 0) map.set(id, amount);
+  for (const run of prevRuns) {
+    for (const it of (run?.items ?? []) as { employeeId?: number; amount?: number }[]) {
+      const id = Number(it?.employeeId);
+      const amount = Number(it?.amount);
+      if (!Number.isFinite(id) || !Number.isFinite(amount) || amount === 0) continue;
+      map.set(id, amount);
+    }
   }
   return map;
 }
@@ -176,7 +198,10 @@ export async function buildPayrollRows(db: Db): Promise<EmployeePayroll[]> {
       paidAvans: paid.avans,
       paidOylik: paid.oylik,
       carryOver,
-      carryNote: carryOver > 0 ? `${prevMonth} oyidan qolgan` : "",
+      carryNote:
+        carryOver > 0 ? `${prevMonth} oyidan qolgan`
+        : carryOver < 0 ? `${prevMonth} oyidan qarzdorlik`
+        : "",
     } satisfies EmployeePayroll;
   });
 }

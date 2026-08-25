@@ -73,6 +73,7 @@ export async function POST(req: Request) {
   let avans = 0;
   let akladi = 0;
   let tolanmagan = 0;
+  let qarzdorlik = 0;
   const items: SalaryRunItem[] = [];
   for (const ep of chosen) {
     const empDue = payrollDue(ep, period);
@@ -82,7 +83,13 @@ export async function POST(req: Request) {
     avans += ep.paidAvans;
     akladi += ep.paidOylik;
     tolanmagan += Math.max(empDue, 0);
-    items.push({ employeeId: ep.id, amount: Math.max(empDue, 0) });
+    // Manfiy qoldiq — xodim hisoblanganidan ko'proq olgan (avans bergan,
+    // keyin uni qoplagan to'lov bekor qilingan). Ilgari u shu yerda
+    // `Math.max(…, 0)` bilan nolga tenglashtirilardi va qarz IZSIZ
+    // yo'qolardi — keyingi oy hisobiga ham o'tmasdi. Endi ishorali holicha
+    // saqlanadi: loadCarryOver uni keyingi oyning `carryOver`iga o'tkazadi.
+    qarzdorlik += Math.max(-empDue, 0);
+    items.push({ employeeId: ep.id, name: ep.name, amount: empDue });
   }
 
   const col = db.collection("salary_runs");
@@ -100,6 +107,7 @@ export async function POST(req: Request) {
     jarima,
     akladi,
     tolanmagan,
+    qarzdorlik,
     createdAt: fmtNow(new Date()),
     month: payrollMonthKey(period),
     items,
