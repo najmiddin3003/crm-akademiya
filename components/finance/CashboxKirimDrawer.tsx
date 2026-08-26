@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -48,7 +48,7 @@ export default function CashboxKirimDrawer({
   // O'qituvchi ro'yxati bazadan — bu qiymat tranzaksiyaga yoziladi va
   // ISM bo'yicha oylik hisobiga ulanadi (lib/payrollSources.ts), shu bois
   // qattiq ro'yxatdagi ism tushumni hech kimga biriktirmasdi.
-  const { names: teacherNames } = useTeachers();
+  const { teachers, names: teacherNames } = useTeachers();
   const [category, setCategory] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -72,6 +72,18 @@ export default function CashboxKirimDrawer({
     const s = studentByName.get(key(n));
     return s?.phone ? `+998 ${s.phone}` : "";
   };
+  // O'qituvchi telefoni — tanlash ro'yxatidagi ikkinchi satr. Qidiruv shu
+  // satrni ham qamrab oladi (StudentSearchSelect → haystackOf), shuning
+  // uchun o'qituvchini telefon raqami bo'yicha ham topsa bo'ladi.
+  const teacherByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of teachers) {
+      const k = key(t.name);
+      if (!map.has(k)) map.set(k, t.phone ? `+998 ${t.phone}` : "");
+    }
+    return map;
+  }, [teachers]);
+  const teacherPhoneOf = (n: string) => teacherByName.get(key(n)) ?? "";
   const balanceOf = (n: string) => balances[key(n)] ?? 0;
   const selectedStudent = studentName ? studentByName.get(key(studentName)) : undefined;
   const selectedBalance = studentName ? balanceOf(studentName) : 0;
@@ -179,18 +191,18 @@ export default function CashboxKirimDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">O&apos;qituvchini tanlang</label>
-            <div className="relative">
-              <select
-                value={teacherName}
-                onChange={(e) => setTeacherName(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Tanlang</option>
-                {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            {/* O'quvchi tanlovi bilan bir xil qidiruvli ro'yxat. Ilgari bu
+                oddiy <select> edi: bazada 43 o'qituvchi bor va kerakligini
+                topish uchun butun ro'yxatni aylantirishga to'g'ri kelardi,
+                telefon raqami esa umuman ko'rinmasdi. */}
+            <StudentSearchSelect
+              label="O'qituvchini tanlang"
+              value={teacherName}
+              onChange={setTeacherName}
+              options={teacherNames}
+              placeholder="Ism yoki telefon bo'yicha qidiring…"
+              subtitleOf={(n) => teacherPhoneOf(n)}
+            />
           </div>
 
           <div>

@@ -23,14 +23,14 @@ export const EMP_COLUMNS = [
   { id: "filial", label: "Filiallar" },
   { id: "phone", label: "Telefon raqam" },
   { id: "kurs", label: "Kurs" },
-  // Referensda "Kurs" dan keyin shu uchtasi turadi. Demo yozuvlarda bu
-  // maydonlar yo'q (manba massivida ham yo'q edi), shuning uchun hozircha
-  // bo'sh ko'rsatiladi — maydon qo'shilgach renderCell'da to'ldiriladi.
-  { id: "lavozim", label: "Lavozim" },
-  { id: "birthDate", label: "Tug'ilgan sana" },
-  { id: "salaryCalc", label: "Maosh hisoblanadi" },
+  // OLIB TASHLANGAN USTUNLAR: "Lavozim", "Tug'ilgan sana", "Maosh hisoblanadi"
+  // va "Oxirgi faol bo'lgan". Referensda ular bor edi, lekin amalda hech
+  // qanday ma'lumot ko'rsatmasdi — jadvalda faqat "—" chizig'i turardi va
+  // ro'yxatni kengaytirib, o'ngga gorizontal aylantirishga majbur qilardi.
+  // Ma'lumotning o'zi bazadan o'chirilgani yo'q: tug'ilgan sana va lavozim
+  // xodim PROFILIDA ko'rinadi, "Faollik sanasi" filtri esa `lastActive` ni
+  // o'qiyveradi.
   { id: "created", label: "Yaratilgan sanasi", sortable: true },
-  { id: "lastActive", label: "Oxirgi faol bo'lgan" },
   { id: "archReason", label: "Arxivlash sababi" },
   { id: "archDate", label: "Sana" },
 ];

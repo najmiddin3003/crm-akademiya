@@ -86,15 +86,6 @@ function parseCsv(text: string): string[][] {
   if (cell || row.length) { row.push(cell); rows.push(row); }
   return rows.filter((r) => r.some((v) => v.trim() !== ""));
 }
-/** "1998-04-17" → "17.04.1998" (jadvalda qolgan sanalar bilan bir xil ko'rinish). */
-function fmtBirthDate(iso: string): string {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
-}
-/** Manbasi yo'q katak — 0 emas, chunki 0 ham da'vo bo'lardi. */
-function Dash() {
-  return <span className="text-muted-foreground">—</span>;
-}
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -117,8 +108,8 @@ const IMPORT_IDX = { name: 1, gender: 2, turi: 5, filial: 6, phone: 7, kurs: 8, 
 // "№" saralanmaydi — u qator raqami, ya'ni tartibning O'ZI.
 const SORTABLE = new Set([
   "name", "gender", "aktivOq", "groups", "turi", "ishTuri", "jamiOylik", "jamiAvans",
-  "tolanganOylik", "qolganOylik", "filial", "phone", "kurs", "lavozim", "birthDate",
-  "salaryCalc", "created", "lastActive", "archReason", "archDate",
+  "tolanganOylik", "qolganOylik", "filial", "phone", "kurs",
+  "created", "archReason", "archDate",
 ]);
 type SortDir = "asc" | "desc";
 
@@ -205,8 +196,6 @@ export default function EmployeesListPage() {
   // guruhi yo'q" deb yolg'on da'vo qilardi.
   const [groups, setGroups] = useState<Group[]>([]);
   const [payrollById, setPayrollById] = useState<Map<number, EmployeePayroll>>(new Map());
-  // Rol nomlari — "Lavozim" ustuni uchun (xodimda faqat roleId saqlanadi).
-  const [roleNameById, setRoleNameById] = useState<Map<number, string>>(new Map());
   const [loadingRows, setLoadingRows] = useState(true);
 
   const period = useMemo(() => payrollPeriod(), []);
@@ -224,17 +213,13 @@ export default function EmployeesListPage() {
     Promise.all([
       fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
       fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
-      fetch("/api/roles").then((r) => r.json()).catch(() => null),
       fetch("/api/groups").then((r) => r.json()).catch(() => null),
     ])
-      .then(([emps, pay, rls, grps]) => {
+      .then(([emps, pay, grps]) => {
         if (cancelled) return;
         if (emps?.ok) setRows(emps.employees);
         if (pay?.ok) {
           setPayrollById(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.id, e])));
-        }
-        if (rls?.ok) {
-          setRoleNameById(new Map((rls.roles as { id: number; name: string }[]).map((r) => [r.id, r.name])));
         }
         if (grps?.ok) setGroups(grps.groups as Group[]);
       })
@@ -299,15 +284,6 @@ export default function EmployeesListPage() {
   const statsOf = (e: HrEmployeeFull) =>
     groupStatsByName.get(e.name.trim().toLowerCase()) ?? { groups: 0, students: 0 };
 
-  /** Xodimga biriktirilgan rol nomlari (filiallar bo'yicha, takrorsiz). */
-  function roleNamesOf(e: HrEmployeeFull): string[] {
-    return [...new Set(
-      (e.branchAssignments ?? [])
-        .map((b) => (b.roleId != null ? roleNameById.get(b.roleId) : undefined))
-        .filter((n): n is string => Boolean(n)),
-    )];
-  }
-
   // Ustun bo'yicha saralash. Ilgari sarlavhalarda strelka chizilardi, lekin
   // na holat, na taqqoslagich, na onClick bor edi — ya'ni bezak edi.
   // Qiymati yo'q qatorlar ("Sozlanmagan", bo'sh sana) HAR DOIM oxirida
@@ -331,11 +307,7 @@ export default function EmployeesListPage() {
         case "filial": return (e.filial || "").toLowerCase() || null;
         case "phone": return e.phone || null;
         case "kurs": return (e.kurs || "").toLowerCase() || null;
-        case "lavozim": return roleNamesOf(e).join(", ").toLowerCase() || null;
-        case "birthDate": return e.birthDate || null; // ISO — leksikografik tartib = xronologik
-        case "salaryCalc": return e.payroll === undefined ? null : Number(e.payroll);
         case "created": return dateVal(e.created);
-        case "lastActive": return dateVal(e.lastActive);
         case "archDate": return dateVal(e.archDate);
         case "archReason": return (e.archReason || "").toLowerCase() || null;
         default: {
@@ -361,9 +333,8 @@ export default function EmployeesListPage() {
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
       return String(va).localeCompare(String(vb), "uz") * dir;
     });
-    // roleNamesOf faqat roleNameById dan bog'liq — shuning uchun deps'da o'sha.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, sortKey, sortDir, period, payrollById, roleNameById]);
+  }, [filtered, sortKey, sortDir, period, payrollById]);
 
   /** Sarlavhaga bosish: o'sish → kamayish → saralashsiz. */
   function toggleSort(colId: string) {
@@ -518,40 +489,7 @@ export default function EmployeesListPage() {
       case "filial": return e.filial;
       case "phone": return <span className="tabular-nums text-[13px]">{e.phone}</span>;
       case "kurs": return <span className="text-[13px]">{e.kurs || "-"}</span>;
-      case "lavozim": {
-        // "Lavozim" = xodimga biriktirilgan ROL (Boshqaruv → Rollar). Xodim
-        // hujjatida faqat `branchAssignments[].roleId` bor, shuning uchun
-        // nomi /api/roles dan olinadi. Rol biriktirilmagan bo'lsa — "—".
-        const names = roleNamesOf(e);
-        return names.length ? <span className="text-[13px]">{names.join(", ")}</span> : <Dash />;
-      }
-      case "birthDate":
-        // Xodim qo'shish modalidagi "Tug'ilgan sanasi". Eski hujjatlarda bu
-        // maydon yo'q — bunday xodimda "—" turadi.
-        return e.birthDate ? <span className="tabular-nums text-[13px]">{fmtBirthDate(e.birthDate)}</span> : <Dash />;
-      case "salaryCalc": {
-        // "Maosh hisoblanadi" = modaldagi "Ish haqi chiqarish" toggle'i.
-        // undefined ("hech qachon so'ralmagan") bilan false ("yo'q deb
-        // belgilangan") ni ajratamiz — "Yo'q" ham da'vo bo'lardi.
-        //
-        // "Ha" / "Yo'q" ham DA'VO edi, va u YOLG'ON edi: bu bayroqni hech kim
-        // o'qimaydi — lib/payrollSources.ts dagi buildPayrollRows()
-        // `hr_employees` ni filtrsiz oladi va `payroll` maydoniga umuman
-        // qaramaydi, ya'ni Oylik chiqarish sahifasi belgidan qat'i nazar
-        // HAMMANI hisoblaydi. Shu bois ustun endi tizim xulqi haqida emas,
-        // SAQLANGAN TANLOV haqida gapiradi.
-        if (e.payroll === undefined) return <Dash />;
-        return (
-          <span
-            className="text-[13px] text-muted-foreground"
-            title="Xodim kartasidagi saqlangan tanlov. Oylik chiqarish hozircha bu belgini o'qimaydi — hisobga barcha xodimlar kiradi."
-          >
-            {e.payroll ? "Belgilangan" : "Belgilanmagan"}
-          </span>
-        );
-      }
       case "created": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.created}</span>;
-      case "lastActive": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.lastActive || "-"}</span>;
       case "archReason": return <span className="text-muted-foreground">{e.archReason || "-"}</span>;
       case "archDate": return <span className="tabular-nums text-[12px] text-muted-foreground">{e.archDate || "-"}</span>;
       default: return null;

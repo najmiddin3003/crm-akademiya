@@ -417,6 +417,11 @@ function SearchFilter({
 // tarixi ochiladi. "Qabul qilindi" faqat tahrirlanmagan holatda ko'rinadi —
 // tahrirlangan bo'lsa uning o'rnini "Tahrirlangan" egallaydi (bekor
 // qilingan holatda esa ikkalasi birga: "Bekor qilingan" + "Tahrirlangan").
+//
+// CHIQIMDA MATN BOSHQA: kassadan pul chiqarilganda "Qabul qilindi" noto'g'ri
+// o'qiladi — kassa hech narsa qabul qilmagan, aksincha to'lab bergan.
+// Shuning uchun payOut yozuvida jigarrang fonli qizil "To'landi" chiqadi;
+// kirim va ko'chirishda esa avvalgidek yashil "Qabul qilindi" qoladi.
 function StatusCell({
   entry,
   onShowHistory,
@@ -444,8 +449,12 @@ function StatusCell({
             <UserCheck style={{ width: 11, height: 11 }} />
           </span>
         </span>
-      ) : edited ? null : (
-        <span className="text-[13px] text-emerald-600 font-medium">
+      ) : edited ? null : entry.txType === "payOut" ? (
+        <span className="inline-flex items-center h-6 px-2 rounded-md text-[13px] font-medium bg-red-900 text-red-200">
+          To&apos;landi
+        </span>
+      ) : (
+        <span className="inline-flex items-center h-6 px-2 rounded-md text-[13px] font-medium bg-emerald-500/20 text-emerald-700">
           Qabul qilindi
         </span>
       )}
@@ -744,6 +753,36 @@ export default function CashboxesPage() {
     return "—";
   }
 
+  // Jadvaldagi "Oyligiga" ustuni: yozuv qaysi o'qituvchining oyligiga
+  // ta'sir qilishini ko'rsatadi. "Kim" ustuni kabi bu ism ham xodim
+  // profiliga (/management-xodimlar/[id]) olib boradi — ilgari oddiy matn
+  // edi va o'qituvchini ochish uchun Boshqaruv → Xodimlar dan qaytadan
+  // qidirishga to'g'ri kelardi. Ism xodimlar ro'yxatidan topilmasa (masalan
+  // xodim o'chirilgan, yozuv esa tarixda qolgan) — avvalgidek oddiy matn.
+  function renderSalaryTargetCell(e: TransactionEntry) {
+    const sign = e.txType === "payIn" ? "+" : "−";
+    const tone = e.txType === "payIn" ? "text-emerald-600" : "text-rose-600";
+    const cls = `inline-flex items-center gap-1 text-[12px] ${tone}`;
+    const empId = e.teacherName ? moderatorProfileId(e.teacherName) : undefined;
+    if (empId === undefined) {
+      return (
+        <span title={salaryTargetLabel(e)} className={cls}>
+          {sign} {e.teacherName}
+        </span>
+      );
+    }
+    return (
+      <Link
+        href={`/management-xodimlar/${empId}`}
+        onClick={(ev) => ev.stopPropagation()}
+        title={salaryTargetLabel(e)}
+        className={`${cls} hover:underline`}
+      >
+        {sign} {e.teacherName}
+      </Link>
+    );
+  }
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/cashboxes")
@@ -997,8 +1036,14 @@ export default function CashboxesPage() {
           {filteredList.map((c) => {
             const isSelected = c.id === selectedId;
             const isDark = isSelected || c.isPrimary;
-            // Arxivdagi kassada amaliyot qilinmaydi — faqat ko'rish.
+            // Arxivdagi kassada pul amaliyoti qilinmaydi (Kirim/Chiqim/
+            // Ko'chirish, bosh kassa qilish, hisobot) — lekin TAHRIRLASH
+            // kerak bo'ladi: arxivdan qaytarish, nomini yoki mas'ulini
+            // to'g'rilash aynan shu oynadan qilinadi. Ilgari arxivdagi
+            // kartada bitta ham tugma yo'q edi, ya'ni arxivga tushgan
+            // kassani interfeys orqali qaytarib bo'lmasdi.
             const showActions = isSelected && !c.archived;
+            const showEditOnly = isSelected && c.archived;
             const showMore = cardMoreId === c.id;
             const labelMuted = isDark ? "text-white/70" : "text-slate-700";
             const textMuted = isDark ? "text-white/85" : "text-slate-700";
@@ -1219,6 +1264,22 @@ export default function CashboxesPage() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {showEditOnly && (
+                  <div
+                    className="flex items-center mt-3 pt-3"
+                    style={{ borderTop: `1px solid ${line}` }}
+                    onClick={(ev) => ev.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setEditTarget(c)}
+                      title="Kassani o'zgartirish"
+                      className="fc-card-btn"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 
@@ -1489,12 +1550,7 @@ export default function CashboxesPage() {
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
                         {e.teacherName ? (
-                          <span
-                            title={salaryTargetLabel(e)}
-                            className={`inline-flex items-center gap-1 text-[12px] ${e.txType === "payIn" ? "text-emerald-600" : "text-rose-600"}`}
-                          >
-                            {e.txType === "payIn" ? "+" : "−"} {e.teacherName}
-                          </span>
+                          renderSalaryTargetCell(e)
                         ) : (
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )}
