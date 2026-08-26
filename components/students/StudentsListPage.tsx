@@ -25,6 +25,7 @@ import {
 } from "@/lib/studentsData";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // O'quvchilar → O'quvchilar ro'yxati (sidebar: O'quvchilar > O'quvchilar
 // ro'yxati, href /students-list). Yangi/Aktiv/Arxiv o'quvchilar
@@ -77,6 +78,15 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
     if (ref.current) ref.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className={checkboxCls} />;
+}
+
+/**
+ * Bironta filtr to'ldirilganmi. "Tozalash" tugmasi faqat shunda ko'rinadi —
+ * hammasi bo'sh turganda u shunchaki shovqin.
+ */
+function hasActiveFilters(f: StudentFilters): boolean {
+  return (Object.keys(EMPTY_STUDENT_FILTERS) as (keyof StudentFilters)[])
+    .some((k) => f[k] !== EMPTY_STUDENT_FILTERS[k]);
 }
 
 /** Filtr paneli uchun yorliqli select — 13 marta takrorlanmasligi uchun. */
@@ -153,11 +163,12 @@ export default function StudentsListPage() {
   );
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  // Drawer o'z QORALAMASI bilan ishlaydi: maydonlar o'zgarganda jadval darhol
-  // qayta filtrlanmaydi. "Saqlash" bosilgandagina qo'llanadi, "Orqaga" esa
-  // o'zgarishlarni tashlab yuboradi — referensdagi bilan bir xil xatti-harakat.
-  const [draft, setDraft] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
+  // Filtrlar sahifaning YUQORISIDA, jadval ustida turadi (referensdagidek)
+  // va odatda ochiq. Ilgari bu o'ng tomondan chiqadigan panel edi: jadval
+  // filtr bilan bir vaqtda ko'rinmasdi, ya'ni har o'zgarishdan keyin
+  // panelni yopib-ochish kerak bo'lardi. "Filtr" tugmasi endi shu setkani
+  // yig'ib qo'yadi — ustunlar ko'p bo'lgani uchun joy kerak bo'lsa.
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -315,7 +326,7 @@ export default function StudentsListPage() {
         <Button
           variant="primary"
           lucideIcon={Filter}
-          onClick={() => { setDraft(filters); setFiltersOpen(true); }}
+          onClick={() => setFiltersOpen((o) => !o)}
           className={filtersOpen ? "ring-2 ring-blue-300" : ""}
         >
           Filtr
@@ -351,90 +362,86 @@ export default function StudentsListPage() {
         </div>
       </div>
 
-      {/* Filtr paneli — referensdagi maydonlar. Faqat ma'lumoti bor filtrlar
-          chizilgan; qolganlari (Teglar, Bloklanganlar, Oferta, Ilova holati,
-          Ranglar, Referal, Shartnoma) uchun o'quvchi modelida maydon yo'q,
-          shuning uchun ataylab qo'shilmagan — ishlamaydigan tugma qo'yishdan
-          ko'ra yo'qligi ma'qul. */}
+      {/* Filtrlar — jadval USTIDA, doim ko'rinadigan setka (referensdagidek).
+          Ilgari bu o'ng tomondan chiqadigan panel edi va jadvalni to'sib
+          qo'yardi: natijani ko'rish uchun har safar panelni yopish kerak
+          bo'lardi. Endi filtr ham, natija ham bir ekranda.
+
+          Tanlov DARHOL qo'llanadi — "Saqlash" tugmasi yo'q. Panel yopiq
+          bo'lganda kutish mantiqiy edi, ochiq setkada esa ortiqcha qadam.
+
+          Faqat ma'lumoti bor filtrlar chizilgan; qolganlari (Teglar,
+          Bloklanganlar, Oferta, Ilova holati, Ranglar, Referal, Shartnoma)
+          uchun o'quvchi modelida maydon yo'q, shuning uchun ataylab
+          qo'shilmagan — ishlamaydigan tugma qo'yishdan ko'ra yo'qligi
+          ma'qul. */}
       {filtersOpen && (() => {
-        const setD = <K extends keyof StudentFilters>(k: K, v: StudentFilters[K]) =>
-          setDraft((d) => ({ ...d, [k]: v }));
-        const numInput = "h-9 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+        const setF = <K extends keyof StudentFilters>(k: K, v: StudentFilters[K]) => {
+          setFilters((f) => ({ ...f, [k]: v }));
+          setPage(1);
+        };
+        const inputCls = "h-9 w-full min-w-0 rounded-lg border border-border bg-card px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
         return (
-          <div className="fixed inset-0 z-[200]" onClick={() => setFiltersOpen(false)}>
-            <div className="absolute inset-0 bg-black/40" />
-            <aside
-              className="absolute right-0 top-0 flex h-full w-full max-w-[400px] flex-col border-l border-border bg-card shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-                <h3 className="text-[15px] font-semibold">Filter</h3>
+          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div>
+                <label className="mb-1 block text-[12px] text-muted-foreground">O&apos;quvchi</label>
+                <input
+                  value={filters.name}
+                  onChange={(e) => setF("name", e.target.value)}
+                  placeholder="Ism bo'yicha"
+                  className={inputCls}
+                />
+              </div>
+              <FilterSelect label="Kurs" value={filters.course} onChange={(v) => setF("course", v)} options={courseOptions} />
+              <FilterSelect label="Guruh" value={filters.group} onChange={(v) => setF("group", v)} options={groupIdOptions} />
+              <FilterSelect label="Subkurs" value={filters.subcourse} onChange={(v) => setF("subcourse", v)} options={subcourseOptions} />
+              <FilterSelect label="Manba" value={filters.source} onChange={(v) => setF("source", v)} options={sourceOptions} />
+
+              <FilterSelect label="Moderator" value={filters.moderator} onChange={(v) => setF("moderator", v)} options={moderatorOptions} />
+              <FilterSelect label="O'qituvchi" value={filters.teacher} onChange={(v) => setF("teacher", v)} options={teacherOptions} />
+              <FilterSelect label="Kategoriya" value={filters.category} onChange={(v) => setF("category", v)} options={categoryNames} />
+              <FilterSelect label="Guruhlar soni" value={filters.groupCount} onChange={(v) => setF("groupCount", v)} options={["0", "1", "2"]} />
+              <FilterSelect label="Kun" value={filters.day} onChange={(v) => setF("day", v)} options={dayOptions} />
+
+              <FilterSelect label="Toq/Juft kunlar" value={filters.oddEven} onChange={(v) => setF("oddEven", v)} options={["Toq", "Juft"]} />
+              {/* "Holati" — applyStudentFilters `r.status` bilan solishtiradi,
+                  u esa pupilStatusOf() orqali BAZADAGI holatdan keladi (ilgari
+                  enrichStudents hammaga "Aktiv" yozib qo'yardi). Qator ikonkasi
+                  orqali holat o'zgargach `statusPatch` qatorni yangilaydi, shu
+                  sababli filtr darhol yangi holatga qarab ishlaydi. */}
+              <FilterSelect label="Holati" value={filters.status} onChange={(v) => setF("status", v)} options={STUDENT_STATUSES} />
+
+              <div>
+                <label className="mb-1 block text-[12px] text-muted-foreground">Balans oralig&apos;i</label>
+                <div className="flex items-center gap-1.5">
+                  <input value={filters.balanceFrom} onChange={(e) => setF("balanceFrom", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="dan" className={inputCls} />
+                  <span className="text-muted-foreground">—</span>
+                  <input value={filters.balanceTo} onChange={(e) => setF("balanceTo", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="gacha" className={inputCls} />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-[12px] text-muted-foreground">Coin oralig&apos;i</label>
+                <div className="flex items-center gap-1.5">
+                  <input value={filters.coinFrom} onChange={(e) => setF("coinFrom", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="dan" className={inputCls} />
+                  <span className="text-muted-foreground">—</span>
+                  <input value={filters.coinTo} onChange={(e) => setF("coinTo", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="gacha" className={inputCls} />
+                </div>
+              </div>
+            </div>
+
+            {/* "Tozalash" faqat tozalanadigan narsa bo'lganda ko'rinadi —
+                bo'sh setkada u shunchaki shovqin. */}
+            {hasActiveFilters(filters) && (
+              <div className="mt-3 flex justify-end border-t border-border pt-3">
                 <button
-                  onClick={() => setDraft(EMPTY_STUDENT_FILTERS)}
-                  className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-secondary"
+                  onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setPage(1); }}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card text-[13px] font-medium hover:bg-secondary"
                 >
                   <X className="icon icon-xs" /> Tozalash
                 </button>
               </div>
-
-              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                <div>
-                  <label className="mb-1 block text-[12px] text-muted-foreground">Balans oralig&apos;i</label>
-                  <div className="flex items-center gap-2">
-                    <input value={draft.balanceFrom} onChange={(e) => setD("balanceFrom", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="dan" className={numInput} />
-                    <span className="text-muted-foreground">—</span>
-                    <input value={draft.balanceTo} onChange={(e) => setD("balanceTo", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="gacha" className={numInput} />
-                  </div>
-                </div>
-
-                <FilterSelect label="Kurs" value={draft.course} onChange={(v) => setD("course", v)} options={courseOptions} />
-                <FilterSelect label="Guruh" value={draft.group} onChange={(v) => setD("group", v)} options={groupIdOptions} />
-                <FilterSelect label="Subkurs" value={draft.subcourse} onChange={(v) => setD("subcourse", v)} options={subcourseOptions} />
-                <FilterSelect label="Manba" value={draft.source} onChange={(v) => setD("source", v)} options={sourceOptions} />
-                <FilterSelect label="Moderator" value={draft.moderator} onChange={(v) => setD("moderator", v)} options={moderatorOptions} />
-                <FilterSelect label="O'qituvchi" value={draft.teacher} onChange={(v) => setD("teacher", v)} options={teacherOptions} />
-
-                <div>
-                  <label className="mb-1 block text-[12px] text-muted-foreground">O&apos;quvchi</label>
-                  <input value={draft.name} onChange={(e) => setD("name", e.target.value)} placeholder="Ism bo'yicha" className={numInput} />
-                </div>
-
-                <FilterSelect label="Kategoriya" value={draft.category} onChange={(v) => setD("category", v)} options={categoryNames} />
-                <FilterSelect label="Guruhlar soni" value={draft.groupCount} onChange={(v) => setD("groupCount", v)} options={["0", "1", "2"]} />
-                <FilterSelect label="Kun" value={draft.day} onChange={(v) => setD("day", v)} options={dayOptions} />
-                <FilterSelect label="Toq/Juft kunlar" value={draft.oddEven} onChange={(v) => setD("oddEven", v)} options={["Toq", "Juft"]} />
-                {/* "Holati" — applyStudentFilters `r.status` bilan solishtiradi,
-                    u esa pupilStatusOf() orqali BAZADAGI holatdan keladi (ilgari
-                    enrichStudents hammaga "Aktiv" yozib qo'yardi). Qator ikonkasi
-                    orqali holat o'zgargach `statusPatch` qatorni yangilaydi, shu
-                    sababli filtr darhol yangi holatga qarab ishlaydi. */}
-                <FilterSelect label="Holati" value={draft.status} onChange={(v) => setD("status", v)} options={STUDENT_STATUSES} />
-
-                <div>
-                  <label className="mb-1 block text-[12px] text-muted-foreground">Coin oralig&apos;i</label>
-                  <div className="flex items-center gap-2">
-                    <input value={draft.coinFrom} onChange={(e) => setD("coinFrom", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="dan" className={numInput} />
-                    <span className="text-muted-foreground">—</span>
-                    <input value={draft.coinTo} onChange={(e) => setD("coinTo", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="gacha" className={numInput} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 border-t border-border p-3">
-                <button
-                  onClick={() => setFiltersOpen(false)}
-                  className="h-10 flex-1 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
-                >
-                  Orqaga
-                </button>
-                <button
-                  onClick={() => { setFilters(draft); setPage(1); setFiltersOpen(false); }}
-                  className="h-10 flex-1 rounded-lg bg-primary text-sm font-medium text-white hover:opacity-90"
-                >
-                  Saqlash
-                </button>
-              </div>
-            </aside>
+            )}
           </div>
         );
       })()}
@@ -526,7 +533,7 @@ export default function StudentsListPage() {
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                     <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.createdAt}</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">{r.source || "—"}</td>
-                    <td className="px-3 py-3 text-[13px] whitespace-nowrap">{r.moderator || "—"}</td>
+                    <td className="px-3 py-3 text-[13px] whitespace-nowrap"><PersonLink name={r.moderator} kind="staff" /></td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">{r.groupNames}</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>

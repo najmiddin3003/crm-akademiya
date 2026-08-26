@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
+import { flushSoon } from "@/lib/sync/dispatch";
 import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
 import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 
@@ -162,6 +163,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     methodLabel,
     cashboxId,
   });
+
+  // Yozuv navbatga logEntry ichida qo'yilgan (lib/transactionLog.ts).
+  // `after` — javob KASSIRGA YUBORILGANDAN KEYIN ishlaydi, ya'ni Google
+  // va Telegram sekin javob bersa ham kassa oynasi kutib turmaydi.
+  // Bu yerda xato bo'lsa ham to'lov allaqachon bazada: navbat uni
+  // keyingi imkoniyatda yoki kunlik tekshiruvda yuboradi.
+  after(() => flushSoon(db));
 
   const { _id, ...cashbox } = res;
   return NextResponse.json({ ok: true, cashbox: normalizeCashbox(cashbox, methods.map((m) => m.key)) });

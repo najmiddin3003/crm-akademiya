@@ -46,4 +46,31 @@ export interface TransactionEntry {
   cashboxId: number;
   /** Miqdor har tahrirlanganda shu massivga bitta yangi yozuv qo'shiladi. */
   editHistory?: AmountEdit[];
+  /**
+   * Yozuv qaysi "Oylik chiqarish" partiyasidan tug'ilgani (`salary_runs.id`).
+   *
+   * Bog'lanish KERAK: chiqarish o'chirilganda aynan shu partiya yaratgan
+   * chiqimlarni topib bekor qilish va pulni kassaga qaytarish lozim.
+   * Usiz o'chirish kassadan pulni izsiz yo'qotardi. Kassa oynasidan qo'lda
+   * kiritilgan yozuvlarda bu maydon yo'q.
+   */
+  salaryRunId?: number;
+  /**
+   * To'lov turining BARQAROR kaliti (`settings_payment_methods.key`).
+   *
+   * `paymentType` — turning KO'RINADIGAN NOMI va u Sozlamalardan
+   * o'zgartirilishi mumkin. Bekor qilish esa kassaning qaysi
+   * `methodTotals` maydonini tiklashni bilishi kerak; nom bo'yicha qidirish
+   * nom o'zgargan zahoti ishlamay qolardi va pul kassaga QAYTMASDI.
+   * Shu bois kalit yozuvning o'zida saqlanadi. Eski yozuvlarda yo'q —
+   * ularda nom bo'yicha qidirishga qaytiladi.
+   */
+  paymentMethodKey?: string;
+  /**
+   * Yozuv bazaga tushgan aniq vaqt (ISO). `date` va `time` — foydalanuvchi
+   * ko'radigan, kassir o'zgartira oladigan maydonlar; bu esa tizim qo'ygan
+   * o'zgarmas tamg'a. Sinxronizatsiya navbati va tekshiruvlar shunga
+   * tayanadi. Bu maydon qo'shilishidan OLDINGI yozuvlarda yo'q.
+   */
+  createdAt?: string;
 }

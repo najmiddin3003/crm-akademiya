@@ -160,6 +160,7 @@ export const SIDEBAR_ITEMS = [
             { label: "Tranzakisyalar", href: "/finance-transactions" },
             { label: "Rejalashtirilgan xarajatlar", href: "/finance-planned" },
             { label: "Shartnoma", href: "/finance-fin-contract" },
+            { label: "Sinxronizatsiya", href: "/finance-sync" },
           ],
         },
       ],

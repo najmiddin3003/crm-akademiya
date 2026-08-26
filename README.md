@@ -1297,3 +1297,85 @@ tayyor, yozadigan kod yo'q:
 
 Bo'lim-bo'lim ro'yxat va qolgan 15 ta cheklov:
 <https://claude.ai/code/artifact/fb38bf60-66c1-4479-98ac-103abcd67b31>
+
+## Sinxronizatsiya: Google Sheets + Telegram (2026-08-26)
+
+Kassadagi har bir Kirim/Chiqim ikki tashqi manzilga ko'chiriladi. Ikki
+oqim bir-biridan mustaqil — har birining o'z jadvali va o'z guruhi bor:
+
+| Oqim | Baza filtri | Manzil |
+| --- | --- | --- |
+| O'quvchi to'lovlari | `txType: "payIn"` | `SHEET_ID_PAYMENTS` + `TELEGRAM_CHAT_PAYMENTS` |
+| Xodim oyliklari | `txType: "payOut"` + `txName` da `avans`/`oylik` | `SHEET_ID_SALARIES` + `TELEGRAM_CHAT_SALARIES` |
+
+Qolgan chiqimlar (ijara, kommunal) va kassalar orasidagi ko'chirish
+(`transfer`) **hech qayerga yuborilmaydi** — kelishuvda yo'q.
+
+### Qanday ishlaydi
+
+```
+Kassir "Kirim" bosdi
+  → transaction_entries  (asosiy yozuv + createdAt)
+  → sync_outbox          (status: pending)
+  → after() — javob ketgandan keyin, kassirni kutdirmay
+       → Google Sheets qatori + Telegram xabari
+       → status: done
+  ✗ xato bo'lsa pending qoladi → keyingi to'lovda yoki kunlik cron'da qayta yuboriladi
+```
+
+**Kunlik cron** (`/api/sync/cron`, `vercel.json` da `0 22 * * *` = Toshkent
+03:00) ikki ish qiladi: navbatni bo'shatadi, keyin jadvalni baza bilan
+solishtiradi. Natija `sync_runs` ga yoziladi va **Moliya →
+Sinxronizatsiya** sahifasida ko'rinadi (Telegram'ga yuborilmaydi —
+kelishuv shunday).
+
+### Asosiy fayllar
+
+| Fayl | Vazifa |
+| --- | --- |
+| `lib/sync/config.ts` | `.env` kalitlari, `SYNC_ENABLED`, sozlama kamchiliklari |
+| `lib/sync/googleSheets.ts` | Sheets API v4 — `googleapis` paketisiz, JWT `node:crypto` bilan |
+| `lib/sync/telegram.ts` | Bot API, HTML eskeypi, 429 bilan ishlash |
+| `lib/sync/lookups.ts` | Filial / lavozim / guruh bog'lash (keshlangan) |
+| `lib/sync/mappers.ts` | Yozuv → jadval qatori va Telegram matni |
+| `lib/sync/outbox.ts` | Navbat: `enqueue`, `claimPending`, `recordOutcome` |
+| `lib/sync/dispatch.ts` | Yuborish; `flushSoon()` — `after()` ichida |
+| `lib/sync/reconcile.ts` | Jadval ↔ baza solishtirish |
+| `lib/sync/run.ts` | To'liq sikl (cron ham, qo'lda ham shuni chaqiradi) |
+
+### Sozlash
+
+1. `.env.example` dagi yangi kalitlarni `.env.local` ga ko'chiring.
+2. `node scripts/sync-get-chat-id.mjs` — Telegram guruh id'larini topadi.
+3. Google jadvallarni service account emailiga **Editor** qilib share qiling.
+4. `node scripts/sync-backfill.mjs` — eski yozuvlarni jadvalga ko'chiradi
+   (**Telegram'ga yubormaydi**).
+
+Varaq (tab) va sarlavha qatorini kod o'zi yaratadi — qo'lda yozish shart emas.
+
+### Tuzoqlar — kelajakda vaqt yeydiganlar
+
+- **Filial `transaction_entries` da yo'q.** U faqat `hr_employees` da bor.
+  Shuning uchun to'lov filiali **kassir orqali** aniqlanadi
+  (`lookups.ts` → `branchOfPayment`). Kassaga filial maydoni qo'shilsa,
+  shu bitta funksiyani o'zgartirish yetadi.
+- **Chiqim yozuvida xodim ismi `studentName` da turadi** — g'alati, lekin
+  bazadagi mavjud kelishuv shunday (`adjust/route.ts`).
+- **`valueInputOption=RAW` majburiy.** `USER_ENTERED` bo'lsa Google
+  "26.08.2026" ni sanaga aylantirib, o'qiganda seriya raqami qaytaradi va
+  solishtirish har kuni "farq bor" deb butun jadvalni qayta yozadi.
+- **`signatureOf` ga ustunlar soni beriladi.** Google o'ngdagi bo'sh
+  kataklarni tashlab yuboradi, ya'ni o'qilgan qator kaltaroq keladi.
+  Ustunlar sonisiz oxirgi ustun noto'g'ri kesilardi.
+- **Varaq nomida apostrof bor** ("To'lovlar") — A1 notatsiyasida u
+  ikkilantirilishi shart (`quoteSheetName`).
+- **Navbat oldin, solishtirish keyin.** Teskari bo'lsa solishtirish
+  navbatdagi yozuvni "yetishmayapti" deb qo'shadi, keyin navbat yana
+  qo'shadi → dublikat.
+- **Import kodi `logEntry(db, entry, { notifyTelegram: false })`
+  ishlatishi SHART** — aks holda edutizim tarixini yuklashda guruhga
+  minglab xabar ketadi.
+- **`SYNC_ENABLED=false`** — butun modul jim turadi, kassa avvalgidek
+  ishlayveradi. Sinxron buzilsa ham to'lov qabul qilish to'xtamaydi.
+- **`_` bilan boshlangan papka Next'da route bo'lmaydi** (private folder).
+  `app/api/sync/_selftest` 404 bergani shundan edi.

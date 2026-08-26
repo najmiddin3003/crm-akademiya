@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import { classifyEntry, flushSoon } from "@/lib/sync/dispatch";
+import { enqueue } from "@/lib/sync/outbox";
 
 // POST /api/transaction-entries/:id/cancel — Kassalar sahifasidagi
 // tranzaksiya tafsilot oynasidagi "Tranzaksiyani bekor qilish". Faqat
@@ -58,6 +60,17 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   }
 
   await entriesCol.updateOne({ id: entryId }, { $set: { status: "cancelled" } });
+
+  // Sinxronizatsiya: Sheet'dagi qator "Bekor qilindi" bo'lib yangilanadi
+  // va guruhga ALOHIDA tuzatish xabari ketadi (eski xabar tahrirlanmaydi —
+  // guruhdagi odam eski xabarni qayta o'qimaydi, tuzatish oxirgi xabar
+  // bo'lib ko'rinishi kerak).
+  const kind = classifyEntry(entry);
+  if (kind) {
+    await enqueue(db, { kind, entryId, event: "cancelled", notifyTelegram: true });
+    after(() => flushSoon(db));
+  }
+
   const updated = await entriesCol.findOne({ id: entryId });
   const { _id, ...rest } = updated as TransactionEntry & { _id: unknown };
   return NextResponse.json({ ok: true, entry: rest });

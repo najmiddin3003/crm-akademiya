@@ -115,6 +115,15 @@ export async function ensureIndexes(): Promise<Db> {
     // so'rov ketadi (app/api/transaction-entries/route.ts).
     await db.collection("transaction_entries").createIndex({ studentName: 1, date: -1 });
     await db.collection("transaction_entries").createIndex({ moderator: 1, date: -1 });
+    // Moliya > Sinxronizatsiya (lib/sync). `sync_outbox` — Google Sheets va
+    // Telegram'ga yetkazib berish navbati. Unikal indeks ENG MUHIMI: u
+    // bitta yozuvning bitta hodisasi ikki marta navbatga tushishiga yo'l
+    // qo'ymaydi, ya'ni jadvalda dublikat qator, guruhda takroriy xabar
+    // paydo bo'lmaydi (tugma ikki marta bosilsa ham).
+    await db.collection("sync_outbox").createIndex({ kind: 1, entryId: 1, event: 1 }, { unique: true });
+    // Yuborishga tayyorlarini tanlash uchun (status + kutish vaqti).
+    await db.collection("sync_outbox").createIndex({ status: 1, nextAttemptAt: 1 });
+    await db.collection("sync_runs").createIndex({ id: 1 }, { unique: true });
     await db.collection("planned_expenses").createIndex({ id: 1 }, { unique: true });
     await db.collection("finance_contracts").createIndex({ id: 1 }, { unique: true });
     await db.collection("turnstile_io").createIndex({ id: 1 }, { unique: true });
