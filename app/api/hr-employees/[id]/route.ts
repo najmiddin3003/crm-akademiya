@@ -46,6 +46,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   for (const k of ["aktivOq", "groups"] as const) {
     if (Number.isFinite(Number(body[k]))) set[k] = Number(body[k]);
   }
+  // Xodimga biriktirilgan soliq turlari (Boshqaruv → Xodimlar). Faqat
+  // haqiqiy sonlar o'tadi va takrorlar tashlanadi — noto'g'ri qiymat
+  // kelib qolsa soliq jimgina ikki marta hisoblanib ketardi.
+  if (body.taxIds !== undefined) {
+    set.taxIds = Array.isArray(body.taxIds)
+      ? [...new Set(body.taxIds.map(Number).filter((n) => Number.isFinite(n) && n > 0))]
+      : [];
+  }
   // Ish haqi — POST bilan bir xil tozalagichdan o'tadi (lib/hrEmployees.ts).
   if (body.branchAssignments !== undefined) {
     set.branchAssignments = sanitizeAssignments(body.branchAssignments);

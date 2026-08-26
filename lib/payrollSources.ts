@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
 import { payrollMonthKey, payrollPeriod, prevMonthKey, prevMonthName, type EmployeePayroll, type PayrollPeriod } from "@/lib/salary";
+import { loadTaxRules } from "@/lib/taxes";
 
 // Oylik hisobiga kiradigan HAQIQIY manbalar. Ilgari bu yig'ish uch joyda
 // (employees-payroll, salary-runs, Xodimlar ro'yxati) takrorlanardi va har
@@ -137,7 +138,14 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod): Promise<Map<numbe
     for (const it of (run?.items ?? []) as { employeeId?: number; amount?: number }[]) {
       const id = Number(it?.employeeId);
       const amount = Number(it?.amount);
-      if (!Number.isFinite(id) || !Number.isFinite(amount) || amount === 0) continue;
+      // NOL QIYMAT HAM YOZILADI. Ilgari bu yerda `amount === 0` ni tashlab
+      // yuboradigan shart turardi va u endi ZARARLI: chiqarish pulni
+      // haqiqatan to'lagandan keyin to'liq yopilgan xodimda qoldiq aynan
+      // 0 bo'ladi (app/api/salary-runs/route.ts → `amount: empDue - empPaid`).
+      // Shart qolsa, o'sha oydagi AVVALGI chiqarishda yozilgan manfiy qoldiq
+      // (xodim qarzi) map'da qolib ketardi va allaqachon yopilgan qarz
+      // keyingi oy oyligidan IKKINCHI marta ushlab qolinardi.
+      if (!Number.isFinite(id) || !Number.isFinite(amount)) continue;
       map.set(id, amount);
     }
   }
@@ -151,7 +159,7 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod): Promise<Map<numbe
  */
 export async function buildPayrollRows(db: Db): Promise<EmployeePayroll[]> {
   const p = payrollPeriod();
-  const [employees, bonusRows, penaltyRows, paidBy, percentByTier, carryBy, collectedBy] = await Promise.all([
+  const [employees, bonusRows, penaltyRows, paidBy, percentByTier, carryBy, collectedBy, taxRules] = await Promise.all([
     db.collection<HrEmployee>("hr_employees").find({}).sort({ id: 1 }).toArray(),
     db.collection("bonuses").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
     db.collection("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
@@ -159,9 +167,12 @@ export async function buildPayrollRows(db: Db): Promise<EmployeePayroll[]> {
     loadPercentByTier(db),
     loadCarryOver(db, p),
     loadCollectedByTeacher(db, payrollMonthKey(p)),
+    loadTaxRules(db),
   ]);
 
   const prevMonth = prevMonthName(p);
+  // Soliq qoidalari id bo'yicha — har bir xodim o'ziga biriktirilganini oladi.
+  const taxById = new Map(taxRules.map((r) => [r.id, r]));
   const sumFor = (rows: { recipientName?: string; amount?: number }[], k: string) =>
     rows.filter((r) => nameKey(r.recipientName) === k).reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
@@ -173,6 +184,9 @@ export async function buildPayrollRows(db: Db): Promise<EmployeePayroll[]> {
     const percent = resolvePercent(emp.percent, percentByTier);
     const carryOver = carryBy.get(emp.id) ?? 0;
     const collected = collectedBy.get(k) ?? 0;
+    const empTaxRules = (Array.isArray(emp.taxIds) ? emp.taxIds : [])
+      .map((id) => taxById.get(Number(id)))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
 
     // Ikki xil ish haqi bo'lishi mumkin va ikkalasi ham SOZLAMA hisoblanadi:
     //   • oklad — xodim kartasidagi filial bo'yicha ish haqi,
@@ -202,6 +216,11 @@ export async function buildPayrollRows(db: Db): Promise<EmployeePayroll[]> {
         carryOver > 0 ? `${prevMonth} oyidan qolgan`
         : carryOver < 0 ? `${prevMonth} oyidan qarzdorlik`
         : "",
+      // Soliq faqat xodimga ATAYLAB biriktirilgan turlar bo'yicha
+      // hisoblanadi. Sozlamalarda o'chirilgan yoki o'chirib tashlangan
+      // qoida `taxById` da bo'lmaydi va o'z-o'zidan tushib qoladi.
+      taxable: empTaxRules.length > 0,
+      taxRules: empTaxRules,
     } satisfies EmployeePayroll;
   });
 }

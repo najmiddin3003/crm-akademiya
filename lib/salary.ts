@@ -1,3 +1,5 @@
+import type { TaxRule } from "@/lib/taxes";
+
 // Moliya → Oylik chiqarish. MongoDB `salary_runs` kolleksiyasi — har bir
 // yozuv bitta "oylik chiqarish" partiyasi (tanlangan xodimlar bo'yicha
 // umumlashtirilgan hisobot, audit-log — o'chirilmaydi/tahrirlanmaydi).
@@ -17,7 +19,58 @@ export interface SalaryRunItem {
    *            uni qoplagan tushum keyin bekor qilingan).
    * Ikkala tomon ham keyingi oyga o'tadi (lib/payrollSources.ts →
    * loadCarryOver).
+   *
+   * DIQQAT: bu TO'LOVDAN KEYINGI qoldiq. Chiqarish paytida pul kassadan
+   * haqiqatan chiqarilgani uchun to'liq to'langan xodimda u 0 bo'ladi —
+   * aks holda allaqachon to'langan summa keyingi oyga "qarz" bo'lib
+   * o'tib ketardi.
    */
+  amount: number;
+  /** Shu chiqarishda xodimga kassadan chiqarilgan summa. */
+  paid?: number;
+  /**
+   * CHEK uchun kesim — chiqarish PAYTIDAGI holat, muzlatilgan.
+   *
+   * Nima uchun saqlanadi: chek qayta hisoblanmasligi kerak. Xodimning
+   * oyligi, foizi yoki soliq ro'yxati keyin o'zgarsa ham, berilgan chekdagi
+   * raqamlar o'zgarmasligi shart — aks holda bir marta bosib berilgan
+   * qog'oz bilan ekrandagi chek bir-biriga mos kelmay qolardi.
+   * Eski yozuvlarda yo'q.
+   */
+  receipt?: SalaryReceipt;
+}
+
+/** Bitta xodimning bitta chiqarishdagi to'liq hisob-kitobi (chek uchun). */
+export interface SalaryReceipt {
+  turi?: string;
+  salaryType?: "foiz" | "fixed";
+  /** Oklad (qat'iy maosh) yoki foiz asosi. */
+  fixedSalary?: number;
+  percent?: number;
+  /** Shu oyda o'qituvchi orqali tushgan pul — foizli hisob asosi. */
+  collected?: number;
+  /** Davr: nechanchi kun / oyda nechta kun (oklad pro-rata uchun). */
+  day?: number;
+  daysIn?: number;
+  /** Asos (oklad pro-rata yoki tushumdan foiz). */
+  base?: number;
+  bonus?: number;
+  jarima?: number;
+  /** Hisoblangan: asos + bonus − jarima. */
+  gross?: number;
+  taxLines?: TaxLine[];
+  tax?: number;
+  paidAvans?: number;
+  /** Shu oyda AVVAL chiqarilgan oylik (bu chiqarishgacha). */
+  paidOylik?: number;
+  carryOver?: number;
+}
+
+/** Chekdagi bitta soliq qatori. */
+export interface TaxLine {
+  name: string;
+  /** "12%" yoki "qat'iy" — foydalanuvchiga ko'rsatiladigan izoh. */
+  detail: string;
   amount: number;
 }
 
@@ -31,7 +84,29 @@ export interface SalaryRun {
   avans: number;
   jarima: number;
   akladi: number;
+  /** Shu chiqarishda ushlab qolingan soliq (barcha xodimlar bo'yicha). */
+  soliq?: number;
   tolanmagan: number;
+  /**
+   * Shu chiqarishda kassadan HAQIQATAN chiqarilgan summa.
+   *
+   * Ilgari "Oylik chiqarish" faqat hisobot yozardi — pul hech qayerdan
+   * chiqmasdi va shu sababli xodimning "To'langan oylik"i 0, chiqarishning
+   * "To'lanmagan"i esa to'liq summa bo'lib qolaverardi. Endi chiqarish
+   * kassadan chiqim yozuvlarini ham yaratadi va shu maydon o'sha summani
+   * qayd etadi. Eski yozuvlarda yo'q — 0 deb o'qiladi.
+   */
+  tolangan?: number;
+  /** Pul qaysi kassadan va qaysi to'lov turi bilan chiqqani (izlanish uchun). */
+  cashboxId?: number;
+  cashboxName?: string;
+  /**
+   * To'lov turining BARQAROR kaliti — bekor qilishda kassaning qaysi
+   * `methodTotals` maydonini tiklash kerakligini shu aniqlaydi. `methodLabel`
+   * esa faqat ko'rsatish uchun va Sozlamalardan o'zgartirilishi mumkin.
+   */
+  method?: string;
+  methodLabel?: string;
   /**
    * Xodimlarning akademiyaga qarzdorligi (manfiy qoldiqlar yig'indisi,
    * musbat son sifatida). Eski yozuvlarda yo'q — 0 deb o'qiladi.
@@ -135,6 +210,17 @@ export interface EmployeePayroll {
    */
   carryOver: number;
   carryNote: string;
+  /**
+   * Bu xodimga soliq solinadimi (Boshqaruv → Xodimlar dagi tugmacha,
+   * `hr_employees.taxIds` bo'sh emasmi). HOSILA qiymat: quyidagi `taxRules`
+   * bo'sh bo'lmasa rost. Soliq HECH KIMGA o'z-o'zidan qo'llanmaydi.
+   */
+  taxable: boolean;
+  /**
+   * SHU xodimga biriktirilgan soliq qoidalari — ro'yxatdagi hammasi emas.
+   * Sozlamalarda o'chirilgan yoki nofaol qilingan qoida bu yerga tushmaydi.
+   */
+  taxRules: TaxRule[];
 }
 
 /** Shu oy uchun hisoblangan asos (oklad pro-rata yoki tushumdan foiz). */
@@ -155,13 +241,47 @@ export function payrollPaid(e: EmployeePayroll): number {
 }
 
 /**
- * Qolgan qoldiq, ishorali: hisoblangan + o'tgan oydan − to'langanlar.
+ * Xodimdan ushlab qolinadigan soliq qatorlari.
+ *
+ * • FOIZ — hisoblangan oylikdan (asos + bonus − jarima) olinadi, ya'ni
+ *   oklad pro-rata bo'lgani uchun soliq ham o'z-o'zidan davrga mos keladi.
+ * • ANIQ SUMMA — to'liq olinadi, oy o'rtasida ham bo'linmaydi: sozlamada
+ *   "aniq harajat" deb yozilgan raqam aynan shu holicha ushlanadi.
+ *
+ * Kartasida soliq YOQILMAGAN xodimda bo'sh ro'yxat qaytadi.
+ */
+export function payrollTaxLines(e: EmployeePayroll, p: PayrollPeriod): TaxLine[] {
+  if (!e.taxable) return [];
+  const gross = payrollEarned(e, p);
+  return e.taxRules.map((r) =>
+    r.type === "percent"
+      ? { name: r.name, detail: `${r.value}%`, amount: Math.round((gross * r.value) / 100) }
+      : { name: r.name, detail: "qat'iy", amount: Math.round(r.value) },
+  );
+}
+
+/**
+ * Umumiy soliq. HISOBLANGAN OYLIKDAN OSHMAYDI: aks holda sof oylik manfiy
+ * chiqib, u "xodim qarzdorligi" bo'lib keyingi oyga o'tib ketardi — soliq
+ * esa xodimning qarzi emas. Chegara urgan holat interfeysda ko'rinadi
+ * (soliq = hisoblangan, qolgan = 0).
+ */
+export function payrollTax(e: EmployeePayroll, p: PayrollPeriod): number {
+  const total = payrollTaxLines(e, p).reduce((s, l) => s + l.amount, 0);
+  return Math.min(total, Math.max(payrollEarned(e, p), 0));
+}
+
+/**
+ * Qolgan qoldiq, ishorali: hisoblangan − soliq + o'tgan oydan − to'langanlar.
  * Manfiy chiqishi MUMKIN va bu xato emas: xodim hisoblangan oyligidan
  * ko'proq olgan (masalan, avans berilgan, keyin uni qoplagan o'quvchi
  * to'lovi bekor qilingan) — o'sha farq uning qarzdorligi.
+ *
+ * SOLIQ shu yerda ayriladi, ya'ni kassadan chiqadigan summa allaqachon
+ * sof oylik bo'ladi (Moliya → Oylik chiqarish shu qiymatni to'laydi).
  */
 export function payrollDue(e: EmployeePayroll, p: PayrollPeriod): number {
-  return payrollEarned(e, p) + e.carryOver - payrollPaid(e);
+  return payrollEarned(e, p) - payrollTax(e, p) + e.carryOver - payrollPaid(e);
 }
 
 /**

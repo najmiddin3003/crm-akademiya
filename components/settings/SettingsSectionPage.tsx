@@ -16,7 +16,7 @@ import ModuleNotEnabledTab from "./ModuleNotEnabledTab";
 import { loadMonthlyPercentStaffCounts } from "./monthlyPercentStaff";
 import SettingsNote from "./SettingsNote";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { LEAVE_REASON_TYPES } from "@/lib/settingsLists";
+import { LEAVE_REASON_TYPES, TAX_TYPES } from "@/lib/settingsLists";
 import {
   USER_FILTER_SETTINGS_GROUPS,
   APP_CONTENT_GROUPS,
@@ -184,6 +184,24 @@ const BUILT: Record<string, () => ReactNode> = {
         afterKey: "name",
         load: loadMonthlyPercentStaffCounts,
       }}
+    />
+  ),
+
+  // Soliq. Har bir yozuv — bitta soliq turi: yo FOIZ (hisoblangan oylikdan),
+  // yo ANIQ SUMMA. Faqat "Faol" yozuvlar hisobga olinadi va faqat kartasida
+  // soliq YOQILGAN xodimga qo'llanadi (Boshqaruv → Xodimlar dagi tugmacha).
+  // Hisob-kitob: lib/taxes.ts va lib/salary.ts → payrollTaxLines.
+  "finance:tax": () => (
+    <SettingsListTab
+      kind="taxes"
+      addLabel="Soliq qo'shish"
+      fields={[
+        { key: "name", label: "Soliq nomi", input: "text" },
+        { key: "taxType", label: "Turi", input: "select", options: [...TAX_TYPES] },
+        { key: "percent", label: "Foiz", input: "text", suffix: "%" },
+        { key: "amount", label: "Aniq summa", input: "text", suffix: "UZS" },
+        { key: "active", label: "Holati", input: "toggle" },
+      ]}
     />
   ),
 

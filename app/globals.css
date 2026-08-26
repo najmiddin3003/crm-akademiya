@@ -10283,3 +10283,24 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
 
 
 
+
+/* ============================================================
+   OYLIK CHEKI (Moliya → Oylik chiqarish → Chiqarishlar tarixi)
+   ============================================================
+   Chekni chop etganda qog'ozga FAQAT chek tushishi kerak: sidebar,
+   modal foni va tugmalar emas. Loyihadagi mavjud naqsh (#rh-print-area,
+   #rpe-print-area) bilan bir xil — hammasi yashiriladi, so'ng chek
+   qaytarib ko'rsatiladi. */
+@media print {
+  body * { visibility: hidden; }
+  #salary-receipt-print, #salary-receipt-print * { visibility: visible; }
+  #salary-receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 16px 20px;
+  }
+  /* Chek ichidagi tugmalar va modal boshqaruvi qog'ozga tushmasin. */
+  .no-print { display: none !important; }
+}

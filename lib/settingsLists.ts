@@ -47,7 +47,18 @@ export interface SettingsListItem {
   showInInvestment?: boolean; // "Sarmoya va dividentda ko'rsatish"
   halfRate?: string; // Grading tizimi — yarim stavka
   fullRate?: string; // Grading tizimi — bir stavka
+
+  // Soliq (Moliya → Soliq). Bitta yozuv — bitta soliq turi.
+  //   taxType = "Foiz"       → `percent` maydoni ishlatiladi
+  //   taxType = "Aniq summa" → `amount` maydoni ishlatiladi
+  // Ikkalasi ham matn: ro'yxatda ular ustida hisob-kitob qilinmaydi,
+  // oylik hisobi esa lib/taxes.ts orqali songa aylantiradi.
+  taxType?: string;
+  amount?: string;
 }
+
+/** Soliq yozuvidagi `taxType` qiymatlari — forma va hisob shu yerdan oladi. */
+export const TAX_TYPES = ["Foiz", "Aniq summa"] as const;
 
 export const LEAVE_REASON_TYPES = ["Ketdi", "Bekor qilindi", "Davomat"];
 
@@ -81,6 +92,8 @@ export const LIST_FIELD_TYPES = {
   showInInvestment: "boolean",
   halfRate: "string",
   fullRate: "string",
+  taxType: "string",
+  amount: "string",
 } as const;
 
 export type ListFieldKey = keyof typeof LIST_FIELD_TYPES;
@@ -120,6 +133,7 @@ export const SETTINGS_LIST_KINDS = {
   "student-categories": "settings_student_categories",
   "sms-devices": "settings_sms_devices",
   "lead-colors": "settings_lead_colors",
+  taxes: "settings_taxes",
 } as const;
 
 export type SettingsListKind = keyof typeof SETTINGS_LIST_KINDS;

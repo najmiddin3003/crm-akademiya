@@ -2,18 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, ReceiptText, Search, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import type { SalaryRun } from "@/lib/salary";
+import SalaryReceiptModal from "./SalaryReceiptModal";
+import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import { UZ_MONTHS, payrollPeriod, payrollPeriodLabel } from "@/lib/salary";
 
-// Moliya → Oylik chiqarish (/finance-payroll). Har bir qator — bitta
-// o'tkazilgan "oylik chiqarish" partiyasining umumlashtirilgan hisoboti
-// (/api/salary-runs). AMALLAR ustunida ko'rish (per-xodim breakdown) va
-// o'chirish (tasdiqlash bilan) mavjud — "Oylik chiqarish" tugmasi xodim
-// tanlash sahifasiga o'tadi (/finance-payroll/create).
+// Moliya → Oylik chiqarish → Chiqarishlar tarixi (/finance-payroll/history).
+// Har bir qator — bitta o'tkazilgan "oylik chiqarish" partiyasining
+// umumlashtirilgan hisoboti (/api/salary-runs). AMALLAR ustunida ko'rish
+// (per-xodim breakdown) va o'chirish (tasdiqlash bilan) mavjud.
+//
+// Bu sahifa ilgari bo'limning bosh sahifasi edi; endi bosh sahifada oylik
+// HISOB-KITOBI turadi (/finance-payroll), tarixga esa o'sha yerdagi
+// "Chiqarishlar tarixi" tugmasi orqali kelinadi.
 
 function fmtSum(n: number): string {
   return Math.round(n).toLocaleString("ru-RU") + " so'm";
@@ -42,6 +46,14 @@ function debtOf(r: SalaryRun): number {
   return (r.items ?? []).reduce((s, it) => s + Math.max(-(Number(it.amount) || 0), 0), 0);
 }
 
+// Shu chiqarishda kassadan HAQIQATAN chiqarilgan summa. Bu maydon
+// qo'shilishidan oldingi chiqarishlar umuman pul chiqarmagan (faqat
+// hisobot yozilardi) — ularda 0, ya'ni to'lanmagan bo'lib qolaveradi.
+function paidOf(r: SalaryRun): number {
+  if (typeof r.tolangan === "number") return r.tolangan;
+  return (r.items ?? []).reduce((s, it) => s + (Number(it.paid) || 0), 0);
+}
+
 function periodFor(r: SalaryRun) {
   if (r.month) {
     const [y, m] = r.month.split("-").map(Number);
@@ -63,6 +75,8 @@ export default function SalaryRunsPage() {
   const [detail, setDetail] = useState<SalaryRun | null>(null);
   const [confirmDel, setConfirmDel] = useState<SalaryRun | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Ochilgan chek: qaysi chiqarishning qaysi xodimi.
+  const [receipt, setReceipt] = useState<{ run: SalaryRun; item: SalaryRunItem } | null>(null);
   // Xodim ismlari — tafsilot oynasidagi kesim uchun. Yangi chiqarishlar
   // ismni o'z ichida saqlaydi (audit-log), eski yozuvlarda esa faqat
   // employeeId bor, shuning uchun ro'yxatdan qidiriladi.
@@ -122,7 +136,11 @@ export default function SalaryRunsPage() {
         return;
       }
       setRows((prev) => prev.filter((r) => r.id !== confirmDel.id));
-      showSuccess("Oylik chiqarish o'chirildi");
+      showSuccess(
+        data.refunded > 0
+          ? `Oylik chiqarish o'chirildi — ${fmtSum(data.refunded)} kassaga qaytarildi`
+          : "Oylik chiqarish o'chirildi",
+      );
       setConfirmDel(null);
     } catch {
       showError("Serverga ulanib bo'lmadi");
@@ -135,12 +153,14 @@ export default function SalaryRunsPage() {
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center gap-2">
+        {/* Bitta havola yetarli: hisob-kitob sahifasi ham "orqaga", ham
+            "yangi chiqarish" manzili — ikkitasi bir joyga olib borardi. */}
         <Link
-          href="/finance-payroll/create"
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm w-fit"
+          href="/finance-payroll"
+          className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium w-fit"
         >
-          <Plus className="w-4 h-4" />
-          Oylik chiqarish
+          <ArrowLeft className="w-4 h-4" />
+          Oylik hisob-kitobga qaytish
         </Link>
         <div className="md:ml-auto flex flex-col sm:flex-row gap-2">
           <div className="relative">
@@ -189,7 +209,9 @@ export default function SalaryRunsPage() {
                 <th className="text-right px-3 py-3 whitespace-nowrap">Bonus</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Avans</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">Soliq</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Akladi</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;langan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;lanmagan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Qarzdorlik</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>
@@ -208,7 +230,21 @@ export default function SalaryRunsPage() {
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(r.bonus)}</span> : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.avans > 0 ? <span className="text-amber-600 font-medium">{fmtNum(r.avans)}</span> : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(r.jarima)}</span> : <span className="text-muted-foreground">0</span>}</td>
+                    {/* Soliq — shu chiqarishda ushlab qolingan summa.
+                        Maydon qo'shilishidan oldingi yozuvlarda yo'q. */}
+                    <td className="px-3 py-3 text-right text-[13px] tabular-nums">
+                      {(r.soliq ?? 0) > 0
+                        ? <span className="text-rose-600 font-medium">{fmtNum(r.soliq ?? 0)}</span>
+                        : <span className="text-muted-foreground">0</span>}
+                    </td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.akladi > 0 ? fmtNum(r.akladi) : <span className="text-muted-foreground">0</span>}</td>
+                    {/* Kassadan chiqarilgan summa — chiqarish "to'langan"
+                        ekanini aynan shu ustun ko'rsatadi. */}
+                    <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
+                      {paidOf(r) > 0
+                        ? <span className="text-emerald-600">{fmtSum(paidOf(r))}</span>
+                        : <span className="text-muted-foreground">0</span>}
+                    </td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       <span className={r.tolanmagan > 0 ? "text-rose-600" : "text-muted-foreground"}>{fmtSum(r.tolanmagan)}</span>
                     </td>
@@ -246,7 +282,7 @@ export default function SalaryRunsPage() {
               })}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={14} className="px-3 py-10 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "Ma'lumot topilmadi"}
                   </td>
                 </tr>
@@ -265,11 +301,16 @@ export default function SalaryRunsPage() {
             <h3 className="text-[16px] font-semibold mb-1">Oylik chiqarish #{detail.id}</h3>
             <div className="text-[12.5px] text-muted-foreground mb-4">
               {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month)}`} · {detail.employeeCount} ta xodim
+              {detail.cashboxName && ` · ${detail.cashboxName}${detail.methodLabel ? ` (${detail.methodLabel})` : ""}`}
             </div>
             <div className="grid grid-cols-2 gap-3 text-[13px]">
-              <div className="rounded-lg border border-border p-3">
+              <div className="col-span-2 rounded-lg border border-border p-3">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Oylik</div>
                 <div className="mt-1 font-semibold tabular-nums">{fmtSum(detail.oylik)}</div>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">To&apos;langan</div>
+                <div className="mt-1 font-semibold tabular-nums text-emerald-600">{fmtSum(paidOf(detail))}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">To&apos;lanmagan</div>
@@ -290,6 +331,12 @@ export default function SalaryRunsPage() {
               <div className="rounded-lg border border-border p-3">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Akladi</div>
                 <div className="mt-1 tabular-nums">{fmtNum(detail.akladi)}</div>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Soliq</div>
+                <div className={`mt-1 tabular-nums ${(detail.soliq ?? 0) > 0 ? "text-rose-600" : ""}`}>
+                  {fmtNum(detail.soliq ?? 0)}
+                </div>
               </div>
               <div className="col-span-2 rounded-lg border border-border p-3">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Xodim qarzdorligi</div>
@@ -312,15 +359,32 @@ export default function SalaryRunsPage() {
                   {detail.items!.map((it) => {
                     const name = it.name || empNames.get(it.employeeId) || `Xodim #${it.employeeId}`;
                     const debt = Math.max(-it.amount, 0);
+                    const paid = Number(it.paid) || 0;
                     return (
                       <div key={it.employeeId} className="flex items-center justify-between gap-3 px-3 py-2">
+                        {/* Chek — shu xodimning oylik hisob-kitobi to'liq
+                            ko'rinadigan va chop etsa bo'ladigan oyna. */}
+                        <button
+                          type="button"
+                          onClick={() => setReceipt({ run: detail, item: it })}
+                          className="h-7 w-7 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                          title={`${name} — chekni ko'rish`}
+                        >
+                          <ReceiptText className="w-4 h-4" />
+                        </button>
                         <Link
                           href={`/management-xodimlar/${it.employeeId}`}
-                          className="text-[13px] font-medium text-primary hover:underline truncate"
+                          className="text-[13px] font-medium text-primary hover:underline truncate mr-auto"
                         >
                           {name}
                         </Link>
-                        {debt > 0 ? (
+                        {/* Chiqarilgan pul birinchi o'rinda — qolgan qoldiq
+                            yoki qarz esa yonida izoh bo'lib turadi. */}
+                        {paid > 0 ? (
+                          <span className="text-[13px] tabular-nums font-semibold text-emerald-600 whitespace-nowrap">
+                            {fmtSum(paid)} <span className="font-normal text-muted-foreground">to&apos;landi</span>
+                          </span>
+                        ) : debt > 0 ? (
                           <span className="text-[13px] tabular-nums font-semibold text-amber-600 whitespace-nowrap">
                             −{fmtSum(debt)} <span className="font-normal text-muted-foreground">qarzdor</span>
                           </span>
@@ -361,6 +425,15 @@ export default function SalaryRunsPage() {
             <p className="text-center text-[12.5px] text-muted-foreground mt-1">
               #{confirmDel.id} · {datePart(confirmDel.createdAt)} · {fmtSum(confirmDel.oylik)}
             </p>
+            {/* O'chirish endi pulni ham qaytaradi — foydalanuvchi buni
+                oldindan bilishi kerak. */}
+            {paidOf(confirmDel) > 0 && (
+              <p className="text-center text-[12.5px] text-amber-600 mt-2">
+                {`Chiqarilgan ${fmtSum(paidOf(confirmDel))}${
+                  confirmDel.cashboxName ? ` "${confirmDel.cashboxName}" kassasiga` : " kassaga"
+                } qaytariladi, tranzaksiyalar bekor qilingan deb belgilanadi.`}
+              </p>
+            )}
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={() => setConfirmDel(null)}
@@ -379,6 +452,16 @@ export default function SalaryRunsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Chek — tafsilot oynasi USTIDA ochiladi (z-[120]), shuning uchun
+          yopilganda foydalanuvchi yana xodimlar ro'yxatiga qaytadi. */}
+      {receipt && (
+        <SalaryReceiptModal
+          run={receipt.run}
+          item={receipt.item}
+          onClose={() => setReceipt(null)}
+        />
       )}
     </div>
   );

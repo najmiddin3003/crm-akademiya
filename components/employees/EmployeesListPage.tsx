@@ -11,6 +11,8 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import AddEmployeeModal from "./AddEmployeeModal";
+import EmployeeToggle from "./EmployeeToggle";
+import EmployeeTaxModal from "./EmployeeTaxModal";
 import type { HrEmployeeFull } from "./employeeExtras";
 import type { Group } from "@/lib/groups";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
@@ -107,9 +109,8 @@ const IMPORT_IDX = { name: 1, gender: 2, turi: 5, filial: 6, phone: 7, kurs: 8, 
 // qayerda o'qilmasdi (strelka chizilardi, bosilganda hech narsa bo'lmasdi).
 // "№" saralanmaydi — u qator raqami, ya'ni tartibning O'ZI.
 const SORTABLE = new Set([
-  "name", "gender", "aktivOq", "groups", "turi", "ishTuri", "jamiOylik", "jamiAvans",
-  "tolanganOylik", "qolganOylik", "filial", "phone", "kurs",
-  "created", "archReason", "archDate",
+  "name", "gender", "aktivOq", "groups", "turi", "ishTuri", "filial", "phone", "kurs",
+  "created", "archReason", "archDate", "soliq",
 ]);
 type SortDir = "asc" | "desc";
 
@@ -131,7 +132,6 @@ interface SalaryView {
   fixedSalary: number;
   jamiOylik: number;
   jamiAvans: number;
-  tolanganOylik: number;
   qolganOylik: number;
 }
 
@@ -148,7 +148,6 @@ function salaryFor(
     fixedSalary: row.fixedSalary,
     jamiOylik: payrollEarned(row, p),
     jamiAvans: row.paidAvans,
-    tolanganOylik: row.paidOylik,
     qolganOylik: payrollDue(row, p),
   };
 }
@@ -177,6 +176,8 @@ export default function EmployeesListPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  // Soliq turlarini tanlash oynasi ochilgan xodim.
+  const [taxTarget, setTaxTarget] = useState<HrEmployeeFull | null>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
 
   const [page, setPage] = useState(1);
@@ -307,6 +308,9 @@ export default function EmployeesListPage() {
         case "filial": return (e.filial || "").toLowerCase() || null;
         case "phone": return e.phone || null;
         case "kurs": return (e.kurs || "").toLowerCase() || null;
+        // Soliq — mantiqiy ustun; yoqilganlar bir joyga to'planishi uchun
+        // 1/0 sifatida saralanadi.
+        case "soliq": return (e.taxIds ?? []).length;
         case "created": return dateVal(e.created);
         case "archDate": return dateVal(e.archDate);
         case "archReason": return (e.archReason || "").toLowerCase() || null;
@@ -314,10 +318,6 @@ export default function EmployeesListPage() {
           const s = salaryFor(e, period, payrollById);
           if (!s) return null;
           if (sortKey === "ishTuri") return s.salaryType === "foiz" ? `Foiz ${String(s.percent).padStart(3, "0")}` : "Oklad";
-          if (sortKey === "jamiOylik") return s.jamiOylik;
-          if (sortKey === "jamiAvans") return s.jamiAvans;
-          if (sortKey === "tolanganOylik") return s.tolanganOylik;
-          if (sortKey === "qolganOylik") return s.qolganOylik;
           return null;
         }
       }
@@ -422,6 +422,45 @@ export default function EmployeesListPage() {
     setMoreOpen(false);
   }
 
+  /**
+   * Xodimga biriktirilgan soliq turlarini saqlaydi.
+   *
+   * Optimistik: qator darhol yangilanadi, so'rov muvaffaqiyatsiz bo'lsa
+   * eski holatga qaytariladi va xato ko'rsatiladi — aks holda foydalanuvchi
+   * yoqilgan deb o'ylab qolardi.
+   */
+  async function saveTaxIds(e: HrEmployeeFull, next: number[]) {
+    const before = e.taxIds ?? [];
+    setRows((prev) => prev.map((r) => (r.id === e.id ? { ...r, taxIds: next } : r)));
+    try {
+      const res = await fetch(`/api/hr-employees/${e.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taxIds: next }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Saqlanmadi");
+      showSuccess(
+        next.length > 0
+          ? `${e.name} — ${next.length} ta soliq turi biriktirildi`
+          : `${e.name} — soliq o'chirildi`,
+      );
+    } catch (err) {
+      setRows((prev) => prev.map((r) => (r.id === e.id ? { ...r, taxIds: before } : r)));
+      showError(err instanceof Error ? err.message : "Saqlanmadi");
+    }
+  }
+
+  /**
+   * Tugmacha bosilganda: O'CHIQ bo'lsa qaysi soliq turlari qo'llanishini
+   * SO'RAYMIZ, yoqilgan bo'lsa darhol o'chiramiz. Turlarni keyin
+   * o'zgartirish uchun tugmacha yonidagi izohga bosiladi.
+   */
+  function onTaxToggle(e: HrEmployeeFull, next: boolean) {
+    if (next) setTaxTarget(e);
+    else saveTaxIds(e, []);
+  }
+
   function renderCell(e: HrEmployeeFull, colId: string, i: number) {
     switch (colId) {
       case "num": return <span className="text-muted-foreground tabular-nums">{start + i + 1}</span>;
@@ -458,33 +497,38 @@ export default function EmployeesListPage() {
           </span>
         );
       }
-      case "jamiOylik": {
-        const s = salaryFor(e, period, payrollById);
-        if (!s) return <NotConfigured />;
-        return s.jamiOylik > 0
-          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(s.jamiOylik)}</span>
-          : <span className="tabular-nums text-muted-foreground">0</span>;
-      }
-      case "jamiAvans": {
-        const s = salaryFor(e, period, payrollById);
-        if (!s) return <NotConfigured />;
-        return s.jamiAvans > 0
-          ? <span className="tabular-nums text-[13px] font-medium text-amber-600">{fmtNum(s.jamiAvans)}</span>
-          : <span className="tabular-nums text-muted-foreground">0</span>;
-      }
-      case "tolanganOylik": {
-        const s = salaryFor(e, period, payrollById);
-        if (!s) return <NotConfigured />;
-        return s.tolanganOylik > 0
-          ? <span className="tabular-nums text-[13px]">{fmtNum(s.tolanganOylik)}</span>
-          : <span className="tabular-nums text-muted-foreground">0</span>;
-      }
-      case "qolganOylik": {
-        const s = salaryFor(e, period, payrollById);
-        if (!s) return <NotConfigured />;
-        return s.qolganOylik !== 0
-          ? <span className="tabular-nums text-[13px] font-semibold text-amber-600">{fmtNum(s.qolganOylik)}</span>
-          : <span className="tabular-nums text-muted-foreground">0</span>;
+      // Soliq tugmachasi. Bosilishi bilan bazaga yoziladi (PATCH), lekin
+      // ekranda DARHOL o'zgaradi — javobni kutib turish tugmachani
+      // "tormozlab" ko'rsatardi. Xato bo'lsa holat orqaga qaytariladi.
+      //
+      // stopPropagation SHART: qatorning o'zida `onClick` bor va u xodim
+      // profiliga o'tkazadi. Usiz tugmachani bosgan odam soliqni yoqib,
+      // ayni paytda boshqa sahifaga uchib ketardi — natijani ko'rolmasdi.
+      case "soliq": {
+        const count = (e.taxIds ?? []).length;
+        return (
+          <span
+            className="inline-flex flex-col items-start gap-0.5"
+            onClick={(ev) => ev.stopPropagation()}
+            // Klaviatura bilan (Enter/Bo'shliq) bosilganda ham qator
+            // hodisasi ishga tushmasin.
+            onKeyDown={(ev) => ev.stopPropagation()}
+          >
+            <EmployeeToggle checked={count > 0} onChange={(v) => onTaxToggle(e, v)} />
+            {count > 0 && (
+              // Biriktirilgan turlarni KEYIN o'zgartirish yo'li: tugmachani
+              // bosish uni o'chiradi, shuning uchun tahrirlash shu yerda.
+              <button
+                type="button"
+                onClick={() => setTaxTarget(e)}
+                className="text-[11px] text-primary hover:underline whitespace-nowrap"
+                title="Soliq turlarini o'zgartirish"
+              >
+                {count} ta tur
+              </button>
+            )}
+          </span>
+        );
       }
       case "filial": return e.filial;
       case "phone": return <span className="tabular-nums text-[13px]">{e.phone}</span>;
@@ -764,6 +808,18 @@ export default function EmployeesListPage() {
         <AddEmployeeModal
           onClose={() => setAddOpen(false)}
           onCreated={(emp) => setRows((prev) => [emp, ...prev])}
+        />
+      )}
+
+      {taxTarget && (
+        <EmployeeTaxModal
+          employeeName={taxTarget.name}
+          selected={taxTarget.taxIds ?? []}
+          onClose={() => setTaxTarget(null)}
+          onSave={async (nextIds) => {
+            await saveTaxIds(taxTarget, nextIds);
+            setTaxTarget(null);
+          }}
         />
       )}
     </div>

@@ -36,6 +36,16 @@ export interface HrEmployee {
   photoUrl?: string;
   /** Belgilangan filiallar bo'yicha rol/jadval/ish haqi. */
   branchAssignments?: EmployeeBranchAssignment[];
+  /**
+   * Shu xodimga QAYSI soliq turlari qo'llanishi — Sozlamalar → Moliya →
+   * Soliq ro'yxatidagi yozuvlarning id'lari.
+   *
+   * Bo'sh yoki yo'q bo'lsa soliq umuman hisoblanmaydi. Ilgari bu yerda
+   * `taxable: boolean` turardi va yoqilgan xodimga ro'yxatdagi HAMMA faol
+   * qoida qo'llanardi — ya'ni bir xodimga faqat daromad solig'ini, boshqasiga
+   * esa yana INPS'ni biriktirib bo'lmasdi. Endi tanlov xodim kesimida.
+   */
+  taxIds?: number[];
 }
 
 /**

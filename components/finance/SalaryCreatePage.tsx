@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, DollarSign, History, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, DollarSign, History, RotateCcw, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import Select from "@/components/ui/Select";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import type { Cashbox } from "@/lib/cashboxes";
 import {
   payrollBase,
   payrollDebt,
@@ -14,10 +16,17 @@ import {
   payrollPaid,
   payrollPeriod,
   payrollPeriodLabel,
+  payrollTax,
+  payrollTaxLines,
   type EmployeePayroll,
 } from "@/lib/salary";
 
-// Moliya → Oylik chiqarish → xodim tanlash (/finance-payroll/create).
+// Moliya → Oylik chiqarish (/finance-payroll) — bo'limning BOSH sahifasi.
+//
+// Ilgari bosh sahifada chiqarishlar TARIXI turardi, hisob-kitob esa
+// /finance-payroll/create da edi. Amalda har kuni kerak bo'ladigani
+// hisob-kitob, tarixga esa kamdan-kam qaraladi — shu bois o'rin
+// almashtirildi: tarix endi /finance-payroll/history da.
 //
 // Har bir qator /api/salary-runs/employees-payroll'dan keladi va HAMMA
 // qiymat haqiqiy (lib/payrollSources.ts):
@@ -66,13 +75,18 @@ function StatCard({ label, value, hint, tone }: StatCardProps) {
 }
 
 export default function SalaryCreatePage() {
-  const router = useRouter();
   const { showSuccess, showError } = useToast();
+  const { active: paymentMethods } = usePaymentMethods();
   const [employees, setEmployees] = useState<EmployeePayroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Pul QAYSI kassadan chiqishi — oylik chiqarish haqiqiy chiqim yozuvlari
+  // yaratadi, shuning uchun kassa va to'lov turi tanlanishi shart.
+  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [cashboxId, setCashboxId] = useState<string>("");
+  const [method, setMethod] = useState<string>("");
   const [query, setQuery] = useState("");
   const [turiFilter, setTuriFilter] = useState<string>("all");
   const [hisoblash, setHisoblash] = useState<HisoblashFilter>("all");
@@ -94,6 +108,25 @@ export default function SalaryCreatePage() {
   }
   // Effekt tanasida setState chaqirilmaydi (`loading` boshlanishida true).
   useEffect(() => { fetchRows(); }, []);
+
+  // Kassalar — arxivdagilar tanlovga chiqmaydi. Bosh kassa sukut bo'yicha
+  // tanlanadi (odatda oylik shundan chiqariladi), lekin o'zgartirsa bo'ladi.
+  // Oylik chiqarilgandan keyin ham qayta o'qiladi: kassadagi qoldiq
+  // kamaygan bo'ladi va tanlov ro'yxatidagi summalar eskirmasligi kerak.
+  function loadCashboxes() {
+    return fetch("/api/cashboxes")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d?.ok) return;
+        const list = (d.cashboxes as Cashbox[]).filter((c) => !c.archived);
+        setCashboxes(list);
+        // Tanlov faqat BOSHIDA qo'yiladi — qayta yuklashda foydalanuvchi
+        // tanlagan kassa bosh kassaga qaytib ketmasin.
+        setCashboxId((cur) => cur || String((list.find((c) => c.isPrimary) ?? list[0])?.id ?? ""));
+      })
+      .catch(() => {});
+  }
+  useEffect(() => { loadCashboxes(); }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -151,13 +184,37 @@ export default function SalaryCreatePage() {
     return { hisoblangan, avans, tolangan, qolgan, otganOydan, qarzdorlik };
   }, [employees, period]);
 
+  // Sukut — ro'yxatdagi birinchi faol to'lov turi. Effektda setState
+  // qilinmaydi: qiymat shu yerda HOSILA sifatida chiqariladi, aks holda
+  // ro'yxat yuklangach ortiqcha qayta render bo'lardi.
+  const methodKey = method || paymentMethods[0]?.key || "";
+
+  // Kassadan CHIQADIGAN summa: tanlangan xodimlarning musbat qoldiqlari.
+  // Qarzdor xodimga pul chiqmaydi, shuning uchun u yig'indiga kirmaydi —
+  // server ham aynan shunday hisoblaydi.
+  const payoutTotal = useMemo(() => {
+    let sum = 0;
+    for (const e of employees) {
+      if (!selected.has(e.id) || !e.configured) continue;
+      sum += Math.max(payrollDue(e, period), 0);
+    }
+    return sum;
+  }, [employees, selected, period]);
+
+  const activeCashbox = cashboxes.find((c) => String(c.id) === cashboxId);
+  // Chegara kassaning umumiy balansi emas, tanlangan TO'LOV TURIDAGI summa —
+  // Kassalar sahifasidagi Chiqim oynasi ham shunday tekshiradi.
+  const available = activeCashbox && methodKey ? Number(activeCashbox.methodTotals?.[methodKey]) || 0 : 0;
+  const notEnough = payoutTotal > 0 && available < payoutTotal;
+  const canPayout = Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0 && !notEnough;
+
   async function confirmPayout() {
     setSaving(true);
     try {
       const res = await fetch("/api/salary-runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeIds: Array.from(selected) }),
+        body: JSON.stringify({ employeeIds: Array.from(selected), cashboxId: Number(cashboxId), method: methodKey }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -165,8 +222,17 @@ export default function SalaryCreatePage() {
         setSaving(false);
         return;
       }
-      showSuccess("Oylik chiqarildi");
-      router.push("/finance-payroll");
+      // Ilgari bu yerdan tarix sahifasiga o'tilardi — endi hisob-kitob
+      // bo'limning BOSH sahifasi, shuning uchun shu yerda qolamiz va
+      // jadvalni qayta yuklaymiz: "To'langan oylik" va "Qolgan" darhol
+      // yangilanadi, ya'ni chiqarish natijasi ko'z oldida ko'rinadi.
+      // Kassadagi qoldiq ham kamaygani uchun kassalar qayta o'qiladi.
+      showSuccess(`Oylik chiqarildi — ${fmtSum(payoutTotal)}`);
+      setConfirmOpen(false);
+      setSelected(new Set());
+      setSaving(false);
+      load();
+      loadCashboxes();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -183,23 +249,21 @@ export default function SalaryCreatePage() {
     t === "teacher" ? "O'qituvchilar" : t === "moderator" ? "Moderatorlar" : t === "admin" ? "Adminlar" : t;
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
-      {/* Header */}
+    // `page-frame` — loyihaning mavjud naqshi (app/globals.css): sahifa
+    // ildizi to'liq balandlikni oladi va scroll SAHIFADA emas, jadval
+    // kartasining ichida bo'ladi. Shu sababli sarlavha, kartalar, filtrlar
+    // va "Hammasini tanlash" qatori qotib turadi — faqat qatorlar suriladi.
+    <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+      {/* Header — "Orqaga" YO'Q: bu bo'limning bosh sahifasi, qaytadigan
+          yuqori sahifa yo'q. Tarixga o'tish o'ng tomondagi tugmada. */}
       <div className="flex flex-wrap items-center gap-2">
-        <Link
-          href="/finance-payroll"
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Orqaga
-        </Link>
         <h1 className="text-[18px] md:text-[20px] font-bold">Oylik hisob-kitob</h1>
         <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-primary/10 text-primary text-[12px] font-semibold">
           {periodLabel}
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Link
-            href="/finance-payroll"
+            href="/finance-payroll/history"
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             <History className="w-4 h-4" />
@@ -298,7 +362,7 @@ export default function SalaryCreatePage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-secondary/30">
           <label className="inline-flex items-center gap-2 text-sm cursor-pointer select-none">
             <input
@@ -318,7 +382,10 @@ export default function SalaryCreatePage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* `table-scroll` — scroll aynan shu yerda bo'ladi va globals.css
+            dagi qoida `thead th` ni yopishtirib qo'yadi, ya'ni ustun
+            nomlari pastga surilganda ham ko'rinib turadi. */}
+        <div className="table-scroll">
           <table className="w-full text-sm">
             <thead className="bg-secondary/40">
               <tr className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
@@ -327,13 +394,17 @@ export default function SalaryCreatePage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;liq ismi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Turi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Hisob-kitob (shu kungacha)</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Bonus</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
+                {/* Asosiy hisob zanjiri yonma-yon: hisoblangan → soliq →
+                    olinganlar → qolgan. Bonus va jarima kamdan-kam
+                    to'ldiriladi, shuning uchun ular OXIRGA surildi. */}
                 <th className="text-right px-3 py-3 whitespace-nowrap">Hisoblangan</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">Soliq</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Avans olingan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;langan oylik</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">O&apos;tgan oydan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Qolgan</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">Bonus</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
               </tr>
             </thead>
             <tbody>
@@ -342,6 +413,11 @@ export default function SalaryCreatePage() {
                 const earned = payrollEarned(e, period);
                 const paid = payrollPaid(e);
                 const due = payrollDue(e, period);
+                const tax = payrollTax(e, period);
+                // Sichqoncha ostida qaysi soliqlardan yig'ilgani ko'rinsin.
+                const taxTitle = payrollTaxLines(e, period)
+                  .map((l) => `${l.name} (${l.detail}): ${fmtNum(l.amount)}`)
+                  .join("\n");
                 const isFoiz = e.salaryType === "foiz";
                 const badgeCls = isFoiz
                   ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
@@ -396,14 +472,20 @@ export default function SalaryCreatePage() {
                         </Link>
                       )}
                     </td>
-                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
-                      {e.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(e.bonus)}</span> : <span className="text-muted-foreground">0</span>}
-                    </td>
-                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
-                      {e.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(e.jarima)}</span> : <span className="text-muted-foreground">0</span>}
-                    </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       {e.configured ? fmtNum(earned) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    {/* Soliq — faqat kartasida yoqilgan xodimda hisoblanadi
+                        (Boshqaruv → Xodimlar). O'chiq bo'lsa "—", ya'ni
+                        "0 so'm soliq" bilan "soliq solinmaydi" farqlanadi. */}
+                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                      {!e.taxable ? (
+                        <span className="text-muted-foreground" title="Bu xodimga soliq solinmaydi">—</span>
+                      ) : tax > 0 ? (
+                        <span className="text-rose-600 font-medium" title={taxTitle}>−{fmtNum(tax)}</span>
+                      ) : (
+                        <span className="text-muted-foreground" title="Soliq ro'yxati bo'sh yoki hisoblangan oylik 0">0</span>
+                      )}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {e.paidAvans > 0 ? <span className="text-amber-600 font-medium">{fmtNum(e.paidAvans)}</span> : <span className="text-muted-foreground">0</span>}
@@ -440,12 +522,20 @@ export default function SalaryCreatePage() {
                         <span className="text-muted-foreground font-normal">—</span>
                       )}
                     </td>
+                    {/* Bonus va jarima — qatorning oxirida (sarlavhadagi
+                        izohga qarang). */}
+                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                      {e.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(e.bonus)}</span> : <span className="text-muted-foreground">0</span>}
+                    </td>
+                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                      {e.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(e.jarima)}</span> : <span className="text-muted-foreground">0</span>}
+                    </td>
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={13} className="px-3 py-10 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "Xodim topilmadi"}
                   </td>
                 </tr>
@@ -458,24 +548,93 @@ export default function SalaryCreatePage() {
       {confirmOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setConfirmOpen(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+          <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6">
             <p className="text-center text-[15px] font-semibold">
-              Haqiqatdan ham {selectedCount} ta xodim uchun oylik chiqarishni xohlaysizmi?
+              {selectedCount} ta xodim uchun oylik chiqariladi
             </p>
+            <p className="text-center text-[12.5px] text-muted-foreground mt-1">
+              Pul tanlangan kassadan chiqadi va Tranzaksiyalar jurnaliga yoziladi.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium mb-1">Kassa</label>
+                <div className="relative">
+                  <select
+                    value={cashboxId}
+                    onChange={(e) => setCashboxId(e.target.value)}
+                    disabled={saving}
+                    className="w-full h-10 pl-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+                  >
+                    {cashboxes.length === 0 && <option value="">Kassa topilmadi</option>}
+                    {cashboxes.map((c) => (
+                      <option key={c.id} value={String(c.id)}>
+                        {c.name}{c.isPrimary ? " — bosh kassa" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-medium mb-1">To&apos;lov turi</label>
+                {/* Har bir tur yonida SHU KASSADAGI qoldiq turadi — qaysi
+                    turdan oylik chiqarish mumkinligi ro'yxatning o'zidayoq
+                    ko'rinsin, tanlab-tanlab qidirishga to'g'ri kelmasin. */}
+                <Select
+                  value={methodKey}
+                  onChange={setMethod}
+                  disabled={saving}
+                  placeholder={paymentMethods.length === 0 ? "To'lov turi topilmadi" : "Tanlang"}
+                  options={paymentMethods.map((m) => ({
+                    value: m.key,
+                    label: m.name,
+                    hint: fmtSum(Number(activeCashbox?.methodTotals?.[m.key]) || 0),
+                  }))}
+                />
+              </div>
+
+              <div className="rounded-lg border border-border bg-secondary/20 p-3 text-[13px] space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Chiqariladigan summa</span>
+                  <span className="font-semibold tabular-nums">{fmtSum(payoutTotal)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Kassada mavjud</span>
+                  <span className={`tabular-nums ${notEnough ? "text-rose-600 font-semibold" : ""}`}>{fmtSum(available)}</span>
+                </div>
+              </div>
+
+              {payoutTotal === 0 && (
+                <p className="text-[12.5px] text-amber-600">
+                  Tanlangan xodimlarda to&apos;lanadigan qoldiq yo&apos;q — oylik allaqachon chiqarilgan yoki qarzdorlik bor.
+                </p>
+              )}
+              {/* Butun jumla bitta ifodada — JSX ifoda bilan undan keyingi
+                  matn orasidagi bo'shliqni yeb qo'yadi (so'mkam bo'lib
+                  chiqardi). */}
+              {notEnough && (
+                <p className="text-[12.5px] text-rose-600">
+                  {`Mablag' yetarli emas — ${fmtSum(payoutTotal - available)} kam. Boshqa kassa yoki to'lov turini tanlang.`}
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={() => setConfirmOpen(false)}
                 disabled={saving}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                Bekor qilish
               </button>
               <button
                 onClick={confirmPayout}
-                disabled={saving}
-                className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+                disabled={saving || !canPayout}
+                className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? "Chiqarilmoqda…" : "Ha"}
+                {saving ? "Chiqarilmoqda…" : "Ha, chiqarish"}
               </button>
             </div>
           </div>

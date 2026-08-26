@@ -13,13 +13,13 @@ export const EMP_COLUMNS = [
   { id: "aktivOq", label: "Aktiv o'quvchilar soni" },
   { id: "groups", label: "Guruhlar" },
   { id: "turi", label: "Turi" },
-  // Oylik hisob-kitob ustunlari (Moliya → Oylik hisob-kitob bilan bir manba).
   // ISH TURI — "Foiz X%" yoki "Oklad" (xodim kartasi filiallar/foiz asosida).
+  //
+  // "Jami oylik", "Jami avans", "To'langan oylik" va "Qolgan oylik"
+  // ustunlari OLIB TASHLANDI: bu ro'yxat xodimlar kartotekasi, oylik
+  // hisob-kitobi esa Moliya → Oylik chiqarish sahifasida to'liq ko'rinadi.
+  // Ikki joyda takrorlanishi jadvalni keraksiz kengaytirardi.
   { id: "ishTuri", label: "Ish turi" },
-  { id: "jamiOylik", label: "Jami oylik" },
-  { id: "jamiAvans", label: "Jami avans" },
-  { id: "tolanganOylik", label: "To'langan oylik" },
-  { id: "qolganOylik", label: "Qolgan oylik" },
   { id: "filial", label: "Filiallar" },
   { id: "phone", label: "Telefon raqam" },
   { id: "kurs", label: "Kurs" },
@@ -33,6 +33,11 @@ export const EMP_COLUMNS = [
   { id: "created", label: "Yaratilgan sanasi", sortable: true },
   { id: "archReason", label: "Arxivlash sababi" },
   { id: "archDate", label: "Sana" },
+  // SOLIQ — tugmacha, jadvalning OXIRIDA. Yoqilgan bo'lsa Sozlamalar →
+  // Moliya → Soliq dagi faol qoidalar shu xodimning oyligidan ushlab
+  // qolinadi (lib/salary.ts → payrollTaxLines). O'chiq bo'lsa soliq
+  // umuman hisoblanmaydi.
+  { id: "soliq", label: "Soliq" },
 ];
 
 // turi (rol) — ichki qiymat → ko'rinadigan o'zbekcha nom.

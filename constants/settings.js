@@ -35,6 +35,7 @@ export const SETTINGS_SECTIONS = [
       { key: "kpi-manager", label: "Moliya bo'limi bonusi" },
       { key: "kvi", label: "KPI" },
       { key: "monthly", label: "Oylik foizlari" },
+      { key: "tax", label: "Soliq" },
       { key: "payment-student", label: "Talabalar uchun avtochegirma" },
     ],
   },

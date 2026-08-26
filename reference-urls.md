@@ -43,7 +43,7 @@ parametrlarni qo'shadi (masalan `?limit=50&page=1&sortBy=...`).
 | `/finance/cash` | `/finance-cash` |
 | `/finance/bonus` | `/finance-bonus` |
 | `/finance/penalty` | `/finance-penalty` |
-| `/finance/salary` | `/finance-payroll` |
+| `/finance/salary` | `/finance-payroll` (hisob-kitob; tarix — `/finance-payroll/history`) |
 | `/analytics/finance` | `/finance-cashflow` |
 | `/analytics/income-plan` | `/finance-revenue-plan` |
 | `/analytics/financial-analytics` | `/finance-analytics` |
