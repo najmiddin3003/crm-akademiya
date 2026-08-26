@@ -8,6 +8,7 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import Spinner from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { formatSupportTime, type SupportRecord } from "@/lib/supportAnalytics";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Nazorat → Support analitikasi (sidebar: Nazorat > Hisobotlar > Support
 // analitikasi, href /nazorat-support-analytics). Ma'lumot HAQIQIY —
@@ -189,7 +190,7 @@ export default function NazoratSupportAnalyticsPage() {
               {slice.map((r, i) => (
                 <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
-                  <td className="px-5 py-3 font-medium">{r.studentName}</td>
+                  <td className="px-5 py-3 font-medium"><PersonLink name={r.studentName} /></td>
                   <td className="px-5 py-3 text-[13px]">{r.courseName}</td>
                   <td className="px-5 py-3 text-[13px]">{r.supportTeacherName}</td>
                   <td className="px-5 py-3 tabular-nums text-[12px] text-muted-foreground">{formatSupportTime(r)}</td>

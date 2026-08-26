@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import TaskModal from "./TaskModal";
 import type { GroupTask } from "@/lib/groupTasks";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Guruh → Barcha vazifalar (crm-akademiya #view-groups-tasks). Barcha guruhlar
 // bo'ylab vazifalar (/api/group-tasks). "Imtihon qo'shish" → TaskModal (qo'shish),
@@ -95,7 +96,7 @@ export default function GroupTasksPage() {
                   <td className="px-3 py-3 text-[13px]">{t.type}</td>
                   <td className="px-3 py-3"><span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary text-[13px] font-medium">{t.name}</span></td>
                   <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{t.deadline || "—"}</td>
-                  <td className="px-3 py-3 text-[13px]">{t.teacher || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]"><PersonLink name={t.teacher} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{t.groupName || "—"}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{t.maxScore}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground truncate" style={{ maxWidth: 200 }}>{t.note || "—"}</td>

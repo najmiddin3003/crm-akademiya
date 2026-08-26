@@ -26,6 +26,7 @@ import {
   BalanceTab, EmptyState, KpiTab, NotesTab, PayoutHistoryTab, TeacherReportTab,
   UnpaidHistoryTab, UnpaidTab, WorkHoursTab, buildLedger, type UnpaidRow,
 } from "./EmployeeProfileTabs";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
@@ -675,7 +676,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                         <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
                           <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.date}{t.time ? ` | ${t.time}` : ""}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">{t.studentName || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={t.studentName} /></td>
                           <td className="px-4 py-3 whitespace-nowrap">{groupByStudent.get(t.studentName) || "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{t.txName || "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap">

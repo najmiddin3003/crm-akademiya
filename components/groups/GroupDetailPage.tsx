@@ -27,6 +27,7 @@ import {
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import type { GroupTask } from "@/lib/groupTasks";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Guruh tafsiloti (skrinshot 1-5). Chap "Guruh ma'lumotlari" kartasi guruh
 // maydonlaridan. O'ngda 5 tab:
@@ -413,7 +414,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
           </div>
           <div className="divide-y divide-border">
             <InfoRow icon={BookOpen} label="Kurs / Fan">{group.course || "—"}</InfoRow>
-            <InfoRow icon={User} label="O'qituvchi">{group.teacher || "—"}</InfoRow>
+            <InfoRow icon={User} label="O'qituvchi"><PersonLink name={group.teacher} kind="staff" /></InfoRow>
           </div>
 
           <div className="flex items-center gap-2 mt-4 mb-1">
@@ -552,7 +553,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                             <td className="px-4 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-[12px] font-medium">{t.type}</span></td>
                             <td className="px-4 py-3 text-[13px] font-medium">{t.name}</td>
                             <td className="px-4 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{t.deadline || "—"}</td>
-                            <td className="px-4 py-3 text-[13px]">{t.teacher || "—"}</td>
+                            <td className="px-4 py-3 text-[13px]"><PersonLink name={t.teacher} kind="staff" /></td>
                             <td className="px-4 py-3 text-[13px] tabular-nums">{t.groupName}</td>
                             <td className="px-4 py-3 text-[13px] tabular-nums">{t.maxScore}</td>
                             <td className="px-4 py-3 text-[13px] text-muted-foreground truncate" style={{ maxWidth: 200 }}>{t.note || "—"}</td>

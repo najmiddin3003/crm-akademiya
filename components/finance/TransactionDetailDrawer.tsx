@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 const STATUS_LABELS: Record<string, string> = { "": "Qabul qilingan", waiting: "Kutilmoqda", cancelled: "Bekor qilingan" };
@@ -119,7 +120,7 @@ export default function TransactionDetailDrawer({
           <Row label={entry.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi"}>
             {entry.teacherName ? (
               <span className={entry.txType === "payIn" ? "text-emerald-600" : "text-rose-600"}>
-                {entry.txType === "payIn" ? "+" : "−"} {entry.teacherName}
+                {entry.txType === "payIn" ? "+" : "−"} <PersonLink name={entry.teacherName} kind="staff" />
               </span>
             ) : "—"}
           </Row>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import Navbar from "@/components/shared/Navbar";
+import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 
 // Umumiy qobiq (Navbar + Sidebar), app/layout.tsx orqali barcha sahifalarga
 // o'raladi. Har bir sahifa endi o'zining nomlangan route papkasida (masalan
@@ -17,13 +18,18 @@ import Navbar from "@/components/shared/Navbar";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // PersonDirectoryProvider shu yerda — ism→profil xaritasi sessiyaga bir
+  // marta yuklanib, barcha sahifalardagi <PersonLink> larga xizmat qiladi
+  // (har sahifa o'zi so'rov yubormaydi).
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <Navbar onOpenMobileMenu={() => setMobileOpen(true)} />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
-        <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
+    <PersonDirectoryProvider>
+      <div className="flex h-screen flex-col overflow-hidden">
+        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
+          <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
+        </div>
       </div>
-    </div>
+    </PersonDirectoryProvider>
   );
 }

@@ -14,6 +14,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useTeachers } from "@/hooks/useTeachers";
 import { pupilStatusOf } from "@/lib/pupilsData";
 import { GROUP_DAYS } from "@/constants/groups";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Guruhlar ro'yxati (crm-akademiya #view-groups). SARIQ qator = bugun davomat
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
@@ -428,7 +429,7 @@ export default function GroupsListPage() {
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{groupStudentCount(g)}</td>
-                  <td className="px-3 py-3 text-[13px]">{g.teacher || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]"><PersonLink name={g.teacher} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{g.room || "—"}</td>
                   <td className="px-3 py-3 text-[12px]">{g.telegram ? <a href={g.telegram} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-primary hover:underline">{g.telegram}</a> : <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-3 text-[12px]"><span className="text-emerald-600 font-medium">{g.status}</span></td>

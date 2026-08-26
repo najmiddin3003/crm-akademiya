@@ -34,6 +34,7 @@ import {
   type OrdersFilters,
 } from "@/lib/ordersData";
 import { Menu } from "lucide-react";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Ported from crm-akademiya/index-dev.html lines 880-1129 (id="view-orders-list")
 // + src/app.js (applyOrdersFilters/renderOrdersList/renderOrdersKanban/openAddOrderModal
@@ -762,14 +763,14 @@ export default function OrdersPage() {
                       {o.created}
                     </td>
                     <td className="px-3 py-3 text-[13px]">
-                      {o.teacher || "—"}
+                      <PersonLink name={o.teacher} kind="staff" />
                     </td>
                     <td className="px-3 py-3 text-[13px]">{o.course || "—"}</td>
                     <td className="px-3 py-3 text-[13px] text-muted-foreground">
                       {o.level || "—"}
                     </td>
                     <td className="px-3 py-3 text-[13px]">
-                      {o.moderator || "—"}
+                      <PersonLink name={o.moderator} kind="staff" />
                     </td>
                     <td className="px-3 py-3 text-[12px] text-muted-foreground max-w-[180px] truncate">
                       {o.note}

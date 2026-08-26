@@ -11,6 +11,7 @@ import type { Penalty } from "@/lib/penalties";
 import type { PerformanceRow } from "@/lib/performanceReport";
 import { STATE_KEYS, STATE_LABELS } from "@/lib/performanceReport";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Xodim profilidagi tablar mazmuni. Hammasi HAQIQIY backend ma'lumotidan
 // ishlaydi — manbasi yo'q tablar (Reyting, Qo'ng'iroqlar, Harakatlar tarixi,
@@ -103,7 +104,7 @@ export function PayoutHistoryTab({
             <td className="px-4 py-3 whitespace-nowrap">{e.txName || "—"}</td>
             <td className="px-4 py-3 whitespace-nowrap">{e.paymentType || "—"}</td>
             <td className="px-4 py-3 whitespace-nowrap">{cashboxName(e.cashboxId)}</td>
-            <td className="px-4 py-3 whitespace-nowrap">{e.moderator || "—"}</td>
+            <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={e.moderator} kind="staff" /></td>
             <td className="px-4 py-3">{e.note || "—"}</td>
             <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={e.status} /></td>
             <td className="px-4 py-3 tabular-nums font-medium text-rose-600 whitespace-nowrap">{nf(e.amount)}</td>
@@ -304,7 +305,7 @@ export function UnpaidTab({ rows, rosterEmpty }: { rows: UnpaidRow[]; rosterEmpt
         {rows.map((r, i) => (
           <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
             <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-            <td className="px-4 py-3 whitespace-nowrap">{r.studentName}</td>
+            <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={r.studentName} /></td>
             <td className="px-4 py-3 whitespace-nowrap">{r.groups || "—"}</td>
             <td className="px-4 py-3 tabular-nums">{r.unpaidLessons}</td>
             <td className="px-4 py-3 tabular-nums font-medium text-rose-600 whitespace-nowrap">{nf(r.totalUnpaid)}</td>
@@ -330,7 +331,7 @@ export function UnpaidHistoryTab({ entries }: { entries: TransactionEntry[] }) {
           <tr key={e.id} className="hover:bg-secondary/30 transition-colors">
             <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
             <td className="px-4 py-3 tabular-nums whitespace-nowrap">{e.date}{e.time ? ` | ${e.time}` : ""}</td>
-            <td className="px-4 py-3 whitespace-nowrap">{e.studentName || "—"}</td>
+            <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={e.studentName} /></td>
             <td className="px-4 py-3 whitespace-nowrap">{e.txName || "—"}</td>
             <td className="px-4 py-3 whitespace-nowrap">{e.paymentType || "—"}</td>
             <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={e.status} /></td>

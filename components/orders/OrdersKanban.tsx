@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ORDER_STAGES, type Order, type OrderStageKey } from "@/lib/ordersData";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Ported from crm-akademiya/src/app.js renderOrdersKanban()/renderOrderKanbanCard()
 // and the onOrderCardDragStart/onStageDrop family (~lines 24065-24598).
@@ -60,7 +61,7 @@ export default function OrdersKanban({ orders, onDropStage }: OrdersKanbanProps)
                     </div>
                     <div className="ok-card-day-badge">{o.dayPattern}</div>
                   </div>
-                  <div className="ok-card-teacher">{o.teacher || "—"}</div>
+                  <div className="ok-card-teacher"><PersonLink name={o.teacher} kind="staff" /></div>
                   <div className="ok-card-row3">
                     {/* Referens kartasida sana va vaqt oddiy probel bilan
                         ajratiladi ("03.10.2025 15:04"), jadvaldagi kabi "|"

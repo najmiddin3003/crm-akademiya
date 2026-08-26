@@ -8,6 +8,7 @@ import Spinner from "@/components/ui/Spinner";
 import { groupWeekdays, parsePeriod } from "@/lib/attendance";
 import type { Group } from "@/lib/groups";
 import { dateToIso, isoToDate, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Nazorat > Davomat qilinmagan guruhlar (/nazorat-missed-groups).
 //
@@ -190,7 +191,7 @@ export default function NazoratMissedGroupsPage() {
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
                   <td className="px-5 py-3 font-medium tabular-nums">{g.groupName || "—"}</td>
                   <td className="px-5 py-3 tabular-nums text-[13px] text-muted-foreground">{isoToLabel(g.date)}</td>
-                  <td className="px-5 py-3 pr-5 text-[13px]">{g.teacher || "—"}</td>
+                  <td className="px-5 py-3 pr-5 text-[13px]"><PersonLink name={g.teacher} kind="staff" /></td>
                 </tr>
               ))}
               {slice.length === 0 && (

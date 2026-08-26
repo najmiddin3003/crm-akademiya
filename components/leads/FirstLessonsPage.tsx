@@ -31,6 +31,7 @@ import {
   type Order,
   type OrderStageKey,
 } from "@/lib/ordersData";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
@@ -613,10 +614,10 @@ export default function FirstLessonsPage() {
                   </td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{o.created}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{o.firstLesson}</td>
-                  <td className="px-3 py-3 text-[13px]">{o.teacher || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]"><PersonLink name={o.teacher} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px]">{o.course || "—"}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{o.level || "—"}</td>
-                  <td className="px-3 py-3 text-[13px]">{o.moderator || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]"><PersonLink name={o.moderator} kind="staff" /></td>
                   <td className="px-3 py-3">
                     {o.firstLessonStatus ? (
                       <span className={`fl-status fl-status-${o.firstLessonStatus}`}>

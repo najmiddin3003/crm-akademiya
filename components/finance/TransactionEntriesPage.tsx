@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { Cashbox } from "@/lib/cashboxes";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Moliya → Tranzaksiyalar (sidebar: Moliya > Tranzakisyalar, href
 // /finance-transactions). Sof jurnal — add/edit/delete yo'q (manba saytida
@@ -152,7 +153,7 @@ export default function TransactionEntriesPage() {
                 <tr key={e.id} className={`border-b border-border/50 ${e.status === "cancelled" ? "bg-rose-50" : ""}`}>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtDate(e)}</td>
-                  <td className="px-3 py-3 text-[13px] whitespace-nowrap">{e.studentName || "—"}</td>
+                  <td className="px-3 py-3 text-[13px] whitespace-nowrap"><PersonLink name={e.studentName} /></td>
                   <td className={`px-3 py-3 text-[13px] tabular-nums font-medium ${e.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtUZS(e.amount)}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{fmtUZS(e.before)}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{fmtUZS(e.after)}</td>
@@ -161,7 +162,7 @@ export default function TransactionEntriesPage() {
                   <td className="px-3 py-3 text-[13px]">{e.paymentType}</td>
                   <td className="px-3 py-3 text-[13px]">{e.group || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">{e.lessonDate || "—"}</td>
-                  <td className="px-3 py-3 text-[13px] whitespace-nowrap">{e.moderator}</td>
+                  <td className="px-3 py-3 text-[13px] whitespace-nowrap"><PersonLink name={e.moderator} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{e.reason || "—"}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{e.note || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">{e.status || "—"}</td>

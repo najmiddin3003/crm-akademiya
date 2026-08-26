@@ -15,6 +15,7 @@ import {
   STUDENT_STATUSES,
   type EnrichedStudent,
 } from "@/lib/studentsData";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Guruh → Guruh o'quvchilari (sidebar: Guruh > Guruh o'quvchilari,
 // href /groups-students). Referens: akademiya.edutizim.uz/group/group-students
@@ -153,7 +154,7 @@ export default function GroupStudentsPage() {
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-[13px]">{r.groupNames}</td>
-                  <td className="px-3 py-3 text-[13px]">{r.teacher || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]"><PersonLink name={r.teacher} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px]">
                     <span className={`font-medium ${STATUS_CLS[r.status] ?? ""}`}>{r.status}</span>
                   </td>

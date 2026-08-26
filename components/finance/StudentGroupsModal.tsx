@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useGroups } from "@/hooks/useGroups";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -73,7 +74,7 @@ export default function StudentGroupsModal({
                   {myGroups.map((g) => (
                     <tr key={g.id}>
                       <td className="py-2.5 pr-3 font-medium whitespace-nowrap">{g.name || g.id}</td>
-                      <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap">{g.teacher || "—"}</td>
+                      <td className="py-2.5 pr-3 text-muted-foreground whitespace-nowrap"><PersonLink name={g.teacher} kind="staff" /></td>
                       <td className="py-2.5 text-muted-foreground whitespace-nowrap">
                         {[g.day, g.time].filter(Boolean).join(" ") || "—"}
                       </td>

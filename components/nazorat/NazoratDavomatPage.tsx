@@ -14,6 +14,7 @@ import { ABSENCE_REASONS, ATTENDANCE_COLOR, ATTENDANCE_OPTIONS, type AttendanceS
 import { WEEKDAYS_FULL } from "@/lib/i18n";
 import DavomatCommentModal from "./DavomatCommentModal";
 import { dateToIso, isoToDate, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
+import PersonLink from "@/components/shared/PersonDirectory";
 
 // Nazorat > Davomat (sidebar: Nazorat > Davomat, /nazorat-davomat).
 //
@@ -529,8 +530,8 @@ export default function NazoratDavomatPage() {
                     {formatBalance(r.balance)}
                   </td>
                   <td className="px-3 py-3">{r.groupName || "—"}</td>
-                  <td className="px-3 py-3">{r.teacher || "—"}</td>
-                  <td className="px-3 py-3">{r.moderator || "—"}</td>
+                  <td className="px-3 py-3"><PersonLink name={r.teacher} kind="staff" /></td>
+                  <td className="px-3 py-3"><PersonLink name={r.moderator} kind="staff" /></td>
                   <td className="px-3 py-3 tabular-nums text-[13px] text-muted-foreground">{isoToLabel(r.date)}</td>
                   <td className="px-3 py-3">
                     <span className="inline-flex items-center gap-1.5 text-[13px]">
