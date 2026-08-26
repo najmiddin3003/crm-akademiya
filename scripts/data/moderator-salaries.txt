@@ -1,0 +1,28 @@
+// Moderatorlarning qat'iy oyligi (oklad), UZS. Manba: edutizim xodim
+// kartalari (2026-08-26 da yuborilgan skrinshotlar).
+//
+// Format:  #<xodim id> = <filial nomi>: <summa>; <filial nomi>: <summa>
+// Xodimning oklad ro'yxati shu qator bilan TO'LIQ almashtiriladi —
+// qatorda yo'q filialdagi eski summa o'chadi.
+//
+// Ishga tushirish (quruq yurish -> keyin yozish):
+//   node scripts/import-employee-salaries.mjs scripts/data/moderator-salaries.txt --create-branches
+//   node scripts/import-employee-salaries.mjs scripts/data/moderator-salaries.txt --create-branches --yes
+
+#1  = Akademiya: 3 000 000
+#28 = Akademiya: 3 000 000
+#29 = Akademiya: 3 000 000
+#31 = Akademiya: 2 000 000
+#38 = Akademiya: 5 000 000
+#48 = Akademiya: 2 000 000
+#50 = Akademiya: 3 500 000
+#53 = Akademiya: 2 000 000; Akademiya 2-filial: 2 000 000
+
+// TEGILMAYDI — edutizim kartasida "Ish haqi chiqarish" O'CHIQ (summasi
+// 5 000 000 ko'rsatilgan, lekin chiqarilmaydi). Bizda bunday bayroq yo'q,
+// shuning uchun yozmaymiz.
+// #43 = Akademiya: 5 000 000     Shohruh Axmadjanov (94 315 07 00)
+
+// TEGILMAYDI — test yozuvlari, edutizimda oyligi yo'q:
+// #42  Najmiddin Turgunpolatov (33 626 30 06)
+// #54  Dilmurod test
