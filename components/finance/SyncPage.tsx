@@ -25,8 +25,10 @@ interface TargetState {
   label: string;
   sheetReady: boolean;
   telegramReady: boolean;
-  /** Bu oqim umuman guruhga ketadimi (xarajat/ko'chirma — yo'q). */
+  /** Bu oqim guruhga HAR BIR YOZUV uchun ketadimi. */
   telegramUsed: boolean;
+  /** Bo'sh bo'lmasa — Telegram o'rniga shu izoh ko'rsatiladi. */
+  telegramNote: string;
   /** Guruh ichidagi topic raqami — bo'sh bo'lsa umumiy oqim. */
   threadId: string;
   tabName: string;
@@ -268,12 +270,15 @@ export default function SyncPage() {
                       )}
                       Google Sheets
                     </span>
-                    {/* Xarajat va ko'chirma guruhga ATAYLAB yuborilmaydi —
-                        bu yerda qizil ✗ chiqsa "buzuq" degan taassurot
-                        qolardi, shuning uchun alohida yozuv. */}
+                    {/* Har bir yozuv uchun xabar ketmaydigan oqimlarda
+                        qizil ✗ chiqsa "buzuq" degan taassurot qolardi.
+                        Oyliklar bundan ham nozik: u guruhga BORADI, lekin
+                        oyda ikki marta xulosa bo'lib — shuni aytamiz. */}
                     <span className="inline-flex items-center gap-1.5 text-[13px]">
                       {!t.telegramUsed ? (
-                        <span className="text-muted-foreground">Telegram: kerak emas</span>
+                        <span className="text-muted-foreground">
+                          Telegram: {t.telegramNote || "kerak emas"}
+                        </span>
                       ) : (
                         <>
                           {t.telegramReady ? (

@@ -124,6 +124,12 @@ export async function ensureIndexes(): Promise<Db> {
     // Yuborishga tayyorlarini tanlash uchun (status + kutish vaqti).
     await db.collection("sync_outbox").createIndex({ status: 1, nextAttemptAt: 1 });
     await db.collection("sync_runs").createIndex({ id: 1 }, { unique: true });
+    // Oyliklar xulosasi — bitta davrga BITTA xabar. Unikal indeks buni
+    // SERVER tomonda ushlab turadi, kodning ehtiyotkorligiga tayanmaydi:
+    // cron kuniga o'nlab marta chaqirilishi mumkin (scripts/sync-backfill.mjs
+    // uni ketma-ket 40 martagacha uradi), va ikkita Vercel nusxasi bir
+    // vaqtda ishga tushsa ham faqat bittasi hujjatni yarata oladi.
+    await db.collection("sync_digests").createIndex({ period: 1 }, { unique: true });
     await db.collection("planned_expenses").createIndex({ id: 1 }, { unique: true });
     await db.collection("finance_contracts").createIndex({ id: 1 }, { unique: true });
     await db.collection("turnstile_io").createIndex({ id: 1 }, { unique: true });

@@ -49,8 +49,12 @@ const te = db.collection("transaction_entries");
 const ob = db.collection("sync_outbox");
 
 const PICK = [
+  // FAQAT to'lov: "salary" oqimi endi guruhga har bir yozuv uchun
+  // xabar yubormaydi (lib/sync/config.ts, TELEGRAM_KINDS). Bu skript
+  // navbatga TO'G'RIDAN-TO'G'RI yozadi, ya'ni enqueue() dagi
+  // himoyani chetlab o'tadi — salary qatori qolsa, u sinov xabarini
+  // baribir oyliklar topikiga tashlardi.
   { kind: "payment", filter: { txType: "payIn", status: "" } },
-  { kind: "salary", filter: { txType: "payOut", status: "", txName: { $regex: "avans|oylik", $options: "i" } } },
 ];
 
 const now = new Date().toISOString();

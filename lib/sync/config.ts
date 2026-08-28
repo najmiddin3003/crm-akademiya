@@ -142,15 +142,26 @@ export const KIND_LABEL: Record<SyncKind, string> = {
 export const SYNC_KINDS: readonly SyncKind[] = ["payment", "salary", "expense", "transfer"];
 
 /**
- * Telegram guruhiga BORADIGAN oqimlar. Ro'yxat qasddan qisqa: kelishuv
- * faqat o'quvchi to'lovlari va xodim oyliklari haqida edi. Xarajat va
- * ko'chirma soni ko'p va guruhga foydasi yo'q.
+ * Guruhga HAR BIR YOZUV uchun xabar boradigan oqimlar. Faqat o'quvchi
+ * to'lovlari.
+ *
+ * "salary" 2026-08-28 da ro'yxatdan CHIQARILDI. Ilgari har bir avans va
+ * oylik alohida xabar bo'lib "O'qituvchilar oyliklari" topikiga tushardi
+ * — avgust oyida bu 231 ta xabar degani. Foydalanuvchi o'sha topikni
+ * boshqa maqsad uchun ochgan: oyda IKKI MARTA umumiy oylik holatini
+ * ko'rish uchun. Endi u yerga faqat `lib/sync/salaryDigest.ts` yozadi.
+ *
+ * DIQQAT: `TELEGRAM_CHAT_SALARIES` va `TELEGRAM_TOPIC_SALARIES` ni bo'sh
+ * qoldirib "o'chirish" MUMKIN EMAS — u holda navbatdagi vazifa
+ * `isTelegramReady` da yiqilib, har 6 soatda abadiy qayta urinilardi va
+ * Sinxronizatsiya sahifasidagi "muammolar" ro'yxatini to'ldirardi.
+ * Ustiga xulosa ham aynan o'sha chat va topikka yoziladi.
  *
  * Bu shunchaki sozlama emas — `outbox.enqueue` shu ro'yxatga qaramay
  * kelgan `notifyTelegram: true` ni ham o'chiradi, ya'ni kelajakda
  * kimdir chaqiruv joyida xato qilsa ham guruh himoyalangan.
  */
-const TELEGRAM_KINDS: readonly SyncKind[] = ["payment", "salary"];
+const TELEGRAM_KINDS: readonly SyncKind[] = ["payment"];
 
 export function kindNotifiesTelegram(kind: SyncKind): boolean {
   return TELEGRAM_KINDS.includes(kind);
