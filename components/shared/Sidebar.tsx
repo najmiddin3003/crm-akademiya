@@ -86,6 +86,7 @@ const IMPLEMENTED_ROUTES = new Set([
   "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll",
   "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow",
   "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract",
+  "/finance-sync",
   // Nazorat
   "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating",
   "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile", "/nazorat-turnstile-io", "/nazorat-support-analytics",
