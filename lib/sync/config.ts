@@ -14,6 +14,15 @@ export interface SheetTarget {
   /** Jadval ichidagi varaq nomi — kod o'zi yaratadi, qo'lda kerak emas. */
   tabName: string;
   chatId: string;
+  /**
+   * Guruh ichidagi TOPIC (mavzu) raqami — Telegram'da `message_thread_id`.
+   *
+   * Ikkala oqim uchun alohida guruh ochish shart emas: bitta forum-guruhda
+   * ikkita topic ochib, `chatId` ni bir xil qoldirib, shu yerda ularni
+   * ajratish kifoya. Bo'sh bo'lsa xabar guruhning umumiy ("General")
+   * oqimiga tushadi — oddiy (forum bo'lmagan) guruhda ham shunday.
+   */
+  threadId: string;
 }
 
 export interface SyncConfig {
@@ -61,11 +70,13 @@ export function loadSyncConfig(): SyncConfig {
         spreadsheetId: (env.SHEET_ID_PAYMENTS || "").trim(),
         tabName: (env.SHEET_TAB_PAYMENTS || "To'lovlar").trim(),
         chatId: (env.TELEGRAM_CHAT_PAYMENTS || "").trim(),
+        threadId: (env.TELEGRAM_TOPIC_PAYMENTS || "").trim(),
       },
       salary: {
         spreadsheetId: (env.SHEET_ID_SALARIES || "").trim(),
         tabName: (env.SHEET_TAB_SALARIES || "Xodim oyliklari").trim(),
         chatId: (env.TELEGRAM_CHAT_SALARIES || "").trim(),
+        threadId: (env.TELEGRAM_TOPIC_SALARIES || "").trim(),
       },
       // Xarajat va ko'chirma odatda to'lovlar bilan BITTA jadvalda,
       // alohida varaqda turadi — shuning uchun id ko'rsatilmasa
@@ -76,11 +87,13 @@ export function loadSyncConfig(): SyncConfig {
         tabName: (env.SHEET_TAB_EXPENSES || "Xarajatlar").trim(),
         // chatId ATAYLAB bo'sh: xarajat guruhga yuborilmaydi (types.ts).
         chatId: "",
+        threadId: "",
       },
       transfer: {
         spreadsheetId: (env.SHEET_ID_TRANSFERS || env.SHEET_ID_PAYMENTS || "").trim(),
         tabName: (env.SHEET_TAB_TRANSFERS || "Ko'chirmalar").trim(),
         chatId: "",
+        threadId: "",
       },
     },
     cronSecret: (env.CRON_SECRET || "").trim(),

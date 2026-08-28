@@ -219,7 +219,8 @@ export async function flushPending(
       if (!outcome.telegramDone) {
         if (isTelegramReady(cfg, task.kind)) {
           const text = task.event === "cancelled" ? prepared.cancelledText : prepared.createdText;
-          const sent = await sendMessage(cfg, cfg.targets[task.kind].chatId, text);
+          const target = cfg.targets[task.kind];
+          const sent = await sendMessage(cfg, target.chatId, text, target.threadId);
           outcome.messageId = sent.messageId;
           outcome.telegramDone = true;
           // Telegram guruhga daqiqasiga ~20 xabar chegarasi bor —

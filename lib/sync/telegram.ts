@@ -62,10 +62,16 @@ async function callTelegram(
   return data;
 }
 
+/**
+ * @param threadId Guruh ichidagi TOPIC raqami. Bo'sh bo'lsa xabar umumiy
+ *   oqimga tushadi. Bitta forum-guruhni ikki oqimga bo'lish uchun shu
+ *   yetadi — alohida guruh ochish shart emas.
+ */
 export async function sendMessage(
   cfg: SyncConfig,
   chatId: string,
   html: string,
+  threadId = "",
 ): Promise<TelegramResult> {
   if (!cfg.telegramToken) throw new Error("TELEGRAM_BOT_TOKEN sozlanmagan");
   if (!chatId) throw new Error("Telegram guruh id'si sozlanmagan");
@@ -75,6 +81,9 @@ export async function sendMessage(
     text: html,
     parse_mode: "HTML",
     disable_web_page_preview: true,
+    // Maydon faqat KERAK bo'lgandagina qo'shiladi: forum bo'lmagan
+    // guruhga `message_thread_id` yuborilsa Telegram xato qaytaradi.
+    ...(threadId ? { message_thread_id: Number(threadId) } : {}),
   });
 
   if (!data.ok || !data.result) {
@@ -90,6 +99,16 @@ export async function sendMessage(
     }
     if (/unauthorized/i.test(desc)) {
       throw new Error("Telegram: TELEGRAM_BOT_TOKEN noto'g'ri");
+    }
+    // Topic bilan bog'liq xatolar — "message thread not found" ko'pincha
+    // topic id noto'g'ri yoki guruh umuman forum emasligini bildiradi.
+    if (/message thread not found|TOPIC_DELETED/i.test(desc)) {
+      throw new Error(
+        `Telegram: ${threadId} raqamli topic topilmadi — id noto'g'ri, topic o'chirilgan yoki guruhda "Topics" yoqilmagan`,
+      );
+    }
+    if (/TOPIC_CLOSED/i.test(desc)) {
+      throw new Error("Telegram: topic yopilgan — uni oching yoki boshqa topic tanlang");
     }
     throw new Error(`Telegram xatosi: ${desc}`);
   }

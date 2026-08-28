@@ -27,6 +27,8 @@ interface TargetState {
   telegramReady: boolean;
   /** Bu oqim umuman guruhga ketadimi (xarajat/ko'chirma — yo'q). */
   telegramUsed: boolean;
+  /** Guruh ichidagi topic raqami — bo'sh bo'lsa umumiy oqim. */
+  threadId: string;
   tabName: string;
 }
 
@@ -280,6 +282,9 @@ export default function SyncPage() {
                             <XCircle className="w-4 h-4 text-rose-500" />
                           )}
                           Telegram
+                          {t.threadId && (
+                            <span className="text-muted-foreground">· topic {t.threadId}</span>
+                          )}
                         </>
                       )}
                     </span>

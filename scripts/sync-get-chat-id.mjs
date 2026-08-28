@@ -44,11 +44,29 @@ if (!updates.ok) {
 }
 
 // Bir guruh bir necha xabar yuborgan bo'lishi mumkin — takrorlamaymiz.
+// Forum-guruhda har bir TOPIC ham alohida yig'iladi: bitta guruhni ikki
+// oqimga bo'lish uchun chat_id emas, topic raqami kerak bo'ladi.
 const chats = new Map();
+/** chat_id -> Map(thread_id -> topic nomi) */
+const topics = new Map();
+
 for (const u of updates.result) {
   const msg = u.message || u.channel_post || u.my_chat_member;
   const chat = msg?.chat;
-  if (chat && chat.type !== "private") chats.set(chat.id, chat);
+  if (!chat || chat.type === "private") continue;
+  chats.set(chat.id, chat);
+
+  const threadId = msg.message_thread_id;
+  if (!threadId) continue; // umumiy ("General") oqim — raqami yo'q
+  if (!topics.has(chat.id)) topics.set(chat.id, new Map());
+  // Topic nomi ikki joyda uchraydi: topic ochilgan paytdagi xizmat
+  // xabarida va o'sha topicdagi xabarning `reply_to_message` ida.
+  const name =
+    msg.forum_topic_created?.name ||
+    msg.reply_to_message?.forum_topic_created?.name ||
+    "";
+  const known = topics.get(chat.id).get(threadId);
+  if (!known) topics.get(chat.id).set(threadId, name);
 }
 
 if (chats.size === 0) {
@@ -63,9 +81,21 @@ console.log("Topilgan guruhlar:\n");
 for (const chat of chats.values()) {
   console.log(`  ${chat.title}`);
   console.log(`    chat_id: ${chat.id}`);
-  console.log(`    turi:    ${chat.type}\n`);
+  console.log(`    turi:    ${chat.type}${chat.is_forum ? " (Topics yoqilgan)" : ""}`);
+  const t = topics.get(chat.id);
+  if (t && t.size > 0) {
+    console.log("    topiclar:");
+    for (const [id, name] of t) console.log(`      ${String(id).padStart(6)}  ${name || "(nomi ko'rinmadi)"}`);
+  } else if (chat.is_forum) {
+    console.log("    topiclar: topilmadi — HAR BIR topicga bittadan xabar yozing");
+  }
+  console.log("");
 }
 
-console.log("Endi .env.local ga qo'ying (qaysi guruh qaysi oqim ekaniga qarab):");
-console.log("  TELEGRAM_CHAT_PAYMENTS=<to'lovlar guruhi id>");
-console.log("  TELEGRAM_CHAT_SALARIES=<oyliklar guruhi id>");
+console.log("Endi .env.local ga qo'ying.\n");
+console.log("Bitta guruh + ikkita topic bo'lsa (chat_id ikkalasida BIR XIL):");
+console.log("  TELEGRAM_CHAT_PAYMENTS=<guruh id>");
+console.log("  TELEGRAM_TOPIC_PAYMENTS=<to'lovlar topic raqami>");
+console.log("  TELEGRAM_CHAT_SALARIES=<xuddi o'sha guruh id>");
+console.log("  TELEGRAM_TOPIC_SALARIES=<oyliklar topic raqami>\n");
+console.log("Ikkita alohida guruh bo'lsa — TOPIC qatorlarini bo'sh qoldiring.");

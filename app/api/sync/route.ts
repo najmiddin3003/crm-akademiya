@@ -54,6 +54,10 @@ export async function GET() {
             // ketmaydi, sahifada ham shunday ko'rinadi.
             telegramReady: Boolean(cfg.targets[kind].chatId),
             telegramUsed: kindNotifiesTelegram(kind),
+            // Guruh id MAXFIY emas, lekin uni ham chiqarishning hojati
+            // yo'q — sahifada faqat topic raqami ko'rinsa yetadi, chunki
+            // eng ko'p adashiladigan joy shu.
+            threadId: cfg.targets[kind].threadId,
             tabName: cfg.targets[kind].tabName,
           },
         ]),
