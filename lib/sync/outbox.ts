@@ -120,6 +120,33 @@ export async function enqueueMany(db: Db, inputs: EnqueueInput[]): Promise<numbe
 }
 
 /**
+ * Shu yozuvning YARATILGANI guruhga e'lon qilinganmi (yoki e'lon
+ * qilinishi mo'ljallanganmi)?
+ *
+ * NEGA KERAK: bekor qilish xabari faqat guruh ALLAQACHON ko'rgan
+ * to'lov haqida ma'noli. Bazadagi 25 561 yozuvning aksari edutizimdan
+ * ko'chirilgan tarix — ular `logEntry` dan o'tmagan, ya'ni navbatga
+ * umuman tushmagan va guruhga hech qachon e'lon qilinmagan. 2025-yilgi
+ * to'lovni bekor qilganda guruhga "BEKOR QILINDI" degan xabar ketsa,
+ * odamlar ko'rmagan to'lov haqida tuzatish olgan bo'lardi.
+ *
+ * Sana chegarasi yoki `imported` bayrog'i o'rniga shu usul tanlandi:
+ * u qo'shimcha maydon ham, migratsiya ham, sehrli sana ham talab
+ * qilmaydi — javob navbatning o'zida turibdi.
+ *
+ * MUHIM: bu `sync_outbox` dagi bajarilgan (`done`) yozuvlar SAQLANIB
+ * qolishiga tayanadi. Kelajakda navbatni tozalash qo'shilsa, `created`
+ * hodisalari o'chmasligi kerak — aks holda eski to'lovni bekor qilish
+ * yana jimgina guruhga chiqib ketadi.
+ */
+export async function wasAnnounced(db: Db, kind: SyncKind, entryId: number): Promise<boolean> {
+  const doc = await db
+    .collection(OUTBOX)
+    .findOne({ kind, entryId, event: "created", notifyTelegram: true }, { projection: { _id: 1 } });
+  return doc !== null;
+}
+
+/**
  * Yuborishga tayyor vazifalar: hali bajarilmagan va kutish vaqti o'tgan.
  * Eng eskisidan boshlab — to'lovlar guruhga qaysi tartibda bo'lgan bo'lsa,
  * shu tartibda tushsin.

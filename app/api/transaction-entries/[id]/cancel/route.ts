@@ -4,7 +4,7 @@ import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { classifyEntry, flushSoon } from "@/lib/sync/dispatch";
-import { enqueue } from "@/lib/sync/outbox";
+import { enqueue, wasAnnounced } from "@/lib/sync/outbox";
 
 // POST /api/transaction-entries/:id/cancel — Kassalar sahifasidagi
 // tranzaksiya tafsilot oynasidagi "Tranzaksiyani bekor qilish". Faqat
@@ -65,9 +65,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   // va guruhga ALOHIDA tuzatish xabari ketadi (eski xabar tahrirlanmaydi —
   // guruhdagi odam eski xabarni qayta o'qimaydi, tuzatish oxirgi xabar
   // bo'lib ko'rinishi kerak).
+  //
+  // Guruhga esa FAQAT o'sha to'lov yaratilganda e'lon qilingan bo'lsa
+  // xabar ketadi (wasAnnounced). Edutizimdan ko'chirilgan tarix guruhga
+  // hech qachon chiqmagan — uni bekor qilganda tuzatish xabari yuborish
+  // odamlarni chalg'itardi.
   const kind = classifyEntry(entry);
   if (kind) {
-    await enqueue(db, { kind, entryId, event: "cancelled", notifyTelegram: true });
+    await enqueue(db, {
+      kind,
+      entryId,
+      event: "cancelled",
+      notifyTelegram: await wasAnnounced(db, kind, entryId),
+    });
     after(() => flushSoon(db));
   }
 

@@ -4,7 +4,7 @@ import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { classifyEntry, flushSoon } from "@/lib/sync/dispatch";
-import { enqueue } from "@/lib/sync/outbox";
+import { enqueue, wasAnnounced } from "@/lib/sync/outbox";
 
 // DELETE /api/salary-runs/:id — Moliya → Oylik chiqarish jadvalidagi bitta
 // tarixiy chiqarishni o'chirish (referens dizaynda AMALLAR ustunidagi
@@ -103,8 +103,17 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     // Sheet'dagi qator "Bekor qilindi" bo'lib yangilanadi va guruhga
     // alohida tuzatish xabari ketadi (transaction-entries/[id]/cancel
     // bilan bir xil qoida).
+    // Guruhga faqat yaratilishi e'lon qilingan yozuv uchun xabar ketadi —
+    // transaction-entries/[id]/cancel bilan bir xil qoida (wasAnnounced).
     const kind = classifyEntry(entry);
-    if (kind) await enqueue(db, { kind, entryId: entry.id, event: "cancelled", notifyTelegram: true });
+    if (kind) {
+      await enqueue(db, {
+        kind,
+        entryId: entry.id,
+        event: "cancelled",
+        notifyTelegram: await wasAnnounced(db, kind, entry.id),
+      });
+    }
   }
 
   await db.collection("salary_runs").deleteOne({ id: n });
