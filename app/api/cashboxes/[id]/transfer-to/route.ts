@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, nowTime, todayIso } from "@/lib/transactionLog";
+import { flushSoon } from "@/lib/sync/dispatch";
 
 // POST /api/cashboxes/:id/transfer-to — pulni bitta kassadan BOSHQA kassaga
 // ko'chiradi (referens saytdagi Kassalar → asosiy kartochka "Ko'chirish"
@@ -80,7 +81,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     date: entryDate,
     time: entryTime,
     studentName: "",
-    amount: -amount,
     after: null,
     txType: "transfer",
     txName,
@@ -91,8 +91,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     note: note || "",
     status: "",
   };
-  await logEntry(db, { ...base, before: totals[method as keyof CashboxMethodTotals] ?? 0, moderator: source.moderator || "", cashboxId: fromId });
-  await logEntry(db, { ...base, before: (dest.methodTotals as CashboxMethodTotals)[method as keyof CashboxMethodTotals] ?? 0, moderator: dest.moderator || "", cashboxId: toCashboxId });
+  // ISHORA JUFT BO'LADI: jo'natgan kassada manfiy, qabul qilganda musbat —
+  // yuqoridagi `$inc` bilan bir xil. Ilgari ikkalasi ham manfiy yozilardi
+  // va qabul qilgan kassaning daftarida pul KIRGANI "-500 000" bo'lib
+  // ko'rinardi. Balansga ta'sir qilmagani uchun sezilmay yurgan, lekin
+  // edutizimdan ko'chirilgan 3 578 ko'chirma juft ishora bilan yozilgan
+  // (scripts/import-cashbox-api.mjs) va Google Sheets'dagi "Ko'chirmalar"
+  // varag'i yo'nalishni AYNAN shu ishoradan oladi (lib/sync/mappers.ts).
+  await logEntry(db, { ...base, amount: -amount, before: totals[method as keyof CashboxMethodTotals] ?? 0, moderator: source.moderator || "", cashboxId: fromId });
+  await logEntry(db, { ...base, amount, before: (dest.methodTotals as CashboxMethodTotals)[method as keyof CashboxMethodTotals] ?? 0, moderator: dest.moderator || "", cashboxId: toCashboxId });
+
+  // Javob ketgandan keyin navbatni bo'shatamiz — qator Google Sheets'ga
+  // kunlik cron'ni kutmasdan tushadi (boshqa yozuv route'lari ham shunday).
+  after(() => flushSoon(db));
 
   const { _id: _f, ...fromCashbox } = fromRes;
   const { _id: _t, ...toCashbox } = toRes;

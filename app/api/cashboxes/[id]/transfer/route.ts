@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, nowTime, todayIso } from "@/lib/transactionLog";
+import { flushSoon } from "@/lib/sync/dispatch";
 
 // POST /api/cashboxes/:id/transfer — bitta kassa ichida to'lov turlari
 // orasida pul ko'chiradi (masalan Naqd → Plastik). Umumiy balansga
 // tegmaydi, faqat methodTotals'ni qayta taqsimlaydi. "Tranzaksiyalar"
-// jurnaliga ikkita qator yoziladi (chiqadigan va tushadigan to'lov turi —
-// manba saytidagi kabi ikkalasi ham manfiy miqdor bilan, TRANSACTION_ENTRY_SEED
-// konvensiyasiga qarang); daromad/xarajat hisobotiga tegmaydi.
+// jurnaliga ikkita qator yoziladi: chiqadigan tur manfiy, tushadigani
+// musbat miqdor bilan. Daromad/xarajat hisobotiga tegmaydi.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cashboxId = Number(id);
@@ -67,7 +67,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     date: entryDate,
     time: entryTime,
     studentName: "",
-    amount: -amount,
     before: totals[from as keyof CashboxMethodTotals] ?? 0,
     after: null,
     txType: "transfer",
@@ -80,8 +79,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     status: "",
     cashboxId,
   };
-  await logEntry(db, { ...base, paymentType: fromLabel });
-  await logEntry(db, { ...base, paymentType: toLabel });
+  // Chiqadigan tur manfiy, tushadigani musbat — yuqoridagi `$inc` bilan
+  // bir xil va edutizimdan ko'chirilgan juftliklar bilan bir xil
+  // (scripts/import-cashbox-api.mjs kategoriyasiz kirim/chiqimni aynan
+  // shunday yozadi). Ikkalasi ham manfiy bo'lsa "Ko'chirmalar" varag'ida
+  // ikkala qator ham "Chiqim" bo'lib chiqardi (lib/sync/mappers.ts).
+  await logEntry(db, { ...base, amount: -amount, paymentType: fromLabel });
+  await logEntry(db, { ...base, amount, paymentType: toLabel });
+
+  // Javob ketgandan keyin navbatni bo'shatamiz — qator Google Sheets'ga
+  // kunlik cron'ni kutmasdan tushadi (boshqa yozuv route'lari ham shunday).
+  after(() => flushSoon(db));
 
   const { _id, ...cashbox } = res;
   return NextResponse.json({ ok: true, cashbox: normalizeCashbox(cashbox, methods.map((m) => m.key)) });
