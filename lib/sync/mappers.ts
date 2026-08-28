@@ -54,10 +54,32 @@ export function kindFilter(kind: SyncKind): Record<string, unknown> {
 
 // ───────────────────────── Formatlash ─────────────────────────
 
-/** "2026-08-26" -> "26.08.2026". Sana jadvalga MATN bo'lib yoziladi. */
+/** "2026-08-26" -> "26.08.2026". TELEGRAM xabari uchun — matn. */
 export function fmtDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? "").trim());
   return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso ?? "");
+}
+
+// ── SANA JADVALGA QANDAY YOZILADI ────────────────────────────────────
+// Google Sheets sanani SON bo'lib saqlaydi: 1899-12-30 dan beri o'tgan
+// kunlar soni. Ko'rinishini ustunning formati hal qiladi.
+//
+// Ilgari bu yerga "26.08.2026" degan MATN yozilardi va jadval uni sana
+// deb bilmasdi: saralaganda 01.02.2026 03.10.2025 dan oldin turardi
+// (harfma-harf taqqoslash), sana bo'yicha filtr va pivot ishlamasdi.
+//
+// MUHIM: son yozish solishtirishni BUZMAYDI. Modul jadvalni
+// UNFORMATTED_VALUE bilan o'qiydi (googleSheets.ts readRows), ya'ni
+// katakdan xuddi shu son qaytadi va `signatureOf` ikkalasini teng deb
+// topadi. Matn yozilganda ham shunday edi — turi o'zgardi, xolos.
+const SHEETS_EPOCH_MS = Date.UTC(1899, 11, 30);
+const DAY_MS = 86_400_000;
+
+/** "YYYY-MM-DD" -> Sheets sana seriyasi. Format buzuq bo'lsa matn qaytadi. */
+export function dateSerial(iso: string): number | string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? "").trim());
+  if (!m) return String(iso ?? "");
+  return Math.round((Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - SHEETS_EPOCH_MS) / DAY_MS);
 }
 
 /** 500000 -> "500 000". Telegram xabari uchun (jadvalda xom son turadi). */
@@ -65,10 +87,18 @@ export function fmtMoney(n: number): string {
   return String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
-function nowStamp(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+/**
+ * "Yangilangan" ustuni — hozirgi lahza, Sheets seriyasi bo'lib.
+ *
+ * Toshkent vaqtiga QO'LDA o'tkaziladi (+5, yil bo'yi o'zgarmaydi):
+ * ilgari `new Date()` ning lokal getterlari ishlatilardi, ya'ni Vercel'da
+ * UTC chiqib, jadvalda 5 soat orqada ko'rinardi.
+ *
+ * Bu ustun `signatureOf` ga KIRMAYDI (oxirgi ustun tashlab ketiladi),
+ * shuning uchun har yozishda o'zgarishi solishtirishga ta'sir qilmaydi.
+ */
+function nowStamp(): number {
+  return (Date.now() + 5 * 3_600_000 - SHEETS_EPOCH_MS) / DAY_MS;
 }
 
 const DASH = "—";
@@ -222,7 +252,7 @@ export async function toTransferRow(entry: TransactionEntry, ctx: SyncContext): 
 export function paymentCells(r: PaymentRow): SheetCell[] {
   return [
     r.entryId,
-    fmtDate(r.date),
+    dateSerial(r.date),
     cell(r.time),
     cell(r.studentName),
     cell(r.groupName),
@@ -242,7 +272,7 @@ export function paymentCells(r: PaymentRow): SheetCell[] {
 export function salaryCells(r: SalaryRow): SheetCell[] {
   return [
     r.entryId,
-    fmtDate(r.date),
+    dateSerial(r.date),
     cell(r.time),
     cell(r.employeeName),
     cell(r.position),
@@ -261,7 +291,7 @@ export function salaryCells(r: SalaryRow): SheetCell[] {
 export function expenseCells(r: ExpenseRow): SheetCell[] {
   return [
     r.entryId,
-    fmtDate(r.date),
+    dateSerial(r.date),
     cell(r.time),
     cell(r.personName),
     cell(r.category),
@@ -278,7 +308,7 @@ export function expenseCells(r: ExpenseRow): SheetCell[] {
 export function transferCells(r: TransferRow): SheetCell[] {
   return [
     r.entryId,
-    fmtDate(r.date),
+    dateSerial(r.date),
     cell(r.time),
     r.direction,
     cell(r.category),
