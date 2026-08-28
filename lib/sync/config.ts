@@ -38,7 +38,11 @@ function normalizePrivateKey(raw: string): string {
   if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
     key = key.slice(1, -1);
   }
-  return key.replace(/\n/g, "\n");
+  // `\\n` — ikki belgi (teskari chiziq va "n"), HAQIQIY yangi qator emas.
+  // Aynan shularni almashtirish kerak; `/\n/` yozilsa hech narsa
+  // o'zgarmaydi va kalit bir qatorli bo'lib qolib, imzolash "DECODER
+  // routines::unsupported" xatosi bilan yiqiladi.
+  return key.replace(/\\n/g, "\n");
 }
 
 export function loadSyncConfig(): SyncConfig {
