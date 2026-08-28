@@ -57,8 +57,13 @@ if (!tokRes.ok) {
 const { access_token } = await tokRes.json();
 
 async function getRange(sheetId, range) {
+  // UNFORMATTED_VALUE SHART. Sukut bo'yicha Google katakni EKRANDAGI
+  // ko'rinishida qaytaradi: "Summa" ustuniga #,##0 formati berilgach
+  // 1000 soni "1,000" matniga aylanadi va Number() uni NaN deb o'qiydi —
+  // yig'indi jimgina noto'g'ri chiqadi. Xuddi shu sabab lib/sync
+  // solishtirishda ham aynan shu parametr ishlatiladi.
   const r = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`,
     { headers: { Authorization: `Bearer ${access_token}` } },
   );
   const j = await r.json();
