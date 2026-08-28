@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { kindNotifiesTelegram } from "@/lib/sync/config";
 import type { SyncEvent, SyncKind, SyncTask } from "@/lib/sync/types";
 
 // `sync_outbox` — yetkazib berish navbati.
@@ -36,6 +37,15 @@ export interface EnqueueInput {
 }
 
 /**
+ * Telegram bayrog'ining YAKUNIY qiymati. Chaqiruvchi `true` bersa ham,
+ * guruhga chiqmaydigan oqim (xarajat, ko'chirma) uchun majburan
+ * o'chiriladi — qoida bitta joyda, chaqiruv joylarida takrorlanmaydi.
+ */
+function telegramFlag(input: EnqueueInput): boolean {
+  return input.notifyTelegram && kindNotifiesTelegram(input.kind);
+}
+
+/**
  * Vazifani navbatga qo'yadi. Xuddi shu hodisa allaqachon navbatda bo'lsa
  * (masalan bir tugma ikki marta bosildi) yangisi yaratilmaydi — upsert.
  *
@@ -53,12 +63,12 @@ export async function enqueue(db: Db, input: EnqueueInput): Promise<boolean> {
           kind: input.kind,
           entryId: input.entryId,
           event: input.event,
-          notifyTelegram: input.notifyTelegram,
+          notifyTelegram: telegramFlag(input),
           status: "pending",
           sheetDone: false,
           // Telegram kerak bo'lmasa darhol "bajarilgan" deb belgilanadi,
           // shunda vazifa faqat Sheet yozilishi bilan yopiladi.
-          telegramDone: !input.notifyTelegram,
+          telegramDone: !telegramFlag(input),
           messageId: null,
           attempts: 0,
           lastError: null,
@@ -89,10 +99,10 @@ export async function enqueueMany(db: Db, inputs: EnqueueInput[]): Promise<numbe
           kind: input.kind,
           entryId: input.entryId,
           event: input.event,
-          notifyTelegram: input.notifyTelegram,
+          notifyTelegram: telegramFlag(input),
           status: "pending",
           sheetDone: false,
-          telegramDone: !input.notifyTelegram,
+          telegramDone: !telegramFlag(input),
           messageId: null,
           attempts: 0,
           lastError: null,

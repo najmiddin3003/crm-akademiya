@@ -3,14 +3,22 @@
 // guruh (faqat YANGI yozuvlar — eski/import qilingan tarix guruhga
 // yuborilmaydi, foydalanuvchi bilan kelishilgan).
 //
-// Ikki oqim bir-biridan mustaqil, har birining o'z jadvali va guruhi bor:
-//   • "payment" — o'quvchi to'lovlari (kassaga tushgan pul, txType payIn)
-//   • "salary"  — xodimga chiqarilgan oylik/avans (txType payOut, kategoriya
-//                 "avans"/"oylik" bo'lganlar; ijara, kommunal kabi boshqa
-//                 xarajatlar bu yerga TUSHMAYDI)
+// To'rt oqim bir-biridan mustaqil, har birining o'z varag'i bor:
+//   • "payment"  — o'quvchi to'lovlari (kassaga tushgan pul, txType payIn)
+//   • "salary"   — xodimga chiqarilgan oylik/avans (txType payOut, kategoriya
+//                  "avans"/"oylik" bo'lganlar)
+//   • "expense"  — qolgan barcha chiqimlar (ijara, kommunal, kanselyariya,
+//                  soliq, o'quvchiga qaytarilgan pul, …)
+//   • "transfer" — kassalar orasidagi va kassa ichidagi ko'chirmalar
+//
+// TELEGRAM FAQAT BIRINCHI IKKITASIGA. Xarajat va ko'chirma guruhga
+// yuborilmaydi — kelishuv "o'quvchi to'lovlari va xodim oyliklari"
+// haqida edi. Bu qoida `config.ts` dagi TELEGRAM_KINDS bilan
+// TUZILMAVIY ta'minlangan: yangi oqimlarda `chatId` doim bo'sh va
+// `enqueue` ularning `notifyTelegram` bayrog'ini majburan o'chiradi.
 
-/** Qaysi oqim — har biri o'z Sheet'i va o'z Telegram guruhiga boradi. */
-export type SyncKind = "payment" | "salary";
+/** Qaysi oqim — har biri o'z varag'iga boradi. */
+export type SyncKind = "payment" | "salary" | "expense" | "transfer";
 
 /**
  * Navbatdagi hodisa turi.
@@ -77,7 +85,7 @@ export interface PaymentRow {
   moderator: string;   // to'lovni qabul qilgan kassir
   branch: string;      // kassir filiali (izohga qarang: kelishilgan yechim)
   note: string;
-  cancelled: boolean;
+  status: string;      // "Faol" | "Kutilmoqda" | "Bekor qilindi"
 }
 
 export interface SalaryRow {
@@ -93,10 +101,53 @@ export interface SalaryRow {
   cashboxName: string;
   issuedBy: string;    // pulni chiqargan kassir
   note: string;
-  cancelled: boolean;
+  status: string;
 }
 
-export type SyncRow = PaymentRow | SalaryRow;
+/**
+ * Oylik/avansdan BOSHQA har qanday chiqim. Xodim ismi bo'lishi ham,
+ * bo'lmasligi ham mumkin (ijarada yo'q, o'quvchiga qaytarishda bor).
+ */
+export interface ExpenseRow {
+  entryId: number;
+  date: string;
+  time: string;
+  personName: string;  // yozuvda ko'rsatilgan odam (bo'lmasligi mumkin)
+  category: string;    // "Ijara" | "Soliq" | "Printer" | ...
+  amount: number;      // musbat
+  paymentType: string;
+  cashboxName: string;
+  issuedBy: string;
+  note: string;
+  status: string;
+}
+
+/**
+ * Ko'chirma. HAR BIR ko'chirma IKKI qator beradi — jo'natgan kassada
+ * "Chiqim", qabul qilganda "Kirim".
+ *
+ * `Summa` ustuni DOIM MUSBAT (mappers.ts `Math.abs`), shuning uchun
+ * varaqning SUM() i nolga teng emas — u ko'chirilgan pulning IKKI
+ * BARAVARINI beradi. Netto uchun `Yo'nalish` ustuni bo'yicha ajratish
+ * kerak: Kirim − Chiqim = 0. Har qanday holatda bu varaqni daromad yoki
+ * xarajatga qo'shib bo'lmaydi — u pulning qayerdan qayerga o'tgani
+ * jurnali, yangi pul emas.
+ */
+export interface TransferRow {
+  entryId: number;
+  date: string;
+  time: string;
+  direction: string;   // "Kirim" | "Chiqim"
+  category: string;    // txName — "Ko'chirish: X -> Y"
+  amount: number;      // musbat
+  paymentType: string;
+  cashboxName: string; // qaysi kassaning daftaridagi qator
+  moderator: string;
+  note: string;
+  status: string;
+}
+
+export type SyncRow = PaymentRow | SalaryRow | ExpenseRow | TransferRow;
 
 /** Kunlik solishtirish natijasi — `sync_runs` va CRM sahifasi uchun. */
 export interface ReconcileReport {

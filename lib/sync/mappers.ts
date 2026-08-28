@@ -1,6 +1,6 @@
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { SheetCell } from "@/lib/sync/googleSheets";
-import type { PaymentRow, SalaryRow, SyncKind } from "@/lib/sync/types";
+import type { ExpenseRow, PaymentRow, SalaryRow, SyncKind, TransferRow } from "@/lib/sync/types";
 import { esc } from "@/lib/sync/telegram";
 import { positionLabel, type SyncContext } from "@/lib/sync/lookups";
 
@@ -8,26 +8,48 @@ import { positionLabel, type SyncContext } from "@/lib/sync/lookups";
 
 // ───────────────────────── Tasnif ─────────────────────────
 
+const SALARY_RE = /avans|oylik/i;
+
 /**
  * Yozuv qaysi oqimga tegishli. `null` — hech qayerga yuborilmaydi.
  *
- *   payIn                        -> "payment" (kassaga tushgan pul)
- *   payOut + avans/oylik         -> "salary"  (xodimga chiqarilgan pul)
- *   payOut (ijara, kommunal, …)  -> null      (kelishuvda yo'q)
- *   transfer                     -> null      (kassalar orasida ko'chirish,
- *                                              yangi pul emas)
+ *   payIn                        -> "payment"  (kassaga tushgan pul)
+ *   payOut + avans/oylik         -> "salary"   (xodimga chiqarilgan pul)
+ *   payOut (ijara, kommunal, …)  -> "expense"  (qolgan barcha chiqim)
+ *   transfer                     -> "transfer" (kassalar orasida yoki
+ *                                               kassa ichida ko'chirish)
+ *
+ * `null` faqat kutilmagan `txType` uchun qoladi — bunday yozuv jimgina
+ * tashlab ketiladi, chunki uni qaysi varaqqa yozishni bilmaymiz.
  */
 export function classifyEntry(entry: Pick<TransactionEntry, "txType" | "txName">): SyncKind | null {
   if (entry.txType === "payIn") return "payment";
-  if (entry.txType === "payOut" && /avans|oylik/i.test(String(entry.txName ?? ""))) return "salary";
+  if (entry.txType === "payOut") {
+    return SALARY_RE.test(String(entry.txName ?? "")) ? "salary" : "expense";
+  }
+  if (entry.txType === "transfer") return "transfer";
   return null;
 }
 
-/** Mongo filtri — tasnif bilan BIR XIL qoida. Solishtirish shundan foydalanadi. */
+/**
+ * Mongo filtri — tasnif bilan BIR XIL qoida bo'lishi SHART, aks holda
+ * solishtirish varaqqa noto'g'ri to'plamni yozadi. To'rt filtr kesishmaydi
+ * va birgalikda `transaction_entries` ni to'liq qoplaydi
+ * (kutilmagan `txType` dan boshqasini).
+ */
 export function kindFilter(kind: SyncKind): Record<string, unknown> {
-  return kind === "payment"
-    ? { txType: "payIn" }
-    : { txType: "payOut", txName: { $regex: "avans|oylik", $options: "i" } };
+  switch (kind) {
+    case "payment":
+      return { txType: "payIn" };
+    case "salary":
+      return { txType: "payOut", txName: { $regex: "avans|oylik", $options: "i" } };
+    case "expense":
+      // `$not` + RegExp — "salary" filtrining aniq teskarisi. Matnli
+      // `$regex` bilan `$not` ishlamaydi, shuning uchun RegExp literal.
+      return { txType: "payOut", txName: { $not: /avans|oylik/i } };
+    case "transfer":
+      return { txType: "transfer" };
+  }
 }
 
 // ───────────────────────── Formatlash ─────────────────────────
@@ -64,12 +86,42 @@ export const SALARY_HEADERS = [
   "To'lov usuli", "Kassa", "Chiqargan", "Izoh", "Status", "Yangilangan",
 ];
 
+export const EXPENSE_HEADERS = [
+  "ID", "Sana", "Vaqt", "Kim", "Turi", "Summa",
+  "To'lov usuli", "Kassa", "Chiqargan", "Izoh", "Status", "Yangilangan",
+];
+
+export const TRANSFER_HEADERS = [
+  "ID", "Sana", "Vaqt", "Yo'nalish", "Ko'chirish", "Summa",
+  "To'lov usuli", "Kassa", "Moderator", "Izoh", "Status", "Yangilangan",
+];
+
 export function headersFor(kind: SyncKind): string[] {
-  return kind === "payment" ? PAYMENT_HEADERS : SALARY_HEADERS;
+  switch (kind) {
+    case "payment": return PAYMENT_HEADERS;
+    case "salary": return SALARY_HEADERS;
+    case "expense": return EXPENSE_HEADERS;
+    case "transfer": return TRANSFER_HEADERS;
+  }
 }
 
 const STATUS_ACTIVE = "Faol";
 const STATUS_CANCELLED = "Bekor qilindi";
+const STATUS_WAITING = "Kutilmoqda";
+
+/**
+ * Yozuv holati. Ilgari faqat "bekor qilinganmi" tekshirilardi va
+ * KUTILAYOTGAN ko'chirma jadvalda "Faol" bo'lib ko'rinardi — ya'ni hali
+ * qabul qilinmagan pul amalga oshgandek. Ko'chirmalar varag'i qo'shilgach
+ * bu holat ommaviy bo'ldi (import qilingan tarixda 24 ta kutilayotgan
+ * ko'chirma bor), shuning uchun alohida yorliq kerak.
+ */
+function statusLabel(status: unknown): string {
+  const s = String(status ?? "").trim();
+  if (s === "cancelled") return STATUS_CANCELLED;
+  if (s === "waiting") return STATUS_WAITING;
+  return STATUS_ACTIVE;
+}
 
 // ───────────────────────── Yozuv -> qator ma'lumoti ─────────────────────────
 
@@ -91,7 +143,7 @@ export async function toPaymentRow(entry: TransactionEntry, ctx: SyncContext): P
     moderator: String(entry.moderator ?? "").trim(),
     branch: await ctx.branchOfPayment(String(entry.moderator ?? "")),
     note: String(entry.note ?? "").trim(),
-    cancelled: entry.status === "cancelled",
+    status: statusLabel(entry.status),
   };
 }
 
@@ -114,7 +166,54 @@ export async function toSalaryRow(entry: TransactionEntry, ctx: SyncContext): Pr
     cashboxName: await ctx.cashboxName(entry.cashboxId),
     issuedBy: String(entry.moderator ?? "").trim(),
     note: String(entry.note ?? "").trim(),
-    cancelled: entry.status === "cancelled",
+    status: statusLabel(entry.status),
+  };
+}
+
+/**
+ * Oylik/avansdan boshqa chiqim. `ctx` KERAK EMAS: bu yerda xodim
+ * lavozimi ham, o'quvchi guruhi ham qidirilmaydi — chiqim ko'pincha
+ * odamga umuman bog'liq emas (ijara, soliq, printer). Faqat kassa nomi
+ * kerak, u ham arzon (lookups ichida keshlangan).
+ */
+export async function toExpenseRow(entry: TransactionEntry, ctx: SyncContext): Promise<ExpenseRow> {
+  return {
+    entryId: entry.id,
+    date: String(entry.date ?? ""),
+    time: String(entry.time ?? ""),
+    // Chiqim yozuvida odam ismi `studentName` da turadi — oylik bilan
+    // bir xil kelishuv (toSalaryRow izohiga qarang).
+    personName: String(entry.studentName ?? "").trim(),
+    category: String(entry.txName ?? "").trim(),
+    amount: Math.abs(Number(entry.amount) || 0),
+    paymentType: String(entry.paymentType ?? "").trim(),
+    cashboxName: await ctx.cashboxName(entry.cashboxId),
+    issuedBy: String(entry.moderator ?? "").trim(),
+    note: String(entry.note ?? "").trim(),
+    status: statusLabel(entry.status),
+  };
+}
+
+/**
+ * Ko'chirma. Yo'nalish summaning ISHORASIDAN olinadi: manfiy — pul shu
+ * kassadan chiqdi, musbat — kirdi. Nomi (`txName`) qayerdan qayerga
+ * ketganini aytadi, lekin qator QAYSI kassaning daftarida turganini
+ * faqat ishora ko'rsatadi.
+ */
+export async function toTransferRow(entry: TransactionEntry, ctx: SyncContext): Promise<TransferRow> {
+  const amount = Number(entry.amount) || 0;
+  return {
+    entryId: entry.id,
+    date: String(entry.date ?? ""),
+    time: String(entry.time ?? ""),
+    direction: amount < 0 ? "Chiqim" : "Kirim",
+    category: String(entry.txName ?? "").trim(),
+    amount: Math.abs(amount),
+    paymentType: String(entry.paymentType ?? "").trim(),
+    cashboxName: await ctx.cashboxName(entry.cashboxId),
+    moderator: String(entry.moderator ?? "").trim(),
+    note: String(entry.note ?? "").trim(),
+    status: statusLabel(entry.status),
   };
 }
 
@@ -135,7 +234,7 @@ export function paymentCells(r: PaymentRow): SheetCell[] {
     cell(r.moderator),
     cell(r.branch),
     cell(r.note),
-    r.cancelled ? STATUS_CANCELLED : STATUS_ACTIVE,
+    r.status,
     nowStamp(),
   ];
 }
@@ -154,7 +253,41 @@ export function salaryCells(r: SalaryRow): SheetCell[] {
     cell(r.cashboxName),
     cell(r.issuedBy),
     cell(r.note),
-    r.cancelled ? STATUS_CANCELLED : STATUS_ACTIVE,
+    r.status,
+    nowStamp(),
+  ];
+}
+
+export function expenseCells(r: ExpenseRow): SheetCell[] {
+  return [
+    r.entryId,
+    fmtDate(r.date),
+    cell(r.time),
+    cell(r.personName),
+    cell(r.category),
+    r.amount,
+    cell(r.paymentType),
+    cell(r.cashboxName),
+    cell(r.issuedBy),
+    cell(r.note),
+    r.status,
+    nowStamp(),
+  ];
+}
+
+export function transferCells(r: TransferRow): SheetCell[] {
+  return [
+    r.entryId,
+    fmtDate(r.date),
+    cell(r.time),
+    r.direction,
+    cell(r.category),
+    r.amount,
+    cell(r.paymentType),
+    cell(r.cashboxName),
+    cell(r.moderator),
+    cell(r.note),
+    r.status,
     nowStamp(),
   ];
 }

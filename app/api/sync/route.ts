@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
-import { KIND_LABEL, loadSyncConfig, syncConfigIssues } from "@/lib/sync/config";
+import { KIND_LABEL, kindNotifiesTelegram, loadSyncConfig, SYNC_KINDS, syncConfigIssues } from "@/lib/sync/config";
 import { flushPending } from "@/lib/sync/dispatch";
 import { listProblems, outboxCounts, resetBackoff } from "@/lib/sync/outbox";
 import { runSyncCycle } from "@/lib/sync/run";
@@ -42,20 +42,22 @@ export async function GET() {
     config: {
       enabled: cfg.enabled,
       issues: syncConfigIssues(cfg),
-      targets: {
-        payment: {
-          label: KIND_LABEL.payment,
-          sheetReady: Boolean(cfg.targets.payment.spreadsheetId),
-          telegramReady: Boolean(cfg.targets.payment.chatId),
-          tabName: cfg.targets.payment.tabName,
-        },
-        salary: {
-          label: KIND_LABEL.salary,
-          sheetReady: Boolean(cfg.targets.salary.spreadsheetId),
-          telegramReady: Boolean(cfg.targets.salary.chatId),
-          tabName: cfg.targets.salary.tabName,
-        },
-      },
+      // Oqimlar ro'yxati bitta manbadan (SYNC_KINDS) — yangi oqim
+      // qo'shilganda bu yerni tahrirlash esdan chiqmasin uchun.
+      targets: Object.fromEntries(
+        SYNC_KINDS.map((kind) => [
+          kind,
+          {
+            label: KIND_LABEL[kind],
+            sheetReady: Boolean(cfg.targets[kind].spreadsheetId),
+            // Xarajat/ko'chirmada `chatId` doim bo'sh — ular guruhga
+            // ketmaydi, sahifada ham shunday ko'rinadi.
+            telegramReady: Boolean(cfg.targets[kind].chatId),
+            telegramUsed: kindNotifiesTelegram(kind),
+            tabName: cfg.targets[kind].tabName,
+          },
+        ]),
+      ),
     },
     counts,
     problems,

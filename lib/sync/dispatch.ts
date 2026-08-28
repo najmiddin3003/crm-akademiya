@@ -13,13 +13,17 @@ import { SyncContext } from "@/lib/sync/lookups";
 import {
   cancelMessage,
   classifyEntry,
+  expenseCells,
   headersFor,
   paymentCells,
   paymentMessage,
   salaryCells,
   salaryMessage,
+  toExpenseRow,
   toPaymentRow,
   toSalaryRow,
+  toTransferRow,
+  transferCells,
 } from "@/lib/sync/mappers";
 import { claimPending, recordOutcome, type TaskOutcome } from "@/lib/sync/outbox";
 import { sendMessage } from "@/lib/sync/telegram";
@@ -94,26 +98,46 @@ interface PreparedEntry {
   cancelledText: string;
 }
 
-/** Bazadagi yozuvdan Sheet qatorini va ikkala Telegram matnini tayyorlaydi. */
+/**
+ * Bazadagi yozuvdan Sheet qatorini va (kerak bo'lsa) Telegram matnini
+ * tayyorlaydi.
+ *
+ * Xarajat va ko'chirma uchun matn BO'SH qoladi — ular guruhga hech qachon
+ * ketmaydi (config.ts, TELEGRAM_KINDS). Bo'sh matn xavfsiz: `telegramDone`
+ * bunday vazifalarda navbatga qo'yilishidayoq `true` bo'ladi, ya'ni
+ * yuborish shoxobchasiga umuman kirilmaydi.
+ */
 async function prepare(
   entry: TransactionEntry,
   kind: SyncKind,
   ctx: SyncContext,
 ): Promise<PreparedEntry> {
-  if (kind === "payment") {
-    const row = await toPaymentRow(entry, ctx);
-    return {
-      cells: paymentCells(row),
-      createdText: paymentMessage(row),
-      cancelledText: cancelMessage(kind, row),
-    };
+  switch (kind) {
+    case "payment": {
+      const row = await toPaymentRow(entry, ctx);
+      return {
+        cells: paymentCells(row),
+        createdText: paymentMessage(row),
+        cancelledText: cancelMessage(kind, row),
+      };
+    }
+    case "salary": {
+      const row = await toSalaryRow(entry, ctx);
+      return {
+        cells: salaryCells(row),
+        createdText: salaryMessage(row),
+        cancelledText: cancelMessage(kind, row),
+      };
+    }
+    case "expense": {
+      const row = await toExpenseRow(entry, ctx);
+      return { cells: expenseCells(row), createdText: "", cancelledText: "" };
+    }
+    case "transfer": {
+      const row = await toTransferRow(entry, ctx);
+      return { cells: transferCells(row), createdText: "", cancelledText: "" };
+    }
   }
-  const row = await toSalaryRow(entry, ctx);
-  return {
-    cells: salaryCells(row),
-    createdText: salaryMessage(row),
-    cancelledText: cancelMessage(kind, row),
-  };
 }
 
 export interface FlushResult {

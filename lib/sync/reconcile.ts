@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
 import type { TransactionEntry } from "@/lib/transactionEntries";
-import { isSheetsReady, loadSyncConfig, type SyncConfig } from "@/lib/sync/config";
+import { isSheetsReady, loadSyncConfig, SYNC_KINDS, type SyncConfig } from "@/lib/sync/config";
 import {
   appendRows,
   deleteRows,
@@ -11,13 +11,17 @@ import {
 } from "@/lib/sync/googleSheets";
 import { SyncContext } from "@/lib/sync/lookups";
 import {
+  expenseCells,
   headersFor,
   kindFilter,
   paymentCells,
   salaryCells,
   signatureOf,
+  toExpenseRow,
   toPaymentRow,
   toSalaryRow,
+  toTransferRow,
+  transferCells,
 } from "@/lib/sync/mappers";
 import type { ReconcileReport, SyncKind } from "@/lib/sync/types";
 
@@ -63,12 +67,16 @@ async function cellsFor(
   kind: SyncKind,
   ctx: SyncContext,
 ): Promise<SheetCell[]> {
-  if (kind === "payment") return paymentCells(await toPaymentRow(entry, ctx));
-  return salaryCells(await toSalaryRow(entry, ctx));
+  switch (kind) {
+    case "payment": return paymentCells(await toPaymentRow(entry, ctx));
+    case "salary": return salaryCells(await toSalaryRow(entry, ctx));
+    case "expense": return expenseCells(await toExpenseRow(entry, ctx));
+    case "transfer": return transferCells(await toTransferRow(entry, ctx));
+  }
 }
 
 /**
- * Bitta oqimni (to'lovlar yoki oyliklar) baza bilan solishtirib tuzatadi.
+ * Bitta oqimni baza bilan solishtirib tuzatadi.
  */
 export async function reconcileKind(
   db: Db,
@@ -184,13 +192,13 @@ export async function reconcileKind(
   return report;
 }
 
-/** Ikkala oqimni ham solishtiradi. */
+/** To'rt oqimning hammasini solishtiradi (SYNC_KINDS tartibida). */
 export async function reconcileAll(
   db: Db,
   deadline: number = Date.now() + 45_000,
 ): Promise<ReconcileReport[]> {
   const cfg = loadSyncConfig();
-  const kinds: SyncKind[] = ["payment", "salary"];
+  const kinds = SYNC_KINDS;
   const reports: ReconcileReport[] = [];
   for (const kind of kinds) {
     try {

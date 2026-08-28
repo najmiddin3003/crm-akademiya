@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import type { ReconcileReport, SyncRunDoc, SyncTask } from "@/lib/sync/types";
+import type { ReconcileReport, SyncKind, SyncRunDoc, SyncTask } from "@/lib/sync/types";
 
 // Moliya → Sinxronizatsiya (sidebar: Moliya > Sinxronizatsiya, href
 // /finance-sync).
@@ -25,6 +25,8 @@ interface TargetState {
   label: string;
   sheetReady: boolean;
   telegramReady: boolean;
+  /** Bu oqim umuman guruhga ketadimi (xarajat/ko'chirma — yo'q). */
+  telegramUsed: boolean;
   tabName: string;
 }
 
@@ -33,7 +35,7 @@ interface StatusResponse {
   config: {
     enabled: boolean;
     issues: string[];
-    targets: { payment: TargetState; salary: TargetState };
+    targets: Record<SyncKind, TargetState>;
   };
   counts: { pending: number; failed: number; done: number; oldestPendingAt: string | null };
   problems: SyncTask[];
@@ -51,7 +53,12 @@ function fmtStamp(iso: string | null): string {
 const KIND_LABEL: Record<string, string> = {
   payment: "To'lov",
   salary: "Oylik",
+  expense: "Xarajat",
+  transfer: "Ko'chirma",
 };
+
+/** Manzil kartochkalari va tarix ustunlari shu tartibda. */
+const KINDS: SyncKind[] = ["payment", "salary", "expense", "transfer"];
 
 const EVENT_LABEL: Record<string, string> = {
   created: "Yangi",
@@ -243,7 +250,7 @@ export default function SyncPage() {
 
           {/* Manzillar */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {(["payment", "salary"] as const).map((kind) => {
+            {KINDS.map((kind) => {
               const t = data?.config.targets[kind];
               if (!t) return null;
               return (
@@ -259,13 +266,22 @@ export default function SyncPage() {
                       )}
                       Google Sheets
                     </span>
+                    {/* Xarajat va ko'chirma guruhga ATAYLAB yuborilmaydi —
+                        bu yerda qizil ✗ chiqsa "buzuq" degan taassurot
+                        qolardi, shuning uchun alohida yozuv. */}
                     <span className="inline-flex items-center gap-1.5 text-[13px]">
-                      {t.telegramReady ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      {!t.telegramUsed ? (
+                        <span className="text-muted-foreground">Telegram: kerak emas</span>
                       ) : (
-                        <XCircle className="w-4 h-4 text-rose-500" />
+                        <>
+                          {t.telegramReady ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-rose-500" />
+                          )}
+                          Telegram
+                        </>
                       )}
-                      Telegram
                     </span>
                   </div>
                 </div>
@@ -334,15 +350,14 @@ export default function SyncPage() {
                     <th className="text-left px-3 py-3 whitespace-nowrap">Vaqt</th>
                     <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
                     <th className="text-left px-3 py-3 whitespace-nowrap">Navbat</th>
-                    <th className="text-left px-3 py-3">To&apos;lovlar</th>
-                    <th className="text-left px-3 py-3">Oyliklar</th>
+                    {KINDS.map((k) => (
+                      <th key={k} className="text-left px-3 py-3">{KIND_LABEL[k]}</th>
+                    ))}
                     <th className="text-left px-3 py-3 whitespace-nowrap w-20">Holat</th>
                   </tr>
                 </thead>
                 <tbody>
                   {runs.map((r) => {
-                    const pay = r.reports.find((x) => x.kind === "payment");
-                    const sal = r.reports.find((x) => x.kind === "salary");
                     return (
                       <tr key={r.id} className="border-b border-border/50">
                         <td className="px-3 py-3 text-[13px] whitespace-nowrap">{fmtStamp(r.finishedAt || r.startedAt)}</td>
@@ -351,15 +366,19 @@ export default function SyncPage() {
                           {r.flushed}
                           {r.flushFailed > 0 && <span className="text-rose-600"> / {r.flushFailed} xato</span>}
                         </td>
-                        <td className="px-3 py-3 text-[12px]">{pay ? summarize(pay) : "—"}</td>
-                        <td className="px-3 py-3 text-[12px]">{sal ? summarize(sal) : "—"}</td>
+                        {KINDS.map((k) => {
+                          const rep = r.reports.find((x) => x.kind === k);
+                          return (
+                            <td key={k} className="px-3 py-3 text-[12px]">{rep ? summarize(rep) : "—"}</td>
+                          );
+                        })}
                         <td className="px-3 py-3 text-[13px]">{r.ok ? "✅" : "⚠️"}</td>
                       </tr>
                     );
                   })}
                   {runs.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={3 + KINDS.length + 1} className="px-3 py-8 text-center text-sm text-muted-foreground">
                         Hali tekshiruv o&apos;tkazilmagan
                       </td>
                     </tr>

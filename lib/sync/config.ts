@@ -67,6 +67,21 @@ export function loadSyncConfig(): SyncConfig {
         tabName: (env.SHEET_TAB_SALARIES || "Xodim oyliklari").trim(),
         chatId: (env.TELEGRAM_CHAT_SALARIES || "").trim(),
       },
+      // Xarajat va ko'chirma odatda to'lovlar bilan BITTA jadvalda,
+      // alohida varaqda turadi — shuning uchun id ko'rsatilmasa
+      // SHEET_ID_PAYMENTS ga tushadi. Shu bois Vercel'ga yangi
+      // o'zgaruvchi qo'shish shart emas.
+      expense: {
+        spreadsheetId: (env.SHEET_ID_EXPENSES || env.SHEET_ID_PAYMENTS || "").trim(),
+        tabName: (env.SHEET_TAB_EXPENSES || "Xarajatlar").trim(),
+        // chatId ATAYLAB bo'sh: xarajat guruhga yuborilmaydi (types.ts).
+        chatId: "",
+      },
+      transfer: {
+        spreadsheetId: (env.SHEET_ID_TRANSFERS || env.SHEET_ID_PAYMENTS || "").trim(),
+        tabName: (env.SHEET_TAB_TRANSFERS || "Ko'chirmalar").trim(),
+        chatId: "",
+      },
     },
     cronSecret: (env.CRON_SECRET || "").trim(),
   };
@@ -106,4 +121,24 @@ export function syncConfigIssues(cfg: SyncConfig): string[] {
 export const KIND_LABEL: Record<SyncKind, string> = {
   payment: "O'quvchi to'lovlari",
   salary: "Xodim oyliklari",
+  expense: "Xarajatlar",
+  transfer: "Ko'chirmalar",
 };
+
+/** Solishtirish va sozlamalar sahifasi shu tartibda aylanadi. */
+export const SYNC_KINDS: readonly SyncKind[] = ["payment", "salary", "expense", "transfer"];
+
+/**
+ * Telegram guruhiga BORADIGAN oqimlar. Ro'yxat qasddan qisqa: kelishuv
+ * faqat o'quvchi to'lovlari va xodim oyliklari haqida edi. Xarajat va
+ * ko'chirma soni ko'p va guruhga foydasi yo'q.
+ *
+ * Bu shunchaki sozlama emas — `outbox.enqueue` shu ro'yxatga qaramay
+ * kelgan `notifyTelegram: true` ni ham o'chiradi, ya'ni kelajakda
+ * kimdir chaqiruv joyida xato qilsa ham guruh himoyalangan.
+ */
+const TELEGRAM_KINDS: readonly SyncKind[] = ["payment", "salary"];
+
+export function kindNotifiesTelegram(kind: SyncKind): boolean {
+  return TELEGRAM_KINDS.includes(kind);
+}

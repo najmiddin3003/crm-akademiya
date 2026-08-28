@@ -37,8 +37,10 @@ export function nowTime(): string {
  * qo'shilsa ham u avtomatik qamrab olinadi va "sinxronni ulashni unutish"
  * degan xato bo'lmaydi.
  *
- * Ko'chirish (transfer) yozuvlari navbatga TUSHMAYDI — ular yangi pul
- * emas, kassalar orasidagi qayta taqsimlash (classifyEntry qarang).
+ * Har bir yozuv navbatga tushadi — to'lov, oylik, xarajat va ko'chirma
+ * ham (classifyEntry endi to'rt oqimni ham qaytaradi). Lekin GURUHGA
+ * faqat to'lov va oylik ketadi: xarajat/ko'chirma uchun `notifyTelegram`
+ * navbatning o'zida majburan o'chiriladi (lib/sync/outbox.ts).
  */
 export async function logEntry(
   db: Db,
