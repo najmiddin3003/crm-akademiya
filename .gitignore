@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Import uchun olingan xom ma'lumot fayllari — ichida o'quvchi ismlari,
+# telefon raqamlari va to'lov summalari bor. Repozitoriyga tushmasin
+# (25 MB dan ortiq va shaxsiy ma'lumot). Skriptlarning o'zi kuzatiladi.
+/scripts/data/*.json
+/scripts/data/*.ndjson
