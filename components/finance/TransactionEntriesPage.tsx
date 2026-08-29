@@ -52,40 +52,51 @@ export default function TransactionEntriesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
+  // Filtrlash ham, sahifalash ham SERVERDA. Ilgari bu sahifa butun
+  // jadvalni (25 569 qator, ~11 MB) yuklab, hammasini brauzerda
+  // filtrlab-kesardi — ekranda esa bir vaqtda 50 qator turadi.
+  const [total, setTotal] = useState(0);
+  const [studentOptions, setStudentOptions] = useState<string[]>([]);
+
+  // Kassalar va "O'quvchi" filtri ro'yxati — bir marta.
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/transaction-entries").then((r) => r.json()),
       fetch("/api/cashboxes").then((r) => r.json()),
-    ])
-      .then(([tx, cb]) => {
-        if (cancelled) return;
-        if (tx.ok) setEntries(tx.entries);
-        if (cb.ok) setCashboxes(cb.cashboxes);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      fetch("/api/transaction-entries/students").then((r) => r.json()),
+    ]).then(([cb, st]) => {
+      if (cancelled) return;
+      if (cb.ok) setCashboxes(cb.cashboxes);
+      if (st.ok) setStudentOptions(st.students);
+    });
     return () => { cancelled = true; };
   }, []);
 
-  const studentOptions = useMemo(
-    () => Array.from(new Set(entries.map((e) => e.studentName).filter(Boolean))).sort(),
-    [entries],
-  );
+  // Filtr yoki sahifa o'zgarganda — faqat ko'rinadigan qatorlar.
+  useEffect(() => {
+    let cancelled = false;
+    const qs = new URLSearchParams({ page: String(page), limit: String(pageSize) });
+    if (cashboxId) qs.set("cashboxId", cashboxId);
+    if (txType) qs.set("txType", txType);
+    if (status) qs.set("status", status);
+    if (student) qs.set("studentName", student);
+    if (dateRange.start) qs.set("dateFrom", dateRange.start.toISOString().slice(0, 10));
+    if (dateRange.end) qs.set("dateTo", dateRange.end.toISOString().slice(0, 10));
+    fetch(`/api/transaction-entries?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        setEntries(d.entries);
+        setTotal(d.total);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [page, pageSize, cashboxId, txType, status, student, dateRange]);
 
-  const filtered = useMemo(() => {
-    return entries.filter((e) => {
-      if (cashboxId && e.cashboxId !== Number(cashboxId)) return false;
-      if (txType && e.txType !== txType) return false;
-      if (status && e.status !== status) return false;
-      if (student && e.studentName !== student) return false;
-      if (dateRange.start && e.date < dateRange.start.toISOString().slice(0, 10)) return false;
-      if (dateRange.end && e.date > dateRange.end.toISOString().slice(0, 10)) return false;
-      return true;
-    });
-  }, [entries, cashboxId, txType, status, student, dateRange]);
-
+  // Server allaqachon filtrlab, kesib bergan — bu yerda qo'shimcha ish yo'q.
+  // `total` esa filtrga mos JAMI son (sahifadagi qatorlar soni emas).
+  const slice = entries;
   const start = (page - 1) * pageSize;
-  const slice = filtered.slice(start, start + pageSize);
 
   const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-40";
 
@@ -122,7 +133,7 @@ export default function TransactionEntriesPage() {
       <div className="flex justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
           <span className="text-muted-foreground">Umumiy soni:</span>
-          <span className="font-bold tabular-nums">{filtered.length}</span>
+          <span className="font-bold tabular-nums">{total}</span>
         </div>
       </div>
 
@@ -176,7 +187,7 @@ export default function TransactionEntriesPage() {
             </tbody>
           </table>
         </div>
-        <Pagination totalItems={filtered.length} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
+        <Pagination totalItems={total} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
       </div>
     </div>
   );

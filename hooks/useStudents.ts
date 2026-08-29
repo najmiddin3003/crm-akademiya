@@ -13,18 +13,25 @@ import { studentRowFromPupil, type StudentRow } from "@/lib/studentsData";
 // orqali ishlaydi — u qo'shilgan o'quvchini darhol ro'yxatga qo'shishi
 // kerak, shuning uchun alohida kontekst sifatida qoladi; qolgan hamma joy
 // shu hook'dan foydalanadi.
-export function useStudents() {
+/**
+ * `light` — faqat id, ism va telefon so'raladi (`/api/pupils?light=1`).
+ * To'liq hujjatlar ~3.6 MB, yengil ro'yxat ~544 KB. Faqat ism ko'rsatadigan
+ * yoki profilga havola yasaydigan joylar shuni ishlatsin; balans/koin kabi
+ * maydonlar kerak bo'lsa — standart (to'liq) rejim.
+ */
+export function useStudents(options?: { light?: boolean }) {
+  const light = options?.light === true;
   const [pupils, setPupils] = useState<Pupil[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/pupils")
+    fetch(light ? "/api/pupils?light=1" : "/api/pupils")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setPupils(d.pupils); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [light]);
 
   const students = useMemo<StudentRow[]>(() => pupils.map(studentRowFromPupil), [pupils]);
   const names = useMemo(() => students.map((s) => s.name).filter(Boolean), [students]);

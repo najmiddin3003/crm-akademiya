@@ -125,6 +125,9 @@ export async function ensureIndexes(): Promise<Db> {
     // so'rov ketadi (app/api/transaction-entries/route.ts).
     tasks.push(db.collection("transaction_entries").createIndex({ studentName: 1, date: -1 }));
     tasks.push(db.collection("transaction_entries").createIndex({ moderator: 1, date: -1 }));
+    // Kassalar sahifasi doim BITTA kassani va standart holatda bugungi
+    // kunni ko'rsatadi — server tomondagi filtr shu indeksdan foydalanadi.
+    tasks.push(db.collection("transaction_entries").createIndex({ cashboxId: 1, date: -1 }));
     // Moliya > Sinxronizatsiya (lib/sync). `sync_outbox` — Google Sheets va
     // Telegram'ga yetkazib berish navbati. Unikal indeks ENG MUHIMI: u
     // bitta yozuvning bitta hodisasi ikki marta navbatga tushishiga yo'l

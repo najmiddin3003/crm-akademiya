@@ -69,7 +69,15 @@ export default function RevenuePlanPage() {
   const [status, setStatus] = useState<string | null>(STATUS_OPTIONS[0]);
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
-  const [entries, setEntries] = useState<TransactionEntry[]>([]);
+  // To'lov yig'indilari SERVERDA hisoblanadi. Ilgari bu sahifa butun
+  // `transaction_entries` ni (25 569 qator, ~11 MB) yuklab, yig'indini
+  // brauzerda chiqarardi — holbuki ekranga atigi to'rtta son chiqadi.
+  //
+  // Aggregation natijasi eski hisob bilan AYNAN bir xil ekani oltita oy
+  // bo'yicha tekshirilgan: scripts/_verify-revenue.mjs
+  const [summary, setSummary] = useState({
+    paidAmount: 0, paidStudents: 0, paidBeforeAmount: 0, paidBeforeStudents: 0,
+  });
   const [contracts, setContracts] = useState<FinanceContract[]>([]);
 
   const range = monthRange(date);
@@ -77,9 +85,6 @@ export default function RevenuePlanPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/transaction-entries")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setEntries(d.entries); });
     fetch("/api/finance-contracts")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setContracts(d.contracts); });
@@ -97,18 +102,25 @@ export default function RevenuePlanPage() {
 
   const startIso = toIso(range.start);
   const endIso = toIso(new Date(range.end.getTime() - 86400000));
-  const paidThisMonth = entries.filter(
-    (e) => e.txType === "payIn" && e.studentName && e.date >= startIso && e.date <= endIso,
-  );
-  const paidAmount = paidThisMonth.reduce((s, e) => s + e.amount, 0);
-  const paidStudents = new Set(paidThisMonth.map((e) => e.studentName)).size;
+  // Oy o'zgarganda qayta so'raladi (shu oy + oy boshigacha bo'lgani).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/transaction-entries/revenue-summary?from=${startIso}&to=${endIso}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        setSummary({
+          paidAmount: d.paidAmount,
+          paidStudents: d.paidStudents,
+          paidBeforeAmount: d.paidBeforeAmount,
+          paidBeforeStudents: d.paidBeforeStudents,
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [startIso, endIso]);
 
-  // Oy boshigacha yozilgan to'lovlar
-  const paidBeforeEntries = entries.filter(
-    (e) => e.txType === "payIn" && e.studentName && e.date < startIso,
-  );
-  const paidBeforeAmount = paidBeforeEntries.reduce((s, e) => s + e.amount, 0);
-  const paidBeforeStudents = new Set(paidBeforeEntries.map((e) => e.studentName)).size;
+  const { paidAmount, paidStudents, paidBeforeAmount, paidBeforeStudents } = summary;
 
   // Shartnoma qismlari — muddati shu oyda / oy boshigacha. Holat chipi
   // tanlangan bo'lsa faqat mos shartnomalar hisobga olinadi (chip olib

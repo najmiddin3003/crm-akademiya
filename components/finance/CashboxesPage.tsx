@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   ArrowDownLeft,
@@ -666,13 +666,32 @@ export default function CashboxesPage() {
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
   const [detailEntry, setDetailEntry] = useState<TransactionEntry | null>(null);
 
-  function refreshEntries() {
-    fetch("/api/transaction-entries")
+  // Yozuvlar SERVERDA filtrlanadi: bu sahifa doim BITTA kassani ko'rsatadi
+  // (pastdagi `filteredEntries` da `e.cashboxId !== selectedId` tashlanadi)
+  // va sana oralig'i standart holatda bugungi kun.
+  //
+  // Ilgari bu yer butun jadvalni tortardi — 25 569 qator, ~11 MB — va
+  // filtrlash brauzerda bo'lardi. Server tomondagi filtr `filteredEntries`
+  // ni O'ZGARTIRMAYDI: u xuddi shu shartlarni yana bir bor tekshiradi,
+  // ya'ni ko'rinadigan qatorlar ham, ular ustidagi Kirim/Chiqim yig'indisi
+  // ham avvalgidek qoladi.
+  const loadEntries = useCallback(() => {
+    // Kassa tanlanmagan bo'lsa so'rov yubormaymiz. Holatni bu yerda
+    // tozalash SHART EMAS — `filteredEntries` `selectedId` yo'qligida
+    // baribir bo'sh ro'yxat qaytaradi.
+    if (!selectedId) return;
+    const qs = new URLSearchParams({ cashboxId: String(selectedId) });
+    if (dateRange.start) qs.set("dateFrom", toIso(dateRange.start));
+    if (dateRange.end) qs.set("dateTo", toIso(dateRange.end));
+    fetch(`/api/transaction-entries?${qs.toString()}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.ok) setEntries(d.entries);
       });
-  }
+  }, [selectedId, dateRange]);
+
+  // Kassa yoki sana oralig'i o'zgarganda qayta yuklanadi.
+  useEffect(() => { loadEntries(); }, [loadEntries]);
 
   function refreshCashboxes() {
     fetch("/api/cashboxes")
@@ -687,7 +706,9 @@ export default function CashboxesPage() {
   // (/api/pupils) ichidan ism bo'yicha qidiramiz. Xodimlar xaritasi (pastda)
   // bilan bir xil qoida — katta-kichik harf va ortiqcha bo'shliq farq
   // qilmasin (hooks/useStudents.ts → byName).
-  const { names: dbStudents, byName: studentByName } = useStudents();
+  // Bu sahifaga o'quvchidan faqat ISM va ID kerak (pastda name->id
+  // xaritasi), shu bois yengil rejim — 3.6 MB o'rniga ~544 KB.
+  const { names: dbStudents, byName: studentByName } = useStudents({ light: true });
   const studentIdByName = useMemo(() => {
     const map = new Map<string, number>();
     for (const [key, s] of studentByName) map.set(key, s.id);
@@ -803,7 +824,6 @@ export default function CashboxesPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    refreshEntries();
     fetch("/api/hr-employees")
       .then((r) => r.json())
       .then((d) => {
@@ -1683,7 +1703,7 @@ export default function CashboxesPage() {
           onClose={() => setTransferState(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
-            refreshEntries();
+            loadEntries();
           }}
         />
       )}
@@ -1694,7 +1714,7 @@ export default function CashboxesPage() {
           onClose={() => setAdjustState(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
-            refreshEntries();
+            loadEntries();
           }}
         />
       )}
@@ -1704,7 +1724,7 @@ export default function CashboxesPage() {
           onClose={() => setKirimTarget(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
-            refreshEntries();
+            loadEntries();
           }}
         />
       )}
@@ -1714,7 +1734,7 @@ export default function CashboxesPage() {
           onClose={() => setDividendTarget(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
-            refreshEntries();
+            loadEntries();
           }}
         />
       )}
@@ -1724,7 +1744,7 @@ export default function CashboxesPage() {
           onClose={() => setInvestmentTarget(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
-            refreshEntries();
+            loadEntries();
           }}
         />
       )}
@@ -1739,7 +1759,7 @@ export default function CashboxesPage() {
                 x.id === from.id ? from : x.id === to.id ? to : x,
               ),
             );
-            refreshEntries();
+            loadEntries();
           }}
         />
       )}

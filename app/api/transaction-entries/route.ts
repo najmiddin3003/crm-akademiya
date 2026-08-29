@@ -6,6 +6,7 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 // o'qish uchun — bu sahifada qo'shish/tahrirlash/o'chirish yo'q). Demo seed
 // YO'Q — yozuvlar kassa amallaridan (Kirim/Chiqim) kelib chiqadi.
 const TX_TYPES = ["payIn", "payOut", "transfer"];
+const STATUSES = ["cancelled", "waiting"];
 
 /** Foydalanuvchi kiritgan matnni $regex ichiga xavfsiz qo'yish uchun. */
 function escapeRegex(s: string): string {
@@ -68,7 +69,56 @@ export async function GET(req: Request) {
   // ko'rinib tursin — shuning uchun bu ixtiyoriy.
   if (sp.get("excludeCancelled") === "1") filter.status = { $ne: "cancelled" };
 
-  const rows = await col.find(filter).sort({ id: -1 }).toArray();
+  // Bo'sh satr ham HAQIQIY qiymat ("" — oddiy yozuv), lekin interfeysda u
+  // "filtr yo'q" degani. Klientdagi `if (status && ...)` bilan bir xil.
+  const status = sp.get("status");
+  if (status) {
+    if (!STATUSES.includes(status)) {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri status" }, { status: 400 });
+    }
+    filter.status = status;
+  }
+
+  const cashboxId = sp.get("cashboxId");
+  if (cashboxId) {
+    const n = Number(cashboxId);
+    if (!Number.isFinite(n)) {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri cashboxId" }, { status: 400 });
+    }
+    filter.cashboxId = n;
+  }
+
+  // Sana "YYYY-MM-DD" satr sifatida saqlanadi, shu bois oddiy satr
+  // taqqoslash to'g'ri ishlaydi (leksikografik tartib = xronologik).
+  const dateFrom = sp.get("dateFrom");
+  const dateTo = sp.get("dateTo");
+  const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+  if ((dateFrom && !ISO_DAY.test(dateFrom)) || (dateTo && !ISO_DAY.test(dateTo))) {
+    return NextResponse.json({ ok: false, error: "Noto'g'ri sana (YYYY-MM-DD kutilgan)" }, { status: 400 });
+  }
+  if (dateFrom || dateTo) {
+    // `month` ham `date` ni ishlatadi — ikkalasi berilganda biri
+    // ikkinchisini bosib ketmasin.
+    const range: Record<string, string> = {};
+    if (dateFrom) range.$gte = dateFrom;
+    if (dateTo) range.$lte = dateTo;
+    filter.date = filter.date ? { ...(filter.date as object), ...range } : range;
+  }
+
+  // JAMI son sahifalashdan OLDIN hisoblanadi — jadval ostidagi "Umumiy
+  // soni" va sahifalar soni shunga tayanadi, sahifadagi qatorlar soniga
+  // emas.
+  const total = await col.countDocuments(filter);
+
+  let cursor = col.find(filter).sort({ id: -1 });
+  const limitRaw = Number(sp.get("limit"));
+  if (Number.isFinite(limitRaw) && limitRaw > 0) {
+    const limit = Math.min(limitRaw, 500);
+    const page = Math.max(1, Number(sp.get("page")) || 1);
+    cursor = cursor.skip((page - 1) * limit).limit(limit);
+  }
+
+  const rows = await cursor.toArray();
   const entries = rows.map(({ _id, ...rest }) => rest as unknown as TransactionEntry);
-  return NextResponse.json({ ok: true, entries, total: entries.length });
+  return NextResponse.json({ ok: true, entries, total });
 }
