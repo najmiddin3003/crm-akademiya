@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { Group } from "@/lib/groups";
 import type { GroupNote } from "@/lib/groupNotes";
+import { toUz } from "@/lib/uzTime";
 
 // Guruh → Davomat → "Izoh" ustunidagi xabar oynasi.
 // MongoDB kolleksiyasi: `group_notes`. Bitta yozuv = o'quvchiga yozilgan
 // bitta xabar. Referensda bu o'ngdan chiqadigan panel: tepasida o'quvchi
 // ismi, pastida "Izoh qoldirish" input.
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

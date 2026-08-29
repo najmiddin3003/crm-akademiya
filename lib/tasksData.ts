@@ -1,3 +1,4 @@
+import { toUz } from "./uzTime";
 // Ported from crm-akademiya/src/app.js (TASKS seed array ~line 899,
 // _augmentTasksWithPriority ~line 1926, PRIORITY_META/KANBAN_STATES ~line 1875,
 // TASK_TEMPLATES ~line 2325, RECURRENCE_OPTIONS ~line 2506).
@@ -52,6 +53,10 @@ export interface Task {
  * qotib qolgan sanaga nisbatan hisoblanardi.
  */
 export function todayStart(): Date {
+  // Bu SOLISHTIRISH uchun, ko'rsatish uchun emas — `getTaskStatus()` uni
+  // `new Date(task.date)` bilan taqqoslaydi. Shu sabab `uzNow()` (formatlash
+  // uchun siljitilgan sana) ISHLATILMAYDI: ikki xil vaqt o'lchovini
+  // taqqoslash 5 soatlik xatoga olib kelardi.
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
@@ -191,7 +196,7 @@ export function getTaskStatus(task: Task): "overdue" | "today" | "upcoming" {
 }
 
 export function formatTaskDate(iso: string): string {
-  const d = new Date(iso);
+  const d = toUz(new Date(iso));
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} | ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

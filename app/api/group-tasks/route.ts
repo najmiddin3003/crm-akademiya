@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { formatDeadline, type GroupTask } from "@/lib/groupTasks";
+import { toUz } from "@/lib/uzTime";
 
 // Barcha vazifalar (Guruh → Barcha vazifalar). Barcha guruhlar bo'ylab
 // `group_tasks` kolleksiyasi (guruh detalidagi Topshiriqlar bilan bir xil
 // manba). Bu yerda qo'shilgan vazifa guruhsiz bo'ladi (groupId=0).
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

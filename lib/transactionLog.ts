@@ -3,6 +3,7 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { Transaction } from "@/lib/transactions";
 import { classifyEntry } from "@/lib/sync/mappers";
 import { enqueue } from "@/lib/sync/outbox";
+import { uzNow } from "./uzTime";
 
 // Kassalar sahifasidagi Kirim/Chiqim/Ko'chirish (adjust, transfer,
 // transfer-to route'lari) shu yordamchilar orqali HAQIQIY tranzaksiya
@@ -16,13 +17,13 @@ async function nextId(db: Db, collectionName: string): Promise<number> {
 }
 
 export function todayIso(): string {
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 export function nowTime(): string {
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }

@@ -45,6 +45,7 @@ import { useTransactionTypes } from "@/hooks/useTransactionTypes";
 import { type Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import { toUz } from "@/lib/uzTime";
 
 const TX_TYPE_MAP: Record<string, string> = {
   kirim: "payIn",
@@ -489,8 +490,10 @@ function EditHistoryModal({
   useEscapeClose(onClose);
   const items = Array.isArray(entry.editHistory) ? entry.editHistory : [];
   function fmtAt(iso: string): string {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
+    const raw = new Date(iso);
+    if (Number.isNaN(raw.getTime())) return iso;
+    // Har doim O'zbekiston vaqti — brauzer boshqa zonada bo'lsa ham.
+    const d = toUz(raw);
     const p = (n: number) => String(n).padStart(2, "0");
     return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }

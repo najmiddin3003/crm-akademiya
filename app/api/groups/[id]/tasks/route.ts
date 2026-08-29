@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { Group } from "@/lib/groups";
 import type { GroupTask } from "@/lib/groupTasks";
+import { toUz } from "@/lib/uzTime";
 
 // "2026-07-15T14:00" → "15.07.2026 | 14:00"
 function fmtDeadline(v?: string): string {
@@ -12,7 +13,8 @@ function fmtDeadline(v?: string): string {
   return `${d}.${m}.${y}${time ? ` | ${time}` : ""}`;
 }
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

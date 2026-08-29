@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { uzNow } from "@/lib/uzTime";
 import {
   isFeedbackType,
   type FeedbackRecord,
@@ -18,7 +19,7 @@ import {
 
 /** Mahalliy vaqt bo'yicha "YYYY-MM-DDTHH:mm". */
 function nowStamp(): string {
-  const d = new Date();
+  const d = uzNow();
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

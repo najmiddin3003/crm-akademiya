@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { eskizConfigured, sendSms } from "@/lib/eskiz";
 import type { SmsMessage } from "@/lib/smsMessages";
+import { uzNow } from "@/lib/uzTime";
 
 // Sotuv va marketing → Xabarlar ro'yhati backend'i (MongoDB `sms_messages`).
 // Demo seed YO'Q: yozuvlar faqat SMS yuborilganda paydo bo'ladi.
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
 
   const result = await sendSms(phone, text);
 
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   const db = await ensureIndexes();
   const col = db.collection("sms_messages");

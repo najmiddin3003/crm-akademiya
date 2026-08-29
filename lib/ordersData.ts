@@ -5,6 +5,7 @@
 // getPageButtons (~line 22910).
 
 import { MANAGEMENT_BRANCH_NAMES } from "@/constants/managementBranches";
+import { uzNow } from "./uzTime";
 
 export type OrderStageKey = "bir_oylay" | "jaylang_e" | "rahmaaaat" | "ketdim";
 
@@ -335,7 +336,7 @@ function firstLessonFromValues(values: NewOrderValues): string {
 }
 
 export function buildOrderFromValues(nextId: number, values: NewOrderValues): Order {
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   const created = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} | ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   return {

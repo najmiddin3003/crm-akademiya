@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { FinanceContract } from "@/lib/financeContracts";
+import { uzNow } from "@/lib/uzTime";
 
 // Moliya → Shartnoma backend'i (MongoDB `finance_contracts`). Demo seed YO'Q —
 // shartnomalar faqat foydalanuvchi qo'shganda paydo bo'ladi.
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   const createdAt = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} | ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 

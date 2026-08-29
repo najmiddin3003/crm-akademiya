@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { ensureIndexes } from "./mongodb";
 import { resolvePermissions, type UserForPermissions } from "./rolePermissions";
 import { SESSION_COOKIE, verifySessionToken } from "./session";
+import { uzNow } from "./uzTime";
 
 export interface CurrentUser {
   id: string;
@@ -44,7 +45,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     if (!live) return null;
     // Oxirgi faollik vaqtini yangilaymiz — ro'yxatda ko'rsatiladi.
     const p = (n: number) => String(n).padStart(2, "0");
-    const d = new Date();
+    const d = uzNow();
     await db.collection("user_sessions").updateOne(
       { sid: session.sid },
       { $set: { lastSeenAt: `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}` } },

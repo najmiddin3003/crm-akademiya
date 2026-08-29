@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { studentPaidBalanceByName } from "@/lib/pupilsDb";
 import type { Bonus } from "@/lib/bonuses";
+import { toUz } from "@/lib/uzTime";
 
 // Moliya → Bonus backend'i (MongoDB `bonuses`). Demo seed YO'Q — kolleksiya
 // bo'sh bo'lsa ro'yxat ham bo'sh qaytadi.
@@ -18,7 +19,8 @@ type BonusRecord = Omit<Bonus, "before" | "after"> & {
   after: number | null;
 };
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

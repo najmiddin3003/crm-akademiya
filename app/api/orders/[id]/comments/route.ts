@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { uzNow } from "@/lib/uzTime";
 
 // Buyurtma izohlari (megafon/"Izoh yozish" oynasi — OrderMessagePanel).
 //
@@ -73,7 +74,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Izoh matnini kiriting" }, { status: 400 });
   }
 
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   const comment: OrderComment = {
     text,

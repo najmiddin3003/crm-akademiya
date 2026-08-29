@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { BlockTestType, BlockTestSubject } from "@/lib/blockTestTypes";
+import { toUz } from "@/lib/uzTime";
 
 // Blok test turlari backend'i (MongoDB `block_test_types`).
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

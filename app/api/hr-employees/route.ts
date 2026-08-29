@@ -6,6 +6,7 @@ import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 // uchun bu bog'lanish kompilyatsiyada butunlay yo'qoladi.
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
+import { toUz, uzNow } from "@/lib/uzTime";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
 // Demo seed YO'Q — xodimlar faqat qo'shilganda (yoki scripts/seed-test-*
@@ -13,7 +14,8 @@ import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, nor
 // sanitizeAssignments lib/hrEmployees.ts ga ko'chirildi — PATCH route ham
 // aynan shu tozalagichdan foydalanadi.
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
@@ -125,6 +127,10 @@ export async function POST(req: Request) {
   };
   await col.insertOne({ ...employee });
 
+  // DIQQAT: bu HAQIQIY lahza — `createdAt` va taklif muddati shundan
+  // hisoblanadi. `uzNow()` (siljitilgan sana) bo'lmasligi kerak, aks holda
+  // baza 5 soat oldinga ketardi. Ko'rinadigan satrlar `fmtNow` orqali
+  // alohida formatlanadi.
   const now = new Date();
   const token = generateToken();
   await db.collection("users").insertOne({

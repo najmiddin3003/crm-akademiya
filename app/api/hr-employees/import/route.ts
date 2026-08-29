@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import { toUz } from "@/lib/uzTime";
 
 // POST /api/hr-employees/import — bir nechta xodimni bir so'rovda qo'shadi.
 //
@@ -41,7 +42,8 @@ const ROLE_BY_LABEL: Record<string, string> = {
   administrator: "admin", admin: "admin",
 };
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

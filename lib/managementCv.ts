@@ -1,3 +1,4 @@
+import { toUz } from "./uzTime";
 // Boshqaruv → Ishga qabul (CV) uchun umumiy tip. API route'lari va klient
 // komponentlar (CRM ro'yxati, anketa modali, ommaviy /ariza sahifasi) shuni
 // bo'lishadi. MongoDB `cv_applications` kolleksiyasi.
@@ -66,7 +67,8 @@ export function isCvStatus(v: unknown): v is CvStatus {
 }
 
 /** "dd.MM.yyyy | HH:mm" — referens HTML'dagi `submitted` formati. */
-export function formatSubmitted(d: Date): string {
+export function formatSubmitted(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

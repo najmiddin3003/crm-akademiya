@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { ReconcileReport, SyncKind, SyncRunDoc, SyncTask } from "@/lib/sync/types";
+import { toUz } from "@/lib/uzTime";
 
 // Moliya → Sinxronizatsiya (sidebar: Moliya > Sinxronizatsiya, href
 // /finance-sync).
@@ -48,8 +49,10 @@ interface StatusResponse {
 
 function fmtStamp(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  const raw = new Date(iso);
+  if (Number.isNaN(raw.getTime())) return "—";
+  // Har doim O'zbekiston vaqti — brauzer boshqa zonada bo'lsa ham.
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

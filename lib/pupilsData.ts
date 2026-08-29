@@ -1,3 +1,4 @@
+import { uzNow } from "./uzTime";
 // O'quvchilar — MongoDB'dagi "pupils" kolleksiyasi. Bu loyihadagi
 // o'quvchilarning YAGONA manbasi: "O'quvchi qo'shish" (AddStudentModal) orqali
 // qo'shilganlar ham, scripts/seed-test-pupils.js bilan bazaga yozilgan test
@@ -117,7 +118,7 @@ export function pupilFullName(p: Pick<Pupil, "firstName" | "lastName">): string 
 }
 
 export function buildPupilFromValues(nextId: number, values: NewPupilValues): Pupil {
-  const now = new Date();
+  const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   const createdAt = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} | ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   // balance/coin/moderator/source qo'shish formasida so'ralmaydi — nol/bo'sh

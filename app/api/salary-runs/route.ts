@@ -15,6 +15,7 @@ import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import { flushSoon } from "@/lib/sync/dispatch";
 import type { CashboxMethodTotals } from "@/lib/cashboxes";
+import { toUz } from "@/lib/uzTime";
 
 // Moliya → Oylik chiqarish backend'i (MongoDB `salary_runs`).
 //
@@ -22,7 +23,8 @@ import type { CashboxMethodTotals } from "@/lib/cashboxes";
 // edi va u haqiqiy yozuvlar bilan yonma-yon, ajratib bo'lmaydigan holda
 // turardi. Bo'sh ro'yxat — haqiqat, soxta tarix emas.
 
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }

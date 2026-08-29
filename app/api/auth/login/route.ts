@@ -3,9 +3,11 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { compareSecret, isValidPhone, normalizePhone } from "@/lib/invite";
 import { createSessionToken, newSessionId, SESSION_COOKIE, SESSION_MAX_AGE_SEC } from "@/lib/session";
 import { describeUserAgent, type UserSession } from "@/lib/userSessions";
+import { toUz } from "@/lib/uzTime";
 
 /** "15.08.2026 | 00:22" — loyihadagi boshqa sanalar bilan bir xil format. */
-function fmtNow(d: Date): string {
+function fmtNow(raw: Date): string {
+  const d = toUz(raw);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
