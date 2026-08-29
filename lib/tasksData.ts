@@ -1,4 +1,4 @@
-import { toUz } from "./uzTime";
+import { toUz, uzDayKey } from "./uzTime";
 // Ported from crm-akademiya/src/app.js (TASKS seed array ~line 899,
 // _augmentTasksWithPriority ~line 1926, PRIORITY_META/KANBAN_STATES ~line 1875,
 // TASK_TEMPLATES ~line 2325, RECURRENCE_OPTIONS ~line 2506).
@@ -53,11 +53,13 @@ export interface Task {
  * qotib qolgan sanaga nisbatan hisoblanardi.
  */
 export function todayStart(): Date {
-  // Bu SOLISHTIRISH uchun, ko'rsatish uchun emas — `getTaskStatus()` uni
-  // `new Date(task.date)` bilan taqqoslaydi. Shu sabab `uzNow()` (formatlash
-  // uchun siljitilgan sana) ISHLATILMAYDI: ikki xil vaqt o'lchovini
-  // taqqoslash 5 soatlik xatoga olib kelardi.
-  const d = new Date();
+  // Toshkent kunining boshi. FAQAT yil/oy/kun o'qish uchun (kalendar
+  // ko'rinishi, sana maydonining boshlang'ich qiymati).
+  //
+  // Buni boshqa `Date` bilan TAQQOSLAMANG — u siljitilgan o'lchovda va
+  // siljitilmagan sana bilan solishtirish 5 soatlik xato beradi. Kunlarni
+  // taqqoslash uchun `uzDayKey()` bor.
+  const d = toUz(new Date());
   d.setHours(0, 0, 0, 0);
   return d;
 }
@@ -187,11 +189,14 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
 ];
 
 export function getTaskStatus(task: Task): "overdue" | "today" | "upcoming" {
-  const d = new Date(task.date);
-  d.setHours(0, 0, 0, 0);
-  const today = todayStart().getTime();
-  if (d.getTime() < today) return "overdue";
-  if (d.getTime() === today) return "today";
+  // Toshkent taqvimi bo'yicha: server ham, chet eldagi brauzer ham bir xil
+  // javob beradi. Ilgari bu `new Date()` ning lokal kuniga tayanardi —
+  // UTC'da ishlaydigan serverda 00:00–05:00 oralig'ida "bugun" bir kunga
+  // adashardi.
+  const day = uzDayKey(new Date(task.date));
+  const today = uzDayKey();
+  if (day < today) return "overdue";
+  if (day === today) return "today";
   return "upcoming";
 }
 

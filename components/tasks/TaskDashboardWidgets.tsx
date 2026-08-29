@@ -1,4 +1,5 @@
-import { getTaskStatus, todayStart, type Task } from "@/lib/tasksData";
+import { getTaskStatus, type Task } from "@/lib/tasksData";
+import { uzDayKey, uzDayKeyIn } from "@/lib/uzTime";
 
 export type DashboardFilter = "all" | "today" | "late" | "soon" | "done";
 
@@ -16,11 +17,11 @@ export default function TaskDashboardWidgets({ tasks, active, onChange }: TaskDa
   const total = tasks.length;
   const dueToday = tasks.filter((t) => getTaskStatus(t) === "today").length;
   const late = tasks.filter((t) => getTaskStatus(t) === "overdue").length;
-  const soonEnd = new Date(todayStart().getTime() + 3 * 86400000);
-  const dueSoon = tasks.filter((t) => {
-    const d = new Date(t.date);
-    return getTaskStatus(t) === "upcoming" && d.getTime() <= soonEnd.getTime();
-  }).length;
+  // Kunlar Toshkent taqvimi bo'yicha taqqoslanadi (lib/uzTime.ts).
+  const soonEnd = uzDayKeyIn(3);
+  const dueSoon = tasks.filter(
+    (t) => getTaskStatus(t) === "upcoming" && uzDayKey(new Date(t.date)) <= soonEnd,
+  ).length;
   const done = tasks.filter((t) => t.state === "bajarilgan").length;
 
   const widgets: { key: DashboardFilter; label: string; value: number | string; icon: string; className: string }[] = [

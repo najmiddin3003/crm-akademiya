@@ -25,6 +25,7 @@ import {
   type Task,
   type TaskState,
 } from "@/lib/tasksData";
+import { uzDayKey, uzDayKeyIn } from "@/lib/uzTime";
 
 // Ported from crm-akademiya/index-dev.html lines 551-877 (id="view-tasks") +
 // src/app.js (renderTasks/renderKanbanView/renderCalendarView/setTaskView).
@@ -132,8 +133,8 @@ export default function TasksPage() {
       if (dashFilter === "today") return getTaskStatus(t) === "today";
       if (dashFilter === "late") return getTaskStatus(t) === "overdue";
       if (dashFilter === "soon") {
-        const soonEnd = new Date(todayStart().getTime() + 3 * 86400000);
-        return getTaskStatus(t) === "upcoming" && new Date(t.date).getTime() <= soonEnd.getTime();
+        // Kunlar Toshkent taqvimi bo'yicha (lib/uzTime.ts).
+        return getTaskStatus(t) === "upcoming" && uzDayKey(new Date(t.date)) <= uzDayKeyIn(3);
       }
       if (dashFilter === "done") return t.state === "bajarilgan";
       return true;
@@ -301,9 +302,12 @@ export default function TasksPage() {
       return;
     }
     const existing = new Date(task.date);
-    const today = todayStart().getTime();
-    const anchor = targetStatus === "today" ? today : today - 86400000;
-    const newDate = new Date(anchor);
+    // `todayStart()` — siljitilgan sana: undan faqat Toshkent kunining
+    // yil/oy/kunini olamiz. Saqlanadigan lahza esa ODDIY `Date` bilan
+    // quriladi, aks holda `toISOString()` 5 soat surilib ketardi.
+    const uzToday = todayStart();
+    const newDate = new Date(uzToday.getFullYear(), uzToday.getMonth(), uzToday.getDate());
+    if (targetStatus !== "today") newDate.setDate(newDate.getDate() - 1);
     newDate.setHours(existing.getHours() || 9, existing.getMinutes() || 0, 0, 0);
     const isoDate = newDate.toISOString();
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, date: isoDate } : t)));

@@ -50,6 +50,24 @@ export function uzTimeHm(d: Date = new Date()): string {
   return `${p2(u.getHours())}:${p2(u.getMinutes())}`;
 }
 
+/**
+ * Toshkent taqvimidagi kun kaliti — masalan 29.08.2026 uchun `20260829`.
+ *
+ * SANALARNI SOLISHTIRISH uchun shu ishlatilsin, `Date` obyektlari emas.
+ * Sabab: bir tomoni siljitilgan (`toUz`), ikkinchisi siljitilmagan ikkita
+ * `Date` ni taqqoslash 5 soatlik jimgina xatoga olib keladi. Kun kaliti
+ * oddiy son — uni noto'g'ri o'lchovda taqqoslab bo'lmaydi.
+ */
+export function uzDayKey(d: Date = new Date()): number {
+  const u = toUz(d);
+  return u.getFullYear() * 10000 + (u.getMonth() + 1) * 100 + u.getDate();
+}
+
+/** Bugundan `days` kun keyingi Toshkent kunining kaliti. */
+export function uzDayKeyIn(days: number): number {
+  return uzDayKey(new Date(Date.now() + days * 86_400_000));
+}
+
 /** "29.08.2026 | 11:42" — loyihadagi eng ko'p uchraydigan format. */
 export function uzStamp(d: Date = new Date()): string {
   const u = toUz(d);

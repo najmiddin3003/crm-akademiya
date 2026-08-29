@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { todayStart, type Task } from "@/lib/tasksData";
+import { uzDayKey } from "@/lib/uzTime";
 
 // Ported from crm-akademiya/src/app.js openMoveTaskModal()/confirmMoveTask() (~line 3676).
 // Shown when a task card is dropped onto the "Keyinchalik keladigan" (upcoming)
@@ -38,8 +39,10 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
       return;
     }
     const newDate = new Date(`${date}T${time || "09:00"}:00`);
-    const newDateZero = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
-    if (newDateZero.getTime() <= todayStart().getTime()) {
+    // Toshkent taqvimidagi kunlar taqqoslanadi — `todayStart()` siljitilgan
+    // sana qaytaradi va uni bu yerdagi lokal sana bilan solishtirish
+    // 5 soatlik xato berardi (lib/uzTime.ts).
+    if (uzDayKey(newDate) <= uzDayKey()) {
       setError("Iltimos, bugundan keyingi sanani tanlang!");
       return;
     }
