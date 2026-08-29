@@ -75,11 +75,16 @@ const TX_TYPE_LABELS: Record<string, string> = {
 // Kartadagi mas'ul (moderator) ismi va jadvaldagi "Kim" ustuni profil
 // sahifalariga (/management-xodimlar/[id], /student-edit/[id]) o'tadi.
 
-// Karta fonlari — referens dizayndagi gradientlar. Tailwind'ning arbitrary
-// klasslari bu loyihada ishonchsiz (globals.css dagi eski v3 dump bosib
-// ketadi), shuning uchun kartaga xos ranglar inline style bilan beriladi.
-const CARD_DARK = "linear-gradient(135deg,#1e40af,#172554)";
-const CARD_LIGHT = "linear-gradient(135deg,#7dd3fc,#60a5fa)";
+// Karta foni endi SHU YERDA emas — `.fc-card-dark` / `.fc-card-light`
+// klasslarida, globals.css da. Ranglar "BREND PALITRASI" blokidan keladi,
+// ya'ni brend almashtirilganda bu katta kartochka ham u bilan birga
+// o'zgaradi.
+//
+// NEGA inline style EMAS: gradientni inline `style` ichida
+// `hsl(var(--brand-card-...))` deb yozib ko'rilgandi va u ISHLAMADI —
+// o'zgaruvchilar CSS ichida hech qayerda ishlatilmagani uchun qurish
+// bosqichida "keraksiz" deb tashlab yuborilgan, natijada kartochka
+// fonsiz qolgan edi. CSS klassida ishlatilsa, ular saqlanadi.
 
 // To'lov turi yonidagi rangli nuqta. Kalitlar Sozlamalar → Moliya → To'lov
 // turlaridan keladi; ro'yxatga yangi tur qo'shilsa, u zaxira palitradan rang
@@ -1065,10 +1070,7 @@ export default function CashboxesPage() {
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
                 className={`fc-card ${isDark ? "fc-card-dark" : "fc-card-light"} rounded-xl p-5 shadow-md cursor-pointer hover:shadow-lg transition-shadow relative`}
-                style={{
-                  background: isDark ? CARD_DARK : CARD_LIGHT,
-                  color: isDark ? "#fff" : "#0f172a",
-                }}
+                style={{ color: isDark ? "#fff" : "#0f172a" }}
               >
                 {c.isPrimary && !showActions && (
                   <Crown

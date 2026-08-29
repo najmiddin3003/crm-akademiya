@@ -30,6 +30,105 @@
    prefers-color-scheme emas. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ============================================================
+   BREND PALITRASI  —  butun ilovaning rangi SHU YERDA
+   ============================================================
+   QAYTARISH: app/layout.tsx dagi `BRAND` ni "edutizim" ga o'zgartiring.
+   Boshqa hech qayerga tegish shart emas — pastdagi barcha qoidalar
+   (--primary, --shell-blue, body fon gradienti) shu bloknning
+   o'zgaruvchilarini o'qiydi.
+
+   Yangi palitra qo'shish: shu yerga `html[data-brand="..."]` bloki
+   yozib, hamma o'zgaruvchini to'ldiring — boshqa joyni tahrirlash
+   kerak emas.
+
+   Nega alohida qatlamsiz (@layer tashqarisida): bu qiymatlar faqat
+   var() orqali o'qiladi, ya'ni qatlam ustuvorligi masalasi umuman
+   tug'ilmaydi va blokni fayl ichida bemalol ko'chirish mumkin.
+
+   ATAMALAR
+     primary / primary-2   — asosiy rang va gradient hamrohi (HSL uchligi)
+     *-dark                — tungi rejimdagi variantlari
+     solid / solid-soft    — shell (navbar/sidebar) uchun tayyor rang
+     glow-1..4             — body fonidagi to'rtta radial dog'
+     bg-a / bg-b           — fonning tagidagi tekis gradient
+   ============================================================ */
+
+/* Standart: TEAL. `:root` bilan birga yozilgan — atribut umuman
+   qo'yilmasa ham shu palitra ishlaydi. */
+:root,
+html[data-brand="teal"] {
+  /* Hue 186° ATAYLAB tanlangan. "Muvaffaqiyat" yashili 161° da
+     (emerald), ya'ni klassik teal (175°) undan atigi 14° narida —
+     jadvalda yashil nishon va teal tugma yonma-yon turganda ular bir
+     xil oiladek ko'rinardi va rangning semantik ma'nosi so'nardi.
+     186° ni tanlash 25° ajratma beradi, edutizim ko'kidan (227°) esa
+     41° uzoq. */
+  --brand-primary:        186 88% 32%;   /* #0A8B99 */
+  --brand-primary-2:      196 88% 36%;   /* #0B7DAD */
+  /* Tungi rejimda teal yorug'likka yorqinroq chiqadi (ko'kdan farqli),
+     shu sabab to'yinganligi pasaytirilgan — aks holda tugmalar neon
+     bo'lib ketadi va ustidagi oq matn yo'qoladi. */
+  --brand-primary-dark:   186 64% 44%;   /* #28AAB8 */
+  --brand-primary-2-dark: 196 68% 48%;   /* #29A0CE */
+
+  --brand-solid:      #0a8b99;
+  --brand-solid-soft: rgba(10, 139, 153, 0.1);
+
+  /* Fon — ko'k/binafsha/pushti kamalak o'rniga teal→moviy→yashil
+     oilasi. Asosiy rang bilan bir xil oilada bo'lishi shart, aks
+     holda teal tugma begona fonda turgandek ko'rinadi. */
+  --brand-glow-1: 186 90% 70%;
+  --brand-glow-2: 199 95% 74%;
+  --brand-glow-3: 170 82% 75%;
+  --brand-glow-4: 212 88% 78%;
+  --brand-bg-a: 190 55% 97%;
+  --brand-bg-b: 198 25% 96%;
+
+  /* Moliya → Kassalar sahifasidagi katta gradient kartochka. */
+  --brand-card-dark-a:  191 77% 25%;   /* #0E5E6E */
+  --brand-card-dark-b:  195 70% 13%;   /* #0A2C38 */
+  --brand-card-light-a: 184 68% 70%;   /* #7DE0E8 */
+  --brand-card-light-b: 191 60% 53%;   /* #3FB6CF */
+
+  --brand-glow-1-dark: 186 90% 30%;
+  --brand-glow-2-dark: 199 88% 32%;
+  --brand-glow-3-dark: 170 78% 27%;
+  --brand-glow-4-dark: 212 82% 33%;
+  --brand-bg-a-dark: 200 42% 8%;
+  --brand-bg-b-dark: 205 34% 6%;
+}
+
+/* Dastlabki holat — akademiya.edutizim.uz dan ko'chirilgan ko'k. */
+html[data-brand="edutizim"] {
+  --brand-primary:        227 100% 62%;  /* #3D68FF */
+  --brand-primary-2:      250 95% 65%;
+  --brand-primary-dark:   217 100% 64%;
+  --brand-primary-2-dark: 250 95% 70%;
+
+  --brand-solid:      #3d68ff;
+  --brand-solid-soft: rgba(61, 104, 255, 0.1);
+
+  --brand-glow-1: 217 100% 70%;
+  --brand-glow-2: 280 100% 75%;
+  --brand-glow-3: 180 100% 75%;
+  --brand-glow-4: 330 100% 75%;
+  --brand-bg-a: 220 100% 97%;
+  --brand-bg-b: 222 30% 96%;
+
+  --brand-card-dark-a:  226 71% 40%;   /* #1E40AF */
+  --brand-card-dark-b:  226 57% 21%;   /* #172554 */
+  --brand-card-light-a: 199 95% 74%;   /* #7DD3FC */
+  --brand-card-light-b: 213 94% 68%;   /* #60A5FA */
+
+  --brand-glow-1-dark: 217 100% 30%;
+  --brand-glow-2-dark: 280 90% 35%;
+  --brand-glow-3-dark: 180 80% 30%;
+  --brand-glow-4-dark: 330 80% 35%;
+  --brand-bg-a-dark: 222 47% 8%;
+  --brand-bg-b-dark: 222 35% 6%;
+}
+
 /* v3 -> v4 moslik: v4 preflight’ida chegara rangi currentColor,
    v3 da esa kulrang edi. Loyiha ko’p joyda faqat `border` yozadi va
    kulrang chegara kutadi. Tugmalar uchun ham ko’rsatkich qaytariladi. */
@@ -7622,7 +7721,7 @@ tr.gs-row-selected {
   justify-content: center;
   gap: 8px;
   padding: 10px 12px 12px;
-  border-bottom: 3px solid var(--ok-stage-color, hsl(217 100% 56%));
+  border-bottom: 3px solid var(--ok-stage-color, hsl(var(--primary)));
   margin-bottom: 12px;
 }
 .ok-column-title {
@@ -7864,8 +7963,9 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     /* Dimmed surface — ~30% darker than --card (for submenus, dropdowns) */
     --card-dim: 220 18% 88%;
     /* Semantic */
-    --primary: 227 100% 62%;          /* #3D68FF — referens akademiya.edutizim.uz */
-    --primary-2: 250 95% 65%;         /* gradient companion */
+    /* Rang BREND PALITRASI blokidan keladi (fayl boshida). */
+    --primary: var(--brand-primary);
+    --primary-2: var(--brand-primary-2);
     --secondary: 220 30% 96%;
     --muted: 220 30% 94%;
     --muted-foreground: 222 14% 45%;
@@ -7881,8 +7981,8 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     --sidebar: 222 25% 9%;
     /* Dimmed surface — ~30% darker than --card in dark mode */
     --card-dim: 222 22% 9%;
-    --primary: 217 100% 64%;
-    --primary-2: 250 95% 70%;
+    --primary: var(--brand-primary-dark);
+    --primary-2: var(--brand-primary-2-dark);
     --secondary: 222 18% 16%;
     --muted: 222 18% 18%;
     --muted-foreground: 220 12% 65%;
@@ -7901,21 +8001,21 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     background:
-      radial-gradient(70% 60% at 0% 0%,    hsla(217, 100%, 70%, 0.25) 0%, transparent 60%),
-      radial-gradient(55% 55% at 100% 0%,  hsla(280, 100%, 75%, 0.22) 0%, transparent 60%),
-      radial-gradient(60% 60% at 50% 100%, hsla(180, 100%, 75%, 0.18) 0%, transparent 60%),
-      radial-gradient(55% 55% at 100% 100%, hsla(330, 100%, 75%, 0.18) 0%, transparent 60%),
-      linear-gradient(180deg, hsl(220 100% 97%) 0%, hsl(222 30% 96%) 100%);
+      radial-gradient(70% 60% at 0% 0%,    hsl(var(--brand-glow-1) / 0.25) 0%, transparent 60%),
+      radial-gradient(55% 55% at 100% 0%,  hsl(var(--brand-glow-2) / 0.22) 0%, transparent 60%),
+      radial-gradient(60% 60% at 50% 100%, hsl(var(--brand-glow-3) / 0.18) 0%, transparent 60%),
+      radial-gradient(55% 55% at 100% 100%, hsl(var(--brand-glow-4) / 0.18) 0%, transparent 60%),
+      linear-gradient(180deg, hsl(var(--brand-bg-a)) 0%, hsl(var(--brand-bg-b)) 100%);
     background-attachment: fixed;
   }
 
   html.dark body {
     background:
-      radial-gradient(70% 60% at 0% 0%,    hsla(217, 100%, 30%, 0.40) 0%, transparent 60%),
-      radial-gradient(55% 55% at 100% 0%,  hsla(280, 90%, 35%, 0.32) 0%, transparent 60%),
-      radial-gradient(60% 60% at 50% 100%, hsla(180, 80%, 30%, 0.28) 0%, transparent 60%),
-      radial-gradient(55% 55% at 100% 100%, hsla(330, 80%, 35%, 0.25) 0%, transparent 60%),
-      linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 35% 6%) 100%);
+      radial-gradient(70% 60% at 0% 0%,    hsl(var(--brand-glow-1-dark) / 0.40) 0%, transparent 60%),
+      radial-gradient(55% 55% at 100% 0%,  hsl(var(--brand-glow-2-dark) / 0.32) 0%, transparent 60%),
+      radial-gradient(60% 60% at 50% 100%, hsl(var(--brand-glow-3-dark) / 0.28) 0%, transparent 60%),
+      radial-gradient(55% 55% at 100% 100%, hsl(var(--brand-glow-4-dark) / 0.25) 0%, transparent 60%),
+      linear-gradient(180deg, hsl(var(--brand-bg-a-dark)) 0%, hsl(var(--brand-bg-b-dark)) 100%);
   }
 
   /* ---------- Glass surfaces ---------- */
@@ -9564,7 +9664,7 @@ table { border-collapse: collapse; }
   --shell-header-h: 56px;
   --shell-sidebar-w: 173px;
   --shell-line: #dbe0e6;   /* referens border rangi */
-  --shell-blue: #3d68ff;   /* referens primary */
+  --shell-blue: var(--brand-solid);   /* BREND PALITRASI blokidan */
   --shell-text: #333333;   /* referens matn rangi */
   --shell-hover: #e6eaea;  /* referens sidebar hover foni */
   --shell-surface: #ffffff;
@@ -9774,7 +9874,7 @@ html.dark .flyout {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 .flyout-item:hover { background-color: var(--shell-hover); color: var(--shell-blue); }
-.flyout-item.is-active { background-color: rgba(61, 104, 255, 0.1); color: var(--shell-blue); }
+.flyout-item.is-active { background-color: var(--brand-solid-soft); color: var(--shell-blue); }
 .flyout-item.is-locked { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
 /* ---------- Responsiv ko'rinish ----------
@@ -10212,6 +10312,16 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
   width: 2rem;
   border-radius: 0.375rem;
   transition: background-color .15s;
+}
+/* Kartochka foni. Ranglar "BREND PALITRASI" blokidan (fayl boshi) —
+   brend almashtirilganda bu kartochka ham u bilan birga o'zgaradi.
+   Inline style'da EMAS: faqat TSX'dan ishlatiladigan CSS o'zgaruvchisi
+   qurish bosqichida "keraksiz" deb tashlab yuboriladi. */
+.fc-card-dark {
+  background: linear-gradient(135deg, hsl(var(--brand-card-dark-a)), hsl(var(--brand-card-dark-b)));
+}
+.fc-card-light {
+  background: linear-gradient(135deg, hsl(var(--brand-card-light-a)), hsl(var(--brand-card-light-b)));
 }
 .fc-card-dark .fc-card-btn:hover { background-color: rgba(255, 255, 255, .15); }
 .fc-card-light .fc-card-btn:hover { background-color: rgba(15, 23, 42, .08); }

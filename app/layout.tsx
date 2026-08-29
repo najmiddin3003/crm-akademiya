@@ -17,6 +17,19 @@ export const metadata: Metadata = {
   title: "Tizimli",
 };
 
+/**
+ * Ilovaning brend palitrasi.
+ *
+ *   "teal"     — joriy rang (moviy-yashil)
+ *   "edutizim" — dastlabki ko'k (akademiya.edutizim.uz dan ko'chirilgan)
+ *
+ * QAYTARISH: shu qatorni "edutizim" ga o'zgartirish KIFOYA. Barcha
+ * qiymatlar app/globals.css dagi "BREND PALITRASI" blokida turadi va
+ * asosiy rang, shell (navbar/sidebar) hamda body fonining gradienti —
+ * hammasi o'sha bloknni o'qiydi.
+ */
+const BRAND = "teal";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,7 +39,7 @@ export default function RootLayout({
     // `suppressHydrationWarning` — pastdagi skript `dark` klassini gidratatsiyadan
     // OLDIN qo'shadi, server HTML'ida esa u yo'q. React buni nomuvofiqlik deb
     // hisoblaydi; bu atribut aynan shu holat uchun (faqat shu elementga tegishli).
-    <html lang="uz" className={nunito.variable} suppressHydrationWarning>
+    <html lang="uz" data-brand={BRAND} className={nunito.variable} suppressHydrationWarning>
       <head>
         {/* Mavzu `useTheme` da effekt orqali qo'llanadi — ya'ni gidratatsiyadan
             KEYIN. Shu sabab tungi rejimda har sahifa yuklanganda bir lahza
