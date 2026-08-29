@@ -32,7 +32,8 @@ export function useTaskTargets() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/pupils").then((r) => r.json()).catch(() => null),
+      // Bu yerga faqat ism va telefon kerak — to'liq hujjatlar ~3.6 MB.
+      fetch("/api/pupils?light=1").then((r) => r.json()).catch(() => null),
       fetch("/api/groups").then((r) => r.json()).catch(() => null),
       fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
     ]).then(([p, g, e]) => {

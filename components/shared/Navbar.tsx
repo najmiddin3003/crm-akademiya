@@ -10,7 +10,7 @@ import { LANGS as LANGUAGES, NOTIFS as NOTIFICATIONS, NOTIF_STYLE as NOTIF_STYLE
 import type { Lang } from "@/lib/i18n";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
-import { useStudents } from "@/hooks/useStudents";
+import type { StudentRow } from "@/lib/studentsData";
 import { useBranches } from "@/hooks/useBranches";
 import { HELP_TOPICS } from "@/constants/helpTopics";
 
@@ -54,9 +54,37 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
     branch && branches.some((b) => b.name === branch) ? branch : (branches[0]?.name ?? "");
   const [filialModalOpen, setFilialModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  // O'quvchilar qidiruv uchun bazadan (/api/pupils).
-  const { students } = useStudents();
-  const searchResults = useMemo(() => searchAll(searchQuery, students), [searchQuery, students]);
+
+  // Qidiruv natijalari SERVERDAN keladi (/api/search/students).
+  //
+  // Ilgari bu yer `useStudents()` orqali butun o'quvchilar ro'yxatini
+  // yuklardi — 6 732 hujjat, ~3.6 MB. Navbar `AppShell` ichida bo'lgani
+  // uchun bu HAR BIR sahifa ochilishida takrorlanardi va sahifaning eng
+  // og'ir so'rovi edi. Endi sahifa ochilishida hech narsa yuklanmaydi.
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const query = searchQuery.trim();
+  const queryReady = query.length >= 2;
+  useEffect(() => {
+    if (!queryReady) return;
+    // `cancelled` TASHQARIDA: tozalash funksiyasi effektdan qaytishi kerak,
+    // `setTimeout` ichidan qaytarilgani hech qachon chaqirilmaydi.
+    let cancelled = false;
+    // Har bosilgan harfga so'rov ketmasin.
+    const timer = setTimeout(() => {
+      fetch(`/api/search/students?q=${encodeURIComponent(query)}`)
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled && d?.ok) setStudents(d.students as StudentRow[]); })
+        .catch(() => {});
+    }, 200);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, queryReady]);
+
+  // Qidiruv qisqa bo'lsa oldingi natijalar ko'rinib qolmasin — holatni
+  // effektda tozalash o'rniga shu yerda kesamiz (ortiqcha render bo'lmaydi).
+  const searchResults = useMemo(
+    () => searchAll(searchQuery, queryReady ? students : []),
+    [searchQuery, queryReady, students],
+  );
   const rootRef = useRef<HTMLDivElement>(null);
   const profileHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

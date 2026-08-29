@@ -33,6 +33,7 @@ export const SHARED_API: readonly string[] = [
   "/api/people/directory",
   "/api/profile",
   "/api/pupils",
+  "/api/search/students",
   "/api/sessions",
 ];
 

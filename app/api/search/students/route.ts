@@ -1,0 +1,61 @@
+import { NextResponse } from "next/server";
+import { ensureIndexes } from "@/lib/mongodb";
+import type { Pupil } from "@/lib/pupilsData";
+import { studentRowFromPupil } from "@/lib/studentsData";
+
+// GET /api/search/students?q=… — navbardagi global qidiruv uchun.
+//
+// NEGA KERAK: ilgari Navbar `useStudents()` orqali BUTUN o'quvchilar
+// ro'yxatini yuklardi — 6 732 hujjat, ~3.6 MB — va faqat qidiruv oynasi
+// uchun. Navbar `AppShell` ichida, ya'ni bu HAR BIR sahifa ochilishida
+// takrorlanardi. Endi sahifa ochilishida hech narsa yuklanmaydi, so'rov
+// faqat foydalanuvchi yozganda ketadi va bir necha kilobayt qaytadi.
+//
+// Qidiruv SERVERDA bajariladi: 6 732 hujjatni brauzerga tashib, u yerda
+// filtrlashning ma'nosi yo'q edi.
+
+/** So'rovdagi maxsus belgilar regex sifatida talqin qilinmasin. */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** `studentRecords()` (lib/search.ts) qidiradigan maydonlar. */
+const FIELDS = ["firstName", "lastName", "phone", "moderator", "source", "category"] as const;
+
+const LIMIT = 20;
+
+export async function GET(req: Request) {
+  const q = (new URL(req.url).searchParams.get("q") || "").trim();
+  // Bitta harf bo'yicha qidirish deyarli butun bazani qaytaradi — foydasi
+  // yo'q, narxi bor.
+  if (q.length < 2) return NextResponse.json({ ok: true, students: [] });
+
+  // Ko'p so'z — HAMMASI mos kelishi kerak (klientdagi eski xulq bilan bir
+  // xil): "ali valiyev" da "ali" ismga, "valiyev" familiyaga tushishi
+  // mumkin, shuning uchun har bir so'z alohida $or bo'lib, ular $and ga
+  // yig'iladi.
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5);
+  const and = terms.map((t) => {
+    const rx = { $regex: escapeRegex(t), $options: "i" };
+    const or: Record<string, unknown>[] = FIELDS.map((f) => ({ [f]: rx }));
+    const asNum = Number(t);
+    if (Number.isInteger(asNum) && asNum > 0) or.push({ id: asNum });
+    return { $or: or };
+  });
+
+  const db = await ensureIndexes();
+  const rows = await db.collection("pupils")
+    .find({ $and: and }, {
+      // Faqat StudentRow uchun kerak bo'lgan maydonlar.
+      projection: {
+        _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, balance: 1, coin: 1,
+        createdAt: 1, moderator: 1, source: 1, category: 1,
+        status: 1, statusReason: 1, statusChangedAt: 1,
+      },
+    })
+    .limit(LIMIT)
+    .toArray();
+
+  const students = rows.map((r) => studentRowFromPupil(r as unknown as Pupil));
+  return NextResponse.json({ ok: true, students });
+}
