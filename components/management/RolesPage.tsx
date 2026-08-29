@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Pencil, Search, UserCog } from "lucide-react";
+import { ArrowLeft, Check, Pencil, Search, Trash2, UserCog } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { HrEmployee } from "@/lib/hrEmployees";
@@ -11,15 +11,14 @@ import type { Role } from "@/lib/roles";
 // Boshqaruv → Rollar (sidebar: Boshqaruv > Rollar, href /management-rollar).
 // Ma'lumot HAQIQIY — /api/roles va /api/hr-employees.
 //
-// IKKI QATLAM:
-//   1) LAVOZIM (asosiy) — `teacher` / `moderator`. Rollar soni qat'iy
-//      (lib/roles.ts), shu sabab qo'shish/o'chirish yo'q. Bu yerda
-//      belgilangan ro'yxat o'sha lavozimdagi BARCHA xodimlarga qo'llanadi.
-//   2) XODIM (istisno) — "Xodimga alohida ruxsat" tugmasi. Bitta xodimga
-//      berilgan ro'yxat uning lavozimidan USTUN turadi.
+// IKKI XIL ROL (lib/roles.ts):
+//   O'RNATILGAN — O'qituvchi / Moderator. `hr_employees.turi` ga bog'langan,
+//   ya'ni o'sha lavozimdagi barcha xodimlarga o'zi qo'llanadi. Nomi
+//   o'zgarmaydi, o'chirilmaydi.
+//   QO'LDA QO'SHILGAN — nomi, izohi, ruxsatlari erkin; o'chirsa bo'ladi.
 //
-// "Xodimlar" ustuni saqlanmaydi: /api/hr-employees dan shu lavozimdagi
-// (`turi`) xodimlar sanaladi — istisnosi borlari ham shu songa kiradi.
+// Bundan tashqari XODIM KESIMIDA istisno bor ("Xodimga alohida ruxsat"):
+// u `hr_employees.permissions` ga yoziladi va lavozimdan ustun turadi.
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -32,9 +31,12 @@ export default function RolesPage() {
 
   // Bir vaqtda faqat bittasi ochiq bo'ladi.
   const [roleTarget, setRoleTarget] = useState<Role | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [empListOpen, setEmpListOpen] = useState(false);
   const [empTarget, setEmpTarget] = useState<HrEmployee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Role | null>(null);
 
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   // Modal ichida ruxsatlar DOIM massiv bo'lib turadi — galochkalar bevosita
   // shu ro'yxatni ko'rsatadi.
@@ -82,7 +84,16 @@ export default function RolesPage() {
     return role && Array.isArray(role.permissions) ? [...role.permissions] : [...ALL_PERMISSION_PATHS];
   }
 
+  function openCreate() {
+    setName("");
+    setDescription("");
+    // Yangi rolda hamma bo'lim YOPIQ — ruxsat ataylab beriladi.
+    setChosenList([]);
+    setCreateOpen(true);
+  }
+
   function openRole(r: Role) {
+    setName(r.name);
     setDescription(r.description);
     // Cheklovsiz rol = hamma bo'lim ochiq, ya'ni hamma galochka belgilangan.
     setChosenList(Array.isArray(r.permissions) ? [...r.permissions] : [...ALL_PERMISSION_PATHS]);
@@ -97,6 +108,7 @@ export default function RolesPage() {
 
   function closeAll() {
     setRoleTarget(null);
+    setCreateOpen(false);
     setEmpTarget(null);
     setEmpListOpen(false);
   }
@@ -117,32 +129,66 @@ export default function RolesPage() {
     });
   }
 
+  /**
+   * HAMMASI belgilangan bo'lsa `null` — "cheklov yo'q". Bu shunchaki yorliq
+   * emas: cheklovsiz rolga sidebarga KEYIN qo'shilgan sahifalar ham
+   * avtomatik ochiq bo'ladi. To'liq ro'yxat saqlansa, yangi sahifa har
+   * safar qo'lda belgilanishi kerak bo'lardi.
+   */
+  const permissionsToSave = () =>
+    chosen.size === ALL_PERMISSION_PATHS.length ? null : chosenList;
+
   async function saveRole() {
-    if (!roleTarget) return;
+    const creating = createOpen;
+    if (!creating && !roleTarget) return;
+    if ((creating || !roleTarget?.key) && !name.trim()) {
+      showError("Rol nomini kiriting");
+      return;
+    }
     setSaving(true);
     try {
-      // HAMMASI belgilangan bo'lsa `null` saqlaymiz — "cheklov yo'q". Bu
-      // shunchaki yorliq emas: cheklovsiz rolga sidebarga KEYIN qo'shilgan
-      // sahifalar ham avtomatik ochiq bo'ladi. To'liq ro'yxat saqlansa,
-      // yangi sahifa har safar qo'lda belgilanishi kerak bo'lardi.
-      const permissions = chosen.size === ALL_PERMISSION_PATHS.length ? null : chosenList;
-      const res = await fetch(`/api/roles/${roleTarget.id}`, {
-        method: "PATCH",
+      const res = await fetch(creating ? "/api/roles" : `/api/roles/${roleTarget!.id}`, {
+        method: creating ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, permissions }),
+        body: JSON.stringify({ name: name.trim(), description, permissions: permissionsToSave() }),
       });
       const data = await res.json();
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         return;
       }
-      setRoles((prev) => prev.map((x) => (x.id === data.role.id ? data.role : x)));
-      showSuccess("Ruxsatlar saqlandi");
-      setRoleTarget(null);
+      if (creating) {
+        setRoles((prev) => [...prev, data.role]);
+        showSuccess("Rol qo'shildi");
+      } else {
+        setRoles((prev) => prev.map((x) => (x.id === data.role.id ? data.role : x)));
+        showSuccess("Ruxsatlar saqlandi");
+      }
+      closeAll();
     } catch {
       showError("Serverga ulanib bo'lmadi");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/roles/${deleteTarget.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "O'chirilmadi");
+        return;
+      }
+      setRoles((prev) => prev.filter((x) => x.id !== deleteTarget.id));
+      showSuccess("Rol o'chirildi");
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+    } finally {
+      setSaving(false);
+      setDeleteTarget(null);
     }
   }
 
@@ -186,17 +232,26 @@ export default function RolesPage() {
     );
   }, [employees, empSearch]);
 
+  // Nomi tahrirlanadigan holat: yangi rol yoki qo'lda qo'shilgan rol.
+  const nameEditable = createOpen || (roleTarget !== null && !roleTarget.key);
+
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={openCreate}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
+        >
+          <span>+ Rol qo&apos;shish</span>
+        </button>
         <button
           onClick={() => { setEmpSearch(""); setEmpListOpen(true); }}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium shrink-0"
         >
           <UserCog className="w-4 h-4" />
           <span>Xodimga alohida ruxsat</span>
           {overrideCount > 0 && (
-            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-white/20 text-[11px] tabular-nums">
+            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary/10 text-primary text-[11px] tabular-nums">
               {overrideCount}
             </span>
           )}
@@ -204,28 +259,46 @@ export default function RolesPage() {
       </div>
 
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
+        <div className="flex items-center justify-end px-5 py-3 border-b border-border">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
+            <span>Umumiy soni:</span>
+            <span className="tabular-nums">{roles.length}</span>
+          </div>
+        </div>
         <div className="table-scroll">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[820px]">
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Lavozim</th>
+                <th className="px-5 py-3 text-left">Nomi</th>
                 <th className="px-5 py-3 text-left">Izoh</th>
                 <th className="px-5 py-3 text-left">Ko&apos;rinadigan bo&apos;limlar</th>
                 <th className="px-5 py-3 text-right">Xodimlar</th>
-                <th className="px-5 py-3 text-right pr-5 w-20" />
+                <th className="px-5 py-3 text-right pr-5 w-28" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {roles.map((r, i) => (
-                <tr key={r.key} className="hover:bg-secondary/30 transition-colors">
+                <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                  <td className="px-5 py-3 font-medium">{r.name}</td>
+                  <td className="px-5 py-3">
+                    <span className="font-medium">{r.name}</span>
+                    {r.key && (
+                      <span className="ml-2 inline-flex items-center h-5 px-1.5 rounded border border-border text-[10.5px] text-muted-foreground align-middle">
+                        lavozim
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-[13px] text-muted-foreground">{r.description || "-"}</td>
                   <td className="px-5 py-3"><PermBadge permissions={r.permissions} /></td>
-                  <td className="px-5 py-3 text-right tabular-nums">{countByTuri.get(r.key) ?? 0}</td>
+                  <td className="px-5 py-3 text-right tabular-nums">
+                    {/* Faqat o'rnatilgan rollar xodimga bog'langan (`turi`).
+                        Qo'lda qo'shilgan rolni xodimga biriktirish usuli
+                        hali yo'q — soxta 0 ko'rsatmaymiz. */}
+                    {r.key ? (countByTuri.get(r.key) ?? 0) : <span className="text-muted-foreground">—</span>}
+                  </td>
                   <td className="px-5 py-3 pr-5">
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => openRole(r)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
@@ -233,6 +306,15 @@ export default function RolesPage() {
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
+                      {!r.key && (
+                        <button
+                          onClick={() => setDeleteTarget(r)}
+                          className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
+                          title="O'chirish"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -249,7 +331,7 @@ export default function RolesPage() {
         </div>
       </div>
 
-      {/* ── 1-qadam: xodimni tanlash ───────────────────────────────────── */}
+      {/* ── Xodimni tanlash ─────────────────────────────────────────────── */}
       {empListOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeAll} />
@@ -313,8 +395,8 @@ export default function RolesPage() {
         </div>
       )}
 
-      {/* ── Ruxsatlar oynasi: lavozim uchun ham, xodim uchun ham bir xil ── */}
-      {(roleTarget || empTarget) && (
+      {/* ── Ruxsatlar oynasi: yangi rol / rol / xodim uchun bir xil ────── */}
+      {(createOpen || roleTarget || empTarget) && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeAll()} />
           {/* Ruxsatlar daraxti baland — oyna ekranning 90% ini egallaydi va
@@ -322,26 +404,7 @@ export default function RolesPage() {
               tufayli "Saqlash" doim ko'rinib turadi. */}
           <div className="relative w-[90vw] h-[90vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
             <div className="shrink-0 px-6 pt-5 pb-4 space-y-3">
-              {roleTarget ? (
-                <>
-                  <div>
-                    <h3 className="text-[17px] font-semibold">{roleTarget.name} — ruxsatlar</h3>
-                    <p className="mt-0.5 text-[12px] text-muted-foreground">
-                      {countByTuri.get(roleTarget.key) ?? 0} ta xodimga qo&apos;llanadi
-                      {overrideCount > 0 && " (alohida istisnosi borlardan tashqari)"}.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
-                    <input
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className={inputCls}
-                      placeholder="Bu lavozim nima qilishini qisqacha yozing"
-                    />
-                  </div>
-                </>
-              ) : (
+              {empTarget ? (
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => { setEmpTarget(null); setEmpListOpen(true); }}
@@ -352,19 +415,60 @@ export default function RolesPage() {
                     <ArrowLeft className="w-4 h-4" />
                   </button>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[17px] font-semibold truncate">{empTarget!.name} — alohida ruxsat</h3>
+                    <h3 className="text-[17px] font-semibold truncate">{empTarget.name} — alohida ruxsat</h3>
                     <p className="mt-0.5 text-[12px] text-muted-foreground">
-                      Lavozimi: {roleNameOf(empTarget!.turi)}.{" "}
-                      {Array.isArray(empTarget!.permissions)
+                      Lavozimi: {roleNameOf(empTarget.turi)}.{" "}
+                      {Array.isArray(empTarget.permissions)
                         ? "Hozir alohida ro'yxat amal qilmoqda."
                         : "Hozir lavozim ro'yxati amal qilmoqda — saqlasangiz istisno yaratiladi."}
                     </p>
                   </div>
                 </div>
+              ) : (
+                <>
+                  <div>
+                    <h3 className="text-[17px] font-semibold">
+                      {createOpen ? "Yangi rol" : `${roleTarget!.name} — ruxsatlar`}
+                    </h3>
+                    {roleTarget?.key && (
+                      <p className="mt-0.5 text-[12px] text-muted-foreground">
+                        {countByTuri.get(roleTarget.key) ?? 0} ta xodimga qo&apos;llanadi
+                        {overrideCount > 0 && " (alohida istisnosi borlardan tashqari)"}.
+                      </p>
+                    )}
+                  </div>
+                  <div className={`grid grid-cols-1 gap-4 ${nameEditable ? "md:grid-cols-2" : ""}`}>
+                    {nameEditable && (
+                      <div>
+                        <label className="block text-[13px] font-medium mb-1.5">Nomi</label>
+                        <input
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className={inputCls}
+                          placeholder="Masalan: Filial direktori"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+                      <input
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className={inputCls}
+                        placeholder="Bu rol nima qilishini qisqacha yozing"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
-            <PermissionPicker chosen={chosen} onToggleItem={toggleItem} onSetMany={setMany} forRole={!!roleTarget} />
+            <PermissionPicker
+              chosen={chosen}
+              onToggleItem={toggleItem}
+              onSetMany={setMany}
+              forRole={!empTarget}
+            />
 
             <div className="shrink-0 flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
               {empTarget && Array.isArray(empTarget.permissions) && (
@@ -384,11 +488,38 @@ export default function RolesPage() {
                 Bekor qilish
               </button>
               <button
-                onClick={() => (roleTarget ? saveRole() : saveEmployee())}
+                onClick={() => (empTarget ? saveEmployee() : saveRole())}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setDeleteTarget(null)} />
+          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+            <p className="text-center text-[15px] font-semibold">
+              &laquo;{deleteTarget.name}&raquo; rolini o&apos;chirmoqchimisiz?
+            </p>
+            <div className="flex items-center justify-center gap-2 mt-5">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={saving}
+                className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
+              >
+                Yo&apos;q
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={saving}
+                className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                {saving ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
           </div>
@@ -416,12 +547,9 @@ function PermBadge({ permissions }: { permissions?: string[] | null }) {
 /**
  * "Ko'rinadigan bo'limlar" — sidebar daraxtining galochkali nusxasi.
  *
- * Daraxt DOIM ochiq: ilgari uni ko'rsatadigan "cheklash" kaliti bor edi,
- * ammo u ortiqcha bir bosishdan boshqa narsa bermasdi.
- *
- * `forRole` — faqat matn uchun: LAVOZIM sozlamasida hammasi belgilangan
- * holat "cheklovsiz" deb saqlanadi, xodim istisnosida esa yo'q (RolesPage
- * dagi `saveEmployee` izohiga qarang), shu farq yozib turiladi.
+ * `forRole` — faqat matn uchun: ROL sozlamasida hammasi belgilangan holat
+ * "cheklovsiz" deb saqlanadi, xodim istisnosida esa yo'q (RolesPage dagi
+ * `saveEmployee` izohiga qarang).
  */
 function PermissionPicker({
   chosen,

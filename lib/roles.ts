@@ -3,17 +3,18 @@ import type { Db } from "mongodb";
 // Boshqaruv → Rollar (sidebar: Boshqaruv > Rollar, href /management-rollar).
 // MongoDB `roles` kolleksiyasi.
 //
-// ROLLAR SONI QAT'IY: faqat `teacher` va `moderator`. Ruxsat XODIMGA emas,
-// LAVOZIMGA beriladi — ya'ni barcha o'qituvchilar bitta ro'yxatni, barcha
-// moderatorlar boshqasini ko'radi. Bitta xodimga alohida ruxsat ochib
-// bo'lmaydi, bu ataylab shunday.
+// IKKI XIL ROL BOR:
 //
-// Bog'lanish: `hr_employees.turi` → `roles.key`. Xodimning lavozimi
-// o'zgarishi bilan uning ruxsatlari ham o'zgaradi, boshqa hech narsa
-// qilish kerak emas.
+//   O'RNATILGAN — `teacher` va `moderator`. Ular `key` maydoni bilan
+//   belgilangan va `hr_employees.turi` ga BOG'LANGAN: xodimning lavozimi
+//   o'zgarishi bilan uning ruxsatlari ham o'zgaradi. Bu ikkisi doim
+//   mavjud (ensureRoles), nomi o'zgarmaydi va o'chirilmaydi.
 //
-// `turi` boshqa qiymat bo'lsa (masalan `admin`, yoki import qilingan
-// xodimdagi bo'sh qiymat) — cheklov qo'llanmaydi.
+//   QO'LDA QO'SHILGAN — `key` maydoni YO'Q. Nomi, izohi va ruxsatlari
+//   erkin tahrirlanadi, o'chirsa ham bo'ladi.
+//
+// `turi` o'rnatilgan kalitlardan biri bo'lmasa (masalan `admin`, yoki
+// import qilingan xodimdagi bo'sh qiymat) — cheklov qo'llanmaydi.
 
 export const ROLE_KEYS = ["teacher", "moderator"] as const;
 export type RoleKey = (typeof ROLE_KEYS)[number];
@@ -30,8 +31,11 @@ export function isRoleKey(value: unknown): value is RoleKey {
 
 export interface Role {
   id: number;
-  /** Lavozim kaliti — `hr_employees.turi` bilan bir xil alifbo. */
-  key: RoleKey;
+  /**
+   * O'rnatilgan rolning lavozim kaliti — `hr_employees.turi` bilan bir xil
+   * alifbo. Qo'lda qo'shilgan rollarda bu maydon YO'Q.
+   */
+  key?: RoleKey;
   name: string;
   description: string; // Izoh
   /**
@@ -44,11 +48,15 @@ export interface Role {
   permissions?: string[] | null;
 }
 
+/** Keyingi bo'sh `id`. Rollar ro'yxati kichik, shu sabab oddiy usul. */
+export async function nextRoleId(db: Db): Promise<number> {
+  const last = await db.collection("roles").find({}).sort({ id: -1 }).limit(1).toArray();
+  return (last[0]?.id ?? 0) + 1;
+}
+
 /**
- * Ikkala rol hujjati borligiga kafolat beradi va ularni qaytaradi.
- *
- * Rollarni foydalanuvchi qo'shmaydi/o'chirmaydi — ular tizimning qat'iy
- * qismi. Shu sabab yozuvlar shu yerda, birinchi so'rovdayoq yaratiladi.
+ * O'rnatilgan rollar borligiga kafolat beradi va BARCHA rollarni qaytaradi
+ * (avval o'rnatilganlar, keyin qo'lda qo'shilganlar `id` bo'yicha).
  *
  * MIGRATSIYA: `key` maydoni keyin qo'shilgan. Undan oldin nomi bo'yicha
  * yaratilgan yozuv bo'lsa (masalan qo'lda kiritilgan "teacher"), yangisini
@@ -70,9 +78,8 @@ export async function ensureRoles(db: Db): Promise<Role[]> {
       continue;
     }
 
-    const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
     await col.insertOne({
-      id: (last[0]?.id ?? 0) + 1,
+      id: await nextRoleId(db),
       key,
       name: ROLE_KEY_LABELS[key],
       description: "",
@@ -80,12 +87,15 @@ export async function ensureRoles(db: Db): Promise<Role[]> {
     });
   }
 
-  const rows = await col.find({ key: { $in: [...ROLE_KEYS] } }).toArray();
-  // Tartib ROLE_KEYS dagidek bo'lsin — jadval qatorlari sakrab turmasin.
-  return ROLE_KEYS.map((key) => {
-    const row = rows.find((r) => r.key === key)!;
+  const rows = await col.find({}).sort({ id: 1 }).toArray();
+  const strip = (row: Record<string, unknown>) => {
     const { _id, ...rest } = row;
     void _id;
     return rest as unknown as Role;
-  });
+  };
+  // Tartib: avval o'rnatilganlar ROLE_KEYS bo'yicha (jadval qatorlari
+  // sakrab turmasin), keyin qo'lda qo'shilganlar.
+  const builtIn = ROLE_KEYS.map((key) => strip(rows.find((r) => r.key === key)!));
+  const custom = rows.filter((r) => !isRoleKey(r.key)).map(strip);
+  return [...builtIn, ...custom];
 }
