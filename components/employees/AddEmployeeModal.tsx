@@ -468,6 +468,9 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
                 </select>
                 <Chevron />
               </div>
+              <p className="mt-1 text-[11.5px] text-muted-foreground">
+                Ko&apos;rinadigan bo&apos;limlar ham shu vazifadan olinadi (Boshqaruv → Rollar).
+              </p>
             </div>
             <div>
               <label className={labelCls}>Jinsi</label>

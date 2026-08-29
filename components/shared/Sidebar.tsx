@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
 import { useLang } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
 import { LANGS, NOTIFS } from "@/lib/navbar";
+import { isPathAllowed } from "@/lib/permissions";
 import type { Lang } from "@/lib/i18n";
 
 // Sidebar (chap navigatsiya) — barcha matn/havolalar constants/sidebar.js dagi
@@ -52,6 +53,57 @@ interface SidebarItem {
 }
 
 const ITEMS = SIDEBAR_ITEMS as SidebarItem[];
+
+/**
+ * Sidebar daraxtini rol ruxsatlariga qarab qirqadi (lib/permissions.ts).
+ * `null` — cheklov yo'q, daraxt tegilmaydi.
+ *
+ * Faqat YASHIRISH emas, yo'nalishlarni TUZATISH ham shu yerda: bo'limning
+ * o'z havolasi (`href`) yoki mobil havolasi (`mobileHref`) taqiqlangan
+ * sahifaga qaragan bo'lsa, u ochiq qolgan birinchi ichki sahifaga
+ * almashtiriladi. Aks holda ko'rinib turgan bo'limni bosgan xodim darhol
+ * orqaga qaytarib yuborilardi (layout tekshiruvi).
+ */
+function filterByPermissions(items: SidebarItem[], permissions: string[] | null): SidebarItem[] {
+  if (permissions === null) return items;
+  const ok = (href?: string) => !!href && isPathAllowed(href, permissions);
+
+  const out: SidebarItem[] = [];
+  for (const item of items) {
+    let nextMenu: SidebarMenu | undefined;
+    let firstHref: string | undefined;
+
+    if (item.menu) {
+      const menuItems = item.menu.items?.filter((i) => ok(i.href));
+      const columns = item.menu.columns
+        ?.map((c) => ({ ...c, items: c.items.filter((i) => ok(i.href)) }))
+        .filter((c) => c.items.length > 0);
+      const flat = menuItems ?? columns?.flatMap((c) => c.items) ?? [];
+
+      if (flat.length === 0) {
+        // Ichida bitta ham ochiq sahifa qolmadi. Bo'lim faqat o'z havolasi
+        // ochiq bo'lsa qoladi — va bo'sh flyout ochilmasligi uchun menyusiz.
+        if (!ok(item.href)) continue;
+        nextMenu = undefined;
+      } else {
+        firstHref = flat[0].href;
+        nextMenu = { ...item.menu };
+        if (menuItems) nextMenu.items = menuItems;
+        if (columns) nextMenu.columns = columns;
+      }
+    } else if (!ok(item.href)) {
+      continue;
+    }
+
+    out.push({
+      ...item,
+      menu: nextMenu,
+      href: item.href && !ok(item.href) ? firstHref : item.href,
+      mobileHref: ok(item.mobileHref) ? item.mobileHref : (firstHref ?? item.href ?? item.mobileHref),
+    });
+  }
+  return out;
+}
 
 // Faqat shu sahifalar hali kod bilan qurilgan (tegishli app/(app)/<href>/page.tsx
 // mavjud). Qolgan barcha havolalar hozircha "qurilmagan" — qulflanadi: hover
@@ -106,9 +158,17 @@ const IMPLEMENTED_ROUTES = new Set([
 export interface SidebarProps {
   mobileOpen: boolean;
   onMobileOpenChange: (open: boolean) => void;
+  /**
+   * Rol ruxsatlari — app/(app)/layout.tsx → AppShell orqali keladi.
+   * `null` = cheklov yo'q.
+   */
+  permissions?: string[] | null;
 }
 
-export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null }: SidebarProps) {
+  // Xodim ko'ra oladigan bo'limlar. Bu FAQAT ko'rinish: haqiqiy to'siq
+  // app/(app)/layout.tsx da, server tomonda.
+  const items = useMemo(() => filterByPermissions(ITEMS, permissions), [permissions]);
   const [openKey, setOpenKey] = useState<string | null>(null);
   // Bir menyudan ikkinchisiga o'tishda fade/translate animatsiyasini o'chirish
   // uchun. Aks holda eski panel so'nib turganda yangisi BOSHQA balandlikda
@@ -383,7 +443,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
       <aside id="sidebar" className="shell-sidebar hidden lg:flex flex-col border-r shrink-0" style={{ borderColor: "var(--shell-line)" }}>
         <nav className="flex-1 overflow-y-auto overflow-x-hidden">
           <ul className="space-y-[2px]">
-            {ITEMS.map((item) => {
+            {items.map((item) => {
               const hasMenu = !!item.menu;
               const topLocked = !!item.href && !IMPLEMENTED_ROUTES.has(item.href.split("?")[0]);
               const itemActive = isPathActive(item.href) || isMenuActive(item.menu);
@@ -445,7 +505,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
       </aside>
 
       {/* ============ FLYOUT SUBMENULAR (constants'dan) ============ */}
-      {ITEMS.filter((item) => item.menu).map((item) => {
+      {items.filter((item) => item.menu).map((item) => {
         const menu = item.menu!;
         return (
           <div
@@ -473,7 +533,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps
           </Link>
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <ul className="space-y-0.5">
-              {ITEMS.map((item) => (
+              {items.map((item) => (
                 <li key={item.key}>
                   <Link
                     href={item.mobileHref}

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { ObjectId } from "mongodb";
 import { ensureIndexes } from "./mongodb";
+import { resolvePermissions, type UserForPermissions } from "./rolePermissions";
 import { SESSION_COOKIE, verifySessionToken } from "./session";
 
 export interface CurrentUser {
@@ -10,6 +11,15 @@ export interface CurrentUser {
   role: string;
   /** Joriy qurilma sessiyasi (eski cookie'larda bo'lmasligi mumkin). */
   sid?: string;
+  /**
+   * Xodim ko'ra oladigan bo'limlar (lib/permissions.ts).
+   * `null` — cheklov yo'q.
+   *
+   * Cookie'da EMAS, har so'rovda DB'dan o'qiladi: rol ruxsatlari
+   * o'zgartirilganda xodim qayta login qilishini kutib o'tirmasin, hamda
+   * cookie'ni o'zi tahrirlab ruxsat qo'shib ololmasin.
+   */
+  permissions: string[] | null;
 }
 
 // Joriy so'rovdagi sessiya cookie'sini tekshirib, DB'dagi jonli holatini
@@ -47,5 +57,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     fullName: user.fullName,
     role: user.role || "employee",
     sid: session.sid,
+    permissions: await resolvePermissions(db, user as UserForPermissions),
   };
 }

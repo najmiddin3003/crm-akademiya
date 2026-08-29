@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { Role } from "@/lib/roles";
+import { sanitizePermissions } from "@/lib/permissions";
+import { ensureRoles, type Role } from "@/lib/roles";
 
-// PATCH /api/roles/:id — rolni tahrirlaydi.
+// PATCH /api/roles/:id — rolning IZOHI va RUXSATLARINI yangilaydi.
+//
+// Nomi va kaliti o'zgarmaydi: rollar tizimning qat'iy qismi va nomi
+// `hr_employees.turi` bilan bog'langan (lib/roles.ts). O'chirish ham yo'q.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const roleId = Number(id);
@@ -17,19 +21,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const set: Record<string, unknown> = {};
-  if (typeof body.name === "string") {
-    const name = body.name.trim();
-    if (!name) return NextResponse.json({ ok: false, error: "Rol nomini kiriting" }, { status: 400 });
-    set.name = name;
-  }
   if (typeof body.description === "string") set.description = body.description.trim();
+  // Ko'rinadigan bo'limlar. `null` — cheklovni olib tashlash; massiv —
+  // aynan shu bo'limlar (noma'lum kalitlar tashlanadi).
+  if (body.permissions !== undefined) {
+    set.permissions = body.permissions === null ? null : sanitizePermissions(body.permissions);
+  }
   if (Object.keys(set).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
   const db = await ensureIndexes();
+  // Yozuvlar mavjudligiga kafolat — bo'sh bazada ham PATCH ishlasin.
+  await ensureRoles(db);
+
   const res = await db.collection("roles").findOneAndUpdate(
-    { id: roleId },
+    { id: roleId, key: { $exists: true } },
     { $set: set },
     { returnDocument: "after" },
   );
@@ -37,20 +44,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Rol topilmadi" }, { status: 404 });
   }
   const { _id, ...role } = res;
+  void _id;
   return NextResponse.json({ ok: true, role: role as unknown as Role });
-}
-
-// DELETE /api/roles/:id
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const roleId = Number(id);
-  if (!Number.isFinite(roleId)) {
-    return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
-  }
-  const db = await ensureIndexes();
-  const res = await db.collection("roles").deleteOne({ id: roleId });
-  if (res.deletedCount === 0) {
-    return NextResponse.json({ ok: false, error: "Rol topilmadi" }, { status: 404 });
-  }
-  return NextResponse.json({ ok: true });
 }

@@ -15,7 +15,14 @@ import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 // header ostidan boshlanadi. Ilgari teskari edi — sidebar to'liq balandlikda
 // chapda turib, logo o'zida saqlanardi va header faqat o'ngdagi joyni
 // egallardi.
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  permissions = null,
+}: {
+  children: React.ReactNode;
+  /** Rol ruxsatlari — app/(app)/layout.tsx dan keladi. `null` = cheklovsiz. */
+  permissions?: string[] | null;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // PersonDirectoryProvider shu yerda — ism→profil xaritasi sessiyaga bir
@@ -26,7 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen flex-col overflow-hidden">
         <Navbar onOpenMobileMenu={() => setMobileOpen(true)} />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
+          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} />
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
         </div>
       </div>

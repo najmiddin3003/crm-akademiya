@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
+import { sanitizePermissions } from "@/lib/permissions";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -45,6 +46,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   for (const k of ["aktivOq", "groups"] as const) {
     if (Number.isFinite(Number(body[k]))) set[k] = Number(body[k]);
+  }
+  // Xodimga alohida ruxsatlar (Boshqaruv → Rollar → "Xodimga alohida
+  // ruxsat"). `null` — istisnoni olib tashlash, ya'ni xodim yana lavozim
+  // ro'yxatiga qaytadi. Bo'sh massiv esa haqiqiy istisno (hech narsa
+  // ko'rinmasin), shuning uchun ikkalasi bir xil qaralmaydi.
+  if (body.permissions !== undefined) {
+    set.permissions = body.permissions === null ? null : sanitizePermissions(body.permissions);
   }
   // Xodimga biriktirilgan soliq turlari (Boshqaruv → Xodimlar). Faqat
   // haqiqiy sonlar o'tadi va takrorlar tashlanadi — noto'g'ri qiymat

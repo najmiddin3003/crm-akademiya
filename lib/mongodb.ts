@@ -136,6 +136,9 @@ export async function ensureIndexes(): Promise<Db> {
     await db.collection("turnstile_io").createIndex({ date: 1 });
     await db.collection("support_analytics").createIndex({ id: 1 }, { unique: true });
     await db.collection("roles").createIndex({ id: 1 }, { unique: true });
+    // `key` — lavozim kaliti (teacher/moderator). Ruxsatlar shu bo'yicha
+    // o'qiladi, va bir kalitli ikkita yozuv bo'lishi mumkin emas.
+    await db.collection("roles").createIndex({ key: 1 }, { unique: true, sparse: true });
     // `branches` — Boshqaruv > Filiallar (CRUD ro'yxati). Nazorat >
     // "Filiallar holati" bundan foydalanmaydi, u constants'dan hisoblaydi.
     await db.collection("branches").createIndex({ id: 1 }, { unique: true });

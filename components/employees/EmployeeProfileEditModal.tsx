@@ -98,6 +98,10 @@ export default function EmployeeProfileEditModal({
             <select value={turi} onChange={(e) => setTuri(e.target.value)} className={inputCls}>
               {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
+              Xodim qaysi bo&apos;limlarni ko&apos;rishi ham shu lavozimdan olinadi
+              (Boshqaruv → Rollar). Alohida xodimga ruxsat berilmaydi.
+            </p>
           </div>
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Jinsi</label>

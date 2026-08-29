@@ -19,7 +19,25 @@ export interface HrEmployee {
   gender: string; // "male" | "female"
   aktivOq: number;
   groups: number;
-  turi: string; // "teacher" | "moderator" | "admin"
+  /**
+   * Lavozim: "teacher" | "moderator" | "admin".
+   *
+   * Xodim CRM'ning qaysi bo'limlarini ko'rishi ODATDA shu maydondan kelib
+   * chiqadi — `roles` dagi bir xil kalitli yozuv orqali (lib/roles.ts).
+   * Lavozim o'zgarsa, ruxsatlar ham o'zi o'zgaradi.
+   */
+  turi: string;
+  /**
+   * SHU XODIM uchun alohida ruxsatlar — lavozim sozlamasidan USTUN turadi.
+   *
+   *   maydon yo'q yoki null → istisno yo'q, lavozim ro'yxati amal qiladi
+   *   [...]                 → aynan shu bo'limlar (lavozimdan qat'i nazar)
+   *
+   * Bo'sh massiv ham HAQIQIY istisno: "hech qanday bo'lim ko'rinmasin"
+   * degani (doim ochiq sahifalardan tashqari). Shu sabab "istisno bormi"
+   * savoli uzunlik bilan emas, `Array.isArray` bilan tekshiriladi.
+   */
+  permissions?: string[] | null;
   filial: string;
   phone: string;
   kurs: string;
