@@ -9,7 +9,7 @@ const env = Object.fromEntries(
 );
 
 const t0 = Date.now();
-const client = new MongoClient(env.MONGODB_URI);
+const client = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 console.log("ulanish:", Date.now() - t0, "ms");
 const db = client.db(env.MONGODB_DB);

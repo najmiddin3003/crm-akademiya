@@ -49,7 +49,7 @@ const sheet = (await r.json()).values ?? [];
 const SHEETS_EPOCH_MS = Date.UTC(1899, 11, 30);
 const monthKey = (serial) => new Date(SHEETS_EPOCH_MS + serial * 86_400_000).toISOString().slice(0, 7);
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const te = db.collection("transaction_entries");

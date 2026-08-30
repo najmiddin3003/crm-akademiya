@@ -65,7 +65,7 @@ async function main() {
   const dbName = process.env.MONGODB_DB || "crm_akademiya";
   if (!uri) throw new Error("MONGODB_URI .env.local da topilmadi");
 
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, { maxPoolSize: 5 });
   await client.connect();
   try {
     const db = client.db(dbName);

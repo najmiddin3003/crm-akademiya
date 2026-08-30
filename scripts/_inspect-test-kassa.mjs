@@ -11,7 +11,7 @@ const env = Object.fromEntries(
     })
 );
 
-const client = new MongoClient(env.MONGODB_URI);
+const client = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(env.MONGODB_DB || "crm_akademiya");
 

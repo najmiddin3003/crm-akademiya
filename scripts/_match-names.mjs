@@ -15,7 +15,7 @@ const norm = (v) => String(v ?? "").replace(/[\u2019\u02BB\u02BC`']/g, "'").repl
 const key = (v) => norm(v).toLowerCase();
 const phoneKey = (v) => { const d = String(v ?? "").replace(/\D/g, ""); return d.startsWith("998") ? d.slice(3) : d; };
 
-const client = new MongoClient(process.env.MONGODB_URI); await client.connect();
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 }); await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const emps = await db.collection("hr_employees").find({}).toArray();
 const pupils = await db.collection("pupils").find({}).toArray();

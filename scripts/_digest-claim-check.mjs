@@ -25,7 +25,7 @@ for (const l of fs.readFileSync(path.join(HERE, "..", ".env.local"), "utf8").spl
   if (i > 0) process.env[s.slice(0, i).trim()] ??= s.slice(i + 1).trim();
 }
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const COL = "_sinov_digest_claim";

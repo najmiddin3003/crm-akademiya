@@ -61,7 +61,7 @@ async function main() {
   if (!/^998\d{9}$/.test(phone)) throw new Error(`Telefon raqami noto'g'ri: ${process.argv[2]}`);
   if (password.length < 8) throw new Error("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
 
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, { maxPoolSize: 5 });
   await client.connect();
   try {
     const db = client.db(dbName);

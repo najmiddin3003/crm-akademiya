@@ -11,7 +11,7 @@ for (const line of fs.readFileSync(path.join(ROOT, ".env.local"), "utf8").split(
   if (i > 0) process.env[s.slice(0, i).trim()] ??= s.slice(i + 1).trim();
 }
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 console.log("BAZA:", db.databaseName, "\n");

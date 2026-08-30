@@ -82,7 +82,7 @@ console.log(`Ro'yxatda ${wanted.length} ta o'qituvchi, biriktiriladigan foiz: ${
 
 // ---------------------------------------------------------------- baza
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB || "crm_akademiya");
 const employees = db.collection("hr_employees");

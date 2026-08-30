@@ -25,7 +25,7 @@ const METHOD = "naqd";
 const FROM_CB = 4;      // pul QAYTADIGAN kassa
 const TO_CB   = 3;      // pul QAYTARIB OLINADIGAN kassa
 
-const c = new MongoClient(env.MONGODB_URI);
+const c = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 });
 await c.connect();
 const db = c.db(env.MONGODB_DB);
 const entries = db.collection("transaction_entries");

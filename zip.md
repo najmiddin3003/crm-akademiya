@@ -395,6 +395,41 @@ o'zgartiradi. **Flag emas, loyiha.**
 
 ---
 
+## 6.5. Atlas M0 — ULANISHLAR CHEGARASI (bir marta kuydirgan)
+
+Klaster bepul **M0** tarifida, unda jami **500 ta ulanish** chegarasi bor.
+
+Bir marta shunday bo'ldi: o'lchov va tekshiruv skriptlari ketma-ket
+yugurtirildi, har biri o'z `MongoClient` ini ochdi, drayverning standart
+`maxPoolSize` qiymati esa **100**. Chegara to'ldi va Atlas yangi
+ulanishlarni rad eta boshladi — tashqaridan bu "backend butunlay
+ishlamayapti" bo'lib ko'rinadi, Atlas esa pochtaga ogohlantirish yuboradi
+("connections to your cluster(s) have exceeded your threshold").
+
+**Belgilari:** sahifalar ochilmaydi yoki bo'sh keladi; skriptlar
+`MongoServerSelectionError` bilan yiqiladi; Atlas'dan ogohlantirish xati.
+
+**Darhol tuzatish:** ilovani va barcha skriptlarni to'xtatish — ulanishlar
+bo'shagach hammasi o'z-o'zidan tiklanadi. Tekshirish:
+
+```js
+const st = await db.admin().serverStatus();
+console.log(st.connections.current, st.connections.available);
+```
+
+**Oldini olish (bajarildi):**
+- [lib/mongodb.ts](lib/mongodb.ts) — `maxPoolSize: 20`, `minPoolSize: 0`,
+  `maxIdleTimeMS: 60_000`. 20 ta ulanish bu yuk uchun yetarli: har so'rov
+  ~150 ms, ya'ni sekundiga ~130 amal.
+- `scripts/` dagi **42 ta** skript — `maxPoolSize: 5`. Ular bir martalik,
+  katta pool kerak emas.
+
+> **Qoida:** yangi skript yozganda `new MongoClient(uri, { maxPoolSize: 5 })`
+> deb yozing va oxirida `await client.close()` ni unutmang. Bir vaqtda
+> ko'p skriptni yugurtirmang.
+
+---
+
 ## 7. O'lchov va tekshiruv skriptlari
 
 | Skript | Nima qiladi |

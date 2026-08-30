@@ -10,7 +10,7 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
 
 const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
-const c = new MongoClient(env.MONGODB_URI);
+const c = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 });
 const t0 = Date.now(); await c.connect(); const connectMs = Date.now() - t0;
 const db = c.db(env.MONGODB_DB);
 

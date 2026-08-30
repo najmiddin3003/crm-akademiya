@@ -120,7 +120,7 @@ console.log(`${wanted.length} ta xodim qatori, tur filtri: ${TURI}\n`);
 
 // --------------------------------------------------------------- baza
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB || "crm_akademiya");
 const employees = db.collection("hr_employees");

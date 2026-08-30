@@ -17,8 +17,26 @@ declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
+// ULANISHLAR POOLI ATAYLAB KICHIK.
+//
+// Klaster — Atlas M0 (bepul tarif), unda JAMI 500 ta ulanish chegarasi bor.
+// Drayverning standart `maxPoolSize` qiymati esa 100. Ya'ni bitta dev
+// server + bir nechta o'lchov skripti (scripts/_*.mjs, har biri o'z
+// MongoClient'ini ochadi) chegarani to'ldirib qo'yishi mumkin — o'shanda
+// Atlas YANGI ulanishlarni rad etadi va butun ilova "ishlamay qoladi".
+// Bu amalda bir marta sodir bo'lgan.
+//
+// 20 ta ulanish bu yuk uchun yetarli: har bir so'rov ~150 ms, ya'ni 20 ta
+// ulanish sekundiga ~130 ta amalni bajaradi. `maxIdleTimeMS` esa bo'sh
+// turgan ulanishni qaytarib beradi — ilgari ular ochiq qolaverardi.
+const POOL = {
+  maxPoolSize: 20,
+  minPoolSize: 0,
+  maxIdleTimeMS: 60_000,
+};
+
 function createClient() {
-  const client = new MongoClient(uri as string);
+  const client = new MongoClient(uri as string, POOL);
   return client.connect();
 }
 

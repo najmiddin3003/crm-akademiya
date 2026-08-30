@@ -11,7 +11,7 @@ const env = Object.fromEntries(
 );
 
 const t0 = Date.now();
-const client = new MongoClient(env.MONGODB_URI);
+const client = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const tConnect = Date.now() - t0;
 const db = client.db(env.MONGODB_DB || undefined);

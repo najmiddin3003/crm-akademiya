@@ -121,7 +121,7 @@ const HEADERS = [
 ];
 const FIRST_DATA_ROW = 3; // 1 — sarlavha, 2 — JAMI
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const agg = await db.collection("transaction_entries")

@@ -38,7 +38,7 @@ console.log(`Zaxira: ${file}`);
 console.log(`Olingan vaqt: ${dump.takenAt} · baza: ${dump.database}`);
 console.log(`${apply ? "TIKLANADI" : "QURUQ YURISH — hech narsa yozilmaydi"}\n`);
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 

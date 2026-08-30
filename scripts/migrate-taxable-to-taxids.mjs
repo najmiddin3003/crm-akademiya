@@ -30,7 +30,7 @@ for (const line of fs.readFileSync(path.join(ROOT, ".env.local"), "utf8").split(
 
 const APPLY = process.argv.includes("--yes");
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB || "crm_akademiya");
 

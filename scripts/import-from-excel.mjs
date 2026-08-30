@@ -282,7 +282,7 @@ console.log("NAMUNALAR (xodim)");
 for (const e of employees.slice(0, 3)) console.log(`  #${e.id} ${e.name} | ${e.phone} | ${e.turi} | ${e.gender} | ${e.kurs || "—"}`);
 
 console.log("\nO'CHIRILADI");
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 for (const c of WIPE) {

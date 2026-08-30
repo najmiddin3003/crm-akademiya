@@ -59,7 +59,7 @@ const WIPE = ["transaction_entries", "transactions", "salary_runs", "sync_outbox
 // tegmaymiz (bonus/jarima qo'lda kiritilgan bo'lishi mumkin).
 const EXPECT_EMPTY = ["bonuses", "penalties", "pupil_activity"];
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 

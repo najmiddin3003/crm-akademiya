@@ -5,7 +5,7 @@
 import fs from "fs";
 import { MongoClient } from "mongodb";
 const env = Object.fromEntries(fs.readFileSync(".env.local","utf8").split(/\r?\n/).filter(l=>l.trim()&&!l.startsWith("#")&&l.includes("=")).map(l=>{const i=l.indexOf("=");return [l.slice(0,i).trim(),l.slice(i+1).trim()];}));
-const c = new MongoClient(env.MONGODB_URI); await c.connect();
+const c = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 }); await c.connect();
 const col = c.db(env.MONGODB_DB).collection("transaction_entries");
 
 // ── ESKI USUL: hammasini yuklab, klientdagidek hisoblash ──────────────

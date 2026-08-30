@@ -101,7 +101,7 @@ if (XLSX_PATH) console.log(`Ismlar  : ${XLSX_PATH} (${people.size} ta yozuv)`);
 console.log(`Kassa   : "${CASHBOX_NAME}" · moderator ${MODERATOR}`);
 console.log(APPLY ? "\nIMPORT QILINADI\n" : "\nQURUQ YURISH — bazaga hech narsa yozilmaydi\n");
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const methods = await db.collection("settings_payment_methods").find({}).toArray();

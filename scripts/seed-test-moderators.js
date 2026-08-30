@@ -37,7 +37,7 @@ const MODERATORS = [
   loadEnvLocal();
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error("MONGODB_URI topilmadi (.env.local)");
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, { maxPoolSize: 5 });
   await client.connect();
   const db = client.db(process.env.MONGODB_DB || "crm_akademiya");
   const col = db.collection("hr_employees");

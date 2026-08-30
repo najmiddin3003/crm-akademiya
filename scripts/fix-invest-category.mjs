@@ -47,7 +47,7 @@ const IDS = [122, 519, 520, 521];
 const FROM = "Boshqa";
 const TO = "F - INVEST";
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const entries = db.collection("transaction_entries");

@@ -8,7 +8,7 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }),
 );
 
-const client = new MongoClient(env.MONGODB_URI);
+const client = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(env.MONGODB_DB || undefined);
 

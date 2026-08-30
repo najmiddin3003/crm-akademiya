@@ -7,7 +7,7 @@ for (const l of fs.readFileSync(path.join(HERE, "..", ".env.local"), "utf8").spl
   const i = s.indexOf("="); if (i > 0) process.env[s.slice(0, i).trim()] ??= s.slice(i + 1).trim();
 }
 const fmt = (n) => Math.round(n).toLocaleString("ru-RU");
-const client = new MongoClient(process.env.MONGODB_URI); await client.connect();
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 }); await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 
 console.log("=== KASSALAR ===");

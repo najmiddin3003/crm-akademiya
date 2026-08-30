@@ -86,7 +86,7 @@ const TABS = [
   { title: process.env.SHEET_TAB_TRANSFERS || "Ko'chirmalar", cols: 12, filter: { txType: "transfer" } },
 ];
 
-const client = new MongoClient(process.env.MONGODB_URI);
+const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5 });
 await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const te = db.collection("transaction_entries");
