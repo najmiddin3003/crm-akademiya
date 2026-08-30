@@ -16,7 +16,23 @@
 | `/finance-revenue-plan` | ~11.6 MB | **0 KB** | aggregation, 4 ta son |
 | **Sovuq start** (birinchi so'rov) | +3 636 ms | **+152 ms** | indeks tekshiruvi fonda |
 | Analitika sahifalari orasida yurish | har safar 2.8 MB | **1 marta** | umumiy kesh |
-| Bitta sahifada o'quvchilar ro'yxati | 2–3 marta | **1 marta** | umumiy kesh |
+| Bitta sahifada o'quvchilar ro'yxati | 2 marta | **1 marta** | umumiy kesh |
+
+### Brauzerda o'lchangan A/B (bir xil mashina, bir xil baza, bir xil yo'l)
+
+Usul: `window.fetch` sanagichga o'raldi, keyin `/parents` -> `/active-students`
+-> `/parents` yo'li bosib o'tildi. "Keshsiz" holat `TTL_MS = 0` qilib
+olindi — bu keshni butunlay o'chiradi, ya'ni aynan eski xulq.
+
+| | `/api/pupils` chaqiruvi | Trafik |
+|---|---|---|
+| Keshsiz (eski xulq) | **4 ta** | 4 × 3 654 KB = **14 616 KB** |
+| Kesh bilan | **1 ta** | **3 654 KB** |
+
+Sanagich vaqtlari eski xulqda: `102942, 102973, 106116, 106126` —
+ya'ni **har bir sahifa 2 ta bir xil so'rovni bir vaqtda** yuborardi
+(31 ms va 10 ms farq bilan). Bu takrorlanish endi TTL'dan qat'i nazar
+yo'qoladi: in-flight dedup ularni bitta so'rovga birlashtiradi.
 
 ---
 
@@ -187,20 +203,48 @@ bo'lgan joylar. Faqat 3 tasi haqiqatan mustaqil edi (4.6-band).
 
 ## 6. Qolgan ish
 
-### 6.1. Atlas regioni — kod emas, infratuzilma
+### 6.1. Atlas regioni — O'LCHANDI, qaror kutilmoqda
 
-Atlas'gacha RTT **145–154 ms**. Bitta so'rovda bir nechta round-trip
-bo'ladi, shuning uchun bu hamma narsaga ko'paytma. Bir region ichida
-odatda **< 5 ms**.
+Klaster **AWS / Singapur (ap-southeast-1)**, foydalanuvchilar O'zbekistonda.
 
-**Tekshirish kerak:**
+`node scripts/_region-latency.mjs` — sof TCP ulanish vaqti (1 round-trip),
+har region uchun 6 o'lchov, eng tezi olindi:
 
-1. Atlas konsolida klaster qaysi regionda;
-2. `vercel.json` da `regions` ko'rsatilmagan — Vercel funksiyasi qaysi
-   regionda ishlayapti.
+| Region | Joy | RTT | Farq |
+|---|---|---|---|
+| `eu-north-1` | Stokgolm | **90 ms** | **−57 ms** |
+| `eu-central-1` | Frankfurt | **106 ms** | **−41 ms** |
+| `ap-southeast-1` | **Singapur (hozirgi)** | **147 ms** | — |
+| `ap-northeast-1` | Tokio | 166 ms | +19 ms |
+| `us-east-1` | AQSh (Virjiniya) | 190 ms | +43 ms |
+| `ap-south-1` | Mumbay | 205 ms | +58 ms |
+| `eu-west-1` | Irlandiya | 212 ms | +65 ms |
+| `me-central-1` | BAA (Dubay) | 220 ms | +73 ms |
 
-Ikkalasi bir-biriga yaqin bo'lsa — **barcha so'rovlar birdaniga tezlashadi,
-kodga tegmasdan.** Bu hozirgi eng katta qolgan imkoniyat.
+**O'lchov o'zini o'zi tasdiqlaydi:** Singapur uchun 147 ms chiqdi, bu
+`scripts/_db-perf.mjs` dagi mustaqil Atlas o'lchovi (145–154 ms) bilan
+aynan mos. Ya'ni usul to'g'ri.
+
+**Kutilmagan natija:** Dubay va Mumbay geografik jihatdan yaqinroq bo'lsa
+ham SEKINROQ. O'zbekiston tranziti Yevropa orqali ketadi, shuning uchun
+masofa emas, marshrut hal qiladi.
+
+**Tavsiya — Frankfurt (`eu-central-1`):** 147 ms → 106 ms, ya'ni **har bir
+round-trip 28% qisqaradi**, kodga umuman tegmasdan. Stokgolm yana 16 ms
+tezroq, lekin u Atlas'ning bepul (M0) tarifida yo'q — Frankfurt esa hamma
+tarifda bor.
+
+**Diqqat:** Atlas klasterning regionini joyida o'zgartirib bo'lmaydi
+(ayniqsa M0 da). Yangi klaster yaratib, ma'lumotni ko'chirish kerak:
+`scripts/_backup-db.mjs` → yangi klaster → `scripts/_restore-db.mjs`,
+keyin `.env.local` va deploy muhitidagi `MONGODB_URI` almashtiriladi.
+
+**Vercel tomoni:** ulangan Vercel akkauntida (`Abdulloh's projects`,
+hobby) **birorta ham proyekt yo'q** — sayt Vercel'da joylashmagan.
+Shuning uchun `vercel.json` dagi `regions` masalasi hozircha ochilmaydi.
+Sayt qayerda ishlayotgani aniqlangach, o'sha yerning regioni ham
+klasterga yaqin bo'lishi kerak — aks holda Frankfurt'ga ko'chirishning
+foydasi yo'qoladi.
 
 ### 6.2. `/api/pupils` standart rejimi
 
@@ -219,6 +263,7 @@ sahifada qaysi maydon ishlatilishini tekshirish shart.
 | `scripts/_collection-sizes.mjs` | qaysi to'plam og'ir |
 | `scripts/_db-perf.mjs` | RTT, ulanish, o'qish vaqtlari |
 | `scripts/_time-indexes.mjs` | `ensureIndexes()` narxi |
+| `scripts/_region-latency.mjs` | AWS regionlarigacha RTT (qaysi region tezroq) |
 | `scripts/_verify-revenue.mjs` | tushum raqamlari o'zgarmaganini tekshiradi |
 | `scripts/_verify-cashbox.mjs` | kassa raqamlari o'zgarmaganini tekshiradi |
 
