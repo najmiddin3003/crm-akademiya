@@ -314,44 +314,101 @@ haqiqatan statik ro'yxatlarga arziydi, ular esa allaqachon klient keshida.
 
 ## 6. Qolgan ish
 
-### 6.1. Atlas regioni — O'LCHANDI, qaror kutilmoqda
+### 6.1. Region — SAYT VIRJINIYADA, BAZA SINGAPURDA edi (tuzatildi)
 
-Klaster **AWS / Singapur (ap-southeast-1)**, foydalanuvchilar O'zbekistonda.
+> **Diqqat: bu bandning oldingi tahriri NOTO'G'RI edi.** Unda "sayt
+> Vercel'da joylashmagan" deb yozilgan, chunki tekshiruv ulangan
+> akkauntga qaragan va u yerda proyekt yo'q edi. Aslida sayt boshqa
+> akkaunt ostida ishlab turgan. Undan ham muhimi — o'sha tahrir
+> NOTO'G'RI MASOFANI o'lchagan.
 
-`node scripts/_region-latency.mjs` — sof TCP ulanish vaqti, har region
-uchun 6 o'lchov, eng tezi:
+**Ishlab turgan sayt:**
 
-| Region | Joy | RTT | Farq |
+| | |
+|---|---|
+| Vercel proyekti | `crm-akademiya` |
+| Akkaunt | `Najmiddin's projects` (hobby) |
+| GitHub | `najmiddin3003/crm-akademiya` |
+| Domenlar | **`tizimli24.uz`**, `www.tizimli24.uz`, `crm-akademiya-777777.vercel.app` |
+
+**Zanjir (o'lchandi, 2026-08-31):**
+
+```
+Foydalanuvchi (O'zbekiston)
+      ▼  edge — hkg1 (Gonkong), foydalanuvchiga yaqin
+Serverless funksiya — iad1 (AQSh, VIRJINIYA)
+      ▼  ~215 ms HAR BIR baza amaliga
+MongoDB Atlas — SINGAPUR
+```
+
+**Bu qanday o'lchandi:** `/api/auth/verify-token` ikki xil chaqirildi —
+bo'sh token bilan (funksiya bazaga bormay 400 qaytaradi) va yaroqsiz token
+bilan (bazaga bitta so'rov ketadi). Farq = bitta baza amalining narxi.
+Natija: 386 ms → 604 ms, ya'ni **~215 ms**. Region esa `x-vercel-id`
+sarlavhasidan (`hkg1::iad1::...`).
+
+**Eski tahrirdagi xato:** u O'zbekistondan regionlargacha bo'lgan masofani
+o'lchagan va shunga qarab Frankfurtni tavsiya qilgan. Lekin foydalanuvchi
+bazaga TO'G'RIDAN-TO'G'RI ulanmaydi — hal qiluvchi masofa **server ↔ baza**.
+
+**Nima qilindi:** `vercel.json` ga funksiya regioni qo'shildi —
+
+```json
+{ "regions": ["sin1"] }
+```
+
+Funksiya bazaning yoniga (Singapur) ko'chadi, ya'ni har bir baza amali
+~215 ms dan bir region ichidagi masofaga tushadi. Bazaga umuman tegilmadi
+va bir tiyin ham sarflanmaydi.
+
+**Nega aynan shunday — uchta variant solishtirildi:**
+
+| | Server ↔ Baza | Foydalanuvchi → Server | Narxi |
 |---|---|---|---|
-| `eu-north-1` | Stokgolm | **90 ms** | **−57 ms** |
-| `eu-central-1` | Frankfurt | **106 ms** | **−41 ms** |
-| `ap-southeast-1` | **Singapur (hozirgi)** | **147 ms** | — |
-| `ap-northeast-1` | Tokio | 166 ms | +19 ms |
-| `us-east-1` | AQSh (Virjiniya) | 190 ms | +43 ms |
-| `ap-south-1` | Mumbay | 205 ms | +58 ms |
-| `eu-west-1` | Irlandiya | 212 ms | +65 ms |
-| `me-central-1` | BAA (Dubay) | 220 ms | +73 ms |
+| Ilgari (Virjiniya + Singapur) | **215 ms** (o'lchangan) | ~80 ms | — |
+| **Server → Singapur** (qilindi) | bir region ichi | 147 ms | bepul |
+| Server → Frankfurt, baza Singapurda | ~160 ms (taxmin) | 106 ms | bepul, lekin deyarli foydasiz |
+| Ikkalasi → Frankfurt | bir region ichi | 106 ms | baza ko'chirish kerak |
 
-**O'lchov o'zini o'zi tasdiqlaydi:** Singapur uchun 147 ms chiqdi, bu
-`scripts/_db-perf.mjs` dagi mustaqil Atlas o'lchovi (145–154 ms) bilan mos.
+**Xulosa: foyda "Frankfurt"dan emas, YONMA-YON qo'yishdan keladi.**
+Serverni Frankfurtga olib bazani Singapurda qoldirish 215 → ~160 ms, ya'ni
+deyarli hech nima. Ikkalasini Frankfurtga ko'chirish esa Singapur
+variantiga nisbatan yana ~41 ms beradi — bu faqat foydalanuvchi hopida,
+har so'rovga bir marta.
 
-**Kutilmagan natija:** Dubay va Mumbay geografik jihatdan yaqinroq bo'lsa
-ham SEKINROQ — masofa emas, marshrut hal qiladi.
+**Ta'sirining kattaligi.** `getCurrentUser` har sahifa render'ida ishlaydi
+va 3 ta ketma-ket baza so'rovi qiladi:
 
-**Tavsiya — Frankfurt (`eu-central-1`):** har round-trip 28% qisqaradi,
-kodga umuman tegmasdan. Stokgolm yana 16 ms tezroq, lekin M0 tarifida yo'q.
+| | Har sahifadagi auth narxi |
+|---|---|
+| Boshida (5 so'rov × 215 ms) | ~1 075 ms |
+| 4.7-banddan keyin (3 × 215) | ~645 ms |
+| **Funksiya baza yonida (3 × ~5)** | **~15 ms** |
 
-**Diqqat:** regionni joyida o'zgartirib bo'lmaydi. Yangi klaster yaratib,
-ma'lumotni ko'chirish kerak: `scripts/_backup-db.mjs` → yangi klaster →
-`scripts/_restore-db.mjs`, keyin `MONGODB_URI` almashtiriladi.
+Ya'ni bu bitta konfiguratsiya qatori bu hujjatdagi barcha kod
+optimizatsiyalaridan ko'ra ko'proq beradi.
 
-**Vercel tomoni:** ulangan akkauntda birorta proyekt yo'q — sayt
-Vercel'da joylashmagan. Sayt qayerda ishlayotgani aniqlangach, o'sha
-yerning regioni ham klasterga yaqin bo'lishi kerak.
+**Deploy'dan keyin TEKSHIRING** — taxmin qolmasin:
 
-> Bu bandning ta'siri boshqa hamma ishdan KENGROQ: u har bir so'rovga
-> ta'sir qiladi. Yuqoridagi server o'lchovlarining ko'pi 150 ms lik
-> round-trip'ni o'z ichiga oladi.
+```bash
+node scripts/_where-deployed.mjs
+```
+
+`x-vercel-id` da `sin1` chiqishi va bitta baza amalining narxi 215 ms dan
+tushgani ko'rinadi.
+
+**Keyingi qadam (ixtiyoriy):** M10 ga o'tishda ikkalasini Frankfurtga
+ko'chirish — qo'shimcha ~41 ms. Baza ko'chirish yo'li: `_backup-db.mjs` →
+yangi klaster → `_restore-db.mjs`, keyin `MONGODB_URI` va `vercel.json`
+dagi region `fra1` ga almashtiriladi.
+
+**Yo'l-yo'lakay topildi:** `APP_BASE_URL` hamon
+`https://crm-akademiya-777777.vercel.app` ga qarab turibdi, haqiqiy domen
+esa `tizimli24.uz`. Bu qiymat SMS orqali yuboriladigan faollashtirish
+havolasini yasaydi (lib/invite.ts). Hozir ishlaydi, lekin o'sha vercel.app
+aliasi olib tashlansa havolalar buziladi — Vercel muhit o'zgaruvchisida
+`https://tizimli24.uz` ga almashtirilsa to'g'ri bo'ladi.
+
 
 ### 6.2. Xodim profili — 6.5 MB (eng katta qolgan joy)
 
@@ -395,7 +452,7 @@ o'zgartiradi. **Flag emas, loyiha.**
 
 ---
 
-## 6.5. Atlas M0 — ULANISHLAR CHEGARASI (bir marta kuydirgan)
+### 6.5. Atlas M0 — ULANISHLAR CHEGARASI (bir marta kuydirgan)
 
 Klaster bepul **M0** tarifida, unda jami **500 ta ulanish** chegarasi bor.
 
@@ -437,7 +494,8 @@ console.log(st.connections.current, st.connections.available);
 | `scripts/_collection-sizes.mjs` | qaysi to'plam og'ir |
 | `scripts/_db-perf.mjs` | RTT, ulanish, o'qish vaqtlari |
 | `scripts/_time-indexes.mjs` | `ensureIndexes()` narxi |
-| `scripts/_region-latency.mjs` | AWS regionlarigacha RTT |
+| `scripts/_region-latency.mjs` | AWS regionlarigacha RTT (foydalanuvchidan) |
+| `scripts/_where-deployed.mjs` | sayt qaysi regionda ishlayapti + server↔baza masofasi |
 | `scripts/_verify-revenue.mjs` | tushum raqamlari o'zgarmaganini tekshiradi |
 | `scripts/_verify-cashbox.mjs` | kassa raqamlari o'zgarmaganini tekshiradi |
 | `scripts/_verify-aggregations.mjs` | sales-plans / balances / pupilsDb |
