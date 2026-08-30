@@ -523,6 +523,7 @@ console.log(st.connections.current, st.connections.available);
 | `scripts/_db-perf.mjs` | RTT, ulanish, o'qish vaqtlari |
 | `scripts/_time-indexes.mjs` | `ensureIndexes()` narxi |
 | `scripts/_region-latency.mjs` | AWS regionlarigacha RTT (foydalanuvchidan) |
+| `scripts/_baseline.mjs` | **bazaviy o'lchov** — 8-bo'limga qarang |
 | `scripts/_where-deployed.mjs` | sayt qaysi regionda ishlayapti + server↔baza masofasi |
 | `scripts/_verify-revenue.mjs` | tushum raqamlari o'zgarmaganini tekshiradi |
 | `scripts/_verify-cashbox.mjs` | kassa raqamlari o'zgarmaganini tekshiradi |
@@ -550,7 +551,105 @@ for (const u of urls) {
 
 ---
 
-## 8. Tekshirilmagan joy (halol ta'rif)
+## 8. BAZAVIY O'LCHOV — taqqoslash nuqtasi
+
+> "Sayt tezlashdimi?" degan savolga faqat TAQQOSLASH javob beradi.
+> Quyidagi skript bir xil sharoitda bir xil narsalarni o'lchaydi, ya'ni
+> natijalarni yonma-yon qo'yish mumkin.
+
+```bash
+node scripts/_baseline.mjs
+```
+
+### O'lchov: 2026-08-31 (barcha ishlar deploy qilingandan keyin)
+
+```
+[1] PRODUCTION — region va server<->baza masofasi
+  edge                : hkg1 (Gonkong)
+  FUNKSIYA            : sin1 (Singapur)
+  sovuq so'rov        : 1203 ms
+  issiq, bazasiz      :  339 ms
+  issiq, baza bilan   :  347 ms
+  BAZA AMALI          :    8 ms      <- ilgari 215-224 ms
+
+[2] BAZA — hajm
+  hujjatlar           : 54 511
+  ma'lumot + indeks   : 28.4 MB      <- M0 chegarasi 512 MB
+  transaction_entries : 25 567
+  pupils              :  6 732
+  transactions        : 21 921
+  groups              :     91
+  attendance          :      0
+
+[3] BAZA — og'ir o'qishlar (o'lchagan kompyuterdan)
+  pupils (ro'yxat rejimi)   1828 ms   2727 KB
+  pupils (light)             506 ms    544 KB
+  transactions              1744 ms   3805 KB
+  balanslar (aggregation)    394 ms    148 KB
+```
+
+### Qanday taqqoslash kerak — uchta tuzoq
+
+1. **SOVUQ START.** Vercel funksiyasi nolga tushadi, yangi nusxa Mongo
+   ulanishini noldan ochadi. Isitmasdan o'lchasangiz son bir necha
+   barobar katta chiqadi. Skript o'zi isitadi — lekin qo'lda o'lchasangiz
+   buni unutmang. Bugungi misol: birinchi so'rov 1 203 ms, keyingilari
+   ~340 ms.
+2. **QAYERDAN O'LCHAYAPSIZ.** [1] va [3] bo'limlari o'lchayotgan
+   kompyuterning internetiga bog'liq. Taqqoslaganda bir xil joydan
+   o'lchang, aks holda o'z uyingiz bilan ofisingizni solishtirasiz.
+3. **[3] — SERVERDAN EMAS, sizning mashinangizdan.** Production'da
+   funksiya baza bilan bir regionda, ya'ni u yerdagi haqiqiy raqamlar
+   bundan ancha kichik. Bu bo'lim absolyut tezlik emas, O'SISHNI
+   kuzatish uchun: hujjatlar ko'paygani sari bu sonlar ham o'sadi.
+
+### Kirgandan keyingi sahifalar
+
+Bu skript tizimga kirmaydi, shuning uchun eng og'ir sahifalar unda yo'q.
+Ularni brauzer konsolida (tizimga kirgan holda) o'lchang:
+
+```js
+const urls = ["/api/pupils", "/api/pupils?light=1", "/api/transactions",
+              "/api/students/balances", "/api/groups"];
+for (const u of urls) {
+  await fetch(u);                                   // isitish
+  const t0 = performance.now();
+  const b = await (await fetch(u, { cache: "no-store" })).arrayBuffer();
+  console.log(u, Math.round(b.byteLength / 1024) + " KB",
+                 Math.round(performance.now() - t0) + " ms");
+}
+```
+
+Natijani shu jadvalga yozib boring:
+
+| Sana | `/api/pupils` | `?light=1` | `/api/transactions` | `balances` | `/api/groups` |
+|---|---|---|---|---|---|
+| 2026-08-31 | _to'ldiring_ | _to'ldiring_ | _to'ldiring_ | _to'ldiring_ | _to'ldiring_ |
+
+### 08-28 dagi holat — NEGA raqam yo'q
+
+Bu hujjatdagi barcha ishlar 08-29 dan boshlangan (`826cd7f`). Undan
+oldingi holat o'lchanmagan va endi qaytarib bo'lmaydi, shuning uchun
+"necha barobar tezlashdi" degan savolga ANIQ javob yo'q — faqat
+bo'laklardan yig'ilgan taxmin bor:
+
+| | 08-28 | hozir |
+|---|---|---|
+| har bir baza amali | 215–224 ms | ~0–8 ms |
+| sovuq start (indeks tekshiruvi) | +3 636 ms | +152 ms |
+| auth, har sahifa render'ida | ~1 075 ms | ~0 ms |
+| navbar, har sahifada | 3 654 KB | 0 KB |
+| `/finance-transactions` | ~15.2 MB | 293 KB |
+| `/finance-cash` | ~15.2 MB | 572 KB |
+| boshlang'ich JS (moliya) | +752 KB | 0 |
+
+Bo'laklar o'lchangan, yig'indi esa taxminiy: og'ir sahifalarda ~10–15
+barobar, yengillarida ~3–5. **Shu sabab bu bo'lim bor** — keyingi safar
+taxmin qilish shart bo'lmasin.
+
+---
+
+## 9. Tekshirilmagan joy (halol ta'rif)
 
 Yuqoridagi ishlarning hammasi `npx tsc --noEmit`, `npx eslint` va
 `npm run build` dan o'tdi; moliyaviy hisoblar haqiqiy baza ustida
