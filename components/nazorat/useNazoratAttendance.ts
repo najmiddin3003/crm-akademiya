@@ -7,13 +7,25 @@ import type { AttendanceStatus } from "@/lib/attendance";
 
 // Nazorat bo'limidagi davomatga tayanadigan sahifalarning umumiy manbasi.
 //
-// NEGA shunday: `attendance` kolleksiyasi uchun global API route yo'q — faqat
-// GET /api/groups/:id/attendance bor. Shuning uchun avval /api/groups dan
-// guruhlar olinadi, keyin har bir guruhning belgilari parallel tortiladi va
-// bitta ro'yxatga birlashtiriladi. Ilgari bu sahifalar (Davomat, Davomat
-// analitikasi, Davomat qilinmagan guruhlar) sonlarni indeks arifmetikasi va
-// LCG generatorlari bilan o'ylab topardi — endi hammasi bazadagi haqiqiy
-// belgilardan hisoblanadi.
+// Belgilar BITTA so'rovda keladi — GET /api/attendance.
+//
+// Ilgari bunday route yo'q edi (faqat GET /api/groups/:id/attendance), shu
+// bois bu hook har bir guruh uchun alohida so'rov yuborardi. Bazada 91 ta
+// guruh bor, ya'ni uchala Nazorat sahifasi har ochilganda 91 ta HTTP
+// so'rovi ketardi — har biri o'zining ensureIndexes() va Atlas
+// round-trip'i bilan, brauzerning 6 ta ulanish chegarasi tufayli ~16
+// to'lqinga bo'linib.
+//
+// Guruh bo'yicha ajratish shu yerda qoladi: javobdagi har bir belgida
+// `groupId` bor va shakl eski route bilan aynan bir xil, shuning uchun
+// sahifalardagi hisob mantiqi tegilmagan.
+//
+// Guruhlar ro'yxati baribir kerak (jadval qatorlarida guruh nomi va
+// o'qituvchisi ko'rsatiladi), shuning uchun u `useGroups` dan olinaveradi.
+//
+// Ilgari bu sahifalar (Davomat, Davomat analitikasi, Davomat qilinmagan
+// guruhlar) sonlarni indeks arifmetikasi va LCG generatorlari bilan o'ylab
+// topardi — endi hammasi bazadagi haqiqiy belgilardan hisoblanadi.
 
 export interface AttendanceMarkRow {
   groupId: number;
@@ -40,31 +52,18 @@ export function useNazoratAttendance(): NazoratAttendance {
   const [marksLoading, setMarksLoading] = useState(true);
 
   useEffect(() => {
-    if (groupsLoading) return;
     let cancelled = false;
-
-    // Guruh bo'lmasa ham Promise.all([]) ishlatiladi: u mikrotaskda hal
-    // bo'ladi, ya'ni setState effekt tanasida SINXRON chaqirilmaydi
-    // (react-hooks/set-state-in-effect qoidasi shuni talab qiladi).
-    Promise.all(
-      groups.map((g) =>
-        fetch(`/api/groups/${g.id}/attendance`)
-          .then((r) => r.json())
-          .catch(() => null),
-      ),
-    )
-      .then((results) => {
+    fetch("/api/attendance")
+      .then((r) => r.json())
+      .then((d) => {
         if (cancelled) return;
-        const all: AttendanceMarkRow[] = [];
-        for (const d of results) {
-          if (d?.ok && Array.isArray(d.marks)) all.push(...(d.marks as AttendanceMarkRow[]));
-        }
-        setMarks(all);
+        if (d?.ok && Array.isArray(d.marks)) setMarks(d.marks as AttendanceMarkRow[]);
       })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setMarksLoading(false); });
 
     return () => { cancelled = true; };
-  }, [groups, groupsLoading]);
+  }, []);
 
   const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
 

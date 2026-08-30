@@ -1,6 +1,7 @@
 "use client";
 
-import { cachedGet, invalidateCached } from "@/lib/clientCache";
+import { cachedGet } from "@/lib/clientCache";
+import { CACHE_KEYS } from "@/lib/cacheKeys";
 import type { Transaction } from "@/lib/transactions";
 
 // `/api/transactions` — 21 921 yozuv, ~2.8 MB. Uni BESHTA analitika sahifasi
@@ -13,7 +14,7 @@ import type { Transaction } from "@/lib/transactions";
 // TTL o'quvchilarnikidan qisqa: bu moliyaviy ko'rsatkichlar, va kassa
 // amallari serverda yangi tranzaksiya yozadi.
 
-const KEY = "transactions";
+const KEY = CACHE_KEYS.transactions;
 const TTL_MS = 15_000;
 
 export function loadTransactionsCached(): Promise<Transaction[]> {
@@ -26,7 +27,8 @@ export function loadTransactionsCached(): Promise<Transaction[]> {
       }));
 }
 
-/** Kassa/oylik amallaridan keyin CHAQIRILSIN — ular yangi tranzaksiya yozadi. */
-export function invalidateTransactions(): void {
-  invalidateCached(KEY);
-}
+// invalidateTransactions() ATAYLAB bu yerda emas — u lib/cacheKeys.ts da.
+// Sabab: ruxsatlar xaritasi (lib/apiPermissions.generated.ts) sahifaning
+// import grafigini kuzatadi, shu bois faqat keshni bekor qiladigan sahifa
+// shu fayldagi "/api/transactions" satri tufayli o'sha endpoint'ga ruxsat
+// olib qo'yardi.

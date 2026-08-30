@@ -1,6 +1,6 @@
 "use client";
 
-import { invalidateBalances } from "@/lib/balancesClient";
+import { invalidateBalances } from "@/lib/cacheKeys";
 import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import PersonLink from "@/components/shared/PersonDirectory";
 
-import { invalidateTransactions } from "@/lib/transactionsClient";
+import { invalidateTransactions } from "@/lib/cacheKeys";
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 const STATUS_LABELS: Record<string, string> = { "": "Qabul qilingan", waiting: "Kutilmoqda", cancelled: "Bekor qilingan" };
 

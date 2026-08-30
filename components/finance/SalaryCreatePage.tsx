@@ -1,6 +1,5 @@
 "use client";
 
-import { invalidateBalances } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, DollarSign, History, RotateCcw, Search } from "lucide-react";
@@ -21,7 +20,7 @@ import {
   payrollTaxLines,
   type EmployeePayroll,
 } from "@/lib/salary";
-import { invalidateTransactions } from "@/lib/transactionsClient";
+import { invalidateTransactions } from "@/lib/cacheKeys";
 
 // Moliya → Oylik chiqarish (/finance-payroll) — bo'limning BOSH sahifasi.
 //
@@ -220,7 +219,6 @@ export default function SalaryCreatePage() {
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
-      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Oylik chiqarilmadi");
         setSaving(false);

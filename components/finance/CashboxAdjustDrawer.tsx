@@ -1,6 +1,7 @@
 "use client";
 
-import { loadBalancesCached, invalidateBalances } from "@/lib/balancesClient";
+import { loadBalancesCached } from "@/lib/balancesClient";
+import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -18,7 +19,7 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import { ROLE_LABELS } from "@/constants/employees";
-import { invalidateTransactions } from "@/lib/transactionsClient";
+import { invalidateTransactions } from "@/lib/cacheKeys";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";

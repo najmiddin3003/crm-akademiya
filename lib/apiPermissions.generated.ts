@@ -39,6 +39,7 @@ export const SHARED_API: readonly string[] = [
 
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */
 export const API_PERMISSIONS: Record<string, readonly string[]> = {
+  "/api/attendance": ["/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups"],
   "/api/block-test-exams": ["/blok-testlar"],
   "/api/block-test-exams/[id]": ["/blok-testlar"],
   "/api/block-test-types": ["/blok-test-turlari", "/blok-testlar"],
@@ -69,7 +70,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/group-tasks/[id]": ["/groups-tasks"],
   "/api/groups": ["/active-students", "/archive-students", "/blok-testlar", "/finance-cash", "/finance-fin-contract", "/first-lessons", "/groups", "/groups-schedule", "/groups-students", "/management-xodimlar", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups", "/offline-courses", "/online-courses", "/orders-list", "/reports-rooms", "/reports-served", "/seasonal-assessment", "/students-list", "/tasks"],
   "/api/groups/[id]": ["/groups"],
-  "/api/groups/[id]/attendance": ["/groups", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups"],
+  "/api/groups/[id]/attendance": ["/groups"],
   "/api/groups/[id]/attendance/history": ["/groups"],
   "/api/groups/[id]/lessons": ["/groups"],
   "/api/groups/[id]/notes": ["/groups"],
@@ -139,9 +140,10 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/tasks": ["/students-list", "/tasks"],
   "/api/tasks/[id]": ["/tasks"],
   "/api/teachers": ["/finance-cash", "/first-lessons", "/groups", "/orders-list", "/reports-served"],
-  "/api/transaction-entries": ["/finance-cash", "/finance-transactions", "/management-xodimlar", "/reports-served"],
+  "/api/transaction-entries": ["/finance-cash", "/finance-transactions", "/management-xodimlar"],
   "/api/transaction-entries/[id]/cancel": ["/finance-cash"],
   "/api/transaction-entries/revenue-summary": ["/finance-revenue-plan"],
+  "/api/transaction-entries/served-summary": ["/reports-served"],
   "/api/transaction-entries/students": ["/finance-transactions"],
   "/api/transaction-types": ["/finance-analytics", "/finance-cash", "/finance-cashflow", "/finance-flow", "/finance-reports", "/finance-tx-types"],
   "/api/transaction-types/[id]": ["/finance-tx-types"],

@@ -1,6 +1,7 @@
 "use client";
 
-import { cachedGet, invalidateCached } from "@/lib/clientCache";
+import { cachedGet } from "@/lib/clientCache";
+import { CACHE_KEYS } from "@/lib/cacheKeys";
 
 // `/api/students/balances` — o'quvchi → to'lagan pul yig'indisi.
 //
@@ -19,7 +20,7 @@ import { cachedGet, invalidateCached } from "@/lib/clientCache";
 // TTL tranzaksiyalarnikidek qisqa (15 s): balans — moliyaviy son, va uni
 // kassa amallari o'zgartiradi.
 
-const KEY = "student-balances";
+const KEY = CACHE_KEYS.balances;
 const TTL_MS = 15_000;
 
 /** Ism (kichik harfda, chetlari kesilgan) → to'langan summa. */
@@ -37,11 +38,5 @@ export function loadBalancesCached(): Promise<StudentBalances> {
       }));
 }
 
-/**
- * Kassa amalidan keyin CHAQIRILSIN — kirim/chiqim yozuvi balansni
- * o'zgartiradi. `invalidateTransactions()` chaqiriladigan joylarda shu ham
- * chaqirilishi kerak.
- */
-export function invalidateBalances(): void {
-  invalidateCached(KEY);
-}
+// invalidateBalances() ATAYLAB bu yerda emas — u lib/cacheKeys.ts da
+// (yuqoridagi transactionsClient bilan bir xil sabab).

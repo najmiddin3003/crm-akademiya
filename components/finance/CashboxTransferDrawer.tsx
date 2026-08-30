@@ -1,6 +1,5 @@
 "use client";
 
-import { invalidateBalances } from "@/lib/balancesClient";
 import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -8,7 +7,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
-import { invalidateTransactions } from "@/lib/transactionsClient";
+import { invalidateTransactions } from "@/lib/cacheKeys";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -69,7 +68,6 @@ export default function CashboxTransferDrawer({
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
-      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);

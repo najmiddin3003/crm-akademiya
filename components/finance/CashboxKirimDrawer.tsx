@@ -1,6 +1,7 @@
 "use client";
 
-import { loadBalancesCached, invalidateBalances } from "@/lib/balancesClient";
+import { loadBalancesCached } from "@/lib/balancesClient";
+import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
@@ -14,7 +15,7 @@ import { useStudents } from "@/hooks/useStudents";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
-import { invalidateTransactions } from "@/lib/transactionsClient";
+import { invalidateTransactions } from "@/lib/cacheKeys";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";

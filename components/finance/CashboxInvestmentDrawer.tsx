@@ -1,6 +1,5 @@
 "use client";
 
-import { invalidateBalances } from "@/lib/balancesClient";
 import { useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -9,7 +8,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
-import { invalidateTransactions } from "@/lib/transactionsClient";
+import { invalidateTransactions } from "@/lib/cacheKeys";
 
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -102,7 +101,6 @@ export default function CashboxInvestmentDrawer({
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
-      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);
