@@ -32,7 +32,8 @@ export default function BonusDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { names: studentNames } = useStudents();
+  // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
+  const { names: studentNames } = useStudents({ light: true });
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   useEffect(() => {

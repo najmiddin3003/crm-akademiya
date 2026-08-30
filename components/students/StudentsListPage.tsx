@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, Plus, Share2, UserCog, Users, X } from "lucide-react";
@@ -134,9 +135,8 @@ export default function StudentsListPage() {
     fetch("/api/groups")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); });
-    fetch("/api/students/balances")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances as Record<string, number>); })
+    loadBalancesCached()
+      .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);

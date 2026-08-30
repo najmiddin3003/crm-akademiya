@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Filter, MoreVertical, X } from "lucide-react";
@@ -12,7 +13,7 @@ import {
   type OrdersFilters,
 } from "@/lib/ordersData";
 import { findPupilForOrder } from "@/lib/enrollStudent";
-import type { Pupil } from "@/lib/pupilsData";
+import type { PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 
 // O'quvchilar → Yangi o'quvchilar (crm-akademiya #view-new-students, sidebar:
@@ -90,7 +91,7 @@ export default function NewStudentsPage() {
   // ikkalasi ham 1 dan boshlanadi. Shuning uchun ism ustidagi havolani
   // buyurtma id'si bilan yasab bo'lmaydi: u boshqa odamning profilini
   // ochib yuborardi. O'quvchi telefon/ism bo'yicha topiladi.
-  const [pupils, setPupils] = useState<Pupil[]>([]);
+  const [pupils, setPupils] = useState<PupilListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -105,14 +106,14 @@ export default function NewStudentsPage() {
     let cancelled = false;
     Promise.all([
       fetch("/api/orders").then((r) => r.json()).catch(() => null),
-      fetch("/api/students/balances").then((r) => r.json()).catch(() => null),
+      loadBalancesCached().then((balances) => ({ ok: true, balances })).catch(() => null),
       loadPupilsCached(true).then((pupils) => ({ ok: true, pupils })).catch(() => null),
     ])
       .then(([o, b, p]) => {
         if (cancelled) return;
         if (o?.ok) setOrders(o.orders as Order[]);
         if (b?.ok) setBalances(b.balances as Record<string, number>);
-        if (p?.ok) setPupils(p.pupils as Pupil[]);
+        if (p?.ok) setPupils(p.pupils);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

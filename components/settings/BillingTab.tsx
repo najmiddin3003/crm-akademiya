@@ -62,7 +62,8 @@ export default function BillingTab() {
   // O'quvchilar sonining YAGONA haqiqiy manbasi — `pupils` kolleksiyasi.
   // Arxivdagilar ham sanaladi: yorliq shunchaki "O'quvchilar soni" deydi,
   // holat bo'yicha filtrlash esa yorliqda aytilmagan da'vo bo'lardi.
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // Faqat SONI kerak (pupils.length) — yengil rejim.
+  const { pupils, loading: pupilsLoading } = useStudents({ light: true });
   const studentCount = pupils.length;
 
   useEffect(() => {

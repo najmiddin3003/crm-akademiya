@@ -16,7 +16,8 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
   const [studentName, setStudentName] = useState("");
   // O'quvchilar bazadan (/api/pupils) — ilgari constants/index.js dagi
   // STUDENT_NAMES statik ro'yxati edi.
-  const { names: studentNames, loading: studentsLoading } = useStudents();
+  // Faqat ismlar kerak — yengil rejim.
+  const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
   useEscapeClose(open ? onClose : () => {});
 
   if (!open) return null;

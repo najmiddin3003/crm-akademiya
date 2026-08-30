@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownToLine, ArrowUpToLine, Pencil } from "lucide-react";
@@ -76,9 +77,8 @@ export default function FinanceContractsPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     // Balanslar alohida — jadval shartnomalarsiz ham chiziladi, balans esa
     // kechroq kelsa faqat shu ustun yangilanadi.
-    fetch("/api/students/balances")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+    loadBalancesCached()
+      .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);

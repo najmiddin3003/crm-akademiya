@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateBalances } from "@/lib/balancesClient";
 import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import Link from "next/link";
@@ -68,6 +69,7 @@ export default function TransactionDetailDrawer({
       const res = await fetch(`/api/transaction-entries/${entry.id}/cancel`, { method: "POST" });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
+      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Bekor qilinmadi");
         return;

@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -167,9 +168,8 @@ export default function GroupDetailPage({ id }: { id: number }) {
     fetch(`/api/groups/${id}/tasks`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setTasks(d.tasks); });
-    fetch("/api/students/balances")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+    loadBalancesCached()
+      .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [id]);

@@ -33,7 +33,8 @@ export default function NazoratDavomatViewingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const studentId = searchParams.get("studentId");
-  const { students, loading: studentsLoading } = useStudents();
+  // Faqat s.id va student.name o'qiladi — yengil rejim yetadi.
+  const { students, loading: studentsLoading } = useStudents({ light: true });
 
   const [records, setRecords] = useState<TurnstileIoRecord[]>([]);
   const [loading, setLoading] = useState(true);

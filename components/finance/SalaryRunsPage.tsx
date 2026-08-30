@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateBalances } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, Eye, ReceiptText, Search, Trash2 } from "lucide-react";
@@ -132,6 +133,7 @@ export default function SalaryRunsPage() {
       const res = await fetch(`/api/salary-runs/${confirmDel.id}`, { method: "DELETE" });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
+      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "O'chirilmadi");
         setDeleting(false);

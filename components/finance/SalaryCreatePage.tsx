@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateBalances } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, DollarSign, History, RotateCcw, Search } from "lucide-react";
@@ -219,6 +220,7 @@ export default function SalaryCreatePage() {
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
+      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Oylik chiqarilmadi");
         setSaving(false);

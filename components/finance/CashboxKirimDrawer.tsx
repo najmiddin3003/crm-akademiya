@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached, invalidateBalances } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
@@ -66,7 +67,10 @@ export default function CashboxKirimDrawer({
   const [categories, setCategories] = useState<string[]>([]);
   // O'quvchilar bazadan (/api/pupils). Ism → o'quvchi kartasi (telefon va
   // profil havolasi uchun): to'lov yozuvida faqat ism saqlanadi, id emas.
-  const { names: studentNames, byName: studentByName } = useStudents();
+  // Faqat ism/telefon/id kerak (phoneOf, selectedStudent.phone/.id) — yengil
+  // ro'yxat yetadi. Bu sahifada CashboxesPage ham yengil ro'yxatni oladi,
+  // ya'ni drawer ochilganda so'rov umuman ketmaydi (kesh mos keladi).
+  const { names: studentNames, byName: studentByName } = useStudents({ light: true });
 
   const key = (n: string) => n.trim().toLowerCase();
   const phoneOf = (n: string) => {
@@ -91,7 +95,7 @@ export default function CashboxKirimDrawer({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/students/balances").then((r)=>r.json()).then((d)=>{ if(!cancelled && d.ok) setBalances(d.balances); }).catch(()=>{});
+    loadBalancesCached().then((b)=>{ if(!cancelled) setBalances(b); }).catch(()=>{});
     fetch("/api/transaction-types")
       .then((r) => r.json())
       .then((d) => {
@@ -138,6 +142,7 @@ export default function CashboxKirimDrawer({
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
+      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);

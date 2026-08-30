@@ -31,7 +31,8 @@ export default function PenaltyDrawer({
   onSaved: (p: Penalty) => void;
 }) {
   useEscapeClose(onClose);
-  const { names: studentNames } = useStudents();
+  // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
+  const { names: studentNames } = useStudents({ light: true });
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState("");
   const [employeeName, setEmployeeName] = useState("");

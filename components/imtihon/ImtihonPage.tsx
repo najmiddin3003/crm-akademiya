@@ -172,7 +172,7 @@ export default function ImtihonPage() {
 
   // O'quvchilar bazadan (/api/pupils) + imtihon yozuvlarida uchraganlari
   // (o'quvchi keyin o'chirilgan bo'lishi mumkin).
-  const { names: pupilNames } = useStudents();
+  const { names: pupilNames } = useStudents({ light: true });
   const studentNames = useMemo(() => {
     const names = new Set<string>(pupilNames);
     exams.forEach((r) => names.add(r.student));

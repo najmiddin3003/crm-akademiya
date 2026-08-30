@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -107,9 +108,8 @@ export default function NazoratDavomatPage() {
   const [balances, setBalances] = useState<Record<string, number>>({});
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/students/balances")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+    loadBalancesCached()
+      .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);

@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached, invalidateBalances } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -124,7 +125,8 @@ export default function CashboxAdjustDrawer({
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
   // O'quvchilar tanlovi bazadan (/api/pupils).
-  const { names: studentNames, byName: studentByName } = useStudents();
+  // Faqat ism va id kerak (selectedStudent.name/.id) — yengil ro'yxat yetadi.
+  const { names: studentNames, byName: studentByName } = useStudents({ light: true });
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
@@ -138,9 +140,8 @@ export default function CashboxAdjustDrawer({
   useEffect(() => {
     if (target !== "student") return;
     let cancelled = false;
-    fetch("/api/students/balances")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+    loadBalancesCached()
+      .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [target]);
@@ -262,6 +263,7 @@ export default function CashboxAdjustDrawer({
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
+      invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);

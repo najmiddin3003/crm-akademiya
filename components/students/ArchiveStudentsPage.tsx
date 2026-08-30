@@ -1,5 +1,6 @@
 "use client";
 
+import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Filter, MoreVertical, X } from "lucide-react";
@@ -112,9 +113,10 @@ export default function ArchiveStudentsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/students/balances")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setBalances(d.balances); })
+    loadBalancesCached()
+      .then((b) => { if (!cancelled) setBalances(b); })
+      // Xato bo'lsa balans ustuni bo'sh qoladi — ilgari ham shunday edi.
+      .catch(() => {})
       .finally(() => { if (!cancelled) setBalancesLoading(false); });
     return () => { cancelled = true; };
   }, []);
