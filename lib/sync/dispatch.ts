@@ -177,6 +177,20 @@ export async function flushPending(
   const session = new SheetSession(cfg);
   const entriesCol = db.collection("transaction_entries");
 
+  // Yozuvlar BITTA so'rovda olinadi. Ilgari `findOne` tsikl ICHIDA edi:
+  // to'liq partiyada (limit = 100) bu 100 ta ketma-ket Atlas so'rovi, ~156 ms
+  // RTT bilan ~15.3 s sof kutish. Bu 45 soniyalik `deadline` ning uchdan
+  // birini hech narsaga sarflardi va partiyalar ish tugamasdan
+  // `if (Date.now() > deadline) break` da uzilardi.
+  // O'lchandi: ~15 315 ms → ~480 ms.
+  //
+  // "Hujjat yo'q" holati o'zgarmaydi: xaritadan topilmaslik — findOne'ning
+  // null qaytarishi bilan bir xil signal.
+  const entryDocs = await entriesCol.find({ id: { $in: tasks.map((t) => t.entryId) } }).toArray();
+  const entryById = new Map<number, (typeof entryDocs)[number]>();
+  // findOne kabi BIRINCHISI yutadi (id takrorlanmaydi, lekin qoida aniq tursin).
+  for (const d of entryDocs) if (!entryById.has(Number(d.id))) entryById.set(Number(d.id), d);
+
   for (const task of tasks) {
     if (Date.now() > deadline) break;
     result.processed += 1;
@@ -189,7 +203,7 @@ export async function flushPending(
     };
 
     try {
-      const doc = await entriesCol.findOne({ id: task.entryId });
+      const doc = entryById.get(task.entryId);
       if (!doc) {
         // Yozuv bazadan yo'qolgan (odatda bo'lmaydi — tranzaksiyalar
         // o'chirilmaydi). Cheksiz qayta urinmaslik uchun yopamiz.

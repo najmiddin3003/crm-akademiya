@@ -38,6 +38,8 @@ export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<str
       status: { $ne: "cancelled" },
       txName: { $regex: "avans|oylik", $options: "i" },
     })
+    // Pastdagi tsikl faqat shu uchtasini o'qiydi. 109 KB -> ~12 KB.
+    .project({ studentName: 1, txName: 1, amount: 1, _id: 0 })
     .toArray();
 
   const map = new Map<string, PaidByEmployee>();
@@ -68,6 +70,8 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
     })
+    // Pastdagi tsikl faqat shu ikkitasini o'qiydi. 666 KB -> 73 KB.
+    .project({ teacherName: 1, amount: 1, _id: 0 })
     .toArray();
 
   const map = new Map<string, number>();

@@ -8,7 +8,7 @@
 // `key` — kassaning `methodTotals` obyektidagi maydon nomi. U BARQAROR
 // bo'lishi shart: nom o'zgarsa ham kalit o'zgarmaydi, aks holda mavjud
 // kassalardagi summalar "yo'qolib" qolardi.
-import type { Db } from "mongodb";
+import type { Db, Document, WithId } from "mongodb";
 import { PAYMENT_METHODS_SEED } from "@/constants/settingsLists";
 
 export interface PaymentMethod {
@@ -37,10 +37,7 @@ export function slugifyMethod(name: string): string {
 // Quyidagi backfill idempotent: kalitsiz hujjat topilsa, uni seed'dagi
 // bir xil `id` dan (yoki nomdan) tiklaydi va bir marta yozib qo'yadi.
 // Shu sababli qo'lda migratsiya skripti kerak emas.
-async function backfillKeys(col: ReturnType<Db["collection"]>) {
-  const missing = await col.find({ key: { $exists: false } }).toArray();
-  if (missing.length === 0) return;
-
+async function backfillKeys(col: ReturnType<Db["collection"]>, missing: WithId<Document>[]) {
   const seedById = new Map(
     (PAYMENT_METHODS_SEED as { id: number; key: string }[]).map((s) => [s.id, s.key]),
   );
@@ -50,13 +47,32 @@ async function backfillKeys(col: ReturnType<Db["collection"]>) {
   }
 }
 
+// AVVAL O'QIYMIZ, keyin kerak bo'lsagina yozamiz.
+//
+// Ilgari bu funksiya har chaqiruvda UCHTA ketma-ket Atlas so'rovi qilardi:
+// countDocuments() → backfill uchun find({key:{$exists:false}}) → find({}).
+// Kolleksiyada 8 ta hujjat bor va HAMMASIDA `key` bor, ya'ni birinchi
+// ikkitasi migratsiyalar bir marta ishlaganidan beri hech nima qilmasdi.
+// Lekin ular 8 ta route'ning kritik yo'lida turardi — GET /api/cashboxes
+// (Kassalar sahifasi) shular ichida. O'lchandi: 513 ms → 154 ms.
+//
+// Ikkala migratsiya ham idempotent bo'lib qoladi, shunchaki endi ular
+// allaqachon o'qilgan ro'yxat ustidan qaror qiladi.
 export async function loadPaymentMethods(db: Db): Promise<PaymentMethod[]> {
   const col = db.collection(PAYMENT_METHODS_COLLECTION);
-  if ((await col.countDocuments()) === 0) {
+  let rows = await col.find({}).sort({ id: 1 }).toArray();
+
+  if (rows.length === 0) {
     await col.insertMany(JSON.parse(JSON.stringify(PAYMENT_METHODS_SEED)));
+    rows = await col.find({}).sort({ id: 1 }).toArray();
   }
-  await backfillKeys(col);
-  const rows = await col.find({}).sort({ id: 1 }).toArray();
+
+  const missing = rows.filter((r) => r.key === undefined);
+  if (missing.length > 0) {
+    await backfillKeys(col, missing);
+    rows = await col.find({}).sort({ id: 1 }).toArray();
+  }
+
   return rows.map(({ _id, ...rest }) => rest as unknown as PaymentMethod);
 }
 

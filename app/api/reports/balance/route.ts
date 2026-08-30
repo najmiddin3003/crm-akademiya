@@ -56,6 +56,9 @@ export async function GET() {
     db
       .collection("transaction_entries")
       .find({ txType: "payOut", txName: { $regex: "avans", $options: "i" } })
+      // Pastda faqat shu uchtasi o'qiladi: studentName (sumBy kaliti),
+      // amount va status (notCancelled). 1 173 KB -> 160 KB.
+      .project({ studentName: 1, amount: 1, status: 1, _id: 0 })
       .toArray(),
   ]);
 

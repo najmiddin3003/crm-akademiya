@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { cookies } from "next/headers";
 import { ObjectId } from "mongodb";
 import { ensureIndexes } from "./mongodb";
@@ -34,22 +35,45 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!session || !ObjectId.isValid(session.uid)) return null;
 
   const db = await ensureIndexes();
-  const user = await db.collection("users").findOne({ _id: new ObjectId(session.uid) });
+
+  // IKKALA O'QISH BARAVARIGA. Ular bir-biriga bog'liq emas: `session.uid`
+  // ham, `session.sid` ham allaqachon tekshirilgan cookie'dan keladi, biri
+  // ikkinchisining natijasini kutmaydi. Ilgari bu yerda 5 ta KETMA-KET
+  // Atlas so'rovi bor edi (users → user_sessions → updateOne →
+  // hr_employees → roles) va (app)/layout.tsx har bir sahifa ochilishida
+  // shuni kutardi. O'lchandi: 818 ms.
+  //
+  // Foydalanuvchi hujjatidan faqat quyidagi maydonlar o'qiladi (parol xeshi
+  // umuman kerak emas) — lib/rolePermissions.ts dagi loadAccess bilan bir xil.
+  const [user, live] = await Promise.all([
+    db.collection("users").findOne(
+      { _id: new ObjectId(session.uid) },
+      { projection: { status: 1, phone: 1, fullName: 1, role: 1, hrEmployeeId: 1 } },
+    ),
+    session.sid
+      ? db.collection("user_sessions").findOne({ sid: session.sid })
+      : Promise.resolve(null),
+  ]);
+
   if (!user || user.status !== "active") return null;
 
   // Qurilma sessiyasi uzilgan bo'lsa ("Aktiv qurilmalar" da chiqarilgan),
   // keyingi sahifa ochilishida foydalanuvchi chiqarib yuboriladi.
   // `sid` yo'q eski cookie'lar amal qilaveradi — pastdagi izohga qarang.
   if (session.sid) {
-    const live = await db.collection("user_sessions").findOne({ sid: session.sid });
     if (!live) return null;
-    // Oxirgi faollik vaqtini yangilaymiz — ro'yxatda ko'rsatiladi.
+
+    // Oxirgi faollik vaqti — RO'YXATDA ko'rsatiladigan bezak ma'lumot,
+    // natijasi hech qayerda o'qilmaydi. Shu sabab u javobdan KEYIN
+    // yoziladi: ilgari har bir sahifa render'i shu YOZUVni kutib turardi.
+    // `after` Server Component va Route Handler'da ishlaydi va route'ni
+    // dinamik qilib qo'ymaydi (next/dist/docs → functions/after.md).
     const p = (n: number) => String(n).padStart(2, "0");
     const d = uzNow();
-    await db.collection("user_sessions").updateOne(
-      { sid: session.sid },
-      { $set: { lastSeenAt: `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}` } },
-    );
+    const lastSeenAt = `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
+    after(async () => {
+      await db.collection("user_sessions").updateOne({ sid: session.sid }, { $set: { lastSeenAt } });
+    });
   }
 
   return {

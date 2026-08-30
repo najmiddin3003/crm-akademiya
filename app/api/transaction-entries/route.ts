@@ -105,20 +105,27 @@ export async function GET(req: Request) {
     filter.date = filter.date ? { ...(filter.date as object), ...range } : range;
   }
 
-  // JAMI son sahifalashdan OLDIN hisoblanadi — jadval ostidagi "Umumiy
-  // soni" va sahifalar soni shunga tayanadi, sahifadagi qatorlar soniga
-  // emas.
-  const total = await col.countDocuments(filter);
-
   let cursor = col.find(filter).sort({ id: -1 });
   const limitRaw = Number(sp.get("limit"));
-  if (Number.isFinite(limitRaw) && limitRaw > 0) {
+  const paged = Number.isFinite(limitRaw) && limitRaw > 0;
+  if (paged) {
     const limit = Math.min(limitRaw, 500);
     const page = Math.max(1, Number(sp.get("page")) || 1);
     cursor = cursor.skip((page - 1) * limit).limit(limit);
   }
 
   const rows = await cursor.toArray();
+
+  // JAMI son sahifalashdan OLDINGI holatni bildiradi — jadval ostidagi
+  // "Umumiy soni" va sahifalar soni shunga tayanadi, sahifadagi qatorlar
+  // soniga emas.
+  //
+  // Sahifalash SO'RALMAGAN bo'lsa kursor barcha mos qatorlarni qaytaradi,
+  // ya'ni `total` aynan `rows.length`. Ilgari bunday chaqiruvlarda ham
+  // countDocuments ishlardi — bir xil filtr bo'yicha ikkinchi to'liq
+  // yurish, bepul olinadigan son uchun (~200 ms va bitta round-trip).
+  // Chaqiruvchilarning to'rttasi limitsiz keladi.
+  const total = paged ? await col.countDocuments(filter) : rows.length;
   const entries = rows.map(({ _id, ...rest }) => rest as unknown as TransactionEntry);
   return NextResponse.json({ ok: true, entries, total });
 }

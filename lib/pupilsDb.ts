@@ -32,16 +32,25 @@ export async function studentPaidBalanceByName(db: Db, name: string): Promise<nu
   const wanted = name.trim().toLowerCase();
   if (!wanted) return 0;
 
+  // Yig'indi Mongo'da guruhlanadi — ilgari BUTUN kolleksiya (16 937 qator,
+  // 899 KB) Node'ga kelib, pastdagi tsikl bittadan boshqa hammasini
+  // tashlab yuborardi. O'lchandi: 1 167 ms → ~200 ms.
+  //
+  // Ism bo'yicha solishtirish JS'da qoladi (regex bilan emas): qoida
+  // /api/students/balances dagi bilan AYNAN bir xil bo'lishi shart, aks
+  // holda o'quvchining balansi ikki joyda ikki xil chiqadi.
   const rows = await db
     .collection("transaction_entries")
-    .find({ txType: "payIn", status: { $ne: "cancelled" }, studentName: { $nin: ["", null] } })
-    .project({ studentName: 1, amount: 1 })
+    .aggregate([
+      { $match: { txType: "payIn", status: { $ne: "cancelled" }, studentName: { $nin: ["", null] } } },
+      { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
+    ])
     .toArray();
 
   let total = 0;
   for (const r of rows) {
-    if (String(r.studentName ?? "").trim().toLowerCase() !== wanted) continue;
-    total += Number(r.amount) || 0;
+    if (String(r._id ?? "").trim().toLowerCase() !== wanted) continue;
+    total += Number(r.total) || 0;
   }
   // To'lov yozuvi bo'lmasa yig'indi 0 — bu o'ylab topilgan son emas, aynan
   // /api/students/balances qaytaradigan qiymat (u yerda ham bunday o'quvchi
