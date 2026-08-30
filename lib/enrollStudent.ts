@@ -1,5 +1,6 @@
 import type { Order } from "@/lib/ordersData";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
+import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 
 // Lidni (buyurtmani) haqiqiy o'quvchiga aylantirib guruhga yozish.
 //
@@ -45,9 +46,11 @@ export async function enrollOrderInGroup(
 ): Promise<EnrollResult> {
   let pupils = knownPupils;
   if (!pupils) {
-    const res = await fetch("/api/pupils").then((r) => r.json()).catch(() => null);
-    if (!res?.ok) return { ok: false, error: "O'quvchilar ro'yxatini olib bo'lmadi" };
-    pupils = res.pupils as Pupil[];
+    try {
+      pupils = await loadPupilsCached(true);
+    } catch {
+      return { ok: false, error: "O'quvchilar ro'yxatini olib bo'lmadi" };
+    }
   }
 
   let pupil = findPupilForOrder(order, pupils);
@@ -71,6 +74,7 @@ export async function enrollOrderInGroup(
     if (!res?.ok) return { ok: false, error: res?.error || "O'quvchini yaratishda xatolik yuz berdi" };
     pupil = res.pupil as Pupil;
     created = true;
+    invalidateStudents(); // yangi o'quvchi qo'shildi -> umumiy kesh bekor
   }
 
   const res = await fetch(`/api/groups/${groupId}/students`, {

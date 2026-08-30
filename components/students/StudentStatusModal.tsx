@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { PUPIL_STATUSES, isPupilStatus, type Pupil, type PupilStatus } from "@/lib/pupilsData";
+import { invalidateStudents } from "@/hooks/useStudents";
 
 // O'quvchining holatini o'zgartirish oynasi.
 //
@@ -72,6 +73,7 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
         body: JSON.stringify({ status, reason: reason.trim() }),
       });
       const data = await res.json();
+      invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
       if (!res.ok || !data.ok) {
         // Xato ikki joyda ko'rsatiladi: oynada (kontekst bilan) va toastda.
         setError(data.error || "Saqlanmadi");

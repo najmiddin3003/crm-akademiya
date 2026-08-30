@@ -33,6 +33,7 @@ import {
 } from "@/lib/ordersData";
 import PersonLink from "@/components/shared/PersonDirectory";
 
+import { loadPupilsCached } from "@/hooks/useStudents";
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
 // Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
@@ -158,9 +159,10 @@ export default function FirstLessonsPage() {
   const [pupils, setPupils] = useState<Pupil[]>([]);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/pupils")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setPupils(d.pupils); })
+    // findPupilForOrder faqat telefon va ismga qaraydi, keyin pupil.id
+    // ishlatiladi -> yengil ro'yxat yetarli.
+    loadPupilsCached(true)
+      .then((list) => { if (!cancelled) setPupils(list); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);

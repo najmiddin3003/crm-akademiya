@@ -48,6 +48,7 @@ import TextField from "@/components/students/fields/TextField";
 import PhoneField from "@/components/students/fields/PhoneField";
 import SelectField from "@/components/students/fields/SelectField";
 import DateField from "@/components/students/fields/DateField";
+import { invalidateStudents } from "@/hooks/useStudents";
 
 // Ported from crm-akademiya/src/app.js renderStudentEdit() / renderStudentEditTahrirlash()
 // (~line 34100-35000, view: 'student-edit'). Only the "Tahrirlash" tab has real
@@ -187,6 +188,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
       body: JSON.stringify(form),
     }).then((r) => r.json()).catch(() => null);
     setSaving(false);
+    invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
       showError(res?.error || "Saqlashda xatolik yuz berdi");
       return;
@@ -202,6 +204,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     const res = await fetch(`/api/pupils/${pupil.id}`, { method: "DELETE" })
       .then((r) => r.json()).catch(() => null);
     setDeleting(false);
+    invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     setConfirmDelete(false);
     if (!res?.ok) {
       showError(res?.error || "O'chirishda xatolik yuz berdi");

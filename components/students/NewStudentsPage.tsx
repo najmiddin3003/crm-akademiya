@@ -13,6 +13,7 @@ import {
 } from "@/lib/ordersData";
 import { findPupilForOrder } from "@/lib/enrollStudent";
 import type { Pupil } from "@/lib/pupilsData";
+import { loadPupilsCached } from "@/hooks/useStudents";
 
 // O'quvchilar → Yangi o'quvchilar (crm-akademiya #view-new-students, sidebar:
 // O'quvchilar > Yangi o'quvchilar, href /new-students).
@@ -105,7 +106,7 @@ export default function NewStudentsPage() {
     Promise.all([
       fetch("/api/orders").then((r) => r.json()).catch(() => null),
       fetch("/api/students/balances").then((r) => r.json()).catch(() => null),
-      fetch("/api/pupils").then((r) => r.json()).catch(() => null),
+      loadPupilsCached(true).then((pupils) => ({ ok: true, pupils })).catch(() => null),
     ])
       .then(([o, b, p]) => {
         if (cancelled) return;

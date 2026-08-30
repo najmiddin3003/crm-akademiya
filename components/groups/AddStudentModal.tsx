@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { Pupil } from "@/lib/pupilsData";
+import { loadPupilsCached } from "@/hooks/useStudents";
 
 // "O'quvchini tanlang" modali (skrinshot 5). Serverdagi o'quvchilar
 // (/api/pupils) ro'yxatidan birini tanlab, guruhga qo'shadi
@@ -26,9 +27,11 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/pupils")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setPupils(d.pupils); })
+    // Bu yerda faqat ism/telefon ko'rsatiladi -> yengil ro'yxat, ustiga u
+    // umumiy keshdan keladi (hooks/useStudents.ts).
+    loadPupilsCached(true)
+      .then((list) => { if (!cancelled) setPupils(list); })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);

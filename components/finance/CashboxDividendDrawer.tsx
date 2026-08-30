@@ -8,6 +8,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
+import { invalidateTransactions } from "@/lib/transactionsClient";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -109,6 +110,7 @@ export default function CashboxDividendDrawer({
         }),
       });
       const data = await res.json();
+      invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);

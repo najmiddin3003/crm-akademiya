@@ -6,6 +6,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { renderSmsPreview, type SmsTemplate } from "@/lib/smsTemplates";
 import { AUTO_SMS_SCENARIOS } from "@/constants/settingsAutoSms";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
+import { loadPupilsCached } from "@/hooks/useStudents";
 
 // "SMS yuborish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: O'quvchilar (faqat ko'rsatiladi) →
@@ -106,7 +107,8 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
     Promise.all([
       fetch("/api/sms-templates").then((r) => r.json()).catch(() => null),
       fetch("/api/settings?key=sale-marketing.auto-sms").then((r) => r.json()).catch(() => null),
-      fetch("/api/pupils").then((r) => r.json()).catch(() => null),
+      // Ota/ona telefonlari kerak -> to'liq hujjatlar (lekin umumiy keshdan).
+      loadPupilsCached().then((pupils) => ({ ok: true, pupils })).catch(() => null),
     ]).then(([tplRes, autoRes, pupilRes]) => {
       if (cancelled) return;
       const list: TemplateOption[] = [];

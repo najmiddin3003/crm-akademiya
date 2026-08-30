@@ -69,9 +69,11 @@ export async function POST(req: Request) {
   // "Kim tomonidan" — HAQIQIY amal bajaruvchi: joriy sessiya cookie'sidan
   // o'qilgan foydalanuvchi (lib/auth.ts → getCurrentUser). Mijoz yuborgan
   // ismga ishonilmaydi. Sessiya bo'lmasa bo'sh qoladi va jadvalda "—".
-  const me = await getCurrentUser();
-
-  const prior = await col.find({ type, recipientName }).sort({ id: -1 }).limit(1).toArray();
+  // Sessiya va oldingi yozuv bir-biriga bog'liq emas -> parallel.
+  const [me, prior] = await Promise.all([
+    getCurrentUser(),
+    col.find({ type, recipientName }).sort({ id: -1 }).limit(1).toArray(),
+  ]);
   let before: number | null;
   if (prior[0]) {
     // Oldingi yozuvda "keyingi miqdor" noma'lum bo'lsa (xodim), zanjir ham

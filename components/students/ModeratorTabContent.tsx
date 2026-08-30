@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useModerators } from "@/hooks/useModerators";
 import { useToast } from "@/components/ui/Toast";
+import { invalidateStudents } from "@/hooks/useStudents";
 
 // Ported from crm-akademiya/src/app.js renderStudentEditModerator() (~line 34547),
 // upgraded to a searchable dropdown (matches the real site's moderator picker)
@@ -34,6 +35,7 @@ export default function ModeratorTabContent({
       body: JSON.stringify({ moderator }),
     }).then((r) => r.json()).catch(() => null);
     setSaving(false);
+    invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
       showError(res?.error || "Saqlashda xatolik yuz berdi");
       return;

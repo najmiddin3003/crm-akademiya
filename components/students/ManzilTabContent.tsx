@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { ADDRESS_TYPES, type PupilAddress } from "@/lib/pupilsData";
+import { invalidateStudents } from "@/hooks/useStudents";
 
 // O'quvchi profili → "Manzil".
 //
@@ -34,6 +35,7 @@ export default function ManzilTabContent({
       body: JSON.stringify({ addresses: next }),
     }).then((r) => r.json()).catch(() => null);
     setBusy(false);
+    invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
       showError(res?.error || "Saqlashda xatolik yuz berdi");
       return;

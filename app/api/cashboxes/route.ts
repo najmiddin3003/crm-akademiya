@@ -8,8 +8,11 @@ import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("cashboxes");
-  const keys = await loadPaymentMethodKeys(db);
-  const rows = await col.find({}).sort({ id: 1 }).toArray();
+  // Ikkala o'qish bir-biriga bog'liq emas -> bitta round-trip'da.
+  const [keys, rows] = await Promise.all([
+    loadPaymentMethodKeys(db),
+    col.find({}).sort({ id: 1 }).toArray(),
+  ]);
   const cashboxes = rows.map(({ _id, ...rest }) => normalizeCashbox({ isPrimary: false, ...rest }, keys));
   return NextResponse.json({ ok: true, cashboxes });
 }

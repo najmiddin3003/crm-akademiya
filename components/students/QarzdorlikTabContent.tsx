@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { invalidateStudents } from "@/hooks/useStudents";
 
 // O'quvchi profili → "Qarzdorlik limiti".
 // Ilgari "Saqlash" hech nima qilmasdi; endi qiymat o'quvchi yozuviga
@@ -31,6 +32,7 @@ export default function QarzdorlikTabContent({
       body: JSON.stringify({ debtLimit: limit === "" ? 0 : n }),
     }).then((r) => r.json()).catch(() => null);
     setSaving(false);
+    invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
       showError(res?.error || "Saqlashda xatolik yuz berdi");
       return;

@@ -9,6 +9,7 @@ import MonthPicker from "./reports/MonthPicker";
 import { MONTH_NAMES_UZ } from "@/constants/pnlReports";
 import type { PnlMonthRow } from "@/lib/pnl";
 import type { Transaction } from "@/lib/transactions";
+import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Moliya hisobotlari (P&L) (sidebar: Moliya > Moliya hisobotlari
 // (P&L), href /finance-pnl). Sof hisobot — add/edit/delete yo'q. Yil
@@ -33,9 +34,9 @@ export default function PnlReportsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/transactions")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setTransactions(d.transactions); });
+    loadTransactionsCached()
+      .then((list) => { if (!cancelled) setTransactions(list); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 

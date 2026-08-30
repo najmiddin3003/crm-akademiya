@@ -10,6 +10,7 @@ import { MONTH_NAMES_UZ } from "@/constants/pnlReports";
 import type { MonthlyFlow } from "@/lib/cashflowStatement";
 import type { Transaction } from "@/lib/transactions";
 import type { TransactionType } from "@/lib/transactionTypes";
+import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Pul oqimi (sidebar: Moliya > Pul oqimi, href /finance-flow). Sof
 // hisobot — add/edit/delete yo'q. Yil/oy tanlagichi — Moliya hisobotlari
@@ -76,7 +77,9 @@ export default function CashFlowStatementPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/transactions").then((r) => r.json()),
+      loadTransactionsCached()
+        .then((transactions) => ({ ok: true, transactions }))
+        .catch(() => ({ ok: false, transactions: [] })),
       fetch("/api/transaction-types").then((r) => r.json()),
     ]).then(([tx, types]) => {
       if (cancelled) return;

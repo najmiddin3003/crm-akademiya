@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { NewPupilValues, Pupil } from "@/lib/pupilsData";
+import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 
 // Shared pupils store for the orders-list route segment (mounted alongside
 // OrdersContext by app/(app)/orders-list/layout.tsx), backed by MongoDB via
@@ -25,11 +26,11 @@ export function PupilsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/pupils")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && data.ok) setPupils(data.pupils);
+    loadPupilsCached()
+      .then((list) => {
+        if (!cancelled) setPupils(list);
       })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -47,6 +48,7 @@ export function PupilsProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!data.ok) return null;
+      invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
       setPupils((prev) => [data.pupil as Pupil, ...prev]);
       return data.pupil as Pupil;
     } catch {

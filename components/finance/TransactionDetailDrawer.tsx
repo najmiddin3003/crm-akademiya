@@ -8,6 +8,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import PersonLink from "@/components/shared/PersonDirectory";
 
+import { invalidateTransactions } from "@/lib/transactionsClient";
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 const STATUS_LABELS: Record<string, string> = { "": "Qabul qilingan", waiting: "Kutilmoqda", cancelled: "Bekor qilingan" };
 
@@ -66,6 +67,7 @@ export default function TransactionDetailDrawer({
     try {
       const res = await fetch(`/api/transaction-entries/${entry.id}/cancel`, { method: "POST" });
       const data = await res.json();
+      invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
         showError(data.error || "Bekor qilinmadi");
         return;

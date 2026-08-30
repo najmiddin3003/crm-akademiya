@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import SalaryReceiptModal from "./SalaryReceiptModal";
 import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import { UZ_MONTHS, payrollPeriod, payrollPeriodLabel } from "@/lib/salary";
+import { invalidateTransactions } from "@/lib/transactionsClient";
 
 // Moliya → Oylik chiqarish → Chiqarishlar tarixi (/finance-payroll/history).
 // Har bir qator — bitta o'tkazilgan "oylik chiqarish" partiyasining
@@ -130,6 +131,7 @@ export default function SalaryRunsPage() {
     try {
       const res = await fetch(`/api/salary-runs/${confirmDel.id}`, { method: "DELETE" });
       const data = await res.json();
+      invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
         showError(data.error || "O'chirilmadi");
         setDeleting(false);

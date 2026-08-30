@@ -13,6 +13,7 @@ import { useStudents } from "@/hooks/useStudents";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
+import { invalidateTransactions } from "@/lib/transactionsClient";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -136,6 +137,7 @@ export default function CashboxKirimDrawer({
         }),
       });
       const data = await res.json();
+      invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);

@@ -12,6 +12,7 @@ import { useProfilePupil } from "@/hooks/useProfilePupil";
 import { STUDENT_CATEGORIES } from "@/constants";
 import type { Contract } from "@/lib/contracts";
 import type { Pupil } from "@/lib/pupilsData";
+import { invalidateStudents } from "@/hooks/useStudents";
 
 // O'quvchi profili → "Shartnoma biriktirish".
 //
@@ -186,6 +187,7 @@ export default function ShartnomaBiriktirishTabContent({
       body: JSON.stringify(payload),
     }).then((r) => r.json()).catch(() => null);
     setSaving(false);
+    invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
       showError(res?.error || "Saqlashda xatolik yuz berdi");
       return;

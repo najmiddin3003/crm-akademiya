@@ -58,8 +58,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const col = db.collection("employee_notes");
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
-  const me = await getCurrentUser();
+  // Bir-biriga bog'liq emas -> parallel.
+  const [last, me] = await Promise.all([
+    col.find({}).sort({ id: -1 }).limit(1).toArray(),
+    getCurrentUser(),
+  ]);
 
   const note: EmployeeNote = {
     id: (last[0]?.id ?? 0) + 1,

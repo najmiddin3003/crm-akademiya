@@ -15,6 +15,7 @@ import type { Penalty } from "@/lib/penalties";
 import type { Cashbox } from "@/lib/cashboxes";
 import type { Transaction } from "@/lib/transactions";
 import type { TransactionType } from "@/lib/transactionTypes";
+import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Kirim chiqim (sidebar: Moliya > Kirim chiqim, href
 // /finance-cashflow). 4 tab: Kirim/Chiqim — HAQIQIY MongoDB `transactions`
@@ -86,7 +87,7 @@ export default function FinanceAnalyticsPage() {
     fetch("/api/cashboxes").then((r) => r.json()).then((d) => { if (d.ok) setCashboxes(d.cashboxes); });
     fetch("/api/bonuses").then((r) => r.json()).then((d) => { if (d.ok) setBonuses(d.bonuses); });
     fetch("/api/penalties").then((r) => r.json()).then((d) => { if (d.ok) setPenalties(d.penalties); });
-    fetch("/api/transactions").then((r) => r.json()).then((d) => { if (d.ok) setTransactions(d.transactions); });
+    loadTransactionsCached().then(setTransactions).catch(() => {});
     fetch("/api/transaction-types").then((r) => r.json()).then((d) => {
       if (!d.ok) return;
       const all = d.types as TransactionType[];

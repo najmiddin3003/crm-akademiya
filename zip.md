@@ -1,217 +1,236 @@
-# Tezlik (performance) — tahlil va reja
+# Tezlik (performance) — tahlil va bajarilgan ishlar
 
-> Holat: **o'lchandi, hali hech narsa tuzatilmadi.** 2026-08-29.
-> Barcha raqamlar haqiqiy bazadan (6 732 o'quvchi, 25 569 tranzaksiya).
-
----
-
-## 1. O'lchov natijalari
-
-| Endpoint | Hajmi | Qatorlar | Vaqti | Qayerda yuklanadi |
-|---|---|---|---|---|
-| `/api/transaction-entries` (filtrsiz) | **11.4 MB** | 25 569 | ~15 s | 3 ta moliya sahifasi |
-| `/api/pupils` | **3.6 MB** | 6 732 | ~3.3 s | **HAR BIR sahifada** |
-| `/api/people/directory` | 197 KB | 6 732 | 0.9 s | har bir sahifada |
-| `/api/groups` | 42 KB | 91 | 0.4 s | ko'p sahifada |
-| `/api/hr-employees` | 17 KB | 53 | 0.2 s | ko'p sahifada |
-| Butun statik JS | 3.6 MB | 125 fayl | — | **keshlanadi**, bir marta |
-
-O'lchovni qayta olish (brauzer konsolida, tizimga kirgan holda):
-
-```js
-const urls = ["/api/pupils","/api/hr-employees","/api/people/directory",
-              "/api/branches","/api/groups","/api/transaction-entries"];
-for (const u of urls) {
-  const t0 = performance.now();
-  const b = await (await fetch(u, { cache: "no-store" })).arrayBuffer();
-  console.log(u, Math.round(b.byteLength/1024) + " KB",
-                 Math.round(performance.now() - t0) + " ms");
-}
-```
+> Holat: **2026-08-30 — rejadagi asosiy bandlar bajarildi.**
+> Barcha raqamlar haqiqiy bazadan o'lchangan (6 732 o'quvchi,
+> 25 567 tranzaksiya yozuvi, 21 921 tranzaksiya).
 
 ---
 
-## 2. Ildiz sabab
+## 1. Qisqacha natija
 
-**API'lar butun kolleksiyani brauzerga yuboradi, filtrlash esa klientda bo'ladi.**
-
-Eng og'rituvchi joy — [components/shared/Navbar.tsx:58](components/shared/Navbar.tsx).
-Navbar `AppShell` ichida, ya'ni **har bir sahifada** render bo'ladi. U
-`useStudents()` chaqiradi va butun o'quvchilar ro'yxatini (3.6 MB) yuklaydi —
-faqat tepadagi qidiruv oynasi uchun (`searchAll(searchQuery, students)`).
-
-Ustiga-ustak [hooks/useStudents.ts](hooks/useStudents.ts) da umumiy kesh yo'q:
-har bir chaqiruv o'z `useEffect` ida alohida `fetch` qiladi. Sahifaning o'zi
-ham `useStudents()` ishlatsa (masalan `/groups`, `/parents`, moliya
-sahifalari), bitta yuklashda **7.2 MB** ketadi.
+| Sahifa / joy | Ilgari | Hozir | Izoh |
+|---|---|---|---|
+| **Har bir sahifa** (Navbar) | 3.6 MB | **0 KB** | qidiruv serverga ko'chdi |
+| `/finance-transactions` | 11 600 KB | **293 KB** | server sahifalash |
+| `/finance-cash` | ~11.6 MB | **572 KB** | kassa + sana filtri |
+| `/finance-revenue-plan` | ~11.6 MB | **0 KB** | aggregation, 4 ta son |
+| **Sovuq start** (birinchi so'rov) | +3 636 ms | **+152 ms** | indeks tekshiruvi fonda |
+| Analitika sahifalari orasida yurish | har safar 2.8 MB | **1 marta** | umumiy kesh |
+| Bitta sahifada o'quvchilar ro'yxati | 2–3 marta | **1 marta** | umumiy kesh |
 
 ---
 
-## 3. Reja — tartib bilan (ishonchli foydadan boshlab)
+## 2. Ildiz sabab (tasdiqlangan)
 
-### 1-band. Navbar qidiruvini API'ga o'tkazish ⭐
-
-- **Foyda:** har bir sahifadan 3.6–7.2 MB va ~3–7 soniya olib tashlanadi.
-- **Xavfi:** past, bitta fayl.
-- **Loyihada tayyor namuna bor:** [app/api/people/directory/route.ts:32](app/api/people/directory/route.ts)
-  xuddi shu 6 732 o'quvchini `projection` bilan **197 KB** qilib qaytaradi —
-  18 barobar kichik.
-- **Ikki yo'l:**
-  1. Navbar `useStudents()` o'rniga allaqachon yuklangan
-     `PersonDirectory` kontekstidan foydalansin (qo'shimcha so'rov umuman
-     yo'q), yoki
-  2. serverda qidiruv endpoint'i — `/api/search?q=…`, klientda debounce.
-
-### 2-band. `/api/transaction-entries` ni filtrsiz chaqirmaslik
-
-- **Foyda:** 11.4 MB → o'nlab KB, ~15 s → ~0.3 s.
-- **Xavfi:** o'rtacha — yig'indilar hozir klientda hisoblanadi, ularni Mongo
-  aggregation'ga ko'chirish kerak. **Raqamlar moliyaviy, ehtiyot bo'lish shart.**
-- **Muhim:** route'da filtrlar **allaqachon bor** —
-  [app/api/transaction-entries/route.ts](app/api/transaction-entries/route.ts):
-  `studentName`, `moderator`, `txType`, `month`, `excludeCancelled`.
-  Uchta sahifa ularni ishlatmaydi:
-  - [components/finance/CashboxesPage.tsx:667](components/finance/CashboxesPage.tsx)
-  - [components/finance/RevenuePlanPage.tsx:80](components/finance/RevenuePlanPage.tsx)
-  - [components/finance/TransactionEntriesPage.tsx:58](components/finance/TransactionEntriesPage.tsx)
-- Indekslar bor: `transaction_entries` da `{studentName, date}` va
-  `{moderator, date}` ([lib/mongodb.ts](lib/mongodb.ts)).
-
-### 3-band. `/api/pupils` ga `projection`
-
-- Hozir to'liq hujjat qaytadi (~550 bayt/qator), parol xeshlaridan boshqa
-  hech narsa kesilmaydi — [app/api/pupils/route.ts:9](app/api/pupils/route.ts).
-- **Foyda:** 3.6 MB → ~300 KB.
-- **Xavfi:** o'rtacha — avval qaysi maydonlar haqiqatan ishlatilishini
-  tekshirish kerak (`Pupil` tipida 30+ maydon bor).
-
-### 4-band. Ro'yxat endpoint'lariga sahifalash
-
-Deyarli hamma joyda `find({})` — sahifalash yo'q. Jadvallarda `Pagination`
-komponenti bor, lekin u faqat klientda kesadi.
-
-### 5-band. `useStudents` ga umumiy kesh
-
-Takroriy so'rovlar yo'qoladi (bitta sahifada 2× `/api/pupils`).
+**API'lar butun kolleksiyani brauzerga yuborardi, filtrlash esa klientda
+bo'lardi.** Ikkinchi sabab — **kesh yo'qligi**: bir xil og'ir ro'yxat bitta
+sahifada bir necha marta, va har navigatsiyada qaytadan so'ralardi.
 
 ---
 
-## 4. Hozircha vaqt sarflamaslik kerak
+## 3. Qaysi to'plam haqiqatan og'ir (o'lchandi)
 
-- **JS to'plamini optimallashtirish.** 3.6 MB ko'p ko'rinadi, lekin u route
-  bo'yicha bo'lingan va brauzerda **keshlanadi** — bir marta yuklanadi. Har
-  sahifada qaytadan keladigan 3.6 MB JSON esa keshlanmaydi. Ma'lumot qatlami
-  taxminan **10 barobar** kattaroq muammo.
-- **`proxy.ts` dagi ruxsat tekshiruvi.** So'rovga ~0.7 s qo'shadi va
-  10 soniyalik keshi bor ([lib/rolePermissions.ts](lib/rolePermissions.ts)) —
-  15 soniyalik so'rov yonida ahamiyatsiz.
+`node scripts/_collection-sizes.mjs`
 
+| To'plam | Hujjat | Hajm |
+|---|---|---|
+| `transaction_entries` | 25 567 | **11 929 KB** |
+| `pupils` | 6 732 | **3 976 KB** |
+| `transactions` | 21 921 | **3 506 KB** |
+| `groups` | 91 | 46 KB |
+| `hr_employees` | 53 | 19 KB |
+| qolgan 60+ to'plam | — | ≤ 14 KB |
+
+> **Muhim xulosa:** faqat **uchta** to'plam og'ir. Qolganlariga sahifalash
+> yoki proyeksiya qo'shish — o'lchanadigan foydasi yo'q ish. Eski rejadagi
+> "hamma ro'yxat endpoint'iga sahifalash" bandi shu sababli yopildi.
 
 ---
 
-## 5. Baza tomoni (MongoDB Atlas) — o'lchandi
+## 4. Bajarilgan ishlar
 
-O'lchov: `node scripts/_db-perf.mjs` (faqat o'qiydi, bazaga yozmaydi).
+### 4.1. Navbar qidiruvi serverga (`826cd7f`)
 
-| Ko'rsatkich | Qiymat |
-|---|---|
-| Atlas'gacha RTT | **145 ms** (5 o'lchov: 143–148) |
-| Ulanish o'rnatish | 1 463 ms |
-| Baza hajmi | 19.1 MB ma'lumot + **15.9 MB indeks**, 72 kolleksiya |
-| `pupils` to'liq o'qish | 6 732 hujjat → **2 400–4 400 ms** |
-| `pupils` + `projection` | shu 6 732 hujjat → **790 ms** |
-| `transaction_entries` to'liq | 25 569 hujjat → **3 600–5 700 ms** |
-| `moderator` filtri (explain) | 41 ms, indeksdan foydalanadi (1942 ko'rildi = 1942 topildi) |
+Navbar `AppShell` ichida, ya'ni har bir sahifada. U `useStudents()` orqali
+6 732 o'quvchini (3.6 MB) faqat qidiruv oynasi uchun yuklardi.
 
-Indekslar: `transaction_entries` da `studentName_1_date_-1` va
-`moderator_1_date_-1` bor va **ishlayapti**. `pupils`, `groups`,
-`hr_employees` da faqat `_id_` va `id_1` — lekin bu joyda muammo emas,
-chunki ular baribir "hammasini ol" bilan chaqiriladi.
+Endi: [app/api/search/students/route.ts](app/api/search/students/route.ts) —
+qidiruv Mongo'da, 200 ms debounce, LIMIT 20. Sahifa ochilishida **hech narsa
+yuklanmaydi**.
 
-### 5.1. ⭐ ENG KATTA TOPILMA: `ensureIndexes()` har ishga tushishda ~11.6 s
+### 4.2. `transaction-entries` (`2de933a`)
 
-[lib/mongodb.ts](lib/mongodb.ts) dagi `ensureIndexes()` da **71 ta
-`createIndex`** ketma-ket chaqiriladi. Mavjud indeksni qayta yaratish ham
-to'liq round-trip turadi:
+Uchta moliya sahifasi 25 567 qatorni to'liq yuklab, yig'indini brauzerda
+hisoblardi. Endi:
+
+- route'ga `cashboxId`, `dateFrom`/`dateTo`, `status`, `page`/`limit`
+  qo'shildi; `total` — `countDocuments`, sahifalashdan OLDIN;
+- [revenue-summary](app/api/transaction-entries/revenue-summary/route.ts) —
+  4 ta son `aggregate` bilan;
+- [students](app/api/transaction-entries/students/route.ts) — `distinct`,
+  3 357 ism ≈ 73 KB (ilgari 11 MB dan `new Set(...)`);
+- indeks: `{ cashboxId: 1, date: -1 }`.
+
+**Moliyaviy raqamlar o'zgarmaganligi isbotlangan:**
+`scripts/_verify-revenue.mjs` (6 oy, hammasi MOS) va
+`scripts/_verify-cashbox.mjs` (4 holat, qator id'lari va kirim/chiqim aynan).
+
+### 4.3. `ensureIndexes()` endi so'rovni to'smaydi
+
+O'lchov (`scripts/_time-indexes.mjs`):
 
 ```
-mavjud indeksni qayta yaratish: 164 ms/chaqiruv -> 71 ta ketma-ket ≈ 11.6 s
+72 ta createIndex, PARALLEL:  3 636 ms
+bitta listIndexes tekshiruvi:   152 ms
 ```
 
-Bu har bir API so'rovi yo'lida turadi (`ensureIndexes()` → `getDb()`).
-`indexesEnsured` bayrog'i bor, ya'ni **jarayonga bir marta** — lekin:
+Ya'ni parallel qilingandan keyin ham har sovuq startda birinchi so'rov
+**3.6 soniya** kutardi — va bu vaqt deyarli har doim bekorga ketardi,
+chunki indekslar allaqachon joyida.
 
-- dev'da HMR moduli qayta yuklanganda qaytadan ishlaydi;
-- **Vercel'da har bir sovuq start (cold start) = yana 11.6 s.**
+Endi [lib/mongodb.ts](lib/mongodb.ts):
 
-Bu dev loglaridagi `GET /api/roles 200 in 32.6s`,
-`/api/hr-employees 17.4s` kabi raqamlarni to'liq tushuntiradi.
+- baza allaqachon indekslangan bo'lsa → tekshiruv **fonda**, so'rov kutmaydi;
+- baza **yangi** bo'lsa → **kutamiz**. Unique indekslar takror yozuvdan
+  saqlaydi (`pupils.id`), ular yo'q paytda yozuvga ruxsat berib bo'lmaydi.
 
-**Tuzatish (xavfi deyarli yo'q):**
+Deploy paytida bir marta: `node scripts/ensure-indexes.mjs`.
 
-1. Eng tez yechim — ketma-ket emas, `Promise.all` bilan: 71 × 145 ms
-   o'rniga bir necha yuz millisekund.
-2. To'g'ri yechim — indekslarni ish vaqtida umuman yaratmaslik:
-   `scripts/ensure-indexes.mjs` qilib, deploy paytida bir marta ishga
-   tushirish. `getDb()` esa oddiy `getDb()` bo'lib qoladi.
+### 4.4. Umumiy klient keshi
 
-Kutilayotgan natija: sovuq startdan keyingi birinchi so'rov ~15 s dan
-~1 s ga tushadi.
+[lib/clientCache.ts](lib/clientCache.ts) — ikki vazifasi bor:
 
-### 5.2. Projection — 3 barobar tezroq (va brauzerga 12× kam)
+1. **in-flight dedup** — ayni paytda ketayotgan bir xil so'rovlar bitta
+   so'rovga birlashadi (sahifa + ichidagi oyna bir vaqtda so'raganda);
+2. **qisqa muddatli kesh** — sahifalar orasida yurganda qayta yuklanmaydi.
 
-`pupils` ni to'liq o'qish 2 400 ms, `projection` bilan **790 ms**.
-Bu 3-band bilan bir xil ish: bitta o'zgarish ikkala tomonni ham
-tezlatadi (baza→server va server→brauzer).
+Qo'llanilgan joylar:
 
-### 5.3. ❌ Wire-siqish YORDAM BERMADI — sinab ko'rildi
+| Manba | TTL | Kim ishlatadi |
+|---|---|---|
+| `/api/pupils` | 30 s | [useStudents](hooks/useStudents.ts) + hook'ni chetlab o'tgan **6 ta** joy |
+| `/api/transactions` | 15 s | [5 ta analitika sahifasi](lib/transactionsClient.ts) |
 
-Gipoteza: `compressors: ["zstd"]` 3.6 MB ni siqib, o'qishni tezlatadi.
-**Natija — foyda yo'q:**
+Hook'ni chetlab o'tib alohida 3.6 MB yuklaydigan joylar topildi va ulandi:
+`AddStudentModal`, `FirstLessonsPage`, `PupilsContext`, `SmsModal`,
+`NewStudentsPage`, `lib/enrollStudent.ts`. Ulardan to'rttasi endi **yengil**
+ro'yxatni oladi — kod tekshirib chiqildi, ularga faqat id/ism/telefon
+kerak. `SmsModal` to'liq qoladi (ota/ona telefonlari kerak).
+
+**Eskirish xavfi yo'q:** yozuvdan keyin kesh aniq bekor qilinadi —
+o'quvchi o'zgarganda 9 joyda `invalidateStudents()`, tranzaksiya yozilganda
+9 joyda `invalidateTransactions()`.
+
+> Nega qisqa TTL xavfsiz: sahifa ochilgach ro'yxat baribir "suratga olingan"
+> holatda turadi. Foydalanuvchi 5 daqiqa qarab tursa, keshsiz kodda ham
+> 5 daqiqalik eski ma'lumotni ko'radi. Ya'ni kesh mavjud xulqdan **eskiroq**
+> ma'lumot ko'rsata olmaydi.
+
+### 4.5. `/api/pupils?light=1`
+
+`{ id, firstName, lastName, phone }` — **3 654 KB → 544 KB**.
+Balans/holat kerak bo'lgan sahifalar to'liq rejimda qoladi.
+
+### 4.6. Mustaqil so'rovlarni parallellashtirish
+
+`Promise.all` ga yig'ildi (har biri bitta ~150 ms round-trip tejaydi):
+
+- [app/api/cashboxes/route.ts](app/api/cashboxes/route.ts) — GET, sahifa
+  yuklash yo'lida;
+- [app/api/bonuses/route.ts](app/api/bonuses/route.ts);
+- `app/api/hr-employees/[id]/notes/route.ts`.
+
+**Ataylab tegilmadi:** `cashboxes/[id]/transfer-to` (pul o'tkazmasi —
+debet/kredit tartibi), `employees` (insert zanjiri), `salary-runs`.
+Ularda ketma-ketlik mantiqning bir qismi.
+
+---
+
+## 5. Sinab ko'rilgan va RAD ETILGAN yo'llar
+
+> Bu yo'llarga qaytadan vaqt sarflamang — o'lchandi.
+
+### 5.1. Wire-siqish (zstd) — foyda bermadi
 
 ```
 siqishsiz (hozirgi)    pupils  2359 ms | tx  4030 ms
 zstd siqish bilan      pupils  4411 ms | tx  3566 ms
 ```
 
-Sabab: bo'g'iz kenglik emas, **kursor paketlari (batch)**. 6 732 hujjat
-bir necha paketda keladi va har biri 145 ms round-trip. Shu bois hujjat
-SONINI yoki HAJMINI kamaytirish (projection, filtr, aggregation) yordam
-beradi, siqish esa yo'q.
+Sabab: bo'g'iz kenglik emas, **kursor paketlari (batch)**. Hujjat SONINI
+yoki HAJMINI kamaytirish yordam beradi, siqish esa yo'q.
 
-> Bu yo'lga qaytadan vaqt sarflamang — o'lchandi.
+### 5.2. Hamma ro'yxat endpoint'iga sahifalash
 
-### 5.4. 145 ms RTT — infratuzilma masalasi
+3-bo'limdagi jadval: `groups` 46 KB, `hr_employees` 19 KB, qolganlari
+14 KB dan kichik. Sahifalash u yerda faqat kod murakkabligini oshiradi.
 
-Har bir round-trip 145 ms. Bitta so'rovda bir nechta round-trip bo'ladi
-(ulanish, so'rov, kursor paketlari), shuning uchun bu hamma narsaga
-ko'paytma. Taqqoslash uchun: bir region ichida odatda < 5 ms.
+### 5.3. `transactions` ga proyeksiya
 
-**Tekshirish kerak:** Atlas konsolida klaster qaysi regionda. Agar u
-Yevropa yoki AQSh'da bo'lsa, foydalanuvchilarga yaqinroq regionga
-ko'chirish (yoki o'sha yerda yangi klaster) barcha so'rovlarni birdaniga
-tezlatadi — kod o'zgarishisiz.
+Hujjat allaqachon ixcham — `id`, `date`, `time`, `amount`, `category`,
+`method`, `methodLabel`, `cashboxId`, va **hammasi ishlatiladi**.
+Kesadigan joyi yo'q. Shuning uchun u yerda kesh qo'llanildi.
 
-### 5.5. Round-trip'larni kamaytirish
+### 5.4. Ko'p "ketma-ket await" — aslida bog'liq
 
-- Bir marshrutda ketma-ket `await` qilingan mustaqil so'rovlarni
-  `Promise.all` ga yig'ish. Yaxshi namuna allaqachon bor:
-  [app/api/people/directory/route.ts](app/api/people/directory/route.ts).
-- Yig'indilarni (moliya sahifalaridagi jamilar) klientda emas, Mongo
-  `aggregate` bilan serverda hisoblash — 25 569 qatorni tortib olish
-  o'rniga bitta natija qaytadi.
+Avtomatik qidiruv 11 ta nomzod topdi, lekin qo'lda tekshirilganda
+ko'pchiligi **bog'liq** bo'lib chiqdi (guruhni o'qib, keyin uning
+`studentIds` bo'yicha o'quvchilarni olish kabi) yoki yozuv tartibi muhim
+bo'lgan joylar. Faqat 3 tasi haqiqatan mustaqil edi (4.6-band).
+
+### 5.5. JS to'plamini optimallashtirish
+
+3.6 MB ko'p ko'rinadi, lekin u route bo'yicha bo'lingan va brauzerda
+**keshlanadi** — bir marta yuklanadi.
 
 ---
 
-## 6. Yangilangan tartib
+## 6. Qolgan ish
 
-| # | Ish | Foyda | Xavfi |
-|---|---|---|---|
-| **0** | `ensureIndexes` ni tuzatish (5.1) | sovuq start −11 s | **juda past** |
-| 1 | Navbar qidiruvi (3-bo'lim, 1-band) | har sahifa −3.6 MB, −3 s | past |
-| 2 | `transaction-entries` filtrlari | −11.4 MB, −15 s | o'rtacha |
-| 3 | `pupils` projection | −3.3 MB, baza 3× tez | o'rtacha |
-| 4 | Atlas regionini tekshirish (5.4) | hamma narsa | kod tegmaydi |
-| 5 | Sahifalash + aggregation | katta | o'rtacha |
+### 6.1. Atlas regioni — kod emas, infratuzilma
 
-**0-band birinchi:** bir fayl, xavfi eng past, natijasi eng katta.
+Atlas'gacha RTT **145–154 ms**. Bitta so'rovda bir nechta round-trip
+bo'ladi, shuning uchun bu hamma narsaga ko'paytma. Bir region ichida
+odatda **< 5 ms**.
+
+**Tekshirish kerak:**
+
+1. Atlas konsolida klaster qaysi regionda;
+2. `vercel.json` da `regions` ko'rsatilmagan — Vercel funksiyasi qaysi
+   regionda ishlayapti.
+
+Ikkalasi bir-biriga yaqin bo'lsa — **barcha so'rovlar birdaniga tezlashadi,
+kodga tegmasdan.** Bu hozirgi eng katta qolgan imkoniyat.
+
+### 6.2. `/api/pupils` standart rejimi
+
+Hali to'liq hujjat qaytaradi. Balans/holat ko'rsatadigan sahifalar
+(`ActiveStudentsPage`, `ArchiveStudentsPage`, `ParentsPage`,
+`ExpiringSubsPage`, `NazoratDavomatPage`) shuni ishlatadi. Ularga o'rtacha
+proyeksiya (kerakli 10–12 maydon) qo'shsa bo'ladi — lekin avval har bir
+sahifada qaysi maydon ishlatilishini tekshirish shart.
+
+---
+
+## 7. O'lchov skriptlari
+
+| Skript | Nima qiladi |
+|---|---|
+| `scripts/_collection-sizes.mjs` | qaysi to'plam og'ir |
+| `scripts/_db-perf.mjs` | RTT, ulanish, o'qish vaqtlari |
+| `scripts/_time-indexes.mjs` | `ensureIndexes()` narxi |
+| `scripts/_verify-revenue.mjs` | tushum raqamlari o'zgarmaganini tekshiradi |
+| `scripts/_verify-cashbox.mjs` | kassa raqamlari o'zgarmaganini tekshiradi |
+
+Brauzer tomonini o'lchash (tizimga kirgan holda, konsolda):
+
+```js
+const urls = ["/api/pupils", "/api/transactions", "/api/people/directory",
+              "/api/groups", "/api/transaction-entries?limit=50"];
+for (const u of urls) {
+  const t0 = performance.now();
+  const b = await (await fetch(u, { cache: "no-store" })).arrayBuffer();
+  console.log(u, Math.round(b.byteLength / 1024) + " KB",
+                 Math.round(performance.now() - t0) + " ms");
+}
+```

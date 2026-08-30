@@ -8,6 +8,7 @@ import JournalTab from "./analytics/JournalTab";
 import CashFlowTab from "./analytics/CashFlowTab";
 import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
+import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Moliya analitikasi (sidebar: Moliya > Moliya analitikasi, href
 // /finance-analytics). Sof hisobot sahifasi (add/edit/delete yo'q). Chap
@@ -46,7 +47,9 @@ export default function FinancialAnalyticsPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/transactions").then((r) => r.json()),
+      loadTransactionsCached()
+        .then((transactions) => ({ ok: true, transactions }))
+        .catch(() => ({ ok: false, transactions: [] })),
       fetch("/api/cashboxes").then((r) => r.json()),
     ])
       .then(([tx, cb]) => {

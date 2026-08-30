@@ -12,6 +12,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
 import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
+import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Moliya hisobotlari (sidebar: Moliya > Moliya hisobotlari, href
 // /finance-reports). Bir xil /api/transactions'dan (Moliya analitikasi bilan
@@ -112,7 +113,9 @@ export default function FinanceReportsPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/transactions").then((r) => r.json()),
+      loadTransactionsCached()
+        .then((transactions) => ({ ok: true, transactions }))
+        .catch(() => ({ ok: false, transactions: [] })),
       fetch("/api/cashboxes").then((r) => r.json()),
     ])
       .then(([tx, cb]) => {

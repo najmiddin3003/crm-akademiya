@@ -20,6 +20,7 @@ import {
   payrollTaxLines,
   type EmployeePayroll,
 } from "@/lib/salary";
+import { invalidateTransactions } from "@/lib/transactionsClient";
 
 // Moliya → Oylik chiqarish (/finance-payroll) — bo'limning BOSH sahifasi.
 //
@@ -217,6 +218,7 @@ export default function SalaryCreatePage() {
         body: JSON.stringify({ employeeIds: Array.from(selected), cashboxId: Number(cashboxId), method: methodKey }),
       });
       const data = await res.json();
+      invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
         showError(data.error || "Oylik chiqarilmadi");
         setSaving(false);

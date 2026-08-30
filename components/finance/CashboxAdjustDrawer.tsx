@@ -17,6 +17,7 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import { ROLE_LABELS } from "@/constants/employees";
+import { invalidateTransactions } from "@/lib/transactionsClient";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -260,6 +261,7 @@ export default function CashboxAdjustDrawer({
         }),
       });
       const data = await res.json();
+      invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
         showError(data.error || "Saqlanmadi");
         setSaving(false);
