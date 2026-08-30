@@ -14,10 +14,23 @@
 //   2) QISQA MUDDATLI KESH — tugagan natija TTL davomida saqlanadi, ya'ni
 //      sahifalar orasida yurganda qaytadan yuklanmaydi.
 //
-// ESKIRISH XAVFI: sahifa ochilgach ro'yxat baribir "suratga olingan" holatda
-// turadi — foydalanuvchi 5 daqiqa qarab tursa, keshsiz kodda ham 5 daqiqalik
-// eski ma'lumotni ko'radi. Ya'ni qisqa TTL mavjud xulqdan ESKIROQ ma'lumot
-// ko'rsata olmaydi. Yozuvdan keyin esa kesh aniq bekor qilinadi.
+// ESKIRISH — NIMA O'ZGARDI (halol ta'rif):
+//
+// ILGARI komponent har MOUNT bo'lganda yangi so'rov ketardi. Ya'ni sahifaga
+// o'tish amalda "yangilash" vazifasini bajarardi. ENDI bajarmaydi: TTL
+// ichidagi mount keshdagi SURATNI qayta chizadi va buni bildiradigan
+// ko'rsatkich yo'q (`peekCached` tegsa `loading` darhol false bo'ladi).
+//
+// Nimalar QOPLANGAN:
+//   - foydalanuvchining O'Z yozuvlari — har bir yozuv joyida kesh aniq
+//     bekor qilinadi (invalidateStudents / invalidateTransactions);
+//   - sahifada qimirlamay o'tirgan foydalanuvchi — bu holat o'zgargani
+//     yo'q, avtomatik yangilash ilgari ham yo'q edi.
+//
+// QOPLANMAGAN: boshqa foydalanuvchining yoki fon jarayonining (sinxronizatsiya,
+// cron) yozuvi TTL tugaguncha ko'rinmaydi. Shuning uchun TTL qisqa, va
+// moliyaviy ma'lumot uchun (transactions) o'quvchilar ro'yxatidan ham
+// qisqaroq qilingan.
 
 type Entry = { at: number; ttl: number; req: Promise<unknown>; value?: unknown };
 

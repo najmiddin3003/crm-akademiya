@@ -133,14 +133,29 @@ Hook'ni chetlab o'tib alohida 3.6 MB yuklaydigan joylar topildi va ulandi:
 ro'yxatni oladi — kod tekshirib chiqildi, ularga faqat id/ism/telefon
 kerak. `SmsModal` to'liq qoladi (ota/ona telefonlari kerak).
 
-**Eskirish xavfi yo'q:** yozuvdan keyin kesh aniq bekor qilinadi —
-o'quvchi o'zgarganda 9 joyda `invalidateStudents()`, tranzaksiya yozilganda
-9 joyda `invalidateTransactions()`.
+**Yozuvdan keyin kesh aniq bekor qilinadi** — o'quvchi o'zgarganda 9 joyda
+`invalidateStudents()`, tranzaksiya yozilganda 9 joyda
+`invalidateTransactions()`.
 
-> Nega qisqa TTL xavfsiz: sahifa ochilgach ro'yxat baribir "suratga olingan"
-> holatda turadi. Foydalanuvchi 5 daqiqa qarab tursa, keshsiz kodda ham
-> 5 daqiqalik eski ma'lumotni ko'radi. Ya'ni kesh mavjud xulqdan **eskiroq**
-> ma'lumot ko'rsata olmaydi.
+> **Eskirish — nima o'zgardi (halol ta'rif).** Dastlab bu yerda "kesh mavjud
+> xulqdan eskiroq ma'lumot ko'rsata olmaydi" deb yozilgan edi. Bu **noto'g'ri**
+> — mustaqil tekshiruv aniqladi.
+>
+> Ilgari komponent har MOUNT bo'lganda yangi so'rov ketardi, ya'ni sahifaga
+> o'tish amalda "yangilash" edi. Endi bunday emas: TTL ichidagi mount keshdagi
+> suratni qayta chizadi va buni bildiradigan ko'rsatkich yo'q.
+>
+> - **Qoplangan:** foydalanuvchining o'z yozuvlari (aniq bekor qilish);
+>   sahifada qimirlamay o'tirish (bu holat oldin ham shunday edi —
+>   avtomatik yangilash umuman yo'q).
+> - **Qoplanmagan:** boshqa foydalanuvchi yoki fon jarayoni (sinxronizatsiya,
+>   cron) yozgan ma'lumot TTL tugaguncha ko'rinmaydi.
+>
+> Misol: 10:00:00 da kassir 3 000 000 kirim yozadi; buxgalter 09:59:55 da
+> hisobotlarda bo'lib, 10:00:05 da o'sha sahifaga qaytsa — eski suratni
+> ko'radi. Shu sabab `transactions` TTL'i qisqaroq (15 s) qilingan.
+> Kerak bo'lsa uni pasaytirish yoki ko'tarish bitta o'zgarmas son:
+> `lib/transactionsClient.ts` dagi `TTL_MS`.
 
 ### 4.5. `/api/pupils?light=1`
 

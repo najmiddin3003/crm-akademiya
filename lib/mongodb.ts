@@ -219,12 +219,18 @@ export async function ensureIndexes(): Promise<Db> {
   if (indexesEnsured) return db;
   indexesEnsured = true;
 
+  // TARTIB MUHIM: tekshiruv `createAllIndexes` dan OLDIN bo'lishi SHART.
+  // Aks holda tekshiruv O'ZIMIZ endi jo'natgan `pupils.createIndex` ning
+  // natijasini ko'radi va yangi bazada ham "indekslangan" deb xulosa qilib,
+  // kutish kafolatini buzadi.
+  const indexed = await alreadyIndexed(db);
+
   const work = createAllIndexes(db).catch((e) => {
     indexesEnsured = false; // keyingi so'rov qayta urinsin
     throw e;
   });
 
-  if (await alreadyIndexed(db)) {
+  if (indexed) {
     // Fonda — natijasini kutmaymiz, lekin xatosi yutilib ketmasin.
     void work.catch((e) => console.error("[mongodb] indekslarni tekshirishda xatolik:", e));
     return db;
