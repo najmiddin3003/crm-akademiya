@@ -314,7 +314,7 @@ haqiqatan statik ro'yxatlarga arziydi, ular esa allaqachon klient keshida.
 
 ## 6. Qolgan ish
 
-### 6.1. Region — SAYT VIRJINIYADA, BAZA SINGAPURDA edi (tuzatildi)
+### 6.1. Region — TUZATILDI va o'lchov bilan tasdiqlandi
 
 > **Diqqat: bu bandning oldingi tahriri NOTO'G'RI edi.** Unda "sayt
 > Vercel'da joylashmagan" deb yozilgan, chunki tekshiruv ulangan
@@ -387,6 +387,34 @@ va 3 ta ketma-ket baza so'rovi qiladi:
 
 Ya'ni bu bitta konfiguratsiya qatori bu hujjatdagi barcha kod
 optimizatsiyalaridan ko'ra ko'proq beradi.
+
+**DEPLOY QILINDI VA O'LCHANDI (2026-08-31).** Natija kutilganidan yaxshi:
+
+```
+funksiya : sin1 (Singapur)          — x-vercel-id: hkg1::sin1::...
+issiq so'rov, bazaga tegadigan : 352 ms
+issiq so'rov, bazaga tegmaydigan: 353 ms
+--------------------------------------------
+BITTA BAZA AMALI               : ~0 ms
+```
+
+Ya'ni **215 ms dan o'lchab bo'lmaydigan darajaga** tushdi. Qolgan ~350 ms —
+o'lchayotgan kompyuterdan Gonkong edge'igacha bo'lgan masofa, saytning
+narxi emas.
+
+Yo'l-yo'lakay: bazaga tegmaydigan so'rov ham 505 → 346 ms ga tushdi,
+chunki funksiya endi edge'ga yaqinroq.
+
+> **Diqqat — o'lchaganda ADASHMANG.** Birinchi o'lchovda "146 ms" chiqqan
+> edi va bu chalg'ituvchi: u SOVUQ START narxi edi. Vercel funksiyasi
+> nolga tushadi, yangi nusxa esa Mongo ulanishini noldan ochadi (TCP +
+> TLS + autentifikatsiya). Ketma-ket 12 ta so'rov yuborilganda 1-si
+> 1 470 ms, qolganlari ~360 ms bo'ldi. Shuning uchun o'lchashdan oldin
+> bir necha so'rov bilan isitish shart.
+
+**Endi nima qoldi:** sovuq start. Kam trafikli sahifada birinchi so'rov
+~1.1 soniya qo'shimcha to'laydi — bu region emas, serverless tabiati.
+
 
 **Deploy'dan keyin TEKSHIRING** — taxmin qolmasin:
 
