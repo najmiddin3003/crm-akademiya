@@ -7,7 +7,6 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useGroups } from "@/hooks/useGroups";
 import { useTeachers } from "@/hooks/useTeachers";
 import type { Group } from "@/lib/groups";
-import type { TransactionEntry } from "@/lib/transactionEntries";
 
 // Hisobotlar → O'quv markazga ishlab berilgan (href /reports-served).
 // Referensdagi sarlavha: "O'qituvchilar oylik to'lov analitikasi".
@@ -25,7 +24,9 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 // kelardi.
 //
 // HOZIR: summa HAQIQATDA TO'LANGAN pul — `transaction_entries` dagi kirim
-// yozuvlari (/api/transaction-entries?txType=payIn&excludeCancelled=1).
+// yozuvlari, o'qituvchi bo'yicha yig'ilgan holda
+// (/api/transaction-entries/served-summary — yig'indini Mongo hisoblaydi;
+// ilgari bu yerga 18 757 ta to'liq hujjat, ~9.0 MB tushardi).
 // Har bir kirim yozuvida `teacherName` bor — bu "shu to'lov qaysi
 // o'qituvchining oyligiga tegishli" degani (lib/transactionEntries.ts;
 // to'lov qabul qilinganda lib/teacherOfStudent.ts o'quvchining guruhi orqali
@@ -74,6 +75,12 @@ const nameKey = (v: unknown) => String(v ?? "").trim().toLowerCase();
  */
 const rosterSize = (g: Group): number => g.studentIds?.length ?? 0;
 
+/** /api/transaction-entries/served-summary javobidagi qator. */
+interface ServedRow {
+  teacherName: string;
+  amount: number;
+}
+
 interface Row {
   name: string;
   groups: number;
@@ -85,7 +92,7 @@ interface Row {
 export default function Page() {
   const { groups, loading: groupsLoading } = useGroups();
   const { names: teacherNames } = useTeachers();
-  const [entries, setEntries] = useState<TransactionEntry[]>([]);
+  const [servedRows, setServedRows] = useState<ServedRow[]>([]);
   const [entriesLoading, setEntriesLoading] = useState(true);
   const [teacher, setTeacher] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>(currentMonth);
@@ -93,46 +100,49 @@ export default function Page() {
   const [pageSize, setPageSize] = useState(50);
 
   // Bekor qilingan yozuv tushumga qo'shilmaydi — /api/reports/balance va
-  // /api/employee-salary-summary dagi bilan bir xil qoida.
+  // /api/employee-salary-summary dagi bilan bir xil qoida (endi u shart
+  // server tomonda, served-summary route'ida qo'llanadi).
+  //
+  // Sana oralig'i endi SERVERGA uzatiladi, ya'ni oraliq o'zgarganda yangi
+  // so'rov ketadi. Bu arzon: javob ~45 qator (~2 KB), ilgari esa oraliq
+  // brauzerdagi 18 757 qatorli massiv ustidan filtrlanardi.
+  // Spinner FAQAT birinchi yuklashda: oraliq o'zgarganda jadval eski
+  // raqamlarni ~180 ms ushlab turadi va joyida yangilanadi. Ilgari oraliq
+  // almashtirish umuman so'rovsiz edi (brauzerdagi massiv filtrlanardi),
+  // shuning uchun bu yerda spinner chaqnashi orqaga qadam bo'lardi.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/transaction-entries?txType=payIn&excludeCancelled=1")
+    const qs = new URLSearchParams();
+    if (dateRange.start) qs.set("from", toIso(dateRange.start));
+    if (dateRange.end) qs.set("to", toIso(dateRange.end));
+    fetch(`/api/transaction-entries/served-summary?${qs}`)
       .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setEntries(d.entries as TransactionEntry[]); })
+      .then((d) => { if (!cancelled && d.ok) setServedRows(d.rows as ServedRow[]); })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setEntriesLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [dateRange]);
 
   const loading = groupsLoading || entriesLoading;
-
-  // Oraliqqa tushgan kirimlar. Oraliq tozalangan bo'lsa — hamma yozuv.
-  const rangeEntries = useMemo(() => {
-    const from = dateRange.start ? toIso(dateRange.start) : "";
-    const to = dateRange.end ? toIso(dateRange.end) : "";
-    return entries.filter((e) => {
-      const d = String(e.date ?? "");
-      if (!d) return false;
-      if (from && d < from) return false;
-      if (to && d > to) return false;
-      return true;
-    });
-  }, [entries, dateRange]);
 
   // `teacherName` — ixtiyoriy maydon: u qo'shilishidan oldingi yozuvlarda
   // yo'q. Agar oraliqdagi HECH BIR to'lovda o'qituvchi ko'rsatilmagan bo'lsa,
   // hech kimga 0 yozib bo'lmaydi — 0 "hech kim to'lamagan" degan da'vo,
   // haqiqat esa "bog'lanish saqlanmagan". Bunday holda ustun "—" bo'ladi.
   const attributed = useMemo(
-    () => rangeEntries.filter((e) => nameKey(e.teacherName) !== ""),
-    [rangeEntries],
+    () => servedRows.filter((r) => nameKey(r.teacherName) !== ""),
+    [servedRows],
   );
   const hasAttribution = attributed.length > 0;
 
+  // Server XOM `teacherName` bo'yicha guruhladi; bu yerdagi fold katta-kichik
+  // harf va ortiqcha bo'shliq farq qiladigan yozuvlarni birlashtiradi —
+  // qoida guruhlar jadvalidagi ismlar bilan bir xil bo'lishi uchun shu yerda.
   const earnedByTeacher = useMemo(() => {
     const map = new Map<string, number>();
-    for (const e of attributed) {
-      const k = nameKey(e.teacherName);
-      map.set(k, (map.get(k) ?? 0) + (e.amount || 0));
+    for (const r of attributed) {
+      const k = nameKey(r.teacherName);
+      map.set(k, (map.get(k) ?? 0) + (r.amount || 0));
     }
     return map;
   }, [attributed]);
@@ -140,8 +150,8 @@ export default function Page() {
   // O'qituvchisi ko'rsatilmagan kirimlar jadvalga tushmaydi — summani
   // yashirib qo'ymaslik uchun pastda alohida ko'rsatiladi.
   const unattributedTotal = useMemo(
-    () => rangeEntries.filter((e) => nameKey(e.teacherName) === "").reduce((s, e) => s + (e.amount || 0), 0),
-    [rangeEntries],
+    () => servedRows.filter((r) => nameKey(r.teacherName) === "").reduce((s, r) => s + (r.amount || 0), 0),
+    [servedRows],
   );
 
   const rows = useMemo<Row[]>(() => {
@@ -160,7 +170,7 @@ export default function Page() {
       row.groups += 1;
       row.students += rosterSize(g);
     }
-    for (const e of attributed) take(String(e.teacherName ?? ""));
+    for (const r of attributed) take(String(r.teacherName ?? ""));
 
     for (const [k, row] of byKey) {
       if (hasAttribution) row.earned = earnedByTeacher.get(k) ?? 0;
