@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONTROL_CLS, ROW_CLS_TIGHT, RowChevron, RowLabel } from "@/components/orders/FormRow";
 
 export interface StudentSearchSelectProps {
@@ -35,7 +35,14 @@ export interface StudentSearchSelectProps {
   /**
    * Bir vaqtda ko'rsatiladigan maksimal qator. Ro'yxat uzun bo'lsa (masalan
    * tizimdagi barcha odamlar) hammasini DOM'ga chizish shart emas — qolganini
-   * qidiruv orqali topiladi. Berilmasa cheklov yo'q.
+   * qidiruv orqali topiladi.
+   *
+   * STANDART 50. Ilgari standart qiymat "cheklovsiz" edi va 19 ta
+   * chaqiruvchidan faqat BITTASI limit berardi — qolgan hammasi 6 732
+   * o'quvchini bitta renderda DOM'ga chizardi: har qator ~7 element, ya'ni
+   * ~67 000 tugun, va qidiruv oynasidagi HAR BOSISHDA qaytadan. Ro'yxat 50
+   * dan uzun bo'lsa pastda "Yana N ta — qidiruvdan foydalaning" chiqadi,
+   * qidiruv esa BUTUN ro'yxat bo'yicha ketadi, ya'ni yozuv "yo'qolmaydi".
    */
   limit?: number;
 }
@@ -54,7 +61,7 @@ export default function StudentSearchSelect({
   trailingOf,
   disabledOptions,
   disabledHint,
-  limit,
+  limit = 50,
 }: StudentSearchSelectProps) {
   const isDisabled = (name: string) => Boolean(disabledOptions?.includes(name));
   const [open, setOpen] = useState(false);
@@ -82,12 +89,19 @@ export default function StudentSearchSelect({
   };
   const q = query.trim().toLowerCase();
   const qDigits = query.replace(/\D/g, "");
-  const filtered = options.filter((o) => {
-    if (!q) return true;
-    const hay = haystackOf(o);
-    if (hay.toLowerCase().includes(q)) return true;
-    return qDigits.length >= 3 && hay.replace(/\D/g, "").includes(qDigits);
-  });
+  // Ro'yxat YOPIQ bo'lsa filtrlash umuman bajarilmaydi. Ilgari u render
+  // tanasida shartsiz turardi, ya'ni ota drawer'dagi har qanday o'zgarish
+  // (summa yozish, sana tanlash) 6 732 ta variantni qaytadan skanerlardi.
+  const filtered = useMemo(() => {
+    if (!open) return [];
+    return options.filter((o) => {
+      if (!q) return true;
+      const hay = haystackOf(o);
+      if (hay.toLowerCase().includes(q)) return true;
+      return qDigits.length >= 3 && hay.replace(/\D/g, "").includes(qDigits);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, options, q, qDigits, subtitleOf]);
   const shown = limit && filtered.length > limit ? filtered.slice(0, limit) : filtered;
   const hidden = filtered.length - shown.length;
 

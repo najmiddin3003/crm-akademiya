@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 
 // Umumiy toast (bildirishnoma) tizimi — komponent bir marta yozilgan, butun
 // ilova bo'ylab useToast() orqali props kabi chaqiriladi (showSuccess/showError).
@@ -45,8 +45,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showSuccess = useCallback((message: string) => push("success", message), [push]);
   const showError = useCallback((message: string) => push("error", message), [push]);
 
+  // Kontekst qiymati BARQAROR bo'lishi shart. Ilgari bu yerda obyekt
+  // literali turardi, ya'ni ToastProvider har render bo'lganda yangi
+  // qiymat tarqalardi — va u `toasts` holati o'zgarganda render bo'ladi:
+  // bir marta toast chiqqanda, yana bir marta 3.5 s dan keyin o'chganda.
+  // Natijada HAR BIR toast uchun 109 ta useToast() chaqiruvchisi (ular
+  // orasida sahifalarning o'zi — StudentsListPage, ParentsPage,
+  // CashboxesPage) ikki marta qayta render bo'lardi. showSuccess/showError
+  // allaqachon barqaror useCallback edi, ya'ni ularni ushlab turgan yagona
+  // narsa shu literal edi.
+  const value = useMemo(() => ({ showSuccess, showError }), [showSuccess, showError]);
+
   return (
-    <ToastContext.Provider value={{ showSuccess, showError }}>
+    <ToastContext.Provider value={value}>
       {children}
 
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">

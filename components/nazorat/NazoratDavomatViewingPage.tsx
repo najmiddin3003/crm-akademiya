@@ -37,6 +37,8 @@ export default function NazoratDavomatViewingPage() {
   const { students, loading: studentsLoading } = useStudents({ light: true });
 
   const [records, setRecords] = useState<TurnstileIoRecord[]>([]);
+  // Pastdagi <select> variantlari faqat ro'yxat ochilganda chiziladi.
+  const [optionsReady, setOptionsReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<Tab>("keldi");
@@ -113,13 +115,21 @@ export default function NazoratDavomatViewingPage() {
             </div>
           ) : (
             <div className="relative">
+              {/* Variantlar RO'YXATI faqat ro'yxat ochilganda chiziladi.
+                  Ilgari 6 732 ta <option> (+ shuncha matn tuguni) sahifa
+                  birinchi render bo'lgandayoq DOM'ga tushardi — foydalanuvchi
+                  ro'yxatga tegmasa ham. mousedown ochilishdan OLDIN
+                  ishlaydi, focus esa klaviatura yo'lini qoplaydi, shuning
+                  uchun ro'yxat ochilganda variantlar joyida bo'ladi. */}
               <select
                 defaultValue=""
+                onMouseDown={() => setOptionsReady(true)}
+                onFocus={() => setOptionsReady(true)}
                 onChange={(e) => e.target.value && router.push(`/nazorat-davomat/viewing?studentId=${e.target.value}`)}
                 className="filter-select h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">O&apos;quvchi</option>
-                {students.map((s) => (
+                {optionsReady && students.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
