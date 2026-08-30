@@ -21,7 +21,6 @@ import {
   Printer,
   UserCheck,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import Link from "next/link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, {
@@ -1004,8 +1003,12 @@ export default function CashboxesPage() {
     }
   }
 
-  function exportEntriesExcel() {
+  async function exportEntriesExcel() {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const rows = filteredEntries.map((e) =>
         Object.fromEntries(exportCols.map((c) => [c.label, c.get(e)])),
       );

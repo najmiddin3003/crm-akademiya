@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Filter, Settings2, SlidersHorizontal, Trash2, FileText, FileSpreadsheet, Check } from "lucide-react";
-import * as XLSX from "xlsx";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
@@ -173,8 +172,12 @@ export default function BonusesPage() {
     }
   }
 
-  function exportExcel() {
+  async function exportExcel() {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const data = filtered.map((b) => Object.fromEntries(exportCols.map((c) => [c.label, c.get(b)])));
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();

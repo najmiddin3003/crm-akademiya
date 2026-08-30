@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 
 // Imtihon bo'limidagi Excel/CSV import-eksporti uchun umumiy yordamchilar.
 // Referens HTML'da bu SheetJS'ni CDN'dan yuklardi; bu loyihada `xlsx` paketi
@@ -63,7 +62,10 @@ export function readFileRows(file: File): Promise<string[][]> {
     return file.text().then((t) => parseCsv(t));
   }
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
-    return file.arrayBuffer().then((buf) => {
+    return file.arrayBuffer().then(async (buf) => {
+      // xlsx faqat .xlsx/.xls tanlanganda yuklanadi — .csv yo'li unga
+      // umuman tegmaydi, va sahifa ochilishida ham u kerak emas.
+      const XLSX = await import("xlsx");
       const wb = XLSX.read(new Uint8Array(buf), { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       return XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" }) as string[][];

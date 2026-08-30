@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import YearPicker from "./reports/YearPicker";
@@ -80,8 +79,12 @@ export default function PnlReportsPage() {
     none: "",
   };
 
-  function exportExcel() {
+  async function exportExcel() {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const header = ["Kategoriya", ...monthLabels, ...(month ? [] : ["Jami"])];
       const data = rows.map((r) => {
         const total = r.values.reduce((s, v) => s + v, 0);

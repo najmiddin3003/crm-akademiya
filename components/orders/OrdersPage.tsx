@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Settings, Share2, XCircle } from "lucide-react";
-import * as XLSX from "xlsx";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -244,8 +243,12 @@ export default function OrdersPage() {
     }
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const cols: { key: keyof Order; label: string }[] = [
         { key: "id", label: "ID" },
         { key: "name", label: "O'quvchini ismi" },

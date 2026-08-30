@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileSpreadsheet, FileText, MoreVertical } from "lucide-react";
-import * as XLSX from "xlsx";
 import DonutChart from "@/components/ui/DonutChart";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
@@ -165,8 +164,12 @@ export default function FinanceAnalyticsPage() {
     }
   }
 
-  function exportExcel() {
+  async function exportExcel() {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const rowsOut = slices.map((s) => ({ Turlari: s.label, Summa: s.value }));
       const worksheet = XLSX.utils.json_to_sheet(rowsOut);
       const workbook = XLSX.utils.book_new();

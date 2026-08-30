@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Download, BarChart3, List } from "lucide-react";
-import * as XLSX from "xlsx";
 import DonutChart from "@/components/ui/DonutChart";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -102,8 +101,12 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
 
   // Eksport — ekrandagi AYNAN shu raqamlar: 12 oylik jadval har doim, va
   // grafik ko'rinishida ko'rinadigan taqsimotlar alohida varaqlarda.
-  function exportExcel() {
+  async function exportExcel() {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
 
       const monthRows = monthStats.map((m) => ({

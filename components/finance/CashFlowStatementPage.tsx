@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import YearPicker from "./reports/YearPicker";
@@ -153,8 +152,12 @@ export default function CashFlowStatementPage() {
   const expenseRows = (visible.some((v) => (v.expense[OTHER_KEY] || 0) !== 0) ? [...expenseCats, OTHER_KEY] : expenseCats)
     .map((key) => ({ key, label: catLabel(key, expenseCats) }));
 
-  function exportExcel() {
+  async function exportExcel() {
     try {
+      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
+      // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
+      const XLSX = await import("xlsx");
       const sheetRows: Record<string, string | number>[] = [];
       function pushRow(label: string, values: (number | string)[]) {
         const row: Record<string, string | number> = { Kategoriya: label };
