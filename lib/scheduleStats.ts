@@ -16,7 +16,7 @@
 // ko'rinadi (loyihaning "soxta son yozilmaydi" qoidasi).
 
 import type { Order } from "@/lib/ordersData";
-import type { Pupil } from "@/lib/pupilsData";
+import type { PupilListItem } from "@/lib/pupilsData";
 import { pupilStatusOf } from "@/lib/pupilsData";
 
 export interface ScheduleKpi {
@@ -43,7 +43,7 @@ export interface ScheduleKpiInput {
   /** /api/orders — MongoDB `orders` (barcha buyurtmalar). */
   orders: Order[];
   /** /api/pupils — MongoDB `pupils` (barcha o'quvchilar). */
-  pupils: Pupil[];
+  pupils: PupilListItem[];
   /** /api/groups dagi guruhlar soni. */
   groupCount: number;
   /** Birinchi darsga yozilganlar soni (/first-lessons bilan bir xil shart). */

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cachedGet, invalidateCached, peekCached } from "@/lib/clientCache";
-import type { Pupil } from "@/lib/pupilsData";
+import type { PupilListItem } from "@/lib/pupilsData";
 import { studentRowFromPupil, type StudentRow } from "@/lib/studentsData";
 
 // O'quvchilarning YAGONA klient manbasi — /api/pupils (MongoDB `pupils`).
@@ -23,7 +23,7 @@ const KEY = "pupils:";
 const TTL_MS = 30_000;
 
 /** Ro'yxatni keshdan yoki tarmoqdan oladi. */
-export function loadPupilsCached(light = false): Promise<Pupil[]> {
+export function loadPupilsCached(light = false): Promise<PupilListItem[]> {
   return cachedGet(KEY + (light ? "light" : "full"), TTL_MS, () =>
     fetch(light ? "/api/pupils?light=1" : "/api/pupils")
       .then((r) => r.json())
@@ -32,7 +32,7 @@ export function loadPupilsCached(light = false): Promise<Pupil[]> {
         // `enrollOrderInGroup` "o'quvchi topilmadi" deb TAKROR yozuv
         // yaratib yuborardi, ustiga bo'sh natija keshlanib qolardi.
         if (!d?.ok) throw new Error("pupils: ok emas");
-        return d.pupils as Pupil[];
+        return d.pupils as PupilListItem[];
       }));
 }
 
@@ -55,8 +55,8 @@ export function useStudents(options?: { light?: boolean }) {
   // Kesh tayyor bo'lsa — birinchi renderdayoq to'liq ro'yxat bilan
   // boshlanadi, ya'ni bo'sh jadval "chaqnab" o'tmaydi.
   const cacheKey = KEY + (light ? "light" : "full");
-  const [pupils, setPupils] = useState<Pupil[]>(() => peekCached<Pupil[]>(cacheKey) ?? []);
-  const [loading, setLoading] = useState(() => peekCached<Pupil[]>(cacheKey) === null);
+  const [pupils, setPupils] = useState<PupilListItem[]>(() => peekCached<PupilListItem[]>(cacheKey) ?? []);
+  const [loading, setLoading] = useState(() => peekCached<PupilListItem[]>(cacheKey) === null);
 
   useEffect(() => {
     let cancelled = false;

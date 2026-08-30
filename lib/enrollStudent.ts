@@ -1,5 +1,5 @@
 import type { Order } from "@/lib/ordersData";
-import { pupilFullName, type Pupil } from "@/lib/pupilsData";
+import { pupilFullName, type Pupil, type PupilListItem } from "@/lib/pupilsData";
 import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 
 // Lidni (buyurtmani) haqiqiy o'quvchiga aylantirib guruhga yozish.
@@ -11,7 +11,7 @@ import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 const digitsOf = (s: string) => (s || "").replace(/\D/g, "");
 
 /** Buyurtmadagi o'quvchini `pupils` ichidan topadi (telefon, bo'lmasa ism). */
-export function findPupilForOrder(order: Order, pupils: Pupil[]): Pupil | undefined {
+export function findPupilForOrder(order: Order, pupils: PupilListItem[]): PupilListItem | undefined {
   const phone = digitsOf(order.phone);
   if (phone) {
     const byPhone = pupils.find((p) => digitsOf(p.phone) === phone);
@@ -24,7 +24,7 @@ export function findPupilForOrder(order: Order, pupils: Pupil[]): Pupil | undefi
 export interface EnrollResult {
   ok: boolean;
   error?: string;
-  pupil?: Pupil;
+  pupil?: PupilListItem;
   /** O'quvchi shu chaqiruvda yangi yaratilgan bo'lsa true. */
   created?: boolean;
 }
@@ -42,7 +42,7 @@ export interface EnrollResult {
 export async function enrollOrderInGroup(
   order: Order,
   groupId: number,
-  knownPupils?: Pupil[],
+  knownPupils?: PupilListItem[],
 ): Promise<EnrollResult> {
   let pupils = knownPupils;
   if (!pupils) {

@@ -92,6 +92,31 @@ export interface Pupil {
   parentPasswordHash?: string;
 }
 
+/**
+ * RO'YXAT rejimidagi o'quvchi — GET /api/pupils qaytaradigan maydonlar.
+ *
+ * Ro'yxat javobi to'liq hujjat EMAS: `pupils` da 6 732 yozuv bor, to'liq
+ * hujjatlar ~3.6 MB, shuning uchun route proyeksiya qo'llaydi
+ * (app/api/pupils/route.ts → MEDIUM_PROJECTION). Bu tip aynan o'sha
+ * proyeksiyaning aksi — ikkalasi BIRGA o'zgartirilsin.
+ *
+ * Ro'yxatda YO'Q maydon kerak bo'lsa (masalan `email`, `note`, `debtLimit`)
+ * — bitta o'quvchini GET /api/pupils/:id orqali oling, u to'liq `Pupil`
+ * qaytaradi. Shu tip tufayli yo'q maydonni o'qish kompilyatsiya xatosi
+ * bo'ladi, jimgina bo'sh qiymat emas.
+ */
+export type PupilListItem = Pick<
+  Pupil,
+  | "id" | "firstName" | "lastName" | "phone"
+  | "balance" | "coin" | "createdAt" | "moderator" | "source" | "category"
+  | "status" | "statusReason" | "statusChangedAt"
+  | "paymentDate" | "birthDate"
+  | "fatherName" | "fatherPhone" | "fatherWork"
+  | "motherName" | "motherPhone" | "motherWork"
+  | "address" | "addresses"
+>;
+
+
 export interface PupilAddress {
   id: number;
   /** Manzil nomi/matni. */

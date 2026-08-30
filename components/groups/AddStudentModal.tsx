@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import type { Pupil } from "@/lib/pupilsData";
+import type { Pupil, PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 
 // "O'quvchini tanlang" modali (skrinshot 5). Serverdagi o'quvchilar
@@ -20,7 +20,7 @@ export interface AddStudentModalProps {
 export default function AddStudentModal({ groupId, existingIds, onClose, onAdded }: AddStudentModalProps) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
-  const [pupils, setPupils] = useState<Pupil[]>([]);
+  const [pupils, setPupils] = useState<PupilListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
   const [saving, setSaving] = useState(false);

@@ -20,7 +20,7 @@ import PanelDaysField from "@/components/orders/PanelDaysField";
 import SmsModal from "@/components/orders/SmsModal";
 import { enrollOrderInGroup, findPupilForOrder } from "@/lib/enrollStudent";
 import type { Group } from "@/lib/groups";
-import type { Pupil } from "@/lib/pupilsData";
+import type { PupilListItem } from "@/lib/pupilsData";
 import {
   FIRST_LESSON_STATUSES,
   LESSON_DAYS,
@@ -156,7 +156,7 @@ export default function FirstLessonsPage() {
   const [printFor, setPrintFor] = useState<Order | null>(null);
 
   // "Guruhga qo'shish" va "Profilni ochish" uchun o'quvchilar ro'yxati.
-  const [pupils, setPupils] = useState<Pupil[]>([]);
+  const [pupils, setPupils] = useState<PupilListItem[]>([]);
   useEffect(() => {
     let cancelled = false;
     // findPupilForOrder faqat telefon va ismga qaraydi, keyin pupil.id

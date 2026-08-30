@@ -1,4 +1,4 @@
-import type { Pupil, PupilStatus } from "@/lib/pupilsData";
+import type { PupilListItem, PupilStatus } from "@/lib/pupilsData";
 import { pupilFullName, pupilStatusOf } from "@/lib/pupilsData";
 
 // O'quvchilar → Ota-ona (sidebar: O'quvchilar > Ota-ona, href /parents).
@@ -68,7 +68,7 @@ function clean(v: string | undefined): string {
  *                 pupils.balance maydoni HECH QACHON yangilanmaydi, shuning
  *                 uchun u o'qilmaydi.
  */
-export function buildParentRows(pupils: Pupil[], balances: Record<string, number>): ParentRow[] {
+export function buildParentRows(pupils: PupilListItem[], balances: Record<string, number>): ParentRow[] {
   const rows: ParentRow[] = [];
   for (const p of pupils) {
     const pupilName = pupilFullName(p);

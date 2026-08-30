@@ -14,7 +14,7 @@
 // maydonlar BO'SH turadi (soxta qiymat yozilmaydi).
 
 import type { Group } from "@/lib/groups";
-import type { Pupil, PupilStatus } from "@/lib/pupilsData";
+import type { PupilListItem, PupilStatus } from "@/lib/pupilsData";
 import { pupilFullName, pupilStatusOf, PUPIL_STATUSES } from "@/lib/pupilsData";
 
 export interface StudentRow {
@@ -59,7 +59,7 @@ export interface EnrichedStudent extends StudentRow {
 }
 
 /** MongoDB'dagi o'quvchi hujjatidan jadval qatori. */
-export function studentRowFromPupil(p: Pupil): StudentRow {
+export function studentRowFromPupil(p: PupilListItem): StudentRow {
   return {
     id: p.id,
     name: pupilFullName(p),

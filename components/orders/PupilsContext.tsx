@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import type { NewPupilValues, Pupil } from "@/lib/pupilsData";
+import type { NewPupilValues, Pupil, PupilListItem } from "@/lib/pupilsData";
 import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 
 // Shared pupils store for the orders-list route segment (mounted alongside
@@ -13,7 +13,7 @@ import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 // searchable on the other.
 
 interface PupilsContextValue {
-  pupils: Pupil[];
+  pupils: PupilListItem[];
   loading: boolean;
   createPupil: (values: NewPupilValues) => Promise<Pupil | null>;
 }
@@ -21,7 +21,7 @@ interface PupilsContextValue {
 const PupilsContext = createContext<PupilsContextValue | null>(null);
 
 export function PupilsProvider({ children }: { children: ReactNode }) {
-  const [pupils, setPupils] = useState<Pupil[]>([]);
+  const [pupils, setPupils] = useState<PupilListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
