@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateTransactionTypes } from "@/hooks/useTransactionTypes";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
@@ -53,6 +54,7 @@ export default function TransactionTypesPage() {
         setDeleting(false);
         return;
       }
+      invalidateTransactionTypes();
       setTypes((prev) => prev.filter((x) => x.id !== t.id));
       showSuccess("Tranzaksiya turi o'chirildi");
     } catch {

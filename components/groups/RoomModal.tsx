@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateRooms } from "@/hooks/useRooms";
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -45,6 +46,9 @@ export default function RoomModal({
         setSaving(false);
         return;
       }
+      // Kesh bekor qilinadi: keyin mount bo'ladigan iste'molchilar
+      // yangi ro'yxatni oladi (lib/referenceCache.ts).
+      invalidateRooms();
       onSaved(data.room as Room);
       showSuccess(room ? "Xona yangilandi" : "Xona qo'shildi");
       onClose();

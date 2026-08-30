@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateEduCategories } from "@/hooks/useEduCategories";
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -43,6 +44,7 @@ export default function EduCategoriesPage() {
         setDeleting(false);
         return;
       }
+      invalidateEduCategories();
       setCategories((prev) => prev.filter((x) => x.id !== c.id));
       showSuccess("Kategoriya o'chirildi");
     } catch {

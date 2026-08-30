@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateBranches } from "@/hooks/useBranches";
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -67,6 +68,9 @@ export default function BranchesPage() {
         showError(data.error || "Saqlanmadi");
         return;
       }
+      // Kesh bekor qilinadi: keyin mount bo'ladigan iste'molchilar
+      // yangi ro'yxatni oladi (lib/referenceCache.ts).
+      invalidateBranches();
       if (editing) {
         setBranches((prev) => prev.map((x) => (x.id === data.branch.id ? data.branch : x)));
         showSuccess("Filial yangilandi");
@@ -92,6 +96,7 @@ export default function BranchesPage() {
         showError(data.error || "O'chirilmadi");
         return;
       }
+      invalidateBranches();
       setBranches((prev) => prev.filter((x) => x.id !== deleteTarget.id));
       showSuccess("Filial o'chirildi");
     } catch {

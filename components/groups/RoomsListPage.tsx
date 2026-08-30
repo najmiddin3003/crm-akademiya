@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateRooms } from "@/hooks/useRooms";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
@@ -120,6 +121,7 @@ export default function RoomsListPage() {
         setDeleting(false);
         return;
       }
+      invalidateRooms();
       setRooms((prev) => prev.filter((x) => x.id !== r.id));
       showSuccess("Xona o'chirildi");
     } catch {

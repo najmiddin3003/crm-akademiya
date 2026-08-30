@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useReferenceList } from "@/hooks/useReferenceList";
+import { makeReferenceLoader, REF_KEYS, invalidateReference } from "@/lib/referenceCache";
 import type { TransactionType } from "@/lib/transactionTypes";
 
 // Tranzaksiya turlarining YAGONA klient manbasi — /api/transaction-types
@@ -10,18 +12,10 @@ import type { TransactionType } from "@/lib/transactionTypes";
 // `names` — BARCHA turlarning nomi (to'rtala tab), Kassalar sahifasidagi
 // "Tranzaksiya turi" filtri uchun. `namesOf(mainType)` — bitta tabniki,
 // masalan kirim oynasidagi "Tranzaksiya" ro'yxati uchun.
-export function useTransactionTypes() {
-  const [types, setTypes] = useState<TransactionType[]>([]);
-  const [loading, setLoading] = useState(true);
+const loadTransactionTypes = makeReferenceLoader<TransactionType>(REF_KEYS.transactionTypes, "/api/transaction-types", "types");
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/transaction-types")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setTypes(d.types); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+export function useTransactionTypes() {
+  const { items: types, loading } = useReferenceList(REF_KEYS.transactionTypes, loadTransactionTypes);
 
   // Tartib API'dagidek (id bo'yicha) qoladi — sahifada qaysi tur birinchi
   // tursa, tanlash ro'yxatida ham birinchi bo'ladi.
@@ -31,6 +25,11 @@ export function useTransactionTypes() {
   );
 
   return { types, names, loading };
+}
+
+/** Tranzaksiya turi qo'shilgan/o'zgartirilgan/o'chirilgandan keyin CHAQIRILSIN. */
+export function invalidateTransactionTypes(): void {
+  invalidateReference(REF_KEYS.transactionTypes);
 }
 
 /** Bitta tab ("kirim" | "chiqim" | "voucher" | "jarima") turlarining nomlari. */

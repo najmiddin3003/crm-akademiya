@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateEduCategories } from "@/hooks/useEduCategories";
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -41,6 +42,9 @@ export default function EduCategoryModal({
         setSaving(false);
         return;
       }
+      // Kesh bekor qilinadi: keyin mount bo'ladigan iste'molchilar
+      // yangi ro'yxatni oladi (lib/referenceCache.ts).
+      invalidateEduCategories();
       onSaved(data.category as EduCategory);
       showSuccess(category ? "Kategoriya yangilandi" : "Kategoriya qo'shildi");
       onClose();

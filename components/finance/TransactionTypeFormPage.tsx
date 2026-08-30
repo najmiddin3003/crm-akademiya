@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateTransactionTypes } from "@/hooks/useTransactionTypes";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
@@ -85,6 +86,9 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
         setSaving(false);
         return;
       }
+      // Kesh bekor qilinadi: keyin mount bo'ladigan iste'molchilar
+      // yangi ro'yxatni oladi (lib/referenceCache.ts).
+      invalidateTransactionTypes();
       showSuccess(typeId != null ? "Tranzaksiya turi yangilandi" : "Tranzaksiya turi qo'shildi");
       router.push("/finance-tx-types");
     } catch {

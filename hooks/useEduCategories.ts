@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useReferenceList } from "@/hooks/useReferenceList";
+import { makeReferenceLoader, REF_KEYS, invalidateReference } from "@/lib/referenceCache";
 import type { EduCategory } from "@/lib/eduCategories";
 
 // O'quv bo'limi → Kategoriya ro'yxatining YAGONA klient manbasi
@@ -8,24 +9,14 @@ import type { EduCategory } from "@/lib/eduCategories";
 // sahifasi o'qirdi; onlayn kurs g'ilofchisidagi "Kategoriya" select'i
 // ham shu yerdan oladi. Boshqa data hook'lar bilan bir xil qolip
 // (hooks/useBranches.ts).
+const loadEduCategories = makeReferenceLoader<EduCategory>(REF_KEYS.eduCategories, "/api/edu-categories", "categories");
+
 export function useEduCategories() {
-  const [categories, setCategories] = useState<EduCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/edu-categories")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && d.ok) setCategories(d.categories);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  const { items: categories, loading } = useReferenceList(REF_KEYS.eduCategories, loadEduCategories);
   return { categories, loading };
+}
+
+/** Yo'nalish qo'shilgan/o'zgartirilgan/o'chirilgandan keyin CHAQIRILSIN. */
+export function invalidateEduCategories(): void {
+  invalidateReference(REF_KEYS.eduCategories);
 }
