@@ -90,6 +90,61 @@ function StatCard({
   );
 }
 
+/**
+ * Kirim / chiqim / qoldiq — BITTA o'tishda.
+ *
+ * Ilgari bu funksiya komponent tanasida turardi. Modul darajasiga
+ * ko'chirildi, chunki komponent ichida e'lon qilingan funksiya har renderda
+ * YANGI bo'ladi va uni useMemo bog'liqligiga qo'shish memoizatsiyani bekor
+ * qilardi.
+ *
+ * amount === 0 ikkala tarafga ham qo'shilmaydi — eski filter juftligi
+ * ("> 0" va "< 0") bilan bir xil.
+ */
+function totals(rows: Transaction[]) {
+  let income = 0;
+  let expense = 0;
+  for (const t of rows) {
+    if (t.amount > 0) income += t.amount;
+    else expense -= t.amount;
+  }
+  return { income, expense, net: income - expense };
+}
+
+// Ro'yxatdagi turlar avvalgi tartibda, ulardan tashqarisi oxirida bitta
+// "Boshqa" qatorida — hech bir tranzaksiya tashlanmaydi, shuning uchun
+// yig'indi yuqoridagi karta bilan mos tushadi.
+function categoryBreakdown(rows: Transaction[], cats: string[], positive: boolean) {
+  const map: Record<string, number> = {};
+  for (const t of rows) {
+    if (positive ? t.amount <= 0 : t.amount >= 0) continue;
+    map[t.category] = (map[t.category] || 0) + Math.abs(t.amount);
+  }
+  const known = new Set(cats);
+  const other = Object.entries(map).reduce((s, [c, v]) => (known.has(c) ? s : s + v), 0);
+  const out = cats.map((c) => ({ label: c, amount: map[c] || 0 })).filter((r) => r.amount > 0);
+  if (other > 0) out.push({ label: otherLabel(cats), amount: other });
+  return out;
+}
+
+// Bir xil sabab: Sozlamalardan o'chirilgan to'lov turidagi pul ham
+// "To'lov usuli" taqsimotidan tushib qolmasligi kerak.
+function methodBreakdown(rows: Transaction[], positive: boolean, methods: { key: string; name: string }[]) {
+  const map: Record<string, number> = {};
+  for (const t of rows) {
+    if (positive ? t.amount <= 0 : t.amount >= 0) continue;
+    map[t.method] = (map[t.method] || 0) + Math.abs(t.amount);
+  }
+  const known = new Set(methods.map((m) => m.key));
+  const other = Object.entries(map).reduce((s, [k, v]) => (known.has(k) ? s : s + v), 0);
+  const out = methods.map((m) => ({ label: m.name, amount: map[m.key] || 0 })).filter((r) => r.amount > 0);
+  if (other > 0) out.push({ label: otherLabel(methods.map((m) => m.name)), amount: other });
+  return out;
+}
+
+const toSlices = (rows: { label: string; amount: number }[], offset = 0) =>
+  rows.map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[(i + offset) % CHART_COLORS.length] }));
+
 export default function FinanceReportsPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => monthToDateRange());
   const [cashboxId, setCashboxId] = useState("");
@@ -150,13 +205,8 @@ export default function FinanceReportsPage() {
     return transactions.filter((t) => matchesFilters(t, toIso(prevStart), toIso(prevEnd)));
   }, [transactions, dateRange, matchesFilters]);
 
-  function totals(rows: Transaction[]) {
-    const income = rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-    const expense = -rows.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
-    return { income, expense, net: income - expense };
-  }
-  const curTotals = totals(current);
-  const prevTotals = totals(previous);
+  const curTotals = useMemo(() => totals(current), [current]);
+  const prevTotals = useMemo(() => totals(previous), [previous]);
 
   function pctDelta(cur: number, prev: number): number | null {
     if (prev === 0) return cur === 0 ? null : 100;
@@ -166,56 +216,46 @@ export default function FinanceReportsPage() {
   const dailyPoints: DailyPoint[] = useMemo(() => {
     if (!dateRange.start || !dateRange.end) return [];
     const days = Math.round((dateRange.end.getTime() - dateRange.start.getTime()) / 86400000) + 1;
+    // BITTA o'tishda sana -> {kirim, chiqim}. Ilgari HAR KUN uchun butun
+    // ro'yxat qaytadan filtrlanardi (current.filter(t => t.date === iso),
+    // ustiga yana ikkita filter), ya'ni O(kun x tranzaksiya). Bir yillik
+    // oraliqda 21 921 qatorli to'plamda bu ~8 million solishtirish edi.
+    const byDay = new Map<string, { income: number; expense: number }>();
+    for (const t of current) {
+      let b = byDay.get(t.date);
+      if (!b) { b = { income: 0, expense: 0 }; byDay.set(t.date, b); }
+      if (t.amount > 0) b.income += t.amount;
+      else b.expense -= t.amount;
+    }
     return Array.from({ length: Math.max(days, 0) }, (_, i) => {
       const d = addDays(dateRange.start as Date, i);
       const iso = toIso(d);
-      const dayTx = current.filter((t) => t.date === iso);
-      const income = dayTx.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-      const expense = -dayTx.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+      const b = byDay.get(iso);
       const p = (n: number) => String(n).padStart(2, "0");
-      return { date: iso, label: `${p(d.getDate())}.${p(d.getMonth() + 1)}`, income, expense };
+      return { date: iso, label: `${p(d.getDate())}.${p(d.getMonth() + 1)}`, income: b?.income ?? 0, expense: b?.expense ?? 0 };
     });
   }, [current, dateRange]);
 
-  // Ro'yxatdagi turlar avvalgi tartibda, ulardan tashqarisi oxirida bitta
-  // "Boshqa" qatorida — hech bir tranzaksiya tashlanmaydi, shuning uchun
-  // yig'indi yuqoridagi karta bilan mos tushadi.
-  function categoryBreakdown(rows: Transaction[], cats: string[], positive: boolean) {
-    const map: Record<string, number> = {};
-    for (const t of rows) {
-      if (positive ? t.amount <= 0 : t.amount >= 0) continue;
-      map[t.category] = (map[t.category] || 0) + Math.abs(t.amount);
-    }
-    const known = new Set(cats);
-    const other = Object.entries(map).reduce((s, [c, v]) => (known.has(c) ? s : s + v), 0);
-    const out = cats.map((c) => ({ label: c, amount: map[c] || 0 })).filter((r) => r.amount > 0);
-    if (other > 0) out.push({ label: otherLabel(cats), amount: other });
-    return out;
-  }
-  // Bir xil sabab: Sozlamalardan o'chirilgan to'lov turidagi pul ham
-  // "To'lov usuli" taqsimotidan tushib qolmasligi kerak.
-  function methodBreakdown(rows: Transaction[], positive: boolean) {
-    const map: Record<string, number> = {};
-    for (const t of rows) {
-      if (positive ? t.amount <= 0 : t.amount >= 0) continue;
-      map[t.method] = (map[t.method] || 0) + Math.abs(t.amount);
-    }
-    const known = new Set(paymentMethods.map((m) => m.key));
-    const other = Object.entries(map).reduce((s, [k, v]) => (known.has(k) ? s : s + v), 0);
-    const out = paymentMethods.map((m) => ({ label: m.name, amount: map[m.key] || 0 })).filter((r) => r.amount > 0);
-    if (other > 0) out.push({ label: otherLabel(paymentMethods.map((m) => m.name)), amount: other });
-    return out;
-  }
 
-  const kirimRows = kirimMode === "category" ? categoryBreakdown(current, incomeCats, true) : methodBreakdown(current, true);
-  const chiqimRows = chiqimMode === "category" ? categoryBreakdown(current, expenseCats, false) : methodBreakdown(current, false);
+  // Quyidagilar ilgari render TANASIDA hisoblanardi — ya'ni HAR renderda,
+  // jumladan sof ko'rinish holatlari o'zgarganda ham (eksport menyusi,
+  // diagramma turi, kirim/chiqim rejimi) `current` bo'ylab besh-yetti marta
+  // to'liq yurardi. Endi ular faqat ma'lumot yoki tegishli rejim
+  // o'zgarganda qayta hisoblanadi.
+  const incomeByCat = useMemo(() => categoryBreakdown(current, incomeCats, true), [current, incomeCats]);
+  const expenseByCat = useMemo(() => categoryBreakdown(current, expenseCats, false), [current, expenseCats]);
+  const incomeByMethod = useMemo(() => methodBreakdown(current, true, paymentMethods), [current, paymentMethods]);
+  const expenseByMethod = useMemo(() => methodBreakdown(current, false, paymentMethods), [current, paymentMethods]);
 
-  const flowDonutRows = donutFlow === "income" ? categoryBreakdown(current, incomeCats, true) : categoryBreakdown(current, expenseCats, false);
-  const flowDonutSlices = flowDonutRows.map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[i % CHART_COLORS.length] }));
+  const kirimRows = kirimMode === "category" ? incomeByCat : incomeByMethod;
+  const chiqimRows = chiqimMode === "category" ? expenseByCat : expenseByMethod;
+
+  const flowDonutRows = donutFlow === "income" ? incomeByCat : expenseByCat;
+  const flowDonutSlices = useMemo(() => toSlices(flowDonutRows), [flowDonutRows]);
   const flowDonutTotal = flowDonutSlices.reduce((s, x) => s + x.value, 0);
 
-  const kirimStatSlices = categoryBreakdown(current, incomeCats, true).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[i % CHART_COLORS.length] }));
-  const chiqimStatSlices = categoryBreakdown(current, expenseCats, false).map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[(i + 1) % CHART_COLORS.length] }));
+  const kirimStatSlices = useMemo(() => toSlices(incomeByCat), [incomeByCat]);
+  const chiqimStatSlices = useMemo(() => toSlices(expenseByCat, 1), [expenseByCat]);
 
   if (loading) {
     return <div className="p-5"><SpinnerBlock /></div>;
