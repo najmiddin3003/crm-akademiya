@@ -71,13 +71,33 @@ export async function GET(req: Request) {
 
   // Bo'sh satr ham HAQIQIY qiymat ("" — oddiy yozuv), lekin interfeysda u
   // "filtr yo'q" degani. Klientdagi `if (status && ...)` bilan bir xil.
+  //
+  // Vergul bilan bir nechta holat berish mumkin: `?status=cancelled,waiting`.
+  // Bu Xodim profilidagi "To'lanmagan tarixi" uchun kerak — u yerda klient
+  // `e.status === "cancelled" || e.status === "waiting"` deb tekshiradi.
   const status = sp.get("status");
   if (status) {
-    if (!STATUSES.includes(status)) {
+    const parts = status.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0 || parts.some((p) => !STATUSES.includes(p))) {
       return NextResponse.json({ ok: false, error: "Noto'g'ri status" }, { status: 400 });
     }
-    filter.status = status;
+    filter.status = parts.length > 1 ? { $in: parts } : parts[0];
   }
+
+  // AYNAN TENGLIK bo'yicha o'quvchi filtri — yuqoridagi `studentName` dan
+  // FARQ QILADI va uni qayta ishlatib bo'lmaydi.
+  //
+  // `?studentName=` nameFilter() dan o'tadi: chetlarini kesadi va
+  // katta-kichik harfni farqlamaydi. Xodim profilidagi jadval filtri esa
+  // klientda `e.studentName === fStudent` — XOM satrni aynan solishtiradi.
+  // Farq nazariy emas: bazadagi 13 369 yozuvning 5 371 tasida `studentName`
+  // chetida probel bor, va 2 818 ta xom ismning 1 162 tasida ikkala qoida
+  // BOSHQA-BOSHQA qatorlar to'plamini qaytaradi (eng yomoni "Ismoilova
+  // ezoza": aynan tenglikda 1 qator, regexda 7 qator).
+  //
+  // Shu bois bu yerda qiymat O'ZGARTIRILMASDAN qo'llanadi.
+  const studentNameExact = sp.get("studentNameExact");
+  if (studentNameExact !== null) filter.studentName = studentNameExact;
 
   const cashboxId = sp.get("cashboxId");
   if (cashboxId) {
@@ -112,6 +132,17 @@ export async function GET(req: Request) {
     const limit = Math.min(limitRaw, 500);
     const page = Math.max(1, Number(sp.get("page")) || 1);
     cursor = cursor.skip((page - 1) * limit).limit(limit);
+  }
+
+  // `?slim=1` — jadval CHIZADIGAN maydonlargina. Xodim profilidagi jadval
+  // 20 maydondan atigi 11 tasini o'qiydi, qolgani bekorga tashiladi
+  // (o'rtacha hujjat 464 bayt, kerakli maydonlar bilan ~190 bayt).
+  // Parametrsiz javob avvalgidek to'liq — boshqa chaqiruvchilar tegilmagan.
+  if (sp.get("slim") === "1") {
+    cursor = cursor.project({
+      _id: 0, id: 1, date: 1, time: 1, studentName: 1, amount: 1,
+      before: 1, after: 1, txName: 1, status: 1, note: 1, paymentType: 1,
+    });
   }
 
   const rows = await cursor.toArray();
