@@ -6,6 +6,7 @@ import {
   Archive, ArchiveRestore, ArrowLeft, Briefcase, Check, ChevronDown, Copy, CreditCard,
   DollarSign, Edit, Frown, KeyRound, Lock, MoreVertical, Percent, Phone, Settings, XCircle,
 } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
@@ -129,7 +130,22 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // rasm belgisi o'rniga harflarga qaytamiz.
   const [photoFailed, setPhotoFailed] = useState(false);
   // Moliyaviy ma'lumot (haqiqiy, backend'dan).
-  const [studentPayments, setStudentPayments] = useState<TransactionEntry[]>([]);
+  // "O'quvchilar to'lovlari" endi TO'LIQ ro'yxat sifatida yuklanmaydi.
+  //
+  // Ilgari shu yerda `studentPayments` bor edi va u moderatorning HAMMA
+  // to'lovini saqlardi — eng band moderatorda 13 369 qator (~6 MB). Undan
+  // esa atigi to'rt narsa kerak edi, va to'rttasi ham endi serverdan
+  // tayyor holda keladi:
+  //   1) KPI uchtaligi     -> /api/transaction-entries/moderator-summary
+  //   2) tugallanmaganlar  -> ?status=cancelled,waiting  (35 qator)
+  //   3) ismlar ro'yxati   -> /api/transaction-entries/students?moderator=
+  //   4) jadval            -> ?page=&limit=&slim=1       (bir sahifa)
+  const [kpi, setKpi] = useState({ count: 0, amount: 0, students: 0 });
+  const [unfinished, setUnfinished] = useState<TransactionEntry[]>([]);
+  const [payOptions, setPayOptions] = useState<string[]>([]);
+  const [payPage, setPayPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [ownEntries, setOwnEntries] = useState<TransactionEntry[]>([]);
   const [students, setStudents] = useState<TeacherStudent[]>([]);
   const [bonuses, setBonuses] = useState<Bonus[]>([]);
@@ -246,7 +262,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     const q = encodeURIComponent(name);
     const get = (u: string) => fetch(u).then((r) => r.json()).catch(() => null);
     Promise.all([
-      get(`/api/transaction-entries?moderator=${q}&txType=payIn`),
+      // Uchta yengil so'rov — ilgari shu yerda bitta 6 MB lik so'rov turardi.
+      get(`/api/transaction-entries/moderator-summary?moderator=${q}`),
+      get(`/api/transaction-entries?moderator=${q}&txType=payIn&status=cancelled,waiting&slim=1`),
+      get(`/api/transaction-entries/students?moderator=${q}&txType=payIn`),
       get(`/api/transaction-entries?studentName=${q}&txType=payOut`),
       get(`/api/hr-employees/${id}/students`),
       get("/api/bonuses"),
@@ -256,16 +275,18 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       get("/api/student-reports?kind=unpaid"),
       get("/api/cashboxes"),
       get(`/api/hr-employees/${id}/notes`),
-    ]).then(([pay, own, roster, bon, pen, turn, ord, unp, cash, nts]) => {
+    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts]) => {
       if (cancelled) return;
       // Hech biri kelmagan bo'lsa — bu "ma'lumot yo'q" emas, so'rov
       // muvaffaqiyatsiz. Bo'sh holatda soxta sabab yozmasligimiz uchun.
-      if (!pay && !own && !turn) {
+      if (!sum && !own && !turn) {
         setFinError(true);
         setFinLoading(false);
         return;
       }
-      if (pay?.ok) setStudentPayments(pay.entries as TransactionEntry[]);
+      if (sum?.ok) setKpi({ count: sum.count, amount: sum.amount, students: sum.students });
+      if (unf?.ok) setUnfinished(unf.entries as TransactionEntry[]);
+      if (opts?.ok) setPayOptions(opts.students as string[]);
       if (own?.ok) setOwnEntries(own.entries as TransactionEntry[]);
       if (roster?.ok) setStudents(roster.students as TeacherStudent[]);
       if (Array.isArray(bon?.bonuses)) setBonuses(bon.bonuses as Bonus[]);
@@ -290,6 +311,36 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     });
     return () => { cancelled = true; };
   }, [id, emp?.name]);
+
+  // "O'quvchilar to'lovlari" jadvalining BIR SAHIFASI.
+  //
+  // Sahifa, qator soni yoki o'quvchi filtri o'zgarganda qayta so'raladi.
+  // `studentNameExact` ataylab `studentName` EMAS: jadval filtri ilgari
+  // klientda `e.studentName === fStudent` edi, ya'ni xom satrni aynan
+  // solishtirardi. Route'dagi `?studentName=` esa chetlarini kesib,
+  // katta-kichik harfni farqlamaydi va BOSHQA qatorlarni qaytaradi
+  // (o'lchandi: tekshirilgan 60 ta xavfli ismning hammasida farq bor edi).
+  useEffect(() => {
+    const name = emp?.name?.trim();
+    if (!name || activeTab !== "student-payments") return;
+    let cancelled = false;
+    const qs = new URLSearchParams({
+      moderator: name,
+      txType: "payIn",
+      page: String(page),
+      limit: String(pageSize),
+      slim: "1",
+    });
+    if (fStudent) qs.set("studentNameExact", fStudent);
+    fetch(`/api/transaction-entries?${qs}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.ok) return;
+        setPayPage({ entries: d.entries as TransactionEntry[], total: Number(d.total) || 0 });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [emp?.name, activeTab, page, pageSize, fStudent]);
 
   // true qaytarsa NotesTab kiritish maydonini tozalaydi — saqlanmagan matn
   // yo'qolib ketmasligi uchun.
@@ -388,7 +439,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const unpaidMine = unpaid.filter((r) => rosterNames.has((r.studentName || "").trim().toLowerCase()));
 
   // "To'lanmagan tarixi" — qabul qilingan, lekin oxiriga yetmagan to'lovlar.
-  const unfinished = studentPayments.filter((e) => e.status === "cancelled" || e.status === "waiting");
+  // Endi u serverdan alohida keladi (yuqoridagi `unfinished` holati):
+  // ?status=cancelled,waiting. Tartib server tomonda ham `id` bo'yicha
+  // kamayish — jadvaldagi № ustuni siljimasligi uchun shu shart.
 
   // O'qituvchining hisoboti — buyurtmalardan. `teacher` bazada null bo'lishi
   // mumkin (tip `string` desa ham), shuning uchun String(... ?? "") shart.
@@ -399,13 +452,28 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   ).find((r) => r.name === emp.name) ?? null;
 
   // Ikkala tab ham bir xil jadvalni ko'rsatadi, faqat manbasi boshqa.
+  //
+  // "O'quvchilar to'lovlari" tabi SERVER tomonda sahifalanadi (o'n minglab
+  // qator bo'lishi mumkin). "Tranzaksiyalar" tabi — xodimning o'z chiqimlari,
+  // eng kattasi ~240 qator, shu bois u avvalgidek klientda qoladi.
   const isTxTab = activeTab === "transactions" || activeTab === "student-payments";
-  const tabRows = activeTab === "student-payments" ? studentPayments : ownEntries;
-  const rows = fStudent ? tabRows.filter((e) => e.studentName === fStudent) : tabRows;
+  const isPayTab = activeTab === "student-payments";
+
+  const ownFiltered = fStudent ? ownEntries.filter((e) => e.studentName === fStudent) : ownEntries;
+  const rows = isPayTab ? payPage.entries : ownFiltered;
+  const totalRows = isPayTab ? payPage.total : ownFiltered.length;
+  // Sahifalangan jadvalda № davom etishi kerak, 1 dan boshlanmasligi.
+  const rowOffset = isPayTab ? (page - 1) * pageSize : 0;
+
   // "Guruh" ustuni to'lov yozuvidan olinmaydi (u yerda doim bo'sh) —
   // o'qituvchining guruh ro'yxatidan ism bo'yicha topiladi.
   const groupByStudent = new Map(students.map((s) => [s.name, s.groupName]));
-  const studentOptions = [...new Set(tabRows.map((e) => e.studentName).filter(Boolean))].sort();
+  // Tanlov ro'yxati XOM ismlardan — ular pastdagi `studentNameExact`
+  // filtriga kirish qiymati bo'ladi. Normallashtirilsa jadval bo'shab
+  // qolardi (bazadagi ismlarning ko'pi chetida probel bilan saqlangan).
+  const studentOptions = isPayTab
+    ? payOptions
+    : [...new Set(ownEntries.map((e) => e.studentName).filter(Boolean))].sort();
 
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
@@ -640,7 +708,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                     <div className="relative">
                       <select
                         value={fStudent}
-                        onChange={(e) => setFStudent(e.target.value)}
+                        onChange={(e) => { setFStudent(e.target.value); setPage(1); }}
                         className="h-9 w-52 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                       >
                         <option value="">Talaba — hammasi</option>
@@ -656,7 +724,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   </span>
                 </div>
                 <div className="flex items-center justify-end mb-2">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : rows.length}</span></span>
+                  {/* Sahifalangan tabda `rows.length` bir sahifadagi qatorlar
+                      soni bo'lib qolardi — server qaytargan `total` kerak. */}
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : totalRows}</span></span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -674,7 +744,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                         <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Ma&apos;lumotlar topilmadi</td></tr>
                       ) : rows.map((t, i) => (
                         <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
+                          <td className="px-4 py-3 text-muted-foreground tabular-nums">{rowOffset + i + 1}</td>
                           <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.date}{t.time ? ` | ${t.time}` : ""}</td>
                           <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={t.studentName} /></td>
                           <td className="px-4 py-3 whitespace-nowrap">{groupByStudent.get(t.studentName) || "—"}</td>
@@ -693,6 +763,17 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                     </tbody>
                   </table>
                 </div>
+                {/* Sahifalash faqat server tomonda sahifalanadigan tabda —
+                    xodimning o'z chiqimlari eng ko'pi ~240 qator. */}
+                {isPayTab && totalRows > 0 && (
+                  <Pagination
+                    totalItems={totalRows}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+                  />
+                )}
               </>
             ) : finLoading ? (
               <div className="py-20 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</div>
@@ -720,7 +801,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               <WorkHoursTab records={turnstile} />
             ) : activeTab === "kpi" ? (
               <KpiTab
-                payments={studentPayments}
+                paymentsCount={kpi.count}
+                paymentsAmount={kpi.amount}
+                paymentsStudents={kpi.students}
                 avans={avansTotal}
                 oylik={oylikTotal}
                 bonus={bonusTotal}

@@ -347,30 +347,44 @@ export function UnpaidHistoryTab({ entries }: { entries: TransactionEntry[] }) {
 /* ── KPI ─────────────────────────────────────────────────────────────────
    Faqat manbasi bor ko'rsatkichlar. Davomat/Akladi kabilar bu yerda YO'Q —
    ular uchun ma'lumot yo'q va "0" yozib qo'yish yolg'on bo'lardi. */
+/**
+ * Uchta birinchi ko'rsatkich SERVERDA hisoblanadi
+ * (/api/transaction-entries/moderator-summary).
+ *
+ * Ilgari bu komponent butun to'lovlar ro'yxatini prop sifatida olardi va
+ * uchta sonni o'zi chiqarardi. Eng band moderatorda bu 13 369 qator
+ * (~6 MB) degani edi — uchta son uchun.
+ *
+ * DIQQAT: "To'lov qilgan o'quvchilar" XOM ism bo'yicha sanaladi (ilgari
+ * `new Set(live.map(e => e.studentName))` edi, ya'ni trim/kichik harfsiz).
+ * Server ham `$addToSet` ni xom maydonga qo'llaydi — normallashtirilsa son
+ * o'zgarib ketardi (2 813 o'rniga 2 788).
+ */
 export function KpiTab({
-  payments,
+  paymentsCount,
+  paymentsAmount,
+  paymentsStudents,
   avans,
   oylik,
   bonus,
   jarima,
   students,
 }: {
-  payments: TransactionEntry[];
+  paymentsCount: number;
+  paymentsAmount: number;
+  paymentsStudents: number;
   avans: number;
   oylik: number;
   bonus: number;
   jarima: number;
   students: TeacherStudent[];
 }) {
-  const live = payments.filter((e) => e.status !== "cancelled");
-  const sum = live.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const uniq = new Set(live.map((e) => e.studentName)).size;
   const groups = new Set(students.map((s) => s.groupId)).size;
 
   const tiles: { label: string; value: string }[] = [
-    { label: "Qabul qilingan to'lovlar", value: String(live.length) },
-    { label: "Qabul qilingan summa", value: nf(sum) },
-    { label: "To'lov qilgan o'quvchilar", value: String(uniq) },
+    { label: "Qabul qilingan to'lovlar", value: String(paymentsCount) },
+    { label: "Qabul qilingan summa", value: nf(paymentsAmount) },
+    { label: "To'lov qilgan o'quvchilar", value: String(paymentsStudents) },
     { label: "Bonus", value: nf(bonus) },
     { label: "Jarima", value: nf(jarima) },
     { label: "Avans", value: nf(avans) },
