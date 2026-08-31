@@ -12,9 +12,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { Cashbox } from "@/lib/cashboxes";
-import type { Transaction } from "@/lib/transactions";
 import type { TransactionType } from "@/lib/transactionTypes";
-import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Kirim chiqim (sidebar: Moliya > Kirim chiqim, href
 // /finance-cashflow). 4 tab: Kirim/Chiqim — HAQIQIY MongoDB `transactions`
@@ -45,11 +43,6 @@ function parseCreatedAt(s: string): Date | null {
   const m = s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
   return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
 }
-// "YYYY-MM-DD" → Date (Transaction.date).
-function parseIsoDate(s: string): Date | null {
-  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
-}
 function inRange(d: Date | null, range: DateRange): boolean {
   if (!d) return false;
   if (range.start && d < range.start) return false;
@@ -64,6 +57,19 @@ function monthToDate(): DateRange {
   return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth(), now.getDate()) };
 }
 
+/** /api/transactions/summary qaytaradigan qator (groupBy=category,sign). */
+interface CatRow {
+  category: string;
+  /** "pos" | "neg" | "zero" */
+  sign: string;
+  amount: number;
+}
+
+/** Date -> "YYYY-MM-DD" (MAHALLIY vaqt bo'yicha, toISOString kunni surib yuboradi). */
+function toIsoDay(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 export default function FinanceAnalyticsPage() {
   const { showSuccess, showError } = useToast();
   // "To'lov turi" filtri Sozlamalar → Moliya → To'lov turlaridan.
@@ -78,7 +84,10 @@ export default function FinanceAnalyticsPage() {
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [bonuses, setBonuses] = useState<Bonus[]>([]);
   const [penalties, setPenalties] = useState<Penalty[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Kirim/Chiqim tablari uchun kategoriya bo'yicha yig'indi — SERVERDAN.
+  // Ilgari bu yerda butun `transactions` kolleksiyasi turardi (21 921
+  // qator, 3 099 KB) va filtrlash ham, yig'ish ham brauzerda edi.
+  const [catRows, setCatRows] = useState<CatRow[]>([]);
   const [incomeCats, setIncomeCats] = useState<string[]>([]);
   const [expenseCats, setExpenseCats] = useState<string[]>([]);
 
@@ -86,7 +95,6 @@ export default function FinanceAnalyticsPage() {
     fetch("/api/cashboxes").then((r) => r.json()).then((d) => { if (d.ok) setCashboxes(d.cashboxes); });
     fetch("/api/bonuses").then((r) => r.json()).then((d) => { if (d.ok) setBonuses(d.bonuses); });
     fetch("/api/penalties").then((r) => r.json()).then((d) => { if (d.ok) setPenalties(d.penalties); });
-    loadTransactionsCached().then(setTransactions).catch(() => {});
     fetch("/api/transaction-types").then((r) => r.json()).then((d) => {
       if (!d.ok) return;
       const all = d.types as TransactionType[];
@@ -97,20 +105,42 @@ export default function FinanceAnalyticsPage() {
 
   const selectedCashboxId = cashboxId ? Number(cashboxId) : null;
 
+  // Filtr o'zgarganda serverdan yangi yig'indi. `inRange` kun aniqligida
+  // solishtiradi va ikkala chekkani ham qamrab oladi, shu bois "YYYY-MM-DD"
+  // satrlari bo'yicha $gte/$lte bilan aynan bir xil.
+  useEffect(() => {
+    let cancelled = false;
+    const qs = new URLSearchParams({ groupBy: "category,sign" });
+    if (dateRange.start) qs.set("from", toIsoDay(dateRange.start));
+    if (dateRange.end) qs.set("to", toIsoDay(dateRange.end));
+    if (cashboxId) qs.set("cashboxId", cashboxId);
+    if (payType) qs.set("method", payType);
+    fetch(`/api/transactions/summary?${qs}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.ok) setCatRows(d.rows as CatRow[]); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [dateRange, cashboxId, payType]);
+
   const rows = useMemo(() => {
     if (tab === "kirim" || tab === "chiqim") {
       const cats = tab === "kirim" ? incomeCats : expenseCats;
-      const inWindow = transactions.filter((t) => {
-        if (tab === "kirim" ? t.amount <= 0 : t.amount >= 0) return false;
-        if (!inRange(parseIsoDate(t.date), dateRange)) return false;
-        if (selectedCashboxId != null && t.cashboxId !== selectedCashboxId) return false;
-        if (payType && t.method !== payType) return false;
-        return true;
-      });
-      return cats.map((c) => ({
-        label: c,
-        value: inWindow.filter((t) => t.category === c).reduce((s, t) => s + Math.abs(t.amount), 0),
-      }));
+      // Ishora bo'yicha tanlash eski qat'iy shart bilan bir xil: "kirim"
+      // tabi `amount <= 0` ni tashlaydi, "chiqim" esa `amount >= 0` ni —
+      // ya'ni NOL summali yozuv ikkala tabga ham tushmaydi. Server uch
+      // qiymatli kalit beradi (pos|neg|zero), shu bois "zero" o'z-o'zidan
+      // chetda qoladi.
+      const want = tab === "kirim" ? "pos" : "neg";
+      const byCat = new Map<string, number>();
+      for (const r of catRows) {
+        if (r.sign !== want) continue;
+        // Bitta chelakdagi summalar bir xil ishorada, shu bois
+        // |yig'indi| = yig'indi(|x|) — eski `Math.abs` bilan aynan teng.
+        byCat.set(r.category, (byCat.get(r.category) ?? 0) + Math.abs(r.amount));
+      }
+      // Ro'yxatda YO'Q kategoriyalar bu sahifada ko'rsatilmaydi (jadval
+      // qatorlari aynan `cats` dan iborat) — eski xulq shunday edi.
+      return cats.map((c) => ({ label: c, value: byCat.get(c) ?? 0 }));
     }
     if (tab === "bonus") {
       const inWindow = bonuses.filter(
@@ -128,7 +158,7 @@ export default function FinanceAnalyticsPage() {
       label: t.label,
       value: inWindow.filter((p) => p.type === t.value).reduce((s, p) => s + p.amount, 0),
     }));
-  }, [tab, bonuses, penalties, transactions, incomeCats, expenseCats, dateRange, selectedCashboxId, payType]);
+  }, [tab, bonuses, penalties, catRows, incomeCats, expenseCats, dateRange, selectedCashboxId]);
 
   const slices = rows.map((r, i) => ({ ...r, color: CHART_COLORS[i % CHART_COLORS.length] }));
   const total = slices.reduce((s, x) => s + x.value, 0);
