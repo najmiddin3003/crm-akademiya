@@ -7,8 +7,6 @@ import YearPicker from "./reports/YearPicker";
 import MonthPicker from "./reports/MonthPicker";
 import { MONTH_NAMES_UZ } from "@/constants/pnlReports";
 import type { PnlMonthRow } from "@/lib/pnl";
-import type { Transaction } from "@/lib/transactions";
-import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Moliya hisobotlari (P&L) (sidebar: Moliya > Moliya hisobotlari
 // (P&L), href /finance-pnl). Sof hisobot — add/edit/delete yo'q. Yil
@@ -25,33 +23,65 @@ function fmtUZS(n: number): string {
   return Math.round(n).toLocaleString("ru-RU") + " UZS";
 }
 
+/** /api/transactions/summary qaytaradigan qator (groupBy=month,category,sign). */
+interface PnlRow {
+  /** "YYYY-MM" */
+  month: string;
+  category: string;
+  /** "pos" | "neg" | "zero" */
+  sign: string;
+  amount: number;
+}
 export default function PnlReportsPage() {
   const { showSuccess, showError } = useToast();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState<number | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Yig'indi SERVERDA — /api/transactions/summary.
+  // Ilgari butun `transactions` kolleksiyasi (21 921 qator, 3 099 KB)
+  // yuklanib, uchala qator brauzerda hisoblanardi.
+  const [pnlRows, setPnlRows] = useState<PnlRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    loadTransactionsCached()
-      .then((list) => { if (!cancelled) setTransactions(list); })
+    const qs = new URLSearchParams({
+      groupBy: "month,category,sign",
+      from: `${year}-01-01`,
+      to: `${year}-12-31`,
+    });
+    fetch(`/api/transactions/summary?${qs}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.ok) setPnlRows(d.rows as PnlRow[]); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [year]);
 
   const yearData = useMemo<PnlMonthRow[]>(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const monthTx = transactions.filter((t) => {
-        const [ty, tm] = t.date.split("-").map(Number);
-        return ty === year && tm === m;
-      });
-      const courseIncome = monthTx.filter((t) => t.amount > 0 && t.category === "O'quvchi to'ladi").reduce((s, t) => s + t.amount, 0);
-      const otherIncome = monthTx.filter((t) => t.amount > 0 && t.category !== "O'quvchi to'ladi").reduce((s, t) => s + t.amount, 0);
-      const otherExpense = monthTx.filter((t) => t.amount < 0).reduce((s, t) => s - t.amount, 0);
-      return { month: m, otherIncome, courseIncome, otherExpense };
-    });
-  }, [transactions, year]);
+    // Server bo'sh oy uchun chelak qaytarmaydi — 12 oy shu yerda
+    // to'ldiriladi (jadval doim 12 ustun chizadi).
+    const out: PnlMonthRow[] = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1, otherIncome: 0, courseIncome: 0, otherExpense: 0,
+    }));
+    for (const r of pnlRows) {
+      const m = Number(String(r.month).slice(5, 7));
+      if (!(m >= 1 && m <= 12)) continue;
+      const cell = out[m - 1];
+      if (r.sign === "pos") {
+        // DIQQAT — bu taqqoslash ATAYLAB shu yerda va ATAYLAB shu holda.
+        // Bazada kategoriya KICHIK harf bilan saqlanadi ("o'quvchi
+        // to'ladi"), bu yerdagi shart esa katta "O" bilan — ya'ni u hech
+        // qachon bajarilmaydi va "Dars bo'yicha daromad" doim 0 chiqadi.
+        // Bu mavjud xulq; uni "tuzatish" 2026-yilda ~3 mlrd so'mni ikkita
+        // ko'rinadigan qator orasida ko'chirib yuboradi, shuning uchun bu
+        // yerda O'ZGARTIRILMAYDI — alohida ish sifatida ko'rib chiqilsin.
+        if (r.category === "O'quvchi to'ladi") cell.courseIncome += r.amount;
+        else cell.otherIncome += r.amount;
+      } else if (r.sign === "neg") {
+        // Eski kod `t.amount < 0` — nol chiqimga ham kirmaydi.
+        cell.otherExpense -= r.amount;
+      }
+    }
+    return out;
+  }, [pnlRows]);
   const months = month ? yearData.filter((m) => m.month === month) : yearData;
   const monthLabels = month ? [MONTH_NAMES_UZ[month - 1]] : MONTH_NAMES_UZ;
 
