@@ -61,7 +61,29 @@ async function handleApi(
   }
 
   // Hisob holati va ruxsatlar (qisqa keshli — lib/rolePermissions.ts).
-  const me = await accessForSession(session.uid, session.sid);
+  //
+  // BAZAGA ULANIB BO'LMASA — bu autentifikatsiya xatosi EMAS.
+  //
+  // Ilgari bu chaqiruv xato bersa, u middleware'dan tashqariga otilardi va
+  // Vercel uni "Error running the exported Web Handler" deb 500 qilardi.
+  // Natijada baza bir necha daqiqaga javob bermay qolganda HAR BIR /api/*
+  // so'rov 500 qaytarardi va sabab tashqaridan umuman ko'rinmasdi.
+  //
+  // Endi 503 qaytariladi:
+  //   • 500 "kod buzuq" degani — bu yerda kod buzuq emas, resurs vaqtincha
+  //     yo'q, shuning uchun 503 to'g'ri javob;
+  //   • 401 ham noto'g'ri bo'lardi — u foydalanuvchini tizimdan chiqarib
+  //     yuborardi, holbuki sessiyasi joyida;
+  //   • `Retry-After` klientga qachon qayta urinishni aytadi.
+  let me: Awaited<ReturnType<typeof accessForSession>>;
+  try {
+    me = await accessForSession(session.uid, session.sid);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Baza vaqtincha javob bermayapti. Bir ozdan keyin qayta urinib ko'ring." },
+      { status: 503, headers: { "Retry-After": "5" } },
+    );
+  }
   if (!me.active) return deny(401, "Sessiya amal qilmaydi");
 
   if (access.kind === "permission" && me.permissions !== null) {

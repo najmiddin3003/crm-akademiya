@@ -11,7 +11,7 @@ if (!uri) {
   console.warn("[mongodb] MONGODB_URI .env.local da o'rnatilmagan");
 }
 
-let clientPromise: Promise<MongoClient>;
+let clientPromise: Promise<MongoClient> | undefined;
 
 declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
@@ -40,18 +40,47 @@ function createClient() {
   return client.connect();
 }
 
-if (process.env.NODE_ENV === "development") {
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = createClient();
-  }
-  clientPromise = global._mongoClientPromise;
-} else {
-  clientPromise = createClient();
+// MUVAFFAQIYATSIZ ULANISH KESHDA QOLMASLIGI KERAK.
+//
+// NIMA BO'LGAN EDI: bu yerda `clientPromise = createClient()` turardi.
+// Agar o'sha birinchi `connect()` rad etilsa (masalan Atlas ulanishlar
+// chegarasi to'lib, TLS darajasida rad javob bersa), REDDETILGAN promise
+// modul darajasida keshlanib qolardi. Vercel'dagi har bir nusxa uni butun
+// umri davomida qayta ishlatadi, ya'ni o'sha nusxaga tushgan HAR BIR
+// keyingi so'rov ham yiqiladi — baza allaqachon tiklangan bo'lsa ham.
+//
+// Amalda shunday bo'ldi: ulanishlar chegarasi bir necha daqiqaga to'ldi,
+// lekin sayt undan keyin ham 500 qaytaraverdi va o'zi tiklanmadi — qo'lda
+// qayta deploy qilishga to'g'ri keldi.
+//
+// ENDI: xato bo'lsa kesh tozalanadi va KEYINGI so'rov qaytadan urinadi.
+// Bu lib/clientCache.ts dagi bilan bir xil qoida (u ham xato natijani
+// keshda qoldirmaydi).
+function getClientPromise(): Promise<MongoClient> {
+  const cached = process.env.NODE_ENV === "development"
+    ? global._mongoClientPromise
+    : clientPromise;
+  if (cached) return cached;
+
+  const p = createClient().catch((err) => {
+    // Faqat O'ZIMIZNING yozuvni tozalaymiz — shu orada boshqa urinish
+    // muvaffaqiyatli bo'lgan bo'lishi mumkin.
+    if (process.env.NODE_ENV === "development") {
+      if (global._mongoClientPromise === p) global._mongoClientPromise = undefined;
+    } else if (clientPromise === p) {
+      clientPromise = undefined;
+    }
+    throw err;
+  });
+
+  if (process.env.NODE_ENV === "development") global._mongoClientPromise = p;
+  else clientPromise = p;
+  return p;
 }
 
 export async function getDb(): Promise<Db> {
   if (!uri) throw new Error("MONGODB_URI o'rnatilmagan (.env.local ni tekshiring)");
-  const client = await clientPromise;
+  const client = await getClientPromise();
   return client.db(dbName);
 }
 

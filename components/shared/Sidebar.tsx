@@ -369,6 +369,12 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
       <Link
         key={key}
         href={it.href}
+        // PREFETCH O'CHIRILGAN. Sidebar'da 88 ta havola bor va bitta
+        // flyout ochilganda 17 tagacha havola mount bo'ladi. Har biri
+        // fon so'rovini boshlaydi, har bir so'rov esa (app)/layout.tsx ni
+        // serverda qayta render qiladi — ya'ni getCurrentUser va uning
+        // baza so'rovlari. Bitta hover o'nlab keraksiz so'rov degani edi.
+        prefetch={false}
         onClick={locked ? (e) => e.preventDefault() : closeNow}
         title={title}
         className={`flyout-item ${active ? "is-active" : ""} ${locked ? "is-locked" : ""}`}
@@ -470,7 +476,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                   onMouseLeave={hasMenu ? scheduleClose : undefined}
                 >
                   {item.href && !topLocked ? (
-                    <Link href={item.href} className={rowClass} onClick={closeNow}>{inner}</Link>
+                    <Link href={item.href} prefetch={false} className={rowClass} onClick={closeNow}>{inner}</Link>
                   ) : item.href && topLocked ? (
                     <a href="#" onClick={(e) => e.preventDefault()} title="Hali tayyor emas" className={rowClass} style={LOCKED_STYLE}>
                       {inner}
@@ -537,6 +543,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                 <li key={item.key}>
                   <Link
                     href={item.mobileHref}
+                    prefetch={false}
                     onClick={closeMobile}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium ${item.mobileActive ? "bg-primary text-white" : "text-foreground/70 hover:bg-secondary"}`}
                   >
