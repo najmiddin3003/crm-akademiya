@@ -75,7 +75,13 @@ function Dash() {
 export default function ParentsPage() {
   // Ota-ona maydonlari standart to'plamda YO'Q (ular 13 ta sahifadan
   // faqat shu ikkitasiga kerak) — ataylab so'raymiz.
+  //
+  // `hasParent` — SERVER filtri: `buildParentRows` baribir faqat ota yoki
+  // ona ismi/telefoni bo'lgan o'quvchidan qator yasaydi. Bugun bunday
+  // o'quvchi yo'q, ya'ni sahifa 2.37 MB o'rniga deyarli hech narsa
+  // yuklamaydi; ma'lumot kiritila boshlagach ro'yxat o'zi to'ladi.
   const { pupils, loading: pupilsLoading } = useStudents({
+    hasParent: true,
     extra: [
       "birthDate",
       "fatherName", "fatherPhone", "fatherWork",

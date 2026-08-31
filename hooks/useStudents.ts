@@ -30,6 +30,8 @@ export interface PupilsQuery {
   extra?: readonly PupilExtraField[];
   /** Holat bo'yicha server filtri (`?status=Aktiv`). */
   status?: string;
+  /** Faqat ota-ona ma'lumoti bor o'quvchilar (`?hasParent=1`). */
+  hasParent?: boolean;
 }
 
 /**
@@ -41,9 +43,10 @@ export interface PupilsQuery {
  * ["b","a"] bir xil so'rov, ikki marta tortilmasin.
  */
 function queryKey(q: PupilsQuery): string {
-  if (q.light) return KEY + "light" + (q.status ? "|" + q.status : "");
+  const tail = (q.status ? "|" + q.status : "") + (q.hasParent ? "|hasParent" : "");
+  if (q.light) return KEY + "light" + tail;
   const extra = q.extra?.length ? "+" + [...q.extra].sort().join(",") : "";
-  return KEY + "full" + extra + (q.status ? "|" + q.status : "");
+  return KEY + "full" + extra + tail;
 }
 
 function queryUrl(q: PupilsQuery): string {
@@ -51,6 +54,7 @@ function queryUrl(q: PupilsQuery): string {
   if (q.light) sp.set("light", "1");
   else if (q.extra?.length) sp.set("extra", [...q.extra].sort().join(","));
   if (q.status) sp.set("status", q.status);
+  if (q.hasParent) sp.set("hasParent", "1");
   const qs = sp.toString();
   return "/api/pupils" + (qs ? "?" + qs : "");
 }
@@ -104,14 +108,16 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
   light?: boolean;
   extra?: readonly K[];
   status?: string;
+  hasParent?: boolean;
 }) {
   const light = options?.light === true;
   const status = options?.status;
+  const hasParent = options?.hasParent === true;
   // Massiv har renderda yangi bo'ladi — effekt bog'liqligi uchun uni
   // barqaror satrga aylantiramiz.
   const extraKey = options?.extra?.length ? [...options.extra].sort().join(",") : "";
 
-  const cacheKey = queryKey({ light, extra: options?.extra, status });
+  const cacheKey = queryKey({ light, extra: options?.extra, status, hasParent });
   type Row = PupilListItem & Pick<Pupil, K>;
   // Kesh tayyor bo'lsa — birinchi renderdayoq to'liq ro'yxat bilan
   // boshlanadi, ya'ni bo'sh jadval "chaqnab" o'tmaydi.
@@ -121,12 +127,12 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
   useEffect(() => {
     let cancelled = false;
     const extra = extraKey ? (extraKey.split(",") as K[]) : undefined;
-    loadPupilsCached<K>({ light, extra, status })
+    loadPupilsCached<K>({ light, extra, status, hasParent })
       .then((list) => { if (!cancelled) setPupils(list); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [light, extraKey, status]);
+  }, [light, extraKey, status, hasParent]);
 
   const students = useMemo<StudentRow[]>(() => pupils.map(studentRowFromPupil), [pupils]);
   const names = useMemo(() => students.map((s) => s.name).filter(Boolean), [students]);

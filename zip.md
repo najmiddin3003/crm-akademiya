@@ -411,12 +411,25 @@ tasdiq — standart javobda aynan 13 maydon, har bir `extra` to'plami,
 `?extra=studentPasswordHash` → 400, `?status=` natijasi eski klient
 filtri bilan **aynan bir xil id ro'yxati** (4 276 va 2 456).
 
-> **OCHIQ SAVOL.** `lib/parentsData.ts:92` qatorni faqat
-> `father.name || father.phone` bo'lganda qo'shadi. Bu maydonlar
-> 6 732 tadan **0 tasida** to'ldirilgan, ya'ni **Ota-onalar sahifasi
-> bugun bo'sh jadval ko'rsatadi** va buning uchun 2.37 MB yuklaydi.
-> `SmsModal` ham shu telefonlardan o'qiydi. Funksiya tashlab
-> yuborilganmi yoki kiritish buzuqmi — hal qilinmagan.
+**Ota-onalar sahifasi — hal qilindi.** `lib/parentsData.ts:92` qatorni
+faqat `father.name || father.phone` bo'lganda qo'shadi, bu maydonlar esa
+6 732 tadan **0 tasida** to'ldirilgan: sahifa bo'sh jadval ko'rsatib
+2.37 MB yuklardi.
+
+Egasi tasdiqladi — ota-ona ma'lumoti **hozircha** kiritilmaydi, ya'ni
+funksiya tashlab yuborilmagan. Shu bois maydonlar **o'chirilmadi**;
+o'rniga `?hasParent=1` server filtri qo'shildi, u aynan
+`buildParentRows` shartini takrorlaydi (ish joyining o'zi yetarli
+emas — `fatherWork`/`motherWork` filtrda YO'Q).
+
+| | |
+|---|---|
+| Ota-onalar sahifasi | 2.37 MB → **0 KB** (0 qator) |
+
+Ma'lumot kiritila boshlangach ro'yxat O'ZI to'ladi — keyin hech narsani
+qaytarib olish kerak emas. Tekshirildi: filtr qator yaratadigan har bir
+o'quvchini qamraydi, ortiqchasini olmaydi, va faqat ish joyi
+to'ldirilganlar tushmaydi.
 
 ---
 

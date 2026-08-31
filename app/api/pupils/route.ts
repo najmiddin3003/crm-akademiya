@@ -45,6 +45,7 @@ const EXTRA_ALLOWED = new Set<string>(PUPIL_EXTRA_FIELDS);
 //   ?status=Aktiv   — holat bo'yicha filtr (Aktiv o'quvchilar sahifasi
 //                     6 732 tadan 4 276 tasini, Arxiv esa 2 456 tasini
 //                     ko'rsatadi — qolganini tashish bekor)
+//   ?hasParent=1    — faqat ota-ona ma'lumoti bor o'quvchilar
 export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const light = sp.get("light") === "1";
@@ -66,6 +67,24 @@ export async function GET(req: Request) {
   const filter: Record<string, unknown> = {};
   const status = sp.get("status");
   if (status) filter.status = status;
+
+  // Ota-onalar sahifasi uchun. `buildParentRows` (lib/parentsData.ts) qator
+  // yaratadi FAQAT ota yoki ona ismi/telefoni bo'lganda — ish joyining
+  // o'zi yetarli emas, shu bois `fatherWork`/`motherWork` bu yerda yo'q.
+  //
+  // Bu sahifa ilgari 6 732 o'quvchini tortib, deyarli hammasini tashlab
+  // yuborardi. Bugun ota-ona ma'lumoti hech kimga kiritilmagan, ya'ni
+  // javob bo'sh; ma'lumot kirita boshlangach ro'yxat O'ZI to'ladi —
+  // keyin hech narsani qaytarib olish kerak emas.
+  //
+  // `clean()` chetlarini kesadi, bu filtr esa kesmaydi: faqat probeldan
+  // iborat qiymat bu yerdan o'tib ketadi-yu, qator yaratmaydi. Ya'ni
+  // natija HAR DOIM kerakli to'plamning ustki to'plami — kam emas.
+  if (sp.get("hasParent") === "1") {
+    filter.$or = ["fatherName", "fatherPhone", "motherName", "motherPhone"].map(
+      (f) => ({ [f]: { $nin: ["", null] } }),
+    );
+  }
 
   const db = await ensureIndexes();
   const rows = await db.collection("pupils")
