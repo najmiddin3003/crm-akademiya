@@ -13,7 +13,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 const STORAGE_KEY = "crm_nav_stack";
 const MAX_STACK = 50;
-const AUTH_PATHS = ["/", "/register"];
+// Kirish sahifasi — navigatsiya tarixiga yozilmaydi.
+const AUTH_PATHS = ["/"];
 const isAppPath = (p: string) => !AUTH_PATHS.includes(p);
 
 interface NavHistoryValue {

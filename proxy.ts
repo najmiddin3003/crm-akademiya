@@ -26,7 +26,7 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 //
 // `/ariza` — ish arizasi anketasi: havolasi tashqi nomzodlarga yuboriladi,
 // shuning uchun u ham ochiq (Boshqaruv → Ishga qabul (CV)).
-const PUBLIC_PATHS = ["/", "/activate", "/register", "/ariza"];
+const PUBLIC_PATHS = ["/", "/activate", "/ariza"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([

@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/auth/AuthShell";
 import PhoneField from "@/components/auth/PhoneField";
@@ -59,12 +58,11 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-[13px] text-muted-foreground">
-        Akkountingiz yo&apos;qmi?{" "}
-        <Link href="/register" className="font-medium text-primary hover:underline">
-          Ro&apos;yxatdan o&apos;tish
-        </Link>
-      </p>
+      {/* "Ro'yxatdan o'tish" havolasi OLIB TASHLANDI. Bu tizimda o'z-o'zidan
+          ro'yxatdan o'tish yo'q: hisobni admin yaratadi (Boshqaruv →
+          Xodimlar), so'ng foydalanuvchiga 72 soat amal qiladigan
+          faollashtirish havolasi SMS bilan boradi (lib/invite.ts →
+          /activate). O'sha havoladagi sahifa eskisining o'rnini bosadi. */}
     </AuthShell>
   );
 }
