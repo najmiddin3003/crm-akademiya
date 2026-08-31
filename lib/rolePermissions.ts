@@ -27,6 +27,8 @@ export interface UserForPermissions {
   _id: ObjectId;
   phone?: unknown;
   hrEmployeeId?: unknown;
+  /** `users.role` — faqat "admin" bypass uchun (pastdagi izohga qarang). */
+  role?: unknown;
 }
 
 /**
@@ -48,6 +50,19 @@ export interface UserForPermissions {
  * Bu ATAYLAB: cheklov faqat admin rolga ro'yxat berganda paydo bo'ladi.
  */
 export async function resolvePermissions(db: Db, user: UserForPermissions): Promise<string[] | null> {
+  // ADMIN LAVOZIM ZANJIRIDAN O'TMAYDI.
+  //
+  // NEGA KERAK: ruxsat `users.role` ga emas, xodimning LAVOZIMIGA
+  // (`hr_employees.turi` -> `roles.key`) qarab beriladi. Admin hisobi ham
+  // xodimlar ro'yxatidagi yozuvga bog'langan va uning lavozimi bor. Ya'ni
+  // "Moderator" roliga cheklov qo'yilishi bilan ADMIN HAM o'sha cheklovga
+  // tushadi — va agar ro'yxatga Rollar sahifasi kiritilmagan bo'lsa, u
+  // cheklovni orqaga qaytara olmaydi. Tizimga faqat bazadan kirib
+  // tuzatish qolardi.
+  //
+  // Shu sabab bu tekshiruv rollarga cheklov QO'YISHDAN OLDIN turishi shart.
+  if (user.role === "admin") return null;
+
   let empId = Number(user.hrEmployeeId);
 
   // `users.hrEmployeeId` faqat "Xodim qo'shish" modali yaratgan hisoblarda
@@ -130,7 +145,9 @@ async function loadAccess(uid: string, sid?: string): Promise<SessionAccess> {
   const db = await ensureIndexes();
   const user = await db.collection("users").findOne(
     { _id: new ObjectId(uid) },
-    { projection: { status: 1, phone: 1, hrEmployeeId: 1 } },
+    // `role` ham kerak — yuqoridagi admin bypass /api/* yo'lida ham
+    // ishlashi uchun (bu yerda o'qilmasa, u faqat sahifalarda ishlardi).
+    { projection: { status: 1, phone: 1, hrEmployeeId: 1, role: 1 } },
   );
   if (!user || user.status !== "active") return { active: false, permissions: null };
 

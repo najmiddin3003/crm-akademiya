@@ -1,5 +1,8 @@
 "use client";
 
+import { fetchJson } from "@/lib/fetchJson";
+import { ErrorBlock } from "@/components/ui/ErrorBanner";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -93,6 +96,14 @@ export default function CashFlowStatementPage() {
   const [openingBalance, setOpeningBalance] = useState(0);
   const [incomeCats, setIncomeCats] = useState<string[]>([]);
   const [expenseCats, setExpenseCats] = useState<string[]>([]);
+  // Uchinchi holat SHART. Ilgari faqat "ma'lumot" bor edi, ya'ni so'rov
+  // yiqilsa jadval nol bilan to'ldirilgan holda chizilaverardi va uni
+  // haqiqiy raqamdan ajratib bo'lmasdi. Auditda aynan shu ko'rindi:
+  // avgust uchun butun sahifa "0" ko'rsatgan, holbuki bazada
+  // 355 226 000 / 442 384 000 turgan edi.
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,22 +114,22 @@ export default function CashFlowStatementPage() {
       before: `${year}-01-01`,
     });
     Promise.all([
-      fetch(`/api/transactions/summary?${qs}`).then((r) => r.json()).catch(() => null),
-      fetch("/api/transaction-types").then((r) => r.json()).catch(() => null),
-    ]).then(([sum, types]) => {
-      if (cancelled) return;
-      if (sum?.ok) {
-        setFlowRows(sum.rows as FlowRow[]);
+      fetchJson<{ rows: FlowRow[]; before: number }>(`/api/transactions/summary?${qs}`),
+      fetchJson<{ types: TransactionType[] }>("/api/transaction-types"),
+    ])
+      .then(([sum, types]) => {
+        if (cancelled) return;
+        setFlowRows(sum.rows);
         setOpeningBalance(Number(sum.before) || 0);
-      }
-      if (types?.ok) {
-        const all = types.types as TransactionType[];
+        const all = types.types;
         setIncomeCats(Array.from(new Set(all.filter((t) => t.mainType === "kirim").map((t) => t.name))));
         setExpenseCats(Array.from(new Set(all.filter((t) => t.mainType === "chiqim").map((t) => t.name))));
-      }
-    });
+        setError(false);
+      })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [year]);
+  }, [year, reloadKey]);
 
   const monthly = useMemo<MonthlyFlow[]>(() => {
     const knownIncome = new Set(incomeCats);
@@ -241,6 +252,13 @@ export default function CashFlowStatementPage() {
         </div>
       </div>
 
+      {/* Xato bo'lsa jadval CHIZILMAYDI — nol bilan to'ldirilgan varaq
+          haqiqiy raqamday ko'rinardi. */}
+      {error ? (
+        <ErrorBlock onRetry={() => { setError(false); setLoading(true); setReloadKey((k) => k + 1); }} />
+      ) : loading ? (
+        <SpinnerBlock />
+      ) : (
       <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="table-scroll">
           <table className="w-full text-sm">
@@ -276,6 +294,7 @@ export default function CashFlowStatementPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

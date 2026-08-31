@@ -1,5 +1,8 @@
 "use client";
 
+import { fetchJson } from "@/lib/fetchJson";
+import { ErrorBlock } from "@/components/ui/ErrorBanner";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -40,6 +43,11 @@ export default function PnlReportsPage() {
   // Ilgari butun `transactions` kolleksiyasi (21 921 qator, 3 099 KB)
   // yuklanib, uchala qator brauzerda hisoblanardi.
   const [pnlRows, setPnlRows] = useState<PnlRow[]>([]);
+  // Xato holati SHART: usiz so'rov yiqilganda jadval 12 oylik nol bilan
+  // to'ldirilib chizilardi va uni haqiqiy raqamdan ajratib bo'lmasdi.
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,12 +56,12 @@ export default function PnlReportsPage() {
       from: `${year}-01-01`,
       to: `${year}-12-31`,
     });
-    fetch(`/api/transactions/summary?${qs}`)
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d?.ok) setPnlRows(d.rows as PnlRow[]); })
-      .catch(() => {});
+    fetchJson<{ rows: PnlRow[] }>(`/api/transactions/summary?${qs}`)
+      .then((d) => { if (!cancelled) { setPnlRows(d.rows); setError(false); } })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [year]);
+  }, [year, reloadKey]);
 
   const yearData = useMemo<PnlMonthRow[]>(() => {
     // Server bo'sh oy uchun chelak qaytarmaydi — 12 oy shu yerda
@@ -147,6 +155,12 @@ export default function PnlReportsPage() {
         </div>
       </div>
 
+      {/* Xato bo'lsa nol bilan to'ldirilgan jadval CHIZILMAYDI. */}
+      {error ? (
+        <ErrorBlock onRetry={() => { setError(false); setLoading(true); setReloadKey((k) => k + 1); }} />
+      ) : loading ? (
+        <SpinnerBlock />
+      ) : (
       <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="table-scroll">
           <table className="w-full text-sm">
@@ -182,6 +196,7 @@ export default function PnlReportsPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

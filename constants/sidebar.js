@@ -251,7 +251,27 @@ export const SIDEBAR_ITEMS = [
         {
           title: "Moliya",
           items: [
-            { type: "text", label: "Balans", href: "/reports-balance" },
+            // BALANS HISOBOTI MENYUDAN VAQTINCHA OLIB TURILDI.
+            //
+            // Sabab: app/api/reports/balance/route.ts:104 da
+            // `salary = bonus - penalty - advance` — hisoblangan ish
+            // haqi (oklad yoki foiz) hadi UMUMAN yo'q. Natijada 54
+            // xodimning 54 tasida "Ish haqi" = minus avans chiqadi va
+            // butun jamoa qarzdorday ko'rinadi. Bu Oylik sahifasiga
+            // (SalaryCreatePage) to'g'ridan-to'g'ri zid: o'sha yerda
+            // 2026-08 uchun qoldiq +88 217 630, bu yerda esa
+            // -1 065 081 400.
+            //
+            // Route'ning O'Z izohi (15-21-qatorlar) buni vaqtinchalik
+            // deb yozgan: "Alohida oylik jadvali paydo bo'lsa, shu
+            // formulani almashtirish kifoya". O'sha jadval endi bor —
+            // lib/payrollSources.ts:164 buildPayrollRows.
+            //
+            // Tuzatishdan oldin BITTA QAROR kerak: Balans butun tarixni
+            // jamlaydi, Oylik esa bitta oyni. Hisobot qaysi davrni
+            // ko'rsatishi kerakligini kelishib olish shart, aks holda
+            // ikkita to'g'ri raqam yana bir-biriga zid chiqadi.
+            // { type: "text", label: "Balans", href: "/reports-balance" },
             // Referensda bu ikkisi Moliya bo'limidagi sahifalarning
             // AYNAN O'ZI (faqat /reports/ prefiksi bilan) — shuning uchun
             // yangi sahifa emas, mavjud route'ga havola.

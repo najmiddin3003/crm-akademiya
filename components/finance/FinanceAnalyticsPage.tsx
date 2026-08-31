@@ -1,5 +1,8 @@
 "use client";
 
+import { fetchJson } from "@/lib/fetchJson";
+import { ErrorBlock } from "@/components/ui/ErrorBanner";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileSpreadsheet, FileText, MoreVertical } from "lucide-react";
 import DonutChart from "@/components/ui/DonutChart";
@@ -88,6 +91,11 @@ export default function FinanceAnalyticsPage() {
   // Ilgari bu yerda butun `transactions` kolleksiyasi turardi (21 921
   // qator, 3 099 KB) va filtrlash ham, yig'ish ham brauzerda edi.
   const [catRows, setCatRows] = useState<CatRow[]>([]);
+  // Xato holati SHART: usiz so'rov yiqilganda donut ham, jadval ham
+  // "0 UZS" ko'rsatardi va uni haqiqiy nol daromaddan ajratib bo'lmasdi.
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [incomeCats, setIncomeCats] = useState<string[]>([]);
   const [expenseCats, setExpenseCats] = useState<string[]>([]);
 
@@ -115,12 +123,12 @@ export default function FinanceAnalyticsPage() {
     if (dateRange.end) qs.set("to", toIsoDay(dateRange.end));
     if (cashboxId) qs.set("cashboxId", cashboxId);
     if (payType) qs.set("method", payType);
-    fetch(`/api/transactions/summary?${qs}`)
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d?.ok) setCatRows(d.rows as CatRow[]); })
-      .catch(() => {});
+    fetchJson<{ rows: CatRow[] }>(`/api/transactions/summary?${qs}`)
+      .then((d) => { if (!cancelled) { setCatRows(d.rows); setError(false); } })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [dateRange, cashboxId, payType]);
+  }, [dateRange, cashboxId, payType, reloadKey]);
 
   const rows = useMemo(() => {
     if (tab === "kirim" || tab === "chiqim") {
@@ -279,6 +287,14 @@ export default function FinanceAnalyticsPage() {
         </div>
       </div>
 
+      {/* Xato bo'lsa raqamlar CHIZILMAYDI — "0 UZS" haqiqiy nol daromadday
+          ko'rinardi. Shart faqat Kirim/Chiqim tablariga: bonus va jarima
+          boshqa manbadan keladi va bu xatoga bog'liq emas. */}
+      {error && (tab === "kirim" || tab === "chiqim") ? (
+        <ErrorBlock onRetry={() => { setError(false); setLoading(true); setReloadKey((k) => k + 1); }} />
+      ) : loading && (tab === "kirim" || tab === "chiqim") ? (
+        <SpinnerBlock />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-xl border border-border bg-card p-6 flex items-center justify-center">
           <DonutChart slices={slices} centerLabel={fmtUZS(total)} size={320} />
@@ -318,6 +334,7 @@ export default function FinanceAnalyticsPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
