@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -8,6 +8,9 @@ import { ErrorBlock } from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
 import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
+// Bo'sh massiv MODUL DARAJASIDA: `?? []` har renderda YANGI massiv yasaydi
+// va uni bog'liqlik sifatida ishlatadigan useMemo har safar qayta hisoblanadi.
+const EMPTY: never[] = [];
 
 // Moliya analitikasi → "Journal" tab'i.
 //
@@ -40,47 +43,60 @@ export default function JournalTab({ cashboxes }: { cashboxes: Cashbox[] }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  const [rows, setRows] = useState<Transaction[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const fromIso = dateRange.start ? toIso(dateRange.start) : "";
+  const toIsoStr = dateRange.end ? toIso(dateRange.end) : "";
+  const queryKey = [fromIso, toIsoStr, page, pageSize].join("|");
 
-  const load = useCallback(() => {
-    const qs = new URLSearchParams({ page: String(page), limit: String(pageSize), sort: "desc" });
-    if (dateRange.start) qs.set("from", toIso(dateRange.start));
-    if (dateRange.end) qs.set("to", toIso(dateRange.end));
-    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
-    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
-    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
-    // faqat birinchi yuklashda — `useState(true)` dan.
+  // So'rov EFFEKT ICHIDA turadi va `reloadKey` bilan qayta ishga tushadi.
+  // Ilgari bu yer `load` nomli useCallback edi va "Qayta urinish" tugmasi
+  // uni TO'G'RIDAN-TO'G'RI chaqirardi — o'shanda funksiya qaytargan
+  // `cancelled` tozalagichi TASHLAB YUBORILARDI (uni faqat React chaqira
+  // oladi). Natijada kechikkan javob yangisini bosib ketishi mumkin edi.
+  //
+  // Ma'lumot O'Z SO'ROV KALITI bilan saqlanadi. Kalit mos kelmasa u eski
+  // hisoblanadi va CHIZILMAYDI — aks holda yangi sarlavha ostida eski
+  // raqamlar turardi (spinner qayta yoqilmagani uchun).
+  const [data, setData] = useState<
+    { key: string; rows: Transaction[]; total: number; start: number } | null
+  >(null);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
     let cancelled = false;
+    const qs = new URLSearchParams({ page: String(page), limit: String(pageSize), sort: "desc" });
+    if (fromIso) qs.set("from", fromIso);
+    if (toIsoStr) qs.set("to", toIsoStr);
     fetchJson<{ transactions: Transaction[]; total: number }>(`/api/transactions?${qs}`)
       .then((d) => {
         if (cancelled) return;
-        setRows(d.transactions);
-        setTotal(d.total);
+        // `start` ham SHU YERDA saqlanadi: aks holda "keyingi sahifa"
+        // bosilganda raqamlash darhol 51-100 ga o'tib, ekranda hali
+        // eski qatorlar turardi.
+        setData({ key: queryKey, rows: d.transactions, total: d.total, start: (page - 1) * pageSize });
         setError(false);
       })
       .catch(() => {
         if (cancelled) return;
         // Xato bo'lganda bo'sh jadval CHIZILMAYDI — pastda ErrorBlock
         // turadi. "Umumiy soni: 0" ham da'vo bo'lardi.
-        setRows([]);
-        setTotal(0);
+        setData(null);
         setError(true);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      });
     return () => { cancelled = true; };
-  }, [dateRange, page, pageSize]);
+  }, [queryKey, fromIso, toIsoStr, page, pageSize, reloadKey]);
 
-  useEffect(() => load(), [load]);
+  const fresh = data && data.key === queryKey ? data : null;
+  const rows = fresh?.rows ?? EMPTY;
+  const total = fresh?.total ?? 0;
+  const loading = !fresh && !error;
 
   const cashboxName = useMemo(() => {
     const map = new Map(cashboxes.map((c) => [c.id, c.name]));
     return (id: number) => map.get(id) || "—";
   }, [cashboxes]);
 
-  const start = (page - 1) * pageSize;
+  const start = fresh?.start ?? 0;
 
   function fmtDate(t: Transaction): string {
     const [y, m, d] = t.date.split("-");
@@ -98,7 +114,10 @@ export default function JournalTab({ cashboxes }: { cashboxes: Cashbox[] }) {
       </div>
 
       {error ? (
-        <ErrorBlock message="Tranzaksiyalarni yuklab bo'lmadi." onRetry={load} />
+        <ErrorBlock
+          message="Tranzaksiyalarni yuklab bo'lmadi."
+          onRetry={() => { setError(false); setReloadKey((k) => k + 1); }}
+        />
       ) : (
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
           <div className="overflow-x-auto">

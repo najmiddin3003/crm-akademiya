@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AreaChart, ArrowDown, ArrowUp, BarChart3 } from "lucide-react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import DonutChart from "@/components/ui/DonutChart";
@@ -28,6 +28,9 @@ type DayRow = { day: string; sign: Sign; amount: number };
 type CatRow = { category: string; sign: Sign; amount: number };
 type MethodRow = { method: string; sign: Sign; amount: number };
 type SignRow = { sign: Sign; amount: number };
+// Bo'sh massiv MODUL DARAJASIDA: `?? []` har renderda YANGI massiv yasaydi
+// va uni bog'liqlik sifatida ishlatadigan useMemo har safar qayta hisoblanadi.
+const EMPTY: never[] = [];
 
 // Moliya → Moliya hisobotlari (sidebar: Moliya > Moliya hisobotlari, href
 // /finance-reports). Bir xil /api/transactions'dan (Moliya analitikasi bilan
@@ -185,12 +188,24 @@ export default function FinanceReportsPage() {
   const [chiqimMode, setChiqimMode] = useState<"category" | "method">("category");
 
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
-  const [dayRows, setDayRows] = useState<DayRow[]>([]);
-  const [catRows, setCatRows] = useState<CatRow[]>([]);
-  const [methodRows, setMethodRows] = useState<MethodRow[]>([]);
-  const [prevRows, setPrevRows] = useState<SignRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // So'rov EFFEKT ICHIDA turadi va `reloadKey` bilan qayta ishga tushadi.
+  // Ilgari bu yer `load` nomli useCallback edi va "Qayta urinish" tugmasi
+  // uni TO'G'RIDAN-TO'G'RI chaqirardi — o'shanda funksiya qaytargan
+  // `cancelled` tozalagichi TASHLAB YUBORILARDI (uni faqat React chaqira
+  // oladi). Natijada kechikkan javob yangisini bosib ketishi mumkin edi.
+  //
+  // Ma'lumot O'Z SO'ROV KALITI bilan saqlanadi. Kalit mos kelmasa u eski
+  // hisoblanadi va CHIZILMAYDI — aks holda yangi filtr tanlangani bilan
+  // ekranda eski filtr raqamlari turardi.
+  const [data, setData] = useState<{
+    key: string;
+    dayRows: DayRow[];
+    catRows: CatRow[];
+    methodRows: MethodRow[];
+    prevRows: SignRow[];
+  } | null>(null);
   const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     fetch("/api/cashboxes")
@@ -212,7 +227,17 @@ export default function FinanceReportsPage() {
     return { from: toIso(prevStart), to: toIso(prevEnd) };
   }, [dateRange]);
 
-  const load = useCallback(() => {
+  // Ko'rinayotgan holatni bir qatorga jamlaydigan kalit.
+  const queryKey = [
+    dateRange.start ? startIso : "",
+    dateRange.end ? endIso : "",
+    cashboxId,
+    method,
+    prevRange ? prevRange.from + ".." + prevRange.to : "",
+  ].join("|");
+
+  useEffect(() => {
+    let cancelled = false;
     const base = new URLSearchParams();
     if (dateRange.start) base.set("from", startIso);
     if (dateRange.end) base.set("to", endIso);
@@ -228,11 +253,6 @@ export default function FinanceReportsPage() {
     if (method) prevQs.set("method", method);
     if (prevRange) { prevQs.set("from", prevRange.from); prevQs.set("to", prevRange.to); }
 
-    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
-    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
-    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
-    // faqat birinchi yuklashda — `useState(true)` dan.
-    let cancelled = false;
     Promise.all([
       fetchJson<{ rows: DayRow[] }>(q("day,sign")),
       fetchJson<{ rows: CatRow[] }>(q("category,sign")),
@@ -243,20 +263,25 @@ export default function FinanceReportsPage() {
     ])
       .then(([d, c, m, p]) => {
         if (cancelled) return;
-        setDayRows(d.rows); setCatRows(c.rows); setMethodRows(m.rows); setPrevRows(p.rows);
+        setData({ key: queryKey, dayRows: d.rows, catRows: c.rows, methodRows: m.rows, prevRows: p.rows });
         setError(false);
       })
       .catch(() => {
         if (cancelled) return;
         // Nol bilan to'ldirilgan kartalar va bo'sh grafik CHIZILMASIN.
-        setDayRows([]); setCatRows([]); setMethodRows([]); setPrevRows([]);
+        setData(null);
         setError(true);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      });
     return () => { cancelled = true; };
-  }, [startIso, endIso, cashboxId, method, prevRange, dateRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey, reloadKey]);
 
-  useEffect(() => load(), [load]);
+  const fresh = data && data.key === queryKey ? data : null;
+  const dayRows = fresh?.dayRows ?? EMPTY;
+  const catRows = fresh?.catRows ?? EMPTY;
+  const methodRows = fresh?.methodRows ?? EMPTY;
+  const prevRows = fresh?.prevRows ?? EMPTY;
+  const loading = !fresh && !error;
 
   const curTotals = useMemo(() => totals(dayRows), [dayRows]);
   const prevTotals = useMemo(() => totals(prevRows), [prevRows]);
@@ -313,7 +338,10 @@ export default function FinanceReportsPage() {
   if (error) {
     return (
       <div className="p-5">
-        <ErrorBanner message="Moliya hisobotini yuklab bo'lmadi — raqamlar ko'rsatilmaydi." onRetry={load} />
+        <ErrorBanner
+          message="Moliya hisobotini yuklab bo'lmadi — raqamlar ko'rsatilmaydi."
+          onRetry={() => { setError(false); setReloadKey((k) => k + 1); }}
+        />
       </div>
     );
   }

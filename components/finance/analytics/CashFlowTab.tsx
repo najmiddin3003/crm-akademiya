@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, BarChart3, List } from "lucide-react";
 import DonutChart from "@/components/ui/DonutChart";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -13,6 +13,9 @@ import { fetchJson } from "@/lib/fetchJson";
 /** summary?groupBy=month,sign va ?groupBy=category,sign qaytaradigan qatorlar. */
 type MonthRow = { month: string; sign: "pos" | "neg" | "zero"; amount: number };
 type CatRow = { category: string; sign: "pos" | "neg" | "zero"; amount: number };
+// Bo'sh massiv MODUL DARAJASIDA: `?? []` har renderda YANGI massiv yasaydi
+// va uni bog'liqlik sifatida ishlatadigan useMemo har safar qayta hisoblanadi.
+const EMPTY: never[] = [];
 
 // Moliya analitikasi → "Pul oqimi" tab'i. Yig'indi SERVERDA —
 // /api/transactions/summary. Ilgari butun kolleksiya ota komponentdan
@@ -71,17 +74,22 @@ export default function CashFlowTab() {
   const months = useMemo(() => trailingMonths(), []);
   const rangeStart = `${months[0].year}-${pad2(months[0].month)}-01`;
 
-  const [monthRows, setMonthRows] = useState<MonthRow[]>([]);
-  const [catRows, setCatRows] = useState<CatRow[]>([]);
-  const [initialBalance, setInitialBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // So'rov EFFEKT ICHIDA turadi va `reloadKey` bilan qayta ishga tushadi.
+  // Ilgari bu yer `load` nomli useCallback edi va "Qayta urinish" tugmasi
+  // uni TO'G'RIDAN-TO'G'RI chaqirardi — o'shanda funksiya qaytargan
+  // `cancelled` tozalagichi TASHLAB YUBORILARDI (uni faqat React chaqira
+  // oladi). Natijada kechikkan javob yangisini bosib ketishi mumkin edi.
+  //
+  // Ma'lumot O'Z SO'ROV KALITI bilan saqlanadi. Kalit mos kelmasa u eski
+  // hisoblanadi va CHIZILMAYDI — aks holda yangi filtr tanlangani bilan
+  // ekranda eski filtr raqamlari turardi.
+  const [data, setData] = useState<
+    { key: string; monthRows: MonthRow[]; catRows: CatRow[]; initialBalance: number } | null
+  >(null);
   const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const load = useCallback(() => {
-    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
-    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
-    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
-    // faqat birinchi yuklashda — `useState(true)` dan.
+  useEffect(() => {
     let cancelled = false;
     const monthQs = new URLSearchParams({ groupBy: "month,sign", from: rangeStart, before: rangeStart });
     Promise.all([
@@ -90,24 +98,23 @@ export default function CashFlowTab() {
     ])
       .then(([m, c]) => {
         if (cancelled) return;
-        setMonthRows(m.rows);
-        setInitialBalance(m.before);
-        setCatRows(c.rows);
+        setData({ key: rangeStart, monthRows: m.rows, catRows: c.rows, initialBalance: m.before });
         setError(false);
       })
       .catch(() => {
         if (cancelled) return;
         // Nol bilan to'ldirilgan 12 oylik jadval CHIZILMASIN.
-        setMonthRows([]);
-        setCatRows([]);
-        setInitialBalance(0);
+        setData(null);
         setError(true);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      });
     return () => { cancelled = true; };
-  }, [rangeStart]);
+  }, [rangeStart, reloadKey]);
 
-  useEffect(() => load(), [load]);
+  const fresh = data && data.key === rangeStart ? data : null;
+  const monthRows = fresh?.monthRows ?? EMPTY;
+  const catRows = fresh?.catRows ?? EMPTY;
+  const initialBalance = fresh?.initialBalance ?? 0;
+  const loading = !fresh && !error;
 
   const monthStats = useMemo(() => {
     // Server bo'sh oy uchun chelak qaytarmaydi — 12 oy shu yerda to'ldiriladi.
@@ -192,7 +199,12 @@ export default function CashFlowTab() {
   }
 
   if (error) {
-    return <ErrorBlock message="Pul oqimi ma'lumotini yuklab bo'lmadi." onRetry={load} />;
+    return (
+      <ErrorBlock
+        message="Pul oqimi ma'lumotini yuklab bo'lmadi."
+        onRetry={() => { setError(false); setReloadKey((k) => k + 1); }}
+      />
+    );
   }
   if (loading) {
     return <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, BarChart3, LayoutGrid } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { ErrorBlock } from "@/components/ui/ErrorBanner";
@@ -19,6 +19,9 @@ import { fetchJson } from "@/lib/fetchJson";
 
 /** summary?groupBy=day,sign qaytaradigan qator. */
 type DayRow = { day: string; sign: "pos" | "neg" | "zero"; amount: number };
+// Bo'sh massiv MODUL DARAJASIDA: `?? []` har renderda YANGI massiv yasaydi
+// va uni bog'liqlik sifatida ishlatadigan useMemo har safar qayta hisoblanadi.
+const EMPTY: never[] = [];
 
 const WEEKDAYS = ["Dush", "Sesh", "Chor", "Pay", "Jum", "Shan", "Yak"];
 
@@ -40,43 +43,48 @@ export default function CalendarTab() {
   const monthStartIso = `${year}-${pad2(month)}-01`;
   const monthEndIso = `${year}-${pad2(month)}-${pad2(daysInMonth)}`;
 
-  const [dayRows, setDayRows] = useState<DayRow[]>([]);
-  const [balanceBeforeMonth, setBalanceBeforeMonth] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // So'rov EFFEKT ICHIDA turadi va `reloadKey` bilan qayta ishga tushadi.
+  // Ilgari bu yer `load` nomli useCallback edi va "Qayta urinish" tugmasi
+  // uni TO'G'RIDAN-TO'G'RI chaqirardi — o'shanda funksiya qaytargan
+  // `cancelled` tozalagichi TASHLAB YUBORILARDI (uni faqat React chaqira
+  // oladi). Natijada kechikkan javob yangisini bosib ketishi mumkin edi.
+  //
+  // Ma'lumot O'Z SO'ROV KALITI bilan saqlanadi. Kalit mos kelmasa u eski
+  // hisoblanadi va CHIZILMAYDI — aks holda yangi sarlavha ostida eski
+  // raqamlar turardi (spinner qayta yoqilmagani uchun).
+  const [data, setData] = useState<{ key: string; rows: DayRow[]; before: number } | null>(null);
   const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const load = useCallback(() => {
+  useEffect(() => {
+    let cancelled = false;
     const qs = new URLSearchParams({
       groupBy: "day,sign",
       from: monthStartIso,
       to: monthEndIso,
       before: monthStartIso,
     });
-    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
-    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
-    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
-    // faqat birinchi yuklashda — `useState(true)` dan.
-    let cancelled = false;
     fetchJson<{ rows: DayRow[]; before: number }>(`/api/transactions/summary?${qs}`)
       .then((d) => {
         if (cancelled) return;
-        setDayRows(d.rows);
-        setBalanceBeforeMonth(d.before);
+        setData({ key: monthStartIso, rows: d.rows, before: d.before });
         setError(false);
       })
       .catch(() => {
         if (cancelled) return;
         // Xato bo'lganda kalendar NOL bilan to'ldirilib chizilmasin —
         // "0 UZS" moliyada da'vo, "kelmadi" esa boshqa gap.
-        setDayRows([]);
-        setBalanceBeforeMonth(0);
+        setData(null);
         setError(true);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      });
     return () => { cancelled = true; };
-  }, [monthStartIso, monthEndIso]);
+  }, [monthStartIso, monthEndIso, reloadKey]);
 
-  useEffect(() => load(), [load]);
+  // Ko'rinayotgan oyga TEGISHLI ma'lumotgina ishlatiladi.
+  const fresh = data && data.key === monthStartIso ? data : null;
+  const dayRows = fresh?.rows ?? EMPTY;
+  const balanceBeforeMonth = fresh?.before ?? 0;
+  const loading = !fresh && !error;
 
   const days = useMemo(() => {
     const byDay: Record<number, { income: number; expense: number }> = {};
@@ -142,7 +150,10 @@ export default function CalendarTab() {
       </div>
 
       {error ? (
-        <ErrorBlock message="Kalendar ma'lumotini yuklab bo'lmadi." onRetry={load} />
+        <ErrorBlock
+          message="Kalendar ma'lumotini yuklab bo'lmadi."
+          onRetry={() => { setError(false); setReloadKey((k) => k + 1); }}
+        />
       ) : loading ? (
         <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>
       ) : view === "grid" ? (
