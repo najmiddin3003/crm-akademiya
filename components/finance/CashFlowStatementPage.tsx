@@ -7,9 +7,7 @@ import YearPicker from "./reports/YearPicker";
 import MonthPicker from "./reports/MonthPicker";
 import { MONTH_NAMES_UZ } from "@/constants/pnlReports";
 import type { MonthlyFlow } from "@/lib/cashflowStatement";
-import type { Transaction } from "@/lib/transactions";
 import type { TransactionType } from "@/lib/transactionTypes";
-import { loadTransactionsCached } from "@/lib/transactionsClient";
 
 // Moliya → Pul oqimi (sidebar: Moliya > Pul oqimi, href /finance-flow). Sof
 // hisobot — add/edit/delete yo'q. Yil/oy tanlagichi — Moliya hisobotlari
@@ -65,71 +63,105 @@ function buildRow(m: MonthlyFlow, opening: number) {
   return { month: m.month, opening, kirim, chiqim, sof, closing, income: m.income, expense: m.expense };
 }
 
+/** /api/transactions/summary qaytaradigan qator (groupBy=month,category,sign). */
+interface FlowRow {
+  /** "YYYY-MM" */
+  month: string;
+  category: string;
+  /** "pos" | "neg" | "zero" */
+  sign: string;
+  amount: number;
+}
 export default function CashFlowStatementPage() {
   const { showSuccess, showError } = useToast();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState<number | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Yig'indi SERVERDA hisoblanadi — /api/transactions/summary.
+  //
+  // Ilgari sahifa butun `transactions` kolleksiyasini yuklardi (21 921
+  // qator, 3 099 KB) va ikkala hisobni brauzerda bajarardi. Endi server
+  // {oy, kategoriya, ishora} kesimida yig'ib beradi, sahifa esa faqat
+  // "Boshqa" ga yig'ish va 12 oylik nol to'ldirishni qiladi — bu ikkisi
+  // KLIENTDA qolishi SHART, sababi pastdagi `monthly` izohida.
+  //
+  // `before` — yanvarning boshlang'ich balansi, ya'ni yildan oldingi
+  // BARCHA tranzaksiyalarning sof yig'indisi. Shu sabab bu yerda sana
+  // oralig'i bilan cheklanib bo'lmaydi: qoldiq uchun oldingi hamma narsa
+  // kerak, va aynan shuning uchun "faqat sana filtri qo'shamiz" degan
+  // soddaroq yechim bu sahifada ishlamaydi.
+  const [flowRows, setFlowRows] = useState<FlowRow[]>([]);
+  const [openingBalance, setOpeningBalance] = useState(0);
   const [incomeCats, setIncomeCats] = useState<string[]>([]);
   const [expenseCats, setExpenseCats] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+    const qs = new URLSearchParams({
+      groupBy: "month,category,sign",
+      from: `${year}-01-01`,
+      to: `${year}-12-31`,
+      before: `${year}-01-01`,
+    });
     Promise.all([
-      loadTransactionsCached()
-        .then((transactions) => ({ ok: true, transactions }))
-        .catch(() => ({ ok: false, transactions: [] })),
-      fetch("/api/transaction-types").then((r) => r.json()),
-    ]).then(([tx, types]) => {
+      fetch(`/api/transactions/summary?${qs}`).then((r) => r.json()).catch(() => null),
+      fetch("/api/transaction-types").then((r) => r.json()).catch(() => null),
+    ]).then(([sum, types]) => {
       if (cancelled) return;
-      if (tx.ok) setTransactions(tx.transactions);
-      if (types.ok) {
+      if (sum?.ok) {
+        setFlowRows(sum.rows as FlowRow[]);
+        setOpeningBalance(Number(sum.before) || 0);
+      }
+      if (types?.ok) {
         const all = types.types as TransactionType[];
         setIncomeCats(Array.from(new Set(all.filter((t) => t.mainType === "kirim").map((t) => t.name))));
         setExpenseCats(Array.from(new Set(all.filter((t) => t.mainType === "chiqim").map((t) => t.name))));
       }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [year]);
 
   const monthly = useMemo<MonthlyFlow[]>(() => {
     const knownIncome = new Set(incomeCats);
     const knownExpense = new Set(expenseCats);
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      const monthTx = transactions.filter((t) => {
-        const [ty, tm] = t.date.split("-").map(Number);
-        return ty === year && tm === m;
-      });
-      // Ro'yxatdagi turlar 0 bilan oldindan to'ldiriladi — jadvalda har bir
-      // tur qatori tartibi bilan ko'rinib tursin.
-      const income: Record<string, number> = Object.fromEntries(incomeCats.map((c) => [c, 0]));
-      const expense: Record<string, number> = Object.fromEntries(expenseCats.map((c) => [c, 0]));
-      for (const t of monthTx) {
-        // Kategoriya ro'yxatda bo'lmasa ham tranzaksiya TASHLANMAYDI —
-        // "Boshqa" ga qo'shiladi (turi o'chirilgan/nomi o'zgargan bo'lishi
-        // mumkin, lekin pul haqiqiy).
-        if (t.amount > 0) {
-          const key = knownIncome.has(t.category) ? t.category : OTHER_KEY;
-          income[key] = (income[key] || 0) + t.amount;
-        } else {
-          const key = knownExpense.has(t.category) ? t.category : OTHER_KEY;
-          expense[key] = (expense[key] || 0) - t.amount;
-        }
+    // Ro'yxatdagi turlar 0 bilan oldindan to'ldiriladi — jadvalda har bir
+    // tur qatori tartibi bilan ko'rinib tursin. Server bo'sh oy/kategoriya
+    // uchun chelak qaytarmaydi, shu bois bu to'ldirish shart.
+    const out: MonthlyFlow[] = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      income: Object.fromEntries(incomeCats.map((c) => [c, 0])),
+      expense: Object.fromEntries(expenseCats.map((c) => [c, 0])),
+    }));
+    for (const r of flowRows) {
+      const m = Number(String(r.month).slice(5, 7));
+      if (!(m >= 1 && m <= 12)) continue;
+      const cell = out[m - 1];
+      // Kategoriya ro'yxatda bo'lmasa ham tranzaksiya TASHLANMAYDI —
+      // "Boshqa" ga qo'shiladi (turi o'chirilgan/nomi o'zgargan bo'lishi
+      // mumkin, lekin pul haqiqiy). Shu SABABLI yig'ish serverda emas,
+      // shu yerda: ro'yxat /api/transaction-types dan keladi va uni admin
+      // istalgan vaqtda o'zgartiradi.
+      if (r.sign === "pos") {
+        const key = knownIncome.has(r.category) ? r.category : OTHER_KEY;
+        cell.income[key] = (cell.income[key] || 0) + r.amount;
+      } else {
+        // "neg" ham, "zero" ham shu shoxga tushadi — eski koddagi `else`
+        // bilan aynan bir xil.
+        const key = knownExpense.has(r.category) ? r.category : OTHER_KEY;
+        cell.expense[key] = (cell.expense[key] || 0) - r.amount;
       }
-      return { month: m, income, expense };
-    });
-  }, [transactions, year, incomeCats, expenseCats]);
+    }
+    return out;
+  }, [flowRows, incomeCats, expenseCats]);
 
-  // Yanvarning boshlang'ich balansi — tanlangan yilgacha bo'lgan BARCHA
-  // tranzaksiyalarning sof qoldig'i. Ilgari bu yerda kategoriya filtri bor
-  // edi va ro'yxatdan o'chirilgan turdagi pul qoldiqdan yo'qolardi; endi
-  // oylik Kirim/Chiqim ham hech narsani tashlamaydi, ya'ni boshlang'ich va
-  // yakuniy balans bir xil qoidaga bo'ysunadi.
-  const openingBalance = useMemo(() => {
-    const yearStart = `${year}-01-01`;
-    return transactions.filter((t) => t.date < yearStart).reduce((s, t) => s + t.amount, 0);
-  }, [transactions, year]);
+  // Yanvarning boshlang'ich balansi yuqorida, serverdan (`before`) keladi:
+  // tanlangan yilgacha bo'lgan BARCHA tranzaksiyalarning sof qoldig'i.
+  // Kategoriya filtri YO'Q — ro'yxatdan o'chirilgan turdagi pul ham
+  // qoldiqda qoladi, ya'ni boshlang'ich va yakuniy balans bir xil
+  // qoidaga bo'ysunadi.
+  //
+  // Server uni $toDecimal bilan yig'adi. Oddiy $sum float'da yig'ib
+  // 216496999.99999997 kabi qiymat berardi va u xlsx eksportiga xom
+  // holda tushib, 12 oylik qoldiq zanjiriga tarqalardi.
 
   const computed = useMemo(() => {
     const acc = monthly.reduce<{ list: ReturnType<typeof buildRow>[]; opening: number }>(
