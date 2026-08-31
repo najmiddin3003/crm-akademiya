@@ -358,6 +358,68 @@ bo'ylab keyingi oylarga tarqalardi.
 
 ---
 
+### 4.16. `/api/pupils` — so'ralgan maydonlargina
+
+`pupils` 6 732 hujjat, javob 2.66 MB edi va u **13 ta sahifaga bir xil**
+ketardi. Tekshirganda ma'lum bo'ldiki, 13 tadan **9 tasi** qo'shimcha
+maydonlarning birortasini ham o'qimaydi.
+
+Undan ham qizig'i — hujjatdagi **33 maydondan 19 tasi 6 732 tadan
+0 tasida** to'ldirilgan (`fatherName`, `motherPhone`, `source`,
+`paymentDate`, `email`, `tags`, `note`, `language` …). Bo'sh bo'lsa
+ham joy egallaydi: JSON'da `"fatherName":""` ham baytlar. Faqat oltita
+ota-ona maydoni **0.63 MB**.
+
+**Yechim — sahifalash EMAS.** `useStudents` 26 ta joyda chaqiriladi va
+ko'pchiligiga to'liq ro'yxat kerak (ism→id xaritalari, qidiruvli
+tanlovlar). Buning o'rniga so'rov aniqlashtirildi:
+
+```
+GET /api/pupils              -> asosiy 13 maydon
+GET /api/pupils?extra=a,b    -> ustiga qo'shimcha (OQ RO'YXAT)
+GET /api/pupils?status=Aktiv -> holat bo'yicha SERVER filtri
+GET /api/pupils?light=1      -> 4 maydon (o'zgarmagan)
+```
+
+| Sahifa | Eski | Yangi |
+|---|---|---|
+| Qolgan 9 ta sahifa | 2.66 MB | **1.64 MB** |
+| Aktiv o'quvchilar (4 276 qator) | 2.66 MB | **1.08 MB** |
+| Arxiv o'quvchilar (2 456 qator) | 2.66 MB | **0.63 MB** |
+| Tug'ilgan kunlar | 2.66 MB | 1.74 MB |
+| O'quvchilar manzillari | 2.66 MB | 1.83 MB |
+| Ota-onalar | 2.66 MB | 2.37 MB |
+
+**Turlar orqali xavfsizlik.** `useStudents` endi generik:
+
+```ts
+const { pupils } = useStudents({ extra: ["birthDate"] as const });
+pupils[0].birthDate   // OK
+pupils[0].address     // kompilyatsiya XATOSI — so'ralmagan
+```
+
+Ya'ni so'ralmagan maydon `undefined` bo'lib jimgina ekranga chiqmaydi.
+Aynan shu `tsc` matnli auditim **o'tkazib yuborgan** bitta joyni topdi:
+[OrderDetailPage](components/orders/OrderDetailPage.tsx) `birthDate` ni
+`PupilsContext` orqali o'qir ekan.
+
+Kesh kaliti so'rovning HAMMA qismini o'z ichiga oladi — aks holda
+`?extra=birthDate` so'ragan sahifa qo'shimchasiz keshga tushib qolardi.
+
+**Tekshirildi** (jonli baza, route handler'ning o'zi chaqirilib): 18 ta
+tasdiq — standart javobda aynan 13 maydon, har bir `extra` to'plami,
+`?extra=studentPasswordHash` → 400, `?status=` natijasi eski klient
+filtri bilan **aynan bir xil id ro'yxati** (4 276 va 2 456).
+
+> **OCHIQ SAVOL.** `lib/parentsData.ts:92` qatorni faqat
+> `father.name || father.phone` bo'lganda qo'shadi. Bu maydonlar
+> 6 732 tadan **0 tasida** to'ldirilgan, ya'ni **Ota-onalar sahifasi
+> bugun bo'sh jadval ko'rsatadi** va buning uchun 2.37 MB yuklaydi.
+> `SmsModal` ham shu telefonlardan o'qiydi. Funksiya tashlab
+> yuborilganmi yoki kiritish buzuqmi — hal qilinmagan.
+
+---
+
 ## 5. Sinab ko'rilgan va RAD ETILGAN yo'llar
 
 > Bu yo'llarga qaytadan vaqt sarflamang — o'lchandi.

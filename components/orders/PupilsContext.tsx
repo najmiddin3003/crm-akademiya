@@ -12,8 +12,14 @@ import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 // STUDENTS list — and a pupil created via one surface is immediately
 // searchable on the other.
 
+/**
+ * Buyurtma paneli ro'yxati — asosiy to'plam USTIGA `birthDate`.
+ * OrderDetailPage kartada yoshni ko'rsatadi, shu bois u so'raladi.
+ */
+export type OrderPupil = PupilListItem & Pick<Pupil, "birthDate">;
+
 interface PupilsContextValue {
-  pupils: PupilListItem[];
+  pupils: OrderPupil[];
   loading: boolean;
   createPupil: (values: NewPupilValues) => Promise<Pupil | null>;
 }
@@ -21,12 +27,14 @@ interface PupilsContextValue {
 const PupilsContext = createContext<PupilsContextValue | null>(null);
 
 export function PupilsProvider({ children }: { children: ReactNode }) {
-  const [pupils, setPupils] = useState<PupilListItem[]>([]);
+  // `birthDate` — buyurtma kartasidagi yosh uchun (OrderDetailPage).
+  // Standart to'plamda yo'q, shu bois ataylab so'raymiz.
+  const [pupils, setPupils] = useState<OrderPupil[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    loadPupilsCached()
+    loadPupilsCached<"birthDate">({ extra: ["birthDate"] })
       .then((list) => {
         if (!cancelled) setPupils(list);
       })

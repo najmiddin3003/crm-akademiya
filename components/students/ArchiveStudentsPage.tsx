@@ -104,7 +104,9 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
 }
 
 export default function ArchiveStudentsPage() {
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // `status: "Arxiv"` — filtr SERVERDA: 6 732 tadan 2 456 tasi.
+  // Pastdagi `.filter(s.status === "Arxiv")` himoya sifatida qoladi.
+  const { pupils, loading: pupilsLoading } = useStudents({ status: "Arxiv" });
   const { groups, loading: groupsLoading } = useGroups();
   // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
   // haqiqiy summa faqat transaction_entries dan yig'iladi.

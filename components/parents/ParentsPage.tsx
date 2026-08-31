@@ -73,7 +73,15 @@ function Dash() {
 }
 
 export default function ParentsPage() {
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // Ota-ona maydonlari standart to'plamda YO'Q (ular 13 ta sahifadan
+  // faqat shu ikkitasiga kerak) — ataylab so'raymiz.
+  const { pupils, loading: pupilsLoading } = useStudents({
+    extra: [
+      "birthDate",
+      "fatherName", "fatherPhone", "fatherWork",
+      "motherName", "motherPhone", "motherWork",
+    ] as const,
+  });
   // Balanslar alohida so'raladi: pupils.balance maydonini hech bir API
   // yangilamaydi, haqiqiy summa faqat transaction_entries dan yig'iladi.
   const [balances, setBalances] = useState<Record<string, number>>({});

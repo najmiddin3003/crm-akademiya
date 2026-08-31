@@ -105,7 +105,13 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
 }
 
 export default function ActiveStudentsPage() {
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // `status: "Aktiv"` — filtr SERVERDA. Ilgari 6 732 o'quvchi tortilib,
+  // brauzerda 4 276 tasi qoldirilardi (pastdagi `.filter(s.status === "Aktiv")`
+  // himoya sifatida joyida qoladi). `paymentDate` — "To'lov sanasi" ustuni.
+  const { pupils, loading: pupilsLoading } = useStudents({
+    extra: ["paymentDate"] as const,
+    status: "Aktiv",
+  });
   const { groups, loading: groupsLoading } = useGroups();
   // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
   // haqiqiy summa faqat transaction_entries dan yig'iladi.

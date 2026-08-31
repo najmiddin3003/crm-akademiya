@@ -108,7 +108,9 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
       fetch("/api/sms-templates").then((r) => r.json()).catch(() => null),
       fetch("/api/settings?key=sale-marketing.auto-sms").then((r) => r.json()).catch(() => null),
       // Ota/ona telefonlari kerak -> to'liq hujjatlar (lekin umumiy keshdan).
-      loadPupilsCached().then((pupils) => ({ ok: true, pupils })).catch(() => null),
+      loadPupilsCached<"fatherPhone" | "motherPhone">({ extra: ["fatherPhone", "motherPhone"] })
+        .then((pupils) => ({ ok: true, pupils }))
+        .catch(() => null),
     ]).then(([tplRes, autoRes, pupilRes]) => {
       if (cancelled) return;
       const list: TemplateOption[] = [];

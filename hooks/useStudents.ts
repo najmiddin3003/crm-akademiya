@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cachedGet, invalidateCached, peekCached } from "@/lib/clientCache";
-import type { PupilListItem } from "@/lib/pupilsData";
+import type { Pupil, PupilExtraField, PupilListItem } from "@/lib/pupilsData";
 import { studentRowFromPupil, type StudentRow } from "@/lib/studentsData";
 
 // O'quvchilarning YAGONA klient manbasi — /api/pupils (MongoDB `pupils`).
@@ -22,50 +22,111 @@ import { studentRowFromPupil, type StudentRow } from "@/lib/studentsData";
 const KEY = "pupils:";
 const TTL_MS = 30_000;
 
+/** So'rovni bir xil ko'rinishga keltiradi — kesh kaliti ham shundan. */
+export interface PupilsQuery {
+  /** Faqat id/ism/telefon (`?light=1`). Qo'shimcha maydonlar bilan birga ISHLAMAYDI. */
+  light?: boolean;
+  /** Asosiy to'plam ustiga qo'shimcha maydonlar (`?extra=`). */
+  extra?: readonly PupilExtraField[];
+  /** Holat bo'yicha server filtri (`?status=Aktiv`). */
+  status?: string;
+}
+
+/**
+ * Kesh kaliti so'rovning HAMMA qismini o'z ichiga oladi.
+ *
+ * Bu SHART: aks holda `?extra=birthDate` so'ragan sahifa, undan oldin
+ * qo'shimchasiz so'ragan sahifaning keshiga tushib qolardi va `birthDate`
+ * jimgina `undefined` bo'lardi. Qo'shimchalar SARALANADI — ["a","b"] va
+ * ["b","a"] bir xil so'rov, ikki marta tortilmasin.
+ */
+function queryKey(q: PupilsQuery): string {
+  if (q.light) return KEY + "light" + (q.status ? "|" + q.status : "");
+  const extra = q.extra?.length ? "+" + [...q.extra].sort().join(",") : "";
+  return KEY + "full" + extra + (q.status ? "|" + q.status : "");
+}
+
+function queryUrl(q: PupilsQuery): string {
+  const sp = new URLSearchParams();
+  if (q.light) sp.set("light", "1");
+  else if (q.extra?.length) sp.set("extra", [...q.extra].sort().join(","));
+  if (q.status) sp.set("status", q.status);
+  const qs = sp.toString();
+  return "/api/pupils" + (qs ? "?" + qs : "");
+}
+
 /** Ro'yxatni keshdan yoki tarmoqdan oladi. */
-export function loadPupilsCached(light = false): Promise<PupilListItem[]> {
-  return cachedGet(KEY + (light ? "light" : "full"), TTL_MS, () =>
-    fetch(light ? "/api/pupils?light=1" : "/api/pupils")
+export function loadPupilsCached<K extends PupilExtraField = never>(
+  query: PupilsQuery | boolean = {},
+): Promise<(PupilListItem & Pick<Pupil, K>)[]> {
+  // Eski chaqiruv shakli — `loadPupilsCached(true)` — hali ishlaydi.
+  const q: PupilsQuery = typeof query === "boolean" ? { light: query } : query;
+  return cachedGet(queryKey(q), TTL_MS, () =>
+    fetch(queryUrl(q))
       .then((r) => r.json())
       .then((d) => {
         // MUHIM: xatoni bo'sh ro'yxatga aylantirmaymiz. Aks holda
         // `enrollOrderInGroup` "o'quvchi topilmadi" deb TAKROR yozuv
         // yaratib yuborardi, ustiga bo'sh natija keshlanib qolardi.
         if (!d?.ok) throw new Error("pupils: ok emas");
-        return d.pupils as PupilListItem[];
+        return d.pupils as (PupilListItem & Pick<Pupil, K>)[];
       }));
 }
 
 /**
  * O'quvchi qo'shilgan/o'zgartirilgan/o'chirilgandan keyin CHAQIRILSIN —
  * aks holda ro'yxat TTL tugaguncha eski holatda qolishi mumkin.
+ *
+ * Prefiks bo'yicha bekor qiladi, ya'ni HAMMA variant (light, qo'shimchali,
+ * holat bo'yicha filtrlangan) birdan tozalanadi.
  */
 export function invalidateStudents(): void {
   invalidateCached(KEY);
 }
 
 /**
- * `light` — faqat id, ism va telefon so'raladi (`/api/pupils?light=1`).
- * To'liq hujjatlar ~3.6 MB, yengil ro'yxat ~544 KB. Faqat ism ko'rsatadigan
- * yoki profilga havola yasaydigan joylar shuni ishlatsin; balans/koin kabi
- * maydonlar kerak bo'lsa — standart (to'liq) rejim.
+ * `light` — faqat id, ism va telefon (`?light=1`, 0.53 MB). Faqat ism
+ * ko'rsatadigan yoki profilga havola yasaydigan joylar shuni ishlatsin.
+ *
+ * Standart rejim — asosiy 13 maydon (1.64 MB). Ota-ona, manzil, tug'ilgan
+ * sana va to'lov sanasi UNDA YO'Q: ular `extra` bilan ALOHIDA so'raladi,
+ * chunki 13 ta sahifadan atigi 4 tasiga kerak.
+ *
+ *     const { pupils } = useStudents({ extra: ["birthDate"] as const });
+ *     pupils[0].birthDate   // OK
+ *     pupils[0].address     // kompilyatsiya xatosi — so'ralmagan
+ *
+ * `status` — serverda filtrlaydi. Aktiv o'quvchilar sahifasi 6 732 tadan
+ * 4 276 tasini ko'rsatadi, Arxiv esa 2 456 tasini; qolganini brauzerga
+ * tashib, keyin tashlab yuborishning ma'nosi yo'q.
  */
-export function useStudents(options?: { light?: boolean }) {
+export function useStudents<K extends PupilExtraField = never>(options?: {
+  light?: boolean;
+  extra?: readonly K[];
+  status?: string;
+}) {
   const light = options?.light === true;
+  const status = options?.status;
+  // Massiv har renderda yangi bo'ladi — effekt bog'liqligi uchun uni
+  // barqaror satrga aylantiramiz.
+  const extraKey = options?.extra?.length ? [...options.extra].sort().join(",") : "";
+
+  const cacheKey = queryKey({ light, extra: options?.extra, status });
+  type Row = PupilListItem & Pick<Pupil, K>;
   // Kesh tayyor bo'lsa — birinchi renderdayoq to'liq ro'yxat bilan
   // boshlanadi, ya'ni bo'sh jadval "chaqnab" o'tmaydi.
-  const cacheKey = KEY + (light ? "light" : "full");
-  const [pupils, setPupils] = useState<PupilListItem[]>(() => peekCached<PupilListItem[]>(cacheKey) ?? []);
-  const [loading, setLoading] = useState(() => peekCached<PupilListItem[]>(cacheKey) === null);
+  const [pupils, setPupils] = useState<Row[]>(() => peekCached<Row[]>(cacheKey) ?? []);
+  const [loading, setLoading] = useState(() => peekCached<Row[]>(cacheKey) === null);
 
   useEffect(() => {
     let cancelled = false;
-    loadPupilsCached(light)
+    const extra = extraKey ? (extraKey.split(",") as K[]) : undefined;
+    loadPupilsCached<K>({ light, extra, status })
       .then((list) => { if (!cancelled) setPupils(list); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [light]);
+  }, [light, extraKey, status]);
 
   const students = useMemo<StudentRow[]>(() => pupils.map(studentRowFromPupil), [pupils]);
   const names = useMemo(() => students.map((s) => s.name).filter(Boolean), [students]);

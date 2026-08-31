@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { buildPupilFromValues, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
+import { buildPupilFromValues, PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
 
 // GET /api/pupils — "O'quvchi qo'shish" orqali qo'shilgan haqiqiy o'quvchilar
 // ro'yxati (constants/index.js'dagi statik demo STUDENTS'dan ajratilgan).
@@ -17,32 +17,59 @@ import { buildPupilFromValues, type NewPupilValues, type Pupil } from "@/lib/pup
 // bitta hujjatni oladi, shuning uchun bu qisqartirish ularga tegmaydi.
 const LIGHT_PROJECTION = { _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1 };
 
-// Standart rejim — ro'yxat sahifalari HAQIQATDA o'qiydigan maydonlar. Yangi
-// maydon kerak bo'lsa shu ro'yxatga qo'shilsin, aks holda u klientda
-// `undefined` bo'lib keladi.
-const MEDIUM_PROJECTION = {
+// Standart rejim — studentRowFromPupil (lib/studentsData.ts) talab
+// qiladigan asosiy 13 maydon. `students`/`names`/`byName` ni ishlatadigan
+// HAR BIR joy shulardan iborat.
+//
+// Ilgari bu yerda yana o'nta maydon bor edi (to'lov sanasi, tug'ilgan sana,
+// oltita ota-ona maydoni, ikkita manzil). Ular 13 ta sahifadan 4 tasiga
+// kerak, lekin HAMMASIGA tashilardi — 6 732 hujjatda 1.02 MB ortiqcha,
+// ustiga ularning aksariyati bazada BO'SH satr. Endi `?extra=` bilan.
+const BASE_PROJECTION = {
   _id: 0,
-  // studentRowFromPupil (lib/studentsData.ts) — `students`/`names`/`byName`
-  // ni ishlatadigan HAR BIR joy shu 13 tasini talab qiladi.
   id: 1, firstName: 1, lastName: 1, phone: 1,
   balance: 1, coin: 1, createdAt: 1, moderator: 1, source: 1, category: 1,
   status: 1, statusReason: 1, statusChangedAt: 1,
-  // "To'lov sanasi" ustuni — ActiveStudentsPage (StudentRow'da yo'q).
-  paymentDate: 1,
-  // Tug'ilgan kunlar, ota-onalar jadvali, buyurtma kartasidagi yosh.
-  birthDate: 1,
-  // Ota-onalar sahifasi (lib/parentsData.ts) va SmsModal.
-  fatherName: 1, fatherPhone: 1, fatherWork: 1,
-  motherName: 1, motherPhone: 1, motherWork: 1,
-  // O'quvchilar manzillari sahifasi — `addresses` massiv sifatida kerak.
-  address: 1, addresses: 1,
 };
 
+// Kim qaysi qo'shimchani so'raydi (oq ro'yxat lib/pupilsData.ts da):
+//   birthDate                      -> Tug'ilgan kunlar, Ota-onalar
+//   paymentDate                    -> Aktiv o'quvchilar ("To'lov sanasi")
+//   address, addresses             -> O'quvchilar manzillari
+//   father*/mother*                -> Ota-onalar, SmsModal
+const EXTRA_ALLOWED = new Set<string>(PUPIL_EXTRA_FIELDS);
+
+// GET /api/pupils
+//   ?light=1        — faqat id/ism/telefon
+//   ?extra=a,b      — asosiy to'plam USTIGA qo'shimcha maydonlar
+//   ?status=Aktiv   — holat bo'yicha filtr (Aktiv o'quvchilar sahifasi
+//                     6 732 tadan 4 276 tasini, Arxiv esa 2 456 tasini
+//                     ko'rsatadi — qolganini tashish bekor)
 export async function GET(req: Request) {
-  const light = new URL(req.url).searchParams.get("light") === "1";
+  const sp = new URL(req.url).searchParams;
+  const light = sp.get("light") === "1";
+
+  let projection: Record<string, number> = light ? LIGHT_PROJECTION : BASE_PROJECTION;
+  const extraRaw = sp.get("extra");
+  if (extraRaw && !light) {
+    const extra = extraRaw.split(",").map((s) => s.trim()).filter(Boolean);
+    const bad = extra.filter((f) => !EXTRA_ALLOWED.has(f));
+    if (bad.length) {
+      return NextResponse.json(
+        { ok: false, error: `Noto'g'ri extra: ${bad.join(", ")}` },
+        { status: 400 },
+      );
+    }
+    projection = { ...projection, ...Object.fromEntries(extra.map((f) => [f, 1])) };
+  }
+
+  const filter: Record<string, unknown> = {};
+  const status = sp.get("status");
+  if (status) filter.status = status;
+
   const db = await ensureIndexes();
   const rows = await db.collection("pupils")
-    .find({}, { projection: light ? LIGHT_PROJECTION : MEDIUM_PROJECTION })
+    .find(filter, { projection })
     .sort({ id: -1 })
     .toArray();
   // Parol xeshlari hech qachon klientga chiqmaydi.

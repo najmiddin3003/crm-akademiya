@@ -105,16 +105,36 @@ export interface Pupil {
  * qaytaradi. Shu tip tufayli yo'q maydonni o'qish kompilyatsiya xatosi
  * bo'ladi, jimgina bo'sh qiymat emas.
  */
+/**
+ * `/api/pupils` HAR DOIM qaytaradigan maydonlar — `studentRowFromPupil`
+ * (lib/studentsData.ts) talab qiladigan asosiy to'plam.
+ *
+ * Ilgari bu yerda yana o'nta maydon bor edi (ota-ona, manzil, tug'ilgan
+ * sana, to'lov sanasi). Ular 13 ta sahifadan atigi 4 tasiga kerak, lekin
+ * HAMMASIGA tashilardi: 6 732 hujjatda 1.02 MB ortiqcha. Endi ular
+ * `?extra=` bilan ALOHIDA so'raladi.
+ */
 export type PupilListItem = Pick<
   Pupil,
   | "id" | "firstName" | "lastName" | "phone"
   | "balance" | "coin" | "createdAt" | "moderator" | "source" | "category"
   | "status" | "statusReason" | "statusChangedAt"
-  | "paymentDate" | "birthDate"
-  | "fatherName" | "fatherPhone" | "fatherWork"
-  | "motherName" | "motherPhone" | "motherWork"
-  | "address" | "addresses"
 >;
+
+/**
+ * `?extra=` orqali qo'shimcha so'rash mumkin bo'lgan maydonlar (OQ RO'YXAT).
+ *
+ * Bu ro'yxat serverda ham, `useStudents` turida ham ishlatiladi: sahifa
+ * so'ramagan maydonni o'qisa, TypeScript kompilyatsiyada to'xtatadi —
+ * ya'ni `undefined` jimgina ekranga chiqmaydi.
+ */
+export const PUPIL_EXTRA_FIELDS = [
+  "paymentDate", "birthDate",
+  "fatherName", "fatherPhone", "fatherWork",
+  "motherName", "motherPhone", "motherWork",
+  "address", "addresses",
+] as const;
+export type PupilExtraField = (typeof PUPIL_EXTRA_FIELDS)[number];
 
 
 export interface PupilAddress {

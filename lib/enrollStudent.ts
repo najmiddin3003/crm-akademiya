@@ -11,7 +11,9 @@ import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 const digitsOf = (s: string) => (s || "").replace(/\D/g, "");
 
 /** Buyurtmadagi o'quvchini `pupils` ichidan topadi (telefon, bo'lmasa ism). */
-export function findPupilForOrder(order: Order, pupils: PupilListItem[]): PupilListItem | undefined {
+// Generik: chaqiruvchi boyroq tur bersa (masalan `birthDate` bilan), javob
+// ham o`sha turda qaytadi — `PupilListItem` ga qisilib qolmaydi.
+export function findPupilForOrder<T extends PupilListItem>(order: Order, pupils: T[]): T | undefined {
   const phone = digitsOf(order.phone);
   if (phone) {
     const byPhone = pupils.find((p) => digitsOf(p.phone) === phone);

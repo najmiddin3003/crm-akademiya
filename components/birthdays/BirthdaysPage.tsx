@@ -62,7 +62,8 @@ export default function BirthdaysPage() {
   const now = new Date();
   const today = now;
 
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // `birthDate` standart to'plamda YO'Q — ataylab so'raymiz.
+  const { pupils, loading: pupilsLoading } = useStudents({ extra: ["birthDate"] as const });
   const { employees, loading: staffLoading } = useStaff();
   const loading = pupilsLoading || staffLoading;
 
