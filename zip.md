@@ -296,6 +296,68 @@ ularni `distinct` bilan qaytaradi, kassa almashgandagina (64 KB).
 
 ---
 
+### 4.15. Moliya analitikasi: oxirgi ikkita sahifa
+
+§4.7 da beshta analitika sahifasidan uchtasi `/api/transactions/summary`
+ga o'tkazilgan edi. Qolgan ikkitasi ham tugadi — endi **hech bir sahifa
+butun `transactions` kolleksiyasini tortmaydi**.
+
+**[/finance-analytics](components/finance/FinancialAnalyticsPage.tsx)** —
+ota komponent 21 921 qatorni (3.03 MB) bir marta yuklab, uchala tabga
+uzatardi. Endi har biri o'ziga kerakli kesimni so'raydi:
+
+| | |
+|---|---|
+| chap panel (`groupBy=method`) | 0.3 KB |
+| Kalendar tabi (`day,sign` + `before`) | 2.9 KB |
+| Pul oqimi (`month,sign` + `category,sign`) | 2.5 KB |
+| Journal (50 qator, sahifalangan) | 7.1 KB |
+| **Sahifa ochilganda** | **3.3 KB — 953×** |
+| Uchala tab ham ochilsa | 12.8 KB — 242× |
+
+**[/finance-reports](components/finance/FinanceReportsPage.tsx)** — to'rtta
+so'rov, chunki ular boshqa-boshqa kesimlar: `day,sign` (grafik va
+kartalar), `category,sign`, `method,sign`, va oldingi davr uchun
+`sign`. **3.03 MB → 4.3 KB (722×)**; butun tarix tanlansa ham 37 KB (84×).
+
+Journal tabi uchun `/api/transactions` ga sahifalash qo'shildi
+(`?from/to/page/limit/sort=desc`) va `{date, id}` indeksi — bitta
+`date` indeksi bir kun ichidagi `id` tiebreak'ini qoplamasdi.
+
+**Nozik joylar** — ikkalasi ham summary route'idagi qoidalar tufayli
+to'g'ri chiqdi:
+
+- **Nol turlicha talqin qilinadi.** Kalendar tabi nolni KIRIMGA qo'shadi
+  (`t.amount >= 0`), Pul oqimi esa ikkalasidan ham chiqarib tashlaydi
+  (`> 0` va `< 0`). Ishora uch qiymatli bo'lgani uchun ikkalasi ham
+  o'z qoidasini saqlab qoldi.
+- **Kategoriya taqsimoti BUTUN TARIX bo'yicha**, 12 oy bo'yicha emas —
+  eski kodda ham shunday edi. Shu bois Pul oqimi tabi ikkita alohida
+  so'rov yuboradi; bittaga qo'shilsa ko'rinadigan raqamlar o'zgarardi.
+
+**Tekshirish** — jonli baza bo'yicha, eski va yangi mantiq yonma-yon:
+
+1. `/finance-analytics`: umumiy qoldiq, 8 ta to'lov usuli, 4 ta oy uchun
+   kalendar (123 kun), 12 oylik pul oqimi, 21 ta kategoriya, Journal
+   sahifalash va tartibi — **xato 0**.
+2. `/finance-reports`: 15 ta holat (sana oralig'i × kassa × to'lov
+   usuli), har birida kartalar, kunlik grafik, ikkala taqsimot va
+   oldingi davr — **xato 0**.
+3. Parametrsiz `/api/transactions` chaqiruvi avvalgidek — to'liq ro'yxat,
+   o'sish tartibida.
+
+Yo'l-yo'lakay **ikkita float artefakti** tuzaldi (`$toDecimal` tufayli):
+naqd qoldiq `43 743 210.899999976` → `43 743 210.9`, va 2026-mart oyi
+oldidagi qoldiq `-0.0000000298` → **aniq `0`**. Ikkinchisi zanjir
+bo'ylab keyingi oylarga tarqalardi.
+
+> Natijada [lib/transactionsClient.ts](lib/transactionsClient.ts) —
+> butun kolleksiyani keshlaydigan qatlam — **o'lik kodga aylandi**.
+> To'qqiz joy hali `invalidateTransactions()` ni chaqiradi, lekin
+> o'sha keshni endi hech kim o'qimaydi. Zararsiz, alohida tozalanadi.
+
+---
+
 ## 5. Sinab ko'rilgan va RAD ETILGAN yo'llar
 
 > Bu yo'llarga qaytadan vaqt sarflamang — o'lchandi.

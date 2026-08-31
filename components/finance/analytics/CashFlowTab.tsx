@@ -1,15 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, BarChart3, List } from "lucide-react";
 import DonutChart from "@/components/ui/DonutChart";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
 import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
-import type { Transaction } from "@/lib/transactions";
+import { ErrorBlock } from "@/components/ui/ErrorBanner";
+import { fetchJson } from "@/lib/fetchJson";
 
-// Moliya analitikasi → "Pul oqimi" tab'i. Hammasi /api/transactions dan.
+/** summary?groupBy=month,sign va ?groupBy=category,sign qaytaradigan qatorlar. */
+type MonthRow = { month: string; sign: "pos" | "neg" | "zero"; amount: number };
+type CatRow = { category: string; sign: "pos" | "neg" | "zero"; amount: number };
+
+// Moliya analitikasi → "Pul oqimi" tab'i. Yig'indi SERVERDA —
+// /api/transactions/summary. Ilgari butun kolleksiya ota komponentdan
+// kelardi (21 921 qator, 3.72 MB) va uchala hisob brauzerda bo'lardi.
+//
+// IKKITA ALOHIDA so'rov, va bu ATAYLAB:
+//   • oylik jadval — faqat so'nggi 12 oy (`from`), qoldiq esa `before`;
+//   • kategoriya taqsimoti — BUTUN TARIX bo'yicha, sanasiz. Ilgarigi
+//     kod ham shunday edi: `incomeByCategory` 12 oy bilan cheklanmagan.
+// Ularni bitta so'rovga qo'shsak, taqsimot 12 oyga qisqarib, ko'rinadigan
+// raqamlar o'zgarib ketardi.
 //
 // ILGARI IKKITA MUAMMO BOR EDI:
 //   1. Kategoriya qatorlari `constants/transactions.js` dagi qattiq yozilgan
@@ -46,7 +60,7 @@ function trailingMonths(): { year: number; month: number; key: string; label: st
   return out;
 }
 
-export default function CashFlowTab({ transactions, loading }: { transactions: Transaction[]; loading: boolean }) {
+export default function CashFlowTab() {
   const [view, setView] = useState<"chart" | "table">("chart");
   const { showSuccess, showError } = useToast();
   // Kategoriyalar admin boshqaradigan HAQIQIY ro'yxatdan.
@@ -55,24 +69,68 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
   const expenseCats = useMemo(() => transactionTypeNames(types, "chiqim"), [types]);
 
   const months = useMemo(() => trailingMonths(), []);
+  const rangeStart = `${months[0].year}-${pad2(months[0].month)}-01`;
+
+  const [monthRows, setMonthRows] = useState<MonthRow[]>([]);
+  const [catRows, setCatRows] = useState<CatRow[]>([]);
+  const [initialBalance, setInitialBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(() => {
+    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
+    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
+    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
+    // faqat birinchi yuklashda — `useState(true)` dan.
+    let cancelled = false;
+    const monthQs = new URLSearchParams({ groupBy: "month,sign", from: rangeStart, before: rangeStart });
+    Promise.all([
+      fetchJson<{ rows: MonthRow[]; before: number }>(`/api/transactions/summary?${monthQs}`),
+      fetchJson<{ rows: CatRow[] }>("/api/transactions/summary?groupBy=category,sign"),
+    ])
+      .then(([m, c]) => {
+        if (cancelled) return;
+        setMonthRows(m.rows);
+        setInitialBalance(m.before);
+        setCatRows(c.rows);
+        setError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Nol bilan to'ldirilgan 12 oylik jadval CHIZILMASIN.
+        setMonthRows([]);
+        setCatRows([]);
+        setInitialBalance(0);
+        setError(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [rangeStart]);
+
+  useEffect(() => load(), [load]);
 
   const monthStats = useMemo(() => {
-    const initialBalance = transactions
-      .filter((t) => t.date < `${months[0].year}-${pad2(months[0].month)}-01`)
-      .reduce((s, t) => s + t.amount, 0);
+    // Server bo'sh oy uchun chelak qaytarmaydi — 12 oy shu yerda to'ldiriladi.
+    const byMonth: Record<string, { income: number; expense: number }> = {};
+    for (const m of months) byMonth[m.key] = { income: 0, expense: 0 };
+    for (const r of monthRows) {
+      const cell = byMonth[r.month];
+      if (!cell) continue;
+      // Nol IKKALASIGA HAM qo'shilmaydi — ilgarigi shartlar `> 0` va
+      // `< 0` edi (Kalendar tab'idan farqli, u nolni kirimga qo'shadi).
+      if (r.sign === "pos") cell.income += r.amount;
+      else if (r.sign === "neg") cell.expense += -r.amount;
+    }
     const acc = months.reduce<{ list: (typeof months[number] & { income: number; expense: number; startBalance: number; endBalance: number })[]; running: number }>(
       (a, m) => {
-        const prefix = `${m.year}-${pad2(m.month)}`;
-        const monthTx = transactions.filter((t) => t.date.startsWith(prefix));
-        const income = monthTx.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-        const expense = -monthTx.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+        const { income, expense } = byMonth[m.key];
         const endBalance = a.running + income - expense;
         return { list: [...a.list, { ...m, income, expense, startBalance: a.running, endBalance }], running: endBalance };
       },
       { list: [], running: initialBalance },
     );
     return acc.list;
-  }, [transactions, months]);
+  }, [monthRows, months, initialBalance]);
 
   const currentPeriod = useMemo(() => {
     const income = monthStats.reduce((s, m) => s + m.income, 0);
@@ -82,15 +140,15 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
 
   const incomeByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const t of transactions) if (t.amount > 0) map[t.category] = (map[t.category] || 0) + t.amount;
+    for (const r of catRows) if (r.sign === "pos") map[r.category] = (map[r.category] || 0) + r.amount;
     return incomeCats.map((c) => ({ label: c, value: map[c] || 0 })).sort((a, b) => b.value - a.value);
-  }, [transactions, incomeCats]);
+  }, [catRows, incomeCats]);
 
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const t of transactions) if (t.amount < 0) map[t.category] = (map[t.category] || 0) - t.amount;
+    for (const r of catRows) if (r.sign === "neg") map[r.category] = (map[r.category] || 0) - r.amount;
     return expenseCats.map((c) => ({ label: c, value: map[c] || 0 })).sort((a, b) => b.value - a.value).slice(0, 5);
-  }, [transactions, expenseCats]);
+  }, [catRows, expenseCats]);
 
   const incomeSlices = incomeByCategory.map((c, i) => ({ ...c, color: CHART_COLORS[i % CHART_COLORS.length] }));
   const expenseSlices = expenseByCategory.map((c, i) => ({ ...c, color: CHART_COLORS[(i + 1) % CHART_COLORS.length] }));
@@ -133,6 +191,9 @@ export default function CashFlowTab({ transactions, loading }: { transactions: T
     }
   }
 
+  if (error) {
+    return <ErrorBlock message="Pul oqimi ma'lumotini yuklab bo'lmadi." onRetry={load} />;
+  }
   if (loading) {
     return <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>;
   }

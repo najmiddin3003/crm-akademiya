@@ -6,9 +6,11 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import CalendarTab from "./analytics/CalendarTab";
 import JournalTab from "./analytics/JournalTab";
 import CashFlowTab from "./analytics/CashFlowTab";
-import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
-import { loadTransactionsCached } from "@/lib/transactionsClient";
+import { fetchJson } from "@/lib/fetchJson";
+
+/** summary?groupBy=method qaytaradigan qator. */
+type MethodRow = { method: string; amount: number };
 
 // Moliya → Moliya analitikasi (sidebar: Moliya > Moliya analitikasi, href
 // /finance-analytics). Sof hisobot sahifasi (add/edit/delete yo'q). Chap
@@ -40,35 +42,51 @@ export default function FinancialAnalyticsPage() {
   // nofaol qilingan turdagi eski summalar ham ko'rinishi kerak).
   const { methods: paymentMethods } = usePaymentMethods();
   const [tab, setTab] = useState<TabKey>("kalendar");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Chap paneldagi ikkita raqam — SERVERDAN. Ilgari bu sahifa butun
+  // `transactions` kolleksiyasini yuklab (21 921 qator, 3.72 MB) uchala
+  // tabga uzatardi; endi har bir tab o'ziga kerakli yig'indini so'raydi.
+  //
+  // `groupBy=method` bitta so'rovda ikkalasini beradi: usul bo'yicha
+  // taqsimot va ularning yig'indisi = umumiy qoldiq.
+  const [methodRows, setMethodRows] = useState<MethodRow[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      loadTransactionsCached()
-        .then((transactions) => ({ ok: true, transactions }))
-        .catch(() => ({ ok: false, transactions: [] })),
-      fetch("/api/cashboxes").then((r) => r.json()),
+      fetchJson<{ rows: MethodRow[] }>("/api/transactions/summary?groupBy=method")
+        .then((d) => d.rows)
+        .catch(() => null),
+      fetch("/api/cashboxes").then((r) => r.json()).catch(() => ({ ok: false })),
     ])
-      .then(([tx, cb]) => {
+      .then(([rows, cb]) => {
         if (cancelled) return;
-        if (tx.ok) setTransactions(tx.transactions);
+        setMethodRows(rows);
         if (cb.ok) setCashboxes(cb.cashboxes);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
-  const totalBalance = useMemo(() => transactions.reduce((s, t) => s + t.amount, 0), [transactions]);
+  // Xato bo'lganda "0 UZS" ko'rsatilmaydi — pastda `fmtOrDash` uni
+  // chiziqchaga aylantiradi. Nol qoldiq ham haqiqiy holat, shu bois
+  // ularni farqlash SHART.
+  const failed = !loading && methodRows === null;
+  const totalBalance = useMemo(
+    () => (methodRows || []).reduce((s, r) => s + r.amount, 0),
+    [methodRows],
+  );
 
   const methodTotals = useMemo(() => {
     const map: Record<string, number> = {};
     for (const m of paymentMethods) map[m.key] = 0;
-    for (const t of transactions) map[t.method] = (map[t.method] || 0) + t.amount;
+    for (const r of methodRows || []) map[r.method] = (map[r.method] || 0) + r.amount;
     return map;
-  }, [transactions, paymentMethods]);
+  }, [methodRows, paymentMethods]);
+
+  const fmtOrDash = (n: number) => (loading ? "…" : failed ? "—" : fmtUZS(n));
 
   return (
     <div className="p-4 md:p-5 flex flex-col lg:flex-row gap-4 items-start">
@@ -90,7 +108,7 @@ export default function FinancialAnalyticsPage() {
 
         <div className="rounded-xl p-4 text-white" style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)" }}>
           <div className="text-[13px] font-medium opacity-90">Umumiy filiallar summasi</div>
-          <div className="text-[22px] font-bold tabular-nums mt-1">{loading ? "…" : fmtUZS(totalBalance)}</div>
+          <div className="text-[22px] font-bold tabular-nums mt-1">{fmtOrDash(totalBalance)}</div>
         </div>
 
         <div>
@@ -99,12 +117,12 @@ export default function FinancialAnalyticsPage() {
             <div className="flex items-center justify-between">
               <span className="font-semibold text-[14px]">Akademiya</span>
             </div>
-            <div className="font-bold text-[15px] tabular-nums mt-0.5">{loading ? "…" : fmtUZS(totalBalance)}</div>
+            <div className="font-bold text-[15px] tabular-nums mt-0.5">{fmtOrDash(totalBalance)}</div>
             <div className="mt-3 space-y-2">
               {paymentMethods.map((m) => (
                 <div key={m.key} className="flex items-center justify-between text-[13px]">
                   <span className="text-muted-foreground">{m.name}</span>
-                  <span className="tabular-nums font-medium">{fmtUZS(methodTotals[m.key] || 0)}</span>
+                  <span className="tabular-nums font-medium">{fmtOrDash(methodTotals[m.key] || 0)}</span>
                 </div>
               ))}
             </div>
@@ -132,9 +150,9 @@ export default function FinancialAnalyticsPage() {
           </div>
         </div>
 
-        {tab === "kalendar" && <CalendarTab transactions={transactions} loading={loading} />}
-        {tab === "journal" && <JournalTab transactions={transactions} cashboxes={cashboxes} loading={loading} />}
-        {tab === "pulOqimi" && <CashFlowTab transactions={transactions} loading={loading} />}
+        {tab === "kalendar" && <CalendarTab />}
+        {tab === "journal" && <JournalTab cashboxes={cashboxes} />}
+        {tab === "pulOqimi" && <CashFlowTab />}
       </div>
     </div>
   );

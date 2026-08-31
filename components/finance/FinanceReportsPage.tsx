@@ -10,9 +10,24 @@ import BreakdownBars from "@/components/finance/reports/BreakdownBars";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
-import type { Transaction } from "@/lib/transactions";
 import type { Cashbox } from "@/lib/cashboxes";
-import { loadTransactionsCached } from "@/lib/transactionsClient";
+import ErrorBanner from "@/components/ui/ErrorBanner";
+import { fetchJson } from "@/lib/fetchJson";
+
+// Yig'indi SERVERDA — /api/transactions/summary. Ilgari bu sahifa butun
+// `transactions` kolleksiyasini yuklab (21 921 qator, 3.72 MB) hamma
+// kartani, grafikni va taqsimotni brauzerda hisoblardi.
+//
+// TO'RTTA so'rov, chunki ular BOSHQA-BOSHQA kesimlar:
+//   day,sign      -> kunlik grafik VA yuqoridagi Kirim/Chiqim/Qoldiq
+//   category,sign -> "Tranzaksiya turi" taqsimoti
+//   method,sign   -> "To'lov usuli" taqsimoti
+//   sign          -> OLDINGI davr (foiz o'zgarishi uchun)
+type Sign = "pos" | "neg" | "zero";
+type DayRow = { day: string; sign: Sign; amount: number };
+type CatRow = { category: string; sign: Sign; amount: number };
+type MethodRow = { method: string; sign: Sign; amount: number };
+type SignRow = { sign: Sign; amount: number };
 
 // Moliya → Moliya hisobotlari (sidebar: Moliya > Moliya hisobotlari, href
 // /finance-reports). Bir xil /api/transactions'dan (Moliya analitikasi bilan
@@ -99,27 +114,40 @@ function StatCard({
  * qilardi.
  *
  * amount === 0 ikkala tarafga ham qo'shilmaydi — eski filter juftligi
- * ("> 0" va "< 0") bilan bir xil.
+ * ("> 0" va "< 0") bilan bir xil. Server ishorani UCH qiymatli qaytaradi
+ * (pos/neg/zero), shu bois "zero" shu yerda ataylab e'tiborsiz qoladi.
  */
-function totals(rows: Transaction[]) {
+function totals(rows: SignRow[]) {
   let income = 0;
   let expense = 0;
-  for (const t of rows) {
-    if (t.amount > 0) income += t.amount;
-    else expense -= t.amount;
+  for (const r of rows) {
+    if (r.sign === "pos") income += r.amount;
+    else if (r.sign === "neg") expense -= r.amount; // amount manfiy -> chiqim ortadi
   }
   return { income, expense, net: income - expense };
+}
+
+/** Bitta ishora bo'yicha "kalit -> mutlaq summa" xaritasi. */
+function absMap(
+  rows: { sign: Sign; amount: number; category?: string; method?: string }[],
+  field: "category" | "method",
+  positive: boolean,
+): Record<string, number> {
+  const map: Record<string, number> = {};
+  const want = positive ? "pos" : "neg";
+  for (const r of rows) {
+    if (r.sign !== want) continue;
+    const k = r[field];
+    if (k === undefined) continue;
+    map[k] = (map[k] || 0) + Math.abs(r.amount);
+  }
+  return map;
 }
 
 // Ro'yxatdagi turlar avvalgi tartibda, ulardan tashqarisi oxirida bitta
 // "Boshqa" qatorida — hech bir tranzaksiya tashlanmaydi, shuning uchun
 // yig'indi yuqoridagi karta bilan mos tushadi.
-function categoryBreakdown(rows: Transaction[], cats: string[], positive: boolean) {
-  const map: Record<string, number> = {};
-  for (const t of rows) {
-    if (positive ? t.amount <= 0 : t.amount >= 0) continue;
-    map[t.category] = (map[t.category] || 0) + Math.abs(t.amount);
-  }
+function categoryBreakdown(map: Record<string, number>, cats: string[]) {
   const known = new Set(cats);
   const other = Object.entries(map).reduce((s, [c, v]) => (known.has(c) ? s : s + v), 0);
   const out = cats.map((c) => ({ label: c, amount: map[c] || 0 })).filter((r) => r.amount > 0);
@@ -129,12 +157,7 @@ function categoryBreakdown(rows: Transaction[], cats: string[], positive: boolea
 
 // Bir xil sabab: Sozlamalardan o'chirilgan to'lov turidagi pul ham
 // "To'lov usuli" taqsimotidan tushib qolmasligi kerak.
-function methodBreakdown(rows: Transaction[], positive: boolean, methods: { key: string; name: string }[]) {
-  const map: Record<string, number> = {};
-  for (const t of rows) {
-    if (positive ? t.amount <= 0 : t.amount >= 0) continue;
-    map[t.method] = (map[t.method] || 0) + Math.abs(t.amount);
-  }
+function methodBreakdown(map: Record<string, number>, methods: { key: string; name: string }[]) {
   const known = new Set(methods.map((m) => m.key));
   const other = Object.entries(map).reduce((s, [k, v]) => (known.has(k) ? s : s + v), 0);
   const out = methods.map((m) => ({ label: m.name, amount: map[m.key] || 0 })).filter((r) => r.amount > 0);
@@ -161,52 +184,82 @@ export default function FinanceReportsPage() {
   const [kirimMode, setKirimMode] = useState<"category" | "method">("category");
   const [chiqimMode, setChiqimMode] = useState<"category" | "method">("category");
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [dayRows, setDayRows] = useState<DayRow[]>([]);
+  const [catRows, setCatRows] = useState<CatRow[]>([]);
+  const [methodRows, setMethodRows] = useState<MethodRow[]>([]);
+  const [prevRows, setPrevRows] = useState<SignRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      loadTransactionsCached()
-        .then((transactions) => ({ ok: true, transactions }))
-        .catch(() => ({ ok: false, transactions: [] })),
-      fetch("/api/cashboxes").then((r) => r.json()),
-    ])
-      .then(([tx, cb]) => {
-        if (cancelled) return;
-        if (tx.ok) setTransactions(tx.transactions);
-        if (cb.ok) setCashboxes(cb.cashboxes);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    fetch("/api/cashboxes")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setCashboxes(d.cashboxes); })
+      .catch(() => {});
   }, []);
 
   const startIso = dateRange.start ? toIso(dateRange.start) : "0000-01-01";
   const endIso = dateRange.end ? toIso(dateRange.end) : "9999-12-31";
 
-  const matchesFilters = useCallback(
-    (t: Transaction, dStart: string, dEnd: string) => {
-      if (t.date < dStart || t.date > dEnd) return false;
-      if (cashboxId && t.cashboxId !== Number(cashboxId)) return false;
-      if (method && t.method !== method) return false;
-      return true;
-    },
-    [cashboxId, method],
-  );
-
-  const current = useMemo(() => transactions.filter((t) => matchesFilters(t, startIso, endIso)), [transactions, startIso, endIso, matchesFilters]);
-
-  const previous = useMemo(() => {
-    if (!dateRange.start || !dateRange.end) return [];
+  // OLDINGI davr — joriy oraliq bilan bir xil uzunlikda, undan darhol
+  // oldin. Hisob-kitob ilgarigidek, faqat endi server so'roviga aylanadi.
+  const prevRange = useMemo(() => {
+    if (!dateRange.start || !dateRange.end) return null;
     const days = Math.round((dateRange.end.getTime() - dateRange.start.getTime()) / 86400000) + 1;
     const prevEnd = addDays(dateRange.start, -1);
     const prevStart = addDays(prevEnd, -(days - 1));
-    return transactions.filter((t) => matchesFilters(t, toIso(prevStart), toIso(prevEnd)));
-  }, [transactions, dateRange, matchesFilters]);
+    return { from: toIso(prevStart), to: toIso(prevEnd) };
+  }, [dateRange]);
 
-  const curTotals = useMemo(() => totals(current), [current]);
-  const prevTotals = useMemo(() => totals(previous), [previous]);
+  const load = useCallback(() => {
+    const base = new URLSearchParams();
+    if (dateRange.start) base.set("from", startIso);
+    if (dateRange.end) base.set("to", endIso);
+    if (cashboxId) base.set("cashboxId", cashboxId);
+    if (method) base.set("method", method);
+    const q = (groupBy: string) => {
+      const p = new URLSearchParams(base);
+      p.set("groupBy", groupBy);
+      return "/api/transactions/summary?" + p.toString();
+    };
+    const prevQs = new URLSearchParams({ groupBy: "sign" });
+    if (cashboxId) prevQs.set("cashboxId", cashboxId);
+    if (method) prevQs.set("method", method);
+    if (prevRange) { prevQs.set("from", prevRange.from); prevQs.set("to", prevRange.to); }
+
+    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
+    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
+    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
+    // faqat birinchi yuklashda — `useState(true)` dan.
+    let cancelled = false;
+    Promise.all([
+      fetchJson<{ rows: DayRow[] }>(q("day,sign")),
+      fetchJson<{ rows: CatRow[] }>(q("category,sign")),
+      fetchJson<{ rows: MethodRow[] }>(q("method,sign")),
+      prevRange
+        ? fetchJson<{ rows: SignRow[] }>("/api/transactions/summary?" + prevQs.toString())
+        : Promise.resolve({ rows: [] as SignRow[] }),
+    ])
+      .then(([d, c, m, p]) => {
+        if (cancelled) return;
+        setDayRows(d.rows); setCatRows(c.rows); setMethodRows(m.rows); setPrevRows(p.rows);
+        setError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Nol bilan to'ldirilgan kartalar va bo'sh grafik CHIZILMASIN.
+        setDayRows([]); setCatRows([]); setMethodRows([]); setPrevRows([]);
+        setError(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [startIso, endIso, cashboxId, method, prevRange, dateRange]);
+
+  useEffect(() => load(), [load]);
+
+  const curTotals = useMemo(() => totals(dayRows), [dayRows]);
+  const prevTotals = useMemo(() => totals(prevRows), [prevRows]);
 
   function pctDelta(cur: number, prev: number): number | null {
     if (prev === 0) return cur === 0 ? null : 100;
@@ -221,11 +274,11 @@ export default function FinanceReportsPage() {
     // ustiga yana ikkita filter), ya'ni O(kun x tranzaksiya). Bir yillik
     // oraliqda 21 921 qatorli to'plamda bu ~8 million solishtirish edi.
     const byDay = new Map<string, { income: number; expense: number }>();
-    for (const t of current) {
-      let b = byDay.get(t.date);
-      if (!b) { b = { income: 0, expense: 0 }; byDay.set(t.date, b); }
-      if (t.amount > 0) b.income += t.amount;
-      else b.expense -= t.amount;
+    for (const r of dayRows) {
+      let b = byDay.get(r.day);
+      if (!b) { b = { income: 0, expense: 0 }; byDay.set(r.day, b); }
+      if (r.sign === "pos") b.income += r.amount;
+      else if (r.sign === "neg") b.expense -= r.amount;
     }
     return Array.from({ length: Math.max(days, 0) }, (_, i) => {
       const d = addDays(dateRange.start as Date, i);
@@ -234,7 +287,7 @@ export default function FinanceReportsPage() {
       const p = (n: number) => String(n).padStart(2, "0");
       return { date: iso, label: `${p(d.getDate())}.${p(d.getMonth() + 1)}`, income: b?.income ?? 0, expense: b?.expense ?? 0 };
     });
-  }, [current, dateRange]);
+  }, [dayRows, dateRange]);
 
 
   // Quyidagilar ilgari render TANASIDA hisoblanardi — ya'ni HAR renderda,
@@ -242,10 +295,10 @@ export default function FinanceReportsPage() {
   // diagramma turi, kirim/chiqim rejimi) `current` bo'ylab besh-yetti marta
   // to'liq yurardi. Endi ular faqat ma'lumot yoki tegishli rejim
   // o'zgarganda qayta hisoblanadi.
-  const incomeByCat = useMemo(() => categoryBreakdown(current, incomeCats, true), [current, incomeCats]);
-  const expenseByCat = useMemo(() => categoryBreakdown(current, expenseCats, false), [current, expenseCats]);
-  const incomeByMethod = useMemo(() => methodBreakdown(current, true, paymentMethods), [current, paymentMethods]);
-  const expenseByMethod = useMemo(() => methodBreakdown(current, false, paymentMethods), [current, paymentMethods]);
+  const incomeByCat = useMemo(() => categoryBreakdown(absMap(catRows, "category", true), incomeCats), [catRows, incomeCats]);
+  const expenseByCat = useMemo(() => categoryBreakdown(absMap(catRows, "category", false), expenseCats), [catRows, expenseCats]);
+  const incomeByMethod = useMemo(() => methodBreakdown(absMap(methodRows, "method", true), paymentMethods), [methodRows, paymentMethods]);
+  const expenseByMethod = useMemo(() => methodBreakdown(absMap(methodRows, "method", false), paymentMethods), [methodRows, paymentMethods]);
 
   const kirimRows = kirimMode === "category" ? incomeByCat : incomeByMethod;
   const chiqimRows = chiqimMode === "category" ? expenseByCat : expenseByMethod;
@@ -257,6 +310,13 @@ export default function FinanceReportsPage() {
   const kirimStatSlices = useMemo(() => toSlices(incomeByCat), [incomeByCat]);
   const chiqimStatSlices = useMemo(() => toSlices(expenseByCat, 1), [expenseByCat]);
 
+  if (error) {
+    return (
+      <div className="p-5">
+        <ErrorBanner message="Moliya hisobotini yuklab bo'lmadi — raqamlar ko'rsatilmaydi." onRetry={load} />
+      </div>
+    );
+  }
   if (loading) {
     return <div className="p-5"><SpinnerBlock /></div>;
   }

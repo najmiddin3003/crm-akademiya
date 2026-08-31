@@ -1,9 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, BarChart3, LayoutGrid } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import type { Transaction } from "@/lib/transactions";
+import { ErrorBlock } from "@/components/ui/ErrorBanner";
+import { fetchJson } from "@/lib/fetchJson";
+
+// Moliya analitikasi → "Kalendar" tab'i.
+//
+// Ilgari butun `transactions` kolleksiyasi ota komponentdan kelardi
+// (21 921 qator, 3.72 MB) va kunlik yig'indi brauzerda hisoblanardi.
+// Endi /api/transactions/summary?groupBy=day,sign — faqat ko'rinadigan
+// oy uchun, oy boshigacha bo'lgan qoldiq esa `?before=` bilan.
+//
+// ISHORA UCH QIYMATLI (pos/neg/zero) va bu yerda NOL KIRIMGA qo'shiladi —
+// ilgarigi shart `t.amount >= 0` shunday edi. Pul oqimi tab'i esa nolni
+// ikkalasidan ham chiqarib tashlaydi; shu bois server ularni aralashtirmaydi.
+
+/** summary?groupBy=day,sign qaytaradigan qator. */
+type DayRow = { day: string; sign: "pos" | "neg" | "zero"; amount: number };
 
 const WEEKDAYS = ["Dush", "Sesh", "Chor", "Pay", "Jum", "Shan", "Yak"];
 
@@ -14,7 +29,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-export default function CalendarTab({ transactions, loading }: { transactions: Transaction[]; loading: boolean }) {
+export default function CalendarTab() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-12
@@ -23,21 +38,55 @@ export default function CalendarTab({ transactions, loading }: { transactions: T
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const monthStartIso = `${year}-${pad2(month)}-01`;
-  const monthEndIsoExclusive = month === 12 ? `${year + 1}-01-01` : `${year}-${pad2(month + 1)}-01`;
+  const monthEndIso = `${year}-${pad2(month)}-${pad2(daysInMonth)}`;
 
-  const balanceBeforeMonth = useMemo(
-    () => transactions.filter((t) => t.date < monthStartIso).reduce((s, t) => s + t.amount, 0),
-    [transactions, monthStartIso],
-  );
+  const [dayRows, setDayRows] = useState<DayRow[]>([]);
+  const [balanceBeforeMonth, setBalanceBeforeMonth] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const load = useCallback(() => {
+    const qs = new URLSearchParams({
+      groupBy: "day,sign",
+      from: monthStartIso,
+      to: monthEndIso,
+      before: monthStartIso,
+    });
+    // `setLoading(true)` ATAYLAB yo'q: u effekt tanasida sinxron
+    // ishlaganda kaskadli render chaqiradi (react-hooks/set-state-in-effect),
+    // va qayta yuklashda jadval bo'shab, keyin to'lib "sakrardi". Spinner
+    // faqat birinchi yuklashda — `useState(true)` dan.
+    let cancelled = false;
+    fetchJson<{ rows: DayRow[]; before: number }>(`/api/transactions/summary?${qs}`)
+      .then((d) => {
+        if (cancelled) return;
+        setDayRows(d.rows);
+        setBalanceBeforeMonth(d.before);
+        setError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Xato bo'lganda kalendar NOL bilan to'ldirilib chizilmasin —
+        // "0 UZS" moliyada da'vo, "kelmadi" esa boshqa gap.
+        setDayRows([]);
+        setBalanceBeforeMonth(0);
+        setError(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [monthStartIso, monthEndIso]);
+
+  useEffect(() => load(), [load]);
 
   const days = useMemo(() => {
     const byDay: Record<number, { income: number; expense: number }> = {};
     for (let d = 1; d <= daysInMonth; d++) byDay[d] = { income: 0, expense: 0 };
-    for (const t of transactions) {
-      if (t.date < monthStartIso || t.date >= monthEndIsoExclusive) continue;
-      const d = Number(t.date.slice(8, 10));
-      if (t.amount >= 0) byDay[d].income += t.amount;
-      else byDay[d].expense += -t.amount;
+    for (const r of dayRows) {
+      const d = Number(r.day.slice(8, 10));
+      if (!byDay[d]) continue;
+      // Nol KIRIMGA — ilgarigi `t.amount >= 0` shartining aynan o'zi.
+      if (r.sign === "neg") byDay[d].expense += -r.amount;
+      else byDay[d].income += r.amount;
     }
     const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const acc = dayNumbers.reduce<{ list: { day: number; income: number; expense: number; balance: number }[]; running: number }>(
@@ -48,7 +97,7 @@ export default function CalendarTab({ transactions, loading }: { transactions: T
       { list: [], running: balanceBeforeMonth },
     );
     return acc.list;
-  }, [transactions, daysInMonth, monthStartIso, monthEndIsoExclusive, balanceBeforeMonth]);
+  }, [dayRows, daysInMonth, balanceBeforeMonth]);
 
   const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7; // 0=Dush
   const cells: (typeof days[number] | null)[] = [...Array(firstWeekday).fill(null), ...days];
@@ -92,7 +141,9 @@ export default function CalendarTab({ transactions, loading }: { transactions: T
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <ErrorBlock message="Kalendar ma'lumotini yuklab bo'lmadi." onRetry={load} />
+      ) : loading ? (
         <div className="rounded-xl border border-border bg-card p-10"><SpinnerBlock /></div>
       ) : view === "grid" ? (
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">

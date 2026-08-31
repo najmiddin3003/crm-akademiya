@@ -175,6 +175,10 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("salary_runs").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("transactions").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("transactions").createIndex({ date: 1 }));
+  // Journal tab'i sana oralig'i bo'yicha sahifalab o'qiydi va bir kun
+  // ichida `id` bo'yicha saralaydi. Bitta `date` indeksi tiebreak'ni
+  // qoplamaydi — qolgani xotirada saralanardi.
+  tasks.push(db.collection("transactions").createIndex({ date: 1, id: 1 }));
   tasks.push(db.collection("transaction_types").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("transaction_entries").createIndex({ id: 1 }, { unique: true }));
   // O'quvchi va xodim profillari har ochilganda shu ikki maydon bo'yicha
