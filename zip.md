@@ -246,6 +246,56 @@ bilan. Endi [/api/attendance](app/api/attendance/route.ts).
 
 ---
 
+### 4.14. Kassalar jadvali: 8.10 MB → 22.2 KB
+
+[/finance-cash](components/finance/CashboxesPage.tsx) sana oralig'i
+tozalanganda BUTUN kassani tortardi — kassa 4 uchun **18 597 qator,
+8.10 MB**. Sahifalash ham, beshta filtr ham brauzerda edi: "O'quvchini
+qidiring" katagiga har harf yozilganda 18 597 obyekt qayta filtrlanardi.
+
+| | eski | yangi |
+|---|---|---|
+| Javob hajmi | 8.10 MB | **22.2 KB** (373×) |
+| Bazada o'qilgan hujjat | 18 597 | **50** |
+| Indeks | `id_1` teskari, 5 079 hujjat / 50 qator | `{cashboxId, id}`, 50 / 50 |
+
+Uch narsa to'liq ro'yxatga tayanardi va ularning har biri alohida
+hal qilindi:
+
+- **Yuqoridagi Kirim/Chiqim** — endi `?withTotals=1` aggregatsiyasidan,
+  butun filtr bo'yicha. Qatorlar soni ham SHU YERDAN: aks holda aynan
+  bir xil filtr bo'yicha `countDocuments()` ikkinchi marta yurardi.
+- **Beshta filtr** — serverga ko'chdi. Yangi parametrlar: `txName`,
+  `paymentType`, `studentLike`, `teacherLike`. Oxirgi ikkisi ATAYLAB
+  alohida nomda — mavjud `?studentName=` anchor'li (`^…$`), jadval
+  filtri esa ICHIDAN qidiradi. Ularni aralashtirish §6.2 dagi tuzoqni
+  takrorlardi.
+- **Eksport** — bosilganda to'liq ro'yxatni o'zi tortadi. Kamdan-kam va
+  ataylab qilinadigan amal, og'ir so'rov o'sha yerda o'rinli.
+
+Yo'l-yo'lakay topilgan **regressiya**: filtr TANLOVLARI (`txNameOptions`,
+`teacherOptions`, `studentOptions`) `entries` dan yig'ilardi. 50 qatorda
+ular qisqarib qolardi — kassa 4 da katalogda yo'q 5 ta tranzaksiya nomi
+va 51 ta o'qituvchi ro'yxatdan tushib ketardi. Yangi
+[/api/transaction-entries/facets](app/api/transaction-entries/facets/route.ts)
+ularni `distinct` bilan qaytaradi, kassa almashgandagina (64 KB).
+
+**Tekshirish** — uch bosqichda, hammasi jonli baza bo'yicha:
+
+1. 28 ta filtr kombinatsiyasi: eski (hammasini tortib, klientda filtrlash)
+   va yangi (Mongo filtri + aggregatsiya) — son, kirim, chiqim va
+   1-sahifadagi 50 qatorning ID lari **aynan mos**.
+2. Route handler'ning O'ZI chaqirildi (`next/server` va `mongodb` stub
+   bilan): 18 ta tasdiq — sahifalar kesishmasligi, oxirgi sahifa,
+   regex belgilari literal, eski chaqiruvchilar buzilmagani.
+3. `.toLowerCase().includes()` va Mongo `$options:"i"` ekvivalentligi —
+   239 ta qidiruv so'zi (apostrof, kirill, aralash registr): farq **0**.
+
+> Bu §5.2 ni INKOR ETMAYDI. U yerda rad etilgani — `groups` (46 KB) kabi
+> KICHIK ro'yxatlar. Bu jadval 8.10 MB, ya'ni boshqa toifadagi masala.
+
+---
+
 ## 5. Sinab ko'rilgan va RAD ETILGAN yo'llar
 
 > Bu yo'llarga qaytadan vaqt sarflamang — o'lchandi.

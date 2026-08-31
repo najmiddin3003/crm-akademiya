@@ -184,6 +184,10 @@ async function createAllIndexes(db: Db): Promise<void> {
   // Kassalar sahifasi doim BITTA kassani va standart holatda bugungi
   // kunni ko'rsatadi — server tomondagi filtr shu indeksdan foydalanadi.
   tasks.push(db.collection("transaction_entries").createIndex({ cashboxId: 1, date: -1 }));
+  // Jadval sahifalab o'qiladi va `id` bo'yicha teskari saralanadi. Bu indeks
+  // bo'lmasa Mongo `id_1` ni teskari yurib kerakli kassani QIDIRARDI: 50 qator
+  // uchun 5 079 hujjat o'qilardi (explain bilan o'lchangan).
+  tasks.push(db.collection("transaction_entries").createIndex({ cashboxId: 1, id: -1 }));
   // Moliya > Sinxronizatsiya (lib/sync). `sync_outbox` — Google Sheets va
   // Telegram'ga yetkazib berish navbati. Unikal indeks ENG MUHIMI: u
   // bitta yozuvning bitta hodisasi ikki marta navbatga tushishiga yo'l

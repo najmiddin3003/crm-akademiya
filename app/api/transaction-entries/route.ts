@@ -99,6 +99,30 @@ export async function GET(req: Request) {
   const studentNameExact = sp.get("studentNameExact");
   if (studentNameExact !== null) filter.studentName = studentNameExact;
 
+  // Kassalar sahifasidagi jadval filtrlari — mijozdagi shartlarning AYNAN
+  // ekvivalenti. components/finance/CashboxesPage.tsx `filteredEntries` da:
+  //   txName      : e.txName !== txName                        → aynan tenglik
+  //   paymentType : e.paymentType !== wantedPayLabel            → aynan tenglik
+  //   o'quvchi    : e.studentName.toLowerCase().includes(q)     → ICHIDAN
+  //   o'qituvchi  : e.teacherName.toLowerCase().includes(q)     → ICHIDAN
+  //
+  // "Ichidan qidirish" uchun ATAYLAB alohida nomlar. Yuqoridagi
+  // `?studentName=` anchor'li (^…$) va uni bu yerda qayta ishlatib
+  // BO'LMAYDI — boshqa qatorlar to'plamini qaytaradi.
+  const txName = sp.get("txName");
+  if (txName) filter.txName = txName;
+
+  const paymentType = sp.get("paymentType");
+  if (paymentType) filter.paymentType = paymentType;
+
+  const studentLike = sp.get("studentLike");
+  if (studentLike?.trim())
+    filter.studentName = { $regex: escapeRegex(studentLike.trim()), $options: "i" };
+
+  const teacherLike = sp.get("teacherLike");
+  if (teacherLike?.trim())
+    filter.teacherName = { $regex: escapeRegex(teacherLike.trim()), $options: "i" };
+
   const cashboxId = sp.get("cashboxId");
   if (cashboxId) {
     const n = Number(cashboxId);
@@ -147,6 +171,36 @@ export async function GET(req: Request) {
 
   const rows = await cursor.toArray();
 
+  // `?withTotals=1` — Kirim/Chiqim yig'indisi BUTUN filtr bo'yicha, sahifadagi
+  // qatorlar bo'yicha emas. Sahifalash joriy qilingach bu shart bo'ldi:
+  // ilgari yig'indini klient butun ro'yxatdan hisoblardi.
+  //
+  // Mijozdagi qoida (`entryTotals`): amount > 0 → kirim, aks holda chiqim
+  // (manfiy ishorasiz). amount === 0 chiqimga `-0` qo'shadi, ya'ni hech
+  // narsa — shu bois bu yerda ham nolinchi qator ikkalasiga ham kirmaydi.
+  //
+  // Qatorlar soni ham SHU YERDAN olinadi: aks holda aynan bir xil filtr
+  // bo'yicha countDocuments() ikkinchi marta to'liq yurishga majbur bo'lardi.
+  let totals: { income: number; expense: number } | undefined;
+  let aggCount: number | undefined;
+  if (sp.get("withTotals") === "1") {
+    const [agg] = await col
+      .aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            n: { $sum: 1 },
+            income: { $sum: { $cond: [{ $gt: ["$amount", 0] }, "$amount", 0] } },
+            expense: { $sum: { $cond: [{ $lt: ["$amount", 0] }, { $abs: "$amount" }, 0] } },
+          },
+        },
+      ])
+      .toArray();
+    totals = { income: agg?.income ?? 0, expense: agg?.expense ?? 0 };
+    aggCount = agg?.n ?? 0;
+  }
+
   // JAMI son sahifalashdan OLDINGI holatni bildiradi — jadval ostidagi
   // "Umumiy soni" va sahifalar soni shunga tayanadi, sahifadagi qatorlar
   // soniga emas.
@@ -156,7 +210,11 @@ export async function GET(req: Request) {
   // countDocuments ishlardi — bir xil filtr bo'yicha ikkinchi to'liq
   // yurish, bepul olinadigan son uchun (~200 ms va bitta round-trip).
   // Chaqiruvchilarning to'rttasi limitsiz keladi.
-  const total = paged ? await col.countDocuments(filter) : rows.length;
+  const total = !paged
+    ? rows.length
+    : aggCount !== undefined
+      ? aggCount
+      : await col.countDocuments(filter);
   const entries = rows.map(({ _id, ...rest }) => rest as unknown as TransactionEntry);
-  return NextResponse.json({ ok: true, entries, total });
+  return NextResponse.json({ ok: true, entries, total, ...(totals ? { totals } : {}) });
 }

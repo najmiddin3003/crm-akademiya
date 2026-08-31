@@ -656,38 +656,127 @@ export default function CashboxesPage() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [pageResetKey, setPageResetKey] = useState(selectedId);
-  if (selectedId !== pageResetKey) {
-    setPageResetKey(selectedId);
+
+  // Sahifalash endi SERVERDA — shu bois filtr o'zgarganda 1-sahifaga
+  // QAYTISH SHART. Ilgari bu faqat kassa almashganda kerak edi: qatorlar
+  // brauzerda bo'lgani uchun 300-sahifadan 2-sahifaga o'zi tushardi.
+  // Endi esa 300-sahifada turib filtr qo'yilsa server bo'sh javob qaytaradi.
+  const filterKey = [
+    selectedId, txType, txName, student, payType, teacher,
+    dateRange.start?.getTime() ?? "", dateRange.end?.getTime() ?? "",
+  ].join("|");
+  const [pageResetKey, setPageResetKey] = useState(filterKey);
+  if (filterKey !== pageResetKey) {
+    setPageResetKey(filterKey);
     setPage(1);
   }
 
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
   const [detailEntry, setDetailEntry] = useState<TransactionEntry | null>(null);
 
-  // Yozuvlar SERVERDA filtrlanadi: bu sahifa doim BITTA kassani ko'rsatadi
-  // (pastdagi `filteredEntries` da `e.cashboxId !== selectedId` tashlanadi)
-  // va sana oralig'i standart holatda bugungi kun.
+  // Filtr TANLOVLARI serverdan (/api/transaction-entries/facets). Ilgari
+  // ular `entries` dan yig'ilardi — jadval sahifalab o'qiladigan bo'lgach
+  // bu ishlamay qoladi: 50 qatorda kassadagi barcha nomlar bo'lmaydi.
+  // Kassa almashgandagina qayta yuklanadi, filtr o'zgarganda emas.
+  const [facets, setFacets] = useState<{
+    txNames: string[];
+    teacherNames: string[];
+    studentNames: string[];
+  }>({ txNames: [], teacherNames: [], studentNames: [] });
+  useEffect(() => {
+    if (!selectedId) return;
+    let cancelled = false;
+    fetch(`/api/transaction-entries/facets?cashboxId=${selectedId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        setFacets({
+          txNames: d.txNames,
+          teacherNames: d.teacherNames,
+          studentNames: d.studentNames,
+        });
+      })
+      .catch(() => {
+        // Tanlovlar yuklanmasa jadval baribir ishlaydi — pastdagi
+        // ro'yxatlar katalogdagi qiymatlar bilan qoladi.
+      });
+    return () => { cancelled = true; };
+  }, [selectedId]);
+
+  // Yozuvlar SERVERDA filtrlanadi VA SAHIFALANADI: brauzerga faqat bitta
+  // sahifa (odatda 50 qator) keladi.
   //
-  // Ilgari bu yer butun jadvalni tortardi — 25 569 qator, ~11 MB — va
-  // filtrlash brauzerda bo'lardi. Server tomondagi filtr `filteredEntries`
-  // ni O'ZGARTIRMAYDI: u xuddi shu shartlarni yana bir bor tekshiradi,
-  // ya'ni ko'rinadigan qatorlar ham, ular ustidagi Kirim/Chiqim yig'indisi
-  // ham avvalgidek qoladi.
+  // Ilgari bu yer butun jadvalni tortardi — kassa 4 uchun 18 597 qator,
+  // 8.10 MB — filtrlash ham, sahifalash ham brauzerda bo'lardi. Endi
+  // bittasi 22.2 KB (373 barobar kam), va "O'quvchini qidiring" katagiga
+  // har harf yozilganda 18 597 obyekt qayta filtrlanmaydi.
+  //
+  // Jadval yuqorisidagi Kirim/Chiqim va "Umumiy soni" — SERVERDAN, butun
+  // filtr bo'yicha. Ular endi qatorlardan hisoblanmaydi: brauzerda faqat
+  // bitta sahifa (50 qator) bor.
+  const [entryTotals, setEntryTotals] = useState({ income: 0, expense: 0 });
+  const [entryTotal, setEntryTotal] = useState(0);
+  const [entriesError, setEntriesError] = useState(false);
+  const entryReqRef = useRef(0);
+
+  // BARCHA filtrlar serverga birga yuboriladi. Bu shart: filtrlash klientda
+  // qolsa, u faqat ko'rinib turgan 50 qator ichidan qidirardi.
+  const entryQuery = useCallback(() => {
+    const qs = new URLSearchParams({ cashboxId: String(selectedId) });
+    if (dateRange.start) qs.set("dateFrom", toIso(dateRange.start));
+    if (dateRange.end) qs.set("dateTo", toIso(dateRange.end));
+    if (txType) qs.set("txType", TX_TYPE_MAP[txType]);
+    if (txName) qs.set("txName", txName);
+    // ATAYLAB `studentLike`/`teacherLike` — ular ICHIDAN qidiradi, xuddi
+    // shu yerdagi eski `.includes()` kabi. API'dagi `?studentName=` esa
+    // aynan tenglik va uni bu yerda ishlatib bo'lmaydi.
+    if (student.trim()) qs.set("studentLike", student.trim());
+    if (teacher.trim()) qs.set("teacherLike", teacher.trim());
+    // To'lov turi yozuvda NOMI bilan saqlanadi, filtrda esa kaliti
+    // tanlanadi — shuning uchun ro'yxat yuklangan bo'lishi kerak.
+    const payLabel = payType
+      ? paymentMethods.find((m) => m.key === payType)?.name
+      : "";
+    if (payLabel) qs.set("paymentType", payLabel);
+    return qs;
+  }, [
+    selectedId, dateRange, txType, txName, student, teacher, payType,
+    paymentMethods,
+  ]);
+
   const loadEntries = useCallback(() => {
     // Kassa tanlanmagan bo'lsa so'rov yubormaymiz. Holatni bu yerda
     // tozalash SHART EMAS — `filteredEntries` `selectedId` yo'qligida
     // baribir bo'sh ro'yxat qaytaradi.
     if (!selectedId) return;
-    const qs = new URLSearchParams({ cashboxId: String(selectedId) });
-    if (dateRange.start) qs.set("dateFrom", toIso(dateRange.start));
-    if (dateRange.end) qs.set("dateTo", toIso(dateRange.end));
+    const qs = entryQuery();
+    qs.set("page", String(page));
+    qs.set("limit", String(pageSize));
+    qs.set("withTotals", "1");
+    // Sahifalar ketma-ket tez bosilganda javoblar boshqa tartibda kelishi
+    // mumkin — faqat ENG OXIRGI so'rovniki qabul qilinadi.
+    const seq = ++entryReqRef.current;
     fetch(`/api/transaction-entries?${qs.toString()}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.ok) setEntries(d.entries);
+        if (seq !== entryReqRef.current) return;
+        if (!d.ok) throw new Error(d.error || "yuklab bo'lmadi");
+        setEntries(d.entries);
+        setEntryTotal(d.total);
+        setEntryTotals(d.totals || { income: 0, expense: 0 });
+        setEntriesError(false);
+      })
+      .catch(() => {
+        if (seq !== entryReqRef.current) return;
+        // Moliya jadvali: xato bo'lganda ESKI raqamlar ekranda qolmasligi
+        // kerak, lekin nol ham ko'rsatilmaydi — jadval xato holatini
+        // ochiq aytadi (pastdagi `entriesError`).
+        setEntries([]);
+        setEntryTotal(0);
+        setEntryTotals({ income: 0, expense: 0 });
+        setEntriesError(true);
       });
-  }, [selectedId, dateRange]);
+  }, [selectedId, entryQuery, page, pageSize]);
 
   // Kassa yoki sana oralig'i o'zgarganda qayta yuklanadi.
   useEffect(() => { loadEntries(); }, [loadEntries]);
@@ -859,10 +948,10 @@ export default function CashboxesPage() {
     () => [
       ...new Set([
         ...dbStudents,
-        ...entries.map((e) => e.studentName).filter(Boolean),
+        ...facets.studentNames,
       ]),
     ].sort(),
-    [dbStudents, entries],
+    [dbStudents, facets],
   );
 
   // O'qituvchilar ro'yxati XODIMLARDAN (/api/teachers) — ilgari bu yerda
@@ -874,10 +963,10 @@ export default function CashboxesPage() {
     () => [
       ...new Set([
         ...dbTeachers,
-        ...entries.map((e) => e.teacherName).filter((n): n is string => Boolean(n)),
+        ...facets.teacherNames,
       ]),
     ].sort(),
-    [dbTeachers, entries],
+    [dbTeachers, facets],
   );
 
   // Referensdagi "Tranzaksiya turi" filtri. `txName` — tranzaksiya turlari
@@ -889,13 +978,13 @@ export default function CashboxesPage() {
   const txNameOptions = useMemo(
     () => [
       ...txTypeNames,
-      ...[...new Set(entries.map((e) => e.txName).filter(Boolean))]
-        .filter((n) => !txTypeNames.includes(n))
-        .sort(),
+      ...facets.txNames.filter((n) => !txTypeNames.includes(n)).sort(),
     ],
-    [txTypeNames, entries],
+    [txTypeNames, facets],
   );
 
+  // Server allaqachon filtrlab bergan — bu yer o'sha shartlarni yana bir
+  // bor tekshiradi (himoya qatlami). Mos kelganda hech narsa o'zgarmaydi.
   const filteredEntries = useMemo(() => {
     if (!selectedId) return [];
     const wantedType = txType ? TX_TYPE_MAP[txType] : "";
@@ -933,18 +1022,10 @@ export default function CashboxesPage() {
     paymentMethods,
   ]);
 
-  const entryTotals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    for (const e of filteredEntries) {
-      if (e.amount > 0) income += e.amount;
-      else expense += -e.amount;
-    }
-    return { income, expense };
-  }, [filteredEntries]);
-
+  // Qator raqami uchun — jadval serverdan sahifalab keladi, shu bois
+  // `filteredEntries` allaqachon AYNAN shu sahifaning qatorlari.
   const entryStart = (page - 1) * pageSize;
-  const entrySlice = filteredEntries.slice(entryStart, entryStart + pageSize);
+  const entrySlice = filteredEntries;
 
   // Hisobotni yuklab olish menyusi — tanlangan kassa kartasi ichida.
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -977,11 +1058,23 @@ export default function CashboxesPage() {
     { label: "Turi", get: (e) => e.paymentType },
   ];
 
-  function exportEntriesCsv() {
+  // Eksport butun ro'yxat bo'yicha bo'lishi kerak, jadvaldagi 50 qator
+  // bo'yicha emas. Bu kamdan-kam va ataylab bosiladigan amal, shu bois
+  // og'ir so'rov aynan shu yerda o'rinli — jadval esa sahifalab o'qiydi.
+  async function fetchAllForExport(): Promise<TransactionEntry[]> {
+    const d = await fetch(
+      `/api/transaction-entries?${entryQuery().toString()}`,
+    ).then((r) => r.json());
+    if (!d.ok) throw new Error(d.error || "yuklab bo'lmadi");
+    return d.entries as TransactionEntry[];
+  }
+
+  async function exportEntriesCsv() {
     try {
+      const all = await fetchAllForExport();
       const rows = [
         exportCols.map((c) => c.label).join(","),
-        ...filteredEntries.map((e) =>
+        ...all.map((e) =>
           exportCols
             .map((c) => `"${String(c.get(e)).replace(/"/g, '""')}"`)
             .join(","),
@@ -1009,7 +1102,8 @@ export default function CashboxesPage() {
       // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
       // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
       const XLSX = await import("xlsx");
-      const rows = filteredEntries.map((e) =>
+      const all = await fetchAllForExport();
+      const rows = all.map((e) =>
         Object.fromEntries(exportCols.map((c) => [c.label, c.get(e)])),
       );
       const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -1506,7 +1600,7 @@ export default function CashboxesPage() {
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
               <span className="text-muted-foreground">Umumiy soni:</span>
               <span className="font-bold tabular-nums">
-                {filteredEntries.length}
+                {entryTotal}
               </span>
             </div>
           </div>
@@ -1645,12 +1739,27 @@ export default function CashboxesPage() {
                 {entrySlice.length === 0 && (
                   <tr>
                     <td colSpan={11} className="px-3 py-16 text-center">
+                      {/* Bo'sh natija bilan XATONI farqlaymiz: ilgari
+                          ikkalasi ham "topilmadi" deb ko'rinardi va
+                          yuqoridagi nol summalar haqiqiy deb o'ylanardi. */}
                       <div className="text-[14px] font-semibold">
-                        Ma&apos;lumotlar topilmadi
+                        {entriesError
+                          ? "Ma'lumotni yuklab bo'lmadi"
+                          : "Ma'lumotlar topilmadi"}
                       </div>
                       <div className="text-[12px] text-muted-foreground mt-1">
-                        Filterni o&apos;zgartirib ko&apos;ring.
+                        {entriesError
+                          ? "Aloqa yoki server xatosi — yuqoridagi summalar ham to'liq emas."
+                          : "Filterni o'zgartirib ko'ring."}
                       </div>
+                      {entriesError && (
+                        <button
+                          onClick={loadEntries}
+                          className="mt-3 h-9 px-4 rounded-md bg-primary text-white text-[13px] font-medium"
+                        >
+                          Qayta urinish
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -1658,7 +1767,7 @@ export default function CashboxesPage() {
             </table>
           </div>
           <Pagination
-            totalItems={filteredEntries.length}
+            totalItems={entryTotal}
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}
