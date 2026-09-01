@@ -365,7 +365,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       get("/api/turnstile-io"),
       get("/api/orders"),
       get("/api/student-reports?kind=unpaid"),
-      get("/api/cashboxes"),
+      get("/api/cashboxes?names=1"),
       get(`/api/hr-employees/${id}/notes`),
       // Chap kartadagi "Akladi" va "To'lanmagan" uchun — Oylik hisob-kitob
       // sahifasi bilan AYNAN bir xil manba (lib/payrollSources.ts).

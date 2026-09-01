@@ -14,7 +14,7 @@ import { PENALTY_TYPES } from "@/constants/penalties";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
-import type { Cashbox } from "@/lib/cashboxes";
+import type { CashboxName } from "@/lib/cashboxes";
 import type { TransactionType } from "@/lib/transactionTypes";
 
 // Moliya → Kirim chiqim (sidebar: Moliya > Kirim chiqim, href
@@ -84,7 +84,7 @@ export default function FinanceAnalyticsPage() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [cashboxes, setCashboxes] = useState<CashboxName[]>([]);
   const [bonuses, setBonuses] = useState<Bonus[]>([]);
   const [penalties, setPenalties] = useState<Penalty[]>([]);
   // Kirim/Chiqim tablari uchun kategoriya bo'yicha yig'indi — SERVERDAN.
@@ -100,7 +100,7 @@ export default function FinanceAnalyticsPage() {
   const [expenseCats, setExpenseCats] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch("/api/cashboxes").then((r) => r.json()).then((d) => { if (d.ok) setCashboxes(d.cashboxes); });
+    fetch("/api/cashboxes?names=1").then((r) => r.json()).then((d) => { if (d.ok) setCashboxes(d.cashboxes); });
     fetch("/api/bonuses").then((r) => r.json()).then((d) => { if (d.ok) setBonuses(d.bonuses); });
     fetch("/api/penalties").then((r) => r.json()).then((d) => { if (d.ok) setPenalties(d.penalties); });
     fetch("/api/transaction-types").then((r) => r.json()).then((d) => {

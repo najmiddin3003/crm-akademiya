@@ -6,7 +6,7 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { TransactionEntry } from "@/lib/transactionEntries";
-import type { Cashbox } from "@/lib/cashboxes";
+import type { CashboxName } from "@/lib/cashboxes";
 import PersonLink from "@/components/shared/PersonDirectory";
 
 // Moliya → Tranzaksiyalar (sidebar: Moliya > Tranzakisyalar, href
@@ -40,7 +40,7 @@ function fmtDate(e: TransactionEntry): string {
 
 export default function TransactionEntriesPage() {
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
-  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [cashboxes, setCashboxes] = useState<CashboxName[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [cashboxId, setCashboxId] = useState("");
@@ -62,7 +62,7 @@ export default function TransactionEntriesPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/cashboxes").then((r) => r.json()),
+      fetch("/api/cashboxes?names=1").then((r) => r.json()),
       fetch("/api/transaction-entries/students").then((r) => r.json()),
     ]).then(([cb, st]) => {
       if (cancelled) return;

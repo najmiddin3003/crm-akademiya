@@ -19,6 +19,21 @@ export interface Cashbox {
   methodTotals: CashboxMethodTotals;
 }
 
+/**
+ * Kassaning faqat NOMI — `GET /api/cashboxes?names=1` javobidagi shakl.
+ *
+ * Jadval va hisobotlarda qatorning yonida kassa nomi turadi. Ular butun
+ * `Cashbox` ni (balans, moderator, to'lov turlari kesimi) so'ramaydi va
+ * so'ramasligi ham kerak: kassa qamrovi xodimga bog'langanidan keyin
+ * to'liq ro'yxat faqat adminga ochiq, nom esa hammaga kerak — aks holda
+ * jadvalda "kassa: —" degan bo'sh katak chiqib qolardi.
+ */
+export interface CashboxName {
+  id: number;
+  name: string;
+  archived?: boolean;
+}
+
 export function zeroMethodTotals(keys: string[]): CashboxMethodTotals {
   return Object.fromEntries(keys.map((k) => [k, 0]));
 }

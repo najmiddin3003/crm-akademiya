@@ -7,7 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { ErrorBlock } from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
 import type { Transaction } from "@/lib/transactions";
-import type { Cashbox } from "@/lib/cashboxes";
+import type { CashboxName } from "@/lib/cashboxes";
 // Bo'sh massiv MODUL DARAJASIDA: `?? []` har renderda YANGI massiv yasaydi
 // va uni bog'liqlik sifatida ishlatadigan useMemo har safar qayta hisoblanadi.
 const EMPTY: never[] = [];
@@ -38,7 +38,7 @@ function toIso(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-export default function JournalTab({ cashboxes }: { cashboxes: Cashbox[] }) {
+export default function JournalTab({ cashboxes }: { cashboxes: CashboxName[] }) {
   const [dateRange, setDateRange] = useState<DateRange>(() => todayRange());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);

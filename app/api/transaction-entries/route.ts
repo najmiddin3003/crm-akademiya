@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getCurrentEmployee, ownsCashbox } from "@/lib/currentEmployee";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 
 // Moliya → Tranzaksiyalar backend'i (MongoDB `transaction_entries`, faqat
@@ -196,6 +197,21 @@ export async function GET(req: Request) {
     const n = Number(cashboxId);
     if (!Number.isFinite(n)) {
       return NextResponse.json({ ok: false, error: "Noto'g'ri cashboxId" }, { status: 400 });
+    }
+    // Kassa kesimidagi so'rov — faqat o'z kassasi. GET /api/cashboxes
+    // ro'yxatni allaqachon kesadi, lekin uni chetlab o'tib bu yerga
+    // to'g'ridan-to'g'ri `?cashboxId=3` yuborish mumkin edi.
+    //
+    // Boshqa kesimlar (`?person=`, `?studentName=`, `?moderator=`)
+    // ATAYLAB tegilmaydi: ular o'quvchi va xodim profillarining manbai,
+    // ularni kassa bo'yicha kesish o'quvchining boshqa kassada qilgan
+    // to'lovini yo'qotib, balansni buzardi.
+    const me = await getCurrentEmployee();
+    if (!me) {
+      return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+    }
+    if (!me.isAdmin && !(await ownsCashbox(db, me.name, n))) {
+      return NextResponse.json({ ok: false, error: "Bu kassa sizga biriktirilmagan" }, { status: 403 });
     }
     filter.cashboxId = n;
   }

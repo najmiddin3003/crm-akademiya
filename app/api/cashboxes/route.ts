@@ -2,16 +2,49 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, zeroMethodTotals, type Cashbox } from "@/lib/cashboxes";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
+import { getCurrentEmployee, nameEq } from "@/lib/currentEmployee";
 
 // Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
 // kassalarni foydalanuvchi o'zi qo'shadi.
-export async function GET() {
+//
+// GET /api/cashboxes          — kassalar (pul bilan), QAMROV cheklangan
+// GET /api/cashboxes?names=1  — faqat [{ id, name }], cheklovsiz
+//
+// QAMROV: admin hammasini ko'radi, xodim esa faqat O'ZIGA biriktirilganini
+// (`cashboxes.moderator` — uning `hr_employees.name` i). Kassa — shaxsiy
+// javobgarlik obyekti: unda kimning puli borligi va qancha ekani faqat
+// egasiga va adminga tegishli. Ilgari bu yerda `col.find({})` turardi va
+// `/finance-cash` ruxsati tekkan har kim uchala kassaning balansini ham,
+// 25 581 qatorlik daftarini ham ochib ko'ra olardi.
+//
+// `?names=1` — kassa NOMLARI xaritasi (id → nom) uchun. Uni tranzaksiya
+// jadvallari, hisobotlar va cheklar ishlatadi: qatorda boshqa kassaning
+// yozuvi ko'rinishi mumkin va uning nomi bo'sh qolmasligi kerak. Bu
+// javobda balans ham, moderator ham YO'Q, ya'ni pul oshkor bo'lmaydi.
+export async function GET(req: Request) {
   const db = await ensureIndexes();
   const col = db.collection("cashboxes");
+
+  if (new URL(req.url).searchParams.get("names") === "1") {
+    const rows = await col.find({}, { projection: { id: 1, name: 1, archived: 1, _id: 0 } }).sort({ id: 1 }).toArray();
+    return NextResponse.json({ ok: true, cashboxes: rows });
+  }
+
+  const me = await getCurrentEmployee();
+  if (!me) {
+    return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  }
+  // Kassaga biriktirilmagan xodim hech qanday kassa ko'rmaydi. Sahifada
+  // buning uchun alohida bo'sh holat matni bor (CashboxesPage) — aks holda
+  // bo'sh ekran "sayt buzildi" deb tushunilardi.
+  if (!me.isAdmin && !me.name) {
+    return NextResponse.json({ ok: true, cashboxes: [] });
+  }
+
   // Ikkala o'qish bir-biriga bog'liq emas -> bitta round-trip'da.
   const [keys, rows] = await Promise.all([
     loadPaymentMethodKeys(db),
-    col.find({}).sort({ id: 1 }).toArray(),
+    col.find(me.isAdmin ? {} : { moderator: nameEq(me.name!) }).sort({ id: 1 }).toArray(),
   ]);
   const cashboxes = rows.map(({ _id, ...rest }) => normalizeCashbox({ isPrimary: false, ...rest }, keys));
   return NextResponse.json({ ok: true, cashboxes });

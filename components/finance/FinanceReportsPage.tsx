@@ -10,7 +10,7 @@ import BreakdownBars from "@/components/finance/reports/BreakdownBars";
 import { CHART_COLORS } from "@/constants/financeAnalytics";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
-import type { Cashbox } from "@/lib/cashboxes";
+import type { CashboxName } from "@/lib/cashboxes";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
 
@@ -187,7 +187,7 @@ export default function FinanceReportsPage() {
   const [kirimMode, setKirimMode] = useState<"category" | "method">("category");
   const [chiqimMode, setChiqimMode] = useState<"category" | "method">("category");
 
-  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [cashboxes, setCashboxes] = useState<CashboxName[]>([]);
   // So'rov EFFEKT ICHIDA turadi va `reloadKey` bilan qayta ishga tushadi.
   // Ilgari bu yer `load` nomli useCallback edi va "Qayta urinish" tugmasi
   // uni TO'G'RIDAN-TO'G'RI chaqirardi — o'shanda funksiya qaytargan
@@ -208,7 +208,7 @@ export default function FinanceReportsPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetch("/api/cashboxes")
+    fetch("/api/cashboxes?names=1")
       .then((r) => r.json())
       .then((d) => { if (d.ok) setCashboxes(d.cashboxes); })
       .catch(() => {});

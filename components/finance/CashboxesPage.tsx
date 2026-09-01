@@ -1492,7 +1492,17 @@ export default function CashboxesPage() {
           })}
           {filteredList.length === 0 && (
             <div className="rounded-xl border border-border bg-card p-6 text-center text-[13px] text-muted-foreground">
-              {loading ? <SpinnerBlock size={22} /> : "Bu bo'limda kassa yo'q"}
+              {loading ? (
+                <SpinnerBlock size={22} />
+              ) : cashboxes.length === 0 ? (
+                // Ro'yxat SERVERDA kesiladi: xodim faqat o'ziga
+                // biriktirilgan kassani ko'radi. Bo'sh ekran "sayt buzildi"
+                // deb tushunilmasin — nima uchun bo'shligi va kim
+                // to'g'rilashi aytiladi.
+                "Sizga kassa biriktirilmagan. Kassani Moliya → Kassalar bo'limida admin biriktiradi."
+              ) : (
+                "Bu bo'limda kassa yo'q"
+              )}
             </div>
           )}
         </div>
@@ -1863,7 +1873,6 @@ export default function CashboxesPage() {
       {transferToTarget && (
         <CashboxTransferToDrawer
           cashbox={transferToTarget}
-          cashboxes={cashboxes}
           onClose={() => setTransferToTarget(null)}
           onSaved={({ from, to }) => {
             setCashboxes((prev) =>

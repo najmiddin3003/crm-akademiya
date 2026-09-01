@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getCurrentEmployee, ownsCashbox } from "@/lib/currentEmployee";
 
 /** Foydalanuvchi kiritgan matnni $regex ichiga xavfsiz qo'yish uchun. */
 function escapeRegex(s: string): string {
@@ -39,6 +40,17 @@ export async function GET(req: Request) {
     const cashboxId = Number(raw);
     if (!raw || !Number.isFinite(cashboxId)) {
       return NextResponse.json({ ok: false, error: "cashboxId yoki person kerak" }, { status: 400 });
+    }
+    // Kassa kesimida — faqat o'z kassasi (jadval route'idagi bilan bir xil
+    // qoida; usiz filtr tanlovlari orqali boshqa kassaning o'quvchi va
+    // o'qituvchi ismlari ro'yxati oshkor bo'lardi).
+    const me = await getCurrentEmployee();
+    if (!me) {
+      return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+    }
+    const dbForCheck = await ensureIndexes();
+    if (!me.isAdmin && !(await ownsCashbox(dbForCheck, me.name, cashboxId))) {
+      return NextResponse.json({ ok: false, error: "Bu kassa sizga biriktirilmagan" }, { status: 403 });
     }
     filter = { cashboxId };
   }

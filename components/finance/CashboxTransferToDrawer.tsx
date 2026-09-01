@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -8,7 +8,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput from "@/components/ui/MoneyInput";
 import Select from "@/components/ui/Select";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
-import { type Cashbox } from "@/lib/cashboxes";
+import { type Cashbox, type CashboxName } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 
 function toIso(d: Date): string {
@@ -28,12 +28,10 @@ function fmtSum(n: number): string {
 // qarang).
 export default function CashboxTransferToDrawer({
   cashbox,
-  cashboxes,
   onClose,
   onSaved,
 }: {
   cashbox: Cashbox;
-  cashboxes: Cashbox[];
   onClose: () => void;
   onSaved: (updated: { from: Cashbox; to: Cashbox }) => void;
 }) {
@@ -48,7 +46,22 @@ export default function CashboxTransferToDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const destinations = cashboxes.filter((c) => c.id !== cashbox.id && !c.archived);
+  // Manzil kassalari — TIZIMDAGI hammasi, nomlari bilan.
+  //
+  // `GET /api/cashboxes` endi xodimga biriktirilganini qaytaradi, ya'ni
+  // sahifadagi ro'yxatdan manzil olinsa kassirda bitta ham manzil
+  // qolmasdi va ko'chirish umuman ishlamay qolardi. `?names=1` esa faqat
+  // id va nomni beradi — boshqa odamning puli oshkor bo'lmaydi.
+  const [allNames, setAllNames] = useState<CashboxName[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/cashboxes?names=1")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setAllNames(d.cashboxes as CashboxName[]); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  const destinations = allNames.filter((c) => c.id !== cashbox.id && !c.archived);
 
   // To'lov turlari ro'yxatida faqat SHU KASSADA puli borlari turadi va har
   // birining yonida qoldig'i ko'rinadi. Nol qoldiqli turdan ko'chirib

@@ -6,7 +6,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import CalendarTab from "./analytics/CalendarTab";
 import JournalTab from "./analytics/JournalTab";
 import CashFlowTab from "./analytics/CashFlowTab";
-import type { Cashbox } from "@/lib/cashboxes";
+import type { CashboxName } from "@/lib/cashboxes";
 import { fetchJson } from "@/lib/fetchJson";
 
 /** summary?groupBy=method qaytaradigan qator. */
@@ -42,7 +42,7 @@ export default function FinancialAnalyticsPage() {
   // nofaol qilingan turdagi eski summalar ham ko'rinishi kerak).
   const { methods: paymentMethods } = usePaymentMethods();
   const [tab, setTab] = useState<TabKey>("kalendar");
-  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [cashboxes, setCashboxes] = useState<CashboxName[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Chap paneldagi ikkita raqam — SERVERDAN. Ilgari bu sahifa butun
@@ -59,7 +59,7 @@ export default function FinancialAnalyticsPage() {
       fetchJson<{ rows: MethodRow[] }>("/api/transactions/summary?groupBy=method")
         .then((d) => d.rows)
         .catch(() => null),
-      fetch("/api/cashboxes").then((r) => r.json()).catch(() => ({ ok: false })),
+      fetch("/api/cashboxes?names=1").then((r) => r.json()).catch(() => ({ ok: false })),
     ])
       .then(([rows, cb]) => {
         if (cancelled) return;
