@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 import { sanitizePermissions } from "@/lib/permissions";
+import { isValidPhone, normalizePhone } from "@/lib/invite";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
@@ -42,8 +43,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // kelib qolsa, oylik yig'indisi qo'shilish o'rniga birikib ketardi va
   // o'sha qiymat kassadagi chiqim chegarasini boshqargan bo'lardi.
   const set: Record<string, unknown> = {};
-  for (const k of ["name", "gender", "turi", "filial", "phone", "kurs", "email", "degree", "photoUrl", "archReason", "archDate", "lastActive", "percent"] as const) {
+  for (const k of ["name", "gender", "turi", "filial", "kurs", "email", "degree", "photoUrl", "archReason", "archDate", "lastActive", "percent"] as const) {
     if (typeof body[k] === "string") set[k] = body[k];
+  }
+
+  // Telefon — alohida yo'l. Ilgari u yuqoridagi ro'yxatda edi va XOM
+  // holda yozilardi: shakl tekshirilmasdi, boshqa xodimning raqami bilan
+  // takrorlanib ketishi mumkin edi va eng muhimi `users` hujjati eski
+  // raqamda qolardi — ya'ni xodim yangi raqami bilan tizimga KIRA
+  // OLMASDI, ruxsatlar zanjiri ham (lib/rolePermissions.ts telefon
+  // bo'yicha topadi) uzilardi.
+  let newPhone: string | null = null;
+  if (typeof body.phone === "string" && body.phone.trim() !== "") {
+    if (!isValidPhone(body.phone)) {
+      return NextResponse.json({ ok: false, error: "Telefon raqami noto'g'ri" }, { status: 400 });
+    }
+    newPhone = normalizePhone(body.phone);
   }
   for (const k of ["aktivOq", "groups"] as const) {
     if (Number.isFinite(Number(body[k]))) set[k] = Number(body[k]);
@@ -94,11 +109,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     set.customFields = clean;
   }
 
-  if (Object.keys(set).length === 0) {
+  if (Object.keys(set).length === 0 && newPhone === null) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
   const db = await ensureIndexes();
+
+  if (newPhone !== null) {
+    // Raqam BOSHQA xodimda yoki BOSHQA hisobda band bo'lmasin. Ikkala
+    // kolleksiya ham qaraladi — import qilingan xodimlarda `users` yozuvi
+    // yo'q (app/api/hr-employees/import), ya'ni faqat `users` ni tekshirish
+    // ularni ko'rmasdi. Xodim qo'shish yo'lidagi qoida bilan bir xil.
+    const [otherUser, otherEmp] = await Promise.all([
+      db.collection("users").findOne({ phone: newPhone, hrEmployeeId: { $ne: empId } }, { projection: { _id: 1 } }),
+      db.collection("hr_employees").findOne({ phone: newPhone, id: { $ne: empId } }, { projection: { _id: 1 } }),
+    ]);
+    if (otherUser || otherEmp) {
+      return NextResponse.json({ ok: false, error: "Bu telefon raqami allaqachon ro'yxatdan o'tgan" }, { status: 409 });
+    }
+    set.phone = newPhone;
+  }
+
   const res = await db.collection("hr_employees").findOneAndUpdate(
     { id: empId },
     { $set: set },
@@ -106,6 +137,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   );
   if (!res) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+  }
+
+  // Hisob HAM yangilanadi — aks holda xodim eski raqami bilan kirib,
+  // yangi raqami profilida turgan bo'lardi. Ism o'zgargan bo'lsa
+  // `users.fullName` ham ergashadi (navbardagi profil shundan o'qiydi).
+  const userSet: Record<string, unknown> = {};
+  if (newPhone !== null) userSet.phone = newPhone;
+  if (typeof set.name === "string") userSet.fullName = set.name;
+  if (Object.keys(userSet).length > 0) {
+    await db.collection("users").updateOne({ hrEmployeeId: empId }, { $set: userSet });
   }
   const { _id, ...employee } = res;
   return NextResponse.json({ ok: true, employee: employee as unknown as HrEmployee });

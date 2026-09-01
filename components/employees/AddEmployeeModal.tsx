@@ -371,7 +371,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       return;
     }
     const trimmedPhone = phone.trim();
-    if (!editing && !isValidPhoneClient(trimmedPhone)) {
+    if (!isValidPhoneClient(trimmedPhone)) {
       showError("Telefon raqamini to'g'ri kiriting (masalan +998 90 123 45 67)");
       return;
     }
@@ -442,10 +442,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          // Tahrirlashda telefon YUBORILMAYDI: maydon faqat o'qish uchun va
-          // u formatlangan ko'rinishda ("+998 94 155 88 55"). Yuborilsa
-          // PATCH bazadagi saqlash shaklini o'zgartirib qo'yardi.
-          ...(editing ? {} : { phone: trimmedPhone }),
+          // Telefon formatlangan ko'rinishda ketadi ("+998 94 155 88 55") —
+          // server uni normalizePhone() bilan bir xil shaklga soladi, ya'ni
+          // probel va qavslar bazaga tushmaydi.
+          phone: trimmedPhone,
           turi: TURI_MAP[vazifa] || "",
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
@@ -527,24 +527,22 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               </>
             )}
             <div>
-              <label className={labelCls}>Telefon raqam{!editing && <span className="text-rose-500">*</span>}</label>
-              <div className={`flex items-center gap-2 h-10 rounded-lg border border-border pl-2 pr-3 ${editing ? "bg-secondary/40" : "bg-card"}`}>
+              <label className={labelCls}>Telefon raqam<span className="text-rose-500">*</span></label>
+              <div className="flex items-center gap-2 h-10 rounded-lg border border-border pl-2 pr-3 bg-card">
                 <span className="inline-block text-[16px]">🇺🇿</span>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  readOnly={editing}
                   className="flex-1 bg-transparent text-sm focus:outline-none"
                 />
               </div>
-              {/* Telefon — tizimga kirish logini. Uni bu yerdan o'zgartirish
-                  XAVFLI: PATCH faqat `hr_employees` ni yangilaydi, `users`
-                  hujjatiga tegmaydi — profil yangi raqamni ko'rsatgani bilan
-                  xodim eskisi bilan kirishda davom etardi. Raqamni almashtirish
-                  alohida oqim bo'lishi kerak. */}
+              {/* Telefon — tizimga kirish logini. Shu sababli PATCH endi
+                  `users` hujjatini ham yangilaydi: aks holda profil yangi
+                  raqamni ko'rsatgani bilan xodim eskisi bilan kirishda davom
+                  etardi. Raqam band bo'lsa server 409 qaytaradi. */}
               {editing && (
-                <p className="mt-1 text-[11px] text-muted-foreground">Telefon — tizimga kirish logini, bu yerdan o&apos;zgartirilmaydi.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Bu raqam bilan xodim tizimga kiradi — o&apos;zgartirilsa yangisi amal qiladi.</p>
               )}
             </div>
           </div>
