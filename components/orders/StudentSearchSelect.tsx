@@ -205,10 +205,17 @@ export default function StudentSearchSelect({
   const compact = variant === "compact";
   return (
     <div ref={ref} className="relative">
-      <label className={compact ? "text-xs font-medium text-muted-foreground mb-1 block" : "block text-[13px] font-medium mb-1.5"}>
-        {label}
-        {required && <span className="text-red-500"> *</span>}
-      </label>
+      {/* Yorliq BO'SH bo'lsa element umuman chizilmaydi.
+          Ilgari u har doim chizilardi: matni yo'q `<label>` ichida qator
+          qutisi hosil bo'lmaydi, ya'ni balandligi 0 — LEKIN `mb-1` (4px)
+          o'z joyida qolardi. Natijada filtrlar qatorida bu tanlov yonidagi
+          `h-9` selectlardan aynan 4px pastda turardi. */}
+      {label && (
+        <label className={compact ? "text-xs font-medium text-muted-foreground mb-1 block" : "block text-[13px] font-medium mb-1.5"}>
+          {label}
+          {required && <span className="text-red-500"> *</span>}
+        </label>
+      )}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

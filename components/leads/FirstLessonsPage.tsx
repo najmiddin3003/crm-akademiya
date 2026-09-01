@@ -469,10 +469,18 @@ export default function FirstLessonsPage() {
           placeholder="Moderator"
           searchPlaceholder="Qidirish"
         />
-        <select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">O&apos;qituvchi</option>
-          {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        {/* O'qituvchilar ro'yxati ham uzun — Kurs va Moderator bilan AYNAN
+            bir xil qidiruvli tanlov. Ilgari bu yerda nativ <select> turardi
+            va o'nlab ism orasidan qidirib bo'lmasdi. */}
+        <StudentSearchSelect
+          label=""
+          variant="compact"
+          value={teacherFilter}
+          onChange={(v) => { setTeacherFilter(v); setPage(1); }}
+          options={teacherOptions}
+          placeholder="O'qituvchi"
+          searchPlaceholder="Qidirish"
+        />
         <input
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
