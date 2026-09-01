@@ -69,7 +69,12 @@ export default function CashboxAdjustDrawer({
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
-  const [category, setCategory] = useState("");
+  // Tanlangan tur ID bo'yicha saqlanadi, nom bo'yicha emas: turning "Mijoz"
+  // maydoni ham kerak, nom esa noyob emas (POST /api/transaction-types nom
+  // takrorlanishini tekshirmaydi va bazada `name` bo'yicha unikal indeks
+  // yo'q). Serverga baribir NOM ketadi — jurnal, analitika va hisobotlar
+  // shu nom bo'yicha guruhlanadi.
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   // Tanlangan KIM — tranzaksiya turiga qarab o'quvchi yoki xodim.
   const [personName, setPersonName] = useState("");
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -84,7 +89,15 @@ export default function CashboxAdjustDrawer({
   const [date, setDate] = useState<Date | null>(new Date());
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState<string[]>([]);
+  // Turlar TO'LIQ saqlanadi. Ilgari bu yerda `.map((t) => t.name)` turardi
+  // va turning "Mijoz" maydoni aynan shu qatorda yo'qolardi — javobda u bor
+  // edi, lekin brauzergacha yetib kelmasdi.
+  const [categories, setCategories] = useState<TransactionType[]>([]);
+  const selectedType = useMemo(
+    () => categories.find((t) => t.id === categoryId) ?? null,
+    [categories, categoryId],
+  );
+  const category = selectedType?.name ?? "";
   // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan.
   const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
   // Tanlangan SANANING oyi — oylik hisobining davri ham, "shu oyda
@@ -112,14 +125,13 @@ export default function CashboxAdjustDrawer({
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.ok) return;
-        const names = (d.types as TransactionType[]).filter((t) => t.mainType === "chiqim").map((t) => t.name);
-        setCategories(Array.from(new Set(names)));
+        setCategories((d.types as TransactionType[]).filter((t) => t.mainType === "chiqim"));
       });
     return () => { cancelled = true; };
   }, []);
 
   // Xodimlar ro'yxati faqat kerak bo'lganda (xodimga oylik/avans) yuklanadi.
-  const target = txTarget(category);
+  const target = txTarget(selectedType);
   useEffect(() => {
     if (target !== "employee" || employees.length > 0) return;
     let cancelled = false;
@@ -244,6 +256,14 @@ export default function CashboxAdjustDrawer({
       showError("Tranzaksiya turini tanlang");
       return;
     }
+    // Tanlov maydoni ko'rinib turgan bo'lsa, u BO'SH qolmasin. Aks holda
+    // yozuv egasiz tug'iladi: xodimga berilgan avans hech kimning oylik
+    // hisobiga tushmaydi va oddiy xarajat bo'lib qoladi (jurnalda aynan
+    // shunday bitta yozuv bor — "Avans", −20 000, xodimsiz).
+    if (target !== null && !personName.trim()) {
+      showError(txTargetLabel(target));
+      return;
+    }
     if (!total || total <= 0) {
       showError("Qiymatni to'g'ri kiriting");
       return;
@@ -281,6 +301,11 @@ export default function CashboxAdjustDrawer({
           // Jurnaldagi "KIM" ustuni shu maydondan o'qiladi (o'quvchi ham,
           // xodim ham shu yerda ko'rsatiladi — referensda ham shunday).
           studentName: personName,
+          // Yozuv KIMNING oyligiga tegishli. Xodimga chiqim bo'lsa — o'sha
+          // xodim. Server buni nomdagi "avans|oylik" so'ziga qarab ham
+          // topadi, lekin "KPI bonusi", "Bayram mukofoti" kabi turlarda bu
+          // so'zlar yo'q va yozuv egasiz qolardi.
+          teacherName: target === "employee" ? personName : undefined,
           date: date ? toIso(date) : undefined,
           note,
         }),
@@ -321,17 +346,20 @@ export default function CashboxAdjustDrawer({
             <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya</label>
             <div className="relative">
               <select
-                value={category}
+                value={categoryId ?? ""}
                 onChange={(e) => {
                   // Tur o'zgarsa avval tanlangan kishi kerak bo'lmay qolishi
                   // mumkin (o'quvchi → xodim yoki umuman tanlovsiz tur).
-                  if (txTarget(e.target.value) !== txTarget(category)) setPersonName("");
-                  setCategory(e.target.value);
+                  // Tozalanmasa, maydon yashirinib ketgan bo'lsa ham eski
+                  // ism `studentName` bo'lib yozuvga tushardi.
+                  const next = categories.find((t) => t.id === Number(e.target.value)) ?? null;
+                  if (txTarget(next) !== target) setPersonName("");
+                  setCategoryId(next?.id ?? null);
                 }}
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">Tanlang</option>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>

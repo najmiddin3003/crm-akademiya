@@ -125,8 +125,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   //     o'quvchining guruhidagi ustoz
   // Topilmasa bo'sh qoladi — taxmin qilinmaydi.
   let salaryTarget = "";
-  if (mode === "chiqim" && isEmployeePayoutCategory(category)) {
-    salaryTarget = (studentName || "").trim();
+  if (mode === "chiqim") {
+    // Nomida "avans"/"oylik" bo'lgan turlarda xodim `studentName` da keladi
+    // (jurnaldagi "KIM" ustuni), qolgan XODIM turlarida esa — "KPI bonusi",
+    // "Oyning eng yaxshi o'qituvchisi", "Bayram mukofoti" — oyna uni
+    // `teacherName` da alohida yuboradi. Ilgari ikkinchi holat umuman
+    // qaralmasdi va bunday chiqim hech kimga biriktirilmasdi.
+    salaryTarget = isEmployeePayoutCategory(category)
+      ? (studentName || "").trim()
+      : (teacherName || "").trim();
   } else if (mode === "kirim") {
     salaryTarget = (teacherName || "").trim() || (await findTeacherOfStudent(db, studentName || "")) || "";
   }

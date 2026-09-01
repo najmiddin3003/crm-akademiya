@@ -1,33 +1,82 @@
-// Kassa Kirim/Chiqim oynasida tranzaksiya turiga qarab pastda KIM tanlanishi
-// aniqlanadi. Referensda (akademiya.edutizim.uz → Moliya → Kassa → Chiqim):
+// Kassa Chiqim oynasida tranzaksiya turiga qarab pastda KIM tanlanishi
+// aniqlanadi.
 //
-//   "Hodimga oylik", "Hodimga avans"   → XODIMLAR ro'yxati
-//   "O'quvchiga pul qaytarildi"        → O'QUVCHILAR ro'yxati
-//   "List", "Printer", "Suv", ...      → hech kim tanlanmaydi
+// NIMA NOTO'G'RI EDI: bu yerda faqat turning NOMIGA qaralardi — nomda
+// "xodim"/"hodim" bo'lsa xodimlar, "o'quvchi" bo'lsa o'quvchilar. Amalda:
 //
-// Tranzaksiya turlari admin boshqaradigan ro'yxat (/finance-tx-types), ya'ni
-// nomlar o'zgarishi mumkin. Shu sabab qat'iy satr solishtirish emas, nomdagi
-// kalit so'zga qaraymiz — "hodim"/"xodim" ham, "o'quvchi" ham imlo variantlari
-// bilan yoziladi (H/X va turli apostroflar).
+//   "Oylik ish haqi — admin/xodim"  -> "xodim" bor    -> ishlardi
+//   "Oylik ish haqi — o'qituvchi"   -> "xodim" YO'Q   -> tanlov CHIQMASDI
+//   "Avans"                          -> "xodim" YO'Q   -> tanlov CHIQMASDI
+//   "KPI bonusi (…o'quvchi saqlash)" -> "o'quvchi" bor -> O'QUVCHILAR chiqardi
+//
+// Ya'ni bir xil ma'nodagi to'rt tur to'rt xil ishlardi va xodimga avans
+// berilganda yozuv EGASIZ qolardi — u hech kimning oylik hisobiga
+// tushmasdi, oddiy xarajat bo'lib qolardi.
+//
+// Javob esa bazada bor edi: Sozlamalar -> Tranzaksiya turi formasidagi
+// "Mijoz" maydoni (`transaction_types.customerType`), va u 51 turning
+// HAMMASIDA to'ldirilgan. Endi asosiy manba shu.
 
 export type TxTarget = "employee" | "student" | null;
 
 /** Apostrof variantlarini (’ ‘ ` ´) oddiy ' ga keltiradi va kichik harfga o'giradi. */
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/[\u2018\u2019\u02BC\u0060\u00B4]/g, "'");
+  return s.toLowerCase().replace(/[‘’ʼ`´]/g, "'").trim();
 }
 
 /**
- * Tranzaksiya turi nomiga qarab kim tanlanishi kerakligini aniqlaydi.
- * `null` — bu tur uchun umuman tanlov ko'rsatilmaydi.
+ * Tur NOMIDAGI kalit so'z bo'yicha — ZAXIRA yo'l.
+ *
+ * "Mijoz" maydoni to'ldirilmagan turlar uchun qoladi: yangi tur qo'shishda
+ * u majburiy emas va standart qiymati "Boshqa"
+ * (app/api/transaction-types/route.ts -> `body.customerType || "Boshqa"`).
+ * Ya'ni admin ertaga "Xodimga qarz" turini qo'shib, Mijozga tegmasa,
+ * tanlov baribir chiqadi va bugungi xato qaytadan tug'ilmaydi.
  */
-export function txTarget(category: string): TxTarget {
+export function targetOfName(category: string): TxTarget {
   const n = normalize(category);
   // "o'quvchi" birinchi tekshiriladi: nomda ikkalasi ham uchrasa
   // (masalan "o'quvchidan xodimga o'tkazma") o'quvchi ustun bo'lsin.
   if (n.includes("o'quvchi") || n.includes("oquvchi")) return "student";
   if (n.includes("hodim") || n.includes("xodim")) return "employee";
   return null;
+}
+
+/**
+ * "Mijoz" maydoni bo'yicha (constants/transactionTypes.js -> CUSTOMER_TYPES).
+ *
+ * `undefined` — "maydon qaror qilmadi, nomga qayt";
+ * `null`      — "ATAYLAB hech kim tanlanmaydi".
+ *
+ * Farqi muhim: "Uchinchi shaxs" — ongli tanlov, "Boshqa" esa maydonning
+ * standart qiymati, ya'ni ko'pincha shunchaki to'ldirilmagan.
+ */
+function targetOfCustomerType(customerType: unknown): TxTarget | undefined {
+  switch (normalize(String(customerType ?? ""))) {
+    case "xodim": return "employee";
+    case "o'quvchilar": return "student";
+    // Uchinchi shaxs uchun tizimda na ro'yxat, na jurnalda maydon bor —
+    // yetkazib beruvchi nomini `studentName` ga yozish "KIM" ustunini
+    // ifloslantirardi (u yerdan /student-edit ga havola yasaladi).
+    case "uchinchi shaxs": return null;
+    default: return undefined; // "Boshqa", bo'sh yoki notanish qiymat
+  }
+}
+
+/**
+ * Tanlangan tranzaksiya turi uchun kim tanlanishi kerakligini aniqlaydi.
+ * `null` — bu tur uchun umuman tanlov ko'rsatilmaydi.
+ *
+ * OBYEKT qabul qiladi, ikkita alohida argument emas: chaqiruvchi ikkala
+ * maydonni ham bitta joydan (tanlangan `TransactionType`) oladi, va ikki
+ * argumentli imzoda `customerType` ni uzatishni unutish oson bo'lardi —
+ * u holda kod jimgina eski, nosoz xulqqa qaytardi.
+ */
+export function txTarget(type: { name?: string; customerType?: string } | null | undefined): TxTarget {
+  if (!type) return null;
+  const byCustomer = targetOfCustomerType(type.customerType);
+  if (byCustomer !== undefined) return byCustomer;
+  return targetOfName(type.name ?? "");
 }
 
 /** Tanlov maydonining sarlavhasi. */
