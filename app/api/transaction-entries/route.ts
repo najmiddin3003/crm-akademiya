@@ -23,7 +23,9 @@ function nameFilter(value: string) {
 
 // GET /api/transaction-entries
 //   ?studentName=…   — bitta o'quvchining to'lovlari (O'quvchi profili)
-//   ?moderator=…     — shu xodim qayd etgan to'lovlar (Xodim profili)
+//   ?moderator=…     — shu xodim QAYD ETGAN to'lovlar (kassir kesimi)
+//   ?teacherName=…   — shu USTOZNING o'quvchilari qilgan to'lovlar
+//   ?person=…        — shu xodimga OID hammasi (yuqoridagi uchtasining $or'i)
 //   ?txType=payIn    — "payIn" | "payOut" | "transfer"
 //   ?month=YYYY-MM   — shu oy ichidagilar
 //   ?excludeCancelled=1 — bekor qilinganlarni tashlab ketadi
@@ -54,6 +56,36 @@ export async function GET(req: Request) {
     // Xodim profilidagi "O'quvchilar to'lovlari" — o'quvchisi ko'rsatilmagan
     // yozuv (masalan kassalar orasidagi ko'chirish) bu ro'yxatga tushmaydi.
     filter.studentName = { $nin: ["", null] };
+  }
+
+  // ?teacherName=… — SHU USTOZNING o'quvchilari qilgan to'lovlar.
+  //
+  // `moderator` bilan ADASHTIRMASLIK kerak: u to'lovni kassada QAYD ETGAN
+  // xodim. O'qituvchi hech qachon kassir bo'lmaydi, shu bois "O'quvchilar
+  // to'lovlari" tabi o'qituvchida doim bo'sh turardi (o'lchandi: bazadagi
+  // 56 xodimdan ikkala maydonda ham uchraydigani 0 ta — ro'yxatlar
+  // kesishmaydi).
+  //
+  // `teacherLike` dan farqi: u ANCHORSIZ ("ichidan qidirish", Kassalar
+  // sahifasi filtri). Ikkalasi ham `filter.teacherName` ga yozadi, shuning
+  // uchun birga berilmaydi — pastda tekshiriladi.
+  const teacherName = sp.get("teacherName");
+  if (teacherName?.trim()) {
+    filter.teacherName = nameFilter(teacherName);
+    filter.studentName = { $nin: ["", null] };
+  }
+
+  // ?person=… — SHU XODIMGA OID BARCHA yozuvlar: unga chiqarilgan avans/
+  // oylik (`studentName`), o'quvchilari qilgan to'lovlar (`teacherName`) va
+  // o'zi kassada qayd etganlari (`moderator`).
+  //
+  // Xodim profilidagi "Tranzaksiyalar tarixi" shuni ko'rsatadi. Bu yerda
+  // `studentName` guard'i YO'Q: kassalar aro ko'chirish ham xodimga oid
+  // amal va u ro'yxatdan tushib qolmasligi kerak.
+  const person = sp.get("person");
+  if (person?.trim()) {
+    const n = nameFilter(person);
+    filter.$or = [{ studentName: n }, { teacherName: n }, { moderator: n }];
   }
 
   const month = sp.get("month");
@@ -120,8 +152,19 @@ export async function GET(req: Request) {
     filter.studentName = { $regex: escapeRegex(studentLike.trim()), $options: "i" };
 
   const teacherLike = sp.get("teacherLike");
-  if (teacherLike?.trim())
+  if (teacherLike?.trim()) {
+    // Ikkalasi ham `filter.teacherName` ga yozadi — birga berilsa biri
+    // ikkinchisini JIMGINA bosib ketardi va natija noto'g'ri chiqardi.
+    // Hozircha hech bir chaqiruvchi ikkalasini yubormaydi; shart shu
+    // holatni qulflab qo'yadi.
+    if (teacherName?.trim()) {
+      return NextResponse.json(
+        { ok: false, error: "teacherName va teacherLike birga berilmaydi" },
+        { status: 400 },
+      );
+    }
     filter.teacherName = { $regex: escapeRegex(teacherLike.trim()), $options: "i" };
+  }
 
   const cashboxId = sp.get("cashboxId");
   if (cashboxId) {
@@ -166,6 +209,10 @@ export async function GET(req: Request) {
     cursor = cursor.project({
       _id: 0, id: 1, date: 1, time: 1, studentName: 1, amount: 1,
       before: 1, after: 1, txName: 1, status: 1, note: 1, paymentType: 1,
+      // Xodim profilidagi jadval "Qabul qilgan" ustunini ko'rsatadi va
+      // birlashgan ro'yxatda qator KIM orqali kelganini bilish kerak.
+      // Qator boshiga ~25 bayt qo'shadi — 50 qatorda sezilmaydi.
+      moderator: 1, teacherName: 1,
     });
   }
 

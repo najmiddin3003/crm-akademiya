@@ -33,10 +33,22 @@ function escapeRegex(v: string): string {
 }
 
 export async function GET(req: Request) {
-  const moderator = (new URL(req.url).searchParams.get("moderator") || "").trim();
-  if (!moderator) {
-    return NextResponse.json({ ok: false, error: "moderator kerak" }, { status: 400 });
+  const sp = new URL(req.url).searchParams;
+  const moderator = (sp.get("moderator") || "").trim();
+  // `?teacherName=` — USTOZ kesimi: shu ustozning o'quvchilari qilgan
+  // to'lovlar. O'qituvchi hech qachon kassir bo'lmagani uchun `moderator`
+  // bilan so'ralganda KPI doim nol chiqardi.
+  const teacherName = (sp.get("teacherName") || "").trim();
+  if (!moderator && !teacherName) {
+    return NextResponse.json({ ok: false, error: "moderator yoki teacherName kerak" }, { status: 400 });
   }
+
+  // Qolgan uchta shart O'ZGARMAYDI: ular Oyliklar sahifasidagi
+  // `loadCollectedByTeacher` bilan bir xil qoida — aks holda KPI va oylik
+  // hisobi bir-biriga chaqishmay qolardi.
+  const who = moderator
+    ? { moderator: { $regex: `^${escapeRegex(moderator)}$`, $options: "i" } }
+    : { teacherName: { $regex: `^${escapeRegex(teacherName)}$`, $options: "i" } };
 
   const db = await ensureIndexes();
   const rows = await db
@@ -44,7 +56,7 @@ export async function GET(req: Request) {
     .aggregate([
       {
         $match: {
-          moderator: { $regex: `^${escapeRegex(moderator)}$`, $options: "i" },
+          ...who,
           studentName: { $nin: ["", null] },
           txType: "payIn",
           status: { $ne: "cancelled" },

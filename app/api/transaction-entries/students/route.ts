@@ -28,6 +28,12 @@ export async function GET(req: Request) {
   // qoida: chetlari kesilgan, katta-kichik harf farq qilmaydi.
   if (moderator) filter.moderator = { $regex: `^${escapeRegex(moderator)}$`, $options: "i" };
 
+  // ?teacherName=<ism> — USTOZNING o'quvchilari (xodim profilidagi
+  // "O'quvchi" tanlovi o'qituvchida shu manbadan to'ladi). Kassir kesimi
+  // `moderator` da qoladi — ikkalasi boshqa-boshqa savol.
+  const teacherName = (sp.get("teacherName") || "").trim();
+  if (teacherName) filter.teacherName = { $regex: `^${escapeRegex(teacherName)}$`, $options: "i" };
+
   const txType = sp.get("txType");
   if (txType) {
     if (!TX_TYPES.includes(txType)) {

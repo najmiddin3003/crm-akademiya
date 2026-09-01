@@ -140,6 +140,8 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [unfinished, setUnfinished] = useState<TransactionEntry[]>([]);
   const [payOptions, setPayOptions] = useState<string[]>([]);
   const [payPage, setPayPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
+  // "Tranzaksiyalar tarixi" sahifasi — xodimga oid HAMMA yozuv (?person=).
+  const [allPage, setAllPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [ownEntries, setOwnEntries] = useState<TransactionEntry[]>([]);
@@ -237,17 +239,26 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     };
   }, [id]);
 
+  /**
+   * "O'quvchilar to'lovlari" QAYSI maydon bo'yicha yig'iladi.
+   *
+   * To'lov yozuvida ikkita turli ism bor (app/api/cashboxes/[id]/adjust):
+   *   `moderator`   — to'lovni KASSADA qayd etgan xodim,
+   *   `teacherName` — to'lov KIMNING oyligiga tegishli (o'quvchining ustozi).
+   * Ilgari bu yerda faqat `moderator` ishlatilardi va o'qituvchida tab doim
+   * bo'sh edi — o'qituvchi hech qachon kassir bo'lmaydi.
+   */
+  const payKey = emp?.turi === "teacher" ? "teacherName" : "moderator";
+
   // Xodim ismi ma'lum bo'lgach — HAQIQIY moliyaviy ma'lumot.
   //
-  // "O'quvchilar to'lovlari": to'lov yozuviga qabul qilgan xodimning ISMI
-  // yoziladi (app/api/cashboxes/[id]/adjust/route.ts — Kirim oynasidagi
-  // "O'qituvchini tanlang"). Shu bois o'qituvchining o'quvchilari to'lovi
-  // `moderator` bo'yicha topiladi. `transaction_entries.group` hech qachon
-  // to'ldirilmaydi, shuning uchun "Guruh" ustuni guruh ro'yxatidan olinadi.
+  // "Tranzaksiyalar tarixi": xodimga OID hamma yozuv (pastdagi alohida
+  // effekt, `?person=`). "O'quvchilar to'lovlari": faqat o'quvchi to'lovlari.
   //
-  // "Tranzaksiyalar tarixi": xodimning O'ZIGA tegishli chiqimlar (avans va
-  // h.k.) — bunda ism `studentName` maydonida turadi
-  // (components/finance/CashboxAdjustDrawer.tsx shunday yozadi).
+  // `ownEntries` (xodimning o'z chiqimlari) shu yerda qoladi va TEGILMAYDI:
+  // undan chap kartadagi Avans/Oylik, "Balans", "Avans tarixi" va "Oylik
+  // tarixi" tablari oziqlanadi. `transaction_entries.group` hech qachon
+  // to'ldirilmaydi, shuning uchun "Guruh" ustuni guruh ro'yxatidan olinadi.
   useEffect(() => {
     const name = emp?.name?.trim();
     if (!name) return;
@@ -259,9 +270,16 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     const get = (u: string) => fetch(u).then((r) => r.json()).catch(() => null);
     Promise.all([
       // Uchta yengil so'rov — ilgari shu yerda bitta 6 MB lik so'rov turardi.
-      get(`/api/transaction-entries/moderator-summary?moderator=${q}`),
-      get(`/api/transaction-entries?moderator=${q}&txType=payIn&status=cancelled,waiting&slim=1`),
-      get(`/api/transaction-entries/students?moderator=${q}&txType=payIn`),
+      // "O'quvchilar to'lovlari" manbasi xodim TURIGA bog'liq:
+      //   o'qituvchi → `teacherName` (o'quvchilarim qilgan to'lovlar)
+      //   kassir/admin → `moderator` (men qabul qilgan to'lovlar)
+      // Ilgari uchalasi ham `moderator` edi va o'qituvchida tab, KPI hamda
+      // "O'quvchi" tanlovi DOIM bo'sh qolardi — o'qituvchi hech qachon
+      // kassir bo'lmaydi. O'lchandi: bazadagi 56 xodimdan ikkala maydonda
+      // ham uchraydigani 0 ta, ya'ni ro'yxatlar kesishmaydi.
+      get(`/api/transaction-entries/moderator-summary?${payKey}=${q}`),
+      get(`/api/transaction-entries?${payKey}=${q}&txType=payIn&status=cancelled,waiting&slim=1`),
+      get(`/api/transaction-entries/students?${payKey}=${q}&txType=payIn`),
       get(`/api/transaction-entries?studentName=${q}&txType=payOut`),
       get(`/api/hr-employees/${id}/students`),
       get("/api/bonuses"),
@@ -306,7 +324,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       setFinLoading(false);
     });
     return () => { cancelled = true; };
-  }, [id, emp?.name]);
+  }, [id, emp?.name, payKey]);
 
   // "O'quvchilar to'lovlari" jadvalining BIR SAHIFASI.
   //
@@ -321,7 +339,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     if (!name || activeTab !== "student-payments") return;
     let cancelled = false;
     const qs = new URLSearchParams({
-      moderator: name,
+      [payKey]: name,
       txType: "payIn",
       page: String(page),
       limit: String(pageSize),
@@ -333,6 +351,38 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       .then((d) => {
         if (cancelled || !d?.ok) return;
         setPayPage({ entries: d.entries as TransactionEntry[], total: Number(d.total) || 0 });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [emp?.name, activeTab, page, pageSize, fStudent, payKey]);
+
+  // "Tranzaksiyalar tarixi" jadvalining BIR SAHIFASI — xodimga OID HAMMA
+  // yozuv: unga chiqarilgan avans/oylik, o'quvchilari qilgan to'lovlar va
+  // o'zi kassada qayd etganlari (`?person=` — server tomonda `$or`).
+  //
+  // NIMA UCHUN ALOHIDA MANBA: `ownEntries` ni kengaytirib bo'lmaydi — undan
+  // chap kartadagi Avans/Oylik summalari, "Balans", "Avans tarixi" va
+  // "Oylik tarixi" tablari hisoblanadi; ularga o'quvchi to'lovi (kirim)
+  // aralashsa raqamlar Hisobotlar bilan chaqishmay qolardi.
+  //
+  // SAHIFALASH ham server tomonda: eng band kassirda bu ro'yxat 13 000+
+  // qator bo'ladi, klientda uni ushlab turib bo'lmaydi.
+  useEffect(() => {
+    const name = emp?.name?.trim();
+    if (!name || activeTab !== "transactions") return;
+    let cancelled = false;
+    const qs = new URLSearchParams({
+      person: name,
+      page: String(page),
+      limit: String(pageSize),
+      slim: "1",
+    });
+    if (fStudent) qs.set("studentNameExact", fStudent);
+    fetch(`/api/transaction-entries?${qs}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.ok) return;
+        setAllPage({ entries: d.entries as TransactionEntry[], total: Number(d.total) || 0 });
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -448,17 +498,20 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
 
   // Ikkala tab ham bir xil jadvalni ko'rsatadi, faqat manbasi boshqa.
   //
-  // "O'quvchilar to'lovlari" tabi SERVER tomonda sahifalanadi (o'n minglab
-  // qator bo'lishi mumkin). "Tranzaksiyalar" tabi — xodimning o'z chiqimlari,
-  // eng kattasi ~240 qator, shu bois u avvalgidek klientda qoladi.
+  // ENDI IKKALA TAB HAM SERVER tomonda sahifalanadi.
+  //
+  // Ilgari "Tranzaksiyalar" tabi klientda edi, chunki u faqat xodimning o'z
+  // chiqimlarini (~240 qator) ko'rsatardi. Endi u xodimga OID hamma yozuvni
+  // ko'rsatadi — eng band kassirda 13 000+ qator, ya'ni klientda ushlab
+  // turib bo'lmaydi.
   const isTxTab = activeTab === "transactions" || activeTab === "student-payments";
   const isPayTab = activeTab === "student-payments";
 
-  const ownFiltered = fStudent ? ownEntries.filter((e) => e.studentName === fStudent) : ownEntries;
-  const rows = isPayTab ? payPage.entries : ownFiltered;
-  const totalRows = isPayTab ? payPage.total : ownFiltered.length;
+  const src = isPayTab ? payPage : allPage;
+  const rows = src.entries;
+  const totalRows = src.total;
   // Sahifalangan jadvalda № davom etishi kerak, 1 dan boshlanmasligi.
-  const rowOffset = isPayTab ? (page - 1) * pageSize : 0;
+  const rowOffset = (page - 1) * pageSize;
 
   // "Guruh" ustuni to'lov yozuvidan olinmaydi (u yerda doim bo'sh) —
   // o'qituvchining guruh ro'yxatidan ism bo'yicha topiladi.
@@ -466,9 +519,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // Tanlov ro'yxati XOM ismlardan — ular pastdagi `studentNameExact`
   // filtriga kirish qiymati bo'ladi. Normallashtirilsa jadval bo'shab
   // qolardi (bazadagi ismlarning ko'pi chetida probel bilan saqlangan).
+  // "Tranzaksiyalar" tabida ro'yxat endi serverdan kelgan SAHIFADAN emas,
+  // ikkala manbadan birlashtiriladi: o'quvchilar (payOptions) + xodimning
+  // o'z chiqimlaridagi ismlar. Faqat joriy sahifadan yig'ilsa, tanlov
+  // sahifa almashganda o'zgarib turardi.
   const studentOptions = isPayTab
     ? payOptions
-    : [...new Set(ownEntries.map((e) => e.studentName).filter(Boolean))].sort();
+    : [...new Set([...payOptions, ...ownEntries.map((e) => e.studentName)].filter(Boolean))].sort();
 
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
@@ -665,8 +722,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   )}
                   <span className="text-[12px] text-muted-foreground">
                     {activeTab === "student-payments"
-                      ? "Shu xodim qabul qilgan o'quvchi to'lovlari"
-                      : "Xodimning o'ziga yozilgan chiqimlar (avans va h.k.)"}
+                      ? (payKey === "teacherName"
+                          ? "Shu ustozning o'quvchilari qilgan to'lovlar"
+                          : "Shu xodim qabul qilgan o'quvchi to'lovlari")
+                      : "Shu xodimga oid barcha kirim va chiqimlar (avans, oylik, o'quvchi to'lovlari)"}
                   </span>
                 </div>
                 <div className="flex items-center justify-end mb-2">
@@ -709,9 +768,8 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                     </tbody>
                   </table>
                 </div>
-                {/* Sahifalash faqat server tomonda sahifalanadigan tabda —
-                    xodimning o'z chiqimlari eng ko'pi ~240 qator. */}
-                {isPayTab && totalRows > 0 && (
+                {/* Ikkala tab ham endi server tomonda sahifalanadi. */}
+                {totalRows > 0 && (
                   <Pagination
                     totalItems={totalRows}
                     page={page}

@@ -107,16 +107,37 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     // `entriesLoading` boshlanishida true — effekt tanasida qayta
     // o'rnatilsa, ortiqcha render zanjiri chiqadi (react-hooks qoidasi).
     let alive = true;
-    fetch(`/api/transaction-entries?studentName=${encodeURIComponent(order.name)}&txType=payIn`)
-      .then((r) => r.json())
-      .then((d) => { if (alive && d.ok) setEntries(d.entries as TransactionEntry[]); })
-      .catch(() => {})
-      .finally(() => { if (alive) setEntriesLoading(false); });
+    const q = encodeURIComponent(order.name);
+    Promise.all([
+      fetch(`/api/transaction-entries?studentName=${q}&txType=payIn`).then((r) => r.json()).catch(() => null),
+      // PUL QAYTARISH — chiqim yozuvi, shu bois yuqoridagi payIn so'roviga
+      // tushmaydi. Alohida so'raladi va faqat QAYTARISH turlari olinadi.
+      //
+      // NIMA UCHUN `txType` ni butunlay olib tashlab bo'lmaydi: xodimga
+      // chiqarilgan avans/oylik yozuvida ham `studentName` maydoni bor —
+      // u yerda XODIM ismi turadi (CashboxAdjustDrawer shunday yozadi,
+      // bazada 2 511 ta shunday qator). Ismdosh xodim topilsa uning avansi
+      // o'quvchi tarixiga tushib, balansni buzardi.
+      fetch(`/api/transaction-entries?studentName=${q}&txType=payOut`).then((r) => r.json()).catch(() => null),
+    ]).then(([inRes, outRes]) => {
+      if (!alive) return;
+      const rows: TransactionEntry[] = [];
+      if (inRes?.ok) rows.push(...(inRes.entries as TransactionEntry[]));
+      if (outRes?.ok) {
+        rows.push(...(outRes.entries as TransactionEntry[]).filter((e) => /qaytar/i.test(e.txName || "")));
+      }
+      // Yangi yozuv yuqorida — jadval sanaga qarab tartiblanmaydi.
+      rows.sort((a, b) => b.id - a.id);
+      setEntries(rows);
+    }).finally(() => { if (alive) setEntriesLoading(false); });
     return () => { alive = false; };
   }, [order.name]);
 
   // Balans — bekor qilinganlardan tashqari to'lovlar yig'indisi
   // (app/api/employee-salary-summary/route.ts dagi bilan bir xil qoida).
+  //
+  // Qaytarish yozuvi MANFIY summa bilan keladi, ya'ni u shu yig'indidan
+  // o'z-o'zidan ayriladi — alohida shart kerak emas.
   const balans = entries
     .filter((e) => e.status !== "cancelled")
     .reduce((s, e) => s + (Number(e.amount) || 0), 0);
