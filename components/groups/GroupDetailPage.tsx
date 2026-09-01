@@ -1,9 +1,9 @@
 "use client";
 
 import { loadBalancesCached } from "@/lib/balancesClient";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Archive, BookOpen, Calendar, CalendarCheck, CalendarPlus, Clock, ClipboardList, GraduationCap,
   History, Inbox, LayoutGrid, List, MapPin, MessageSquare, MoreVertical, PanelLeft, PanelLeftClose,
@@ -119,7 +119,22 @@ export default function GroupDetailPage({ id }: { id: number }) {
   const [rowBusy, setRowBusy] = useState(false);
   const [membersLoading, setMembersLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState("students");
+  // Tab holati MANZILDA: /groups/12?tab=attendance.
+  //
+  // Ilgari u `useState("students")` edi, ya'ni sahifaga qanday havola
+  // qilinmasin foydalanuvchi doim "O'quvchilar" tabiga tushardi. Guruhlar
+  // ro'yxatidagi "Davomat" va "Guruh tarixi" ikonkalari aynan shu
+  // parametrga tayanadi. Naqsh components/imtihon/ImtihonPage.tsx dan.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const qsTab = searchParams.get("tab") ?? "";
+  const activeTab = TABS.some((t) => t.key === qsTab) ? qsTab : "students";
+  const setActiveTab = useCallback(
+    (t: string) => {
+      router.replace(t === "students" ? pathname : `${pathname}?tab=${t}`, { scroll: false });
+    },
+    [router, pathname],
+  );
   // Chap "Guruh ma'lumotlari" kartasi yig'ilganmi. Yig'ilganda u tor ikonka
   // ustuniga aylanadi va o'ngdagi jadval bo'shagan joyni egallaydi — davomat
   // jadvali keng bo'lgani uchun bu ayniqsa foydali.

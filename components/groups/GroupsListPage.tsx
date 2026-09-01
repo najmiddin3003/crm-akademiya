@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Plus, X } from "lucide-react";
+import Link from "next/link";
+import { CalendarCheck, History, MoreVertical, Plus, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -98,6 +99,16 @@ function groupStudentCount(g: Group): number {
   return g.studentIds?.length ?? 0;
 }
 
+// Bazadagi holat kalitlari (app/api/groups/route.ts → `body.status || "active"`).
+// Ilgari ustunda XOM qiymat ("active") chiqardi va holati qanday bo'lishidan
+// qat'i nazar DOIM yashil rangda edi.
+const STATUS_LABEL: Record<string, string> = { active: "Aktiv", frozen: "Muzlatilgan", archive: "Arxiv" };
+const STATUS_CLS: Record<string, string> = {
+  active: "text-emerald-600",
+  frozen: "text-amber-600",
+  archive: "text-muted-foreground",
+};
+
 export default function GroupsListPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
@@ -156,6 +167,11 @@ export default function GroupsListPage() {
   const teacherNames = useMemo(() => unionWithGroups(dbTeachers, groups, (g) => g.teacher), [dbTeachers, groups]);
   const courseNames = useMemo(() => unionWithGroups(dbCourses, groups, (g) => g.course), [dbCourses, groups]);
   const roomNames = useMemo(() => unionWithGroups(dbRooms, groups, (g) => g.room), [dbRooms, groups]);
+  // Kun ro'yxati ham boshqa uchtasi kabi BAZADAGI qiymatlar bilan
+  // birlashtiriladi. Filtr aniq tenglik bilan solishtiradi, ya'ni import
+  // qilingan yoki qo'lda "Du,Se,Pa" deb yozilgan guruh qattiq ro'yxat
+  // orqali HECH QACHON topilmasdi.
+  const dayNames = useMemo(() => unionWithGroups(GROUP_DAYS, groups, (g) => g.day), [groups]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -298,7 +314,7 @@ export default function GroupsListPage() {
         <div className="relative">
           <select value={day} onChange={(e) => { setDay(e.target.value); setPage(1); }} className={`${selectCls} w-28`}>
             <option value="">Kun</option>
-            {GROUP_DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+            {dayNames.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
           <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </div>
@@ -318,7 +334,11 @@ export default function GroupsListPage() {
         </div>
         <div className="relative">
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={`${selectCls} w-32`}>
-            <option value="">Aktiv guruh</option>
+            {/* Bo'sh qiymat "HAMMASI" degani, "aktivlar" emas — ilgari
+                yorlig'i "Aktiv guruh" edi va arxivdagi guruh ro'yxatda
+                turgani chalkashtirardi. */}
+            <option value="">Guruh holati</option>
+            <option value="active">Aktiv</option>
             <option value="frozen">Muzlatilgan</option>
             <option value="archive">Arxiv</option>
           </select>
@@ -410,6 +430,7 @@ export default function GroupsListPage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">Xona</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Telegram link</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Guruh holati</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">Amallar</th>
               </tr>
             </thead>
             <tbody>
@@ -432,12 +453,39 @@ export default function GroupsListPage() {
                   <td className="px-3 py-3 text-[13px]"><PersonLink name={g.teacher} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">{g.room || "—"}</td>
                   <td className="px-3 py-3 text-[12px]">{g.telegram ? <a href={g.telegram} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-primary hover:underline">{g.telegram}</a> : <span className="text-muted-foreground">—</span>}</td>
-                  <td className="px-3 py-3 text-[12px]"><span className="text-emerald-600 font-medium">{g.status}</span></td>
+                  <td className="px-3 py-3 text-[12px]">
+                    <span className={`font-medium ${STATUS_CLS[g.status] ?? "text-muted-foreground"}`}>
+                      {STATUS_LABEL[g.status] ?? g.status}
+                    </span>
+                  </td>
+                  {/* `e.stopPropagation()` MAJBURIY: butun qator bosiladigan
+                      (`<tr onClick>`), to'xtatilmasa navigatsiya ikki marta
+                      ketadi va `?tab=` parametri yo'qoladi. */}
+                  <td className="px-3 py-3 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/groups/${g.id}?tab=attendance`}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Davomat"
+                        className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary inline-flex items-center justify-center text-muted-foreground"
+                      >
+                        <CalendarCheck className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        href={`/groups/${g.id}?tab=history`}
+                        onClick={(e) => e.stopPropagation()}
+                        title="Guruh tarixi"
+                        className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary inline-flex items-center justify-center text-muted-foreground"
+                      >
+                        <History className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Guruh topilmadi"}</td>
+                  <td colSpan={13} className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? <SpinnerBlock size={22} /> : "Guruh topilmadi"}</td>
                 </tr>
               )}
             </tbody>
