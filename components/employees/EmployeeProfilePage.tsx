@@ -9,6 +9,9 @@ import {
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
+import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
+import { useTransactionTypes } from "@/hooks/useTransactionTypes";
 import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
@@ -45,6 +48,36 @@ import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSi
 function nf(n: number): string {
   const sign = n < 0 ? "-" : "";
   return sign + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
+}
+
+function toIsoDay(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Jadval filtrlarini so'rovga qo'shadi — ikkala tab uchun bir xil.
+ *
+ * Filtrlash SERVERDA bo'lishi shart: jadval sahifalab o'qiladi (eng band
+ * kassirda 13 000+ qator), klientdagi filtr faqat ochiq turgan 50 qatorni
+ * kesardi.
+ */
+function applyTableFilters(
+  qs: URLSearchParams,
+  f: { student: string; txName: string; range: DateRange; group: string; students: TeacherStudent[] },
+) {
+  if (f.student) {
+    // Aynan tanlangan o'quvchi guruhdan kuchliroq — ikkalasi ham serverda
+    // `studentName` ga yozadi, birga yuborilsa route 400 qaytaradi.
+    qs.set("studentNameExact", f.student);
+  } else if (f.group) {
+    // Guruh yozuvda saqlanmaydi (`transaction_entries.group` doim bo'sh),
+    // shu bois u o'quvchilari ro'yxatiga aylantirib yuboriladi.
+    for (const s of f.students) if (s.groupName === f.group && s.name) qs.append("studentNames", s.name);
+  }
+  if (f.txName) qs.set("txName", f.txName);
+  if (f.range.start) qs.set("dateFrom", toIsoDay(f.range.start));
+  if (f.range.end) qs.set("dateTo", toIsoDay(f.range.end));
 }
 
 // Chap kartadagi moliyaviy ko'rsatkichlar. Manbasi bor uchtasi haqiqiy
@@ -194,6 +227,16 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [fStudent, setFStudent] = useState("");
+  // Namunadagi to'rtlik: sana oralig'i + tranzaksiya turi + o'quvchi +
+  // guruh. Hammasi SERVERGA ketadi — jadval sahifalab o'qiladi, ya'ni
+  // klientda filtrlash faqat ochiq turgan 50 qatorni kesardi.
+  const [fTxName, setFTxName] = useState("");
+  const [fGroup, setFGroup] = useState("");
+  const [fRange, setFRange] = useState<DateRange>({ start: null, end: null });
+  // Filtr TANLOVLARI — butun ro'yxat bo'yicha (distinct), bir sahifadan
+  // emas. Kassalar sahifasidagi bilan bir xil endpoint, `?person=` rejimi.
+  const [facets, setFacets] = useState<{ txNames: string[]; studentNames: string[] }>({ txNames: [], studentNames: [] });
+  const { names: txTypeNames } = useTransactionTypes();
 
   // ── "Tablarni sozlash" ──────────────────────────────────────────────────
   // Ilgari bu tugma faqat "(demo)" toast chiqarardi. Endi yashiriladigan
@@ -327,7 +370,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       // Chap kartadagi "Akladi" va "To'lanmagan" uchun — Oylik hisob-kitob
       // sahifasi bilan AYNAN bir xil manba (lib/payrollSources.ts).
       get("/api/salary-runs/employees-payroll"),
-    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts, pay]) => {
+      // Jadval filtrlarining tanlovlari — BUTUN ro'yxat bo'yicha, ochiq
+      // turgan 50 qatordan emas.
+      get(`/api/transaction-entries/facets?person=${q}`),
+    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts, pay, fac]) => {
       if (cancelled) return;
       // Hech biri kelmagan bo'lsa — bu "ma'lumot yo'q" emas, so'rov
       // muvaffaqiyatsiz. Bo'sh holatda soxta sabab yozmasligimiz uchun.
@@ -362,6 +408,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       if (pay?.ok) {
         setPayrollRow((pay.employees as EmployeePayroll[]).find((e) => e.id === id) ?? null);
       }
+      if (fac?.ok) {
+        setFacets({ txNames: fac.txNames as string[], studentNames: fac.studentNames as string[] });
+      }
       setFinLoading(false);
     });
     return () => { cancelled = true; };
@@ -386,7 +435,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       limit: String(pageSize),
       slim: "1",
     });
-    if (fStudent) qs.set("studentNameExact", fStudent);
+    applyTableFilters(qs, { student: fStudent, txName: fTxName, range: fRange, group: fGroup, students });
     fetch(`/api/transaction-entries?${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -395,7 +444,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [emp?.name, activeTab, page, pageSize, fStudent, payKey]);
+  }, [emp?.name, activeTab, page, pageSize, fStudent, fTxName, fRange, fGroup, students, payKey]);
 
   // "Tranzaksiyalar tarixi" jadvalining BIR SAHIFASI — xodimga OID HAMMA
   // yozuv: unga chiqarilgan avans/oylik, o'quvchilari qilgan to'lovlar va
@@ -418,7 +467,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       limit: String(pageSize),
       slim: "1",
     });
-    if (fStudent) qs.set("studentNameExact", fStudent);
+    applyTableFilters(qs, { student: fStudent, txName: fTxName, range: fRange, group: fGroup, students });
     fetch(`/api/transaction-entries?${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -427,7 +476,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [emp?.name, activeTab, page, pageSize, fStudent]);
+  }, [emp?.name, activeTab, page, pageSize, fStudent, fTxName, fRange, fGroup, students]);
 
   // true qaytarsa NotesTab kiritish maydonini tozalaydi — saqlanmagan matn
   // yo'qolib ketmasligi uchun.
@@ -576,9 +625,34 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // ikkala manbadan birlashtiriladi: o'quvchilar (payOptions) + xodimning
   // o'z chiqimlaridagi ismlar. Faqat joriy sahifadan yig'ilsa, tanlov
   // sahifa almashganda o'zgarib turardi.
-  const studentOptions = isPayTab
+  // "Tranzaksiyalar" tabida manba endi `facets` — u serverda BUTUN ro'yxat
+  // bo'yicha distinct qiladi, ya'ni payOptions + ownEntries birlashmasidan
+  // to'liqroq (o'sha birlashma xodimning kassada qayd etgan begona
+  // o'quvchilarini o'tkazib yuborardi).
+  const allStudentOptions = isPayTab
     ? payOptions
-    : [...new Set([...payOptions, ...ownEntries.map((e) => e.studentName)].filter(Boolean))].sort();
+    : facets.studentNames.length > 0
+      ? facets.studentNames
+      : [...new Set([...payOptions, ...ownEntries.map((e) => e.studentName)].filter(Boolean))].sort();
+
+  // Guruh — faqat o'qituvchida. Yozuvda guruh saqlanmaydi, u o'qituvchining
+  // guruh ro'yxatidan keladi; kassirda bu ro'yxat bo'sh, shu bois unda
+  // filtr umuman chizilmaydi (ishlamaydigan tanlov qo'yilmaydi).
+  const groupOptions = [...new Set(students.map((s) => s.groupName).filter(Boolean))].sort();
+  const groupStudentNames = fGroup ? students.filter((s) => s.groupName === fGroup).map((s) => s.name) : null;
+  // Guruh tanlangan bo'lsa o'quvchi ro'yxati ham o'sha guruh bilan
+  // cheklanadi — ikkala filtr bir-biriga qarshi tushmasin.
+  const studentOptions = groupStudentNames
+    ? allStudentOptions.filter((s) => groupStudentNames.some((g) => g.trim().toLowerCase() === s.trim().toLowerCase()))
+    : allStudentOptions;
+
+  // Tranzaksiya turi: katalog (Sozlamalar) + yozuvlarda HAQIQATDA uchragan,
+  // lekin katalogda yo'q nomlar. Faqat katalogga tayanilsa eski yozuvlarning
+  // turini tanlab bo'lmasdi.
+  const txNameOptions = [
+    ...txTypeNames,
+    ...facets.txNames.filter((n) => !txTypeNames.includes(n)),
+  ];
 
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
@@ -767,21 +841,63 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           <div className="p-4 md:p-5 min-h-[500px]">
             {isTxTab ? (
               <>
-                <div className="flex flex-wrap items-center gap-2.5 mb-4">
+                <div className="flex flex-wrap items-end gap-2.5 mb-4">
+                  <DateRangePicker
+                    value={fRange}
+                    onChange={(r) => { setFRange(r); setPage(1); }}
+                    className="w-56"
+                  />
+                  {/* Tranzaksiya turi — katalog + yozuvlarda uchragan nomlar. */}
+                  {txNameOptions.length > 0 && (
+                    <StudentSearchSelect
+                      label=""
+                      variant="compact"
+                      value={fTxName}
+                      onChange={(v) => { setFTxName(v); setPage(1); }}
+                      options={txNameOptions}
+                      placeholder="Tranzaksiya turi"
+                      searchPlaceholder="Turni qidirish"
+                    />
+                  )}
                   {/* Filtr faqat tanlash mantiqan bor bo'lganda — xodimning
                       o'z chiqimlari tabida ism doim bitta. */}
                   {studentOptions.length > 1 && (
-                    <div className="relative">
-                      <select
-                        value={fStudent}
-                        onChange={(e) => { setFStudent(e.target.value); setPage(1); }}
-                        className="h-9 w-52 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      >
-                        <option value="">Talaba — hammasi</option>
-                        {studentOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    </div>
+                    <StudentSearchSelect
+                      label=""
+                      variant="compact"
+                      value={fStudent}
+                      onChange={(v) => { setFStudent(v); setPage(1); }}
+                      options={studentOptions}
+                      placeholder="O'quvchi"
+                      searchPlaceholder="O'quvchini qidirish"
+                    />
+                  )}
+                  {/* Guruh — faqat o'qituvchida manbasi bor (guruh ro'yxati);
+                      kassirda ro'yxat bo'sh, ishlamaydigan filtr chizilmaydi. */}
+                  {groupOptions.length > 0 && (
+                    <StudentSearchSelect
+                      label=""
+                      variant="compact"
+                      value={fGroup}
+                      onChange={(v) => { setFGroup(v); setFStudent(""); setPage(1); }}
+                      options={groupOptions}
+                      placeholder="Guruh"
+                      searchPlaceholder="Guruhni qidirish"
+                    />
+                  )}
+                  {(fRange.start || fRange.end || fTxName || fStudent || fGroup) && (
+                    <button
+                      onClick={() => {
+                        setFRange({ start: null, end: null });
+                        setFTxName("");
+                        setFStudent("");
+                        setFGroup("");
+                        setPage(1);
+                      }}
+                      className="h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] font-medium"
+                    >
+                      Tozalash
+                    </button>
                   )}
                   <span className="text-[12px] text-muted-foreground">
                     {activeTab === "student-payments"

@@ -131,6 +131,31 @@ export async function GET(req: Request) {
   const studentNameExact = sp.get("studentNameExact");
   if (studentNameExact !== null) filter.studentName = studentNameExact;
 
+  // ?studentNames=…&studentNames=… — bir nechta o'quvchining yozuvlari.
+  //
+  // Xodim profilidagi "Guruh" filtri shu orqali ishlaydi: guruh yozuvda
+  // SAQLANMAYDI (`transaction_entries.group` hech qachon to'ldirilmaydi),
+  // shu bois guruh uning o'quvchilari ro'yxatiga aylantirilib yuboriladi.
+  //
+  // Aynan tenglik EMAS, anchor'li regex: bazadagi 13 369 yozuvning
+  // 5 371 tasida `studentName` chetida ortiqcha probel bor va tenglikda
+  // ular tushib qolardi. Mongo `$in` ichida regex qabul qiladi.
+  const studentNames = sp.getAll("studentNames").map((s) => s.trim()).filter(Boolean);
+  if (studentNames.length > 0) {
+    // Ikkalasi ham `filter.studentName` ga yozadi — birga berilsa biri
+    // ikkinchisini jimgina bosib ketardi (`teacherName`/`teacherLike` bilan
+    // bir xil qoida).
+    if (studentNameExact !== null) {
+      return NextResponse.json(
+        { ok: false, error: "studentNameExact va studentNames birga berilmaydi" },
+        { status: 400 },
+      );
+    }
+    filter.studentName = {
+      $in: studentNames.map((s) => new RegExp(`^${escapeRegex(s)}$`, "i")),
+    };
+  }
+
   // Kassalar sahifasidagi jadval filtrlari — mijozdagi shartlarning AYNAN
   // ekvivalenti. components/finance/CashboxesPage.tsx `filteredEntries` da:
   //   txName      : e.txName !== txName                        → aynan tenglik
