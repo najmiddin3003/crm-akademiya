@@ -13,6 +13,7 @@ import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
+import { payrollDue, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeePasswordModal from "./EmployeePasswordModal";
@@ -54,18 +55,44 @@ function nf(n: number): string {
 // `icon` — TAYYOR element (ProfileSideCard shunday kutadi): o'quvchi
 // profilida ikonkalar global sprite'dan keladi, bu yerda lucide'dan, ya'ni
 // umumiy komponent ikkalasini ham bir xil qabul qila olishi kerak.
-function buildStats(bonus: number, jarima: number, avans: number, oylik: number, ready: boolean): ProfileStat[] {
+interface StatInput {
+  bonus: number;
+  jarima: number;
+  avans: number;
+  oylik: number;
+  ready: boolean;
+  /**
+   * Oylik hisobidagi qator (/api/salary-runs/employees-payroll).
+   *
+   * "Akladi" va "To'lanmagan" AYNAN shundan olinadi — ilgari ikkalasi ham
+   * "—" edi, holbuki manba bor: oklad xodim kartasida, qolgan qarz esa
+   * Oylik hisob-kitob sahifasida allaqachon hisoblanadi. Ikki joyda ikki
+   * xil raqam chiqmasligi uchun bu yerda qayta hisoblanmaydi.
+   */
+  payroll?: { fixedSalary: number; due: number; configured: boolean } | null;
+}
+
+function buildStats({ bonus, jarima, avans, oylik, ready, payroll }: StatInput): ProfileStat[] {
   const v = (n: number) => (ready ? nf(n) : "…");
   const none = ready ? "—" : "…";
+  // Oyligi sozlanmagan xodimda 0 ko'rsatish yolg'on bo'lardi — "—" qoladi.
+  const p = (n: number | undefined) =>
+    !ready ? "…" : payroll?.configured && n !== undefined ? nf(n) : "—";
   return [
     { label: "Davomat", value: none, icon: <Check className="w-4 h-4" />, wrap: "bg-emerald-100 text-emerald-600" },
     { label: "Davomatdan foizi", value: none, icon: <Percent className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-600" },
     { label: "Bonus", value: v(bonus), icon: <Lock className="w-4 h-4" />, wrap: "bg-violet-100 text-violet-700" },
     { label: "Avans", value: v(avans), icon: <XCircle className="w-4 h-4" />, wrap: "bg-rose-100 text-rose-600", valueCls: avans > 0 ? "text-rose-600" : "" },
     { label: "Jarima", value: v(jarima), icon: <Frown className="w-4 h-4" />, wrap: "bg-amber-100 text-amber-600" },
-    { label: "Akladi", value: none, icon: <Briefcase className="w-4 h-4" />, wrap: "bg-secondary text-foreground/70" },
+    { label: "Akladi", value: p(payroll?.fixedSalary), icon: <Briefcase className="w-4 h-4" />, wrap: "bg-secondary text-foreground/70" },
     { label: "Oylik", value: v(oylik), icon: <CreditCard className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-700" },
-    { label: "To'lanmagan", value: none, icon: <DollarSign className="w-4 h-4" />, wrap: "bg-emerald-100 text-emerald-700" },
+    {
+      label: "To'lanmagan",
+      value: p(payroll?.due),
+      icon: <DollarSign className="w-4 h-4" />,
+      wrap: "bg-emerald-100 text-emerald-700",
+      valueCls: (payroll?.due ?? 0) < 0 ? "text-rose-600" : "",
+    },
   ];
 }
 
@@ -143,6 +170,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [kpi, setKpi] = useState({ count: 0, amount: 0, students: 0 });
   const [unfinished, setUnfinished] = useState<TransactionEntry[]>([]);
   const [payOptions, setPayOptions] = useState<string[]>([]);
+  // Shu xodimning oylik qatori — chap kartadagi "Akladi" va "To'lanmagan"
+  // AYNAN shundan chiqadi, ya'ni Oylik hisob-kitob sahifasi bilan bir xil
+  // raqam ko'rinadi.
+  const [payrollRow, setPayrollRow] = useState<EmployeePayroll | null>(null);
   const [payPage, setPayPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
   // "Tranzaksiyalar tarixi" sahifasi — xodimga oid HAMMA yozuv (?person=).
   const [allPage, setAllPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
@@ -293,7 +324,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       get("/api/student-reports?kind=unpaid"),
       get("/api/cashboxes"),
       get(`/api/hr-employees/${id}/notes`),
-    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts]) => {
+      // Chap kartadagi "Akladi" va "To'lanmagan" uchun — Oylik hisob-kitob
+      // sahifasi bilan AYNAN bir xil manba (lib/payrollSources.ts).
+      get("/api/salary-runs/employees-payroll"),
+    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts, pay]) => {
       if (cancelled) return;
       // Hech biri kelmagan bo'lsa — bu "ma'lumot yo'q" emas, so'rov
       // muvaffaqiyatsiz. Bo'sh holatda soxta sabab yozmasligimiz uchun.
@@ -325,6 +359,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
         ));
       }
       if (Array.isArray(nts?.notes)) setNotes(nts.notes as EmployeeNote[]);
+      if (pay?.ok) {
+        setPayrollRow((pay.employees as EmployeePayroll[]).find((e) => e.id === id) ?? null);
+      }
       setFinLoading(false);
     });
     return () => { cancelled = true; };
@@ -480,7 +517,16 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const sumAmount = (rows: { amount?: number }[]) => rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const bonusTotal = sumAmount(mineOf(bonuses));
   const penaltyTotal = sumAmount(mineOf(penalties));
-  const stats = buildStats(bonusTotal, penaltyTotal, avansTotal, oylikTotal, !finLoading);
+  const stats = buildStats({
+    bonus: bonusTotal,
+    jarima: penaltyTotal,
+    avans: avansTotal,
+    oylik: oylikTotal,
+    ready: !finLoading,
+    payroll: payrollRow
+      ? { fixedSalary: payrollRow.fixedSalary, due: payrollDue(payrollRow, payrollPeriod()), configured: payrollRow.configured }
+      : null,
+  });
 
   const salaryConfigured = isSalaryConfigured(emp);
   const cashboxName = (cid: number) => cashboxNames[cid] ?? (cid ? `Kassa ${cid}` : "—");
