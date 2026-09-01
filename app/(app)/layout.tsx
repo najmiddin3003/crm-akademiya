@@ -30,5 +30,12 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     redirect(firstAllowedPath(user.permissions));
   }
 
-  return <AppShell permissions={user.permissions}>{children}</AppShell>;
+  // Navbardagi profil menyusi uchun HAQIQIY foydalanuvchi. Serverdan
+  // uzatiladi — alohida so'rov ham, "avval noto'g'ri ism ko'rinib, keyin
+  // to'g'rilanishi" ham bo'lmaydi. Parol/sessiya kabi maydonlar berilmaydi.
+  return (
+    <AppShell permissions={user.permissions} user={{ fullName: user.fullName, phone: user.phone }}>
+      {children}
+    </AppShell>
+  );
 }

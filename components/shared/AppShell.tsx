@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
-import Navbar from "@/components/shared/Navbar";
+import Navbar, { type ShellUser } from "@/components/shared/Navbar";
 import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 
 // Umumiy qobiq (Navbar + Sidebar), app/layout.tsx orqali barcha sahifalarga
@@ -18,10 +18,13 @@ import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 export default function AppShell({
   children,
   permissions = null,
+  user = null,
 }: {
   children: React.ReactNode;
   /** Rol ruxsatlari — app/(app)/layout.tsx dan keladi. `null` = cheklovsiz. */
   permissions?: string[] | null;
+  /** Joriy foydalanuvchi — o'sha layout'dan. `null` faqat testlarda. */
+  user?: ShellUser | null;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -31,7 +34,7 @@ export default function AppShell({
   return (
     <PersonDirectoryProvider>
       <div className="flex h-screen flex-col overflow-hidden">
-        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} />
+        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} />
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>

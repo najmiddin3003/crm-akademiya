@@ -13,6 +13,7 @@ import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { useBranches } from "@/hooks/useBranches";
 import { HELP_TOPICS } from "@/constants/helpTopics";
+import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 
@@ -30,11 +31,36 @@ type OpenMenu = "lang" | "news" | "help" | "create" | "notifications" | "profile
 // LANGUAGES / NOTIFICATIONS / NOTIF_STYLES — constants/navbar.js da
 // (mobil chekma menyu ham xuddi shulardan foydalanadi).
 
-export interface NavbarProps {
-  onOpenMobileMenu: () => void;
+/**
+ * Profil menyusida ko'rsatiladigan minimal ma'lumot.
+ *
+ * Tur AYNAN shu yerda e'lon qilinadi — uni ko'rsatadigan komponent shu.
+ * AppShell esa shundan import qiladi (u baribir Navbar'ni chaqiradi, ya'ni
+ * yangi bog'liqlik paydo bo'lmaydi).
+ */
+export interface ShellUser {
+  fullName: string;
+  phone: string;
 }
 
-export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
+export interface NavbarProps {
+  onOpenMobileMenu: () => void;
+  /**
+   * Joriy foydalanuvchi — app/(app)/layout.tsx dan AppShell orqali keladi.
+   *
+   * ILGARI bu yerdagi ism va telefon QATTIQ YOZILGAN edi, ya'ni tizimga
+   * kim kirmasin profil menyusida bitta odamning ma'lumoti turardi.
+   * Serverdan uzatilgani uchun alohida so'rov kerak emas va noto'g'ri ism
+   * bir lahza ko'rinib, keyin almashib ketmaydi.
+   */
+  user?: ShellUser | null;
+}
+
+export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
+  // Bo'sh bo'lsa ham menyu buzilmasin: ism o'rniga chiziqcha, harf "?".
+  const displayName = user?.fullName?.trim() || "—";
+  const displayPhone = user?.phone ? formatPhoneDisplay(user.phone) : "";
+  const initial = displayName.charAt(0).toUpperCase() || "?";
   const { canGoBack, goBack } = useNavHistory();
   const router = useRouter();
   const [sidebarHidden, setSidebarHidden] = useState(false);
@@ -457,15 +483,23 @@ export default function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
           {/* Profile */}
           <div className="relative ml-1" onMouseEnter={onProfileHoverEnter} onMouseLeave={onProfileHoverLeave}>
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("profile"); }} className={`dropdown-trigger nav-avatar transition-shadow ${openMenu === "profile" ? "ring-2 ring-blue-300" : ""}`}>
-              A
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleMenu("profile"); }}
+              title={displayName}
+              className={`dropdown-trigger nav-avatar transition-shadow ${openMenu === "profile" ? "ring-2 ring-blue-300" : ""}`}
+            >
+              {initial}
             </button>
             <div className={`${openMenu === "profile" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[280px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-base font-bold">A</div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-base font-bold">
+                  {initial}
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold truncate">Abdulloh Raxmatullayev</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">+998 94 155 88 55</div>
+                  <div className="text-sm font-semibold truncate" title={displayName}>{displayName}</div>
+                  {displayPhone && (
+                    <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">{displayPhone}</div>
+                  )}
                 </div>
               </div>
               <div className="p-1">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, LogOut } from "lucide-react";
+import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 
 // Profil menyusi → "Qulflash" bosilganda chiqadigan ekran.
 // Sessiya tugatilmagan — foydalanuvchi tizimda qolgan, faqat ekran yopilgan.
@@ -57,7 +58,9 @@ export default function LockScreen({ fullName, phone }: LockScreenProps) {
             {initials}
           </div>
           <div className="text-[15px] font-semibold">{fullName}</div>
-          <div className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">{phone}</div>
+          {/* Bazada raqam "998941558855" ko'rinishida — o'qishli shaklga
+              keltiramiz, navbardagi profil menyusi bilan bir xil. */}
+          <div className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">{formatPhoneDisplay(phone)}</div>
 
           <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-[12px] font-medium text-muted-foreground">
             <Lock className="h-3.5 w-3.5" />
