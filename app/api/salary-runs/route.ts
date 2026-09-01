@@ -36,16 +36,45 @@ function fmtNow(raw: Date): string {
  * Chiqim yozuvining turi ("Tranzaksiyalar" jurnalidagi nomi).
  *
  * Ro'yxatni admin boshqaradi (/finance-tx-types), shuning uchun nom qattiq
- * yozilmaydi — chiqim turlaridan "oylik" so'zi borini olamiz. Topilmasa
- * seed'dagi standart nom ishlatiladi. Nom MUHIM: "to'langan oylik" aynan
- * shu nomdagi yozuvlardan hisoblanadi (lib/payrollSources.ts →
- * loadPaidByEmployee) va sinxronizatsiya ham shunga qarab tasniflaydi
- * (lib/sync/mappers.ts → classifyEntry).
+ * yozilmaydi. Nom MUHIM: "to'langan oylik" aynan shu nomdagi yozuvlardan
+ * hisoblanadi (lib/payrollSources.ts → loadPaidByEmployee) va
+ * sinxronizatsiya ham shunga qarab tasniflaydi (lib/sync/mappers.ts →
+ * classifyEntry).
+ *
+ * NIMA NOTO'G'RI EDI: tanlov faqat NOMGA qarardi — "oylik" so'zi bor va
+ * "o'quvchi" so'zi yo'q. Bazadagi birinchi mos tur esa id 1
+ * "Kurs to'lovi (oylik)" bo'lib chiqadi: unda "oylik" BOR, "o'quvchi" esa
+ * YO'Q. Ya'ni Oylik chiqarish xodimga chiqim yozuvini O'QUVCHI KIRIMI
+ * kategoriyasining nomi bilan yozardi va u moliya hisobotlarida kurs
+ * to'lovi bo'lib ko'rinardi.
+ *
+ * Endi uch shart birga tekshiriladi: "Mijoz" = Xodim, tab = chiqim,
+ * nomida "oylik". Avans (id 16) va mukofot turlari (id 41-44) shu bilan
+ * chetda qoladi — ular oylik emas, aks holda `loadPaidByEmployee` ularni
+ * avans deb sanab, oylik ikki marta to'lanishi mumkin edi.
+ *
+ * O'qituvchi va boshqa xodim uchun ALOHIDA nom qaytadi (id 14 va 15) —
+ * jurnalda kimga qanday to'lov ketgani ajralib tursin.
  */
-async function salaryCategory(db: Awaited<ReturnType<typeof ensureIndexes>>): Promise<string> {
-  const rows = await db.collection("transaction_types").find({}).sort({ id: 1 }).toArray();
-  const found = rows.find((t) => /oylik/i.test(String(t?.name ?? "")) && !/o'quvchi|oquvchi/i.test(String(t?.name ?? "")));
-  return found ? String(found.name) : "Hodimga oylik";
+interface SalaryCategories {
+  teacher: string;
+  other: string;
+}
+async function salaryCategories(db: Awaited<ReturnType<typeof ensureIndexes>>): Promise<SalaryCategories> {
+  const rows = await db
+    .collection("transaction_types")
+    .find({ customerType: "Xodim", mainType: "chiqim" })
+    .sort({ id: 1 })
+    .toArray();
+  const salary = rows.filter((t) => /oylik/i.test(String(t?.name ?? "")));
+  const teacherRow = salary.find((t) => /o'qituvchi|oqituvchi/i.test(String(t?.name ?? "")));
+  const otherRow = salary.find((t) => t !== teacherRow);
+  // Mos tur topilmasa seed'dagi standart nom — u ham `/oylik/` ga tushadi,
+  // ya'ni "to'langan oylik" hisobi baribir ishlaydi.
+  const fallback = "Hodimga oylik";
+  const teacher = teacherRow ? String(teacherRow.name) : (otherRow ? String(otherRow.name) : fallback);
+  const other = otherRow ? String(otherRow.name) : teacher;
+  return { teacher, other };
 }
 
 export async function GET() {
@@ -146,7 +175,7 @@ export async function POST(req: Request) {
   let tolanmagan = 0;
   let qarzdorlik = 0;
   // Kim uchun qancha chiqariladi — kassa yozuvlari shu ro'yxatdan yasaladi.
-  const payouts: { name: string; amount: number }[] = [];
+  const payouts: { name: string; turi: string; amount: number }[] = [];
   const items: SalaryRunItem[] = [];
   for (const ep of chosen) {
     const empDue = payrollDue(ep, period);
@@ -172,7 +201,7 @@ export async function POST(req: Request) {
     // yo'qolardi — keyingi oy hisobiga ham o'tmasdi. Endi ishorali holicha
     // saqlanadi: loadCarryOver uni keyingi oyning `carryOver`iga o'tkazadi.
     qarzdorlik += Math.max(-empDue, 0);
-    if (empPaid > 0) payouts.push({ name: ep.name, amount: empPaid });
+    if (empPaid > 0) payouts.push({ name: ep.name, turi: ep.turi, amount: empPaid });
     // `amount` — TO'LOVDAN KEYINGI qoldiq (keyingi oyga o'tadigan had).
     items.push({
       employeeId: ep.id,
@@ -245,7 +274,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const txName = await salaryCategory(db);
+  const txNames = await salaryCategories(db);
   // Chiqim yozuvining SANASI — chiqarilayotgan OY ichida bo'lishi shart.
   // Joriy oyda bu bugungi kun, o'tgan oyda esa o'sha oyning oxirgi kuni.
   //
@@ -311,6 +340,9 @@ export async function POST(req: Request) {
     for (const p of payouts) {
       const before = running;
       running -= p.amount;
+      // O'qituvchiga va boshqa xodimga alohida kategoriya — jurnalda va
+      // moliya hisobotlarida to'lov kimga ketgani ajralib tursin.
+      const txName = p.turi === "teacher" ? txNames.teacher : txNames.other;
       const entryId = await logEntry(db, {
         date: entryDate,
         time,
