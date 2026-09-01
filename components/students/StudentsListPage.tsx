@@ -90,12 +90,20 @@ function hasActiveFilters(f: StudentFilters): boolean {
     .some((k) => f[k] !== EMPTY_STUDENT_FILTERS[k]);
 }
 
+/**
+ * Filtr tanlovi: oddiy satr yoki "qiymat boshqa, ko'rinadigan matn boshqa"
+ * juftligi. Ikkinchisi Guruh filtri uchun kerak — filtr guruh ID'si bo'yicha
+ * ishlaydi (lib/studentsData.ts), lekin ro'yxatda ID emas, nomi va o'qituvchisi
+ * ko'rinishi kerak.
+ */
+type FilterOption = string | { value: string; label: string };
+
 /** Filtr paneli uchun yorliqli select — 13 marta takrorlanmasligi uchun. */
 function FilterSelect({ label, value, onChange, options }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: readonly string[];
+  options: readonly FilterOption[];
 }) {
   return (
     <div>
@@ -107,7 +115,11 @@ function FilterSelect({ label, value, onChange, options }: {
           className="h-9 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           <option value="">Hammasi</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o) => {
+            const v = typeof o === "string" ? o : o.value;
+            const l = typeof o === "string" ? o : o.label;
+            return <option key={v} value={v}>{l}</option>;
+          })}
         </select>
         <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
       </div>
@@ -177,6 +189,13 @@ export default function StudentsListPage() {
   // Qator ikonkalari: guruhga qoʻshish, SMS oynasi va holatni o'zgartirish.
   const [groupFor, setGroupFor] = useState<{ id: number; name: string } | null>(null);
   const [smsFor, setSmsFor] = useState<{ id: number; name: string; phone: string } | null>(null);
+  // Xabar ikonkasi endi darhol oyna ochmaydi, avval kichik menyu chiqaradi.
+  // Menyu `position: fixed` — jadval `overflow-x: auto` ichida bo'lgani
+  // uchun oddiy `absolute` menyu oxirgi ustunda kesilib qolardi.
+  const [smsMenu, setSmsMenu] = useState<
+    { id: number; name: string; phone: string; top: number; left: number } | null
+  >(null);
+  const smsMenuRef = useRef<HTMLDivElement>(null);
   const [statusFor, setStatusFor] = useState<{ id: number; name: string; status: string; statusReason?: string } | null>(null);
   const { showSuccess: toastOk, showError: toastErr } = useToast();
   const moreRef = useRef<HTMLDivElement>(null);
@@ -190,6 +209,27 @@ export default function StudentsListPage() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
 
+  // Xabar menyusi: tashqariga bosilsa yopiladi. Menyu sahifaga nisbatan
+  // qotirilgani uchun jadval yoki sahifa aylantirilsa ham yopiladi —
+  // aks holda u tugmadan ajralib, havoda osilib qolardi.
+  useEffect(() => {
+    if (!smsMenu) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (t && smsMenuRef.current?.contains(t)) return;
+      setSmsMenu(null);
+    };
+    const close = () => setSmsMenu(null);
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [smsMenu]);
+
   // Filtr tanlovlari — faqat ma'lumotda HAQIQATDA uchraydigan qiymatlar.
   const moderatorOptions = useMemo(() => uniqueSorted(rows.map((r) => r.moderator)), [rows]);
   const sourceOptions = useMemo(() => uniqueSorted(rows.map((r) => r.source)), [rows]);
@@ -197,7 +237,20 @@ export default function StudentsListPage() {
   const teacherOptions = useMemo(() => uniqueSorted(groups.map((g) => g.teacher)), [groups]);
   const dayOptions = useMemo(() => uniqueSorted(groups.map((g) => g.day)), [groups]);
   const subcourseOptions = useMemo(() => uniqueSorted(groups.map((g) => g.level)), [groups]);
-  const groupIdOptions = useMemo(() => groups.map((g) => String(g.id)), [groups]);
+  // Guruh filtri: qiymat — guruh ID'si (applyStudentFilters shu bilan
+  // solishtiradi), ko'rinadigan matn esa "(nom, o'qituvchi) raqam". Quruq
+  // raqamdan qaysi guruh ekanini bilib bo'lmasdi. `name` ko'pincha id'ning
+  // o'zi, shuning uchun u takrorlansa qavs ichida faqat o'qituvchi qoladi.
+  const groupIdOptions = useMemo(
+    () =>
+      groups.map((g) => {
+        const nom = (g.name || "").trim();
+        const ustoz = (g.teacher || "").trim() || "o'qituvchisiz";
+        const ichi = nom && nom !== String(g.id) ? `${nom}, ${ustoz}` : ustoz;
+        return { value: String(g.id), label: `(${ichi}) ${g.id}` };
+      }),
+    [groups],
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -560,8 +613,15 @@ export default function StudentsListPage() {
                         </Link>
                         <button
                           title="Xabar"
-                          onClick={() => setSmsFor({ id: r.id, name: r.name, phone: r.phone })}
-                          className="p-1.5 rounded-md hover:bg-secondary"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setSmsMenu((cur) =>
+                              cur?.id === r.id
+                                ? null
+                                : { id: r.id, name: r.name, phone: r.phone, top: rect.bottom + 4, left: rect.left },
+                            );
+                          }}
+                          className={`p-1.5 rounded-md hover:bg-secondary${smsMenu?.id === r.id ? " bg-secondary" : ""}`}
                         >
                           <MessageSquare className="h-4 w-4" />
                         </button>
@@ -622,6 +682,37 @@ export default function StudentsListPage() {
             setGroupFor(null);
           }}
         />
+      )}
+
+      {smsMenu && (
+        <div
+          ref={smsMenuRef}
+          style={{ position: "fixed", top: smsMenu.top, left: Math.min(smsMenu.left, (typeof window === "undefined" ? 0 : window.innerWidth) - 188), zIndex: 60 }}
+          className="w-44 rounded-lg border border-border bg-card shadow-xl py-1 text-sm"
+        >
+          <div className="px-3 py-1.5 text-[12px] text-muted-foreground truncate">{smsMenu.name}</div>
+          <button
+            onClick={() => {
+              setSmsFor({ id: smsMenu.id, name: smsMenu.name, phone: smsMenu.phone });
+              setSmsMenu(null);
+            }}
+            disabled={!smsMenu.phone}
+            title={smsMenu.phone ? undefined : "Telefon raqam yo'q"}
+            className="w-full text-left px-3 py-2 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            SMS yuborish
+          </button>
+          {/* SMS tarixi — profilning SMS tabi, `sms_messages` jurnalini o'qiydi.
+              Telegram bandi ataylab yo'q: bitta o'quvchiga yozish uchun uning
+              `chatId` si kerak, u esa hech qayerda saqlanmaydi. */}
+          <Link
+            href={`/student-edit/${smsMenu.id}?src=list&tab=sms`}
+            onClick={() => setSmsMenu(null)}
+            className="block px-3 py-2 hover:bg-secondary"
+          >
+            SMS tarixi
+          </Link>
+        </div>
       )}
 
       {smsFor && (
