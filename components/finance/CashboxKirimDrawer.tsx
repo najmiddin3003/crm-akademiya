@@ -8,6 +8,7 @@ import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
+import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useTeachers } from "@/hooks/useTeachers";
@@ -63,6 +64,14 @@ export default function CashboxKirimDrawer({
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [method, setMethod] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
+  // QAYSI OY uchun tolov. Sana — pul KELGAN kun, bu esa tolov qaysi
+  // davrga tegishli ekani: sentabrda kelgan pul avgust darslari uchun
+  // bolishi mumkin. Sukut — tanlangan sananing oyi, yani odatdagi holatda
+  // kassir hech narsa qilmaydi.
+  const [periodMonth, setPeriodMonth] = useState<string>(() => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  });
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
@@ -137,6 +146,7 @@ export default function CashboxKirimDrawer({
           category,
           teacherName,
           studentName,
+          periodMonth,
           date: date ? toIso(date) : undefined,
           note,
         }),
@@ -268,10 +278,38 @@ export default function CashboxKirimDrawer({
             </div>
           </div>
 
-          <div>
-            <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
-            <DatePicker value={date} onChange={setDate} className="w-full" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
+              <DatePicker
+                value={date}
+                onChange={(d) => {
+                  setDate(d);
+                  // Sana o'zgarsa oy ham ergashadi — kassir odatda bugungi
+                  // kun uchun to'lov qabul qiladi va ikkinchi maydonga
+                  // umuman tegishi shart emas.
+                  if (d) setPeriodMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+                }}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Qaysi oy uchun</label>
+              <MonthYearPicker
+                className="w-full"
+                value={{ month: Number(periodMonth.slice(5, 7)), year: Number(periodMonth.slice(0, 4)) }}
+                onChange={(v) => setPeriodMonth(`${v.year}-${String(v.month).padStart(2, "0")}`)}
+              />
+            </div>
           </div>
+          {/* To'lov sanasi va u qoplaydigan oy HAR DOIM bir xil emas:
+              sentabrda kelgan pul avgust darslari uchun bo'lishi mumkin.
+              O'qituvchining foizli oyligi aynan shu oyga hisoblanadi. */}
+          {periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
+            <p className="-mt-1 text-[11px] text-amber-600">
+              To&apos;lov {periodMonth} oyiga yoziladi — o&apos;qituvchining o&apos;sha oydagi oyligiga qo&apos;shiladi.
+            </p>
+          )}
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Izoh</label>

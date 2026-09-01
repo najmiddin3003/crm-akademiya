@@ -23,6 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   let body: {
     mode?: string; method?: string; amount?: number;
     category?: string; teacherName?: string; studentName?: string; date?: string; note?: string;
+    periodMonth?: string;
   };
   try {
     body = await req.json();
@@ -30,7 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
 
-  const { mode, method, amount, category, teacherName, studentName, date, note } = body;
+  const { mode, method, amount, category, teacherName, studentName, date, note, periodMonth } = body;
   if (mode !== "kirim" && mode !== "chiqim") {
     return NextResponse.json({ ok: false, error: "Noto'g'ri amal turi" }, { status: 400 });
   }
@@ -160,6 +161,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     note: note || "",
     status: "",
     cashboxId,
+    // To'lov QAYSI OY uchun ekani — Kirim oynasida tanlanadi.
+    // Sana bilan bir xil bo'lsa ham yoziladi: keyinchalik "bu yozuvda oy
+    // ataylab tanlanganmi yoki eski yozuvmi?" degan savol tug'ilmasin.
+    // Faqat "YYYY-MM" shakli qabul qilinadi.
+    ...(typeof periodMonth === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)
+      ? { periodMonth }
+      : {}),
   });
   await logTransaction(db, {
     date: entryDate,

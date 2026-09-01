@@ -73,4 +73,17 @@ export interface TransactionEntry {
    * tayanadi. Bu maydon qo'shilishidan OLDINGI yozuvlarda yo'q.
    */
   createdAt?: string;
+  /**
+   * To'lov QAYSI OY uchun ekani — "YYYY-MM".
+   *
+   * `date` dan FARQI: `date` — pul kassaga kelgan kun, bu esa u qoplaydigan
+   * davr. Sentabrda kelgan pul avgust darslari uchun bo'lishi mumkin, va
+   * o'qituvchining foizli oyligi aynan SHU oyga hisoblanadi
+   * (lib/payrollSources.ts → loadCollectedByTeacher).
+   *
+   * Kirim oynasida sukut bo'yicha sana oyiga teng, ya'ni odatdagi holatda
+   * kassir hech narsa qilmaydi. Maydon YO'Q bo'lgan (bu qo'shilishdan
+   * oldingi va import qilingan) yozuvlarda `date` ning oyi ishlatiladi.
+   */
+  periodMonth?: string;
 }

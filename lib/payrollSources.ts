@@ -66,7 +66,18 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
     .collection("transaction_entries")
     .find({
       txType: "payIn",
-      date: { $regex: `^${month}-` },
+      // QAYSI OYGA tegishli ekani `periodMonth` da (Kirim oynasida
+      // tanlanadi): pul sentabrda kelib, avgust darslari uchun bo'lishi
+      // mumkin va o'qituvchining foizi AVGUSTGA hisoblanishi kerak.
+      //
+      // Maydon yo'q yozuvlarda (bu qo'shilishdan oldingilar va import
+      // qilinganlar — bazadagi yozuvlarning aksariyati) avvalgidek `date`
+      // ning oyi ishlatiladi, ya'ni eski hisob buzilmaydi.
+      $or: [
+        { periodMonth: month },
+        { periodMonth: { $exists: false }, date: { $regex: `^${month}-` } },
+        { periodMonth: "", date: { $regex: `^${month}-` } },
+      ],
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
     })

@@ -15,6 +15,9 @@ export interface MonthYearValue {
 
 // Qisqa oy nomlari navbardagi til tanloviga qarab olinadi (lib/i18n.ts).
 
+/** Ochiladigan oynaning kengligi (`w-72`) — joylashuvni hisoblashda kerak. */
+const POPUP_WIDTH = 288;
+
 export interface MonthYearPickerProps {
   value: MonthYearValue | null;
   onChange: (value: MonthYearValue) => void;
@@ -31,10 +34,15 @@ export default function MonthYearPicker({ value, onChange, placeholder = "Oy/yil
   const rootRef = useRef<HTMLDivElement>(null);
 
   const reposition = useCallback(() => {
-    if (rootRef.current) {
-      const r = rootRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 8, left: r.left });
-    }
+    if (!rootRef.current) return;
+    const r = rootRef.current.getBoundingClientRect();
+    // Oyna `position: fixed` — ya'ni ota blokning chegarasi uni ushlab
+    // qolmaydi. Tanlagich ekranning o'ng chekkasiga yaqin turganda (masalan
+    // o'ngdan chiqadigan Kirim oynasida) 288px kenglik ekrandan chiqib
+    // ketardi va oylarning uchinchi ustuni — Mar/Iyn/Sen/Dek — ko'rinmasdi.
+    // Shu sababli chap chekka ekran ichiga siqiladi.
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - POPUP_WIDTH - 8));
+    setPos({ top: r.bottom + 8, left });
   }, []);
 
   useEffect(() => {
