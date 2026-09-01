@@ -23,10 +23,77 @@ import type { Role } from "@/lib/roles";
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
+/** /api/roles/coverage javobi — rol zanjiridagi "jim uzilish"lar. */
+interface RoleCoverage {
+  unknownTuri: { id: number; name: string; turi: string }[];
+  noLogin: { id: number; name: string; turi: string }[];
+  adminBypass: { id: number; name: string; turi: string }[];
+}
+
+/**
+ * Ruxsat berildi, lekin ta'sir qilmaydigan holatlar paneli.
+ *
+ * NIMA UCHUN: rolga cheklov qo'yilgani bilan u ishlamay qolishi mumkin va
+ * ekranda buning izi qolmasdi. Zanjir uzun —
+ * `users.hrEmployeeId → hr_employees.turi → roles.key → permissions` — va
+ * uning istalgan bo'g'ini uzilsa xodim CHEKLOVSIZ bo'lib qoladi
+ * (lib/rolePermissions.ts, ataylab shunday). Amalda shu bo'ldi: bir odamga
+ * ikkita xodim yozuvi bor edi, login esa `turi` maydoni BO'SH bo'lganiga
+ * bog'langan — Moderatorga qo'yilgan cheklov hech narsaga ta'sir qilmadi.
+ */
+function CoveragePanel({ data }: { data: RoleCoverage }) {
+  const rows = ([
+    {
+      tone: "rose",
+      title: "Lavozimi belgilanmagan",
+      hint: "rol ruxsatlari bu xodimga QO'LLANMAYDI — u hamma bo'limni ko'radi",
+      people: data.unknownTuri,
+    },
+    {
+      tone: "amber",
+      title: "Login hisobi yo'q",
+      hint: "lavozimi to'g'ri, lekin tizimga kira olmaydi — cheklovni sinab bo'lmaydi",
+      people: data.noLogin,
+    },
+    {
+      tone: "sky",
+      title: "Admin — cheklovdan ozod",
+      hint: "ataylab: aks holda admin o'ziga Rollar sahifasini yopib qo'yishi mumkin edi",
+      people: data.adminBypass,
+    },
+  ] as const).filter((r) => r.people.length > 0);
+
+  if (rows.length === 0) return null;
+
+  const tones = {
+    rose: "border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400",
+    amber: "border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-500",
+    sky: "border-sky-500/30 bg-sky-500/5 text-sky-600 dark:text-sky-400",
+  };
+
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <div key={r.title} className={`rounded-xl border px-4 py-3 ${tones[r.tone]}`}>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-[13px] font-semibold">{r.title}</span>
+            <span className="text-[12px] tabular-nums opacity-80">{r.people.length} ta</span>
+            <span className="text-[12px] text-muted-foreground">— {r.hint}</span>
+          </div>
+          <div className="mt-1.5 text-[12.5px] text-foreground/80">
+            {r.people.map((p) => p.name || `#${p.id}`).join(", ")}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function RolesPage() {
   const { showSuccess, showError } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
+  const [coverage, setCoverage] = useState<RoleCoverage | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Bir vaqtda faqat bittasi ochiq bo'ladi.
@@ -49,10 +116,14 @@ export default function RolesPage() {
     Promise.all([
       fetch("/api/roles").then((r) => r.json()),
       fetch("/api/hr-employees").then((r) => r.json()),
-    ]).then(([rolesRes, empRes]) => {
+      // Ogohlantirish paneli uchun. Yiqilsa sahifa baribir ochiladi —
+      // panel shunchaki ko'rinmaydi.
+      fetch("/api/roles/coverage").then((r) => r.json()).catch(() => null),
+    ]).then(([rolesRes, empRes, covRes]) => {
       if (cancelled) return;
       if (rolesRes.ok) setRoles(rolesRes.roles);
       if (empRes.ok) setEmployees(empRes.employees);
+      if (covRes?.ok) setCoverage(covRes as RoleCoverage);
     }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
@@ -257,6 +328,8 @@ export default function RolesPage() {
           )}
         </button>
       </div>
+
+      {coverage && <CoveragePanel data={coverage} />}
 
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">

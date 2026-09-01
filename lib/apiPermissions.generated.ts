@@ -113,6 +113,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/reports/balance": ["/reports-balance"],
   "/api/roles": ["/management-rollar", "/management-xodimlar"],
   "/api/roles/[id]": ["/management-rollar"],
+  "/api/roles/coverage": ["/management-rollar"],
   "/api/rooms": ["/groups", "/groups-rooms", "/groups-schedule", "/reports-rooms"],
   "/api/rooms/[id]": ["/groups-rooms"],
   "/api/salary-runs": ["/finance-payroll"],
