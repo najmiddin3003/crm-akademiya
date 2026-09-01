@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 import { sanitizePermissions } from "@/lib/permissions";
+import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -30,7 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!Number.isFinite(empId)) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
-  let body: Partial<HrEmployee>;
+  let body: Partial<HrEmployee> & HrEmployeeExtra;
   try {
     body = await req.json();
   } catch {
@@ -65,6 +66,32 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Ish haqi — POST bilan bir xil tozalagichdan o'tadi (lib/hrEmployees.ts).
   if (body.branchAssignments !== undefined) {
     set.branchAssignments = sanitizeAssignments(body.branchAssignments);
+  }
+
+  // "Xodim qo'shish" modalining QOLGAN maydonlari. Ilgari ular bu oq
+  // ro'yxatda yo'q edi: modal tahrirlash uchun ham ishlatila boshlaganda
+  // tug'ilgan sana, izoh va maxsus maydonlar JIMGINA saqlanmasdi.
+  //
+  // POST dagi `pickExtras()` ni shundoq ko'chirib bo'lmaydi — u
+  // `Required<HrEmployeeExtra>` qaytaradi, ya'ni qisman PATCH'da
+  // yuborilmagan maydonlarni bo'sh qiymat bilan bosib tashlardi. Shu sabab
+  // har biri ALOHIDA, "kelgan bo'lsa yoziladi" qoidasi bilan.
+  if (typeof body.birthDate === "string") {
+    set.birthDate = /^\d{4}-\d{2}-\d{2}$/.test(body.birthDate) ? body.birthDate : "";
+  }
+  if (typeof body.comment === "string") set.comment = body.comment.trim().slice(0, 2000);
+  if (body.payroll !== undefined) set.payroll = Boolean(body.payroll);
+  if (body.twoFactor !== undefined) set.twoFactor = Boolean(body.twoFactor);
+  if (body.customFields !== undefined) {
+    const clean: Record<string, string> = {};
+    if (body.customFields && typeof body.customFields === "object") {
+      for (const [k, v] of Object.entries(body.customFields)) {
+        const key = String(k).trim().slice(0, 100);
+        const val = String(v ?? "").trim().slice(0, 500);
+        if (key && val) clean[key] = val;
+      }
+    }
+    set.customFields = clean;
   }
 
   if (Object.keys(set).length === 0) {

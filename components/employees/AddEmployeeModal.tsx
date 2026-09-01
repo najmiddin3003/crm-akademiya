@@ -5,6 +5,7 @@ import { Plus, Trash2, Upload, X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import { useBranches } from "@/hooks/useBranches";
 import EmployeeToggle from "./EmployeeToggle";
 import CustomFieldDrawer, { type CustomFieldDraft } from "./CustomFieldDrawer";
@@ -56,6 +57,14 @@ const EMPTY_ROW: BranchRow = { checked: false, roleId: "", scheduleId: "", salar
 
 const TURI_MAP: Record<string, string> = { "O'qituvchi": "teacher", Moderator: "moderator", Administrator: "admin" };
 const GENDER_MAP: Record<string, string> = { Erkak: "male", Ayol: "female" };
+
+// TESKARI xaritalar — tahrirlash uchun. Modal LAVOZIM YORLIG'ini saqlaydi
+// ("O'qituvchi"), bazada esa kod turadi ("teacher"). Bularsiz mavjud xodim
+// ochilganda tanlov bo'sh qolardi — va bu jimgina zanjir buzardi: `vazifa`
+// bo'sh bo'lsa `isTeacher` false bo'lib, "Oladigan foizi" ro'yxati umuman
+// yuklanmasdi.
+const TURI_LABEL: Record<string, string> = { teacher: "O'qituvchi", moderator: "Moderator", admin: "Administrator" };
+const GENDER_LABEL: Record<string, string> = { male: "Erkak", female: "Ayol" };
 
 // lib/invite.ts dagi isValidPhone/normalizePhone bilan bir xil qoida —
 // u yerdagi funksiyalarni to'g'ridan-to'g'ri import qilmaymiz (crypto/bcryptjs
@@ -111,22 +120,49 @@ function renderCustomInput(
   );
 }
 
-export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () => void; onCreated?: (emp: HrEmployeeFull) => void }) {
+/**
+ * Modal IKKI ish uchun: xodim QO'SHISH va TAHRIRLASH.
+ *
+ * Rejim `mode` bayrog'i bilan emas, `employee` propining bor-yo'qligi bilan
+ * aniqlanadi — bayroq bo'lganda `mode="edit"` + `employee` yo'q degan
+ * mumkin bo'lmagan holat yaratish mumkin edi. Birlashma tipi buni
+ * kompilyatsiya paytida taqiqlaydi.
+ *
+ * NIMA UCHUN QAYTA ISHLATILADI: ilgari tahrirlash uchun alohida, KICHIK
+ * oyna bor edi (EmployeeProfileEditModal) va u to'liq formadan ortda
+ * qolgandi — masalan "Oladigan foizi" u yerda erkin matn edi, bu yerda esa
+ * Sozlamalardagi ro'yxatdan tanlanadi.
+ */
+type EmployeeFormProps =
+  | { employee?: undefined; onClose: () => void; onCreated?: (emp: HrEmployeeFull) => void; onSaved?: never }
+  | { employee: HrEmployeeFull; onClose: () => void; onSaved?: (emp: HrEmployeeFull) => void; onCreated?: never };
+
+export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved }: EmployeeFormProps) {
+  const editing = Boolean(employee);
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   // Filial qatorlari Boshqaruv → Filiallar bilan bir xil manbadan.
   const { branches } = useBranches();
-  const [ism, setIsm] = useState("");
+  // Tahrirlashda ism BITTA maydon. Bazada ham yagona `name` bor va
+  // "ism familiya" tartibi hech qayerda majburlanmagan (import ham) — har
+  // qanday bo'lish qoidasi familiyasi oldinda yozilgan yozuvlarni ag'darib
+  // yuborardi. Shuning uchun mavjud xodimda satr BO'LINMAYDI.
+  const [ism, setIsm] = useState(employee?.name ?? "");
   const [familiya, setFamiliya] = useState("");
-  const [phone, setPhone] = useState("+998");
-  const [vazifa, setVazifa] = useState("");
-  const [jinsi, setJinsi] = useState("");
-  const [email, setEmail] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [comment, setComment] = useState("");
-  const [payroll, setPayroll] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [sameForAll, setSameForAll] = useState(true);
+  // Bazada ikki xil shakl bor: "94 155 88 55" va "998336263006". Formatter
+  // ikkalasini ham qabul qiladi — ilgari bu yerda qo'lda "+998" qo'shilardi
+  // va 12 xonali raqamga u IKKINCHI marta yopishib ketardi.
+  const [phone, setPhone] = useState(employee ? formatPhoneDisplay(employee.phone) : "+998");
+  const [vazifa, setVazifa] = useState(employee ? TURI_LABEL[employee.turi] ?? "" : "");
+  const [jinsi, setJinsi] = useState(employee ? GENDER_LABEL[employee.gender] ?? "" : "");
+  const [email, setEmail] = useState(employee?.email ?? "");
+  const [birthDate, setBirthDate] = useState(employee?.birthDate ?? "");
+  const [comment, setComment] = useState(employee?.comment ?? "");
+  const [payroll, setPayroll] = useState(employee?.payroll ?? false);
+  const [twoFactor, setTwoFactor] = useState(employee?.twoFactor ?? false);
+  // Tahrirlashda FALSE: yoqiq bo'lsa bitta filial ish haqini o'zgartirish
+  // qolgan hammasini jimgina bosib tashlardi.
+  const [sameForAll, setSameForAll] = useState(!editing);
   const [showCustomField, setShowCustomField] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -134,7 +170,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   // Ta'riflar sozlamalarda (barcha xodimlar uchun umumiy), qiymatlar esa
   // shu xodim hujjatida (`customFields`) saqlanadi.
   const [customDefs, setCustomDefs] = useState<EmployeeCustomFieldDef[]>([]);
-  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  const [customValues, setCustomValues] = useState<Record<string, string>>(employee?.customFields ?? {});
   const [savingField, setSavingField] = useState(false);
 
   useEffect(() => {
@@ -202,9 +238,9 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   //   Darajasi       — Sozlamalar → Boshqaruv → O'qituvchi darajalari
   //   Kurslar        — O'quv bo'limi → Kurslar (/api/offline-courses)
   const isTeacher = vazifa === "O'qituvchi";
-  const [percent, setPercent] = useState("");
-  const [daraja, setDaraja] = useState("");
-  const [kurs, setKurs] = useState("");
+  const [percent, setPercent] = useState(employee?.percent ?? "");
+  const [daraja, setDaraja] = useState(employee?.degree ?? "");
+  const [kurs, setKurs] = useState(employee?.kurs ?? "");
   const [percentOpts, setPercentOpts] = useState<{ name: string; percent: string }[]>([]);
   const [darajaOpts, setDarajaOpts] = useState<string[]>([]);
   const [kursOpts, setKursOpts] = useState<string[]>([]);
@@ -235,7 +271,21 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   // Boshqaruv → Ish jadvali (/api/work-schedules, faqat faollari).
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const [schedules, setSchedules] = useState<{ id: number; name: string }[]>([]);
-  const [branchRows, setBranchRows] = useState<Record<number, BranchRow>>({});
+  // Tahrirlashda mavjud biriktiruvlar bilan to'ldiriladi — aks holda modal
+  // ochilib "Saqlash" bosilsa, sozlangan ish haqi bo'sh massiv bilan
+  // almashib, butunlay yo'qolardi.
+  const [branchRows, setBranchRows] = useState<Record<number, BranchRow>>(() => {
+    const seed: Record<number, BranchRow> = {};
+    for (const a of employee?.branchAssignments ?? []) {
+      seed[a.branchId] = {
+        checked: true,
+        roleId: a.roleId == null ? "" : String(a.roleId),
+        scheduleId: a.scheduleId == null ? "" : String(a.scheduleId),
+        salary: a.salary ? String(a.salary) : "",
+      };
+    }
+    return seed;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -286,6 +336,10 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   // `file` saqlanadi — saqlash bosilganda Cloudinary'ga yuboriladi.
   // `url` faqat ko'rinish uchun (blob:), serverga bormaydi.
   const [photo, setPhoto] = useState<{ name: string; url: string; file: File } | null>(null);
+  // Mavjud rasm — Cloudinary havolasi. `photo` faqat YANGI tanlangan faylni
+  // ushlaydi, shu sabab eskisi alohida saqlanadi. Bo'sh satr — "rasmni
+  // o'chirish", `undefined` emas: PATCH da yuborilmagan maydon tegilmaydi.
+  const [photoUrl, setPhotoUrl] = useState(employee?.photoUrl ?? "");
 
   function pickPhoto(file: File | undefined) {
     if (!file) return;
@@ -304,18 +358,28 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
   function clearPhoto() {
     if (photo) URL.revokeObjectURL(photo.url);
     setPhoto(null);
+    // Tahrirlashda "X" — ATAYLAB o'chirish, ya'ni serverga bo'sh satr ketadi.
+    setPhotoUrl("");
     if (photoRef.current) photoRef.current.value = "";
   }
 
   async function save() {
-    const name = `${ism.trim()} ${familiya.trim()}`.trim();
+    // Tahrirlashda ism BITTA maydonda (`ism`), yaratishda ikkitasi.
+    const name = editing ? ism.trim() : `${ism.trim()} ${familiya.trim()}`.trim();
     if (!name) {
-      showError("Ism va familiyani kiriting");
+      showError(editing ? "F.I.SH. ni kiriting" : "Ism va familiyani kiriting");
       return;
     }
     const trimmedPhone = phone.trim();
-    if (!isValidPhoneClient(trimmedPhone)) {
+    if (!editing && !isValidPhoneClient(trimmedPhone)) {
       showError("Telefon raqamini to'g'ri kiriting (masalan +998 90 123 45 67)");
+      return;
+    }
+    // Filiallar ro'yxati hali kelmagan bo'lsa saqlashga yo'l qo'ymaymiz:
+    // `branchAssignments` shu ro'yxatdan yig'iladi va bo'sh massiv
+    // yuborilsa xodimning sozlangan ish haqi butunlay o'chib ketardi.
+    if (editing && branches.length === 0) {
+      showError("Filiallar ro'yxati hali yuklanmadi — bir lahza kuting");
       return;
     }
     // Referensda bu ikkisi yulduzcha bilan — faqat o'qituvchi uchun majburiy.
@@ -338,7 +402,8 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
     try {
       // Rasm avval Cloudinary'ga yuklanadi. Yuklanmasa saqlashni TO'XTATAMIZ —
       // xodim rasmsiz yaratilib, foydalanuvchi buni sezmay qolmasin.
-      let photoUrl = "";
+      // Yangi fayl tanlanmagan bo'lsa MAVJUD havola saqlanadi.
+      let finalPhotoUrl = photoUrl;
       if (photo) {
         const fd = new FormData();
         fd.append("file", photo.file);
@@ -350,7 +415,7 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
           setSaving(false);
           return;
         }
-        photoUrl = upData.url as string;
+        finalPhotoUrl = upData.url as string;
       }
 
       // Faqat galochka qo'yilgan filiallar yuboriladi.
@@ -365,13 +430,22 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
             salary: Number(r.salary) || 0,
           };
         });
+      // O'CHIRILGAN filialdagi biriktiruv ham saqlanadi: yuqoridagi halqa
+      // faqat JORIY filiallar bo'yicha yuradi, ya'ni ro'yxatdan olib
+      // tashlangan filialning ish haqi jimgina yo'qolib ketardi.
+      for (const a of employee?.branchAssignments ?? []) {
+        if (!branches.some((b) => b.id === a.branchId)) branchAssignments.push(a);
+      }
 
-      const res = await fetch("/api/hr-employees", {
-        method: "POST",
+      const res = await fetch(editing ? `/api/hr-employees/${employee!.id}` : "/api/hr-employees", {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          phone: trimmedPhone,
+          // Tahrirlashda telefon YUBORILMAYDI: maydon faqat o'qish uchun va
+          // u formatlangan ko'rinishda ("+998 94 155 88 55"). Yuborilsa
+          // PATCH bazadagi saqlash shaklini o'zgartirib qo'yardi.
+          ...(editing ? {} : { phone: trimmedPhone }),
           turi: TURI_MAP[vazifa] || "",
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
@@ -389,21 +463,28 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
           kurs,
           percent,
           degree: daraja,
-          photoUrl,
+          photoUrl: finalPhotoUrl,
           branchAssignments,
         }),
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Xodim qo'shilmadi");
+        showError(data.error || (editing ? "Saqlanmadi" : "Xodim qo'shilmadi"));
         setSaving(false);
         return;
       }
-      onCreated?.(data.employee as HrEmployeeFull);
-      if (data.smsSent) {
-        showSuccess(`Xodim qo'shildi — ${name}. Faollashtirish SMS'i yuborildi.`);
+      if (editing) {
+        // Tahrirlashda SMS yuborilmaydi — faollashtirish taklifi faqat
+        // yangi xodim yaratilganda ketadi.
+        onSaved?.(data.employee as HrEmployeeFull);
+        showSuccess("Xodim ma'lumotlari saqlandi");
       } else {
-        showError(`Xodim qo'shildi — ${name}, lekin faollashtirish SMS'i yuborilmadi. Birozdan so'ng qayta urinib ko'ring.`);
+        onCreated?.(data.employee as HrEmployeeFull);
+        if (data.smsSent) {
+          showSuccess(`Xodim qo'shildi — ${name}. Faollashtirish SMS'i yuborildi.`);
+        } else {
+          showError(`Xodim qo'shildi — ${name}, lekin faollashtirish SMS'i yuborilmadi. Birozdan so'ng qayta urinib ko'ring.`);
+        }
       }
       onClose();
     } catch {
@@ -418,27 +499,53 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
       <div className="relative w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-border sticky top-0 bg-card z-10">
-          <h3 className="text-[16px] font-semibold">Xodim qo&apos;shish</h3>
+          <h3 className="text-[16px] font-semibold">{editing ? "Xodimni tahrirlash" : "Xodim qo'shish"}</h3>
           <p className="text-[11px] text-muted-foreground"><span className="text-rose-500">*</span> Zarurligini bildiradi</p>
         </div>
 
         <div className="p-6 space-y-5">
           {/* Row 1: Ism / Familiya / Telefon */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className={labelCls}>Ism<span className="text-rose-500">*</span></label>
-              <input type="text" value={ism} onChange={(e) => setIsm(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Familiya<span className="text-rose-500">*</span></label>
-              <input type="text" value={familiya} onChange={(e) => setFamiliya(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Telefon raqam<span className="text-rose-500">*</span></label>
-              <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-card pl-2 pr-3">
-                <span className="inline-block text-[16px]">🇺🇿</span>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="flex-1 bg-transparent text-sm focus:outline-none" />
+            {/* Tahrirlashda BITTA maydon — bazada ham yagona `name` bor va
+                uni ism/familiyaga bo'lish tartibi hech qayerda kafolatlanmagan
+                (familiyasi oldinda yozilgan yozuvlar ag'darilib ketardi). */}
+            {editing ? (
+              <div className="md:col-span-2">
+                <label className={labelCls}>F.I.SH.<span className="text-rose-500">*</span></label>
+                <input type="text" value={ism} onChange={(e) => setIsm(e.target.value)} className={inputCls} />
               </div>
+            ) : (
+              <>
+                <div>
+                  <label className={labelCls}>Ism<span className="text-rose-500">*</span></label>
+                  <input type="text" value={ism} onChange={(e) => setIsm(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Familiya<span className="text-rose-500">*</span></label>
+                  <input type="text" value={familiya} onChange={(e) => setFamiliya(e.target.value)} className={inputCls} />
+                </div>
+              </>
+            )}
+            <div>
+              <label className={labelCls}>Telefon raqam{!editing && <span className="text-rose-500">*</span>}</label>
+              <div className={`flex items-center gap-2 h-10 rounded-lg border border-border pl-2 pr-3 ${editing ? "bg-secondary/40" : "bg-card"}`}>
+                <span className="inline-block text-[16px]">🇺🇿</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  readOnly={editing}
+                  className="flex-1 bg-transparent text-sm focus:outline-none"
+                />
+              </div>
+              {/* Telefon — tizimga kirish logini. Uni bu yerdan o'zgartirish
+                  XAVFLI: PATCH faqat `hr_employees` ni yangilaydi, `users`
+                  hujjatiga tegmaydi — profil yangi raqamni ko'rsatgani bilan
+                  xodim eskisi bilan kirishda davom etardi. Raqamni almashtirish
+                  alohida oqim bo'lishi kerak. */}
+              {editing && (
+                <p className="mt-1 text-[11px] text-muted-foreground">Telefon — tizimga kirish logini, bu yerdan o&apos;zgartirilmaydi.</p>
+              )}
             </div>
           </div>
 
@@ -502,6 +609,14 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
                 <div className="relative">
                   <select className={selectCls} value={percent} onChange={(e) => setPercent(e.target.value)}>
                     <option value="">Foizni tanlang</option>
+                    {/* ESKI XOM QIYMAT ("60" kabi). Ilgari bu maydon erkin
+                        matn edi, ya'ni bazada ro'yxatga mos kelmaydigan
+                        qiymatlar bor. Ular uchun variant qo'shilmasa
+                        <select> ularni JIMGINA tashlab yuborardi va birinchi
+                        saqlashda foiz yo'qolardi. */}
+                    {percent && !percentOpts.some((p) => p.name === percent) && (
+                      <option value={percent}>{`${percent} — ro'yxatda yo'q (eski qiymat)`}</option>
+                    )}
                     {percentOpts.map((p) => (
                       <option key={p.name} value={p.name}>{`${p.name} (${p.percent}%)`}</option>
                     ))}
@@ -629,11 +744,14 @@ export default function AddEmployeeModal({ onClose, onCreated }: { onClose: () =
                 className="hidden"
                 onChange={(e) => pickPhoto(e.target.files?.[0])}
               />
-              {photo ? (
+              {/* Yangi tanlangan fayl BO'LMASA ham, tahrirlashda mavjud
+                  rasm ko'rinib turishi kerak — aks holda admin rasm yo'q deb
+                  o'ylab, uni bilmasdan qayta yuklardi. */}
+              {photo || photoUrl ? (
                 <div className="w-full h-10 rounded-lg border border-border bg-card px-2 text-sm flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt="" style={{ width: 28, height: 28, objectFit: "cover" }} className="rounded-full shrink-0" />
-                  <span className="flex-1 truncate text-[13px]">{photo.name}</span>
+                  <img src={photo ? photo.url : photoUrl} alt="" style={{ width: 28, height: 28, objectFit: "cover" }} className="rounded-full shrink-0" />
+                  <span className="flex-1 truncate text-[13px]">{photo ? photo.name : "Mavjud rasm"}</span>
                   <button
                     type="button"
                     onClick={clearPhoto}

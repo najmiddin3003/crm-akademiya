@@ -29,8 +29,13 @@ export function formatPhoneDigits(digits: string) {
 export function formatPhoneDisplay(input: string): string {
   const raw = String(input ?? "");
   const d = raw.replace(/\D/g, "");
-  if (d.length !== 12 || !d.startsWith("998")) return raw;
-  const n = d.slice(3); // qolgan 9 ta raqam
+  // Bazada ikki xil shakl uchraydi: `users.phone` — 12 xonali
+  // ("998941558855"), `hr_employees.phone` — 9 xonali va bo'shliqli
+  // ("94 155 88 55"). Ikkalasini ham qabul qilamiz, aks holda chaqiruvchi
+  // qo'lda "+998" qo'shishga majbur bo'lardi va 12 xonali raqamga u
+  // IKKINCHI marta yopishib ketardi ("+998998336263006").
+  const n = d.length === 9 ? d : d.length === 12 && d.startsWith("998") ? d.slice(3) : "";
+  if (!n) return raw;
   return `+998 ${n.slice(0, 2)} ${n.slice(2, 5)} ${n.slice(5, 7)} ${n.slice(7, 9)}`;
 }
 

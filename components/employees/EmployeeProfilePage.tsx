@@ -14,7 +14,8 @@ import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
-import EmployeeProfileEditModal from "./EmployeeProfileEditModal";
+import AddEmployeeModal from "./AddEmployeeModal";
+import EmployeePasswordModal from "./EmployeePasswordModal";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 import type { Bonus } from "@/lib/bonuses";
@@ -28,6 +29,7 @@ import {
   UnpaidHistoryTab, UnpaidTab, WorkHoursTab, buildLedger, type UnpaidRow,
 } from "./EmployeeProfileTabs";
 import PersonLink from "@/components/shared/PersonDirectory";
+import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
@@ -107,6 +109,7 @@ const ROLE_BADGE: Record<string, string> = {
 // (ProfileSideCard ikkalasini ham shu ko'rinishda chizadi).
 const ACTION_CLS = {
   key: "bg-blue-500/15 text-blue-600 hover:bg-blue-500/25",
+  salary: "bg-violet-500/15 text-violet-600 hover:bg-violet-500/25",
   archive: "bg-amber-500/15 text-amber-600 hover:bg-amber-500/25",
   restore: "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25",
   call: "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25",
@@ -125,6 +128,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [moreOpen, setMoreOpen] = useState(false);
   // null — modal yopiq; aks holda qaysi amal so'ralayotgani.
   const [archiveMode, setArchiveMode] = useState<ArchiveMode | null>(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   // Moliyaviy ma'lumot (haqiqiy, backend'dan).
   // "O'quvchilar to'lovlari" endi TO'LIQ ro'yxat sifatida yuklanmaydi.
   //
@@ -437,7 +441,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   }
 
   const initials = emp.name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-  const phone = emp.phone.startsWith("+") ? emp.phone : "+998" + (emp.phone || "").replace(/\s/g, "");
+  // Bazada 9 xonali ("94 155 88 55") ham, 12 xonali ("998336263006") ham
+  // uchraydi. Ilgari bu yerda qo'lda "+998" qo'shilardi va ikkinchisiga u
+  // IKKINCHI marta yopishib, "+998998336263006" chiqardi.
+  const phone = formatPhoneDisplay(emp.phone);
   const roleLabel = ROLE_LABELS[emp.turi as keyof typeof ROLE_LABELS] ?? emp.turi;
 
   // Alohida "holat" maydoni yo'q: `archReason` to'lgan bo'lsa — arxivda.
@@ -576,15 +583,25 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
             badge={{ label: roleLabel, cls: ROLE_BADGE[emp.turi] ?? "bg-slate-400" }}
             stats={stats}
             actions={[
-              // Ilgari bu tugma faqat "(demo)" toast chiqarardi. Xodimga
-              // tizim paroli Boshqaruv → Xodimlar sahifasidan beriladi,
-              // shu bois bu yerda u ish haqi sozlamasini ochadi.
+              // Kalit ikonkasi — PAROL (referensdagi tartib). Ilgari u ish
+              // haqi sozlamasini ochardi; u endi yonidagi alohida tugmada.
+              {
+                key: "password",
+                title: "Parol",
+                cls: ACTION_CLS.key,
+                onClick: () => setPasswordOpen(true),
+                icon: <KeyRound className="icon icon-sm" />,
+              },
+              // Ish haqi sozlash uchun ALOHIDA tugma. Busiz unga yagona
+              // kirish nuqtasi "Ish haqi sozlanmagan" ogohlantirishi bo'lib
+              // qolardi — u esa oyligi ALLAQACHON sozlangan xodimda umuman
+              // chizilmaydi, ya'ni sozlamani qayta ochib bo'lmasdi.
               {
                 key: "salary",
                 title: "Ish haqini sozlash",
-                cls: ACTION_CLS.key,
+                cls: ACTION_CLS.salary,
                 onClick: () => setSalaryOpen(true),
-                icon: <KeyRound className="icon icon-sm" />,
+                icon: <DollarSign className="icon icon-sm" />,
               },
               {
                 key: "archive",
@@ -828,11 +845,15 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       </div>
 
       {editOpen && (
-        <EmployeeProfileEditModal
+        <AddEmployeeModal
           employee={emp}
           onClose={() => setEditOpen(false)}
           onSaved={(updated) => setEmp(updated)}
         />
+      )}
+
+      {passwordOpen && emp && (
+        <EmployeePasswordModal employee={emp} onClose={() => setPasswordOpen(false)} />
       )}
 
       {salaryOpen && (

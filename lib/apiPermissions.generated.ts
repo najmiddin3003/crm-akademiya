@@ -79,6 +79,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/groups/import": ["/groups"],
   "/api/hr-employees/[id]": ["/management-rollar", "/management-xodimlar"],
   "/api/hr-employees/[id]/notes": ["/management-xodimlar"],
+  "/api/hr-employees/[id]/password": ["/management-xodimlar"],
   "/api/hr-employees/[id]/students": ["/management-xodimlar"],
   "/api/hr-employees/import": ["/management-xodimlar"],
   "/api/imtihon/monthly": ["/imtihon"],
