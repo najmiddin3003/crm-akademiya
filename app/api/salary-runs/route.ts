@@ -2,13 +2,16 @@ import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import {
+  isMonthKey,
   payrollBase,
   payrollEarned,
   payrollDue,
   payrollTax,
   payrollTaxLines,
+  payrollMonthEndIso,
   payrollMonthKey,
   payrollPeriod,
+  payrollPeriodOf,
 } from "@/lib/salary";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
@@ -69,7 +72,7 @@ export async function GET() {
 // DAVOMAT va AKLADI 0 bo'lib qoladi — tizimda ular uchun manba yo'q va
 // o'ylab topilmaydi.
 export async function POST(req: Request) {
-  let body: { employeeIds?: number[]; cashboxId?: number; method?: string };
+  let body: { employeeIds?: number[]; cashboxId?: number; method?: string; month?: string };
   try {
     body = await req.json();
   } catch {
@@ -80,6 +83,18 @@ export async function POST(req: Request) {
   if (employeeIds.length === 0) {
     return NextResponse.json({ ok: false, error: "Kamida bitta xodimni tanlang" }, { status: 400 });
   }
+
+  // QAYSI OY uchun chiqariladi. Parametrsiz — joriy oy (eski xulq).
+  // Kelajak oy rad etiladi: sahifada ham tanlanmaydi, bu oxirgi himoya.
+  const monthRaw = (body.month ?? "").trim();
+  if (monthRaw && !isMonthKey(monthRaw)) {
+    return NextResponse.json({ ok: false, error: "Oy noto'g'ri (YYYY-MM kutiladi)" }, { status: 400 });
+  }
+  const current = payrollPeriod();
+  if (monthRaw && monthRaw > payrollMonthKey(current)) {
+    return NextResponse.json({ ok: false, error: "Kelajak oy uchun oylik chiqarilmaydi" }, { status: 400 });
+  }
+  const period = monthRaw ? payrollPeriodOf(monthRaw) : current;
 
   const db = await ensureIndexes();
 
@@ -102,7 +117,7 @@ export async function POST(req: Request) {
   // Hamma qiymat bitta haqiqiy manbadan (lib/payrollSources.ts) — shu
   // bois Oylik chiqarish, Xodimlar ro'yxati va xodim profili bir xil
   // raqam ko'rsatadi.
-  const all = await buildPayrollRows(db);
+  const all = await buildPayrollRows(db, period);
   const chosen = all.filter((e) => employeeIds.includes(e.id));
   if (chosen.length === 0) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
@@ -121,7 +136,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const period = payrollPeriod();
   let oylik = 0;
   let bonus = 0;
   let jarima = 0;
@@ -232,7 +246,20 @@ export async function POST(req: Request) {
   }
 
   const txName = await salaryCategory(db);
-  const entryDate = todayIso();
+  // Chiqim yozuvining SANASI — chiqarilayotgan OY ichida bo'lishi shart.
+  // Joriy oyda bu bugungi kun, o'tgan oyda esa o'sha oyning oxirgi kuni.
+  //
+  // NIMA UCHUN: "to'langan oylik" aynan `date` maydonining oyi bo'yicha
+  // yig'iladi (lib/payrollSources.ts → loadPaidByEmployee). Avgust oyligi
+  // sentabr sanasi bilan yozilsa, avgust qayta ochilganda o'sha summa yana
+  // "to'lanmagan" bo'lib chiqardi va IKKINCHI marta to'lash mumkin bo'lardi.
+  //
+  // Kassaning BALANSI baribir hozir kamayadi (pul rostdan bugun chiqadi) —
+  // faqat jurnaldagi sana o'sha oyga tegishli bo'ladi. Bu kelishuv orqaga
+  // sanalangan Kirim uchun allaqachon qabul qilingan
+  // (app/api/cashboxes/[id]/adjust/route.ts → `date || todayIso()`).
+  const isCurrentMonth = period.year === current.year && period.month === current.month;
+  const entryDate = isCurrentMonth ? todayIso() : payrollMonthEndIso(period);
   const time = nowTime();
 
   const run: SalaryRun = {

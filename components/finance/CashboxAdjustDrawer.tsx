@@ -17,7 +17,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
-import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
+import { payrollDue, payrollEarned, payrollPeriod, payrollPeriodOf, type EmployeePayroll } from "@/lib/salary";
 import { ROLE_LABELS } from "@/constants/employees";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 
@@ -87,7 +87,20 @@ export default function CashboxAdjustDrawer({
   const [categories, setCategories] = useState<string[]>([]);
   // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan.
   const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
-  const period = useMemo(() => payrollPeriod(), []);
+  // Tanlangan SANANING oyi — oylik hisobining davri ham, "shu oyda
+  // allaqachon berilgan" so'rovi ham AYNAN shu oyga tegishli bo'lishi kerak.
+  //
+  // Ilgari `period` doim JORIY oy edi, `alreadyPaid` esa tanlangan sana
+  // oyidan olinardi (pastdagi `/api/employee-salary-summary`). Kassir sanani
+  // o'tgan oyga qo'yganda "hisoblangan oylik" sentabrniki, "olingan" esa
+  // avgustniki bo'lib chiqardi — `remainingSalary` chegarasi ikki xil oydan
+  // yig'ilardi va o'tgan oy uchun avans berishga to'sqinlik qilardi.
+  const monthKey = useMemo(() => {
+    if (!date) return "";
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${p(date.getMonth() + 1)}`;
+  }, [date]);
+  const period = useMemo(() => (monthKey ? payrollPeriodOf(monthKey) : payrollPeriod()), [monthKey]);
 
   // Maosh/guruh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda
   // ikkala tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
@@ -110,18 +123,33 @@ export default function CashboxAdjustDrawer({
   useEffect(() => {
     if (target !== "employee" || employees.length > 0) return;
     let cancelled = false;
-    Promise.all([
-      fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
-      fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
-    ]).then(([emps, pay]) => {
-      if (cancelled) return;
-      if (emps?.ok) setEmployees(emps.employees as HrEmployee[]);
-      if (pay?.ok) {
-        setPayroll(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.name.trim().toLowerCase(), e])));
-      }
-    });
+    fetch("/api/hr-employees")
+      .then((r) => r.json())
+      .catch(() => null)
+      .then((emps) => {
+        if (cancelled || !emps?.ok) return;
+        setEmployees(emps.employees as HrEmployee[]);
+      });
     return () => { cancelled = true; };
   }, [target, employees.length]);
+
+  // Oylik qatorlari ALOHIDA yuklanadi va SANA o'zgarsa qayta so'raladi:
+  // xodimlar ro'yxati oydan qat'i nazar bir xil, hisoblangan oylik esa
+  // oyga bog'liq. Ilgari ikkalasi bitta so'rovda edi va faqat bir marta
+  // yuklanardi — sana o'tgan oyga surilganda ekranda joriy oyning
+  // raqamlari qolib ketardi.
+  useEffect(() => {
+    if (target !== "employee" || !monthKey) return;
+    let cancelled = false;
+    fetch(`/api/salary-runs/employees-payroll?month=${monthKey}`)
+      .then((r) => r.json())
+      .catch(() => null)
+      .then((pay) => {
+        if (cancelled || !pay?.ok) return;
+        setPayroll(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.name.trim().toLowerCase(), e])));
+      });
+    return () => { cancelled = true; };
+  }, [target, monthKey]);
 
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
@@ -168,14 +196,9 @@ export default function CashboxAdjustDrawer({
     : 0;
   const carryOver = selectedPayroll?.carryOver ?? 0;
 
-  // Tanlangan sana kimga tegishli oy — shu oyda xodimga necha marta oylik/
-  // avans chiqarilgani serverdan olinadi. Sana yoki xodim o'zgarsa qayta
-  // yuklanadi. Avval yozilgan tranzaksiyalarning yig'indisi `alreadyPaid`.
-  const monthKey = (() => {
-    if (!date) return "";
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${date.getFullYear()}-${p(date.getMonth() + 1)}`;
-  })();
+  // Shu oyda xodimga necha marta oylik/avans chiqarilgani serverdan olinadi
+  // (`monthKey` yuqorida, `period` bilan bir joyda hisoblangan). Sana yoki
+  // xodim o'zgarsa qayta yuklanadi. Yig'indisi — `alreadyPaid`.
   const [alreadyPaid, setAlreadyPaid] = useState(0);
   useEffect(() => {
     if (!isSalaryPayoutCategory || !selectedEmployee || !monthKey) {

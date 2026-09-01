@@ -196,6 +196,13 @@ async function createAllIndexes(db: Db): Promise<void> {
   // bo'lmasa Mongo `id_1` ni teskari yurib kerakli kassani QIDIRARDI: 50 qator
   // uchun 5 079 hujjat o'qilardi (explain bilan o'lchangan).
   tasks.push(db.collection("transaction_entries").createIndex({ cashboxId: 1, id: -1 }));
+  // Oylik hisobi bir oydagi hamma kirim/chiqimni `txType` + sana prefiksi
+  // bo'yicha o'qiydi (lib/payrollSources.ts → loadCollectedByTeacher,
+  // loadPaidByEmployee). Oy tanlagich qo'shilgach bu so'rov har oy
+  // almashtirilganda takrorlanadi; mos indeks bo'lmasa butun kolleksiya
+  // skanerlanardi. `^YYYY-MM-` — prefiksga bog'langan regex, ya'ni indeks
+  // oralig'idan foydalana oladi.
+  tasks.push(db.collection("transaction_entries").createIndex({ txType: 1, date: 1 }));
   // Moliya > Sinxronizatsiya (lib/sync). `sync_outbox` — Google Sheets va
   // Telegram'ga yetkazib berish navbati. Unikal indeks ENG MUHIMI: u
   // bitta yozuvning bitta hodisasi ikki marta navbatga tushishiga yo'l

@@ -115,7 +115,12 @@ const money = (n: number): string =>
  */
 export async function digestLines(db: Db, at: Date): Promise<{ teachers: Line[]; others: Line[]; period: PayrollPeriod }> {
   const p = payrollPeriod(at);
-  const rows = await buildPayrollRows(db);
+  // Davr xulosaning YORLIG'iga ham, RAQAMLARIGA ham bir xil bo'lishi kerak.
+  // Ilgari `buildPayrollRows(db)` argumentsiz chaqirilardi va o'z ichida
+  // server soatidan oy olardi — cron Toshkent vaqti bilan 03:00 da ishlagani
+  // uchun oy chegarasida sarlavha bir oyni, raqamlar boshqa oyni ko'rsatishi
+  // mumkin edi.
+  const rows = await buildPayrollRows(db, p);
   const lines = rows
     .filter((e) => e.configured)
     .map((e) => lineOf(e, p))

@@ -160,9 +160,18 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod): Promise<Map<numbe
  * Barcha xodimlar uchun oylik qatorlarini HAQIQIY ma'lumotdan yig'adi.
  * Yagona manba — buni employees-payroll, salary-runs va Xodimlar ro'yxati
  * birgalikda ishlatadi, shunda uchala ekran bir xil raqam ko'rsatadi.
+ *
+ * DAVR PARAMETR: ilgari oy shu yerda `payrollPeriod()` bilan QOTIB
+ * turardi, ya'ni har qanday ekran faqat server soatidagi joriy oyni
+ * ko'rardi. Oqibati: kassir sanani o'tgan oyga qo'yib kirim kiritsa,
+ * yozuv bazaga to'g'ri tushardi (`date: "2026-08-20"`), lekin uni
+ * o'qiydigan filtr doim `^2026-09-` bo'lgani uchun o'sha pul hech
+ * qaysi o'qituvchining oyligiga qo'shilmasdi — va o'tgan oyni qayta
+ * hisoblaydigan kirish nuqtasi ham yo'q edi. Endi davrni chaqiruvchi
+ * beradi (`payrollPeriodOf("2026-08")`), sukut esa joriy oy — eski
+ * chaqiruvlar o'zgarishsiz ishlayveradi.
  */
-export async function buildPayrollRows(db: Db): Promise<EmployeePayroll[]> {
-  const p = payrollPeriod();
+export async function buildPayrollRows(db: Db, p: PayrollPeriod = payrollPeriod()): Promise<EmployeePayroll[]> {
   const [employees, bonusRows, penaltyRows, paidBy, percentByTier, carryBy, collectedBy, taxRules] = await Promise.all([
     db.collection<HrEmployee>("hr_employees").find({}).sort({ id: 1 }).toArray(),
     db.collection("bonuses").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),

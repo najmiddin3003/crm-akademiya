@@ -1,4 +1,5 @@
 import type { TaxRule } from "@/lib/taxes";
+import { uzNow } from "@/lib/uzTime";
 
 // Moliya → Oylik chiqarish. MongoDB `salary_runs` kolleksiyasi — har bir
 // yozuv bitta "oylik chiqarish" partiyasi (tanlangan xodimlar bo'yicha
@@ -141,11 +142,66 @@ export interface PayrollPeriod {
   daysIn: number;
 }
 
-export function payrollPeriod(now: Date = new Date()): PayrollPeriod {
+// SUKUT — TOSHKENT soati, `new Date()` emas. Vercel'da server UTC'da
+// ishlaydi va 1-sentabr soat 02:00 (Toshkent) da `new Date()` hali
+// 31-avgustni ko'rsatardi: kassa yozuvlari sentabr sanasi bilan tushar
+// (todayIso() ham uzNow() ga tayanadi), oylik sahifasi esa avgustni
+// hisoblardi. Toshkent brauzerida (UTC+5) `uzNow()` siljish bermaydi,
+// ya'ni mijoz tomonidagi xulq o'zgarmaydi.
+export function payrollPeriod(now: Date = uzNow()): PayrollPeriod {
   const year = now.getFullYear();
   const month = now.getMonth();
   const daysIn = new Date(year, month + 1, 0).getDate();
   return { year, month, day: Math.min(now.getDate(), daysIn), daysIn };
+}
+
+/**
+ * "2026-08" kalitidan davr — oylikni O'TGAN oy uchun hisoblash uchun.
+ *
+ * TUGAGAN oyda `day = daysIn`, ya'ni oy TO'LIQ hisoblanadi. Bu shart:
+ * `payrollBase` okladni `fixedSalary × day / daysIn` bilan bo'ladi, ya'ni
+ * bugungi kun raqami qolib ketsa 1-sentabrda ochilgan AVGUST oyligi 1/31
+ * ga kesilib ketardi. Foizli xodimda `day` umuman ishlatilmaydi — bu qoida
+ * faqat oklad tarmog'iga tegadi.
+ *
+ * JORIY oyda hozirgi xulq saqlanadi: oy boshidan bugungacha (pro-rata).
+ * KELAJAK oyda `day = 0` — hali ishlanmagan oyga oklad hisoblanmaydi.
+ * (Interfeys ham, server ham kelajak oyni tanlashga yo'l qo'ymaydi; bu
+ * shunchaki oxirgi himoya.)
+ *
+ * Noto'g'ri kalit berilsa joriy davr qaytadi — chaqiruvchi hech qachon
+ * ma'nosiz davr olmaydi.
+ */
+export function payrollPeriodOf(monthKey: string, now: Date = uzNow()): PayrollPeriod {
+  const cur = payrollPeriod(now);
+  const m = /^(\d{4})-(\d{2})$/.exec(String(monthKey ?? "").trim());
+  if (!m) return cur;
+  const year = Number(m[1]);
+  const month = Number(m[2]) - 1;
+  if (month < 0 || month > 11) return cur;
+  if (year === cur.year && month === cur.month) return cur;
+  const daysIn = new Date(year, month + 1, 0).getDate();
+  const past = year < cur.year || (year === cur.year && month < cur.month);
+  return { year, month, day: past ? daysIn : 0, daysIn };
+}
+
+/** Kalit "YYYY-MM" shaklidami — so'rov parametrlarini tekshirish uchun. */
+export function isMonthKey(v: unknown): v is string {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(v ?? "").trim());
+}
+
+/**
+ * Davrning OXIRGI kuni, "YYYY-MM-DD".
+ *
+ * O'tgan oy uchun oylik chiqarilganda kassa yozuvining sanasi shu bo'ladi.
+ * NIMA UCHUN bugungi sana EMAS: "to'langan oylik" aynan `date` maydonining
+ * oyi bo'yicha yig'iladi (lib/payrollSources.ts → loadPaidByEmployee). Agar
+ * avgust oyligi sentabr sanasi bilan yozilsa, avgust qayta ochilganda o'sha
+ * summa yana "to'lanmagan" bo'lib ko'rinardi va IKKINCHI marta to'lash
+ * mumkin bo'lardi.
+ */
+export function payrollMonthEndIso(p: PayrollPeriod): string {
+  return `${p.year}-${String(p.month + 1).padStart(2, "0")}-${String(p.daysIn).padStart(2, "0")}`;
 }
 
 /** "1 — 19-avgust (19/31 kun)" */

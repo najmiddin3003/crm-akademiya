@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, DollarSign, History, RotateCcw, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
+import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import type { Cashbox } from "@/lib/cashboxes";
 import {
@@ -13,11 +14,14 @@ import {
   payrollDebt,
   payrollDue,
   payrollEarned,
+  payrollMonthKey,
   payrollPaid,
   payrollPeriod,
   payrollPeriodLabel,
+  payrollPeriodOf,
   payrollTax,
   payrollTaxLines,
+  UZ_MONTHS,
   type EmployeePayroll,
 } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
@@ -54,8 +58,17 @@ interface StatCardProps {
   value: string;
   hint: string;
   tone: "cyan" | "amber" | "blue" | "rose";
+  /**
+   * Yuklanayotganda RAQAM KO'RSATILMAYDI.
+   *
+   * Oy almashtirilganda sarlavha darhol yangi oyni yozadi, qatorlar esa
+   * javob kelguncha eskiligicha qoladi — kartalarda o'sha paytda AVGUST
+   * puli "sentabr" yorlig'i ostida turib qolardi. Bir necha soniya bo'lsa
+   * ham bu noto'g'ri fakt, shuning uchun o'rniga uch nuqta chiqadi.
+   */
+  loading?: boolean;
 }
-function StatCard({ label, value, hint, tone }: StatCardProps) {
+function StatCard({ label, value, hint, tone, loading = false }: StatCardProps) {
   const tones = {
     cyan:  { bar: "bg-cyan-500",  text: "text-cyan-500",  dot: "bg-cyan-500" },
     amber: { bar: "bg-amber-500", text: "text-amber-500", dot: "bg-amber-500" },
@@ -69,7 +82,9 @@ function StatCard({ label, value, hint, tone }: StatCardProps) {
         <span className={`inline-block w-1.5 h-1.5 rounded-full ${tones.dot}`} />
         {label}
       </div>
-      <div className={`mt-1.5 text-[22px] font-bold tabular-nums leading-tight ${tones.text}`}>{value}</div>
+      <div className={`mt-1.5 text-[22px] font-bold tabular-nums leading-tight ${tones.text}`}>
+        {loading ? <span className="text-muted-foreground">…</span> : value}
+      </div>
       <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>
     </div>
   );
@@ -93,22 +108,71 @@ export default function SalaryCreatePage() {
   const [hisoblash, setHisoblash] = useState<HisoblashFilter>("all");
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
-  const period = useMemo(() => payrollPeriod(), []);
+  // QAYSI OY hisoblanadi. Sukut — joriy oy, ya'ni sahifa ochilgandagi xulq
+  // avvalgidek qoladi.
+  //
+  // NIMA UCHUN OY TANLAGICH KERAK: kassir Kirim oynasida sanani o'tgan oyga
+  // qo'yishi mumkin va yozuv bazaga o'sha sana bilan tushadi. Ilgari oylik
+  // hisobi doim server soatidagi joriy oyni olardi, ya'ni o'sha to'lov
+  // o'qituvchining o'tgan oy foiziga hech qachon qo'shilmasdi — uni
+  // ko'rsatadigan ekranning o'zi yo'q edi. Yangi oy boshlangan kuni esa
+  // o'tgan oyning butun tushumi ko'zdan g'oyib bo'lardi.
+  const currentMonthKey = useMemo(() => payrollMonthKey(payrollPeriod()), []);
+  const [monthKey, setMonthKey] = useState(currentMonthKey);
+  const period = useMemo(() => payrollPeriodOf(monthKey), [monthKey]);
   const periodLabel = useMemo(() => payrollPeriodLabel(period), [period]);
+  const isPastMonth = monthKey < currentMonthKey;
+  // KELAJAK oy ham ko'riladi (o'quvchi oldindan to'lashi mumkin), lekin
+  // undan pul CHIQARILMAYDI — hali ishlanmagan oy uchun oylik berilmaydi.
+  // Server ham rad etadi, bu shunchaki tugmani oldindan o'chirib qo'yadi.
+  const isFutureMonth = monthKey > currentMonthKey;
+  const monthLabel = `${UZ_MONTHS[period.month]} ${period.year}`;
+  // Sarlavhalar oyga qarab o'zgaradi: "shu kungacha" faqat JORIY oyda
+  // to'g'ri — tugagan oy to'liq hisoblanadi, kelajak oyda esa umuman
+  // hisoblanmaydi (faqat oldindan tushgan pul ko'rinadi).
+  const calcSuffix = isPastMonth ? "to'liq oy" : isFutureMonth ? "oldindan" : "shu kungacha";
+  // Kelajak oyda davr yorlig'i "1 — 0-oktabr (0/31 kun)" bo'lib chiqadi —
+  // izohlarda uning o'rniga oddiy oy nomi ko'rsatiladi.
+  const periodHint = isFutureMonth ? monthLabel : periodLabel;
 
-  function fetchRows() {
-    return fetch("/api/salary-runs/employees-payroll")
+  // Kechikkan javob YANGI oyning raqamlarini bosib ketmasin: har so'rovga
+  // tartib raqami beriladi va faqat eng oxirgisi holatni yozadi (oy tez-tez
+  // almashtirilsa javoblar tartibsiz kelishi mumkin).
+  const reqSeq = useRef(0);
+  const fetchRows = useCallback(() => {
+    const seq = ++reqSeq.current;
+    return fetch(`/api/salary-runs/employees-payroll?month=${monthKey}`)
       .then((r) => r.json())
-      .then((d) => { if (d.ok) setEmployees(d.employees); })
-      .finally(() => setLoading(false));
-  }
+      .then((d) => { if (seq === reqSeq.current && d.ok) setEmployees(d.employees); })
+      .finally(() => { if (seq === reqSeq.current) setLoading(false); });
+  }, [monthKey]);
+
   /** "Qayta hisoblash" tugmasi — spinnerni qayta yoqadi. */
   function load() {
     setLoading(true);
     fetchRows();
   }
-  // Effekt tanasida setState chaqirilmaydi (`loading` boshlanishida true).
-  useEffect(() => { fetchRows(); }, []);
+  /**
+   * Oyni almashtirish. Tanlov TOZALANADI — boshqa oyda tanlangan xodimlar
+   * bo'yicha oylik chiqarib yuborish jiddiy xato bo'lardi.
+   * `setLoading` shu yerda, effekt tanasida emas: birinchi renderda `loading`
+   * allaqachon true va ortiqcha render zanjiri kerak emas.
+   */
+  function changeMonth(next: string) {
+    if (next === monthKey) return;
+    setMonthKey(next);
+    setSelected(new Set());
+    setLoading(true);
+    // Eski oyning qatorlari TOZALANADI. Sarlavha darhol yangi oyni yozadi,
+    // javob esa bir necha soniyadan keyin keladi — orada jadval "sentabr"
+    // sarlavhasi ostida avgust qatorlarini ko'rsatib turardi (masalan
+    // "450 000 × 50%"), ya'ni ekranda noto'g'ri fakt turardi. Endi o'rniga
+    // yuklash belgisi chiqadi.
+    setEmployees([]);
+  }
+  // `fetchRows` oyga bog'langan — oy o'zgarsa qatorlar o'z-o'zidan qayta
+  // yuklanadi.
+  useEffect(() => { fetchRows(); }, [fetchRows]);
 
   // Kassalar — arxivdagilar tanlovga chiqmaydi. Bosh kassa sukut bo'yicha
   // tanlanadi (odatda oylik shundan chiqariladi), lekin o'zgartirsa bo'ladi.
@@ -207,7 +271,7 @@ export default function SalaryCreatePage() {
   // Kassalar sahifasidagi Chiqim oynasi ham shunday tekshiradi.
   const available = activeCashbox && methodKey ? Number(activeCashbox.methodTotals?.[methodKey]) || 0 : 0;
   const notEnough = payoutTotal > 0 && available < payoutTotal;
-  const canPayout = Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0 && !notEnough;
+  const canPayout = Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0 && !notEnough && !isFutureMonth;
 
   async function confirmPayout() {
     setSaving(true);
@@ -215,7 +279,11 @@ export default function SalaryCreatePage() {
       const res = await fetch("/api/salary-runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeIds: Array.from(selected), cashboxId: Number(cashboxId), method: methodKey }),
+        // `month` — pul QAYSI oy hisobi uchun chiqayotgani. Serverda
+        // chiqim yozuvining sanasi ham shu oy ichida bo'ladi, aks holda
+        // o'tgan oy qayta ochilganda summa yana "to'lanmagan" bo'lib
+        // ko'rinardi (app/api/salary-runs/route.ts → entryDate).
+        body: JSON.stringify({ employeeIds: Array.from(selected), cashboxId: Number(cashboxId), method: methodKey, month: monthKey }),
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
@@ -260,9 +328,31 @@ export default function SalaryCreatePage() {
           yuqori sahifa yo'q. Tarixga o'tish o'ng tomondagi tugmada. */}
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-[18px] md:text-[20px] font-bold">Oylik hisob-kitob</h1>
-        <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-primary/10 text-primary text-[12px] font-semibold">
-          {periodLabel}
-        </span>
+        {/* Oy tanlagich — o'tgan oyni QAYTA hisoblash uchun. */}
+        <MonthYearPicker
+          className="w-[124px]"
+          value={{ month: period.month + 1, year: period.year }}
+          onChange={(v) => changeMonth(`${v.year}-${String(v.month).padStart(2, "0")}`)}
+        />
+        {/* Kelajak oyda davr yorlig'i ma'nosiz ("0-oktabr") — o'rniga
+            nima ko'rsatilayotgani aytiladi. */}
+        {!isFutureMonth && (
+          <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-primary/10 text-primary text-[12px] font-semibold">
+            {periodLabel}
+          </span>
+        )}
+        {isPastMonth && (
+          // Tugagan oy TO'LIQ hisoblanadi (oklad kesilmaydi) — foydalanuvchi
+          // joriy oydagi "shu kungacha" hisobidan farqini ko'rib tursin.
+          <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[12px] font-semibold">
+            {`${monthLabel} — tugagan oy, to'liq hisoblanadi`}
+          </span>
+        )}
+        {isFutureMonth && (
+          <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[12px] font-semibold">
+            {`${monthLabel} — oldindan tushgan pul, oylik chiqarilmaydi`}
+          </span>
+        )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Link
             href="/finance-payroll/history"
@@ -280,7 +370,8 @@ export default function SalaryCreatePage() {
           </button>
           <button
             onClick={() => setConfirmOpen(true)}
-            disabled={selectedCount === 0}
+            disabled={selectedCount === 0 || isFutureMonth}
+            title={isFutureMonth ? "Kelajak oy uchun oylik chiqarilmaydi" : undefined}
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <DollarSign className="w-4 h-4" />
@@ -296,21 +387,24 @@ export default function SalaryCreatePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard
           tone="cyan"
-          label="Hisoblangan oylik (shu kungacha)"
+          label={`Hisoblangan oylik (${calcSuffix})`}
           value={fmtSum(stats.hisoblangan)}
-          hint={`${employees.length} ta xodim · ${periodLabel}`}
+          hint={`${employees.length} ta xodim · ${periodHint}`}
+          loading={loading}
         />
         <StatCard
           tone="amber"
           label="Berilgan avans"
           value={fmtSum(stats.avans)}
           hint="oylikdan ushlab qolinadi"
+          loading={loading}
         />
         <StatCard
           tone="blue"
           label="To'langan oylik"
           value={fmtSum(stats.tolangan)}
           hint="kassadan chiqarilgan"
+          loading={loading}
         />
         <StatCard
           tone="rose"
@@ -321,6 +415,7 @@ export default function SalaryCreatePage() {
               ? `o'tgan oydan: ${fmtSum(stats.otganOydan)} · xodim qarzi: ${fmtSum(stats.qarzdorlik)}`
               : `shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}`
           }
+          loading={loading}
         />
       </div>
 
@@ -395,7 +490,7 @@ export default function SalaryCreatePage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;liq ismi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Turi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Hisob-kitob (shu kungacha)</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{`Hisob-kitob (${calcSuffix})`}</th>
                 {/* Asosiy hisob zanjiri yonma-yon: hisoblangan → soliq →
                     olinganlar → qolgan. Bonus va jarima kamdan-kam
                     to'ldiriladi, shuning uchun ular OXIRGA surildi. */}
@@ -551,12 +646,24 @@ export default function SalaryCreatePage() {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setConfirmOpen(false)} />
           <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6">
+            {/* QAYSI OY — tasdiqlash oynasida ko'rinishi SHART: o'tgan oy
+                tanlangan holda tugma bosilsa, pul boshqa oyning hisobiga
+                chiqadi va buni keyin faqat chiqarishni o'chirib qaytarish
+                mumkin. */}
             <p className="text-center text-[15px] font-semibold">
-              {selectedCount} ta xodim uchun oylik chiqariladi
+              {`${monthLabel} — ${selectedCount} ta xodim uchun oylik chiqariladi`}
             </p>
             <p className="text-center text-[12.5px] text-muted-foreground mt-1">
               Pul tanlangan kassadan chiqadi va Tranzaksiyalar jurnaliga yoziladi.
             </p>
+            {isPastMonth && (
+              // Jurnaldagi sana o'sha oyning oxirgi kuni bo'ladi — aks holda
+              // "to'langan oylik" o'tgan oyga bog'lanmasdi va bir summa ikki
+              // marta chiqarilishi mumkin edi (app/api/salary-runs/route.ts).
+              <p className="text-center text-[12.5px] text-amber-600 dark:text-amber-500 mt-1">
+                {`Chiqim yozuvi ${monthLabel} oyining oxirgi kuni bilan qayd etiladi.`}
+              </p>
+            )}
 
             <div className="mt-4 space-y-3">
               <div>
