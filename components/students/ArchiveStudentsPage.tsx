@@ -3,10 +3,12 @@
 import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Filter, MoreVertical, X } from "lucide-react";
+import { CreditCard, Filter, MessageSquare, MoreVertical, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import SmsModal from "@/components/orders/SmsModal";
+import { useToast } from "@/components/ui/Toast";
 import { useStudents } from "@/hooks/useStudents";
 import { useGroups } from "@/hooks/useGroups";
 import {
@@ -135,6 +137,10 @@ export default function ArchiveStudentsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const moreRef = useRef<HTMLDivElement>(null);
+  // Qator amallari: xabar oynasi va "Sababi" ustunidagi to'liq matn.
+  const [smsFor, setSmsFor] = useState<{ name: string; phone: string } | null>(null);
+  const [reasonFor, setReasonFor] = useState<{ name: string; reason: string; date: string } | null>(null);
+  const { showSuccess, showError } = useToast();
 
   const loading = pupilsLoading || groupsLoading || balancesLoading;
 
@@ -261,7 +267,7 @@ export default function ArchiveStudentsPage() {
       fmtIsoDate(r.student.statusChangedAt),
       r.student.statusReason,
       "", // Oldingi holati — status tarixi saqlanmaydi, faqat joriy status bor.
-      "", // Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan.
+      "yo'q", // Shartnoma — `contracts` o'quvchiga bog'lanmagan, ya'ni yo'q. Ekranda "x" turadi; bo'sh katak "bilinmadi" degan boshqa ma'no berardi.
     ]);
   }
   function exportCSV() {
@@ -391,6 +397,7 @@ export default function ArchiveStudentsPage() {
                 <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Oldingi holati</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
+                <th className="px-3 py-3 w-20" />
               </tr>
             </thead>
             <tbody>
@@ -431,25 +438,71 @@ export default function ArchiveStudentsPage() {
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
                   {/* Arxivlangan sana — haqiqiy pupils.statusChangedAt. */}
                   <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{r.student.statusChangedAt ? fmtIsoDate(r.student.statusChangedAt) : "—"}</td>
-                  {/* Sababi — haqiqiy pupils.statusReason (arxivlashda majburiy). */}
-                  <td className="px-3 py-3 text-[13px]">{r.student.statusReason || "—"}</td>
+                  {/* Sababi — haqiqiy pupils.statusReason (arxivlashda majburiy).
+                      Sabab uzun bo'lishi mumkin, jadval katagi esa uni kesib
+                      qo'yadi — shu bois ustiga bosilsa to'liq matn oynada
+                      chiqadi. Sababsiz qatorda bosiladigan narsa yo'q. */}
+                  <td className="px-3 py-3 text-[13px] max-w-[220px]">
+                    {r.student.statusReason ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReasonFor({
+                            name: r.student.name,
+                            reason: r.student.statusReason || "",
+                            date: r.student.statusChangedAt ? fmtIsoDate(r.student.statusChangedAt) : "",
+                          })
+                        }
+                        title="To'liq sababni ko'rish"
+                        className="text-left truncate max-w-full hover:text-primary hover:underline"
+                      >
+                        {r.student.statusReason}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   {/* Oldingi holati — status tarixi saqlanmaydi: hujjatda faqat
                       joriy status bor, o'zgarishlar jurnali yo'q. */}
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
-                  {/* Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan (studentId yo'q). */}
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>
+                  {/* Shartnoma — `contracts` kolleksiyasi o'quvchiga bog'lanmagan
+                      (studentId yo'q), ya'ni birorta o'quvchida shartnoma YO'Q.
+                      "—" (bilmayman) emas, aynan "x" (yo'q) — o'quvchilar
+                      ro'yxatidagi ustun bilan bir xil ko'rinish. */}
+                  <td className="px-3 py-3 text-[13px]"><X className="h-4 w-4 text-rose-500" /></td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1 text-primary">
+                      {/* ?src=list — yuqoridagi ism havolasidagi bilan bir xil
+                          sabab: id fazolari kesishadi. */}
+                      <Link
+                        title="To'lovlar"
+                        href={`/student-edit/${r.student.id}?src=list&tab=tranzaksiya`}
+                        className="p-1.5 rounded-md hover:bg-secondary"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                      </Link>
+                      <button
+                        title={r.student.phone ? "Xabar" : "Telefon raqam yo'q"}
+                        disabled={!r.student.phone}
+                        onClick={() => setSmsFor({ name: r.student.name, phone: r.student.phone })}
+                        className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {loading && (
                 <tr>
-                  <td colSpan={15} className="px-3">
+                  <td colSpan={16} className="px-3">
                     <SpinnerBlock />
                   </td>
                 </tr>
               )}
               {!loading && slice.length === 0 && (
                 <tr>
-                  <td colSpan={15} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={16} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
                 </tr>
               )}
             </tbody>
@@ -463,6 +516,46 @@ export default function ArchiveStudentsPage() {
           onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
         />
       </div>
+
+      {smsFor && (
+        <SmsModal
+          studentName={smsFor.name}
+          phone={smsFor.phone}
+          onClose={() => setSmsFor(null)}
+          onSent={({ simulated }) => {
+            if (simulated) showError("SMS jo'natilmadi: Eskiz sozlanmagan (jurnalga yozildi)");
+            else showSuccess("SMS yuborildi");
+            setSmsFor(null);
+          }}
+          onError={showError}
+        />
+      )}
+
+      {reasonFor && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setReasonFor(null)} />
+          <div className="relative w-full max-w-md rounded-xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+              <h3 className="text-[15px] font-semibold flex-1">Arxivlash sababi</h3>
+              <button onClick={() => setReasonFor(null)} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="font-medium">{reasonFor.name}</span>
+                {reasonFor.date && <span className="text-muted-foreground tabular-nums">{reasonFor.date}</span>}
+              </div>
+              <p className="text-sm whitespace-pre-wrap break-words">{reasonFor.reason}</p>
+            </div>
+            <div className="flex justify-end px-5 py-4 border-t border-border">
+              <button onClick={() => setReasonFor(null)} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
+                Yopish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
