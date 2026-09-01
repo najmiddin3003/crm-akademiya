@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Bell, CalendarCheck, CalendarClock, CalendarX2, CheckCircle2,
@@ -186,13 +186,32 @@ export default function FirstLessonsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Menyu tashqarisiga bosilganda yopiladi.
+  //
+  // NIMA NOTO'G'RI EDI: bu yerda shunchaki `close` turardi, menyuda esa
+  // `onMouseDown={(e) => e.stopPropagation()}` bilan himoya qilinardi. U
+  // ISHLAMAYDI: React 18+ hodisalarni ROOT KONTEYNERGA ulaydi, ya'ni
+  // quyidagi `document` tinglovchisi bilan BIR XIL tugunga. Bir tugundagi
+  // boshqa tinglovchini `stopPropagation()` to'xtatmaydi (buning uchun
+  // `stopImmediatePropagation` kerak).
+  //
+  // Natijada `mousedown` da menyu YOPILIB ketardi va `click` endi mavjud
+  // bo'lmagan tugmaga tushmasdi — foydalanuvchi uchun bu "menyu bandlari
+  // umuman ishlamaydi" bo'lib ko'rinardi. Yechim: hodisa MANBASINI
+  // tekshirish (loyihadagi qolgan menyular ham shunday qiladi).
+  const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menuFor) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (t && menuRef.current?.contains(t)) return;
+      setMenuFor(null);
+    };
     const close = () => setMenuFor(null);
-    document.addEventListener("mousedown", close);
+    document.addEventListener("mousedown", onDown);
     window.addEventListener("scroll", close, true);
     return () => {
-      document.removeEventListener("mousedown", close);
+      document.removeEventListener("mousedown", onDown);
       window.removeEventListener("scroll", close, true);
     };
   }, [menuFor]);
@@ -643,7 +662,10 @@ export default function FirstLessonsPage() {
                       type="button"
                       className="fl-row-actions-btn"
                       title="Amallar"
-                      onMouseDown={(e) => e.stopPropagation()}
+                      // `onMouseDown` da `stopPropagation()` YO'Q — u bu
+                      // yerda hech narsa qilmasdi (yuqoridagi izohga qarang),
+                      // faqat ishlayotgandek ko'rinardi. Menyuni yopish
+                      // endi manbani tekshirish bilan hal qilinadi.
                       onClick={(e) => {
                         const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         setMenuFor({ order: o, top: r.bottom + 6, left: Math.max(8, r.right - 220) });
@@ -678,9 +700,9 @@ export default function FirstLessonsPage() {
       {/* "⋮" amallar menyusi */}
       {menuFor && (
         <div
+          ref={menuRef}
           className="fl-action-menu"
           style={{ top: menuFor.top, left: menuFor.left }}
-          onMouseDown={(e) => e.stopPropagation()}
         >
           <a className="fl-action-btn-row" href={telHref(menuFor.order.phone) ? `tel:${telHref(menuFor.order.phone)}` : undefined} onClick={() => setMenuFor(null)}>
             <Phone /> Telefon qilish
