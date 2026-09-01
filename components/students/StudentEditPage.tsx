@@ -49,6 +49,7 @@ import PhoneField from "@/components/students/fields/PhoneField";
 import SelectField from "@/components/students/fields/SelectField";
 import DateField from "@/components/students/fields/DateField";
 import { invalidateStudents } from "@/hooks/useStudents";
+import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
 
 // Ported from crm-akademiya/src/app.js renderStudentEdit() / renderStudentEditTahrirlash()
 // (~line 34100-35000, view: 'student-edit'). Only the "Tahrirlash" tab has real
@@ -123,6 +124,31 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   // dars/majburiyat hisobi yo'q — soxta 0 o'rniga "—" ko'rsatamiz.
   const qolganDarslar: number | null = null;
   const tolanishKerak: number | null = null;
+
+  // Chap kartaning ma'lumoti. Qoidalar xodim profilidagi bilan bir xil
+  // (components/shared/ProfileSideCard.tsx): "…" — yuklanmoqda, "—" —
+  // manba yo'q. Soxta 0 yozilmaydi.
+  const initials = order.name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  const stats: ProfileStat[] = [
+    {
+      label: "Qolgan darslar soni",
+      value: String(qolganDarslar ?? "—"),
+      wrap: "bg-sky-500/10 text-sky-600",
+      icon: <svg className="icon icon-sm"><use href="#i-book" /></svg>,
+    },
+    {
+      label: "To'lanish kerak",
+      value: tolanishKerak === null ? "—" : `${fmtSpace(tolanishKerak)} UZS`,
+      wrap: "bg-amber-500/10 text-amber-600",
+      icon: <svg className="icon icon-sm"><use href="#i-wallet" /></svg>,
+    },
+    {
+      label: "Balans",
+      value: entriesLoading ? "…" : `${fmtSpace(balans)} UZS`,
+      wrap: "bg-emerald-500/10 text-emerald-600",
+      icon: <svg className="icon icon-sm"><use href="#i-shield" /></svg>,
+    },
+  ];
 
   // Boshlangʻich tab ?tab= dan keladi — oʻquvchilar roʻyxatidagi qator
   // ikonkalari toʻgʻridan-toʻgʻri kerakli tabga olib boradi.
@@ -215,84 +241,67 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   };
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-      <div className="student-edit-layout">
+    // Kenglik va grid xodim profili bilan AYNAN bir xil
+    // (EmployeeProfilePage.tsx) — ilgari bu yerda qo'lda yozilgan
+    // `.student-edit-layout` (chap ustun 30%) turardi va shu sababli ikkala
+    // profil ekrani har xil kenglikda edi.
+    <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         {/* LEFT SIDEBAR — Student card */}
-        <aside className="space-y-3">
-          <div className="rounded-2xl bg-card border border-border p-5 text-center">
-            <div className="relative inline-block">
-              <div className="h-28 w-28 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 mx-auto flex items-center justify-center text-5xl text-slate-400 dark:text-slate-500">
-                <svg viewBox="0 0 24 24" className="w-16 h-16" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                </svg>
-              </div>
-              <button type="button" className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-primary text-white inline-flex items-center justify-center shadow-md hover:opacity-90" title="Rasm yuklash">
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              </button>
-            </div>
-            <h3 className="text-[16px] font-bold tracking-tight mt-3">{order.name}</h3>
-            <div className="flex items-center justify-center gap-1.5 mt-1 text-[13px] text-muted-foreground">
-              <span>{phone}</span>
-              <button type="button" className="h-5 w-5 inline-flex items-center justify-center hover:text-foreground" title="Nusxa olish">
-                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              </button>
-            </div>
-            {/* Quick action buttons */}
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <button type="button" className="h-9 w-9 rounded-full bg-violet-500/15 text-violet-600 inline-flex items-center justify-center hover:bg-violet-500/25" title="Xabar yuborish">
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </svg>
-              </button>
-              <button type="button" className="h-9 w-9 rounded-full bg-emerald-500/15 text-emerald-600 inline-flex items-center justify-center hover:bg-emerald-500/25" title="To'lov">
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="1" x2="12" y2="23" />
-                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-              </button>
-              <button type="button" className="h-9 w-9 rounded-full bg-rose-500/15 text-rose-600 inline-flex items-center justify-center hover:bg-rose-500/25" title="Qo'ng'iroq qilish">
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-            <div className="flex items-center gap-3 p-4">
-              <span className="h-10 w-10 rounded-lg bg-sky-500/10 text-sky-600 inline-flex items-center justify-center flex-shrink-0">
-                <svg className="icon icon-sm"><use href="#i-book" /></svg>
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[12px] text-muted-foreground">Qolgan darslar soni</div>
-                <div className="text-[15px] font-bold tabular-nums">{qolganDarslar ?? "—"}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4">
-              <span className="h-10 w-10 rounded-lg bg-amber-500/10 text-amber-600 inline-flex items-center justify-center flex-shrink-0">
-                <svg className="icon icon-sm"><use href="#i-wallet" /></svg>
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[12px] text-muted-foreground">To&apos;lanish kerak</div>
-                <div className="text-[15px] font-bold tabular-nums">{tolanishKerak === null ? "—" : `${fmtSpace(tolanishKerak)} UZS`}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4">
-              <span className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-600 inline-flex items-center justify-center flex-shrink-0">
-                <svg className="icon icon-sm"><use href="#i-shield" /></svg>
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[12px] text-muted-foreground">Balans</div>
-                <div className="text-[15px] font-bold tabular-nums">{entriesLoading ? "…" : `${fmtSpace(balans)} UZS`}</div>
-              </div>
-            </div>
-          </div>
+        <aside className="space-y-4">
+          {/* Sarlavha va statistika BITTA kartada — xodim profili bilan
+              bir xil (components/shared/ProfileSideCard.tsx). Ilgari ular
+              ikkita alohida karta edi va ikkala sahifada turlicha yig'ilgandi. */}
+          <ProfileSideCard
+            name={order.name}
+            phone={phone}
+            onCopyPhone={() => { navigator.clipboard?.writeText(phone); showSuccess("Nusxa olindi"); }}
+            initials={initials}
+            badge={null}
+            stats={stats}
+            // Kamera tugmasi namunada bor, shuning uchun ko'rinishda
+            // saqlanadi. DIQQAT: u ilgari ham hech narsa qilmasdi va hozir
+            // ham qilmaydi — `Pupil`/`Order` tipida `photoUrl` maydoni yo'q,
+            // ya'ni o'quvchi rasmini saqlaydigan joy hali qurilmagan.
+            // Bu yerda ataylab bo'sh qoldirilgan: xulqni o'zgartirish
+            // (masalan xato xabari chiqarish) alohida qaror.
+            onPhotoUpload={() => {}}
+            actions={[
+              {
+                key: "message",
+                title: "Xabar yuborish",
+                cls: "bg-violet-500/15 text-violet-600 hover:bg-violet-500/25",
+                icon: (
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                ),
+              },
+              {
+                key: "payment",
+                title: "To'lov",
+                cls: "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25",
+                icon: (
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="1" x2="12" y2="23" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                ),
+              },
+              // Xodim profilidagi bilan bir xil: telefon ilovasini ochamiz.
+              {
+                key: "call",
+                title: "Qo'ng'iroq qilish",
+                cls: "bg-rose-500/15 text-rose-600 hover:bg-rose-500/25",
+                href: `tel:${phone.replace(/\s/g, "")}`,
+                icon: (
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                ),
+              },
+            ]}
+          />
           {/* Info cards */}
         </aside>
 

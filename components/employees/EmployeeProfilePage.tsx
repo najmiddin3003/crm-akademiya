@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Archive, ArchiveRestore, ArrowLeft, Briefcase, Check, ChevronDown, Copy, CreditCard,
+  Archive, ArchiveRestore, ArrowLeft, Briefcase, Check, ChevronDown, CreditCard,
   DollarSign, Edit, Frown, KeyRound, Lock, MoreVertical, Percent, Phone, Settings, XCircle,
 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
@@ -28,6 +28,7 @@ import {
   UnpaidHistoryTab, UnpaidTab, WorkHoursTab, buildLedger, type UnpaidRow,
 } from "./EmployeeProfileTabs";
 import PersonLink from "@/components/shared/PersonDirectory";
+import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
@@ -43,30 +44,26 @@ function nf(n: number): string {
   return sign + Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
 }
 
-interface Stat {
-  label: string;
-  value: string;
-  icon: ComponentType<{ className?: string }>;
-  wrap: string;
-  valueCls?: string;
-}
-
 // Chap kartadagi moliyaviy ko'rsatkichlar. Manbasi bor uchtasi haqiqiy
 // hisoblanadi (Bonus, Jarima, Avans); qolganlari uchun tizimda hali
 // dars/majburiyat hisobi yo'q — soxta "0 UZS" o'rniga "—" ko'rsatamiz,
 // aks holda raqam bor-u, ortida hech narsa yo'qdek tuyuladi.
-function buildStats(bonus: number, jarima: number, avans: number, oylik: number, ready: boolean): Stat[] {
+//
+// `icon` — TAYYOR element (ProfileSideCard shunday kutadi): o'quvchi
+// profilida ikonkalar global sprite'dan keladi, bu yerda lucide'dan, ya'ni
+// umumiy komponent ikkalasini ham bir xil qabul qila olishi kerak.
+function buildStats(bonus: number, jarima: number, avans: number, oylik: number, ready: boolean): ProfileStat[] {
   const v = (n: number) => (ready ? nf(n) : "…");
   const none = ready ? "—" : "…";
   return [
-    { label: "Davomat", value: none, icon: Check, wrap: "bg-emerald-100 text-emerald-600" },
-    { label: "Davomatdan foizi", value: none, icon: Percent, wrap: "bg-blue-100 text-blue-600" },
-    { label: "Bonus", value: v(bonus), icon: Lock, wrap: "bg-violet-100 text-violet-700" },
-    { label: "Avans", value: v(avans), icon: XCircle, wrap: "bg-rose-100 text-rose-600", valueCls: avans > 0 ? "text-rose-600" : "" },
-    { label: "Jarima", value: v(jarima), icon: Frown, wrap: "bg-amber-100 text-amber-600" },
-    { label: "Akladi", value: none, icon: Briefcase, wrap: "bg-secondary text-foreground/70" },
-    { label: "Oylik", value: v(oylik), icon: CreditCard, wrap: "bg-blue-100 text-blue-700" },
-    { label: "To'lanmagan", value: none, icon: DollarSign, wrap: "bg-emerald-100 text-emerald-700" },
+    { label: "Davomat", value: none, icon: <Check className="w-4 h-4" />, wrap: "bg-emerald-100 text-emerald-600" },
+    { label: "Davomatdan foizi", value: none, icon: <Percent className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-600" },
+    { label: "Bonus", value: v(bonus), icon: <Lock className="w-4 h-4" />, wrap: "bg-violet-100 text-violet-700" },
+    { label: "Avans", value: v(avans), icon: <XCircle className="w-4 h-4" />, wrap: "bg-rose-100 text-rose-600", valueCls: avans > 0 ? "text-rose-600" : "" },
+    { label: "Jarima", value: v(jarima), icon: <Frown className="w-4 h-4" />, wrap: "bg-amber-100 text-amber-600" },
+    { label: "Akladi", value: none, icon: <Briefcase className="w-4 h-4" />, wrap: "bg-secondary text-foreground/70" },
+    { label: "Oylik", value: v(oylik), icon: <CreditCard className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-700" },
+    { label: "To'lanmagan", value: none, icon: <DollarSign className="w-4 h-4" />, wrap: "bg-emerald-100 text-emerald-700" },
   ];
 }
 
@@ -106,12 +103,14 @@ const ROLE_BADGE: Record<string, string> = {
 // Kartochka ostidagi to'rtta amal — referensdagi tartib va tooltiplar:
 // [Parol qo'shish] [<Rol>ni arxivlash] [Qo'ng'iroq qilish] [Tahrirlash].
 // Ilgari birinchisi "Guruhlar" edi — referensda unaqasi yo'q.
+// Doira tugmalar — o'quvchi profilidagi bilan bir xil pastel uslub
+// (ProfileSideCard ikkalasini ham shu ko'rinishda chizadi).
 const ACTION_CLS = {
-  key: "bg-blue-50 hover:bg-blue-100 text-blue-700",
-  archive: "bg-amber-50 hover:bg-amber-100 text-amber-700",
-  restore: "bg-emerald-50 hover:bg-emerald-100 text-emerald-700",
-  call: "bg-emerald-50 hover:bg-emerald-200 text-emerald-700",
-  edit: "bg-secondary hover:bg-secondary/80 text-foreground",
+  key: "bg-blue-500/15 text-blue-600 hover:bg-blue-500/25",
+  archive: "bg-amber-500/15 text-amber-600 hover:bg-amber-500/25",
+  restore: "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25",
+  call: "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25",
+  edit: "bg-secondary text-foreground hover:bg-secondary/80",
 };
 
 export default function EmployeeProfilePage({ id }: { id: number }) {
@@ -126,9 +125,6 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   const [moreOpen, setMoreOpen] = useState(false);
   // null — modal yopiq; aks holda qaysi amal so'ralayotgani.
   const [archiveMode, setArchiveMode] = useState<ArchiveMode | null>(null);
-  // Cloudinary'dagi rasm o'chirilgan yoki havola buzilgan bo'lsa, singan
-  // rasm belgisi o'rniga harflarga qaytamiz.
-  const [photoFailed, setPhotoFailed] = useState(false);
   // Moliyaviy ma'lumot (haqiqiy, backend'dan).
   // "O'quvchilar to'lovlari" endi TO'LIQ ro'yxat sifatida yuklanmaydi.
   //
@@ -397,7 +393,6 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // Alohida "holat" maydoni yo'q: `archReason` to'lgan bo'lsa — arxivda.
   // EmployeesListPage dagi "Holat" filtri ham aynan shu belgiga qaraydi.
   const archived = Boolean(emp.archReason);
-  const showPhoto = Boolean(emp.photoUrl) && !photoFailed;
 
   function selectTab(tabId: string) {
     setActiveTab(tabId);
@@ -512,124 +507,75 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         {/* LEFT */}
         <aside className="space-y-4">
-          <div className="rounded-2xl bg-card border border-border p-5">
-            <div className="flex flex-col items-center text-center">
-              <div className="relative">
-                {/* Cloudinary'ga rasm yuklangan bo'lsa — o'sha; bo'lmasa
-                    (yoki havola ishlamasa) avvalgidek bosh harflar. */}
-                {showPhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={emp.photoUrl}
-                    alt={emp.name}
-                    onError={() => setPhotoFailed(true)}
-                    // O'lcham INLINE berilgan. Sabab: Tailwind preflight'idagi
-                    // `img, video { height: auto }` qoidasi qatlamsiz (unlayered)
-                    // CSS'dan keladi va u `@layer utilities` ichidagi `.h-24`
-                    // dan HAR DOIM ustun turadi — spesifiklikdan qat'i nazar.
-                    // Natijada `w-24 h-24` bilan rasm 96x64 bo'lib cho'zilardi
-                    // (brauzerda o'lchangan). Harfli variant esa <div> bo'lgani
-                    // uchun bu qoidaga tushmaydi va 96x96 bo'lib qolaveradi.
-                    style={{ width: 96, height: 96, objectFit: "cover" }}
-                    className="rounded-full shadow-lg"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-700 via-blue-500 to-cyan-300 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                    <span>{initials}</span>
-                  </div>
-                )}
-                <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-white shadow ${ROLE_BADGE[emp.turi] ?? "bg-slate-400"}`}>
-                  {roleLabel}
-                </span>
-              </div>
-              <h2 className="mt-4 text-[17px] font-bold tracking-tight">{emp.name}</h2>
-              <div className="mt-1 inline-flex items-center gap-1 text-[13px] text-muted-foreground">
-                <span className="tabular-nums">{phone}</span>
-                <button onClick={() => { navigator.clipboard?.writeText(phone); showSuccess("Nusxa olindi"); }} className="hover:text-primary" title="Nusxa olish">
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              {archived && (
-                <div className="mt-3 w-full rounded-lg bg-amber-50 px-3 py-2 text-left text-[12px] text-amber-700">
-                  <div className="font-semibold">Arxivlangan</div>
-                  {/* Yagona shablon-satr — JSX matni ifoda bilan yonma-yon
-                      yozilsa probel yo'qoladi (README'dagi tuzoq). */}
-                  <div className="mt-0.5">
-                    {`Sabab: ${emp.archReason}${emp.archDate ? ` · ${emp.archDate}` : ""}`}
-                  </div>
+          {/* Sarlavha va statistika BITTA kartada — o'quvchi profili bilan
+              bir xil (components/shared/ProfileSideCard.tsx). Ilgari ular
+              ikkita alohida karta edi va ikkala sahifada turlicha yig'ilgandi. */}
+          <ProfileSideCard
+            name={emp.name}
+            phone={phone}
+            onCopyPhone={() => { navigator.clipboard?.writeText(phone); showSuccess("Nusxa olindi"); }}
+            photoUrl={emp.photoUrl}
+            initials={initials}
+            badge={{ label: roleLabel, cls: ROLE_BADGE[emp.turi] ?? "bg-slate-400" }}
+            stats={stats}
+            actions={[
+              // Ilgari bu tugma faqat "(demo)" toast chiqarardi. Xodimga
+              // tizim paroli Boshqaruv → Xodimlar sahifasidan beriladi,
+              // shu bois bu yerda u ish haqi sozlamasini ochadi.
+              {
+                key: "salary",
+                title: "Ish haqini sozlash",
+                cls: ACTION_CLS.key,
+                onClick: () => setSalaryOpen(true),
+                icon: <KeyRound className="icon icon-sm" />,
+              },
+              {
+                key: "archive",
+                title: archived ? `${roleLabel}ni arxivdan chiqarish` : `${roleLabel}ni arxivlash`,
+                cls: archived ? ACTION_CLS.restore : ACTION_CLS.archive,
+                onClick: () => setArchiveMode(archived ? "activate" : "archive"),
+                icon: archived ? <ArchiveRestore className="icon icon-sm" /> : <Archive className="icon icon-sm" />,
+              },
+              // Referensda bu "Qo'ng'iroq qilish" — telefon ilovasini ochamiz.
+              {
+                key: "call",
+                title: "Qo'ng'iroq qilish",
+                cls: ACTION_CLS.call,
+                href: `tel:${phone.replace(/\s/g, "")}`,
+                icon: <Phone className="icon icon-sm" />,
+              },
+              // Referensdagidek to'rtinchi tugma — xodimni TAHRIRLASH.
+              {
+                key: "edit",
+                title: "Tahrirlash",
+                cls: ACTION_CLS.edit,
+                onClick: () => setEditOpen(true),
+                icon: <Edit className="icon icon-sm" />,
+              },
+            ]}
+          >
+            {archived && (
+              <div className="mt-3 w-full rounded-lg bg-amber-50 px-3 py-2 text-left text-[12px] text-amber-700">
+                <div className="font-semibold">Arxivlangan</div>
+                {/* Yagona shablon-satr — JSX matni ifoda bilan yonma-yon
+                    yozilsa probel yo'qoladi (README'dagi tuzoq). */}
+                <div className="mt-0.5">
+                  {`Sabab: ${emp.archReason}${emp.archDate ? ` · ${emp.archDate}` : ""}`}
                 </div>
-              )}
-
-              <div className="mt-3 grid grid-cols-4 gap-1.5 w-full">
-                {/* Ilgari bu tugma faqat "(demo)" toast chiqarardi. Xodimga
-                    tizim paroli Boshqaruv → Xodimlar sahifasidan beriladi,
-                    shu bois bu yerda u ish haqi sozlamasini ochadi. */}
-                <button
-                  type="button"
-                  onClick={() => setSalaryOpen(true)}
-                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.key}`}
-                  title="Ish haqini sozlash"
-                >
-                  <KeyRound className="icon icon-sm" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setArchiveMode(archived ? "activate" : "archive")}
-                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${archived ? ACTION_CLS.restore : ACTION_CLS.archive}`}
-                  title={archived ? `${roleLabel}ni arxivdan chiqarish` : `${roleLabel}ni arxivlash`}
-                >
-                  {archived ? <ArchiveRestore className="icon icon-sm" /> : <Archive className="icon icon-sm" />}
-                </button>
-
-                {/* Referensda bu "Qo'ng'iroq qilish" — telefon ilovasini ochamiz. */}
-                <a
-                  href={`tel:${phone.replace(/\s/g, "")}`}
-                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.call}`}
-                  title="Qo'ng'iroq qilish"
-                >
-                  <Phone className="icon icon-sm" />
-                </a>
-
-                {/* Referensdagidek to'rtinchi tugma — xodimni TAHRIRLASH. */}
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(true)}
-                  className={`aspect-square rounded-lg inline-flex items-center justify-center ${ACTION_CLS.edit}`}
-                  title="Tahrirlash"
-                >
-                  <Edit className="icon icon-sm" />
-                </button>
               </div>
-              {/* Oylik sozlanmagan bo'lsa buni ochiq aytamiz — chap
-                  kartadagi "—" larning sababi shu. */}
-              {!finLoading && !salaryConfigured && (
-                <button
-                  type="button"
-                  onClick={() => setSalaryOpen(true)}
-                  className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-500/20 text-left"
-                >
-                  <strong>Ish haqi sozlanmagan.</strong> Oylik hisobi shu xodim uchun ko&apos;rsatilmaydi — sozlash uchun bosing.
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-card border border-border p-2">
-            <ul className="divide-y divide-border">
-              {stats.map((s) => (
-                <li key={s.label} className="flex items-center gap-3 px-3 py-3">
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-full flex-shrink-0 ${s.wrap}`}>
-                    <s.icon className="w-4 h-4" />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-muted-foreground">{s.label}</div>
-                    <div className={`text-[14px] font-semibold tabular-nums ${s.valueCls ?? ""}`}>{s.value}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+            )}
+            {/* Oylik sozlanmagan bo'lsa buni ochiq aytamiz — chap
+                kartadagi "—" larning sababi shu. */}
+            {!finLoading && !salaryConfigured && (
+              <button
+                type="button"
+                onClick={() => setSalaryOpen(true)}
+                className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-500/20 text-left"
+              >
+                <strong>Ish haqi sozlanmagan.</strong> Oylik hisobi shu xodim uchun ko&apos;rsatilmaydi — sozlash uchun bosing.
+              </button>
+            )}
+          </ProfileSideCard>
 
           {/* Xodim qo'shish modalida to'ldiriladigan qo'shimcha ma'lumot.
               Ilgari bu qiymatlar hech qayerda saqlanmasdi ham, ko'rinmasdi

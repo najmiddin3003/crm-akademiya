@@ -10075,20 +10075,12 @@ html.dark .emp-row-blocked { background-color: rgba(220, 38, 38, 0.14); }
 .emp-icon-btn:hover { background-color: hsl(var(--secondary)); }
 .emp-icon-btn-danger:hover { background-color: #fee2e2; color: #dc2626; border-color: #fecaca; }
 
-/* O'quvchi profili (student-edit): chap karta ~30%, o'ng tomon (tab
-   tugmalari + kontent) qolgan joyni egallaydi. `lg:grid-cols-[280px_1fr]`
-   kabi qavsli arbitrary Tailwind klasslar bu statik faylda kompilyatsiya
-   qilinmagani uchun qo'lda yozilgan klass ishlatiladi. */
-.student-edit-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-@media (min-width: 1024px) {
-  .student-edit-layout {
-    grid-template-columns: 30% 1fr;
-  }
-}
+/* `.student-edit-layout` OLIB TASHLANDI. U "qavsli arbitrary Tailwind
+   klasslar kompilyatsiya qilinmaydi" degan taxminga asoslangandi — bu
+   Tailwind v4 PostCSS plagini (postcss.config.mjs) bilan TO'G'RI EMAS:
+   xodim profili allaqachon `lg:grid-cols-[320px_1fr]` dan foydalanadi va
+   ishlaydi. Endi o'quvchi profili ham shu klassni ishlatadi, ya'ni ikkala
+   profil ekrani bir xil kenglikda. */
 
 /* O'quvchi profili: pastel ikonka fonlari (bg-*-500/NN) ham shu statik
    faylda kompilyatsiya qilinmagan opacity-modifier klasslar edi (yuqoridagi
