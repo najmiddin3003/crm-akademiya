@@ -9133,6 +9133,18 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   h1, h2, h3 { letter-spacing: -0.022em; }
 
   /* ---------- Schedule grid (with glass) ---------- */
+  /*
+     AYLANTIRISH TASHQI O'RAMDA (.schedule-scroll), setkaning o'zida EMAS.
+     Sabab: `position: sticky` element bilan aylantiriladigan quti orasida
+     `overflow: hidden` turgan ota bo'lsa ishlamaydi — soatlar ustuni va
+     xona sarlavhasi qotib turishi uchun setkadan `overflow` olib
+     tashlandi, burchak radiusi esa o'ramga ko'chdi.
+  */
+  .schedule-scroll {
+    overflow: auto;
+    max-height: 70vh;
+    border-radius: var(--radius);
+  }
   .schedule {
     display: grid;
     grid-template-columns: 110px repeat(8, minmax(140px, 1fr));
@@ -9141,7 +9153,6 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     gap: 1px;
     border: 1px solid hsl(var(--border) / 0.7);
     border-radius: var(--radius);
-    overflow: hidden;
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
@@ -9150,12 +9161,19 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; color: hsl(var(--muted-foreground));
     font-variant-numeric: tabular-nums;
+    /* Yopishqoq katakning foni SHAFFOF BO'LMASLIGI kerak — aks holda
+       ostidan o'tayotgan darslar ko'rinib qolardi. */
+    position: sticky; left: 0; z-index: 2;
+    background: hsl(var(--card)) !important;
   }
   .sch-room {
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; font-weight: 600; padding: 12px 8px;
-    background: hsl(var(--secondary) / 0.65);
+    position: sticky; top: 0; z-index: 3;
+    background: hsl(var(--secondary)) !important;
   }
+  /* Chap yuqoridagi bo'sh burchak — ikkala yo'nalishda ham qotadi. */
+  .sch-room.sch-corner { left: 0; z-index: 4; }
   .sch-empty {
     display: flex; align-items: center; justify-content: center;
     color: hsl(var(--muted-foreground) / 0.6); font-size: 14px;
@@ -9243,22 +9261,27 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     gap: 1px;
     border: 1px solid hsl(var(--border) / 0.7);
     border-radius: var(--radius);
-    overflow: hidden;
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
   .schedule-row > * { background: hsl(var(--card) / 0.75); }
+  /* Qator ko'rinishida soatlar YUQORIDA turadi — qotadigan tomoni ham
+     shu (ustun ko'rinishida esa chapda). */
   .sch-time-h {
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground));
     padding: 10px 8px;
-    background: hsl(var(--secondary) / 0.65) !important;
+    position: sticky; top: 0; z-index: 3;
+    background: hsl(var(--secondary)) !important;
     font-variant-numeric: tabular-nums;
   }
+  /* Chap yuqoridagi bo'sh burchak — ikkala yo'nalishda ham qotadi. */
+  .sch-time-h.sch-corner { left: 0; z-index: 4; }
   .sch-room-side {
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; font-weight: 600; padding: 10px;
-    background: hsl(var(--secondary) / 0.65) !important;
+    position: sticky; left: 0; z-index: 2;
+    background: hsl(var(--secondary)) !important;
     text-align: center;
   }
   .sch-lesson-row {

@@ -11,12 +11,14 @@
 // layoutda tanlanadi.
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
 import { computeScheduleKpis } from "@/lib/scheduleStats";
 import Button from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import PersonLink from "@/components/shared/PersonDirectory";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
 import type { Order } from "@/lib/ordersData";
@@ -53,6 +55,9 @@ interface Placed {
   col: number;
 }
 
+/** Blok ustiga sichqoncha kelgani/ketgani — panel shu orqali boshqariladi. */
+type HoverFn = (g: Group | null, rect: DOMRect | null) => void;
+
 const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function csvCell(v: string | number): string {
@@ -84,6 +89,9 @@ export default function GroupSchedulePage() {
   const [statsVisible, setStatsVisible] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [fullscreen, setFullscreen] = useState(false);
+  // Sichqoncha turgan blok — ustidagi ma'lumot paneli uchun.
+  const [hovered, setHovered] = useState<{ group: Group; rect: DOMRect } | null>(null);
+  const setHover: HoverFn = (g, rect) => setHovered(g && rect ? { group: g, rect } : null);
   // KPI kartalari uchun HAQIQIY manbalar. Ilgari bu yerdan faqat birinchi
   // darsga yozilganlar soni olinardi, qolgan 10 ta karta esa
   // lib/scheduleStats.ts ichidagi demo generatordan (502 ta soxta buyurtma)
@@ -348,10 +356,12 @@ export default function GroupSchedulePage() {
           {SCHEDULE_DAY_LONG[SCHEDULE_DAY_ORDER.indexOf(day)]} kuni uchun dars topilmadi.
         </div>
       ) : layout === "row" ? (
-        <RowLayout columns={columns} lessons={placed} groupBy={groupBy} />
+        <RowLayout columns={columns} lessons={placed} groupBy={groupBy} onHover={setHover} />
       ) : (
-        <GridLayout columns={columns} lessons={placed} groupBy={groupBy} />
+        <GridLayout columns={columns} lessons={placed} groupBy={groupBy} onHover={setHover} />
       )}
+
+      {hovered && <LessonHoverPanel g={hovered.group} rect={hovered.rect} />}
     </div>
   );
 }
@@ -389,17 +399,91 @@ function colLabel(c: string): string {
   return c.length > 18 ? c.slice(0, 18) + "…" : c;
 }
 
-function LessonCard({ p, groupBy, row }: { p: Placed; groupBy: GroupBy; row?: boolean }) {
+/**
+ * Blok ustiga sichqoncha kelganda chiqadigan panel.
+ *
+ * `position: fixed` — jadval endi 70vh li aylantiriladigan quti ichida,
+ * oddiy `absolute` panel uning chekkasida kesilib qolardi. Joylashuv
+ * blokning ekrandagi o'rnidan hisoblanadi va ekran chetiga siqiladi.
+ */
+function PanelRow({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-[12px]">
+      <span className="text-muted-foreground shrink-0">{k}</span>
+      <span className="text-right font-medium min-w-0 break-words">{v}</span>
+    </div>
+  );
+}
+
+function LessonHoverPanel({ g, rect }: { g: Group; rect: DOMRect }) {
+  const W = 280;
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - W - 8));
+  const below = rect.bottom + 8;
+  const top = below + 210 > window.innerHeight ? Math.max(8, rect.top - 218) : below;
+  return (
+    <div
+      style={{ position: "fixed", top, left, width: W, zIndex: 80 }}
+      className="rounded-xl border border-border bg-card shadow-2xl p-3 space-y-1.5 pointer-events-none"
+    >
+      <div className="flex items-center gap-2 pb-1.5 border-b border-border">
+        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: courseColor(g.course) }} />
+        <span className="text-[13px] font-semibold truncate">№{g.name} · {g.course}</span>
+      </div>
+      <PanelRow k="O'qituvchi" v={g.teacher || "—"} />
+      <PanelRow k="Xona" v={g.room || "—"} />
+      <PanelRow k="Vaqti" v={<span className="tabular-nums">{g.time}</span>} />
+      <PanelRow k="Kunlari" v={g.day || "—"} />
+      <PanelRow k="Daraja" v={g.level || "—"} />
+      <PanelRow k="O'quvchilar" v={<span className="tabular-nums">{g.students}</span>} />
+      <PanelRow k="Davri" v={<span className={g.periodExpired ? "text-rose-600" : ""}>{g.period || "—"}</span>} />
+      {/* Panel FAQAT ma'lumot uchun (`pointer-events: none`) — sichqoncha
+          uning ustiga o'tsa blokdan chiqib ketardi va panel yopilardi.
+          Bosiladigan narsalar blokning o'zida: blok → guruh sahifasi,
+          o'qituvchi ismi → uning profili. */}
+      <div className="pt-1 border-t border-border text-[11px] text-muted-foreground">
+        Blokni bosing — guruh sahifasi ochiladi
+      </div>
+    </div>
+  );
+}
+
+function LessonCard({
+  p,
+  groupBy,
+  row,
+  onHover,
+}: {
+  p: Placed;
+  groupBy: GroupBy;
+  row?: boolean;
+  onHover: (g: Group | null, rect: DOMRect | null) => void;
+}) {
   const g = p.group;
   const tip = `№${g.name} · ${g.teacher} · ${g.room}`;
+  const router = useRouter();
+  // Blokning o'zi guruh sahifasiga olib boradi; ichidagi o'qituvchi ismi
+  // esa uning profiliga. Ism <Link> bo'lgani uchun blokdagi bosishni
+  // to'xtatish kerak — aks holda ikkalasi birdan ishlab, guruh sahifasi
+  // profilni bosib ketardi.
+  const handlers = {
+    onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => onHover(g, e.currentTarget.getBoundingClientRect()),
+    onMouseLeave: () => onHover(null, null),
+    onClick: (e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest("a")) return;
+      router.push(`/groups/${g.id}`);
+    },
+  };
 
   if (row) {
     return (
-      <div className="sch-lesson-row" style={{ background: p.color, gridColumn: `span ${p.span}` }} title={tip}>
+      <div className="sch-lesson-row" style={{ background: p.color, gridColumn: `span ${p.span}` }} title={tip} {...handlers}>
         <span className="gnum">{g.name}</span>
         <div className="info">
           <span className="tname">{g.course}</span>
-          <span className="room">• {groupBy === "room" ? g.teacher : g.room}</span>
+          <span className="room">
+            •{" "}
+            {groupBy === "room" ? <PersonLink name={g.teacher} kind="staff" className="underline-offset-2 hover:underline" /> : g.room}
+          </span>
         </div>
         <div className="meta">
           <span className="tabular-nums">{g.time}</span>
@@ -413,11 +497,13 @@ function LessonCard({ p, groupBy, row }: { p: Placed; groupBy: GroupBy; row?: bo
   }
 
   return (
-    <div className="sch-lesson" style={{ background: p.color, gridRow: `span ${p.span}` }} title={tip}>
+    <div className="sch-lesson" style={{ background: p.color, gridRow: `span ${p.span}` }} title={tip} {...handlers}>
       <div>
         <div className="text-[10px] font-semibold opacity-90 tabular-nums leading-tight">{g.time}</div>
         <div className="text-[13px] font-bold leading-tight mt-0.5">{g.course}</div>
-        <div className="tname">{g.teacher}</div>
+        {/* Ism uning profiliga olib boradi; PersonLink bosishni blokdan
+            to'sadi, ya'ni guruh sahifasi ochilib ketmaydi. */}
+        <div className="tname"><PersonLink name={g.teacher} kind="staff" className="underline-offset-2 hover:underline" /></div>
         <div className="room">{groupBy === "room" ? `Xona: ${g.room}` : g.room}</div>
         <div className="text-[10px] opacity-80 mt-0.5">{g.day}</div>
       </div>
@@ -434,15 +520,15 @@ function LessonCard({ p, groupBy, row }: { p: Placed; groupBy: GroupBy; row?: bo
   );
 }
 
-function GridLayout({ columns, lessons, groupBy }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy }) {
+function GridLayout({ columns, lessons, groupBy, onHover }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy; onHover: HoverFn }) {
   const { skip, start } = buildMatrices(columns.length, lessons, false);
   const cols = `110px repeat(${columns.length}, minmax(140px, 1fr))`;
   const minWidth = 110 + columns.length * 140;
 
   return (
-    <div className="overflow-x-auto rounded-2xl">
+    <div className="schedule-scroll">
       <div className="schedule" style={{ gridTemplateColumns: cols, minWidth }}>
-        <div className="sch-room" style={{ background: "hsl(var(--secondary) / 0.65)" }} />
+        <div className="sch-room sch-corner" />
         {columns.map((c, i) => (
           <div key={`h${i}`} className="sch-room" title={c}>
             {colLabel(c)}
@@ -454,7 +540,7 @@ function GridLayout({ columns, lessons, groupBy }: { columns: string[]; lessons:
             {columns.map((_, c) => {
               if (skip[s][c]) return null;
               const L = start[s][c];
-              if (L) return <LessonCard key={`c${s}-${c}`} p={L} groupBy={groupBy} />;
+              if (L) return <LessonCard key={`c${s}-${c}`} p={L} groupBy={groupBy} onHover={onHover} />;
               return (
                 <div key={`c${s}-${c}`} className="sch-empty">
                   —
@@ -468,15 +554,15 @@ function GridLayout({ columns, lessons, groupBy }: { columns: string[]; lessons:
   );
 }
 
-function RowLayout({ columns, lessons, groupBy }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy }) {
+function RowLayout({ columns, lessons, groupBy, onHover }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy; onHover: HoverFn }) {
   const { skip, start } = buildMatrices(columns.length, lessons, true);
   const cols = `150px repeat(${SCHEDULE_TIME_SLOTS.length}, minmax(140px, 1fr))`;
   const minWidth = 150 + SCHEDULE_TIME_SLOTS.length * 140;
 
   return (
-    <div className="overflow-x-auto rounded-2xl">
+    <div className="schedule-scroll">
       <div className="schedule-row" style={{ gridTemplateColumns: cols, minWidth }}>
-        <div className="sch-time-h" style={{ background: "hsl(var(--secondary) / 0.65)" }} />
+        <div className="sch-time-h sch-corner" />
         {SCHEDULE_TIME_SLOTS.map((t, i) => (
           <div key={`th${i}`} className="sch-time-h">
             {t}
@@ -490,7 +576,7 @@ function RowLayout({ columns, lessons, groupBy }: { columns: string[]; lessons: 
             {SCHEDULE_TIME_SLOTS.map((_, s) => {
               if (skip[r][s]) return null;
               const L = start[r][s];
-              if (L) return <LessonCard key={`rc${r}-${s}`} p={L} groupBy={groupBy} row />;
+              if (L) return <LessonCard key={`rc${r}-${s}`} p={L} groupBy={groupBy} onHover={onHover} row />;
               return (
                 <div key={`rc${r}-${s}`} className="sch-empty">
                   —
