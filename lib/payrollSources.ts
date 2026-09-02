@@ -1,7 +1,18 @@
 import type { Db } from "mongodb";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
-import { payrollMonthKey, payrollPeriod, prevMonthKey, prevMonthName, type EmployeePayroll, type PayrollPeriod } from "@/lib/salary";
+import {
+  payrollEarned,
+  payrollMonthKey,
+  payrollPaid,
+  payrollPeriod,
+  payrollPeriodOf,
+  payrollTax,
+  prevMonthKey,
+  prevMonthName,
+  type EmployeePayroll,
+  type PayrollPeriod,
+} from "@/lib/salary";
 import { loadTaxRules } from "@/lib/taxes";
 
 // Oylik hisobiga kiradigan HAQIQIY manbalar. Ilgari bu yig'ish uch joyda
@@ -16,6 +27,39 @@ import { loadTaxRules } from "@/lib/taxes";
 /** Bir xodimga oid to'lovlarni ismi bo'yicha topish uchun kalit. */
 function nameKey(v: unknown): string {
   return String(v ?? "").trim().toLowerCase();
+}
+
+/**
+ * Yozuv QAYSI OYGA tegishli ekanini aniqlaydigan Mongo sharti.
+ *
+ * Birlamchi manba — `periodMonth` ("YYYY-MM", Kirim/Oylik chiqarish
+ * oynalarida tanlanadi). Maydon YO'Q yoki bo'sh bo'lgan yozuvlarda (bu
+ * maydon qo'shilishidan oldingilar va import qilinganlar — bazadagi
+ * yozuvlarning aksariyati) `date` ning oyi ishlatiladi, ya'ni eski hisob
+ * buzilmaydi.
+ *
+ * KIRIM va CHIQIM uchun BIR XIL qoida bo'lishi shart: sentabrda kelgan
+ * avgust to'lovi avgustga yozilib, o'sha avgust oyligi sentabrda berilsa
+ * ham avgustga yozilmasa — avgust abadiy "to'lanmagan" bo'lib qolardi va
+ * ikkinchi marta to'lash mumkin bo'lardi.
+ */
+function monthMatch(month: string) {
+  return [
+    { periodMonth: month },
+    { periodMonth: { $exists: false }, date: { $regex: `^${month}-` } },
+    { periodMonth: "", date: { $regex: `^${month}-` } },
+  ];
+}
+
+/**
+ * "DD.MM.YYYY HH:mm" -> "YYYY-MM". O'qib bo'lmasa `null`.
+ *
+ * Bonus va jarima yozuvlarida sana shu ko'rinishda saqlanadi
+ * (lib/bonuses.ts, lib/penalties.ts — `createdAt`).
+ */
+function monthOfCreatedAt(raw: unknown): string | null {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(raw ?? "").trim());
+  return m ? `${m[3]}-${m[2]}` : null;
 }
 
 export interface PaidByEmployee {
@@ -34,7 +78,8 @@ export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<str
     .collection("transaction_entries")
     .find({
       txType: "payOut",
-      date: { $regex: `^${month}-` },
+      // Kirim tomonidagi bilan AYNAN bir xil qoida — `monthMatch` izohiga qarang.
+      $or: monthMatch(month),
       status: { $ne: "cancelled" },
       txName: { $regex: "avans|oylik", $options: "i" },
     })
@@ -73,11 +118,7 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
       // Maydon yo'q yozuvlarda (bu qo'shilishdan oldingilar va import
       // qilinganlar — bazadagi yozuvlarning aksariyati) avvalgidek `date`
       // ning oyi ishlatiladi, ya'ni eski hisob buzilmaydi.
-      $or: [
-        { periodMonth: month },
-        { periodMonth: { $exists: false }, date: { $regex: `^${month}-` } },
-        { periodMonth: "", date: { $regex: `^${month}-` } },
-      ],
+      $or: monthMatch(month),
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
     })
@@ -141,12 +182,59 @@ export function resolvePercent(raw: unknown, byTier: Map<string, number>): numbe
  * Ilgari `findOne` ishlatilardi — u tartibsiz bitta yozuvni olardi va
  * boshqa chiqarishlardagi xodimlar umuman tushib qolardi.
  */
-export async function loadCarryOver(db: Db, p: PayrollPeriod): Promise<Map<number, number>> {
+export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs): Promise<Map<number, number>> {
+  const prev = prevMonthKey(p);
   const prevRuns = await db
     .collection("salary_runs")
-    .find({ month: prevMonthKey(p) })
+    .find({ month: prev })
     .sort({ id: 1 })
     .toArray();
+
+  // O'TGAN OY UMUMAN YOPILMAGAN BO'LSA — QOLDIQ JONLI HISOBLANADI.
+  //
+  // NIMA NOTO'G'RI EDI: qoldiq FAQAT `salary_runs` dan o'qilardi, ya'ni
+  // "O'tgan oydan" ustuni faqat oylik AYNAN SHU SAHIFA orqali chiqarilgan
+  // bo'lsagina to'lardi. Amalda esa oyliklar to'g'ridan-to'g'ri kassadan
+  // beriladi va `salary_runs` bo'sh — demak ustun hech qachon to'lmasdi va
+  // o'tgan oyda ishlab, lekin olinmagan pul keyingi oyga umuman o'tmasdi.
+  // (O'lchandi: avgustda 238 745 400 hisoblangan, 114 845 000 to'langan —
+  // 121 572 400 so'm hech qayerda ko'rinmasdi.)
+  //
+  // Endi yopilmagan oy uchun o'sha oyning OCHIQ QOLDIG'I hisoblanadi:
+  //   hisoblangan − soliq − to'langan (avans + oylik)
+  //
+  // ATAYLAB FAQAT BITTA OY ORQAGA qaraladi, zanjir qurilmaydi. Sabab
+  // o'lchangan: har bir oyda ~120-160 mln so'm ochiq qoldiq bor va 12 oy
+  // zanjiri ekranga 1.5 mlrd so'mlik "qarz" chiqarardi — bu raqamning
+  // ortida biznes qarori turadi, kod uni o'zi qabul qila olmaydi. Bir oy
+  // esa foydalanuvchi so'ragan holatni to'liq qoplaydi: sentabrda kelib
+  // "avgust uchun" deb belgilangan to'lov avgust oyligiga qo'shiladi va
+  // olinmagan bo'lsa sentabr sahifasida "O'tgan oydan" bo'lib chiqadi.
+  //
+  // IKKI MARTA SANASH XAVFI YO'Q: oylik shu sahifadan chiqarilishi bilan
+  // `salary_runs` yozuvi paydo bo'ladi va yuqoridagi shox ishlaydi —
+  // muzlatilgan qoldiq jonli hisobdan USTUN.
+  if (prevRuns.length === 0) {
+    const prevPeriod = payrollPeriodOf(prev);
+    // `carryOver: false` — REKURSIYA CHEGARASI. Usiz buildPayrollRows
+    // yana loadCarryOver ni chaqirib, cheksiz zanjir hosil bo'lardi.
+    //
+    // `refs` — chaqiruvchi allaqachon o'qigan, OYGA BOG'LIQ BO'LMAGAN
+    // ma'lumot (xodimlar, bonus/jarima, foiz darajalari, soliqlar). Uni
+    // qayta o'qish o'tgan oy hisobiga 5 ta ortiqcha Atlas so'rovi
+    // qo'shardi va sahifa ochilishi ikki barobar sekinlashardi
+    // (o'lchandi: 1.5 s → 2.9 s).
+    const rows = await buildPayrollRows(db, prevPeriod, { carryOver: false, refs });
+    const live = new Map<number, number>();
+    for (const e of rows) {
+      // Ish haqi sozlanmagan xodimning "hisoblangan"i ma'nosiz (0) —
+      // uni qoldiq sifatida o'tkazish soxta raqam bo'lardi.
+      if (!e.configured) continue;
+      const open = payrollEarned(e, prevPeriod) - payrollTax(e, prevPeriod) - payrollPaid(e);
+      if (open !== 0) live.set(e.id, open);
+    }
+    return live;
+  }
 
   const map = new Map<number, number>();
   for (const run of prevRuns) {
@@ -182,19 +270,76 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod): Promise<Map<numbe
  * beradi (`payrollPeriodOf("2026-08")`), sukut esa joriy oy — eski
  * chaqiruvlar o'zgarishsiz ishlayveradi.
  */
-export async function buildPayrollRows(db: Db, p: PayrollPeriod = payrollPeriod()): Promise<EmployeePayroll[]> {
-  const [employees, bonusRows, penaltyRows, paidBy, percentByTier, carryBy, collectedBy, taxRules] = await Promise.all([
+/**
+ * Oylik hisobining OYGA BOG'LIQ BO'LMAGAN qismi.
+ *
+ * Alohida ajratilgan sabab: o'tgan oyning qoldig'i hisoblanayotganda
+ * `buildPayrollRows` ikkinchi marta chaqiriladi va bu beshta so'rovni
+ * takrorlashning ma'nosi yo'q — xodimlar ro'yxati ham, soliq qoidalari ham
+ * qaysi oy ko'rilayotganiga bog'liq emas.
+ */
+export interface PayrollRefs {
+  employees: HrEmployee[];
+  bonusRows: { recipientName?: string; amount?: number; createdAt?: unknown }[];
+  penaltyRows: { recipientName?: string; amount?: number; createdAt?: unknown }[];
+  percentByTier: Map<string, number>;
+  taxRules: Awaited<ReturnType<typeof loadTaxRules>>;
+}
+
+export async function loadPayrollRefs(db: Db): Promise<PayrollRefs> {
+  const [employees, bonusRows, penaltyRows, percentByTier, taxRules] = await Promise.all([
     db.collection<HrEmployee>("hr_employees").find({}).sort({ id: 1 }).toArray(),
     db.collection("bonuses").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
     db.collection("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
-    loadPaidByEmployee(db, payrollMonthKey(p)),
     loadPercentByTier(db),
-    loadCarryOver(db, p),
-    loadCollectedByTeacher(db, payrollMonthKey(p)),
     loadTaxRules(db),
+  ]);
+  return {
+    employees,
+    bonusRows: bonusRows as PayrollRefs["bonusRows"],
+    penaltyRows: penaltyRows as PayrollRefs["penaltyRows"],
+    percentByTier,
+    taxRules,
+  };
+}
+
+export async function buildPayrollRows(
+  db: Db,
+  p: PayrollPeriod = payrollPeriod(),
+  opts: { carryOver?: boolean; refs?: PayrollRefs } = {},
+): Promise<EmployeePayroll[]> {
+  // `carryOver: false` — o'tgan oyning ochiq qoldig'ini hisoblayotganda
+  // beriladi (loadCarryOver ichida). Usiz ikkalasi bir-birini cheksiz
+  // chaqirar edi.
+  const withCarry = opts.carryOver !== false;
+  const month = payrollMonthKey(p);
+  const refs = opts.refs ?? (await loadPayrollRefs(db));
+  const { employees, bonusRows, penaltyRows, percentByTier, taxRules } = refs;
+  const [paidBy, carryBy, collectedBy] = await Promise.all([
+    loadPaidByEmployee(db, month),
+    withCarry ? loadCarryOver(db, p, refs) : Promise.resolve(new Map<number, number>()),
+    loadCollectedByTeacher(db, month),
   ]);
 
   const prevMonth = prevMonthName(p);
+  const currentMonth = payrollMonthKey(payrollPeriod());
+  // Bonus/jarima SHU OYNIKI bo'lishi kerak.
+  //
+  // NIMA NOTO'G'RI EDI: ular oy bo'yicha umuman filtrlanmasdi — butun tarix
+  // har bir oyga qo'shilardi. Bitta oy ko'riladigan paytda bu sezilmasdi,
+  // lekin endi o'tgan oy ham hisoblanadi va bitta bonus IKKI oyga (o'tgan
+  // oyning qoldig'iga ham, shu oyning hisobiga ham) tushib, ikki marta
+  // to'lanishi mumkin edi. (Bugun ikkala kolleksiya ham bo'sh — ya'ni
+  // ko'rinadigan raqam o'zgarmaydi, bu kelajakdagi xatoni yopadi.)
+  //
+  // Sanasi o'qilmaydigan yozuv JORIY oyga qoladi: uni tashlab yuborish
+  // pulni jimgina yo'qotardi.
+  const inThisMonth = (r: { createdAt?: unknown }) => {
+    const m = monthOfCreatedAt(r.createdAt);
+    return m === null ? month === currentMonth : m === month;
+  };
+  const bonusesOfMonth = (bonusRows as { recipientName?: string; amount?: number; createdAt?: unknown }[]).filter(inThisMonth);
+  const penaltiesOfMonth = (penaltyRows as { recipientName?: string; amount?: number; createdAt?: unknown }[]).filter(inThisMonth);
   // Soliq qoidalari id bo'yicha — har bir xodim o'ziga biriktirilganini oladi.
   const taxById = new Map(taxRules.map((r) => [r.id, r]));
   const sumFor = (rows: { recipientName?: string; amount?: number }[], k: string) =>
@@ -231,8 +376,8 @@ export async function buildPayrollRows(db: Db, p: PayrollPeriod = payrollPeriod(
       // Shu oyda o'quvchilari to'lagan pul — foizli oylik asosi.
       collected,
       futureCollected: 0,
-      bonus: sumFor(bonusRows as { recipientName?: string; amount?: number }[], k),
-      jarima: sumFor(penaltyRows as { recipientName?: string; amount?: number }[], k),
+      bonus: sumFor(bonusesOfMonth, k),
+      jarima: sumFor(penaltiesOfMonth, k),
       paidAvans: paid.avans,
       paidOylik: paid.oylik,
       carryOver,

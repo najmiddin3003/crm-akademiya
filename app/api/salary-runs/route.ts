@@ -369,6 +369,12 @@ export async function POST(req: Request) {
         status: "",
         cashboxId,
         salaryRunId: nextId,
+        // To'lov QAYSI OY oyligi ekani. `date` ham shu oy ichida bo'ladi
+        // (yuqoridagi `entryDate`), lekin maydon baribir ochiq yoziladi:
+        // "avgust oyligi" degan fakt sanadan chiqariladigan taxmin emas,
+        // yozuvning o'zida turishi kerak. loadPaidByEmployee avval shunga
+        // qaraydi (lib/payrollSources.ts → monthMatch).
+        periodMonth: payrollMonthKey(period),
       });
       createdEntryIds.push(entryId);
       createdTxIds.push(
