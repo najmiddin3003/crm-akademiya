@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
 import { buildPupilFromValues, PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
 
 // GET /api/pupils — "O'quvchi qo'shish" orqali qo'shilgan haqiqiy o'quvchilar
@@ -86,9 +87,14 @@ export async function GET(req: Request) {
     );
   }
 
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
+  // Navbardagi filial tanlovi shu yerda ishlaydi. Admin "Barcha filiallar"
+  // rejimida bo'lsa filtr tegilmaydi (lib/branchScope.ts → withBranch).
   const rows = await db.collection("pupils")
-    .find(filter, { projection })
+    .find(withBranch(filter, scope), { projection })
     .sort({ id: -1 })
     .toArray();
   // Parol xeshlari hech qachon klientga chiqmaydi.
@@ -113,12 +119,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Ism majburiy" }, { status: 400 });
   }
 
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  const branchId = branchForInsert(scope);
+  // "Barcha filiallar" rejimida yangi o'quvchi QAYSI filialga tushishi
+  // noma'lum — jimgina 1-filialga muhrlab qo'yish o'rniga aniq so'raladi.
+  if (branchId === null) {
+    return NextResponse.json(
+      { ok: false, error: "Avval navbardan filialni tanlang — o'quvchi qaysi filialga qo'shilishi kerak?" },
+      { status: 400 },
+    );
+  }
+
   const db = await ensureIndexes();
   const col = db.collection("pupils");
+  // `id` GLOBAL ketma-ket (unique indeks butun kolleksiyada) — shu bois
+  // eng katta id filial bo'yicha KESILMASDAN qidiriladi. Kesilsa ikkinchi
+  // filial mavjud id ni qayta ishlatib, E11000 ga urilardi.
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
-  const pupil = buildPupilFromValues(nextId, body);
+  const pupil = { ...buildPupilFromValues(nextId, body), branchId };
   // insertOne mutates its argument to add _id — insert a copy so the
   // returned `pupil` stays clean (same gotcha as app/api/orders/route.ts).
   await col.insertOne({ ...pupil });

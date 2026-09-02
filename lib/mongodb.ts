@@ -131,6 +131,13 @@ async function createAllIndexes(db: Db): Promise<void> {
   // filtrlaydi (6 732 tadan 4 276 va 2 456). Saralash `id` bo'yicha
   // teskari, shu bois indeks juft.
   tasks.push(db.collection("pupils").createIndex({ status: 1, id: -1 }));
+  // Filial qamrovi (lib/branchScope.ts) — har bir ro'yxat so'rovi endi
+  // `branchId` bo'yicha kesiladi. Saralash `id` bo'yicha teskari, shu
+  // bois indeks juft; xona va guruh ro'yxatlari kichik, ularga oddiy
+  // indeks yetadi.
+  tasks.push(db.collection("pupils").createIndex({ branchId: 1, id: -1 }));
+  tasks.push(db.collection("groups").createIndex({ branchId: 1 }));
+  tasks.push(db.collection("rooms").createIndex({ branchId: 1 }));
   tasks.push(db.collection("offline_courses").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("online_courses").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("groups").createIndex({ id: 1 }, { unique: true }));

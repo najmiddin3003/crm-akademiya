@@ -4,16 +4,24 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 // Navbardagi filial tanlovining KLIENT tomoni.
 //
-// Tanlovning o'zi cookie'da va kesish serverda bo'ladi (lib/branchScope.ts).
-// Bu kontekst ikki narsa uchun kerak:
-//   1) navbar qaysi filiallarni ko'rsatishini bilishi,
-//   2) tanlov o'zgarganda sahifadagi ma'lumot QAYTA SO'RALISHI.
+// Tanlovning o'zi cookie'da va kesish SERVERDA bo'ladi (lib/branchScope.ts).
+// Bu kontekst navbar qaysi filiallarni ko'rsatishini biladi va tanlovni
+// almashtiradi.
 //
-// Ikkinchisi uchun `version` bor: u har almashtirishda ortadi va
-// ma'lumot yuklaydigan komponentlar uni `useEffect` bog'liqligiga qo'shib,
-// so'rovni takrorlaydi. Butun sahifani `router.refresh()` bilan qayta
-// qurish ham mumkin edi, lekin sahifalar ma'lumotni klientdan oladi —
-// refresh ularga umuman ta'sir qilmaydi.
+// ALMASHTIRGANDA SAHIFA TO'LIQ QAYTA YUKLANADI (`location.reload()`).
+//
+// NIMA UCHUN aynan shunday, "aqlliroq" yo'l emas: sahifalar ma'lumotni
+// klientdan oladi va HAR BIRI o'zicha so'raydi — kimdir `useStudents`,
+// kimdir `PupilsContext`, kimdir to'g'ridan-to'g'ri `fetch("/api/groups")`
+// ni `useEffect(..., [])` ichida. Har biriga "filial o'zgardi" signalini
+// ulash mumkin edi, lekin bittasini o'tkazib yuborish yetadi: o'sha
+// sahifa BOSHQA FILIAL ma'lumotini ko'rsatib turaveradi va buni hech kim
+// sezmaydi. Filial almashtirish — kuniga bir-ikki marta qilinadigan,
+// butun ekranni o'zgartiradigan amal; bir soniyalik qayta yuklash uning
+// evaziga arziydi va hech qanday teshik qoldirmaydi.
+//
+// `router.refresh()` bu yerda YORDAM BERMAYDI: u Server Component'larni
+// qayta quradi, ma'lumot esa klientdan olinadi.
 
 export interface BranchOption {
   id: number;
@@ -26,8 +34,7 @@ interface BranchValue {
   branches: BranchOption[];
   isAdmin: boolean;
   loading: boolean;
-  /** Har almashtirishda ortadi — ma'lumotni qayta so'rash uchun. */
-  version: number;
+  /** Tanlovni almashtiradi va sahifani qayta yuklaydi. */
   select: (id: number | null) => Promise<void>;
 }
 
@@ -36,7 +43,6 @@ const EMPTY: BranchValue = {
   branches: [],
   isAdmin: false,
   loading: true,
-  version: 0,
   select: async () => {},
 };
 
@@ -47,7 +53,6 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,15 +76,15 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ branchId: id }),
     });
     const d = await res.json().catch(() => null);
-    // Server RAD ETSA holat o'zgarmaydi — interfeys yolg'on ko'rsatmasin.
+    // Server RAD ETSA sahifa qayta yuklanmaydi — interfeys yolg'on
+    // ko'rsatmasin (masalan xodim "Barcha filiallar" ni tanlamoqchi bo'lsa).
     if (!d?.ok) return;
-    setBranchId(d.branchId ?? null);
-    setVersion((v) => v + 1);
+    window.location.reload();
   }, []);
 
   const value = useMemo<BranchValue>(
-    () => ({ branchId, branches, isAdmin, loading, version, select }),
-    [branchId, branches, isAdmin, loading, version, select],
+    () => ({ branchId, branches, isAdmin, loading, select }),
+    [branchId, branches, isAdmin, loading, select],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -87,14 +92,4 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
 export function useBranch(): BranchValue {
   return useContext(Ctx);
-}
-
-/**
- * Faqat "qayta so'rash" signali kerak bo'lgan joylar uchun.
- *
- * `useEffect` bog'liqliklariga shuni qo'shish yetarli:
- *   useEffect(() => { …fetch… }, [branchVersion]);
- */
-export function useBranchVersion(): number {
-  return useContext(Ctx).version;
 }

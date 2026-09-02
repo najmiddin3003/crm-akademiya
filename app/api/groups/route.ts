@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
 import { groupWeekdays } from "@/lib/attendance";
 import type { Group } from "@/lib/groups";
 
@@ -14,9 +15,12 @@ function fmtDate(iso?: string): string {
 }
 
 export async function GET() {
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
   const col = db.collection("groups");
-  const rows = await col.find({}).sort({ id: 1 }).toArray();
+  const rows = await col.find(withBranch({}, scope)).sort({ id: 1 }).toArray();
 
   // `highlighted` bazada saqlanmaydi — HAR SO'ROVDA hisoblanadi: bugun shu
   // guruhning dars kuni bo'lsa va davomat hali qilinmagan bo'lsa, guruh
@@ -54,8 +58,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Guruh nomini kiriting" }, { status: 400 });
   }
 
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  const branchId = branchForInsert(scope);
+  if (branchId === null) {
+    return NextResponse.json(
+      { ok: false, error: "Avval navbardan filialni tanlang — guruh qaysi filialda ochilishi kerak?" },
+      { status: 400 },
+    );
+  }
+
   const db = await ensureIndexes();
   const col = db.collection("groups");
+  // `id` GLOBAL ketma-ket — filial bo'yicha kesilmaydi (E11000 xavfi).
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
@@ -80,6 +95,6 @@ export async function POST(req: Request) {
     startDate: body.startDate || "",
     endDate: body.endDate || "",
   };
-  await col.insertOne({ ...group });
+  await col.insertOne({ ...group, branchId });
   return NextResponse.json({ ok: true, group });
 }

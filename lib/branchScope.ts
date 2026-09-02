@@ -120,7 +120,15 @@ export function withBranch<T extends Document>(filter: Filter<T>, scope: BranchS
   return { $and: [filter, cond] } as Filter<T>;
 }
 
-/** Yangi hujjatga yoziladigan filial. "Barcha" rejimida 1-filialga tushadi. */
-export function branchForInsert(scope: BranchScope): number {
-  return scope.branchId ?? scope.allowed[0] ?? 1;
+/**
+ * Yangi hujjatga yoziladigan filial.
+ *
+ * `null` — "Barcha filiallar" rejimi, ya'ni QAYSI filial ekani noma'lum.
+ * Chaqiruvchi bunda 400 qaytarishi va foydalanuvchidan filialni tanlashni
+ * so'rashi kerak. Jimgina birinchi filialga muhrlash XAVFLI: admin sukut
+ * bo'yicha aynan shu rejimda turadi, ya'ni uning yaratgan har bir yozuvi
+ * bilinmasdan 1-filialga tushib ketardi.
+ */
+export function branchForInsert(scope: BranchScope): number | null {
+  return scope.branchId;
 }
