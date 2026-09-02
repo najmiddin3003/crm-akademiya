@@ -61,7 +61,17 @@ export default function CashboxTransferToDrawer({
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
-  const destinations = allNames.filter((c) => c.id !== cashbox.id && !c.archived);
+  // Manzil ro'yxatida TIZIMDAGI hamma kassa turadi — o'zidan boshqasi.
+  //
+  // NIMA NOTO'G'RI EDI: arxivdagilar chiqarib tashlanardi. Bazadagi uchta
+  // kassadan ikkitasi arxivda, ya'ni ro'yxat bo'shab qolib "Boshqa kassa
+  // yo'q" deb turardi — ko'chirishning umuman iloji yo'q edi.
+  //
+  // Server arxivdagi kassaga ko'chirishni TAQIQLAMAYDI (transfer-to/route.ts
+  // faqat kassa mavjudligini tekshiradi), shuning uchun uni interfeysda
+  // to'sib qo'yish sun'iy cheklov edi. Arxivdagilar yonida shu haqda
+  // eslatma turadi — foydalanuvchi bilib tanlasin.
+  const destinations = allNames.filter((c) => c.id !== cashbox.id);
 
   // To'lov turlari ro'yxatida faqat SHU KASSADA puli borlari turadi va har
   // birining yonida qoldig'i ko'rinadi. Nol qoldiqli turdan ko'chirib
@@ -153,7 +163,11 @@ export default function CashboxTransferToDrawer({
             <Select
               value={toCashboxId}
               onChange={setToCashboxId}
-              options={destinations.map((c) => ({ value: String(c.id), label: c.name }))}
+              options={destinations.map((c) => ({
+                value: String(c.id),
+                label: c.name,
+                hint: c.archived ? "arxivda" : undefined,
+              }))}
               placeholder={destinations.length === 0 ? "Boshqa kassa yo'q" : "Tanlang"}
               disabled={destinations.length === 0}
             />
