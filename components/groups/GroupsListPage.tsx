@@ -13,7 +13,7 @@ import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useStudents } from "@/hooks/useStudents";
 import { useTeachers } from "@/hooks/useTeachers";
-import { pupilStatusOf } from "@/lib/pupilsData";
+import { pupilStatusOf, type PupilListItem } from "@/lib/pupilsData";
 import { GROUP_DAYS } from "@/constants/groups";
 import PersonLink from "@/components/shared/PersonDirectory";
 
@@ -109,7 +109,14 @@ const STATUS_CLS: Record<string, string> = {
   archive: "text-muted-foreground",
 };
 
-export default function GroupsListPage() {
+/** SERVERDA olingan boshlang'ich ro'yxatlar — app/(app)/groups/page.tsx. */
+export interface GroupsListPageProps {
+  initialGroups?: Group[];
+  /** Muzlatilgan o'quvchilar — guruh qatoridagi "muzlatilgan" soni uchun. */
+  initialFrozenPupils?: PupilListItem[];
+}
+
+export default function GroupsListPage({ initialGroups, initialFrozenPupils }: GroupsListPageProps = {}) {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   // Filtr ro'yxatlari bazadan — ilgari constants'dagi qattiq ro'yxatlar
@@ -123,9 +130,12 @@ export default function GroupsListPage() {
   // SERVERDA filtrlanadi: bu yerdan faqat MUZLATILGANLAR soni kerak
   // (pastdagi `frozenStudents`). Ilgari 6 747 o'quvchi tortilib,
   // deyarli hammasi tashlab yuborilardi.
-  const { pupils, loading: pupilsLoading } = useStudents({ status: "Muzlatilgan" });
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { pupils, loading: pupilsLoading } = useStudents({ status: "Muzlatilgan", initial: initialFrozenPupils });
+  // `initialGroups` — SERVERDA olingan ro'yxat (app/(app)/groups/page.tsx).
+  // Berilsa jadval birinchi renderdayoq to'la chiziladi va quyidagi effekt
+  // so'rov yubormaydi.
+  const [groups, setGroups] = useState<Group[]>(initialGroups ?? []);
+  const [loading, setLoading] = useState(!initialGroups);
 
   const [search, setSearch] = useState("");
   const [teacher, setTeacher] = useState("");
@@ -146,13 +156,14 @@ export default function GroupsListPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (initialGroups) return; // ro'yxat sahifa bilan birga keldi
     let cancelled = false;
     fetch("/api/groups")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [initialGroups]);
 
   useEffect(() => {
     if (!moreOpen) return;

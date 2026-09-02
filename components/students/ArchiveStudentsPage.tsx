@@ -11,6 +11,8 @@ import SmsModal from "@/components/orders/SmsModal";
 import { useToast } from "@/components/ui/Toast";
 import { useStudents } from "@/hooks/useStudents";
 import { useGroups } from "@/hooks/useGroups";
+import type { Group } from "@/lib/groups";
+import type { PupilListItem } from "@/lib/pupilsData";
 import {
   applyStudentFilters,
   enrichStudents,
@@ -105,11 +107,19 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
   return <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className={checkboxCls} />;
 }
 
-export default function ArchiveStudentsPage() {
+/** SERVERDA olingan boshlang'ich ro'yxatlar — app/(app)/archive-students/page.tsx. */
+export interface ArchiveStudentsPageProps {
+  initialPupils?: PupilListItem[];
+  initialGroups?: Group[];
+}
+
+export default function ArchiveStudentsPage({ initialPupils, initialGroups }: ArchiveStudentsPageProps = {}) {
   // `status: "Arxiv"` — filtr SERVERDA: 6 732 tadan 2 456 tasi.
   // Pastdagi `.filter(s.status === "Arxiv")` himoya sifatida qoladi.
-  const { pupils, loading: pupilsLoading } = useStudents({ status: "Arxiv" });
-  const { groups, loading: groupsLoading } = useGroups();
+  //
+  // `initial…` berilsa ro'yxatlar sahifa bilan birga kelgan — so'rov yo'q.
+  const { pupils, loading: pupilsLoading } = useStudents({ status: "Arxiv", initial: initialPupils });
+  const { groups, loading: groupsLoading } = useGroups(initialGroups);
   // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
   // haqiqiy summa faqat transaction_entries dan yig'iladi.
   const [balances, setBalances] = useState<Record<string, number>>({});

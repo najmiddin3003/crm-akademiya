@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cachedGet, invalidateCached, peekCached } from "@/lib/clientCache";
+import { cachedGet, invalidateCached, peekCached, primeCached } from "@/lib/clientCache";
 
 // Kichik ro'yxatlarni bir marta so'raydigan umumiy hook.
 //
@@ -34,14 +34,38 @@ const SHARED_TTL_MS = 1500;
  * `key` — kesh kaliti; mutatsiyadan keyin `invalidateSharedList(key)`
  * bilan bekor qilinadi.
  */
-export function useSharedList<T>(key: string, url: string, pick: (d: unknown) => T[]): {
+export function useSharedList<T>(
+  key: string,
+  url: string,
+  pick: (d: unknown) => T[],
+  /**
+   * SERVERDA olingan boshlang'ich ro'yxat (Server Component'dan keladi).
+   *
+   * Berilsa birinchi so'rov YUBORILMAYDI: ma'lumot allaqachon sahifa
+   * bilan birga kelgan. Prodda bu bitta brauzer<->API borib-kelishini
+   * (~208 ms) va gidratatsiya kutishini tejaydi.
+   */
+  initial?: T[],
+): {
   items: T[];
   loading: boolean;
 } {
-  const [items, setItems] = useState<T[]>(() => peekCached<T[]>(key) ?? []);
-  const [loading, setLoading] = useState(() => peekCached<T[]>(key) === null);
+  const [items, setItems] = useState<T[]>(() => {
+    // Serverdan kelgan ro'yxat umumiy keshga ham JOYLANADI — shu sahifadagi
+    // boshqa komponentlar (modallar, tanlov ro'yxatlari) uni qayta
+    // so'ramasin. Faqat BIR MARTA, mount paytida (`useState` boshlang'ich
+    // funksiyasi) — har renderda chaqirilsa, bekor qilingan keshga eski
+    // ro'yxat qaytib tushib qolardi.
+    if (initial) { primeCached(key, SHARED_TTL_MS, initial); return initial; }
+    return peekCached<T[]>(key) ?? [];
+  });
+  const [loading, setLoading] = useState(() => (initial ? false : peekCached<T[]>(key) === null));
 
   useEffect(() => {
+    // Boshlang'ich ro'yxat serverdan kelgan bo'lsa qayta so'ramaymiz.
+    // Ma'lumot o'zgarganda sahifa uni o'zi yangilaydi (mutatsiyadan
+    // keyin `router.refresh()` yoki komponentning o'z so'rovi).
+    if (initial) return;
     let cancelled = false;
     cachedGet<T[]>(key, SHARED_TTL_MS, () =>
       fetch(url)
@@ -59,7 +83,7 @@ export function useSharedList<T>(key: string, url: string, pick: (d: unknown) =>
     // `pick` har renderda yangi funksiya bo'lishi mumkin — u bog'liqlikka
     // qo'shilmaydi, aks holda effekt cheksiz qayta ishga tushardi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, url]);
+  }, [key, url, initial]);
 
   return { items, loading };
 }

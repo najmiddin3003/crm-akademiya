@@ -1,5 +1,13 @@
 import ArchiveStudentsPage from "@/components/students/ArchiveStudentsPage";
+import { listScope, loadGroups, loadPupils } from "@/lib/listQueries";
 
-export default function Page() {
-  return <ArchiveStudentsPage />;
+// SERVER KOMPONENT — ro'yxatlar sahifa bilan BIRGA keladi.
+// Sabab va yondashuv: lib/listQueries.ts izohiga qarang.
+export default async function Page() {
+  const scope = await listScope();
+  const [pupils, groups] = scope
+    ? await Promise.all([loadPupils(scope, { status: "Arxiv" }), loadGroups(scope)])
+    : [undefined, undefined];
+
+  return <ArchiveStudentsPage initialPupils={pupils} initialGroups={groups} />;
 }

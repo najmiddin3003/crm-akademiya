@@ -9,6 +9,8 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useStudents } from "@/hooks/useStudents";
 import { useGroups } from "@/hooks/useGroups";
+import type { Group } from "@/lib/groups";
+import type { Pupil, PupilListItem } from "@/lib/pupilsData";
 import {
   applyStudentFilters,
   enrichStudents,
@@ -104,15 +106,25 @@ function HeaderCheckbox({ checked, indeterminate, onChange }: { checked: boolean
   return <input ref={ref} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className={checkboxCls} />;
 }
 
-export default function ActiveStudentsPage() {
+/** SERVERDA olingan boshlang'ich ro'yxatlar — app/(app)/active-students/page.tsx. */
+export interface ActiveStudentsPageProps {
+  initialPupils?: (PupilListItem & Pick<Pupil, "paymentDate">)[];
+  initialGroups?: Group[];
+}
+
+export default function ActiveStudentsPage({ initialPupils, initialGroups }: ActiveStudentsPageProps = {}) {
   // `status: "Aktiv"` — filtr SERVERDA. Ilgari 6 732 o'quvchi tortilib,
   // brauzerda 4 276 tasi qoldirilardi (pastdagi `.filter(s.status === "Aktiv")`
   // himoya sifatida joyida qoladi). `paymentDate` — "To'lov sanasi" ustuni.
+  //
+  // `initial…` berilsa ikkala ro'yxat ham sahifa bilan birga kelgan —
+  // birinchi renderdayoq jadval to'la, so'rov yuborilmaydi.
   const { pupils, loading: pupilsLoading } = useStudents({
     extra: ["paymentDate"] as const,
     status: "Aktiv",
+    initial: initialPupils,
   });
-  const { groups, loading: groupsLoading } = useGroups();
+  const { groups, loading: groupsLoading } = useGroups(initialGroups);
   // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
   // haqiqiy summa faqat transaction_entries dan yig'iladi.
   const [balances, setBalances] = useState<Record<string, number>>({});

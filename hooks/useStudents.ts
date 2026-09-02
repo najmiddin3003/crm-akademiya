@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { cachedGet, invalidateCached, peekCached } from "@/lib/clientCache";
+import { cachedGet, invalidateCached, peekCached, primeCached } from "@/lib/clientCache";
 import type { Pupil, PupilExtraField, PupilListItem } from "@/lib/pupilsData";
 import { studentRowFromPupil, type StudentRow } from "@/lib/studentsData";
 
@@ -120,6 +120,14 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
   hasBirthDate?: boolean;
   /** Faqat manzili borlar — O'quvchi manzillari sahifasi. */
   hasAddress?: boolean;
+  /**
+   * SERVERDA olingan boshlang'ich ro'yxat (Server Component'dan).
+   *
+   * Berilsa birinchi so'rov YUBORILMAYDI — ma'lumot sahifa bilan birga
+   * kelgan. Prodda bu bitta brauzer<->API borib-kelishini (~208 ms) va
+   * gidratatsiya kutishini tejaydi.
+   */
+  initial?: (PupilListItem & Pick<Pupil, K>)[];
 }) {
   const light = options?.light === true;
   const status = options?.status;
@@ -134,10 +142,21 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
   type Row = PupilListItem & Pick<Pupil, K>;
   // Kesh tayyor bo'lsa — birinchi renderdayoq to'liq ro'yxat bilan
   // boshlanadi, ya'ni bo'sh jadval "chaqnab" o'tmaydi.
-  const [pupils, setPupils] = useState<Row[]>(() => peekCached<Row[]>(cacheKey) ?? []);
-  const [loading, setLoading] = useState(() => peekCached<Row[]>(cacheKey) === null);
+  const initial = options?.initial as Row[] | undefined;
+  const [pupils, setPupils] = useState<Row[]>(() => {
+    // Serverdan kelgan ro'yxat keshga ham joylanadi — shu sahifadagi
+    // boshqa komponentlar uni qayta so'ramasin. Faqat mount paytida:
+    // har renderda chaqirilsa, bekor qilingan keshga eski ro'yxat
+    // qaytib tushib qolardi.
+    if (initial) { primeCached(cacheKey, TTL_MS, initial); return initial; }
+    return peekCached<Row[]>(cacheKey) ?? [];
+  });
+  const [loading, setLoading] = useState(() => (initial ? false : peekCached<Row[]>(cacheKey) === null));
 
   useEffect(() => {
+    // Serverdan kelgan ro'yxat bo'lsa qayta so'ralmaydi — u sahifa bilan
+    // birga kelgan.
+    if (initial) return;
     let cancelled = false;
     const extra = extraKey ? (extraKey.split(",") as K[]) : undefined;
     loadPupilsCached<K>({ light, extra, status, hasParent, hasBirthDate, hasAddress })
@@ -145,7 +164,7 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [light, extraKey, status, hasParent, hasBirthDate, hasAddress]);
+  }, [light, extraKey, status, hasParent, hasBirthDate, hasAddress, initial]);
 
   const students = useMemo<StudentRow[]>(() => pupils.map(studentRowFromPupil), [pupils]);
   const names = useMemo(() => students.map((s) => s.name).filter(Boolean), [students]);

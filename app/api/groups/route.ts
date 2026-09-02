@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
-import { groupWeekdays } from "@/lib/attendance";
+import { branchForInsert, getBranchScope } from "@/lib/branchScope";
+import { loadGroups } from "@/lib/listQueries";
 import type { Group } from "@/lib/groups";
 
 // Guruh backend'i (MongoDB `groups`). Demo seed YO'Q — guruhlarni
@@ -18,34 +18,10 @@ export async function GET() {
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
-  const db = await ensureIndexes();
-  const col = db.collection("groups");
-
-  // `highlighted` bazada saqlanmaydi — HAR SO'ROVDA hisoblanadi: bugun shu
-  // guruhning dars kuni bo'lsa va davomat hali qilinmagan bo'lsa, guruh
-  // ro'yxatda sariq qator bo'lib turadi (referens: akademiya.edutizim.uz).
-  // Davomat qilingan deb bugungi sana bo'yicha kamida bitta belgi bo'lishi
-  // hisoblanadi (`attendance` kolleksiyasi: {groupId, pupilId, date, status}).
-  const now = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  const todayIso = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-  const weekday = now.getDay();
-
-  // Ikkala so'rov BIR-BIRIGA BOG'LIQ EMAS — ketma-ket kutilsa ikkita
-  // kechikish qo'shilardi (o'lchandi: 359 ms -> 189 ms).
-  const [rows, marked] = await Promise.all([
-    col.find(withBranch({}, scope)).sort({ id: 1 }).toArray(),
-    db.collection("attendance").distinct("groupId", { date: todayIso }),
-  ]);
-  const markedToday = new Set<number>(marked as number[]);
-
-  const groups = rows.map(({ _id, ...rest }) => {
-    const g = rest as unknown as Group;
-    return {
-      ...g,
-      highlighted: groupWeekdays(g.day).includes(weekday) && !markedToday.has(g.id),
-    };
-  });
+  // Ro'yxatni YIG'ISH mantig'i lib/listQueries.ts da — uni Guruhlar
+  // sahifasining server komponenti ham chaqiradi. Ikki joyda ikki xil
+  // natija chiqmasligi uchun manba bitta.
+  const groups = await loadGroups(scope);
   return NextResponse.json({ ok: true, groups });
 }
 

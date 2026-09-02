@@ -71,3 +71,20 @@ export function invalidateCached(prefix?: string): void {
   if (!prefix) { cache.clear(); return; }
   for (const k of [...cache.keys()]) if (k.startsWith(prefix)) cache.delete(k);
 }
+
+/**
+ * SERVERDA olingan ro'yxatni keshga JOYLAYDI — tarmoqqa chiqilmaydi.
+ *
+ * Server Component sahifa bilan birga ma'lumot yuborganda, o'sha sahifadagi
+ * BOSHQA komponentlar (modallar, tanlov ro'yxatlari) shu kalitni so'raydi.
+ * Kesh to'ldirilmasa, ular baribir alohida so'rov yuborardi va sahifa
+ * ochilishida server bergan ro'yxat ikkinchi marta tortilardi.
+ *
+ * Mavjud yozuvning USTIGA yozmaydi: agar kimdir allaqachon so'rov
+ * boshlagan bo'lsa, o'sha so'rov to'g'riroq (yangiroq) natija beradi.
+ */
+export function primeCached<T>(key: string, ttlMs: number, value: T): void {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < hit.ttl) return;
+  cache.set(key, { at: Date.now(), ttl: ttlMs, req: Promise.resolve(value), value });
+}
