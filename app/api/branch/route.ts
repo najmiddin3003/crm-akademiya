@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ALL_BRANCHES, BRANCH_COOKIE, getBranchScope } from "@/lib/branchScope";
+import { BRANCH_COOKIE, getBranchScope } from "@/lib/branchScope";
 import { ensureIndexes } from "@/lib/mongodb";
 
 // GET  /api/branch — joriy qamrov: tanlangan filial va ruxsat etilganlari.
@@ -48,18 +48,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
 
-  const raw = body.branchId;
-  // "Barcha filiallar" — faqat admin uchun. Xodim uni tanlay olmaydi.
-  if (raw === null || raw === ALL_BRANCHES) {
-    if (!scope.isAdmin) {
-      return NextResponse.json({ ok: false, error: "Barcha filiallar rejimi faqat admin uchun" }, { status: 403 });
-    }
-    const res = NextResponse.json({ ok: true, branchId: null });
-    res.cookies.set(BRANCH_COOKIE, ALL_BRANCHES, { sameSite: "lax", maxAge: YEAR_SEC, path: "/" });
-    return res;
-  }
-
-  const n = Number(raw);
+  const n = Number(body.branchId);
   if (!Number.isFinite(n)) {
     return NextResponse.json({ ok: false, error: "Filial noto'g'ri" }, { status: 400 });
   }

@@ -29,13 +29,13 @@ export interface BranchOption {
 }
 
 interface BranchValue {
-  /** Tanlangan filial yoki `null` — "Barcha filiallar" (faqat admin). */
+  /** Tanlangan filial. Yuklanmaguncha `null`. */
   branchId: number | null;
   branches: BranchOption[];
   isAdmin: boolean;
   loading: boolean;
   /** Tanlovni almashtiradi va sahifani qayta yuklaydi. */
-  select: (id: number | null) => Promise<void>;
+  select: (id: number) => Promise<void>;
 }
 
 const EMPTY: BranchValue = {
@@ -69,7 +69,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  const select = useCallback(async (id: number | null) => {
+  const select = useCallback(async (id: number) => {
     const res = await fetch("/api/branch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,7 +77,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     });
     const d = await res.json().catch(() => null);
     // Server RAD ETSA sahifa qayta yuklanmaydi — interfeys yolg'on
-    // ko'rsatmasin (masalan xodim "Barcha filiallar" ni tanlamoqchi bo'lsa).
+    // ko'rsatmasin (masalan xodim o'ziga biriktirilmagan filialni tanlasa).
     if (!d?.ok) return;
     window.location.reload();
   }, []);

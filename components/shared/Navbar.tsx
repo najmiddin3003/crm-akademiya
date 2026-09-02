@@ -16,8 +16,6 @@ import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
-/** "Barcha filiallar" bandining select qiymati (raqam emas). */
-const ALL_BRANCHES_VALUE = "all";
 
 // Ported 1:1 from crm-akademiya/index-dev.html (<header> top bar) +
 // crm-akademiya/src/app.js (search/lang/theme/news/create/notifications/profile
@@ -77,11 +75,11 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
   // turardi va boshqa hech qayerga yetib bormasdi — ya'ni tanlashning
   // hech qanday oqibati yo'q edi. Endi u cookie'ga yoziladi, server har
   // so'rovda o'shanga qarab ma'lumotni kesadi (lib/branchScope.ts).
-  const { branchId, branches: allowedBranches, isAdmin, select } = useBranch();
+  const { branchId, branches: allowedBranches, select } = useBranch();
   // Ro'yxat qamrovga qarab keladi: xodim faqat o'ziga biriktirilganlarini
   // ko'radi. `useBranches()` (Boshqaruv → Filiallar) esa HAMMASINI beradi
   // va shu bois bu yerda ishlatilmaydi.
-  const selectedBranch = branchId === null ? ALL_BRANCHES_VALUE : String(branchId);
+  const selectedBranch = String(branchId ?? "");
   const [filialModalOpen, setFilialModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -261,14 +259,11 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
                 setFilialModalOpen(true);
                 return;
               }
-              void select(v === ALL_BRANCHES_VALUE ? null : Number(v));
+              void select(Number(v));
             }}
             className="h-full w-full appearance-none bg-transparent pl-9 pr-7 text-sm focus:outline-none"
           >
             {allowedBranches.length === 0 && <option value="">Filial…</option>}
-            {/* "Barcha filiallar" faqat adminda — xodim doim bitta
-                filialda turadi (server ham shuni majburlaydi). */}
-            {isAdmin && <option value={ALL_BRANCHES_VALUE}>Barcha filiallar</option>}
             {allowedBranches.map((b) => (
               <option key={b.id} value={String(b.id)}>{b.name}</option>
             ))}

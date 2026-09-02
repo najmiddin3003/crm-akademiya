@@ -13,7 +13,8 @@ import { getCurrentEmployee } from "@/lib/currentEmployee";
 //   • Sozlamalar UMUMIY qoladi (to'lov turlari, tranzaksiya turlari,
 //     rollar, soliqlar, kurslar, SMS shablonlari) — ular tizim sozlamasi.
 //   • Bitta xodim BIR NECHTA filialda ishlashi mumkin.
-//   • Admin uchun "Barcha filiallar" rejimi bor.
+//   • "Barcha filiallar" rejimi YO'Q — hamma, admin ham, aniq bitta
+//     filialda turadi. Sukut — birinchi filial.
 //
 // NIMA UCHUN COOKIE: tanlov SERVERGA yetib borishi shart, chunki kesish
 // serverda bo'ladi (klientda kesish — ma'lumot baribir tarmoqdan
@@ -24,15 +25,17 @@ import { getCurrentEmployee } from "@/lib/currentEmployee";
 /** Tanlangan filial cookie'si. `httpOnly` EMAS — klient ham o'qiydi. */
 export const BRANCH_COOKIE = "branch";
 
-/** "Barcha filiallar" rejimi — faqat admin uchun. */
-export const ALL_BRANCHES = "all";
-
 export interface BranchScope {
   /**
-   * Joriy tanlov: filial `id` si yoki `null` — "barcha filiallar".
-   * `null` FAQAT adminda bo'ladi.
+   * Joriy filial. DOIM aniq bitta filial — "barcha filiallar" rejimi YO'Q.
+   *
+   * Ilgari admin uchun `null` ("hammasi") bor edi va u SUKUT holat edi.
+   * Ikki muammosi chiqdi: kesilmagan qamrov sukut bo'yicha yoqiq turardi,
+   * va o'sha rejimda yaratilgan har bir yozuv qaysi filialga tegishli
+   * ekani noma'lum bo'lib qolardi. Endi hamma — admin ham — aniq bitta
+   * filialda turadi.
    */
-  branchId: number | null;
+  branchId: number;
   /** Foydalanuvchi ko'ra oladigan filiallar (admin — hammasi). */
   allowed: number[];
   isAdmin: boolean;
@@ -80,23 +83,20 @@ export async function getBranchScope(): Promise<BranchScope | null> {
 
   const db = await ensureIndexes();
   const all = await allBranchIds(db);
+  const raw = (await cookies()).get(BRANCH_COOKIE)?.value ?? "";
+  const n = Number(raw);
+
   if (me.isAdmin) {
-    const raw = (await cookies()).get(BRANCH_COOKIE)?.value ?? "";
-    // Admin sukut bo'yicha HAMMASINI ko'radi.
-    if (raw === "" || raw === ALL_BRANCHES) return { branchId: null, allowed: all, isAdmin: true };
-    const n = Number(raw);
-    return { branchId: all.includes(n) ? n : null, allowed: all, isAdmin: true };
+    // Sukut — birinchi filial ("Akademiya 1 Chortoq").
+    return { branchId: all.includes(n) ? n : (all[0] ?? 1), allowed: all, isAdmin: true };
   }
 
   const mine = await employeeBranchIds(db, me.employeeId);
-  // Biriktirilmagan xodim — 1-filial. Bo'sh ro'yxat qaytarish uni butun
-  // saytdan uzib qo'yardi; migratsiyagacha hamma 1-filialda.
+  // Biriktirilmagan xodim — birinchi filial. Bo'sh ro'yxat qaytarish uni
+  // butun saytdan uzib qo'yardi.
   const allowed = mine.filter((id) => all.includes(id));
   const fallback = allowed[0] ?? all[0] ?? 1;
-  const raw = (await cookies()).get(BRANCH_COOKIE)?.value ?? "";
-  const n = Number(raw);
   return {
-    // Xodimda "barcha filiallar" YO'Q — u doim bitta filialda turadi.
     branchId: allowed.includes(n) ? n : fallback,
     allowed: allowed.length > 0 ? allowed : [fallback],
     isAdmin: false,
@@ -106,13 +106,10 @@ export async function getBranchScope(): Promise<BranchScope | null> {
 /**
  * Mongo filtriga filial shartini qo'shadi.
  *
- * "Barcha filiallar" rejimida filtr TEGILMAYDI. Aks holda `branchId`
- * bo'yicha kesiladi va MAYDONI YO'Q hujjatlar ham 1-filialga tegishli deb
- * qaraladi — migratsiya oralig'ida (yoki u yiqilib qolsa) ma'lumot
- * ko'rinmay qolmasligi uchun.
+ * BIRINCHI filialda maydoni YO'Q hujjatlar ham qo'shiladi: migratsiya
+ * oralig'ida (yoki u yiqilib qolsa) ma'lumot ko'rinmay qolmasligi uchun.
  */
 export function withBranch<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
-  if (scope.branchId === null) return filter;
   const cond =
     scope.branchId === 1
       ? { $or: [{ branchId: 1 }, { branchId: { $exists: false } }, { branchId: null }] }
@@ -123,12 +120,8 @@ export function withBranch<T extends Document>(filter: Filter<T>, scope: BranchS
 /**
  * Yangi hujjatga yoziladigan filial.
  *
- * `null` — "Barcha filiallar" rejimi, ya'ni QAYSI filial ekani noma'lum.
- * Chaqiruvchi bunda 400 qaytarishi va foydalanuvchidan filialni tanlashni
- * so'rashi kerak. Jimgina birinchi filialga muhrlash XAVFLI: admin sukut
- * bo'yicha aynan shu rejimda turadi, ya'ni uning yaratgan har bir yozuvi
- * bilinmasdan 1-filialga tushib ketardi.
+ * Doim aniq bitta filial — "barcha filiallar" rejimi olib tashlangan.
  */
-export function branchForInsert(scope: BranchScope): number | null {
+export function branchForInsert(scope: BranchScope): number {
   return scope.branchId;
 }
