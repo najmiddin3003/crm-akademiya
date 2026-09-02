@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/Sidebar";
 import Navbar, { type ShellUser } from "@/components/shared/Navbar";
 import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
+import { BranchProvider } from "@/components/shared/BranchContext";
 
 // Umumiy qobiq (Navbar + Sidebar), app/layout.tsx orqali barcha sahifalarga
 // o'raladi. Har bir sahifa endi o'zining nomlangan route papkasida (masalan
@@ -33,6 +34,9 @@ export default function AppShell({
   // (har sahifa o'zi so'rov yubormaydi).
   return (
     <PersonDirectoryProvider>
+      {/* Filial tanlovi — navbar uni boshqaradi, sahifalar `useBranch()`
+          orqali o'qiydi va tanlov o'zgarganda ma'lumotni qayta so'raydi. */}
+      <BranchProvider>
       <div className="flex h-screen flex-col overflow-hidden">
         <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} />
         <div className="flex flex-1 overflow-hidden">
@@ -40,6 +44,7 @@ export default function AppShell({
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
         </div>
       </div>
+      </BranchProvider>
     </PersonDirectoryProvider>
   );
 }

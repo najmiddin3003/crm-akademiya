@@ -50,6 +50,11 @@ const SHARED_EXTRA = [
   "/api/auth/change-password", // Sozlamalar → Xavfsizlik
   "/api/profile",             // Sozlamalar → Profil
   "/api/sessions",            // Sozlamalar → Qurilmalar
+  // Navbardagi filial tanlagichi — har bir sahifada turadi, ya'ni sahifa
+  // ruxsatiga bog'lab bo'lmaydi. Route'ning o'zi hech qanday ruxsat
+  // bermaydi: tanlangan qiymat serverda foydalanuvchining RUXSAT ETILGAN
+  // filiallariga solishtiriladi (lib/branchScope.ts).
+  "/api/branch",
 ];
 
 /**
