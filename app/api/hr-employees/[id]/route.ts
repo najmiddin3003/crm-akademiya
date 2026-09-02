@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 import { sanitizePermissions } from "@/lib/permissions";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
+import { sanitizeBranchIds } from "@/lib/employeeBranches";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
@@ -109,11 +110,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     set.customFields = clean;
   }
 
+  const db = await ensureIndexes();
+
+  // Xodim QAYSI FILIALLARDA ishlaydi — navbardagi ro'yxat shundan chiqadi
+  // (lib/branchScope.ts). Oyna galochka qo'yilgan filiallarni yuboradi.
+  //
+  // Bo'sh ro'yxat QABUL QILINMAYDI: filialsiz xodim navbarda hech narsa
+  // ko'rmasdi va butun saytdan uzilib qolardi — shu bois `sanitizeBranchIds`
+  // bo'sh natijada `null` qaytaradi va maydon umuman yozilmaydi.
+  if ((body as { branchIds?: unknown }).branchIds !== undefined) {
+    const ids = await sanitizeBranchIds(db, (body as { branchIds?: unknown }).branchIds);
+    if (ids) set.branchIds = ids;
+  }
+
   if (Object.keys(set).length === 0 && newPhone === null) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
-
-  const db = await ensureIndexes();
 
   if (newPhone !== null) {
     // Raqam BOSHQA xodimda yoki BOSHQA hisobda band bo'lmasin. Ikkala

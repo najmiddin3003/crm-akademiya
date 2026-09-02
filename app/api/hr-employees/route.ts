@@ -7,6 +7,8 @@ import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 import { toUz, uzNow } from "@/lib/uzTime";
+import { getBranchScope } from "@/lib/branchScope";
+import { sanitizeBranchIds } from "@/lib/employeeBranches";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
 // Demo seed YO'Q — xodimlar faqat qo'shilganda (yoki scripts/seed-test-*
@@ -101,9 +103,23 @@ export async function POST(req: Request) {
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
+  // Xodim QAYSI FILIALLARDA ishlaydi — navbardagi ro'yxat shundan chiqadi.
+  //
+  // NIMA NOTO'G'RI EDI: bu maydon yozilmasdi, ya'ni migratsiyadan KEYIN
+  // qo'shilgan har bir xodim filialsiz qolardi va `getBranchScope()` uni
+  // jimgina birinchi filialga tushirardi. Amalda uchradi: id 57
+  // "Nilufar Sharipova" — `branchIds` yo'q.
+  //
+  // Oyna galochka qo'yilgan filiallarni yuboradi (ular ish haqi
+  // biriktirilgan filiallar bilan bir xil). Yubormasa — joriy filial.
+  const scope = await getBranchScope();
+  const sent = await sanitizeBranchIds(db, (body as { branchIds?: unknown }).branchIds);
+  const branchIds = sent ?? [scope?.branchId ?? scope?.allowed[0] ?? 1];
+
   const employee: HrEmployee & HrEmployeeExtra = {
     ...pickExtras(body),
     id: nextId,
+    branchIds,
     name,
     gender: body.gender || "",
     aktivOq: 0,

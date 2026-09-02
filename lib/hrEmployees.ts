@@ -55,6 +55,20 @@ export interface HrEmployee {
   /** Belgilangan filiallar bo'yicha rol/jadval/ish haqi. */
   branchAssignments?: EmployeeBranchAssignment[];
   /**
+   * Xodim QAYSI FILIALLARDA ishlaydi (`branches.id`).
+   *
+   * Navbardagi filial ro'yxati shundan chiqadi (lib/branchScope.ts): xodim
+   * faqat shu filiallarni ko'radi va ular orasida almashadi. Admin
+   * bundan mustasno — u hammasini ko'radi.
+   *
+   * `branchAssignments` dan FARQ QILADI: u filial bo'yicha ISH HAQI
+   * sozlagichi. O'lchandi — u to'ldirilgan 11 xodimning 9 tasida
+   * `branchId: 3` turgan, holbuki butun ma'lumot 1-filialga tegishli edi.
+   *
+   * Maydon yo'q eski hujjatlarda xodim birinchi filialga tushadi.
+   */
+  branchIds?: number[];
+  /**
    * Shu xodimga QAYSI soliq turlari qo'llanishi — Sozlamalar → Moliya →
    * Soliq ro'yxatidagi yozuvlarning id'lari.
    *

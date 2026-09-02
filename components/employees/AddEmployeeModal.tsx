@@ -436,6 +436,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       for (const a of employee?.branchAssignments ?? []) {
         if (!branches.some((b) => b.id === a.branchId)) branchAssignments.push(a);
       }
+      // Galochka qo'yilgan filiallar — xodim SHU FILIALLARDA ishlaydi.
+      // Navbardagi filial ro'yxati aynan shundan chiqadi
+      // (lib/branchScope.ts → getBranchScope). Bo'sh bo'lsa yuborilmaydi
+      // va server mavjud qiymatga tegmaydi.
+      const branchIds = branchAssignments.map((a) => a.branchId);
 
       const res = await fetch(editing ? `/api/hr-employees/${employee!.id}` : "/api/hr-employees", {
         method: editing ? "PATCH" : "POST",
@@ -465,6 +470,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           degree: daraja,
           photoUrl: finalPhotoUrl,
           branchAssignments,
+          branchIds,
         }),
       });
       const data = await res.json();
