@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 
 // Bitta o'quvchi (MongoDB `pupils`) — O'quvchi profili sahifasi uchun
@@ -38,8 +39,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (pupilId === null) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
-  const doc = await db.collection("pupils").findOne({ id: pupilId });
+  // BOSHQA FILIALNING o'quvchisi "topilmadi" bo'ladi — id ni terib
+  // ko'rish orqali begona kartani ochib bo'lmasin.
+  const doc = await db.collection("pupils").findOne(withBranch({ id: pupilId }, scope));
   if (!doc) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
@@ -84,9 +90,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
   const res = await db.collection("pupils").findOneAndUpdate(
-    { id: pupilId },
+    withBranch({ id: pupilId }, scope),
     { $set: set },
     { returnDocument: "after" },
   );
@@ -103,8 +112,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
 
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
-  const res = await db.collection("pupils").deleteOne({ id: pupilId });
+  const res = await db.collection("pupils").deleteOne(withBranch({ id: pupilId }, scope));
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
