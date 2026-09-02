@@ -80,7 +80,21 @@ export default function EmployeeTaxModal({
   async function save() {
     setSaving(true);
     try {
-      await onSave([...ids]);
+      // ENDI MAVJUD BO'LMAGAN soliq id'lari tashlab yuboriladi.
+      //
+      // NIMA NOTO'G'RI EDI: `ids` boshlang'ich qiymatni to'liq saqlardi,
+      // shu jumladan ro'yxatdan O'CHIRILGAN soliqning id'sini. Bunday
+      // yozuvning katagi chizilmaydi (u `items` da yo'q), ya'ni uni
+      // yechib bo'lmasdi — oyna qayta saqlansa ham u qaytib yozilaverardi.
+      // Amalda uchradi: bitta xodimda `taxIds: [2, 5]` turgan, 2-soliq
+      // esa allaqachon o'chirilgan; ro'yxatda "2 ta soliq" ko'rinardi,
+      // hisobga esa faqat bittasi kirardi.
+      //
+      // Ro'yxat YUKLANMAGAN bo'lsa filtr QO'LLANMAYDI: aks holda so'rov
+      // yiqilganda saqlash butun tanlovni o'chirib yuborardi.
+      const known = new Set(items.map((t) => t.id));
+      const next = items.length > 0 ? [...ids].filter((id) => known.has(id)) : [...ids];
+      await onSave(next);
     } finally {
       setSaving(false);
     }

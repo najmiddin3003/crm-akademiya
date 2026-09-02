@@ -72,5 +72,21 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   await col.deleteOne({ id: itemId });
+
+  // Soliq o'chirilsa — u biriktirilgan XODIMLARDAN ham yechiladi.
+  //
+  // NIMA NOTO'G'RI EDI: `hr_employees.taxIds` da o'chirilgan soliqning
+  // id'si qolib ketardi. Oqibati ikkita: Xodimlar ro'yxatidagi "Soliq"
+  // ustuni uni sanardi ("2 ta soliq"), holbuki hisobga faqat mavjudi
+  // kirardi (lib/payrollSources.ts o'chirilganini jimgina tashlaydi); va
+  // tanlov oynasida bunday yozuvning katagi umuman chizilmagani uchun
+  // uni yechib bo'lmasdi. Amalda uchradi — bitta xodimda `taxIds: [2, 5]`.
+  if (kind === "taxes") {
+    await db.collection("hr_employees").updateMany(
+      { taxIds: itemId },
+      { $pull: { taxIds: itemId } } as never,
+    );
+  }
+
   return NextResponse.json({ ok: true });
 }
