@@ -67,6 +67,32 @@ export interface TransactionEntry {
    */
   paymentMethodKey?: string;
   /**
+   * Kassalararo ko'chirmaning IKKI qatorini bog'laydigan kalit.
+   *
+   * NIMA UCHUN KERAK: ko'chirma har doim juft yozuv — jo'natuvchida
+   * manfiy, qabul qiluvchida musbat. Tasdiqlash/rad etish ikkala qatorni
+   * ham bir vaqtda o'zgartirishi shart. Ilgari bu maydon YO'Q edi va
+   * juftlikni faqat qo'shni id, bir xil `txName`/`date`/`time` bo'yicha
+   * TAXMIN qilish mumkin edi — qo'lda qaytarish skripti (scripts/
+   * _revert-transfer-49179.mjs) shu sababli ikkala id'ni qattiq yozib
+   * qo'ygan.
+   *
+   * Qiymat — juftlikning "chiquvchi" qatorining id'si (ikkalasida bir xil).
+   * Faqat `txType: "transfer"` va faqat KASSALARARO ko'chirmada bo'ladi;
+   * bitta kassa ichidagi to'lov turlari orasidagi ko'chirishda ham,
+   * bu maydon qo'shilishidan oldingi yozuvlarda ham yo'q.
+   */
+  transferId?: number;
+  /**
+   * Juftlikda shu qator qaysi tomon: pul CHIQQAN kassami yoki KELGANmi.
+   *
+   * Miqdor ishorasidan (`amount < 0`) chiqarish ham mumkin edi, lekin
+   * tasdiqlash huquqi aynan shu maydonga tayanadi — "kelgan" qatorning
+   * kassa egasi tasdiqlaydi — va bunday qoidani ishoraga emas, ochiq
+   * maydonga bog'lash xavfsizroq.
+   */
+  transferRole?: "out" | "in";
+  /**
    * Yozuv bazaga tushgan aniq vaqt (ISO). `date` va `time` — foydalanuvchi
    * ko'radigan, kassir o'zgartira oladigan maydonlar; bu esa tizim qo'ygan
    * o'zgarmas tamg'a. Sinxronizatsiya navbati va tekshiruvlar shunga

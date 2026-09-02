@@ -27,8 +27,15 @@ export type SyncKind = "payment" | "salary" | "expense" | "transfer";
  *                   guruhga ALOHIDA tuzatish xabari ketadi; eski xabar
  *                   tahrirlanmaydi, chunki kassir eski xabarni ko'rmay
  *                   qolishi mumkin)
+ *   • "confirmed" — kassalararo ko'chirma tasdiqlandi: qator "Kutilmoqda"
+ *                   dan "Faol" ga o'tadi. FAQAT Sheet yangilanadi —
+ *                   ko'chirma guruhga umuman chiqmaydi (`kindNotifiesTelegram`).
+ *
+ * ALOHIDA hodisa kerak edi, chunki `enqueue` upsert'ni `$setOnInsert`
+ * bilan qiladi: mavjud "created" vazifasini qayta navbatga qo'yish HECH
+ * NARSA qilmasdi va Sheet qatori "Kutilmoqda" bo'lib qolib ketardi.
  */
-export type SyncEvent = "created" | "cancelled";
+export type SyncEvent = "created" | "cancelled" | "confirmed";
 
 export type SyncStatus = "pending" | "done" | "failed";
 

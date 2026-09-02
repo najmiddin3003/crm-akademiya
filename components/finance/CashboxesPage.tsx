@@ -437,12 +437,23 @@ function SearchFilter({
 function StatusCell({
   entry,
   onShowHistory,
+  onDecide,
+  deciding,
 }: {
   entry: TransactionEntry;
   onShowHistory: () => void;
+  /** ✓ / × bosilganda. Faqat kassalararo ko'chirmaning KELUVCHI qatorida. */
+  onDecide: (decision: "confirm" | "reject") => void;
+  /** So'rov ketayotgan payt — ikkala tugma ham o'chiriladi. */
+  deciding: boolean;
 }) {
   const status = entry.status;
   const edited = Array.isArray(entry.editHistory) && entry.editHistory.length > 0;
+  // Qaror faqat pul KELAYOTGAN qatorda qabul qilinadi. Eski (edutizimdan
+  // kelgan) "waiting" yozuvlarda `transferRole` yo'q — ularda tugmalar
+  // chizilmaydi, chunki juftlik bog'lanmagan va pulni qayerga qo'yishni
+  // aniqlab bo'lmaydi (server ham bunday so'rovni rad etadi).
+  const canDecide = entry.txType === "transfer" && entry.transferRole === "in";
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {status === "cancelled" ? (
@@ -450,16 +461,43 @@ function StatusCell({
           <CircleX className="w-3.5 h-3.5" /> Bekor qilingan
         </span>
       ) : status === "waiting" ? (
+        // × va ✓ — HAQIQIY tugmalar. Ilgari ikkalasi ham oddiy <span> edi,
+        // ya'ni "Kutilmoqda" holatidan chiqishning hech qanday yo'li yo'q edi.
+        //
+        // `stopPropagation` SHART: qatorning o'zida `onClick` bor va u
+        // tafsilot oynasini ochadi (shu fayldagi "Tahrirlangan" tugmasi va
+        // chek tugmasi ham xuddi shunday qilingan).
+        //
+        // Tugmalar faqat ko'chirmaning KELUVCHI qatorida chiziladi: pul
+        // kelayotgan kassaning egasi tasdiqlaydi. Chiquvchi qatorda faqat
+        // "Kutilmoqda" yozuvi qoladi — jo'natuvchi o'z ko'chirmasini o'zi
+        // tasdiqlay olmaydi (server ham buni rad etadi).
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px]">
-            ×
-          </span>
+          {canDecide && (
+            <button
+              type="button"
+              disabled={deciding}
+              title="Rad etish — pul jo'natuvchi kassaga qaytariladi"
+              onClick={(ev) => { ev.stopPropagation(); onDecide("reject"); }}
+              className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px] hover:bg-rose-200 disabled:opacity-50"
+            >
+              ×
+            </button>
+          )}
           <span className="text-[13px] text-rose-600 font-medium">
             Kutilmoqda
           </span>
-          <span className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600">
-            <UserCheck style={{ width: 11, height: 11 }} />
-          </span>
+          {canDecide && (
+            <button
+              type="button"
+              disabled={deciding}
+              title="Tasdiqlash — pul shu kassaga qo'shiladi"
+              onClick={(ev) => { ev.stopPropagation(); onDecide("confirm"); }}
+              className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600 hover:bg-emerald-200 disabled:opacity-50"
+            >
+              <UserCheck style={{ width: 11, height: 11 }} />
+            </button>
+          )}
         </span>
       ) : edited ? null : entry.txType === "payOut" ? (
         <span className="inline-flex items-center h-6 px-2 rounded-md text-[13px] font-medium bg-red-900 text-red-200">
@@ -580,6 +618,11 @@ export default function CashboxesPage() {
   const [historyEntry, setHistoryEntry] = useState<TransactionEntry | null>(
     null,
   );
+  // Qaysi ko'chirma qatori bo'yicha hozir so'rov ketyapti (id) — o'sha
+  // qatordagi ikkala tugma ham o'chiriladi, ya'ni ikki marta bosib
+  // yuborilmaydi. Server tomonda ham himoya bor (holat almashtirish
+  // sharti), bu esa faqat interfeys darajasidagi qulaylik.
+  const [decidingId, setDecidingId] = useState<number | null>(null);
 
   async function confirmSetPrimary() {
     if (!primaryConfirmTarget) return;
@@ -794,6 +837,38 @@ export default function CashboxesPage() {
       .then((d) => {
         if (d.ok) setCashboxes(d.cashboxes);
       });
+  }
+
+  /**
+   * Kassalararo ko'chirmani tasdiqlash (✓) yoki rad etish (×).
+   *
+   * Jadval va kassa kartochkalari IKKALASI ham yangilanadi: tasdiq pulni
+   * qabul qiluvchiga qo'shadi, rad etish esa jo'natuvchiga qaytaradi —
+   * ya'ni balanslar o'zgaradi.
+   */
+  async function decideTransfer(entry: TransactionEntry, decision: "confirm" | "reject") {
+    setDecidingId(entry.id);
+    try {
+      // Manzil QATTIQ yoziladi (shablon ichida emas): ruxsatlar jadvali
+      // route fayllari bo'yicha yig'iladi va u sahifadan chaqiruvgacha
+      // bo'lgan import zanjiriga tayanadi — scripts/gen-api-permissions.mjs.
+      const url = decision === "confirm"
+        ? `/api/transaction-entries/${entry.id}/transfer-confirm`
+        : `/api/transaction-entries/${entry.id}/transfer-reject`;
+      const res = await fetch(url, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(data.error || "Amal bajarilmadi");
+        return;
+      }
+      showSuccess(decision === "confirm" ? "Ko'chirma tasdiqlandi" : "Ko'chirma rad etildi");
+      loadEntries();
+      refreshCashboxes();
+    } catch {
+      showError("Serverga ulanib bo'lmadi");
+    } finally {
+      setDecidingId(null);
+    }
   }
 
   // "Kim" ustunini /student-edit/[id] ga bog'lash uchun — TransactionEntry
@@ -1717,7 +1792,12 @@ export default function CashboxesPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
-                        <StatusCell entry={e} onShowHistory={() => setHistoryEntry(e)} />
+                        <StatusCell
+                          entry={e}
+                          onShowHistory={() => setHistoryEntry(e)}
+                          onDecide={(d) => decideTransfer(e, d)}
+                          deciding={decidingId === e.id}
+                        />
                       </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80">
                         {TX_TYPE_LABELS[e.txType] || e.txType}
