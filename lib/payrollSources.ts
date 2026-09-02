@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { Db, Filter } from "mongodb";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
 import {
@@ -309,7 +309,22 @@ export interface PayrollRefs {
 
 export async function loadPayrollRefs(db: Db): Promise<PayrollRefs> {
   const [employees, bonusRows, penaltyRows, percentByTier, taxRules] = await Promise.all([
-    db.collection<HrEmployee>("hr_employees").find({}).sort({ id: 1 }).toArray(),
+    // ARXIVLANGAN (ishdan ketgan) XODIM OYLIK HISOBIGA KIRMAYDI.
+    //
+    // NIMA NOTO'G'RI EDI: bu yerda `find({})` turardi, ya'ni arxivdagi
+    // xodimga ham har oy to'liq oklad hisoblanardi va u "to'lanmagan"
+    // bo'lib turaverardi. O'lchandi: 12 ta arxivlangan xodimdan uchtasida
+    // oklad sozlangan (7 000 000, 3 500 000 va 1 000 000 so'm) — ya'ni
+    // ishdan ketganlarga oyiga 11.5 mln so'm "qarz" yozilib borardi.
+    //
+    // `archReason` — arxivlash sababi, u arxivlashda MAJBURIY so'raladi
+    // (lib/moderatorsData.ts dagi `isActiveModerator` bilan bir xil qoida:
+    // sabab bo'sh bo'lsa xodim faol). Maydon yo'q eski hujjatlar ham faol
+    // hisoblanadi.
+    db.collection<HrEmployee>("hr_employees")
+      .find({ archReason: { $in: ["", null] } } as Filter<HrEmployee>)
+      .sort({ id: 1 })
+      .toArray(),
     db.collection("bonuses").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
     db.collection("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
     loadPercentByTier(db),
