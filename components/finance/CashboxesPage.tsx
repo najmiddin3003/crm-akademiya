@@ -192,19 +192,26 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
     @page{size:58mm auto;margin:3mm}
     html,body{margin:0;padding:0}
-    body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;display:flex;justify-content:center}
+    /* HAMMA MATN QORA. Termal printer faqat qora yoki oq bosadi —
+       kulrangni nuqtalar bilan taqlid qiladi va natija yuvilgandek,
+       hira chiqadi. Ilgari yorliqlar (#64748b), kassa nomi, "JAMI"
+       yozuvi va ajratuvchi chiziqlar (#94a3b8) kulrang edi, ya'ni
+       chekning yarmi hira bosilardi. Yorliq bilan qiymat endi RANG
+       bilan emas, QALINLIK bilan ajraladi. */
+    body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#000;display:flex;justify-content:center}
     .wrap{width:52mm}
     .brand{text-align:center;font-size:12px;font-weight:700;letter-spacing:.15em}
-    .sub{text-align:center;color:#64748b;font-size:10px;margin-top:1px}
+    .sub{text-align:center;font-size:10px;margin-top:1px}
     .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:.05em;margin-top:8px}
-    .divider{border-top:1px dashed #94a3b8;margin:8px 0}
+    /* Uzuq chiziq ham qora: ochiq kulrang chiziq termal qog'ozda deyarli
+       ko'rinmasdi. */
+    .divider{border-top:1px dashed #000;margin:8px 0}
     .r{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
-    .r span:first-child{color:#64748b}
-    .r span:last-child{text-align:right;font-weight:500;word-break:break-word}
+    .r span:last-child{text-align:right;font-weight:700;word-break:break-word}
     .total{display:flex;justify-content:space-between;align-items:baseline}
-    .total .lbl{font-size:11px;font-style:italic;color:#64748b}
+    .total .lbl{font-size:11px;font-style:italic}
     .total .val{font-size:15px;font-weight:700}
-    .thanks{text-align:center;font-style:italic;color:#64748b;font-size:10px}
+    .thanks{text-align:center;font-style:italic;font-size:10px}
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
     <div class="wrap">
