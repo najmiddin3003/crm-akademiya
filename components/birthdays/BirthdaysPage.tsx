@@ -63,7 +63,9 @@ export default function BirthdaysPage() {
   const today = now;
 
   // `birthDate` standart to'plamda YO'Q — ataylab so'raymiz.
-  const { pupils, loading: pupilsLoading } = useStudents({ extra: ["birthDate"] as const });
+  // Tug'ilgan sanasi KIRITILGANLAR serverda ajratiladi — ilgari 6 747
+  // o'quvchi tortilib, 14 tasi qolardi.
+  const { pupils, loading: pupilsLoading } = useStudents({ extra: ["birthDate"] as const, hasBirthDate: true });
   const { employees, loading: staffLoading } = useStaff();
   const loading = pupilsLoading || staffLoading;
 

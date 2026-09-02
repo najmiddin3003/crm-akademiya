@@ -81,18 +81,48 @@ export async function GET(req: Request) {
   // `clean()` chetlarini kesadi, bu filtr esa kesmaydi: faqat probeldan
   // iborat qiymat bu yerdan o'tib ketadi-yu, qator yaratmaydi. Ya'ni
   // natija HAR DOIM kerakli to'plamning ustki to'plami — kam emas.
+  // Bir nechta "shulardan biri bo'lsa" sharti bo'lishi mumkin, shuning
+  // uchun ular `filter.$or` ga EMAS, `$and` ichiga qo'yiladi. Ikkinchi
+  // `$or` birinchisini jimgina bosib ketardi va `?hasParent=1&hasAddress=1`
+  // xatosiz, lekin NOTO'G'RI to'plam qaytarardi.
+  const anyOf: Record<string, unknown>[] = [];
+
   if (sp.get("hasParent") === "1") {
-    filter.$or = ["fatherName", "fatherPhone", "motherName", "motherPhone"].map(
-      (f) => ({ [f]: { $nin: ["", null] } }),
-    );
+    anyOf.push({
+      $or: ["fatherName", "fatherPhone", "motherName", "motherPhone"].map(
+        (f) => ({ [f]: { $nin: ["", null] } }),
+      ),
+    });
   }
+
+  // Tug'ilgan kunlar sahifasi — sanasi kiritilganlargina. Ilgari sahifa
+  // 6 747 o'quvchini tortib, klientda 14 tasini qoldirardi.
+  if (sp.get("hasBirthDate") === "1") {
+    filter.birthDate = { $nin: ["", null] };
+  }
+
+  // O'quvchi manzillari sahifasi — manzili borlargina (eski `address`
+  // yoki yangi `addresses[]`). Ilgari 6 747 dan 198 tasi qolardi.
+  if (sp.get("hasAddress") === "1") {
+    anyOf.push({ $or: [{ address: { $nin: ["", null] } }, { "addresses.0": { $exists: true } }] });
+  }
+
+  if (anyOf.length > 0) filter.$and = anyOf;
 
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
   const db = await ensureIndexes();
-  // Navbardagi filial tanlovi shu yerda ishlaydi. Admin "Barcha filiallar"
-  // rejimida bo'lsa filtr tegilmaydi (lib/branchScope.ts → withBranch).
+
+  // `?countOnly=1` — faqat SON kerak bo'lgan joylar uchun (Sozlamalar →
+  // Billing). Ilgari u 6 747 hujjatni (544 KB) tortib, `.length` ni
+  // o'qib, qolganini tashlab yuborardi.
+  if (sp.get("countOnly") === "1") {
+    const count = await db.collection("pupils").countDocuments(withBranch(filter, scope));
+    return NextResponse.json({ ok: true, count });
+  }
+
+  // Navbardagi filial tanlovi shu yerda ishlaydi (lib/branchScope.ts).
   const rows = await db.collection("pupils")
     .find(withBranch(filter, scope), { projection })
     .sort({ id: -1 })

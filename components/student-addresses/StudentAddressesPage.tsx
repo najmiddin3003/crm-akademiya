@@ -51,7 +51,8 @@ function Dash() {
 
 export default function StudentAddressesPage() {
   // Manzil maydonlari standart to'plamda YO'Q — ataylab so'raymiz.
-  const { pupils, loading } = useStudents({ extra: ["address", "addresses"] as const });
+  // Manzili borlar serverda ajratiladi — ilgari 6 747 dan 198 tasi qolardi.
+  const { pupils, loading } = useStudents({ extra: ["address", "addresses"] as const, hasAddress: true });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);

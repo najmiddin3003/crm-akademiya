@@ -32,6 +32,10 @@ export interface PupilsQuery {
   status?: string;
   /** Faqat ota-ona ma'lumoti bor o'quvchilar (`?hasParent=1`). */
   hasParent?: boolean;
+  /** Faqat tug'ilgan sanasi kiritilganlar (`?hasBirthDate=1`). */
+  hasBirthDate?: boolean;
+  /** Faqat manzili borlar (`?hasAddress=1`). */
+  hasAddress?: boolean;
 }
 
 /**
@@ -43,7 +47,8 @@ export interface PupilsQuery {
  * ["b","a"] bir xil so'rov, ikki marta tortilmasin.
  */
 function queryKey(q: PupilsQuery): string {
-  const tail = (q.status ? "|" + q.status : "") + (q.hasParent ? "|hasParent" : "");
+  const tail = (q.status ? "|" + q.status : "") + (q.hasParent ? "|hasParent" : "") +
+    (q.hasBirthDate ? "|hasBirthDate" : "") + (q.hasAddress ? "|hasAddress" : "");
   if (q.light) return KEY + "light" + tail;
   const extra = q.extra?.length ? "+" + [...q.extra].sort().join(",") : "";
   return KEY + "full" + extra + tail;
@@ -55,6 +60,8 @@ function queryUrl(q: PupilsQuery): string {
   else if (q.extra?.length) sp.set("extra", [...q.extra].sort().join(","));
   if (q.status) sp.set("status", q.status);
   if (q.hasParent) sp.set("hasParent", "1");
+  if (q.hasBirthDate) sp.set("hasBirthDate", "1");
+  if (q.hasAddress) sp.set("hasAddress", "1");
   const qs = sp.toString();
   return "/api/pupils" + (qs ? "?" + qs : "");
 }
@@ -109,15 +116,21 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
   extra?: readonly K[];
   status?: string;
   hasParent?: boolean;
+  /** Faqat tug'ilgan sanasi kiritilganlar — Tug'ilgan kunlar sahifasi. */
+  hasBirthDate?: boolean;
+  /** Faqat manzili borlar — O'quvchi manzillari sahifasi. */
+  hasAddress?: boolean;
 }) {
   const light = options?.light === true;
   const status = options?.status;
   const hasParent = options?.hasParent === true;
+  const hasBirthDate = options?.hasBirthDate === true;
+  const hasAddress = options?.hasAddress === true;
   // Massiv har renderda yangi bo'ladi — effekt bog'liqligi uchun uni
   // barqaror satrga aylantiramiz.
   const extraKey = options?.extra?.length ? [...options.extra].sort().join(",") : "";
 
-  const cacheKey = queryKey({ light, extra: options?.extra, status, hasParent });
+  const cacheKey = queryKey({ light, extra: options?.extra, status, hasParent, hasBirthDate, hasAddress });
   type Row = PupilListItem & Pick<Pupil, K>;
   // Kesh tayyor bo'lsa — birinchi renderdayoq to'liq ro'yxat bilan
   // boshlanadi, ya'ni bo'sh jadval "chaqnab" o'tmaydi.
@@ -127,12 +140,12 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
   useEffect(() => {
     let cancelled = false;
     const extra = extraKey ? (extraKey.split(",") as K[]) : undefined;
-    loadPupilsCached<K>({ light, extra, status, hasParent })
+    loadPupilsCached<K>({ light, extra, status, hasParent, hasBirthDate, hasAddress })
       .then((list) => { if (!cancelled) setPupils(list); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [light, extraKey, status, hasParent]);
+  }, [light, extraKey, status, hasParent, hasBirthDate, hasAddress]);
 
   const students = useMemo<StudentRow[]>(() => pupils.map(studentRowFromPupil), [pupils]);
   const names = useMemo(() => students.map((s) => s.name).filter(Boolean), [students]);

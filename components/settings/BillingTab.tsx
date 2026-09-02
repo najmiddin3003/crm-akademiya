@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { useStudents } from "@/hooks/useStudents";
 import SettingsNote from "./SettingsNote";
 import {
   BILLING_CURRENCY,
@@ -62,9 +61,20 @@ export default function BillingTab() {
   // O'quvchilar sonining YAGONA haqiqiy manbasi — `pupils` kolleksiyasi.
   // Arxivdagilar ham sanaladi: yorliq shunchaki "O'quvchilar soni" deydi,
   // holat bo'yicha filtrlash esa yorliqda aytilmagan da'vo bo'lardi.
-  // Faqat SONI kerak (pupils.length) — yengil rejim.
-  const { pupils, loading: pupilsLoading } = useStudents({ light: true });
-  const studentCount = pupils.length;
+  // Faqat SON kerak — server `countDocuments` qaytaradi.
+  //
+  // Ilgari bu yerda `useStudents({ light: true })` turardi: 6 747 hujjat
+  // (544 KB) tortilib, `.length` o'qilib, qolgani tashlab yuborilardi.
+  const [studentCount, setStudentCount] = useState<number | null>(null);
+  const pupilsLoading = studentCount === null;
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pupils?countOnly=1")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.ok) setStudentCount(Number(d.count) || 0); })
+      .catch(() => { if (!cancelled) setStudentCount(0); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

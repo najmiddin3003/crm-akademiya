@@ -120,7 +120,10 @@ export default function GroupsListPage() {
   // O'quvchilar HOLATI (Aktiv/Muzlatilgan/Arxiv) faqat `pupils` da bor —
   // guruh hujjatida yo'q. "Muzlatilgan o'quvchilar soni" ni hisoblash uchun
   // guruhlarning `studentIds` ro'yxati shu ro'yxatga ulanadi.
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // SERVERDA filtrlanadi: bu yerdan faqat MUZLATILGANLAR soni kerak
+  // (pastdagi `frozenStudents`). Ilgari 6 747 o'quvchi tortilib,
+  // deyarli hammasi tashlab yuborilardi.
+  const { pupils, loading: pupilsLoading } = useStudents({ status: "Muzlatilgan" });
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 

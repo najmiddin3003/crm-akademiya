@@ -66,7 +66,9 @@ interface Row {
 }
 
 export default function ExpiringSubsPage() {
-  const { pupils, loading: pupilsLoading } = useStudents();
+  // SERVERDA filtrlanadi (pastda ham `Aktiv` sharti bor edi) va faqat
+  // id/ism/telefon so'raladi — sahifa boshqa maydonni ishlatmaydi.
+  const { pupils, loading: pupilsLoading } = useStudents({ light: true, status: "Aktiv" });
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [balancesLoading, setBalancesLoading] = useState(true);
   const [page, setPage] = useState(1);
