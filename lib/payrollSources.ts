@@ -215,6 +215,27 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs
   // `salary_runs` yozuvi paydo bo'ladi va yuqoridagi shox ishlaydi —
   // muzlatilgan qoldiq jonli hisobdan USTUN.
   if (prevRuns.length === 0) {
+    // O'TGAN OYDA MOLIYAVIY YOZUV UMUMAN BO'LMASA — O'TKAZILADIGAN QOLDIQ
+    // YO'Q.
+    //
+    // NIMA UCHUN: oklad oladigan xodimning "hisoblangan"i har oy o'z-o'zidan
+    // paydo bo'ladi (fixedSalary × kun/kun), "to'langan"i esa faqat kassa
+    // yozuvidan keladi. Kassada o'sha oyga oid birorta yozuv bo'lmasa,
+    // natija "hamma to'liq to'lanmagan" bo'lib chiqadi va har oy ustma-ust
+    // yig'ilib boraveradi — bu QARZ emas, YOZUV YO'QLIGI.
+    //
+    // Amalda uchradi: to'lovlar jurnali ataylab tozalangandan keyin
+    // avgustda 39 000 000 "hisoblangan" ustiga iyuldan 38 412 000 "o'tgan
+    // oydan" qo'shilib, hech kim olmagan pul ikki barobar ko'rinardi.
+    //
+    // Tizim ishlatila boshlashi bilan bu shart o'z-o'zidan ochiladi:
+    // o'tgan oyda bitta kirim yoki chiqim bo'lishi kifoya.
+    const anyPrev = await db.collection("transaction_entries").countDocuments(
+      { $or: monthMatch(prev), status: { $ne: "cancelled" } },
+      { limit: 1 },
+    );
+    if (anyPrev === 0) return new Map();
+
     const prevPeriod = payrollPeriodOf(prev);
     // `carryOver: false` — REKURSIYA CHEGARASI. Usiz buildPayrollRows
     // yana loadCarryOver ni chaqirib, cheksiz zanjir hosil bo'lardi.
