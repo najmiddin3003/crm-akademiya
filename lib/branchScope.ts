@@ -84,7 +84,22 @@ async function employeeBranchIds(db: Db, employeeId: number | null): Promise<num
  * yozuvga tushadi.
  */
 const SCOPE_TTL_MS = 10_000;
-const scopeCache = new Map<string, { at: number; value: BranchScope }>();
+
+/**
+ * Keshda QIYMAT emas, SO'ROVNING O'ZI (promise) saqlanadi.
+ *
+ * NIMA NOTO'G'RI EDI: qiymat `await` dan KEYIN yozilardi. Sahifa
+ * ochilishida 5-6 ta so'rov bir vaqtda ketadi va ularning hammasi keshni
+ * bo'sh ko'rib, har biri butun zanjirni boshidan yurar edi — kesh faqat
+ * IKKINCHI to'lqinga yordam berardi.
+ *
+ * O'lchandi (6 ta parallel `/api/rooms`): sovuq keshda 2125-3333 ms,
+ * issiqda 311 ms. Ya'ni birinchi to'lqin kesh yo'qdek ishlardi.
+ *
+ * Promise keshlansa birinchisi zanjirni yuradi, qolganlari o'shani
+ * kutadi. Naqsh loyihada tayyor — lib/clientCache.ts dagi `cachedGet`.
+ */
+const scopeCache = new Map<string, { at: number; req: Promise<BranchScope> }>();
 
 /**
  * Joriy so'rov uchun filial qamrovi. `null` — tizimga kirilmagan.
@@ -109,21 +124,30 @@ export async function getBranchScope(): Promise<BranchScope | null> {
   const key = `${session.uid}:${session.sid ?? ""}:${raw}`;
   const now = Date.now();
   const hit = scopeCache.get(key);
-  if (hit && now - hit.at < SCOPE_TTL_MS) return hit.value;
+  if (hit && now - hit.at < SCOPE_TTL_MS) return hit.req;
 
-  // Hisob FAOL ekani bu yerda tekshirilmaydi — uni proxy allaqachon
-  // qiladi (proxy.ts → accessForSession, o'zi ham 10 s keshli) va
-  // bloklangan foydalanuvchi /api/* ga umuman yetib kelmaydi. Bu
-  // funksiya faqat "qaysi filial" savoliga javob beradi.
-  const me = await getCurrentEmployee();
-  if (!me) return null;
+  const req = (async () => {
+    // Hisob FAOL ekani bu yerda tekshirilmaydi — uni proxy allaqachon
+    // qiladi (proxy.ts → accessForSession) va bloklangan foydalanuvchi
+    // /api/* ga umuman yetib kelmaydi. Bu funksiya faqat "qaysi filial"
+    // savoliga javob beradi.
+    const me = await getCurrentEmployee();
+    // Xodim topilmasa ham QAMROV qaytariladi (birinchi filial): bu
+    // funksiya avtorizatsiya qilmaydi, faqat qamrovni aytadi.
+    if (!me) return loadBranchScope({ isAdmin: false, employeeId: null }, raw);
+    return loadBranchScope(me, raw);
+  })().catch((e) => {
+    // Xato KESHLANMASIN: aks holda bazaning bir lahzalik uzilishi
+    // 10 soniya davomida hamma so'rovni yiqitardi.
+    scopeCache.delete(key);
+    throw e;
+  });
 
-  const value = await loadBranchScope(me, raw);
-  scopeCache.set(key, { at: now, value });
+  scopeCache.set(key, { at: now, req });
   if (scopeCache.size > 500) {
     for (const [k, v] of scopeCache) if (now - v.at >= SCOPE_TTL_MS) scopeCache.delete(k);
   }
-  return value;
+  return req;
 }
 
 async function loadBranchScope(

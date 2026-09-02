@@ -114,7 +114,20 @@ export interface SessionAccess {
  */
 const TTL_MS = 10_000;
 
-const cache = new Map<string, { at: number; value: SessionAccess }>();
+/**
+ * Keshda QIYMAT emas, SO'ROVNING O'ZI (promise) saqlanadi.
+ *
+ * NIMA NOTO'G'RI EDI: qiymat `await` dan KEYIN yozilardi. Sahifa
+ * ochilishida 5-6 ta `/api/*` so'rovi bir vaqtda ketadi va proxy har
+ * biri uchun shu funksiyani chaqiradi — hammasi keshni BO'SH ko'rib,
+ * har biri uchta Atlas so'rovini (users → hr_employees → roles)
+ * boshidan yurar edi. Ya'ni kesh faqat ikkinchi to'lqinga yordam
+ * berardi.
+ *
+ * Promise keshlansa birinchisi zanjirni yuradi, qolganlari o'shani
+ * kutadi. Naqsh loyihada tayyor — lib/clientCache.ts dagi `cachedGet`.
+ */
+const cache = new Map<string, { at: number; req: Promise<SessionAccess> }>();
 
 /**
  * Sessiya egasining holati va ruxsatlari.
@@ -128,15 +141,22 @@ export async function accessForSession(uid: string, sid?: string): Promise<Sessi
   const key = `${uid}:${sid ?? ""}`;
   const now = Date.now();
   const hit = cache.get(key);
-  if (hit && now - hit.at < TTL_MS) return hit.value;
+  if (hit && now - hit.at < TTL_MS) return hit.req;
 
-  const value = await loadAccess(uid, sid);
-  cache.set(key, { at: now, value });
+  const req = loadAccess(uid, sid).catch((e) => {
+    // Xato KESHLANMASIN: bazaning bir lahzalik uzilishi 10 soniya
+    // davomida hamma so'rovni yiqitib turardi. `handleApi` (proxy.ts)
+    // otilgan xatoni 503 ga aylantiradi.
+    cache.delete(key);
+    throw e;
+  });
+
+  cache.set(key, { at: now, req });
   // Kesh cheksiz o'smasin — muddati o'tganlarni vaqti-vaqti bilan tozalaymiz.
   if (cache.size > 500) {
     for (const [k, v] of cache) if (now - v.at >= TTL_MS) cache.delete(k);
   }
-  return value;
+  return req;
 }
 
 async function loadAccess(uid: string, sid?: string): Promise<SessionAccess> {
