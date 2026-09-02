@@ -10429,3 +10429,46 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
   /* Chek ichidagi tugmalar va modal boshqaruvi qog'ozga tushmasin. */
   .no-print { display: none !important; }
 }
+
+/* ------------------------------------------------------------------
+   CHOP ETISHDA MATN HIRA CHIQMASIN
+   ------------------------------------------------------------------
+   MUAMMO: chop etiladigan bloklar ekran ranglarini olib ketardi, ya'ni
+   qog'ozga kulrang matn tushardi. Ikki sabab bor edi:
+
+     • Yorug' mavzuda `--muted-foreground: 222 14% 45%` — o'rta kulrang.
+       Ekranda o'qilaydi, printerda esa xira chiqadi (ayniqsa termal va
+       tejamkor rejimdagi printerlarda).
+     • Tungi rejimda esa `--foreground: 0 0% 98%` — deyarli OQ. Chekni
+       tungi rejimda chop etsa, oq qog'ozga oq matn tushardi.
+
+   Ustiga brauzerlar sukut bo'yicha FONNI umuman chop etmaydi, ya'ni
+   `bg-secondary` kabi ajratib turuvchi fonlar yo'qolib, faqat kulrang
+   matn qolardi.
+
+   Yechim: chop etiladigan uchala blok ham mavzudan QAT'I NAZAR oq fon va
+   qora matnga majburlanadi. Chek — hujjat, unda bezak emas, o'qilishi
+   muhim. Ramka ranglari ham qoraga o'tadi, aks holda tungi rejimdagi
+   to'q kulrang chiziqlar ko'rinmasdi.
+   ------------------------------------------------------------------ */
+@media print {
+  #salary-receipt-print,
+  #rh-print-area,
+  #rpe-print-area {
+    background: #fff !important;
+  }
+  #salary-receipt-print, #salary-receipt-print *,
+  #rh-print-area, #rh-print-area *,
+  #rpe-print-area, #rpe-print-area * {
+    color: #000 !important;
+    background-color: transparent !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    /* Yarim shaffof matn (`opacity-70` kabi) qog'ozda yana hira bo'lardi. */
+    opacity: 1 !important;
+    /* Brauzer ranglarni "tejash" uchun o'zgartirmasin. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

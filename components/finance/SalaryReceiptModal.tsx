@@ -187,7 +187,10 @@ export default function SalaryReceiptModal({
                 />
               )}
 
-              <div className="mt-2 rounded-lg bg-secondary/40 px-3 py-2 flex items-baseline justify-between gap-3">
+              {/* Ramka ataylab: chop etishda fon tushmaydi (brauzer sukut
+                  bo'yicha fonni bosmaydi), ya'ni bu qator qog'ozda faqat
+                  ramka bilan ajralib turadi. */}
+              <div className="mt-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 flex items-baseline justify-between gap-3">
                 <span className="text-[13px] font-semibold">Qo&apos;lga tegdi</span>
                 <span className="text-[17px] font-bold tabular-nums">{fmtSum(paid)}</span>
               </div>
