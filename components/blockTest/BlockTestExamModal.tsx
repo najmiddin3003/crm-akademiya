@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { useGroups } from "@/hooks/useGroups";
+import { LOADING_TEXT, selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { BlockTestExam } from "@/lib/blockTestExams";
 import type { BlockTestType } from "@/lib/blockTestTypes";
-import type { Group } from "@/lib/groups";
 import type { HrEmployee } from "@/lib/hrEmployees";
 
 // "Blok test qo'shish" / tahrirlash modali (Blok test → Blok testlar, referens
@@ -41,15 +43,34 @@ export default function BlockTestExamModal({
   const [saving, setSaving] = useState(false);
 
   const [types, setTypes] = useState<BlockTestType[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [typesLoading, setTypesLoading] = useState(true);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  // Guruhlar xom `fetch` dan hook'ga o'tkazildi: manba ham, ajratilgan
+  // maydon ham AYNAN oldingidek (/api/groups → `d.groups`, `ok` bo'lmasa
+  // ro'yxat o'zgarmaydi), ustiga yuklanish holati tayyor keladi va bir
+  // sahifadagi boshqa ro'yxatlar bilan so'rov dedup bo'ladi
+  // (hooks/useSharedList.ts).
+  const { groups, loading: groupsLoading } = useGroups();
   const [groupsOpen, setGroupsOpen] = useState(false);
   const groupsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/block-test-types").then((r) => r.json()).then((d) => { if (d.ok) setTypes(d.types); });
-    fetch("/api/groups").then((r) => r.json()).then((d) => { if (d.ok) setGroups(d.groups); });
-    fetch("/api/hr-employees").then((r) => r.json()).then((d) => { if (d.ok) setEmployees(d.employees); });
+    // Ikki so'rov ikki xil tanlovni to'ldiradi — shuning uchun `Promise.all`
+    // emas: biri kelganda o'sha tanlov darrov ochiladi, ikkinchisini
+    // kutib turmaydi.
+    let cancelled = false;
+    fetch("/api/block-test-types")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setTypes(d.types); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setTypesLoading(false); });
+    fetch("/api/hr-employees")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setEmployeesLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -117,8 +138,15 @@ export default function BlockTestExamModal({
           <div>
             <label className={labelCls}>Tur</label>
             <div className="relative">
-              <select value={typeId} onChange={(e) => setTypeId(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
+              <select
+                value={typeId}
+                onChange={(e) => setTypeId(e.target.value)}
+                disabled={typesLoading}
+                className={`${selectCls} disabled:opacity-70`}
+              >
+                {/* Turlar kelgunicha "Tur qo'shilmagan" deb yozib bo'lmaydi —
+                    o'sha onda bu YOLG'ON. */}
+                <option value="">{selectPlaceholder(typesLoading, types.length, "Tur qo'shilmagan")}</option>
                 {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
               <Chevron />
@@ -147,19 +175,29 @@ export default function BlockTestExamModal({
                 className="w-full h-11 rounded-lg border border-border bg-card px-3 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <span className={groupIds.length ? "" : "text-muted-foreground"}>
-                  {groupIds.length ? `${groupIds.length} ta guruh tanlandi` : "Tanlang"}
+                  {groupIds.length
+                    ? `${groupIds.length} ta guruh tanlandi`
+                    : groupsLoading ? LOADING_TEXT : "Tanlang"}
                 </span>
                 <svg className="icon icon-xs text-muted-foreground"><use href="#i-chevron-down" /></svg>
               </button>
               {groupsOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-56 overflow-y-auto rounded-lg border border-border bg-card shadow-xl p-1">
-                  {groups.map((g) => (
-                    <label key={g.id} className="flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-secondary text-sm cursor-pointer">
-                      <input type="checkbox" checked={groupIds.includes(g.id)} onChange={() => toggleGroup(g.id)} className="rounded border-border" />
-                      <span>{g.name}</span>
-                    </label>
-                  ))}
-                  {groups.length === 0 && <div className="px-2.5 py-2 text-sm text-muted-foreground">Guruh topilmadi</div>}
+                  {/* Yuklanish DOIM bo'sh-holatdan ustun: guruhlar kelayotgan
+                      paytda "Guruh topilmadi" YOLG'ON bo'lardi va foydalanuvchi
+                      guruh yo'q deb o'ylab modalni yopardi. */}
+                  {groupsLoading ? (
+                    <SpinnerBlock size={22} />
+                  ) : groups.length === 0 ? (
+                    <div className="px-2.5 py-2 text-sm text-muted-foreground">Guruh topilmadi</div>
+                  ) : (
+                    groups.map((g) => (
+                      <label key={g.id} className="flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-secondary text-sm cursor-pointer">
+                        <input type="checkbox" checked={groupIds.includes(g.id)} onChange={() => toggleGroup(g.id)} className="rounded border-border" />
+                        <span>{g.name}</span>
+                      </label>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -167,8 +205,15 @@ export default function BlockTestExamModal({
           <div>
             <label className={labelCls}>Mas&apos;ul xodim</label>
             <div className="relative">
-              <select value={responsibleEmployeeId} onChange={(e) => setResponsibleEmployeeId(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
+              <select
+                value={responsibleEmployeeId}
+                onChange={(e) => setResponsibleEmployeeId(e.target.value)}
+                disabled={employeesLoading}
+                className={`${selectCls} disabled:opacity-70`}
+              >
+                {/* Xodimlar kelgunicha "Xodim qo'shilmagan" deb yozib
+                    bo'lmaydi — o'sha onda bu YOLG'ON. */}
+                <option value="">{selectPlaceholder(employeesLoading, employees.length, "Xodim qo'shilmagan")}</option>
                 {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
               <Chevron />

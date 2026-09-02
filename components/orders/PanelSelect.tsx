@@ -1,3 +1,5 @@
+import { LOADING_TEXT } from "@/lib/selectPlaceholder";
+
 export interface PanelSelectProps {
   label: string;
   required?: boolean;
@@ -6,9 +8,11 @@ export interface PanelSelectProps {
   options: string[];
   placeholder?: string;
   error?: boolean;
+  /** Ro'yxat hali backenddan kelayotgan bo'lsa `true`. */
+  loading?: boolean;
 }
 
-export default function PanelSelect({ label, required, value, onChange, options, placeholder = "Tanlang", error }: PanelSelectProps) {
+export default function PanelSelect({ label, required, value, onChange, options, placeholder = "Tanlang", error, loading }: PanelSelectProps) {
   return (
     <div>
       <label className="block text-[13px] font-medium mb-1.5">
@@ -19,9 +23,10 @@ export default function PanelSelect({ label, required, value, onChange, options,
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full h-11 px-3 pr-9 rounded-lg border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
+          disabled={loading}
+          className={`w-full h-11 px-3 pr-9 rounded-lg border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70 ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
         >
-          <option value="">{placeholder}</option>
+          <option value="">{loading ? LOADING_TEXT : placeholder}</option>
           {options.map((o) => (
             <option key={o} value={o}>
               {o}

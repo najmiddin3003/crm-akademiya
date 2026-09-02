@@ -58,14 +58,14 @@ function parseFields(raw: unknown): CustomField[] {
 export default function AddOrderPage() {
   const router = useRouter();
   const { createOrder } = useOrders();
-  const { pupils } = usePupils();
+  const { pupils, loading: pupilLoading } = usePupils();
   // "O'qituvchi" ro'yxati — /api/teachers (Boshqaruv → Xodimlardagi haqiqiy
   // o'qituvchilar), AddOrderModal bilan bir xil manba.
-  const { names: teacherNames } = useTeachers();
+  const { names: teacherNames, loading: teacherLoading } = useTeachers();
   const { showSuccess, showError } = useToast();
   // Mas'ul shaxs va kurs ro'yxatlari bazadan.
-  const { names: moderatorNames } = useModerators();
-  const { names: courseNames } = useOfflineCourseList();
+  const { names: moderatorNames, loading: moderatorLoading } = useModerators();
+  const { names: courseNames, loading: courseLoading } = useOfflineCourseList();
   const pupilNames = pupils.map((p) => `${p.firstName} ${p.lastName}`.trim());
   const [activeTab, setActiveTab] = useState<"asosiy" | "sozlamalar">("asosiy");
   const [stage, setStage] = useState<OrderStageKey | null>(null);
@@ -324,7 +324,7 @@ export default function AddOrderPage() {
               </div>
 
               <SectionHeader icon={ClipboardList} title="Buyurtma ma'lumotlari" />
-              <FormRowSelect label="Mas'ul shaxs" value={moderator} onChange={setModerator} options={moderatorNames} />
+              <FormRowSelect label="Mas'ul shaxs" value={moderator} onChange={setModerator} options={moderatorNames} loading={moderatorLoading} />
               <FormRowSelect
                 label="Kurs"
                 required
@@ -334,8 +334,9 @@ export default function AddOrderPage() {
                   setError(null);
                 }}
                 options={courseNames}
+                loading={courseLoading}
               />
-              <FormRowSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherNames} />
+              <FormRowSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherNames} loading={teacherLoading} />
               <StudentSearchSelect
                 variant="row"
                 label="Referal bergan o'quvchi"
@@ -344,6 +345,7 @@ export default function AddOrderPage() {
                 options={pupilNames}
                 placeholder="..."
                 searchPlaceholder="O'quvchini qidirish"
+                loading={pupilLoading}
               />
 
               {/* Referensda ikki bo'lim orasida 48px bo'shliq va 1px ajratgich bor */}

@@ -7,6 +7,7 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { BONUS_TYPES } from "@/constants/bonuses";
 import { useStudents } from "@/hooks/useStudents";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
 import type { Cashbox } from "@/lib/cashboxes";
@@ -33,17 +34,23 @@ export default function BonusDrawer({
   const [saving, setSaving] = useState(false);
 
   // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
-  const { names: studentNames } = useStudents({ light: true });
+  const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  // Ikkala ro'yxat ham shu yerda yuklanadi — kelmaguncha "Tanlang"/"Tanlanmagan"
+  // o'rniga "Yuklanmoqda…" turadi, aks holda bo'sh select "xodim yo'q ekan"
+  // degan taassurot qoldiradi.
+  const [listsLoading, setListsLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/hr-employees")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); });
-    fetch("/api/cashboxes")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setCashboxes(d.cashboxes); });
+    Promise.all([
+      fetch("/api/hr-employees")
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); }),
+      fetch("/api/cashboxes")
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled && d.ok) setCashboxes(d.cashboxes); }),
+    ]).finally(() => { if (!cancelled) setListsLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -107,9 +114,10 @@ export default function BonusDrawer({
                 <select
                   value={employeeName}
                   onChange={(e) => setEmployeeName(e.target.value)}
-                  className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  disabled={listsLoading}
+                  className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
                 >
-                  <option value="">Tanlang</option>
+                  <option value="">{selectPlaceholder(listsLoading, employees.length, "Xodim qo'shilmagan")}</option>
                   {employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
                 </select>
                 <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
@@ -122,6 +130,7 @@ export default function BonusDrawer({
               onChange={setStudentName}
               options={studentNames}
               placeholder="O'quvchini qidirish"
+              loading={studentsLoading}
             />
           )}
 
@@ -131,9 +140,12 @@ export default function BonusDrawer({
               <select
                 value={cashboxId}
                 onChange={(e) => setCashboxId(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={listsLoading}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                <option value="">Tanlanmagan</option>
+                {/* "Tanlanmagan" — haqiqiy tanlov (kassasiz bonus), shuning
+                    uchun u `ready` matni sifatida saqlanadi. */}
+                <option value="">{selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")}</option>
                 {cashboxes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>

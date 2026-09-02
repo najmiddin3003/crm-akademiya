@@ -12,6 +12,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { useBranch } from "@/components/shared/BranchContext";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 
@@ -75,7 +76,11 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
   // turardi va boshqa hech qayerga yetib bormasdi — ya'ni tanlashning
   // hech qanday oqibati yo'q edi. Endi u cookie'ga yoziladi, server har
   // so'rovda o'shanga qarab ma'lumotni kesadi (lib/branchScope.ts).
-  const { branchId, branches: allowedBranches, select } = useBranch();
+  //
+  // `loading` — ro'yxat hali /api/branch dan kelayotgan payt. Usiz tanlov
+  // bo'sh turardi va bu "filial yo'q" degan taassurot berardi (bu CRM'dagi
+  // eng ko'p ko'riladigan tanlov, har sahifada ko'rinadi).
+  const { branchId, branches: allowedBranches, select, loading: branchLoading } = useBranch();
   // Ro'yxat qamrovga qarab keladi: xodim faqat o'ziga biriktirilganlarini
   // ko'radi. `useBranches()` (Boshqaruv → Filiallar) esa HAMMASINI beradi
   // va shu bois bu yerda ishlatilmaydi.
@@ -261,9 +266,14 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
               }
               void select(Number(v));
             }}
-            className="h-full w-full appearance-none bg-transparent pl-9 pr-7 text-sm focus:outline-none"
+            disabled={branchLoading}
+            className="h-full w-full appearance-none bg-transparent pl-9 pr-7 text-sm focus:outline-none disabled:opacity-70"
           >
-            {allowedBranches.length === 0 && <option value="">Filial…</option>}
+            {(branchLoading || allowedBranches.length === 0) && (
+              <option value="">
+                {selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…")}
+              </option>
+            )}
             {allowedBranches.map((b) => (
               <option key={b.id} value={String(b.id)}>{b.name}</option>
             ))}

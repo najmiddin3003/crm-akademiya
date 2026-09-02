@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { BLOCK_TEST_KINDS } from "@/constants/blockTest";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { BlockTestType, BlockTestSubject } from "@/lib/blockTestTypes";
 
 // "Tur qo'shish" / tahrirlash modali (Blok test → Blok test turlari, referens
@@ -39,7 +40,7 @@ export default function BlockTestTypeModal({
   // constants/blockTest.js dagi qattiq yozilgan 12 ta maktab fani edi: ular
   // akademiyada haqiqatan o'qitiladigan fanlarga mos kelmasdi, ya'ni blok
   // test turiga bazada mavjud bo'lmagan fan biriktirilardi.
-  const { names: subjectOptions } = useOfflineCourseList();
+  const { names: subjectOptions, loading: subjectsLoading } = useOfflineCourseList();
   const [name, setName] = useState(type?.name || "");
   const [kind, setKind] = useState(type?.kind || "");
   const [durationMinutes, setDurationMinutes] = useState(type ? String(type.durationMinutes) : "0");
@@ -139,8 +140,15 @@ export default function BlockTestTypeModal({
                   <div>
                     <label className="block text-[12px] text-muted-foreground mb-1">Fan</label>
                     <div className="relative">
-                      <select value={s.subject} onChange={(e) => updateSubject(i, { subject: e.target.value })} className={`${selectCls} h-10`}>
-                        <option value="">{subjectOptions.length ? "Tanlang" : "Kurs qo'shilmagan"}</option>
+                      <select
+                        value={s.subject}
+                        onChange={(e) => updateSubject(i, { subject: e.target.value })}
+                        disabled={subjectsLoading}
+                        className={`${selectCls} h-10 disabled:opacity-70`}
+                      >
+                        {/* Kurslar kelgunicha "Kurs qo'shilmagan" deb yozib
+                            bo'lmaydi — o'sha onda bu YOLG'ON. */}
+                        <option value="">{selectPlaceholder(subjectsLoading, subjectOptions.length, "Kurs qo'shilmagan")}</option>
                         {/* Avval saqlangan fan kurslar ro'yxatidan o'chirilgan
                             bo'lsa ham ko'rinsin — aks holda tahrirlashda
                             jimgina bo'shab qolardi. */}

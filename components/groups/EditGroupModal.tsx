@@ -8,6 +8,7 @@ import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
 import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { Group } from "@/lib/groups";
 
 // Guruhni tahrirlash modali (skrinshot 1). Guruh maydonlari bilan to'ldirilgan;
@@ -46,9 +47,9 @@ function isoToDmy(s: string): string {
 export default function EditGroupModal({ group, onClose, onSaved }: { group: Group; onClose: () => void; onSaved: (g: Group) => void }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
-  const { names: courseNames } = useOfflineCourseList();
-  const { names: teacherNames } = useTeachers();
-  const { names: roomNames } = useRooms();
+  const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
+  const { names: teacherNames, loading: teachersLoading } = useTeachers();
+  const { names: roomNames, loading: roomsLoading } = useRooms();
 
   const [t0, t1] = (group.time || " - ").split(" - ");
   const [p0, p1] = (group.period || " - ").split(" - ");
@@ -127,8 +128,8 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           <div>
             <label className={labelCls}>Kurs<span className="text-rose-500">*</span></label>
             <div className="relative">
-              <select value={course} onChange={(e) => setCourse(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
+              <select value={course} onChange={(e) => setCourse(e.target.value)} disabled={coursesLoading} className={`${selectCls} disabled:opacity-70`}>
+                <option value="">{selectPlaceholder(coursesLoading, courseNames.length, "Kurs qo'shilmagan")}</option>
                 {withCurrent(courseNames, course).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <Chevron />
@@ -171,8 +172,8 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           <div>
             <label className={labelCls}>O&apos;qituvchi<span className="text-rose-500">*</span></label>
             <div className="relative">
-              <select value={teacher} onChange={(e) => setTeacher(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
+              <select value={teacher} onChange={(e) => setTeacher(e.target.value)} disabled={teachersLoading} className={`${selectCls} disabled:opacity-70`}>
+                <option value="">{selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}</option>
                 {withCurrent(teacherNames, teacher).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <Chevron />
@@ -181,8 +182,8 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           <div>
             <label className={labelCls}>Yordamchi o&apos;qituvchilar</label>
             <div className="relative">
-              <select value={assistant} onChange={(e) => setAssistant(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
+              <select value={assistant} onChange={(e) => setAssistant(e.target.value)} disabled={teachersLoading} className={`${selectCls} disabled:opacity-70`}>
+                <option value="">{selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}</option>
                 {withCurrent(teacherNames, assistant).map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <Chevron />
@@ -200,8 +201,8 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           <div>
             <label className={labelCls}>Xona<span className="text-rose-500">*</span></label>
             <div className="relative">
-              <select value={room} onChange={(e) => setRoom(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
+              <select value={room} onChange={(e) => setRoom(e.target.value)} disabled={roomsLoading} className={`${selectCls} disabled:opacity-70`}>
+                <option value="">{selectPlaceholder(roomsLoading, roomNames.length, "Xona qo'shilmagan")}</option>
                 {withCurrent(roomNames, room).map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
               <Chevron />

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import MonthYearPicker from "@/components/ui/MonthYearPicker";
@@ -47,12 +48,12 @@ export default function CashboxKirimDrawer({
 }) {
   useEscapeClose(onClose);
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
-  const { active: paymentMethods } = usePaymentMethods();
+  const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
   // O'qituvchi ro'yxati bazadan — bu qiymat tranzaksiyaga yoziladi va
   // ISM bo'yicha oylik hisobiga ulanadi (lib/payrollSources.ts), shu bois
   // qattiq ro'yxatdagi ism tushumni hech kimga biriktirmasdi.
-  const { teachers, names: teacherNames } = useTeachers();
+  const { teachers, names: teacherNames, loading: teachersLoading } = useTeachers();
   const [category, setCategory] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -75,12 +76,15 @@ export default function CashboxKirimDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  // Tranzaksiya turlari xom `fetch` bilan olinadi (hook yo’q), shuning
+  // uchun yuklanish holati shu yerda yaratiladi.
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   // O'quvchilar bazadan (/api/pupils). Ism → o'quvchi kartasi (telefon va
   // profil havolasi uchun): to'lov yozuvida faqat ism saqlanadi, id emas.
   // Faqat ism/telefon/id kerak (phoneOf, selectedStudent.phone/.id) — yengil
   // ro'yxat yetadi. Bu sahifada CashboxesPage ham yengil ro'yxatni oladi,
   // ya'ni drawer ochilganda so'rov umuman ketmaydi (kesh mos keladi).
-  const { names: studentNames, byName: studentByName } = useStudents({ light: true });
+  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
 
   const key = (n: string) => n.trim().toLowerCase();
   const phoneOf = (n: string) => {
@@ -116,7 +120,8 @@ export default function CashboxKirimDrawer({
         // Moliya → Tranzaksiya turi sahifasining "Kirim" tabida BIRINCHI
         // turgan tur avtomatik tanlanadi (tartib API'dagi id bo'yicha).
         if (uniq.length > 0) setCategory((cur) => cur || uniq[0]);
-      });
+      })
+      .finally(() => { if (!cancelled) setCategoriesLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -189,9 +194,10 @@ export default function CashboxKirimDrawer({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={categoriesLoading}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                <option value="">Tanlang</option>
+                <option value="">{selectPlaceholder(categoriesLoading, categories.length, "Kirim turi qo’shilmagan")}</option>
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               {category && (
@@ -218,6 +224,7 @@ export default function CashboxKirimDrawer({
               value={teacherName}
               onChange={setTeacherName}
               options={teacherNames}
+              loading={teachersLoading}
               placeholder="Ism yoki telefon bo'yicha qidiring…"
               subtitleOf={(n) => teacherPhoneOf(n)}
             />
@@ -229,6 +236,7 @@ export default function CashboxKirimDrawer({
               value={studentName}
               onChange={setStudentName}
               options={studentNames}
+              loading={studentsLoading}
               placeholder="Ism yoki telefon bo'yicha qidiring…"
               subtitleOf={(n) => phoneOf(n)}
               trailingOf={(n) => {
@@ -269,9 +277,10 @@ export default function CashboxKirimDrawer({
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={methodsLoading}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                <option value="">Tanlang</option>
+                <option value="">{selectPlaceholder(methodsLoading, paymentMethods.length, "To’lov turi qo’shilmagan")}</option>
                 {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONTROL_CLS, ROW_CLS_TIGHT, RowChevron, RowLabel } from "@/components/orders/FormRow";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { LOADING_TEXT } from "@/lib/selectPlaceholder";
 
 export interface StudentSearchSelectProps {
   label: string;
@@ -45,6 +47,21 @@ export interface StudentSearchSelectProps {
    * qidiruv esa BUTUN ro'yxat bo'yicha ketadi, ya'ni yozuv "yo'qolmaydi".
    */
   limit?: number;
+  /**
+   * Ro'yxat hali BACKENDDAN kelayotgan bo'lsa `true`.
+   *
+   * NIMA UCHUN KERAK: ilgari ro'yxat bo'sh bo'lsa shartsiz "Topilmadi"
+   * yozilardi. Ma'lumot kelayotgan paytda bu YOLG'ON — hali hech narsa
+   * o'qilmagan, "topilmadi" esa "yo'q ekan" degan ma'noni beradi.
+   * Foydalanuvchi o'qituvchi tanlamoqchi bo'lib ro'yxatni ochsa, bo'sh
+   * ro'yxat ko'rardi.
+   *
+   * `options.length === 0` BILAN ALMASHTIRIB BO'LMAYDI: tahrirlashda
+   * ro'yxat boshiga joriy qiymat qo'shiladi (masalan AddOrderModal
+   * `teacherOptions`), ya'ni ro'yxat bo'sh bo'lmasa ham hali to'lmagan
+   * bo'lishi mumkin.
+   */
+  loading?: boolean;
 }
 
 export default function StudentSearchSelect({
@@ -62,6 +79,7 @@ export default function StudentSearchSelect({
   disabledOptions,
   disabledHint,
   limit = 50,
+  loading,
 }: StudentSearchSelectProps) {
   const isDisabled = (name: string) => Boolean(disabledOptions?.includes(name));
   const [open, setOpen] = useState(false);
@@ -133,7 +151,11 @@ export default function StudentSearchSelect({
             Tozalash
           </button>
         )}
-        {filtered.length === 0 ? (
+        {/* Yuklanish "Topilmadi" dan USTUN: ro'yxat kelmaguncha bo'sh-holat
+            xabari yozilmaydi (lib/selectPlaceholder.ts izohiga qarang). */}
+        {loading ? (
+          <SpinnerBlock size={20} />
+        ) : filtered.length === 0 ? (
           <div className="px-3 py-3 text-sm text-muted-foreground">Topilmadi</div>
         ) : (
           shown.map((name, i) => (
@@ -190,10 +212,13 @@ export default function StudentSearchSelect({
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
+            disabled={loading}
             style={{ paddingLeft: 11, paddingRight: 29 }}
-            className={`block h-8 w-full rounded-md border-0 bg-secondary text-left text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${error ? "ring-2 ring-red-400" : ""}`}
+            className={`block h-8 w-full rounded-md border-0 bg-secondary text-left text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70 ${error ? "ring-2 ring-red-400" : ""}`}
           >
-            <span className={`block truncate ${value ? "" : "text-muted-foreground"}`}>{value || placeholder}</span>
+            <span className={`block truncate ${value ? "" : "text-muted-foreground"}`}>
+              {value || (loading ? LOADING_TEXT : placeholder)}
+            </span>
           </button>
           <RowChevron />
           {dropdown}
@@ -219,9 +244,10 @@ export default function StudentSearchSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full px-3 rounded-lg border text-sm flex items-center justify-between text-left focus:outline-none focus:ring-2 ${compact ? "h-9 bg-background focus:ring-blue-500" : "h-11 bg-secondary/30 focus:ring-primary/40"} ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
+        disabled={loading}
+        className={`w-full px-3 rounded-lg border text-sm flex items-center justify-between text-left focus:outline-none focus:ring-2 disabled:opacity-70 ${compact ? "h-9 bg-background focus:ring-blue-500" : "h-11 bg-secondary/30 focus:ring-primary/40"} ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
       >
-        <span className={value ? "" : "text-muted-foreground"}>{value || placeholder}</span>
+        <span className={value ? "" : "text-muted-foreground"}>{value || (loading ? LOADING_TEXT : placeholder)}</span>
         <svg className="icon icon-sm text-muted-foreground shrink-0">
           <use href="#i-chevron-down" />
         </svg>

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { LOADING_TEXT } from "@/lib/selectPlaceholder";
 
 // Qo'lda yozilgan tanlov ro'yxati (native `<select>` o'rniga).
 //
@@ -27,6 +29,7 @@ export default function Select({
   onChange,
   placeholder = "Tanlang",
   disabled = false,
+  loading = false,
   className = "",
 }: {
   value: string;
@@ -34,6 +37,14 @@ export default function Select({
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Ro'yxat hali BACKENDDAN kelayotgan bo'lsa `true`.
+   *
+   * Ilgari bo'sh ro'yxat shartsiz "Ro'yxat bo'sh" deb yozilardi va
+   * chaqiruvchilar buni "Boshqa kassa yo'q" kabi matnlar bilan
+   * almashtirardi — ma'lumot kelayotgan paytda ikkalasi ham yolg'on.
+   */
+  loading?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -111,7 +122,7 @@ export default function Select({
     <div ref={rootRef} className={`relative ${className}`}>
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || loading}
         onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={onKeyDown}
         aria-haspopup="listbox"
@@ -124,7 +135,7 @@ export default function Select({
             {selected.hint && <span className="text-muted-foreground"> ({selected.hint})</span>}
           </span>
         ) : (
-          <span className="text-muted-foreground truncate">{placeholder}</span>
+          <span className="text-muted-foreground truncate">{loading ? LOADING_TEXT : placeholder}</span>
         )}
         <ChevronDown
           className={`w-4 h-4 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
@@ -137,9 +148,12 @@ export default function Select({
           role="listbox"
           className="absolute z-30 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-border bg-card shadow-lg py-1"
         >
-          {options.length === 0 && (
+          {/* Yuklanish "Ro'yxat bo'sh" dan USTUN. */}
+          {loading ? (
+            <SpinnerBlock size={20} />
+          ) : options.length === 0 ? (
             <div className="px-3 py-2 text-[13px] text-muted-foreground">Ro&apos;yxat bo&apos;sh</div>
-          )}
+          ) : null}
           {options.map((o, i) => {
             const isSelected = o.value === value;
             const isActive = i === activeIndex;

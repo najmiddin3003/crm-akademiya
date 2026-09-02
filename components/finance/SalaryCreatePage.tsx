@@ -8,6 +8,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
 import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { Cashbox } from "@/lib/cashboxes";
 import {
   payrollBase,
@@ -92,7 +93,7 @@ function StatCard({ label, value, hint, tone, loading = false }: StatCardProps) 
 
 export default function SalaryCreatePage() {
   const { showSuccess, showError } = useToast();
-  const { active: paymentMethods } = usePaymentMethods();
+  const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
   const [employees, setEmployees] = useState<EmployeePayroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -101,6 +102,10 @@ export default function SalaryCreatePage() {
   // Pul QAYSI kassadan chiqishi — oylik chiqarish haqiqiy chiqim yozuvlari
   // yaratadi, shuning uchun kassa va to'lov turi tanlanishi shart.
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  // Kassalar hali KELAYAPTIMI. Bunisiz tanlov ro'yxatida birinchi soniyalarda
+  // "Kassa topilmadi" turardi — o'sha onda bu yolg'on, hali hech narsa
+  // o'qilmagan edi.
+  const [cashboxesLoading, setCashboxesLoading] = useState(true);
   const [cashboxId, setCashboxId] = useState<string>("");
   const [method, setMethod] = useState<string>("");
   const [query, setQuery] = useState("");
@@ -189,7 +194,10 @@ export default function SalaryCreatePage() {
         // tanlagan kassa bosh kassaga qaytib ketmasin.
         setCashboxId((cur) => cur || String((list.find((c) => c.isPrimary) ?? list[0])?.id ?? ""));
       })
-      .catch(() => {});
+      .catch(() => {})
+      // So'rov muvaffaqiyatli tugadimi yoki xato berdimi — ro'yxat endi
+      // "kelayotgan" holatda emas, ya'ni bo'sh-holat xabari haqiqatga aylanadi.
+      .finally(() => setCashboxesLoading(false));
   }
   useEffect(() => { loadCashboxes(); }, []);
 
@@ -672,10 +680,16 @@ export default function SalaryCreatePage() {
                   <select
                     value={cashboxId}
                     onChange={(e) => setCashboxId(e.target.value)}
-                    disabled={saving}
+                    disabled={saving || cashboxesLoading}
                     className="w-full h-10 pl-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
                   >
-                    {cashboxes.length === 0 && <option value="">Kassa topilmadi</option>}
+                    {/* Yuklanish bo'sh-holatdan USTUN: kassalar kelmaguncha
+                        "Kassa topilmadi" deb yozib bo'lmaydi. */}
+                    {(cashboxesLoading || cashboxes.length === 0) && (
+                      <option value="">
+                        {selectPlaceholder(cashboxesLoading, cashboxes.length, "Kassa topilmadi")}
+                      </option>
+                    )}
                     {cashboxes.map((c) => (
                       <option key={c.id} value={String(c.id)}>
                         {c.name}{c.isPrimary ? " — bosh kassa" : ""}
@@ -695,6 +709,9 @@ export default function SalaryCreatePage() {
                   value={methodKey}
                   onChange={setMethod}
                   disabled={saving}
+                  // Ro'yxat kelayotganda "To'lov turi topilmadi" chiqmasin —
+                  // `loading` bo'sh-holat matnidan ustun (ui/Select).
+                  loading={methodsLoading}
                   placeholder={paymentMethods.length === 0 ? "To'lov turi topilmadi" : "Tanlang"}
                   options={paymentMethods.map((m) => ({
                     value: m.key,

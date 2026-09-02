@@ -53,12 +53,17 @@ export default function CashboxTransferToDrawer({
   // qolmasdi va ko'chirish umuman ishlamay qolardi. `?names=1` esa faqat
   // id va nomni beradi — boshqa odamning puli oshkor bo'lmaydi.
   const [allNames, setAllNames] = useState<CashboxName[]>([]);
+  // Bu ro'yxat hooksiz, xom `fetch` bilan olinadi — demak "keldimi?"
+  // bayrog'ini ham shu yerda yuritamiz. Boshlang'ich qiymat `true`:
+  // birinchi chizilishda ro'yxat aniq bo'sh, lekin so'rov hali yo'lda.
+  const [cashboxesLoading, setCashboxesLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
     fetch("/api/cashboxes?names=1")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setAllNames(d.cashboxes as CashboxName[]); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCashboxesLoading(false); });
     return () => { cancelled = true; };
   }, []);
   // Manzil ro'yxatida TIZIMDAGI hamma kassa turadi — o'zidan boshqasi.
@@ -159,7 +164,12 @@ export default function CashboxTransferToDrawer({
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Moliya bo&apos;limi</label>
             {/* Manzil kassalari — faqat NOMLARI. Balans ataylab yozilmaydi:
-                bu boshqa odamning kassasi, uning puli bu yerda ko'rinmasin. */}
+                bu boshqa odamning kassasi, uning puli bu yerda ko'rinmasin.
+
+                Ro'yxat kelmaguncha "Boshqa kassa yo'q" deb yozib bo'lmaydi —
+                bu yolg'on bo'lardi: hali hech narsa o'qilmagan, kassir esa
+                buni "ko'chiradigan joy yo'q ekan" deb tushunardi. `loading`
+                o'sha paytda o'zi "Yuklanmoqda…" yozadi. */}
             <Select
               value={toCashboxId}
               onChange={setToCashboxId}
@@ -168,6 +178,7 @@ export default function CashboxTransferToDrawer({
                 label: c.name,
                 hint: c.archived ? "arxivda" : undefined,
               }))}
+              loading={cashboxesLoading}
               placeholder={destinations.length === 0 ? "Boshqa kassa yo'q" : "Tanlang"}
               disabled={destinations.length === 0}
             />
@@ -184,20 +195,17 @@ export default function CashboxTransferToDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
+            {/* Ro'yxat kelmaguncha "mablag' yo'q" deb yozib bo'lmaydi — bu
+                yolg'on bo'lardi: hali hech narsa o'qilmagan. Ilgari shu
+                shart qo'lda yozilgan edi; endi `loading` propining o'zi
+                "Yuklanmoqda…" yozadi va tugmani bosdirmaydi. */}
             <Select
               value={method}
               onChange={setMethod}
               options={methodOptions}
-              placeholder={
-                // Ro'yxat kelmaguncha "mablag' yo'q" deb yozib bo'lmaydi —
-                // bu yolg'on bo'lardi: hali hech narsa o'qilmagan.
-                loadingMethods
-                  ? "Yuklanmoqda…"
-                  : methodOptions.length === 0
-                    ? "Kassada mablag' yo'q"
-                    : "Tanlang"
-              }
-              disabled={loadingMethods || methodOptions.length === 0}
+              loading={loadingMethods}
+              placeholder={methodOptions.length === 0 ? "Kassada mablag' yo'q" : "Tanlang"}
+              disabled={methodOptions.length === 0}
             />
           </div>
 

@@ -7,6 +7,8 @@ import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import { useBranches } from "@/hooks/useBranches";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import EmployeeToggle from "./EmployeeToggle";
 import CustomFieldDrawer, { type CustomFieldDraft } from "./CustomFieldDrawer";
 import {
@@ -142,7 +144,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   // Filial qatorlari Boshqaruv → Filiallar bilan bir xil manbadan.
-  const { branches } = useBranches();
+  const { branches, loading: branchesLoading } = useBranches();
   // Tahrirlashda ism BITTA maydon. Bazada ham yagona `name` bor va
   // "ism familiya" tartibi hech qayerda majburlanmagan (import ham) — har
   // qanday bo'lish qoidasi familiyasi oldinda yozilgan yozuvlarni ag'darib
@@ -244,6 +246,14 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   const [percentOpts, setPercentOpts] = useState<{ name: string; percent: string }[]>([]);
   const [darajaOpts, setDarajaOpts] = useState<string[]>([]);
   const [kursOpts, setKursOpts] = useState<string[]>([]);
+  // Ro'yxatlar KELAYOTGANDA "Foizni tanlang" turishi yolg'on edi: hali hech
+  // narsa o'qilmagan, foydalanuvchi esa ro'yxat bo'sh deb o'ylardi.
+  // Bayroq "yuklanmoqda" emas, "YUKLANDI" — chunki bu uch so'rov vazifa
+  // "O'qituvchi"ga o'zgargandan KEYIN ketadi. Oddiy `loading` bayrog'i
+  // effekt ishga tushguncha bir kadr `false` turib, aynan o'sha bo'sh
+  // ro'yxatni ko'rsatib ulgurardi; hosila qiymatda bunday oyna yo'q.
+  const [teacherListsLoaded, setTeacherListsLoaded] = useState(false);
+  const teacherListsLoading = isTeacher && !teacherListsLoaded;
 
   // Ro'yxatlar faqat kerak bo'lganda yuklanadi — moderator/administrator
   // tanlansa bu so'rovlar umuman ketmaydi.
@@ -260,7 +270,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       if (p?.ok) setPercentOpts((p.items as { name: string; percent: string }[]).map((i) => ({ name: i.name, percent: i.percent })));
       if (d?.ok) setDarajaOpts((d.items as { name: string }[]).map((i) => i.name));
       if (c?.ok) setKursOpts((c.courses as { name: string }[]).map((i) => i.name));
-    });
+    }).finally(() => { if (!cancelled) setTeacherListsLoaded(true); });
     return () => { cancelled = true; };
   }, [isTeacher]);
 
@@ -271,6 +281,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   // Boshqaruv → Ish jadvali (/api/work-schedules, faqat faollari).
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const [schedules, setSchedules] = useState<{ id: number; name: string }[]>([]);
+  // Ikkalasi bitta Promise.all bilan keladi — shu sabab bitta bayroq.
+  // O'qituvchi ro'yxatlariniki ALOHIDA: u effekt kechroq (vazifa tanlangach)
+  // ishga tushadi, umumiy bayroq bo'lsa birinchi tugagan so'rov ikkinchisi
+  // hali yo'ldaligida ro'yxatni "tayyor" deb ko'rsatib qo'yardi.
+  const [branchListsLoading, setBranchListsLoading] = useState(true);
   // Tahrirlashda mavjud biriktiruvlar bilan to'ldiriladi — aks holda modal
   // ochilib "Saqlash" bosilsa, sozlangan ish haqi bo'sh massiv bilan
   // almashib, butunlay yo'qolardi.
@@ -296,7 +311,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       if (s?.ok) {
         setSchedules((s.schedules as { id: number; name: string; active: boolean }[]).filter((x) => x.active));
       }
-    });
+    }).finally(() => { if (!cancelled) setBranchListsLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -611,8 +626,13 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               <div>
                 <label className={labelCls}>Oladigan foizi<span className="text-rose-500">*</span></label>
                 <div className="relative">
-                  <select className={selectCls} value={percent} onChange={(e) => setPercent(e.target.value)}>
-                    <option value="">Foizni tanlang</option>
+                  <select
+                    className={`${selectCls} disabled:opacity-70`}
+                    disabled={teacherListsLoading}
+                    value={percent}
+                    onChange={(e) => setPercent(e.target.value)}
+                  >
+                    <option value="">{selectPlaceholder(teacherListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")}</option>
                     {/* ESKI XOM QIYMAT ("60" kabi). Ilgari bu maydon erkin
                         matn edi, ya'ni bazada ro'yxatga mos kelmaydigan
                         qiymatlar bor. Ular uchun variant qo'shilmasa
@@ -631,8 +651,13 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               <div>
                 <label className={labelCls}>Darajasi</label>
                 <div className="relative">
-                  <select className={selectCls} value={daraja} onChange={(e) => setDaraja(e.target.value)}>
-                    <option value="">Darajani tanlang</option>
+                  <select
+                    className={`${selectCls} disabled:opacity-70`}
+                    disabled={teacherListsLoading}
+                    value={daraja}
+                    onChange={(e) => setDaraja(e.target.value)}
+                  >
+                    <option value="">{selectPlaceholder(teacherListsLoading, darajaOpts.length, "Daraja qo'shilmagan", "Darajani tanlang")}</option>
                     {darajaOpts.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <Chevron />
@@ -641,8 +666,13 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               <div>
                 <label className={labelCls}>Kurslar<span className="text-rose-500">*</span></label>
                 <div className="relative">
-                  <select className={selectCls} value={kurs} onChange={(e) => setKurs(e.target.value)}>
-                    <option value="">Tanlang</option>
+                  <select
+                    className={`${selectCls} disabled:opacity-70`}
+                    disabled={teacherListsLoading}
+                    value={kurs}
+                    onChange={(e) => setKurs(e.target.value)}
+                  >
+                    <option value="">{selectPlaceholder(teacherListsLoading, kursOpts.length, "Kurs qo'shilmagan")}</option>
                     {kursOpts.map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
                   <Chevron />
@@ -667,11 +697,18 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                 </label>
               </div>
             </div>
-            {branches.map((branch) => {
+            {/* Filiallar KELAYOTGANDA bu yer butunlay bo'sh turardi — sarlavha
+                qatori bor, ostida esa hech narsa yo'q: "xodimni biriktiradigan
+                filial yo'q ekan" degan taassurot. Checkbox ro'yxatiga nativ
+                select placeholder'i to'g'ri kelmaydi, shuning uchun spinner. */}
+            {branchesLoading ? <SpinnerBlock size={22} /> : branches.map((branch) => {
               const row = rowOf(branch.id);
               // `disabled:opacity-40` — loyihada MAVJUD bo'lgan yagona
               // disabled-opacity klassi (brauzerda tekshirildi; opacity-50 va
-              // disabled:opacity-60 umuman generatsiya bo'lmagan).
+              // disabled:opacity-60 umuman generatsiya bo'lmagan). Yuklanish
+              // uchun `disabled:opacity-70` QO'SHILMAYDI: ikkala klass ham
+              // bir xil xossani yozadi va qaysi biri g'olib bo'lishi CSS
+              // tartibiga qolardi — bu yerda o'chiq ko'rinish allaqachon bor.
               const off = !row.checked;
               return (
                 <div key={branch.id} className="grid grid-cols-4 gap-3">
@@ -687,11 +724,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   <div className="relative">
                     <select
                       className={`${selectCls} disabled:opacity-40`}
-                      disabled={off}
+                      disabled={off || branchListsLoading}
                       value={row.roleId}
                       onChange={(e) => updateRow(branch.id, { roleId: e.target.value })}
                     >
-                      <option value="">Rolni tanlang</option>
+                      <option value="">{selectPlaceholder(branchListsLoading, roles.length, "Rol qo'shilmagan", "Rolni tanlang")}</option>
                       {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
                     </select>
                     <Chevron />
@@ -699,11 +736,13 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   <div className="relative">
                     <select
                       className={`${selectCls} disabled:opacity-40`}
-                      disabled={off}
+                      disabled={off || branchListsLoading}
                       value={row.scheduleId}
                       onChange={(e) => updateRow(branch.id, { scheduleId: e.target.value })}
                     >
-                      <option value="">Ish jadvali</option>
+                      {/* Ro'yxat FAOL jadvallar bilan filtrlangan — "jadval
+                          qo'shilmagan" emas, "faol jadval yo'q" to'g'ri. */}
+                      <option value="">{selectPlaceholder(branchListsLoading, schedules.length, "Faol ish jadvali yo'q", "Ish jadvali")}</option>
                       {schedules.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
                     </select>
                     <Chevron />

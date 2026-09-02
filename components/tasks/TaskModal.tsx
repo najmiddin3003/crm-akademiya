@@ -8,6 +8,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import { useTaskTargets } from "@/hooks/useTaskTargets";
 import { useStaff } from "@/hooks/useStaff";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import {
   RECURRENCE_OPTIONS,
   TASK_TARGET_KINDS,
@@ -97,9 +98,9 @@ function valuesFromTask(task: Task): TaskModalValues {
 export default function TaskModal({ task, initialDate, onClose, onSave }: TaskModalProps) {
   const [values, setValues] = useState<TaskModalValues>(() => (task ? valuesFromTask(task) : blankValues(initialDate)));
   const [dateError, setDateError] = useState(false);
-  const { types: taskTypes } = useTaskTypes();
+  const { types: taskTypes, loading: typesLoading } = useTaskTypes();
   const { byKind, loading: targetsLoading } = useTaskTargets();
-  const { names: staffNames } = useStaff();
+  const { names: staffNames, loading: staffLoading } = useStaff();
   useEscapeClose(onClose);
 
   const targetOptions = byKind[values.targetKind] ?? [];
@@ -160,9 +161,10 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
             <select
               value={values.staff}
               onChange={(e) => set("staff", e.target.value)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={staffLoading}
+              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
             >
-              <option value="">Tanlang</option>
+              <option value="">{selectPlaceholder(staffLoading, staffNames.length, "Xodim qo'shilmagan")}</option>
               {staffNames.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -173,9 +175,10 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
             <select
               value={values.type}
               onChange={(e) => set("type", e.target.value)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={typesLoading}
+              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
             >
-              <option value="">Tanlang</option>
+              <option value="">{selectPlaceholder(typesLoading, taskTypes.length, "Topshiriq turi qo'shilmagan")}</option>
               {/* Tahrirlanayotgan topshiriqdagi tur keyin o'chirilgan
                   bo'lishi mumkin — u ham ko'rinsin, aks holda tanlov
                   jimgina bo'shab qoladi. */}
@@ -209,7 +212,8 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
             onChange={(v) => set("targetValue", v)}
             options={targetOptions.map((o) => o.value)}
             subtitleOf={(name) => targetSubtitle.get(name) ?? ""}
-            placeholder={targetsLoading ? "Yuklanmoqda…" : `${targetLabel}ni qidirish`}
+            placeholder={`${targetLabel}ni qidirish`}
+            loading={targetsLoading}
             limit={50}
           />
         </div>

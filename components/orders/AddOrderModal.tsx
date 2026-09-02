@@ -45,8 +45,8 @@ function parseFirstLesson(firstLesson: string): { date: string; time: string } {
 export default function AddOrderModal({ initialOrder, initialStudentName, initialStudentPhone, onClose, onSave }: AddOrderModalProps) {
   // Kurs va guruh ro'yxatlari bazadan — ilgari constants'dagi qattiq
   // ro'yxatlar edi, ya'ni haqiqiy guruhga yozib bo'lmasdi.
-  const { names: courseNames } = useOfflineCourseList();
-  const { groups } = useGroups();
+  const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
+  const { groups, loading: groupsLoading } = useGroups();
   const groupNames = useMemo(() => groups.map((g) => g.name).filter(Boolean), [groups]);
   const [mounted, setMounted] = useState(false);
   const [studentName, setStudentName] = useState(initialOrder?.name ?? initialStudentName ?? "");
@@ -73,10 +73,10 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   // (constants/index.js'dagi statik 50 ta demo STUDENTS ro'yxati emas) —
   // shared PupilsContext orqali, shu bois avvalgi sessiyalarda qo'shilganlar
   // ham qidiruvda ko'rinadi.
-  const { pupils } = usePupils();
+  const { pupils, loading: pupilsLoading } = usePupils();
   // "O'qituvchi" ro'yxati — Boshqaruv → Xodimlardagi HAQIQIY o'qituvchilar
   // (/api/teachers), avvalgi qattiq yozilgan TEACHERS massivi emas.
-  const { names: teacherNames } = useTeachers();
+  const { names: teacherNames, loading: teachersLoading } = useTeachers();
 
   useEscapeClose(onClose);
 
@@ -198,11 +198,18 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
                 setError(null);
               }}
               options={studentOptions}
+              loading={pupilsLoading}
               error={error === "O'quvchi majburiy"}
             />
           )}
 
-          <StudentSearchSelect label="Referal bergan o'quvchi" value={referral} onChange={setReferral} options={studentOptions} />
+          <StudentSearchSelect
+            label="Referal bergan o'quvchi"
+            value={referral}
+            onChange={setReferral}
+            options={studentOptions}
+            loading={pupilsLoading}
+          />
 
           <StudentSearchSelect
             label="Kurs"
@@ -213,6 +220,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               setError(null);
             }}
             options={courseNames}
+            loading={coursesLoading}
             placeholder="Kursni tanlang"
             searchPlaceholder="Kursni qidirish"
             error={error === "Kurs majburiy"}
@@ -240,6 +248,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             value={teacher}
             onChange={setTeacher}
             options={teacherOptions}
+            loading={teachersLoading}
             placeholder="Ustozni tanlang"
             searchPlaceholder="Ustozni qidirish"
           />
@@ -249,6 +258,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             value={group}
             onChange={setGroup}
             options={groupNames}
+            loading={groupsLoading}
             placeholder="Yig'ilayotgan guruhni tanlang"
             searchPlaceholder="Guruhni qidirish"
           />

@@ -18,6 +18,8 @@
 // px-[11px]) bosib ketadi. Aniq qiymatlar inline style bilan yoziladi.
 
 /** Referens qator: chapda yorliq, o'ngda 250px boshqaruv (balandligi 36px). */
+import { LOADING_TEXT } from "@/lib/selectPlaceholder";
+
 export const ROW_CLS = "flex justify-between items-center w-full my-2 min-h-9";
 /**
  * Balandligi boshqaruvga qarab o'lchanadigan qator (32px). Referensda
@@ -56,9 +58,15 @@ export interface FormRowSelectProps {
   onChange: (value: string) => void;
   options: string[];
   placeholder?: string;
+  /**
+   * Ro'yxat hali BACKENDDAN kelayotgan bo'lsa `true` — birinchi qatorda
+   * "Yuklanmoqda…" turadi. Nativ `<select>` ichiga spinner chizib
+   * bo'lmaydi, shuning uchun bu yerda faqat matn o'zgaradi.
+   */
+  loading?: boolean;
 }
 
-export function FormRowSelect({ label, required, value, onChange, options, placeholder = "..." }: FormRowSelectProps) {
+export function FormRowSelect({ label, required, value, onChange, options, placeholder = "...", loading }: FormRowSelectProps) {
   return (
     <div className={ROW_CLS}>
       <RowLabel label={label} required={required} />
@@ -66,10 +74,11 @@ export function FormRowSelect({ label, required, value, onChange, options, place
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          disabled={loading}
           style={{ paddingLeft: 11, paddingRight: 29 }}
-          className="h-8 w-full cursor-pointer appearance-none rounded-md border-0 bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-8 w-full cursor-pointer appearance-none rounded-md border-0 bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
         >
-          <option value="">{placeholder}</option>
+          <option value="">{loading ? LOADING_TEXT : placeholder}</option>
           {options.map((o) => (
             <option key={o} value={o}>
               {o}

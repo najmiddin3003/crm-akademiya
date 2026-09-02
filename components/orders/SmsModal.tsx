@@ -7,6 +7,7 @@ import { renderSmsPreview, type SmsTemplate } from "@/lib/smsTemplates";
 import { AUTO_SMS_SCENARIOS } from "@/constants/settingsAutoSms";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 
 // "SMS yuborish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: O'quvchilar (faqat ko'rsatiladi) →
@@ -94,6 +95,9 @@ function Toggle({
 
 export default function SmsModal({ studentName, phone, onClose, onSent, onError }: SmsModalProps) {
   const [options, setOptions] = useState<TemplateOption[]>([]);
+  // Shablonlar ikki manbadan yig'ilib bo'lguncha ro'yxat bo'sh turadi — o'sha
+  // paytda "Shablon yo'q" deyish YOLG'ON bo'lardi.
+  const [templatesLoading, setTemplatesLoading] = useState(true);
   const [picked, setPicked] = useState("");
   const [toParent, setToParent] = useState(false);
   const [onlyParent, setOnlyParent] = useState(false);
@@ -148,6 +152,8 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
         // Ota va ona bir xil raqam yozgan bo'lsa SMS ikki marta ketmasin.
         setParentPhones(found.filter((r, i) => found.findIndex((x) => digitsOf(x.phone) === digitsOf(r.phone)) === i));
       }
+    }).finally(() => {
+      if (!cancelled) setTemplatesLoading(false);
     });
     return () => { cancelled = true; };
   }, [phone, studentName]);
@@ -248,8 +254,13 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
           <div>
             <label className="block text-sm font-medium mb-1.5">SMS shablon</label>
             <div className="relative">
-              <select value={picked} onChange={(e) => pick(e.target.value)} className={`${FIELD_CLS} appearance-none pr-9`}>
-                <option value="">{options.length ? "Qidirish" : "Shablon yo'q"}</option>
+              <select
+                value={picked}
+                onChange={(e) => pick(e.target.value)}
+                disabled={templatesLoading}
+                className={`${FIELD_CLS} appearance-none pr-9 disabled:opacity-70`}
+              >
+                <option value="">{selectPlaceholder(templatesLoading, options.length, "Shablon yo'q", "Qidirish")}</option>
                 {groups.map((g) => (
                   <optgroup key={g} label={g}>
                     {options

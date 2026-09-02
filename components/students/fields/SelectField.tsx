@@ -1,3 +1,5 @@
+import { LOADING_TEXT } from "@/lib/selectPlaceholder";
+
 // O'quvchi profilidagi tanlov maydoni.
 //
 // `options` + `onChange` berilsa haqiqiy tanlov bo'ladi; berilmasa eski
@@ -9,6 +11,7 @@ export default function SelectField({
   onChange,
   placeholder = "Tanlang",
   clearable = false,
+  loading = false,
 }: {
   label: string;
   value?: string;
@@ -16,6 +19,14 @@ export default function SelectField({
   onChange?: (v: string) => void;
   placeholder?: string;
   clearable?: boolean;
+  /**
+   * `options` hali backenddan kelayotgan bo'lsa `true`.
+   *
+   * Nazoratsiz rejimda (`options` berilmagan — faqat bitta qiymat
+   * ko'rsatiladi) hech qachon rost bo'lmasligi kerak: u yerda so'ralayotgan
+   * ro'yxat yo'q.
+   */
+  loading?: boolean;
 }) {
   const controlled = onChange !== undefined;
   return (
@@ -26,9 +37,10 @@ export default function SelectField({
           {...(controlled
             ? { value: value ?? "", onChange: (e) => onChange(e.target.value) }
             : {})}
-          className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+          disabled={loading}
+          className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
         >
-          <option value="">{placeholder}</option>
+          <option value="">{loading ? LOADING_TEXT : placeholder}</option>
           {options
             ? options.map((o) => (
                 <option key={o} value={o}>

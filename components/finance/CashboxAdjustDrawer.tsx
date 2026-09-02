@@ -20,6 +20,7 @@ import { txTarget, txTargetLabel } from "@/lib/txTarget";
 import { payrollDue, payrollEarned, payrollPeriod, payrollPeriodOf, type EmployeePayroll } from "@/lib/salary";
 import { ROLE_LABELS } from "@/constants/employees";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -67,7 +68,7 @@ export default function CashboxAdjustDrawer({
   onSaved: (c: Cashbox) => void;
 }) {
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
-  const { active: paymentMethods } = usePaymentMethods();
+  const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
   // Tanlangan tur ID bo'yicha saqlanadi, nom bo'yicha emas: turning "Mijoz"
   // maydoni ham kerak, nom esa noyob emas (POST /api/transaction-types nom
@@ -93,6 +94,14 @@ export default function CashboxAdjustDrawer({
   // va turning "Mijoz" maydoni aynan shu qatorda yo'qolardi — javobda u bor
   // edi, lekin brauzergacha yetib kelmasdi.
   const [categories, setCategories] = useState<TransactionType[]>([]);
+  // Bayroq `true` bo'lganda tanlovda BO'SH-HOLAT xabari ("Chiqim turi
+  // qo'shilmagan", "Topilmadi") ko'rsatilmaydi — o'sha onda u yolg'on
+  // bo'lardi. Boshlang'ich qiymat `true`: ochilish zahoti fetch ketadi.
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  // Xodimlar ro'yxati SHARTLI yuklanadi (faqat "xodimga to'lov" turida),
+  // shuning uchun bayroq HOSILA: effekt tanasida setState chaqirilsa
+  // kaskad render bo'lardi (react-hooks/set-state-in-effect).
+  const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const selectedType = useMemo(
     () => categories.find((t) => t.id === categoryId) ?? null,
     [categories, categoryId],
@@ -126,12 +135,17 @@ export default function CashboxAdjustDrawer({
       .then((d) => {
         if (cancelled || !d.ok) return;
         setCategories((d.types as TransactionType[]).filter((t) => t.mainType === "chiqim"));
-      });
+      })
+      .finally(() => { if (!cancelled) setCategoriesLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
   // Xodimlar ro'yxati faqat kerak bo'lganda (xodimga oylik/avans) yuklanadi.
   const target = txTarget(selectedType);
+  // "Xodim" turiga o'tilgan, lekin ro'yxat hali kelmagan payt — aynan shu
+  // oraliqda tanlov bo'sh turadi. Hosila bayroq: effekt tanasida
+  // `setState` chaqirilmaydi.
+  const employeesLoading = target === "employee" && !employeesLoaded && employees.length === 0;
   useEffect(() => {
     if (target !== "employee" || employees.length > 0) return;
     let cancelled = false;
@@ -141,7 +155,8 @@ export default function CashboxAdjustDrawer({
       .then((emps) => {
         if (cancelled || !emps?.ok) return;
         setEmployees(emps.employees as HrEmployee[]);
-      });
+      })
+      .finally(() => { if (!cancelled) setEmployeesLoaded(true); });
     return () => { cancelled = true; };
   }, [target, employees.length]);
 
@@ -167,7 +182,7 @@ export default function CashboxAdjustDrawer({
   const activeEmployees = employees.filter((e) => !e.archReason);
   // O'quvchilar tanlovi bazadan (/api/pupils).
   // Faqat ism va id kerak (selectedStudent.name/.id) — yengil ro'yxat yetadi.
-  const { names: studentNames, byName: studentByName } = useStudents({ light: true });
+  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
@@ -189,6 +204,17 @@ export default function CashboxAdjustDrawer({
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
+
+  // To'lov turlari ro'yxati alohida hisoblanadi: birinchi `<option>` matni
+  // uchun HAQIQATAN chiziladigan variantlar SONI kerak (ro'yxat kassada
+  // mablag'i bor turlar bilan cheklangan).
+  const methodOptions = useMemo(
+    () =>
+      paymentMethods
+        .map((m) => ({ m, bal: cashbox.methodTotals[m.key as keyof CashboxMethodTotals] ?? 0 }))
+        .filter(({ bal }) => bal > 0),
+    [paymentMethods, cashbox.methodTotals],
+  );
 
   // "Hodimga oylik" va "Hodimga avans" turlarida umumiy summa xodimning shu
   // oyda qolgan oyligidan oshmasligi kerak (referens qoida: avans oylikdan
@@ -356,9 +382,12 @@ export default function CashboxAdjustDrawer({
                   if (txTarget(next) !== target) setPersonName("");
                   setCategoryId(next?.id ?? null);
                 }}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={categoriesLoading}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                <option value="">Tanlang</option>
+                <option value="">
+                  {selectPlaceholder(categoriesLoading, categories.length, "Chiqim turi qo'shilmagan")}
+                </option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
@@ -376,6 +405,11 @@ export default function CashboxAdjustDrawer({
                 value={personName}
                 onChange={setPersonName}
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : studentNames}
+                // Bitta tanlovni IKKI manba to'ldiradi — turga QARAB: xodim
+                // turida xodimlar ro'yxati, aks holda o'quvchilar. Ikkalasini
+                // birlashtirib yuborish xato bo'lardi — o'quvchi
+                // tanlanayotganda xodimlar ro'yxati kutilmasligi kerak.
+                loading={target === "employee" ? employeesLoading : studentsLoading}
                 placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
                 subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
                 // Ism yonida QOLGAN oylik: shu oynada aynan shuncha pul
@@ -510,15 +544,15 @@ export default function CashboxAdjustDrawer({
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={methodsLoading}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                <option value="">Tanlang</option>
-                {paymentMethods
-                  .map((m) => ({ m, bal: cashbox.methodTotals[m.key as keyof CashboxMethodTotals] ?? 0 }))
-                  .filter(({ bal }) => bal > 0)
-                  .map(({ m, bal }) => (
-                    <option key={m.key} value={m.key}>{`${m.name} (${fmtSum(bal)})`}</option>
-                  ))}
+                <option value="">
+                  {selectPlaceholder(methodsLoading, methodOptions.length, "Kassada mablag' yo'q")}
+                </option>
+                {methodOptions.map(({ m, bal }) => (
+                  <option key={m.key} value={m.key}>{`${m.name} (${fmtSum(bal)})`}</option>
+                ))}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
             </div>

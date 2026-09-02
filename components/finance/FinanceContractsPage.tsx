@@ -51,7 +51,9 @@ function parseCreatedAt(s: string): Date | null {
 export default function FinanceContractsPage() {
   const { showSuccess, showError } = useToast();
   // O'quvchilar bazadan: ism → karta (id, profil havolasi uchun).
-  const { students, byName: studentByName } = useStudents();
+  // `studentsLoading` drawer'ga uzatiladi: u ro'yxatni PROPDAN oladi va
+  // bo'sh massivni "o'quvchi yo'q" deb o'qib "Topilmadi" yozib qo'ymasin.
+  const { students, byName: studentByName, loading: studentsLoading } = useStudents();
   const { groups } = useGroups();
 
   const [contracts, setContracts] = useState<FinanceContract[]>([]);
@@ -185,7 +187,9 @@ export default function FinanceContractsPage() {
             <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
           </div>
           <div className="w-44">
-            <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder="O'quvchi" />
+            {/* Filtr ro'yxati shartnomalardan yig'iladi — ular kelmaguncha
+                ochilgan dropdownda "Topilmadi" yozilardi. */}
+            <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder="O'quvchi" loading={loading} />
           </div>
         </div>
       </div>
@@ -295,12 +299,13 @@ export default function FinanceContractsPage() {
       </div>
 
       {addOpen && (
-        <FinanceContractDrawer students={students} onClose={() => setAddOpen(false)} onSaved={(c) => setContracts((prev) => [c, ...prev])} />
+        <FinanceContractDrawer students={students} studentsLoading={studentsLoading} onClose={() => setAddOpen(false)} onSaved={(c) => setContracts((prev) => [c, ...prev])} />
       )}
       {editTarget && (
         <FinanceContractDrawer
           contract={editTarget}
           students={students}
+          studentsLoading={studentsLoading}
           onClose={() => setEditTarget(null)}
           onSaved={(c) => setContracts((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
         />

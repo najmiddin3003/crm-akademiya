@@ -8,6 +8,7 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useModerators } from "@/hooks/useModerators";
+import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { StudentRow } from "@/lib/studentsData";
 import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
 
@@ -37,17 +38,26 @@ function nextPartId(parts: PartDraft[]): number {
 export default function FinanceContractDrawer({
   contract,
   students,
+  studentsLoading,
   onClose,
   onSaved,
 }: {
   contract?: FinanceContract;
   students: StudentRow[];
+  /**
+   * `students` propi hali /api/pupils dan kelayotgan bo'lsa `true`.
+   *
+   * Ro'yxat SAHIFADAN uzatiladi, shuning uchun drawer o'zi bilolmaydi:
+   * bo'sh massiv "o'quvchi yo'q" degani emas, "hali kelmagan" degani ham
+   * bo'lishi mumkin. Bu bayroqsiz ro'yxat ochilganda "Topilmadi" yozilardi.
+   */
+  studentsLoading?: boolean;
   onClose: () => void;
   onSaved: (c: FinanceContract) => void;
 }) {
   useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
-  const { moderators } = useModerators();
+  const { moderators, loading: moderatorsLoading } = useModerators();
 
   // Tanlash ro'yxatida ism va telefon — bir xil ismli o'quvchilarni ajratish
   // uchun (telefonsiz o'quvchida faqat ism turadi).
@@ -152,6 +162,7 @@ export default function FinanceContractDrawer({
             onChange={setStudentOption}
             options={studentOptions}
             placeholder="O'quvchini tanlang"
+            loading={studentsLoading}
           />
 
           <div>
@@ -162,9 +173,10 @@ export default function FinanceContractDrawer({
               <select
                 value={moderatorId}
                 onChange={(e) => setModeratorId(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                disabled={moderatorsLoading}
+                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                <option value="">Tanlang</option>
+                <option value="">{selectPlaceholder(moderatorsLoading, moderators.length, "Moderator qo'shilmagan")}</option>
                 {moderators.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
