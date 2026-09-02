@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useSharedList } from "@/hooks/useSharedList";
 import type { Moderator } from "@/lib/moderatorsData";
 
 // Moderatorlarning YAGONA klient manbasi — /api/moderators (MongoDB
@@ -11,17 +12,12 @@ import type { Moderator } from "@/lib/moderatorsData";
 // o'qir edi (kassa panelida hatto O'QITUVCHILAR ro'yxati chiqardi), yo
 // butun xodimlar ro'yxatini tortib olib klientda filtrlardi.
 export function useModerators() {
-  const [moderators, setModerators] = useState<Moderator[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/moderators")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setModerators(d.moderators); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  // Takroriy so'rov dedup qilinadi — hooks/useSharedList.ts (7 ta faylda).
+  const { items: moderators, loading } = useSharedList<Moderator>(
+    "shared:moderators",
+    "/api/moderators",
+    (d) => (d as { moderators?: Moderator[] }).moderators ?? [],
+  );
 
   const names = useMemo(() => moderators.map((m) => m.name).filter(Boolean), [moderators]);
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useSharedList } from "@/hooks/useSharedList";
 import type { Teacher } from "@/lib/teachersData";
 
 // O'qituvchilarning YAGONA klient manbasi — /api/teachers (MongoDB
@@ -11,17 +12,13 @@ import type { Teacher } from "@/lib/teachersData";
 // bilan bog'liq emas edi. O'qituvchi kerak bo'lgan har qanday klient
 // komponent shu hook'dan foydalanishi kerak.
 export function useTeachers() {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/teachers")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setTeachers(d.teachers); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  // Bir vaqtda kelgan chaqiruvlar bitta so'rovni bo'lishadi — sabab
+  // hooks/useSharedList.ts izohida (bu hook 9 ta faylda ishlatiladi).
+  const { items: teachers, loading } = useSharedList<Teacher>(
+    "shared:teachers",
+    "/api/teachers",
+    (d) => (d as { teachers?: Teacher[] }).teachers ?? [],
+  );
 
   const names = useMemo(() => teachers.map((t) => t.name).filter(Boolean), [teachers]);
 

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useSharedList } from "@/hooks/useSharedList";
+
+import { useMemo } from "react";
 import type { HrEmployee } from "@/lib/hrEmployees";
 
 // "Mas'ul shaxs" tanlovlarining YAGONA klient manbasi — /api/hr-employees
@@ -12,17 +14,12 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 // iborat edi va bazadagi haqiqiy xodimlar bilan bog'liq emas edi — ya'ni
 // topshiriq tizimda mavjud bo'lmagan odamga biriktirilishi mumkin edi.
 export function useStaff() {
-  const [employees, setEmployees] = useState<HrEmployee[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/hr-employees")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  // Takroriy so'rov dedup qilinadi — hooks/useSharedList.ts (4 ta faylda).
+  const { items: employees, loading } = useSharedList<HrEmployee>(
+    "shared:hr-employees",
+    "/api/hr-employees",
+    (d) => (d as { employees?: HrEmployee[] }).employees ?? [],
+  );
 
   const names = useMemo(
     () => employees.filter((e) => !e.archReason).map((e) => e.name).filter(Boolean),

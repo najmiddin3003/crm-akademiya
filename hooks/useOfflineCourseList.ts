@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useSharedList } from "@/hooks/useSharedList";
+
+import { useMemo } from "react";
 import type { OfflineCourse } from "@/components/offline-courses/OfflineCoursesProvider";
 
 // Oflayn kurslarni OfflineCoursesProvider'dan TASHQARIDA o'qish uchun yengil
@@ -8,17 +10,12 @@ import type { OfflineCourse } from "@/components/offline-courses/OfflineCoursesP
 // o'ralgan, ammo kurs ro'yxati boshqa sahifalarda ham kerak bo'ladi —
 // masalan buyurtma detalidagi fan nomini kurs sahifasiga bog'lash uchun.
 export function useOfflineCourseList() {
-  const [courses, setCourses] = useState<OfflineCourse[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/offline-courses")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setCourses(d.courses); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  // Takroriy so'rov dedup qilinadi — hooks/useSharedList.ts (10 ta faylda).
+  const { items: courses, loading } = useSharedList<OfflineCourse>(
+    "shared:offline-courses",
+    "/api/offline-courses",
+    (d) => (d as { courses?: OfflineCourse[] }).courses ?? [],
+  );
 
   // Kurs TANLANADIGAN joylar uchun — ilgari ular constants'dagi bir-biriga
   // mos kelmaydigan uchta qattiq ro'yxatdan (GROUP_COURSES, COURSES,

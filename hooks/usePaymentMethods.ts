@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSharedList } from "@/hooks/useSharedList";
+
 import type { PaymentMethod } from "@/lib/paymentMethods";
 
 // To'lov turlarining yagona KLIENT manbasi — Sozlamalar → Moliya → To'lov
@@ -11,17 +12,12 @@ import type { PaymentMethod } from "@/lib/paymentMethods";
 // qilingan tur yangi amalda tanlanmasligi kerak, lekin eski summalar
 // ko'rinib turishi kerak.
 export function usePaymentMethods() {
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/settings-lists?kind=payment-methods")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setMethods(d.items); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  // Takroriy so'rov dedup qilinadi — hooks/useSharedList.ts (11 ta faylda).
+  const { items: methods, loading } = useSharedList<PaymentMethod>(
+    "shared:payment-methods",
+    "/api/settings-lists?kind=payment-methods",
+    (d) => (d as { items?: PaymentMethod[] }).items ?? [],
+  );
 
   return { methods, active: methods.filter((m) => m.active), loading };
 }

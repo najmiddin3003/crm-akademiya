@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSharedList } from "@/hooks/useSharedList";
+
 import type { Group } from "@/lib/groups";
 
 // Guruhlarning YAGONA klient manbasi — /api/groups (MongoDB `groups`,
@@ -11,17 +12,15 @@ import type { Group } from "@/lib/groups";
 // bog'liq emas edi. Guruh kerak bo'lgan har qanday klient komponent shu
 // hook'dan foydalanishi kerak.
 export function useGroups() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/groups")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  // Takroriy so'rov dedup qilinadi — hooks/useSharedList.ts (11 ta faylda).
+  //
+  // TTL ataylab QISQA (1.5 s): `highlighted` bayrog'i har so'rovda qaytadan
+  // hisoblanadi (bugungi davomat), ya'ni ro'yxatni uzoq keshlash mumkin emas.
+  const { items: groups, loading } = useSharedList<Group>(
+    "shared:groups",
+    "/api/groups",
+    (d) => (d as { groups?: Group[] }).groups ?? [],
+  );
 
   return { groups, loading };
 }
