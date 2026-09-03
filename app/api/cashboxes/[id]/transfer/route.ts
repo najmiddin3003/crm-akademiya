@@ -46,17 +46,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Kassa topilmadi" }, { status: 404 });
   }
   const totals = current.methodTotals as CashboxMethodTotals;
+  // Erta tekshiruv — kassirga darhol tushunarli xabar berish uchun.
+  // Himoya esa quyidagi filtrda.
   if ((totals[fromMethod.key] ?? 0) < amount) {
     return NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 });
   }
 
+  // Shart FILTRDA — `adjust` bilan bir xil sabab: ilgari yuqoridagi
+  // tekshiruv bilan bu yozuv orasida boshqa so'rov o'sha puldan sarflab
+  // ulgurishi mumkin edi va chiqadigan tur minusga tushardi.
+  //
+  // `balance` sharti bu yerda KERAK EMAS: bitta kassa ichidagi ko'chirish
+  // umumiy balansga tegmaydi, faqat turlar orasida qayta taqsimlaydi.
   const res = await col.findOneAndUpdate(
-    { id: cashboxId },
+    { id: cashboxId, [`methodTotals.${from}`]: { $gte: amount } },
     { $inc: { [`methodTotals.${from}`]: -amount, [`methodTotals.${to}`]: amount } },
     { returnDocument: "after" },
   );
   if (!res) {
-    return NextResponse.json({ ok: false, error: "Kassa topilmadi" }, { status: 404 });
+    const exists = await col.findOne({ id: cashboxId }, { projection: { _id: 1 } });
+    return exists
+      ? NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 })
+      : NextResponse.json({ ok: false, error: "Kassa topilmadi" }, { status: 404 });
   }
 
   const fromLabel = fromMethod.name;
@@ -67,7 +78,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     date: entryDate,
     time: entryTime,
     studentName: "",
-    before: totals[from as keyof CashboxMethodTotals] ?? 0,
+    // YOZILGAN natijadan: `totals` parallel so'rov oralasa eskirgan
+    // bo'lishi mumkin (`adjust` dagi bilan bir xil sabab). Chiqadigan tur
+    // `amount` ga kamaygan, ya'ni ko'chirishdan oldingi qiymat shu.
+    before: ((res.methodTotals as CashboxMethodTotals)[fromMethod.key] ?? 0) + amount,
     after: null,
     txType: "transfer",
     txName: `Ko'chirish: ${fromLabel} → ${toLabel}`,

@@ -54,8 +54,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const signedAmount = mode === "kirim" ? amount : -amount;
-  const before = (current.methodTotals as CashboxMethodTotals)[chosen.key] ?? 0;
-  if (mode === "chiqim" && before < amount) {
+  // ERTA TEKSHIRUV — pastdagi oylik chegarasi so'rovlarini bekorga
+  // qilmaslik uchun. Bu HIMOYA EMAS: haqiqiy qorovul quyida,
+  // `findOneAndUpdate` filtrida (o'sha yerdagi izohga qarang).
+  const available = (current.methodTotals as CashboxMethodTotals)[chosen.key] ?? 0;
+  if (mode === "chiqim" && available < amount) {
     return NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 });
   }
 
@@ -107,14 +110,50 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
+  // QOROVUL SHARTNING O'ZI FILTRDA — `transfer-to` va `salary-runs` bilan
+  // bir xil uslub.
+  //
+  // NIMA NOTO'G'RI EDI: shart yuqorida `findOne` bilan O'QIB tekshirilar,
+  // yozish esa shartsiz (`{ id: cashboxId }`) ketardi. Ikkita oqibati bor edi:
+  //
+  //   1. O'qish bilan yozish orasida boshqa so'rov o'sha puldan sarflab
+  //      ulgursa, ikkala chiqim ham o'tib ketardi.
+  //   2. Shart faqat `methodTotals` ga qarardi, `balance` ga UMUMAN
+  //      qaramasdi. 2026-09-03 da Nilufar kassasi aynan shundan `-1` ga
+  //      tushdi: `methodTotals.plastik` da jurnalda izi yo'q soxta 1 turgan
+  //      va 1 so'mlik chiqim o'shani "yeb" ketgan — to'lov turi uchun pul
+  //      bor edi, balans uchun esa yo'q.
+  //
+  // Shu bois endi IKKALASI ham shart: to'lov turi ham, umumiy balans ham
+  // yetarli bo'lishi kerak. Sog'lom kassada `balance` turlar yig'indisiga
+  // teng, ya'ni ikkinchi shart hech narsani to'smaydi — u faqat hujjat
+  // allaqachon buzilgan holatda ishga tushadi.
   const res = await col.findOneAndUpdate(
-    { id: cashboxId },
+    mode === "chiqim"
+      ? {
+          id: cashboxId,
+          [`methodTotals.${method}`]: { $gte: amount },
+          balance: { $gte: amount },
+        }
+      : { id: cashboxId },
     { $inc: { [`methodTotals.${method}`]: signedAmount, balance: signedAmount } },
     { returnDocument: "after" },
   );
   if (!res) {
-    return NextResponse.json({ ok: false, error: "Kassa topilmadi" }, { status: 404 });
+    // Shart bajarilmadi. Kassaning o'zi yo'qolgani kamdan-kam, deyarli
+    // doim mablag' yetmagani — ikkovini ajratamiz, aks holda kassir
+    // "Kassa topilmadi" degan chalg'ituvchi xabar olardi.
+    const exists = await col.findOne({ id: cashboxId }, { projection: { _id: 1 } });
+    return exists
+      ? NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 })
+      : NextResponse.json({ ok: false, error: "Kassa topilmadi" }, { status: 404 });
   }
+
+  // Jurnaldagi "oldingi/keyingi miqdor" YOZILGAN natijadan chiqariladi,
+  // yuqorida o'qilgan `current` dan emas: parallel so'rov oralab ketsa u
+  // eskirgan bo'lardi va jurnalda uzilgan ketma-ketlik qolardi.
+  const afterTotal = (res.methodTotals as CashboxMethodTotals)[chosen.key] ?? 0;
+  const beforeTotal = afterTotal - signedAmount;
 
   const methodLabel = chosen.name;
   const entryDate = date || todayIso();
@@ -143,8 +182,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     time: nowTime(),
     studentName: studentName || "",
     amount: signedAmount,
-    before,
-    after: before + signedAmount,
+    before: beforeTotal,
+    after: afterTotal,
     txType: mode === "kirim" ? "payIn" : "payOut",
     txName,
     paymentType: methodLabel,
