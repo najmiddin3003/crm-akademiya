@@ -5,6 +5,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import Navbar, { type ShellUser } from "@/components/shared/Navbar";
 import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 import { BranchProvider } from "@/components/shared/BranchContext";
+import { NotificationsProvider } from "@/components/shared/NotificationsProvider";
 
 // Umumiy qobiq (Navbar + Sidebar), app/layout.tsx orqali barcha sahifalarga
 // o'raladi. Har bir sahifa endi o'zining nomlangan route papkasida (masalan
@@ -37,6 +38,12 @@ export default function AppShell({
       {/* Filial tanlovi — navbar uni boshqaradi, sahifalar `useBranch()`
           orqali o'qiydi va tanlov o'zgarganda ma'lumotni qayta so'raydi. */}
       <BranchProvider>
+      {/* Qo'ng'iroq paneli — Navbar ham, mobil chekma menyu ham BITTA
+          manbadan o'qisin. Ilgari ikkalasi o'qilmaganlar sonini alohida
+          hisoblardi va telefonda ikkita raqam bir-biriga zid bo'lardi.
+          BranchProvider ICHIDA: filial almashtirilganda sahifa qayta
+          yuklanadi, ya'ni bu ham qaytadan mount bo'ladi. */}
+      <NotificationsProvider>
       <div className="flex h-screen flex-col overflow-hidden">
         <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} />
         <div className="flex flex-1 overflow-hidden">
@@ -44,6 +51,7 @@ export default function AppShell({
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
         </div>
       </div>
+      </NotificationsProvider>
       </BranchProvider>
     </PersonDirectoryProvider>
   );

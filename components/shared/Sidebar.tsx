@@ -6,7 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
 import { useLang } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
-import { LANGS, NOTIFS } from "@/lib/navbar";
+import { LANGS } from "@/lib/navbar";
+import NotificationsPanel from "@/components/shared/NotificationsPanel";
+import { useNotifications } from "@/components/shared/NotificationsProvider";
+import { badgeLabel } from "@/lib/notifications";
 import { isPathAllowed } from "@/lib/permissions";
 import type { Lang } from "@/lib/i18n";
 
@@ -200,7 +203,11 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   const [lang, setLang] = useLang();
   const [isDark, toggleTheme] = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
-  const unreadCount = NOTIFS.filter((n) => n.unread).length;
+  // Son Navbar bilan BIR XIL manbadan (NotificationsProvider). Ilgari bu
+  // yerda alohida hisob turardi va ikkala sirt bir vaqtda ko'rinadigan
+  // mobil kenglikda ikkita raqam bir-biriga zid bo'lishi mumkin edi.
+  const { unread, unreadIsFloor, everLoaded } = useNotifications();
+  const showBadge = everLoaded && unread > 0;
 
   // Navbar'dagi profil menyusi `hidden md:flex` blokida — 768px dan pastda
   // butunlay yashirinadi. Shu sabab telefondan chiqish/qulflash imkoni
@@ -581,21 +588,28 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
             >
               <svg className="icon icon-sm text-muted-foreground"><use href="#i-bell" /></svg>
               <span className="flex-1">Bildirishnomalar</span>
-              {unreadCount > 0 && (
+              {showBadge && (
                 <span className="inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {unreadCount}
+                  {badgeLabel(unread, unreadIsFloor)}
                 </span>
               )}
             </button>
-            {notifOpen && (
-              <ul className="space-y-1 pb-1">
-                {NOTIFS.map((n, i) => (
-                  <li key={i} className={`rounded-lg px-3 py-2 ${n.unread ? "bg-primary/5" : ""}`}>
-                    <div className="text-[12px] font-medium">{n.title}</div>
-                    <div className="text-[11px] text-muted-foreground">{n.time}</div>
-                  </li>
-                ))}
-              </ul>
+            {/* SHART `mobileOpen` NI HAM O'Z ICHIGA OLADI.
+                Chekma menyu `hidden` klassi bilan yashiriladi — u DEMOUNT
+                BO'LMAYDI. Faqat `notifOpen` ga bog'lansa, foydalanuvchi
+                bo'limni ochib, keyin menyuni yopgach ham panel `open` holida
+                mount bo'lib qolardi. Natijada provider'dagi "panel ochiq
+                ekan ro'yxatni siljitma" qulfi HECH QACHON ochilmasdi: nishon
+                o'sib boraverar, ro'yxat esa o'sha lahzadagi holatida
+                muzlab qolardi (sahifa qayta yuklanmaguncha). */}
+            {notifOpen && mobileOpen && (
+              <div className="pb-1">
+                <NotificationsPanel
+                  variant="drawer"
+                  open={notifOpen && mobileOpen}
+                  onNavigate={closeMobile}
+                />
+              </div>
             )}
 
             <button

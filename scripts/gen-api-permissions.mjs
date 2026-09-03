@@ -55,6 +55,13 @@ const SHARED_EXTRA = [
   // bermaydi: tanlangan qiymat serverda foydalanuvchining RUXSAT ETILGAN
   // filiallariga solishtiriladi (lib/branchScope.ts).
   "/api/branch",
+  // Navbardagi qo'ng'iroq — filial tanlagichi bilan bir xil sabab: u ham
+  // har bir sahifada turadi. Bironta bo'lim ruxsatiga bog'lansa, o'sha
+  // ruxsati yo'q xodim uchun BUTUN qo'ng'iroq 403 bo'lardi. Route hech
+  // qanday ruxsat bermaydi: har bir manba (to'lov / buyurtma / topshiriq)
+  // handler ICHIDA `isPathAllowed` bilan alohida kesiladi va yopiq manba
+  // umuman so'ralmaydi (app/api/notifications/route.ts).
+  "/api/notifications",
 ];
 
 /**

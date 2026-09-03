@@ -123,6 +123,11 @@ async function createAllIndexes(db: Db): Promise<void> {
   // purgeAt vaqti kelganda hujjat avtomatik o'chadi (TTL).
   tasks.push(db.collection("verification_codes").createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 }));
   tasks.push(db.collection("tasks").createIndex({ id: 1 }, { unique: true }));
+  // Navbardagi qo'ng'iroq: muddati o'tgan topshiriqlar
+  // (app/api/notifications). `state` yopiq ro'yxatdan uchta aniq qiymat
+  // ($in — uchta chegaralangan sakrash), keyin `date` oralig'i va saralashi.
+  // `$ne: "bajarilgan"` ishlatilmaydi: inkor indeksda sakrash bermaydi.
+  tasks.push(db.collection("tasks").createIndex({ state: 1, date: -1 }));
   // task_types — Topshiriqlar sahifasidagi "Topshiriq turi" boshqaruvi.
   tasks.push(db.collection("task_types").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("orders").createIndex({ id: 1 }, { unique: true }));
@@ -210,6 +215,10 @@ async function createAllIndexes(db: Db): Promise<void> {
   // skanerlanardi. `^YYYY-MM-` — prefiksga bog'langan regex, ya'ni indeks
   // oralig'idan foydalana oladi.
   tasks.push(db.collection("transaction_entries").createIndex({ txType: 1, date: 1 }));
+  // Navbardagi qo'ng'iroq: so'nggi kirimlar (app/api/notifications).
+  // Tenglik (`txType`) → ro'yxat (`cashboxId: $in`) → oraliq va saralash
+  // (`createdAt`) — maydonlar tartibi aynan shu bo'lishi kerak.
+  tasks.push(db.collection("transaction_entries").createIndex({ txType: 1, cashboxId: 1, createdAt: -1 }));
   // Moliya > Sinxronizatsiya (lib/sync). `sync_outbox` — Google Sheets va
   // Telegram'ga yetkazib berish navbati. Unikal indeks ENG MUHIMI: u
   // bitta yozuvning bitta hodisasi ikki marta navbatga tushishiga yo'l

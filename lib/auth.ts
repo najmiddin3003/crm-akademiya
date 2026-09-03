@@ -22,6 +22,20 @@ export interface CurrentUser {
    * cookie'ni o'zi tahrirlab ruxsat qo'shib ololmasin.
    */
   permissions: string[] | null;
+  /**
+   * Xodim yozuvining id'si (`hr_employees.id`).
+   *
+   * Hujjatdan ALLAQACHON o'qilardi (pastdagi proyeksiyaga qarang), lekin
+   * tashqariga berilmasdi — natijada `getCurrentEmployee()` uni olish uchun
+   * butun zanjirni (`getCurrentUser` + `users.findOne`) qaytadan yurardi.
+   */
+  hrEmployeeId: number | null;
+  /**
+   * Qo'ng'iroq paneli kursorlari — manba boshiga "shu vaqtgacha ko'rilgan"
+   * ISO tamg'asi (app/api/notifications). Panel har 60 soniyada so'raladi,
+   * ya'ni buning uchun alohida `users` o'qishi ochiq isrof bo'lardi.
+   */
+  lastSeenNotifAt: Record<string, string> | null;
 }
 
 // Joriy so'rovdagi sessiya cookie'sini tekshirib, DB'dagi jonli holatini
@@ -48,7 +62,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const [user, live] = await Promise.all([
     db.collection("users").findOne(
       { _id: new ObjectId(session.uid) },
-      { projection: { status: 1, phone: 1, fullName: 1, role: 1, hrEmployeeId: 1 } },
+      { projection: { status: 1, phone: 1, fullName: 1, role: 1, hrEmployeeId: 1, lastSeenNotifAt: 1 } },
     ),
     session.sid
       ? db.collection("user_sessions").findOne({ sid: session.sid })
@@ -83,5 +97,13 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     role: user.role || "employee",
     sid: session.sid,
     permissions: await resolvePermissions(db, user as UserForPermissions),
+    hrEmployeeId: Number.isFinite(Number(user.hrEmployeeId)) ? Number(user.hrEmployeeId) : null,
+    // Maydon YO'Q bo'lsa `null` — qo'ng'iroq hech ochilmagan. Route uni oyna
+    // boshiga tenglashtiradi, "hozir" ga EMAS: aks holda birinchi kirishda
+    // bir haftalik haqiqiy hodisa jimgina o'qilgan bo'lib qolardi.
+    lastSeenNotifAt:
+      user.lastSeenNotifAt && typeof user.lastSeenNotifAt === "object"
+        ? (user.lastSeenNotifAt as Record<string, string>)
+        : null,
   };
 }

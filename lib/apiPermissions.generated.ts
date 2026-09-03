@@ -30,6 +30,7 @@ export const SHARED_API: readonly string[] = [
   "/api/auth/unlock",
   "/api/branch",
   "/api/hr-employees",
+  "/api/notifications",
   "/api/people/directory",
   "/api/profile",
   "/api/pupils",

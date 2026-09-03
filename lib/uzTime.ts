@@ -73,3 +73,47 @@ export function uzStamp(d: Date = new Date()): string {
   const u = toUz(d);
   return `${p2(u.getDate())}.${p2(u.getMonth() + 1)}.${u.getFullYear()} | ${p2(u.getHours())}:${p2(u.getMinutes())}`;
 }
+
+/**
+ * "2026-09-03T14:30:00" — Toshkent DEVOR-SOATI satri.
+ *
+ * `tasks.date` aynan shu shaklda saqlanadi (topshiriq oynasi shuni yozadi).
+ * `new Date(...).toISOString().slice(0,16)` bilan ADASHTIRMANG: u UTC
+ * beradi, ya'ni Toshkentdagi 14:30 bazaga 09:30 bo'lib tushadi.
+ */
+export function uzWall(d: Date = new Date()): string {
+  const u = toUz(d);
+  return `${u.getFullYear()}-${p2(u.getMonth() + 1)}-${p2(u.getDate())}T${p2(u.getHours())}:${p2(u.getMinutes())}:00`;
+}
+
+/**
+ * `tasks.date` ni HAQIQIY LAHZAGA (epoch ms) aylantiradi. Yaroqsiz bo'lsa
+ * `null`.
+ *
+ * NEGA ALOHIDA PARSER KERAK. Bu maydonni bir nechta joy to'ldiradi va
+ * yozuvdagi yagona tekshiruv — `isTaskDate` (lib/tasksData.ts) — `new Date()`
+ * o'qiy oladigan HAR QANDAY satrni qabul qiladi. Bazada shu sabab ikki xil
+ * shakl yonma-yon yotibdi:
+ *   • "2026-09-03T14:30:00"       — Toshkent devor-soati (topshiriq oynasi)
+ *   • "2026-09-02T04:00:00.000Z"  — haqiqiy lahza (kanban surish, ko'chirish)
+ *
+ * Mintaqa belgisi BOR bo'lsa satr haqiqiy lahza — o'z holicha o'qiladi.
+ * BO'LMASA u Toshkent devor-soati va +05:00 qo'shiladi: `new Date(s)` uni
+ * SERVER zonasida o'qiydi, ya'ni Vercel'da (UTC) 5 soatlik xato beradi.
+ *
+ * `NaN` emas, `null` QAYTARADI. `new Date(NaN).toISOString()` RangeError
+ * otadi — bitta buzuq qator butun bildirishnomalar so'rovini yiqitardi.
+ */
+export function uzParseStamp(s: unknown): number | null {
+  if (typeof s !== "string") return null;
+  const t = /(?:Z|[+-]\d{2}:?\d{2})$/.test(s)
+    ? Date.parse(s)
+    : /^\d{4}-\d{2}-\d{2}$/.test(s)
+      ? Date.parse(`${s}T00:00:00+05:00`)
+      : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)
+        ? Date.parse(`${s}:00+05:00`)
+        : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(s)
+          ? Date.parse(`${s}+05:00`)
+          : NaN;
+  return Number.isFinite(t) ? t : null;
+}

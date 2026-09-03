@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
 import { useLang } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
-import { LANGS as LANGUAGES, NOTIFS as NOTIFICATIONS, NOTIF_STYLE as NOTIF_STYLES } from "@/lib/navbar";
+import { LANGS as LANGUAGES } from "@/lib/navbar";
+import NotificationsPanel from "@/components/shared/NotificationsPanel";
+import { useNotifications } from "@/components/shared/NotificationsProvider";
+import { badgeLabel } from "@/lib/notifications";
 import type { Lang } from "@/lib/i18n";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
@@ -28,9 +31,13 @@ const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 type OpenMenu = "lang" | "news" | "help" | "create" | "notifications" | "profile" | null;
 
 // `short` — navbar tugmasida ko'rinadigan qisqa nom (referensda "O'zb"),
-// `name` esa ochilgan ro'yxatdagi to'liq nom.
-// LANGUAGES / NOTIFICATIONS / NOTIF_STYLES — constants/navbar.js da
-// (mobil chekma menyu ham xuddi shulardan foydalanadi).
+// `name` esa ochilgan ro'yxatdagi to'liq nom. LANGUAGES — constants/navbar.js
+// da (mobil chekma menyu ham xuddi shundan foydalanadi).
+//
+// Bildirishnomalar endi bu yerda EMAS: ro'yxat ham, o'qilmaganlar soni ham
+// NotificationsProvider'dan keladi va u bazadagi haqiqiy hodisalarni o'qiydi
+// (app/api/notifications). Ilgari bu yerda constants/navbar.js dagi beshta
+// o'ylab topilgan qator turardi.
 
 /**
  * Profil menyusida ko'rsatiladigan minimal ma'lumot.
@@ -184,7 +191,12 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
     }
   };
 
-  const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length;
+  // Nishon YUKLANGUNCHA umuman chizilmaydi: noma'lum son nol EMAS, va
+  // xato bo'lganda nolni ko'rsatish "bildirishnoma yo'q" degan yolg'on
+  // da'vo bo'lardi.
+  const { unread, unreadIsFloor, everLoaded } = useNotifications();
+  const notifBadge = badgeLabel(unread, unreadIsFloor);
+  const showBadge = everLoaded && unread > 0;
   useEscapeClose(filialModalOpen ? () => setFilialModalOpen(false) : () => {});
 
   return (
@@ -210,6 +222,11 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
           <symbol id="i-circle-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></symbol>
           <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></symbol>
           <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></symbol>
+          {/* Kechikkan topshiriq bildirishnomasi. `i-clock` DEB atalmadi: u
+              components/tasks/TasksPage.tsx dagi sahifa sprite'ida bor va
+              ikkinchi nusxa /tasks ochiq turganda hujjatda takroriy DOM id
+              hosil qilardi. */}
+          <symbol id="i-clock-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></symbol>
           <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
           <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></symbol>
         </defs>
@@ -458,39 +475,31 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
           <div className="relative">
             <button onClick={(e) => { e.stopPropagation(); toggleMenu("notifications"); }} className={`dropdown-trigger nav-btn relative ${openMenu === "notifications" ? "is-open" : ""}`} title="Bildirishnomalar">
               <svg className="icon"><use href="#i-bell" /></svg>
-              {unreadCount > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ backgroundColor: "#d32f2f" }} />}
+              {showBadge && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 h-4 min-w-[16px] rounded-full px-1 text-center text-[10px] font-semibold leading-4 text-white"
+                  style={{ backgroundColor: "#d32f2f" }}
+                >
+                  {notifBadge}
+                </span>
+              )}
             </button>
             <div className={`${openMenu === "notifications" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[400px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <h3 className="font-semibold text-base">Notifications</h3>
-                <button className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-secondary text-muted-foreground" title="Sozlamalar">
-                  <svg className="icon icon-sm"><use href="#i-settings" /></svg>
-                </button>
+                <h3 className="font-semibold text-base">Bildirishnomalar</h3>
+                {/* Ilgari bu yerda hech qayerga olib bormaydigan tishli g'ildirak
+                    turardi. Haqiqiy ma'lumot yonida ishlamaydigan tugma bo'lmasin. */}
+                {showBadge && (
+                  <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                    {notifBadge} yangi
+                  </span>
+                )}
               </div>
-              <div className="max-h-[440px] overflow-y-auto">
-                <ul className="divide-y divide-border">
-                  {NOTIFICATIONS.map((n, i) => {
-                    const s = NOTIF_STYLES[n.type];
-                    return (
-                      <li key={i} className={`px-4 py-3 hover:bg-secondary cursor-pointer ${n.unread ? "bg-blue-50/40" : ""}`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${s.bg} ${s.text}`}>
-                            <svg className="icon icon-sm"><use href={`#${s.icon}`} /></svg>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-medium truncate">{n.title}</div>
-                              {n.unread && <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
-                            </div>
-                            <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</div>
-                            <div className="text-[11px] text-muted-foreground mt-1">{n.time}</div>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              <NotificationsPanel
+                variant="dropdown"
+                open={openMenu === "notifications"}
+                onNavigate={() => setOpenMenu(null)}
+              />
             </div>
           </div>
 

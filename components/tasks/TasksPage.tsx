@@ -25,7 +25,7 @@ import {
   type Task,
   type TaskState,
 } from "@/lib/tasksData";
-import { uzDayKey, uzDayKeyIn } from "@/lib/uzTime";
+import { uzDayKey, uzDayKeyIn, uzWall } from "@/lib/uzTime";
 
 // Ported from crm-akademiya/index-dev.html lines 551-877 (id="view-tasks") +
 // src/app.js (renderTasks/renderKanbanView/renderCalendarView/setTaskView).
@@ -227,7 +227,11 @@ export default function TasksPage() {
       const payload: Omit<Task, "id"> = {
         student: studentName,
         targetKind: "student",
-        date: new Date(now + item.offsetHours * 3600000).toISOString().slice(0, 16),
+        // `toISOString().slice(0,16)` EDI — u UTC beradi, ya'ni shablondan
+        // yaratilgan topshiriqning muddati Toshkent vaqtidan 5 soat orqada
+        // yozilardi (soat 14:00 da yaratilgan "48 soat" topshirig'i
+        // 09:00 ga tushardi). Boshqa yozuvchilar bilan bir xil devor-soati.
+        date: uzWall(new Date(now + item.offsetHours * 3600000)),
         description: item.description,
         type: item.type,
         priority: item.priority,
