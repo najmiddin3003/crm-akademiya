@@ -11,7 +11,7 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
 import StudentGroupsModal from "./StudentGroupsModal";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
-import { useStudents } from "@/hooks/useStudents";
+import type { StudentRow } from "@/lib/studentsData";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
@@ -59,11 +59,27 @@ interface Row {
 // (masalan `periodMonth`) qo'shilishi kerak.
 export default function CashboxAdjustDrawer({
   cashbox,
+  studentNames,
+  studentByName,
+  studentsLoading,
+  studentsRefreshing,
   onClose,
   onSaved,
 }: {
   cashbox: Cashbox;
   mode: "chiqim";
+  /**
+   * O'quvchilar ro'yxati OTA SAHIFADAN (CashboxesPage) keladi — bu oyna
+   * uni O'ZI SO'RAMAYDI. Sabab CashboxKirimDrawer dagi bilan bir xil:
+   * ota sahifa ro'yxatni allaqachon olgan, drawer esa uni bir xil kesh
+   * kaliti bilan qaytadan so'rardi va TTL (30 s) o'tgach 546 KB / ~1.4 s
+   * kutardi — o'sha paytda tanlov maydoni `disabled` bo'lib turardi.
+   */
+  studentNames: string[];
+  studentByName: Map<string, StudentRow>;
+  studentsLoading: boolean;
+  /** Ro'yxat FONDA yangilanmoqda — maydon ishlaydi, faqat izoh chiqadi. */
+  studentsRefreshing: boolean;
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
@@ -180,9 +196,6 @@ export default function CashboxAdjustDrawer({
 
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
-  // O'quvchilar tanlovi bazadan (/api/pupils).
-  // Faqat ism va id kerak (selectedStudent.name/.id) — yengil ro'yxat yetadi.
-  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
@@ -424,6 +437,15 @@ export default function CashboxAdjustDrawer({
                   return <span className={b > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(b)}</span>;
                 } : undefined}
               />
+
+              {/* Ro'yxat fonda yangilanayotgan payt. Faqat o'quvchi turida:
+                  xodimlar ro'yxati boshqa manbadan keladi. Sababi ko'rinib
+                  tursin — `StudentSearchSelect` erkin matn qabul qilmaydi,
+                  ya'ni hozirgina qo'shilgan o'quvchini topa olmagan kassir
+                  nima kutayotganini bilmasdi. */}
+              {target === "student" && studentsRefreshing && (
+                <p className="text-[11px] text-muted-foreground">Ro&apos;yxat yangilanmoqda…</p>
+              )}
 
               {selectedStudent && (
                 <div className="space-y-2">

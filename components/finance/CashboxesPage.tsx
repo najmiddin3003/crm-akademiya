@@ -878,7 +878,21 @@ export default function CashboxesPage() {
   // qilmasin (hooks/useStudents.ts → byName).
   // Bu sahifaga o'quvchidan faqat ISM va ID kerak (pastda name->id
   // xaritasi), shu bois yengil rejim — 3.6 MB o'rniga ~544 KB.
-  const { names: dbStudents, byName: studentByName } = useStudents({ light: true });
+  // Ro'yxat SHU YERDA bir marta olinadi va Kirim oynasiga PROP bilan
+  // uzatiladi. Ilgari drawer uni o'zi so'rardi — bir xil kesh kaliti
+  // bilan ("pupils:light"), lekin TTL 30 s. Kassir jurnalni ko'rib,
+  // yarim daqiqadan keyin "+ Kirim" bossa kesh muddati o'tgan bo'lardi
+  // va oyna 546 KB / ~1.4 s kutardi. Eng yomoni — o'sha paytda
+  // `StudentSearchSelect` `disabled={loading}` bilan o'chib turardi,
+  // ya'ni kassir yozishni ham boshlay olmasdi. Ma'lumot esa shu
+  // komponentning holatida turardi.
+  const {
+    names: dbStudents,
+    byName: studentByName,
+    loading: studentsLoading,
+    refresh: refreshStudents,
+    refreshing: studentsRefreshing,
+  } = useStudents({ light: true });
   const studentIdByName = useMemo(() => {
     const map = new Map<string, number>();
     for (const [key, s] of studentByName) map.set(key, s.id);
@@ -1372,15 +1386,27 @@ export default function CashboxesPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
-                        onClick={() => setKirimTarget(c)}
+                        onClick={() => {
+                          setKirimTarget(c);
+                          // Sahifa uzoq ochiq turgan bo'lsa ro'yxat
+                          // eskirgan bo'lishi mumkin — qabulxona hozirgina
+                          // qo'shgan o'quvchi kassirga ko'rinsin. FONDA:
+                          // oyna kutmaydi, maydon o'chmaydi. Bosqichi
+                          // ichkarida (sukut 60 s).
+                          refreshStudents();
+                        }}
                         className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
                         <Plus className="w-3.5 h-3.5" /> Kirim
                       </button>
                       <button
-                        onClick={() =>
-                          setAdjustState({ cashbox: c, mode: "chiqim" })
-                        }
+                        onClick={() => {
+                          setAdjustState({ cashbox: c, mode: "chiqim" });
+                          // Kirim tugmasidagi bilan bir xil: fonda, bosqich
+                          // bilan. Drawer endi ro'yxatni o'zi so'ramaydi,
+                          // shu bois keshni tashlash uni sovutmaydi.
+                          refreshStudents();
+                        }}
                         className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
                         <span className="font-bold">−</span> Chiqim
@@ -1920,6 +1946,10 @@ export default function CashboxesPage() {
         <CashboxAdjustDrawer
           cashbox={adjustState.cashbox}
           mode={adjustState.mode}
+          studentNames={dbStudents}
+          studentByName={studentByName}
+          studentsLoading={studentsLoading}
+          studentsRefreshing={studentsRefreshing}
           onClose={() => setAdjustState(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
@@ -1930,6 +1960,10 @@ export default function CashboxesPage() {
       {kirimTarget && (
         <CashboxKirimDrawer
           cashbox={kirimTarget}
+          studentNames={dbStudents}
+          studentByName={studentByName}
+          studentsLoading={studentsLoading}
+          studentsRefreshing={studentsRefreshing}
           onClose={() => setKirimTarget(null)}
           onSaved={(c) => {
             setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));

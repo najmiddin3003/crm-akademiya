@@ -13,7 +13,7 @@ import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useTeachers } from "@/hooks/useTeachers";
-import { useStudents } from "@/hooks/useStudents";
+import type { StudentRow } from "@/lib/studentsData";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
@@ -39,10 +39,31 @@ function toIso(d: Date): string {
 // sahifasidagi HAQIQIY, admin boshqaradigan ro'yxatdan (mainType: "kirim").
 export default function CashboxKirimDrawer({
   cashbox,
+  studentNames,
+  studentByName,
+  studentsLoading,
+  studentsRefreshing,
   onClose,
   onSaved,
 }: {
   cashbox: Cashbox;
+  /**
+   * O'quvchilar ro'yxati OTA SAHIFADAN keladi (CashboxesPage) — bu oyna
+   * uni O'ZI SO'RAMAYDI.
+   *
+   * NEGA: ota sahifa aynan shu ro'yxatni allaqachon olgan va React
+   * holatida ushlab turibdi. Ilgari drawer uni qaytadan so'rardi; kesh
+   * kaliti bir xil ("pupils:light"), lekin TTL 30 s — ya'ni kassir
+   * jurnalni ko'rib turib "+ Kirim" bosgan har safar 546 KB qaytadan
+   * kelardi va `StudentSearchSelect` `disabled={loading}` bilan ~1.4 s
+   * o'chib turardi. Endi so'rov umuman ketmaydi.
+   */
+  studentNames: string[];
+  /** Ism → o'quvchi kartasi (telefon va profil havolasi uchun). */
+  studentByName: Map<string, StudentRow>;
+  studentsLoading: boolean;
+  /** Ro'yxat FONDA yangilanmoqda — maydon ishlaydi, faqat izoh chiqadi. */
+  studentsRefreshing: boolean;
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
@@ -79,13 +100,6 @@ export default function CashboxKirimDrawer({
   // Tranzaksiya turlari xom `fetch` bilan olinadi (hook yo’q), shuning
   // uchun yuklanish holati shu yerda yaratiladi.
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  // O'quvchilar bazadan (/api/pupils). Ism → o'quvchi kartasi (telefon va
-  // profil havolasi uchun): to'lov yozuvida faqat ism saqlanadi, id emas.
-  // Faqat ism/telefon/id kerak (phoneOf, selectedStudent.phone/.id) — yengil
-  // ro'yxat yetadi. Bu sahifada CashboxesPage ham yengil ro'yxatni oladi,
-  // ya'ni drawer ochilganda so'rov umuman ketmaydi (kesh mos keladi).
-  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
-
   const key = (n: string) => n.trim().toLowerCase();
   const phoneOf = (n: string) => {
     const s = studentByName.get(key(n));
@@ -244,6 +258,14 @@ export default function CashboxKirimDrawer({
                 return <span className={b < 0 ? "text-rose-600" : "text-muted-foreground"}>{fmtSom(b)}</span>;
               }}
             />
+            {/* Ro'yxat fonda yangilanayotgan payt. Sababi ko'rinib tursin:
+                `StudentSearchSelect` erkin matn qabul qilmaydi (qiymat faqat
+                ro'yxatdagi tugmadan chiqadi), ya'ni qabulxona hozirgina
+                qo'shgan o'quvchini topa olmagan kassir nima kutayotganini
+                bilmasdi. */}
+            {studentsRefreshing && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Ro&apos;yxat yangilanmoqda…</p>
+            )}
             {/* Tanlangandan keyin — balans va telefon. */}
             {selectedStudent && (
               <div className="mt-2 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-[12px]">

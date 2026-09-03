@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { TASK_TEMPLATES } from "@/lib/tasksData";
 import { useStudents } from "@/hooks/useStudents";
@@ -16,8 +17,13 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
   const [studentName, setStudentName] = useState("");
   // O'quvchilar bazadan (/api/pupils) — ilgari constants/index.js dagi
   // STUDENT_NAMES statik ro'yxati edi.
-  // Faqat ismlar kerak — yengil rejim.
-  const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
+  // Faqat ismlar va telefon kerak — yengil rejim.
+  //
+  // Bu oyna endi TasksPage.tsx da `{templatesOpen && <TaskTemplatesModal…/>}`
+  // bilan o'ralgan, ya'ni ochilmagan holatda bu hook UMUMAN ishga
+  // tushmaydi — /tasks sahifasining har ochilishida 546 KB tortilishi
+  // shu bilan to'xtaydi.
+  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
   useEscapeClose(open ? onClose : () => {});
 
   if (!open) return null;
@@ -37,25 +43,24 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
             <div className="text-sm">
               <strong>{pendingTpl.name}</strong> shablonini qaysi o&apos;quvchi uchun qo&apos;llaymiz?
             </div>
-            <div className="h-[400px] w-full overflow-y-auto rounded-lg border border-border">
-              {studentNames.length === 0 && (
-                <div className="px-3 py-3 text-sm text-muted-foreground">
-                  {studentsLoading ? "Yuklanmoqda…" : "O'quvchi topilmadi"}
-                </div>
-              )}
-              {studentNames.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => setStudentName(name)}
-                  className={`block w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-secondary ${
-                    studentName === name ? "bg-primary/10 font-medium text-primary" : ""
-                  }`}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
+            {/* Ilgari bu yerda BUTUN ro'yxat (6 765 ta) xom <button>
+                sifatida, qidiruvsiz, id kamayish tartibida chizilardi —
+                eng oxirgi qo'shilgan o'quvchi tepada, ikki yil oldingisi
+                esa oynani oxirigacha aylantirmasdan topib bo'lmasdi.
+                StudentSearchSelect qidiruvni, 50 qatorlik limitni va
+                "Yana N ta" hisoblagichini tayyor beradi. */}
+            <StudentSearchSelect
+              label="O'quvchi"
+              value={studentName}
+              onChange={setStudentName}
+              options={studentNames}
+              loading={studentsLoading}
+              placeholder="O'quvchini qidirish"
+              subtitleOf={(n) => {
+                const phone = studentByName.get(n.trim().toLowerCase())?.phone;
+                return phone ? `+998 ${phone}` : "";
+              }}
+            />
             <div className="flex justify-end gap-2">
               <button onClick={() => setPendingId(null)} className="inline-flex items-center h-9 px-3.5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
                 Orqaga

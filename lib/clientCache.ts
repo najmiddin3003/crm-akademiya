@@ -73,6 +73,21 @@ export function invalidateCached(prefix?: string): void {
 }
 
 /**
+ * AYNAN BITTA kalitni o'chiradi.
+ *
+ * `invalidateCached(key)` bu ish uchun YARAMAYDI: u PREFIKS bo'yicha
+ * ishlaydi, ya'ni "pupils:light" berilsa "pupils:light|Aktiv" ni ham
+ * o'chiradi — u boshqa sahifaning (ExpiringSubsPage) ro'yxati va uni
+ * sovutishning sababi yo'q.
+ *
+ * Kerak bo'ladigan joyi — fon yangilanishi (hooks/useStudents.ts →
+ * `refresh`): u faqat O'ZI so'ragan ro'yxatni qaytadan olishi kerak.
+ */
+export function dropCached(key: string): void {
+  cache.delete(key);
+}
+
+/**
  * SERVERDA olingan ro'yxatni keshga JOYLAYDI — tarmoqqa chiqilmaydi.
  *
  * Server Component sahifa bilan birga ma'lumot yuborganda, o'sha sahifadagi

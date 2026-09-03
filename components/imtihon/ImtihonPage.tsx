@@ -621,7 +621,10 @@ export default function ImtihonPage() {
       </div>
 
       <div className={tab === "uzbmb" ? "" : "hidden"}>
-        <UzbmbView />
+        {/* Ro'yxat SHU YERDAN uzatiladi. UzbmbView har doim mount bo'lgan
+            (yuqoridagi `hidden` klassi uni faqat yashiradi), ya'ni ilgari
+            ikkala komponent ham bir xil ro'yxatni o'zi qayta ishlardi. */}
+        <UzbmbView pupilNames={pupilNames} />
       </div>
 
       {/* ===== NATIJA KIRITISH MODALI ===== */}

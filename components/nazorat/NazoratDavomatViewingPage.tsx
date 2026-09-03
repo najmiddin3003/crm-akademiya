@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import Spinner from "@/components/ui/Spinner";
-import { useStudents } from "@/hooks/useStudents";
+import { loadPupilsCached } from "@/hooks/useStudents";
+import { pupilFullName } from "@/lib/pupilsData";
 import type { TurnstileIoRecord } from "@/lib/turnstileIo";
 import { dateToIso, isoToLabel } from "./useNazoratAttendance";
 
@@ -26,19 +27,25 @@ import { dateToIso, isoToLabel } from "./useNazoratAttendance";
 // OLIB TASHLANGAN: qizil "Hammasi ketdi" tugmasi. Unda onClick yo'q edi va
 // turniket yozuvini o'zgartiradigan endpoint ham yo'q (/api/turnstile-io
 // faqat GET) — ishlamaydigan tugmani qoldirgandan ko'ra olib tashlash to'g'ri.
-
+//
+// O'QUVCHI FILTRI: ism URL'dan (`?student=`) keladi, sahifa o'quvchilar
+// bazasini (/api/pupils) O'ZI SO'RAMAYDI. Ota sahifa (NazoratDavomatPage)
+// qatorni bosganda ismni allaqachon biladi va uni havolaga qo'shib
+// uzatadi — ya'ni "propga o'tkazish" ning o'zi, faqat kanal React emas,
+// URL. Tanlash ro'yxati esa BAZADAN emas, shu sahifa allaqachon tortgan
+// `records` dan quriladi: har bir variant HAQIQATAN natija beradi, chunki
+// u aynan shu jadvalni to'ldiradigan yozuvlardan olingan. Ilgari ro'yxat
+// 6 732 ta o'quvchini ko'rsatardi (546 KB / 1407 ms), ularning aksariyati
+// bosilganda "Ma'lumotlar topilmadi" berardi.
 type Tab = "keldi" | "ketdi";
 
 export default function NazoratDavomatViewingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const studentId = searchParams.get("studentId");
-  // Faqat s.id va student.name o'qiladi — yengil rejim yetadi.
-  const { students, loading: studentsLoading } = useStudents({ light: true });
+  const studentParam = searchParams.get("student");
 
   const [records, setRecords] = useState<TurnstileIoRecord[]>([]);
-  // Pastdagi <select> variantlari faqat ro'yxat ochilganda chiziladi.
-  const [optionsReady, setOptionsReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<Tab>("keldi");
@@ -53,9 +60,39 @@ export default function NazoratDavomatViewingPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const student = useMemo(
-    () => (studentId ? students.find((s) => String(s.id) === studentId) ?? null : null),
-    [studentId, students],
+  // ESKI HAVOLA QOROVULI: `studentId` bor-u `student` (ism) yo'q bo'lsa —
+  // bu eski xatcho'p (yangi havolalar ikkalasini ham beradi,
+  // NazoratDavomatPage.tsx). Faqat SHU bitta holatda o'quvchilar
+  // ro'yxati bir martalik so'raladi — issiq yo'lda bu shox ishlamaydi.
+  //
+  // Yuklanish holati ALOHIDA state emas, HOSILA (derived): natija
+  // `studentId` bilan javob berilgan `id` mos kelmasa hali "yuklanmoqda"
+  // hisoblanadi. Shu bois effekt ichida shartsiz `setState` yo'q —
+  // yagona setState so'rov natijasi kelgandagina, `.then()` ichida.
+  const [legacyResult, setLegacyResult] = useState<{ id: string; name: string | null } | null>(null);
+  useEffect(() => {
+    if (!studentId || studentParam) return;
+    let cancelled = false;
+    loadPupilsCached({ light: true })
+      .then((pupils) => {
+        if (cancelled) return;
+        const found = pupils.find((p) => String(p.id) === studentId);
+        setLegacyResult({ id: studentId, name: found ? pupilFullName(found) : null });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [studentId, studentParam]);
+
+  const needsLegacyLookup = Boolean(studentId) && !studentParam;
+  const legacyResolved = legacyResult?.id === studentId;
+  const legacyName = legacyResolved ? legacyResult!.name : null;
+  const legacyLoading = needsLegacyLookup && !legacyResolved;
+
+  const studentName = studentParam ?? legacyName;
+
+  const studentOptions = useMemo(
+    () => [...new Set(records.filter((r) => r.personType === "student").map((r) => r.personName))].sort(),
+    [records],
   );
 
   const filtered = useMemo(() => {
@@ -64,7 +101,7 @@ export default function NazoratDavomatViewingPage() {
     // Turniket yozuvida o'quvchining id'si emas, faqat ISMI bor — shuning
     // uchun tanlangan o'quvchi ism bo'yicha solishtiriladi (loyihada
     // moliya yozuvlari ham shu qoida bilan bog'lanadi).
-    const wantName = student?.name.trim().toLowerCase() ?? null;
+    const wantName = studentName?.trim().toLowerCase() ?? null;
     return records.filter((r) => {
       if (r.personType !== "student") return false;
       if (tab === "keldi" && !r.enterTime) return false;
@@ -74,13 +111,13 @@ export default function NazoratDavomatViewingPage() {
       if (wantName && r.personName.trim().toLowerCase() !== wantName) return false;
       return true;
     });
-  }, [records, tab, dateRange, student]);
+  }, [records, tab, dateRange, studentName]);
 
   function clearStudent() {
     router.push("/nazorat-davomat/viewing");
   }
 
-  const busy = loading || studentsLoading;
+  const busy = loading || legacyLoading;
 
   return (
     <div className="container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
@@ -106,31 +143,23 @@ export default function NazoratDavomatViewingPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {student ? (
+          {studentName ? (
             <div className="relative inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-border bg-card text-sm">
-              <span>{student.name}</span>
+              <span>{studentName}</span>
               <button type="button" onClick={clearStudent} className="h-5 w-5 rounded hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
                 <X className="icon icon-xs" />
               </button>
             </div>
           ) : (
             <div className="relative">
-              {/* Variantlar RO'YXATI faqat ro'yxat ochilganda chiziladi.
-                  Ilgari 6 732 ta <option> (+ shuncha matn tuguni) sahifa
-                  birinchi render bo'lgandayoq DOM'ga tushardi — foydalanuvchi
-                  ro'yxatga tegmasa ham. mousedown ochilishdan OLDIN
-                  ishlaydi, focus esa klaviatura yo'lini qoplaydi, shuning
-                  uchun ro'yxat ochilganda variantlar joyida bo'ladi. */}
               <select
                 defaultValue=""
-                onMouseDown={() => setOptionsReady(true)}
-                onFocus={() => setOptionsReady(true)}
-                onChange={(e) => e.target.value && router.push(`/nazorat-davomat/viewing?studentId=${e.target.value}`)}
+                onChange={(e) => e.target.value && router.push(`/nazorat-davomat/viewing?student=${encodeURIComponent(e.target.value)}`)}
                 className="filter-select h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 <option value="">O&apos;quvchi</option>
-                {optionsReady && students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                {studentOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
                 ))}
               </select>
               <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>

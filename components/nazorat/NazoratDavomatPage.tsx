@@ -514,7 +514,10 @@ export default function NazoratDavomatPage() {
               {slice.map((r, i) => (
                 <tr
                   key={r.key}
-                  onClick={() => router.push(`/nazorat-davomat/viewing?studentId=${r.pupilId}`)}
+                  // Ism ham uzatiladi — ko'rish sahifasi shu bilan
+                  // filtrlaydi va o'zi o'quvchilar ro'yxatini
+                  // so'ramaydi (NazoratDavomatViewingPage.tsx).
+                  onClick={() => router.push(`/nazorat-davomat/viewing?studentId=${r.pupilId}&student=${encodeURIComponent(r.name)}`)}
                   className="hover:bg-secondary/30 transition-colors cursor-pointer"
                 >
                   <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>

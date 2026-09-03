@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { cachedGet, invalidateCached, peekCached, primeCached } from "@/lib/clientCache";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cachedGet, dropCached, invalidateCached, peekCached, primeCached } from "@/lib/clientCache";
 import type { Pupil, PupilExtraField, PupilListItem } from "@/lib/pupilsData";
 import { studentRowFromPupil, type StudentRow } from "@/lib/studentsData";
 
@@ -152,6 +152,29 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
     return peekCached<Row[]>(cacheKey) ?? [];
   });
   const [loading, setLoading] = useState(() => (initial ? false : peekCached<Row[]>(cacheKey) === null));
+  // `refresh` FONDA ishlaydi, shu bois `loading` dan ALOHIDA ko'rsatkich:
+  // `loading` tanlov maydonini `disabled` qiladi (StudentSearchSelect),
+  // fon yangilanishi esa maydonni o'chirib qo'ymasligi kerak.
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Oxirgi MUVAFFAQIYATLI yuklanish vaqti — `refresh()` ning bosqichi
+  // (throttle) shunga qaraydi.
+  //
+  // Nolda boshlanadi, `Date.now()` render tanasida CHAQIRILMAYDI
+  // (react-hooks/purity: renderda nopok funksiya barqaror bo'lmagan
+  // natija beradi). Pastdagi mount effekti ro'yxat keshdan kelgan
+  // holatda ham muhr qo'yadi, ya'ni odatdagi yo'lda qiymat to'g'ri.
+  //
+  // Yagona istisno — `initial` berilgan (serverdan kelgan) ro'yxat: unda
+  // birinchi `refresh()` bosqichni bosib o'tadi va bir marta ortiqcha fon
+  // so'rovi ketadi. Bu ATAYLAB qabul qilingan: fon so'rovi hech narsani
+  // to'smaydi, server surati esa RSC keshidan kelgan bo'lishi mumkin.
+  const lastAtRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     // Serverdan kelgan ro'yxat bo'lsa qayta so'ralmaydi — u sahifa bilan
@@ -160,11 +183,43 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
     let cancelled = false;
     const extra = extraKey ? (extraKey.split(",") as K[]) : undefined;
     loadPupilsCached<K>({ light, extra, status, hasParent, hasBirthDate, hasAddress })
-      .then((list) => { if (!cancelled) setPupils(list); })
+      .then((list) => { if (!cancelled) { lastAtRef.current = Date.now(); setPupils(list); } })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [light, extraKey, status, hasParent, hasBirthDate, hasAddress, initial]);
+
+  /**
+   * Ro'yxatni FONDA qaytadan oladi va komponent holatiga YOZADI.
+   *
+   * NEGA `cachedGet` ning o'zi yetmaydi: u kesh muddati o'tganda keyingi
+   * SO'RAGANGA yangi ro'yxat beradi, lekin allaqachon mount bo'lgan
+   * komponentga hech narsa yetkazmaydi — `setPupils` faqat mount
+   * effektida bir marta chaqiriladi. Bu esa ikkinchi kanal.
+   *
+   * BOSQICH (throttle): oxirgi yuklanishdan `minAgeMs` o'tmagan bo'lsa
+   * hech narsa qilmaydi. Busiz oyna har ochilganda 546 KB qaytadan
+   * ketardi — ya'ni tuzatilayotgan muammoning o'zi qaytib kelardi.
+   *
+   * `loading` ga TEGMAYDI (yuqoridagi izohga qarang), xatoni yutadi —
+   * yangilanish yiqilsa ekrandagi eski ro'yxat joyida qoladi.
+   */
+  const refresh = useCallback((minAgeMs = 60_000) => {
+    if (Date.now() - lastAtRef.current < minAgeMs) return;
+    const extra = extraKey ? (extraKey.split(",") as K[]) : undefined;
+    setRefreshing(true);
+    // Faqat SHU kalit — qo'shni ro'yxatlar (`?status=` bilan so'ralganlar)
+    // sovumasin. Shu bois `invalidateCached` emas, `dropCached`.
+    dropCached(cacheKey);
+    loadPupilsCached<K>({ light, extra, status, hasParent, hasBirthDate, hasAddress })
+      .then((list) => {
+        if (!mountedRef.current) return;
+        lastAtRef.current = Date.now();
+        setPupils(list);
+      })
+      .catch(() => {})
+      .finally(() => { if (mountedRef.current) setRefreshing(false); });
+  }, [cacheKey, light, extraKey, status, hasParent, hasBirthDate, hasAddress]);
 
   const students = useMemo<StudentRow[]>(() => pupils.map(studentRowFromPupil), [pupils]);
   const names = useMemo(() => students.map((s) => s.name).filter(Boolean), [students]);
@@ -180,5 +235,5 @@ export function useStudents<K extends PupilExtraField = never>(options?: {
     return map;
   }, [students]);
 
-  return { pupils, students, names, byName, loading };
+  return { pupils, students, names, byName, loading, refresh, refreshing };
 }

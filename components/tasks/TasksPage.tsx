@@ -585,7 +585,14 @@ export default function TasksPage() {
         />
       )}
 
-      <TaskTemplatesModal open={templatesOpen} onClose={() => setTemplatesOpen(false)} onApply={handleApplyTemplate} />
+      {/* Yonidagi TaskModal (:574) va TaskTypesDrawer (:577) kabi — faqat
+          ochilganda mount bo'ladi. Ilgari bu oyna shartsiz chizilardi va
+          o'zi ichida `useStudents({light:true})` chaqirardi, ya'ni
+          /tasks ning har ochilishida 546 KB / 1407 ms ketardi, oyna
+          umuman ochilmasa ham. */}
+      {templatesOpen && (
+        <TaskTemplatesModal open onClose={() => setTemplatesOpen(false)} onApply={handleApplyTemplate} />
+      )}
 
       {moveTaskTarget && (
         <MoveTaskModal

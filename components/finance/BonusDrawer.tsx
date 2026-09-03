@@ -6,7 +6,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { BONUS_TYPES } from "@/constants/bonuses";
-import { useStudents } from "@/hooks/useStudents";
+import { loadPupilsCached, useStudents } from "@/hooks/useStudents";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
@@ -16,6 +16,36 @@ import type { Cashbox } from "@/lib/cashboxes";
 // panel (skrinshot 2/3). "Tranzaksiya turi"ga qarab pastda "Xodim" (oddiy
 // tanlov, /api/hr-employees'dan) yoki "O'quvchi" (qidiruvli tanlov,
 // /api/pupils'dan — bazadagi haqiqiy o'quvchilar) maydoni chiqadi.
+
+/**
+ * O'quvchi tanlovi — MODUL DARAJASIDA, ATAYLAB shu joyda.
+ *
+ * `useStudents({ light: true })` — 546 KB / 1407 ms / ~6765 o'quvchi —
+ * endi FAQAT shu komponent mount bo'lganda ishga tushadi, ya'ni faqat
+ * "O'quvchi" turi tanlanganda (oyna esa "Xodim" bilan ochiladi —
+ * BONUS_TYPES[0], constants/bonuses.js). Standart yo'lda bu so'rov
+ * UMUMAN ketmaydi.
+ *
+ * NEGA MODUL DARAJASIDA: BonusDrawer FUNKSIYASI ICHIDA e'lon qilinsa,
+ * "Qiymat"/"Izoh" maydoniga har harf yozilganda YANGI komponent turi
+ * hosil bo'lardi — React buni QAYTA MOUNT sifatida ko'radi va 546 KB
+ * har harfda qaytadan ketardi. Bu tuzatilayotgan muammoni bir necha
+ * barobar yomonlashtirardi.
+ */
+function StudentPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
+  return (
+    <StudentSearchSelect
+      label="O'quvchi"
+      value={value}
+      onChange={onChange}
+      options={studentNames}
+      placeholder="O'quvchini qidirish"
+      loading={studentsLoading}
+    />
+  );
+}
+
 export default function BonusDrawer({
   onClose,
   onSaved,
@@ -33,8 +63,6 @@ export default function BonusDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
-  const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   // Ikkala ro'yxat ham shu yerda yuklanadi — kelmaguncha "Tanlang"/"Tanlanmagan"
@@ -99,6 +127,14 @@ export default function BonusDrawer({
               <select
                 value={type}
                 onChange={(e) => { setType(e.target.value); setEmployeeName(""); setStudentName(""); }}
+                // Ro'yxat TANLANGANDA emas, dropdown OCHILGANDA isiy
+                // boshlaydi — odatda 0.3-1.5 s oldinroq. Kalit bir xil
+                // ("pupils:light"), shu bois "O'quvchi" tanlansa
+                // StudentPicker mount bo'lganda in-flight dedup
+                // (lib/clientCache.ts) ikkinchi so'rovni yubormaydi.
+                // "Xodim" tanlangan holda qolsa — hech narsa isrof
+                // bo'lmaydi, chunki StudentPicker umuman mount bo'lmaydi.
+                onPointerDown={() => { void loadPupilsCached({ light: true }); }}
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 {BONUS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -124,14 +160,7 @@ export default function BonusDrawer({
               </div>
             </div>
           ) : (
-            <StudentSearchSelect
-              label="O'quvchi"
-              value={studentName}
-              onChange={setStudentName}
-              options={studentNames}
-              placeholder="O'quvchini qidirish"
-              loading={studentsLoading}
-            />
+            <StudentPicker value={studentName} onChange={setStudentName} />
           )}
 
           <div>

@@ -5,7 +5,6 @@ import { ArrowDownSquare, ChevronDown, FilePlus, Search, Share2, Trash2, XCircle
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { useStudents } from "@/hooks/useStudents";
 import { UB_MAIN_SUBJECTS } from "@/constants/imtihon";
 import {
   UB_CFG,
@@ -103,7 +102,7 @@ const numInputCls =
 const selectCls =
   "w-full h-9 appearance-none rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-export default function UzbmbView() {
+export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
   const { showSuccess, showError } = useToast();
 
   const [exams, setExams] = useState<UzbmbExam[]>([]);
@@ -170,9 +169,16 @@ export default function UzbmbView() {
   const best = items.length ? items[0] : null;
   const strong = items.filter((r) => r.total >= 150).length;
 
-  // O'quvchilar bazadan (/api/pupils) + imtihon yozuvlarida uchraganlari
-  // (o'quvchi keyin o'chirilgan bo'lishi mumkin).
-  const { names: pupilNames } = useStudents({ light: true });
+  // O'quvchi ismlari OTA KOMPONENTDAN (ImtihonPage) keladi + imtihon
+  // yozuvlarida uchraganlari (o'quvchi keyin o'chirilgan bo'lishi mumkin).
+  //
+  // NEGA PROP: bu ko'rinish HAR DOIM mount bo'lgan — ImtihonPage uni
+  // `hidden` klassi bilan yashiradi, unmount qilmaydi (ImtihonPage.tsx:623).
+  // Ya'ni ikkalasi bir vaqtda `useStudents({light:true})` chaqirardi.
+  // Tarmoqqa bitta so'rov ketardi (clientCache in-flight dedup), LEKIN
+  // ro'yxatni qayta ishlash ikki marta bajarilardi: 6 765 o'quvchi ×
+  // (studentRowFromPupil + names.map + byName Map) = ~27 000 amal, ikki
+  // nusxada. Endi bir marta.
   const studentNames = useMemo(() => {
     const names = new Set<string>(pupilNames);
     exams.forEach((r) => names.add(r.student));
