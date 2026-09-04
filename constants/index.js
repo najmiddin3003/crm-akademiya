@@ -27,3 +27,36 @@ export const GROUPS = [
 
 // O'quvchi qo'shish formasidagi "Kategoriyani tanlang".
 export const STUDENT_CATEGORIES = ["Kichik (1-4-sinf)", "O'rta (5-9-sinf)", "Katta (10-sinf+)"];
+
+// O'quvchi qo'shish formasidagi MAJBURIY "Manba" tanlovi — o'quvchi
+// markazni qayerdan eshitgani. Qiymat `pupils.source` ga MATN bo'lib
+// yoziladi va O'quvchilar ro'yxatida filtr (StudentsListPage "Manba"),
+// jadval ustuni va Excel eksportida ishlatiladi.
+//
+// DIQQAT — "Tavsiya" satri AYNAN shu imloda qolsin: StudentsListPage
+// dagi "Tavsiyalarni yuklash" tugmasi `r.source === "Tavsiya"` bo'yicha
+// filtrlaydi. "Do'st tavsiyasi" yoki "Referal" deb yozilsa, tugma
+// xatosiz, lekin DOIM BO'SH fayl beradi.
+//
+// Solishtiruv qat'iy tenglik bo'yicha ketadi (lib/studentsData.ts), shu
+// bois qiymatlar barqaror bo'lishi kerak: bu yerda o'zgartirilsa eski
+// yozuvlar yetim qoladi. Apostrof ataylab ishlatilmagan — qo'lda qayta
+// yozilganda ' (U+0027) o'rniga ’ (U+2019) tushib, tenglik jimgina
+// buzilishi mumkin.
+export const STUDENT_SOURCES = [
+  "Instagram",
+  "Telegram",
+  "Facebook",
+  "YouTube",
+  "Veb-sayt",
+  "Banner",
+  "Tavsiya",
+  "Boshqa",
+];
+
+// Lid (buyurtma) guruhga yozilganda o'quvchi AVTOMATIK yaratiladi
+// (lib/enrollStudent.ts) — o'shanda manba shu qiymat bo'ladi.
+// `STUDENT_SOURCES` ga ATAYLAB kirmaydi: buni qo'lda tanlashning ma'nosi
+// yo'q, u tizim biladigan fakt. Filtrda o'zi paydo bo'ladi, chunki filtr
+// varianti mavjud yozuvlardan quriladi.
+export const SOURCE_FROM_ORDER = "Buyurtmadan";

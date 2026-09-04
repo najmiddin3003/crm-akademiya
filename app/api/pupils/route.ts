@@ -149,6 +149,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Ism majburiy" }, { status: 400 });
   }
 
+  // Manba (o'quvchi qayerdan keldi) — qo'shish formasida MAJBURIY.
+  //
+  // TRIM shu yerda kerak: POST boshqa hech narsani kesmaydi (PATCH esa
+  // kesadi). "Manba" filtri variantlarni MAVJUD yozuvlardan quradi va
+  // solishtiruv qat'iy tenglik bo'yicha ketadi — ya'ni "Instagram " (ortiqcha
+  // probel bilan) filtrga ikkinchi, ko'zga bir xil ko'rinadigan element
+  // qo'shib qo'yardi.
+  //
+  // Qiymat ro'yxat ICHIDA ekani ATAYLAB tekshirilmaydi: qo'shni `category`
+  // maydonida ham server tekshiruvi yo'q, va yopiq ro'yxat — UI cheklovi,
+  // server invarianti emas. Aks holda ro'yxatdan olib tashlangan eski
+  // manbali o'quvchini keyinchalik tahrirlab bo'lmay qolardi.
+  const source = typeof body.source === "string" ? body.source.trim() : "";
+  if (!source) {
+    return NextResponse.json({ ok: false, error: "Manba majburiy" }, { status: 400 });
+  }
+
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
   const branchId = branchForInsert(scope);
@@ -169,7 +186,8 @@ export async function POST(req: Request) {
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
-  const pupil = { ...buildPupilFromValues(nextId, body), branchId };
+  // Normallashtirilgan `source` bilan — yuqoridagi trim izohiga qarang.
+  const pupil = { ...buildPupilFromValues(nextId, { ...body, source }), branchId };
   // insertOne mutates its argument to add _id — insert a copy so the
   // returned `pupil` stays clean (same gotcha as app/api/orders/route.ts).
   await col.insertOne({ ...pupil });

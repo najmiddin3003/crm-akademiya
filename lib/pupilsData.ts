@@ -155,6 +155,17 @@ export interface NewPupilValues {
   extraPhone: string;
   category: string;
   birthDate: string;
+  /**
+   * O'quvchi markazni qayerdan eshitgani — qo'shish formasida MAJBURIY
+   * (constants/index.js → STUDENT_SOURCES).
+   *
+   * IXTIYORIY (`source?:`) EMAS: shundagina TypeScript uni yubormayotgan
+   * chaqiruvchini ko'rsatib beradi. DIQQAT — bu kafolat to'liq emas:
+   * `lib/enrollStudent.ts` obyektni `JSON.stringify()` ichida uzatadi va
+   * `app/api/pupils/route.ts` tanani `await req.json()` dan tayinlaydi,
+   * ya'ni ikkalasi ham `any` orqali o'tadi va xato bermaydi.
+   */
+  source: string;
 }
 
 /** "Ism Familiya" — ro'yxat/tanlov joylarida o'quvchining ko'rinadigan nomi. */
@@ -166,7 +177,24 @@ export function buildPupilFromValues(nextId: number, values: NewPupilValues): Pu
   const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   const createdAt = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} | ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  // balance/coin/moderator/source qo'shish formasida so'ralmaydi — nol/bo'sh
+  // balance/coin/moderator qo'shish formasida so'ralmaydi — nol/bo'sh
   // holatda boshlanadi, keyin moliya amallari (bonus/jarima/to'lov) o'zgartiradi.
-  return { id: nextId, ...values, createdAt, balance: 0, coin: 0, moderator: "", source: "", status: "Aktiv" };
+  //
+  // `source` bu ro'yxatda YO'Q va bo'lmasligi ham kerak: u endi formada
+  // MAJBURIY so'raladi va `...values` orqali keladi. Ilgari bu yerda
+  // `source: ""` turardi — `...values` dan KEYIN, ya'ni u formadan kelgan
+  // qiymatni har safar JIMGINA bosib ketardi: foydalanuvchi manbani
+  // tanlaydi, "qo'shildi" degan xabarni ko'radi, bazada esa bo'sh qoladi.
+  //
+  // TARTIB QOIDASI: `...values` BIRINCHI, server aniqlaydigan maydonlar
+  // undan KEYIN. Shunda klient yuborgan ortiqcha kalitlar server
+  // qiymatini bosib yoza olmaydi.
+  //
+  // `id` ataylab spread'dan KEYINGA ko'chirildi. Ilgari u birinchi
+  // turardi (`{ id: nextId, ...values, ... }`), ya'ni POST tanasida
+  // `id` yuborilsa server bergan raqam bosib yozilardi: `body` —
+  // `await req.json()` dan kelgan `any`, ya'ni TypeScript buni
+  // to'smaydi. Oqibati: mavjud id yuborilsa unikal indeks E11000 bilan
+  // yiqilardi, yangi id yuborilsa esa ketma-ketlik buzilardi.
+  return { ...values, id: nextId, createdAt, balance: 0, coin: 0, moderator: "", status: "Aktiv" };
 }

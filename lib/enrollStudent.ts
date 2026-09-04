@@ -1,6 +1,7 @@
 import type { Order } from "@/lib/ordersData";
 import { pupilFullName, type Pupil, type PupilListItem } from "@/lib/pupilsData";
 import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
+import { SOURCE_FROM_ORDER } from "@/constants";
 
 // Lidni (buyurtmani) haqiqiy o'quvchiga aylantirib guruhga yozish.
 //
@@ -69,6 +70,17 @@ export async function enrollOrderInGroup(
         extraPhone: "",
         category: order.category || "",
         birthDate: "",
+        // Manba POST /api/pupils da MAJBURIY. Bu yerda o'quvchi lid
+        // (buyurtma) dan avtomatik yaratilyapti, ya'ni so'raydigan forma
+        // yo'q — qat'iy qiymat yoziladi.
+        //
+        // `order.source` KO'CHIRILMAYDI: uning lug'ati butunlay boshqa
+        // (lib/ordersData.ts → ORDER_SOURCES = bot/interface/kommo/
+        // survey/tilda) va u lid CRM'ga qaysi KANAL orqali tushganini
+        // bildiradi, o'quvchi markazni qayerdan eshitganini emas.
+        // Ko'chirilsa "Manba" filtrida `bot`, `tilda` kabi begona
+        // variantlar paydo bo'lardi.
+        source: SOURCE_FROM_ORDER,
       }),
     })
       .then((r) => r.json())

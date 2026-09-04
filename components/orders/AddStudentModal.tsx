@@ -7,7 +7,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { usePupils } from "@/components/orders/PupilsContext";
 import { useToast } from "@/components/ui/Toast";
 import { useSettingsListNames } from "@/hooks/useSettingsList";
-import { STUDENT_CATEGORIES } from "@/constants";
+import { STUDENT_CATEGORIES, STUDENT_SOURCES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 
 // "O'quvchi qo'shish" tugmasi bosilganda ochiladigan alohida modal — akademiya.edutizim.uz
@@ -64,6 +64,9 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [category, setCategory] = useState("");
+  // O'quvchi qayerdan keldi — MAJBURIY. Ro'yxat constants/index.js da
+  // (Kategoriya bilan bir xil qolip: sozlanadigan CRUD ro'yxati emas).
+  const [source, setSource] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [showExtra, setShowExtra] = useState(false);
   const [extraPhone, setExtraPhone] = useState("");
@@ -78,6 +81,12 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
       setError("Ism majburiy");
       return;
     }
+    // Serverda ham tekshiriladi (POST /api/pupils) — bu yerdagisi shunchaki
+    // so'rovni bekorga yubormaslik uchun, "Ism majburiy" bilan bir qolipda.
+    if (!source) {
+      setError("Manba majburiy");
+      return;
+    }
     setSaving(true);
     setError(null);
     const pupil = await createPupil({
@@ -87,6 +96,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
       extraPhone: showExtra ? formatLocalPhone(extraPhone) : "",
       category,
       birthDate,
+      source,
     });
     setSaving(false);
     if (!pupil) {
@@ -145,6 +155,21 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
 
         <PanelSelect label="Kategoriyani tanlang" value={category} onChange={setCategory} options={categoryNames} placeholder="Kategoriyani tanlang" />
 
+        {/* Majburiy — `required` qizil yulduzcha, `error` esa qizil halqa
+            chizadi (PanelSelect'da ikkala prop ham allaqachon bor). */}
+        <PanelSelect
+          label="Manba"
+          required
+          value={source}
+          onChange={(v) => {
+            setSource(v);
+            setError(null);
+          }}
+          options={STUDENT_SOURCES}
+          placeholder="O'quvchi qayerdan keldi?"
+          error={error === "Manba majburiy"}
+        />
+
         <div>
           <label className="block text-[13px] font-medium mb-1.5">Tug&apos;ilgan sanasi</label>
           <input
@@ -167,7 +192,12 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
 
         {showExtra && <PhoneInput label="Qo'shimcha telefon raqam" value={extraPhone} onChange={setExtraPhone} />}
 
-        {error && error !== "Ism majburiy" && <div className="text-sm text-red-600">⚠ {error}</div>}
+        {/* Majburiylik xatolari maydonning O'ZIDA ko'rsatiladi (qizil ramka /
+            halqa), shu bois pastda takrorlanmaydi — aks holda bitta xato bir
+            vaqtda ikki xil ko'rinishda chiqardi. */}
+        {error && error !== "Ism majburiy" && error !== "Manba majburiy" && (
+          <div className="text-sm text-red-600">⚠ {error}</div>
+        )}
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose}>
