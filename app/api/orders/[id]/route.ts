@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import type { Order } from "@/lib/ordersData";
 
 // PATCH /api/orders/:id — qisman $set yangilanish (tasks/[id]/route.ts bilan
@@ -22,10 +23,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
 
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
+  // `branchId` so'rov tanasi orqali O'ZGARTIRILMAYDI. Bu yerda `$set: body`
+  // umumiy — ya'ni klient yuborgan har qanday maydon yoziladi. Endi
+  // `branchId` xavfsizlik chegarasi bo'lgani uchun, uni tana orqali
+  // o'zgartirishga ruxsat berilsa, lidni jimgina boshqa filialga
+  // ko'chirib yuborish mumkin bo'lardi.
+  const { branchId, ...patch } = body as Partial<Order> & { branchId?: unknown };
+  void branchId;
+
   const db = await ensureIndexes();
+  // Filtr qamrov bilan kesiladi: boshqa filialning lidini id'sini bilib
+  // turib ham tahrirlab bo'lmaydi (o'quvchi profilidagi bilan bir xil qoida).
   const res = await db.collection("orders").findOneAndUpdate(
-    { id: orderId },
-    { $set: body },
+    withBranch({ id: orderId }, scope),
+    { $set: patch },
     { returnDocument: "after" },
   );
 
