@@ -67,7 +67,20 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, cashboxes });
 }
 
+// POST /api/cashboxes — yangi kassa yaratadi. FAQAT ADMIN.
+//
+// Kassa yaratish — kassaning O'ZINI boshqarish, ya'ni tahrirlash,
+// o'chirish va "bosh kassa qilish" bilan bir toifada (ular
+// app/api/cashboxes/[id] da allaqachon adminga qoldirilgan). Ochiq
+// qolsa, kassir o'ziga yangi kassa ochib, uni moderator sifatida
+// biriktirib olardi.
 export async function POST(req: Request) {
+  const me = await getCurrentEmployee();
+  if (!me) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  if (!me.isAdmin) {
+    return NextResponse.json({ ok: false, error: "Bu amal faqat administrator uchun" }, { status: 403 });
+  }
+
   let body: Partial<Cashbox>;
   try {
     body = await req.json();

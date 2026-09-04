@@ -1233,13 +1233,17 @@ export default function CashboxesPage() {
     <div className="page-frame-row p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
       {/* Chap panel — kassa kartalari */}
       <aside className="page-frame-aside fc-aside w-full shrink-0 space-y-3">
-        <button
-          onClick={() => setAddOpen(true)}
-          className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Yangi kassa qo&apos;shish</span>
-        </button>
+        {/* Yangi kassa yaratish — kassaning O'ZINI boshqarish, ya'ni
+            tahrirlash/bosh kassa qilish bilan bir toifada: faqat admin. */}
+        {isAdmin && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Yangi kassa qo&apos;shish</span>
+          </button>
+        )}
 
         {/* Holat filtri — segmentli tugmalar */}
         <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1">
