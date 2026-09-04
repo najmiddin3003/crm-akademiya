@@ -27,7 +27,7 @@ function uzParseStamp(s) {
   return Number.isFinite(t) ? t : null;
 }
 
-const c = new MongoClient(get("MONGODB_URI"));
+const c = new MongoClient(get("MONGODB_URI"), { maxPoolSize: 5 }); // zip.md qoidasi: skriptlar 5 dan oshmasin
 await c.connect();
 const db = c.db(get("MONGODB_DB") || "crm_akademiya");
 

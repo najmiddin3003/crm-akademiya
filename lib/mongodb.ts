@@ -26,11 +26,39 @@ declare global {
 // Atlas YANGI ulanishlarni rad etadi va butun ilova "ishlamay qoladi".
 // Bu amalda bir marta sodir bo'lgan.
 //
-// 20 ta ulanish bu yuk uchun yetarli: har bir so'rov ~150 ms, ya'ni 20 ta
-// ulanish sekundiga ~130 ta amalni bajaradi. `maxIdleTimeMS` esa bo'sh
-// turgan ulanishni qaytarib beradi — ilgari ular ochiq qolaverardi.
+// NEGA 20 EMAS, 5 — CHEGARA POOL EMAS, NUSXALAR SONI.
+//
+// Ilgari bu yerda 20 turardi va hisobi shunday edi: "har bir so'rov
+// ~150 ms, ya'ni 20 ta ulanish sekundiga ~130 ta amalni bajaradi".
+// Hisob to'g'ri, lekin u BITTA jarayonni nazarda tutgan. Vercel'da esa
+// jarayon bitta emas: har bir serverless NUSXA o'z poolini ochadi va
+// chegara pool hajmiga emas, NUSXALAR SONIGA ko'paytiriladi.
+//
+//     maxPoolSize 20  ->  500 / 20  =  atigi 25 nusxa sig'adi
+//     maxPoolSize 5   ->  500 / 5   =  100 nusxa
+//
+// Bu ko'paytuvchi bu ilovada ayniqsa katta, chunki bitta sahifa
+// ochilishi 5-10 ta /api so'rovini PARALLEL yuboradi va Vercel ularni
+// turli nusxalarga tarqatishi mumkin — ya'ni bitta foydalanuvchining
+// bitta harakati bir necha pool ochadi.
+//
+// 2026-09-04 da o'lchandi: 354/500 band, Atlas ogohlantirish xati
+// yubordi va yangi ulanishlar TLS darajasida rad etila boshladi
+// (`SSL alert 80`, drayverda `SystemOverloadedError`). 354 / 20 ~ 18
+// nusxa — ya'ni chegarani to'ldirish uchun 18 ta issiq nusxa yetarli
+// bo'lgan.
+//
+// 5 ta ulanish bitta so'rov uchun yetarli: bu yerdagi eng "keng"
+// yo'llar ham 3-5 ta parallel so'rov qiladi. `ensureIndexes` dagi 72 ta
+// `createIndex` bundan mustasno, lekin u FONDA ketadi (natijasi
+// kutilmaydi), ya'ni navbatda turishi hech kimni to'smaydi.
+//
+// `maxIdleTimeMS` ataylab 60 s da qoldirildi: uni qisqartirish bo'sh
+// ulanishni tezroq qaytaradi-yu, har qaytishdan keyin yangi TLS qo'l
+// siqishini (~100-200 ms) so'rov yo'liga qo'shardi. Asosiy bosim
+// pool HAJMIDA edi, bo'sh turish muddatida emas.
 const POOL = {
-  maxPoolSize: 20,
+  maxPoolSize: 5,
   minPoolSize: 0,
   maxIdleTimeMS: 60_000,
 };

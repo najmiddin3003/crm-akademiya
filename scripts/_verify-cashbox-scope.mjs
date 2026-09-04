@@ -14,7 +14,7 @@ const uri = env.match(/^MONGODB_URI=(.+)$/m)?.[1]?.trim();
 const dbName = env.match(/^MONGODB_DB=(.+)$/m)?.[1]?.trim() || "crm";
 if (!uri) throw new Error(".env.local ichida MONGODB_URI topilmadi");
 
-const client = new MongoClient(uri);
+const client = new MongoClient(uri, { maxPoolSize: 5 }); // zip.md qoidasi: skriptlar 5 dan oshmasin
 await client.connect();
 const db = client.db(dbName);
 
