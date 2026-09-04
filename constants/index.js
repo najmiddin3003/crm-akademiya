@@ -43,6 +43,13 @@ export const STUDENT_CATEGORIES = ["Kichik (1-4-sinf)", "O'rta (5-9-sinf)", "Kat
 // yozuvlar yetim qoladi. Apostrof ataylab ishlatilmagan — qo'lda qayta
 // yozilganda ' (U+0027) o'rniga ’ (U+2019) tushib, tenglik jimgina
 // buzilishi mumkin.
+// "Boshqa" — ro'yxatdagi oddiy variant EMAS, DARVOZA: tanlansa qo'shimcha
+// oyna ochiladi va moderator manbani o'z so'zi bilan yozadi. Yozilgan matn
+// `source` ga tushadi, ya'ni bazada "Boshqa" degan qiymat HECH QACHON
+// saqlanmaydi — aks holda "Manba" filtri bir kunda ma'nosiz "Boshqa"
+// to'plamiga aylanib qolardi.
+export const SOURCE_OTHER = "Boshqa";
+
 export const STUDENT_SOURCES = [
   "Instagram",
   "Telegram",
@@ -51,7 +58,7 @@ export const STUDENT_SOURCES = [
   "Veb-sayt",
   "Banner",
   "Tavsiya",
-  "Boshqa",
+  SOURCE_OTHER,
 ];
 
 // Lid (buyurtma) guruhga yozilganda o'quvchi AVTOMATIK yaratiladi

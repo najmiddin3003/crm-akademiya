@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import PanelSelect from "@/components/orders/PanelSelect";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { usePupils } from "@/components/orders/PupilsContext";
 import { useToast } from "@/components/ui/Toast";
 import { useSettingsListNames } from "@/hooks/useSettingsList";
-import { STUDENT_CATEGORIES, STUDENT_SOURCES } from "@/constants";
+import { SOURCE_OTHER, STUDENT_CATEGORIES, STUDENT_SOURCES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 
 // "O'quvchi qo'shish" tugmasi bosilganda ochiladigan alohida modal — akademiya.edutizim.uz
@@ -67,6 +67,10 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   // O'quvchi qayerdan keldi — MAJBURIY. Ro'yxat constants/index.js da
   // (Kategoriya bilan bir xil qolip: sozlanadigan CRUD ro'yxati emas).
   const [source, setSource] = useState("");
+  // "Boshqa" tanlanganda ochiladigan qo'shimcha oyna: moderator manbani
+  // o'z so'zi bilan yozadi.
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [otherText, setOtherText] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [showExtra, setShowExtra] = useState(false);
   const [extraPhone, setExtraPhone] = useState("");
@@ -74,7 +78,52 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   const [saving, setSaving] = useState(false);
   const { createPupil } = usePupils();
   const { showSuccess, showError } = useToast();
-  useEscapeClose(onClose);
+
+  const closeOther = useCallback(() => setOtherOpen(false), []);
+  // Escape: ichki oyna ochiq bo'lsa FAQAT uni yopadi.
+  //
+  // `useEscapeClose` tinglovchini `window` ga qo'yadi, ya'ni ikkala oyna
+  // ham o'z tinglovchisini o'rnatsa bitta Escape IKKALASINI birdan
+  // yopib yuborardi — moderator manbani yozayotib butun formani yo'qotardi.
+  useEscapeClose(otherOpen ? closeOther : onClose);
+
+  /**
+   * `<select>` da ko'rsatiladigan variantlar.
+   *
+   * Qo'lda yozilgan manba (masalan "Maktabdan eshitgan") ro'yxatda YO'Q,
+   * `PanelSelect` esa oddiy `<select>` — ro'yxatda yo'q qiymat umuman
+   * ko'rinmaydi va maydon bo'sh turgandek tuyulardi. Shu bois yozilgan
+   * qiymat oxiriga QO'SHILADI. Naqsh loyihada bor (AddOrderModal ham
+   * tahrirlashda joriy qiymatni ro'yxat boshiga qo'shadi).
+   */
+  const sourceOptions = useMemo(
+    () => (source && !STUDENT_SOURCES.includes(source) ? [...STUDENT_SOURCES, source] : STUDENT_SOURCES),
+    [source],
+  );
+
+  /**
+   * Manba tanlanganda. "Boshqa" — qiymat EMAS, darvoza: u `source` ga
+   * YOZILMAYDI, faqat oynani ochadi. Shu sabab moderator oynani bekor
+   * qilsa, avvalgi tanlov joyida qoladi va bazaga hech qachon "Boshqa"
+   * degan mazmunsiz qiymat tushmaydi.
+   */
+  function pickSource(v: string) {
+    setError(null);
+    if (v === SOURCE_OTHER) {
+      // Qayta tahrirlashda avval yozilgani ko'rinib tursin.
+      setOtherText(STUDENT_SOURCES.includes(source) ? "" : source);
+      setOtherOpen(true);
+      return;
+    }
+    setSource(v);
+  }
+
+  function confirmOther() {
+    const v = otherText.trim();
+    if (!v) return;
+    setSource(v);
+    setOtherOpen(false);
+  }
 
   const handleSave = async () => {
     if (!firstName.trim()) {
@@ -161,11 +210,8 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
           label="Manba"
           required
           value={source}
-          onChange={(v) => {
-            setSource(v);
-            setError(null);
-          }}
-          options={STUDENT_SOURCES}
+          onChange={pickSource}
+          options={sourceOptions}
           placeholder="O'quvchi qayerdan keldi?"
           error={error === "Manba majburiy"}
         />
@@ -208,6 +254,62 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
           </Button>
         </div>
       </div>
+
+      {/* "Boshqa" tanlanganda ochiladigan oyna. z-index 1200 — ota oyna
+          1100 da, ya'ni bu uning USTIDA turadi. Tashqarisiga bosilganda
+          yopiladi, lekin `stopPropagation` ota oynaning o'z yopish
+          ishlovchisiga yetib borishiga yo'l qo'ymaydi. */}
+      {otherOpen && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/50 p-4"
+          style={{ zIndex: 1200 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            closeOther();
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 className="text-base font-semibold">Manbani yozing</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                O&apos;quvchi markazni qayerdan eshitgan?
+              </p>
+            </div>
+
+            <input
+              autoFocus
+              value={otherText}
+              onChange={(e) => setOtherText(e.target.value)}
+              // Enter — "Tasdiqlash" bilan bir xil. Bir maydonli oynada
+              // sichqonchaga uzatish ortiqcha.
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmOther();
+                }
+              }}
+              maxLength={60}
+              placeholder="Masalan: Maktabdan eshitgan"
+              className="h-11 w-full rounded-lg border border-border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={closeOther}>
+                Orqaga
+              </Button>
+              {/* Bo'sh matn bilan yopib bo'lmaydi: "Manba" majburiy maydon,
+                  bo'sh qoldirilsa moderator buni faqat "Saqlash" bosganda
+                  bilardi. */}
+              <Button variant="primary" onClick={confirmOther} disabled={!otherText.trim()}>
+                Tasdiqlash
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
