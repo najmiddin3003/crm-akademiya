@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
+import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 import { buildPupilFromValues, PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
 
 // GET /api/pupils — "O'quvchi qo'shish" orqali qo'shilgan haqiqiy o'quvchilar
@@ -109,22 +109,33 @@ export async function GET(req: Request) {
 
   if (anyOf.length > 0) filter.$and = anyOf;
 
-  const scope = await getBranchScope();
-  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
-
+  // O'QUVCHILAR RO'YXATI FILIAL BO'YICHA KESILMAYDI — ATAYLAB.
+  //
+  // Markaz qarori (2026-09-04): kassa, moliya va lidlar filial bo'yicha
+  // ajratiladi, O'QUVCHILAR ro'yxati esa UMUMIY — istalgan kassada
+  // istalgan o'quvchidan to'lov qabul qilinadi.
+  //
+  // Ilgari bu yerda `withBranch(filter, scope)` turardi va amalda shunday
+  // bo'ldi: 2-filialga biriktirilgan yagona moderator (Dilmurod) Kassa
+  // "Kirim" oynasida 6 700 dan ortiq o'quvchi o'rniga atigi 10 tasini
+  // ko'rardi, chunki o'quvchilarning deyarli hammasi 1-filialda. Ya'ni
+  // qamrov himoya qilish o'rniga kassirni ishlashdan to'sib qo'yardi.
+  //
+  // POST (pastda) `branchId` ni YOZISHDA DAVOM ETADI — u qaysi filialda
+  // qo'shilgani haqidagi foydali belgi bo'lib qoladi, lekin ko'rinishni
+  // cheklamaydi.
   const db = await ensureIndexes();
 
   // `?countOnly=1` — faqat SON kerak bo'lgan joylar uchun (Sozlamalar →
   // Billing). Ilgari u 6 747 hujjatni (544 KB) tortib, `.length` ni
   // o'qib, qolganini tashlab yuborardi.
   if (sp.get("countOnly") === "1") {
-    const count = await db.collection("pupils").countDocuments(withBranch(filter, scope));
+    const count = await db.collection("pupils").countDocuments(filter);
     return NextResponse.json({ ok: true, count });
   }
 
-  // Navbardagi filial tanlovi shu yerda ishlaydi (lib/branchScope.ts).
   const rows = await db.collection("pupils")
-    .find(withBranch(filter, scope), { projection })
+    .find(filter, { projection })
     .sort({ id: -1 })
     .toArray();
   // Parol xeshlari hech qachon klientga chiqmaydi.

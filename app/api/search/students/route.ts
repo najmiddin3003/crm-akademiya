@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 import { studentRowFromPupil } from "@/lib/studentsData";
 
@@ -44,14 +43,14 @@ export async function GET(req: Request) {
     return { $or: or };
   });
 
-  // Qidiruv ham FILIAL bo'yicha kesiladi: aks holda navbardan boshqa
-  // filialning o'quvchisini topib, uning profiliga kirish mumkin edi.
-  const scope = await getBranchScope();
-  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
-
+  // Qidiruv FILIAL bo'yicha KESILMAYDI — o'quvchilar ro'yxati umumiy
+  // (sabab app/api/pupils/route.ts dagi GET izohida). Ilgari bu yerda
+  // `withBranch` turardi va u ro'yxat bilan izchil edi; ro'yxat umumiy
+  // bo'lgach, qidiruvni kesib qoldirish faqat chalkashlik tug'dirardi —
+  // ro'yxatda ko'rinadigan o'quvchi qidiruvda topilmasdi.
   const db = await ensureIndexes();
   const rows = await db.collection("pupils")
-    .find(withBranch({ $and: and }, scope), {
+    .find({ $and: and }, {
       // Faqat StudentRow uchun kerak bo'lgan maydonlar.
       projection: {
         _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, balance: 1, coin: 1,

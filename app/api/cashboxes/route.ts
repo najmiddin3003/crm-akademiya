@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, zeroMethodTotals, type Cashbox } from "@/lib/cashboxes";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 import { getCurrentEmployee, nameEq } from "@/lib/currentEmployee";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 
 // Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
 // kassalarni foydalanuvchi o'zi qo'shadi.
@@ -41,10 +42,26 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, cashboxes: [] });
   }
 
+  // FILIAL QAMROVI — FAQAT ADMIN uchun.
+  //
+  // Admin uchun navbardagi filial tanlovi shu ro'yxatni FILTRLAYDI:
+  // "Akademiya 2 Chortoq" tanlansa o'sha filialning kassasi ko'rinadi.
+  // Kassa qaysi filialga tegishli ekani `cashboxes.branchId` da.
+  //
+  // XODIMGA QO'LLANMAYDI — ATAYLAB. Uning ro'yxati allaqachon `moderator`
+  // bo'yicha kesilgan, ya'ni u eng ko'pi bitta — O'ZINING — kassasini
+  // ko'radi. Ustiga filial sharti qo'yilsa, xodimning filiali bilan
+  // kassaning filiali bir lahzaga mos kelmay qolgan paytda (masalan biri
+  // ko'chirilib, ikkinchisi hali ko'chirilmaganda) kassir O'Z kassasini
+  // ham ko'rmay qolardi va sabab hech qayerda ko'rinmasdi. Aynan shunday
+  // holat bu loyihada bir marta bo'lgan.
+  const scope = me.isAdmin ? await getBranchScope() : null;
+  const filter = me.isAdmin ? {} : { moderator: nameEq(me.name!) };
+
   // Ikkala o'qish bir-biriga bog'liq emas -> bitta round-trip'da.
   const [keys, rows] = await Promise.all([
     loadPaymentMethodKeys(db),
-    col.find(me.isAdmin ? {} : { moderator: nameEq(me.name!) }).sort({ id: 1 }).toArray(),
+    col.find(scope ? withBranch(filter, scope) : filter).sort({ id: 1 }).toArray(),
   ]);
   const cashboxes = rows.map(({ _id, ...rest }) => normalizeCashbox({ isPrimary: false, ...rest }, keys));
   return NextResponse.json({ ok: true, cashboxes });
