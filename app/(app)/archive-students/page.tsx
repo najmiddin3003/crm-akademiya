@@ -6,7 +6,7 @@ import { listScope, loadGroups, loadPupils } from "@/lib/listQueries";
 export default async function Page() {
   const scope = await listScope();
   const [pupils, groups] = scope
-    ? await Promise.all([loadPupils(scope, { status: "Arxiv" }), loadGroups(scope)])
+    ? await Promise.all([loadPupils({ status: "Arxiv" }), loadGroups()])
     : [undefined, undefined];
 
   return <ArchiveStudentsPage initialPupils={pupils} initialGroups={groups} />;

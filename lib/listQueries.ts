@@ -1,5 +1,5 @@
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch, type BranchScope } from "@/lib/branchScope";
+import { getBranchScope, type BranchScope } from "@/lib/branchScope";
 import { groupWeekdays } from "@/lib/attendance";
 import { PUPIL_EXTRA_FIELDS, type Pupil, type PupilExtraField, type PupilListItem } from "@/lib/pupilsData";
 import type { Group } from "@/lib/groups";
@@ -15,6 +15,16 @@ import type { Group } from "@/lib/groups";
 // gidratatsiyadan KEYIN, alohida HTTP to'lqinda olardi. Prodda bitta
 // brauzer<->API borib-kelishi ~208 ms, ya'ni ro'yxat shuncha kech
 // ko'rinardi. Serverda olinsa o'sha to'lqin butunlay yo'qoladi.
+//
+// FILIAL QAMROVI BU YERDA YO'Q — ataylab. Markaz qarori (2026-09-04):
+// kassa, moliya va lidlar filial bo'yicha ajratiladi, O'QUVCHILAR va
+// GURUHLAR esa UMUMIY. Sabab amaliy: 2-filialga biriktirilgan moderator
+// 6 700 dan ortiq o'quvchi va 91 guruh o'rniga deyarli hech nimani
+// ko'rmasdi (ma'lumotning deyarli hammasi 1-filialda), ya'ni qamrov
+// himoya qilish o'rniga ishlashdan to'sardi.
+//
+// `listScope()` SAQLANADI — u endi qamrov uchun emas, sahifalardagi
+// "tizimga kirilganmi" tekshiruvi uchun ishlatiladi.
 
 /** Sahifa ochilishida ishlatiladigan qamrov. `null` — tizimga kirilmagan. */
 export async function listScope(): Promise<BranchScope | null> {
@@ -28,7 +38,7 @@ export async function listScope(): Promise<BranchScope | null> {
  * guruhning dars kuni bo'lsa va davomat hali qilinmagan bo'lsa, guruh
  * ro'yxatda sariq qator bo'lib turadi.
  */
-export async function loadGroups(scope: BranchScope): Promise<Group[]> {
+export async function loadGroups(): Promise<Group[]> {
   const db = await ensureIndexes();
   const now = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
@@ -37,7 +47,7 @@ export async function loadGroups(scope: BranchScope): Promise<Group[]> {
 
   // Ikkala so'rov bir-biriga bog'liq emas.
   const [rows, marked] = await Promise.all([
-    db.collection("groups").find(withBranch({}, scope)).sort({ id: 1 }).toArray(),
+    db.collection("groups").find({}).sort({ id: 1 }).toArray(),
     db.collection("attendance").distinct("groupId", { date: todayIso }),
   ]);
   const markedToday = new Set<number>(marked as number[]);
@@ -69,7 +79,6 @@ export interface PupilsQueryOptions {
  * o'chiriladi; bu yerda ular hech qachon o'qilmaydi).
  */
 export async function loadPupils(
-  scope: BranchScope,
   opts: PupilsQueryOptions = {},
 ): Promise<PupilListItem[]> {
   const db = await ensureIndexes();
@@ -82,7 +91,7 @@ export async function loadPupils(
   }
 
   const rows = await db.collection("pupils")
-    .find(withBranch(filter, scope), { projection })
+    .find(filter, { projection })
     .sort({ id: -1 })
     .toArray();
   return rows as unknown as (PupilListItem & Partial<Pupil>)[];

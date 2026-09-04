@@ -16,7 +16,7 @@ export default async function Page() {
   // o'zi so'raydi va 401 ni odatdagidek qayta ishlaydi.
   // Ikkala so'rov bir-biriga bog'liq emas — barobar ketadi.
   const [groups, frozenPupils] = scope
-    ? await Promise.all([loadGroups(scope), loadPupils(scope, { status: "Muzlatilgan" })])
+    ? await Promise.all([loadGroups(), loadPupils({ status: "Muzlatilgan" })])
     : [undefined, undefined];
 
   return <GroupsListPage initialGroups={groups} initialFrozenPupils={frozenPupils} />;

@@ -21,7 +21,7 @@ export async function GET() {
   // Ro'yxatni YIG'ISH mantig'i lib/listQueries.ts da — uni Guruhlar
   // sahifasining server komponenti ham chaqiradi. Ikki joyda ikki xil
   // natija chiqmasligi uchun manba bitta.
-  const groups = await loadGroups(scope);
+  const groups = await loadGroups();
   return NextResponse.json({ ok: true, groups });
 }
 

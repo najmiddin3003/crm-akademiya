@@ -9,8 +9,8 @@ export default async function Page() {
   // Ikkala ro'yxat bir-biriga bog'liq emas — barobar olinadi.
   const [pupils, groups] = scope
     ? await Promise.all([
-        loadPupils(scope, { status: "Aktiv", extra: ["paymentDate"] }),
-        loadGroups(scope),
+        loadPupils({ status: "Aktiv", extra: ["paymentDate"] }),
+        loadGroups(),
       ])
     : [undefined, undefined];
 
