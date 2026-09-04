@@ -83,3 +83,33 @@ export function txTarget(type: { name?: string; customerType?: string } | null |
 export function txTargetLabel(target: TxTarget): string {
   return target === "employee" ? "Xodimni tanlang" : "O'quvchini tanlang";
 }
+
+/**
+ * Tur ONGLI ravishda "Uchinchi shaxs" deb belgilanganmi.
+ *
+ * NEGA `txTarget(...) === null` YETMAYDI: u IKKI boshqa-boshqa holatni
+ * bitta `null` ga qorishtiradi (yuqoridagi `targetOfCustomerType`
+ * izohiga qarang):
+ *
+ *   "Uchinchi shaxs" — ONGLI tanlov: bu pul odamga bog'liq emas
+ *                      (masalan "Kitob sotuvi").
+ *   "Boshqa"         — maydonning STANDART qiymati, ya'ni ko'pincha
+ *                      shunchaki to'ldirilmagan
+ *                      (app/api/transaction-types/route.ts →
+ *                      `body.customerType || "Boshqa"`).
+ *
+ * Farq muhim, chunki bu funksiya Kirim oynasida o'quvchi va o'qituvchi
+ * tanlovlarini YASHIRADI. Ularsiz yozuv hech kimga biriktirilmaydi va
+ * uch joydan chiqib ketadi: o'quvchi balansi
+ * (app/api/students/balances), Tushum rejasi (revenue-summary) va
+ * o'qituvchining foizli oyligi (lib/payrollSources.ts). "Boshqa kirim"
+ * turi uchun bu JIMGINA regressiya bo'lardi — u zaxira yo'l bo'lib,
+ * unda kassir odamni tanlaydi.
+ *
+ * Ya'ni qaror KODDA emas, BAZADA turadi: Sozlamalar → Moliya →
+ * Tranzaksiya turi sahifasida "Mijoz" maydonini "Uchinchi shaxs" ga
+ * o'tkazish kifoya.
+ */
+export function isThirdParty(type: { customerType?: string } | null | undefined): boolean {
+  return normalize(String(type?.customerType ?? "")) === "uchinchi shaxs";
+}
