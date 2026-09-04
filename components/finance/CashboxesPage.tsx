@@ -41,6 +41,7 @@ import TransactionDetailDrawer from "./TransactionDetailDrawer";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useTransactionTypes } from "@/hooks/useTransactionTypes";
+import { useBranch } from "@/components/shared/BranchContext";
 import { type Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
@@ -579,6 +580,15 @@ function EditHistoryModal({
 
 export default function CashboxesPage() {
   const { showSuccess, showError } = useToast();
+  // Kassani BOSHQARISH (tahrirlash, bosh kassa qilish, hisobotni yuklab
+  // olish) faqat administratorda. Kassa egasi — kassir — o'z kassasida
+  // pul amallarini bajaradi, lekin kassaning O'ZINI o'zgartira olmaydi.
+  //
+  // Bu FAQAT KO'RINISH: haqiqiy himoya server tomonda
+  // (app/api/cashboxes/[id] — PATCH/DELETE va .../set-primary 403
+  // qaytaradi). Tugmani yashirish so'rovni qo'lda yuborishga to'sqinlik
+  // qilmaydi.
+  const { isAdmin } = useBranch();
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
   // Tanlangan karta ochiq holatda ko'rinadi (amal tugmalari + to'lov turlari
@@ -1264,7 +1274,9 @@ export default function CashboxesPage() {
             // kartada bitta ham tugma yo'q edi, ya'ni arxivga tushgan
             // kassani interfeys orqali qaytarib bo'lmasdi.
             const showActions = isSelected && !c.archived;
-            const showEditOnly = isSelected && c.archived;
+            // Arxivdagi kartadagi yagona tugma ham tahrirlash — u ham
+            // faqat adminda (arxivdan qaytarish o'sha oynadan qilinadi).
+            const showEditOnly = isSelected && c.archived && isAdmin;
             const showMore = cardMoreId === c.id;
             const labelMuted = isDark ? "text-white/70" : "text-slate-700";
             const textMuted = isDark ? "text-white/85" : "text-slate-700";
@@ -1518,6 +1530,13 @@ export default function CashboxesPage() {
                     className="flex items-center justify-between mt-3 pt-3"
                     style={{ borderTop: `1px solid ${line}` }}
                   >
+                    {/* Tahrirlash / bosh kassa / hisobotni yuklab olish —
+                        FAQAT ADMIN. Kassir o'z kassasida pul amallarini
+                        bajaradi (Kirim/Chiqim/Ko'chirish), lekin kassaning
+                        o'zini o'zgartirmaydi. Bo'sh <div/> — "More" tugmasi
+                        o'ng chekkada qolishi uchun (justify-between). */}
+                    {!isAdmin && <div />}
+                    {isAdmin && (
                     <div
                       className="flex items-center gap-2"
                       onClick={(e) => e.stopPropagation()}
@@ -1584,6 +1603,7 @@ export default function CashboxesPage() {
                         )}
                       </div>
                     </div>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
