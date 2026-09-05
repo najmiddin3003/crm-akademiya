@@ -58,7 +58,7 @@ function parseFields(raw: unknown): CustomField[] {
 export default function AddOrderPage() {
   const router = useRouter();
   const { createOrder } = useOrders();
-  const { pupils, loading: pupilLoading } = usePupils();
+  const { pupils, loading: pupilLoading, phoneOf } = usePupils();
   // "O'qituvchi" ro'yxati — /api/teachers (Boshqaruv → Xodimlardagi haqiqiy
   // o'qituvchilar), AddOrderModal bilan bir xil manba.
   const { names: teacherNames, loading: teacherLoading } = useTeachers();
@@ -346,6 +346,8 @@ export default function AddOrderPage() {
                 placeholder="..."
                 searchPlaceholder="O'quvchini qidirish"
                 loading={pupilLoading}
+                // Telefon qidiruvga ham qo'shiladi (AddOrderModal bilan bir xil).
+                subtitleOf={phoneOf}
               />
 
               {/* Referensda ikki bo'lim orasida 48px bo'shliq va 1px ajratgich bor */}

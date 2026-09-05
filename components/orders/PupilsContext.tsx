@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { NewPupilValues, Pupil, PupilListItem } from "@/lib/pupilsData";
 import { invalidateStudents, loadPupilsCached } from "@/hooks/useStudents";
 
@@ -22,6 +22,21 @@ interface PupilsContextValue {
   pupils: OrderPupil[];
   loading: boolean;
   createPupil: (values: NewPupilValues) => Promise<Pupil | null>;
+  /**
+   * Ism -> "+998 XX XXX XX XX". Topilmasa bo'sh satr.
+   *
+   * NEGA KONTEKSTDA: `StudentSearchSelect` telefon bo'yicha qidirishni
+   * FAQAT `subtitleOf` berilgan bo'lsa qila oladi — uning `haystackOf`
+   * funksiyasi ism bilan ost-satrni birga qidiradi va raqam kiritilganda
+   * ikkalasidan ham raqam bo'lmagan belgilarni tashlab solishtiradi
+   * ("94 155 88 55" ni "941558855" deb ham topadi). Ost-satr berilmasa
+   * qidiruv faqat ism bo'yicha ishlaydi.
+   *
+   * Xarita bir marta, provider'da tuziladi: uni "O'quvchi",
+   * "Referal bergan o'quvchi" (AddOrderModal) va AddOrderPage'dagi
+   * referal maydoni — uchalasi ham ishlatadi.
+   */
+  phoneOf: (name: string) => string;
 }
 
 const PupilsContext = createContext<PupilsContextValue | null>(null);
@@ -66,7 +81,28 @@ export function PupilsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  return <PupilsContext.Provider value={{ pupils, loading, createPupil }}>{children}</PupilsContext.Provider>;
+  // Bir xil ismli o'quvchilar bor (bazada 500 dan ortiq ism takrorlanadi),
+  // shu bois BIRINCHISI yutadi — hooks/useStudents.ts dagi `byName` bilan
+  // bir xil qoida.
+  const phoneByName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of pupils) {
+      const k = `${p.firstName} ${p.lastName}`.trim().toLowerCase();
+      if (!m.has(k) && p.phone) m.set(k, `+998 ${p.phone}`);
+    }
+    return m;
+  }, [pupils]);
+  const phoneOf = useCallback(
+    (name: string) => phoneByName.get(name.trim().toLowerCase()) ?? "",
+    [phoneByName],
+  );
+
+  const value = useMemo(
+    () => ({ pupils, loading, createPupil, phoneOf }),
+    [pupils, loading, createPupil, phoneOf],
+  );
+
+  return <PupilsContext.Provider value={value}>{children}</PupilsContext.Provider>;
 }
 
 export function usePupils(): PupilsContextValue {

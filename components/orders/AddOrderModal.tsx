@@ -73,7 +73,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   // (constants/index.js'dagi statik 50 ta demo STUDENTS ro'yxati emas) —
   // shared PupilsContext orqali, shu bois avvalgi sessiyalarda qo'shilganlar
   // ham qidiruvda ko'rinadi.
-  const { pupils, loading: pupilsLoading } = usePupils();
+  const { pupils, loading: pupilsLoading, phoneOf } = usePupils();
   // "O'qituvchi" ro'yxati — Boshqaruv → Xodimlardagi HAQIQIY o'qituvchilar
   // (/api/teachers), avvalgi qattiq yozilgan TEACHERS massivi emas.
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
@@ -200,6 +200,11 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               options={studentOptions}
               loading={pupilsLoading}
               error={error === "O'quvchi majburiy"}
+              // Telefon ost-satr sifatida ko'rinadi VA qidiruvga qo'shiladi
+              // — moderator "941558855" deb yozib ham topa oladi
+              // (StudentSearchSelect raqamlarni ajratkichlarsiz solishtiradi).
+              // Ustiga bir xil ismli o'quvchilarni ajratish imkonini beradi.
+              subtitleOf={phoneOf}
             />
           )}
 
@@ -209,6 +214,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             onChange={setReferral}
             options={studentOptions}
             loading={pupilsLoading}
+            subtitleOf={phoneOf}
           />
 
           <StudentSearchSelect
