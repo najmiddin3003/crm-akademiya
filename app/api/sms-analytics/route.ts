@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { eskizConfigured } from "@/lib/eskiz";
-import { paymentSmsEnabled } from "@/lib/paymentSms";
+import { paymentSmsEnabled, paymentSmsVarSet } from "@/lib/paymentSms";
 import type { SmsMessage } from "@/lib/smsMessages";
 
 // GET /api/sms-analytics — Nazorat > SMS analitikasi sahifasi uchun.
@@ -61,6 +61,7 @@ export async function GET(req: Request) {
     config: {
       eskizConfigured: eskizConfigured(),
       paymentSmsEnabled: paymentSmsEnabled(),
+      paymentSmsVarSet: paymentSmsVarSet(),
     },
     // `providerRaw` qaytarilmaydi — u faqat serverda kerak (xabar ID sini
     // ajratish uchun) va ichida nima borligi Eskizga bog'liq.

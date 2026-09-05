@@ -24,7 +24,7 @@ interface Payload {
   stats: { accepted: number; failed: number; pending: number; simulated: number };
   byPurpose: { key: string | null; n: number }[];
   byCashbox: { name: string | null; n: number }[];
-  config: { eskizConfigured: boolean; paymentSmsEnabled: boolean };
+  config: { eskizConfigured: boolean; paymentSmsEnabled: boolean; paymentSmsVarSet: boolean };
 }
 
 function toIso(d: Date | null): string {
@@ -129,7 +129,15 @@ export default function NazoratSmsAnalyticsPage() {
             }`}
           >
             To&apos;lov SMS i: <strong>{data.config.paymentSmsEnabled ? "yoqilgan" : "o'chiq"}</strong>
-            {!data.config.paymentSmsEnabled && <span>(PAYMENT_SMS_ENABLED)</span>}
+            {/* "O'chiq" ning IKKI xil sababi bor va ular boshqa-boshqa ish
+                talab qiladi — sahifa qaysi biri ekanini aytadi. */}
+            {!data.config.paymentSmsEnabled && (
+              <span>
+                {data.config.paymentSmsVarSet
+                  ? "(PAYMENT_SMS_ENABLED qiymati rost emas)"
+                  : "(PAYMENT_SMS_ENABLED Production'da yo'q)"}
+              </span>
+            )}
           </span>
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${
@@ -281,6 +289,11 @@ export default function NazoratSmsAnalyticsPage() {
               <p className="text-[13px] text-muted-foreground max-w-md">
                 Jurnal bo&apos;sh. To&apos;lov SMS i <strong>PAYMENT_SMS_ENABLED=true</strong> bo&apos;lganda
                 ishlaydi — o&apos;chiq bo&apos;lsa kassadagi kirimlarda xabar yuborilmaydi.
+                {data && !data.config.paymentSmsEnabled && !data.config.paymentSmsVarSet && (
+                  <> Hozir bu o&apos;zgaruvchi Production muhitida umuman yo&apos;q: Vercel &rarr;
+                  Settings &rarr; Environment Variables da <strong>Production</strong> belgilangan
+                  bo&apos;lishi va keyin qayta deploy qilinishi kerak.</>
+                )}
               </p>
             )}
           </div>

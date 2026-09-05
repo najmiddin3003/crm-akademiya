@@ -41,7 +41,39 @@ const CONTACT_PHONE = "+998941118855";
  * dev serverni qayta ishga tushiring.
  */
 export function paymentSmsEnabled(): boolean {
-  return process.env.PAYMENT_SMS_ENABLED === "true";
+  return isEnvTrue(process.env.PAYMENT_SMS_ENABLED);
+}
+
+/**
+ * Muhit o'zgaruvchisining "rost" qiymatlari — BAG'RIKENG o'qiladi.
+ *
+ * NIMA NOTO'G'RI EDI: bu yerda qat'iy `=== "true"` turardi. Qiymatni
+ * ODAM Vercel oynasiga qo'lda yozadi, ya'ni "True", "TRUE", "1" yoki
+ * oxirida bo'sh joy bilan "true " bo'lishi mutlaqo tabiiy — va ularning
+ * hammasida tekshiruv JIMGINA `false` qaytarardi. Natijada kalit
+ * qo'yilgan, sahifada esa "o'chiq" deb turardi va sababini topib
+ * bo'lmasdi. Aynan shu holat sodir bo'ldi.
+ *
+ * "false", "0", bo'sh va yo'q qiymat — hammasi o'chiq.
+ */
+function isEnvTrue(v: string | undefined): boolean {
+  const s = (v ?? "").trim().toLowerCase();
+  return s === "true" || s === "1" || s === "yes" || s === "on";
+}
+
+/**
+ * O'zgaruvchi UMUMAN mavjudmi (qiymatidan qat'i nazar).
+ *
+ * "O'chiq" ning ikki xil sababi bor va ular BOSHQA-BOSHQA ish talab
+ * qiladi:
+ *   mavjud emas  -> Vercel'da Production muhitiga qo'yilmagan (yoki
+ *                   qo'yilgan-u, qayta deploy qilinmagan);
+ *   mavjud, lekin rost emas -> qiymat noto'g'ri yozilgan.
+ * Sahifa shu ikkisini ajratib ko'rsatadi, aks holda "o'chiq" degan
+ * yozuvdan keyin nima qilishni topib bo'lmaydi.
+ */
+export function paymentSmsVarSet(): boolean {
+  return typeof process.env.PAYMENT_SMS_ENABLED === "string";
 }
 
 /** Eskizdagi tasdiqlangan shablon. */
