@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Settings2 } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
+import Button from "@/components/ui/Button";
+import SourceOptionsModal from "@/components/sales/SourceOptionsModal";
 
 // Sotuv va marketing → O'quvchilar oqimi (/sales-sources).
 //
@@ -113,15 +116,19 @@ function StatCard({ label, value, hint, color }: { label: string; value: string 
 export default function StudentSourcesPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [manageOpen, setManageOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Ro'yxat oynasida nom o'zgartirilsa o'quvchilarning `source` matni ham
+  // tuzatiladi (app/api/student-sources/options/manage), ya'ni taqsimot
+  // eskirib qoladi — shu bois qayta o'qish kerak.
+  const load = useCallback(() => {
     fetch("/api/student-sources")
       .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setData(d as Payload); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .then((d) => { if (d.ok) setData(d as Payload); })
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const max = data?.sources[0]?.n ?? 0;
   const top = data?.sources[0];
@@ -134,12 +141,19 @@ export default function StudentSourcesPage() {
 
   return (
     <div className="container mx-auto max-w-[1000px] p-4 md:p-5 space-y-4">
-      <div>
-        <h1 className="text-[20px] font-semibold">O&apos;quvchilar oqimi</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          O&apos;quvchilar markazga qayerdan kelayotgani — qo&apos;shish oynasidagi
-          &laquo;Manba&raquo; maydoni bo&apos;yicha.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[20px] font-semibold">O&apos;quvchilar oqimi</h1>
+          <p className="text-[13px] text-muted-foreground mt-1">
+            O&apos;quvchilar markazga qayerdan kelayotgani — qo&apos;shish oynasidagi
+            &laquo;Manba&raquo; maydoni bo&apos;yicha.
+          </p>
+        </div>
+        {/* Tanlovlar ro'yxati aynan SHU sahifadan boshqariladi: diagramma
+            nimadan yasalgani va uni kim to'ldirishi bir joyda tursin. */}
+        <Button variant="outline" lucideIcon={Settings2} onClick={() => setManageOpen(true)} className="shrink-0">
+          Manbalar ro&apos;yxati
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -238,6 +252,10 @@ export default function StudentSourcesPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {manageOpen && (
+        <SourceOptionsModal onClose={() => setManageOpen(false)} onChanged={load} />
       )}
     </div>
   );

@@ -136,6 +136,8 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/stories/[id]": ["/sales-stories"],
   "/api/student-reports": ["/management-xodimlar", "/reports-cancelled", "/reports-cancelled-attend", "/reports-diff-payments", "/reports-discounts", "/reports-leave-reasons", "/reports-unpaid"],
   "/api/student-sources": ["/sales-sources"],
+  "/api/student-sources/options": ["/orders-list", "/sales-sources", "/students-list"],
+  "/api/student-sources/options/manage": ["/sales-sources"],
   "/api/students/balances": ["/active-students", "/archive-students", "/expiring-subs", "/finance-cash", "/finance-fin-contract", "/groups", "/nazorat-davomat", "/new-students", "/parents", "/students-list"],
   "/api/support-analytics": ["/nazorat-support-analytics"],
   "/api/surveys": ["/sales-marketing"],

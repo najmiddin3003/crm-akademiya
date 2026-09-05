@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import PanelSelect from "@/components/orders/PanelSelect";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -88,7 +88,32 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   useEscapeClose(otherOpen ? closeOther : onClose);
 
   /**
+   * Manba tanlovlari BAZADAN — Sotuv va marketing → O'quvchilar oqimi
+   * sahifasidagi "Manbalar ro'yxati" oynasidan boshqariladi.
+   *
+   * KONSTANTA ZAXIRA bo'lib qoladi: so'rov yiqilsa yoki hali kelmagan
+   * bo'lsa ro'yxat bo'sh chiqmasligi kerak — "Manba" MAJBURIY maydon,
+   * ya'ni bo'sh tanlov butun formani saqlab bo'lmaydigan qilib qo'yardi.
+   */
+  const [dbSources, setDbSources] = useState<string[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/student-sources/options")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.ok) return;
+        const names = (d.options as { name: string }[]).map((o) => o.name).filter(Boolean);
+        if (names.length > 0) setDbSources(names);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  /**
    * `<select>` da ko'rsatiladigan variantlar.
+   *
+   * "Boshqa" DOIM oxirida — u ro'yxatning bir qismi emas, darvoza
+   * (pastdagi `pickSource` izohiga qarang) va bazadagi ro'yxatda saqlanmaydi.
    *
    * Qo'lda yozilgan manba (masalan "Maktabdan eshitgan") ro'yxatda YO'Q,
    * `PanelSelect` esa oddiy `<select>` — ro'yxatda yo'q qiymat umuman
@@ -96,10 +121,14 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
    * qiymat oxiriga QO'SHILADI. Naqsh loyihada bor (AddOrderModal ham
    * tahrirlashda joriy qiymatni ro'yxat boshiga qo'shadi).
    */
-  const sourceOptions = useMemo(
-    () => (source && !STUDENT_SOURCES.includes(source) ? [...STUDENT_SOURCES, source] : STUDENT_SOURCES),
-    [source],
+  const knownSources = useMemo(
+    () => dbSources ?? (STUDENT_SOURCES as string[]).filter((s) => s !== SOURCE_OTHER),
+    [dbSources],
   );
+  const sourceOptions = useMemo(() => {
+    const base = [...knownSources, SOURCE_OTHER];
+    return source && !base.includes(source) ? [...base, source] : base;
+  }, [knownSources, source]);
 
   /**
    * Manba tanlanganda. "Boshqa" — qiymat EMAS, darvoza: u `source` ga
@@ -110,8 +139,10 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   function pickSource(v: string) {
     setError(null);
     if (v === SOURCE_OTHER) {
-      // Qayta tahrirlashda avval yozilgani ko'rinib tursin.
-      setOtherText(STUDENT_SOURCES.includes(source) ? "" : source);
+      // Qayta tahrirlashda avval yozilgani ko'rinib tursin. Solishtiruv
+      // `knownSources` bo'yicha — ro'yxat endi bazadan keladi va konstanta
+      // bilan solishtirish o'chirilgan/qo'shilgan qiymatlarda adashardi.
+      setOtherText(knownSources.includes(source) ? "" : source);
       setOtherOpen(true);
       return;
     }
