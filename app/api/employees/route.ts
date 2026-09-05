@@ -9,6 +9,7 @@ import {
   normalizePhone,
   INVITE_TTL_MS,
 } from "@/lib/invite";
+import { logSms } from "@/lib/smsLog";
 
 // GET /api/employees
 // Admin xodimlar ro'yxatini holati (invited/active/blocked) bilan ko'radi.
@@ -106,6 +107,11 @@ export async function POST(req: Request) {
     const sms = await sendSms(phone, activationMessage(token, code.code));
     smsSent = sms.ok;
     smsSimulated = Boolean(sms.simulated);
+    // Jurnalga yoziladi; matn saqlanmaydi (bir martalik token/kod).
+    await logSms(db, {
+      recipientName: (body.fullName || "").trim(), phone, text: "",
+      purpose: "invite", kind: "auto", secret: true, result: sms,
+    });
     if (!sms.ok) {
       console.error("[employees] SMS yuborilmadi:", sms.error, sms.raw);
     }

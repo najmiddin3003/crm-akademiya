@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Settings, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Copy, Settings, TrendingUp, Trash2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Survey } from "@/lib/surveys";
@@ -146,13 +147,23 @@ export default function SurveysPage() {
 
   return (
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={openAdd}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
           <span>+ So&apos;rovnoma qo&apos;shish</span>
         </button>
+        {/* O'quvchilar oqimi — o'quvchi qo'shishdagi "Manba" maydonidan
+            yig'iladigan analitika. Sidebarda ham bor, lekin marketing
+            ishi shu sahifadan boshlanadi. */}
+        <Link
+          href="/sales-sources"
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
+        >
+          <TrendingUp className="w-4 h-4" />
+          <span>O&apos;quvchilar oqimi</span>
+        </Link>
       </div>
 
       {/* Rost izoh: manba havolalari hali yasalmaydi. Ilgari bu yerda uchta

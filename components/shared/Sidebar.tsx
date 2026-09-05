@@ -145,10 +145,11 @@ const IMPLEMENTED_ROUTES = new Set([
   // Nazorat
   "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating",
   "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile", "/nazorat-turnstile-io", "/nazorat-support-analytics",
+  "/nazorat-sms-analytics",
   // Boshqaruv
   "/management-xodimlar", "/management-cv", "/management-rollar", "/management-filiallar", "/management-ish-jadvali",
   // Sotuv va marketing
-  "/sales-marketing", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages",
+  "/sales-marketing", "/sales-sources", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages",
   // Hisobotlar (finance-*/nazorat-* takrorlari yuqorida bor)
   "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
   "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",

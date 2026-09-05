@@ -193,6 +193,7 @@ export const SIDEBAR_ITEMS = [
             { label: "Turniket analitikasi", href: "/nazorat-turnstile" },
             { label: "Turniket kirish-chiqish analitikasi", href: "/nazorat-turnstile-io" },
             { label: "Support analitikasi", href: "/nazorat-support-analytics" },
+            { label: "SMS analitikasi", href: "/nazorat-sms-analytics" },
           ],
         },
       ],
@@ -225,6 +226,7 @@ export const SIDEBAR_ITEMS = [
       width: 240,
       items: [
         { label: "Marketing", href: "/sales-marketing", icon: "i-trending-up", medium: true },
+        { label: "O'quvchilar oqimi", href: "/sales-sources", icon: "i-bar-chart" },
         { label: "Savdo plani", href: "/sales-plan", icon: "i-bar-chart" },
         { label: "Yangiliklar", href: "/sales-news", icon: "i-file-plus" },
         { label: "Hikoya", href: "/sales-stories", icon: "i-book" },

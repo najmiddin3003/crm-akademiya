@@ -253,6 +253,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         pupilName: (studentName || "").trim(),
         amount,
         moderator: current.moderator || "",
+        cashboxId,
+        cashboxName: current.name || "",
       }),
     );
   }

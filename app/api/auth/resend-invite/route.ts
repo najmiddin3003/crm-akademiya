@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { issueCode, generateToken, activationMessage, sendSms, INVITE_TTL_MS } from "@/lib/invite";
+import { logSms } from "@/lib/smsLog";
 
 // POST /api/auth/resend-invite  { employee_id }  yoki  { phone }
 // Taklif kodi yetib bormasa/eskirsa qayta yuboradi. Faqat status='invited'
@@ -47,5 +48,10 @@ export async function POST(req: Request) {
   );
 
   const sms = await sendSms(phone, activationMessage(token, code.code!));
+  // Jurnalga yoziladi; matn saqlanmaydi (bir martalik token/kod).
+  await logSms(db, {
+    recipientName: String(user.fullName ?? ""), phone, text: "",
+    purpose: "invite", kind: "auto", secret: true, result: sms,
+  });
   return NextResponse.json({ ok: true, smsSent: sms.ok, smsSimulated: Boolean(sms.simulated) });
 }

@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
-import { sendSms } from "@/lib/eskiz";
-import { nowTime, todayIso } from "@/lib/transactionLog";
+import { normalizePhone, sendSms } from "@/lib/eskiz";
+import { logSms } from "@/lib/smsLog";
 
 // To'lov qabul qilinganda o'quvchiga ketadigan avtomatik SMS.
 //
@@ -63,6 +63,9 @@ export interface PaymentSmsInput {
   amount: number;
   /** Yozuvni qayd etgan kassir — SMS jurnalida ko'rinadi. */
   moderator: string;
+  /** Qaysi kassadan — SMS analitikasi shu bo'yicha ham guruhlaydi. */
+  cashboxId: number;
+  cashboxName: string;
 }
 
 /**
@@ -76,26 +79,42 @@ export interface PaymentSmsInput {
  */
 export async function sendPaymentSms(db: Db, input: PaymentSmsInput): Promise<void> {
   const text = paymentSmsText(input.pupilName, input.amount);
-  let status = "Yuborilmadi";
 
+  const common = {
+    recipientName: input.pupilName,
+    text,
+    purpose: "payment" as const,
+    kind: "auto" as const,
+    moderator: input.moderator,
+    cashboxId: input.cashboxId,
+    cashboxName: input.cashboxName,
+  };
+
+  let phone = "";
   try {
-    const phone = await pupilPhone(db, input.pupilId);
-    if (!phone) {
-      // Telefonsiz o'quvchi (bazada 6 ta) yoki id kelmagan holat.
-      // Jurnalga yozib qo'yamiz, jim o'tkazib yubormaymiz.
-      await logSms(db, input, text, "Yuborilmadi");
-      return;
-    }
-    const res = await sendSms(phone, text);
-    status = res.ok ? "Qabul qilindi" : "Yuborilmadi";
-    if (!res.ok) console.error("[paymentSms] Eskiz xato:", res.error, res.raw);
+    phone = await pupilPhone(db, input.pupilId);
   } catch (e) {
-    console.error("[paymentSms] yuborilmadi:", e);
+    console.error("[paymentSms] telefon topilmadi:", e);
   }
 
-  await logSms(db, input, text, status).catch((e) => {
-    console.error("[paymentSms] jurnalga yozilmadi:", e);
-  });
+  if (!phone) {
+    // Telefonsiz o'quvchi (bazada 6 ta) yoki id kelmagan holat.
+    // Jurnalga yozib qo'yamiz, jim o'tkazib yubormaymiz.
+    await logSms(db, {
+      ...common,
+      phone: "",
+      result: { ok: false, error: "O'quvchining telefon raqami yo'q" },
+    });
+    return;
+  }
+
+  const res = await sendSms(phone, text).catch((e) => ({
+    ok: false as const,
+    error: e instanceof Error ? e.message : String(e),
+  }));
+  if (!res.ok) console.error("[paymentSms] Eskiz xato:", res.error);
+
+  await logSms(db, { ...common, phone: normalizePhone(phone), result: res });
 }
 
 async function pupilPhone(db: Db, pupilId: number | null): Promise<string> {
@@ -105,20 +124,4 @@ async function pupilPhone(db: Db, pupilId: number | null): Promise<string> {
     { projection: { _id: 0, phone: 1 } },
   );
   return typeof p?.phone === "string" ? p.phone.trim() : "";
-}
-
-async function logSms(db: Db, input: PaymentSmsInput, text: string, status: string): Promise<void> {
-  const col = db.collection("sms_messages");
-  // `id` ketma-ket — kolleksiyadagi boshqa yozuvlar bilan bir xil qoida.
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
-  await col.insertOne({
-    id: (last[0]?.id ?? 0) + 1,
-    recipientName: input.pupilName,
-    text,
-    date: todayIso(),
-    time: nowTime(),
-    moderator: input.moderator,
-    status,
-    kind: "auto",
-  });
 }

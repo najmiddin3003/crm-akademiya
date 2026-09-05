@@ -9,6 +9,7 @@ import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, nor
 import { toUz, uzNow } from "@/lib/uzTime";
 import { getBranchScope } from "@/lib/branchScope";
 import { sanitizeBranchIds } from "@/lib/employeeBranches";
+import { logSms } from "@/lib/smsLog";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
 // Demo seed YO'Q — xodimlar faqat qo'shilganda (yoki scripts/seed-test-*
@@ -174,6 +175,13 @@ export async function POST(req: Request) {
     if (!sms.ok) {
       console.error("[hr-employees] SMS yuborilmadi:", sms.error, sms.raw);
     }
+    // Jurnalga yoziladi (Nazorat > SMS analitikasi). `secret: true` —
+    // matnda bir martalik faollashtirish tokeni va kod bor, ular
+    // saqlanmaydi.
+    await logSms(db, {
+      recipientName: name, phone, text: "", purpose: "invite", kind: "auto",
+      secret: true, result: sms,
+    });
   }
 
   return NextResponse.json({ ok: true, employee, smsSent, smsSimulated });

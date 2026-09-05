@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { isValidPhone, issueCode, resetMessage, sendSms, normalizePhone } from "@/lib/invite";
+import { logSms } from "@/lib/smsLog";
 
 // POST /api/auth/forgot-password  { phone }
 // Parolni unutgan (status='active') foydalanuvchiga SMS orqali tiklash kodi
@@ -27,6 +28,11 @@ export async function POST(req: Request) {
     const code = await issueCode(phone, "reset");
     if (code.ok && code.code) {
       const sms = await sendSms(phone, resetMessage(code.code));
+      // Jurnalga yoziladi; matn saqlanmaydi (tiklash kodi).
+      await logSms(db, {
+        recipientName: String(user.fullName ?? ""), phone, text: "",
+        purpose: "password-reset", kind: "auto", secret: true, result: sms,
+      });
       return NextResponse.json({ ok: true, smsSent: sms.ok, smsSimulated: Boolean(sms.simulated) });
     }
     if (!code.ok) {
