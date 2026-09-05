@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { Pupil } from "@/lib/pupilsData";
+import { phoneSearchPattern } from "@/lib/phoneSearch";
 import { studentRowFromPupil } from "@/lib/studentsData";
 
 // GET /api/search/students?q=… — navbardagi global qidiruv uchun.
@@ -23,31 +24,18 @@ function escapeRegex(s: string): string {
 const FIELDS = ["firstName", "lastName", "phone", "moderator", "source", "category"] as const;
 
 /**
- * Telefon uchun AJRATKICHGA CHIDAMLI naqsh.
+ * Telefon uchun AJRATKICHGA CHIDAMLI naqsh — lib/phoneSearch.ts dan.
  *
  * NIMA NOTO'G'RI EDI: bazada raqam "94 155 88 55" ko'rinishida (6 797
  * o'quvchining hammasida shu format), qidiruv esa kiritilgan matnni
  * shundoq regexga aylantirardi. Ya'ni "941558855" deb yozilsa hech
- * narsa topilmasdi — bo'shliqlar to'sib qo'yardi. Jadval ichidagi
- * tanlovlar (StudentSearchSelect) buni allaqachon uddalardi, chunki
- * ular ikkala tomondan raqam bo'lmagan belgilarni tashlab
- * solishtiradi; NAVBARDAGI global qidiruv esa yo'q.
+ * narsa topilmasdi — bo'shliqlar to'sib qo'yardi.
  *
- * Yechim: raqamlar orasiga ixtiyoriy ajratkichga ruxsat beriladi —
- * "941558855" -> /9[^0-9]*4[^0-9]*1.../
- *
- * `998` prefiksi tashlanadi: bazada raqam 9 xonali saqlanadi, lekin
- * odam to'liq "+998 94 155 88 55" ko'rinishida nusxalashi mumkin.
- *
- * `null` — so'rovda qidirishga arziydigan raqam yo'q.
+ * Qoida endi umumiy faylda: klient natijalarni QAYTA filtrlaydi
+ * (lib/search.ts) va u yerdagi qoida bundan farq qilsa, server topgan
+ * yozuv ekranga chiqmay qolardi — aynan shunday bo'lgan ham.
  */
-function phonePattern(term: string): string | null {
-  let d = term.replace(/\D/g, "");
-  if (d.length > 9 && d.startsWith("998")) d = d.slice(3);
-  // 3 tadan kam raqam deyarli hamma raqamga mos keladi — foydasi yo'q.
-  if (d.length < 3) return null;
-  return d.split("").join("[^0-9]*");
-}
+const phonePattern = phoneSearchPattern;
 
 /** O'quvchi ID si bo'yicha aniq moslik (masalan "16751"). */
 function idClause(term: string): Record<string, unknown>[] {
