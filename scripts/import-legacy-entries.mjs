@@ -52,9 +52,26 @@ for (const f of FILES) {
   for (const r of j.rows) raw.push({ ...r, _cashbox: j.cashbox });
 }
 
+/**
+ * ATAYLAB TASHLAB KETILADIGAN yozuvlar (edutizimdagi `_id` bo'yicha).
+ *
+ * NEGA KERAK: bu ro'yxatsiz skript qayta ishga tushirilganda markaz
+ * qarori bilan o'chirilgan qator TIRILIB kelardi — `sourceId` unikal
+ * bo'lgani uchun takror qo'shilmasdi, lekin O'CHIRILGANIDAN keyin
+ * bemalol qaytadi. Xuddi shu tuzoq Sheets urug'ida ham bo'lgan.
+ *
+ *   6949297eed325e86243703f0 — 22.12.2025, Abdulaxat Abdullayev,
+ *     27 000 000 000. Edutizimning O'Z xato kirimi; o'sha kuni "Xato
+ *     kirim" chiqimi bilan qaytarilgan, lekin u chiqimda o'quvchi ismi
+ *     yo'q, ya'ni arxivga tushmaydi va profilda 27 mlrd yolg'iz turib
+ *     qolardi. scripts/legacy-drop-bad-row.mjs bilan o'chirilgan.
+ */
+const SKIP_SOURCE_IDS = new Set(["6949297eed325e86243703f0"]);
+
 const wanted = raw.filter((r) =>
   r.type === "payIn" &&
   String(r.student ?? "").trim() !== "" &&
+  !SKIP_SOURCE_IDS.has(String(r.id)) &&
   uzParts(r.at).date < CUTOFF);
 
 const client = new MongoClient(env.MONGODB_URI, { maxPoolSize: 5, serverSelectionTimeoutMS: 20000 });
