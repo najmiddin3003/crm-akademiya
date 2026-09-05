@@ -15,7 +15,7 @@ import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { useTeachers } from "@/hooks/useTeachers";
 import type { StudentRow } from "@/lib/studentsData";
 import type { TransactionType } from "@/lib/transactionTypes";
-import { isThirdParty, txTarget, txTargetLabel } from "@/lib/txTarget";
+import { txAudience } from "@/lib/txTarget";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
@@ -162,11 +162,23 @@ export default function CashboxKirimDrawer({
   );
   // Serverga NOM ketadi — jurnal/analitika nom bo'yicha guruhlaydi.
   const category = selectedType?.name ?? "";
+  // QAYSI TANLOVLAR CHIQADI — qaror KODDA emas, Sozlamalar → Moliya →
+  // Tranzaksiya turi formasidagi "Mijoz" KATAKCHALARIDA
+  // (`transaction_types.customerType`, lib/txTarget.ts → txAudience).
+  //
+  // Ilgari bu yerda faqat "Uchinchi shaxsmi?" degan bitta savol bor edi va
+  // undan boshqa HAR QANDAY turda ikkala tanlov ham chiqaverardi — ya'ni
+  // "Imtihon to'lovi" da ham o'qituvchi so'ralardi. Endi har bir tur
+  // o'ziga keragini aytadi.
+  const audience = txAudience(selectedType);
+  // Maydon UMUMAN to'ldirilmagan tur (masalan API orqali qo'shilgani) —
+  // ikkala tanlov ham chiqadi. Bu ataylab: yozuvni egasiz qoldirgandan
+  // ko'ra kassirga ortiqcha maydon ko'rsatgan yaxshi.
+  const showTeacher = audience.unset || audience.employee;
+  const showStudent = audience.unset || audience.student;
   // "Uchinchi shaxs" (masalan "Kitob sotuvi") — pul odamga bog'liq emas:
-  // o'quvchi/o'qituvchi tanlovlari o'rniga (Qiymat + Oy) qatorlari.
-  const isThird = isThirdParty(selectedType);
-  // `null` — bu tur uchun umuman tanlov ko'rsatilmaydi.
-  const target = txTarget(selectedType);
+  // bitta "Qiymat" maydoni o'rniga (Qiymat + Oy) qatorlari chiqadi.
+  const showRows = audience.thirdParty;
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
   /**
@@ -178,8 +190,8 @@ export default function CashboxKirimDrawer({
    * holatda saqlanib turadi va keyingi turda `total` ularni ham
    * qo'shib yuboradi — ya'ni kassaga kassir ko'rmagan pul kiradi.
    *
-   * Shart `isThird` o'zgarishiga emas, tur ID siga bog'langan:
-   * "Kitob → X → Kurs" yo'lida ikkala uchida ham `isThird === false`
+   * Shart `showRows` o'zgarishiga emas, tur ID siga bog'langan:
+   * "Kitob → X → Kurs" yo'lida ikkala uchida ham `showRows === false`
    * bo'ladi va bayroqqa bog'langan qorovul ishlamasdi.
    */
   function pickType(next: TransactionType | null): void {
@@ -235,13 +247,24 @@ export default function CashboxKirimDrawer({
     // yozuv egasiz tug'iladi: to'lov o'quvchi balansiga ham, o'qituvchining
     // foizli oyligiga ham tushmaydi va shunchaki nomsiz tushum bo'lib
     // qoladi. Chiqim oynasida bu qorovul allaqachon bor.
-    if (target !== null && !studentName.trim()) {
-      showError(txTargetLabel(target));
+    if (showStudent && !studentName.trim()) {
+      showError("O'quvchini tanlang");
+      return;
+    }
+    // O'QITUVCHI faqat u YAGONA tanlov bo'lganda majburiy.
+    //
+    // Ikkalasi ham chiqqanda majburiy EMAS — bugungi xulq shunday va u
+    // to'g'ri: "Kurs to'lovi (oylik)" da o'quvchi allaqachon yozuvning
+    // egasi, o'qituvchi esa qo'shimcha (foizli oylik uchun) va guruhga
+    // hali biriktirilmagan bo'lishi mumkin. Yagona tanlov bo'lgan holatda
+    // esa uni bo'sh qoldirish yozuvni butunlay egasiz qilardi.
+    if (showTeacher && !showStudent && !teacherName.trim()) {
+      showError("O'qituvchini tanlang");
       return;
     }
     // "Uchinchi shaxs" turida summa QATORLARDAN yig'iladi, boshqa
     // turlarda — bitta maydondan.
-    const amountNum = isThird ? total : Number(amount);
+    const amountNum = showRows ? total : Number(amount);
     if (!amountNum || amountNum <= 0) {
       showError("Qiymatni to'g'ri kiriting");
       return;
@@ -261,7 +284,7 @@ export default function CashboxKirimDrawer({
     // Qatorlarning ma'lumoti Izohga MATN bo'lib tushadi va u to'rt joyda
     // ko'rinadi: jurnal "Izoh" ustuni, yozuv kartochkasi, Google Sheets
     // va Telegram xabari.
-    const rowsNote = isThird && rows.length > 1
+    const rowsNote = showRows && rows.length > 1
       ? rows.map((r) => `${monthLabel(r.periodMonth)}: ${groupNumber(Number(r.amount) || 0)}`).join("; ")
       : "";
     const finalNote = rowsNote ? (note.trim() ? `${rowsNote} · ${note.trim()}` : rowsNote) : note;
@@ -276,11 +299,11 @@ export default function CashboxKirimDrawer({
           method,
           amount: amountNum,
           category,
-          // Uchinchi shaxs — pul odamga bog'liq emas, tanlovlar
-          // ko'rsatilmagan ham. Ekranda ko'rinmagan qiymat jimgina
-          // yuborilmasin.
-          teacherName: isThird ? "" : teacherName,
-          studentName: isThird ? "" : studentName,
+          // EKRANDA KO'RINMAGAN QIYMAT YUBORILMAYDI. Tur almashtirilganda
+          // `pickType()` maydonlarni tozalaydi, lekin bu ikkinchi qorovul
+          // arzon va u yerdagi tuzoq qimmat edi (izohi o'sha funksiyada).
+          teacherName: showTeacher ? teacherName : "",
+          studentName: showStudent ? studentName : "",
           // FAQAT SMS uchun: to'lov haqidagi xabar aynan shu o'quvchining
           // telefoniga ketsin. Jurnal yozuvi bugungidek ISM bilan
           // ishlaydi — bu maydon unga tegmaydi.
@@ -289,11 +312,11 @@ export default function CashboxKirimDrawer({
           // takrorlanadi va ularning 501 tasida telefon HAR XIL, ya'ni
           // har to'rtinchi to'lovda xabar begona odamga ketishi mumkin
           // edi (ichida to'lov summasi bor).
-          studentId: isThird ? undefined : selectedStudent?.id,
-          // Uchinchi shaxsda oy QATORLARDA — bitta umumiy `periodMonth`
+          studentId: showStudent ? selectedStudent?.id : undefined,
+          // Qatorlar rejimida oy HAR QATORDA — bitta umumiy `periodMonth`
           // ma'nosiz bo'lardi, ustiga u orqaga sanalgan oylik hisobini
           // (payrollSources → carryOver) bekorga uyg'otishi mumkin edi.
-          ...(isThird ? {} : { periodMonth }),
+          ...(showRows ? {} : { periodMonth }),
           date: date ? toIso(date) : undefined,
           note: finalNote,
         }),
@@ -361,11 +384,13 @@ export default function CashboxKirimDrawer({
             </div>
           </div>
 
-          {/* O'QITUVCHI va O'QUVCHI tanlovlari "Uchinchi shaxs" turida
-              (masalan "Kitob sotuvi") KO'RSATILMAYDI — bunday tushum
-              odamga bog'liq emas. Ularning o'rniga pastda (Qiymat + Oy)
-              qatorlari chiqadi. */}
-          {!isThird && (
+          {/* O'QITUVCHI va O'QUVCHI tanlovlari turning "Mijoz"
+              katakchalariga qarab chiqadi (Sozlamalar → Moliya →
+              Tranzaksiya turi). Hech biri belgilanmagan bo'lsa ikkalasi
+              ham chiqmaydi — masalan "Kitob sotuvi" da pul odamga
+              bog'liq emas va uning o'rniga (Qiymat + Oy) qatorlari
+              turadi. */}
+          {showTeacher && (
           <div>
             {/* O'quvchi tanlovi bilan bir xil qidiruvli ro'yxat. Ilgari bu
                 oddiy <select> edi: bazada 43 o'qituvchi bor va kerakligini
@@ -383,7 +408,7 @@ export default function CashboxKirimDrawer({
           </div>
           )}
 
-          {!isThird && (
+          {showStudent && (
           <div>
             <StudentSearchSelect
               label="O'quvchini tanlang"
@@ -426,7 +451,7 @@ export default function CashboxKirimDrawer({
           )}
 
           {/* ODATDAGI turlar — bitta Qiymat maydoni (bugungidek). */}
-          {!isThird && (
+          {!showRows && (
             <div>
               <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
               <MoneyInput
@@ -441,7 +466,7 @@ export default function CashboxKirimDrawer({
               necha oyni qoplashi mumkin, shuning uchun qator qo'shiladi.
               Qatorlar KALKULYATOR: ular alohida jurnal yozuvi yaratmaydi,
               yig'indi bitta yozuvga ketadi (sabab `save()` izohida). */}
-          {isThird && (
+          {showRows && (
             <div className="space-y-3">
               {rows.map((row, i) => (
                 <div key={row.id} className="flex items-end gap-2">
@@ -493,9 +518,9 @@ export default function CashboxKirimDrawer({
           )}
 
           {/* Yig'indi FAQAT bir nechta qator bo'lganda — bitta qatorda u
-              yuqoridagi "Qiymat" ning takrori bo'lardi. Shart `isThird`
+              yuqoridagi "Qiymat" ning takrori bo'lardi. Shart `showRows`
               ga EMAS: yuboriladigan summa ekranda ko'rinib turishi kerak. */}
-          {rows.length > 1 && isThird && (
+          {rows.length > 1 && showRows && (
             <div>
               <label className="block text-[13px] font-medium mb-1.5">Umumiy summa</label>
               <input
@@ -525,7 +550,7 @@ export default function CashboxKirimDrawer({
 
           {/* Uchinchi shaxs turida oy QATORLARDA tanlanadi, shu bois bu
               yerda faqat sana qoladi va grid bitta ustunga tushadi. */}
-          <div className={isThird ? "" : "grid grid-cols-2 gap-3"}>
+          <div className={showRows ? "" : "grid grid-cols-2 gap-3"}>
             <div>
               <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
               <DatePicker
@@ -540,7 +565,7 @@ export default function CashboxKirimDrawer({
                 className="w-full"
               />
             </div>
-            {!isThird && (
+            {!showRows && (
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Qaysi oy uchun</label>
                 <MonthYearPicker
@@ -554,9 +579,10 @@ export default function CashboxKirimDrawer({
           {/* To'lov sanasi va u qoplaydigan oy HAR DOIM bir xil emas:
               sentabrda kelgan pul avgust darslari uchun bo'lishi mumkin.
               O'qituvchining foizli oyligi aynan shu oyga hisoblanadi.
-              Uchinchi shaxs turida bu ogohlantirish YOLG'ON bo'lardi —
-              u yerda o'qituvchi umuman yo'q. */}
-          {!isThird && periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
+              Shart `showTeacher` ni ham tekshiradi: o'qituvchi tanlovi
+              chiqmaydigan turda bu ogohlantirish YOLG'ON bo'lardi — u
+              yerda hech kimning oyligi o'zgarmaydi. */}
+          {!showRows && showTeacher && periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
             <p className="-mt-1 text-[11px] text-amber-600">
               To&apos;lov {periodMonth} oyiga yoziladi — o&apos;qituvchining o&apos;sha oydagi oyligiga qo&apos;shiladi.
             </p>

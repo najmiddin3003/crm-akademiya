@@ -3,6 +3,7 @@
 import { invalidateTransactionTypes } from "@/hooks/useTransactionTypes";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Check } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import MoneyInput from "@/components/ui/MoneyInput";
@@ -11,6 +12,12 @@ import type { TransactionType } from "@/lib/transactionTypes";
 
 const chipCls = (active: boolean) =>
   `h-9 px-4 rounded-lg text-[13px] font-medium border ${active ? "bg-primary text-white border-primary" : "border-border text-foreground hover:bg-secondary"}`;
+
+/** "Mijoz" katakchasi — belgilangani chip bo'lib emas, GALOCHKA bilan ko'rinadi. */
+const checkCls = (active: boolean) =>
+  `h-9 pl-2.5 pr-3.5 rounded-lg text-[13px] font-medium border inline-flex items-center gap-2 ${
+    active ? "border-primary bg-primary/10 text-foreground" : "border-border text-foreground hover:bg-secondary"
+  }`;
 
 // Moliya → Tranzaksiya turi → "Qo'shish"/tahrirlash (skrinshot 2). `typeId`
 // berilsa — mavjud turni tahrirlaydi (PATCH), aks holda yangi yaratadi
@@ -34,7 +41,11 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
   const [name, setName] = useState("");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  const [customerType, setCustomerType] = useState(CUSTOMER_TYPES[0]);
+  // KO'P TANLOVLI. Sukut — BO'SH: yangi turda hech narsa belgilanmagan
+  // bo'ladi va kassa oynasi tanlovni tur nomiga qarab chiqaradi
+  // (lib/txTarget.ts). Ilgari bu yerda "Boshqa" oldindan tanlangan turardi
+  // va admin maydonga tegmasa tur jimgina "hech kim" bo'lib qolardi.
+  const [customerTypes, setCustomerTypes] = useState<string[]>([]);
   const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
   const [mainType, setMainType] = useState(searchParams.get("type") || "kirim");
   const [saving, setSaving] = useState(false);
@@ -51,13 +62,64 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
         setName(found.name);
         setMinAmount(found.minAmount ? String(found.minAmount) : "");
         setMaxAmount(found.maxAmount ? String(found.maxAmount) : "");
-        setCustomerType(found.customerType);
+        // Eski yozuvlarda `customerType` — bitta SATR. Bir elementli
+        // ro'yxatga keltiriladi, ya'ni forma ikkala shaklni ham ochadi
+        // va birinchi saqlashda yozuv yangi shaklga o'tadi.
+        setCustomerTypes(
+          Array.isArray(found.customerType)
+            ? found.customerType
+            : (found.customerType ? [found.customerType] : []),
+        );
         setCategory(found.category);
         setMainType(found.mainType);
         setLoaded(true);
       });
     return () => { cancelled = true; };
   }, [typeId]);
+
+  function toggleCustomerType(c: string) {
+    setCustomerTypes((prev) =>
+      prev.includes(c)
+        ? prev.filter((x) => x !== c)
+        // Tartib CUSTOMER_TYPES bo'yicha saqlanadi — bir xil tanlov har doim
+        // bir xil ko'rinsin (server ham shunday tozalaydi).
+        : CUSTOMER_TYPES.filter((x: string) => x === c || prev.includes(x)),
+    );
+  }
+
+  const hasStudent = customerTypes.includes("O'quvchilar");
+  const hasEmployee = customerTypes.includes("Xodim");
+  const hasThird = customerTypes.includes("Uchinchi shaxs");
+
+  /** Kassa oynasida nima chiqishini odam tilida aytadi. */
+  const audienceHint = (() => {
+    const parts: string[] = [];
+    if (hasStudent) parts.push("«O'quvchini tanlang»");
+    // Kirim oynasida xodim tanlovi O'QITUVCHILAR ro'yxati bilan
+    // to'ldiriladi (foizli oylik shu ism bo'yicha hisoblanadi), chiqimda
+    // esa butun xodimlar ro'yxati. Yorliq shu bois turlicha.
+    if (hasEmployee) parts.push(mainType === "kirim" ? "«O'qituvchini tanlang»" : "«Xodimni tanlang»");
+    if (hasThird) parts.push("(Qiymat + Oy) qatorlari");
+    if (parts.length > 0) return `Kassa oynasida chiqadi: ${parts.join(" · ")}.`;
+    if (customerTypes.length === 0) {
+      return "Belgilanmagan — kassa oynasida tanlov tur NOMIGA qarab chiqadi (ichida «o'quvchi» yoki «xodim» so'zi bo'lsa).";
+    }
+    return "Kassa oynasida hech qanday tanlov chiqmaydi — pul odamga biriktirilmaydi.";
+  })();
+
+  /**
+   * Eng qimmat xato uchun ogohlantirish.
+   *
+   * "Xodim" belgilanmagan kirim turida O'QITUVCHI tanlovi chiqmaydi, ya'ni
+   * yozuvda `teacherName` bo'sh qoladi. Foizli oylik aynan shu maydon
+   * bo'yicha hisoblanadi (lib/payrollSources.ts) — ya'ni pul kassaga
+   * kiradi, lekin o'qituvchining oyligiga qo'shilmaydi. Bu jimgina yuz
+   * beradi va faqat oy oxirida ma'lum bo'ladi.
+   */
+  const teacherWarning =
+    mainType === "kirim" && customerTypes.length > 0 && !hasEmployee
+      ? "«Xodim» belgilanmagan — bu turdagi to'lovda o'qituvchi tanlanmaydi va uning foizli oyligiga qo'shilmaydi."
+      : "";
 
   async function save() {
     if (!name.trim()) {
@@ -75,7 +137,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
           name,
           minAmount: minAmount ? Number(minAmount) : 0,
           maxAmount: maxAmount ? Number(maxAmount) : 0,
-          customerType,
+          customerType: customerTypes,
           category,
           mainType,
         }),
@@ -138,13 +200,42 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
           </div>
         </div>
 
+        {/* MIJOZ — ko'p tanlovli. Aynan shu belgilar kassa oynasida qaysi
+            tanlov chiqishini hal qiladi (lib/txTarget.ts → txAudience).
+            Pastdagi izoh natijani JONLI ko'rsatadi: bu maydonning ta'siri
+            boshqa sahifada ko'rinadi, ya'ni sinab ko'rish uchun kassaga
+            borib qaytishga to'g'ri kelardi. */}
         <div>
           <label className="block text-[13px] font-medium mb-2">Mijoz</label>
           <div className="flex items-center gap-2 flex-wrap">
-            {CUSTOMER_TYPES.map((c) => (
-              <button key={c} type="button" onClick={() => setCustomerType(c)} className={chipCls(customerType === c)}>{c}</button>
-            ))}
+            {CUSTOMER_TYPES.map((c) => {
+              const on = customerTypes.includes(c);
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  onClick={() => toggleCustomerType(c)}
+                  className={checkCls(on)}
+                >
+                  <span
+                    aria-hidden
+                    className={`h-4 w-4 shrink-0 rounded-[4px] border inline-flex items-center justify-center ${
+                      on ? "bg-primary border-primary text-white" : "border-border bg-card"
+                    }`}
+                  >
+                    {on && <Check className="w-3 h-3" strokeWidth={3} />}
+                  </span>
+                  {c}
+                </button>
+              );
+            })}
           </div>
+          <p className="mt-2 text-[12px] text-muted-foreground">{audienceHint}</p>
+          {teacherWarning && (
+            <p className="mt-1 text-[12px] text-amber-600">{teacherWarning}</p>
+          )}
         </div>
 
         <div>

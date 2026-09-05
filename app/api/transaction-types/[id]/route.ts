@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { sanitizeCustomerTypes } from "@/lib/txTarget";
 import type { TransactionType } from "@/lib/transactionTypes";
 
 // PATCH /api/transaction-types/:id — tranzaksiya turini tahrirlaydi.
@@ -24,7 +25,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (body.minAmount !== undefined) set.minAmount = Number(body.minAmount) || 0;
   if (body.maxAmount !== undefined) set.maxAmount = Number(body.maxAmount) || 0;
-  if (typeof body.customerType === "string") set.customerType = body.customerType;
+  // Ko'p tanlovli. `undefined` — maydon so'rovda kelmagan, ya'ni tegilmaydi;
+  // bo'sh ro'yxat esa haqiqiy qiymat ("hech qaysi katakcha belgilanmagan").
+  const customerTypes = sanitizeCustomerTypes(body.customerType);
+  if (customerTypes !== undefined) set.customerType = customerTypes;
   if (typeof body.mainType === "string") set.mainType = body.mainType;
   if (typeof body.category === "string") set.category = body.category;
   if (Object.keys(set).length === 0) {

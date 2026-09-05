@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { sanitizeCustomerTypes } from "@/lib/txTarget";
 import type { TransactionType } from "@/lib/transactionTypes";
 
 // Moliya → Tranzaksiya turi backend'i (MongoDB `transaction_types`). Demo
@@ -37,7 +38,14 @@ export async function POST(req: Request) {
     name,
     minAmount: Number(body.minAmount) || 0,
     maxAmount: Number(body.maxAmount) || 0,
-    customerType: body.customerType || "Boshqa",
+    // KO'P TANLOVLI ro'yxat. Sukut — BO'SH, "Boshqa" EMAS.
+    //
+    // Farqi kattaroq ko'ringanidan muhimroq: "Boshqa" — ongli tanlov
+    // ("hech kim tanlanmaydi"), bo'sh ro'yxat esa "to'ldirilmagan" va
+    // lib/txTarget.ts uni tur NOMIGA qarab hal qiladi. Ilgari bu yerda
+    // "Boshqa" turgani uchun API orqali qo'shilgan har bir yangi tur
+    // jimgina "hech kim" bo'lib tug'ilardi.
+    customerType: sanitizeCustomerTypes(body.customerType) ?? [],
     mainType,
     category,
   };
