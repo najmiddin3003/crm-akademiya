@@ -78,6 +78,31 @@ export async function GET() {
   const cursorOf = (k: NotifKind) => (typeof cur[k] === "string" ? cur[k] : sinceIso);
 
   const db = await ensureIndexes();
+
+  // KASSA EGALARIDA QO'NG'IROQ VAQTINCHA O'CHIQ (markaz qarori, 2026-09-05).
+  //
+  // Sabab markazniki: hozircha kassirga bildirishnoma kerak emas, keyinroq
+  // alohida ko'rinish qilinadi. Admin esa HAMMA kassani ko'radi (pastdagi
+  // `loadPayments` da `isAdmin` uchun kassa filtri qo'yilmaydi).
+  //
+  // QAYTA YOQISH: shu blokni o'chirish kifoya — boshqa hech narsaga
+  // tegilmagan, manbalar va ruxsatlar o'z holicha qolgan.
+  //
+  // Kassa "egaligi" ISM bo'yicha aniqlanadi: `cashboxes.moderator` —
+  // `hr_employees.name` ning nusxasi, id emas (lib/currentEmployee.ts).
+  if (me.role !== "admin" && (await ownsAnyCashbox(db, me.hrEmployeeId))) {
+    return NextResponse.json({
+      ok: true,
+      serverNow: now.toISOString(),
+      unread: 0,
+      unreadIsFloor: false,
+      items: [],
+      // Uchala manba ham "off": panel shunda "ruxsat yo'q" emas, "bo'sh"
+      // holatini chizadi va soxta "0 ta yangi" nishoni yonmaydi.
+      sources: { payment: off(), order: off(), task: off() },
+    });
+  }
+
   const sources: Record<NotifKind, NotifSource> = { payment: off(), order: off(), task: off() };
   const picked: Record<NotifKind, NotifItem[]> = { payment: [], order: [], task: [] };
 
@@ -102,21 +127,38 @@ export async function GET() {
 
   if (payRows) {
     sources.payment.state = "on";
-    picked.payment = payRows.map((r) => {
-      const student = String(r.studentName ?? "").trim();
+    picked.payment = payRows.rows.map((r) => {
+      const person = String(r.studentName ?? "").trim();
       const method = String(r.paymentType ?? "").trim();
       const suffix = method ? ` (${method})` : "";
+      const isOut = r.txType === "payOut";
+      // KASSA EGASI — qo'ng'iroqda eng kerakli ma'lumot: pul QAYSI
+      // kassaga tushgani. Ilgari faqat o'quvchi ismi chiqardi va admin
+      // uchta kassaning yozuvlarini bir-biridan ajrata olmasdi.
+      const owner = payRows.owners.get(Number(r.cashboxId)) ?? "";
       // HAR QANDAY `payIn` o'quvchi to'lovi EMAS: kassa oynasi ismsiz kirim
       // yozishga ruxsat beradi (app/api/cashboxes/[id]/adjust). Ismsiz
       // qatorni "Yangi to'lov — 2 000 000 UZS" deb chizish uni o'quvchi
       // to'lovi deb ko'rsatardi; sarlavha va matn shu bois ajratiladi.
+      // Matn tartibi: KASSA — SUMMA — KIM. Bo'sh bo'lagi tushib qoladi,
+      // ya'ni ismsiz kirimda ham qator to'g'ri o'qiladi (kassa oynasi
+      // ismsiz kirim yozishga ruxsat beradi — /api/cashboxes/[id]/adjust).
+      //
+      // VAQT bu yerda YOZILMAYDI: panel uni `at` dan o'zi chizadi
+      // ("2 daqiqa oldin"). `meta` to'ldirilsa esa u vaqtning O'RNIGA
+      // chiqardi (components/shared/NotificationsPanel.tsx) — ya'ni
+      // "qachon" degan ma'lumot yo'qolardi.
+      const body = [
+        owner ? `${owner} kassasi` : "",
+        `${uzMoney(Math.abs(Number(r.amount)))} UZS${suffix}`,
+        person || String(r.txName ?? "").trim(),
+      ].filter(Boolean).join(" · ");
+
       return {
         id: `payment:${r.id}`,
         kind: "payment" as const,
-        title: student ? "Yangi to'lov" : "Yangi kirim",
-        body: student
-          ? `${student} — ${uzMoney(Number(r.amount))} UZS${suffix}`
-          : `${String(r.txName ?? "").trim() || "Kirim"} — ${uzMoney(Number(r.amount))} UZS${suffix}`,
+        title: isOut ? "Yangi chiqim" : "Yangi kirim",
+        body,
         meta: null,
         at: String(r.createdAt),
         href: canPayAll ? PAY_ALL : PAY_OWN,
@@ -179,6 +221,24 @@ export async function GET() {
 }
 
 /**
+ * Xodimga birorta kassa biriktirilganmi.
+ *
+ * `ownsCashbox` (lib/currentEmployee.ts) BITTA kassani tekshiradi, bu yerda
+ * esa "umuman kassa egasimi" degan savol bor.
+ */
+async function ownsAnyCashbox(
+  db: Awaited<ReturnType<typeof ensureIndexes>>,
+  hrEmployeeId: number | null,
+): Promise<boolean> {
+  const name = await employeeNameById(db, hrEmployeeId);
+  if (!name) return false;
+  const box = await db
+    .collection("cashboxes")
+    .findOne({ moderator: nameEq(name) }, { projection: { _id: 1 } });
+  return !!box;
+}
+
+/**
  * Kassaga tushgan to'lovlar.
  *
  * QAMROV `GET /api/cashboxes` bilan BIR XIL: kassa — shaxsiy javobgarlik
@@ -223,8 +283,13 @@ async function loadPayments(
 
   const boxes = await db
     .collection("cashboxes")
-    .find(boxFilter, { projection: { id: 1, _id: 0 } })
+    // `moderator` ham olinadi: qo'ng'iroqda pul QAYSI kassaga tushgani
+    // ko'rinishi kerak, kassa nomida esa faqat ism bo'lagi bo'ladi
+    // ("Akademiya 1 Chortoq (Nilufar)"), ism-familiya emas.
+    .find(boxFilter, { projection: { id: 1, moderator: 1, _id: 0 } })
     .toArray();
+  const owners = new Map<number, string>();
+  for (const b of boxes) owners.set(Number(b.id), String(b.moderator ?? "").trim());
   const boxIds = boxes.map((b) => Number(b.id)).filter(Number.isFinite);
   if (boxIds.length === 0) {
     // Bo'sh ro'yxat "to'lov yo'q" DEB DA'VO QILMASIN — xodimga umuman
@@ -233,13 +298,17 @@ async function loadPayments(
     return null;
   }
 
-  return db
+  const rows = await db
     .collection("transaction_entries")
     .find(
       {
-        // Faqat kirim. `payOut` da `studentName` — XODIM ismi (oylik/avans),
-        // uni "yangi to'lov" deb chizish yolg'on bo'lardi.
-        txType: "payIn",
+        // KIRIM ham, CHIQIM ham. Ilgari faqat `payIn` olinardi va sabab
+        // shu edi: `payOut` da `studentName` — XODIM ismi (oylik/avans),
+        // uni "yangi to'lov" deb chizish yolg'on bo'lardi. Endi sarlavha
+        // "Yangi kirim" / "Yangi chiqim" deb ANIQ ajratiladi, ya'ni
+        // yolg'on yo'q — kassadan chiqqan pul ham ko'rinadi.
+        // `transfer` kirmaydi: u tasdiq kutadigan alohida oqim.
+        txType: { $in: ["payIn", "payOut"] },
         // Bekor qilingan yozuv o'chirilmaydi, belgilanadi. Har so'rovda
         // qayta tekshiriladi — bekor qilingan to'lov 60 soniyada
         // ro'yxatdan o'zi chiqib ketadi. ("waiting" faqat `transfer`
@@ -255,11 +324,13 @@ async function loadPayments(
         // sanasi; oynadan tashqarida bo'lsa qator chiqmaydi.
         date: { $gte: uzDateIso(new Date(sinceMs)) },
       },
-      { projection: { _id: 0, id: 1, studentName: 1, txName: 1, amount: 1, paymentType: 1, createdAt: 1 } },
+      { projection: { _id: 0, id: 1, studentName: 1, txName: 1, amount: 1, paymentType: 1, createdAt: 1, cashboxId: 1, txType: 1 } },
     )
     .sort({ createdAt: -1 })
     .limit(SOURCE_SCAN)
     .toArray();
+
+  return { rows, owners };
 }
 
 /**

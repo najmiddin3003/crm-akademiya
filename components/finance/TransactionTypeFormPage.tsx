@@ -41,11 +41,14 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
   const [name, setName] = useState("");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  // KO'P TANLOVLI. Sukut — BO'SH: yangi turda hech narsa belgilanmagan
-  // bo'ladi va kassa oynasi tanlovni tur nomiga qarab chiqaradi
-  // (lib/txTarget.ts). Ilgari bu yerda "Boshqa" oldindan tanlangan turardi
-  // va admin maydonga tegmasa tur jimgina "hech kim" bo'lib qolardi.
-  const [customerTypes, setCustomerTypes] = useState<string[]>([]);
+  // KO'P TANLOVLI. Sukut — "Boshqa" YONIQ.
+  //
+  // Bo'sh holat SAQLANMAYDI (pastdagi `canSave` ga qarang): "Mijoz" kassa
+  // oynasida qaysi tanlov chiqishini hal qiladi, ya'ni hech biri
+  // belgilanmagan tur — javobsiz qolgan savol. Shu bois formada doim
+  // kamida bittasi yoniq turadi va odam ongli ravishda "hech kim" deb
+  // belgilashi uchun aynan "Boshqa" bor.
+  const [customerTypes, setCustomerTypes] = useState<string[]>([CUSTOMER_TYPES[0]]);
   const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
   const [mainType, setMainType] = useState(searchParams.get("type") || "kirim");
   const [saving, setSaving] = useState(false);
@@ -65,11 +68,14 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
         // Eski yozuvlarda `customerType` — bitta SATR. Bir elementli
         // ro'yxatga keltiriladi, ya'ni forma ikkala shaklni ham ochadi
         // va birinchi saqlashda yozuv yangi shaklga o'tadi.
-        setCustomerTypes(
-          Array.isArray(found.customerType)
-            ? found.customerType
-            : (found.customerType ? [found.customerType] : []),
-        );
+        //
+        // Bo'sh kelsa "Boshqa" ga tushadi: forma hech qachon bo'sh holatni
+        // ko'rsatmasin (u saqlanmaydi ham) — aks holda odam Saqlash
+        // tugmasi nega o'chiqligini tushunmasdi.
+        const saved = Array.isArray(found.customerType)
+          ? found.customerType
+          : (found.customerType ? [found.customerType] : []);
+        setCustomerTypes(saved.length > 0 ? saved : [CUSTOMER_TYPES[0]]);
         setCategory(found.category);
         setMainType(found.mainType);
         setLoaded(true);
@@ -102,10 +108,20 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
     if (hasThird) parts.push("(Qiymat + Oy) qatorlari");
     if (parts.length > 0) return `Kassa oynasida chiqadi: ${parts.join(" · ")}.`;
     if (customerTypes.length === 0) {
-      return "Belgilanmagan — kassa oynasida tanlov tur NOMIGA qarab chiqadi (ichida «o'quvchi» yoki «xodim» so'zi bo'lsa).";
+      return "Kamida bittasini belgilang — «Mijoz» bo'sh qolsa tur saqlanmaydi.";
     }
     return "Kassa oynasida hech qanday tanlov chiqmaydi — pul odamga biriktirilmaydi.";
   })();
+
+  /**
+   * "Mijoz" bo'sh bo'lsa SAQLASH TUGMASI O'CHIQ.
+   *
+   * Bo'sh ro'yxat "hech kim" ma'nosini bermaydi — u shunchaki javobsiz
+   * savol: kassa oynasi tanlovni tur NOMIGA qarab chiqarishga qaytadi
+   * (lib/txTarget.ts dagi zaxira yo'l), ya'ni natijani formada ko'rib
+   * bo'lmaydi. "Hech kim" degan ONGLI javob uchun "Boshqa" bor.
+   */
+  const canSave = customerTypes.length > 0;
 
   /**
    * Eng qimmat xato uchun ogohlantirish.
@@ -124,6 +140,12 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
   async function save() {
     if (!name.trim()) {
       showError("Ismni kiriting");
+      return;
+    }
+    // Tugma o'chiq bo'lsa ham ikkinchi qorovul: klaviatura yoki eski
+    // holat orqali bu yerga yetib kelmasin.
+    if (!canSave) {
+      showError("«Mijoz» dan kamida bittasini belgilang");
       return;
     }
     setSaving(true);
@@ -251,7 +273,12 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
           <button onClick={() => router.push("/finance-tx-types")} disabled={saving} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
-          <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
+          <button
+            onClick={save}
+            disabled={saving || !canSave}
+            title={canSave ? undefined : "«Mijoz» dan kamida bittasini belgilang"}
+            className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
