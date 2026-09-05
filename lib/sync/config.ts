@@ -51,8 +51,29 @@ function normalizePrivateKey(raw: string): string {
   // Aynan shularni almashtirish kerak; `/\n/` yozilsa hech narsa
   // o'zgarmaydi va kalit bir qatorli bo'lib qolib, imzolash "DECODER
   // routines::unsupported" xatosi bilan yiqiladi.
-  return key.replace(/\\n/g, "\n");
+  key = key.replace(/\\n/g, "\n");
+
+  // PEM BLOKINI KESIB OLAMIZ — chetidagi hamma narsa tashlanadi.
+  //
+  // NIMA NOTO'G'RI EDI: yuqoridagi qo'shtirnoq tekshiruvi faqat IKKALA
+  // uchi ham qo'shtirnoq bo'lgandagina ishlaydi. Vercel oynasiga
+  // nusxalaganda esa oldiga qo'shtirnoq, orqasiga qo'shtirnoq + yangi
+  // qator tushib qoladi — juftlik topilmaydi, qo'shtirnoq kalit ichida
+  // qolib ketadi va imzolash yiqiladi. O'lchandi: production'da kalit
+  // to'liq edi (1711 belgi, 29 qator), lekin `-----BEGIN` boshida emas
+  // edi.
+  //
+  // Bir marta yozilgan bu uch qator ko'rinmaydigan bo'shliq, BOM va
+  // qo'shtirnoqning hammasini birdaniga hal qiladi.
+  const begin = key.indexOf("-----BEGIN");
+  const end = key.lastIndexOf("-----");
+  if (begin >= 0 && end > begin) key = key.slice(begin, end + 5);
+
+  return key.trim();
 }
+
+/** Faqat sinov uchun (scripts/_verify-key-describe.mjs). */
+export const normalizePrivateKeyForTest = normalizePrivateKey;
 
 /**
  * Kalitning SHAKLI haqida qisqacha ma'lumot — imzolash yiqilganda
@@ -84,6 +105,13 @@ export function describePrivateKey(key: string): string {
   // yangi qatorga aylantiradi va BIRINCHI chiziq osilib qoladi — ya'ni
   // "\n" ni qidirish uni topmasdi, teskari chiziqni qidirish esa topadi.
   if (trimmed.includes("\\")) parts.push("ORTIQCHA TESKARI CHIZIQ — qiymat ikki marta ekranlangan");
+  // Chegara satri MATNDA bor, lekin boshida emas — demak oldida ortiqcha
+  // belgi bor (qo'shtirnoq, bo'shliq, BOM). `normalizePrivateKey` endi
+  // buni o'zi kesib tashlaydi; xabar esa qiymat qanday kiritilganini
+  // aytadi, ya'ni Vercel'dagi qatorni tozalash kerakligi bilinadi.
+  if (!trimmed.startsWith("-----BEGIN") && trimmed.includes("-----BEGIN")) {
+    parts.push("BEGIN matn ICHIDA bor — oldida ortiqcha belgi");
+  }
   // Odatdagi 2048-bitli service account kaliti ~1700 belgi.
   if (trimmed.length < 1000) parts.push("JUDA QISQA — to'liq nusxalanmagan");
   return parts.join(", ");
