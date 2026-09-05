@@ -11,6 +11,9 @@
 //   badge       — o'ngdagi qizil belgi (masalan "34")
 //   mobileActive— mobil menyuda ko'k (active) ko'rinishda turadimi
 //   menu        — hover flyout ma'lumoti (yo'q bo'lsa — oddiy havola)
+//   hidden      — bo'lim sidebarda CHIZILMAYDI (Sidebar.tsx), lekin
+//                 ruxsatlar daraxtida va route sifatida saqlanadi. Vaqtincha
+//                 olib turish uchun: qatorni o'chirsangiz qaytadi.
 //
 // Chevron (o'ng tomondagi ochiluvchi belgi) avtomatik: menu bor va href yo'q
 // bo'lsa ko'rsatiladi (Sozlamalar — menu + href, shuning uchun chevronsiz).
@@ -99,6 +102,23 @@ export const SIDEBAR_ITEMS = [
     key: "blok-test",
     icon: "i-file-text",
     label: "Blok test",
+    // VAQTINCHA YASHIRILGAN (2026-09-05, markaz so'rovi bilan).
+    //
+    // QAYTA YOQISH: shu bitta `hidden: true` qatorini o'chirish kifoya —
+    // boshqa hech narsaga tegish shart emas.
+    //
+    // NEGA O'CHIRIB TASHLANMADI. Bu massiv sidebarning emas, RUXSATLAR
+    // daraxtining ham yagona manbasi (lib/permissions.ts →
+    // PERMISSION_GROUPS). Element olib tashlansa ikkita sahifa ruxsatlar
+    // olamidan ham tushib ketardi va scripts/gen-api-permissions.mjs
+    // ularning API route'larini "sessiya yetarli" guruhiga o'tkazib
+    // yuborardi — ya'ni yashirish niyati aksincha, ruxsatni KENGAYTIRIB
+    // qo'yardi. Shu bois faqat sidebar chizig'i kesiladi.
+    //
+    // Sahifalarning o'zi ishlab turaveradi: to'g'ridan-to'g'ri havola
+    // bilan ochsa ochiladi, rol ruxsati ham eski holicha. Yashirilgani —
+    // menyudan olib turish, o'chirish emas.
+    hidden: true,
     mobileHref: "/blok-test-turlari",
     menu: {
       variant: "list",

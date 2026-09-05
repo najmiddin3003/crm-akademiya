@@ -53,9 +53,16 @@ interface SidebarItem {
   mobileBadge?: string;
   mobileActive?: boolean;
   menu?: SidebarMenu;
+  /** Vaqtincha olib turilgan bo'lim — constants/sidebar.js dagi izohga qarang. */
+  hidden?: boolean;
 }
 
-const ITEMS = SIDEBAR_ITEMS as SidebarItem[];
+// `hidden` shu YAGONA joyda kesiladi — kompyuter menyusi ham, mobil menyu
+// ham quyidagi bitta `items` dan chiziladi. Ruxsatlar daraxti
+// (lib/permissions.ts) esa SIDEBAR_ITEMS ni to'g'ridan-to'g'ri o'qiydi va
+// bu filtrga tegmaydi: yashirilgan bo'lim ruxsat sifatida saqlanib
+// qoladi, ya'ni qaytarilganda rollarni qaytadan sozlash kerak bo'lmaydi.
+const ITEMS = (SIDEBAR_ITEMS as SidebarItem[]).filter((i) => !i.hidden);
 
 /**
  * Sidebar daraxtini rol ruxsatlariga qarab qirqadi (lib/permissions.ts).
