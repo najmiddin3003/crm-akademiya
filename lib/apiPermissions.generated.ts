@@ -154,6 +154,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/transaction-entries/[id]/transfer-reject": ["/finance-cash"],
   "/api/transaction-entries/facets": ["/finance-cash", "/management-xodimlar"],
   "/api/transaction-entries/moderator-summary": ["/management-xodimlar"],
+  "/api/transaction-entries/notes": ["/finance-cash"],
   "/api/transaction-entries/revenue-summary": ["/finance-revenue-plan"],
   "/api/transaction-entries/served-summary": ["/reports-served"],
   "/api/transaction-entries/students": ["/finance-transactions", "/management-xodimlar"],

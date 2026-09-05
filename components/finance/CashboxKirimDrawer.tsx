@@ -12,6 +12,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
+import SuggestInput from "@/components/ui/SuggestInput";
 import { useTeachers } from "@/hooks/useTeachers";
 import type { StudentRow } from "@/lib/studentsData";
 import type { TransactionType } from "@/lib/transactionTypes";
@@ -130,6 +131,9 @@ export default function CashboxKirimDrawer({
   const [rows, setRows] = useState<Row[]>(() => [{ id: 1, amount: "", periodMonth: monthOf(null) }]);
   const [nextRowId, setNextRowId] = useState(2);
   const [note, setNote] = useState("");
+  // Shu kassada ILGARI yozilgan izohlar — "Izoh" maydonidagi tavsiyalar
+  // (tez-tez ishlatilgani birinchi, server shunday saralaydi).
+  const [noteOptions, setNoteOptions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<TransactionType[]>([]);
   // Tranzaksiya turlari xom `fetch` bilan olinadi (hook yo’q), shuning
@@ -235,8 +239,17 @@ export default function CashboxKirimDrawer({
         if (kirim.length > 0) setCategoryId((cur) => cur ?? kirim[0].id);
       })
       .finally(() => { if (!cancelled) setCategoriesLoading(false); });
+
+    // Izoh tavsiyalari — SHU kassaning yozuvlaridan. Yiqilsa jim
+    // o'tkaziladi: maydon oddiy input bo'lib ishlayveradi, ya'ni tavsiya
+    // yo'qligi kirim qilishga to'sqinlik qilmaydi.
+    fetch(`/api/transaction-entries/notes?cashboxId=${cashbox.id}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setNoteOptions(d.notes as string[]); })
+      .catch(() => {});
+
     return () => { cancelled = true; };
-  }, []);
+  }, [cashbox.id]);
 
   async function save() {
     if (!category) {
@@ -588,12 +601,16 @@ export default function CashboxKirimDrawer({
             </p>
           )}
 
+          {/* IZOH — oddiy input, lekin ustiga bosilganda shu kassada ilgari
+              yozilgan izohlar chiqadi va yozgan sari filtrlanadi. Ro'yxat
+              MAJBURLAMAYDI: yangi matn ham bemalol yoziladi. */}
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
-            <input
+            <SuggestInput
               value={note}
-              onChange={(e) => setNote(e.target.value)}
-              type="text"
+              onChange={setNote}
+              options={noteOptions}
+              placeholder="Yozing yoki avvalgilaridan tanlang"
               className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
