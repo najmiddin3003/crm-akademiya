@@ -29,9 +29,16 @@ const CONTACT_PHONE = "+998941118855";
  * tasdiqlanmasidan oldin yoqilsa har to'lovda bekorga urinish bo'lardi
  * va jurnal "Yuborilmadi" bilan to'lardi.
  *
- * Yoqish: Vercel -> Settings -> Environment Variables ->
- *   PAYMENT_SMS_ENABLED=true
- * (o'zgartirgach qayta deploy shart emas — keyingi so'rov o'qiydi.)
+ * Yoqish: Vercel -> Loyiha -> Settings -> Environment Variables ->
+ *   PAYMENT_SMS_ENABLED = true   (Production muhitiga)
+ *
+ * KEYIN QAYTA DEPLOY QILISH SHART. Vercel muhit o'zgaruvchilarini
+ * ishlab turgan nusxalarga QAYTA UZATMAYDI — ular deploy paytida
+ * biriktiriladi. Yangi qiymat faqat keyingi deploydan boshlab
+ * ko'rinadi (Deployments -> oxirgisi -> Redeploy).
+ *
+ * Lokal ishlab chiqishda: `.env.local` ga o'sha qatorni qo'shib,
+ * dev serverni qayta ishga tushiring.
  */
 export function paymentSmsEnabled(): boolean {
   return process.env.PAYMENT_SMS_ENABLED === "true";
