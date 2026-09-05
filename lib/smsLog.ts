@@ -86,6 +86,11 @@ export async function logSms(db: Db, input: LogSmsInput): Promise<void> {
       ...(input.cashboxName ? { cashboxName: input.cashboxName } : {}),
       providerMessageId: extractMessageId(input.result.raw),
       providerRaw: input.result.raw ?? null,
+      // NEGA yuborilmagani. Bu bo'lmasa jurnalda faqat "Yuborilmadi"
+      // turadi va sabab noma'lum qoladi — eng ko'p uchraydigan sabab esa
+      // Eskizda shablon hali tasdiqlanmagani yoki matn tasdiqlangandan
+      // farq qilishi. Sababsiz uni topib bo'lmasdi.
+      providerError: input.result.ok ? null : (input.result.error ?? null),
       deliveryStatus: "unknown",
       // Eskiz sozlanmagan bo'lsa haqiqiy SMS KETMAYDI (lib/eskiz.ts
       // simulyatsiya rejimi). Buni yashirmaymiz — aks holda analitikada

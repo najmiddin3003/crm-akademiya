@@ -206,6 +206,18 @@ export default function NazoratSmsAnalyticsPage() {
                     {m.simulated && (
                       <span className="ml-1 text-[11px] text-amber-600">simulyatsiya</span>
                     )}
+                    {/* NEGA yuborilmagani. Eng ko'p uchraydigan sabab —
+                        Eskizda shablon hali tasdiqlanmagani yoki matn
+                        tasdiqlangandan farq qilishi. Sababsiz uni topib
+                        bo'lmasdi. */}
+                    {m.providerError && (
+                      <div
+                        className="mt-1 text-[11px] text-rose-600 max-w-[220px] truncate"
+                        title={m.providerError}
+                      >
+                        {m.providerError}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-[12px] text-muted-foreground max-w-[360px] truncate" title={m.text}>
                     {m.text || "—"}

@@ -57,6 +57,13 @@ export interface SmsMessage {
    */
   providerMessageId?: string | null;
   providerRaw?: unknown;
+  /**
+   * Eskiz qaytargan xato matni — faqat yuborilmagan yozuvlarda.
+   *
+   * Sahifada ko'rsatiladi: "Yuborilmadi" ning o'zi yetarli emas, sabab
+   * kerak (eng ko'p uchraydigani — shablon tasdiqlanmagani).
+   */
+  providerError?: string | null;
 
   /**
    * HAQIQIY yetkazilish holati — Eskizdan alohida so'ralib aniqlanadi.
