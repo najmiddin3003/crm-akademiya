@@ -9,6 +9,7 @@ import { STUDENT_CATEGORIES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 import type { Order } from "@/lib/ordersData";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import type { LegacyEntry } from "@/lib/legacyEntries";
 import TahrirlashTabButton from "@/components/shared/TahrirlashTabButton";
 import ParolTabButton from "@/components/shared/ParolTabButton";
 import ModeratorTabButton from "@/components/shared/ModeratorTabButton";
@@ -102,6 +103,16 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   // sxemasidagi cheklov, keyinchalik yozuvga studentId qo'shilsa yopiladi.
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
   const [entriesLoading, setEntriesLoading] = useState(true);
+  /**
+   * EDUTIZIM ARXIVI — o'quvchining 09.2026 gacha bo'lgan eski to'lovlari.
+   *
+   * `entries` DAN ALOHIDA turadi va ataylab shunday: pastdagi `balans`
+   * aynan `entries` dan hisoblanadi. Arxiv unga qo'shilsa, o'quvchining
+   * balansi bir kechada o'sib ketardi — markaz esa "hech qanday joyga
+   * pul qo'shilib yoki kamayib ketmasin" degan edi. Arxiv faqat
+   * KO'RSATILADI.
+   */
+  const [legacyEntries, setLegacyEntries] = useState<LegacyEntry[]>([]);
 
   useEffect(() => {
     // `entriesLoading` boshlanishida true — effekt tanasida qayta
@@ -132,6 +143,18 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     }).finally(() => { if (alive) setEntriesLoading(false); });
     return () => { alive = false; };
   }, [order.name]);
+
+  // Arxiv ALOHIDA so'raladi va ID bo'yicha: jonli tarix ism bo'yicha
+  // izlanadi (yuqoridagi izoh), arxivda esa ko'chirish paytida telefon
+  // orqali topilgan `pupilId` bor — ya'ni ismdoshlar aralashmaydi.
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/legacy-entries?pupilId=${order.id}`)
+      .then((r) => r.json())
+      .then((d) => { if (alive && d?.ok) setLegacyEntries(d.entries as LegacyEntry[]); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [order.id]);
 
   // Balans — bekor qilinganlardan tashqari to'lovlar yig'indisi
   // (app/api/employee-salary-summary/route.ts dagi bilan bir xil qoida).
@@ -359,7 +382,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           {activeTab === "vazifa" && <VazifaTabContent pupilId={pupil?.id} />}
           {activeTab === "coin" && <CoinTabContent />}
           {activeTab === "blok" && <BlokTabContent />}
-          {activeTab === "tranzaksiya" && <TranzaksiyaTabContent entries={entries} loading={entriesLoading} />}
+          {activeTab === "tranzaksiya" && <TranzaksiyaTabContent entries={entries} legacyEntries={legacyEntries} loading={entriesLoading} />}
           {activeTab === "buyurtma" && <BuyurtmaTabContent />}
           {activeTab === "harakatlar" && <HarakatlarTabContent order={order} balans={balans} />}
           {activeTab === "ltv" && <LtvTabContent />}
