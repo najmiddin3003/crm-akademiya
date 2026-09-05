@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { eskizConfigured } from "@/lib/eskiz";
+import { paymentSmsEnabled } from "@/lib/paymentSms";
 import type { SmsMessage } from "@/lib/smsMessages";
 
 // GET /api/sms-analytics — Nazorat > SMS analitikasi sahifasi uchun.
@@ -48,6 +50,18 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    // SOZLAMALAR HOLATI — faqat "bor/yo'q", qiymatlar EMAS.
+    //
+    // NEGA KERAK: sahifa bo'sh bo'lsa yoki hamma qator "Yuborilmadi"
+    // bo'lsa, sabab ikkitadan biri — kalit o'chiq yoki Eskiz muhit
+    // o'zgaruvchilari qo'yilmagan. Ilgari buni bilishning yagona yo'li
+    // Vercel sozlamalarini ochib ko'rish edi; endi shu yerda ko'rinadi.
+    //
+    // Maxfiy qiymatlar (email/parol) QAYTARILMAYDI — faqat mavjudligi.
+    config: {
+      eskizConfigured: eskizConfigured(),
+      paymentSmsEnabled: paymentSmsEnabled(),
+    },
     // `providerRaw` qaytarilmaydi — u faqat serverda kerak (xabar ID sini
     // ajratish uchun) va ichida nima borligi Eskizga bog'liq.
     messages: rows as unknown as SmsMessage[],

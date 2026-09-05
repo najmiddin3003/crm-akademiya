@@ -24,6 +24,7 @@ interface Payload {
   stats: { accepted: number; failed: number; pending: number; simulated: number };
   byPurpose: { key: string | null; n: number }[];
   byCashbox: { name: string | null; n: number }[];
+  config: { eskizConfigured: boolean; paymentSmsEnabled: boolean };
 }
 
 function toIso(d: Date | null): string {
@@ -114,6 +115,46 @@ export default function NazoratSmsAnalyticsPage() {
           hint="Eskiz sozlanmagan — SMS ketmagan"
         />
       </div>
+
+      {/* SOZLAMALAR HOLATI — sahifa bo'sh yoki hamma qator "Yuborilmadi"
+          bo'lganda sababni SHU YERDA ko'rsatadi. Ilgari buni bilish uchun
+          Vercel sozlamalarini ochib ko'rish kerak edi. */}
+      {data && (
+        <div className="flex items-center gap-2 flex-wrap text-[12px]">
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${
+              data.config.paymentSmsEnabled
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            To&apos;lov SMS i: <strong>{data.config.paymentSmsEnabled ? "yoqilgan" : "o'chiq"}</strong>
+            {!data.config.paymentSmsEnabled && <span>(PAYMENT_SMS_ENABLED)</span>}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${
+              data.config.eskizConfigured
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-rose-100 text-rose-700"
+            }`}
+          >
+            Eskiz: <strong>{data.config.eskizConfigured ? "sozlangan" : "SOZLANMAGAN"}</strong>
+            {!data.config.eskizConfigured && <span>(ESKIZ_EMAIL / ESKIZ_PASSWORD)</span>}
+          </span>
+        </div>
+      )}
+
+      {/* Eskiz sozlanmagan bo'lsa SMS UMUMAN ketmaydi — bu jimgina
+          o'tib ketmasin. */}
+      {data && !data.config.eskizConfigured && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[13px]">
+          <strong>Eskiz sozlanmagan.</strong> `ESKIZ_EMAIL` va `ESKIZ_PASSWORD` muhit
+          o&apos;zgaruvchilari yo&apos;q, ya&apos;ni SMS <strong>hech qayerga
+          ketmayapti</strong> — jurnaldagi qatorlar &laquo;simulyatsiya&raquo; bo&apos;ladi.
+          Ularni Vercel &rarr; Settings &rarr; Environment Variables ga qo&apos;shing va qayta
+          deploy qiling.
+        </div>
+      )}
 
       {/* HALOL OGOHLANTIRISH — bu ustunlar chalg'itmasligi uchun.
           "Qabul qilindi" = Eskiz so'rovni oldi, telefonga yetib borgani
