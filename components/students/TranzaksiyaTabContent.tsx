@@ -129,15 +129,21 @@ export default function TranzaksiyaTabContent({
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya turi</th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">To&apos;lov turi</th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya nomi</th>
+                {/* IZOH — kassir kirim qilayotganda yozadigan matn
+                    ("Musoxon avgust" kabi). U qaysi o'qituvchi va qaysi
+                    oy uchun to'langanini aytadi, ya'ni tarixdagi eng
+                    ma'noli ustunlardan biri. Arxiv jadvalida allaqachon
+                    bor edi, jonli jadvalda esa yo'q edi. */}
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Izoh</th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Qabul qilgan</th>
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Holati</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
+                <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">To&apos;lovlar topilmadi</td></tr>
+                <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">To&apos;lovlar topilmadi</td></tr>
               ) : (
                 rows.map((e, i) => (
                   <tr key={e.id} className="border-b border-border/50 last:border-0">
@@ -149,6 +155,12 @@ export default function TranzaksiyaTabContent({
                     <td className="px-4 py-3 text-[13px] whitespace-nowrap">{TX_TYPE_LABEL[e.txType] ?? e.txType}</td>
                     <td className="px-4 py-3 text-[13px] whitespace-nowrap">{e.paymentType || "—"}</td>
                     <td className="px-4 py-3 text-[13px]">{e.txName || "—"}</td>
+                    {/* Uzun izoh qatorni cho'zib yubormasin — kengligi
+                        cheklangan, to'lig'i `title` da (kassa jadvalidagi
+                        bilan bir xil qoida). */}
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground max-w-[220px] truncate" title={e.note}>
+                      {e.note || "—"}
+                    </td>
                     <td className="px-4 py-3 text-[13px] text-muted-foreground whitespace-nowrap">{e.moderator || "—"}</td>
                     <td className="px-4 py-3 text-[13px] whitespace-nowrap">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${STATUS_CLS[e.status || ""] ?? "bg-secondary text-foreground/70"}`}>
