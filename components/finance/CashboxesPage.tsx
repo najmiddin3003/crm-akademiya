@@ -1819,13 +1819,27 @@ export default function CashboxesPage() {
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )}
                       </td>
+                      {/* IZOHNING O'ZI yoziladi.
+                          Ilgari bu yerda "Izoh" degan qotib qolgan yorliq
+                          turardi va haqiqiy matn faqat `title` da — ya'ni
+                          sichqonchani ustida ushlab turmaguncha ko'rinmasdi.
+                          Jadvalda esa izohlar aynan ma'noli: "Umidjon tarix
+                          avgust", "turk tili kitob" — ular kimning qaysi oyi
+                          uchun to'lov ekanini aytadi.
+                          Uzun matn qatorni cho'zib yubormasin: kengligi
+                          cheklangan va uchi qirqiladi, to'lig'i `title` da
+                          hamda yozuv kartochkasida qoladi. */}
                       <td className="px-3 py-3">
-                        <span
-                          title={e.note || "Izoh yo'q"}
-                          className="inline-flex items-center px-3 h-7 rounded-md bg-secondary/60 text-[12px]"
-                        >
-                          Izoh
-                        </span>
+                        {e.note ? (
+                          <span
+                            title={e.note}
+                            className="block max-w-[220px] truncate text-[12.5px] text-foreground/80"
+                          >
+                            {e.note}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">
                         {e.txName || "—"}
