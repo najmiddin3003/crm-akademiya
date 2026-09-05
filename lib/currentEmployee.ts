@@ -90,15 +90,22 @@ export async function getCurrentEmployee(): Promise<CurrentEmployee | null> {
 export async function currentAuthorName(): Promise<string> {
   const me = await getCurrentUser();
   if (!me) return "";
-  if (me.hrEmployeeId !== null) {
-    const db = await ensureIndexes();
-    const emp = await db
-      .collection("hr_employees")
-      .findOne({ id: me.hrEmployeeId }, { projection: { _id: 0, name: 1 } });
-    const name = String(emp?.name ?? "").trim();
-    if (name) return name;
-  }
-  return String(me.fullName ?? "").trim();
+  const db = await ensureIndexes();
+  return (await employeeNameById(db, me.hrEmployeeId)) || String(me.fullName ?? "").trim();
+}
+
+/**
+ * `hr_employees.id` → ism. Bo'sh satr — topilmadi.
+ *
+ * Alohida turadi, chunki chaqiruvchilarning bir qismi `getCurrentUser()`
+ * ni ALLAQACHON o'qigan bo'ladi (masalan /api/notifications) va uni ikkinchi
+ * marta yurgizish o'sha yerda qo'shimcha ikkita Atlas so'rovi bo'lardi —
+ * qo'ng'iroq esa har 60 soniyada so'raladi.
+ */
+export async function employeeNameById(db: Db, id: number | null): Promise<string> {
+  if (id === null || !Number.isFinite(id)) return "";
+  const emp = await db.collection("hr_employees").findOne({ id }, { projection: { _id: 0, name: 1 } });
+  return String(emp?.name ?? "").trim();
 }
 
 /** Shu kassa xodimga biriktirilganmi (admin uchun chaqirilmaydi). */

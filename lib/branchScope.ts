@@ -182,38 +182,20 @@ async function loadBranchScope(
  * oralig'ida (yoki u yiqilib qolsa) ma'lumot ko'rinmay qolmasligi uchun.
  */
 export function withBranch<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
-  const cond =
-    scope.branchId === 1
-      ? { $or: [{ branchId: 1 }, { branchId: { $exists: false } }, { branchId: null }] }
-      : { branchId: scope.branchId };
-  return { $and: [filter, cond] } as Filter<T>;
+  return { $and: [filter, branchCondition(scope)] } as Filter<T>;
 }
 
 /**
- * `withBranch` ning YUMSHOQ varianti: joriy filial + filiali UMUMAN
- * BELGILANMAGAN hujjatlar (`branchId` yo'q yoki `null`).
+ * Filial shartining O'ZI — boshqa shart bilan `$or` qilish uchun.
  *
- * NEGA KERAK (lidlar, 2026-09-05). `withBranch` maydonsiz hujjatlarni
- * FAQAT 1-filialga qo'shadi. Lidlar uchun bu shunday chiqdi: filial
- * bo'linishi 04.09 kuni ishga tushdi, Dilmurodning hisobi esa o'sha kuni
- * 16:11 da 2-filialga ko'chirildi. Natijada undan oldin kiritilgan 42 ta
- * lid (`branchId` maydoni yo'q) va 1-filialga yozilganlar bir zumda uning
- * ro'yxatidan yo'qoldi — u o'zi kiritgan lidlarni ham ko'rmay qoldi.
- *
- * QAROR (markaz, 2026-09-05): bo'linishdan OLDINGI lidlar hamma filialga
- * ko'rinadi — ular "qaysi filialdan qo'shilgani" YOZILMAGAN, ya'ni ularni
- * 1-filialga muhrlash taxmin bo'lardi. Bo'linishdan KEYINGI lidlar esa
- * qo'shilgan filialida qoladi.
- *
- * Faqat lidlar (`orders`) uchun. Kassa, moliya va boshqa qamrovlar
- * `withBranch` da qoladi: u yerda maydonsiz hujjat yo'q va yumshatish
- * pulga tegishli ma'lumotni ochib yuborardi.
+ * Kerak bo'ldi: lidlar qamrovi "shu filial YOKI o'zim qo'shganim"
+ * (lib/leadScope.ts), ya'ni shartni `withBranch` ichidan ajratib olish
+ * zarur. Nusxa ko'chirilsa ikki joy vaqt o'tib bir-biridan uzoqlashardi.
  */
-export function withBranchOrUnassigned<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
-  const cond = {
-    $or: [{ branchId: scope.branchId }, { branchId: { $exists: false } }, { branchId: null }],
-  };
-  return { $and: [filter, cond] } as Filter<T>;
+export function branchCondition(scope: BranchScope): Filter<Document> {
+  return scope.branchId === 1
+    ? { $or: [{ branchId: 1 }, { branchId: { $exists: false } }, { branchId: null }] }
+    : { branchId: scope.branchId };
 }
 
 /**

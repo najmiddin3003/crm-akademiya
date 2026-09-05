@@ -3,8 +3,9 @@ import { ObjectId } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { isPathAllowed } from "@/lib/permissions";
-import { nameEq } from "@/lib/currentEmployee";
-import { getBranchScope, withBranchOrUnassigned, type BranchScope } from "@/lib/branchScope";
+import { employeeNameById, nameEq } from "@/lib/currentEmployee";
+import { getBranchScope, type BranchScope } from "@/lib/branchScope";
+import { withLeadScope } from "@/lib/leadScope";
 import { SOURCE_SCAN, SOURCE_SHOW, WINDOW_DAYS } from "@/constants/notifications";
 import { overdueUz, uzMoney, type NotifItem, type NotifKind, type NotifSource } from "@/lib/notifications";
 import { uzDateIso, uzParseStamp, uzStamp, uzWall } from "@/lib/uzTime";
@@ -83,12 +84,19 @@ export async function GET() {
   // Uchala manba bir-biriga bog'liq emas — parallel.
   const [payRows, orderRows, taskRows] = await Promise.all([
     canPay ? loadPayments(db, me, canPayAll, sinceMs, sinceIso, sources) : Promise.resolve(null),
-    // Filial qamrovi lidlar uchun kerak. `getBranchScope()` shu yerda,
-    // Promise.all ICHIDA chaqiriladi — shunda u to'lov va topshiriq
+    // Lidlar qamrovi uchun filial va muallif ismi kerak. Ikkalasi ham shu
+    // yerda, Promise.all ICHIDA olinadi — shunda ular to'lov va topshiriq
     // so'rovlari bilan PARALLEL ketadi. Qo'ng'iroq har 60 soniyada
-    // so'raladi, ya'ni uni ketma-ket qo'yish har bir foydalanuvchiga
+    // so'raladi, ya'ni ketma-ket qo'yilsa har bir foydalanuvchiga
     // muntazam qo'shimcha kutish bo'lardi.
-    canOrder ? getBranchScope().then((s) => loadOrders(db, sinceMs, s)) : Promise.resolve(null),
+    //
+    // Ism `me.hrEmployeeId` dan olinadi, `currentAuthorName()` dan EMAS:
+    // u `getCurrentUser()` ni qaytadan yurgizardi, holbuki `me` yuqorida
+    // allaqachon o'qilgan.
+    canOrder
+      ? Promise.all([getBranchScope(), employeeNameById(db, me.hrEmployeeId)])
+          .then(([s, author]) => loadOrders(db, sinceMs, s, author))
+      : Promise.resolve(null),
     canTask ? loadTasks(db, sinceMs, nowMs) : Promise.resolve(null),
   ]);
 
@@ -257,8 +265,8 @@ async function loadPayments(
 /**
  * Yangi buyurtmalar (lidlar).
  *
- * FILIAL BO'YICHA KESILADI — sahifa bilan AYNAN bir xil qoida bo'yicha
- * (`withBranchOrUnassigned`, GET /api/orders bilan bitta funksiya).
+ * QAMROV SAHIFA BILAN AYNAN BIR XIL — `withLeadScope`, GET /api/orders
+ * bilan bitta funksiya.
  *
  * Ilgari bu yerda kesish yo'q edi va izohda sabab yozilgan edi: "`orders`
  * da `branchId` maydoni yo'q, GET /api/orders ham kesmaydi". O'sha izoh
@@ -270,6 +278,7 @@ async function loadOrders(
   db: Awaited<ReturnType<typeof ensureIndexes>>,
   sinceMs: number,
   scope: BranchScope | null,
+  authorName: string,
 ) {
   // Qamrovsiz (sessiyasiz) holat bu yergacha yetib kelmaydi — chaqiruvchi
   // allaqachon `getCurrentUser()` ni tekshirgan. Shunga qaramay `null`
@@ -283,7 +292,7 @@ async function loadOrders(
   return db
     .collection("orders")
     .find(
-      withBranchOrUnassigned({ _id: { $gte: minId } }, scope),
+      withLeadScope({ _id: { $gte: minId } }, scope, authorName),
       { projection: { _id: 1, id: 1, name: 1, course: 1, phone: 1 } },
     )
     .sort({ _id: -1 })
