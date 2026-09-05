@@ -22,6 +22,39 @@ function escapeRegex(s: string): string {
 /** `studentRecords()` (lib/search.ts) qidiradigan maydonlar. */
 const FIELDS = ["firstName", "lastName", "phone", "moderator", "source", "category"] as const;
 
+/**
+ * Telefon uchun AJRATKICHGA CHIDAMLI naqsh.
+ *
+ * NIMA NOTO'G'RI EDI: bazada raqam "94 155 88 55" ko'rinishida (6 797
+ * o'quvchining hammasida shu format), qidiruv esa kiritilgan matnni
+ * shundoq regexga aylantirardi. Ya'ni "941558855" deb yozilsa hech
+ * narsa topilmasdi — bo'shliqlar to'sib qo'yardi. Jadval ichidagi
+ * tanlovlar (StudentSearchSelect) buni allaqachon uddalardi, chunki
+ * ular ikkala tomondan raqam bo'lmagan belgilarni tashlab
+ * solishtiradi; NAVBARDAGI global qidiruv esa yo'q.
+ *
+ * Yechim: raqamlar orasiga ixtiyoriy ajratkichga ruxsat beriladi —
+ * "941558855" -> /9[^0-9]*4[^0-9]*1.../
+ *
+ * `998` prefiksi tashlanadi: bazada raqam 9 xonali saqlanadi, lekin
+ * odam to'liq "+998 94 155 88 55" ko'rinishida nusxalashi mumkin.
+ *
+ * `null` — so'rovda qidirishga arziydigan raqam yo'q.
+ */
+function phonePattern(term: string): string | null {
+  let d = term.replace(/\D/g, "");
+  if (d.length > 9 && d.startsWith("998")) d = d.slice(3);
+  // 3 tadan kam raqam deyarli hamma raqamga mos keladi — foydasi yo'q.
+  if (d.length < 3) return null;
+  return d.split("").join("[^0-9]*");
+}
+
+/** O'quvchi ID si bo'yicha aniq moslik (masalan "16751"). */
+function idClause(term: string): Record<string, unknown>[] {
+  const asNum = Number(term);
+  return Number.isInteger(asNum) && asNum > 0 ? [{ id: asNum }] : [];
+}
+
 const LIMIT = 20;
 
 export async function GET(req: Request) {
@@ -34,14 +67,26 @@ export async function GET(req: Request) {
   // xil): "ali valiyev" da "ali" ismga, "valiyev" familiyaga tushishi
   // mumkin, shuning uchun har bir so'z alohida $or bo'lib, ular $and ga
   // yig'iladi.
+  // RAQAM KIRITILGANDA so'z bo'yicha bo'lish YARAMAYDI: "94 155 88 55"
+  // to'rtta bo'lakka bo'linib, har biri ALOHIDA shart bo'lardi va
+  // "94" hamma 94-raqamli o'quvchiga mos kelib ketardi. Shu bois raqamli
+  // so'rov BUTUNLIGICHA, bitta naqsh sifatida qidiriladi.
+  const wholePhone = phonePattern(q);
+  const digitsOnly = /^[\d\s()+-]+$/.test(q);
+
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 5);
-  const and = terms.map((t) => {
-    const rx = { $regex: escapeRegex(t), $options: "i" };
-    const or: Record<string, unknown>[] = FIELDS.map((f) => ({ [f]: rx }));
-    const asNum = Number(t);
-    if (Number.isInteger(asNum) && asNum > 0) or.push({ id: asNum });
-    return { $or: or };
-  });
+  const and = digitsOnly && wholePhone
+    ? [{ $or: [{ phone: { $regex: wholePhone } }, ...idClause(q)] }]
+    : terms.map((t) => {
+        const rx = { $regex: escapeRegex(t), $options: "i" };
+        const or: Record<string, unknown>[] = FIELDS.map((f) => ({ [f]: rx }));
+        // Aralash so'rovda ("ali 9415") raqamli bo'lak telefonga ham
+        // urinib ko'rsin — ajratkichga chidamli naqsh bilan.
+        const p = phonePattern(t);
+        if (p) or.push({ phone: { $regex: p } });
+        or.push(...idClause(t));
+        return { $or: or };
+      });
 
   // Qidiruv FILIAL bo'yicha KESILMAYDI — o'quvchilar ro'yxati umumiy
   // (sabab app/api/pupils/route.ts dagi GET izohida). Ilgari bu yerda
