@@ -25,6 +25,29 @@ export interface SheetTarget {
   threadId: string;
 }
 
+/**
+ * Hisoblangan oylik varag'ining nomi (lib/sync/salarySheet.ts to'ldiradi).
+ *
+ * Sozlanmaydi va jurnal varaqlaridan farqli o'laroq muhit o'zgaruvchisi
+ * bilan almashtirilmaydi: varaqning ustunlari kodga qattiq bog'langan.
+ */
+export const SALARY_SUMMARY_TAB = "Xodim oyliklari";
+
+/**
+ * Oylik JURNALI varag'ining nomi.
+ *
+ * NEGA QO'RIQCHI BOR: bu varaq ilgari "Xodim oyliklari" deb atalardi va
+ * eski o'rnatmalarda `SHEET_TAB_SALARIES` hali ham shu qiymatni ushlab
+ * turishi mumkin (masalan Vercel'da). O'sha holda jurnal qatorlari
+ * HISOB varag'ining ustiga yozilib, ikkalasi ham buzilardi. Shuning
+ * uchun aynan shu qiymat e'tiborsiz qoldiriladi — sozlamani qo'lda
+ * tuzatish esdan chiqsa ham modul to'g'ri varaqqa yozadi.
+ */
+function journalTabName(raw: string | undefined): string {
+  const v = (raw || "").trim();
+  return !v || v === SALARY_SUMMARY_TAB ? "Xodim avanslari" : v;
+}
+
 export interface SyncConfig {
   enabled: boolean;
   google: {
@@ -137,7 +160,14 @@ export function loadSyncConfig(): SyncConfig {
       },
       salary: {
         spreadsheetId: (env.SHEET_ID_SALARIES || "").trim(),
-        tabName: (env.SHEET_TAB_SALARIES || "Xodim oyliklari").trim(),
+        // "Xodim AVANSLARI" — "oyliklari" EMAS (markaz so'rovi 2026-09-05).
+        //
+        // Bu varaq hech narsa hisoblamaydi: u kassadan HAQIQATAN
+        // chiqarilgan pulning jurnali (oylik ham, avans ham). Nomi
+        // "Xodim oyliklari" bo'lgani chalkashlik tug'dirardi — odam u
+        // yerda xodimning OYLIGI qancha ekanini ko'rmoqchi bo'lardi.
+        // Hisoblangan oylik endi alohida varaqda: lib/sync/salarySheet.ts.
+        tabName: journalTabName(env.SHEET_TAB_SALARIES),
         chatId: (env.TELEGRAM_CHAT_SALARIES || "").trim(),
         threadId: (env.TELEGRAM_TOPIC_SALARIES || "").trim(),
       },

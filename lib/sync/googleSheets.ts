@@ -170,7 +170,27 @@ export async function ensureTab(
   )) as { sheets?: { properties: { sheetId: number; title: string } }[] };
 
   const existing = (meta.sheets || []).find((s) => s.properties.title === tabName);
-  if (existing) return { sheetId: existing.properties.sheetId, tabName };
+  if (existing) {
+    // SARLAVHA QATORI TEKSHIRILADI — ilgari mavjud varaq shartsiz qabul
+    // qilinardi.
+    //
+    // NEGA QO'SHILDI: "Xodim oyliklari" nomi endi HISOBLANGAN oylik
+    // varag'iniki, jurnal esa "Xodim avanslari" ga ko'chdi. Agar biror
+    // muhitda eski `SHEET_TAB_SALARIES=Xodim oyliklari` qolib ketsa,
+    // solishtirish jurnal qatorlarini XULOSA varag'ining ustiga
+    // yozib yuborardi va buni hech narsa sezmasdi. Endi u jimgina
+    // buzish o'rniga BALAND OVOZDA to'xtaydi.
+    //
+    // Bo'sh sarlavha (yangi, hali to'ldirilmagan varaq) qabul qilinadi.
+    const head = await readHeaderRow(cfg, spreadsheetId, tabName);
+    if (head.length > 0 && head[0] !== headers[0]) {
+      throw new Error(
+        `"${tabName}" varag'ining sarlavhasi boshqa ("${head[0]}" != "${headers[0]}") — ` +
+        `varaq nomi sozlamada noto'g'ri ko'rsatilgan bo'lishi mumkin (SHEET_TAB_*)`,
+      );
+    }
+    return { sheetId: existing.properties.sheetId, tabName };
+  }
 
   const created = (await sheetsFetch(cfg, `${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
     method: "POST",
@@ -220,6 +240,53 @@ export async function ensureTab(
   });
 
   return { sheetId, tabName };
+}
+
+/**
+ * Faqat SARLAVHA qatori (A1:Z1). `ensureTab` mavjud varaq to'g'ri
+ * varaqmi-yo'qmi shuni tekshirishda ishlatadi.
+ */
+async function readHeaderRow(
+  cfg: SyncConfig,
+  spreadsheetId: string,
+  tabName: string,
+): Promise<string[]> {
+  const data = (await sheetsFetch(
+    cfg,
+    `${SHEETS_API}/${spreadsheetId}/values/${rangeParam(tabName, "A1:Z1")}?majorDimension=ROWS`,
+  )) as { values?: SheetCell[][] };
+  return (data.values?.[0] ?? []).map((v) => String(v ?? "").trim());
+}
+
+/**
+ * Varaqning ma'lumot qismini TO'LIQ almashtiradi: eskisini tozalab,
+ * yangisini yozadi.
+ *
+ * Solishtirishdan (reconcile) FARQ QILADI va bu ataylab: u yerda har
+ * qator bazadagi YOZUVGA teng va id bo'yicha topiladi. Bu yerda esa
+ * qatorlar HISOB natijasi — kecha 14 ta o'qituvchi bo'lsa bugun 13 ta
+ * bo'lishi mumkin, ya'ni "id bo'yicha yangilash" ma'nosiz. Butun blokni
+ * qayta yozish yagona to'g'ri usul.
+ */
+export async function replaceRows(
+  cfg: SyncConfig,
+  spreadsheetId: string,
+  tabName: string,
+  rows: SheetCell[][],
+): Promise<void> {
+  await sheetsFetch(cfg, `${SHEETS_API}/${spreadsheetId}/values/${rangeParam(tabName, "A2:Z10000")}:clear`, {
+    method: "POST",
+    body: "{}",
+  });
+  if (rows.length === 0) return;
+  // Oraliqning o'ng chegarasi "Z" — ustunlar soni har doim undan kam
+  // (eng kengi 15 ta). Aniq harfni hisoblashning hojati yo'q: Google
+  // berilgan qatorlar bo'yicha o'zi kesadi.
+  await sheetsFetch(
+    cfg,
+    `${SHEETS_API}/${spreadsheetId}/values/${rangeParam(tabName, `A2:Z${rows.length + 1}`)}?${RAW}`,
+    { method: "PUT", body: JSON.stringify({ values: rows }) },
+  );
 }
 
 /**

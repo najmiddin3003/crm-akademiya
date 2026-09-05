@@ -1,6 +1,8 @@
 import { ensureIndexes } from "@/lib/mongodb";
+import { loadSyncConfig } from "@/lib/sync/config";
 import { flushPending } from "@/lib/sync/dispatch";
 import { reconcileAll } from "@/lib/sync/reconcile";
+import { writeSalarySummary } from "@/lib/sync/salarySheet";
 import { finishRun, startRun } from "@/lib/sync/runs";
 import type { FlushResult } from "@/lib/sync/dispatch";
 import type { ReconcileReport } from "@/lib/sync/types";
@@ -38,6 +40,20 @@ export async function runSyncCycle(
     const flushBudget = Math.min(Math.floor(budgetMs * 0.4), 20_000);
     const flush = await flushPending(db, { limit: 200, deadline: startedAt + flushBudget });
     const reports = await reconcileAll(db, startedAt + budgetMs);
+
+    // "Xodim oyliklari" — HISOBLANGAN oylik varag'i (lib/sync/salarySheet.ts).
+    //
+    // Solishtirishdan KEYIN: u yozuvlar jadvalini bazaga tenglaydi, oylik
+    // esa o'sha yozuvlardan hisoblanadi. Teskari tartibda varaq bir sikl
+    // eskirgan raqamni ko'rsatib turardi.
+    //
+    // Xatosi butun siklni yiqitmaydi — `writeSalarySummary` otmaydi,
+    // nosozlikni hisobotga qaytaradi. To'lovlar solishtiruvi oylik
+    // varag'idagi muammo tufayli to'xtab qolmasligi kerak.
+    const salarySheet = await writeSalarySummary(db, loadSyncConfig(), new Date());
+    if (salarySheet.errors.length > 0) {
+      console.error("[sync] oylik varag'i:", salarySheet.errors.join("; "));
+    }
 
     await finishRun(db, runId, {
       flushed: flush.succeeded,

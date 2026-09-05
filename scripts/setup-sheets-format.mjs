@@ -69,12 +69,25 @@ const api = async (method, url, body) => {
 const meta = await api("GET", `https://sheets.googleapis.com/v4/spreadsheets/${ID}?fields=properties(timeZone),sheets(properties(sheetId,title,gridProperties),basicFilter,conditionalFormats)`);
 const byTitle = new Map(meta.sheets.map((s) => [s.properties.title, s]));
 
+// "Xodim oyliklari" — HISOB varag'i (pastda alohida formatlanadi), jurnal
+// varag'i emas. Ikkalasi adashib ketmasin: lib/sync/config.ts dagi
+// SALARY_SUMMARY_TAB bilan bir xil nom.
+const SUMMARY_TAB = "Xodim oyliklari";
+const journalTab = (raw) => {
+  const v = (raw || "").trim();
+  return !v || v === SUMMARY_TAB ? "Xodim avanslari" : v;
+};
+
 // Har bir varaqning ustun tartibi lib/sync/mappers.ts dagi sarlavhalar
 // bilan bir xil. `status` va `summa` — 0 dan boshlangan ustun raqami.
 const TABS = [
   { title: process.env.SHEET_TAB_PAYMENTS || "To'lovlar", cols: 15, summa: 7, status: 13,
     widths: [60, 90, 60, 190, 170, 170, 150, 110, 110, 140, 170, 110, 200, 110, 130] },
-  { title: process.env.SHEET_TAB_SALARIES || "Xodim oyliklari", cols: 14, summa: 7, status: 12,
+  // Jurnal varag'i. Nomi lib/sync/config.ts dagi `journalTabName` bilan
+  // bir xil qoida bo'yicha tanlanadi: eski sozlamada "Xodim oyliklari"
+  // turgan bo'lsa e'tiborsiz qoldiriladi, aks holda jurnal formati HISOB
+  // varag'iga qo'llanib, ustunlar mos kelmay qolardi.
+  { title: journalTab(process.env.SHEET_TAB_SALARIES), cols: 14, summa: 7, status: 12,
     widths: [60, 90, 60, 190, 110, 110, 150, 110, 110, 140, 170, 200, 110, 130] },
   { title: process.env.SHEET_TAB_EXPENSES || "Xarajatlar", cols: 12, summa: 5, status: 10,
     widths: [60, 90, 60, 190, 150, 110, 110, 140, 170, 200, 110, 130] },
@@ -207,6 +220,73 @@ for (const t of TABS) {
   });
   requests.push(rule("Bekor qilindi", { red: 0.98, green: 0.89, blue: 0.89 }));
   requests.push(rule("Kutilmoqda", { red: 1, green: 0.96, blue: 0.85 }));
+}
+
+// 8) "Xodim oyliklari" — HISOB varag'i, yuqoridagi jurnal varaqlaridan
+//    tuzilishi bilan boshqacha, shuning uchun alohida blok:
+//      • B ustunida "Sana" yo'q — birinchi ustun xodim ismi;
+//      • "Yangilangan" MATN (lib/sync/salarySheet.ts uni "05.09.2026 18:56"
+//        deb yozadi, Sheets seriyasi emas) — sana formati zarar qilardi;
+//      • holat ustuni yo'q — bekor qilingan/kutilayotgan qator bo'lmaydi;
+//      • pul ustuni bitta emas, TO'RTTA (Hisoblangan..Qolgan).
+//    Nom lib/sync/config.ts dagi SALARY_SUMMARY_TAB bilan bir xil
+//    bo'lishi shart — u sozlanmaydi, shu bois bu yerda ham qattiq yozilgan.
+const SUMMARY = {
+  title: SUMMARY_TAB,
+  cols: 9,
+  money: [3, 4, 5, 6], // Hisoblangan, Soliq, Olingan, Qolgan
+  widths: [190, 120, 80, 130, 110, 120, 130, 160, 140],
+};
+const summarySheet = byTitle.get(SUMMARY.title);
+if (!summarySheet) {
+  plan.push(`⚠️  "${SUMMARY.title}" varag'i topilmadi — sinxronizatsiya bir marta ishlasin`);
+} else {
+  const sheetId = summarySheet.properties.sheetId;
+  plan.push(`${SUMMARY.title}: sarlavha bo'yaladi`);
+  requests.push({
+    repeatCell: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: SUMMARY.cols },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: { red: 0.17, green: 0.33, blue: 0.53 },
+          horizontalAlignment: "CENTER",
+          verticalAlignment: "MIDDLE",
+          textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 }, fontSize: 10 },
+        },
+      },
+      fields: "userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat)",
+    },
+  });
+
+  plan.push(`${SUMMARY.title}: pul ustunlariga ming ajratgich`);
+  for (const c of SUMMARY.money) {
+    requests.push({
+      repeatCell: {
+        range: { sheetId, startRowIndex: 1, startColumnIndex: c, endColumnIndex: c + 1 },
+        cell: { userEnteredFormat: { numberFormat: { type: "NUMBER", pattern: "#,##0" }, horizontalAlignment: "RIGHT" } },
+        fields: "userEnteredFormat(numberFormat,horizontalAlignment)",
+      },
+    });
+  }
+
+  plan.push(`${SUMMARY.title}: ustun kengliklari`);
+  SUMMARY.widths.forEach((px, i) => {
+    requests.push({
+      updateDimensionProperties: {
+        range: { sheetId, dimension: "COLUMNS", startIndex: i, endIndex: i + 1 },
+        properties: { pixelSize: px },
+        fields: "pixelSize",
+      },
+    });
+  });
+
+  if (summarySheet.basicFilter) requests.push({ clearBasicFilter: { sheetId } });
+  plan.push(`${SUMMARY.title}: filtr qo'yiladi`);
+  requests.push({
+    setBasicFilter: {
+      filter: { range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: SUMMARY.cols } },
+    },
+  });
 }
 
 console.log("Bajariladigan ishlar:\n" + plan.map((p) => "  • " + p).join("\n"));
