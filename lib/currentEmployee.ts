@@ -69,6 +69,38 @@ export async function getCurrentEmployee(): Promise<CurrentEmployee | null> {
   return { isAdmin: false, name: (emp?.name ?? "").trim() || null, employeeId: empId };
 }
 
+/**
+ * Joriy foydalanuvchining XODIM ISMI — MUALLIFLIK yozuvi uchun.
+ *
+ * `getCurrentEmployee()` dan farqi: u admin uchun `name: null` qaytaradi va
+ * bu ATAYLAB shunday — o'sha ism kassa EGALIGINI tekshirishga ishlatiladi,
+ * admin uchun esa tekshiruv umuman o'tkazilmaydi. Bu yerda ism boshqa
+ * maqsadda: yozuvni KIM yaratganini qayd etish. Admin qo'shgan lid ham
+ * "kim qo'shdi?" savoliga javobsiz qolmasligi kerak.
+ *
+ * `hr_employees.name` qaytariladi (`users.fullName` emas): lidlardagi
+ * "Moderator" filtri variantlarni /api/hr-employees dan quradi va aynan
+ * tenglik bo'yicha solishtiradi. Bazadagi admin hisobining `fullName` i
+ * "Admin", `hrEmployeeId: 1` esa "Abdulloh Raxmatullayev" ga olib boradi —
+ * `fullName` yozilsa filtr uni hech qachon topa olmasdi.
+ *
+ * Xodimga bog'lanmagan hisobda `users.fullName` ga tushadi, u ham bo'lmasa
+ * bo'sh satr (ya'ni hozirgi holatdan yomonlashmaydi).
+ */
+export async function currentAuthorName(): Promise<string> {
+  const me = await getCurrentUser();
+  if (!me) return "";
+  if (me.hrEmployeeId !== null) {
+    const db = await ensureIndexes();
+    const emp = await db
+      .collection("hr_employees")
+      .findOne({ id: me.hrEmployeeId }, { projection: { _id: 0, name: 1 } });
+    const name = String(emp?.name ?? "").trim();
+    if (name) return name;
+  }
+  return String(me.fullName ?? "").trim();
+}
+
 /** Shu kassa xodimga biriktirilganmi (admin uchun chaqirilmaydi). */
 export async function ownsCashbox(db: Db, name: string | null, cashboxId: number): Promise<boolean> {
   if (!name) return false;

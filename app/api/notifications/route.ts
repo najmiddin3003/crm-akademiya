@@ -4,6 +4,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { isPathAllowed } from "@/lib/permissions";
 import { nameEq } from "@/lib/currentEmployee";
+import { getBranchScope, withBranchOrUnassigned, type BranchScope } from "@/lib/branchScope";
 import { SOURCE_SCAN, SOURCE_SHOW, WINDOW_DAYS } from "@/constants/notifications";
 import { overdueUz, uzMoney, type NotifItem, type NotifKind, type NotifSource } from "@/lib/notifications";
 import { uzDateIso, uzParseStamp, uzStamp, uzWall } from "@/lib/uzTime";
@@ -82,7 +83,12 @@ export async function GET() {
   // Uchala manba bir-biriga bog'liq emas — parallel.
   const [payRows, orderRows, taskRows] = await Promise.all([
     canPay ? loadPayments(db, me, canPayAll, sinceMs, sinceIso, sources) : Promise.resolve(null),
-    canOrder ? loadOrders(db, sinceMs) : Promise.resolve(null),
+    // Filial qamrovi lidlar uchun kerak. `getBranchScope()` shu yerda,
+    // Promise.all ICHIDA chaqiriladi — shunda u to'lov va topshiriq
+    // so'rovlari bilan PARALLEL ketadi. Qo'ng'iroq har 60 soniyada
+    // so'raladi, ya'ni uni ketma-ket qo'yish har bir foydalanuvchiga
+    // muntazam qo'shimcha kutish bo'lardi.
+    canOrder ? getBranchScope().then((s) => loadOrders(db, sinceMs, s)) : Promise.resolve(null),
     canTask ? loadTasks(db, sinceMs, nowMs) : Promise.resolve(null),
   ]);
 
@@ -251,15 +257,25 @@ async function loadPayments(
 /**
  * Yangi buyurtmalar (lidlar).
  *
- * FILIAL BO'YICHA KESILMAYDI — ATAYIN. `orders` da `branchId` maydoni yo'q
- * (`buildOrderFromValues` uni yozmaydi) va `GET /api/orders` ham kesmaydi.
- * `withBranch` qo'yilsa 1-filial hammasini, qolganlari esa HECH QACHON
- * HECH NARSANI ko'rmasdi — holbuki /orders-list ularga o'sha lidlarni
- * ko'rsatib turibdi. Qo'ng'iroq o'zi ochadigan sahifa bilan bir xil
- * qamrovda bo'ladi; `orders` ga `branchId` qo'shilganda IKKALASI birga
- * o'zgaradi.
+ * FILIAL BO'YICHA KESILADI — sahifa bilan AYNAN bir xil qoida bo'yicha
+ * (`withBranchOrUnassigned`, GET /api/orders bilan bitta funksiya).
+ *
+ * Ilgari bu yerda kesish yo'q edi va izohda sabab yozilgan edi: "`orders`
+ * da `branchId` maydoni yo'q, GET /api/orders ham kesmaydi". O'sha izoh
+ * eskirdi — 8de8b4e dan beri ikkalasi ham bor. Natijada qo'ng'iroq boshqa
+ * filialning lidini ko'rsatib turardi, bosilganda esa ro'yxatda u lid
+ * yo'q edi. Izohda aytilganidek, ikkalasi BIRGA o'zgaradi.
  */
-async function loadOrders(db: Awaited<ReturnType<typeof ensureIndexes>>, sinceMs: number) {
+async function loadOrders(
+  db: Awaited<ReturnType<typeof ensureIndexes>>,
+  sinceMs: number,
+  scope: BranchScope | null,
+) {
+  // Qamrovsiz (sessiyasiz) holat bu yergacha yetib kelmaydi — chaqiruvchi
+  // allaqachon `getCurrentUser()` ni tekshirgan. Shunga qaramay `null`
+  // bo'lsa manba JIM YOPILADI: kesilmagan ro'yxat qaytarish bu yerda eng
+  // yomon tanlov bo'lardi.
+  if (!scope) return [];
   // `created` — "DD.MM.YYYY | HH:mm" satri, Mongo uni saralay olmaydi va
   // `createdAt` maydoni umuman yo'q. `_id` ning tamg'asi esa aniq lahza va
   // sukutdagi indeksda yotadi — na migratsiya, na yangi indeks kerak.
@@ -267,7 +283,7 @@ async function loadOrders(db: Awaited<ReturnType<typeof ensureIndexes>>, sinceMs
   return db
     .collection("orders")
     .find(
-      { _id: { $gte: minId } },
+      withBranchOrUnassigned({ _id: { $gte: minId } }, scope),
       { projection: { _id: 1, id: 1, name: 1, course: 1, phone: 1 } },
     )
     .sort({ _id: -1 })

@@ -190,6 +190,33 @@ export function withBranch<T extends Document>(filter: Filter<T>, scope: BranchS
 }
 
 /**
+ * `withBranch` ning YUMSHOQ varianti: joriy filial + filiali UMUMAN
+ * BELGILANMAGAN hujjatlar (`branchId` yo'q yoki `null`).
+ *
+ * NEGA KERAK (lidlar, 2026-09-05). `withBranch` maydonsiz hujjatlarni
+ * FAQAT 1-filialga qo'shadi. Lidlar uchun bu shunday chiqdi: filial
+ * bo'linishi 04.09 kuni ishga tushdi, Dilmurodning hisobi esa o'sha kuni
+ * 16:11 da 2-filialga ko'chirildi. Natijada undan oldin kiritilgan 42 ta
+ * lid (`branchId` maydoni yo'q) va 1-filialga yozilganlar bir zumda uning
+ * ro'yxatidan yo'qoldi — u o'zi kiritgan lidlarni ham ko'rmay qoldi.
+ *
+ * QAROR (markaz, 2026-09-05): bo'linishdan OLDINGI lidlar hamma filialga
+ * ko'rinadi — ular "qaysi filialdan qo'shilgani" YOZILMAGAN, ya'ni ularni
+ * 1-filialga muhrlash taxmin bo'lardi. Bo'linishdan KEYINGI lidlar esa
+ * qo'shilgan filialida qoladi.
+ *
+ * Faqat lidlar (`orders`) uchun. Kassa, moliya va boshqa qamrovlar
+ * `withBranch` da qoladi: u yerda maydonsiz hujjat yo'q va yumshatish
+ * pulga tegishli ma'lumotni ochib yuborardi.
+ */
+export function withBranchOrUnassigned<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
+  const cond = {
+    $or: [{ branchId: scope.branchId }, { branchId: { $exists: false } }, { branchId: null }],
+  };
+  return { $and: [filter, cond] } as Filter<T>;
+}
+
+/**
  * Yangi hujjatga yoziladigan filial.
  *
  * Doim aniq bitta filial — "barcha filiallar" rejimi olib tashlangan.

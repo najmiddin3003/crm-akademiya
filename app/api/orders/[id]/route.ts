@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withBranchOrUnassigned } from "@/lib/branchScope";
 import type { Order } from "@/lib/ordersData";
 
 // PATCH /api/orders/:id — qisman $set yangilanish (tasks/[id]/route.ts bilan
@@ -37,8 +37,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const db = await ensureIndexes();
   // Filtr qamrov bilan kesiladi: boshqa filialning lidini id'sini bilib
   // turib ham tahrirlab bo'lmaydi (o'quvchi profilidagi bilan bir xil qoida).
+  //
+  // Qamrov RO'YXAT bilan bir xil bo'lishi shart (`withBranchOrUnassigned`):
+  // aks holda filiali belgilanmagan eski lid ro'yxatda ko'rinib, ochilganda
+  // yoki holati o'zgartirilganda "Buyurtma topilmadi" berardi — ayniqsa
+  // "Birinchi darsga yozilganlar" sahifasida, u aynan shu lidlarni PATCH
+  // qiladi.
   const res = await db.collection("orders").findOneAndUpdate(
-    withBranch({ id: orderId }, scope),
+    withBranchOrUnassigned({ id: orderId }, scope),
     { $set: patch },
     { returnDocument: "after" },
   );

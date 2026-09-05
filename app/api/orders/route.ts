@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
+import { branchForInsert, getBranchScope, withBranchOrUnassigned } from "@/lib/branchScope";
+import { currentAuthorName } from "@/lib/currentEmployee";
 import { buildOrderFromValues, type NewOrderValues, type Order } from "@/lib/ordersData";
 
 // GET /api/orders — buyurtmalar ro'yxati, faqat bazadagi haqiqiy yozuvlar
@@ -12,16 +13,16 @@ import { buildOrderFromValues, type NewOrderValues, type Order } from "@/lib/ord
 // ko'rinadi. Ilgari ro'yxat kesilmasdi va filialni almashtirish lidlarga
 // umuman ta'sir qilmasdi.
 //
-// `withBranch` 1-filialda maydoni YO'Q hujjatlarni ham qo'shadi, shu bois
-// filial xususiyatidan oldin yaratilgan buyurtmalar ko'rinmay qolmaydi —
-// alohida migratsiya kerak emas.
+// `withBranch` EMAS, `withBranchOrUnassigned`: filiali BELGILANMAGAN eski
+// lidlar har bir filialda ko'rinadi. Nima yuz bergani va nega shunday
+// qaror qilingani — lib/branchScope.ts dagi o'sha funksiya izohida.
 export async function GET() {
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
   const db = await ensureIndexes();
   const col = db.collection("orders");
-  const rows = await col.find(withBranch({}, scope)).sort({ id: -1 }).toArray();
+  const rows = await col.find(withBranchOrUnassigned({}, scope)).sort({ id: -1 }).toArray();
   const orders: Order[] = rows.map(({ _id, ...rest }) => rest as Order);
   return NextResponse.json({ ok: true, orders });
 }
@@ -52,8 +53,23 @@ export async function POST(req: Request) {
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
+  // LIDNI KIM QO'SHGANI. Ilgari bu maydon HAR BIR lidda bo'sh edi
+  // (`buildOrderFromValues` uni faqat Kanbandagi to'liq sahifa formasidan
+  // olardi, yon oyna esa yubormaydi) — o'lchandi: bazadagi 59 ta lidning
+  // hammasida `moderator: ""`. Ya'ni "Dilmurod qo'shgan lidlar" degan
+  // savolga tizim javob bera olmasdi va /orders-list dagi "Moderator"
+  // filtri hech qachon hech narsani topmasdi.
+  //
+  // Forma qiymati USTUN turadi: Kanban oqimida moderator ataylab
+  // tanlanadi (lid boshqa xodimga biriktirilishi mumkin), bu yerdagi ism
+  // esa faqat u tanlanmaganda qo'yiladigan sukut.
+  const author = body.moderator?.trim() ? body.moderator.trim() : await currentAuthorName();
+
   // Lid QAYSI filialda qo'shilgani — navbardagi tanlovdan.
-  const order = { ...buildOrderFromValues(nextId, body), branchId: branchForInsert(scope) };
+  const order = {
+    ...buildOrderFromValues(nextId, { ...body, moderator: author }),
+    branchId: branchForInsert(scope),
+  };
   // insertOne mutates its argument to add _id — insert a copy so the
   // returned `order` (and whatever the client stores from it) stays clean.
   await col.insertOne({ ...order });

@@ -323,8 +323,12 @@ export interface NewOrderValues {
   firstLessonDate: string;
   firstLessonTime: string;
   note: string;
-  /** Only set by the Kanban "Qo'shish" full-page flow (components/orders/AddOrderPage.tsx) — the
-   * side-drawer flow (AddOrderModal.tsx) leaves these unset and gets the defaults below. */
+  /**
+   * Kanbandagi to'liq sahifa formasi (components/orders/AddOrderPage.tsx) buni
+   * ATAYLAB tanlaydi — lid boshqa xodimga biriktirilishi mumkin. Yon oyna
+   * (AddOrderModal.tsx) esa yubormaydi va o'shanda POST /api/orders lidni
+   * QO'SHGAN xodim ismini o'zi qo'yadi (`stage` esa quyidagi sukutda qoladi).
+   */
   moderator?: string;
   stage?: OrderStageKey;
 }
