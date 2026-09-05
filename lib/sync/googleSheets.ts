@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { describePrivateKey } from "@/lib/sync/config";
 import type { SyncConfig } from "@/lib/sync/config";
 
 // Google Sheets API v4 bilan ishlash — `googleapis` paketisiz.
@@ -58,7 +59,14 @@ export async function getAccessToken(cfg: SyncConfig): Promise<string> {
     // Eng ko'p uchraydigan sabab — .env dagi kalitda \n lar haqiqiy yangi
     // qatorga aylantirilmagan. config.ts buni tuzatadi, lekin kalit
     // butunlay noto'g'ri nusxalangan bo'lsa shu yerga tushadi.
-    throw new Error("GOOGLE_PRIVATE_KEY noto'g'ri — JSON fayldagi private_key to'liq nusxalanganini tekshiring");
+    //
+    // Kalitning SHAKLI xabarga qo'shiladi — usiz "noto'g'ri" degan so'z
+    // o'nlab sababga to'g'ri kelardi va Vercel'dagi qiymatni tashqaridan
+    // ko'rib bo'lmaydi. Maxfiy qism chiqmaydi (describePrivateKey izohi).
+    throw new Error(
+      `GOOGLE_PRIVATE_KEY noto'g'ri — JSON fayldagi private_key to'liq nusxalanganini tekshiring ` +
+      `[${describePrivateKey(cfg.google.privateKey)}]`,
+    );
   }
 
   const res = await fetch(TOKEN_URL, {

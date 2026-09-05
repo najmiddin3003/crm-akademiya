@@ -54,6 +54,41 @@ function normalizePrivateKey(raw: string): string {
   return key.replace(/\\n/g, "\n");
 }
 
+/**
+ * Kalitning SHAKLI haqida qisqacha ma'lumot — imzolash yiqilganda
+ * xabarga qo'shiladi.
+ *
+ * NEGA KERAK: xato "GOOGLE_PRIVATE_KEY noto'g'ri" deb turardi va bu
+ * o'nlab sababga to'g'ri kelardi — kalit qisqa nusxalanganmi, `\n` lar
+ * qatorga aylanmaganmi, umuman boshqa qiymat qo'yilganmi. Vercel'dagi
+ * qiymatni tashqaridan ko'rib bo'lmaydi, ya'ni topishning yagona yo'li
+ * taxmin qilib ko'rish edi. Endi xabarning o'zi aytadi.
+ *
+ * MAXFIY QISM CHIQMAYDI: faqat uzunlik, chegara satrlari bor-yo'qligi va
+ * qator sonlari — kalitning birorta belgisi qaytarilmaydi.
+ */
+export function describePrivateKey(key: string): string {
+  if (!key) return "bo'sh";
+  const trimmed = key.trim();
+  const parts = [
+    `uzunlik ${trimmed.length}`,
+    trimmed.startsWith("-----BEGIN") ? "BEGIN bor" : "BEGIN YO'Q",
+    trimmed.endsWith("-----") ? "END bor" : "END YO'Q",
+    `qatorlar ${trimmed.split("\n").length}`,
+  ];
+  // TESKARI CHIZIQ tekshiruvi, "\n" qidirish EMAS.
+  //
+  // To'g'ri PEM kalitida teskari chiziq UMUMAN bo'lmaydi. Qiymat ikki
+  // marta ekranlangan bo'lsa (Vercel oynasiga nusxalashda eng ko'p
+  // uchraydigan xato), `normalizePrivateKey` ikkinchi chiziq bilan "n" ni
+  // yangi qatorga aylantiradi va BIRINCHI chiziq osilib qoladi — ya'ni
+  // "\n" ni qidirish uni topmasdi, teskari chiziqni qidirish esa topadi.
+  if (trimmed.includes("\\")) parts.push("ORTIQCHA TESKARI CHIZIQ — qiymat ikki marta ekranlangan");
+  // Odatdagi 2048-bitli service account kaliti ~1700 belgi.
+  if (trimmed.length < 1000) parts.push("JUDA QISQA — to'liq nusxalanmagan");
+  return parts.join(", ");
+}
+
 export function loadSyncConfig(): SyncConfig {
   const env = process.env;
   return {
