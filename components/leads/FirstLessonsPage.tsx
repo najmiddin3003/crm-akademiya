@@ -1074,7 +1074,11 @@ function printReceipt(order: Order) {
   const rows = receiptRows(order);
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Birinchi dars #${order.id}</title><style>
     @page{size:58mm auto;margin:3mm}
-    html,body{margin:0;padding:0}
+    /* Bosma DOIM oq fonda — sayt tungi rejimda bo'lsa ham. Sabab
+       CashboxesPage.tsx dagi bilan bir xil: color-scheme:light
+       brauzer/OS ning "majburiy tungi rejim"ini shu hujjatga qo'llashini
+       to'xtatadi, aks holda qora siyoh qora fonda bosilardi. */
+    html,body{margin:0;padding:0;background:#fff;color-scheme:light}
     body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;display:flex;justify-content:center}
     .wrap{width:52mm}
     .brand{text-align:center;font-size:12px;font-weight:700;letter-spacing:.15em}
@@ -1087,12 +1091,12 @@ function printReceipt(order: Order) {
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
     <div class="wrap">
-      <div class="brand">TIZIMLI</div>
+      <div class="brand">Akademiya CRM</div>
       <div class="title">BIRINCHI DARSGA YOZILISH</div>
       <div class="divider"></div>
       ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
       <div class="divider"></div>
-      <div class="thanks">Xizmatingizdamiz. Rahmat!</div>
+      <div class="thanks">Akademiya - ilm maskani!</div>
     </div>
   </body></html>`;
 
@@ -1121,7 +1125,7 @@ function PrintPreviewModal({ order, onClose }: { order: Order; onClose: () => vo
   return (
     <ModalShell title="Chek — ko'rib chiqish" onClose={onClose}>
       <div className="rounded-xl border border-border bg-background p-4">
-        <div className="text-center text-[13px] font-bold tracking-[0.15em]">TIZIMLI</div>
+        <div className="text-center text-[13px] font-bold tracking-[0.15em]">Akademiya CRM</div>
         <div className="mt-1 text-center text-sm font-bold">BIRINCHI DARSGA YOZILISH</div>
         <div className="my-3 border-t border-dashed border-border" />
         <div className="max-h-72 overflow-y-auto">
@@ -1133,7 +1137,7 @@ function PrintPreviewModal({ order, onClose }: { order: Order; onClose: () => vo
           ))}
         </div>
         <div className="my-3 border-t border-dashed border-border" />
-        <div className="text-center text-xs italic text-muted-foreground">Xizmatingizdamiz. Rahmat!</div>
+        <div className="text-center text-xs italic text-muted-foreground">Akademiya - ilm maskani!</div>
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">

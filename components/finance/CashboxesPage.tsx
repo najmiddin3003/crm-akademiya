@@ -167,8 +167,21 @@ function escHtml(s: string): string {
 // Chek chiqarish — yashirin iframe ichida bosma sahifa yasab, brauzerning
 // bosma oynasini ochadi. Alohida chek route'i kerak emas va sahifadagi
 // holat (drawer, filtrlar) buzilmaydi.
-// Yozuv o'qituvchi oyligiga QO'SHILADIMI yoki undan AYRILADIMI — chek va
-// jadvalda shu farq ko'rinib turishi kerak.
+
+/**
+ * Chekdagi sarlavha va pastki satr — BOSMA va KO'RIB CHIQISH oynasi uchun
+ * bitta manba. Ular ikki joyda yozilgan edi va shu bois vaqt o'tib
+ * bir-biridan uzoqlashishi hech gap emasdi.
+ */
+const RECEIPT_BRAND = "Akademiya CRM";
+const RECEIPT_FOOTER = "Akademiya - ilm maskani!";
+
+// Yozuv o'qituvchi oyligiga QO'SHILADIMI yoki undan AYRILADIMI — JADVALDA
+// shu farq ko'rinib turishi kerak (ustun ostidagi izoh sifatida).
+//
+// CHEKDA esa qisqa "Ustoz" yoziladi: yo'nalish chekning o'z sarlavhasidan
+// ("KIRIM CHEKI" / "CHIQIM CHEKI") allaqachon ma'lum, va 52 mm enli termal
+// qog'ozda uzun yorliq qiymatni ikkinchi qatorga tashlab yuborardi.
 function salaryTargetLabel(e: TransactionEntry): string {
   return e.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi";
 }
@@ -181,18 +194,26 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
   const rows: [string, string][] = [
     ["Chek №", String(e.id)],
     ["Sana", fmtEntryDate(e)],
-    ["Kim", e.studentName || e.moderator || "—"],
+    ["O'quvchi", e.studentName || e.moderator || "—"],
     ["Kassa", cashboxName || "—"],
     ["Tranzaksiya", e.txName || "—"],
     ["To'lov turi", e.paymentType],
   ];
   // Yozuv qaysi o'qituvchining oyligiga tegishli ekani.
-  if (e.teacherName) rows.push([salaryTargetLabel(e), e.teacherName]);
+  if (e.teacherName) rows.push(["Ustoz", e.teacherName]);
   if (e.note) rows.push(["Izoh", e.note]);
 
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
     @page{size:58mm auto;margin:3mm}
-    html,body{margin:0;padding:0}
+    /* BOSMA HAR DOIM OQ FONDA — sayt tungi rejimda bo'lsa ham.
+       Bu hujjat alohida iframe'da yasaladi, ya'ni ilovaning "dark"
+       klassi bu yerga o'tmaydi. Baribir aniq yozib qo'yiladi: brauzer
+       yoki OS "majburiy tungi rejim" da bo'lsa, fon o'zi qoraytirilib,
+       qora siyoh qora fonda bosilardi. color-scheme:light aynan shu
+       avtomatik qoraytirishni o'chiradi.
+       DIQQAT: bu izoh template literal ICHIDA — teskari apostrof
+       ishlatilmaydi, u satrni uzib yuboradi. */
+    html,body{margin:0;padding:0;background:#fff;color-scheme:light}
     /* HAMMA MATN QORA. Termal printer faqat qora yoki oq bosadi —
        kulrangni nuqtalar bilan taqlid qiladi va natija yuvilgandek,
        hira chiqadi. Ilgari yorliqlar (#64748b), kassa nomi, "JAMI"
@@ -216,15 +237,15 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
     <div class="wrap">
-      <div class="brand">TIZIMLI</div>
+      <div class="brand">${escHtml(RECEIPT_BRAND)}</div>
       <div class="sub">${escHtml(cashboxName)}</div>
       <div class="title">${title}</div>
       <div class="divider"></div>
       ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
       <div class="divider"></div>
-      <div class="total"><span class="lbl">JAMI</span><span class="val">${fmtSom(Math.abs(e.amount))}</span></div>
+      <div class="total"><span class="lbl">Jami</span><span class="val">${fmtSom(Math.abs(e.amount))}</span></div>
       <div class="divider"></div>
-      <div class="thanks">Xizmatingizdamiz. Rahmat!</div>
+      <div class="thanks">${escHtml(RECEIPT_FOOTER)}</div>
     </div>
   </body></html>`;
 
@@ -269,62 +290,83 @@ function ReceiptPreviewModal({
         : "KO'CHIRISH CHEKI";
   const rows: [string, string][] = [
     ["Sana", fmtEntryDate(entry)],
-    ["Kim", entry.studentName || entry.moderator || "—"],
+    ["O'quvchi", entry.studentName || entry.moderator || "—"],
     ["Kassa", cashboxName || "—"],
     ["Tranzaksiya", entry.txName || "—"],
     ["To'lov turi", entry.paymentType],
   ];
-  if (entry.teacherName) rows.push([salaryTargetLabel(entry), entry.teacherName]);
+  if (entry.teacherName) rows.push(["Ustoz", entry.teacherName]);
   if (entry.note) rows.push(["Izoh", entry.note]);
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-xs bg-white border border-border rounded-2xl shadow-2xl overflow-hidden">
+      {/* CHEK QOG'OZI DOIM OQ — MAVZUGA ERGASHMAYDI.
+          NIMA NOTO'G'RI EDI: karta `bg-white` bilan qattiq oq edi, matn
+          esa mavzu tokenlaridan kelardi. Tungi rejimda o'lchandi: fon
+          rgb(255,255,255), matn rgb(250,250,250) — ya'ni oq qog'ozda oq
+          siyoh, qiymatlarni umuman o'qib bo'lmasdi; yorliqlar esa
+          rgb(155,162,176) bo'lib yuvilib ketardi.
+          Bu oyna — bosiladigan QOG'OZNING ko'rinishi, ekran elementi emas.
+          Qog'oz oq, siyoh qora; shu bois ranglar shu yerda aniq yozilgan
+          va `printReceipt` dagi bosma uslubi bilan bir xil. */}
+      <div
+        className="relative w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }}
+      >
         <div className="px-6 pt-6 pb-4">
           <div className="text-center text-[13px] font-bold tracking-[0.15em]">
-            TIZIMLI
+            {RECEIPT_BRAND}
           </div>
-          <div className="text-center text-[12px] text-muted-foreground mt-0.5">
+          <div className="text-center text-[12px] mt-0.5" style={{ color: "#64748b" }}>
             {cashboxName}
           </div>
           <div className="text-center text-[15px] font-bold mt-3 tracking-wide">
             {title}
           </div>
-          <div className="my-3 border-t border-dashed border-border" />
+          <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
           <div className="space-y-1.5 text-[13px]">
             <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">Chek №</span>
+              <span style={{ color: "#64748b" }}>Chek №</span>
               <span className="font-medium tabular-nums">{entry.id}</span>
             </div>
             {rows.map(([k, v]) => (
               <div key={k} className="flex justify-between gap-3">
-                <span className="text-muted-foreground">{k}</span>
+                <span style={{ color: "#64748b" }}>{k}</span>
                 <span className="text-right font-medium break-words">{v}</span>
               </div>
             ))}
           </div>
-          <div className="my-3 border-t border-dashed border-border" />
+          <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
           <div className="flex justify-between items-baseline">
-            <span className="text-[13px] italic text-muted-foreground">
-              JAMI
+            <span className="text-[13px] italic" style={{ color: "#64748b" }}>
+              Jami
             </span>
             <span className="text-[18px] font-bold tabular-nums">
               {fmtSom(Math.abs(entry.amount))}
             </span>
           </div>
-          <div className="my-3 border-t border-dashed border-border" />
-          <div className="text-center text-[12px] italic text-muted-foreground">
-            Xizmatingizdamiz. Rahmat!
+          <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
+          <div className="text-center text-[12px] italic" style={{ color: "#64748b" }}>
+            {RECEIPT_FOOTER}
           </div>
         </div>
-        <div className="flex gap-2 px-4 py-3 border-t border-border bg-secondary/30">
+        {/* Tugmalar qatori ham oq qog'ozga MOS qilib qoldirildi: mavzu
+            tokenlarida qolsa, tungi rejimda oq chekning ostiga qop-qora
+            tasma yopishib turardi. */}
+        <div
+          className="flex gap-2 px-4 py-3"
+          style={{ borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}
+        >
           <button
             onClick={onClose}
-            className="h-9 flex-1 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
+            className="h-9 flex-1 rounded-lg text-sm font-medium"
+            style={{ border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a" }}
           >
             Yopish
           </button>
+          {/* "Chop etish" — brend rangida qolaveradi: u ikkala mavzuda
+              ham oq matn bilan yetarli kontrast beradi. */}
           <button
             onClick={onPrint}
             className="h-9 flex-1 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 inline-flex items-center justify-center gap-1.5"
