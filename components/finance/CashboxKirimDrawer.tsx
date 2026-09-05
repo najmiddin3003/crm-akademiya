@@ -281,6 +281,15 @@ export default function CashboxKirimDrawer({
           // yuborilmasin.
           teacherName: isThird ? "" : teacherName,
           studentName: isThird ? "" : studentName,
+          // FAQAT SMS uchun: to'lov haqidagi xabar aynan shu o'quvchining
+          // telefoniga ketsin. Jurnal yozuvi bugungidek ISM bilan
+          // ishlaydi — bu maydon unga tegmaydi.
+          //
+          // Ism bo'yicha qidirish YARAMAYDI: bazada 511 ta ism
+          // takrorlanadi va ularning 501 tasida telefon HAR XIL, ya'ni
+          // har to'rtinchi to'lovda xabar begona odamga ketishi mumkin
+          // edi (ichida to'lov summasi bor).
+          studentId: isThird ? undefined : selectedStudent?.id,
           // Uchinchi shaxsda oy QATORLARDA — bitta umumiy `periodMonth`
           // ma'nosiz bo'lardi, ustiga u orqaga sanalgan oylik hisobini
           // (payrollSources → carryOver) bekorga uyg'otishi mumkin edi.

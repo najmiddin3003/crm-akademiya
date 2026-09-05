@@ -6,6 +6,7 @@ import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLo
 import { flushSoon } from "@/lib/sync/dispatch";
 import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
 import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
+import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 
 // POST /api/cashboxes/:id/adjust — kassaning bitta to'lov turiga Kirim
 // qo'shadi yoki undan Chiqim oladi. Ko'chirishdan farqi — bu safar umumiy
@@ -24,6 +25,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     mode?: string; method?: string; amount?: number;
     category?: string; teacherName?: string; studentName?: string; date?: string; note?: string;
     periodMonth?: string;
+    /**
+     * Tanlangan o'quvchining ID si — faqat SMS uchun (Kirim oynasi
+     * yuboradi). Jurnal yozuvi bugungidek ISM bilan ishlaydi, bu maydon
+     * unga tegmaydi.
+     *
+     * NEGA ID KERAK: telefonni ism bo'yicha topib bo'lmaydi — bazada
+     * 511 ta ism takrorlanadi va ularning 501 tasida telefon har xil
+     * (lib/paymentSms.ts izohiga qarang).
+     */
+    studentId?: number;
   };
   try {
     body = await req.json();
@@ -31,7 +42,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
 
-  const { mode, method, amount, category, teacherName, studentName, date, note, periodMonth } = body;
+  const { mode, method, amount, category, teacherName, studentName, date, note, periodMonth, studentId } = body;
   if (mode !== "kirim" && mode !== "chiqim") {
     return NextResponse.json({ ok: false, error: "Noto'g'ri amal turi" }, { status: 400 });
   }
@@ -224,6 +235,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Bu yerda xato bo'lsa ham to'lov allaqachon bazada: navbat uni
   // keyingi imkoniyatda yoki kunlik tekshiruvda yuboradi.
   after(() => flushSoon(db));
+
+  // TO'LOV SMS I — o'quvchiga "to'lovingiz qabul qilindi" xabari.
+  //
+  // Shartlar: faqat KIRIM, faqat o'quvchi tanlangan bo'lsa (Kitob sotuvi
+  // kabi "Uchinchi shaxs" turlarida o'quvchi yo'q) va faqat sozlama
+  // yoqilgan bo'lsa.
+  //
+  // `after` ichida — SMS to'lovni BLOKLAMAYDI. Eskiz sekin javob bersa
+  // yoki umuman yiqilsa ham pul allaqachon kassaga yozilgan va kassir
+  // javobni olgan bo'ladi. `sendPaymentSms` o'zi ham hech qachon
+  // otmaydi, natijani `sms_messages` jurnaliga yozadi.
+  if (mode === "kirim" && (studentName || "").trim() && paymentSmsEnabled()) {
+    after(() =>
+      sendPaymentSms(db, {
+        pupilId: Number.isFinite(Number(studentId)) ? Number(studentId) : null,
+        pupilName: (studentName || "").trim(),
+        amount,
+        moderator: current.moderator || "",
+      }),
+    );
+  }
 
   const { _id, ...cashbox } = res;
   return NextResponse.json({ ok: true, cashbox: normalizeCashbox(cashbox, methods.map((m) => m.key)) });
