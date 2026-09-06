@@ -29,13 +29,14 @@ export const SHARED_API: readonly string[] = [
   "/api/auth/logout",
   "/api/auth/unlock",
   "/api/branch",
-  "/api/hr-employees",
+  "/api/hr-employees/ref",
   "/api/notifications",
   "/api/people/directory",
   "/api/profile",
   "/api/pupils",
   "/api/search/students",
   "/api/sessions",
+  "/api/sidebar-counts",
 ];
 
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */
@@ -79,6 +80,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/groups/[id]/students": ["/first-lessons", "/groups", "/new-students", "/orders-list", "/seasonal-assessment", "/students-list"],
   "/api/groups/[id]/tasks": ["/groups"],
   "/api/groups/import": ["/groups"],
+  "/api/hr-employees": ["/blok-testlar", "/management-xodimlar", "/orders-list", "/tasks"],
   "/api/hr-employees/[id]": ["/management-rollar", "/management-xodimlar"],
   "/api/hr-employees/[id]/notes": ["/management-xodimlar"],
   "/api/hr-employees/[id]/password": ["/management-xodimlar"],
@@ -121,7 +123,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/rooms": ["/groups", "/groups-rooms", "/groups-schedule", "/reports-rooms"],
   "/api/rooms/[id]": ["/groups-rooms"],
   "/api/salary-runs": ["/finance-payroll"],
-  "/api/salary-runs/[id]": ["/finance-cash", "/finance-payroll", "/management-xodimlar"],
+  "/api/salary-runs/[id]": ["/finance-payroll"],
   "/api/salary-runs/employees-payroll": ["/finance-cash", "/finance-payroll", "/management-xodimlar"],
   "/api/sales-plans": ["/sales-plan"],
   "/api/seasonal-assessments": ["/seasonal-assessment"],

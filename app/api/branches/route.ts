@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { ManagementBranch } from "@/lib/managementBranches";
+import { getCurrentUser } from "@/lib/auth";
 
 // Boshqaruv → Filiallar backend'i (MongoDB `branches`). Demo seed YO'Q —
 // filiallarni foydalanuvchi o'zi qo'shadi.
@@ -12,7 +13,30 @@ export async function GET() {
   return NextResponse.json({ ok: true, branches });
 }
 
+// FILIAL YARATISH — FAQAT ADMIN.
+//
+// NIMA UCHUN HANDLER ICHIDA: ruxsat jadvali PATHNAME bo'yicha ishlaydi va
+// `/api/branches` ni 14 ta sahifaga ochib qo'ygan (`/orders-list`,
+// `/offline-courses`, sozlamalar…). Bu GET uchun to'g'ri — filial
+// ro'yxati deyarli hamma joyda kerak. Lekin POST o'sha pathname'da va u
+// YANGI FILIAL YARATADI: moderator so'rovni qo'lda yuborib tizimga filial
+// qo'shib qo'yishi mumkin edi, interfeysda tugma yashirilgan bo'lsa ham.
+//
+// Naqsh app/api/hr-employees/[id]/password/route.ts dan olingan — u yerda
+// ham bitta pathname ichida sezgirligi har xil ikkita metod bor.
+async function requireAdmin() {
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ ok: false, error: "Avtorizatsiya kerak" }, { status: 401 });
+  if (me.role !== "admin") {
+    return NextResponse.json({ ok: false, error: "Filial qo'shish faqat administrator uchun" }, { status: 403 });
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   let body: Partial<ManagementBranch>;
   try {
     body = await req.json();

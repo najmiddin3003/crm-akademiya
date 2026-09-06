@@ -87,7 +87,7 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
   // `loading` — ro'yxat hali /api/branch dan kelayotgan payt. Usiz tanlov
   // bo'sh turardi va bu "filial yo'q" degan taassurot berardi (bu CRM'dagi
   // eng ko'p ko'riladigan tanlov, har sahifada ko'rinadi).
-  const { branchId, branches: allowedBranches, select, loading: branchLoading } = useBranch();
+  const { branchId, branches: allowedBranches, isAdmin, select, loading: branchLoading } = useBranch();
   // Ro'yxat qamrovga qarab keladi: xodim faqat o'ziga biriktirilganlarini
   // ko'radi. `useBranches()` (Boshqaruv → Filiallar) esa HAMMASINI beradi
   // va shu bois bu yerda ishlatilmaydi.
@@ -294,7 +294,16 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
             {allowedBranches.map((b) => (
               <option key={b.id} value={String(b.id)}>{b.name}</option>
             ))}
-            <option>{FILIAL_ADD_OPTION}</option>
+            {/* "Filial biriktirish ++++" — FAQAT ADMINGA.
+                Ro'yxatning o'zi allaqachon xodimga biriktirilgan
+                filiallardan iborat (lib/branchScope.ts → scope.allowed),
+                ya'ni moderator o'z ish joyini ko'radi. Lekin bu qator
+                undan PASTDA hammaga chiqib turardi va u yangi filial
+                yaratadigan oynani ochadi — moderatorning ishi emas.
+                Bosilganda serverdagi qorovul baribir to'xtatardi, ammo
+                mavjud bo'lmagan imkoniyatni ko'rsatib turishning o'zi
+                chalg'itadi. */}
+            {isAdmin && <option>{FILIAL_ADD_OPTION}</option>}
           </select>
           <svg className="icon icon-xs pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--shell-blue)" }}><use href="#i-chevron-down" /></svg>
         </div>

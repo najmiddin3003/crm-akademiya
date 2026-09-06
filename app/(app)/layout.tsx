@@ -22,11 +22,19 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     redirect("/api/auth/force-logout");
   }
 
-  // Pathname'ni proxy.ts qo'yadi. Sarlavha bo'lmasa (masalan proxy matcher'i
-  // tegmagan so'rov) tekshirib bo'lmaydi — bunday holatda sahifa ochiq
-  // qoladi, aks holda butun ilova qulflanib qolardi.
+  // IKKINCHI QATLAM. Birlamchi majburlash `proxy.ts` da — u klient
+  // navigatsiyasini ham ko'radi, bu layout esa KO'RMAYDI (Next.js
+  // "Partial Rendering": umumiy layout o'tishlarda qayta ishga
+  // tushmaydi). Bu yerdagi tekshiruv KESHSIZ, ya'ni rol o'zgarishi
+  // proxy'ning 10 soniyalik keshini kutmasdan kuchga kiradi.
+  //
+  // FAIL-CLOSED: sarlavha yetib kelmasa tekshirib bo'lmaydi degani va
+  // sahifa OCHIQ QOLDIRILMAYDI. Ilgari bu yerda `if (pathname && …)`
+  // turardi — sarlavha yo'qolgan har qanday holatda qo'riqchi jimgina
+  // o'tkazib yuborilardi. Proxy matcher'i barcha sahifalarni qamraydi,
+  // ya'ni normal ishda sarlavha DOIM bo'ladi.
   const pathname = (await headers()).get(PATHNAME_HEADER);
-  if (pathname && !isPathAllowed(pathname, user.permissions)) {
+  if (!pathname || !isPathAllowed(pathname, user.permissions)) {
     redirect(firstAllowedPath(user.permissions));
   }
 

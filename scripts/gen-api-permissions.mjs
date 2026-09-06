@@ -46,6 +46,11 @@ const PUBLIC_METHODS = {
 
 /** Faqat sessiya yetarli — har doim ochiq sahifalar ishlatadiganlar. */
 const SHARED_EXTRA = [
+  // Yon paneldagi sonlar — qo'ng'iroq va filial tanlagichi bilan bir xil
+  // sabab: HAR BIR sahifada chaqiriladi. Bo'lim ruxsatiga bog'lansa, o'sha
+  // ruxsati yo'q xodimda BUTUN sanoq 403 bo'lardi. Ruxsat route ichida,
+  // har bir sanoq uchun ALOHIDA kesiladi (app/api/sidebar-counts).
+  "/api/sidebar-counts",
   "/api/auth/unlock",
   "/api/auth/change-password", // Sozlamalar → Xavfsizlik
   "/api/profile",             // Sozlamalar → Profil
@@ -170,10 +175,22 @@ for (const f of ["components/shared/AppShell.tsx", "app/(app)/layout.tsx"]) {
 // segmentga mos keladi. Aks holda `/api/hr-employees/${id}` havolasi
 // `/api/hr-employees/import` route'iga ham "mos" kelib, ommaviy import
 // endpointini kerak bo'lmagan sahifaga ochib qo'yardi.
+// Aynan shu yo'lda STATIK route bor bo'lsa — havola faqat o'shanga
+// bog'lanadi, dinamik qo'shnisiga emas.
+//
+// NIMA NOTO'G'RI EDI: `/api/hr-employees/ref` havolasi dinamik
+// `/api/hr-employees/[id]` route'iga ham "mos" kelardi (dinamik segment
+// har qanday matnni yutadi). `ref` esa qobiqdagi ALWAYS_ALLOWED
+// sahifadan chaqiriladi, ya'ni XODIM PROFILI (`[id]`) jimgina
+// "sessiya yetarli" darajasiga tushib qolardi — GET, PATCH va DELETE
+// bilan birga. Buni faqat `git diff` da sezish mumkin edi.
+const STATIC_ROUTES = new Set(apiRoutes.filter((r) => !r.includes("[")));
+
 function matches(route, ref) {
   const rp = route.split("/").filter(Boolean);
   const fp = ref.split("/").filter(Boolean);
   if (rp.length !== fp.length) return false;
+  if (route.includes("[") && STATIC_ROUTES.has("/" + fp.join("/"))) return false;
   for (let i = 0; i < rp.length; i++) {
     if (fp[i] === "*") {
       if (!rp[i].startsWith("[")) return false;
