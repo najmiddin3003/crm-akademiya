@@ -129,9 +129,30 @@ export function withEmployeeBranch<T extends Document>(filter: Filter<T>, scope:
   return { $and: [filter, employeeBranchCondition(scope)] } as Filter<T>;
 }
 
-/** Admin hammasini ko'radi; qolganlar faqat o'z filialini. */
+/**
+ * Xodim ro'yxati uchun filial sharti — ADMIN UCHUN HAM.
+ *
+ * NIMA NOTO'G'RI EDI: bu yerda `scope.isAdmin ? filter : …` istisnosi
+ * turardi va u ikkita zarar keltirdi.
+ *
+ * 1) LOYIHANING O'Z QARORIGA ZID. lib/branchScope.ts da ochiq yozilgan:
+ *    «"Barcha filiallar" rejimi YO'Q — hamma, admin ham, aniq bitta
+ *    filialda turadi». Admin filialni ALMASHTIRA oladi (`scope.allowed`
+ *    unda hamma filial), lekin bir vaqtda bittasida turadi.
+ *
+ * 2) EKRANNI BUZDI. Xodimlar ro'yxati admin uchun kesilmasdi (54 qator),
+ *    oylik ro'yxati esa `payrollBranchId` bo'yicha kesilardi (2-filialda
+ *    1 qator). Ro'yxatdagi "Ish turi" ustuni oylik qatorini xodim id'si
+ *    bo'yicha qidiradi va topolmagach HAMMASINI "Sozlanmagan" deb
+ *    ko'rsatardi — go'yo 53 xodimning oyligi yo'qolgandek.
+ *
+ * QOIDA: xodim ro'yxati va oylik ro'yxati BIR XIL filialda turishi shart.
+ * Ular har xil maydon bo'yicha kesiladi (`branchIds` va
+ * `payrollBranchId`) — bu ataylab — lekin ikkalasi ham JORIY filialga
+ * nisbatan, istisnosiz.
+ */
 export function scopedEmployeeFilter<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
-  return scope.isAdmin ? filter : withEmployeeBranch(filter, scope);
+  return withEmployeeBranch(filter, scope);
 }
 
 /**
