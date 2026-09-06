@@ -10,7 +10,8 @@ import type { ManagementBranch } from "@/lib/managementBranches";
 // Boshqaruv → Filiallar (sidebar: Boshqaruv > Filiallar, href
 // /management-filiallar). Ma'lumot HAQIQIY — /api/branches (MongoDB
 // `branches`). Referensdagidek jadval emas, oddiy ro'yxat: chapda filial
-// nomi, o'ngda manzil. Amal tugmalari qator ustiga kelganda ko'rinadi.
+// nomi, o'ngda manzil. Amal tugmalari DOIM ko'rinadi (boshqa ro'yxatlar
+// bilan bir xil) — ilgari ular faqat hover'da chiqardi.
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -122,10 +123,16 @@ export default function BranchesPage() {
 
       <div className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
         {branches.map((b) => (
-          <div key={b.id} className="group flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/30 transition-colors">
+          <div key={b.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/30 transition-colors">
             <span className="font-medium">{b.name}</span>
             <span className="ml-auto text-[13px] text-muted-foreground">{b.location}</span>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Amal tugmalari DOIM ko'rinadi. Ilgari ular
+                `opacity-0 group-hover:opacity-100` bilan yashiringan edi —
+                sichqonchasiz (sensorli ekran, klaviatura) ularni topib
+                bo'lmasdi va sahifada tahrirlash imkoni umuman yo'qdek
+                ko'rinardi. Loyihadagi boshqa ro'yxatlar ham tugmalarni
+                doim ko'rsatadi (EmployeesListPage, RoomsListPage). */}
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => openEdit(b)}
                 className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
