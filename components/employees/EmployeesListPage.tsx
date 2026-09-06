@@ -154,6 +154,9 @@ function salaryFor(
   };
 }
 
+/** Arxivdagi xodimda o'chirilgan tugmachalar ustidagi izoh. */
+const ARCHIVED_HINT = "Xodim arxivda — oylik hisoblanmaydi, soliq va plastik ta'sir qilmaydi";
+
 /** Sozlanmagan xodim uchun bir xil ko'rinish — hamma ustunda. */
 function NotConfigured() {
   return <span className="text-[12px] text-muted-foreground" title="Xodim kartasida ish haqi kiritilmagan">Sozlanmagan</span>;
@@ -505,6 +508,16 @@ export default function EmployeesListPage() {
   }
 
   function renderCell(e: HrEmployeeFull, colId: string, i: number) {
+    // ARXIVDAGI XODIM — soliq va plastik tugmachalari o'chiriladi.
+    //
+    // Arxivlangan xodim oylik hisobiga UMUMAN kirmaydi
+    // (lib/payrollSources.ts → loadPayrollRefs `archReason` bo'yicha
+    // kesadi), ya'ni unga soliq yoki plastik biriktirish hech qanday
+    // natija bermaydi — faqat "biriktirilgan" degan yolg'on ko'rinish
+    // qoladi. Mavjud qiymat o'chirilmaydi, shunchaki tahrirlab
+    // bo'lmaydigan qilib ko'rsatiladi: xodim arxivdan qaytarilsa
+    // sozlamasi joyida turadi.
+    const archived = Boolean(e.archReason);
     switch (colId) {
       case "num": return <span className="text-muted-foreground tabular-nums">{start + i + 1}</span>;
       case "name": return (
@@ -575,8 +588,13 @@ export default function EmployeesListPage() {
             // hodisasi ishga tushmasin.
             onKeyDown={(ev) => ev.stopPropagation()}
           >
-            <EmployeeToggle checked={count > 0} onChange={(v) => onTaxToggle(e, v)} />
-            {count > 0 && (
+            <EmployeeToggle
+              checked={count > 0}
+              onChange={(v) => onTaxToggle(e, v)}
+              disabled={archived}
+              title={archived ? ARCHIVED_HINT : undefined}
+            />
+            {count > 0 && !archived && (
               // Biriktirilgan turlarni KEYIN o'zgartirish yo'li: tugmachani
               // bosish uni o'chiradi, shuning uchun tahrirlash shu yerda.
               <button
@@ -587,6 +605,9 @@ export default function EmployeesListPage() {
               >
                 {count} ta tur
               </button>
+            )}
+            {count > 0 && archived && (
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{count} ta tur</span>
             )}
           </span>
         );
@@ -601,8 +622,13 @@ export default function EmployeesListPage() {
             onClick={(ev) => ev.stopPropagation()}
             onKeyDown={(ev) => ev.stopPropagation()}
           >
-            <EmployeeToggle checked={amount != null} onChange={(v) => onPlastikToggle(e, v)} />
-            {amount != null && (
+            <EmployeeToggle
+              checked={amount != null}
+              onChange={(v) => onPlastikToggle(e, v)}
+              disabled={archived}
+              title={archived ? ARCHIVED_HINT : undefined}
+            />
+            {amount != null && !archived && (
               <button
                 type="button"
                 onClick={() => setPlastikTarget(e)}
@@ -611,6 +637,9 @@ export default function EmployeesListPage() {
               >
                 {groupNumber(amount)}
               </button>
+            )}
+            {amount != null && archived && (
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap tabular-nums">{groupNumber(amount)}</span>
             )}
           </span>
         );

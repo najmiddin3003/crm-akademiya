@@ -22,17 +22,23 @@ export interface EmployeeToggleProps {
   checked: boolean;
   onChange: (v: boolean) => void;
   label?: string;
+  /** O'chirilgan tugmacha bosilmaydi va xiralashadi (masalan arxivdagi xodim). */
+  disabled?: boolean;
+  /** Sichqoncha ostidagi izoh — nima uchun o'chirilganini aytadi. */
+  title?: string;
 }
 
-export default function EmployeeToggle({ checked, onChange, label }: EmployeeToggleProps) {
+export default function EmployeeToggle({ checked, onChange, label, disabled, title }: EmployeeToggleProps) {
   const reduceMotion = useReducedMotion();
   const dur = reduceMotion ? "0s" : ".2s";
 
   const btn = (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full ${checked ? "bg-primary" : "bg-border"}`}
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      title={title}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full ${checked ? "bg-primary" : "bg-border"} ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
       style={{ transition: `background-color ${dur} ease` }}
       role="switch"
       aria-checked={checked}
