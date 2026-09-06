@@ -528,6 +528,24 @@ export default function EmployeesListPage() {
         );
       }
       case "ishTuri": {
+        // ARXIVDAGI XODIM — "Sozlanmagan" EMAS.
+        //
+        // Arxivlangan xodim oylik hisobiga umuman kirmaydi
+        // (lib/payrollSources.ts → loadPayrollRefs `archReason` bo'yicha
+        // kesadi), shu sabab uning oylik qatori topilmaydi. Ilgari bu
+        // "Sozlanmagan" deb ko'rsatilardi — go'yo xodim kartasi
+        // to'ldirilmagandek. Aslida sozlama joyida, u shunchaki ishdan
+        // ketgan va oylik olmaydi.
+        if (e.archReason) {
+          return (
+            <span
+              className="inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium bg-rose-500/10 text-rose-600 border-rose-500/20 whitespace-nowrap"
+              title={`Arxivlangan: ${e.archReason} — oylik hisoblanmaydi`}
+            >
+              Arxivda
+            </span>
+          );
+        }
         const s = salaryFor(e, period, payrollById);
         if (!s) return <NotConfigured />;
         const isFoiz = s.salaryType === "foiz";
@@ -760,7 +778,7 @@ export default function EmployeesListPage() {
         </div>
         {viewMode === "list" ? (
           <div className="table-scroll">
-            <table className="w-full text-sm min-w-[1700px]">
+            <table className="emp-list-table w-full text-sm min-w-[1700px]">
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   {visibleCols.map((c) => {
@@ -793,7 +811,10 @@ export default function EmployeesListPage() {
                   <tr
                     key={e.id}
                     onClick={() => router.push(`/management-xodimlar/${e.id}`)}
-                    className="hover:bg-secondary/30 transition-colors cursor-pointer"
+                    // Hover, kursor va ARXIV foni — app/globals.css dagi
+                    // `.emp-list-table` qoidalarida (sabab o'sha izohda).
+                    className={e.archReason ? "is-archived" : undefined}
+                    title={e.archReason ? `Arxivlangan: ${e.archReason} — oylik hisoblanmaydi` : undefined}
                   >
                     {visibleCols.map((c) => (
                       <td key={c.id} className="px-3 py-3 whitespace-nowrap">{renderCell(e, c.id, i)}</td>

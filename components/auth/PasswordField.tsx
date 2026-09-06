@@ -7,20 +7,36 @@ export interface PasswordFieldProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** `<label htmlFor>` bog'lanishi uchun — Sozlamalar → Xavfsizlik ishlatadi. */
+  id?: string;
+  /** "current-password" / "new-password" — brauzer parol menejeri uchun. */
+  autoComplete?: string;
+  /** Maydon ostidagi kichik izoh (masalan "Kamida 8 belgi"). */
+  hint?: string;
 }
 
-export default function PasswordField({ label, value, onChange, placeholder = "••••••" }: PasswordFieldProps) {
+export default function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder = "••••••",
+  id,
+  autoComplete,
+  hint,
+}: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
   return (
     <div>
-      <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-[13px] font-medium text-foreground/80">{label}</label>
       <div className="relative">
         <input
+          id={id}
           type={visible ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           className="h-10 w-full rounded-lg border border-border bg-background px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
@@ -42,6 +58,7 @@ export default function PasswordField({ label, value, onChange, placeholder = "�
           )}
         </button>
       </div>
+      {hint && <p className="mt-1.5 text-[12px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }

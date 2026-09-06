@@ -10096,6 +10096,29 @@ html.dark .emp-row-blocked { background-color: rgba(220, 38, 38, 0.14); }
 /* Xodimlar qatoridagi ikonka-tugmalar (hover:bg-secondary shu statik
    faylda generatsiya qilinmagani uchun qo'lda yozilgan). */
 .emp-icon-btn:hover { background-color: hsl(var(--secondary)); }
+
+/* ── Xodimlar ro'yxati jadvali ──────────────────────────────────────
+   Qator xodim profiliga olib boradi, shuning uchun ustiga kelganda
+   ajralib turishi kerak.
+
+   NIMA UCHUN QO'LDA, Tailwind bilan emas: qatorda `hover:bg-secondary/30`
+   bor edi, lekin u `<tr>` ga fon berardi va yetarlicha sezilmasdi.
+   Bu yerda fon `td` ga qo'yiladi — loyihadagi boshqa jadvallar bilan bir
+   xil naqsh (.fe-table, .rh-report-table) — hamda quyidagi ARXIV foni
+   bilan to'g'ri qatlamlanadi: arxiv qatorida hover ham qizg'ish qoladi,
+   kulrangga o'tib ketmaydi. */
+.emp-list-table tbody tr { cursor: pointer; transition: background-color .12s ease; }
+.emp-list-table tbody tr:hover td { background: hsl(var(--secondary) / 0.5); }
+
+/* ARXIVLANGAN XODIM — qizg'ish fon.
+   Arxivdagi xodim oylik hisobiga UMUMAN kirmaydi (lib/payrollSources.ts →
+   loadPayrollRefs `archReason` bo'yicha kesadi), shuning uchun uning
+   "Ish turi" ustuni "Sozlanmagan" bo'lib turadi. Bu xato emas, lekin
+   qatorni ajratmasa xuddi sozlama yo'qdek ko'rinardi. */
+.emp-list-table tbody tr.is-archived td { background: rgba(254, 226, 226, 0.5); }
+.emp-list-table tbody tr.is-archived:hover td { background: rgba(254, 202, 202, 0.6); }
+html.dark .emp-list-table tbody tr.is-archived td { background: rgba(220, 38, 38, 0.13); }
+html.dark .emp-list-table tbody tr.is-archived:hover td { background: rgba(220, 38, 38, 0.2); }
 .emp-icon-btn-danger:hover { background-color: #fee2e2; color: #dc2626; border-color: #fecaca; }
 
 /* `.student-edit-layout` OLIB TASHLANDI. U "qavsli arbitrary Tailwind

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import PasswordField from "@/components/auth/PasswordField";
 
 // Sozlamalar → "Xavfsizlik". Referensda bunday sahifa yo'q — bu bizning
 // qo'shimchamiz: mavjud infratuzilma (parol, qurilma sessiyalari, ekran
@@ -55,8 +56,6 @@ export default function SecurityPage() {
     }
   };
 
-  const inputClass =
-    "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
     <div className="page-frame container mx-auto max-w-[900px] p-4 space-y-4">
@@ -65,42 +64,34 @@ export default function SecurityPage() {
       <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
         <h2 className="text-[14px] font-semibold">Parolni o&apos;zgartirish</h2>
 
-        <div>
-          <label htmlFor="sec-current" className="block text-[13px] font-medium mb-1.5">Joriy parol</label>
-          <input
-            id="sec-current"
-            type="password"
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            autoComplete="current-password"
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="sec-new" className="block text-[13px] font-medium mb-1.5">Yangi parol</label>
-          <input
-            id="sec-new"
-            type="password"
-            value={next}
-            onChange={(e) => setNext(e.target.value)}
-            autoComplete="new-password"
-            className={inputClass}
-          />
-          <p className="mt-1.5 text-[12px] text-muted-foreground">Kamida 8 belgi</p>
-        </div>
-
-        <div>
-          <label htmlFor="sec-repeat" className="block text-[13px] font-medium mb-1.5">Yangi parolni takrorlang</label>
-          <input
-            id="sec-repeat"
-            type="password"
-            value={repeat}
-            onChange={(e) => setRepeat(e.target.value)}
-            autoComplete="new-password"
-            className={inputClass}
-          />
-        </div>
+        {/* Uchala maydon ham `PasswordField` — ichida ko'rsatish/yashirish
+            tugmasi bor. Ilgari bu yerda oddiy `type="password"` inputlar
+            turardi va yozilgan parolni tekshirib bo'lmasdi; ko'z ikonkasi
+            login va faollashtirish ekranlarida allaqachon bor edi, ya'ni
+            bu yerda uni takrorlash emas, o'sha komponentni ishlatish
+            kerak edi. */}
+        <PasswordField
+          id="sec-current"
+          label="Joriy parol"
+          value={current}
+          onChange={setCurrent}
+          autoComplete="current-password"
+        />
+        <PasswordField
+          id="sec-new"
+          label="Yangi parol"
+          value={next}
+          onChange={setNext}
+          autoComplete="new-password"
+          hint="Kamida 8 belgi"
+        />
+        <PasswordField
+          id="sec-repeat"
+          label="Yangi parolni takrorlang"
+          value={repeat}
+          onChange={setRepeat}
+          autoComplete="new-password"
+        />
 
         <div>
           <button

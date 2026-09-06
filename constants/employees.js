@@ -8,7 +8,7 @@
 // to'liq (skrinshotdagidek) label'lar — manbadagi qisqartirilgan variant emas.
 export const EMP_COLUMNS = [
   { id: "num", label: "№" },
-  { id: "name", label: "To'liq nomi" },
+  { id: "name", label: "To'liq ismi" },
   { id: "gender", label: "Jinsi" },
   { id: "aktivOq", label: "Aktiv o'quvchilar soni" },
   { id: "groups", label: "Guruhlar" },

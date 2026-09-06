@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
 import { useLang } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
@@ -125,6 +125,23 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
     () => searchAll(searchQuery, queryReady ? students : []),
     [searchQuery, queryReady, students],
   );
+  // SAHIFA ALMASHGANDA QIDIRUV TOZALANADI.
+  //
+  // NIMA NOTO'G'RI EDI: `searchQuery` — Navbar komponentining holati,
+  // Navbar esa UMUMIY layoutda yashaydi va sahifa almashganda QAYTA MOUNT
+  // BO'LMAYDI. Natijada bir sahifada yozilgan qidiruv keyingi HAMMA
+  // sahifada ochiq turaverardi: natijalar oynasi Sozlamalar → Xavfsizlik
+  // sahifasining ustiga tushib, parol maydonlarini to'sib qo'yardi.
+  // Foydalanuvchi buni qidirmagan ham edi — ekran shunchaki eski holatni
+  // ko'rsatib turardi.
+  //
+  // Natijaga bosilganda ham tozalanadi (`onClick`), lekin boshqa yo'l
+  // bilan o'tilganda (sidebar, orqaga tugmasi) hech narsa tozalamasdi.
+  const pathname = usePathname();
+  useEffect(() => {
+    setSearchQuery("");
+  }, [pathname]);
+
   const rootRef = useRef<HTMLDivElement>(null);
   const profileHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
