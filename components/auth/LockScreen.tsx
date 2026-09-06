@@ -34,7 +34,7 @@ export default function LockScreen({ fullName, phone }: LockScreenProps) {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Parol noto'g'ri");
-      router.replace("/tasks");
+      router.replace("/home");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Parol noto'g'ri");

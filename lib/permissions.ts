@@ -48,6 +48,13 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   "/settings-security",
   "/settings-devices",
   "/birthdays",
+  // BOSH SAHIFA. Sidebar daraxtida "/home" bandi yo'q, ya'ni uni hech bir
+  // rolda belgilab bo'lmaydi — ochiq qoldirilmasa proxy.ts dagi sahifa
+  // qorovuli uni HAMMAGA yopib qo'yardi va hamma yo'naltirish halqaga
+  // tushardi (`firstAllowedPath` ham "/home" ni qaytaradi).
+  "/home",
+  // Eski manzil — endi "/home" ga yo'naltiradi, lekin yo'naltirish ishga
+  // tushishi uchun route'ning o'zi ochiq bo'lishi kerak.
   "/dashboard",
 ]);
 
@@ -153,15 +160,18 @@ export function isPathAllowed(pathname: string, permissions: string[] | null): b
  * Taqiqlangan sahifaga kirmoqchi bo'lgan xodim QAYERGA yuboriladi.
  *
  * Bu doim RUXSAT ETILGAN manzil bo'lishi shart — aks holda yo'naltirish
- * o'zini qayta taqiqlab, cheksiz redirect halqasi hosil qilardi. Hech narsa
- * ochiq bo'lmasa profil sahifasiga tushadi (u ALWAYS_ALLOWED_PATHS da).
+ * o'zini qayta taqiqlab, cheksiz redirect halqasi hosil qilardi.
+ *
+ * "/home" — bosh sahifa va u ALWAYS_ALLOWED_PATHS ichida, ya'ni ruxsati
+ * qanday bo'lishidan qat'i nazar HAR DOIM ochiq. Shuning uchun bu yerda
+ * ruxsat ro'yxatini aylanib chiqish kerak emas: ilgari funksiya
+ * xodimning BIRINCHI ruxsat etilgan sahifasini qaytarardi va odam
+ * taqiqlangan manzildan tasodifiy bir bo'limga tushib qolardi. Endi u
+ * har doim bosh sahifaga qaytadi.
+ *
+ * `permissions` parametri saqlanadi — chaqiruv joylari o'zgarmasin va
+ * kelajakda qoida murakkablashsa shu yerda hal qilinsin.
  */
-export function firstAllowedPath(permissions: string[] | null): string {
-  if (permissions === null) return "/tasks";
-  for (const g of PERMISSION_GROUPS) {
-    for (const it of g.items) {
-      if (!it.always && permissions.includes(it.href)) return it.href;
-    }
-  }
-  return "/settings-profile";
+export function firstAllowedPath(_permissions: string[] | null): string {
+  return "/home";
 }

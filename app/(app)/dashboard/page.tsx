@@ -1,8 +1,9 @@
-// Tizimga kirgandan keyingi bosh sahifa ("/dashboard") — view-schedule
-// (Dars jadvali). crm-akademiya/index-dev.html id="view-schedule" bo'limidan
-// 1:1 ko'chirilgan.
-import SchedulePage from "@/components/schedule/SchedulePage";
+// ESKI MANZIL. Bosh sahifa "/home" ga ko'chirildi — bu route faqat eski
+// havolalar va brauzer xatcho'plari buzilmasligi uchun qoldirilgan.
+//
+// Sahifaning o'zi app/(app)/home/page.tsx da.
+import { redirect } from "next/navigation";
 
 export default function DashboardPage() {
-  return <SchedulePage />;
+  redirect("/home");
 }

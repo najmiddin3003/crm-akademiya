@@ -34,7 +34,7 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      router.push("/tasks");
+      router.push("/home");
       router.refresh();
     } catch {
       setError("Server bilan bog'lanib bo'lmadi");

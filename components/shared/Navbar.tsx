@@ -257,7 +257,7 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
       <header className="shell-header relative z-30 flex shrink-0 items-center gap-2 pr-1.5">
         {/* Logo — referensda sidebar ichida emas, HEADER ichida turadi va
             kengligi sidebar kengligiga tekislanadi. */}
-        <Link href="/tasks" className="shell-logo flex shrink-0 items-center gap-2" title="Asosiy sahifaga qaytish">
+        <Link href="/home" className="shell-logo flex shrink-0 items-center gap-2" title="Bosh sahifa">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white" style={{ backgroundColor: "var(--shell-blue)" }}>
             <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-graduation-cap" /></svg>
           </span>

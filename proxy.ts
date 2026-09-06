@@ -138,13 +138,16 @@ export async function proxy(req: NextRequest) {
   }
   if (!locked && pathname === "/lock") {
     const url = req.nextUrl.clone();
-    url.pathname = session ? "/tasks" : "/";
+    url.pathname = session ? "/home" : "/";
     return NextResponse.redirect(url);
   }
 
+  // Tizimga kirgan foydalanuvchi login sahifasidan BOSH SAHIFAGA tushadi.
+  // Ilgari bu "/tasks" edi va tayyor bosh sahifa (Dars jadvali) hech
+  // qayerdan ochilmasdi.
   if (pathname === "/" && session) {
     const url = req.nextUrl.clone();
-    url.pathname = "/tasks";
+    url.pathname = "/home";
     return NextResponse.redirect(url);
   }
 
