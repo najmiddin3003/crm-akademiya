@@ -13,6 +13,8 @@ import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeeToggle from "./EmployeeToggle";
 import EmployeeTaxModal from "./EmployeeTaxModal";
+import EmployeePlastikModal from "./EmployeePlastikModal";
+import { groupNumber } from "@/components/ui/MoneyInput";
 import type { HrEmployeeFull } from "./employeeExtras";
 import type { Group } from "@/lib/groups";
 import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
@@ -110,7 +112,7 @@ const IMPORT_IDX = { name: 1, gender: 2, turi: 5, filial: 6, phone: 7, kurs: 8, 
 // "№" saralanmaydi — u qator raqami, ya'ni tartibning O'ZI.
 const SORTABLE = new Set([
   "name", "gender", "aktivOq", "groups", "turi", "ishTuri", "filial", "phone", "kurs",
-  "created", "archReason", "archDate", "soliq",
+  "created", "archReason", "archDate", "soliq", "plastik",
 ]);
 type SortDir = "asc" | "desc";
 
@@ -178,6 +180,8 @@ export default function EmployeesListPage() {
   const [addOpen, setAddOpen] = useState(false);
   // Soliq turlarini tanlash oynasi ochilgan xodim.
   const [taxTarget, setTaxTarget] = useState<HrEmployeeFull | null>(null);
+  // Plastik oylik summasini kiritish oynasi ochilgan xodim.
+  const [plastikTarget, setPlastikTarget] = useState<HrEmployeeFull | null>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
 
   const [page, setPage] = useState(1);
@@ -311,6 +315,9 @@ export default function EmployeesListPage() {
         // Soliq — mantiqiy ustun; yoqilganlar bir joyga to'planishi uchun
         // 1/0 sifatida saralanadi.
         case "soliq": return (e.taxIds ?? []).length;
+        // Plastik — summa bo'yicha. Biriktirilmagan xodim `null` beradi va
+        // matnli ustunlar bilan bir xil qoidada oxirda turadi.
+        case "plastik": return e.plastikSalary ?? null;
         case "created": return dateVal(e.created);
         case "archDate": return dateVal(e.archDate);
         case "archReason": return (e.archReason || "").toLowerCase() || null;
@@ -461,6 +468,42 @@ export default function EmployeesListPage() {
     else saveTaxIds(e, []);
   }
 
+  /**
+   * Plastik oylik summasini saqlaydi. `saveTaxIds` bilan bir xil naqsh:
+   * optimistik yangilash, xatoda orqaga qaytarish.
+   *
+   * `null` — biriktirilmagan. 0 YOZILMAYDI: unda xodimda plastik solig'i
+   * bor-u summasi yo'q holat paydo bo'lardi va soliq jimgina 0 ga tushardi.
+   */
+  async function savePlastikSalary(e: HrEmployeeFull, next: number | null) {
+    const before = e.plastikSalary ?? null;
+    setRows((prev) => prev.map((r) => (r.id === e.id ? { ...r, plastikSalary: next } : r)));
+    setPlastikTarget(null);
+    try {
+      const res = await fetch(`/api/hr-employees/${e.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plastikSalary: next }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Saqlanmadi");
+      showSuccess(
+        next != null
+          ? `${e.name} — plastik oylik ${groupNumber(next)} so'm`
+          : `${e.name} — plastik oylik olib tashlandi`,
+      );
+    } catch (err) {
+      setRows((prev) => prev.map((r) => (r.id === e.id ? { ...r, plastikSalary: before } : r)));
+      showError(err instanceof Error ? err.message : "Saqlanmadi");
+    }
+  }
+
+  /** Tugmacha: yoqilsa summa so'raladi, o'chirilsa darhol olib tashlanadi. */
+  function onPlastikToggle(e: HrEmployeeFull, next: boolean) {
+    if (next) setPlastikTarget(e);
+    else savePlastikSalary(e, null);
+  }
+
   function renderCell(e: HrEmployeeFull, colId: string, i: number) {
     switch (colId) {
       case "num": return <span className="text-muted-foreground tabular-nums">{start + i + 1}</span>;
@@ -525,6 +568,30 @@ export default function EmployeesListPage() {
                 title="Soliq turlarini o'zgartirish"
               >
                 {count} ta tur
+              </button>
+            )}
+          </span>
+        );
+      }
+      // Plastik tugmachasi — soliqniki bilan aynan bir xil naqsh
+      // (stopPropagation, optimistik yozish, izohga bosib tahrirlash).
+      case "plastik": {
+        const amount = e.plastikSalary ?? null;
+        return (
+          <span
+            className="inline-flex flex-col items-start gap-0.5"
+            onClick={(ev) => ev.stopPropagation()}
+            onKeyDown={(ev) => ev.stopPropagation()}
+          >
+            <EmployeeToggle checked={amount != null} onChange={(v) => onPlastikToggle(e, v)} />
+            {amount != null && (
+              <button
+                type="button"
+                onClick={() => setPlastikTarget(e)}
+                className="text-[11px] text-primary hover:underline whitespace-nowrap tabular-nums"
+                title="Plastik oylik summasini o'zgartirish"
+              >
+                {groupNumber(amount)}
               </button>
             )}
           </span>
@@ -820,6 +887,15 @@ export default function EmployeesListPage() {
             await saveTaxIds(taxTarget, nextIds);
             setTaxTarget(null);
           }}
+        />
+      )}
+
+      {plastikTarget && (
+        <EmployeePlastikModal
+          employeeName={plastikTarget.name}
+          current={plastikTarget.plastikSalary ?? null}
+          onClose={() => setPlastikTarget(null)}
+          onSave={(next) => savePlastikSalary(plastikTarget, next)}
         />
       )}
     </div>

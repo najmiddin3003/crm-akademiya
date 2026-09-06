@@ -166,8 +166,12 @@ export async function ensureTab(
 ): Promise<TabInfo> {
   const meta = (await sheetsFetch(
     cfg,
-    `${SHEETS_API}/${spreadsheetId}?fields=sheets.properties(sheetId,title)`,
-  )) as { sheets?: { properties: { sheetId: number; title: string } }[] };
+    // `gridProperties.columnCount` — mavjud varaqda ustun YETARLIMI degan
+    // savol uchun. Usiz yangi ustun jimgina yozilmay qolardi (pastga qarang).
+    `${SHEETS_API}/${spreadsheetId}?fields=sheets.properties(sheetId,title,gridProperties.columnCount)`,
+  )) as {
+    sheets?: { properties: { sheetId: number; title: string; gridProperties?: { columnCount?: number } } }[];
+  };
 
   const existing = (meta.sheets || []).find((s) => s.properties.title === tabName);
   if (existing) {
@@ -187,6 +191,46 @@ export async function ensureTab(
       throw new Error(
         `"${tabName}" varag'ining sarlavhasi boshqa ("${head[0]}" != "${headers[0]}") — ` +
         `varaq nomi sozlamada noto'g'ri ko'rsatilgan bo'lishi mumkin (SHEET_TAB_*)`,
+      );
+    }
+    // USTUN SONI YETARLIMI — sarlavhaga yangi ustun qo'shilganda.
+    //
+    // NIMA NOTO'G'RI EDI: `columnCount` faqat varaq YARATILAYOTGANDA
+    // qo'yilardi (pastda `Math.max(headers.length, 10)`), mavjud varaqda
+    // esa bu funksiya shu yerda darhol qaytardi. Sarlavhaga yangi ustun
+    // qo'shilsa, o'sha ustun gridda UMUMAN BO'LMASDI: Google Sheets xato
+    // bermaydi, qiymat shunchaki yozilmaydi — jim buzilish.
+    //
+    // O'lchandi: "Xodim oyliklari" varag'ida columnCount = 10, sarlavha
+    // 9 ta. "Kartaga"/"Naqd" qo'shilishi bilan 11 ta bo'ladi va 11-ustun
+    // (K) gridda yo'q edi.
+    const cols = existing.properties.gridProperties?.columnCount ?? 0;
+    if (cols > 0 && cols < headers.length) {
+      await sheetsFetch(cfg, `${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
+        method: "POST",
+        body: JSON.stringify({
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId: existing.properties.sheetId,
+                  gridProperties: { columnCount: headers.length },
+                },
+                fields: "gridProperties.columnCount",
+              },
+            },
+          ],
+        }),
+      });
+    }
+    // Sarlavha qatori ham yangilanadi — aks holda yangi ustunlar nomsiz
+    // qolardi. Faqat UZUNLIK farq qilganda: matnni har safar qayta yozish
+    // foydalanuvchi qo'lda o'zgartirgan sarlavhani bosib ketardi.
+    if (head.length > 0 && head.length < headers.length) {
+      await sheetsFetch(
+        cfg,
+        `${SHEETS_API}/${spreadsheetId}/values/${rangeParam(tabName, "A1")}?valueInputOption=RAW`,
+        { method: "PUT", body: JSON.stringify({ values: [headers] }) },
       );
     }
     return { sheetId: existing.properties.sheetId, tabName };

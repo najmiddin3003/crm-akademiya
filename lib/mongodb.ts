@@ -171,6 +171,20 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("pupils").createIndex({ branchId: 1, id: -1 }));
   tasks.push(db.collection("groups").createIndex({ branchId: 1 }));
   tasks.push(db.collection("rooms").createIndex({ branchId: 1 }));
+  // XODIM FILIALI — ikkita ALOHIDA maydon, ikkita alohida indeks
+  // (lib/employeeBranches.ts izohiga qarang):
+  //   `branchIds`       — MASSIV (multikey): xodim ro'yxatlari va profil;
+  //   `payrollBranchId` — skalyar: oylik ro'yxati, aynan bitta filial.
+  // 54 hujjatda tezlik farqi sezilmaydi — indeks bu yerda QOIDANI
+  // HUJJATLASHTIRADI va o'sish uchun joy qoldiradi.
+  tasks.push(db.collection("hr_employees").createIndex({ branchIds: 1, id: 1 }));
+  tasks.push(db.collection("hr_employees").createIndex({ payrollBranchId: 1, id: 1 }));
+  // Oylik chiqarish qulfi — bir filial × bir oy uchun bitta amal.
+  // TTL zaxira sifatida: jarayon o'ldirilsa qulf 120 soniyada o'chadi va
+  // filial abadiy qulflanib qolmaydi (odatda `finally` uni o'zi o'chiradi).
+  tasks.push(
+    db.collection("salary_run_locks").createIndex({ createdAt: 1 }, { expireAfterSeconds: 120 }),
+  );
   tasks.push(db.collection("offline_courses").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("online_courses").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("groups").createIndex({ id: 1 }, { unique: true }));

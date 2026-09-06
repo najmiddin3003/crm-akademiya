@@ -8,14 +8,14 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import { ALL_PERMISSION_PATHS, PERMISSION_GROUPS } from "@/lib/permissions";
 import type { Role } from "@/lib/roles";
 
-// Boshqaruv → Rollar (sidebar: Boshqaruv > Rollar, href /management-rollar).
-// Ma'lumot HAQIQIY — /api/roles va /api/hr-employees.
+// Boshqaruv â Rollar (sidebar: Boshqaruv > Rollar, href /management-rollar).
+// Ma'lumot HAQIQIY â /api/roles va /api/hr-employees.
 //
 // IKKI XIL ROL (lib/roles.ts):
-//   O'RNATILGAN — O'qituvchi / Moderator. `hr_employees.turi` ga bog'langan,
+//   O'RNATILGAN â O'qituvchi / Moderator. `hr_employees.turi` ga bog'langan,
 //   ya'ni o'sha lavozimdagi barcha xodimlarga o'zi qo'llanadi. Nomi
 //   o'zgarmaydi, o'chirilmaydi.
-//   QO'LDA QO'SHILGAN — nomi, izohi, ruxsatlari erkin; o'chirsa bo'ladi.
+//   QO'LDA QO'SHILGAN â nomi, izohi, ruxsatlari erkin; o'chirsa bo'ladi.
 //
 // Bundan tashqari XODIM KESIMIDA istisno bor ("Xodimga alohida ruxsat"):
 // u `hr_employees.permissions` ga yoziladi va lavozimdan ustun turadi.
@@ -23,7 +23,7 @@ import type { Role } from "@/lib/roles";
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-/** /api/roles/coverage javobi — rol zanjiridagi "jim uzilish"lar. */
+/** /api/roles/coverage javobi â rol zanjiridagi "jim uzilish"lar. */
 interface RoleCoverage {
   unknownTuri: { id: number; name: string; turi: string }[];
   noLogin: { id: number; name: string; turi: string }[];
@@ -34,30 +34,30 @@ interface RoleCoverage {
  * Ruxsat berildi, lekin ta'sir qilmaydigan holatlar paneli.
  *
  * NIMA UCHUN: rolga cheklov qo'yilgani bilan u ishlamay qolishi mumkin va
- * ekranda buning izi qolmasdi. Zanjir uzun —
- * `users.hrEmployeeId → hr_employees.turi → roles.key → permissions` — va
+ * ekranda buning izi qolmasdi. Zanjir uzun â
+ * `users.hrEmployeeId â hr_employees.turi â roles.key â permissions` â va
  * uning istalgan bo'g'ini uzilsa xodim CHEKLOVSIZ bo'lib qoladi
  * (lib/rolePermissions.ts, ataylab shunday). Amalda shu bo'ldi: bir odamga
  * ikkita xodim yozuvi bor edi, login esa `turi` maydoni BO'SH bo'lganiga
- * bog'langan — Moderatorga qo'yilgan cheklov hech narsaga ta'sir qilmadi.
+ * bog'langan â Moderatorga qo'yilgan cheklov hech narsaga ta'sir qilmadi.
  */
 function CoveragePanel({ data }: { data: RoleCoverage }) {
   const rows = ([
     {
       tone: "rose",
       title: "Lavozimi belgilanmagan",
-      hint: "rol ruxsatlari bu xodimga QO'LLANMAYDI — u hamma bo'limni ko'radi",
+      hint: "rol ruxsatlari bu xodimga QO'LLANMAYDI â u hamma bo'limni ko'radi",
       people: data.unknownTuri,
     },
     {
       tone: "amber",
       title: "Login hisobi yo'q",
-      hint: "lavozimi to'g'ri, lekin tizimga kira olmaydi — cheklovni sinab bo'lmaydi",
+      hint: "lavozimi to'g'ri, lekin tizimga kira olmaydi â cheklovni sinab bo'lmaydi",
       people: data.noLogin,
     },
     {
       tone: "sky",
-      title: "Admin — cheklovdan ozod",
+      title: "Admin â cheklovdan ozod",
       hint: "ataylab: aks holda admin o'ziga Rollar sahifasini yopib qo'yishi mumkin edi",
       people: data.adminBypass,
     },
@@ -78,7 +78,7 @@ function CoveragePanel({ data }: { data: RoleCoverage }) {
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-[13px] font-semibold">{r.title}</span>
             <span className="text-[12px] tabular-nums opacity-80">{r.people.length} ta</span>
-            <span className="text-[12px] text-muted-foreground">— {r.hint}</span>
+            <span className="text-[12px] text-muted-foreground">â {r.hint}</span>
           </div>
           <div className="mt-1.5 text-[12.5px] text-foreground/80">
             {r.people.map((p) => p.name || `#${p.id}`).join(", ")}
@@ -105,7 +105,7 @@ export default function RolesPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  // Modal ichida ruxsatlar DOIM massiv bo'lib turadi — galochkalar bevosita
+  // Modal ichida ruxsatlar DOIM massiv bo'lib turadi â galochkalar bevosita
   // shu ro'yxatni ko'rsatadi.
   const [chosenList, setChosenList] = useState<string[]>([]);
   const [empSearch, setEmpSearch] = useState("");
@@ -115,8 +115,10 @@ export default function RolesPage() {
     let cancelled = false;
     Promise.all([
       fetch("/api/roles").then((r) => r.json()),
-      fetch("/api/hr-employees").then((r) => r.json()),
-      // Ogohlantirish paneli uchun. Yiqilsa sahifa baribir ochiladi —
+      // FILIALGA KESILMAGAN ro'yxat (tor proyeksiya) — nima uchun aynan
+      // shu endpoint: app/api/hr-employees/ref/route.ts izohiga qarang.
+      fetch("/api/hr-employees/ref").then((r) => r.json()),
+      // Ogohlantirish paneli uchun. Yiqilsa sahifa baribir ochiladi â
       // panel shunchaki ko'rinmaydi.
       fetch("/api/roles/coverage").then((r) => r.json()).catch(() => null),
     ]).then(([rolesRes, empRes, covRes]) => {
@@ -142,12 +144,12 @@ export default function RolesPage() {
     [employees],
   );
 
-  const roleNameOf = (turi: string) => roles.find((r) => r.key === turi)?.name ?? (turi || "—");
+  const roleNameOf = (turi: string) => roles.find((r) => r.key === turi)?.name ?? (turi || "â");
 
   /**
    * Xodim uchun galochkalarni oldindan to'ldirish.
-   * Istisnosi bo'lsa — o'sha; bo'lmasa lavozim ro'yxati; lavozim ham
-   * cheklovsiz bo'lsa — hammasi belgilangan holat.
+   * Istisnosi bo'lsa â o'sha; bo'lmasa lavozim ro'yxati; lavozim ham
+   * cheklovsiz bo'lsa â hammasi belgilangan holat.
    */
   function effectivePermsOf(e: HrEmployee): string[] {
     if (Array.isArray(e.permissions)) return [...e.permissions];
@@ -158,7 +160,7 @@ export default function RolesPage() {
   function openCreate() {
     setName("");
     setDescription("");
-    // Yangi rolda hamma bo'lim YOPIQ — ruxsat ataylab beriladi.
+    // Yangi rolda hamma bo'lim YOPIQ â ruxsat ataylab beriladi.
     setChosenList([]);
     setCreateOpen(true);
   }
@@ -201,7 +203,7 @@ export default function RolesPage() {
   }
 
   /**
-   * HAMMASI belgilangan bo'lsa `null` — "cheklov yo'q". Bu shunchaki yorliq
+   * HAMMASI belgilangan bo'lsa `null` â "cheklov yo'q". Bu shunchaki yorliq
    * emas: cheklovsiz rolga sidebarga KEYIN qo'shilgan sahifalar ham
    * avtomatik ochiq bo'ladi. To'liq ro'yxat saqlansa, yangi sahifa har
    * safar qo'lda belgilanishi kerak bo'lardi.
@@ -264,7 +266,7 @@ export default function RolesPage() {
   }
 
   /**
-   * Xodim istisnosini saqlash. `reset` — istisnoni olib tashlash
+   * Xodim istisnosini saqlash. `reset` â istisnoni olib tashlash
    * (`permissions: null`), ya'ni xodim yana lavozim ro'yxatiga qaytadi.
    *
    * Rolga qaraganda farqi bor: bu yerda "hammasi belgilangan" `null` ga
@@ -342,7 +344,7 @@ export default function RolesPage() {
           <table className="w-full text-sm min-w-[820px]">
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="px-5 py-3 text-left w-12">№</th>
+                <th className="px-5 py-3 text-left w-12">â</th>
                 <th className="px-5 py-3 text-left">Nomi</th>
                 <th className="px-5 py-3 text-left">Izoh</th>
                 <th className="px-5 py-3 text-left">Ko&apos;rinadigan bo&apos;limlar</th>
@@ -367,8 +369,8 @@ export default function RolesPage() {
                   <td className="px-5 py-3 text-right tabular-nums">
                     {/* Faqat o'rnatilgan rollar xodimga bog'langan (`turi`).
                         Qo'lda qo'shilgan rolni xodimga biriktirish usuli
-                        hali yo'q — soxta 0 ko'rsatmaymiz. */}
-                    {r.key ? (countByTuri.get(r.key) ?? 0) : <span className="text-muted-foreground">—</span>}
+                        hali yo'q â soxta 0 ko'rsatmaymiz. */}
+                    {r.key ? (countByTuri.get(r.key) ?? 0) : <span className="text-muted-foreground">â</span>}
                   </td>
                   <td className="px-5 py-3 pr-5">
                     <div className="flex items-center justify-end gap-1">
@@ -404,7 +406,7 @@ export default function RolesPage() {
         </div>
       </div>
 
-      {/* ── Xodimni tanlash ─────────────────────────────────────────────── */}
+      {/* ââ Xodimni tanlash âââââââââââââââââââââââââââââââââââââââââââââââ */}
       {empListOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeAll} />
@@ -437,12 +439,12 @@ export default function RolesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] font-medium truncate">{e.name}</div>
                     <div className="text-[11.5px] text-muted-foreground truncate">
-                      {roleNameOf(e.turi)} · {e.phone}
+                      {roleNameOf(e.turi)} Â· {e.phone}
                     </div>
                   </div>
                   {Array.isArray(e.permissions) ? (
                     <span className="shrink-0 inline-flex items-center h-6 px-2 rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-600 text-[11px] font-medium whitespace-nowrap">
-                      Alohida — {e.permissions.length} sahifa
+                      Alohida â {e.permissions.length} sahifa
                     </span>
                   ) : (
                     <span className="shrink-0 inline-flex items-center h-6 px-2 rounded-md border border-border text-muted-foreground text-[11px] whitespace-nowrap">
@@ -468,11 +470,11 @@ export default function RolesPage() {
         </div>
       )}
 
-      {/* ── Ruxsatlar oynasi: yangi rol / rol / xodim uchun bir xil ────── */}
+      {/* ââ Ruxsatlar oynasi: yangi rol / rol / xodim uchun bir xil ââââââ */}
       {(createOpen || roleTarget || empTarget) && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeAll()} />
-          {/* Ruxsatlar daraxti baland — oyna ekranning 90% ini egallaydi va
+          {/* Ruxsatlar daraxti baland â oyna ekranning 90% ini egallaydi va
               ichida uch qavat: sarlavha, siljiydigan ro'yxat, tugmalar. Shu
               tufayli "Saqlash" doim ko'rinib turadi. */}
           <div className="relative w-[90vw] h-[90vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
@@ -488,12 +490,12 @@ export default function RolesPage() {
                     <ArrowLeft className="w-4 h-4" />
                   </button>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-[17px] font-semibold truncate">{empTarget.name} — alohida ruxsat</h3>
+                    <h3 className="text-[17px] font-semibold truncate">{empTarget.name} â alohida ruxsat</h3>
                     <p className="mt-0.5 text-[12px] text-muted-foreground">
                       Lavozimi: {roleNameOf(empTarget.turi)}.{" "}
                       {Array.isArray(empTarget.permissions)
                         ? "Hozir alohida ro'yxat amal qilmoqda."
-                        : "Hozir lavozim ro'yxati amal qilmoqda — saqlasangiz istisno yaratiladi."}
+                        : "Hozir lavozim ro'yxati amal qilmoqda â saqlasangiz istisno yaratiladi."}
                     </p>
                   </div>
                 </div>
@@ -501,7 +503,7 @@ export default function RolesPage() {
                 <>
                   <div>
                     <h3 className="text-[17px] font-semibold">
-                      {createOpen ? "Yangi rol" : `${roleTarget!.name} — ruxsatlar`}
+                      {createOpen ? "Yangi rol" : `${roleTarget!.name} â ruxsatlar`}
                     </h3>
                     {roleTarget?.key && (
                       <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -565,7 +567,7 @@ export default function RolesPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? "Saqlanmoqdaâ¦" : "Saqlash"}
               </button>
             </div>
           </div>
@@ -592,7 +594,7 @@ export default function RolesPage() {
                 disabled={saving}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "O'chirilmoqda…" : "Ha"}
+                {saving ? "O'chirilmoqdaâ¦" : "Ha"}
               </button>
             </div>
           </div>
@@ -618,9 +620,9 @@ function PermBadge({ permissions }: { permissions?: string[] | null }) {
 }
 
 /**
- * "Ko'rinadigan bo'limlar" — sidebar daraxtining galochkali nusxasi.
+ * "Ko'rinadigan bo'limlar" â sidebar daraxtining galochkali nusxasi.
  *
- * `forRole` — faqat matn uchun: ROL sozlamasida hammasi belgilangan holat
+ * `forRole` â faqat matn uchun: ROL sozlamasida hammasi belgilangan holat
  * "cheklovsiz" deb saqlanadi, xodim istisnosida esa yo'q (RolesPage dagi
  * `saveEmployee` izohiga qarang).
  */
@@ -643,7 +645,7 @@ function PermissionPicker({
         <div className="flex items-center gap-3">
           <span className="text-[12px] text-muted-foreground tabular-nums">
             {chosen.size} / {ALL_PERMISSION_PATHS.length} tanlandi
-            {all && forRole && <span className="ml-1.5 text-emerald-600 font-medium">— cheklovsiz</span>}
+            {all && forRole && <span className="ml-1.5 text-emerald-600 font-medium">â cheklovsiz</span>}
           </span>
           <button
             type="button"
@@ -705,9 +707,9 @@ function PermissionPicker({
         </div>
 
         <p className="mt-4 text-[11.5px] text-muted-foreground leading-relaxed">
-          Xira galochkalar — profil, xavfsizlik va qurilmalar: ular har doim ochiq, aks holda xodim
+          Xira galochkalar â profil, xavfsizlik va qurilmalar: ular har doim ochiq, aks holda xodim
           o&apos;z parolini almashtira olmay qolardi. Ba&apos;zi sahifalar sidebarda ikki bo&apos;limda
-          takrorlanadi (masalan &laquo;Kirim chiqim&raquo; — Moliya va Hisobotlarda); ular bitta sahifa,
+          takrorlanadi (masalan &laquo;Kirim chiqim&raquo; â Moliya va Hisobotlarda); ular bitta sahifa,
           shuning uchun birini belgilasangiz ikkinchisi ham belgilanadi.
         </p>
       </div>

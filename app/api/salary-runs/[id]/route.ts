@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
+import { getBranchScope } from "@/lib/branchScope";
 import { logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { classifyEntry, flushSoon } from "@/lib/sync/dispatch";
@@ -25,6 +26,23 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   const db = await ensureIndexes();
   const run = await db.collection("salary_runs").findOne({ id: n });
   if (!run) return NextResponse.json({ ok: false, error: "Topilmadi" }, { status: 404 });
+
+  // FILIAL QOROVULI — bekor qilish ham pul harakati, ya'ni u ham
+  // qamrovga bo'ysunadi.
+  //
+  // ⚠ `undefined` ALOHIDA QARALADI. Oddiy `run.branchId !== scope.branchId`
+  // yozilsa, maydonsiz ESKI hujjatda `undefined !== 1` doim rost bo'lib,
+  // uni hech kim (admin ham) o'chira olmasdi. Amalda bazada aynan shunday
+  // bitta hujjat bor — avgustni nol qoldiq bilan yopgan yozuv, va uni
+  // qaytarishning yagona yo'li shu o'chirish.
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  if (run.branchId !== undefined && !scope.isAdmin && run.branchId !== scope.branchId) {
+    return NextResponse.json(
+      { ok: false, error: "Bu chiqarish boshqa filialda bajarilgan — uni o'sha filialdan o'chiring" },
+      { status: 403 },
+    );
+  }
 
   const entriesCol = db.collection("transaction_entries");
   const cashboxesCol = db.collection("cashboxes");
@@ -56,8 +74,17 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     const byKey = entry.paymentMethodKey
       ? methods.find((m) => m.key === entry.paymentMethodKey)
       : undefined;
-    const byRun = run.method ? methods.find((m) => m.key === run.method) : undefined;
-    const byName = methods.find((m) => m.name === entry.paymentType);
+    // IKKI OYOQLI CHIQARISHDA TAXMIN QILINMAYDI.
+    //
+    // `byRun`/`byName` zaxiralari bitta to'lov turi bilan chiqarilgan eski
+    // hujjatlar uchun. Chiqarish plastik VA naqd oyoqlaridan iborat bo'lsa,
+    // kalitsiz yozuvda taxmin qilish plastik summasini naqd chelagiga
+    // qaytarib, kassa kesimlarini jimgina buzardi (umumiy balans to'g'ri
+    // qolgani uchun buni hech kim sezmasdi). Bunday holatda 409 xavfsizroq:
+    // yozuvni kassa oynasidan qo'lda bekor qilish yo'li ochiq qoladi.
+    const multiLeg = Array.isArray(run.legs) && run.legs.length > 1;
+    const byRun = !multiLeg && run.method ? methods.find((m) => m.key === run.method) : undefined;
+    const byName = multiLeg ? undefined : methods.find((m) => m.name === entry.paymentType);
     const method = byKey ?? byRun ?? byName;
     if (!method) {
       return NextResponse.json(

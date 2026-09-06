@@ -198,6 +198,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     txType: mode === "kirim" ? "payIn" : "payOut",
     txName,
     paymentType: methodLabel,
+    // To'lov turining BARQAROR kaliti.
+    //
+    // NIMA UCHUN KERAK: `paymentType` — Sozlamalardan o'zgartirilishi
+    // mumkin bo'lgan KO'RINADIGAN nom, ya'ni undan kanalni aniqlash
+    // ishonchsiz. Kalit esa o'zgarmaydi. Oylik hisobi shu maydondan
+    // "xodimga PLASTIK bilan qancha berilgan"ni o'qiydi
+    // (lib/payrollSources.ts → loadPaidByEmployee).
+    //
+    // NIMA NOTO'G'RI EDI: bu yerda maydon UMUMAN yozilmasdi (o'lchandi:
+    // bazadagi 19 ta chiqim yozuvining birortasida ham yo'q). Kassa
+    // oynasidan kartaga qo'lda berilgan oylik hisobga tushmasdi va
+    // keyingi "Oylik chiqarish" kartaga YANA to'liq summa yuborardi.
+    paymentMethodKey: chosen.key,
     group: "",
     lessonDate: "",
     // `moderator` — yozuvni qayd etgan kassa mas'uli.

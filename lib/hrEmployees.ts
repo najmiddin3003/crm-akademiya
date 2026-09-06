@@ -69,6 +69,21 @@ export interface HrEmployee {
    */
   branchIds?: number[];
   /**
+   * OYLIK QAYSI FILIALDAN CHIQADI — aynan BITTA filial.
+   *
+   * `branchIds` ko'p qiymatli (xodim ikki filialda ishlashi mumkin), pul
+   * esa BIR MARTA chiqishi shart. Oylik ro'yxati `branchIds` bo'yicha
+   * kesilsa, [1,2] xodim ikkala filial ro'yxatida to'liq summa bilan
+   * turardi va ikki admin uni ikki marta to'lashi mumkin edi.
+   *
+   * INVARIANT: `branchIds.includes(payrollBranchId)`.
+   * Sukut — `branchIds[0]`, lekin qo'lda o'zgartiriladi (biznes qarori).
+   *
+   * Maydon yo'q eski hujjatlarda oylik ro'yxati uni KO'RMAYDI — backfill
+   * shu sabab majburiy (scripts/migrate-payroll-branch.mjs).
+   */
+  payrollBranchId?: number;
+  /**
    * Shu xodimga QAYSI soliq turlari qo'llanishi — Sozlamalar → Moliya →
    * Soliq ro'yxatidagi yozuvlarning id'lari.
    *
@@ -78,6 +93,32 @@ export interface HrEmployee {
    * esa yana INPS'ni biriktirib bo'lmasdi. Endi tanlov xodim kesimida.
    */
   taxIds?: number[];
+  /**
+   * Shu xodimga PLASTIK KARTA orqali beriladigan oylik summasi (so'm).
+   *
+   * QO'LDA yoziladi va har kimda har xil bo'ladi — kimgadir 2 000 000,
+   * kimgadir 4 000 000. Shu bois Sozlamalardagi tayyor ro'yxatdan
+   * TANLANMAYDI: erkin summani oldindan sanab bo'lmaydi.
+   *
+   * `null` yoki maydon yo'q → plastik biriktirilmagan: xodim butun oyligini
+   * bugungidek bitta kanal bilan oladi.
+   *
+   * IKKI XIL ISHGA ISHLATILADI va ular ARALASHTIRILMASLIGI SHART:
+   *   1. SOLIQ ASOSI — "Plastik qismidan" bazali foizli qoida aynan shu
+   *      NOMINAL summadan hisoblanadi. Davrga, avansga va shu oyda
+   *      allaqachon to'langan summaga BOG'LIQ EMAS.
+   *   2. KARTA OYOG'I MAQSADI — chiqarishda kartaga qancha yuborilishi
+   *      (`min(qolgan maqsad, to'lanadigan qoldiq)`), ya'ni oy ichida
+   *      kamayib boradigan qiymat.
+   * Agar soliq asosi ham karta oyog'idan olinsa, bir oyda IKKINCHI marta
+   * chiqarishda maqsad 0 bo'lgani uchun soliq ham 0 chiqadi va o'sha oyda
+   * allaqachon ushlangan soliq xodimga QAYTIB berilardi (`payrollDue`
+   * soliqni har safar boshidan qayta hisoblaydi).
+   *
+   * NIMA UCHUN SKALYAR, `taxIds` KABI MASSIV EMAS: ikkita soliqni birga
+   * biriktirish ma'noli, ikkita plastik summa esa — qo'sh hisob.
+   */
+  plastikSalary?: number | null;
 }
 
 /**
@@ -120,4 +161,28 @@ export function fixedSalaryOf(emp: { branchAssignments?: EmployeeBranchAssignmen
  */
 export function isSalaryConfigured(emp: { branchAssignments?: EmployeeBranchAssignment[] }): boolean {
   return fixedSalaryOf(emp) > 0;
+}
+
+/**
+ * Mijozdan kelgan plastik summani tozalaydi.
+ *
+ * `null` — BIRIKTIRILMAGAN (haqiqiy qiymat, "tegilmadi" emas): oyna
+ * "Biriktirilmagan qilish" tugmasi bilan aynan shuni yuboradi.
+ *
+ * DIQQAT: bu yerda `sanitizeAssignments` dagi `> 0 ? n : 0` naqshi
+ * TAKRORLANMAYDI. U yerda 0 — "oylik yo'q" degan qonuniy qiymat, bu yerda
+ * esa 0 va "biriktirilmagan" farqlanishi kerak: 0 yozib qo'yilsa xodimda
+ * plastik qoidasi bor-u summasi yo'q holat paydo bo'lardi va soliq JIMGINA
+ * nolga tushardi.
+ */
+export function sanitizePlastikSalary(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+}
+
+/** Hisobda ishlatiladigan plastik summa. Biriktirilmagan xodimda 0. */
+export function plastikSalaryOf(emp: { plastikSalary?: number | null }): number {
+  const n = Number(emp?.plastikSalary);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
 }

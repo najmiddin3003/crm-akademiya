@@ -21,6 +21,18 @@ export interface PaymentMethod {
 
 export const PAYMENT_METHODS_COLLECTION = "settings_payment_methods";
 
+/**
+ * PLASTIK KARTA turining barqaror kaliti (seed id 2).
+ *
+ * Oylikning "rasmiy" qismi aynan shu kanal bilan chiqadi va oylik hisobi
+ * "xodimga kartadan qancha berilgan"ni shu kalit bo'yicha o'lchaydi
+ * (lib/payrollSources.ts → loadPaidByEmployee).
+ *
+ * Nomi ("Plastik") Sozlamalardan o'zgartirilishi mumkin, kaliti esa yo'q —
+ * shuning uchun taqqoslash HAR DOIM kalit bo'yicha bo'ladi.
+ */
+export const PLASTIK_METHOD_KEY = "plastik";
+
 // Nomdan barqaror kalit yasaydi (yangi tur qo'shilganda).
 export function slugifyMethod(name: string): string {
   const map: Record<string, string> = { "'": "", "‘": "", "’": "", "ʻ": "" };

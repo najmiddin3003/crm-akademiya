@@ -12,23 +12,23 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
 import type { Cashbox } from "@/lib/cashboxes";
 
-// "Bonus yaratish" — Moliya → Bonus sahifasidagi o'ng tomondan ochiladigan
+// "Bonus yaratish" â Moliya â Bonus sahifasidagi o'ng tomondan ochiladigan
 // panel (skrinshot 2/3). "Tranzaksiya turi"ga qarab pastda "Xodim" (oddiy
 // tanlov, /api/hr-employees'dan) yoki "O'quvchi" (qidiruvli tanlov,
-// /api/pupils'dan — bazadagi haqiqiy o'quvchilar) maydoni chiqadi.
+// /api/pupils'dan â bazadagi haqiqiy o'quvchilar) maydoni chiqadi.
 
 /**
- * O'quvchi tanlovi — MODUL DARAJASIDA, ATAYLAB shu joyda.
+ * O'quvchi tanlovi â MODUL DARAJASIDA, ATAYLAB shu joyda.
  *
- * `useStudents({ light: true })` — 546 KB / 1407 ms / ~6765 o'quvchi —
+ * `useStudents({ light: true })` â 546 KB / 1407 ms / ~6765 o'quvchi â
  * endi FAQAT shu komponent mount bo'lganda ishga tushadi, ya'ni faqat
- * "O'quvchi" turi tanlanganda (oyna esa "Xodim" bilan ochiladi —
+ * "O'quvchi" turi tanlanganda (oyna esa "Xodim" bilan ochiladi â
  * BONUS_TYPES[0], constants/bonuses.js). Standart yo'lda bu so'rov
  * UMUMAN ketmaydi.
  *
  * NEGA MODUL DARAJASIDA: BonusDrawer FUNKSIYASI ICHIDA e'lon qilinsa,
  * "Qiymat"/"Izoh" maydoniga har harf yozilganda YANGI komponent turi
- * hosil bo'lardi — React buni QAYTA MOUNT sifatida ko'radi va 546 KB
+ * hosil bo'lardi â React buni QAYTA MOUNT sifatida ko'radi va 546 KB
  * har harfda qaytadan ketardi. Bu tuzatilayotgan muammoni bir necha
  * barobar yomonlashtirardi.
  */
@@ -65,14 +65,16 @@ export default function BonusDrawer({
 
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
-  // Ikkala ro'yxat ham shu yerda yuklanadi — kelmaguncha "Tanlang"/"Tanlanmagan"
-  // o'rniga "Yuklanmoqda…" turadi, aks holda bo'sh select "xodim yo'q ekan"
+  // Ikkala ro'yxat ham shu yerda yuklanadi â kelmaguncha "Tanlang"/"Tanlanmagan"
+  // o'rniga "Yuklanmoqdaâ¦" turadi, aks holda bo'sh select "xodim yo'q ekan"
   // degan taassurot qoldiradi.
   const [listsLoading, setListsLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/hr-employees")
+      // FILIALGA KESILMAGAN ro'yxat (tor proyeksiya) — nima uchun aynan
+      // shu endpoint: app/api/hr-employees/ref/route.ts izohiga qarang.
+      fetch("/api/hr-employees/ref")
         .then((r) => r.json())
         .then((d) => { if (!cancelled && d.ok) setEmployees(d.employees); }),
       fetch("/api/cashboxes")
@@ -128,11 +130,11 @@ export default function BonusDrawer({
                 value={type}
                 onChange={(e) => { setType(e.target.value); setEmployeeName(""); setStudentName(""); }}
                 // Ro'yxat TANLANGANDA emas, dropdown OCHILGANDA isiy
-                // boshlaydi — odatda 0.3-1.5 s oldinroq. Kalit bir xil
+                // boshlaydi â odatda 0.3-1.5 s oldinroq. Kalit bir xil
                 // ("pupils:light"), shu bois "O'quvchi" tanlansa
                 // StudentPicker mount bo'lganda in-flight dedup
                 // (lib/clientCache.ts) ikkinchi so'rovni yubormaydi.
-                // "Xodim" tanlangan holda qolsa — hech narsa isrof
+                // "Xodim" tanlangan holda qolsa â hech narsa isrof
                 // bo'lmaydi, chunki StudentPicker umuman mount bo'lmaydi.
                 onPointerDown={() => { void loadPupilsCached({ light: true }); }}
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -172,7 +174,7 @@ export default function BonusDrawer({
                 disabled={listsLoading}
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                {/* "Tanlanmagan" — haqiqiy tanlov (kassasiz bonus), shuning
+                {/* "Tanlanmagan" â haqiqiy tanlov (kassasiz bonus), shuning
                     uchun u `ready` matni sifatida saqlanadi. */}
                 <option value="">{selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")}</option>
                 {cashboxes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -206,7 +208,7 @@ export default function BonusDrawer({
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? "Saqlanmoqdaâ¦" : "Saqlash"}
           </button>
         </div>
       </div>

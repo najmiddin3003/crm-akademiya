@@ -58,38 +58,38 @@ const TX_TYPE_LABELS: Record<string, string> = {
   transfer: "Ko'chirish",
 };
 
-// Moliya → Kassalar (sidebar: Moliya > Kassalar, href /finance-cash).
+// Moliya â Kassalar (sidebar: Moliya > Kassalar, href /finance-cash).
 //
 // Dizayn referensi: chapda gradient kassa kartalari (tanlangani va bosh
-// kassa — to'q ko'k, qolganlari — och ko'k), tanlangan kartaning ICHIDA
+// kassa â to'q ko'k, qolganlari â och ko'k), tanlangan kartaning ICHIDA
 // Kirim/Chiqim/Ko'chirish tugmalari, to'lov turlari bo'yicha qoldiq va
 // tahrirlash / asosiy qilish / hisobot yuklab olish satri. O'ngda ikki
 // qatorli filtrlar + tranzaksiyalar jadvali.
 //
 // Barcha amallar HAQIQIY (MongoDB): kassa qo'shish/tahrirlash, Kirim/Chiqim
-// (/api/cashboxes/:id/adjust — balans ham o'zgaradi), to'lov turlari orasida
+// (/api/cashboxes/:id/adjust â balans ham o'zgaradi), to'lov turlari orasida
 // (transfer) va kassalar orasida (transfer-to) ko'chirish. Har bir amal
-// `transaction_entries` kolleksiyasiga yozuv qo'shadi — shu jadval,
+// `transaction_entries` kolleksiyasiga yozuv qo'shadi â shu jadval,
 // "Tranzaksiyalar" va "Moliya hisobotlari/analitikasi" sahifalari BIR XIL
 // manbadan (lib/transactionLog.ts) foydalanadi.
 //
 // Kartadagi mas'ul (moderator) ismi va jadvaldagi "Kim" ustuni profil
 // sahifalariga (/management-xodimlar/[id], /student-edit/[id]) o'tadi.
 
-// Karta foni endi SHU YERDA emas — `.fc-card-dark` / `.fc-card-light`
+// Karta foni endi SHU YERDA emas â `.fc-card-dark` / `.fc-card-light`
 // klasslarida, globals.css da. Ranglar "BREND PALITRASI" blokidan keladi,
 // ya'ni brend almashtirilganda bu katta kartochka ham u bilan birga
 // o'zgaradi.
 //
 // NEGA inline style EMAS: gradientni inline `style` ichida
-// `hsl(var(--brand-card-...))` deb yozib ko'rilgandi va u ISHLAMADI —
+// `hsl(var(--brand-card-...))` deb yozib ko'rilgandi va u ISHLAMADI â
 // o'zgaruvchilar CSS ichida hech qayerda ishlatilmagani uchun qurish
 // bosqichida "keraksiz" deb tashlab yuborilgan, natijada kartochka
 // fonsiz qolgan edi. CSS klassida ishlatilsa, ular saqlanadi.
 
-// To'lov turi yonidagi rangli nuqta. Kalitlar Sozlamalar → Moliya → To'lov
+// To'lov turi yonidagi rangli nuqta. Kalitlar Sozlamalar â Moliya â To'lov
 // turlaridan keladi; ro'yxatga yangi tur qo'shilsa, u zaxira palitradan rang
-// oladi (rang faqat bezak — hisob-kitobga ta'sir qilmaydi).
+// oladi (rang faqat bezak â hisob-kitobga ta'sir qilmaydi).
 const METHOD_DOT: Record<string, string> = {
   naqd: "#34d399",
   inkassa: "#fbbf24",
@@ -117,7 +117,7 @@ function methodDot(key: string, i: number): string {
 const METHOD_ORDER_KEY = "financeCashMethodOrder";
 
 // Foydalanuvchi tanlagan to'lov turlari tartibi (localStorage). Ro'yxatga
-// solishtirish render vaqtida bo'ladi — to'lov turlari Sozlamalardan
+// solishtirish render vaqtida bo'ladi â to'lov turlari Sozlamalardan
 // asinxron kelgani uchun bu yerda faqat xom massiv o'qiladi.
 function readSavedOrder(): string[] {
   if (typeof window === "undefined") return [];
@@ -164,19 +164,19 @@ function escHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => map[c]);
 }
 
-// Chek chiqarish — yashirin iframe ichida bosma sahifa yasab, brauzerning
+// Chek chiqarish â yashirin iframe ichida bosma sahifa yasab, brauzerning
 // bosma oynasini ochadi. Alohida chek route'i kerak emas va sahifadagi
 // holat (drawer, filtrlar) buzilmaydi.
 
 /**
- * Chekdagi sarlavha va pastki satr — BOSMA va KO'RIB CHIQISH oynasi uchun
+ * Chekdagi sarlavha va pastki satr â BOSMA va KO'RIB CHIQISH oynasi uchun
  * bitta manba. Ular ikki joyda yozilgan edi va shu bois vaqt o'tib
  * bir-biridan uzoqlashishi hech gap emasdi.
  */
 const RECEIPT_BRAND = "Akademiya CRM";
 const RECEIPT_FOOTER = "Akademiya - ilm maskani!";
 
-// Yozuv o'qituvchi oyligiga QO'SHILADIMI yoki undan AYRILADIMI — JADVALDA
+// Yozuv o'qituvchi oyligiga QO'SHILADIMI yoki undan AYRILADIMI â JADVALDA
 // shu farq ko'rinib turishi kerak (ustun ostidagi izoh sifatida).
 //
 // CHEKDA esa qisqa "Ustoz" yoziladi: yo'nalish chekning o'z sarlavhasidan
@@ -192,11 +192,11 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
     e.txType === "payOut" ? "CHIQIM CHEKI" :
     "KO'CHIRISH CHEKI";
   const rows: [string, string][] = [
-    ["Chek №", String(e.id)],
+    ["Chek â", String(e.id)],
     ["Sana", fmtEntryDate(e)],
-    ["O'quvchi", e.studentName || e.moderator || "—"],
-    ["Kassa", cashboxName || "—"],
-    ["Tranzaksiya", e.txName || "—"],
+    ["O'quvchi", e.studentName || e.moderator || "â"],
+    ["Kassa", cashboxName || "â"],
+    ["Tranzaksiya", e.txName || "â"],
     ["To'lov turi", e.paymentType],
   ];
   // Yozuv qaysi o'qituvchining oyligiga tegishli ekani.
@@ -205,16 +205,16 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
 
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
     @page{size:58mm auto;margin:3mm}
-    /* BOSMA HAR DOIM OQ FONDA — sayt tungi rejimda bo'lsa ham.
+    /* BOSMA HAR DOIM OQ FONDA â sayt tungi rejimda bo'lsa ham.
        Bu hujjat alohida iframe'da yasaladi, ya'ni ilovaning "dark"
        klassi bu yerga o'tmaydi. Baribir aniq yozib qo'yiladi: brauzer
        yoki OS "majburiy tungi rejim" da bo'lsa, fon o'zi qoraytirilib,
        qora siyoh qora fonda bosilardi. color-scheme:light aynan shu
        avtomatik qoraytirishni o'chiradi.
-       DIQQAT: bu izoh template literal ICHIDA — teskari apostrof
+       DIQQAT: bu izoh template literal ICHIDA â teskari apostrof
        ishlatilmaydi, u satrni uzib yuboradi. */
     html,body{margin:0;padding:0;background:#fff;color-scheme:light}
-    /* HAMMA MATN QORA. Termal printer faqat qora yoki oq bosadi —
+    /* HAMMA MATN QORA. Termal printer faqat qora yoki oq bosadi â
        kulrangni nuqtalar bilan taqlid qiladi va natija yuvilgandek,
        hira chiqadi. Ilgari yorliqlar (#64748b), kassa nomi, "JAMI"
        yozuvi va ajratuvchi chiziqlar (#94a3b8) kulrang edi, ya'ni
@@ -268,7 +268,7 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
 }
 
 // Chek chiqarish tugmasi bosilganda avval shu ko'rinishdagi ("kirim cheki"
-// referens skrinshoti) modal chiqadi — foydalanuvchi mazmunni ko'rib "Chop
+// referens skrinshoti) modal chiqadi â foydalanuvchi mazmunni ko'rib "Chop
 // etish" bosgandagina brauzerning haqiqiy bosma oynasi ochiladi.
 function ReceiptPreviewModal({
   entry,
@@ -290,9 +290,9 @@ function ReceiptPreviewModal({
         : "KO'CHIRISH CHEKI";
   const rows: [string, string][] = [
     ["Sana", fmtEntryDate(entry)],
-    ["O'quvchi", entry.studentName || entry.moderator || "—"],
-    ["Kassa", cashboxName || "—"],
-    ["Tranzaksiya", entry.txName || "—"],
+    ["O'quvchi", entry.studentName || entry.moderator || "â"],
+    ["Kassa", cashboxName || "â"],
+    ["Tranzaksiya", entry.txName || "â"],
     ["To'lov turi", entry.paymentType],
   ];
   if (entry.teacherName) rows.push(["Ustoz", entry.teacherName]);
@@ -301,13 +301,13 @@ function ReceiptPreviewModal({
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      {/* CHEK QOG'OZI DOIM OQ — MAVZUGA ERGASHMAYDI.
+      {/* CHEK QOG'OZI DOIM OQ â MAVZUGA ERGASHMAYDI.
           NIMA NOTO'G'RI EDI: karta `bg-white` bilan qattiq oq edi, matn
           esa mavzu tokenlaridan kelardi. Tungi rejimda o'lchandi: fon
-          rgb(255,255,255), matn rgb(250,250,250) — ya'ni oq qog'ozda oq
+          rgb(255,255,255), matn rgb(250,250,250) â ya'ni oq qog'ozda oq
           siyoh, qiymatlarni umuman o'qib bo'lmasdi; yorliqlar esa
           rgb(155,162,176) bo'lib yuvilib ketardi.
-          Bu oyna — bosiladigan QOG'OZNING ko'rinishi, ekran elementi emas.
+          Bu oyna â bosiladigan QOG'OZNING ko'rinishi, ekran elementi emas.
           Qog'oz oq, siyoh qora; shu bois ranglar shu yerda aniq yozilgan
           va `printReceipt` dagi bosma uslubi bilan bir xil. */}
       <div
@@ -327,7 +327,7 @@ function ReceiptPreviewModal({
           <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
           <div className="space-y-1.5 text-[13px]">
             <div className="flex justify-between gap-3">
-              <span style={{ color: "#64748b" }}>Chek №</span>
+              <span style={{ color: "#64748b" }}>Chek â</span>
               <span className="font-medium tabular-nums">{entry.id}</span>
             </div>
             {rows.map(([k, v]) => (
@@ -365,7 +365,7 @@ function ReceiptPreviewModal({
           >
             Yopish
           </button>
-          {/* "Chop etish" — brend rangida qolaveradi: u ikkala mavzuda
+          {/* "Chop etish" â brend rangida qolaveradi: u ikkala mavzuda
               ham oq matn bilan yetarli kontrast beradi. */}
           <button
             onClick={onPrint}
@@ -380,7 +380,7 @@ function ReceiptPreviewModal({
   );
 }
 
-// "O'quvchini qidiring..." / "O'qituvchini qidiring..." — yozib qidiriladigan
+// "O'quvchini qidiring..." / "O'qituvchini qidiring..." â yozib qidiriladigan
 // filtr. Qiymat erkin matn (qismiy moslik bo'yicha filtrlaydi), ro'yxatdan
 // tanlansa to'liq ism qo'yiladi.
 function SearchFilter({
@@ -436,7 +436,7 @@ function SearchFilter({
           title="Tozalash"
           className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
         >
-          ×
+          Ã
         </button>
       )}
       {open && (
@@ -468,13 +468,13 @@ function SearchFilter({
 
 // Jadvaldagi "Holati" ustuni. Manbadagi qiymatlar: "" (qabul qilindi),
 // "waiting" (kutilmoqda), "cancelled" (bekor qilingan). Miqdor tahrirlangan
-// bo'lsa "Tahrirlangan" belgisi qo'shiladi — ustiga bosilganda tahrirlar
-// tarixi ochiladi. "Qabul qilindi" faqat tahrirlanmagan holatda ko'rinadi —
+// bo'lsa "Tahrirlangan" belgisi qo'shiladi â ustiga bosilganda tahrirlar
+// tarixi ochiladi. "Qabul qilindi" faqat tahrirlanmagan holatda ko'rinadi â
 // tahrirlangan bo'lsa uning o'rnini "Tahrirlangan" egallaydi (bekor
 // qilingan holatda esa ikkalasi birga: "Bekor qilingan" + "Tahrirlangan").
 //
 // CHIQIMDA MATN BOSHQA: kassadan pul chiqarilganda "Qabul qilindi" noto'g'ri
-// o'qiladi — kassa hech narsa qabul qilmagan, aksincha to'lab bergan.
+// o'qiladi â kassa hech narsa qabul qilmagan, aksincha to'lab bergan.
 // Shuning uchun payOut yozuvida jigarrang fonli qizil "To'landi" chiqadi;
 // kirim va ko'chirishda esa avvalgidek yashil "Qabul qilindi" qoladi.
 function StatusCell({
@@ -485,15 +485,15 @@ function StatusCell({
 }: {
   entry: TransactionEntry;
   onShowHistory: () => void;
-  /** ✓ / × bosilganda. Faqat kassalararo ko'chirmaning KELUVCHI qatorida. */
+  /** â / Ã bosilganda. Faqat kassalararo ko'chirmaning KELUVCHI qatorida. */
   onDecide: (decision: "confirm" | "reject") => void;
-  /** So'rov ketayotgan payt — ikkala tugma ham o'chiriladi. */
+  /** So'rov ketayotgan payt â ikkala tugma ham o'chiriladi. */
   deciding: boolean;
 }) {
   const status = entry.status;
   const edited = Array.isArray(entry.editHistory) && entry.editHistory.length > 0;
   // Qaror faqat pul KELAYOTGAN qatorda qabul qilinadi. Eski (edutizimdan
-  // kelgan) "waiting" yozuvlarda `transferRole` yo'q — ularda tugmalar
+  // kelgan) "waiting" yozuvlarda `transferRole` yo'q â ularda tugmalar
   // chizilmaydi, chunki juftlik bog'lanmagan va pulni qayerga qo'yishni
   // aniqlab bo'lmaydi (server ham bunday so'rovni rad etadi).
   const canDecide = entry.txType === "transfer" && entry.transferRole === "in";
@@ -504,7 +504,7 @@ function StatusCell({
           <CircleX className="w-3.5 h-3.5" /> Bekor qilingan
         </span>
       ) : status === "waiting" ? (
-        // × va ✓ — HAQIQIY tugmalar. Ilgari ikkalasi ham oddiy <span> edi,
+        // Ã va â â HAQIQIY tugmalar. Ilgari ikkalasi ham oddiy <span> edi,
         // ya'ni "Kutilmoqda" holatidan chiqishning hech qanday yo'li yo'q edi.
         //
         // `stopPropagation` SHART: qatorning o'zida `onClick` bor va u
@@ -513,18 +513,18 @@ function StatusCell({
         //
         // Tugmalar faqat ko'chirmaning KELUVCHI qatorida chiziladi: pul
         // kelayotgan kassaning egasi tasdiqlaydi. Chiquvchi qatorda faqat
-        // "Kutilmoqda" yozuvi qoladi — jo'natuvchi o'z ko'chirmasini o'zi
+        // "Kutilmoqda" yozuvi qoladi â jo'natuvchi o'z ko'chirmasini o'zi
         // tasdiqlay olmaydi (server ham buni rad etadi).
         <span className="inline-flex items-center gap-1.5">
           {canDecide && (
             <button
               type="button"
               disabled={deciding}
-              title="Rad etish — pul jo'natuvchi kassaga qaytariladi"
+              title="Rad etish â pul jo'natuvchi kassaga qaytariladi"
               onClick={(ev) => { ev.stopPropagation(); onDecide("reject"); }}
               className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px] hover:bg-rose-200 disabled:opacity-50"
             >
-              ×
+              Ã
             </button>
           )}
           <span className="text-[13px] text-rose-600 font-medium">
@@ -534,7 +534,7 @@ function StatusCell({
             <button
               type="button"
               disabled={deciding}
-              title="Tasdiqlash — pul shu kassaga qo'shiladi"
+              title="Tasdiqlash â pul shu kassaga qo'shiladi"
               onClick={(ev) => { ev.stopPropagation(); onDecide("confirm"); }}
               className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600 hover:bg-emerald-200 disabled:opacity-50"
             >
@@ -565,7 +565,7 @@ function StatusCell({
   );
 }
 
-// Miqdor tahrirlanish tarixini ko'rsatuvchi modal — jadvaldagi "Tahrirlangan"
+// Miqdor tahrirlanish tarixini ko'rsatuvchi modal â jadvaldagi "Tahrirlangan"
 // belgisi bosilganda ochiladi.
 function EditHistoryModal({
   entry,
@@ -579,7 +579,7 @@ function EditHistoryModal({
   function fmtAt(iso: string): string {
     const raw = new Date(iso);
     if (Number.isNaN(raw.getTime())) return iso;
-    // Har doim O'zbekiston vaqti — brauzer boshqa zonada bo'lsa ham.
+    // Har doim O'zbekiston vaqti â brauzer boshqa zonada bo'lsa ham.
     const d = toUz(raw);
     const p = (n: number) => String(n).padStart(2, "0");
     return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -594,7 +594,7 @@ function EditHistoryModal({
             onClick={onClose}
             className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
           >
-            ×
+            Ã
           </button>
         </div>
         <div className="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-3">
@@ -608,10 +608,10 @@ function EditHistoryModal({
               <div className="flex items-center justify-between text-[12px] text-muted-foreground">
                 <span>{fmtAt(h.at)}</span>
                 <span className="tabular-nums">
-                  {fmtNum(Math.abs(h.from))} → <span className="text-foreground font-medium">{fmtNum(Math.abs(h.to))}</span> so&apos;m
+                  {fmtNum(Math.abs(h.from))} â <span className="text-foreground font-medium">{fmtNum(Math.abs(h.to))}</span> so&apos;m
                 </span>
               </div>
-              <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{h.reason || "—"}</div>
+              <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{h.reason || "â"}</div>
             </div>
           ))}
         </div>
@@ -623,11 +623,11 @@ function EditHistoryModal({
 export default function CashboxesPage() {
   const { showSuccess, showError } = useToast();
   // Kassani BOSHQARISH (tahrirlash, bosh kassa qilish, hisobotni yuklab
-  // olish) faqat administratorda. Kassa egasi — kassir — o'z kassasida
+  // olish) faqat administratorda. Kassa egasi â kassir â o'z kassasida
   // pul amallarini bajaradi, lekin kassaning O'ZINI o'zgartira olmaydi.
   //
   // Bu FAQAT KO'RINISH: haqiqiy himoya server tomonda
-  // (app/api/cashboxes/[id] — PATCH/DELETE va .../set-primary 403
+  // (app/api/cashboxes/[id] â PATCH/DELETE va .../set-primary 403
   // qaytaradi). Tugmani yashirish so'rovni qo'lda yuborishga to'sqinlik
   // qilmaydi.
   const { isAdmin } = useBranch();
@@ -670,7 +670,7 @@ export default function CashboxesPage() {
   const [historyEntry, setHistoryEntry] = useState<TransactionEntry | null>(
     null,
   );
-  // Qaysi ko'chirma qatori bo'yicha hozir so'rov ketyapti (id) — o'sha
+  // Qaysi ko'chirma qatori bo'yicha hozir so'rov ketyapti (id) â o'sha
   // qatordagi ikkala tugma ham o'chiriladi, ya'ni ikki marta bosib
   // yuborilmaydi. Server tomonda ham himoya bor (holat almashtirish
   // sharti), bu esa faqat interfeys darajasidagi qulaylik.
@@ -699,13 +699,13 @@ export default function CashboxesPage() {
     }
   }
 
-  // Kartadagi qoldiq ro'yxati uchun BARCHA turlar (nofaol qilingani ham) —
+  // Kartadagi qoldiq ro'yxati uchun BARCHA turlar (nofaol qilingani ham) â
   // eski summalar ko'rinib turishi kerak; tanlash ro'yxatlarida esa faqat
   // faollari.
   const { methods: paymentMethods } = usePaymentMethods();
   const [methodOrder, setMethodOrder] = useState<string[]>([]);
   useEffect(() => {
-    // localStorage faqat clientda mavjud — SSR bilan bir xil boshlang'ich
+    // localStorage faqat clientda mavjud â SSR bilan bir xil boshlang'ich
     // holatdan boshlab, hydratsiyadan keyin saqlangan tartibga sinxronlaymiz.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMethodOrder(readSavedOrder());
@@ -727,7 +727,7 @@ export default function CashboxesPage() {
 
   function reorderMethod(target: string) {
     if (!dragKey || dragKey === target) return;
-    // Amaldagi (ko'rinib turgan) tartibdan boshlaymiz — saqlangan massiv
+    // Amaldagi (ko'rinib turgan) tartibdan boshlaymiz â saqlangan massiv
     // bo'sh yoki chala bo'lishi mumkin, o'shanda indeks topilmay qolardi.
     const current = orderedMethods.map((m) => m.key);
     const sourceIndex = current.indexOf(dragKey);
@@ -736,7 +736,7 @@ export default function CashboxesPage() {
 
     const next = current.filter((k) => k !== dragKey);
     // Dropping past the target in the drag direction: land right after it
-    // when moving forward, right before it when moving backward — so a
+    // when moving forward, right before it when moving backward â so a
     // single drag can move a row any number of positions, not just one.
     let insertAt = next.indexOf(target);
     if (sourceIndex < targetIndex) insertAt += 1;
@@ -759,7 +759,7 @@ export default function CashboxesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  // Sahifalash endi SERVERDA — shu bois filtr o'zgarganda 1-sahifaga
+  // Sahifalash endi SERVERDA â shu bois filtr o'zgarganda 1-sahifaga
   // QAYTISH SHART. Ilgari bu faqat kassa almashganda kerak edi: qatorlar
   // brauzerda bo'lgani uchun 300-sahifadan 2-sahifaga o'zi tushardi.
   // Endi esa 300-sahifada turib filtr qo'yilsa server bo'sh javob qaytaradi.
@@ -777,7 +777,7 @@ export default function CashboxesPage() {
   const [detailEntry, setDetailEntry] = useState<TransactionEntry | null>(null);
 
   // Filtr TANLOVLARI serverdan (/api/transaction-entries/facets). Ilgari
-  // ular `entries` dan yig'ilardi — jadval sahifalab o'qiladigan bo'lgach
+  // ular `entries` dan yig'ilardi â jadval sahifalab o'qiladigan bo'lgach
   // bu ishlamay qoladi: 50 qatorda kassadagi barcha nomlar bo'lmaydi.
   // Kassa almashgandagina qayta yuklanadi, filtr o'zgarganda emas.
   const [facets, setFacets] = useState<{
@@ -799,7 +799,7 @@ export default function CashboxesPage() {
         });
       })
       .catch(() => {
-        // Tanlovlar yuklanmasa jadval baribir ishlaydi — pastdagi
+        // Tanlovlar yuklanmasa jadval baribir ishlaydi â pastdagi
         // ro'yxatlar katalogdagi qiymatlar bilan qoladi.
       });
     return () => { cancelled = true; };
@@ -808,12 +808,12 @@ export default function CashboxesPage() {
   // Yozuvlar SERVERDA filtrlanadi VA SAHIFALANADI: brauzerga faqat bitta
   // sahifa (odatda 50 qator) keladi.
   //
-  // Ilgari bu yer butun jadvalni tortardi — kassa 4 uchun 18 597 qator,
-  // 8.10 MB — filtrlash ham, sahifalash ham brauzerda bo'lardi. Endi
+  // Ilgari bu yer butun jadvalni tortardi â kassa 4 uchun 18 597 qator,
+  // 8.10 MB â filtrlash ham, sahifalash ham brauzerda bo'lardi. Endi
   // bittasi 22.2 KB (373 barobar kam), va "O'quvchini qidiring" katagiga
   // har harf yozilganda 18 597 obyekt qayta filtrlanmaydi.
   //
-  // Jadval yuqorisidagi Kirim/Chiqim va "Umumiy soni" — SERVERDAN, butun
+  // Jadval yuqorisidagi Kirim/Chiqim va "Umumiy soni" â SERVERDAN, butun
   // filtr bo'yicha. Ular endi qatorlardan hisoblanmaydi: brauzerda faqat
   // bitta sahifa (50 qator) bor.
   const [entryTotals, setEntryTotals] = useState({ income: 0, expense: 0 });
@@ -829,13 +829,13 @@ export default function CashboxesPage() {
     if (dateRange.end) qs.set("dateTo", toIso(dateRange.end));
     if (txType) qs.set("txType", TX_TYPE_MAP[txType]);
     if (txName) qs.set("txName", txName);
-    // ATAYLAB `studentLike`/`teacherLike` — ular ICHIDAN qidiradi, xuddi
+    // ATAYLAB `studentLike`/`teacherLike` â ular ICHIDAN qidiradi, xuddi
     // shu yerdagi eski `.includes()` kabi. API'dagi `?studentName=` esa
     // aynan tenglik va uni bu yerda ishlatib bo'lmaydi.
     if (student.trim()) qs.set("studentLike", student.trim());
     if (teacher.trim()) qs.set("teacherLike", teacher.trim());
     // To'lov turi yozuvda NOMI bilan saqlanadi, filtrda esa kaliti
-    // tanlanadi — shuning uchun ro'yxat yuklangan bo'lishi kerak.
+    // tanlanadi â shuning uchun ro'yxat yuklangan bo'lishi kerak.
     const payLabel = payType
       ? paymentMethods.find((m) => m.key === payType)?.name
       : "";
@@ -848,7 +848,7 @@ export default function CashboxesPage() {
 
   const loadEntries = useCallback(() => {
     // Kassa tanlanmagan bo'lsa so'rov yubormaymiz. Holatni bu yerda
-    // tozalash SHART EMAS — `filteredEntries` `selectedId` yo'qligida
+    // tozalash SHART EMAS â `filteredEntries` `selectedId` yo'qligida
     // baribir bo'sh ro'yxat qaytaradi.
     if (!selectedId) return;
     const qs = entryQuery();
@@ -856,7 +856,7 @@ export default function CashboxesPage() {
     qs.set("limit", String(pageSize));
     qs.set("withTotals", "1");
     // Sahifalar ketma-ket tez bosilganda javoblar boshqa tartibda kelishi
-    // mumkin — faqat ENG OXIRGI so'rovniki qabul qilinadi.
+    // mumkin â faqat ENG OXIRGI so'rovniki qabul qilinadi.
     const seq = ++entryReqRef.current;
     fetch(`/api/transaction-entries?${qs.toString()}`)
       .then((r) => r.json())
@@ -871,7 +871,7 @@ export default function CashboxesPage() {
       .catch(() => {
         if (seq !== entryReqRef.current) return;
         // Moliya jadvali: xato bo'lganda ESKI raqamlar ekranda qolmasligi
-        // kerak, lekin nol ham ko'rsatilmaydi — jadval xato holatini
+        // kerak, lekin nol ham ko'rsatilmaydi â jadval xato holatini
         // ochiq aytadi (pastdagi `entriesError`).
         setEntries([]);
         setEntryTotal(0);
@@ -892,10 +892,10 @@ export default function CashboxesPage() {
   }
 
   /**
-   * Kassalararo ko'chirmani tasdiqlash (✓) yoki rad etish (×).
+   * Kassalararo ko'chirmani tasdiqlash (â) yoki rad etish (Ã).
    *
    * Jadval va kassa kartochkalari IKKALASI ham yangilanadi: tasdiq pulni
-   * qabul qiluvchiga qo'shadi, rad etish esa jo'natuvchiga qaytaradi —
+   * qabul qiluvchiga qo'shadi, rad etish esa jo'natuvchiga qaytaradi â
    * ya'ni balanslar o'zgaradi.
    */
   async function decideTransfer(entry: TransactionEntry, decision: "confirm" | "reject") {
@@ -903,7 +903,7 @@ export default function CashboxesPage() {
     try {
       // Manzil QATTIQ yoziladi (shablon ichida emas): ruxsatlar jadvali
       // route fayllari bo'yicha yig'iladi va u sahifadan chaqiruvgacha
-      // bo'lgan import zanjiriga tayanadi — scripts/gen-api-permissions.mjs.
+      // bo'lgan import zanjiriga tayanadi â scripts/gen-api-permissions.mjs.
       const url = decision === "confirm"
         ? `/api/transaction-entries/${entry.id}/transfer-confirm`
         : `/api/transaction-entries/${entry.id}/transfer-reject`;
@@ -923,18 +923,18 @@ export default function CashboxesPage() {
     }
   }
 
-  // "Kim" ustunini /student-edit/[id] ga bog'lash uchun — TransactionEntry
+  // "Kim" ustunini /student-edit/[id] ga bog'lash uchun â TransactionEntry
   // faqat ismni saqlaydi (id emas), shu sabab bazadagi o'quvchilar
   // (/api/pupils) ichidan ism bo'yicha qidiramiz. Xodimlar xaritasi (pastda)
-  // bilan bir xil qoida — katta-kichik harf va ortiqcha bo'shliq farq
-  // qilmasin (hooks/useStudents.ts → byName).
+  // bilan bir xil qoida â katta-kichik harf va ortiqcha bo'shliq farq
+  // qilmasin (hooks/useStudents.ts â byName).
   // Bu sahifaga o'quvchidan faqat ISM va ID kerak (pastda name->id
-  // xaritasi), shu bois yengil rejim — 3.6 MB o'rniga ~544 KB.
+  // xaritasi), shu bois yengil rejim â 3.6 MB o'rniga ~544 KB.
   // Ro'yxat SHU YERDA bir marta olinadi va Kirim oynasiga PROP bilan
-  // uzatiladi. Ilgari drawer uni o'zi so'rardi — bir xil kesh kaliti
+  // uzatiladi. Ilgari drawer uni o'zi so'rardi â bir xil kesh kaliti
   // bilan ("pupils:light"), lekin TTL 30 s. Kassir jurnalni ko'rib,
   // yarim daqiqadan keyin "+ Kirim" bossa kesh muddati o'tgan bo'lardi
-  // va oyna 546 KB / ~1.4 s kutardi. Eng yomoni — o'sha paytda
+  // va oyna 546 KB / ~1.4 s kutardi. Eng yomoni â o'sha paytda
   // `StudentSearchSelect` `disabled={loading}` bilan o'chib turardi,
   // ya'ni kassir yozishni ham boshlay olmasdi. Ma'lumot esa shu
   // komponentning holatida turardi.
@@ -970,7 +970,7 @@ export default function CashboxesPage() {
   // Jadvaldagi "Kim" ustuni: o'quvchi bo'lsa /student-edit/[id] ga, xodim
   // (moderator) bo'lsa /management-xodimlar/[id] ga o'tadi. Qatorning o'zi
   // bosilganda tranzaksiya oynasi ochilgani uchun havola propagatsiyani
-  // to'xtatadi — ism bosilganda faqat profilga o'tiladi.
+  // to'xtatadi â ism bosilganda faqat profilga o'tiladi.
   function renderWhoCell(e: TransactionEntry) {
     const linkCls = "text-primary hover:underline";
     if (e.studentName) {
@@ -986,7 +986,7 @@ export default function CashboxesPage() {
           </Link>
         );
       }
-      // O'quvchilar orasidan topilmasa — xodim (masalan "Hodimga avans"
+      // O'quvchilar orasidan topilmasa â xodim (masalan "Hodimga avans"
       // yozuvida ismi shu maydonda saqlanadi) profiliga o'tishga urinamiz.
       const empId = moderatorProfileId(e.studentName);
       if (empId !== undefined) {
@@ -1015,17 +1015,17 @@ export default function CashboxesPage() {
         </Link>
       );
     }
-    return "—";
+    return "â";
   }
 
   // Jadvaldagi "Oyligiga" ustuni: yozuv qaysi o'qituvchining oyligiga
   // ta'sir qilishini ko'rsatadi. "Kim" ustuni kabi bu ism ham xodim
-  // profiliga (/management-xodimlar/[id]) olib boradi — ilgari oddiy matn
-  // edi va o'qituvchini ochish uchun Boshqaruv → Xodimlar dan qaytadan
+  // profiliga (/management-xodimlar/[id]) olib boradi â ilgari oddiy matn
+  // edi va o'qituvchini ochish uchun Boshqaruv â Xodimlar dan qaytadan
   // qidirishga to'g'ri kelardi. Ism xodimlar ro'yxatidan topilmasa (masalan
-  // xodim o'chirilgan, yozuv esa tarixda qolgan) — avvalgidek oddiy matn.
+  // xodim o'chirilgan, yozuv esa tarixda qolgan) â avvalgidek oddiy matn.
   function renderSalaryTargetCell(e: TransactionEntry) {
-    const sign = e.txType === "payIn" ? "+" : "−";
+    const sign = e.txType === "payIn" ? "+" : "â";
     const tone = e.txType === "payIn" ? "text-emerald-600" : "text-rose-600";
     const cls = `inline-flex items-center gap-1 text-[12px] ${tone}`;
     const empId = e.teacherName ? moderatorProfileId(e.teacherName) : undefined;
@@ -1060,7 +1060,9 @@ export default function CashboxesPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    fetch("/api/hr-employees")
+    // FILIALGA KESILMAGAN ro'yxat (tor proyeksiya) — nima uchun aynan
+    // shu endpoint: app/api/hr-employees/ref/route.ts izohiga qarang.
+    fetch("/api/hr-employees/ref")
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && d.ok) setEmployees(d.employees);
@@ -1088,7 +1090,7 @@ export default function CashboxesPage() {
     return hideBalances ? "*** *** ***" : fmtNum(n);
   }
 
-  // O'quvchilar ro'yxati BAZADAN (/api/pupils) — ilgari faqat shu kassada
+  // O'quvchilar ro'yxati BAZADAN (/api/pupils) â ilgari faqat shu kassada
   // to'lov QILGAN o'quvchilar chiqardi, ya'ni hali to'lov qilmagan
   // o'quvchini qidirib topib bo'lmasdi. Yozuvlarda uchraydigan, lekin
   // bazada yo'q ismlar ham qo'shiladi (o'chirilgan o'quvchi).
@@ -1102,7 +1104,7 @@ export default function CashboxesPage() {
     [dbStudents, facets],
   );
 
-  // O'qituvchilar ro'yxati XODIMLARDAN (/api/teachers) — ilgari bu yerda
+  // O'qituvchilar ro'yxati XODIMLARDAN (/api/teachers) â ilgari bu yerda
   // yozuvlarning `moderator` maydoni ishlatilardi, ya'ni "O'qituvchini
   // qidiring" deb turib aslida kassa mas'uli bo'yicha filtrlanardi.
   // Yozuvlarda uchraydigan, lekin ro'yxatda yo'q ismlar ham qo'shiladi
@@ -1117,10 +1119,10 @@ export default function CashboxesPage() {
     [dbTeachers, facets],
   );
 
-  // Referensdagi "Tranzaksiya turi" filtri. `txName` — tranzaksiya turlari
+  // Referensdagi "Tranzaksiya turi" filtri. `txName` â tranzaksiya turlari
   // katalogidan keladigan nom ("O'quvchi to'ladi", "Hodimga avans", ...),
   // yuqoridagi "Tranzaksiya" filtri esa Kirim/Chiqim/Ko'chirish amali bo'yicha.
-  // Ro'yxat Moliya → Tranzaksiya turi sahifasidagi BARCHA turlardan
+  // Ro'yxat Moliya â Tranzaksiya turi sahifasidagi BARCHA turlardan
   // (Kirim/Chiqim/Vaucher/Jarima) iborat; katalogda yo'q, lekin eski
   // yozuvlarda uchraydigan nomlar oxiriga qo'shiladi.
   const txNameOptions = useMemo(
@@ -1131,7 +1133,7 @@ export default function CashboxesPage() {
     [txTypeNames, facets],
   );
 
-  // Server allaqachon filtrlab bergan — bu yer o'sha shartlarni yana bir
+  // Server allaqachon filtrlab bergan â bu yer o'sha shartlarni yana bir
   // bor tekshiradi (himoya qatlami). Mos kelganda hech narsa o'zgarmaydi.
   const filteredEntries = useMemo(() => {
     if (!selectedId) return [];
@@ -1170,12 +1172,12 @@ export default function CashboxesPage() {
     paymentMethods,
   ]);
 
-  // Qator raqami uchun — jadval serverdan sahifalab keladi, shu bois
+  // Qator raqami uchun â jadval serverdan sahifalab keladi, shu bois
   // `filteredEntries` allaqachon AYNAN shu sahifaning qatorlari.
   const entryStart = (page - 1) * pageSize;
   const entrySlice = filteredEntries;
 
-  // Hisobotni yuklab olish menyusi — tanlangan kassa kartasi ichida.
+  // Hisobotni yuklab olish menyusi â tanlangan kassa kartasi ichida.
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1208,7 +1210,7 @@ export default function CashboxesPage() {
 
   // Eksport butun ro'yxat bo'yicha bo'lishi kerak, jadvaldagi 50 qator
   // bo'yicha emas. Bu kamdan-kam va ataylab bosiladigan amal, shu bois
-  // og'ir so'rov aynan shu yerda o'rinli — jadval esa sahifalab o'qiydi.
+  // og'ir so'rov aynan shu yerda o'rinli â jadval esa sahifalab o'qiydi.
   async function fetchAllForExport(): Promise<TransactionEntry[]> {
     const d = await fetch(
       `/api/transaction-entries?${entryQuery().toString()}`,
@@ -1246,7 +1248,7 @@ export default function CashboxesPage() {
 
   async function exportEntriesExcel() {
     try {
-      // xlsx (SheetJS) FAQAT shu yerda kerak — bosilganda. Statik import
+      // xlsx (SheetJS) FAQAT shu yerda kerak â bosilganda. Statik import
       // bo'lganida u route'ning boshlang'ich JS to'plamiga kirardi:
       // 431 KB lik chunk 9 ta sahifada, eksport tugmasi bosilmasa ham.
       const XLSX = await import("xlsx");
@@ -1273,9 +1275,9 @@ export default function CashboxesPage() {
 
   return (
     <div className="page-frame-row p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
-      {/* Chap panel — kassa kartalari */}
+      {/* Chap panel â kassa kartalari */}
       <aside className="page-frame-aside fc-aside w-full shrink-0 space-y-3">
-        {/* Yangi kassa yaratish — kassaning O'ZINI boshqarish, ya'ni
+        {/* Yangi kassa yaratish â kassaning O'ZINI boshqarish, ya'ni
             tahrirlash/bosh kassa qilish bilan bir toifada: faqat admin. */}
         {isAdmin && (
           <button
@@ -1287,7 +1289,7 @@ export default function CashboxesPage() {
           </button>
         )}
 
-        {/* Holat filtri — segmentli tugmalar */}
+        {/* Holat filtri â segmentli tugmalar */}
         <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1">
           <button
             onClick={() => setStatusFilter("active")}
@@ -1314,13 +1316,13 @@ export default function CashboxesPage() {
             const isSelected = c.id === selectedId;
             const isDark = isSelected || c.isPrimary;
             // Arxivdagi kassada pul amaliyoti qilinmaydi (Kirim/Chiqim/
-            // Ko'chirish, bosh kassa qilish, hisobot) — lekin TAHRIRLASH
+            // Ko'chirish, bosh kassa qilish, hisobot) â lekin TAHRIRLASH
             // kerak bo'ladi: arxivdan qaytarish, nomini yoki mas'ulini
             // to'g'rilash aynan shu oynadan qilinadi. Ilgari arxivdagi
             // kartada bitta ham tugma yo'q edi, ya'ni arxivga tushgan
             // kassani interfeys orqali qaytarib bo'lmasdi.
             const showActions = isSelected && !c.archived;
-            // Arxivdagi kartadagi yagona tugma ham tahrirlash — u ham
+            // Arxivdagi kartadagi yagona tugma ham tahrirlash â u ham
             // faqat adminda (arxivdan qaytarish o'sha oynadan qilinadi).
             const showEditOnly = isSelected && c.archived && isAdmin;
             const showMore = cardMoreId === c.id;
@@ -1329,7 +1331,7 @@ export default function CashboxesPage() {
             const line = isDark
               ? "rgba(255,255,255,.22)"
               : "rgba(15,23,42,.14)";
-            // Faqat puli bor to'lov turlari ko'rinadi — yangi turga kirim
+            // Faqat puli bor to'lov turlari ko'rinadi â yangi turga kirim
             // bo'lishi bilan o'zi qo'shiladi (referens dizayndagi kabi).
             const methodRows = orderedMethods
               .map((m, i) => ({
@@ -1447,7 +1449,7 @@ export default function CashboxesPage() {
                         onClick={() => {
                           setKirimTarget(c);
                           // Sahifa uzoq ochiq turgan bo'lsa ro'yxat
-                          // eskirgan bo'lishi mumkin — qabulxona hozirgina
+                          // eskirgan bo'lishi mumkin â qabulxona hozirgina
                           // qo'shgan o'quvchi kassirga ko'rinsin. FONDA:
                           // oyna kutmaydi, maydon o'chmaydi. Bosqichi
                           // ichkarida (sukut 60 s).
@@ -1467,7 +1469,7 @@ export default function CashboxesPage() {
                         }}
                         className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
-                        <span className="font-bold">−</span> Chiqim
+                        <span className="font-bold">â</span> Chiqim
                       </button>
                       <button
                         onClick={() => setTransferToTarget(c)}
@@ -1498,7 +1500,7 @@ export default function CashboxesPage() {
                   </>
                 )}
 
-                {/* To'lov turlari bo'yicha qoldiq. Qatorni bosish — shu turdan
+                {/* To'lov turlari bo'yicha qoldiq. Qatorni bosish â shu turdan
                     boshqa turga ko'chirish; sudrab tashlash tartibni o'zgartiradi
                     (tartib localStorage'da saqlanadi). */}
                 {isSelected && methodRows.length > 0 && (
@@ -1522,7 +1524,7 @@ export default function CashboxesPage() {
                         title={
                           c.archived
                             ? m.name
-                            : `${m.name} — boshqa to'lov turiga ko'chirish`
+                            : `${m.name} â boshqa to'lov turiga ko'chirish`
                         }
                         className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md ${c.archived ? "" : "cursor-grab active:cursor-grabbing"} ${dragKey === m.key ? "opacity-50" : ""}`}
                         style={{
@@ -1576,10 +1578,10 @@ export default function CashboxesPage() {
                     className="flex items-center justify-between mt-3 pt-3"
                     style={{ borderTop: `1px solid ${line}` }}
                   >
-                    {/* Tahrirlash / bosh kassa / hisobotni yuklab olish —
+                    {/* Tahrirlash / bosh kassa / hisobotni yuklab olish â
                         FAQAT ADMIN. Kassir o'z kassasida pul amallarini
                         bajaradi (Kirim/Chiqim/Ko'chirish), lekin kassaning
-                        o'zini o'zgartirmaydi. Bo'sh <div/> — "More" tugmasi
+                        o'zini o'zgartirmaydi. Bo'sh <div/> â "More" tugmasi
                         o'ng chekkada qolishi uchun (justify-between). */}
                     {!isAdmin && <div />}
                     {isAdmin && (
@@ -1671,9 +1673,9 @@ export default function CashboxesPage() {
               ) : cashboxes.length === 0 ? (
                 // Ro'yxat SERVERDA kesiladi: xodim faqat o'ziga
                 // biriktirilgan kassani ko'radi. Bo'sh ekran "sayt buzildi"
-                // deb tushunilmasin — nima uchun bo'shligi va kim
+                // deb tushunilmasin â nima uchun bo'shligi va kim
                 // to'g'rilashi aytiladi.
-                "Sizga kassa biriktirilmagan. Kassani Moliya → Kassalar bo'limida admin biriktiradi."
+                "Sizga kassa biriktirilmagan. Kassani Moliya â Kassalar bo'limida admin biriktiradi."
               ) : (
                 "Bu bo'limda kassa yo'q"
               )}
@@ -1682,7 +1684,7 @@ export default function CashboxesPage() {
         </div>
       </aside>
 
-      {/* O'ng qism — filtrlar + tanlangan kassaning tranzaksiyalari */}
+      {/* O'ng qism â filtrlar + tanlangan kassaning tranzaksiyalari */}
       <div className="page-frame-col flex-1 min-w-0 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <DateRangePicker
@@ -1796,7 +1798,7 @@ export default function CashboxesPage() {
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-3 py-3 whitespace-nowrap w-14">
-                    №
+                    â
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
                     Sana
@@ -1828,7 +1830,7 @@ export default function CashboxesPage() {
               </thead>
               <tbody>
                 {entrySlice.map((e, i) => {
-                  // Qatorning istalgan joyiga bosilsa — tranzaksiya oynasi
+                  // Qatorning istalgan joyiga bosilsa â tranzaksiya oynasi
                   // (to'lovni bekor qilish) ochiladi. "Kim" ustunidagi ism va
                   // o'ngdagi chek tugmasi bundan mustasno.
                   const dir =
@@ -1858,15 +1860,15 @@ export default function CashboxesPage() {
                         {e.teacherName ? (
                           renderSalaryTargetCell(e)
                         ) : (
-                          <span className="text-[12px] text-muted-foreground">—</span>
+                          <span className="text-[12px] text-muted-foreground">â</span>
                         )}
                       </td>
                       {/* IZOHNING O'ZI yoziladi.
                           Ilgari bu yerda "Izoh" degan qotib qolgan yorliq
-                          turardi va haqiqiy matn faqat `title` da — ya'ni
+                          turardi va haqiqiy matn faqat `title` da â ya'ni
                           sichqonchani ustida ushlab turmaguncha ko'rinmasdi.
                           Jadvalda esa izohlar aynan ma'noli: "Umidjon tarix
-                          avgust", "turk tili kitob" — ular kimning qaysi oyi
+                          avgust", "turk tili kitob" â ular kimning qaysi oyi
                           uchun to'lov ekanini aytadi.
                           Uzun matn qatorni cho'zib yubormasin: kengligi
                           cheklangan va uchi qirqiladi, to'lig'i `title` da
@@ -1880,11 +1882,11 @@ export default function CashboxesPage() {
                             {e.note}
                           </span>
                         ) : (
-                          <span className="text-[12px] text-muted-foreground">—</span>
+                          <span className="text-[12px] text-muted-foreground">â</span>
                         )}
                       </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">
-                        {e.txName || "—"}
+                        {e.txName || "â"}
                       </td>
                       <td className="px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap text-[13px]">
                         <span
@@ -1952,7 +1954,7 @@ export default function CashboxesPage() {
                       </div>
                       <div className="text-[12px] text-muted-foreground mt-1">
                         {entriesError
-                          ? "Aloqa yoki server xatosi — yuqoridagi summalar ham to'liq emas."
+                          ? "Aloqa yoki server xatosi â yuqoridagi summalar ham to'liq emas."
                           : "Filterni o'zgartirib ko'ring."}
                       </div>
                       {entriesError && (
@@ -2131,7 +2133,7 @@ export default function CashboxesPage() {
             const name =
               cashboxes.find((c) => c.id === e.cashboxId)?.name || "";
             setReceiptEntry(null);
-            // Modal yopilib bo'lgach print oynasi ochilishi uchun bir tick kutamiz —
+            // Modal yopilib bo'lgach print oynasi ochilishi uchun bir tick kutamiz â
             // aks holda ba'zi brauzerlarda modal ostiga tushib qoladi.
             setTimeout(() => printReceipt(e, name), 0);
           }}
@@ -2160,7 +2162,7 @@ export default function CashboxesPage() {
                 disabled={settingPrimary}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {settingPrimary ? "Saqlanmoqda…" : "Ha"}
+                {settingPrimary ? "Saqlanmoqdaâ¦" : "Ha"}
               </button>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 // Soliq qoidalari — Sozlamalar → Moliya → Soliq ro'yxatidan.
 //
 // Qoida ikki xil bo'ladi:
-//   • "percent" — hisoblangan oylikdan (asos + bonus − jarima) foiz,
+//   • "percent" — foiz (asosi `base` bilan belgilanadi),
 //   • "amount"  — oyiga qat'iy summa.
 //
 // Soliq HAMMAGA emas va hamma qoida ham emas: har bir xodimga aynan
@@ -26,10 +26,24 @@ export interface TaxRule {
  *
  * Ro'yxatdagi pul va foiz qiymatlari MATN sifatida saqlanadi (referensdagidek
  * formatlangan holda kiritiladi), shuning uchun bo'shliq va foiz belgisi
- * tozalanadi. Vergul o'nlik ajratgich sifatida nuqtaga aylantiriladi.
+ * tozalanadi.
+ *
+ * EKSPORT QILINGAN: aynan shu mantiq `EmployeeTaxModal` ichida ham nusxa
+ * bo'lib turardi. Ikki nusxa vaqt o'tib bir-biridan uzoqlashsa, oyna bir
+ * raqamni, oylik hisobi esa boshqasini ko'rsatardi.
  */
-function numOf(raw: unknown): number {
-  const s = String(raw ?? "").replace(/\s| /g, "").replace(/%/g, "").replace(",", ".");
+export function parseMoney(raw: unknown): number {
+  // `\s` bo'shliqlarni qamrab oladi, uzilmas bo'shliq (U+00A0) ham shunda.
+  let s = String(raw ?? "").replace(/\s/g, "").replace(/%/g, "");
+  // VERGUL IKKI XIL MA'NODA kelishi mumkin: "12,5" — o'nlik kasr,
+  // "1,800,000" — minglik ajratgich.
+  //
+  // NIMA NOTO'G'RI EDI: bu yerda `.replace(",", ".")` turardi va u FAQAT
+  // BIRINCHI vergulni almashtirardi. Natijada "1,800,000" → "1.800000" →
+  // 1.8 so'm bo'lib o'qilardi va soliq JIMGINA yo'qolardi (quyidagi
+  // `value <= 0` sharti qoidani butunlay tashlab yuboradi). Qiymat qo'lda
+  // kiritilgani uchun bu holat amalda mumkin.
+  s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
   const n = Number(s.replace(/[^\d.]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
@@ -49,7 +63,7 @@ export async function loadTaxRules(db: Db): Promise<TaxRule[]> {
   for (const r of rows) {
     if (r?.active === false) continue;
     const type: TaxRule["type"] = /aniq|summa/i.test(String(r?.taxType ?? "")) ? "amount" : "percent";
-    const value = numOf(type === "amount" ? r?.amount : r?.percent);
+    const value = parseMoney(type === "amount" ? r?.amount : r?.percent);
     if (value <= 0) continue;
     const id = Number(r?.id);
     if (!Number.isFinite(id)) continue;

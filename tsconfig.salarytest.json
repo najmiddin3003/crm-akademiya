@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".salarytest",
+    "rootDir": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "declaration": false,
+    "jsx": "preserve",
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [
+    "lib/salary.ts",
+    "lib/uzTime.ts",
+    "lib/taxes.ts",
+    "lib/settingsLists.ts",
+    "lib/hrEmployees.ts",
+    "lib/paymentMethods.ts",
+    "lib/payrollSources.ts",
+    "constants/settingsLists.js"
+  ]
+}

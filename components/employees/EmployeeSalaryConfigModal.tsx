@@ -53,6 +53,9 @@ export default function EmployeeSalaryConfigModal({
   const [percentOpts, setPercentOpts] = useState<{ name: string; percent: string }[]>([]);
   const [rows, setRows] = useState<Record<number, Row>>({});
   const [percent, setPercent] = useState(employee.percent ?? "");
+  // Plastik oylik — faqat raqamlardan iborat satr (MoneyInput kelishuvi).
+  // Bo'sh satr = biriktirilmagan.
+  const [plastik, setPlastik] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -83,6 +86,10 @@ export default function EmployeeSalaryConfigModal({
         };
       }
       setRows(init);
+      // DIQQAT: `employee.plastikSalary ? String(...) : ""` YOZILMAYDI —
+      // yuqoridagi `a.salary ? ... : ""` naqshi bu maydon uchun XATO
+      // bo'lardi: u yerda 0 va "yo'q" bir xil, bu yerda esa farqli.
+      setPlastik(employee.plastikSalary == null ? "" : String(employee.plastikSalary));
       setLoading(false);
     });
     return () => { alive = false; };
@@ -118,7 +125,12 @@ export default function EmployeeSalaryConfigModal({
       const res = await fetch(`/api/hr-employees/${employee.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ branchAssignments: assignments, percent }),
+        // `plastikSalary`: bo'sh maydon → `null` (biriktirilmagan), 0 EMAS.
+        body: JSON.stringify({
+          branchAssignments: assignments,
+          percent,
+          plastikSalary: plastik === "" ? null : Number(plastik),
+        }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -232,6 +244,32 @@ export default function EmployeeSalaryConfigModal({
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* PLASTIK OYLIK — oklad yonida turadi, chunki bu ham ish
+                  haqi sozlamasi. Xodimlar ro'yxatidagi tugmacha tez
+                  o'zgartirish uchun qoladi, bu yer esa asosiy joyi. */}
+              <div className="rounded-xl border border-border p-3 space-y-2">
+                <label className="block text-[13px] font-medium" htmlFor="cfg-plastik">
+                  Plastik orqali beriladigan oylik
+                </label>
+                <div className="relative">
+                  <MoneyInput
+                    id="cfg-plastik"
+                    value={plastik}
+                    onChange={setPlastik}
+                    placeholder="Masalan 2 000 000"
+                    className={`${inputCls} tabular-nums pr-14`}
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">
+                    so&apos;m
+                  </span>
+                </div>
+                <p className="text-[12px] text-muted-foreground">
+                  Har oy shu summa kartaga o&apos;tkaziladi, qolgani naqd beriladi.
+                  &ldquo;Plastik qismidan&rdquo; asosli soliq aynan shu summadan hisoblanadi.
+                  Bo&apos;sh qoldirilsa xodim butun oyligini bitta kanal bilan oladi.
+                </p>
               </div>
 
               <div className="rounded-xl border border-border bg-secondary/20 p-3 text-[13px]">

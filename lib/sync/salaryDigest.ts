@@ -2,9 +2,11 @@ import type { Db } from "mongodb";
 import { isTelegramReady, loadSyncConfig } from "@/lib/sync/config";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import {
+  payrollCashLeg,
   payrollDue,
   payrollEarned,
   payrollPaid,
+  payrollPlastikLeg,
   payrollPeriod,
   payrollTax,
   type EmployeePayroll,
@@ -88,6 +90,9 @@ interface Line {
   paid: number;
   due: number;
   tax: number;
+  /** Qolgan qoldiqning kanal bo'yicha bo'linishi (plastik + naqd = due). */
+  plastik: number;
+  naqd: number;
 }
 
 function lineOf(e: EmployeePayroll, p: PayrollPeriod): Line {
@@ -100,6 +105,8 @@ function lineOf(e: EmployeePayroll, p: PayrollPeriod): Line {
     paid: payrollPaid(e),
     due: payrollDue(e, p),
     tax: payrollTax(e, p),
+    plastik: payrollPlastikLeg(e, p),
+    naqd: payrollCashLeg(e, p),
   };
 }
 
@@ -141,9 +148,13 @@ function itemsOf(lines: Line[]): string[] {
     // Soliq faqat bor bo'lsa ko'rsatiladi — aks holda "hisoblangan −
     // olingan = qolgan" ayirmasi o'quvchiga tushunarsiz bo'lib qolardi.
     const tax = l.tax > 0 ? ` · soliq ${money(l.tax)}` : "";
+    // Qoldiq kartaga va naqdga bo'linsa — ochiq aytiladi. Faqat plastigi
+    // bor xodimda ko'rinadi, aks holda har bir qatorga "naqd" so'zi
+    // qo'shilib, xabar bekorga uzayardi.
+    const split = l.plastik > 0 ? `\n   ↳ kartaga ${money(l.plastik)} · naqd ${money(l.naqd)}` : "";
     out.push(
       `• <b>${esc(l.name)}</b> (${tag})\n` +
-      `   hisoblangan ${money(l.earned)}${tax} · olingan ${money(l.paid)} · <b>qolgan ${money(l.due)}</b>`,
+      `   hisoblangan ${money(l.earned)}${tax} · olingan ${money(l.paid)} · <b>qolgan ${money(l.due)}</b>${split}`,
     );
   }
   return out;

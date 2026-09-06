@@ -12,9 +12,11 @@ import {
   payrollMonthKey,
   payrollPeriod,
   payrollPeriodOf,
+  payrollPlastikLeg,
 } from "@/lib/salary";
 import { buildPayrollRows } from "@/lib/payrollSources";
-import { loadPaymentMethods } from "@/lib/paymentMethods";
+import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
+import { getBranchScope } from "@/lib/branchScope";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import { flushSoon } from "@/lib/sync/dispatch";
 import type { CashboxMethodTotals } from "@/lib/cashboxes";
@@ -101,7 +103,18 @@ export async function GET() {
 // DAVOMAT va AKLADI 0 bo'lib qoladi — tizimda ular uchun manba yo'q va
 // o'ylab topilmaydi.
 export async function POST(req: Request) {
-  let body: { employeeIds?: number[]; cashboxId?: number; method?: string; month?: string };
+  let body: {
+    employeeIds?: number[];
+    cashboxId?: number;
+    method?: string;
+    /**
+     * PLASTIK oyog'ining to'lov turi. Berilmasa standart "plastik" kaliti.
+     * `method` ning MA'NOSI O'ZGARMAYDI — u naqd oyog'i (va plastigi yo'q
+     * xodimlarning yagona oyog'i).
+     */
+    plastikMethod?: string;
+    month?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -133,6 +146,9 @@ export async function POST(req: Request) {
   if (!chosenMethod) {
     return NextResponse.json({ ok: false, error: "To'lov turini tanlang" }, { status: 400 });
   }
+  // PLASTIK oyog'ining turi. Ko'rsatilmasa standart "Plastik" ishlatiladi.
+  // Plastik oyog'i bo'lmagan chiqarishda bu qiymat umuman ishlatilmaydi.
+  const plastikMethod = methods.find((m) => m.key === (body.plastikMethod || PLASTIK_METHOD_KEY));
   const cashboxId = Number(body.cashboxId);
   if (!Number.isFinite(cashboxId)) {
     return NextResponse.json({ ok: false, error: "Kassani tanlang" }, { status: 400 });
@@ -146,10 +162,24 @@ export async function POST(req: Request) {
   // Hamma qiymat bitta haqiqiy manbadan (lib/payrollSources.ts) — shu
   // bois Oylik chiqarish, Xodimlar ro'yxati va xodim profili bir xil
   // raqam ko'rsatadi.
-  const all = await buildPayrollRows(db, period);
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
+  // FAQAT SHU FILIALNING oylik ro'yxati (`payrollBranchId`).
+  const all = await buildPayrollRows(db, period, { payrollBranchId: scope.branchId });
   const chosen = all.filter((e) => employeeIds.includes(e.id));
   if (chosen.length === 0) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+  }
+  // Interfeysda filtrlash YETARLI EMAS: so'rovni qo'lda yuborib boshqa
+  // filialning xodimini ro'yxatga qo'shib bo'lardi.
+  const foreign = employeeIds.filter((id) => !all.some((e) => e.id === id));
+  if (foreign.length > 0) {
+    return NextResponse.json(
+      { ok: false, error: `Bu filialning oylik ro'yxatiga kirmaydigan xodim(lar): ${foreign.join(", ")}`, foreign },
+      { status: 403 },
+    );
   }
   // Oyligi sozlanmagan xodimni hisobga qo'shib bo'lmaydi — uning
   // "hisoblangan"i 0 bo'lardi va bu haqiqat emas, sozlama yo'qligi.
@@ -165,6 +195,7 @@ export async function POST(req: Request) {
     );
   }
 
+
   let oylik = 0;
   let bonus = 0;
   let jarima = 0;
@@ -174,8 +205,12 @@ export async function POST(req: Request) {
   let tolangan = 0;
   let tolanmagan = 0;
   let qarzdorlik = 0;
+  let plastikTolangan = 0;
+  let naqdTolangan = 0;
   // Kim uchun qancha chiqariladi — kassa yozuvlari shu ro'yxatdan yasaladi.
-  const payouts: { name: string; turi: string; amount: number }[] = [];
+  // `leg` — pul qaysi kanaldan chiqishi; bitta xodimda ikkitagacha qator
+  // bo'lishi mumkin (plastik + naqd).
+  const payouts: { name: string; turi: string; leg: "plastik" | "naqd"; amount: number }[] = [];
   const items: SalaryRunItem[] = [];
   for (const ep of chosen) {
     const empDue = payrollDue(ep, period);
@@ -201,13 +236,31 @@ export async function POST(req: Request) {
     // yo'qolardi — keyingi oy hisobiga ham o'tmasdi. Endi ishorali holicha
     // saqlanadi: loadCarryOver uni keyingi oyning `carryOver`iga o'tkazadi.
     qarzdorlik += Math.max(-empDue, 0);
-    if (empPaid > 0) payouts.push({ name: ep.name, turi: ep.turi, amount: empPaid });
+
+    // ---- IKKI OYOQQA BO'LISH -------------------------------------
+    // Bu yerda HISOB YO'Q, faqat TAQSIMOT: `empPaid` yuqorida allaqachon
+    // hisoblangan va u o'zgarmaydi. Karta BIRINCHI to'lanadi (rasmiy
+    // o'tkazma qoldiqda oxirgi bo'lib qolmasin), naqd — qoldiq.
+    //
+    // Bo'linish `empPaid` (ya'ni payrollDue) USTIDAN, hisoblangan oylik
+    // ustidan EMAS: aks holda oy davomida avans olgan xodimga kassadan
+    // ortiqcha pul chiqib ketardi.
+    const empPlastik = payrollPlastikLeg(ep, period);
+    const empNaqd = empPaid - empPlastik;
+    plastikTolangan += empPlastik;
+    naqdTolangan += empNaqd;
+    // Nol summali oyoq yozuv YARATMAYDI — jurnalda bo'sh qator qolmasin
+    // va kassadan 0 yechishga urinilmasin.
+    if (empPlastik > 0) payouts.push({ name: ep.name, turi: ep.turi, leg: "plastik", amount: empPlastik });
+    if (empNaqd > 0) payouts.push({ name: ep.name, turi: ep.turi, leg: "naqd", amount: empNaqd });
     // `amount` — TO'LOVDAN KEYINGI qoldiq (keyingi oyga o'tadigan had).
     items.push({
       employeeId: ep.id,
       name: ep.name,
       amount: empDue - empPaid,
       paid: empPaid,
+      paidPlastik: empPlastik,
+      paidNaqd: empNaqd,
       // Chek uchun kesim — chiqarish paytidagi holat muzlatiladi, keyin
       // oylik yoki soliq o'zgarsa ham chek o'zgarmaydi.
       receipt: {
@@ -227,6 +280,14 @@ export async function POST(req: Request) {
         paidAvans: ep.paidAvans,
         paidOylik: ep.paidOylik,
         carryOver: ep.carryOver,
+        // PLASTIK kesimi — chekda muzlatiladi. `plastikSalary` ataylab
+        // tez-tez qo'lda o'zgartiriladigan maydon, chek esa o'zgarmasligi
+        // shart: bir marta bosib berilgan qog'oz bilan ekrandagi chek
+        // bir-biriga mos kelishi kerak.
+        plastikSalary: ep.plastikSalary,
+        paidPlastikBefore: ep.paidPlastik,
+        paidPlastik: empPlastik,
+        paidNaqd: empNaqd,
       },
     });
   }
@@ -238,23 +299,98 @@ export async function POST(req: Request) {
     );
   }
 
-  // Mablag' yetarlimi. Chegara kassaning UMUMIY balansi emas, tanlangan
-  // TO'LOV TURIDAGI summa — Kassalar sahifasidagi Chiqim oynasi ham aynan
-  // shunday tekshiradi (app/api/cashboxes/[id]/adjust/route.ts).
-  const methodTotals = (cashbox.methodTotals ?? {}) as CashboxMethodTotals;
-  const available = Number(methodTotals[chosenMethod.key]) || 0;
-  if (available < tolangan) {
+  // Plastik oyog'i bor, lekin uning to'lov turi topilmadi.
+  if (plastikTolangan > 0 && !plastikMethod) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: `Mablag' yetarli emas: "${cashbox.name}" kassasining "${chosenMethod.name}" summasi ${available.toLocaleString("ru-RU")} so'm, kerak ${tolangan.toLocaleString("ru-RU")} so'm`,
-        available,
-        required: tolangan,
-      },
+      { ok: false, error: "Plastik to'lovi uchun to'lov turi topilmadi — Sozlamalar → Moliya → To'lov turlarini tekshiring" },
+      { status: 400 },
+    );
+  }
+  // Ikkala oyoq BIR XIL turga tushmasin: jurnalda ular ajralmay qolardi va
+  // quyidagi `$inc` bitta yo'lga ikki marta yozishga urinardi.
+  if (plastikTolangan > 0 && naqdTolangan > 0 && plastikMethod!.key === chosenMethod.key) {
+    return NextResponse.json(
+      { ok: false, error: `Plastik va naqd uchun bir xil to'lov turi ("${chosenMethod.name}") tanlab bo'lmaydi` },
       { status: 400 },
     );
   }
 
+  // ---- Chiqadigan oyoqlar -------------------------------------------
+  //
+  // Kalit bo'yicha YIG'ILADI. Obyekt literalida qo'lda yozilsa, bir xil
+  // kalit ikki marta uchraganda ikkinchisi birinchisini JIMGINA bosib
+  // ketardi (`{a: -100, a: -50}` → `-50`): kassadan kam pul yechilib,
+  // orqaga qaytarishda esa farq butunlay yo'qolardi. Yuqoridagi qorovul bu
+  // holatni allaqachon rad etadi, lekin himoya kodda ham qolsin.
+  const legMap = new Map<string, { key: string; label: string; total: number }>();
+  const addLeg = (m: { key: string; name: string }, amount: number) => {
+    if (amount <= 0) return;
+    const cur = legMap.get(m.key) ?? { key: m.key, label: m.name, total: 0 };
+    cur.total += amount;
+    legMap.set(m.key, cur);
+  };
+  addLeg(chosenMethod, naqdTolangan);
+  if (plastikMethod) addLeg(plastikMethod, plastikTolangan);
+  const legs = [...legMap.values()];
+
+  // Mablag' yetarlimi — HAR BIR to'lov turi bo'yicha alohida. Chegara
+  // kassaning UMUMIY balansi emas, o'sha turdagi summa (Kassalar
+  // sahifasidagi Chiqim oynasi ham aynan shunday tekshiradi).
+  const methodTotals = (cashbox.methodTotals ?? {}) as CashboxMethodTotals;
+  for (const leg of legs) {
+    const available = Number(methodTotals[leg.key]) || 0;
+    if (available < leg.total) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Mablag' yetarli emas: "${cashbox.name}" kassasining "${leg.label}" summasi ${available.toLocaleString("ru-RU")} so'm, kerak ${leg.total.toLocaleString("ru-RU")} so'm`,
+          available,
+          required: leg.total,
+          method: leg.key,
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  // TAQSIMOT YIG'INDISI to'g'rimi. Bu shunchaki ehtiyot emas: oyoqlarning
+  // yig'indisi `tolangan` dan farq qilsa, kassadan bir summa yechilib
+  // jurnalga boshqasi yozilardi va farq hech qayerda ko'rinmasdi.
+  if (plastikTolangan + naqdTolangan !== tolangan) {
+    console.error("Oylik taqsimoti mos kelmadi:", { plastikTolangan, naqdTolangan, tolangan });
+    return NextResponse.json(
+      { ok: false, error: "Ichki xato: to'lov taqsimoti yig'indisi mos kelmadi — oylik chiqarilmadi" },
+      { status: 500 },
+    );
+  }
+
+  // BIR FILIAL × BIR OY UCHUN BIR VAQTDA BITTA CHIQARISH.
+  //
+  // NIMA NOTO'G'RI EDI: yagona qorovul kassadagi `$gte` sharti edi va u
+  // faqat MABLAG' YETARLILIGINI tekshiradi. "Chiqarish" tugmasi ikki marta
+  // bosilsa (yoki ikki admin bir vaqtda bossa) ikkala so'rov ham
+  // `payrollDue > 0` ko'radi va IKKALASI HAM o'tadi — xodimga oylik ikki
+  // marta chiqarilardi.
+  //
+  // Kalit `oy:filial` — kompaniya bo'yicha emas: bo'linish tufayli
+  // filiallararo to'qnashuv imkonsiz (bitta xodim bitta ro'yxatda), haqiqiy
+  // poyga esa bitta filial ichida. Kompaniya bo'yicha qulf ikki filial
+  // adminini sababsiz kutishga majbur qilardi.
+  //
+  // TTL indeksi 120 s — jarayon o'ldirilsa qulf o'z-o'zidan ochiladi
+  // (lib/mongodb.ts).
+  const lockId = `${payrollMonthKey(period)}:${scope.branchId}`;
+  const locks = db.collection("salary_run_locks");
+  try {
+    await locks.insertOne({ _id: lockId as unknown as never, createdAt: new Date() });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Bu filialda shu oy uchun oylik chiqarish hozir bajarilmoqda — biroz kutib qayta urinib ko'ring" },
+      { status: 409 },
+    );
+  }
+
+  try {
   const col = db.collection("salary_runs");
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
@@ -262,9 +398,24 @@ export async function POST(req: Request) {
   // Pulni kassadan yechamiz. Yozuvlar yaratilishidan OLDIN — shunda
   // balans yetmay qolgan holat (parallel chiqim) yozuvlar tug'ilgandan
   // keyin emas, oldin ushlanadi.
+  //
+  // IKKALA OYOQ HAM BITTA amalda yechiladi — shunda yarim yechilgan holat
+  // (plastik ketdi, naqd yiqildi) umuman tug'ilmaydi va mavjud yagona
+  // rollback shakli o'z kuchida qoladi.
+  //
+  // `balance: { $gte: tolangan }` YANGI. Ilgari faqat `methodTotals`
+  // tekshirilardi, holbuki Kassalar sahifasidagi Chiqim oynasi ikkalasini
+  // ham qaraydi — Nilufar kassasidagi manfiy balans hodisasi aynan shu
+  // farqdan chiqqan edi.
+  const deductFilter: Record<string, unknown> = { id: cashboxId, balance: { $gte: tolangan } };
+  const deductInc: Record<string, number> = { balance: -tolangan };
+  for (const leg of legs) {
+    deductFilter[`methodTotals.${leg.key}`] = { $gte: leg.total };
+    deductInc[`methodTotals.${leg.key}`] = -leg.total;
+  }
   const updated = await cashboxesCol.findOneAndUpdate(
-    { id: cashboxId, [`methodTotals.${chosenMethod.key}`]: { $gte: tolangan } },
-    { $inc: { [`methodTotals.${chosenMethod.key}`]: -tolangan, balance: -tolangan } },
+    deductFilter,
+    { $inc: deductInc },
     { returnDocument: "after" },
   );
   if (!updated) {
@@ -307,10 +458,16 @@ export async function POST(req: Request) {
     qarzdorlik,
     cashboxId,
     cashboxName: String(cashbox.name ?? ""),
+    // `method`/`methodLabel` MA'NOSI O'ZGARMAYDI — naqd oyog'i. Eski
+    // hujjatlar va chek oynasi shunga tayanadi.
     method: chosenMethod.key,
     methodLabel: chosenMethod.name,
+    legs,
+    plastikTolangan,
+    naqdTolangan,
     createdAt: fmtNow(new Date()),
     month: payrollMonthKey(period),
+    branchId: scope.branchId,
     items,
   };
 
@@ -336,10 +493,20 @@ export async function POST(req: Request) {
 
     // Har bir xodim uchun alohida chiqim yozuvi — jurnal, moliya hisoboti va
     // "to'langan oylik" hisobi xodim kesimida bo'lishi kerak.
-    let running = available;
+    // `before`/`after` — HAR BIR (kassa + to'lov turi) juftligi o'zining
+    // ketma-ketligini yuritadi. Ikkala oyoq bitta hisoblagichni bo'lishsa
+    // jurnaldagi qoldiq yolg'on gapirardi. Boshlang'ich qiymat — yechishdan
+    // OLDINGI summa: `updated` yechilgandan keyingi hujjat.
+    const running = new Map<string, number>();
+    for (const leg of legs) {
+      const after = Number((updated.methodTotals as CashboxMethodTotals)?.[leg.key]) || 0;
+      running.set(leg.key, after + leg.total);
+    }
     for (const p of payouts) {
-      const before = running;
-      running -= p.amount;
+      const legMethod = p.leg === "plastik" ? plastikMethod! : chosenMethod;
+      const before = running.get(legMethod.key) ?? 0;
+      const after = before - p.amount;
+      running.set(legMethod.key, after);
       // O'qituvchiga va boshqa xodimga alohida kategoriya — jurnalda va
       // moliya hisobotlarida to'lov kimga ketgani ajralib tursin.
       const txName = p.turi === "teacher" ? txNames.teacher : txNames.other;
@@ -351,13 +518,17 @@ export async function POST(req: Request) {
         studentName: p.name,
         amount: -p.amount,
         before,
-        after: running,
+        after,
         txType: "payOut",
         txName,
-        paymentType: chosenMethod.name,
+        // `txName` KANALGA QARAB O'ZGARMAYDI: "to'langan oylik" hisobi
+        // (`/avans|oylik/`) va Sheets tasnifi aynan shu matnga tayanadi.
+        // Nomga "plastik" qo'shilsa yozuv ikkalasidan ham jimgina tushib
+        // qolardi. Kanal `paymentMethodKey` da turadi.
+        paymentType: legMethod.name,
         // Kalit yozuvda saqlanadi — bekor qilishda kassaning qaysi
         // maydonini tiklashni nom emas, SHU aniqlaydi (nom o'zgarishi mumkin).
-        paymentMethodKey: chosenMethod.key,
+        paymentMethodKey: legMethod.key,
         group: "",
         lessonDate: "",
         moderator: String(cashbox.moderator ?? ""),
@@ -383,17 +554,20 @@ export async function POST(req: Request) {
           time,
           amount: -p.amount,
           category: txName,
-          method: chosenMethod.key,
-          methodLabel: chosenMethod.name,
+          method: legMethod.key,
+          methodLabel: legMethod.name,
           cashboxId,
         }),
       );
     }
   } catch (err) {
-    await cashboxesCol.updateOne(
-      { id: cashboxId },
-      { $inc: { [`methodTotals.${chosenMethod.key}`]: tolangan, balance: tolangan } },
-    );
+    // Pul AYNAN yechilgan tarkibda qaytariladi — `legs` ikkala nuqtada ham
+    // bitta manba. Ilgari bu yerda `chosenMethod` qattiq yozilgan edi;
+    // ikki oyoqli chiqarishda u plastik summasini naqd chelagiga qaytarib,
+    // kassa kesimlarini jimgina buzardi.
+    const refundInc: Record<string, number> = { balance: tolangan };
+    for (const leg of legs) refundInc[`methodTotals.${leg.key}`] = leg.total;
+    await cashboxesCol.updateOne({ id: cashboxId }, { $inc: refundInc });
     if (createdEntryIds.length > 0) {
       await db.collection("transaction_entries").deleteMany({ id: { $in: createdEntryIds } });
       // Navbatdagi vazifa qolib ketsa, mavjud bo'lmagan yozuvni yuborishga
@@ -417,4 +591,10 @@ export async function POST(req: Request) {
   after(() => flushSoon(db));
 
   return NextResponse.json({ ok: true, run });
+  } finally {
+    // Qulf HAR QANDAY yo'lda ochiladi — muvaffaqiyat, xato yoki erta
+    // `return` (mablag' yetmadi, taqsimot mos kelmadi). Aks holda filial
+    // TTL tugagunicha (120 s) qulflanib qolardi.
+    await locks.deleteOne({ _id: lockId as unknown as never }).catch(() => {});
+  }
 }

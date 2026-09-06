@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
+import { getBranchScope } from "@/lib/branchScope";
 
 // POST /api/hr-employees/import — bir nechta xodimni bir so'rovda qo'shadi.
 //
@@ -65,6 +66,11 @@ export async function POST(req: Request) {
   }
 
   const db = await ensureIndexes();
+  // Import qilingan xodimlar JORIY filialga tushadi (pastdagi izohga qarang).
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
   const col = db.collection("hr_employees");
 
   const existing = await col.find({}, { projection: { id: 1, phone: 1 } }).toArray();
@@ -112,6 +118,18 @@ export async function POST(req: Request) {
       aktivOq: 0,
       groups: 0,
       turi: ROLE_BY_LABEL[str(r.turi).toLowerCase()] ?? "",
+      // FILIAL — import qilingan xodim JORIY filialga tushadi.
+      //
+      // NIMA NOTO'G'RI EDI: bu yerda `branchIds` UMUMAN yozilmasdi. Endi
+      // xodim ro'yxatlari `branchIds` bo'yicha kesiladi, ya'ni maydonsiz
+      // xodim HECH BIR filialda ko'rinmay qolardi — import "muvaffaqiyatli"
+      // deb hisobot berardi-yu, odamlar yo'qolib ketardi.
+      //
+      // CSV dagi "Filiallar" ustuni O'QILMAYDI: u erkin matn (o'lchandi —
+      // 54/54 hujjatda "Akademiya", ya'ni nol axborot) va `branches.id`
+      // ga bog'lanmagan. Undan filial aniqlash taxmin bo'lardi.
+      branchIds: [scope.branchId],
+      payrollBranchId: scope.branchId,
       filial: str(r.filial) || "Akademiya",
       phone,
       kurs: str(r.kurs),

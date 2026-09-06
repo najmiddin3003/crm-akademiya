@@ -1,6 +1,7 @@
 import type { Db, Filter } from "mongodb";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
-import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
+import { fixedSalaryOf, isSalaryConfigured, plastikSalaryOf, type HrEmployee } from "@/lib/hrEmployees";
+import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   payrollEarned,
   payrollMonthKey,
@@ -65,6 +66,15 @@ function monthOfCreatedAt(raw: unknown): string | null {
 export interface PaidByEmployee {
   avans: number;
   oylik: number;
+  /**
+   * Shu oyda xodimga PLASTIK bilan chiqarilgan summa (avans + oylik).
+   *
+   * `avans` va `oylik` ning QISM to'plami — ular bilan qo'shilmaydi va
+   * `payrollPaid` ga kirmaydi. Shu sabab ikki marta sanash tuzilmaviy
+   * jihatdan imkonsiz: yuqoridagi ikkita chelak har doim to'liq summani
+   * beradi, bu esa faqat "qanchasi kartadan ketdi" degan kesim.
+   */
+  plastik: number;
 }
 
 /**
@@ -83,18 +93,26 @@ export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<str
       status: { $ne: "cancelled" },
       txName: { $regex: "avans|oylik", $options: "i" },
     })
-    // Pastdagi tsikl faqat shu uchtasini o'qiydi. 109 KB -> ~12 KB.
-    .project({ studentName: 1, txName: 1, amount: 1, _id: 0 })
+    // Pastdagi tsikl faqat shu to'rttasini o'qiydi. 109 KB -> ~14 KB.
+    .project({ studentName: 1, txName: 1, amount: 1, paymentMethodKey: 1, _id: 0 })
     .toArray();
 
   const map = new Map<string, PaidByEmployee>();
   for (const r of rows) {
     const k = nameKey(r.studentName);
     if (!k) continue; // egasi ko'rsatilmagan yozuv hech kimga tegishli emas
-    const cur = map.get(k) ?? { avans: 0, oylik: 0 };
+    const cur = map.get(k) ?? { avans: 0, oylik: 0, plastik: 0 };
     const amount = Math.abs(Number(r.amount) || 0);
     if (/oylik/i.test(String(r.txName ?? ""))) cur.oylik += amount;
     else cur.avans += amount;
+    // KANAL — nom bo'yicha emas, BARQAROR kalit bo'yicha: ko'rinadigan nom
+    // ("Plastik") Sozlamalardan o'zgartirilishi mumkin.
+    //
+    // Kaliti YO'Q yozuv NAQD deb sanaladi. Bu ataylab va o'lchangan:
+    // bazadagi 19 ta chiqim yozuvining birortasida ham `paymentMethodKey`
+    // yo'q va hammasi haqiqatan naqd edi. Teskarisi qilinsa, migratsiyadan
+    // keyingi birinchi chiqarish kartaga umuman pul yubormay qo'yardi.
+    if (String(r.paymentMethodKey ?? "") === PLASTIK_METHOD_KEY) cur.plastik += amount;
     map.set(k, cur);
   }
   return map;
@@ -307,7 +325,27 @@ export interface PayrollRefs {
   taxRules: Awaited<ReturnType<typeof loadTaxRules>>;
 }
 
-export async function loadPayrollRefs(db: Db): Promise<PayrollRefs> {
+export async function loadPayrollRefs(
+  db: Db,
+  opts: {
+    /**
+     * Oylik QAYSI FILIALDAN chiqarilayotgani. Berilmasa — butun kompaniya
+     * (sinxronizatsiya va skriptlar shu ko'rinishda ishlaydi).
+     *
+     * ⚠ `branchIds` EMAS, `payrollBranchId`. Farqi hayot-mamot:
+     *     { branchIds: 1 }       → [1,2] xodim IKKALA ro'yxatda,
+     *                              to'liq summa bilan — ikki marta to'lash;
+     *     { payrollBranchId: 1 } → [1,2] xodim FAQAT 1-filial ro'yxatida.
+     * Ikki marta to'lash arifmetika bilan emas, TO'PLAM BO'LINISHI bilan
+     * yopiladi: har bir xodim har oyda aniq bitta ro'yxatda turadi.
+     */
+    payrollBranchId?: number;
+  } = {},
+): Promise<PayrollRefs> {
+  const empFilter: Filter<HrEmployee> = { archReason: { $in: ["", null] } } as Filter<HrEmployee>;
+  if (opts.payrollBranchId !== undefined) {
+    (empFilter as Record<string, unknown>).payrollBranchId = opts.payrollBranchId;
+  }
   const [employees, bonusRows, penaltyRows, percentByTier, taxRules] = await Promise.all([
     // ARXIVLANGAN (ishdan ketgan) XODIM OYLIK HISOBIGA KIRMAYDI.
     //
@@ -322,7 +360,7 @@ export async function loadPayrollRefs(db: Db): Promise<PayrollRefs> {
     // sabab bo'sh bo'lsa xodim faol). Maydon yo'q eski hujjatlar ham faol
     // hisoblanadi.
     db.collection<HrEmployee>("hr_employees")
-      .find({ archReason: { $in: ["", null] } } as Filter<HrEmployee>)
+      .find(empFilter)
       .sort({ id: 1 })
       .toArray(),
     db.collection("bonuses").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
@@ -342,14 +380,14 @@ export async function loadPayrollRefs(db: Db): Promise<PayrollRefs> {
 export async function buildPayrollRows(
   db: Db,
   p: PayrollPeriod = payrollPeriod(),
-  opts: { carryOver?: boolean; refs?: PayrollRefs } = {},
+  opts: { carryOver?: boolean; refs?: PayrollRefs; payrollBranchId?: number } = {},
 ): Promise<EmployeePayroll[]> {
   // `carryOver: false` — o'tgan oyning ochiq qoldig'ini hisoblayotganda
   // beriladi (loadCarryOver ichida). Usiz ikkalasi bir-birini cheksiz
   // chaqirar edi.
   const withCarry = opts.carryOver !== false;
   const month = payrollMonthKey(p);
-  const refs = opts.refs ?? (await loadPayrollRefs(db));
+  const refs = opts.refs ?? (await loadPayrollRefs(db, { payrollBranchId: opts.payrollBranchId }));
   const { employees, bonusRows, penaltyRows, percentByTier, taxRules } = refs;
   const [paidBy, carryBy, collectedBy] = await Promise.all([
     loadPaidByEmployee(db, month),
@@ -383,7 +421,7 @@ export async function buildPayrollRows(
 
   return employees.map((emp) => {
     const k = nameKey(emp.name);
-    const paid = paidBy.get(k) ?? { avans: 0, oylik: 0 };
+    const paid = paidBy.get(k) ?? { avans: 0, oylik: 0, plastik: 0 };
     const fixedSalary = fixedSalaryOf(emp);
     const hasOklad = isSalaryConfigured(emp);
     const percent = resolvePercent(emp.percent, percentByTier);
@@ -426,6 +464,11 @@ export async function buildPayrollRows(
       // qoida `taxById` da bo'lmaydi va o'z-o'zidan tushib qoladi.
       taxable: empTaxRules.length > 0,
       taxRules: empTaxRules,
+      // NOMINAL plastik summa — soliq asosi. Davrga bog'liq emas.
+      plastikSalary: plastikSalaryOf(emp),
+      // Shu oyda kartadan allaqachon berilgani — karta oyog'ining qolgan
+      // maqsadini hisoblash uchun. Soliq asosiga TA'SIR QILMAYDI.
+      paidPlastik: paid.plastik,
     } satisfies EmployeePayroll;
   });
 }

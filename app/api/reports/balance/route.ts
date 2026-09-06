@@ -4,6 +4,8 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import { getBranchScope } from "@/lib/branchScope";
+import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 
 // Hisobotlar → Balans (href /reports-balance).
 //
@@ -48,9 +50,19 @@ function key(name: unknown): string {
 
 export async function GET() {
   const db = await ensureIndexes();
+  // FILIAL QAMROVI. Bu hisobot xodimlarning telefoni, oyligi, bonusi,
+  // avansi va jarimasini birga qaytaradi — ya'ni kesilmagan holda u
+  // butun kompaniyaning maosh ma'lumotini har bir filialga ochib berardi.
+  //
+  // Ilgari bu yerda `getBranchScope()` UMUMAN chaqirilmasdi va endpoint
+  // qamrov ro'yxatlarining hech birida yo'q edi — shunchaki unutilgan.
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
 
   const [employees, bonuses, penalties, entries] = await Promise.all([
-    db.collection("hr_employees").find({}).sort({ id: 1 }).toArray(),
+    db.collection("hr_employees").find(scopedEmployeeFilter({}, scope)).sort({ id: 1 }).toArray(),
     db.collection("bonuses").find({}).toArray(),
     db.collection("penalties").find({}).toArray(),
     db

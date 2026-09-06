@@ -31,8 +31,17 @@ import { digestLines } from "@/lib/sync/salaryDigest";
 // Varaq nomi lib/sync/config.ts da — u yerda jurnal varag'i shu nomni
 // olib qolmasligi uchun qo'riqchi ham bor.
 
+// "Kartaga" va "Naqd" — "Qolgan" ning kanal bo'yicha bo'linishi
+// (kartaga + naqd = qolgan). Ular "Qolgan" dan KEYIN turadi: mavjud
+// ustunlarning tartibi va joyi o'zgarmasin, jadvalga qarab turgan odam
+// eski ustunlarni o'sha yerda topsin.
+//
+// DIQQAT: mavjud varaqda `columnCount` yetmasa yangi ustun JIMGINA
+// yozilmasdi. `ensureTab` endi gridni kengaytiradi va sarlavhani
+// yangilaydi (lib/sync/googleSheets.ts).
 const HEADERS = [
-  "Xodim", "Lavozim", "Stavka", "Hisoblangan", "Soliq", "Olingan", "Qolgan", "Davr", "Yangilangan",
+  "Xodim", "Lavozim", "Stavka", "Hisoblangan", "Soliq", "Olingan", "Qolgan",
+  "Kartaga", "Naqd", "Davr", "Yangilangan",
 ];
 
 /** `turi` kodini odam o'qiydigan yorliqqa. */
@@ -93,6 +102,8 @@ export async function writeSalarySummary(
       Math.round(l.tax),
       Math.round(l.paid),
       Math.round(l.due),
+      Math.round(l.plastik),
+      Math.round(l.naqd),
       periodLabel,
       stamp,
     ]);

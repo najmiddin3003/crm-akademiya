@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import { isMonthKey, payrollMonthKey, payrollPeriod, payrollPeriodOf } from "@/lib/salary";
+import { getBranchScope } from "@/lib/branchScope";
 
 // GET /api/salary-runs/employees-payroll[?month=YYYY-MM]
 // Oylik chiqarish → xodim tanlash jadvali uchun har bir xodimning
@@ -34,7 +35,14 @@ export async function GET(req: Request) {
 
   const period = raw ? payrollPeriodOf(raw) : payrollPeriod();
   const db = await ensureIndexes();
-  const employees = await buildPayrollRows(db, period);
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
+  // OYLIK RO'YXATI — `payrollBranchId` bo'yicha, `branchIds` bo'yicha EMAS.
+  // Ikki filialda ishlaydigan xodim faqat BITTA filialning ro'yxatida
+  // turadi, ya'ni oylik ikki marta chiqarilishi mumkin emas.
+  const employees = await buildPayrollRows(db, period, { payrollBranchId: scope.branchId });
   // `month` QAYTARILADI: mijoz qaysi oy hisoblanganini taxmin qilmasin —
   // parametrsiz so'rovda ham server tanlagan oy aniq bo'lsin.
   return NextResponse.json({ ok: true, month: payrollMonthKey(period), employees });

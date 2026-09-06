@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { isCvStatus, type CvApplication } from "@/lib/managementCv";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
+import { getBranchScope } from "@/lib/branchScope";
 
 // PATCH /api/management-cv/:id — arizaning holatini o'zgartiradi.
 // `status: "accepted"` bo'lsa — referensdagi `cvHire()` kabi nomzod
@@ -24,6 +25,16 @@ function positionToTuri(position: string): string {
 async function hire(
   db: Awaited<ReturnType<typeof ensureIndexes>>,
   cv: CvApplication,
+  /**
+   * Yangi xodim QAYSI FILIALGA tushadi — arizani tasdiqlayotgan odamning
+   * joriy filiali.
+   *
+   * NIMA UCHUN MAJBURIY PARAMETR (ixtiyoriy emas): filialsiz yaratilgan
+   * xodim hech bir filial ro'yxatida ko'rinmaydi — ariza "tasdiqlandi"
+   * bo'lardi-yu, odam tizimda yo'qolib ketardi. Majburiy parametr bu
+   * yo'lni ochiq qoldirmaydi.
+   */
+  branchId: number,
 ): Promise<HrEmployee> {
   const col = db.collection("hr_employees");
   const [last] = await col.find({}).sort({ id: -1 }).limit(1).toArray();
@@ -39,6 +50,8 @@ async function hire(
     aktivOq: 0,
     groups: 0,
     turi: positionToTuri(cv.position),
+    branchIds: [branchId],
+    payrollBranchId: branchId,
     filial: "Akademiya",
     phone: cv.phone,
     kurs: isTeacher && cv.subject && cv.subject !== "-" ? cv.subject : "",
@@ -87,7 +100,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // "Ishga olish" faqat bir marta — takror bosilsa yangi xodim yaratilmaydi.
   if (status === "accepted" && current.status !== "accepted") {
-    employee = await hire(db, current);
+    const scope = await getBranchScope();
+    if (!scope) {
+      return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+    }
+    employee = await hire(db, current, scope.branchId);
     set.hiredEmpId = employee.id;
   }
 

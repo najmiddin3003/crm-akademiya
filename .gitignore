@@ -48,3 +48,7 @@ next-env.d.ts
 
 # Xodim birlashtirish zaxirasi — shaxsiy ma'lumot (telefon), git ga tushmasin.
 scripts/_backup-merged-employees.json
+# O'chirilgan yozuvlarning zaxiralari — ular ham shaxsiy ma'lumot saqlaydi.
+scripts/_deleted-*.json
+scripts/_plastik-migration-backup.json
+.salarytest/

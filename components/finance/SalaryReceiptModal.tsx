@@ -195,6 +195,29 @@ export default function SalaryReceiptModal({
                 <span className="text-[17px] font-bold tabular-nums">{fmtSum(paid)}</span>
               </div>
 
+              {/* KANAL BO'YICHA BO'LINISH — faqat ikki oyoqli chiqarishda.
+                  Eski cheklarda bu maydonlar yo'q va ular bitta kanaldan
+                  chiqqan; u yerda bo'linishni ko'rsatish o'ylab topilgan
+                  raqam bo'lardi. */}
+              {(r.paidPlastik ?? 0) > 0 && (
+                <div className="mt-1.5 pl-3 space-y-0.5">
+                  <Row label="↳ kartaga" value={fmtSum(r.paidPlastik ?? 0)} />
+                  <Row label="↳ naqd" value={fmtSum(r.paidNaqd ?? 0)} />
+                </div>
+              )}
+
+              {/* Kartaga e'lon qilingan summadan KAM ketgan bo'lsa sababi
+                  ochiq aytiladi: qoldiq yetmagan (avans olingan yoki
+                  hisoblangan oylik kam). Bu xato emas, arifmetik natija. */}
+              {(r.plastikSalary ?? 0) > 0
+                && (r.paidPlastik ?? 0) < (r.plastikSalary ?? 0) - (r.paidPlastikBefore ?? 0) && (
+                <p className="mt-1.5 text-[11px] text-amber-600">
+                  Plastik oylik {fmtSum(r.plastikSalary ?? 0)} so&apos;m
+                  {(r.paidPlastikBefore ?? 0) > 0 && ` (shu oyda avval ${fmtSum(r.paidPlastikBefore ?? 0)} o'tkazilgan)`},
+                  lekin qolgan qoldiq yetmadi — kartaga {fmtSum(r.paidPlastik ?? 0)} ketdi.
+                </p>
+              )}
+
               {rest !== 0 && (
                 <Row
                   label={rest > 0 ? "To'lanmagan qoldiq" : "Xodim qarzdorligi"}
@@ -210,7 +233,12 @@ export default function SalaryReceiptModal({
             {run.cashboxName && (
               <div>
                 Kassa: {run.cashboxName}
-                {run.methodLabel ? ` · ${run.methodLabel}` : ""}
+                {/* Ikki oyoqli chiqarishda `methodLabel` faqat NAQD turini
+                    bildiradi — yolg'on bo'lmasligi uchun bu holatda ikkala
+                    kanal ham ro'yxatdan chiqariladi. */}
+                {run.legs && run.legs.length > 0
+                  ? ` · ${run.legs.map((l) => l.label).join(" + ")}`
+                  : run.methodLabel ? ` · ${run.methodLabel}` : ""}
               </div>
             )}
             <div>Chiqarish № {run.id} · {run.employeeCount} ta xodim</div>

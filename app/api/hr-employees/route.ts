@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
+import { sanitizeAssignments, sanitizePlastikSalary, type HrEmployee } from "@/lib/hrEmployees";
 // Qo'shimcha maydonlar tipi vaqtincha komponentlar yonida turadi — sabab
 // components/employees/employeeExtras.ts izohida. `import type` bo'lgani
 // uchun bu bog'lanish kompilyatsiyada butunlay yo'qoladi.
@@ -8,7 +8,14 @@ import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 import { toUz, uzNow } from "@/lib/uzTime";
 import { getBranchScope } from "@/lib/branchScope";
-import { sanitizeBranchIds } from "@/lib/employeeBranches";
+import {
+  branchIdsErrorText,
+  branchNameMap,
+  pruneAssignments,
+  resolvePayrollBranch,
+  scopedEmployeeFilter,
+  validateBranchIds,
+} from "@/lib/employeeBranches";
 import { logSms } from "@/lib/smsLog";
 
 // Boshqaruv → Xodimlar backend'i (MongoDB `hr_employees`).
@@ -23,10 +30,24 @@ function fmtNow(raw: Date): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// GET — FILIAL BO'YICHA KESILGAN ro'yxat (Boshqaruv → Xodimlar).
+//
+// Xodim `branchIds` massivida qaysi filial bo'lsa, o'sha filial
+// ro'yxatida chiqadi. Chortoq 1 va 2 da ishlaydigan o'qituvchi IKKALASIDA
+// ham ko'rinadi — talab aynan shu.
+//
+// BUTUN kompaniya ro'yxati kerak bo'lgan ekranlar (tug'ilgan kunlar,
+// rollar, kassa oynalari, eski oylik cheklaridagi ism→id xaritasi)
+// `/api/hr-employees/ref` dan oladi: u kesilmagan, LEKIN proyeksiyasi
+// tor — pul va filial maydonlari chiqmaydi.
 export async function GET() {
   const db = await ensureIndexes();
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
   const col = db.collection("hr_employees");
-  const rows = await col.find({}).sort({ id: 1 }).toArray();
+  const rows = await col.find(scopedEmployeeFilter({}, scope)).sort({ id: 1 }).toArray();
   // `archDate` ("Sana" ustuni) keyin qo'shilgan — eski hujjatlarda yo'q,
   // shuning uchun bo'sh satrga to'ldiramiz (jadval `undefined` olmasligi uchun).
   const employees = rows.map(({ _id, ...rest }) => ({ archDate: "", ...rest }) as unknown as HrEmployee & HrEmployeeExtra);
@@ -114,13 +135,50 @@ export async function POST(req: Request) {
   // Oyna galochka qo'yilgan filiallarni yuboradi (ular ish haqi
   // biriktirilgan filiallar bilan bir xil). Yubormasa — joriy filial.
   const scope = await getBranchScope();
-  const sent = await sanitizeBranchIds(db, (body as { branchIds?: unknown }).branchIds);
-  const branchIds = sent ?? [scope?.branchId ?? scope?.allowed[0] ?? 1];
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
+  // Yuborilmasa — joriy filial. Yuborilsa TEKSHIRILADI: bo'sh ro'yxat,
+  // mavjud bo'lmagan filial va o'z qamrovidan tashqarisi RAD ETILADI.
+  // Ilgari bu yerda jimgina tozalash turardi va noto'g'ri qiymat sassiz
+  // tushib qolardi.
+  const rawBranchIds = (body as { branchIds?: unknown }).branchIds;
+  const checked = await validateBranchIds(db, rawBranchIds === undefined ? [scope.branchId] : rawBranchIds, scope);
+  if (!checked.ok) {
+    const names = await branchNameMap(db);
+    return NextResponse.json(
+      { ok: false, error: branchIdsErrorText(checked.error!, (id) => names.get(id) ?? String(id)) },
+      { status: 400 },
+    );
+  }
+  const branchIds = checked.ids;
+  const payrollBranchId = resolvePayrollBranch(branchIds, (body as { payrollBranchId?: unknown }).payrollBranchId);
+
+  // Ish haqi qatorlari a'zolik ichida bo'lishi shart. Ish haqi KIRITILGAN
+  // qator tashlanib ketsa — bu jimgina pul yo'qotish, shuning uchun 400.
+  const { kept: keptAssignments, dropped } = pruneAssignments(
+    sanitizeAssignments(body.branchAssignments),
+    branchIds,
+  );
+  const lostSalary = dropped.filter((a) => a.salary > 0);
+  if (lostSalary.length > 0) {
+    const names = await branchNameMap(db);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Ish haqi kiritilgan filial xodimga biriktirilmagan: ${lostSalary.map((a) => names.get(a.branchId) ?? a.branchId).join(", ")}`,
+      },
+      { status: 400 },
+    );
+  }
 
   const employee: HrEmployee & HrEmployeeExtra = {
     ...pickExtras(body),
     id: nextId,
     branchIds,
+    // Oylik uyi — a'zolik ichidan aynan bittasi. Usiz xodim hech bir
+    // filialning oylik ro'yxatiga tushmasdi.
+    payrollBranchId,
     name,
     gender: body.gender || "",
     aktivOq: 0,
@@ -138,9 +196,17 @@ export async function POST(req: Request) {
     percent: body.percent || "",
     degree: body.degree || "",
     photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : "",
-    // Mijozdan kelgan qatorlarni tozalaymiz — faqat kutilgan maydonlar,
-    // to'g'ri turda va faqat filialId bor bo'lganlari saqlanadi.
-    branchAssignments: sanitizeAssignments(body.branchAssignments),
+    // Yuqorida tozalangan VA a'zolik ichiga kesilgan qatorlar.
+    branchAssignments: keptAssignments,
+    // SOLIQ va PLASTIK — ilgari POST da `taxIds` bloki UMUMAN YO'Q edi:
+    // yangi xodimga soliqni faqat KEYIN, tahrirlash orqali biriktirish
+    // mumkin bo'lardi va sababi hech qayerda yozilmagan edi. Ikkala maydon
+    // ham PATCH bilan bir xil qoidada tozalanadi, shunda ikki yo'l bir xil
+    // xulq qiladi.
+    taxIds: Array.isArray(body.taxIds)
+      ? [...new Set(body.taxIds.map(Number).filter((n) => Number.isFinite(n) && n > 0))]
+      : [],
+    plastikSalary: sanitizePlastikSalary(body.plastikSalary),
   };
   await col.insertOne({ ...employee });
 

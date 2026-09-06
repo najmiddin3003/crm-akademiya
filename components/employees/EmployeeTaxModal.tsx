@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SettingsListItem } from "@/lib/settingsLists";
+import { parseMoney } from "@/lib/taxes";
 
 // Boshqaruv → Xodimlar jadvalidagi SOLIQ tugmachasi bosilganda chiqadigan
 // tanlov: xodimga aynan QAYSI soliq turlari qo'llanishi belgilanadi.
@@ -15,18 +16,18 @@ import type { SettingsListItem } from "@/lib/settingsLists";
 // Bir nechta tur tanlanadi. Hech biri tanlanmasa — xodimga soliq
 // solinmaydi (tugmacha o'chadi).
 
-function numOf(raw: unknown): number {
-  const s = String(raw ?? "").replace(/\s| /g, "").replace(/%/g, "").replace(",", ".");
-  const n = Number(s.replace(/[^\d.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-/** "12%" yoki "500 000 so'm" — turi va qiymatiga qarab. */
+/**
+ * "12%" yoki "500 000 so'm" — turi, qiymati va ASOSIGA qarab.
+ *
+ * Matn→son o'girishi `lib/taxes.ts` dan olinadi. Ilgari bu yerda o'sha
+ * mantiqning NUSXASI turardi va u vaqt o'tib hisobdan uzoqlashib ketishi
+ * mumkin edi — oyna bir raqamni, oylik hisobi boshqasini ko'rsatardi.
+ */
 function describe(t: SettingsListItem): string {
   const isAmount = /aniq|summa/i.test(String(t.taxType ?? ""));
   return isAmount
-    ? `${numOf(t.amount).toLocaleString("ru-RU")} so'm (qat'iy)`
-    : `${numOf(t.percent)}% (hisoblangan oylikdan)`;
+    ? `${parseMoney(t.amount).toLocaleString("ru-RU")} so'm (qat'iy)`
+    : `${parseMoney(t.percent)}% (hisoblangan oylikdan)`;
 }
 
 export default function EmployeeTaxModal({

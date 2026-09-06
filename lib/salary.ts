@@ -30,6 +30,12 @@ export interface SalaryRunItem {
   /** Shu chiqarishda xodimga kassadan chiqarilgan summa. */
   paid?: number;
   /**
+   * `paid` ning kanal bo'yicha kesimi: `paidPlastik + paidNaqd === paid`.
+   * Eski yozuvlarda yo'q — ularda hammasi bitta kanaldan chiqqan.
+   */
+  paidPlastik?: number;
+  paidNaqd?: number;
+  /**
    * CHEK uchun kesim — chiqarish PAYTIDAGI holat, muzlatilgan.
    *
    * Nima uchun saqlanadi: chek qayta hisoblanmasligi kerak. Xodimning
@@ -65,6 +71,17 @@ export interface SalaryReceipt {
   /** Shu oyda AVVAL chiqarilgan oylik (bu chiqarishgacha). */
   paidOylik?: number;
   carryOver?: number;
+  /**
+   * PLASTIK kesimi. Eski cheklarda yo'q.
+   *
+   * `plastikSalary` — chiqarish paytidagi NOMINAL summa (soliq asosi).
+   * `paidPlastikBefore` — shu oyda undan oldin kartadan berilgani.
+   * `paidPlastik` / `paidNaqd` — shu chiqarishdagi ikki oyoq.
+   */
+  plastikSalary?: number;
+  paidPlastikBefore?: number;
+  paidPlastik?: number;
+  paidNaqd?: number;
 }
 
 /** Chekdagi bitta soliq qatori. */
@@ -102,6 +119,19 @@ export interface SalaryRun {
   cashboxId?: number;
   cashboxName?: string;
   /**
+   * Chiqarish QAYSI kanallardan qancha pul yechganini — kalit kesimida.
+   *
+   * `method`/`methodLabel` MA'NOSINI SAQLAYDI (naqd oyog'i) — eski
+   * hujjatlar va `SalaryReceiptModal` shunga tayanadi. `legs` esa to'liq
+   * rasmni beradi va bekor qilishda aynan shu ishlatiladi: kalitsiz
+   * yozuvda to'lov turini TAXMIN qilish naqd oyog'ini plastik chelagiga
+   * qaytarib, kassa summalarini jimgina buzardi.
+   */
+  legs?: { key: string; label: string; total: number }[];
+  /** Kanallar bo'yicha yig'indi (`legs` ning qisqartmasi, hisobot uchun). */
+  plastikTolangan?: number;
+  naqdTolangan?: number;
+  /**
    * To'lov turining BARQAROR kaliti — bekor qilishda kassaning qaysi
    * `methodTotals` maydonini tiklash kerakligini shu aniqlaydi. `methodLabel`
    * esa faqat ko'rsatish uchun va Sozlamalardan o'zgartirilishi mumkin.
@@ -116,6 +146,15 @@ export interface SalaryRun {
   createdAt: string; // "DD.MM.YYYY | HH:mm"
   /** "YYYY-MM" — qaysi oy uchun chiqarilgani. Eski yozuvlarda yo'q. */
   month?: string;
+  /**
+   * Chiqarish QAYSI FILIALDA bajarilgani.
+   *
+   * Eski hujjatlarda YO'Q va bu farq muhim: o'chirish qorovuli
+   * `run.branchId !== scope.branchId` shaklida yozilsa, `undefined !== 1`
+   * doim rost bo'lib, maydonsiz eski chiqarishni HECH KIM (admin ham)
+   * o'chira olmasdi. Qorovul shu bois `undefined` ni ALOHIDA qaraydi.
+   */
+  branchId?: number;
   /** Xodim kesimidagi qoldiqlar. Eski yozuvlarda yo'q. */
   items?: SalaryRunItem[];
 }
@@ -277,6 +316,20 @@ export interface EmployeePayroll {
    * Sozlamalarda o'chirilgan yoki nofaol qilingan qoida bu yerga tushmaydi.
    */
   taxRules: TaxRule[];
+  /**
+   * Xodimga plastik karta orqali beriladigan oylik summasi
+   * (`hr_employees.plastikSalary`). Biriktirilmagan xodimda 0.
+   *
+   * SOLIQ HISOBIGA UMUMAN TEGMAYDI. Soliq bugungidek hisoblangan
+   * oylikdan ushlanadi; bu maydon faqat TO'LOVNI ikki kanalga bo'ladi.
+   */
+  plastikSalary: number;
+  /**
+   * Shu oyda xodimga PLASTIK bilan chiqarilgan avans + oylik.
+   * `paidAvans + paidOylik` ning QISM to'plami, ular bilan qo'shilmaydi.
+   * Faqat karta oyog'ining qolgan maqsadini hisoblashda ishlatiladi.
+   */
+  paidPlastik: number;
 }
 
 /** Shu oy uchun hisoblangan asos (oklad pro-rata yoki tushumdan foiz). */
@@ -308,7 +361,11 @@ export function payrollPaid(e: EmployeePayroll): number {
  */
 export function payrollTaxLines(e: EmployeePayroll, p: PayrollPeriod): TaxLine[] {
   if (!e.taxable) return [];
-  const gross = payrollEarned(e, p);
+  // `Math.max(..., 0)` YANGI: jarima asosdan katta bo'lsa hisoblangan oylik
+  // manfiy bo'ladi va foizli qoida MANFIY soliq berardi. Manfiy soliq esa
+  // `payrollDue` da xodimning qarzini KAMAYTIRARDI — quyidagi
+  // `Math.min(total, max(gross,0))` qorovuli uni o'tkazib yuboradi.
+  const gross = Math.max(payrollEarned(e, p), 0);
   return e.taxRules.map((r) =>
     r.type === "percent"
       ? { name: r.name, detail: `${r.value}%`, amount: Math.round((gross * r.value) / 100) }
@@ -324,7 +381,10 @@ export function payrollTaxLines(e: EmployeePayroll, p: PayrollPeriod): TaxLine[]
  */
 export function payrollTax(e: EmployeePayroll, p: PayrollPeriod): number {
   const total = payrollTaxLines(e, p).reduce((s, l) => s + l.amount, 0);
-  return Math.min(total, Math.max(payrollEarned(e, p), 0));
+  // PASTDAN QISISH ham kerak: soliq hech qachon manfiy bo'lmaydi. Usiz
+  // manfiy qator (manfiy gross + foizli qoida) `payrollDue` ga QO'SHILIB,
+  // xodimning qarzini kamaytirib yuborardi.
+  return Math.min(Math.max(total, 0), Math.max(payrollEarned(e, p), 0));
 }
 
 /**
@@ -346,4 +406,44 @@ export function payrollDue(e: EmployeePayroll, p: PayrollPeriod): number {
  */
 export function payrollDebt(e: EmployeePayroll, p: PayrollPeriod): number {
   return Math.max(-payrollDue(e, p), 0);
+}
+
+// ---------- To'lovning ikki oyog'i: PLASTIK va NAQD ----------
+//
+// DIQQAT — BU YERDA HISOB YO'Q, FAQAT TAQSIMOT. Kassadan chiqadigan summa
+// (`payrollDue`) yuqorida allaqachon hisoblangan; quyidagilar uni ikkiga
+// bo'ladi, xolos. Ya'ni plastikni yoqish xodimga tegadigan JAMI summani
+// zarracha o'zgartirmaydi — faqat pul qaysi kanaldan chiqishini aytadi.
+
+/**
+ * Shu oyda kartaga YANA qancha yuborilishi kerakligi.
+ *
+ * Oy davomida kartadan berilgan avans va oylik (`paidPlastik`) e'lon
+ * qilingan summani to'ldirib boradi, ya'ni bir oyda ikkinchi marta
+ * chiqarilganda karta oyog'i QAYTA to'liq chiqmaydi.
+ */
+export function payrollPlastikTarget(e: EmployeePayroll): number {
+  return Math.max(e.plastikSalary - e.paidPlastik, 0);
+}
+
+/**
+ * KARTA OYOG'I — shu chiqarishda plastik bilan beriladigan summa.
+ *
+ * Karta BIRINCHI to'lanadi: rasmiy o'tkazma qonuniy majburiyat va u
+ * qoldiqda oxirgi bo'lib qolmasligi kerak. Avans, o'tgan oy qarzi va
+ * soliq esa naqd qismdan yeydi.
+ *
+ * `payrollDue` USTIDAN bo'linadi, `payrollEarned` ustidan EMAS.
+ * NIMA UCHUN: kassadan chiqadigan pul — hisoblangan oylik emas,
+ * TO'LANADIGAN QOLDIQ (unda avans va o'tgan oy qoldig'i ayrilgan).
+ * Hisoblangan ustidan bo'linsa, oy davomida 3 000 000 avans olgan xodimga
+ * yana 4 760 000 chiqarilardi — 2.7 barobar ortiq.
+ */
+export function payrollPlastikLeg(e: EmployeePayroll, p: PayrollPeriod): number {
+  return Math.min(payrollPlastikTarget(e), Math.max(payrollDue(e, p), 0));
+}
+
+/** NAQD OYOG'I — qoldiq. Ayirma bo'lgani uchun alohida yaxlitlanmaydi. */
+export function payrollCashLeg(e: EmployeePayroll, p: PayrollPeriod): number {
+  return Math.max(payrollDue(e, p), 0) - payrollPlastikLeg(e, p);
 }

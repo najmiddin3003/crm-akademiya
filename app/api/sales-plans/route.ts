@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { SalesPlanRow } from "@/lib/salesPlan";
+import { getBranchScope } from "@/lib/branchScope";
+import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 
 // Sotuv va marketing → Savdo plani backend'i.
 //
@@ -11,6 +13,12 @@ import type { SalesPlanRow } from "@/lib/salesPlan";
 
 export async function GET() {
   const db = await ensureIndexes();
+  // Filial qamrovi — ilgari bu endpoint ham `getBranchScope()` ni umuman
+  // chaqirmasdi va butun kompaniyaning moderatorlarini qaytarardi.
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
 
   // To'lovlar SONI moderator bo'yicha — Mongo'da guruhlanadi.
   //
@@ -22,7 +30,9 @@ export async function GET() {
   // `$match` eski filtr + eski `if (!e.moderator) continue` qatoriga aynan
   // teng, shuning uchun `paymentsCount` o'zgarmaydi.
   const [employees, plans, moderatorCounts] = await Promise.all([
-    db.collection("hr_employees").find({ turi: "moderator" }).sort({ id: 1 }).toArray(),
+    // Filial qamrovi — sotuv rejasi shu filialning moderatorlari uchun.
+    // Ilgari bu ro'yxat kesilmasdi va `getBranchScope()` chaqirilmasdi.
+    db.collection("hr_employees").find(scopedEmployeeFilter({ turi: "moderator" }, scope)).sort({ id: 1 }).toArray(),
     db.collection("sales_plans").find({}).toArray(),
     db.collection("transaction_entries").aggregate([
       { $match: { txType: "payIn", moderator: { $nin: ["", null] } } },

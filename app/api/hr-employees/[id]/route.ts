@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizeAssignments, type HrEmployee } from "@/lib/hrEmployees";
+import { sanitizeAssignments, sanitizePlastikSalary, type HrEmployee } from "@/lib/hrEmployees";
 import { sanitizePermissions } from "@/lib/permissions";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
-import { sanitizeBranchIds } from "@/lib/employeeBranches";
+import {
+  branchIdsErrorText,
+  branchNameMap,
+  pruneAssignments,
+  resolvePayrollBranch,
+  scopedEmployeeFilter,
+  validateBranchIds,
+} from "@/lib/employeeBranches";
+import { getBranchScope } from "@/lib/branchScope";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
@@ -14,7 +22,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
   const db = await ensureIndexes();
-  const row = await db.collection("hr_employees").findOne({ id: empId });
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
+  // Boshqa filial xodimining profili ochilmaydi. 403 EMAS, 404 —
+  // bunday xodim BORLIGI ham oshkor bo'lmasin.
+  const row = await db.collection("hr_employees").findOne(scopedEmployeeFilter({ id: empId }, scope));
   if (!row) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
   }
@@ -79,10 +93,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ? [...new Set(body.taxIds.map(Number).filter((n) => Number.isFinite(n) && n > 0))]
       : [];
   }
-  // Ish haqi — POST bilan bir xil tozalagichdan o'tadi (lib/hrEmployees.ts).
-  if (body.branchAssignments !== undefined) {
-    set.branchAssignments = sanitizeAssignments(body.branchAssignments);
+  // Plastik karta orqali beriladigan oylik (Boshqaruv → Xodimlar, yoki
+  // xodim kartasidagi "Ish haqi" oynasi). `null` — biriktirilmagan.
+  //
+  // DIQQAT: yuqoridagi `aktivOq`/`groups` naqshi (`Number.isFinite(...)`)
+  // BU YERDA ISHLAMAYDI: `Number(null)` va `Number("")` ikkalasi ham 0 va
+  // ikkalasi ham finite, ya'ni "biriktirilmagan qilish" so'rovi jimgina
+  // 0 yozib qo'yardi. `sanitizePlastikSalary` bu farqni saqlaydi.
+  if (body.plastikSalary !== undefined) {
+    set.plastikSalary = sanitizePlastikSalary(body.plastikSalary);
   }
+  // `branchAssignments` quyida, filial qoidasi bilan BIRGA ishlanadi:
+  // qatorlar a'zolik ichiga kesilishi kerak, ya'ni `branchIds` aniq
+  // bo'lgandan keyin.
 
   // "Xodim qo'shish" modalining QOLGAN maydonlari. Ilgari ular bu oq
   // ro'yxatda yo'q edi: modal tahrirlash uchun ham ishlatila boshlaganda
@@ -111,16 +134,78 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const db = await ensureIndexes();
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
 
-  // Xodim QAYSI FILIALLARDA ishlaydi — navbardagi ro'yxat shundan chiqadi
-  // (lib/branchScope.ts). Oyna galochka qo'yilgan filiallarni yuboradi.
+  // Nishon xodim QAMROVDA bo'lsinmi. Joriy holat filial qoidasini
+  // hisoblash uchun ham kerak (a'zolik va oylik uyi bir-biriga bog'liq).
+  const current = (await db
+    .collection("hr_employees")
+    .findOne(scopedEmployeeFilter({ id: empId }, scope))) as (HrEmployee & { _id?: unknown }) | null;
+  if (!current) {
+    // 403 EMAS, 404: boshqa filialda bunday xodim BORLIGI ham oshkor
+    // bo'lmasin.
+    return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+  }
+
+  // ── FILIAL QOIDASI ───────────────────────────────────────────────
   //
-  // Bo'sh ro'yxat QABUL QILINMAYDI: filialsiz xodim navbarda hech narsa
-  // ko'rmasdi va butun saytdan uzilib qolardi — shu bois `sanitizeBranchIds`
-  // bo'sh natijada `null` qaytaradi va maydon umuman yozilmaydi.
-  if ((body as { branchIds?: unknown }).branchIds !== undefined) {
-    const ids = await sanitizeBranchIds(db, (body as { branchIds?: unknown }).branchIds);
-    if (ids) set.branchIds = ids;
+  // Uch manba bir-biriga bog'liq va shu bois BIRGA hisoblanadi:
+  //   `branchIds`        — a'zolik (nimani ko'radi, qayerda ko'rinadi)
+  //   `payrollBranchId`  — oylik uyi, a'zolik ichidan aynan bittasi
+  //   `branchAssignments`— filial bo'yicha ish haqi, a'zolikning qismi
+  const rawIds = (body as { branchIds?: unknown }).branchIds;
+  const rawAssign = body.branchAssignments;
+  const rawPayrollBranch = (body as { payrollBranchId?: unknown }).payrollBranchId;
+
+  if (rawIds !== undefined || rawAssign !== undefined || rawPayrollBranch !== undefined) {
+    const currentIds = Array.isArray(current.branchIds) ? current.branchIds.map(Number) : [];
+    const assignments = rawAssign !== undefined ? sanitizeAssignments(rawAssign) : (current.branchAssignments ?? []);
+
+    // `branchIds` YUBORILMASA-YU ish haqi qatorlari kelsa — a'zolik
+    // KENGAYTIRILADI (kesilmaydi).
+    //
+    // NIMA UCHUN: "Ish haqi" oynasi (EmployeeSalaryConfigModal) faqat
+    // `branchAssignments` yuboradi. Usiz 2-filialga oklad qo'shilgan
+    // xodim o'sha filialga KIRA OLMASDI — qator bor, a'zolik yo'q.
+    // Birlashma (kesish emas) tanlangani ham ataylab: bu oyna a'zolikni
+    // olib tashlash uchun mo'ljallanmagan, u Xodim tahriri oynasida.
+    const wanted = rawIds !== undefined
+      ? rawIds
+      : [...new Set([...currentIds, ...assignments.map((a) => a.branchId)])];
+
+    const checked = await validateBranchIds(db, wanted, scope);
+    if (!checked.ok) {
+      const names = await branchNameMap(db);
+      return NextResponse.json(
+        { ok: false, error: branchIdsErrorText(checked.error!, (id) => names.get(id) ?? String(id)) },
+        { status: 400 },
+      );
+    }
+    const branchIds = checked.ids;
+    set.branchIds = branchIds;
+    // Oylik uyi HAR SAFAR qayta hal qilinadi: a'zolik qisqarganda u
+    // tashqarida qolib ketmasligi kerak (I2 invarianti).
+    set.payrollBranchId = resolvePayrollBranch(
+      branchIds,
+      rawPayrollBranch !== undefined ? rawPayrollBranch : current.payrollBranchId,
+    );
+
+    const { kept, dropped } = pruneAssignments(assignments, branchIds);
+    const lostSalary = dropped.filter((a) => a.salary > 0);
+    if (lostSalary.length > 0) {
+      const names = await branchNameMap(db);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Ish haqi kiritilgan filial xodimga biriktirilmagan: ${lostSalary.map((a) => names.get(a.branchId) ?? a.branchId).join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
+    if (rawAssign !== undefined) set.branchAssignments = kept;
   }
 
   if (Object.keys(set).length === 0 && newPhone === null) {
@@ -142,8 +227,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     set.phone = newPhone;
   }
 
+  // Qamrov FILTRDA, JS'da emas: o'qib→tekshirib→yozish oralig'ida xodim
+  // boshqa filialga ko'chirilsa ham yozuv o'tib ketmasin.
   const res = await db.collection("hr_employees").findOneAndUpdate(
-    { id: empId },
+    scopedEmployeeFilter({ id: empId }, scope),
     { $set: set },
     { returnDocument: "after" },
   );
@@ -172,7 +259,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
   const db = await ensureIndexes();
-  const res = await db.collection("hr_employees").deleteOne({ id: empId });
+  const scope = await getBranchScope();
+  if (!scope) {
+    return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
+  }
+  // Boshqa filial xodimini o'chirib bo'lmaydi.
+  const res = await db.collection("hr_employees").deleteOne(scopedEmployeeFilter({ id: empId }, scope));
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
   }

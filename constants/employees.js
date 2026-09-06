@@ -33,6 +33,11 @@ export const EMP_COLUMNS = [
   { id: "created", label: "Yaratilgan sanasi", sortable: true },
   { id: "archReason", label: "Arxivlash sababi" },
   { id: "archDate", label: "Sana" },
+  // PLASTIK — tugmacha. Xodimga oyiga kartaga qancha o'tkazilishi (qo'lda
+  // yoziladi). Soliq ustuni bilan YONMA-YON turadi va bu ataylab: "Plastik
+  // qismidan" bazali soliq aynan shu summadan hisoblanadi, ya'ni ikkalasi
+  // bitta qarorning ikki yarmi.
+  { id: "plastik", label: "Plastik" },
   // SOLIQ — tugmacha, jadvalning OXIRIDA. Yoqilgan bo'lsa Sozlamalar →
   // Moliya → Soliq dagi faol qoidalar shu xodimning oyligidan ushlab
   // qolinadi (lib/salary.ts → payrollTaxLines). O'chiq bo'lsa soliq

@@ -10,6 +10,7 @@ import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { Cashbox } from "@/lib/cashboxes";
+import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   payrollBase,
   payrollDebt,
@@ -22,6 +23,8 @@ import {
   payrollPeriodOf,
   payrollTax,
   payrollTaxLines,
+  payrollPlastikLeg,
+  payrollCashLeg,
   UZ_MONTHS,
   type EmployeePayroll,
 } from "@/lib/salary";
@@ -108,6 +111,9 @@ export default function SalaryCreatePage() {
   const [cashboxesLoading, setCashboxesLoading] = useState(true);
   const [cashboxId, setCashboxId] = useState<string>("");
   const [method, setMethod] = useState<string>("");
+  // PLASTIK oyog'ining to'lov turi — naqd turidan alohida. Bo'sh bo'lsa
+  // quyida sukut qiymat hosila sifatida chiqariladi.
+  const [plastikMethod, setPlastikMethod] = useState<string>("");
   const [query, setQuery] = useState("");
   const [turiFilter, setTuriFilter] = useState<string>("all");
   const [hisoblash, setHisoblash] = useState<HisoblashFilter>("all");
@@ -274,12 +280,47 @@ export default function SalaryCreatePage() {
     return sum;
   }, [employees, selected, period]);
 
+  // Ro'yxatda umuman plastik oyligi bor xodim bormi — ikkita qo'shimcha
+  // ustun faqat shunda chiziladi.
+  const anyPlastik = useMemo(() => employees.some((e) => e.plastikSalary > 0), [employees]);
+
+  // Summaning KARTA va NAQD ga bo'linishi. Bu yerda hisob YO'Q — server
+  // ham aynan shu funksiyalarni chaqiradi (lib/salary.ts), ya'ni ekrandagi
+  // va kassadan chiqadigan raqam bir xil bo'lishi kafolatlangan.
+  const { plastikTotal, naqdTotal } = useMemo(() => {
+    let plastik = 0;
+    let naqd = 0;
+    for (const e of employees) {
+      if (!selected.has(e.id) || !e.configured) continue;
+      plastik += payrollPlastikLeg(e, period);
+      naqd += payrollCashLeg(e, period);
+    }
+    return { plastikTotal: plastik, naqdTotal: naqd };
+  }, [employees, selected, period]);
+
+  // Plastik oyog'ining to'lov turi. Sukut — "plastik" kaliti (Sozlamalarda
+  // o'chirilgan bo'lsa ro'yxatdagi birinchisi).
+  const plastikMethodKey = plastikMethod
+    || (paymentMethods.some((m) => m.key === PLASTIK_METHOD_KEY) ? PLASTIK_METHOD_KEY : "")
+    || paymentMethods[0]?.key
+    || "";
+
   const activeCashbox = cashboxes.find((c) => String(c.id) === cashboxId);
   // Chegara kassaning umumiy balansi emas, tanlangan TO'LOV TURIDAGI summa —
   // Kassalar sahifasidagi Chiqim oynasi ham shunday tekshiradi.
-  const available = activeCashbox && methodKey ? Number(activeCashbox.methodTotals?.[methodKey]) || 0 : 0;
-  const notEnough = payoutTotal > 0 && available < payoutTotal;
-  const canPayout = Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0 && !notEnough && !isFutureMonth;
+  const totalOf = (key: string) => (activeCashbox && key ? Number(activeCashbox.methodTotals?.[key]) || 0 : 0);
+  const available = totalOf(methodKey);
+  const plastikAvailable = totalOf(plastikMethodKey);
+  // Har bir oyoq O'Z chelagidan yechiladi, shuning uchun yetarlilik ham
+  // alohida tekshiriladi. Ikkalasi bir xil turga tushsa — bitta chelak.
+  const sameMethod = plastikTotal > 0 && naqdTotal > 0 && plastikMethodKey === methodKey;
+  const notEnough = sameMethod
+    ? available < payoutTotal
+    : (naqdTotal > available) || (plastikTotal > plastikAvailable);
+  const needsPlastikMethod = plastikTotal > 0 && !plastikMethodKey;
+  const canPayout =
+    Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0
+    && !notEnough && !isFutureMonth && !sameMethod && !needsPlastikMethod;
 
   async function confirmPayout() {
     setSaving(true);
@@ -291,7 +332,15 @@ export default function SalaryCreatePage() {
         // chiqim yozuvining sanasi ham shu oy ichida bo'ladi, aks holda
         // o'tgan oy qayta ochilganda summa yana "to'lanmagan" bo'lib
         // ko'rinardi (app/api/salary-runs/route.ts → entryDate).
-        body: JSON.stringify({ employeeIds: Array.from(selected), cashboxId: Number(cashboxId), method: methodKey, month: monthKey }),
+        // `method` — NAQD oyog'i (va plastigi yo'q xodimlarning yagonasi).
+        // `plastikMethod` faqat karta oyog'i bo'lganda ishlatiladi.
+        body: JSON.stringify({
+          employeeIds: Array.from(selected),
+          cashboxId: Number(cashboxId),
+          method: methodKey,
+          plastikMethod: plastikTotal > 0 ? plastikMethodKey : undefined,
+          month: monthKey,
+        }),
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
@@ -503,13 +552,23 @@ export default function SalaryCreatePage() {
                     olinganlar → qolgan. Bonus va jarima kamdan-kam
                     to'ldiriladi, shuning uchun ular OXIRGA surildi. */}
                 <th className="text-right px-3 py-3 whitespace-nowrap">Hisoblangan</th>
+                {/* HISOBLANGAN → KARTAGA → NAQD → SOLIQ tartibi ataylab:
+                    hisoblangan oylik avval ikki kanalga bo'linadi, keyin
+                    undan soliq ushlanadi. Qator o'ngga qarab o'qilganda
+                    pulning yo'li ko'rinadi. Kanal ustunlari faqat kimdadir
+                    plastik oyligi bo'lsa chiziladi. */}
+                {anyPlastik && <th className="text-right px-3 py-3 whitespace-nowrap">Kartaga</th>}
+                {anyPlastik && <th className="text-right px-3 py-3 whitespace-nowrap">Naqd</th>}
                 <th className="text-right px-3 py-3 whitespace-nowrap">Soliq</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Avans olingan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;langan oylik</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">O&apos;tgan oydan</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Qolgan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Bonus</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
+                {/* QOLGAN — qatorning ENG OXIRIDA, yakuniy raqam sifatida:
+                    hisoblangan − soliq (+ o'tgan oydan − allaqachon
+                    to'langani). Ya'ni kassadan haqiqatan chiqadigan summa. */}
+                <th className="text-right px-3 py-3 whitespace-nowrap">Qolgan</th>
               </tr>
             </thead>
             <tbody>
@@ -580,6 +639,24 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       {e.configured ? fmtNum(earned) : <span className="text-muted-foreground">—</span>}
                     </td>
+                    {/* KARTAGA — shu chiqarishda kartaga o'tadigan summa.
+                        Boshqa hech narsa ko'rsatilmaydi: e'lon qilingan
+                        summa xodim kartasida turadi, bu ustun esa faqat
+                        "hozir qancha ketadi" degan savolga javob beradi. */}
+                    {anyPlastik && (
+                      <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                        {e.plastikSalary > 0 ? (
+                          <span className="font-medium text-sky-600">{fmtNum(payrollPlastikLeg(e, period))}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    )}
+                    {anyPlastik && (
+                      <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                        {e.configured ? fmtNum(payrollCashLeg(e, period)) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    )}
                     {/* Soliq — faqat kartasida yoqilgan xodimda hisoblanadi
                         (Boshqaruv → Xodimlar). O'chiq bo'lsa "—", ya'ni
                         "0 so'm soliq" bilan "soliq solinmaydi" farqlanadi. */}
@@ -613,6 +690,13 @@ export default function SalaryCreatePage() {
                         <span className="text-muted-foreground">0</span>
                       )}
                     </td>
+                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                      {e.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(e.bonus)}</span> : <span className="text-muted-foreground">0</span>}
+                    </td>
+                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
+                      {e.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(e.jarima)}</span> : <span className="text-muted-foreground">0</span>}
+                    </td>
+                    {/* QOLGAN — yakuniy raqam, qatorning eng oxirida. */}
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-bold whitespace-nowrap">
                       {e.configured ? (
                         due < 0 ? (
@@ -626,14 +710,6 @@ export default function SalaryCreatePage() {
                       ) : (
                         <span className="text-muted-foreground font-normal">—</span>
                       )}
-                    </td>
-                    {/* Bonus va jarima — qatorning oxirida (sarlavhadagi
-                        izohga qarang). */}
-                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
-                      {e.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(e.bonus)}</span> : <span className="text-muted-foreground">0</span>}
-                    </td>
-                    <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
-                      {e.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(e.jarima)}</span> : <span className="text-muted-foreground">0</span>}
                     </td>
                   </tr>
                 );
@@ -701,7 +777,9 @@ export default function SalaryCreatePage() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium mb-1">To&apos;lov turi</label>
+                <label className="block text-[12px] font-medium mb-1">
+                  {plastikTotal > 0 ? "Naqd qismi uchun to'lov turi" : "To'lov turi"}
+                </label>
                 {/* Har bir tur yonida SHU KASSADAGI qoldiq turadi — qaysi
                     turdan oylik chiqarish mumkinligi ro'yxatning o'zidayoq
                     ko'rinsin, tanlab-tanlab qidirishga to'g'ri kelmasin. */}
@@ -721,16 +799,65 @@ export default function SalaryCreatePage() {
                 />
               </div>
 
+              {/* PLASTIK oyog'i — faqat kartaga pul ketadigan bo'lsa
+                  ko'rinadi. Plastigi yo'q xodimlar bilan ishlaganda oyna
+                  bugungidek bitta tanlov bilan qoladi. */}
+              {plastikTotal > 0 && (
+                <div>
+                  <label className="block text-[12px] font-medium mb-1">Plastik qismi uchun to&apos;lov turi</label>
+                  <Select
+                    value={plastikMethodKey}
+                    onChange={setPlastikMethod}
+                    disabled={saving}
+                    loading={methodsLoading}
+                    placeholder={paymentMethods.length === 0 ? "To'lov turi topilmadi" : "Tanlang"}
+                    options={paymentMethods.map((m) => ({
+                      value: m.key,
+                      label: m.name,
+                      hint: fmtSum(Number(activeCashbox?.methodTotals?.[m.key]) || 0),
+                    }))}
+                  />
+                </div>
+              )}
+
+              {/* TARTIB: avval kanallar, oxirida yig'indi — jadvaldagi
+                  "Kartaga · Naqd · Qolgan" ustunlari bilan bir xil o'qiladi.
+                  Har kanal yonida SHU KASSADAGI qoldiq turadi, ya'ni pul
+                  yetmasligi tugma bosilishidan OLDIN ko'rinadi. */}
               <div className="rounded-lg border border-border bg-secondary/20 p-3 text-[13px] space-y-1">
-                <div className="flex items-center justify-between">
+                {plastikTotal > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Kartaga</span>
+                      <span className={`tabular-nums ${plastikTotal > plastikAvailable ? "text-rose-600 font-semibold" : ""}`}>
+                        {fmtSum(plastikTotal)} <span className="text-muted-foreground">/ {fmtSum(plastikAvailable)}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Naqd</span>
+                      <span className={`tabular-nums ${naqdTotal > available ? "text-rose-600 font-semibold" : ""}`}>
+                        {fmtSum(naqdTotal)} <span className="text-muted-foreground">/ {fmtSum(available)}</span>
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Kassada mavjud</span>
+                    <span className={`tabular-nums ${notEnough ? "text-rose-600 font-semibold" : ""}`}>{fmtSum(available)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-border pt-1 mt-1">
                   <span className="text-muted-foreground">Chiqariladigan summa</span>
                   <span className="font-semibold tabular-nums">{fmtSum(payoutTotal)}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Kassada mavjud</span>
-                  <span className={`tabular-nums ${notEnough ? "text-rose-600 font-semibold" : ""}`}>{fmtSum(available)}</span>
-                </div>
               </div>
+
+              {sameMethod && (
+                <p className="text-[12.5px] text-rose-600">
+                  Plastik va naqd uchun bir xil to&apos;lov turi tanlangan — birini o&apos;zgartiring,
+                  aks holda jurnalda ikki qism ajralmay qoladi.
+                </p>
+              )}
 
               {payoutTotal === 0 && (
                 <p className="text-[12.5px] text-amber-600">
