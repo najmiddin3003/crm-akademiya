@@ -9,6 +9,7 @@ import { useTheme } from "@/components/shared/Theme";
 import { LANGS } from "@/lib/navbar";
 import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
+import { useSidebarCounts } from "@/hooks/useSidebarCounts";
 import { badgeLabel } from "@/lib/notifications";
 import { isPathAllowed } from "@/lib/permissions";
 import type { Lang } from "@/lib/i18n";
@@ -28,7 +29,8 @@ interface SidebarMenuItem {
   medium?: boolean;
   semibold?: boolean;
   primary?: boolean;
-  count?: string;
+  /** Sanoq kaliti — son /api/sidebar-counts dan keladi (constants/sidebar.js). */
+  countKey?: string;
   type?: "highlight" | "action" | "text";
   truncate?: boolean;
 }
@@ -49,8 +51,8 @@ interface SidebarItem {
   label: string;
   href?: string;
   mobileHref: string;
-  badge?: string;
-  mobileBadge?: string;
+  /** Qizil belgi uchun sanoq kaliti. Bitta kalit desktop va mobil menyuga ham xizmat qiladi. */
+  badgeKey?: string;
   mobileActive?: boolean;
   menu?: SidebarMenu;
   /** Vaqtincha olib turilgan bo'lim — constants/sidebar.js dagi izohga qarang. */
@@ -215,6 +217,8 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // yerda alohida hisob turardi va ikkala sirt bir vaqtda ko'rinadigan
   // mobil kenglikda ikkita raqam bir-biriga zid bo'lishi mumkin edi.
   const { unread, unreadIsFloor, everLoaded } = useNotifications();
+  // Yon panel yonidagi sonlar — bazadan (ilgari qattiq yozilgan edi).
+  const counts = useSidebarCounts();
   const showBadge = everLoaded && unread > 0;
 
   // Navbar'dagi profil menyusi `hidden md:flex` blokida — 768px dan pastda
@@ -395,7 +399,15 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
         className={`flyout-item ${active ? "is-active" : ""} ${locked ? "is-locked" : ""}`}
       >
         <span className={it.truncate ? "flex-1 truncate" : "flex-1"}>{it.label}</span>
-        {locked ? lockIcon : it.count && <span className="text-[11px] tabular-nums opacity-50">{it.count}</span>}
+        {/* Son 0 bo'lsa ham HALOL ko'rsatiladi — shu bois "!= null",
+            "&&" emas: 0 ham haqiqat ("bu sahifada yozuv yo'q"), uni
+            yashirish "hali yuklanmadi" bilan chalkashtirardi. Sanoq
+            umuman kelmagan bo'lsa hech narsa chizilmaydi. */}
+        {locked
+          ? lockIcon
+          : it.countKey != null && counts[it.countKey] != null && (
+              <span className="text-[11px] tabular-nums opacity-50">{counts[it.countKey]}</span>
+            )}
       </Link>
     );
   };
@@ -476,7 +488,9 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                   {/* Badge referensda ikonkaning yuqori-o'ng burchagida turadi */}
                   <span className="side-badge-wrap">
                     <svg className="icon"><use href={`#${item.icon}`} /></svg>
-                    {item.badge && <span className="side-badge">{item.badge}</span>}
+                    {item.badgeKey != null && (counts[item.badgeKey] ?? 0) > 0 && (
+                      <span className="side-badge">{counts[item.badgeKey]}</span>
+                    )}
                   </span>
                   <span className="flex-1 truncate">{item.label}</span>
                   {topLocked && lockIcon}
@@ -564,8 +578,8 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                   >
                     <svg className={`icon icon-sm ${item.mobileActive ? "" : "text-muted-foreground"}`}><use href={`#${item.icon}`} /></svg>
                     <span className="flex-1">{item.label}</span>
-                    {item.mobileBadge && (
-                      <span className="ml-auto inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">{item.mobileBadge}</span>
+                    {item.badgeKey != null && (counts[item.badgeKey] ?? 0) > 0 && (
+                      <span className="ml-auto inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">{counts[item.badgeKey]}</span>
                     )}
                   </Link>
                 </li>

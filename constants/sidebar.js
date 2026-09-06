@@ -1,6 +1,12 @@
 // Sidebar navigatsiyasining barcha matn/havolalari shu yerdan keladi.
 // Sidebar.tsx shu massivdan render qiladi (matnlar kod ichida qattiq
-// yozilmagan). Backend ulanganda badge/count sonlari real qiymatga almashadi.
+// yozilmagan).
+//
+// SONLAR BU YERDA YO'Q. Ilgari ular qattiq yozilgan edi ("502", "1411",
+// "89", "189", "34") va bazadagi haqiqat bilan hech qanday aloqasi yo'q
+// edi — buyurtmalar sahifasida 3 ta yozuv turganda sidebar 502 deb
+// ko'rsatardi. Endi bu yerda faqat KALIT turadi, son esa bazadan keladi:
+// app/api/sidebar-counts/route.ts.
 //
 // Har bir top-level element:
 //   key         — ichki identifikator (flyout holatini boshqarish uchun)
@@ -8,7 +14,8 @@
 //   label       — ko'rinadigan matn
 //   href        — bosilganda o'tadigan sahifa (agar to'g'ridan-to'g'ri havola bo'lsa)
 //   mobileHref  — mobil menyuda bosilganda o'tadigan sahifa
-//   badge       — o'ngdagi qizil belgi (masalan "34")
+//   badgeKey    — qizil belgi uchun SANOQ KALITI (/api/sidebar-counts)
+//   countKey    — flyout ro'yxatidagi kulrang son uchun SANOQ KALITI
 //   mobileActive— mobil menyuda ko'k (active) ko'rinishda turadimi
 //   menu        — hover flyout ma'lumoti (yo'q bo'lsa — oddiy havola)
 //   hidden      — bo'lim sidebarda CHIZILMAYDI (Sidebar.tsx), lekin
@@ -25,21 +32,19 @@ export const SIDEBAR_ITEMS = [
     label: "Topshiriqlar",
     href: "/tasks",
     mobileHref: "/tasks",
-    badge: "0",
+    badgeKey: "tasks",
   },
   {
     key: "leads",
     icon: "i-megaphone",
     label: "Lidlar",
     mobileHref: "/orders-list",
-    badge: "34",
-    mobileBadge: "34",
     menu: {
       variant: "list",
       width: 256,
       items: [
-        { label: "Buyurtmalar ro'yxati", href: "/orders-list", icon: "i-list-todo", count: "502" },
-        { label: "Birinchi darsga yozilganlar", href: "/first-lessons", icon: "i-graduation-cap", count: "1411" },
+        { label: "Buyurtmalar ro'yxati", href: "/orders-list", icon: "i-list-todo", countKey: "orders" },
+        { label: "Birinchi darsga yozilganlar", href: "/first-lessons", icon: "i-graduation-cap", countKey: "firstLessons" },
       ],
     },
   },
@@ -52,7 +57,7 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 256,
       items: [
-        { label: "Guruh", href: "/groups", icon: "i-users-group", count: "89" },
+        { label: "Guruh", href: "/groups", icon: "i-users-group", countKey: "groups" },
         { label: "Barcha vazifalar", href: "/groups-tasks", icon: "i-list-todo" },
         { label: "Dars jadvali", href: "/groups-schedule", icon: "i-calendar" },
         { label: "Xonalar", href: "/groups-rooms", icon: "i-monitor" },
@@ -139,7 +144,7 @@ export const SIDEBAR_ITEMS = [
       width: 256,
       items: [
         { label: "Oylik imtihon", href: "/imtihon", icon: "i-calendar" },
-        { label: "UzBMB", href: "/imtihon?tab=uzbmb", icon: "i-award", count: "189" },
+        { label: "UzBMB", href: "/imtihon?tab=uzbmb", icon: "i-award" },
       ],
     },
   },
