@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 
 // Bitta o'quvchi (MongoDB `pupils`) — O'quvchi profili sahifasi uchun
@@ -48,7 +48,7 @@ function parseId(id: string): number | null {
  */
 async function scopedFilter(pupilId: number) {
   const scope = await getBranchScope();
-  return scope ? withBranch({ id: pupilId }, scope) : null;
+  return scope ? withPupilBranch({ id: pupilId }, scope) : null;
 }
 
 /** Har safar YANGI javob: `NextResponse` ning tanasi bir marta o'qiladi. */

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 import { phoneSearchPattern } from "@/lib/phoneSearch";
 import { studentRowFromPupil } from "@/lib/studentsData";
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
 
   const db = await ensureIndexes();
   const rows = await db.collection("pupils")
-    .find(withBranch({ $and: and }, scope), {
+    .find(withPupilBranch({ $and: and }, scope), {
       // Faqat StudentRow uchun kerak bo'lgan maydonlar.
       projection: {
         _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, balance: 1, coin: 1,

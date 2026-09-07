@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { isPupilStatus, type Pupil } from "@/lib/pupilsData";
 
 // PATCH /api/pupils/:id/status — { status, reason? }
@@ -46,7 +46,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const db = await ensureIndexes();
   const res = await db.collection("pupils").findOneAndUpdate(
-    withBranch({ id: pupilId }, scope),
+    withPupilBranch({ id: pupilId }, scope),
     { $set: { status, statusChangedAt: today, statusReason: status === "Aktiv" ? "" : reason } },
     { returnDocument: "after" },
   );

@@ -29,7 +29,7 @@
 // nechta `countDocuments` serverda ishlaydi va simdan faqat sonlar o'tadi.
 
 import type { Db, Document, Filter } from "mongodb";
-import { withBranch, type BranchScope } from "./branchScope";
+import { withBranch, withPupilBranch, type BranchScope } from "./branchScope";
 import { withLeadScope } from "./leadScope";
 
 export interface HomeKpi {
@@ -153,9 +153,9 @@ export async function computeHomeKpis({ db, scope, author, can }: HomeKpiInput):
   // Holat filtri sahifalardagi bilan bir xil: ular /api/pupils ga
   // `?status=Aktiv` / `?status=Arxiv` yuboradi va route uni to'g'ridan-to'g'ri
   // `filter.status` ga qo'yadi.
-  if (need.has("active")) count("active", "pupils", withBranch({ status: "Aktiv" }, scope));
-  if (need.has("frozen")) count("frozen", "pupils", withBranch({ status: "Muzlatilgan" }, scope));
-  if (need.has("archive")) count("archive", "pupils", withBranch({ status: "Arxiv" }, scope));
+  if (need.has("active")) count("active", "pupils", withPupilBranch({ status: "Aktiv" }, scope));
+  if (need.has("frozen")) count("frozen", "pupils", withPupilBranch({ status: "Muzlatilgan" }, scope));
+  if (need.has("archive")) count("archive", "pupils", withPupilBranch({ status: "Arxiv" }, scope));
 
   // GURUHLAR HAM FILIAL BO'YICHA KESILADI (qaror 2026-09-07) — /groups
   // sahifasi va sidebar sanog'i bilan bir xil qamrov.

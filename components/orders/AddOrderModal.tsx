@@ -257,6 +257,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             loading={teachersLoading}
             placeholder="Ustozni tanlang"
             searchPlaceholder="Ustozni qidirish"
+            emptyText="Bu filialga o'qituvchi biriktirilmagan — Boshqaruv > Xodimlar bo'limidan biriktiring"
           />
 
           <StudentSearchSelect
@@ -267,6 +268,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             loading={groupsLoading}
             placeholder="Yig'ilayotgan guruhni tanlang"
             searchPlaceholder="Guruhni qidirish"
+            emptyText="Bu filialda guruh yo'q — avval Guruh bo'limidan qo'shing"
           />
 
           <div>

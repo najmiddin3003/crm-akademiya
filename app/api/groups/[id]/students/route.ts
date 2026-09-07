@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withBranch, withPupilBranch } from "@/lib/branchScope";
 import { groupScopeFilter } from "@/lib/groupScope";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
   const ids = group.studentIds ?? [];
   const rows = ids.length
-    ? await db.collection("pupils").find(withBranch({ id: { $in: ids } }, scope)).toArray()
+    ? await db.collection("pupils").find(withPupilBranch({ id: { $in: ids } }, scope)).toArray()
     : [];
   // studentIds tartibini saqlaymiz (qo'shilgan tartibda).
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -63,7 +63,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const scope = await getBranchScope();
   if (!scope) return notLoggedIn();
   const db = await ensureIndexes();
-  const pupil = await db.collection("pupils").findOne(withBranch({ id: pupilId }, scope));
+  const pupil = await db.collection("pupils").findOne(withPupilBranch({ id: pupilId }, scope));
   if (!pupil) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }

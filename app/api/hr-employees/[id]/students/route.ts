@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withBranch, withPupilBranch } from "@/lib/branchScope";
 import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 import type { Group } from "@/lib/groups";
 
@@ -57,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const pupilIds = [...new Set(groupRows.flatMap((g) => g.studentIds ?? []))];
   const pupilRows = pupilIds.length
-    ? await db.collection("pupils").find(withBranch({ id: { $in: pupilIds } }, scope)).toArray()
+    ? await db.collection("pupils").find(withPupilBranch({ id: { $in: pupilIds } }, scope)).toArray()
     : [];
   const pupilById = new Map(pupilRows.map((p) => [p.id as number, p]));
 

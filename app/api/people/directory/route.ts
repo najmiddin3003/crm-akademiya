@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 
 // GET /api/people/directory — ISM → PROFIL kartasi.
 //
@@ -39,7 +39,7 @@ export async function GET() {
   const db = await ensureIndexes();
 
   const [pupilRows, staffRows] = await Promise.all([
-    db.collection("pupils").find(withBranch({}, scope), { projection: { id: 1, firstName: 1, lastName: 1 } }).toArray(),
+    db.collection("pupils").find(withPupilBranch({}, scope), { projection: { id: 1, firstName: 1, lastName: 1 } }).toArray(),
     db.collection("hr_employees").find({}, { projection: { id: 1, name: 1 } }).toArray(),
   ]);
 

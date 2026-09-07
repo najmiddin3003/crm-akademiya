@@ -952,6 +952,7 @@ function RescheduleModal({
         options={teacherOptions}
         placeholder="Ustozni tanlang"
         searchPlaceholder="Ustozni qidirish"
+        emptyText="Bu filialga o'qituvchi biriktirilmagan — Boshqaruv > Xodimlar bo'limidan biriktiring"
       />
 
       <PanelDaysField label="Dars kunlari" value={lessonDay} onChange={setLessonDay} />

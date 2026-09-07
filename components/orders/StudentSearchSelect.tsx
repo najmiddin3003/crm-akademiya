@@ -62,6 +62,21 @@ export interface StudentSearchSelectProps {
    * bo'lishi mumkin.
    */
   loading?: boolean;
+  /**
+   * Ro'yxat UMUMAN bo'sh bo'lganda "Topilmadi" o'rniga ko'rsatiladigan matn.
+   *
+   * NIMA UCHUN KERAK: "Topilmadi" — QIDIRUV javobi, ya'ni "yozganingizga mos
+   * yozuv yo'q" degani. Ro'yxatning o'zi bo'sh bo'lsa bu chalg'itadi:
+   * 2-filial moderatori yangi buyurtmada ustoz tanlamoqchi bo'lganda
+   * "Topilmadi" ko'rdi va sababini bilmadi — aslida o'sha filialga birorta
+   * o'qituvchi BIRIKTIRILMAGAN edi (o'quvchi/guruh/o'qituvchi 07.09.2026
+   * dan filial bo'yicha kesiladi). Naqsh loyihada bor:
+   * components/orders/GroupPickerModal.tsx.
+   *
+   * `filtered` EMAS, `options` bo'yicha tekshiriladi: foydalanuvchi biror
+   * narsa yozib qidirganda javob baribir "Topilmadi" bo'lishi kerak.
+   */
+  emptyText?: string;
 }
 
 export default function StudentSearchSelect({
@@ -80,6 +95,7 @@ export default function StudentSearchSelect({
   disabledHint,
   limit = 50,
   loading,
+  emptyText,
 }: StudentSearchSelectProps) {
   const isDisabled = (name: string) => Boolean(disabledOptions?.includes(name));
   const [open, setOpen] = useState(false);
@@ -156,7 +172,9 @@ export default function StudentSearchSelect({
         {loading ? (
           <SpinnerBlock size={20} />
         ) : filtered.length === 0 ? (
-          <div className="px-3 py-3 text-sm text-muted-foreground">Topilmadi</div>
+          <div className="px-3 py-3 text-sm text-muted-foreground">
+            {options.length === 0 && emptyText ? emptyText : "Topilmadi"}
+          </div>
         ) : (
           shown.map((name, i) => (
             <button

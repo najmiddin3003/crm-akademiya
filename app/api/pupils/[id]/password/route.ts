@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 
 // O'quvchi profili → "Parol o'rnatish" tabi.
 //
@@ -28,7 +28,7 @@ function parseId(id: string): number | null {
  */
 async function scopedFilter(pupilId: number) {
   const scope = await getBranchScope();
-  return scope ? withBranch({ id: pupilId }, scope) : null;
+  return scope ? withPupilBranch({ id: pupilId }, scope) : null;
 }
 
 const notLoggedIn = () => NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });

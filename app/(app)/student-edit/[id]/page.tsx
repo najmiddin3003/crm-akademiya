@@ -1,7 +1,7 @@
 import StudentEditPage from "@/components/students/StudentEditPage";
 import { createInitialOrders, type Order } from "@/lib/ordersData";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 
 // O'quvchi profili ikki xil ro'yxatdan ochilishi mumkin:
@@ -19,7 +19,7 @@ async function orderFromPupil(id: number): Promise<Order | null> {
   const scope = await getBranchScope();
   if (!scope) return null;
   const db = await ensureIndexes();
-  const doc = await db.collection("pupils").findOne(withBranch({ id }, scope));
+  const doc = await db.collection("pupils").findOne(withPupilBranch({ id }, scope));
   if (!doc) return null;
   const p = doc as unknown as Pupil;
   // StudentEditPage `Order` kutadi — mavjud maydonlarni ko'chiramiz,

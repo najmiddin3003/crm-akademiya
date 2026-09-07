@@ -1,0 +1,306 @@
+{
+  "branch": 2,
+  "changed": [
+    {
+      "id": 3,
+      "name": "Abdushukur Abdug'aniyev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": [
+        {
+          "branchId": 2,
+          "roleId": null,
+          "scheduleId": null,
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Hasanboy Obidov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 5,
+      "name": "Shoxsanam Obidova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 6,
+      "name": "Ilhomjon Sharabidinov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 7,
+      "name": "Azizbek Mahmudov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 8,
+      "name": "Shahnoza Abduqahharova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": [
+        {
+          "branchId": 1,
+          "roleId": 1,
+          "scheduleId": null,
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Umidjon Jaloliddinov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 10,
+      "name": "Zebunniso Kukibayeva",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 12,
+      "name": "Nargiza Ergasheva",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 13,
+      "name": "Jasurbek O'rinboyev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 14,
+      "name": "Gulbahor Jo'raboyeva",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 15,
+      "name": "Odina Ahmedova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": [
+        {
+          "branchId": 1,
+          "roleId": null,
+          "scheduleId": null,
+          "salary": 0
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Umidjon Kamalov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 19,
+      "name": "Umidjon Abdurayimov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 20,
+      "name": "Maftuna Kamalova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 21,
+      "name": "Muhammadjon Ahmadjanov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 22,
+      "name": "Ibrohim Dadaxojayev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 23,
+      "name": "Yaxyoxo'ja Yigitaliyev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 25,
+      "name": "Musoxon Maxamadaliyev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 26,
+      "name": "Durdona Yoldasheva",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 30,
+      "name": "Mohinur Abdurahimova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 33,
+      "name": "Shohsanam Dadaxojayeva",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 36,
+      "name": "Odina Yuldasheva",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 37,
+      "name": "Gulnoza Abdurahimova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 39,
+      "name": "Nozima Ziyomiddinova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 40,
+      "name": "Mashxura Kutupova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 41,
+      "name": "Rayxona To'lqinova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 44,
+      "name": "Dilnoza Nabijanova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 45,
+      "name": "Asadbek Qosimov",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 46,
+      "name": "Shohsanam Odilova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 47,
+      "name": "Nafisa Muradova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 49,
+      "name": "Akmal To'rabayev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 51,
+      "name": "Shaxlo Ziyamova",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 52,
+      "name": "Xurshidbek Tojiboyev",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    },
+    {
+      "id": 55,
+      "name": "Muhammadali (kores tili)",
+      "beforeBranchIds": [
+        1
+      ],
+      "beforeAssignments": []
+    }
+  ]
+}

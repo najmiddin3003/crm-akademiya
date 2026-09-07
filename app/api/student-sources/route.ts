@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 
 // GET /api/student-sources — Sotuv va marketing > O'quvchilar oqimi.
 //
@@ -20,7 +20,7 @@ export async function GET() {
 
   const db = await ensureIndexes();
   const col = db.collection("pupils");
-  const scoped = withBranch({}, scope);
+  const scoped = withPupilBranch({}, scope);
 
   const [rows, total] = await Promise.all([
     col.aggregate([

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
+import { branchForInsert, getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { buildPupilFromValues, PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
 
 // GET /api/pupils — "O'quvchi qo'shish" orqali qo'shilgan haqiqiy o'quvchilar
@@ -128,7 +128,7 @@ export async function GET(req: Request) {
   // (branchCondition) — bazada 7 ta shunday yozuv bor.
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
-  const scoped = withBranch(filter, scope);
+  const scoped = withPupilBranch(filter, scope);
 
   const db = await ensureIndexes();
 

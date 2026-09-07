@@ -1,5 +1,5 @@
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withBranch, type BranchScope } from "@/lib/branchScope";
+import { getBranchScope, withBranch, withPupilBranch, type BranchScope } from "@/lib/branchScope";
 import { groupWeekdays } from "@/lib/attendance";
 import { PUPIL_EXTRA_FIELDS, type Pupil, type PupilExtraField, type PupilListItem } from "@/lib/pupilsData";
 import type { Group } from "@/lib/groups";
@@ -109,7 +109,7 @@ export async function loadPupils(
   }
 
   const rows = await db.collection("pupils")
-    .find(withBranch(filter, scope), { projection })
+    .find(withPupilBranch(filter, scope), { projection })
     .sort({ id: -1 })
     .toArray();
   return rows as unknown as (PupilListItem & Partial<Pupil>)[];

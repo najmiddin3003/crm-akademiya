@@ -206,3 +206,52 @@ export function branchCondition(scope: BranchScope): Filter<Document> {
 export function branchForInsert(scope: BranchScope): number {
   return scope.branchId;
 }
+
+/**
+ * O'QUVCHILAR UCHUN UMUMIY HOVUZLAR (qaror 07.09.2026, foydalanuvchi so'rovi).
+ *
+ * Bitta hovuzdagi filiallar bir-birining o'quvchisini KO'RADI. Sabab amaliy:
+ * "Akademiya 1 Chortoq" va "Akademiya 2 Chortoq" — bitta shahardagi ikki
+ * bino, o'quvchi ikkalasiga ham qatnaydi va kassada to'lovni qaysi binoda
+ * bo'lsa o'sha yerda topshiradi. Ularni ajratish kassirni ishlashdan
+ * to'sardi: "Kirim" oynasida o'quvchi topilmasdi.
+ *
+ * "Akademiya 4 Uchqo'rg'on" — BOSHQA SHAHAR, o'z bazasi bilan; u hech bir
+ * hovuzda emas, ya'ni uning o'quvchilari boshqa filialda ko'rinmaydi va
+ * boshqa filialnikilar u yerda ko'rinmaydi. "Akademiya 3 Uychi" ham
+ * shunday (hozircha bo'sh).
+ *
+ * FAQAT O'QUVCHILARGA tegishli. Guruhlar, xonalar, kassalar va lidlar
+ * o'z filialida qoladi — ular bino bilan bog'liq, o'quvchi esa odam.
+ *
+ * Yangi filial qo'shilsa shu ro'yxatni yangilash kerak; sozlamalar oynasi
+ * hozircha yo'q, chunki qoida bitta va u kamdan-kam o'zgaradi.
+ */
+const PUPIL_BRANCH_POOLS: readonly (readonly number[])[] = [[1, 2]];
+
+/** Filial -> u qatnashadigan hovuz (yo'q bo'lsa — o'zi yolg'iz). */
+function pupilPool(branchId: number): readonly number[] {
+  return PUPIL_BRANCH_POOLS.find((p) => p.includes(branchId)) ?? [branchId];
+}
+
+/**
+ * O'QUVCHILAR uchun filial sharti — hovuzni hisobga oladi.
+ *
+ * `branchCondition` DAN FARQI shu: u aniq bitta filialni qidiradi, bu esa
+ * butun hovuzni. Ikkalasi bir joyda aralashib ketmasin — o'quvchi o'qiydigan
+ * har bir ro'yxat SHU funksiyadan foydalanadi (app/api/pupils va h.k.).
+ */
+export function pupilBranchCondition(scope: BranchScope): Filter<Document> {
+  const pool = pupilPool(scope.branchId);
+  const or: Filter<Document>[] = [{ branchId: { $in: [...pool] } }];
+  // Maydoni YO'Q eski hujjatlar 1-filialga tegishli deb hisoblanadi
+  // (bazada 7 ta shunday yozuv bor) — hovuzda 1-filial bo'lsa ular ham
+  // ko'rinishi kerak, aks holda eski o'quvchilar g'oyib bo'lardi.
+  if (pool.includes(1)) or.push({ branchId: { $exists: false } }, { branchId: null });
+  return or.length === 1 ? or[0] : { $or: or };
+}
+
+/** `withBranch` ning o'quvchilar uchun varianti (hovuz bilan). */
+export function withPupilBranch<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
+  return { $and: [filter, pupilBranchCondition(scope)] } as Filter<T>;
+}
