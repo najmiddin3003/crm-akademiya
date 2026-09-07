@@ -1311,6 +1311,31 @@ oqim bir-biridan mustaqil — har birining o'z jadvali va o'z guruhi bor:
 Qolgan chiqimlar (ijara, kommunal) va kassalar orasidagi ko'chirish
 (`transfer`) **hech qayerga yuborilmaydi** — kelishuvda yo'q.
 
+### Yangi lid → Telegram "Lidlar" topigi (2026-09-07)
+
+Bu oqim yuqoridagi ikkitasidan **alohida** turadi (`lib/leadNotify.ts`):
+
+| | Kassa oqimi | Lid xabari |
+| --- | --- | --- |
+| Qachon | kunlik cron + `after()` | faqat `after()`, **darhol** |
+| Google Sheets | ha | **yo'q** |
+| Filial | qamrovda | **hammasi** (foydalanuvchi so'rovi) |
+| Qayta urinish | `sync_outbox` orqali | yo'q — xato faqat jurnalga yoziladi |
+
+Shu sabab `SyncKind` ga beshinchi qiymat qo'shilmadi: outbox, reconcile va
+Sinxronizatsiya sahifasi lid uchun "qaysi jadval?" degan savolga javob
+berishi kerak bo'lardi. Faqat yuboruvchi qayta ishlatiladi
+(`lib/sync/telegram.ts` — 429 va 5xx uchun qayta urinish o'sha yerda).
+
+Sozlamalar:
+
+| O'zgaruvchi | Ma'nosi |
+| --- | --- |
+| `TELEGRAM_TOPIC_LEADS` | "Lidlar" topigining raqami. **Bo'sh bo'lsa xabar umuman yuborilmaydi** — to'lovlar oqimiga aralashib ketgandan ko'ra jim turgani yaxshi. |
+| `TELEGRAM_CHAT_LEADS` | Guruh id'si. Ko'rsatilmasa `TELEGRAM_CHAT_PAYMENTS` ishlatiladi (uchala topik ham bitta forum-guruhda). |
+
+Topik raqamini topish: `node scripts/_telegram-topics.mjs` (faqat o'qiydi).
+
 ### Qanday ishlaydi
 
 ```

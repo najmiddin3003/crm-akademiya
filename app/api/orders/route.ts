@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
+import { notifyNewLead } from "@/lib/leadNotify";
 import { withLeadScope } from "@/lib/leadScope";
 import { buildOrderFromValues, type NewOrderValues, type Order } from "@/lib/ordersData";
 
@@ -77,6 +78,12 @@ export async function POST(req: Request) {
   // insertOne mutates its argument to add _id — insert a copy so the
   // returned `order` (and whatever the client stores from it) stays clean.
   await col.insertOne({ ...order });
+
+  // TELEGRAM — javobdan KEYIN (`after`), lid qaysi filialda qo'shilganidan
+  // qat'i nazar (lib/leadNotify.ts). Javob ichida yuborilsa moderator
+  // Telegram javob berguncha kutib turardi va Telegram ishlamay qolgan
+  // paytda lid QO'SHILMAY qolardi — yozuv allaqachon bazada bo'lsa ham.
+  after(() => notifyNewLead(db, order, order.branchId ?? null));
 
   return NextResponse.json({ ok: true, order });
 }
