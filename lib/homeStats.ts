@@ -157,10 +157,9 @@ export async function computeHomeKpis({ db, scope, author, can }: HomeKpiInput):
   if (need.has("frozen")) count("frozen", "pupils", withBranch({ status: "Muzlatilgan" }, scope));
   if (need.has("archive")) count("archive", "pupils", withBranch({ status: "Arxiv" }, scope));
 
-  // FILIAL FILTRI ATAYLAB YO'Q — /groups sahifasi ham kesmaydi
-  // (lib/listQueries.ts, kelishilgan qaror). Qo'shilsa karta va sahifa
-  // bir-biriga zid son ko'rsatardi.
-  if (need.has("groups")) count("groups", "groups", {});
+  // GURUHLAR HAM FILIAL BO'YICHA KESILADI (qaror 2026-09-07) — /groups
+  // sahifasi va sidebar sanog'i bilan bir xil qamrov.
+  if (need.has("groups")) count("groups", "groups", withBranch({}, scope));
 
   await Promise.all(jobs);
 

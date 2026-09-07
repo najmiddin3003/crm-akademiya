@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
+import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 import type { Group } from "@/lib/groups";
 
 export interface TeacherStudent {
@@ -27,8 +29,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
 
+  // FILIAL QAMROVI UCHALA BO'G'INDA: xodim ham, guruhlar ham, o'quvchilar
+  // ham joriy filialdan. Ilgari bu route umuman kesilmagan edi — xodim
+  // ro'yxati (/api/hr-employees) kesilgan bo'lsa ham, bu yerdan istalgan
+  // xodimning id'si bilan uning guruhlari va O'QUVCHILARI olinardi.
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
-  const emp = await db.collection("hr_employees").findOne({ id: empId });
+  const emp = await db.collection("hr_employees").findOne(scopedEmployeeFilter({ id: empId }, scope));
   if (!emp) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
   }
@@ -40,12 +49,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const groupRows = await db
     .collection<Group>("groups")
-    .find({ teacher: { $regex: `^${teacher.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } })
+    .find(withBranch(
+      { teacher: { $regex: `^${teacher.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" } },
+      scope,
+    ))
     .toArray();
 
   const pupilIds = [...new Set(groupRows.flatMap((g) => g.studentIds ?? []))];
   const pupilRows = pupilIds.length
-    ? await db.collection("pupils").find({ id: { $in: pupilIds } }).toArray()
+    ? await db.collection("pupils").find(withBranch({ id: { $in: pupilIds } }, scope)).toArray()
     : [];
   const pupilById = new Map(pupilRows.map((p) => [p.id as number, p]));
 

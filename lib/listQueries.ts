@@ -16,17 +16,16 @@ import type { Group } from "@/lib/groups";
 // brauzer<->API borib-kelishi ~208 ms, ya'ni ro'yxat shuncha kech
 // ko'rinardi. Serverda olinsa o'sha to'lqin butunlay yo'qoladi.
 //
-// FILIAL QAMROVI: O'QUVCHILAR — HA, GURUHLAR — YO'Q.
+// FILIAL QAMROVI — IKKALA RO'YXAT HAM KESILADI (qaror 2026-09-07).
 //
-// `loadPupils()` filial bo'yicha kesiladi (qaror 2026-09-07, sabab
+// `loadPupils()` va `loadGroups()` filial bo'yicha kesiladi (sabab
 // app/api/pupils/route.ts dagi GET izohida). Bu SHART: sahifani server
-// chizadi, keyin klient o'sha ro'yxatni `/api/pupils` dan qayta so'raydi —
-// ikkalasi bir xil qamrovda bo'lmasa, birinchi kadrda boshqa filialning
-// o'quvchilari ko'rinib, keyin g'oyib bo'lardi.
+// chizadi, keyin klient o'sha ro'yxatni `/api/pupils` yoki `/api/groups`
+// dan qayta so'raydi — ikkalasi bir xil qamrovda bo'lmasa, birinchi
+// kadrda boshqa filialning ma'lumoti ko'rinib, keyin g'oyib bo'lardi.
 //
-// `loadGroups()` esa KESILMAYDI — 91 guruhning hammasi 1-filialda va
-// guruhlarni ajratish alohida qaror (hozircha so'ralmagan). Sidebar'dagi
-// guruhlar sanog'i ham aynan shu qamrovda (app/api/sidebar-counts).
+// Sidebar'dagi guruhlar sanog'i ham aynan shu qamrovda bo'lishi kerak
+// (app/api/sidebar-counts) — u yerda ham o'zgartirildi.
 
 /** Sahifa ochilishida ishlatiladigan qamrov. `null` — tizimga kirilmagan. */
 export async function listScope(): Promise<BranchScope | null> {
@@ -41,6 +40,12 @@ export async function listScope(): Promise<BranchScope | null> {
  * ro'yxatda sariq qator bo'lib turadi.
  */
 export async function loadGroups(): Promise<Group[]> {
+  // Qamrov shu yerda olinadi — sabab `loadPupils()` dagi bilan bir xil
+  // (chaqiruvchidan kutilsa, uzatishni unutgan sahifa butun bazani
+  // ko'rsatib qo'yardi).
+  const scope = await getBranchScope();
+  if (!scope) return [];
+
   const db = await ensureIndexes();
   const now = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
@@ -49,7 +54,9 @@ export async function loadGroups(): Promise<Group[]> {
 
   // Ikkala so'rov bir-biriga bog'liq emas.
   const [rows, marked] = await Promise.all([
-    db.collection("groups").find({}).sort({ id: 1 }).toArray(),
+    db.collection("groups").find(withBranch({}, scope)).sort({ id: 1 }).toArray(),
+    // Davomat KESILMAYDI — u guruh id'si bo'yicha qidiriladi va yuqoridagi
+    // ro'yxatda bo'lmagan guruhning id'si baribir ishlatilmaydi.
     db.collection("attendance").distinct("groupId", { date: todayIso }),
   ]);
   const markedToday = new Set<number>(marked as number[]);

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { isPathAllowed } from "@/lib/permissions";
-import { getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
 import { withLeadScope } from "@/lib/leadScope";
 
@@ -54,10 +54,11 @@ export async function GET() {
     );
   }
   if (can("/groups")) {
-    // FILIAL FILTRI ATAYLAB YO'Q — /groups sahifasi ham kesmaydi
-    // (lib/listQueries.ts, kelishilgan qaror). Qo'shilsa sidebar va sahifa
-    // bir-biriga zid son ko'rsatardi.
-    jobs.push(db.collection("groups").countDocuments({}).then((n) => { counts.groups = n; }));
+    // FILIAL BO'YICHA KESILADI — /groups sahifasi ham shunday
+    // (lib/listQueries.ts → loadGroups, qaror 2026-09-07). Ikkalasi bir xil
+    // qamrovda bo'lishi shart: sidebar 91 deb turib, sahifada 0 chiqishi
+    // aynan shu joyda ikki marta xato bergan naqsh.
+    jobs.push(db.collection("groups").countDocuments(withBranch({}, scope)).then((n) => { counts.groups = n; }));
   }
   if (can("/tasks")) {
     jobs.push(

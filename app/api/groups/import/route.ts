@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 import type { Group } from "@/lib/groups";
 
 // POST /api/groups/import — bir nechta guruhni bir so'rovda qo'shadi.
@@ -43,10 +44,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Bir martada 1000 tadan ko'p qator import qilib bo'lmaydi" }, { status: 400 });
   }
 
+  // IMPORT QILINGAN GURUH HAM FILIALGA TEGISHLI. Bu maydonsiz yozuvlar
+  // `branchId` siz tushardi va qamrov ularni 1-filialga hisoblardi
+  // (branchCondition) — ya'ni Uchqo'rg'onda import qilingan guruhlar o'sha
+  // zahoti g'oyib bo'lardi, xatosiz.
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  const branchId = branchForInsert(scope);
+
   const db = await ensureIndexes();
   const col = db.collection("groups");
 
   // Mavjud nomlar — bir xil nomli guruh ikkinchi marta yaratilmasin.
+  // Nom tekshiruvi ATAYLAB butun kolleksiya bo'yicha: `id` global ketma-ket
+  // va nom ham chalkashmasligi kerak (bir xil nomli ikki guruh ikki
+  // filialda — jadval va hisobotlarda ajratib bo'lmas edi).
   const existing = await col.find({}, { projection: { id: 1, name: 1 } }).toArray();
   const takenNames = new Set(existing.map((g) => str(g.name).toLowerCase()));
   let nextId = existing.reduce((max, g) => Math.max(max, Number(g.id) || 0), 0) + 1;
@@ -89,7 +101,7 @@ export async function POST(req: Request) {
   }
 
   if (created.length > 0) {
-    await col.insertMany(created.map((g) => ({ ...g })));
+    await col.insertMany(created.map((g) => ({ ...g, branchId })));
   }
 
   return NextResponse.json({ ok: true, created: created.length, skipped });

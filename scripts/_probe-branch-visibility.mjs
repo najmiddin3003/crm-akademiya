@@ -32,6 +32,25 @@ for (const id of allIds) {
   console.log(`  ${id} ${String(nameOf.get(id)).padEnd(22)} ${String(n).padStart(5)} ta   so'nggilari: ${names || "—"}`);
 }
 
+console.log("\n=== FILIAL BO'YICHA GURUHLAR ===");
+for (const id of allIds) {
+  const n = await db.collection("groups").countDocuments(branchCondition(id));
+  console.log(`  ${id} ${String(nameOf.get(id)).padEnd(22)} ${String(n).padStart(5)} ta guruh`);
+}
+
+// lib/employeeBranches.ts -> employeeBranchCondition
+// `branchIds` MASSIV: Mongo'da massivga tenglik "element ichida bormi" degani.
+// `$exists: false` yumshatishi ATAYLAB yo'q (o'sha fayldagi izoh).
+const employeeCondition = (branchId) => ({ branchIds: branchId });
+
+console.log("\n=== FILIAL BO'YICHA O'QITUVCHILAR VA MODERATORLAR ===");
+for (const id of allIds) {
+  const t = await db.collection("hr_employees").countDocuments({ $and: [{ turi: "teacher" }, employeeCondition(id)] });
+  const m = await db.collection("hr_employees").countDocuments({ $and: [{ turi: "moderator" }, employeeCondition(id)] });
+  const r = await db.collection("rooms").countDocuments(branchCondition(id));
+  console.log(`  ${id} ${String(nameOf.get(id)).padEnd(22)} o'qituvchi: ${String(t).padStart(3)}   moderator: ${String(m).padStart(3)}   xona: ${String(r).padStart(3)}`);
+}
+
 console.log("\n=== HISOBLAR: kim qaysi filialni tanlay oladi ===");
 const users = await db.collection("users")
   .find({}, { projection: { _id: 0, fullName: 1, role: 1, hrEmployeeId: 1, status: 1 } })

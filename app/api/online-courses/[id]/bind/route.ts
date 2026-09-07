@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { groupScopeFilter } from "@/lib/groupScope";
 import type { OnlineCourse } from "@/lib/onlineCourses";
 
 // "Kurs biriktirish" drawer'ining backend'i (components/online-courses/BindCourseDrawer.tsx).
@@ -59,7 +60,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Biriktirilayotgan yozuv HAQIQATAN bazada borligini tekshiramiz — aks holda
   // kursga mavjud bo'lmagan guruh/kategoriya id'si yozilib qolardi.
   if (groupId !== null) {
-    const group = await db.collection("groups").findOne({ id: groupId }, { projection: { id: 1 } });
+    // Guruh JORIY FILIALDA bo'lishi shart — aks holda boshqa filialning
+    // guruhini onlayn kursga biriktirib, uni shu orqali ko'rib olardi.
+    const where = await groupScopeFilter({ id: groupId });
+    if (!where) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+    const group = await db.collection("groups").findOne(where, { projection: { id: 1 } });
     if (!group) {
       return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
     }

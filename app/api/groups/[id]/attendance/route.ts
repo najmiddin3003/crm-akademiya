@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
+import { groupScopeFilter } from "@/lib/groupScope";
 import type { Group } from "@/lib/groups";
 import { toUz } from "@/lib/uzTime";
 import {
@@ -121,8 +122,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const note = body.note ? String(body.note).slice(0, 2000) : null;
 
+  // Guruh JORIY FILIALDA bo'lishi shart (lib/groupScope.ts) — aks holda
+  // boshqa filial guruhiga davomat qo'yib bo'lardi.
+  const where = await groupScopeFilter<Group>({ id: groupId });
+  if (!where) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
   const db = await ensureIndexes();
-  const group = await db.collection<Group>("groups").findOne({ id: groupId });
+  const group = await db.collection<Group>("groups").findOne(where);
   if (!group) {
     return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
   }

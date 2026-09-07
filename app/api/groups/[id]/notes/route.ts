@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { groupScopeFilter } from "@/lib/groupScope";
 import type { Group } from "@/lib/groups";
 import type { GroupNote } from "@/lib/groupNotes";
 import { toUz } from "@/lib/uzTime";
@@ -64,8 +65,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Xabar bo'sh" }, { status: 400 });
   }
 
+  // Guruh JORIY FILIALDA bo'lishi shart (lib/groupScope.ts).
+  const where = await groupScopeFilter<Group>({ id: groupId });
+  if (!where) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
   const db = await ensureIndexes();
-  const group = await db.collection<Group>("groups").findOne({ id: groupId });
+  const group = await db.collection<Group>("groups").findOne(where);
   if (!group) {
     return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
   }
