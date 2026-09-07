@@ -28,7 +28,28 @@ import { getBranchScope } from "@/lib/branchScope";
 // ishlanmagan) — faqat haqiqatan tushgan pul ko'rinadi. Pulni chiqarish
 // esa boshqa route va u kelajak oyni RAD etadi (POST /api/salary-runs).
 export async function GET(req: Request) {
-  const raw = (new URL(req.url).searchParams.get("month") ?? "").trim();
+  const params = new URL(req.url).searchParams;
+  const raw = (params.get("month") ?? "").trim();
+  // `?branch=all` — FILIALGA KESILMAGAN ro'yxat. Faqat kassa "Chiqim"
+  // oynasi (components/finance/CashboxAdjustDrawer.tsx) shunday so'raydi.
+  //
+  // NEGA KERAK: o'sha oynada xodimlar ro'yxati /api/hr-employees/ref dan
+  // keladi va u ATAYLAB filialga kesilmagan, oylik qatorlari esa shu
+  // route'dan — kesilgan holda. Natijada 2-filial kassiri (Dilmurod)
+  // ro'yxatdagi 43 xodimdan 42 tasini "Sozlanmagan" ko'rardi: ularning
+  // `payrollBranchId` i 1 ga teng. O'lchandi: filial 2 uchun bu route
+  // 1 ta qator qaytaradi, filial 1 uchun 42 ta.
+  //
+  // NEGA XAVFSIZ: kassadagi avans chegarasini SERVER allaqachon GLOBAL
+  // hisoblaydi — app/api/cashboxes/[id]/adjust/route.ts da `fixedSalaryOf`
+  // xodimning hamma filialdagi ish haqini qo'shadi va oldin chiqarilgan
+  // avans/oylik ism bo'yicha butun oy ichida sanaladi, kassaga qaramasdan.
+  // Ya'ni bu bayroq yangi ruxsat bermaydi, oynani serverga MOSLAYDI.
+  //
+  // OYLIK CHIQARISH sahifasi (components/finance/SalaryCreatePage.tsx) bu
+  // bayroqni ISHLATMAYDI va ishlatmasligi ham kerak: u yerda kesish ikki
+  // marta to'lashni to'sadi (pastdagi izohga qarang).
+  const allBranches = (params.get("branch") ?? "").trim() === "all";
   if (raw && !isMonthKey(raw)) {
     return NextResponse.json({ ok: false, error: "Oy noto'g'ri (YYYY-MM kutiladi)" }, { status: 400 });
   }
@@ -42,7 +63,11 @@ export async function GET(req: Request) {
   // OYLIK RO'YXATI — `payrollBranchId` bo'yicha, `branchIds` bo'yicha EMAS.
   // Ikki filialda ishlaydigan xodim faqat BITTA filialning ro'yxatida
   // turadi, ya'ni oylik ikki marta chiqarilishi mumkin emas.
-  const employees = await buildPayrollRows(db, period, { payrollBranchId: scope.branchId });
+  const employees = await buildPayrollRows(
+    db,
+    period,
+    allBranches ? {} : { payrollBranchId: scope.branchId },
+  );
   // `month` QAYTARILADI: mijoz qaysi oy hisoblanganini taxmin qilmasin —
   // parametrsiz so'rovda ham server tanlagan oy aniq bo'lsin.
   return NextResponse.json({ ok: true, month: payrollMonthKey(period), employees });

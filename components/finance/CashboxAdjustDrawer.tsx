@@ -186,7 +186,12 @@ export default function CashboxAdjustDrawer({
   useEffect(() => {
     if (target !== "employee" || !monthKey) return;
     let cancelled = false;
-    fetch(`/api/salary-runs/employees-payroll?month=${monthKey}`)
+    // `branch=all` — xodimlar ro'yxati (/api/hr-employees/ref) filialga
+    // KESILMAGAN, oylik qatorlari ham shunday kelishi kerak. Aks holda
+    // boshqa filialdagi xodim "Sozlanmagan" bo'lib ko'rinadi va oynadagi
+    // chegara jimgina o'chib qoladi, server esa chegarani baribir global
+    // qo'llaydi — oyna bilan server bir-biriga zid javob berardi.
+    fetch(`/api/salary-runs/employees-payroll?month=${monthKey}&branch=all`)
       .then((r) => r.json())
       .catch(() => null)
       .then((pay) => {
