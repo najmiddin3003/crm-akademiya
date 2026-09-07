@@ -9,22 +9,25 @@
 // Filtr (o'qituvchi/kurs/xona/kun turi) va Export (CSV) tepadagi tugmalar
 // orqali ishlaydi; ko'rinish xona yoki o'qituvchi bo'yicha, ustun yoki qator
 // layoutda tanlanadi.
+//
+// STATISTIKA YO'Q. Ilgari jadval ustida 12 ta KPI kartasi va ularni
+// yashiradigan "Statistika" tugmasi turardi — bu sahifada kerak emas
+// (o'sha ko'rsatkichlar o'z sahifalarida bor). Ular bilan birga ikkita
+// ortiqcha so'rov ham ketdi: /api/orders va /api/pupils — endi sahifa
+// faqat o'ziga kerakli /api/groups va /api/rooms ni yuklaydi.
+// Hisob-kitob kodi lib/scheduleStats.ts da turibdi (endi ishlatilmaydi).
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
-import { computeScheduleKpis } from "@/lib/scheduleStats";
+import { ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import PersonLink from "@/components/shared/PersonDirectory";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
-import type { Order } from "@/lib/ordersData";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
-import { useStudents } from "@/hooks/useStudents";
 import { GROUP_DAYS } from "@/constants/groups";
 import {
   SCHEDULE_DAY_LABELS,
@@ -85,44 +88,11 @@ export default function GroupSchedulePage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("room");
   const [layout, setLayout] = useState<Layout>("grid");
   const [filtersVisible, setFiltersVisible] = useState(false);
-  // Referensda KPI kartalari boshlang'ich holatda ko'rinib turadi.
-  const [statsVisible, setStatsVisible] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [fullscreen, setFullscreen] = useState(false);
   // Sichqoncha turgan blok — ustidagi ma'lumot paneli uchun.
   const [hovered, setHovered] = useState<{ group: Group; rect: DOMRect } | null>(null);
   const setHover: HoverFn = (g, rect) => setHovered(g && rect ? { group: g, rect } : null);
-  // KPI kartalari uchun HAQIQIY manbalar. Ilgari bu yerdan faqat birinchi
-  // darsga yozilganlar soni olinardi, qolgan 10 ta karta esa
-  // lib/scheduleStats.ts ichidagi demo generatordan (502 ta soxta buyurtma)
-  // va o'ylab topilgan balansdan chiqardi. Endi hammasi bazadan keladi.
-  const [orders, setOrders] = useState<Order[]>([]);
-  // O'quvchilar (holat maydoni bilan) — /api/pupils, hooks/useStudents.ts.
-  const { pupils } = useStudents();
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/orders")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setOrders(d.orders as Order[]); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  // "Birinchi darsga keladiganlar" — /first-lessons sahifasi bilan AYNAN bir
-  // xil shart (components/leads/FirstLessonsPage.tsx → rows): birinchi dars
-  // sanasi belgilangan buyurtmalar.
-  const firstLessonCount = useMemo(
-    () => orders.filter((o) => (o.firstLesson || "").trim()).length,
-    [orders],
-  );
-
-  // Har bir karta o'zi havola qiladigan sahifa qanday sanasa, shunday
-  // hisoblanadi — lib/scheduleStats.ts.
-  const kpis = useMemo(
-    () => computeScheduleKpis({ orders, pupils, groupCount: groups.length, firstLessonCount }),
-    [orders, pupils, groups.length, firstLessonCount],
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -215,17 +185,6 @@ export default function GroupSchedulePage() {
             Export
           </Button>
           <button
-            onClick={() => setStatsVisible((v) => !v)}
-            title="Statistika kartalarini ko'rsatish/yashirish"
-            className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium transition-colors ${
-              statsVisible ? "bg-primary text-white hover:opacity-90" : "border border-border bg-card hover:bg-secondary"
-            }`}
-          >
-            <BarChart3 className="icon icon-sm" />
-            <span>Statistika</span>
-          </button>
-
-          <button
             onClick={() => setFiltersVisible((v) => !v)}
             className={`relative inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-shadow${
               filtersVisible ? " ring-2 ring-blue-300" : ""
@@ -241,39 +200,6 @@ export default function GroupSchedulePage() {
           </button>
         </div>
       </div>
-
-      {/* KPI kartalari — referensda jadval ustida turadi. "Statistika"
-          tugmasi ularni yashiradi/ko'rsatadi (boshlang'ich holat — ochiq,
-          referensdagi kabi). */}
-      {statsVisible && (
-        <div className="kpi-grid non-fullscreen">
-          {kpis.map((k) => {
-            const body = (
-              <>
-                <span className="kpi-icon" style={{ backgroundColor: k.bg, color: k.fg }}>
-                  <svg className="icon"><use href={`#${k.icon}`} /></svg>
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[11px] leading-tight text-muted-foreground">{k.label}</span>
-                  <span className="block text-[17px] font-bold tabular-nums leading-tight">
-                    {k.value === null ? "—" : k.value.toLocaleString("ru-RU").replace(/,/g, " ")}
-                  </span>
-                </span>
-              </>
-            );
-            // Manbasi yo'q ko'rsatkich "—" bilan chiziladi va BOSILMAYDI:
-            // bosilsa foydalanuvchi kartadagi son bilan hech qanday
-            // aloqasi yo'q sahifaga tushardi. globals.css'da hover faqat
-            // `a.kpi-card` uchun yozilgan — shu bois <div> bir xil
-            // ko'rinadi, lekin bosiladigandek tuyulmaydi.
-            return k.value === null ? (
-              <div key={k.key} className="kpi-card" title={k.note}>{body}</div>
-            ) : (
-              <Link key={k.key} href={k.href} className="kpi-card">{body}</Link>
-            );
-          })}
-        </div>
-      )}
 
       {/* Filtr paneli */}
       {filtersVisible && (

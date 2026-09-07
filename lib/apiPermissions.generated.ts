@@ -105,7 +105,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/online-courses": ["/online-courses"],
   "/api/online-courses/[id]": ["/online-courses"],
   "/api/online-courses/[id]/bind": ["/online-courses"],
-  "/api/orders": ["/first-lessons", "/groups-schedule", "/management-xodimlar", "/new-students", "/orders-list", "/reports-admins-perf", "/reports-funnel", "/reports-teachers-perf"],
+  "/api/orders": ["/first-lessons", "/management-xodimlar", "/new-students", "/orders-list", "/reports-admins-perf", "/reports-funnel", "/reports-teachers-perf"],
   "/api/orders/[id]": ["/first-lessons", "/orders-list"],
   "/api/orders/[id]/comments": ["/orders-list"],
   "/api/penalties": ["/finance-cashflow", "/finance-penalty", "/management-xodimlar"],
