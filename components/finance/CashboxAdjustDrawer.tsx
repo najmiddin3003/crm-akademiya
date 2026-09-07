@@ -38,20 +38,20 @@ interface Row {
   amount: string;
 }
 
-// Kassalar sahifasidagi "- Chiqim" â referens saytdagi oyna: Tranzaksiya
+// Kassalar sahifasidagi "- Chiqim" — referens saytdagi oyna: Tranzaksiya
 // (xarajat turi), O'quvchini/Xodimni tanlang, so'ng bir nechta Qiymat
-// qatori â "+" bosilsa yana bir qator qo'shiladi (bitta xarajatni bir
+// qatori — "+" bosilsa yana bir qator qo'shiladi (bitta xarajatni bir
 // nechta band qilib yozish uchun), ularning yig'indisi "Umumiy summa"da
 // avtomatik ko'rsatiladi. Pul harakati (methodTotals/balance) shu umumiy
 // summa bo'yicha /api/cashboxes/:id/adjust orqali HAQIQIY, kategoriya/
-// o'quvchi/sana/izoh bilan birga â "Tranzaksiyalar" va "Moliya hisobotlari/
+// o'quvchi/sana/izoh bilan birga — "Tranzaksiyalar" va "Moliya hisobotlari/
 // analitikasi" ko'radigan haqiqiy jurnalga yoziladi. "Tranzaksiya" ro'yxati
-// â Moliya â Tranzaksiya turi (/finance-tx-types) sahifasidagi HAQIQIY,
+// — Moliya → Tranzaksiya turi (/finance-tx-types) sahifasidagi HAQIQIY,
 // admin boshqaradigan ro'yxatdan (mainType: "chiqim").
 //
 // OLIB TASHLANGAN: har bir qatorda "Oyni tanlang" degan, hatto yulduzcha
 // bilan MAJBURIY deb belgilangan tanlagich turardi. Tanlangan oy hech
-// qachon hech qayerga yuborilmasdi â /api/cashboxes/:id/adjust so'rov
+// qachon hech qayerga yuborilmasdi — /api/cashboxes/:id/adjust so'rov
 // tanasida bunday maydon yo'q, `transaction_entries` yozuvida ham xarajat
 // qaysi OYGA tegishli ekanini saqlaydigan maydon yo'q. Ya'ni foydalanuvchi
 // "iyul oyiga" deb belgilab saqlardi, natijada esa hech qanday farq
@@ -69,35 +69,35 @@ export default function CashboxAdjustDrawer({
   cashbox: Cashbox;
   mode: "chiqim";
   /**
-   * O'quvchilar ro'yxati OTA SAHIFADAN (CashboxesPage) keladi â bu oyna
+   * O'quvchilar ro'yxati OTA SAHIFADAN (CashboxesPage) keladi — bu oyna
    * uni O'ZI SO'RAMAYDI. Sabab CashboxKirimDrawer dagi bilan bir xil:
    * ota sahifa ro'yxatni allaqachon olgan, drawer esa uni bir xil kesh
    * kaliti bilan qaytadan so'rardi va TTL (30 s) o'tgach 546 KB / ~1.4 s
-   * kutardi â o'sha paytda tanlov maydoni `disabled` bo'lib turardi.
+   * kutardi — o'sha paytda tanlov maydoni `disabled` bo'lib turardi.
    */
   studentNames: string[];
   studentByName: Map<string, StudentRow>;
   studentsLoading: boolean;
-  /** Ro'yxat FONDA yangilanmoqda â maydon ishlaydi, faqat izoh chiqadi. */
+  /** Ro'yxat FONDA yangilanmoqda — maydon ishlaydi, faqat izoh chiqadi. */
   studentsRefreshing: boolean;
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
-  // To'lov turlari Sozlamalar â Moliya â To'lov turlaridan (faqat faollari).
+  // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
   // Tanlangan tur ID bo'yicha saqlanadi, nom bo'yicha emas: turning "Mijoz"
   // maydoni ham kerak, nom esa noyob emas (POST /api/transaction-types nom
   // takrorlanishini tekshirmaydi va bazada `name` bo'yicha unikal indeks
-  // yo'q). Serverga baribir NOM ketadi â jurnal, analitika va hisobotlar
+  // yo'q). Serverga baribir NOM ketadi — jurnal, analitika va hisobotlar
   // shu nom bo'yicha guruhlanadi.
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  // Tanlangan KIM â tranzaksiya turiga qarab o'quvchi yoki xodim.
+  // Tanlangan KIM — tranzaksiya turiga qarab o'quvchi yoki xodim.
   const [personName, setPersonName] = useState("");
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
-  // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) â Kirim oynasidagi
+  // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — Kirim oynasidagi
   // bilan bir xil manba (/api/students/balances).
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "" }]);
@@ -107,11 +107,11 @@ export default function CashboxAdjustDrawer({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   // Turlar TO'LIQ saqlanadi. Ilgari bu yerda `.map((t) => t.name)` turardi
-  // va turning "Mijoz" maydoni aynan shu qatorda yo'qolardi â javobda u bor
+  // va turning "Mijoz" maydoni aynan shu qatorda yo'qolardi — javobda u bor
   // edi, lekin brauzergacha yetib kelmasdi.
   const [categories, setCategories] = useState<TransactionType[]>([]);
   // Bayroq `true` bo'lganda tanlovda BO'SH-HOLAT xabari ("Chiqim turi
-  // qo'shilmagan", "Topilmadi") ko'rsatilmaydi â o'sha onda u yolg'on
+  // qo'shilmagan", "Topilmadi") ko'rsatilmaydi — o'sha onda u yolg'on
   // bo'lardi. Boshlang'ich qiymat `true`: ochilish zahoti fetch ketadi.
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   // Xodimlar ro'yxati SHARTLI yuklanadi (faqat "xodimga to'lov" turida),
@@ -123,15 +123,15 @@ export default function CashboxAdjustDrawer({
     [categories, categoryId],
   );
   const category = selectedType?.name ?? "";
-  // Xodimlarning HAQIQIY oylik qatorlari â ism bo'yicha kalitlangan.
+  // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan.
   const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
-  // Tanlangan SANANING oyi â oylik hisobining davri ham, "shu oyda
+  // Tanlangan SANANING oyi — oylik hisobining davri ham, "shu oyda
   // allaqachon berilgan" so'rovi ham AYNAN shu oyga tegishli bo'lishi kerak.
   //
   // Ilgari `period` doim JORIY oy edi, `alreadyPaid` esa tanlangan sana
   // oyidan olinardi (pastdagi `/api/employee-salary-summary`). Kassir sanani
   // o'tgan oyga qo'yganda "hisoblangan oylik" sentabrniki, "olingan" esa
-  // avgustniki bo'lib chiqardi â `remainingSalary` chegarasi ikki xil oydan
+  // avgustniki bo'lib chiqardi — `remainingSalary` chegarasi ikki xil oydan
   // yig'ilardi va o'tgan oy uchun avans berishga to'sqinlik qilardi.
   const monthKey = useMemo(() => {
     if (!date) return "";
@@ -140,7 +140,7 @@ export default function CashboxAdjustDrawer({
   }, [date]);
   const period = useMemo(() => (monthKey ? payrollPeriodOf(monthKey) : payrollPeriod()), [monthKey]);
 
-  // Maosh/guruh modali ochiq bo'lsa Escape faqat o'shani yopsin â aks holda
+  // Maosh/guruh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda
   // ikkala tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
   useEscapeClose(salaryOpen || groupsOpen ? () => {} : onClose);
 
@@ -158,7 +158,7 @@ export default function CashboxAdjustDrawer({
 
   // Xodimlar ro'yxati faqat kerak bo'lganda (xodimga oylik/avans) yuklanadi.
   const target = txTarget(selectedType);
-  // "Xodim" turiga o'tilgan, lekin ro'yxat hali kelmagan payt â aynan shu
+  // "Xodim" turiga o'tilgan, lekin ro'yxat hali kelmagan payt — aynan shu
   // oraliqda tanlov bo'sh turadi. Hosila bayroq: effekt tanasida
   // `setState` chaqirilmaydi.
   const employeesLoading = target === "employee" && !employeesLoaded && employees.length === 0;
@@ -181,7 +181,7 @@ export default function CashboxAdjustDrawer({
   // Oylik qatorlari ALOHIDA yuklanadi va SANA o'zgarsa qayta so'raladi:
   // xodimlar ro'yxati oydan qat'i nazar bir xil, hisoblangan oylik esa
   // oyga bog'liq. Ilgari ikkalasi bitta so'rovda edi va faqat bir marta
-  // yuklanardi â sana o'tgan oyga surilganda ekranda joriy oyning
+  // yuklanardi — sana o'tgan oyga surilganda ekranda joriy oyning
   // raqamlari qolib ketardi.
   useEffect(() => {
     if (target !== "employee" || !monthKey) return;
@@ -201,12 +201,12 @@ export default function CashboxAdjustDrawer({
     return () => { cancelled = true; };
   }, [target, monthKey]);
 
-  // Arxivdagi xodimga oylik berilmaydi â ro'yxatda faqat aktivlar.
+  // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
   const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
 
-  // O'quvchi balansi â faqat "o'quvchiga pul qaytarildi" turidagi
+  // O'quvchi balansi — faqat "o'quvchiga pul qaytarildi" turidagi
   // chiqimlarda kerak (target === "student"da har doim shu ma'no).
   const studentKey = (n: string) => n.trim().toLowerCase();
   const balanceOf = (n: string) => balances[studentKey(n)] ?? 0;
@@ -256,11 +256,11 @@ export default function CashboxAdjustDrawer({
 
   // Shu oyda xodimga necha marta oylik/avans chiqarilgani serverdan olinadi
   // (`monthKey` yuqorida, `period` bilan bir joyda hisoblangan). Sana yoki
-  // xodim o'zgarsa qayta yuklanadi. Yig'indisi â `alreadyPaid`.
+  // xodim o'zgarsa qayta yuklanadi. Yig'indisi — `alreadyPaid`.
   const [alreadyPaid, setAlreadyPaid] = useState(0);
   useEffect(() => {
     if (!isSalaryPayoutCategory || !selectedEmployee || !monthKey) {
-      // Shart bajarilmasa qiymat allaqachon 0 â qayta o'rnatish shart emas
+      // Shart bajarilmasa qiymat allaqachon 0 — qayta o'rnatish shart emas
       // (effekt tanasidagi setState ortiqcha render zanjirini keltiradi).
       return;
     }
@@ -276,9 +276,9 @@ export default function CashboxAdjustDrawer({
     return () => { cancelled = true; };
   }, [isSalaryPayoutCategory, selectedEmployee, monthKey]);
 
-  // Chiqarish mumkin = hisoblangan oylik + o'tgan oydan qolgan â olingan.
+  // Chiqarish mumkin = hisoblangan oylik + o'tgan oydan qolgan − olingan.
   const remainingSalary = Math.max(0, employeeOylik + carryOver - alreadyPaid);
-  // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) â
+  // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) —
   // aks holda 0 deb o'qilib, hamma to'lov rad etilgan bo'lardi.
   const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
   const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && total > remainingSalary;
@@ -305,7 +305,7 @@ export default function CashboxAdjustDrawer({
     // Tanlov maydoni ko'rinib turgan bo'lsa, u BO'SH qolmasin. Aks holda
     // yozuv egasiz tug'iladi: xodimga berilgan avans hech kimning oylik
     // hisobiga tushmaydi va oddiy xarajat bo'lib qoladi (jurnalda aynan
-    // shunday bitta yozuv bor â "Avans", â20 000, xodimsiz).
+    // shunday bitta yozuv bor — "Avans", −20 000, xodimsiz).
     if (target !== null && !personName.trim()) {
       showError(txTargetLabel(target));
       return;
@@ -323,7 +323,7 @@ export default function CashboxAdjustDrawer({
       return;
     }
     if (salaryExhausted) {
-      showError("Bu oyga xodim oyligi to'liq chiqarib bo'lingan â keyingi oygacha qo'shimcha pul chiqarib bo'lmaydi");
+      showError("Bu oyga xodim oyligi to'liq chiqarib bo'lingan — keyingi oygacha qo'shimcha pul chiqarib bo'lmaydi");
       return;
     }
     if (salaryExceeds) {
@@ -345,9 +345,9 @@ export default function CashboxAdjustDrawer({
           amount: total,
           category,
           // Jurnaldagi "KIM" ustuni shu maydondan o'qiladi (o'quvchi ham,
-          // xodim ham shu yerda ko'rsatiladi â referensda ham shunday).
+          // xodim ham shu yerda ko'rsatiladi — referensda ham shunday).
           studentName: personName,
-          // Yozuv KIMNING oyligiga tegishli. Xodimga chiqim bo'lsa â o'sha
+          // Yozuv KIMNING oyligiga tegishli. Xodimga chiqim bo'lsa — o'sha
           // xodim. Server buni nomdagi "avans|oylik" so'ziga qarab ham
           // topadi, lekin "KPI bonusi", "Bayram mukofoti" kabi turlarda bu
           // so'zlar yo'q va yozuv egasiz qolardi.
@@ -395,7 +395,7 @@ export default function CashboxAdjustDrawer({
                 value={categoryId ?? ""}
                 onChange={(e) => {
                   // Tur o'zgarsa avval tanlangan kishi kerak bo'lmay qolishi
-                  // mumkin (o'quvchi â xodim yoki umuman tanlovsiz tur).
+                  // mumkin (o'quvchi → xodim yoki umuman tanlovsiz tur).
                   // Tozalanmasa, maydon yashirinib ketgan bo'lsa ham eski
                   // ism `studentName` bo'lib yozuvga tushardi.
                   const next = categories.find((t) => t.id === Number(e.target.value)) ?? null;
@@ -415,8 +415,8 @@ export default function CashboxAdjustDrawer({
           </div>
 
           {/* Kim tanlanishi tranzaksiya turiga bog'liq (lib/txTarget.ts):
-              xodimga oylik/avans â xodimlar, o'quvchiga pul qaytarildi â
-              o'quvchilar, qolgan turlarda (List, Printer, Suvâ¦) tanlov
+              xodimga oylik/avans → xodimlar, o'quvchiga pul qaytarildi →
+              o'quvchilar, qolgan turlarda (List, Printer, Suv…) tanlov
               umuman ko'rsatilmaydi. */}
           {target !== null && (
             <div className="space-y-2">
@@ -425,12 +425,12 @@ export default function CashboxAdjustDrawer({
                 value={personName}
                 onChange={setPersonName}
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : studentNames}
-                // Bitta tanlovni IKKI manba to'ldiradi â turga QARAB: xodim
+                // Bitta tanlovni IKKI manba to'ldiradi — turga QARAB: xodim
                 // turida xodimlar ro'yxati, aks holda o'quvchilar. Ikkalasini
-                // birlashtirib yuborish xato bo'lardi â o'quvchi
+                // birlashtirib yuborish xato bo'lardi — o'quvchi
                 // tanlanayotganda xodimlar ro'yxati kutilmasligi kerak.
                 loading={target === "employee" ? employeesLoading : studentsLoading}
-                placeholder={target === "employee" ? "Xodimni qidiringâ¦" : "Tanlang"}
+                placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
                 subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
                 // Ism yonida QOLGAN oylik: shu oynada aynan shuncha pul
                 // chiqarish mumkin (jami hisoblangan emas).
@@ -447,11 +447,11 @@ export default function CashboxAdjustDrawer({
 
               {/* Ro'yxat fonda yangilanayotgan payt. Faqat o'quvchi turida:
                   xodimlar ro'yxati boshqa manbadan keladi. Sababi ko'rinib
-                  tursin â `StudentSearchSelect` erkin matn qabul qilmaydi,
+                  tursin — `StudentSearchSelect` erkin matn qabul qilmaydi,
                   ya'ni hozirgina qo'shilgan o'quvchini topa olmagan kassir
                   nima kutayotganini bilmasdi. */}
               {target === "student" && studentsRefreshing && (
-                <p className="text-[11px] text-muted-foreground">Ro&apos;yxat yangilanmoqdaâ¦</p>
+                <p className="text-[11px] text-muted-foreground">Ro&apos;yxat yangilanmoqda…</p>
               )}
 
               {selectedStudent && (
@@ -479,7 +479,7 @@ export default function CashboxAdjustDrawer({
 
               {selectedEmployee && (
                 <>
-                  {/* Xodim tanlangach â nimadan qancha chiqarish mumkinligi. */}
+                  {/* Xodim tanlangach — nimadan qancha chiqarish mumkinligi. */}
                   {isSalaryPayoutCategory ? (
                     salaryConfigured ? (
                       <div className="text-[12.5px] text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2.5 py-2">
@@ -487,13 +487,13 @@ export default function CashboxAdjustDrawer({
                         <span className="text-muted-foreground">
                           {" "}(Jami oylik {fmtUZS(employeeOylik)}
                           {carryOver > 0 ? ` + o'tgan oydan ${fmtUZS(carryOver)}` : ""}
-                          {carryOver < 0 ? ` â o'tgan oy qarzdorligi ${fmtUZS(-carryOver)}` : ""}
-                          {" "}â olingan {fmtUZS(alreadyPaid)})
+                          {carryOver < 0 ? ` − o'tgan oy qarzdorligi ${fmtUZS(-carryOver)}` : ""}
+                          {" "}− olingan {fmtUZS(alreadyPaid)})
                         </span>
                       </div>
                     ) : (
                       <div className="text-[12.5px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-md px-2.5 py-2">
-                        Ish haqi sozlanmagan â chegara qo&apos;llanmaydi. Xodim profilida oylikni kiriting.
+                        Ish haqi sozlanmagan — chegara qo&apos;llanmaydi. Xodim profilida oylikni kiriting.
                       </div>
                     )
                   ) : (
@@ -503,7 +503,7 @@ export default function CashboxAdjustDrawer({
                   )}
                   {isSalaryPayoutCategory && salaryExhausted && (
                     <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
-                      Bu oyga xodim oyligi to&apos;liq chiqarib bo&apos;lingan â keyingi oygacha qo&apos;shimcha pul chiqarib bo&apos;lmaydi.
+                      Bu oyga xodim oyligi to&apos;liq chiqarib bo&apos;lingan — keyingi oygacha qo&apos;shimcha pul chiqarib bo&apos;lmaydi.
                     </div>
                   )}
                   {isSalaryPayoutCategory && !salaryExhausted && salaryExceeds && (
@@ -615,12 +615,12 @@ export default function CashboxAdjustDrawer({
             disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saving ? "Saqlanmoqdaâ¦" : "Saqlash"}
+            {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
       </div>
 
-      {/* Modal chekmadan (z-110) tepada turishi kerak â z-300. */}
+      {/* Modal chekmadan (z-110) tepada turishi kerak — z-300. */}
       {salaryOpen && selectedEmployee && (
         <EmployeeSalaryModal
           payroll={selectedPayroll}

@@ -13,16 +13,16 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Penalty } from "@/lib/penalties";
 import type { Cashbox } from "@/lib/cashboxes";
 
-// "Jarima qo'shish" â Moliya â Jarima sahifasidagi o'ng tomondan ochiladigan
-// panel. Bonus bilan bir xil "Tranzaksiya turi" â Xodim/O'quvchi mantig'i
-// (BonusDrawer'ga qarang), farqi â oxirida "Rasm" (fayl) maydoni bor.
+// "Jarima qo'shish" — Moliya → Jarima sahifasidagi o'ng tomondan ochiladigan
+// panel. Bonus bilan bir xil "Tranzaksiya turi" → Xodim/O'quvchi mantig'i
+// (BonusDrawer'ga qarang), farqi — oxirida "Rasm" (fayl) maydoni bor.
 //
 // ILGARI rasm HECH QAYERGA yuklanmasdi: faqat faylning NOMI ("dalil.jpg")
 // bazaga yozilardi, ya'ni jadvaldagi "Rasm" ustuni ochib bo'lmaydigan matn
-// edi â jarimaga dalil biriktirdim degan yolg'on. Endi fayl haqiqatan
+// edi — jarimaga dalil biriktirdim degan yolg'on. Endi fayl haqiqatan
 // /api/upload/image orqali Cloudinary'ga yuklanadi va `image` maydonida
 // URL saqlanadi (components/employees/AddEmployeeModal.tsx bilan bir xil
-// qolip). Yuklash muvaffaqiyatsiz bo'lsa saqlash TO'XTAYDI â jarima
+// qolip). Yuklash muvaffaqiyatsiz bo'lsa saqlash TO'XTAYDI — jarima
 // rasmsiz yozilib, foydalanuvchi buni sezmay qolmasin.
 export default function PenaltyDrawer({
   onClose,
@@ -32,7 +32,7 @@ export default function PenaltyDrawer({
   onSaved: (p: Penalty) => void;
 }) {
   useEscapeClose(onClose);
-  // Faqat ismlar ro'yxati kerak â yengil rejim (3 654 KB â 544 KB).
+  // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
   const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState("");
@@ -41,15 +41,15 @@ export default function PenaltyDrawer({
   const [cashboxId, setCashboxId] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  // Faylning o'zi saqlanadi (nomi emas) â saqlashda u yuklanadi.
+  // Faylning o'zi saqlanadi (nomi emas) — saqlashda u yuklanadi.
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
-  // Ikkala ro'yxat ham shu yerda yuklanadi â kelmaguncha "Tanlang"/"Tanlanmagan"
-  // o'rniga "Yuklanmoqdaâ¦" turadi, aks holda bo'sh select "xodim yo'q ekan"
+  // Ikkala ro'yxat ham shu yerda yuklanadi — kelmaguncha "Tanlang"/"Tanlanmagan"
+  // o'rniga "Yuklanmoqda…" turadi, aks holda bo'sh select "xodim yo'q ekan"
   // degan taassurot qoldiradi.
   const [listsLoading, setListsLoading] = useState(true);
   useEffect(() => {
@@ -178,7 +178,7 @@ export default function PenaltyDrawer({
                 disabled={listsLoading}
                 className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
               >
-                {/* "Tanlanmagan" â haqiqiy tanlov (kassasiz jarima), shuning
+                {/* "Tanlanmagan" — haqiqiy tanlov (kassasiz jarima), shuning
                     uchun u `ready` matni sifatida saqlanadi. */}
                 <option value="">{selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")}</option>
                 {cashboxes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -209,7 +209,7 @@ export default function PenaltyDrawer({
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Rasm</label>
             {/* Endpoint faqat PNG/JPG/WEBP va 5 MB gacha qabul qiladi
-                (app/api/upload/image/route.ts) â tanlash oynasi ham shu
+                (app/api/upload/image/route.ts) — tanlash oynasi ham shu
                 turlar bilan cheklanadi. */}
             <input
               ref={fileRef}
@@ -234,7 +234,7 @@ export default function PenaltyDrawer({
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqdaâ¦" : "Saqlash"}
+            {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
       </div>
