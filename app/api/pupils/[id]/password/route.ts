@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 
 // O'quvchi profili → "Parol o'rnatish" tabi.
 //
@@ -20,14 +21,28 @@ function parseId(id: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Bitta o'quvchining filtri — JORIY FILIAL ICHIDA (naqsh: ../route.ts).
+ * Bu route kesilmasa, boshqa filialning o'quvchisiga PAROL O'RNATIB
+ * qo'yish mumkin bo'lardi. `null` — tizimga kirilmagan.
+ */
+async function scopedFilter(pupilId: number) {
+  const scope = await getBranchScope();
+  return scope ? withBranch({ id: pupilId }, scope) : null;
+}
+
+const notLoggedIn = () => NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const pupilId = parseId(id);
   if (pupilId === null) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
+  const where = await scopedFilter(pupilId);
+  if (!where) return notLoggedIn();
   const db = await ensureIndexes();
-  const doc = await db.collection("pupils").findOne({ id: pupilId });
+  const doc = await db.collection("pupils").findOne(where);
   if (!doc) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
@@ -69,8 +84,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const set: Record<string, unknown> = { [f.login]: login };
   if (password) set[f.hash] = await bcrypt.hash(password, 10);
 
+  const where = await scopedFilter(pupilId);
+  if (!where) return notLoggedIn();
   const db = await ensureIndexes();
-  const res = await db.collection("pupils").updateOne({ id: pupilId }, { $set: set });
+  const res = await db.collection("pupils").updateOne(where, { $set: set });
   if (res.matchedCount === 0) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }

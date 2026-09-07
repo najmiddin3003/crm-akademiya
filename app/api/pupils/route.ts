@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope } from "@/lib/branchScope";
+import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
 import { buildPupilFromValues, PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
 
 // GET /api/pupils — "O'quvchi qo'shish" orqali qo'shilgan haqiqiy o'quvchilar
@@ -109,33 +109,47 @@ export async function GET(req: Request) {
 
   if (anyOf.length > 0) filter.$and = anyOf;
 
-  // O'QUVCHILAR RO'YXATI FILIAL BO'YICHA KESILMAYDI — ATAYLAB.
+  // O'QUVCHILAR RO'YXATI FILIAL BO'YICHA KESILADI (qaror 2026-09-07).
   //
-  // Markaz qarori (2026-09-04): kassa, moliya va lidlar filial bo'yicha
-  // ajratiladi, O'QUVCHILAR ro'yxati esa UMUMIY — istalgan kassada
-  // istalgan o'quvchidan to'lov qabul qilinadi.
+  // Bu 2026-09-04 dagi "o'quvchilar umumiy" qarorini BEKOR QILADI.
+  // Foydalanuvchi so'rovi: "Akademiya 4 Uchqo'rg'on" filiali o'z o'quvchilar
+  // bazasini yuritadi — 1- va 2-filial o'quvchilari u yerda ko'rinmasin,
+  // Uchqo'rg'onnikilar esa boshqa filial moderatorlariga ko'rinmasin.
+  // Admin hammasini ko'radi: u navbardan filialni almashtiradi va o'sha
+  // filialning ro'yxati chiqadi.
   //
-  // Ilgari bu yerda `withBranch(filter, scope)` turardi va amalda shunday
-  // bo'ldi: 2-filialga biriktirilgan yagona moderator (Dilmurod) Kassa
-  // "Kirim" oynasida 6 700 dan ortiq o'quvchi o'rniga atigi 10 tasini
-  // ko'rardi, chunki o'quvchilarning deyarli hammasi 1-filialda. Ya'ni
-  // qamrov himoya qilish o'rniga kassirni ishlashdan to'sib qo'yardi.
+  // BUNING NARXI — bilib turib qabul qilingan: kassaning "Kirim" oynasidagi
+  // o'quvchi tanlagichi ham shu ro'yxatdan oziqlanadi, ya'ni 2-filial
+  // kassiri endi FAQAT o'z filiali o'quvchisidan to'lov qabul qila oladi
+  // (ilgari qamrov aynan shu sabab olib tashlangan edi). Yangi qoidada bu
+  // xato emas, talab.
   //
-  // POST (pastda) `branchId` ni YOZISHDA DAVOM ETADI — u qaysi filialda
-  // qo'shilgani haqidagi foydali belgi bo'lib qoladi, lekin ko'rinishni
-  // cheklamaydi.
+  // Maydoni YO'Q eski hujjatlar 1-filialga tegishli deb hisoblanadi
+  // (branchCondition) — bazada 7 ta shunday yozuv bor.
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  const scoped = withBranch(filter, scope);
+
   const db = await ensureIndexes();
 
   // `?countOnly=1` — faqat SON kerak bo'lgan joylar uchun (Sozlamalar →
   // Billing). Ilgari u 6 747 hujjatni (544 KB) tortib, `.length` ni
   // o'qib, qolganini tashlab yuborardi.
   if (sp.get("countOnly") === "1") {
-    const count = await db.collection("pupils").countDocuments(filter);
-    return NextResponse.json({ ok: true, count });
+    // `&all=1` — QAMROVDAN TASHQARI umumiy son, FAQAT ADMINGA.
+    //
+    // Sozlamalar > Billing "O'quvchilar soni" ni obuna narxi uchun
+    // ko'rsatadi, ya'ni unga MARKAZNING butun soni kerak. Filial bo'yicha
+    // kesilsa admin 4-filialga o'tgan zahoti "1 ta o'quvchi" deb yozib
+    // qo'yardi. Bu yagona istisno va u faqat SONNI beradi — hech qanday
+    // shaxsiy ma'lumot emas.
+    const all = sp.get("all") === "1" && scope.isAdmin;
+    const count = await db.collection("pupils").countDocuments(all ? filter : scoped);
+    return NextResponse.json({ ok: true, count, scope: all ? "all" : "branch" });
   }
 
   const rows = await db.collection("pupils")
-    .find(filter, { projection })
+    .find(scoped, { projection })
     .sort({ id: -1 })
     .toArray();
   // Parol xeshlari hech qachon klientga chiqmaydi.

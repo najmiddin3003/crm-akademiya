@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 
 // GET /api/student-sources — Sotuv va marketing > O'quvchilar oqimi.
 //
@@ -11,15 +12,23 @@ import { ensureIndexes } from "@/lib/mongodb";
 //
 // FAQAT GET: bu sahifa hech narsa yozmaydi.
 export async function GET() {
+  // Sonlar o'quvchilar ro'yxati bilan BIR XIL qamrovda bo'lishi shart —
+  // aks holda bu sahifa "Instagram: 4 200" deb turar, ro'yxatda esa
+  // umuman boshqa son chiqardi (app/api/pupils/route.ts dagi GET izohi).
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
   const col = db.collection("pupils");
+  const scoped = withBranch({}, scope);
 
   const [rows, total] = await Promise.all([
     col.aggregate([
+      { $match: scoped },
       { $group: { _id: "$source", n: { $sum: 1 } } },
       { $sort: { n: -1 } },
     ]).toArray(),
-    col.countDocuments(),
+    col.countDocuments(scoped),
   ]);
 
   // Bo'sh/yo'q manbani ALOHIDA ajratamiz. Uni oddiy manba deb qo'shib

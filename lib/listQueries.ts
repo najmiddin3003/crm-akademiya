@@ -1,5 +1,5 @@
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, type BranchScope } from "@/lib/branchScope";
+import { getBranchScope, withBranch, type BranchScope } from "@/lib/branchScope";
 import { groupWeekdays } from "@/lib/attendance";
 import { PUPIL_EXTRA_FIELDS, type Pupil, type PupilExtraField, type PupilListItem } from "@/lib/pupilsData";
 import type { Group } from "@/lib/groups";
@@ -16,15 +16,17 @@ import type { Group } from "@/lib/groups";
 // brauzer<->API borib-kelishi ~208 ms, ya'ni ro'yxat shuncha kech
 // ko'rinardi. Serverda olinsa o'sha to'lqin butunlay yo'qoladi.
 //
-// FILIAL QAMROVI BU YERDA YO'Q — ataylab. Markaz qarori (2026-09-04):
-// kassa, moliya va lidlar filial bo'yicha ajratiladi, O'QUVCHILAR va
-// GURUHLAR esa UMUMIY. Sabab amaliy: 2-filialga biriktirilgan moderator
-// 6 700 dan ortiq o'quvchi va 91 guruh o'rniga deyarli hech nimani
-// ko'rmasdi (ma'lumotning deyarli hammasi 1-filialda), ya'ni qamrov
-// himoya qilish o'rniga ishlashdan to'sardi.
+// FILIAL QAMROVI: O'QUVCHILAR — HA, GURUHLAR — YO'Q.
 //
-// `listScope()` SAQLANADI — u endi qamrov uchun emas, sahifalardagi
-// "tizimga kirilganmi" tekshiruvi uchun ishlatiladi.
+// `loadPupils()` filial bo'yicha kesiladi (qaror 2026-09-07, sabab
+// app/api/pupils/route.ts dagi GET izohida). Bu SHART: sahifani server
+// chizadi, keyin klient o'sha ro'yxatni `/api/pupils` dan qayta so'raydi —
+// ikkalasi bir xil qamrovda bo'lmasa, birinchi kadrda boshqa filialning
+// o'quvchilari ko'rinib, keyin g'oyib bo'lardi.
+//
+// `loadGroups()` esa KESILMAYDI — 91 guruhning hammasi 1-filialda va
+// guruhlarni ajratish alohida qaror (hozircha so'ralmagan). Sidebar'dagi
+// guruhlar sanog'i ham aynan shu qamrovda (app/api/sidebar-counts).
 
 /** Sahifa ochilishida ishlatiladigan qamrov. `null` — tizimga kirilmagan. */
 export async function listScope(): Promise<BranchScope | null> {
@@ -81,6 +83,15 @@ export interface PupilsQueryOptions {
 export async function loadPupils(
   opts: PupilsQueryOptions = {},
 ): Promise<PupilListItem[]> {
+  // Qamrov SHU YERDA olinadi, chaqiruvchidan kutilmaydi: uni parametr
+  // qilish "uzatishni unutish" imkonini qoldirardi va o'sha sahifa jimgina
+  // butun bazani ko'rsatib qo'yardi. `getBranchScope()` 10 soniyalik keshda
+  // (lib/branchScope.ts), ya'ni takroriy chaqiruv qimmat emas.
+  const scope = await getBranchScope();
+  // Tizimga kirilmagan — sahifalar buni `listScope()` bilan allaqachon
+  // tekshiradi va bu yergacha yetib kelmaydi; baribir bo'sh qaytariladi.
+  if (!scope) return [];
+
   const db = await ensureIndexes();
   const filter: Record<string, unknown> = {};
   if (opts.status) filter.status = opts.status;
@@ -91,7 +102,7 @@ export async function loadPupils(
   }
 
   const rows = await db.collection("pupils")
-    .find(filter, { projection })
+    .find(withBranch(filter, scope), { projection })
     .sort({ id: -1 })
     .toArray();
   return rows as unknown as (PupilListItem & Partial<Pupil>)[];

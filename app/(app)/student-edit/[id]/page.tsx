@@ -1,6 +1,7 @@
 import StudentEditPage from "@/components/students/StudentEditPage";
 import { createInitialOrders, type Order } from "@/lib/ordersData";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 
 // O'quvchi profili ikki xil ro'yxatdan ochilishi mumkin:
@@ -12,8 +13,13 @@ import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 // (aks holda noto'g'ri odam ochilib, buni hech kim sezmaydi).
 async function orderFromPupil(id: number): Promise<Order | null> {
   if (!Number.isFinite(id)) return null;
+  // FILIAL QAMROVI: boshqa filialning o'quvchisi bu sahifada ochilmaydi —
+  // `/api/pupils/:id` bilan bir xil qoida, aks holda ro'yxatdan yashiringan
+  // odam manzilni qo'lda yozib ochilaverardi.
+  const scope = await getBranchScope();
+  if (!scope) return null;
   const db = await ensureIndexes();
-  const doc = await db.collection("pupils").findOne({ id });
+  const doc = await db.collection("pupils").findOne(withBranch({ id }, scope));
   if (!doc) return null;
   const p = doc as unknown as Pupil;
   // StudentEditPage `Order` kutadi — mavjud maydonlarni ko'chiramiz,

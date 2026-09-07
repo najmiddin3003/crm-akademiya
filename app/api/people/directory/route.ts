@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 
 // GET /api/people/directory — ISM → PROFIL kartasi.
 //
@@ -26,10 +27,19 @@ export interface PeopleDirectoryResponse {
 }
 
 export async function GET() {
+  // QOBIQ ROUTE'i (har sahifada yuklanadi) — bo'lim ruxsatiga bog'lanmaydi,
+  // lekin O'QUVCHILAR QISMI FILIAL BO'YICHA KESILADI: katalog ismlar
+  // ro'yxati, ya'ni kesilmasa boshqa filial o'quvchilarining ismlari
+  // barcha sahifada tarqalib yurardi (ro'yxatning o'zi kesilgan bo'lsa ham).
+  // XODIMLAR kesilmaydi — ism ustiga bosilganda profil ochilishi uchun
+  // ular umumiy (bitta xodim bir necha filialda ishlashi mumkin).
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
 
   const [pupilRows, staffRows] = await Promise.all([
-    db.collection("pupils").find({}, { projection: { id: 1, firstName: 1, lastName: 1 } }).toArray(),
+    db.collection("pupils").find(withBranch({}, scope), { projection: { id: 1, firstName: 1, lastName: 1 } }).toArray(),
     db.collection("hr_employees").find({}, { projection: { id: 1, name: 1 } }).toArray(),
   ]);
 

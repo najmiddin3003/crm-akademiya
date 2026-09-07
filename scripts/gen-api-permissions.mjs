@@ -67,6 +67,12 @@ const SHARED_EXTRA = [
   // handler ICHIDA `isPathAllowed` bilan alohida kesiladi va yopiq manba
   // umuman so'ralmaydi (app/api/notifications/route.ts).
   "/api/notifications",
+  // Bosh sahifadagi KPI kartalari. "/home" HAR DOIM ochiq (pastdagi
+  // INTERNALLY_GATED izohiga qarang), ya'ni bu route'ni bironta bo'lim
+  // ruxsatiga bog'lab bo'lmaydi. Ruxsat handler ichida, HAR BIR KARTA
+  // uchun alohida kesiladi va yopiq kartaning soni umuman so'ralmaydi
+  // (app/api/home-stats/route.ts, lib/homeStats.ts).
+  "/api/home-stats",
 ];
 
 /**
@@ -82,10 +88,31 @@ const MANUAL = {
   "/api/employees/[id]/password": ["/management-xodimlar"],
 };
 
-// lib/permissions.ts dagi bilan bir xil bo'lishi SHART.
+// lib/permissions.ts dagi ALWAYS_ALLOWED_PATHS bilan bir xil bo'lishi SHART
+// — BITTA ATAYLABGI ISTISNO bilan: "/home" pastdagi INTERNALLY_GATED da.
 const ALWAYS_ALLOWED = new Set([
   "/settings-profile", "/settings-security", "/settings-devices", "/birthdays", "/dashboard",
 ]);
+
+/**
+ * HAR DOIM OCHIQ, LEKIN MAZMUNI SAHIFANING O'ZIDA KESILADIGAN sahifalar —
+ * ular hech qanday route'ni KENGAYTIRMAYDI, shu bois tahlildan chetlatiladi.
+ *
+ * NIMA NOTO'G'RI EDI: "/home" bosh sahifa sifatida ALWAYS_ALLOWED_PATHS ga
+ * qo'shilgach, generator uni oddiy sahifa deb hisobladi va u ko'rsatadigan
+ * dars jadvalining route'lari — /api/groups, /api/rooms, /api/offline-courses
+ * — ruxsat ro'yxatiga "/home" bilan kirdi. `isPathAllowed("/home", ...)` esa
+ * HAR DOIM `true`, ya'ni o'sha uchtasi amalda "sessiya yetarli" darajasiga
+ * tushib qolgandi, jadvalda esa ruxsatli ko'rinardi — buni faqat ro'yxatni
+ * diqqat bilan o'qib sezish mumkin edi.
+ *
+ * TO'G'RI MODEL: bosh sahifa jadvalni FAQAT "Dars jadvali" ruxsati bor
+ * xodimga ko'rsatadi (app/(app)/home/page.tsx), ya'ni o'sha route'lar
+ * "/groups-schedule" orqali baribir ochiladi va ruxsati yo'q xodim ularni
+ * umuman so'ramaydi. Bosh sahifaning O'ZIGA tegishli route (/api/home-stats)
+ * esa yuqoridagi SHARED_EXTRA da — u ham ichidan kesiladi.
+ */
+const INTERNALLY_GATED = new Set(["/home"]);
 const ROUTE_ALIASES = { "/student-edit": "/students-list" };
 
 // ── Tahlil ───────────────────────────────────────────────────────────────
@@ -159,6 +186,7 @@ const bySegment = new Map();
 for (const p of walk(appDir).filter((x) => /page\.tsx?$/.test(x))) {
   const seg = "/" + path.relative(appDir, p).replace(/\\/g, "/").split("/")[0];
   if (seg.startsWith("/[")) continue; // [view] — "hali qurilmagan" o'rin egallovchi
+  if (INTERNALLY_GATED.has(seg)) continue;
   if (!bySegment.has(seg)) bySegment.set(seg, new Set());
   for (const r of collect(p)) bySegment.get(seg).add(r);
 }

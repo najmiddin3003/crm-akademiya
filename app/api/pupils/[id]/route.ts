@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 
 // Bitta o'quvchi (MongoDB `pupils`) — O'quvchi profili sahifasi uchun
@@ -32,17 +33,37 @@ function parseId(id: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Bitta o'quvchining filtri — JORIY FILIAL ICHIDA.
+ *
+ * Ro'yxat filial bo'yicha kesilgach (app/api/pupils/route.ts), bu route
+ * kesilmasa qamrov qog'ozda qolardi: ro'yxatda ko'rinmaydigan o'quvchini
+ * `/api/pupils/16700` deb to'g'ridan-to'g'ri o'qish ham, PATCH bilan
+ * o'zgartirish ham, DELETE bilan o'chirish ham mumkin bo'lardi.
+ *
+ * Boshqa filialning o'quvchisi "topilmadi" (404) bo'ladi — "ruxsat yo'q"
+ * emas: mavjudligini ham bildirmaslik kerak.
+ *
+ * `null` — tizimga kirilmagan (chaqiruvchi 401 qaytaradi).
+ */
+async function scopedFilter(pupilId: number) {
+  const scope = await getBranchScope();
+  return scope ? withBranch({ id: pupilId }, scope) : null;
+}
+
+/** Har safar YANGI javob: `NextResponse` ning tanasi bir marta o'qiladi. */
+const notLoggedIn = () => NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const pupilId = parseId(id);
   if (pupilId === null) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
+  const where = await scopedFilter(pupilId);
+  if (!where) return notLoggedIn();
   const db = await ensureIndexes();
-  // O'quvchilar ro'yxati UMUMIY — filial bo'yicha kesilmaydi (sabab
-  // app/api/pupils/route.ts dagi GET izohida). Login tekshiruvi proxy.ts
-  // da: "/api/pupils" SHARED_API ro'yxatida, ya'ni sessiyasiz kelinmaydi.
-  const doc = await db.collection("pupils").findOne({ id: pupilId });
+  const doc = await db.collection("pupils").findOne(where);
   if (!doc) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
@@ -87,9 +108,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
+  const where = await scopedFilter(pupilId);
+  if (!where) return notLoggedIn();
   const db = await ensureIndexes();
   const res = await db.collection("pupils").findOneAndUpdate(
-    { id: pupilId },
+    where,
     { $set: set },
     { returnDocument: "after" },
   );
@@ -106,8 +129,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
 
+  const where = await scopedFilter(pupilId);
+  if (!where) return notLoggedIn();
   const db = await ensureIndexes();
-  const res = await db.collection("pupils").deleteOne({ id: pupilId });
+  const res = await db.collection("pupils").deleteOne(where);
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }

@@ -16,6 +16,13 @@
 // turardi va u BAZAGA UMUMAN ULANMAGAN — sonlar, xonalar, o'qituvchi
 // ismlari va darslar `constants/schedule.js` dagi demo seeddan kelardi.
 //
+// STATISTIKA FAQAT SHU YERDA: `showStats` — referensdagi 12 ta KPI kartasi
+// (akademiya.edutizim.uz/home) jadval ustida chiziladi. "Guruh > Dars
+// jadvali" (/groups-schedule) o'sha komponentni proplarsiz ko'rsatadi, ya'ni
+// unda kartalar yo'q (foydalanuvchi so'rovi). Kartalarning sonlari
+// /api/home-stats dan keladi va HAR BIRI o'zi olib boradigan sahifa
+// ruxsatiga qarab kesiladi (lib/homeStats.ts).
+//
 // RUXSAT: "/home" ALWAYS_ALLOWED_PATHS ichida, ya'ni ROLDAN QAT'I NAZAR
 // ochiq (usiz proxy.ts dagi qorovul uni hammaga yopib, yo'naltirish
 // halqasiga tushirardi — sidebar daraxtida "/home" bandi yo'q). Shu bois
@@ -70,7 +77,7 @@ export default async function HomePage() {
   }
 
   if (user && isPathAllowed("/groups-schedule", user.permissions)) {
-    return <GroupSchedulePage />;
+    return <GroupSchedulePage showStats />;
   }
 
   // Na lavozim manzili, na "Dars jadvali" ruxsati bor xodim uchun.

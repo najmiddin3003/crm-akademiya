@@ -10,22 +10,27 @@
 // orqali ishlaydi; ko'rinish xona yoki o'qituvchi bo'yicha, ustun yoki qator
 // layoutda tanlanadi.
 //
-// STATISTIKA YO'Q. Ilgari jadval ustida 12 ta KPI kartasi va ularni
-// yashiradigan "Statistika" tugmasi turardi — bu sahifada kerak emas
-// (o'sha ko'rsatkichlar o'z sahifalarida bor). Ular bilan birga ikkita
-// ortiqcha so'rov ham ketdi: /api/orders va /api/pupils — endi sahifa
-// faqat o'ziga kerakli /api/groups va /api/rooms ni yuklaydi.
-// Hisob-kitob kodi lib/scheduleStats.ts da turibdi (endi ishlatilmaydi).
+// STATISTIKA FAQAT BOSH SAHIFADA. Referensda (akademiya.edutizim.uz/home)
+// jadval ustida 12 ta KPI kartasi turadi, "Guruh > Dars jadvali" da esa
+// ular kerak emas (foydalanuvchi so'rovi). Ikkala manzil bitta komponentni
+// ko'rsatgani uchun farq `showStats` proplari orqali: /home uni beradi,
+// /groups-schedule bermaydi.
+//
+// Sonlar SERVERDA sanaladi — /api/home-stats (lib/homeStats.ts). Ilgari bu
+// sahifa /api/orders va /api/pupils ni to'liq tortib olib (6 732 o'quvchi,
+// ~2.7 MB) brauzerda sanardi.
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
+import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import PersonLink from "@/components/shared/PersonDirectory";
 import { useToast } from "@/components/ui/Toast";
 import type { Group } from "@/lib/groups";
+import type { HomeKpi } from "@/lib/homeStats";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { GROUP_DAYS } from "@/constants/groups";
@@ -78,7 +83,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function GroupSchedulePage() {
+export default function GroupSchedulePage({ showStats = false }: { showStats?: boolean }) {
   const { showSuccess } = useToast();
   const { names: roomNames } = useRooms();
   const { names: courseNames } = useOfflineCourseList();
@@ -90,9 +95,37 @@ export default function GroupSchedulePage() {
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [fullscreen, setFullscreen] = useState(false);
+  // Referensda KPI kartalari boshlang'ich holatda ochiq turadi.
+  const [statsVisible, setStatsVisible] = useState(true);
+  // Xodim ko'ra oladigan kartalar — ruxsat SERVERDA kesiladi
+  // (app/api/home-stats). Ro'yxat bo'sh bo'lsa qator umuman chizilmaydi.
+  const [kpis, setKpis] = useState<HomeKpi[]>([]);
   // Sichqoncha turgan blok — ustidagi ma'lumot paneli uchun.
   const [hovered, setHovered] = useState<{ group: Group; rect: DOMRect } | null>(null);
-  const setHover: HoverFn = (g, rect) => setHovered(g && rect ? { group: g, rect } : null);
+
+  // Panel BLOKDAN CHIQQANDA DARHOL YOPILMAYDI.
+  //
+  // Blok bilan panel orasida 8px bo'shliq bor va panelning o'zi endi
+  // sichqonchani qabul qiladi (ichidagi havolalar bosilsin). Yopish
+  // kechiktirilmasa, o'sha bo'shliqni kesib o'tishning O'ZI `mouseleave`
+  // berardi va panel foydalanuvchi unga yetib bormasidan yo'qolardi.
+  const closeTimer = useRef<number | null>(null);
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+  // `useCallback` — sof optimallashtirish emas, SHART: `GridLayout`/`RowLayout`
+  // `memo` bilan o'ralgan va bu funksiya har renderda yangidan tug'ilsa,
+  // sichqoncha har tekkanda butun setka (yuzlab katak) qayta chizilardi —
+  // aynan shu narsa blokning `transform` animatsiyasini yutib yuborardi.
+  const setHover: HoverFn = useCallback((g, rect) => {
+    cancelClose();
+    if (g && rect) setHovered({ group: g, rect });
+    else closeTimer.current = window.setTimeout(() => setHovered(null), 160);
+  }, [cancelClose]);
+  useEffect(() => cancelClose, [cancelClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +135,17 @@ export default function GroupSchedulePage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // KPI kartalari — faqat bosh sahifada so'raladi.
+  useEffect(() => {
+    if (!showStats) return;
+    let cancelled = false;
+    fetch("/api/home-stats")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setKpis(d.cards as HomeKpi[]); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [showStats]);
 
   // To'liq ekran — body klassi orqali (globals.css: body.fullscreen-mode ...)
   useEffect(() => {
@@ -184,6 +228,21 @@ export default function GroupSchedulePage() {
           <Button variant="outline" lucideIcon={Download} onClick={exportCSV}>
             Export
           </Button>
+          {/* Tugma FAQAT kartalar bo'lganda: xodim bironta ham kartani
+              ko'ra olmasa (server bo'sh ro'yxat qaytaradi) u hech narsani
+              yashirmaydigan tugma bo'lib qolardi. */}
+          {showStats && kpis.length > 0 && (
+            <button
+              onClick={() => setStatsVisible((v) => !v)}
+              title="Statistika kartalarini ko'rsatish/yashirish"
+              className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium transition-colors ${
+                statsVisible ? "bg-primary text-white hover:opacity-90" : "border border-border bg-card hover:bg-secondary"
+              }`}
+            >
+              <BarChart3 className="icon icon-sm" />
+              <span>Statistika</span>
+            </button>
+          )}
           <button
             onClick={() => setFiltersVisible((v) => !v)}
             className={`relative inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-shadow${
@@ -200,6 +259,37 @@ export default function GroupSchedulePage() {
           </button>
         </div>
       </div>
+
+      {/* KPI kartalari — referensda jadval ustida, ikki qatorda. */}
+      {showStats && statsVisible && kpis.length > 0 && (
+        <div className="kpi-grid non-fullscreen">
+          {kpis.map((k) => {
+            const body = (
+              <>
+                <span className="kpi-icon" style={{ backgroundColor: k.bg, color: k.fg }}>
+                  <svg className="icon"><use href={`#${k.icon}`} /></svg>
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[11px] leading-tight text-muted-foreground">{k.label}</span>
+                  <span className="block text-[17px] font-bold tabular-nums leading-tight">
+                    {k.value === null ? "—" : k.value.toLocaleString("ru-RU").replace(/,/g, " ")}
+                  </span>
+                </span>
+              </>
+            );
+            // Manbasi yo'q ko'rsatkich "—" bilan chiziladi va BOSILMAYDI:
+            // bosilsa foydalanuvchi kartadagi son bilan hech qanday aloqasi
+            // yo'q sahifaga tushardi. globals.css'da hover faqat `a.kpi-card`
+            // uchun yozilgan — shu bois <div> bir xil ko'rinadi, lekin
+            // bosiladigandek tuyulmaydi.
+            return k.value === null ? (
+              <div key={k.key} className="kpi-card" title={k.note}>{body}</div>
+            ) : (
+              <Link key={k.key} href={k.href} className="kpi-card">{body}</Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filtr paneli */}
       {filtersVisible && (
@@ -287,7 +377,18 @@ export default function GroupSchedulePage() {
         <GridLayout columns={columns} lessons={placed} groupBy={groupBy} onHover={setHover} />
       )}
 
-      {hovered && <LessonHoverPanel g={hovered.group} rect={hovered.rect} />}
+      {/* `key` — har yangi blokda panel qaytadan tug'ilsin, ya'ni chiqish
+          animatsiyasi (globals.css: .sch-hover-panel) qayta o'ynasin.
+          Kalitsiz panel bir blokdan ikkinchisiga jimgina "sakrab" o'tardi. */}
+      {hovered && (
+        <LessonHoverPanel
+          key={hovered.group.id}
+          g={hovered.group}
+          rect={hovered.rect}
+          onEnter={cancelClose}
+          onLeave={() => setHover(null, null)}
+        />
+      )}
     </div>
   );
 }
@@ -341,7 +442,17 @@ function PanelRow({ k, v }: { k: string; v: React.ReactNode }) {
   );
 }
 
-function LessonHoverPanel({ g, rect }: { g: Group; rect: DOMRect }) {
+function LessonHoverPanel({
+  g,
+  rect,
+  onEnter,
+  onLeave,
+}: {
+  g: Group;
+  rect: DOMRect;
+  onEnter: () => void;
+  onLeave: () => void;
+}) {
   const W = 280;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - W - 8));
   const below = rect.bottom + 8;
@@ -349,7 +460,9 @@ function LessonHoverPanel({ g, rect }: { g: Group; rect: DOMRect }) {
   return (
     <div
       style={{ position: "fixed", top, left, width: W, zIndex: 80 }}
-      className="rounded-xl border border-border bg-card shadow-2xl p-3 space-y-1.5 pointer-events-none"
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      className="sch-hover-panel rounded-xl border border-border bg-card shadow-2xl p-3 space-y-1.5"
     >
       <div className="flex items-center gap-2 pb-1.5 border-b border-border">
         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: courseColor(g.course) }} />
@@ -362,13 +475,17 @@ function LessonHoverPanel({ g, rect }: { g: Group; rect: DOMRect }) {
       <PanelRow k="Daraja" v={g.level || "—"} />
       <PanelRow k="O'quvchilar" v={<span className="tabular-nums">{g.students}</span>} />
       <PanelRow k="Davri" v={<span className={g.periodExpired ? "text-rose-600" : ""}>{g.period || "—"}</span>} />
-      {/* Panel FAQAT ma'lumot uchun (`pointer-events: none`) — sichqoncha
-          uning ustiga o'tsa blokdan chiqib ketardi va panel yopilardi.
-          Bosiladigan narsalar blokning o'zida: blok → guruh sahifasi,
-          o'qituvchi ismi → uning profili. */}
-      <div className="pt-1 border-t border-border text-[11px] text-muted-foreground">
-        Blokni bosing — guruh sahifasi ochiladi
-      </div>
+      {/* Panel SICHQONCHANI QABUL QILADI. Ilgari unda `pointer-events: none`
+          turardi — sichqoncha ustiga o'tishi bilan blokdan `mouseleave`
+          kelib panel yo'qolardi, ya'ni ichidagi hech narsani bosib
+          bo'lmasdi. Endi ochiq qoladi (yopilish chaqiruvchida
+          kechiktirilgan) va guruh sahifasi shu yerdan ham ochiladi. */}
+      <Link
+        href={`/groups/${g.id}`}
+        className="mt-1 pt-1.5 border-t border-border block text-[11px] font-medium text-primary hover:underline"
+      >
+        Guruh sahifasini ochish →
+      </Link>
     </div>
   );
 }
@@ -446,7 +563,23 @@ function LessonCard({
   );
 }
 
-function GridLayout({ columns, lessons, groupBy, onHover }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy; onHover: HoverFn }) {
+/**
+ * SETKA SICHQONCHA HARAKATIDA QAYTA CHIZILMAYDI.
+ *
+ * Blok ustiga sichqoncha kelishi ota komponentda holatni o'zgartiradi
+ * (`hovered`) va `memo` bo'lmasa har tegishda BUTUN setka — 20 ta xona x 33
+ * ta slot, ya'ni yuz-yuzlab katak — qaytadan chizilardi. Blokning
+ * ko'tarilish animatsiyasi (globals.css: .sch-lesson:hover) shu paytda
+ * boshlanishi kerak edi va o'sha qayta chizish uni yutib yuborardi: effekt
+ * "sakrab" o'tar yoki umuman ko'rinmasdi.
+ *
+ * `memo` ISHLASHI UCHUN proplar barqaror bo'lishi shart: `columns` va
+ * `lessons` allaqachon `useMemo` da, `onHover` esa `useCallback` da.
+ */
+const GridLayout = memo(GridLayoutInner);
+const RowLayout = memo(RowLayoutInner);
+
+function GridLayoutInner({ columns, lessons, groupBy, onHover }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy; onHover: HoverFn }) {
   const { skip, start } = buildMatrices(columns.length, lessons, false);
   const cols = `110px repeat(${columns.length}, minmax(140px, 1fr))`;
   const minWidth = 110 + columns.length * 140;
@@ -480,7 +613,7 @@ function GridLayout({ columns, lessons, groupBy, onHover }: { columns: string[];
   );
 }
 
-function RowLayout({ columns, lessons, groupBy, onHover }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy; onHover: HoverFn }) {
+function RowLayoutInner({ columns, lessons, groupBy, onHover }: { columns: string[]; lessons: Placed[]; groupBy: GroupBy; onHover: HoverFn }) {
   const { skip, start } = buildMatrices(columns.length, lessons, true);
   const cols = `150px repeat(${SCHEDULE_TIME_SLOTS.length}, minmax(140px, 1fr))`;
   const minWidth = 150 + SCHEDULE_TIME_SLOTS.length * 140;

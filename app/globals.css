@@ -9197,7 +9197,14 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0) 60%);
     pointer-events: none;
   }
+  /* `z-index` — ko'tarilgan blok QO'SHNILARI OSTIDA qolmasin.
+     Kataklarning foni shaffof emas va setkada keyin turgan har bir katak
+     oldingisining ustiga chiziladi: z-indexsiz blokning ko'tarilishi ham,
+     soyasi ham qo'shni katak tomonidan kesilardi va effekt deyarli
+     ko'rinmasdi. 1 yetarli — yopishqoq soat ustuni (2) va xona sarlavhasi
+     (3) baribir tepada qoladi. */
   .sch-lesson:hover {
+    z-index: 1;
     transform: translateY(-2px) scale(1.01);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,.25),
@@ -9207,6 +9214,21 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   .sch-lesson .tname { font-size: 13px; font-weight: 500; }
   .sch-lesson .room  { font-size: 11px; opacity: .85; }
   .sch-lesson .meta  { display: flex; gap: 10px; align-items: center; font-size: 11px; opacity: .95; font-variant-numeric: tabular-nums; }
+
+  /* Blok ustiga sichqoncha kelganda chiqadigan ma'lumot paneli
+     (GroupSchedulePage → LessonHoverPanel).
+
+     `transition` EMAS, `animation`: panel har yangi blokda React `key` si
+     bilan QAYTADAN tug'iladi, o'tish esa faqat allaqachon mavjud elementda
+     o'ynaydi — endigina qo'shilgan tugunda u hech qachon ko'rinmasdi va
+     panel shu bois "birdan otilib" chiqardi. */
+  .sch-hover-panel {
+    animation: sch-panel-in .16s cubic-bezier(.16, 1, .3, 1);
+  }
+  @keyframes sch-panel-in {
+    from { opacity: 0; transform: translateY(-6px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+  }
 
   /* ---------- Stat card hover ---------- */
   .stat-card {
@@ -9300,7 +9322,9 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
     background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0) 60%);
     pointer-events: none;
   }
+  /* Ustun ko'rinishidagi bilan bir xil sabab (yuqoridagi izoh). */
   .sch-lesson-row:hover {
+    z-index: 1;
     transform: translateY(-2px);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 12px 24px rgba(0,0,0,.18);
   }

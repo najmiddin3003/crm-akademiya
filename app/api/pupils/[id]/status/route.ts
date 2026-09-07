@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { isPupilStatus, type Pupil } from "@/lib/pupilsData";
 
 // PATCH /api/pupils/:id/status — { status, reason? }
@@ -38,9 +39,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const p = (n: number) => String(n).padStart(2, "0");
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 
+  // Boshqa filialning o'quvchisi bu yerdan o'zgartirilmaydi — qamrov
+  // PATCH /api/pupils/:id dagi bilan bir xil (u yerdagi izohga qarang).
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
   const res = await db.collection("pupils").findOneAndUpdate(
-    { id: pupilId },
+    withBranch({ id: pupilId }, scope),
     { $set: { status, statusChangedAt: today, statusReason: status === "Aktiv" ? "" : reason } },
     { returnDocument: "after" },
   );

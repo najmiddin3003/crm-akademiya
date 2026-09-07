@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { getBranchScope, withBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 import { phoneSearchPattern } from "@/lib/phoneSearch";
 import { studentRowFromPupil } from "@/lib/studentsData";
@@ -76,14 +77,16 @@ export async function GET(req: Request) {
         return { $or: or };
       });
 
-  // Qidiruv FILIAL bo'yicha KESILMAYDI — o'quvchilar ro'yxati umumiy
-  // (sabab app/api/pupils/route.ts dagi GET izohida). Ilgari bu yerda
-  // `withBranch` turardi va u ro'yxat bilan izchil edi; ro'yxat umumiy
-  // bo'lgach, qidiruvni kesib qoldirish faqat chalkashlik tug'dirardi —
-  // ro'yxatda ko'rinadigan o'quvchi qidiruvda topilmasdi.
+  // QIDIRUV HAM FILIAL BO'YICHA KESILADI — ro'yxat bilan bir xil qamrov
+  // (sabab app/api/pupils/route.ts dagi GET izohida). Ikkalasi ajralib
+  // qolsa qidiruv qamrovdagi eng katta teshik bo'lardi: ro'yxatda
+  // ko'rinmaydigan o'quvchi ismini yozib topib olish mumkin edi.
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
   const rows = await db.collection("pupils")
-    .find({ $and: and }, {
+    .find(withBranch({ $and: and }, scope), {
       // Faqat StudentRow uchun kerak bo'lgan maydonlar.
       projection: {
         _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, balance: 1, coin: 1,
