@@ -7,9 +7,8 @@ import SelectField from "@/components/students/fields/SelectField";
 import DateField from "@/components/students/fields/DateField";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useSettingsListNames } from "@/hooks/useSettingsList";
+import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import { useProfilePupil } from "@/hooks/useProfilePupil";
-import { STUDENT_CATEGORIES } from "@/constants";
 import type { Contract } from "@/lib/contracts";
 import type { Pupil } from "@/lib/pupilsData";
 import { invalidateStudents } from "@/hooks/useStudents";
@@ -124,7 +123,6 @@ export default function ShartnomaBiriktirishTabContent({
 }) {
   const { showSuccess, showError } = useToast();
   const { pupilId, pupil, loading } = useProfilePupil(pupilIdProp);
-  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
 
   // Forma qiymati HISOBLANADI, nusxalanmaydi: `base` — bazadagi yozuv,
   // `edits` — foydalanuvchi yozgani. Effekt bilan sinxronlash (setForm)
@@ -147,6 +145,10 @@ export default function ShartnomaBiriktirishTabContent({
     [current, ism, familiya, phone],
   );
   const form = useMemo<FormState>(() => ({ ...base, ...edits }), [base, edits]);
+
+  // O'quvchi kategoriyalari — O'quv bo'limi → Kategoriya (`edu_categories`).
+  // Joriy qiymat ro'yxatda bo'lmasa ham ko'rinsin (hook izohiga qarang).
+  const { names: categoryNames, loading: categoriesLoading } = useEduCategoryNames(form.category);
 
   // Andozalar yuklanmagunicha "Andoza yo'q" deyish mumkin emas — bu javob
   // kelmasdan turib "hech narsa yo'q" deb da'vo qilish bo'lardi.
@@ -246,7 +248,7 @@ export default function ShartnomaBiriktirishTabContent({
               <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" value={form.email ?? ""} onChange={set("email")} />
               <DateField label="Tug'ilgan sanasi" value={form.birthDate ?? ""} onChange={set("birthDate")} />
               <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
-              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} />
+              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
               <SelectField label="O'qish tili" options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
               <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
               {/* Marketing so'rovnomasi va Teglar — bazada erkin matn

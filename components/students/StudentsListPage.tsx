@@ -12,8 +12,7 @@ import SmsModal from "@/components/orders/SmsModal";
 import StudentStatusModal from "@/components/students/StudentStatusModal";
 import { useToast } from "@/components/ui/Toast";
 import { usePupils } from "@/components/orders/PupilsContext";
-import { useSettingsListNames } from "@/hooks/useSettingsList";
-import { STUDENT_CATEGORIES } from "@/constants";
+import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import {
   applyStudentFilters,
   enrichStudents,
@@ -128,9 +127,6 @@ function FilterSelect({ label, value, onChange, options }: {
 }
 
 export default function StudentsListPage() {
-  // O'quvchi kategoriyalari — Sozlamalar → Sotuv va marketing → Kategoriya.
-  // Sozlamada ro'yxat bo'sh bo'lsa constants'dagi standart uchlik ishlatiladi.
-  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
   // O'quvchilar — bazadan (PupilsProvider, app/(app)/students-list/layout.tsx).
   // Guruhlar ham bazadan: o'quvchining kursi/o'qituvchisi/dars kunlari u a'zo
   // bo'lgan guruhdan kelib chiqadi (lib/studentsData.ts → enrichStudents).
@@ -175,6 +171,9 @@ export default function StudentsListPage() {
   );
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
+  // O'quvchi kategoriyalari — O'quv bo'limi → Kategoriya (`edu_categories`).
+  // Filtrda ham tanlangan qiymat ro'yxatdan tushib qolmasin (hook izohi).
+  const { names: categoryNames } = useEduCategoryNames(filters.category);
   // Filtrlar sahifaning YUQORISIDA, jadval ustida turadi (referensdagidek)
   // va odatda ochiq. Ilgari bu o'ng tomondan chiqadigan panel edi: jadval
   // filtr bilan bir vaqtda ko'rinmasdi, ya'ni har o'zgarishdan keyin

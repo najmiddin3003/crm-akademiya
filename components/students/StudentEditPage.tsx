@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
-import { useSettingsListNames } from "@/hooks/useSettingsList";
-import { STUDENT_CATEGORIES } from "@/constants";
+import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import type { Pupil } from "@/lib/pupilsData";
 import type { Order } from "@/lib/ordersData";
 import type { TransactionEntry } from "@/lib/transactionEntries";
@@ -89,9 +88,6 @@ const TABS: { key: string; label: string }[] = [
 ];
 
 export default function StudentEditPage({ order, initialTab }: { order: Order; initialTab?: string }) {
-  // O'quvchi kategoriyalari — Sozlamalar → Sotuv va marketing → Kategoriya.
-  // Sozlamada ro'yxat bo'sh bo'lsa constants'dagi standart uchlik ishlatiladi.
-  const { names: categoryNames } = useSettingsListNames("student-categories", STUDENT_CATEGORIES);
   const [ism, ...rest] = order.name.trim().split(/\s+/);
   const familiya = rest.join(" ");
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "+998";
@@ -244,6 +240,11 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   }, [order.id, fillForm]);
 
   const set = (k: string) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // O'quvchi kategoriyalari — O'quv bo'limi → Kategoriya (`edu_categories`).
+  // Joriy qiymat ro'yxatda bo'lmasa ham ko'rinsin (hook izohiga qarang):
+  // aks holda eski kategoriyali yozuv saqlanganda u jimgina o'chib ketardi.
+  const { names: categoryNames, loading: categoriesLoading } = useEduCategoryNames(form.category);
 
   const handleSave = async () => {
     if (!pupil) return;
@@ -415,7 +416,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
-              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} />
+              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
               <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
             </div>
 

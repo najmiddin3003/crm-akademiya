@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import type { Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
@@ -30,6 +31,73 @@ export async function GET() {
     .toArray();
   const orders: Order[] = rows.map(({ _id, ...rest }) => rest as Order);
   return NextResponse.json({ ok: true, orders });
+}
+
+/**
+ * Lidning MANBASI (`orders.source`) — o'quvchining yozuvidan.
+ *
+ * MUAMMO: bu maydon `buildOrderFromValues` da "Sayt" deb QATTIQ yozilgan edi.
+ * O'lchandi: bazadagi 98 ta lidning HAMMASIDA `source: "Sayt"`. Ya'ni "Yangi
+ * o'quvchi qo'shish" formasidagi MAJBURIY "Manba" tanlovi ("Tavsiya",
+ * "Instagram", …) hech qayerga yetib bormasdi — Telegramdagi lid xabari ham
+ * doim "📣 Manba: Sayt" deb chiqardi (foydalanuvchi shikoyati, 08.09.2026).
+ *
+ * "Manba" LIDDA emas, O'QUVCHIDA saqlanadi (`pupils.source`) — lid formasida
+ * bunday maydon umuman yo'q. Shu bois u shu yerda o'qiladi. KLIENTDAN
+ * OLINMAYDI: yon oyna ham, Kanbandagi forma ham uni yubormaydi, va o'quvchining
+ * yozuvi baribir yagona ishonchli manba.
+ *
+ * TOPISH TARTIBI — avval TO'LIQ ISM, keyin telefon:
+ *   • yon oyna (AddOrderModal) `studentName` ni o'quvchining O'Z yozuvidan
+ *     yasaydi (ism + " " + familiya, chetlari kesilgan), ya'ni satr aynan
+ *     mos keladi;
+ *   • telefon esa faqat ZAXIRA: aka-uka/opa-singillar bitta ota-ona raqamini
+ *     bo'lishadi, shuning uchun u birinchi bo'lsa boshqa bolaning manbasini
+ *     olib qo'yishi mumkin edi.
+ *
+ * Topilmasa BO'SH satr — o'quvchi hali qo'shilmagan bo'lishi mumkin, va
+ * noma'lum manbani to'qib yozgandan ko'ra bo'sh qoldirilgani to'g'ri
+ * (leadMessage bo'sh `source` da "Manba" qatorini umuman chizmaydi).
+ *
+ * TAKRORLANGAN O'QUVCHILAR. Bazada bir xil ism VA bir xil raqamli ikkita
+ * yozuv uchraydi (o'lchandi: #14927 va #16792 — "Shahboz Rustamjanov",
+ * ikkalasi ham "95 214 03 33"; birinchisida `source: ""`, ikkinchisida
+ * "Boshqa"). Oddiy `findOne` birinchisini olib, manbani BO'SH deb
+ * qaytarardi. Shu bois qidiruvga IKKI shart qo'shilgan:
+ *   • `source` bo'sh bo'lmagan yozuvlargina hisobga olinadi — bo'sh
+ *     yozuv baribir foyda bermaydi, u faqat to'g'ri javobni to'sadi;
+ *   • `id` bo'yicha teskari tartib — dublikatlarda ENG YANGI yozuv
+ *     ustun: moderator hozir kiritgani o'sha.
+ *
+ * INDEKS SHART EMAS: bu so'rov faqat lid yaratilganda (kuniga bir necha marta,
+ * odam tezligida) bajariladi, `pupils` esa ~7 ming yozuv (o'lchandi: ~190 ms).
+ */
+async function pupilSourceFor(db: Db, studentName: string, phone: string): Promise<string> {
+  const name = (studentName || "").trim();
+  const tel = (phone || "").trim();
+  const col = db.collection("pupils");
+
+  const sourceOf = async (match: Record<string, unknown>): Promise<string> => {
+    const row = await col.findOne(
+      { $and: [match, { source: { $nin: ["", null] } }] },
+      { projection: { _id: 0, source: 1 }, sort: { id: -1 } },
+    );
+    return typeof row?.source === "string" ? row.source.trim() : "";
+  };
+
+  if (name) {
+    const byName = await sourceOf({
+      $expr: {
+        $eq: [
+          { $trim: { input: { $concat: [{ $ifNull: ["$firstName", ""] }, " ", { $ifNull: ["$lastName", ""] }] } } },
+          name,
+        ],
+      },
+    });
+    if (byName) return byName;
+  }
+
+  return tel ? sourceOf({ phone: tel }) : "";
 }
 
 // POST /api/orders — AddOrderModal'dan "Saqlash" bosilganda yangi buyurtma
@@ -70,9 +138,12 @@ export async function POST(req: Request) {
   // esa faqat u tanlanmaganda qo'yiladigan sukut.
   const author = body.moderator?.trim() ? body.moderator.trim() : await currentAuthorName();
 
+  // Lid manbasi — o'quvchining yozuvidan (yuqoridagi izoh).
+  const source = await pupilSourceFor(db, body.studentName, body.phone);
+
   // Lid QAYSI filialda qo'shilgani — navbardagi tanlovdan.
   const order = {
-    ...buildOrderFromValues(nextId, { ...body, moderator: author }),
+    ...buildOrderFromValues(nextId, { ...body, moderator: author, source }),
     branchId: branchForInsert(scope),
   };
   // insertOne mutates its argument to add _id — insert a copy so the

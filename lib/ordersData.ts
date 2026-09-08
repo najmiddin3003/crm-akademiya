@@ -331,6 +331,13 @@ export interface NewOrderValues {
    */
   moderator?: string;
   stage?: OrderStageKey;
+  /**
+   * Lidning manbasi. Lid formasida bunday maydon YO'Q — "Manba" o'quvchida
+   * saqlanadi ("Yangi o'quvchi qo'shish" formasidagi majburiy tanlov,
+   * `pupils.source`). Qiymatni SERVER qo'yadi: app/api/orders/route.ts
+   * lidga tegishli o'quvchini topib, uning manbasini shu yerga uzatadi.
+   */
+  source?: string;
 }
 
 function firstLessonFromValues(values: NewOrderValues): string {
@@ -365,7 +372,13 @@ export function buildOrderFromValues(nextId: number, values: NewOrderValues): Or
     dayPattern: "Juft kunlar",
     taskStatus: "Topshiriq yo'q",
     status: "Yangi",
-    source: "Sayt",
+    // ILGARI: `source: "Sayt"` — qattiq yozilgan edi va o'lchandi: bazadagi
+    // 98 ta lidning HAMMASIDA shu qiymat turardi. Ya'ni o'quvchi qo'shishda
+    // tanlangan "Manba" ("Tavsiya", "Instagram", …) hech qayerga yetib
+    // bormasdi — Telegramdagi lid xabari ham doim "Manba: Sayt" deb chiqardi.
+    // Endi qiymat o'quvchining yozuvidan keladi (route izohiga qarang);
+    // o'quvchi topilmasa BO'SH — noma'lum manbani to'qib yozgandan yaxshiroq.
+    source: values.source?.trim() || "",
     subsource: "",
     fromBranch: "",
     toBranch: "",

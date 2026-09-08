@@ -17,7 +17,7 @@ import DateRangePicker from "@/components/ui/DateRangePicker";
 import DateField from "@/components/ui/DateField";
 import { useBranches } from "@/hooks/useBranches";
 import { useTeachers } from "@/hooks/useTeachers";
-import { STUDENT_CATEGORIES } from "@/constants";
+import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import type { Group } from "@/lib/groups";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import {
@@ -60,7 +60,7 @@ import PersonLink from "@/components/shared/PersonDirectory";
 //   Manba        — ORDER_SOURCES (hozircha qo'lda; README'ga qarang)
 //   Filiallar    — /api/branches
 //   Kun          — hafta kunlari
-//   Kategoriya   — STUDENT_CATEGORIES
+//   Kategoriya   — /api/edu-categories (O'quv bo'limi → Kategoriya)
 
 type Layout = "list" | "kanban";
 
@@ -96,6 +96,8 @@ export default function OrdersPage() {
   const { showSuccess, showError } = useToast();
   const [layout, setLayout] = useState<Layout>(searchParams.get("layout") === "kanban" ? "kanban" : "list");
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
+  // Kategoriya ro'yxati O'quv bo'limi → Kategoriya'dan (hooks/useEduCategories.ts).
+  const { names: categoryNames } = useEduCategoryNames(filters.category);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -626,7 +628,7 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Kategoriya</option>
-              {STUDENT_CATEGORIES.map((c) => (
+              {categoryNames.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
