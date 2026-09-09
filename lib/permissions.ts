@@ -74,6 +74,8 @@ interface RawTop {
   label: string;
   href?: string;
   menu?: { items?: RawItem[]; columns?: { items: RawItem[] }[] };
+  /** Faqat adminga ochiq bo'lim — ruxsatlar daraxtiga TUSHMAYDI. */
+  adminOnly?: boolean;
 }
 
 /** "/imtihon?tab=uzbmb" → "/imtihon" */
@@ -82,6 +84,11 @@ function stripQuery(href: string): string {
 }
 
 export const PERMISSION_GROUPS: PermissionGroup[] = (SIDEBAR_ITEMS as RawTop[])
+  // "Faqat admin" bo'limlari daraxtga UMUMAN kirmaydi. Kirsa — ularni
+  // moderator roliga belgilab qo'yish mumkin bo'lardi va "faqat admin"
+  // degan va'da rollar oynasidan buzilardi. Adminlik boshqa o'lchov
+  // (`users.role`), lib/adminOnly.ts ga qarang.
+  .filter((top) => !top.adminOnly)
   .map((top) => {
     const flat = top.menu?.items ?? top.menu?.columns?.flatMap((c) => c.items) ?? [];
     // Menyu elementlari BIRINCHI: "Sozlamalar" ning o'z href'i menyudagi

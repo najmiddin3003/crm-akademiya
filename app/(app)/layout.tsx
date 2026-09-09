@@ -42,7 +42,13 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
   // uzatiladi — alohida so'rov ham, "avval noto'g'ri ism ko'rinib, keyin
   // to'g'rilanishi" ham bo'lmaydi. Parol/sessiya kabi maydonlar berilmaydi.
   return (
-    <AppShell permissions={user.permissions} user={{ fullName: user.fullName, phone: user.phone }}>
+    <AppShell
+      permissions={user.permissions}
+      user={{ fullName: user.fullName, phone: user.phone }}
+      // Sidebar'dagi `adminOnly` bo'limlar uchun. Bu FAQAT ko'rinish —
+      // sahifaning o'zi ham qaytadan tekshiradi (lib/adminOnly.ts).
+      isAdmin={user.role === "admin"}
+    >
       {children}
     </AppShell>
   );

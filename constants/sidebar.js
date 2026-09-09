@@ -357,4 +357,24 @@ export const SIDEBAR_ITEMS = [
       ],
     },
   },
+  // VAQTINCHA turadigan bo'lim — faqat admin ko'radi.
+  //
+  // `adminOnly` bayrog'i IKKI joyda o'qiladi va ikkalasi ham kerak:
+  //   components/shared/Sidebar.tsx — admin bo'lmaganga umuman chizmaydi;
+  //   lib/permissions.ts            — Boshqaruv → Rollar daraxtiga
+  //                                   TUSHIRMAYDI (aks holda bu bo'limni
+  //                                   moderatorga belgilab qo'yish mumkin
+  //                                   bo'lardi, holbuki u faqat adminniki).
+  //
+  // Haqiqiy to'siq — sahifaning o'zida (app/(app)/vaqtinchalik/page.tsx).
+  // Nima uchun kerakligi ham o'sha faylda yozilgan; kerak bo'lmay qolsa shu
+  // bandni va o'sha modulni o'chirish kifoya.
+  {
+    key: "temp",
+    icon: "i-zap",
+    label: "Vaqtinchalik tugma",
+    href: "/vaqtinchalik",
+    mobileHref: "/vaqtinchalik",
+    adminOnly: true,
+  },
 ];

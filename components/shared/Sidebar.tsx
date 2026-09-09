@@ -57,6 +57,14 @@ interface SidebarItem {
   menu?: SidebarMenu;
   /** Vaqtincha olib turilgan bo'lim — constants/sidebar.js dagi izohga qarang. */
   hidden?: boolean;
+  /**
+   * Faqat admin ko'radigan bo'lim (`users.role === "admin"`).
+   *
+   * Ruxsatlar daraxti bilan ifodalab bo'lmaydi: u yerda "cheklov yo'q"
+   * (`permissions === null`) HAMMA narsa ochiq degani, ya'ni ro'yxati
+   * sozlanmagan rol bunday bo'limni ham ko'raverardi. lib/adminOnly.ts.
+   */
+  adminOnly?: boolean;
 }
 
 // `hidden` shu YAGONA joyda kesiladi — kompyuter menyusi ham, mobil menyu
@@ -166,6 +174,8 @@ const IMPLEMENTED_ROUTES = new Set([
   "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
   "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
   "/settings-profile", "/settings-security",
+  // Vaqtinchalik tugma (faqat admin)
+  "/vaqtinchalik",
 ]);
 
 export interface SidebarProps {
@@ -176,12 +186,22 @@ export interface SidebarProps {
    * `null` = cheklov yo'q.
    */
   permissions?: string[] | null;
+  /** `users.role === "admin"` — `adminOnly` bo'limlar shu bayroqqa qarab chiziladi. */
+  isAdmin?: boolean;
 }
 
-export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null, isAdmin = false }: SidebarProps) {
   // Xodim ko'ra oladigan bo'limlar. Bu FAQAT ko'rinish: haqiqiy to'siq
-  // app/(app)/layout.tsx da, server tomonda.
-  const items = useMemo(() => filterByPermissions(ITEMS, permissions), [permissions]);
+  // app/(app)/layout.tsx da (va `adminOnly` bo'limlar uchun sahifaning
+  // o'zida), server tomonda.
+  //
+  // `adminOnly` ruxsat filtridan ALOHIDA kesiladi: u ruxsatlar daraxtida
+  // yo'q (lib/permissions.ts uni ataylab tushirmaydi), ya'ni cheklovsiz
+  // rol uchun `filterByPermissions` uni o'tkazib yuborardi.
+  const items = useMemo(
+    () => filterByPermissions(ITEMS.filter((i) => !i.adminOnly || isAdmin), permissions),
+    [permissions, isAdmin],
+  );
   const [openKey, setOpenKey] = useState<string | null>(null);
   // Bir menyudan ikkinchisiga o'tishda fade/translate animatsiyasini o'chirish
   // uchun. Aks holda eski panel so'nib turganda yangisi BOSHQA balandlikda
