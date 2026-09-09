@@ -211,7 +211,10 @@ async function sectionScreen(
 
     case CB.kids: {
       const names = await loadPupilNames(db, user.links.map((l) => l.pupilId));
-      return { html: V.kidsView(), keyboard: kidsMenu(user.links, names, user.activePupilId) };
+      return {
+        html: V.kidsView(user.links.length),
+        keyboard: kidsMenu(user.links, names, user.activePupilId),
+      };
     }
 
     default:
@@ -280,6 +283,23 @@ async function handleContact(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
   // Telefon tugmasi kirish maydonining ustidan olib tashlanadi — endi
   // u keraksiz va chalg'itadi.
   await dropReplyKeyboard(cfg, chatId, "✅ Raqam qabul qilindi.");
+
+  // BIR NECHTA o'quvchi topilsa — avval TANLATILADI.
+  //
+  // Ilgari ro'yxatdagi birinchisi (eng kichik id) jimgina ochilardi:
+  // ikki farzandli ota-ona o'zi so'ramagan bolaning davomatini ko'rib,
+  // ikkinchisi botga umuman kirmagan deb o'ylashi mumkin edi.
+  // "Farzandni almashtirish" tugmasi esa menyuning eng pastida,
+  // ko'zga tashlanmasdi. Belgi (✅) ATAYLAB qo'yilmaydi — hali hech
+  // narsa tanlanmagan.
+  if (user.links.length > 1) {
+    const names = await loadPupilNames(db, user.links.map((l) => l.pupilId));
+    await showScreen(db, cfg, chatId, undefined, {
+      html: V.kidsView(user.links.length, true),
+      keyboard: kidsMenu(user.links, names, null),
+    });
+    return;
+  }
 
   const pupil = await loadPupil(db, user.activePupilId);
   if (!pupil) {

@@ -139,14 +139,21 @@ export function attendanceNav(months: string[], current: string, monthLabel: (m:
 /** Sozlamalar — har bir xabar turi yonida joriy holati ko'rinadi. */
 export function settingsMenu(user: StudentBotUser): InlineKeyboard {
   const on = (k: NotifyKind) => (user.notify?.[k] ?? true) ? "🔔" : "🔕";
-  return {
-    inline_keyboard: [
-      [{ text: `${on("attendance")} Davomat xabarlari`, callback_data: "set:attendance" }],
-      [{ text: `${on("payment")} To'lov xabarlari`, callback_data: "set:payment" }],
-      [{ text: "🚪 Chiqish (bog'lanishni uzish)", callback_data: CB.logout }],
-      [{ text: "⬅️ Asosiy menyu", callback_data: CB.home }],
-    ],
-  };
+  const rows: InlineButton[][] = [
+    [{ text: `${on("attendance")} Davomat xabarlari`, callback_data: "set:attendance" }],
+    [{ text: `${on("payment")} To'lov xabarlari`, callback_data: "set:payment" }],
+  ];
+
+  // Almashtirish ASOSIY menyuda ham bor. Bu yerda TAKRORLANADI, chunki
+  // odam "boshqa farzandimni ko'ray" deganda avval sozlamalarga
+  // qaraydi — u yerda topolmasa tugma umuman yo'q deb o'ylardi.
+  if (user.links.length > 1) {
+    rows.push([{ text: "👨‍👩‍👧 Farzandni almashtirish", callback_data: CB.kids }]);
+  }
+
+  rows.push([{ text: "🚪 Chiqish (bog'lanishni uzish)", callback_data: CB.logout }]);
+  rows.push([{ text: "⬅️ Asosiy menyu", callback_data: CB.home }]);
+  return { inline_keyboard: rows };
 }
 
 export function logoutConfirm(): InlineKeyboard {
@@ -159,7 +166,16 @@ export function logoutConfirm(): InlineKeyboard {
 }
 
 /** Farzand tanlash — ota-onaga bir nechta bola bog'langanda. */
-export function kidsMenu(links: { pupilId: number }[], names: Map<number, string>, activeId: number): InlineKeyboard {
+/**
+ * Farzandlar ro'yxati. `activeId` null bo'lsa hech biri ✅ bilan
+ * belgilanmaydi — BIRINCHI tanlovda hali hech narsa tanlanmagan va
+ * tayyor belgi "tanlab bo'lingan" degan yolg'on taassurot berardi.
+ */
+export function kidsMenu(
+  links: { pupilId: number }[],
+  names: Map<number, string>,
+  activeId: number | null,
+): InlineKeyboard {
   const rows = links.map((l) => [
     {
       text: `${l.pupilId === activeId ? "✅ " : ""}${names.get(l.pupilId) ?? `O'quvchi #${l.pupilId}`}`,
