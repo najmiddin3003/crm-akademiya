@@ -421,8 +421,8 @@ export function settingsView(user: StudentBotUser, pupilName: string): string {
     `Bog'langan raqam: <code>${esc(formatPhone(user.phone))}</code>`,
     `Ulangan: <i>${esc(user.linkedAt)}</i>`,
     "",
-    "Avtomatik xabarlarni pastdagi tugmalar bilan yoqing yoki o'chiring.",
-    "🔔 — yoqilgan, 🔕 — o'chirilgan.",
+    "🔔 Davomat va to'lov xabarlari <b>doim yoqilgan</b>.",
+    "<i>Dars qoldirsangiz yoki to'lov qabul qilinsa — darhol xabar keladi.</i>",
   ].join("\n");
 }
 

@@ -47,7 +47,6 @@ import {
   setActivePupil,
   setAwaiting,
   setMenuMessage,
-  toggleNotify,
   touchBotUser,
   unlinkBotUser,
   type StudentBotUser,
@@ -517,22 +516,21 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
     return;
   }
 
-  // Xabar sozlamalarini yoqish/o'chirish — ekran o'sha joyida qayta chiziladi.
-  const kind = notifyArg(data);
-  if (kind !== null) {
-    const on = await toggleNotify(db, chatId, kind);
+  // ESKI sozlamalar xabaridagi yoqish/o'chirish tugmasi bosilsa.
+  // Tugmalar olib tashlangan, ammo yozishmadagi eski xabar hali
+  // bosiladi — javobsiz qoldirilsa odam tugma buzuq deb o'ylardi.
+  if (notifyArg(data) !== null) {
     const fresh = await getBotUser(db, chatId);
-    const pupil = fresh ? await loadPupil(db, fresh.activePupilId) : null;
-    await answerStudent(cfg, cq.id, on ? "Yoqildi" : "O'chirildi");
-    if (fresh && pupil) {
+    const active = fresh ? await loadPupil(db, fresh.activePupilId) : null;
+    await answerStudent(cfg, cq.id, "Bu xabarlar doim yoqilgan");
+    if (fresh && active) {
       await showScreen(db, cfg, chatId, messageId, {
-        html: V.settingsView(fresh, pupilFullName(pupil)),
+        html: V.settingsView(fresh, pupilFullName(active)),
         keyboard: settingsMenu(fresh),
       });
     }
     return;
   }
-
   const pupil = await loadPupil(db, user.activePupilId);
   if (!pupil) {
     await unlinkBotUser(db, chatId);

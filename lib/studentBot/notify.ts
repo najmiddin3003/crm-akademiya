@@ -24,12 +24,17 @@ import * as V from "@/lib/studentBot/views";
 //    hech narsa yuborilmaydi — bot ishga tushgan zahoti minglab
 //    o'quvchiga xabar yog'ilib ketmasin (lib/studentBot/config.ts).
 
-/** Bitta o'quvchiga bog'langan HAMMA chatga yuboradi (o'zi, onasi, otasi). */
+/**
+ * Bitta o'quvchiga bog'langan HAMMA chatga yuboradi (o'zi, onasi, otasi).
+ *
+ * `kind` faqat jurnal yozuvi uchun: xabarlarni o'chirib qo'yish
+ * imkoniyati yo'q, ya'ni filtrlashga ishlatilmaydi.
+ */
 async function fanOut(db: Db, pupilId: number, kind: NotifyKind, html: string): Promise<number> {
   const cfg = loadStudentBotConfig();
   if (!isStudentBotReady(cfg)) return 0;
 
-  const chats = await chatsForPupil(db, pupilId, kind);
+  const chats = await chatsForPupil(db, pupilId);
   let sent = 0;
   for (const chatId of chats) {
     const res = await sendToStudent(cfg, chatId, html);

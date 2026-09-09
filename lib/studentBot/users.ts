@@ -16,7 +16,14 @@ import type { MatchRole, PupilMatch } from "@/lib/studentBot/phone";
 
 export const BOT_USERS = "student_bot_users";
 
-/** Avtomatik xabar turlari — Sozlamalarda alohida-alohida o'chiriladi. */
+/**
+ * Avtomatik xabar turi — faqat JURNALDAGI belgi uchun.
+ *
+ * Ilgari bu o'quvchi o'chirib qo'ya oladigan sozlama edi. Endi
+ * davomat va to'lov xabarlari DOIM yoqilgan (markaz qarori): xabar
+ * o'chirib qo'yilsa o'quvchi qarzdorligini yoki dars qoldirganini
+ * bilmay qolardi, markaz esa uni ogohlantirgan deb hisoblardi.
+ */
 export type NotifyKind = "attendance" | "payment";
 
 export interface BotUserLink {
@@ -52,7 +59,6 @@ export interface StudentBotUser {
    * matn e'tiborsiz qoldiriladi (bot suhbatdosh emas).
    */
   awaiting?: "support" | null;
-  notify: Record<NotifyKind, boolean>;
   /**
    * Bot bloklangan (Telegram 403 qaytardi).
    *
@@ -63,8 +69,6 @@ export interface StudentBotUser {
   blocked?: boolean;
 }
 
-const DEFAULT_NOTIFY: Record<NotifyKind, boolean> = { attendance: true, payment: true };
-
 export async function getBotUser(db: Db, chatId: number): Promise<StudentBotUser | null> {
   const row = await db.collection(BOT_USERS).findOne({ chatId }, { projection: { _id: 0 } });
   return (row as StudentBotUser | null) ?? null;
@@ -73,11 +77,10 @@ export async function getBotUser(db: Db, chatId: number): Promise<StudentBotUser
 /**
  * Bog'lanishni yozadi (yoki mavjudini yangilaydi).
  *
- * `notify` va `activePupilId` ATAYLAB `$setOnInsert` da: odam raqamini
- * qayta yuborsa (masalan yangi farzand qo'shilgani uchun) uning
- * o'chirib qo'ygan xabar sozlamalari va tanlagan farzandi saqlanib
- * qolsin. `links` esa har safar qayta hisoblanadi — bazada farzand
- * qo'shilgan yoki olib tashlangan bo'lishi mumkin.
+ * `activePupilId` ATAYLAB saqlanadi: odam raqamini qayta yuborsa
+ * (masalan yangi farzand qo'shilgani uchun) tanlagan farzandi
+ * o'zgarmasin. `links` esa har safar qayta hisoblanadi — bazada
+ * farzand qo'shilgan yoki olib tashlangan bo'lishi mumkin.
  */
 export async function linkBotUser(
   db: Db,
@@ -110,7 +113,7 @@ export async function linkBotUser(
         blocked: false,
         awaiting: null,
       },
-      $setOnInsert: { chatId, linkedAt: now, notify: DEFAULT_NOTIFY },
+      $setOnInsert: { chatId, linkedAt: now },
     },
     { upsert: true },
   );
@@ -142,13 +145,6 @@ export async function setMenuMessage(db: Db, chatId: number, messageId: number):
   await db.collection(BOT_USERS).updateOne({ chatId }, { $set: { menuMessageId: messageId } });
 }
 
-/** Xabar turini yoqadi/o'chiradi va YANGI holatni qaytaradi. */
-export async function toggleNotify(db: Db, chatId: number, kind: NotifyKind): Promise<boolean> {
-  const user = await getBotUser(db, chatId);
-  const next = !(user?.notify?.[kind] ?? true);
-  await db.collection(BOT_USERS).updateOne({ chatId }, { $set: { [`notify.${kind}`]: next } });
-  return next;
-}
 
 export async function touchBotUser(db: Db, chatId: number): Promise<void> {
   await db.collection(BOT_USERS).updateOne({ chatId }, { $set: { lastSeenAt: uzStamp() } });
@@ -170,11 +166,18 @@ export async function markBlocked(db: Db, chatId: number): Promise<void> {
  * "aniq o'chirilmagan" degani, `true` emas. Aks holda modul yangilangan
  * kunidan oldin ulangan hamma jim qolardi.
  */
-export async function chatsForPupil(db: Db, pupilId: number, kind: NotifyKind): Promise<number[]> {
+/**
+ * Shu o'quvchiga bog'langan HAMMA chat (o'zi, onasi, otasi).
+ *
+ * Xabar turiga qarab FILTRLANMAYDI — davomat va to'lov xabarlari
+ * doim yoqilgan. Bloklaganlar chiqarib tashlanadi: ularga urinish
+ * bekorga so'rov.
+ */
+export async function chatsForPupil(db: Db, pupilId: number): Promise<number[]> {
   const rows = await db
     .collection(BOT_USERS)
     .find(
-      { "links.pupilId": pupilId, blocked: { $ne: true }, [`notify.${kind}`]: { $ne: false } },
+      { "links.pupilId": pupilId, blocked: { $ne: true } },
       { projection: { _id: 0, chatId: 1 } },
     )
     .toArray();

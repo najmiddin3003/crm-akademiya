@@ -44,7 +44,14 @@ export function kidArg(data: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** "set:attendance" -> "attendance"; mos kelmasa null. */
+/**
+ * "set:attendance" -> "attendance"; mos kelmasa null.
+ *
+ * Tugmalar OLIB TASHLANGAN, lekin bu ajratkich QOLDIRILDI: yozishmada
+ * eski sozlamalar xabari osilib turgan bo'lishi mumkin va uning
+ * tugmasi hali bosiladi. Shusiz bosgan odam sababsiz asosiy menyuga
+ * tashlanardi.
+ */
 export function notifyArg(data: string): NotifyKind | null {
   if (data === "set:attendance") return "attendance";
   if (data === "set:payment") return "payment";
@@ -137,12 +144,16 @@ export function attendanceNav(months: string[], current: string, monthLabel: (m:
 }
 
 /** Sozlamalar — har bir xabar turi yonida joriy holati ko'rinadi. */
+/**
+ * Sozlamalar menyusi.
+ *
+ * XABARLARNI YOQISH/O'CHIRISH TUGMALARI YO'Q — davomat va to'lov
+ * xabarlari doim yoqilgan (markaz qarori). O'chirib qo'yilsa o'quvchi
+ * qarzdorligini yoki dars qoldirganini bilmay qolardi, markaz esa uni
+ * ogohlantirgan deb hisoblardi.
+ */
 export function settingsMenu(user: StudentBotUser): InlineKeyboard {
-  const on = (k: NotifyKind) => (user.notify?.[k] ?? true) ? "🔔" : "🔕";
-  const rows: InlineButton[][] = [
-    [{ text: `${on("attendance")} Davomat xabarlari`, callback_data: "set:attendance" }],
-    [{ text: `${on("payment")} To'lov xabarlari`, callback_data: "set:payment" }],
-  ];
+  const rows: InlineButton[][] = [];
 
   // Almashtirish ASOSIY menyuda ham bor. Bu yerda TAKRORLANADI, chunki
   // odam "boshqa farzandimni ko'ray" deganda avval sozlamalarga
