@@ -434,15 +434,15 @@ export function settingsView(user: StudentBotUser, pupilName: string): string {
 export function kidsView(count = 0, first = false): string {
   if (first) {
     return [
-      "👨‍👩‍👧 <b>Kimning ma'lumotini ko'rasiz?</b>",
+      "🔄 <b>Kimning ma'lumotini ko'rasiz?</b>",
       "",
       `Raqamingizga <b>${count}</b> ta o'quvchi bog'langan. Birini tanlang.`,
       "",
-      "<i>Keyinroq ⚙️ Sozlamalar orqali istalgan vaqtda almashtirasiz.</i>",
+      "<i>Keyinroq \"🔄 Boshqa profil\" tugmasi orqali istalgan vaqtda almashtirasiz.</i>",
     ].join("\n");
   }
   return [
-    "👨‍👩‍👧 <b>Farzandni tanlang</b>",
+    "🔄 <b>Profilni tanlang</b>",
     "",
     "Sizning raqamingizga bir nechta o'quvchi bog'langan.",
     "Tanlangan o'quvchining ma'lumotlari ko'rsatiladi.",

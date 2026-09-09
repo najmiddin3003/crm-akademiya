@@ -60,7 +60,7 @@ import { uzDateIso } from "@/lib/uzTime";
 // HECH QACHON OLMAYDI. Har bir so'rovda `chatId` (uni Telegram beradi,
 // klient to'qib bo'lmaydi) bo'yicha `student_bot_users` dan bog'lanish
 // o'qiladi va faqat o'sha ro'yxatdagi o'quvchi ko'rsatiladi. Yagona
-// istisno — "Farzandni almashtirish": u ham `setActivePupil` ichida
+// istisno — "Boshqa profil": u ham `setActivePupil` ichida
 // bog'lanish ro'yxatiga tekshiriladi, ya'ni begona id yozib boshqa
 // o'quvchining ma'lumotini ochib bo'lmaydi.
 
@@ -497,7 +497,7 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
     return;
   }
 
-  // Farzandni almashtirish — id RO'YXATGA tekshiriladi (setActivePupil).
+  // Boshqa profilga o'tish — id RO'YXATGA tekshiriladi (setActivePupil).
   const kid = kidArg(data);
   if (kid !== null) {
     const ok = await setActivePupil(db, chatId, kid);

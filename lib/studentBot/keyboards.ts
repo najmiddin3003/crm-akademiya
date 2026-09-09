@@ -88,7 +88,14 @@ export function contactKeyboard(): ReplyKeyboard {
   };
 }
 
-/** Asosiy menyu. `hasSupport` va `multiKid` bo'yicha qatorlar qo'shiladi. */
+/**
+ * Asosiy menyu.
+ *
+ * `multiKid` — raqamga IKKI YOKI UNDAN KO'P o'quvchi bog'langanmi.
+ * Bitta bo'lsa "Boshqa profil" tugmasi UMUMAN chizilmaydi: bosgan
+ * odam bitta qatorli ro'yxatni ko'rib, nimadir yo'qolgandek his
+ * qilardi.
+ */
 export function mainMenu(opts: { hasSupport: boolean; multiKid: boolean }): InlineKeyboard {
   const rows: InlineButton[][] = [
     [
@@ -125,7 +132,7 @@ export function mainMenu(opts: { hasSupport: boolean; multiKid: boolean }): Inli
   rows.push(last);
 
   if (opts.multiKid) {
-    rows.push([{ text: "👨‍👩‍👧 Farzandni almashtirish", callback_data: CB.kids }]);
+    rows.push([{ text: "🔄 Boshqa profil", callback_data: CB.kids }]);
   }
   return { inline_keyboard: rows };
 }
@@ -166,11 +173,14 @@ export function attendanceNav(months: string[], current: string, monthLabel: (m:
 export function settingsMenu(user: StudentBotUser): InlineKeyboard {
   const rows: InlineButton[][] = [];
 
-  // Almashtirish ASOSIY menyuda ham bor. Bu yerda TAKRORLANADI, chunki
-  // odam "boshqa farzandimni ko'ray" deganda avval sozlamalarga
-  // qaraydi — u yerda topolmasa tugma umuman yo'q deb o'ylardi.
+  // Asosiy menyuda ham bor. Bu yerda TAKRORLANADI, chunki odam
+  // "boshqa profilimni ko'ray" deganda avval sozlamalarga qaraydi —
+  // u yerda topolmasa tugma umuman yo'q deb o'ylardi.
+  //
+  // Shart asosiy menyudagi bilan BIR XIL: bittagina o'quvchi bo'lsa
+  // tugma ikkala joyda ham yo'q.
   if (user.links.length > 1) {
-    rows.push([{ text: "👨‍👩‍👧 Farzandni almashtirish", callback_data: CB.kids }]);
+    rows.push([{ text: "🔄 Boshqa profil", callback_data: CB.kids }]);
   }
 
   rows.push([{ text: "🚪 Chiqish (bog'lanishni uzish)", callback_data: CB.logout }]);

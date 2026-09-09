@@ -7,7 +7,7 @@ import type { MatchRole, PupilMatch } from "@/lib/studentBot/phone";
 // Bitta hujjat = bitta TELEGRAM SUHBATI (chat). Ota-ona bir nechta
 // farzandini ko'rishi mumkin, shu bois bog'lanish RO'YXAT — `links`.
 // Ekranda bir vaqtda bittasi ko'rinadi (`activePupilId`), menyudagi
-// "Farzandni almashtirish" uni o'zgartiradi.
+// "Boshqa profil" uni o'zgartiradi.
 //
 // BU KOLLEKSIYA PAROL SAQLAMAYDI va o'quvchi hujjatiga TEGMAYDI:
 // `pupils` faqat O'QILADI. Ya'ni bot bilan bog'liq hech narsa CRM
