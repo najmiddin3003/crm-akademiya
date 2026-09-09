@@ -31,7 +31,13 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 //
 // `/ariza` — ish arizasi anketasi: havolasi tashqi nomzodlarga yuboriladi,
 // shuning uchun u ham ochiq (Boshqaruv → Ishga qabul (CV)).
-const PUBLIC_PATHS = ["/", "/activate", "/ariza"];
+//
+// `/oquvchi` — o'quvchining Telegram ichida ochiladigan sahifasi. CRM
+// sessiyasi bilan emas, bot tokeni bilan imzolangan `initData` orqali
+// himoyalangan (lib/studentBot/webapp.ts). Sahifaning o'zi bo'sh qobiq:
+// barcha ma'lumot /api/student-web/me dan keladi va imzo o'sha yerda
+// tekshiriladi.
+const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([

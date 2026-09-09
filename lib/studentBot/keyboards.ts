@@ -1,4 +1,5 @@
 import type { InlineButton, InlineKeyboard, ReplyKeyboard } from "@/lib/telegramApi";
+import { studentWebUrl } from "@/lib/studentBot/config";
 import { plainEmoji } from "@/lib/studentBot/premiumEmoji";
 import type { NotifyKind, StudentBotUser } from "@/lib/studentBot/users";
 
@@ -107,6 +108,16 @@ export function mainMenu(opts: { hasSupport: boolean; multiKid: boolean }): Inli
       { text: "📰 Yangiliklar", callback_data: CB.news },
     ],
   ];
+
+  // SHAXSIY KABINET — Telegram ichida ochiladigan to'liq sahifa.
+  //
+  // Faqat BOG'LANGAN odam ko'radi: bu menyu telefon tasdiqlangandan
+  // keyingina chiziladi. Sahifaning o'zi ham bog'lanishni qayta
+  // tekshiradi — tugmani ko'rish ruxsat degani emas.
+  //
+  // Eng tepada, ataylab: qolgan tugmalar bitta bo'limni ko'rsatadi,
+  // bu esa hammasini birdan ochadi.
+  rows.unshift([{ text: "🌐 Shaxsiy kabinet", web_app: { url: studentWebUrl() } }]);
 
   const last: InlineButton[] = [];
   if (opts.hasSupport) last.push({ text: "✍️ Ustozga savol", callback_data: CB.ask });

@@ -52,6 +52,22 @@ export function loadStudentBotConfig(): StudentBotConfig {
   };
 }
 
+/**
+ * O'QUVCHI KABINETINING manzili (Telegram Web App).
+ *
+ * `lib/invite.ts` dagi bilan BIR XIL sabab: `APP_BASE_URL` Vercel'da
+ * texnik domenga sozlangan, sayt esa www.tizimli24.uz da. Telegram
+ * Web App manzili HTTPS bo'lishi SHART, aks holda tugma umuman
+ * ochilmaydi.
+ *
+ * Bo'sh qaytmaydi — shu bois tugma har doim ishlaydi, hatto
+ * PUBLIC_SITE_URL sozlanmagan bo'lsa ham.
+ */
+export function studentWebUrl(): string {
+  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || "https://www.tizimli24.uz";
+  return `${base}/oquvchi`;
+}
+
 /** Bot yozishga tayyormi (token bor va o'chirilmagan). */
 export function isStudentBotReady(cfg: StudentBotConfig): boolean {
   return Boolean(cfg.enabled && cfg.token);

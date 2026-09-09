@@ -38,6 +38,14 @@ export interface InlineButton {
   text: string;
   callback_data?: string;
   url?: string;
+  /**
+   * Telegram ICHIDA ochiladigan sahifa (Web App).
+   *
+   * `url` dan FARQI: brauzerga chiqarmaydi va sahifaga imzolangan
+   * `initData` beradi — sahifa kim ekanini shundan biladi
+   * (lib/studentBot/webapp.ts). Manzil HTTPS bo'lishi shart.
+   */
+  web_app?: { url: string };
 }
 
 export interface InlineKeyboard {

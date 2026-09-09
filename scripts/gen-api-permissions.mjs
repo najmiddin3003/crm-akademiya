@@ -40,6 +40,11 @@ const PUBLIC = [
   // (TELEGRAM_STUDENT_WEBHOOK_SECRET, app/api/telegram/student/route.ts).
   // Bu qatorsiz Telegram'ning har bir so'rovi 401 bo'ladi.
   "/api/telegram/student",
+  // O'QUVCHI WEB SAHIFASI. Chaqiruvchi — o'quvchi, uning CRM sessiyasi
+  // YO'Q va bo'lmasligi ham kerak. Himoya boshqacha: Telegram `initData`
+  // imzosi bot tokeni bilan tekshiriladi va o'quvchi bog'lanish
+  // yozuvidan topiladi (lib/studentBot/webapp.ts). Marshrut faqat O'QIYDI.
+  "/api/student-web/me",
 ];
 
 /**
