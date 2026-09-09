@@ -2,31 +2,37 @@
 //
 // Telegram HTML rejimida ular shunday yoziladi:
 //
-//   <tg-emoji emoji-id="5368324170671202286">👋</tg-emoji>
+//   <tg-emoji emoji-id="5472055112702629499">👋</tg-emoji>
 //
-// Ichidagi oddiy emoji — ZAXIRA: premium obunasi yo'q odamning
-// telefonida aynan o'sha ko'rinadi. Shu bois har bir maxsus emojiga
-// ma'no jihatdan MOS oddiy emoji qo'yiladi, tasodifiy belgi emas.
+// Ichidagi oddiy emoji — ZAXIRA: uni ko'ra olmaydigan odam aynan
+// o'shani ko'radi. Shu bois har bir ID ga ma'no jihatdan MOS oddiy
+// emoji qo'yiladi, tasodifiy belgi emas.
 //
-// TELEGRAM CHEKLOVI (bu modul mavjudligining sababi): botlar maxsus
-// emoji yubora olishi uchun bot egasi Fragment'da qo'shimcha username
-// SOTIB OLGAN bo'lishi kerak. Oddiy botga bu huquq berilmagan va
-// Telegram butun xabarni rad etadi. Shuning uchun:
+// KIM YUBORA OLADI (Bot API hujjatidagi aniq shart):
 //
-//   • ID'lar KODGA YOZILMAYDI, muhit o'zgaruvchisidan o'qiladi —
-//     sozlanmagan bo'lsa bot oddiy emoji bilan ishlayveradi;
-//   • yuborish muvaffaqiyatsiz bo'lsa lib/studentBot/api.ts xabarni
-//     maxsus emojisiz QAYTA yuboradi (`stripCustomEmoji`), ya'ni
-//     noto'g'ri ID tufayli o'quvchi bo'sh ekran ko'rib qolmaydi.
+//   "Custom emoji entities can only be used by bots that purchased
+//    additional usernames on Fragment or in the messages directly sent
+//    by the bot to private, group and supergroup chats if the owner of
+//    the bot has a Telegram Premium subscription."
 //
-// SOZLASH. TELEGRAM_STUDENT_PREMIUM_EMOJI ga "kalit=id" juftliklari
-// vergul bilan yoziladi:
+// Ya'ni IKKI yo'l bor va bizga IKKINCHISI to'g'ri keladi: o'quvchilar
+// boti xabarni to'g'ridan-to'g'ri SHAXSIY chatga yuboradi, demak bot
+// egasida Telegram Premium bo'lsa yetadi — Fragment'dan username sotib
+// olish shart emas.
 //
-//   wave=5368324170671202286, calendar=5411139534557245448, card=...
+// Obuna tugab qolsa yoki ID eskirsa Telegram BUTUN xabarni rad etadi.
+// Shuning uchun lib/studentBot/api.ts xabarni maxsus emojisiz QAYTA
+// yuboradi (`stripCustomEmoji`) — o'quvchi hech qachon bo'sh ekran
+// ko'rmaydi.
 //
-// ID'ni qayerdan olish: kerakli premium emojini o'z botingizga (yoki
-// @RawDataBot ga) yuboring — javobdagi `entities[].custom_emoji_id`
-// aynan shu raqam.
+// SOZLASH (TELEGRAM_STUDENT_PREMIUM_EMOJI):
+//
+//   bo'sh          — oddiy emoji (sukut bo'yicha)
+//   on             — quyidagi tayyor ID'lar
+//   wave=123,...   — tayyor ID'lar ustidan o'z ID'ilaringiz
+//
+// O'z ID'ingizni olish: premium emojini @RawDataBot ga yuboring —
+// javobdagi `entities[].custom_emoji_id` aynan shu raqam.
 
 /** Matnlarda ishlatiladigan ikonka o'rinlari. */
 export type EmojiSlot =
@@ -39,16 +45,46 @@ export type EmojiSlot =
   | "lock"
   | "phone";
 
-/** Premium ID sozlanmaganda (yoki obunasi yo'q odamda) ko'rinadigan emoji. */
+/**
+ * Maxsus emoji ko'rinmaganda ishlatiladigan oddiy emoji.
+ *
+ * `calendar` uchun 📅 EMAS 📆, `card` uchun 💳 EMAS 💰 — chunki 📅 va
+ * 💳 ning animatsion varianti Telegramning ommaviy to'plamlarida yo'q.
+ * Ikkalasi bir xil bo'lishi SHART: aks holda premiumli odam bir
+ * ikonkani, premiumsizi butunlay boshqasini ko'rardi.
+ */
 const FALLBACK: Record<EmojiSlot, string> = {
   wave: "👋",
-  calendar: "📅",
-  card: "💳",
+  calendar: "📆",
+  card: "💰",
   chart: "📊",
   memo: "📝",
   point: "👇",
   lock: "🔐",
   phone: "📱",
+};
+
+/**
+ * Telegramning ommaviy "RestrictedEmoji" to'plamidagi ID'lar.
+ *
+ * NEGA KODDA: bu to'plam Telegramning o'zi yuritadigan, hammaga ochiq
+ * to'plam — uni o'rnatish yoki sotib olish shart emas, ID'lari esa
+ * barqaror. Shu bois sozlash bitta so'zga ("on") qisqaradi.
+ *
+ * Tekshirish (ID hali tirikmi):
+ *   getCustomEmojiStickers?custom_emoji_ids=["<id>"]
+ * Bo'sh javob — ID o'lgan; o'shanda bot oddiy emojiga qaytadi, ya'ni
+ * bu nosozlik o'quvchiga ko'rinmaydi.
+ */
+const DEFAULT_IDS: Record<EmojiSlot, string> = {
+  wave: "5472055112702629499",
+  calendar: "5431897022456145283",
+  card: "5375296873982604963",
+  chart: "5431577498364158238",
+  memo: "5334882760735598374",
+  point: "5470177992950946662",
+  lock: "5472308992514464048",
+  phone: "5407025283456835913",
 };
 
 type SlotIds = Partial<Record<EmojiSlot, string>>;
@@ -58,11 +94,15 @@ type SlotIds = Partial<Record<EmojiSlot, string>>;
 // o'zi yangilanadi.
 let cache: { raw: string; ids: SlotIds } | null = null;
 
-function slotIds(): SlotIds {
-  const raw = (process.env.TELEGRAM_STUDENT_PREMIUM_EMOJI || "").trim();
-  if (cache && cache.raw === raw) return cache.ids;
+function parseIds(raw: string): SlotIds {
+  const flag = raw.toLowerCase();
+  if (flag === "" || flag === "off" || flag === "false" || flag === "0" || flag === "no") return {};
+  if (flag === "on" || flag === "true" || flag === "1" || flag === "yes") return { ...DEFAULT_IDS };
 
-  const ids: SlotIds = {};
+  // Aniq ID berilsa ham TAYYORLARIDAN boshlanadi: bitta o'rin
+  // yozilgani uchun qolgan yettitasi oddiy emojiga tushib qolmasin —
+  // ro'yxatning yarmi jonli, yarmi jonsiz bo'lgani xunuk ko'rinadi.
+  const ids: SlotIds = { ...DEFAULT_IDS };
   for (const part of raw.split(/[,;\n]/)) {
     // ID FAQAT RAQAM bo'lishi tekshiriladi. Bu ikki ishni qiladi:
     // xatoni erta tutadi va atributga begona HTML tushishining oldini
@@ -72,7 +112,13 @@ function slotIds(): SlotIds {
     const slot = m[1].toLowerCase() as EmojiSlot;
     if (slot in FALLBACK) ids[slot] = m[2];
   }
+  return ids;
+}
 
+function slotIds(): SlotIds {
+  const raw = (process.env.TELEGRAM_STUDENT_PREMIUM_EMOJI || "").trim();
+  if (cache && cache.raw === raw) return cache.ids;
+  const ids = parseIds(raw);
   cache = { raw, ids };
   return ids;
 }
@@ -96,9 +142,9 @@ export function hasCustomEmoji(html: string): boolean {
 /**
  * Maxsus emojini ZAXIRA emojiga almashtiradi.
  *
- * Telegram maxsus emojini rad etganda (huquq yo'q, ID eskirgan) xabar
- * shu ko'rinishda qayta yuboriladi — matn to'liq saqlanadi, faqat
- * ikonkalar oddiy bo'lib qoladi.
+ * Telegram maxsus emojini rad etganda (Premium tugagan, ID eskirgan)
+ * xabar shu ko'rinishda qayta yuboriladi — matn to'liq saqlanadi,
+ * faqat ikonkalar oddiy bo'lib qoladi.
  */
 export function stripCustomEmoji(html: string): string {
   return html.replace(/<tg-emoji\b[^>]*>([\s\S]*?)<\/tg-emoji>/gi, "$1");
@@ -107,4 +153,9 @@ export function stripCustomEmoji(html: string): string {
 /** Sozlangan o'rinlar ro'yxati — diagnostika uchun (ID'lar qaytarilmaydi). */
 export function premiumEmojiSlots(): EmojiSlot[] {
   return Object.keys(slotIds()) as EmojiSlot[];
+}
+
+/** Diagnostika ID'ni Telegramda tekshirsin uchun. */
+export function premiumEmojiIds(): SlotIds {
+  return { ...slotIds() };
 }

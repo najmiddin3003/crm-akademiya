@@ -39,10 +39,11 @@ function isBlocked(code: number | undefined, desc: string): boolean {
 /**
  * MAXSUS EMOJI xabarni yiqitdimi.
  *
- * Telegram botga maxsus (premium) emoji yuborishga ruxsat berishi uchun
- * bot egasi Fragment'da username sotib olgan bo'lishi kerak. Ruxsat
- * bo'lmasa yoki ID eskirgan bo'lsa BUTUN xabar rad etiladi — ya'ni
- * o'quvchi xush kelibsiz matnini umuman ko'rmay qolardi.
+ * Telegram maxsus (premium) emojini bot egasida Telegram Premium
+ * obunasi bo'lgandagina qabul qiladi (yoki bot Fragment'da username
+ * sotib olgan bo'lsa). Obuna tugasa yoki ID eskirsa BUTUN xabar rad
+ * etiladi — ya'ni o'quvchi xush kelibsiz matnini umuman ko'rmay
+ * qolardi. Batafsil: lib/studentBot/premiumEmoji.ts.
  *
  * Xatoning aniq matni Telegram tomonida bir necha xil ("can't parse
  * entities", "CUSTOM_EMOJI_INVALID", oddiy "Bad Request"), shu bois

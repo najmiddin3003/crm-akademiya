@@ -34,7 +34,7 @@ const { loadStudentBotConfig, studentBotIssues, isStudentBotReady } = await impo
 const { findPupilsByPhone, phoneKey, formatPhone } = await import("@/lib/studentBot/phone");
 const D = await import("@/lib/studentBot/data");
 const V = await import("@/lib/studentBot/views");
-const { premiumEmojiSlots } = await import("@/lib/studentBot/premiumEmoji");
+const { premiumEmojiIds } = await import("@/lib/studentBot/premiumEmoji");
 const { getDb } = await import("@/lib/mongodb");
 
 const argv = process.argv.slice(2);
@@ -52,10 +52,11 @@ const issues = studentBotIssues(cfg);
 if (issues.length === 0) line("  Hammasi joyida.");
 for (const i of issues) line(`  • ${i}`);
 line(`  Bot yozishga tayyor: ${isStudentBotReady(cfg) ? "HA" : "YO'Q"}`);
-const premium = premiumEmojiSlots();
+const premiumIds = premiumEmojiIds();
+const premiumSlots = Object.keys(premiumIds);
 line(
-  premium.length > 0
-    ? `  Premium emoji: ${premium.join(", ")} (${premium.length} ta)`
+  premiumSlots.length > 0
+    ? `  Premium emoji: ${premiumSlots.join(", ")} (${premiumSlots.length} ta)`
     : "  Premium emoji: sozlanmagan — oddiy emoji ishlatiladi",
 );
 
@@ -67,6 +68,23 @@ if (!cfg.token) {
   const call = async (m) => (await fetch(`https://api.telegram.org/bot${cfg.token}/${m}`)).json();
   const me = await call("getMe");
   line(`  bot: ${me.ok ? `@${me.result.username}` : `XATO — ${me.description}`}`);
+  // Maxsus emoji ID'lari hali tirikmi. O'lgan ID butun xabarni
+  // yiqitadi (bot oddiy emojiga qaytadi, lekin buni bilgan ma'qul).
+  if (premiumSlots.length > 0) {
+    const ids = Object.values(premiumIds);
+    const r = await fetch(`https://api.telegram.org/bot${cfg.token}/getCustomEmojiStickers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ custom_emoji_ids: ids }),
+    }).then((x) => x.json());
+    if (!r.ok) {
+      line(`  maxsus emoji: TEKSHIRIB BO'LMADI — ${r.description}`);
+    } else {
+      const alive = new Set(r.result.map((x) => x.custom_emoji_id));
+      const dead = Object.entries(premiumIds).filter(([, id]) => !alive.has(id)).map(([k]) => k);
+      line(`  maxsus emoji: ${ids.length - dead.length}/${ids.length} tirik${dead.length ? ` — O'LGAN: ${dead.join(", ")}` : ""}`);
+    }
+  }
   const wh = await call("getWebhookInfo");
   if (wh.ok) {
     line(`  webhook: ${wh.result.url || "(o'rnatilmagan)"}`);
