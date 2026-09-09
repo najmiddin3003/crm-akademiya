@@ -138,11 +138,24 @@ export async function answerStudent(cfg: StudentBotConfig, callbackId: string, t
  * faqat yashiradi, o'chirmaydi. Bog'langan odamga bu tugma keraksiz va
  * chalg'ituvchi.
  */
-export async function dropReplyKeyboard(cfg: StudentBotConfig, chatId: number, text: string): Promise<void> {
-  await callTelegram(cfg.token, "sendMessage", {
+export async function dropReplyKeyboard(cfg: StudentBotConfig, chatId: number): Promise<void> {
+  // Telegramda oddiy klaviaturani XABAR YUBORMASDAN olib bo'lmaydi:
+  // `remove_keyboard` ni biror xabar OLIB KELISHI kerak. Ilgari bu
+  // "✅ Raqam qabul qilindi" edi va yozishmada keraksiz qator bo'lib
+  // qolardi — asosiy ekran o'zi hammasini aytadi.
+  //
+  // Shu bois xabar yuboriladi va DARHOL o'chiriladi. Bir lahzaga
+  // ko'rinib ketishi mumkin, bu Telegramning cheklovi.
+  const data = await callTelegram(cfg.token, "sendMessage", {
     chat_id: chatId,
-    text,
-    parse_mode: "HTML",
+    text: "⌛",
     reply_markup: { remove_keyboard: true },
+  });
+  if (!data.ok || !data.result) return;
+
+  // O'chirilmasa ham falokat emas — shu bois natija tekshirilmaydi.
+  await callTelegram(cfg.token, "deleteMessage", {
+    chat_id: chatId,
+    message_id: data.result.message_id,
   });
 }

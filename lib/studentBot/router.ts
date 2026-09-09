@@ -327,7 +327,7 @@ async function linkAndOpen(
 
   // Telefon tugmasi kirish maydonining ustidan olib tashlanadi — endi
   // u keraksiz va chalg'itadi.
-  await dropReplyKeyboard(cfg, chatId, "✅ Raqam qabul qilindi.");
+  await dropReplyKeyboard(cfg, chatId);
 
   // BIR NECHTA o'quvchi topilsa — avval TANLATILADI.
   //

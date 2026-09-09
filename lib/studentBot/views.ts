@@ -156,24 +156,38 @@ export function foreignContact(): string {
 
 // ── Asosiy menyu ────────────────────────────────────────────────────
 
+/**
+ * Asosiy ekran.
+ *
+ * IKONKASIZ va qatorlar QISQA — markaz shu ko'rinishni tanladi.
+ * Ostida 9 ta tugma turadi, ularning har birida o'z emojisi bor;
+ * matnda ham emoji bo'lsa ekran ola-quroq bo'lib, o'quvchi qayerga
+ * qarashini bilmay qolardi.
+ *
+ * Filial nomi bazadan XOM holda olinadi (`branches.name`) — u yerda
+ * qanday yozilgan bo'lsa shundayligicha.
+ */
 export function homeView(
   pupil: Pupil,
   opts: { branch: string; groups: Group[]; paid: number; role: "student" | "parent" },
 ): string {
-  const groupNames = opts.groups.map((g) => g.name || String(g.id));
-  const lines = [
-    `👤 <b>${esc(pupilFullName(pupil))}</b>`,
-  ];
-  if (opts.role === "parent") lines.push("<i>Ota-ona sifatida ko'rilmoqda</i>");
-  lines.push("");
+  const lines = [`<b>${esc(pupilFullName(pupil))}</b>`, ""];
 
-  if (opts.branch) lines.push(`🏫 Filial: ${esc(opts.branch)}`);
-  if (groupNames.length > 0) lines.push(`👥 Guruh: ${esc(groupNames.join(", "))}`);
+  // Rol va filial BITTA qatorda. Ota-onaga "Ota-ona" emas, "Ota-ona
+  // sifatida" deyiladi: ism ustida FARZANDINIKI turibdi, qisqartirilsa
+  // o'quvchining o'zi ota-ona deb tushunilardi.
+  const who = opts.role === "parent" ? "Ota-ona sifatida" : "O'quvchi";
+  lines.push([who, opts.branch ? esc(opts.branch) : ""].filter(Boolean).join(" · "));
+
+  const groupNames = opts.groups.map((g) => g.name || String(g.id));
+  if (groupNames.length > 0) lines.push(`<b>Guruh:</b> ${esc(groupNames.join(", "))}`);
+
   const status = pupilStatusOf(pupil);
-  if (status !== "Aktiv") lines.push(`⏸ Holat: <b>${esc(status)}</b>`);
-  lines.push(`💰 Jami to'langan: <b>${fmtUZS(opts.paid)} so'm</b>`);
+  if (status !== "Aktiv") lines.push(`<b>Holat:</b> ${esc(status)}`);
+
+  lines.push(`<b>Jami to'lov:</b> ${fmtUZS(opts.paid)} so'm`);
   lines.push("");
-  lines.push("Kerakli bo'limni tanlang:");
+  lines.push("Kerakli bo'limni tanlang.");
   return lines.join("\n");
 }
 
