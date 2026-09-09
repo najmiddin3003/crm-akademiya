@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { groupLabel } from "@/lib/groups";
 import { pupilFullName, pupilStatusOf } from "@/lib/pupilsData";
 import {
   attendanceMonths,
@@ -80,17 +81,19 @@ export async function POST(req: Request) {
       birthDate: pupil.birthDate ?? "",
       phone: pupil.phone ?? "",
       coin: pupil.coin ?? 0,
-      balance: pupil.balance ?? 0,
-      paid: payments.liveTotal + payments.archiveTotal,
-      liveTotal: payments.liveTotal,
-      archiveTotal: payments.archiveTotal,
+      // `balance` VA ARXIV BERILMAYDI. `pupils.balance` ni hech bir API
+      // yangilamaydi (o'lik maydon) — u har doim 0 chiqib, o'quvchida
+      // "to'lovim yo'qolibdi" degan savol tug'dirardi. Arxiv esa
+      // markaz qaroriga ko'ra hozircha ko'rsatilmaydi
+      // (lib/studentBot/data.ts dagi izoh).
+      paid: payments.liveTotal,
       // Ro'yxatdagi boshqa farzandlar — "kimni ko'ryapman" yozuvi uchun.
       // Faqat ID va ism: ular ham shu odamga bog'langan o'quvchilar.
       kids: user.links.map((l) => ({ id: l.pupilId, name: names.get(l.pupilId) ?? `#${l.pupilId}` })),
     },
     groups: groups.map((g) => ({
       id: g.id,
-      name: g.name || String(g.id),
+      name: groupLabel(g),
       course: g.course ?? "",
       level: g.level ?? "",
       day: g.day ?? "",
@@ -99,7 +102,9 @@ export async function POST(req: Request) {
       room: g.room ?? "",
       eduType: g.eduType ?? "",
     })),
-    nextLesson: next ? { groupName: next.group.name || String(next.group.id), iso: next.iso, inDays: next.inDays, time: next.group.time ?? "" } : null,
+    nextLesson: next
+      ? { groupName: groupLabel(next.group), iso: next.iso, inDays: next.inDays, time: next.group.time ?? "" }
+      : null,
     attendance: { months, marks },
     payments: { rows: payments.rows, totalCount: payments.totalCount },
     tasks: tasks.map((t) => ({

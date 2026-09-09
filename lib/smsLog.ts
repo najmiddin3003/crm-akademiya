@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import { nowTime, todayIso } from "@/lib/transactionLog";
 import type { SmsKind, SmsPurpose } from "@/lib/smsMessages";
 import type { SendSmsResult } from "@/lib/eskiz";
+import type { SmsChannel } from "@/lib/smsMessages";
 
 // YUBORILGAN SMS LARNING YAGONA JURNALI (`sms_messages`).
 //
@@ -19,6 +20,8 @@ const REDACTED = "[matn saqlanmadi — ichida bir martalik kod bor]";
 
 export interface LogSmsInput {
   recipientName: string;
+  /** Qaysi kanal. Berilmasa "sms" — eski chaqiruvlar o'zgarmasin. */
+  channel?: SmsChannel;
   /** Eskiz formatidagi raqam (998XXXXXXXXX). */
   phone: string;
   text: string;
@@ -82,6 +85,7 @@ export async function logSms(db: Db, input: LogSmsInput): Promise<void> {
       kind: input.kind,
       purpose: input.purpose,
       phone: input.phone,
+      channel: input.channel ?? "sms",
       ...(input.cashboxId !== undefined ? { cashboxId: input.cashboxId } : {}),
       ...(input.cashboxName ? { cashboxName: input.cashboxName } : {}),
       providerMessageId: extractMessageId(input.result.raw),

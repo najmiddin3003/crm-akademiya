@@ -140,7 +140,24 @@ export interface PaymentsView {
  * Arxivda esa `pupilId` bor (ko'chirishda telefon orqali topilgan) va
  * o'sha ishlatiladi.
  */
-export async function loadPayments(db: Db, pupil: Pupil, limit = 20): Promise<PaymentsView> {
+/**
+ * ARXIV (edutizim davri) SUKUT BO'YICHA QO'SHILMAYDI.
+ *
+ * Markaz qarori (10.09.2026): o'quvchiga hozircha faqat jonli
+ * to'lovlar ko'rsatiladi. Eski tizimdan ko'chirilgan yozuvlar
+ * o'quvchida savol tug'dirardi va CRM'ning balans hisobiga ham
+ * kirmaydi.
+ *
+ * Kod O'CHIRILMADI, faqat o'chirib qo'yildi: `includeArchive: true`
+ * bilan qaytarish bitta argument. "Hozircha" degan so'z aynan
+ * shuni bildiradi.
+ */
+export async function loadPayments(
+  db: Db,
+  pupil: Pupil,
+  limit = 20,
+  includeArchive = false,
+): Promise<PaymentsView> {
   const name = pupilFullName(pupil).trim();
   const liveMatch = {
     studentName: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
@@ -156,12 +173,14 @@ export async function loadPayments(db: Db, pupil: Pupil, limit = 20): Promise<Pa
           .limit(limit)
           .toArray() as unknown as Promise<TransactionEntry[]>)
       : Promise.resolve([] as TransactionEntry[]),
-    db
-      .collection(LEGACY_COLLECTION)
-      .find({ pupilId: pupil.id }, { projection: { _id: 0, date: 1, amount: 1, paymentType: 1, status: 1 } })
-      .sort({ date: -1 })
-      .limit(limit)
-      .toArray() as unknown as Promise<LegacyEntry[]>,
+    includeArchive
+      ? (db
+          .collection(LEGACY_COLLECTION)
+          .find({ pupilId: pupil.id }, { projection: { _id: 0, date: 1, amount: 1, paymentType: 1, status: 1 } })
+          .sort({ date: -1 })
+          .limit(limit)
+          .toArray() as unknown as Promise<LegacyEntry[]>)
+      : Promise.resolve([] as LegacyEntry[]),
     // YIG'INDI ALOHIDA HISOBLANADI — yuqoridagi ro'yxatdan EMAS.
     //
     // NIMA NOTO'G'RI BO'LARDI: ro'yxat `limit` bilan kesiladi, ya'ni
@@ -181,10 +200,12 @@ export async function loadPayments(db: Db, pupil: Pupil, limit = 20): Promise<Pa
           { $group: { _id: null, total: { $sum: notCancelled }, n: { $sum: 1 } } },
         ]).toArray()
       : Promise.resolve([]),
-    db.collection(LEGACY_COLLECTION).aggregate([
-      { $match: { pupilId: pupil.id } },
-      { $group: { _id: null, total: { $sum: notCancelled }, n: { $sum: 1 } } },
-    ]).toArray(),
+    includeArchive
+      ? db.collection(LEGACY_COLLECTION).aggregate([
+          { $match: { pupilId: pupil.id } },
+          { $group: { _id: null, total: { $sum: notCancelled }, n: { $sum: 1 } } },
+        ]).toArray()
+      : Promise.resolve([]),
   ]);
 
   const rows: PaymentRow[] = [

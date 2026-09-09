@@ -292,6 +292,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         amount,
         method: methodLabel,
         date: entryDate,
+        // Xabarlar jurnali uchun — SMS yozuvidagi bilan bir xil maydonlar.
+        pupilName: (studentName || "").trim(),
+        moderator: current.moderator || "",
+        cashboxId,
+        cashboxName: current.name || "",
       }),
     );
   }

@@ -18,10 +18,8 @@ export interface StudentProfile {
   birthDate: string;
   phone: string;
   coin: number;
-  balance: number;
+  /** Jonli to'lovlar yig'indisi. Arxiv va `pupils.balance` berilmaydi — marshrutdagi izoh. */
   paid: number;
-  liveTotal: number;
-  archiveTotal: number;
   kids: { id: number; name: string }[];
 }
 

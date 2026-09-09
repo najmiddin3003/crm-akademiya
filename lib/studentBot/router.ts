@@ -141,7 +141,8 @@ async function homeScreen(db: Db, cfg: StudentBotConfig, user: StudentBotUser, p
     html: V.homeView(pupil, {
       branch,
       groups,
-      paid: payments.liveTotal + payments.archiveTotal,
+      // Arxiv (eski tizim) QO'SHILMAYDI — lib/studentBot/data.ts dagi izoh.
+      paid: payments.liveTotal,
       role: link?.role ?? "student",
     }),
     keyboard: mainMenu({

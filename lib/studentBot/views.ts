@@ -1,5 +1,5 @@
 import type { AttendanceMark, AttendanceStatus } from "@/lib/attendance";
-import type { Group } from "@/lib/groups";
+import { groupLabel, type Group } from "@/lib/groups";
 import type { GroupTask } from "@/lib/groupTasks";
 import { MONTHS, WEEKDAYS_FULL } from "@/lib/i18n";
 import type { NewsItem } from "@/lib/news";
@@ -179,8 +179,15 @@ export function homeView(
   const who = opts.role === "parent" ? "Ota-ona sifatida" : "O'quvchi";
   lines.push([who, opts.branch ? esc(opts.branch) : ""].filter(Boolean).join(" · "));
 
-  const groupNames = opts.groups.map((g) => g.name || String(g.id));
-  if (groupNames.length > 0) lines.push(`<b>Guruh:</b> ${esc(groupNames.join(", "))}`);
+  // GURUH NOMI + USTOZ. Ilgari bu yerda faqat `g.name` turardi va u
+  // bazada raqam ("13") — o'quvchi "Guruh: 13" dan hech narsa
+  // tushunmasdi. Ustoz esa faqat "Dars jadvali" ichida ko'rinardi,
+  // holbuki "kim o'qitadi" birinchi so'raladigan savol.
+  if (opts.groups.length > 0) {
+    lines.push(`<b>Guruh:</b> ${esc(opts.groups.map(groupLabel).join(", "))}`);
+    const teachers = [...new Set(opts.groups.map((g) => (g.teacher || "").trim()).filter(Boolean))];
+    if (teachers.length > 0) lines.push(`<b>Ustoz:</b> ${esc(teachers.join(", "))}`);
+  }
 
   const status = pupilStatusOf(pupil);
   if (status !== "Aktiv") lines.push(`<b>Holat:</b> ${esc(status)}`);
@@ -236,14 +243,11 @@ export function paymentsView(pupil: Pupil, view: PaymentsView): string {
     return lines.join("\n");
   }
 
-  lines.push(`Jami to'langan: <b>${fmtUZS(view.liveTotal + view.archiveTotal)} so'm</b>`);
-  if (view.archiveTotal > 0 && view.liveTotal > 0) {
-    lines.push(`<i>shundan arxiv (eski tizim): ${fmtUZS(view.archiveTotal)} so'm</i>`);
-  }
+  lines.push(`Jami to'langan: <b>${fmtUZS(view.liveTotal)} so'm</b>`);
   lines.push("");
 
   for (const r of view.rows) {
-    const tail = [r.method && esc(r.method), r.archive && "arxiv", r.cancelled && "BEKOR QILINGAN"]
+    const tail = [r.method && esc(r.method), r.cancelled && "BEKOR QILINGAN"]
       .filter(Boolean)
       .join(", ");
     const amount = r.cancelled ? `<s>${fmtUZS(r.amount)}</s>` : `<b>${fmtUZS(r.amount)}</b>`;
@@ -273,8 +277,8 @@ export function scheduleView(pupil: Pupil, groups: Group[], next: NextLesson | n
   }
 
   for (const g of groups) {
-    lines.push(`<b>${esc(g.name || String(g.id))}</b>`);
-    if (g.course) lines.push(`  Kurs: ${esc(g.course)}${g.level ? ` (${esc(g.level)})` : ""}`);
+    lines.push(`<b>${esc(groupLabel(g))}</b>`);
+    if (g.level) lines.push(`  Bosqich: ${esc(g.level)}`);
     if (g.teacher) lines.push(`  Ustoz: ${esc(g.teacher)}`);
     if (g.day) lines.push(`  Kunlar: ${esc(g.day)}`);
     if (g.time) lines.push(`  Vaqt: <b>${esc(g.time)}</b>`);
@@ -286,7 +290,7 @@ export function scheduleView(pupil: Pupil, groups: Group[], next: NextLesson | n
     const when =
       next.inDays === 0 ? "bugun" : next.inDays === 1 ? "ertaga" : `${next.inDays} kundan keyin`;
     lines.push(
-      `⏰ Keyingi dars (jadval bo'yicha): <b>${dmy(next.iso)}</b>, ${weekdayName(next.weekday)}` +
+      `⏰ Keyingi dars — ${esc(groupLabel(next.group))} (jadval bo'yicha): <b>${dmy(next.iso)}</b>, ${weekdayName(next.weekday)}` +
         `${next.group.time ? `, ${esc(next.group.time)}` : ""} — ${when}`,
     );
     lines.push("");
@@ -512,6 +516,29 @@ export function attendancePush(
   if (opts.groupName) lines.push(`👥 ${esc(opts.groupName)}`);
   if (opts.grade) lines.push(`⭐ Baho: <b>${opts.grade}</b>`);
   if (opts.status === "sababli" && opts.reason) lines.push(`📝 Sabab: ${esc(opts.reason)}`);
+  return lines.join("\n");
+}
+
+/**
+ * GURUHGA QO'SHILGANDA — o'quvchiga (va ota-onaga) darhol xabar.
+ *
+ * Jadval to'liq YOZILADI, "jadvalni ko'ring" deb havola berilmaydi:
+ * xabar ko'pincha ish/maktab orasida o'qiladi va odam o'sha zahoti
+ * qachon kelishini bilishi kerak.
+ */
+export function groupAddedPush(pupil: Pupil, group: Group): string {
+  const lines = [
+    "🎓 <b>Yangi guruhga qo'shildingiz</b>",
+    whoLine(pupil),
+    "",
+    `<b>${esc(groupLabel(group))}</b>`,
+  ];
+  if (group.teacher) lines.push(`Ustoz: ${esc(group.teacher)}`);
+  if (group.day) lines.push(`Kunlar: ${esc(group.day)}`);
+  if (group.time) lines.push(`Vaqt: <b>${esc(group.time)}</b>`);
+  if (group.room) lines.push(`Xona: ${esc(group.room)}`);
+  lines.push("");
+  lines.push("<i>To'liq jadval — botdagi \"🗓 Dars jadvali\" bo'limida.</i>");
   return lines.join("\n");
 }
 

@@ -4,6 +4,8 @@ import { getBranchScope, withBranch, withPupilBranch } from "@/lib/branchScope";
 import { groupScopeFilter } from "@/lib/groupScope";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
+import { notifyGroupAdded } from "@/lib/studentBot/notify";
+import { after } from "next/server";
 
 // FILIAL QAMROVI IKKALA TOMONDA: guruh ham, o'quvchi ham JORIY filialda
 // bo'lishi shart. Faqat guruh kesilsa, moderator boshqa filialning
@@ -73,6 +75,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   );
   if (res.matchedCount === 0) {
     return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
+  }
+
+  // O'QUVCHILAR BOTI — "yangi guruhga qo'shildingiz" xabari.
+  //
+  // FAQAT HAQIQATAN QO'SHILGANDA: `$addToSet` allaqachon a'zo bo'lgan
+  // o'quvchida hech narsani o'zgartirmaydi, lekin so'rov muvaffaqiyatli
+  // tugaydi. `modifiedCount` tekshirilmasa, xodim ro'yxatni har
+  // ochganda o'quvchiga bir xil xabar ketardi.
+  //
+  // `after()` ichida — Telegram sekin javob bersa ham xodim guruhga
+  // qo'shishni kutib turmaydi. `notifyGroupAdded` o'zi hech qachon
+  // otmaydi va sozlama o'chiq bo'lsa jimgina qaytadi.
+  if (res.modifiedCount > 0) {
+    const group = await db.collection<Group>("groups").findOne({ id: groupId }, { projection: { _id: 0 } });
+    if (group) after(() => notifyGroupAdded(db, pupilId, group as unknown as Group));
   }
   const { _id, ...student } = pupil;
   return NextResponse.json({ ok: true, student: student as unknown as Pupil });

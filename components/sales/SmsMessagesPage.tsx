@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { SMS_STATUSES, SMS_TABS, formatSmsDate, type SmsKind, type SmsMessage } from "@/lib/smsMessages";
+import { SMS_STATUSES, SMS_TABS, formatSmsDate, smsChannelLabel, type SmsKind, type SmsMessage } from "@/lib/smsMessages";
 
 // Sotuv va marketing → Xabarlar ro'yhati (sidebar: Sotuv va marketing >
 // Xabarlar ro'yhati, href /sales-messages). Ma'lumot HAQIQIY —
@@ -161,6 +161,7 @@ export default function SmsMessagesPage() {
                 <th className="px-5 py-3 text-left w-56">To&apos;liq ismi</th>
                 <th className="px-5 py-3 text-left">Xabar</th>
                 <th className="px-5 py-3 text-left w-44">Yaratilgan sanasi</th>
+                <th className="px-5 py-3 text-left w-36">Kanal</th>
                 <th className="px-5 py-3 text-left w-52">Moderator</th>
                 <th className="px-5 py-3 text-left pr-5 w-40">Holati</th>
               </tr>
@@ -174,13 +175,22 @@ export default function SmsMessagesPage() {
                     <span className="line-clamp-2">{m.text}</span>
                   </td>
                   <td className="px-5 py-3 tabular-nums text-[12px] text-muted-foreground whitespace-nowrap">{formatSmsDate(m)}</td>
+                  <td className="px-5 py-3 text-[13px]">
+                    <span className={`rounded-md px-2 py-0.5 text-[12px] font-semibold ${
+                      m.channel === "telegram"
+                        ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                      {smsChannelLabel(m.channel)}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 text-[13px]">{m.moderator || "-"}</td>
                   <td className={`px-5 py-3 pr-5 text-[13px] font-medium ${STATUS_TONE[m.status] ?? ""}`}>{m.status}</td>
                 </tr>
               ))}
               {slice.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
                     {loading
                       ? <SpinnerBlock size={22} />
                       : kindNote

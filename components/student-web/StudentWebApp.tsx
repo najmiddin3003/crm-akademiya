@@ -232,13 +232,11 @@ export default function StudentWebApp() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {/* "Balans" YO'Q: `pupils.balance` ni hech bir API yangilamaydi,
+            ya'ni u har doim 0 chiqib "to'lovim yo'qolibdi" degan savol
+            tug'dirardi. Qarzdorlik ham tizimda yuritilmaydi. */}
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
           <Stat label="Jami to'lov" value={`${fmtUZS(p.paid)} so'm`} />
-          <Stat
-            label="Balans"
-            value={`${fmtUZS(p.balance)} so'm`}
-            tone={p.balance < 0 ? "text-rose-500" : undefined}
-          />
           <Stat label="Coin" value={fmtUZS(p.coin)} />
         </div>
       </header>
@@ -270,8 +268,7 @@ export default function StudentWebApp() {
             {p.category ? <Row label="Kategoriya" value={p.category} /> : null}
             {p.birthDate ? <Row label="Tug'ilgan sana" value={p.birthDate} /> : null}
             <Row label="Telefon" value={p.phone || "—"} />
-            <Row label="Jonli to'lovlar" value={`${fmtUZS(p.liveTotal)} so'm`} />
-            <Row label="Arxiv to'lovlar" value={`${fmtUZS(p.archiveTotal)} so'm`} />
+            <Row label="Jami to'lov" value={`${fmtUZS(p.paid)} so'm`} />
           </Card>
         )}
 
@@ -298,7 +295,6 @@ export default function StudentWebApp() {
                     <div key={g.id} className="rounded-xl border border-border bg-card-dim p-3.5">
                       <div className="font-bold">{g.name}</div>
                       <div className="mt-1.5 grid gap-1 text-[13px] text-muted-foreground sm:grid-cols-2">
-                        {g.course ? <span>{`Kurs: ${g.course}`}</span> : null}
                         {g.level ? <span>{`Bosqich: ${g.level}`}</span> : null}
                         {g.day ? <span>{`Kunlar: ${g.day}`}</span> : null}
                         {g.time ? <span>{`Vaqt: ${g.time}`}</span> : null}
@@ -373,7 +369,7 @@ export default function StudentWebApp() {
                       <div className="min-w-0">
                         <div className="text-[13px] font-semibold">{dmy(r.date)}</div>
                         <div className="truncate text-[12px] text-muted-foreground">
-                          {[r.method, r.archive ? "arxiv" : ""].filter(Boolean).join(" · ")}
+                          {r.method}
                         </div>
                       </div>
                       <span

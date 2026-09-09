@@ -40,8 +40,32 @@ const CONTACT_PHONE = "+998941118855";
  * Lokal ishlab chiqishda: `.env.local` ga o'sha qatorni qo'shib,
  * dev serverni qayta ishga tushiring.
  */
+/**
+ * TO'LOV SMS I VAQTINCHA TO'XTATILGAN (10.09.2026, markaz qarori).
+ *
+ * Sabab: o'quvchi endi to'lov haqida BOTDAN xabar oladi
+ * (lib/studentBot/notify.ts), SMS esa pul turadi va bir xil gapni
+ * ikki marta aytardi.
+ *
+ * QAYTARISH: shu qatorni `false` ga o'zgartirish KIFOYA. Muhit
+ * o'zgaruvchisi (PAYMENT_SMS_ENABLED) o'z joyida qoldi va sozlamalar
+ * sahifasi uni avvalgidek ko'rsatadi — ya'ni yoqilganda darrov
+ * ishlaydi. O'zgaruvchini o'chirib qo'ymadik: u yoqilgan holatda
+ * qolib, kod jim rad etayotgani sababini topib bo'lmasdi.
+ *
+ * DIQQAT: bu FAQAT to'lov SMS iga tegishli. Taklif va parol tiklash
+ * SMS lari avvalgidek ishlaydi (lib/invite.ts).
+ */
+const PAYMENT_SMS_PAUSED = true;
+
 export function paymentSmsEnabled(): boolean {
+  if (PAYMENT_SMS_PAUSED) return false;
   return isEnvTrue(process.env.PAYMENT_SMS_ENABLED);
+}
+
+/** Kodda to'xtatilganmi — sozlamalar sahifasi sababni ajratib ko'rsatishi uchun. */
+export function paymentSmsPaused(): boolean {
+  return PAYMENT_SMS_PAUSED;
 }
 
 /**

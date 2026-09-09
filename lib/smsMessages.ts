@@ -12,6 +12,27 @@ export type SmsKind = "manual" | "auto" | "grouped";
  */
 export type SmsPurpose = "payment" | "invite" | "password-reset" | "manual" | "other";
 
+/**
+ * Xabar QAYSI KANAL orqali ketgani.
+ *
+ * Jurnal endi faqat SMS emas: to'lov xabari 10.09.2026 dan Telegram
+ * boti orqali boradi. Ikkalasi BITTA ro'yxatda turadi — aks holda
+ * "o'quvchi xabardor qilindimi?" degan savolga javob berish uchun
+ * ikki joyga qarash kerak bo'lardi.
+ *
+ * Eski yozuvlarda maydon YO'Q — ular SMS deb o'qiladi.
+ */
+export type SmsChannel = "sms" | "telegram";
+
+export const SMS_CHANNEL_LABELS: Record<SmsChannel, string> = {
+  sms: "SMS",
+  telegram: "Telegram bot",
+};
+
+export function smsChannelLabel(c: unknown): string {
+  return SMS_CHANNEL_LABELS[c as SmsChannel] ?? "SMS";
+}
+
 export const SMS_PURPOSE_LABELS: Record<SmsPurpose, string> = {
   payment: "To'lov qabul qilindi",
   invite: "Xodim taklifi",
@@ -43,8 +64,10 @@ export interface SmsMessage {
   /** Qaysi kassadan — faqat to'lov SMS ida bo'ladi. */
   cashboxId?: number;
   cashboxName?: string;
-  /** Qabul qiluvchining raqami (Eskiz formatida, 998XXXXXXXXX). */
+  /** Qabul qiluvchining raqami (Eskiz formatida, 998XXXXXXXXX). Telegram kanalida BO'SH. */
   phone?: string;
+  /** Qaysi kanal orqali ketgan. Eski yozuvlarda yo'q — SMS deb o'qiladi. */
+  channel?: SmsChannel;
 
   /**
    * Eskizning javobi va undan ajratilgan xabar ID si.

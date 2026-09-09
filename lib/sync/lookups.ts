@@ -51,7 +51,17 @@ export class SyncContext {
   private cashboxes: Map<number, string> | null = null;
   private pupilGroups: Map<string, string> | null = null;
 
-  constructor(private db: Db) {}
+  // MAYDON OSHKORA E'LON QILINADI, `constructor(private db)` EMAS.
+  // Sabab amaliy: loyihadagi skriptlar `node --import ./scripts/_ts-alias.mjs`
+  // bilan ishlaydi, Node esa tiplarni faqat O'CHIRIB tashlaydi —
+  // konstruktor parametridan maydon YASAY OLMAYDI va butun fayl
+  // yuklanmay qoladi. Bitta shu qator tufayli `lib/` ni import
+  // qiladigan har qanday diagnostika skripti yiqilardi.
+  private readonly db: Db;
+
+  constructor(db: Db) {
+    this.db = db;
+  }
 
   private async loadEmployees(): Promise<Map<string, EmployeeInfo>> {
     if (this.employees) return this.employees;
