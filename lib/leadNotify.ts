@@ -1,6 +1,7 @@
 import type { Db } from "mongodb";
 import { loadSyncConfig } from "@/lib/sync/config";
 import { esc, sendMessage } from "@/lib/sync/telegram";
+import { leadKeyboard, leadStatusLine } from "@/lib/leadStatus";
 import type { Order } from "@/lib/ordersData";
 
 // YANGI LID -> TELEGRAM ("Lidlar" topigi).
@@ -62,10 +63,17 @@ async function branchName(db: Db, branchId: number | null | undefined): Promise<
   return typeof row?.name === "string" ? row.name : "";
 }
 
-/** Telegram xabarining matni — mappers.ts dagi to'lov xabari uslubida. */
+/**
+ * Telegram xabarining matni — mappers.ts dagi to'lov xabari uslubida.
+ *
+ * Status qatori sarlavhaning ostida turadi va HAR DOIM chiziladi: tugma
+ * bosilganda aynan shu matn qayta yig'iladi (app/api/telegram/webhook),
+ * ya'ni xabarning qolgan qismi bazadagi joriy holatdan chiqadi.
+ */
 export function leadMessage(order: Order, branch: string): string {
   const lines = [
     `🆕 <b>Yangi lid</b> <code>#${order.id}</code>`,
+    leadStatusLine(order.leadStatus),
     "",
     `👤 <b>${esc(order.name || DASH)}</b>`,
   ];
@@ -107,7 +115,18 @@ export async function notifyNewLead(db: Db, order: Order, branchId: number | nul
 
     if (!cfg.enabled || !cfg.telegramToken || !chatId || !threadId) return;
 
-    await sendMessage(cfg, chatId, leadMessage(order, await branchName(db, branchId)), threadId);
+    // Tugmalar HAR DOIM qo'shiladi — webhook sozlanmagan bo'lsa ham. Ular
+    // bosilganda hech narsa bo'lmaydi (Telegram javobsiz qoladi), lekin
+    // xabarning shakli bir xil qoladi va webhook ulangan zahoti eski
+    // lidlar ham ishlay boshlaydi. Aks holda tugmalarning bor-yo'qligi
+    // yashirin sozlamaga bog'liq bo'lib qolardi.
+    await sendMessage(
+      cfg,
+      chatId,
+      leadMessage(order, await branchName(db, branchId)),
+      threadId,
+      leadKeyboard(order.id),
+    );
   } catch (e) {
     // Faqat jurnalga — lid allaqachon bazada.
     console.error("[leadNotify] yuborilmadi:", e instanceof Error ? e.message : e);

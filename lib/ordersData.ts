@@ -5,6 +5,7 @@
 // getPageButtons (~line 22910).
 
 import { MANAGEMENT_BRANCH_NAMES } from "@/constants/managementBranches";
+import type { LeadStatusKey } from "./leadStatus";
 import { uzNow } from "./uzTime";
 
 export type OrderStageKey = "bir_oylay" | "jaylang_e" | "rahmaaaat" | "ketdim";
@@ -79,6 +80,19 @@ export interface Order {
    * bunday qatorlar boshqa ko'rsatilmaydi.
    */
   groupId?: number;
+  /**
+   * Telegram guruhidagi tugma bilan qo'yilgan status (lib/leadStatus.ts).
+   *
+   * Buyurtmaning `status` maydonidan ALOHIDA: u CRM'dagi ish jarayoni
+   * ("Yangi", "Qabul qilindi" …), bu esa moderatorning guruhdagi tezkor
+   * belgisi — lid bilan bog'lanildimi va natija nima. Bo'sh bo'lsa
+   * xabarda "Hali bog'lanilmadi" turadi.
+   */
+  leadStatus?: LeadStatusKey;
+  /** Status qo'yilgan payt — "DD.MM.YYYY | HH:MM" (loyihadagi ko'rinish). */
+  leadStatusAt?: string;
+  /** Tugmani bosgan Telegram foydalanuvchisining ko'rinadigan ismi. */
+  leadStatusBy?: string;
 }
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];

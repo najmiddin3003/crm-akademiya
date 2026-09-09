@@ -24,6 +24,14 @@ export interface TelegramResult {
   messageId: number;
 }
 
+/**
+ * Xabar ostidagi tugmalar. `callback_data` bosilganda Telegram uni
+ * webhook'ga qaytaradi (app/api/telegram/webhook) — 64 BAYTdan oshmasin.
+ */
+export interface InlineKeyboard {
+  inline_keyboard: { text: string; callback_data: string }[][];
+}
+
 interface TelegramApiResponse {
   ok: boolean;
   result?: { message_id: number };
@@ -72,6 +80,7 @@ export async function sendMessage(
   chatId: string,
   html: string,
   threadId = "",
+  replyMarkup?: InlineKeyboard,
 ): Promise<TelegramResult> {
   if (!cfg.telegramToken) throw new Error("TELEGRAM_BOT_TOKEN sozlanmagan");
   if (!chatId) throw new Error("Telegram guruh id'si sozlanmagan");
@@ -84,6 +93,7 @@ export async function sendMessage(
     // Maydon faqat KERAK bo'lgandagina qo'shiladi: forum bo'lmagan
     // guruhga `message_thread_id` yuborilsa Telegram xato qaytaradi.
     ...(threadId ? { message_thread_id: Number(threadId) } : {}),
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
   });
 
   if (!data.ok || !data.result) {
@@ -116,16 +126,16 @@ export async function sendMessage(
 }
 
 /**
- * Yuborilgan xabarni tahrirlash. Hozircha bekor qilishda ALOHIDA yangi
- * xabar yuborilyapti (kelishilgan qoida — eski xabarni ko'rmay qolmaslik
- * uchun), lekin bu funksiya kelajakda kerak bo'ladi va API'ni to'liq
- * qoplab turadi.
+ * Yuborilgan xabarni tahrirlash. Lid statusi tugmasi bosilganda aynan shu
+ * ishlatiladi: matn qayta chiziladi, tugmalar joyida qoladi (status
+ * keyin ham o'zgartirilishi mumkin).
  */
 export async function editMessage(
   cfg: SyncConfig,
   chatId: string,
   messageId: number,
   html: string,
+  replyMarkup?: InlineKeyboard,
 ): Promise<void> {
   const data = await callTelegram(cfg, "editMessageText", {
     chat_id: chatId,
@@ -133,10 +143,37 @@ export async function editMessage(
     text: html,
     parse_mode: "HTML",
     disable_web_page_preview: true,
+    // Berilmasa Telegram tugmalarni OLIB TASHLAYDI — bir marta status
+    // qo'yilgan lidni keyin qayta belgilab bo'lmay qolardi.
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
   });
   // "message is not modified" — xato emas, matn allaqachon o'sha.
   if (!data.ok && !/message is not modified/i.test(data.description || "")) {
     throw new Error(`Telegram tahrirlanmadi: ${data.description || "noma'lum xato"}`);
+  }
+}
+
+/**
+ * Tugma bosilishiga JAVOB — Telegram buni kutadi.
+ *
+ * Chaqirilmasa bosgan odamning tugmasida aylanuvchi belgi ~30 soniya
+ * turib qoladi va u tugma "ishlamadi" deb o'ylaydi. Shu bois xato
+ * bo'lganda ham chaqiriladi va o'zi HECH QACHON otilmaydi: javob
+ * berolmaganimiz asosiy ishni (statusni yozishni) bekor qilmasligi kerak.
+ */
+export async function answerCallback(
+  cfg: SyncConfig,
+  callbackId: string,
+  text: string,
+): Promise<void> {
+  try {
+    await callTelegram(cfg, "answerCallbackQuery", {
+      callback_query_id: callbackId,
+      // 200 belgigacha; uzunroq matnni Telegram rad etadi.
+      text: text.slice(0, 200),
+    });
+  } catch (e) {
+    console.error("[telegram] answerCallbackQuery:", e instanceof Error ? e.message : e);
   }
 }
 
