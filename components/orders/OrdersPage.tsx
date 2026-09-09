@@ -23,7 +23,6 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import {
   applyOrdersFilters,
   EMPTY_ORDERS_FILTERS,
-  ORDER_SOURCES,
   ORDER_STAGES,
   STATUSES,
   SUBCOURSES,
@@ -57,7 +56,8 @@ import PersonLink from "@/components/shared/PersonDirectory";
 //   O'qituvchi   — /api/teachers
 //   Moderator    — /api/hr-employees (turi: "moderator")
 //   Status       — ORDER_STAGES (lid voronkasi bosqichlari, emoji bilan)
-//   Manba        — ORDER_SOURCES (hozircha qo'lda; README'ga qarang)
+//   Manba        — /api/student-sources/options (Sotuv va marketing →
+//                  O'quvchilar oqimi) + lidlarda uchraganlari
 //   Filiallar    — /api/branches
 //   Kun          — hafta kunlari
 //   Kategoriya   — /api/edu-categories (O'quv bo'limi → Kategoriya)
@@ -155,17 +155,24 @@ export default function OrdersPage() {
   const [dbCourses, setDbCourses] = useState<string[]>([]);
   const [dbGroups, setDbGroups] = useState<Group[]>([]);
   const [dbEmployees, setDbEmployees] = useState<HrEmployee[]>([]);
+  const [dbSources, setDbSources] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       fetch("/api/offline-courses").then((r) => r.json()).catch(() => null),
       fetch("/api/groups").then((r) => r.json()).catch(() => null),
       fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
-    ]).then(([c, g, e]) => {
+      // "Manba" ro'yxati — Sotuv va marketing → O'quvchilar oqimidagi
+      // sozlanadigan tanlovlar (`student_sources`). Faqat O'QISH route'i;
+      // ularni tahrirlash alohida `/options/manage` da va u shu sahifaga
+      // ochilmagan (lib/apiPermissions.generated.ts).
+      fetch("/api/student-sources/options").then((r) => r.json()).catch(() => null),
+    ]).then(([c, g, e, s]) => {
       if (cancelled) return;
       if (c?.ok) setDbCourses((c.courses as { name: string }[]).map((x) => x.name));
       if (g?.ok) setDbGroups(g.groups);
       if (e?.ok) setDbEmployees(e.employees);
+      if (s?.ok) setDbSources((s.options as { name: string }[]).map((x) => x.name));
     });
     return () => { cancelled = true; };
   }, []);
@@ -185,6 +192,20 @@ export default function OrdersPage() {
     [dbEmployees],
   );
   const branchOptions = useMemo(() => branches.map((b) => b.name), [branches]);
+
+  // MANBA — kurslar bilan bir xil qoida: sozlangan ro'yxat VA lidlarda
+  // haqiqatda uchragan qiymatlar birlashmasi.
+  //
+  // Ikkinchi qism SHART: lidning manbasi o'quvchi yozuvidan ko'chiriladi
+  // (`pupils.source` → `orders.source`), va 08.09.2026 gacha u qattiq
+  // "Sayt" deb yozilgan edi — o'sha eski lidlar hali ham shu qiymat bilan
+  // turibdi. Faqat sozlangan ro'yxat qo'yilsa, ular filtrdan butunlay
+  // tushib qolardi. "Boshqa" tanlanganda moderator o'z so'zini yozadi va
+  // u ham ro'yxatda emas — o'sha qiymatlar ham shu yerdan chiqadi.
+  const sourceOptions = useMemo(
+    () => Array.from(new Set([...dbSources, ...orders.map((o) => o.source)].filter(Boolean))).sort(),
+    [dbSources, orders],
+  );
 
   // Sana oralig'i tanlagichi Date bilan ishlaydi, filtr esa "YYYY-MM-DD" bilan.
   const toIso = (d: Date) => {
@@ -570,7 +591,7 @@ export default function OrdersPage() {
               className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="">Manba</option>
-              {ORDER_SOURCES.map((s) => (
+              {sourceOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
