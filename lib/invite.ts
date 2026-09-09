@@ -132,9 +132,25 @@ export async function verifyCode(phone: string, code: string, purpose: Purpose):
   return { ok: true };
 }
 
-// Taklif SMS matni (havola + kod).
+/**
+ * SMS'dagi havolaning MANZILI — xodim ochadigan sayt.
+ *
+ * NEGA `APP_BASE_URL` EMAS. U Vercel'da texnik domenga
+ * ("crm-akademiya-777777.vercel.app") sozlangan va SMS'da aynan o'sha
+ * ketardi: odam tanimaydigan manzil (ishonchsiz ko'rinadi), ustiga 14
+ * belgi uzunroq — SMS uzunligi segment narxiga ta'sir qiladi. Sayt esa
+ * `www.tizimli24.uz` da (o'lchandi: `tizimli24.uz` → 308 → `www.` bilan,
+ * ya'ni kanonik shakl aynan shu).
+ *
+ * QATTIQ YOZILGAN, lekin o'zgaruvchi bilan almashtirsa bo'ladi. Ataylab
+ * shunday: sozlanmagan holatda ham TO'G'RI manzil chiqsin — SMS matni
+ * Vercel oynasidagi qiymatga bog'liq bo'lib qolmasin.
+ */
+const PUBLIC_SITE_URL = "https://www.tizimli24.uz";
+
+/** Taklif SMS matni (havola + kod). */
 export function activationMessage(token: string, code: string): string {
-  const base = process.env.APP_BASE_URL || "http://localhost:3000";
+  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || PUBLIC_SITE_URL;
   return `CRM-Akademiya tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
 }
 

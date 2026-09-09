@@ -14,6 +14,7 @@ export const PUBLIC_API: readonly string[] = [
   "/api/auth/reset-password",
   "/api/auth/resend-invite",
   "/api/sync/cron",
+  "/api/telegram/webhook",
 ];
 
 /** Faqat shu HTTP metodlar uchun sessiyasiz ochiq. */
@@ -59,7 +60,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/cashboxes/[id]/transfer-to": ["/finance-cash"],
   "/api/contracts": ["/contract", "/students-list"],
   "/api/contracts/[id]": ["/contract"],
-  "/api/edu-categories": ["/edu-category", "/online-courses"],
+  "/api/edu-categories": ["/edu-category", "/online-courses", "/orders-list", "/students-list"],
   "/api/edu-categories/[id]": ["/edu-category"],
   "/api/employee-salary-summary": ["/finance-cash"],
   "/api/employees": ["/management-xodimlar"],
@@ -70,6 +71,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/feedback": ["/nazorat-feedback"],
   "/api/finance-contracts": ["/finance-fin-contract", "/finance-revenue-plan"],
   "/api/finance-contracts/[id]": ["/finance-fin-contract"],
+  "/api/gender-guess": ["/management-xodimlar"],
   "/api/group-tasks": ["/groups-tasks"],
   "/api/group-tasks/[id]": ["/groups-tasks"],
   "/api/groups": ["/active-students", "/archive-students", "/blok-testlar", "/finance-cash", "/finance-fin-contract", "/first-lessons", "/groups", "/groups-schedule", "/groups-students", "/management-xodimlar", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups", "/offline-courses", "/online-courses", "/orders-list", "/reports-rooms", "/reports-served", "/seasonal-assessment", "/students-list", "/tasks"],
@@ -130,7 +132,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/seasonal-assessments": ["/seasonal-assessment"],
   "/api/seasonal-assessments/[id]": ["/seasonal-assessment"],
   "/api/settings": ["/archive-students", "/first-lessons", "/management-xodimlar", "/nazorat-davomat", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales", "/students-list"],
-  "/api/settings-lists": ["/finance-analytics", "/finance-cash", "/finance-cashflow", "/finance-payroll", "/finance-reports", "/groups", "/management-xodimlar", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales", "/students-list"],
+  "/api/settings-lists": ["/finance-analytics", "/finance-cash", "/finance-cashflow", "/finance-payroll", "/finance-reports", "/groups", "/management-xodimlar", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
   "/api/settings-lists/[id]": ["/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
   "/api/sms-analytics": ["/nazorat-sms-analytics"],
   "/api/sms-messages": ["/archive-students", "/first-lessons", "/orders-list", "/sales-messages", "/students-list"],
@@ -152,6 +154,9 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/tasks": ["/students-list", "/tasks"],
   "/api/tasks/[id]": ["/tasks"],
   "/api/teachers": ["/finance-cash", "/first-lessons", "/groups", "/orders-list", "/reports-served"],
+  "/api/temp-staff": ["/vaqtinchalik"],
+  "/api/temp-staff/[id]": ["/vaqtinchalik"],
+  "/api/temp-staff/invite": ["/vaqtinchalik"],
   "/api/transaction-entries": ["/finance-cash", "/finance-transactions", "/management-xodimlar", "/students-list"],
   "/api/transaction-entries/[id]/cancel": ["/finance-cash"],
   "/api/transaction-entries/[id]/transfer-confirm": ["/finance-cash"],

@@ -33,6 +33,9 @@ const PUBLIC = [
   "/api/auth/resend-invite",
   // CRON_SECRET sarlavhasi bilan himoyalangan (app/api/sync/cron/route.ts).
   "/api/sync/cron",
+  // Chaqiruvchi — Telegram serveri, uning sessiyasi yo'q. TELEGRAM_WEBHOOK_SECRET
+  // sarlavhasi bilan himoyalangan (app/api/telegram/webhook/route.ts).
+  "/api/telegram/webhook",
 ];
 
 /**

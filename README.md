@@ -1333,8 +1333,35 @@ Sozlamalar:
 | --- | --- |
 | `TELEGRAM_TOPIC_LEADS` | "Lidlar" topigining raqami. **Bo'sh bo'lsa xabar umuman yuborilmaydi** — to'lovlar oqimiga aralashib ketgandan ko'ra jim turgani yaxshi. |
 | `TELEGRAM_CHAT_LEADS` | Guruh id'si. Ko'rsatilmasa `TELEGRAM_CHAT_PAYMENTS` ishlatiladi (uchala topik ham bitta forum-guruhda). |
+| `TELEGRAM_WEBHOOK_SECRET` | Status tugmalari uchun (quyida). **Bo'sh bo'lsa tugmalar ishlamaydi.** |
 
 Topik raqamini topish: `node scripts/_telegram-topics.mjs` (faqat o'qiydi).
+
+### Lid statusi — guruhdagi tugmalar
+
+Har bir lid xabarining tagida to'rtta tugma turadi (`lib/leadStatus.ts`):
+🟢 Birinchi darsga yozildi · 🕒 Keyinroq keladi · 💳 O'qish niyatida /
+to'lov qilmoqchi · ❌ Rad etdi. Bosilgani xabarning sarlavhasi ostidagi
+`Status:` qatorini almashtiradi; hech biri bosilmagan bo'lsa u yerda
+"⚪ Hali bog'lanilmadi" turadi.
+
+Oqim: tugma → Telegram `callback_query` → `POST /api/telegram/webhook` →
+`orders.leadStatus` yoziladi → xabar `editMessageText` bilan qayta
+chiziladi (tugmalar joyida qoladi, status keyin ham o'zgartiriladi).
+
+`orders.leadStatus` buyurtmaning `status` maydonidan ALOHIDA: u CRM'dagi
+ish jarayoni ("Yangi", "Qabul qilindi" …), bu esa aloqa natijasi.
+
+**Bir marta sozlash** (aks holda tugmalar bosilganda hech narsa bo'lmaydi):
+
+1. `TELEGRAM_WEBHOOK_SECRET` — uzun tasodifiy satr, `.env.local` VA Vercel
+   > Environment Variables ga qo'yiladi.
+2. `APP_BASE_URL` saytning tashqi HTTPS manzili ekanini tekshiring.
+3. `node scripts/set-telegram-webhook.mjs` (holatni ko'rish: `--info`,
+   o'chirish: `--delete`).
+
+Webhook `allowed_updates: ["callback_query"]` bilan ro'yxatdan o'tadi —
+guruhdagi oddiy xabarlar serverga umuman yuborilmaydi.
 
 ### Qanday ishlaydi
 
@@ -1404,3 +1431,64 @@ Varaq (tab) va sarlavha qatorini kod o'zi yaratadi — qo'lda yozish shart emas.
   ishlayveradi. Sinxron buzilsa ham to'lov qabul qilish to'xtamaydi.
 - **`_` bilan boshlangan papka Next'da route bo'lmaydi** (private folder).
   `app/api/sync/_selftest` 404 bergani shundan edi.
+
+## SMS havolasi va jinsni avtomatik aniqlash (2026-09-09)
+
+### 1. Faollashtirish SMS'i tizimli24.uz ga olib boradi
+
+`activationMessage()` (`lib/invite.ts`) havolani `APP_BASE_URL` dan
+qurardi, u esa Vercel'da texnik domenga
+(`crm-akademiya-777777.vercel.app`) sozlangan — SMS'da odam tanimaydigan
+o'sha manzil ketardi, ustiga 14 belgi uzunroq (SMS uzunligi segment
+narxiga ta'sir qiladi).
+
+Endi manba alohida: `PUBLIC_SITE_URL`, sukut qiymati **qattiq yozilgan**
+`https://www.tizimli24.uz`. Ataylab shunday — sozlanmagan holatda ham
+to'g'ri manzil chiqsin, SMS matni Vercel oynasidagi qiymatga bog'liq
+bo'lib qolmasin. (O'lchandi: `tizimli24.uz` → **308** → `www.` bilan,
+ya'ni kanonik shakl aynan `www.tizimli24.uz`.)
+
+`APP_BASE_URL` o'chirilmadi — uni skriptlar ishlatadi
+(`set-telegram-webhook.mjs`, `sync-backfill.mjs`).
+
+### 2. Jinsi ism-familiyadan avtomatik tanlanadi
+
+Xodim qo'shishda Ism + Familiya yozilgach `Jinsi` maydoni sun'iy intellekt
+modeli orqali o'zi to'ldiriladi (`POST /api/gender-guess`, mantiq
+`lib/genderGuess.ts` da).
+
+Qoidalar — maydon TAKLIF beradi, majburlamaydi:
+
+- **qo'lda tanlangan jins hech qachon bosilmaydi** (`genderTouched`).
+  Bo'sh maydonni tekshirish yetmasdi: odam "Erkak" deb qo'yib keyin
+  familiyani tuzatsa, taxmin uning tanlovini jimgina almashtirardi;
+- **tahrirlashda umuman ishlamaydi** — saqlangan jins taxminga
+  almashmasin;
+- so'rov **kechiktirilgan** (700 ms), ya'ni har harfda API'ga chiqmaydi;
+- kalit sozlanmagan yoki so'rov yiqilgan bo'lsa maydon **bo'sh qoladi** va
+  route baribir `200` qaytaradi — xodim qo'shish hech qachon shu so'rovga
+  bog'lanib qolmasin. Sabab javobdagi `reason` da va brauzer konsolida
+  turadi (eng ko'p uchraydigani — model nomi noto'g'ri).
+
+| O'zgaruvchi | Ma'nosi |
+| --- | --- |
+| `OPENAI_URL_API` | API kaliti. **Bo'sh bo'lsa maydon qo'lda to'ldiriladi.** |
+| `OPENAI_MODEL` | Model nomi. Sukut — `lib/genderGuess.ts` dagi qiymat. |
+| `OPENAI_BASE_URL` | Proksi orqali ishlatilsa. Sukut `https://api.openai.com/v1`. |
+
+Kalit **serverda qoladi** — klient faqat ismni yuboradi.
+
+So'rov tanasi ataylab eng oddiy shaklda: `temperature`, `max_tokens` va
+`response_format` **yuborilmaydi**. Yangi modellar ularning bir qismini
+rad etadi (masalan `max_tokens` o'rniga `max_completion_tokens` talab
+qiladi) va model almashtirilganda so'rov jimgina buzilardi.
+
+Sinov (tarmoqqa chiqmaydi):
+
+```
+node --import ./scripts/_ts-alias.mjs scripts/_test-gender-parse.mjs
+```
+
+> TUZOQ: `"female"` ichida `"male"` bor. `includes("male")` bilan yozilsa
+> har bir ayol erkakka aylanib ketardi — shuning uchun so'z chegarasi
+> (`\bmale\b`) va "female" birinchi tekshiriladi. Sinovda shu holat bor.
