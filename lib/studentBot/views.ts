@@ -106,7 +106,10 @@ export function startPrompt(nick = ""): string {
     "",
     `Boshlash uchun telefon raqamingizni tasdiqlang ${pe("point")}`,
     "",
-    `Pastdagi "${CONTACT_BUTTON}" tugmasini bosing. Raqamni qo'lda yozish shart emas.`,
+    `Pastdagi "${CONTACT_BUTTON}" tugmasini bosing — eng oson yo'li shu.`,
+    "",
+    "Yoki raqamingizni shu yerga yozing — qanday yozsangiz ham bo'ladi:",
+    "<code>90 123 45 67</code>, <code>90-123-45-67</code>, <code>+998901234567</code>.",
     "",
     `${pe("lock")} <i>Raqamingiz bazadagi o'quvchi yoki ota-ona ma'lumotlari bilan tekshiriladi.</i>`,
   ].join("\n");
@@ -124,6 +127,21 @@ export function phoneNotFound(phone: string): string {
     "",
     "Iltimos, o'quv markaziga murojaat qiling — raqamingizni yangilashsin.",
     "So'ng /start ni qayta bosing.",
+  ].join("\n");
+}
+
+/**
+ * Qorovul to'xtatganda. SABAB ROSTINI AYTADI va nima qilishni
+ * ko'rsatadi: "raqam topilmadi" deyilsa odam CRM'ga borib bekorga
+ * raqamini tekshirtirardi.
+ */
+export function tooManyTries(minutes: number): string {
+  return [
+    "⏳ <b>Juda ko'p urinish</b>",
+    "",
+    `Raqam bir necha marta topilmadi. <b>${minutes}</b> daqiqadan keyin qayta urinib ko'ring.`,
+    "",
+    `Kutmaslik uchun pastdagi "${CONTACT_BUTTON}" tugmasini bosing — u darrov ishlaydi.`,
   ].join("\n");
 }
 

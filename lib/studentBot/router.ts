@@ -37,6 +37,7 @@ import {
   notifyArg,
   settingsMenu,
 } from "@/lib/studentBot/keyboards";
+import { clearPhoneAttempts, takePhoneAttempt } from "@/lib/studentBot/attempts";
 import { findPupilsByPhone, phoneKey } from "@/lib/studentBot/phone";
 import {
   activeLink,
@@ -269,6 +270,48 @@ async function handleContact(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
     return;
   }
 
+  await linkAndOpen(db, cfg, chatId, key, from);
+}
+
+/**
+ * QO'LDA yozilgan raqam bilan kirish.
+ *
+ * Tugmadan FARQI: bu raqam hech narsa bilan tasdiqlanmagan — yozgan
+ * odam uning egasimi, tekshirilmaydi. Bu markazning ongli qarori
+ * (tugma ba'zi odamlarga qiyin), shuning uchun kod uni bajaradi.
+ * Yagona qo'shimcha — urinishlar qorovuli: u tirik odamga sezilmaydi,
+ * ammo raqamlarni ketma-ket terib bazani so'rab olishni foydasiz
+ * qiladi (lib/studentBot/attempts.ts).
+ */
+async function handlePhoneText(db: Db, cfg: StudentBotConfig, msg: TgMessage, key: string): Promise<void> {
+  const chatId = msg.chat?.id;
+  const from = msg.from;
+  if (chatId === undefined || !from) return;
+
+  // Qorovul QIDIRUVDAN OLDIN: aks holda terib chiqayotgan skript
+  // baribir har urinishda bazani qidirtirib o'tirardi.
+  const gate = await takePhoneAttempt(db, chatId);
+  if (!gate.allowed) {
+    await sendToStudent(cfg, chatId, V.tooManyTries(gate.waitMinutes), contactKeyboard());
+    return;
+  }
+
+  await linkAndOpen(db, cfg, chatId, key, from);
+}
+
+/**
+ * Raqam bo'yicha bog'lab, kerakli ekranni ochadi.
+ *
+ * Ikkala kirish yo'li (tugma va qo'lda yozish) shu yerda BIRLASHADI —
+ * aks holda bittasiga qo'shilgan o'zgarish ikkinchisida unutilardi.
+ */
+async function linkAndOpen(
+  db: Db,
+  cfg: StudentBotConfig,
+  chatId: number,
+  key: string,
+  from: TgUser,
+): Promise<void> {
   const matches = await findPupilsByPhone(db, key);
   if (matches.length === 0) {
     await sendToStudent(cfg, chatId, V.phoneNotFound(key), contactKeyboard());
@@ -279,6 +322,8 @@ async function handleContact(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
     name: displayName(from),
     username: from.username ?? "",
   });
+  // Raqami topildi — qorovul hisoblagichi keraksiz.
+  await clearPhoneAttempts(db, chatId);
 
   // Telefon tugmasi kirish maydonining ustidan olib tashlanadi — endi
   // u keraksiz va chalg'itadi.
@@ -289,9 +334,7 @@ async function handleContact(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
   // Ilgari ro'yxatdagi birinchisi (eng kichik id) jimgina ochilardi:
   // ikki farzandli ota-ona o'zi so'ramagan bolaning davomatini ko'rib,
   // ikkinchisi botga umuman kirmagan deb o'ylashi mumkin edi.
-  // "Farzandni almashtirish" tugmasi esa menyuning eng pastida,
-  // ko'zga tashlanmasdi. Belgi (✅) ATAYLAB qo'yilmaydi — hali hech
-  // narsa tanlanmagan.
+  // Belgi (✅) ATAYLAB qo'yilmaydi — hali hech narsa tanlanmagan.
   if (user.links.length > 1) {
     const names = await loadPupilNames(db, user.links.map((l) => l.pupilId));
     await showScreen(db, cfg, chatId, undefined, {
@@ -389,7 +432,18 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
   const user = await getBotUser(db, chatId);
 
   if (!user) {
-    // Bog'lanmagan: nima yozishidan qat'i nazar telefon so'raladi.
+    // Bog'lanmagan odam RAQAM yozgan bo'lsa — kirishga urinish.
+    //
+    // `phoneKey` matndagi raqam bo'lmagan hamma belgini tashlab,
+    // oxirgi 9 raqamni oladi. Ya'ni "90 123 45 67", "90-123-45-67",
+    // "+998901234567" — hammasi bir xil kalit beradi va odam raqamni
+    // qanday yozishini o'ylab o'tirmaydi.
+    const typed = phoneKey(text);
+    if (typed) {
+      await handlePhoneText(db, cfg, msg, typed);
+      return;
+    }
+    // Raqam emas (masalan /start yoki oddiy so'z) — taklif ko'rsatiladi.
     await sendToStudent(cfg, chatId, V.startPrompt(greetName(msg.from)), contactKeyboard());
     return;
   }
