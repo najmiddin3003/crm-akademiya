@@ -1,4 +1,5 @@
 import { ObjectId, type Db } from "mongodb";
+import { approvalBlocks } from "./adminApproval";
 import { normalizePhone } from "./eskiz";
 import { ensureIndexes } from "./mongodb";
 import { readPermissions } from "./permissions";
@@ -167,9 +168,14 @@ async function loadAccess(uid: string, sid?: string): Promise<SessionAccess> {
     { _id: new ObjectId(uid) },
     // `role` ham kerak — yuqoridagi admin bypass /api/* yo'lida ham
     // ishlashi uchun (bu yerda o'qilmasa, u faqat sahifalarda ishlardi).
-    { projection: { status: 1, phone: 1, hrEmployeeId: 1, role: 1 } },
+    { projection: { status: 1, phone: 1, hrEmployeeId: 1, role: 1, adminApproval: 1 } },
   );
-  if (!user || user.status !== "active") return { active: false, permissions: null };
+  // Tasdiq ham shu yerda tekshiriladi, faqat login yo'lida emas: admin
+  // ALLAQACHON kirgan xodimni rad etsa, u cookie muddati tugaguncha
+  // ichkarida qolib ketardi (lib/adminApproval.ts).
+  if (!user || user.status !== "active" || approvalBlocks(user.adminApproval)) {
+    return { active: false, permissions: null };
+  }
 
   // `sid` yo'q eski cookie'lar amal qilaveradi (lib/session.ts izohiga qarang).
   if (sid) {

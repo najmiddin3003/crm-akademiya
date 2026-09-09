@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/adminOnly";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
+import { APPROVAL_FIELD } from "@/lib/adminApproval";
 
 // "Vaqtinchalik tugma" sahifasining bitta xodim ustidagi amallari.
 // Ikkalasi ham FILIAL QAMROVISIZ ishlaydi (sabab: ../route.ts izohi).
@@ -45,10 +46,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   for (const k of EDITABLE) {
     if (typeof body[k] === "string") set[k] = (body[k] as string).trim();
   }
-  // Yagona mantiqiy maydon — jadvaldagi tugmacha. `undefined` (yuborilmagan)
-  // bilan `false` (o'chirilgan) farqlanadi, aks holda ism tahrirlanganda
-  // tugmacha jimgina o'chib qolardi.
+  // Yagona mantiqiy maydon. `undefined` (yuborilmagan) bilan `false`
+  // (o'chirilgan) farqlanadi, aks holda ism tahrirlanganda tugmacha
+  // jimgina o'chib qolardi.
   if (typeof body.twoFactor === "boolean") set.twoFactor = body.twoFactor;
+
+  // ── ADMIN TASDIG'I (✓ / ✗) ──────────────────────────────────────────
+  // Xodim hujjatiga emas, HISOBGA yoziladi (`users.adminApproval`) —
+  // kirishni to'sadigan tekshiruv o'sha yerdan o'qiydi
+  // (lib/adminApproval.ts). Shu bois alohida yo'l va alohida javob:
+  // boshqa maydonlar bilan aralashtirilsa, hisobsiz xodimga "saqlandi"
+  // deb javob berilib, aslida hech narsa o'zgarmagan bo'lardi.
+  const approval = body.approval;
+  if (approval !== undefined) {
+    if (approval !== "approved" && approval !== "rejected") {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri tasdiq qiymati" }, { status: 400 });
+    }
+    const { db: adb, row: arow } = await findEmployee(empId);
+    if (!arow) return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+
+    const phone = normalizePhone(String(arow.phone ?? ""));
+    const filter = phone ? { $or: [{ hrEmployeeId: empId }, { phone }] } : { hrEmployeeId: empId };
+    const res = await adb.collection("users").updateOne(filter, { $set: { [APPROVAL_FIELD]: approval } });
+    if (res.matchedCount === 0) {
+      return NextResponse.json({ ok: false, error: "Bu xodimning hisobi yo'q" }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, approval });
+  }
   if (typeof set.name === "string" && set.name === "") {
     return NextResponse.json({ ok: false, error: "Ismni kiriting" }, { status: 400 });
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { compareSecret, isValidPhone, normalizePhone } from "@/lib/invite";
+import { approvalBlocks, approvalError } from "@/lib/adminApproval";
 import { createSessionToken, newSessionId, SESSION_COOKIE, SESSION_MAX_AGE_SEC } from "@/lib/session";
 import { describeUserAgent, type UserSession } from "@/lib/userSessions";
 import { toUz } from "@/lib/uzTime";
@@ -45,6 +46,14 @@ export async function POST(req: Request) {
   const match = await compareSecret(body.password, user.passwordHash);
   if (!match) {
     return NextResponse.json({ ok: false, error: "Telefon raqam yoki parol noto'g'ri" }, { status: 401 });
+  }
+
+  // IKKI BOSQICH — parol to'g'ri, lekin admin hali tasdiqlamagan
+  // (lib/adminApproval.ts). Tekshiruv AYNAN shu yerda, parol
+  // solishtirilgandan KEYIN: yuqorida bo'lsa, raqamni terib ko'rgan
+  // begona odam ham "bu raqamda hisob bor" degan ma'lumotni olardi.
+  if (approvalBlocks(user.adminApproval)) {
+    return NextResponse.json({ ok: false, error: approvalError(user.adminApproval) }, { status: 403 });
   }
 
   // Har bir login alohida sessiya (qurilma) yozuvini oladi — "Aktiv qurilmalar"

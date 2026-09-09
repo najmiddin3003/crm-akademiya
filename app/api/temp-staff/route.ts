@@ -34,14 +34,13 @@ export interface TempStaffRow {
   archReason: string;
   archDate: string;
   created: string;
-  /**
-   * "Ikki bosqichli tasdiqlash" — `hr_employees.twoFactor`.
-   *
-   * DIQQAT: qiymat rost saqlanadi, lekin login oqimi
-   * (app/api/auth/login) uni HOZIRCHA O'QIMAYDI. Sahifada shu ochiq
-   * aytiladi — aks holda tugmacha xavfsizlik bergandek ko'rinardi.
-   */
+  /** "Ikki bosqichli tasdiqlash" talab qilinganmi (`hr_employees.twoFactor`). */
   twoFactor: boolean;
+  /**
+   * Admin tasdig'i holati (`users.adminApproval`, lib/adminApproval.ts).
+   * Bo'sh satr — talab qilinmagan.
+   */
+  approval: "" | "pending" | "approved" | "rejected";
   /**
    * Shu telefonda `users` hujjati bormi.
    *
@@ -66,7 +65,7 @@ export async function GET() {
     // qo'shilgan xodimda `users` yozuvi umuman yo'q, qo'lda yaratilgan
     // hisobda esa `hrEmployeeId` bo'lmasligi mumkin. Raqamni BAND QILADIGAN
     // narsa — aynan `users.phone`.
-    db.collection("users").find({}, { projection: { _id: 0, phone: 1, status: 1 } }).toArray(),
+    db.collection("users").find({}, { projection: { _id: 0, phone: 1, status: 1, adminApproval: 1 } }).toArray(),
   ]);
 
   // Kalit NORMALLASHTIRILGAN raqam. Bugungi bazada ikkala kolleksiya ham
@@ -75,12 +74,17 @@ export async function GET() {
   // mumkin (components/auth/PhoneField.tsx izohi) — aynan tenglik bunday
   // qatorni "hisobi yo'q" deb ko'rsatib qo'yardi.
   const statusByPhone = new Map<string, string>();
+  const approvalByPhone = new Map<string, string>();
   for (const u of userRows) {
     const phone = normalizePhone(String(u.phone ?? ""));
-    if (phone) statusByPhone.set(phone, String(u.status ?? "—"));
+    if (!phone) continue;
+    statusByPhone.set(phone, String(u.status ?? "—"));
+    if (u.adminApproval) approvalByPhone.set(phone, String(u.adminApproval));
   }
 
-  const employees: TempStaffRow[] = rows.map((r) => ({
+  const employees: TempStaffRow[] = rows.map((r) => {
+    const key = normalizePhone(String(r.phone ?? ""));
+    return {
     id: Number(r.id),
     name: String(r.name ?? ""),
     phone: String(r.phone ?? ""),
@@ -91,8 +95,10 @@ export async function GET() {
     archDate: String(r.archDate ?? ""),
     created: String(r.created ?? ""),
     twoFactor: Boolean(r.twoFactor),
-    accountStatus: statusByPhone.get(normalizePhone(String(r.phone ?? ""))) ?? null,
-  }));
+    accountStatus: statusByPhone.get(key) ?? null,
+    approval: (approvalByPhone.get(key) ?? "") as TempStaffRow["approval"],
+    };
+  });
 
   const branches = branchRows.map((b) => ({ id: Number(b.id), name: String(b.name ?? `Filial ${b.id}`) }));
   // Partiya chegarasi SERVERDA belgilanadi va shu yerda klientga

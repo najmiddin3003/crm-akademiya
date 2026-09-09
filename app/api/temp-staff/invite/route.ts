@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/adminOnly";
 import { activationMessage, generateToken, INVITE_TTL_MS, issueCode, normalizePhone, sendSms } from "@/lib/invite";
+import { APPROVAL_FIELD, type AdminApproval } from "@/lib/adminApproval";
 import { logSms } from "@/lib/smsLog";
 
 // POST /api/temp-staff/invite  { ids: number[] }
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Bu sahifa faqat admin uchun" }, { status: 403 });
   }
 
-  let body: { ids?: unknown };
+  let body: { ids?: unknown; twoFactor?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -55,6 +56,10 @@ export async function POST(req: Request) {
   const ids = Array.isArray(body.ids)
     ? [...new Set(body.ids.map(Number).filter((n) => Number.isFinite(n)))]
     : [];
+  // "Ikki bosqichli tasdiqlash" — SMS oynasidagi tugmacha. Aynan SHU
+  // YERDA, chunki qaror taklif yuborilayotgan paytda qabul qilinadi:
+  // xodim parol qo'ygach kira oladimi yoki admin ✓ bosishini kutadimi.
+  const twoFactor = body.twoFactor === true;
   if (ids.length === 0) {
     return NextResponse.json({ ok: false, error: "Xodim tanlanmagan" }, { status: 400 });
   }
@@ -110,8 +115,19 @@ export async function POST(req: Request) {
 
       const token = generateToken();
       const invite = { token, expiresAt: new Date(Date.now() + INVITE_TTL_MS) };
+      // Tugmacha O'CHIQ bo'lsa maydon BUTUNLAY olib tashlanadi (`false`
+      // yozilmaydi): "talab qilinmagan" bilan "tasdiqlangan" ni ajratish
+      // uchun. Ilgari yuborilgan taklifda ikki bosqich yoqiq bo'lsa, uni
+      // o'chiq holda qayta yuborish talabni ham bekor qiladi.
+      const approvalPatch = twoFactor
+        ? { $set: { [APPROVAL_FIELD]: "pending" as AdminApproval } }
+        : { $unset: { [APPROVAL_FIELD]: "" } };
+
       if (existing) {
-        await users.updateOne({ _id: existing._id }, { $set: { invite, hrEmployeeId: id, status: "invited" } });
+        await users.updateOne({ _id: existing._id }, {
+          $set: { invite, hrEmployeeId: id, status: "invited" },
+          ...approvalPatch,
+        });
       } else {
         await users.insertOne({
           phone,
@@ -123,8 +139,12 @@ export async function POST(req: Request) {
           invite,
           createdAt: new Date(),
           activatedAt: null,
+          ...(twoFactor ? { [APPROVAL_FIELD]: "pending" as AdminApproval } : {}),
         });
       }
+      // Xodim kartochkasida ham ko'rinib tursin (hr_employees.twoFactor) —
+      // ilgari bu bayroq faqat saqlanardi va hech narsaga ta'sir qilmasdi.
+      await db.collection("hr_employees").updateOne({ id }, { $set: { twoFactor } });
 
       const sms = await sendSms(phone, activationMessage(token, code.code));
       // `secret: true` — matnda bir martalik token va kod bor, ular

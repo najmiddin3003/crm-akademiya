@@ -1492,3 +1492,48 @@ node --import ./scripts/_ts-alias.mjs scripts/_test-gender-parse.mjs
 > TUZOQ: `"female"` ichida `"male"` bor. `includes("male")` bilan yozilsa
 > har bir ayol erkakka aylanib ketardi — shuning uchun so'z chegarasi
 > (`\bmale\b`) va "female" birinchi tekshiriladi. Sinovda shu holat bor.
+
+## Ikki bosqichli kirish va "Vaqtinchalik" filtrlari (2026-09-09)
+
+### Ikki bosqichli kirish
+
+Jadvaldagi "2 bosqich" ustuni OLIB TASHLANDI va tugmacha **SMS yuborish
+oynasiga** ko'chdi. Sabab: qaror aynan taklif yuborilayotganda qabul
+qilinadi. Ustun bo'lganda u SMS'dan mustaqil o'zgarardi va "yoqilgan,
+lekin taklif eski qoida bilan ketgan" degan chalkash holat chiqardi.
+
+Oqim: admin SMS'ni tugmacha yoqiq holda yuboradi → xodim havoladan o'tib
+**parol qo'yadi** (`status: "active"`) → lekin **tizimga kira olmaydi**,
+ruxsat kutib turadi → admin "Vaqtinchalik" sahifasida **✓** bosgach
+kiradi (**✗** bosilsa kirmaydi).
+
+Maydon: `users.adminApproval` = `pending` | `approved` | `rejected`
+(`lib/adminApproval.ts`). **Maydon yo'q = tekshiruv yo'q** — mavjud hamma
+hisob avvalgidek ishlaydi, cheklov faqat ongli ravishda yoqilgan xodimga
+tegadi.
+
+`users.status` ga to'rtinchi qiymat qo'shilmadi: u faollashtirish oqimi
+bilan bog'langan (`invited` → `active`) va uni o'nlab joy o'qiydi.
+Tasdiq — ALOHIDA o'lchov.
+
+Tekshiruv UCH joyda, chunki uchtasi uch xil savolga javob beradi:
+
+| Joy | Nima uchun |
+| --- | --- |
+| `app/api/auth/login` | kirishga yo'l qo'ymaydi (parol solishtirilgandan KEYIN — aks holda begona odam "bu raqamda hisob bor" ma'lumotini olardi) |
+| `lib/auth.ts` | sahifalar — admin ALLAQACHON kirgan xodimni rad etsa, u cookie muddati tugaguncha ichkarida qolardi |
+| `lib/rolePermissions.ts` | `/api/*` — o'sha sabab, proxy yo'lida |
+
+Xato matni "parol noto'g'ri" DEMAYDI: parol to'g'ri va odam uni qayta-qayta
+terib o'tirmasligi kerak.
+
+### Filtrlar
+
+Uchta ALOHIDA select (bittaga qo'shilsa "1-filialdagi arxivdagi tasdiq
+kutayotganlar" kabi savolga javob berib bo'lmasdi):
+
+| Select | Variantlar |
+| --- | --- |
+| Filial | Barcha filiallar / har biri (xodim bir nechta filialda bo'lishi mumkin — a'zolik tekshiriladi) |
+| Holat | Aktiv / Arxivda |
+| Hisob | Hisob yo'q / SMS ketgan — hali faollashmagan / Tasdiq kutmoqda / Rad etilgan / Faollashgan |

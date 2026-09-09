@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Archive, ArchiveRestore, Pencil, Search, Send, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Pencil, Search, Send, Trash2, X } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -97,6 +97,15 @@ export default function TempStaffPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  // ── Filtrlar ─────────────────────────────────────────────────────────
+  // Uchtasi ALOHIDA select: ular UCH XIL o'lchov va bittaga qo'shilsa
+  // "1-filialdagi arxivdagi tasdiq kutayotganlar" kabi savolga javob
+  // berib bo'lmasdi. Bo'sh qiymat — "hammasi".
+  const [branchFilter, setBranchFilter] = useState("");
+  /** Xodimning o'zi: aktiv yoki arxivda (`archReason` bo'yicha). */
+  const [stateFilter, setStateFilter] = useState("");
+  /** Hisob holati: yo'q / taklif ketgan / tasdiq kutmoqda / rad / faol. */
+  const [accountFilter, setAccountFilter] = useState("");
 
   const [editTarget, setEditTarget] = useState<TempStaffRow | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", turi: "", email: "" });
@@ -122,6 +131,15 @@ export default function TempStaffPage() {
    */
   const [smsTargets, setSmsTargets] = useState<{ list: TempStaffRow[]; skipped: number } | null>(null);
   const [sending, setSending] = useState(false);
+  /**
+   * "Ikki bosqichli tasdiqlash" — SMS OYNASIDA turadi, jadvalda emas.
+   *
+   * Qaror aynan taklif yuborilayotgan paytda qabul qilinadi: xodim parol
+   * qo'ygach darhol kira oladimi, yoki admin ✓ bosishini kutadimi. Jadval
+   * ustuni bo'lganda esa u SMS'dan mustaqil o'zgarardi va "yoqilgan,
+   * lekin taklif eski qoida bilan ketgan" degan chalkash holat chiqardi.
+   */
+  const [smsTwoFactor, setSmsTwoFactor] = useState(false);
   /** Oxirgi yuborish natijasi — qatorlar kesimida (jimgina yo'qolmasin). */
   const [smsResults, setSmsResults] = useState<InviteResult[] | null>(null);
 
@@ -171,9 +189,33 @@ export default function TempStaffPage() {
   // solishtirishdan oldin ikkala tomondan raqam bo'lmagan belgilar olinadi.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
     const qDigits = q.replace(/\D/g, "");
+    const branchId = branchFilter ? Number(branchFilter) : null;
+
     return rows.filter((r) => {
+      // Filial: xodim BIR NECHTA filialda bo'lishi mumkin, shu bois
+      // tenglik emas, a'zolik tekshiriladi.
+      if (branchId !== null && !r.branchIds.includes(branchId)) return false;
+
+      const archived = Boolean(r.archReason);
+      if (stateFilter === "active" && archived) return false;
+      if (stateFilter === "archived" && !archived) return false;
+
+      if (accountFilter) {
+        // "invited" — SMS ketgan, xodim hali parol qo'ymagan.
+        // "pending"/"rejected" — ikki bosqich: parol bor, admin qarori
+        // kutilmoqda yoki rad etilgan (r.approval, users.adminApproval).
+        const ok =
+          accountFilter === "none" ? r.accountStatus === null
+          : accountFilter === "invited" ? r.accountStatus === "invited"
+          : accountFilter === "pending" ? r.approval === "pending"
+          : accountFilter === "rejected" ? r.approval === "rejected"
+          : accountFilter === "active" ? r.accountStatus === "active" && r.approval !== "pending" && r.approval !== "rejected"
+          : true;
+        if (!ok) return false;
+      }
+
+      if (!q) return true;
       const hay = [
         r.name,
         ROLE_LABELS[r.turi as keyof typeof ROLE_LABELS] ?? r.turi,
@@ -185,7 +227,7 @@ export default function TempStaffPage() {
       if (hay.includes(q)) return true;
       return qDigits.length > 0 && r.phone.replace(/\D/g, "").includes(qDigits);
     });
-  }, [rows, query, branchName]);
+  }, [rows, query, branchName, branchFilter, stateFilter, accountFilter]);
 
   // ── Belgilash ────────────────────────────────────────────────────────
   // Sarlavhadagi galochka FILTRLANGAN qatorlar ustida ishlaydi: qidiruv
@@ -226,6 +268,9 @@ export default function TempStaffPage() {
       return;
     }
     setSmsResults(null);
+    // Tugmacha har safar O'CHIQ ochiladi: oldingi yuborishdagi tanlov
+    // esdan chiqib, keyingi guruhga jimgina qo'llanib ketmasin.
+    setSmsTwoFactor(false);
     setSmsTargets({ list, skipped: targets.length - list.length });
   }
 
@@ -236,7 +281,7 @@ export default function TempStaffPage() {
       const res = await fetch("/api/temp-staff/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: smsTargets.list.map((t) => t.id) }),
+        body: JSON.stringify({ ids: smsTargets.list.map((t) => t.id), twoFactor: smsTwoFactor }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -260,23 +305,25 @@ export default function TempStaffPage() {
   }
 
   /**
-   * "Ikki bosqichli tasdiqlash" tugmachasi.
+   * Admin tasdig'i — ✓ yoki ✗.
    *
-   * Javobni KUTMASDAN jadvalni yangilaymiz (optimistik) — tugmacha
-   * bosilishi bilan qimirlashi kerak; xato bo'lsa qaytariladi.
+   * Javobni KUTMASDAN jadval yangilanadi (optimistik): tugma bosilishi
+   * bilan holat qimirlashi kerak, xato bo'lsa eski qiymat qaytariladi.
    */
-  async function toggleTwoFactor(r: TempStaffRow, on: boolean) {
-    setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, twoFactor: on } : x)));
+  async function decideApproval(r: TempStaffRow, approval: "approved" | "rejected") {
+    const before = r.approval;
+    setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, approval } : x)));
     try {
       const res = await fetch(`/api/temp-staff/${r.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ twoFactor: on }),
+        body: JSON.stringify({ approval }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Saqlanmadi");
+      showSuccess(approval === "approved" ? `${r.name} — kirishga ruxsat berildi` : `${r.name} — kirish rad etildi`);
     } catch (e) {
-      setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, twoFactor: !on } : x)));
+      setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, approval: before } : x)));
       showError(e instanceof Error ? e.message : "Saqlanmadi");
     }
   }
@@ -435,6 +482,35 @@ export default function TempStaffPage() {
                 className={`${inputCls} pl-9`}
               />
             </div>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className={`${inputCls} w-auto min-w-[11rem]`}
+            >
+              <option value="">Barcha filiallar</option>
+              {branches.map((b) => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
+            </select>
+            <select
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+              className={`${inputCls} w-auto min-w-[9rem]`}
+            >
+              <option value="">Barcha holatlar</option>
+              <option value="active">Aktiv</option>
+              <option value="archived">Arxivda</option>
+            </select>
+            <select
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
+              className={`${inputCls} w-auto min-w-[13rem]`}
+            >
+              <option value="">Barcha hisoblar</option>
+              <option value="none">Hisob yo&apos;q</option>
+              <option value="invited">SMS ketgan — hali faollashmagan</option>
+              <option value="pending">Tasdiq kutmoqda</option>
+              <option value="rejected">Rad etilgan</option>
+              <option value="active">Faollashgan</option>
+            </select>
             <button
               onClick={() => askSend(rows.filter((r) => selected.has(r.id)))}
               disabled={selected.size === 0}
@@ -478,7 +554,6 @@ export default function TempStaffPage() {
                 <th className="px-5 py-3 text-left">Filiallar</th>
                 <th className="px-5 py-3 text-left">Hisob</th>
                 <th className="px-5 py-3 text-left">Holat</th>
-                <th className="px-5 py-3 text-left w-28">2 bosqich</th>
                 <th className="px-5 py-3 text-right pr-5 w-40" />
               </tr>
             </thead>
@@ -511,7 +586,51 @@ export default function TempStaffPage() {
                         : r.branchIds.map((id) => branchName.get(id) ?? `Filial ${id}`).join(", ")}
                     </td>
                     <td className="px-5 py-3">
-                      <AccountBadge status={r.accountStatus} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <AccountBadge status={r.accountStatus} />
+                        {/* IKKI BOSQICH. Tugmalar tasdiq holati YONIDA
+                            turadi — amal aynan shu holatga tegishli va
+                            uni jadvalning boshqa chekkasidan qidirish
+                            kerak bo'lmasin. */}
+                        {r.approval === "pending" && (
+                          <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-600">
+                            {r.accountStatus === "active" ? "Tasdiq kutmoqda" : "Tasdiq talab qilinadi"}
+                          </span>
+                        )}
+                        {r.approval === "rejected" && (
+                          <span className="inline-flex items-center rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-600">
+                            Rad etilgan
+                          </span>
+                        )}
+                        {r.approval === "approved" && (
+                          <span
+                            className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600"
+                            title="Ikki bosqichli kirish — admin tasdiqlagan"
+                          >
+                            Tasdiqlangan
+                          </span>
+                        )}
+                        {r.approval !== "" && (
+                          <span className="inline-flex items-center gap-0.5">
+                            <button
+                              onClick={() => decideApproval(r, "approved")}
+                              disabled={r.approval === "approved"}
+                              className="h-6 w-6 rounded-md flex items-center justify-center text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Kirishga ruxsat berish"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => decideApproval(r, "rejected")}
+                              disabled={r.approval === "rejected"}
+                              className="h-6 w-6 rounded-md flex items-center justify-center text-rose-600 hover:bg-rose-500/10 disabled:opacity-25 disabled:cursor-not-allowed"
+                              title="Kirishni rad etish"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3">
                       {archived ? (
@@ -526,13 +645,6 @@ export default function TempStaffPage() {
                           Aktiv
                         </span>
                       )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <EmployeeToggle
-                        checked={r.twoFactor}
-                        onChange={(v) => toggleTwoFactor(r, v)}
-                        title="Ikki bosqichli tasdiqlash — saqlanadi, lekin login oqimi uni hozircha o'qimaydi"
-                      />
                     </td>
                     <td className="px-5 py-3 pr-5">
                       <div className="flex items-center justify-end gap-1">
@@ -576,7 +688,7 @@ export default function TempStaffPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-5 py-10 text-center text-sm text-muted-foreground">
                     {loading ? <SpinnerBlock size={22} /> : "Ma'lumotlar topilmadi"}
                   </td>
                 </tr>
@@ -744,6 +856,20 @@ export default function TempStaffPage() {
               allaqachon faollashgan yoki telefon raqami yo&apos;q.
             </p>
           )}
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <EmployeeToggle
+              checked={smsTwoFactor}
+              onChange={setSmsTwoFactor}
+              label="Ikki bosqichli tasdiqlash"
+            />
+            <p className="text-[12px] text-muted-foreground">
+              {smsTwoFactor
+                ? "Xodim havoladan o'tib parol qo'yadi, lekin TIZIMGA KIRA OLMAYDI — ruxsat kutib turadi. Siz shu jadvaldan ✓ bosganingizdan keyin kiradi."
+                : "Xodim parol qo'ygan zahoti tizimga kiraveradi."}
+            </p>
+          </div>
+
           <p className="text-[12px] text-muted-foreground">
             SMS haqiqatan yuboriladi. Bitta raqamga soatiga 5 tadan ko&apos;p kod ketmaydi.
           </p>

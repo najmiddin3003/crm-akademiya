@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { cookies } from "next/headers";
 import { ObjectId } from "mongodb";
+import { approvalBlocks } from "./adminApproval";
 import { ensureIndexes } from "./mongodb";
 import { resolvePermissions, type UserForPermissions } from "./rolePermissions";
 import { SESSION_COOKIE, verifySessionToken } from "./session";
@@ -62,14 +63,17 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const [user, live] = await Promise.all([
     db.collection("users").findOne(
       { _id: new ObjectId(session.uid) },
-      { projection: { status: 1, phone: 1, fullName: 1, role: 1, hrEmployeeId: 1, lastSeenNotifAt: 1 } },
+      { projection: { status: 1, phone: 1, fullName: 1, role: 1, hrEmployeeId: 1, lastSeenNotifAt: 1, adminApproval: 1 } },
     ),
     session.sid
       ? db.collection("user_sessions").findOne({ sid: session.sid })
       : Promise.resolve(null),
   ]);
 
-  if (!user || user.status !== "active") return null;
+  // Tasdiq kutayotgan (yoki rad etilgan) hisob — sessiyasi bo'lsa ham
+  // ichkariga o'tkazilmaydi: admin uni ALLAQACHON kirgan paytda rad etsa,
+  // u cookie muddati tugaguncha qolib ketardi (lib/adminApproval.ts).
+  if (!user || user.status !== "active" || approvalBlocks(user.adminApproval)) return null;
 
   // Qurilma sessiyasi uzilgan bo'lsa ("Aktiv qurilmalar" da chiqarilgan),
   // keyingi sahifa ochilishida foydalanuvchi chiqarib yuboriladi.
