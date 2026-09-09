@@ -14,6 +14,7 @@ import {
   loadTasks,
   nextLesson,
 } from "@/lib/studentBot/data";
+import { dueFor } from "@/lib/studentBot/dues";
 import { authStudentWeb } from "@/lib/studentBot/webapp";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     loadPupilNames(db, user.links.map((l) => l.pupilId)),
   ]);
   const tasks = await loadTasks(db, groups.map((g) => g.id));
+  const due = await dueFor(db, pupil);
   const next = nextLesson(groups);
   const link = user.links.find((l) => l.pupilId === pupil.id);
 
@@ -117,6 +119,8 @@ export async function POST(req: Request) {
       note: t.note ?? "",
     })),
     exams,
+    // Joriy oy to'lovi qayd etilganmi — kabinetdagi eslatma uchun.
+    due,
     addresses: pupil.addresses ?? [],
   });
 }

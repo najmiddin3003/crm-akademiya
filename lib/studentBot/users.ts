@@ -24,7 +24,7 @@ export const BOT_USERS = "student_bot_users";
  * o'chirib qo'yilsa o'quvchi qarzdorligini yoki dars qoldirganini
  * bilmay qolardi, markaz esa uni ogohlantirgan deb hisoblardi.
  */
-export type NotifyKind = "attendance" | "payment" | "group";
+export type NotifyKind = "attendance" | "payment" | "group" | "due";
 
 export interface BotUserLink {
   pupilId: number;

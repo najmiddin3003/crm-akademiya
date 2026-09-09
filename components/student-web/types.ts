@@ -54,5 +54,7 @@ export interface StudentMe {
   payments: { rows: PaymentRow[]; totalCount: number };
   tasks: StudentTask[];
   exams: { monthly: MonthlyExam[]; uzbmb: UzbmbExam[] };
+  /** Joriy oy to'lovi qayd etilganmi. */
+  due: { unpaid: boolean; month: string };
   addresses: PupilAddress[];
 }

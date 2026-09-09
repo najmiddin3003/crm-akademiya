@@ -5,9 +5,11 @@ import { isStudentBotReady, loadStudentBotConfig, studentBotPushEnabled } from "
 import type { Group } from "@/lib/groups";
 import { logSms } from "@/lib/smsLog";
 import { loadPupil } from "@/lib/studentBot/data";
+import { currentPeriodMonth, linkedPupilsOwing } from "@/lib/studentBot/dues";
 import { pupilFullName } from "@/lib/pupilsData";
 import { chatsForPupil, markBlocked, type NotifyKind } from "@/lib/studentBot/users";
 import * as V from "@/lib/studentBot/views";
+import { uzNow } from "@/lib/uzTime";
 
 // AVTOMATIK XABARLAR — davomat belgilanganda va to'lov kelganda
 // o'quvchiga (va unga bog'langan ota-onaga) darhol xabar boradi.
@@ -92,6 +94,59 @@ export async function notifyGroupAdded(db: Db, pupilId: number, group: Group): P
   } catch (e) {
     console.error("[student-bot] guruh xabari:", e instanceof Error ? e.message : e);
   }
+}
+
+/**
+ * OY TO'LOVI ESLATMASI — bitta o'quvchiga.
+ *
+ * Chaqiruvchi kimga yuborishni O'ZI hal qiladi (`linkedPupilsOwing`);
+ * bu funksiya faqat yuboradi. Shunda "kim qarzdor" mantig'i bitta
+ * joyda (dues.ts) qoladi va sinash oson bo'ladi.
+ */
+export async function notifyDue(db: Db, pupilId: number, month: string): Promise<void> {
+  try {
+    if (!studentBotPushEnabled()) return;
+    const pupil = await loadPupil(db, pupilId);
+    if (!pupil) return;
+    await fanOut(db, pupilId, "due", V.duePush(pupil, month));
+  } catch (e) {
+    console.error("[student-bot] to'lov eslatmasi:", e instanceof Error ? e.message : e);
+  }
+}
+
+/** Eslatma yuboriladigan kunlar (Toshkent vaqti, oy kuni). */
+const DUE_DAYS = [25];
+
+/**
+ * OYLIK ESLATMA YUGURISHI — kunlik cron chaqiradi.
+ *
+ * QAYSI KUNLARDA: oyning 25-kuni va OXIRGI kuni. Ataylab ikkitagina:
+ * har kuni yuborilsa o'quvchi botni bloklardi va keyin davomat ham,
+ * to'lov xabari ham unga yetmay qolardi — ya'ni ko'p eslatish
+ * eslatmani butunlay yo'qotardi.
+ *
+ * Boshqa kunlarda hech narsa qilmaydi va buni AYTIB qaytadi, jim
+ * emas: hisobotda "nega yuborilmadi" degan savol qolmasin.
+ */
+export async function runDueReminders(
+  db: Db,
+  now: Date = uzNow(),
+): Promise<{ sent: number; skipped: string | null }> {
+  // KUN TEKSHIRUVI BIRINCHI: u sof hisob va bazaga tegmaydi. Push
+  // o'chiq bo'lsa ham jadval to'g'ri ishlayotganini shu tartibda
+  // sinab ko'rish mumkin — hech kimga xabar yubormasdan.
+  const day = now.getDate();
+  const daysIn = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  if (!DUE_DAYS.includes(day) && day !== daysIn) {
+    return { sent: 0, skipped: "bugun eslatma kuni emas" };
+  }
+
+  if (!studentBotPushEnabled()) return { sent: 0, skipped: "push o'chiq" };
+
+  const month = currentPeriodMonth(now);
+  const owing = await linkedPupilsOwing(db, now);
+  for (const pupilId of owing) await notifyDue(db, pupilId, month);
+  return { sent: owing.length, skipped: null };
 }
 
 export interface PaymentNotice {

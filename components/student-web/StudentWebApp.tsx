@@ -241,6 +241,20 @@ export default function StudentWebApp() {
         </div>
       </header>
 
+      {/* TO'LOV ESLATMASI — joriy oy uchun yozuv bo'lmasa.
+          Summa YO'Q va "qarzdorsiz" DEYILMAYDI: tizimda kurs narxi ham,
+          qarz qoldig'i ham yuritilmaydi (lib/studentBot/dues.ts). */}
+      {data.due.unpaid ? (
+        <div className="mt-3 rounded-2xl border border-amber-400/50 bg-amber-500/10 p-4">
+          <p className="text-[14px] font-bold text-amber-700 dark:text-amber-400">
+            {`${monthLabel(data.due.month)} oyi uchun to'lov hali qayd etilmagan`}
+          </p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {"To'lovni o'quv markazida amalga oshirishingiz mumkin. Allaqachon to'lagan bo'lsangiz — kassada yozilgach eslatma yo'qoladi."}
+          </p>
+        </div>
+      ) : null}
+
       {/* Tab paneli — mobilda gorizontal siljiydi, keng ekranda o'raladi. */}
       <nav className="mt-3 flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2.5 sm:flex-wrap sm:overflow-visible">
         {TABS.map((t) => (

@@ -526,6 +526,32 @@ export function attendancePush(
  * xabar ko'pincha ish/maktab orasida o'qiladi va odam o'sha zahoti
  * qachon kelishini bilishi kerak.
  */
+/**
+ * OY TO'LOVI ESLATMASI.
+ *
+ * SUMMA AYTILMAYDI va "qarzdorsiz" DEYILMAYDI. Tizimda kurs narxi
+ * ham, qarz qoldig'i ham yuritilmaydi (lib/studentBot/dues.ts) —
+ * raqam yozilsa u to'qib chiqarilgan bo'lardi. Ayta oladigan
+ * yagona rost gap: shu oy uchun to'lov yozuvi hali yo'q.
+ *
+ * Ohang ham shunga yarasha: ayblov emas, eslatma. To'lov qilingan-u
+ * kassada hali yozilmagan bo'lishi mumkin, shuning uchun oxirida
+ * "allaqachon to'lagan bo'lsangiz e'tibor bermang" deyiladi.
+ */
+export function duePush(pupil: Pupil, month: string): string {
+  return [
+    "💳 <b>To'lov eslatmasi</b>",
+    whoLine(pupil),
+    "",
+    `<b>${esc(monthLabel(month))}</b> oyi uchun to'lov hali qayd etilmagan.`,
+    "",
+    "To'lovni o'quv markazida amalga oshirishingiz mumkin.",
+    "",
+    "<i>Agar to'lovni allaqachon qilgan bo'lsangiz, bu xabarga e'tibor bermang —",
+    "kassada yozilgach eslatma to'xtaydi.</i>",
+  ].join("\n");
+}
+
 export function groupAddedPush(pupil: Pupil, group: Group): string {
   const lines = [
     "🎓 <b>Yangi guruhga qo'shildingiz</b>",

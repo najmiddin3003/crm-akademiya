@@ -4,6 +4,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { loadSyncConfig } from "@/lib/sync/config";
 import { runSyncCycle } from "@/lib/sync/run";
 import { digestLines, digestMessages, digestPeriodFor, runSalaryDigest } from "@/lib/sync/salaryDigest";
+import { runDueReminders } from "@/lib/studentBot/notify";
 
 // GET /api/sync/cron — kunlik tekshiruv (sutkasiga bir marta).
 //
@@ -111,8 +112,21 @@ async function handle(req: Request) {
     // chaqiradi, ya'ni har bosishda guruhga xulosa ketib qolardi.
     const db = await ensureIndexes();
     const digest = await runSalaryDigest(db);
+
+    // O'QUVCHILARGA TO'LOV ESLATMASI — oyning 25-kuni va oxirgi kunida.
+    //
+    // Xulosadan KEYIN, solishtirishdan OLDIN: u ham bir necha soniya
+    // oladi va qolgan vaqt baribir reconcile'ga ketadi.
+    //
+    // O'zi hech qachon otmaydi va push o'chiq bo'lsa jimgina qaytadi,
+    // ya'ni sinxronizatsiyani hech qanday holatda to'xtatmaydi.
+    const dueReminders = await runDueReminders(db).catch((e) => ({
+      sent: 0,
+      skipped: e instanceof Error ? e.message : "xato",
+    }));
+
     const result = await runSyncCycle("cron", (maxDuration * 1000) - RESERVE_MS - DIGEST_MS);
-    return NextResponse.json({ ok: true, digest, ...result });
+    return NextResponse.json({ ok: true, digest, dueReminders, ...result });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "noma'lum xato" },
