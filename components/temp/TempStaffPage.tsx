@@ -24,6 +24,10 @@ import type { TempStaffRow } from "@/app/api/temp-staff/route";
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+// Filtr selektlari — `inputCls` ning `w-full` SIZ varianti: ular qidiruv
+// maydoni bilan BITTA flex qatorida turadi, kengligi inline uslubda.
+const filterCls =
+  "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
 type Branch = { id: number; name: string };
@@ -473,7 +477,13 @@ export default function TempStaffPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-border">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative w-full max-w-xs">
+            {/* Kengliklar INLINE uslub bilan. Sabab: `w-full` (inputCls
+                ichida) flex qatorini butunlay egallab, har bir maydonni
+                alohida satrga tushirib yuborardi; `w-auto`/`min-w-[…]`
+                bilan bekor qilib bo'lmadi — bu loyihada CSS kompilyatsiya
+                qilingan blobdan keladi va qaysi utilita mavjudligi
+                kafolatlanmagan (EmployeeToggle.tsx dagi bir xil sabab). */}
+            <div className="relative" style={{ width: 260 }}>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={query}
@@ -485,7 +495,8 @@ export default function TempStaffPage() {
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className={`${inputCls} w-auto min-w-[11rem]`}
+              className={filterCls}
+              style={{ width: 190 }}
             >
               <option value="">Barcha filiallar</option>
               {branches.map((b) => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
@@ -493,7 +504,8 @@ export default function TempStaffPage() {
             <select
               value={stateFilter}
               onChange={(e) => setStateFilter(e.target.value)}
-              className={`${inputCls} w-auto min-w-[9rem]`}
+              className={filterCls}
+              style={{ width: 150 }}
             >
               <option value="">Barcha holatlar</option>
               <option value="active">Aktiv</option>
@@ -502,7 +514,8 @@ export default function TempStaffPage() {
             <select
               value={accountFilter}
               onChange={(e) => setAccountFilter(e.target.value)}
-              className={`${inputCls} w-auto min-w-[13rem]`}
+              className={filterCls}
+              style={{ width: 235 }}
             >
               <option value="">Barcha hisoblar</option>
               <option value="none">Hisob yo&apos;q</option>

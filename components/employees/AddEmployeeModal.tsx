@@ -5,7 +5,7 @@ import { Plus, Trash2, Upload, X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { formatPhoneDisplay } from "@/components/auth/PhoneField";
+import PhoneField, { phoneDigits } from "@/components/auth/PhoneField";
 import { useBranches } from "@/hooks/useBranches";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
@@ -205,10 +205,12 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   // yuborardi. Shuning uchun mavjud xodimda satr BO'LINMAYDI.
   const [ism, setIsm] = useState(employee?.name ?? "");
   const [familiya, setFamiliya] = useState("");
-  // Bazada ikki xil shakl bor: "94 155 88 55" va "998336263006". Formatter
-  // ikkalasini ham qabul qiladi — ilgari bu yerda qo'lda "+998" qo'shilardi
-  // va 12 xonali raqamga u IKKINCHI marta yopishib ketardi.
-  const [phone, setPhone] = useState(employee ? formatPhoneDisplay(employee.phone) : "+998");
+  // FAQAT 9 RAQAM saqlanadi ("941558855") — "+998" maydonda qotib turadi
+  // (PhoneField, kirish oynasidagi bilan bir xil). Bazada ikki xil shakl
+  // bor ("94 155 88 55" va "998336263006"), `phoneDigits` ikkalasini ham
+  // tanidi. Ilgari bu yerda ko'rinadigan satr turardi va unga istalgan
+  // narsa yozib bo'lardi.
+  const [phone, setPhone] = useState(employee ? phoneDigits(employee.phone) : "");
   const [vazifa, setVazifa] = useState(employee ? TURI_LABEL[employee.turi] ?? "" : "");
   const [jinsi, setJinsi] = useState(employee ? GENDER_LABEL[employee.gender] ?? "" : "");
   /**
@@ -534,9 +536,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       showError(editing ? "F.I.SH. ni kiriting" : "Ism va familiyani kiriting");
       return;
     }
-    const trimmedPhone = phone.trim();
-    if (!isValidPhoneClient(trimmedPhone)) {
-      showError("Telefon raqamini to'g'ri kiriting (masalan +998 90 123 45 67)");
+    // Maydon faqat raqam qabul qiladi, lekin 9 tasi TO'LIQ terilganini
+    // baribir tekshiramiz — yarim raqam bilan saqlab bo'lmasin.
+    if (!isValidPhoneClient(phone)) {
+      showError("Telefon raqamini to'liq kiriting — 9 ta raqam (masalan 90 123 45 67)");
       return;
     }
     // Filiallar ro'yxati hali kelmagan bo'lsa saqlashga yo'l qo'ymaymiz:
@@ -611,10 +614,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          // Telefon formatlangan ko'rinishda ketadi ("+998 94 155 88 55") —
-          // server uni normalizePhone() bilan bir xil shaklga soladi, ya'ni
-          // probel va qavslar bazaga tushmaydi.
-          phone: trimmedPhone,
+          // 9 ta raqam ketadi ("941558855") — server `normalizePhone()`
+          // bilan "998941558855" ga keltiradi (lib/eskiz.ts). Kirish
+          // oynasi ham aynan shunday yuboradi.
+          phone,
           turi: TURI_MAP[vazifa] || "",
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
@@ -700,15 +703,13 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
             )}
             <div>
               <label className={labelCls}>Telefon raqam<span className="text-rose-500">*</span></label>
-              <div className="flex items-center gap-2 h-10 rounded-lg border border-border pl-2 pr-3 bg-card">
-                <span className="inline-block text-[16px]">🇺🇿</span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="flex-1 bg-transparent text-sm focus:outline-none"
-                />
-              </div>
+              {/* KIRISH oynasidagi maydonning AYNAN O'ZI (PhoneField):
+                  "+998" qotib turadi, faqat 9 raqam kiritiladi va u
+                  "(90) 123-45-67" bo'lib formatlanadi. Ilgari bu yerda
+                  oddiy matn maydoni edi va unga istalgan narsa yozib
+                  bo'lardi — ikki ekranda ikki xil qoida ishlardi.
+                  Yorliq shu yerda chiziladi (yulduzchasi bilan). */}
+              <PhoneField label={null} value={phone} onChange={setPhone} />
               {/* Telefon — tizimga kirish logini. Shu sababli PATCH endi
                   `users` hujjatini ham yangilaydi: aks holda profil yangi
                   raqamni ko'rsatgani bilan xodim eskisi bilan kirishda davom
