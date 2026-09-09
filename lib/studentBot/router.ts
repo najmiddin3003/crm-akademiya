@@ -97,6 +97,31 @@ function displayName(u: TgUser | undefined): string {
   return full || (u?.username ? `@${u.username}` : "");
 }
 
+/** Salomlashuvda ko'rsatiladigan ism uchun chegara. */
+const MAX_NICK = 35;
+
+/**
+ * Telegramdagi ismi juda uzun bo'lsa yoki umuman bo'lmasa nima yozilishi.
+ *
+ * Odamlar ismlar maydoniga reklama satrlarini ("... | KANALGA OBUNA
+ * BO'LING") joylashtiradi. Bunday ism salomlashuv qatorini bir necha
+ * qatorga cho'zib, matnni tanimas holga keltiradi — shuning uchun 35
+ * belgidan uzuni USERNAME bilan almashtiriladi, u yo'q bo'lsa salom
+ * ismsiz beriladi.
+ *
+ * `displayName` dan FARQI: u xodimlarga yuboriladigan xabar uchun
+ * ismni to'liq beradi (u yerda uzunlik muammo emas, aksincha kim
+ * yozganini aniqroq bilish kerak).
+ */
+function greetName(u: TgUser | undefined): string {
+  const full = [u?.first_name, u?.last_name].filter(Boolean).join(" ").trim();
+  // `[...full].length` — oddiy `.length` EMAS: emoji va ba'zi harflar
+  // UTF-16 da ikkita birlik egallaydi, ya'ni ko'zga qisqa ko'ringan ism
+  // chegaradan bekorga oshib ketardi.
+  if (full && [...full].length <= MAX_NICK) return full;
+  return u?.username ? `@${u.username}` : "";
+}
+
 /** Bo'lim ekrani — matn va tugmalar birga. */
 interface Screen {
   html: string;
@@ -345,7 +370,7 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
 
   if (!user) {
     // Bog'lanmagan: nima yozishidan qat'i nazar telefon so'raladi.
-    await sendToStudent(cfg, chatId, V.startPrompt(), contactKeyboard());
+    await sendToStudent(cfg, chatId, V.startPrompt(greetName(msg.from)), contactKeyboard());
     return;
   }
 
@@ -361,7 +386,7 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
     // Bog'lanish bor, o'quvchi esa bazadan o'chirilgan — qayta ulanish
     // kerak, aks holda bot har bosishda xato bilan qulab tushardi.
     await unlinkBotUser(db, chatId);
-    await sendToStudent(cfg, chatId, V.startPrompt(), contactKeyboard());
+    await sendToStudent(cfg, chatId, V.startPrompt(greetName(msg.from)), contactKeyboard());
     return;
   }
 
@@ -387,7 +412,7 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
   const user = await getBotUser(db, chatId);
   if (!user) {
     await answerStudent(cfg, cq.id, "Avval telefon raqamingizni yuboring");
-    await sendToStudent(cfg, chatId, V.startPrompt(), contactKeyboard());
+    await sendToStudent(cfg, chatId, V.startPrompt(greetName(cq.from)), contactKeyboard());
     return;
   }
 
@@ -395,7 +420,7 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
   if (data === CB.logoutYes) {
     await unlinkBotUser(db, chatId);
     await answerStudent(cfg, cq.id, "Bog'lanish uzildi");
-    await sendToStudent(cfg, chatId, V.startPrompt(), contactKeyboard());
+    await sendToStudent(cfg, chatId, V.startPrompt(greetName(cq.from)), contactKeyboard());
     return;
   }
 
@@ -438,7 +463,7 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
   if (!pupil) {
     await unlinkBotUser(db, chatId);
     await answerStudent(cfg, cq.id, "O'quvchi topilmadi");
-    await sendToStudent(cfg, chatId, V.startPrompt(), contactKeyboard());
+    await sendToStudent(cfg, chatId, V.startPrompt(greetName(cq.from)), contactKeyboard());
     return;
   }
 

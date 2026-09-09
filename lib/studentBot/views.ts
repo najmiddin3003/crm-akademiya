@@ -6,7 +6,9 @@ import type { NewsItem } from "@/lib/news";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
 import { esc } from "@/lib/telegramApi";
 import type { ExamsView, NextLesson, PaymentsView } from "@/lib/studentBot/data";
+import { CONTACT_BUTTON } from "@/lib/studentBot/keyboards";
 import { formatPhone } from "@/lib/studentBot/phone";
+import { pe } from "@/lib/studentBot/premiumEmoji";
 import type { StudentBotUser } from "@/lib/studentBot/users";
 
 // O'quvchilar botining BARCHA MATNLARI. Telegram HTML rejimi
@@ -81,17 +83,32 @@ function whoLine(pupil: Pupil): string {
 
 // ── Bog'lanish oqimi ────────────────────────────────────────────────
 
-export function startPrompt(): string {
+/**
+ * Xush kelibsiz ekrani — bog'lanmagan odam ko'radigan YAGONA matn.
+ *
+ * `nick` — Telegramdagi ismi (router.ts dagi `greetName` tayyorlaydi).
+ * Bo'sh bo'lsa salom ISMSIZ beriladi: "Assalomu alaykum !" degan
+ * osilib qolgan qator ismi yo'q odamga g'alati ko'rinardi.
+ */
+export function startPrompt(nick = ""): string {
+  const hello = nick ? `Assalomu alaykum ${esc(nick)}!` : "Assalomu alaykum!";
   return [
-    "<b>Assalomu alaykum!</b>",
+    `${pe("wave")} <b>${hello}</b>`,
     "",
-    "Bu — o'quv markazining o'quvchilar uchun boti. Bu yerda davomat,",
-    "to'lovlar, dars jadvali, baholar va topshiriqlarni ko'rishingiz mumkin.",
+    "Akademiya o'quv markazining rasmiy botiga xush kelibsiz!",
     "",
-    "Boshlash uchun pastdagi tugma orqali <b>telefon raqamingizni</b> yuboring.",
-    "Raqamni Telegramning o'zi yuboradi — qo'lda yozish shart emas.",
+    "Bu yerda o'quv jarayoningizga oid barcha muhim ma'lumotlarni bir joyda ko'rishingiz mumkin:",
     "",
-    "<i>Raqam bazadagi o'quvchi yoki ota-ona raqami bilan solishtiriladi.</i>",
+    `${pe("calendar")} Dars jadvali`,
+    `${pe("card")} To'lovlar`,
+    `${pe("chart")} Natijalar va baholar`,
+    `${pe("memo")} Topshiriqlar`,
+    "",
+    `Boshlash uchun telefon raqamingizni tasdiqlang ${pe("point")}`,
+    "",
+    `Pastdagi "${CONTACT_BUTTON}" tugmasini bosing. Raqamni qo'lda yozish shart emas.`,
+    "",
+    `${pe("lock")} <i>Raqamingiz bazadagi o'quvchi yoki ota-ona ma'lumotlari bilan tekshiriladi.</i>`,
   ].join("\n");
 }
 

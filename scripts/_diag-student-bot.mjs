@@ -9,10 +9,11 @@
 // Nima qiladi:
 //   1) sozlamalardagi kamchiliklarni sanaydi (maxfiy qiymatlarsiz);
 //   2) bot tirikmi va webhook o'rnatilganmi — tekshiradi;
-//   3) berilgan telefon bo'yicha o'quvchi topiladimi — bazadan sinaydi;
-//   4) topilgan o'quvchi uchun BOTNING HAR BIR EKRANINI chizib beradi.
+//   3) xush kelibsiz ekranini (ism bor/yo'q holatlari) chizib beradi;
+//   4) berilgan telefon bo'yicha o'quvchi topiladimi — bazadan sinaydi;
+//   5) topilgan o'quvchi uchun BOTNING HAR BIR EKRANINI chizib beradi.
 //
-// (4) eng muhimi: botni Telegramga ulashdan OLDIN o'quvchi nima
+// (5) eng muhimi: botni Telegramga ulashdan OLDIN o'quvchi nima
 // ko'rishini aynan shu yerda ko'rish mumkin.
 import fs from "node:fs";
 import path from "node:path";
@@ -33,6 +34,7 @@ const { loadStudentBotConfig, studentBotIssues, isStudentBotReady } = await impo
 const { findPupilsByPhone, phoneKey, formatPhone } = await import("@/lib/studentBot/phone");
 const D = await import("@/lib/studentBot/data");
 const V = await import("@/lib/studentBot/views");
+const { premiumEmojiSlots } = await import("@/lib/studentBot/premiumEmoji");
 const { getDb } = await import("@/lib/mongodb");
 
 const argv = process.argv.slice(2);
@@ -50,6 +52,12 @@ const issues = studentBotIssues(cfg);
 if (issues.length === 0) line("  Hammasi joyida.");
 for (const i of issues) line(`  • ${i}`);
 line(`  Bot yozishga tayyor: ${isStudentBotReady(cfg) ? "HA" : "YO'Q"}`);
+const premium = premiumEmojiSlots();
+line(
+  premium.length > 0
+    ? `  Premium emoji: ${premium.join(", ")} (${premium.length} ta)`
+    : "  Premium emoji: sozlanmagan — oddiy emoji ishlatiladi",
+);
 
 // ── 2. Telegram ─────────────────────────────────────────────────────
 rule("TELEGRAM");
@@ -71,6 +79,19 @@ if (!cfg.token) {
       }
     }
   }
+}
+
+// ── 2b. Xush kelibsiz ekrani ────────────────────────────────────────
+// Bog'lanmagan odam ko'radigan BIRINCHI ekran. Bazaga bog'liq emas,
+// shuning uchun o'quvchi ko'rsatilmaganda ham chiziladi.
+rule("XUSH KELIBSIZ (/start)");
+for (const [label, nick] of [
+  ["oddiy ism", "Ali Valiyev"],
+  ["35 belgidan uzun ism -> username", "@uzun_odam"],
+  ["ism ham, username ham yo'q", ""],
+]) {
+  line(`\n  [${label}]`);
+  line(V.startPrompt(nick).split("\n").map((l) => `    ${l}`).join("\n"));
 }
 
 // ── 3. Telefon bo'yicha qidiruv ─────────────────────────────────────

@@ -1,4 +1,5 @@
 import type { InlineButton, InlineKeyboard, ReplyKeyboard } from "@/lib/telegramApi";
+import { plainEmoji } from "@/lib/studentBot/premiumEmoji";
 import type { NotifyKind, StudentBotUser } from "@/lib/studentBot/users";
 
 // Tugmalar va ular ortidagi KALITLAR.
@@ -51,6 +52,18 @@ export function notifyArg(data: string): NotifyKind | null {
 }
 
 /**
+ * Telefon tugmasining YOZUVI — bitta manba.
+ *
+ * Xush kelibsiz matni ("pastdagi ... tugmasini bosing") aynan shu
+ * yozuvga havola qiladi; ikki joyda alohida yozilsa, biri o'zgarganda
+ * bot mavjud bo'lmagan tugmani ko'rsatishga chaqirardi.
+ *
+ * ODDIY EMOJI, premium emas: oddiy klaviatura tugmalarida Telegram
+ * maxsus emojini QO'LLAB-QUVVATLAMAYDI — u yerda HTML umuman ishlamaydi.
+ */
+export const CONTACT_BUTTON = `${plainEmoji("phone")} Telefon raqamimni yuborish`;
+
+/**
  * Telefon so'raydigan ODDIY klaviatura — bog'lanmagan odamga ko'rsatiladi.
  *
  * `request_contact` ATAYLAB: matn maydoniga raqam yozdirilsa, odam
@@ -60,7 +73,7 @@ export function notifyArg(data: string): NotifyKind | null {
  */
 export function contactKeyboard(): ReplyKeyboard {
   return {
-    keyboard: [[{ text: "📱 Telefon raqamni yuborish", request_contact: true }]],
+    keyboard: [[{ text: CONTACT_BUTTON, request_contact: true }]],
     resize_keyboard: true,
     one_time_keyboard: true,
     input_field_placeholder: "Pastdagi tugmani bosing",
