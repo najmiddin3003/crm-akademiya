@@ -1,4 +1,5 @@
 import { MongoClient, Db } from "mongodb";
+import { LEGACY_COLLECTION } from "@/lib/legacyEntries";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 
 // MongoDB ulanishi — dev rejimida HMR har safar yangi ulanish ochib
@@ -202,6 +203,12 @@ async function createAllIndexes(db: Db): Promise<void> {
     { unique: true },
   ));
   tasks.push(db.collection("attendance").createIndex({ groupId: 1, date: 1 }));
+  // O'QUVCHI bo'yicha — o'quvchilar Telegram boti (lib/studentBot/data.ts)
+  // "Davomat" va "Baholar" bo'limlarida guruhni BILMAY so'raydi: o'quvchi
+  // bir nechta guruhda bo'lishi mumkin va hammasi birga ko'rsatiladi.
+  // Yuqoridagi qo'shma indeks bunga yaramaydi — uning birinchi ustuni
+  // `groupId`, ya'ni u berilmasa indeks ochilmaydi.
+  tasks.push(db.collection("attendance").createIndex({ pupilId: 1, date: -1 }));
   // attendance_history — Davomat katakchasi bo'yicha o'zgarishlar tarixi
   // ("Tarixi" bo'limi). Yozuvlar hech qachon o'chirilmaydi.
   tasks.push(db.collection("attendance_history").createIndex({ id: 1 }, { unique: true }));
@@ -303,6 +310,21 @@ async function createAllIndexes(db: Db): Promise<void> {
   // olinadi, shuning uchun qo'shma indeks.
   tasks.push(db.collection("pupil_activity").createIndex({ pupilId: 1, date: -1 }));
   tasks.push(db.collection("pupil_activity").createIndex({ id: 1 }, { unique: true }));
+  // legacy_entries — edutizimdan ko'chirilgan to'lov arxivi (25 561 yozuv).
+  // O'quvchi profili ham, o'quvchilar boti ham uni `pupilId` bo'yicha
+  // so'raydi va `at` bo'yicha saralaydi. Indekssiz bu har safar to'liq
+  // skaner edi.
+  tasks.push(db.collection(LEGACY_COLLECTION).createIndex({ pupilId: 1, at: -1 }));
+  // student_bot_users — Telegram hisobi ↔ o'quvchi bog'lanishi
+  // (lib/studentBot/users.ts).
+  //
+  // `chatId` UNIQUE: bitta Telegram suhbati bitta hujjat. Usiz
+  // `linkBotUser` dagi upsert poyga holatida takror hujjat yaratardi va
+  // o'quvchi ikkita bir xil xabar olardi.
+  tasks.push(db.collection("student_bot_users").createIndex({ chatId: 1 }, { unique: true }));
+  // Avtomatik xabar yuborishda "shu o'quvchiga kim ulangan" so'raladi.
+  // `links` — massiv, ya'ni multikey indeks.
+  tasks.push(db.collection("student_bot_users").createIndex({ "links.pupilId": 1 }));
   // Sozlamalardagi CRUD ro'yxatlari — kolleksiya nomlari SETTINGS_LIST_KINDS
   // dan olinadi, shunda yangi ro'yxat qo'shilganda bu yer o'zi yangilanadi.
   for (const c of Object.values(SETTINGS_LIST_KINDS)) {

@@ -36,6 +36,10 @@ const PUBLIC = [
   // Chaqiruvchi — Telegram serveri, uning sessiyasi yo'q. TELEGRAM_WEBHOOK_SECRET
   // sarlavhasi bilan himoyalangan (app/api/telegram/webhook/route.ts).
   "/api/telegram/webhook",
+  // O'QUVCHILAR botining webhook'i — alohida bot, alohida kalit
+  // (TELEGRAM_STUDENT_WEBHOOK_SECRET, app/api/telegram/student/route.ts).
+  // Bu qatorsiz Telegram'ning har bir so'rovi 401 bo'ladi.
+  "/api/telegram/student",
 ];
 
 /**

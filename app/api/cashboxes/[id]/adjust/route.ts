@@ -7,6 +7,7 @@ import { flushSoon } from "@/lib/sync/dispatch";
 import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
 import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
+import { notifyPayment } from "@/lib/studentBot/notify";
 
 // POST /api/cashboxes/:id/adjust — kassaning bitta to'lov turiga Kirim
 // qo'shadi yoki undan Chiqim oladi. Ko'chirishdan farqi — bu safar umumiy
@@ -268,6 +269,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         moderator: current.moderator || "",
         cashboxId,
         cashboxName: current.name || "",
+      }),
+    );
+  }
+
+  // O'QUVCHILAR BOTI — "to'lovingiz qabul qilindi" xabari.
+  //
+  // SMS bilan YONMA-YON, uning o'rniga emas: SMS hammaga boradi, bot
+  // xabari esa faqat botga ulanganlarga. Ikkalasini birlashtirish
+  // ulanmagan o'quvchini xabarsiz qoldirardi.
+  //
+  // FAQAT `studentId` BO'LGANDA. Ism bo'yicha qidirilmaydi — bazada
+  // 511 ta ism takrorlanadi va begona odamga boshqa birovning to'lovi
+  // haqida xabar ketishi mumkin edi (lib/studentBot/notify.ts).
+  //
+  // `notifyPayment` o'zi hech qachon otmaydi va sozlama o'chiq bo'lsa
+  // jimgina qaytadi.
+  if (mode === "kirim" && Number.isFinite(Number(studentId))) {
+    after(() =>
+      notifyPayment(db, {
+        pupilId: Number(studentId),
+        amount,
+        method: methodLabel,
+        date: entryDate,
       }),
     );
   }

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
+import { notifyAttendance } from "@/lib/studentBot/notify";
 import { groupScopeFilter } from "@/lib/groupScope";
 import type { Group } from "@/lib/groups";
 import { toUz } from "@/lib/uzTime";
@@ -172,6 +173,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reason: mark.reason ?? null,
     note: mark.note ?? null,
   });
+
+  // O'QUVCHILAR BOTI — "davomat belgilandi" xabari.
+  //
+  // `after` ichida: javob ustozga YUBORILGANDAN KEYIN ishlaydi, ya'ni
+  // Telegram sekin javob bersa ham davomat jadvali kutib turmaydi. Bir
+  // darsda 15-20 o'quvchi belgilanadi va har biri alohida so'rov —
+  // ularning hech biri sekinlashmasligi kerak.
+  //
+  // BELGI O'CHIRILGANDA (status === null) yuborilmaydi — yuqoridagi
+  // shox alohida qaytadi. "Davomatingiz o'chirildi" degan xabar
+  // o'quvchiga hech narsa bermaydi, faqat xavotir uyg'otadi.
+  //
+  // `notifyAttendance` o'zi hech qachon otmaydi va sozlama o'chiq
+  // bo'lsa jimgina qaytadi (lib/studentBot/notify.ts).
+  after(() =>
+    notifyAttendance(db, {
+      pupilId,
+      date,
+      status,
+      grade,
+      reason: mark.reason ?? null,
+      groupName: group.name || String(group.id),
+    }),
+  );
+
   return NextResponse.json({ ok: true, mark });
 }
 
