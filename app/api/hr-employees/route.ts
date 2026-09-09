@@ -192,9 +192,12 @@ export async function POST(req: Request) {
     archReason: "",
     archDate: "",
     email: body.email || "",
-    // Faqat o'qituvchida to'ldiriladi (Xodim qo'shish modalining 3-qatori).
+    // Vazifaga qarab to'ldiriladi (Xodim qo'shish modalining 3-qatori):
+    // foiz va kurs — o'qituvchida, bandlik darajasi — moderatorda, daraja
+    // esa ikkalasida ham (lekin ro'yxati boshqa-boshqa grading tizimidan).
     percent: body.percent || "",
     degree: body.degree || "",
+    employmentRate: body.employmentRate || "",
     photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : "",
     // Yuqorida tozalangan VA a'zolik ichiga kesilgan qatorlar.
     branchAssignments: keptAssignments,

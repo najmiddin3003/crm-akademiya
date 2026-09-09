@@ -58,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // kelib qolsa, oylik yig'indisi qo'shilish o'rniga birikib ketardi va
   // o'sha qiymat kassadagi chiqim chegarasini boshqargan bo'lardi.
   const set: Record<string, unknown> = {};
-  for (const k of ["name", "gender", "turi", "filial", "kurs", "email", "degree", "photoUrl", "archReason", "archDate", "lastActive", "percent"] as const) {
+  for (const k of ["name", "gender", "turi", "filial", "kurs", "email", "degree", "employmentRate", "photoUrl", "archReason", "archDate", "lastActive", "percent"] as const) {
     if (typeof body[k] === "string") set[k] = body[k];
   }
 

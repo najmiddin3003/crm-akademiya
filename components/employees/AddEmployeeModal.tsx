@@ -57,6 +57,60 @@ interface BranchRow {
 }
 const EMPTY_ROW: BranchRow = { checked: false, roleId: "", scheduleId: "", salary: "" };
 
+// Grading tizimidagi bitta lavozim. `halfRate` faqat MENEJER jadvalida bor
+// (o'qituvchilarnikida "Yarim stavka" ustuni yo'q), shu bois ixtiyoriy.
+interface DegreeOpt {
+  name: string;
+  halfRate?: string;
+  fullRate?: string;
+}
+// "Bandlik darajasi" ro'yxati — menejer grading jadvalidagi ikki ustun.
+// Yozuvlardan emas, USTUNLARDAN kelib chiqadi, shuning uchun qat'iy.
+const BANDLIK_OPTS = [
+  { label: "Yarim stavka", key: "halfRate" as const },
+  { label: "Bir stavka", key: "fullRate" as const },
+];
+
+/**
+ * "Darajasi" tanlagichi — o'qituvchida ham, moderatorda ham bir xil
+ * ko'rinadi, farq faqat KELADIGAN RO'YXATda. Shu sabab bitta komponent.
+ */
+function DegreeSelect({
+  loading,
+  opts,
+  value,
+  onChange,
+  empty = "Daraja qo'shilmagan",
+}: {
+  loading: boolean;
+  opts: DegreeOpt[];
+  value: string;
+  onChange: (v: string) => void;
+  empty?: string;
+}) {
+  return (
+    <div className="relative">
+      <select
+        className={`${selectCls} disabled:opacity-70`}
+        disabled={loading}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">{selectPlaceholder(loading, opts.length, empty, "Darajani tanlang")}</option>
+        {/* Ro'yxatdan olib tashlangan ESKI daraja. Variant qo'shilmasa
+            <select> uni jimgina tashlab yuborardi va birinchi saqlashda
+            xodimning darajasi yo'qolardi (foiz maydonidagi bilan bir xil
+            tuzoq). */}
+        {value && !opts.some((d) => d.name === value) && (
+          <option value={value}>{`${value} — ro'yxatda yo'q (eski qiymat)`}</option>
+        )}
+        {opts.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+      </select>
+      <Chevron />
+    </div>
+  );
+}
+
 const TURI_MAP: Record<string, string> = { "O'qituvchi": "teacher", Moderator: "moderator", Administrator: "admin" };
 const GENDER_MAP: Record<string, string> = { Erkak: "male", Ayol: "female" };
 
@@ -157,6 +211,17 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   const [phone, setPhone] = useState(employee ? formatPhoneDisplay(employee.phone) : "+998");
   const [vazifa, setVazifa] = useState(employee ? TURI_LABEL[employee.turi] ?? "" : "");
   const [jinsi, setJinsi] = useState(employee ? GENDER_LABEL[employee.gender] ?? "" : "");
+  /**
+   * Jinsi QO'LDA tanlanganmi.
+   *
+   * Avtomatik taxmin (pastdagi effekt) faqat shu bayroq `false` bo'lganda
+   * yozadi. Bo'sh maydonni tekshirish YETMAYDI: odam ataylab "Erkak" deb
+   * qo'yib, keyin familiyani tuzatsa, taxmin uning tanlovini jimgina
+   * bosib tashlardi. Tahrirlashda darhol `true` — mavjud xodimning
+   * saqlangan jinsi taxminga almashmasin.
+   */
+  const [genderTouched, setGenderTouched] = useState(editing);
+  const [guessingGender, setGuessingGender] = useState(false);
   const [email, setEmail] = useState(employee?.email ?? "");
   const [birthDate, setBirthDate] = useState(employee?.birthDate ?? "");
   const [comment, setComment] = useState(employee?.comment ?? "");
@@ -234,45 +299,101 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
     showSuccess(`Maxsus maydon o'chirildi — ${def.name}`);
   }
 
-  // Referensda vazifa "O'qituvchi" tanlanganda pastda yana uchta maydon
-  // ochiladi. Uchalasining ro'yxati ham BACKENDDAN keladi:
-  //   Oladigan foizi — Sozlamalar → Moliya → Oylik foizlari (monthly-percents)
-  //   Darajasi       — Sozlamalar → Boshqaruv → O'qituvchi darajalari
-  //   Kurslar        — O'quv bo'limi → Kurslar (/api/offline-courses)
+  // Vazifa tanlanganda pastda qo'shimcha maydonlar ochiladi. Ularning
+  // ro'yxati ham, TARKIBI ham vazifaga bog'liq (referensdagidek):
+  //
+  //   O'qituvchi → Oladigan foizi — Sozlamalar → Moliya → Oylik foizlari
+  //                Darajasi       — Sozlamalar → Boshqaruv → O'QITUVCHILAR
+  //                                 grading tizimi (degrees-teacher)
+  //                Kurslar        — O'quv bo'limi → Kurslar
+  //   Moderator  → Darajasi         — Sozlamalar → Boshqaruv → MENEJER
+  //                                   grading tizimi (degrees-manager)
+  //                Bandlik darajasi — o'sha jadvaldagi yarim/bir stavka
+  //
+  // Ikkala "Darajasi" bir xil ko'rinadi, lekin MANBASI boshqa: o'qituvchi
+  // darajalarini moderatorga taklif qilish — jimgina noto'g'ri ma'lumot.
   const isTeacher = vazifa === "O'qituvchi";
+  const isModerator = vazifa === "Moderator";
   const [percent, setPercent] = useState(employee?.percent ?? "");
   const [daraja, setDaraja] = useState(employee?.degree ?? "");
+  const [bandlik, setBandlik] = useState(employee?.employmentRate ?? "");
   const [kurs, setKurs] = useState(employee?.kurs ?? "");
   const [percentOpts, setPercentOpts] = useState<{ name: string; percent: string }[]>([]);
-  const [darajaOpts, setDarajaOpts] = useState<string[]>([]);
+  // Stavkalar ham olinadi: "Bandlik darajasi" variantlari yonida tanlangan
+  // lavozimning summasi ko'rinsin — aks holda "Yarim stavka" degan tanlov
+  // qancha pul ekanini modal ichida bilib bo'lmasdi.
+  const [darajaOpts, setDarajaOpts] = useState<DegreeOpt[]>([]);
   const [kursOpts, setKursOpts] = useState<string[]>([]);
   // Ro'yxatlar KELAYOTGANDA "Foizni tanlang" turishi yolg'on edi: hali hech
   // narsa o'qilmagan, foydalanuvchi esa ro'yxat bo'sh deb o'ylardi.
-  // Bayroq "yuklanmoqda" emas, "YUKLANDI" — chunki bu uch so'rov vazifa
-  // "O'qituvchi"ga o'zgargandan KEYIN ketadi. Oddiy `loading` bayrog'i
-  // effekt ishga tushguncha bir kadr `false` turib, aynan o'sha bo'sh
-  // ro'yxatni ko'rsatib ulgurardi; hosila qiymatda bunday oyna yo'q.
-  const [teacherListsLoaded, setTeacherListsLoaded] = useState(false);
-  const teacherListsLoading = isTeacher && !teacherListsLoaded;
+  // Bayroq "yuklanmoqda" emas, "QAYSI VAZIFA uchun yuklandi" — chunki
+  // so'rovlar vazifa tanlangandan KEYIN ketadi va vazifa almashsa qaytadan
+  // ketishi kerak. Oddiy `loading` bayrog'i effekt ishga tushguncha bir kadr
+  // `false` turib, bo'sh (yoki eski) ro'yxatni ko'rsatib ulgurardi.
+  const [listsFor, setListsFor] = useState("");
+  const roleListsLoading = (isTeacher || isModerator) && listsFor !== vazifa;
+  // Yuklab bo'lingunicha ESKI ro'yxat ko'rsatilmaydi: o'qituvchi darajalari
+  // moderatorga umuman tegishli emas. Holatni effekt ichida tozalash o'rniga
+  // hosila qiymat — cascading render bo'lmaydi.
+  const degreeOpts = roleListsLoading ? [] : darajaOpts;
 
-  // Ro'yxatlar faqat kerak bo'lganda yuklanadi — moderator/administrator
-  // tanlansa bu so'rovlar umuman ketmaydi.
+  // Ro'yxatlar faqat kerak bo'lganda yuklanadi — administrator tanlansa
+  // bu so'rovlar umuman ketmaydi.
   useEffect(() => {
-    if (!isTeacher) return;
+    if (!isTeacher && !isModerator) return;
     let cancelled = false;
     const get = (url: string) => fetch(url).then((r) => r.json()).catch(() => null);
     Promise.all([
-      get("/api/settings-lists?kind=monthly-percents"),
-      get("/api/settings-lists?kind=degrees-teacher"),
-      get("/api/offline-courses"),
+      isTeacher ? get("/api/settings-lists?kind=monthly-percents") : null,
+      get(`/api/settings-lists?kind=${isTeacher ? "degrees-teacher" : "degrees-manager"}`),
+      isTeacher ? get("/api/offline-courses") : null,
     ]).then(([p, d, c]) => {
       if (cancelled) return;
       if (p?.ok) setPercentOpts((p.items as { name: string; percent: string }[]).map((i) => ({ name: i.name, percent: i.percent })));
-      if (d?.ok) setDarajaOpts((d.items as { name: string }[]).map((i) => i.name));
+      if (d?.ok) {
+        setDarajaOpts((d.items as DegreeOpt[]).map((i) => ({ name: i.name, halfRate: i.halfRate, fullRate: i.fullRate })));
+      }
       if (c?.ok) setKursOpts((c.courses as { name: string }[]).map((i) => i.name));
-    }).finally(() => { if (!cancelled) setTeacherListsLoaded(true); });
+    }).finally(() => { if (!cancelled) setListsFor(vazifa); });
     return () => { cancelled = true; };
-  }, [isTeacher]);
+  }, [isTeacher, isModerator, vazifa]);
+
+  // ── Jinsni ism-familiyadan taxmin qilish ────────────────────────────
+  //
+  // Sun'iy intellekt modeli orqali (/api/gender-guess — kalit serverda,
+  // brauzerga chiqmaydi). Bu TAKLIF, majburiy qiymat emas:
+  //   • qo'lda tanlangan jins hech qachon bosilmaydi (`genderTouched`);
+  //   • so'rov yiqilsa yoki kalit sozlanmagan bo'lsa maydon bo'sh qoladi
+  //     va shakl avvalgidek qo'lda to'ldiriladi — xodim qo'shish hech
+  //     qachon shu so'rovga bog'lanib qolmasin;
+  //   • TAHRIRLASHDA umuman ishlamaydi: saqlangan jins taxminga
+  //     almashmasin (`editing` da `genderTouched` boshidan `true`).
+  const nameForGuess = editing ? "" : `${ism.trim()} ${familiya.trim()}`.trim();
+  useEffect(() => {
+    if (genderTouched || nameForGuess.length < 3) return;
+    let cancelled = false;
+    // Har bosilgan harfda so'rov ketmasin — odam yozib bo'lguncha kutamiz.
+    const timer = setTimeout(() => {
+      setGuessingGender(true);
+      fetch("/api/gender-guess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nameForGuess }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (cancelled || !d?.ok) return;
+          const label = GENDER_LABEL[d.gender as keyof typeof GENDER_LABEL];
+          if (label) setJinsi(label);
+          // Sabab konsolda qoladi (kalit yo'q, model nomi noto'g'ri…) —
+          // foydalanuvchiga toast chiqarmaymiz: u shunchaki qo'lda tanlaydi.
+          else if (d.reason) console.debug("[jins taxmini]", d.reason);
+        })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setGuessingGender(false); });
+    }, 700);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [nameForGuess, genderTouched]);
 
   // ── Filial qatorlari ────────────────────────────────────────────────────
   // Referensda har filial qatori mustaqil: galochka QO'YILGAN filialdagina
@@ -330,18 +451,46 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           next[b.id] = { ...(next[b.id] ?? EMPTY_ROW), salary: patch.salary };
         }
       }
+      // Galochka YOQIQ turganda yangi filial yoqilsa, u ham umumiy ish haqi
+      // bilan ochilsin — aks holda o'sha bitta qator bo'sh qolib ketardi.
+      if (sameForAll && patch.checked && !next[id].salary) {
+        const src = branches.find((b) => p[b.id]?.salary);
+        if (src) next[id] = { ...next[id], salary: p[src.id]!.salary };
+      }
       return next;
     });
   }
-  /** Galochka YOQILGANDA mavjud ish haqilarni darhol tenglashtiramiz. */
+  /**
+   * Galochka bosilganda ikkala YO'NALISH ham ishlaydi:
+   *  YOQILSA  — YONIB TURGAN (galochkali) filialning ish haqi pastdagi
+   *             filiallarga ham tushadi;
+   *  O'CHIRILSA — galochkasiz filiallarda qolib ketgan NUSXA tozalanadi,
+   *             ya'ni har filial o'z ish haqini o'zi hisoblaydi.
+   */
   function toggleSameForAll(on: boolean) {
     setSameForAll(on);
-    if (!on) return;
     setBranchRows((p) => {
-      const first = branches.map((b) => p[b.id]?.salary).find((s) => s);
-      if (!first) return p;
       const next: Record<number, BranchRow> = { ...p };
-      for (const b of branches) next[b.id] = { ...(next[b.id] ?? EMPTY_ROW), salary: first };
+      if (on) {
+        // Manba — avvalo GALOCHKALI qator. Ilgari shunchaki birinchi
+        // to'ldirilgan qator olinardi: yuqorida o'chiq turgan filialda eski
+        // raqam qolgan bo'lsa, u yonib turgan filialnikini bosib tashlardi.
+        const src =
+          branches.find((b) => p[b.id]?.checked && p[b.id]?.salary) ??
+          branches.find((b) => p[b.id]?.salary);
+        const shared = src ? p[src.id]!.salary : "";
+        if (!shared) return p;
+        for (const b of branches) next[b.id] = { ...(next[b.id] ?? EMPTY_ROW), salary: shared };
+      } else {
+        // Galochkasiz qatordagi raqam — faqat "hammasiga bir xil" qoldirgan
+        // nusxa (input o'chiq, unga qo'lda yozib bo'lmaydi). Tozalanmasa,
+        // keyin o'sha filial yoqilganda tayyor raqam bilan ochilib qolardi
+        // va saqlashda jimgina o'sha ish haqi ketardi.
+        for (const b of branches) {
+          const r = next[b.id];
+          if (r && !r.checked && r.salary) next[b.id] = { ...r, salary: "" };
+        }
+      }
       return next;
     });
   }
@@ -479,10 +628,12 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               .map((f) => [f.name, (customValues[f.name] || "").trim()] as const)
               .filter(([, v]) => v !== ""),
           ),
-          // Faqat o'qituvchida to'ldiriladi; boshqasida bo'sh ketadi.
+          // Vazifaga qarab to'ldiriladi; tegishli bo'lmaganda bo'sh ketadi
+          // (vazifa almashganda holat allaqachon tozalangan).
           kurs,
           percent,
           degree: daraja,
+          employmentRate: bandlik,
           photoUrl: finalPhotoUrl,
           branchAssignments,
           branchIds,
@@ -577,13 +728,17 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   className={selectCls}
                   value={vazifa}
                   onChange={(e) => {
-                    // O'qituvchidan boshqasiga o'tilsa, faqat o'qituvchiga
-                    // tegishli maydonlar tozalanadi.
+                    // Vazifaga tegishli bo'lmay qolgan maydonlar tozalanadi.
                     if (e.target.value !== "O'qituvchi") {
                       setPercent("");
-                      setDaraja("");
                       setKurs("");
                     }
+                    if (e.target.value !== "Moderator") setBandlik("");
+                    // Daraja HAR SAFAR tozalanadi: o'qituvchi va moderator
+                    // darajalari boshqa-boshqa ro'yxatdan keladi, ya'ni eski
+                    // tanlov yangi ro'yxatda umuman yo'q qiymat bo'lardi va
+                    // <select> uni jimgina tashlab yuborardi.
+                    setDaraja("");
                     setVazifa(e.target.value);
                   }}
                 >
@@ -599,9 +754,27 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               </p>
             </div>
             <div>
-              <label className={labelCls}>Jinsi</label>
+              <label className={labelCls}>
+                Jinsi
+                {/* Taxmin ketayotgani ko'rinib tursin — aks holda maydon
+                    o'zidan o'zi to'lgandek tuyulardi. */}
+                {guessingGender && (
+                  <span className="ml-2 font-normal text-[11.5px] text-muted-foreground">
+                    ismdan aniqlanmoqda…
+                  </span>
+                )}
+              </label>
               <div className="relative">
-                <select className={selectCls} value={jinsi} onChange={(e) => setJinsi(e.target.value)}>
+                <select
+                  className={selectCls}
+                  value={jinsi}
+                  onChange={(e) => {
+                    // Qo'lda tanlandi — endi avtomatik taxmin bu maydonga
+                    // umuman tegmaydi (yuqoridagi effektga qarang).
+                    setGenderTouched(true);
+                    setJinsi(e.target.value);
+                  }}
+                >
                   <option value="">Jinsini tanlang</option>
                   <option>Erkak</option>
                   <option>Ayol</option>
@@ -628,11 +801,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                 <div className="relative">
                   <select
                     className={`${selectCls} disabled:opacity-70`}
-                    disabled={teacherListsLoading}
+                    disabled={roleListsLoading}
                     value={percent}
                     onChange={(e) => setPercent(e.target.value)}
                   >
-                    <option value="">{selectPlaceholder(teacherListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")}</option>
+                    <option value="">{selectPlaceholder(roleListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")}</option>
                     {/* ESKI XOM QIYMAT ("60" kabi). Ilgari bu maydon erkin
                         matn edi, ya'ni bazada ro'yxatga mos kelmaydigan
                         qiymatlar bor. Ular uchun variant qo'shilmasa
@@ -650,30 +823,67 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               </div>
               <div>
                 <label className={labelCls}>Darajasi</label>
-                <div className="relative">
-                  <select
-                    className={`${selectCls} disabled:opacity-70`}
-                    disabled={teacherListsLoading}
-                    value={daraja}
-                    onChange={(e) => setDaraja(e.target.value)}
-                  >
-                    <option value="">{selectPlaceholder(teacherListsLoading, darajaOpts.length, "Daraja qo'shilmagan", "Darajani tanlang")}</option>
-                    {darajaOpts.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  <Chevron />
-                </div>
+                <DegreeSelect
+                  loading={roleListsLoading}
+                  opts={degreeOpts}
+                  value={daraja}
+                  onChange={setDaraja}
+                />
               </div>
               <div>
                 <label className={labelCls}>Kurslar<span className="text-rose-500">*</span></label>
                 <div className="relative">
                   <select
                     className={`${selectCls} disabled:opacity-70`}
-                    disabled={teacherListsLoading}
+                    disabled={roleListsLoading}
                     value={kurs}
                     onChange={(e) => setKurs(e.target.value)}
                   >
-                    <option value="">{selectPlaceholder(teacherListsLoading, kursOpts.length, "Kurs qo'shilmagan")}</option>
+                    <option value="">{selectPlaceholder(roleListsLoading, kursOpts.length, "Kurs qo'shilmagan")}</option>
                     {kursOpts.map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                  <Chevron />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Row 3 — MODERATOR uchun (referensdagidek ikkita maydon).
+              Darajasi menejer grading tizimidan, bandlik darajasi esa o'sha
+              jadvaldagi yarim/bir stavka ustunlaridan. */}
+          {isModerator && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Darajasi</label>
+                <DegreeSelect
+                  loading={roleListsLoading}
+                  opts={degreeOpts}
+                  value={daraja}
+                  onChange={setDaraja}
+                  empty="Menejer qo'shilmagan"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Bandlik darajasi</label>
+                <div className="relative">
+                  {/* Ro'yxat yuklanishini kutmaydi: ikkala variant qat'iy,
+                      grading jadvalidan faqat YONIDAGI summa keladi. */}
+                  <select
+                    className={selectCls}
+                    value={bandlik}
+                    onChange={(e) => setBandlik(e.target.value)}
+                  >
+                    <option value="">Tanlang</option>
+                    {BANDLIK_OPTS.map(({ label, key }) => {
+                      // Tanlangan lavozimning summasi yonida turadi — "Yarim
+                      // stavka" o'zi qancha pul ekanini aytmaydi.
+                      const rate = degreeOpts.find((d) => d.name === daraja)?.[key];
+                      return (
+                        <option key={label} value={label}>
+                          {rate ? `${label} (${rate} UZS)` : label}
+                        </option>
+                      );
+                    })}
                   </select>
                   <Chevron />
                 </div>

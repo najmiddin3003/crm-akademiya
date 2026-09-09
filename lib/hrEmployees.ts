@@ -46,10 +46,22 @@ export interface HrEmployee {
   archReason: string;
   archDate: string; // "Sana" ustuni — arxivlash sababi qayd etilgan sana
   email?: string;
-  // Faqat o'qituvchida to'ldiriladi (Xodim qo'shish modalidagi 3-qator).
+  // Vazifaga qarab to'ldiriladi (Xodim qo'shish modalidagi 3-qator).
   // Ixtiyoriy: eski hujjatlarda bu maydonlar yo'q.
-  percent?: string; // Oladigan foizi — Sozlamalar > Moliya > Oylik foizlari
-  degree?: string;  // Darajasi — Sozlamalar > Boshqaruv > O'qituvchi darajalari
+  percent?: string; // Oladigan foizi (faqat o'qituvchi) — Sozlamalar > Moliya > Oylik foizlari
+  /**
+   * Darajasi — grading tizimidagi LAVOZIM nomi. Manba vazifaga qarab
+   * ikki xil bo'ladi va ular ARALASHTIRILMAYDI:
+   *   o'qituvchi → Sozlamalar > Boshqaruv > O'qituvchilar grading tizimi
+   *   moderator  → Sozlamalar > Boshqaruv > Menejer grading tizimi
+   */
+  degree?: string;
+  /**
+   * Bandlik darajasi — "Yarim stavka" | "Bir stavka" (faqat moderator).
+   * Menejer grading tizimida har lavozimning ikkala stavkasi turadi;
+   * xodim shulardan qaysi biri bo'yicha ishlashini shu maydon aytadi.
+   */
+  employmentRate?: string;
   /** Cloudinary'dagi profil rasmi (secure_url). */
   photoUrl?: string;
   /** Belgilangan filiallar bo'yicha rol/jadval/ish haqi. */
