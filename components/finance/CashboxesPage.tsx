@@ -15,7 +15,6 @@ import {
   EyeOff,
   FileSpreadsheet,
   FileText,
-  Hourglass,
   LayoutGrid,
   Pencil,
   Plus,
@@ -1343,15 +1342,11 @@ export default function CashboxesPage() {
                 val: c.methodTotals[m.key] ?? 0,
               }))
               .filter((r) => r.val > 0);
-            // Boshqa kassaga jo'natilgan, ammo hali tasdiqlanmagan summa.
-            // U BALANSNING ICHIDA turadi — pul qabul qiluvchi ✓ bosgunicha
-            // shu kassadan yechilmaydi (transfer-to/route.ts). Shuning
-            // uchun balansdan ayirmaymiz, yoniga eslatma qo'yamiz: kassir
-            // pulning bir qismi allaqachon va'da qilinganini bilsin.
-            const pendingSum = Object.values(c.pendingOut ?? {}).reduce(
-              (a, b) => a + (b || 0),
-              0,
-            );
+            // TASDIQ KUTAYOTGAN SUMMA KARTOCHKADA KO'RSATILMAYDI —
+            // foydalanuvchi shunday xohladi (10.09.2026). Bir muddat
+            // balans tagida "X so'm tasdiq kutmoqda" qatori turgan edi.
+            // `c.pendingOut` API'dan kelaveradi: uni ko'chirish oynasi
+            // ishlatadi (mavjud = qoldiq − kutilayotgan).
 
             return (
               <div
@@ -1450,17 +1445,6 @@ export default function CashboxesPage() {
                     )}
                   </div>
 
-                  {pendingSum > 0 && (
-                    <div
-                      className={`mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-medium tabular-nums ${
-                        isDark ? "text-amber-200" : "text-amber-700"
-                      }`}
-                      title="Boshqa kassaga jo'natilgan, ammo hali tasdiqlanmagan summa. Pul shu kassada — qabul qiluvchi tasdiqlaganda chiqadi."
-                    >
-                      <Hourglass className="w-3.5 h-3.5 shrink-0" />
-                      {mask(pendingSum)} so&apos;m tasdiq kutmoqda
-                    </div>
-                  )}
                 </div>
 
                 {showActions && (
