@@ -61,9 +61,7 @@ interface StatCardProps {
   label: string;
   value: string;
   hint: string;
-  /** Sichqoncha ustiga kelganda chiqadigan to'liq izoh (ixtiyoriy). */
-  title?: string;
-  tone: "cyan" | "amber" | "blue" | "rose" | "emerald";
+  tone: "cyan" | "amber" | "blue" | "rose";
   /**
    * Yuklanayotganda RAQAM KO'RSATILMAYDI.
    *
@@ -74,19 +72,15 @@ interface StatCardProps {
    */
   loading?: boolean;
 }
-function StatCard({ label, value, hint, title, tone, loading = false }: StatCardProps) {
+function StatCard({ label, value, hint, tone, loading = false }: StatCardProps) {
   const tones = {
-    cyan:    { bar: "bg-cyan-500",    text: "text-cyan-500",    dot: "bg-cyan-500" },
-    amber:   { bar: "bg-amber-500",   text: "text-amber-500",   dot: "bg-amber-500" },
-    blue:    { bar: "bg-sky-500",     text: "text-sky-500",     dot: "bg-sky-500" },
-    rose:    { bar: "bg-rose-500",    text: "text-rose-500",    dot: "bg-rose-500" },
-    emerald: { bar: "bg-emerald-500", text: "text-emerald-500", dot: "bg-emerald-500" },
+    cyan:  { bar: "bg-cyan-500",  text: "text-cyan-500",  dot: "bg-cyan-500" },
+    amber: { bar: "bg-amber-500", text: "text-amber-500", dot: "bg-amber-500" },
+    blue:  { bar: "bg-sky-500",   text: "text-sky-500",   dot: "bg-sky-500" },
+    rose:  { bar: "bg-rose-500",  text: "text-rose-500",  dot: "bg-rose-500" },
   }[tone];
   return (
-    <div
-      title={title}
-      className="relative rounded-xl border border-border bg-card px-4 py-3.5 shadow-sm overflow-hidden"
-    >
+    <div className="relative rounded-xl border border-border bg-card px-4 py-3.5 shadow-sm overflow-hidden">
       <span className={`absolute left-0 top-0 h-full w-1 ${tones.bar}`} />
       <div className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
         <span className={`inline-block w-1.5 h-1.5 rounded-full ${tones.dot}`} />
@@ -164,38 +158,10 @@ export default function SalaryCreatePage() {
       .finally(() => { if (seq === reqSeq.current) setLoading(false); });
   }, [monthKey]);
 
-  // OYNING DAROMADI VA XARAJATI — "O'quv markazda qoladi" kartochkasi
-  // uchun (/api/salary-runs/month-cashflow). Xodimlar jadvali bilan bir
-  // xil filialga kesilgan, ya'ni ikkala raqam bitta qamrovdan.
-  //
-  // `null` — hali kelmagan. Nol bilan almashtirilmaydi: bo'sh oy ham
-  // 0 beradi va ikkalasini ajratib bo'lmasdi, kartochkada esa javob
-  // kelguncha "0 so'm" turib qolardi.
-  const [cashflow, setCashflow] = useState<
-    { daromad: number; xarajat: number; hasCashbox: boolean } | null
-  >(null);
-  const cashflowSeq = useRef(0);
-  const fetchCashflow = useCallback(() => {
-    const seq = ++cashflowSeq.current;
-    // Manzil QATTIQ yozilgan (shablon ichida emas): ruxsatlar jadvali
-    // route fayllari bo'yicha yig'iladi va u chaqiruv manzilini matndan
-    // topadi — scripts/gen-api-permissions.mjs.
-    return fetch(`/api/salary-runs/month-cashflow?month=${monthKey}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (seq !== cashflowSeq.current || !d?.ok) return;
-        setCashflow({ daromad: d.daromad, xarajat: d.xarajat, hasCashbox: !!d.hasCashbox });
-      })
-      .catch(() => {});
-  }, [monthKey]);
-  useEffect(() => { fetchCashflow(); }, [fetchCashflow]);
-
   /** "Qayta hisoblash" tugmasi — spinnerni qayta yoqadi. */
   function load() {
     setLoading(true);
-    setCashflow(null);
     fetchRows();
-    fetchCashflow();
   }
   /**
    * Oyni almashtirish. Tanlov TOZALANADI — boshqa oyda tanlangan xodimlar
@@ -214,8 +180,6 @@ export default function SalaryCreatePage() {
     // "450 000 × 50%"), ya'ni ekranda noto'g'ri fakt turardi. Endi o'rniga
     // yuklash belgisi chiqadi.
     setEmployees([]);
-    // Kartochkadagi daromad/xarajat ham eski oyniki — o'chiriladi.
-    setCashflow(null);
   }
   // `fetchRows` oyga bog'langan — oy o'zgarsa qatorlar o'z-o'zidan qayta
   // yuklanadi.
@@ -298,27 +262,6 @@ export default function SalaryCreatePage() {
     }
     return { hisoblangan, avans, tolangan, qolgan, otganOydan, qarzdorlik };
   }, [employees, period]);
-
-  /**
-   * "O'quv markazda qoladi" — barcha chiqimlardan keyin qoladigan pul.
-   *
-   *     qoladi = oy daromadi − oy xarajati − qolgan to'lanadigan oylik
-   *
-   * XARAJAT ICHIDA allaqachon chiqarilgan avans va oylik BOR
-   * (`transactions` ga oylik chiqarish ham yozadi — app/api/salary-runs).
-   * Shuning uchun ustiga `stats.qolgan` qo'shiladi, `stats.hisoblangan`
-   * emas: aks holda to'langan qism ikki marta ayirilardi.
-   *
-   * Ko'chirmalar bu hisobga KIRMAYDI — kassadan kassaga pul o'tkazish
-   * `transactions` ga umuman yozilmaydi, ya'ni rahbar kassaga topshirilgan
-   * tushum "xarajat" bo'lib ko'rinmaydi.
-   *
-   * `hasCashbox: false` — filialga kassa bog'lanmagan, ya'ni daromad ham,
-   * xarajat ham 0 bo'lib keladi. Bunda son KO'RSATILMAYDI: "0 − 0 −
-   * oylik" manfiy raqami yolg'on bo'lardi (pul bor, u boshqa kassada).
-   */
-  const qoladi = cashflow ? cashflow.daromad - cashflow.xarajat - stats.qolgan : 0;
-  const qoladiNoma = cashflow !== null && !cashflow.hasCashbox;
 
   // Sukut — ro'yxatdagi birinchi faol to'lov turi. Effektda setState
   // qilinmaydi: qiymat shu yerda HOSILA sifatida chiqariladi, aks holda
@@ -498,31 +441,7 @@ export default function SalaryCreatePage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-        {/* BIRINCHI TURADI — sahifadagi asosiy savolga javob: hamma
-            chiqimdan keyin markazda qancha pul qoladi. Manfiy bo'lsa
-            rangi qizil: bu "foyda" emas, ZARAR degani va uni yashil
-            kartochkada ko'rsatish chalg'itardi. */}
-        <StatCard
-          tone={!qoladiNoma && qoladi < 0 ? "rose" : "emerald"}
-          label="O'quv markazda qoladi"
-          value={qoladiNoma ? "—" : fmtSum(qoladi)}
-          hint={
-            qoladiNoma
-              ? "bu filialga kassa biriktirilmagan"
-              : "daromad − xarajat − qolgan oylik"
-          }
-          title={
-            qoladiNoma
-              ? "Daromad va xarajat kassa orqali filialga bog'lanadi. Bu filialda bitta ham kassa yo'q, shuning uchun son hisoblanmadi."
-              : cashflow
-                ? `Daromad ${fmtSum(cashflow.daromad)} − xarajat ${fmtSum(cashflow.xarajat)}` +
-                  ` − qolgan to'lanadigan oylik ${fmtSum(stats.qolgan)}.` +
-                  ` Xarajat ichida allaqachon berilgan avans va chiqarilgan oylik ham bor.`
-                : undefined
-          }
-          loading={loading || cashflow === null}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard
           tone="cyan"
           label={`Hisoblangan oylik (${calcSuffix})`}

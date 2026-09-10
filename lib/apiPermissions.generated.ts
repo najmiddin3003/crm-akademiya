@@ -130,7 +130,6 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/salary-runs": ["/finance-payroll"],
   "/api/salary-runs/[id]": ["/finance-payroll"],
   "/api/salary-runs/employees-payroll": ["/finance-cash", "/finance-payroll", "/management-xodimlar"],
-  "/api/salary-runs/month-cashflow": ["/finance-payroll"],
   "/api/sales-plans": ["/sales-plan"],
   "/api/seasonal-assessments": ["/seasonal-assessment"],
   "/api/seasonal-assessments/[id]": ["/seasonal-assessment"],
