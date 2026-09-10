@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, zeroMethodTotals, type Cashbox } from "@/lib/cashboxes";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 import { loadPendingOut } from "@/lib/transferPending";
+import { loadCardStats } from "@/lib/cashboxStats";
 import { getCurrentEmployee, nameEq } from "@/lib/currentEmployee";
 
 // Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
@@ -58,21 +59,40 @@ export async function GET(req: Request) {
   // O'ZINING kassasini ko'radi (yuqoridagi izohga qarang).
   const filter = me.isAdmin ? {} : { moderator: nameEq(me.name!) };
 
-  // Ikkala o'qish bir-biriga bog'liq emas -> bitta round-trip'da.
-  const [keys, rows] = await Promise.all([
+  // Uchala o'qish bir-biriga bog'liq emas -> bitta round-trip'da.
+  //
+  // BOSH KASSA alohida so'raladi, `rows` ichidan qidirilmaydi: kassir
+  // faqat O'Z kassasini ko'radi, bosh kassa esa uning ro'yxatiga
+  // tushmaydi — topilmasdi va "bu oy rahbarga o'tkazilgan" har doim 0
+  // bo'lib qolardi.
+  const [keys, rows, primary] = await Promise.all([
     loadPaymentMethodKeys(db),
     col.find(filter).sort({ id: 1 }).toArray(),
+    col.findOne({ isPrimary: true }, { projection: { id: 1 } }),
   ]);
   // TASDIQ KUTAYOTGAN summa balansning ICHIDA turadi: boshqa kassaga
   // jo'natilgan pul qabul qiluvchi ✓ bosgunicha shu kassadan yechilmaydi
   // (app/api/cashboxes/[id]/transfer-to/route.ts). Kartochkada shu
   // summa alohida ko'rsatiladi, aks holda kassir balansning bir qismi
   // allaqachon va'da qilinganini bilmasdi.
-  const pending = await loadPendingOut(db, rows.map((r) => r.id as number));
-  const cashboxes = rows.map(({ _id, ...rest }) => ({
-    ...normalizeCashbox({ isPrimary: false, ...rest }, keys),
-    pendingOut: pending.get(rest.id as number) ?? {},
-  }));
+  //
+  // Kartochkadagi "Bugungi tushum" va "Bu oy rahbar kassaga o'tkazilgan
+  // pul" ham shu yerda hisoblanadi (lib/cashboxStats.ts).
+  const ids = rows.map((r) => r.id as number);
+  const [pending, stats] = await Promise.all([
+    loadPendingOut(db, ids),
+    loadCardStats(db, ids, (primary?.id as number) ?? null),
+  ]);
+  const cashboxes = rows.map(({ _id, ...rest }) => {
+    const id = rest.id as number;
+    const s = stats.get(id);
+    return {
+      ...normalizeCashbox({ isPrimary: false, ...rest }, keys),
+      pendingOut: pending.get(id) ?? {},
+      todayIncome: s?.todayIncome ?? 0,
+      monthToPrimary: s?.monthToPrimary ?? 0,
+    };
+  });
   return NextResponse.json({ ok: true, cashboxes });
 }
 

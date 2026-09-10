@@ -892,6 +892,20 @@ export default function CashboxesPage() {
   }
 
   /**
+   * Kassa kartochkasini yozuv route'i qaytargan holat bilan yangilaydi.
+   *
+   * ALMASHTIRMAYDI, USTIGA QO'YADI. Sabab: kartochkadagi uchta raqam —
+   * `pendingOut`, `todayIncome`, `monthToPrimary` — faqat
+   * `GET /api/cashboxes` da hisoblanadi (lib/cashboxStats.ts,
+   * lib/transferPending.ts). Kirim/Chiqim/Ko'chirish javobida ular YO'Q,
+   * ya'ni obyektni butunlay almashtirsak kartochkadagi qatorlar
+   * sahifa yangilangunicha nolga tushib turardi.
+   */
+  function patchCashbox(next: Cashbox) {
+    setCashboxes((prev) => prev.map((x) => (x.id === next.id ? { ...x, ...next } : x)));
+  }
+
+  /**
    * Kassalararo ko'chirmani tasdiqlash (✓) yoki rad etish (×).
    *
    * Jadval va kassa kartochkalari IKKALASI ham yangilanadi. Tasdiq pulni
@@ -1445,6 +1459,20 @@ export default function CashboxesPage() {
                     )}
                   </div>
 
+                  {/* Jumlalar BITTA ifodada: bu loyihada JSX ifodadan
+                      keyingi bo'shliqni yeb qo'yadi (yuqoridagi balans
+                      "3 000 000so'm" bo'lib chiqishi ham shundan).
+
+                      Ikkinchi qator bosh kassada CHIZILMAYDI — "rahbar
+                      kassaga o'tkazilgan pul" uning o'zi uchun ma'nosiz. */}
+                  <div className={`mt-1.5 space-y-0.5 text-[12px] tabular-nums ${labelMuted}`}>
+                    <div>{`Bugungi tushum: ${mask(c.todayIncome ?? 0)} so'm`}</div>
+                    {!c.isPrimary && (
+                      <div>
+                        {`Bu oy rahbar kassaga o'tkazilgan pul: ${mask(c.monthToPrimary ?? 0)} so'm`}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {showActions && (
@@ -2007,9 +2035,7 @@ export default function CashboxesPage() {
           cashbox={editTarget}
           cashboxes={cashboxes}
           onClose={() => setEditTarget(null)}
-          onSaved={(c) =>
-            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)))
-          }
+          onSaved={(c) => patchCashbox(c)}
           onDeleted={(id) => {
             setCashboxes((prev) => {
               const next = prev.filter((x) => x.id !== id);
@@ -2027,8 +2053,11 @@ export default function CashboxesPage() {
           initialFrom={transferState.from}
           onClose={() => setTransferState(null)}
           onSaved={(c) => {
-            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            patchCashbox(c);
             loadEntries();
+            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // raqamlari serverda hisoblanadi — javobda yo'q.
+            refreshCashboxes();
           }}
         />
       )}
@@ -2042,8 +2071,11 @@ export default function CashboxesPage() {
           studentsRefreshing={studentsRefreshing}
           onClose={() => setAdjustState(null)}
           onSaved={(c) => {
-            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            patchCashbox(c);
             loadEntries();
+            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // raqamlari serverda hisoblanadi — javobda yo'q.
+            refreshCashboxes();
           }}
         />
       )}
@@ -2056,8 +2088,11 @@ export default function CashboxesPage() {
           studentsRefreshing={studentsRefreshing}
           onClose={() => setKirimTarget(null)}
           onSaved={(c) => {
-            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            patchCashbox(c);
             loadEntries();
+            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // raqamlari serverda hisoblanadi — javobda yo'q.
+            refreshCashboxes();
           }}
         />
       )}
@@ -2066,8 +2101,11 @@ export default function CashboxesPage() {
           cashbox={dividendTarget}
           onClose={() => setDividendTarget(null)}
           onSaved={(c) => {
-            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            patchCashbox(c);
             loadEntries();
+            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // raqamlari serverda hisoblanadi — javobda yo'q.
+            refreshCashboxes();
           }}
         />
       )}
@@ -2076,8 +2114,11 @@ export default function CashboxesPage() {
           cashbox={investmentTarget}
           onClose={() => setInvestmentTarget(null)}
           onSaved={(c) => {
-            setCashboxes((prev) => prev.map((x) => (x.id === c.id ? c : x)));
+            patchCashbox(c);
             loadEntries();
+            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // raqamlari serverda hisoblanadi — javobda yo'q.
+            refreshCashboxes();
           }}
         />
       )}
@@ -2086,12 +2127,11 @@ export default function CashboxesPage() {
           cashbox={transferToTarget}
           onClose={() => setTransferToTarget(null)}
           onSaved={({ from, to }) => {
-            setCashboxes((prev) =>
-              prev.map((x) =>
-                x.id === from.id ? from : x.id === to.id ? to : x,
-              ),
-            );
+            patchCashbox(from);
+            patchCashbox(to);
             loadEntries();
+            // "Bu oy rahbar kassaga o'tkazilgan pul" hozirgina o'zgardi.
+            refreshCashboxes();
           }}
         />
       )}

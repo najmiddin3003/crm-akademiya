@@ -28,6 +28,18 @@ export interface Cashbox {
    * bo'lishi mumkin.
    */
   pendingOut?: CashboxMethodTotals;
+  /**
+   * Kartochkadagi ikkita raqam — bugungi tushum va bu oy bosh kassaga
+   * o'tkazilgan pul (lib/cashboxStats.ts).
+   *
+   * `pendingOut` bilan bir xil qoida: MongoDB hujjatida saqlanmaydi, har
+   * so'rovda jurnaldan hisoblanadi va faqat `GET /api/cashboxes`
+   * javobida bo'ladi. Kirim/Chiqim/Ko'chirish route'lari kassani
+   * qaytarganda bu maydonlar YO'Q — sahifa ularni eski qiymat ustiga
+   * yozib yubormasligi kerak (CashboxesPage → patchCashbox).
+   */
+  todayIncome?: number;
+  monthToPrimary?: number;
 }
 
 /**
