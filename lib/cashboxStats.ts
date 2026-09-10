@@ -17,6 +17,15 @@ export interface CashboxCardStats {
   /** Bugun shu kassaga tushgan kirim (bekor qilinganlari hisobga olinmaydi). */
   todayIncome: number;
   /**
+   * O'sha bugungi tushumning TO'LOV TURI kesimi — kartochkadagi
+   * "Naqd / Plastik / Terminal" qatorlari shundan chiziladi.
+   *
+   * Qatorlar yig'indisi `todayIncome` ga TENG bo'lishi shart: kassir
+   * kartochkada "Bugungi tushum" ni ko'rib, tagidagi taqsimot bilan
+   * solishtiradi. Shu sabab ikkalasi ham BITTA so'rovdan chiqadi.
+   */
+  todayByMethod: Record<string, number>;
+  /**
    * Joriy oyda shu kassadan bosh kassaga jo'natilgan summa.
    *
    * TASDIQ KUTAYOTGANLARI HAM KIRADI (`waiting`), faqat bekor qilingani
@@ -35,7 +44,9 @@ export async function loadCardStats(
 ): Promise<Map<number, CashboxCardStats>> {
   const out = new Map<number, CashboxCardStats>();
   if (cashboxIds.length === 0) return out;
-  for (const id of cashboxIds) out.set(id, { todayIncome: 0, monthToPrimary: 0 });
+  for (const id of cashboxIds) {
+    out.set(id, { todayIncome: 0, todayByMethod: {}, monthToPrimary: 0 });
+  }
 
   const entries = db.collection("transaction_entries");
   const today = uzDateIso(uzNow());
@@ -48,7 +59,7 @@ export async function loadCardStats(
 
   const [incomeRows, inRows] = await Promise.all([
     entries
-      .aggregate<{ _id: number; sum: number }>([
+      .aggregate<{ _id: { cashboxId: number; key: string | null }; sum: number }>([
         {
           $match: {
             cashboxId: { $in: cashboxIds },
@@ -57,7 +68,10 @@ export async function loadCardStats(
             status: { $ne: "cancelled" },
           },
         },
-        { $group: { _id: "$cashboxId", sum: { $sum: "$amount" } } },
+        // TO'LOV TURI kesimida — jami `todayIncome` shu chelaklarni
+        // qo'shib chiqariladi, ya'ni ikkita raqam bir manbadan bo'ladi
+        // va hech qachon bir-biriga zid chiqmaydi.
+        { $group: { _id: { cashboxId: "$cashboxId", key: "$paymentMethodKey" }, sum: { $sum: "$amount" } } },
       ])
       .toArray(),
     // Bosh kassaga KELGAN ko'chirma qatorlari. Jo'natuvchi kassa
@@ -78,8 +92,14 @@ export async function loadCardStats(
   ]);
 
   for (const r of incomeRows) {
-    const cur = out.get(r._id);
-    if (cur) cur.todayIncome = r.sum;
+    const cur = out.get(r._id.cashboxId);
+    if (!cur) continue;
+    cur.todayIncome += r.sum;
+    // Kaliti YO'Q eski yozuv jamiga kiradi, lekin taqsimotga tushmaydi —
+    // uni qaysi turga yozishni bilib bo'lmaydi. Shu sabab qatorlar
+    // yig'indisi jamidan KICHIK bo'lishi mumkin; kartochkada bu
+    // "Bugungi tushum" satri bilan solishtirilganda ko'rinadi.
+    if (r._id.key) cur.todayByMethod[r._id.key] = (cur.todayByMethod[r._id.key] ?? 0) + r.sum;
   }
 
   // `transferId` yo'q qator — juftligini ishonchli topib bo'lmaydi, ya'ni

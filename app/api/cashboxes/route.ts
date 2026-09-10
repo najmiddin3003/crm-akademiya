@@ -90,6 +90,7 @@ export async function GET(req: Request) {
       ...normalizeCashbox({ isPrimary: false, ...rest }, keys),
       pendingOut: pending.get(id) ?? {},
       todayIncome: s?.todayIncome ?? 0,
+      todayByMethod: s?.todayByMethod ?? {},
       monthToPrimary: s?.monthToPrimary ?? 0,
     };
   });

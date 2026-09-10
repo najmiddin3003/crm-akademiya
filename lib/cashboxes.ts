@@ -39,6 +39,14 @@ export interface Cashbox {
    * yozib yubormasligi kerak (CashboxesPage → patchCashbox).
    */
   todayIncome?: number;
+  /**
+   * Bugungi tushumning to'lov turi kesimi. Kartochkadagi "Naqd /
+   * Plastik / …" qatorlari SHUNDAN chiziladi, `methodTotals` dan emas.
+   *
+   * `methodTotals` — kassadagi QOLDIQ (ko'chirish oynasi shundan
+   * foydalanadi); bu esa BUGUN tushgani. Ikkalasini adashtirmaslik kerak.
+   */
+  todayByMethod?: CashboxMethodTotals;
   monthToPrimary?: number;
 }
 

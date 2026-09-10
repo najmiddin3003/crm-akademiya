@@ -1347,15 +1347,26 @@ export default function CashboxesPage() {
             const line = isDark
               ? "rgba(255,255,255,.22)"
               : "rgba(15,23,42,.14)";
-            // Faqat puli bor to'lov turlari ko'rinadi — yangi turga kirim
-            // bo'lishi bilan o'zi qo'shiladi (referens dizayndagi kabi).
+            // TO'LOV TURI QATORLARI — BUGUNGI TUSHUM kesimi.
+            //
+            // Ilgari bu yerda kassadagi QOLDIQ turardi (`methodTotals`).
+            // Foydalanuvchi bugungi to'lovlar bo'yicha ko'rishni so'radi
+            // (10.09.2026): qatorlar endi tepadagi "Bugungi tushum"
+            // satrining taqsimoti bo'ladi va yig'indisi unga teng chiqadi.
+            //
+            // QATOR QOLDIQ BO'YICHA HAM CHIZILADI (`bal > 0`), garchi
+            // raqam bugungi tushum bo'lsa ham. Sabab: qatorning o'zi —
+            // to'lov turlari orasida ko'chirish TUGMASI. Faqat bugun pul
+            // tushgan turlar qoldirilsa, bugun kirimsiz turdagi qoldiqni
+            // ko'chirishning interfeysda yo'li qolmasdi.
             const methodRows = orderedMethods
               .map((m, i) => ({
                 m,
                 dot: methodDot(m.key, i),
-                val: c.methodTotals[m.key] ?? 0,
+                val: c.todayByMethod?.[m.key] ?? 0,
+                bal: c.methodTotals[m.key] ?? 0,
               }))
-              .filter((r) => r.val > 0);
+              .filter((r) => r.val > 0 || r.bal > 0);
             // TASDIQ KUTAYOTGAN SUMMA KARTOCHKADA KO'RSATILMAYDI —
             // foydalanuvchi shunday xohladi (10.09.2026). Bir muddat
             // balans tagida "X so'm tasdiq kutmoqda" qatori turgan edi.
@@ -1544,7 +1555,7 @@ export default function CashboxesPage() {
                     className="mt-4 pt-3 space-y-1.5"
                     style={{ borderTop: `1px solid ${line}` }}
                   >
-                    {methodRows.map(({ m, dot, val }) => (
+                    {methodRows.map(({ m, dot, val, bal }) => (
                       <div
                         key={m.key}
                         draggable={!c.archived}
@@ -1557,10 +1568,15 @@ export default function CashboxesPage() {
                           if (!c.archived)
                             setTransferState({ cashbox: c, from: m.key });
                         }}
+                        /* Raqam BUGUNGI tushum, qoldiq esa boshqa son —
+                           ikkalasi ham shu yerda ochiq aytiladi, aks holda
+                           "Naqd 0" kassada naqd yo'q degan ma'noda
+                           o'qilardi. `mask` SHU YERDA HAM kerak: summalar
+                           yashirilganda izoh ularni oshkor qilmasin. */
                         title={
-                          c.archived
-                            ? m.name
-                            : `${m.name} — boshqa to'lov turiga ko'chirish`
+                          `${m.name} — bugun ${mask(val)} so'm tushgan` +
+                          ` · kassada ${mask(bal)} so'm` +
+                          (c.archived ? "" : " · bosing: boshqa to'lov turiga ko'chirish")
                         }
                         className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md ${c.archived ? "" : "cursor-grab active:cursor-grabbing"} ${dragKey === m.key ? "opacity-50" : ""}`}
                         style={{
