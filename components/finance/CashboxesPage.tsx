@@ -1347,26 +1347,31 @@ export default function CashboxesPage() {
             const line = isDark
               ? "rgba(255,255,255,.22)"
               : "rgba(15,23,42,.14)";
-            // TO'LOV TURI QATORLARI — BUGUNGI TUSHUM kesimi.
+            // TO'LOV TURI QATORLARI — KASSADAGI QOLDIQ kesimi.
             //
-            // Ilgari bu yerda kassadagi QOLDIQ turardi (`methodTotals`).
-            // Foydalanuvchi bugungi to'lovlar bo'yicha ko'rishni so'radi
-            // (10.09.2026): qatorlar endi tepadagi "Bugungi tushum"
-            // satrining taqsimoti bo'ladi va yig'indisi unga teng chiqadi.
+            // Raqam `methodTotals` dan: kirim qo'shadi, chiqim ham,
+            // ko'chirma ham AYIRADI. Ya'ni qator "shu turda kassada
+            // hozir qancha pul bor" degan savolga javob beradi.
             //
-            // QATOR QOLDIQ BO'YICHA HAM CHIZILADI (`bal > 0`), garchi
-            // raqam bugungi tushum bo'lsa ham. Sabab: qatorning o'zi —
-            // to'lov turlari orasida ko'chirish TUGMASI. Faqat bugun pul
-            // tushgan turlar qoldirilsa, bugun kirimsiz turdagi qoldiqni
-            // ko'chirishning interfeysda yo'li qolmasdi.
+            // 10.09.2026 da bir necha soat bu yerda BUGUNGI TUSHUM turgan
+            // edi (`todayByMethod`). Foydalanuvchi o'sha kuni qaytardi:
+            // naqddan 245 000 so'm chiqim qilinganda qator kamaymadi,
+            // chunki tushum faqat `payIn` ni sanaydi. Ikkinchi sabab —
+            // qatorning o'zi to'lov turlari orasida ko'chirish TUGMASI,
+            // ko'chirish oynasi esa qoldiqdan ishlaydi: qator tushumni
+            // ko'rsatsa, ko'rinib turgan son bilan ko'chirsa bo'ladigan
+            // son bir-biriga zid chiqardi.
+            //
+            // Bugungi tushum yo'qolmadi: jami — kartochkadagi "Bugungi
+            // tushum" satrida, tur kesimi esa qator izohida (`title`).
             const methodRows = orderedMethods
               .map((m, i) => ({
                 m,
                 dot: methodDot(m.key, i),
-                val: c.todayByMethod?.[m.key] ?? 0,
-                bal: c.methodTotals[m.key] ?? 0,
+                val: c.methodTotals[m.key] ?? 0,
+                today: c.todayByMethod?.[m.key] ?? 0,
               }))
-              .filter((r) => r.val > 0 || r.bal > 0);
+              .filter((r) => r.val > 0);
             // TASDIQ KUTAYOTGAN SUMMA KARTOCHKADA KO'RSATILMAYDI —
             // foydalanuvchi shunday xohladi (10.09.2026). Bir muddat
             // balans tagida "X so'm tasdiq kutmoqda" qatori turgan edi.
@@ -1555,7 +1560,7 @@ export default function CashboxesPage() {
                     className="mt-4 pt-3 space-y-1.5"
                     style={{ borderTop: `1px solid ${line}` }}
                   >
-                    {methodRows.map(({ m, dot, val, bal }) => (
+                    {methodRows.map(({ m, dot, val, today }) => (
                       <div
                         key={m.key}
                         draggable={!c.archived}
@@ -1568,14 +1573,14 @@ export default function CashboxesPage() {
                           if (!c.archived)
                             setTransferState({ cashbox: c, from: m.key });
                         }}
-                        /* Raqam BUGUNGI tushum, qoldiq esa boshqa son —
-                           ikkalasi ham shu yerda ochiq aytiladi, aks holda
-                           "Naqd 0" kassada naqd yo'q degan ma'noda
-                           o'qilardi. `mask` SHU YERDA HAM kerak: summalar
-                           yashirilganda izoh ularni oshkor qilmasin. */
+                        /* Qatordagi raqam — QOLDIQ. Bugungi tushum esa
+                           boshqa son (chiqim va ko'chirma uni kamaytirmaydi),
+                           shu bois izohda alohida aytiladi. `mask` SHU YERDA
+                           HAM kerak: summalar yashirilganda izoh ularni
+                           oshkor qilmasin. */
                         title={
-                          `${m.name} — bugun ${mask(val)} so'm tushgan` +
-                          ` · kassada ${mask(bal)} so'm` +
+                          `${m.name} — kassada ${mask(val)} so'm` +
+                          ` · bugun ${mask(today)} so'm tushgan` +
                           (c.archived ? "" : " · bosing: boshqa to'lov turiga ko'chirish")
                         }
                         className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md ${c.archived ? "" : "cursor-grab active:cursor-grabbing"} ${dragKey === m.key ? "opacity-50" : ""}`}

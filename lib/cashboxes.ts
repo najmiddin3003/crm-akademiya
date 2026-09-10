@@ -40,11 +40,12 @@ export interface Cashbox {
    */
   todayIncome?: number;
   /**
-   * Bugungi tushumning to'lov turi kesimi. Kartochkadagi "Naqd /
-   * Plastik / …" qatorlari SHUNDAN chiziladi, `methodTotals` dan emas.
+   * Bugungi tushumning to'lov turi kesimi — kartochkadagi "Naqd /
+   * Plastik / …" qatorining IZOHIDA ("bugun X so'm tushgan").
    *
-   * `methodTotals` — kassadagi QOLDIQ (ko'chirish oynasi shundan
-   * foydalanadi); bu esa BUGUN tushgani. Ikkalasini adashtirmaslik kerak.
+   * Qatordagi RAQAM esa `methodTotals` dan — kassadagi qoldiq. Ikkalasini
+   * adashtirmaslik kerak: chiqim va ko'chirma qoldiqni kamaytiradi, bugungi
+   * tushumga esa tegmaydi (u faqat `payIn` ni sanaydi).
    */
   todayByMethod?: CashboxMethodTotals;
   monthToPrimary?: number;

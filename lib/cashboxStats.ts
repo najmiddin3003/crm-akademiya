@@ -18,11 +18,11 @@ export interface CashboxCardStats {
   todayIncome: number;
   /**
    * O'sha bugungi tushumning TO'LOV TURI kesimi — kartochkadagi
-   * "Naqd / Plastik / Terminal" qatorlari shundan chiziladi.
+   * "Naqd / Plastik / Terminal" qatorining IZOHIDA ko'rinadi (qatordagi
+   * raqamning o'zi `methodTotals`, ya'ni qoldiq).
    *
-   * Qatorlar yig'indisi `todayIncome` ga TENG bo'lishi shart: kassir
-   * kartochkada "Bugungi tushum" ni ko'rib, tagidagi taqsimot bilan
-   * solishtiradi. Shu sabab ikkalasi ham BITTA so'rovdan chiqadi.
+   * Jami bilan kesim BITTA so'rovdan chiqadi, ya'ni ular hech qachon
+   * bir-biriga zid bo'lmaydi.
    */
   todayByMethod: Record<string, number>;
   /**
