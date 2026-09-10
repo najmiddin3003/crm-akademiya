@@ -421,9 +421,25 @@ export function payrollDebt(e: EmployeePayroll, p: PayrollPeriod): number {
  * Oy davomida kartadan berilgan avans va oylik (`paidPlastik`) e'lon
  * qilingan summani to'ldirib boradi, ya'ni bir oyda ikkinchi marta
  * chiqarilganda karta oyog'i QAYTA to'liq chiqmaydi.
+ *
+ * DAVRGA BO'LINADI — oklad bilan bir xil qoida (`payrollBase`).
+ *
+ * NIMA NOTO'G'RI EDI: `plastikSalary` OYLIK summa, lekin u 1-kundanoq
+ * to'liq "kartaga tegishli" deb olinardi. Oy o'rtasida xodimning
+ * ishlab topgani deyarli har doim shu summadan kichik bo'ladi
+ * (10 kunda 801 000, e'lon qilingani 1 672 000), ya'ni `Math.min`
+ * quyida HAR DOIM qoldiqni tanlardi: karta oyog'i = butun qoldiq,
+ * naqd oyog'i = 0. Natijada naqd berilgan avans kartaga chiqadigan
+ * summani yeb ketardi — foydalanuvchi buni xato deb ko'rsatdi
+ * (10.09.2026).
+ *
+ * Bo'lingandan keyin: kartaga 1 672 000 × 10/30 = 557 333, qolgani
+ * naqd oyog'iga tushadi va naqd avans o'sha yerdan yeydi. JAMI SUMMA
+ * O'ZGARMAYDI — pastdagi ikkala oyoq yig'indisi baribir `payrollDue`.
+ * Tugagan oyda `day === daysIn`, ya'ni eski xulq saqlanadi.
  */
-export function payrollPlastikTarget(e: EmployeePayroll): number {
-  return Math.max(e.plastikSalary - e.paidPlastik, 0);
+export function payrollPlastikTarget(e: EmployeePayroll, p: PayrollPeriod): number {
+  return Math.max(Math.round((e.plastikSalary * p.day) / p.daysIn) - e.paidPlastik, 0);
 }
 
 /**
@@ -440,7 +456,7 @@ export function payrollPlastikTarget(e: EmployeePayroll): number {
  * yana 4 760 000 chiqarilardi — 2.7 barobar ortiq.
  */
 export function payrollPlastikLeg(e: EmployeePayroll, p: PayrollPeriod): number {
-  return Math.min(payrollPlastikTarget(e), Math.max(payrollDue(e, p), 0));
+  return Math.min(payrollPlastikTarget(e, p), Math.max(payrollDue(e, p), 0));
 }
 
 /** NAQD OYOG'I — qoldiq. Ayirma bo'lgani uchun alohida yaxlitlanmaydi. */

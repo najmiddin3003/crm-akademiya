@@ -206,17 +206,33 @@ export default function SalaryReceiptModal({
                 </div>
               )}
 
-              {/* Kartaga e'lon qilingan summadan KAM ketgan bo'lsa sababi
-                  ochiq aytiladi: qoldiq yetmagan (avans olingan yoki
-                  hisoblangan oylik kam). Bu xato emas, arifmetik natija. */}
-              {(r.plastikSalary ?? 0) > 0
-                && (r.paidPlastik ?? 0) < (r.plastikSalary ?? 0) - (r.paidPlastikBefore ?? 0) && (
-                <p className="mt-1.5 text-[11px] text-amber-600">
-                  Plastik oylik {fmtSum(r.plastikSalary ?? 0)} so&apos;m
-                  {(r.paidPlastikBefore ?? 0) > 0 && ` (shu oyda avval ${fmtSum(r.paidPlastikBefore ?? 0)} o'tkazilgan)`},
-                  lekin qolgan qoldiq yetmadi — kartaga {fmtSum(r.paidPlastik ?? 0)} ketdi.
-                </p>
-              )}
+              {/* Kartaga MO'LJALDAN kam ketgan bo'lsa sababi ochiq
+                  aytiladi: qoldiq yetmagan (avans olingan yoki hisoblangan
+                  oylik kam). Bu xato emas, arifmetik natija.
+
+                  MO'LJAL — oylik summaning DAVRGA to'g'ri keladigan qismi
+                  (lib/salary.ts → payrollPlastikTarget), e'lon qilingan
+                  butun oylik EMAS. Aks holda oy o'rtasidagi har bir chekda
+                  "qoldiq yetmadi" degan yolg'on ogohlantirish chiqardi:
+                  10-kunda kartaga oylikning uchdan biri ketishi normal
+                  holat. Eski cheklarda `day`/`daysIn` bo'lmasa butun
+                  summaga qaytiladi (avvalgi xulq). */}
+              {(() => {
+                const full = r.plastikSalary ?? 0;
+                const day = r.day ?? 0;
+                const daysIn = r.daysIn ?? 0;
+                const target = daysIn > 0 ? Math.round((full * day) / daysIn) : full;
+                const kutilgan = target - (r.paidPlastikBefore ?? 0);
+                if (full <= 0 || (r.paidPlastik ?? 0) >= kutilgan) return null;
+                return (
+                  <p className="mt-1.5 text-[11px] text-amber-600">
+                    {`Kartaga ${fmtSum(target)} mo'ljallangandi`}
+                    {daysIn > 0 && target !== full && ` (${fmtSum(full)} oylikning ${day}/${daysIn} kuni)`}
+                    {(r.paidPlastikBefore ?? 0) > 0 && `, shu oyda avval ${fmtSum(r.paidPlastikBefore ?? 0)} o'tkazilgan`}
+                    {` — lekin qoldiq yetmadi, kartaga ${fmtSum(r.paidPlastik ?? 0)} ketdi.`}
+                  </p>
+                );
+              })()}
 
               {rest !== 0 && (
                 <Row

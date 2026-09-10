@@ -27,7 +27,13 @@ execFileSync("npx", ["tsc", "-p", "tsconfig.salarytest.json"], { stdio: "inherit
 
 // Emit qilingan fayl `@/lib/uzTime` ni import qiladi — bu Next'ning taxallusi,
 // oddiy Node uni bilmaydi. Nisbiy yo'lga almashtiramiz.
-const salaryPath = path.join(OUT, "salary.js");
+// YO'L `.salarytest/lib/salary.js` — `.salarytest/salary.js` EMAS.
+// tsconfig.salarytest.json da `rootDir: "."` va ro'yxatda `constants/`
+// ham bor, ya'ni tsc papka tuzilishini saqlab chiqaradi. Ilgari bu yerda
+// tekis yo'l turgan edi va u faqat ESKI seansdan qolgan fayl tufayli
+// "ishlardi": tekshiruvlar o'zgartirilgan koddan emas, eskisidan
+// o'tardi. `.salarytest` o'chirilishi bilan skript ENOENT bilan yiqildi.
+const salaryPath = path.join(OUT, "lib", "salary.js");
 fs.writeFileSync(salaryPath, fs.readFileSync(salaryPath, "utf8").replace('"@/lib/uzTime"', '"./uzTime.js"'));
 
 const {
@@ -92,13 +98,22 @@ scenario("D) AVANS TUZOG'I — 3 000 000 naqd avans olingan",
   emp({ fixedSalary: 5000000, taxable: true, taxRules: [TAX_216], plastikSalary: 2000000, paidAvans: 3000000 }), P30,
   { gross: 5000000, tax: 216000, due: 1784000, plastik: 1784000, naqd: 0 });
 
-scenario("E1) Bir oyda ikki chiqarish — 15-kun",
+// E1/E2 — PLASTIK OYLIK DAVRGA BO'LINADI (10.09.2026 dan).
+// 15-kunda kartaga oylik summaning yarmi mo'ljallanadi (1 500 000/2 =
+// 750 000), qolgani naqd oyog'iga tushadi. Oy oxirida ikkinchi chiqarish
+// qolgan 750 000 ni kartaga yuboradi — ya'ni oy bo'yicha kartaga baribir
+// to'liq 1 500 000 ketadi, faqat ikki bo'lakda.
+//
+// Ilgari bu yerda 15-kunda ham BUTUN 1 500 000 kutilardi va natijada
+// naqd oyog'i deyarli har doim 0 chiqardi (lib/salary.ts →
+// payrollPlastikTarget izohiga qarang).
+scenario("E1) Bir oyda ikki chiqarish — 15-kun (kartaga yarmi)",
   emp({ fixedSalary: 5000000, taxable: true, taxRules: [TAX_216], plastikSalary: 1500000 }), P15,
-  { gross: 2500000, tax: 216000, due: 2284000, plastik: 1500000, naqd: 784000 });
+  { gross: 2500000, tax: 216000, due: 2284000, plastik: 750000, naqd: 1534000 });
 
-scenario("E2) …30-kun (kartaga allaqachon 1 500 000 ketgan)",
-  emp({ fixedSalary: 5000000, taxable: true, taxRules: [TAX_216], plastikSalary: 1500000, paidOylik: 2284000, paidPlastik: 1500000 }), P30,
-  { gross: 5000000, tax: 216000, due: 2500000, plastik: 0, naqd: 2500000 });
+scenario("E2) …30-kun (kartaga avval 750 000 ketgan — qolgani yuboriladi)",
+  emp({ fixedSalary: 5000000, taxable: true, taxRules: [TAX_216], plastikSalary: 1500000, paidOylik: 2284000, paidPlastik: 750000 }), P30,
+  { gross: 5000000, tax: 216000, due: 2500000, plastik: 750000, naqd: 1750000 });
 
 scenario("F) Manfiy hisoblangan (jarima asosdan katta) — soliq 0",
   emp({ fixedSalary: 5000000, jarima: 5500000, taxable: true, taxRules: [TAX_216], plastikSalary: 2000000 }), P30,
