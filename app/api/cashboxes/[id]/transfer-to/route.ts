@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
 import { logEntry, nowTime, todayIso } from "@/lib/transactionLog";
+import { loadPendingOut } from "@/lib/transferPending";
 import { flushSoon } from "@/lib/sync/dispatch";
 
 // POST /api/cashboxes/:id/transfer-to — pulni bitta kassadan BOSHQA kassaga
@@ -14,21 +15,36 @@ import { flushSoon } from "@/lib/sync/dispatch";
 // umumiy pulni o'zgartirmaydi).
 //
 // ------------------------------------------------------------------
-// TASDIQLASH TALAB QILINADI — pul "YO'LDA" turadi (eskrou)
+// TASDIQLASH TALAB QILINADI — pul TASDIQGACHA JO'NATUVCHIDA TURADI
 //
-// NIMA NOTO'G'RI EDI: bu route ikkala kassaning balansini DARHOL
-// o'zgartirar va ikkala qatorni ham `status: ""` (qabul qilingan) qilib
-// yozardi. Ya'ni qabul qiluvchi kassa pulni tasdiqlamasdan olardi, jadvaldagi
-// qizil × va yashil ✓ esa faqat bezak edi (onClick'siz <span>).
+// NIMA NOTO'G'RI EDI (birinchi navbatda): bu route ikkala kassaning
+// balansini DARHOL o'zgartirar va ikkala qatorni ham `status: ""` (qabul
+// qilingan) qilib yozardi. Ya'ni qabul qiluvchi kassa pulni tasdiqlamasdan
+// olardi, jadvaldagi qizil × va yashil ✓ esa faqat bezak edi.
+//
+// NIMA NOTO'G'RI EDI (ikkinchi navbatda): tasdiq qo'shilgach pul
+// jo'natuvchidan DARHOL yechilib, "yo'lda" (eskrouda) turardi. Kassir
+// kunlik tushumni rahbarga jo'natishi bilan uning balansi nolga tushardi,
+// rahbar esa hech narsa bosmagan bo'lardi — pul ikkala kassada ham
+// ko'rinmasdi. Foydalanuvchi buni xato deb ko'rsatdi (10.09.2026): pul
+// kassadan faqat rahbar QABUL QILGANDA chiqishi kerak.
 //
 // ENDI:
-//   jo'natish  — pul jo'natuvchidan DARHOL yechiladi, qabul qiluvchiga
-//                QO'SHILMAYDI: u "yo'lda" turadi. Ikkala qator `waiting`.
-//   ✓ tasdiq   — qabul qiluvchiga qo'shiladi, ikkala qator `""` bo'ladi.
-//   × rad etish — pul jo'natuvchiga QAYTARILADI, ikkala qator `cancelled`.
+//   jo'natish  — hech kimning balansi o'zgarmaydi, faqat ikkita `waiting`
+//                qator yoziladi. Pul JO'NATUVCHIDA qoladi.
+//   ✓ tasdiq   — jo'natuvchidan yechiladi VA qabul qiluvchiga qo'shiladi,
+//                ikkala qator `""` bo'ladi.
+//   × rad etish — hech qanday pul ko'chmaydi (u hech qayerga ketmagan
+//                edi), ikkala qator `cancelled` bo'ladi.
 //
-// Jo'natuvchidan darhol yechilishining sababi: aks holda tasdiq
-// kutilayotgan pulni jo'natuvchi ikkinchi marta sarflashi mumkin edi.
+// BITTA PULNI IKKI MARTA VA'DA QILISH: balans tushmagani uchun kassir
+// o'sha summani yana jo'natishga urinishi mumkin. Shuning uchun quyida
+// mavjud mablag' = qoldiq − TASDIQ KUTAYOTGAN summa (lib/transferPending.ts).
+//
+// Kassir tasdiq kutilayotgan pulni XARAJATGA sarflab yuborsa — bunga
+// ATAYLAB yo'l qo'yiladi: pul jismonan hali uning qo'lida. U holda
+// tasdiqlash paytida mablag' yetmaydi va rahbar aniq xato xabarini
+// oladi (lib/transferDecision.ts).
 //
 // Tasdiqlash/rad etish: app/api/transaction-entries/[id]/transfer-confirm
 // va .../transfer-reject.
@@ -74,24 +90,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Moliya bo'limi topilmadi" }, { status: 404 });
   }
   const totals = source.methodTotals as CashboxMethodTotals;
-  if ((totals[chosen.key] ?? 0) < amount) {
-    return NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 });
-  }
-
-  // FAQAT JO'NATUVCHIDAN yechiladi. Qabul qiluvchining balansiga bu yerda
-  // TEGILMAYDI — pul tasdiqlangunicha "yo'lda" turadi (yuqoridagi izoh).
-  //
-  // Shart bilan yozamiz: yechish paytida mablag' hali ham yetarli
-  // bo'lishi kerak. Yuqoridagi tekshiruvdan keyin boshqa so'rov o'sha
-  // puldan sarflab ulgurgan bo'lishi mumkin — o'qib-keyin-yozish
-  // oralig'idagi teshik shu shart bilan yopiladi.
-  const fromRes = await col.findOneAndUpdate(
-    { id: fromId, [`methodTotals.${method}`]: { $gte: amount } },
-    { $inc: { [`methodTotals.${method}`]: -amount, balance: -amount } },
-    { returnDocument: "after" },
-  );
-  if (!fromRes) {
-    return NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 });
+  // MAVJUD MABLAG' = qoldiq − tasdiq kutayotgan summa. Ikkinchi qism
+  // shuning uchun ayriladi: jo'natilgan pul balansda TURAVERADI, ya'ni
+  // faqat `methodTotals` ga qarasak o'sha pulni yana jo'natish mumkin
+  // bo'lardi va rahbar ikkala ko'chirmani ham tasdiqlay olmasdi.
+  const pending = (await loadPendingOut(db, [fromId])).get(fromId) ?? {};
+  const available = (totals[chosen.key] ?? 0) - (pending[chosen.key] ?? 0);
+  if (available < amount) {
+    // Xabar ochiq aytadi: pul kassada bor, lekin allaqachon va'da
+    // qilingan. Quruq "Mablag' yetarli emas" kassirni chalg'itardi —
+    // u kartada boshqa raqamni ko'rib turibdi.
+    const held = pending[chosen.key] ?? 0;
+    return NextResponse.json(
+      {
+        ok: false,
+        error: held > 0
+          ? `Mablag' yetarli emas — ${held.toLocaleString("ru-RU")} so'm tasdiq kutmoqda`
+          : "Mablag' yetarli emas",
+      },
+      { status: 400 },
+    );
   }
 
   const methodLabel = chosen.name;
@@ -121,7 +139,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     paymentMethodKey: chosen.key,
   };
   // ISHORA JUFT BO'LADI: jo'natgan kassada manfiy, qabul qilganda musbat —
-  // yuqoridagi `$inc` bilan bir xil. Ilgari ikkalasi ham manfiy yozilardi
+  // tasdiqlashdagi `$inc` lar bilan bir xil. Ilgari ikkalasi ham manfiy yozilardi
   // va qabul qilgan kassaning daftarida pul KIRGANI "-500 000" bo'lib
   // ko'rinardi. Balansga ta'sir qilmagani uchun sezilmay yurgan, lekin
   // edutizimdan ko'chirilgan 3 578 ko'chirma juft ishora bilan yozilgan
@@ -141,6 +159,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     before: totals[method as keyof CashboxMethodTotals] ?? 0,
     moderator: source.moderator || "", cashboxId: fromId,
     transferRole: "out",
+    // YANGI QOIDA BELGISI: pul jo'natishda YECHILMADI. Tasdiqlash aynan
+    // shu maydonga qarab pulni jo'natuvchidan yechadi; maydonsiz (eski)
+    // qatorlarda pul allaqachon yechilgan bo'ladi va tasdiq faqat qabul
+    // qiluvchiga qo'shadi (lib/transactionEntries.ts dagi izoh).
+    deductedOnSend: false,
   });
   await db.collection("transaction_entries").updateOne({ id: outId }, { $set: { transferId: outId } });
   await logEntry(db, {
@@ -154,15 +177,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // kunlik cron'ni kutmasdan tushadi (boshqa yozuv route'lari ham shunday).
   after(() => flushSoon(db));
 
-  const { _id: _f, ...fromCashbox } = fromRes;
-  // Qabul qiluvchi kassa O'ZGARMAGAN holida qaytariladi — pul unga hali
-  // qo'shilgani yo'q. Uni javobdan olib tashlamaymiz: klient ikkala
-  // kartochkani ham yangilaydi va "to" yo'q bo'lsa eski qiymat qolib
-  // ketardi.
+  // IKKALA KASSA HAM O'ZGARMAGAN holida qaytariladi — hech kimning
+  // balansiga tegilmadi. Ularni javobdan olib tashlamaymiz: klient ikkala
+  // kartochkani ham shu javob bilan almashtiradi va biri yetishmasa eski
+  // qiymat qolib ketardi.
+  //
+  // JO'NATUVCHIDA `pendingOut` YANGILANADI: kartochkada "tasdiq kutmoqda"
+  // qatori shundan chiziladi va u hozirgina o'sgan. Qayta o'qiymiz —
+  // yuqorida olingan `pending` bu yozuvdan OLDINGI holat.
+  const keys = methods.map((m) => m.key);
+  const pendingAfter = await loadPendingOut(db, [fromId, toCashboxId]);
+  const { _id: _f, ...fromCashbox } = source;
   const { _id: _t, ...toCashbox } = dest;
   return NextResponse.json({
     ok: true,
-    from: normalizeCashbox(fromCashbox, methods.map((m) => m.key)),
-    to: normalizeCashbox(toCashbox, methods.map((m) => m.key)),
+    from: {
+      ...normalizeCashbox(fromCashbox, keys),
+      pendingOut: pendingAfter.get(fromId) ?? {},
+    },
+    to: {
+      ...normalizeCashbox(toCashbox, keys),
+      pendingOut: pendingAfter.get(toCashboxId) ?? {},
+    },
   });
 }

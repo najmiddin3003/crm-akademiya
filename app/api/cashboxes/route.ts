@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, zeroMethodTotals, type Cashbox } from "@/lib/cashboxes";
 import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
+import { loadPendingOut } from "@/lib/transferPending";
 import { getCurrentEmployee, nameEq } from "@/lib/currentEmployee";
 
 // Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
@@ -62,7 +63,16 @@ export async function GET(req: Request) {
     loadPaymentMethodKeys(db),
     col.find(filter).sort({ id: 1 }).toArray(),
   ]);
-  const cashboxes = rows.map(({ _id, ...rest }) => normalizeCashbox({ isPrimary: false, ...rest }, keys));
+  // TASDIQ KUTAYOTGAN summa balansning ICHIDA turadi: boshqa kassaga
+  // jo'natilgan pul qabul qiluvchi ✓ bosgunicha shu kassadan yechilmaydi
+  // (app/api/cashboxes/[id]/transfer-to/route.ts). Kartochkada shu
+  // summa alohida ko'rsatiladi, aks holda kassir balansning bir qismi
+  // allaqachon va'da qilinganini bilmasdi.
+  const pending = await loadPendingOut(db, rows.map((r) => r.id as number));
+  const cashboxes = rows.map(({ _id, ...rest }) => ({
+    ...normalizeCashbox({ isPrimary: false, ...rest }, keys),
+    pendingOut: pending.get(rest.id as number) ?? {},
+  }));
   return NextResponse.json({ ok: true, cashboxes });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -78,24 +78,41 @@ export default function CashboxTransferToDrawer({
   // eslatma turadi — foydalanuvchi bilib tanlasin.
   const destinations = allNames.filter((c) => c.id !== cashbox.id);
 
-  // To'lov turlari ro'yxatida faqat SHU KASSADA puli borlari turadi va har
-  // birining yonida qoldig'i ko'rinadi. Nol qoldiqli turdan ko'chirib
-  // bo'lmaydi (server ham 400 beradi — transfer-to/route.ts), shu bois
-  // ro'yxatda ham turmaydi: kassir tanlab ko'rib, keyin xato eshitmasin.
+  // MAVJUD MABLAG' = qoldiq − TASDIQ KUTAYOTGAN summa.
+  //
+  // Jo'natilgan pul qabul qiluvchi ✓ bosgunicha shu kassada TURAVERADI
+  // (transfer-to/route.ts). Ya'ni `methodTotals` ning bir qismi allaqachon
+  // va'da qilingan bo'lishi mumkin va uni ikkinchi marta jo'natib
+  // bo'lmaydi — server ham shu hisobga qarab 400 beradi.
+  const availableOf = useCallback(
+    (key: string) => (cashbox.methodTotals[key] ?? 0) - (cashbox.pendingOut?.[key] ?? 0),
+    [cashbox.methodTotals, cashbox.pendingOut],
+  );
+
+  // To'lov turlari ro'yxatida faqat SHU KASSADA mavjud puli borlari turadi
+  // va har birining yonida qoldig'i ko'rinadi. Nol qoldiqli turdan
+  // ko'chirib bo'lmaydi (server ham 400 beradi), shu bois ro'yxatda ham
+  // turmaydi: kassir tanlab ko'rib, keyin xato eshitmasin.
   const methodOptions = useMemo(
     () =>
       paymentMethods
-        .filter((m) => (cashbox.methodTotals[m.key] ?? 0) > 0)
+        .filter((m) => availableOf(m.key) > 0)
         .map((m) => ({
           value: m.key,
           label: m.name,
-          hint: fmtSum(cashbox.methodTotals[m.key] ?? 0),
+          // FAQAT summa. Ilgari bu yerga "(… tasdiq kutmoqda)" ham
+          // qo'shilgan edi va uzun matn to'lov turining nomini "N.."
+          // holiga siqib qo'yardi (Select'da `hint` — `shrink-0`).
+          // Eslatma pastda, ro'yxatdan tashqarida turadi.
+          hint: fmtSum(availableOf(m.key)),
         })),
-    [paymentMethods, cashbox.methodTotals],
+    [paymentMethods, availableOf],
   );
 
-  /** Tanlangan turdagi qoldiq — summani yuborishdan oldin tekshirish uchun. */
-  const available = method ? cashbox.methodTotals[method] ?? 0 : null;
+  /** Tanlangan turdagi mavjud mablag' — yuborishdan oldin tekshirish uchun. */
+  const available = method ? availableOf(method) : null;
+  /** Tanlangan turda tasdiq kutayotgan summa — pastdagi eslatma uchun. */
+  const held = method ? cashbox.pendingOut?.[method] ?? 0 : 0;
 
   async function save() {
     if (!toCashboxId) {
@@ -111,10 +128,10 @@ export default function CashboxTransferToDrawer({
       showError("To'lov turini tanlang");
       return;
     }
-    // Qoldiqdan ko'p summa serverda ham rad etiladi; bu yerda tekshirilishi
+    // Mavjuddan ko'p summa serverda ham rad etiladi; bu yerda tekshirilishi
     // shunchaki javobni kutmaslik uchun.
     if (available !== null && amountNum > available) {
-      showError(`Mablag' yetarli emas — qoldiq ${fmtSum(available)}`);
+      showError(`Mablag' yetarli emas — mavjud ${fmtSum(available)}`);
       return;
     }
     setSaving(true);
@@ -138,7 +155,9 @@ export default function CashboxTransferToDrawer({
         return;
       }
       onSaved({ from: data.from as Cashbox, to: data.to as Cashbox });
-      showSuccess("Pul ko'chirildi");
+      // "Ko'chirildi" DEB BO'LMAYDI: pul hali hech qayerga ketgani yo'q,
+      // u qabul qiluvchi ✓ bosgunicha shu kassada turadi.
+      showSuccess("Ko'chirma jo'natildi — tasdiq kutilmoqda");
       onClose();
     } catch {
       showError("Serverga ulanib bo'lmadi");
@@ -207,6 +226,19 @@ export default function CashboxTransferToDrawer({
               placeholder={methodOptions.length === 0 ? "Kassada mablag' yo'q" : "Tanlang"}
               disabled={methodOptions.length === 0}
             />
+            {/* Ro'yxatdagi summa kartadagi balansdan KICHIK bo'lishi
+                mumkin — farqni ochiq aytamiz, aks holda kassir buni xato
+                deb o'ylardi. Tasdiq kutayotgan pul kassada turibdi,
+                lekin uni ikkinchi marta jo'natib bo'lmaydi.
+
+                Jumla BITTA ifodada yozilgan: bu loyihada JSX ifodadan
+                keyingi bo'shliqni yeb qo'yadi ("so'mtasdiq" bo'lib
+                chiqadi — kartadagi "3 000 000so'm" ham shundan). */}
+            {held > 0 && (
+              <p className="mt-1.5 text-[12px] text-amber-600">
+                {`${fmtSum(held)} tasdiq kutmoqda — bu summani qayta jo'natib bo'lmaydi.`}
+              </p>
+            )}
           </div>
 
           <div>

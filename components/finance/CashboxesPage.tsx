@@ -15,6 +15,7 @@ import {
   EyeOff,
   FileSpreadsheet,
   FileText,
+  Hourglass,
   LayoutGrid,
   Pencil,
   Plus,
@@ -520,7 +521,7 @@ function StatusCell({
             <button
               type="button"
               disabled={deciding}
-              title="Rad etish — pul jo'natuvchi kassaga qaytariladi"
+              title="Rad etish — pul jo'natuvchi kassada qoladi"
               onClick={(ev) => { ev.stopPropagation(); onDecide("reject"); }}
               className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px] hover:bg-rose-200 disabled:opacity-50"
             >
@@ -534,7 +535,7 @@ function StatusCell({
             <button
               type="button"
               disabled={deciding}
-              title="Tasdiqlash — pul shu kassaga qo'shiladi"
+              title="Tasdiqlash — pul jo'natuvchidan yechilib, shu kassaga qo'shiladi"
               onClick={(ev) => { ev.stopPropagation(); onDecide("confirm"); }}
               className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600 hover:bg-emerald-200 disabled:opacity-50"
             >
@@ -894,9 +895,11 @@ export default function CashboxesPage() {
   /**
    * Kassalararo ko'chirmani tasdiqlash (✓) yoki rad etish (×).
    *
-   * Jadval va kassa kartochkalari IKKALASI ham yangilanadi: tasdiq pulni
-   * qabul qiluvchiga qo'shadi, rad etish esa jo'natuvchiga qaytaradi —
-   * ya'ni balanslar o'zgaradi.
+   * Jadval va kassa kartochkalari IKKALASI ham yangilanadi. Tasdiq pulni
+   * jo'natuvchidan yechib qabul qiluvchiga qo'shadi — ikkala balans ham
+   * o'zgaradi. Rad etishda pul ko'chmaydi (u jo'natuvchida turgan edi),
+   * lekin "tasdiq kutmoqda" summasi kamayadi, ya'ni kartochka baribir
+   * yangilanishi kerak.
    */
   async function decideTransfer(entry: TransactionEntry, decision: "confirm" | "reject") {
     setDecidingId(entry.id);
@@ -1340,6 +1343,15 @@ export default function CashboxesPage() {
                 val: c.methodTotals[m.key] ?? 0,
               }))
               .filter((r) => r.val > 0);
+            // Boshqa kassaga jo'natilgan, ammo hali tasdiqlanmagan summa.
+            // U BALANSNING ICHIDA turadi — pul qabul qiluvchi ✓ bosgunicha
+            // shu kassadan yechilmaydi (transfer-to/route.ts). Shuning
+            // uchun balansdan ayirmaymiz, yoniga eslatma qo'yamiz: kassir
+            // pulning bir qismi allaqachon va'da qilinganini bilsin.
+            const pendingSum = Object.values(c.pendingOut ?? {}).reduce(
+              (a, b) => a + (b || 0),
+              0,
+            );
 
             return (
               <div
@@ -1437,6 +1449,18 @@ export default function CashboxesPage() {
                       />
                     )}
                   </div>
+
+                  {pendingSum > 0 && (
+                    <div
+                      className={`mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-medium tabular-nums ${
+                        isDark ? "text-amber-200" : "text-amber-700"
+                      }`}
+                      title="Boshqa kassaga jo'natilgan, ammo hali tasdiqlanmagan summa. Pul shu kassada — qabul qiluvchi tasdiqlaganda chiqadi."
+                    >
+                      <Hourglass className="w-3.5 h-3.5 shrink-0" />
+                      {mask(pendingSum)} so&apos;m tasdiq kutmoqda
+                    </div>
+                  )}
                 </div>
 
                 {showActions && (

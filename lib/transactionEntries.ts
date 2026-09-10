@@ -93,6 +93,27 @@ export interface TransactionEntry {
    */
   transferRole?: "out" | "in";
   /**
+   * Ko'chirma yozilganda pul jo'natuvchi kassadan DARHOL yechilganmi.
+   *
+   * Faqat juftlikning "out" qatorida bo'ladi va faqat ikkita qiymati bor:
+   *
+   *   `false` — YANGI QOIDA. Pul jo'natuvchida QOLADI, undan faqat qabul
+   *             qiluvchi ✓ bosganda yechiladi. Kassir kunlik tushumni
+   *             rahbarga jo'natgach balansi darhol nolga tushib qolmasin
+   *             degan talab shundan (foydalanuvchi, 10.09.2026).
+   *
+   *   yo'q    — ESKI QOIDA (bu maydon qo'shilishidan oldingi yozuvlar).
+   *             Pul jo'natishda ALLAQACHON yechilgan va "yo'lda" turibdi:
+   *             tasdiq faqat qabul qiluvchiga qo'shadi, rad etish esa
+   *             jo'natuvchiga QAYTARADI.
+   *
+   * Farq muhim: ikkisini adashtirish pulni ikki marta yechish yoki ikki
+   * marta qaytarish demakdir. Shuning uchun `lib/transferDecision.ts`
+   * qaror qabul qilishdan oldin aynan shu maydonga qaraydi va sukut
+   * bo'yicha ESKI qoidani tanlaydi — maydonsiz yozuvlar bazada bor.
+   */
+  deductedOnSend?: boolean;
+  /**
    * Yozuv bazaga tushgan aniq vaqt (ISO). `date` va `time` — foydalanuvchi
    * ko'radigan, kassir o'zgartira oladigan maydonlar; bu esa tizim qo'ygan
    * o'zgarmas tamg'a. Sinxronizatsiya navbati va tekshiruvlar shunga

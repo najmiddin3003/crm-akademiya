@@ -17,6 +17,17 @@ export interface Cashbox {
   archived: boolean; // "Kassani arxiv qilish"
   isPrimary: boolean; // "Bosh kassa" — bir vaqtda faqat bitta kassada true
   methodTotals: CashboxMethodTotals;
+  /**
+   * Boshqa kassaga jo'natilgan, ammo hali TASDIQLANMAGAN summa — to'lov
+   * turi kesimida. `methodTotals` NING ICHIDA turadi, undan ayrilgan
+   * emas: pul qabul qiluvchi ✓ bosgunicha shu kassada qoladi
+   * (lib/transferPending.ts).
+   *
+   * MongoDB hujjatida SAQLANMAYDI — har so'rovda jurnaldan hisoblanadi,
+   * shu bois `GET /api/cashboxes` javobida bor, boshqa joyda yo'q
+   * bo'lishi mumkin.
+   */
+  pendingOut?: CashboxMethodTotals;
 }
 
 /**

@@ -15,10 +15,19 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 // .../transfer-reject).
 //
 // PUL QAYERDA TURADI (app/api/cashboxes/[id]/transfer-to/route.ts):
-//   jo'natishda pul jo'natuvchidan DARHOL yechiladi, qabul qiluvchiga
-//   qo'shilmaydi — "yo'lda" turadi, ikkala jurnal qatori `waiting`.
-//     ✓ tasdiq    -> qabul qiluvchiga qo'shiladi, ikkala qator ""
-//     × rad etish -> jo'natuvchiga QAYTARILADI, ikkala qator "cancelled"
+//   jo'natishda hech kimning balansi o'zgarmaydi — pul JO'NATUVCHIDA
+//   qoladi, ikkala jurnal qatori `waiting`.
+//     ✓ tasdiq    -> jo'natuvchidan YECHILADI va qabul qiluvchiga
+//                    qo'shiladi, ikkala qator ""
+//     × rad etish -> hech qanday pul ko'chmaydi, ikkala qator "cancelled"
+//
+// ESKI QATORLAR BOSHQACHA. Bu qoidadan oldin yozilgan `waiting` yozuvlarda
+// pul jo'natishda ALLAQACHON yechilgan va "yo'lda" (eskrouda) turibdi:
+//     ✓ tasdiq    -> faqat qabul qiluvchiga qo'shiladi
+//     × rad etish -> jo'natuvchiga QAYTARILADI
+// Ikkisini `out.deductedOnSend` ajratadi (lib/transactionEntries.ts).
+// Adashtirish = pulni ikki marta yechish yoki ikki marta qaytarish,
+// shuning uchun maydon YO'Q bo'lsa ESKI qoida tanlanadi.
 
 export type TransferDecision = "confirm" | "reject";
 
@@ -81,9 +90,9 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
   if (!key) return err("To'lov turi topilmadi", 400);
   const amount = Math.abs(Number(entry.amount) || 0);
   if (amount <= 0) return err("Ko'chirma summasi noto'g'ri", 400);
-  // Tasdiq — pul qabul qiluvchiga qo'shiladi; rad etish — jo'natuvchiga
-  // qaytariladi. Ikkalasida ham MUSBAT $inc, faqat kassa boshqa.
-  const targetCashboxId = decision === "confirm" ? entry.cashboxId : out.cashboxId;
+  // Pul jo'natishda kassadan yechilganmi? Maydon YO'Q bo'lsa — ESKI
+  // yozuv, ya'ni yechilgan va "yo'lda" turibdi (yuqoridagi izoh).
+  const heldInTransit = out.deductedOnSend !== false;
   const newStatus = decision === "confirm" ? "" : "cancelled";
 
   // ---- HOLATNI ALMASHTIRISH (avval), SO'NG PUL ----
@@ -98,10 +107,10 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
   //
   // MongoDB tranzaksiyasi ishlatilmadi — loyihada hech qayerda yo'q va
   // bu birinchisi bo'lib qolardi. Qolgan xavf: CAS bajarilib, keyingi
-  // $inc gacha jarayon o'lsa, pul "yo'lda" qolib ketadi. Pul yo'qolmaydi
-  // (jo'natuvchidan yechilgan, jurnalda ikkala qator ko'rinadi), lekin
-  // qo'lda tuzatish talab qiladi. $inc SINXRON xato bersa quyida holat
-  // orqaga qaytariladi.
+  // $inc gacha jarayon o'lsa, ko'chirma hal qilingan bo'lib ko'rinadi-yu
+  // pul ko'chmay qoladi. Pul yo'qolmaydi (jurnalda ikkala qator
+  // ko'rinadi), lekin qo'lda tuzatish talab qiladi. $inc SINXRON xato
+  // bersa quyida holat ham, pul ham orqaga qaytariladi.
   const cas = await entriesCol.updateMany(
     { transferId, status: "waiting" },
     { $set: { status: newStatus } },
@@ -110,15 +119,58 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
     return err("Bu ko'chirma allaqachon hal qilingan", 409);
   }
 
-  const inc = await db.collection("cashboxes").updateOne(
-    { id: targetCashboxId },
-    { $inc: { [`methodTotals.${key}`]: amount, balance: amount } },
-  );
-  if (inc.matchedCount === 0) {
-    // Kassa yo'q — holatni qaytaramiz, aks holda pul "yo'lda" qolib,
-    // ko'chirma esa hal qilingan bo'lib ko'rinardi.
-    await entriesCol.updateMany({ transferId }, { $set: { status: "waiting" } });
-    return err("Kassa topilmadi", 404);
+  const cashboxesCol = db.collection("cashboxes");
+  /** Qaror bekor qilinadi — qatorlar yana tasdiq kutadigan holatga qaytadi. */
+  const undoStatus = () =>
+    entriesCol.updateMany({ transferId }, { $set: { status: "waiting" } });
+  const give = (cashboxId: number, delta: number) =>
+    cashboxesCol.updateOne(
+      { id: cashboxId },
+      { $inc: { [`methodTotals.${key}`]: delta, balance: delta } },
+    );
+
+  if (decision === "confirm") {
+    // 1) YANGI QOIDA: pul hali jo'natuvchida — avval undan yechamiz.
+    //
+    // Shart FILTRDA (kassa qoldig'i hamon yetarlimi): tasdiq kutilgan
+    // vaqt ichida kassir o'sha puldan xarajat qilgan bo'lishi mumkin —
+    // pul jismonan uning qo'lida edi va bunga yo'l qo'yilgan. U holda
+    // ko'chirmani tasdiqlab bo'lmaydi, rad etish kerak.
+    if (!heldInTransit) {
+      const take = await cashboxesCol.updateOne(
+        {
+          id: out.cashboxId,
+          [`methodTotals.${key}`]: { $gte: amount },
+          balance: { $gte: amount },
+        },
+        { $inc: { [`methodTotals.${key}`]: -amount, balance: -amount } },
+      );
+      if (take.matchedCount === 0) {
+        await undoStatus();
+        const exists = await cashboxesCol.findOne({ id: out.cashboxId }, { projection: { _id: 1 } });
+        return exists
+          ? err("Jo'natuvchi kassada mablag' yetarli emas — ko'chirmani rad eting", 409)
+          : err("Jo'natuvchi kassa topilmadi", 404);
+      }
+    }
+    // 2) Qabul qiluvchiga qo'shamiz.
+    const added = await give(entry.cashboxId, amount);
+    if (added.matchedCount === 0) {
+      // Kassa yo'q — hammasini orqaga qaytaramiz, aks holda pul
+      // jo'natuvchidan yechilib, hech qayerga tushmasdan yo'qolardi.
+      if (!heldInTransit) await give(out.cashboxId, amount);
+      await undoStatus();
+      return err("Kassa topilmadi", 404);
+    }
+  } else if (heldInTransit) {
+    // RAD ETISH. Faqat ESKI qatorlarda qaytariladigan pul bor — u
+    // jo'natuvchidan yechilib "yo'lda" turibdi. Yangi qoidada pul
+    // jo'natuvchidan umuman chiqmagan, ya'ni hech narsa ko'chirilmaydi.
+    const back = await give(out.cashboxId, amount);
+    if (back.matchedCount === 0) {
+      await undoStatus();
+      return err("Kassa topilmadi", 404);
+    }
   }
 
   // ---- SINXRONIZATSIYA ----
