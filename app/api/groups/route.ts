@@ -5,6 +5,7 @@ import { loadGroups } from "@/lib/listQueries";
 import { nextGroupId } from "@/lib/groupIds";
 import { validateGroupInput, type GroupFormInput } from "@/lib/groupRules";
 import { findRoomClashInDb } from "@/lib/groupRoomClash";
+import { checkGroupCourse } from "@/lib/groupCourseCheck";
 import type { Group } from "@/lib/groups";
 
 // Guruh backend'i (MongoDB `groups`). Demo seed YO'Q — guruhlarni
@@ -74,6 +75,15 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
   const col = db.collection("groups");
+
+  // Kurs ro'yxatda bormi, bosqich o'sha kursnikimi (lib/groupCourseCheck.ts).
+  // Bazaga kurs hujjatidagi KANONIK yozilish tushadi.
+  const courseCheck = await checkGroupCourse(db, input.course!, input.level || "");
+  if (!courseCheck.ok) {
+    return NextResponse.json({ ok: false, error: courseCheck.error, field: courseCheck.field }, { status: 400 });
+  }
+  input.course = courseCheck.course;
+  input.level = courseCheck.level;
 
   // Xona shu kun-vaqtda boshqa tirik guruh bilan band bo'lsa — 409. Modal
   // buni ro'yxatdan oldindan ko'rsatadi, lekin ikki moderator bir vaqtda

@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { groupScopeFilter } from "@/lib/groupScope";
 import { validateGroupInput, type GroupFormInput } from "@/lib/groupRules";
 import { findRoomClashInDb } from "@/lib/groupRoomClash";
+import { checkGroupCourse } from "@/lib/groupCourseCheck";
 import type { Group } from "@/lib/groups";
 
 // FILIAL QAMROVI har uchala amalda (lib/groupScope.ts). Kesilmasa, boshqa
@@ -56,13 +57,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!where) return notLoggedIn();
   const db = await ensureIndexes();
 
-  // Xona/kun/vaqt/muddat/holat o'zgarsa — yangilangan jadval bo'lagi boshqa
-  // tirik guruh bilan to'qnashmasligi tekshiriladi (POST dagi qoida).
-  // Ko'chirish uchun hozirgi hujjat kerak: o'zgarmagan maydonlar undan olinadi.
-  if (["room", "day", "time", "startDate", "endDate", "status"].some((k) => k in set)) {
+  // Jadval bo'lagi yoki kurs/bosqich o'zgarsa hozirgi hujjat kerak —
+  // o'zgarmagan maydonlar undan olinadi.
+  const CHECKED = ["room", "day", "time", "startDate", "endDate", "status", "course", "level"];
+  if (CHECKED.some((k) => k in set)) {
     const cur = await db.collection("groups").findOne(where, { projection: { _id: 0 } });
     if (!cur) return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
     const merged = { ...cur, ...set } as unknown as Group & { branchId?: number | null };
+
+    // Kurs/bosqich FAQAT O'ZGARGANDA tekshiriladi (POST dagi qoida): eski
+    // guruhda arxivdan qolgan "1-bosqich" turgan bo'lsa, telegram havolasini
+    // tuzatish uchun ochilgan tahrir shu sabab to'xtab qolmasin.
+    const courseChanged = "course" in set && (set.course || "") !== (cur.course || "");
+    const levelChanged = "level" in set && (set.level || "") !== (cur.level || "");
+    if (courseChanged || (levelChanged && merged.level)) {
+      const courseCheck = await checkGroupCourse(db, merged.course || "", merged.level || "");
+      if (!courseCheck.ok) {
+        return NextResponse.json({ ok: false, error: courseCheck.error, field: courseCheck.field }, { status: 400 });
+      }
+      // Kanonik yozilish (POST dagi kabi) — faqat so'rovda kelgan maydonlar.
+      if ("course" in set) set.course = courseCheck.course;
+      if ("level" in set) set.level = courseCheck.level;
+    }
+
+    // Xona/kun/vaqt/muddat/holat — yangilangan jadval bo'lagi boshqa tirik
+    // guruh bilan to'qnashmasligi.
     if ((merged.status === "active" || merged.status === "frozen") && typeof merged.branchId === "number") {
       const clash = await findRoomClashInDb(
         db,

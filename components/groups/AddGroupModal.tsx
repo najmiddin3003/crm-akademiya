@@ -11,9 +11,10 @@ import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
-import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
+import { GROUP_DAYS, GROUP_FORMATS } from "@/constants/groups";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { findRoomConflict, joinTime, missingGroupFields, parseTimeRange, roomConflictText } from "@/lib/groupRules";
+import { courseLevelNames, findCourseByName, levelPlaceholder } from "@/lib/courseLevels";
 import { uzDateIso } from "@/lib/uzTime";
 import type { Group } from "@/lib/groups";
 
@@ -22,6 +23,8 @@ import type { Group } from "@/lib/groups";
 //
 // Kurslar, o'qituvchilar va xonalar bazadan (/api/offline-courses,
 // /api/teachers, /api/rooms) — tahrirlash modali bilan bir xil manba.
+// Daraja (bosqich) ro'yxati TANLANGAN KURSNING o'zidan (kurs hujjatidagi
+// `levels`, Oflayn kurslar → kurs → "Bosqich qo'shish") — lib/courseLevels.ts.
 //
 // MAJBURIY MAYDONLAR (11.09.2026, audit F-1/F-2): ilgari oynada yulduzcha
 // turgan maydonlar ham aslida tekshirilmasdi (faqat nom), o'qituvchi,
@@ -45,7 +48,6 @@ const STATUS_OPTIONS = [
   { value: "archive", label: "Arxiv", icon: Archive },
 ];
 const FORMAT_OPTIONS = GROUP_FORMATS.map((f) => ({ value: f, label: f }));
-const LEVEL_OPTIONS = GROUP_EDU_TYPES.map((l) => ({ value: l, label: l }));
 const DAY_OPTIONS = GROUP_DAYS.map((d) => ({ value: d, label: d }));
 
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -99,7 +101,7 @@ export default function AddGroupModal({
   onCreated?: (g: Group) => void;
 }) {
   const { showSuccess, showError } = useToast();
-  const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
+  const { courses, names: courseNames, loading: coursesLoading } = useOfflineCourseList();
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
   const { names: roomNames, loading: roomsLoading } = useRooms();
   const [name, setName] = useState("");
@@ -116,6 +118,10 @@ export default function AddGroupModal({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Bosqichlar — tanlangan kursniki. Kurs almashsa eski bosqich unda
+  // bo'lmasligi mumkin — `onChange` da tozalanadi.
+  const levelNames = courseLevelNames(findCourseByName(courses, course));
 
   const time = joinTime(startTime, endTime);
   const missing = missingGroupFields({ name, status, course, day, time, teacher, eduType, room });
@@ -201,7 +207,10 @@ export default function AddGroupModal({
           label="Kurs"
           required
           value={course}
-          onChange={setCourse}
+          onChange={(v) => {
+            setCourse(v);
+            if (level && !courseLevelNames(findCourseByName(courses, v)).includes(level)) setLevel("");
+          }}
           options={courseNames.map((c) => ({ value: c, label: c }))}
           loading={coursesLoading}
           placeholder="Kursni tanlang"
@@ -212,8 +221,10 @@ export default function AddGroupModal({
           label="Daraja (bosqich)"
           value={level}
           onChange={setLevel}
-          options={LEVEL_OPTIONS}
-          placeholder="Bosqichsiz"
+          options={levelNames.map((l) => ({ value: l, label: l }))}
+          placeholder={levelPlaceholder(Boolean(course), levelNames.length)}
+          disabled={!course || levelNames.length === 0}
+          emptyText="Bu kursda bosqich yo'q — Oflayn kurslar → kurs sahifasida qo'shing"
           clearable
         />
 

@@ -6,9 +6,10 @@ import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
-import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
+import { GROUP_DAYS, GROUP_FORMATS } from "@/constants/groups";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { joinTime, missingGroupFields, parseTimeRange } from "@/lib/groupRules";
+import { courseLevelNames, findCourseByName, levelPlaceholder } from "@/lib/courseLevels";
 import type { Group } from "@/lib/groups";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
@@ -52,7 +53,7 @@ function isoToDmy(s: string): string {
 export default function EditGroupModal({ group, onClose, onSaved }: { group: Group; onClose: () => void; onSaved: (g: Group) => void }) {
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
-  const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
+  const { courses, names: courseNames, loading: coursesLoading } = useOfflineCourseList();
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
   const { names: roomNames, loading: roomsLoading } = useRooms();
 
@@ -74,6 +75,11 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
   const [startDate, setStartDate] = useState(group.startDate || dmyToIso(p0 || ""));
   const [endDate, setEndDate] = useState(group.endDate || dmyToIso(p1 || ""));
   const [saving, setSaving] = useState(false);
+
+  // Bosqichlar — tanlangan kursniki (lib/courseLevels.ts). Guruhda arxivdan
+  // qolgan "1-bosqich" kabi ro'yxatda yo'q qiymat bo'lsa, `withCurrent`
+  // uni saqlab turadi — server ham o'zgarmagan bosqichni tekshirmaydi.
+  const levelNames = courseLevelNames(findCourseByName(courses, course));
 
   const time = joinTime(startTime, endTime);
   const missing = missingGroupFields({ name, status, course, day, time, teacher, eduType, room });
@@ -128,11 +134,11 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           </div>
           <div>
             <label className={labelCls}>Kurs<span className="text-rose-500">*</span></label>
-            <Select value={course} onChange={(v) => setCourse(v)} options={withCurrent(courseNames, course).map((c) => ({ value: c, label: c }))} placeholder={selectPlaceholder(coursesLoading, courseNames.length, "Kurs qo'shilmagan")} clearable disabled={coursesLoading} />
+            <Select value={course} onChange={(v) => { setCourse(v); if (level && !courseLevelNames(findCourseByName(courses, v)).includes(level)) setLevel(""); }} options={withCurrent(courseNames, course).map((c) => ({ value: c, label: c }))} placeholder={selectPlaceholder(coursesLoading, courseNames.length, "Kurs qo'shilmagan")} clearable disabled={coursesLoading} />
           </div>
           <div>
             <label className={labelCls}>Kurs darajasi</label>
-            <Select value={level} onChange={(v) => setLevel(v)} options={GROUP_EDU_TYPES.map((l) => ({ value: l, label: l }))} placeholder="Tanlang" clearable />
+            <Select value={level} onChange={(v) => setLevel(v)} options={withCurrent(levelNames, level).map((l) => ({ value: l, label: l }))} placeholder={levelPlaceholder(Boolean(course), levelNames.length)} disabled={!course || (levelNames.length === 0 && !level)} clearable />
           </div>
           <div>
             <label className={labelCls}>Dars kunini tanlang<span className="text-rose-500">*</span></label>
