@@ -24,8 +24,10 @@ export interface DateFieldProps {
   error?: boolean;
   className?: string;
   /** "compact" (default) — Topshiriq oynasidagi h-9 o'lcham. "panel" —
-   * Yangi buyurtma panelidagi qolgan maydonlar bilan bir xil h-11 o'lcham. */
-  variant?: "compact" | "panel";
+   * Yangi buyurtma panelidagi qolgan maydonlar bilan bir xil h-11 o'lcham.
+   * "form" — oddiy modal formalaridagi (Yangi guruh) h-10 maydonlar bilan
+   * bir xil; ui/Select `size="md"` bilan yonma-yon bir tekis turadi. */
+  variant?: "compact" | "panel" | "form";
 }
 
 function isoToText(iso: string): string {
@@ -161,7 +163,11 @@ export default function DateField({
         className={`w-full rounded-lg border pl-3 text-sm tabular-nums focus:outline-none focus:ring-2 ${
           clearable ? "pr-16" : "pr-9"
         } ${
-          variant === "panel" ? "h-11 bg-secondary/30 focus:ring-primary/40" : "h-9 bg-background focus:ring-blue-500"
+          variant === "panel"
+            ? "h-11 bg-secondary/30 focus:ring-primary/40"
+            : variant === "form"
+              ? "h-10 bg-card focus:ring-primary/40"
+              : "h-9 bg-background focus:ring-blue-500"
         } ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
       />
       {clearable && (

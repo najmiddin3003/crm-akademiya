@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "@/components/ui/Link";
 import { CalendarCheck, History, MoreVertical, Plus, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
+import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import AddGroupModal from "./AddGroupModal";
@@ -21,7 +22,6 @@ import PersonLink from "@/components/shared/PersonDirectory";
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
 // (g.periodExpired). Ma'lumot /api/groups dan; guruh nomi ustiga bosilsa
 // /groups/[id] (detail) ga o'tadi.
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
@@ -108,6 +108,11 @@ const STATUS_CLS: Record<string, string> = {
   frozen: "text-amber-600",
   archive: "text-muted-foreground",
 };
+const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }));
+const ODD_EVEN_OPTIONS = [
+  { value: "Toq", label: "Toq kunlar" },
+  { value: "Juft", label: "Juft kunlar" },
+];
 
 /** SERVERDA olingan boshlang'ich ro'yxatlar — app/(app)/groups/page.tsx. */
 export interface GroupsListPageProps {
@@ -306,13 +311,10 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
           <span>Qo&apos;shish</span>
         </button>
 
-        <div className="relative">
-          <select value={teacher} onChange={(e) => { setTeacher(e.target.value); setPage(1); }} className={`${selectCls} w-36`}>
-            <option value="">O&apos;qituvchi</option>
-            {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        {/* Filtrlar — qo'lda yasalgan ui/Select: bo'sh qiymat "hammasi",
+            placeholder esa filtr nomi. Uzun ro'yxatlarda (o'qituvchi, kurs,
+            xona) qidiruv o'zi chiqadi. */}
+        <Select size="sm" clearable className="w-36" value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} placeholder="O'qituvchi" searchPlaceholder="O'qituvchini qidirish" options={teacherNames.map((t) => ({ value: t, label: t }))} />
 
         <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-3 gap-1.5 text-sm">
           <span className="text-muted-foreground text-[12px]">Boshlanish vaqti</span>
@@ -325,39 +327,13 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
           <button onClick={() => { setEndTime(""); setPage(1); }} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
         </div>
 
-        <div className="relative">
-          <select value={day} onChange={(e) => { setDay(e.target.value); setPage(1); }} className={`${selectCls} w-28`}>
-            <option value="">Kun</option>
-            {dayNames.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={course} onChange={(e) => { setCourse(e.target.value); setPage(1); }} className={`${selectCls} w-32`}>
-            <option value="">Kurs</option>
-            {courseNames.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={room} onChange={(e) => { setRoom(e.target.value); setPage(1); }} className={`${selectCls} w-28`}>
-            <option value="">Xona</option>
-            {roomNames.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={`${selectCls} w-32`}>
-            {/* Bo'sh qiymat "HAMMASI" degani, "aktivlar" emas — ilgari
-                yorlig'i "Aktiv guruh" edi va arxivdagi guruh ro'yxatda
-                turgani chalkashtirardi. */}
-            <option value="">Guruh holati</option>
-            <option value="active">Aktiv</option>
-            <option value="frozen">Muzlatilgan</option>
-            <option value="archive">Arxiv</option>
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select size="sm" clearable className="w-28" value={day} onChange={(v) => { setDay(v); setPage(1); }} placeholder="Kun" options={dayNames.map((d) => ({ value: d, label: d }))} />
+        <Select size="sm" clearable className="w-32" value={course} onChange={(v) => { setCourse(v); setPage(1); }} placeholder="Kurs" searchPlaceholder="Kursni qidirish" options={courseNames.map((c) => ({ value: c, label: c }))} />
+        <Select size="sm" clearable className="w-28" value={room} onChange={(v) => { setRoom(v); setPage(1); }} placeholder="Xona" searchPlaceholder="Xonani qidirish" options={roomNames.map((r) => ({ value: r, label: r }))} />
+        {/* Bo'sh qiymat "HAMMASI" degani, "aktivlar" emas — ilgari
+            yorlig'i "Aktiv guruh" edi va arxivdagi guruh ro'yxatda
+            turgani chalkashtirardi. */}
+        <Select size="sm" clearable className="w-32" value={status} onChange={(v) => { setStatus(v); setPage(1); }} placeholder="Guruh holati" options={STATUS_OPTIONS} />
 
         <div className="relative flex-1 min-w-[180px]">
           <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"><use href="#i-search" /></svg>
@@ -405,14 +381,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
 
       {/* Toq/Juft on right */}
       <div className="flex items-center justify-end">
-        <div className="relative">
-          <select value={oddEven} onChange={(e) => { setOddEven(e.target.value); setPage(1); }} className={`${selectCls} w-44`}>
-            <option value="">Toq/Juft kunlar</option>
-            <option value="Toq">Toq kunlar</option>
-            <option value="Juft">Juft kunlar</option>
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select size="sm" clearable className="w-44" value={oddEven} onChange={(v) => { setOddEven(v); setPage(1); }} placeholder="Toq/Juft kunlar" options={ODD_EVEN_OPTIONS} />
       </div>
 
       {/* Stats — javob kelmaguncha "—": bo'sh ro'yxat ustidan hisoblangan 0
