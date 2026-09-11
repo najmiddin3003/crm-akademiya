@@ -7,6 +7,8 @@ import {
   ArrowDownToLine,
   ArrowLeftRight,
   ArrowUpRight,
+  BanknoteArrowDown,
+  BanknoteArrowUp,
   ChevronDown,
   CircleCheckBig,
   CircleX,
@@ -15,8 +17,10 @@ import {
   EyeOff,
   FileSpreadsheet,
   FileText,
+  HandCoins,
   LayoutGrid,
   Pencil,
+  PiggyBank,
   Plus,
   Printer,
   UserCheck,
@@ -1491,9 +1495,13 @@ export default function CashboxesPage() {
                           // ichkarida (sukut 60 s).
                           refreshStudents();
                         }}
-                        className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
-                        <Plus className="w-3.5 h-3.5" /> Kirim
+                        {/* Tugma ikonkalari — vazifasiga qarab: pul KIRADI /
+                            CHIQADI (banknot + strelka), kassalar orasida
+                            KO'CHADI, divident — qo'ldagi tangalar (ulush
+                            beriladi), sarmoya — jamg'arma. */}
+                        <BanknoteArrowDown className="w-4 h-4" /> Kirim
                       </button>
                       <button
                         onClick={() => {
@@ -1503,15 +1511,15 @@ export default function CashboxesPage() {
                           // shu bois keshni tashlash uni sovutmaydi.
                           refreshStudents();
                         }}
-                        className="flex-1 inline-flex items-center justify-center gap-1 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
-                        <span className="font-bold">−</span> Chiqim
+                        <BanknoteArrowUp className="w-4 h-4" /> Chiqim
                       </button>
                       <button
                         onClick={() => setTransferToTarget(c)}
-                        className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-sky-400 hover:bg-sky-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-sky-400 hover:bg-sky-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                       >
-                        Ko&apos;chirish
+                        <ArrowLeftRight className="w-4 h-4" /> Ko&apos;chirish
                       </button>
                     </div>
                     {showMore && (
@@ -1521,15 +1529,15 @@ export default function CashboxesPage() {
                       >
                         <button
                           onClick={() => setDividendTarget(c)}
-                          className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-amber-400 hover:bg-amber-500 text-amber-900 text-[13px] font-medium shadow-sm whitespace-nowrap"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-amber-400 hover:bg-amber-500 text-amber-900 text-[13px] font-medium shadow-sm whitespace-nowrap"
                         >
-                          Divident
+                          <HandCoins className="w-4 h-4" /> Divident
                         </button>
                         <button
                           onClick={() => setInvestmentTarget(c)}
-                          className="flex-1 inline-flex items-center justify-center h-9 rounded-lg bg-blue-400 hover:bg-blue-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-blue-400 hover:bg-blue-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
                         >
-                          Sarmoya
+                          <PiggyBank className="w-4 h-4" /> Sarmoya
                         </button>
                       </div>
                     )}
