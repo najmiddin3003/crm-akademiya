@@ -30,6 +30,7 @@ import {
   type Order,
   type OrderStageKey,
   type OrdersFilters,
+ orderNo,
 } from "@/lib/ordersData";
 import { Menu } from "lucide-react";
 import PersonLink from "@/components/shared/PersonDirectory";
@@ -594,7 +595,7 @@ export default function OrdersPage() {
                       {(currentPage - 1) * pageSize + i + 1}
                     </td>
                     <td className="px-3 py-3 tabular-nums font-medium text-[13px]">
-                      {o.id}
+                      {orderNo(o)}
                     </td>
                     <td className="px-3 py-3 text-[13px]">
                       <Link

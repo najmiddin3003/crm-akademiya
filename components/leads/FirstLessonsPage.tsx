@@ -30,6 +30,7 @@ import {
   type FirstLessonStatus,
   type Order,
   type OrderStageKey,
+ orderNo,
 } from "@/lib/ordersData";
 import PersonLink from "@/components/shared/PersonDirectory";
 
@@ -586,7 +587,7 @@ export default function FirstLessonsPage() {
                     />
                   </td>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 tabular-nums font-medium text-[13px]">{o.id}</td>
+                  <td className="px-3 py-3 tabular-nums font-medium text-[13px]">{orderNo(o)}</td>
                   <td className="px-3 py-3 text-[13px]">
                     <Link href={`/orders-list/${o.id}`} className="text-foreground hover:text-primary hover:underline">
                       {o.name}
@@ -1042,7 +1043,7 @@ function receiptRows(order: Order): [string, string][] {
 /** Yashirin iframe orqali bosmaga yuboradi (CashboxesPage bilan bir xil naqsh). */
 function printReceipt(order: Order) {
   const rows = receiptRows(order);
-  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Birinchi dars #${order.id}</title><style>
+  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Birinchi dars #${orderNo(order)}</title><style>
     @page{size:58mm auto;margin:3mm}
     /* Bosma DOIM oq fonda — sayt tungi rejimda bo'lsa ham. Sabab
        CashboxesPage.tsx dagi bilan bir xil: color-scheme:light

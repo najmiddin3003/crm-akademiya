@@ -161,6 +161,9 @@ async function createAllIndexes(db: Db): Promise<void> {
   // task_types — Topshiriqlar sahifasidagi "Topshiriq turi" boshqaruvi.
   tasks.push(db.collection("task_types").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("orders").createIndex({ id: 1 }, { unique: true }));
+  // Filial ichidagi tartib raqami (Order.branchNo) — POST /api/orders har
+  // safar shu filialning eng kattasini qidiradi.
+  tasks.push(db.collection("orders").createIndex({ branchId: 1, branchNo: -1 }));
   tasks.push(db.collection("pupils").createIndex({ id: 1 }, { unique: true }));
   // Aktiv/Arxiv o'quvchilar sahifalari `?status=` bilan SERVERDA
   // filtrlaydi (6 732 tadan 4 276 va 2 456). Saralash `id` bo'yicha

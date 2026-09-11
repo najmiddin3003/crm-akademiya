@@ -2,7 +2,7 @@ import type { Db } from "mongodb";
 import { loadSyncConfig } from "@/lib/sync/config";
 import { esc, sendMessage } from "@/lib/sync/telegram";
 import { leadKeyboard, leadStatusLine } from "@/lib/leadStatus";
-import type { Order } from "@/lib/ordersData";
+import { orderNo, type Order } from "@/lib/ordersData";
 
 // YANGI LID -> TELEGRAM ("Lidlar" topigi).
 //
@@ -72,7 +72,7 @@ async function branchName(db: Db, branchId: number | null | undefined): Promise<
  */
 export function leadMessage(order: Order, branch: string): string {
   const lines = [
-    `🆕 <b>Yangi lid</b> <code>#${order.id}</code>`,
+    `🆕 <b>Yangi lid</b> <code>#${orderNo(order)}</code>`,
     leadStatusLine(order.leadStatus),
     "",
     `👤 <b>${esc(order.name || DASH)}</b>`,

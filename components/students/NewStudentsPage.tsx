@@ -11,6 +11,7 @@ import {
   EMPTY_ORDERS_FILTERS,
   type Order,
   type OrdersFilters,
+ orderNo,
 } from "@/lib/ordersData";
 import { findPupilForOrder } from "@/lib/enrollStudent";
 import type { PupilListItem } from "@/lib/pupilsData";
@@ -330,7 +331,7 @@ export default function NewStudentsPage() {
               {slice.map((r, i) => (
                 <tr key={r.order.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 tabular-nums text-[13px] text-muted-foreground">{r.order.id}</td>
+                  <td className="px-3 py-3 tabular-nums text-[13px] text-muted-foreground">{orderNo(r.order)}</td>
                   <td className="px-3 py-3 text-[13px]">
                     <Link href={profileHref(r.order)} className="font-medium hover:text-primary hover:underline">
                       {r.order.name}

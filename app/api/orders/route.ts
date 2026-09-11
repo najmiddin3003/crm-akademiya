@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import type { Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchForInsert, getBranchScope } from "@/lib/branchScope";
+import { branchCondition, branchForInsert, getBranchScope } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
 import { notifyNewLead } from "@/lib/leadNotify";
 import { withLeadScope } from "@/lib/leadScope";
@@ -142,9 +142,17 @@ export async function POST(req: Request) {
   const source = await pupilSourceFor(db, body.studentName, body.phone);
 
   // Lid QAYSI filialda qo'shilgani — navbardagi tanlovdan.
+  const branchId = branchForInsert(scope);
+  // FILIAL ICHIDAGI tartib raqami — foydalanuvchi ko'radigan "ID".
+  // `id` dan farqli, shu filialning eng katta raqamidan davom etadi
+  // (lib/ordersData.ts → Order.branchNo). Qidiruv `branchCondition` bilan:
+  // 1-filialda filialsiz eski lidlar ham bor (ular ham shu raqamlashda).
+  const lastInBranch = await col.find(branchCondition(scope)).sort({ branchNo: -1 }).limit(1).toArray();
+  const branchNo = (Number(lastInBranch[0]?.branchNo) || 0) + 1;
   const order = {
     ...buildOrderFromValues(nextId, { ...body, moderator: author, source }),
-    branchId: branchForInsert(scope),
+    branchId,
+    branchNo,
   };
   // insertOne mutates its argument to add _id — insert a copy so the
   // returned `order` (and whatever the client stores from it) stays clean.

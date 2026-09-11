@@ -35,7 +35,19 @@ export function firstLessonStatusLabel(v: string | undefined): string {
 }
 
 export interface Order {
+  /** TEXNIK kalit — butun tizim bo'yicha unikal; manzil (/orders-list/[id])
+   * va bog'lanishlar shunga tayanadi. Foydalanuvchiga KO'RSATILMAYDI. */
   id: number;
+  /**
+   * Filial ichidagi TARTIB RAQAMI — ro'yxatlardagi "ID" ustuni, Telegram
+   * xabaridagi "#…". Har filial o'zining 1, 2, 3… raqamlashiga ega
+   * (foydalanuvchi so'rovi, 11.09.2026): 1-filial moderatori lid qo'shsa
+   * u 1-filialning navbatdagi raqamini oladi, boshqa filialdagilar hisobga
+   * olinmaydi. Yaratilishda beriladi (POST /api/orders), eski lidlar
+   * scripts/backfill-order-branch-no.mjs bilan to'ldirilgan.
+   * Ko'rsatishda `orderNo(o)` ishlatiladi — raqam yo'q bo'lsa `id`.
+   */
+  branchNo?: number;
   name: string;
   phone: string;
   created: string;
@@ -360,6 +372,11 @@ function firstLessonFromValues(values: NewOrderValues): string {
     : "";
 }
 
+/** Ro'yxatlarda ko'rsatiladigan raqam: filial ichidagi tartib raqami, bo'lmasa texnik id. */
+export function orderNo(o: Pick<Order, "id" | "branchNo">): number {
+  return o.branchNo ?? o.id;
+}
+
 export function buildOrderFromValues(nextId: number, values: NewOrderValues): Order {
   const now = uzNow();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -512,7 +529,7 @@ export function applyOrdersFilters(items: Order[], f: OrdersFilters): Order[] {
         // telefon, ID, kurs, guruh, o'qituvchi, moderator, holat, manba,
         // filial, kategoriya, izoh va h.k.
         const hay = [
-          o.name, o.phone, String(o.id), o.course, o.subcourse, o.level,
+          o.name, o.phone, String(o.id), String(orderNo(o)), o.course, o.subcourse, o.level,
           o.group, o.teacher, o.moderator, o.status, o.source, o.subsource,
           o.fromBranch, o.toBranch, o.category, o.survey, o.note,
           o.lessonDay, o.created, o.firstLesson,
