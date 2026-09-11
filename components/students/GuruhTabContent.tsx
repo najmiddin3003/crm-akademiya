@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useGroups } from "@/hooks/useGroups";
 import { useProfilePupilId } from "@/hooks/useProfilePupil";

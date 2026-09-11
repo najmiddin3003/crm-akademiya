@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { ChevronDown, ChevronUp, FileText, Info } from "lucide-react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import Spinner from "@/components/ui/Spinner";

@@ -2,7 +2,7 @@
 
 import { loadBalancesCached } from "@/lib/balancesClient";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Archive, BookOpen, Calendar, CalendarCheck, CalendarPlus, Clock, ClipboardList, GraduationCap,

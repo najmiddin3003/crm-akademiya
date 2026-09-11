@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 // Odam ismini uning profiliga bog'laydigan yagona joy.

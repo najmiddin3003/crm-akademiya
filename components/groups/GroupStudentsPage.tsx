@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import EmployeeToggle from "@/components/employees/EmployeeToggle";

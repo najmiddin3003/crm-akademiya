@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { usePathname, useRouter } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
 import { useLang } from "@/components/shared/Language";

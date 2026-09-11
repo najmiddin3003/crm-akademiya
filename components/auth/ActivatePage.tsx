@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import Button from "@/components/ui/Button";
 import AuthShell from "@/components/auth/AuthShell";
 import PhoneField, { formatPhoneDigits } from "@/components/auth/PhoneField";

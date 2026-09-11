@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { CalendarCheck, History, MoreVertical, Plus, X } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import Button from "@/components/ui/Button";
 import AddOrderModal from "@/components/orders/AddOrderModal";
 import OrderMessagePanel from "@/components/orders/OrderMessagePanel";

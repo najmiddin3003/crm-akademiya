@@ -22,7 +22,7 @@
 
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import type { LucideIcon } from "lucide-react";
 import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
 import Button from "@/components/ui/Button";

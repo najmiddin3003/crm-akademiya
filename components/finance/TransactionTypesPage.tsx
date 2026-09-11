@@ -2,7 +2,7 @@
 
 import { invalidateTransactionTypes } from "@/hooks/useTransactionTypes";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";

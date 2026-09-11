@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { BILLING_TEXTS } from "@/constants/settingsBilling";
 
 // Gamifikatsiya tablari uchun — "hali qurilmagan" o'rniga HAQIQIY sabab.

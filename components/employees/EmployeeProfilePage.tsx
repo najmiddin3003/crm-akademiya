@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import {
   Archive, ArchiveRestore, ArrowLeft, Briefcase, Check, ChevronDown, CreditCard,
   DollarSign, Edit, Frown, KeyRound, Lock, MoreVertical, Percent, Phone, Settings, XCircle,

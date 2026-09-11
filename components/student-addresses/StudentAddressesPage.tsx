@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { MapPinOff } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";

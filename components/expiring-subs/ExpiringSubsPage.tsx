@@ -2,7 +2,7 @@
 
 import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { Info } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";

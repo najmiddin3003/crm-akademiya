@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { DollarSign, Monitor, Pencil, Plus, Trash2 } from "lucide-react";
 import DeleteConfirmModal from "@/components/offline-courses/DeleteConfirmModal";
 import { useToast } from "@/components/ui/Toast";

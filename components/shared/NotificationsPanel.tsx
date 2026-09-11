@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { SOURCE_LABELS } from "@/constants/notifications";
 import { relativeUz, styleOf, type NotifKind } from "@/lib/notifications";
 import { SpinnerBlock } from "@/components/ui/Spinner";

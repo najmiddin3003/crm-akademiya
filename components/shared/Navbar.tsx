@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { usePathname, useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
 import { useLang } from "@/components/shared/Language";

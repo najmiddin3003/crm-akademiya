@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import {
   Bell, CalendarCheck, CalendarClock, CalendarX2, CheckCircle2,
   MoreVertical, Phone, Printer, Send, StickyNote, TrendingUp, User, Users, XCircle,

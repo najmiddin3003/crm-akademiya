@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { useRouter } from "next/navigation";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";

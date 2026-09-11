@@ -3,7 +3,7 @@
 import { invalidateBalances } from "@/lib/cacheKeys";
 import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TransactionEntry } from "@/lib/transactionEntries";

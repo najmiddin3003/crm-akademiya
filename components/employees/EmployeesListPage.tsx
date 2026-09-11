@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Filter, LayoutGrid, List, MoreVertical, Plus, Settings } from "lucide-react";
 import Button from "@/components/ui/Button";

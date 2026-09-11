@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Settings, Share2, XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";

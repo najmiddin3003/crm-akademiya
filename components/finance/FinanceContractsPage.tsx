@@ -2,7 +2,7 @@
 
 import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { ArrowDownToLine, ArrowUpToLine, Pencil } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";

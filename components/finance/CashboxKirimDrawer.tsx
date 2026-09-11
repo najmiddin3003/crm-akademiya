@@ -3,7 +3,7 @@
 import { loadBalancesCached } from "@/lib/balancesClient";
 import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";

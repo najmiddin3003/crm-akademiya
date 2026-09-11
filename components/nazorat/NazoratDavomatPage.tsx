@@ -2,7 +2,7 @@
 
 import { loadBalancesCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { useRouter } from "next/navigation";
 import { Eye, MoreVertical, Archive, ArchiveRestore, MessageSquare } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";

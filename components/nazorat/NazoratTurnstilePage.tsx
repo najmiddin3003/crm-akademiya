@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import { Info } from "lucide-react";
 
 // Nazorat > Turniket analitikasi (/nazorat-turnstile).

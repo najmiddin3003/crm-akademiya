@@ -21,7 +21,7 @@ import {
   Printer,
   UserCheck,
 } from "lucide-react";
-import Link from "next/link";
+import Link from "@/components/ui/Link";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, {
   type DateRange,
