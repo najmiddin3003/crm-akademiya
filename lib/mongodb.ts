@@ -1,4 +1,5 @@
 import { MongoClient, Db } from "mongodb";
+import { ARCHIVED_GROUPS_COLLECTION } from "@/lib/groups";
 import { LEGACY_COLLECTION } from "@/lib/legacyEntries";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 
@@ -189,6 +190,10 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("offline_courses").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("online_courses").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("groups").createIndex({ id: 1 }, { unique: true }));
+  // Guruhlar arxivi — `id` bu yerda ham unique: ko'chirish skripti qayta
+  // ishga tushsa dublikat qilmaydi, nextGroupId esa shu indeks bo'yicha
+  // eng katta id'ni bitta o'qishda topadi.
+  tasks.push(db.collection(ARCHIVED_GROUPS_COLLECTION).createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("group_tasks").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("group_tasks").createIndex({ groupId: 1 }));
   // group_lessons — Guruh tafsiloti > "Mashg'ulot qo'shish" tabi.

@@ -41,3 +41,20 @@ export interface Group {
   endDate?: string;
   studentIds?: number[]; // guruhga qo'shilgan o'quvchilar (pupils.id)
 }
+
+/**
+ * Eski (tugagan) guruhlar ARXIVI — alohida MongoDB kolleksiyasi.
+ *
+ * 11.09.2026, yangi o'quv mavsumi: `groups` dagi barcha 110 ta guruh
+ * (3 filial, 1 592 ta o'quvchi a'zoligi bilan) butunlay shu yerga
+ * ko'chirildi — scripts/archive-groups.mjs. Ilova ularni KO'RSATMAYDI,
+ * kerak bo'lganda qo'lda yoki skript bilan qaraladi. Hujjat shakli
+ * `groups` bilan bir xil, ustiga `archivedAt` qo'shilgan.
+ *
+ * `id` ketma-ketligi IKKALA kolleksiya bo'yicha global (lib/groupIds.ts):
+ * yangi guruh arxivdagi eng katta id'dan keyingi raqamni oladi. Aks holda
+ * bo'shagan `groups` da birinchi yangi guruh id=1 olib, arxivdagi
+ * 1-guruh bilan chalkashar, arxivni qaytarishda esa `unique` indeks
+ * bilan to'qnashar edi.
+ */
+export const ARCHIVED_GROUPS_COLLECTION = "arxivTugaganGuruhlarimiz";

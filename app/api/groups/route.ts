@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 import { loadGroups } from "@/lib/listQueries";
+import { nextGroupId } from "@/lib/groupIds";
 import type { Group } from "@/lib/groups";
 
 // Guruh backend'i (MongoDB `groups`). Demo seed YO'Q — guruhlarni
@@ -50,9 +51,9 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
   const col = db.collection("groups");
-  // `id` GLOBAL ketma-ket — filial bo'yicha kesilmaydi (E11000 xavfi).
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
-  const nextId = (last[0]?.id ?? 0) + 1;
+  // `id` GLOBAL ketma-ket — filial bo'yicha kesilmaydi (E11000 xavfi) va
+  // arxivdagi guruhlarni ham hisobga oladi (lib/groupIds.ts).
+  const nextId = await nextGroupId(db);
 
   const period = body.startDate || body.endDate ? `${fmtDate(body.startDate)} - ${fmtDate(body.endDate)}` : "";
   const group: Group = {

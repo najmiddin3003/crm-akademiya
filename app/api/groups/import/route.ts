@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope } from "@/lib/branchScope";
+import { nextGroupId } from "@/lib/groupIds";
 import type { Group } from "@/lib/groups";
 
 // POST /api/groups/import — bir nechta guruhni bir so'rovda qo'shadi.
@@ -61,7 +62,8 @@ export async function POST(req: Request) {
   // filialda — jadval va hisobotlarda ajratib bo'lmas edi).
   const existing = await col.find({}, { projection: { id: 1, name: 1 } }).toArray();
   const takenNames = new Set(existing.map((g) => str(g.name).toLowerCase()));
-  let nextId = existing.reduce((max, g) => Math.max(max, Number(g.id) || 0), 0) + 1;
+  // Raqamlash arxivdagi guruhlardan ham davom etadi (lib/groupIds.ts).
+  let nextId = await nextGroupId(db);
 
   const created: Group[] = [];
   const skipped: { row: number; reason: string }[] = [];
