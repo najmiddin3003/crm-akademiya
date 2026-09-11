@@ -479,6 +479,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
 
       {addOpen && (
         <AddGroupModal
+          groups={groups}
           onClose={() => setAddOpen(false)}
           onCreated={(g) => setGroups((prev) => [...prev, g])}
         />

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
 import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
+import { joinTime, missingGroupFields, parseTimeRange } from "@/lib/groupRules";
 import type { Group } from "@/lib/groups";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
@@ -22,6 +24,11 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
 // tanlab bo'lmasdi. Guruhning o'qituvchisi ISM bo'yicha oylik hisobiga
 // ulanadi (lib/payrollSources.ts), shu bois ro'yxatdan tashqari ism
 // tushum-taqsimotini ham buzardi.
+//
+// Majburiy maydonlar — qo'shish modali bilan bir xil qoida
+// (lib/groupRules.ts; server PATCH da ham tekshiradi): bo'sh qolsa
+// "Saqlash" o'chiq va yonida sabab yoziladi. Xona bandligini bu yerda
+// ro'yxat yo'qligi uchun server 409 bilan aytadi (xabar toastda).
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
@@ -68,13 +75,18 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
   const [endDate, setEndDate] = useState(group.endDate || dmyToIso(p1 || ""));
   const [saving, setSaving] = useState(false);
 
+  const time = joinTime(startTime, endTime);
+  const missing = missingGroupFields({ name, status, course, day, time, teacher, eduType, room });
+  const timeOrderError = Boolean(startTime && endTime) && parseTimeRange(time) === null;
+  const blocker = missing.length > 0
+    ? `To'ldiring: ${missing.join(", ")}`
+    : timeOrderError
+      ? "Tugash vaqti boshlanishdan keyin bo'lishi kerak"
+      : null;
+
   async function save() {
+    if (blocker) return;
     const trimmed = name.trim();
-    if (!trimmed) {
-      showError("Guruh nomini kiriting");
-      return;
-    }
-    const time = startTime && endTime ? `${startTime} - ${endTime}` : startTime || endTime || "";
     const period = startDate || endDate ? `${isoToDmy(startDate)} - ${isoToDmy(endDate)}` : group.period;
     setSaving(true);
     try {
@@ -119,7 +131,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
             <Select value={course} onChange={(v) => setCourse(v)} options={withCurrent(courseNames, course).map((c) => ({ value: c, label: c }))} placeholder={selectPlaceholder(coursesLoading, courseNames.length, "Kurs qo'shilmagan")} clearable disabled={coursesLoading} />
           </div>
           <div>
-            <label className={labelCls}>Kurs darajasi<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>Kurs darajasi</label>
             <Select value={level} onChange={(v) => setLevel(v)} options={GROUP_EDU_TYPES.map((l) => ({ value: l, label: l }))} placeholder="Tanlang" clearable />
           </div>
           <div>
@@ -127,12 +139,12 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
             <Select value={day} onChange={(v) => setDay(v)} options={GROUP_DAYS.map((d) => ({ value: d, label: d }))} placeholder="Tanlang" clearable />
           </div>
           <div>
-            <label className={labelCls}>Boshlanish vaqti</label>
-            <TimeField value={startTime} onChange={setStartTime} variant="form" />
+            <label className={labelCls}>Boshlanish vaqti<span className="text-rose-500">*</span></label>
+            <TimeField value={startTime} onChange={setStartTime} variant="form" error={timeOrderError} />
           </div>
           <div>
-            <label className={labelCls}>Tugash vaqti</label>
-            <TimeField value={endTime} onChange={setEndTime} variant="form" />
+            <label className={labelCls}>Tugash vaqti<span className="text-rose-500">*</span></label>
+            <TimeField value={endTime} onChange={setEndTime} variant="form" error={timeOrderError} />
           </div>
           <div>
             <label className={labelCls}>O&apos;qituvchi<span className="text-rose-500">*</span></label>
@@ -165,8 +177,14 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
+          {blocker && (
+            <span className="mr-auto inline-flex items-center gap-1.5 text-[12px] text-amber-600 dark:text-amber-400 leading-tight">
+              <TriangleAlert className="w-3.5 h-3.5 shrink-0" />
+              <span>{blocker}</span>
+            </span>
+          )}
           <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <button onClick={save} disabled={saving || blocker !== null} title={blocker ?? undefined} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
         </div>
       </Modal>
   );
