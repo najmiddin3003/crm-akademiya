@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SettingsGroup } from "@/lib/settings";
+import Select from "@/components/ui/Select";
 
 // Sozlamalardagi oddiy "maydonlar + Saqlash" formasi uchun umumiy komponent.
 // FunctionalityTab dagi kartalar ham, alohida tablar ham shundan foydalanadi —
@@ -160,18 +161,7 @@ export default function SettingsForm({
                   <div key={f.key} className="py-3">
                     {f.label && <label className="block text-[13px] font-medium mb-1.5">{f.label}</label>}
                     {f.type === "select" ? (
-                      <div className="relative">
-                        <select
-                          value={String(value ?? "")}
-                          onChange={(e) => set(f.key, e.target.value)}
-                          className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                        >
-                          {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                        <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                          <use href="#i-chevron-down" />
-                        </svg>
-                      </div>
+                      <Select value={String(value ?? "")} onChange={(v) => set(f.key, v)} options={(f.options ?? []).map((o) => ({ value: o, label: o }))} />
                     ) : (
                       <div className="relative">
                         <input

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Search } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -36,6 +36,9 @@ export interface SelectOption {
   hint?: string;
   /** Yorliq ostidagi kichik satr — masalan telefon yoki lavozim. */
   sub?: string;
+  /** Guruh sarlavhasi (native <optgroup> o'rnida) — ketma-ket bir xil
+   * guruhli qatorlar ustida bir marta chiziladi. */
+  group?: string;
   disabled?: boolean;
 }
 
@@ -56,8 +59,9 @@ export interface SelectProps {
   label?: string;
   required?: boolean;
   error?: boolean;
-  /** sm — filtrlar qatori (h-9); md — modal formalari (h-10); lg — drawer (h-11). */
-  size?: "sm" | "md" | "lg";
+  /** sm — filtrlar qatori (h-9); md — modal formalari (h-10); lg — drawer (h-11);
+   * row — /orders-list/add qatorlari (h-8, chegarasiz, bg-secondary). */
+  size?: "sm" | "md" | "lg" | "row";
   /** true/false — majburan; "auto" — SEARCH_THRESHOLD dan ko'p bo'lsa. */
   searchable?: boolean | "auto";
   searchPlaceholder?: string;
@@ -68,6 +72,18 @@ export interface SelectProps {
   /** Bir vaqtda chiziladigan maksimal qator; qolgani qidiruv orqali. */
   limit?: number;
   id?: string;
+  /** Tugma ustidagi izoh (title). */
+  title?: string;
+  /** Ro'yxat ochilganda — masalan keshni oldindan isitish uchun. */
+  onOpen?: () => void;
+  style?: CSSProperties;
+  /**
+   * Tugma bosilganda fokusni O'ZIGA OLMAYDI — matn muharriri asboblari
+   * uchun: aks holda contentEditable'dagi tanlov yo'qolib, format
+   * buyrug'i hech narsaga qo'llanmasdi. Klaviatura bilan boshqarish
+   * bu rejimda ishlamaydi (fokus yo'q).
+   */
+  preserveFocus?: boolean;
 }
 
 const SEARCH_THRESHOLD = 8;
@@ -78,9 +94,10 @@ const MENU_MIN_W = 180;
 const MENU_Z = 1200;
 
 const SIZE_CLS: Record<NonNullable<SelectProps["size"]>, string> = {
-  sm: "h-9 text-[13px] bg-card",
-  md: "h-10 text-sm bg-card",
-  lg: "h-11 text-sm bg-secondary/30",
+  sm: "h-9 text-[13px] bg-card rounded-lg border",
+  md: "h-10 text-sm bg-card rounded-lg border",
+  lg: "h-11 text-sm bg-secondary/30 rounded-lg border",
+  row: "h-8 text-sm bg-secondary rounded-md border-0",
 };
 
 export default function Select({
@@ -101,6 +118,10 @@ export default function Select({
   emptyText,
   limit = 50,
   id,
+  title,
+  onOpen,
+  style,
+  preserveFocus = false,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -188,6 +209,7 @@ export default function Select({
 
   function openList(initialQuery = "") {
     if (disabled || loading) return;
+    onOpen?.();
     setQuery(initialQuery);
     setActiveIndex(initialQuery ? 0 : options.findIndex((o) => o.value === value));
     setOpen(true);
@@ -196,7 +218,7 @@ export default function Select({
   function close() {
     setOpen(false);
     setQuery("");
-    triggerRef.current?.focus();
+    if (!preserveFocus) triggerRef.current?.focus();
   }
 
   function pick(index: number) {
@@ -256,7 +278,7 @@ export default function Select({
   // `className` yorliq bo'lsa o'ramga (kenglik butun maydonga tegishli),
   // bo'lmasa tugmaning o'ziga beriladi (filtrlar qatoridagi `w-36`).
   const triggerCls = [
-    "w-full rounded-lg border text-left flex items-center gap-2 pl-3 pr-8 relative",
+    "w-full text-left flex items-center gap-2 pl-3 pr-8 relative",
     "focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-not-allowed transition-[box-shadow,border-color]",
     SIZE_CLS[size],
     error
@@ -309,9 +331,13 @@ export default function Select({
           shown.map((o, i) => {
             const isSelected = o.value === value;
             const isActive = i === activeIndex;
+            const groupHead = o.group && o.group !== shown[i - 1]?.group ? o.group : null;
             return (
+              <div key={o.value}>
+              {groupHead && (
+                <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{groupHead}</div>
+              )}
               <div
-                key={o.value}
                 role="option"
                 aria-selected={isSelected}
                 aria-disabled={o.disabled || undefined}
@@ -331,6 +357,7 @@ export default function Select({
                   {o.sub && <span className="block truncate text-[11.5px] text-muted-foreground font-normal">{o.sub}</span>}
                 </span>
                 {o.hint && <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{o.hint}</span>}
+              </div>
               </div>
             );
           })
@@ -355,8 +382,11 @@ export default function Select({
       <button
         ref={triggerRef}
         id={id}
+        title={title}
+        style={style}
         type="button"
         disabled={disabled}
+        onMouseDown={preserveFocus ? (e) => e.preventDefault() : undefined}
         onClick={() => (open ? close() : openList())}
         onKeyDown={onKeyDown}
         aria-haspopup="listbox"

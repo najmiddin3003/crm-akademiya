@@ -12,6 +12,7 @@ import {
   CHECK_MODE_DEFAULTS,
   CHECK_TOGGLES,
 } from "@/constants/settingsCheck";
+import Select from "@/components/ui/Select";
 
 // Umumiy sozlamalar → Chek. Chek "Moliya" va "Buyurtma" rejimlarida alohida
 // bosiladi, shuning uchun ikkala rejim bitta hujjatda mustaqil saqlanadi:
@@ -264,20 +265,7 @@ export default function CheckTab() {
 
           <div className="py-3">
             <label className="block text-[13px] font-medium mb-1.5">Chek tili</label>
-            <div className="relative">
-              <select
-                value={cur.language}
-                onChange={(e) => set({ language: e.target.value })}
-                className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                {(CHECK_LANGUAGES as string[]).map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-              <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                <use href="#i-chevron-down" />
-              </svg>
-            </div>
+            <Select value={cur.language} onChange={(v) => set({ language: v })} options={(CHECK_LANGUAGES as string[]).map((l) => ({ value: l, label: l }))} />
           </div>
 
           {TOGGLES.map((t) => (

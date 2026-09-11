@@ -9,6 +9,7 @@ import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import Select from "@/components/ui/Select";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -186,17 +187,7 @@ export default function CashboxDividendDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
-            <div className="relative">
-              <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Tanlang</option>
-                {investmentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={method} onChange={(v) => setMethod(v)} options={investmentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="Tanlang" clearable />
             {available != null && (
               <div className="text-[12px] text-muted-foreground mt-1">Mavjud: {fmtUZS(available)}</div>
             )}

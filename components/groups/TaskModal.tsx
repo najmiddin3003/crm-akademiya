@@ -6,6 +6,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import DateField from "@/components/ui/DateField";
 import type { GroupTask } from "@/lib/groupTasks";
+import Select from "@/components/ui/Select";
 
 // Vazifa qo'shish / tahrirlash modali (skrinshot 2). `task` berilsa — tahrirlash
 // (inputlar oldingi qiymatlar bilan to'ldiriladi), PATCH /api/group-tasks/:id.
@@ -95,19 +96,7 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
         <div className="px-6 py-2 space-y-3.5 overflow-y-auto flex-1">
           <div>
             <label className={labelCls}>Turi<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={type} onChange={(e) => setType(e.target.value)} className={`${inputCls} appearance-none pr-9`}>
-                <option value="">Tanlang</option>
-                {/* Joriy qiymat ro'yxatda bo'lmasligi mumkin — sukutdagi
-                    "Imtihon" hali Topshiriqlar sahifasida tur sifatida
-                    qo'shilmagan bo'lsa, yoki tahrirlanayotgan vazifaning
-                    turi keyin o'chirilgan bo'lsa. Busiz <select> qiymatni
-                    jimgina tashlab yuborardi. */}
-                {type && !typeNames.includes(type) && <option value={type}>{type}</option>}
-                {typeNames.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={type} onChange={(v) => setType(v)} options={[...(type && !typeNames.includes(type) ? [{ value: type, label: type }] : []), ...typeNames.map((t) => ({ value: t, label: t }))]} placeholder="Tanlang" clearable size="lg" />
             {typeNames.length === 0 && (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Turlar ro&apos;yxati bo&apos;sh — Topshiriqlar sahifasidan tur qo&apos;shsangiz shu yerda chiqadi.

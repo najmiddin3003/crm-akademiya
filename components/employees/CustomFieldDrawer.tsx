@@ -5,6 +5,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useToast } from "@/components/ui/Toast";
 import { CUSTOM_FIELD_TYPES } from "@/constants/employees";
 import EmployeeToggle from "./EmployeeToggle";
+import Select from "@/components/ui/Select";
 
 // "Yangi maydon qo'shish" — xodim qo'shish modalidagi "Maxsus maydon qo'shish"
 // tugmasi bosilganda o'ng tomondan ochiladigan drawer (skrinshot 3).
@@ -90,19 +91,7 @@ export default function CustomFieldDrawer({ onClose, onSave, saving = false }: C
           </div>
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Maydon turi<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Maydon turi</option>
-                {CUSTOM_FIELD_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={type} onChange={(v) => setType(v)} options={CUSTOM_FIELD_TYPES.map((t) => ({ value: t, label: t }))} placeholder="Maydon turi" clearable />
           </div>
           {type === SELECT_TYPE && (
             <div>

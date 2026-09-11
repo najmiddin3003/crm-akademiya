@@ -18,7 +18,7 @@
 // px-[11px]) bosib ketadi. Aniq qiymatlar inline style bilan yoziladi.
 
 /** Referens qator: chapda yorliq, o'ngda 250px boshqaruv (balandligi 36px). */
-import { LOADING_TEXT } from "@/lib/selectPlaceholder";
+import Select from "@/components/ui/Select";
 
 export const ROW_CLS = "flex justify-between items-center w-full my-2 min-h-9";
 /**
@@ -71,21 +71,15 @@ export function FormRowSelect({ label, required, value, onChange, options, place
     <div className={ROW_CLS}>
       <RowLabel label={label} required={required} />
       <div className={CONTROL_CLS}>
-        <select
+        <Select
+          size="row"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={loading}
-          style={{ paddingLeft: 11, paddingRight: 29 }}
-          className="h-8 w-full cursor-pointer appearance-none rounded-md border-0 bg-secondary text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-        >
-          <option value="">{loading ? LOADING_TEXT : placeholder}</option>
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-        <RowChevron />
+          onChange={onChange}
+          options={options.map((o) => ({ value: o, label: o }))}
+          placeholder={placeholder}
+          loading={loading}
+          clearable
+        />
       </div>
     </div>
   );

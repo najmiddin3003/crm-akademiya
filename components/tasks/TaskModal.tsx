@@ -17,6 +17,7 @@ import {
   type TaskRecurring,
   type TaskTargetKind,
 } from "@/lib/tasksData";
+import Select from "@/components/ui/Select";
 
 // Ported from crm-akademiya/src/app.js openTaskModal()/saveTask() (~line 4238).
 //
@@ -158,52 +159,18 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Mas&apos;ul shaxs</label>
-            <select
-              value={values.staff}
-              onChange={(e) => set("staff", e.target.value)}
-              disabled={staffLoading}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
-            >
-              <option value="">{selectPlaceholder(staffLoading, staffNames.length, "Xodim qo'shilmagan")}</option>
-              {staffNames.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <Select value={values.staff} onChange={(v) => set("staff", v)} options={staffNames.map((s) => ({ value: s, label: s }))} placeholder={selectPlaceholder(staffLoading, staffNames.length, "Xodim qo'shilmagan")} clearable size="sm" disabled={staffLoading} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Topshiriq turi</label>
-            <select
-              value={values.type}
-              onChange={(e) => set("type", e.target.value)}
-              disabled={typesLoading}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
-            >
-              <option value="">{selectPlaceholder(typesLoading, taskTypes.length, "Topshiriq turi qo'shilmagan")}</option>
-              {/* Tahrirlanayotgan topshiriqdagi tur keyin o'chirilgan
-                  bo'lishi mumkin — u ham ko'rinsin, aks holda tanlov
-                  jimgina bo'shab qoladi. */}
-              {values.type && !taskTypes.some((t) => t.name === values.type) && (
-                <option value={values.type}>{values.type}</option>
-              )}
-              {taskTypes.map((t) => (
-                <option key={t.id} value={t.name}>{t.name}</option>
-              ))}
-            </select>
+            <Select value={values.type} onChange={(v) => set("type", v)} options={[...(values.type && !taskTypes.some((t) => t.name === values.type) ? [{ value: values.type, label: values.type }] : []), ...taskTypes.map((t) => ({ value: t.name, label: t.name }))]} placeholder={selectPlaceholder(typesLoading, taskTypes.length, "Topshiriq turi qo'shilmagan")} clearable size="sm" disabled={typesLoading} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Kimga</label>
-            <select
-              value={values.targetKind}
-              onChange={(e) => setTargetKind(e.target.value as TaskTargetKind)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {TASK_TARGET_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>{k.label}</option>
-              ))}
-            </select>
+            <Select value={values.targetKind} onChange={(v) => setTargetKind(v as TaskTargetKind)} options={TASK_TARGET_KINDS.map((k) => ({ value: k.value, label: k.label }))} size="sm" />
           </div>
           <StudentSearchSelect
             variant="compact"
@@ -221,28 +188,11 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Muhimlik</label>
-            <select
-              value={values.priority}
-              onChange={(e) => set("priority", e.target.value as TaskPriority)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="kritik">Kritik</option>
-              <option value="yuqori">Yuqori</option>
-              <option value="orta">O&apos;rta</option>
-              <option value="past">Past</option>
-            </select>
+            <Select value={values.priority} onChange={(v) => set("priority", v as TaskPriority)} options={[{ value: "kritik", label: "Kritik" }, { value: "yuqori", label: "Yuqori" }, { value: "orta", label: "O'rta" }, { value: "past", label: "Past" }]} size="sm" />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Takrorlanish</label>
-            <select
-              value={values.recurring}
-              onChange={(e) => set("recurring", e.target.value as TaskRecurring)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {RECURRENCE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <Select value={values.recurring} onChange={(v) => set("recurring", v as TaskRecurring)} options={RECURRENCE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} size="sm" />
           </div>
         </div>
 

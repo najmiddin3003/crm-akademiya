@@ -9,6 +9,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { BONUS_TYPES } from "@/constants/bonuses";
 import BonusDrawer from "./BonusDrawer";
 import type { Bonus } from "@/lib/bonuses";
+import Select from "@/components/ui/Select";
 
 // Moliya → Bonus (sidebar: Moliya > Bonus, href /finance-bonus). Ma'lumot
 // /api/bonuses dan. "Bonus yaratish" — BonusDrawer (o'ng panel), o'chirish —
@@ -33,7 +34,6 @@ type BonusRow = Omit<Bonus, "before" | "after" | "givenBy"> & {
 };
 
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(BONUS_TYPES.map((t) => [t.value, t.tableLabel]));
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 const ALL_COLUMNS: { key: string; label: string }[] = [
   { key: "type", label: "Bonus turi" },
@@ -219,20 +219,8 @@ export default function BonusesPage() {
           <span>+ Bonus yaratish</span>
         </button>
 
-        <div className="relative">
-          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }} className={`${selectCls} w-44`}>
-            <option value="">Bonus turi</option>
-            {BONUS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.tableLabel}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={recipientFilter} onChange={(e) => { setRecipientFilter(e.target.value); setPage(1); }} className={`${selectCls} w-44`}>
-            <option value="">Talaba</option>
-            {recipientOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={BONUS_TYPES.map((t) => ({ value: t.value, label: t.tableLabel }))} placeholder="Bonus turi" clearable size="sm" className="w-44" />
+        <Select value={recipientFilter} onChange={(v) => { setRecipientFilter(v); setPage(1); }} options={recipientOptions.map((n) => ({ value: n, label: n }))} placeholder="Talaba" clearable size="sm" className="w-44" />
         {/* Bu yerda "To'lov" nomli o'chirilgan (disabled), hech qachon
             ishlamaydigan tanlov turardi — Bonus yozuvida to'lovga bog'lanish
             maydoni yo'q, shuning uchun u hech qachon filtrlay olmasdi.

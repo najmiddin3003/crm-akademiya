@@ -22,6 +22,7 @@ import {
   type EnrichedStudent,
   type StudentFilters,
 } from "@/lib/studentsData";
+import Select from "@/components/ui/Select";
 
 // O'quvchilar → Arxiv o'quvchilar (crm-akademiya #view-archive-students,
 // sidebar: O'quvchilar > Arxiv o'quvchilar, href /archive-students).
@@ -95,7 +96,6 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const checkboxCls = "h-4 w-4 rounded border-border accent-primary cursor-pointer";
 const HEADERS = ["№", "ID", "O'quvchini ismi", "Telefon raqam", "Balans", "Arxivlangan guruh", "Arxiv o'qituvchisi", "Yaratilgan sanasi", "Moderator", "Pro arxivlangan sana", "Arxivlangan sana", "Sababi", "Oldingi holati", "Shartnoma"];
 
@@ -344,23 +344,8 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
       {/* Filtr paneli */}
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            {/* Sababi ro'yxati arxivlangan o'quvchilarning HAQIQIY statusReason
-                qiymatlaridan yig'iladi — ilgari u statusdan kelib chiqib
-                to'qib chiqarilgan uchta iboradan iborat edi. */}
-            <select value={reason} onChange={(e) => { setReason(e.target.value); setPage(1); }} className={`${selectCls} w-52`}>
-              <option value="">Sababi</option>
-              {reasonOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className={`${selectCls} w-44`}>
-              <option value="">Moderator</option>
-              {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={reason} onChange={(v) => { setReason(v); setPage(1); }} options={reasonOptions.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable size="sm" className="w-52" />
+          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" className="w-44" />
           <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Arxivlangan sana oralig'i" />
           <button
             onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setReason(""); setSearch(""); setDateRange({ start: null, end: null }); setPage(1); }}

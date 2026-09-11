@@ -5,6 +5,7 @@ import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { SMS_STATUSES, SMS_TABS, formatSmsDate, smsChannelLabel, type SmsKind, type SmsMessage } from "@/lib/smsMessages";
+import Select from "@/components/ui/Select";
 
 // Sotuv va marketing → Xabarlar ro'yhati (sidebar: Sotuv va marketing >
 // Xabarlar ro'yhati, href /sales-messages). Ma'lumot HAQIQIY —
@@ -15,8 +16,6 @@ import { SMS_STATUSES, SMS_TABS, formatSmsDate, smsChannelLabel, type SmsKind, t
 // hali mos ma'lumotga ega emas (lib/eskiz.ts bitta shlyuz bilan ishlaydi),
 // shuning uchun ular qo'yilmadi — o'rniga "Holati" filtri bor, u haqiqiy.
 
-const selectCls =
-  "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 /**
  * "Avto sms" va "Guruhlangan sms" tablari NEGA doim bo'sh.
@@ -121,18 +120,9 @@ export default function SmsMessagesPage() {
             onChange={(r) => { setDateRange(r); setPage(1); }}
             placeholder="Oraliqni tanlang"
           />
-          <select value={moderator} onChange={(e) => setFilter(setModerator, e.target.value)} className={`${selectCls} w-44`}>
-            <option value="">Moderator</option>
-            {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-          <select value={recipient} onChange={(e) => setFilter(setRecipient, e.target.value)} className={`${selectCls} w-48`}>
-            <option value="">O&apos;quvchi</option>
-            {recipientOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <select value={status} onChange={(e) => setFilter(setStatus, e.target.value)} className={`${selectCls} w-40`}>
-            <option value="">Holati</option>
-            {SMS_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <Select value={moderator} onChange={(v) => setFilter(setModerator, v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable className="w-44" />
+          <Select value={recipient} onChange={(v) => setFilter(setRecipient, v)} options={recipientOptions.map((r) => ({ value: r, label: r }))} placeholder="O'quvchi" clearable className="w-48" />
+          <Select value={status} onChange={(v) => setFilter(setStatus, v)} options={SMS_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="Holati" clearable className="w-40" />
         </div>
       </div>
 

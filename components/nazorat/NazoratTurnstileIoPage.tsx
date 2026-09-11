@@ -10,6 +10,7 @@ import {
   TURNSTILE_IO_STATUS_LABELS,
   type TurnstileIoRecord,
 } from "@/lib/turnstileIo";
+import Select from "@/components/ui/Select";
 
 // Nazorat → Turniket kirish-chiqish analitikasi (sidebar: Nazorat >
 // Hisobotlar > Turniket kirish-chiqish analitikasi, href /nazorat-turnstile-io).
@@ -19,8 +20,6 @@ import {
 // o'ngda odamlar jadvali: kirgan/chiqqan vaqti va holati. Barcha 4 filtr
 // (sana oralig'i, foydalanuvchi turi, odam, holati) haqiqatan filtrlaydi.
 
-const selectCls =
-  "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 const STATUS_TONE: Record<string, string> = {
   kelgan: "text-emerald-600",
@@ -110,25 +109,9 @@ export default function NazoratTurnstileIoPage() {
         <h2 className="text-[18px] font-semibold tracking-tight">Turniket kirish-chiqish analitikasi</h2>
         <div className="flex items-center gap-2 flex-wrap">
           <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
-          <select
-            value={personType}
-            onChange={(e) => { setPersonType(e.target.value); setPerson(""); }}
-            className={`${selectCls} w-36`}
-          >
-            {TURNSTILE_IO_PERSON_TYPES.map((t) => (
-              <option key={t.key} value={t.key}>{t.label}</option>
-            ))}
-          </select>
-          <select value={person} onChange={(e) => setPerson(e.target.value)} className={`${selectCls} w-52`}>
-            <option value="">
-              {personType === "student" ? "O'quvchi" : "Xodim"}
-            </option>
-            {personOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={`${selectCls} w-36`}>
-            <option value="">Holati</option>
-            {TURNSTILE_IO_STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
+          <Select value={personType} onChange={(v) => { setPersonType(v); setPerson(""); }} options={TURNSTILE_IO_PERSON_TYPES.map((t) => ({ value: t.key, label: t.label }))} className="w-36" />
+          <Select value={person} onChange={(v) => setPerson(v)} options={personOptions.map((n) => ({ value: n, label: n }))} placeholder={personType === "student" ? "O'quvchi" : "Xodim"} clearable className="w-52" />
+          <Select value={status} onChange={(v) => setStatus(v)} options={TURNSTILE_IO_STATUSES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable className="w-36" />
         </div>
       </div>
 

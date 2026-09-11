@@ -21,6 +21,7 @@ import { payrollDue, payrollEarned, payrollPeriod, payrollPeriodOf, type Employe
 import { ROLE_LABELS } from "@/constants/employees";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
+import Select from "@/components/ui/Select";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -390,28 +391,15 @@ export default function CashboxAdjustDrawer({
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya</label>
-            <div className="relative">
-              <select
-                value={categoryId ?? ""}
-                onChange={(e) => {
+            <Select value={String(categoryId ?? "")} onChange={(v) => {
                   // Tur o'zgarsa avval tanlangan kishi kerak bo'lmay qolishi
                   // mumkin (o'quvchi → xodim yoki umuman tanlovsiz tur).
                   // Tozalanmasa, maydon yashirinib ketgan bo'lsa ham eski
                   // ism `studentName` bo'lib yozuvga tushardi.
-                  const next = categories.find((t) => t.id === Number(e.target.value)) ?? null;
+                  const next = categories.find((t) => t.id === Number(v)) ?? null;
                   if (txTarget(next) !== target) setPersonName("");
                   setCategoryId(next?.id ?? null);
-                }}
-                disabled={categoriesLoading}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-              >
-                <option value="">
-                  {selectPlaceholder(categoriesLoading, categories.length, "Chiqim turi qo'shilmagan")}
-                </option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+                }} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(categoriesLoading, categories.length, "Chiqim turi qo'shilmagan")} clearable disabled={categoriesLoading} />
           </div>
 
           {/* Kim tanlanishi tranzaksiya turiga bog'liq (lib/txTarget.ts):
@@ -569,22 +557,7 @@ export default function CashboxAdjustDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
-            <div className="relative">
-              <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                disabled={methodsLoading}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-              >
-                <option value="">
-                  {selectPlaceholder(methodsLoading, methodOptions.length, "Kassada mablag' yo'q")}
-                </option>
-                {methodOptions.map(({ m, bal }) => (
-                  <option key={m.key} value={m.key}>{`${m.name} (${fmtSum(bal)})`}</option>
-                ))}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={method} onChange={(v) => setMethod(v)} options={methodOptions.map(({ m, bal }) => ({ value: m.key, label: `${m.name} (${fmtSum(bal)})` }))} placeholder={selectPlaceholder(methodsLoading, methodOptions.length, "Kassada mablag' yo'q")} clearable disabled={methodsLoading} />
             {available != null && (
               <div className="text-[12px] text-muted-foreground mt-1">Mavjud: {fmtUZS(available)}</div>
             )}

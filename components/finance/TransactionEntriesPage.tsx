@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -8,6 +8,7 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { CashboxName } from "@/lib/cashboxes";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Select from "@/components/ui/Select";
 
 // Moliya → Tranzaksiyalar (sidebar: Moliya > Tranzakisyalar, href
 // /finance-transactions). Sof jurnal — add/edit/delete yo'q (manba saytida
@@ -98,32 +99,13 @@ export default function TransactionEntriesPage() {
   const slice = entries;
   const start = (page - 1) * pageSize;
 
-  const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-40";
 
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        <div className="relative">
-          <select value={cashboxId} onChange={(e) => { setCashboxId(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="">Kassa</option>
-            {cashboxes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={txType} onChange={(e) => { setTxType(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="">Turi</option>
-            {TX_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="">Holati</option>
-            {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={cashboxId} onChange={(v) => { setCashboxId(v); setPage(1); }} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kassa" clearable size="sm" className="w-40" />
+        <Select value={txType} onChange={(v) => { setTxType(v); setPage(1); }} options={TX_TYPES.map((t) => ({ value: t.key, label: t.label }))} placeholder="Turi" clearable size="sm" className="w-40" />
+        <Select value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUSES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable size="sm" className="w-40" />
         <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" className="w-52" />
         <div className="w-52">
           <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder="O'quvchi" />

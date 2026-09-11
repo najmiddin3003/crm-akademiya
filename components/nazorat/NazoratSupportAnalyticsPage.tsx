@@ -8,6 +8,7 @@ import Spinner from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { formatSupportTime, type SupportRecord } from "@/lib/supportAnalytics";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Select from "@/components/ui/Select";
 
 // Nazorat → Support analitikasi (sidebar: Nazorat > Hisobotlar > Support
 // analitikasi, href /nazorat-support-analytics). Ma'lumot HAQIQIY —
@@ -17,8 +18,6 @@ import PersonLink from "@/components/shared/PersonDirectory";
 // Kurs, Support Teacher, sana oralig'i. Eksport — loyihaning boshqa
 // sahifalaridagi bilan bir xil CSV/XLSX konventsiyasi.
 
-const selectCls =
-  "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -136,14 +135,8 @@ export default function NazoratSupportAnalyticsPage() {
             className="h-10 w-64 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
-        <select value={course} onChange={(e) => setFilter(setCourse, e.target.value)} className={`${selectCls} w-48`}>
-          <option value="">Kurs</option>
-          {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={teacher} onChange={(e) => setFilter(setTeacher, e.target.value)} className={`${selectCls} w-56`}>
-          <option value="">Support Teacher</option>
-          {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <Select value={course} onChange={(v) => setFilter(setCourse, v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable className="w-48" />
+        <Select value={teacher} onChange={(v) => setFilter(setTeacher, v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="Support Teacher" clearable className="w-56" />
         <DateRangePicker
           value={dateRange}
           onChange={(r) => { setDateRange(r); setPage(1); }}

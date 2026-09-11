@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
+import Select from "@/components/ui/Select";
 
 // "Tahrirlash" modal for a single custom field definition, opened by clicking
 // a field row under the "Sozlamalar" tab (AddOrderPage.tsx) — reference:
@@ -86,22 +87,7 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
           className="w-full h-11 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
 
-        <div className="relative">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as CustomFieldType)}
-            className="w-full h-11 appearance-none border border-border rounded-lg bg-background px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            {FIELD_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-          <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            <use href="#i-chevron-down" />
-          </svg>
-        </div>
+        <Select value={type} onChange={(v) => setType(v as CustomFieldType)} options={FIELD_TYPES.map((t) => ({ value: t.value, label: t.label }))} size="lg" />
 
         <div className="relative">
           <button

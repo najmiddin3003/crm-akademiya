@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { ADDRESS_TYPES, type PupilAddress } from "@/lib/pupilsData";
 import { invalidateStudents } from "@/hooks/useStudents";
+import Select from "@/components/ui/Select";
 
 // O'quvchi profili → "Manzil".
 //
@@ -82,19 +83,7 @@ export default function ManzilTabContent({
 
         <div>
           <label className="block text-[13px] font-medium mb-1.5">Manzil turi</label>
-          <div className="relative">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Tanlang</option>
-              {ADDRESS_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={type} onChange={(v) => setType(v)} options={ADDRESS_TYPES.map((t) => ({ value: t, label: t }))} placeholder="Tanlang" clearable size="lg" />
         </div>
 
         <div>

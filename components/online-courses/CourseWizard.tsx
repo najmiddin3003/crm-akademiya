@@ -9,6 +9,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useEduCategories } from "@/hooks/useEduCategories";
 import { COURSE_LANGUAGES, COURSE_LEVELS, type CourseSection, type OnlineCourse } from "@/lib/onlineCourses";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
+import Select from "@/components/ui/Select";
 
 // Kurs qo'shish/tahrirlash — crm-akademiya #view-online-course-add (4 bosqichli
 // "wizard"). Manba klonida bu sahifaning yarmi bezak edi: ikkala "Yuklash"
@@ -54,7 +55,6 @@ const REQUIREMENT_FIELDS = [
   },
 ];
 
-const selectCls = "filter-select w-full h-10 mt-1 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const textareaCls = "w-full min-h-[120px] mt-2 rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y";
 
 /** Yuklangan fayl URL'idan ko'rsatish uchun nom ajratadi. */
@@ -261,29 +261,15 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
               <div>
                 <label className="text-[12px] font-medium text-foreground/80">Kurs tili</label>
-                <select value={language} onChange={(e) => setLanguage(e.target.value)} className={selectCls}>
-                  <option value="">Kurs tili</option>
-                  {COURSE_LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
+                <Select value={language} onChange={(v) => setLanguage(v)} options={COURSE_LANGUAGES.map((l) => ({ value: l, label: l }))} placeholder="Kurs tili" clearable className="mt-1" />
               </div>
               <div>
                 <label className="text-[12px] font-medium text-foreground/80">Kurs bosqichi</label>
-                <select value={level} onChange={(e) => setLevel(e.target.value)} className={selectCls}>
-                  <option value="">Kurs bosqichi</option>
-                  {COURSE_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
+                <Select value={level} onChange={(v) => setLevel(v)} options={COURSE_LEVELS.map((l) => ({ value: l, label: l }))} placeholder="Kurs bosqichi" clearable className="mt-1" />
               </div>
               <div>
                 <label className="text-[12px] font-medium text-foreground/80">Kategoriya</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  disabled={!categoriesLoading && categories.length === 0}
-                  className={`${selectCls} disabled:opacity-60`}
-                >
-                  <option value="">Kategoriya</option>
-                  {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-                </select>
+                <Select value={categoryId} onChange={(v) => setCategoryId(v)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kategoriya" clearable className="mt-1" disabled={!categoriesLoading && categories.length === 0} />
                 {!categoriesLoading && categories.length === 0 && (
                   <p className="text-[11px] text-muted-foreground mt-1.5">
                     Kategoriya yo&apos;q —{" "}

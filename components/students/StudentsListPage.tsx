@@ -26,6 +26,7 @@ import {
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Select from "@/components/ui/Select";
 
 // O'quvchilar → O'quvchilar ro'yxati (sidebar: O'quvchilar > O'quvchilar
 // ro'yxati, href /students-list). Yangi/Aktiv/Arxiv o'quvchilar
@@ -107,21 +108,7 @@ function FilterSelect({ label, value, onChange, options }: {
   return (
     <div>
       <label className="mb-1 block text-[12px] text-muted-foreground">{label}</label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          <option value="">Hammasi</option>
-          {options.map((o) => {
-            const v = typeof o === "string" ? o : o.value;
-            const l = typeof o === "string" ? o : o.label;
-            return <option key={v} value={v}>{l}</option>;
-          })}
-        </select>
-        <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-      </div>
+      <Select value={value} onChange={(v) => onChange(v)} options={options.map((o) => { const v = typeof o === "string" ? o : o.value; const l = typeof o === "string" ? o : o.label; return { value: v, label: l }; })} placeholder="Hammasi" clearable size="sm" />
     </div>
   );
 }

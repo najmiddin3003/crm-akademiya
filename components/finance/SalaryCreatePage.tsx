@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
-import { ChevronDown, DollarSign, History, RotateCcw, Search } from "lucide-react";
+import { DollarSign, History, RotateCcw, Search } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -591,31 +591,8 @@ export default function SalaryCreatePage() {
             className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-card text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
-        <div className="relative">
-          <select
-            value={turiFilter}
-            onChange={(e) => setTuriFilter(e.target.value)}
-            className="h-10 pl-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[180px]"
-          >
-            <option value="all">Barcha xodimlar</option>
-            {turiOptions.map((t) => (
-              <option key={t} value={t}>{turiLabel(t)}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
-        <div className="relative">
-          <select
-            value={hisoblash}
-            onChange={(e) => setHisoblash(e.target.value as HisoblashFilter)}
-            className="h-10 pl-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[200px]"
-          >
-            <option value="all">Hisoblash: barchasi</option>
-            <option value="foiz">Hisoblash: foizli</option>
-            <option value="fixed">Hisoblash: okladli</option>
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+        <Select value={turiFilter} onChange={(v) => setTuriFilter(v)} options={[{ value: "all", label: "Barcha xodimlar" }, ...turiOptions.map((t) => ({ value: t, label: turiLabel(t) }))]} className="min-w-[180px]" />
+        <Select value={hisoblash} onChange={(v) => setHisoblash(v as HisoblashFilter)} options={[{ value: "all", label: "Hisoblash: barchasi" }, { value: "foiz", label: "Hisoblash: foizli" }, { value: "fixed", label: "Hisoblash: okladli" }]} className="min-w-[200px]" />
       </div>
 
       {/* Table */}
@@ -855,28 +832,7 @@ export default function SalaryCreatePage() {
             <div className="mt-4 space-y-3">
               <div>
                 <label className="block text-[12px] font-medium mb-1">Kassa</label>
-                <div className="relative">
-                  <select
-                    value={cashboxId}
-                    onChange={(e) => setCashboxId(e.target.value)}
-                    disabled={saving || cashboxesLoading}
-                    className="w-full h-10 pl-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
-                  >
-                    {/* Yuklanish bo'sh-holatdan USTUN: kassalar kelmaguncha
-                        "Kassa topilmadi" deb yozib bo'lmaydi. */}
-                    {(cashboxesLoading || cashboxes.length === 0) && (
-                      <option value="">
-                        {selectPlaceholder(cashboxesLoading, cashboxes.length, "Kassa topilmadi")}
-                      </option>
-                    )}
-                    {cashboxes.map((c) => (
-                      <option key={c.id} value={String(c.id)}>
-                        {c.name}{c.isPrimary ? " — bosh kassa" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
+                <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={[...((cashboxesLoading || cashboxes.length === 0) ? [{ value: "", label: selectPlaceholder(cashboxesLoading, cashboxes.length, "Kassa topilmadi") }] : []), ...cashboxes.map((c) => ({ value: String(c.id), label: `${c.name} ${c.isPrimary ? " — bosh kassa" : ""}` }))]} disabled={saving || cashboxesLoading} />
               </div>
 
               <div>

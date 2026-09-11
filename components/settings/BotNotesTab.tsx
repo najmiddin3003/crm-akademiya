@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import { BOT_NOTE_DEFAULTS, BOT_NOTE_TYPES, BOT_NOTE_VARIABLES } from "@/constants/settingsBotNotes";
+import Select from "@/components/ui/Select";
 
 // Sozlamalar → Sotuv va marketing → Bot eslatmalari.
 // Chapda shablon konstruktori, o'ngda Telegram xabarining jonli namunasi,
@@ -179,19 +180,7 @@ export default function BotNotesTab() {
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Shablon turi</label>
-            <div className="relative">
-              <select
-                value={form.type}
-                onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
-                className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Tanlang</option>
-                {BOT_NOTE_TYPES.map((t: string) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                <use href="#i-chevron-down" />
-              </svg>
-            </div>
+            <Select value={form.type} onChange={(v) => setForm((p) => ({ ...p, type: v }))} options={BOT_NOTE_TYPES.map((t: string) => ({ value: t, label: t }))} placeholder="Tanlang" clearable />
           </div>
 
           <div>

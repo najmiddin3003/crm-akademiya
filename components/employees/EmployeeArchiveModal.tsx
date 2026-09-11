@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { EMP_LEAVE_REASONS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import Select from "@/components/ui/Select";
 
 // Xodimni arxivlash / arxivdan chiqarish modali.
 //
@@ -140,11 +141,7 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
           <>
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Ketish sababi</label>
-              <select className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)}>
-                {EMP_LEAVE_REASONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+              <Select value={reason} onChange={(v) => setReason(v)} options={EMP_LEAVE_REASONS.map((r) => ({ value: r, label: r }))} size="sm" />
             </div>
 
             <div>

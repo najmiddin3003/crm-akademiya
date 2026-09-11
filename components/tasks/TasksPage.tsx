@@ -26,6 +26,7 @@ import {
   type TaskState,
 } from "@/lib/tasksData";
 import { uzDayKey, uzDayKeyIn, uzWall } from "@/lib/uzTime";
+import Select from "@/components/ui/Select";
 
 // Ported from crm-akademiya/index-dev.html lines 551-877 (id="view-tasks") +
 // src/app.js (renderTasks/renderKanbanView/renderCalendarView/setTaskView).
@@ -451,47 +452,11 @@ export default function TasksPage() {
 
       {filtersOpen && (
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative">
-            <select
-              value={filters.responsible}
-              onChange={(e) => setFilter("responsible", e.target.value)}
-              className="filter-select h-9 w-36 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Mas&apos;ul shaxs</option>
-              {staffNames.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="relative">
-            <select
-              value={filters.student}
-              onChange={(e) => setFilter("student", e.target.value)}
-              className="filter-select h-9 w-32 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">O&apos;quvchi</option>
-              {studentOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="relative">
-            <select
-              value={filters.type}
-              onChange={(e) => setFilter("type", e.target.value)}
-              className="filter-select h-9 w-40 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Topshiriq turi</option>
-              {taskTypes.types.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-            </select>
-          </div>
+          <Select value={filters.responsible} onChange={(v) => setFilter("responsible", v)} options={staffNames.map((s) => ({ value: s, label: s }))} placeholder="Mas'ul shaxs" clearable size="sm" className="w-36" />
+          <Select value={filters.student} onChange={(v) => setFilter("student", v)} options={studentOptions.map((s) => ({ value: s, label: s }))} placeholder="O'quvchi" clearable size="sm" className="w-32" />
+          <Select value={filters.type} onChange={(v) => setFilter("type", v)} options={taskTypes.types.map((t) => ({ value: t.name, label: t.name }))} placeholder="Topshiriq turi" clearable size="sm" className="w-40" />
           {groupOptions.length > 0 && (
-            <div className="relative">
-              <select
-                value={filters.group}
-                onChange={(e) => setFilter("group", e.target.value)}
-                className="filter-select h-9 w-32 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Guruh</option>
-                {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-              </select>
-            </div>
+            <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" className="w-32" />
           )}
           <input
             type="date"
@@ -507,16 +472,7 @@ export default function TasksPage() {
             className="filter-select h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             title="Tugash sanasi"
           />
-          <div className="relative">
-            <select
-              value={filters.status}
-              onChange={(e) => setFilter("status", e.target.value)}
-              className="filter-select h-9 w-32 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Holati</option>
-              {KANBAN_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-            </select>
-          </div>
+          <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={KANBAN_STATES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable size="sm" className="w-32" />
           <button onClick={clearFilters} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
             <svg className="icon icon-xs"><use href="#i-x-circle" /></svg> Tozalash
           </button>

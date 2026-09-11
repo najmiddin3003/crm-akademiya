@@ -15,6 +15,7 @@ import {
 import { findPupilForOrder } from "@/lib/enrollStudent";
 import type { PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
+import Select from "@/components/ui/Select";
 
 // O'quvchilar → Yangi o'quvchilar (crm-akademiya #view-new-students, sidebar:
 // O'quvchilar > Yangi o'quvchilar, href /new-students).
@@ -81,7 +82,6 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const HEADERS = ["№", "ID", "O'quvchi ismi", "Telefon raqam", "Balans", "Guruh", "O'qituvchi", "Moderator"];
 
 export default function NewStudentsPage() {
@@ -283,27 +283,9 @@ export default function NewStudentsPage() {
       {/* Filtr paneli */}
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <select value={filters.teacher} onChange={(e) => setFilter("teacher", e.target.value)} className={`${selectCls} w-44`}>
-              <option value="">O&apos;qituvchi</option>
-              {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className={`${selectCls} w-44`}>
-              <option value="">Moderator</option>
-              {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            <select value={filters.course} onChange={(e) => setFilter("course", e.target.value)} className={`${selectCls} w-36`}>
-              <option value="">Kurs</option>
-              {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={filters.teacher} onChange={(v) => setFilter("teacher", v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable size="sm" className="w-44" />
+          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" className="w-44" />
+          <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" className="w-36" />
           <button
             onClick={() => setFilters(EMPTY_ORDERS_FILTERS)}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"

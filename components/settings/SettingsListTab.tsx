@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { ListFieldKey, SettingsListItem } from "@/lib/settingsLists";
+import Select from "@/components/ui/Select";
 
 // Sozlamalardagi barcha oddiy CRUD ro'yxatlari uchun umumiy komponent
 // (Sabablar, To'lov turlari, Hamkorlar, grading tizimi, Hashtag …).
@@ -349,18 +350,7 @@ export default function SettingsListTab({
                         />
                       </div>
                     ) : f.input === "select" ? (
-                      <div className="relative">
-                        <select
-                          value={String(form[f.key] ?? "")}
-                          onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                          className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                        >
-                          {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                        <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                          <use href="#i-chevron-down" />
-                        </svg>
-                      </div>
+                      <Select value={String(form[f.key] ?? "")} onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))} options={(f.options ?? []).map((o) => ({ value: o, label: o }))} />
                     ) : (
                       <div className="relative">
                         <input

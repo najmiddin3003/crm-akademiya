@@ -12,6 +12,7 @@ import { useProfilePupil } from "@/hooks/useProfilePupil";
 import type { Contract } from "@/lib/contracts";
 import type { Pupil } from "@/lib/pupilsData";
 import { invalidateStudents } from "@/hooks/useStudents";
+import Select from "@/components/ui/Select";
 
 // O'quvchi profili → "Shartnoma biriktirish".
 //
@@ -218,19 +219,7 @@ export default function ShartnomaBiriktirishTabContent({
               {/* Andozalar bazadan; ro'yxat bo'sh bo'lsa buni ochiq aytamiz. */}
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Shartnoma turi</label>
-                <div className="relative">
-                  <select
-                    value={templateId}
-                    onChange={(e) => setTemplateId(e.target.value)}
-                    className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  >
-                    <option value="">
-                      {templatesLoading ? "Yuklanmoqda…" : templates.length ? "Andozani tanlang" : "Andoza yo'q"}
-                    </option>
-                    {templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
-                  </select>
-                  <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-                </div>
+                <Select value={templateId} onChange={(v) => setTemplateId(v)} options={templates.map((t) => ({ value: String(t.id), label: t.title }))} placeholder={templatesLoading ? "Yuklanmoqda…" : templates.length ? "Andozani tanlang" : "Andoza yo'q"} clearable size="lg" />
                 {/* Tanlangan andoza SAQLANMAYDI: `pupils` hujjatida ham,
                     shartnoma modellarida ham o'quvchiga biriktirilgan
                     andozani saqlaydigan maydon yo'q. Shuning uchun buni

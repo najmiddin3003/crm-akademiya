@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
-import { ArrowLeft, ChevronDown, Eye, ReceiptText, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, ReceiptText, Search, Trash2 } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -10,6 +10,7 @@ import SalaryReceiptModal from "./SalaryReceiptModal";
 import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import { UZ_MONTHS, payrollPeriod, payrollPeriodLabel } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import Select from "@/components/ui/Select";
 
 // Moliya → Oylik chiqarish → Chiqarishlar tarixi (/finance-payroll/history).
 // Har bir qator — bitta o'tkazilgan "oylik chiqarish" partiyasining
@@ -177,19 +178,7 @@ export default function SalaryRunsPage() {
               className="h-10 pl-9 pr-3 rounded-lg border border-border bg-card text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30 w-full sm:w-[220px]"
             />
           </div>
-          <div className="relative">
-            <select
-              value={monthFilter}
-              onChange={(e) => { setMonthFilter(e.target.value); setPage(1); }}
-              className="h-10 pl-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 w-full sm:w-[200px]"
-            >
-              <option value="all">Barcha oylar</option>
-              {monthOptions.map((m) => (
-                <option key={m} value={m}>{monthKeyLabel(m)}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          </div>
+          <Select value={monthFilter} onChange={(v) => { setMonthFilter(v); setPage(1); }} options={[{ value: "all", label: "Barcha oylar" }, ...monthOptions.map((m) => ({ value: m, label: monthKeyLabel(m) }))]} className="sm:w-[200px]" />
         </div>
       </div>
 

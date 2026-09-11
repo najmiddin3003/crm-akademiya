@@ -9,6 +9,7 @@ import DvaBarChart, { type DvaDay, type DvaSeries } from "@/components/nazorat/D
 import { downloadTableCsv } from "@/lib/exportTable";
 import { ATTENDANCE_COLOR, ATTENDANCE_OPTIONS, type AttendanceStatus } from "@/lib/attendance";
 import { dateToIso, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
+import Select from "@/components/ui/Select";
 
 // Nazorat > Davomat analitikasi (/nazorat-davomat-analytics).
 //
@@ -42,8 +43,6 @@ import { dateToIso, isoToLabel, useNazoratAttendance } from "./useNazoratAttenda
 // — "Davomat qilinmagan guruhlar" sahifasi: u o'quvchi sonini emas,
 // guruh-dars faktini sanaydi va faqat muddati ma'lum guruhlarni oladi.
 
-const selectCls =
-  "w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 // Grafikdagi qatorlar — davomat holatlarining O'ZI (ranglar lib/attendance dan,
 // ya'ni guruh davomati jadvalidagi doirachalar bilan bir xil). Har bir qator
@@ -221,43 +220,19 @@ export default function NazoratDavomatAnalyticsPage() {
               </div>
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Kurs</label>
-                <div className="relative">
-                  <select value={kurs} onChange={(e) => setKurs(e.target.value)} className={selectCls}>
-                    <option value="">Tanlang</option>
-                    {kursOptions.map((k) => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                  <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-                </div>
+                <Select value={kurs} onChange={(v) => setKurs(v)} options={kursOptions.map((k) => ({ value: k, label: k }))} placeholder="Tanlang" clearable />
               </div>
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Guruh</label>
-                <div className="relative">
-                  <select value={group} onChange={(e) => setGroup(e.target.value)} className={selectCls}>
-                    <option value="">Tanlang</option>
-                    {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                  <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-                </div>
+                <Select value={group} onChange={(v) => setGroup(v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Tanlang" clearable />
               </div>
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">O&apos;qituvchi</label>
-                <div className="relative">
-                  <select value={teacher} onChange={(e) => setTeacher(e.target.value)} className={selectCls}>
-                    <option value="">Tanlang</option>
-                    {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-                </div>
+                <Select value={teacher} onChange={(v) => setTeacher(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="Tanlang" clearable />
               </div>
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Holati</label>
-                <div className="relative">
-                  <select value={holati} onChange={(e) => setHolati(e.target.value)} className={selectCls}>
-                    <option value="">Tanlang</option>
-                    {ATTENDANCE_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                  </select>
-                  <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-                </div>
+                <Select value={holati} onChange={(v) => setHolati(v)} options={ATTENDANCE_OPTIONS.map((o) => ({ value: o.key, label: o.label }))} placeholder="Tanlang" clearable />
               </div>
             </div>
           )}

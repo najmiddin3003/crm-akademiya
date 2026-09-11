@@ -10,6 +10,7 @@ import { useTeachers } from "@/hooks/useTeachers";
 import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { Group } from "@/lib/groups";
+import Select from "@/components/ui/Select";
 
 // Guruhni tahrirlash modali (skrinshot 1). Guruh maydonlari bilan to'ldirilgan;
 // Saqlash → PATCH /api/groups/:id.
@@ -20,13 +21,9 @@ import type { Group } from "@/lib/groups";
 // tanlab bo'lmasdi. Guruhning o'qituvchisi ISM bo'yicha oylik hisobiga
 // ulanadi (lib/payrollSources.ts), shu bois ro'yxatdan tashqari ism
 // tushum-taqsimotini ham buzardi.
-const selectCls = "w-full h-10 appearance-none rounded-lg border border-border bg-card px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
-function Chevron() {
-  return <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>;
-}
 /**
  * Guruhda saqlangan qiymat bazadagi ro'yxatda bo'lmasligi mumkin (eski
  * yozuvlar, o'chirilgan xona/o'qituvchi). Uni ro'yxat boshiga qo'shamiz —
@@ -116,44 +113,19 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           </div>
           <div>
             <label className={labelCls}>Guruh holati<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls}>
-                <option value="active">Aktiv</option>
-                <option value="frozen">Muzlatilgan</option>
-                <option value="archive">Arxiv</option>
-              </select>
-              <Chevron />
-            </div>
+            <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "active", label: "Aktiv" }, { value: "frozen", label: "Muzlatilgan" }, { value: "archive", label: "Arxiv" }]} />
           </div>
           <div>
             <label className={labelCls}>Kurs<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={course} onChange={(e) => setCourse(e.target.value)} disabled={coursesLoading} className={`${selectCls} disabled:opacity-70`}>
-                <option value="">{selectPlaceholder(coursesLoading, courseNames.length, "Kurs qo'shilmagan")}</option>
-                {withCurrent(courseNames, course).map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={course} onChange={(v) => setCourse(v)} options={withCurrent(courseNames, course).map((c) => ({ value: c, label: c }))} placeholder={selectPlaceholder(coursesLoading, courseNames.length, "Kurs qo'shilmagan")} clearable disabled={coursesLoading} />
           </div>
           <div>
             <label className={labelCls}>Kurs darajasi<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={level} onChange={(e) => setLevel(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
-                {GROUP_EDU_TYPES.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={level} onChange={(v) => setLevel(v)} options={GROUP_EDU_TYPES.map((l) => ({ value: l, label: l }))} placeholder="Tanlang" clearable />
           </div>
           <div>
             <label className={labelCls}>Dars kunini tanlang<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={day} onChange={(e) => setDay(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
-                {GROUP_DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={day} onChange={(v) => setDay(v)} options={GROUP_DAYS.map((d) => ({ value: d, label: d }))} placeholder="Tanlang" clearable />
           </div>
           <div>
             <label className={labelCls}>Boshlanish vaqti</label>
@@ -171,42 +143,19 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           </div>
           <div>
             <label className={labelCls}>O&apos;qituvchi<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={teacher} onChange={(e) => setTeacher(e.target.value)} disabled={teachersLoading} className={`${selectCls} disabled:opacity-70`}>
-                <option value="">{selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}</option>
-                {withCurrent(teacherNames, teacher).map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={teacher} onChange={(v) => setTeacher(v)} options={withCurrent(teacherNames, teacher).map((t) => ({ value: t, label: t }))} placeholder={selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")} clearable disabled={teachersLoading} />
           </div>
           <div>
             <label className={labelCls}>Yordamchi o&apos;qituvchilar</label>
-            <div className="relative">
-              <select value={assistant} onChange={(e) => setAssistant(e.target.value)} disabled={teachersLoading} className={`${selectCls} disabled:opacity-70`}>
-                <option value="">{selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}</option>
-                {withCurrent(teacherNames, assistant).map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={assistant} onChange={(v) => setAssistant(v)} options={withCurrent(teacherNames, assistant).map((t) => ({ value: t, label: t }))} placeholder={selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")} clearable disabled={teachersLoading} />
           </div>
           <div>
             <label className={labelCls}>Ta&apos;lim turi<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={eduType} onChange={(e) => setEduType(e.target.value)} className={selectCls}>
-                {GROUP_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={eduType} onChange={(v) => setEduType(v)} options={GROUP_FORMATS.map((f) => ({ value: f, label: f }))} />
           </div>
           <div>
             <label className={labelCls}>Xona<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={room} onChange={(e) => setRoom(e.target.value)} disabled={roomsLoading} className={`${selectCls} disabled:opacity-70`}>
-                <option value="">{selectPlaceholder(roomsLoading, roomNames.length, "Xona qo'shilmagan")}</option>
-                {withCurrent(roomNames, room).map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={room} onChange={(v) => setRoom(v)} options={withCurrent(roomNames, room).map((r) => ({ value: r, label: r }))} placeholder={selectPlaceholder(roomsLoading, roomNames.length, "Xona qo'shilmagan")} clearable disabled={roomsLoading} />
           </div>
           <div>
             <label className={labelCls}>Telegram guruh havolasi</label>

@@ -26,6 +26,7 @@ import {
   GENDER_LABELS,
   ROLE_LABELS,
 } from "@/constants/employees";
+import Select from "@/components/ui/Select";
 
 // Boshqaruv → Xodimlar ro'yxati (crm-akademiya #view-management-xodimlar).
 // Toolbar ikonkalari (Sozlash / Filtr / 3-nuqta) Lidlar → Buyurtmalar ro'yxati
@@ -35,7 +36,6 @@ import {
 // profiliga o'tadi.
 
 const inputCls = "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-const selectCls = "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 const EMPTY_RANGE: DateRange = { start: null, end: null };
 
@@ -754,13 +754,7 @@ export default function EmployeesListPage() {
       {filtersOpen && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidiruv" className={inputCls} />
-          <div className="relative">
-            <select value={stateFilter} onChange={(e) => { setStateFilter(e.target.value); setPage(1); }} className={selectCls}>
-              <option value="">Holat</option>
-              {EMP_STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-            <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={stateFilter} onChange={(v) => { setStateFilter(v); setPage(1); }} options={EMP_STATES.map((s) => ({ value: s.value, label: s.label }))} placeholder="Holat" clearable />
           <DateRangePicker
             value={activeDateRange}
             onChange={(r) => { setActiveDateRange(r); setPage(1); }}
@@ -773,27 +767,9 @@ export default function EmployeesListPage() {
             placeholder="Ketish sanasi"
             className="w-full"
           />
-          <div className="relative">
-            <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }} className={selectCls}>
-              <option value="">Rol</option>
-              {EMP_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
-            <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            <select value={courseFilter} onChange={(e) => { setCourseFilter(e.target.value); setPage(1); }} className={selectCls}>
-              <option value="">Kurs</option>
-              {courseNames.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            <select value={reasonFilter} onChange={(e) => { setReasonFilter(e.target.value); setPage(1); }} className={selectCls}>
-              <option value="">Ketish sababi</option>
-              {EMP_LEAVE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={roleFilter} onChange={(v) => { setRoleFilter(v); setPage(1); }} options={EMP_ROLES.map((r) => ({ value: r.value, label: r.label }))} placeholder="Rol" clearable />
+          <Select value={courseFilter} onChange={(v) => { setCourseFilter(v); setPage(1); }} options={courseNames.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable />
+          <Select value={reasonFilter} onChange={(v) => { setReasonFilter(v); setPage(1); }} options={EMP_LEAVE_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Ketish sababi" clearable />
         </div>
       )}
 

@@ -20,6 +20,7 @@ import { txAudience } from "@/lib/txTarget";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import Select from "@/components/ui/Select";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -371,18 +372,10 @@ export default function CashboxKirimDrawer({
             <div className="relative">
               {/* Ikkala yo'l ham `pickType()` dan o'tadi — u yagona
                   darvoza (izohi funksiyaning o'zida). */}
-              <select
-                value={categoryId ?? ""}
-                onChange={(e) => {
-                  const id = Number(e.target.value);
+              <Select value={String(categoryId ?? "")} onChange={(v) => {
+                  const id = Number(v);
                   pickType(categories.find((t) => t.id === id) ?? null);
-                }}
-                disabled={categoriesLoading}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-              >
-                <option value="">{selectPlaceholder(categoriesLoading, categories.length, "Kirim turi qo’shilmagan")}</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+                }} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(categoriesLoading, categories.length, "Kirim turi qo’shilmagan")} clearable disabled={categoriesLoading} />
               {categoryId !== null && (
                 <button
                   type="button"
@@ -547,18 +540,7 @@ export default function CashboxKirimDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
-            <div className="relative">
-              <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                disabled={methodsLoading}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-              >
-                <option value="">{selectPlaceholder(methodsLoading, paymentMethods.length, "To’lov turi qo’shilmagan")}</option>
-                {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={method} onChange={(v) => setMethod(v)} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder={selectPlaceholder(methodsLoading, paymentMethods.length, "To’lov turi qo’shilmagan")} clearable disabled={methodsLoading} />
           </div>
 
           {/* Uchinchi shaxs turida oy QATORLARDA tanlanadi, shu bois bu

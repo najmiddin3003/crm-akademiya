@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { PUPIL_STATUSES, isPupilStatus, type Pupil, type PupilStatus } from "@/lib/pupilsData";
 import { invalidateStudents } from "@/hooks/useStudents";
+import Select from "@/components/ui/Select";
 
 // O'quvchining holatini o'zgartirish oynasi.
 //
@@ -114,22 +115,10 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
 
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Yangi holat</label>
-          <div className="relative">
-            <select
-              value={status}
-              onChange={(e) => {
-                const next = e.target.value;
+          <Select value={status} onChange={(v) => {
+                const next = v;
                 if (isPupilStatus(next)) setStatus(next);
-              }}
-              disabled={saving}
-              className="h-9 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
-            >
-              {PUPIL_STATUSES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+              }} options={PUPIL_STATUSES.map((s) => ({ value: s, label: s }))} size="sm" disabled={saving} />
           <p className="mt-1.5 text-[12px] text-muted-foreground">{STATUS_HINTS[status]}</p>
         </div>
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { LegacyEntry } from "@/lib/legacyEntries";
+import Select from "@/components/ui/Select";
 
 // O'quvchi profili → "Tranzaksiyalar tarixi".
 // Ma'lumot HAQIQIY: MongoDB `transaction_entries` dan
@@ -85,30 +86,8 @@ export default function TranzaksiyaTabContent({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div className="relative">
-          <select
-            value={paymentType}
-            onChange={(e) => setPaymentType(e.target.value)}
-            className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="">To&apos;lov turi — hammasi</option>
-            {paymentTypes.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full h-10 px-3 pr-9 rounded-lg border border-border bg-card text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="all">Holat — hammasi</option>
-            <option value="ok">Tasdiqlangan</option>
-            <option value="waiting">Kutilmoqda</option>
-            <option value="cancelled">Bekor qilingan</option>
-          </select>
-          <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={paymentType} onChange={(v) => setPaymentType(v)} options={paymentTypes.map((p) => ({ value: p, label: p }))} placeholder="To'lov turi — hammasi" clearable />
+        <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "all", label: "Holat — hammasi" }, { value: "ok", label: "Tasdiqlangan" }, { value: "waiting", label: "Kutilmoqda" }, { value: "cancelled", label: "Bekor qilingan" }]} />
       </div>
 
       <div className="rounded-2xl bg-card border border-border overflow-hidden">

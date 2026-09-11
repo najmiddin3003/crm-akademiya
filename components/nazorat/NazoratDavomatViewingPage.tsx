@@ -9,6 +9,7 @@ import { loadPupilsCached } from "@/hooks/useStudents";
 import { pupilFullName } from "@/lib/pupilsData";
 import type { TurnstileIoRecord } from "@/lib/turnstileIo";
 import { dateToIso, isoToLabel } from "./useNazoratAttendance";
+import Select from "@/components/ui/Select";
 
 // Nazorat > Davomat > "O'quvchilarni davomatini ko'rish" (/nazorat-davomat/viewing).
 //
@@ -151,19 +152,15 @@ export default function NazoratDavomatViewingPage() {
               </button>
             </div>
           ) : (
-            <div className="relative">
-              <select
-                defaultValue=""
-                onChange={(e) => e.target.value && router.push(`/nazorat-davomat/viewing?student=${encodeURIComponent(e.target.value)}`)}
-                className="filter-select h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">O&apos;quvchi</option>
-                {studentOptions.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            // Qiymat saqlanmaydi — tanlangan zahoti o'sha o'quvchi sahifasiga o'tiladi.
+            <Select
+              value=""
+              onChange={(v) => { if (v) router.push(`/nazorat-davomat/viewing?student=${encodeURIComponent(v)}`); }}
+              options={studentOptions.map((name) => ({ value: name, label: name }))}
+              placeholder="O'quvchi"
+              searchPlaceholder="O'quvchini qidirish"
+              className="w-56"
+            />
           )}
           <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
         </div>

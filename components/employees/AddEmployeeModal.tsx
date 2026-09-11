@@ -17,6 +17,7 @@ import {
   type EmployeeCustomFieldDef,
   type HrEmployeeFull,
 } from "./employeeExtras";
+import Select from "@/components/ui/Select";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
 // Saqlash → POST /api/hr-employees.
@@ -33,19 +34,10 @@ import {
 // DIQQAT: saqlanish — ishlash degani EMAS. "Ikki bosqichli tasdiqlash"
 // bazaga yoziladi, lekin login oqimi (app/api/auth/login/route.ts) uni
 // o'qimaydi; shuning uchun toggle ostida buni ochiq aytadigan izoh turadi.
-const selectCls =
-  "w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls =
   "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
-function Chevron() {
-  return (
-    <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-      <use href="#i-chevron-down" />
-    </svg>
-  );
-}
 
 // Bitta filial qatorining holati. Galochka qo'yilmaguncha qolgan uchtasi
 // o'chiq turadi (referensdagidek).
@@ -89,25 +81,7 @@ function DegreeSelect({
   empty?: string;
 }) {
   return (
-    <div className="relative">
-      <select
-        className={`${selectCls} disabled:opacity-70`}
-        disabled={loading}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">{selectPlaceholder(loading, opts.length, empty, "Darajani tanlang")}</option>
-        {/* Ro'yxatdan olib tashlangan ESKI daraja. Variant qo'shilmasa
-            <select> uni jimgina tashlab yuborardi va birinchi saqlashda
-            xodimning darajasi yo'qolardi (foiz maydonidagi bilan bir xil
-            tuzoq). */}
-        {value && !opts.some((d) => d.name === value) && (
-          <option value={value}>{`${value} — ro'yxatda yo'q (eski qiymat)`}</option>
-        )}
-        {opts.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
-      </select>
-      <Chevron />
-    </div>
+    <Select value={value} onChange={(v) => onChange(v)} options={[...(value && !opts.some((d) => d.name === value) ? [{ value: value, label: `${value} — ro'yxatda yo'q (eski qiymat)` }] : []), ...opts.map((d) => ({ value: d.name, label: d.name }))]} placeholder={selectPlaceholder(loading, opts.length, empty, "Darajani tanlang")} clearable disabled={loading} />
   );
 }
 
@@ -156,13 +130,7 @@ function renderCustomInput(
   }
   if (def.type === "Tanlov (select)") {
     return (
-      <div className="relative">
-        <select className={selectCls} value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Tanlang</option>
-          {def.options.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <Chevron />
-      </div>
+      <Select value={value} onChange={(v) => onChange(v)} options={def.options.map((o) => ({ value: o, label: o }))} placeholder="Tanlang" clearable />
     );
   }
   const type = def.type === "Raqam" ? "number" : def.type === "Sana" ? "date" : "text";
@@ -724,32 +692,20 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className={labelCls}>O&apos;quv markazidagi vazifasi<span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <select
-                  className={selectCls}
-                  value={vazifa}
-                  onChange={(e) => {
+              <Select value={vazifa} onChange={(v) => {
                     // Vazifaga tegishli bo'lmay qolgan maydonlar tozalanadi.
-                    if (e.target.value !== "O'qituvchi") {
+                    if (v !== "O'qituvchi") {
                       setPercent("");
                       setKurs("");
                     }
-                    if (e.target.value !== "Moderator") setBandlik("");
+                    if (v !== "Moderator") setBandlik("");
                     // Daraja HAR SAFAR tozalanadi: o'qituvchi va moderator
                     // darajalari boshqa-boshqa ro'yxatdan keladi, ya'ni eski
                     // tanlov yangi ro'yxatda umuman yo'q qiymat bo'lardi va
                     // <select> uni jimgina tashlab yuborardi.
                     setDaraja("");
-                    setVazifa(e.target.value);
-                  }}
-                >
-                  <option value="">Tanlang</option>
-                  <option>O&apos;qituvchi</option>
-                  <option>Moderator</option>
-                  <option>Administrator</option>
-                </select>
-                <Chevron />
-              </div>
+                    setVazifa(v);
+                  }} options={[{ value: "O'qituvchi", label: "O'qituvchi" }, { value: "Moderator", label: "Moderator" }, { value: "Administrator", label: "Administrator" }]} placeholder="Tanlang" clearable />
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 Ko&apos;rinadigan bo&apos;limlar ham shu vazifadan olinadi (Boshqaruv → Rollar).
               </p>
@@ -765,23 +721,12 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   </span>
                 )}
               </label>
-              <div className="relative">
-                <select
-                  className={selectCls}
-                  value={jinsi}
-                  onChange={(e) => {
+              <Select value={jinsi} onChange={(v) => {
                     // Qo'lda tanlandi — endi avtomatik taxmin bu maydonga
                     // umuman tegmaydi (yuqoridagi effektga qarang).
                     setGenderTouched(true);
-                    setJinsi(e.target.value);
-                  }}
-                >
-                  <option value="">Jinsini tanlang</option>
-                  <option>Erkak</option>
-                  <option>Ayol</option>
-                </select>
-                <Chevron />
-              </div>
+                    setJinsi(v);
+                  }} options={[{ value: "Erkak", label: "Erkak" }, { value: "Ayol", label: "Ayol" }]} placeholder="Jinsini tanlang" clearable />
             </div>
             <div>
               <label className={labelCls}>Tug&apos;ilgan sanasi</label>
@@ -799,28 +744,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className={labelCls}>Oladigan foizi<span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <select
-                    className={`${selectCls} disabled:opacity-70`}
-                    disabled={roleListsLoading}
-                    value={percent}
-                    onChange={(e) => setPercent(e.target.value)}
-                  >
-                    <option value="">{selectPlaceholder(roleListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")}</option>
-                    {/* ESKI XOM QIYMAT ("60" kabi). Ilgari bu maydon erkin
-                        matn edi, ya'ni bazada ro'yxatga mos kelmaydigan
-                        qiymatlar bor. Ular uchun variant qo'shilmasa
-                        <select> ularni JIMGINA tashlab yuborardi va birinchi
-                        saqlashda foiz yo'qolardi. */}
-                    {percent && !percentOpts.some((p) => p.name === percent) && (
-                      <option value={percent}>{`${percent} — ro'yxatda yo'q (eski qiymat)`}</option>
-                    )}
-                    {percentOpts.map((p) => (
-                      <option key={p.name} value={p.name}>{`${p.name} (${p.percent}%)`}</option>
-                    ))}
-                  </select>
-                  <Chevron />
-                </div>
+                <Select value={percent} onChange={(v) => setPercent(v)} options={[...(percent && !percentOpts.some((p) => p.name === percent) ? [{ value: percent, label: `${percent} — ro'yxatda yo'q (eski qiymat)` }] : []), ...percentOpts.map((p) => ({ value: p.name, label: `${p.name} (${p.percent}%)` }))]} placeholder={selectPlaceholder(roleListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")} clearable disabled={roleListsLoading} />
               </div>
               <div>
                 <label className={labelCls}>Darajasi</label>
@@ -833,18 +757,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               </div>
               <div>
                 <label className={labelCls}>Kurslar<span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <select
-                    className={`${selectCls} disabled:opacity-70`}
-                    disabled={roleListsLoading}
-                    value={kurs}
-                    onChange={(e) => setKurs(e.target.value)}
-                  >
-                    <option value="">{selectPlaceholder(roleListsLoading, kursOpts.length, "Kurs qo'shilmagan")}</option>
-                    {kursOpts.map((k) => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                  <Chevron />
-                </div>
+                <Select value={kurs} onChange={(v) => setKurs(v)} options={kursOpts.map((k) => ({ value: k, label: k }))} placeholder={selectPlaceholder(roleListsLoading, kursOpts.length, "Kurs qo'shilmagan")} clearable disabled={roleListsLoading} />
               </div>
             </div>
           )}
@@ -866,28 +779,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               </div>
               <div>
                 <label className={labelCls}>Bandlik darajasi</label>
-                <div className="relative">
-                  {/* Ro'yxat yuklanishini kutmaydi: ikkala variant qat'iy,
-                      grading jadvalidan faqat YONIDAGI summa keladi. */}
-                  <select
-                    className={selectCls}
-                    value={bandlik}
-                    onChange={(e) => setBandlik(e.target.value)}
-                  >
-                    <option value="">Tanlang</option>
-                    {BANDLIK_OPTS.map(({ label, key }) => {
-                      // Tanlangan lavozimning summasi yonida turadi — "Yarim
-                      // stavka" o'zi qancha pul ekanini aytmaydi.
-                      const rate = degreeOpts.find((d) => d.name === daraja)?.[key];
-                      return (
-                        <option key={label} value={label}>
-                          {rate ? `${label} (${rate} UZS)` : label}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <Chevron />
-                </div>
+                <Select value={bandlik} onChange={(v) => setBandlik(v)} options={BANDLIK_OPTS.map(({ label, key }) => { const rate = degreeOpts.find((d) => d.name === daraja)?.[key]; return { value: label, label: rate ? `${label} (${rate} UZS)` : label }; })} placeholder="Tanlang" clearable />
               </div>
             </div>
           )}
@@ -932,32 +824,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                     />
                     <span className="text-sm">{branch.name}</span>
                   </label>
-                  <div className="relative">
-                    <select
-                      className={`${selectCls} disabled:opacity-40`}
-                      disabled={off || branchListsLoading}
-                      value={row.roleId}
-                      onChange={(e) => updateRow(branch.id, { roleId: e.target.value })}
-                    >
-                      <option value="">{selectPlaceholder(branchListsLoading, roles.length, "Rol qo'shilmagan", "Rolni tanlang")}</option>
-                      {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
-                    </select>
-                    <Chevron />
-                  </div>
-                  <div className="relative">
-                    <select
-                      className={`${selectCls} disabled:opacity-40`}
-                      disabled={off || branchListsLoading}
-                      value={row.scheduleId}
-                      onChange={(e) => updateRow(branch.id, { scheduleId: e.target.value })}
-                    >
-                      {/* Ro'yxat FAOL jadvallar bilan filtrlangan — "jadval
-                          qo'shilmagan" emas, "faol jadval yo'q" to'g'ri. */}
-                      <option value="">{selectPlaceholder(branchListsLoading, schedules.length, "Faol ish jadvali yo'q", "Ish jadvali")}</option>
-                      {schedules.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-                    </select>
-                    <Chevron />
-                  </div>
+                  <Select value={row.roleId} onChange={(v) => updateRow(branch.id, { roleId: v })} options={roles.map((r) => ({ value: String(r.id), label: r.name }))} placeholder={selectPlaceholder(branchListsLoading, roles.length, "Rol qo'shilmagan", "Rolni tanlang")} clearable disabled={off || branchListsLoading} />
+                  <Select value={row.scheduleId} onChange={(v) => updateRow(branch.id, { scheduleId: v })} options={schedules.map((s) => ({ value: String(s.id), label: s.name }))} placeholder={selectPlaceholder(branchListsLoading, schedules.length, "Faol ish jadvali yo'q", "Ish jadvali")} clearable disabled={off || branchListsLoading} />
                   <MoneyInput
                     value={row.salary}
                     onChange={(v) => updateRow(branch.id, { salary: v })}

@@ -33,6 +33,7 @@ import {
 } from "@/lib/ordersData";
 import { Menu } from "lucide-react";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Select from "@/components/ui/Select";
 
 // Ported from crm-akademiya/index-dev.html lines 880-1129 (id="view-orders-list")
 // + src/app.js (applyOrdersFilters/renderOrdersList/renderOrdersKanban/openAddOrderModal
@@ -483,178 +484,43 @@ export default function OrdersPage() {
             />
           )}
           {visibleFields.status1 && (
-            <select
-              value={filters.status1}
-              onChange={(e) => setFilter("status1", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Holatlar</option>
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.status1} onChange={(v) => setFilter("status1", v)} options={STATUSES.map((s) => ({ value: s.value, label: s.label }))} placeholder="Holatlar" clearable size="sm" />
           )}
           {visibleFields.course && (
-            <select
-              value={filters.course}
-              onChange={(e) => setFilter("course", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Kurs</option>
-              {courseOptions.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" />
           )}
           {visibleFields.subcourse && (
             /* Referensda ham bu maydon o'chirilgan (disabled) — ichki kurs
                ro'yxati hali hech qayerdan kelmaydi. */
-            <select
-              value={filters.subcourse}
-              onChange={(e) => setFilter("subcourse", e.target.value)}
-              disabled
-              title="Hozircha mavjud emas"
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-secondary/40 px-3 pr-8 text-sm text-muted-foreground cursor-not-allowed focus:outline-none"
-            >
-              <option value="">Ichki kurs</option>
-              {SUBCOURSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.subcourse} onChange={(v) => setFilter("subcourse", v)} options={SUBCOURSES.map((s) => ({ value: s, label: s }))} placeholder="Ichki kurs" clearable size="sm" disabled title="Hozircha mavjud emas" />
           )}
           {visibleFields.group && (
-            <select
-              value={filters.group}
-              onChange={(e) => setFilter("group", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Guruh</option>
-              {groupOptions.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" />
           )}
           {visibleFields.teacher && (
-            <select
-              value={filters.teacher}
-              onChange={(e) => setFilter("teacher", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">O&apos;qituvchi</option>
-              {teacherOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.teacher} onChange={(v) => setFilter("teacher", v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable size="sm" />
           )}
           {visibleFields.moderator && (
-            <select
-              value={filters.moderator}
-              onChange={(e) => setFilter("moderator", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Moderator</option>
-              {moderatorOptions.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" />
           )}
           {visibleFields.status && (
-            <select
-              value={filters.status}
-              onChange={(e) => setFilter("status", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Status</option>
-              {ORDER_STAGES.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.emoji} {s.label}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={ORDER_STAGES.map((s) => ({ value: s.key, label: `${s.emoji} ${s.label}` }))} placeholder="Status" clearable size="sm" />
           )}
           {visibleFields.source && (
-            <select
-              value={filters.source}
-              onChange={(e) => setFilter("source", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Manba</option>
-              {sourceOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.source} onChange={(v) => setFilter("source", v)} options={sourceOptions.map((s) => ({ value: s, label: s }))} placeholder="Manba" clearable size="sm" />
           )}
           {visibleFields.fromBranch && (
-            <select
-              value={filters.fromBranch}
-              onChange={(e) => setFilter("fromBranch", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Qaysi filialdan o&apos;tkazilgan</option>
-              {branchOptions.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.fromBranch} onChange={(v) => setFilter("fromBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder="Qaysi filialdan o'tkazilgan" clearable size="sm" />
           )}
           {visibleFields.toBranch && (
-            <select
-              value={filters.toBranch}
-              onChange={(e) => setFilter("toBranch", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Qaysi filialga o&apos;tkazilgan</option>
-              {branchOptions.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.toBranch} onChange={(v) => setFilter("toBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder="Qaysi filialga o'tkazilgan" clearable size="sm" />
           )}
           {visibleFields.day && (
-            <select
-              value={filters.day}
-              onChange={(e) => setFilter("day", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Kun</option>
-              {WEEKDAY_NAMES.filter((d) => d !== "Yakshanba")
-                .concat("Yakshanba")
-                .map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-            </select>
+            <Select value={filters.day} onChange={(v) => setFilter("day", v)} options={WEEKDAY_NAMES.filter((d) => d !== "Yakshanba")
+                .concat("Yakshanba").map((d) => ({ value: d, label: d }))} placeholder="Kun" clearable size="sm" />
           )}
           {visibleFields.category && (
-            <select
-              value={filters.category}
-              onChange={(e) => setFilter("category", e.target.value)}
-              className="filter-select w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Kategoriya</option>
-              {categoryNames.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <Select value={filters.category} onChange={(v) => setFilter("category", v)} options={categoryNames.map((c) => ({ value: c, label: c }))} placeholder="Kategoriya" clearable size="sm" />
           )}
         </div>
       </div>

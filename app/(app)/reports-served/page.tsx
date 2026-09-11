@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useGroups } from "@/hooks/useGroups";
 import { useTeachers } from "@/hooks/useTeachers";
 import type { Group } from "@/lib/groups";
+import Select from "@/components/ui/Select";
 
 // Hisobotlar → O'quv markazga ishlab berilgan (href /reports-served).
 // Referensdagi sarlavha: "O'qituvchilar oylik to'lov analitikasi".
@@ -201,14 +202,7 @@ export default function Page() {
           />
           {/* O'qituvchilar bazadan (/api/teachers), qattiq yozilgan
               GROUP_TEACHERS ro'yxatidan emas. */}
-          <select
-            value={teacher}
-            onChange={(e) => { setTeacher(e.target.value); setPage(1); }}
-            className="h-10 w-52 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="">O&apos;qituvchi</option>
-            {teacherNames.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Select value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} options={teacherNames.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable className="w-52" />
         </div>
       </div>
 

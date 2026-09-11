@@ -8,6 +8,7 @@ import MoneyInput from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import Select from "@/components/ui/Select";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -99,18 +100,7 @@ export default function CashboxTransferDrawer({
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
             <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
-            <div className="relative">
-              <select
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                disabled={!!initialFrom}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
-              >
-                <option value="">Tanlang</option>
-                {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={from} onChange={(v) => setFrom(v)} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="Tanlang" clearable disabled={!!initialFrom} />
             {available != null && (
               <div className="text-[12px] text-muted-foreground mt-1">Mavjud: {fmtUZS(available)}</div>
             )}
@@ -118,17 +108,7 @@ export default function CashboxTransferDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turiga</label>
-            <div className="relative">
-              <select
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Tanlang</option>
-                {paymentMethods.filter((m) => m.key !== from).map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={to} onChange={(v) => setTo(v)} options={paymentMethods.filter((m) => m.key !== from).map((m) => ({ value: m.key, label: m.name }))} placeholder="Tanlang" clearable />
           </div>
 
           <div>

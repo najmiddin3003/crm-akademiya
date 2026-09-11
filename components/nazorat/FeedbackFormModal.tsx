@@ -10,6 +10,7 @@ import {
   type FeedbackRecord,
   type FeedbackType,
 } from "./feedbackTypes";
+import Select from "@/components/ui/Select";
 
 // "Fikr qo'shish" oynasi. NEGA kerak: fikr-mulohaza sahifasi ilgari faqat
 // qattiq yozilgan ro'yxatni ko'rsatardi va yangi fikr kelib tushadigan yo'l
@@ -20,8 +21,6 @@ import {
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-const selectCls =
-  "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -105,19 +104,12 @@ export default function FeedbackFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Filial">
               <SelectWrap>
-                <select value={filial} onChange={(e) => setFilial(e.target.value)} className={selectCls}>
-                  <option value="">Tanlang</option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.name}>{b.name}</option>
-                  ))}
-                </select>
+                <Select value={filial} onChange={(v) => setFilial(v)} options={branches.map((b) => ({ value: b.name, label: b.name }))} placeholder="Tanlang" clearable />
               </SelectWrap>
             </Field>
             <Field label="Kimdan">
               <SelectWrap>
-                <select value={from} onChange={(e) => setFrom(e.target.value)} className={selectCls}>
-                  {FEEDBACK_FROM_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
+                <Select value={from} onChange={(v) => setFrom(v)} options={FEEDBACK_FROM_OPTIONS.map((o) => ({ value: o, label: o }))} />
               </SelectWrap>
             </Field>
             <Field label="Ism">
@@ -130,13 +122,7 @@ export default function FeedbackFormModal({
 
           <Field label="Turi">
             <SelectWrap>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as FeedbackType)}
-                className={selectCls}
-              >
-                {FEEDBACK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <Select value={type} onChange={(v) => setType(v as FeedbackType)} options={FEEDBACK_TYPES.map((t) => ({ value: t, label: t }))} />
             </SelectWrap>
           </Field>
 

@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import MonthPicker from "@/components/ui/MonthPicker";
 import SeasonalAssessmentEditModal from "./SeasonalAssessmentEditModal";
 import type { SeasonalAssessment } from "@/lib/seasonalAssessments";
+import Select from "@/components/ui/Select";
 
 // O'quv bo'limi → Mavsumiy baholash (sidebar: O'quv bo'limi > Mavsumiy
 // baholash, href /seasonal-assessment). Ma'lumot /api/seasonal-assessments
@@ -18,7 +19,6 @@ import type { SeasonalAssessment } from "@/lib/seasonalAssessments";
 // manba skrinshotda bu ikonkaning aniq vazifasi ko'rsatilmagan, shuning uchun
 // eng foydali variant — tahrirlash sifatida amalga oshirildi.
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const HEADERS = ["№", "O'quvchi", "Kurs", "Guruh", "Sana", "Ball", "Izoh"];
 
 function csvCell(v: string | number): string {
@@ -139,27 +139,9 @@ export default function SeasonalAssessmentsPage() {
 
         <MonthPicker value={month} onChange={(m) => { setMonth(m); setPage(1); }} onClear={() => { setMonth(null); setPage(1); }} className="w-28" />
 
-        <div className="relative">
-          <select value={student} onChange={(e) => { setStudent(e.target.value); setPage(1); }} className={`${selectCls} w-40`}>
-            <option value="">O&apos;quvchi</option>
-            {studentOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={course} onChange={(e) => { setCourse(e.target.value); setPage(1); }} className={`${selectCls} w-40`}>
-            <option value="">Kurs</option>
-            {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={group} onChange={(e) => { setGroup(e.target.value); setPage(1); }} className={`${selectCls} w-40`}>
-            <option value="">Guruh</option>
-            {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions.map((s) => ({ value: s, label: s }))} placeholder="O'quvchi" clearable size="sm" className="w-40" />
+        <Select value={course} onChange={(v) => { setCourse(v); setPage(1); }} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" className="w-40" />
+        <Select value={group} onChange={(v) => { setGroup(v); setPage(1); }} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" className="w-40" />
 
         <div className="relative ml-auto" ref={moreRef}>
           <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">

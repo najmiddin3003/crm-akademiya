@@ -11,6 +11,7 @@ import { useModerators } from "@/hooks/useModerators";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { StudentRow } from "@/lib/studentsData";
 import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
+import Select from "@/components/ui/Select";
 
 // "Shartnoma yaratish" — Moliya → Shartnoma sahifasidagi o'ng tomondan
 // ochiladigan panel. `contract` berilsa — tahrirlash (PATCH
@@ -169,18 +170,7 @@ export default function FinanceContractDrawer({
             <label className="block text-[13px] font-medium mb-1.5">
               Moderator<span className="text-red-500"> *</span>
             </label>
-            <div className="relative">
-              <select
-                value={moderatorId}
-                onChange={(e) => setModeratorId(e.target.value)}
-                disabled={moderatorsLoading}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-              >
-                <option value="">{selectPlaceholder(moderatorsLoading, moderators.length, "Moderator qo'shilmagan")}</option>
-                {moderators.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={moderatorId} onChange={(v) => setModeratorId(v)} options={moderators.map((m) => ({ value: String(m.id), label: m.name }))} placeholder={selectPlaceholder(moderatorsLoading, moderators.length, "Moderator qo'shilmagan")} clearable disabled={moderatorsLoading} />
           </div>
 
           <div>

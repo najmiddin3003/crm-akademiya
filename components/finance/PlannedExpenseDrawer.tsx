@@ -8,6 +8,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { EXPENSE_TYPES, EXPENSE_STATUSES } from "@/constants/plannedExpenses";
 import type { PlannedExpense } from "@/lib/plannedExpenses";
+import Select from "@/components/ui/Select";
 
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -110,32 +111,12 @@ export default function PlannedExpenseDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Turi</label>
-            <div className="relative">
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Tanlang</option>
-                {EXPENSE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={type} onChange={(v) => setType(v)} options={EXPENSE_TYPES.map((t) => ({ value: t, label: t }))} placeholder="Tanlang" clearable />
           </div>
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Holati</label>
-            <div className="relative">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Tanlang</option>
-                {EXPENSE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={status} onChange={(v) => setStatus(v)} options={EXPENSE_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="Tanlang" clearable />
           </div>
 
           <div>

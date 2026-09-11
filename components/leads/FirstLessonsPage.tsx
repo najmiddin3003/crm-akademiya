@@ -34,6 +34,7 @@ import {
 import PersonLink from "@/components/shared/PersonDirectory";
 
 import { loadPupilsCached } from "@/hooks/useStudents";
+import Select from "@/components/ui/Select";
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
 // Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
@@ -393,8 +394,6 @@ export default function FirstLessonsPage() {
     { key: "contact", label: "Aloqa kerak", value: stats.needsContact, icon: Phone, bg: "#ffedd5", fg: "#ea580c" },
   ];
 
-  const selectCls =
-    "w-full h-9 appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
@@ -454,31 +453,13 @@ export default function FirstLessonsPage() {
           placeholder="Kurs"
           searchPlaceholder="Qidirish"
         />
-        <select value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Daraja</option>
-          {levelOptions.map((l) => <option key={l} value={l}>{l}</option>)}
-        </select>
-        {/* "Ranglar bo'yicha" — lid voronkasi bosqichlari, emoji bilan
-            (referens). Birinchi dars holati yuqoridagi tablarda. */}
-        <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Ranglar bo&apos;yicha</option>
-          {ORDER_STAGES.map((st) => (
-            <option key={st.key} value={st.key}>{st.emoji} {st.label}</option>
-          ))}
-        </select>
+        <Select value={levelFilter} onChange={(v) => { setLevelFilter(v); setPage(1); }} options={levelOptions.map((l) => ({ value: l, label: l }))} placeholder="Daraja" clearable size="sm" />
+        
+        <Select value={stageFilter} onChange={(v) => { setStageFilter(v); setPage(1); }} options={ORDER_STAGES.map((st) => ({ value: st.key, label: `${st.emoji} ${st.label}` }))} placeholder="Ranglar bo'yicha" clearable size="sm" />
 
-        {/* Hafta kunlari to'liq nom bilan (referens), buyurtmadagi
-            qisqartmaga filtrlashda moslashtiriladi. */}
-        <select value={dayFilter} onChange={(e) => { setDayFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Kun</option>
-          {LESSON_DAYS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}
-        </select>
-        <select value={oddEvenFilter} onChange={(e) => { setOddEvenFilter(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">Toq/Juft kunlar</option>
-          <option value="toq">Toq kunlar (Du-Ch-Ju)</option>
-          <option value="juft">Juft kunlar (Se-Pa-Sh)</option>
-          <option value="boshqa">Boshqa kunlar</option>
-        </select>
+        
+        <Select value={dayFilter} onChange={(v) => { setDayFilter(v); setPage(1); }} options={LESSON_DAYS.map((d) => ({ value: d.code, label: d.label }))} placeholder="Kun" clearable size="sm" />
+        <Select value={oddEvenFilter} onChange={(v) => { setOddEvenFilter(v); setPage(1); }} options={[{ value: "toq", label: "Toq kunlar (Du-Ch-Ju)" }, { value: "juft", label: "Juft kunlar (Se-Pa-Sh)" }, { value: "boshqa", label: "Boshqa kunlar" }]} placeholder="Toq/Juft kunlar" clearable size="sm" />
         <StudentSearchSelect
           label=""
           variant="compact"

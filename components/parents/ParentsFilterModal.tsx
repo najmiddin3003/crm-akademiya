@@ -7,6 +7,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useModerators } from "@/hooks/useModerators";
 import { PUPIL_STATUSES } from "@/lib/pupilsData";
 import { EMPTY_PARENTS_FILTERS, PARENT_KINDS, type ParentsFilters } from "@/lib/parentsData";
+import Select from "@/components/ui/Select";
 
 // Ota-ona sahifasining filtr modali.
 //
@@ -23,7 +24,6 @@ import { EMPTY_PARENTS_FILTERS, PARENT_KINDS, type ParentsFilters } from "@/lib/
 // bo'lgan GURUHda saqlanadi va bu sahifada bunday ustun ko'rinmaydi —
 // ko'rinmaydigan ustun bo'yicha filtr chalg'itadi.
 
-const selectCls = "filter-select h-10 w-full appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls = "modal-input h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export interface ParentsFilterModalProps {
@@ -65,25 +65,13 @@ export default function ParentsFilterModal({ initialFilters, categoryOptions, on
         </div>
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
-          <select className={selectCls} value={draft.kind} onChange={(e) => set("kind", e.target.value)}>
-            <option value="">Qarindoshligi</option>
-            {PARENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
-          </select>
+          <Select value={draft.kind} onChange={(v) => set("kind", v)} options={PARENT_KINDS.map((k) => ({ value: k, label: k }))} placeholder="Qarindoshligi" clearable />
 
-          <select className={selectCls} value={draft.moderator} onChange={(e) => set("moderator", e.target.value)}>
-            <option value="">Moderator</option>
-            {moderatorNames.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <Select value={draft.moderator} onChange={(v) => set("moderator", v)} options={moderatorNames.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable />
 
-          <select className={selectCls} value={draft.category} onChange={(e) => set("category", e.target.value)}>
-            <option value="">Kategoriya</option>
-            {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <Select value={draft.category} onChange={(v) => set("category", v)} options={categoryOptions.map((c) => ({ value: c, label: c }))} placeholder="Kategoriya" clearable />
 
-          <select className={selectCls} value={draft.status} onChange={(e) => set("status", e.target.value)}>
-            <option value="">O&apos;quvchi holati</option>
-            {PUPIL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <Select value={draft.status} onChange={(v) => set("status", v)} options={PUPIL_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="O'quvchi holati" clearable />
 
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">Balans (dan)</span>

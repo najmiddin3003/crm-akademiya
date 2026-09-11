@@ -16,6 +16,7 @@ import {
   type EnrichedStudent,
 } from "@/lib/studentsData";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Select from "@/components/ui/Select";
 
 // Guruh → Guruh o'quvchilari (sidebar: Guruh > Guruh o'quvchilari,
 // href /groups-students). Referens: akademiya.edutizim.uz/group/group-students
@@ -42,7 +43,6 @@ const STATUS_CLS: Record<string, string> = {
   Arxiv: "text-muted-foreground",
 };
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function GroupStudentsPage() {
   const { pupils, loading: pupilsLoading } = useStudents();
@@ -99,25 +99,9 @@ export default function GroupStudentsPage() {
       <div className="flex items-center justify-end gap-3 flex-wrap">
         <EmployeeToggle checked={frozenOnly} onChange={resetPage(setFrozenOnly)} label="Muzlatilgan" />
 
-        <div className="relative">
-          <select value={teacher} onChange={(e) => resetPage(setTeacher)(e.target.value)} className={`${selectCls} w-44`}>
-            <option value="">O&apos;qituvchi</option>
-            {teacherOptions.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={teacher} onChange={(v) => resetPage(setTeacher)(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable size="sm" className="w-44" />
 
-        <div className="relative">
-          <select value={status} onChange={(e) => resetPage(setStatus)(e.target.value)} className={`${selectCls} w-40`}>
-            <option value="">Guruh holati</option>
-            {STUDENT_STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={status} onChange={(v) => resetPage(setStatus)(v)} options={STUDENT_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="Guruh holati" clearable size="sm" className="w-40" />
 
         <DateRangePicker value={dateRange} onChange={resetPage(setDateRange)} placeholder="Oraliqni tanlang" />
       </div>

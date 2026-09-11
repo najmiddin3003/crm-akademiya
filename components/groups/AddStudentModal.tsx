@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { Pupil, PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
+import Select from "@/components/ui/Select";
 
 // "O'quvchini tanlang" modali (skrinshot 5). Serverdagi o'quvchilar
 // (/api/pupils) ro'yxatidan birini tanlab, guruhga qo'shadi
@@ -75,22 +76,7 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
         </div>
         <div className="px-6 py-4">
           <label className="block text-[13px] font-medium mb-1.5">O&apos;quvchini tanlang</label>
-          <div className="relative">
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={loading}
-              className="w-full h-11 appearance-none rounded-lg border border-border bg-card px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
-            >
-              <option value="">{loading ? "Yuklanmoqda…" : available.length ? "Tanlang" : "O'quvchilar yo'q"}</option>
-              {available.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.firstName} {p.lastName}{p.phone ? ` — ${p.phone}` : ""}
-                </option>
-              ))}
-            </select>
-            <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={selected} onChange={(v) => setSelected(v)} options={available.map((p) => ({ value: String(p.id), label: `${p.firstName} ${p.lastName} ${p.phone ? ` — ${p.phone}` : ""}` }))} placeholder={loading ? "Yuklanmoqda…" : available.length ? "Tanlang" : "O'quvchilar yo'q"} clearable size="lg" disabled={loading} />
           {!loading && available.length === 0 && (
             <p className="mt-2 text-[12px] text-muted-foreground">Serverda qo&apos;shiladigan o&apos;quvchi yo&apos;q. Avval Lidlar → &quot;O&apos;quvchi qo&apos;shish&quot; orqali o&apos;quvchi qo&apos;shing.</p>
           )}

@@ -20,6 +20,7 @@ import {
   type EnrichedStudent,
   type StudentFilters,
 } from "@/lib/studentsData";
+import Select from "@/components/ui/Select";
 
 // O'quvchilar → Aktiv o'quvchilar (crm-akademiya #view-active-students,
 // sidebar: O'quvchilar > Aktiv o'quvchilar, href /active-students).
@@ -94,7 +95,6 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const checkboxCls = "h-4 w-4 rounded border-border accent-primary cursor-pointer";
 const HEADERS = ["№", "O'quvchi ismi", "Telefon raqam", "Balans", "To'lov sanasi", "Yaratilgan sanasi", "Moderator", "Taklif qilganlari", "Ilovani yuklab olish sanasi", "Sababi", "Shartnoma"];
 
@@ -345,22 +345,8 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
       {/* Filtr paneli */}
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <select value={filters.moderator} onChange={(e) => setFilter("moderator", e.target.value)} className={`${selectCls} w-44`}>
-              <option value="">Moderator</option>
-              {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
-          <div className="relative">
-            {/* Kurs o'quvchining o'zida emas — u a'zo bo'lgan guruhdan keladi
-                (enrichStudents), shuning uchun ro'yxat ham shundan quriladi. */}
-            <select value={filters.course} onChange={(e) => setFilter("course", e.target.value)} className={`${selectCls} w-36`}>
-              <option value="">Kurs</option>
-              {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" className="w-44" />
+          <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" className="w-36" />
           <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" />
           <button
             onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setSearch(""); setDateRange({ start: null, end: null }); setPage(1); }}

@@ -13,6 +13,7 @@ import {
   formatFeedbackCreatedAt,
   type FeedbackRecord,
 } from "./feedbackTypes";
+import Select from "@/components/ui/Select";
 
 // Nazorat > Fikr-mulohaza (sidebar: Nazorat > Fikr-mulohaza, /nazorat-feedback).
 //
@@ -102,27 +103,9 @@ export default function NazoratFeedbackPage() {
             className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
-        <div className="relative">
-          <select value={filial} onChange={(e) => { setFilial(e.target.value); setPage(1); }} className="h-10 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="">Filial — barchasi</option>
-            {filialOptions.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} className="h-10 w-36 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="">Turi — barchasi</option>
-            {FEEDBACK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
-        <div className="relative">
-          <select value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className="h-10 w-36 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="">Kimdan</option>
-            {FEEDBACK_FROM_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-          <svg className="icon icon-xs pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-        </div>
+        <Select value={filial} onChange={(v) => { setFilial(v); setPage(1); }} options={filialOptions.map((f) => ({ value: f, label: f }))} placeholder="Filial — barchasi" clearable className="w-44" />
+        <Select value={type} onChange={(v) => { setType(v); setPage(1); }} options={FEEDBACK_TYPES.map((t) => ({ value: t, label: t }))} placeholder="Turi — barchasi" clearable className="w-36" />
+        <Select value={from} onChange={(v) => { setFrom(v); setPage(1); }} options={FEEDBACK_FROM_OPTIONS.map((o) => ({ value: o, label: o }))} placeholder="Kimdan" clearable className="w-36" />
 
         <button
           type="button"

@@ -24,7 +24,7 @@ import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useRouter } from "next/navigation";
 import Link from "@/components/ui/Link";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, ChevronDown, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
+import { BarChart3, DoorOpen, Download, Filter, LayoutGrid, Maximize2, Minimize2, Rows3, User, Users, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import PersonLink from "@/components/shared/PersonDirectory";
@@ -43,6 +43,7 @@ import {
   parseTimeRange,
   weekdaysForDayPattern,
 } from "@/constants/groupsSchedule";
+import Select from "@/components/ui/Select";
 
 type GroupBy = "room" | "teacher";
 type Layout = "grid" | "row";
@@ -66,7 +67,6 @@ interface Placed {
 /** Blok ustiga sichqoncha kelgani/ketgani — panel shu orqali boshqariladi. */
 type HoverFn = (g: Group | null, rect: DOMRect | null) => void;
 
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
@@ -665,17 +665,7 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${selectCls} ${width}`}>
-        <option value="">{placeholder}</option>
-        {options.map(([v, lbl]) => (
-          <option key={v} value={v}>
-            {lbl}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-    </div>
+    <Select value={value} onChange={(v) => onChange(v)} options={options.map(([v, lbl]) => ({ value: v, label: lbl }))} placeholder={placeholder} clearable size="sm" className={`${width}`} />
   );
 }
 

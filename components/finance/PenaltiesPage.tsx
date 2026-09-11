@@ -8,6 +8,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { PENALTY_CANCEL_REASONS } from "@/constants/penalties";
 import PenaltyDrawer from "./PenaltyDrawer";
 import type { Penalty } from "@/lib/penalties";
+import Select from "@/components/ui/Select";
 
 // Moliya → Jarima (sidebar: Moliya > Jarima, href /finance-penalty).
 // Ma'lumot /api/penalties dan. "Jarima qo'shish" — PenaltyDrawer. Chapdagi
@@ -167,17 +168,7 @@ export default function PenaltiesPage() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !cancelling && setCancelTarget(null)} />
           <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
             <p className="text-center text-[15px] font-semibold">Rostdan ham bekor qilmoqchimisiz?</p>
-            <div className="relative">
-              <select
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Sababi</option>
-                {PENALTY_CANCEL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={cancelReason} onChange={(v) => setCancelReason(v)} options={PENALTY_CANCEL_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable />
             <div className="flex items-center justify-center gap-2">
               <button onClick={() => setCancelTarget(null)} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 Yo&apos;q

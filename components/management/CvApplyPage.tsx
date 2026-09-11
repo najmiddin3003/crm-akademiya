@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { CV_QUESTIONS, PA_SHORT, PA_STEPS } from "@/constants/managementCv";
+import Select from "@/components/ui/Select";
 
 // Ommaviy ish arizasi sahifasi (/ariza) — referens HTML'dagi
 // "OMMAVIY ARIZA SAHIFASI (#ariza)" bo'limining aynan o'zi: 3 bosqichli
@@ -182,12 +183,7 @@ export default function CvApplyPage() {
       let input: ReactNode;
       if (q.type === "select") {
         input = (
-          <select id={`pa-${k}`} className={cls} value={String(v ?? "")} onChange={(e) => setField(k, e.target.value)}>
-            <option value="">Tanlang</option>
-            {(q.opts || []).map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
+          <Select value={String(v ?? "")} onChange={(v) => setField(k, v)} options={(q.opts || []).map((o) => ({ value: o, label: o }))} placeholder="Tanlang" clearable className={`${cls}`} id={`pa-${k}`} />
         );
       } else if (q.type === "multi") {
         const on = (v as string[]) || [];

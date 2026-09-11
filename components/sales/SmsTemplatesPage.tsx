@@ -6,6 +6,7 @@ import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { SMS_AUDIENCES, SMS_PLACEHOLDERS, type SmsTemplate } from "@/lib/smsTemplates";
+import Select from "@/components/ui/Select";
 
 // Sotuv va marketing → SMS shablonlari (sidebar: Sotuv va marketing >
 // SMS shablonlari, href /sales-sms). Ma'lumot HAQIQIY — /api/sms-templates
@@ -218,16 +219,7 @@ export default function SmsTemplatesPage() {
             </div>
             <div>
               <label className="block text-[13px] font-medium mb-1.5">Turi</label>
-              <div className="relative">
-                <select
-                  value={form.audience}
-                  onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
-                  className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  {SMS_AUDIENCES.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-                <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-              </div>
+              <Select value={form.audience} onChange={(v) => setForm((f) => ({ ...f, audience: v }))} options={SMS_AUDIENCES.map((a) => ({ value: a, label: a }))} />
             </div>
             <div>
               <label className="block text-[13px] font-medium mb-1.5">SMS matni</label>

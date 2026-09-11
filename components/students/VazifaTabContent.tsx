@@ -9,6 +9,7 @@ import { useModerators } from "@/hooks/useModerators";
 import { useProfilePupil } from "@/hooks/useProfilePupil";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import { KANBAN_STATES, formatTaskDate, type Task } from "@/lib/tasksData";
+import Select from "@/components/ui/Select";
 
 // O'quvchi profili → "Vazifa".
 //
@@ -258,17 +259,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
               </button>
             </div>
             <div className="px-5 pb-4 space-y-3">
-              <div className="relative">
-                <select
-                  value={moderator}
-                  onChange={(e) => setModerator(e.target.value)}
-                  className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="">Moderator</option>
-                  {moderatorNames.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-              </div>
+              <Select value={moderator} onChange={(v) => setModerator(v)} options={moderatorNames.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="lg" />
               {/* Ro'yxat bo'sh bo'lsa sababi aytiladi — aks holda "Saqlash"
                   nega yonmayotgani tushunarsiz bo'lardi. */}
               {!moderatorsLoading && moderatorNames.length === 0 && (
@@ -276,17 +267,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
                   Moderatorlar yo&apos;q — Boshqaruv &rarr; Xodimlar bo&apos;limida qo&apos;shiladi.
                 </p>
               )}
-              <div className="relative">
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="">Topshiriq turi</option>
-                  {taskTypes.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-                </select>
-                <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-              </div>
+              <Select value={type} onChange={(v) => setType(v)} options={taskTypes.map((t) => ({ value: t.name, label: t.name }))} placeholder="Topshiriq turi" clearable size="lg" />
               {!typesLoading && taskTypes.length === 0 && (
                 <p className="-mt-1 text-[12px] text-muted-foreground">
                   Topshiriq turlari yo&apos;q — Topshiriqlar sahifasidagi &quot;⋮ &rarr; Topshiriq turi&quot; oynasida qo&apos;shiladi.

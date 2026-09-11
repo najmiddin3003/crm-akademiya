@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker";
 import Spinner from "@/components/ui/Spinner";
 import { smsPurposeLabel, type SmsMessage } from "@/lib/smsMessages";
+import Select from "@/components/ui/Select";
 
 // Nazorat → SMS analitikasi (/nazorat-sms-analytics).
 //
@@ -93,8 +94,6 @@ export default function NazoratSmsAnalyticsPage() {
   }, [data, status, purpose]);
 
   const s = data?.stats;
-  const selectCls =
-    "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
     <div className="container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
@@ -179,19 +178,8 @@ export default function NazoratSmsAnalyticsPage() {
       {/* Filtrlar */}
       <div className="flex items-center gap-2 flex-wrap">
         <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Sana oralig'i" />
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls}>
-          <option value="">Barcha holatlar</option>
-          <option value="Qabul qilindi">Eskiz qabul qildi</option>
-          <option value="Yuborilmadi">Yuborilmadi</option>
-          <option value="Kutilmoqda">Kutilmoqda</option>
-        </select>
-        <select value={purpose} onChange={(e) => setPurpose(e.target.value)} className={selectCls}>
-          <option value="">Barcha maqsadlar</option>
-          <option value="payment">To&apos;lov qabul qilindi</option>
-          <option value="invite">Xodim taklifi</option>
-          <option value="password-reset">Parol tiklash</option>
-          <option value="manual">Qo&apos;lda yuborilgan</option>
-        </select>
+        <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "Qabul qilindi", label: "Eskiz qabul qildi" }, { value: "Yuborilmadi", label: "Yuborilmadi" }, { value: "Kutilmoqda", label: "Kutilmoqda" }]} placeholder="Barcha holatlar" clearable />
+        <Select value={purpose} onChange={(v) => setPurpose(v)} options={[{ value: "payment", label: "To'lov qabul qilindi" }, { value: "invite", label: "Xodim taklifi" }, { value: "password-reset", label: "Parol tiklash" }, { value: "manual", label: "Qo'lda yuborilgan" }]} placeholder="Barcha maqsadlar" clearable />
       </div>
 
       {/* Kesimlar */}

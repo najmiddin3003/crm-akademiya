@@ -16,6 +16,7 @@ import { WEEKDAYS_FULL } from "@/lib/i18n";
 import DavomatCommentModal from "./DavomatCommentModal";
 import { dateToIso, isoToDate, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Select from "@/components/ui/Select";
 
 // Nazorat > Davomat (sidebar: Nazorat > Davomat, /nazorat-davomat).
 //
@@ -53,7 +54,6 @@ const HEADERS = [
   "O'qituvchi", "Moderator", "Dars sanasi", "Holati", "Sababi", "Sharh",
 ];
 
-const selectCls = "filter-select h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 // WEEKDAYS_FULL.uz dushanbadan boshlanadi, Date.getDay() esa yakshanbadan —
 // shuning uchun to'g'ridan-to'g'ri indekslash mumkin emas.
@@ -389,51 +389,29 @@ export default function NazoratDavomatPage() {
       {/* Filtrlar 1 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         <SelectWrap>
-          <select value={day} onChange={(e) => resetPage(setDay)(e.target.value)} className={selectCls}>
-            <option value="">Kun</option>
-            {WEEKDAY_NAMES.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
+          <Select value={day} onChange={(v) => resetPage(setDay)(v)} options={WEEKDAY_NAMES.map((d) => ({ value: d, label: d }))} placeholder="Kun" clearable />
         </SelectWrap>
         <SelectWrap>
-          <select value={status} onChange={(e) => resetPage(setStatus)(e.target.value)} className={selectCls}>
-            <option value="">Holati — barchasi</option>
-            {ATTENDANCE_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-          </select>
+          <Select value={status} onChange={(v) => resetPage(setStatus)(v)} options={ATTENDANCE_OPTIONS.map((o) => ({ value: o.key, label: o.label }))} placeholder="Holati — barchasi" clearable />
         </SelectWrap>
         <SelectWrap>
-          <select value={moderator} onChange={(e) => resetPage(setModerator)(e.target.value)} className={selectCls}>
-            <option value="">Moderator</option>
-            {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <Select value={moderator} onChange={(v) => resetPage(setModerator)(v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable />
         </SelectWrap>
         <SelectWrap>
-          <select value={teacher} onChange={(e) => resetPage(setTeacher)(e.target.value)} className={selectCls}>
-            <option value="">O&apos;qituvchi</option>
-            {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Select value={teacher} onChange={(v) => resetPage(setTeacher)(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable />
         </SelectWrap>
         <SelectWrap>
-          <select value={reason} onChange={(e) => resetPage(setReason)(e.target.value)} className={selectCls}>
-            <option value="">Sababi</option>
-            {ABSENCE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <Select value={reason} onChange={(v) => resetPage(setReason)(v)} options={ABSENCE_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable />
         </SelectWrap>
       </div>
 
       {/* Filtrlar 2 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         <SelectWrap>
-          <select value={group} onChange={(e) => resetPage(setGroup)(e.target.value)} className={selectCls}>
-            <option value="">Guruh</option>
-            {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
+          <Select value={group} onChange={(v) => resetPage(setGroup)(v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable />
         </SelectWrap>
         <SelectWrap>
-          <select value={groupStatus} onChange={(e) => resetPage(setGroupStatus)(e.target.value)} className={selectCls}>
-            <option value="">O&apos;quvchini guruhdagi holati</option>
-            <option value="Aktiv">Aktiv</option>
-            <option value="Arxiv">Arxiv</option>
-          </select>
+          <Select value={groupStatus} onChange={(v) => resetPage(setGroupStatus)(v)} options={[{ value: "Aktiv", label: "Aktiv" }, { value: "Arxiv", label: "Arxiv" }]} placeholder="O'quvchini guruhdagi holati" clearable />
         </SelectWrap>
         <div className="relative">
           <input

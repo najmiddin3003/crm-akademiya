@@ -5,6 +5,7 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { Order } from "@/lib/ordersData";
 import { buildFunnelReport, buildFunnelSteps, buildStageSummary } from "@/lib/salesFunnel";
+import Select from "@/components/ui/Select";
 
 // Hisobotlar → Sotuv voronkasi (href /reports-funnel).
 //
@@ -23,8 +24,6 @@ import { buildFunnelReport, buildFunnelSteps, buildStageSummary } from "@/lib/sa
 // butunlay boshqacha ("bot", "interface", "kommo", "survey", "tilda", "Sayt") —
 // ya'ni tanlangan variant deyarli hech qachon hech nima topmasdi.
 
-const selectCls =
-  "h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 // Referensda lid voronkasi ustida shu uch filtr turadi. "Yopilgan" lid —
 // yakuniy holatga yetgani (bekor/yakun/o'tkazma) yoki "Ketdim" bosqichidagisi;
@@ -166,26 +165,11 @@ export default function SalesFunnelPage() {
       {/* Filtrlar */}
       <div className="flex items-center gap-2 flex-wrap">
         <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
-        <select value={source} onChange={(e) => setSource(e.target.value)} className={`${selectCls} w-40`}>
-          <option value="">Marketing</option>
-          {sourceOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={course} onChange={(e) => setCourse(e.target.value)} className={`${selectCls} w-40`}>
-          <option value="">Kurs</option>
-          {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={subcourse} onChange={(e) => setSubcourse(e.target.value)} className={`${selectCls} w-40`}>
-          <option value="">Subkurs</option>
-          {subcourseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={moderator} onChange={(e) => setModerator(e.target.value)} className={`${selectCls} w-44`}>
-          <option value="">Moderator</option>
-          {moderatorOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select value={teacher} onChange={(e) => setTeacher(e.target.value)} className={`${selectCls} w-48`}>
-          <option value="">O&apos;qituvchi</option>
-          {teacherOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <Select value={source} onChange={(v) => setSource(v)} options={sourceOptions.map((s) => ({ value: s, label: s }))} placeholder="Marketing" clearable className="w-40" />
+        <Select value={course} onChange={(v) => setCourse(v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable className="w-40" />
+        <Select value={subcourse} onChange={(v) => setSubcourse(v)} options={subcourseOptions.map((c) => ({ value: c, label: c }))} placeholder="Subkurs" clearable className="w-40" />
+        <Select value={moderator} onChange={(v) => setModerator(v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable className="w-44" />
+        <Select value={teacher} onChange={(v) => setTeacher(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable className="w-48" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

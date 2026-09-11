@@ -8,17 +8,14 @@ import { BLOCK_TEST_KINDS } from "@/constants/blockTest";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { BlockTestType, BlockTestSubject } from "@/lib/blockTestTypes";
+import Select from "@/components/ui/Select";
 
 // "Tur qo'shish" / tahrirlash modali (Blok test → Blok test turlari, referens
 // akademiya.edutizim.uz/block-test/types). `type` berilsa — tahrirlash
 // (PATCH /api/block-test-types/:id), aks holda qo'shish (POST).
 const inputCls = "w-full h-11 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-const selectCls = "filter-select w-full h-11 appearance-none rounded-lg border border-border bg-card px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
-function Chevron() {
-  return <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>;
-}
 
 function emptySubject(): BlockTestSubject {
   return { subject: "", questionsCount: 0, pointsPerCorrect: 0 };
@@ -106,13 +103,7 @@ export default function BlockTestTypeModal({
           </div>
           <div>
             <label className={labelCls}>Turi (kodi)</label>
-            <div className="relative">
-              <select value={kind} onChange={(e) => setKind(e.target.value)} className={selectCls}>
-                <option value="">Tanlang</option>
-                {BLOCK_TEST_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={kind} onChange={(v) => setKind(v)} options={BLOCK_TEST_KINDS.map((k) => ({ value: k.value, label: k.label }))} placeholder="Tanlang" clearable size="lg" />
           </div>
           <div>
             <label className={labelCls}>Davomiyligi (daqiqa)</label>
@@ -139,24 +130,7 @@ export default function BlockTestTypeModal({
                   </div>
                   <div>
                     <label className="block text-[12px] text-muted-foreground mb-1">Fan</label>
-                    <div className="relative">
-                      <select
-                        value={s.subject}
-                        onChange={(e) => updateSubject(i, { subject: e.target.value })}
-                        disabled={subjectsLoading}
-                        className={`${selectCls} h-10 disabled:opacity-70`}
-                      >
-                        {/* Kurslar kelgunicha "Kurs qo'shilmagan" deb yozib
-                            bo'lmaydi — o'sha onda bu YOLG'ON. */}
-                        <option value="">{selectPlaceholder(subjectsLoading, subjectOptions.length, "Kurs qo'shilmagan")}</option>
-                        {/* Avval saqlangan fan kurslar ro'yxatidan o'chirilgan
-                            bo'lsa ham ko'rinsin — aks holda tahrirlashda
-                            jimgina bo'shab qolardi. */}
-                        {(s.subject && !subjectOptions.includes(s.subject) ? [s.subject, ...subjectOptions] : subjectOptions)
-                          .map((f) => <option key={f} value={f}>{f}</option>)}
-                      </select>
-                      <Chevron />
-                    </div>
+                    <Select value={s.subject} onChange={(v) => updateSubject(i, { subject: v })} options={(s.subject && !subjectOptions.includes(s.subject) ? [s.subject, ...subjectOptions] : subjectOptions).map((f) => ({ value: f, label: f }))} placeholder={selectPlaceholder(subjectsLoading, subjectOptions.length, "Kurs qo'shilmagan")} clearable size="lg" disabled={subjectsLoading} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>

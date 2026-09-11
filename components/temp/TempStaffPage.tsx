@@ -9,6 +9,7 @@ import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import EmployeeToggle from "@/components/employees/EmployeeToggle";
 import { EMP_LEAVE_REASONS, ROLE_LABELS } from "@/constants/employees";
 import type { TempStaffRow } from "@/app/api/temp-staff/route";
+import Select from "@/components/ui/Select";
 
 // "Vaqtinchalik tugma" (sidebar → Sozlamalardan keyin, faqat admin).
 //
@@ -26,8 +27,6 @@ const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 // Filtr selektlari — `inputCls` ning `w-full` SIZ varianti: ular qidiruv
 // maydoni bilan BITTA flex qatorida turadi, kengligi inline uslubda.
-const filterCls =
-  "h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
 type Branch = { id: number; name: string };
@@ -492,38 +491,9 @@ export default function TempStaffPage() {
                 className={`${inputCls} pl-9`}
               />
             </div>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className={filterCls}
-              style={{ width: 190 }}
-            >
-              <option value="">Barcha filiallar</option>
-              {branches.map((b) => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
-            </select>
-            <select
-              value={stateFilter}
-              onChange={(e) => setStateFilter(e.target.value)}
-              className={filterCls}
-              style={{ width: 150 }}
-            >
-              <option value="">Barcha holatlar</option>
-              <option value="active">Aktiv</option>
-              <option value="archived">Arxivda</option>
-            </select>
-            <select
-              value={accountFilter}
-              onChange={(e) => setAccountFilter(e.target.value)}
-              className={filterCls}
-              style={{ width: 235 }}
-            >
-              <option value="">Barcha hisoblar</option>
-              <option value="none">Hisob yo&apos;q</option>
-              <option value="invited">SMS ketgan — hali faollashmagan</option>
-              <option value="pending">Tasdiq kutmoqda</option>
-              <option value="rejected">Rad etilgan</option>
-              <option value="active">Faollashgan</option>
-            </select>
+            <Select value={branchFilter} onChange={(v) => setBranchFilter(v)} options={branches.map((b) => ({ value: String(b.id), label: b.name }))} placeholder="Barcha filiallar" clearable style={{ width: 190 }} />
+            <Select value={stateFilter} onChange={(v) => setStateFilter(v)} options={[{ value: "active", label: "Aktiv" }, { value: "archived", label: "Arxivda" }]} placeholder="Barcha holatlar" clearable style={{ width: 150 }} />
+            <Select value={accountFilter} onChange={(v) => setAccountFilter(v)} options={[{ value: "none", label: "Hisob yo'q" }, { value: "invited", label: "SMS ketgan — hali faollashmagan" }, { value: "pending", label: "Tasdiq kutmoqda" }, { value: "rejected", label: "Rad etilgan" }, { value: "active", label: "Faollashgan" }]} placeholder="Barcha hisoblar" clearable style={{ width: 235 }} />
             <button
               onClick={() => askSend(rows.filter((r) => selected.has(r.id)))}
               disabled={selected.size === 0}
@@ -736,16 +706,7 @@ export default function TempStaffPage() {
           </div>
           <div>
             <label className={labelCls}>O&apos;quv markazidagi vazifasi</label>
-            <select
-              value={form.turi}
-              onChange={(e) => setForm((f) => ({ ...f, turi: e.target.value }))}
-              className={inputCls}
-            >
-              <option value="">Tanlang</option>
-              {Object.entries(ROLE_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label as string}</option>
-              ))}
-            </select>
+            <Select value={form.turi} onChange={(v) => setForm((f) => ({ ...f, turi: v }))} options={Object.entries(ROLE_LABELS).map(([key, label]) => ({ value: key, label: label as string }))} placeholder="Tanlang" clearable />
           </div>
           <div>
             <label className={labelCls}>Elektron pochta</label>
@@ -788,13 +749,7 @@ export default function TempStaffPage() {
               </p>
               <div>
                 <label className={labelCls}>Ketish sababi</label>
-                <select
-                  value={archReason}
-                  onChange={(e) => setArchReason(e.target.value)}
-                  className={inputCls}
-                >
-                  {EMP_LEAVE_REASONS.map((r: string) => <option key={r} value={r}>{r}</option>)}
-                </select>
+                <Select value={archReason} onChange={(v) => setArchReason(v)} options={EMP_LEAVE_REASONS.map((r: string) => ({ value: r, label: r }))} />
               </div>
               <div>
                 <label className={labelCls}>Ketgan sanasi</label>

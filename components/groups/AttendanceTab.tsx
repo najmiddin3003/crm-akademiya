@@ -26,6 +26,7 @@ import { MONTHS } from "@/lib/i18n";
 import type { Group } from "@/lib/groups";
 import type { GroupNote } from "@/lib/groupNotes";
 import type { Pupil } from "@/lib/pupilsData";
+import Select from "@/components/ui/Select";
 
 // Guruh → Davomat tabi (referens: akademiya.edutizim.uz/group/groups/details/
 // <id>?status=attendance).
@@ -423,20 +424,8 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
           </button>
         </div>
 
-        <select
-          value={year}
-          onChange={(e) => { setLoading(true); setYear(Number(e.target.value)); }}
-          className="h-9 rounded-lg border border-border bg-card px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <select
-          value={month}
-          onChange={(e) => { setLoading(true); setMonth(Number(e.target.value)); }}
-          className="h-9 rounded-lg border border-border bg-card px-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          {monthNames.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-        </select>
+        <Select value={String(year)} onChange={(v) => { setLoading(true); setYear(Number(v)); }} options={years.map((y) => ({ value: String(y), label: String(y) }))} size="sm" />
+        <Select value={String(month)} onChange={(v) => { setLoading(true); setMonth(Number(v)); }} options={monthNames.map((m, i) => ({ value: String(i + 1), label: m }))} size="sm" />
       </div>
 
       <div className="px-4 py-2 flex items-center gap-2">
@@ -695,14 +684,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
             <h3 className="mb-4 text-center text-lg font-semibold">Izoh qoldiring</h3>
 
             <label className="mb-1.5 block text-[13px] font-medium">Sababi</label>
-            <select
-              value={reasonModal.reason}
-              onChange={(e) => setReasonModal({ ...reasonModal, reason: e.target.value })}
-              className="mb-4 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Tanlang</option>
-              {reasonNames.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <Select value={reasonModal.reason} onChange={(v) => setReasonModal({ ...reasonModal, reason: v })} options={reasonNames.map((r) => ({ value: r, label: r }))} placeholder="Tanlang" clearable className="mb-4" />
 
             <label className="mb-1.5 block text-[13px] font-medium">Izoh</label>
             <textarea

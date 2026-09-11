@@ -9,6 +9,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { CONTRACT_TYPES, CONTRACT_FIELDS } from "@/constants/contracts";
 import type { Contract } from "@/lib/contracts";
 import type { RichTextEditorField } from "@/components/ui/RichTextEditor";
+import Select from "@/components/ui/Select";
 
 const CONTRACT_FIELDS_MAP = CONTRACT_FIELDS as Record<string, RichTextEditorField[]>;
 
@@ -103,16 +104,7 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
         <h2 className="text-[16px] font-semibold">Shartnoma</h2>
         <div>
           <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Shartnoma turi</label>
-          <div className="relative">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              {CONTRACT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={type} onChange={(v) => setType(v)} options={CONTRACT_TYPES.map((t) => ({ value: t.value, label: t.label }))} size="sm" />
         </div>
         <div className="space-y-1.5">
           {fields.map((f) => (

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
+import Select from "@/components/ui/Select";
 
 // Xodim profili → "Ish haqi" oynasi.
 //
@@ -16,16 +17,8 @@ import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
 // Bu yerda hech qanday standart summa TAKLIF QILINMAYDI — raqamlarni faqat
 // admin kiritadi. Bo'sh qoldirilsa xodim "sozlanmagan" bo'lib qolaveradi.
 
-const selectCls = "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const inputCls = "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-function Chevron() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
 
 interface Row {
   checked: boolean;
@@ -169,15 +162,7 @@ export default function EmployeeSalaryConfigModal({
                   <label className="block text-[13px] font-medium mb-1.5">
                     Oladigan foizi <span className="text-muted-foreground font-normal">— o&apos;qituvchi uchun asosiy</span>
                   </label>
-                  <div className="relative">
-                    <select className={selectCls} value={percent} onChange={(e) => setPercent(e.target.value)}>
-                      <option value="">Tanlanmagan</option>
-                      {percentOpts.map((p) => (
-                        <option key={p.name} value={p.name}>{`${p.name} (${p.percent}%)`}</option>
-                      ))}
-                    </select>
-                    <Chevron />
-                  </div>
+                  <Select value={percent} onChange={(v) => setPercent(v)} options={percentOpts.map((p) => ({ value: p.name, label: `${p.name} (${p.percent}%)` }))} placeholder="Tanlanmagan" clearable />
                   <p className="text-[11.5px] text-muted-foreground mt-1.5">
                     O&apos;qituvchi yaxlit oklad emas, o&apos;quvchilari to&apos;lagan puldan
                     <strong> shu foizni</strong> oladi. Oylik har oy tushumdan avtomatik hisoblanadi.
@@ -218,20 +203,8 @@ export default function EmployeeSalaryConfigModal({
                             />
                             <span className="text-sm">{branch.name}</span>
                           </label>
-                          <div className="relative">
-                            <select className={`${selectCls} disabled:opacity-40`} disabled={off} value={row.roleId} onChange={(e) => update(branch.id, { roleId: e.target.value })}>
-                              <option value="">Rolni tanlang</option>
-                              {roles.map((r) => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
-                            </select>
-                            <Chevron />
-                          </div>
-                          <div className="relative">
-                            <select className={`${selectCls} disabled:opacity-40`} disabled={off} value={row.scheduleId} onChange={(e) => update(branch.id, { scheduleId: e.target.value })}>
-                              <option value="">Ish jadvali</option>
-                              {schedules.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
-                            </select>
-                            <Chevron />
-                          </div>
+                          <Select value={row.roleId} onChange={(v) => update(branch.id, { roleId: v })} options={roles.map((r) => ({ value: String(r.id), label: r.name }))} placeholder="Rolni tanlang" clearable disabled={off} />
+                          <Select value={row.scheduleId} onChange={(v) => update(branch.id, { scheduleId: v })} options={schedules.map((s) => ({ value: String(s.id), label: s.name }))} placeholder="Ish jadvali" clearable disabled={off} />
                           <MoneyInput
                             value={row.salary}
                             onChange={(v) => update(branch.id, { salary: v })}

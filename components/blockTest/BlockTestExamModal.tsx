@@ -9,17 +9,14 @@ import { LOADING_TEXT, selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { BlockTestExam } from "@/lib/blockTestExams";
 import type { BlockTestType } from "@/lib/blockTestTypes";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import Select from "@/components/ui/Select";
 
 // "Blok test qo'shish" / tahrirlash modali (Blok test → Blok testlar, referens
 // akademiya.edutizim.uz/block-test/exams). `exam` berilsa — tahrirlash
 // (PATCH /api/block-test-exams/:id), aks holda qo'shish (POST).
 const inputCls = "w-full h-11 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-const selectCls = "filter-select w-full h-11 appearance-none rounded-lg border border-border bg-card px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
-function Chevron() {
-  return <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>;
-}
 
 export default function BlockTestExamModal({
   exam,
@@ -137,20 +134,7 @@ export default function BlockTestExamModal({
           </div>
           <div>
             <label className={labelCls}>Tur</label>
-            <div className="relative">
-              <select
-                value={typeId}
-                onChange={(e) => setTypeId(e.target.value)}
-                disabled={typesLoading}
-                className={`${selectCls} disabled:opacity-70`}
-              >
-                {/* Turlar kelgunicha "Tur qo'shilmagan" deb yozib bo'lmaydi —
-                    o'sha onda bu YOLG'ON. */}
-                <option value="">{selectPlaceholder(typesLoading, types.length, "Tur qo'shilmagan")}</option>
-                {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={typeId} onChange={(v) => setTypeId(v)} options={types.map((t) => ({ value: String(t.id), label: t.name }))} placeholder={selectPlaceholder(typesLoading, types.length, "Tur qo'shilmagan")} clearable size="lg" disabled={typesLoading} />
           </div>
           <div>
             <label className={labelCls}>Sana</label>
@@ -204,20 +188,7 @@ export default function BlockTestExamModal({
           </div>
           <div>
             <label className={labelCls}>Mas&apos;ul xodim</label>
-            <div className="relative">
-              <select
-                value={responsibleEmployeeId}
-                onChange={(e) => setResponsibleEmployeeId(e.target.value)}
-                disabled={employeesLoading}
-                className={`${selectCls} disabled:opacity-70`}
-              >
-                {/* Xodimlar kelgunicha "Xodim qo'shilmagan" deb yozib
-                    bo'lmaydi — o'sha onda bu YOLG'ON. */}
-                <option value="">{selectPlaceholder(employeesLoading, employees.length, "Xodim qo'shilmagan")}</option>
-                {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-              <Chevron />
-            </div>
+            <Select value={responsibleEmployeeId} onChange={(v) => setResponsibleEmployeeId(v)} options={employees.map((e) => ({ value: String(e.id), label: e.name }))} placeholder={selectPlaceholder(employeesLoading, employees.length, "Xodim qo'shilmagan")} clearable size="lg" disabled={employeesLoading} />
           </div>
           <div>
             <label className={labelCls}>Izoh</label>

@@ -6,6 +6,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
 import type { EduCategory } from "@/lib/eduCategories";
 import type { Group } from "@/lib/groups";
+import Select from "@/components/ui/Select";
 
 // "Kurs biriktirish" — o'ngdan chiquvchi drawer (crm-akademiya
 // #bind-course-drawer). Guruh/Kurs rejimlari orasida almashadi.
@@ -74,8 +75,6 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
     onClose();
   }
 
-  const selectCls =
-    "filter-select w-full h-10 mt-2 appearance-none rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
     <>
@@ -103,27 +102,12 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
           {mode === "group" ? (
             <div className="mt-6">
               <label className="text-[13px] font-medium">Guruh</label>
-              <select value={value} onChange={(e) => setValue(e.target.value)} className={selectCls} disabled={loading}>
-                {/* Bo'sh ro'yxat "hech narsa yo'q" deb ochiq aytadi — ilgari
-                    o'sha holatda ham beshta o'ylab topilgan guruh chiqardi.
-                    "Yo'q" degan xulosa esa faqat javob KELGANDAN keyin
-                    chiqariladi, aks holda yuklanish paytidagi bo'sh massiv
-                    "guruh yo'q" deb da'vo qilib turardi. */}
-                <option value="">{loading ? "Yuklanmoqda…" : groups.length ? "Guruh" : "Guruh yo'q"}</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name || `#${g.id}`}</option>
-                ))}
-              </select>
+              <Select value={value} onChange={(v) => setValue(v)} options={groups.map((g) => ({ value: String(g.id), label: g.name || `#${g.id}` }))} placeholder={loading ? "Yuklanmoqda…" : groups.length ? "Guruh" : "Guruh yo'q"} clearable className="mt-2" disabled={loading} />
             </div>
           ) : (
             <div className="mt-6">
               <label className="text-[13px] font-medium">Kurs</label>
-              <select value={value} onChange={(e) => setValue(e.target.value)} className={selectCls} disabled={loading}>
-                <option value="">{loading ? "Yuklanmoqda…" : categories.length ? "Kurs" : "Kategoriya yo'q"}</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <Select value={value} onChange={(v) => setValue(v)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={loading ? "Yuklanmoqda…" : categories.length ? "Kurs" : "Kategoriya yo'q"} clearable className="mt-2" disabled={loading} />
             </div>
           )}
         </div>

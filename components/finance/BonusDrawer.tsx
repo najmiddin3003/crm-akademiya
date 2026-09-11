@@ -11,6 +11,7 @@ import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Bonus } from "@/lib/bonuses";
 import type { Cashbox } from "@/lib/cashboxes";
+import Select from "@/components/ui/Select";
 
 // "Bonus yaratish" — Moliya → Bonus sahifasidagi o'ng tomondan ochiladigan
 // panel (skrinshot 2/3). "Tranzaksiya turi"ga qarab pastda "Xodim" (oddiy
@@ -125,41 +126,24 @@ export default function BonusDrawer({
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya turi</label>
-            <div className="relative">
-              <select
-                value={type}
-                onChange={(e) => { setType(e.target.value); setEmployeeName(""); setStudentName(""); }}
-                // Ro'yxat TANLANGANDA emas, dropdown OCHILGANDA isiy
-                // boshlaydi — odatda 0.3-1.5 s oldinroq. Kalit bir xil
-                // ("pupils:light"), shu bois "O'quvchi" tanlansa
-                // StudentPicker mount bo'lganda in-flight dedup
-                // (lib/clientCache.ts) ikkinchi so'rovni yubormaydi.
-                // "Xodim" tanlangan holda qolsa — hech narsa isrof
-                // bo'lmaydi, chunki StudentPicker umuman mount bo'lmaydi.
-                onPointerDown={() => { void loadPupilsCached({ light: true }); }}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                {BONUS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            {/* Ro'yxat TANLANGANDA emas, OCHILGANDA isiy boshlaydi (onOpen) —
+                odatda 0.3-1.5 s oldinroq. Kalit bir xil ("pupils:light"),
+                shu bois "O'quvchi" tanlansa StudentPicker mount bo'lganda
+                in-flight dedup (lib/clientCache.ts) ikkinchi so'rovni
+                yubormaydi. "Xodim" tanlangan holda qolsa — hech narsa isrof
+                bo'lmaydi, chunki StudentPicker umuman mount bo'lmaydi. */}
+            <Select
+              value={type}
+              onChange={(v) => { setType(v); setEmployeeName(""); setStudentName(""); }}
+              onOpen={() => { void loadPupilsCached({ light: true }); }}
+              options={BONUS_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+            />
           </div>
 
           {type === "employee" ? (
             <div>
               <label className="block text-[13px] font-medium mb-1.5">Xodim</label>
-              <div className="relative">
-                <select
-                  value={employeeName}
-                  onChange={(e) => setEmployeeName(e.target.value)}
-                  disabled={listsLoading}
-                  className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-                >
-                  <option value="">{selectPlaceholder(listsLoading, employees.length, "Xodim qo'shilmagan")}</option>
-                  {employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}
-                </select>
-                <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-              </div>
+              <Select value={employeeName} onChange={(v) => setEmployeeName(v)} options={employees.map((e) => ({ value: e.name, label: e.name }))} placeholder={selectPlaceholder(listsLoading, employees.length, "Xodim qo'shilmagan")} clearable disabled={listsLoading} />
             </div>
           ) : (
             <StudentPicker value={studentName} onChange={setStudentName} />
@@ -167,20 +151,7 @@ export default function BonusDrawer({
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Kassa</label>
-            <div className="relative">
-              <select
-                value={cashboxId}
-                onChange={(e) => setCashboxId(e.target.value)}
-                disabled={listsLoading}
-                className="w-full h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70"
-              >
-                {/* "Tanlanmagan" — haqiqiy tanlov (kassasiz bonus), shuning
-                    uchun u `ready` matni sifatida saqlanadi. */}
-                <option value="">{selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")}</option>
-                {cashboxes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <svg className="icon icon-xs pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")} clearable disabled={listsLoading} />
           </div>
 
           <div>

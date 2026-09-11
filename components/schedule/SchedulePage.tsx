@@ -26,6 +26,7 @@ import {
   formatStatValue,
   type Lesson,
 } from "@/lib/schedule";
+import Select from "@/components/ui/Select";
 
 type SchView = "day" | "week" | "month" | "teacher" | "room";
 type GroupBy = "room" | "teacher";
@@ -712,23 +713,7 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`filter-select h-9 ${width} appearance-none rounded-lg border border-border bg-card px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-      >
-        <option value="">{placeholder}</option>
-        {options.map(([v, lbl]) => (
-          <option key={v} value={v}>
-            {lbl}
-          </option>
-        ))}
-      </select>
-      <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-        <use href="#i-chevron-down" />
-      </svg>
-    </div>
+    <Select value={value} onChange={(v) => onChange(v)} options={options.map(([v, lbl]) => ({ value: v, label: lbl }))} placeholder={placeholder} clearable size="sm" className={`${width}`} />
   );
 }
 

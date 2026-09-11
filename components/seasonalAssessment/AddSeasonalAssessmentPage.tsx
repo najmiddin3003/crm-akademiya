@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import MonthPicker from "@/components/ui/MonthPicker";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
+import Select from "@/components/ui/Select";
 
 // O'quv bo'limi → Mavsumiy baholash → "Baholash" ("+ Baholash" tugmasi shu
 // sahifaga o'tadi). Bosqichma-bosqich ochiladi (manba: skrinshot 2-3):
@@ -17,7 +18,6 @@ import type { Pupil } from "@/lib/pupilsData";
 //     (/api/groups/:id/students) yuklanadi, har biriga Ball/Izoh kiritish
 //     maydoni chiqadi. "Saqlash" — barchasini bir yo'la /api/seasonal-assessments
 //     ga POST qiladi.
-const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50";
 const labelCls = "block text-[12px] font-medium text-muted-foreground mb-1";
 
 interface Draft {
@@ -128,38 +128,16 @@ export default function AddSeasonalAssessmentPage() {
           <>
             <div>
               <label className={labelCls}>Kurs<span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={course}
-                  onChange={(e) => { setCourse(e.target.value); setGroupId(null); setStudents(null); setDrafts({}); }}
-                  className={`${selectCls} w-48`}
-                >
-                  <option value="">Kursni tanlang</option>
-                  {courseOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-              </div>
+              <Select value={course} onChange={(v) => { setCourse(v); setGroupId(null); setStudents(null); setDrafts({}); }} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kursni tanlang" clearable size="sm" className="w-48" />
             </div>
 
             <div>
               <label className={labelCls}>Guruh<span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={groupId ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
+              <Select value={String(groupId ?? "")} onChange={(v) => {
                     setGroupId(v ? Number(v) : null);
                     setStudents(null);
                     setDrafts({});
-                  }}
-                  disabled={!course}
-                  className={`${selectCls} w-56`}
-                >
-                  <option value="">Guruhni tanlang</option>
-                  {groupOptions.map((g) => <option key={g.id} value={g.id}>{g.name} — {g.teacher}</option>)}
-                </select>
-                <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-              </div>
+                  }} options={groupOptions.map((g) => ({ value: String(g.id), label: `${g.name}—${g.teacher}` }))} placeholder="Guruhni tanlang" clearable size="sm" className="w-56" disabled={!course} />
             </div>
 
             <button

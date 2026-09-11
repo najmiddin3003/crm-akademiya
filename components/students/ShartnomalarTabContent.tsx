@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Select from "@/components/ui/Select";
 
 // Ported from the real site's Shartnomalar tab: a table (the "Shartnoma turi"
 // column really is duplicated on the live site — kept as-is to match) + a
@@ -64,12 +65,8 @@ export default function ShartnomalarTabContent() {
             <div className="px-5 pb-4 space-y-4 flex-1 overflow-y-auto">
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Shartnoma turi</label>
-                <div className="relative">
-                  <select className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40">
-                    <option value="">Tanlang</option>
-                  </select>
-                  <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-chevron-down" /></svg>
-                </div>
+                {/* Shartnoma turlari hali sozlanmagan — ro'yxat bo'sh stub. */}
+                <Select value="" onChange={() => {}} options={[]} placeholder="Tanlang" size="lg" emptyText="Shartnoma turi qo'shilmagan" />
               </div>
               <div>
                 <label className="block text-[13px] font-medium mb-1.5">Fayl</label>

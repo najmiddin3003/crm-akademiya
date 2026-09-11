@@ -8,6 +8,7 @@ import { AUTO_SMS_SCENARIOS } from "@/constants/settingsAutoSms";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
+import Select from "@/components/ui/Select";
 
 // "SMS yuborish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: O'quvchilar (faqat ko'rsatiladi) →
@@ -50,9 +51,6 @@ interface TemplateOption {
   text: string;
   group: string;
 }
-
-const FIELD_CLS =
-  "w-full h-11 rounded-lg border border-border bg-secondary/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 /** Bitta qabul qiluvchi — jurnalda ham shu nom bilan ko'rinadi. */
 interface Recipient {
@@ -253,30 +251,16 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
 
           <div>
             <label className="block text-sm font-medium mb-1.5">SMS shablon</label>
-            <div className="relative">
-              <select
-                value={picked}
-                onChange={(e) => pick(e.target.value)}
-                disabled={templatesLoading}
-                className={`${FIELD_CLS} appearance-none pr-9 disabled:opacity-70`}
-              >
-                <option value="">{selectPlaceholder(templatesLoading, options.length, "Shablon yo'q", "Qidirish")}</option>
-                {groups.map((g) => (
-                  <optgroup key={g} label={g}>
-                    {options
-                      .filter((o) => o.group === g)
-                      .map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-              <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <use href="#i-chevron-down" />
-              </svg>
-            </div>
+            {/* Guruh sarlavhalari (ilgari <optgroup>) — Select `group` maydoni orqali. */}
+            <Select
+              size="lg"
+              value={picked}
+              onChange={pick}
+              disabled={templatesLoading}
+              placeholder={selectPlaceholder(templatesLoading, options.length, "Shablon yo'q", "Qidirish")}
+              options={groups.flatMap((g) => options.filter((o) => o.group === g).map((o) => ({ value: o.value, label: o.label, group: g })))}
+              clearable
+            />
           </div>
 
           <div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftRight, ChevronDown, FilePlus, LayoutGrid, Link2, Search, XCircle } from "lucide-react";
+import { ArrowLeftRight, FilePlus, LayoutGrid, Link2, Search, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -13,6 +13,7 @@ import {
   CV_STATUS_ORDER,
 } from "@/constants/managementCv";
 import type { CvApplication, CvStatus } from "@/lib/managementCv";
+import Select from "@/components/ui/Select";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
 // bo'limining aynan o'zi: sarlavha + 4 ta amal tugmasi, 5 ta statistika
@@ -444,34 +445,8 @@ export default function CvPage() {
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative">
-          <select
-            value={filterPos}
-            onChange={(e) => setFilterPos(e.target.value)}
-            className="h-9 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="">Yo&apos;nalish — barchasi</option>
-            {(CV_POSITIONS as string[]).map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        </div>
-        <div className="relative">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="h-9 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="">Holat — barchasi</option>
-            {(CV_STATUS_ORDER as CvStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {CV_STATUS[s].label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        </div>
+        <Select value={filterPos} onChange={(v) => setFilterPos(v)} options={(CV_POSITIONS as string[]).map((p) => ({ value: p, label: p }))} placeholder="Yo'nalish — barchasi" clearable size="sm" className="w-44" />
+        <Select value={filterStatus} onChange={(v) => setFilterStatus(v)} options={(CV_STATUS_ORDER as CvStatus[]).map((s) => ({ value: s, label: CV_STATUS[s].label }))} placeholder="Holat — barchasi" clearable size="sm" className="w-44" />
         <div className="flex-1" />
         <div className="relative w-72">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -766,19 +741,7 @@ export default function CvPage() {
                       {f.req && <span className="text-rose-500">*</span>}
                     </label>
                     {f.type === "select" ? (
-                      <div className="relative">
-                        <select
-                          value={String(form[f.k] ?? "")}
-                          onChange={(e) => setField(f.k, e.target.value)}
-                          className="w-full h-10 appearance-none rounded-lg border border-border bg-background pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                        >
-                          <option value="">Tanlang</option>
-                          {(f.opts || []).map((o) => (
-                            <option key={o}>{o}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      </div>
+                      <Select value={String(form[f.k] ?? "")} onChange={(v) => setField(f.k, v)} options={(f.opts || []).map((o) => ({ value: o, label: o }))} placeholder="Tanlang" clearable />
                     ) : f.type === "multi" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                         {(f.opts || []).map((o) => (

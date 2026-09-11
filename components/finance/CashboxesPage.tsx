@@ -46,6 +46,7 @@ import { type Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { toUz } from "@/lib/uzTime";
+import Select from "@/components/ui/Select";
 
 const TX_TYPE_MAP: Record<string, string> = {
   kirim: "payIn",
@@ -129,8 +130,6 @@ function readSavedOrder(): string[] {
   }
 }
 
-const selectCls =
-  "h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 function fmtNum(n: number): string {
   return Math.round(n)
@@ -1752,40 +1751,14 @@ export default function CashboxesPage() {
             }}
             className="fc-range flex-1 min-w-[210px] max-w-[280px]"
           />
-          <div className="relative flex-1 min-w-[140px]">
-            <select
-              value={txType}
-              onChange={(e) => {
-                setTxType(e.target.value);
+          <Select value={txType} onChange={(v) => {
+                setTxType(v);
                 setPage(1);
-              }}
-              className={selectCls}
-            >
-              <option value="">Tranzaksiya</option>
-              <option value="kirim">Kirim</option>
-              <option value="chiqim">Chiqim</option>
-              <option value="kochirish">Ko&apos;chirish</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-          </div>
-          <div className="relative flex-1 min-w-[150px]">
-            <select
-              value={txName}
-              onChange={(e) => {
-                setTxName(e.target.value);
+              }} options={[{ value: "kirim", label: "Kirim" }, { value: "chiqim", label: "Chiqim" }, { value: "kochirish", label: "Ko'chirish" }]} placeholder="Tranzaksiya" clearable className="flex-1 min-w-[140px]" />
+          <Select value={txName} onChange={(v) => {
+                setTxName(v);
                 setPage(1);
-              }}
-              className={selectCls}
-            >
-              <option value="">Tranzaksiya turi</option>
-              {txNameOptions.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-          </div>
+              }} options={txNameOptions.map((n) => ({ value: n, label: n }))} placeholder="Tranzaksiya turi" clearable className="flex-1 min-w-[150px]" />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -1798,24 +1771,10 @@ export default function CashboxesPage() {
             options={studentOptions}
             placeholder="O'quvchini qidiring..."
           />
-          <div className="relative flex-1 min-w-[140px]">
-            <select
-              value={payType}
-              onChange={(e) => {
-                setPayType(e.target.value);
+          <Select value={payType} onChange={(v) => {
+                setPayType(v);
                 setPage(1);
-              }}
-              className={selectCls}
-            >
-              <option value="">To&apos;lov turi</option>
-              {paymentMethods.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" />
-          </div>
+              }} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="To'lov turi" clearable className="flex-1 min-w-[140px]" />
           <SearchFilter
             value={teacher}
             onChange={(v) => {

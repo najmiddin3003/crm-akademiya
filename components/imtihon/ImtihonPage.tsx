@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowDownSquare, ChevronDown, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
+import { ArrowDownSquare, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -11,6 +11,7 @@ import { IM_LEVELS, IM_SUBJECTS } from "@/constants/imtihon";
 import { imMonthLabel, imPct, normalizeMonth, type MonthlyExam } from "@/lib/imtihon";
 import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "./importUtils";
 import UzbmbView from "./UzbmbView";
+import Select from "@/components/ui/Select";
 
 // Imtihon bo'limi — referens HTML'dagi "IMTIHON (Oylik imtihon) VIEW" ning
 // aynan o'zi: sarlavha + 4 amal tugmasi, ichki tablar (Oylik imtihon | UzBMB),
@@ -88,8 +89,6 @@ function avgOf(arr: MonthlyExam[]): number {
 
 const inputCls =
   "w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-const selectCls =
-  "w-full h-10 appearance-none rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function ImtihonPage() {
   const { showSuccess, showError } = useToast();
@@ -467,47 +466,9 @@ export default function ImtihonPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <select
-              value={fm}
-              onChange={(e) => setFMonth(e.target.value)}
-              className="h-9 w-40 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Barcha oylar</option>
-              {months.map((m) => (
-                <option key={m} value={m}>
-                  {imMonthLabel(m)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          </div>
-          <div className="relative">
-            <select
-              value={fSubject}
-              onChange={(e) => setFSubject(e.target.value)}
-              className="h-9 w-40 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Fan — barchasi</option>
-              {subjects.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          </div>
-          <div className="relative">
-            <select
-              value={fLevel}
-              onChange={(e) => setFLevel(e.target.value)}
-              className="h-9 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Bosqich — barchasi</option>
-              {levels.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          </div>
+          <Select value={fm} onChange={(v) => setFMonth(v)} options={months.map((m) => ({ value: m, label: imMonthLabel(m) }))} placeholder="Barcha oylar" clearable size="sm" className="w-40" />
+          <Select value={fSubject} onChange={(v) => setFSubject(v)} options={subjects.map((s) => ({ value: s, label: s }))} placeholder="Fan — barchasi" clearable size="sm" className="w-40" />
+          <Select value={fLevel} onChange={(v) => setFLevel(v)} options={levels.map((s) => ({ value: s, label: s }))} placeholder="Bosqich — barchasi" clearable size="sm" className="w-44" />
           <div className="flex-1" />
           <div className="relative w-72">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -672,28 +633,11 @@ export default function ImtihonPage() {
                     <label className="block text-[13px] font-medium mb-1.5">
                       Fan<span className="text-rose-500">*</span>
                     </label>
-                    <select
-                      value={entry.subject}
-                      onChange={(e) => setEntry((f) => ({ ...f, subject: e.target.value }))}
-                      className={selectCls}
-                    >
-                      {IM_SUBJECTS.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
+                    <Select value={entry.subject} onChange={(v) => setEntry((f) => ({ ...f, subject: v }))} options={IM_SUBJECTS.map((s) => ({ value: s, label: s }))} />
                   </div>
                   <div>
                     <label className="block text-[13px] font-medium mb-1.5">Bosqich</label>
-                    <select
-                      value={entry.level}
-                      onChange={(e) => setEntry((f) => ({ ...f, level: e.target.value }))}
-                      className={selectCls}
-                    >
-                      <option value="">—</option>
-                      {IM_LEVELS.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
+                    <Select value={entry.level} onChange={(v) => setEntry((f) => ({ ...f, level: v }))} options={IM_LEVELS.map((s) => ({ value: s, label: s }))} placeholder="—" clearable />
                   </div>
                 </div>
                 <div>

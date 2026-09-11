@@ -12,6 +12,7 @@ import {
   AUTO_SMS_DEFAULTS,
   AUTO_SMS_SCENARIOS,
 } from "@/constants/settingsAutoSms";
+import Select from "@/components/ui/Select";
 
 // Sotuv va marketing → Avto sms. Yuqorida umumiy yoqish va filial, pastda
 // har bir hodisa uchun alohida karta: toggle + xabar matni + o'zgaruvchilar
@@ -221,32 +222,11 @@ export default function AutoSmsTab() {
 
         <div className="pt-3">
           <label className="block text-[13px] font-medium mb-1.5">Filiallar</label>
-          <div className="relative">
-            {/* Saqlangan filial ro'yxatda topilmasa (hali yuklanmagan yoki
-                Boshqaruv → Filiallar dan o'chirilgan) o'rinbosar ko'rsatiladi:
-                yo'q filial nomini chizib turish "shu filial tanlangan" degan
-                yolg'on bo'lardi, bo'sh maydon esa nima bo'layotganini
-                umuman tushuntirmasdi. */}
-            <select
-              value={branchNames.includes(data.branch) ? data.branch : ""}
-              onChange={(e) => setData((p) => ({ ...p, branch: e.target.value }))}
-              className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">
-                {branchesLoading
+          <Select value={branchNames.includes(data.branch) ? data.branch : ""} onChange={(v) => setData((p) => ({ ...p, branch: v }))} options={branchNames.map((b) => ({ value: b, label: b }))} placeholder={branchesLoading
                   ? "Yuklanmoqda…"
                   : branchNames.length === 0
                     ? "Filial qo'shilmagan"
-                    : "Tanlang"}
-              </option>
-              {branchNames.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-            <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-              <use href="#i-chevron-down" />
-            </svg>
-          </div>
+                    : "Tanlang"} clearable />
         </div>
       </div>
 
@@ -263,20 +243,7 @@ export default function AutoSmsTab() {
               <div className="pt-3 space-y-3">
                 <div>
                   <label className="block text-[13px] font-medium mb-1.5">Davomat holati</label>
-                  <div className="relative">
-                    <select
-                      value={String(sc.status ?? "")}
-                      onChange={(e) => setScenario(s.key, { status: e.target.value })}
-                      className="h-10 w-full appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      {(AUTO_SMS_ABSENT_STATUSES as string[]).map((st) => (
-                        <option key={st} value={st}>{st}</option>
-                      ))}
-                    </select>
-                    <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                      <use href="#i-chevron-down" />
-                    </svg>
-                  </div>
+                  <Select value={String(sc.status ?? "")} onChange={(v) => setScenario(s.key, { status: v })} options={(AUTO_SMS_ABSENT_STATUSES as string[]).map((st) => ({ value: st, label: st }))} />
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap text-[13px]">

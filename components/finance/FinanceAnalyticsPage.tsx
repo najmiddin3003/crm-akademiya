@@ -16,6 +16,7 @@ import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { CashboxName } from "@/lib/cashboxes";
 import type { TransactionType } from "@/lib/transactionTypes";
+import Select from "@/components/ui/Select";
 
 // Moliya → Kirim chiqim (sidebar: Moliya > Kirim chiqim, href
 // /finance-cashflow). 4 tab: Kirim/Chiqim — HAQIQIY MongoDB `transactions`
@@ -236,21 +237,9 @@ export default function FinanceAnalyticsPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <select value={cashboxId} onChange={(e) => setCashboxId(e.target.value)} className="h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-              <option value="">Kassa</option>
-              {cashboxes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kassa" clearable size="sm" />
           <DateRangePicker value={dateRange} onChange={setDateRange} className="w-52" />
-          <div className="relative">
-            <select value={payType} onChange={(e) => setPayType(e.target.value)} className="h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
-              <option value="">To&apos;lov turi</option>
-              {paymentMethods.map((m) => <option key={m.key} value={m.key}>{m.name}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={payType} onChange={(v) => setPayType(v)} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="To'lov turi" clearable size="sm" />
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setExportMenuOpen((o) => !o)}

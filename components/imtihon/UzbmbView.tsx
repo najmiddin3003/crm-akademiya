@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDownSquare, ChevronDown, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
+import { ArrowDownSquare, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
@@ -16,6 +16,7 @@ import {
   type UzbmbExam,
 } from "@/lib/imtihon";
 import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "./importUtils";
+import Select from "@/components/ui/Select";
 
 // Imtihon → UzBMB tabi. Referens HTML'dagi "UZBMB" konteyneri va uning uch
 // modali (natija kiritish, import, solishtirish) bilan bir xil.
@@ -99,8 +100,6 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 const numInputCls =
   "w-full h-9 rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40";
-const selectCls =
-  "w-full h-9 appearance-none rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
   const { showSuccess, showError } = useToast();
@@ -485,34 +484,8 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative">
-          <select
-            value={fm}
-            onChange={(e) => setFMonth(e.target.value)}
-            className="h-9 w-40 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="">Barcha oylar</option>
-            {months.map((m) => (
-              <option key={m} value={m}>
-                {imMonthLabel(m)}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        </div>
-        <div className="relative">
-          <select
-            value={fSubject}
-            onChange={(e) => setFSubject(e.target.value)}
-            className="h-9 w-44 appearance-none rounded-lg border border-border bg-card pl-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="">1-blok fani — barchasi</option>
-            {subjects.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        </div>
+        <Select value={fm} onChange={(v) => setFMonth(v)} options={months.map((m) => ({ value: m, label: imMonthLabel(m) }))} placeholder="Barcha oylar" clearable size="sm" className="w-40" />
+        <Select value={fSubject} onChange={(v) => setFSubject(v)} options={subjects.map((s) => ({ value: s, label: s }))} placeholder="1-blok fani — barchasi" clearable size="sm" className="w-44" />
         <div className="flex-1" />
         <div className="relative w-72">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -685,15 +658,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                       <label className="block text-[12px] font-medium mb-1">
                         1-blok fani (×3.1)<span className="text-rose-500">*</span>
                       </label>
-                      <select
-                        value={entry.b1s}
-                        onChange={(e) => setEntry((f) => ({ ...f, b1s: e.target.value }))}
-                        className={selectCls}
-                      >
-                        {UB_MAIN_SUBJECTS.map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
+                      <Select value={entry.b1s} onChange={(v) => setEntry((f) => ({ ...f, b1s: v }))} options={UB_MAIN_SUBJECTS.map((s) => ({ value: s, label: s }))} size="sm" />
                     </div>
                     <div>
                       <label className="block text-[12px] font-medium mb-1">
@@ -735,15 +700,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                       <label className="block text-[12px] font-medium mb-1">
                         2-blok fani (×2.1)<span className="text-rose-500">*</span>
                       </label>
-                      <select
-                        value={entry.b2s}
-                        onChange={(e) => setEntry((f) => ({ ...f, b2s: e.target.value }))}
-                        className={selectCls}
-                      >
-                        {UB_MAIN_SUBJECTS.map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
+                      <Select value={entry.b2s} onChange={(v) => setEntry((f) => ({ ...f, b2s: v }))} options={UB_MAIN_SUBJECTS.map((s) => ({ value: s, label: s }))} size="sm" />
                     </div>
                     <div>
                       <label className="block text-[12px] font-medium mb-1">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Select from "@/components/ui/Select";
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, AtSign, Bold, Code, Eraser, Highlighter,
   ImageIcon, IndentDecrease, IndentIncrease, Italic, Link as LinkIcon, List, ListOrdered, Maximize2,
@@ -33,7 +34,6 @@ const BLOCK_FORMATS = [
 ];
 
 const toolBtn = "h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground";
-const toolSelect = "h-8 rounded-md border border-border bg-card px-2 text-[12px] focus:outline-none";
 
 export interface RichTextEditorField {
   label: string;
@@ -58,6 +58,11 @@ export default function RichTextEditor({
   const hiliteInputRef = useRef<HTMLInputElement>(null);
 
   const [codeView, setCodeView] = useState(false);
+  // Asboblar panelidagi joriy shrift o'lchami / blok formati — faqat
+  // ko'rsatish uchun (muharrir tanloviga qarab yangilanmaydi, avval ham
+  // shunday edi: native select `defaultValue` bilan turardi).
+  const [fontSize, setFontSize] = useState("13");
+  const [blockFormat, setBlockFormat] = useState("p");
   const [codeDraft, setCodeDraft] = useState(value);
   const [fullscreen, setFullscreen] = useState(false);
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -187,13 +192,9 @@ export default function RichTextEditor({
           <button type="button" onClick={() => exec("undo")} className={toolBtn} title="Bekor qilish"><Undo2 className="w-4 h-4" /></button>
           <button type="button" onClick={() => exec("redo")} className={toolBtn} title="Qaytarish"><Redo2 className="w-4 h-4" /></button>
 
-          <select onChange={(e) => applyFontSize(e.target.value)} defaultValue="13" className={toolSelect} title="Shrift o'lchami">
-            {FONT_SIZES.map((s) => <option key={s.px} value={s.px}>{s.label}</option>)}
-          </select>
-
-          <select onChange={(e) => exec("formatBlock", e.target.value)} defaultValue="p" className={toolSelect} title="Format">
-            {BLOCK_FORMATS.map((b) => <option key={b.tag} value={b.tag}>{b.label}</option>)}
-          </select>
+          {/* preserveFocus: tanlov muharrirda qolsin — aks holda buyruq hech narsaga qo'llanmaydi. */}
+          <Select size="row" preserveFocus className="w-20" value={fontSize} onChange={(v) => { setFontSize(v); applyFontSize(v); }} options={FONT_SIZES.map((s) => ({ value: s.px, label: s.label }))} title="Shrift o'lchami" />
+          <Select size="row" preserveFocus className="w-28" value={blockFormat} onChange={(v) => { setBlockFormat(v); exec("formatBlock", v); }} options={BLOCK_FORMATS.map((b) => ({ value: b.tag, label: b.label }))} title="Format" />
 
           <button type="button" onClick={() => exec("formatBlock", "blockquote")} className={toolBtn} title="Iqtibos"><Quote className="w-4 h-4" /></button>
 

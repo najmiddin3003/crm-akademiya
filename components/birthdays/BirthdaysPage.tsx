@@ -19,6 +19,7 @@ import {
   type PersonKind,
   type BirthdayPerson,
 } from "@/lib/birthdays";
+import Select from "@/components/ui/Select";
 
 /** Ism bosilganda ochiladigan profil sahifasi. */
 function profileHref(p: BirthdayPerson): string {
@@ -114,22 +115,10 @@ export default function BirthdaysPage() {
 
         {/* Tartib referensdagidek: yil → oy → kim → ko'rinish */}
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <Select value={String(year)} onChange={(v) => setYear(Number(v))} options={years.map((y) => ({ value: String(y), label: String(y) }))} size="sm" />
 
           {view === "monthly" && (
-            <select
-              value={month}
-              onChange={(e) => { setMonth(Number(e.target.value)); setOpenDay(null); }}
-              className="h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              {MONTHS[lang].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </select>
+            <Select value={String(month)} onChange={(v) => { setMonth(Number(v)); setOpenDay(null); }} options={MONTHS[lang].map((m, i) => ({ value: String(i + 1), label: m }))} size="sm" />
           )}
 
           <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">

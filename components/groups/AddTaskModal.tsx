@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { GroupTask } from "@/lib/groupTasks";
+import Select from "@/components/ui/Select";
 
 // "Topshiriq qo'shish" modali (skrinshot 1-2). Saqlash → POST
 // /api/groups/:id/tasks. Fayl mahalliy (backendga faqat fayl NOMI yuboriladi —
@@ -62,13 +63,7 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
         <div className="px-6 py-2 space-y-3.5 overflow-y-auto flex-1">
           <div>
             <label className={labelCls}>Turi<span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <select value={type} onChange={(e) => setType(e.target.value)} className={`${inputCls} appearance-none pr-9`}>
-                <option value="Vazifa">Vazifa</option>
-                <option value="Manba">Manba</option>
-              </select>
-              <svg className="icon icon-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-            </div>
+            <Select value={type} onChange={(v) => setType(v)} options={[{ value: "Vazifa", label: "Vazifa" }, { value: "Manba", label: "Manba" }]} size="lg" />
           </div>
           <div>
             <label className={labelCls}>Nomi<span className="text-rose-500">*</span></label>

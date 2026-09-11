@@ -13,6 +13,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useGroups } from "@/hooks/useGroups";
 import { contractPartsTotal, type FinanceContract } from "@/lib/financeContracts";
 import FinanceContractDrawer from "./FinanceContractDrawer";
+import Select from "@/components/ui/Select";
 
 // Moliya → Shartnoma (sidebar: Moliya > Ma'lumotlar > Shartnoma, href
 // /finance-fin-contract). Aktiv/Arxiv — cashboxes'dagi bilan bir xil mahalliy
@@ -136,7 +137,6 @@ export default function FinanceContractsPage() {
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
-  const selectCls = "h-9 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-40";
 
   async function toggleArchive(c: FinanceContract) {
     setArchiveBusyId(c.id);
@@ -171,21 +171,9 @@ export default function FinanceContractsPage() {
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as "active" | "archived"); setPage(1); }} className={selectCls}>
-              <option value="active">Aktiv</option>
-              <option value="archived">Arxiv</option>
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={statusFilter} onChange={(v) => { setStatusFilter(v as "active" | "archived"); setPage(1); }} options={[{ value: "active", label: "Aktiv" }, { value: "archived", label: "Arxiv" }]} size="sm" className="w-40" />
           <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" className="w-56" />
-          <div className="relative">
-            <select value={group} onChange={(e) => { setGroup(e.target.value); setPage(1); }} className={selectCls}>
-              <option value="">Guruh</option>
-              {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <svg className="icon icon-xs absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><use href="#i-chevron-down" /></svg>
-          </div>
+          <Select value={group} onChange={(v) => { setGroup(v); setPage(1); }} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" className="w-40" />
           <div className="w-44">
             {/* Filtr ro'yxati shartnomalardan yig'iladi — ular kelmaguncha
                 ochilgan dropdownda "Topilmadi" yozilardi. */}

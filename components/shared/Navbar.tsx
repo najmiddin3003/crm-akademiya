@@ -18,6 +18,7 @@ import { useBranch } from "@/components/shared/BranchContext";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
+import Select from "@/components/ui/Select";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 
@@ -290,39 +291,14 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
           >
             <use href="#i-landmark" />
           </svg>
-          <select
-            value={selectedBranch}
-            onChange={(e) => {
-              const v = e.target.value;
+          <Select value={selectedBranch} onChange={(v) => {
               if (v === FILIAL_ADD_OPTION) {
                 setFilialModalOpen(true);
                 return;
               }
               void select(Number(v));
-            }}
-            disabled={branchLoading}
-            className="h-full w-full appearance-none bg-transparent pl-9 pr-7 text-sm focus:outline-none disabled:opacity-70"
-          >
-            {(branchLoading || allowedBranches.length === 0) && (
-              <option value="">
-                {selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…")}
-              </option>
-            )}
-            {allowedBranches.map((b) => (
-              <option key={b.id} value={String(b.id)}>{b.name}</option>
-            ))}
-            {/* "Filial biriktirish ++++" — FAQAT ADMINGA.
-                Ro'yxatning o'zi allaqachon xodimga biriktirilgan
-                filiallardan iborat (lib/branchScope.ts → scope.allowed),
-                ya'ni moderator o'z ish joyini ko'radi. Lekin bu qator
-                undan PASTDA hammaga chiqib turardi va u yangi filial
-                yaratadigan oynani ochadi — moderatorning ishi emas.
-                Bosilganda serverdagi qorovul baribir to'xtatardi, ammo
-                mavjud bo'lmagan imkoniyatni ko'rsatib turishning o'zi
-                chalg'itadi. */}
-            {isAdmin && <option>{FILIAL_ADD_OPTION}</option>}
-          </select>
-          <svg className="icon icon-xs pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" style={{ color: "var(--shell-blue)" }}><use href="#i-chevron-down" /></svg>
+            }} options={[...((branchLoading || allowedBranches.length === 0) ? [{ value: "", label: selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…") }] : []), ...allowedBranches.map((b) => ({ value: String(b.id), label: b.name })), ...(isAdmin ? [{ value: FILIAL_ADD_OPTION, label: FILIAL_ADD_OPTION }] : [])]} disabled={branchLoading} />
+          
         </div>
 
         <div className="nav-field shell-field-md relative ml-1 w-full" style={{ maxWidth: 340 }} id="global-search-wrapper">
