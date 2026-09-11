@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -76,11 +77,19 @@ export function useModalClose(onClose: () => void, variant: "center" | "drawer" 
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
+  // Animatsiya tugagach `onClose` chaqiriladi va holat O'ZI TIKLANADI —
+  // hook sahifa komponentida (inline modal) tursa, keyingi ochilishda modal
+  // `closing` holatida qolib ko'rinmay qolmasin. Ota modalni unmount qilsa
+  // (odatiy holat) tiklash bekor ketadi, xolos.
   const close = useCallback(() => {
     if (timerRef.current !== null) return;
     setClosing(true);
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    timerRef.current = window.setTimeout(() => onCloseRef.current(), reduced ? 0 : EXIT_MS[variant]);
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      onCloseRef.current();
+      setClosing(false);
+    }, reduced ? 0 : EXIT_MS[variant]);
   }, [variant]);
 
   useEffect(() => () => { if (timerRef.current !== null) window.clearTimeout(timerRef.current); }, []);
@@ -107,15 +116,19 @@ export interface ModalProps {
   title?: ReactNode;
   /** Sarlavha ostidagi kichik matn (masalan "* Zarurligini bildiradi"). */
   subtitle?: ReactNode;
-  children: ReactNode;
+  /** Oddiy JSX yoki funksiya — sahifa ichidagi inline modallar uchun:
+   * `{(modal) => <button onClick={modal.close}>…}` (hook chaqirib bo'lmaydigan joyda). */
+  children: ReactNode | ((modal: ModalController) => ReactNode);
   footer?: ReactNode;
-  /** Panel kengligi (faqat "center"). Drawer doim max-w-md, `panelClassName` bilan o'zgartiriladi. */
+  /** Panel kengligi (max-w-*). Drawer'da ham ishlaydi (standart md). */
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
   variant?: "center" | "drawer";
   /** Tana klasslari; standart — formalar uchun `p-5 space-y-3.5`. */
   bodyClassName?: string;
   /** Panelga qo'shimcha klasslar (masalan drawer kengligi `max-w-lg`). */
   panelClassName?: string;
+  /** Panelga inline uslub (masalan `{ width: "92%", maxWidth: 360 }`). */
+  panelStyle?: CSSProperties;
   hideClose?: boolean;
   /** Esc va overlay bilan yopilmasin (masalan saqlash ketayotganda). */
   locked?: boolean;
@@ -123,12 +136,21 @@ export interface ModalProps {
   bare?: boolean;
   /** Overlay bosilganda yopilmasin (faqat Esc/X/tugmalar). */
   disableOverlayClose?: boolean;
+  /** Konteyner z-index'i (standart 100). Boshqa modal ustida ochiladigan
+   * drawer/oynalar uchun (masalan kassa oynasi ustidagi tasdiq). */
+  zIndex?: number;
 }
 
 // SSR'da portal chizib bo'lmaydi; gidratatsiya tugaguncha ham hech narsa
 // chizilmaydi (server HTML'ida yo'q edi — nomuvofiqlik bo'lmasin).
 const subscribeNoop = () => () => {};
 const useMounted = () => useSyncExternalStore(subscribeNoop, () => true, () => false);
+
+// OCHIQ MODALLAR STEKI. Esc faqat ENG USTKI modalni yopadi: ichma-ich
+// oynalarda (Yangi o'quvchi → "Manbani yozing") ikkala oyna ham `window`
+// ni tinglaydi va bitta Esc ikkalasini birdan yopib yuborardi — moderator
+// manbani yozayotib butun formani yo'qotardi.
+const openStack: symbol[] = [];
 
 export default function Modal({
   onClose,
@@ -141,15 +163,25 @@ export default function Modal({
   variant = "center",
   bodyClassName = "p-5 space-y-3.5",
   panelClassName = "",
+  panelStyle,
   hideClose = false,
   locked = false,
   bare = false,
   disableOverlayClose = false,
+  zIndex,
 }: ModalProps) {
   const mounted = useMounted();
   const own = useModalClose(onClose, variant);
   const { closing, close } = controller ?? own;
   const panelRef = useRef<HTMLDivElement>(null);
+  const idRef = useRef<symbol | null>(null);
+  if (idRef.current === null) idRef.current = Symbol("modal");
+
+  useEffect(() => {
+    const id = idRef.current!;
+    openStack.push(id);
+    return () => { const i = openStack.indexOf(id); if (i >= 0) openStack.splice(i, 1); };
+  }, []);
 
   // Foydalanuvchi yopishi (Esc, overlay, X) — `locked` bo'lsa e'tiborsiz.
   const dismiss = useCallback(() => {
@@ -161,7 +193,7 @@ export default function Modal({
   // (stopPropagation) avval o'z ro'yxatini yopadi, bu yerga yetib kelmaydi.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") dismiss();
+      if (e.key === "Escape" && openStack[openStack.length - 1] === idRef.current) dismiss();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -181,20 +213,24 @@ export default function Modal({
   if (!mounted) return null;
 
   const isDrawer = variant === "drawer";
+  // Eski modal o'z panelida overflow boshqarsa (`overflow-y-auto`), bizning
+  // `overflow-hidden` u bilan to'qnashmasin.
+  const overflowCls = /overflow-/.test(panelClassName) ? "" : "overflow-hidden";
   const panelCls = isDrawer
-    ? `relative h-full w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col outline-none ${closing ? "ui-drawer-out" : "ui-drawer-in"} ${panelClassName}`
-    : `relative w-full ${SIZE_CLS[size]} rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-hidden flex flex-col outline-none ${closing ? "ui-modal-out" : "ui-modal-in"} ${panelClassName}`;
+    ? `relative h-full w-full ${SIZE_CLS[size]} bg-card border-l border-border shadow-2xl flex flex-col outline-none ${overflowCls} ${closing ? "ui-drawer-out" : "ui-drawer-in"} ${panelClassName}`
+    : `relative w-full ${SIZE_CLS[size]} rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] flex flex-col outline-none ${overflowCls} ${closing ? "ui-modal-out" : "ui-modal-in"} ${panelClassName}`;
+  const content = typeof children === "function" ? children({ closing, close }) : children;
 
   const node = (
     <ModalContext.Provider value={{ closing, close }}>
-      <div className={`fixed inset-0 z-[100] flex ${isDrawer ? "justify-end" : "items-center justify-center p-4"}`}>
+      <div className={`fixed inset-0 z-[100] flex ${isDrawer ? "justify-end" : "items-center justify-center p-4"}`} style={zIndex !== undefined ? { zIndex } : undefined}>
         <div
           className={`absolute inset-0 bg-black/40 backdrop-blur-sm ${closing ? "ui-overlay-out" : "ui-overlay-in"}`}
           onMouseDown={disableOverlayClose ? undefined : dismiss}
         />
-        <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" className={panelCls}>
+        <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" className={panelCls} style={panelStyle}>
           {bare ? (
-            children
+            content
           ) : (
             <>
               {(title || !hideClose) && (
@@ -215,7 +251,7 @@ export default function Modal({
                   )}
                 </div>
               )}
-              <div className={`overflow-y-auto flex-1 ${bodyClassName}`}>{children}</div>
+              <div className={`overflow-y-auto flex-1 ${bodyClassName}`}>{content}</div>
               {footer && <div className="flex items-center justify-end gap-2 p-4 border-t border-border flex-shrink-0">{footer}</div>}
             </>
           )}

@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { EXPENSE_TYPES, EXPENSE_STATUSES } from "@/constants/plannedExpenses";
 import type { PlannedExpense } from "@/lib/plannedExpenses";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -32,7 +32,7 @@ export default function PlannedExpenseDrawer({
   onClose: () => void;
   onSaved: (e: PlannedExpense) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const [name, setName] = useState(expense?.name || "");
   const [amount, setAmount] = useState(expense?.amount ? String(expense.amount) : "");
@@ -71,7 +71,7 @@ export default function PlannedExpenseDrawer({
       }
       onSaved(data.expense as PlannedExpense);
       showSuccess(expense ? "Xarajat yangilandi" : "Xarajat qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -79,12 +79,10 @@ export default function PlannedExpenseDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h3 className="text-[16px] font-semibold">{expense ? "Xarajatni tahrirlash" : "Xarajat qo'shish"}</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -137,14 +135,13 @@ export default function PlannedExpenseDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Bekor qilish
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // Ported from the real site's Shartnomalar tab: a table (the "Shartnoma turi"
 // column really is duplicated on the live site — kept as-is to match) + a
@@ -46,14 +47,12 @@ export default function ShartnomalarTabContent() {
       </div>
 
       {panelOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setPanelOpen(false)} />
-          <div className="absolute right-0 top-0 bottom-0 bg-card border-l border-border shadow-2xl flex flex-col" style={{ width: "92%", maxWidth: 360 }}>
+        <Modal onClose={() => setPanelOpen(false)} bare variant="drawer" zIndex={50} panelStyle={{ width: "92%", maxWidth: 360 }}>{(modal) => (<>
             <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-shrink-0">
               <h3 className="text-[18px] font-bold tracking-tight">Qo&apos;shish</h3>
               <button
                 type="button"
-                onClick={() => setPanelOpen(false)}
+                onClick={modal.close}
                 className="h-8 w-8 rounded-md hover:bg-secondary/60 text-muted-foreground inline-flex items-center justify-center"
               >
                 <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -80,11 +79,10 @@ export default function ShartnomalarTabContent() {
               </div>
             </div>
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-border flex-shrink-0">
-              <button type="button" onClick={() => setPanelOpen(false)} className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">Bekor qilish</button>
-              <button type="button" onClick={() => setPanelOpen(false)} className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">Saqlash</button>
+              <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">Bekor qilish</button>
+              <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">Saqlash</button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useBranches } from "@/hooks/useBranches";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Transfer" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: "Filialni tanlang" sarlavha,
@@ -18,18 +18,14 @@ export interface BranchPickerModalProps {
 }
 
 export default function BranchPickerModal({ onClose, onSelect }: BranchPickerModalProps) {
+  const modal = useModalClose(onClose);
   const [query, setQuery] = useState("");
   const { branches, loading } = useBranches();
-  useEscapeClose(onClose);
 
   const filtered = branches.filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={200}>
         <div className="p-5 pb-4 text-center border-b border-border">
           <h3 className="text-xl font-semibold">Filialni tanlang</h3>
         </div>
@@ -67,7 +63,6 @@ export default function BranchPickerModal({ onClose, onSelect }: BranchPickerMod
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

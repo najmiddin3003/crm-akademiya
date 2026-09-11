@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { SeasonalAssessment } from "@/lib/seasonalAssessments";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Mavsumiy baholash ro'yxatidagi bitta yozuvni tahrirlash (ball/izoh) —
 // jadvaldagi soat-tarix ikonkasi bosilganda ochiladi. Oy/kurs/guruh/o'quvchi
@@ -20,7 +20,7 @@ export default function SeasonalAssessmentEditModal({
   onClose: () => void;
   onSaved: (a: SeasonalAssessment) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [ball, setBall] = useState(String(assessment.ball));
   const [izoh, setIzoh] = useState(assessment.izoh);
@@ -42,7 +42,7 @@ export default function SeasonalAssessmentEditModal({
       }
       onSaved(data.assessment as SeasonalAssessment);
       showSuccess("Baho yangilandi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -50,9 +50,7 @@ export default function SeasonalAssessmentEditModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2">
           <h3 className="text-[16px] font-semibold">Bahoni tahrirlash</h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">{assessment.studentName} — {assessment.course} / {assessment.groupName}</p>
@@ -70,14 +68,13 @@ export default function SeasonalAssessmentEditModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <button onClick={onClose} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

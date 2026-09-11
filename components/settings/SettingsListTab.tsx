@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { ListFieldKey, SettingsListItem } from "@/lib/settingsLists";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Sozlamalardagi barcha oddiy CRUD ro'yxatlari uchun umumiy komponent
 // (Sabablar, To'lov turlari, Hamkorlar, grading tizimi, Hashtag …).
@@ -59,6 +60,7 @@ export default function SettingsListTab({
   fields: ListFieldDef[];
   computed?: ComputedColumnDef;
 }) {
+  const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [items, setItems] = useState<SettingsListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +152,7 @@ export default function SettingsListTab({
         editing ? prev.map((x) => (x.id === data.item.id ? data.item : x)) : [...prev, data.item],
       );
       showSuccess(editing ? "Yangilandi" : "Qo'shildi");
-      closeForm();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
     } finally {
@@ -308,9 +310,7 @@ export default function SettingsListTab({
       </div>
 
       {formOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeForm()} />
-          <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+        <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110} panelClassName="overflow-y-auto p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">{editTarget ? "Tahrirlash" : addLabel}</h3>
             {fields.map((f) => (
               <div key={f.key}>
@@ -367,7 +367,7 @@ export default function SettingsListTab({
             ))}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
-                onClick={closeForm}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -381,18 +381,15 @@ export default function SettingsListTab({
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -406,8 +403,7 @@ export default function SettingsListTab({
                 {deleting ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

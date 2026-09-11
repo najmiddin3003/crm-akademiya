@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Tahrirlash" modal for a single custom field definition, opened by clicking
 // a field row under the "Sozlamalar" tab (AddOrderPage.tsx) — reference:
@@ -47,13 +47,13 @@ export interface CustomFieldEditModalProps {
 }
 
 export default function CustomFieldEditModal({ field, onClose, onSave, onDelete }: CustomFieldEditModalProps) {
+  const modal = useModalClose(onClose);
   const [label, setLabel] = useState(field.label);
   const [type, setType] = useState<CustomFieldType>(field.type);
   const [stages, setStages] = useState<OrderStageKey[]>(field.stages);
   const [apiOnly, setApiOnly] = useState(field.apiOnly);
   const [stagesOpen, setStagesOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEscapeClose(onClose);
 
   const toggleStage = (key: OrderStageKey) => {
     setStages((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
@@ -73,11 +73,7 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={200} panelClassName="p-6 space-y-4">
         <h3 className="text-2xl font-semibold">Tahrirlash</h3>
 
         <input
@@ -150,7 +146,7 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
             <span />
           )}
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={modal.close}>
               Orqaga
             </Button>
             <Button variant="primary" onClick={handleSave} disabled={busy}>
@@ -158,7 +154,6 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

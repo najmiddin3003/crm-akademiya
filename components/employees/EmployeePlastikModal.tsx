@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Boshqaruv → Xodimlar jadvalidagi PLASTIK tugmachasi bosilganda chiqadigan
 // oyna: xodimga plastik karta orqali beriladigan oylik summasi.
@@ -29,6 +30,7 @@ export default function EmployeePlastikModal({
   onClose: () => void;
   onSave: (next: number | null) => Promise<void> | void;
 }) {
+  const modal = useModalClose(onClose);
   // DIQQAT: `current ? String(current) : ""` YOZILMAYDI. 0 ham, null ham
   // bo'sh satrga aylanib ketardi va "biriktirilmagan" bilan "0 so'm"
   // farqi yo'qolardi. (EmployeeSalaryConfigModal da aynan shu naqsh xato
@@ -49,9 +51,7 @@ export default function EmployeePlastikModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !saving && onClose()} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl">
+    <Modal onClose={onClose} controller={modal} locked={saving} bare zIndex={120}>
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border">
           <div>
             <h3 className="text-[15px] font-semibold">Plastik oylik</h3>
@@ -59,7 +59,7 @@ export default function EmployeePlastikModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={modal.close}
             disabled={saving}
             className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg hover:bg-secondary"
             aria-label="Yopish"
@@ -111,7 +111,7 @@ export default function EmployeePlastikModal({
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={modal.close}
               disabled={saving}
               className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
             >
@@ -127,7 +127,6 @@ export default function EmployeePlastikModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

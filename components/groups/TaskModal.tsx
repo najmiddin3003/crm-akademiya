@@ -2,12 +2,12 @@
 
 import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import DateField from "@/components/ui/DateField";
 import type { GroupTask } from "@/lib/groupTasks";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Vazifa qo'shish / tahrirlash modali (skrinshot 2). `task` berilsa — tahrirlash
 // (inputlar oldingi qiymatlar bilan to'ldiriladi), PATCH /api/group-tasks/:id.
@@ -30,11 +30,11 @@ function deadlineToParts(s: string): { date: string; time: string } {
 }
 
 export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask; onClose: () => void; onSaved: (task: GroupTask) => void }) {
+  const modal = useModalClose(onClose);
   // Topshiriq turlari — Topshiriqlar sahifasidagi bilan bir manba
   // (/api/task-types), ilgari constants'dagi qattiq ro'yxat edi.
   const { types } = useTaskTypes();
   const typeNames = types.map((t) => t.name).filter(Boolean);
-  useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   // Sukut "Imtihon": bu oyna "Imtihon qo'shish" tugmasidan ochiladi va
   // server ham `type` bo'sh bo'lsa aynan shuni yozadi
@@ -79,7 +79,7 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
       }
       onSaved(data.task as GroupTask);
       showSuccess(task ? "Vazifa yangilandi" : "Vazifa qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -87,9 +87,7 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
           <h3 className="text-[16px] font-semibold">{task ? "Vazifani tahrirlash" : "Vazifa qo'shish"}</h3>
         </div>
@@ -137,10 +135,9 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={onClose} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

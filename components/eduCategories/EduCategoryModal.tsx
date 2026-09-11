@@ -3,8 +3,8 @@
 import { invalidateEduCategories } from "@/hooks/useEduCategories";
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { EduCategory } from "@/lib/eduCategories";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Kategoriya qo'shish / tahrirlash modali (O'quv bo'limi → Kategoriya).
 // `category` berilsa — tahrirlash (PATCH /api/edu-categories/:id), aks holda
@@ -20,7 +20,7 @@ export default function EduCategoryModal({
   onClose: () => void;
   onSaved: (category: EduCategory) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [name, setName] = useState(category?.name || "");
   const [saving, setSaving] = useState(false);
@@ -47,7 +47,7 @@ export default function EduCategoryModal({
       invalidateEduCategories();
       onSaved(data.category as EduCategory);
       showSuccess(category ? "Kategoriya yangilandi" : "Kategoriya qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -55,9 +55,7 @@ export default function EduCategoryModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6">
+    <Modal onClose={onClose} controller={modal} bare panelClassName="p-6">
         <div>
           <label className="block text-[13px] font-medium mb-1.5">Nomi<span className="text-rose-500">*</span></label>
           <input
@@ -71,14 +69,13 @@ export default function EduCategoryModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 mt-6">
-          <button onClick={onClose} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

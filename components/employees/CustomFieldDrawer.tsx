@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useToast } from "@/components/ui/Toast";
 import { CUSTOM_FIELD_TYPES } from "@/constants/employees";
 import EmployeeToggle from "./EmployeeToggle";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Yangi maydon qo'shish" — xodim qo'shish modalidagi "Maxsus maydon qo'shish"
 // tugmasi bosilganda o'ng tomondan ochiladigan drawer (skrinshot 3).
@@ -38,7 +38,7 @@ export interface CustomFieldDrawerProps {
 const SELECT_TYPE = "Tanlov (select)";
 
 export default function CustomFieldDrawer({ onClose, onSave, saving = false }: CustomFieldDrawerProps) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   const { showError } = useToast();
   const [name, setName] = useState("");
   const [type, setType] = useState("");
@@ -67,13 +67,11 @@ export default function CustomFieldDrawer({ onClose, onSave, saving = false }: C
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h3 className="text-[16px] font-semibold">Yangi maydon qo&apos;shish</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground">
             <svg className="icon icon-sm"><use href="#i-x-circle" /></svg>
           </button>
         </div>
@@ -119,7 +117,7 @@ export default function CustomFieldDrawer({ onClose, onSave, saving = false }: C
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
           <button
             type="button"
-            onClick={onClose}
+            onClick={modal.close}
             className="h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
           >
             Bekor qilish
@@ -133,7 +131,6 @@ export default function CustomFieldDrawer({ onClose, onSave, saving = false }: C
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

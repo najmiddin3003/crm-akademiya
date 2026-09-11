@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { BLOCK_TEST_KINDS } from "@/constants/blockTest";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { BlockTestType, BlockTestSubject } from "@/lib/blockTestTypes";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Tur qo'shish" / tahrirlash modali (Blok test → Blok test turlari, referens
 // akademiya.edutizim.uz/block-test/types). `type` berilsa — tahrirlash
@@ -30,7 +30,7 @@ export default function BlockTestTypeModal({
   onClose: () => void;
   onSaved: (type: BlockTestType) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   // "Fan" tanlovi BAZADAN — /api/offline-courses (loyihadagi kurs/fan
   // ro'yxatining yagona manbasi, hooks/useOfflineCourseList.ts). Ilgari bu
@@ -81,7 +81,7 @@ export default function BlockTestTypeModal({
       }
       onSaved(data.type as BlockTestType);
       showSuccess(type ? "Tur yangilandi" : "Tur qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -89,9 +89,7 @@ export default function BlockTestTypeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
           <h3 className="text-[16px] font-semibold">{type ? "Turni tahrirlash" : "Tur qo'shish"}</h3>
         </div>
@@ -178,14 +176,13 @@ export default function BlockTestTypeModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={onClose} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
             Bekor qilish
           </button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

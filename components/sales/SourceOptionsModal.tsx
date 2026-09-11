@@ -5,8 +5,8 @@ import { Check, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { StudentSourceOption } from "@/lib/studentSources";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Manba" tanlovlarini boshqarish oynasi — O'quvchilar oqimi sahifasidan
 // ochiladi. Bu yerda qo'shilgan qiymatlar o'quvchi qo'shish formasidagi
@@ -31,7 +31,7 @@ export default function SourceOptionsModal({
   /** Ro'yxat o'zgardi — sahifa taqsimotni qayta o'qisin. */
   onChanged: () => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
 
   const [options, setOptions] = useState<StudentSourceOption[]>([]);
@@ -104,12 +104,7 @@ export default function SourceOptionsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[85vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={120}>
         <div className="flex items-start gap-3 px-5 py-4 border-b border-border">
           <div className="flex-1">
             <h3 className="text-base font-semibold">Manbalar ro&apos;yxati</h3>
@@ -118,7 +113,7 @@ export default function SourceOptionsModal({
               &laquo;Manba&raquo; tanlovida chiqadi.
             </p>
           </div>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center shrink-0">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -237,9 +232,8 @@ export default function SourceOptionsModal({
         </div>
 
         <div className="flex justify-end px-5 py-4 border-t border-border">
-          <Button variant="outline" onClick={onClose}>Yopish</Button>
+          <Button variant="outline" onClick={modal.close}>Yopish</Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

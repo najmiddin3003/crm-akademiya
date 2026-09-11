@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
@@ -12,6 +11,7 @@ import type { Group } from "@/lib/groups";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Guruhni tahrirlash modali (skrinshot 1). Guruh maydonlari bilan to'ldirilgan;
 // Saqlash → PATCH /api/groups/:id.
@@ -43,7 +43,7 @@ function isoToDmy(s: string): string {
 }
 
 export default function EditGroupModal({ group, onClose, onSaved }: { group: Group; onClose: () => void; onSaved: (g: Group) => void }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
@@ -91,7 +91,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
       }
       onSaved(data.group as Group);
       showSuccess("Guruh yangilandi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -99,9 +99,7 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
           <h3 className="text-base font-semibold">Guruhni tahrirlash</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5"><span className="text-rose-500">*</span> Zarurligini bildiradi</p>
@@ -167,10 +165,9 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={onClose} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

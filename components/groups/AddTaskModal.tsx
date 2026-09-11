@@ -2,9 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { GroupTask } from "@/lib/groupTasks";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Topshiriq qo'shish" modali (skrinshot 1-2). Saqlash → POST
 // /api/groups/:id/tasks. Fayl mahalliy (backendga faqat fayl NOMI yuboriladi —
@@ -13,7 +13,7 @@ const inputCls = "w-full h-11 rounded-lg border border-border bg-card px-3 text-
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
 export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: number; onClose: () => void; onAdded: (task: GroupTask) => void }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState("Vazifa");
   const [name, setName] = useState("");
@@ -45,7 +45,7 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
       }
       onAdded(data.task as GroupTask);
       showSuccess("Topshiriq qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -53,9 +53,7 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
           <h3 className="text-[16px] font-semibold">Topshiriq qo&apos;shish</h3>
         </div>
@@ -90,10 +88,9 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={onClose} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

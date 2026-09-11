@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
 import { useLang } from "@/components/shared/Language";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useStudents } from "@/hooks/useStudents";
 import { useStaff } from "@/hooks/useStaff";
 import { MONTHS, WEEKDAYS_FULL } from "@/lib/i18n";
@@ -20,6 +19,7 @@ import {
   type BirthdayPerson,
 } from "@/lib/birthdays";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 /** Ism bosilganda ochiladigan profil sahifasi. */
 function profileHref(p: BirthdayPerson): string {
@@ -76,9 +76,7 @@ export default function BirthdaysPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   // Katak bosilganda o'sha kunning to'liq ro'yxati modalda ochiladi
   // (referensda ham shunday — katakda faqat 3 ta ism sig'adi).
-  const [openDay, setOpenDay] = useState<number | null>(null);
-  useEscapeClose(openDay !== null ? () => setOpenDay(null) : () => {});
-
+  const [openDay, setOpenDay] = useState<number | null>(null);
   const all = useMemo(() => {
     const studentSources = pupils.map((p) => ({
       id: p.id,
@@ -224,14 +222,7 @@ export default function BirthdaysPage() {
       {/* Kun modali — referensdagidek: sarlavhada to'liq sana, ichida ism +
           telefon kartalari, pastda "Orqaga". Ism bosilsa profilga o'tadi. */}
       {openDay !== null && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setOpenDay(null)}
-        >
-          <div
-            className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[80vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal onClose={() => setOpenDay(null)} bare size="lg" zIndex={200}>{(modal) => (<>
             <div className="px-5 pt-5 pb-3">
               {/* Yagona shablon-satr: JSX'da `{expr} matn&apos;li-so'z`
                   shaklida yozilsa probel yo'qoladi (README'dagi tuzoq). */}
@@ -245,7 +236,7 @@ export default function BirthdaysPage() {
                 <Link
                   key={`${p.kind}-${p.id}`}
                   href={profileHref(p)}
-                  onClick={() => setOpenDay(null)}
+                  onClick={modal.close}
                   className="block rounded-xl bg-secondary/50 hover:bg-secondary px-4 py-3 transition-colors"
                 >
                   <div className="text-[14px] font-medium">{p.name}</div>
@@ -258,14 +249,13 @@ export default function BirthdaysPage() {
 
             <div className="flex justify-end px-5 py-4">
               <button
-                onClick={() => setOpenDay(null)}
+                onClick={modal.close}
                 className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
                 Orqaga
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

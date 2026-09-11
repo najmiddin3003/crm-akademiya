@@ -1,9 +1,9 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useGroups } from "@/hooks/useGroups";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -29,22 +29,18 @@ export default function StudentGroupsModal({
   balance: number;
   onClose: () => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { groups, loading } = useGroups();
   const myGroups = groups.filter((g) => g.studentIds?.includes(pupilId));
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={300}>
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
           <div className="flex-1 min-w-0">
             <h3 className="text-[17px] font-semibold">Guruhlar</h3>
             <p className="text-[12px] text-muted-foreground truncate">{studentName}</p>
           </div>
-          <button onClick={onClose} className="h-8 w-8 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -85,7 +81,6 @@ export default function StudentGroupsModal({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

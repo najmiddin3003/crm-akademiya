@@ -50,6 +50,7 @@ import SelectField from "@/components/students/fields/SelectField";
 import DateField from "@/components/students/fields/DateField";
 import { invalidateStudents } from "@/hooks/useStudents";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
+import Modal from "@/components/ui/Modal";
 
 // Ported from crm-akademiya/src/app.js renderStudentEdit() / renderStudentEditTahrirlash()
 // (~line 34100-35000, view: 'student-edit'). Only the "Tahrirlash" tab has real
@@ -467,23 +468,21 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           </div>
 
           {confirmDelete && pupil && (
-            <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmDelete(false)}>
-              <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <Modal onClose={() => setConfirmDelete(false)} bare size="sm" zIndex={300} panelClassName="p-5 space-y-4">{(modal) => (<>
                 <h3 className="text-lg font-semibold">O&apos;quvchini o&apos;chirish</h3>
                 <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">{`${pupil.firstName} ${pupil.lastName}`.trim()}</strong>
                   {" "}o&apos;chiriladi va barcha guruhlardan chiqariladi. Bu amalni qaytarib bo&apos;lmaydi.
                 </p>
                 <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setConfirmDelete(false)} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+                  <button type="button" onClick={modal.close} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
                     Bekor qilish
                   </button>
                   <button type="button" disabled={deleting} onClick={handleDelete} className="h-9 rounded-lg bg-rose-500 px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                     {deleting ? "O'chirilmoqda..." : "O'chirish"}
                   </button>
                 </div>
-              </div>
-            </div>
+              </>)}</Modal>
           )}
           </>
           )}

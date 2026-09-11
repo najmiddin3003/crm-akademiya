@@ -6,6 +6,7 @@ import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Xodim profili → "Ish haqi" oynasi.
 //
@@ -39,6 +40,7 @@ export default function EmployeeSalaryConfigModal({
   onClose: () => void;
   onSaved: (updated: HrEmployee) => void;
 }) {
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [branches, setBranches] = useState<NamedId[]>([]);
   const [roles, setRoles] = useState<NamedId[]>([]);
@@ -140,14 +142,13 @@ export default function EmployeeSalaryConfigModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onClose} controller={modal} bare size="3xl" zIndex={50} panelClassName="overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-card">
           <div>
             <h3 className="text-[15px] font-semibold">Ish haqi — {employee.name}</h3>
             <p className="text-[12px] text-muted-foreground mt-0.5">Filial bo&apos;yicha oklad kiriting. Oylik hisobi va kassadagi chiqim chegarasi shu qiymatlarga tayanadi.</p>
           </div>
-          <button type="button" onClick={onClose} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-secondary">
+          <button type="button" onClick={modal.close} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-secondary">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -259,12 +260,11 @@ export default function EmployeeSalaryConfigModal({
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border sticky bottom-0 bg-card">
-          <button type="button" onClick={onClose} className="h-10 px-4 rounded-lg border border-border hover:bg-secondary text-sm">Bekor qilish</button>
+          <button type="button" onClick={modal.close} className="h-10 px-4 rounded-lg border border-border hover:bg-secondary text-sm">Bekor qilish</button>
           <button type="button" onClick={save} disabled={saving || loading} className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowDownSquare, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useStudents } from "@/hooks/useStudents";
 import { IM_LEVELS, IM_SUBJECTS } from "@/constants/imtihon";
 import { imMonthLabel, imPct, normalizeMonth, type MonthlyExam } from "@/lib/imtihon";
@@ -13,6 +12,7 @@ import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "
 import UzbmbView from "./UzbmbView";
 import Select from "@/components/ui/Select";
 import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
+import Modal from "@/components/ui/Modal";
 
 // Imtihon bo'limi — referens HTML'dagi "IMTIHON (Oylik imtihon) VIEW" ning
 // aynan o'zi: sarlavha + 4 amal tugmasi, ichki tablar (Oylik imtihon | UzBMB),
@@ -365,14 +365,6 @@ export default function ImtihonPage() {
     };
   }, [cmp, exams]);
 
-  useEscapeClose(
-    useCallback(() => {
-      setEntryOpen(false);
-      setImportOpen(false);
-      setCmpId(null);
-    }, []),
-  );
-
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -591,19 +583,12 @@ export default function ImtihonPage() {
 
       {/* ===== NATIJA KIRITISH MODALI ===== */}
       {entryOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.45)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setEntryOpen(false);
-          }}
-        >
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-md">
+        <Modal onClose={() => setEntryOpen(false)} bare zIndex={120}>{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-[16px] font-semibold">Oylik imtihon natijasi</div>
                 <button
-                  onClick={() => setEntryOpen(false)}
+                  onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                 >
                   <XCircle className="w-4 h-4" />
@@ -690,7 +675,7 @@ export default function ImtihonPage() {
 
               <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-border">
                 <button
-                  onClick={() => setEntryOpen(false)}
+                  onClick={modal.close}
                   disabled={saving}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm disabled:opacity-60"
                 >
@@ -705,25 +690,17 @@ export default function ImtihonPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {/* ===== IMPORT MODALI ===== */}
       {importOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.45)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setImportOpen(false);
-          }}
-        >
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-xl">
+        <Modal onClose={() => setImportOpen(false)} bare size="xl" zIndex={120}>{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-[16px] font-semibold">Excel / CSV dan yuklash</div>
                 <button
-                  onClick={() => setImportOpen(false)}
+                  onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                 >
                   <XCircle className="w-4 h-4" />
@@ -769,7 +746,7 @@ export default function ImtihonPage() {
               )}
               <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-border">
                 <button
-                  onClick={() => setImportOpen(false)}
+                  onClick={modal.close}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm"
                 >
                   Yopish
@@ -783,20 +760,12 @@ export default function ImtihonPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {/* ===== SOLISHTIRISH MODALI ===== */}
       {cmp && cmpData && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.45)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setCmpId(null);
-          }}
-        >
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Modal onClose={() => setCmpId(null)} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
             <div className="p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
@@ -807,7 +776,7 @@ export default function ImtihonPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setCmpId(null)}
+                  onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground flex-shrink-0"
                 >
                   <XCircle className="w-4 h-4" />
@@ -893,8 +862,7 @@ export default function ImtihonPage() {
                 </table>
               </div>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

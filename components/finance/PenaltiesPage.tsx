@@ -9,6 +9,7 @@ import { PENALTY_CANCEL_REASONS } from "@/constants/penalties";
 import PenaltyDrawer from "./PenaltyDrawer";
 import type { Penalty } from "@/lib/penalties";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // Moliya → Jarima (sidebar: Moliya > Jarima, href /finance-penalty).
 // Ma'lumot /api/penalties dan. "Jarima qo'shish" — PenaltyDrawer. Chapdagi
@@ -164,21 +165,18 @@ export default function PenaltiesPage() {
         <PenaltyDrawer onClose={() => setAddOpen(false)} onSaved={(p) => setRows((prev) => [p, ...prev])} />
       )}
       {cancelTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !cancelling && setCancelTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+        <Modal onClose={() => setCancelTarget(null)} locked={cancelling} bare size="sm" zIndex={110} panelClassName="p-6 space-y-4">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham bekor qilmoqchimisiz?</p>
             <Select value={cancelReason} onChange={(v) => setCancelReason(v)} options={PENALTY_CANCEL_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable />
             <div className="flex items-center justify-center gap-2">
-              <button onClick={() => setCancelTarget(null)} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+              <button onClick={modal.close} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 Yo&apos;q
               </button>
               <button onClick={confirmCancel} disabled={cancelling} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
                 {cancelling ? "Bekor qilinmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

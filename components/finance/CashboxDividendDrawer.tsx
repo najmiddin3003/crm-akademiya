@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -43,7 +43,7 @@ export default function CashboxDividendDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods } = usePaymentMethods();
   // TUZATILDI: Sozlamalardagi "Sarmoya va dividentda ko'rsatish" tugmasi
@@ -119,7 +119,7 @@ export default function CashboxDividendDrawer({
       }
       onSaved(data.cashbox as Cashbox);
       showSuccess("Divident to'landi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -127,15 +127,13 @@ export default function CashboxDividendDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex items-center gap-3 px-5 py-4 bg-primary text-white">
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h3 className="text-[16px] font-semibold flex-1">Divident</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -210,14 +208,13 @@ export default function CashboxDividendDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

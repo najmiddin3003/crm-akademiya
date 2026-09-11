@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { ALL_PERMISSION_PATHS, PERMISSION_GROUPS } from "@/lib/permissions";
 import type { Role } from "@/lib/roles";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Boshqaruv → Rollar (sidebar: Boshqaruv > Rollar, href /management-rollar).
 // Ma'lumot HAQIQIY — /api/roles va /api/hr-employees.
@@ -90,6 +91,7 @@ function CoveragePanel({ data }: { data: RoleCoverage }) {
 }
 
 export default function RolesPage() {
+  const modal = useModalClose(closeAll);
   const { showSuccess, showError } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -237,7 +239,7 @@ export default function RolesPage() {
         setRoles((prev) => prev.map((x) => (x.id === data.role.id ? data.role : x)));
         showSuccess("Ruxsatlar saqlandi");
       }
-      closeAll();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
     } finally {
@@ -408,9 +410,7 @@ export default function RolesPage() {
 
       {/* ── Xodimni tanlash ─────────────────────────────────────────────── */}
       {empListOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeAll} />
-          <div className="relative w-full max-w-2xl h-[80vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+        <Modal onClose={closeAll} controller={modal} bare size="2xl" zIndex={110} panelClassName="h-[80vh]">
             <div className="shrink-0 px-6 pt-5 pb-4 space-y-3">
               <div>
                 <h3 className="text-[17px] font-semibold">Xodimga alohida ruxsat</h3>
@@ -460,24 +460,18 @@ export default function RolesPage() {
 
             <div className="shrink-0 flex items-center justify-end px-6 py-4 border-t border-border">
               <button
-                onClick={closeAll}
+                onClick={modal.close}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
               >
                 Yopish
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {/* ── Ruxsatlar oynasi: yangi rol / rol / xodim uchun bir xil ────── */}
       {(createOpen || roleTarget || empTarget) && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeAll()} />
-          {/* Ruxsatlar daraxti baland — oyna ekranning 90% ini egallaydi va
-              ichida uch qavat: sarlavha, siljiydigan ro'yxat, tugmalar. Shu
-              tufayli "Saqlash" doim ko'rinib turadi. */}
-          <div className="relative w-[90vw] h-[90vh] flex flex-col rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+        <Modal onClose={closeAll} controller={modal} locked={saving} bare zIndex={110} panelClassName="w-[90vw] h-[90vh]">
             <div className="shrink-0 px-6 pt-5 pb-4 space-y-3">
               {empTarget ? (
                 <div className="flex items-start gap-3">
@@ -556,7 +550,7 @@ export default function RolesPage() {
                 </button>
               )}
               <button
-                onClick={closeAll}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -570,20 +564,17 @@ export default function RolesPage() {
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} locked={saving} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">
               &laquo;{deleteTarget.name}&raquo; rolini o&apos;chirmoqchimisiz?
             </p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -597,8 +588,7 @@ export default function RolesPage() {
                 {saving ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

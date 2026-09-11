@@ -29,6 +29,7 @@ import {
   type EmployeePayroll,
 } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import Modal from "@/components/ui/Modal";
 
 // Moliya → Oylik chiqarish (/finance-payroll) — bo'limning BOSH sahifasi.
 //
@@ -807,9 +808,7 @@ export default function SalaryCreatePage() {
       </div>
 
       {confirmOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setConfirmOpen(false)} />
-          <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setConfirmOpen(false)} locked={saving} bare zIndex={110} panelClassName="p-6">{(modal) => (<>
             {/* QAYSI OY — tasdiqlash oynasida ko'rinishi SHART: o'tgan oy
                 tanlangan holda tugma bosilsa, pul boshqa oyning hisobiga
                 chiqadi va buni keyin faqat chiqarishni o'chirib qaytarish
@@ -935,7 +934,7 @@ export default function SalaryCreatePage() {
 
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setConfirmOpen(false)}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -949,8 +948,7 @@ export default function SalaryCreatePage() {
                 {saving ? "Chiqarilmoqda…" : "Ha, chiqarish"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

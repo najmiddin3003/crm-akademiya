@@ -5,11 +5,11 @@ import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import PersonLink from "@/components/shared/PersonDirectory";
 
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 const STATUS_LABELS: Record<string, string> = { "": "Qabul qilingan", waiting: "Kutilmoqda", cancelled: "Bekor qilingan" };
 
@@ -56,7 +56,7 @@ export default function TransactionDetailDrawer({
   /** Bekor qilinganda — yangilangan yozuv qaytariladi. */
   onChanged: (entry: TransactionEntry) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -85,15 +85,13 @@ export default function TransactionDetailDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <><Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex items-center gap-3 px-5 py-4 bg-primary text-white">
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h3 className="text-[16px] font-semibold flex-1">Ma&apos;lumot</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -148,25 +146,19 @@ export default function TransactionDetailDrawer({
             </button>
           </div>
         )}
-      </div>
-
-      {confirmOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !cancelling && setConfirmOpen(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+      </Modal>{confirmOpen && (
+        <Modal onClose={() => setConfirmOpen(false)} locked={cancelling} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Tranzaksiyani bekor qilmoqchimisiz?</p>
             <p className="text-center text-[13px] text-muted-foreground mt-1.5">Kassa balansi ham teskari o&apos;zgaradi.</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setConfirmOpen(false)} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+              <button onClick={modal.close} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 Yo&apos;q
               </button>
               <button onClick={confirmCancel} disabled={cancelling} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
                 {cancelling ? "Bekor qilinmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </>)}</Modal>
+      )}</>
   );
 }

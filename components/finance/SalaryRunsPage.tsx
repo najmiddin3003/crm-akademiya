@@ -11,6 +11,7 @@ import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import { UZ_MONTHS, payrollPeriod, payrollPeriodLabel } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // Moliya → Oylik chiqarish → Chiqarishlar tarixi (/finance-payroll/history).
 // Har bir qator — bitta o'tkazilgan "oylik chiqarish" partiyasining
@@ -288,9 +289,7 @@ export default function SalaryRunsPage() {
 
       {/* Detail modal */}
       {detail && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDetail(null)} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDetail(null)} bare size="lg" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <h3 className="text-[16px] font-semibold mb-1">Oylik chiqarish #{detail.id}</h3>
             <div className="text-[12.5px] text-muted-foreground mb-4">
               {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month)}`} Â· {detail.employeeCount} ta xodim
@@ -397,21 +396,18 @@ export default function SalaryRunsPage() {
 
             <div className="flex justify-end mt-5">
               <button
-                onClick={() => setDetail(null)}
+                onClick={modal.close}
                 className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
                 Yopish
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {/* Delete confirm */}
       {confirmDel && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setConfirmDel(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setConfirmDel(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">
               Haqiqatdan ham bu oylik chiqarishni o&apos;chirishni xohlaysizmi?
             </p>
@@ -429,7 +425,7 @@ export default function SalaryRunsPage() {
             )}
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setConfirmDel(null)}
+                onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -443,8 +439,7 @@ export default function SalaryRunsPage() {
                 {deleting ? "O'chirilmoqda…" : "Ha, o'chirish"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {/* Chek — tafsilot oynasi USTIDA ochiladi (z-[120]), shuning uchun

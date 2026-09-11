@@ -29,6 +29,7 @@ import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import type { GroupTask } from "@/lib/groupTasks";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Modal from "@/components/ui/Modal";
 
 // Guruh tafsiloti (skrinshot 1-5). Chap "Guruh ma'lumotlari" kartasi guruh
 // maydonlaridan. O'ngda 5 tab:
@@ -737,15 +738,14 @@ export default function GroupDetailPage({ id }: { id: number }) {
       )}
 
       {removeFor && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={() => setRemoveFor(null)}>
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setRemoveFor(null)} bare size="sm" zIndex={300} panelClassName="p-5 space-y-4">{(modal) => (<>
             <h3 className="text-lg font-semibold">Guruhdan chiqarish</h3>
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">{pupilName(removeFor)}</strong>
               {" "}shu guruhdan chiqariladi. O&apos;quvchining o&apos;zi o&apos;chirilmaydi.
             </p>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setRemoveFor(null)} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+              <button type="button" onClick={modal.close} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
                 Bekor qilish
               </button>
               <button
@@ -769,8 +769,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                 {rowBusy ? "Chiqarilmoqda..." : "Chiqarish"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {taskModalOpen && (
@@ -792,15 +791,14 @@ export default function GroupDetailPage({ id }: { id: number }) {
       )}
 
       {lessonDeleteFor && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={() => !lessonBusy && setLessonDeleteFor(null)}>
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <Modal onClose={() => setLessonDeleteFor(null)} locked={lessonBusy} bare size="sm" zIndex={300} panelClassName="p-5 space-y-4">{(modal) => (<>
             <h3 className="text-lg font-semibold">Mashg&apos;ulotni o&apos;chirish</h3>
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">{lessonDeleteFor.name}</strong>
               {" "}o&apos;chiriladi. Bu amalni ortga qaytarib bo&apos;lmaydi.
             </p>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setLessonDeleteFor(null)} disabled={lessonBusy} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+              <button type="button" onClick={modal.close} disabled={lessonBusy} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
                 Bekor qilish
               </button>
               <button
@@ -812,8 +810,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                 {lessonBusy ? "O'chirilmoqda..." : "O'chirish"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {editOpen && (
@@ -825,16 +822,13 @@ export default function GroupDetailPage({ id }: { id: number }) {
       )}
 
       {archiveConfirm && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !archiving && setArchiveConfirm(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setArchiveConfirm(false)} locked={archiving} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Haqiqatdan ham arxivga qo&apos;shmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setArchiveConfirm(false)} disabled={archiving} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Yo&apos;q</button>
+              <button onClick={modal.close} disabled={archiving} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Yo&apos;q</button>
               <button onClick={confirmArchive} disabled={archiving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{archiving ? "..." : "Ha"}</button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Upload, X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import PhoneField, { phoneDigits } from "@/components/auth/PhoneField";
 import { useBranches } from "@/hooks/useBranches";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -19,6 +18,7 @@ import {
 } from "./employeeExtras";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
 // Saqlash → POST /api/hr-employees.
@@ -163,8 +163,8 @@ type EmployeeFormProps =
   | { employee: HrEmployeeFull; onClose: () => void; onSaved?: (emp: HrEmployeeFull) => void; onCreated?: never };
 
 export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved }: EmployeeFormProps) {
+  const modal = useModalClose(onClose);
   const editing = Boolean(employee);
-  useEscapeClose(onClose);
   const { showSuccess, showError } = useToast();
   // Filial qatorlari Boshqaruv → Filiallar bilan bir xil manbadan.
   const { branches, loading: branchesLoading } = useBranches();
@@ -630,7 +630,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           showError(`Xodim qo'shildi — ${name}, lekin faollashtirish SMS'i yuborilmadi. Birozdan so'ng qayta urinib ko'ring.`);
         }
       }
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -638,9 +638,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
+    <><Modal onClose={onClose} controller={modal} bare size="3xl" panelClassName="overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-border sticky top-0 bg-card z-10">
           <h3 className="text-[16px] font-semibold">{editing ? "Xodimni tahrirlash" : "Xodim qo'shish"}</h3>
@@ -946,18 +944,15 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-border sticky bottom-0 bg-card">
-          <button onClick={onClose} className="h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary">Orqaga</button>
+          <button onClick={modal.close} className="h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary">Orqaga</button>
           <button onClick={save} disabled={saving} className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
         </div>
-      </div>
-
-      {showCustomField && (
+      </Modal>{showCustomField && (
         <CustomFieldDrawer
           onClose={() => setShowCustomField(false)}
           onSave={addCustomField}
           saving={savingField}
         />
-      )}
-    </div>
+      )}</>
   );
 }

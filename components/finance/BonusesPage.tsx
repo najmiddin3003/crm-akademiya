@@ -10,6 +10,7 @@ import { BONUS_TYPES } from "@/constants/bonuses";
 import BonusDrawer from "./BonusDrawer";
 import type { Bonus } from "@/lib/bonuses";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // Moliya → Bonus (sidebar: Moliya > Bonus, href /finance-bonus). Ma'lumot
 // /api/bonuses dan. "Bonus yaratish" — BonusDrawer (o'ng panel), o'chirish —
@@ -375,20 +376,17 @@ export default function BonusesPage() {
         <BonusDrawer onClose={() => setAddOpen(false)} onSaved={(b) => setRows((prev) => [b, ...prev])} />
       )}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+              <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 Yo&apos;q
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
                 {deleting ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

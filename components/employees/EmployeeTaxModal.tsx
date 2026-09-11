@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SettingsListItem } from "@/lib/settingsLists";
 import { parseMoney } from "@/lib/taxes";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Boshqaruv → Xodimlar jadvalidagi SOLIQ tugmachasi bosilganda chiqadigan
 // tanlov: xodimga aynan QAYSI soliq turlari qo'llanishi belgilanadi.
@@ -42,6 +43,7 @@ export default function EmployeeTaxModal({
   onClose: () => void;
   onSave: (ids: number[]) => Promise<void> | void;
 }) {
+  const modal = useModalClose(onClose);
   const [items, setItems] = useState<SettingsListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -102,9 +104,7 @@ export default function EmployeeTaxModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !saving && onClose()} />
-      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl">
+    <Modal onClose={onClose} controller={modal} locked={saving} bare zIndex={120} panelClassName="overflow-y-auto">
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border sticky top-0 bg-card">
           <div>
             <h3 className="text-[15px] font-semibold">Soliq turlari</h3>
@@ -112,7 +112,7 @@ export default function EmployeeTaxModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={modal.close}
             disabled={saving}
             className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg hover:bg-secondary"
             aria-label="Yopish"
@@ -177,7 +177,7 @@ export default function EmployeeTaxModal({
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border sticky bottom-0 bg-card">
           <button
             type="button"
-            onClick={onClose}
+            onClick={modal.close}
             disabled={saving}
             className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
           >
@@ -192,7 +192,6 @@ export default function EmployeeTaxModal({
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

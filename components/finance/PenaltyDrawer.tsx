@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { PENALTY_TYPES } from "@/constants/penalties";
@@ -13,6 +12,7 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import type { Penalty } from "@/lib/penalties";
 import type { Cashbox } from "@/lib/cashboxes";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Jarima qo'shish" — Moliya → Jarima sahifasidagi o'ng tomondan ochiladigan
 // panel. Bonus bilan bir xil "Tranzaksiya turi" → Xodim/O'quvchi mantig'i
@@ -32,7 +32,7 @@ export default function PenaltyDrawer({
   onClose: () => void;
   onSaved: (p: Penalty) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
   const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
   const { showSuccess, showError } = useToast();
@@ -115,7 +115,7 @@ export default function PenaltyDrawer({
       }
       onSaved(data.penalty as Penalty);
       showSuccess("Jarima qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -123,9 +123,7 @@ export default function PenaltyDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya turi</label>
@@ -197,14 +195,13 @@ export default function PenaltyDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

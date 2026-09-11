@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import DatePicker from "@/components/ui/DatePicker";
 import MoneyInput from "@/components/ui/MoneyInput";
@@ -12,6 +11,7 @@ import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { StudentRow } from "@/lib/studentsData";
 import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Shartnoma yaratish" — Moliya → Shartnoma sahifasidagi o'ng tomondan
 // ochiladigan panel. `contract` berilsa — tahrirlash (PATCH
@@ -56,7 +56,7 @@ export default function FinanceContractDrawer({
   onClose: () => void;
   onSaved: (c: FinanceContract) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const { moderators, loading: moderatorsLoading } = useModerators();
 
@@ -134,7 +134,7 @@ export default function FinanceContractDrawer({
       }
       onSaved(data.contract as FinanceContract);
       showSuccess(contract ? "Shartnoma yangilandi" : "Shartnoma qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -142,15 +142,13 @@ export default function FinanceContractDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex items-center gap-3 px-5 py-4 bg-primary text-white">
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h3 className="text-[16px] font-semibold flex-1">{contract ? "Shartnomani tahrirlash" : "Shartnoma yaratish"}</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -243,14 +241,13 @@ export default function FinanceContractDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

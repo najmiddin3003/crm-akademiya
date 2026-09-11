@@ -8,6 +8,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import TaskModal from "./TaskModal";
 import type { GroupTask } from "@/lib/groupTasks";
 import PersonLink from "@/components/shared/PersonDirectory";
+import Modal from "@/components/ui/Modal";
 
 // Guruh → Barcha vazifalar (crm-akademiya #view-groups-tasks). Barcha guruhlar
 // bo'ylab vazifalar (/api/group-tasks). "Imtihon qo'shish" → TaskModal (qo'shish),
@@ -125,17 +126,14 @@ export default function GroupTasksPage() {
         <TaskModal task={editTask} onClose={() => setEditTask(null)} onSaved={(t) => setTasks((prev) => prev.map((x) => (x.id === t.id ? t : x)))} />
       )}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Vazifani o&apos;chirmoqchimisiz?</p>
             <p className="text-center text-[13px] text-muted-foreground mt-1">{deleteTarget.name}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setDeleteTarget(null)} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Yo&apos;q</button>
+              <button onClick={modal.close} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Yo&apos;q</button>
               <button onClick={confirmDelete} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700">Ha</button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

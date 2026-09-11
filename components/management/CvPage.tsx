@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { ArrowLeftRight, FilePlus, LayoutGrid, Link2, Search, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import {
   CV_APPS_SCRIPT,
   CV_POSITIONS,
@@ -14,6 +13,7 @@ import {
 } from "@/constants/managementCv";
 import type { CvApplication, CvStatus } from "@/lib/managementCv";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
 // bo'limining aynan o'zi: sarlavha + 4 ta amal tugmasi, 5 ta statistika
@@ -380,13 +380,7 @@ export default function CvPage() {
   }
 
   const closeDetail = useCallback(() => setDetailId(null), []);
-  useEscapeClose(
-    useCallback(() => {
-      setDetailId(null);
-      setFormOpen(false);
-      setSheetsOpen(false);
-    }, []),
-  );
+  const modal = useModalClose(closeDetail);
 
   const dotCls = sheetsOk === true ? "bg-emerald-500" : sheetsOk === false ? "bg-rose-500" : "bg-slate-400";
 
@@ -537,14 +531,7 @@ export default function CvPage() {
 
       {/* ===== CV DETAIL MODAL ===== */}
       {detail && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.45)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeDetail();
-          }}
-        >
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Modal onClose={closeDetail} controller={modal} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">
             <div className="p-5">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
@@ -558,7 +545,7 @@ export default function CvPage() {
                   </div>
                 </div>
                 <button
-                  onClick={closeDetail}
+                  onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground flex-shrink-0"
                 >
                   <XCircle className="w-4 h-4" />
@@ -621,25 +608,17 @@ export default function CvPage() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {/* ===== GOOGLE SHEETS SOZLASH MODALI ===== */}
       {sheetsOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.45)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSheetsOpen(false);
-          }}
-        >
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Modal onClose={() => setSheetsOpen(false)} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[17px] font-semibold">Google Sheets bilan bog&apos;lash</div>
                 <button
-                  onClick={() => setSheetsOpen(false)}
+                  onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                 >
                   <XCircle className="w-4 h-4" />
@@ -704,25 +683,17 @@ export default function CvPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {/* ===== CV FORM MODAL (anketa) ===== */}
       {formOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.45)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setFormOpen(false);
-          }}
-        >
-          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Modal onClose={() => setFormOpen(false)} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[17px] font-semibold">Ishga qabul anketasi</div>
                 <button
-                  onClick={() => setFormOpen(false)}
+                  onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                 >
                   <XCircle className="w-4 h-4" />
@@ -777,7 +748,7 @@ export default function CvPage() {
 
               <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-border">
                 <button
-                  onClick={() => setFormOpen(false)}
+                  onClick={modal.close}
                   disabled={submitting}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm disabled:opacity-60"
                 >
@@ -792,8 +763,7 @@ export default function CvPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

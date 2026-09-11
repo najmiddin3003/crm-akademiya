@@ -5,7 +5,6 @@ import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import DatePicker from "@/components/ui/DatePicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
@@ -22,6 +21,7 @@ import { ROLE_LABELS } from "@/constants/employees";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -84,6 +84,7 @@ export default function CashboxAdjustDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
+  const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
   const { showSuccess, showError } = useToast();
@@ -143,7 +144,6 @@ export default function CashboxAdjustDrawer({
 
   // Maosh/guruh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda
   // ikkala tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
-  useEscapeClose(salaryOpen || groupsOpen ? () => {} : onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -367,7 +367,7 @@ export default function CashboxAdjustDrawer({
       }
       onSaved(data.cashbox as Cashbox);
       showSuccess("Chiqim amalga oshirildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -375,15 +375,13 @@ export default function CashboxAdjustDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <><Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex items-center gap-3 px-5 py-4 bg-primary text-white">
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h3 className="text-[16px] font-semibold flex-1">Chiqim</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -580,7 +578,7 @@ export default function CashboxAdjustDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
           <button
@@ -591,25 +589,20 @@ export default function CashboxAdjustDrawer({
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-
-      {/* Modal chekmadan (z-110) tepada turishi kerak — z-300. */}
-      {salaryOpen && selectedEmployee && (
+      </Modal>{salaryOpen && selectedEmployee && (
         <EmployeeSalaryModal
           payroll={selectedPayroll}
           period={period}
           employeeName={selectedEmployee.name}
           onClose={() => setSalaryOpen(false)}
         />
-      )}
-      {groupsOpen && selectedStudent && (
+      )}{groupsOpen && selectedStudent && (
         <StudentGroupsModal
           pupilId={selectedStudent.id}
           studentName={selectedStudent.name}
           balance={studentBalance}
           onClose={() => setGroupsOpen(false)}
         />
-      )}
-    </div>
+      )}</>
   );
 }

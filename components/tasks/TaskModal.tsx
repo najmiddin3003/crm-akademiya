@@ -4,7 +4,6 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import DateField from "@/components/ui/DateField";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import { useTaskTargets } from "@/hooks/useTaskTargets";
 import { useStaff } from "@/hooks/useStaff";
@@ -19,6 +18,7 @@ import {
 } from "@/lib/tasksData";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Ported from crm-akademiya/src/app.js openTaskModal()/saveTask() (~line 4238).
 //
@@ -98,12 +98,12 @@ function valuesFromTask(task: Task): TaskModalValues {
 // Mounted only while open (see TasksPage), so this initializer runs fresh
 // every time the modal opens — no effect-based state sync needed.
 export default function TaskModal({ task, initialDate, onClose, onSave }: TaskModalProps) {
+  const modal = useModalClose(onClose);
   const [values, setValues] = useState<TaskModalValues>(() => (task ? valuesFromTask(task) : blankValues(initialDate)));
   const [dateError, setDateError] = useState(false);
   const { types: taskTypes, loading: typesLoading } = useTaskTypes();
   const { byKind, loading: targetsLoading } = useTaskTargets();
   const { names: staffNames, loading: staffLoading } = useStaff();
-  useEscapeClose(onClose);
 
   const targetOptions = byKind[values.targetKind] ?? [];
   const targetSubtitle = new Map(targetOptions.map((o) => [o.value, o.subtitle]));
@@ -134,11 +134,7 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="2xl" zIndex={200} panelClassName="overflow-y-auto p-6 space-y-4">
         <h3 className="text-lg font-semibold">{task ? "Topshiriqni o'zgartirish" : "Topshiriq"}</h3>
 
         <div className="grid grid-cols-2 gap-3">
@@ -203,10 +199,9 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={onClose}>Bekor qilish</Button>
+          <Button variant="outline" onClick={modal.close}>Bekor qilish</Button>
           <Button variant="primary" onClick={handleSave} disabled={!complete}>Saqlash</Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

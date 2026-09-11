@@ -11,7 +11,6 @@ import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
 import { badgeLabel } from "@/lib/notifications";
 import type { Lang } from "@/lib/i18n";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { useBranch } from "@/components/shared/BranchContext";
@@ -19,6 +18,7 @@ import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 
@@ -214,9 +214,7 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
   // da'vo bo'lardi.
   const { unread, unreadIsFloor, everLoaded } = useNotifications();
   const notifBadge = badgeLabel(unread, unreadIsFloor);
-  const showBadge = everLoaded && unread > 0;
-  useEscapeClose(filialModalOpen ? () => setFilialModalOpen(false) : () => {});
-
+  const showBadge = everLoaded && unread > 0;
   return (
     <div ref={rootRef}>
       {/* ============ SVG SPRITE (icons unique to navbar) ============ */}
@@ -552,11 +550,7 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
       </header>
 
       {filialModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={() => setFilialModalOpen(false)}>
-          <div
-            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4 text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal onClose={() => setFilialModalOpen(false)} bare size="sm" zIndex={200} panelClassName="p-5 space-y-4 text-center">{(modal) => (<>
             <h3 className="text-lg font-semibold">Filial biriktirish</h3>
             <p className="text-sm text-muted-foreground">
               Filiallar Boshqaruv &rarr; Filiallar sahifasida boshqariladi. U yerda qo&apos;shilgan
@@ -564,21 +558,20 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
             </p>
             <div className="flex items-center justify-center gap-2">
               <button
-                onClick={() => setFilialModalOpen(false)}
+                onClick={modal.close}
                 className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
               >
                 Yopish
               </button>
               <Link
                 href="/management-filiallar"
-                onClick={() => setFilialModalOpen(false)}
+                onClick={modal.close}
                 className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
                 Filiallar sahifasi
               </Link>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

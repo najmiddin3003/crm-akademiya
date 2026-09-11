@@ -164,7 +164,7 @@ export default function TaskTypesDrawer({
           title="Turni o'chirish"
           message="Ushbu topshiriq turini o'chirmoqchimisiz:"
           name={deleting.name}
-          zIndexClass="z-[1200]"
+          zIndex={1200}
           onCancel={() => setDeleting(null)}
           onConfirm={handleDelete}
         />

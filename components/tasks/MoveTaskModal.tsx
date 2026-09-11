@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { todayStart, type Task } from "@/lib/tasksData";
 import { uzDayKey } from "@/lib/uzTime";
 import DateField from "@/components/ui/DateField";
 import TimeField from "@/components/ui/TimeField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Ported from crm-akademiya/src/app.js openMoveTaskModal()/confirmMoveTask() (~line 3676).
 // Shown when a task card is dropped onto the "Keyinchalik keladigan" (upcoming)
@@ -28,12 +28,12 @@ export interface MoveTaskModalProps {
 }
 
 export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModalProps) {
+  const modal = useModalClose(onClose);
   const tomorrow = new Date(todayStart().getTime() + 86400000);
   const existing = new Date(task.date);
   const [date, setDate] = useState(toDateInputValue(tomorrow));
   const [time, setTime] = useState(`${pad(existing.getHours() || 9)}:${pad(existing.getMinutes() || 0)}`);
   const [error, setError] = useState<string | null>(null);
-  useEscapeClose(onClose);
 
   const handleConfirm = () => {
     if (!date) {
@@ -52,8 +52,7 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onClose} controller={modal} bare size="sm" zIndex={200} panelClassName="p-5 space-y-4">
         <h3 className="text-lg font-semibold">Topshiriqni ko&apos;chirish</h3>
         <p className="text-sm text-muted-foreground">
           <strong className="text-foreground">{task.student}</strong> uchun yangi sanani tanlang. Sana bugundan kelajakda bo&apos;lishi kerak.
@@ -73,10 +72,9 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
         {error && <div className="text-sm text-red-600">⚠ {error}</div>}
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={onClose}>Bekor qilish</Button>
+          <Button variant="outline" onClick={modal.close}>Bekor qilish</Button>
           <Button variant="primary" onClick={handleConfirm}>Ko&apos;chirish</Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import TaskTypeIcon from "@/components/tasks/TaskTypeIcon";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import {
   DEFAULT_TASK_TYPE_COLOR,
   DEFAULT_TASK_TYPE_ICON,
@@ -12,6 +11,7 @@ import {
   TASK_TYPE_ICON_KEYS,
   type TaskType,
 } from "@/lib/taskTypes";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Yangi tur" / "Turni tahrirlash" oynasi — referensdagi (akademiya.edutizim.uz)
 // kabi: tepada jonli KO'RINISH kartasi, so'ng nomi, rang paletkasi va belgilar
@@ -27,11 +27,11 @@ export interface TaskTypeModalProps {
 }
 
 export default function TaskTypeModal({ type, saving, error, onClose, onSave }: TaskTypeModalProps) {
+  const modal = useModalClose(onClose);
   const [name, setName] = useState(type?.name ?? "");
   const [color, setColor] = useState(type?.color ?? DEFAULT_TASK_TYPE_COLOR);
   const [icon, setIcon] = useState(type?.icon ?? DEFAULT_TASK_TYPE_ICON);
   const [nameError, setNameError] = useState(false);
-  useEscapeClose(onClose);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -42,14 +42,10 @@ export default function TaskTypeModal({ type, saving, error, onClose, onSave }: 
   };
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-2xl border border-border bg-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={1200}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <h3 className="text-lg font-semibold">{type ? "Turni tahrirlash" : "Yangi tur"}</h3>
-          <button type="button" onClick={onClose} title="Yopish (Esc)" className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={modal.close} title="Yopish (Esc)" className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -138,12 +134,11 @@ export default function TaskTypeModal({ type, saving, error, onClose, onSave }: 
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border px-5 py-4 shrink-0">
-          <Button variant="outline" onClick={onClose}>Bekor qilish</Button>
+          <Button variant="outline" onClick={modal.close}>Bekor qilish</Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? "Saqlanmoqda..." : "Saqlash"}
           </Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

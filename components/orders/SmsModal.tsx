@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { renderSmsPreview, type SmsTemplate } from "@/lib/smsTemplates";
 import { AUTO_SMS_SCENARIOS } from "@/constants/settingsAutoSms";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "SMS yuborish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: O'quvchilar (faqat ko'rsatiladi) →
@@ -92,6 +92,7 @@ function Toggle({
 }
 
 export default function SmsModal({ studentName, phone, onClose, onSent, onError }: SmsModalProps) {
+  const modal = useModalClose(onClose);
   const [options, setOptions] = useState<TemplateOption[]>([]);
   // Shablonlar ikki manbadan yig'ilib bo'lguncha ro'yxat bo'sh turadi — o'sha
   // paytda "Shablon yo'q" deyish YOLG'ON bo'lardi.
@@ -102,7 +103,6 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [parentPhones, setParentPhones] = useState<Recipient[]>([]);
-  useEscapeClose(onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,11 +209,7 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={200} panelClassName="overflow-y-auto">
         <div className="p-5 pb-4 text-center">
           <h3 className="text-xl font-semibold">SMS yuborish</h3>
         </div>
@@ -275,7 +271,7 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={modal.close}>
               Orqaga
             </Button>
             <Button variant="primary" onClick={send} disabled={sending || recipients.length === 0}>
@@ -283,7 +279,6 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

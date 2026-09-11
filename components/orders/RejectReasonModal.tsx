@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useReasons } from "@/hooks/useSettingsList";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "✗ Rad etish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: "Izoh qoldiring" sarlavha, "Sabab"
@@ -27,10 +27,10 @@ export interface RejectReasonModalProps {
 }
 
 export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonModalProps) {
+  const modal = useModalClose(onClose);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState("");
-  useEscapeClose(onClose);
 
   // Sabablar Sozlamalar → O'quv → Sabablar'dan ("Bekor qilindi" turi);
   // sozlamada bo'sh bo'lsa quyidagi standart ro'yxat ishlatiladi.
@@ -47,11 +47,7 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={200}>
         <div className="p-5 pb-4 text-center border-b border-border">
           <h3 className="text-xl font-semibold">Izoh qoldiring</h3>
         </div>
@@ -99,7 +95,7 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
                 className="w-full rounded-lg border border-border bg-secondary/20 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={onClose}>
+                <Button variant="outline" onClick={modal.close}>
                   Orqaga
                 </Button>
                 <Button variant="primary" onClick={() => onConfirm(customReason.trim() || OTHER)}>
@@ -109,7 +105,6 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

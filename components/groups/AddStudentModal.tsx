@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { Pupil, PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "O'quvchini tanlang" modali (skrinshot 5). Serverdagi o'quvchilar
 // (/api/pupils) ro'yxatidan birini tanlab, guruhga qo'shadi
@@ -19,7 +19,7 @@ export interface AddStudentModalProps {
 }
 
 export default function AddStudentModal({ groupId, existingIds, onClose, onAdded }: AddStudentModalProps) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [pupils, setPupils] = useState<PupilListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,7 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
       }
       onAdded(data.student as Pupil);
       showSuccess("O'quvchi guruhga qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -68,9 +68,7 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 text-center">
           <h3 className="text-[17px] font-bold tracking-tight">O&apos;quvchini tanlang</h3>
         </div>
@@ -84,7 +82,6 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
           <button onClick={save} disabled={saving || loading} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

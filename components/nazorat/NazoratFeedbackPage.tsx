@@ -14,6 +14,7 @@ import {
   type FeedbackRecord,
 } from "./feedbackTypes";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // Nazorat > Fikr-mulohaza (sidebar: Nazorat > Fikr-mulohaza, /nazorat-feedback).
 //
@@ -190,12 +191,10 @@ export default function NazoratFeedbackPage() {
 
       {/* Tafsilot modali */}
       {selected && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelected(null)} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl">
+        <Modal onClose={() => setSelected(null)} bare size="lg">{(modal) => (<>
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">
               <h3 className="text-[15px] font-semibold">Fikr-mulohaza tafsilotlari</h3>
-              <button type="button" onClick={() => setSelected(null)} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
+              <button type="button" onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
                 <X className="icon icon-sm" />
               </button>
             </div>
@@ -221,8 +220,7 @@ export default function NazoratFeedbackPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

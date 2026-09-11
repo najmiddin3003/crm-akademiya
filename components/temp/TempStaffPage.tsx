@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Archive, ArchiveRestore, Check, Pencil, Search, Send, Trash2, X } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import EmployeeToggle from "@/components/employees/EmployeeToggle";
 import { EMP_LEAVE_REASONS, ROLE_LABELS } from "@/constants/employees";
 import type { TempStaffRow } from "@/app/api/temp-staff/route";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Vaqtinchalik tugma" (sidebar → Sozlamalardan keyin, faqat admin).
 //
@@ -860,16 +860,11 @@ function Dialog({
   onClose: () => void;
   width: string;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className={`relative w-full ${width} rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4 max-h-[92vh] overflow-y-auto`}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={120} panelClassName={`p-6 space-y-4 overflow-y-auto ${width}`}>
         {children}
-      </div>
-    </div>
+      </Modal>
   );
 }
 

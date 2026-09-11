@@ -4,10 +4,10 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { PUPIL_STATUSES, isPupilStatus, type Pupil, type PupilStatus } from "@/lib/pupilsData";
 import { invalidateStudents } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // O'quvchining holatini o'zgartirish oynasi.
 //
@@ -42,7 +42,7 @@ const fieldCls =
   "h-9 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function StudentStatusModal({ student, onClose, onSaved }: Props) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
 
   // Boshlang'ich qiymat — qatordagi holat. Eski yozuvlarda holat umuman
@@ -83,7 +83,7 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
       }
       onSaved(data.pupil as Pupil);
       showSuccess(`${student.name} — holati "${status}" ga o'zgartirildi`);
-      onClose();
+      modal.close();
     } catch {
       setError("Serverga ulanib bo'lmadi");
       showError("Serverga ulanib bo'lmadi");
@@ -96,14 +96,7 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
     // Saqlash ketayotganda fonni bosish oynani yopmasin — so'rov yarim
     // yo'lda qolib, natijasi ko'rinmay ketardi (loyihadagi tasdiq
     // oynalarining umumiy naqshi, qarang EmployeeArchiveModal).
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
-      onClick={() => !saving && onClose()}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} locked={saving} bare zIndex={200} panelClassName="p-5 space-y-4 overflow-y-auto">
         <h3 className="text-lg font-semibold">Holatni o&apos;zgartirish</h3>
 
         {/* Matn satr IFODASI sifatida yozilgan: ko'p qatorli JSX matnining
@@ -161,14 +154,13 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
         <div className="flex items-center justify-end gap-2 pt-1">
           {/* components/ui/Button.tsx da disabled uslubi bor, lekin loyihadagi
               boshqa modallar kabi ochiqroq bo'lishi uchun opacity qo'shilgan. */}
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="disabled:opacity-40">
+          <Button type="button" variant="outline" onClick={modal.close} disabled={saving} className="disabled:opacity-40">
             Bekor qilish
           </Button>
           <Button type="button" variant="primary" onClick={submit} disabled={!canSave} className="disabled:opacity-40">
             {saving ? "Saqlanmoqda..." : "Saqlash"}
           </Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

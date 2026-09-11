@@ -1,6 +1,6 @@
 "use client";
 
-import { useEscapeClose } from "@/hooks/useEscapeClose";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Umumiy o'chirishni tasdiqlash oynasi — kurs va daraja o'chirishda bir xil.
 // crm-akademiya/index-dev.html dagi #oc-delete-modal dizayni asosida.
@@ -11,19 +11,14 @@ export interface DeleteConfirmModalProps {
   onCancel: () => void;
   onConfirm: () => void;
   /** Qatlam — drawer (z-index 1001) ustidan ochilishi kerak bo'lsa oshiriladi. */
-  zIndexClass?: string;
+  zIndex?: number;
 }
 
-export default function DeleteConfirmModal({ title, message, name, onCancel, onConfirm, zIndexClass = "z-[120]" }: DeleteConfirmModalProps) {
-  useEscapeClose(onCancel);
+export default function DeleteConfirmModal({ title, message, name, onCancel, onConfirm, zIndex = 120 }: DeleteConfirmModalProps) {
+  const modal = useModalClose(onCancel);
 
   return (
-    <div
-      className={`fixed inset-0 ${zIndexClass} flex items-center justify-center p-4`}
-      style={{ background: "rgba(15,23,42,.55)", backdropFilter: "blur(4px)" }}
-      onClick={onCancel}
-    >
-      <div className="w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onCancel} controller={modal} bare size="sm" zIndex={zIndex}>
         <div className="p-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center">
@@ -36,14 +31,13 @@ export default function DeleteConfirmModal({ title, message, name, onCancel, onC
           </p>
         </div>
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <button onClick={onCancel} className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
+          <button onClick={modal.close} className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
             Orqaga
           </button>
           <button onClick={onConfirm} className="h-9 px-5 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700">
             O&apos;chirish
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

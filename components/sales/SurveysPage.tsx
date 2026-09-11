@@ -6,6 +6,7 @@ import { Copy, Settings, TrendingUp, Trash2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Survey } from "@/lib/surveys";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Sotuv va marketing → Marketing (sidebar: Sotuv va marketing > Marketing,
 // href /sales-marketing). Ma'lumot HAQIQIY — /api/surveys (MongoDB `surveys`).
@@ -44,6 +45,7 @@ function CodeCell({ value, onCopy }: { value: string; onCopy: (v: string) => voi
 }
 
 export default function SurveysPage() {
+  const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +117,7 @@ export default function SurveysPage() {
         setSurveys((prev) => [...prev, data.survey]);
         showSuccess("So'rovnoma qo'shildi");
       }
-      closeForm();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
     } finally {
@@ -237,9 +239,7 @@ export default function SurveysPage() {
       </div>
 
       {formOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeForm()} />
-          <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+        <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110} panelClassName="p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">
               {editTarget ? "So'rovnomani tahrirlash" : "So'rovnoma qo'shish"}
             </h3>
@@ -276,7 +276,7 @@ export default function SurveysPage() {
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
-                onClick={closeForm}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -290,18 +290,15 @@ export default function SurveysPage() {
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -315,8 +312,7 @@ export default function SurveysPage() {
                 {deleting ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

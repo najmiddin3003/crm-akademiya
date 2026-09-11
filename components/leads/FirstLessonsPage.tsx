@@ -36,6 +36,7 @@ import PersonLink from "@/components/shared/PersonDirectory";
 import { loadPupilsCached } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
 // Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
@@ -828,14 +829,12 @@ export default function FirstLessonsPage() {
 /* ---------- "⋮" menyusi ochadigan kichik oynalar ---------- */
 
 function ModalShell({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onClose} controller={modal} bare zIndex={300} panelClassName="p-5 space-y-4">
         <h3 className="text-lg font-semibold">{title}</h3>
         {children}
-      </div>
-    </div>
+      </Modal>
   );
 }
 

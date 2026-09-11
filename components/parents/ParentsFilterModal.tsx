@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useModerators } from "@/hooks/useModerators";
 import { PUPIL_STATUSES } from "@/lib/pupilsData";
 import { EMPTY_PARENTS_FILTERS, PARENT_KINDS, type ParentsFilters } from "@/lib/parentsData";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Ota-ona sahifasining filtr modali.
 //
@@ -36,24 +36,16 @@ export interface ParentsFilterModalProps {
 }
 
 export default function ParentsFilterModal({ initialFilters, categoryOptions, onClose, onApply }: ParentsFilterModalProps) {
+  const modal = useModalClose(onClose);
   const { names: moderatorNames } = useModerators();
   const [draft, setDraft] = useState<ParentsFilters>(initialFilters);
-  useEscapeClose(onClose);
 
   function set<K extends keyof ParentsFilters>(key: K, value: ParentsFilters[K]) {
     setDraft((f) => ({ ...f, [key]: value }));
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4 overflow-auto"
-      style={{ background: "rgba(15,23,42,.55)", backdropFilter: "blur(4px)" }}
-      onClick={(e) => { e.stopPropagation(); onClose(); }}
-    >
-      <div
-        className="modal-window w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl my-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="3xl" zIndex={120}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h3 className="text-lg font-semibold tracking-tight">Filter</h3>
           <button
@@ -107,10 +99,9 @@ export default function ParentsFilterModal({ initialFilters, categoryOptions, on
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <Button variant="outline" onClick={onClose}>Orqaga</Button>
+          <Button variant="outline" onClick={modal.close}>Orqaga</Button>
           <Button variant="primary" onClick={() => onApply(draft)}>Saqlash</Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

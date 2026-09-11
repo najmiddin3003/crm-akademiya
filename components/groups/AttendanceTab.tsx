@@ -27,6 +27,7 @@ import type { Group } from "@/lib/groups";
 import type { GroupNote } from "@/lib/groupNotes";
 import type { Pupil } from "@/lib/pupilsData";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // Guruh → Davomat tabi (referens: akademiya.edutizim.uz/group/groups/details/
 // <id>?status=attendance).
@@ -673,14 +674,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
 
       {/* "Izoh qoldiring" — Sababli tanlanganda */}
       {reasonModal && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setReasonModal(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal onClose={() => setReasonModal(null)} bare zIndex={200} panelClassName="p-5">{(modal) => (<>
             <h3 className="mb-4 text-center text-lg font-semibold">Izoh qoldiring</h3>
 
             <label className="mb-1.5 block text-[13px] font-medium">Sababi</label>
@@ -697,7 +691,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
 
             <div className="flex items-center justify-end gap-2">
               <button
-                onClick={() => setReasonModal(null)}
+                onClick={modal.close}
                 className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-medium hover:bg-secondary"
               >
                 Yopish
@@ -718,21 +712,15 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 Saqlash
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
 
       {/* "Izoh" ustuni — o'quvchiga xabar yozish paneli (referensda o'ngdan chiqadi) */}
       {notesFor && (
-        <div className="fixed inset-0 z-[200]" onClick={() => setNotesFor(null)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <aside
-            className="absolute right-0 top-0 flex h-full w-full max-w-[380px] flex-col border-l border-border bg-card shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal onClose={() => setNotesFor(null)} bare variant="drawer" zIndex={200} panelClassName="max-w-[380px]">{(modal) => (<>
             <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
               <button
-                onClick={() => setNotesFor(null)}
+                onClick={modal.close}
                 className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-secondary inline-flex items-center justify-center"
                 title="Yopish"
               >
@@ -778,8 +766,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 <Send className="h-4 w-4" />
               </button>
             </div>
-          </aside>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

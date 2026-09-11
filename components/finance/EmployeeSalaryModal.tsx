@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import {
   payrollBase,
@@ -11,6 +10,7 @@ import {
   type EmployeePayroll,
   type PayrollPeriod,
 } from "@/lib/salary";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Kassa → Chiqim oynasidagi "Xodim ma'lumotlarini ko'rish" tugmasi ochadigan
 // modal (referens skrinshoti). Sarlavhasi "Xodimlar", yonidagi ikonka —
@@ -89,11 +89,11 @@ export default function EmployeeSalaryModal({
   employeeName: string;
   onClose: () => void;
 }) {
+  const modal = useModalClose(onClose);
   const [open, setOpen] = useState(true);
   const bodyRef = useRef<HTMLDivElement>(null);
   const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reduceMotion = useReducedMotion();
-  useEscapeClose(onClose);
 
   const duration = reduceMotion ? "0s" : ".3s";
   const ease = `${duration} cubic-bezier(.4,0,.2,1)`;
@@ -133,11 +133,7 @@ export default function EmployeeSalaryModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-3xl rounded-2xl bg-card border border-border shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="3xl" zIndex={300}>
         <button
           type="button"
           onClick={toggle}
@@ -193,7 +189,6 @@ export default function EmployeeSalaryModal({
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

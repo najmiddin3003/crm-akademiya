@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import PanelSelect from "@/components/orders/PanelSelect";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { usePupils } from "@/components/orders/PupilsContext";
 import { useToast } from "@/components/ui/Toast";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import { SOURCE_OTHER, STUDENT_SOURCES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "O'quvchi qo'shish" tugmasi bosilganda ochiladigan alohida modal — akademiya.edutizim.uz
 // dagi "Yangi buyurtma" panelining o'zida joylashgan xuddi shu nomdagi tugma ortidan
@@ -58,6 +58,7 @@ export interface AddStudentModalProps {
 }
 
 export default function AddStudentModal({ onClose, onSave }: AddStudentModalProps) {
+  const modal = useModalClose(onClose);
   // O'quvchi kategoriyalari — O'quv bo'limi → Kategoriya (`edu_categories`).
   const { names: categoryNames, loading: categoriesLoading } = useEduCategoryNames();
   const [firstName, setFirstName] = useState("");
@@ -80,12 +81,11 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   const { showSuccess, showError } = useToast();
 
   const closeOther = useCallback(() => setOtherOpen(false), []);
-  // Escape: ichki oyna ochiq bo'lsa FAQAT uni yopadi.
-  //
-  // `useEscapeClose` tinglovchini `window` ga qo'yadi, ya'ni ikkala oyna
-  // ham o'z tinglovchisini o'rnatsa bitta Escape IKKALASINI birdan
-  // yopib yuborardi — moderator manbani yozayotib butun formani yo'qotardi.
-  useEscapeClose(otherOpen ? closeOther : onClose);
+  // Ichki oyna — alohida controller. Escape: ui/Modal ochiq modallar
+  // stekini yuritadi va faqat ENG USTKI oynani yopadi, ya'ni ichki oyna
+  // ochiq bo'lsa faqat u yopiladi (moderator manbani yozayotib butun
+  // formani yo'qotmaydi).
+  const otherModal = useModalClose(closeOther);
 
   /**
    * Manba tanlovlari BAZADAN — Sotuv va marketing → O'quvchilar oqimi
@@ -189,18 +189,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   };
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center bg-black/50 p-4"
-      style={{ zIndex: 1100 }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <><Modal onClose={onClose} controller={modal} bare panelClassName="p-5 space-y-4 overflow-y-auto">
         <div>
           <h3 className="text-lg font-semibold">Yangi o&apos;quvchi qo&apos;shish</h3>
           <p className="text-xs text-muted-foreground mt-1">* Zarurligini bildiradi</p>
@@ -272,32 +261,15 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
         )}
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={modal.close}>
             Orqaga
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? "Saqlanmoqda..." : "Saqlash"}
           </Button>
         </div>
-      </div>
-
-      {/* "Boshqa" tanlanganda ochiladigan oyna. z-index 1200 — ota oyna
-          1100 da, ya'ni bu uning USTIDA turadi. Tashqarisiga bosilganda
-          yopiladi, lekin `stopPropagation` ota oynaning o'z yopish
-          ishlovchisiga yetib borishiga yo'l qo'ymaydi. */}
-      {otherOpen && (
-        <div
-          className="fixed inset-0 flex items-center justify-center bg-black/50 p-4"
-          style={{ zIndex: 1200 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            closeOther();
-          }}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
+      </Modal>{otherOpen && (
+        <Modal onClose={closeOther} controller={otherModal} bare size="sm" panelClassName="p-5 space-y-4">
             <div>
               <h3 className="text-base font-semibold">Manbani yozing</h3>
               <p className="text-xs text-muted-foreground mt-1">
@@ -323,7 +295,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
             />
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={closeOther}>
+              <Button variant="outline" onClick={otherModal.close}>
                 Orqaga
               </Button>
               {/* Bo'sh matn bilan yopib bo'lmaydi: "Manba" majburiy maydon,
@@ -333,9 +305,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
                 Tasdiqlash
               </Button>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </Modal>
+      )}</>
   );
 }

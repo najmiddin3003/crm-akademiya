@@ -27,7 +27,6 @@ import DateRangePicker, {
   type DateRange,
 } from "@/components/ui/DateRangePicker";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useStudents } from "@/hooks/useStudents";
 import CashboxDrawer from "./CashboxDrawer";
@@ -47,6 +46,7 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { toUz } from "@/lib/uzTime";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 const TX_TYPE_MAP: Record<string, string> = {
   kirim: "payIn",
@@ -280,7 +280,7 @@ function ReceiptPreviewModal({
   onClose: () => void;
   onPrint: () => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const title =
     entry.txType === "payIn"
       ? "KIRIM CHEKI"
@@ -298,21 +298,7 @@ function ReceiptPreviewModal({
   if (entry.note) rows.push(["Izoh", entry.note]);
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      {/* CHEK QOG'OZI DOIM OQ — MAVZUGA ERGASHMAYDI.
-          NIMA NOTO'G'RI EDI: karta `bg-white` bilan qattiq oq edi, matn
-          esa mavzu tokenlaridan kelardi. Tungi rejimda o'lchandi: fon
-          rgb(255,255,255), matn rgb(250,250,250) — ya'ni oq qog'ozda oq
-          siyoh, qiymatlarni umuman o'qib bo'lmasdi; yorliqlar esa
-          rgb(155,162,176) bo'lib yuvilib ketardi.
-          Bu oyna — bosiladigan QOG'OZNING ko'rinishi, ekran elementi emas.
-          Qog'oz oq, siyoh qora; shu bois ranglar shu yerda aniq yozilgan
-          va `printReceipt` dagi bosma uslubi bilan bir xil. */}
-      <div
-        className="relative w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden"
-        style={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="xs" zIndex={130} panelStyle={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }}>
         <div className="px-6 pt-6 pb-4">
           <div className="text-center text-[13px] font-bold tracking-[0.15em]">
             {RECEIPT_BRAND}
@@ -358,7 +344,7 @@ function ReceiptPreviewModal({
           style={{ borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}
         >
           <button
-            onClick={onClose}
+            onClick={modal.close}
             className="h-9 flex-1 rounded-lg text-sm font-medium"
             style={{ border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a" }}
           >
@@ -374,8 +360,7 @@ function ReceiptPreviewModal({
             Chop etish
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }
 
@@ -573,7 +558,7 @@ function EditHistoryModal({
   entry: TransactionEntry;
   onClose: () => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const items = Array.isArray(entry.editHistory) ? entry.editHistory : [];
   function fmtAt(iso: string): string {
     const raw = new Date(iso);
@@ -584,13 +569,11 @@ function EditHistoryModal({
     return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+    <Modal onClose={onClose} controller={modal} bare zIndex={140}>
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <div className="text-[15px] font-semibold">Tahrirlar tarixi</div>
           <button
-            onClick={onClose}
+            onClick={modal.close}
             className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
           >
             ×
@@ -614,8 +597,7 @@ function EditHistoryModal({
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }
 
@@ -2168,18 +2150,13 @@ export default function CashboxesPage() {
         />
       )}
       {primaryConfirmTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => !settingPrimary && setPrimaryConfirmTarget(null)}
-          />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setPrimaryConfirmTarget(null)} locked={settingPrimary} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">
               Bosh kassa qilmoqchimisiz?
             </p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setPrimaryConfirmTarget(null)}
+                onClick={modal.close}
                 disabled={settingPrimary}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -2193,8 +2170,7 @@ export default function CashboxesPage() {
                 {settingPrimary ? "Saqlanmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

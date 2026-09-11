@@ -23,6 +23,7 @@ import {
   type StudentFilters,
 } from "@/lib/studentsData";
 import Select from "@/components/ui/Select";
+import Modal from "@/components/ui/Modal";
 
 // O'quvchilar → Arxiv o'quvchilar (crm-akademiya #view-archive-students,
 // sidebar: O'quvchilar > Arxiv o'quvchilar, href /archive-students).
@@ -527,12 +528,10 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
       )}
 
       {reasonFor && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setReasonFor(null)} />
-          <div className="relative w-full max-w-md rounded-xl border border-border bg-card shadow-2xl">
+        <Modal onClose={() => setReasonFor(null)} bare zIndex={120}>{(modal) => (<>
             <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
               <h3 className="text-[15px] font-semibold flex-1">Arxivlash sababi</h3>
-              <button onClick={() => setReasonFor(null)} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
+              <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -544,12 +543,11 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
               <p className="text-sm whitespace-pre-wrap break-words">{reasonFor.reason}</p>
             </div>
             <div className="flex justify-end px-5 py-4 border-t border-border">
-              <button onClick={() => setReasonFor(null)} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
+              <button onClick={modal.close} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
                 Yopish
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

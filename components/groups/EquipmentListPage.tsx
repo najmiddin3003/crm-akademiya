@@ -8,6 +8,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import EquipmentModal from "./EquipmentModal";
 import type { Equipment } from "@/lib/equipment";
 import DateField from "@/components/ui/DateField";
+import Modal from "@/components/ui/Modal";
 
 // Guruh → Jihozlar (referens akademiya.edutizim.uz/group/equipments, sidebar:
 // Guruh > Jihozlar, href /groups-equipments). Ma'lumot /api/equipment dan.
@@ -233,20 +234,17 @@ export default function EquipmentListPage() {
         <EquipmentModal equipment={editItem} onClose={() => setEditItem(null)} onSaved={(r) => setItems((prev) => prev.map((x) => (x.id === r.id ? r : x)))} />
       )}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+              <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 Yo&apos;q
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
                 {deleting ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

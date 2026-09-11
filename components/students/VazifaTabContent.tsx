@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import DateField from "@/components/ui/DateField";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useModerators } from "@/hooks/useModerators";
 import { useProfilePupil } from "@/hooks/useProfilePupil";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import { KANBAN_STATES, formatTaskDate, type Task } from "@/lib/tasksData";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // O'quvchi profili → "Vazifa".
 //
@@ -98,7 +98,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
   // useCallback — useEscapeClose effektining har renderda qayta
   // obuna bo'lishining oldini oladi (tab doim mount holatda turadi).
   const closeModal = useCallback(() => setModalOpen(false), []);
-  useEscapeClose(closeModal);
+  const modal = useModalClose(closeModal, "drawer");
 
   const resetForm = () => {
     setModerator("");
@@ -243,14 +243,12 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={closeModal} />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
+        <Modal onClose={closeModal} controller={modal} bare variant="drawer" zIndex={50} panelClassName="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%]">
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
               <h3 className="text-[18px] font-bold tracking-tight">Topshiriq</h3>
               <button
                 type="button"
-                onClick={closeModal}
+                onClick={modal.close}
                 className="h-8 w-8 rounded-md hover:bg-secondary/60 text-muted-foreground inline-flex items-center justify-center"
               >
                 <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -302,7 +300,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
               />
             </div>
             <div className="flex justify-end gap-2 px-5 pb-5">
-              <button type="button" onClick={closeModal} className="inline-flex items-center h-10 px-5 text-sm font-medium text-foreground/70 hover:text-foreground">Orqaga</button>
+              <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 text-sm font-medium text-foreground/70 hover:text-foreground">Orqaga</button>
               <button
                 type="button"
                 onClick={save}
@@ -312,8 +310,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
     </div>
   );

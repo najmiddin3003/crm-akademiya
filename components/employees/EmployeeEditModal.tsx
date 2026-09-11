@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import PhoneField from "@/components/auth/PhoneField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 export interface EmployeeEditRow {
   id: string;
@@ -30,6 +30,7 @@ export interface EmployeeEditModalProps {
 // (agar o'rnatilgan bo'lsa) yangisini qo'yishdan oldin ko'rsatiladi.
 // O'chirish endi jadval qatoridagi ikonka orqali amalga oshiriladi.
 export default function EmployeeEditModal({ employee, onClose, onSaved }: EmployeeEditModalProps) {
+  const modal = useModalClose(onClose);
   const [fullName, setFullName] = useState(employee.fullName);
   const [phone, setPhone] = useState(employee.phone.startsWith("998") ? employee.phone.slice(3) : employee.phone);
   const [position, setPosition] = useState(employee.position || "");
@@ -45,7 +46,6 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  useEscapeClose(onClose);
 
   useEffect(() => {
     if (employee.status === "invited") return;
@@ -111,11 +111,7 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
     "h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary";
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={200} panelClassName="p-5 space-y-4 overflow-y-auto">
         <h3 className="text-lg font-semibold">Xodimni tahrirlash</h3>
 
         <div>
@@ -200,14 +196,13 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
         {error && <div className="text-sm text-red-600">⚠ {error}</div>}
 
         <div className="flex items-center justify-end gap-2 pt-1">
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+          <Button type="button" variant="outline" onClick={modal.close} disabled={saving}>
             Bekor qilish
           </Button>
           <Button type="button" variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? "Saqlanmoqda..." : "Saqlash"}
           </Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

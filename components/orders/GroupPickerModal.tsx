@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useGroups } from "@/hooks/useGroups";
 import type { Group } from "@/lib/groups";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Guruhga qo'shish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx)
 // — akademiya.edutizim.uz referensiga mos: "Guruh shaklini tanlang" sarlavha,
@@ -25,19 +25,15 @@ function subtitleOf(g: Group): string {
 }
 
 export default function GroupPickerModal({ onClose, onSelect }: GroupPickerModalProps) {
+  const modal = useModalClose(onClose);
   const [query, setQuery] = useState("");
   const { groups, loading } = useGroups();
-  useEscapeClose(onClose);
 
   const q = query.trim().toLowerCase();
   const filtered = groups.filter((g) => `${g.id} ${g.name} ${subtitleOf(g)}`.toLowerCase().includes(q));
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare zIndex={200}>
         <div className="p-5 pb-4 text-center border-b border-border">
           <h3 className="text-xl font-semibold">Guruh shaklini tanlang</h3>
         </div>
@@ -79,7 +75,6 @@ export default function GroupPickerModal({ onClose, onSelect }: GroupPickerModal
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

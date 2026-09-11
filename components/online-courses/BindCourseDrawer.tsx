@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
 import type { EduCategory } from "@/lib/eduCategories";
 import type { Group } from "@/lib/groups";
@@ -35,7 +35,7 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
   const [saving, setSaving] = useState(false);
   const { bindCourse } = useOnlineCourses();
   const { showSuccess, showError } = useToast();
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
 
   useEffect(() => {
     let cancelled = false;
@@ -72,14 +72,11 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
         ? groups.find((g) => g.id === id)?.name || String(id)
         : categories.find((c) => c.id === id)?.name || String(id);
     showSuccess(`Biriktirildi — ${label}`);
-    onClose();
+    modal.close();
   }
 
-
   return (
-    <>
-      <div className="fixed inset-0 z-[110]" style={{ background: "rgba(15,23,42,.45)", backdropFilter: "blur(2px)" }} onClick={onClose} />
-      <div className="fixed top-0 right-0 bottom-0 z-[120] w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col">
+    <Modal onClose={onClose} controller={modal} bare variant="drawer" zIndex={110}>
         <div className="px-6 pt-6 pb-4">
           <h2 className="text-xl font-bold tracking-tight">Kurs biriktirish</h2>
         </div>
@@ -114,7 +111,7 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
 
         <div className="flex-1" />
         <div className="flex items-center justify-end gap-4 px-6 py-4 border-t border-border">
-          <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">Orqaga</button>
+          <button onClick={modal.close} className="text-sm text-muted-foreground hover:text-foreground">Orqaga</button>
           <button
             onClick={save}
             disabled={saving}
@@ -123,7 +120,6 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
             {saving ? "Saqlanmoqda..." : "Saqlash"}
           </button>
         </div>
-      </div>
-    </>
+    </Modal>
   );
 }

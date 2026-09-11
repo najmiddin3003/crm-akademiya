@@ -3,6 +3,7 @@
 import { Printer, X } from "lucide-react";
 import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import { UZ_MONTHS } from "@/lib/salary";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Bitta xodimning bitta oylik chiqarishdagi ELEKTRON CHEKI.
 //
@@ -73,6 +74,7 @@ export default function SalaryReceiptModal({
   item: SalaryRunItem;
   onClose: () => void;
 }) {
+  const modal = useModalClose(onClose);
   const r = item.receipt;
   const name = item.name || `Xodim #${item.employeeId}`;
   const paid = Number(item.paid) || 0;
@@ -92,14 +94,12 @@ export default function SalaryReceiptModal({
   const taxCapped = taxRaw > taxUsed;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm no-print" onClick={onClose} />
-      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-card border border-border shadow-2xl">
+    <Modal onClose={onClose} controller={modal} bare zIndex={120} panelClassName="overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border no-print sticky top-0 bg-card">
           <h3 className="text-[15px] font-semibold">Oylik cheki</h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={modal.close}
             className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-secondary"
             aria-label="Yopish"
           >
@@ -264,7 +264,7 @@ export default function SalaryReceiptModal({
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border no-print sticky bottom-0 bg-card">
           <button
             type="button"
-            onClick={onClose}
+            onClick={modal.close}
             className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             Yopish
@@ -278,7 +278,6 @@ export default function SalaryReceiptModal({
             Chop etish
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

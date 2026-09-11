@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useModerators } from "@/hooks/useModerators";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { Cashbox } from "@/lib/cashboxes";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // "Yangi kassa qo'shish" / "Kassani o'zgartirish" — Moliya → Kassalar
 // sahifasidagi o'ng tomondan ochiladigan panel. `cashbox` berilsa —
@@ -32,7 +32,7 @@ export default function CashboxDrawer({
   onSaved: (c: Cashbox) => void;
   onDeleted?: (id: number) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const { names: moderatorNames, loading: loadingModerators } = useModerators();
   const [name, setName] = useState(cashbox?.name || "");
@@ -72,7 +72,7 @@ export default function CashboxDrawer({
       }
       onSaved(data.cashbox as Cashbox);
       showSuccess(cashbox ? "Kassa yangilandi" : "Kassa qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -92,7 +92,7 @@ export default function CashboxDrawer({
       }
       onDeleted?.(cashbox.id);
       showSuccess("Kassa o'chirildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setDeleting(false);
@@ -100,15 +100,13 @@ export default function CashboxDrawer({
   }
 
   return (
-    <div className="fixed inset-0 z-[110]">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-card border-l border-border shadow-2xl flex flex-col">
+    <><Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex items-center gap-3 px-5 py-4 bg-primary text-white">
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h3 className="text-[16px] font-semibold flex-1">{cashbox ? "Kassani o'zgartirish" : "Yangi kassa qo'shish"}</h3>
-          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
+          <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -155,7 +153,7 @@ export default function CashboxDrawer({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button onClick={onClose} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+          <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             Orqaga
           </button>
           {cashbox && (
@@ -171,24 +169,18 @@ export default function CashboxDrawer({
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-
-      {confirmDelete && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setConfirmDelete(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+      </Modal>{confirmDelete && (
+        <Modal onClose={() => setConfirmDelete(false)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={() => setConfirmDelete(false)} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
+              <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 Yo&apos;q
               </button>
               <button onClick={confirmDeleteCashbox} disabled={deleting} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
                 {deleting ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </>)}</Modal>
+      )}</>
   );
 }

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { TASK_TEMPLATES } from "@/lib/tasksData";
 import { useStudents } from "@/hooks/useStudents";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 export interface TaskTemplatesModalProps {
   open: boolean;
@@ -13,6 +13,7 @@ export interface TaskTemplatesModalProps {
 }
 
 export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTemplatesModalProps) {
+  const modal = useModalClose(onClose);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
   // O'quvchilar bazadan (/api/pupils) — ilgari constants/index.js dagi
@@ -23,19 +24,13 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
   // bilan o'ralgan, ya'ni ochilmagan holatda bu hook UMUMAN ishga
   // tushmaydi — /tasks sahifasining har ochilishida 546 KB tortilishi
   // shu bilan to'xtaydi.
-  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
-  useEscapeClose(open ? onClose : () => {});
-
+  const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
   if (!open) return null;
 
   const pendingTpl = TASK_TEMPLATES.find((t) => t.id === pendingId);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-3 max-h-[85vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={200} panelClassName="p-5 space-y-3 overflow-y-auto">
         <h3 className="text-lg font-semibold">Tayyor shablonlar</h3>
 
         {pendingTpl ? (
@@ -101,7 +96,6 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </Modal>
   );
 }

@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { SMS_AUDIENCES, SMS_PLACEHOLDERS, type SmsTemplate } from "@/lib/smsTemplates";
 import Select from "@/components/ui/Select";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Sotuv va marketing → SMS shablonlari (sidebar: Sotuv va marketing >
 // SMS shablonlari, href /sales-sms). Ma'lumot HAQIQIY — /api/sms-templates
@@ -24,6 +25,7 @@ function truncate(s: string, n = 20): string {
 }
 
 export default function SmsTemplatesPage() {
+  const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [templates, setTemplates] = useState<SmsTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function SmsTemplatesPage() {
         setTemplates((prev) => [...prev, data.template]);
         showSuccess("Shablon qo'shildi");
       }
-      closeForm();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
     } finally {
@@ -202,9 +204,7 @@ export default function SmsTemplatesPage() {
       </div>
 
       {formOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeForm()} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+        <Modal onClose={closeForm} controller={modal} locked={saving} bare size="lg" zIndex={110} panelClassName="p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">
               {editTarget ? "Shablonni tahrirlash" : "SMS shablon qo'shish"}
             </h3>
@@ -246,7 +246,7 @@ export default function SmsTemplatesPage() {
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
-                onClick={closeForm}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -260,18 +260,15 @@ export default function SmsTemplatesPage() {
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
               </button>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+        <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -285,8 +282,7 @@ export default function SmsTemplatesPage() {
                 {deleting ? "O'chirilmoqda…" : "Ha"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

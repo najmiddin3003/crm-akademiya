@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { Equipment } from "@/lib/equipment";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Jihoz qo'shish / tahrirlash modali (Guruh → Jihozlar, referens
 // akademiya.edutizim.uz/group/equipments). `equipment` berilsa — tahrirlash
@@ -20,7 +20,7 @@ export default function EquipmentModal({
   onClose: () => void;
   onSaved: (equipment: Equipment) => void;
 }) {
-  useEscapeClose(onClose);
+  const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [name, setName] = useState(equipment?.name || "");
   const [inventoryCode, setInventoryCode] = useState(equipment?.inventoryCode || "");
@@ -47,7 +47,7 @@ export default function EquipmentModal({
       }
       onSaved(data.equipment as Equipment);
       showSuccess(equipment ? "Jihoz yangilandi" : "Jihoz qo'shildi");
-      onClose();
+      modal.close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
       setSaving(false);
@@ -55,9 +55,7 @@ export default function EquipmentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl">
+    <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2">
           <h3 className="text-[16px] font-semibold">{equipment ? "Jihozni tahrirlash" : "Jihoz qo'shish"}</h3>
         </div>
@@ -84,14 +82,13 @@ export default function EquipmentModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <button onClick={onClose} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
             Bekor qilish
           </button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

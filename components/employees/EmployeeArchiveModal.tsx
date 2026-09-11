@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { EMP_LEAVE_REASONS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Xodimni arxivlash / arxivdan chiqarish modali.
 //
@@ -45,12 +45,12 @@ function todayIso(): string {
 }
 
 export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }: Props) {
+  const modal = useModalClose(onClose);
   const [reason, setReason] = useState(EMP_LEAVE_REASONS[0]);
   const [date, setDate] = useState(todayIso());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  useEscapeClose(onClose);
 
   const roleLabel = ROLE_LABELS[employee.turi as keyof typeof ROLE_LABELS] ?? "Xodim";
   const isArchive = mode === "archive";
@@ -104,14 +104,7 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
   return (
     // Saqlash ketayotganda fon bosilsa modal yopilmasin — so'rov yarim yo'lda
     // qolib, natijasi ko'rinmay ketardi (loyihadagi tasdiq oynalari naqshi).
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
-      onClick={() => !saving && onClose()}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal onClose={onClose} controller={modal} locked={saving} bare zIndex={200} panelClassName="p-5 space-y-4 overflow-y-auto">
         <h3 className="text-lg font-semibold">
           {isArchive ? `${roleLabel}ni arxivlash` : `${roleLabel}ni arxivdan chiqarish`}
         </h3>
@@ -154,14 +147,13 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
         <div className="flex items-center justify-end gap-2 pt-1">
           {/* `components/ui/Button.tsx` da disabled uslubi yo'q — loyihadagi
               boshqa modallar kabi `disabled:opacity-40` qo'lda qo'shiladi. */}
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="disabled:opacity-40">
+          <Button type="button" variant="outline" onClick={modal.close} disabled={saving} className="disabled:opacity-40">
             Bekor qilish
           </Button>
           <Button type="button" variant="primary" onClick={submit} disabled={saving} className="disabled:opacity-40">
             {saving ? "Saqlanmoqda..." : isArchive ? "Arxivlash" : "Arxivdan chiqarish"}
           </Button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

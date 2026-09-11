@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { SalesPlanRow } from "@/lib/salesPlan";
+import Modal from "@/components/ui/Modal";
 
 // Sotuv va marketing → Savdo plani (sidebar: Sotuv va marketing > Savdo
 // plani, href /sales-plan). Ma'lumot HAQIQIY — /api/sales-plans.
@@ -108,9 +109,7 @@ export default function SalesPlanPage() {
       </div>
 
       {setupOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && setSetupOpen(false)} />
-          <div className="relative w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+        <Modal onClose={() => setSetupOpen(false)} locked={saving} bare size="lg" zIndex={110} panelClassName="p-6 space-y-4">{(modal) => (<>
             <h3 className="text-[16px] font-semibold">Planni sozlash</h3>
             <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
               {rows.map((r) => (
@@ -128,7 +127,7 @@ export default function SalesPlanPage() {
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
-                onClick={() => setSetupOpen(false)}
+                onClick={modal.close}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
@@ -142,8 +141,7 @@ export default function SalesPlanPage() {
                 {saving ? "Saqlanmoqda…" : "Saqlash"}
               </button>
             </div>
-          </div>
-        </div>
+          </>)}</Modal>
       )}
     </div>
   );

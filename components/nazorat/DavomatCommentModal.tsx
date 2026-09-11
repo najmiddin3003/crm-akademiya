@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Modal, { useModalClose } from "@/components/ui/Modal";
 
 // Nazorat > Davomat jadvalidagi "Sharh" ikonkasi ochadigan oyna.
 // Sharh o'quvchining davomati bo'yicha eslatma — `settings` kolleksiyasida
@@ -29,11 +30,11 @@ export default function DavomatCommentModal({
   onClose: () => void;
   onSave: (text: string) => void;
 }) {
+  const modal = useModalClose(onClose);
   const [text, setText] = useState(initialValue);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <Modal onClose={onClose} controller={modal} bare zIndex={300} panelClassName="p-5 space-y-4">
         <div>
           <h3 className="text-lg font-semibold">Sharh</h3>
           <p className="text-[13px] text-muted-foreground">{studentName}</p>
@@ -49,7 +50,7 @@ export default function DavomatCommentModal({
         />
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
+          <button type="button" onClick={modal.close} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
             Bekor qilish
           </button>
           <button
@@ -61,7 +62,6 @@ export default function DavomatCommentModal({
             {busy ? "Saqlanmoqda..." : "Saqlash"}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }
