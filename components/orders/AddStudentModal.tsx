@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import { SOURCE_OTHER, STUDENT_SOURCES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
+import DateField from "@/components/ui/DateField";
 
 // "O'quvchi qo'shish" tugmasi bosilganda ochiladigan alohida modal — akademiya.edutizim.uz
 // dagi "Yangi buyurtma" panelining o'zida joylashgan xuddi shu nomdagi tugma ortidan
@@ -248,12 +249,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
 
         <div>
           <label className="block text-[13px] font-medium mb-1.5">Tug&apos;ilgan sanasi</label>
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            className="w-full h-11 px-3 rounded-lg border border-border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+          <DateField value={birthDate} onChange={(v) => setBirthDate(v)} variant="panel" />
         </div>
 
         <label className="flex items-center gap-2 text-sm cursor-pointer">

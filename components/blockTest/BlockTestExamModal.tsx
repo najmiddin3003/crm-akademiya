@@ -10,6 +10,8 @@ import type { BlockTestExam } from "@/lib/blockTestExams";
 import type { BlockTestType } from "@/lib/blockTestTypes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
+import TimeField from "@/components/ui/TimeField";
 
 // "Blok test qo'shish" / tahrirlash modali (Blok test → Blok testlar, referens
 // akademiya.edutizim.uz/block-test/exams). `exam` berilsa — tahrirlash
@@ -138,12 +140,12 @@ export default function BlockTestExamModal({
           </div>
           <div>
             <label className={labelCls}>Sana</label>
-            <input value={date} onChange={(e) => setDate(e.target.value)} type="date" className={inputCls} />
+            <DateField value={date} onChange={(v) => setDate(v)} variant="panel" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Boshlanish vaqti</label>
-              <input value={startTime} onChange={(e) => setStartTime(e.target.value)} type="time" className={inputCls} />
+              <TimeField value={startTime} onChange={(v) => setStartTime(v)} variant="panel" />
             </div>
             <div>
               <label className={labelCls}>Davomiyligi (daqiqa)</label>

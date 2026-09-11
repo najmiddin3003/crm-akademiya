@@ -18,6 +18,7 @@ import {
   type TaskTargetKind,
 } from "@/lib/tasksData";
 import Select from "@/components/ui/Select";
+import TimeField from "@/components/ui/TimeField";
 
 // Ported from crm-akademiya/src/app.js openTaskModal()/saveTask() (~line 4238).
 //
@@ -147,12 +148,7 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Vaqt</label>
-            <input
-              type="time"
-              value={values.time}
-              onChange={(e) => set("time", e.target.value)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <TimeField value={values.time} onChange={(v) => set("time", v)} />
           </div>
         </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "@/components/ui/Link";
-import { CalendarCheck, History, MoreVertical, Plus, X } from "lucide-react";
+import { CalendarCheck, History, MoreVertical, Plus } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
@@ -17,6 +17,7 @@ import { useTeachers } from "@/hooks/useTeachers";
 import { pupilStatusOf, type PupilListItem } from "@/lib/pupilsData";
 import { GROUP_DAYS } from "@/constants/groups";
 import PersonLink from "@/components/shared/PersonDirectory";
+import TimeField from "@/components/ui/TimeField";
 
 // Guruhlar ro'yxati (crm-akademiya #view-groups). SARIQ qator = bugun davomat
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
@@ -316,16 +317,9 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
             xona) qidiruv o'zi chiqadi. */}
         <Select size="sm" clearable className="w-36" value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} placeholder="O'qituvchi" searchPlaceholder="O'qituvchini qidirish" options={teacherNames.map((t) => ({ value: t, label: t }))} />
 
-        <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-3 gap-1.5 text-sm">
-          <span className="text-muted-foreground text-[12px]">Boshlanish vaqti</span>
-          <input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); setPage(1); }} className="bg-transparent outline-none text-[13px] tabular-nums w-16" />
-          <button onClick={() => { setStartTime(""); setPage(1); }} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
-        </div>
-        <div className="inline-flex items-center h-9 rounded-lg border border-border bg-card px-3 gap-1.5 text-sm">
-          <span className="text-muted-foreground text-[12px]">Tugash vaqti</span>
-          <input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); setPage(1); }} className="bg-transparent outline-none text-[13px] tabular-nums w-16" />
-          <button onClick={() => { setEndTime(""); setPage(1); }} className="text-muted-foreground hover:text-foreground" title="Tozalash"><X className="h-3 w-3" /></button>
-        </div>
+        {/* Vaqt filtrlari — TimeField: placeholder filtr nomi, tozalash X maydonning o'zida. */}
+        <TimeField value={startTime} onChange={(v) => { setStartTime(v); setPage(1); }} placeholder="Boshlanish vaqti" className="w-40" />
+        <TimeField value={endTime} onChange={(v) => { setEndTime(v); setPage(1); }} placeholder="Tugash vaqti" className="w-36" />
 
         <Select size="sm" clearable className="w-28" value={day} onChange={(v) => { setDay(v); setPage(1); }} placeholder="Kun" options={dayNames.map((d) => ({ value: d, label: d }))} />
         <Select size="sm" clearable className="w-32" value={course} onChange={(v) => { setCourse(v); setPage(1); }} placeholder="Kurs" searchPlaceholder="Kursni qidirish" options={courseNames.map((c) => ({ value: c, label: c }))} />

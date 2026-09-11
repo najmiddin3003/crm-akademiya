@@ -7,6 +7,7 @@ import { useTaskTypes } from "@/hooks/useTaskTypes";
 import DateField from "@/components/ui/DateField";
 import type { GroupTask } from "@/lib/groupTasks";
 import Select from "@/components/ui/Select";
+import TimeField from "@/components/ui/TimeField";
 
 // Vazifa qo'shish / tahrirlash modali (skrinshot 2). `task` berilsa — tahrirlash
 // (inputlar oldingi qiymatlar bilan to'ldiriladi), PATCH /api/group-tasks/:id.
@@ -116,7 +117,7 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
             </div>
             <div>
               <label className={labelCls}>Vaqti</label>
-              <input value={dTime} onChange={(e) => setDTime(e.target.value)} type="time" className={inputCls} />
+              <TimeField value={dTime} onChange={(v) => setDTime(v)} variant="panel" />
             </div>
           </div>
           <div>

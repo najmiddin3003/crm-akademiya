@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
@@ -11,6 +10,8 @@ import { GROUP_DAYS, GROUP_EDU_TYPES, GROUP_FORMATS } from "@/constants/groups";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import type { Group } from "@/lib/groups";
 import Select from "@/components/ui/Select";
+import TimeField from "@/components/ui/TimeField";
+import DateField from "@/components/ui/DateField";
 
 // Guruhni tahrirlash modali (skrinshot 1). Guruh maydonlari bilan to'ldirilgan;
 // Saqlash → PATCH /api/groups/:id.
@@ -129,17 +130,11 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           </div>
           <div>
             <label className={labelCls}>Boshlanish vaqti</label>
-            <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-card px-3">
-              <input value={startTime} onChange={(e) => setStartTime(e.target.value)} type="time" className="flex-1 bg-transparent text-sm outline-none tabular-nums" />
-              <button type="button" onClick={() => setStartTime("")} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
-            </div>
+            <TimeField value={startTime} onChange={setStartTime} variant="form" />
           </div>
           <div>
             <label className={labelCls}>Tugash vaqti</label>
-            <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-card px-3">
-              <input value={endTime} onChange={(e) => setEndTime(e.target.value)} type="time" className="flex-1 bg-transparent text-sm outline-none tabular-nums" />
-              <button type="button" onClick={() => setEndTime("")} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
-            </div>
+            <TimeField value={endTime} onChange={setEndTime} variant="form" />
           </div>
           <div>
             <label className={labelCls}>O&apos;qituvchi<span className="text-rose-500">*</span></label>
@@ -163,11 +158,11 @@ export default function EditGroupModal({ group, onClose, onSaved }: { group: Gro
           </div>
           <div>
             <label className={labelCls}>Boshlanish sanasi</label>
-            <input value={startDate} onChange={(e) => setStartDate(e.target.value)} type="date" className={inputCls} />
+            <DateField value={startDate} onChange={(v) => setStartDate(v)} variant="form" />
           </div>
           <div>
             <label className={labelCls}>Bitkazish sanasi</label>
-            <input value={endDate} onChange={(e) => setEndDate(e.target.value)} type="date" className={inputCls} />
+            <DateField value={endDate} onChange={(v) => setEndDate(v)} variant="form" />
           </div>
         </div>
 

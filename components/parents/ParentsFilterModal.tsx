@@ -8,6 +8,7 @@ import { useModerators } from "@/hooks/useModerators";
 import { PUPIL_STATUSES } from "@/lib/pupilsData";
 import { EMPTY_PARENTS_FILTERS, PARENT_KINDS, type ParentsFilters } from "@/lib/parentsData";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // Ota-ona sahifasining filtr modali.
 //
@@ -97,21 +98,11 @@ export default function ParentsFilterModal({ initialFilters, categoryOptions, on
               sanasi (pupils.birthDate) bo'yicha oraliq — nomi ham shunga mos. */}
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">Tug&apos;ilgan (dan)</span>
-            <input
-              type="date"
-              value={draft.birthFrom}
-              onChange={(e) => set("birthFrom", e.target.value)}
-              className={`${inputCls} date-input`}
-            />
+            <DateField value={draft.birthFrom} onChange={(v) => set("birthFrom", v)} variant="form" />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">Tug&apos;ilgan (gacha)</span>
-            <input
-              type="date"
-              value={draft.birthTo}
-              onChange={(e) => set("birthTo", e.target.value)}
-              className={`${inputCls} date-input`}
-            />
+            <DateField value={draft.birthTo} onChange={(v) => set("birthTo", v)} variant="form" />
           </div>
         </div>
 

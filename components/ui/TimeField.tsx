@@ -82,6 +82,10 @@ export default function TimeField({
   const popRef = useRef<HTMLDivElement>(null);
   const hoursRef = useRef<HTMLDivElement>(null);
   const minutesRef = useRef<HTMLDivElement>(null);
+  // Popup ichida tanlangan soat/daqiqa — ota komponent `value`ni qachon
+  // yangilashiga bog'liq bo'lmaslik uchun (soat bosilib, daqiqa bosilguncha
+  // re-render bo'lmasa ham soat yo'qolmasin).
+  const draftRef = useRef<{ h: number; m: number } | null>(null);
 
   // Tashqaridan kelgan qiymat o'zgarsa matn moslanadi — render paytida
   // (DateField bilan bir xil naqsh).
@@ -131,6 +135,7 @@ export default function TimeField({
   const curM = current ? Number(current.slice(3)) : -1;
 
   function commit(h: number, m: number) {
+    draftRef.current = { h, m };
     const v = `${p2(h)}:${p2(m)}`;
     setText(v);
     if (v !== value) onChange(v);
@@ -144,6 +149,7 @@ export default function TimeField({
 
   const openPopup = () => {
     if (disabled || open) return;
+    draftRef.current = null;
     setOpen(true);
     reposition();
   };
@@ -222,7 +228,7 @@ export default function TimeField({
                   type="button"
                   data-selected={h === curH}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => commit(h, curM >= 0 ? curM : 0)}
+                  onClick={() => commit(h, draftRef.current?.m ?? (curM >= 0 ? curM : 0))}
                   className={`block w-full px-4 py-1.5 text-left hover:bg-secondary ${h === curH ? "bg-primary/10 text-primary font-medium" : ""}`}
                 >
                   {p2(h)}
@@ -238,7 +244,7 @@ export default function TimeField({
                   data-selected={m === curM}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    commit(curH >= 0 ? curH : 0, m);
+                    commit(draftRef.current?.h ?? (curH >= 0 ? curH : 0), m);
                     setOpen(false);
                   }}
                   className={`block w-full px-4 py-1.5 text-left hover:bg-secondary ${m === curM ? "bg-primary/10 text-primary font-medium" : ""}`}

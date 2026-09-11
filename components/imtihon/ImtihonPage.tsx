@@ -12,6 +12,7 @@ import { imMonthLabel, imPct, normalizeMonth, type MonthlyExam } from "@/lib/imt
 import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "./importUtils";
 import UzbmbView from "./UzbmbView";
 import Select from "@/components/ui/Select";
+import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
 
 // Imtihon bo'limi — referens HTML'dagi "IMTIHON (Oylik imtihon) VIEW" ning
 // aynan o'zi: sarlavha + 4 amal tugmasi, ichki tablar (Oylik imtihon | UzBMB),
@@ -642,11 +643,9 @@ export default function ImtihonPage() {
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium mb-1.5">Oy</label>
-                  <input
-                    value={entry.month}
-                    onChange={(e) => setEntry((f) => ({ ...f, month: e.target.value }))}
-                    type="month"
-                    className={`${inputCls} tabular-nums`}
+                  <MonthYearPicker
+                    value={monthYearFromIso(entry.month)}
+                    onChange={(v) => setEntry((f) => ({ ...f, month: monthYearToIso(v) }))}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">

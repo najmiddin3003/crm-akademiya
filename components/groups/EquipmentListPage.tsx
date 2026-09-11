@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import EquipmentModal from "./EquipmentModal";
 import type { Equipment } from "@/lib/equipment";
+import DateField from "@/components/ui/DateField";
 
 // Guruh → Jihozlar (referens akademiya.edutizim.uz/group/equipments, sidebar:
 // Guruh > Jihozlar, href /groups-equipments). Ma'lumot /api/equipment dan.
@@ -151,8 +152,8 @@ export default function EquipmentListPage() {
           </div>
           <div className="inline-flex items-center gap-1.5">
             <span className="text-[13px] text-muted-foreground">Sana</span>
-            <input value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} type="date" placeholder="Dan" title="Dan" className="h-9 rounded-lg border border-border bg-card px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
-            <input value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} type="date" placeholder="Gacha" title="Gacha" className="h-9 rounded-lg border border-border bg-card px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <DateField value={from} onChange={(v) => { setFrom(v); setPage(1); }} placeholder="Dan" />
+            <DateField value={to} onChange={(v) => { setTo(v); setPage(1); }} placeholder="Gacha" />
           </div>
           <div className="relative" ref={moreRef}>
             <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">

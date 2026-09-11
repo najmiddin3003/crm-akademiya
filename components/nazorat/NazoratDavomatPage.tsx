@@ -17,6 +17,7 @@ import DavomatCommentModal from "./DavomatCommentModal";
 import { dateToIso, isoToDate, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // Nazorat > Davomat (sidebar: Nazorat > Davomat, /nazorat-davomat).
 //
@@ -414,12 +415,7 @@ export default function NazoratDavomatPage() {
           <Select value={groupStatus} onChange={(v) => resetPage(setGroupStatus)(v)} options={[{ value: "Aktiv", label: "Aktiv" }, { value: "Arxiv", label: "Arxiv" }]} placeholder="O'quvchini guruhdagi holati" clearable />
         </SelectWrap>
         <div className="relative">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => resetPage(setDate)(e.target.value)}
-            className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+          <DateField value={date} onChange={(v) => resetPage(setDate)(v)} variant="form" />
           <svg className="icon icon-xs pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"><use href="#i-calendar" /></svg>
           {date && (
             <button type="button" onClick={() => resetPage(setDate)("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">

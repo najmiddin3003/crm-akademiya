@@ -17,6 +17,7 @@ import {
 } from "@/lib/imtihon";
 import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "./importUtils";
 import Select from "@/components/ui/Select";
+import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
 
 // Imtihon → UzBMB tabi. Referens HTML'dagi "UZBMB" konteyneri va uning uch
 // modali (natija kiritish, import, solishtirish) bilan bir xil.
@@ -642,11 +643,9 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                   </div>
                   <div>
                     <label className="block text-[13px] font-medium mb-1.5">Oy</label>
-                    <input
-                      value={entry.month}
-                      onChange={(e) => setEntry((f) => ({ ...f, month: e.target.value }))}
-                      type="month"
-                      className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 tabular-nums"
+                    <MonthYearPicker
+                      value={monthYearFromIso(entry.month)}
+                      onChange={(v) => setEntry((f) => ({ ...f, month: monthYearToIso(v) }))}
                     />
                   </div>
                 </div>

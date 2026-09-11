@@ -5,6 +5,8 @@ import Button from "@/components/ui/Button";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { todayStart, type Task } from "@/lib/tasksData";
 import { uzDayKey } from "@/lib/uzTime";
+import DateField from "@/components/ui/DateField";
+import TimeField from "@/components/ui/TimeField";
 
 // Ported from crm-akademiya/src/app.js openMoveTaskModal()/confirmMoveTask() (~line 3676).
 // Shown when a task card is dropped onto the "Keyinchalik keladigan" (upcoming)
@@ -60,21 +62,11 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Sana</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => { setDate(e.target.value); setError(null); }}
-              className={`h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? "ring-2 ring-red-400 border-red-400" : "border-border"}`}
-            />
+            <DateField value={date} onChange={(v) => { setDate(v); setError(null); }} error={!!error} />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Vaqt</label>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <TimeField value={time} onChange={(v) => setTime(v)} />
           </div>
         </div>
 

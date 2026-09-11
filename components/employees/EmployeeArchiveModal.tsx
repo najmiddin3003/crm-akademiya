@@ -7,6 +7,7 @@ import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { EMP_LEAVE_REASONS, ROLE_LABELS } from "@/constants/employees";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // Xodimni arxivlash / arxivdan chiqarish modali.
 //
@@ -42,9 +43,6 @@ function todayIso(): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-
-const inputCls =
-  "h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary";
 
 export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }: Props) {
   const [reason, setReason] = useState(EMP_LEAVE_REASONS[0]);
@@ -146,7 +144,7 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
 
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Ketish sanasi</label>
-              <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+              <DateField value={date} onChange={(v) => setDate(v)} />
             </div>
           </>
         )}

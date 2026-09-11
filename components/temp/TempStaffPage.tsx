@@ -10,6 +10,7 @@ import EmployeeToggle from "@/components/employees/EmployeeToggle";
 import { EMP_LEAVE_REASONS, ROLE_LABELS } from "@/constants/employees";
 import type { TempStaffRow } from "@/app/api/temp-staff/route";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // "Vaqtinchalik tugma" (sidebar → Sozlamalardan keyin, faqat admin).
 //
@@ -753,12 +754,7 @@ export default function TempStaffPage() {
               </div>
               <div>
                 <label className={labelCls}>Ketgan sanasi</label>
-                <input
-                  type="date"
-                  value={archDate}
-                  onChange={(e) => setArchDate(e.target.value)}
-                  className={inputCls}
-                />
+                <DateField value={archDate} onChange={(v) => setArchDate(v)} variant="form" />
               </div>
             </>
           )}

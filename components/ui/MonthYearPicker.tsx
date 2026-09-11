@@ -18,6 +18,17 @@ export interface MonthYearValue {
 /** Ochiladigan oynaning kengligi (`w-72`) — joylashuvni hisoblashda kerak. */
 const POPUP_WIDTH = 288;
 
+/** "YYYY-MM" (native <input type="month"> formati) → qiymat; noto'g'ri bo'lsa null. */
+export function monthYearFromIso(s: string | null | undefined): MonthYearValue | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(s ?? ""));
+  return m ? { year: Number(m[1]), month: Number(m[2]) } : null;
+}
+
+/** Qiymat → "YYYY-MM". */
+export function monthYearToIso(v: MonthYearValue): string {
+  return `${v.year}-${String(v.month).padStart(2, "0")}`;
+}
+
 export interface MonthYearPickerProps {
   value: MonthYearValue | null;
   onChange: (value: MonthYearValue) => void;

@@ -10,6 +10,7 @@ import { useProfilePupil } from "@/hooks/useProfilePupil";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
 import { KANBAN_STATES, formatTaskDate, type Task } from "@/lib/tasksData";
 import Select from "@/components/ui/Select";
+import TimeField from "@/components/ui/TimeField";
 
 // O'quvchi profili → "Vazifa".
 //
@@ -277,12 +278,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
                   ilgari bu shunchaki niqobsiz matn input edi. */}
               <DateField value={date} onChange={setDate} variant="panel" placeholder="kk/oo/yyyy" />
               <div className="relative">
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                <TimeField value={time} onChange={(v) => setTime(v)} variant="panel" />
                 {time && (
                   <button
                     type="button"

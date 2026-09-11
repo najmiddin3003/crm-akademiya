@@ -27,6 +27,7 @@ import {
 } from "@/lib/tasksData";
 import { uzDayKey, uzDayKeyIn, uzWall } from "@/lib/uzTime";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // Ported from crm-akademiya/index-dev.html lines 551-877 (id="view-tasks") +
 // src/app.js (renderTasks/renderKanbanView/renderCalendarView/setTaskView).
@@ -458,20 +459,8 @@ export default function TasksPage() {
           {groupOptions.length > 0 && (
             <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" className="w-32" />
           )}
-          <input
-            type="date"
-            value={filters.from}
-            onChange={(e) => setFilter("from", e.target.value)}
-            className="filter-select h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title="Boshlanish sanasi"
-          />
-          <input
-            type="date"
-            value={filters.to}
-            onChange={(e) => setFilter("to", e.target.value)}
-            className="filter-select h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title="Tugash sanasi"
-          />
+          <DateField value={filters.from} onChange={(v) => setFilter("from", v)} />
+          <DateField value={filters.to} onChange={(v) => setFilter("to", v)} />
           <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={KANBAN_STATES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable size="sm" className="w-32" />
           <button onClick={clearFilters} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
             <svg className="icon icon-xs"><use href="#i-x-circle" /></svg> Tozalash

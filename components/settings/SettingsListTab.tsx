@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { ListFieldKey, SettingsListItem } from "@/lib/settingsLists";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // Sozlamalardagi barcha oddiy CRUD ro'yxatlari uchun umumiy komponent
 // (Sabablar, To'lov turlari, Hamkorlar, grading tizimi, Hashtag …).
@@ -327,12 +328,7 @@ export default function SettingsListTab({
                   <>
                     <label className="block text-[13px] font-medium mb-1.5">{f.label}</label>
                     {f.input === "date" ? (
-                      <input
-                        type="date"
-                        value={String(form[f.key] ?? "")}
-                        onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                        className={inputCls}
-                      />
+                      <DateField value={String(form[f.key] ?? "")} onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))} variant="form" />
                     ) : f.input === "color" ? (
                       // Rang tanlagich + kod maydoni — ikkalasi bir qiymatni
                       // boshqaradi, shunda qo'lda ham kiritish mumkin.

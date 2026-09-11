@@ -18,6 +18,7 @@ import {
   type HrEmployeeFull,
 } from "./employeeExtras";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
 // Saqlash → POST /api/hr-employees.
@@ -730,12 +731,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
             </div>
             <div>
               <label className={labelCls}>Tug&apos;ilgan sanasi</label>
-              <input
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className={inputCls}
-              />
+              <DateField value={birthDate} onChange={(v) => setBirthDate(v)} variant="form" />
             </div>
           </div>
 

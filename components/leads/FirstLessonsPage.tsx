@@ -35,6 +35,7 @@ import PersonLink from "@/components/shared/PersonDirectory";
 
 import { loadPupilsCached } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
+import TimeField from "@/components/ui/TimeField";
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
 // Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
@@ -915,13 +916,7 @@ function RescheduleModal({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Birinchi dars vaqti</label>
-          <input
-            type="time"
-            step={60}
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+          <TimeField value={time} onChange={(v) => setTime(v)} />
         </div>
       </div>
 
@@ -940,13 +935,7 @@ function RescheduleModal({
 
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Darsning boshlanish vaqti</label>
-        <input
-          type="time"
-          step={60}
-          value={lessonStartTime}
-          onChange={(e) => setLessonStartTime(e.target.value)}
-          className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
+        <TimeField value={lessonStartTime} onChange={(v) => setLessonStartTime(v)} />
       </div>
 
       <div className="flex justify-end gap-2">
