@@ -3,18 +3,24 @@ import { uzDateIso } from "@/lib/uzTime";
 
 // Kassa kartochkasidagi raqamlar (Moliya → Kassalar):
 //   • Bugungi tushum — shu kassaga BUGUN tushgan kirim.
-//   • Bu oy rahbar kassaga o'tkazilgan pul — shu kassadan BOSH KASSAGA
-//     jo'natilgan ko'chirmalar yig'indisi, joriy oy bo'yicha.
+//   • Oxirgi topshiruvdan beri tushum / chiqim — rahbar oxirgi marta shu
+//     kassadan kelgan ko'chirmani ✓ QABUL QILGANIDAN beri yig'ilgan kirim va
+//     qilingan chiqim (kassir "hozir qancha topshirishim kerak" savoliga
+//     javob: tushum − chiqim). Qabul qilingan ko'chirma yo'q bo'lsa —
+//     boshidan beri. (11.09.2026 gacha bu yerda "Bu oy rahbar kassaga
+//     o'tkazilgan pul" turardi — foydalanuvchi so'rovi bilan olib tashlandi.)
 //   • Kutilayotgan ko'chirma summasi — SHU KASSAGA jo'natilgan, lekin hali
 //     ✓ bosilmagan ko'chirmalar (rahbar kassa uchun: filiallar bugun
 //     qancha topshirmoqchi, u hali balansda yo'q).
 //
-// Ikkalasi ham jurnaldan (`transaction_entries`) JONLI hisoblanadi, kassa
+// Hammasi jurnaldan (`transaction_entries`) JONLI hisoblanadi, kassa
 // hujjatida saqlanmaydi — aks holda har yozuvda ikkita joyni bir vaqtda
 // yangilash kerak bo'lardi va ular bir-biridan uzilib qolishi mumkin edi
 // (`balance` bilan `methodTotals` orasidagi tuzoq bir marta shunday
-// bo'lgan). Sana FOYDALANUVCHI ko'radigan `date` maydonidan olinadi —
-// jadval va hisobotlar ham shu maydon bo'yicha filtrlaydi.
+// bo'lgan). Bugungi tushum FOYDALANUVCHI ko'radigan `date` maydonidan —
+// jadval va hisobotlar ham shu maydon bo'yicha filtrlaydi; "oxirgi
+// topshiruvdan beri" esa `createdAt` (yozilgan lahza) bo'yicha — kassir
+// orqaga sana qo'yib kiritsa ham pul kassaga QACHON kirgani muhim.
 
 export interface CashboxCardStats {
   /** Bugun shu kassaga tushgan kirim (bekor qilinganlari hisobga olinmaydi). */
@@ -29,14 +35,15 @@ export interface CashboxCardStats {
    */
   todayByMethod: Record<string, number>;
   /**
-   * Joriy oyda shu kassadan bosh kassaga jo'natilgan summa.
+   * Oxirgi QABUL QILINGAN topshiruvdan (shu kassadan bosh kassaga
+   * jo'natilib ✓ bosilgan ko'chirma) beri: tushum, chiqim va chegara lahzasi.
    *
-   * TASDIQ KUTAYOTGANLARI HAM KIRADI (`waiting`), faqat bekor qilingani
-   * chiqib qoladi. Sabab: bu raqam kassirning "shu oy rahbarga qancha
-   * topshirdim" savoliga javob beradi. Faqat tasdiqlanganini sanasak,
-   * rahbar bir hafta ✓ bosmaganda karta 0 ko'rsatib turardi.
+   * Chegara — ko'chirmaning `decidedAt` (✓ bosilgan vaqt,
+   * lib/transferDecision.ts); 11.09.2026 dan oldingi ko'chirmalarda bu
+   * maydon yo'q, ularda jo'natilgan vaqt (`createdAt`) olinadi. `since`
+   * null — hali birorta qabul qilingan topshiruv yo'q (boshidan beri).
    */
-  monthToPrimary: number;
+  sinceHandover: { income: number; expense: number; since: string | null };
   /**
    * Shu kassaga KELAYOTGAN, tasdiq kutayotgan ko'chirmalar yig'indisi.
    *
@@ -53,13 +60,19 @@ export interface CashboxCardStats {
 export async function loadCardStats(
   db: Db,
   cashboxIds: number[],
-  /** Bosh kassa (`cashboxes.isPrimary`). Yo'q bo'lsa ikkinchi raqam 0. */
+  /** Bosh kassa (`cashboxes.isPrimary`). Yo'q bo'lsa "oxirgi topshiruv" boshidan beri. */
   primaryId: number | null,
 ): Promise<Map<number, CashboxCardStats>> {
   const out = new Map<number, CashboxCardStats>();
   if (cashboxIds.length === 0) return out;
   for (const id of cashboxIds) {
-    out.set(id, { todayIncome: 0, todayByMethod: {}, monthToPrimary: 0, pendingIn: 0, pendingInCount: 0 });
+    out.set(id, {
+      todayIncome: 0,
+      todayByMethod: {},
+      sinceHandover: { income: 0, expense: 0, since: null },
+      pendingIn: 0,
+      pendingInCount: 0,
+    });
   }
 
   const entries = db.collection("transaction_entries");
@@ -69,14 +82,8 @@ export async function loadCardStats(
   // tushardi (11.09.2026, 21:00 da sezildi). Dev mashinada (UTC+5)
   // siljish 0 bo'lgani uchun ko'rinmasdi.
   const today = uzDateIso();
-  const monthStart = today.slice(0, 8) + "01";
-  // Keyingi oyning boshi — "YYYY-MM-DD" satrlari leksik tartibda
-  // solishtiriladi, ya'ni oy oxirining nechanchi kun ekanini bilish
-  // shart emas.
-  const [y, m] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
-  const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
 
-  const [incomeRows, inRows, pendingInRows] = await Promise.all([
+  const [incomeRows, acceptedInRows, pendingInRows] = await Promise.all([
     entries
       .aggregate<{ _id: { cashboxId: number; key: string | null }; sum: number }>([
         {
@@ -93,20 +100,14 @@ export async function loadCardStats(
         { $group: { _id: { cashboxId: "$cashboxId", key: "$paymentMethodKey" }, sum: { $sum: "$amount" } } },
       ])
       .toArray(),
-    // Bosh kassaga KELGAN ko'chirma qatorlari. Jo'natuvchi kassa
-    // ularning o'zida yozilmagan — u juftlikning "out" qatorida turadi,
-    // shuning uchun pastda `transferId` bo'yicha bog'lanadi.
+    // Bosh kassaga KELGAN va ✓ QABUL QILINGAN ko'chirma qatorlari — chegara
+    // lahzasi uchun. Jo'natuvchi kassa ularning o'zida yozilmagan — u
+    // juftlikning "out" qatorida turadi, pastda `transferId` bo'yicha bog'lanadi.
     primaryId === null
       ? Promise.resolve([])
       : entries
-          .find({
-            cashboxId: primaryId,
-            txType: "transfer",
-            transferRole: "in",
-            date: { $gte: monthStart, $lt: nextMonth },
-            status: { $ne: "cancelled" },
-          })
-          .project<{ transferId?: number; amount?: number }>({ _id: 0, transferId: 1, amount: 1 })
+          .find({ cashboxId: primaryId, txType: "transfer", transferRole: "in", status: "" })
+          .project<{ transferId?: number; createdAt?: string; decidedAt?: string }>({ _id: 0, transferId: 1, createdAt: 1, decidedAt: 1 })
           .toArray(),
     // Tasdiq kutayotgan KELUVCHI qatorlar — kassa kesimida. Keluvchi qator
     // miqdori musbat yoziladi, baribir modulini olamiz.
@@ -137,25 +138,57 @@ export async function loadCardStats(
     if (r._id.key) cur.todayByMethod[r._id.key] = (cur.todayByMethod[r._id.key] ?? 0) + r.sum;
   }
 
-  // `transferId` yo'q qator — juftligini ishonchli topib bo'lmaydi, ya'ni
-  // pulni qaysi kassa jo'natganini ham. Bunday qatorlar bu maydon
-  // qo'shilishidan oldingi (import qilingan) tarixda uchraydi; joriy oyda
-  // yo'q. Ularni noto'g'ri kassaga yozgandan ko'ra sanamagan afzal.
-  const amountByTransfer = new Map<number, number>();
-  for (const r of inRows) {
+  // Har kassa uchun OXIRGI qabul qilingan topshiruv lahzasi. `transferId`
+  // yo'q qator — juftligini ishonchli topib bo'lmaydi (import qilingan eski
+  // tarix); ular tashlab ketiladi.
+  const momentByTransfer = new Map<number, string>();
+  for (const r of acceptedInRows) {
     if (typeof r.transferId !== "number") continue;
-    amountByTransfer.set(r.transferId, Math.abs(Number(r.amount) || 0));
+    const moment = r.decidedAt || r.createdAt;
+    if (moment) momentByTransfer.set(r.transferId, moment);
   }
-  if (amountByTransfer.size > 0) {
+  const sinceById = new Map<number, string>();
+  if (momentByTransfer.size > 0) {
     const outRows = await entries
-      .find({ transferId: { $in: [...amountByTransfer.keys()] }, transferRole: "out" })
+      .find({ transferId: { $in: [...momentByTransfer.keys()] }, transferRole: "out", cashboxId: { $in: cashboxIds } })
       .project<{ transferId?: number; cashboxId?: number }>({ _id: 0, transferId: 1, cashboxId: 1 })
       .toArray();
     for (const o of outRows) {
-      const cur = typeof o.cashboxId === "number" ? out.get(o.cashboxId) : undefined;
-      if (!cur || typeof o.transferId !== "number") continue;
-      cur.monthToPrimary += amountByTransfer.get(o.transferId) ?? 0;
+      if (typeof o.transferId !== "number" || typeof o.cashboxId !== "number") continue;
+      const m = momentByTransfer.get(o.transferId);
+      if (!m) continue;
+      const prev = sinceById.get(o.cashboxId);
+      // ISO satrlar — leksik tartib vaqt tartibiga teng.
+      if (!prev || m > prev) sinceById.set(o.cashboxId, m);
     }
+  }
+
+  // Chegaradan keyingi kirim/chiqim — bitta so'rovda, kassa bo'yicha har xil
+  // chegara bilan (`$or`). Chegarasi yo'q kassada — boshidan beri.
+  const flowRows = await entries
+    .aggregate<{ _id: { cashboxId: number; txType: string }; sum: number }>([
+      {
+        $match: {
+          txType: { $in: ["payIn", "payOut"] },
+          status: { $nin: ["waiting", "cancelled"] },
+          $or: cashboxIds.map((id) => {
+            const since = sinceById.get(id);
+            return since ? { cashboxId: id, createdAt: { $gt: since } } : { cashboxId: id };
+          }),
+        },
+      },
+      { $group: { _id: { cashboxId: "$cashboxId", txType: "$txType" }, sum: { $sum: { $abs: "$amount" } } } },
+    ])
+    .toArray();
+  for (const [id, since] of sinceById) {
+    const cur = out.get(id);
+    if (cur) cur.sinceHandover.since = since;
+  }
+  for (const f of flowRows) {
+    const cur = out.get(f._id.cashboxId);
+    if (!cur) continue;
+    if (f._id.txType === "payIn") cur.sinceHandover.income += f.sum;
+    else cur.sinceHandover.expense += f.sum;
   }
 
   return out;

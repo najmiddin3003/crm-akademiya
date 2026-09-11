@@ -29,8 +29,8 @@ export interface Cashbox {
    */
   pendingOut?: CashboxMethodTotals;
   /**
-   * Kartochkadagi ikkita raqam — bugungi tushum va bu oy bosh kassaga
-   * o'tkazilgan pul (lib/cashboxStats.ts).
+   * Kartochkadagi raqamlar — bugungi tushum va oxirgi topshiruvdan beri
+   * tushum/chiqim (lib/cashboxStats.ts).
    *
    * `pendingOut` bilan bir xil qoida: MongoDB hujjatida saqlanmaydi, har
    * so'rovda jurnaldan hisoblanadi va faqat `GET /api/cashboxes`
@@ -48,7 +48,12 @@ export interface Cashbox {
    * tushumga esa tegmaydi (u faqat `payIn` ni sanaydi).
    */
   todayByMethod?: CashboxMethodTotals;
-  monthToPrimary?: number;
+  /**
+   * Oxirgi QABUL QILINGAN topshiruvdan beri tushum/chiqim va chegara lahzasi
+   * (lib/cashboxStats.ts). Kassir "hozir qancha topshirishim kerak" degan
+   * savolga shu ikki raqamdan javob oladi.
+   */
+  sinceHandover?: { income: number; expense: number; since: string | null };
   /** Shu kassaga kelib, ✓ kutayotgan ko'chirmalar yig'indisi (lib/cashboxStats.ts). */
   pendingIn?: number;
   /** O'sha ko'chirmalar soni — rahbar kartochkasidagi ikonka belgisi. */

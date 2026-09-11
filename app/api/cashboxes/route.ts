@@ -76,8 +76,8 @@ export async function GET(req: Request) {
   // summa alohida ko'rsatiladi, aks holda kassir balansning bir qismi
   // allaqachon va'da qilinganini bilmasdi.
   //
-  // Kartochkadagi "Bugungi tushum" va "Bu oy rahbar kassaga o'tkazilgan
-  // pul" ham shu yerda hisoblanadi (lib/cashboxStats.ts).
+  // Kartochkadagi "Bugungi tushum" va "Oxirgi topshiruvdan beri
+  // tushum/chiqim" ham shu yerda hisoblanadi (lib/cashboxStats.ts).
   const ids = rows.map((r) => r.id as number);
   const [pending, stats] = await Promise.all([
     loadPendingOut(db, ids),
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
       pendingOut: pending.get(id) ?? {},
       todayIncome: s?.todayIncome ?? 0,
       todayByMethod: s?.todayByMethod ?? {},
-      monthToPrimary: s?.monthToPrimary ?? 0,
+      sinceHandover: s?.sinceHandover ?? { income: 0, expense: 0, since: null },
       pendingIn: s?.pendingIn ?? 0,
       pendingInCount: s?.pendingInCount ?? 0,
     };

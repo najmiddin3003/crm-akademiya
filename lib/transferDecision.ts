@@ -111,9 +111,13 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
   // pul ko'chmay qoladi. Pul yo'qolmaydi (jurnalda ikkala qator
   // ko'rinadi), lekin qo'lda tuzatish talab qiladi. $inc SINXRON xato
   // bersa quyida holat ham, pul ham orqaga qaytariladi.
+  // `decidedAt` — ✓/× bosilgan lahza (ISO satr, `createdAt` bilan bir xil
+  // shakl). Kassa kartochkasidagi "Oxirgi topshiruvdan beri tushum/chiqim"
+  // shu lahzadan hisoblanadi (lib/cashboxStats.ts). 11.09.2026 dan oldingi
+  // qatorlarda maydon yo'q — u yerda jo'natilgan vaqt olinadi.
   const cas = await entriesCol.updateMany(
     { transferId, status: "waiting" },
-    { $set: { status: newStatus } },
+    { $set: { status: newStatus, decidedAt: new Date().toISOString() } },
   );
   if (cas.modifiedCount === 0) {
     return err("Bu ko'chirma allaqachon hal qilingan", 409);

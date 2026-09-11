@@ -147,6 +147,15 @@ function fmtSom(n: number): string {
   return fmtNum(n) + " so'm";
 }
 
+/** "Oxirgi topshiruvdan beri" qatorlarining izohi — chegara qachon edi. */
+function sinceTitle(since: string | null): string {
+  if (!since) return "Hali qabul qilingan topshiruv yo'q — boshidan beri hisoblanadi";
+  const d = new Date(since);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `Rahbar oxirgi topshiruvni ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())} da qabul qilgan`;
+}
+
 /**
  * Kassa kartochkasidagi amal plitkasi (Kirim, Chiqim, Ko'chirish, Dividend,
  * Sarmoya). Rang `tone` (hex) — CSS `--tile` o'zgaruvchisi orqali gradient
@@ -900,8 +909,8 @@ export default function CashboxesPage() {
   /**
    * Kassa kartochkasini yozuv route'i qaytargan holat bilan yangilaydi.
    *
-   * ALMASHTIRMAYDI, USTIGA QO'YADI. Sabab: kartochkadagi uchta raqam —
-   * `pendingOut`, `todayIncome`, `monthToPrimary` — faqat
+   * ALMASHTIRMAYDI, USTIGA QO'YADI. Sabab: kartochkadagi raqamlar —
+   * `pendingOut`, `todayIncome`, `sinceHandover` — faqat
    * `GET /api/cashboxes` da hisoblanadi (lib/cashboxStats.ts,
    * lib/transferPending.ts). Kirim/Chiqim/Ko'chirish javobida ular YO'Q,
    * ya'ni obyektni butunlay almashtirsak kartochkadagi qatorlar
@@ -1513,10 +1522,20 @@ export default function CashboxesPage() {
                         {`Kutilayotgan ko'chirma summasi: ${mask(c.pendingIn ?? 0)} so'm`}
                       </div>
                     )}
+                    {/* Filial kassasi: rahbar oxirgi marta ✓ bosganidan beri
+                        yig'ilgan tushum va qilingan chiqim — "hozir qancha
+                        topshirishim kerak" (tushum − chiqim). Chegara sanasi
+                        izohda (title). Qabul qilingan topshiruv bo'lmasa —
+                        boshidan beri. */}
                     {!c.isPrimary && (
-                      <div>
-                        {`Bu oy rahbar kassaga o'tkazilgan pul: ${mask(c.monthToPrimary ?? 0)} so'm`}
-                      </div>
+                      <>
+                        <div title={sinceTitle(c.sinceHandover?.since ?? null)}>
+                          {`Oxirgi topshiruvdan beri tushum: ${mask(c.sinceHandover?.income ?? 0)} so'm`}
+                        </div>
+                        <div title={sinceTitle(c.sinceHandover?.since ?? null)}>
+                          {`Oxirgi topshiruvdan beri chiqim: ${mask(c.sinceHandover?.expense ?? 0)} so'm`}
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -2134,7 +2153,7 @@ export default function CashboxesPage() {
             patchCashbox(from);
             patchCashbox(to);
             loadEntries();
-            // "Bu oy rahbar kassaga o'tkazilgan pul" hozirgina o'zgardi.
+            // Kartochkadagi "Kutilayotgan ko'chirma" / "Oxirgi topshiruvdan beri" raqamlari o'zgardi.
             refreshCashboxes();
           }}
         />
