@@ -188,8 +188,11 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
     onSave(pupil);
   };
 
+  // zIndex 1100 — bu oyna "Yangi buyurtma" DRAWER'i (.st-drawer, z 1001)
+  // USTIDA ochiladi; standart 100 da drawer orqasida qolib, xira va bosib
+  // bo'lmas holda turardi. Ichki "Manbani yozing" oynasi 1200.
   return (
-    <><Modal onClose={onClose} controller={modal} bare panelClassName="p-5 space-y-4 overflow-y-auto">
+    <><Modal onClose={onClose} controller={modal} bare zIndex={1100} panelClassName="p-5 space-y-4 overflow-y-auto">
         <div>
           <h3 className="text-lg font-semibold">Yangi o&apos;quvchi qo&apos;shish</h3>
           <p className="text-xs text-muted-foreground mt-1">* Zarurligini bildiradi</p>
@@ -269,7 +272,7 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
           </Button>
         </div>
       </Modal>{otherOpen && (
-        <Modal onClose={closeOther} controller={otherModal} bare size="sm" panelClassName="p-5 space-y-4">
+        <Modal onClose={closeOther} controller={otherModal} bare size="sm" zIndex={1200} panelClassName="p-5 space-y-4">
             <div>
               <h3 className="text-base font-semibold">Manbani yozing</h3>
               <p className="text-xs text-muted-foreground mt-1">

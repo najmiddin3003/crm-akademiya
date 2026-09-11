@@ -78,7 +78,10 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   // (/api/teachers), avvalgi qattiq yozilgan TEACHERS massivi emas.
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
 
-  useEscapeClose(onClose);
+  // Ustida "Yangi o'quvchi" modali ochiq bo'lsa Esc FAQAT uni yopsin (u
+  // o'zi ui/Modal orqali tinglaydi) — aks holda bitta Esc drawer'ni ham
+  // yopib, yarim to'ldirilgan buyurtma yo'qolardi.
+  useEscapeClose(addStudentOpen ? () => {} : onClose);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
