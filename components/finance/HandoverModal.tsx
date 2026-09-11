@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, CircleCheck, Clock, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, RefreshCw } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import DateField from "@/components/ui/DateField";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -12,10 +12,11 @@ import { uzDateIso, uzNow } from "@/lib/uzTime";
 // → rahbar kartochkasidagi ro'yxat ikonkasi).
 //
 // Har qator — bitta filial kassasi: shu kuni qancha yig'di (tushum),
-// sarfladi (chiqim), rahbarga qanchasini jo'natdi (tasdiqlangan /
-// kutilayotgan) va farq — hali topshirilmagani. Raqamlar
-// /api/cashboxes/handover dan (lib/handoverReport.ts), FAQAT KO'RSATADI:
-// tasdiqlash jurnaldagi ✓/× tugmalarida qoladi.
+// sarfladi (chiqim) va rahbarga qanchasini jo'natdi (tasdiqlangan /
+// kutilayotgan). Raqamlar /api/cashboxes/handover dan
+// (lib/handoverReport.ts), FAQAT KO'RSATADI: tasdiqlash jurnaldagi ✓/×
+// tugmalarida qoladi. API "farq" va "kassadagi qoldiq"ni ham qaytaradi,
+// lekin oynada ko'rsatilmaydi (foydalanuvchi so'rovi, 11.09.2026).
 //
 // Sana: standart — bugun; ← → bilan kunma-kun yurish, maydonga yozish yoki
 // kalendardan tanlash ham mumkin (kassir kechqurun topshirgan bo'lsa
@@ -35,20 +36,6 @@ function shiftDay(iso: string, days: number): string {
 function fmtUz(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
-}
-
-/** Farq ustuni: 0 — hammasi topshirilgan; musbat — qarz; manfiy — ortiqcha. */
-function DiffCell({ value, active }: { value: number; active: boolean }) {
-  if (!active) return <span className="text-muted-foreground">—</span>;
-  if (value === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-        <CircleCheck className="w-3.5 h-3.5" /> 0
-      </span>
-    );
-  }
-  if (value > 0) return <span className="text-amber-600 dark:text-amber-400 font-semibold">{fmtNum(value)}</span>;
-  return <span className="text-muted-foreground" title="Bugungi tushumdan ko'p jo'natilgan (masalan kechagi qoldiq bilan)">{fmtNum(value)}</span>;
 }
 
 export default function HandoverModal({ onClose }: { onClose: () => void }) {
@@ -99,7 +86,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
     <Modal
       onClose={onClose}
       controller={modal}
-      size="6xl"
+      size="5xl"
       title="Kunlik topshiruv — rahbar kassa"
       subtitle="Filial kassalari shu kuni qancha yig'di, sarfladi va rahbarga qanchasini topshirdi"
       bodyClassName="p-0"
@@ -167,14 +154,12 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
                 <th className={`${th} text-right`}>Jo&apos;natdi</th>
                 <th className={`${th} text-right text-emerald-700 dark:text-emerald-400`}>✓ Tasdiqlangan</th>
                 <th className={`${th} text-right text-amber-700 dark:text-amber-400`}>⏳ Kutilmoqda</th>
-                <th className={`${th} text-right`} title="Topshirishi kerak − Jo'natdi">Farq</th>
-                <th className={`${th} text-right`} title="Kassadagi hozirgi qoldiq (kunga bog'liq emas)">Kassada bor</th>
               </tr>
             </thead>
             <tbody className={loading ? "opacity-60" : ""}>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-10 text-center text-muted-foreground">Filial kassalari yo&apos;q</td>
+                  <td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">Filial kassalari yo&apos;q</td>
                 </tr>
               )}
               {rows.map((r) => {
@@ -193,8 +178,6 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
                       {active ? fmtNum(r.sentPending) : "—"}
                       {r.pendingCount > 0 && <span className="ml-1 text-[11px] text-amber-700/80">({r.pendingCount})</span>}
                     </td>
-                    <td className={`${td} text-right`}><DiffCell value={r.diff} active={active} /></td>
-                    <td className={`${td} text-right text-muted-foreground`}>{fmtNum(r.balance)}</td>
                   </tr>
                 );
               })}
@@ -209,8 +192,6 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
                   <td className={`${td} text-right`}>{fmtNum(t.sentAccepted + t.sentPending)}</td>
                   <td className={`${td} text-right text-emerald-700 dark:text-emerald-400`}>{fmtNum(t.sentAccepted)}</td>
                   <td className={`${td} text-right text-amber-700 dark:text-amber-400`}>{fmtNum(t.sentPending)}</td>
-                  <td className={`${td} text-right`}><DiffCell value={t.diff} active={rows.some(hasActivity)} /></td>
-                  <td className={`${td} text-right text-muted-foreground`}>{fmtNum(t.balance)}</td>
                 </tr>
               </tfoot>
             )}
@@ -221,7 +202,6 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
       <div className="px-5 py-3 border-t border-border text-[12px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
         <span><b className="font-semibold text-foreground">{fmtUz(date)}</b> uchun, jurnaldagi sana bo&apos;yicha</span>
         <span>Topshirishi kerak = Tushum − Chiqim</span>
-        <span>Farq = Topshirishi kerak − Jo&apos;natdi (musbat — hali topshirilmagan)</span>
         <span>Tasdiqlash — jurnaldagi ✓ / × tugmalarida</span>
       </div>
     </Modal>
