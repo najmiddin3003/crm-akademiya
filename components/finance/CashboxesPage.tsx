@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   Archive,
   ArrowDownLeft,
   ArrowDownToLine,
   ArrowLeftRight,
   ArrowUpRight,
-  BanknoteArrowDown,
-  BanknoteArrowUp,
+  ChartNoAxesCombined,
   ChevronDown,
+  ChevronRight,
+  Coins,
   CircleCheckBig,
   ClipboardList,
   CircleX,
@@ -18,12 +19,12 @@ import {
   EyeOff,
   FileSpreadsheet,
   FileText,
-  HandCoins,
   LayoutGrid,
+  Minus,
   Pencil,
-  PiggyBank,
   Plus,
   Printer,
+  Wallet,
   UserCheck,
 } from "lucide-react";
 import Link from "@/components/ui/Link";
@@ -144,6 +145,22 @@ function fmtNum(n: number): string {
 }
 function fmtSom(n: number): string {
   return fmtNum(n) + " so'm";
+}
+
+/**
+ * Kassa kartochkasidagi amal plitkasi (Kirim, Chiqim, Ko'chirish, Dividend,
+ * Sarmoya). Rang `tone` (hex) — CSS `--tile` o'zgaruvchisi orqali gradient
+ * va soyaga tarqaladi (globals.css → .fc-tile). `children` — ikonka (va
+ * xohlasa ustidagi kichik belgi).
+ */
+function ActionTile({ tone, label, onClick, children }: { tone: string; label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="fc-tile" style={{ "--tile": tone } as CSSProperties} title={label}>
+      <span className="fc-tile-arrow"><ChevronRight /></span>
+      <span className="fc-tile-icon">{children}</span>
+      <span>{label}</span>
+    </button>
+  );
 }
 function fmtEntryDate(e: TransactionEntry): string {
   const [y, m, d] = e.date.split("-");
@@ -620,11 +637,9 @@ export default function CashboxesPage() {
   const { isAdmin } = useBranch();
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
-  // Tanlangan karta ochiq holatda ko'rinadi (amal tugmalari + to'lov turlari
-  // bo'yicha qoldiq), qolganlari yig'ilgan. "More" esa faqat qo'shimcha
-  // Divident/Sarmoya tugmalarini ochadi.
+  // Tanlangan karta ochiq holatda ko'rinadi (amal plitkalari + to'lov turlari
+  // bo'yicha qoldiq), qolganlari yig'ilgan.
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [cardMoreId, setCardMoreId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     "active" | "archived" | "all"
   >("active");
@@ -1330,7 +1345,6 @@ export default function CashboxesPage() {
             // Arxivdagi kartadagi yagona tugma ham tahrirlash — u ham
             // faqat adminda (arxivdan qaytarish o'sha oynadan qilinadi).
             const showEditOnly = isSelected && c.archived && isAdmin;
-            const showMore = cardMoreId === c.id;
             // Matn ranglari CSS'da (.fc-card-dark/.fc-card-light + .fc-muted*) —
             // tungi rejim yopiq kartochkani o'zi moslaydi (globals.css).
             const labelMuted = "fc-muted";
@@ -1504,69 +1518,52 @@ export default function CashboxesPage() {
                   </div>
                 </div>
 
+                {/* AMAL PLITKALARI — foydalanuvchi mockup'i (11.09.2026):
+                    rangli gradient, katta ikonka, pastda yorliq, burchakda "›".
+                    Beshalasi doim ko'rinadi (ilgari Divident/Sarmoya "More"
+                    ostida edi). Uslub: globals.css → .fc-tile. */}
                 {showActions && (
-                  <>
-                    <div
-                      className="flex items-center gap-1.5 mt-4"
-                      onClick={(e) => e.stopPropagation()}
+                  <div className="fc-tiles mt-4" onClick={(e) => e.stopPropagation()}>
+                    <ActionTile
+                      tone="#22c55e"
+                      label="Kirim"
+                      onClick={() => {
+                        setKirimTarget(c);
+                        // Sahifa uzoq ochiq turgan bo'lsa ro'yxat
+                        // eskirgan bo'lishi mumkin — qabulxona hozirgina
+                        // qo'shgan o'quvchi kassirga ko'rinsin. FONDA:
+                        // oyna kutmaydi, maydon o'chmaydi. Bosqichi
+                        // ichkarida (sukut 60 s).
+                        refreshStudents();
+                      }}
                     >
-                      <button
-                        onClick={() => {
-                          setKirimTarget(c);
-                          // Sahifa uzoq ochiq turgan bo'lsa ro'yxat
-                          // eskirgan bo'lishi mumkin — qabulxona hozirgina
-                          // qo'shgan o'quvchi kassirga ko'rinsin. FONDA:
-                          // oyna kutmaydi, maydon o'chmaydi. Bosqichi
-                          // ichkarida (sukut 60 s).
-                          refreshStudents();
-                        }}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
-                      >
-                        {/* Tugma ikonkalari — vazifasiga qarab: pul KIRADI /
-                            CHIQADI (banknot + strelka), kassalar orasida
-                            KO'CHADI, divident — qo'ldagi tangalar (ulush
-                            beriladi), sarmoya — jamg'arma. */}
-                        <BanknoteArrowDown className="w-4 h-4" /> Kirim
-                      </button>
-                      <button
-                        onClick={() => {
-                          setAdjustState({ cashbox: c, mode: "chiqim" });
-                          // Kirim tugmasidagi bilan bir xil: fonda, bosqich
-                          // bilan. Drawer endi ro'yxatni o'zi so'ramaydi,
-                          // shu bois keshni tashlash uni sovutmaydi.
-                          refreshStudents();
-                        }}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
-                      >
-                        <BanknoteArrowUp className="w-4 h-4" /> Chiqim
-                      </button>
-                      <button
-                        onClick={() => setTransferToTarget(c)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-sky-400 hover:bg-sky-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
-                      >
-                        <ArrowLeftRight className="w-4 h-4" /> Ko&apos;chirish
-                      </button>
-                    </div>
-                    {showMore && (
-                      <div
-                        className="flex items-center gap-1.5 mt-1.5"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => setDividendTarget(c)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-amber-400 hover:bg-amber-500 text-amber-900 text-[13px] font-medium shadow-sm whitespace-nowrap"
-                        >
-                          <HandCoins className="w-4 h-4" /> Divident
-                        </button>
-                        <button
-                          onClick={() => setInvestmentTarget(c)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-blue-400 hover:bg-blue-500 text-white text-[13px] font-medium shadow-sm whitespace-nowrap"
-                        >
-                          <PiggyBank className="w-4 h-4" /> Sarmoya
-                        </button>
-                      </div>
-                    )}
-                  </>
+                      <Wallet />
+                      <span className="fc-tile-badge"><Plus /></span>
+                    </ActionTile>
+                    <ActionTile
+                      tone="#f97316"
+                      label="Chiqim"
+                      onClick={() => {
+                        setAdjustState({ cashbox: c, mode: "chiqim" });
+                        // Kirim plitkasidagi bilan bir xil: fonda, bosqich
+                        // bilan. Drawer endi ro'yxatni o'zi so'ramaydi,
+                        // shu bois keshni tashlash uni sovutmaydi.
+                        refreshStudents();
+                      }}
+                    >
+                      <Wallet />
+                      <span className="fc-tile-badge"><Minus /></span>
+                    </ActionTile>
+                    <ActionTile tone="#06b6d4" label="Ko'chirish" onClick={() => setTransferToTarget(c)}>
+                      <ArrowLeftRight />
+                    </ActionTile>
+                    <ActionTile tone="#f59e0b" label="Dividend" onClick={() => setDividendTarget(c)}>
+                      <Coins />
+                    </ActionTile>
+                    <ActionTile tone="#8b5cf6" label="Sarmoya" onClick={() => setInvestmentTarget(c)}>
+                      <ChartNoAxesCombined />
+                    </ActionTile>
+                  </div>
                 )}
 
                 {/* To'lov turlari bo'yicha qoldiq. Qatorni bosish — shu turdan
@@ -1647,7 +1644,7 @@ export default function CashboxesPage() {
                   </div>
                 )}
 
-                {showActions && (
+                {showActions && isAdmin && (
                   <div
                     className="flex items-center justify-between mt-3 pt-3"
                     style={{ borderTop: `1px solid ${line}` }}
@@ -1655,10 +1652,7 @@ export default function CashboxesPage() {
                     {/* Tahrirlash / bosh kassa / hisobotni yuklab olish —
                         FAQAT ADMIN. Kassir o'z kassasida pul amallarini
                         bajaradi (Kirim/Chiqim/Ko'chirish), lekin kassaning
-                        o'zini o'zgartirmaydi. Bo'sh <div/> — "More" tugmasi
-                        o'ng chekkada qolishi uchun (justify-between). */}
-                    {!isAdmin && <div />}
-                    {isAdmin && (
+                        o'zini o'zgartirmaydi. */}
                     <div
                       className="flex items-center gap-2"
                       onClick={(e) => e.stopPropagation()}
@@ -1725,16 +1719,6 @@ export default function CashboxesPage() {
                         )}
                       </div>
                     </div>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCardMoreId(showMore ? null : c.id);
-                      }}
-                      className="text-[12px] text-white/80 hover:text-white"
-                    >
-                      {showMore ? "Less" : "More"}
-                    </button>
                   </div>
                 )}
               </div>
@@ -2039,7 +2023,6 @@ export default function CashboxesPage() {
               const next = prev.filter((x) => x.id !== id);
               if (selectedId === id)
                 setSelectedId(next.length > 0 ? next[0].id : null);
-              if (cardMoreId === id) setCardMoreId(null);
               return next;
             });
           }}

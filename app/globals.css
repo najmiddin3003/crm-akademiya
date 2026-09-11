@@ -10596,3 +10596,50 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
     animation-duration: .01ms;
   }
 }
+
+/* ---------- Kassa kartochkasidagi AMAL PLITKALARI (Kirim/Chiqim/…) ----------
+   Foydalanuvchi mockup'i (11.09.2026): rangli gradient plitka, katta oq
+   ikonka, pastda yorliq, burchakda kichik "›" — "oyna ochiladi" belgisi.
+   Rang har plitkada `--tile` o'zgaruvchisi bilan (TSX'dan inline style).
+   Kenglik: 68px dan tor bo'lmaydi — keng kartada 5 tasi bir qatorda,
+   torida 3+2 (auto-fit). */
+.fc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: .5rem; }
+.fc-tile {
+  --tile: #22c55e;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem;
+  height: 74px; border-radius: 14px; padding: 0 4px;
+  color: #fff; font-weight: 600; font-size: 12px; line-height: 1; white-space: nowrap;
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--tile) 82%, #fff) 0%,
+    var(--tile) 48%,
+    color-mix(in srgb, var(--tile) 72%, #000) 100%);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--tile) 85%, transparent),
+              inset 0 1px 0 rgba(255, 255, 255, .38);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  overflow: hidden;
+}
+/* Yuqori yarmidagi yumshoq yaltiroq — "shisha" tuyg'usi. */
+.fc-tile::before {
+  content: ""; position: absolute; inset: 0 0 50% 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0));
+}
+.fc-tile:hover { transform: translateY(-1px); filter: brightness(1.06);
+  box-shadow: 0 14px 26px -10px color-mix(in srgb, var(--tile) 90%, transparent), inset 0 1px 0 rgba(255, 255, 255, .45); }
+.fc-tile:active { transform: translateY(0); filter: brightness(.96); }
+.fc-tile:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.fc-tile-arrow {
+  position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 9999px;
+  background: rgba(0, 0, 0, .28); color: rgba(255, 255, 255, .95);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fc-tile-arrow svg { width: 11px; height: 11px; }
+.fc-tile-icon { position: relative; display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; }
+.fc-tile-icon > svg { width: 26px; height: 26px; }
+/* Hamyon ustidagi kichik +/− belgisi (Kirim/Chiqim). */
+.fc-tile-badge {
+  position: absolute; right: -5px; bottom: -4px; width: 14px; height: 14px; border-radius: 9999px;
+  background: #fff; color: var(--tile); display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 2px var(--tile);
+}
+.fc-tile-badge svg { width: 10px; height: 10px; stroke-width: 3.2; }
