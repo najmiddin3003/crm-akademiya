@@ -1,0 +1,229 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, CircleCheck, Clock, RefreshCw } from "lucide-react";
+import Modal, { useModalClose } from "@/components/ui/Modal";
+import DateField from "@/components/ui/DateField";
+import { SpinnerBlock } from "@/components/ui/Spinner";
+import type { HandoverReport, HandoverRow } from "@/lib/handoverReport";
+import { uzDateIso, uzNow } from "@/lib/uzTime";
+
+// KUNLIK TOPSHIRUV — rahbar kassa uchun nazorat oynasi (Moliya → Kassalar
+// → rahbar kartochkasidagi ro'yxat ikonkasi).
+//
+// Har qator — bitta filial kassasi: shu kuni qancha yig'di (tushum),
+// sarfladi (chiqim), rahbarga qanchasini jo'natdi (tasdiqlangan /
+// kutilayotgan) va farq — hali topshirilmagani. Raqamlar
+// /api/cashboxes/handover dan (lib/handoverReport.ts), FAQAT KO'RSATADI:
+// tasdiqlash jurnaldagi ✓/× tugmalarida qoladi.
+//
+// Sana: standart — bugun; ← → bilan kunma-kun yurish, maydonga yozish yoki
+// kalendardan tanlash ham mumkin (kassir kechqurun topshirgan bo'lsa
+// rahbar ertalab kechagi kunni tekshiradi).
+
+function fmtNum(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function shiftDay(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+}
+
+function fmtUz(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
+
+/** Farq ustuni: 0 — hammasi topshirilgan; musbat — qarz; manfiy — ortiqcha. */
+function DiffCell({ value, active }: { value: number; active: boolean }) {
+  if (!active) return <span className="text-muted-foreground">—</span>;
+  if (value === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+        <CircleCheck className="w-3.5 h-3.5" /> 0
+      </span>
+    );
+  }
+  if (value > 0) return <span className="text-amber-600 dark:text-amber-400 font-semibold">{fmtNum(value)}</span>;
+  return <span className="text-muted-foreground" title="Bugungi tushumdan ko'p jo'natilgan (masalan kechagi qoldiq bilan)">{fmtNum(value)}</span>;
+}
+
+export default function HandoverModal({ onClose }: { onClose: () => void }) {
+  const modal = useModalClose(onClose);
+  const today = uzDateIso(uzNow());
+  const [date, setDate] = useState(today);
+  const [report, setReport] = useState<HandoverReport | null>(null);
+  const [error, setError] = useState<{ date: string; msg: string } | null>(null);
+  // "Yangilash" tugmasi — sana o'zgarmasa ham qayta so'raydi.
+  const [tick, setTick] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const seqRef = useRef(0);
+
+  // Holat effekt ichida sinxron O'ZGARTIRILMAYDI (react-hooks qoidasi):
+  // "yuklanmoqda" — hisobot sanasi tanlangan sanaga mos kelmasligidan
+  // kelib chiqadi; javob kelganda holat callback'da yoziladi. Ketma-ket
+  // tez bosilganda faqat ENG OXIRGI javob qabul qilinadi.
+  useEffect(() => {
+    const seq = ++seqRef.current;
+    fetch(`/api/cashboxes/handover?date=${date}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (seq !== seqRef.current) return;
+        if (!j.ok) throw new Error(j.error || "Hisobot yuklanmadi");
+        setReport(j as HandoverReport);
+        setError(null);
+      })
+      .catch((e: Error) => {
+        if (seq !== seqRef.current) return;
+        setError({ date, msg: e.message || "Serverga ulanib bo'lmadi" });
+      })
+      .finally(() => {
+        if (seq === seqRef.current) setRefreshing(false);
+      });
+  }, [date, tick]);
+
+  const errorMsg = error?.date === date ? error.msg : null;
+  const loading = !errorMsg && (report?.date !== date || refreshing);
+  const rows = report?.date === date ? report.rows : [];
+  const t = report?.date === date ? report.totals : undefined;
+  const isToday = date === today;
+  const hasActivity = (r: HandoverRow) => r.income > 0 || r.expense > 0 || r.sentAccepted > 0 || r.sentPending > 0;
+
+  const th = "px-2.5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
+  const td = "px-2.5 py-2.5 tabular-nums whitespace-nowrap";
+
+  return (
+    <Modal
+      onClose={onClose}
+      controller={modal}
+      size="6xl"
+      title="Kunlik topshiruv — rahbar kassa"
+      subtitle="Filial kassalari shu kuni qancha yig'di, sarfladi va rahbarga qanchasini topshirdi"
+      bodyClassName="p-0"
+    >
+      {/* Sana boshqaruvi */}
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-border flex-wrap">
+        <button
+          type="button"
+          onClick={() => setDate((d) => shiftDay(d, -1))}
+          className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary"
+          title="Oldingi kun"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <DateField value={date} onChange={(v) => v && setDate(v)} variant="compact" className="w-40" />
+        <button
+          type="button"
+          onClick={() => setDate((d) => shiftDay(d, 1))}
+          disabled={isToday}
+          className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Keyingi kun"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        {!isToday && (
+          <button
+            type="button"
+            onClick={() => setDate(today)}
+            className="h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] font-medium"
+          >
+            Bugun
+          </button>
+        )}
+        <div className="flex-1" />
+        {t && t.pendingCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 text-[12px] font-medium">
+            <Clock className="w-3.5 h-3.5" /> {t.pendingCount} ta ko&apos;chirma tasdiq kutmoqda
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => { setRefreshing(true); setTick((n) => n + 1); }}
+          disabled={loading}
+          className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary disabled:opacity-50"
+          title="Yangilash"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
+      {errorMsg ? (
+        <div className="px-5 py-10 text-center text-sm text-rose-600">{errorMsg}</div>
+      ) : loading && !t ? (
+        <SpinnerBlock size={28} />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead className="bg-secondary/40">
+              <tr>
+                <th className={`${th} text-left`}>Kassa</th>
+                <th className={`${th} text-left`}>Egasi</th>
+                <th className={`${th} text-right`}>Tushum</th>
+                <th className={`${th} text-right`}>Chiqim</th>
+                <th className={`${th} text-right`} title="Tushum − Chiqim">Topshirishi kerak</th>
+                <th className={`${th} text-right`}>Jo&apos;natdi</th>
+                <th className={`${th} text-right text-emerald-700 dark:text-emerald-400`}>✓ Tasdiqlangan</th>
+                <th className={`${th} text-right text-amber-700 dark:text-amber-400`}>⏳ Kutilmoqda</th>
+                <th className={`${th} text-right`} title="Topshirishi kerak − Jo'natdi">Farq</th>
+                <th className={`${th} text-right`} title="Kassadagi hozirgi qoldiq (kunga bog'liq emas)">Kassada bor</th>
+              </tr>
+            </thead>
+            <tbody className={loading ? "opacity-60" : ""}>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-3 py-10 text-center text-muted-foreground">Filial kassalari yo&apos;q</td>
+                </tr>
+              )}
+              {rows.map((r) => {
+                const active = hasActivity(r);
+                const sent = r.sentAccepted + r.sentPending;
+                return (
+                  <tr key={r.cashboxId} className={`border-t border-border/60 ${active ? "" : "text-muted-foreground"}`}>
+                    <td className={`${td} font-medium`}>{r.name}</td>
+                    <td className={td}>{r.moderator || <span className="text-muted-foreground">mas&apos;ul belgilanmagan</span>}</td>
+                    <td className={`${td} text-right`}>{active ? fmtNum(r.income) : "—"}</td>
+                    <td className={`${td} text-right`}>{active ? fmtNum(r.expense) : "—"}</td>
+                    <td className={`${td} text-right font-medium`}>{active ? fmtNum(r.mustSend) : "—"}</td>
+                    <td className={`${td} text-right`}>{active ? fmtNum(sent) : "—"}</td>
+                    <td className={`${td} text-right ${r.sentAccepted > 0 ? "text-emerald-600 dark:text-emerald-400 font-medium" : ""}`}>{active ? fmtNum(r.sentAccepted) : "—"}</td>
+                    <td className={`${td} text-right ${r.sentPending > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : ""}`}>
+                      {active ? fmtNum(r.sentPending) : "—"}
+                      {r.pendingCount > 0 && <span className="ml-1 text-[11px] text-amber-700/80">({r.pendingCount})</span>}
+                    </td>
+                    <td className={`${td} text-right`}><DiffCell value={r.diff} active={active} /></td>
+                    <td className={`${td} text-right text-muted-foreground`}>{fmtNum(r.balance)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {t && rows.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-border bg-secondary/40 font-semibold">
+                  <td className={td} colSpan={2}>Jami</td>
+                  <td className={`${td} text-right`}>{fmtNum(t.income)}</td>
+                  <td className={`${td} text-right`}>{fmtNum(t.expense)}</td>
+                  <td className={`${td} text-right`}>{fmtNum(t.mustSend)}</td>
+                  <td className={`${td} text-right`}>{fmtNum(t.sentAccepted + t.sentPending)}</td>
+                  <td className={`${td} text-right text-emerald-700 dark:text-emerald-400`}>{fmtNum(t.sentAccepted)}</td>
+                  <td className={`${td} text-right text-amber-700 dark:text-amber-400`}>{fmtNum(t.sentPending)}</td>
+                  <td className={`${td} text-right`}><DiffCell value={t.diff} active={rows.some(hasActivity)} /></td>
+                  <td className={`${td} text-right text-muted-foreground`}>{fmtNum(t.balance)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+
+      <div className="px-5 py-3 border-t border-border text-[12px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+        <span><b className="font-semibold text-foreground">{fmtUz(date)}</b> uchun, jurnaldagi sana bo&apos;yicha</span>
+        <span>Topshirishi kerak = Tushum − Chiqim</span>
+        <span>Farq = Topshirishi kerak − Jo&apos;natdi (musbat — hali topshirilmagan)</span>
+        <span>Tasdiqlash — jurnaldagi ✓ / × tugmalarida</span>
+      </div>
+    </Modal>
+  );
+}

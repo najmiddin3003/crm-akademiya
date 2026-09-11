@@ -107,6 +107,8 @@ const SIZE_CLS: Record<NonNullable<ModalProps["size"]>, string> = {
   "3xl": "max-w-3xl",
   "4xl": "max-w-4xl",
   "5xl": "max-w-5xl",
+  "6xl": "max-w-6xl",
+  "7xl": "max-w-7xl",
 };
 
 export interface ModalProps {
@@ -121,7 +123,7 @@ export interface ModalProps {
   children: ReactNode | ((modal: ModalController) => ReactNode);
   footer?: ReactNode;
   /** Panel kengligi (max-w-*). Drawer'da ham ishlaydi (standart md). */
-  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl";
   variant?: "center" | "drawer";
   /** Tana klasslari; standart — formalar uchun `p-5 space-y-3.5`. */
   bodyClassName?: string;

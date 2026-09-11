@@ -93,6 +93,7 @@ export async function GET(req: Request) {
       todayByMethod: s?.todayByMethod ?? {},
       monthToPrimary: s?.monthToPrimary ?? 0,
       pendingIn: s?.pendingIn ?? 0,
+      pendingInCount: s?.pendingInCount ?? 0,
     };
   });
   return NextResponse.json({ ok: true, cashboxes });

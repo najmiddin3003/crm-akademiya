@@ -46,6 +46,8 @@ export interface CashboxCardStats {
    * (`cancelled`) hisobga kirmaydi.
    */
   pendingIn: number;
+  /** Kutilayotgan keluvchi ko'chirmalar SONI — kartochkadagi ikonka belgisi. */
+  pendingInCount: number;
 }
 
 export async function loadCardStats(
@@ -57,7 +59,7 @@ export async function loadCardStats(
   const out = new Map<number, CashboxCardStats>();
   if (cashboxIds.length === 0) return out;
   for (const id of cashboxIds) {
-    out.set(id, { todayIncome: 0, todayByMethod: {}, monthToPrimary: 0, pendingIn: 0 });
+    out.set(id, { todayIncome: 0, todayByMethod: {}, monthToPrimary: 0, pendingIn: 0, pendingInCount: 0 });
   }
 
   const entries = db.collection("transaction_entries");
@@ -104,16 +106,19 @@ export async function loadCardStats(
     // Tasdiq kutayotgan KELUVCHI qatorlar — kassa kesimida. Keluvchi qator
     // miqdori musbat yoziladi, baribir modulini olamiz.
     entries
-      .aggregate<{ _id: number; sum: number }>([
+      .aggregate<{ _id: number; sum: number; n: number }>([
         { $match: { cashboxId: { $in: cashboxIds }, txType: "transfer", transferRole: "in", status: "waiting" } },
-        { $group: { _id: "$cashboxId", sum: { $sum: { $abs: "$amount" } } } },
+        { $group: { _id: "$cashboxId", sum: { $sum: { $abs: "$amount" } }, n: { $sum: 1 } } },
       ])
       .toArray(),
   ]);
 
   for (const r of pendingInRows) {
     const cur = out.get(r._id);
-    if (cur) cur.pendingIn = r.sum;
+    if (cur) {
+      cur.pendingIn = r.sum;
+      cur.pendingInCount = r.n;
+    }
   }
 
   for (const r of incomeRows) {

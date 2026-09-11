@@ -11,6 +11,7 @@ import {
   BanknoteArrowUp,
   ChevronDown,
   CircleCheckBig,
+  ClipboardList,
   CircleX,
   Crown,
   Eye,
@@ -39,6 +40,7 @@ import CashboxTransferToDrawer from "./CashboxTransferToDrawer";
 import CashboxAdjustDrawer from "./CashboxAdjustDrawer";
 import CashboxKirimDrawer from "./CashboxKirimDrawer";
 import CashboxDividendDrawer from "./CashboxDividendDrawer";
+import HandoverModal from "./HandoverModal";
 import CashboxInvestmentDrawer from "./CashboxInvestmentDrawer";
 import TransactionDetailDrawer from "./TransactionDetailDrawer";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
@@ -643,6 +645,8 @@ export default function CashboxesPage() {
   } | null>(null);
   const [kirimTarget, setKirimTarget] = useState<Cashbox | null>(null);
   const [dividendTarget, setDividendTarget] = useState<Cashbox | null>(null);
+  // Rahbar kassa: "Kunlik topshiruv" oynasi (HandoverModal).
+  const [handoverOpen, setHandoverOpen] = useState(false);
   const [investmentTarget, setInvestmentTarget] = useState<Cashbox | null>(
     null,
   );
@@ -1402,22 +1406,43 @@ export default function CashboxesPage() {
                         </span>
                       )}
                     </div>
-                    <div
-                      className={`text-[12px] font-medium truncate min-w-0 ${textMuted}`}
-                      style={{ maxWidth: "60%" }}
-                    >
-                      {!c.moderator ? (
-                        "mas'ul belgilanmagan"
-                      ) : moderatorProfileId(c.moderator) ? (
-                        <Link
-                          href={`/management-xodimlar/${moderatorProfileId(c.moderator)}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="hover:underline"
+                    <div className="flex items-center gap-1.5 min-w-0" style={{ maxWidth: "60%" }}>
+                      <div className={`text-[12px] font-medium truncate min-w-0 ${textMuted}`}>
+                        {!c.moderator ? (
+                          "mas'ul belgilanmagan"
+                        ) : moderatorProfileId(c.moderator) ? (
+                          <Link
+                            href={`/management-xodimlar/${moderatorProfileId(c.moderator)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:underline"
+                          >
+                            {c.moderator}
+                          </Link>
+                        ) : (
+                          c.moderator
+                        )}
+                      </div>
+                      {/* RAHBAR KASSA: kunlik topshiruv oynasi — filiallar
+                          bugun qancha yig'di / sarfladi / topshirdi. Belgi —
+                          tasdiq kutayotgan ko'chirmalar soni: rahbar oynani
+                          ochmasdan ham ✓ kutayotganlar borligini ko'radi. */}
+                      {c.isPrimary && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHandoverOpen(true);
+                          }}
+                          title="Kunlik topshiruv — filiallar bugun qancha topshirdi"
+                          className="fc-card-btn relative shrink-0"
                         >
-                          {c.moderator}
-                        </Link>
-                      ) : (
-                        c.moderator
+                          <ClipboardList className="w-4 h-4" />
+                          {(c.pendingInCount ?? 0) > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-4 text-center shadow">
+                              {c.pendingInCount}
+                            </span>
+                          )}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -2069,6 +2094,7 @@ export default function CashboxesPage() {
           }}
         />
       )}
+      {handoverOpen && <HandoverModal onClose={() => setHandoverOpen(false)} />}
       {dividendTarget && (
         <CashboxDividendDrawer
           cashbox={dividendTarget}

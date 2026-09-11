@@ -51,6 +51,8 @@ export interface Cashbox {
   monthToPrimary?: number;
   /** Shu kassaga kelib, ✓ kutayotgan ko'chirmalar yig'indisi (lib/cashboxStats.ts). */
   pendingIn?: number;
+  /** O'sha ko'chirmalar soni — rahbar kartochkasidagi ikonka belgisi. */
+  pendingInCount?: number;
 }
 
 /**
