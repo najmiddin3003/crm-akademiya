@@ -638,8 +638,10 @@ export default function CashboxesPage() {
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
   // Tanlangan karta ochiq holatda ko'rinadi (amal plitkalari + to'lov turlari
-  // bo'yicha qoldiq), qolganlari yig'ilgan.
+  // bo'yicha qoldiq), qolganlari yig'ilgan. "More" esa faqat qo'shimcha
+  // Dividend/Sarmoya plitkalarini ochadi.
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [cardMoreId, setCardMoreId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     "active" | "archived" | "all"
   >("active");
@@ -1345,6 +1347,7 @@ export default function CashboxesPage() {
             // Arxivdagi kartadagi yagona tugma ham tahrirlash — u ham
             // faqat adminda (arxivdan qaytarish o'sha oynadan qilinadi).
             const showEditOnly = isSelected && c.archived && isAdmin;
+            const showMore = cardMoreId === c.id;
             // Matn ranglari CSS'da (.fc-card-dark/.fc-card-light + .fc-muted*) —
             // tungi rejim yopiq kartochkani o'zi moslaydi (globals.css).
             const labelMuted = "fc-muted";
@@ -1520,10 +1523,10 @@ export default function CashboxesPage() {
 
                 {/* AMAL PLITKALARI — foydalanuvchi mockup'i (11.09.2026):
                     rangli gradient, katta ikonka, pastda yorliq, burchakda "›".
-                    Beshalasi doim ko'rinadi (ilgari Divident/Sarmoya "More"
-                    ostida edi). Uslub: globals.css → .fc-tile. */}
+                    Birinchi qatorda uchtasi; Dividend/Sarmoya — "More"
+                    bosilganda pastida. Uslub: globals.css → .fc-tile. */}
                 {showActions && (
-                  <div className="fc-tiles mt-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="fc-tiles mt-4" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }} onClick={(e) => e.stopPropagation()}>
                     <ActionTile
                       tone="#22c55e"
                       label="Kirim"
@@ -1557,6 +1560,10 @@ export default function CashboxesPage() {
                     <ActionTile tone="#06b6d4" label="Ko'chirish" onClick={() => setTransferToTarget(c)}>
                       <ArrowLeftRight />
                     </ActionTile>
+                  </div>
+                )}
+                {showActions && showMore && (
+                  <div className="fc-tiles mt-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }} onClick={(e) => e.stopPropagation()}>
                     <ActionTile tone="#f59e0b" label="Dividend" onClick={() => setDividendTarget(c)}>
                       <Coins />
                     </ActionTile>
@@ -1644,7 +1651,7 @@ export default function CashboxesPage() {
                   </div>
                 )}
 
-                {showActions && isAdmin && (
+                {showActions && (
                   <div
                     className="flex items-center justify-between mt-3 pt-3"
                     style={{ borderTop: `1px solid ${line}` }}
@@ -1652,7 +1659,10 @@ export default function CashboxesPage() {
                     {/* Tahrirlash / bosh kassa / hisobotni yuklab olish —
                         FAQAT ADMIN. Kassir o'z kassasida pul amallarini
                         bajaradi (Kirim/Chiqim/Ko'chirish), lekin kassaning
-                        o'zini o'zgartirmaydi. */}
+                        o'zini o'zgartirmaydi. Bo'sh <div/> — "More" tugmasi
+                        o'ng chekkada qolishi uchun (justify-between). */}
+                    {!isAdmin && <div />}
+                    {isAdmin && (
                     <div
                       className="flex items-center gap-2"
                       onClick={(e) => e.stopPropagation()}
@@ -1719,6 +1729,17 @@ export default function CashboxesPage() {
                         )}
                       </div>
                     </div>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCardMoreId(showMore ? null : c.id);
+                      }}
+                      className="inline-flex items-center gap-1 text-[12px] text-white/80 hover:text-white"
+                    >
+                      {showMore ? "Less" : "More"}
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? "rotate-180" : ""}`} />
+                    </button>
                   </div>
                 )}
               </div>
@@ -2023,6 +2044,7 @@ export default function CashboxesPage() {
               const next = prev.filter((x) => x.id !== id);
               if (selectedId === id)
                 setSelectedId(next.length > 0 ? next[0].id : null);
+              if (cardMoreId === id) setCardMoreId(null);
               return next;
             });
           }}
