@@ -1410,13 +1410,13 @@ export default function CashboxesPage() {
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <div
-                        className={`text-[14px] font-semibold truncate min-w-0 ${labelMuted}`}
+                        className={`text-[16px] font-semibold truncate min-w-0 ${labelMuted}`}
                       >
                         {c.name}
                       </div>
                       {c.archived && (
                         <span
-                          className={`text-[11px] font-medium shrink-0 fc-chip ${labelMuted}`}
+                          className={`text-[12px] font-medium shrink-0 fc-chip ${labelMuted}`}
                           style={{ padding: "1px 8px", borderRadius: 9999 }}
                         >
                           Arxiv
@@ -1424,7 +1424,7 @@ export default function CashboxesPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0" style={{ maxWidth: "60%" }}>
-                      <div className={`text-[12px] font-medium truncate min-w-0 ${textMuted}`}>
+                      <div className={`text-[13.5px] font-medium truncate min-w-0 ${textMuted}`}>
                         {!c.moderator ? (
                           "mas'ul belgilanmagan"
                         ) : moderatorProfileId(c.moderator) ? (
@@ -1485,7 +1485,7 @@ export default function CashboxesPage() {
                           <Eye className="w-4 h-4" />
                         )}
                       </button>
-                      <div className="text-2xl font-bold tabular-nums truncate">
+                      <div className="text-[28px] leading-tight font-bold tabular-nums truncate">
                         {mask(c.balance)} so&apos;m
                       </div>
                     </div>
@@ -1503,7 +1503,7 @@ export default function CashboxesPage() {
 
                       Ikkinchi qator bosh kassada CHIZILMAYDI — "rahbar
                       kassaga o'tkazilgan pul" uning o'zi uchun ma'nosiz. */}
-                  <div className={`mt-1.5 space-y-0.5 text-[12px] tabular-nums ${labelMuted}`}>
+                  <div className={`mt-2 space-y-1 text-[13.5px] tabular-nums ${labelMuted}`}>
                     <div>{`Bugungi tushum: ${mask(c.todayIncome ?? 0)} so'm`}</div>
                     {/* Rahbar kassada DOIM (filiallar shu kassaga topshiradi),
                         boshqasida faqat kutilayotgani bo'lsa. Bu pul hali
@@ -1622,12 +1622,12 @@ export default function CashboxesPage() {
                             }}
                           />
                           <span
-                            className={`text-[12px] truncate ${labelMuted}`}
+                            className={`text-[14px] truncate ${labelMuted}`}
                           >
                             {m.name}
                           </span>
                         </div>
-                        <span className="text-[13px] font-semibold tabular-nums shrink-0">
+                        <span className="text-[15px] font-semibold tabular-nums shrink-0">
                           {mask(val)}
                         </span>
                       </div>
@@ -1735,7 +1735,7 @@ export default function CashboxesPage() {
                         e.stopPropagation();
                         setCardMoreId(showMore ? null : c.id);
                       }}
-                      className="inline-flex items-center gap-1 text-[12px] text-white/80 hover:text-white"
+                      className="inline-flex items-center gap-1 text-[13.5px] text-white/80 hover:text-white"
                     >
                       {showMore ? "Less" : "More"}
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? "rotate-180" : ""}`} />
