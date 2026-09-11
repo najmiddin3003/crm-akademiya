@@ -30,7 +30,7 @@ unset NODE_ENV
 
 TS="$(date -u +%Y%m%d%H%M%S)"
 REL="$APP_DIR/releases/$TS"
-PREV="$(readlink -f "$APP_DIR/current" 2>/dev/null || true)"
+PREV="$([[ -L "$APP_DIR/current" ]] && readlink -f "$APP_DIR/current" || true)"
 
 echo "== [$TS] Klon: $REPO ($BRANCH)"
 git clone --quiet --depth 1 --branch "$BRANCH" "$REPO" "$REL"
@@ -62,7 +62,7 @@ pm2 save >/dev/null
 
 # Ilova javob beryaptimi (30 soniyagacha kutadi)
 for i in $(seq 1 30); do
-  if curl -fsS -o /dev/null http://127.0.0.1:3000/; then echo "   ilova javob berdi ($i s)"; break; fi
+  if curl -fs -o /dev/null http://127.0.0.1:3000/; then echo "   ilova javob berdi ($i s)"; break; fi
   [[ "$i" -eq 30 ]] && { echo "Ilova 30 s ichida javob bermadi: pm2 logs crm --lines 50; orqaga: ln -sfn $PREV $APP_DIR/current && pm2 reload crm"; exit 1; }
   sleep 1
 done
@@ -71,3 +71,10 @@ echo "== Eski relizlar (oxirgi $KEEP ta qoladi)"
 ls -1dt "$APP_DIR"/releases/* | tail -n +"$((KEEP + 1))" | xargs -r rm -rf
 [[ -n "$PREV" ]] && echo "   oldingi reliz: $PREV (orqaga qaytish uchun)"
 echo "== Tayyor: $(git -C "$REL" log -1 --format='%h')  →  https://www.tizimli24.uz"
+# BIRINCHI deployda pm2 daemoni shu qobiqdan ko'tarilgan bo'ladi — systemd
+# (pm2-crm.service) uni bilmaydi va reboot'dan keyin qayta ko'tarolmaydi.
+# Bir marta systemd ostiga o'tkazish kerak (deploy/README.md, 6-qadam).
+if [[ -z "$PREV" ]]; then
+  echo "   DIQQAT: birinchi deploy. root sifatida bir marta bajaring:"
+  echo "   sudo -iu crm pm2 kill && systemctl start pm2-crm"
+fi

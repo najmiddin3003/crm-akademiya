@@ -31,8 +31,16 @@ if ! command -v node >/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 2
 fi
 npm i -g pm2@latest >/dev/null
 node -v; npm -v; pm2 -v
+# `pm2 -v` root uchun alohida daemon ochib qo'yadi (~50 MB) — u kerak emas,
+# ilova `crm` foydalanuvchisining daemonida yuradi.
+pm2 kill >/dev/null 2>&1 || true
 
 echo "== 2 GB swap (next build 4 GB RAM da swapsiz qotishi mumkin)"
+# Eskiz obrazida 512 MB /swapfile bor — kichik bo'lsa 2 GB ga almashtiriladi.
+if [[ -f /swapfile ]] && [[ "$(stat -c %s /swapfile)" -lt $((2 * 1024 * 1024 * 1024)) ]]; then
+  swapoff /swapfile 2>/dev/null || true
+  rm -f /swapfile
+fi
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l 2G /swapfile
   chmod 600 /swapfile
@@ -64,6 +72,10 @@ echo "== pm2 tizim bilan birga ko'tarilsin (crm foydalanuvchisi ostida)"
 env PATH="$PATH:/usr/bin" pm2 startup systemd -u "$APP_USER" --hp "$APP_DIR" >/dev/null
 
 echo "== Nginx (HTTP; certbot keyin HTTPS qo'shadi)"
+# Eskiz VPS'da nginx "could not build server_names_hash … bucket_size: 32"
+# bilan yiqildi (CPU kesh qatori 32 deb aniqlanadi) — 64 qilinadi.
+sed -i -E 's/^[[:space:]]*#?[[:space:]]*server_names_hash_bucket_size .*/\tserver_names_hash_bucket_size 64;/' /etc/nginx/nginx.conf
+grep -q 'server_names_hash_bucket_size 64' /etc/nginx/nginx.conf || sed -i '/^http {/a \\tserver_names_hash_bucket_size 64;' /etc/nginx/nginx.conf
 sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__APEX__/$APEX/g" "$HERE/nginx.conf.template" > /etc/nginx/sites-available/crm
 ln -sfn /etc/nginx/sites-available/crm /etc/nginx/sites-enabled/crm
 rm -f /etc/nginx/sites-enabled/default

@@ -66,8 +66,18 @@ exit
 ## 4. Muhit o'zgaruvchilari
 
 Vercel'dagi production qiymatlarini `/var/www/crm/shared/.env.local` ga
-yozing (fayl `crm` ga tegishli, 0600). Qulay yo'l — lokal kompyuterda
-Vercel CLI bilan olib, scp qilish:
+yozing (fayl `crm` ga tegishli, 0600).
+
+> **11.09.2026 da chiqqan tuzoq:** Vercel'da "Sensitive" deb belgilangan
+> o'zgaruvchilar (MONGODB_URI, SESSION_SECRET, Cloudinary, Eskiz, webhook
+> secret'lar…) CLI orqali ham, panel orqali ham O'QILMAYDI — `vercel env
+> pull` ularni `[SENSITIVE]` deb beradi. Ular lokal `.env.local` dan
+> olindi (o'sha Atlas, o'sha botlar); Vercel'dan faqat ochiq farqlar
+> (OPENAI_*, SHEET_TAB_SALARIES) va bayroqlar. Prodda YO'Q bo'lganlari
+> (ENCRYPTION_KEY, SYNC_ENABLED, TELEGRAM_*_SUPPORT) ataylab qo'yilmadi.
+> STUDENT_BOT_PUSH_ENABLED lokalda `false` — serverda `true` qilindi.
+
+Qulay yo'l — lokal kompyuterda Vercel CLI bilan olib, scp qilish:
 
 ```bash
 npx vercel env pull .env.vercel.production --environment=production
@@ -102,6 +112,14 @@ Tekshiruv:
 pm2 status
 curl -sI http://127.0.0.1:3000/ | head -1        # HTTP/1.1 200 OK
 curl -sI -H 'Host: www.tizimli24.uz' http://127.0.0.1/ | head -1   # Nginx orqali
+```
+
+Birinchi deploydan keyin pm2 daemonini **systemd ostiga** o'tkazing
+(aks holda reboot'dan keyin ilova ko'tarilmaydi — `pm2-crm.service`
+pid faylini topolmay `failed` bo'ladi), root sifatida:
+
+```bash
+sudo -iu crm pm2 kill && systemctl start pm2-crm && systemctl is-active pm2-crm
 ```
 
 Sayt hali HTTP, ammo kirish cookie'si faqat HTTPS'da yuradi
@@ -159,13 +177,13 @@ qator:
 Qo'lda sinov: `bash /var/www/crm/shared/cron.sh` → natija Moliya →
 Sinxronizatsiya sahifasida (`sync_runs`).
 
-## 11. Vercel'ni to'xtatish (bir hafta kuzatgandan keyin)
+## 11. Vercel'ni to'xtatish
 
 Vercel'dagi nusxa ham **o'sha bazaga** qaraydi va **o'zining cron'ini**
 har kuni yuritadi — ikkita cron bitta bazani ikki marta sinxronlaydi.
-DNS to'liq tarqalgach (1–2 kun) Vercel → Project → Settings →
-General → **Pause** (yoki loyihani o'chirish). Undan oldin — orqaga
-qaytish yo'li ochiq turadi (13-band).
+DARHOL: Vercel → Project → Settings → **Cron Jobs → Disable**
+(11.09.2026 da qilindi). Loyihaning o'zini 1–2 hafta kuzatgach Pause
+qilish mumkin — undan oldin orqaga qaytish yo'li ochiq turadi (13-band).
 
 ## 12. Keyingi yangilanishlar
 
@@ -203,6 +221,10 @@ free -m; df -h /
   so'rov ~150 ms (o'lchandi). Vercel `sin1` da baza yonida edi. Ko'p
   ketma-ket so'rovli sahifalar sekinlashishi mumkin — quyidagi "Baza"
   bandiga qarang.
+- **Nginx `server_names_hash_bucket_size`.** Eskiz VPS'da nginx
+  standart 32 bilan `could not build server_names_hash` deb yiqildi —
+  `setup-server.sh` uni 64 qiladi.
+- **Eskiz obrazida 512 MB swap bor** — skript uni 2 GB ga almashtiradi.
 - **Ishlab turgan papkada build qilmang** — `next build` `.next` ni
   o'chirib qayta yaratadi, sayt o'sha zahoti 500 beradi. Faqat `deploy.sh`.
 - **`npm ci` NODE_ENV=production bilan chaqirilmasin** — devDependencies
