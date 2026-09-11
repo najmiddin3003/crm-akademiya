@@ -90,6 +90,11 @@ html[data-brand="teal"] {
   --brand-card-dark-b:  195 70% 13%;   /* #0A2C38 */
   --brand-card-light-a: 184 68% 70%;   /* #7DE0E8 */
   --brand-card-light-b: 191 60% 53%;   /* #3FB6CF */
+  /* Tungi rejimda yopiq kartochka — och moviy gradient qora fonda
+     "chiroq" bo'lib turardi, ustidagi kulrang yorliqlar esa o'qilmasdi.
+     To'q, xira teal: tanlangan kartochkadan (card-dark) sezilarli past. */
+  --brand-card-light-a-dark: 193 38% 19%;   /* #1E3F49 */
+  --brand-card-light-b-dark: 200 34% 12%;   /* #142229 */
 
   --brand-glow-1-dark: 186 90% 30%;
   --brand-glow-2-dark: 199 88% 32%;
@@ -120,6 +125,8 @@ html[data-brand="edutizim"] {
   --brand-card-dark-b:  226 57% 21%;   /* #172554 */
   --brand-card-light-a: 199 95% 74%;   /* #7DD3FC */
   --brand-card-light-b: 213 94% 68%;   /* #60A5FA */
+  --brand-card-light-a-dark: 222 40% 22%;   /* #21304F */
+  --brand-card-light-b-dark: 224 36% 13%;   /* #15192D */
 
   --brand-glow-1-dark: 217 100% 30%;
   --brand-glow-2-dark: 280 90% 35%;
@@ -10381,12 +10388,35 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
    qurish bosqichida "keraksiz" deb tashlab yuboriladi. */
 .fc-card-dark {
   background: linear-gradient(135deg, hsl(var(--brand-card-dark-a)), hsl(var(--brand-card-dark-b)));
+  color: #fff;
 }
 .fc-card-light {
   background: linear-gradient(135deg, hsl(var(--brand-card-light-a)), hsl(var(--brand-card-light-b)));
+  color: #0f172a;
 }
+/* Matn darajalari — kartochka varianti bo'yicha. Ilgari TSX'da
+   `isDark ? "text-white/70" : "text-slate-700"` edi; tungi rejimda esa
+   globaldagi `.dark .text-slate-700 { color: #94a3b8 }` yorliqlarni och
+   kulrang qilib, och moviy fonda o'qilmas qilib qo'yardi. */
+.fc-card-dark .fc-muted   { color: rgba(255, 255, 255, .70); }
+.fc-card-dark .fc-muted-2 { color: rgba(255, 255, 255, .85); }
+.fc-card-light .fc-muted,
+.fc-card-light .fc-muted-2 { color: #334155; }
+.fc-card-dark .fc-chip  { background-color: rgba(255, 255, 255, .18); }
+.fc-card-light .fc-chip { background-color: rgba(15, 23, 42, .10); }
 .fc-card-dark .fc-card-btn:hover { background-color: rgba(255, 255, 255, .15); }
 .fc-card-light .fc-card-btn:hover { background-color: rgba(15, 23, 42, .08); }
+/* Tungi rejim: yopiq kartochka to'q gradientda, och matn bilan; tanlangan
+   (card-dark) o'zgarmaydi — u shundoq ham to'q. */
+.dark .fc-card-light {
+  background: linear-gradient(135deg, hsl(var(--brand-card-light-a-dark)), hsl(var(--brand-card-light-b-dark)));
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, .07);
+}
+.dark .fc-card-light .fc-muted   { color: rgba(226, 232, 240, .66); }
+.dark .fc-card-light .fc-muted-2 { color: rgba(226, 232, 240, .85); }
+.dark .fc-card-light .fc-chip    { background-color: rgba(255, 255, 255, .12); }
+.dark .fc-card-light .fc-card-btn:hover { background-color: rgba(255, 255, 255, .12); }
 /* Sana oralig'i tanlagichi qatordagi `h-10` select'lar bilan bir tekisda
    turishi uchun (komponentning o'zi h-9). Faqat birinchi bola — ochilgan
    kalendar `position: fixed` bilan alohida joylashadi. */

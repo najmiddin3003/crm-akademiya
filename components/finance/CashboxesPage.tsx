@@ -1323,8 +1323,10 @@ export default function CashboxesPage() {
             // faqat adminda (arxivdan qaytarish o'sha oynadan qilinadi).
             const showEditOnly = isSelected && c.archived && isAdmin;
             const showMore = cardMoreId === c.id;
-            const labelMuted = isDark ? "text-white/70" : "text-slate-700";
-            const textMuted = isDark ? "text-white/85" : "text-slate-700";
+            // Matn ranglari CSS'da (.fc-card-dark/.fc-card-light + .fc-muted*) —
+            // tungi rejim yopiq kartochkani o'zi moslaydi (globals.css).
+            const labelMuted = "fc-muted";
+            const textMuted = "fc-muted-2";
             const line = isDark
               ? "rgba(255,255,255,.22)"
               : "rgba(15,23,42,.14)";
@@ -1364,7 +1366,6 @@ export default function CashboxesPage() {
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
                 className={`fc-card ${isDark ? "fc-card-dark" : "fc-card-light"} rounded-xl p-5 shadow-md cursor-pointer hover:shadow-lg transition-shadow relative`}
-                style={{ color: isDark ? "#fff" : "#0f172a" }}
               >
                 {c.isPrimary && !showActions && (
                   <Crown
@@ -1390,14 +1391,8 @@ export default function CashboxesPage() {
                       </div>
                       {c.archived && (
                         <span
-                          className={`text-[11px] font-medium shrink-0 ${labelMuted}`}
-                          style={{
-                            padding: "1px 8px",
-                            borderRadius: 9999,
-                            background: isDark
-                              ? "rgba(255,255,255,.18)"
-                              : "rgba(15,23,42,.10)",
-                          }}
+                          className={`text-[11px] font-medium shrink-0 fc-chip ${labelMuted}`}
+                          style={{ padding: "1px 8px", borderRadius: 9999 }}
                         >
                           Arxiv
                         </span>
