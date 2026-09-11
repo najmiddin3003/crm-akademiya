@@ -1,10 +1,13 @@
 import type { Db } from "mongodb";
 import { uzDateIso, uzNow } from "@/lib/uzTime";
 
-// Kassa kartochkasidagi ikkita raqam (Moliya → Kassalar):
+// Kassa kartochkasidagi raqamlar (Moliya → Kassalar):
 //   • Bugungi tushum — shu kassaga BUGUN tushgan kirim.
 //   • Bu oy rahbar kassaga o'tkazilgan pul — shu kassadan BOSH KASSAGA
 //     jo'natilgan ko'chirmalar yig'indisi, joriy oy bo'yicha.
+//   • Kutilayotgan ko'chirma summasi — SHU KASSAGA jo'natilgan, lekin hali
+//     ✓ bosilmagan ko'chirmalar (rahbar kassa uchun: filiallar bugun
+//     qancha topshirmoqchi, u hali balansda yo'q).
 //
 // Ikkalasi ham jurnaldan (`transaction_entries`) JONLI hisoblanadi, kassa
 // hujjatida saqlanmaydi — aks holda har yozuvda ikkita joyni bir vaqtda
@@ -34,6 +37,15 @@ export interface CashboxCardStats {
    * rahbar bir hafta ✓ bosmaganda karta 0 ko'rsatib turardi.
    */
   monthToPrimary: number;
+  /**
+   * Shu kassaga KELAYOTGAN, tasdiq kutayotgan ko'chirmalar yig'indisi.
+   *
+   * Qabul qiluvchi uchun bu pul hali balansda yo'q — ikkala qoidada ham
+   * (`deductedOnSend` qanday bo'lmasin) u ✓ bosilgunicha jo'natuvchida yoki
+   * "yo'lda" turadi, shu bois bayroq tekshirilmaydi. Rad etilgani
+   * (`cancelled`) hisobga kirmaydi.
+   */
+  pendingIn: number;
 }
 
 export async function loadCardStats(
@@ -45,7 +57,7 @@ export async function loadCardStats(
   const out = new Map<number, CashboxCardStats>();
   if (cashboxIds.length === 0) return out;
   for (const id of cashboxIds) {
-    out.set(id, { todayIncome: 0, todayByMethod: {}, monthToPrimary: 0 });
+    out.set(id, { todayIncome: 0, todayByMethod: {}, monthToPrimary: 0, pendingIn: 0 });
   }
 
   const entries = db.collection("transaction_entries");
@@ -57,7 +69,7 @@ export async function loadCardStats(
   const [y, m] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
   const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
 
-  const [incomeRows, inRows] = await Promise.all([
+  const [incomeRows, inRows, pendingInRows] = await Promise.all([
     entries
       .aggregate<{ _id: { cashboxId: number; key: string | null }; sum: number }>([
         {
@@ -89,7 +101,20 @@ export async function loadCardStats(
           })
           .project<{ transferId?: number; amount?: number }>({ _id: 0, transferId: 1, amount: 1 })
           .toArray(),
+    // Tasdiq kutayotgan KELUVCHI qatorlar — kassa kesimida. Keluvchi qator
+    // miqdori musbat yoziladi, baribir modulini olamiz.
+    entries
+      .aggregate<{ _id: number; sum: number }>([
+        { $match: { cashboxId: { $in: cashboxIds }, txType: "transfer", transferRole: "in", status: "waiting" } },
+        { $group: { _id: "$cashboxId", sum: { $sum: { $abs: "$amount" } } } },
+      ])
+      .toArray(),
   ]);
+
+  for (const r of pendingInRows) {
+    const cur = out.get(r._id);
+    if (cur) cur.pendingIn = r.sum;
+  }
 
   for (const r of incomeRows) {
     const cur = out.get(r._id.cashboxId);

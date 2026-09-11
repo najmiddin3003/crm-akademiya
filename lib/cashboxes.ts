@@ -49,6 +49,8 @@ export interface Cashbox {
    */
   todayByMethod?: CashboxMethodTotals;
   monthToPrimary?: number;
+  /** Shu kassaga kelib, ✓ kutayotgan ko'chirmalar yig'indisi (lib/cashboxStats.ts). */
+  pendingIn?: number;
 }
 
 /**

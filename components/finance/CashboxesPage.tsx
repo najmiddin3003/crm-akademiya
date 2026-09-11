@@ -1464,6 +1464,14 @@ export default function CashboxesPage() {
                       kassaga o'tkazilgan pul" uning o'zi uchun ma'nosiz. */}
                   <div className={`mt-1.5 space-y-0.5 text-[12px] tabular-nums ${labelMuted}`}>
                     <div>{`Bugungi tushum: ${mask(c.todayIncome ?? 0)} so'm`}</div>
+                    {/* Rahbar kassada DOIM (filiallar shu kassaga topshiradi),
+                        boshqasida faqat kutilayotgani bo'lsa. Bu pul hali
+                        balansda YO'Q — ✓ bosilganda qo'shiladi. */}
+                    {(c.isPrimary || (c.pendingIn ?? 0) > 0) && (
+                      <div>
+                        {`Kutilayotgan ko'chirma summasi: ${mask(c.pendingIn ?? 0)} so'm`}
+                      </div>
+                    )}
                     {!c.isPrimary && (
                       <div>
                         {`Bu oy rahbar kassaga o'tkazilgan pul: ${mask(c.monthToPrimary ?? 0)} so'm`}

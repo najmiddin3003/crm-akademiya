@@ -263,15 +263,22 @@ export async function GET(req: Request) {
   // qatorlar bo'yicha emas. Sahifalash joriy qilingach bu shart bo'ldi:
   // ilgari yig'indini klient butun ro'yxatdan hisoblardi.
   //
-  // Mijozdagi qoida (`entryTotals`): amount > 0 → kirim, aks holda chiqim
-  // (manfiy ishorasiz). amount === 0 chiqimga `-0` qo'shadi, ya'ni hech
-  // narsa — shu bois bu yerda ham nolinchi qator ikkalasiga ham kirmaydi.
+  // Qoida: amount > 0 → kirim, aks holda chiqim (manfiy ishorasiz).
+  // amount === 0 ikkalasiga ham kirmaydi.
+  //
+  // FAQAT QABUL QILINGAN qatorlar sanaladi (`status` bo'sh yoki yo'q).
+  // "waiting" — tasdiq kutayotgan ko'chirma: pul hali kelmagan (yoki
+  // ketmagan), "cancelled" — bekor qilingan. Ilgari ikkalasi ham
+  // yig'indiga kirardi va rahbar kassada kirim filiallar hali
+  // topshirmagan summani ham ko'rsatardi (11.09.2026). Qatorlar SONI esa
+  // filtr bo'yicha HAMMASI — jadval ularni ko'rsatadi va sahifalaydi.
   //
   // Qatorlar soni ham SHU YERDAN olinadi: aks holda aynan bir xil filtr
   // bo'yicha countDocuments() ikkinchi marta to'liq yurishga majbur bo'lardi.
   let totals: { income: number; expense: number } | undefined;
   let aggCount: number | undefined;
   if (sp.get("withTotals") === "1") {
+    const accepted = { $not: [{ $in: [{ $ifNull: ["$status", ""] }, ["waiting", "cancelled"]] }] };
     const [agg] = await col
       .aggregate([
         { $match: filter },
@@ -279,8 +286,8 @@ export async function GET(req: Request) {
           $group: {
             _id: null,
             n: { $sum: 1 },
-            income: { $sum: { $cond: [{ $gt: ["$amount", 0] }, "$amount", 0] } },
-            expense: { $sum: { $cond: [{ $lt: ["$amount", 0] }, { $abs: "$amount" }, 0] } },
+            income: { $sum: { $cond: [{ $and: [{ $gt: ["$amount", 0] }, accepted] }, "$amount", 0] } },
+            expense: { $sum: { $cond: [{ $and: [{ $lt: ["$amount", 0] }, accepted] }, { $abs: "$amount" }, 0] } },
           },
         },
       ])
