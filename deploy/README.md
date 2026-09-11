@@ -268,3 +268,51 @@ Variantlar:
 Tavsiya: sinov uchun 1-variant bilan ko'tarib o'lchash; sekinlik
 sezilsa 2-variantga o'tish (ilova tomonida faqat `MONGODB_URI`
 o'zgaradi).
+
+## Baza VPS'da — 12.09.2026 da ko'chirildi (2-variant)
+
+Atlas'dan (Singapur, ~120 ms/so'rov) shu serverdagi MongoDB 8.0 ga
+o'tildi: login API 135 ms → **20 ms**. Nima qilingan (qayta o'rnatish
+kerak bo'lsa shu tartibda):
+
+1. **CPU.** Eskiz VM'ga «QEMU Virtual CPU 2.5+» modelini beradi — AVX yo'q,
+   MongoDB 5+ `Illegal instruction` bilan yiqiladi. Tiket bilan
+   `host-passthrough` so'raldi (5 daqiqada bajarildi, VM qayta ishga
+   tushdi; ilova pm2/systemd tufayli o'zi ko'tarildi). Tekshiruv:
+   `grep -c avx /proc/cpuinfo`.
+2. **O'rnatish:** rasmiy repo `repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0`,
+   `apt-get install mongodb-org` (mongod, mongosh, mongodump/restore).
+3. **Sozlash** (`/etc/mongod.conf`): `bindIp: 127.0.0.1` (tashqaridan
+   yopiq), `security.authorization: enabled`, WiredTiger kesh 0.5 GB.
+   `systemctl enable --now mongod`.
+4. **Foydalanuvchilar:** `admin` (root, `admin` bazasida) va `crm`
+   (readWrite, `crm-akademiya-nextjs` bazasida). Parollar `openssl rand -hex 24`
+   bilan yaratilgan, faqat serverda: `/root/.mongo-admin-uri`,
+   `/root/.mongo-app-uri` (0600). Ilova URI'si `shared/.env.local` da.
+5. **Ko'chirish:** `mongodump --uri=<atlas> --db=crm-akademiya-nextjs --gzip --archive`
+   → `mongorestore --uri=<admin> --nsInclude="crm-akademiya-nextjs.*" --drop`
+   (25 579 hujjat, 78 kolleksiya, 199 indeks — 6 soniya). Kolleksiya
+   sanoqlari Atlas bilan solishtirildi. Keyin `.env.local` da
+   `MONGODB_URI` almashtirildi (Atlas qatori `# MONGODB_URI_ATLAS=` bo'lib
+   qoldi) va `pm2 reload crm --update-env`.
+6. **Zaxira:** `deploy/backup-mongo.sh` (nusxasi `shared/`), root crontab
+   `0 21 * * *` (Toshkent 02:00): lokal `/var/backups/crm/crm-<sana>.gz`
+   (14 kun) + o'sha arxiv **Atlas'ga** (bepul M0) `--drop` bilan qayta
+   yoziladi — server yo'qolsa kechagi holat Atlas'da turadi. Atlas URI
+   `/root/.mongo-atlas-uri` da. Log: `shared/logs/backup.log`.
+
+**Orqaga qaytish (Atlas'ga):** `.env.local` da `MONGODB_URI=` qatorini
+`# MONGODB_URI_ATLAS=` dagi qiymatga almashtirib `pm2 reload crm
+--update-env` — Atlas'da oxirgi kechagi nusxa bo'ladi (02:00 dan keyingi
+yozuvlar yo'q), shuning uchun avval `backup-mongo.sh` ni qo'lda yurgizish
+kerak.
+
+**Tiklash (lokal nusxadan):**
+```bash
+mongorestore --uri="$(sed 's#/admin$#/?authSource=admin#' /root/.mongo-admin-uri)" \
+  --gzip --archive=/var/backups/crm/crm-YYYYMMDD.gz --nsInclude="crm-akademiya-nextjs.*" --drop
+```
+
+Eslatma: `lib/mongodb.ts` dagi `maxPoolSize: 5` Vercel'ning ko'p nusxali
+muhiti uchun tanlangan edi; bitta jarayonli VPS'da lokal baza bilan bu
+chegara sezilmaydi (so'rov <1 ms), shuning uchun tegilmadi.
