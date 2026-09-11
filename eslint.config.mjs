@@ -37,6 +37,27 @@ const eslintConfig = defineConfig([
     files: ["components/ui/Link.tsx"],
     rules: { "no-restricted-imports": "off" },
   },
+  // Native <select> va <input type="date|time|month"> ISHLATILMAYDI —
+  // ular brauzer/OS oynasi: stillanmaydi, tungi rejimda oq, qidiruvi yo'q.
+  // O'rniga components/ui/{Select,DateField,TimeField,MonthYearPicker}.
+  // 11.09.2026 da butun loyiha shularga ko'chirildi; qoida — yangi sahifada
+  // eski odat qaytmasligi uchun. Faqat components/ui/ ichida ruxsat.
+  {
+    ignores: ["components/ui/**"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message: "Native <select> o'rniga @/components/ui/Select ishlating.",
+        },
+        {
+          selector: "JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'] > Literal[value=/^(date|time|month)$/]",
+          message: "Native sana/vaqt inputi o'rniga @/components/ui/DateField, TimeField yoki MonthYearPicker ishlating.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
