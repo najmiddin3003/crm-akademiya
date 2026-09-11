@@ -14,6 +14,9 @@ npm run dev
 Kolleksiya indekslari `lib/mongodb.ts` dagi `ensureIndexes()` da bir marta
 yaratiladi.
 
+**Prod'ni o'z VPS'ga joylash** (pm2 + Nginx, reliz papkalari, cron,
+Vercel'dan ko'chish tartibi) — [deploy/README.md](deploy/README.md).
+
 **Demo seed YO'Q.** Ilgari har bir `app/api/*/route.ts` "kolleksiya bo'sh
 bo'lsa demo bilan to'ldir" qilardi — bu olib tashlandi. Har bir ro'yxat bo'sh
 holatdan boshlanadi. Test uchun `scripts/seed-test-*.js` skriptlari bor

@@ -1,0 +1,44 @@
+# CRM — Nginx teskari proksi. deploy/setup-server.sh __DOMAIN__ / __APEX__
+# o'rniga haqiqiy nomlarni qo'yib /etc/nginx/sites-available/crm ga yozadi.
+# HTTPS bloklarini `certbot --nginx -d __DOMAIN__ -d __APEX__ --redirect`
+# o'zi qo'shadi (DNS ulangandan keyin).
+
+# tizimli24.uz → www.tizimli24.uz (kanonik shakl www bilan — lib/invite.ts
+# izohi: SMS'dagi havolalar ham shu shaklda).
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __APEX__;
+    # Let's Encrypt tekshiruvi (server darajasidagi `return` uni ham
+    # yo'naltirib yuborardi — shuning uchun `location /` ichida).
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 308 https://__DOMAIN__$request_uri; }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    # Video yuklash 50 MB gacha (app/api/upload/video/route.ts) + zaxira.
+    client_max_body_size 60m;
+    # Import va sinxronizatsiya so'rovlari uzoq ishlashi mumkin.
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+    gzip_min_length 1024;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        # Kirish jurnali IP ni shu sarlavhadan oladi (app/api/auth/login).
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+    }
+}
