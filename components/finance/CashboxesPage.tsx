@@ -1379,8 +1379,8 @@ export default function CashboxesPage() {
             // ko'rsatsa, ko'rinib turgan son bilan ko'chirsa bo'ladigan
             // son bir-biriga zid chiqardi.
             //
-            // Bugungi tushum yo'qolmadi: jami — kartochkadagi "Bugungi
-            // tushum" satrida, tur kesimi esa qator izohida (`title`).
+            // Bugungi tushum faqat qator izohida (`title`), tur kesimida —
+            // kartochkada alohida satr yo'q (foydalanuvchi so'rovi, 11.09.2026).
             const methodRows = orderedMethods
               .map((m, i) => ({
                 m,
@@ -1513,7 +1513,6 @@ export default function CashboxesPage() {
                       Ikkinchi qator bosh kassada CHIZILMAYDI — "rahbar
                       kassaga o'tkazilgan pul" uning o'zi uchun ma'nosiz. */}
                   <div className={`mt-2 space-y-1 text-[13.5px] tabular-nums ${labelMuted}`}>
-                    <div>{`Bugungi tushum: ${mask(c.todayIncome ?? 0)} so'm`}</div>
                     {/* Rahbar kassada DOIM (filiallar shu kassaga topshiradi),
                         boshqasida faqat kutilayotgani bo'lsa. Bu pul hali
                         balansda YO'Q — ✓ bosilganda qo'shiladi. */}
@@ -2077,7 +2076,7 @@ export default function CashboxesPage() {
           onSaved={(c) => {
             patchCashbox(c);
             loadEntries();
-            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // Kartochkadagi "Oxirgi topshiruvdan beri" / "Kutilayotgan"
             // raqamlari serverda hisoblanadi — javobda yo'q.
             refreshCashboxes();
           }}
@@ -2095,7 +2094,7 @@ export default function CashboxesPage() {
           onSaved={(c) => {
             patchCashbox(c);
             loadEntries();
-            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // Kartochkadagi "Oxirgi topshiruvdan beri" / "Kutilayotgan"
             // raqamlari serverda hisoblanadi — javobda yo'q.
             refreshCashboxes();
           }}
@@ -2112,7 +2111,7 @@ export default function CashboxesPage() {
           onSaved={(c) => {
             patchCashbox(c);
             loadEntries();
-            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // Kartochkadagi "Oxirgi topshiruvdan beri" / "Kutilayotgan"
             // raqamlari serverda hisoblanadi — javobda yo'q.
             refreshCashboxes();
           }}
@@ -2126,7 +2125,7 @@ export default function CashboxesPage() {
           onSaved={(c) => {
             patchCashbox(c);
             loadEntries();
-            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // Kartochkadagi "Oxirgi topshiruvdan beri" / "Kutilayotgan"
             // raqamlari serverda hisoblanadi — javobda yo'q.
             refreshCashboxes();
           }}
@@ -2139,7 +2138,7 @@ export default function CashboxesPage() {
           onSaved={(c) => {
             patchCashbox(c);
             loadEntries();
-            // Kartochkadagi "Bugungi tushum" / "Bu oy o'tkazilgan"
+            // Kartochkadagi "Oxirgi topshiruvdan beri" / "Kutilayotgan"
             // raqamlari serverda hisoblanadi — javobda yo'q.
             refreshCashboxes();
           }}
