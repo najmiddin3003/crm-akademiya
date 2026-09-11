@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import { uzDateIso, uzNow } from "@/lib/uzTime";
+import { uzDateIso } from "@/lib/uzTime";
 
 // Kassa kartochkasidagi raqamlar (Moliya → Kassalar):
 //   • Bugungi tushum — shu kassaga BUGUN tushgan kirim.
@@ -63,7 +63,12 @@ export async function loadCardStats(
   }
 
   const entries = db.collection("transaction_entries");
-  const today = uzDateIso(uzNow());
+  // `uzDateIso()` — ARGUMENTSIZ. `uzDateIso(uzNow())` ikki marta siljitardi
+  // (uzNow +5 soat, uzDateIso yana +5): Vercel'da (UTC) Toshkent 19:00 dan
+  // keyin "bugun" ertangi kun bo'lib, kartochkadagi "Bugungi tushum" 0 ga
+  // tushardi (11.09.2026, 21:00 da sezildi). Dev mashinada (UTC+5)
+  // siljish 0 bo'lgani uchun ko'rinmasdi.
+  const today = uzDateIso();
   const monthStart = today.slice(0, 8) + "01";
   // Keyingi oyning boshi — "YYYY-MM-DD" satrlari leksik tartibda
   // solishtiriladi, ya'ni oy oxirining nechanchi kun ekanini bilish

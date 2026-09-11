@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentEmployee } from "@/lib/currentEmployee";
 import { loadHandoverReport } from "@/lib/handoverReport";
-import { uzDateIso, uzNow } from "@/lib/uzTime";
+import { uzDateIso } from "@/lib/uzTime";
 
 // GET /api/cashboxes/handover?date=YYYY-MM-DD — kunlik topshiruv hisoboti:
 // har bir filial kassasi shu kuni qancha yig'di, sarfladi va rahbar
@@ -27,7 +27,9 @@ export async function GET(req: Request) {
   }
 
   const raw = new URL(req.url).searchParams.get("date") || "";
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : uzDateIso(uzNow());
+  // uzDateIso() argumentsiz — uzNow() bilan ikki marta siljib, UTC serverda
+  // kechqurun ertangi kunga o'tib ketardi (lib/cashboxStats.ts izohi).
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : uzDateIso();
 
   // Arxivdagi kassa hisobotga kirmaydi — u pul yig'maydi.
   const branches = await col

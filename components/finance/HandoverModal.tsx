@@ -6,7 +6,7 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
 import DateField from "@/components/ui/DateField";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { HandoverReport, HandoverRow } from "@/lib/handoverReport";
-import { uzDateIso, uzNow } from "@/lib/uzTime";
+import { uzDateIso } from "@/lib/uzTime";
 
 // KUNLIK TOPSHIRUV — rahbar kassa uchun nazorat oynasi (Moliya → Kassalar
 // → rahbar kartochkasidagi ro'yxat ikonkasi).
@@ -40,7 +40,7 @@ function fmtUz(iso: string): string {
 
 export default function HandoverModal({ onClose }: { onClose: () => void }) {
   const modal = useModalClose(onClose);
-  const today = uzDateIso(uzNow());
+  const today = uzDateIso();
   const [date, setDate] = useState(today);
   const [report, setReport] = useState<HandoverReport | null>(null);
   const [error, setError] = useState<{ date: string; msg: string } | null>(null);
