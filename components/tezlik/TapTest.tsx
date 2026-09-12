@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleHelp, Fingerprint, Rabbit, RotateCcw, Turtle } from "lucide-react";
 import { fmtTime, laneBases, timed, warmUp } from "@/components/tezlik/SpeedRace";
+import { burstConfetti } from "@/lib/confetti";
 
 // BARMOQ SINOVI — oddiy foydalanuvchi uchun, so'z bilan.
 //
@@ -27,6 +28,14 @@ import { fmtTime, laneBases, timed, warmUp } from "@/components/tezlik/SpeedRace
 const TAPS = 2;
 const TOO_FAST_S = 0.15;
 const TOO_SLOW_S = 1.2;
+
+// Juda tez bosganga — maqtov (tasodifiy), ustiga qog'ozlar sochiladi.
+const QUICK_PRAISE = [
+  "Voy, siz tezkorsiz!",
+  "Barmog'ingiz chaqmoqdek!",
+  "Chempion barmoq!",
+  "Bu tezlikka server ham hayron!",
+];
 type LaneKey = "old" | "new";
 
 interface Probe {
@@ -47,6 +56,8 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
   const [taps, setTaps] = useState<number[]>([]);
   const [probe, setProbe] = useState<Record<LaneKey, Probe>>({ old: { sec: null, error: false }, new: { sec: null, error: false } });
   const [showNumbers, setShowNumbers] = useState(false);
+  const [praise, setPraise] = useState(QUICK_PRAISE[0]);
+  const celebrated = useRef(false);
   // "Yana" bosilgach kechikib kelgan eski javoblar yangi turga yopishmasin.
   const round = useRef(0);
   const bases = useRef<Record<LaneKey, string> | null>(null);
@@ -76,6 +87,8 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
 
   const reset = () => {
     round.current += 1;
+    celebrated.current = false;
+    setPraise(QUICK_PRAISE[Math.floor(Math.random() * QUICK_PRAISE.length)]);
     setTaps([]);
     setProbe({ old: { sec: null, error: false }, new: { sec: null, error: false } });
   };
@@ -100,7 +113,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
     if (waiting) return "Javoblar kelmoqda…";
     if (vNew === "error" && vOld === "error") return "Ikkala server ham javob bermadi — internet uzilgan bo'lishi mumkin, yana urinib ko'ring.";
     if (vNew === "error") return "Yangi server javob bermadi — xulosa chiqarib bo'lmadi, yana urinib ko'ring.";
-    if (tooFast) return `Juda tez bosdingiz (${fmtTime(gapSec! * 1000)}) — bunga hech qaysi server ulgurmaydi. Biroz sekinroq bosib ko'ring.`;
+    if (tooFast) return `${praise} ${fmtTime(gapSec! * 1000)} — bunga hech qaysi server ulgurmaydi. Biroz sekinroq bosib ko'ring.`;
     if (tooSlow) return `Sekin bosdingiz (${fmtTime(gapSec! * 1000)}) — bunday oraliqda deyarli har qanday server ulguradi. Tezroq bosib ko'ring.`;
     if (vOld === "error") return vNew === "fast" ? "Yangi server barmog'ingizdan tez! (Eski server javob bermadi — taqqoslab bo'lmadi.)" : "Yangi server ulgurmadi; eski server javob bermadi.";
     if (vNew === "fast" && vOld === "slow") return "Yangi server barmog'ingizdan tez, eski — ulgurmadi.";
@@ -111,6 +124,14 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
     if (vNew === "slow" && vOld === "slow") return "Bu safar ikkalasi ham ulgurmadi — yana urinib ko'ring.";
     return "Bu safar eski server ulgurdi, yangisi — yo'q. Tarmoq tebrangan bo'lishi mumkin, yana urinib ko'ring.";
   })();
+
+  // Bayram: juda tez bosganga ham, yangi server yutganda ham — bir marta.
+  const celebrate = finished && !waiting && (tooFast || (!tooSlow && vNew === "fast" && vOld !== "fast" && vOld !== "error"));
+  useEffect(() => {
+    if (!celebrate || celebrated.current) return;
+    celebrated.current = true;
+    burstConfetti();
+  }, [celebrate]);
 
   const cardText = (lane: LaneKey, v: Verdict): string => {
     const p = probe[lane];
