@@ -1328,6 +1328,11 @@ yaratilganda navbardagi filialni oladi; eskilarini
 `node scripts/telegram-branch-topics.mjs --payments --cashbox <kassa> <filial>`
 bilan biriktiriladi (holat: `--payments`, topik ochish: `--payments --create`).
 Xabar/Sheet'dagi "Filial" ham endi kassadan — ilgari "Akademiya" chiqardi.
+Eski to'lovlarni filial topiklariga ko'chirish (12.09.2026 da bajarildi):
+`scripts/resend-payments-telegram.mjs` — sukutda `sync_outbox` da Telegram
+izi bor to'lovlar (umumiy topikda turganlar), `--all` — ilova orqali
+kiritilgan hammasi, `--since YYYY-MM-DD`; quruq rejim sukut, `--send`
+yuboradi. Bekor qilingan yozuv "BEKOR QILINDI" ko'rinishida ketadi.
 
 ### Yangi lid → Telegram "Lidlar" topigi (2026-09-07)
 
