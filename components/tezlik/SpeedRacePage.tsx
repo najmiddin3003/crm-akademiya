@@ -2,6 +2,7 @@
 
 import { Gauge } from "lucide-react";
 import SpeedRace, { WhyFast } from "@/components/tezlik/SpeedRace";
+import TapTest from "@/components/tezlik/TapTest";
 
 // /tezlik — ommaviy sahifa (loginsiz). Mijozga havola bilan beriladi.
 // O'lchovning o'zi components/tezlik/SpeedRace.tsx da — saytdagi suzuvchi
@@ -21,6 +22,7 @@ export default function SpeedRacePage() {
           </p>
         </header>
         <SpeedRace />
+        <TapTest />
         <WhyFast />
       </div>
     </main>

@@ -77,12 +77,18 @@ async function timed(url: string, opts: RequestInit = {}): Promise<{ ms: number;
   }
 }
 
-function makeLanes(): Lane[] {
+/** Ikkala serverning manzili — TapTest.tsx ham shu qoidani ishlatadi. */
+export function laneBases(): { old: string; new: string } {
   const host = window.location.hostname;
   const newBase = host === "tizimli24.uz" || host.endsWith(".tizimli24.uz") ? window.location.origin : NEW_BASE;
+  return { old: OLD_BASE, new: newBase };
+}
+
+function makeLanes(): Lane[] {
+  const b = laneBases();
   return [
-    { key: "old", name: "Eski server", place: "Vercel · Singapur", base: OLD_BASE, steps: EMPTY_STEPS(), running: false, done: false },
-    { key: "new", name: "Yangi server", place: "Eskiz VPS · Toshkent", base: newBase, steps: EMPTY_STEPS(), running: false, done: false },
+    { key: "old", name: "Eski server", place: "Vercel · Singapur", base: b.old, steps: EMPTY_STEPS(), running: false, done: false },
+    { key: "new", name: "Yangi server", place: "Eskiz VPS · Toshkent", base: b.new, steps: EMPTY_STEPS(), running: false, done: false },
   ];
 }
 

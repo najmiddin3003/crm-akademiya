@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Link from "@/components/ui/Link";
 import SpeedRace, { WhyFast } from "@/components/tezlik/SpeedRace";
+import TapTest from "@/components/tezlik/TapTest";
+import RobotFace from "@/components/tezlik/RobotFace";
 
 // SUZUVCHI ROBOT — saytning har sahifasida turadigan, istalgan joyga
 // sudrab qo'yiladigan tugma (referens: akademiya.edutizim.uz dagi robot).
@@ -104,12 +106,12 @@ export default function SpeedFab() {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         style={{ position: "fixed", left: pos.x, top: pos.y, width: SIZE, height: SIZE, touchAction: "none", zIndex: 90 }}
-        className={`group rounded-full bg-primary text-white shadow-lg shadow-primary/30 flex items-center justify-center select-none
+        className={`group rounded-full bg-white dark:bg-slate-100 shadow-lg shadow-blue-500/30 ring-2 ring-blue-500/30 flex items-center justify-center select-none
           transition-transform ${dragging ? "scale-110 cursor-grabbing" : "cursor-grab hover:scale-105"}`}
       >
         {/* Nafas olayotgan halqa — e'tiborni tortadi, sudrashda o'chadi */}
-        {!dragging && <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" style={{ animationDuration: "2.4s" }} />}
-        <Bot className="w-7 h-7 relative" />
+        {!dragging && <span className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" style={{ animationDuration: "2.4s" }} />}
+        <RobotFace className="w-9 h-9 relative" />
       </button>
 
       {open && (
@@ -127,6 +129,7 @@ export default function SpeedFab() {
           }
         >
           <SpeedRace compact />
+          <TapTest compact />
           <WhyFast compact />
         </Modal>
       )}
