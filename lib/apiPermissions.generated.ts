@@ -17,6 +17,8 @@ export const PUBLIC_API: readonly string[] = [
   "/api/telegram/webhook",
   "/api/telegram/student",
   "/api/student-web/me",
+  "/api/health/ping",
+  "/api/health/db",
 ];
 
 /** Faqat shu HTTP metodlar uchun sessiyasiz ochiq. */

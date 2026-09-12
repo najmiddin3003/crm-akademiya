@@ -37,7 +37,8 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 // himoyalangan (lib/studentBot/webapp.ts). Sahifaning o'zi bo'sh qobiq:
 // barcha ma'lumot /api/student-web/me dan keladi va imzo o'sha yerda
 // tekshiriladi.
-const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi"];
+// "/tezlik" — ommaviy tezlik poygasi (components/tezlik/SpeedRacePage.tsx).
+const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([
