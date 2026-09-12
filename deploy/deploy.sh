@@ -33,7 +33,12 @@ REL="$APP_DIR/releases/$TS"
 PREV="$([[ -L "$APP_DIR/current" ]] && readlink -f "$APP_DIR/current" || true)"
 
 echo "== [$TS] Klon: $REPO ($BRANCH)"
-git clone --quiet --depth 1 --branch "$BRANCH" "$REPO" "$REL"
+# 12.09.2026: klon bir marta 11 daqiqa osilib qoldi (GitHub SSH, xalqaro
+# kanal) — 3 daqiqa chegara; muddat o'tsa deploy xato bilan to'xtaydi,
+# `current` eskicha qoladi.
+GIT_SSH_COMMAND="ssh -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=4" \
+  timeout 180 git clone --quiet --depth 1 --branch "$BRANCH" "$REPO" "$REL" \
+  || { echo "Klon 3 daqiqada tugamadi (GitHub bilan aloqa) — qayta urinib ko'ring"; rm -rf "$REL"; exit 1; }
 echo "   commit: $(git -C "$REL" log -1 --format='%h %s')"
 
 # Maxfiy sozlamalar relizga kirmaydi — shared/ dagi bitta faylga havola.
