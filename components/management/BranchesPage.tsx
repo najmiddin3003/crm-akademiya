@@ -13,9 +13,18 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
 // `branches`). Referensdagidek jadval emas, oddiy ro'yxat: chapda filial
 // nomi, o'ngda manzil. Amal tugmalari DOIM ko'rinadi (boshqa ro'yxatlar
 // bilan bir xil) — ilgari ular faqat hover'da chiqardi.
+//
+// TELEGRAM LID TOPIGI (12.09.2026): har filialning lidlari "Lidlar"
+// guruhidagi o'z topigiga tushadi (lib/leadNotify.ts). Topik raqami shu
+// formadan kiritiladi — raqam yoki Telegram'dan nusxalangan topik havolasi
+// (serverda `parseLeadTopicId` ikkalasini ham tushunadi). Ro'yxatda topigi
+// yo'q filial ATAYLAB ko'zga tashlanadi: uning lidlari umumiy topikka
+// tushadi yoki (u ham bo'lmasa) umuman yuborilmaydi.
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+
+const emptyForm = { name: "", location: "", leadTopic: "" };
 
 export default function BranchesPage() {
   const modal = useModalClose(closeForm);
@@ -25,7 +34,7 @@ export default function BranchesPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ManagementBranch | null>(null);
-  const [form, setForm] = useState({ name: "", location: "" });
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ManagementBranch | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -40,11 +49,11 @@ export default function BranchesPage() {
   }, []);
 
   function openAdd() {
-    setForm({ name: "", location: "" });
+    setForm(emptyForm);
     setAddOpen(true);
   }
   function openEdit(b: ManagementBranch) {
-    setForm({ name: b.name, location: b.location });
+    setForm({ name: b.name, location: b.location, leadTopic: b.leadTopicId ? String(b.leadTopicId) : "" });
     setEditTarget(b);
   }
   function closeForm() {
@@ -64,7 +73,9 @@ export default function BranchesPage() {
       const res = await fetch(editing ? `/api/branches/${editTarget.id}` : "/api/branches", {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, location: form.location }),
+        // Topik XOM satr sifatida ketadi (raqam yoki havola) — server
+        // tozalaydi va noto'g'ri bo'lsa tushunarli xato qaytaradi.
+        body: JSON.stringify({ name, location: form.location, leadTopicId: form.leadTopic.trim() }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -128,6 +139,21 @@ export default function BranchesPage() {
           <div key={b.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/30 transition-colors">
             <span className="font-medium">{b.name}</span>
             <span className="ml-auto text-[13px] text-muted-foreground">{b.location}</span>
+            {b.leadTopicId ? (
+              <span
+                className="shrink-0 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[12px] font-medium text-sky-600"
+                title="Yangi lidlar Telegram'da shu topikka tushadi"
+              >
+                Telegram topik {b.leadTopicId}
+              </span>
+            ) : (
+              <span
+                className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[12px] font-medium text-amber-700 dark:text-amber-400"
+                title="Bu filialning lidlari umumiy topikka tushadi (u ham bo'lmasa — yuborilmaydi)"
+              >
+                Telegram topigi yo&apos;q
+              </span>
+            )}
             {/* Amal tugmalari DOIM ko'rinadi. Ilgari ular
                 `opacity-0 group-hover:opacity-100` bilan yashiringan edi —
                 sichqonchasiz (sensorli ekran, klaviatura) ularni topib
@@ -181,6 +207,20 @@ export default function BranchesPage() {
                 className={inputCls}
                 placeholder="Masalan: Chortoq"
               />
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Telegram lid topigi</label>
+              <input
+                value={form.leadTopic}
+                onChange={(e) => setForm((f) => ({ ...f, leadTopic: e.target.value }))}
+                className={inputCls}
+                placeholder="Masalan: 45 yoki https://t.me/c/…/45"
+              />
+              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                Shu filialda qo&apos;shilgan yangi lid &quot;Lidlar&quot; guruhining shu topigiga tushadi.
+                Topikdagi xabarga o&apos;ng tugma → &quot;Copy Link&quot; — havolani shu yerga qo&apos;ying.
+                Bo&apos;sh qoldirilsa umumiy topik ishlatiladi.
+              </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <button

@@ -1334,11 +1334,49 @@ Sozlamalar:
 
 | O'zgaruvchi | Ma'nosi |
 | --- | --- |
-| `TELEGRAM_TOPIC_LEADS` | "Lidlar" topigining raqami. **Bo'sh bo'lsa xabar umuman yuborilmaydi** — to'lovlar oqimiga aralashib ketgandan ko'ra jim turgani yaxshi. |
-| `TELEGRAM_CHAT_LEADS` | Guruh id'si. Ko'rsatilmasa `TELEGRAM_CHAT_PAYMENTS` ishlatiladi (uchala topik ham bitta forum-guruhda). |
+| `TELEGRAM_CHAT_LEADS` | "Lidlar" guruhining id'si — filial topiklari shu guruhda. Ko'rsatilmasa `TELEGRAM_CHAT_PAYMENTS` ishlatiladi (eski o'rnatma: lid topigi to'lovlar guruhida edi). |
+| `branches.leadTopicId` | **Filialning o'z topigi** (bazada, muhit o'zgaruvchisi emas — quyida). |
+| `TELEGRAM_TOPIC_LEADS` | Topigi biriktirilmagan filial uchun UMUMIY topik. **Bo'sh bo'lsa bunday lid umuman yuborilmaydi** — umumiy oqimga aralashib ketgandan ko'ra jim turgani yaxshi (jurnalga `[leadNotify] … topigi yo'q` yoziladi). |
 | `TELEGRAM_WEBHOOK_SECRET` | Status tugmalari uchun (quyida). **Bo'sh bo'lsa tugmalar ishlamaydi.** |
 
-Topik raqamini topish: `node scripts/_telegram-topics.mjs` (faqat o'qiydi).
+### Har filialga o'z topigi (2026-09-12)
+
+Markaz so'rovi: "1-filialdan tushayotgan lidlar filial 1 lidlar topigiga,
+filial 2 dagilar filial 2 ga tushsin". Lidlar uchun **alohida forum-guruh**
+ochildi, unda har filialga bittadan topik.
+
+Filial → topik bog'lanishi **`branches.leadTopicId`** da (Boshqaruv →
+Filiallar → tahrirlash → "Telegram lid topigi"). Nega bazada, `.env` da
+emas: bu filialning o'z xususiyati — yangi filial qo'shilganda topik ham
+shu yerda biriktiriladi, serverga kirib `.env` tahrirlash va qayta ishga
+tushirish shart emas. Ro'yxatda topigi yo'q filial sariq belgi bilan
+ko'rinadi. Maydon raqamni ham, Telegram'dan nusxalangan topik havolasini
+ham (`https://t.me/c/<guruh>/<TOPIK>/…`) qabul qiladi.
+
+Tartib (`lib/leadNotify.ts` → `leadThreadId`): filial topigi → bo'lmasa
+`TELEGRAM_TOPIC_LEADS` → u ham bo'lmasa yuborilmaydi.
+
+**Bir marta sozlash** (`scripts/telegram-lead-topics.mjs`):
+
+1. Yangi guruh: "Topics" yoqiladi, bot **admin** + "Manage Topics" huquqi
+   bilan qo'shiladi.
+2. Serverdagi `.env.local` ga `TELEGRAM_CHAT_LEADS=<yangi guruh id>`;
+   `TELEGRAM_TOPIC_LEADS` eski guruhning topigi bo'lsa — **bo'shatiladi**
+   (topik raqami guruhga bog'liq, yangi guruhda u "message thread not
+   found" beradi). Keyin `pm2 reload crm`.
+3. `node scripts/telegram-lead-topics.mjs --create` — topigi yo'q har
+   filial uchun bot guruhda topik ochadi (nomi = filial nomi) va raqamini
+   bazaga yozadi. Bot API topiklar ro'yxatini bermaydi, webhook tufayli
+   `getUpdates` ham yopiq — shuning uchun bot o'zi ochgani eng ishonchli.
+   Qo'lda ochilgan topik bo'lsa: `--set <filial id> <raqam yoki havola>`.
+4. `--test` — har topikka bittadan sinov xabari. Argumentsiz — holat.
+
+Skript bazaga yozadi, ya'ni **prod uchun serverda** yurgiziladi
+(`/var/www/crm/current`); lokal `.env.local` Atlas ko'zgusiga qaraydi.
+Ilova filial hujjatini har lidda o'qiydi — topik o'zgarganda qayta ishga
+tushirish kerak emas. Status tugmalari o'zgarishsiz ishlaydi: webhook
+xabarni `callback_query` dagi chat id bo'yicha tahrirlaydi, eski guruhdagi
+xabarlar ham ishlayveradi.
 
 ### Lid statusi — guruhdagi tugmalar
 

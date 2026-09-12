@@ -4,11 +4,21 @@ import { esc, sendMessage } from "@/lib/sync/telegram";
 import { leadKeyboard, leadStatusLine } from "@/lib/leadStatus";
 import { orderNo, type Order } from "@/lib/ordersData";
 
-// YANGI LID -> TELEGRAM ("Lidlar" topigi).
+// YANGI LID -> TELEGRAM (filialning o'z topigi).
 //
 // Foydalanuvchi so'rovi (07.09.2026): "qaysi filialdan bo'lsa ham yangi lid
 // kiritilgan paytda telegramga notification yuborilishi kerak" — shu bois
 // FILIAL BO'YICHA KESILMAYDI, xabarda filial nomi ko'rsatiladi.
+//
+// FILIAL → TOPIK (12.09.2026): "1-filialdan tushayotgan lidlar filial 1
+// lidlar topigiga tushishi kerak, filial 2 dagi lidlar filial 2 ga" —
+// lidlar uchun ALOHIDA forum-guruh ochildi, har filialga o'z topigi.
+// Topik raqami filialning o'zida turadi (`branches.leadTopicId`, Boshqaruv →
+// Filiallar sahifasidan tahrirlanadi), muhit o'zgaruvchisida emas: yangi
+// filial qo'shilganda serverga kirib .env tahrirlash shart bo'lmasin.
+// Topigi yo'q filialning lidi `TELEGRAM_TOPIC_LEADS` ga (umumiy topik)
+// tushadi, u ham bo'sh bo'lsa — yuborilmaydi va jurnalga ogohlantirish
+// yoziladi (jimgina yo'qolmasin).
 //
 // NEGA SyncKind EMAS: lib/sync dagi oqim (payment/salary/expense/transfer)
 // kuniga bir marta cron bilan ketadi va har biri Google Sheets varag'iga
@@ -20,13 +30,17 @@ import { orderNo, type Order } from "@/lib/ordersData";
 // (lib/sync/telegram.ts — 429 va 5xx uchun qayta urinish o'sha yerda).
 //
 // SOZLAMA:
-//   TELEGRAM_TOPIC_LEADS — "Lidlar" topigining raqami. BO'SH BO'LSA
-//     xabar YUBORILMAYDI: umumiy oqimga tushib, to'lovlar bilan
-//     aralashib ketgandan ko'ra jim turgani yaxshi.
-//   TELEGRAM_CHAT_LEADS  — guruh id'si. Ko'rsatilmasa TELEGRAM_CHAT_PAYMENTS
-//     ishlatiladi: uchala topik ham bitta forum-guruhda
-//     ([[sync-module-decisions]] dagi qaror), ya'ni Vercel'ga yangi
-//     o'zgaruvchi qo'shish shart emas.
+//   TELEGRAM_CHAT_LEADS  — "Lidlar" guruhining id'si (filial topiklari shu
+//     guruhda). Ko'rsatilmasa TELEGRAM_CHAT_PAYMENTS ishlatiladi — eski
+//     o'rnatma, lid topigi to'lovlar guruhida bo'lgan payt uchun.
+//   branches.leadTopicId — filialning topigi (bazada, sahifadan sozlanadi).
+//   TELEGRAM_TOPIC_LEADS — topigi yo'q filiallar uchun UMUMIY topik. Bo'sh
+//     bo'lsa bunday lid YUBORILMAYDI: guruhning umumiy oqimiga tushib
+//     boshqa xabarlar bilan aralashib ketgandan ko'ra jim turgani yaxshi.
+//     DIQQAT: topik raqami GURUHGA bog'liq — guruh almashtirilsa bu
+//     qiymat ham yangi guruhdagi topikka o'zgartirilishi (yoki
+//     bo'shatilishi) kerak, aks holda "message thread not found" bo'ladi.
+//   Topiklarni ochish va biriktirish: node scripts/telegram-lead-topics.mjs
 
 const DASH = "—";
 
@@ -56,11 +70,33 @@ export function phoneForCall(raw: string): string {
   return String(raw ?? "").trim();
 }
 
-/** Filial nomi (`branches`). Topilmasa bo'sh satr — xabar baribir ketadi. */
-async function branchName(db: Db, branchId: number | null | undefined): Promise<string> {
-  if (typeof branchId !== "number") return "";
-  const row = await db.collection("branches").findOne({ id: branchId }, { projection: { _id: 0, name: 1 } });
-  return typeof row?.name === "string" ? row.name : "";
+interface BranchInfo {
+  /** Filial nomi — xabar ichida. Topilmasa bo'sh satr, xabar baribir ketadi. */
+  name: string;
+  /** Filialning topigi (`branches.leadTopicId`). Yo'q bo'lsa null. */
+  leadTopicId: number | null;
+}
+
+/** Filial nomi va topigi (`branches`) — bitta so'rov. */
+async function branchInfo(db: Db, branchId: number | null | undefined): Promise<BranchInfo> {
+  if (typeof branchId !== "number") return { name: "", leadTopicId: null };
+  const row = await db
+    .collection("branches")
+    .findOne({ id: branchId }, { projection: { _id: 0, name: 1, leadTopicId: 1 } });
+  const topic = row?.leadTopicId;
+  return {
+    name: typeof row?.name === "string" ? row.name : "",
+    leadTopicId: typeof topic === "number" && Number.isInteger(topic) && topic > 0 ? topic : null,
+  };
+}
+
+/**
+ * Lid qaysi topikka tushadi: filialning o'z topigi, bo'lmasa umumiy
+ * (`TELEGRAM_TOPIC_LEADS`), u ham bo'lmasa bo'sh satr — yuborilmaydi.
+ * Filial topigi ustun: umumiy topik faqat "hali biriktirilmagan" holat uchun.
+ */
+export function leadThreadId(branchTopic: number | null): string {
+  return branchTopic ? String(branchTopic) : (process.env.TELEGRAM_TOPIC_LEADS || "").trim();
 }
 
 /**
@@ -111,22 +147,25 @@ export async function notifyNewLead(db: Db, order: Order, branchId: number | nul
   try {
     const cfg = loadSyncConfig();
     const chatId = (process.env.TELEGRAM_CHAT_LEADS || "").trim() || cfg.targets.payment.chatId;
-    const threadId = (process.env.TELEGRAM_TOPIC_LEADS || "").trim();
+    if (!cfg.enabled || !cfg.telegramToken || !chatId) return;
 
-    if (!cfg.enabled || !cfg.telegramToken || !chatId || !threadId) return;
+    const branch = await branchInfo(db, branchId);
+    const threadId = leadThreadId(branch.leadTopicId);
+    if (!threadId) {
+      // Sozlama kamchiligi — jim yo'qolmasin: Boshqaruv → Filiallar da shu
+      // filialga topik biriktirilmagan va umumiy topik ham yo'q.
+      console.warn(
+        `[leadNotify] lid #${orderNo(order)} yuborilmadi: ${branch.name || `filial ${branchId}`} uchun Telegram topigi yo'q`,
+      );
+      return;
+    }
 
     // Tugmalar HAR DOIM qo'shiladi — webhook sozlanmagan bo'lsa ham. Ular
     // bosilganda hech narsa bo'lmaydi (Telegram javobsiz qoladi), lekin
     // xabarning shakli bir xil qoladi va webhook ulangan zahoti eski
     // lidlar ham ishlay boshlaydi. Aks holda tugmalarning bor-yo'qligi
     // yashirin sozlamaga bog'liq bo'lib qolardi.
-    await sendMessage(
-      cfg,
-      chatId,
-      leadMessage(order, await branchName(db, branchId)),
-      threadId,
-      leadKeyboard(order.id),
-    );
+    await sendMessage(cfg, chatId, leadMessage(order, branch.name), threadId, leadKeyboard(order.id));
   } catch (e) {
     // Faqat jurnalga — lid allaqachon bazada.
     console.error("[leadNotify] yuborilmadi:", e instanceof Error ? e.message : e);

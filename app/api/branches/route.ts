@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import type { ManagementBranch } from "@/lib/managementBranches";
+import { parseLeadTopicId, type ManagementBranch } from "@/lib/managementBranches";
 import { getCurrentUser } from "@/lib/auth";
 
 // Boshqaruv → Filiallar backend'i (MongoDB `branches`). Demo seed YO'Q —
@@ -54,7 +54,17 @@ export async function POST(req: Request) {
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
-  const branch: ManagementBranch = { id: nextId, name, location: (body.location || "").trim() };
+  // Telegram topigi — ixtiyoriy; forma tahrirlash bilan bir xil, shu bois
+  // qo'shishda ham qabul qilinadi. Bo'sh bo'lsa maydon umuman yozilmaydi.
+  const topic = parseLeadTopicId(body.leadTopicId);
+  if (!topic.ok) return NextResponse.json({ ok: false, error: topic.error }, { status: 400 });
+
+  const branch: ManagementBranch = {
+    id: nextId,
+    name,
+    location: (body.location || "").trim(),
+    ...(topic.value ? { leadTopicId: topic.value } : {}),
+  };
   await col.insertOne({ ...branch });
   return NextResponse.json({ ok: true, branch });
 }
