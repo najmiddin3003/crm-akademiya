@@ -29,7 +29,8 @@ const TAPS = 2;
 const TOO_FAST_S = 0.15;
 const TOO_SLOW_S = 1.2;
 
-// Juda tez bosganga — maqtov (tasodifiy), ustiga qog'ozlar sochiladi.
+// IKKALA serverdan ham tez bosganga — maqtov (tasodifiy) va qog'ozlar.
+// Faqat shu holatda: ikkala javob ham 2-bosishdan keyin kelgan bo'lsa.
 const QUICK_PRAISE = [
   "Voy, siz tezkorsiz!",
   "Barmog'ingiz chaqmoqdek!",
@@ -95,7 +96,6 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
 
   const finished = taps.length >= TAPS;
   const gapSec = finished ? (taps[1] - taps[0]) / 1000 : null;
-  const tooFast = gapSec !== null && gapSec < TOO_FAST_S;
   const tooSlow = gapSec !== null && gapSec > TOO_SLOW_S;
 
   const verdictOf = (lane: LaneKey): Verdict => {
@@ -107,31 +107,34 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
   const vNew = finished ? verdictOf("new") : "wait";
   const vOld = finished ? verdictOf("old") : "wait";
   const waiting = vNew === "wait" || vOld === "wait";
+  // Foydalanuvchi IKKALA serverdan ham tez — ikkala javob 2-bosishdan keyin keldi.
+  const beatBoth = finished && !waiting && vNew === "slow" && vOld === "slow";
+  // Juda tez bosilgan, lekin qaysidir server baribir ulgurgan (juda tez tarmoq) — oddiy xulosa.
+  const tooFastHint = gapSec !== null && gapSec < TOO_FAST_S && !beatBoth;
 
   const headline = (() => {
     if (!finished) return null;
     if (waiting) return "Javoblar kelmoqda…";
     if (vNew === "error" && vOld === "error") return "Ikkala server ham javob bermadi — internet uzilgan bo'lishi mumkin, yana urinib ko'ring.";
     if (vNew === "error") return "Yangi server javob bermadi — xulosa chiqarib bo'lmadi, yana urinib ko'ring.";
-    if (tooFast) return `${praise} ${fmtTime(gapSec! * 1000)} — bunga hech qaysi server ulgurmaydi. Biroz sekinroq bosib ko'ring.`;
+    if (beatBoth) return `${praise} Siz ikkala serverdan ham tez bosdingiz (${fmtTime(gapSec! * 1000)}). Serverlarni taqqoslash uchun biroz sekinroq bosib ko'ring.`;
     if (tooSlow) return `Sekin bosdingiz (${fmtTime(gapSec! * 1000)}) — bunday oraliqda deyarli har qanday server ulguradi. Tezroq bosib ko'ring.`;
+    if (tooFastHint) return "Juda tez bosdingiz, lekin server baribir ulgurdi — internetingiz juda tez!";
     if (vOld === "error") return vNew === "fast" ? "Yangi server barmog'ingizdan tez! (Eski server javob bermadi — taqqoslab bo'lmadi.)" : "Yangi server ulgurmadi; eski server javob bermadi.";
     if (vNew === "fast" && vOld === "slow") return "Yangi server barmog'ingizdan tez, eski — ulgurmadi.";
     if (vNew === "fast" && vOld === "fast") {
       const n = probe.new.sec!, o = probe.old.sec!;
       return n * 1.5 < o ? "Ikkalasi ham ulgurdi — lekin yangi server ancha oldinroq javob berdi." : "Ikkalasi ham ulgurdi, deyarli bir vaqtda.";
     }
-    if (vNew === "slow" && vOld === "slow") return "Bu safar ikkalasi ham ulgurmadi — yana urinib ko'ring.";
     return "Bu safar eski server ulgurdi, yangisi — yo'q. Tarmoq tebrangan bo'lishi mumkin, yana urinib ko'ring.";
   })();
 
-  // Bayram: juda tez bosganga ham, yangi server yutganda ham — bir marta.
-  const celebrate = finished && !waiting && (tooFast || (!tooSlow && vNew === "fast" && vOld !== "fast" && vOld !== "error"));
+  // Bayram FAQAT ikkala serverdan ham tez bosganda — bir turda bir marta.
   useEffect(() => {
-    if (!celebrate || celebrated.current) return;
+    if (!beatBoth || celebrated.current) return;
     celebrated.current = true;
     burstConfetti();
-  }, [celebrate]);
+  }, [beatBoth]);
 
   const cardText = (lane: LaneKey, v: Verdict): string => {
     const p = probe[lane];
@@ -174,7 +177,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
       {finished && (
         <div className="space-y-3">
           <div className="text-center text-[15px] font-semibold">{headline}</div>
-          {!tooFast && !tooSlow && (
+          {!tooSlow && (
             <ul className="space-y-2">
               {LANES.map((lane) => {
                 const v = lane.key === "new" ? vNew : vOld;
