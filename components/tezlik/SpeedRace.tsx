@@ -55,9 +55,15 @@ interface Lane {
 
 const EMPTY_STEPS = (): Record<StepKey, StepResult> => ({ connect: { ms: null }, db: { ms: null }, page: { ms: null } });
 
-export function fmtMs(ms: number | null): string {
+/**
+ * Vaqt HAR DOIM sekundda, vergul bilan (oddiy foydalanuvchi "ms" ni
+ * bilmaydi): 1250 → "1,25 s", 148 → "0,15 s", 3 → "0,003 s"
+ * (0,1 s dan kichigi uch xona bilan, aks holda "0,00 s" bo'lib qolardi).
+ */
+export function fmtTime(ms: number | null): string {
   if (ms === null) return "—";
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
+  const sec = ms / 1000;
+  return `${sec.toFixed(sec < 0.1 ? 3 : 2).replace(".", ",")} s`;
 }
 
 async function timed(url: string, opts: RequestInit = {}): Promise<{ ms: number; body?: { dbMs?: number } }> {
@@ -200,7 +206,7 @@ export default function SpeedRace({ compact = false }: { compact?: boolean }) {
 
               <div className="tabular-nums">
                 <div className={`${compact ? "text-3xl" : "text-4xl"} font-bold leading-none ${isNew && winner !== "old" ? "text-primary" : ""}`}>
-                  {failed ? "—" : fmtMs(live ?? null)}
+                  {failed ? "—" : fmtTime(live ?? null)}
                 </div>
                 <div className="mt-1 text-[12px] text-muted-foreground">
                   {lane.running ? "o'lchanmoqda…" : failed ? "server javob bermadi" : lane.done ? "jami (uch bosqich)" : ""}
@@ -218,10 +224,10 @@ export default function SpeedRace({ compact = false }: { compact?: boolean }) {
                         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                           <Icon className="w-3.5 h-3.5" /> {s.label}
                           {s.key === "db" && r.serverMs !== undefined && (
-                            <span className="text-[11px] opacity-70">· bazaning o&apos;zi {fmtMs(r.serverMs)}</span>
+                            <span className="text-[11px] opacity-70">· bazaning o&apos;zi {fmtTime(r.serverMs)}</span>
                           )}
                         </span>
-                        <span className="font-medium tabular-nums">{r.error ? "xato" : fmtMs(r.ms)}</span>
+                        <span className="font-medium tabular-nums">{r.error ? "xato" : fmtTime(r.ms)}</span>
                       </div>
                       <div className="mt-1 h-2 rounded-full bg-secondary overflow-hidden">
                         <div
@@ -248,14 +254,14 @@ export default function SpeedRace({ compact = false }: { compact?: boolean }) {
                 {winner === null && <>Bu safar deyarli teng chiqdi</>}
               </div>
               <div className="text-[13px] text-muted-foreground">
-                {fmtMs(oldTotal)} → {fmtMs(newTotal)} · {runs}-o&apos;lchov, sizning tarmog&apos;ingizdan
+                {fmtTime(oldTotal)} → {fmtTime(newTotal)} · {runs}-o&apos;lchov, sizning tarmog&apos;ingizdan
                 {winner !== "new" && " · tarmoq tebranishi bo'lishi mumkin, yana yugurtiring"}
               </div>
             </>
           ) : allDone ? (
             <div className="text-[13px] text-muted-foreground">
               {old && STEPS.some((s) => old.steps[s.key].error)
-                ? <>Eski server javob bermadi — taqqoslab bo&apos;lmadi. Yangi server: {fmtMs(newTotal)}.</>
+                ? <>Eski server javob bermadi — taqqoslab bo&apos;lmadi. Yangi server: {fmtTime(newTotal)}.</>
                 : <>Yangi server javob bermadi — yana yugurtirib ko&apos;ring.</>}
             </div>
           ) : (
@@ -282,7 +288,7 @@ export function WhyFast({ compact = false }: { compact?: boolean }) {
       <h2 className="text-[15px] font-semibold mb-2">Nega tez?</h2>
       <ul className="space-y-1.5 text-[13.5px] text-muted-foreground list-disc pl-5">
         <li>Server endi <span className="text-foreground font-medium">Toshkentda</span> (TAS-IX) — so&apos;rov Singapurga borib kelmaydi.</li>
-        <li>Ma&apos;lumotlar bazasi <span className="text-foreground font-medium">serverning o&apos;zida</span> — har so&apos;rov 120 ms o&apos;rniga 3 ms.</li>
+        <li>Ma&apos;lumotlar bazasi <span className="text-foreground font-medium">serverning o&apos;zida</span> — har so&apos;rov 0,12 s o&apos;rniga 0,003 s.</li>
         <li>Kod ikkala serverda bir xil — farq faqat masofada. Natija internet tezligingizga ham bog&apos;liq; qayta yugurtirib ko&apos;ring.</li>
       </ul>
     </section>

@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Fingerprint, Rabbit, RotateCcw, Turtle } from "lucide-react";
-import { laneBases, fmtMs } from "@/components/tezlik/SpeedRace";
+import { laneBases, fmtTime } from "@/components/tezlik/SpeedRace";
 
 // BARMOQ SINOVI — oddiy foydalanuvchi uchun, raqamsiz.
 //
@@ -153,7 +153,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
           </ul>
           {showNumbers && (
             <div className="text-[12px] text-muted-foreground text-center tabular-nums">
-              O&apos;rtacha javob: yangi {fmtMs(avg("new"))} · eski {fmtMs(avg("old"))} · ikki bosish orasi {fmtMs(shots[TAPS - 1].tapAt - shots[0].tapAt)}
+              O&apos;rtacha javob: yangi {fmtTime(avg("new"))} · eski {fmtTime(avg("old"))} · ikki bosish orasi {fmtTime(shots[TAPS - 1].tapAt - shots[0].tapAt)}
             </div>
           )}
           <div className="flex items-center justify-center gap-4">
