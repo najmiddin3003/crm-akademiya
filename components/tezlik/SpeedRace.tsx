@@ -31,9 +31,17 @@ import { Database, Gauge, MapPin, Play, Server, Trophy, Wifi } from "lucide-reac
 // (DNS, TLS, HTTP/2) allaqachon ochiq, eski server esa boshqa domen —
 // sovuq ulanish Singapurga qo'shimcha 2 ta borib-kelish qo'shardi va
 // "farq faqat masofada" degan gap yolg'on bo'lardi. Shu sabab o'lchovdan
-// OLDIN ikkalasiga ham hisobga olinmaydigan bitta ping yuboriladi
+// OLDIN ikkalasiga ham hisobga olinmaydigan bitta so'rov yuboriladi
 // (`warmUp`), keyin uchala bosqich issiq ulanishda o'lchanadi. Ya'ni
 // "Javob" bosqichi — sof borib-kelish, TLS emas.
+//
+// ISITISH /api/health/db GA, /ping GA EMAS (12.09.2026 dagi tekshiruv).
+// Eski server Vercel'da: har lambda o'z baza ulanishini ochadi, ping esa
+// bazaga tegmaydi — ya'ni ping bilan isitilganda birinchi /db so'rovi
+// hali sovuq ulanish ustiga tushardi. O'lchandi: birinchi sinovda eski
+// server 1,19–1,62 s va "bazaning o'zi" 0,12 s, keyingilarida 0,36–0,62 s
+// va ~0,002 s. Bu eski serverni haqiqatdan yomonroq ko'rsatardi. /db
+// bilan isitilganda ulanish ham, baza ham issiq — o'lchov faqat masofa.
 
 const OLD_BASE = "https://crm-akademiya-777777.vercel.app";
 const NEW_BASE = "https://www.tizimli24.uz";
@@ -100,9 +108,12 @@ export function laneBases(): { old: string; new: string } {
   return { old: OLD_BASE, new: newBase };
 }
 
-/** Hisobga olinmaydigan isitish so'rovi — ulanish ochilsin (xato bo'lsa ham davom etiladi). */
+/**
+ * Hisobga olinmaydigan isitish so'rovi — ulanish HAM, baza ulanishi HAM
+ * ochilsin (yuqoridagi izoh). Xato bo'lsa ham davom etiladi.
+ */
 export async function warmUp(base: string): Promise<void> {
-  try { await timed(`${base}/api/health/ping`, {}, 8_000); } catch { /* sovuq qoladi — o'lchov baribir ketadi */ }
+  try { await timed(`${base}/api/health/db`, {}, 8_000); } catch { /* sovuq qoladi — o'lchov baribir ketadi */ }
 }
 
 function makeLanes(): Lane[] {

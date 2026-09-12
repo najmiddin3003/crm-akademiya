@@ -21,8 +21,14 @@ import { burstConfetti } from "@/lib/confetti";
 //     "javob kelmadi — xulosa yo'q". Timeout 10 s (ilgari umuman yo'q edi).
 //   • Isitish: sahifa yangi serverdan kelgani uchun unga ulanish ochiq,
 //     eski serverga esa sovuq — sinovdan oldin ikkalasiga ham hisobga
-//     olinmaydigan ping yuboriladi (SpeedRace.warmUp), doira shungacha
-//     "tayyorlanmoqda".
+//     olinmaydigan /api/health/db so'rovi yuboriladi (SpeedRace.warmUp —
+//     aynan sinov uradigan manzil, ping emas: ping bazani isitmaydi),
+//     doira shungacha "tayyorlanmoqda".
+//   • Bosishlar soni `useRef` da: 40 ms oralig'ida ikki marta bosilganda
+//     ikkala bosish ham eski `taps.length === 0` ni ko'rib, 2 emas 4 ta
+//     so'rov jo'natardi (React qayta render qilishdan oldin) va ekrandagi
+//     raqam kechroq boshlangan so'rovniki bo'lib shishib chiqardi. Ref
+//     bir zumda yangilanadi — so'rovni faqat BIRINCHI bosish yuboradi.
 // Millisekund yo'q — hamma vaqt sekundda (fmtTime).
 
 const TAPS = 2;
@@ -62,6 +68,8 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
   // "Yana" bosilgach kechikib kelgan eski javoblar yangi turga yopishmasin.
   const round = useRef(0);
   const bases = useRef<Record<LaneKey, string> | null>(null);
+  // Bosishlar soni — sinxron qorovul (`taps` holati render'gacha eskiradi).
+  const tapCount = useRef(0);
 
   // Isitish — ikkala serverga ham, hisobga olinmaydi.
   useEffect(() => {
@@ -73,10 +81,11 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
   }, []);
 
   const tap = useCallback(() => {
-    if (!ready || taps.length >= TAPS || !bases.current) return;
+    if (!ready || tapCount.current >= TAPS || !bases.current) return;
+    const index = tapCount.current++;
     const now = performance.now();
     setTaps((t) => [...t, now]);
-    if (taps.length > 0) return; // oxirgi bosish — faqat vaqt
+    if (index > 0) return; // oxirgi bosish — faqat vaqt
     const myRound = round.current;
     for (const lane of LANES) {
       timed(`${bases.current[lane.key]}/api/health/db`, {}, 10_000).then(
@@ -84,10 +93,11 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
         () => { if (myRound === round.current) setProbe((p) => ({ ...p, [lane.key]: { sec: null, error: true } })); },
       );
     }
-  }, [ready, taps.length]);
+  }, [ready]);
 
   const reset = () => {
     round.current += 1;
+    tapCount.current = 0;
     celebrated.current = false;
     setPraise(QUICK_PRAISE[Math.floor(Math.random() * QUICK_PRAISE.length)]);
     setTaps([]);
