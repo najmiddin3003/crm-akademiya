@@ -1,26 +1,38 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { Fingerprint, Rabbit, RotateCcw, Turtle } from "lucide-react";
-import { laneBases, fmtTime } from "@/components/tezlik/SpeedRace";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CircleHelp, Fingerprint, Rabbit, RotateCcw, Turtle } from "lucide-react";
+import { fmtTime, laneBases, timed, warmUp } from "@/components/tezlik/SpeedRace";
 
-// BARMOQ SINOVI — oddiy foydalanuvchi uchun, raqamsiz.
+// BARMOQ SINOVI — oddiy foydalanuvchi uchun, so'z bilan.
 //
-// Foydalanuvchi doirani ketma-ket 2 marta bosadi (avval 3 edi — ko'p
-// tuyuldi). Har bosishda ikkala serverga bittadan so'rov (/api/health/db)
-// ketadi. Server "ulgurdi" deb hisoblanadi, agar 1-bosishga javobi
-// 2-bosishdan OLDIN kelsa (oxirgi bosishdan keyin bosish yo'q). Odam ikki
-// bosish orasida ~200–400 ms sarflaydi: Toshkentdagi server (~50 ms)
-// ulguradi, Singapurdagi (~500 ms) — yo'q. Natija so'z bilan: quyon/toshbaqa.
-// Millisekundlar faqat "Raqamlar" tugmasi ostida — qiziquvchilar uchun.
+// Foydalanuvchi doirani ketma-ket 2 marta bosadi. 1-BOSISHDA ikkala
+// serverga bittadan so'rov (/api/health/db) ketadi; 2-bosish faqat
+// vaqtni belgilaydi (so'rov yuborilmaydi — baholanmaydigan so'rov behuda).
+// Server "ulgurdi" — javobi 2-bosishdan OLDIN kelgan bo'lsa.
+//
+// HALOLLIK QOIDALARI (12.09.2026 dagi tekshiruvdan keyin):
+//   • Bosish oralig'i O'LCHANADI va matn shunga qarab yoziladi: juda tez
+//     bosilsa (< 0,15 s) — "hech kim ulgurmaydi, sekinroq bosing", sekin
+//     bosilsa (> 1,2 s) — "hamma ulguradi, tezroq bosing"; server haqida
+//     xulosa faqat o'rtacha oraliqda. Ilgari bunda internet ayblanardi.
+//   • Xato (tarmoq, 500, vaqt tugashi) — "ulgurmadi" EMAS, alohida holat:
+//     "javob kelmadi — xulosa yo'q". Timeout 10 s (ilgari umuman yo'q edi).
+//   • Isitish: sahifa yangi serverdan kelgani uchun unga ulanish ochiq,
+//     eski serverga esa sovuq — sinovdan oldin ikkalasiga ham hisobga
+//     olinmaydigan ping yuboriladi (SpeedRace.warmUp), doira shungacha
+//     "tayyorlanmoqda".
+// Millisekund yo'q — hamma vaqt sekundda (fmtTime).
 
 const TAPS = 2;
+const TOO_FAST_S = 0.15;
+const TOO_SLOW_S = 1.2;
 type LaneKey = "old" | "new";
 
-interface Shot {
-  tapAt: number;
-  doneAt: Record<LaneKey, number | null>;
-  error: Record<LaneKey, boolean>;
+interface Probe {
+  /** Javob vaqti (bosishdan), soniya; null — hali kelmadi. */
+  sec: number | null;
+  error: boolean;
 }
 
 const LANES: { key: LaneKey; name: string; place: string }[] = [
@@ -28,75 +40,87 @@ const LANES: { key: LaneKey; name: string; place: string }[] = [
   { key: "old", name: "Eski server", place: "Singapur" },
 ];
 
-type Verdict = "fast" | "slow" | "mixed" | "wait";
-
-const VERDICT_TEXT: Record<Verdict, string> = {
-  fast: "ulgurdi — javob siz ikkinchi marta bosguningizcha kelib bo'lgan edi",
-  slow: "ulgurmadi — javob ikkinchi bosishingizdan keyin keldi",
-  mixed: "bir marta ulgurdi, bir marta yo'q",
-  wait: "javob kutilmoqda…",
-};
+type Verdict = "fast" | "slow" | "error" | "wait";
 
 export default function TapTest({ compact = false }: { compact?: boolean }) {
-  const [shots, setShots] = useState<Shot[]>([]);
+  const [ready, setReady] = useState(false);
+  const [taps, setTaps] = useState<number[]>([]);
+  const [probe, setProbe] = useState<Record<LaneKey, Probe>>({ old: { sec: null, error: false }, new: { sec: null, error: false } });
   const [showNumbers, setShowNumbers] = useState(false);
   // "Yana" bosilgach kechikib kelgan eski javoblar yangi turga yopishmasin.
   const round = useRef(0);
   const bases = useRef<Record<LaneKey, string> | null>(null);
 
+  // Isitish — ikkala serverga ham, hisobga olinmaydi.
+  useEffect(() => {
+    let alive = true;
+    const b = laneBases();
+    bases.current = b;
+    Promise.allSettled([warmUp(b.old), warmUp(b.new)]).then(() => { if (alive) setReady(true); });
+    return () => { alive = false; };
+  }, []);
+
   const tap = useCallback(() => {
-    if (shots.length >= TAPS) return;
-    if (!bases.current) bases.current = laneBases();
-    const idx = shots.length;
-    const shot: Shot = { tapAt: performance.now(), doneAt: { old: null, new: null }, error: { old: false, new: false } };
-    setShots((s) => [...s, shot]);
+    if (!ready || taps.length >= TAPS || !bases.current) return;
+    const now = performance.now();
+    setTaps((t) => [...t, now]);
+    if (taps.length > 0) return; // oxirgi bosish — faqat vaqt
     const myRound = round.current;
     for (const lane of LANES) {
-      fetch(`${bases.current[lane.key]}/api/health/db?t=${Date.now()}-${idx}`, { cache: "no-store" })
-        .then((r) => { if (!r.ok) throw new Error(String(r.status)); })
-        .then(
-          () => setShots((s) => (myRound !== round.current ? s : s.map((x, i) => (i === idx ? { ...x, doneAt: { ...x.doneAt, [lane.key]: performance.now() } } : x)))),
-          () => setShots((s) => (myRound !== round.current ? s : s.map((x, i) => (i === idx ? { ...x, error: { ...x.error, [lane.key]: true } } : x)))),
-        );
+      timed(`${bases.current[lane.key]}/api/health/db`, {}, 10_000).then(
+        (r) => { if (myRound === round.current) setProbe((p) => ({ ...p, [lane.key]: { sec: r.ms / 1000, error: false } })); },
+        () => { if (myRound === round.current) setProbe((p) => ({ ...p, [lane.key]: { sec: null, error: true } })); },
+      );
     }
-  }, [shots.length]);
+  }, [ready, taps.length]);
 
-  const reset = () => { round.current += 1; setShots([]); };
-
-  const finished = shots.length >= TAPS;
-
-  /** Bosish i ning javobi keyingi bosishdan oldin keldimi (null — hali noma'lum). */
-  const beforeNext = (i: number, lane: LaneKey): boolean | null => {
-    const s = shots[i];
-    const next = shots[i + 1];
-    if (!s || !next) return null;
-    if (s.error[lane]) return false;
-    const done = s.doneAt[lane];
-    if (done === null) return null;
-    return done <= next.tapAt;
+  const reset = () => {
+    round.current += 1;
+    setTaps([]);
+    setProbe({ old: { sec: null, error: false }, new: { sec: null, error: false } });
   };
+
+  const finished = taps.length >= TAPS;
+  const gapSec = finished ? (taps[1] - taps[0]) / 1000 : null;
+  const tooFast = gapSec !== null && gapSec < TOO_FAST_S;
+  const tooSlow = gapSec !== null && gapSec > TOO_SLOW_S;
+
   const verdictOf = (lane: LaneKey): Verdict => {
-    const v = Array.from({ length: TAPS - 1 }, (_, i) => beforeNext(i, lane));
-    if (v.some((x) => x === null)) return "wait";
-    const wins = v.filter(Boolean).length;
-    return wins === v.length ? "fast" : wins === 0 ? "slow" : "mixed";
+    const p = probe[lane];
+    if (p.error) return "error";
+    if (p.sec === null || gapSec === null) return "wait";
+    return p.sec <= gapSec ? "fast" : "slow";
   };
-  const avg = (lane: LaneKey) => {
-    const v = shots.map((s) => (s.doneAt[lane] === null ? null : s.doneAt[lane]! - s.tapAt)).filter((x): x is number => x !== null);
-    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
-  };
-
   const vNew = finished ? verdictOf("new") : "wait";
   const vOld = finished ? verdictOf("old") : "wait";
-  const headline =
-    !finished ? null
-    : vNew === "wait" || vOld === "wait" ? "Javoblar kelmoqda…"
-    : vNew === "fast" && vOld !== "fast" ? "Yangi server barmog'ingizdan tez!"
-    : vNew === "fast" && vOld === "fast"
-      ? ((avg("new") ?? 0) * 1.5 < (avg("old") ?? 0) ? "Ikkalasi ham ulgurdi — lekin yangi server ancha oldinroq javob berdi" : "Ikkalasi ham ulgurdi — internetingiz juda tez")
-    : vNew === "slow" && vOld === "slow" ? "Bu safar hech kim ulgurmadi — internet sekin, yana urinib ko'ring"
-    : vNew !== "slow" ? "Yangi server ulgurdi, eski — qisman"
-    : "Bu safar yangi server ulgurmadi — yana urinib ko'ring";
+  const waiting = vNew === "wait" || vOld === "wait";
+
+  const headline = (() => {
+    if (!finished) return null;
+    if (waiting) return "Javoblar kelmoqda…";
+    if (vNew === "error" && vOld === "error") return "Ikkala server ham javob bermadi — internet uzilgan bo'lishi mumkin, yana urinib ko'ring.";
+    if (vNew === "error") return "Yangi server javob bermadi — xulosa chiqarib bo'lmadi, yana urinib ko'ring.";
+    if (tooFast) return `Juda tez bosdingiz (${fmtTime(gapSec! * 1000)}) — bunga hech qaysi server ulgurmaydi. Biroz sekinroq bosib ko'ring.`;
+    if (tooSlow) return `Sekin bosdingiz (${fmtTime(gapSec! * 1000)}) — bunday oraliqda deyarli har qanday server ulguradi. Tezroq bosib ko'ring.`;
+    if (vOld === "error") return vNew === "fast" ? "Yangi server barmog'ingizdan tez! (Eski server javob bermadi — taqqoslab bo'lmadi.)" : "Yangi server ulgurmadi; eski server javob bermadi.";
+    if (vNew === "fast" && vOld === "slow") return "Yangi server barmog'ingizdan tez, eski — ulgurmadi.";
+    if (vNew === "fast" && vOld === "fast") {
+      const n = probe.new.sec!, o = probe.old.sec!;
+      return n * 1.5 < o ? "Ikkalasi ham ulgurdi — lekin yangi server ancha oldinroq javob berdi." : "Ikkalasi ham ulgurdi, deyarli bir vaqtda.";
+    }
+    if (vNew === "slow" && vOld === "slow") return "Bu safar ikkalasi ham ulgurmadi — yana urinib ko'ring.";
+    return "Bu safar eski server ulgurdi, yangisi — yo'q. Tarmoq tebrangan bo'lishi mumkin, yana urinib ko'ring.";
+  })();
+
+  const cardText = (lane: LaneKey, v: Verdict): string => {
+    const p = probe[lane];
+    switch (v) {
+      case "fast": return `ulgurdi — javob ${fmtTime(p.sec! * 1000)} da keldi, siz ${fmtTime(gapSec! * 1000)} da bosdingiz`;
+      case "slow": return `ulgurmadi — javob ${fmtTime(p.sec! * 1000)} da keldi, siz ${fmtTime(gapSec! * 1000)} da bosdingiz`;
+      case "error": return "javob kelmadi (xato yoki 10 s vaqt tugadi) — bu server haqida xulosa yo'q";
+      default: return "javob kutilmoqda…";
+    }
+  };
 
   return (
     <section className={`rounded-2xl border border-border bg-card ${compact ? "p-4 space-y-4" : "p-5 space-y-5"}`}>
@@ -111,49 +135,49 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           onClick={tap}
-          disabled={finished}
+          disabled={!ready || finished}
           aria-label="Bu yerga bosing"
           className={`relative w-32 h-32 rounded-full border-4 flex flex-col items-center justify-center select-none transition-transform active:scale-95
-            ${finished ? "border-border bg-secondary text-muted-foreground" : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 cursor-pointer"}`}
+            ${!ready || finished ? "border-border bg-secondary text-muted-foreground" : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 cursor-pointer"}`}
           style={{ touchAction: "manipulation" }}
         >
-          {!finished && <span className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" style={{ animationDuration: "1.8s" }} />}
+          {ready && !finished && <span className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" style={{ animationDuration: "1.8s" }} />}
           <Fingerprint className="w-8 h-8" />
           <span className="mt-1 text-2xl font-bold tabular-nums leading-none">
-            {Math.min(shots.length, TAPS)}<span className="text-base font-medium opacity-60">/{TAPS}</span>
+            {Math.min(taps.length, TAPS)}<span className="text-base font-medium opacity-60">/{TAPS}</span>
           </span>
-          <span className="mt-1 text-[12px]">{finished ? "tugadi" : shots.length === 0 ? "bosing" : "yana bosing"}</span>
+          <span className="mt-1 text-[12px]">{!ready ? "tayyorlanmoqda…" : finished ? "tugadi" : taps.length === 0 ? "bosing" : "yana bosing"}</span>
         </button>
       </div>
 
       {finished && (
         <div className="space-y-3">
-          <div className="text-center text-[16px] font-semibold">{headline}</div>
-          <ul className="space-y-2">
-            {LANES.map((lane) => {
-              const v = lane.key === "new" ? vNew : vOld;
-              const good = v === "fast";
-              const bad = v === "slow";
-              const Icon = bad ? Turtle : Rabbit;
-              const tone = good
-                ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
-                : bad
-                  ? "border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
-                  : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
-              return (
-                <li key={lane.key} className={`rounded-xl border px-3 py-2.5 flex items-center gap-3 ${tone}`}>
-                  <Icon className="w-6 h-6 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-[14px] font-semibold">{lane.name} <span className="font-normal opacity-70">· {lane.place}</span></div>
-                    <div className="text-[12.5px] opacity-90">{VERDICT_TEXT[v]}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          {showNumbers && (
+          <div className="text-center text-[15px] font-semibold">{headline}</div>
+          {!tooFast && !tooSlow && (
+            <ul className="space-y-2">
+              {LANES.map((lane) => {
+                const v = lane.key === "new" ? vNew : vOld;
+                const Icon = v === "fast" ? Rabbit : v === "slow" ? Turtle : CircleHelp;
+                const tone = v === "fast"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                  : v === "slow"
+                    ? "border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+                    : "border-border bg-secondary text-muted-foreground";
+                return (
+                  <li key={lane.key} className={`rounded-xl border px-3 py-2.5 flex items-center gap-3 ${tone}`}>
+                    <Icon className="w-6 h-6 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[14px] font-semibold">{lane.name} <span className="font-normal opacity-70">· {lane.place}</span></div>
+                      <div className="text-[12.5px] opacity-90">{cardText(lane.key, v)}</div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {showNumbers && gapSec !== null && (
             <div className="text-[12px] text-muted-foreground text-center tabular-nums">
-              O&apos;rtacha javob: yangi {fmtTime(avg("new"))} · eski {fmtTime(avg("old"))} · ikki bosish orasi {fmtTime(shots[TAPS - 1].tapAt - shots[0].tapAt)}
+              Ikki bosish orasi {fmtTime(gapSec * 1000)} · javob: yangi {probe.new.error ? "xato" : fmtTime(probe.new.sec === null ? null : probe.new.sec * 1000)} · eski {probe.old.error ? "xato" : fmtTime(probe.old.sec === null ? null : probe.old.sec * 1000)}
             </div>
           )}
           <div className="flex items-center justify-center gap-4">

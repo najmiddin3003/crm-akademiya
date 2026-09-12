@@ -26,13 +26,21 @@ import { Database, Gauge, MapPin, Play, Server, Trophy, Wifi } from "lucide-reac
 // (dev server kodni yo'l-yo'lakay kompilyatsiya qiladi, bazasi Atlas)
 // o'lchov www.tizimli24.uz ga boradi — aks holda "yangi server" deb dev
 // server ko'rsatilib chalg'itardi. Prod domenining o'zida — o'sha origin.
+//
+// ADOLAT — ISITISH. Sahifa yangi serverdan kelgani uchun unga ulanish
+// (DNS, TLS, HTTP/2) allaqachon ochiq, eski server esa boshqa domen —
+// sovuq ulanish Singapurga qo'shimcha 2 ta borib-kelish qo'shardi va
+// "farq faqat masofada" degan gap yolg'on bo'lardi. Shu sabab o'lchovdan
+// OLDIN ikkalasiga ham hisobga olinmaydigan bitta ping yuboriladi
+// (`warmUp`), keyin uchala bosqich issiq ulanishda o'lchanadi. Ya'ni
+// "Javob" bosqichi — sof borib-kelish, TLS emas.
 
 const OLD_BASE = "https://crm-akademiya-777777.vercel.app";
 const NEW_BASE = "https://www.tizimli24.uz";
 
 type StepKey = "connect" | "db" | "page";
 const STEPS: { key: StepKey; label: string; icon: typeof Wifi }[] = [
-  { key: "connect", label: "Ulanish", icon: Wifi },
+  { key: "connect", label: "Javob (ping)", icon: Wifi },
   { key: "db", label: "Bazadan javob", icon: Database },
   { key: "page", label: "Sahifa", icon: Gauge },
 ];
@@ -50,6 +58,8 @@ interface Lane {
   base: string;
   steps: Record<StepKey, StepResult>;
   running: boolean;
+  /** Isitish so'rovi ketmoqda (hisobga olinmaydi). */
+  warming: boolean;
   done: boolean;
 }
 
@@ -66,9 +76,9 @@ export function fmtTime(ms: number | null): string {
   return `${sec.toFixed(sec < 0.1 ? 3 : 2).replace(".", ",")} s`;
 }
 
-async function timed(url: string, opts: RequestInit = {}): Promise<{ ms: number; body?: { dbMs?: number } }> {
+export async function timed(url: string, opts: RequestInit = {}, timeoutMs = 20_000): Promise<{ ms: number; body?: { dbMs?: number } }> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = performance.now();
   try {
     const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store", signal: ctrl.signal, ...opts });
@@ -90,11 +100,16 @@ export function laneBases(): { old: string; new: string } {
   return { old: OLD_BASE, new: newBase };
 }
 
+/** Hisobga olinmaydigan isitish so'rovi — ulanish ochilsin (xato bo'lsa ham davom etiladi). */
+export async function warmUp(base: string): Promise<void> {
+  try { await timed(`${base}/api/health/ping`, {}, 8_000); } catch { /* sovuq qoladi — o'lchov baribir ketadi */ }
+}
+
 function makeLanes(): Lane[] {
   const b = laneBases();
   return [
-    { key: "old", name: "Eski server", place: "Vercel · Singapur", base: b.old, steps: EMPTY_STEPS(), running: false, done: false },
-    { key: "new", name: "Yangi server", place: "Eskiz VPS · Toshkent", base: b.new, steps: EMPTY_STEPS(), running: false, done: false },
+    { key: "old", name: "Eski server", place: "Vercel · Singapur", base: b.old, steps: EMPTY_STEPS(), running: false, warming: false, done: false },
+    { key: "new", name: "Yangi server", place: "Eskiz VPS · Toshkent", base: b.new, steps: EMPTY_STEPS(), running: false, warming: false, done: false },
   ];
 }
 
@@ -113,8 +128,10 @@ export default function SpeedRace({ compact = false }: { compact?: boolean }) {
     setLanes((prev) => prev.map((l) => (l.key === key ? fn(l) : l)));
 
   const runLane = useCallback(async (lane: Lane) => {
+    patch(lane.key, (l) => ({ ...l, steps: EMPTY_STEPS(), running: false, warming: true, done: false }));
+    await warmUp(lane.base);
     startedAt.current[lane.key] = performance.now();
-    patch(lane.key, (l) => ({ ...l, steps: EMPTY_STEPS(), running: true, done: false }));
+    patch(lane.key, (l) => ({ ...l, warming: false, running: true }));
     for (const step of STEPS) {
       try {
         const r =
@@ -206,10 +223,10 @@ export default function SpeedRace({ compact = false }: { compact?: boolean }) {
 
               <div className="tabular-nums">
                 <div className={`${compact ? "text-3xl" : "text-4xl"} font-bold leading-none ${isNew && winner !== "old" ? "text-primary" : ""}`}>
-                  {failed ? "—" : fmtTime(live ?? null)}
+                  {lane.warming ? "…" : failed ? "—" : fmtTime(live ?? null)}
                 </div>
                 <div className="mt-1 text-[12px] text-muted-foreground">
-                  {lane.running ? "o'lchanmoqda…" : failed ? "server javob bermadi" : lane.done ? "jami (uch bosqich)" : ""}
+                  {lane.warming ? "ulanish isitilmoqda…" : lane.running ? "o'lchanmoqda…" : failed ? "server javob bermadi" : lane.done ? "jami (uch bosqich)" : ""}
                 </div>
               </div>
 
@@ -271,7 +288,7 @@ export default function SpeedRace({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           onClick={() => void race()}
-          disabled={lanes.some((l) => l.running)}
+          disabled={lanes.some((l) => l.running || l.warming)}
           className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 shrink-0"
         >
           <Play className="w-4 h-4" /> Yana yugurtir
@@ -288,8 +305,8 @@ export function WhyFast({ compact = false }: { compact?: boolean }) {
       <h2 className="text-[15px] font-semibold mb-2">Nega tez?</h2>
       <ul className="space-y-1.5 text-[13.5px] text-muted-foreground list-disc pl-5">
         <li>Server endi <span className="text-foreground font-medium">Toshkentda</span> (TAS-IX) — so&apos;rov Singapurga borib kelmaydi.</li>
-        <li>Ma&apos;lumotlar bazasi <span className="text-foreground font-medium">serverning o&apos;zida</span> — har so&apos;rov 0,12 s o&apos;rniga 0,003 s.</li>
-        <li>Kod ikkala serverda bir xil — farq faqat masofada. Natija internet tezligingizga ham bog&apos;liq; qayta yugurtirib ko&apos;ring.</li>
+        <li>Ma&apos;lumotlar bazasi ham <span className="text-foreground font-medium">server yonida, Toshkentda</span>. (Eski serverda ham baza yonida edi — lekin ikkalasi Singapurda.)</li>
+        <li>Kod ikkala serverda bir xil, o&apos;lchovdan oldin ikkalasiga ham ulanish isitiladi — farq faqat masofada. Natija internet tezligingizga ham bog&apos;liq; qayta yugurtirib ko&apos;ring.</li>
       </ul>
     </section>
   );
