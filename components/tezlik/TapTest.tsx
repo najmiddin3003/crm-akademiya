@@ -6,15 +6,15 @@ import { laneBases, fmtMs } from "@/components/tezlik/SpeedRace";
 
 // BARMOQ SINOVI — oddiy foydalanuvchi uchun, raqamsiz.
 //
-// Foydalanuvchi doirani ketma-ket 3 marta bosadi. Har bosishda ikkala
-// serverga bittadan so'rov (/api/health/db) ketadi. Server "ulgurdi" deb
-// hisoblanadi, agar javobi foydalanuvchining KEYINGI bosishidan oldin
-// kelsa (1- va 2-bosish uchun; 3-bosishdan keyin bosish yo'q). Odam ikki
+// Foydalanuvchi doirani ketma-ket 2 marta bosadi (avval 3 edi — ko'p
+// tuyuldi). Har bosishda ikkala serverga bittadan so'rov (/api/health/db)
+// ketadi. Server "ulgurdi" deb hisoblanadi, agar 1-bosishga javobi
+// 2-bosishdan OLDIN kelsa (oxirgi bosishdan keyin bosish yo'q). Odam ikki
 // bosish orasida ~200–400 ms sarflaydi: Toshkentdagi server (~50 ms)
 // ulguradi, Singapurdagi (~500 ms) — yo'q. Natija so'z bilan: quyon/toshbaqa.
 // Millisekundlar faqat "Raqamlar" tugmasi ostida — qiziquvchilar uchun.
 
-const TAPS = 3;
+const TAPS = 2;
 type LaneKey = "old" | "new";
 
 interface Shot {
@@ -31,8 +31,8 @@ const LANES: { key: LaneKey; name: string; place: string }[] = [
 type Verdict = "fast" | "slow" | "mixed" | "wait";
 
 const VERDICT_TEXT: Record<Verdict, string> = {
-  fast: "ulgurdi — javob siz keyingi marta bosguningizcha kelib bo'lgan edi",
-  slow: "ulgurmadi — javob keyingi bosishingizdan keyin keldi",
+  fast: "ulgurdi — javob siz ikkinchi marta bosguningizcha kelib bo'lgan edi",
+  slow: "ulgurmadi — javob ikkinchi bosishingizdan keyin keldi",
   mixed: "bir marta ulgurdi, bir marta yo'q",
   wait: "javob kutilmoqda…",
 };
@@ -76,10 +76,10 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
     return done <= next.tapAt;
   };
   const verdictOf = (lane: LaneKey): Verdict => {
-    const v = [0, 1].map((i) => beforeNext(i, lane));
+    const v = Array.from({ length: TAPS - 1 }, (_, i) => beforeNext(i, lane));
     if (v.some((x) => x === null)) return "wait";
     const wins = v.filter(Boolean).length;
-    return wins === 2 ? "fast" : wins === 0 ? "slow" : "mixed";
+    return wins === v.length ? "fast" : wins === 0 ? "slow" : "mixed";
   };
   const avg = (lane: LaneKey) => {
     const v = shots.map((s) => (s.doneAt[lane] === null ? null : s.doneAt[lane]! - s.tapAt)).filter((x): x is number => x !== null);
@@ -92,7 +92,8 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
     !finished ? null
     : vNew === "wait" || vOld === "wait" ? "Javoblar kelmoqda…"
     : vNew === "fast" && vOld !== "fast" ? "Yangi server barmog'ingizdan tez!"
-    : vNew === "fast" && vOld === "fast" ? "Ikkalasi ham ulgurdi — internetingiz juda tez"
+    : vNew === "fast" && vOld === "fast"
+      ? ((avg("new") ?? 0) * 1.5 < (avg("old") ?? 0) ? "Ikkalasi ham ulgurdi — lekin yangi server ancha oldinroq javob berdi" : "Ikkalasi ham ulgurdi — internetingiz juda tez")
     : vNew === "slow" && vOld === "slow" ? "Bu safar hech kim ulgurmadi — internet sekin, yana urinib ko'ring"
     : vNew !== "slow" ? "Yangi server ulgurdi, eski — qisman"
     : "Bu safar yangi server ulgurmadi — yana urinib ko'ring";
@@ -102,7 +103,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
       <div className="text-center">
         <h2 className="text-[15px] font-semibold">Barmoq sinovi</h2>
         <p className="text-[13px] text-muted-foreground mt-0.5">
-          Doirani ketma-ket <span className="font-medium text-foreground">3 marta</span>{" "}bosing. Server sizning barmog&apos;ingizdan tezmi — ko&apos;ramiz.
+          Doirani ketma-ket <span className="font-medium text-foreground">{TAPS} marta</span>{" "}bosing. Server sizning barmog&apos;ingizdan tezmi — ko&apos;ramiz.
         </p>
       </div>
 
@@ -152,7 +153,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
           </ul>
           {showNumbers && (
             <div className="text-[12px] text-muted-foreground text-center tabular-nums">
-              O&apos;rtacha javob: yangi {fmtMs(avg("new"))} · eski {fmtMs(avg("old"))} · siz 3 marta {fmtMs(shots[TAPS - 1].tapAt - shots[0].tapAt)} da bosdingiz
+              O&apos;rtacha javob: yangi {fmtMs(avg("new"))} · eski {fmtMs(avg("old"))} · ikki bosish orasi {fmtMs(shots[TAPS - 1].tapAt - shots[0].tapAt)}
             </div>
           )}
           <div className="flex items-center justify-center gap-4">
