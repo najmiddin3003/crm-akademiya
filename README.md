@@ -1373,6 +1373,15 @@ Tartib (`lib/leadNotify.ts` → `leadThreadId`): filial topigi → bo'lmasa
 
 Skript bazaga yozadi, ya'ni **prod uchun serverda** yurgiziladi
 (`/var/www/crm/current`); lokal `.env.local` Atlas ko'zgusiga qaraydi.
+
+Ishga tushdi 12.09.2026: guruh "Akademiya Lidlar", topiklar 1→10, 2→11,
+3→12, 4→13. Eski guruhdagi 85 lid (07.09 dan beri) yangi guruhga
+**bazadan qayta yuborildi** — `scripts/resend-leads-telegram.mjs`
+(argumentsiz quruq rejim, `--send` yuboradi, `--since DD.MM.YYYY`,
+`--all`). Bot API xabarni o'qiy/ko'chira olmaydi va eski xabarlarning
+id'lari saqlanmagan, shu bois "ko'chirish" — matnni `leadMessage` bilan
+qayta yig'ib yuborish; xabar jonli lid bilan bir xil (status, tugmalar).
+Bitta guruhga daqiqasiga ~20 xabar chegarasi — har xabardan keyin 3.1 s.
 Ilova filial hujjatini har lidda o'qiydi — topik o'zgarganda qayta ishga
 tushirish kerak emas. Status tugmalari o'zgarishsiz ishlaydi: webhook
 xabarni `callback_query` dagi chat id bo'yicha tahrirlaydi, eski guruhdagi
