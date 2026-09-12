@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AppShell from "@/components/shared/AppShell";
+import SpeedFab from "@/components/tezlik/SpeedFab";
 import { getCurrentUser } from "@/lib/auth";
 import { firstAllowedPath, isPathAllowed, PATHNAME_HEADER } from "@/lib/permissions";
 
@@ -50,6 +51,8 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       isAdmin={user.role === "admin"}
     >
       {children}
+      {/* Suzuvchi robot — tezlik poygasi (components/tezlik/SpeedFab.tsx) */}
+      <SpeedFab />
     </AppShell>
   );
 }
