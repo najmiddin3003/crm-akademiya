@@ -456,12 +456,19 @@ export interface OrdersFilters {
   to: string;
   /** Birinchi darsga kelish sanasi (alohida yakka sana maydoni). */
   firstLessonDate: string;
+  /**
+   * Birinchi dars HAFTA KUNI ("Dushanba" …) — `day` dan farqi: u lid
+   * YARATILGAN kunni oladi, bu esa birinchi darsga YOZILGAN kunni
+   * (`firstLesson` dagi sana). 12.09.2026 da qo'shildi: moderator "shanba
+   * kuni birinchi darsga keladiganlar" ro'yxatini bir bosishda oladi.
+   */
+  firstLessonDay: string;
 }
 
 export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
   course: "", subcourse: "", group: "", teacher: "", moderator: "", status: "", status1: "",
   source: "", subsource: "", fromBranch: "", toBranch: "", day: "", survey: "", category: "",
-  search: "", from: "", to: "", firstLessonDate: "",
+  search: "", from: "", to: "", firstLessonDate: "", firstLessonDay: "",
 };
 
 function parseCreated(s: string): Date | null {
@@ -519,6 +526,14 @@ export function applyOrdersFilters(items: Order[], f: OrdersFilters): Order[] {
     const [y, m, d] = f.firstLessonDate.split("-");
     const wanted = `${d}.${m}.${y}`;
     res = res.filter((o) => (o.firstLesson || "").startsWith(wanted));
+  }
+  if (f.firstLessonDay) {
+    // Birinchi dars sanasi bo'lmagan lid (hali yozilmagan) hech qaysi kunga
+    // tushmaydi — `parseCreated` sanani "DD.MM.YYYY" boshidan oladi.
+    res = res.filter((o) => {
+      const dt = parseCreated(o.firstLesson || "");
+      return !!dt && WEEKDAY_NAMES[dt.getDay()] === f.firstLessonDay;
+    });
   }
 
   if (f.search) {

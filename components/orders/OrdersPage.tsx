@@ -61,7 +61,9 @@ import Select from "@/components/ui/Select";
 //   Manba        — /api/student-sources/options (Sotuv va marketing →
 //                  O'quvchilar oqimi) + lidlarda uchraganlari
 //   Filiallar    — /api/branches
-//   Kun          — hafta kunlari
+//   Kun          — hafta kunlari (lid YARATILGAN kun)
+//   Birinchi dars kuni — hafta kunlari (birinchi darsga YOZILGAN kun;
+//                  12.09.2026, referensda yo'q — moderator so'rovi)
 //   Kategoriya   — /api/edu-categories (O'quv bo'limi → Kategoriya)
 
 type Layout = "list" | "kanban";
@@ -81,6 +83,7 @@ const FILTER_FIELDS: { key: string; label: string }[] = [
   { key: "fromBranch", label: "Qaysi filialdan o'tkazilgan" },
   { key: "toBranch", label: "Qaysi filialga o'tkazilgan" },
   { key: "day", label: "Kun" },
+  { key: "firstLessonDay", label: "Birinchi dars kuni" },
   { key: "category", label: "Kategoriya" },
 ];
 // OLIB TASHLANDI: "Ichki manba" va "So'rovnoma" filtrlari. Ikkalasi ham faqat
@@ -90,6 +93,9 @@ const FILTER_FIELDS: { key: string; label: string }[] = [
 // doim "" qilib yozadi). Ya'ni bu ikki filtr hech qachon hech narsani topa
 // olmasdi. Maydonlar to'ldiriladigan bo'lsa, filtrlar qaytariladi.
 const DEFAULT_VISIBLE_FIELDS: Record<string, boolean> = Object.fromEntries(FILTER_FIELDS.map((f) => [f.key, true]));
+// Hafta kunlari — ish haftasi tartibida, Yakshanba oxirida ("Kun" va
+// "Birinchi dars kuni" bir xil ro'yxat).
+const WEEKDAY_OPTIONS = WEEKDAY_NAMES.filter((d) => d !== "Yakshanba").concat("Yakshanba").map((d) => ({ value: d, label: d }));
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -517,8 +523,10 @@ export default function OrdersPage() {
             <Select value={filters.toBranch} onChange={(v) => setFilter("toBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder="Qaysi filialga o'tkazilgan" clearable size="sm" />
           )}
           {visibleFields.day && (
-            <Select value={filters.day} onChange={(v) => setFilter("day", v)} options={WEEKDAY_NAMES.filter((d) => d !== "Yakshanba")
-                .concat("Yakshanba").map((d) => ({ value: d, label: d }))} placeholder="Kun" clearable size="sm" />
+            <Select value={filters.day} onChange={(v) => setFilter("day", v)} options={WEEKDAY_OPTIONS} placeholder="Kun" clearable size="sm" title="Lid yaratilgan hafta kuni" />
+          )}
+          {visibleFields.firstLessonDay && (
+            <Select value={filters.firstLessonDay} onChange={(v) => setFilter("firstLessonDay", v)} options={WEEKDAY_OPTIONS} placeholder="Birinchi dars kuni" clearable size="sm" title="Birinchi darsga yozilgan hafta kuni" />
           )}
           {visibleFields.category && (
             <Select value={filters.category} onChange={(v) => setFilter("category", v)} options={categoryNames.map((c) => ({ value: c, label: c }))} placeholder="Kategoriya" clearable size="sm" />
