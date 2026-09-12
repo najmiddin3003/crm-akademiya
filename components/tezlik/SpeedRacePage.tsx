@@ -23,7 +23,7 @@ import { Database, Gauge, MapPin, Play, Server, Trophy, Wifi } from "lucide-reac
 // Raqamlar mijozning tarmog'iga bog'liq — sahifa buni ochiq aytadi.
 
 const OLD_BASE = "https://crm-akademiya-777777.vercel.app";
-const NEW_BASE_FALLBACK = "https://www.tizimli24.uz";
+const NEW_BASE = "https://www.tizimli24.uz";
 
 type StepKey = "connect" | "db" | "page";
 const STEPS: { key: StepKey; label: string; hint: string; icon: typeof Wifi }[] = [
@@ -79,11 +79,14 @@ export default function SpeedRacePage() {
   const startedAt = useRef<Record<string, number>>({});
   const raf = useRef<number | null>(null);
 
-  // Yangi server — sahifa ochilgan origin (dev'da localhost, prodda
-  // www.tizimli24.uz). Sahifa tasodifan Vercel'dan ochilsa — prod domeni.
+  // Yangi server — HAR DOIM prod VPS. Sahifa localhost'dan ochilsa ham
+  // (dev server: kodni yo'l-yo'lakay kompilyatsiya qiladi, bazasi Atlas)
+  // o'lchov VPS'ga boradi — aks holda "yangi server" deb dev server
+  // ko'rsatilib, 12.09.2026 da chalg'itgan edi. Prod domenining o'zida
+  // ochilsa — o'sha origin (www yoki apex).
   const makeLanes = useCallback((): Lane[] => {
-    const here = window.location.origin;
-    const newBase = window.location.hostname.endsWith("vercel.app") ? NEW_BASE_FALLBACK : here;
+    const host = window.location.hostname;
+    const newBase = host === "tizimli24.uz" || host.endsWith(".tizimli24.uz") ? window.location.origin : NEW_BASE;
     return [
       { key: "old", name: "Eski server", place: "Vercel · Singapur", base: OLD_BASE, steps: EMPTY_STEPS(), running: false, done: false },
       { key: "new", name: "Yangi server", place: "Eskiz VPS · Toshkent", base: newBase, steps: EMPTY_STEPS(), running: false, done: false },
@@ -148,7 +151,11 @@ export default function SpeedRacePage() {
   const oldTotal = old ? total(old) : null;
   const newTotal = neu ? total(neu) : null;
   const allDone = lanes.length > 0 && lanes.every((l) => l.done);
-  const ratio = allDone && oldTotal && newTotal && newTotal > 0 && old && !STEPS.some((s) => old.steps[s.key].error) ? oldTotal / newTotal : null;
+  const comparable = allDone && !!oldTotal && !!newTotal && newTotal > 0 && !!old && !!neu
+    && !STEPS.some((s) => old.steps[s.key].error || neu.steps[s.key].error);
+  const ratio = comparable ? oldTotal / newTotal : null;
+  // G'olib — HAQIQATAN tez chiqqani. Teng bo'lsa (±5 %) — hech kim.
+  const winner: Lane["key"] | null = ratio === null ? null : ratio >= 1.05 ? "new" : ratio <= 0.95 ? "old" : null;
   const maxStep = (key: StepKey) => Math.max(1, ...lanes.map((l) => l.steps[key].ms ?? 0));
 
   return (
@@ -185,15 +192,15 @@ export default function SpeedRacePage() {
                       <MapPin className="w-3 h-3" /> {lane.place}
                     </div>
                   </div>
-                  {ratio !== null && isNew && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[12px] font-semibold text-primary">
+                  {winner === lane.key && (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold ${isNew ? "bg-primary/10 text-primary" : "bg-secondary text-foreground"}`}>
                       <Trophy className="w-3.5 h-3.5" /> g&apos;olib
                     </span>
                   )}
                 </div>
 
                 <div className="tabular-nums">
-                  <div className={`text-4xl font-bold leading-none ${isNew ? "text-primary" : ""}`}>
+                  <div className={`text-4xl font-bold leading-none ${isNew && winner !== "old" ? "text-primary" : ""}`}>
                     {failed ? "—" : fmt(live ?? null)}
                   </div>
                   <div className="mt-1 text-[12px] text-muted-foreground">
@@ -237,15 +244,20 @@ export default function SpeedRacePage() {
             {ratio !== null ? (
               <>
                 <div className="text-lg font-semibold">
-                  Yangi server <span className="text-primary">{ratio.toFixed(1).replace(".", ",")} barobar</span> tez
+                  {winner === "new" && <>Yangi server <span className="text-primary">{ratio.toFixed(1).replace(".", ",")} barobar</span> tez</>}
+                  {winner === "old" && <>Bu safar eski server <span className="text-primary">{(1 / ratio).toFixed(1).replace(".", ",")} barobar</span> tez chiqdi</>}
+                  {winner === null && <>Bu safar deyarli teng chiqdi</>}
                 </div>
                 <div className="text-[13px] text-muted-foreground">
                   {fmt(oldTotal)} → {fmt(newTotal)} · {runs}-o&apos;lchov, sizning tarmog&apos;ingizdan
+                  {winner !== "new" && " · tarmoq tebranishi bo'lishi mumkin, yana yugurtiring"}
                 </div>
               </>
             ) : allDone ? (
               <div className="text-[13px] text-muted-foreground">
-                Eski server javob bermadi — taqqoslab bo&apos;lmadi. Yangi server: {fmt(newTotal)}.
+                {old && STEPS.some((s) => old.steps[s.key].error)
+                  ? <>Eski server javob bermadi — taqqoslab bo&apos;lmadi. Yangi server: {fmt(newTotal)}.</>
+                  : <>Yangi server javob bermadi — yana yugurtirib ko&apos;ring.</>}
               </div>
             ) : (
               <div className="text-[13px] text-muted-foreground">Poyga ketmoqda…</div>
