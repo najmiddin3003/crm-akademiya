@@ -7,16 +7,17 @@ import type { Group } from "@/lib/groups";
 //
 // FILIAL HAQIDA MUHIM IZOH
 // ────────────────────────
-// `transaction_entries` da filial maydoni YO'Q. `cashboxes`, `pupils`,
-// `groups` da ham yo'q — filial faqat `hr_employees` da bor. Shu bois
-// foydalanuvchi bilan kelishilgan yechim:
+// `transaction_entries` da filial maydoni YO'Q. Dastlab (08.2026) u
+// `cashboxes` da ham yo'q edi va filial faqat `hr_employees` dan olinardi:
 //
 //   • xodim oyligi  → pul chiqarilgan XODIMNING o'z filiali (aniq)
-//   • o'quvchi to'lovi → to'lovni QABUL QILGAN KASSIR filiali (taxminiy,
-//     lekin amalda kassir o'z filialida ishlaydi)
+//   • o'quvchi to'lovi → to'lovni QABUL QILGAN KASSIR filiali (taxminiy)
 //
-// Kelajakda kassaga filial maydoni qo'shilsa, `branchOfPayment` shu
-// yerda bitta qatorda o'zgartiriladi — qolgan kod tegilmaydi.
+// 12.09.2026 dan o'quvchi to'lovi uchun KASSA → FILIAL (`cashboxes.branchId`
+// → `branches`) ustun: kassa binoga bog'liq, kassir esa ko'chib yurishi
+// mumkin, ustiga `hr_employees.filial` da 48 xodimda shunchaki "Akademiya"
+// yozilgan (o'lchandi) — bu to'lovni filial topigiga yo'naltirish uchun
+// yaroqsiz. Kassada filial bo'lmasa eski yo'l (kassir filiali) qoladi.
 
 function nameKey(v: unknown): string {
   return String(v ?? "").trim().toLowerCase();
@@ -46,9 +47,22 @@ export function positionLabel(turi: string): string {
  * O'quvchi va guruh xaritalari DANGASA (lazy): xodim oyligi yozuvida ular
  * umuman kerak emas, shuning uchun bekorga minglab hujjat o'qilmaydi.
  */
+interface CashboxInfo {
+  name: string;
+  /** Kassa qaysi filialga tegishli (`cashboxes.branchId`); eski kassalarda yo'q. */
+  branchId: number | null;
+}
+
+interface BranchInfo {
+  name: string;
+  /** To'lovlar guruhidagi filial topigi (`branches.paymentTopicId`). */
+  paymentTopicId: number | null;
+}
+
 export class SyncContext {
   private employees: Map<string, EmployeeInfo> | null = null;
-  private cashboxes: Map<number, string> | null = null;
+  private cashboxes: Map<number, CashboxInfo> | null = null;
+  private branches: Map<number, BranchInfo> | null = null;
   private pupilGroups: Map<string, string> | null = null;
 
   // MAYDON OSHKORA E'LON QILINADI, `constructor(private db)` EMAS.
@@ -83,14 +97,44 @@ export class SyncContext {
     return map;
   }
 
-  private async loadCashboxes(): Promise<Map<number, string>> {
+  private async loadCashboxes(): Promise<Map<number, CashboxInfo>> {
     if (this.cashboxes) return this.cashboxes;
     const rows = await this.db
       .collection("cashboxes")
-      .find({}, { projection: { id: 1, name: 1 } })
+      .find({}, { projection: { id: 1, name: 1, branchId: 1 } })
       .toArray();
-    this.cashboxes = new Map(rows.map((r) => [Number(r.id), String(r.name ?? "")]));
+    this.cashboxes = new Map(
+      rows.map((r) => [
+        Number(r.id),
+        { name: String(r.name ?? ""), branchId: typeof r.branchId === "number" ? r.branchId : null },
+      ]),
+    );
     return this.cashboxes;
+  }
+
+  private async loadBranches(): Promise<Map<number, BranchInfo>> {
+    if (this.branches) return this.branches;
+    const rows = await this.db
+      .collection("branches")
+      .find({}, { projection: { id: 1, name: 1, paymentTopicId: 1 } })
+      .toArray();
+    this.branches = new Map(
+      rows.map((r) => [
+        Number(r.id),
+        {
+          name: String(r.name ?? ""),
+          paymentTopicId: typeof r.paymentTopicId === "number" && r.paymentTopicId > 0 ? r.paymentTopicId : null,
+        },
+      ]),
+    );
+    return this.branches;
+  }
+
+  /** Kassaning filiali (`cashboxes.branchId` → `branches`); topilmasa null. */
+  private async branchOfCashbox(cashboxId: number): Promise<BranchInfo | null> {
+    const box = (await this.loadCashboxes()).get(Number(cashboxId));
+    if (!box || box.branchId === null) return null;
+    return (await this.loadBranches()).get(box.branchId) ?? null;
   }
 
   /** O'quvchi ismi -> guruh nomi. Faqat to'lov yozuvlari uchun yuklanadi. */
@@ -134,7 +178,7 @@ export class SyncContext {
 
   async cashboxName(id: number): Promise<string> {
     const map = await this.loadCashboxes();
-    return map.get(Number(id)) || `Kassa #${id}`;
+    return map.get(Number(id))?.name || `Kassa #${id}`;
   }
 
   async groupOfStudent(studentName: string): Promise<string> {
@@ -143,10 +187,21 @@ export class SyncContext {
     return map.get(nameKey(studentName)) || "";
   }
 
-  /** To'lov filiali — kassir orqali (yuqoridagi izohga qarang). */
-  async branchOfPayment(moderator: string): Promise<string> {
+  /** To'lov filiali — avval kassa orqali, bo'lmasa kassir orqali (yuqoridagi izoh). */
+  async branchOfPayment(cashboxId: number, moderator: string): Promise<string> {
+    const byCashbox = await this.branchOfCashbox(cashboxId);
+    if (byCashbox?.name) return byCashbox.name;
     const info = await this.employeeInfo(moderator);
     return info?.filial || "";
+  }
+
+  /**
+   * To'lov qaysi Telegram topigiga tushadi — kassa filialining
+   * `paymentTopicId` si. Yo'q bo'lsa null: dispatch umumiy "To'lovlar"
+   * topigiga (`TELEGRAM_TOPIC_PAYMENTS`) yuboradi, to'lov yo'qolmaydi.
+   */
+  async paymentTopicOf(cashboxId: number): Promise<number | null> {
+    return (await this.branchOfCashbox(cashboxId))?.paymentTopicId ?? null;
   }
 }
 

@@ -5,6 +5,7 @@ import { loadPaymentMethodKeys } from "@/lib/paymentMethods";
 import { loadPendingOut } from "@/lib/transferPending";
 import { loadCardStats } from "@/lib/cashboxStats";
 import { getCurrentEmployee, nameEq } from "@/lib/currentEmployee";
+import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 
 // Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
 // kassalarni foydalanuvchi o'zi qo'shadi.
@@ -145,6 +146,12 @@ export async function POST(req: Request) {
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = (last[0]?.id ?? 0) + 1;
 
+  // Kassa QAYSI FILIALDA ochilgani — navbardagi tanlovdan (lidlar bilan bir
+  // xil qoida). Shu maydon to'lovni Telegram'da filial topigiga yo'naltiradi
+  // (lib/sync/lookups.ts); ilgari yozilmasdi va yangi kassalar filialsiz
+  // qolardi (Uychi va Uchqo'rg'on kassalari shunday ochilgan edi).
+  const scope = await getBranchScope();
+
   const cashbox: Cashbox = {
     id: nextId,
     name,
@@ -153,6 +160,7 @@ export async function POST(req: Request) {
     onlinePayment: !!body.onlinePayment,
     archived: !!body.archived,
     isPrimary: false,
+    ...(scope ? { branchId: branchForInsert(scope) } : {}),
     methodTotals: zeroMethodTotals(await loadPaymentMethodKeys(db)),
   };
   await col.insertOne({ ...cashbox });

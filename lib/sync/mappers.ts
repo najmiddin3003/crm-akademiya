@@ -171,7 +171,7 @@ export async function toPaymentRow(entry: TransactionEntry, ctx: SyncContext): P
     paymentType: String(entry.paymentType ?? "").trim(),
     cashboxName: await ctx.cashboxName(entry.cashboxId),
     moderator: String(entry.moderator ?? "").trim(),
-    branch: await ctx.branchOfPayment(String(entry.moderator ?? "")),
+    branch: await ctx.branchOfPayment(entry.cashboxId, String(entry.moderator ?? "")),
     note: String(entry.note ?? "").trim(),
     status: statusLabel(entry.status),
   };

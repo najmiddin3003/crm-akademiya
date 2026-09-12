@@ -14,17 +14,37 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
 // nomi, o'ngda manzil. Amal tugmalari DOIM ko'rinadi (boshqa ro'yxatlar
 // bilan bir xil) — ilgari ular faqat hover'da chiqardi.
 //
-// TELEGRAM LID TOPIGI (12.09.2026): har filialning lidlari "Lidlar"
-// guruhidagi o'z topigiga tushadi (lib/leadNotify.ts). Topik raqami shu
-// formadan kiritiladi — raqam yoki Telegram'dan nusxalangan topik havolasi
+// TELEGRAM TOPIKLARI (12.09.2026): har filialning lidlari "Lidlar"
+// guruhidagi, to'lovlari esa to'lovlar guruhidagi o'z topigiga tushadi
+// (lib/leadNotify.ts, lib/sync/dispatch.ts). Topik raqami shu formadan
+// kiritiladi — raqam yoki Telegram'dan nusxalangan topik havolasi
 // (serverda `parseLeadTopicId` ikkalasini ham tushunadi). Ro'yxatda topigi
-// yo'q filial ATAYLAB ko'zga tashlanadi: uning lidlari umumiy topikka
-// tushadi yoki (u ham bo'lmasa) umuman yuborilmaydi.
+// yo'q filial ATAYLAB ko'zga tashlanadi: lid umumiy topikka tushadi yoki
+// (u ham bo'lmasa) umuman yuborilmaydi; to'lov umumiy "To'lovlar" topigiga.
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-const emptyForm = { name: "", location: "", leadTopic: "" };
+const emptyForm = { name: "", location: "", leadTopic: "", paymentTopic: "" };
+
+/** Ro'yxatdagi kichik belgi: topik bor — ko'k, yo'q — sariq. */
+function TopicBadge({ label, topic, missingTitle }: { label: string; topic: number | null | undefined; missingTitle: string }) {
+  return topic ? (
+    <span
+      className="shrink-0 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[12px] font-medium text-sky-600"
+      title={`${label} Telegram'da shu topikka tushadi`}
+    >
+      {label}: topik {topic}
+    </span>
+  ) : (
+    <span
+      className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[12px] font-medium text-amber-700 dark:text-amber-400"
+      title={missingTitle}
+    >
+      {label}: topik yo&apos;q
+    </span>
+  );
+}
 
 export default function BranchesPage() {
   const modal = useModalClose(closeForm);
@@ -53,7 +73,12 @@ export default function BranchesPage() {
     setAddOpen(true);
   }
   function openEdit(b: ManagementBranch) {
-    setForm({ name: b.name, location: b.location, leadTopic: b.leadTopicId ? String(b.leadTopicId) : "" });
+    setForm({
+      name: b.name,
+      location: b.location,
+      leadTopic: b.leadTopicId ? String(b.leadTopicId) : "",
+      paymentTopic: b.paymentTopicId ? String(b.paymentTopicId) : "",
+    });
     setEditTarget(b);
   }
   function closeForm() {
@@ -75,7 +100,12 @@ export default function BranchesPage() {
         headers: { "Content-Type": "application/json" },
         // Topik XOM satr sifatida ketadi (raqam yoki havola) — server
         // tozalaydi va noto'g'ri bo'lsa tushunarli xato qaytaradi.
-        body: JSON.stringify({ name, location: form.location, leadTopicId: form.leadTopic.trim() }),
+        body: JSON.stringify({
+          name,
+          location: form.location,
+          leadTopicId: form.leadTopic.trim(),
+          paymentTopicId: form.paymentTopic.trim(),
+        }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -139,21 +169,16 @@ export default function BranchesPage() {
           <div key={b.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/30 transition-colors">
             <span className="font-medium">{b.name}</span>
             <span className="ml-auto text-[13px] text-muted-foreground">{b.location}</span>
-            {b.leadTopicId ? (
-              <span
-                className="shrink-0 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[12px] font-medium text-sky-600"
-                title="Yangi lidlar Telegram'da shu topikka tushadi"
-              >
-                Telegram topik {b.leadTopicId}
-              </span>
-            ) : (
-              <span
-                className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[12px] font-medium text-amber-700 dark:text-amber-400"
-                title="Bu filialning lidlari umumiy topikka tushadi (u ham bo'lmasa — yuborilmaydi)"
-              >
-                Telegram topigi yo&apos;q
-              </span>
-            )}
+            <TopicBadge
+              label="Lidlar"
+              topic={b.leadTopicId}
+              missingTitle="Bu filialning lidlari umumiy topikka tushadi (u ham bo'lmasa — yuborilmaydi)"
+            />
+            <TopicBadge
+              label="To'lovlar"
+              topic={b.paymentTopicId}
+              missingTitle="Bu filialning to'lovlari umumiy “To'lovlar” topigiga tushadi"
+            />
             {/* Amal tugmalari DOIM ko'rinadi. Ilgari ular
                 `opacity-0 group-hover:opacity-100` bilan yashiringan edi —
                 sichqonchasiz (sensorli ekran, klaviatura) ularni topib
@@ -220,6 +245,19 @@ export default function BranchesPage() {
                 Shu filialda qo&apos;shilgan yangi lid &quot;Lidlar&quot; guruhining shu topigiga tushadi.
                 Topikdagi xabarga o&apos;ng tugma → &quot;Copy Link&quot; — havolani shu yerga qo&apos;ying.
                 Bo&apos;sh qoldirilsa umumiy topik ishlatiladi.
+              </p>
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Telegram to&apos;lov topigi</label>
+              <input
+                value={form.paymentTopic}
+                onChange={(e) => setForm((f) => ({ ...f, paymentTopic: e.target.value }))}
+                className={inputCls}
+                placeholder="Masalan: 3 yoki https://t.me/c/…/3"
+              />
+              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                Shu filial kassalariga tushgan to&apos;lov to&apos;lovlar guruhining shu topigiga ketadi.
+                Bo&apos;sh qoldirilsa umumiy &quot;To&apos;lovlar&quot; topigi.
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">

@@ -234,7 +234,13 @@ export async function flushPending(
         if (isTelegramReady(cfg, task.kind)) {
           const text = task.event === "cancelled" ? prepared.cancelledText : prepared.createdText;
           const target = cfg.targets[task.kind];
-          const sent = await sendMessage(cfg, target.chatId, text, target.threadId);
+          // TO'LOV — KASSA FILIALINING TOPIGIGA (12.09.2026, markaz so'rovi:
+          // "qaysi filialda to'lov bo'lsa o'sha topikka tushsin"). Bekor
+          // qilish xabari ham o'sha topikka — to'lov bilan yonma-yon tursin.
+          // Filialda topik yo'q bo'lsa umumiy "To'lovlar" topigi
+          // (TELEGRAM_TOPIC_PAYMENTS) — guruh bir xil, faqat topik farq qiladi.
+          const branchTopic = task.kind === "payment" ? await ctx.paymentTopicOf(entry.cashboxId) : null;
+          const sent = await sendMessage(cfg, target.chatId, text, branchTopic ? String(branchTopic) : target.threadId);
           outcome.messageId = sent.messageId;
           outcome.telegramDone = true;
           // Telegram guruhga daqiqasiga ~20 xabar chegarasi bor —

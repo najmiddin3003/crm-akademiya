@@ -19,7 +19,20 @@ export interface ManagementBranch {
    * .env tahrirlash va qayta ishga tushirish shart emas.
    */
   leadTopicId?: number | null;
+  /**
+   * To'lovlar guruhidagi SHU FILIALNING topigi — o'quvchi to'lovi (va uning
+   * bekor qilinishi) shu yerga tushadi (lib/sync/dispatch.ts). Filial
+   * to'lovning KASSASI orqali aniqlanadi (`cashboxes.branchId`), kassir
+   * ismi orqali emas. Yo'q bo'lsa — `TELEGRAM_TOPIC_PAYMENTS` (umumiy
+   * "To'lovlar" topigi) — ya'ni to'lov hech qachon yo'qolmaydi, faqat
+   * umumiy topikka tushadi.
+   */
+  paymentTopicId?: number | null;
 }
+
+/** Filial hujjatidagi Telegram topik maydonlari — API va sahifa shu ro'yxat bo'ylab aylanadi. */
+export const BRANCH_TOPIC_FIELDS = ["leadTopicId", "paymentTopicId"] as const;
+export type BranchTopicField = (typeof BRANCH_TOPIC_FIELDS)[number];
 
 export type LeadTopicParse = { ok: true; value: number | null } | { ok: false; error: string };
 

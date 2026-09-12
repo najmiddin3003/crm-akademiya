@@ -16,6 +16,14 @@ export interface Cashbox {
   onlinePayment: boolean; // "Onlayn to'lov qabul qiladi"
   archived: boolean; // "Kassani arxiv qilish"
   isPrimary: boolean; // "Bosh kassa" — bir vaqtda faqat bitta kassada true
+  /**
+   * Kassa qaysi filialga tegishli. Ko'rinishni CHEKLAMAYDI (admin hamma
+   * kassani ko'radi — app/api/cashboxes/route.ts); to'lov Telegram'da
+   * qaysi filial topigiga tushishini belgilaydi (lib/sync/lookups.ts).
+   * Yaratilganda navbardagi filialdan olinadi; eski kassalarda bo'lmasligi
+   * mumkin — u holda to'lov umumiy "To'lovlar" topigiga tushadi.
+   */
+  branchId?: number;
   methodTotals: CashboxMethodTotals;
   /**
    * Boshqa kassaga jo'natilgan, ammo hali TASDIQLANMAGAN summa — to'lov

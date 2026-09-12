@@ -1314,6 +1314,21 @@ oqim bir-biridan mustaqil — har birining o'z jadvali va o'z guruhi bor:
 Qolgan chiqimlar (ijara, kommunal) va kassalar orasidagi ko'chirish
 (`transfer`) **hech qayerga yuborilmaydi** — kelishuvda yo'q.
 
+**To'lov — kassa filialining topigiga (2026-09-12).** Markaz so'rovi:
+"qaysi filialda to'lov bo'lsa o'sha topikka tushsin". Guruh o'sha
+(`TELEGRAM_CHAT_PAYMENTS`), lekin har filialga o'z topigi —
+`branches.paymentTopicId` (Boshqaruv → Filiallar → "Telegram to'lov
+topigi"). Filial to'lovning **kassasi** orqali aniqlanadi
+(`cashboxes.branchId` → `branches`, `lib/sync/lookups.ts`), kassir ismi
+orqali emas: `hr_employees.filial` da 48 xodimda shunchaki "Akademiya"
+yozilgan (o'lchandi). Kassada filial bo'lmasa yoki filialda topik bo'lmasa
+— umumiy "To'lovlar" topigi (`TELEGRAM_TOPIC_PAYMENTS`), ya'ni to'lov hech
+qachon yo'qolmaydi. Bekor qilish xabari ham o'sha topikka. Kassa endi
+yaratilganda navbardagi filialni oladi; eskilarini
+`node scripts/telegram-branch-topics.mjs --payments --cashbox <kassa> <filial>`
+bilan biriktiriladi (holat: `--payments`, topik ochish: `--payments --create`).
+Xabar/Sheet'dagi "Filial" ham endi kassadan — ilgari "Akademiya" chiqardi.
+
 ### Yangi lid → Telegram "Lidlar" topigi (2026-09-07)
 
 Bu oqim yuqoridagi ikkitasidan **alohida** turadi (`lib/leadNotify.ts`):
@@ -1356,7 +1371,7 @@ ham (`https://t.me/c/<guruh>/<TOPIK>/…`) qabul qiladi.
 Tartib (`lib/leadNotify.ts` → `leadThreadId`): filial topigi → bo'lmasa
 `TELEGRAM_TOPIC_LEADS` → u ham bo'lmasa yuborilmaydi.
 
-**Bir marta sozlash** (`scripts/telegram-lead-topics.mjs`):
+**Bir marta sozlash** (`scripts/telegram-branch-topics.mjs`):
 
 1. Yangi guruh: "Topics" yoqiladi, bot **admin** + "Manage Topics" huquqi
    bilan qo'shiladi.
@@ -1364,7 +1379,7 @@ Tartib (`lib/leadNotify.ts` → `leadThreadId`): filial topigi → bo'lmasa
    `TELEGRAM_TOPIC_LEADS` eski guruhning topigi bo'lsa — **bo'shatiladi**
    (topik raqami guruhga bog'liq, yangi guruhda u "message thread not
    found" beradi). Keyin `pm2 reload crm`.
-3. `node scripts/telegram-lead-topics.mjs --create` — topigi yo'q har
+3. `node scripts/telegram-branch-topics.mjs --create` — topigi yo'q har
    filial uchun bot guruhda topik ochadi (nomi = filial nomi) va raqamini
    bazaga yozadi. Bot API topiklar ro'yxatini bermaydi, webhook tufayli
    `getUpdates` ham yopiq — shuning uchun bot o'zi ochgani eng ishonchli.
@@ -1373,6 +1388,10 @@ Tartib (`lib/leadNotify.ts` → `leadThreadId`): filial topigi → bo'lmasa
 
 Skript bazaga yozadi, ya'ni **prod uchun serverda** yurgiziladi
 (`/var/www/crm/current`); lokal `.env.local` Atlas ko'zgusiga qaraydi.
+
+Skript umumiy: `--leads` (sukut) va `--payments` — to'lovlar uchun
+`branches.paymentTopicId`, guruh `TELEGRAM_CHAT_PAYMENTS`, topik nomi
+"<filial> to'lovlari" (yuqoridagi "To'lov — kassa filialining topigiga").
 
 Ishga tushdi 12.09.2026: guruh "Akademiya Lidlar", topiklar 1→10, 2→11,
 3→12, 4→13. Eski guruhdagi 85 lid (07.09 dan beri) yangi guruhga

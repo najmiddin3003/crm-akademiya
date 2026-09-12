@@ -60,4 +60,4 @@ console.log("\nHozirgi sozlama:");
 for (const k of ["TELEGRAM_CHAT_PAYMENTS", "TELEGRAM_TOPIC_PAYMENTS", "TELEGRAM_CHAT_SALARIES", "TELEGRAM_TOPIC_SALARIES", "TELEGRAM_CHAT_LEADS", "TELEGRAM_TOPIC_LEADS"]) {
   console.log(`  ${k.padEnd(24)} ${get(k) || "(bo'sh)"}`);
 }
-console.log("\nFilial lidlari topiklari bazada (branches.leadTopicId): node scripts/telegram-lead-topics.mjs");
+console.log("\nFilial lidlari topiklari bazada (branches.leadTopicId): node scripts/telegram-branch-topics.mjs");

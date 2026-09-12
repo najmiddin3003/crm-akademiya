@@ -40,7 +40,7 @@ import { orderNo, type Order } from "@/lib/ordersData";
 //     DIQQAT: topik raqami GURUHGA bog'liq — guruh almashtirilsa bu
 //     qiymat ham yangi guruhdagi topikka o'zgartirilishi (yoki
 //     bo'shatilishi) kerak, aks holda "message thread not found" bo'ladi.
-//   Topiklarni ochish va biriktirish: node scripts/telegram-lead-topics.mjs
+//   Topiklarni ochish va biriktirish: node scripts/telegram-branch-topics.mjs
 
 const DASH = "—";
 
