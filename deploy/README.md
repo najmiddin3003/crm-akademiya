@@ -185,6 +185,17 @@ DARHOL: Vercel → Project → Settings → **Cron Jobs → Disable**
 (11.09.2026 da qilindi). Loyihaning o'zini 1–2 hafta kuzatgach Pause
 qilish mumkin — undan oldin orqaga qaytish yo'li ochiq turadi (13-band).
 
+> **14.09.2026 da chiqqan tuzoq:** cron o'chirilgani yetmas ekan. Domen
+> Vercel'dan uzilmagani uchun DNS'i eskirgan kompyuter (filial 1) ikki
+> kun `tizimli24.uz` deb Vercel'ga kirib turdi, Vercel esa Atlas'ga
+> (endi faqat kechki ko'zgu) yozdi — 12.09 dagi kun ko'zgu bilan o'chib
+> ketdi, 14.09 dagisi skript bilan ko'chirildi. Shundan beri **proxy.ts**
+> Vercel'ni (`VERCEL=1`) o'zi taniydi va ilovani ishlatmaydi:
+> `*.vercel.app` → `https://www.tizimli24.uz` ga 308, `tizimli24.uz` deb
+> kelgan (eskirgan DNS) → DNS yo'riqnomali sahifa, `/api/*` → 503.
+> Vercel'ga qaytish kerak bo'lsa (13-band) u yerda `APP_MOVED_TO=off`
+> qo'yiladi. Domenlarni Vercel'dan uzish va Pause — baribir tavsiya.
+
 ## 12. Keyingi yangilanishlar
 
 ```bash
@@ -201,7 +212,10 @@ yangi nusxa bilan almashtirib turadi.
   Build o'tmasa `current` o'zi eskicha qoladi.
 - **Server umuman yiqilgan**: DNS'ni Vercel'ga qaytaring (`www` →
   `cname.vercel-dns.com`, apex → `76.76.21.21`) — Vercel nusxasi
-  to'xtatilmagan bo'lsa 5–10 daqiqada tiklanadi.
+  to'xtatilmagan bo'lsa 5–10 daqiqada tiklanadi. Lekin AVVAL Vercel'da
+  `APP_MOVED_TO=off` qo'yib redeploy qiling (11-banddagi qo'riqchi, aks
+  holda Vercel faqat "ko'chdi" sahifasini ko'rsatadi) va u Atlas'ga
+  qarashini unutmang — Atlas'da kechagi holat (zaxira ko'zgusi) turadi.
 
 ## Kuzatuv
 

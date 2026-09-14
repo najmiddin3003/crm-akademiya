@@ -54,6 +54,79 @@ export const config = {
   matcher: ["/((?!_next/|favicon.ico).*)"],
 };
 
+// ── ESKI SERVER (VERCEL) QO'RIQCHISI ─────────────────────────────────
+//
+// Prod 12.09.2026 da VPS'ga ko'chdi (deploy/README.md), lekin Vercel
+// loyihasi tirik va unga `tizimli24.uz` domeni hamon biriktirilgan.
+// 12–14.09 da filial 1 aynan shu yo'l bilan ATLAS'ga (endi faqat zaxira
+// ko'zgusi) yozib qo'ydi: kompyuteri DNS'ni eskicha hal qilib Vercel'ga
+// tushgan, kechki ko'zgu esa yozuvlarini o'chirib yuborgan
+// (scripts/_merge-atlas-20260914.mjs, scripts/_import-sheet-rows-20260912.mjs).
+//
+// Shu bois Vercel'da ILOVA UMUMAN ISHLAMAYDI — so'rov bazaga yetmasdan
+// shu yerda to'xtaydi:
+//   • `*.vercel.app` orqali kelgan → yangi manzilga 308 (yo'l saqlanadi);
+//   • `tizimli24.uz` deb kelgan (mijoz DNS'i eskirgan, Vercel IP'siga hal
+//     qilgan) → redirect HALQA bo'lardi (o'sha nom yana Vercel'ga qaytadi),
+//     shuning uchun DNS'ni to'g'rilash yo'riqnomali sahifa;
+//   • `/api/*` → JSON 503 — ochiq turgan sahifa xatoni ko'rsatadi,
+//     hech narsa yozilmaydi.
+//
+// Vercel har deploy'ga `VERCEL=1` ni o'zi qo'yadi — qo'lda sozlash shart
+// emas, unutib bo'lmaydi. VPS'da bu o'zgaruvchi yo'q → blok o'chiq.
+// Orqaga qaytish (deploy/README.md, 13-band) uchun Vercel'da
+// `APP_MOVED_TO=off`; manzilni o'zgartirish uchun `APP_MOVED_TO=https://…`.
+const MOVED_TO_DEFAULT = "https://www.tizimli24.uz";
+
+function movedTarget(): string | null {
+  const raw = (process.env.APP_MOVED_TO || "").trim();
+  if (raw === "off") return null;
+  if (/^https?:\/\//.test(raw)) return raw.replace(/\/+$/, "");
+  return process.env.VERCEL === "1" ? MOVED_TO_DEFAULT : null;
+}
+
+function movedPage(target: string, host: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return `<!doctype html><html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Tizim yangi serverga ko'chdi</title>
+<style>body{margin:0;font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif;background:#f4f6f8;color:#1f2937}
+main{max-width:640px;margin:8vh auto;padding:32px 28px;background:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h1{font-size:22px;margin:0 0 12px}p{margin:10px 0}code{background:#eef2f7;padding:2px 6px;border-radius:6px}
+.warn{background:#fff7ed;border:1px solid #fdba74;padding:12px 14px;border-radius:10px}
+a.btn{display:inline-block;margin:14px 0;padding:12px 18px;background:#0f766e;color:#fff;text-decoration:none;border-radius:10px;font-weight:600}
+ol{padding-left:22px}li{margin:6px 0}small{color:#6b7280}</style></head><body><main>
+<h1>Tizim yangi serverga ko'chdi</h1>
+<p class="warn"><b>Bu — eski server.</b> Bu yerda kiritilgan ma'lumot <b>saqlanmaydi</b>. Iltimos, faqat yangi manzildan ishlang.</p>
+<a class="btn" href="${esc(target)}">${esc(target.replace(/^https?:\/\//, ""))} ga o'tish</a>
+<p>Agar aynan shu manzilni yozganingizda ham bu sahifa chiqsa — kompyuteringiz sayt manzilini <b>eski serverga</b> hal qilyapti (DNS keshi). Tuzatish:</p>
+<ol>
+<li>Kompyuter DNS'ini <code>8.8.8.8</code> va <code>1.1.1.1</code> ga o'zgartiring (Tarmoq sozlamalari → adapter → IPv4 → DNS).</li>
+<li>Buyruq satrida: <code>ipconfig /flushdns</code>; Chrome'da <code>chrome://net-internals/#dns</code> → <b>Clear host cache</b>.</li>
+<li>Brauzerni to'liq yopib qayta oching; yordam bermasa router'ni o'chirib yoqing.</li>
+<li>Baribir chiqsa — administratorga shu sahifaning suratini yuboring.</li>
+</ol>
+<p><small>So'rov kelgan manzil: <code>${esc(host)}</code></small></p>
+</main></body></html>`;
+}
+
+function movedResponse(req: NextRequest, target: string) {
+  const host = req.headers.get("host") || req.nextUrl.host;
+  if (host.endsWith(".vercel.app")) {
+    return NextResponse.redirect(new URL(req.nextUrl.pathname + req.nextUrl.search, target), 308);
+  }
+  if (req.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      { ok: false, error: `Tizim yangi serverga ko'chgan (${target}). Kompyuteringiz eski manzilga ulanmoqda — sahifani yangilang va yo'riqnomaga amal qiling.` },
+      { status: 503, headers: { "cache-control": "no-store" } },
+    );
+  }
+  return new NextResponse(movedPage(target, host), {
+    status: 503,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
 function deny(status: number, error: string) {
   return NextResponse.json({ ok: false, error }, { status });
 }
@@ -119,6 +192,10 @@ async function handleApi(
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Eski server — hech qanday tekshiruvdan OLDIN (yuqoridagi izoh).
+  const moved = movedTarget();
+  if (moved) return movedResponse(req, moved);
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = await verifySessionToken(token);
