@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowDownSquare, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
+import { ArrowDownSquare, BarChart3, FilePlus, Search, Share2, Trash2, XCircle } from "lucide-react";
+import Link from "@/components/ui/Link";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useStudents } from "@/hooks/useStudents";
@@ -10,40 +11,25 @@ import { IM_LEVELS, IM_SUBJECTS } from "@/constants/imtihon";
 import { imMonthLabel, imPct, normalizeMonth, type MonthlyExam } from "@/lib/imtihon";
 import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "./importUtils";
 import UzbmbView from "./UzbmbView";
+import GroupExamDrawer from "./GroupExamDrawer";
 import Select from "@/components/ui/Select";
-import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
 import Modal from "@/components/ui/Modal";
 
 // Imtihon bo'limi — referens HTML'dagi "IMTIHON (Oylik imtihon) VIEW" ning
-// aynan o'zi: sarlavha + 4 amal tugmasi, ichki tablar (Oylik imtihon | UzBMB),
-// 4 ta statistika kartasi, filtrlar, jadval va uch modal (natija kiritish,
-// Excel/CSV import, solishtirish).
+// aynan o'zi: sarlavha + amal tugmalari, ichki tablar (Oylik imtihon | UzBMB),
+// 4 ta statistika kartasi, filtrlar, jadval va ikki modal (Excel/CSV import,
+// solishtirish).
+//
+// "Natija kiritish" — o'ng tomondan ochiladigan panel (GroupExamDrawer):
+// fan → ustoz → guruh → o'quvchilar zanjiri bilan butun guruhning natijasi
+// bir yo'la kiritiladi. U `group_exams` ga yozadi (Sarhisob sahifasi
+// ko'rsatadi) va har bir o'quvchi natijasini `monthly_exams` ga ham
+// ko'chiradi — shu sahifadagi jadval saqlashdan keyin qayta o'qiladi.
 //
 // Ma'lumot HAQIQIY — /api/imtihon/monthly (MongoDB `monthly_exams`).
 // UzBMB tabi alohida komponentda (`UzbmbView`).
 
 type MonthlyParsed = Omit<MonthlyExam, "id">;
-
-interface EntryForm {
-  student: string;
-  subject: string;
-  level: string;
-  month: string;
-  total: string;
-  correct: string;
-}
-
-function emptyEntry(): EntryForm {
-  const d = new Date();
-  return {
-    student: "",
-    subject: IM_SUBJECTS[0],
-    level: "",
-    month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-    total: "",
-    correct: "",
-  };
-}
 
 function pctCls(p: number): string {
   return p >= 80 ? "text-emerald-600" : p >= 60 ? "text-amber-600" : "text-rose-500";
@@ -88,9 +74,6 @@ function avgOf(arr: MonthlyExam[]): number {
   return arr.length ? Math.round(arr.reduce((s, r) => s + r.pct, 0) / arr.length) : 0;
 }
 
-const inputCls =
-  "w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
-
 export default function ImtihonPage() {
   const { showSuccess, showError } = useToast();
 
@@ -117,9 +100,7 @@ export default function ImtihonPage() {
   const [fLevel, setFLevel] = useState("");
   const [search, setSearch] = useState("");
 
-  const [entryOpen, setEntryOpen] = useState(false);
-  const [entry, setEntry] = useState<EntryForm>(emptyEntry);
-  const [saving, setSaving] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [importOpen, setImportOpen] = useState(false);
   const [parsed, setParsed] = useState<ParseResult<MonthlyParsed> | null>(null);
@@ -140,6 +121,17 @@ export default function ImtihonPage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Panel saqlagach — u har bir o'quvchi natijasini `monthly_exams` ga ham
+  // yozgan, shu sahifadagi jadval va statistika yangisini ko'rsin.
+  const reloadExams = useCallback(() => {
+    fetch("/api/imtihon/monthly")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) setExams(d.exams as MonthlyExam[]);
+      })
+      .catch(() => {});
   }, []);
 
   const months = useMemo(() => [...new Set(exams.map((r) => r.month))].sort().reverse(), [exams]);
@@ -170,58 +162,8 @@ export default function ImtihonPage() {
   const best = items.length ? items[0] : null;
   const green = items.filter((r) => r.pct >= 80).length;
 
-  // O'quvchilar bazadan (/api/pupils) + imtihon yozuvlarida uchraganlari
-  // (o'quvchi keyin o'chirilgan bo'lishi mumkin).
+  // O'quvchilar ro'yxati UzBMB tabiga uzatiladi (u yerdagi ism tanlovi).
   const { names: pupilNames } = useStudents({ light: true });
-  const studentNames = useMemo(() => {
-    const names = new Set<string>(pupilNames);
-    exams.forEach((r) => names.add(r.student));
-    return [...names];
-  }, [exams, pupilNames]);
-
-  /* ---- Natija kiritish ---- */
-  function openEntry() {
-    setEntry(emptyEntry());
-    setEntryOpen(true);
-  }
-
-  const entryTotal = Number(entry.total) || 0;
-  const entryCorrect = Number(entry.correct) || 0;
-  const entryValid = entryTotal > 0 && entryCorrect >= 0 && entryCorrect <= entryTotal;
-  const entryPct = entryValid ? imPct(entryCorrect, entryTotal) : 0;
-
-  async function saveEntry() {
-    const student = entry.student.trim();
-    if (!student) return showError("⚠ O'quvchi ismini kiriting");
-    if (!entry.subject) return showError("⚠ Fanni tanlang");
-    if (!entry.month) return showError("⚠ Oyni tanlang");
-    if (entryTotal <= 0) return showError("⚠ Savollar sonini kiriting");
-    if (entryCorrect < 0 || entryCorrect > entryTotal) {
-      return showError("⚠ To'g'ri javoblar savollar sonidan oshmasin");
-    }
-    setSaving(true);
-    try {
-      const res = await fetch("/api/imtihon/monthly", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...entry, student, total: entryTotal, correct: entryCorrect }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
-        return;
-      }
-      setExams(data.exams as MonthlyExam[]);
-      setEntryOpen(false);
-      showSuccess(
-        `${data.updated ? "Natija yangilandi" : "Natija saqlandi"} — ${student} · ${entry.subject} · ${entryPct}% (${entryCorrect}/${entryTotal})`,
-      );
-    } catch {
-      showError("Serverga ulanib bo'lmadi");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   /* ---- O'chirish ---- */
   const remove = useCallback(
@@ -400,8 +342,15 @@ export default function ImtihonPage() {
               <Share2 className="w-4 h-4" />
               <span>Yuklab olish</span>
             </button>
+            <Link
+              href="/imtihon/sarhisob"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Sarhisob</span>
+            </Link>
             <button
-              onClick={openEntry}
+              onClick={() => setDrawerOpen(true)}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
             >
               <FilePlus className="w-4 h-4" />
@@ -581,117 +530,8 @@ export default function ImtihonPage() {
         <UzbmbView pupilNames={pupilNames} />
       </div>
 
-      {/* ===== NATIJA KIRITISH MODALI ===== */}
-      {entryOpen && (
-        <Modal onClose={() => setEntryOpen(false)} bare zIndex={120}>{(modal) => (<>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[16px] font-semibold">Oylik imtihon natijasi</div>
-                <button
-                  onClick={modal.close}
-                  className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[13px] font-medium mb-1.5">
-                    O&apos;quvchi<span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    value={entry.student}
-                    onChange={(e) => setEntry((f) => ({ ...f, student: e.target.value }))}
-                    list="im-students-dl"
-                    type="text"
-                    placeholder="Ism yozing..."
-                    className={inputCls}
-                  />
-                  <datalist id="im-students-dl">
-                    {studentNames.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[13px] font-medium mb-1.5">
-                      Fan<span className="text-rose-500">*</span>
-                    </label>
-                    <Select value={entry.subject} onChange={(v) => setEntry((f) => ({ ...f, subject: v }))} options={IM_SUBJECTS.map((s) => ({ value: s, label: s }))} />
-                  </div>
-                  <div>
-                    <label className="block text-[13px] font-medium mb-1.5">Bosqich</label>
-                    <Select value={entry.level} onChange={(v) => setEntry((f) => ({ ...f, level: v }))} options={IM_LEVELS.map((s) => ({ value: s, label: s }))} placeholder="—" clearable />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Oy</label>
-                  <MonthYearPicker
-                    value={monthYearFromIso(entry.month)}
-                    onChange={(v) => setEntry((f) => ({ ...f, month: monthYearToIso(v) }))}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[13px] font-medium mb-1.5">
-                      Savollar soni<span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      value={entry.total}
-                      onChange={(e) => setEntry((f) => ({ ...f, total: e.target.value }))}
-                      type="number"
-                      min={1}
-                      placeholder="25"
-                      className={`${inputCls} tabular-nums`}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[13px] font-medium mb-1.5">
-                      To&apos;g&apos;ri javoblar<span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      value={entry.correct}
-                      onChange={(e) => setEntry((f) => ({ ...f, correct: e.target.value }))}
-                      type="number"
-                      min={0}
-                      placeholder="20"
-                      className={`${inputCls} tabular-nums`}
-                    />
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border bg-secondary/30 p-3.5 text-center">
-                  <div className="text-[12px] text-muted-foreground">O&apos;zlashtirish (avtomatik)</div>
-                  {entryValid ? (
-                    <div className={`text-[26px] font-bold tabular-nums ${pctCls(entryPct)}`}>{entryPct}%</div>
-                  ) : (
-                    <div className="text-[20px] font-bold tabular-nums text-muted-foreground">
-                      {entryCorrect > entryTotal ? "⚠ to'g'ri javob savoldan ko'p" : "—"}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-border">
-                <button
-                  onClick={modal.close}
-                  disabled={saving}
-                  className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm disabled:opacity-60"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  onClick={saveEntry}
-                  disabled={saving}
-                  className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
-                >
-                  {saving ? "Saqlanmoqda…" : "Saqlash"}
-                </button>
-              </div>
-            </div>
-          </>)}</Modal>
-      )}
+      {/* ===== NATIJA KIRITISH PANELI (o'ng tomondan) ===== */}
+      {drawerOpen && <GroupExamDrawer onClose={() => setDrawerOpen(false)} onSaved={reloadExams} />}
 
       {/* ===== IMPORT MODALI ===== */}
       {importOpen && (

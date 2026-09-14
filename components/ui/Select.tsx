@@ -28,6 +28,13 @@ import { LOADING_TEXT } from "@/lib/selectPlaceholder";
 // KLAVIATURA: ↑↓ yurish, Enter/Space tanlash, Esc yopish (modalga
 // yetkazilmaydi — avval ro'yxat yopilsin), Backspace/Delete — tozalash
 // (`clearable` bo'lsa), harf bosilsa qidiruvga tushadi.
+//
+// KO'P TANLOV (`multiple`): `values` + `onChangeMany`. Qator bosilganda
+// ro'yxat YOPILMAYDI — belgi almashadi (imtihonda qatnashgan o'quvchilar
+// kabi 20–30 talik ro'yxatni birma-bir belgilash uchun). Ro'yxat boshida
+// "Hammasini tanlash" / "Tozalash" qatorlari; tugmada — tanlanganlar soni
+// (`summary` bilan o'zgartiriladi). Bitta komponent — ko'rinish, joylashuv
+// va klaviatura oddiy tanlov bilan aynan bir xil bo'lsin.
 
 export interface SelectOption {
   value: string;
@@ -43,9 +50,19 @@ export interface SelectOption {
 }
 
 export interface SelectProps {
-  value: string;
+  /** Tanlangan qiymat (oddiy tanlov). `multiple` da o'qilmaydi. */
+  value?: string;
   options: SelectOption[];
-  onChange: (value: string) => void;
+  /** Oddiy tanlovda chaqiriladi. `multiple` da o'rniga `onChangeMany`. */
+  onChange?: (value: string) => void;
+  /** Ko'p tanlov rejimi — yuqoridagi izohga qarang. */
+  multiple?: boolean;
+  /** Ko'p tanlovda tanlanganlar. */
+  values?: string[];
+  onChangeMany?: (values: string[]) => void;
+  /** Ko'p tanlovda tugma matni: (tanlanganlar soni, jami) → satr.
+   * Berilmasa "N ta tanlandi". */
+  summary?: (count: number, total: number) => string;
   placeholder?: string;
   disabled?: boolean;
   /**
@@ -100,10 +117,16 @@ const SIZE_CLS: Record<NonNullable<SelectProps["size"]>, string> = {
   row: "h-8 text-sm bg-secondary rounded-md border-0",
 };
 
+const NO_VALUES: string[] = [];
+
 export default function Select({
-  value,
+  value = "",
   options,
   onChange,
+  multiple = false,
+  values = NO_VALUES,
+  onChangeMany,
+  summary,
   placeholder = "Tanlang",
   disabled = false,
   loading = false,
@@ -137,7 +160,10 @@ export default function Select({
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
-  const selected = options.find((o) => o.value === value) ?? null;
+  const selected = multiple ? null : (options.find((o) => o.value === value) ?? null);
+  // Ko'p tanlovda "belgilanganmi" tekshiruvi har qator uchun — to'plam.
+  const valueSet = useMemo(() => new Set(multiple ? values : []), [multiple, values]);
+  const hasValue = multiple ? values.length > 0 : Boolean(value);
   const hasSearch = searchable === true || (searchable === "auto" && options.length > SEARCH_THRESHOLD);
 
   // Qidiruv yorliq, izoh va kichik satr bo'yicha; raqam yozilsa faqat
@@ -211,7 +237,7 @@ export default function Select({
     if (disabled || loading) return;
     onOpen?.();
     setQuery(initialQuery);
-    setActiveIndex(initialQuery ? 0 : options.findIndex((o) => o.value === value));
+    setActiveIndex(initialQuery || multiple ? 0 : options.findIndex((o) => o.value === value));
     setOpen(true);
   }
 
@@ -221,10 +247,27 @@ export default function Select({
     if (!preserveFocus) triggerRef.current?.focus();
   }
 
+  function clear() {
+    if (multiple) onChangeMany?.([]);
+    else onChange?.("");
+  }
+
+  /** Ko'p tanlov: hozir KO'RINIB turgan (qidiruvdan o'tgan) qatorlarning hammasini belgilaydi. */
+  function selectAllShown() {
+    const next = new Set(values);
+    for (const o of shown) if (!o.disabled) next.add(o.value);
+    onChangeMany?.([...next]);
+  }
+
   function pick(index: number) {
     const opt = shown[index];
     if (!opt || opt.disabled) return;
-    onChange(opt.value);
+    if (multiple) {
+      // Belgi almashadi, ro'yxat ochiq qoladi — keyingisini ham belgilash uchun.
+      onChangeMany?.(valueSet.has(opt.value) ? values.filter((v) => v !== opt.value) : [...values, opt.value]);
+      return;
+    }
+    onChange?.(opt.value);
     close();
   }
 
@@ -247,9 +290,9 @@ export default function Select({
         openList();
         return;
       }
-      if (clearable && value && (e.key === "Backspace" || e.key === "Delete")) {
+      if (clearable && hasValue && (e.key === "Backspace" || e.key === "Delete")) {
         e.preventDefault();
-        onChange("");
+        clear();
         return;
       }
       // Harf bosilsa darhol qidiruv bilan ochiladi.
@@ -311,11 +354,23 @@ export default function Select({
         </div>
       )}
       <div ref={listRef} className="max-h-56 overflow-y-auto py-1">
-        {clearable && value && (
+        {/* Ko'p tanlov: hammasini belgilash (ko'rinib turganlarni) — tozalash
+            qatori bilan bir qatorda; ikkalasi ham ro'yxatni yopmaydi. */}
+        {multiple && !loading && shown.some((o) => !o.disabled && !valueSet.has(o.value)) && (
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { onChange(""); close(); }}
+            onClick={selectAllShown}
+            className="block w-full px-3 py-2 text-left text-[13px] text-primary font-medium hover:bg-secondary"
+          >
+            Hammasini tanlash
+          </button>
+        )}
+        {clearable && hasValue && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { clear(); if (!multiple) close(); }}
             className="block w-full px-3 py-2 text-left text-[13px] text-muted-foreground hover:bg-secondary"
           >
             Tozalash
@@ -329,7 +384,7 @@ export default function Select({
           </div>
         ) : (
           shown.map((o, i) => {
-            const isSelected = o.value === value;
+            const isSelected = multiple ? valueSet.has(o.value) : o.value === value;
             const isActive = i === activeIndex;
             const groupHead = o.group && o.group !== shown[i - 1]?.group ? o.group : null;
             return (
@@ -394,7 +449,9 @@ export default function Select({
         aria-controls={open ? listboxId : undefined}
         className={triggerCls}
       >
-        {selected ? (
+        {multiple && values.length > 0 ? (
+          <span className="truncate">{summary ? summary(values.length, options.length) : `${values.length} ta tanlandi`}</span>
+        ) : selected ? (
           <span className="truncate">
             {selected.label}
             {selected.hint && <span className="text-muted-foreground"> ({selected.hint})</span>}

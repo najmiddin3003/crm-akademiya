@@ -2,7 +2,8 @@
 // klient komponentlar ham shu faylni bo'lishadi — shunda ball formulasi
 // bitta joyda turadi.
 //
-// MongoDB kolleksiyalari: `monthly_exams` va `uzbmb_exams`.
+// MongoDB kolleksiyalari: `monthly_exams`, `uzbmb_exams` va `group_exams`
+// (guruh bo'yicha kiritilgan imtihon — "Natija kiritish" paneli).
 
 import { MONTHLY_SEED_ROWS, UZBMB_SEED_ROWS, UZBMB_CERT_SEED } from "@/constants/imtihon";
 
@@ -57,6 +58,160 @@ export const UB_B2_MAX_BALL = 63;
 
 export function imPct(correct: number, total: number): number {
   return total > 0 ? Math.round((correct / total) * 100) : 0;
+}
+
+/* ============================================================
+   O'zlashtirish TOIFALARI — rang shkalasi
+   ============================================================ */
+
+export type ImTierKey = "past" | "orta" | "yaxshi" | "zor";
+
+export interface ImTier {
+  key: ImTierKey;
+  label: string;
+  /** Yorliq (badge) — fon va matn rangi bir-biriga moslangan. */
+  cls: string;
+  /** Faqat matn rangi (kartochka raqamlari uchun). */
+  text: string;
+}
+
+/**
+ * To'rt toifa: past (qizil), o'rtacha (sariq), yaxshi (och yashil), zo'r
+ * (yashil). Chegaralar — foiz: <50, 50–69, 70–84, ≥85.
+ *
+ * Guruh imtihoni jadvali va Sarhisob sahifasi shundan foydalanadi; fon va
+ * matn rangi juft, shunda tungi rejimda ham o'qiladi.
+ */
+export const IM_TIERS: Record<ImTierKey, ImTier> = {
+  past: {
+    key: "past",
+    label: "Past",
+    cls: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
+    text: "text-rose-600 dark:text-rose-400",
+  },
+  orta: {
+    key: "orta",
+    label: "O'rtacha",
+    cls: "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300",
+    text: "text-amber-600 dark:text-amber-400",
+  },
+  yaxshi: {
+    key: "yaxshi",
+    label: "Yaxshi",
+    cls: "bg-lime-100 text-lime-800 dark:bg-lime-500/20 dark:text-lime-300",
+    text: "text-lime-700 dark:text-lime-400",
+  },
+  zor: {
+    key: "zor",
+    label: "Zo'r",
+    cls: "bg-emerald-500 text-white dark:bg-emerald-500/80 dark:text-white",
+    text: "text-emerald-600 dark:text-emerald-400",
+  },
+};
+
+export function imTier(pct: number): ImTier {
+  if (pct >= 85) return IM_TIERS.zor;
+  if (pct >= 70) return IM_TIERS.yaxshi;
+  if (pct >= 50) return IM_TIERS.orta;
+  return IM_TIERS.past;
+}
+
+/* ============================================================
+   GURUH IMTIHONI — "Natija kiritish" paneli (MongoDB `group_exams`)
+   ============================================================ */
+
+export interface GroupExamStudent {
+  /** `pupils.id`. */
+  pupilId: number;
+  name: string;
+  phone: string;
+  correct: number;
+  pct: number;
+}
+
+/**
+ * Bitta guruhning bitta imtihoni — fan, ustoz, guruh, sana va har bir
+ * o'quvchining natijasi bitta hujjatda. Sarhisob sahifasi shu ro'yxatni
+ * ko'rsatadi.
+ *
+ * Har bir o'quvchi natijasi `monthly_exams` ga ham ko'chiriladi
+ * (app/api/imtihon/group) — shunda "Oylik imtihon" jadvali va statistikasi
+ * ham shu natijalarni ko'radi.
+ */
+export interface GroupExam {
+  id: number;
+  /** Imtihon O'TKAZILGAN sana ("YYYY-MM-DD") — panelda tanlanadi, yozuv qo'shilgan sana emas. */
+  date: string;
+  /** Fan yo'nalishi — `offline_courses.name`. */
+  course: string;
+  teacher: string;
+  groupId: number;
+  /** Guruh raqami (`groups.name`, odatda "13"). */
+  groupName: string;
+  /** "Matematika (13-guruh)" — ro'yxatlarda ko'rinadigan nom. */
+  groupLabel: string;
+  /** Guruh bosqichi — bo'sh bo'lishi mumkin. */
+  level: string;
+  branchId: number;
+  /** Savollar soni. */
+  total: number;
+  students: GroupExamStudent[];
+  studentCount: number;
+  /** Guruh o'rtacha bali (foiz, butun). */
+  avgPct: number;
+  createdAt: string;
+  createdBy: string;
+}
+
+export function groupAvgPct(students: Pick<GroupExamStudent, "pct">[]): number {
+  return students.length ? Math.round(students.reduce((s, r) => s + r.pct, 0) / students.length) : 0;
+}
+
+/** Mijozdan keladigan panel yuki — tekshiruvdan o'tgach `GroupExam` ga aylanadi. */
+export interface GroupExamInput {
+  date: string;
+  course: string;
+  teacher: string;
+  groupId: number;
+  total: number;
+  students: { pupilId: number; correct: number }[];
+}
+
+/**
+ * Panel yuborgan yukni tekshiradi. Xato bo'lsa — foydalanuvchiga
+ * ko'rsatiladigan MATN (panel ham xuddi shu tartibda tekshiradi, bu
+ * serverdagi ikkinchi qorovul).
+ */
+export function sanitizeGroupExam(raw: unknown): { ok: true; input: GroupExamInput } | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object") return { ok: false, error: "Noto'g'ri so'rov" };
+  const r = raw as Record<string, unknown>;
+  const date = String(r.date || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Imtihon sanasini tanlang" };
+  const course = String(r.course || "").trim();
+  if (!course) return { ok: false, error: "Fan yo'nalishini tanlang" };
+  const teacher = String(r.teacher || "").trim();
+  if (!teacher) return { ok: false, error: "Ustozni tanlang" };
+  const groupId = Number(r.groupId);
+  if (!Number.isFinite(groupId) || groupId <= 0) return { ok: false, error: "Guruhni tanlang" };
+  const total = Math.trunc(Number(r.total) || 0);
+  if (total <= 0) return { ok: false, error: "Savollar sonini kiriting" };
+  if (!Array.isArray(r.students) || r.students.length === 0) return { ok: false, error: "Kamida bitta o'quvchi tanlang" };
+
+  const students: GroupExamInput["students"] = [];
+  const seen = new Set<number>();
+  for (const s of r.students as unknown[]) {
+    const o = (s && typeof s === "object" ? s : {}) as Record<string, unknown>;
+    const pupilId = Number(o.pupilId);
+    if (!Number.isFinite(pupilId) || seen.has(pupilId)) continue;
+    const correct = Math.trunc(Number(o.correct) || 0);
+    if (correct < 0 || correct > total) {
+      return { ok: false, error: `To'g'ri javoblar 0 dan ${total} gacha bo'lishi kerak` };
+    }
+    seen.add(pupilId);
+    students.push({ pupilId, correct });
+  }
+  if (students.length === 0) return { ok: false, error: "Kamida bitta o'quvchi tanlang" };
+  return { ok: true, input: { date, course, teacher, groupId, total, students } };
 }
 
 const MONTH_NAMES: Record<string, string> = {

@@ -235,6 +235,10 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("monthly_exams").createIndex({ month: 1 }));
   tasks.push(db.collection("uzbmb_exams").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("uzbmb_exams").createIndex({ month: 1 }));
+  // group_exams — "Natija kiritish" paneli (guruh bo'yicha imtihon).
+  // Sarhisob sahifasi joriy filialnikini sana bo'yicha teskari o'qiydi.
+  tasks.push(db.collection("group_exams").createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection("group_exams").createIndex({ branchId: 1, date: -1 }));
   // cv_applications — Boshqaruv > Ishga qabul (CV). `sid` ommaviy /ariza
   // sahifasi va Google Sheets'dan kelgan yozuvlarni takrorlamaslik uchun.
   tasks.push(db.collection("cv_applications").createIndex({ id: 1 }, { unique: true }));
