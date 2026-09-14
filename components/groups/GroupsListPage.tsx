@@ -23,6 +23,10 @@ import TimeField from "@/components/ui/TimeField";
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
 // (g.periodExpired). Ma'lumot /api/groups dan; guruh nomi ustiga bosilsa
 // /groups/[id] (detail) ga o'tadi.
+//
+// Ranglar Tailwind sinflari bilan, har biri `dark:` jufti bilan: ilgari sariq
+// fon qattiq `#fef9c3` (style) edi va tungi rejimda oq matn och sariq ustida
+// o'qilmasdi — foydalanuvchi 14.09.2026 da ko'rsatdi.
 
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
@@ -105,8 +109,8 @@ function groupStudentCount(g: Group): number {
 // qat'i nazar DOIM yashil rangda edi.
 const STATUS_LABEL: Record<string, string> = { active: "Aktiv", frozen: "Muzlatilgan", archive: "Arxiv" };
 const STATUS_CLS: Record<string, string> = {
-  active: "text-emerald-600",
-  frozen: "text-amber-600",
+  active: "text-emerald-600 dark:text-emerald-400",
+  frozen: "text-amber-600 dark:text-amber-400",
   archive: "text-muted-foreground",
 };
 const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }));
@@ -412,7 +416,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
             </thead>
             <tbody>
               {slice.map((g, i) => (
-                <tr key={g.id} onClick={() => router.push(`/groups/${g.id}`)} className="border-b border-border/50 transition-colors hover:bg-secondary/30 cursor-pointer" style={g.highlighted ? { backgroundColor: "#fef9c3" } : undefined}>
+                <tr key={g.id} onClick={() => router.push(`/groups/${g.id}`)} className={`border-b border-border/50 transition-colors cursor-pointer ${g.highlighted ? "bg-yellow-100 hover:bg-yellow-200/70 dark:bg-amber-500/15 dark:hover:bg-amber-500/25" : "hover:bg-secondary/30"}`}>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
                   <td className="px-3 py-3 tabular-nums font-medium text-[13px]">
                     <span className="text-foreground">{g.name}</span>
@@ -423,7 +427,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
                   <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{g.time || "—"}</td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     {g.period ? (
-                      <span className={g.periodExpired ? "inline-flex items-center px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 text-[12px] font-medium tabular-nums" : "text-muted-foreground tabular-nums text-[13px]"}>{g.period}</span>
+                      <span className={g.periodExpired ? "inline-flex items-center px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 text-[12px] font-medium tabular-nums" : "text-muted-foreground tabular-nums text-[13px]"}>{g.period}</span>
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{groupStudentCount(g)}</td>
