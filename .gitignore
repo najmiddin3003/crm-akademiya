@@ -45,6 +45,7 @@ next-env.d.ts
 # (25 MB dan ortiq va shaxsiy ma'lumot). Skriptlarning o'zi kuzatiladi.
 /scripts/data/*.json
 /scripts/data/*.ndjson
+/scripts/data/*.xlsx
 
 # Xodim birlashtirish zaxirasi — shaxsiy ma'lumot (telefon), git ga tushmasin.
 scripts/_backup-merged-employees.json
