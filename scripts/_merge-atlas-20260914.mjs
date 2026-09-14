@@ -76,10 +76,24 @@ const pupilsIn = await fresh("pupils", added("pupils").sort((a, b) => a.id - b.i
 // bo'lmaganlari quyida o'tkazib yuboriladi.
 
 // Kutilgan hajm — boshqa narsa chiqsa to'xtaymiz (skript aynan shu hodisa uchun).
+//
+// KO'CHIRMA (kun oxiridagi topshiruv, 17:57): juft qator — chiquvchi
+// (kassa 4, manfiy, `deductedOnSend: false`) va kiruvchi (rahbar kassa 3,
+// musbat), ikkalasi ham `waiting`, `transferId` = chiquvchining Atlas id'si.
+// Pul tasdiqlangunicha kassa 4 da turadi — kassa hujjatiga tegilmaydi,
+// `transferId` yangi id'ga xaritalanadi (app/api/cashboxes/[id]/transfer-to).
+const PRIMARY = 3;
+const isTransfer = (e) => e.txType === "transfer";
 const bad = [];
-if (!entriesIn.every((e) => e.cashboxId === CASHBOX && e.moderator === "Nilufar Sharipova")) bad.push("jurnalda kassa 4 / Nilufar bo'lmagan yozuv bor");
+if (!entriesIn.every((e) => (e.cashboxId === CASHBOX && e.moderator === "Nilufar Sharipova") || (isTransfer(e) && e.transferRole === "in" && e.cashboxId === PRIMARY))) bad.push("jurnalda kassa 4 / Nilufar bo'lmagan yozuv bor");
 if (!entriesIn.every((e) => typeof e.paymentMethodKey === "string" && e.paymentMethodKey)) bad.push("paymentMethodKey yo'q yozuv bor");
-if (!entriesIn.every((e) => e.txType === "payIn" || e.txType === "payOut")) bad.push("ko'chirma bor — skript faqat kirim/chiqim uchun");
+if (!entriesIn.every((e) => e.txType === "payIn" || e.txType === "payOut" || isTransfer(e))) bad.push("noma'lum txType bor");
+const atlasIds = new Set(entriesIn.map((e) => e.id));
+for (const e of entriesIn.filter(isTransfer)) {
+  if (e.status !== "waiting") bad.push(`ko'chirma #${e.id} holati "${e.status}" — faqat "waiting" kutilgan edi`);
+  if (e.transferRole === "out" && e.deductedOnSend !== false) bad.push(`ko'chirma #${e.id} eski qoidada (deductedOnSend yo'q)`);
+  if (!atlasIds.has(e.transferId)) bad.push(`ko'chirma #${e.id} jufti (transferId ${e.transferId}) diff'da yo'q`);
+}
 if (!txIn.every((t) => t.cashboxId === CASHBOX)) bad.push("transactions'da kassa 4 bo'lmagan yozuv bor");
 if (!ordersIn.every((o) => o.branchId === 1) || !pupilsIn.every((p) => p.branchId === 1)) bad.push("filial 1 bo'lmagan buyurtma/o'quvchi bor");
 const changedOther = Object.entries(diff.collections).filter(([n, r]) => (r.changed.length || r.deleted.length) && !["cashboxes", "user_sessions"].includes(n));
@@ -121,11 +135,19 @@ console.log(`transactions: ${txIn.length} ta → ${txStart}+ | o'quvchilar: ${pu
 
 // ── before/after va kassa yig'indilari ──
 const running = { ...(box.methodTotals ?? {}) };
+const primary = await db.collection("cashboxes").findOne({ id: PRIMARY }, { projection: { methodTotals: 1 } });
 const incByMethod = {};
 let incBalance = 0;
 const plan = [];
 for (const e of entriesIn) {
   const key = e.paymentMethodKey;
+  if (isTransfer(e)) {
+    // Balans o'zgarmaydi; `before` — ilova yozganidek, o'sha kassaning joriy qoldig'i.
+    const before = Number((e.transferRole === "out" ? running : primary?.methodTotals ?? {})[key] ?? 0);
+    if (e.transferRole === "out" && before < -Number(e.amount)) console.log(`  ! ko'chirma #${e.id}: ${key} qoldig'i (${before}) summadan (${-e.amount}) kam — tasdiqlashda yetmaydi`);
+    plan.push({ ...e, newId: entryMap.get(e.id), before, after: null });
+    continue;
+  }
   const before = Number(running[key] ?? 0);
   const after = before + Number(e.amount);
   if (after < 0) { console.error(`MANFIY: yozuv ${e.id} (${key}) ${before} + ${e.amount} = ${after}`); process.exit(1); }
@@ -136,7 +158,10 @@ for (const e of entriesIn) {
 }
 console.log("\nKassa 4 ga qo'shiladi:", JSON.stringify(incByMethod), "| balans +" + incBalance, "→", box.balance + incBalance);
 console.log("\n#Atlas → #VPS | sana vaqt | tur | kim | summa | tur | before→after");
-for (const p of plan) console.log(`  ${p.id} → ${p.newId} | ${p.date} ${p.time} | ${p.txType} ${p.txName} | ${p.studentName || "-"} | ${p.amount} | ${p.paymentMethodKey} | ${p.before}→${p.after}`);
+for (const p of plan) {
+  if (isTransfer(p)) console.log(`  ${p.id} → ${p.newId} | ${p.date} ${p.time} | transfer/${p.transferRole} k${p.cashboxId} (juft ${p.transferId} → ${entryMap.get(p.transferId)}) | ${p.amount} | ${p.paymentMethodKey} | ${p.before}→(kutilmoqda)`);
+  else console.log(`  ${p.id} → ${p.newId} | ${p.date} ${p.time} | ${p.txType} ${p.txName} | ${p.studentName || "-"} | ${p.amount} | ${p.paymentMethodKey} | ${p.before}→${p.after}`);
+}
 
 if (!APPLY) { console.log("\nHech narsa yozilmadi. Qo'llash uchun: --apply"); await c.close(); process.exit(0); }
 
@@ -181,6 +206,15 @@ console.log("transactions yozildi:", n); n = 0;
 for (const p of plan) {
   const { newId, before, after, ...e } = p;
   if (await exists("transaction_entries", e._id)) continue;
+  if (isTransfer(e)) {
+    // Kutilayotgan juft: kassa hujjatiga tegilmaydi, faqat `transferId` yangi id.
+    await db.collection("transaction_entries").insertOne({
+      ...e, id: newId, before, after: null, transferId: entryMap.get(e.transferId),
+      migratedFrom: { ...stamp, id: e.id, transferId: e.transferId, before: e.before },
+    });
+    n += 1;
+    continue;
+  }
   await db.collection("transaction_entries").insertOne({
     ...e, id: newId, before, after,
     migratedFrom: { ...stamp, id: e.id, before: e.before, after: e.after },
