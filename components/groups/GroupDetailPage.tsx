@@ -18,7 +18,7 @@ import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import AddLessonModal, { type GroupLesson } from "./AddLessonModal";
 import AddTaskModal from "./AddTaskModal";
 import AttendanceTab from "./AttendanceTab";
-import EditGroupModal from "./EditGroupModal";
+import GroupFormModal from "./GroupFormModal";
 import {
   ATTENDANCE_OPTIONS,
   toIsoDate,
@@ -814,7 +814,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
       )}
 
       {editOpen && (
-        <EditGroupModal
+        <GroupFormModal
           group={group}
           onClose={() => setEditOpen(false)}
           onSaved={(g) => setGroup(g)}

@@ -59,7 +59,7 @@ function isoToDate(iso: string): Date | null {
  * NEGA `g.students` EMAS: `Group.students` — hech kim yangilamaydigan
  * denormalizatsiya qilingan hisoblagich. Guruh yaratilganda
  * app/api/groups/route.ts va app/api/groups/import/route.ts uni `students: 0`
- * qilib yozadi, EditGroupModal esa uni hech qachon PATCH qilmaydi. Ya'ni UI
+ * qilib yozadi, GroupFormModal esa uni hech qachon PATCH qilmaydi. Ya'ni UI
  * orqali yaratilgan har qanday guruh uchun u abadiy 0 bo'lib qoladi va
  * kartada bandlik "0/25" ko'rinardi — bu esa "bu xonaga hech kim kelmaydi"
  * degan yolg'on da'vo.
@@ -90,7 +90,7 @@ function groupBounds(g: Group): { start: Date | null; end: Date | null } {
 // NEGA "archive" QO'SHILDI: bu ro'yxat avval faqat constants/groups.js dagi
 // GROUP_STATUSES bo'yicha yozilgan edi, "archive" esa o'sha massivda yo'q.
 // Lekin u haqiqiy, foydalanuvchi o'rnatadigan holat: GroupDetailPage
-// { status: "archive" } bilan PATCH qiladi, AddGroupModal/EditGroupModal da
+// { status: "archive" } bilan PATCH qiladi, GroupFormModal da
 // "Arxiv" varianti bor va GroupsListPage filtri ham shu kalitni ishlatadi.
 // Ya'ni arxivga tushgan, endi dars o'tmaydigan guruh xonani band qilib
 // turgandek sanalardi — bandlik nisbati oshib ketardi.

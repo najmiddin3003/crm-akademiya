@@ -8,6 +8,7 @@ import Segmented from "@/components/ui/Segmented";
 import DateField from "@/components/ui/DateField";
 import TimeField from "@/components/ui/TimeField";
 import { useToast } from "@/components/ui/Toast";
+import { useGroups } from "@/hooks/useGroups";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
@@ -18,25 +19,31 @@ import { courseLevelNames, findCourseByName, levelPlaceholder } from "@/lib/cour
 import { uzDateIso } from "@/lib/uzTime";
 import type { Group } from "@/lib/groups";
 
-// Yangi guruh qo'shish modali (crm-akademiya #group-add-modal, skrinshot 2).
-// Saqlash → POST /api/groups.
+// Guruh QO'SHISH va TAHRIRLASH — bitta modal. `group` berilsa tahrirlash
+// (PATCH /api/groups/:id), bo'lmasa qo'shish (POST /api/groups).
+//
+// NEGA BITTA: 14.09.2026 gacha ikkita alohida modal edi — AddGroupModal
+// (ikki ustun, holat va ta'lim turi segment tugmalar, vaqt juft maydon)
+// va EditGroupModal (bir ustun, hamma narsa select). Bir xil forma ikki
+// xil ko'rinishda turardi; foydalanuvchi "qo'shishda qanday modal
+// bo'lsa, tahrirlashda ham shunday bo'lsin" dedi. Endi maydonlar,
+// joylashuv, majburiylik qoidasi va xona bandligi tekshiruvi ikkala
+// rejimda AYNAN bir xil; farq faqat sarlavha, boshlang'ich qiymatlar,
+// so'rov turi va toast matnida.
 //
 // Kurslar, o'qituvchilar va xonalar bazadan (/api/offline-courses,
-// /api/teachers, /api/rooms) — tahrirlash modali bilan bir xil manba.
-// Daraja (bosqich) ro'yxati TANLANGAN KURSNING o'zidan (kurs hujjatidagi
-// `levels`, Oflayn kurslar → kurs → "Bosqich qo'shish") — lib/courseLevels.ts.
+// /api/teachers, /api/rooms). Daraja (bosqich) ro'yxati TANLANGAN KURSNING
+// o'zidan (kurs hujjatidagi `levels`) — lib/courseLevels.ts.
 //
-// MAJBURIY MAYDONLAR (11.09.2026, audit F-1/F-2): ilgari oynada yulduzcha
-// turgan maydonlar ham aslida tekshirilmasdi (faqat nom), o'qituvchi,
-// xona, dars kunlari, vaqti va daraja esa umuman yo'q edi — guruh
-// yaratilgach darhol "Tahrirlash"ga kirishga to'g'ri kelardi. Endi qoida
-// lib/groupRules.ts da (server ham AYNAN shuni tekshiradi): majburiy
-// maydon bo'sh yoki xona band bo'lsa "Saqlash" o'chiq turadi va yonida
-// nima yetishmayotgani yoziladi.
+// MAJBURIY MAYDONLAR — qoida lib/groupRules.ts da (server POST/PATCH ham
+// AYNAN shuni tekshiradi): majburiy maydon bo'sh yoki xona band bo'lsa
+// "Saqlash" o'chiq turadi va yonida nima yetishmayotgani yoziladi.
 //
-// Xona bandligi ro'yxatdagi guruhlar bo'yicha JOYIDA ko'rsatiladi
-// (`groups` — sahifa allaqachon yuklab qo'ygan, qo'shimcha so'rov yo'q);
-// server 409 bilan oxirgi so'zni aytadi (ikki moderator bir vaqtda).
+// Xona bandligi ro'yxatdagi guruhlar bo'yicha JOYIDA ko'rsatiladi:
+// Guruhlar sahifasi o'z ro'yxatini `groups` orqali beradi (qo'shimcha
+// so'rov yo'q), guruh sahifasi bermaydi — u holda /api/groups dan olinadi
+// (useGroups). Tahrirlashda guruhning o'zi hisobga kirmaydi (`excludeId`).
+// Server 409 bilan oxirgi so'zni aytadi (ikki moderator bir vaqtda).
 //
 // "Guruh holati" va "Ta'lim turi" — segment tugmalar: variant 2–3 ta,
 // deyarli doim birinchisi tanlanadi, shuning uchun standart qiymat
@@ -52,6 +59,25 @@ const DAY_OPTIONS = GROUP_DAYS.map((d) => ({ value: d, label: d }));
 
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
+
+/**
+ * Guruhda saqlangan qiymat bazadagi ro'yxatda bo'lmasligi mumkin (eski
+ * yozuvlar, o'chirilgan xona/o'qituvchi). Uni ro'yxat boshiga qo'shamiz —
+ * aks holda select bo'sh ko'rinib, saqlashda qiymat jimgina yo'qolardi.
+ * Qo'shish rejimida joriy qiymat bo'sh — ro'yxat o'zgarmaydi.
+ */
+function withCurrent(list: string[], current: string): string[] {
+  return current && !list.includes(current) ? [current, ...list] : list;
+}
+// "16.09.2026" ↔ "2026-09-16": `period` satri eski guruhlarda yagona manba.
+function dmyToIso(s: string): string {
+  const m = s.trim().match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+function isoToDmy(s: string): string {
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : "";
+}
 
 /**
  * Footer — modal konteksti ichida, yopish animatsiya bilan. `blocker` —
@@ -90,46 +116,62 @@ function Actions({ saving, blocker, onSave }: { saving: boolean; blocker: string
   );
 }
 
-export default function AddGroupModal({
-  groups = [],
+export default function GroupFormModal({
+  group,
+  groups: groupsProp,
   onClose,
-  onCreated,
+  onSaved,
 }: {
-  /** Sahifadagi guruhlar — xona bandligini joyida ko'rsatish uchun. */
+  /** Tahrirlanayotgan guruh; berilmasa — yangi guruh qo'shish. */
+  group?: Group;
+  /** Sahifadagi guruhlar — xona bandligini joyida ko'rsatish uchun; bo'lmasa /api/groups. */
   groups?: Group[];
   onClose: () => void;
-  onCreated?: (g: Group) => void;
+  /** Qo'shilgan yoki yangilangan guruh (serverdan qaytgan hujjat). */
+  onSaved?: (g: Group) => void;
 }) {
+  const editing = group !== undefined;
   const { showSuccess, showError } = useToast();
   const { courses, names: courseNames, loading: coursesLoading } = useOfflineCourseList();
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
   const { names: roomNames, loading: roomsLoading } = useRooms();
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState("active");
-  const [course, setCourse] = useState("");
-  const [level, setLevel] = useState("");
-  const [day, setDay] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [teacher, setTeacher] = useState("");
-  const [eduType, setEduType] = useState(GROUP_FORMATS[0]);
-  const [room, setRoom] = useState("");
-  const [telegram, setTelegram] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // `groupsProp` berilsa so'rov yuborilmaydi — u boshlang'ich ro'yxat bo'lib kiradi.
+  const { groups } = useGroups(groupsProp);
+
+  const [t0, t1] = (group?.time || " - ").split(" - ");
+  const [p0, p1] = (group?.period || " - ").split(" - ");
+
+  const [name, setName] = useState(group?.name ?? "");
+  const [status, setStatus] = useState(group?.status || "active");
+  const [course, setCourse] = useState(group?.course ?? "");
+  const [level, setLevel] = useState(group?.level ?? "");
+  const [day, setDay] = useState(group?.day ?? "");
+  const [startTime, setStartTime] = useState(t0?.trim() ?? "");
+  const [endTime, setEndTime] = useState(t1?.trim() ?? "");
+  const [teacher, setTeacher] = useState(group?.teacher ?? "");
+  const [assistant, setAssistant] = useState(group?.assistant ?? "");
+  const [eduType, setEduType] = useState(group?.eduType || GROUP_FORMATS[0]);
+  const [room, setRoom] = useState(group?.room ?? "");
+  const [telegram, setTelegram] = useState(group?.telegram ?? "");
+  const [startDate, setStartDate] = useState(group?.startDate || dmyToIso(p0 ?? ""));
+  const [endDate, setEndDate] = useState(group?.endDate || dmyToIso(p1 ?? ""));
   const [saving, setSaving] = useState(false);
 
   // Bosqichlar — tanlangan kursniki. Kurs almashsa eski bosqich unda
-  // bo'lmasligi mumkin — `onChange` da tozalanadi.
+  // bo'lmasligi mumkin — `onChange` da tozalanadi. Guruhda arxivdan qolgan
+  // "1-bosqich" kabi ro'yxatda yo'q qiymat bo'lsa, `withCurrent` uni saqlab
+  // turadi — server ham o'zgarmagan bosqichni tekshirmaydi.
   const levelNames = courseLevelNames(findCourseByName(courses, course));
 
   const time = joinTime(startTime, endTime);
   const missing = missingGroupFields({ name, status, course, day, time, teacher, eduType, room });
   // Ikkala vaqt tanlangan, lekin tartib noto'g'ri — bu bo'sh maydon emas, xato.
   const timeOrderError = Boolean(startTime && endTime) && parseTimeRange(time) === null;
-  // Xona bandligi — maydonlar to'liq bo'lgach, sahifadagi ro'yxat bo'yicha.
+  // Xona bandligi — maydonlar to'liq bo'lgach, ro'yxat bo'yicha.
   // useMemo yo'q — ro'yxat kichik (yuzlab guruh), React Compiler o'zi keshlaydi.
-  const conflict = room && day && time ? findRoomConflict({ room, day, time, startDate, endDate }, groups, uzDateIso()) : null;
+  const conflict = room && day && time
+    ? findRoomConflict({ room, day, time, startDate, endDate }, groups, uzDateIso(), group?.id)
+    : null;
   const conflictText = conflict ? roomConflictText(room, conflict) : null;
 
   const blocker = missing.length > 0
@@ -140,34 +182,41 @@ export default function AddGroupModal({
 
   async function save(close: () => void) {
     if (blocker) return;
+    const trimmed = name.trim();
+    const body: Record<string, unknown> = {
+      name: trimmed,
+      status,
+      course,
+      level,
+      day,
+      time,
+      teacher,
+      assistant,
+      eduType,
+      room,
+      telegram: telegram.trim(),
+      startDate,
+      endDate,
+    };
+    // POST `period`ni o'zi tuzadi; PATCH kelgan maydonlarni shunchaki
+    // yozadi, shu bois sanalar bilan birga ko'rinadigan satr ham yuboriladi
+    // (ro'yxatdagi "Guruh vaqti" ustuni). Ikkala sana ham o'chirilsa — bo'sh.
+    if (editing) body.period = startDate || endDate ? `${isoToDmy(startDate)} - ${isoToDmy(endDate)}` : "";
     setSaving(true);
     try {
-      const res = await fetch("/api/groups", {
-        method: "POST",
+      const res = await fetch(editing ? `/api/groups/${group.id}` : "/api/groups", {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          status,
-          course,
-          level,
-          day,
-          time,
-          teacher,
-          eduType,
-          room,
-          telegram: telegram.trim(),
-          startDate,
-          endDate,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Guruh qo'shilmadi");
+        showError(data.error || (editing ? "Saqlanmadi" : "Guruh qo'shilmadi"));
         setSaving(false);
         return;
       }
-      onCreated?.(data.group as Group);
-      showSuccess(`Guruh qo'shildi — ${name.trim()}`);
+      onSaved?.(data.group as Group);
+      showSuccess(editing ? "Guruh yangilandi" : `Guruh qo'shildi — ${trimmed}`);
       close();
     } catch {
       showError("Serverga ulanib bo'lmadi");
@@ -178,7 +227,7 @@ export default function AddGroupModal({
   return (
     <Modal
       onClose={onClose}
-      title="Yangi guruh qo'shish"
+      title={editing ? "Guruhni tahrirlash" : "Yangi guruh qo'shish"}
       subtitle={<><span className="text-red-500">*</span> Zarurligini bildiradi</>}
       size="xl"
       locked={saving}
@@ -193,7 +242,7 @@ export default function AddGroupModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             type="text"
-            autoFocus
+            autoFocus={!editing}
             placeholder="Masalan: 12"
             className={inputCls}
           />
@@ -211,7 +260,7 @@ export default function AddGroupModal({
             setCourse(v);
             if (level && !courseLevelNames(findCourseByName(courses, v)).includes(level)) setLevel("");
           }}
-          options={courseNames.map((c) => ({ value: c, label: c }))}
+          options={withCurrent(courseNames, course).map((c) => ({ value: c, label: c }))}
           loading={coursesLoading}
           placeholder="Kursni tanlang"
           searchPlaceholder="Kursni qidirish"
@@ -221,9 +270,9 @@ export default function AddGroupModal({
           label="Daraja (bosqich)"
           value={level}
           onChange={setLevel}
-          options={levelNames.map((l) => ({ value: l, label: l }))}
+          options={withCurrent(levelNames, level).map((l) => ({ value: l, label: l }))}
           placeholder={levelPlaceholder(Boolean(course), levelNames.length)}
-          disabled={!course || levelNames.length === 0}
+          disabled={!course || (levelNames.length === 0 && !level)}
           emptyText="Bu kursda bosqich yo'q — Oflayn kurslar → kurs sahifasida qo'shing"
           clearable
         />
@@ -249,19 +298,31 @@ export default function AddGroupModal({
           required
           value={teacher}
           onChange={setTeacher}
-          options={teacherNames.map((t) => ({ value: t, label: t }))}
+          options={withCurrent(teacherNames, teacher).map((t) => ({ value: t, label: t }))}
           loading={teachersLoading}
           placeholder={selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}
           searchPlaceholder="O'qituvchini qidirish"
           emptyText="O'qituvchilar ro'yxati bo'sh — Boshqaruv → Xodimlar bo'limida o'qituvchi qo'shing"
         />
+        <Select
+          label="Yordamchi o'qituvchi"
+          value={assistant}
+          onChange={setAssistant}
+          options={withCurrent(teacherNames, assistant).map((t) => ({ value: t, label: t }))}
+          loading={teachersLoading}
+          placeholder={selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}
+          searchPlaceholder="O'qituvchini qidirish"
+          emptyText="O'qituvchilar ro'yxati bo'sh"
+          clearable
+        />
+
         <div>
           <Select
             label="Xona"
             required
             value={room}
             onChange={setRoom}
-            options={roomNames.map((r) => ({ value: r, label: r }))}
+            options={withCurrent(roomNames, room).map((r) => ({ value: r, label: r }))}
             loading={roomsLoading}
             placeholder={selectPlaceholder(roomsLoading, roomNames.length, "Xona qo'shilmagan")}
             searchPlaceholder="Xonani qidirish"
@@ -275,14 +336,9 @@ export default function AddGroupModal({
             </p>
           )}
         </div>
-
         <div>
           <label className={labelCls}>Ta&apos;lim turi<span className="text-red-500">*</span></label>
           <Segmented value={eduType} onChange={setEduType} options={FORMAT_OPTIONS} />
-        </div>
-        <div>
-          <label className={labelCls}>Telegram guruh havolasi</label>
-          <input value={telegram} onChange={(e) => setTelegram(e.target.value)} type="text" placeholder="https://t.me/..." className={inputCls} />
         </div>
 
         <div>
@@ -293,8 +349,12 @@ export default function AddGroupModal({
           <label className={labelCls}>Bitkazish sanasi</label>
           <DateField value={endDate} onChange={setEndDate} variant="form" placeholder="kk/oo/yyyy" />
         </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelCls}>Telegram guruh havolasi</label>
+          <input value={telegram} onChange={(e) => setTelegram(e.target.value)} type="text" placeholder="https://t.me/..." className={inputCls} />
+        </div>
       </div>
     </Modal>
   );
 }
-

@@ -64,7 +64,7 @@ const nameKey = (v: unknown) => String(v ?? "").trim().toLowerCase();
  * NEGA `g.students` EMAS: `Group.students` — hech qaysi yozuv yo'li
  * yangilamaydigan denormalizatsiya qilingan hisoblagich. Guruh yaratilganda
  * app/api/groups/route.ts va app/api/groups/import/route.ts uni `students: 0`
- * qilib yozadi, EditGroupModal esa uni hech qachon PATCH qilmaydi. Shu bois
+ * qilib yozadi, GroupFormModal esa uni hech qachon PATCH qilmaydi. Shu bois
  * UI orqali yaratilgan guruhlar uchun "O'quvchilar" ustuni har bir
  * o'qituvchida 0 chiqardi, ya'ni "bu o'qituvchining o'quvchisi yo'q" degan
  * yolg'on da'vo qilardi.

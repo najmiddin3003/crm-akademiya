@@ -8,7 +8,7 @@ import Pagination from "@/components/ui/Pagination";
 import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import AddGroupModal from "./AddGroupModal";
+import GroupFormModal from "./GroupFormModal";
 import type { Group } from "@/lib/groups";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
@@ -478,10 +478,10 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
       </div>
 
       {addOpen && (
-        <AddGroupModal
+        <GroupFormModal
           groups={groups}
           onClose={() => setAddOpen(false)}
-          onCreated={(g) => setGroups((prev) => [...prev, g])}
+          onSaved={(g) => setGroups((prev) => [...prev, g])}
         />
       )}
     </div>
