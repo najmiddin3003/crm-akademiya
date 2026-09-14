@@ -2,7 +2,7 @@ import { groupWeekdays, parsePeriod } from "@/lib/attendance";
 import type { Group } from "@/lib/groups";
 
 // Guruh formasining QOIDALARI — majburiy maydonlar, dars vaqti va xona
-// bandligi. Klient (AddGroupModal / EditGroupModal) va server
+// bandligi. Klient (GroupFormModal) va server
 // (POST /api/groups, PATCH /api/groups/:id) AYNAN shu faylni bo'lishadi:
 // modal tugmani o'chiq tutadi, server esa xuddi shu tekshiruvni qayta
 // o'tkazadi — brauzerni chetlab yuborilgan so'rov ham bo'sh guruh yozolmaydi.
@@ -143,11 +143,42 @@ export interface RoomSlot {
 type SlotGroup = Pick<Group, "id" | "name" | "room" | "day" | "time" | "status"> &
   Partial<Pick<Group, "period" | "startDate" | "endDate">>;
 
-/** Guruh muddatining chegaralari: `startDate/endDate` yo'q bo'lsa `period` satridan. */
-function bounds(g: { startDate?: string; endDate?: string; period?: string }): { start: string; end: string } {
+/**
+ * Guruh muddatining chegaralari ("YYYY-MM-DD" yoki bo'sh): `startDate/endDate`
+ * yo'q bo'lsa `period` satridan. ISO satrlar leksik taqqoslanadi — `Date`
+ * obyektlari emas (lib/uzTime.ts dagi 5 soatlik siljish tuzog'i).
+ */
+export function groupBoundsIso(g: { startDate?: string; endDate?: string; period?: string }): { start: string; end: string } {
   const iso = (d: Date | null) => (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : "");
   const p = g.period ? parsePeriod(g.period) : { start: null, end: null };
   return { start: g.startDate || iso(p.start), end: g.endDate || iso(p.end) };
+}
+
+/**
+ * Shu kuni guruhda DARS BO'LISHI KUTILADIMI — ro'yxatdagi sariq belgi
+ * ("bugun davomat qilinmagan") shu qoidaga tayanadi.
+ *
+ * Uchta shart birga: guruh aktiv (muzlatilgan/arxivda dars yo'q), hafta
+ * kuni jadvalga mos va sana guruh muddati ICHIDA. Ilgari faqat hafta kuni
+ * tekshirilardi — 16-sentabrda boshlanadigan guruh 14-sentabrda "davomat
+ * qilinmadi" deb sariq turardi, hali boshlanmagan darsga davomat esa
+ * bo'lmaydi. Davomat jadvali (lessonDates) ham muddatdan tashqari kunga
+ * ustun chiqarmaydi — ikkalasi bir xil chegaraga qarasin.
+ *
+ * @param iso     Tekshirilayotgan kun, "YYYY-MM-DD" (Toshkent kuni).
+ * @param weekday O'sha kunning hafta kuni (0 — yakshanba), `Date#getDay()` kabi.
+ */
+export function lessonExpectedOn(
+  g: { status?: string; day?: string; startDate?: string; endDate?: string; period?: string },
+  iso: string,
+  weekday: number,
+): boolean {
+  if (g.status !== "active") return false;
+  if (!groupWeekdays(g.day).includes(weekday)) return false;
+  const b = groupBoundsIso(g);
+  if (b.start && iso < b.start) return false;
+  if (b.end && iso > b.end) return false;
+  return true;
 }
 
 /**
@@ -186,7 +217,7 @@ export function findRoomConflict<G extends SlotGroup>(
     const gDays = groupWeekdays(g.day);
     if (!gDays.some((d) => days.includes(d))) continue;
     // Muddatlar kesishmasa — bo'shagan xona. ISO satrlar leksik taqqoslanadi.
-    const b = bounds(g);
+    const b = groupBoundsIso(g);
     if (b.end && b.end < candStart) continue;
     if (candEnd && b.start && b.start > candEnd) continue;
     return g;

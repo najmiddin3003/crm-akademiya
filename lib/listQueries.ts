@@ -1,6 +1,7 @@
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, withBranch, withPupilBranch, type BranchScope } from "@/lib/branchScope";
-import { groupWeekdays } from "@/lib/attendance";
+import { lessonExpectedOn } from "@/lib/groupRules";
+import { uzDateIso, uzNow } from "@/lib/uzTime";
 import { PUPIL_EXTRA_FIELDS, type Pupil, type PupilExtraField, type PupilListItem } from "@/lib/pupilsData";
 import type { Group } from "@/lib/groups";
 
@@ -36,8 +37,9 @@ export async function listScope(): Promise<BranchScope | null> {
  * Guruhlar ro'yxati — `/api/groups` GET bilan AYNAN bir xil natija.
  *
  * `highlighted` bazada saqlanmaydi, har safar hisoblanadi: bugun shu
- * guruhning dars kuni bo'lsa va davomat hali qilinmagan bo'lsa, guruh
- * ro'yxatda sariq qator bo'lib turadi.
+ * guruhda dars KUTILSA (aktiv, dars kuni, muddati ichida —
+ * lib/groupRules.ts `lessonExpectedOn`) va davomat hali qilinmagan
+ * bo'lsa, guruh ro'yxatda sariq qator bo'lib turadi.
  */
 export async function loadGroups(): Promise<Group[]> {
   // Qamrov shu yerda olinadi — sabab `loadPupils()` dagi bilan bir xil
@@ -47,10 +49,11 @@ export async function loadGroups(): Promise<Group[]> {
   if (!scope) return [];
 
   const db = await ensureIndexes();
-  const now = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  const todayIso = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-  const weekday = now.getDay();
+  // "Bugun" — Toshkent kuni. Prod server UTC'da: kechqurun 19:00 dan keyin
+  // `new Date()` hali kechagi kunni ko'rsatadi, davomat esa Toshkent sanasi
+  // bilan yoziladi (AttendanceTab → toIsoDate) — ikkalasi bir xil kun bo'lsin.
+  const todayIso = uzDateIso();
+  const weekday = uzNow().getDay();
 
   // Ikkala so'rov bir-biriga bog'liq emas.
   const [rows, marked] = await Promise.all([
@@ -64,7 +67,7 @@ export async function loadGroups(): Promise<Group[]> {
   return rows.map(({ _id, ...rest }) => {
     void _id;
     const g = rest as unknown as Group;
-    return { ...g, highlighted: groupWeekdays(g.day).includes(weekday) && !markedToday.has(g.id) };
+    return { ...g, highlighted: lessonExpectedOn(g, todayIso, weekday) && !markedToday.has(g.id) };
   });
 }
 
