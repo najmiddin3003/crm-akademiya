@@ -8,11 +8,14 @@
 // sezmasdi. Shundan beri qoida — pulga tegadigan har amaldan KEYIN
 // shu skriptni yurgizish.
 //
-// KUTILAYOTGAN ko'chirma (`status: "waiting"`) jurnal yig'indisiga
-// KIRMAYDI: pul jo'natuvchi kassadan chiqib bo'lgan, qabul qiluvchida
-// esa hali yo'q. Shuning uchun jo'natuvchi tomonda manfiy qator DARHOL
-// hisoblanadi, qabul qiluvchidagi musbat qator esa tasdiqlangunicha
-// hisobga olinmaydi.
+// KUTILAYOTGAN ko'chirma (`status: "waiting"`): qabul qiluvchidagi musbat
+// qator tasdiqlangunicha hisobga olinmaydi. Jo'natuvchidagi manfiy qator
+// esa QOIDAGA BOG'LIQ (lib/transactionEntries.ts → `deductedOnSend`):
+//   • `deductedOnSend: false` (10.09.2026 dan yangi qoida) — pul hali
+//     kassada, qator tasdiqlangunicha HISOBLANMAYDI;
+//   • maydon yo'q (eski qoida) — pul jo'natishda yechilgan, DARHOL hisoblanadi.
+// 14.09.2026: 12.09 ko'chirmalari tiklangach skript 670 000 farq ko'rsatdi —
+// ma'lumot to'g'ri edi, skript yangi qoidani bilmasdi.
 import fs from "fs";
 import { MongoClient } from "mongodb";
 
@@ -32,13 +35,14 @@ let bad = 0;
 console.log("kassa                              balance      turlar     jurnal   holat");
 for (const b of boxes) {
   const totals = Object.values(b.methodTotals ?? {}).reduce((s, v) => s + (Number(v) || 0), 0);
-  // Jurnal: bekor qilinganlar chiqadi; kutilayotgan ko'chirmaning
-  // MUSBAT (qabul qiluvchi) tomoni ham hali hisobga olinmaydi.
+  // Jurnal: bekor qilinganlar chiqadi; kutilayotgan ko'chirmaning MUSBAT
+  // (qabul qiluvchi) tomoni va yangi qoidadagi (`deductedOnSend: false`)
+  // MANFIY tomoni ham hali hisobga olinmaydi (yuqoridagi izoh).
   const rows = await db.collection("transaction_entries")
-    .find({ cashboxId: b.id, status: { $ne: "cancelled" } }, { projection: { _id: 0, amount: 1, status: 1 } })
+    .find({ cashboxId: b.id, status: { $ne: "cancelled" } }, { projection: { _id: 0, amount: 1, status: 1, deductedOnSend: 1 } })
     .toArray();
   const journal = rows
-    .filter((r) => !(r.status === "waiting" && Number(r.amount) > 0))
+    .filter((r) => !(r.status === "waiting" && (Number(r.amount) > 0 || r.deductedOnSend === false)))
     .reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
   const ok = b.balance === totals && b.balance === journal;

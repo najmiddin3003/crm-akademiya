@@ -1,7 +1,17 @@
 // Jadvalda bor, LEKIN bazada yo'q qatorlarni o'chiradi ("yetim" qatorlar).
 //
-//   node scripts/sheets-drop-orphans.mjs            # quruq yurish
-//   node scripts/sheets-drop-orphans.mjs --apply    # o'chiradi
+//   node scripts/sheets-drop-orphans.mjs                     # quruq yurish
+//   node scripts/sheets-drop-orphans.mjs --apply             # o'chiradi
+//   node scripts/sheets-drop-orphans.mjs --by-tab [--apply]  # varaq bo'yicha
+//
+// `--by-tab` — yetimlik VARAQ bo'yicha: id bazada bo'lsa ham, SHU varaqning
+// turiga (to'lov / oylik / xarajat / ko'chirma) tegishli bo'lmasa qator
+// yetim. 14.09.2026 hodisasi: ikki server (Vercel→Atlas va VPS) bir
+// jadvalga bir xil id'lar bilan yozgan; Atlas yozuvlari prod'ga yangi id
+// bilan ko'chirilgach, eski id'li qatorlar boshqa turdagi yozuvlarning
+// varag'ida qolib ketdi. Solishtirish (`reconcile.ts`) to'g'ri varaqqa
+// to'g'ri qatorni qo'shadi, lekin noto'g'ri varaqdagini o'chirmaydi —
+// oddiy rejim esa "id bazada bor" deb uni yetim sanamaydi.
 //
 // ------------------------------------------------------------------
 // NEGA ALOHIDA SKRIPT, SOLISHTIRISHNING O'ZI EMAS
@@ -18,6 +28,7 @@ import { createSign } from "node:crypto";
 import { MongoClient } from "mongodb";
 
 const APPLY = process.argv.includes("--apply");
+const BY_TAB = process.argv.includes("--by-tab");
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 for (const line of fs.readFileSync(path.join(HERE, "..", ".env.local"), "utf8").split(/\r?\n/)) {
   const s = line.trim();
@@ -64,11 +75,24 @@ const api = async (p, init) => {
 
 // Varaq -> shu varaqqa tushadigan yozuvlarning baza filtri.
 // `lib/sync/reconcile.ts` dagi `kindFilter` bilan bir xil ma'noda.
+// Varaq nomlari `lib/sync/config.ts` bilan bir xil qoidada: muhitdan,
+// bo'lmasa sukut. Oylik JURNALI "Xodim avanslari" — "Xodim oyliklari"
+// esa oylik HISOBI varag'i (SALARY_SUMMARY_TAB), unda id ustuni yo'q;
+// config.ts dagi qo'riqchi kabi bu qiymat e'tiborsiz qoldiriladi.
+// Next.js .env o'quvchisi qiymat atrofidagi qo'shtirnoqni olib tashlaydi,
+// yuqoridagi oddiy o'quvchi esa yo'q — serverdagi `.env.local` da
+// SHEET_TAB_SALARIES qo'shtirnoq bilan yozilgan, shuni tenglashtiramiz.
+const tab = (v, dflt) => {
+  let t = (v || "").trim();
+  if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1).trim();
+  return t || dflt;
+};
+const salaryTab = (v) => { const t = tab(v, ""); return !t || t === "Xodim oyliklari" ? "Xodim avanslari" : t; };
 const TABS = [
-  { title: "To'lovlar", filter: { txType: "payIn" } },
-  { title: "Xodim oyliklari", filter: { txType: "payOut", txName: { $regex: "oylik|avans", $options: "i" } } },
-  { title: "Xarajatlar", filter: { txType: "payOut", txName: { $not: { $regex: "oylik|avans", $options: "i" } } } },
-  { title: "Ko'chirmalar", filter: { txType: "transfer" } },
+  { title: tab(process.env.SHEET_TAB_PAYMENTS, "To'lovlar"), filter: { txType: "payIn" } },
+  { title: salaryTab(process.env.SHEET_TAB_SALARIES), filter: { txType: "payOut", txName: { $regex: "oylik|avans", $options: "i" } } },
+  { title: tab(process.env.SHEET_TAB_EXPENSES, "Xarajatlar"), filter: { txType: "payOut", txName: { $not: { $regex: "oylik|avans", $options: "i" } } } },
+  { title: tab(process.env.SHEET_TAB_TRANSFERS, "Ko'chirmalar"), filter: { txType: "transfer" } },
 ];
 
 const client = new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 5, serverSelectionTimeoutMS: 20000 });
@@ -76,11 +100,13 @@ await client.connect();
 const db = client.db(process.env.MONGODB_DB);
 const entries = db.collection("transaction_entries");
 
-// Bazadagi BARCHA id'lar — varaqma-varaq ajratmaymiz. Yetimlik "shu id
-// bazada umuman yo'q" degani; qaysi varaqda turishi alohida masala va uni
-// solishtirish o'zi to'g'rilaydi.
-const dbIds = new Set((await entries.find({}, { projection: { _id: 0, id: 1 } }).toArray()).map((r) => Number(r.id)));
-console.log(APPLY ? "=== QO'LLANMOQDA ===" : "=== QURUQ YURISH (--apply yo'q) ===");
+// Oddiy rejim: bazadagi BARCHA id'lar — varaqma-varaq ajratmaymiz.
+// Yetimlik "shu id bazada umuman yo'q" degani. `--by-tab` da esa har
+// varaq uchun faqat o'z turidagi id'lar olinadi (yuqoridagi izoh).
+const idsOf = async (filter) =>
+  new Set((await entries.find(filter, { projection: { _id: 0, id: 1 } }).toArray()).map((r) => Number(r.id)));
+const dbIds = await idsOf({});
+console.log(APPLY ? "=== QO'LLANMOQDA ===" : "=== QURUQ YURISH (--apply yo'q) ===", BY_TAB ? "— varaq bo'yicha" : "");
 console.log("bazadagi yozuvlar:", dbIds.size, "\n");
 
 const meta = await api("?fields=sheets(properties(sheetId,title))");
@@ -88,13 +114,14 @@ const sheetIdOf = new Map(meta.sheets.map((s) => [s.properties.title, s.properti
 
 for (const t of TABS) {
   const sheetId = sheetIdOf.get(t.title);
-  if (sheetId === undefined) continue;
+  if (sheetId === undefined) { console.log(`--- ${t.title}: varaq topilmadi ---`); continue; }
   const values = (await api(`/values/${encodeURIComponent(`${t.title}!A2:D`)}?majorDimension=ROWS`)).values ?? [];
+  const known = BY_TAB ? await idsOf(t.filter) : dbIds;
   const orphans = [];
   values.forEach((row, i) => {
     const id = Number(String(row?.[0] ?? "").trim());
     if (!Number.isFinite(id) || id <= 0) return;
-    if (!dbIds.has(id)) orphans.push({ row: i + 2, cells: row });
+    if (!known.has(id)) orphans.push({ row: i + 2, cells: row });
   });
   console.log(`--- ${t.title}: ${orphans.length} yetim ---`);
   for (const o of orphans) console.log(`    ${o.row}-qator: ${JSON.stringify(o.cells)}`);
