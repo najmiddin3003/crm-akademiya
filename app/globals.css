@@ -9768,6 +9768,55 @@ html.dark {
 .nav-btn-back:hover { background-color: rgba(61, 104, 255, 0.18); }
 .nav-btn-back:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* Topshiriq ikonkasi (components/shared/Navbar.tsx → TaskInboxProvider).
+   Xodimga javob kutayotgan topshiriq berilgan bo'lsa tugma QIZARADI va
+   pulsatsiya qiladi, yonida "Bajarilishi kutilmoqda" yozuvi chiqadi
+   (keng ekranda). Faqat hisobot kelgan bo'lsa — yashil, pulssiz. */
+.nav-btn-task-alert {
+  width: auto;
+  padding: 5px 10px 5px 6px;
+  gap: 6px;
+  color: #d32f2f;
+  background-color: rgba(211, 47, 47, 0.10);
+  border-color: rgba(211, 47, 47, 0.30);
+  animation: nav-task-pulse 1.8s cubic-bezier(0.66, 0, 0, 1) infinite;
+}
+.nav-btn-task-alert:hover { background-color: rgba(211, 47, 47, 0.16); }
+.nav-btn-task-info {
+  color: #059669;
+  background-color: rgba(5, 150, 105, 0.10);
+  border-color: rgba(5, 150, 105, 0.28);
+}
+.nav-btn-task-info:hover { background-color: rgba(5, 150, 105, 0.16); }
+html.dark .nav-btn-task-alert { color: #fca5a5; background-color: rgba(220, 38, 38, 0.18); border-color: rgba(220, 38, 38, 0.4); }
+html.dark .nav-btn-task-info { color: #6ee7b7; background-color: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.35); }
+.nav-task-label {
+  display: none;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+@media (min-width: 1280px) { .nav-btn-task-alert .nav-task-label { display: inline; } }
+@keyframes nav-task-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(211, 47, 47, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .nav-btn-task-alert { animation: none; } }
+
+/* Topshiriq oynasi (components/shared/TaskInboxModal.tsx): bir nechta
+   topshiriq bo'lsa chapda ro'yxat, o'ngda tanlangani. Tailwind'ning
+   `md:grid-cols-[…]` klassi bu loyihada ishonchsiz (yuqoridagi
+   "Responsiv ko'rinish" izohi), shu bois o'z qoidasi. */
+.task-inbox-grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+.task-inbox-list { border-bottom: 1px solid hsl(var(--border)); }
+@media (min-width: 768px) {
+  .task-inbox-grid { grid-template-columns: minmax(0, 260px) minmax(0, 1fr); }
+  .task-inbox-list { border-bottom: 0; border-right: 1px solid hsl(var(--border)); }
+}
+.task-inbox-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; row-gap: 10px; }
+
 .nav-field {               /* filial select + qidiruv maydoni */
   height: 36px;
   border-radius: 8px;

@@ -6,6 +6,7 @@ import {
   PRIORITY_META,
   type Task,
 } from "@/lib/tasksData";
+import TaskReportChip from "@/components/tasks/TaskReportChip";
 
 export interface KanbanCardProps {
   task: Task;
@@ -38,6 +39,7 @@ export default function KanbanCard({ task, blocked, isDragging, onOpen, onDragSt
               🔗 #{task.dependsOn}
             </span>
           )}
+          <TaskReportChip report={task.report} />
         </div>
         {risk !== "normal" && risk !== "completed" && (
           <span className={`risk-indicator risk-${risk}`}>

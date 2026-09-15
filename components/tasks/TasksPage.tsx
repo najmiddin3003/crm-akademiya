@@ -18,8 +18,10 @@ import { useStaff } from "@/hooks/useStaff";
 import {
   getTaskStatus,
   isTaskBlocked,
+  isTaskState,
   compareTasksForSort,
   KANBAN_STATES,
+  parseTaskReport,
   TASK_TEMPLATES,
   todayStart,
   type Task,
@@ -72,8 +74,10 @@ export default function TasksPage() {
       })
       .catch(() => {});
   }, []);
-  // "Mas'ul shaxs" ro'yxati bazadagi aktiv xodimlardan.
-  const { names: staffNames } = useStaff();
+  // "Mas'ul shaxs" ro'yxati bazadagi aktiv xodimlardan. `employees` —
+  // tanlangan ismni `hr_employees.id` ga bog'lash uchun: xodimning shaxsiy
+  // topshiriq oynasi (app/api/tasks/inbox) aynan id bo'yicha kesiladi.
+  const { names: staffNames, employees: staffEmployees } = useStaff();
   const [viewMode, setViewMode] = useState<ViewMode>("time");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -171,16 +175,34 @@ export default function TasksPage() {
   };
   const editingTask = modalTaskId != null ? tasks.find((t) => t.id === modalTaskId) || null : null;
 
+  /**
+   * PATCH javobidagi hujjatdan FAQAT server o'zi hal qiladigan maydonlar
+   * olinadi — `report` (qayta berilganda o'chadi), `state` (qayta
+   * berilganda "yangi" ga qaytadi) va `staffId` (ism → id). Qolganini
+   * optimistik yangilash allaqachon qo'ygan.
+   */
+  const syncFromServer = (id: number, doc: Record<string, unknown>) => {
+    const report = parseTaskReport(doc.report);
+    const staffId = Number(doc.staffId) > 0 ? Number(doc.staffId) : undefined;
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, report, staffId, state: isTaskState(doc.state) ? doc.state : t.state } : t)));
+  };
+
   const handleSaveModal = async (values: TaskModalValues) => {
     const isoDate = `${values.date}T${values.time || "09:00"}:00`;
     // Topshiriq kimga biriktirilgani: kartada sarlavha sifatida `student`
     // ko'rinadi, guruh tanlansa qo'shimcha ravishda `group` ham to'ladi.
     const target = values.targetValue.trim();
+    // Ism → id. Tanlov ro'yxati aynan shu ismlardan qurilgan, ya'ni aniq
+    // tenglik yetarli (bazadagi "Najmiddin Turgunpolatov" / "Najmiddin
+    // turgunpolatov" juftligini ham to'g'ri ajratadi). Topilmasa server ism
+    // bo'yicha o'zi izlaydi (lib/taskStaff.ts).
+    const staffId = values.staff ? staffEmployees.find((e) => e.name === values.staff)?.id : undefined;
     if (modalTaskId != null) {
       const patch = {
         date: isoDate,
         description: values.note || undefined,
         staff: values.staff || undefined,
+        staffId,
         type: values.type || undefined,
         priority: values.priority,
         recurring: values.recurring,
@@ -189,11 +211,14 @@ export default function TasksPage() {
         targetKind: values.targetKind,
       };
       setTasks((prev) => prev.map((t) => (t.id === modalTaskId ? { ...t, ...patch, description: patch.description || t.description, staff: patch.staff || t.staff, type: patch.type || t.type } : t)));
+      // Javobdan `report`/`staffId` olinadi: qayta berilgan (yangi muddat,
+      // boshqa mas'ul) topshiriqning eski hisobotini server o'chiradi
+      // (app/api/tasks/[id]) — karta ham o'sha zahoti "hisobotsiz" bo'lsin.
       fetch(`/api/tasks/${modalTaskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
-      }).catch(() => {});
+      }).then((r) => r.json()).then((d) => { if (d?.ok && d.task) syncFromServer(modalTaskId, d.task); }).catch(() => {});
     } else {
       const newTask: Omit<Task, "id"> = {
         student: target,
@@ -202,6 +227,7 @@ export default function TasksPage() {
         date: isoDate,
         description: values.note || values.type || "Yangi topshiriq",
         staff: values.staff || undefined,
+        staffId,
         type: values.type || undefined,
         priority: values.priority,
         recurring: values.recurring,
@@ -267,11 +293,12 @@ export default function TasksPage() {
     const id = parseInt(e.dataTransfer.getData("text/plain"), 10);
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, state } : t)));
     setDragOverState(null);
+    // "Yangi" ga qaytarilganda server hisobotni o'chiradi — javobdan olinadi.
     fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ state }),
-    }).catch(() => {});
+    }).then((r) => r.json()).then((d) => { if (d?.ok && d.task) syncFromServer(id, d.task); }).catch(() => {});
   };
 
   // Ported from crm-akademiya/src/app.js onTaskDragStart/onTaskDragOver/onTaskDrop

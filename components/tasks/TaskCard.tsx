@@ -7,6 +7,7 @@ import {
   taskUrgency,
   type Task,
 } from "@/lib/tasksData";
+import TaskReportChip from "@/components/tasks/TaskReportChip";
 
 // "Vaqt" ko'rinishidagi topshiriq kartasi.
 //
@@ -50,6 +51,7 @@ export default function TaskCard({ task, blocked, isDragging, onOpen, onComplete
               🔗 #{task.dependsOn}
             </span>
           )}
+          <TaskReportChip report={task.report} />
         </div>
         {risk !== "normal" && risk !== "completed" && (
           <span className={`risk-indicator risk-${risk}`}>

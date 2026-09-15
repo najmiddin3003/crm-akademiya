@@ -29,12 +29,61 @@ export function isTaskTargetKind(v: unknown): v is TaskTargetKind {
   return v === "student" || v === "group" || v === "order";
 }
 
+/**
+ * Mas'ul xodimning JAVOBI — "Bajarildi" yoki "Bajarilmadi".
+ *
+ * Ikkalasi ham IZOH bilan keladi (oynada izohsiz tugma yonmaydi): rahbar
+ * "bajarilmadi" ning sababini, "bajarildi" ning natijasini o'qiy olsin.
+ */
+export type TaskOutcome = "bajarildi" | "bajarilmadi";
+
+export function isTaskOutcome(v: unknown): v is TaskOutcome {
+  return v === "bajarildi" || v === "bajarilmadi";
+}
+
+/** Mas'ul xodimning hisoboti — topshiriq hujjatining `report` maydoni. */
+export interface TaskReport {
+  outcome: TaskOutcome;
+  comment: string;
+  /** ISO UTC — javob berilgan lahza. */
+  at: string;
+  /** `hr_employees.name` — kim javob berdi (ismi kartada ko'rinadi). */
+  byName: string;
+  /**
+   * Rahbar hisobotni "Ko'rdim" deb belgilagan lahza (ISO UTC). Yo'q bo'lsa
+   * hisobot hali rahbarning oynasida turadi (app/api/tasks/inbox).
+   */
+  seenAt?: string;
+}
+
+/**
+ * Topshiriqni KIM BERGANI — hisobot aynan shu odamga qaytadi.
+ *
+ * `userId` — `users._id`; hisobot qamrovi shu bo'yicha kesiladi, chunki
+ * bitta `hr_employees` yozuviga ikkita hisob bog'langan holat bor (69).
+ */
+export interface TaskAuthor {
+  userId: string;
+  employeeId: number | null;
+  name: string;
+}
+
 export interface Task {
   id: number;
   student: string;
   date: string;
   description: string;
   staff?: string;
+  /**
+   * Mas'ul xodimning `hr_employees.id` si.
+   *
+   * `staff` — ISM SATRI (shablonlar u yerga "Siz" deb yozadi), ya'ni
+   * foydalanuvchi bilan solishtirib bo'lmaydi. Xodimning shaxsiy oynasi
+   * (app/api/tasks/inbox) aynan shu id bo'yicha kesiladi: oyna sizga
+   * berilgan topshiriqni ko'rsatishi uchun bu maydon TO'LGAN bo'lishi shart.
+   * Ismdan id'ga o'tkazish POST /api/tasks da.
+   */
+  staffId?: number;
   type?: string;
   group?: string;
   /** `student` / `group` qaysi tanlovdan to'lganini eslab qoladi. */
@@ -43,7 +92,46 @@ export interface Task {
   priority: TaskPriority;
   recurring: TaskRecurring;
   dependsOn?: number;
+  /** ISO UTC — yaratilgan lahza (xodim oynasida "berildi: …"). */
+  createdAt?: string;
+  /** Kim berdi — hisobot shu odamga qaytadi. */
+  createdBy?: TaskAuthor;
+  /** Mas'ul xodimning javobi; yo'q bo'lsa topshiriq hali javob kutmoqda. */
+  report?: TaskReport;
 }
+
+/**
+ * Hujjatdagi `report` — faqat shakli to'g'ri bo'lsa. Yaroqsiz (qo'lda
+ * buzilgan) hisobot butun sahifani yiqitmasin: `undefined` ga tushadi.
+ */
+export function parseTaskReport(v: unknown): TaskReport | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  if (!isTaskOutcome(o.outcome)) return undefined;
+  return {
+    outcome: o.outcome,
+    comment: String(o.comment ?? ""),
+    at: String(o.at ?? ""),
+    byName: String(o.byName ?? ""),
+    seenAt: typeof o.seenAt === "string" ? o.seenAt : undefined,
+  };
+}
+
+/** Hujjatdagi `createdBy` — `userId` siz yozuv muallifsiz hisoblanadi. */
+export function parseTaskAuthor(v: unknown): TaskAuthor | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  if (typeof o.userId !== "string" || !o.userId) return undefined;
+  const emp = Number(o.employeeId);
+  return { userId: o.userId, employeeId: Number.isFinite(emp) ? emp : null, name: String(o.name ?? "") };
+}
+
+/**
+ * Hali yopilmagan holatlar — xodim oynasi va qo'ng'iroq shu ro'yxat bilan
+ * so'raydi. `$ne: "bajarilgan"` EMAS: inkor indeksda chegaralangan sakrash
+ * bermaydi (lib/mongodb.ts dagi `tasks` indeksi izohi).
+ */
+export const OPEN_TASK_STATES: TaskState[] = ["yangi", "jarayonda", "kutilmoqda"];
 
 /**
  * Bugungi kun (00:00). Har chaqirilganda YANGI Date qaytaradi — ilgari bu
@@ -216,6 +304,33 @@ export function computeTaskRisk(task: Task): TaskRisk {
   if (hoursLeft < 6) return "danger";
   if (hoursLeft < 24) return "warning";
   return "normal";
+}
+
+/**
+ * Muddatgacha QANCHA QOLGANI — "2 kun 3 soat qoldi", "45 daqiqa qoldi",
+ * muddat o'tgan bo'lsa "3 soat kechikdi". Xodim oynasidagi hisoblagich.
+ *
+ * `nowMs` tashqaridan keladi (server vaqtiga tekislangan "hozir",
+ * components/shared/TaskInboxProvider.tsx): klient soati bir soat oldinda
+ * bo'lsa ham hali muddati kelmagan topshiriq "kechikdi" deb turmasin.
+ *
+ * Ikki eng yirik birlik chiziladi (kun+soat, soat+daqiqa) — "2 kun 3 soat
+ * 14 daqiqa" o'qishga og'ir, "2 kun" esa juda qo'pol. Bir daqiqadan kam
+ * qolganda "1 daqiqadan kam qoldi": nol daqiqa hech narsa demaydi.
+ */
+export function remainingUz(dueMs: number, nowMs: number): string {
+  const late = dueMs < nowMs;
+  const totalMin = Math.floor(Math.abs(dueMs - nowMs) / 60_000);
+  const suffix = late ? "kechikdi" : "qoldi";
+  if (totalMin < 1) return late ? "hozirgina muddati o'tdi" : "1 daqiqadan kam qoldi";
+  const days = Math.floor(totalMin / 1440);
+  const hours = Math.floor((totalMin % 1440) / 60);
+  const mins = totalMin % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} kun`);
+  if (hours > 0) parts.push(`${hours} soat`);
+  if (days === 0 && mins > 0) parts.push(`${mins} daqiqa`);
+  return `${parts.join(" ")} ${suffix}`;
 }
 
 export function getRiskLabel(risk: TaskRisk): string {

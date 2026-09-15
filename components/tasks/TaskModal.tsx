@@ -19,6 +19,7 @@ import {
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { uzStamp } from "@/lib/uzTime";
 
 // Ported from crm-akademiya/src/app.js openTaskModal()/saveTask() (~line 4238).
 //
@@ -136,6 +137,27 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
   return (
     <Modal onClose={onClose} controller={modal} bare size="2xl" zIndex={200} panelClassName="overflow-y-auto p-6 space-y-4">
         <h3 className="text-lg font-semibold">{task ? "Topshiriqni o'zgartirish" : "Topshiriq"}</h3>
+
+        {/* Mas'ul xodimning HISOBOTI (xodim oynasidan kelgan javob). Faqat
+            o'qish uchun — uni faqat xodimning o'zi yozadi. Muddat yoki
+            mas'ul o'zgartirilsa server hisobotni o'chirib, topshiriqni
+            xodimga QAYTADAN yuboradi (app/api/tasks/[id]) — shu yerda
+            ogohlantiriladi. */}
+        {task?.report && (
+          <div className={`rounded-xl border px-4 py-3 text-[13px] ${task.report.outcome === "bajarildi" ? "border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10" : "border-red-300 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className={`font-semibold ${task.report.outcome === "bajarildi" ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+                {task.report.outcome === "bajarildi" ? "✓ Bajarildi" : "✗ Bajarilmadi"}
+                {task.report.byName && <span className="font-normal"> — {task.report.byName}</span>}
+              </span>
+              {task.report.at && <span className="text-xs text-muted-foreground tabular-nums">{uzStamp(new Date(task.report.at))}</span>}
+            </div>
+            <div className="mt-1.5 whitespace-pre-wrap leading-snug">{task.report.comment}</div>
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              Muddat yoki mas&apos;ul shaxs o&apos;zgartirilsa hisobot o&apos;chadi va topshiriq xodimga qaytadan yuboriladi.
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>

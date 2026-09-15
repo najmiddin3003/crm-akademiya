@@ -9,6 +9,7 @@ import { useTheme } from "@/components/shared/Theme";
 import { LANGS } from "@/lib/navbar";
 import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
+import { useTaskInbox } from "@/components/shared/TaskInboxProvider";
 import { useSidebarCounts } from "@/hooks/useSidebarCounts";
 import { badgeLabel } from "@/lib/notifications";
 import { isPathAllowed } from "@/lib/permissions";
@@ -240,6 +241,11 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // Yon panel yonidagi sonlar — bazadan (ilgari qattiq yozilgan edi).
   const counts = useSidebarCounts();
   const showBadge = everLoaded && unread > 0;
+  // Xodimning shaxsiy topshiriq oynasi — Navbar'dagi ikonka bilan bir manba.
+  // Telefonda navbarning o'ng bloki yashirin, shu bois qator shu yerda.
+  const inbox = useTaskInbox();
+  const inboxPending = inbox.everLoaded ? inbox.pending.length : 0;
+  const inboxCount = inboxPending + (inbox.everLoaded ? inbox.reports.length : 0);
 
   // Navbar'dagi profil menyusi `hidden md:flex` blokida — 768px dan pastda
   // butunlay yashirinadi. Shu sabab telefondan chiqish/qulflash imkoni
@@ -624,6 +630,18 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
               ))}
             </div>
 
+            <button
+              onClick={() => { closeMobile(); inbox.openModal(); }}
+              className={`flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-left hover:bg-secondary ${inboxPending > 0 ? "text-red-600 dark:text-red-300" : "text-foreground/70"}`}
+            >
+              <svg className={`icon icon-sm ${inboxPending > 0 ? "" : "text-muted-foreground"}`}><use href="#i-task-inbox" /></svg>
+              <span className="flex-1">{inboxPending > 0 ? "Topshiriq bajarilishi kutilmoqda" : "Mening topshiriqlarim"}</span>
+              {inboxCount > 0 && (
+                <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white ${inboxPending > 0 ? "bg-red-500" : "bg-emerald-600"}`}>
+                  {inboxCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setNotifOpen((v) => !v)}
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"

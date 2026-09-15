@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isTaskDate, isTaskPriority, isTaskRecurring, isTaskState, isTaskTargetKind, type Task } from "@/lib/tasksData";
+import { resolveStaffId, taskAuthorOf } from "@/lib/taskStaff";
+import {
+  isTaskDate,
+  isTaskPriority,
+  isTaskRecurring,
+  isTaskState,
+  isTaskTargetKind,
+  parseTaskAuthor,
+  parseTaskReport,
+  type Task,
+} from "@/lib/tasksData";
 
 // GET /api/tasks — barcha topshiriqlar ro'yxati.
 export async function GET() {
@@ -16,6 +27,8 @@ export async function GET() {
     date: isTaskDate(r.date) ? r.date : new Date().toISOString(),
     description: r.description,
     staff: r.staff ?? undefined,
+    // `null` ham, yo'q maydon ham "bog'lanmagan" (Number(null) === 0).
+    staffId: Number(r.staffId) > 0 ? Number(r.staffId) : undefined,
     type: r.type ?? undefined,
     group: r.group ?? undefined,
     targetKind: isTaskTargetKind(r.targetKind) ? r.targetKind : undefined,
@@ -23,6 +36,9 @@ export async function GET() {
     priority: isTaskPriority(r.priority) ? r.priority : "orta",
     recurring: isTaskRecurring(r.recurring) ? r.recurring : "none",
     dependsOn: r.dependsOn ?? undefined,
+    createdAt: typeof r.createdAt === "string" ? r.createdAt : undefined,
+    createdBy: parseTaskAuthor(r.createdBy),
+    report: parseTaskReport(r.report),
   }));
   return NextResponse.json({ ok: true, tasks });
 }
@@ -51,19 +67,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Sana formati noto'g'ri" }, { status: 400 });
   }
 
+  // Muallif — hisobot shu odamga qaytadi (xodim oynasi, app/api/tasks/inbox).
+  // Proxy sessiyani allaqachon tekshirgan; bu yerda `null` faqat sessiya
+  // shu lahzada uzilganida bo'ladi.
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
   const db = await ensureIndexes();
   const col = db.collection("tasks");
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
+  const staff = typeof body.staff === "string" ? body.staff : undefined;
+  const [last, staffId, createdBy] = await Promise.all([
+    col.find({}).sort({ id: -1 }).limit(1).toArray(),
+    // Mas'ul xodim ID'GA bog'lanadi — ism satri xodim oynasiga yetarli emas
+    // (lib/tasksData.ts dagi `staffId` izohi).
+    resolveStaffId(db, body.staffId, staff),
+    taskAuthorOf(db, me),
+  ]);
   const nextId = (last[0]?.id ?? 0) + 1;
 
   // Yozuvni maydonma-maydon yig'amiz — mijoz yuborgan begona maydonlar
-  // (va `id`) bazaga tushmaydi.
+  // (va `id`, `report`, `createdBy`) bazaga tushmaydi.
   const task: Task = {
     id: nextId,
     student: String(body.student).trim(),
     date: body.date,
     description: typeof body.description === "string" ? body.description : "",
-    staff: typeof body.staff === "string" ? body.staff : undefined,
+    staff,
+    staffId,
     type: typeof body.type === "string" ? body.type : undefined,
     group: typeof body.group === "string" ? body.group : undefined,
     targetKind: isTaskTargetKind(body.targetKind) ? body.targetKind : undefined,
@@ -71,6 +101,8 @@ export async function POST(req: Request) {
     priority: body.priority,
     recurring: isTaskRecurring(body.recurring) ? body.recurring : "none",
     dependsOn: Number.isFinite(Number(body.dependsOn)) ? Number(body.dependsOn) : undefined,
+    createdAt: new Date().toISOString(),
+    createdBy,
   };
   await col.insertOne({ ...task });
 

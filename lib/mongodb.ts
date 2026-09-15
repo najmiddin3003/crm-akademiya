@@ -158,6 +158,11 @@ async function createAllIndexes(db: Db): Promise<void> {
   // ($in — uchta chegaralangan sakrash), keyin `date` oralig'i va saralashi.
   // `$ne: "bajarilgan"` ishlatilmaydi: inkor indeksda sakrash bermaydi.
   tasks.push(db.collection("tasks").createIndex({ state: 1, date: -1 }));
+  // Xodimning shaxsiy topshiriq oynasi (app/api/tasks/inbox) — har 60
+  // soniyada, har foydalanuvchi uchun: "menga berilganlar" `staffId` +
+  // `state` bo'yicha, "menga kelgan hisobotlar" muallif bo'yicha.
+  tasks.push(db.collection("tasks").createIndex({ staffId: 1, state: 1, date: 1 }));
+  tasks.push(db.collection("tasks").createIndex({ "createdBy.userId": 1, "report.at": -1 }));
   // task_types — Topshiriqlar sahifasidagi "Topshiriq turi" boshqaruvi.
   tasks.push(db.collection("task_types").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("orders").createIndex({ id: 1 }, { unique: true }));

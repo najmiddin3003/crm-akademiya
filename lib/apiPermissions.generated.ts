@@ -43,6 +43,7 @@ export const SHARED_API: readonly string[] = [
   "/api/search/students",
   "/api/sessions",
   "/api/sidebar-counts",
+  "/api/tasks/inbox",
 ];
 
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */

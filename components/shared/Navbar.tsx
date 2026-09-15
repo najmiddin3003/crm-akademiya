@@ -9,6 +9,7 @@ import { useTheme } from "@/components/shared/Theme";
 import { LANGS as LANGUAGES } from "@/lib/navbar";
 import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
+import { useTaskInbox } from "@/components/shared/TaskInboxProvider";
 import { badgeLabel } from "@/lib/notifications";
 import type { Lang } from "@/lib/i18n";
 import { searchAll } from "@/lib/search";
@@ -215,6 +216,19 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
   const { unread, unreadIsFloor, everLoaded } = useNotifications();
   const notifBadge = badgeLabel(unread, unreadIsFloor);
   const showBadge = everLoaded && unread > 0;
+
+  // Topshiriq ikonkasi — xodimning shaxsiy oynasi (TaskInboxProvider).
+  // Javob kutayotgan topshiriq bo'lsa QIZIL (pulsatsiya + yozuv), faqat
+  // hisobot kelgan bo'lsa yashil; ikkisi ham yo'q — oddiy ikonka. Qo'ng'iroq
+  // kabi: yuklanguncha nishon chizilmaydi.
+  const inbox = useTaskInbox();
+  const inboxPending = inbox.everLoaded ? inbox.pending.length : 0;
+  const inboxReports = inbox.everLoaded ? inbox.reports.length : 0;
+  const inboxCount = inboxPending + inboxReports;
+  const inboxTone = inboxPending > 0 ? "nav-btn-task-alert" : inboxReports > 0 ? "nav-btn-task-info" : "";
+  const inboxTitle = inboxPending > 0
+    ? "Topshiriq bajarilishi kutilmoqda"
+    : inboxReports > 0 ? "Topshiriq bo'yicha hisobot keldi" : "Mening topshiriqlarim";
   return (
     <div ref={rootRef}>
       {/* ============ SVG SPRITE (icons unique to navbar) ============ */}
@@ -243,6 +257,10 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
               ikkinchi nusxa /tasks ochiq turganda hujjatda takroriy DOM id
               hosil qilardi. */}
           <symbol id="i-clock-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></symbol>
+          {/* Xodimning shaxsiy topshiriq oynasi — galochkali planshet.
+              `i-list-todo` (sidebar) EMAS: bu boshqa narsa — sahifa emas,
+              "menga berilgan" pochta. */}
+          <symbol id="i-task-inbox" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></symbol>
           <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
           <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></symbol>
         </defs>
@@ -470,6 +488,28 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
               </Link>
             </div>
           </div>
+
+          {/* Topshiriq oynasi — sizga berilgan topshiriqlar / kelgan hisobotlar.
+              Ochiladigan menyu emas, MODAL (components/shared/TaskInboxModal.tsx):
+              xodim izoh yozib "Bajarildi"/"Bajarilmadi" deb javob beradi. */}
+          <button
+            type="button"
+            onClick={() => { setOpenMenu(null); inbox.openModal(); }}
+            className={`nav-btn relative ${inboxTone}`}
+            title={inboxTitle}
+            aria-label={inboxTitle}
+          >
+            <svg className="icon"><use href="#i-task-inbox" /></svg>
+            {inboxPending > 0 && <span className="nav-task-label">Bajarilishi kutilmoqda</span>}
+            {inboxCount > 0 && (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-4 min-w-[16px] rounded-full px-1 text-center text-[10px] font-semibold leading-4 text-white"
+                style={{ backgroundColor: inboxPending > 0 ? "#d32f2f" : "#059669" }}
+              >
+                {inboxCount > 99 ? "99+" : inboxCount}
+              </span>
+            )}
+          </button>
 
           {/* Notifications */}
           <div className="relative">
