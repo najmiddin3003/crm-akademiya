@@ -45,9 +45,9 @@ const PUBLIC = [
   // imzosi bot tokeni bilan tekshiriladi va o'quvchi bog'lanish
   // yozuvidan topiladi (lib/studentBot/webapp.ts). Marshrut faqat O'QIYDI.
   "/api/student-web/me",
-  // TEZLIK POYGASI (/tezlik) — faqat vaqt va server nomini qaytaradi,
-  // ma'lumot yo'q; eski Vercel nusxasi ham shu endpointlar orqali
-  // o'lchanadi (CORS "*", lib/health.ts).
+  // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
+  // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
+  // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).
   "/api/health/ping",
   "/api/health/db",
 ];

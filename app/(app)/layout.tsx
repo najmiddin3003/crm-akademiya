@@ -51,7 +51,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       isAdmin={user.role === "admin"}
     >
       {children}
-      {/* Suzuvchi robot — tezlik poygasi (components/tezlik/SpeedFab.tsx) */}
+      {/* Suzuvchi robot — tezlik sinovi (components/tezlik/SpeedFab.tsx) */}
       <SpeedFab />
     </AppShell>
   );

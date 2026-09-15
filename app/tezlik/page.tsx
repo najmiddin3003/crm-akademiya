@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import SpeedRacePage from "@/components/tezlik/SpeedRacePage";
+import TapTestPage from "@/components/tezlik/TapTestPage";
 
-// Ommaviy "Tezlik poygasi" — mijozga eski (Vercel, Singapur) va yangi
-// (Eskiz VPS, Toshkent) serverni o'z qurilmasidan jonli taqqoslab
-// ko'rsatish (12.09.2026, VPS'ga ko'chgan kun). `(app)` guruhidan
-// tashqarida — sidebar/navbar yo'q, login talab qilmaydi (proxy.ts
-// PUBLIC_PATHS). Mantiq: components/tezlik/SpeedRacePage.tsx.
+// Ommaviy "Tezlik sinovi" — mijoz o'z qurilmasidan serverning javob
+// tezligini jonli ko'radi (barmoq sinovi). 12.09.2026 da, VPS'ga ko'chgan
+// kuni ochilgan; 15.09 gacha eski Vercel nusxasi bilan poyga ham bor edi
+// (components/tezlik/TapTest.tsx izohi). `(app)` guruhidan tashqarida —
+// sidebar/navbar yo'q, login talab qilmaydi (proxy.ts PUBLIC_PATHS).
+// Mantiq: components/tezlik/TapTestPage.tsx.
 
 export const metadata: Metadata = {
-  title: "Tezlik poygasi — Tizimli",
+  title: "Tezlik sinovi — Tizimli",
 };
 
 export default function Page() {
-  return <SpeedRacePage />;
+  return <TapTestPage />;
 }

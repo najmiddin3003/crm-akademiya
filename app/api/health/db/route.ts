@@ -3,10 +3,10 @@ import { getDb } from "@/lib/mongodb";
 import { healthHeaders, healthNode } from "@/lib/health";
 
 // GET /api/health/db — bazaga BITTA arzon so'rov (`branches` dan bitta
-// hujjatning _id si) va uning serverdagi davomiyligi. Tezlik poygasi
-// (/tezlik) shu bilan "server → baza" masofasini ko'rsatadi: Vercel'da
-// baza Singapurdagi Atlas, VPS'da — o'sha serverning o'zida.
-// Ma'lumot qaytarmaydi, sessiya talab qilmaydi (PUBLIC).
+// hujjatning _id si) va uning serverdagi davomiyligi. Barmoq sinovi
+// (/tezlik, components/tezlik/TapTest.tsx) aynan shu so'rovni o'lchaydi:
+// brauzer → server → baza → brauzer. Ma'lumot qaytarmaydi, sessiya
+// talab qilmaydi (PUBLIC).
 export const dynamic = "force-dynamic";
 
 export async function GET() {

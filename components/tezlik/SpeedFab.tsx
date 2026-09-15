@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Link from "@/components/ui/Link";
-import SpeedRace, { WhyFast } from "@/components/tezlik/SpeedRace";
 import TapTest from "@/components/tezlik/TapTest";
+import WhyFast from "@/components/tezlik/WhyFast";
 import RobotFace from "@/components/tezlik/RobotFace";
 
 // SUZUVCHI ROBOT — saytning har sahifasida turadigan, istalgan joyga
 // sudrab qo'yiladigan tugma (referens: akademiya.edutizim.uz dagi robot).
-// Bosilsa tezlik poygasi (SpeedRace.tsx) modalda ochiladi; sudralsa —
+// Bosilsa barmoq sinovi (TapTest.tsx) modalda ochiladi; sudralsa —
 // faqat ko'chadi (5 px dan kam siljish = bosish). Joyi localStorage'da
 // saqlanadi (qurilma bo'yicha), oyna kichraysa ekran ichiga qaytariladi.
 // app/(app)/layout.tsx da mount qilinadi — ya'ni faqat kirgan
@@ -117,9 +117,9 @@ export default function SpeedFab() {
       {open && (
         <Modal
           onClose={() => setOpen(false)}
-          title="Tezlik poygasi"
-          subtitle="Sizning qurilmangizdan ikkala serverga bir vaqtda so'rov yuboriladi — raqamlar jonli."
-          size="3xl"
+          title="Tezlik sinovi"
+          subtitle="So'rov sizning qurilmangizdan serverga hozir yuboriladi — raqamlar jonli, taxmin emas."
+          size="xl"
           bodyClassName="p-4 space-y-3"
           zIndex={1150}
           footer={
@@ -128,7 +128,6 @@ export default function SpeedFab() {
             </Link>
           }
         >
-          <SpeedRace compact />
           <TapTest compact />
           <WhyFast compact />
         </Modal>
