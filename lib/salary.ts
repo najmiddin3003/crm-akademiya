@@ -76,10 +76,16 @@ export interface SalaryReceipt {
    *
    * `plastikSalary` — chiqarish paytidagi NOMINAL summa (soliq asosi).
    * `paidPlastikBefore` — shu oyda undan oldin kartadan berilgani.
+   * `plastikTarget` — kartaga MO'LJAL (payrollPlastikTarget) o'sha
+   *   paytdagi qoida bo'yicha, muzlatilgan: chekdagi "qoldiq yetmadi"
+   *   izohi shundan solishtiradi. 16.09.2026 gacha bu maydon yo'q edi —
+   *   o'sha davr cheklarida mo'ljal qoidasi boshqacha (davrga bo'lingan)
+   *   bo'lgani uchun chek oynasi eski qoidaga qaytadi.
    * `paidPlastik` / `paidNaqd` — shu chiqarishdagi ikki oyoq.
    */
   plastikSalary?: number;
   paidPlastikBefore?: number;
+  plastikTarget?: number;
   paidPlastik?: number;
   paidNaqd?: number;
 }
@@ -321,7 +327,9 @@ export interface EmployeePayroll {
    * (`hr_employees.plastikSalary`). Biriktirilmagan xodimda 0.
    *
    * SOLIQ HISOBIGA UMUMAN TEGMAYDI. Soliq bugungidek hisoblangan
-   * oylikdan ushlanadi; bu maydon faqat TO'LOVNI ikki kanalga bo'ladi.
+   * oylikdan ushlanadi. Bu summa to'lanadigan qoldiqdan BIRINCHI kartaga
+   * ketadi, xodimga qo'lga faqat undan oshgani beriladi (quyida
+   * `payrollPlastikLeg` / `payrollCashLeg`).
    */
   plastikSalary: number;
   /**
@@ -410,56 +418,89 @@ export function payrollDebt(e: EmployeePayroll, p: PayrollPeriod): number {
 
 // ---------- To'lovning ikki oyog'i: PLASTIK va NAQD ----------
 //
-// DIQQAT — BU YERDA HISOB YO'Q, FAQAT TAQSIMOT. Kassadan chiqadigan summa
-// (`payrollDue`) yuqorida allaqachon hisoblangan; quyidagilar uni ikkiga
-// bo'ladi, xolos. Ya'ni plastikni yoqish xodimga tegadigan JAMI summani
-// zarracha o'zgartirmaydi — faqat pul qaysi kanaldan chiqishini aytadi.
+// KARTA BIRINCHI, NAQD — FAQAT UNDAN OSHGANI (foydalanuvchi qoidasi,
+// 16.09.2026):
+//
+//     kartaga = min(plastik − shu oyda kartadan berilgani, qoldiq)
+//     naqd    = qoldiq − kartaga            (qoldiq = hisoblangan − soliq
+//                                            + o'tgan oydan − olinganlar)
+//
+// Ya'ni xodim ishlab topgani (soliqdan keyin) AVVAL kartaga ketadi; qo'lga
+// beriladigani — karta TO'LIQ qoplangandan keyin qolgani. Misol: kartaga
+// 1 000 000, xodim 800 000 ishlagan → kartaga 800 000, "Qolgan" 0;
+// 1 200 000 ishlagan → kartaga 1 000 000, qo'lga 200 000.
+//
+// NIMA O'ZGARMAYDI: bu yerda HISOB YO'Q, faqat taqsimot — ikki oyoq
+// yig'indisi doim `max(payrollDue, 0)`. Plastikni yoqish xodimga tegadigan
+// JAMI summani o'zgartirmaydi, faqat qaysi kanaldan chiqishini aytadi.
+//
+// IKKI QOIDA, ikkalasi ham foydalanuvchi bilan kelishilgan:
+//   • karta QOLDIQDAN OSHMAYDI — kam ishlagan xodimga karta "qarzga"
+//     to'liq chiqarilmaydi, yetmagani KEYINGI OYGA HAM O'TMAYDI
+//     (shu oyda qancha bo'lsa shu ketadi, tamom);
+//   • karta qoplanmaguncha NAQD (avans ham, oylik ham) CHIQMAYDI —
+//     kassa Chiqim oynasi va app/api/cashboxes/[id]/adjust chegarasi
+//     aynan `payrollCashLeg` ga tenglashtirilgan.
+//
+// NEGA DAVRGA BO'LINMAYDI (10.09–16.09 oralig'ida `plastik × kun/oy` edi):
+// bo'linsa oy o'rtasida kartaning bir qismi "hali kerak emas" deb naqdga
+// o'tkazib yuborilardi va oyning qolgan qismida tushum sust bo'lsa karta
+// oxirida to'lmay qolardi — bu "karta birinchi" qoidasiga zid. Karta
+// oylik summa: oy boshidanoq to'liq mo'ljal, hisoblangan yetganicha
+// to'ladi.
 
 /**
- * Shu oyda kartaga YANA qancha yuborilishi kerakligi.
+ * Shu oyda kartaga YANA qancha yuborilishi kerakligi (mo'ljal).
  *
  * Oy davomida kartadan berilgan avans va oylik (`paidPlastik`) e'lon
  * qilingan summani to'ldirib boradi, ya'ni bir oyda ikkinchi marta
  * chiqarilganda karta oyog'i QAYTA to'liq chiqmaydi.
- *
- * DAVRGA BO'LINADI — oklad bilan bir xil qoida (`payrollBase`).
- *
- * NIMA NOTO'G'RI EDI: `plastikSalary` OYLIK summa, lekin u 1-kundanoq
- * to'liq "kartaga tegishli" deb olinardi. Oy o'rtasida xodimning
- * ishlab topgani deyarli har doim shu summadan kichik bo'ladi
- * (10 kunda 801 000, e'lon qilingani 1 672 000), ya'ni `Math.min`
- * quyida HAR DOIM qoldiqni tanlardi: karta oyog'i = butun qoldiq,
- * naqd oyog'i = 0. Natijada naqd berilgan avans kartaga chiqadigan
- * summani yeb ketardi — foydalanuvchi buni xato deb ko'rsatdi
- * (10.09.2026).
- *
- * Bo'lingandan keyin: kartaga 1 672 000 × 10/30 = 557 333, qolgani
- * naqd oyog'iga tushadi va naqd avans o'sha yerdan yeydi. JAMI SUMMA
- * O'ZGARMAYDI — pastdagi ikkala oyoq yig'indisi baribir `payrollDue`.
- * Tugagan oyda `day === daysIn`, ya'ni eski xulq saqlanadi.
  */
-export function payrollPlastikTarget(e: EmployeePayroll, p: PayrollPeriod): number {
-  return Math.max(Math.round((e.plastikSalary * p.day) / p.daysIn) - e.paidPlastik, 0);
+export function payrollPlastikTarget(e: EmployeePayroll): number {
+  return Math.max(e.plastikSalary - e.paidPlastik, 0);
 }
 
 /**
  * KARTA OYOG'I — shu chiqarishda plastik bilan beriladigan summa.
  *
- * Karta BIRINCHI to'lanadi: rasmiy o'tkazma qonuniy majburiyat va u
- * qoldiqda oxirgi bo'lib qolmasligi kerak. Avans, o'tgan oy qarzi va
- * soliq esa naqd qismdan yeydi.
- *
- * `payrollDue` USTIDAN bo'linadi, `payrollEarned` ustidan EMAS.
- * NIMA UCHUN: kassadan chiqadigan pul — hisoblangan oylik emas,
- * TO'LANADIGAN QOLDIQ (unda avans va o'tgan oy qoldig'i ayrilgan).
- * Hisoblangan ustidan bo'linsa, oy davomida 3 000 000 avans olgan xodimga
- * yana 4 760 000 chiqarilardi — 2.7 barobar ortiq.
+ * `payrollDue` USTIDAN bo'linadi, `payrollEarned` ustidan EMAS: kassadan
+ * chiqadigan pul — hisoblangan oylik emas, TO'LANADIGAN QOLDIQ (unda soliq,
+ * avans va o'tgan oy qoldig'i ayrilgan). Qoldiq mo'ljaldan kichik bo'lsa
+ * kartaga qoldiqning o'zi ketadi va naqd 0 bo'ladi.
  */
 export function payrollPlastikLeg(e: EmployeePayroll, p: PayrollPeriod): number {
-  return Math.min(payrollPlastikTarget(e, p), Math.max(payrollDue(e, p), 0));
+  return Math.min(payrollPlastikTarget(e), Math.max(payrollDue(e, p), 0));
 }
 
-/** NAQD OYOG'I — qoldiq. Ayirma bo'lgani uchun alohida yaxlitlanmaydi. */
+/**
+ * KARTADAN KEYINGI QOLDIQ, ishorali: to'lanadigan qoldiq − karta oyog'i.
+ *
+ * Musbat — xodimga qo'lga beriladigan naqd (sahifadagi "Qolgan" ustuni).
+ * Manfiy FAQAT `payrollDue` manfiy bo'lganda (xodim ishlaganidan ko'p
+ * olgan — qarzdor); karta yetmagani manfiy bermaydi, u shunchaki 0.
+ * Plastigi yo'q xodimda bu aynan `payrollDue`.
+ */
+export function payrollCashDue(e: EmployeePayroll, p: PayrollPeriod): number {
+  return payrollDue(e, p) - payrollPlastikLeg(e, p);
+}
+
+/**
+ * NAQD OYOG'I — kartadan keyin qolgani, manfiy bo'lmaydi. Ayirma bo'lgani
+ * uchun alohida yaxlitlanmaydi.
+ *
+ * Bu ayni paytda xodimga NAQD berish mumkin bo'lgan CHEGARA ham: kassa
+ * Chiqim oynasidagi avans/oylik shu raqamdan oshmaydi.
+ */
 export function payrollCashLeg(e: EmployeePayroll, p: PayrollPeriod): number {
-  return Math.max(payrollDue(e, p), 0) - payrollPlastikLeg(e, p);
+  return Math.max(payrollCashDue(e, p), 0);
+}
+
+/**
+ * Kassadan CHIQADIGAN JAMI summa — ikki oyoq yig'indisi, ya'ni
+ * `max(payrollDue, 0)`. Sahifa (chiqariladigan summa, "Qolgan
+ * to'lanadigan" kartochkasi, sof foyda) va server (`tolangan`) aynan
+ * shuni ishlatadi — ikkalasi bir xil raqamni ko'rsatishi shart.
+ */
+export function payrollPayout(e: EmployeePayroll, p: PayrollPeriod): number {
+  return payrollPlastikLeg(e, p) + payrollCashLeg(e, p);
 }

@@ -14,7 +14,6 @@ import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   payrollBase,
   payrollDebt,
-  payrollDue,
   payrollEarned,
   payrollMonthKey,
   payrollPaid,
@@ -24,7 +23,10 @@ import {
   payrollTax,
   payrollTaxLines,
   payrollPlastikLeg,
+  payrollPlastikTarget,
   payrollCashLeg,
+  payrollCashDue,
+  payrollPayout,
   UZ_MONTHS,
   type EmployeePayroll,
 } from "@/lib/salary";
@@ -301,19 +303,23 @@ export default function SalaryCreatePage() {
   // "hisoblangan"i 0 bo'ladi va uni yig'indiga qo'shish jami summani
   // haqiqatdan kichik ko'rsatgan bo'lardi.
   const stats = useMemo(() => {
-    let hisoblangan = 0, avans = 0, tolangan = 0, qolgan = 0, otganOydan = 0, qarzdorlik = 0;
+    let hisoblangan = 0, avans = 0, tolangan = 0, qolgan = 0, kartaga = 0, naqd = 0, otganOydan = 0, qarzdorlik = 0;
     for (const e of employees.filter((x) => x.configured)) {
       hisoblangan += payrollEarned(e, period);
       avans += e.paidAvans;
       tolangan += e.paidOylik;
-      // To'lanadigan va qarzdorlik ALOHIDA yig'iladi — ishorali yig'indi
-      // bo'lganda bir xodimning qarzi boshqasiga to'lanadigan pulni
-      // "yeb" qo'yardi va karta jamini haqiqatdan kichik ko'rsatardi.
-      qolgan += Math.max(payrollDue(e, period), 0);
+      // "Qolgan to'lanadigan" — kassadan CHIQADIGAN jami (lib/salary.ts →
+      // payrollPayout = karta + naqd = musbat qoldiq). Karta va naqd
+      // kesimi kartochka izohi uchun. Qarzdorlik ALOHIDA yig'iladi —
+      // ishorali yig'indi bo'lganda bir xodimning qarzi boshqasiga
+      // to'lanadigan pulni "yeb" qo'yardi.
+      qolgan += payrollPayout(e, period);
+      kartaga += payrollPlastikLeg(e, period);
+      naqd += payrollCashLeg(e, period);
       qarzdorlik += payrollDebt(e, period);
       otganOydan += e.carryOver;
     }
-    return { hisoblangan, avans, tolangan, qolgan, otganOydan, qarzdorlik };
+    return { hisoblangan, avans, tolangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik };
   }, [employees, period]);
 
   /**
@@ -342,14 +348,15 @@ export default function SalaryCreatePage() {
   // ro'yxat yuklangach ortiqcha qayta render bo'lardi.
   const methodKey = method || paymentMethods[0]?.key || "";
 
-  // Kassadan CHIQADIGAN summa: tanlangan xodimlarning musbat qoldiqlari.
-  // Qarzdor xodimga pul chiqmaydi, shuning uchun u yig'indiga kirmaydi —
-  // server ham aynan shunday hisoblaydi.
+  // Kassadan CHIQADIGAN summa: tanlangan xodimlarning musbat qoldiqlari
+  // (karta oyog'i + kartadan keyingi naqd). Qarzdor xodimga pul chiqmaydi
+  // — server ham aynan shu funksiya bilan hisoblaydi
+  // (app/api/salary-runs/route.ts).
   const payoutTotal = useMemo(() => {
     let sum = 0;
     for (const e of employees) {
       if (!selected.has(e.id) || !e.configured) continue;
-      sum += Math.max(payrollDue(e, period), 0);
+      sum += payrollPayout(e, period);
     }
     return sum;
   }, [employees, selected, period]);
@@ -567,14 +574,28 @@ export default function SalaryCreatePage() {
           hint="kassadan chiqarilgan"
           loading={loading}
         />
+        {/* Kassadan CHIQADIGAN jami. Plastik bor bo'lsa izohda ikki oyoq
+            turadi — karta birinchi, naqd undan keyingi qoldiq, ya'ni
+            jadvaldagi "Qolgan" ustunining yig'indisi aynan NAQD qismi.
+            O'tgan oy tafsiloti sichqoncha ostida. */}
         <StatCard
           tone="rose"
           label="Qolgan to'lanadigan"
           value={fmtSum(stats.qolgan)}
           hint={
-            stats.qarzdorlik > 0
-              ? `o'tgan oydan: ${fmtSum(stats.otganOydan)} · xodim qarzi: ${fmtSum(stats.qarzdorlik)}`
-              : `shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}`
+            anyPlastik
+              ? `kartaga ${fmtNum(stats.kartaga)} · naqd ${fmtNum(stats.naqd)}`
+                + (stats.qarzdorlik > 0 ? ` · xodim qarzi: ${fmtNum(stats.qarzdorlik)}` : "")
+              : stats.qarzdorlik > 0
+                ? `o'tgan oydan: ${fmtSum(stats.otganOydan)} · xodim qarzi: ${fmtSum(stats.qarzdorlik)}`
+                : `shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}`
+          }
+          title={
+            anyPlastik
+              ? `Kartaga ${fmtSum(stats.kartaga)} — qoldiqdan birinchi, plastik summasigacha.` +
+                ` Naqd ${fmtSum(stats.naqd)} — kartadan keyin xodimlarga qo'lga beriladigani (jadvaldagi "Qolgan" ustuni).` +
+                ` Shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}.`
+              : undefined
           }
           loading={loading}
         />
@@ -633,13 +654,21 @@ export default function SalaryCreatePage() {
                     olinganlar → qolgan. Bonus va jarima kamdan-kam
                     to'ldiriladi, shuning uchun ular OXIRGA surildi. */}
                 <th className="text-right px-3 py-3 whitespace-nowrap">Hisoblangan</th>
-                {/* HISOBLANGAN → KARTAGA → NAQD → SOLIQ tartibi ataylab:
-                    hisoblangan oylik avval ikki kanalga bo'linadi, keyin
-                    undan soliq ushlanadi. Qator o'ngga qarab o'qilganda
-                    pulning yo'li ko'rinadi. Kanal ustunlari faqat kimdadir
-                    plastik oyligi bo'lsa chiziladi. */}
-                {anyPlastik && <th className="text-right px-3 py-3 whitespace-nowrap">Kartaga</th>}
-                {anyPlastik && <th className="text-right px-3 py-3 whitespace-nowrap">Naqd</th>}
+                {/* HISOBLANGAN → KARTAGA → SOLIQ → … → QOLGAN tartibi
+                    ataylab: hisoblangandan avval karta (BIRINCHI), keyin
+                    ushlanmalar, eng oxirida qo'lga tegadigan naqd. Qator
+                    o'ngga qarab o'qilganda pulning yo'li ko'rinadi. Alohida
+                    "Naqd" ustuni YO'Q: kartadan keyingi naqd aynan "Qolgan"
+                    ustunining o'zi — ikkita bir xil raqam turardi. Karta
+                    ustuni faqat kimdadir plastik oyligi bo'lsa chiziladi. */}
+                {anyPlastik && (
+                  <th
+                    className="text-right px-3 py-3 whitespace-nowrap"
+                    title="Kartaga birinchi ketadi — plastik summasigacha; hisoblangan yetmasa shu oydagi qoldiqning o'zi"
+                  >
+                    Kartaga
+                  </th>
+                )}
                 <th className="text-right px-3 py-3 whitespace-nowrap">Soliq</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">Avans olingan</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;langan oylik</th>
@@ -648,8 +677,14 @@ export default function SalaryCreatePage() {
                 <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
                 {/* QOLGAN — qatorning ENG OXIRIDA, yakuniy raqam sifatida:
                     hisoblangan − soliq (+ o'tgan oydan − allaqachon
-                    to'langani). Ya'ni kassadan haqiqatan chiqadigan summa. */}
-                <th className="text-right px-3 py-3 whitespace-nowrap">Qolgan</th>
+                    to'langani) − kartaga. Ya'ni kartadan KEYIN xodimga
+                    qo'lga beriladigan naqd; karta qoplanmasa 0. */}
+                <th
+                  className="text-right px-3 py-3 whitespace-nowrap"
+                  title="Kartadan keyin xodimga qo'lga beriladigan naqd. Hisoblangan kartani qoplamasa 0."
+                >
+                  Qolgan
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -657,7 +692,13 @@ export default function SalaryCreatePage() {
                 const base = payrollBase(e, period);
                 const earned = payrollEarned(e, period);
                 const paid = payrollPaid(e);
-                const due = payrollDue(e, period);
+                // Karta oyog'i, uning mo'ljali va kartadan KEYINGI qoldiq
+                // (ishorali). Plastigi yo'q xodimda `cashDue` — oddiy
+                // `payrollDue`. `plastikShort` — karta shu oyda qancha
+                // to'lmay qolgani (qoldiq mo'ljaldan kichik).
+                const plastik = payrollPlastikLeg(e, period);
+                const plastikShort = payrollPlastikTarget(e) - plastik;
+                const cashDue = payrollCashDue(e, period);
                 const tax = payrollTax(e, period);
                 // Sichqoncha ostida qaysi soliqlardan yig'ilgani ko'rinsin.
                 const taxTitle = payrollTaxLines(e, period)
@@ -720,22 +761,28 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       {e.configured ? fmtNum(earned) : <span className="text-muted-foreground">—</span>}
                     </td>
-                    {/* KARTAGA — shu chiqarishda kartaga o'tadigan summa.
-                        Boshqa hech narsa ko'rsatilmaydi: e'lon qilingan
-                        summa xodim kartasida turadi, bu ustun esa faqat
-                        "hozir qancha ketadi" degan savolga javob beradi. */}
+                    {/* KARTAGA — shu chiqarishda kartaga o'tadigan summa:
+                        to'lanadigan qoldiqdan BIRINCHI, plastik summasigacha
+                        (shu oyda kartadan berilgani ayrilib). Qoldiq
+                        yetmasa qoldiqning o'zi turadi — ostida yetmagani. */}
                     {anyPlastik && (
                       <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                         {e.plastikSalary > 0 ? (
-                          <span className="font-medium text-sky-600">{fmtNum(payrollPlastikLeg(e, period))}</span>
+                          <div
+                            title={
+                              `Plastik oylik ${fmtNum(e.plastikSalary)}` +
+                              (e.paidPlastik > 0 ? ` − shu oyda kartadan berilgan ${fmtNum(e.paidPlastik)}` : "") +
+                              (plastikShort > 0 ? ` — hisoblangan yetmagani uchun ${fmtNum(plastik)} chiqadi` : "")
+                            }
+                          >
+                            <div className="font-medium text-sky-600">{fmtNum(plastik)}</div>
+                            {plastikShort > 0 && (
+                              <div className="text-[11px] text-muted-foreground">{`${fmtNum(plastikShort)} yetmadi`}</div>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
-                      </td>
-                    )}
-                    {anyPlastik && (
-                      <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
-                        {e.configured ? fmtNum(payrollCashLeg(e, period)) : <span className="text-muted-foreground">—</span>}
                       </td>
                     )}
                     {/* Soliq — faqat kartasida yoqilgan xodimda hisoblanadi
@@ -777,19 +824,24 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {e.jarima > 0 ? <span className="text-rose-600 font-medium">{fmtNum(e.jarima)}</span> : <span className="text-muted-foreground">0</span>}
                     </td>
-                    {/* QOLGAN — yakuniy raqam, qatorning eng oxirida. */}
+                    {/* QOLGAN — yakuniy raqam, qatorning eng oxirida:
+                        kartadan keyin qo'lga beriladigan naqd. Qoldiq
+                        kartani qoplamasa 0 (yetmagani "Kartaga" ostida
+                        yozilgan, bu qarz EMAS va keyingi oyga o'tmaydi).
+                        Manfiy faqat xodim ishlaganidan ko'p olganda —
+                        avvalgidek "qarzdor". */}
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums font-bold whitespace-nowrap">
-                      {e.configured ? (
-                        due < 0 ? (
-                          <div>
-                            <div className="text-amber-600">{fmtNum(due)}</div>
-                            <div className="text-[11px] font-normal text-muted-foreground">qarzdor</div>
-                          </div>
-                        ) : (
-                          fmtNum(due)
-                        )
-                      ) : (
+                      {!e.configured ? (
                         <span className="text-muted-foreground font-normal">—</span>
+                      ) : cashDue >= 0 ? (
+                        <span title={plastik > 0 ? `Qoldiq ${fmtNum(Math.max(cashDue + plastik, 0))} − kartaga ${fmtNum(plastik)}` : undefined}>
+                          {fmtNum(cashDue)}
+                        </span>
+                      ) : (
+                        <div>
+                          <div className="text-amber-600">{fmtNum(cashDue)}</div>
+                          <div className="text-[11px] font-normal text-muted-foreground">qarzdor</div>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -879,9 +931,9 @@ export default function SalaryCreatePage() {
               )}
 
               {/* TARTIB: avval kanallar, oxirida yig'indi — jadvaldagi
-                  "Kartaga · Naqd · Qolgan" ustunlari bilan bir xil o'qiladi.
-                  Har kanal yonida SHU KASSADAGI qoldiq turadi, ya'ni pul
-                  yetmasligi tugma bosilishidan OLDIN ko'rinadi. */}
+                  "Kartaga" va "Qolgan" (= naqd) ustunlari bilan bir xil
+                  o'qiladi. Har kanal yonida SHU KASSADAGI qoldiq turadi,
+                  ya'ni pul yetmasligi tugma bosilishidan OLDIN ko'rinadi. */}
               <div className="rounded-lg border border-border bg-secondary/20 p-3 text-[13px] space-y-1">
                 {plastikTotal > 0 ? (
                   <>

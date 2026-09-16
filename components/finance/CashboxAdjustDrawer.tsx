@@ -16,7 +16,18 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
-import { payrollDue, payrollEarned, payrollPeriod, payrollPeriodOf, type EmployeePayroll } from "@/lib/salary";
+import {
+  payrollCashLeg,
+  payrollEarned,
+  payrollPaid,
+  payrollPayout,
+  payrollPeriod,
+  payrollPeriodOf,
+  payrollPlastikLeg,
+  payrollTax,
+  type EmployeePayroll,
+} from "@/lib/salary";
+import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { ROLE_LABELS } from "@/constants/employees";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
@@ -127,14 +138,14 @@ export default function CashboxAdjustDrawer({
   const category = selectedType?.name ?? "";
   // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan.
   const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
-  // Tanlangan SANANING oyi — oylik hisobining davri ham, "shu oyda
-  // allaqachon berilgan" so'rovi ham AYNAN shu oyga tegishli bo'lishi kerak.
+  // Tanlangan SANANING oyi — oylik qatori (hisoblangan ham, "shu oyda
+  // allaqachon berilgan" ham) AYNAN shu oy uchun so'raladi.
   //
-  // Ilgari `period` doim JORIY oy edi, `alreadyPaid` esa tanlangan sana
-  // oyidan olinardi (pastdagi `/api/employee-salary-summary`). Kassir sanani
-  // o'tgan oyga qo'yganda "hisoblangan oylik" sentabrniki, "olingan" esa
-  // avgustniki bo'lib chiqardi — `remainingSalary` chegarasi ikki xil oydan
-  // yig'ilardi va o'tgan oy uchun avans berishga to'sqinlik qilardi.
+  // Ilgari `period` doim JORIY oy edi va "olingan" alohida so'rov bilan
+  // tanlangan sana oyidan olinardi. Kassir sanani o'tgan oyga qo'yganda
+  // "hisoblangan oylik" sentabrniki, "olingan" esa avgustniki bo'lib
+  // chiqardi — chegara ikki xil oydan yig'ilardi va o'tgan oy uchun avans
+  // berishga to'sqinlik qilardi. Endi hammasi bitta qatordan.
   const monthKey = useMemo(() => {
     if (!date) return "";
     const p = (n: number) => String(n).padStart(2, "0");
@@ -253,36 +264,47 @@ export default function CashboxAdjustDrawer({
   const employeeOylik = selectedPayroll && selectedPayroll.configured
     ? payrollEarned(selectedPayroll, period)
     : 0;
-  const carryOver = selectedPayroll?.carryOver ?? 0;
 
-  // Shu oyda xodimga necha marta oylik/avans chiqarilgani serverdan olinadi
-  // (`monthKey` yuqorida, `period` bilan bir joyda hisoblangan). Sana yoki
-  // xodim o'zgarsa qayta yuklanadi. Yig'indisi — `alreadyPaid`.
-  const [alreadyPaid, setAlreadyPaid] = useState(0);
-  useEffect(() => {
-    if (!isSalaryPayoutCategory || !selectedEmployee || !monthKey) {
-      // Shart bajarilmasa qiymat allaqachon 0 — qayta o'rnatish shart emas
-      // (effekt tanasidagi setState ortiqcha render zanjirini keltiradi).
-      return;
-    }
-    let cancelled = false;
-    const q = new URLSearchParams({ name: selectedEmployee.name, month: monthKey });
-    fetch(`/api/employee-salary-summary?${q}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        setAlreadyPaid(d.ok ? Number(d.paid) || 0 : 0);
-      })
-      .catch(() => { if (!cancelled) setAlreadyPaid(0); })
-    return () => { cancelled = true; };
-  }, [isSalaryPayoutCategory, selectedEmployee, monthKey]);
-
-  // Chiqarish mumkin = hisoblangan oylik + o'tgan oydan qolgan − olingan.
-  const remainingSalary = Math.max(0, employeeOylik + carryOver - alreadyPaid);
+  // CHIQARISH CHEGARASI — Oylik hisob-kitob sahifasi bilan AYNAN BIR XIL
+  // funksiyalar (lib/salary.ts), ya'ni oyna, sahifa va server bitta
+  // raqamni ko'radi:
+  //
+  //   naqd (va boshqa) turida → payrollCashLeg — hisoblangan − soliq −
+  //                              KARTA − olingan (+ o'tgan oydan);
+  //   plastik turida          → payrollPayout  — karta oyog'i + naqd qoldig'i.
+  //
+  // QOIDA (foydalanuvchi, 16.09.2026): karta qoplanmaguncha naqd avans ham,
+  // oylik ham chiqmaydi — xodim ishlab topgani avval kartaga ketadi, qo'lga
+  // faqat undan oshgani. Shu bois naqd chegara "hisoblangan − olingan" EMAS.
+  //
+  // "Olingan" ham qatorning o'zidan (`paidAvans + paidOylik`): ilgari u
+  // alohida /api/employee-salary-summary so'rovi bilan olinardi va o'sha
+  // so'rov faqat `date` oyiga qarardi — o'tgan oy uchun deb belgilangan
+  // to'lov (`periodMonth`) ikki manbada ikki xil oyga tushib, chegara
+  // sahifadagi raqamdan farq qilardi.
+  const isPlastikMethod = method === PLASTIK_METHOD_KEY;
+  const salaryBreakdown = selectedPayroll && selectedPayroll.configured
+    ? {
+        tax: payrollTax(selectedPayroll, period),
+        karta: payrollPlastikLeg(selectedPayroll, period),
+        paid: payrollPaid(selectedPayroll),
+        carryOver: selectedPayroll.carryOver,
+        naqd: payrollCashLeg(selectedPayroll, period),
+        jami: payrollPayout(selectedPayroll, period),
+      }
+    : null;
+  const remainingSalary = salaryBreakdown ? (isPlastikMethod ? salaryBreakdown.jami : salaryBreakdown.naqd) : 0;
+  // Karta hali to'liq qoplanmagan (qoldiq mo'ljaldan kichik) — naqd 0
+  // bo'lishining sababi shu; xabarda "oylik tugagan" EMAS, shu aytiladi.
+  const kartaYetmadi = !!salaryBreakdown && !isPlastikMethod && salaryBreakdown.naqd <= 0
+    && selectedPayroll!.plastikSalary > 0 && salaryBreakdown.jami > 0;
   // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) —
   // aks holda 0 deb o'qilib, hamma to'lov rad etilgan bo'lardi.
   const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
   const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && total > remainingSalary;
+  const exhaustedMessage = kartaYetmadi
+    ? `Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq ${fmtUZS(salaryBreakdown!.karta)} kartaga ketadi)`
+    : "Bu oyda xodimga chiqariladigan qoldiq yo'q — oylik to'liq chiqarilgan yoki hali hisoblanmagan";
 
   // O'quvchiga qaytariladigan summa uning balansidan oshmasligi kerak.
   const studentBalanceExceeds = target === "student" && !!selectedStudent && total > studentBalance;
@@ -324,11 +346,11 @@ export default function CashboxAdjustDrawer({
       return;
     }
     if (salaryExhausted) {
-      showError("Bu oyga xodim oyligi to'liq chiqarib bo'lingan — keyingi oygacha qo'shimcha pul chiqarib bo'lmaydi");
+      showError(exhaustedMessage);
       return;
     }
     if (salaryExceeds) {
-      showError(`Summa qolgan oylikdan (${fmtUZS(remainingSalary)}) ko'p bo'lishi mumkin emas`);
+      showError(`Summa ${isPlastikMethod ? "qolgan oylikdan" : "naqd chiqarish mumkin bo'lgan summadan"} (${fmtUZS(remainingSalary)}) ko'p bo'lishi mumkin emas`);
       return;
     }
     if (studentBalanceExceeds) {
@@ -418,13 +440,15 @@ export default function CashboxAdjustDrawer({
                 loading={target === "employee" ? employeesLoading : studentsLoading}
                 placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
                 subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
-                // Ism yonida QOLGAN oylik: shu oynada aynan shuncha pul
-                // chiqarish mumkin (jami hisoblangan emas).
+                // Ism yonida shu oynada CHIQARISH MUMKIN bo'lgan summa —
+                // tanlangan to'lov turiga qarab (naqd: kartadan keyingi
+                // qoldiq; plastik: karta + naqd), jami hisoblangan emas.
+                // Pastdagi `remainingSalary` bilan bir xil qoida.
                 trailingOf={target === "employee" ? (n) => {
                   const p = payrollOf(n);
                   if (!p?.configured) return <span className="text-muted-foreground">Sozlanmagan</span>;
-                  const due = Math.max(0, payrollDue(p, period));
-                  return <span className={due > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(due)}</span>;
+                  const can = isPlastikMethod ? payrollPayout(p, period) : payrollCashLeg(p, period);
+                  return <span className={can > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(can)}</span>;
                 } : target === "student" ? (n) => {
                   const b = balanceOf(n);
                   return <span className={b > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(b)}</span>;
@@ -467,14 +491,22 @@ export default function CashboxAdjustDrawer({
                 <>
                   {/* Xodim tanlangach — nimadan qancha chiqarish mumkinligi. */}
                   {isSalaryPayoutCategory ? (
-                    salaryConfigured ? (
+                    salaryConfigured && salaryBreakdown ? (
+                      // Hisob zanjiri OCHIQ yoziladi — kassir naqd nega
+                      // kam (yoki 0) ekanini shu yerning o'zida ko'rsin:
+                      // karta va soliq avval ayriladi. Plastik turida
+                      // chegara karta + naqd, ya'ni karta qatori chiqmaydi.
                       <div className="text-[12.5px] text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2.5 py-2">
-                        Chiqarish mumkin: <strong>{fmtUZS(remainingSalary)}</strong>
+                        {isPlastikMethod ? "Kartaga chiqarish mumkin: " : "Naqd chiqarish mumkin: "}
+                        <strong>{fmtUZS(remainingSalary)}</strong>
                         <span className="text-muted-foreground">
                           {" "}(Jami oylik {fmtUZS(employeeOylik)}
-                          {carryOver > 0 ? ` + o'tgan oydan ${fmtUZS(carryOver)}` : ""}
-                          {carryOver < 0 ? ` − o'tgan oy qarzdorligi ${fmtUZS(-carryOver)}` : ""}
-                          {" "}− olingan {fmtUZS(alreadyPaid)})
+                          {salaryBreakdown.tax > 0 ? ` − soliq ${fmtUZS(salaryBreakdown.tax)}` : ""}
+                          {salaryBreakdown.carryOver > 0 ? ` + o'tgan oydan ${fmtUZS(salaryBreakdown.carryOver)}` : ""}
+                          {salaryBreakdown.carryOver < 0 ? ` − o'tgan oy qarzdorligi ${fmtUZS(-salaryBreakdown.carryOver)}` : ""}
+                          {salaryBreakdown.paid > 0 ? ` − olingan ${fmtUZS(salaryBreakdown.paid)}` : ""}
+                          {!isPlastikMethod && salaryBreakdown.karta > 0 ? ` − kartaga ${fmtUZS(salaryBreakdown.karta)}` : ""}
+                          )
                         </span>
                       </div>
                     ) : (
@@ -489,12 +521,12 @@ export default function CashboxAdjustDrawer({
                   )}
                   {isSalaryPayoutCategory && salaryExhausted && (
                     <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
-                      Bu oyga xodim oyligi to&apos;liq chiqarib bo&apos;lingan — keyingi oygacha qo&apos;shimcha pul chiqarib bo&apos;lmaydi.
+                      {exhaustedMessage}.
                     </div>
                   )}
                   {isSalaryPayoutCategory && !salaryExhausted && salaryExceeds && (
                     <div className="text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
-                      Summa qolgan oylikdan ({fmtUZS(remainingSalary)}) ko&apos;p bo&apos;lishi mumkin emas.
+                      {`Summa ${isPlastikMethod ? "qolgan oylikdan" : "naqd chiqarish mumkin bo'lgan summadan"} (${fmtUZS(remainingSalary)}) ko'p bo'lishi mumkin emas.`}
                     </div>
                   )}
                   <button

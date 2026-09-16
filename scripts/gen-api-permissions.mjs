@@ -103,6 +103,13 @@ const MANUAL = {
   "/api/employees": ["/management-xodimlar"],
   "/api/employees/[id]": ["/management-xodimlar"],
   "/api/employees/[id]/password": ["/management-xodimlar"],
+  // 16.09.2026 gacha Kassa → Chiqim oynasi shu route'dan "shu oyda olingan"
+  // summani so'rardi; endi oyna uni oylik qatoridan oladi va ilovada
+  // chaqiruv qolmadi. Route esa qoldi (scripts/_e2e-smoke-test.mjs
+  // ishlatadi) — chaqiruvsiz qolgani uchun generator uni "sessiya
+  // yetarli" darajasiga tushirib yuborardi, ya'ni xodimning oylik
+  // to'lovlari har qanday kirgan odamga ochilardi. Avvalgi kesim saqlanadi.
+  "/api/employee-salary-summary": ["/finance-cash"],
 };
 
 // lib/permissions.ts dagi ALWAYS_ALLOWED_PATHS bilan bir xil bo'lishi SHART

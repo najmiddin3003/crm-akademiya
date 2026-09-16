@@ -41,9 +41,9 @@ export async function GET(req: Request) {
   // 1 ta qator qaytaradi, filial 1 uchun 42 ta.
   //
   // NEGA XAVFSIZ: kassadagi avans chegarasini SERVER allaqachon GLOBAL
-  // hisoblaydi — app/api/cashboxes/[id]/adjust/route.ts da `fixedSalaryOf`
-  // xodimning hamma filialdagi ish haqini qo'shadi va oldin chiqarilgan
-  // avans/oylik ism bo'yicha butun oy ichida sanaladi, kassaga qaramasdan.
+  // hisoblaydi — app/api/cashboxes/[id]/adjust/route.ts xuddi shu
+  // `buildPayrollRows` ni filialga kesmasdan chaqiradi va chegarani
+  // `payrollCashLeg` / `payrollPayout` bilan oladi, kassaga qaramasdan.
   // Ya'ni bu bayroq yangi ruxsat bermaydi, oynani serverga MOSLAYDI.
   //
   // OYLIK CHIQARISH sahifasi (components/finance/SalaryCreatePage.tsx) bu

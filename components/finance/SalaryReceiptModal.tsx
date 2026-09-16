@@ -208,26 +208,28 @@ export default function SalaryReceiptModal({
 
               {/* Kartaga MO'LJALDAN kam ketgan bo'lsa sababi ochiq
                   aytiladi: qoldiq yetmagan (avans olingan yoki hisoblangan
-                  oylik kam). Bu xato emas, arifmetik natija.
+                  oylik kam). Bu xato emas, arifmetik natija — va bu farq
+                  keyingi oyga O'TMAYDI (foydalanuvchi qoidasi, lib/salary.ts).
 
-                  MO'LJAL — oylik summaning DAVRGA to'g'ri keladigan qismi
-                  (lib/salary.ts → payrollPlastikTarget), e'lon qilingan
-                  butun oylik EMAS. Aks holda oy o'rtasidagi har bir chekda
-                  "qoldiq yetmadi" degan yolg'on ogohlantirish chiqardi:
-                  10-kunda kartaga oylikning uchdan biri ketishi normal
-                  holat. Eski cheklarda `day`/`daysIn` bo'lmasa butun
-                  summaga qaytiladi (avvalgi xulq). */}
+                  MO'LJAL chekda MUZLATILGAN (`plastikTarget`, 16.09.2026
+                  dan): qoida keyin o'zgarsa ham chek o'sha paytdagi raqam
+                  bilan solishtiradi. Undan oldingi cheklarda maydon yo'q —
+                  ularda o'sha davrning qoidasi (10.09–16.09: oylik summaning
+                  DAVRGA to'g'ri keladigan qismi) qayta hisoblanadi, aks holda
+                  oy o'rtasidagi eski cheklarda "qoldiq yetmadi" degan yolg'on
+                  ogohlantirish chiqardi. */}
               {(() => {
                 const full = r.plastikSalary ?? 0;
                 const day = r.day ?? 0;
                 const daysIn = r.daysIn ?? 0;
-                const target = daysIn > 0 ? Math.round((full * day) / daysIn) : full;
-                const kutilgan = target - (r.paidPlastikBefore ?? 0);
+                const legacyTarget = daysIn > 0 ? Math.round((full * day) / daysIn) : full;
+                const kutilgan = r.plastikTarget ?? (legacyTarget - (r.paidPlastikBefore ?? 0));
                 if (full <= 0 || (r.paidPlastik ?? 0) >= kutilgan) return null;
+                const prorated = r.plastikTarget === undefined && daysIn > 0 && legacyTarget !== full;
                 return (
                   <p className="mt-1.5 text-[11px] text-amber-600">
-                    {`Kartaga ${fmtSum(target)} mo'ljallangandi`}
-                    {daysIn > 0 && target !== full && ` (${fmtSum(full)} oylikning ${day}/${daysIn} kuni)`}
+                    {`Kartaga ${fmtSum(prorated ? legacyTarget : full)} mo'ljallangandi`}
+                    {prorated && ` (${fmtSum(full)} oylikning ${day}/${daysIn} kuni)`}
                     {(r.paidPlastikBefore ?? 0) > 0 && `, shu oyda avval ${fmtSum(r.paidPlastikBefore ?? 0)} o'tkazilgan`}
                     {` — lekin qoldiq yetmadi, kartaga ${fmtSum(r.paidPlastik ?? 0)} ketdi.`}
                   </p>

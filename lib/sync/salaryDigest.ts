@@ -2,10 +2,11 @@ import type { Db } from "mongodb";
 import { isTelegramReady, loadSyncConfig } from "@/lib/sync/config";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import {
-  payrollCashLeg,
+  payrollCashDue,
   payrollDue,
   payrollEarned,
   payrollPaid,
+  payrollPayout,
   payrollPlastikLeg,
   payrollPeriod,
   payrollTax,
@@ -88,11 +89,18 @@ interface Line {
   salaryType: "foiz" | "fixed";
   earned: number;
   paid: number;
+  /** Hisoblangan − soliq + o'tgan oydan − olingan (ishorali). */
   due: number;
   tax: number;
-  /** Qolgan qoldiqning kanal bo'yicha bo'linishi (plastik + naqd = due). */
+  /**
+   * Karta oyog'i — qoldiqdan BIRINCHI, plastik summasigacha (lib/salary.ts).
+   * `cashDue` — kartadan keyingi qoldiq (sahifadagi "Qolgan"), ishorali:
+   * manfiy faqat xodim ishlaganidan ko'p olganda.
+   * `payout` — kassadan chiqadigan jami (karta + naqd = musbat qoldiq).
+   */
   plastik: number;
-  naqd: number;
+  cashDue: number;
+  payout: number;
 }
 
 function lineOf(e: EmployeePayroll, p: PayrollPeriod): Line {
@@ -106,7 +114,8 @@ function lineOf(e: EmployeePayroll, p: PayrollPeriod): Line {
     due: payrollDue(e, p),
     tax: payrollTax(e, p),
     plastik: payrollPlastikLeg(e, p),
-    naqd: payrollCashLeg(e, p),
+    cashDue: payrollCashDue(e, p),
+    payout: payrollPayout(e, p),
   };
 }
 
@@ -148,13 +157,16 @@ function itemsOf(lines: Line[]): string[] {
     // Soliq faqat bor bo'lsa ko'rsatiladi — aks holda "hisoblangan −
     // olingan = qolgan" ayirmasi o'quvchiga tushunarsiz bo'lib qolardi.
     const tax = l.tax > 0 ? ` · soliq ${money(l.tax)}` : "";
-    // Qoldiq kartaga va naqdga bo'linsa — ochiq aytiladi. Faqat plastigi
-    // bor xodimda ko'rinadi, aks holda har bir qatorga "naqd" so'zi
-    // qo'shilib, xabar bekorga uzayardi.
-    const split = l.plastik > 0 ? `\n   ↳ kartaga ${money(l.plastik)} · naqd ${money(l.naqd)}` : "";
+    // "Qolgan" — Oylik hisob-kitob sahifasidagi ustun bilan BIR XIL
+    // ma'noda: kartadan KEYIN qo'lga beriladigan naqd (karta qoplanmasa
+    // 0), plastigi yo'qda oddiy qoldiq; manfiy — ortiqcha olgan. Karta
+    // alohida qatorda, faqat plastigi bor xodimda — aks holda har qatorga
+    // so'z qo'shilib xabar uzayardi.
+    const qolgan = `<b>qolgan ${money(l.cashDue)}</b>` +
+      (l.plastik > 0 ? `\n   ↳ kartaga ${money(l.plastik)}` : "");
     out.push(
       `• <b>${esc(l.name)}</b> (${tag})\n` +
-      `   hisoblangan ${money(l.earned)}${tax} · olingan ${money(l.paid)} · <b>qolgan ${money(l.due)}</b>${split}`,
+      `   hisoblangan ${money(l.earned)}${tax} · olingan ${money(l.paid)} · ${qolgan}`,
     );
   }
   return out;
@@ -170,7 +182,11 @@ function itemsOf(lines: Line[]): string[] {
  */
 export function digestMessages(period: DigestPeriod, data: { teachers: Line[]; others: Line[]; period: PayrollPeriod }): string[] {
   const all = [...data.teachers, ...data.others];
-  const jamiQolgan = all.reduce((s, l) => s + Math.max(l.due, 0), 0);
+  // Kassadan chiqadigan JAMI — karta + kartadan keyingi naqd (sahifadagi
+  // "Qolgan to'lanadigan" bilan bir xil). Karta qismi alohida aytiladi —
+  // u bank orqali, naqd esa kassadan qo'lga.
+  const jamiQolgan = all.reduce((s, l) => s + l.payout, 0);
+  const jamiKartaga = all.reduce((s, l) => s + l.plastik, 0);
   const jamiOlingan = all.reduce((s, l) => s + l.paid, 0);
   const qarzdor = all.filter((l) => l.due < 0).length;
 
@@ -181,7 +197,8 @@ export function digestMessages(period: DigestPeriod, data: { teachers: Line[]; o
   ];
   const foot = [
     "",
-    `💰 To'lanishi kerak: <b>${money(jamiQolgan)} so'm</b>`,
+    `💰 To'lanishi kerak: <b>${money(jamiQolgan)} so'm</b>` +
+      (jamiKartaga > 0 ? ` (kartaga ${money(jamiKartaga)} · naqd ${money(jamiQolgan - jamiKartaga)})` : ""),
     `✅ Shu oyda berilgan: <b>${money(jamiOlingan)} so'm</b>`,
     ...(qarzdor > 0 ? [`⚠️ ${qarzdor} xodimda ortiqcha olingan (manfiy qoldiq)`] : []),
   ];

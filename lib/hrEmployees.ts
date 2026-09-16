@@ -120,8 +120,10 @@ export interface HrEmployee {
    *      NOMINAL summadan hisoblanadi. Davrga, avansga va shu oyda
    *      allaqachon to'langan summaga BOG'LIQ EMAS.
    *   2. KARTA OYOG'I MAQSADI — chiqarishda kartaga qancha yuborilishi
-   *      (`min(qolgan maqsad, to'lanadigan qoldiq)`), ya'ni oy ichida
-   *      kamayib boradigan qiymat.
+   *      (davrga bo'lingan summa − shu oyda kartadan berilgani), ya'ni oy
+   *      ichida kamayib boradigan qiymat. Qoldiq bilan CHEKLANMAYDI:
+   *      karta to'liq chiqadi, xodimga qo'lga undan oshgani beriladi
+   *      (lib/salary.ts → payrollPlastikLeg / payrollCashLeg).
    * Agar soliq asosi ham karta oyog'idan olinsa, bir oyda IKKINCHI marta
    * chiqarishda maqsad 0 bo'lgani uchun soliq ham 0 chiqadi va o'sha oyda
    * allaqachon ushlangan soliq xodimga QAYTIB berilardi (`payrollDue`

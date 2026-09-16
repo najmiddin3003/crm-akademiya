@@ -13,6 +13,8 @@ import {
   payrollPeriod,
   payrollPeriodOf,
   payrollPlastikLeg,
+  payrollPlastikTarget,
+  payrollCashLeg,
 } from "@/lib/salary";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
@@ -214,9 +216,17 @@ export async function POST(req: Request) {
   const items: SalaryRunItem[] = [];
   for (const ep of chosen) {
     const empDue = payrollDue(ep, period);
-    // Faqat MUSBAT qoldiq to'lanadi. Manfiysi — xodimning qarzi, unga pul
-    // chiqarilmaydi (aks holda qarz ustiga yana pul berilgan bo'lardi).
-    const empPaid = Math.max(empDue, 0);
+    // ---- IKKI OYOQ: KARTA BIRINCHI, NAQD — UNDAN OSHGANI ---------------
+    // Bu yerda HISOB YO'Q, faqat TAQSIMOT: to'lanadigan qoldiq
+    // (`payrollDue`, musbat qismi) avval kartaga — mo'ljalgacha, qolgani
+    // naqd. Qoldiq mo'ljaldan kichik bo'lsa kartaga qoldiqning o'zi ketadi,
+    // naqd 0. Yig'indi doim `max(empDue, 0)` — lib/salary.ts izohi.
+    //
+    // Sahifa (`payoutTotal`) aynan shu funksiyalarni chaqiradi, shuning
+    // uchun ekrandagi va kassadan chiqadigan raqam bir xil.
+    const empPlastik = payrollPlastikLeg(ep, period);
+    const empNaqd = payrollCashLeg(ep, period);
+    const empPaid = empPlastik + empNaqd;
     // Soliq `payrollDue` ichida allaqachon ayrilgan — bu yerda faqat
     // hisobot va chek uchun alohida qayd etiladi.
     const empGross = payrollEarned(ep, period);
@@ -230,23 +240,15 @@ export async function POST(req: Request) {
     tolangan += empPaid;
     // To'lov kassadan chiqqani uchun to'langan qism qoldiqda qolmaydi.
     tolanmagan += Math.max(empDue - empPaid, 0);
-    // Manfiy qoldiq — xodim hisoblanganidan ko'proq olgan (avans bergan,
-    // keyin uni qoplagan to'lov bekor qilingan). Ilgari u shu yerda
-    // `Math.max(…, 0)` bilan nolga tenglashtirilardi va qarz IZSIZ
+    // TO'LOVDAN KEYINGI manfiy qoldiq — xodim hisoblanganidan ko'proq olgan
+    // (avans bergan, keyin uni qoplagan to'lov bekor qilingan). Ilgari u shu
+    // yerda `Math.max(…, 0)` bilan nolga tenglashtirilardi va qarz IZSIZ
     // yo'qolardi — keyingi oy hisobiga ham o'tmasdi. Endi ishorali holicha
     // saqlanadi: loadCarryOver uni keyingi oyning `carryOver`iga o'tkazadi.
-    qarzdorlik += Math.max(-empDue, 0);
-
-    // ---- IKKI OYOQQA BO'LISH -------------------------------------
-    // Bu yerda HISOB YO'Q, faqat TAQSIMOT: `empPaid` yuqorida allaqachon
-    // hisoblangan va u o'zgarmaydi. Karta BIRINCHI to'lanadi (rasmiy
-    // o'tkazma qoldiqda oxirgi bo'lib qolmasin), naqd — qoldiq.
-    //
-    // Bo'linish `empPaid` (ya'ni payrollDue) USTIDAN, hisoblangan oylik
-    // ustidan EMAS: aks holda oy davomida avans olgan xodimga kassadan
-    // ortiqcha pul chiqib ketardi.
-    const empPlastik = payrollPlastikLeg(ep, period);
-    const empNaqd = empPaid - empPlastik;
+    // `items.amount` ning manfiy qismi bilan bir xil ta'rif (SalaryRunsPage
+    // → debtOf). Karta yetmagani bu yerga TUSHMAYDI: karta qoldiqdan
+    // oshmaydi, ya'ni `empPaid ≤ max(empDue, 0)`.
+    qarzdorlik += Math.max(empPaid - empDue, 0);
     plastikTolangan += empPlastik;
     naqdTolangan += empNaqd;
     // Nol summali oyoq yozuv YARATMAYDI — jurnalda bo'sh qator qolmasin
@@ -286,6 +288,10 @@ export async function POST(req: Request) {
         // bir-biriga mos kelishi kerak.
         plastikSalary: ep.plastikSalary,
         paidPlastikBefore: ep.paidPlastik,
+        // Mo'ljal ham muzlatiladi — chekdagi "qoldiq yetmadi" izohi
+        // keyinchalik qoida o'zgarsa ham o'sha paytdagi raqam bilan
+        // solishtirsin.
+        plastikTarget: payrollPlastikTarget(ep),
         paidPlastik: empPlastik,
         paidNaqd: empNaqd,
       },

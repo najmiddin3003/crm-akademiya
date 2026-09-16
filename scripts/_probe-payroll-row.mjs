@@ -42,7 +42,7 @@ const { buildPayrollRows } = await import(pathToFileURL(path.resolve(OUT, "lib/p
 const salary = await import(pathToFileURL(path.resolve(OUT, "lib/salary.js")).href);
 const {
   payrollPeriod, payrollEarned, payrollTax, payrollDue,
-  payrollPlastikLeg, payrollCashLeg, payrollTaxLines,
+  payrollPlastikLeg, payrollCashLeg, payrollCashDue, payrollPayout, payrollTaxLines,
 } = salary;
 
 const uri = /^MONGODB_URI=(.*)$/m.exec(fs.readFileSync(".env.local", "utf8"))[1].trim().replace(/^["']|["']$/g, "");
@@ -74,19 +74,24 @@ const lines = payrollTaxLines(e, period);
 console.log("JADVAL QATORI (Oylik chiqarish sahifasidagi ustunlar tartibida):");
 console.log(`  Hisoblangan    ${money(payrollEarned(e, period))}`);
 console.log(`  Kartaga        ${e.plastikSalary > 0 ? money(payrollPlastikLeg(e, period)) : "            —"}`);
-console.log(`  Naqd           ${e.plastikSalary > 0 ? money(payrollCashLeg(e, period)) : money(Math.max(payrollDue(e, period), 0))}`);
-console.log(`  Soliq          ${payrollTax(e, period) > 0 ? money(-payrollTax(e, period)) : "            0"}${lines.length ? "   (" + lines.map((l) => `${l.name}: ${l.detail}`).join(", ") + ")" : ""}`);
+console.log(`  Soliq         ${payrollTax(e, period) > 0 ? money(-payrollTax(e, period)) : "            0"}${lines.length ? "   (" + lines.map((l) => `${l.name}: ${l.detail}`).join(", ") + ")" : ""}`);
 console.log(`  Avans olingan  ${money(e.paidAvans)}`);
 console.log(`  To'langan oylik${money(e.paidOylik)}`);
 console.log(`  O'tgan oydan   ${money(e.carryOver)}`);
 console.log(`  Bonus          ${money(e.bonus)}`);
 console.log(`  Jarima         ${money(e.jarima)}`);
-console.log(`  QOLGAN         ${money(payrollDue(e, period))}`);
+// QOLGAN — kartadan KEYINGI qoldiq (sahifadagi ustun bilan bir xil):
+// karta yetmasa 0 va yetmagan summa; plastiksiz qarzdorda manfiy.
+const cashDue = payrollCashDue(e, period);
+const fmt = (n) => Math.round(n).toLocaleString("ru-RU");
+console.log(`  QOLGAN         ${money(e.plastikSalary > 0 ? Math.max(cashDue, 0) : cashDue)}${
+  cashDue < 0 && e.plastikSalary > 0 ? `   (kartaga ${fmt(-cashDue)} yetmadi)` : cashDue < 0 ? "   (qarzdor)" : ""}`);
 
 const k = payrollPlastikLeg(e, period);
 const n = payrollCashLeg(e, period);
-const due = Math.max(payrollDue(e, period), 0);
-console.log(`\nINVARIANT: kartaga ${Math.round(k).toLocaleString("ru-RU")} + naqd ${Math.round(n).toLocaleString("ru-RU")} = ${Math.round(k + n).toLocaleString("ru-RU")}` +
-  `  ${Math.round(k + n) === Math.round(due) ? "✅ to'lanadigan bilan teng" : "❌ MOS EMAS (" + Math.round(due) + ")"}`);
+const payout = payrollPayout(e, period);
+console.log(`\nINVARIANT: kartaga ${fmt(k)} + naqd ${fmt(n)} = ${fmt(k + n)}` +
+  `  ${Math.round(k + n) === Math.round(payout) ? "✅ chiqariladigan bilan teng" : "❌ MOS EMAS (" + Math.round(payout) + ")"}` +
+  `  · to'lanadigan qoldiq ${fmt(payrollDue(e, period))}`);
 
 await client.close();

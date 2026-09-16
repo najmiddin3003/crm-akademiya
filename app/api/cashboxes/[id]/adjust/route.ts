@@ -1,10 +1,11 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { normalizeCashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
-import { loadPaymentMethods } from "@/lib/paymentMethods";
+import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import { flushSoon } from "@/lib/sync/dispatch";
-import { fixedSalaryOf, isSalaryConfigured, type HrEmployee } from "@/lib/hrEmployees";
+import { buildPayrollRows } from "@/lib/payrollSources";
+import { payrollCashLeg, payrollPayout, payrollPeriodOf, payrollPlastikLeg } from "@/lib/salary";
 import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 import { notifyPayment } from "@/lib/studentBot/notify";
@@ -74,48 +75,55 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Mablag' yetarli emas" }, { status: 400 });
   }
 
-  // Xodimga oylik/avans chiqarilsa — shu oyda ushbu xodim uchun oldin
-  // chiqarilgan oylik+avans yig'indisi bilan birga uning oyligidan
-  // oshib ketmasligi kerak. Frontendda ham tekshiriladi, backend zaxira.
+  // Xodimga oylik/avans chiqarilsa — summa xodimning shu oyda CHIQARISH
+  // MUMKIN bo'lgan qoldig'idan oshmasligi kerak. Frontend (Chiqim oynasi)
+  // ham tekshiradi, bu backend zaxira — ikkalasi BIR XIL funksiyalar bilan
+  // (lib/salary.ts), ya'ni oyna ruxsat bergan summani server rad etmaydi va
+  // aksincha.
+  //
+  // QOIDA (foydalanuvchi, 16.09.2026): xodim ishlab topgani avval KARTAGA
+  // ketadi, qo'lga faqat undan oshgani. Shu bois:
+  //   naqd (va boshqa) turida chegara → payrollCashLeg — hisoblangan −
+  //                                      soliq − karta oyog'i − olingan;
+  //   plastik turida               → payrollPayout  — karta + naqd.
+  //
+  // NIMA NOTO'G'RI EDI: chegara `fixedSalaryOf − olingan` edi — soliqni
+  // ham, kartani ham hisobga olmasdi va FAQAT okladli xodimga qo'llanardi
+  // (foizli o'qituvchida `fixedSalaryOf` 0, ya'ni `isSalaryConfigured`
+  // yolg'on va tekshiruv umuman o'tkazib yuborilardi). Shu teshikdan
+  // kartasi qoplanmagan o'qituvchiga naqd avans chiqib ketardi.
+  //
+  // Oyligi SOZLANMAGAN xodimga (oklad ham, foiz ham yo'q) chegara
+  // qo'llanmaydi: aks holda 0 deb o'qilib, hamma to'lov rad etilgan
+  // bo'lardi. Sozlanmagani "0 oylik" degani emas.
+  //
+  // Qator BUTUN KOMPANIYA bo'yicha quriladi (filialga kesilmaydi) — Chiqim
+  // oynasi ham `branch=all` bilan so'raydi; xodim boshqa filialning oylik
+  // ro'yxatida bo'lsa ham chegara o'sha yerdagi raqam bilan bir xil.
   if (mode === "chiqim" && studentName && /avans|oylik/i.test(category || "")) {
-    const employees = await db.collection("hr_employees").find({ name: studentName }).toArray();
-    const employee = employees.find((e) => !e.archReason) || employees[0];
-    // Chegara xodimning HAQIQIY oyligiga tayanadi (xodim kartasidagi
-    // filiallar bo'yicha ish haqi). Ilgari bu yerda xodim id'sidan
-    // hisoblanadigan demo funksiya turardi — ya'ni o'ylab topilgan raqam
-    // haqiqiy pulning chiqishini to'sar yoki ortiqcha chiqishiga yo'l
-    // qo'yardi.
-    //
-    // Oyligi SOZLANMAGAN xodimga chegara qo'llanmaydi: aks holda 0 deb
-    // o'qilib, hamma to'lov rad etilgan bo'lardi. Sozlanmagani "0 oylik"
-    // degani emas.
-    const empRec = employee as unknown as HrEmployee | undefined;
-    if (empRec && typeof empRec.id === "number" && isSalaryConfigured(empRec)) {
-      const oylik = fixedSalaryOf(empRec);
-      const dateIso = date || todayIso();
-      const month = dateIso.slice(0, 7);
-      const prior = await db
-        .collection("transaction_entries")
-        .find({
-          studentName,
-          txType: "payOut",
-          date: { $regex: `^${month}-` },
-          status: { $ne: "cancelled" },
-        })
-        .toArray();
-      const paid = prior
-        .filter((r) => /avans|oylik/i.test(String(r.txName ?? "")))
-        .reduce((s, r) => s + Math.abs(Number(r.amount) || 0), 0);
-      const remaining = Math.max(0, oylik - paid);
+    const dateIso = date || todayIso();
+    const period = payrollPeriodOf(dateIso.slice(0, 7));
+    const rows = await buildPayrollRows(db, period);
+    const key = studentName.trim().toLowerCase();
+    const row = rows.find((e) => e.name.trim().toLowerCase() === key);
+    if (row && row.configured) {
+      const isPlastik = chosen.key === PLASTIK_METHOD_KEY;
+      const remaining = isPlastik ? payrollPayout(row, period) : payrollCashLeg(row, period);
       if (remaining <= 0) {
-        return NextResponse.json(
-          { ok: false, error: "Bu oyga xodim oyligi to'liq chiqarib bo'lingan — keyingi oygacha qo'shimcha pul chiqarib bo'lmaydi" },
-          { status: 400 },
-        );
+        // Sabab AYNAN aytiladi: karta hali qoplanmagan bo'lsa "oylik
+        // tugagan" degan xabar yolg'on bo'lardi.
+        const karta = payrollPlastikLeg(row, period);
+        const error = !isPlastik && karta > 0
+          ? `Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq ${karta.toLocaleString("ru-RU")} so'm kartaga ketadi)`
+          : "Bu oyda xodimga chiqariladigan qoldiq yo'q — oylik to'liq chiqarilgan yoki hali hisoblanmagan";
+        return NextResponse.json({ ok: false, error }, { status: 400 });
       }
       if (amount > remaining) {
         return NextResponse.json(
-          { ok: false, error: `Summa qolgan oylikdan ko'p bo'lmasin (qolgan: ${remaining})` },
+          {
+            ok: false,
+            error: `Summa ${isPlastik ? "qolgan oylikdan" : "naqd chiqarish mumkin bo'lgan summadan"} ko'p bo'lmasin (qolgan: ${remaining.toLocaleString("ru-RU")} so'm)`,
+          },
           { status: 400 },
         );
       }

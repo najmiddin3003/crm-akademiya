@@ -31,10 +31,16 @@ import { digestLines } from "@/lib/sync/salaryDigest";
 // Varaq nomi lib/sync/config.ts da — u yerda jurnal varag'i shu nomni
 // olib qolmasligi uchun qo'riqchi ham bor.
 
-// "Kartaga" va "Naqd" — "Qolgan" ning kanal bo'yicha bo'linishi
-// (kartaga + naqd = qolgan). Ular "Qolgan" dan KEYIN turadi: mavjud
-// ustunlarning tartibi va joyi o'zgarmasin, jadvalga qarab turgan odam
-// eski ustunlarni o'sha yerda topsin.
+// "Kartaga" va "Naqd" — kassadan chiqadigan pulning ikki oyog'i
+// (kartaga + naqd = chiqariladigan jami). Ular "Qolgan" dan KEYIN turadi:
+// mavjud ustunlarning tartibi va joyi o'zgarmasin, jadvalga qarab turgan
+// odam eski ustunlarni o'sha yerda topsin.
+//
+// "Qolgan" — Oylik hisob-kitob sahifasidagi ustun bilan BIR XIL ma'noda
+// (16.09.2026 dan): kartadan KEYIN qo'lga beriladigan naqd (hisoblangan
+// kartani qoplamasa 0), plastigi yo'qda oddiy qoldiq; manfiy — ortiqcha
+// olgan. Karta qoldiqdan birinchi ketadi, shuning uchun musbat qatorda
+// Qolgan = Naqd, jami esa Kartaga + Naqd.
 //
 // DIQQAT: mavjud varaqda `columnCount` yetmasa yangi ustun JIMGINA
 // yozilmasdi. `ensureTab` endi gridni kengaytiradi va sarlavhani
@@ -101,9 +107,9 @@ export async function writeSalarySummary(
       Math.round(l.earned),
       Math.round(l.tax),
       Math.round(l.paid),
-      Math.round(l.due),
+      Math.round(l.cashDue),
       Math.round(l.plastik),
-      Math.round(l.naqd),
+      Math.round(Math.max(l.cashDue, 0)),
       periodLabel,
       stamp,
     ]);
