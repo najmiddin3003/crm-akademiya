@@ -56,7 +56,7 @@ const TAX_180 = { id: 8, name: "180 000", type: "amount", value: 180000 };
 function emp(o) {
   return {
     id: 1, name: "Sinov", phone: "", turi: "teacher", configured: true,
-    salaryType: "fixed", fixedSalary: 0, percent: 0, collected: 0, futureCollected: 0,
+    salaryType: "fixed", fixedSalary: 0, percent: 0, collected: 0, refunded: 0, futureCollected: 0,
     bonus: 0, jarima: 0, paidAvans: 0, paidOylik: 0, carryOver: 0, carryNote: "",
     taxable: false, taxRules: [], plastikSalary: 0, paidPlastik: 0,
     ...o,

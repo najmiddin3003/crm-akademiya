@@ -56,7 +56,19 @@ export async function GET(req: Request) {
   const grouped = await db
     .collection("transaction_entries")
     .aggregate([
-      { $match: { txType: "payIn", status: { $ne: "cancelled" }, date } },
+      // O'QUVCHIGA QAYTARILGAN PUL AYRILADI (18.09.2026): qaytarim yozuvi
+      // (`payOut` + `studentRefund: true`, lib/studentRefund.ts) o'sha
+      // ustozning `teacherName` i va MANFIY summa bilan turadi — ishorali
+      // yig'indi uni o'z-o'zidan ayiradi. Oylik hisobidagi `collected`
+      // bilan bir xil qoida (lib/payrollSources.ts), faqat bu yerda oy
+      // emas, `date` oralig'i.
+      {
+        $match: {
+          $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }],
+          status: { $ne: "cancelled" },
+          date,
+        },
+      },
       { $group: { _id: "$teacherName", amount: { $sum: "$amount" } } },
       // Tartib aniq bo'lsin — $group tartibi kafolatlanmaydi.
       { $sort: { _id: 1 } },

@@ -708,8 +708,15 @@ export default function SalaryCreatePage() {
                 const badgeCls = isFoiz
                   ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
                   : "bg-sky-500/10 text-sky-600 border-sky-500/20";
+                // Foizli asos SOF tushum: o'quvchilarga qaytarilgan pul
+                // ayrilgan (lib/payrollSources.ts). Qaytarim bo'lsa formula
+                // uni ochiq ko'rsatadi — "tushum nega kam" degan savol
+                // tug'ilmasin.
+                const collectedFormula = (e.refunded ?? 0) > 0
+                  ? `(${fmtNum(e.collected + e.refunded)} − qaytarim ${fmtNum(e.refunded)})`
+                  : fmtNum(e.collected);
                 const formula = isFoiz
-                  ? `${fmtNum(e.collected)} × ${e.percent}% = ${fmtNum(base)}`
+                  ? `${collectedFormula} × ${e.percent}% = ${fmtNum(base)}`
                   : `${fmtNum(e.fixedSalary)} × ${period.day}/${period.daysIn} kun = ${fmtNum(base)}`;
                 return (
                   <tr

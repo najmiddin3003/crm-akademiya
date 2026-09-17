@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useToast } from "@/components/ui/Toast";
-import type { TransactionEntry } from "@/lib/transactionEntries";
+import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import PersonLink from "@/components/shared/PersonDirectory";
 
 import { invalidateTransactions } from "@/lib/cacheKeys";
@@ -118,8 +118,10 @@ export default function TransactionDetailDrawer({
           <Row label="Kassa">{cashboxName || "—"}</Row>
           {/* Yozuv qaysi o'qituvchining oyligiga qo'shilishi yoki undan
               ayrilishi — kirimda o'quvchining ustozi, chiqimda puli
-              chiqarilayotgan xodimning o'zi. */}
-          <Row label={entry.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi"}>
+              chiqarilayotgan xodimning o'zi; o'quvchiga pul qaytarishda
+              — ustozning shu oydagi TUSHUMIDAN (foizli oylik undan
+              hisoblanadi, lib/studentRefund.ts). */}
+          <Row label={isStudentRefundEntry(entry) ? "Ustozi tushumidan ayriladi" : entry.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi"}>
             {entry.teacherName ? (
               <span className={entry.txType === "payIn" ? "text-emerald-600" : "text-rose-600"}>
                 {entry.txType === "payIn" ? "+" : "−"} <PersonLink name={entry.teacherName} kind="staff" />

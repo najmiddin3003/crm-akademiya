@@ -34,6 +34,8 @@ import Select from "@/components/ui/Select";
 // aniqlaydi). Ya'ni o'qituvchi bo'yicha yig'indi — bu o'sha o'qituvchining
 // o'quvchilari markazga to'lagan pul. Sana oralig'i yozuvning O'Z sanasi
 // (`date`, "YYYY-MM-DD") bo'yicha filtrlaydi, ya'ni tanlagich haqiqiy ishlaydi.
+// O'quvchiga QAYTARIB BERILGAN pul (chiqim + `studentRefund`) o'sha ustozning
+// summasidan ayriladi — oylikdagi tushum bilan bir xil (lib/studentRefund.ts).
 //
 // "Guruhlar" va "O'quvchilar" ustunlari /api/groups dan — BUGUNGI holat
 // (guruhda sana kesimidagi tarix saqlanmaydi), summa esa oraliqqa bog'liq.

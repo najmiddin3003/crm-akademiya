@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { studentBalanceMatch } from "@/lib/studentRefund";
 
 // GET /api/students/balances — har bir o'quvchining balansi.
 //
-// Manba: `transaction_entries` — o'quvchi qilgan to'lovlar (payIn), bekor
-// qilinganlarsiz. Kassalardagi "Kirim" oynasida o'quvchi tanlanayotganda
-// uning balansi ko'rsatiladi.
+// Manba: `transaction_entries` — o'quvchi qilgan to'lovlar (payIn) MINUS
+// unga qaytarib berilgan pul (payOut + `studentRefund: true`), bekor
+// qilinganlarsiz. Shart BITTA joyda — lib/studentRefund.ts →
+// studentBalanceMatch (lib/pupilsDb.ts ham aynan shuni ishlatadi, ya'ni
+// balans ikki joyda ikki xil chiqmaydi). Kassalardagi "Kirim" va "Chiqim"
+// oynalarida o'quvchi tanlanayotganda uning balansi ko'rsatiladi.
 //
 // DIQQAT: bu TO'LANGAN pul yig'indisi. Tizimda o'quvchining to'lashi kerak
 // bo'lgan summa (dars narxi × dars soni) yuritilmaydi, shuning uchun
@@ -26,7 +30,9 @@ export async function GET() {
   const rows = await db
     .collection("transaction_entries")
     .aggregate([
-      { $match: { txType: "payIn", status: { $ne: "cancelled" }, studentName: { $nin: ["", null] } } },
+      // Qaytarim yozuvi MANFIY summa bilan turadi — ishorali yig'indi uni
+      // o'z-o'zidan ayiradi.
+      { $match: studentBalanceMatch() },
       { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
     ])
     .toArray();

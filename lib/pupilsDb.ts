@@ -9,6 +9,7 @@
 // hooks/useStudents.ts → byName bilan bir xil qoida).
 
 import type { Db } from "mongodb";
+import { studentBalanceMatch } from "@/lib/studentRefund";
 
 // NIMA NOTO'G'RI EDI: bu faylda `findPupilByName()` + `pupilBalanceByName()`
 // juftligi bor edi va ikkinchisi `pupils.balance` maydonini o'qirdi. O'sha
@@ -20,10 +21,12 @@ import type { Db } from "mongodb";
 //
 // NEGA ENDI TO'G'RI: yagona haqiqiy balans manbasi —
 // app/api/students/balances/route.ts dagi qoida: bekor qilinmagan `payIn`
-// `transaction_entries` yozuvlarining yig'indisi, kalit — kichik harfga
-// o'tkazilgan va chetlari kesilgan to'liq ism. Ya'ni "o'quvchi HAQIQATAN
-// to'lagan pul". Quyidagi funksiya aynan o'sha arifmetikani bitta ism uchun
-// bajaradi, boshqa manbaga umuman tegmaydi.
+// `transaction_entries` yozuvlari MINUS o'quvchiga qaytarib berilgan pul
+// (`payOut` + `studentRefund: true`, lib/studentRefund.ts), kalit — kichik
+// harfga o'tkazilgan va chetlari kesilgan to'liq ism. Ya'ni "o'quvchi
+// HAQIQATAN to'lagan va qaytarib olmagan pul". Quyidagi funksiya aynan
+// o'sha arifmetikani bitta ism uchun bajaradi, boshqa manbaga umuman
+// tegmaydi.
 //
 // `findPupilByName()` olib tashlandi: undan faqat shu balans hisobi
 // foydalanardi va u `pupils` hujjatini (ichida o'sha yaroqsiz `balance`
@@ -38,11 +41,13 @@ export async function studentPaidBalanceByName(db: Db, name: string): Promise<nu
   //
   // Ism bo'yicha solishtirish JS'da qoladi (regex bilan emas): qoida
   // /api/students/balances dagi bilan AYNAN bir xil bo'lishi shart, aks
-  // holda o'quvchining balansi ikki joyda ikki xil chiqadi.
+  // holda o'quvchining balansi ikki joyda ikki xil chiqadi. Shart ham
+  // o'sha yerdagi bilan bitta manbadan (studentBalanceMatch) — qaytarim
+  // manfiy summa bilan ishorali yig'indiga kiradi.
   const rows = await db
     .collection("transaction_entries")
     .aggregate([
-      { $match: { txType: "payIn", status: { $ne: "cancelled" }, studentName: { $nin: ["", null] } } },
+      { $match: studentBalanceMatch() },
       { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
     ])
     .toArray();

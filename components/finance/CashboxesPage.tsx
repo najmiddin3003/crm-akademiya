@@ -50,7 +50,7 @@ import { useTransactionTypes } from "@/hooks/useTransactionTypes";
 import { useBranch } from "@/components/shared/BranchContext";
 import { type Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
-import type { TransactionEntry } from "@/lib/transactionEntries";
+import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import { toUz } from "@/lib/uzTime";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
@@ -214,6 +214,9 @@ const RECEIPT_FOOTER = "Akademiya - ilm maskani!";
 // ("KIRIM CHEKI" / "CHIQIM CHEKI") allaqachon ma'lum, va 52 mm enli termal
 // qog'ozda uzun yorliq qiymatni ikkinchi qatorga tashlab yuborardi.
 function salaryTargetLabel(e: TransactionEntry): string {
+  // O'quvchiga pul qaytarish: ayriladigani ustozning OYLIGI emas, shu
+  // oydagi TUSHUMI (foizli oylik undan hisoblanadi — lib/studentRefund.ts).
+  if (isStudentRefundEntry(e)) return "Ustozi tushumidan ayriladi";
   return e.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi";
 }
 

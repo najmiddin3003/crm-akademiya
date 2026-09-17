@@ -6,7 +6,7 @@ import { LEGACY_COLLECTION, type LegacyEntry } from "@/lib/legacyEntries";
 import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
 import type { NewsItem } from "@/lib/news";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
-import type { TransactionEntry } from "@/lib/transactionEntries";
+import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import { uzNow } from "@/lib/uzTime";
 
 // O'quvchilar boti KO'RSATADIGAN ma'lumot. FAQAT O'QISH — bu fayldagi
@@ -104,17 +104,24 @@ export async function attendanceMonths(db: Db, pupilId: number): Promise<string[
 export interface PaymentRow {
   /** "YYYY-MM-DD" */
   date: string;
+  /** Ishorali: to'lov musbat, o'quvchiga qaytarilgan pul MANFIY. */
   amount: number;
   method: string;
   cancelled: boolean;
   /** Edutizimdan ko'chirilgan eski yozuvmi. */
   archive: boolean;
+  /** O'quvchiga pul QAYTARILGAN yozuv (lib/studentRefund.ts). */
+  refund: boolean;
 }
 
 export interface PaymentsView {
   /** KO'RSATISH uchun oxirgi yozuvlar — `limit` bilan kesilgan. */
   rows: PaymentRow[];
-  /** Bekor qilinmagan JONLI to'lovlar yig'indisi — CRM'dagi "Balans" bilan bir xil qoida. */
+  /**
+   * Bekor qilinmagan JONLI to'lovlar yig'indisi MINUS o'quvchiga
+   * qaytarilgani — CRM'dagi "Balans" bilan bir xil qoida
+   * (lib/studentRefund.ts → studentBalanceMatch).
+   */
   liveTotal: number;
   /** Arxiv yig'indisi (edutizim davri). */
   archiveTotal: number;
@@ -159,16 +166,21 @@ export async function loadPayments(
   includeArchive = false,
 ): Promise<PaymentsView> {
   const name = pupilFullName(pupil).trim();
+  // To'lovlar VA o'quvchiga qaytarilgan pul — CRM balansi bilan bir xil
+  // to'plam (lib/studentRefund.ts → studentBalanceMatch), faqat ism bu
+  // yerda regex bilan va bekor qilinganlar ham ro'yxatga kiradi (pastdagi
+  // izoh). Oddiy chiqim (`payOut` bayroqsiz) KIRMAYDI: u yerda
+  // `studentName` — xodim ismi bo'lishi mumkin (avans/oylik).
   const liveMatch = {
     studentName: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
-    txType: "payIn",
+    $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }],
   };
 
   const [live, legacy, liveAgg, legacyAgg] = await Promise.all([
     name
       ? (db
           .collection("transaction_entries")
-          .find(liveMatch, { projection: { _id: 0, date: 1, amount: 1, paymentType: 1, status: 1 } })
+          .find(liveMatch, { projection: { _id: 0, date: 1, amount: 1, paymentType: 1, status: 1, txType: 1, studentRefund: 1 } })
           .sort({ date: -1 })
           .limit(limit)
           .toArray() as unknown as Promise<TransactionEntry[]>)
@@ -215,6 +227,7 @@ export async function loadPayments(
       method: String(e.paymentType ?? ""),
       cancelled: e.status === "cancelled",
       archive: false,
+      refund: isStudentRefundEntry(e),
     })),
     ...legacy.map((e) => ({
       date: String(e.date ?? ""),
@@ -222,6 +235,7 @@ export async function loadPayments(
       method: String(e.paymentType ?? ""),
       cancelled: e.status === "cancelled",
       archive: true,
+      refund: false,
     })),
   ]
     .sort((a, b) => b.date.localeCompare(a.date))

@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import type { Pupil } from "@/lib/pupilsData";
 import type { Order } from "@/lib/ordersData";
-import type { TransactionEntry } from "@/lib/transactionEntries";
+import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import type { LegacyEntry } from "@/lib/legacyEntries";
 import TahrirlashTabButton from "@/components/shared/TahrirlashTabButton";
 import ParolTabButton from "@/components/shared/ParolTabButton";
@@ -119,7 +119,11 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     Promise.all([
       fetch(`/api/transaction-entries?studentName=${q}&txType=payIn`).then((r) => r.json()).catch(() => null),
       // PUL QAYTARISH — chiqim yozuvi, shu bois yuqoridagi payIn so'roviga
-      // tushmaydi. Alohida so'raladi va faqat QAYTARISH turlari olinadi.
+      // tushmaydi. Alohida so'raladi va faqat QAYTARISH yozuvlari olinadi
+      // — `studentRefund` bayrog'i bo'yicha (lib/transactionEntries.ts →
+      // isStudentRefundEntry), balans hisobi bilan bir xil qoida. Ilgari
+      // bu yerda nomdagi "qaytar" so'ziga qaralardi — tur nomi
+      // Sozlamalardan o'zgartirilsa qaytarim jimgina yo'qolardi.
       //
       // NIMA UCHUN `txType` ni butunlay olib tashlab bo'lmaydi: xodimga
       // chiqarilgan avans/oylik yozuvida ham `studentName` maydoni bor —
@@ -132,7 +136,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
       const rows: TransactionEntry[] = [];
       if (inRes?.ok) rows.push(...(inRes.entries as TransactionEntry[]));
       if (outRes?.ok) {
-        rows.push(...(outRes.entries as TransactionEntry[]).filter((e) => /qaytar/i.test(e.txName || "")));
+        rows.push(...(outRes.entries as TransactionEntry[]).filter(isStudentRefundEntry));
       }
       // Yangi yozuv yuqorida — jadval sanaga qarab tartiblanmaydi.
       rows.sort((a, b) => b.id - a.id);

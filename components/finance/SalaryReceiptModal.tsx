@@ -81,10 +81,17 @@ export default function SalaryReceiptModal({
   const rest = Number(item.amount) || 0;
 
   // Asos qatorining formulasi — chiqarish paytidagi holat bo'yicha.
+  // `collected` — sof tushum (o'quvchilarga qaytarilgani ayrilgan);
+  // qaytarim bo'lsa chekda ham ochiq yoziladi. Eski cheklarda `refunded`
+  // yo'q — oddiy ko'rinish.
+  const refunded = Number(r?.refunded) || 0;
+  const collectedFormula = refunded > 0
+    ? `(${fmtNum((r?.collected ?? 0) + refunded)} − qaytarim ${fmtNum(refunded)})`
+    : fmtNum(r?.collected ?? 0);
   const baseFormula =
     !r ? ""
     : r.salaryType === "foiz"
-      ? `${fmtNum(r.collected ?? 0)} × ${r.percent ?? 0}%`
+      ? `${collectedFormula} × ${r.percent ?? 0}%`
       : `${fmtNum(r.fixedSalary ?? 0)} × ${r.day ?? 0}/${r.daysIn ?? 0} kun`;
 
   // Soliq chegaraga urganmi (hisoblangan oylikdan oshib ketgan).

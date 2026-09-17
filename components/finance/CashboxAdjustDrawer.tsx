@@ -12,7 +12,9 @@ import StudentGroupsModal from "./StudentGroupsModal";
 import MoneyInput, { groupNumber } from "@/components/ui/MoneyInput";
 import type { StudentRow } from "@/lib/studentsData";
 import type { TransactionType } from "@/lib/transactionTypes";
+import type { TransactionEntry } from "@/lib/transactionEntries";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useTeachers } from "@/hooks/useTeachers";
 import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { txTarget, txTargetLabel } from "@/lib/txTarget";
@@ -234,7 +236,42 @@ export default function CashboxAdjustDrawer({
     return () => { cancelled = true; };
   }, [target]);
 
-  const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  // O'QUVCHIGA PUL QAYTARISH — QAYSI USTOZDAN (foydalanuvchi, 18.09.2026).
+  //
+  // Qaytarilgan summa o'quvchi balansidan ayriladi va USTOZNING shu oydagi
+  // tushumidan ham ayriladi — foizli oyligi qaytarilgan summaning foizi
+  // qadar kamayadi (50% bo'lsa yarmi ustozdan, yarmi markaz hisobidan).
+  // Ustoz o'quvchining ENG OXIRGI to'lovidagi `teacherName` dan o'zi
+  // to'ldiriladi (o'sha to'lovga foiz hisoblangan edi), kassir o'zgartira
+  // oladi — o'quvchi ikki ustozda o'qisa qaysi to'lov qaytarilayotganini
+  // faqat u biladi. Bo'sh qoldirilsa server o'zi topadi (oxirgi to'lov →
+  // guruh ustozi, lib/studentRefund.ts); u ham topolmasa yozuv ustozsiz
+  // qoladi va faqat balansga ta'sir qiladi.
+  const { names: teacherNames, loading: teachersLoading } = useTeachers();
+  // O'quvchi yoki tur almashganda o'sha tanlovlarning onChange'i buni
+  // tozalaydi — effekt ichida sinxron setState yo'q
+  // (react-hooks/set-state-in-effect).
+  const [refundTeacher, setRefundTeacher] = useState("");
+  const refundStudentName = target === "student" ? selectedStudent?.name ?? "" : "";
+  useEffect(() => {
+    if (!refundStudentName) return;
+    let cancelled = false;
+    const q = encodeURIComponent(refundStudentName);
+    fetch(`/api/transaction-entries?studentName=${q}&txType=payIn&excludeCancelled=1&limit=1&slim=1`)
+      .then((r) => r.json())
+      .catch(() => null)
+      .then((d) => {
+        if (cancelled || !d?.ok) return;
+        const last = (d.entries as TransactionEntry[])[0];
+        // Foydalanuvchi shu orada o'zi tanlagan bo'lsa — uniki qoladi.
+        setRefundTeacher((cur) => cur || String(last?.teacherName ?? "").trim());
+      });
+    return () => { cancelled = true; };
+  }, [refundStudentName]);
+
+  // Qatorlar yig'indisi. "Oylik" turida summa qatorlardan EMAS, xodimning
+  // hisoblangan qoldig'idan olinadi — pastdagi `total` ga qarang.
+  const rowsTotal = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const available = method ? cashbox.methodTotals[method as keyof CashboxMethodTotals] ?? 0 : null;
 
   // To'lov turlari ro'yxati alohida hisoblanadi: birinchi `<option>` matni
@@ -298,6 +335,19 @@ export default function CashboxAdjustDrawer({
   // bo'lishining sababi shu; xabarda "oylik tugagan" EMAS, shu aytiladi.
   const kartaYetmadi = !!salaryBreakdown && !isPlastikMethod && salaryBreakdown.naqd <= 0
     && selectedPayroll!.plastikSalary > 0 && salaryBreakdown.jami > 0;
+  // "OYLIK" TURIDA SUMMA QO'LDA TERILMAYDI (foydalanuvchi, 18.09.2026):
+  // Qiymat maydonida xodimning shu oyda CHIQARISH MUMKIN bo'lgan qoldig'i
+  // (yuqoridagi `remainingSalary` — hisoblangan − soliq − karta − olingan,
+  // tanlangan to'lov turiga qarab) o'zi turadi va faqat o'qiladi. Sabab:
+  // oylik — qoldiqning to'liq o'zi; qo'lda terilsa kassir xato raqam
+  // kiritishi yoki bir qismini qoldirib ketishi mumkin edi. Qisman berish
+  // "Avans" turining ishi — u yerda maydon avvalgidek erkin.
+  //
+  // FAQAT oyligi sozlangan xodimda: sozlanmaganda qoldiq ma'nosiz (0) va
+  // chegara ham qo'llanmaydi — maydon erkin qoladi. To'lov turi
+  // almashtirilsa (naqd ↔ plastik) summa o'zi qayta hisoblanadi.
+  const oylikLocked = target === "employee" && /oylik/i.test(category) && !!selectedEmployee && salaryConfigured;
+  const total = oylikLocked ? remainingSalary : rowsTotal;
   // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) —
   // aks holda 0 deb o'qilib, hamma to'lov rad etilgan bo'lardi.
   const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
@@ -373,8 +423,12 @@ export default function CashboxAdjustDrawer({
           // Yozuv KIMNING oyligiga tegishli. Xodimga chiqim bo'lsa — o'sha
           // xodim. Server buni nomdagi "avans|oylik" so'ziga qarab ham
           // topadi, lekin "KPI bonusi", "Bayram mukofoti" kabi turlarda bu
-          // so'zlar yo'q va yozuv egasiz qolardi.
-          teacherName: target === "employee" ? personName : undefined,
+          // so'zlar yo'q va yozuv egasiz qolardi. O'quvchiga pul
+          // qaytarishda — tushumidan ayriladigan ustoz (yuqoridagi
+          // `refundTeacher`; bo'sh bo'lsa server o'zi topadi).
+          teacherName: target === "employee" ? personName
+            : target === "student" ? (refundTeacher || undefined)
+            : undefined,
           date: date ? toIso(date) : undefined,
           note,
         }),
@@ -417,7 +471,10 @@ export default function CashboxAdjustDrawer({
                   // Tozalanmasa, maydon yashirinib ketgan bo'lsa ham eski
                   // ism `studentName` bo'lib yozuvga tushardi.
                   const next = categories.find((t) => t.id === Number(v)) ?? null;
-                  if (txTarget(next) !== target) setPersonName("");
+                  if (txTarget(next) !== target) {
+                    setPersonName("");
+                    setRefundTeacher("");
+                  }
                   setCategoryId(next?.id ?? null);
                 }} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(categoriesLoading, categories.length, "Chiqim turi qo'shilmagan")} clearable disabled={categoriesLoading} />
           </div>
@@ -431,7 +488,12 @@ export default function CashboxAdjustDrawer({
               <StudentSearchSelect
                 label={txTargetLabel(target)}
                 value={personName}
-                onChange={setPersonName}
+                onChange={(v) => {
+                  setPersonName(v);
+                  // Boshqa o'quvchi — oldingisining ustozi qolib ketmasin;
+                  // yangisi effektda oxirgi to'lovidan qayta to'ladi.
+                  setRefundTeacher("");
+                }}
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : studentNames}
                 // Bitta tanlovni IKKI manba to'ldiradi — turga QARAB: xodim
                 // turida xodimlar ro'yxati, aks holda o'quvchilar. Ikkalasini
@@ -477,6 +539,21 @@ export default function CashboxAdjustDrawer({
                       Summa o&apos;quvchi balansidan ({fmtUZS(studentBalance)}) ko&apos;p bo&apos;lishi mumkin emas.
                     </div>
                   )}
+                  {/* Qaytarilgan pul qaysi ustozning tushumidan ayrilishi —
+                      o'quvchining oxirgi to'lovidagi ustoz o'zi tushadi
+                      (yuqoridagi effekt), kassir o'zgartira oladi. */}
+                  <StudentSearchSelect
+                    label="Ustozi (tushumidan ayriladi)"
+                    value={refundTeacher}
+                    onChange={setRefundTeacher}
+                    options={teacherNames}
+                    loading={teachersLoading}
+                    placeholder="Ism bo'yicha qidiring…"
+                  />
+                  <p className="text-[11.5px] text-muted-foreground leading-snug">
+                    Qaytarilgan summa o&apos;quvchi balansidan va ustozning shu oydagi tushumidan ayriladi —
+                    ustozning foizli oyligi shu summaning foizi qadar kamayadi, qolgani markaz hisobidan ketadi.
+                  </p>
                   <button
                     type="button"
                     onClick={() => setGroupsOpen(true)}
@@ -541,6 +618,23 @@ export default function CashboxAdjustDrawer({
             </div>
           )}
 
+          {oylikLocked ? (
+            // "Oylik": bitta, faqat o'qiladigan maydon — summa xodimning
+            // qoldig'idan (yuqoridagi `oylikLocked` izohi). Qator qo'shish
+            // ham yo'q: oylik bir necha bandga bo'linmaydi.
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+              <input
+                value={groupNumber(remainingSalary)}
+                readOnly
+                type="text"
+                className="w-full h-10 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums"
+              />
+              <div className="text-[12px] text-muted-foreground mt-1">
+                Oylik summasi hisobdan olinadi — qo&apos;lda o&apos;zgartirilmaydi.
+              </div>
+            </div>
+          ) : (
           <div className="space-y-3">
             {rows.map((row, i) => (
               <div key={row.id} className="flex items-end gap-2">
@@ -574,6 +668,7 @@ export default function CashboxAdjustDrawer({
               <Plus className="w-4 h-4" />
             </button>
           </div>
+          )}
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">Umumiy summa</label>

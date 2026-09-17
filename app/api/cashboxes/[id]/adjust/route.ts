@@ -7,6 +7,8 @@ import { flushSoon } from "@/lib/sync/dispatch";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import { payrollCashLeg, payrollPayout, payrollPeriodOf, payrollPlastikLeg } from "@/lib/salary";
 import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
+import { isStudentRefundCategory, refundTeacherOf } from "@/lib/studentRefund";
+import { studentPaidBalanceByName } from "@/lib/pupilsDb";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 import { notifyPayment } from "@/lib/studentBot/notify";
 
@@ -130,6 +132,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
+  // O'QUVCHIGA PUL QAYTARISH — tur "Mijoz" bo'yicha O'QUVCHIGA qaratilgan
+  // chiqim (lib/studentRefund.ts; oyna ham aynan shu qoida bilan o'quvchi
+  // tanlovini ko'rsatadi). Bunday yozuv:
+  //   • o'quvchi BALANSIDAN ayriladi — shu bois summa balansdan oshmasin
+  //     (oyna tekshiradi, bu server zaxirasi; oylik chegarasi bilan bir
+  //     uslub);
+  //   • USTOZNING shu oydagi tushumidan ayriladi — `teacherName` ga o'sha
+  //     to'lov foizi hisoblangan ustoz yoziladi (oyna tanlagan bo'lsa
+  //     o'sha, aks holda o'quvchining oxirgi to'lovidagi / guruhidagi
+  //     ustoz). Ustoz topilmasa yozuv ustozsiz qoladi — taxmin qilinmaydi.
+  // Qolgani (markaz ulushi) shu chiqimning o'zi — kassadan chiqqan pul.
+  const studentRefund = mode === "chiqim"
+    && !!(studentName || "").trim()
+    && (await isStudentRefundCategory(db, category || ""));
+  let refundTeacher = "";
+  if (studentRefund) {
+    const balance = await studentPaidBalanceByName(db, studentName || "");
+    if (amount > balance) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Summa o'quvchi balansidan ko'p bo'lmasin (balans: ${balance.toLocaleString("ru-RU")} so'm)`,
+        },
+        { status: 400 },
+      );
+    }
+    refundTeacher = (teacherName || "").trim() || (await refundTeacherOf(db, studentName || "")) || "";
+  }
+
   // QOROVUL SHARTNING O'ZI FILTRDA — `transfer-to` va `salary-runs` bilan
   // bir xil uslub.
   //
@@ -181,11 +212,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // Yozuv qaysi o'qituvchining oyligiga tegishli.
   //   • chiqim + "hodimga avans/oylik" → puli chiqarilayotgan xodim
+  //   • chiqim + o'quvchiga pul qaytarildi → o'quvchining ustozi (uning
+  //     tushumidan ayriladi, yuqoridagi `refundTeacher`)
   //   • kirim → oynada tanlangan o'qituvchi, tanlanmagan bo'lsa
   //     o'quvchining guruhidagi ustoz
   // Topilmasa bo'sh qoladi — taxmin qilinmaydi.
   let salaryTarget = "";
-  if (mode === "chiqim") {
+  if (studentRefund) {
+    salaryTarget = refundTeacher;
+  } else if (mode === "chiqim") {
     // Nomida "avans"/"oylik" bo'lgan turlarda xodim `studentName` da keladi
     // (jurnaldagi "KIM" ustuni), qolgan XODIM turlarida esa — "KPI bonusi",
     // "Oyning eng yaxshi o'qituvchisi", "Bayram mukofoti" — oyna uni
@@ -240,6 +275,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     ...(typeof periodMonth === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)
       ? { periodMonth }
       : {}),
+    // O'quvchiga pul qaytarish belgisi — balans va ustoz tushumi shu
+    // bayroq bo'yicha ayiradi (lib/transactionEntries.ts izohi). Oddiy
+    // chiqimda maydon umuman yozilmaydi.
+    ...(studentRefund ? { studentRefund: true } : {}),
   });
   await logTransaction(db, {
     date: entryDate,

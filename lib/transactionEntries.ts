@@ -133,4 +133,39 @@ export interface TransactionEntry {
    * oldingi va import qilingan) yozuvlarda `date` ning oyi ishlatiladi.
    */
   periodMonth?: string;
+  /**
+   * O'QUVCHIGA PUL QAYTARILDI — chiqim yozuvi, lekin oddiy xarajat EMAS.
+   *
+   * `true` bo'lsa yozuv o'quvchining ILGARI TO'LAGAN pulini qaytarib
+   * berish: `studentName` — o'quvchi, `amount` — manfiy summa, `teacherName`
+   * — o'sha to'lov foizi hisoblangan ustoz. Uch joyga ta'sir qiladi:
+   *
+   *   • o'quvchi balansi — ayriladi (lib/studentRefund.ts →
+   *     studentBalanceMatch; balans = payIn + shu yozuvlar, ishorali);
+   *   • ustozning shu oydagi tushumi (`collected`) — ayriladi, ya'ni
+   *     foizli oyligi qaytarilgan summaning foizi qadar kamayadi
+   *     (lib/payrollSources.ts → loadCollectedByTeacher); qolgan qismi
+   *     markaz hisobidan ketadi — u kassa chiqimi sifatida allaqachon yozilgan;
+   *   • "O'quv markazga ishlab berilgan" hisoboti — o'sha ustozning
+   *     summasidan ayriladi.
+   *
+   * QAYSI YOZUVDA `true`: Chiqim oynasida tanlangan tur "Mijoz" bo'yicha
+   * O'QUVCHI ga qaratilgan bo'lsa (lib/txTarget.ts → txTarget === "student")
+   * server o'zi qo'yadi (app/api/cashboxes/[id]/adjust). Nomga qarab
+   * ("qaytar" so'zi) TAXMIN QILINMAYDI — tur nomi Sozlamalardan
+   * o'zgartirilishi mumkin. Bu maydon qo'shilishidan OLDINGI qaytarim
+   * yozuvlari `scripts/backfill-student-refund.mjs` bilan belgilanadi.
+   */
+  studentRefund?: boolean;
+}
+
+/**
+ * Yozuv o'quvchiga pul qaytarish yozuvimi — YAGONA qoida, klient va server
+ * uchun bir xil. Faqat `studentRefund` bayrog'iga qaraladi; `txName` dagi
+ * "qaytar" so'zi qoida EMAS (yuqoridagi izoh).
+ */
+export function isStudentRefundEntry(
+  e: Pick<TransactionEntry, "txType" | "studentRefund"> | null | undefined,
+): boolean {
+  return !!e && e.txType === "payOut" && e.studentRefund === true;
 }

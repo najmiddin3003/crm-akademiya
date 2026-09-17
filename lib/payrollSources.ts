@@ -118,37 +118,69 @@ export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<str
   return map;
 }
 
+export interface CollectedByTeacher {
+  /**
+   * Shu oyda ustoz orqali tushgan pul MINUS uning o'quvchilariga
+   * qaytarib berilgani — foizli oylik AYNAN shundan hisoblanadi.
+   * Manfiy bo'lishi mumkin (oy boshida tushum yo'q, lekin o'tgan oy
+   * to'lovi qaytarildi) — bu xato emas: foizli asos manfiy chiqadi va
+   * `payrollDue` xodim qarzdorligi bo'lib keyingi oyga o'tadi, to'lovi
+   * bekor qilingan holat bilan bir xil yo'l (lib/salary.ts → carryOver).
+   */
+  collected: number;
+  /** Shu oyda ustozning o'quvchilariga QAYTARILGAN pul (musbat, ma'lumot uchun). */
+  refunded: number;
+}
+
 /**
  * Shu oyda har bir o'qituvchi orqali tushgan pul — foizli oylik uchun asos.
  * Manba: `transaction_entries` kirim yozuvlaridagi `teacherName`, ya'ni
  * to'lagan o'quvchining ustozi (app/api/cashboxes/[id]/adjust/route.ts).
  * Bekor qilinganlar hisobga olinmaydi.
+ *
+ * O'QUVCHIGA QAYTARILGAN PUL AYRILADI (foydalanuvchi, 18.09.2026): o'quvchi
+ * 200 to'lab 100 ni qaytarib olsa, ustozning tushumi 100 ga kamayadi va
+ * foizli oyligi qaytarilgan summaning foizi qadar (50% da — 50) kamayadi;
+ * qolgan 50 markaz hisobidan ketadi (kassa chiqimi). Qaytarim yozuvi —
+ * `payOut` + `studentRefund: true` + o'sha ustozning `teacherName` i
+ * (lib/studentRefund.ts); oy qoidasi kirim bilan bir xil (`monthMatch`).
  */
-export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map<string, number>> {
+export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map<string, CollectedByTeacher>> {
   const rows = await db
     .collection("transaction_entries")
     .find({
-      txType: "payIn",
-      // QAYSI OYGA tegishli ekani `periodMonth` da (Kirim oynasida
-      // tanlanadi): pul sentabrda kelib, avgust darslari uchun bo'lishi
-      // mumkin va o'qituvchining foizi AVGUSTGA hisoblanishi kerak.
-      //
-      // Maydon yo'q yozuvlarda (bu qo'shilishdan oldingilar va import
-      // qilinganlar — bazadagi yozuvlarning aksariyati) avvalgidek `date`
-      // ning oyi ishlatiladi, ya'ni eski hisob buzilmaydi.
-      $or: monthMatch(month),
+      // Ikkita `$or` bitta filtrda turolmaydi — `$and` orqali.
+      $and: [
+        { $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }] },
+        // QAYSI OYGA tegishli ekani `periodMonth` da (Kirim oynasida
+        // tanlanadi): pul sentabrda kelib, avgust darslari uchun bo'lishi
+        // mumkin va o'qituvchining foizi AVGUSTGA hisoblanishi kerak.
+        //
+        // Maydon yo'q yozuvlarda (bu qo'shilishdan oldingilar va import
+        // qilinganlar — bazadagi yozuvlarning aksariyati) avvalgidek `date`
+        // ning oyi ishlatiladi, ya'ni eski hisob buzilmaydi.
+        { $or: monthMatch(month) },
+      ],
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
     })
-    // Pastdagi tsikl faqat shu ikkitasini o'qiydi. 666 KB -> 73 KB.
-    .project({ teacherName: 1, amount: 1, _id: 0 })
+    // Pastdagi tsikl faqat shu uchtasini o'qiydi. 666 KB -> 73 KB.
+    .project({ teacherName: 1, amount: 1, txType: 1, _id: 0 })
     .toArray();
 
-  const map = new Map<string, number>();
+  const map = new Map<string, CollectedByTeacher>();
   for (const r of rows) {
     const k = nameKey(r.teacherName);
     if (!k) continue;
-    map.set(k, (map.get(k) ?? 0) + Math.abs(Number(r.amount) || 0));
+    const cur = map.get(k) ?? { collected: 0, refunded: 0 };
+    const amount = Math.abs(Number(r.amount) || 0);
+    if (r.txType === "payIn") {
+      cur.collected += amount;
+    } else {
+      cur.collected -= amount;
+      cur.refunded += amount;
+    }
+    map.set(k, cur);
   }
   return map;
 }
@@ -426,7 +458,7 @@ export async function buildPayrollRows(
     const hasOklad = isSalaryConfigured(emp);
     const percent = resolvePercent(emp.percent, percentByTier);
     const carryOver = carryBy.get(emp.id) ?? 0;
-    const collected = collectedBy.get(k) ?? 0;
+    const collected = collectedBy.get(k) ?? { collected: 0, refunded: 0 };
     const empTaxRules = (Array.isArray(emp.taxIds) ? emp.taxIds : [])
       .map((id) => taxById.get(Number(id)))
       .filter((r): r is NonNullable<typeof r> => Boolean(r));
@@ -447,8 +479,10 @@ export async function buildPayrollRows(
       salaryType,
       fixedSalary,
       percent: percent ?? 0,
-      // Shu oyda o'quvchilari to'lagan pul — foizli oylik asosi.
-      collected,
+      // Shu oyda o'quvchilari to'lagan pul MINUS ularga qaytarilgani —
+      // foizli oylik asosi (loadCollectedByTeacher izohiga qarang).
+      collected: collected.collected,
+      refunded: collected.refunded,
       futureCollected: 0,
       bonus: sumFor(bonusesOfMonth, k),
       jarima: sumFor(penaltiesOfMonth, k),

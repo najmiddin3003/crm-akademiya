@@ -54,8 +54,16 @@ export interface SalaryReceipt {
   /** Oklad (qat'iy maosh) yoki foiz asosi. */
   fixedSalary?: number;
   percent?: number;
-  /** Shu oyda o'qituvchi orqali tushgan pul — foizli hisob asosi. */
+  /**
+   * Shu oyda o'qituvchi orqali tushgan pul — foizli hisob asosi (SOF:
+   * o'quvchilarga qaytarilgani ayrilgan).
+   */
   collected?: number;
+  /**
+   * Shu oyda o'quvchilariga qaytarilgan pul (musbat). Chekda "tushum −
+   * qaytarim" izohi uchun; 18.09.2026 gacha bo'lgan cheklarda yo'q.
+   */
+  refunded?: number;
   /** Davr: nechanchi kun / oyda nechta kun (oklad pro-rata uchun). */
   day?: number;
   daysIn?: number;
@@ -292,8 +300,21 @@ export interface EmployeePayroll {
   fixedSalary: number;
   /** O'qituvchi foizi (%). */
   percent: number;
-  /** Shu oyda shu xodim orqali tushgan pul (foizli hisob uchun asos). */
+  /**
+   * Shu oyda shu xodim orqali tushgan pul (foizli hisob uchun asos) —
+   * o'quvchilariga QAYTARILGAN pul ayrilgan holda (sof). Ya'ni o'quvchi
+   * to'lovini qaytarib olsa, ustozning foizli oyligi o'sha summaning foizi
+   * qadar kamayadi (lib/payrollSources.ts → loadCollectedByTeacher).
+   * Manfiy bo'lishi mumkin — u holda asos manfiy, qoldiq qarzdorlik
+   * bo'lib keyingi oyga o'tadi (bekor qilingan to'lov bilan bir xil yo'l).
+   */
   collected: number;
+  /**
+   * Shu oyda ustozning o'quvchilariga qaytarilgan pul (musbat) — faqat
+   * KO'RSATISH uchun: `collected` allaqachon sof, formulalar bunga
+   * tegmaydi. Yalpi tushum = `collected + refunded`.
+   */
+  refunded: number;
   /** Kelgusi oylar uchun oldindan tushgan pul — o'z oyida hisoblanadi. */
   futureCollected: number;
   /** Shu oydagi bonus/jarima yig'indisi. */

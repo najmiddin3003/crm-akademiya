@@ -59,9 +59,14 @@ function rowsOf(e: EmployeePayroll, p: PayrollPeriod): Row[] {
   const earned = payrollEarned(e, p);
   const due = payrollDue(e, p);
   return [
-    // Foizli o'qituvchida asos — shu oyda u orqali tushgan pul; oklad
+    // Foizli o'qituvchida asos — shu oyda u orqali tushgan pul (SOF:
+    // o'quvchilarga qaytarilgani ayrilgan, izohda ko'rinadi); oklad
     // oladigan xodimda tushum oyligiga ta'sir qilmaydi, shuning uchun 0.
-    { label: "Davomat", value: e.salaryType === "foiz" ? e.collected : 0 },
+    {
+      label: "Davomat",
+      value: e.salaryType === "foiz" ? e.collected : 0,
+      hint: e.salaryType === "foiz" && (e.refunded ?? 0) > 0 ? `qaytarim −${fmtUZS(e.refunded)}` : undefined,
+    },
     {
       label: e.salaryType === "foiz" ? "Davomatdan foizi" : "Oklad (shu kungacha)",
       value: base,

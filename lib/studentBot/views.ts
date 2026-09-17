@@ -247,7 +247,9 @@ export function paymentsView(pupil: Pupil, view: PaymentsView): string {
   lines.push("");
 
   for (const r of view.rows) {
-    const tail = [r.method && esc(r.method), r.cancelled && "BEKOR QILINGAN"]
+    // Qaytarim qatori MANFIY summa bilan chiqadi va alohida yorliq oladi —
+    // o'quvchi "−320 000" ni ko'rib nima ekanini shu yerning o'zida bilsin.
+    const tail = [r.refund && "QAYTARILDI", r.method && esc(r.method), r.cancelled && "BEKOR QILINGAN"]
       .filter(Boolean)
       .join(", ");
     const amount = r.cancelled ? `<s>${fmtUZS(r.amount)}</s>` : `<b>${fmtUZS(r.amount)}</b>`;
@@ -262,7 +264,7 @@ export function paymentsView(pupil: Pupil, view: PaymentsView): string {
   }
 
   lines.push("");
-  lines.push("<i>Bu — to'langan pul yig'indisi. Qarzdorlik tizimda yuritilmaydi.</i>");
+  lines.push("<i>Bu — to'langan pul yig'indisi (qaytarib olingani ayrilgan). Qarzdorlik tizimda yuritilmaydi.</i>");
   return lines.join("\n");
 }
 

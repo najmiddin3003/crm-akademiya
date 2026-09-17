@@ -271,6 +271,7 @@ export async function POST(req: Request) {
         fixedSalary: ep.fixedSalary,
         percent: ep.percent,
         collected: ep.collected,
+        refunded: ep.refunded,
         day: period.day,
         daysIn: period.daysIn,
         base: payrollBase(ep, period),
