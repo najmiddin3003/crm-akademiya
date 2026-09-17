@@ -42,6 +42,11 @@ export interface ProfileStat {
   wrap: string;
   /** Qiymatga qo'shimcha klass (masalan manfiy avans — "text-rose-600"). */
   valueCls?: string;
+  /**
+   * Qiymat ostidagi kichik izoh (masalan "kartaga 1 584 000 · naqd
+   * 2 900 000"). Berilmasa chizilmaydi.
+   */
+  hint?: string;
 }
 
 /** Ism/telefon ostidagi doira ikonka-tugma. */
@@ -205,6 +210,7 @@ export default function ProfileSideCard({
               <div className="flex-1 min-w-0 text-left">
                 <div className="text-[11px] text-muted-foreground">{s.label}</div>
                 <div className={`text-[14px] font-semibold tabular-nums ${s.valueCls ?? ""}`}>{s.value}</div>
+                {s.hint && <div className="text-[11px] text-muted-foreground tabular-nums">{s.hint}</div>}
               </div>
             </li>
           ))}

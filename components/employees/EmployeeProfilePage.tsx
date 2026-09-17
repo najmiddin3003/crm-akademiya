@@ -16,11 +16,11 @@ import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
-import { payrollDue, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
+import { payrollCashLeg, payrollDue, payrollPeriod, payrollPlastikLeg, type EmployeePayroll } from "@/lib/salary";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeePasswordModal from "./EmployeePasswordModal";
-import type { TransactionEntry } from "@/lib/transactionEntries";
+import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
@@ -102,7 +102,20 @@ interface StatInput {
    * Oylik hisob-kitob sahifasida allaqachon hisoblanadi. Ikki joyda ikki
    * xil raqam chiqmasligi uchun bu yerda qayta hisoblanmaydi.
    */
-  payroll?: { fixedSalary: number; due: number; configured: boolean } | null;
+  payroll?: {
+    fixedSalary: number;
+    due: number;
+    configured: boolean;
+    /**
+     * `due` ning ikki oyog'i (lib/salary.ts): kartaga ketadigani va
+     * qo'lga beriladigan naqd. Oylik hisob-kitob sahifasining "Qolgan"
+     * ustuni AYNAN `naqd` — shu bois karta bor xodimda profil "To'lanmagan"
+     * (karta + naqd) o'sha ustundan katta ko'rinadi va bu xato emas;
+     * kesim ostida ko'rsatiladi, ikki raqam bir-biriga mos tushsin.
+     */
+    karta: number;
+    naqd: number;
+  } | null;
 }
 
 function buildStats({ bonus, jarima, avans, oylik, ready, payroll }: StatInput): ProfileStat[] {
@@ -125,8 +138,52 @@ function buildStats({ bonus, jarima, avans, oylik, ready, payroll }: StatInput):
       icon: <DollarSign className="w-4 h-4" />,
       wrap: "bg-emerald-100 text-emerald-700",
       valueCls: (payroll?.due ?? 0) < 0 ? "text-rose-600" : "",
+      // Karta bor xodimda kesim: Oylik hisob-kitob sahifasidagi "Qolgan"
+      // — bu yerdagi `naqd`. Kartasiz xodimda kesim ma'nosiz — yozilmaydi.
+      hint: ready && payroll?.configured && payroll.karta > 0
+        ? `kartaga ${nf(payroll.karta)} · naqd ${nf(payroll.naqd)}`
+        : undefined,
     },
   ];
+}
+
+/**
+ * Yozuvning SHU XODIM OYLIGIGA ta'siri — "Tranzaksiyalar tarixi"dagi
+ * "Oyligiga ta'siri" ustuni (18.09.2026).
+ *
+ * NIMA UCHUN KERAK: jadvaldagi "Miqdori" — kassaga kirgan/chiqqan pulning
+ * O'ZI, "Kassada oldin/keyin" esa o'sha kassaning qoldig'i. Foizli
+ * o'qituvchida o'quvchi to'lagan 300 000 uning oyligiga 300 000 emas,
+ * 300 000 × foiz bo'lib tushadi; o'quvchiga qaytarilgan 150 000 ham
+ * to'liq emas, foizi qadar ayriladi. Bu farq jadvalda ko'rinmagani uchun
+ * kassa qoldig'i ustunlari "oylik shuncha kamaydi" deb o'qilardi.
+ *
+ * Qoida lib/payrollSources.ts bilan BIR XIL:
+ *   • kirim, `teacherName` — shu xodim, foizli    → +summa × foiz
+ *   • o'quvchiga qaytarim, `teacherName` — shu xodim → −summa × foiz
+ *   • chiqim avans/oylik, `studentName` — shu xodim  → −summa (olingan)
+ *   • okladli xodimda o'quvchi to'lovi oylikka tegmaydi → null
+ *   • bekor qilingan yozuv hisobga kirmaydi           → null
+ */
+function salaryEffectOf(
+  t: TransactionEntry,
+  empName: string,
+  payroll: EmployeePayroll | null,
+): { amount: number; note: string } | null {
+  if (t.status === "cancelled") return null;
+  const key = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  const me = key(empName);
+  if (!me) return null;
+  const abs = Math.abs(Number(t.amount) || 0);
+  if (t.txType === "payOut" && key(t.studentName) === me && /avans|oylik/i.test(t.txName || "")) {
+    return { amount: -abs, note: "olingan" };
+  }
+  if (key(t.teacherName) !== me) return null;
+  if (!payroll?.configured || payroll.salaryType !== "foiz") return null;
+  const share = Math.round(abs * payroll.percent / 100);
+  if (t.txType === "payIn") return { amount: share, note: `${payroll.percent}%` };
+  if (isStudentRefundEntry(t)) return { amount: -share, note: `${payroll.percent}% qaytarim` };
+  return null;
 }
 
 // Manbasi bo'lmagan tablar — nima uchun bo'shligini aniq aytamiz, chunki
@@ -573,7 +630,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     oylik: oylikTotal,
     ready: !finLoading,
     payroll: payrollRow
-      ? { fixedSalary: payrollRow.fixedSalary, due: payrollDue(payrollRow, payrollPeriod()), configured: payrollRow.configured }
+      ? {
+          fixedSalary: payrollRow.fixedSalary,
+          due: payrollDue(payrollRow, payrollPeriod()),
+          configured: payrollRow.configured,
+          karta: payrollPlastikLeg(payrollRow, payrollPeriod()),
+          naqd: payrollCashLeg(payrollRow, payrollPeriod()),
+        }
       : null,
   });
 
@@ -916,16 +979,31 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                        {["№", "Sana", "O'quvchilar", "Guruh", "Turi", "Holati", "Izoh", "Miqdori", "Keyingi miqdor", "Oldingi miqdor"].map((h) => (
-                          <th key={h} className="px-4 py-3 text-left whitespace-nowrap">{h}</th>
+                        {/* "Kassada keyin/oldin" — yozuv yozilgan KASSANING
+                            qoldig'i (transaction_entries.after/before), xodim
+                            balansi EMAS. Ilgari "Keyingi/Oldingi miqdor" deb
+                            turardi va xodim oyligi deb o'qilardi; oylikka
+                            haqiqiy ta'sir — alohida ustunda (salaryEffectOf). */}
+                        {["№", "Sana", "O'quvchilar", "Guruh", "Turi", "Holati", "Izoh", "Miqdori", "Oyligiga ta'siri", "Kassada keyin", "Kassada oldin"].map((h) => (
+                          <th
+                            key={h}
+                            className="px-4 py-3 text-left whitespace-nowrap"
+                            title={
+                              h === "Oyligiga ta'siri"
+                                ? "Foizli o'qituvchida o'quvchi to'lovi × foiz (qaytarim ham foizi qadar); avans/oylik — olingan summa"
+                                : h.startsWith("Kassada") ? "Yozuv yozilgan kassaning qoldig'i — xodim balansi emas" : undefined
+                            }
+                          >
+                            {h}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
                       {finLoading ? (
-                        <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
+                        <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
                       ) : rows.length === 0 ? (
-                        <tr><td colSpan={10} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Ma&apos;lumotlar topilmadi</td></tr>
+                        <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Ma&apos;lumotlar topilmadi</td></tr>
                       ) : rows.map((t, i) => (
                         <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{rowOffset + i + 1}</td>
@@ -940,6 +1018,16 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                           </td>
                           <td className="px-4 py-3">{t.note || "—"}</td>
                           <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${t.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{nf(t.amount)}</td>
+                          {(() => {
+                            const eff = salaryEffectOf(t, emp.name, payrollRow);
+                            if (!eff) return <td className="px-4 py-3 text-muted-foreground">—</td>;
+                            return (
+                              <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${eff.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                                {eff.amount < 0 ? "−" : "+"}{nf(Math.abs(eff.amount))}
+                                <span className="ml-1 text-[11px] font-normal text-muted-foreground">({eff.note})</span>
+                              </td>
+                            );
+                          })()}
                           <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.after === null ? "—" : nf(t.after)}</td>
                           <td className="px-4 py-3 tabular-nums whitespace-nowrap">{nf(t.before)}</td>
                         </tr>

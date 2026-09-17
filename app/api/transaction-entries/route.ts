@@ -254,6 +254,9 @@ export async function GET(req: Request) {
       // birlashgan ro'yxatda qator KIM orqali kelganini bilish kerak.
       // Qator boshiga ~25 bayt qo'shadi — 50 qatorda sezilmaydi.
       moderator: 1, teacherName: 1,
+      // "Oyligiga ta'siri" ustuni (EmployeeProfilePage → salaryEffectOf):
+      // kirim/chiqim va o'quvchiga qaytarim yozuvini ajratish uchun.
+      txType: 1, studentRefund: 1,
     });
   }
 
