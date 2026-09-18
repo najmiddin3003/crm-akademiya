@@ -399,29 +399,30 @@ export async function chiqimText(ctx: FlowCtx, text: string): Promise<boolean> {
   switch (d.step) {
     case "person": {
       const q = text.trim();
-      const found = d.target === "employee"
-        ? await searchEmployees(ctx.db, q)
-        : await searchPupils(ctx.db, q, cashbox.branchId);
+      // Ikki manba, ikki xil yorliq — birlashtirilgan tipda `in` bilan
+      // toraytirish serverdagi TS'da o'tmadi (18.09.2026 deploy), shu
+      // bois har tomon o'z tugmalarini o'zi yasaydi.
+      const kind = d.target === "employee" ? "employee" : "student";
+      const found = kind === "employee"
+        ? await searchEmployees(ctx.db, q).then((r) => r && {
+            more: r.more,
+            options: r.hits.map((h) => ({ id: h.id, label: h.turi ? `${h.name} · ${roleWord(h.turi)}` : h.name })),
+          })
+        : await searchPupils(ctx.db, q, cashbox.branchId).then((r) => r && {
+            more: r.more,
+            options: r.hits.map((h) => ({ id: h.id, label: h.phone ? `${h.name} · ${formatPhone(h.phone)}` : h.name })),
+          });
       if (!found) {
         await show(ctx, { html: V.chiqimQueryTooShort(d, cashbox), keyboard: chiqimCancelOnly() });
         return true;
       }
-      if (found.hits.length === 0) {
+      if (found.options.length === 0) {
         await show(ctx, { html: V.chiqimPersonNotFound(d, cashbox, q), keyboard: chiqimCancelOnly() });
         return true;
       }
-      const kind = d.target === "employee" ? "employee" : "student";
       await show(ctx, {
-        html: V.chiqimPersonResults(d, cashbox, q, found.hits.length, found.more),
-        keyboard: chiqimPersonKeyboard(
-          found.hits.map((h) => ({
-            id: h.id,
-            label: kind === "employee"
-              ? `${h.name}${"turi" in h && h.turi ? ` · ${roleWord(h.turi)}` : ""}`
-              : (h.phone ? `${h.name} · ${formatPhone(h.phone)}` : h.name),
-          })),
-          kind,
-        ),
+        html: V.chiqimPersonResults(d, cashbox, q, found.options.length, found.more),
+        keyboard: chiqimPersonKeyboard(found.options, kind),
       });
       return true;
     }

@@ -1,6 +1,6 @@
 import type { Db } from "mongodb";
 import { nameEq } from "@/lib/currentEmployee";
-import { markBlocked, STAFF_BOT_USERS, type StaffBotUser } from "@/lib/staffBot/session";
+import { markBlocked, STAFF_BOT_USERS } from "@/lib/staffBot/session";
 import { sendToStaff } from "@/lib/staffBot/api";
 import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
 import { transferDecisionKeyboard } from "@/lib/staffBot/keyboards";
@@ -53,17 +53,18 @@ export async function notifyTransferPending(db: Db, info: TransferPendingInfo): 
     or.push({ isAdmin: true, cashboxId: info.toCashboxId });
     if (cashbox.isPrimary === true) or.push({ isAdmin: true, cashboxId: { $exists: false } });
 
-    const users = (await db.collection(STAFF_BOT_USERS)
+    const rows = await db.collection(STAFF_BOT_USERS)
       .find({ stage: "in", blocked: { $ne: true }, $or: or }, { projection: { _id: 0, chatId: 1 } })
-      .toArray()) as Pick<StaffBotUser, "chatId">[];
-    if (users.length === 0) return;
+      .toArray();
+    const chatIds = rows.map((r) => Number(r.chatId)).filter((n) => Number.isFinite(n));
+    if (chatIds.length === 0) return;
 
     const html = transferPendingPush(info);
     const keyboard = transferDecisionKeyboard(info.inEntryId);
-    for (const u of users) {
-      const sent = await sendToStaff(cfg, u.chatId, html, keyboard);
+    for (const chatId of chatIds) {
+      const sent = await sendToStaff(cfg, chatId, html, keyboard);
       if (!sent.ok) {
-        if (sent.blocked) await markBlocked(db, u.chatId);
+        if (sent.blocked) await markBlocked(db, chatId);
         else console.error("[staff-bot] ko'chirma xabari ketmadi:", sent.error);
       }
     }
