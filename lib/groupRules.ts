@@ -15,8 +15,44 @@ import type { Group } from "@/lib/groups";
 // Fayl TOZA (Mongo yo'q) — brauzerga ham tushadi. Bazadan o'qiydigan
 // qismi lib/groupRoomClash.ts da.
 
-/** Modal va serverda ruxsat etilgan holatlar (constants/groups.js dagi eski demo ro'yxati emas). */
-export const GROUP_STATUS_VALUES = ["active", "frozen", "archive"] as const;
+/**
+ * Modal va serverda ruxsat etilgan holatlar (constants/groups.js dagi eski
+ * demo ro'yxati emas). Tartib — guruh hayot yo'li:
+ *
+ *   gathering  "Yig'ilayotgan" — guruh endi tuzilyapti, o'quvchilar
+ *              yig'ilmoqda, dars HALI boshlanmagan (18.09.2026, moderator
+ *              so'rovi). Buyurtma formasidagi "Yig'ilayotgan guruh"
+ *              tanlovi shu guruhlarni nazarda tutadi. Xona/kun/vaqt
+ *              allaqachon belgilangan bo'ladi, shu bois u xonani BAND
+ *              QILADI (aktivga o'tganda to'qnashuv chiqmasin), lekin
+ *              davomat kutilmaydi (lessonExpectedOn) va xona hisobotida
+ *              dars o'tayotgan guruh sanalmaydi.
+ *   active     dars o'tilmoqda;
+ *   frozen     vaqtincha to'xtagan — xona saqlanib turadi;
+ *   archive    tugagan — hech narsa band qilmaydi.
+ *
+ * Yorliqlar ham shu yerda: ro'yxat, o'quvchi profilidagi Guruh tabi va
+ * filtr tanlovi bitta manbadan o'qisin — ilgari uchta nusxa bor edi va
+ * yangi holat qo'shilganda birortasi unutilishi mumkin edi.
+ */
+export const GROUP_STATUS_VALUES = ["gathering", "active", "frozen", "archive"] as const;
+export type GroupStatus = (typeof GROUP_STATUS_VALUES)[number];
+export const GROUP_STATUS_LABELS: Record<GroupStatus, string> = {
+  gathering: "Yig'ilayotgan",
+  active: "Aktiv",
+  frozen: "Muzlatilgan",
+  archive: "Arxiv",
+};
+
+/**
+ * Xonani band qiladigan holatlar — bandlik tekshiruvi (klientda
+ * `findRoomConflict`, serverda lib/groupRoomClash.ts va POST/PATCH
+ * /api/groups) HAMMASI shu ro'yxatga qaraydi. Arxiv xona egallamaydi.
+ */
+export const ROOM_HOLDING_STATUSES: readonly string[] = ["gathering", "active", "frozen"];
+export function holdsRoom(status: string | undefined): boolean {
+  return ROOM_HOLDING_STATUSES.includes(String(status ?? ""));
+}
 
 /**
  * Majburiy maydonlar va ularning foydalanuvchi ko'radigan nomlari — xato
@@ -182,10 +218,11 @@ export function lessonExpectedOn(
 }
 
 /**
- * Xona shu kun va vaqtda boshqa guruh bilan bandmi. Bandlik faqat AKTIV va
- * MUZLATILGAN guruhlar bilan hisoblanadi (arxiv xona egallamaydi);
- * muddati tugab bo'lgan guruh ham hisobga kirmaydi — aks holda mavsumi
- * o'tgan, lekin arxivlanmagan guruh xonani abadiy band qilib turardi.
+ * Xona shu kun va vaqtda boshqa guruh bilan bandmi. Bandlik faqat
+ * YIG'ILAYOTGAN, AKTIV va MUZLATILGAN guruhlar bilan hisoblanadi
+ * (ROOM_HOLDING_STATUSES; arxiv xona egallamaydi); muddati tugab bo'lgan
+ * guruh ham hisobga kirmaydi — aks holda mavsumi o'tgan, lekin
+ * arxivlanmagan guruh xonani abadiy band qilib turardi.
  *
  * Kun kesishuvi lib/attendance.ts `groupWeekdays` bo'yicha ("Toq kunlar"
  * bilan "Du,Ju" kesishadi), vaqt — daqiqalarda yarim ochiq oraliq
@@ -210,7 +247,7 @@ export function findRoomConflict<G extends SlotGroup>(
 
   for (const g of groups) {
     if (excludeId !== undefined && g.id === excludeId) continue;
-    if (g.status !== "active" && g.status !== "frozen") continue;
+    if (!holdsRoom(g.status)) continue;
     if ((g.room || "").trim().toLowerCase() !== room) continue;
     const gRange = parseTimeRange(g.time);
     if (!gRange || !(range[0] < gRange[1] && gRange[0] < range[1])) continue;

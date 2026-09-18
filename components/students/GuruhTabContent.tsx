@@ -5,6 +5,7 @@ import Link from "@/components/ui/Link";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useGroups } from "@/hooks/useGroups";
 import { useProfilePupilId } from "@/hooks/useProfilePupil";
+import { GROUP_STATUS_LABELS } from "@/lib/groupRules";
 
 // O'quvchi profili → "Guruh".
 //
@@ -23,13 +24,9 @@ import { useProfilePupilId } from "@/hooks/useProfilePupil";
 // chunki StudentEditPage tabga id uzatmaydi. Sahifa uzata boshlasa,
 // `pupilId` propi ustun turadi.
 
-// Bazadagi qiymat ("active"/"frozen"/"archive") — foydalanuvchi ko'radigan
-// yozuv (Guruhlar ro'yxatidagi tanlov bilan bir xil).
-const STATUS_LABELS: Record<string, string> = {
-  active: "Aktiv",
-  frozen: "Muzlatilgan",
-  archive: "Arxiv",
-};
+// Bazadagi qiymat ("gathering"/"active"/"frozen"/"archive") — foydalanuvchi
+// ko'radigan yozuv, Guruhlar ro'yxati bilan bitta manbadan (lib/groupRules.ts).
+const STATUS_LABELS: Record<string, string> = GROUP_STATUS_LABELS;
 
 export default function GuruhTabContent({ pupilId: pupilIdProp }: { pupilId?: number }) {
   // Faqat id kerak — o'quvchi yozuvining o'zi bu tabda ishlatilmaydi.

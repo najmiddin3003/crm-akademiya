@@ -54,7 +54,7 @@ export default function AppShell({
           provider'dan o'qiydi (components/shared/TaskInboxProvider.tsx). */}
       <TaskInboxProvider>
       <div className="flex h-screen flex-col overflow-hidden">
-        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} />
+        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} permissions={permissions} />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} isAdmin={isAdmin} />
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>

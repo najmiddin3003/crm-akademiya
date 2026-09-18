@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import GroupFormModal from "./GroupFormModal";
 import type { Group } from "@/lib/groups";
+import { GROUP_STATUS_LABELS } from "@/lib/groupRules";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useStudents } from "@/hooks/useStudents";
@@ -104,11 +105,12 @@ function groupStudentCount(g: Group): number {
   return g.studentIds?.length ?? 0;
 }
 
-// Bazadagi holat kalitlari (app/api/groups/route.ts → `body.status || "active"`).
-// Ilgari ustunda XOM qiymat ("active") chiqardi va holati qanday bo'lishidan
-// qat'i nazar DOIM yashil rangda edi.
-const STATUS_LABEL: Record<string, string> = { active: "Aktiv", frozen: "Muzlatilgan", archive: "Arxiv" };
+// Bazadagi holat kalitlari va yorliqlari — lib/groupRules.ts (modal va
+// server bilan bitta ro'yxat). Ilgari ustunda XOM qiymat ("active")
+// chiqardi va holati qanday bo'lishidan qat'i nazar DOIM yashil rangda edi.
+const STATUS_LABEL: Record<string, string> = GROUP_STATUS_LABELS;
 const STATUS_CLS: Record<string, string> = {
+  gathering: "text-sky-600 dark:text-sky-400",
   active: "text-emerald-600 dark:text-emerald-400",
   frozen: "text-amber-600 dark:text-amber-400",
   archive: "text-muted-foreground",

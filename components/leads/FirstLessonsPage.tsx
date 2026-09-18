@@ -18,6 +18,7 @@ import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePicke
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import PanelDaysField from "@/components/orders/PanelDaysField";
 import SmsModal from "@/components/orders/SmsModal";
+import LeadReceiptModal, { type ReceiptRow } from "@/components/leads/LeadReceipt";
 import { enrollOrderInGroup, findPupilForOrder } from "@/lib/enrollStudent";
 import type { Group } from "@/lib/groups";
 import type { PupilListItem } from "@/lib/pupilsData";
@@ -1014,15 +1015,16 @@ function NotePanel({ order, onClose, onSave }: { order: Order; onClose: () => vo
 
 /* ---------- "Chop etish" — avval ko'rib chiqish, keyin bosma ---------- */
 
-function escHtml(s: string): string {
-  const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
-  return s.replace(/[&<>"]/g, (c) => map[c]);
-}
+// Oyna va bosma qismi components/leads/LeadReceipt.tsx da (Buyurtmalar
+// ro'yxatidagi "Chek chiqarish" bilan bo'lishiladi); bu yerda faqat
+// SHU sahifaning chekida nima yozilishi.
 
 /** Chekda ko'rsatiladigan barcha maydonlar — oynada ham, bosmada ham shu. */
-function receiptRows(order: Order): [string, string][] {
-  const rows: [string, string][] = [
-    ["ID", String(order.id)],
+function receiptRows(order: Order): ReceiptRow[] {
+  const rows: ReceiptRow[] = [
+    // Jadvaldagi "ID" ustuni bilan bir xil raqam (filial ichidagi tartib
+    // raqami) — texnik `id` foydalanuvchiga ko'rsatilmaydi.
+    ["ID", String(orderNo(order))],
     ["O'quvchi", order.name || "—"],
     ["Telefon", order.phone || "—"],
     ["Yaratilgan", order.created || "—"],
@@ -1040,88 +1042,13 @@ function receiptRows(order: Order): [string, string][] {
   return rows;
 }
 
-/** Yashirin iframe orqali bosmaga yuboradi (CashboxesPage bilan bir xil naqsh). */
-function printReceipt(order: Order) {
-  const rows = receiptRows(order);
-  const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Birinchi dars #${orderNo(order)}</title><style>
-    @page{size:58mm auto;margin:3mm}
-    /* Bosma DOIM oq fonda — sayt tungi rejimda bo'lsa ham. Sabab
-       CashboxesPage.tsx dagi bilan bir xil: color-scheme:light
-       brauzer/OS ning "majburiy tungi rejim"ini shu hujjatga qo'llashini
-       to'xtatadi, aks holda qora siyoh qora fonda bosilardi. */
-    html,body{margin:0;padding:0;background:#fff;color-scheme:light}
-    body{font:11px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#0f172a;display:flex;justify-content:center}
-    .wrap{width:52mm}
-    .brand{text-align:center;font-size:12px;font-weight:700;letter-spacing:.15em}
-    .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:.05em;margin-top:8px}
-    .divider{border-top:1px dashed #94a3b8;margin:8px 0}
-    .r{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
-    .r span:first-child{color:#64748b}
-    .r span:last-child{text-align:right;font-weight:500;word-break:break-word}
-    .thanks{text-align:center;font-style:italic;color:#64748b;font-size:10px}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-  </style></head><body>
-    <div class="wrap">
-      <div class="brand">Akademiya CRM</div>
-      <div class="title">BIRINCHI DARSGA YOZILISH</div>
-      <div class="divider"></div>
-      ${rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
-      <div class="divider"></div>
-      <div class="thanks">Akademiya - ilm maskani!</div>
-    </div>
-  </body></html>`;
 
-  const frame = document.createElement("iframe");
-  frame.setAttribute("aria-hidden", "true");
-  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
-  document.body.appendChild(frame);
-  const doc = frame.contentDocument;
-  if (!doc) {
-    frame.remove();
-    return;
-  }
-  doc.open();
-  doc.write(html);
-  doc.close();
-  frame.contentWindow?.focus();
-  frame.contentWindow?.print();
-  window.setTimeout(() => frame.remove(), 1000);
-}
-
-// "Chop etish" bosilganda AVVAL shu oyna chiqadi — foydalanuvchi barcha
-// ma'lumotni ko'rib "Chop etish" bosgandagina brauzerning bosma oynasi
-// ochiladi.
+/** Umumiy chek oynasiga shu sahifa sarlavhasi va qatorlari bilan. */
 function PrintPreviewModal({ order, onClose }: { order: Order; onClose: () => void }) {
-  const rows = receiptRows(order);
   return (
-    <ModalShell title="Chek — ko'rib chiqish" onClose={onClose}>
-      <div className="rounded-xl border border-border bg-background p-4">
-        <div className="text-center text-[13px] font-bold tracking-[0.15em]">Akademiya CRM</div>
-        <div className="mt-1 text-center text-sm font-bold">BIRINCHI DARSGA YOZILISH</div>
-        <div className="my-3 border-t border-dashed border-border" />
-        <div className="max-h-72 overflow-y-auto">
-          {rows.map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-3 py-1 text-[13px]">
-              <span className="text-muted-foreground">{k}</span>
-              <span className="text-right font-medium break-words">{v}</span>
-            </div>
-          ))}
-        </div>
-        <div className="my-3 border-t border-dashed border-border" />
-        <div className="text-center text-xs italic text-muted-foreground">Akademiya - ilm maskani!</div>
-      </div>
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-          Bekor qilish
-        </button>
-        <button
-          type="button"
-          onClick={() => { printReceipt(order); onClose(); }}
-          className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90"
-        >
-          Chop etish
-        </button>
-      </div>
-    </ModalShell>
+    <LeadReceiptModal
+      receipt={{ docTitle: `Birinchi dars #${orderNo(order)}`, heading: "BIRINCHI DARSGA YOZILISH", rows: receiptRows(order) }}
+      onClose={onClose}
+    />
   );
 }

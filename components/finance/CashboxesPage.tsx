@@ -1224,22 +1224,23 @@ export default function CashboxesPage() {
     return () => document.removeEventListener("click", onDocClick);
   }, [exportMenuOpen]);
 
+  // Ustunlar tartibi jadval bilan bir xil (jadval sarlavhasidagi izohga qarang).
   const exportCols: {
     label: string;
     get: (e: TransactionEntry) => string | number;
   }[] = [
-    { label: "Sana", get: fmtEntryDate },
     { label: "Kim", get: (e) => e.studentName || e.moderator || "" },
-    { label: "Oyligiga", get: (e) => e.teacherName || "" },
-    { label: "Izoh", get: (e) => e.note || "" },
-    { label: "Tranzaksiya nomi", get: (e) => e.txName || "" },
     { label: "Miqdori", get: (e) => e.amount },
+    { label: "To'lov turi", get: (e) => e.paymentType },
+    { label: "Sana", get: fmtEntryDate },
+    { label: "Izoh", get: (e) => e.note || "" },
+    { label: "Oyligiga", get: (e) => e.teacherName || "" },
+    { label: "Tranzaksiya nomi", get: (e) => e.txName || "" },
     { label: "Holati", get: (e) => e.status || "" },
     {
       label: "Tranzaksiya turi",
       get: (e) => TX_TYPE_LABELS[e.txType] || e.txType,
     },
-    { label: "Turi", get: (e) => e.paymentType },
   ];
 
   // Eksport butun ro'yxat bo'yicha bo'lishi kerak, jadvaldagi 50 qator
@@ -1855,26 +1856,38 @@ export default function CashboxesPage() {
         <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
           <div className="table-scroll">
             <table className="w-full text-sm">
+              {/* USTUNLAR TARTIBI (18.09.2026, kassir so'rovi): kassirga
+                  eng kerakli narsalar chapda — chek, kim, summa, to'lov
+                  turi, sana, izoh; texnik ustunlar (oyligiga, tranzaksiya
+                  nomi/turi, holati) o'ngda. Ilgari chek tugmasi eng oxirgi
+                  ustunda edi va keng jadvalda gorizontal aylantirmasdan
+                  ko'rinmasdi. Excel eksporti (exportCols) ham shu tartibda. */}
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-3 py-3 whitespace-nowrap w-14">
                     №
                   </th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Sana
+                  <th className="text-center px-2 py-3 whitespace-nowrap w-14" title="Chek chiqarish">
+                    Chek
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
+                  <th className="text-right px-3 py-3 whitespace-nowrap">
+                    Miqdori
+                  </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Oyligiga
+                    To&apos;lov turi
+                  </th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Sana
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
                     Izoh
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Tranzaksiya nomi
+                    Oyligiga
                   </th>
-                  <th className="text-right px-3 py-3 whitespace-nowrap">
-                    Miqdori
+                  <th className="text-left px-3 py-3 whitespace-nowrap">
+                    Tranzaksiya nomi
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
                     Holati
@@ -1882,17 +1895,13 @@ export default function CashboxesPage() {
                   <th className="text-left px-3 py-3 whitespace-nowrap">
                     Tranzaksiya turi
                   </th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Turi
-                  </th>
-                  <th className="text-right px-3 py-3 w-20"></th>
                 </tr>
               </thead>
               <tbody>
                 {entrySlice.map((e, i) => {
                   // Qatorning istalgan joyiga bosilsa — tranzaksiya oynasi
                   // (to'lovni bekor qilish) ochiladi. "Kim" ustunidagi ism va
-                  // o'ngdagi chek tugmasi bundan mustasno.
+                  // chapdagi chek tugmasi bundan mustasno.
                   const dir =
                     e.txType === "transfer"
                       ? "transfer"
@@ -1910,18 +1919,52 @@ export default function CashboxesPage() {
                       <td className="px-3 py-3 text-foreground/70 tabular-nums text-[13px]">
                         {entryStart + i + 1}
                       </td>
-                      <td className="px-3 py-3 text-foreground/80 text-[12px] tabular-nums whitespace-nowrap">
-                        {fmtEntryDate(e)}
+                      {/* Chek — bekor qilingan yozuvga chek berilmaydi
+                          (bo'sh katak), yo'nalish belgisi esa summa yonida. */}
+                      <td className="px-2 py-3 text-center">
+                        {!cancelled && (
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setReceiptEntry(e);
+                            }}
+                            title="Chek chiqarish"
+                            className="h-7 w-7 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-[13px] whitespace-nowrap">
                         {renderWhoCell(e)}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        {e.teacherName ? (
-                          renderSalaryTargetCell(e)
-                        ) : (
-                          <span className="text-[12px] text-muted-foreground">—</span>
-                        )}
+                      <td className="px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap text-[13px]">
+                        <span className="inline-flex items-center gap-1.5">
+                          {dir === "in" && (
+                            <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
+                          )}
+                          {dir === "out" && (
+                            <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />
+                          )}
+                          {dir === "transfer" && (
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />
+                          )}
+                          <span
+                            style={
+                              cancelled
+                                ? { textDecoration: "line-through" }
+                                : undefined
+                            }
+                          >
+                            {mask(Math.abs(e.amount))}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">
+                        {e.paymentType}
+                      </td>
+                      <td className="px-3 py-3 text-foreground/80 text-[12px] tabular-nums whitespace-nowrap">
+                        {fmtEntryDate(e)}
                       </td>
                       {/* IZOHNING O'ZI yoziladi.
                           Ilgari bu yerda "Izoh" degan qotib qolgan yorliq
@@ -1945,19 +1988,15 @@ export default function CashboxesPage() {
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )}
                       </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        {e.teacherName ? (
+                          renderSalaryTargetCell(e)
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">
                         {e.txName || "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap text-[13px]">
-                        <span
-                          style={
-                            cancelled
-                              ? { textDecoration: "line-through" }
-                              : undefined
-                          }
-                        >
-                          {mask(Math.abs(e.amount))}
-                        </span>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
                         <StatusCell
@@ -1969,34 +2008,6 @@ export default function CashboxesPage() {
                       </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80">
                         {TX_TYPE_LABELS[e.txType] || e.txType}
-                      </td>
-                      <td className="px-3 py-3 text-[13px] text-foreground/80">
-                        {e.paymentType}
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <div className="inline-flex items-center gap-1">
-                          {dir === "in" && (
-                            <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
-                          )}
-                          {dir === "out" && (
-                            <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />
-                          )}
-                          {dir === "transfer" && (
-                            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-500" />
-                          )}
-                          {!cancelled && (
-                            <button
-                              onClick={(ev) => {
-                                ev.stopPropagation();
-                                setReceiptEntry(e);
-                              }}
-                              title="Chek chiqarish"
-                              className="h-7 w-7 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   );

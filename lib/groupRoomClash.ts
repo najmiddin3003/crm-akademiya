@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import { findRoomConflict, roomConflictText, type RoomSlot } from "@/lib/groupRules";
+import { findRoomConflict, roomConflictText, ROOM_HOLDING_STATUSES, type RoomSlot } from "@/lib/groupRules";
 import { uzDateIso } from "@/lib/uzTime";
 
 // Xona bandligi — SERVER tomoni (POST /api/groups, PATCH /api/groups/:id).
@@ -24,7 +24,7 @@ export async function findRoomClashInDb(
   if (!candidate.room || !candidate.day || !candidate.time) return null;
   const rows = await db
     .collection("groups")
-    .find({ branchId, room: candidate.room, status: { $in: ["active", "frozen"] } })
+    .find({ branchId, room: candidate.room, status: { $in: [...ROOM_HOLDING_STATUSES] } })
     .project<{ id: number; name: string; room: string; day: string; time: string; status: string; period?: string; startDate?: string; endDate?: string }>({
       _id: 0, id: 1, name: 1, room: 1, day: 1, time: 1, status: 1, period: 1, startDate: 1, endDate: 1,
     })

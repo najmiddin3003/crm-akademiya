@@ -83,9 +83,14 @@ function groupBounds(g: Group): { start: Date | null; end: Date | null } {
   };
 }
 
-// Muzlatilgan, yakunlangan va ARXIVLANGAN guruh xonani band qilmaydi. Qolgan
-// holatlar ("active" / "new" / "completing" / "problematic") dars o'tadigan
-// guruhlar.
+// Muzlatilgan, yakunlangan, ARXIVLANGAN va YIG'ILAYOTGAN guruh xonani band
+// qilmaydi. Qolgan holatlar ("active" / "new" / "completing" / "problematic")
+// dars o'tadigan guruhlar.
+//
+// "gathering" (18.09.2026): guruh hali tuzilyapti, dars boshlanmagan —
+// xona jadvalda unga ajratilgan bo'lsa ham hozircha bo'sh turadi, ya'ni
+// bandlik nisbatiga kirmaydi (bu HISOBOT — jadvaldagi to'qnashuv
+// tekshiruvi esa uni band deb biladi, lib/groupRules.ts ROOM_HOLDING_STATUSES).
 //
 // NEGA "archive" QO'SHILDI: bu ro'yxat avval faqat constants/groups.js dagi
 // GROUP_STATUSES bo'yicha yozilgan edi, "archive" esa o'sha massivda yo'q.
@@ -94,7 +99,7 @@ function groupBounds(g: Group): { start: Date | null; end: Date | null } {
 // "Arxiv" varianti bor va GroupsListPage filtri ham shu kalitni ishlatadi.
 // Ya'ni arxivga tushgan, endi dars o'tmaydigan guruh xonani band qilib
 // turgandek sanalardi — bandlik nisbati oshib ketardi.
-const IDLE_STATUSES = new Set(["frozen", "finished", "archive"]);
+const IDLE_STATUSES = new Set(["gathering", "frozen", "finished", "archive"]);
 
 /** Guruh tanlangan oraliqda umuman faolmi (muddati kesishadimi). */
 function overlapsRange(g: Group, start: Date, end: Date): boolean {

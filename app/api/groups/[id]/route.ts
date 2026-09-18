@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { groupScopeFilter } from "@/lib/groupScope";
-import { validateGroupInput, type GroupFormInput } from "@/lib/groupRules";
+import { holdsRoom, validateGroupInput, type GroupFormInput } from "@/lib/groupRules";
 import { findRoomClashInDb } from "@/lib/groupRoomClash";
 import { checkGroupCourse } from "@/lib/groupCourseCheck";
 import type { Group } from "@/lib/groups";
@@ -82,7 +82,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // Xona/kun/vaqt/muddat/holat — yangilangan jadval bo'lagi boshqa tirik
     // guruh bilan to'qnashmasligi.
-    if ((merged.status === "active" || merged.status === "frozen") && typeof merged.branchId === "number") {
+    if (holdsRoom(merged.status) && typeof merged.branchId === "number") {
       const clash = await findRoomClashInDb(
         db,
         merged.branchId,

@@ -16,6 +16,7 @@ import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { useBranch } from "@/components/shared/BranchContext";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
+import { isPathAllowed } from "@/lib/permissions";
 import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import Select from "@/components/ui/Select";
@@ -64,9 +65,35 @@ export interface NavbarProps {
    * bir lahza ko'rinib, keyin almashib ketmaydi.
    */
   user?: ShellUser | null;
+  /**
+   * Rol ruxsatlari — Sidebar oladigan ro'yxatning o'zi (`null` = cheklovsiz).
+   * Tezkor menyu ("+") shunga qarab qirqiladi: xodimning ruxsati yo'q
+   * bo'limga olib boradigan tugma ko'rsatilmaydi (bosilsa baribir
+   * layout uni bosh sahifaga qaytarardi).
+   */
+  permissions?: string[] | null;
 }
 
-export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
+/**
+ * Navbardagi "+" tezkor menyusi — eng ko'p bosiladigan ikki amal.
+ *
+ * NIMA NOTO'G'RI EDI (18.09.2026 gacha): havolalar `/orders-new` va
+ * `/finance-payment-new` ga olib borardi — bunday sahifalar loyihada
+ * HECH QACHON bo'lmagan (referens saytdagi manzillar ko'chirilgan, lekin
+ * sahifalari qurilmagan). Ya'ni menyu ochilardi-yu, ikkala tugma ham
+ * 404 ga tushardi. Endi ular haqiqiy sahifalarga boradi:
+ *   Buyurtma yaratish → /orders-list/add (Lidlar sahifasidagi "Buyurtma
+ *                        qo'shish" bilan bir xil to'liq forma);
+ *   Kassa             → /finance-cash (Moliya → Kassa: to'lov qabul qilish).
+ * Ruxsat `isPathAllowed` bilan tekshiriladi — Sidebar'dagi qoida.
+ */
+const QUICK_LINKS: { href: string; label: string; icon: string; tone: string }[] = [
+  { href: "/orders-list/add", label: "Buyurtma yaratish", icon: "#i-user-plus", tone: "bg-blue-100 text-blue-600" },
+  { href: "/finance-cash", label: "Kassa — to'lov qabul qilish", icon: "#i-wallet", tone: "bg-emerald-100 text-emerald-600" },
+];
+
+export default function Navbar({ onOpenMobileMenu, user = null, permissions = null }: NavbarProps) {
+  const quickLinks = QUICK_LINKS.filter((l) => isPathAllowed(l.href, permissions));
   // Bo'sh bo'lsa ham menyu buzilmasin: ism o'rniga chiziqcha, harf "?".
   const displayName = user?.fullName?.trim() || "—";
   const displayPhone = user?.phone ? formatPhoneDisplay(user.phone) : "";
@@ -468,26 +495,26 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
             </div>
           </div>
 
-          {/* Create action (Buyurtma / Moliya) */}
-          <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("create"); }} title="Tezkor bo'limlar" className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "create" ? "is-open" : ""}`}>
-              <svg className="icon"><use href="#i-circle-plus" /></svg>
-            </button>
-            <div className={`${openMenu === "create" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-52 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1`}>
-              <Link href="/orders-new" className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left" onClick={() => setOpenMenu(null)}>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                  <svg className="icon icon-sm"><use href="#i-user-plus" /></svg>
-                </span>
-                <span>Buyurtma yaratish</span>
-              </Link>
-              <Link href="/finance-payment-new" className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left" onClick={() => setOpenMenu(null)}>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-                  <svg className="icon icon-sm"><use href="#i-wallet" /></svg>
-                </span>
-                <span>Moliya bo&apos;limi</span>
-              </Link>
+          {/* Tezkor amallar ("+") — QUICK_LINKS (yuqorida). Xodimga ochiq
+              bo'lim bitta ham bo'lmasa tugmaning o'zi chiqmaydi: bo'sh
+              menyu ochadigan tugma bo'lmasin. */}
+          {quickLinks.length > 0 && (
+            <div className="relative">
+              <button onClick={(e) => { e.stopPropagation(); toggleMenu("create"); }} title="Tezkor amallar" className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "create" ? "is-open" : ""}`}>
+                <svg className="icon"><use href="#i-circle-plus" /></svg>
+              </button>
+              <div className={`${openMenu === "create" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1`}>
+                {quickLinks.map((l) => (
+                  <Link key={l.href} href={l.href} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left" onClick={() => setOpenMenu(null)}>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${l.tone}`}>
+                      <svg className="icon icon-sm"><use href={l.icon} /></svg>
+                    </span>
+                    <span>{l.label}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Topshiriq oynasi — sizga berilgan topshiriqlar / kelgan hisobotlar.
               Ochiladigan menyu emas, MODAL (components/shared/TaskInboxModal.tsx):

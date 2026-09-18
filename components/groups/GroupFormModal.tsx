@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, CircleCheck, Snowflake, TriangleAlert } from "lucide-react";
+import { Archive, CircleCheck, Snowflake, TriangleAlert, UserPlus } from "lucide-react";
 import Modal, { useModal } from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
 import Segmented from "@/components/ui/Segmented";
@@ -45,11 +45,16 @@ import type { Group } from "@/lib/groups";
 // (useGroups). Tahrirlashda guruhning o'zi hisobga kirmaydi (`excludeId`).
 // Server 409 bilan oxirgi so'zni aytadi (ikki moderator bir vaqtda).
 //
-// "Guruh holati" va "Ta'lim turi" — segment tugmalar: variant 2–3 ta,
-// deyarli doim birinchisi tanlanadi, shuning uchun standart qiymat
+// "Guruh holati" va "Ta'lim turi" — segment tugmalar: variant 2–4 ta,
+// deyarli doim "Aktiv guruh" tanlanadi, shuning uchun standart qiymat
 // oldindan turadi va moderator hech narsa bosmasa ham to'g'ri chiqadi.
+//
+// Holatlar tartibi va ma'nosi — lib/groupRules.ts (GROUP_STATUS_VALUES):
+// "Yig'ilayotgan" (18.09.2026) — o'quvchilar yig'ilayotgan, dars hali
+// boshlanmagan guruh; xonani band qiladi, davomat kutilmaydi.
 
 const STATUS_OPTIONS = [
+  { value: "gathering", label: "Yig'ilayotgan", icon: UserPlus },
   { value: "active", label: "Aktiv guruh", icon: CircleCheck },
   { value: "frozen", label: "Muzlatilgan", icon: Snowflake },
   { value: "archive", label: "Arxiv", icon: Archive },
@@ -233,8 +238,9 @@ export default function GroupFormModal({
       locked={saving}
       footer={<Actions saving={saving} blocker={blocker} onSave={save} />}
     >
-      {/* Nom va holat — to'liq kenglikda: uchta segment (Aktiv / Muzlatilgan /
-          Arxiv) yarim ustunga sig'maydi, qolgan maydonlar juft-juft. */}
+      {/* Nom va holat — to'liq kenglikda: to'rtta segment (Yig'ilayotgan /
+          Aktiv / Muzlatilgan / Arxiv) yarim ustunga sig'maydi, qolgan
+          maydonlar juft-juft. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
         <div className="sm:col-span-2">
           <label className={labelCls}>Guruh nomi<span className="text-red-500">*</span></label>

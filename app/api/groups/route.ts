@@ -3,7 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope } from "@/lib/branchScope";
 import { loadGroups } from "@/lib/listQueries";
 import { nextGroupId } from "@/lib/groupIds";
-import { validateGroupInput, type GroupFormInput } from "@/lib/groupRules";
+import { holdsRoom, validateGroupInput, type GroupFormInput } from "@/lib/groupRules";
 import { findRoomClashInDb } from "@/lib/groupRoomClash";
 import { checkGroupCourse } from "@/lib/groupCourseCheck";
 import type { Group } from "@/lib/groups";
@@ -88,8 +88,9 @@ export async function POST(req: Request) {
   // Xona shu kun-vaqtda boshqa tirik guruh bilan band bo'lsa — 409. Modal
   // buni ro'yxatdan oldindan ko'rsatadi, lekin ikki moderator bir vaqtda
   // qo'shsa yoki so'rov to'g'ridan-to'g'ri kelsa, oxirgi so'z shu yerda.
-  // Arxiv holatida ochilayotgan guruh xona egallamaydi (PATCH dagi qoida bilan bir xil).
-  const clash = input.status === "active" || input.status === "frozen"
+  // Arxiv holatida ochilayotgan guruh xona egallamaydi (PATCH dagi qoida
+  // bilan bir xil, ro'yxat lib/groupRules.ts ROOM_HOLDING_STATUSES).
+  const clash = holdsRoom(input.status)
     ? await findRoomClashInDb(db, branchId, {
         room: input.room!,
         day: input.day!,

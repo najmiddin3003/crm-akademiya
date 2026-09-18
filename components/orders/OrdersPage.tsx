@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "@/components/ui/Link";
-import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Settings, Share2, XCircle } from "lucide-react";
+import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Printer, Settings, Share2, XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -11,6 +11,7 @@ import OrdersKanban from "@/components/orders/OrdersKanban";
 import StagePickerPopover, { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import AddOrderModal, { type NewOrderValues } from "@/components/orders/AddOrderModal";
 import OrderMessagePanel from "@/components/orders/OrderMessagePanel";
+import LeadReceiptModal, { type ReceiptRow } from "@/components/leads/LeadReceipt";
 import { useOrders } from "@/components/orders/OrdersContext";
 import { useToast } from "@/components/ui/Toast";
 import DateRangePicker from "@/components/ui/DateRangePicker";
@@ -111,6 +112,8 @@ export default function OrdersPage() {
   const [pageSize, setPageSize] = useState(50);
   const [orderModal, setOrderModal] = useState<{ mode: "add" } | { mode: "edit"; order: Order } | null>(null);
   const [messageFor, setMessageFor] = useState<Order | null>(null);
+  // Qatordagi "Chek chiqarish" — avval ko'rib chiqish oynasi (LeadReceipt).
+  const [receiptFor, setReceiptFor] = useState<Order | null>(null);
   const [stagePickerFor, setStagePickerFor] = useState<number | null>(null);
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>(DEFAULT_VISIBLE_FIELDS);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -683,6 +686,16 @@ export default function OrdersPage() {
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          title="Chek chiqarish"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReceiptFor(o);
+                          }}
+                        >
+                          <Printer size={16} />
+                        </button>
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           title="Tahrirlash"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -749,6 +762,41 @@ export default function OrdersPage() {
           }}
         />
       )}
+
+      {receiptFor && (
+        <LeadReceiptModal
+          receipt={{ docTitle: `Buyurtma #${orderNo(receiptFor)}`, heading: "BUYURTMA", rows: leadReceiptRows(receiptFor) }}
+          onClose={() => setReceiptFor(null)}
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * Buyurtma chekidagi qatorlar — jadvaldagi ustunlar + formadagi asosiy
+ * maydonlar. Bo'sh maydon "—" bo'lib chiqadi (qator tushib qolmaydi —
+ * moderator qo'lda to'ldirishi mumkin), faqat izoh bo'lmasa yozilmaydi.
+ * Bosqich EMOJISIZ: 58mm chek printerlari emoji shriftini bilmaydi.
+ */
+function leadReceiptRows(o: Order): ReceiptRow[] {
+  const stage = o.stage ? ORDER_STAGES.find((s) => s.key === o.stage) : undefined;
+  const rows: ReceiptRow[] = [
+    ["ID", String(orderNo(o))],
+    ["O'quvchi", o.name || "—"],
+    ["Telefon", o.phone || "—"],
+    ["Yaratilgan", o.created || "—"],
+    ["Birinchi dars", o.firstLesson || "—"],
+    ["Dars kunlari", o.lessonDay || "—"],
+    ["Dars vaqti", o.lessonStartTime || "—"],
+    ["O'qituvchi", o.teacher || "—"],
+    ["Kurs", o.course || "—"],
+    ["Kurs darajasi", o.level || "—"],
+    ["Guruh", o.group || "—"],
+    ["Moderator", o.moderator || "—"],
+    ["Manba", o.source || "—"],
+    ["Bosqich", stage ? stage.label : "—"],
+  ];
+  if (o.note) rows.push(["Izoh", o.note]);
+  return rows;
 }
