@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { usePathname, useRouter } from "next/navigation";
 import { useNavHistory } from "@/components/shared/NavigationHistory";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
 import { LANGS as LANGUAGES } from "@/lib/navbar";
 import NotificationsPanel from "@/components/shared/NotificationsPanel";
@@ -105,6 +105,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
   // Til endi butun ilova bo'ylab umumiy (components/shared/Language.tsx) —
   // sana tanlagichlar ham shu qiymatga qarab oy/kun nomlarini almashtiradi.
   const [lang, setLangCode] = useLang();
+  const { t } = useT();
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   // Filial tanlovi — endi mahalliy holat EMAS, umumiy kontekst.
   //
@@ -230,7 +231,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
       return;
     }
     if (kind === "logout") {
-      if (!confirm("Tizimdan chiqishni xohlaysizmi?")) return;
+      if (!confirm(t("Tizimdan chiqishni xohlaysizmi?"))) return;
       await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
       router.push("/");
       router.refresh();
@@ -254,8 +255,8 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
   const inboxCount = inboxPending + inboxReports;
   const inboxTone = inboxPending > 0 ? "nav-btn-task-alert" : inboxReports > 0 ? "nav-btn-task-info" : "";
   const inboxTitle = inboxPending > 0
-    ? "Topshiriq bajarilishi kutilmoqda"
-    : inboxReports > 0 ? "Topshiriq bo'yicha hisobot keldi" : "Mening topshiriqlarim";
+    ? t("Topshiriq bajarilishi kutilmoqda")
+    : inboxReports > 0 ? t("Topshiriq bo'yicha hisobot keldi") : t("Mening topshiriqlarim");
   return (
     <div ref={rootRef}>
       {/* ============ SVG SPRITE (icons unique to navbar) ============ */}
@@ -301,14 +302,14 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
       <header className="shell-header relative z-30 flex shrink-0 items-center gap-2 pr-1.5">
         {/* Logo — referensda sidebar ichida emas, HEADER ichida turadi va
             kengligi sidebar kengligiga tekislanadi. */}
-        <Link href="/home" className="shell-logo flex shrink-0 items-center gap-2" title="Bosh sahifa">
+        <Link href="/home" className="shell-logo flex shrink-0 items-center gap-2" title={t("Bosh sahifa")}>
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white" style={{ backgroundColor: "var(--shell-blue)" }}>
             <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-graduation-cap" /></svg>
           </span>
           <span className="text-[15px] font-extrabold tracking-tight" style={{ color: "var(--shell-blue)" }}>Tizimli</span>
         </Link>
 
-        <button onClick={onOpenMobileMenu} className="nav-btn shell-only-mobile" title="Menyu">
+        <button onClick={onOpenMobileMenu} className="nav-btn shell-only-mobile" title={t("Menyu")}>
           <svg className="icon"><use href="#i-menu" /></svg>
         </button>
 
@@ -316,13 +317,13 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
           id="sidebar-toggle"
           onClick={toggleSidebar}
           className="nav-btn shell-from-lg"
-          title={sidebarHidden ? "Menyuni ko'rsatish" : "Menyuni yashirish"}
+          title={sidebarHidden ? t("Menyuni ko'rsatish") : t("Menyuni yashirish")}
         >
           <svg className="icon"><use href="#i-panel-left" /></svg>
         </button>
 
         {/* Referensda "Orqaga" — matnsiz, faqat ikonkali 32x32 tugma */}
-        <button onClick={goBack} disabled={!canGoBack} title="Orqaga" className="nav-btn nav-btn-back shell-from-sm">
+        <button onClick={goBack} disabled={!canGoBack} title={t("Orqaga")} className="nav-btn nav-btn-back shell-from-sm">
           <svg className="icon"><use href="#i-arrow-left" /></svg>
         </button>
 
@@ -340,7 +341,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
                 return;
               }
               void select(Number(v));
-            }} options={[...((branchLoading || allowedBranches.length === 0) ? [{ value: "", label: selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…") }] : []), ...allowedBranches.map((b) => ({ value: String(b.id), label: b.name })), ...(isAdmin ? [{ value: FILIAL_ADD_OPTION, label: FILIAL_ADD_OPTION }] : [])]} disabled={branchLoading} />
+            }} options={[...((branchLoading || allowedBranches.length === 0) ? [{ value: "", label: t(selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…")) }] : []), ...allowedBranches.map((b) => ({ value: String(b.id), label: b.name })), ...(isAdmin ? [{ value: FILIAL_ADD_OPTION, label: t(FILIAL_ADD_OPTION) }] : [])]} disabled={branchLoading} />
           
         </div>
 
@@ -350,12 +351,12 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
             id="global-search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Qidirish..."
+            placeholder={t("Qidirish...")}
             autoComplete="off"
             className="h-full w-full bg-transparent pl-9 pr-16 text-sm focus:outline-none"
           />
           {searchQuery.length > 0 ? (
-            <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground" title="Tozalash">
+            <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground" title={t("Tozalash")}>
               <svg className="icon icon-xs"><use href="#i-x-circle" /></svg>
             </button>
           ) : (
@@ -395,7 +396,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
                   <svg className="w-8 h-8 mx-auto text-muted-foreground mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><use href="#i-frown" /></svg>
-                  <div className="text-sm text-muted-foreground">Natija topilmadi</div>
+                  <div className="text-sm text-muted-foreground">{t("Natija topilmadi")}</div>
                 </div>
               )}
             </div>
@@ -425,26 +426,26 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
 
         {/* Referensda o'ngdagi ikonka tugmalar 32x32, oralig'i 4px */}
         <div className="flex items-center gap-1">
-          <button onClick={toggleTheme} className="nav-btn" title={isDark ? "Yorug' rejim" : "Tungi rejim"}>
+          <button onClick={toggleTheme} className="nav-btn" title={isDark ? t("Yorug' rejim") : t("Tungi rejim")}>
             <svg className="icon"><use href={isDark ? "#i-sun" : "#i-moon"} /></svg>
           </button>
-          <Link href="/birthdays" className="nav-btn shell-from-sm" title="Tug'ilgan kunlar">
+          <Link href="/birthdays" className="nav-btn shell-from-sm" title={t("Tug'ilgan kunlar")}>
             <svg className="icon"><use href="#i-calendar" /></svg>
           </Link>
 
           {/* News (Yangiliklar) */}
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("news"); }} title="Yangiliklar" className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "news" ? "is-open" : ""}`}>
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("news"); }} title={t("Yangiliklar")} className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "news" ? "is-open" : ""}`}>
               <svg className="icon"><use href="#i-megaphone" /></svg>
             </button>
             <div className={`${openMenu === "news" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[340px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="px-4 py-3 border-b border-border">
-                <h3 className="font-semibold text-base">Yangiliklar</h3>
+                <h3 className="font-semibold text-base">{t("Yangiliklar")}</h3>
               </div>
               <div className="max-h-[360px] overflow-y-auto">
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                   <div className="text-muted-foreground mb-2"><svg className="w-10 h-10 mx-auto" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><use href="#i-frown" /></svg></div>
-                  <div className="text-base font-medium">Yangilik yo&apos;q</div>
+                  <div className="text-base font-medium">{t("Yangilik yo'q")}</div>
                 </div>
               </div>
             </div>
@@ -454,30 +455,30 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
           <div className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); toggleMenu("help"); }}
-              title="Qanday ishlaydi?"
+              title={t("Qanday ishlaydi?")}
               className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "help" ? "is-open" : ""}`}
             >
               <svg className="icon"><use href="#i-video" /></svg>
             </button>
             <div className={`${openMenu === "help" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[380px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="px-4 py-3 border-b border-border">
-                <h3 className="font-semibold text-base">Qanday ishlaydi?</h3>
+                <h3 className="font-semibold text-base">{t("Qanday ishlaydi?")}</h3>
               </div>
               <div className="max-h-[420px] overflow-y-auto p-1">
-                {HELP_TOPICS.map((t, i) => {
+                {HELP_TOPICS.map((topic, i) => {
                   const inner = (
                     <>
                       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <svg className="icon icon-xs"><use href="#i-video" /></svg>
                       </span>
-                      <span className="flex-1 text-[13px] leading-snug">{t.title}</span>
+                      <span className="flex-1 text-[13px] leading-snug">{t(topic.title)}</span>
                     </>
                   );
                   // Havola bo'lmasa — bosilmaydigan qator (manzillar hali yo'q).
-                  return t.url ? (
+                  return topic.url ? (
                     <a
                       key={i}
-                      href={t.url}
+                      href={topic.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setOpenMenu(null)}
@@ -500,7 +501,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
               menyu ochadigan tugma bo'lmasin. */}
           {quickLinks.length > 0 && (
             <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); toggleMenu("create"); }} title="Tezkor amallar" className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "create" ? "is-open" : ""}`}>
+              <button onClick={(e) => { e.stopPropagation(); toggleMenu("create"); }} title={t("Tezkor amallar")} className={`dropdown-trigger nav-btn shell-from-sm ${openMenu === "create" ? "is-open" : ""}`}>
                 <svg className="icon"><use href="#i-circle-plus" /></svg>
               </button>
               <div className={`${openMenu === "create" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1`}>
@@ -509,7 +510,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${l.tone}`}>
                       <svg className="icon icon-sm"><use href={l.icon} /></svg>
                     </span>
-                    <span>{l.label}</span>
+                    <span>{t(l.label)}</span>
                   </Link>
                 ))}
               </div>
@@ -527,7 +528,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
             aria-label={inboxTitle}
           >
             <svg className="icon"><use href="#i-task-inbox" /></svg>
-            {inboxPending > 0 && <span className="nav-task-label">Bajarilishi kutilmoqda</span>}
+            {inboxPending > 0 && <span className="nav-task-label">{t("Bajarilishi kutilmoqda")}</span>}
             {inboxCount > 0 && (
               <span
                 className="absolute -right-0.5 -top-0.5 h-4 min-w-[16px] rounded-full px-1 text-center text-[10px] font-semibold leading-4 text-white"
@@ -540,7 +541,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
 
           {/* Notifications */}
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("notifications"); }} className={`dropdown-trigger nav-btn relative ${openMenu === "notifications" ? "is-open" : ""}`} title="Bildirishnomalar">
+            <button onClick={(e) => { e.stopPropagation(); toggleMenu("notifications"); }} className={`dropdown-trigger nav-btn relative ${openMenu === "notifications" ? "is-open" : ""}`} title={t("Bildirishnomalar")}>
               <svg className="icon"><use href="#i-bell" /></svg>
               {showBadge && (
                 <span
@@ -553,7 +554,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
             </button>
             <div className={`${openMenu === "notifications" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[400px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <h3 className="font-semibold text-base">Bildirishnomalar</h3>
+                <h3 className="font-semibold text-base">{t("Bildirishnomalar")}</h3>
                 {/* Ilgari bu yerda hech qayerga olib bormaydigan tishli g'ildirak
                     turardi. Haqiqiy ma'lumot yonida ishlamaydigan tugma bo'lmasin. */}
                 {showBadge && (
@@ -596,19 +597,19 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <svg className="icon icon-sm"><use href="#i-monitor" /></svg>
                   </span>
-                  <span>Aktiv qurilmalar</span>
+                  <span>{t("Aktiv qurilmalar")}</span>
                 </button>
                 <button onClick={() => void onProfileAction("lock")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <svg className="icon icon-sm"><use href="#i-lock" /></svg>
                   </span>
-                  <span>Qulflash</span>
+                  <span>{t("Qulflash")}</span>
                 </button>
                 <button onClick={() => void onProfileAction("logout")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-50 text-left">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
                     <svg className="icon icon-sm"><use href="#i-log-out" /></svg>
                   </span>
-                  <span>Chiqish</span>
+                  <span>{t("Chiqish")}</span>
                 </button>
               </div>
             </div>
@@ -618,24 +619,23 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
 
       {filialModalOpen && (
         <Modal onClose={() => setFilialModalOpen(false)} bare size="sm" zIndex={200} panelClassName="p-5 space-y-4 text-center">{(modal) => (<>
-            <h3 className="text-lg font-semibold">Filial biriktirish</h3>
+            <h3 className="text-lg font-semibold">{t("Filial biriktirish")}</h3>
             <p className="text-sm text-muted-foreground">
-              Filiallar Boshqaruv &rarr; Filiallar sahifasida boshqariladi. U yerda qo&apos;shilgan
-              filial shu ro&apos;yxatda ham paydo bo&apos;ladi.
+              {t("Filiallar Boshqaruv → Filiallar sahifasida boshqariladi. U yerda qo'shilgan filial shu ro'yxatda ham paydo bo'ladi.")}
             </p>
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={modal.close}
                 className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
               >
-                Yopish
+                {t("Yopish")}
               </button>
               <Link
                 href="/management-filiallar"
                 onClick={modal.close}
                 className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
-                Filiallar sahifasi
+                {t("Filiallar sahifasi")}
               </Link>
             </div>
           </>)}</Modal>

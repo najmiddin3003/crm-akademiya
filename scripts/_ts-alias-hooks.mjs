@@ -19,9 +19,16 @@ function withExt(url) {
   return url;
 }
 
-export function resolve(specifier, context, next) {
+export async function resolve(specifier, context, next) {
   if (specifier.startsWith("@/")) {
-    return next(withExt(new URL(specifier.slice(2), ROOT).href), context);
+    const url = withExt(new URL(specifier.slice(2), ROOT).href);
+    // `.json` (messages/en.json) — Node `with { type: "json" }` talab qiladi,
+    // Next esa talab qilmaydi; manbaga yozmasdan shu yerda qo'shiladi.
+    if (url.endsWith(".json")) {
+      const r = await next(url, context);
+      return { ...r, importAttributes: { type: "json" } };
+    }
+    return next(url, context);
   }
   // `next/server`, `next/headers` — Next paketining `exports` xaritasi
   // yo'q, Node esa kengaytmasiz pastki yo'lni topa olmaydi ("Did you

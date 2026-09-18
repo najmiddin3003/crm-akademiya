@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { MONTHS, WEEKDAYS_SHORT } from "@/lib/i18n";
 
 // Qayta ishlatiladigan sana-oralig'i tanlagich (referens: akademiya.edutizim.uz):
@@ -54,8 +54,9 @@ function presets(): { key: string; label: string; range: () => DateRange }[] {
   ];
 }
 
-export default function DateRangePicker({ value, onChange, placeholder = "Sana oralig'i", className = "" }: DateRangePickerProps) {
+export default function DateRangePicker({ value, onChange, placeholder, className = "" }: DateRangePickerProps) {
   const [lang] = useLang();
+  const { t } = useT();
   const monthNames = MONTHS[lang];
   const weekdayNames = WEEKDAYS_SHORT[lang];
   const [open, setOpen] = useState(false);
@@ -145,10 +146,10 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
       <div className="flex items-center justify-between h-9 w-full rounded-lg border border-border bg-card px-3 gap-2 text-[13px]">
         <button type="button" onClick={toggleOpen} className="inline-flex items-center gap-2">
           <Calendar className="w-4 h-4 text-primary" />
-          <span className={label ? "text-foreground tabular-nums" : "text-muted-foreground"}>{label || placeholder}</span>
+          <span className={label ? "text-foreground tabular-nums" : "text-muted-foreground"}>{label || placeholder || t("Sana oralig'i")}</span>
         </button>
         {label && (
-          <button type="button" onClick={() => onChange({ start: null, end: null })} className="text-muted-foreground hover:text-foreground" title="Tozalash">
+          <button type="button" onClick={() => onChange({ start: null, end: null })} className="text-muted-foreground hover:text-foreground" title={t("Tozalash")}>
             <X className="w-3.5 h-3.5" />
           </button>
         )}
@@ -173,7 +174,7 @@ export default function DateRangePicker({ value, onChange, placeholder = "Sana o
           <div className="border-r border-border p-2 w-40 flex flex-col gap-0.5 shrink-0">
             {presets().map((p) => (
               <button key={p.key} type="button" onClick={() => applyPreset(p.range())} className="w-full text-left px-3 py-2 rounded-md hover:bg-secondary text-[13px]">
-                {p.label}
+                {t(p.label)}
               </button>
             ))}
           </div>

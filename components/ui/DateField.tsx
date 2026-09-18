@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Calendar, X } from "lucide-react";
 import CalendarPanel, { startOfDay } from "@/components/ui/CalendarPanel";
+import { useT } from "@/components/shared/Language";
 
 // Forma ichidagi sana maydoni — brauzerning o'z <input type="date"> emas,
 // to'liq o'zimiz yasagan: "DD/MM/YYYY" niqobi bilan qo'lda yozish ham,
@@ -69,6 +70,7 @@ export default function DateField({
   className = "",
   variant = "compact",
 }: DateFieldProps) {
+  const { t } = useT();
   const [text, setText] = useState(() => isoToText(value));
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -173,7 +175,7 @@ export default function DateField({
       {clearable && (
         <button
           type="button"
-          title="Sanani tozalash"
+          title={t("Sanani tozalash")}
           onClick={() => {
             setText("");
             if (value !== "") onChange("");
@@ -186,7 +188,7 @@ export default function DateField({
       )}
       <button
         type="button"
-        title="Kalendardan tanlash"
+        title={t("Kalendardan tanlash")}
         onClick={() => {
           const next = !open;
           setOpen(next);

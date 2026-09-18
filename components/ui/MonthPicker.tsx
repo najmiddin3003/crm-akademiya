@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { MONTHS_SHORT } from "@/lib/i18n";
 
 // Faqat oy tanlash uchun qayta ishlatiladigan tanlagich (Mavsumiy baholash
@@ -20,8 +20,9 @@ export interface MonthPickerProps {
   className?: string;
 }
 
-export default function MonthPicker({ value, onChange, onClear, placeholder = "Oy", className = "" }: MonthPickerProps) {
+export default function MonthPicker({ value, onChange, onClear, placeholder, className = "" }: MonthPickerProps) {
   const [lang] = useLang();
+  const { t } = useT();
   const MONTH_LABELS = MONTHS_SHORT[lang];
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
@@ -66,11 +67,11 @@ export default function MonthPicker({ value, onChange, onClear, placeholder = "O
       <div className="inline-flex items-center h-9 w-full rounded-lg border border-border bg-card px-3 gap-2 text-[13px]">
         <button type="button" onClick={toggleOpen} className="flex-1 text-left">
           <span className={value ? "text-foreground tabular-nums" : "text-muted-foreground"}>
-            {value ? String(value).padStart(2, "0") : placeholder}
+            {value ? String(value).padStart(2, "0") : (placeholder ?? t("Oy"))}
           </span>
         </button>
         {value && onClear && (
-          <button type="button" onClick={onClear} className="text-muted-foreground hover:text-foreground" title="Tozalash">
+          <button type="button" onClick={onClear} className="text-muted-foreground hover:text-foreground" title={t("Tozalash")}>
             <X className="w-3.5 h-3.5" />
           </button>
         )}

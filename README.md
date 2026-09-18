@@ -1770,3 +1770,58 @@ to'ldiriladi.
 Sinov: `--flow lead --student "93 065 34 35"`.
 
 Shu bilan 4 bosqich ham tayyor — 6 tugmaning hammasi ishlaydi.
+
+## Uch tilli interfeys — i18n (2026-09-18)
+
+Tillar: `uz` (lotin o'zbek — MANBA), `uz-cyrl` (kiril), `en`. `ru` olib
+tashlandi. Til QURILMAGA bog'langan (localStorage + cookie), hisobga emas.
+Foydalanuvchi ma'lumoti (ism, kurs, izoh) o'girilmaydi — faqat interfeys.
+
+### Qanday ishlaydi
+
+- **Kalit = o'zbekcha matn** (gettext uslubi): `const { t } = useT();`
+  `t("Saqlash")`, `t("{n} ta o'quvchi", { n })`. Tarjima yo'q kalit
+  o'zbekcha chiqadi — sayt hech qachon "yarim" bo'lmaydi.
+- **Lug'at** `messages/en.json` (`"Saqlash": "Save"`); ko'plik ICU'ning
+  kichik qismi bilan: `"{n, plural, one {# student} other {# students}}"`.
+  Kalitlar alifbo tartibida saqlanadi.
+- **Kiril lug'at EMAS** — `lib/translit.ts` lotin matnni qoida bilan
+  o'giradi (sh→ш, o'→ў, so'z boshida e→э, tutuq→ъ, bosh harf saqlanadi);
+  istisnolar (oylar — сентябрь, ц li so'zlar) shu faylda, qo'lda tuzatish
+  kerak bo'lsa `messages/uz-cyrl.json`. Unlisiz so'zlar va brendlar (Ctrl,
+  PDF, Excel, Telegram) lotincha qoladi. Sinov: `scripts/_translit-check.mjs`.
+- **Til almashganda sahifa yangilanmaydi**: barcha matn klient
+  komponentlarda, `useLang` store'iga obuna (`useSyncExternalStore`) —
+  `setLang` hammasini shu zahoti qayta chizadi.
+- **Birinchi chizish ham to'g'ri tilda**: `app/layout.tsx` `tizimli_lang`
+  cookie'sini o'qib `LangProvider` ga beradi, `<html lang>` ham shundan.
+  Narxi: har sahifa dinamik chiziladi (ilova baribir sessiyali).
+- `lib/i18n.ts` — `translate()`, `MONTHS`/`WEEKDAYS`/`LOCALE` jadvallari
+  (sana tanlagichlar uchun), `normalizeLang`, `htmlLang`.
+  `components/shared/Language.tsx` — store, `LangProvider`, `useLang`, `useT`.
+
+### Qoidalar (yangi kod yozganda)
+
+- Matn `"use client"` komponentda `t()` orqali; server komponentda matn
+  bo'lmasin (sahifalar faqat ma'lumot yuklaydi).
+- `t` nomi BAND — sikl o'zgaruvchisini `t` deb nomlamang (TaskInboxModal da
+  `task` ga o'zgartirildi).
+- Konstantalardagi yorliqlar (`constants/sidebar.js`, `SOURCE_LABELS`,
+  `OUTCOME_LABELS` …) o'zbekcha qoladi, chizishda `t(item.label)`.
+- Server xato xabari toast'ga chiqsa `t(error)` — lug'atda bo'lsa o'giriladi.
+
+### Skriptlar
+
+- `node scripts/i18n-scan.mjs` — inglizchasi yo'q kalitlar (`--todo` →
+  `messages/en.todo.json` skeleti, `--unused`, `--raw` — hali o'ralmagan JSX
+  matnlar soni fayl bo'yicha).
+- `node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_i18n-check.mjs`
+  — `translate()` sinovi; `scripts/_translit-check.mjs` — kiril qoidalari.
+
+### Bosqichlar
+
+1) Yadro + til tanlovi + qobiq (navbar, sidebar, bildirishnomalar,
+   topshiriq inbox, umumiy UI: tugmalar, sana/vaqt maydonlari, select,
+   paginatsiya, modal, matn muharriri) — QILINDI 18.09.2026 (249 kalit).
+2) Bo'limlar: Moliya → O'quvchilar → Guruhlar → Xodimlar → qolganlari.
+3) API xato xabarlari va sahifa sarlavhalari.

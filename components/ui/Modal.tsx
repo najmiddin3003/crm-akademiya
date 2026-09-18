@@ -13,6 +13,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { useT } from "@/components/shared/Language";
 
 // MODAL / DRAWER O'RAMI — kirish va CHIQISH animatsiyasi bilan.
 //
@@ -172,6 +173,7 @@ export default function Modal({
   disableOverlayClose = false,
   zIndex,
 }: ModalProps) {
+  const { t } = useT();
   const mounted = useMounted();
   const own = useModalClose(onClose, variant);
   const { closing, close } = controller ?? own;
@@ -246,7 +248,7 @@ export default function Modal({
                       type="button"
                       onClick={dismiss}
                       className="h-8 w-8 shrink-0 rounded-full hover:bg-secondary flex items-center justify-center text-muted-foreground transition-colors"
-                      title="Yopish"
+                      title={t("Yopish")}
                     >
                       <X className="icon icon-sm" />
                     </button>

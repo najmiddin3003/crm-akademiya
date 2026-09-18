@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown, Search } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LOADING_TEXT } from "@/lib/selectPlaceholder";
+import { useT } from "@/components/shared/Language";
 
 // QO'LDA YASALGAN TANLOV RO'YXATI — loyihadagi YAGONA select.
 //
@@ -146,6 +147,7 @@ export default function Select({
   style,
   preserveFocus = false,
 }: SelectProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   // Klaviatura bilan yurilayotgan qator (sichqoncha ustiga kelganda ham shu).
@@ -363,7 +365,7 @@ export default function Select({
             onClick={selectAllShown}
             className="block w-full px-3 py-2 text-left text-[13px] text-primary font-medium hover:bg-secondary"
           >
-            Hammasini tanlash
+            {t("Hammasini tanlash")}
           </button>
         )}
         {clearable && hasValue && (
@@ -380,7 +382,7 @@ export default function Select({
           <SpinnerBlock size={20} />
         ) : shown.length === 0 ? (
           <div className="px-3 py-3 text-[13px] text-muted-foreground">
-            {options.length === 0 ? (emptyText ?? "Ro'yxat bo'sh") : "Topilmadi"}
+            {options.length === 0 ? (emptyText ?? t("Ro'yxat bo'sh")) : t("Topilmadi")}
           </div>
         ) : (
           shown.map((o, i) => {
@@ -457,7 +459,7 @@ export default function Select({
             {selected.hint && <span className="text-muted-foreground"> ({selected.hint})</span>}
           </span>
         ) : (
-          <span className="text-muted-foreground truncate">{loading ? LOADING_TEXT : placeholder}</span>
+          <span className="text-muted-foreground truncate">{loading ? t(LOADING_TEXT) : t(placeholder)}</span>
         )}
         <ChevronDown
           className={`w-4 h-4 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-transform duration-150 ${open ? "rotate-180" : ""}`}

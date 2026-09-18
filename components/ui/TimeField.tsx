@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Clock, X } from "lucide-react";
+import { useT } from "@/components/shared/Language";
 
 // VAQT MAYDONI — brauzerning <input type="time"> o'rniga, DateField kabi
 // to'liq o'zimiz yasagan: "HH:MM" niqobi bilan qo'lda yozish ham, yonidagi
@@ -75,6 +76,7 @@ export default function TimeField({
   variant = "compact",
   minuteStep = 5,
 }: TimeFieldProps) {
+  const { t } = useT();
   const [text, setText] = useState(() => normalizeTime(value));
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -221,7 +223,7 @@ export default function TimeField({
             className="ui-pop-in rounded-xl border border-border bg-card shadow-xl overflow-hidden flex text-[13px] tabular-nums"
           >
             <div ref={hoursRef} className="max-h-56 overflow-y-auto py-1 border-r border-border">
-              <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Soat</div>
+              <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">{t("Soat")}</div>
               {hours.map((h) => (
                 <button
                   key={h}
@@ -236,7 +238,7 @@ export default function TimeField({
               ))}
             </div>
             <div ref={minutesRef} className="max-h-56 overflow-y-auto py-1">
-              <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Daqiqa</div>
+              <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">{t("Daqiqa")}</div>
               {minutes.map((m) => (
                 <button
                   key={m}

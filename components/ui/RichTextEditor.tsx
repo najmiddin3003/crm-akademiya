@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, AtSign, Bold, Code, Eraser, Highlighter,
   ImageIcon, IndentDecrease, IndentIncrease, Italic, Link as LinkIcon, List, ListOrdered, Maximize2,
@@ -51,6 +52,7 @@ export default function RichTextEditor({
   fields?: RichTextEditorField[];
   minHeight?: number;
 }) {
+  const { t } = useT();
   const editorRef = useRef<HTMLDivElement>(null);
   const lastEmitted = useRef(value);
   const savedRange = useRef<Range | null>(null);
@@ -126,17 +128,17 @@ export default function RichTextEditor({
   }
 
   function insertLink() {
-    const url = window.prompt("Havola manzili (URL):", "https://");
+    const url = window.prompt(t("Havola manzili (URL):"), "https://");
     if (!url) return;
     exec("createLink", url);
   }
   function insertImage() {
-    const url = window.prompt("Rasm manzili (URL):", "https://");
+    const url = window.prompt(t("Rasm manzili (URL):"), "https://");
     if (!url) return;
     exec("insertImage", url);
   }
   function insertVideo() {
-    const url = window.prompt("Video manzili (YouTube yoki to'g'ridan-to'g'ri video URL):", "https://");
+    const url = window.prompt(t("Video manzili (YouTube yoki to'g'ridan-to'g'ri video URL):"), "https://");
     if (!url) return;
     const isYoutube = /youtu\.?be/.test(url);
     const html = isYoutube
@@ -189,64 +191,64 @@ export default function RichTextEditor({
     <div className={fullscreen ? "fixed inset-0 z-[200] bg-card p-4 flex flex-col" : ""}>
       <div className="rounded-xl border border-border bg-card overflow-visible flex flex-col" style={fullscreen ? { flex: 1 } : undefined}>
         <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border flex-wrap">
-          <button type="button" onClick={() => exec("undo")} className={toolBtn} title="Bekor qilish"><Undo2 className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("redo")} className={toolBtn} title="Qaytarish"><Redo2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("undo")} className={toolBtn} title={t("Bekor qilish")}><Undo2 className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("redo")} className={toolBtn} title={t("Qaytarish")}><Redo2 className="w-4 h-4" /></button>
 
           {/* preserveFocus: tanlov muharrirda qolsin — aks holda buyruq hech narsaga qo'llanmaydi. */}
-          <Select size="row" preserveFocus className="w-20" value={fontSize} onChange={(v) => { setFontSize(v); applyFontSize(v); }} options={FONT_SIZES.map((s) => ({ value: s.px, label: s.label }))} title="Shrift o'lchami" />
-          <Select size="row" preserveFocus className="w-28" value={blockFormat} onChange={(v) => { setBlockFormat(v); exec("formatBlock", v); }} options={BLOCK_FORMATS.map((b) => ({ value: b.tag, label: b.label }))} title="Format" />
+          <Select size="row" preserveFocus className="w-20" value={fontSize} onChange={(v) => { setFontSize(v); applyFontSize(v); }} options={FONT_SIZES.map((s) => ({ value: s.px, label: s.label }))} title={t("Shrift o'lchami")} />
+          <Select size="row" preserveFocus className="w-28" value={blockFormat} onChange={(v) => { setBlockFormat(v); exec("formatBlock", v); }} options={BLOCK_FORMATS.map((b) => ({ value: b.tag, label: t(b.label) }))} title={t("Format")} />
 
-          <button type="button" onClick={() => exec("formatBlock", "blockquote")} className={toolBtn} title="Iqtibos"><Quote className="w-4 h-4" /></button>
-
-          <span className="w-px h-5 bg-border mx-0.5" />
-
-          <button type="button" onClick={() => exec("bold")} className={toolBtn} title="Qalin"><Bold className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("underline")} className={toolBtn} title="Tagiga chizish"><Underline className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("italic")} className={toolBtn} title="Qiya"><Italic className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("strikeThrough")} className={toolBtn} title="Ustiga chizish"><Strikethrough className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("subscript")} className={toolBtn} title="Quyi indeks"><Subscript className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("superscript")} className={toolBtn} title="Yuqori indeks"><Superscript className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("formatBlock", "blockquote")} className={toolBtn} title={t("Iqtibos")}><Quote className="w-4 h-4" /></button>
 
           <span className="w-px h-5 bg-border mx-0.5" />
 
-          <button type="button" onClick={() => colorInputRef.current?.click()} className={toolBtn} title="Matn rangi"><Palette className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("bold")} className={toolBtn} title={t("Qalin")}><Bold className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("underline")} className={toolBtn} title={t("Tagiga chizish")}><Underline className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("italic")} className={toolBtn} title={t("Qiya")}><Italic className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("strikeThrough")} className={toolBtn} title={t("Ustiga chizish")}><Strikethrough className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("subscript")} className={toolBtn} title={t("Quyi indeks")}><Subscript className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("superscript")} className={toolBtn} title={t("Yuqori indeks")}><Superscript className="w-4 h-4" /></button>
+
+          <span className="w-px h-5 bg-border mx-0.5" />
+
+          <button type="button" onClick={() => colorInputRef.current?.click()} className={toolBtn} title={t("Matn rangi")}><Palette className="w-4 h-4" /></button>
           <input ref={colorInputRef} type="color" className="hidden" onChange={(e) => exec("foreColor", e.target.value)} />
-          <button type="button" onClick={() => hiliteInputRef.current?.click()} className={toolBtn} title="Fon rangi"><Highlighter className="w-4 h-4" /></button>
+          <button type="button" onClick={() => hiliteInputRef.current?.click()} className={toolBtn} title={t("Fon rangi")}><Highlighter className="w-4 h-4" /></button>
           <input ref={hiliteInputRef} type="color" className="hidden" onChange={(e) => exec("hiliteColor", e.target.value)} />
-          <button type="button" onClick={() => exec("removeFormat")} className={toolBtn} title="Formatni tozalash"><Eraser className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("removeFormat")} className={toolBtn} title={t("Formatni tozalash")}><Eraser className="w-4 h-4" /></button>
 
           <span className="w-px h-5 bg-border mx-0.5" />
 
-          <button type="button" onClick={() => exec("indent")} className={toolBtn} title="Chekinish"><IndentIncrease className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("outdent")} className={toolBtn} title="Chekinishni kamaytirish"><IndentDecrease className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("indent")} className={toolBtn} title={t("Chekinish")}><IndentIncrease className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("outdent")} className={toolBtn} title={t("Chekinishni kamaytirish")}><IndentDecrease className="w-4 h-4" /></button>
 
           <div className="relative">
-            <button type="button" onClick={() => setAlignOpen((o) => !o)} className={toolBtn} title="Tekislash"><AlignLeft className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setAlignOpen((o) => !o)} className={toolBtn} title={t("Tekislash")}><AlignLeft className="w-4 h-4" /></button>
             {alignOpen && (
               <div className="absolute top-full left-0 mt-1 z-50 flex rounded-md border border-border bg-card shadow-xl p-1 gap-0.5">
-                <button type="button" onClick={() => { exec("justifyLeft"); setAlignOpen(false); }} className={toolBtn} title="Chapga"><AlignLeft className="w-4 h-4" /></button>
-                <button type="button" onClick={() => { exec("justifyCenter"); setAlignOpen(false); }} className={toolBtn} title="Markazga"><AlignCenter className="w-4 h-4" /></button>
-                <button type="button" onClick={() => { exec("justifyRight"); setAlignOpen(false); }} className={toolBtn} title="O'ngga"><AlignRight className="w-4 h-4" /></button>
-                <button type="button" onClick={() => { exec("justifyFull"); setAlignOpen(false); }} className={toolBtn} title="Kenglikka"><AlignJustify className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { exec("justifyLeft"); setAlignOpen(false); }} className={toolBtn} title={t("Chapga")}><AlignLeft className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { exec("justifyCenter"); setAlignOpen(false); }} className={toolBtn} title={t("Markazga")}><AlignCenter className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { exec("justifyRight"); setAlignOpen(false); }} className={toolBtn} title={t("O'ngga")}><AlignRight className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { exec("justifyFull"); setAlignOpen(false); }} className={toolBtn} title={t("Kenglikka")}><AlignJustify className="w-4 h-4" /></button>
               </div>
             )}
           </div>
 
-          <button type="button" onClick={() => exec("insertHorizontalRule")} className={toolBtn} title="Gorizontal chiziq"><Minus className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("insertUnorderedList")} className={toolBtn} title="Ro'yxat"><List className="w-4 h-4" /></button>
-          <button type="button" onClick={() => exec("insertOrderedList")} className={toolBtn} title="Raqamli ro'yxat"><ListOrdered className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("insertHorizontalRule")} className={toolBtn} title={t("Gorizontal chiziq")}><Minus className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("insertUnorderedList")} className={toolBtn} title={t("Ro'yxat")}><List className="w-4 h-4" /></button>
+          <button type="button" onClick={() => exec("insertOrderedList")} className={toolBtn} title={t("Raqamli ro'yxat")}><ListOrdered className="w-4 h-4" /></button>
 
           <span className="w-px h-5 bg-border mx-0.5" />
 
-          <button type="button" onClick={insertTable} className={toolBtn} title="Jadval"><Table2 className="w-4 h-4" /></button>
-          <button type="button" onClick={insertLink} className={toolBtn} title="Havola"><LinkIcon className="w-4 h-4" /></button>
-          <button type="button" onClick={insertImage} className={toolBtn} title="Rasm"><ImageIcon className="w-4 h-4" /></button>
-          <button type="button" onClick={insertVideo} className={toolBtn} title="Video"><Video className="w-4 h-4" /></button>
+          <button type="button" onClick={insertTable} className={toolBtn} title={t("Jadval")}><Table2 className="w-4 h-4" /></button>
+          <button type="button" onClick={insertLink} className={toolBtn} title={t("Havola")}><LinkIcon className="w-4 h-4" /></button>
+          <button type="button" onClick={insertImage} className={toolBtn} title={t("Rasm")}><ImageIcon className="w-4 h-4" /></button>
+          <button type="button" onClick={insertVideo} className={toolBtn} title={t("Video")}><Video className="w-4 h-4" /></button>
 
           <span className="w-px h-5 bg-border mx-0.5" />
 
           <div className="relative">
-            <button type="button" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} onClick={() => setMentionOpen((o) => !o)} className={toolBtn} title="Maydon qo'shish">
+            <button type="button" onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} onClick={() => setMentionOpen((o) => !o)} className={toolBtn} title={t("Maydon qo'shish")}>
               <AtSign className="w-4 h-4" />
             </button>
             {mentionOpen && fields.length > 0 && (
@@ -265,8 +267,8 @@ export default function RichTextEditor({
             )}
           </div>
 
-          <button type="button" onClick={toggleCodeView} className={`${toolBtn} ${codeView ? "bg-primary/10 text-primary" : ""}`} title="Kod ko'rinishi"><Code className="w-4 h-4" /></button>
-          <button type="button" onClick={printContent} className={toolBtn} title="Chop etish"><Printer className="w-4 h-4" /></button>
+          <button type="button" onClick={toggleCodeView} className={`${toolBtn} ${codeView ? "bg-primary/10 text-primary" : ""}`} title={t("Kod ko'rinishi")}><Code className="w-4 h-4" /></button>
+          <button type="button" onClick={printContent} className={toolBtn} title={t("Chop etish")}><Printer className="w-4 h-4" /></button>
           <button type="button" onClick={() => setFullscreen((f) => !f)} className={`${toolBtn} ml-auto`} title={fullscreen ? "Kichraytirish" : "Kengaytirish"}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
+import { LangProvider } from "@/components/shared/Language";
 import NavigationHistoryProvider from "@/components/shared/NavigationHistory";
 import { ToastProvider } from "@/components/ui/Toast";
+import { htmlLang, normalizeLang } from "@/lib/i18n";
 
 // Referens sayt (akademiya.edutizim.uz) Nunito ishlatadi. globals.css dagi
 // `body { font-family: var(--font-nunito), ... }` shu o'zgaruvchini o'qiydi.
@@ -30,16 +33,22 @@ export const metadata: Metadata = {
  */
 const BRAND = "teal";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // INTERFEYS TILI — cookie'dan (components/shared/Language.tsx yozadi).
+  // Birinchi chizish ham tanlangan tilda bo'lsin: aks holda inglizcha
+  // tanlagan odam har yangilashda bir lahza o'zbekcha ko'rardi. Narxi:
+  // cookie o'qilgani uchun har sahifa dinamik chiziladi — ilova baribir
+  // sessiyali (proxy.ts), statik sahifa deyarli yo'q edi.
+  const lang = normalizeLang((await cookies()).get("tizimli_lang")?.value);
   return (
     // `suppressHydrationWarning` — pastdagi skript `dark` klassini gidratatsiyadan
     // OLDIN qo'shadi, server HTML'ida esa u yo'q. React buni nomuvofiqlik deb
     // hisoblaydi; bu atribut aynan shu holat uchun (faqat shu elementga tegishli).
-    <html lang="uz" data-brand={BRAND} className={nunito.variable} suppressHydrationWarning>
+    <html lang={htmlLang(lang)} data-brand={BRAND} className={nunito.variable} suppressHydrationWarning>
       <head>
         {/* Mavzu `useTheme` da effekt orqali qo'llanadi — ya'ni gidratatsiyadan
             KEYIN. Shu sabab tungi rejimda har sahifa yuklanganda bir lahza
@@ -54,9 +63,11 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ToastProvider>
-          <NavigationHistoryProvider>{children}</NavigationHistoryProvider>
-        </ToastProvider>
+        <LangProvider initial={lang}>
+          <ToastProvider>
+            <NavigationHistoryProvider>{children}</NavigationHistoryProvider>
+          </ToastProvider>
+        </LangProvider>
       </body>
     </html>
   );

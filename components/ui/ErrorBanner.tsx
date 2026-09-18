@@ -10,26 +10,30 @@
 // QOIDA: xato bo'lganda nol bilan to'ldirilgan jadval CHIZILMASIN.
 // Moliya tizimida "0 UZS" — bu da'vo, "ma'lumot kelmadi" esa boshqa gap.
 
+import { useT } from "@/components/shared/Language";
+
 export default function ErrorBanner({
-  message = "Ma'lumot yuklanmadi — raqamlar to'liq emas.",
+  message,
   onRetry,
 }: {
   message?: string;
   onRetry?: () => void;
 }) {
+  const { t } = useT();
+  const text = message ?? t("Ma'lumot yuklanmadi — raqamlar to'liq emas.");
   return (
     <div
       role="alert"
       className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-600"
     >
-      <span>{message}</span>
+      <span>{text}</span>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
           className="shrink-0 rounded-lg border border-rose-500/30 px-3 py-1.5 text-[12px] font-medium hover:bg-rose-500/10"
         >
-          Qayta urinish
+          {t("Qayta urinish")}
         </button>
       )}
     </div>

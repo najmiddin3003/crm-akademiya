@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { MONTHS_SHORT } from "@/lib/i18n";
 
 // Oy+yil tanlagich ("MM/YYYY" ko'rinishida) — MonthPicker'dan farqi: yil
@@ -36,8 +36,9 @@ export interface MonthYearPickerProps {
   className?: string;
 }
 
-export default function MonthYearPicker({ value, onChange, placeholder = "Oy/yil", className = "" }: MonthYearPickerProps) {
+export default function MonthYearPicker({ value, onChange, placeholder, className = "" }: MonthYearPickerProps) {
   const [lang] = useLang();
+  const { t } = useT();
   const MONTH_LABELS = MONTHS_SHORT[lang];
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => value?.year ?? new Date().getFullYear());
@@ -89,7 +90,7 @@ export default function MonthYearPicker({ value, onChange, placeholder = "Oy/yil
     <div className={`relative ${className}`} ref={rootRef}>
       <button type="button" onClick={toggleOpen} className="w-full inline-flex items-center h-10 rounded-lg border border-border bg-card px-3 gap-2 text-sm justify-between">
         <span className={value ? "text-foreground tabular-nums" : "text-muted-foreground"}>
-          {value ? `${String(value.month).padStart(2, "0")}/${value.year}` : placeholder}
+          {value ? `${String(value.month).padStart(2, "0")}/${value.year}` : (placeholder ?? t("Oy/yil"))}
         </span>
         <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
       </button>

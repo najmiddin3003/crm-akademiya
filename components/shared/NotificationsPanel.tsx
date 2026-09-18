@@ -7,6 +7,7 @@ import { relativeUz, styleOf, type NotifKind } from "@/lib/notifications";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
+import { useT } from "@/components/shared/Language";
 
 // Qo'ng'iroq panelining GAVDASI (sarlavhasiz) — desktop ochiluvchi menyu ham,
 // mobil chekma menyu ham shuni chizadi. Ikkalasi bitta daraxtdan foydalanadi,
@@ -51,6 +52,7 @@ export interface NotificationsPanelProps {
 export default function NotificationsPanel({ variant, open, onNavigate }: NotificationsPanelProps) {
   const { items, sources, status, everLoaded, nowMs, reload, setPanelOpen, markSeen, markAllSeen } =
     useNotifications();
+  const { t } = useT();
   const D = DENSITY[variant];
 
   /**
@@ -109,7 +111,7 @@ export default function NotificationsPanel({ variant, open, onNavigate }: Notifi
           onClick={reload}
           className="mt-1.5 w-full rounded-md border border-rose-500/30 px-2 py-1 text-[11px] font-medium hover:bg-rose-500/10"
         >
-          Qayta urinish
+          {t("Qayta urinish")}
         </button>
       </div>
     ) : (
@@ -119,7 +121,7 @@ export default function NotificationsPanel({ variant, open, onNavigate }: Notifi
     );
 
   if (!everLoaded && status === "error") {
-    return errorRow("Bildirishnomalarni yuklab bo'lmadi");
+    return errorRow(t("Bildirishnomalarni yuklab bo'lmadi"));
   }
 
   // O'qilmagani EKRANDAGIDAN ko'p bo'lgan manbalar.
@@ -141,12 +143,16 @@ export default function NotificationsPanel({ variant, open, onNavigate }: Notifi
     <div className={`${D.box} overflow-y-auto`}>
       {/* Xato bo'lsa ham oxirgi yaxshi ro'yxat QOLADI — banner uning ustida
           turadi. Ma'lumotni saqlab, keyin uni yashirish o'ziga zid bo'lardi. */}
-      {status === "error" && errorRow("Bildirishnomalarni yangilab bo'lmadi")}
+      {status === "error" && errorRow(t("Bildirishnomalarni yangilab bo'lmadi"))}
 
       {hidden.map((k) => (
         <div key={k} className="border-b border-border bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-          Ko&apos;rilmagan {SOURCE_LABELS[k]} — {sources?.[k].unread}
-          {sources?.[k].capped ? "+" : ""} ta, bu yerda faqat oxirgi {sources?.[k].shown} tasi.
+          {t("Ko'rilmagan {kind} — {unread}{plus} ta, bu yerda faqat oxirgi {shown} tasi.", {
+            kind: t(SOURCE_LABELS[k]),
+            unread: sources?.[k].unread ?? 0,
+            plus: sources?.[k].capped ? "+" : "",
+            shown: sources?.[k].shown ?? 0,
+          })}
           {/* FAQAT shu manba — tugma o'zi turgan banner nima haqida gapirsa,
               o'shani yopadi. Ilgari ikkala banner tugmasi ham hamma manbani
               tozalardi, ya'ni to'lov banneridagi tugma buyurtmalarni ham
@@ -156,7 +162,7 @@ export default function NotificationsPanel({ variant, open, onNavigate }: Notifi
             onClick={() => markAllSeen(k)}
             className="ml-1 font-medium underline underline-offset-2 hover:no-underline"
           >
-            O&apos;qilgan deb belgilash
+            {t("O'qilgan deb belgilash")}
           </button>
         </div>
       ))}
@@ -173,22 +179,22 @@ export default function NotificationsPanel({ variant, open, onNavigate }: Notifi
               yozuv bo'lishi mumkin, biz qaramadik. */}
           {onKinds.length === 0 ? (
             <>
-              <div className="text-base font-medium">Sizda bildirishnoma manbalari yo&apos;q</div>
+              <div className="text-base font-medium">{t("Sizda bildirishnoma manbalari yo'q")}</div>
               <div className="mt-1 text-xs text-muted-foreground">
-                To&apos;lov, buyurtma va topshiriq bo&apos;limlariga ruxsatingiz yo&apos;q.
+                {t("To'lov, buyurtma va topshiriq bo'limlariga ruxsatingiz yo'q.")}
               </div>
             </>
           ) : (
             <>
-              <div className="text-base font-medium">Hozircha bildirishnoma yo&apos;q</div>
+              <div className="text-base font-medium">{t("Hozircha bildirishnoma yo'q")}</div>
               <div className="mt-1 text-xs text-muted-foreground">
-                So&apos;nggi 7 kunda {onKinds.map((k) => SOURCE_LABELS[k]).join(", ")} yo&apos;q.
+                {t("So'nggi 7 kunda {kinds} yo'q.", { kinds: onKinds.map((k) => t(SOURCE_LABELS[k])).join(", ") })}
               </div>
             </>
           )}
           {noCashbox && (
             <div className="mt-1 text-xs text-muted-foreground">
-              Sizga biriktirilgan kassa yo&apos;q.
+              {t("Sizga biriktirilgan kassa yo'q.")}
             </div>
           )}
         </div>

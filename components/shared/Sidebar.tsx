@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from "@/components/ui/Link";
 import { usePathname, useRouter } from "next/navigation";
 import { SIDEBAR_ITEMS } from "@/constants/sidebar";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
 import { LANGS } from "@/lib/navbar";
 import NotificationsPanel from "@/components/shared/NotificationsPanel";
@@ -232,6 +232,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // bildirishnoma / mavzu boshqaruvlari mobil chekma menyuda takrorlanadi.
   // Holat umumiy do'konlardan keladi — Navbar bilan doim sinxron.
   const [lang, setLang] = useLang();
+  const { t } = useT();
   const [isDark, toggleTheme] = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
   // Son Navbar bilan BIR XIL manbadan (NotificationsProvider). Ilgari bu
@@ -263,7 +264,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
       router.refresh();
       return;
     }
-    if (!confirm("Tizimdan chiqishni xohlaysizmi?")) return;
+    if (!confirm(t("Tizimdan chiqishni xohlaysizmi?"))) return;
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     router.push("/");
     router.refresh();
@@ -397,10 +398,10 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // qulf ro'yxati faqat sahifa yo'li bilan solishtiriladi.
   const lockedProps = (href: string) => {
     const locked = !IMPLEMENTED_ROUTES.has(href.split("?")[0]);
-    return { locked, title: locked ? "Hali tayyor emas" : undefined };
+    return { locked, title: locked ? t("Hali tayyor emas") : undefined };
   };
   const lockIcon = (
-    <svg className="icon" style={{ width: 12, height: 12, opacity: 0.7 }} aria-label="Qulflangan">
+    <svg className="icon" style={{ width: 12, height: 12, opacity: 0.7 }} aria-label={t("Qulflangan")}>
       <use href="#i-lock" />
     </svg>
   );
@@ -424,7 +425,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
         title={title}
         className={`flyout-item ${active ? "is-active" : ""} ${locked ? "is-locked" : ""}`}
       >
-        <span className={it.truncate ? "flex-1 truncate" : "flex-1"}>{it.label}</span>
+        <span className={it.truncate ? "flex-1 truncate" : "flex-1"}>{t(it.label)}</span>
         {/* Son 0 bo'lsa ham HALOL ko'rsatiladi — shu bois "!= null",
             "&&" emas: 0 ham haqiqat ("bu sahifada yozuv yo'q"), uni
             yashirish "hali yuklanmadi" bilan chalkashtirardi. Sanoq
@@ -440,7 +441,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
 
   const renderColumn = (col: SidebarMenuColumn, ci: number) => (
     <div key={ci} className="flyout-col">
-      {col.title && <div className="flyout-colhead">{col.title}</div>}
+      {col.title && <div className="flyout-colhead">{t(col.title)}</div>}
       {col.items.map((it, i) => renderFlyoutItem(it, `${ci}-${i}`))}
     </div>
   );
@@ -518,7 +519,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                       <span className="side-badge">{counts[item.badgeKey]}</span>
                     )}
                   </span>
-                  <span className="flex-1 truncate">{item.label}</span>
+                  <span className="flex-1 truncate">{t(item.label)}</span>
                   {topLocked && lockIcon}
                 </>
               );
@@ -533,7 +534,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                   {item.href && !topLocked ? (
                     <Link href={item.href} prefetch={false} className={rowClass} onClick={closeNow}>{inner}</Link>
                   ) : item.href && topLocked ? (
-                    <a href="#" onClick={(e) => e.preventDefault()} title="Hali tayyor emas" className={rowClass} style={LOCKED_STYLE}>
+                    <a href="#" onClick={(e) => e.preventDefault()} title={t("Hali tayyor emas")} className={rowClass} style={LOCKED_STYLE}>
                       {inner}
                     </a>
                   ) : (
@@ -560,7 +561,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
         <div className="p-2">
           <button className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[11px] font-semibold" style={{ color: "var(--shell-blue)" }}>
             <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-life-buoy" /></svg>
-            <span>TEXNIK YORDAM</span>
+            <span>{t("TEXNIK YORDAM")}</span>
           </button>
         </div>
       </aside>
@@ -586,7 +587,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
       <div id="mobile-sidebar" className={`${mobileOpen ? "" : "hidden"} fixed inset-0 z-50 lg:hidden`}>
         <div className="absolute inset-0 bg-black/50" onClick={() => onMobileOpenChange(false)} />
         <aside className="absolute left-0 top-0 h-full w-64 flex flex-col border-r border-border bg-sidebar">
-          <Link href="/tasks" className="flex h-16 items-center gap-2 border-b border-border px-5 w-full hover:bg-secondary transition-colors group" title="Asosiy sahifaga qaytish" onClick={closeMobile}>
+          <Link href="/tasks" className="flex h-16 items-center gap-2 border-b border-border px-5 w-full hover:bg-secondary transition-colors group" title={t("Asosiy sahifaga qaytish")} onClick={closeMobile}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white group-hover:scale-110 transition-transform">
               <svg className="icon icon-sm"><use href="#i-graduation-cap" /></svg>
             </div>
@@ -603,7 +604,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
                     className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium ${item.mobileActive ? "bg-primary text-white" : "text-foreground/70 hover:bg-secondary"}`}
                   >
                     <svg className={`icon icon-sm ${item.mobileActive ? "" : "text-muted-foreground"}`}><use href={`#${item.icon}`} /></svg>
-                    <span className="flex-1">{item.label}</span>
+                    <span className="flex-1">{t(item.label)}</span>
                     {item.badgeKey != null && (counts[item.badgeKey] ?? 0) > 0 && (
                       <span className="ml-auto inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">{counts[item.badgeKey]}</span>
                     )}
@@ -647,7 +648,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
             >
               <svg className="icon icon-sm text-muted-foreground"><use href="#i-bell" /></svg>
-              <span className="flex-1">Bildirishnomalar</span>
+              <span className="flex-1">{t("Bildirishnomalar")}</span>
               {showBadge && (
                 <span className="inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   {badgeLabel(unread, unreadIsFloor)}
@@ -677,7 +678,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
             >
               <svg className="icon icon-sm text-muted-foreground"><use href={isDark ? "#i-sun" : "#i-moon"} /></svg>
-              <span>{isDark ? "Yorug' rejim" : "Tungi rejim"}</span>
+              <span>{isDark ? t("Yorug' rejim") : t("Tungi rejim")}</span>
             </button>
           </div>
 
@@ -689,21 +690,21 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
             >
               <svg className="icon icon-sm text-muted-foreground"><use href="#i-monitor" /></svg>
-              <span>Aktiv qurilmalar</span>
+              <span>{t("Aktiv qurilmalar")}</span>
             </button>
             <button
               onClick={() => void onProfileAction("lock")}
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-foreground/70 hover:bg-secondary text-left"
             >
               <svg className="icon icon-sm text-muted-foreground"><use href="#i-lock" /></svg>
-              <span>Qulflash</span>
+              <span>{t("Qulflash")}</span>
             </button>
             <button
               onClick={() => void onProfileAction("logout")}
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-rose-600 hover:bg-rose-50 text-left"
             >
               <svg className="icon icon-sm"><use href="#i-log-out" /></svg>
-              <span>Chiqish</span>
+              <span>{t("Chiqish")}</span>
             </button>
           </div>
         </aside>

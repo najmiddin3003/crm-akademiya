@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getPageButtons } from "@/lib/pagination";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/src/app.js renderPagination()/getPageButtons() (~line 22910).
 // Shared by every list page (Orders, First lessons, ...) — "hamma joylari bir
@@ -18,6 +19,7 @@ export interface PaginationProps {
 }
 
 export default function Pagination({ totalItems, page, pageSize, onPageChange, onPageSizeChange }: PaginationProps) {
+  const { t } = useT();
   const [sizeMenuOpen, setSizeMenuOpen] = useState(false);
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const pages = getPageButtons(page, totalPages);
@@ -50,8 +52,8 @@ export default function Pagination({ totalItems, page, pageSize, onPageChange, o
         )}
       </div>
 
-      <button type="button" onClick={() => onPageChange(1)} disabled={page === 1} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title="Birinchi">«</button>
-      <button type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title="Oldingi">‹</button>
+      <button type="button" onClick={() => onPageChange(1)} disabled={page === 1} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title={t("Birinchi")}>«</button>
+      <button type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title={t("Oldingi")}>‹</button>
 
       <div className="inline-flex items-center gap-0.5 mx-0.5">
         {pages.map((p, i) =>
@@ -70,8 +72,8 @@ export default function Pagination({ totalItems, page, pageSize, onPageChange, o
         )}
       </div>
 
-      <button type="button" onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title="Keyingi">›</button>
-      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page === totalPages} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title="Oxirgi">»</button>
+      <button type="button" onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title={t("Keyingi")}>›</button>
+      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page === totalPages} className="h-8 w-8 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed text-[15px]" title={t("Oxirgi")}>»</button>
     </div>
   );
 }

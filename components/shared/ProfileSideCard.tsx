@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Copy } from "lucide-react";
+import { useT } from "@/components/shared/Language";
 
 // Profil sahifalarining CHAP YON KARTASI — xodim (Boshqaruv → Xodimlar) va
 // o'quvchi (O'quvchilar → profil) uchun YAGONA komponent.
@@ -94,6 +95,7 @@ export default function ProfileSideCard({
   stats,
   children,
 }: ProfileSideCardProps) {
+  const { t } = useT();
   // Cloudinary'dagi rasm o'chirilgan yoki havola buzilgan bo'lsa, singan
   // rasm belgisi o'rniga harflarga qaytamiz. Holat SHU YERDA — shunda
   // ikkala sahifa ham bir xil yiqiladi.
@@ -146,7 +148,7 @@ export default function ProfileSideCard({
               type="button"
               onClick={onPhotoUpload}
               className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-white inline-flex items-center justify-center shadow-md hover:opacity-90"
-              title="Rasm yuklash"
+              title={t("Rasm yuklash")}
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
@@ -161,7 +163,7 @@ export default function ProfileSideCard({
         <div className="mt-1 inline-flex items-center gap-1 text-[13px] text-muted-foreground">
           <span className="tabular-nums">{phone}</span>
           {onCopyPhone && (
-            <button type="button" onClick={onCopyPhone} className="hover:text-primary" title="Nusxa olish">
+            <button type="button" onClick={onCopyPhone} className="hover:text-primary" title={t("Nusxa olish")}>
               <Copy className="w-3.5 h-3.5" />
             </button>
           )}
