@@ -4,7 +4,8 @@ import { fmtUZS, monthLabel } from "@/lib/studentBot/views";
 import { formatPhone } from "@/lib/studentBot/phone";
 import type { BotCashbox } from "@/lib/staffBot/auth";
 import type { KassamView, TodayEntry } from "@/lib/staffBot/data";
-import type { ChiqimDraft, KirimDraft, TransferDraft } from "@/lib/staffBot/session";
+import { lessonDaysLabel, parseLessonDays } from "@/lib/ordersData";
+import type { ChiqimDraft, KirimDraft, LeadDraft, TransferDraft } from "@/lib/staffBot/session";
 import type { TransferPendingInfo } from "@/lib/staffBot/notify";
 
 // Xodimlar boti — EKRAN MATNLARI. Faqat matn yig'adi, bazaga tegmaydi.
@@ -104,9 +105,6 @@ export function noCashbox(): string {
 export function noPermission(): string {
   return "🔒 Kassa bo'limiga ruxsatingiz yo'q. Administratorga murojaat qiling.";
 }
-
-/** Tugma bosilganda chiqadigan qisqa javob (answerCallbackQuery) — 200 belgigacha. */
-export const COMING_SOON = "⏳ Bu bo'lim keyingi bosqichda qo'shiladi";
 
 // ── Kassam ──────────────────────────────────────────────────────────
 
@@ -587,4 +585,87 @@ export function transferDecisionFailed(error: string): string {
 
 export function transferNotFound(): string {
   return "Bu ko'chirma topilmadi yoki allaqachon hal qilingan.";
+}
+
+// ── Lid qo'shish ────────────────────────────────────────────────────
+
+function leadHeader(d: LeadDraft, branchName: string): string {
+  const lines = [`📋 <b>Yangi lid</b>${branchName ? ` · ${esc(branchName)}` : ""}`, RULE];
+  let any = false;
+  if (d.studentName) {
+    lines.push(`O'quvchi: <b>${esc(d.studentName)}</b>${d.studentPhone ? ` · ${esc(formatPhone(d.studentPhone))}` : ""}`);
+    any = true;
+  }
+  if (d.course) { lines.push(`Kurs: <b>${esc(d.course)}</b>`); any = true; }
+  if (d.lessonDay) { lines.push(`Dars kunlari: <b>${esc(lessonDaysLabel(parseLessonDays(d.lessonDay)))}</b>`); any = true; }
+  if (d.note !== undefined) { lines.push(`Izoh: ${d.note ? esc(d.note) : "<i>yo'q</i>"}`); any = true; }
+  if (any) lines.push(RULE);
+  return lines.join("\n");
+}
+
+export function leadStudentPrompt(d: LeadDraft, branchName: string): string {
+  return [
+    leadHeader(d, branchName),
+    "👉 O'quvchining <b>ismi</b> yoki <b>telefon raqamini</b> yozing (kamida 2 belgi).",
+    "<i>Lid faqat CRM'da mavjud o'quvchiga ochiladi — yangi odam bo'lsa avval web'da \"O'quvchi qo'shish\" qiling.</i>",
+  ].join("\n");
+}
+
+export function leadStudentResults(d: LeadDraft, branchName: string, query: string, count: number, more: boolean): string {
+  const tail = more ? "\n<i>Yana bor — ro'yxatda yo'q bo'lsa aniqroq yozing.</i>" : "";
+  return `${leadHeader(d, branchName)}\n🔎 "${esc(query)}" bo'yicha ${count} ta topildi. O'quvchini tanlang:${tail}`;
+}
+
+export function leadStudentNotFound(d: LeadDraft, branchName: string, query: string): string {
+  return `${leadHeader(d, branchName)}\n😕 "${esc(query)}" bo'yicha o'quvchi topilmadi.\n\nBoshqacha yozib ko'ring yoki avval web'da o'quvchini qo'shing.`;
+}
+
+export function leadQueryTooShort(d: LeadDraft, branchName: string): string {
+  return `${leadHeader(d, branchName)}\n✏️ Kamida 2 ta belgi yozing.`;
+}
+
+export function leadCoursePrompt(d: LeadDraft, branchName: string): string {
+  return `${leadHeader(d, branchName)}\n👉 Kursni tanlang:`;
+}
+
+export function leadNoCourses(): string {
+  return "⚠️ Sozlamalarda kurs qo'shilmagan (Kurslar bo'limi). Avval web'da qo'shing.";
+}
+
+export function leadDaysPrompt(d: LeadDraft, branchName: string): string {
+  return `${leadHeader(d, branchName)}\n👉 Dars kunlarini tanlang:`;
+}
+
+export function leadNotePrompt(d: LeadDraft, branchName: string): string {
+  return `${leadHeader(d, branchName)}\n👉 Izoh yozing (masalan qachon qo'ng'iroq qilish) yoki tugmani bosing:`;
+}
+
+export function leadConfirmView(d: LeadDraft, branchName: string, author: string): string {
+  return [
+    leadHeader(d, branchName),
+    `Moderator: ${esc(author || "—")}`,
+    "",
+    "Hammasi to'g'rimi? Lid CRM'ga yoziladi va filialning Telegram \"Lidlar\" topigiga xabar ketadi.",
+  ].join("\n");
+}
+
+export function leadSaved(d: LeadDraft, branchName: string, orderId: number, branchNo: number): string {
+  return [
+    `✅ <b>Lid qo'shildi</b> — №${branchNo}${branchName ? ` (${esc(branchName)})` : ""} · yozuv #${orderId}`,
+    `${esc(d.studentName ?? "")} · ${esc(d.course ?? "")}`,
+    "",
+    "Lid Telegram \"Lidlar\" topigida ko'rinadi — statusini o'sha yerdagi tugmalar bilan belgilang.",
+  ].join("\n");
+}
+
+export function leadFailed(error: string): string {
+  return `❌ Lid qo'shilmadi: ${esc(error)}\n\nQayta urinib ko'ring yoki bekor qiling.`;
+}
+
+export function leadCancelled(): string {
+  return "❌ Lid bekor qilindi. Hech narsa yozilmadi.";
+}
+
+export function noLeadPermission(): string {
+  return "🔒 Lidlar bo'limiga ruxsatingiz yo'q. Administratorga murojaat qiling.";
 }

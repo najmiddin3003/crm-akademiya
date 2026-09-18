@@ -136,7 +136,24 @@ export interface TransferDraft {
   updatedAt: number;
 }
 
-export type Draft = KirimDraft | ChiqimDraft | TransferDraft;
+/** Lid qoralamasining qadamlari (lib/staffBot/lead.ts). */
+export type LeadStep = "student" | "course" | "days" | "note" | "confirm" | "saving";
+
+export interface LeadDraft {
+  kind: "lead";
+  step: LeadStep;
+  studentId?: number;
+  studentName?: string;
+  studentPhone?: string;
+  course?: string;
+  /** "Du,Ch,Ju" — lib/ordersData.ts → formatLessonDays. */
+  lessonDay?: string;
+  note?: string;
+  nonce: string;
+  updatedAt: number;
+}
+
+export type Draft = KirimDraft | ChiqimDraft | TransferDraft | LeadDraft;
 
 /** Shu muddat tegilmagan qoralama eskirgan sanaladi. */
 export const DRAFT_TTL_MS = 30 * 60 * 1000;

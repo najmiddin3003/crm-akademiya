@@ -483,3 +483,87 @@ export function afterDecisionKeyboard(): InlineKeyboard {
     ],
   };
 }
+
+// ── Lid qo'shish ────────────────────────────────────────────────────
+
+export const LEAD_CB = {
+  cancel: "s:l:x",
+  restart: "s:l:re",
+  noteSkip: "s:l:n:0",
+} as const;
+
+export const leadStudentCb = (pupilId: number) => `s:l:s:${pupilId}`;
+/** Kurs — ro'yxatdagi TARTIB raqami (nom 64 baytga sig'masligi mumkin). */
+export const leadCourseCb = (index: number) => `s:l:c:${index}`;
+export const leadDaysCb = (preset: string) => `s:l:d:${preset}`;
+export const leadConfirmCb = (nonce: string) => `s:l:ok:${nonce}`;
+
+export const leadStudentArg = (data: string) => numArg(data, "s:l:s:");
+export const leadCourseArg = (data: string) => numArg(data, "s:l:c:");
+export function leadDaysArg(data: string): string | null {
+  const m = data.match(/^s:l:d:([a-z]{1,10})$/);
+  return m ? m[1] : null;
+}
+export function leadConfirmArg(data: string): string | null {
+  const m = data.match(/^s:l:ok:([a-f0-9]{8,32})$/);
+  return m ? m[1] : null;
+}
+
+const leadCancelRow = (): InlineButton[] => [btn("❌ Bekor qilish", LEAD_CB.cancel)];
+
+export function leadCancelOnly(): InlineKeyboard {
+  return { inline_keyboard: [leadCancelRow()] };
+}
+
+export function leadStudentKeyboard(options: PersonOption[]): InlineKeyboard {
+  return { inline_keyboard: [...options.map((o) => [btn(o.label, leadStudentCb(o.id))]), leadCancelRow()] };
+}
+
+/** Kurslar — 2 tadan qatorda; index bo'yicha (nomlar uzun). */
+export function leadCourseKeyboard(names: string[]): InlineKeyboard {
+  const rows: InlineButton[][] = [];
+  for (let i = 0; i < names.length; i += 2) {
+    rows.push(names.slice(i, i + 2).map((n, j) => btn(n, leadCourseCb(i + j))));
+  }
+  rows.push(leadCancelRow());
+  return { inline_keyboard: rows };
+}
+
+/** Dars kunlari — web'dagi ikki tayyor jadval + "har kuni" (lib/ordersData.ts → LESSON_DAY_PRESETS). */
+export const LEAD_DAY_PRESETS: { key: string; label: string; codes: string[] }[] = [
+  { key: "toq", label: "Toq kunlar", codes: ["Du", "Ch", "Ju"] },
+  { key: "juft", label: "Juft kunlar", codes: ["Se", "Pa", "Sh"] },
+  { key: "har", label: "Har kuni", codes: ["Du", "Se", "Ch", "Pa", "Ju", "Sh"] },
+];
+
+export function leadDaysKeyboard(): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      LEAD_DAY_PRESETS.slice(0, 2).map((p) => btn(p.label, leadDaysCb(p.key))),
+      [btn(LEAD_DAY_PRESETS[2].label, leadDaysCb(LEAD_DAY_PRESETS[2].key))],
+      leadCancelRow(),
+    ],
+  };
+}
+
+export function leadNoteKeyboard(): InlineKeyboard {
+  return { inline_keyboard: [[btn("⏭ Izohsiz davom etish", LEAD_CB.noteSkip)], leadCancelRow()] };
+}
+
+export function leadConfirmKeyboard(nonce: string): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn("✅ Lidni qo'shish", leadConfirmCb(nonce))],
+      [btn("🔄 Qaytadan", LEAD_CB.restart), btn("❌ Bekor qilish", LEAD_CB.cancel)],
+    ],
+  };
+}
+
+export function afterLeadKeyboard(): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn("📋 Yana lid", CB.lead), btn("💵 Kirim", CB.kirim)],
+      [btn("🏠 Bosh menyu", CB.menu)],
+    ],
+  };
+}

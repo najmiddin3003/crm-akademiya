@@ -1619,9 +1619,9 @@ lid tugmalari) — endi kassir bilan SHAXSIY yozishmada ham ishlaydi.
 Foydalanuvchi bilan kelishilgan: 6 tugma (Kirim · Chiqim · Ko'chirish ·
 Lid qo'shish · Kassam · Chiqish), kirish web'dagi telefon + parol bilan,
 yozuv uchta joyga ketadi (VPS baza, Google Sheets, Telegram guruh).
-Bosqichlar: 1) kirish + Kirim + Kassam — QILINDI; 2) Chiqim — QILINDI;
-3) Ko'chirish + qabul ✓/✗ — QILINDI (pastda); 4) Lid. Hozircha Lid
-tugmasi "keyingi bosqichda" deb javob beradi.
+Bosqichlar (hammasi 18.09.2026 da qilindi, har biri alohida commit):
+1) kirish + Kirim + Kassam; 2) Chiqim; 3) Ko'chirish + qabul ✓/✗; 4) Lid —
+har birining tafsiloti pastda.
 
 ### Qanday ishlaydi
 
@@ -1748,3 +1748,25 @@ IKKI bosish — "rostdan ham?" ekrani).
 Sinov: `--flow transfer --method Naqd --amount 500000`, `--flow methods
 --method Terminal --amount max`, `--flow inbox` (✓ so'rovigacha; 2-bosish
 faqat `--apply` bilan).
+
+### 4-bosqich — Lid qo'shish (2026-09-18)
+
+`lib/staffBot/lead.ts`: o'quvchi (CRM'da MAVJUD o'quvchi — web oynasi ham
+ro'yxatdan tanlatadi; telefon o'sha yozuvdan; topilmasa "avval web'da
+qo'shing") → kurs (`offline_courses`) → dars kunlari (Toq / Juft / Har
+kuni) → izoh → tasdiq. Oynadagi ixtiyoriy maydonlar (referal, boshlanish
+vaqti, o'qituvchi, guruh, birinchi dars) botda so'ralmaydi — CRM'da
+to'ldiriladi.
+
+- Yadro `lib/ordersCreate.ts` (`createOrder`) — `POST /api/orders` dan
+  ko'chirildi: id, filial ichidagi raqam (`branchNo`), manba o'quvchi
+  yozuvidan (`pupilSourceFor`), Telegram "Lidlar" topigi (`notifyNewLead`,
+  `defer` ichida). Route yupqa qobiq: muallif sessiyadan, filial cookie'dan.
+- Botda muallif = kassir ismi, filial = kassaning filiali (yo'q bo'lsa
+  xodimning birinchi filiali → bazadagi birinchi filial;
+  `employeeBranchIds`/`allBranchIds` endi eksport qilinadi).
+- Ruxsat: `/orders-list` (`StaffAccess.canLead`).
+
+Sinov: `--flow lead --student "93 065 34 35"`.
+
+Shu bilan 4 bosqich ham tayyor — 6 tugmaning hammasi ishlaydi.

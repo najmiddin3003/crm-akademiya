@@ -85,6 +85,8 @@ export interface StaffAccess {
   identity: LoginIdentity;
   /** Kassa amallari ruxsati — `/finance-cash` (web'dagi bilan bir xil kalit). */
   canCash: boolean;
+  /** Lid qo'shish ruxsati — `/orders-list` (POST /api/orders shu kalit bilan yopiq). */
+  canLead: boolean;
   /** `null` — xodimga kassa biriktirilmagan (yoki admin tanlagan kassa yo'qolgan). */
   cashbox: BotCashbox | null;
 }
@@ -173,6 +175,7 @@ export async function resolveAccess(db: Db, user: StaffBotUser): Promise<AccessR
     access: {
       identity,
       canCash: isPathAllowed("/finance-cash", perms),
+      canLead: isPathAllowed("/orders-list", perms),
       cashbox: await findBotCashbox(db, { isAdmin, name, cashboxId: user.cashboxId }),
     },
   };

@@ -14,8 +14,8 @@
 //                --amount 320000     ("max" — chiqimda "Hammasi" tugmasi)
 //                --flow chiqim --type "Avans" --person Nilufar --method Naqd
 //                                    (chiqim oqimi: tur nomi, kim, to'lov turi)
-//                --flow transfer | methods | inbox
-//                                    (boshqa kassaga / turlar orasida / kelayotganlar)
+//                --flow transfer | methods | inbox | lead
+//                                    (boshqa kassaga / turlar orasida / kelayotganlar / lid)
 //                --apply             (tasdiqni ham bosadi — PUL YOZILADI, Sheets/guruhga
 //                                     navbat tushadi; lokal .env prod kalitlariga
 //                                     qarasa HAQIQIY guruhga xabar ketadi!)
@@ -247,6 +247,22 @@ if (FLOW === "kirim") {
     const noteCb = pick("s:k:n:");
     if (noteCb) await cb(noteCb);
     await confirmOrStop("s:k:ok:");
+  }
+} else if (FLOW === "lead") {
+  // --flow lead: o'quvchi (--student), birinchi kurs, toq kunlar, izohsiz → tasdiq kartasi.
+  rule("LID QO'SHISH");
+  await cb("s:lead");
+  await msg(STUDENT);
+  const st = pick("s:l:s:");
+  if (!st) {
+    line("  O'quvchi topilmadi — --student bilan boshqa matn bering.");
+  } else {
+    await cb(st);
+    const course = pick("s:l:c:");
+    if (course) await cb(course);
+    await cb("s:l:d:toq");
+    await cb("s:l:n:0");
+    await confirmOrStop("s:l:ok:");
   }
 } else if (FLOW === "transfer" || FLOW === "inbox" || FLOW === "methods") {
   // --flow transfer: boshqa kassaga (birinchi kassa, --method, --amount);

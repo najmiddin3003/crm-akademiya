@@ -43,7 +43,7 @@ export interface BranchScope {
 }
 
 /** Bazadagi barcha filial id'lari (kichik ro'yxat — 4 ta). */
-async function allBranchIds(db: Db): Promise<number[]> {
+export async function allBranchIds(db: Db): Promise<number[]> {
   const rows = await db.collection("branches").find({}, { projection: { id: 1, _id: 0 } }).sort({ id: 1 }).toArray();
   return rows.map((r) => Number(r.id)).filter(Number.isFinite);
 }
@@ -60,8 +60,11 @@ async function allBranchIds(db: Db): Promise<number[]> {
  *
  * Maydon yo'q xodimda bo'sh ro'yxat qaytadi va chaqiruvchi uni 1-filialga
  * tushiradi (migratsiya shu qoidaga tayanadi).
+ *
+ * EKSPORT — xodimlar boti lid filialini shundan oladi (lib/staffBot/lead.ts):
+ * u yerda cookie yo'q, qamrov kassaning filialidan, bo'lmasa shu ro'yxatdan.
  */
-async function employeeBranchIds(db: Db, employeeId: number | null): Promise<number[]> {
+export async function employeeBranchIds(db: Db, employeeId: number | null): Promise<number[]> {
   if (employeeId === null) return [];
   const emp = await db.collection("hr_employees").findOne({ id: employeeId }, { projection: { branchIds: 1, _id: 0 } });
   const raw = Array.isArray(emp?.branchIds) ? emp.branchIds : [];
