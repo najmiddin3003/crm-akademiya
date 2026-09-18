@@ -213,11 +213,128 @@ export function kirimConfirmKeyboard(nonce: string): InlineKeyboard {
   };
 }
 
-export function afterSaveKeyboard(): InlineKeyboard {
+export function afterSaveKeyboard(kind: "kirim" | "chiqim" = "kirim"): InlineKeyboard {
+  const again = kind === "chiqim" ? btn("💸 Yana chiqim", CB.chiqim) : btn("💵 Yana kirim", CB.kirim);
   return {
     inline_keyboard: [
-      [btn("💵 Yana kirim", CB.kirim), btn("📊 Kassam", CB.kassam)],
+      [again, btn("📊 Kassam", CB.kassam)],
       [btn("🏠 Bosh menyu", CB.menu)],
+    ],
+  };
+}
+
+// ── Chiqim qadamlari ────────────────────────────────────────────────
+
+export const chiqimTypeCb = (typeId: number) => `s:c:t:${typeId}`;
+export const chiqimPageCb = (page: number) => `s:c:pg:${page}`;
+export const chiqimEmployeeCb = (id: number) => `s:c:e:${id}`;
+export const chiqimStudentCb = (pupilId: number) => `s:c:s:${pupilId}`;
+export const chiqimMethodCb = (key: string) => `s:c:m:${key}`;
+export const chiqimConfirmCb = (nonce: string) => `s:c:ok:${nonce}`;
+
+export const CHIQIM_CB = {
+  cancel: "s:c:x",
+  restart: "s:c:re",
+  /** Summa = chegara/qoldiqning o'zi ("Hammasi" tugmasi). */
+  amountMax: "s:c:a:max",
+  noteSkip: "s:c:n:0",
+} as const;
+
+const numArg = (data: string, prefix: string): number | null => {
+  if (!data.startsWith(prefix)) return null;
+  const rest = data.slice(prefix.length);
+  return /^\d+$/.test(rest) ? Number(rest) : null;
+};
+export const chiqimTypeArg = (data: string) => numArg(data, "s:c:t:");
+export const chiqimPageArg = (data: string) => numArg(data, "s:c:pg:");
+export const chiqimEmployeeArg = (data: string) => numArg(data, "s:c:e:");
+export const chiqimStudentArg = (data: string) => numArg(data, "s:c:s:");
+export function chiqimMethodArg(data: string): string | null {
+  const m = data.match(/^s:c:m:([A-Za-z0-9_-]{1,32})$/);
+  return m ? m[1] : null;
+}
+export function chiqimConfirmArg(data: string): string | null {
+  const m = data.match(/^s:c:ok:([a-f0-9]{8,32})$/);
+  return m ? m[1] : null;
+}
+
+const chiqimCancelRow = (): InlineButton[] => [btn("❌ Bekor qilish", CHIQIM_CB.cancel)];
+
+/** Sahifadagi turlar soni — telefon ekraniga sig'adigan ro'yxat. */
+export const TYPE_PAGE_SIZE = 8;
+
+/**
+ * Chiqim turlari — HAMMASI, sahifalab (foydalanuvchi qarori, 18.09.2026:
+ * web'dagi barcha turlar chiqishi kerak; bazada 24 ta).
+ */
+export function chiqimTypeKeyboard(types: { id: number; name: string }[], page: number): InlineKeyboard {
+  const pages = Math.max(1, Math.ceil(types.length / TYPE_PAGE_SIZE));
+  const p = Math.min(Math.max(0, page), pages - 1);
+  const slice = types.slice(p * TYPE_PAGE_SIZE, (p + 1) * TYPE_PAGE_SIZE);
+  const rows: InlineButton[][] = slice.map((t) => [btn(t.name, chiqimTypeCb(t.id))]);
+  if (pages > 1) {
+    const nav: InlineButton[] = [];
+    if (p > 0) nav.push(btn("◀ Oldingi", chiqimPageCb(p - 1)));
+    nav.push(btn(`${p + 1}/${pages}`, chiqimPageCb(p)));
+    if (p < pages - 1) nav.push(btn("Keyingi ▶", chiqimPageCb(p + 1)));
+    rows.push(nav);
+  }
+  rows.push(chiqimCancelRow());
+  return { inline_keyboard: rows };
+}
+
+export function chiqimCancelOnly(): InlineKeyboard {
+  return { inline_keyboard: [chiqimCancelRow()] };
+}
+
+export interface PersonOption {
+  id: number;
+  label: string;
+}
+
+export function chiqimPersonKeyboard(options: PersonOption[], kind: "employee" | "student"): InlineKeyboard {
+  const cb = kind === "employee" ? chiqimEmployeeCb : chiqimStudentCb;
+  return { inline_keyboard: [...options.map((o) => [btn(o.label, cb(o.id))]), chiqimCancelRow()] };
+}
+
+/** To'lov turlari — faqat kassada mablag'i borlari (web'dagi Chiqim oynasi bilan bir xil). */
+export function chiqimMethodKeyboard(methods: { key: string; name: string; balance: number }[]): InlineKeyboard {
+  const rows: InlineButton[][] = [];
+  for (let i = 0; i < methods.length; i += 2) {
+    rows.push(methods.slice(i, i + 2).map((m) => btn(`${m.name} · ${fmtButtonAmount(m.balance)}`, chiqimMethodCb(m.key))));
+  }
+  rows.push(chiqimCancelRow());
+  return { inline_keyboard: rows };
+}
+
+/** Tugmadagi summa — "2 400 000" (bo'shliq bilan, lib/studentBot/views.ts → fmtUZS bilan bir xil). */
+function fmtButtonAmount(n: number): string {
+  const digits = String(Math.round(Math.abs(n)));
+  let out = "";
+  for (let i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 === 0) out += " ";
+    out += digits[i];
+  }
+  return `${n < 0 ? "-" : ""}${out}`;
+}
+
+/** Summa qadami: "Hammasi" (chegara/qoldiq bo'lsa) + bekor. */
+export function chiqimAmountKeyboard(max: number | null): InlineKeyboard {
+  const rows: InlineButton[][] = [];
+  if (max !== null && max > 0) rows.push([btn(`💯 Hammasi: ${fmtButtonAmount(max)}`, CHIQIM_CB.amountMax)]);
+  rows.push(chiqimCancelRow());
+  return { inline_keyboard: rows };
+}
+
+export function chiqimNoteKeyboard(): InlineKeyboard {
+  return { inline_keyboard: [[btn("⏭ Izohsiz davom etish", CHIQIM_CB.noteSkip)], chiqimCancelRow()] };
+}
+
+export function chiqimConfirmKeyboard(nonce: string): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn("✅ Tasdiqlash", chiqimConfirmCb(nonce))],
+      [btn("🔄 Qaytadan", CHIQIM_CB.restart), btn("❌ Bekor qilish", CHIQIM_CB.cancel)],
     ],
   };
 }

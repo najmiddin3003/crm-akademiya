@@ -1,0 +1,492 @@
+import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
+import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
+import { studentPaidBalanceByName } from "@/lib/pupilsDb";
+import { refundTeacherOf } from "@/lib/studentRefund";
+import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
+import { txTarget } from "@/lib/txTarget";
+import { uzDateIso } from "@/lib/uzTime";
+import type { BotCashbox } from "@/lib/staffBot/auth";
+import {
+  employeeSalaryInfo,
+  loadActiveMethods,
+  loadChiqimTypes,
+  loadEmployeeHit,
+  loadPupilHit,
+  searchEmployees,
+  searchPupils,
+} from "@/lib/staffBot/data";
+import { newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
+import {
+  CHIQIM_CB,
+  afterSaveKeyboard,
+  backToMenu,
+  chiqimAmountKeyboard,
+  chiqimCancelOnly,
+  chiqimConfirmArg,
+  chiqimConfirmKeyboard,
+  chiqimEmployeeArg,
+  chiqimMethodArg,
+  chiqimMethodKeyboard,
+  chiqimNoteKeyboard,
+  chiqimPageArg,
+  chiqimPersonKeyboard,
+  chiqimStudentArg,
+  chiqimTypeArg,
+  chiqimTypeKeyboard,
+} from "@/lib/staffBot/keyboards";
+import {
+  claimDraftForSave,
+  liveDraft,
+  releaseDraft,
+  setDraft,
+  type ChiqimDraft,
+} from "@/lib/staffBot/session";
+import * as V from "@/lib/staffBot/views";
+import { formatPhone } from "@/lib/studentBot/phone";
+import { fmtUZS } from "@/lib/studentBot/views";
+
+// 💸 CHIQIM — botdagi kassadan chiqim oqimi.
+//
+// Web'dagi Chiqim oynasi (components/finance/CashboxAdjustDrawer.tsx)
+// bilan BIR XIL qoidalar:
+//   • tur → KIM (turning "Mijoz" sozlamasiga qarab xodim yoki o'quvchi,
+//     yoki hech kim — lib/txTarget.ts) → to'lov turi → summa → izoh → tasdiq;
+//   • to'lov turlari — faqat kassada qoldig'i borlari;
+//   • Avans/Oylik — xodimning shu oydagi qoldig'idan oshmaydi (naqd:
+//     `payrollCashLeg`, plastik: `payrollPayout` — 16.09.2026 "karta
+//     birinchi" qoidasi); "Oylik" da summa qo'lda terilmaydi, qoldiqning
+//     o'zi (18.09.2026 qoidasi); oyligi sozlanmagan xodimga chegara yo'q;
+//   • O'quvchiga qaytarish — balansdan oshmaydi, ustoz oxirgi to'lovdan;
+//   • hamma 24 tur ko'rsatiladi, sahifalab (foydalanuvchi qarori).
+// Tartibdagi bitta farq: to'lov turi SUMMADAN OLDIN so'raladi — chegara
+// (naqd/plastik) va kassadagi qoldiq unga bog'liq, kassir summani yozishdan
+// oldin qancha mumkinligini ko'rishi kerak.
+// Yozishning o'zi yadroda (lib/cashboxAdjust.ts) — web bilan bitta kod;
+// u chegaralarni yana bir bor tekshiradi.
+
+function cashboxOrNull(ctx: FlowCtx): BotCashbox | null {
+  return ctx.access.cashbox;
+}
+
+async function advance(ctx: FlowCtx, d: ChiqimDraft): Promise<void> {
+  await setDraft(ctx.db, ctx.chatId, d);
+}
+
+/** Tanlangan to'lov turida CHIQARISH MUMKIN bo'lgan oylik qoldig'i (web: `remainingSalary`). */
+function salaryRemaining(d: ChiqimDraft): number | null {
+  if (!d.salaryPayout || !d.salary?.configured) return null;
+  return d.methodKey === PLASTIK_METHOD_KEY ? d.salary.jami : d.salary.naqd;
+}
+
+/** Qoldiq tugaganida sabab — web va server bilan bir xil matn. */
+function exhaustedMessage(d: ChiqimDraft): string {
+  const s = d.salary!;
+  const isPlastik = d.methodKey === PLASTIK_METHOD_KEY;
+  // Karta hali to'liq qoplanmagan — naqd 0 bo'lishining sababi shu.
+  const kartaYetmadi = !isPlastik && s.naqd <= 0 && s.plastikSalary > 0 && s.jami > 0;
+  return kartaYetmadi
+    ? `Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq ${fmtUZS(s.karta)} so'm kartaga ketadi)`
+    : "Bu oyda xodimga chiqariladigan qoldiq yo'q — oylik to'liq chiqarilgan yoki hali hisoblanmagan";
+}
+
+/** Kassada shu to'lov turidan qancha bor — chiqim shundan oshmaydi. */
+function availableOf(cashbox: BotCashbox, methodKey: string | undefined): number {
+  return methodKey ? (cashbox.methodTotals[methodKey] ?? 0) : 0;
+}
+
+/** Summaga qo'yiladigan chegara (kassa qoldig'idan tashqari) va uning nomi. */
+function amountLimit(d: ChiqimDraft): { limit: number | null; label: string } {
+  const rem = salaryRemaining(d);
+  if (rem !== null) {
+    return {
+      limit: Math.max(0, rem),
+      label: d.methodKey === PLASTIK_METHOD_KEY ? "Qolgan oylik (kartaga)" : "Naqd chiqarish mumkin",
+    };
+  }
+  if (d.target === "student") return { limit: Math.max(0, d.studentBalance ?? 0), label: "O'quvchi balansi" };
+  return { limit: null, label: "" };
+}
+
+/** Summa qoidaga to'g'ri keladimi — `null` bo'lsa yaroqli, aks holda rad sababi. */
+function amountProblem(d: ChiqimDraft, cashbox: BotCashbox, amount: number): string | null {
+  const available = availableOf(cashbox, d.methodKey);
+  if (amount > available) return `Mablag' yetarli emas — kassada ${d.methodName ?? ""}: ${fmtUZS(available)} so'm`;
+  const rem = salaryRemaining(d);
+  if (rem !== null && amount > rem) {
+    return `Summa ${d.methodKey === PLASTIK_METHOD_KEY ? "qolgan oylikdan" : "naqd chiqarish mumkin bo'lgan summadan"} (${fmtUZS(rem)} so'm) ko'p bo'lishi mumkin emas`;
+  }
+  if (d.target === "student" && amount > (d.studentBalance ?? 0)) {
+    return `Summa o'quvchi balansidan (${fmtUZS(d.studentBalance ?? 0)} so'm) ko'p bo'lishi mumkin emas`;
+  }
+  return null;
+}
+
+// ── Qadamlar ────────────────────────────────────────────────────────
+
+async function showType(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Promise<void> {
+  const types = await loadChiqimTypes(ctx.db);
+  if (types.length === 0) {
+    await setDraft(ctx.db, ctx.chatId, null);
+    await show(ctx, { html: V.chiqimNoTypes(), keyboard: backToMenu() });
+    return;
+  }
+  await show(ctx, { html: V.chiqimTypePrompt(d, cashbox), keyboard: chiqimTypeKeyboard(types, d.typePage ?? 0) });
+}
+
+async function showPerson(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Promise<void> {
+  await show(ctx, { html: V.chiqimPersonPrompt(d, cashbox), keyboard: chiqimCancelOnly() });
+}
+
+async function showMethod(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, note?: string): Promise<void> {
+  const methods = (await loadActiveMethods(ctx.db))
+    .map((m) => ({ key: m.key, name: m.name, balance: cashbox.methodTotals[m.key] ?? 0 }))
+    .filter((m) => m.balance > 0);
+  if (methods.length === 0) {
+    await show(ctx, { html: V.chiqimNoBalance(d, cashbox), keyboard: chiqimCancelOnly() });
+    return;
+  }
+  const html = note ? `${note}` : V.chiqimMethodPrompt(d, cashbox);
+  await show(ctx, { html, keyboard: chiqimMethodKeyboard(methods) });
+}
+
+async function showAmount(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, note?: string): Promise<void> {
+  const available = availableOf(cashbox, d.methodKey);
+  const { limit, label } = amountLimit(d);
+  // "Hammasi" FAQAT chegarasi bor turlarda (avans/oylik qoldig'i, o'quvchi
+  // balansi) — chegara va kassa qoldig'ining kichigi. Oddiy xarajatda
+  // "hammasi" = butun kassa bo'lardi; bunday tugma bexosdan bosiladi.
+  const max = limit !== null ? Math.min(limit, available) : null;
+  const html = note ?? V.chiqimAmountPrompt(d, cashbox, { available, limit, limitLabel: label });
+  await show(ctx, { html, keyboard: chiqimAmountKeyboard(max) });
+}
+
+async function showNote(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Promise<void> {
+  await show(ctx, { html: V.chiqimNotePrompt(d, cashbox), keyboard: chiqimNoteKeyboard() });
+}
+
+async function showConfirm(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, note?: string): Promise<void> {
+  const body = V.chiqimConfirmView(d, cashbox, uzDateIso());
+  await show(ctx, { html: note ? `${note}\n\n${body}` : body, keyboard: chiqimConfirmKeyboard(d.nonce) });
+}
+
+async function showCurrent(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Promise<void> {
+  switch (d.step) {
+    case "type": return showType(ctx, d, cashbox);
+    case "person": return showPerson(ctx, d, cashbox);
+    case "method": return showMethod(ctx, d, cashbox);
+    case "amount": return showAmount(ctx, d, cashbox);
+    case "note": return showNote(ctx, d, cashbox);
+    default: return showConfirm(ctx, d, cashbox);
+  }
+}
+
+async function stale(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, toast = "Bu tugma eskirgan"): Promise<CallbackResult> {
+  await showCurrent(ctx, d, cashbox);
+  return { handled: true, toast };
+}
+
+/** Summa qabul qilindi (qo'lda yoki "Hammasi") — izohga o'tish. */
+async function acceptAmount(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, amount: number): Promise<void> {
+  const problem = amountProblem(d, cashbox, amount);
+  if (problem) {
+    await showAmount(ctx, d, cashbox, V.chiqimAmountRejected(d, cashbox, problem));
+    return;
+  }
+  const next: ChiqimDraft = { ...d, amount, step: "note" };
+  await advance(ctx, next);
+  await showNote(ctx, next, cashbox);
+}
+
+// ── Kirish nuqtalari ────────────────────────────────────────────────
+
+/** "💸 Chiqim" bosildi — yangi qoralama, birinchi qadam. */
+export async function startChiqim(ctx: FlowCtx): Promise<void> {
+  if (!ctx.access.canCash) {
+    await show(ctx, { html: V.noPermission(), keyboard: backToMenu() });
+    return;
+  }
+  const cashbox = cashboxOrNull(ctx);
+  if (!cashbox) {
+    await show(ctx, { html: V.noCashbox(), keyboard: backToMenu() });
+    return;
+  }
+  const d: ChiqimDraft = { kind: "chiqim", step: "type", typePage: 0, nonce: newNonce(), updatedAt: Date.now() };
+  await advance(ctx, d);
+  await showType(ctx, d, cashbox);
+}
+
+export async function chiqimCallback(ctx: FlowCtx, data: string): Promise<CallbackResult> {
+  if (!data.startsWith("s:c:")) return { handled: false };
+
+  if (data === CHIQIM_CB.cancel) {
+    await setDraft(ctx.db, ctx.chatId, null);
+    await show(ctx, { html: V.chiqimCancelled(), keyboard: backToMenu() });
+    return { handled: true };
+  }
+  if (data === CHIQIM_CB.restart) {
+    await startChiqim(ctx);
+    return { handled: true };
+  }
+
+  const cashbox = cashboxOrNull(ctx);
+  if (!ctx.access.canCash || !cashbox) {
+    await setDraft(ctx.db, ctx.chatId, null);
+    await show(ctx, { html: cashbox ? V.noPermission() : V.noCashbox(), keyboard: backToMenu() });
+    return { handled: true };
+  }
+
+  // TASDIQ — atom band qilish, keyin yozish (Kirim bilan bir xil).
+  const nonce = chiqimConfirmArg(data);
+  if (nonce) {
+    const claimed = await claimDraftForSave(ctx.db, ctx.chatId, nonce, "chiqim");
+    if (!claimed) return { handled: true, toast: V.alreadySaved() };
+    await saveChiqim(ctx, claimed, cashbox);
+    return { handled: true };
+  }
+
+  const d = liveDraft(ctx.user);
+  if (!d || d.kind !== "chiqim") {
+    await show(ctx, { html: V.draftExpired(), keyboard: backToMenu() });
+    return { handled: true };
+  }
+  if (d.step === "saving") return { handled: true, toast: "Saqlanmoqda…" };
+
+  // Turlar sahifasi.
+  const page = chiqimPageArg(data);
+  if (page !== null) {
+    if (d.step !== "type") return stale(ctx, d, cashbox);
+    const next: ChiqimDraft = { ...d, typePage: page };
+    await advance(ctx, next);
+    await showType(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  const typeId = chiqimTypeArg(data);
+  if (typeId !== null) {
+    if (d.step !== "type") return stale(ctx, d, cashbox);
+    const type = (await loadChiqimTypes(ctx.db)).find((t) => t.id === typeId);
+    if (!type) return stale(ctx, d, cashbox, "Bu tur endi yo'q");
+    // KIM tanlanishi — Sozlamalardagi "Mijoz" katakchalaridan; ikkalasi
+    // belgilangan bo'lsa XODIM ustun (lib/txTarget.ts izohi).
+    const target = txTarget(type);
+    const salaryPayout = target === "employee" && isEmployeePayoutCategory(type.name);
+    const next: ChiqimDraft = {
+      ...d,
+      typeId: type.id,
+      typeName: type.name,
+      target,
+      salaryPayout,
+      oylikLocked: target === "employee" && /oylik/i.test(type.name),
+      step: target ? "person" : "method",
+    };
+    await advance(ctx, next);
+    if (target) await showPerson(ctx, next, cashbox);
+    else await showMethod(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  const empId = chiqimEmployeeArg(data);
+  if (empId !== null) {
+    if (d.step !== "person" || d.target !== "employee") return stale(ctx, d, cashbox);
+    const emp = await loadEmployeeHit(ctx.db, empId);
+    if (!emp) return stale(ctx, d, cashbox, "Xodim topilmadi");
+    // Oylik hisobi FAQAT Avans/Oylik turlarida — boshqa xodim turlarida
+    // (KPI bonusi, mukofot) chegara yo'q va hisob so'rovi bekorga bo'lardi.
+    const salary = d.salaryPayout ? await employeeSalaryInfo(ctx.db, emp.name, uzDateIso()) : undefined;
+    const next: ChiqimDraft = {
+      ...d,
+      personId: emp.id,
+      personName: emp.name,
+      personPhone: emp.phone,
+      personRole: emp.turi,
+      salary: salary ?? undefined,
+      step: "method",
+    };
+    await advance(ctx, next);
+    await showMethod(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  const pupilId = chiqimStudentArg(data);
+  if (pupilId !== null) {
+    if (d.step !== "person" || d.target !== "student") return stale(ctx, d, cashbox);
+    const hit = await loadPupilHit(ctx.db, pupilId);
+    if (!hit) return stale(ctx, d, cashbox, "O'quvchi topilmadi");
+    const [balance, teacher] = await Promise.all([
+      studentPaidBalanceByName(ctx.db, hit.name),
+      refundTeacherOf(ctx.db, hit.name),
+    ]);
+    const next: ChiqimDraft = {
+      ...d,
+      personId: hit.id,
+      personName: hit.name,
+      personPhone: hit.phone,
+      studentBalance: balance,
+      refundTeacher: teacher ?? "",
+      step: "method",
+    };
+    await advance(ctx, next);
+    await showMethod(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  const methodKey = chiqimMethodArg(data);
+  if (methodKey !== null) {
+    if (d.step !== "method") return stale(ctx, d, cashbox);
+    const m = (await loadActiveMethods(ctx.db)).find((x) => x.key === methodKey);
+    if (!m) return stale(ctx, d, cashbox, "Bu to'lov turi endi faol emas");
+    const withMethod: ChiqimDraft = { ...d, methodKey: m.key, methodName: m.name };
+
+    // Avans/Oylik: tanlangan to'lov turida qoldiq bormi.
+    const rem = salaryRemaining(withMethod);
+    if (rem !== null && rem <= 0) {
+      // Qoralama `method` qadamida qoladi — boshqa turni tanlash mumkin.
+      await advance(ctx, { ...d });
+      await showMethod(ctx, d, cashbox, V.chiqimSalaryExhausted(withMethod, cashbox, exhaustedMessage(withMethod)));
+      return { handled: true };
+    }
+
+    // "OYLIK" — summa qoldiqning o'zi, qo'lda terilmaydi.
+    if (withMethod.oylikLocked && rem !== null) {
+      const problem = amountProblem(withMethod, cashbox, rem);
+      if (problem) {
+        await advance(ctx, { ...d });
+        await showMethod(ctx, d, cashbox, V.chiqimSalaryExhausted(withMethod, cashbox, problem));
+        return { handled: true };
+      }
+      const next: ChiqimDraft = { ...withMethod, amount: rem, step: "note" };
+      await advance(ctx, next);
+      await showNote(ctx, next, cashbox);
+      return { handled: true };
+    }
+
+    const next: ChiqimDraft = { ...withMethod, step: "amount" };
+    await advance(ctx, next);
+    await showAmount(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  if (data === CHIQIM_CB.amountMax) {
+    if (d.step !== "amount") return stale(ctx, d, cashbox);
+    const { limit } = amountLimit(d);
+    // Tugma faqat chegarali turlarda chiqadi (showAmount) — chegarasiz
+    // turda eski xabardan bosilsa hech narsa qilinmaydi.
+    if (limit === null) return stale(ctx, d, cashbox, "Bu turda \"Hammasi\" yo'q — summani yozing");
+    const max = Math.min(limit, availableOf(cashbox, d.methodKey));
+    if (max <= 0) return stale(ctx, d, cashbox, "Chiqarish mumkin bo'lgan summa yo'q");
+    await acceptAmount(ctx, d, cashbox, max);
+    return { handled: true };
+  }
+
+  if (data === CHIQIM_CB.noteSkip) {
+    if (d.step !== "note") return stale(ctx, d, cashbox);
+    const next: ChiqimDraft = { ...d, note: "", step: "confirm" };
+    await advance(ctx, next);
+    await showConfirm(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  return stale(ctx, d, cashbox, "Tugma tanilmadi");
+}
+
+/** Matn keldi. `true` — qoralama uni qabul qildi. */
+export async function chiqimText(ctx: FlowCtx, text: string): Promise<boolean> {
+  const d = liveDraft(ctx.user);
+  if (!d || d.kind !== "chiqim") return false;
+  const cashbox = cashboxOrNull(ctx);
+  if (!ctx.access.canCash || !cashbox) return false;
+
+  switch (d.step) {
+    case "person": {
+      const q = text.trim();
+      const found = d.target === "employee"
+        ? await searchEmployees(ctx.db, q)
+        : await searchPupils(ctx.db, q, cashbox.branchId);
+      if (!found) {
+        await show(ctx, { html: V.chiqimQueryTooShort(d, cashbox), keyboard: chiqimCancelOnly() });
+        return true;
+      }
+      if (found.hits.length === 0) {
+        await show(ctx, { html: V.chiqimPersonNotFound(d, cashbox, q), keyboard: chiqimCancelOnly() });
+        return true;
+      }
+      const kind = d.target === "employee" ? "employee" : "student";
+      await show(ctx, {
+        html: V.chiqimPersonResults(d, cashbox, q, found.hits.length, found.more),
+        keyboard: chiqimPersonKeyboard(
+          found.hits.map((h) => ({
+            id: h.id,
+            label: kind === "employee"
+              ? `${h.name}${"turi" in h && h.turi ? ` · ${roleWord(h.turi)}` : ""}`
+              : (h.phone ? `${h.name} · ${formatPhone(h.phone)}` : h.name),
+          })),
+          kind,
+        ),
+      });
+      return true;
+    }
+    case "amount": {
+      const amount = parseAmount(text);
+      if (amount === null) {
+        await showAmount(ctx, d, cashbox, V.chiqimBadAmount(d, cashbox));
+        return true;
+      }
+      await acceptAmount(ctx, d, cashbox, amount);
+      return true;
+    }
+    case "note": {
+      const next: ChiqimDraft = { ...d, note: text.trim().slice(0, 500), step: "confirm" };
+      await advance(ctx, next);
+      await showConfirm(ctx, next, cashbox);
+      return true;
+    }
+    default:
+      await showCurrent(ctx, d, cashbox);
+      return true;
+  }
+}
+
+function roleWord(turi: string): string {
+  return turi === "teacher" ? "o'qituvchi" : turi === "moderator" ? "moderator" : turi === "admin" ? "admin" : turi;
+}
+
+// ── Saqlash ─────────────────────────────────────────────────────────
+
+async function saveChiqim(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Promise<void> {
+  if (!d.amount || !d.methodKey || !d.typeName || (d.target && !d.personName)) {
+    await releaseDraft(ctx.db, ctx.chatId, d.nonce);
+    await showConfirm(ctx, d, cashbox, V.chiqimFailed("qoralama to'liq emas"));
+    return;
+  }
+  const out = await applyCashboxAdjust(
+    ctx.db,
+    {
+      cashboxId: cashbox.id,
+      mode: "chiqim",
+      method: d.methodKey,
+      amount: d.amount,
+      category: d.typeName,
+      // Jurnaldagi "KIM" ustuni — o'quvchi ham, xodim ham `studentName` da
+      // (web'dagi Chiqim oynasi bilan bir xil kelishuv).
+      studentName: d.personName ?? "",
+      // Yozuv KIMNING oyligiga tegishli: xodimga chiqim — o'sha xodim;
+      // o'quvchiga qaytarish — tushumidan ayriladigan ustoz (bo'sh bo'lsa
+      // yadro o'zi topadi).
+      teacherName: d.target === "employee" ? (d.personName ?? "") : d.target === "student" ? (d.refundTeacher ?? "") : "",
+      date: uzDateIso(),
+      note: d.note ?? "",
+      origin: ctx.cfg.origin,
+    },
+    { defer: ctx.defer },
+  );
+  if (!out.ok) {
+    await releaseDraft(ctx.db, ctx.chatId, d.nonce);
+    await showConfirm(ctx, d, cashbox, V.chiqimFailed(out.error));
+    return;
+  }
+  await setDraft(ctx.db, ctx.chatId, null);
+  await show(ctx, {
+    html: V.chiqimSaved(d, cashbox, out.entryId, out.cashbox.balance),
+    keyboard: afterSaveKeyboard("chiqim"),
+  });
+}

@@ -11,7 +11,9 @@
 //   node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_diag-staff-bot.mjs --phone 998941558855 --password '…'
 //       — haqiqiy kirish oqimi (telefon → parol), bcrypt bilan
 //   qo'shimcha:  --student Odina     (qidiruv matni, sukut "a")
-//                --amount 320000
+//                --amount 320000     ("max" — chiqimda "Hammasi" tugmasi)
+//                --flow chiqim --type "Avans" --person Nilufar --method Naqd
+//                                    (chiqim oqimi: tur nomi, kim, to'lov turi)
 //                --apply             (tasdiqni ham bosadi — PUL YOZILADI, Sheets/guruhga
 //                                     navbat tushadi; lokal .env prod kalitlariga
 //                                     qarasa HAQIQIY guruhga xabar ketadi!)
@@ -51,6 +53,10 @@ const PHONE = opt("--phone") ?? AS;
 const PASSWORD = opt("--password");
 const STUDENT = opt("--student") ?? "a";
 const AMOUNT = opt("--amount") ?? "320000";
+const FLOW = opt("--flow") ?? "kirim"; // kirim | chiqim
+const TYPE_NAME = opt("--type") ?? "Avans";
+const PERSON = opt("--person") ?? "Nilufar";
+const METHOD = opt("--method") ?? "Naqd";
 const APPLY = has("--apply");
 const KEEP = has("--keep");
 
@@ -199,33 +205,9 @@ if (logged?.stage !== "in") {
   process.exit(1);
 }
 
-rule("KASSAM");
-await cb("s:kassam");
-await cb("s:today");
-
-rule("KIRIM");
-await cb("s:kirim");
-const typeCb = pick("s:k:t:");
-if (!typeCb) {
-  line("  Kirim turi tugmasi chiqmadi — yuqoridagi xabarga qarang (kassa/ruxsat).");
-} else {
-  await cb(typeCb);
-  const stepUser = await getStaffUser(db, CHAT);
-  if (stepUser?.draft?.step === "student") {
-    await msg(STUDENT);
-    const studentCb = pick("s:k:s:");
-    if (!studentCb) line("  O'quvchi topilmadi — --student bilan boshqa matn bering.");
-    else await cb(studentCb);
-  }
-  await msg(AMOUNT);
-  const methodCb = pick("s:k:m:");
-  if (methodCb) await cb(methodCb);
-  const monthCb = lastKeyboard.flat().find((b) => /^s:k:p:/.test(b.callback_data ?? "") && b.text.startsWith("•"))?.callback_data;
-  if (monthCb) await cb(monthCb);
-  const noteCb = pick("s:k:n:");
-  if (noteCb) await cb(noteCb);
-
-  const confirmCb = pick("s:k:ok:");
+/** Tasdiq: faqat --apply bilan bosiladi. */
+const confirmOrStop = async (prefix) => {
+  const confirmCb = pick(prefix);
   if (confirmCb && APPLY) {
     rule("TASDIQ (--apply)");
     await cb(confirmCb);
@@ -233,6 +215,72 @@ if (!typeCb) {
     for (const fn of deferred) await fn();
   } else if (confirmCb) {
     line("\n  Tasdiq BOSILMADI (--apply berilmagan) — pul yozilmadi.");
+  }
+};
+
+if (FLOW === "kirim") {
+  rule("KASSAM");
+  await cb("s:kassam");
+  await cb("s:today");
+
+  rule("KIRIM");
+  await cb("s:kirim");
+  const typeCb = pick("s:k:t:");
+  if (!typeCb) {
+    line("  Kirim turi tugmasi chiqmadi — yuqoridagi xabarga qarang (kassa/ruxsat).");
+  } else {
+    await cb(typeCb);
+    const stepUser = await getStaffUser(db, CHAT);
+    if (stepUser?.draft?.step === "student") {
+      await msg(STUDENT);
+      const studentCb = pick("s:k:s:");
+      if (!studentCb) line("  O'quvchi topilmadi — --student bilan boshqa matn bering.");
+      else await cb(studentCb);
+    }
+    await msg(AMOUNT);
+    const methodCb = pick("s:k:m:");
+    if (methodCb) await cb(methodCb);
+    const monthCb = lastKeyboard.flat().find((b) => /^s:k:p:/.test(b.callback_data ?? "") && b.text.startsWith("•"))?.callback_data;
+    if (monthCb) await cb(monthCb);
+    const noteCb = pick("s:k:n:");
+    if (noteCb) await cb(noteCb);
+    await confirmOrStop("s:k:ok:");
+  }
+} else {
+  // --flow chiqim: tur nomi --type bilan (sukut "Avans"), kim --person bilan.
+  rule(`CHIQIM (${TYPE_NAME})`);
+  await cb("s:chiqim");
+  // Turni sahifalar bo'ylab qidiramiz.
+  let typeCb = null;
+  for (let guard = 0; guard < 6 && !typeCb; guard++) {
+    typeCb = lastKeyboard.flat().find((b) => b.text === TYPE_NAME && String(b.callback_data ?? "").startsWith("s:c:t:"))?.callback_data ?? null;
+    if (typeCb) break;
+    const next = lastKeyboard.flat().find((b) => b.text.startsWith("Keyingi"))?.callback_data;
+    if (!next) break;
+    await cb(next);
+  }
+  if (!typeCb) {
+    line(`  "${TYPE_NAME}" turi topilmadi — --type bilan aniq nom bering.`);
+  } else {
+    await cb(typeCb);
+    const stepUser = await getStaffUser(db, CHAT);
+    if (stepUser?.draft?.step === "person") {
+      await msg(PERSON);
+      const personCb = pick("s:c:e:") ?? pick("s:c:s:");
+      if (!personCb) line("  Kim topilmadi — --person bilan boshqa matn bering.");
+      else await cb(personCb);
+    }
+    const methodCb = lastKeyboard.flat().find((b) => String(b.callback_data ?? "").startsWith("s:c:m:") && b.text.startsWith(METHOD))?.callback_data
+      ?? pick("s:c:m:");
+    if (methodCb) await cb(methodCb);
+    const afterMethod = await getStaffUser(db, CHAT);
+    if (afterMethod?.draft?.step === "amount") {
+      if (AMOUNT === "max") await cb("s:c:a:max");
+      else await msg(AMOUNT);
+    }
+    const noteCb = pick("s:c:n:");
+    if (noteCb) await cb(noteCb);
+    await confirmOrStop("s:c:ok:");
   }
 }
 

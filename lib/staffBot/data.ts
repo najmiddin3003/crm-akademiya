@@ -4,14 +4,31 @@ import { loadCardStats, type CashboxCardStats } from "@/lib/cashboxStats";
 import type { CashboxMethodTotals } from "@/lib/cashboxes";
 import { groupLabel, type Group } from "@/lib/groups";
 import { loadPaymentMethods, type PaymentMethod } from "@/lib/paymentMethods";
+import { buildPayrollRows } from "@/lib/payrollSources";
+import { phoneSearchPattern } from "@/lib/phoneSearch";
 import { pupilFullName } from "@/lib/pupilsData";
 import { pupilSearchFilter } from "@/lib/pupilSearch";
+import {
+  payrollCashLeg,
+  payrollEarned,
+  payrollPaid,
+  payrollPayout,
+  payrollPeriodOf,
+  payrollPlastikLeg,
+  payrollTax,
+} from "@/lib/salary";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { loadPendingOut } from "@/lib/transferPending";
 import type { BotCashbox } from "@/lib/staffBot/auth";
+import type { SalaryInfo } from "@/lib/staffBot/session";
 
 // Xodimlar boti — BAZADAN O'QISH. Bu modul hech narsa yozmaydi; yozish
 // faqat yadro orqali (lib/cashboxAdjust.ts).
+
+/** So'rovdagi maxsus belgilar regex sifatida talqin qilinmasin. */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /** Kirim turlari — Sozlamalar → Moliya → Tranzaksiya turi, "Kirim" tabi tartibida. */
 export async function loadKirimTypes(db: Db): Promise<TransactionType[]> {
@@ -20,6 +37,96 @@ export async function loadKirimTypes(db: Db): Promise<TransactionType[]> {
     .sort({ id: 1 })
     .toArray();
   return rows as unknown as TransactionType[];
+}
+
+/** Chiqim turlari — "Chiqim" tabi tartibida, HAMMASI (foydalanuvchi qarori: qisqartirilmaydi). */
+export async function loadChiqimTypes(db: Db): Promise<TransactionType[]> {
+  const rows = await db.collection("transaction_types")
+    .find({ mainType: "chiqim" }, { projection: { _id: 0 } })
+    .sort({ id: 1 })
+    .toArray();
+  return rows as unknown as TransactionType[];
+}
+
+export interface EmployeeHit {
+  id: number;
+  name: string;
+  phone: string;
+  /** "teacher" | "moderator" | "admin" */
+  turi: string;
+}
+
+const EMPLOYEE_FIELDS = { _id: 0, id: 1, name: 1, phone: 1, turi: 1 } as const;
+
+/**
+ * Xodim qidiruvi — ism yoki telefon bo'yicha, FAQAT FAOLLAR (arxivdagi
+ * xodimga oylik berilmaydi — web'dagi Chiqim oynasi bilan bir xil qoida:
+ * `archReason` bo'sh bo'lsa faol). Filialga KESILMAYDI — kassa oynalari
+ * ham /api/hr-employees/ref (filialsiz) dan oladi.
+ */
+export async function searchEmployees(db: Db, query: string): Promise<{ hits: EmployeeHit[]; more: boolean } | null> {
+  const q = query.trim();
+  if (q.length < 2) return null;
+  const active = { $or: [{ archReason: { $exists: false } }, { archReason: null }, { archReason: "" }] };
+  const phone = phoneSearchPattern(q);
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 4);
+  const byText = terms.map((t) => ({
+    $or: [
+      { name: { $regex: escapeRegex(t), $options: "i" } },
+      ...(phoneSearchPattern(t) ? [{ phone: { $regex: phoneSearchPattern(t)! } }] : []),
+    ],
+  }));
+  const match = /^[\d\s()+-]+$/.test(q) && phone
+    ? { $and: [active, { phone: { $regex: phone } }] }
+    : { $and: [active, ...byText] };
+  const rows = await db.collection("hr_employees")
+    .find(match, { projection: EMPLOYEE_FIELDS })
+    .sort({ id: 1 })
+    .limit(SEARCH_LIMIT + 1)
+    .toArray();
+  const hits = rows.slice(0, SEARCH_LIMIT).map((r) => ({
+    id: Number(r.id),
+    name: String(r.name ?? "").trim(),
+    phone: String(r.phone ?? ""),
+    turi: String(r.turi ?? ""),
+  }));
+  return { hits, more: rows.length > SEARCH_LIMIT };
+}
+
+export async function loadEmployeeHit(db: Db, id: number): Promise<EmployeeHit | null> {
+  const r = await db.collection("hr_employees").findOne({ id }, { projection: EMPLOYEE_FIELDS });
+  if (!r) return null;
+  return { id: Number(r.id), name: String(r.name ?? "").trim(), phone: String(r.phone ?? ""), turi: String(r.turi ?? "") };
+}
+
+/**
+ * Xodimning SHU OYDAGI oylik hisobi — Avans/Oylik chegarasi uchun.
+ *
+ * Oylik hisob-kitob sahifasi, Chiqim oynasi va server (lib/cashboxAdjust.ts)
+ * bilan AYNAN BIR XIL funksiyalar (lib/salary.ts). Qator butun kompaniya
+ * bo'yicha quriladi (filialga kesilmaydi) — server ham shunday tekshiradi.
+ * `null` — xodim oylik ro'yxatida yo'q.
+ */
+export async function employeeSalaryInfo(db: Db, name: string, dateIso: string): Promise<SalaryInfo | null> {
+  const period = payrollPeriodOf(dateIso.slice(0, 7));
+  const rows = await buildPayrollRows(db, period);
+  const key = name.trim().toLowerCase();
+  const row = rows.find((e) => e.name.trim().toLowerCase() === key);
+  if (!row) return null;
+  if (!row.configured) {
+    return { configured: false, earned: 0, tax: 0, karta: 0, paid: 0, carryOver: 0, naqd: 0, jami: 0, plastikSalary: 0 };
+  }
+  return {
+    configured: true,
+    earned: payrollEarned(row, period),
+    tax: payrollTax(row, period),
+    karta: payrollPlastikLeg(row, period),
+    paid: payrollPaid(row),
+    carryOver: row.carryOver,
+    naqd: payrollCashLeg(row, period),
+    jami: payrollPayout(row, period),
+    plastikSalary: row.plastikSalary,
+  };
 }
 
 /** Faol to'lov turlari — web'dagi Kirim oynasi ham faqat shularni ko'rsatadi (hooks/usePaymentMethods.ts). */

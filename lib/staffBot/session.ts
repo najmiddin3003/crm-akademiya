@@ -61,7 +61,60 @@ export interface KirimDraft {
   updatedAt: number;
 }
 
-export type Draft = KirimDraft;
+/** Chiqim qoralamasining qadamlari — tartib bilan (lib/staffBot/chiqim.ts). */
+export type ChiqimStep = "type" | "person" | "method" | "amount" | "note" | "confirm" | "saving";
+
+/** Xodimning shu oydagi oylik hisobi — Avans/Oylik chegarasi uchun (lib/salary.ts). */
+export interface SalaryInfo {
+  /** Ish haqi sozlanganmi — sozlanmaganda chegara qo'llanmaydi (server ham shunday). */
+  configured: boolean;
+  /** Hisoblangan (asos + bonus − jarima). */
+  earned: number;
+  tax: number;
+  /** Karta oyog'i — avval shu qoplanadi (16.09.2026 qoidasi). */
+  karta: number;
+  /** Shu oyda olingan (avans + oylik). */
+  paid: number;
+  carryOver: number;
+  /** Naqd (va boshqa) turida chiqarish mumkin bo'lgan qoldiq. */
+  naqd: number;
+  /** Plastik turida — karta + naqd. */
+  jami: number;
+  /** Xodimga karta oyligi sozlanganmi — "karta yetmadi" xabari uchun. */
+  plastikSalary: number;
+}
+
+export interface ChiqimDraft {
+  kind: "chiqim";
+  step: ChiqimStep;
+  /** Turlar ro'yxatining sahifasi (0 dan). */
+  typePage?: number;
+  typeId?: number;
+  typeName?: string;
+  /** Kim tanlanadi — turning "Mijoz" sozlamasidan (lib/txTarget.ts → txTarget). */
+  target?: "employee" | "student" | null;
+  /** Nomida "avans"/"oylik" bor xodim turi — oylik chegarasi qo'llanadi. */
+  salaryPayout?: boolean;
+  /** "Oylik" turi — summa qo'lda terilmaydi, qoldiqning o'zi (18.09.2026 qoidasi). */
+  oylikLocked?: boolean;
+  personId?: number;
+  personName?: string;
+  personPhone?: string;
+  /** Xodim lavozimi ("teacher" | "moderator" | "admin") — kartada ko'rinadi. */
+  personRole?: string;
+  /** O'quvchiga qaytarishda: balans va tushumidan ayriladigan ustoz. */
+  studentBalance?: number;
+  refundTeacher?: string;
+  salary?: SalaryInfo;
+  methodKey?: string;
+  methodName?: string;
+  amount?: number;
+  note?: string;
+  nonce: string;
+  updatedAt: number;
+}
+
+export type Draft = KirimDraft | ChiqimDraft;
 
 /** Shu muddat tegilmagan qoralama eskirgan sanaladi. */
 export const DRAFT_TTL_MS = 30 * 60 * 1000;
@@ -202,20 +255,25 @@ export async function setDraft(db: Db, chatId: number, draft: Draft | null): Pro
  * o'tadi; o'sha zahoti `saving` ga o'tkaziladi. Ikkinchi (takror)
  * bosish shartga tushmaydi va `false` oladi — pul bir marta yoziladi.
  */
-export async function claimDraftForSave(db: Db, chatId: number, nonce: string): Promise<KirimDraft | null> {
+export async function claimDraftForSave<K extends Draft["kind"]>(
+  db: Db,
+  chatId: number,
+  nonce: string,
+  kind: K,
+): Promise<Extract<Draft, { kind: K }> | null> {
   const res = await db.collection(STAFF_BOT_USERS).findOneAndUpdate(
-    { chatId, "draft.kind": "kirim", "draft.nonce": nonce, "draft.step": "confirm" },
-    { $set: { "draft.step": "saving" satisfies KirimStep, "draft.updatedAt": Date.now() } },
+    { chatId, "draft.kind": kind, "draft.nonce": nonce, "draft.step": "confirm" },
+    { $set: { "draft.step": "saving", "draft.updatedAt": Date.now() } },
     { returnDocument: "before", projection: { _id: 0, draft: 1 } },
   );
-  return (res?.draft as KirimDraft | undefined) ?? null;
+  return (res?.draft as Extract<Draft, { kind: K }> | undefined) ?? null;
 }
 
 /** Saqlash yiqildi — qoralama tasdiq qadamiga qaytariladi, kassir qayta urinishi mumkin. */
 export async function releaseDraft(db: Db, chatId: number, nonce: string): Promise<void> {
   await db.collection(STAFF_BOT_USERS).updateOne(
     { chatId, "draft.nonce": nonce, "draft.step": "saving" },
-    { $set: { "draft.step": "confirm" satisfies KirimStep } },
+    { $set: { "draft.step": "confirm" } },
   );
 }
 

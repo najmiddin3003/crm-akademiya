@@ -19,7 +19,9 @@ import {
   mainMenu,
   todayKeyboard,
 } from "@/lib/staffBot/keyboards";
-import { kirimCallback, kirimText, startKirim, type FlowCtx } from "@/lib/staffBot/kirim";
+import { chiqimCallback, chiqimText, startChiqim } from "@/lib/staffBot/chiqim";
+import type { FlowCtx } from "@/lib/staffBot/flow";
+import { kirimCallback, kirimText, startKirim } from "@/lib/staffBot/kirim";
 import { showScreen, type Screen } from "@/lib/staffBot/screen";
 import {
   completeLogin,
@@ -286,8 +288,11 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
     return;
   }
 
-  // Qoralama matn kutayotgan bo'lsa — unga.
-  if (text && !text.startsWith("/") && (await kirimText(ctx, text))) return;
+  // Qoralama matn kutayotgan bo'lsa — unga (har oqim o'z qoralamasini taniydi).
+  if (text && !text.startsWith("/")) {
+    if (await kirimText(ctx, text)) return;
+    if (await chiqimText(ctx, text)) return;
+  }
 
   // Har qanday boshqa matn — bosh menyu. Bot suhbatdosh emas: erkin
   // matnga javob bermaydi, aniq tugmalarni taklif qiladi.
@@ -342,9 +347,14 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
   const ctx: FlowCtx = { db, cfg, chatId, user, access, messageId, defer };
   const show = (screen: Screen) => showScreen(db, cfg, chatId, messageId, screen);
 
-  // Kirim oqimi — o'z tugmalarini o'zi taniydi.
+  // Oqim tugmalari — har oqim o'z prefiksini o'zi taniydi.
   if (data.startsWith("s:k:")) {
     const r = await kirimCallback(ctx, data);
+    await answerStaff(cfg, cq.id, r.toast ?? "");
+    return;
+  }
+  if (data.startsWith("s:c:")) {
+    const r = await chiqimCallback(ctx, data);
     await answerStaff(cfg, cq.id, r.toast ?? "");
     return;
   }
@@ -357,6 +367,8 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
       await startKirim(ctx);
       break;
     case CB.chiqim:
+      await startChiqim(ctx);
+      break;
     case CB.transfer:
     case CB.lead:
       // Keyingi bosqichlar — tugma joyida, ish hali yo'q.

@@ -1,11 +1,8 @@
-import crypto from "node:crypto";
-import type { Db } from "mongodb";
-import { applyCashboxAdjust, type AdjustDeps } from "@/lib/cashboxAdjust";
+import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
 import { studentPaidBalanceByName } from "@/lib/pupilsDb";
 import { txAudience } from "@/lib/txTarget";
 import { uzDateIso } from "@/lib/uzTime";
-import type { StaffAccess, BotCashbox } from "@/lib/staffBot/auth";
-import type { StaffBotConfig } from "@/lib/staffBot/config";
+import type { BotCashbox } from "@/lib/staffBot/auth";
 import {
   loadActiveMethods,
   loadKirimTypes,
@@ -31,14 +28,13 @@ import {
   backToMenu,
   type MonthOption,
 } from "@/lib/staffBot/keyboards";
-import { showScreen, type Screen } from "@/lib/staffBot/screen";
+import { newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
 import {
   claimDraftForSave,
   liveDraft,
   releaseDraft,
   setDraft,
   type KirimDraft,
-  type StaffBotUser,
 } from "@/lib/staffBot/session";
 import * as V from "@/lib/staffBot/views";
 import { formatPhone } from "@/lib/studentBot/phone";
@@ -59,38 +55,6 @@ import { monthLabel } from "@/lib/studentBot/views";
 //
 // HOLAT BAZADA (`staff_bot_users.draft`): har yangilanish alohida HTTP
 // so'rov, xotirada hech narsa qolmaydi.
-
-export interface FlowCtx {
-  db: Db;
-  cfg: StaffBotConfig;
-  chatId: number;
-  user: StaffBotUser;
-  access: StaffAccess;
-  /** Tugma bosilgan xabar — tahrirlash uchun; matn kelganda undefined. */
-  messageId?: number;
-  defer: AdjustDeps["defer"];
-}
-
-const show = (ctx: FlowCtx, screen: Screen) => showScreen(ctx.db, ctx.cfg, ctx.chatId, ctx.messageId, screen);
-
-function newNonce(): string {
-  return crypto.randomBytes(8).toString("hex");
-}
-
-/**
- * Summa matni: "320000", "320 000", "320.000", "320 000 so'm" — hammasi
- * 320000. Boshqa harf bo'lsa null. Yuqori chegara sog'lom fikr uchun:
- * bitta to'lov 100 mln so'mdan oshmaydi — bu tugmani ushlab qolgan
- * barmoqqa qarshi, hisob qoidasi emas.
- */
-export function parseAmount(text: string): number | null {
-  const t = text.trim().replace(/\s*so['ʼ’]?m$/i, "");
-  if (!/^[\d\s.,'ʼ’]+$/.test(t)) return null;
-  const digits = t.replace(/\D/g, "");
-  if (!digits) return null;
-  const n = Number(digits);
-  return Number.isSafeInteger(n) && n > 0 && n <= 100_000_000 ? n : null;
-}
 
 /** Oy tugmalari: o'tgan · SHU (belgilangan) · keyingi. */
 function monthOptions(todayIso: string): MonthOption[] {
@@ -180,6 +144,8 @@ async function advance(ctx: FlowCtx, d: KirimDraft): Promise<void> {
 
 // ── Kirish nuqtalari ────────────────────────────────────────────────
 
+export type { FlowCtx } from "@/lib/staffBot/flow";
+
 /** "💵 Kirim" bosildi — yangi qoralama, birinchi qadam. */
 export async function startKirim(ctx: FlowCtx): Promise<void> {
   if (!ctx.access.canCash) {
@@ -201,7 +167,7 @@ export async function startKirim(ctx: FlowCtx): Promise<void> {
  * Har tugma o'z qadamida ishlaydi; eski xabardagi tugma boshqa qadamda
  * bosilsa joriy qadam qayta ko'rsatiladi (pul yozilmaydi).
  */
-export async function kirimCallback(ctx: FlowCtx, data: string): Promise<{ handled: boolean; toast?: string }> {
+export async function kirimCallback(ctx: FlowCtx, data: string): Promise<CallbackResult> {
   if (!data.startsWith("s:k:")) return { handled: false };
 
   if (data === CB.kirimCancel) {
@@ -225,7 +191,7 @@ export async function kirimCallback(ctx: FlowCtx, data: string): Promise<{ handl
   // band qilinadi: takror bosish shu yerda qaytariladi.
   const nonce = kirimConfirmArg(data);
   if (nonce) {
-    const claimed = await claimDraftForSave(ctx.db, ctx.chatId, nonce);
+    const claimed = await claimDraftForSave(ctx.db, ctx.chatId, nonce, "kirim");
     if (!claimed) return { handled: true, toast: V.alreadySaved() };
     await saveKirim(ctx, claimed, cashbox);
     return { handled: true };

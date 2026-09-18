@@ -1619,9 +1619,9 @@ lid tugmalari) — endi kassir bilan SHAXSIY yozishmada ham ishlaydi.
 Foydalanuvchi bilan kelishilgan: 6 tugma (Kirim · Chiqim · Ko'chirish ·
 Lid qo'shish · Kassam · Chiqish), kirish web'dagi telefon + parol bilan,
 yozuv uchta joyga ketadi (VPS baza, Google Sheets, Telegram guruh).
-Bosqichlar: 1) kirish + Kirim + Kassam — SHU; 2) Chiqim; 3) Ko'chirish +
-qabul ✓/✗; 4) Lid. Hozircha Chiqim/Ko'chirish/Lid tugmalari "keyingi
-bosqichda" deb javob beradi.
+Bosqichlar: 1) kirish + Kirim + Kassam — QILINDI; 2) Chiqim — QILINDI
+(pastda); 3) Ko'chirish + qabul ✓/✗; 4) Lid. Hozircha Ko'chirish/Lid
+tugmalari "keyingi bosqichda" deb javob beradi.
 
 ### Qanday ishlaydi
 
@@ -1685,3 +1685,36 @@ PUL YOZILADI va lokal `.env` prod kalitlariga qarasa haqiqiy guruhga xabar ketad
   import qiladi — Node skriptida `scripts/_ts-alias-hooks.mjs` ularni
   `next/server.js` ga o'giradi; `lib/sync/dispatch.ts` dagi parameter
   property uchun `--experimental-transform-types` shart.
+
+### 2-bosqich — Chiqim (2026-09-18)
+
+`lib/staffBot/chiqim.ts`. Web'dagi Chiqim oynasi bilan bir xil qoidalar:
+tur (HAMMA 24 tur, 8 tadan sahifalab — foydalanuvchi qarori) → KIM
+(`txTarget`: xodim / o'quvchi / hech kim) → to'lov turi (faqat kassada
+qoldig'i borlari, tugmada qoldiq) → summa → izoh → tasdiq.
+
+- **Avans/Oylik** (`isEmployeePayoutCategory`): xodim tanlangach oylik
+  hisobi ko'rsatiladi (`employeeSalaryInfo` — `buildPayrollRows` +
+  `lib/salary.ts`, server bilan aynan bir xil): hisoblangan · soliq ·
+  karta · olingan → "chiqarish mumkin: naqd X · plastik Y". Chegara
+  to'lov turiga bog'liq (naqd `payrollCashLeg`, plastik `payrollPayout`),
+  shu bois to'lov turi SUMMADAN OLDIN so'raladi. **"Oylik"** da summa
+  qo'lda terilmaydi — qoldiqning o'zi (18.09 qoidasi), to'g'ridan-to'g'ri
+  izohga o'tadi. Qoldiq 0 bo'lsa sabab aytiladi ("karta qoplanmagan" /
+  "oylik chiqarilgan") va boshqa to'lov turi tanlanadi. Oyligi sozlanmagan
+  xodimga chegara yo'q (server ham shunday).
+- **O'quvchiga pul qaytarildi**: balans (`studentPaidBalanceByName`) va
+  ustoz (`refundTeacherOf` — oxirgi to'lovdan) ko'rsatiladi, summa balansdan
+  oshmaydi; yozuvga `teacherName` = o'sha ustoz.
+- Boshqa xodim turlari (KPI, mukofot) — chegarasiz; oddiy xarajat — kim
+  so'ralmaydi. "💯 Hammasi" tugmasi faqat chegarali turlarda (oddiy
+  xarajatda "hammasi" butun kassa bo'lardi).
+- Yozuv: `studentName` = kim (xodim ham, o'quvchi ham — web kelishuvi),
+  `teacherName` = xodim / qaytarish ustozi. Chiqim guruhga alohida xabar
+  bo'lib ketmaydi (`TELEGRAM_KINDS` faqat `payment`), faqat Sheets.
+- Xodim qidiruvi (`searchEmployees`): ism/telefon, faqat faollar
+  (`archReason` bo'sh), filialga kesilmaydi (`/api/hr-employees/ref` kabi).
+
+Sinov: `--flow chiqim --type "Avans" --person Nilufar --method Naqd --amount 150000`
+(`--type Oylik --method Plastik` — qulflangan summa; `--type "O'quvchiga pul
+qaytarildi" --person "93 065 34 35"` — balans chegarasi).

@@ -4,7 +4,7 @@ import { fmtUZS, monthLabel } from "@/lib/studentBot/views";
 import { formatPhone } from "@/lib/studentBot/phone";
 import type { BotCashbox } from "@/lib/staffBot/auth";
 import type { KassamView, TodayEntry } from "@/lib/staffBot/data";
-import type { KirimDraft } from "@/lib/staffBot/session";
+import type { ChiqimDraft, KirimDraft } from "@/lib/staffBot/session";
 
 // Xodimlar boti — EKRAN MATNLARI. Faqat matn yig'adi, bazaga tegmaydi.
 //
@@ -283,4 +283,146 @@ export function kirimNoMethods(): string {
 
 export function kirimTypeUnsupported(typeName: string): string {
   return `⚠️ "${esc(typeName)}" turida faqat XODIM tanlanadi — bu tur hozircha botdan kiritilmaydi, web'dan kiriting.`;
+}
+
+// ── Chiqim ──────────────────────────────────────────────────────────
+
+const ROLE_LABEL: Record<string, string> = { teacher: "o'qituvchi", moderator: "moderator", admin: "admin" };
+
+/** Xodimning oylik hisobi — kartada va summa qadamida. */
+function salaryLines(d: ChiqimDraft): string[] {
+  if (!d.salaryPayout) return [];
+  const s = d.salary;
+  if (!s) return ["Oylik: <i>ro'yxatda yo'q — chegara qo'llanmaydi</i>"];
+  if (!s.configured) return ["Oylik: <i>ish haqi sozlanmagan — chegara qo'llanmaydi</i>"];
+  const parts = [`hisoblangan ${fmtUZS(s.earned)}`];
+  if (s.tax > 0) parts.push(`soliq ${fmtUZS(s.tax)}`);
+  if (s.karta > 0) parts.push(`karta ${fmtUZS(s.karta)}`);
+  if (s.paid > 0) parts.push(`olingan ${fmtUZS(s.paid)}`);
+  if (s.carryOver !== 0) parts.push(`o'tgan oydan ${fmtUZS(s.carryOver)}`);
+  return [
+    `Oylik: ${parts.join(" · ")}`,
+    `Chiqarish mumkin: naqd <b>${fmtUZS(Math.max(0, s.naqd))}</b> · plastik <b>${fmtUZS(Math.max(0, s.jami))}</b>`,
+  ];
+}
+
+function chiqimHeader(d: ChiqimDraft, cashbox: BotCashbox): string {
+  const title = `💸 <b>Chiqim</b> · ${esc(cashbox.name)}`;
+  if (!d.typeName) return `${title}\n${RULE}`;
+  const lines = [title, RULE, `Tur: <b>${esc(d.typeName)}</b>`];
+  if (d.personName) {
+    const who = d.target === "employee" ? "Xodim" : "O'quvchi";
+    const extra = d.target === "employee"
+      ? (ROLE_LABEL[d.personRole ?? ""] ? ` · ${ROLE_LABEL[d.personRole ?? ""]}` : "")
+      : (d.personPhone ? ` · ${esc(formatPhone(d.personPhone))}` : "");
+    lines.push(`${who}: <b>${esc(d.personName)}</b>${extra}`);
+    if (d.target === "student") {
+      lines.push(`Balans: ${so(d.studentBalance ?? 0)}${d.refundTeacher ? ` · ustoz ${esc(d.refundTeacher)}` : ""}`);
+    }
+    lines.push(...salaryLines(d));
+  }
+  if (d.methodName) lines.push(`To'lov turi: <b>${esc(d.methodName)}</b>`);
+  if (d.amount) lines.push(`Summa: <b>${so(d.amount)}</b>${d.oylikLocked ? " <i>(qoldiqning o'zi)</i>" : ""}`);
+  if (d.note !== undefined) lines.push(`Izoh: ${d.note ? esc(d.note) : "<i>yo'q</i>"}`);
+  lines.push(RULE);
+  return lines.join("\n");
+}
+
+export function chiqimTypePrompt(d: ChiqimDraft, cashbox: BotCashbox): string {
+  return `${chiqimHeader(d, cashbox)}\n👉 Chiqim turini tanlang:`;
+}
+
+export function chiqimPersonPrompt(d: ChiqimDraft, cashbox: BotCashbox): string {
+  const ask = d.target === "employee"
+    ? "Xodimning <b>ismini</b> yozing (kamida 2 belgi):"
+    : "O'quvchining <b>ismi</b> yoki <b>telefon raqamini</b> yozing (kamida 2 belgi):";
+  return `${chiqimHeader(d, cashbox)}\n👉 ${ask}`;
+}
+
+export function chiqimPersonResults(d: ChiqimDraft, cashbox: BotCashbox, query: string, count: number, more: boolean): string {
+  const who = d.target === "employee" ? "Xodimni" : "O'quvchini";
+  const tail = more ? "\n<i>Yana bor — ro'yxatda yo'q bo'lsa aniqroq yozing.</i>" : "";
+  return `${chiqimHeader(d, cashbox)}\n🔎 "${esc(query)}" bo'yicha ${count} ta topildi. ${who} tanlang:${tail}`;
+}
+
+export function chiqimPersonNotFound(d: ChiqimDraft, cashbox: BotCashbox, query: string): string {
+  const who = d.target === "employee" ? "faol xodim" : "o'quvchi";
+  return `${chiqimHeader(d, cashbox)}\n😕 "${esc(query)}" bo'yicha ${who} topilmadi. Boshqacha yozib ko'ring.`;
+}
+
+export function chiqimQueryTooShort(d: ChiqimDraft, cashbox: BotCashbox): string {
+  return `${chiqimHeader(d, cashbox)}\n✏️ Kamida 2 ta belgi yozing.`;
+}
+
+export function chiqimMethodPrompt(d: ChiqimDraft, cashbox: BotCashbox): string {
+  return `${chiqimHeader(d, cashbox)}\n👉 Qaysi to'lov turidan chiqariladi? (qavsda kassadagi qoldiq)`;
+}
+
+export function chiqimNoBalance(d: ChiqimDraft, cashbox: BotCashbox): string {
+  return `${chiqimHeader(d, cashbox)}\n⚠️ Kassada mablag' yo'q — hech bir to'lov turida qoldiq yo'q.`;
+}
+
+/** Chegara/qoldiq tugagan — sabab AYNAN aytiladi (web va server bilan bir xil matn). */
+export function chiqimSalaryExhausted(d: ChiqimDraft, cashbox: BotCashbox, message: string): string {
+  return `${chiqimHeader(d, cashbox)}\n⛔ ${esc(message)}\n\nBoshqa to'lov turini tanlang yoki bekor qiling.`;
+}
+
+export interface ChiqimAmountHint {
+  /** Kassada shu to'lov turidan qancha bor. */
+  available: number;
+  /** Chegara (oylik qoldig'i / o'quvchi balansi) — bo'lsa. */
+  limit: number | null;
+  limitLabel: string;
+}
+
+export function chiqimAmountPrompt(d: ChiqimDraft, cashbox: BotCashbox, h: ChiqimAmountHint): string {
+  const lines = [chiqimHeader(d, cashbox), `Kassada ${esc(d.methodName ?? "")}: ${so(h.available)}`];
+  if (h.limit !== null) lines.push(`${esc(h.limitLabel)}: <b>${so(h.limit)}</b>`);
+  lines.push(`👉 Summani yozing (masalan <code>150000</code>):`);
+  return lines.join("\n");
+}
+
+export function chiqimBadAmount(d: ChiqimDraft, cashbox: BotCashbox): string {
+  return `${chiqimHeader(d, cashbox)}\n⚠️ Summa tushunarsiz. Faqat raqam yozing, masalan <code>150000</code>.`;
+}
+
+export function chiqimAmountRejected(d: ChiqimDraft, cashbox: BotCashbox, reason: string): string {
+  return `${chiqimHeader(d, cashbox)}\n⛔ ${esc(reason)}\n\nBoshqa summa yozing yoki bekor qiling.`;
+}
+
+export function chiqimNotePrompt(d: ChiqimDraft, cashbox: BotCashbox): string {
+  return `${chiqimHeader(d, cashbox)}\n👉 Izoh yozing yoki tugmani bosing:`;
+}
+
+export function chiqimConfirmView(d: ChiqimDraft, cashbox: BotCashbox, dateIso: string): string {
+  return [
+    chiqimHeader(d, cashbox),
+    `Sana: ${dmy(dateIso)} · Kassa: ${esc(cashbox.name)}`,
+    "",
+    // Chiqim guruhga ALOHIDA xabar bo'lib ketmaydi (lib/sync/config.ts →
+    // TELEGRAM_KINDS faqat "payment"; oyliklar oyda 2 marta xulosa bilan).
+    "Hammasi to'g'rimi? <b>Tasdiqlash</b> bosilgach pul kassadan chiqariladi va Google Sheets'ga yoziladi.",
+  ].join("\n");
+}
+
+export function chiqimSaved(d: ChiqimDraft, cashbox: BotCashbox, entryId: number, balanceAfter: number): string {
+  const who = d.personName ? ` · ${esc(d.personName)}` : "";
+  return [
+    `✅ <b>Chiqim saqlandi</b> — yozuv #${entryId}`,
+    `−${so(d.amount ?? 0)} · ${esc(d.methodName ?? "")} · ${esc(d.typeName ?? "")}${who}`,
+    "",
+    `🏦 ${esc(cashbox.name)} qoldig'i: <b>${so(balanceAfter)}</b>`,
+  ].join("\n");
+}
+
+export function chiqimFailed(error: string): string {
+  return `❌ Saqlanmadi: ${esc(error)}\n\nQayta urinib ko'ring yoki bekor qiling.`;
+}
+
+export function chiqimCancelled(): string {
+  return "❌ Chiqim bekor qilindi. Hech narsa yozilmadi.";
+}
+
+export function chiqimNoTypes(): string {
+  return "⚠️ Sozlamalarda Chiqim turi qo'shilmagan (Moliya → Tranzaksiya turi). Avval web'da qo'shing.";
 }
