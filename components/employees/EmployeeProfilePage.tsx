@@ -16,11 +16,12 @@ import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
-import { payrollCashLeg, payrollDue, payrollPeriod, payrollPlastikLeg, type EmployeePayroll } from "@/lib/salary";
+import { UZ_MONTHS, payrollCashLeg, payrollDue, payrollPeriod, payrollPlastikLeg, payrollTax, type EmployeePayroll } from "@/lib/salary";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeePasswordModal from "./EmployeePasswordModal";
-import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
+import type { TransactionEntry } from "@/lib/transactionEntries";
+import type { SalaryLedgerRow } from "@/lib/salaryLedger";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
@@ -148,42 +149,34 @@ function buildStats({ bonus, jarima, avans, oylik, ready, payroll }: StatInput):
 }
 
 /**
- * Yozuvning SHU XODIM OYLIGIGA ta'siri — "Tranzaksiyalar tarixi"dagi
- * "Oyligiga ta'siri" ustuni (18.09.2026).
+ * "Oyligiga ta'siri" va "Qoldiq oldin/keyin" ustunlari — XODIMNING OYLIK
+ * DAFTARIDAN (/api/hr-employees/:id/salary-ledger, lib/salaryLedger.ts).
  *
  * NIMA UCHUN KERAK: jadvaldagi "Miqdori" — kassaga kirgan/chiqqan pulning
- * O'ZI, "Kassada oldin/keyin" esa o'sha kassaning qoldig'i. Foizli
- * o'qituvchida o'quvchi to'lagan 300 000 uning oyligiga 300 000 emas,
- * 300 000 × foiz bo'lib tushadi; o'quvchiga qaytarilgan 150 000 ham
- * to'liq emas, foizi qadar ayriladi. Bu farq jadvalda ko'rinmagani uchun
- * kassa qoldig'i ustunlari "oylik shuncha kamaydi" deb o'qilardi.
+ * O'ZI. Foizli o'qituvchida o'quvchi to'lagan 300 000 uning oyligiga
+ * 300 000 emas, 300 000 × foiz bo'lib tushadi. 18.09.2026 gacha jadvalda
+ * kassaning qoldig'i ("Kassada oldin/keyin") turardi va u "xodim hisobi
+ * shuncha o'zgardi" deb o'qilardi — foydalanuvchi: "50% emas, jami to'lov
+ * hisoblanyapti". Endi qoldiq ustunlari xodimning O'Z qoldig'i, qoida
+ * serverda, Oylik hisob-kitob bilan bir xil manbadan; bu yerda hisob YO'Q.
  *
- * Qoida lib/payrollSources.ts bilan BIR XIL:
- *   • kirim, `teacherName` — shu xodim, foizli    → +summa × foiz
- *   • o'quvchiga qaytarim, `teacherName` — shu xodim → −summa × foiz
- *   • chiqim avans/oylik, `studentName` — shu xodim  → −summa (olingan)
- *   • okladli xodimda o'quvchi to'lovi oylikka tegmaydi → null
- *   • bekor qilingan yozuv hisobga kirmaydi           → null
+ * Xarita: `transaction_entries.id` → daftar qatori. Daftarda yo'q yozuv
+ * (boshqa ustozning o'quvchisi, kassir sifatida qayd etgani, bekor
+ * qilingan) uchala ustunda "—".
  */
-function salaryEffectOf(
-  t: TransactionEntry,
-  empName: string,
-  payroll: EmployeePayroll | null,
-): { amount: number; note: string } | null {
-  if (t.status === "cancelled") return null;
-  const key = (v: unknown) => String(v ?? "").trim().toLowerCase();
-  const me = key(empName);
-  if (!me) return null;
-  const abs = Math.abs(Number(t.amount) || 0);
-  if (t.txType === "payOut" && key(t.studentName) === me && /avans|oylik/i.test(t.txName || "")) {
-    return { amount: -abs, note: "olingan" };
-  }
-  if (key(t.teacherName) !== me) return null;
-  if (!payroll?.configured || payroll.salaryType !== "foiz") return null;
-  const share = Math.round(abs * payroll.percent / 100);
-  if (t.txType === "payIn") return { amount: share, note: `${payroll.percent}%` };
-  if (isStudentRefundEntry(t)) return { amount: -share, note: `${payroll.percent}% qaytarim` };
-  return null;
+type LedgerMap = Map<number, SalaryLedgerRow>;
+
+/**
+ * "avgust uchun" — yozuv o'z sanasining oyiga emas, boshqa oyning
+ * oyligiga yozilgan (Kirim oynasida "Davr" tanlangan). Shunday qatorning
+ * qoldig'i o'sha oyning daftaridan keladi va qo'shni qatorlardan sakrab
+ * turadi — belgi buni tushuntiradi.
+ */
+function periodTagOf(t: TransactionEntry): string | null {
+  const pm = String(t.periodMonth ?? "").trim();
+  if (!pm || pm === String(t.date ?? "").slice(0, 7)) return null;
+  const m = Number(pm.slice(5, 7)) - 1;
+  return UZ_MONTHS[m] ? `${UZ_MONTHS[m]} uchun` : `${pm} uchun`;
 }
 
 // Manbasi bo'lmagan tablar — nima uchun bo'shligini aniq aytamiz, chunki
@@ -264,6 +257,12 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // AYNAN shundan chiqadi, ya'ni Oylik hisob-kitob sahifasi bilan bir xil
   // raqam ko'rinadi.
   const [payrollRow, setPayrollRow] = useState<EmployeePayroll | null>(null);
+  // Oylik daftari — jadvalning "Oyligiga ta'siri" / "Qoldiq" ustunlari.
+  // null — hali kelmagan yoki so'rov muvaffaqiyatsiz (ustunlar "—").
+  const [salaryLedger, setSalaryLedger] = useState<LedgerMap | null>(null);
+  // Ish haqi sozlamasi saqlangach moliyaviy so'rovlar qayta yuriladi —
+  // foiz o'zgarsa daftar ham, chap kartadagi "To'lanmagan" ham o'zgaradi.
+  const [finVersion, setFinVersion] = useState(0);
   const [payPage, setPayPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
   // "Tranzaksiyalar tarixi" sahifasi — xodimga oid HAMMA yozuv (?person=).
   const [allPage, setAllPage] = useState<{ entries: TransactionEntry[]; total: number }>({ entries: [], total: 0 });
@@ -430,7 +429,11 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       // Jadval filtrlarining tanlovlari — BUTUN ro'yxat bo'yicha, ochiq
       // turgan 50 qatordan emas.
       get(`/api/transaction-entries/facets?person=${q}`),
-    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts, pay, fac]) => {
+      // Oylik daftari — jadvalning "Oyligiga ta'siri" va "Qoldiq" ustunlari.
+      // Sahifalanmaydi: qoldiq butun tarix bo'yicha yuradi, bir sahifadan
+      // hisoblab bo'lmaydi; qatorlar faqat oylikka ta'sir qilganlar.
+      get(`/api/hr-employees/${id}/salary-ledger`),
+    ]).then(([sum, unf, opts, own, roster, bon, pen, turn, ord, unp, cash, nts, pay, fac, led]) => {
       if (cancelled) return;
       // Hech biri kelmagan bo'lsa — bu "ma'lumot yo'q" emas, so'rov
       // muvaffaqiyatsiz. Bo'sh holatda soxta sabab yozmasligimiz uchun.
@@ -468,10 +471,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       if (fac?.ok) {
         setFacets({ txNames: fac.txNames as string[], studentNames: fac.studentNames as string[] });
       }
+      if (led?.ok) {
+        setSalaryLedger(new Map((led.ledger.rows as SalaryLedgerRow[]).map((r) => [r.id, r])));
+      }
       setFinLoading(false);
     });
     return () => { cancelled = true; };
-  }, [id, emp?.name, payKey]);
+  }, [id, emp?.name, payKey, finVersion]);
 
   // "O'quvchilar to'lovlari" jadvalining BIR SAHIFASI.
   //
@@ -642,6 +648,20 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
 
   const salaryConfigured = isSalaryConfigured(emp);
   const cashboxName = (cid: number) => cashboxNames[cid] ?? (cid ? `Kassa ${cid}` : "—");
+
+  // Jadvaldagi "Qoldiq" bilan chap kartadagi "To'lanmagan" orasidagi
+  // FARQNING sababi — shu oy bonusi, jarimasi va solig'i (daftar ularni
+  // ko'rmaydi, lib/salaryLedger.ts). Farq yo'q bo'lsa izoh ham yo'q.
+  const ledgerGapNote = (() => {
+    if (!payrollRow?.configured || !salaryLedger) return "";
+    const tax = payrollTax(payrollRow, payrollPeriod());
+    const parts: string[] = [];
+    if (payrollRow.bonus) parts.push(`bonus +${nf(payrollRow.bonus)}`);
+    if (payrollRow.jarima) parts.push(`jarima −${nf(payrollRow.jarima)}`);
+    if (tax) parts.push(`soliq −${nf(tax)}`);
+    if (parts.length === 0) return "";
+    return `«Qoldiq» ustuniga shu oy ${parts.join(", ")} kirmaydi — chap kartadagi «To'lanmagan» ${parts.length > 1 ? "ularni" : "buni"} hisobga oladi.`;
+  })();
   const ledger = buildLedger(emp.name, bonuses, penalties, ownEntries);
 
   // "To'lanmagan to'lovlar" — o'qituvchining guruhlaridagi o'quvchilar qarzi.
@@ -970,28 +990,37 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       : "Shu xodimga oid barcha kirim va chiqimlar (avans, oylik, o'quvchi to'lovlari)"}
                   </span>
                 </div>
-                <div className="flex items-center justify-end mb-2">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  {/* "Qoldiq" ustuni kassa yozuvlaridan yuradi — shu oyning
+                      bonus/jarima/solig'i unga kirmaydi, chap kartadagi
+                      "To'lanmagan"ga esa kiradi. Farq bor xodimda (masalan,
+                      qat'iy soliq 216 000) ikki raqam mos kelmaydi va
+                      sababini tooltipdan qidirish shart bo'lmasin. */}
+                  <span className="text-[11px] text-muted-foreground">{ledgerGapNote}</span>
                   {/* Sahifalangan tabda `rows.length` bir sahifadagi qatorlar
                       soni bo'lib qolardi — server qaytargan `total` kerak. */}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : totalRows}</span></span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium whitespace-nowrap">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : totalRows}</span></span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                        {/* "Kassada keyin/oldin" — yozuv yozilgan KASSANING
-                            qoldig'i (transaction_entries.after/before), xodim
-                            balansi EMAS. Ilgari "Keyingi/Oldingi miqdor" deb
-                            turardi va xodim oyligi deb o'qilardi; oylikka
-                            haqiqiy ta'sir — alohida ustunda (salaryEffectOf). */}
-                        {["№", "Sana", "O'quvchilar", "Guruh", "Turi", "Holati", "Izoh", "Miqdori", "Oyligiga ta'siri", "Kassada keyin", "Kassada oldin"].map((h) => (
+                        {/* "Qoldiq keyin/oldin" — XODIMNING oylik qoldig'i
+                            (chap kartadagi "To'lanmagan") shu yozuvdan
+                            keyin/oldin, oylik daftaridan. 18.09.2026 gacha
+                            bu yerda kassaning qoldig'i (transaction_entries
+                            .after/before) turardi va "xodim hisobi to'liq
+                            summaga o'zgardi" deb o'qilardi. */}
+                        {["№", "Sana", "O'quvchilar", "Guruh", "Turi", "Holati", "Izoh", "Miqdori", "Oyligiga ta'siri", "Qoldiq keyin", "Qoldiq oldin"].map((h) => (
                           <th
                             key={h}
                             className="px-4 py-3 text-left whitespace-nowrap"
                             title={
                               h === "Oyligiga ta'siri"
                                 ? "Foizli o'qituvchida o'quvchi to'lovi × foiz (qaytarim ham foizi qadar); avans/oylik — olingan summa"
-                                : h.startsWith("Kassada") ? "Yozuv yozilgan kassaning qoldig'i — xodim balansi emas" : undefined
+                                : h.startsWith("Qoldiq")
+                                  ? "Xodimning oylik qoldig'i shu yozuvdan keyin/oldin. Oy boshida — o'tgan oydan qolgan qoldiq (okladli xodimda + shu oy okladi: o'tgan oyda to'liq, joriy oyda bugungi kungacha), keyin har yozuvning «Oyligiga ta'siri» qo'shilib boradi. Shu oyning bonus, jarima va solig'i bu ustunga kirmaydi — chap kartadagi «To'lanmagan» ularni ham hisobga oladi."
+                                  : undefined
                             }
                           >
                             {h}
@@ -1004,10 +1033,24 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                         <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
                       ) : rows.length === 0 ? (
                         <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Ma&apos;lumotlar topilmadi</td></tr>
-                      ) : rows.map((t, i) => (
+                      ) : rows.map((t, i) => {
+                        const led = salaryLedger?.get(t.id) ?? null;
+                        const periodTag = periodTagOf(t);
+                        const balCell = (v: number | null | undefined) =>
+                          v === null || v === undefined
+                            ? <td className="px-4 py-3 text-muted-foreground">—</td>
+                            : <td className={`px-4 py-3 tabular-nums whitespace-nowrap ${v < 0 ? "text-rose-600" : ""}`}>{nf(v)}</td>;
+                        return (
                         <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{rowOffset + i + 1}</td>
-                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.date}{t.time ? ` | ${t.time}` : ""}</td>
+                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">
+                            {t.date}{t.time ? ` | ${t.time}` : ""}
+                            {periodTag && (
+                              <span className="block text-[11px] text-muted-foreground" title="Kirim oynasida tanlangan davr — qoldiq o'sha oyning daftaridan">
+                                {periodTag}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={t.studentName} /></td>
                           <td className="px-4 py-3 whitespace-nowrap">{groupByStudent.get(t.studentName) || "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap">{t.txName || "—"}</td>
@@ -1018,20 +1061,19 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                           </td>
                           <td className="px-4 py-3">{t.note || "—"}</td>
                           <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${t.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{nf(t.amount)}</td>
-                          {(() => {
-                            const eff = salaryEffectOf(t, emp.name, payrollRow);
-                            if (!eff) return <td className="px-4 py-3 text-muted-foreground">—</td>;
-                            return (
-                              <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${eff.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                                {eff.amount < 0 ? "−" : "+"}{nf(Math.abs(eff.amount))}
-                                <span className="ml-1 text-[11px] font-normal text-muted-foreground">({eff.note})</span>
-                              </td>
-                            );
-                          })()}
-                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{t.after === null ? "—" : nf(t.after)}</td>
-                          <td className="px-4 py-3 tabular-nums whitespace-nowrap">{nf(t.before)}</td>
+                          {led ? (
+                            <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${led.effect < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                              {led.effect < 0 ? "−" : "+"}{nf(Math.abs(led.effect))}
+                              <span className="ml-1 text-[11px] font-normal text-muted-foreground">({led.note})</span>
+                            </td>
+                          ) : (
+                            <td className="px-4 py-3 text-muted-foreground">—</td>
+                          )}
+                          {balCell(led?.after)}
+                          {balCell(led?.before)}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1113,6 +1155,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           onSaved={(updated) => {
             setEmp(updated);
             setSalaryOpen(false);
+            // Foiz/oklad o'zgardi — oylik qatori va daftar qayta o'qilsin,
+            // aks holda chap karta va jadval eski sozlama bilan qolardi.
+            setFinVersion((v) => v + 1);
           }}
         />
       )}

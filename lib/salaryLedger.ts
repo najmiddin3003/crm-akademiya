@@ -1,0 +1,200 @@
+import type { Db } from "mongodb";
+import type { HrEmployee } from "@/lib/hrEmployees";
+import { buildPayrollRows, loadPayrollRefs } from "@/lib/payrollSources";
+import { payrollBase, payrollMonthKey, payrollPeriod, payrollPeriodOf, type EmployeePayroll } from "@/lib/salary";
+import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
+
+// XODIMNING OYLIK DAFTARI — Xodim profili → "Tranzaksiyalar tarixi"
+// jadvalidagi "Oyligiga ta'siri" va "Qoldiq oldin/keyin" ustunlari
+// (18.09.2026).
+//
+// NIMA UCHUN KERAK: `transaction_entries.before/after` — yozuv yozilgan
+// KASSANING qoldig'i. Xodim profilida u "Kassada oldin/keyin" bo'lib
+// turardi va o'quvchi to'lagan 420 000 "xodim hisobiga 420 000 tushdi" deb
+// o'qilardi, holbuki foizli o'qituvchiga uning 50 foizi tegishli.
+// Foydalanuvchi: "xodim profilidagi jadvalda 50% emas, jami to'lov
+// hisoblanyapti". Bu daftar — o'sha jadval uchun XODIMNING O'Z qoldig'i.
+//
+// QOIDA — lib/payrollSources.ts bilan BIR XIL, ikkinchi nusxa emas:
+//   • oy chegarasi: `periodMonth`, u bo'lmasa `date` ning oyi (monthMatch);
+//   • oy boshidagi qoldiq: o'tgan oydan qolgan (`loadCarryOver` —
+//     yopilgan oyda muzlatilgan, yopilmaganida jonli) — chap kartadagi
+//     "To'lanmagan" ham aynan shundan boshlanadi; okladli xodimda unga
+//     shu oy okladi (`payrollBase`: o'tgan oyda to'liq, joriy oyda bugungi
+//     kungacha pro-rata) qo'shiladi;
+//   • kirim, `teacherName` — shu xodim, foizli    → +summa × foiz
+//   • o'quvchiga qaytarim, `teacherName` — shu xodim → −summa × foiz
+//   • chiqim avans/oylik, `studentName` — shu xodim  → −summa (olingan)
+//   • okladli xodimda o'quvchi to'lovi oylikka tegmaydi;
+//   • bekor qilingan yozuv hisobga kirmaydi.
+//
+// Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollDue` — bonus,
+// jarima va soliqsiz (ular kassa yozuvi emas, jadvalda ko'rinmaydi;
+// tooltip shuni aytadi).
+//
+// ULUSH YAXLITLANMAY yig'iladi, faqat ko'rsatishda yaxlitlanadi: aks holda
+// har qatorda ±0.5 so'm yig'ilib, oy yakuni `round(collected × foiz)` dan
+// (chap kartadagi raqam) bir necha so'mga farq qilardi.
+
+export interface SalaryLedgerRow {
+  /** `transaction_entries.id` — jadval qatori shu bo'yicha topadi. */
+  id: number;
+  /** Oylik hisobidagi oy ("YYYY-MM") — `periodMonth` yoki `date` oyi. */
+  month: string;
+  /** Yozuvning shu xodim oyligiga ta'siri, yaxlitlangan, ishorali. */
+  effect: number;
+  /** "50%", "50% qaytarim", "olingan" — ustundagi izoh. */
+  note: string;
+  /**
+   * Xodim qoldig'i shu yozuvdan oldin/keyin. Ish haqi sozlanmagan xodimda
+   * `null` — ishlab topgani hisoblanmaydi, faqat olganini ko'rsatish
+   * soxta "qarzdorlik" bo'lardi.
+   */
+  before: number | null;
+  after: number | null;
+}
+
+export interface SalaryLedger {
+  configured: boolean;
+  salaryType: "foiz" | "fixed";
+  percent: number;
+  /** Faqat oylikka ta'sir qiladigan yozuvlar, xronologik (id bo'yicha). */
+  rows: SalaryLedgerRow[];
+}
+
+/** Jadval va daftar o'qiydigan maydonlar. */
+export type LedgerEntry = Pick<
+  TransactionEntry,
+  "id" | "date" | "time" | "txType" | "txName" | "amount" | "studentName" | "teacherName" | "studentRefund" | "status" | "periodMonth"
+>;
+
+function nameKey(v: unknown): string {
+  return String(v ?? "").trim().toLowerCase();
+}
+
+/** Yozuv QAYSI OYGA tegishli — payrollSources.ts dagi `monthMatch` bilan bir xil. */
+export function payrollMonthOfEntry(e: Pick<TransactionEntry, "date" | "periodMonth">): string {
+  const pm = String(e.periodMonth ?? "").trim();
+  return pm || String(e.date ?? "").slice(0, 7);
+}
+
+/**
+ * Yozuvning SHU XODIM OYLIGIGA ta'siri — YAXLITLANMAGAN.
+ *
+ * `null` — yozuv bu xodimning oyligiga tegmaydi (boshqa ustozning
+ * o'quvchisi, kassir sifatida qayd etgani, bekor qilingan, okladli
+ * xodimda o'quvchi to'lovi).
+ */
+export function salaryEffectOf(
+  t: LedgerEntry,
+  empName: string,
+  payroll: Pick<EmployeePayroll, "configured" | "salaryType" | "percent"> | null,
+): { amount: number; note: string } | null {
+  if (t.status === "cancelled") return null;
+  const me = nameKey(empName);
+  if (!me) return null;
+  const abs = Math.abs(Number(t.amount) || 0);
+  // Avval chiqim: avans yozuvida `teacherName` ham xodimning o'zi bo'lishi
+  // mumkin (kassa Chiqim oynasi shunday yozadi) — u ulush emas, olingan pul.
+  if (t.txType === "payOut" && nameKey(t.studentName) === me && /avans|oylik/i.test(t.txName || "")) {
+    return { amount: -abs, note: "olingan" };
+  }
+  if (nameKey(t.teacherName) !== me) return null;
+  if (!payroll?.configured || payroll.salaryType !== "foiz") return null;
+  const share = abs * payroll.percent / 100;
+  if (t.txType === "payIn") return { amount: share, note: `${payroll.percent}%` };
+  if (isStudentRefundEntry(t)) return { amount: -share, note: `${payroll.percent}% qaytarim` };
+  return null;
+}
+
+/** Ism bo'yicha Mongo sharti — `nameKey` bilan bir xil: chetidagi probel va harf kattaligi farqlanmaydi. */
+function nameMatch(name: string) {
+  const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return { $regex: `^\\s*${escaped}\\s*$`, $options: "i" };
+}
+
+export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<SalaryLedger> {
+  const name = String(emp.name ?? "").trim();
+  const empty: SalaryLedger = { configured: false, salaryType: "foiz", percent: 0, rows: [] };
+  if (!name) return empty;
+
+  // Oyga bog'liq bo'lmagan ma'lumot bir marta; xodimlar ro'yxati esa
+  // FAQAT shu xodim — `buildPayrollRows` shunda bitta qator hisoblaydi
+  // (o'tgan oy qoldig'ining jonli hisobi ham shu bitta xodim uchun).
+  // Arxivlangan xodim `loadPayrollRefs` ro'yxatiga tushmaydi — bu yerda
+  // u ham ochiq, chunki profil arxivdagi xodimda ham ochiladi.
+  const refs = { ...(await loadPayrollRefs(db)), employees: [emp] };
+  const rowOf = async (month: string) => {
+    const period = payrollPeriodOf(month);
+    const [row] = await buildPayrollRows(db, period, { refs });
+    return { period, row };
+  };
+
+  // Joriy oy har doim o'qiladi: xodim turi/foizi shu qatordan, daftar
+  // bo'sh bo'lsa ham (yangi xodim) jadval nima ko'rsatishini bilsin.
+  const nowKey = payrollMonthKey(payrollPeriod());
+  const current = await rowOf(nowKey);
+  const me = current.row;
+  if (!me) return empty;
+
+  // Oylikka TA'SIR QILISHI MUMKIN bo'lgan yozuvlar — payrollSources.ts dagi
+  // ikki manba bilan bir xil shart: `loadCollectedByTeacher` (kirim va
+  // qaytarim, ustoz bo'yicha) va `loadPaidByEmployee` (avans/oylik,
+  // xodim bo'yicha). Okladli xodimda ustoz qismi umuman so'ralmaydi.
+  const n = nameMatch(name);
+  const or: Record<string, unknown>[] = [
+    { txType: "payOut", studentName: n, txName: { $regex: "avans|oylik", $options: "i" } },
+  ];
+  if (me.configured && me.salaryType === "foiz") {
+    or.push({
+      $and: [{ $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }] }, { teacherName: n }],
+    });
+  }
+  const entries = (await db
+    .collection("transaction_entries")
+    .find({ status: { $ne: "cancelled" }, $or: or })
+    .project({
+      _id: 0, id: 1, date: 1, time: 1, txType: 1, txName: 1, amount: 1,
+      studentName: 1, teacherName: 1, studentRefund: 1, status: 1, periodMonth: 1,
+    })
+    // Jadval id bo'yicha kamayish tartibida — daftar ham id bo'yicha yuradi,
+    // shunda qatorning "oldin"i keyingi qatorning "keyin"iga teng chiqadi.
+    .sort({ id: 1 })
+    .toArray()) as unknown as LedgerEntry[];
+
+  const effects = entries
+    .map((e) => ({ e, eff: salaryEffectOf(e, name, me) }))
+    .filter((x): x is { e: LedgerEntry; eff: { amount: number; note: string } } => x.eff !== null);
+
+  // Har bir oy uchun oy boshidagi qoldiq — o'sha oyning `EmployeePayroll`
+  // qatoridan. Oylar bir-biriga bog'liq emas, parallel o'qiladi.
+  const months = [...new Set(effects.map((x) => payrollMonthOfEntry(x.e)))];
+  const openings = new Map<string, number>();
+  if (me.configured) {
+    await Promise.all(months.map(async (m) => {
+      const { period, row } = m === nowKey ? current : await rowOf(m);
+      if (!row) return;
+      // Okladli xodimda oklad oy boshida yoziladi (o'tgan oyda to'liq,
+      // joriy oyda bugungi kungacha); foizlida asos yozuvma-yozuv keladi.
+      openings.set(m, row.carryOver + (row.salaryType === "fixed" ? payrollBase(row, period) : 0));
+    }));
+  }
+
+  const running = new Map<string, number>(openings);
+  const rows: SalaryLedgerRow[] = effects.map(({ e, eff }) => {
+    const month = payrollMonthOfEntry(e);
+    const before = running.has(month) ? running.get(month)! : null;
+    const after = before === null ? null : before + eff.amount;
+    if (after !== null) running.set(month, after);
+    return {
+      id: e.id,
+      month,
+      effect: Math.round(eff.amount),
+      note: eff.note,
+      before: before === null ? null : Math.round(before),
+      after: after === null ? null : Math.round(after),
+    };
+  });
+
+  return { configured: me.configured, salaryType: me.salaryType, percent: me.percent, rows };
+}

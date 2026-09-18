@@ -254,9 +254,13 @@ export async function GET(req: Request) {
       // birlashgan ro'yxatda qator KIM orqali kelganini bilish kerak.
       // Qator boshiga ~25 bayt qo'shadi — 50 qatorda sezilmaydi.
       moderator: 1, teacherName: 1,
-      // "Oyligiga ta'siri" ustuni (EmployeeProfilePage → salaryEffectOf):
-      // kirim/chiqim va o'quvchiga qaytarim yozuvini ajratish uchun.
+      // Kirim/chiqim va o'quvchiga qaytarim yozuvini ajratish uchun
+      // (Kassalar sahifasi ranglari, lib/salaryLedger.ts bilan bir xil tip).
       txType: 1, studentRefund: 1,
+      // Xodim profilidagi "avgust uchun" belgisi: yozuv o'z sanasining
+      // oyiga emas, boshqa oyning oyligiga yozilgan bo'lsa qoldiq o'sha
+      // oyning daftaridan keladi — belgisiz sakrash tushunarsiz edi.
+      periodMonth: 1,
     });
   }
 
