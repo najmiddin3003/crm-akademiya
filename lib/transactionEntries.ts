@@ -157,7 +157,21 @@ export interface TransactionEntry {
    * yozuvlari `scripts/backfill-student-refund.mjs` bilan belgilanadi.
    */
   studentRefund?: boolean;
+  /**
+   * Yozuv QAYERDAN kiritilgani.
+   *
+   * Maydon YO'Q — web (CRM sahifasi), ya'ni bugungacha bo'lgan hamma
+   * yozuv. `"telegram"` — kassir xodimlar Telegram botidan kiritgan
+   * (lib/staffBot). Bot web'dagi bilan AYNAN bir xil yadroni chaqiradi
+   * (lib/cashboxAdjust.ts), shu bois yozuvning o'zi hech narsada farq
+   * qilmaydi — belgi faqat "bu qayerdan kelgan?" savoli uchun: botdagi
+   * xato aynan shu maydon bo'yicha ajratib topiladi.
+   */
+  origin?: EntryOrigin;
 }
+
+/** `TransactionEntry.origin` qiymatlari. */
+export type EntryOrigin = "telegram";
 
 /**
  * Yozuv o'quvchiga pul qaytarish yozuvimi — YAGONA qoida, klient va server

@@ -1611,3 +1611,77 @@ kutayotganlar" kabi savolga javob berib bo'lmasdi):
 | Filial | Barcha filiallar / har biri (xodim bir nechta filialda bo'lishi mumkin — a'zolik tekshiriladi) |
 | Holat | Aktiv / Arxivda |
 | Hisob | Hisob yo'q / SMS ketgan — hali faollashmagan / Tasdiq kutmoqda / Rad etilgan / Faollashgan |
+
+## Xodimlar boti: kassa amallari Telegram'dan (2026-09-18)
+
+@tizimli_akademiya_bot — o'sha bot (guruhlarga to'lov/oylik/lid xabarlari,
+lid tugmalari) — endi kassir bilan SHAXSIY yozishmada ham ishlaydi.
+Foydalanuvchi bilan kelishilgan: 6 tugma (Kirim · Chiqim · Ko'chirish ·
+Lid qo'shish · Kassam · Chiqish), kirish web'dagi telefon + parol bilan,
+yozuv uchta joyga ketadi (VPS baza, Google Sheets, Telegram guruh).
+Bosqichlar: 1) kirish + Kirim + Kassam — SHU; 2) Chiqim; 3) Ko'chirish +
+qabul ✓/✗; 4) Lid. Hozircha Chiqim/Ko'chirish/Lid tugmalari "keyingi
+bosqichda" deb javob beradi.
+
+### Qanday ishlaydi
+
+- **Yadro bitta.** Kirim/Chiqim mantiqi `app/api/cashboxes/[id]/adjust`
+  dan `lib/cashboxAdjust.ts` ga ko'chdi; route yupqa qobiq. Bot HTTP
+  route'ni chaqirmaydi (sessiya cookie'si yo'q), aynan shu funksiyani
+  chaqiradi — chegara tekshiruvlari (oylik/karta, o'quvchi balansi),
+  jurnal, `transactions`, Sheets/Telegram navbati, o'quvchi botiga xabar
+  web bilan bir xil. Yagona farq — yozuvda `origin: "telegram"`
+  (`lib/transactionEntries.ts`), "Bugungi yozuvlar" da 🤖 belgisi.
+- **Kirish** (`lib/staffBot/auth.ts`) — `POST /api/auth/login` ning
+  nusxasi: `users.phone` + `passwordHash`, `status`, `adminApproval`.
+  Parol yozilgan xabarni bot DARHOL o'chiradi (`deleteMessage`; shaxsiy
+  chatda kiruvchi xabarni o'chirishga Telegram ruxsat beradi). 10 daqiqada
+  5 muvaffaqiyatsiz urinish → qulf (`lib/telegramAttempts.ts`).
+- **Ruxsat va kassa HAR AMALDA qayta yechiladi** — `users.status`,
+  `/finance-cash` ruxsati (`resolvePermissions`), kassa `moderator` ism
+  bo'yicha. Admin uchun sukut — bosh kassa, "Kassani almashtirish" bilan
+  boshqasi. CRM'da bloklangan xodim botda ham keyingi bosishda to'xtaydi.
+- **Holat bazada** (`staff_bot_users.draft`) — qoralama 30 daqiqa yashaydi.
+  Tasdiq tugmasi bir martalik kalit bilan (`nonce`): Telegram
+  yangilanishni takror yuborsa `claimDraftForSave` ikkinchisini rad etadi —
+  pul ikki marta yozilmaydi.
+- **O'quvchi qidiruvi** web'dagi navbar qidiruvi bilan bitta filtr
+  (`lib/pupilSearch.ts`), qamrov — kassaning filiali (o'quvchilar hovuzi
+  bilan). Tanlangan o'quvchining ustozi ID orqali guruhidan olinadi
+  (`pupilGroupInfo`) va yozuvga aynan shu ustoz tushadi.
+- Sana doim bugun (Toshkent); orqaga sana va bekor qilish — web'da.
+
+### Fayllar
+
+`lib/staffBot/` — `config` (token = `TELEGRAM_BOT_TOKEN`), `session`
+(`staff_bot_users`), `auth`, `attempts`, `api` (yuborish/tahrirlash/o'chirish),
+`keyboards` (`s:` prefiksli kalitlar — lid tugmalari `lead:` bilan
+to'qnashmaydi), `views`, `data`, `screen`, `kirim` (oqim), `router`.
+Webhook: `app/api/telegram/webhook/route.ts` — `lead:` tugmalar eskicha,
+qolgani routerga; guruh xabarlari tashlanadi.
+
+### Sozlash (deploydan keyin, bir marta)
+
+1. `node scripts/set-telegram-webhook.mjs` — `allowed_updates` endi
+   `["callback_query", "message"]`. ESKI sozlama qolsa bot xabarlarni
+   KO'RMAYDI (`--info` da "qabul qilinadi: callback_query" bo'lsa — shu).
+2. `node scripts/set-telegram-webhook.mjs --commands` — `/start /kassa /chiqish`.
+3. Kassir botga `/start` yozadi → raqam → parol.
+
+Sinov (Telegram'ga yubormaydi, faqat terminalda chizadi):
+`node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_diag-staff-bot.mjs --as 998941558855`
+(`--phone … --password …` — haqiqiy kirish; `--apply` — tasdiqni ham bosadi,
+PUL YOZILADI va lokal `.env` prod kalitlariga qarasa haqiqiy guruhga xabar ketadi).
+
+### Tuzoqlar
+
+- Kassa `moderator` ismi `hr_employees.name` bilan AYNAN (katta-kichik
+  harfsiz) mos bo'lishi shart — "Najmiddin turgunpolatov" ≠ "Najmiddin
+  Turg'unpo'latov": bunday kassir botda "kassa biriktirilmagan" ko'radi
+  (web'da ham ko'rmaydi). Sinov kassasi (#9) aynan shunday.
+- Bot guruhlarda admin — `message` yoqilgach guruhdagi har xabar webhook'ga
+  keladi; router `chat.type !== "private"` ni darhol tashlaydi.
+- `lib/auth.ts`/`lib/branchScope.ts` `next/server`, `next/headers` ni
+  import qiladi — Node skriptida `scripts/_ts-alias-hooks.mjs` ularni
+  `next/server.js` ga o'giradi; `lib/sync/dispatch.ts` dagi parameter
+  property uchun `--experimental-transform-types` shart.

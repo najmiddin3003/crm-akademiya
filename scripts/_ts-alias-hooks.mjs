@@ -23,6 +23,16 @@ export function resolve(specifier, context, next) {
   if (specifier.startsWith("@/")) {
     return next(withExt(new URL(specifier.slice(2), ROOT).href), context);
   }
+  // `next/server`, `next/headers` — Next paketining `exports` xaritasi
+  // yo'q, Node esa kengaytmasiz pastki yo'lni topa olmaydi ("Did you
+  // mean next/server.js?"). Next ichida bu muammo yo'q, faqat skriptda.
+  // Sessiya va filial modullari (lib/auth.ts, lib/branchScope.ts) shu
+  // ikkisini import qiladi; ular yuklanadi, lekin `cookies()` ni
+  // so'rovdan tashqarida chaqirib bo'lmaydi — skriptlar chaqirmaydi ham.
+  if (specifier.startsWith("next/") && !specifier.endsWith(".js")) {
+    const candidate = new URL(`node_modules/${specifier}.js`, ROOT);
+    if (fs.existsSync(fileURLToPath(candidate))) return next(candidate.href, context);
+  }
   if (specifier.startsWith("./") || specifier.startsWith("../")) {
     const parent = context.parentURL;
     if (parent && parent.startsWith("file:")) {

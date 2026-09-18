@@ -1,20 +1,26 @@
 import { timingSafeEqual } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
-import { loadSyncConfig } from "@/lib/sync/config";
+import { loadSyncConfig, type SyncConfig } from "@/lib/sync/config";
 import { answerCallback, editMessage } from "@/lib/sync/telegram";
 import { leadKeyboard, leadStatusOption, parseLeadCallback } from "@/lib/leadStatus";
 import { leadMessage } from "@/lib/leadNotify";
 import { uzStamp } from "@/lib/uzTime";
 import type { Order } from "@/lib/ordersData";
+import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
+import { handleStaffUpdate, type TelegramUpdate } from "@/lib/staffBot/router";
 
-// POST /api/telegram/webhook — Telegram tugmalari (callback_query).
+// POST /api/telegram/webhook — xodimlar botining (@tizimli_akademiya_bot)
+// webhook'i. IKKI OQIM bitta manzilda:
 //
-// NIMA UCHUN: "Lidlar" topigidagi har bir xabar tagida to'rtta status
-// tugmasi turadi (lib/leadStatus.ts). Bosilganda Telegram shu manzilga
-// yangilanish yuboradi; biz statusni bazaga yozamiz va xabarning o'zini
-// tahrirlab, "Status:" qatorini yangilaymiz.
+//   1) "Lidlar" topigidagi status tugmalari (`lead:…`, lib/leadStatus.ts):
+//      bosilganda status bazaga yoziladi va xabarning "Status:" qatori
+//      tahrirlanadi — 07.09.2026 dan beri;
+//   2) kassir bilan SHAXSIY yozishma — to'lov kiritish, kassa holati
+//      (lib/staffBot/*) — 18.09.2026 dan. Shu sabab `allowed_updates` ga
+//      `message` qo'shildi (scripts/set-telegram-webhook.mjs). Guruh
+//      xabarlari ham kela boshlaydi — router ularni darhol tashlaydi.
 //
 // SESSIYASIZ OCHIQ — chaqiruvchi Telegram serveri, uning cookie'si yo'q.
 // Himoya `setWebhook` dagi `secret_token` bilan: Telegram uni HAR BIR
@@ -54,44 +60,21 @@ async function branchNameOf(db: Db, branchId: unknown): Promise<string> {
   return typeof row?.name === "string" ? row.name : "";
 }
 
-export async function POST(req: Request) {
-  const expected = (process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
-  const provided = req.headers.get("x-telegram-bot-api-secret-token") || "";
-  if (!expected || !secretMatches(provided, expected)) {
-    return NextResponse.json({ ok: false }, { status: 401 });
-  }
-
-  let update: { callback_query?: CallbackQuery };
-  try {
-    update = await req.json();
-  } catch {
-    // Buzuq tana — 200 qaytaramiz, aks holda Telegram uni ABADIY qayta
-    // yuboraveradi. Tuzatadigan narsa bizda yo'q.
-    return NextResponse.json({ ok: true });
-  }
-
-  const cq = update.callback_query;
-  // Boshqa turdagi yangilanishlar (xabar, a'zo qo'shilishi …) e'tiborsiz.
-  // `allowed_updates` da faqat callback_query so'ralgan, lekin eski
-  // webhook sozlamasi qolgan bo'lishi mumkin.
-  if (!cq?.id) return NextResponse.json({ ok: true });
-
-  const cfg = loadSyncConfig();
-  const parsed = parseLeadCallback(cq.data);
-  if (!parsed) {
-    await answerCallback(cfg, cq.id, "Tugma tanilmadi");
-    return NextResponse.json({ ok: true });
-  }
-
+/** Lid status tugmasi — bazaga yozish va xabarni yangilash. */
+async function handleLeadCallback(
+  db: Db,
+  cfg: SyncConfig,
+  cq: CallbackQuery,
+  parsed: NonNullable<ReturnType<typeof parseLeadCallback>>,
+): Promise<void> {
   // BUTUN ISH `try` ICHIDA: bu yerdan otilgan xato 500 bo'lib qaytardi va
   // Telegram o'sha tugmani qayta-qayta yuboraverardi.
   try {
-    const db = await ensureIndexes();
     const col = db.collection("orders");
     const order = (await col.findOne({ id: parsed.orderId })) as (Order & { branchId?: number }) | null;
     if (!order) {
       await answerCallback(cfg, cq.id, "Lid topilmadi — CRM'dan o'chirilgan bo'lishi mumkin");
-      return NextResponse.json({ ok: true });
+      return;
     }
 
     const by = senderName(cq.from);
@@ -132,6 +115,45 @@ export async function POST(req: Request) {
     // Bu yerga faqat BAZA yiqilganda tushiladi — status yozilmagan.
     console.error("[telegram-webhook]", e instanceof Error ? e.message : e);
     await answerCallback(cfg, cq.id, "Saqlanmadi — birozdan keyin qayta urinib ko'ring");
+  }
+}
+
+export async function POST(req: Request) {
+  const expected = (process.env.TELEGRAM_WEBHOOK_SECRET || "").trim();
+  const provided = req.headers.get("x-telegram-bot-api-secret-token") || "";
+  if (!expected || !secretMatches(provided, expected)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
+  let update: TelegramUpdate & { callback_query?: CallbackQuery };
+  try {
+    update = await req.json();
+  } catch {
+    // Buzuq tana — 200 qaytaramiz, aks holda Telegram uni ABADIY qayta
+    // yuboraveradi. Tuzatadigan narsa bizda yo'q.
+    return NextResponse.json({ ok: true });
+  }
+
+  const cq = update.callback_query;
+  const parsed = cq?.id ? parseLeadCallback(cq.data) : null;
+
+  // BAZA ULANISHI HAM `try` ICHIDA — yiqilsa ham Telegram'ga 200.
+  try {
+    const db = await ensureIndexes();
+
+    if (cq?.id && parsed) {
+      // 1) Lid status tugmasi.
+      await handleLeadCallback(db, loadSyncConfig(), cq, parsed);
+    } else {
+      // 2) Qolgan hammasi — xodimlar boti (shaxsiy xabar, `s:` tugmalar).
+      // Router o'zi hech qachon otmaydi va guruh xabarlarini tashlaydi.
+      // `after` — to'lov yozilgach Sheets/Telegram navbati javobdan KEYIN
+      // yuriladi (lib/cashboxAdjust.ts → defer).
+      const cfg = loadStaffBotConfig();
+      if (isStaffBotReady(cfg)) await handleStaffUpdate(db, cfg, update, after);
+    }
+  } catch (e) {
+    console.error("[telegram-webhook]", e instanceof Error ? e.message : e);
   }
 
   // Telegram uchun DOIM 200: xato bo'lsa ham qayta yuborilmasin.

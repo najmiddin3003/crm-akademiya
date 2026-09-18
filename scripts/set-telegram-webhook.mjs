@@ -1,10 +1,19 @@
 // Telegram webhook'ini ro'yxatdan o'tkazadi — lid xabari tagidagi status
-// tugmalari SHUSIZ ishlamaydi (bosilganda hech narsa bo'lmaydi).
+// tugmalari ham, kassirning botdagi to'lov kiritishi ham (lib/staffBot)
+// SHUSIZ ishlamaydi (bosilganda hech narsa bo'lmaydi).
 //
 // Bir marta ishga tushiriladi:
 //   node scripts/set-telegram-webhook.mjs            — o'rnatadi va holatni ko'rsatadi
 //   node scripts/set-telegram-webhook.mjs --info     — faqat holatni ko'rsatadi
 //   node scripts/set-telegram-webhook.mjs --delete   — webhook'ni olib tashlaydi
+//   node scripts/set-telegram-webhook.mjs --commands — botning "/" buyruqlar menyusini o'rnatadi
+//
+// 18.09.2026: `allowed_updates` ga `message` QO'SHILDI — kassir botga
+// shaxsiy yozadi (telefon, parol, o'quvchi ismi, summa). Bot guruhlarda
+// admin bo'lgani uchun guruh xabarlari ham kela boshlaydi; router ularni
+// o'qimasdan tashlaydi (lib/staffBot/router.ts). Eski webhook sozlamasi
+// (faqat callback_query) turgan bo'lsa bot xabarlarni KO'RMAYDI — deploydan
+// keyin shu skriptni qayta yurgizish shart.
 //
 // KERAKLI SOZLAMALAR (.env.local va Vercel > Environment Variables):
 //   TELEGRAM_BOT_TOKEN       — bot kaliti (allaqachon bor)
@@ -78,6 +87,22 @@ if (arg === "--delete") {
   process.exit(res.ok ? 0 : 1);
 }
 
+// "/" buyruqlar menyusi — Telegram kirish maydonining yonida ko'rsatadi.
+// Faqat SHAXSIY chatlar uchun (`scope: all_private_chats`): guruhlarda
+// bot buyruq qabul qilmaydi va u yerda menyu chalg'itardi.
+if (arg === "--commands") {
+  const res = await call("setMyCommands", {
+    commands: [
+      { command: "start", description: "Bosh menyu / kirish" },
+      { command: "kassa", description: "Kassam — qoldiq va bugungi tushum" },
+      { command: "chiqish", description: "Botdan chiqish" },
+    ],
+    scope: { type: "all_private_chats" },
+  });
+  console.log(res.ok ? "Buyruqlar o'rnatildi: /start /kassa /chiqish" : `Xato: ${JSON.stringify(res)}`);
+  process.exit(res.ok ? 0 : 1);
+}
+
 const missing = [];
 if (!base) missing.push("APP_BASE_URL");
 if (!secret) missing.push("TELEGRAM_WEBHOOK_SECRET");
@@ -93,12 +118,14 @@ if (!base.startsWith("https://")) {
 }
 
 const url = `${base}/api/telegram/webhook`;
-// Faqat tugma bosilishlari kerak — guruhdagi HAR BIR xabar serverga
-// yuborilsa, bu bekorga trafik va bekorga funksiya chaqiruvi bo'lardi.
+// `callback_query` — lid tugmalari va botdagi menyu tugmalari;
+// `message`        — kassirning shaxsiy xabarlari (kirish, qidiruv, summa).
+// Boshqa turlar (a'zolik o'zgarishi, tahrirlangan xabar …) so'ralmaydi —
+// ular bekorga trafik va bekorga funksiya chaqiruvi bo'lardi.
 const res = await call("setWebhook", {
   url,
   secret_token: secret,
-  allowed_updates: ["callback_query"],
+  allowed_updates: ["callback_query", "message"],
   max_connections: 10,
 });
 

@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { createAttemptGate, type AttemptGate } from "@/lib/telegramAttempts";
 
 // QO'LDA KIRITILGAN RAQAM uchun urinishlar qorovuli. MongoDB
 // `student_bot_attempts`.
@@ -17,25 +18,14 @@ import type { Db } from "mongodb";
 //
 // FAQAT MUVAFFAQIYATSIZ urinish sanaladi: raqami topilgan odam
 // hisoblagichi tozalanadi va u hech qachon chegaraga urilmaydi.
+//
+// Mexanizmning o'zi umumiy — lib/telegramAttempts.ts (xodimlar boti
+// parol uchun xuddi shu qorovuldan foydalanadi, o'z kolleksiyasi bilan).
 
 export const BOT_ATTEMPTS = "student_bot_attempts";
+export type { AttemptGate };
 
-/** Oyna uzunligi — shu vaqt o'tgach hisoblagich noldan boshlanadi. */
-const WINDOW_MS = 10 * 60 * 1000;
-/** Bitta oynada ruxsat etilgan muvaffaqiyatsiz urinishlar. */
-const MAX_TRIES = 5;
-
-interface AttemptDoc {
-  chatId: number;
-  count: number;
-  windowStart: number;
-}
-
-export interface AttemptGate {
-  allowed: boolean;
-  /** Chegaraga urilganda — necha daqiqa kutish kerakligi. */
-  waitMinutes: number;
-}
+const gate = createAttemptGate({ collection: BOT_ATTEMPTS });
 
 /**
  * Urinishni hisobga oladi va ruxsat berilganini aytadi.
@@ -43,23 +33,8 @@ export interface AttemptGate {
  * Chaqiruv QIDIRUVDAN OLDIN: aks holda mavjud bo'lmagan raqamlarni
  * terib chiqayotgan skript baribir bazani qidirtirib o'tirardi.
  */
-export async function takePhoneAttempt(db: Db, chatId: number, now = Date.now()): Promise<AttemptGate> {
-  const col = db.collection<AttemptDoc>(BOT_ATTEMPTS);
-  const doc = await col.findOne({ chatId });
-
-  // Yozuv yo'q yoki oyna eskirgan — yangisini boshlaymiz.
-  if (!doc || now - doc.windowStart > WINDOW_MS) {
-    await col.updateOne({ chatId }, { $set: { chatId, windowStart: now, count: 1 } }, { upsert: true });
-    return { allowed: true, waitMinutes: 0 };
-  }
-
-  if (doc.count >= MAX_TRIES) {
-    const left = WINDOW_MS - (now - doc.windowStart);
-    return { allowed: false, waitMinutes: Math.max(1, Math.ceil(left / 60_000)) };
-  }
-
-  await col.updateOne({ chatId }, { $inc: { count: 1 } });
-  return { allowed: true, waitMinutes: 0 };
+export function takePhoneAttempt(db: Db, chatId: number, now = Date.now()): Promise<AttemptGate> {
+  return gate.take(db, chatId, now);
 }
 
 /**
@@ -68,6 +43,6 @@ export async function takePhoneAttempt(db: Db, chatId: number, now = Date.now())
  * Shu bois "chiqish" qilib qayta kirgan odam ham, farzandi ko'p bo'lgan
  * ota-ona ham chegaraga urilmaydi.
  */
-export async function clearPhoneAttempts(db: Db, chatId: number): Promise<void> {
-  await db.collection<AttemptDoc>(BOT_ATTEMPTS).deleteOne({ chatId });
+export function clearPhoneAttempts(db: Db, chatId: number): Promise<void> {
+  return gate.clear(db, chatId);
 }
