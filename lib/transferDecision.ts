@@ -31,6 +31,30 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 
 export type TransferDecision = "confirm" | "reject";
 
+/** Qaror qabul qilayotgan odam — web'da sessiyadan, botda bog'lanishdan (lib/staffBot). */
+export interface DecisionActor {
+  isAdmin: boolean;
+  /** `hr_employees.name` — kassa egaligi shu ism bilan tekshiriladi. */
+  name: string | null;
+}
+
+export type DecisionStatus = 400 | 401 | 403 | 404 | 409;
+
+/** Yadro natijasi — HTTP'siz, sof ma'lumot (bot ham shuni o'qiydi). */
+export type DecisionOutcome =
+  | {
+      ok: true;
+      decision: TransferDecision;
+      transferId: number;
+      amount: number;
+      /** Pul QAYERDAN qayerga — bot xabari uchun. */
+      fromCashboxId: number;
+      toCashboxId: number;
+    }
+  | { ok: false; error: string; status: DecisionStatus };
+
+const fail = (error: string, status: DecisionStatus): DecisionOutcome => ({ ok: false, error, status });
+
 /** Route'lar shuni qaytaradi — muvaffaqiyat ham, xato ham. */
 type Result = NextResponse;
 
@@ -38,31 +62,53 @@ function err(message: string, status: number): Result {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
 
+/**
+ * HTTP qobig'i — web'dagi ✓/× tugmalari uchun. Aktor SESSIYADAN.
+ *
+ * NEGA IKKIGA BO'LINGAN: xodimlar Telegram boti ham tasdiqlaydi
+ * (lib/staffBot/transfer.ts), unda sessiya yo'q — aktor bog'lanishdan
+ * keladi. Qoidalar bitta joyda (`decideTransferAs`), qobiq faqat
+ * `NextResponse` ga o'giradi.
+ */
 export async function decideTransfer(entryId: number, decision: TransferDecision): Promise<Result> {
   if (!Number.isFinite(entryId)) return err("Noto'g'ri id", 400);
-
   const db = await ensureIndexes();
+  const me = await getCurrentEmployee();
+  if (!me) return err("Tizimga kiring", 401);
+  const out = await decideTransferAs(db, me, entryId, decision);
+  if (!out.ok) return err(out.error, out.status);
+  return NextResponse.json({ ok: true, decision: out.decision, transferId: out.transferId });
+}
+
+export async function decideTransferAs(
+  db: Db,
+  actor: DecisionActor,
+  entryId: number,
+  decision: TransferDecision,
+): Promise<DecisionOutcome> {
+  if (!Number.isFinite(entryId)) return fail("Noto'g'ri id", 400);
+
   const entriesCol = db.collection("transaction_entries");
   const entry = (await entriesCol.findOne({ id: entryId })) as (TransactionEntry & { _id: unknown }) | null;
-  if (!entry) return err("Tranzaksiya topilmadi", 404);
+  if (!entry) return fail("Tranzaksiya topilmadi", 404);
 
   if (entry.txType !== "transfer") {
-    return err("Bu tranzaksiya kassalararo ko'chirma emas", 400);
+    return fail("Bu tranzaksiya kassalararo ko'chirma emas", 400);
   }
   // Qaror QABUL QILUVCHI tomonning qatoriga tegishli: pul kelayotgan
   // kassaning egasi tasdiqlaydi. Chiquvchi qatordan tasdiqlashga ruxsat
   // berilsa, jo'natuvchi o'z ko'chirmasini o'zi tasdiqlab qo'yardi.
   if (entry.transferRole !== "in") {
-    return err("Faqat pul KELAYOTGAN kassa tasdiqlashi mumkin", 400);
+    return fail("Faqat pul KELAYOTGAN kassa tasdiqlashi mumkin", 400);
   }
   if (entry.status !== "waiting") {
-    return err("Bu ko'chirma allaqachon hal qilingan", 409);
+    return fail("Bu ko'chirma allaqachon hal qilingan", 409);
   }
   // Juftlik bog'lanmagan eski yozuv — ikkinchi qatorni ishonchli topib
   // bo'lmaydi, ya'ni pulni to'g'ri joyga qo'yib bo'lmaydi.
   const transferId = Number(entry.transferId);
   if (!Number.isFinite(transferId)) {
-    return err("Ko'chirmaning ikkinchi qatori topilmadi (eski yozuv)", 400);
+    return fail("Ko'chirmaning ikkinchi qatori topilmadi (eski yozuv)", 400);
   }
 
   // ---- RUXSAT ----
@@ -75,21 +121,19 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
   // "Bosh kassa" (isPrimary) belgisiga ATAYLAB bog'lanmagan: uni
   // /finance-cash ruxsati bor istalgan xodim o'ziga o'tkazib olishi
   // mumkin, ya'ni u himoya emas, bezak.
-  const me = await getCurrentEmployee();
-  if (!me) return err("Tizimga kiring", 401);
-  if (!me.isAdmin && !(await ownsCashbox(db, me.name, entry.cashboxId))) {
-    return err("Bu kassani faqat uning mas'uli tasdiqlashi mumkin", 403);
+  if (!actor.isAdmin && !(await ownsCashbox(db, actor.name, entry.cashboxId))) {
+    return fail("Bu kassani faqat uning mas'uli tasdiqlashi mumkin", 403);
   }
 
   const rows = (await entriesCol.find({ transferId }).toArray()) as unknown as TransactionEntry[];
   const out = rows.find((r) => r.transferRole === "out");
-  if (!out) return err("Ko'chirmaning chiquvchi qatori topilmadi", 400);
+  if (!out) return fail("Ko'chirmaning chiquvchi qatori topilmadi", 400);
 
   // ---- PUL QAYSI KASSAGA VA QAYSI TURGA ----
   const key = await methodKeyOf(db, entry);
-  if (!key) return err("To'lov turi topilmadi", 400);
+  if (!key) return fail("To'lov turi topilmadi", 400);
   const amount = Math.abs(Number(entry.amount) || 0);
-  if (amount <= 0) return err("Ko'chirma summasi noto'g'ri", 400);
+  if (amount <= 0) return fail("Ko'chirma summasi noto'g'ri", 400);
   // Pul jo'natishda kassadan yechilganmi? Maydon YO'Q bo'lsa — ESKI
   // yozuv, ya'ni yechilgan va "yo'lda" turibdi (yuqoridagi izoh).
   const heldInTransit = out.deductedOnSend !== false;
@@ -120,7 +164,7 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
     { $set: { status: newStatus, decidedAt: new Date().toISOString() } },
   );
   if (cas.modifiedCount === 0) {
-    return err("Bu ko'chirma allaqachon hal qilingan", 409);
+    return fail("Bu ko'chirma allaqachon hal qilingan", 409);
   }
 
   const cashboxesCol = db.collection("cashboxes");
@@ -153,8 +197,8 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
         await undoStatus();
         const exists = await cashboxesCol.findOne({ id: out.cashboxId }, { projection: { _id: 1 } });
         return exists
-          ? err("Jo'natuvchi kassada mablag' yetarli emas — ko'chirmani rad eting", 409)
-          : err("Jo'natuvchi kassa topilmadi", 404);
+          ? fail("Jo'natuvchi kassada mablag' yetarli emas — ko'chirmani rad eting", 409)
+          : fail("Jo'natuvchi kassa topilmadi", 404);
       }
     }
     // 2) Qabul qiluvchiga qo'shamiz.
@@ -164,7 +208,7 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
       // jo'natuvchidan yechilib, hech qayerga tushmasdan yo'qolardi.
       if (!heldInTransit) await give(out.cashboxId, amount);
       await undoStatus();
-      return err("Kassa topilmadi", 404);
+      return fail("Kassa topilmadi", 404);
     }
   } else if (heldInTransit) {
     // RAD ETISH. Faqat ESKI qatorlarda qaytariladigan pul bor — u
@@ -173,7 +217,7 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
     const back = await give(out.cashboxId, amount);
     if (back.matchedCount === 0) {
       await undoStatus();
-      return err("Kassa topilmadi", 404);
+      return fail("Kassa topilmadi", 404);
     }
   }
 
@@ -195,7 +239,14 @@ export async function decideTransfer(entryId: number, decision: TransferDecision
     }
   }
 
-  return NextResponse.json({ ok: true, decision, transferId });
+  return {
+    ok: true,
+    decision,
+    transferId,
+    amount,
+    fromCashboxId: out.cashboxId,
+    toCashboxId: entry.cashboxId,
+  };
 }
 
 /**

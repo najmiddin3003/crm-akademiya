@@ -22,6 +22,7 @@ import {
 import { chiqimCallback, chiqimText, startChiqim } from "@/lib/staffBot/chiqim";
 import type { FlowCtx } from "@/lib/staffBot/flow";
 import { kirimCallback, kirimText, startKirim } from "@/lib/staffBot/kirim";
+import { startTransfer, transferCallback, transferText } from "@/lib/staffBot/transfer";
 import { showScreen, type Screen } from "@/lib/staffBot/screen";
 import {
   completeLogin,
@@ -130,7 +131,7 @@ async function kassamScreen(db: Db, access: StaffAccess): Promise<Screen> {
   if (!access.canCash) return { html: V.noPermission(), keyboard: backToMenu() };
   if (!access.cashbox) return { html: V.noCashbox(), keyboard: backToMenu() };
   const view = await loadKassam(db, access.cashbox);
-  return { html: V.kassamView(view, uzDateIso()), keyboard: kassamKeyboard(access.identity.isAdmin) };
+  return { html: V.kassamView(view, uzDateIso()), keyboard: kassamKeyboard(access.identity.isAdmin, view.stats.pendingInCount) };
 }
 
 async function todayScreen(db: Db, access: StaffAccess): Promise<Screen> {
@@ -292,6 +293,7 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
   if (text && !text.startsWith("/")) {
     if (await kirimText(ctx, text)) return;
     if (await chiqimText(ctx, text)) return;
+    if (await transferText(ctx, text)) return;
   }
 
   // Har qanday boshqa matn — bosh menyu. Bot suhbatdosh emas: erkin
@@ -358,6 +360,11 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
     await answerStaff(cfg, cq.id, r.toast ?? "");
     return;
   }
+  if (data.startsWith("s:t:")) {
+    const r = await transferCallback(ctx, data);
+    await answerStaff(cfg, cq.id, r.toast ?? "");
+    return;
+  }
 
   switch (data) {
     case CB.menu:
@@ -370,6 +377,8 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
       await startChiqim(ctx);
       break;
     case CB.transfer:
+      await startTransfer(ctx);
+      break;
     case CB.lead:
       // Keyingi bosqichlar — tugma joyida, ish hali yo'q.
       await answerStaff(cfg, cq.id, V.COMING_SOON);

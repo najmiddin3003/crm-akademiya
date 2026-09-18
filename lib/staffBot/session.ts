@@ -114,7 +114,29 @@ export interface ChiqimDraft {
   updatedAt: number;
 }
 
-export type Draft = KirimDraft | ChiqimDraft;
+/** Ko'chirish qoralamasining qadamlari (lib/staffBot/transfer.ts). */
+export type TransferStep = "dest" | "method" | "to" | "amount" | "note" | "confirm" | "saving";
+
+export interface TransferDraft {
+  kind: "transfer";
+  /** "cashbox" — boshqa kassaga (tasdiq bilan); "method" — kassa ichida tur → tur. */
+  mode: "cashbox" | "method";
+  step: TransferStep;
+  destId?: number;
+  destName?: string;
+  /** Kassaga: to'lov turi. Ichki: CHIQADIGAN tur. */
+  fromKey?: string;
+  fromName?: string;
+  /** Ichki ko'chirishda TUSHADIGAN tur. */
+  toKey?: string;
+  toName?: string;
+  amount?: number;
+  note?: string;
+  nonce: string;
+  updatedAt: number;
+}
+
+export type Draft = KirimDraft | ChiqimDraft | TransferDraft;
 
 /** Shu muddat tegilmagan qoralama eskirgan sanaladi. */
 export const DRAFT_TTL_MS = 30 * 60 * 1000;

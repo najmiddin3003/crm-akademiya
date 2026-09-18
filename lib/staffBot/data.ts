@@ -278,3 +278,91 @@ export async function loadTodayEntries(db: Db, cashboxId: number, dateIso: strin
     origin: typeof r.origin === "string" ? r.origin : undefined,
   }));
 }
+
+// ── Ko'chirmalar ────────────────────────────────────────────────────
+
+export interface IncomingTransfer {
+  /** Pul KELAYOTGAN qatorning id'si — ✓/✗ shu id bilan (lib/transferDecision.ts). */
+  id: number;
+  transferId: number;
+  date: string;
+  time: string;
+  amount: number;
+  paymentType: string;
+  txName: string;
+  note: string;
+  fromCashboxId: number | null;
+  fromCashboxName: string;
+}
+
+const INCOMING_FIELDS = {
+  _id: 0, id: 1, transferId: 1, date: 1, time: 1, amount: 1, paymentType: 1, txName: 1, note: 1, cashboxId: 1, status: 1, transferRole: 1,
+} as const;
+
+/** Jo'natuvchi kassa nomlari — chiquvchi qator orqali (txName dan ajratib olishdan ishonchliroq). */
+async function withSenderNames(db: Db, rows: Record<string, unknown>[]): Promise<IncomingTransfer[]> {
+  const transferIds = rows.map((r) => Number(r.transferId)).filter((n) => Number.isFinite(n));
+  const outs = transferIds.length > 0
+    ? await db.collection("transaction_entries")
+        .find({ transferId: { $in: transferIds }, transferRole: "out" }, { projection: { _id: 0, transferId: 1, cashboxId: 1 } })
+        .toArray()
+    : [];
+  const senderOf = new Map(outs.map((o) => [Number(o.transferId), Number(o.cashboxId)]));
+  const cashboxIds = [...new Set([...senderOf.values()])];
+  const boxes = cashboxIds.length > 0
+    ? await db.collection("cashboxes").find({ id: { $in: cashboxIds } }, { projection: { _id: 0, id: 1, name: 1 } }).toArray()
+    : [];
+  const nameOf = new Map(boxes.map((b) => [Number(b.id), String(b.name ?? "")]));
+  return rows.map((r) => {
+    const fromId = senderOf.get(Number(r.transferId)) ?? null;
+    return {
+      id: Number(r.id),
+      transferId: Number(r.transferId),
+      date: String(r.date ?? ""),
+      time: String(r.time ?? ""),
+      amount: Math.abs(Number(r.amount ?? 0)),
+      paymentType: String(r.paymentType ?? ""),
+      txName: String(r.txName ?? ""),
+      note: String(r.note ?? ""),
+      fromCashboxId: fromId,
+      fromCashboxName: fromId !== null ? (nameOf.get(fromId) ?? "") : "",
+    };
+  });
+}
+
+/** Shu kassaga KELAYOTGAN, tasdiq kutayotgan ko'chirmalar — eng yangisi birinchi. */
+export async function loadIncomingTransfers(db: Db, cashboxId: number, limit = 10): Promise<IncomingTransfer[]> {
+  const rows = await db.collection("transaction_entries")
+    .find({ cashboxId, txType: "transfer", transferRole: "in", status: "waiting" }, { projection: INCOMING_FIELDS })
+    .sort({ id: -1 })
+    .limit(limit)
+    .toArray();
+  return withSenderNames(db, rows as Record<string, unknown>[]);
+}
+
+/** Bitta kelayotgan ko'chirma — tugma bosilganda qayta o'qiladi (holati o'zgargan bo'lishi mumkin). */
+export async function loadIncomingTransfer(db: Db, entryId: number): Promise<IncomingTransfer | null> {
+  const row = await db.collection("transaction_entries").findOne(
+    { id: entryId, txType: "transfer", transferRole: "in", status: "waiting" },
+    { projection: INCOMING_FIELDS },
+  );
+  if (!row) return null;
+  return (await withSenderNames(db, [row as Record<string, unknown>]))[0] ?? null;
+}
+
+/** Jo'natish uchun mavjud kassalar — o'zinikidan tashqari, arxivlanmaganlar, bosh kassa birinchi. */
+export async function loadTransferDestinations(db: Db, ownId: number): Promise<BotCashbox[]> {
+  const rows = await db.collection("cashboxes")
+    .find({ id: { $ne: ownId }, archived: { $ne: true } }, { projection: { _id: 0, id: 1, name: 1, moderator: 1, balance: 1, methodTotals: 1, branchId: 1, isPrimary: 1 } })
+    .sort({ isPrimary: -1, id: 1 })
+    .toArray();
+  return rows.map((r) => ({
+    id: Number(r.id),
+    name: String(r.name ?? ""),
+    moderator: String(r.moderator ?? ""),
+    balance: Number(r.balance ?? 0),
+    methodTotals: (r.methodTotals as CashboxMethodTotals | undefined) ?? {},
+    branchId: typeof r.branchId === "number" ? r.branchId : undefined,
+    isPrimary: r.isPrimary === true,
+  }));
+}

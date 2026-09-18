@@ -1619,9 +1619,9 @@ lid tugmalari) — endi kassir bilan SHAXSIY yozishmada ham ishlaydi.
 Foydalanuvchi bilan kelishilgan: 6 tugma (Kirim · Chiqim · Ko'chirish ·
 Lid qo'shish · Kassam · Chiqish), kirish web'dagi telefon + parol bilan,
 yozuv uchta joyga ketadi (VPS baza, Google Sheets, Telegram guruh).
-Bosqichlar: 1) kirish + Kirim + Kassam — QILINDI; 2) Chiqim — QILINDI
-(pastda); 3) Ko'chirish + qabul ✓/✗; 4) Lid. Hozircha Ko'chirish/Lid
-tugmalari "keyingi bosqichda" deb javob beradi.
+Bosqichlar: 1) kirish + Kirim + Kassam — QILINDI; 2) Chiqim — QILINDI;
+3) Ko'chirish + qabul ✓/✗ — QILINDI (pastda); 4) Lid. Hozircha Lid
+tugmasi "keyingi bosqichda" deb javob beradi.
 
 ### Qanday ishlaydi
 
@@ -1718,3 +1718,33 @@ qoldig'i borlari, tugmada qoldiq) → summa → izoh → tasdiq.
 Sinov: `--flow chiqim --type "Avans" --person Nilufar --method Naqd --amount 150000`
 (`--type Oylik --method Plastik` — qulflangan summa; `--type "O'quvchiga pul
 qaytarildi" --person "93 065 34 35"` — balans chegarasi).
+
+### 3-bosqich — Ko'chirish va qabul ✓/✗ (2026-09-18)
+
+`lib/staffBot/transfer.ts`. Uch yo'l: **📤 Boshqa kassaga** (qabul qiluvchi
+→ to'lov turi → summa → izoh → tasdiq; mavjud = qoldiq − tasdiq
+kutayotgani; pul tasdiqgacha jo'natuvchida), **🔄 Turlar orasida** (qayerdan
+→ qayerga → summa → tasdiq; izohsiz — web oynasi ham so'ramaydi),
+**📥 Kelayotganlar** (tasdiq kutayotgan ro'yxat, har qatorga ✅/❌; qaror
+IKKI bosish — "rostdan ham?" ekrani).
+
+- Yadrolar `lib/cashboxTransfer.ts` (`applyMethodTransfer`,
+  `applyCashboxTransferTo`) — route'lardan ko'chirildi, route'lar yupqa
+  qobiq. `lib/transferDecision.ts` ikkiga bo'lindi: `decideTransferAs(db,
+  actor, …)` — sof qoidalar + CAS himoyasi; `decideTransfer` — sessiyali
+  HTTP qobig'i. Bot aktorni bog'lanishdan beradi (`isAdmin`, `name`),
+  `ownsCashbox` tekshiruvi o'sha.
+- **Push** (`lib/staffBot/notify.ts` → `notifyTransferPending`): ko'chirma
+  yaratilganda — web'dan ham, botdan ham (yadro `defer` ichida) — qabul
+  qiluvchi kassaning egasi botda "📥 Ko'chirma keldi" xabarini ✅/❌ bilan
+  oladi. Kimga: `staff_bot_users` da kirgan va (kassa `moderator` i
+  nomiga mos | admin shu kassani tanlagan | admin tanlamagan va kassa
+  bosh kassa). Tugma bosilganda ruxsat baribir qayta tekshiriladi.
+- Kassam ekranida kelayotgan ko'chirma bo'lsa "📥 Kelayotganlarni
+  tasdiqlash (N)" tugmasi chiqadi.
+- Ko'chirma guruhga xabar bo'lib ketmaydi (faqat Sheets); qaror Sheets
+  qatorining holat ustunini yangilaydi (`flushSoon` `defer` da).
+
+Sinov: `--flow transfer --method Naqd --amount 500000`, `--flow methods
+--method Terminal --amount max`, `--flow inbox` (✓ so'rovigacha; 2-bosish
+faqat `--apply` bilan).

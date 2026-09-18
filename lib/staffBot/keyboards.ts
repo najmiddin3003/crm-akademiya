@@ -116,10 +116,12 @@ export function logoutConfirm(): InlineKeyboard {
 
 // ── Kassam ──────────────────────────────────────────────────────────
 
-export function kassamKeyboard(isAdmin: boolean): InlineKeyboard {
+export function kassamKeyboard(isAdmin: boolean, pendingInCount = 0): InlineKeyboard {
   const rows: InlineButton[][] = [
     [btn("🧾 Bugungi yozuvlar", CB.today), btn("🔄 Yangilash", CB.kassam)],
   ];
+  // Kelayotgan ko'chirma bor — tasdiqlash bir bosishda (lib/staffBot/transfer.ts).
+  if (pendingInCount > 0) rows.push([btn(`📥 Kelayotganlarni tasdiqlash (${pendingInCount})`, "s:t:inbox")]);
   if (isAdmin) rows.push([btn("🏦 Kassani almashtirish", CB.cashboxes)]);
   rows.push([btn("💵 Kirim", CB.kirim), btn("🏠 Bosh menyu", CB.menu)]);
   return { inline_keyboard: rows };
@@ -335,6 +337,149 @@ export function chiqimConfirmKeyboard(nonce: string): InlineKeyboard {
     inline_keyboard: [
       [btn("✅ Tasdiqlash", chiqimConfirmCb(nonce))],
       [btn("🔄 Qaytadan", CHIQIM_CB.restart), btn("❌ Bekor qilish", CHIQIM_CB.cancel)],
+    ],
+  };
+}
+
+// ── Ko'chirish ──────────────────────────────────────────────────────
+
+export const TRANSFER_CB = {
+  menu: "s:t:menu",
+  toCashbox: "s:t:to",
+  betweenMethods: "s:t:in",
+  inbox: "s:t:inbox",
+  amountMax: "s:t:a:max",
+  noteSkip: "s:t:n:0",
+  cancel: "s:t:x",
+  restart: "s:t:re",
+} as const;
+
+export const transferDestCb = (cashboxId: number) => `s:t:d:${cashboxId}`;
+export const transferMethodCb = (key: string) => `s:t:m:${key}`;
+export const transferToMethodCb = (key: string) => `s:t:m2:${key}`;
+export const transferConfirmCb = (nonce: string) => `s:t:go:${nonce}`;
+/** Kelayotgan ko'chirma — 1-bosish so'rov, 2-bosish qaror (acc/acc2, rej/rej2). */
+export const transferAcceptCb = (entryId: number, sure = false) => `s:t:${sure ? "acc2" : "acc"}:${entryId}`;
+export const transferRejectCb = (entryId: number, sure = false) => `s:t:${sure ? "rej2" : "rej"}:${entryId}`;
+
+export const transferDestArg = (data: string) => numArg(data, "s:t:d:");
+export const transferAcceptArg = (data: string) => numArg(data, "s:t:acc:");
+export const transferAcceptSureArg = (data: string) => numArg(data, "s:t:acc2:");
+export const transferRejectArg = (data: string) => numArg(data, "s:t:rej:");
+export const transferRejectSureArg = (data: string) => numArg(data, "s:t:rej2:");
+export function transferMethodArg(data: string): string | null {
+  const m = data.match(/^s:t:m:([A-Za-z0-9_-]{1,32})$/);
+  return m ? m[1] : null;
+}
+export function transferToMethodArg(data: string): string | null {
+  const m = data.match(/^s:t:m2:([A-Za-z0-9_-]{1,32})$/);
+  return m ? m[1] : null;
+}
+export function transferConfirmArg(data: string): string | null {
+  const m = data.match(/^s:t:go:([a-f0-9]{8,32})$/);
+  return m ? m[1] : null;
+}
+
+const transferCancelRow = (): InlineButton[] => [btn("❌ Bekor qilish", TRANSFER_CB.cancel)];
+
+/** "🔁 Ko'chirish" bo'limi — uch yo'l. */
+export function transferMenu(pendingIn: number): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn("📤 Boshqa kassaga", TRANSFER_CB.toCashbox)],
+      [btn("🔄 Turlar orasida (Naqd → Plastik)", TRANSFER_CB.betweenMethods)],
+      [btn(pendingIn > 0 ? `📥 Kelayotganlar (${pendingIn})` : "📥 Kelayotganlar", TRANSFER_CB.inbox)],
+      [btn("🏠 Bosh menyu", CB.menu)],
+    ],
+  };
+}
+
+export function transferDestKeyboard(list: BotCashbox[]): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      ...list.map((c) => [btn(`${c.isPrimary ? "⭐ " : ""}${c.name}`, transferDestCb(c.id))]),
+      transferCancelRow(),
+    ],
+  };
+}
+
+/** To'lov turi tugmalari — yonida mavjud summa; `toMethod` — ichki ko'chirishda tushadigan tur. */
+export function transferMethodKeyboard(
+  methods: { key: string; name: string; available: number }[],
+  toMethod = false,
+): InlineKeyboard {
+  const cb = toMethod ? transferToMethodCb : transferMethodCb;
+  const rows: InlineButton[][] = [];
+  for (let i = 0; i < methods.length; i += 2) {
+    rows.push(methods.slice(i, i + 2).map((m) => btn(toMethod ? m.name : `${m.name} · ${fmtButtonAmount(m.available)}`, cb(m.key))));
+  }
+  rows.push(transferCancelRow());
+  return { inline_keyboard: rows };
+}
+
+export function transferAmountKeyboard(max: number): InlineKeyboard {
+  const rows: InlineButton[][] = [];
+  if (max > 0) rows.push([btn(`💯 Hammasi: ${fmtButtonAmount(max)}`, TRANSFER_CB.amountMax)]);
+  rows.push(transferCancelRow());
+  return { inline_keyboard: rows };
+}
+
+export function transferCancelOnly(): InlineKeyboard {
+  return { inline_keyboard: [transferCancelRow()] };
+}
+
+export function transferNoteKeyboard(): InlineKeyboard {
+  return { inline_keyboard: [[btn("⏭ Izohsiz davom etish", TRANSFER_CB.noteSkip)], transferCancelRow()] };
+}
+
+export function transferConfirmKeyboard(nonce: string, mode: "cashbox" | "method"): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn(mode === "cashbox" ? "✅ Jo'natish" : "✅ Ko'chirish", transferConfirmCb(nonce))],
+      [btn("🔄 Qaytadan", TRANSFER_CB.restart), btn("❌ Bekor qilish", TRANSFER_CB.cancel)],
+    ],
+  };
+}
+
+export function afterTransferKeyboard(): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn("🔁 Ko'chirish", TRANSFER_CB.menu), btn("📊 Kassam", CB.kassam)],
+      [btn("🏠 Bosh menyu", CB.menu)],
+    ],
+  };
+}
+
+/** Push xabari va ro'yxatdagi har bir ko'chirma tagida. */
+export function transferDecisionKeyboard(inEntryId: number): InlineKeyboard {
+  return {
+    inline_keyboard: [[btn("✅ Qabul qilish", transferAcceptCb(inEntryId)), btn("❌ Rad etish", transferRejectCb(inEntryId))]],
+  };
+}
+
+/** Kelayotganlar ro'yxati: har qatorga bitta ✓/✗ juftligi. */
+export function transferInboxKeyboard(items: { id: number; label: string }[]): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      ...items.map((it) => [btn(`✅ ${it.label}`, transferAcceptCb(it.id)), btn(`❌ ${it.label}`, transferRejectCb(it.id))]),
+      [btn("🔄 Yangilash", TRANSFER_CB.inbox), btn("↩️ Orqaga", TRANSFER_CB.menu)],
+    ],
+  };
+}
+
+/** "Rostdan ham?" — bitta qo'shimcha bosish, pul ko'chadi. */
+export function transferSureKeyboard(inEntryId: number, decision: "confirm" | "reject"): InlineKeyboard {
+  const yes = decision === "confirm"
+    ? btn("✅ Ha, qabul qilaman", transferAcceptCb(inEntryId, true))
+    : btn("❌ Ha, rad etaman", transferRejectCb(inEntryId, true));
+  return { inline_keyboard: [[yes], [btn("↩️ Yo'q, orqaga", TRANSFER_CB.inbox)]] };
+}
+
+export function afterDecisionKeyboard(): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      [btn("📥 Kelayotganlar", TRANSFER_CB.inbox), btn("📊 Kassam", CB.kassam)],
+      [btn("🏠 Bosh menyu", CB.menu)],
     ],
   };
 }

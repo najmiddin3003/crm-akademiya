@@ -4,7 +4,8 @@ import { fmtUZS, monthLabel } from "@/lib/studentBot/views";
 import { formatPhone } from "@/lib/studentBot/phone";
 import type { BotCashbox } from "@/lib/staffBot/auth";
 import type { KassamView, TodayEntry } from "@/lib/staffBot/data";
-import type { ChiqimDraft, KirimDraft } from "@/lib/staffBot/session";
+import type { ChiqimDraft, KirimDraft, TransferDraft } from "@/lib/staffBot/session";
+import type { TransferPendingInfo } from "@/lib/staffBot/notify";
 
 // Xodimlar boti — EKRAN MATNLARI. Faqat matn yig'adi, bazaga tegmaydi.
 //
@@ -15,6 +16,8 @@ import type { ChiqimDraft, KirimDraft } from "@/lib/staffBot/session";
 const RULE = "━━━━━━━━━━━━━━━━";
 
 const so = (n: number) => `${fmtUZS(n)} so'm`;
+/** "2 400 000 so'm" — oqimlardagi xabar matnlari uchun. */
+export const fmtMoney = so;
 
 /** "2026-09-18" -> "18.09.2026". */
 function dmy(iso: string): string {
@@ -425,4 +428,163 @@ export function chiqimCancelled(): string {
 
 export function chiqimNoTypes(): string {
   return "⚠️ Sozlamalarda Chiqim turi qo'shilmagan (Moliya → Tranzaksiya turi). Avval web'da qo'shing.";
+}
+
+// ── Ko'chirish ──────────────────────────────────────────────────────
+
+export function transferMenuView(cashbox: BotCashbox, pendingOutTotal: number, pendingIn: number, pendingInCount: number): string {
+  const lines = [`🔁 <b>Ko'chirish</b> · ${esc(cashbox.name)}`, `💰 Qoldiq: ${so(cashbox.balance)}`];
+  if (pendingOutTotal > 0) lines.push(`📤 Jo'natilgan, tasdiq kutmoqda: ${so(pendingOutTotal)}`);
+  if (pendingInCount > 0) lines.push(`📥 Kelayotgan: <b>${so(pendingIn)}</b> (${pendingInCount} ta)`);
+  lines.push("", "Nima qilamiz?");
+  return lines.join("\n");
+}
+
+function transferHeader(d: TransferDraft, cashbox: BotCashbox): string {
+  const title = d.mode === "cashbox"
+    ? `📤 <b>Boshqa kassaga</b> · ${esc(cashbox.name)}`
+    : `🔄 <b>Turlar orasida</b> · ${esc(cashbox.name)}`;
+  const lines = [title, RULE];
+  let any = false;
+  if (d.destName) { lines.push(`Qabul qiluvchi: <b>${esc(d.destName)}</b>`); any = true; }
+  if (d.fromName) {
+    lines.push(d.mode === "cashbox" ? `To'lov turi: <b>${esc(d.fromName)}</b>` : `Qayerdan: <b>${esc(d.fromName)}</b>`);
+    any = true;
+  }
+  if (d.toName) { lines.push(`Qayerga: <b>${esc(d.toName)}</b>`); any = true; }
+  if (d.amount) { lines.push(`Summa: <b>${so(d.amount)}</b>`); any = true; }
+  if (d.note !== undefined) { lines.push(`Izoh: ${d.note ? esc(d.note) : "<i>yo'q</i>"}`); any = true; }
+  if (any) lines.push(RULE);
+  return lines.join("\n");
+}
+
+export function transferDestPrompt(d: TransferDraft, cashbox: BotCashbox): string {
+  return `${transferHeader(d, cashbox)}\n👉 Pul qaysi kassaga jo'natiladi? (⭐ — bosh kassa)`;
+}
+
+export function transferNoDest(): string {
+  return "⚠️ Jo'natish uchun boshqa kassa yo'q.";
+}
+
+export function transferMethodPrompt(d: TransferDraft, cashbox: BotCashbox): string {
+  const hint = d.mode === "cashbox"
+    ? "👉 Qaysi to'lov turidan? (yonida jo'natish mumkin bo'lgan summa — qoldiqdan tasdiq kutayotgani ayrilgan)"
+    : "👉 Qaysi turdan chiqariladi? (yonida qoldiq)";
+  return `${transferHeader(d, cashbox)}\n${hint}`;
+}
+
+export function transferToPrompt(d: TransferDraft, cashbox: BotCashbox): string {
+  return `${transferHeader(d, cashbox)}\n👉 Qaysi turga tushadi?`;
+}
+
+export function transferNoMethods(d: TransferDraft, cashbox: BotCashbox): string {
+  return `${transferHeader(d, cashbox)}\n⚠️ Jo'natish mumkin bo'lgan mablag' yo'q — kassa bo'sh yoki hammasi tasdiq kutmoqda.`;
+}
+
+export function transferAmountPrompt(d: TransferDraft, cashbox: BotCashbox, available: number): string {
+  return `${transferHeader(d, cashbox)}\nMumkin: <b>${so(available)}</b>\n👉 Summani yozing yoki "Hammasi" ni bosing:`;
+}
+
+export function transferBadAmount(d: TransferDraft, cashbox: BotCashbox): string {
+  return `${transferHeader(d, cashbox)}\n⚠️ Summa tushunarsiz. Faqat raqam yozing, masalan <code>2400000</code>.`;
+}
+
+export function transferAmountRejected(d: TransferDraft, cashbox: BotCashbox, reason: string): string {
+  return `${transferHeader(d, cashbox)}\n⛔ ${esc(reason)}\n\nBoshqa summa yozing yoki bekor qiling.`;
+}
+
+export function transferNotePrompt(d: TransferDraft, cashbox: BotCashbox): string {
+  return `${transferHeader(d, cashbox)}\n👉 Izoh yozing yoki tugmani bosing:`;
+}
+
+export function transferConfirmView(d: TransferDraft, cashbox: BotCashbox, dateIso: string): string {
+  const tail = d.mode === "cashbox"
+    ? "Jo'natilgach pul <b>tasdiqgacha shu kassada qoladi</b> — qabul qiluvchi ✓ bosganda o'tadi. Google Sheets'ga yoziladi."
+    : "Tasdiqlansa pul shu kassa ichida turdan turga o'tadi. Google Sheets'ga yoziladi.";
+  return [transferHeader(d, cashbox), `Sana: ${dmy(dateIso)}`, "", tail].join("\n");
+}
+
+export function transferSaved(d: TransferDraft, cashbox: BotCashbox, entryId: number, balanceAfter: number | null): string {
+  if (d.mode === "cashbox") {
+    return [
+      `📤 <b>Jo'natildi</b> — yozuv #${entryId}`,
+      `${so(d.amount ?? 0)} · ${esc(d.fromName ?? "")} → ${esc(d.destName ?? "")}`,
+      "",
+      "⏳ Qabul qiluvchi tasdiqlashini kutmoqda. Pul hozircha sizning kassangizda.",
+    ].join("\n");
+  }
+  return [
+    `🔄 <b>Ko'chirildi</b> — yozuv #${entryId}`,
+    `${so(d.amount ?? 0)} · ${esc(d.fromName ?? "")} → ${esc(d.toName ?? "")}`,
+    "",
+    balanceAfter !== null ? `🏦 ${esc(cashbox.name)} qoldig'i: <b>${so(balanceAfter)}</b> (o'zgarmadi — turlar orasida)` : "",
+  ].filter((l) => l !== "").join("\n");
+}
+
+export function transferFailed(error: string): string {
+  return `❌ Bajarilmadi: ${esc(error)}\n\nQayta urinib ko'ring yoki bekor qiling.`;
+}
+
+export function transferCancelled(): string {
+  return "❌ Ko'chirish bekor qilindi. Hech narsa yozilmadi.";
+}
+
+export interface IncomingItem {
+  id: number;
+  date: string;
+  time: string;
+  amount: number;
+  paymentType: string;
+  txName: string;
+  note: string;
+  fromCashboxName: string;
+}
+
+export function transferInboxView(cashboxName: string, items: IncomingItem[]): string {
+  const lines = [`📥 <b>Kelayotgan ko'chirmalar</b> · ${esc(cashboxName)}`, ""];
+  if (items.length === 0) {
+    lines.push("Tasdiq kutayotgan ko'chirma yo'q.");
+    return lines.join("\n");
+  }
+  for (const it of items) {
+    lines.push(`#${it.id} · ${dmy(it.date)} ${esc(it.time)} · <b>${so(it.amount)}</b> · ${esc(it.paymentType)}`);
+    lines.push(`   ${esc(it.fromCashboxName || it.txName)}${it.note ? ` · <i>${esc(it.note)}</i>` : ""}`);
+  }
+  lines.push("", "Har bir qator uchun ✅ qabul yoki ❌ rad — keyin yana bir marta tasdiqlanadi.");
+  return lines.join("\n");
+}
+
+export function transferPendingPush(info: TransferPendingInfo): string {
+  return [
+    `📥 <b>Ko'chirma keldi</b> — yozuv #${info.inEntryId}`,
+    `${esc(info.fromCashboxName)} → ${esc(info.toCashboxName)}`,
+    `<b>${so(info.amount)}</b> · ${esc(info.methodName)}${info.note ? ` · <i>${esc(info.note)}</i>` : ""}`,
+    "",
+    "Pul hozircha jo'natuvchida. Qabul qilsangiz sizning kassangizga o'tadi.",
+  ].join("\n");
+}
+
+export function transferSureView(it: IncomingItem, decision: "confirm" | "reject"): string {
+  const what = decision === "confirm" ? "QABUL QILASIZMI" : "RAD ETASIZMI";
+  return [
+    `❓ Ko'chirma #${it.id} ni <b>${what}</b>?`,
+    `${esc(it.fromCashboxName || it.txName)} · <b>${so(it.amount)}</b> · ${esc(it.paymentType)}`,
+    decision === "confirm"
+      ? "Qabul qilinsa pul jo'natuvchidan yechilib, sizning kassangizga qo'shiladi."
+      : "Rad etilsa hech qanday pul ko'chmaydi, ko'chirma bekor bo'ladi.",
+  ].join("\n");
+}
+
+export function transferDecidedView(decision: "confirm" | "reject", entryId: number, amount: number, fromName: string, toName: string): string {
+  return decision === "confirm"
+    ? `✅ <b>Qabul qilindi</b> — #${entryId}\n${esc(fromName)} → ${esc(toName)} · <b>${so(amount)}</b>`
+    : `❌ <b>Rad etildi</b> — #${entryId}\n${esc(fromName)} → ${esc(toName)} · ${so(amount)} — pul jo'natuvchida qoldi.`;
+}
+
+export function transferDecisionFailed(error: string): string {
+  return `⛔ ${esc(error)}`;
+}
+
+export function transferNotFound(): string {
+  return "Bu ko'chirma topilmadi yoki allaqachon hal qilingan.";
 }

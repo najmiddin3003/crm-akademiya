@@ -14,6 +14,8 @@
 //                --amount 320000     ("max" — chiqimda "Hammasi" tugmasi)
 //                --flow chiqim --type "Avans" --person Nilufar --method Naqd
 //                                    (chiqim oqimi: tur nomi, kim, to'lov turi)
+//                --flow transfer | methods | inbox
+//                                    (boshqa kassaga / turlar orasida / kelayotganlar)
 //                --apply             (tasdiqni ham bosadi — PUL YOZILADI, Sheets/guruhga
 //                                     navbat tushadi; lokal .env prod kalitlariga
 //                                     qarasa HAQIQIY guruhga xabar ketadi!)
@@ -245,6 +247,47 @@ if (FLOW === "kirim") {
     const noteCb = pick("s:k:n:");
     if (noteCb) await cb(noteCb);
     await confirmOrStop("s:k:ok:");
+  }
+} else if (FLOW === "transfer" || FLOW === "inbox" || FLOW === "methods") {
+  // --flow transfer: boshqa kassaga (birinchi kassa, --method, --amount);
+  // --flow methods: turlar orasida; --flow inbox: kelayotganlar + ✓ so'rovi.
+  rule(`KO'CHIRISH (${FLOW})`);
+  await cb("s:transfer");
+  if (FLOW === "inbox") {
+    await cb("s:t:inbox");
+    const acc = pick("s:t:acc:");
+    if (acc) {
+      await cb(acc); // "rostdan ham?" ekrani — 2-bosish (acc2) faqat --apply bilan
+      const sure = pick("s:t:acc2:");
+      if (sure && APPLY) {
+        rule("QABUL (--apply)");
+        await cb(sure);
+        for (const fn of deferred) await fn();
+      } else if (sure) {
+        line("\n  Qabul BOSILMADI (--apply berilmagan) — pul ko'chmadi.");
+      }
+    } else {
+      line("  Kelayotgan ko'chirma yo'q.");
+    }
+  } else {
+    await cb(FLOW === "transfer" ? "s:t:to" : "s:t:in");
+    if (FLOW === "transfer") {
+      const dest = pick("s:t:d:");
+      if (dest) await cb(dest);
+    }
+    const methodCb = lastKeyboard.flat().find((b) => String(b.callback_data ?? "").startsWith("s:t:m:") && b.text.startsWith(METHOD))?.callback_data
+      ?? pick("s:t:m:");
+    if (methodCb) await cb(methodCb);
+    if (FLOW === "methods") {
+      const toCb = lastKeyboard.flat().find((b) => String(b.callback_data ?? "").startsWith("s:t:m2:") && !b.text.startsWith(METHOD))?.callback_data
+        ?? pick("s:t:m2:");
+      if (toCb) await cb(toCb);
+    }
+    if (AMOUNT === "max") await cb("s:t:a:max");
+    else await msg(AMOUNT);
+    const noteCb = pick("s:t:n:");
+    if (noteCb) await cb(noteCb);
+    await confirmOrStop("s:t:go:");
   }
 } else {
   // --flow chiqim: tur nomi --type bilan (sukut "Avans"), kim --person bilan.
