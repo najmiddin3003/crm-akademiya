@@ -215,7 +215,7 @@ export default function Navbar({ onOpenMobileMenu, user = null }: NavbarProps) {
   // da'vo bo'lardi.
   const { unread, unreadIsFloor, everLoaded } = useNotifications();
   const notifBadge = badgeLabel(unread, unreadIsFloor);
-  const showBadge = everLoaded && unread > 0;
+  const showBadge = everLoaded && unread > 0;
 
   // Topshiriq ikonkasi — xodimning shaxsiy oynasi (TaskInboxProvider).
   // Javob kutayotgan topshiriq bo'lsa QIZIL (pulsatsiya + yozuv), faqat
