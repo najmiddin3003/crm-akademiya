@@ -696,7 +696,7 @@ export default function FirstLessonsPage() {
           </a>
           <a
             className="fl-action-btn-row"
-            href={telHref(menuFor.order.phone) ? `https://tv.me/${telHref(menuFor.order.phone)}` : undefined}
+            href={telHref(menuFor.order.phone) ? `https://t.me/${telHref(menuFor.order.phone)}` : undefined}
             target="_blank"
             rel="noreferrer"
             onClick={() => setMenuFor(null)}

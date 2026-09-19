@@ -361,7 +361,7 @@ export default function GroupFormModal({
 
         <div className="sm:col-span-2">
           <label className={labelCls}>{t("Telegram guruh havolasi")}</label>
-          <input value={telegram} onChange={(e) => setTelegram(e.target.value)} type="text" placeholder="https://tv.me/..." className={inputCls} />
+          <input value={telegram} onChange={(e) => setTelegram(e.target.value)} type="text" placeholder="https://t.me/..." className={inputCls} />
         </div>
       </div>
     </Modal>

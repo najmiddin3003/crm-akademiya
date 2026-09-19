@@ -41,7 +41,7 @@ export default function TaskDashboardWidgets({ tasks, active, onChange }: TaskDa
       {widgets.map((w) => (
         <div
           key={w.key}
-          className={`tv-widget ${w.className} ${active === w.key ? "active" : ""}`}
+          className={`t-widget ${w.className} ${active === w.key ? "active" : ""}`}
           onClick={() => onChange(w.key)}
           title={t(w.label)}
         >

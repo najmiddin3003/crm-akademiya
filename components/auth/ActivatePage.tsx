@@ -20,7 +20,7 @@ export default function ActivatePage() {
   const { t } = useT();
   const router = useRouter();
   const params = useSearchParams();
-  const token = params.get("tv") || "";
+  const token = params.get("t") || "";
 
   const [step, setStep] = useState<Step>(token ? "loading" : "phone");
   const [maskedPhone, setMaskedPhone] = useState("");
