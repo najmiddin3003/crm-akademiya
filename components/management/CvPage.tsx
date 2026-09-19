@@ -8,7 +8,6 @@ import {
   CV_ANY_BRANCH,
   CV_APPS_SCRIPT,
   CV_POSITIONS,
-  CV_QUESTIONS,
   CV_STATUS,
   CV_STATUS_ORDER,
 } from "@/constants/managementCv";
@@ -17,11 +16,13 @@ import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
+import CvFormModal from "./CvFormModal";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
 // bo'limining aynan o'zi: sarlavha + 4 ta amal tugmasi, 5 ta statistika
-// kartasi, filtr/qidiruv paneli, arizalar jadvali va uchta modal (ariza
-// tafsiloti, Google Sheets sozlash, yangi anketa).
+// kartasi, filtr/qidiruv paneli, arizalar jadvali va modallar (ariza
+// tafsiloti, fayl ko'rish, Google Sheets sozlash, yangi anketa —
+// CvFormModal.tsx, ommaviy /ariza bilan bir xil savollar).
 //
 // Ma'lumot HAQIQIY — /api/management-cv (MongoDB `cv_applications`).
 // Google Sheets ulanishi referensdagidek ixtiyoriy: URL brauzerda
@@ -69,24 +70,6 @@ function writeSheetsUrl(url: string) {
     // localStorage o'chirilgan bo'lsa ham sahifa ishlayversin.
   }
   for (const cb of sheetsListeners) cb();
-}
-
-interface CvQuestion {
-  k: string;
-  q: string;
-  req?: boolean;
-  type?: "date" | "select" | "multi" | "textarea";
-  opts?: string[];
-}
-
-const QUESTIONS = CV_QUESTIONS as CvQuestion[];
-
-type FormValues = Record<string, string | string[]>;
-
-function emptyForm(): FormValues {
-  const out: FormValues = {};
-  for (const f of QUESTIONS) out[f.k] = f.type === "multi" ? [] : "";
-  return out;
 }
 
 /** Nomzod rasmi (yangi anketa) yoki bosh harflar (eski). */
@@ -243,8 +226,6 @@ export default function CvPage() {
   const [acting, setActing] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<FormValues>(emptyForm);
-  const [submitting, setSubmitting] = useState(false);
 
   const [sheetsOpen, setSheetsOpen] = useState(false);
   const sheetsUrl = useSyncExternalStore(subscribeSheetsUrl, readSheetsUrl, readServerSheetsUrl);
@@ -468,48 +449,14 @@ export default function CvPage() {
     }
   }
 
-  /* ---- Yangi anketa ---- */
+  /* ---- Yangi anketa (CvFormModal — ommaviy /ariza bilan bir xil) ---- */
   function openForm() {
-    setForm(emptyForm());
     setFormOpen(true);
   }
 
-  function setField(k: string, v: string) {
-    setForm((f) => ({ ...f, [k]: v }));
-  }
-
-  function toggleMulti(k: string, opt: string) {
-    setForm((f) => {
-      const cur = (f[k] as string[]) || [];
-      return { ...f, [k]: cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt] };
-    });
-  }
-
-  async function submitForm() {
-    const val = (k: string) => String(form[k] ?? "").trim();
-    if (!val("name")) return showError(t("⚠ Ism va familiyani kiriting"));
-    if (!val("phone")) return showError(t("⚠ Telefon raqamni kiriting"));
-    if (!val("position")) return showError(t("⚠ Yo'nalishni tanlang"));
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/management-cv", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        showError(t(data.error || "Saqlanmadi"));
-        return;
-      }
-      await load();
-      setFormOpen(false);
-      showSuccess(t("CV qabul qilindi — {name}, ariza \"Yangi\" holatida", { name: data.application.name }));
-    } catch {
-      showError(t("Serverga ulanib bo'lmadi"));
-    } finally {
-      setSubmitting(false);
-    }
+  async function onFormSaved(app: CvApplication | null) {
+    await load();
+    if (app) showSuccess(t("CV qabul qilindi — {name}, ariza \"Yangi\" holatida", { name: app.name }));
   }
 
   const closeDetail = useCallback(() => setDetailId(null), []);
@@ -724,6 +671,7 @@ export default function CvPage() {
               <DetailRow label={detail.ref ? t("Oxirgi ish joyi va lavozimi") : t("Hozirgi ish holati")} value={detail.currentJob} />
               <DetailRow label={t("Bandlik turi")} value={detail.load ? t(detail.load) : ""} />
               <DetailRow label={t("Vakansiyani qayerdan bilgan")} value={detail.source ? t(detail.source) : ""} />
+              <DetailRow label={t("CRM'da kiritdi")} value={detail.enteredBy} />
 
               <DetailSection title={t("Ta'lim va tajriba")} />
               <DetailRow label={t("Ta'lim darajasi")} value={detail.edu ? t(detail.edu) : ""} />
@@ -867,84 +815,8 @@ export default function CvPage() {
           </>)}</Modal>
       )}
 
-      {/* ===== CV FORM MODAL (anketa) ===== */}
-      {formOpen && (
-        <Modal onClose={() => setFormOpen(false)} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-[17px] font-semibold">{t("Ishga qabul anketasi")}</div>
-                <button
-                  onClick={modal.close}
-                  className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="text-[12px] text-muted-foreground mb-4">
-                {t("Akademiya o'quv markazi — jamoamizga qo'shilish uchun anketani to'ldiring. Faqat jiddiy nomzodlar ko'rib chiqiladi.")}
-              </div>
-
-              <div className="space-y-3">
-                {QUESTIONS.map((f, i) => (
-                  <div key={f.k}>
-                    <label className="block text-[13px] font-medium mb-1">
-                      {i + 1}. {f.q}
-                      {f.req && <span className="text-rose-500">*</span>}
-                    </label>
-                    {f.type === "select" ? (
-                      <Select value={String(form[f.k] ?? "")} onChange={(v) => setField(f.k, v)} options={(f.opts || []).map((o) => ({ value: o, label: o }))} placeholder={t("Tanlang")} clearable />
-                    ) : f.type === "multi" ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-                        {(f.opts || []).map((o) => (
-                          <label key={o} className="flex items-center gap-2 text-[13px] cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={((form[f.k] as string[]) || []).includes(o)}
-                              onChange={() => toggleMulti(f.k, o)}
-                              className="h-4 w-4 rounded border-border accent-primary"
-                            />
-                            <span>{o}</span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : f.type === "textarea" ? (
-                      <textarea
-                        value={String(form[f.k] ?? "")}
-                        onChange={(e) => setField(f.k, e.target.value)}
-                        rows={2}
-                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y"
-                      />
-                    ) : (
-                      <input
-                        value={String(form[f.k] ?? "")}
-                        onChange={(e) => setField(f.k, e.target.value)}
-                        type={f.type === "date" ? "date" : "text"}
-                        className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-border">
-                <button
-                  onClick={modal.close}
-                  disabled={submitting}
-                  className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm disabled:opacity-60"
-                >
-                  {t("Bekor qilish")}
-                </button>
-                <button
-                  onClick={submitForm}
-                  disabled={submitting}
-                  className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
-                >
-                  {submitting ? t("Yuborilmoqda…") : t("Anketani yuborish")}
-                </button>
-              </div>
-            </div>
-          </>)}</Modal>
-      )}
+      {/* ===== CV FORM MODAL (anketa) — ommaviy /ariza bilan bir xil ===== */}
+      {formOpen && <CvFormModal sheetsUrl={sheetsUrl} onClose={() => setFormOpen(false)} onSaved={onFormSaved} />}
     </div>
   );
 }

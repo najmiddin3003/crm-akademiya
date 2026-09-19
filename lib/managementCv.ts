@@ -74,8 +74,10 @@ export interface CvApplication {
   source?: string;
   cvFile?: CvFile | null;
   docs?: CvFile[];
-  /** Rozilik belgilangan vaqt (ISO). */
+  /** Rozilik belgilangan vaqt (ISO); CRM'da xodim kiritgan bo'lsa bo'sh. */
   consentAt?: string;
+  /** CRM'dagi "Ishga qabul anketasi" modalida kim kiritgani (xodim ismi). */
+  enteredBy?: string;
   status: CvStatus;
   /** "dd.MM.yyyy | HH:mm" — jadvaldagi "Topshirilgan" ustuni. */
   submitted: string;

@@ -2,29 +2,17 @@
 
 /* eslint-disable @next/next/no-img-element -- rasmlar data: URL va Cloudinary, next/image kerak emas. */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Moon, Sun } from "lucide-react";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import { useTheme } from "@/components/shared/Theme";
 import { LANGS as LANG_LABELS } from "@/lib/navbar";
 import { LANGS, type Lang } from "@/lib/i18n";
-import {
-  CV_ANY_BRANCH,
-  CV_EDU_LEVELS,
-  CV_EXP_LEVELS,
-  CV_FILE_LIMITS,
-  CV_INSTAGRAM,
-  CV_LOADS,
-  CV_MAIN_PHONE,
-  CV_MIN_AGE,
-  CV_ROLE_GROUPS,
-  CV_SOURCES,
-  CV_SUBJECT_GROUPS,
-  CV_TEACHING_ROLES,
-} from "@/constants/managementCv";
-import { ageOf, formatUzPhone, type CvApplication } from "@/lib/managementCv";
-import { useLang, useT } from "@/components/shared/Language";
+import { CV_INSTAGRAM, CV_LOADS, CV_MAIN_PHONE, CV_TEACHING_ROLES } from "@/constants/managementCv";
+import { formatUzPhone } from "@/lib/managementCv";
+import { useLang } from "@/components/shared/Language";
+import { EMPTY_VALUES, fmtSize, formatSalary, useCvApplyForm, type ApplyBranch, type TextKey, type Values } from "./cvApplyForm";
 
 // OMMAVIY ISH ARIZASI (/ariza) — dizayn foydalanuvchining
 // "akademiya-ishga-ariza.html" faylidan (19.09.2026): chap panelda jonli
@@ -32,13 +20,14 @@ import { useLang, useT } from "@/components/shared/Language";
 // ta'lim/tajriba, qo'shimcha), tepada to'ldirilish o'lchagichi, mobilda
 // pastki panel. Uslublar app/ariza/ariza.css da.
 //
-// NIMA QILADI:
-//   • rasm (majburiy) — brauzerda 900px JPEG'ga kichraytiriladi, so'ng
-//     server orqali Cloudinary'ga; CV fayli va sertifikat nusxalari (10
-//     tagacha) ham Cloudinary'ga — app/api/management-cv (multipart);
+// MANTIQ (savollar, tekshiruv, rasm kichraytirish, fayllar, yuborish) —
+// ./cvApplyForm.ts dagi useCvApplyForm: CRM'dagi "Ishga qabul anketasi"
+// modali (CvFormModal.tsx) ham AYNI hook'ni ishlatadi, shuning uchun ikki
+// anketa hech qachon bir-biridan farq qilmaydi. Bu faylda faqat ommaviy
+// sahifaga xos narsalar qoldi:
 //   • qoralama localStorage'da (matn + rasm) — sahifa yopilib qolsa
 //     yozganlari qaytadi; fayllar qoralamaga tushmaydi (File saqlanmaydi);
-//   • tekshiruv mijozda (tezkor) va serverda (haqiqiy) bir xil;
+//   • tuzoq maydoni (botlar uchun), yuborilgach "Ariza yuborildi" ekrani;
 //   • Google Sheets ulangan bo'lsa (`#s=BASE64(url)`) ariza jadvalga ham
 //     yoziladi — CRM dagi "Ariza havolasini ulashish" shunday havola beradi.
 //
@@ -50,27 +39,7 @@ import { useLang, useT } from "@/components/shared/Language";
 // (loyiha qoidasi: native <select>/<input type="date"> ishlatilmaydi);
 // til va tungi rejim tugmalari sahifa tepasida (navbar yo'q).
 
-export interface ApplyBranch {
-  id: number;
-  name: string;
-  location: string;
-  address: string;
-  phone: string;
-}
-
-type TextKey =
-  | "firstName" | "lastName" | "birth" | "phone" | "telegram" | "city" | "role" | "subject" | "branch"
-  | "load" | "startDate" | "salary" | "edu" | "exp" | "school" | "lastJob" | "certText" | "about" | "source";
-
-type Values = Record<TextKey, string>;
-
-const EMPTY: Values = {
-  firstName: "", lastName: "", birth: "", phone: "", telegram: "", city: "", role: "", subject: "", branch: "",
-  load: "", startDate: "", salary: "", edu: "", exp: "", school: "", lastJob: "", certText: "", about: "", source: "",
-};
-
-/** Majburiy matn/tanlov maydonlari — o'lchagich va tekshiruv shu ro'yxatdan (dizayndagi `required`). */
-const REQUIRED: TextKey[] = ["firstName", "lastName", "birth", "phone", "city", "role", "branch", "startDate", "salary", "edu", "exp", "school", "about"];
+export type { ApplyBranch } from "./cvApplyForm";
 
 const DRAFT_KEY = "akademiya_ariza_draft";
 
@@ -87,40 +56,6 @@ function readSheetsUrlFromHash(): string {
   }
 }
 
-function fmtSize(b: number): string {
-  return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
-}
-
-/** Rasmni brauzerda kichraytiradi (uzun tomoni `max`) — yuklash yengil bo'lsin. */
-function shrinkImage(src: string, max: number, quality: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k);
-      c.height = Math.round(img.height * k);
-      c.getContext("2d")?.drawImage(img, 0, 0, c.width, c.height);
-      try {
-        resolve(c.toDataURL("image/jpeg", quality));
-      } catch {
-        resolve(src);
-      }
-    };
-    img.onerror = () => reject(new Error("decode"));
-    img.src = src;
-  });
-}
-
-function dataUrlToFile(dataUrl: string, name: string): File {
-  const [head, b64] = dataUrl.split(",");
-  const mime = /data:([^;]+)/.exec(head)?.[1] || "image/jpeg";
-  const bin = atob(b64 || "");
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new File([bytes], name, { type: mime });
-}
-
 const PersonIcon = ({ size }: { size: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
     <circle cx="12" cy="8.5" r="3.6" />
@@ -129,40 +64,24 @@ const PersonIcon = ({ size }: { size: number }) => (
 );
 
 export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
-  const { t } = useT();
   const [lang, setLang] = useLang();
   const [isDark, toggleTheme] = useTheme();
-  const [v, setV] = useState<Values>(EMPTY);
-  const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // tuzoq maydoni — odam ko'rmaydi
-  const [photo, setPhoto] = useState(""); // dataURL (kichraytirilgan JPEG)
-  const [photoErr, setPhotoErr] = useState("");
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const [docs, setDocs] = useState<File[]>([]);
-  const [certErr, setCertErr] = useState("");
+  const [sheetsUrl] = useState(readSheetsUrlFromHash);
   const [dragOver, setDragOver] = useState(false);
-  const [bad, setBad] = useState<Set<string>>(() => new Set());
-  const [birthErr, setBirthErr] = useState("");
-  const [consentBad, setConsentBad] = useState(false);
-  const [sendErr, setSendErr] = useState("");
-  const [sending, setSending] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [done, setDone] = useState<{ ref: string; tel: string; files: string } | null>(null);
-  const [sheetsUrl] = useState(readSheetsUrlFromHash);
+
+  const form = useCvApplyForm({ branches, photoRequired: true, consentRequired: true, sheetsUrl, honeypot: website });
+  const {
+    t, v, setV, set, consent, setConsent, consentBad, setConsentBad, photo, setPhoto, photoErr, cvFile, docs, certErr,
+    bad, birthErr, sendErr, sending, teaching, selectedBranch, branchLabel, branchTel, pct,
+    roleOptions, subjectOptions, branchOptions, eduOptions, expOptions, sourceOptions,
+    photoInput, cvInput, docsInput, onPhotoPick, removePhoto, onCvPick, addDocs, removeDoc, submit, reset,
+  } = form;
 
   const formRef = useRef<HTMLFormElement>(null);
-  const photoInput = useRef<HTMLInputElement>(null);
-  const cvInput = useRef<HTMLInputElement>(null);
-  const docsInput = useRef<HTMLInputElement>(null);
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sendingRef = useRef(false);
-
-  const set = useCallback((k: TextKey, val: string) => setV((s) => ({ ...s, [k]: val })), []);
-  const teaching = CV_TEACHING_ROLES.includes(v.role);
-
-  const selectedBranch = v.branch && v.branch !== "any" ? branches.find((b) => String(b.id) === v.branch) ?? null : null;
-  const branchLabel = v.branch === "any" ? t(CV_ANY_BRANCH) : selectedBranch ? selectedBranch.name : "";
-  const branchTel = (selectedBranch?.phone || CV_MAIN_PHONE).trim();
 
   /* ---- qoralama: tiklash va saqlash ---- */
   // Tiklash gidratatsiyadan KEYIN (localStorage serverda yo'q) va bir tik
@@ -174,9 +93,9 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
         const raw = localStorage.getItem(DRAFT_KEY);
         if (!raw) return;
         const d = JSON.parse(raw) as Partial<Values> & { _rasm?: string; consent?: boolean };
-        const next: Values = { ...EMPTY };
+        const next: Values = { ...EMPTY_VALUES };
         let any = false;
-        for (const k of Object.keys(EMPTY) as TextKey[]) {
+        for (const k of Object.keys(EMPTY_VALUES) as TextKey[]) {
           if (typeof d[k] === "string" && d[k]) {
             next[k] = d[k] as string;
             any = true;
@@ -195,7 +114,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
       }
     }, 0);
     return () => clearTimeout(id);
-  }, []);
+  }, [setV, setPhoto, setConsent]);
 
   useEffect(() => {
     if (done) return;
@@ -223,230 +142,36 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
     } catch {
       /* — */
     }
-    setV(EMPTY);
-    setConsent(false);
-    setPhoto("");
-    setPhotoErr("");
-    setCvFile(null);
-    setDocs([]);
-    setCertErr("");
-    setBad(new Set());
+    reset();
     setDraftRestored(false);
-    if (cvInput.current) cvInput.current.value = "";
   }
 
-  /* ---- o'lchagich ---- */
-  const fieldOk = useCallback(
-    (k: TextKey) => {
-      const val = v[k].trim();
-      if (!val) return false;
-      if (k === "phone") return val.replace(/\D/g, "").length === 12;
-      if (k === "birth") {
-        const a = ageOf(val);
-        return a >= CV_MIN_AGE && a < 80;
-      }
-      return true;
-    },
-    [v],
-  );
-  const pct = useMemo(() => {
-    let n = REQUIRED.filter(fieldOk).length;
-    if (v.load) n++;
-    if (consent) n++;
-    if (photo) n++;
-    return Math.round((n / (REQUIRED.length + 3)) * 100);
-  }, [fieldOk, v.load, consent, photo]);
-
-  /* ---- rasm ---- */
-  async function onPhotoPick(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    if (!/^image\//.test(f.type)) return setPhotoErr(t("Faqat rasm yuklang — JPG yoki PNG."));
-    if (f.size > CV_FILE_LIMITS.photoBytes) return setPhotoErr(t("Rasm hajmi 10 MB dan oshmasin."));
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        setPhoto(await shrinkImage(String(reader.result), 900, 0.82));
-        setPhotoErr("");
-      } catch {
-        setPhotoErr(t("Bu formatdagi rasm ochilmadi — JPG yoki PNG yuklang."));
-      }
-    };
-    reader.onerror = () => setPhotoErr(t("Rasmni o'qib bo'lmadi, boshqasini tanlang."));
-    reader.readAsDataURL(f);
-  }
-
-  /* ---- sertifikat va diplomlar ---- */
-  function addDocs(list: FileList | File[]) {
-    let msg = "";
-    // FileList JONLI — chaqiruvchi input'ni darhol tozalaydi (`value = ""`),
-    // React esa yangilovchini keyinroq ishga tushiradi. Shu bois nusxa hozir.
-    const picked = Array.from(list);
-    // Xato matni ham SHU YERDA hisoblanadi (yangilovchi ichida emas — u
-    // keyinroq, render paytida ishlaydi va `msg` bo'sh qolardi).
-    const next = [...docs];
-    {
-      for (const f of picked) {
-        if (next.length >= CV_FILE_LIMITS.docsCount) {
-          msg = t("Ko'pi bilan {n} ta fayl yuklash mumkin.", { n: CV_FILE_LIMITS.docsCount });
-          break;
-        }
-        if (f.size > CV_FILE_LIMITS.fileBytes) {
-          msg = t("{name} — 10 MB dan katta, siqib qayta yuklang.", { name: f.name });
-          continue;
-        }
-        if (next.reduce((a, x) => a + x.size, 0) + f.size > CV_FILE_LIMITS.docsTotalBytes) {
-          msg = t("Fayllarning umumiy hajmi 25 MB dan oshmasin.");
-          continue;
-        }
-        if (!/^image\//.test(f.type) && f.type !== "application/pdf" && !/\.(pdf|jpe?g|png|webp)$/i.test(f.name)) {
-          msg = t("{name} — faqat PDF yoki rasm yuklanadi.", { name: f.name });
-          continue;
-        }
-        if (next.some((x) => x.name === f.name && x.size === f.size)) continue;
-        next.push(f);
-      }
-    }
-    setDocs(next);
-    setCertErr(msg);
-  }
   function onDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     setDragOver(false);
     if (e.dataTransfer?.files) addDocs(e.dataTransfer.files);
   }
 
-  /* ---- tekshirish ---- */
-  function validate(): boolean {
-    const nextBad = new Set<string>();
-    let first: string | null = null;
-    const mark = (id: string) => {
-      nextBad.add(id);
-      if (!first) first = id;
-    };
-    if (!photo) {
-      setPhotoErr(t("Rasmingizni yuklang."));
-      first = "photoBtn";
-    } else setPhotoErr("");
-    for (const k of REQUIRED) {
-      if (k === "birth") {
-        const a = v.birth ? ageOf(v.birth) : -1;
-        setBirthErr(
-          v.birth && !(a >= CV_MIN_AGE && a < 80)
-            ? t("Ishga qabul {age} yoshdan boshlanadi — sanani tekshiring.", { age: CV_MIN_AGE })
-            : t("Tug'ilgan sanangizni tanlang."),
-        );
-      }
-      if (!fieldOk(k)) mark(k);
-    }
-    if (v.startDate && v.startDate < today) mark("startDate");
-    if (teaching && !v.subject) mark("subject");
-    if (!v.load) mark("load1");
-    setConsentBad(!consent);
-    if (!consent) mark("consent");
-    setBad(nextBad);
-    if (first) {
-      const el = document.getElementById(`ar-${first}`);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      el?.focus({ preventScroll: true });
-    }
-    return !first;
-  }
-
   /* ---- yuborish ---- */
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!validate() || sendingRef.current) return;
-    sendingRef.current = true;
-    setSending(true);
-    setSendErr("");
-    const sid = `pa${Date.now()}_${Math.floor(Math.random() * 9999)}`;
-    try {
-      const fd = new FormData();
-      for (const k of Object.keys(v) as TextKey[]) fd.append(k, v[k]);
-      fd.append("consent", consent ? "on" : "");
-      fd.append("website", website);
-      fd.append("sid", sid);
-      fd.append("photo", dataUrlToFile(photo, "rasm.jpg"));
-      if (cvFile) fd.append("cv", cvFile);
-      for (const d of docs) fd.append("docs", d);
-
-      const res = await fetch("/api/management-cv", { method: "POST", body: fd });
-      const out = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; ref?: string; application?: CvApplication | null };
-      if (!res.ok || !out.ok) throw new Error(out.error || `server ${res.status}`);
-      const ref = out.ref || "";
-      const app = out.application;
-
-      // Google Sheets ulangan bo'lsa — markaziy jadvalga ham (javob kutilmaydi).
-      if (sheetsUrl && app) {
-        const rec = {
-          sid,
-          ref,
-          name: app.name,
-          phone: app.phone,
-          telegram: app.telegram || "",
-          address: app.address,
-          birth: app.birth,
-          university: app.university,
-          position: app.position,
-          subject: app.subject,
-          branchName: app.branchName || "",
-          load: app.load || "",
-          edu: app.edu || "",
-          achievements: app.achievements,
-          experience: app.experience,
-          startDate: app.startDate,
-          whyUs: app.whyUs,
-          currentJob: app.currentJob,
-          expectedSalary: app.expectedSalary,
-          source: app.source || "",
-          photoUrl: app.photoUrl || "",
-          cvFileUrl: app.cvFile?.url || "",
-          docsUrls: (app.docs || []).map((d) => d.url),
-          priorities: [],
-          strengths: [],
-        };
-        fetch(sheetsUrl, { method: "POST", body: JSON.stringify(rec) }).catch(() => {});
-      }
-
-      const files = [t("rasm")];
-      if (docs.length) files.push(t("{n} ta sertifikat/diplom", { n: docs.length }));
-      if (cvFile) files.push(t("CV fayli"));
-      if (draftTimer.current) clearTimeout(draftTimer.current);
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch {
-        /* — */
-      }
-      setDone({ ref, tel: branchTel, files: files.join(", ") });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err) {
-      const msg = err instanceof Error && err.message && !/^server \d+/.test(err.message) ? t(err.message) : "";
-      setSendErr(msg || t("Yuborib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring — yozganlaringiz saqlanib turibdi."));
+    const r = await submit();
+    if (!r) {
       setTimeout(() => document.getElementById("ar-sendErr")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
-    } finally {
-      sendingRef.current = false;
-      setSending(false);
+      return;
     }
+    // Yuborilgach — kutib turgan qoralama taymeri ham o'chsin, aks holda
+    // tozalangan qoralama qayta yozilib qolardi.
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* — */
+    }
+    setDone({ ref: r.ref, tel: branchTel, files: r.files.join(", ") });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const roleOptions = useMemo(
-    () => CV_ROLE_GROUPS.flatMap((g) => g.roles.map((r) => ({ value: r, label: t(r), group: t(g.label) }))),
-    [t],
-  );
-  const subjectOptions = useMemo(
-    () => CV_SUBJECT_GROUPS.flatMap((g) => g.subjects.map((sub) => ({ value: sub, label: t(sub), group: t(g.label) }))),
-    [t],
-  );
-  const branchOptions = useMemo(
-    () => [
-      ...branches.map((b) => ({ value: String(b.id), label: b.name, sub: b.address || b.location || undefined })),
-      { value: "any", label: t(CV_ANY_BRANCH) },
-    ],
-    [branches, t],
-  );
   const fullName = `${v.firstName} ${v.lastName}`.trim();
   const fieldCls = (k: string, extra = "") => `field${extra ? " " + extra : ""}${bad.has(k) ? " bad" : ""}`;
 
@@ -589,14 +314,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                             {photo ? t("Boshqa rasm") : t("Rasm tanlash")}
                           </button>
                           {photo && (
-                            <button
-                              className="mini ghost"
-                              type="button"
-                              onClick={() => {
-                                setPhoto("");
-                                setPhotoErr("");
-                              }}
-                            >
+                            <button className="mini ghost" type="button" onClick={removePhoto}>
                               {t("O'chirish")}
                             </button>
                           )}
@@ -723,10 +441,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                         inputMode="numeric"
                         placeholder="4 000 000"
                         value={v.salary}
-                        onChange={(e) => {
-                          const d = e.target.value.replace(/\D/g, "").slice(0, 12);
-                          set("salary", d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, " ") : "");
-                        }}
+                        onChange={(e) => set("salary", formatSalary(e.target.value))}
                       />
                       <p className="err">{t("Taxminiy summani yozing.")}</p>
                     </div>
@@ -740,12 +455,12 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                   <div className="grid">
                     <div className={fieldCls("edu")}>
                       <label htmlFor="ar-edu">{t("Ta'lim darajasi")}</label>
-                      <Select id="ar-edu" size="lg" value={v.edu} error={bad.has("edu")} placeholder={t("Tanlang")} options={CV_EDU_LEVELS.map((o) => ({ value: o, label: t(o) }))} onChange={(val) => set("edu", val)} />
+                      <Select id="ar-edu" size="lg" value={v.edu} error={bad.has("edu")} placeholder={t("Tanlang")} options={eduOptions} onChange={(val) => set("edu", val)} />
                       <p className="err">{t("Ta'lim darajangizni tanlang.")}</p>
                     </div>
                     <div className={fieldCls("exp")}>
                       <label htmlFor="ar-exp">{t("Ish tajribasi")}</label>
-                      <Select id="ar-exp" size="lg" value={v.exp} error={bad.has("exp")} placeholder={t("Tanlang")} options={CV_EXP_LEVELS.map((o) => ({ value: o, label: t(o) }))} onChange={(val) => set("exp", val)} />
+                      <Select id="ar-exp" size="lg" value={v.exp} error={bad.has("exp")} placeholder={t("Tanlang")} options={expOptions} onChange={(val) => set("exp", val)} />
                       <p className="err">{t("Tajribangizni tanlang.")}</p>
                     </div>
                     <div className={fieldCls("school", "full")}>
@@ -774,21 +489,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                           <path d="M12 16V4M6 10l6-6 6 6M4 20h16" />
                         </svg>
                         <span>{cvFile ? cvFile.name : t("Fayl tanlash")}</span>
-                        <input
-                          ref={cvInput}
-                          id="ar-cv"
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0] ?? null;
-                            if (f && f.size > CV_FILE_LIMITS.fileBytes) {
-                              setCertErr(t("CV fayli 10 MB dan oshmasin."));
-                              e.target.value = "";
-                              return;
-                            }
-                            setCvFile(f);
-                          }}
-                        />
+                        <input ref={cvInput} id="ar-cv" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={onCvPick} />
                       </label>
                     </div>
                     <div className="field full">
@@ -842,10 +543,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                               <button
                                 type="button"
                                 aria-label={t("{name} faylini olib tashlash", { name: f.name })}
-                                onClick={() => {
-                                  setDocs((d) => d.filter((_, j) => j !== i));
-                                  setCertErr("");
-                                }}
+                                onClick={() => removeDoc(i)}
                               >
                                 ×
                               </button>
@@ -872,7 +570,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                       <label htmlFor="ar-source">
                         {t("Vakansiyani qayerdan bildingiz")} <i>{t("— ixtiyoriy")}</i>
                       </label>
-                      <Select id="ar-source" size="lg" value={v.source} placeholder={t("Tanlang")} clearable options={CV_SOURCES.map((o) => ({ value: o, label: t(o) }))} onChange={(val) => set("source", val)} />
+                      <Select id="ar-source" size="lg" value={v.source} placeholder={t("Tanlang")} clearable options={sourceOptions} onChange={(val) => set("source", val)} />
                     </div>
                     <div className="hp" aria-hidden="true">
                       <label htmlFor="ar-website">Website</label>

@@ -2,62 +2,12 @@
 // va "OMMAVIY ARIZA SAHIFASI (#ariza)" bo'limlaridan ko'chirilgan sobit
 // ma'lumotlar. Sidebar: Boshqaruv > Ishga chaqiruv (CV), href /management-cv.
 //
-// Anketa savollari: "Akademiya o'quv markazi — Ishga qabul anketasi"
-// (Google Forms namunasi asosida, 20 savol). Savollar ro'yxati bitta joyda
-// turadi: CRM ichidagi "CV to'ldirish" modali ham, /ariza dagi ommaviy
-// 3 bosqichli anketa ham shuni o'qiydi.
-
-export const CV_QUESTIONS = [
-  { k: "name", q: "Ism va familiya", req: true },
-  { k: "phone", q: "Telefon raqamingiz", req: true },
-  { k: "address", q: "Yashash manzilingiz" },
-  { k: "birth", q: "Tug'ilgan kun, oy va yilingiz", type: "date" },
-  { k: "university", q: "Oliygohni nomi, qachon tamomlaganingiz va yo'nalishingiz" },
-  {
-    k: "position",
-    q: "Qaysi yo'nalishda ishlamoqchisiz?",
-    req: true,
-    type: "select",
-    opts: ["O'qituvchi", "Administrator", "SMM / Marketing", "Sotuv", "Boshqa"],
-  },
-  { k: "subject", q: "Qaysi fan yoki chet tilidan ishlamoqchisiz" },
-  { k: "achievements", q: "Yo'nalishingizda qanday yutuqlarga erishgansiz (sertifikatlar)" },
-  { k: "experience", q: "Avval ishlagan ish joyingiz haqida batafsil ma'lumot" },
-  { k: "startDate", q: "Qachondan ishlashni boshlay olasiz" },
-  { k: "whyUs", q: "Nega aynan bizning o'quv markazda ishlashni xohlaysiz?" },
-  { k: "schools", q: "Qanday o'quv markaz yoki maktablarda ishlagansiz?" },
-  { k: "currentJob", q: "Hozirgi paytda boshqa joyda ishlayapsizmi?" },
-  { k: "levels", q: "Qanday darajadagi o'quvchilarga dars bera olasiz" },
-  { k: "plans5", q: "Kelajakdagi 5 yillik rejalaringiz qanday" },
-  { k: "expectedSalary", q: "Kutilayotgan oylik maosh" },
-  { k: "results", q: "Agar sizni ishga olsak, qanday natija bera olasiz?" },
-  {
-    k: "priorities",
-    q: "Siz uchun ishda muhim bo'lgan 3 ta eng asosiy omil",
-    type: "multi",
-    opts: [
-      "Oylik maosh",
-      "Professional o'sish imkoniyati",
-      "Jamoa muhiti",
-      "Ish jadvali moslashuvchanligi",
-      "Ish joyi qulayligi",
-    ],
-  },
-  {
-    k: "strengths",
-    q: "Ish faoliyatingizdagi asosiy kuchli tomonlaringiz",
-    type: "multi",
-    opts: [
-      "Mas'uliyat",
-      "Jamoada ishlash",
-      "Moslashuvchanlik",
-      "Muammo yechish",
-      "Boshqaruv qobiliyati",
-      "Tashabbuskorlik",
-    ],
-  },
-  { k: "extra", q: "Qo'shimcha ma'lumotlar uchun joy", type: "textarea" },
-];
+// ESKI ANKETA (20 savolli Google Forms nusxasi) 19.09.2026 da olib
+// tashlandi: /ariza ham, CRM'dagi "Ishga qabul anketasi" modali ham endi
+// quyidagi YANGI ro'yxatlar bilan ishlaydi (components/management/
+// cvApplyForm.ts). Eski arizalarning maydonlari (schools, levels, plans5,
+// priorities, strengths …) lib/managementCv.ts dagi CvApplication'da
+// qoldi — bazadagi eski yozuvlar tafsilot oynasida o'qilaveradi.
 
 /** Toolbar'dagi "Yo'nalish" filtri — anketadagi `position` savoli bilan bir xil. */
 export const CV_POSITIONS = ["O'qituvchi", "Administrator", "SMM / Marketing", "Sotuv", "Boshqa"];

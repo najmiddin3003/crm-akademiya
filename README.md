@@ -1928,3 +1928,15 @@ forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
   buzardi. `NavigationHistory` ommaviy yo'llarni (`/ariza`, `/oquvchi`,
   `/activate`, `/tezlik`) eslamaydi — aks holda kirish sahifasi `/ariza` ga
   qaytarib yuborardi.
+- **CRM'dagi "Ishga qabul anketasi" modali** ("CV to'ldirish (yangi
+  ariza)") — endi ommaviy /ariza bilan AYNI anketa: savollar, tekshiruv,
+  rasm kichraytirish, fayl chegaralari, multipart yuborish va Sheets'ga
+  yozish `components/management/cvApplyForm.ts` dagi `useCvApplyForm`
+  hook'ida bitta nusxada; ommaviy sahifa (`CvApplyPage.tsx`) va modal
+  (`CvFormModal.tsx`) faqat ko'rinishni chizadi. Eski 21 savolli anketa
+  (`CV_QUESTIONS`) olib tashlandi, eski arizalar tafsilotda o'qilaveradi.
+  Xodim nomzod nomidan to'ldirgani uchun serverda xodim sessiyasi bo'lsa
+  **rasm va rozilik majburiy emas** (`consentAt` bo'sh qoladi), kim
+  kiritgani `enteredBy` ga yoziladi va tafsilotda "CRM'da kiritdi" bo'lib
+  ko'rinadi; filial navbardagi filialdan boshlanadi. Sessiyasiz (nomzod)
+  kelganda rasm va rozilik avvalgidek majburiy.

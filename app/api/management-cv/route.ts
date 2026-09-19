@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Db, Filter, Document } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope } from "@/lib/branchScope";
+import { getCurrentUser } from "@/lib/auth";
 import { CV_UPLOAD_FOLDER, cloudinaryConfig, uploadDocument, uploadImage } from "@/lib/cloudinary";
 import {
   ageOf,
@@ -93,13 +94,19 @@ function fileMeta(f: File, url: string): CvFile {
 }
 
 /**
- * OMMAVIY ANKETA — `multipart/form-data` (rasm va fayllar bilan).
+ * ANKETA — `multipart/form-data` (rasm va fayllar bilan). Ikki manbadan:
+ * ommaviy /ariza sahifasi (nomzod o'zi) va CRM'dagi "Ishga qabul anketasi"
+ * modali (xodim nomzod nomidan) — savollar bir xil, mijoz mantiqi ham bitta
+ * (components/management/cvApplyForm.ts).
  *
- * Tekshiruv mijozdagi bilan bir xil (components/management/CvApplyPage.tsx):
- * mijoz tezkor javob uchun, server esa haqiqat uchun — anketa ommaviy,
- * unga brauzersiz ham murojaat qilish mumkin. Fayllar avval tekshiriladi,
- * keyin Cloudinary'ga yuklanadi, oxirida bazaga yoziladi — yarim yozuv
- * qolmasin.
+ * Tekshiruv mijozdagi bilan bir xil: mijoz tezkor javob uchun, server esa
+ * haqiqat uchun — anketa ommaviy, unga brauzersiz ham murojaat qilish
+ * mumkin. Fayllar avval tekshiriladi, keyin Cloudinary'ga yuklanadi,
+ * oxirida bazaga yoziladi — yarim yozuv qolmasin.
+ *
+ * XODIM SESSIYASI bilan kelganda (CRM modali) rasm va rozilik majburiy
+ * emas — xodimda nomzodning rasmi bo'lmasligi mumkin, rozilikni nomzod
+ * o'zi belgilamaydi; kim kiritgani `enteredBy` ga yoziladi.
  */
 async function createFromPublicForm(db: Db, form: FormData) {
   const str = (k: string) => {
@@ -110,6 +117,8 @@ async function createFromPublicForm(db: Db, form: FormData) {
   // Tuzoq maydoni — botlar to'ldiradi, odam ko'rmaydi. Jimgina "qabul
   // qilindi" deymiz, lekin hech narsa saqlamaymiz.
   if (str("website")) return NextResponse.json({ ok: true, ref: makeCvRef(), application: null });
+
+  const staff = await getCurrentUser();
 
   const firstName = str("firstName");
   const lastName = str("lastName");
@@ -163,15 +172,16 @@ async function createFromPublicForm(db: Db, form: FormData) {
   if (!university) return bad("O'quv yurti va yo'nalishni yozing");
   const whyUs = str("about");
   if (!whyUs) return bad("Nega Akademiyada ishlamoqchi ekaningizni yozing");
-  if (str("consent") !== "on") return bad("Rozilikni belgilang");
+  const consented = str("consent") === "on";
+  if (!consented && !staff) return bad("Rozilikni belgilang");
 
   const source = str("source");
 
   // ── Fayllar ──
   const photo = fileOf(form, "photo");
-  if (!photo) return bad("Rasmingizni yuklang");
-  if (!IMAGE_TYPES.has(photo.type)) return bad("Faqat rasm yuklang — JPG yoki PNG");
-  if (photo.size > CV_FILE_LIMITS.photoBytes) return bad("Rasm hajmi 10 MB dan oshmasin");
+  if (!photo && !staff) return bad("Rasmingizni yuklang");
+  if (photo && !IMAGE_TYPES.has(photo.type)) return bad("Faqat rasm yuklang — JPG yoki PNG");
+  if (photo && photo.size > CV_FILE_LIMITS.photoBytes) return bad("Rasm hajmi 10 MB dan oshmasin");
 
   const cv = fileOf(form, "cv");
   if (cv && !(DOC_TYPES.has(cv.type) || DOC_EXT.test(cv.name))) return bad("CV fayli — faqat PDF, DOC yoki rasm");
@@ -187,13 +197,17 @@ async function createFromPublicForm(db: Db, form: FormData) {
   }
   if (total > CV_FILE_LIMITS.docsTotalBytes) return bad("Fayllarning umumiy hajmi 25 MB dan oshmasin");
 
-  // Rasm MAJBURIY va u Cloudinary'da bo'lishi shart (foydalanuvchi talabi) —
-  // sozlanmagan bo'lsa ariza qabul qilinmaydi, jimgina rasmsiz saqlanmaydi.
-  if (!cloudinaryConfig()) return bad("Rasm saqlash xizmati sozlanmagan — administratorga xabar bering", 503);
+  // Rasm (nomzod uchun MAJBURIY) va fayllar Cloudinary'da bo'lishi shart
+  // (foydalanuvchi talabi) — sozlanmagan bo'lsa ariza qabul qilinmaydi,
+  // jimgina fayllarsiz saqlanmaydi.
+  if ((photo || cv || docs.length) && !cloudinaryConfig()) return bad("Rasm saqlash xizmati sozlanmagan — administratorga xabar bering", 503);
 
-  const uploaded = await uploadImage(photo, CV_UPLOAD_FOLDER);
-  if (!uploaded.ok || !uploaded.url) return bad(uploaded.error || "Rasm yuklanmadi", 502);
-  const photoUrl = uploaded.url;
+  let photoUrl = "";
+  if (photo) {
+    const uploaded = await uploadImage(photo, CV_UPLOAD_FOLDER);
+    if (!uploaded.ok || !uploaded.url) return bad(uploaded.error || "Rasm yuklanmadi", 502);
+    photoUrl = uploaded.url;
+  }
 
   let cvFile: CvFile | null = null;
   if (cv) {
@@ -256,7 +270,8 @@ async function createFromPublicForm(db: Db, form: FormData) {
     source: CV_SOURCES.includes(source) ? source : "",
     cvFile,
     docs: docFiles,
-    consentAt: now.toISOString(),
+    consentAt: consented ? now.toISOString() : "",
+    ...(staff ? { enteredBy: staff.fullName } : {}),
     status: "new",
     submitted: formatSubmitted(now),
   };
@@ -266,9 +281,10 @@ async function createFromPublicForm(db: Db, form: FormData) {
 
 // POST /api/management-cv — yangi ariza. Uch manbadan keladi:
 //   1) ommaviy /ariza sahifasi — multipart (rasm va fayllar bilan),
-//   2) CRM ichidagi "CV to'ldirish (yangi ariza)" modali — JSON,
+//   2) CRM ichidagi "Ishga qabul anketasi" modali — 19.09.2026 dan
+//      xuddi (1) kabi multipart (savollar bir xil), xodim sessiyasi bilan,
 //   3) Google Sheets sinxroni (o'sha yerda to'ldirilgan qatorlar) — JSON.
-// (1) va (3) da `sid` bo'ladi — takror yozmaslik uchun shu bo'yicha
+// Hammasida `sid` bo'ladi — takror yozmaslik uchun shu bo'yicha
 // tekshiramiz. JSON yo'lida filial — kirgan xodimning joriy filiali
 // (anketani u to'ldirgan), sessiyasiz kelsa (Sheets) yozilmaydi.
 export async function POST(req: Request) {
