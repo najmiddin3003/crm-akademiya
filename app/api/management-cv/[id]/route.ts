@@ -15,11 +15,23 @@ function fmtNow(raw: Date): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} | ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** Anketadagi yo'nalishni Xodimlar ro'yxatidagi `turi` ga o'giradi. */
+/**
+ * Anketadagi yo'nalishni Xodimlar ro'yxatidagi `turi` ga o'giradi.
+ * Eski anketa: "O'qituvchi" / "Administrator" / boshqalar. Yangi (19.09.2026)
+ * anketadagi vakansiyalar: "Fan o'qituvchisi", "Assistent o'qituvchi" →
+ * o'qituvchi; "Administrator", "Filial rahbari", "HR menejer",
+ * "Buxgalter / kassir", "IT administrator" → admin; qolgani (sotuv,
+ * marketing, texnik xizmat) → moderator.
+ */
 function positionToTuri(position: string): string {
-  if (position === "O'qituvchi") return "teacher";
-  if (position === "Administrator") return "admin";
+  const p = position.toLowerCase();
+  if (/o['ʻ’]qituvchi/.test(p)) return "teacher";
+  if (/administrator|rahbari|\bhr\b|buxgalter|kassir/.test(p)) return "admin";
   return "moderator";
+}
+
+function isTeacherPosition(position: string): boolean {
+  return positionToTuri(position) === "teacher";
 }
 
 async function hire(
@@ -39,7 +51,7 @@ async function hire(
   const col = db.collection("hr_employees");
   const [last] = await col.find({}).sort({ id: -1 }).limit(1).toArray();
   const nextId = ((last?.id as number) ?? 0) + 1;
-  const isTeacher = cv.position === "O'qituvchi";
+  const isTeacher = isTeacherPosition(cv.position);
 
   const employee: HrEmployee = {
     id: nextId,
@@ -62,7 +74,8 @@ async function hire(
     email: "",
     percent: isTeacher ? "40" : "",
     degree: "",
-    photoUrl: "",
+    // Yangi anketada nomzod rasmi bor — xodim kartasiga o'tadi.
+    photoUrl: cv.photoUrl || "",
     branchAssignments: [],
   };
   await col.insertOne({ ...employee });
@@ -104,7 +117,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!scope) {
       return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
     }
-    employee = await hire(db, current, scope.branchId);
+    // Nomzod aniq filialni tanlagan bo'lsa — o'sha; "qaysi filial bo'lsa
+    // ham" yoki eski ariza — tasdiqlayotgan odamning joriy filiali.
+    employee = await hire(db, current, current.branchId ?? scope.branchId);
     set.hiredEmpId = employee.id;
   }
 

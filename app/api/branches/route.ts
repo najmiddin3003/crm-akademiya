@@ -63,7 +63,14 @@ export async function POST(req: Request) {
     if (topic.value) topics[field] = topic.value;
   }
 
-  const branch: ManagementBranch = { id: nextId, name, location: (body.location || "").trim(), ...topics };
+  const branch: ManagementBranch = {
+    id: nextId,
+    name,
+    location: (body.location || "").trim(),
+    address: (body.address || "").trim(),
+    phone: (body.phone || "").trim(),
+    ...topics,
+  };
   await col.insertOne({ ...branch });
   return NextResponse.json({ ok: true, branch });
 }

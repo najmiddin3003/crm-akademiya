@@ -9,6 +9,14 @@ export interface ManagementBranch {
   name: string;
   location: string; // o'ngda ko'rinadigan manzil/shahar — bo'sh bo'lishi mumkin
   /**
+   * Ommaviy ish arizasi (/ariza) nomzodga ko'rsatadigan aniq manzil
+   * ("Temur kafe, 2-qavat") va filial telefoni. Ixtiyoriy — bo'sh bo'lsa
+   * anketa `location` va bosh raqamni ko'rsatadi (constants/managementCv.js
+   * CV_MAIN_PHONE). Boshqaruv → Filiallar formasidan to'ldiriladi.
+   */
+  address?: string;
+  phone?: string;
+  /**
    * Telegram "Lidlar" guruhidagi SHU FILIALNING topigi (`message_thread_id`).
    * Yangi lid qaysi filialda qo'shilsa, xabar o'sha topikka tushadi
    * (lib/leadNotify.ts). Yo'q bo'lsa — `TELEGRAM_TOPIC_LEADS` (umumiy topik),

@@ -29,6 +29,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     set.name = name;
   }
   if (typeof body.location === "string") set.location = body.location.trim();
+  if (typeof body.address === "string") set.address = body.address.trim();
+  if (typeof body.phone === "string") set.phone = body.phone.trim();
   const unset: Record<string, 1> = {};
   for (const field of BRANCH_TOPIC_FIELDS) {
     if (!(field in body)) continue;

@@ -1,20 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftRight, FilePlus, LayoutGrid, Link2, Search, XCircle } from "lucide-react";
+import { ArrowLeftRight, Building2, FilePlus, LayoutGrid, Link2, Paperclip, Search, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import {
+  CV_ANY_BRANCH,
   CV_APPS_SCRIPT,
   CV_POSITIONS,
   CV_QUESTIONS,
   CV_STATUS,
   CV_STATUS_ORDER,
 } from "@/constants/managementCv";
-import type { CvApplication, CvStatus } from "@/lib/managementCv";
+import type { CvApplication, CvFile, CvStatus } from "@/lib/managementCv";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { useBranch } from "@/components/shared/BranchContext";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
 // bo'limining aynan o'zi: sarlavha + 4 ta amal tugmasi, 5 ta statistika
@@ -24,6 +26,13 @@ import { useT } from "@/components/shared/Language";
 // Ma'lumot HAQIQIY — /api/management-cv (MongoDB `cv_applications`).
 // Google Sheets ulanishi referensdagidek ixtiyoriy: URL brauzerda
 // (localStorage) saqlanadi, jadvaldagi yangi qatorlar bazaga ko'chiriladi.
+//
+// FILIAL (19.09.2026): ro'yxat navbarda tanlangan filialniki — kesish
+// serverda (route `cvBranchFilter`), filial almashganda sahifa qayta
+// yuklanadi (BranchContext). "Qaysi filial bo'lsa ham" va eski arizalar
+// hammasida ko'rinadi. Yangi ommaviy anketa (/ariza) rasm, filial,
+// bandlik, ta'lim darajasi va fayllar bilan keladi — jadval va tafsilot
+// ikkala avlodni ham chizadi.
 
 const CV_SHEETS_KEY = "tizimli_cv_sheets_url";
 
@@ -80,6 +89,29 @@ function emptyForm(): FormValues {
   return out;
 }
 
+/** Nomzod rasmi (yangi anketa) yoki bosh harflar (eski). */
+function Avatar({ cv, size = 32 }: { cv: CvApplication; size?: number }) {
+  const initials = cv.name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  return cv.photoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={cv.photoUrl} alt="" className="rounded-lg object-cover shrink-0" style={{ width: size, height: size }} />
+  ) : (
+    <span className="inline-flex items-center justify-center rounded-lg bg-secondary text-[11px] font-semibold text-muted-foreground shrink-0" style={{ width: size, height: size }}>
+      {initials}
+    </span>
+  );
+}
+
+function FileLink({ f }: { f: CvFile }) {
+  return (
+    <a href={f.url} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2 py-1 text-[12px] hover:bg-secondary">
+      <Paperclip className="w-3.5 h-3.5 text-muted-foreground" />
+      <span className="max-w-[220px] truncate">{f.name}</span>
+      <span className="text-muted-foreground">{f.size > 1048576 ? (f.size / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(f.size / 1024)) + " KB"}</span>
+    </a>
+  );
+}
+
 function StatusBadge({ status }: { status: CvStatus }) {
   const { t } = useT();
   const s = CV_STATUS[status] || CV_STATUS.new;
@@ -108,6 +140,8 @@ function DetailSection({ title }: { title: string }) {
 export default function CvPage() {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
+  const branch = useBranch();
+  const branchName = branch.branches.find((b) => b.id === branch.branchId)?.name ?? "";
 
   const [items, setItems] = useState<CvApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,6 +276,13 @@ export default function CvPage() {
   }, [items, filterPos, filterStatus, search]);
 
   const count = useCallback((k: CvStatus) => items.filter((c) => c.status === k).length, [items]);
+
+  // Filtr tanlovlari — eski ro'yxat + ma'lumotda uchraydigan yangi vakansiyalar.
+  const positionOptions = useMemo(() => {
+    const seen = new Set<string>(CV_POSITIONS as string[]);
+    for (const c of items) if (c.position) seen.add(c.position);
+    return [...seen];
+  }, [items]);
 
   const detail = detailId === null ? null : items.find((c) => c.id === detailId) || null;
 
@@ -395,6 +436,13 @@ export default function CvPage() {
           <div className="text-[12px] text-muted-foreground mt-0.5">
             {t("Anketa asosida kelgan CV lar; munosiblarini tanlab Xodimlar ro'yxatiga qo'shing")}
           </div>
+          {branchName && (
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2 py-0.5 text-[12px]">
+              <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>{branchName}</span>
+              <span className="text-muted-foreground">· {t("shu filial arizalari (+ filial tanlamaganlar)")}</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -442,7 +490,7 @@ export default function CvPage() {
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={filterPos} onChange={(v) => setFilterPos(v)} options={(CV_POSITIONS as string[]).map((p) => ({ value: p, label: p }))} placeholder={t("Yo'nalish — barchasi")} clearable size="sm" className="w-44" />
+        <Select value={filterPos} onChange={(v) => setFilterPos(v)} options={positionOptions.map((p) => ({ value: p, label: p }))} placeholder={t("Yo'nalish — barchasi")} clearable size="sm" className="w-52" />
         <Select value={filterStatus} onChange={(v) => setFilterStatus(v)} options={(CV_STATUS_ORDER as CvStatus[]).map((s) => ({ value: s, label: CV_STATUS[s].label }))} placeholder={t("Holat — barchasi")} clearable size="sm" className="w-44" />
         <div className="flex-1" />
         <div className="relative w-72">
@@ -471,6 +519,7 @@ export default function CvPage() {
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("F.I.Sh")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Yo'nalish")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Fan / soha")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Filial")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Tajriba")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Kutilayotgan maosh")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Telefon")}</th>
@@ -482,14 +531,14 @@ export default function CvPage() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8">
+                  <td colSpan={11} className="px-4 py-8">
                     <SpinnerBlock size={22} />
                   </td>
                 </tr>
               )}
               {!loading && visible.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
+                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
                     {t("CV topilmadi. Filterni o'zgartirib ko'ring.")}
                   </td>
                 </tr>
@@ -502,9 +551,23 @@ export default function CvPage() {
                     className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
-                    <td className="px-4 py-3 text-[13px] font-medium">{c.name}</td>
-                    <td className="px-4 py-3 text-[13px]">{c.position}</td>
+                    <td className="px-4 py-3 text-[13px] font-medium">
+                      <span className="inline-flex items-center gap-2.5">
+                        <Avatar cv={c} />
+                        <span>
+                          {c.name}
+                          {c.ref && <span className="block text-[11px] font-normal text-muted-foreground tabular-nums">{c.ref}</span>}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[13px]">
+                      {c.position}
+                      {c.load && <span className="block text-[11px] text-muted-foreground">{t(c.load)}</span>}
+                    </td>
                     <td className="px-4 py-3 text-[13px]">{c.subject || "-"}</td>
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground">
+                      {c.branchId ? c.branchName || c.branchId : c.branchId === null ? t("Istalgan") : "-"}
+                    </td>
                     <td className="px-4 py-3 text-[13px] text-muted-foreground">
                       {(c.experience || "").split("—")[0].trim() || "-"}
                     </td>
@@ -537,14 +600,24 @@ export default function CvPage() {
         <Modal onClose={closeDetail} controller={modal} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">
             <div className="p-5">
               <div className="flex items-start justify-between gap-3 mb-2">
-                <div>
+                <div className="flex items-start gap-3">
+                  <Avatar cv={detail} size={64} />
+                  <div>
                   <div className="text-[18px] font-semibold">{detail.name}</div>
                   <div className="text-[13px] text-muted-foreground mt-0.5">
                     {detail.position}
                     {detail.subject && detail.subject !== "-" ? ` · ${detail.subject}` : ""} · {detail.phone}
                   </div>
-                  <div className="mt-1.5">
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                     <StatusBadge status={detail.status} />
+                    {detail.ref && <span className="text-[11px] tabular-nums text-muted-foreground">{detail.ref}</span>}
+                    {detail.branchId !== undefined && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Building2 className="w-3 h-3" />
+                        {detail.branchId ? detail.branchName || detail.branchId : t(CV_ANY_BRANCH)}
+                      </span>
+                    )}
+                  </div>
                   </div>
                 </div>
                 <button
@@ -558,11 +631,15 @@ export default function CvPage() {
               <DetailSection title={t("Shaxsiy ma'lumotlar")} />
               <DetailRow label={t("Yashash manzili")} value={detail.address} />
               <DetailRow label={t("Tug'ilgan sana")} value={detail.birth} />
+              <DetailRow label="Telegram" value={detail.telegram ? "@" + detail.telegram : ""} />
               <DetailRow label={t("Hozirgi ish holati")} value={detail.currentJob} />
+              <DetailRow label={t("Bandlik turi")} value={detail.load ? t(detail.load) : ""} />
+              <DetailRow label={t("Vakansiyani qayerdan bilgan")} value={detail.source ? t(detail.source) : ""} />
 
               <DetailSection title={t("Ta'lim va tajriba")} />
+              <DetailRow label={t("Ta'lim darajasi")} value={detail.edu ? t(detail.edu) : ""} />
               <DetailRow label={t("Oliygoh")} value={detail.university} />
-              <DetailRow label={t("Ish tajribasi")} value={detail.experience} />
+              <DetailRow label={t("Ish tajribasi")} value={detail.experience ? t(detail.experience) : ""} />
               <DetailRow label={t("Qaysi o'quv markaz/maktablarda ishlagan")} value={detail.schools} />
               <DetailRow label={t("Yutuqlar va sertifikatlar")} value={detail.achievements} />
               <DetailRow label={t("Qanday darajadagi o'quvchilarga dars bera oladi")} value={detail.levels} />
@@ -578,6 +655,18 @@ export default function CvPage() {
               <DetailRow label={t("Ish tanlashda muhim omillar")} value={(detail.priorities || []).join(", ")} />
               <DetailRow label={t("Kuchli tomonlari")} value={(detail.strengths || []).join(", ")} />
               <DetailRow label={t("Qo'shimcha")} value={detail.extra} />
+
+              {(detail.cvFile || (detail.docs && detail.docs.length > 0)) && (
+                <>
+                  <DetailSection title={t("Fayllar")} />
+                  <div className="flex flex-wrap gap-2 py-2">
+                    {detail.cvFile && <FileLink f={detail.cvFile} />}
+                    {(detail.docs || []).map((f, i) => (
+                      <FileLink key={`${f.url}-${i}`} f={f} />
+                    ))}
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-border flex-wrap">
                 {detail.status === "accepted" ? (

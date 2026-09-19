@@ -62,6 +62,74 @@ export const CV_QUESTIONS = [
 /** Toolbar'dagi "Yo'nalish" filtri — anketadagi `position` savoli bilan bir xil. */
 export const CV_POSITIONS = ["O'qituvchi", "Administrator", "SMM / Marketing", "Sotuv", "Boshqa"];
 
+// ── OMMAVIY ANKETA (/ariza) — 19.09.2026 dagi yangi dizayn ──────────────
+//
+// Dizayn foydalanuvchining "akademiya-ishga-ariza.html" faylidan (chap
+// panelda jonli ariza kartasi + progress, o'ngda 4 bo'limli forma).
+// Quyidagi ro'yxatlar o'sha formadagi tanlovlar — mijoz (CvApplyPage)
+// va server (app/api/management-cv, tekshiruv) ikkalasi shundan o'qiydi,
+// shuning uchun ro'yxat bitta joyda turadi.
+
+/** Vakansiya turlari — guruhlangan (`<optgroup>`). */
+export const CV_ROLE_GROUPS = [
+  { label: "Ta'lim", roles: ["Fan o'qituvchisi", "Assistent o'qituvchi", "Metodist", "Kurator / mentor"] },
+  { label: "Qabul va sotuv", roles: ["Administrator", "Sotuv menejeri", "Call-center operatori"] },
+  { label: "Marketing", roles: ["SMM menejer", "Targetolog", "Videograf / montajchi", "Grafik dizayner"] },
+  { label: "Boshqaruv va moliya", roles: ["Filial rahbari", "HR menejer", "Buxgalter / kassir", "IT administrator"] },
+  { label: "Texnik xizmat", roles: ["Farrosh", "Qorovul", "Haydovchi"] },
+];
+
+/** Fan/yo'nalish faqat shu vakansiyalarda so'raladi. */
+export const CV_TEACHING_ROLES = ["Fan o'qituvchisi", "Assistent o'qituvchi", "Metodist", "Kurator / mentor"];
+
+/** Fan yoki yo'nalish — guruhlangan. */
+export const CV_SUBJECT_GROUPS = [
+  { label: "Fanlar", subjects: ["Ona tili", "Fizika", "Tarix", "Biologiya", "Huquq", "Geografiya", "Matematika", "Kimyo"] },
+  { label: "Chet tillari", subjects: ["Ingliz tili", "Rus tili", "Arab tili", "Koreys tili", "Nemis tili", "Turk tili"] },
+  {
+    label: "Boshqa yo'nalishlar",
+    subjects: ["IELTS / CEFR tayyorlov", "Milliy sertifikat", "Boshlang'ich sinflar", "Prezident maktablariga tayyorlov"],
+  },
+];
+
+/** Bandlik turi (radio tugmalar). */
+export const CV_LOADS = ["To'liq stavka", "Yarim stavka", "Soatbay", "Farqi yo'q"];
+
+export const CV_EDU_LEVELS = ["O'rta maktab", "Kollej / texnikum", "Talaba (hozir o'qiyapman)", "Bakalavr", "Magistr", "Ilmiy daraja"];
+
+export const CV_EXP_LEVELS = ["Tajribam yo'q", "1 yilgacha", "1–3 yil", "3–5 yil", "5 yildan ko'p"];
+
+export const CV_SOURCES = [
+  "Instagram",
+  "Telegram",
+  "Tanishim aytdi",
+  "OLX yoki ish e'lonlari sayti",
+  "Banner yoki flayer",
+  "Markazga o'zim keldim",
+  "Boshqa",
+];
+
+/**
+ * "Qaysi filial bo'lsa ham ishlayveraman" — bunday ariza `branchId: null`
+ * bilan saqlanadi va HAR BIR filialning ro'yxatida ko'rinadi.
+ */
+export const CV_ANY_BRANCH = "Qaysi filial bo'lsa ham ishlayveraman";
+
+/** Filial telefoni ko'rsatilmagan bo'lsa — bosh raqam (dizayndagi). */
+export const CV_MAIN_PHONE = "+998 94 111 88 55";
+export const CV_INSTAGRAM = "@Akademiya.rasmiy";
+
+/** Ishga qabul shu yoshdan boshlanadi (tug'ilgan sana tekshiruvi). */
+export const CV_MIN_AGE = 16;
+
+/** Fayl chegaralari — mijoz va server bir xil raqamni ishlatadi. */
+export const CV_FILE_LIMITS = {
+  photoBytes: 10 * 1024 * 1024,
+  fileBytes: 10 * 1024 * 1024,
+  docsCount: 10,
+  docsTotalBytes: 25 * 1024 * 1024,
+};
+
 /** Holat rangi/nomi — jadval nishonchasi ham, filtri ham shundan o'qiydi. */
 export const CV_STATUS = {
   new: { label: "Yangi", cls: "bg-blue-100 text-blue-700" },
@@ -185,7 +253,7 @@ export const CV_SEED = [
 // Google Sheets (Apps Script Web App) backend'i — "Google Sheets bilan
 // bog'lash" modalidagi "Kodni nusxalash" tugmasi shu matnni nusxalaydi.
 export const CV_APPS_SCRIPT = `const SHEET_NAME = 'Arizalar';
-const HEADERS = ['sid','status','submitted','name','phone','address','birth','university','position','subject','achievements','experience','startDate','whyUs','schools','currentJob','levels','plans5','expectedSalary','results','priorities','strengths','extra'];
+const HEADERS = ['sid','status','submitted','ref','name','phone','telegram','address','birth','university','position','subject','branchName','load','edu','achievements','experience','startDate','whyUs','schools','currentJob','levels','plans5','expectedSalary','results','priorities','strengths','extra','source','photoUrl','cvFileUrl','docsUrls'];
 function _sheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(SHEET_NAME);

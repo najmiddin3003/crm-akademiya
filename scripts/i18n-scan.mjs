@@ -56,6 +56,10 @@ const CONSTANT_SOURCES = [
   { file: "constants/sidebar.js", re: /\b(?:label|title):\s*"([^"]+)"/g },
   // Tizimli to'lov turlari nomlari ("Naqd", "Plastik") — kassa kartalarida `t(m.name)`.
   { file: "constants/settingsLists.js", re: /\bname:\s*"([^"]+)"/g },
+  // Ommaviy ish arizasi tanlovlari (vakansiya, fan, bandlik, ta'lim, tajriba, manba) — `t(r)`.
+  { file: "constants/managementCv.js", re: /\b(?:roles|subjects):\s*\[([^\]]*)\]/g, list: true },
+  { file: "constants/managementCv.js", re: /\bCV_(?:LOADS|EDU_LEVELS|EXP_LEVELS|SOURCES) = \[([^\]]*)\]/g, list: true },
+  { file: "constants/managementCv.js", re: /\bCV_ANY_BRANCH = "([^"]+)"/g },
   { file: "constants/navbar.js", re: /\bname:\s*"([^"]+)"/g, skip: true },
   { file: "constants/helpTopics.js", re: /\btitle:\s*"([^"]+)"/g },
   { file: "constants/notifications.js", re: /\b(?:payment|order|task):\s*"([^"]+)"/g },
@@ -97,7 +101,7 @@ const SERVER_DIRS = ["app/api", "lib"];
 const SERVER_SKIP = /[\\/](staffBot|studentBot|sync|telegram|eskiz|paymentSms|exportTable|receipt|referenceCache|fetchJson)/i;
 const SERVER_FIELDS = "error|reason|message|msg|hint|title|text|detail|label";
 const serverRe = new RegExp(
-  `\\b(?:(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|throw new Error|throw new ApiError)\\()\\s*(?:"((?:[^"\\\\\\n]|\\\\.)+)"|\`((?:[^\`\\\\]|\\\\.)+?)\`)`,
+  `\\b(?:(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|bad|throw new Error|throw new ApiError)\\()\\s*(?:"((?:[^"\\\\\\n]|\\\\.)+)"|\`((?:[^\`\\\\]|\\\\.)+?)\`)`,
   "g",
 );
 /** `${expr}` → `{name}` — nom ifodadagi oxirgi identifikator (kodmod 6-o'tishi bilan bir xil). */
@@ -129,7 +133,7 @@ const serverKeys = new Map();
 // `error: left > 0 ? \`…\` : "…"` — maydon/chaqiruvdan keyin 4 qatorgacha
 // ichidagi barcha satr literallari olinadi (yuqoridagi regex faqat bevosita
 // kelgan satrni ko'radi).
-const ternaryRe = new RegExp(`(?:\\b(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|throw new Error|throw new ApiError)\\()\\s*(?=(?:[^"\`\\n]*\\n){0,2}[^"\`\\n]*\\?)((?:[^\\n]*\\n){0,4}[^\\n]*)`, "g");
+const ternaryRe = new RegExp(`(?:\\b(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|bad|throw new Error|throw new ApiError)\\()\\s*(?=(?:[^"\`\\n]*\\n){0,2}[^"\`\\n]*\\?)((?:[^\\n]*\\n){0,4}[^\\n]*)`, "g");
 const litRe = /"((?:[^"\\\n]|\\.)+)"|`((?:[^`\\]|\\.)+?)`/g;
 for (const f of SERVER_DIRS.flatMap((d) => (fs.existsSync(path.join(ROOT, d)) ? walk(path.join(ROOT, d)) : []))) {
   if (!/\.ts$/.test(f) || SERVER_SKIP.test(f)) continue;

@@ -48,13 +48,20 @@ export interface UploadResult {
 // o'zgartirib boshqa joyga yozib yuborish mumkin bo'lardi.
 const UPLOAD_FOLDERS: readonly string[] = ["xodimlar", "kurslar"];
 
+/** Ommaviy ish arizasi (/ariza) fayllari — rasm, CV, sertifikat nusxalari. */
+export const CV_UPLOAD_FOLDER = "nomzodlar";
+
 /** Ruxsat etilgan papka nomini qaytaradi, notanishi uchun — "boshqa". */
 export function safeFolder(v: unknown): string {
   return typeof v === "string" && UPLOAD_FOLDERS.includes(v) ? v : "boshqa";
 }
 
-/** Cloudinary `resource_type` — URL yo'lida ham shu so'z ishlatiladi. */
-type ResourceKind = "image" | "video";
+/**
+ * Cloudinary `resource_type` — URL yo'lida ham shu so'z ishlatiladi.
+ * "auto" — Cloudinary turini o'zi aniqlaydi: PDF/rasm → image, DOCX → raw.
+ * Nomzodning CV va diplom nusxalari shu bilan yuklanadi (tur aralash).
+ */
+type ResourceKind = "image" | "video" | "auto";
 
 /**
  * Faylni Cloudinary'ga yuklaydi va `secure_url` ni qaytaradi.
@@ -78,7 +85,7 @@ async function upload(file: File, folder: string, kind: ResourceKind): Promise<U
   for (const [k, v] of Object.entries(signed)) form.append(k, v);
   form.append("signature", sign(signed, cfg.apiSecret));
 
-  const failed = kind === "video" ? "Video yuklanmadi" : "Rasm yuklanmadi";
+  const failed = kind === "video" ? "Video yuklanmadi" : kind === "auto" ? "Fayl yuklanmadi" : "Rasm yuklanmadi";
   try {
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/${kind}/upload`, {
       method: "POST",
@@ -101,4 +108,9 @@ export function uploadImage(file: File, folder: string): Promise<UploadResult> {
 
 export function uploadVideo(file: File, folder: string): Promise<UploadResult> {
   return upload(file, folder, "video");
+}
+
+/** PDF, DOC(X) yoki rasm — turi noma'lum hujjat (nomzod fayllari). */
+export function uploadDocument(file: File, folder: string): Promise<UploadResult> {
+  return upload(file, folder, "auto");
 }

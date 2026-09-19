@@ -1875,3 +1875,36 @@ O'girish mijozda:
    (`i18n-scan.mjs --raw` ~250 ta, asosan kod/formula qismlari), /tezlik sahifasi.
 3) Backend xabarlari, bazadagi holat/tur qiymatlari, oy/hafta nomlari,
    bildirishnoma matnlari — QILINDI 19.09.2026 (yuqoridagi bo'lim).
+
+## Ishga ariza sahifasi (/ariza) — yangi dizayn va filial (2026-09-19)
+
+Ommaviy anketa foydalanuvchining `akademiya-ishga-ariza.html` dizayniga
+ko'chirildi: chap panelda jonli ariza kartasi + 3 qadam, o'ngda 4 bo'limli
+forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
+
+- **Fayllar**: `app/ariza/page.tsx` (server — filiallarni bazadan beradi,
+  shriftlar `next/font`: Anton, Montserrat, Inter), `app/ariza/ariza.css`
+  (dizayn CSS'i `.ariza` ildizi ostida, tungi rejim qo'llanmaydi),
+  `components/management/CvApplyPage.tsx` (forma), rasmlar `public/ariza/`.
+- **Ma'lumot**: `app/api/management-cv` POST endi `multipart/form-data` ham
+  qabul qiladi — rasm (majburiy, brauzerda 900px JPEG'ga kichraytiriladi),
+  CV fayli va sertifikat nusxalari (10 tagacha, 25 MB) Cloudinary'ga
+  (`nomzodlar/`, `nomzodlar/hujjatlar/`), URL'lar `cv_applications` da
+  (`photoUrl`, `cvFile`, `docs`). Barcha maydon saqlanadi; semantik jihatdan
+  bir xil savollar ESKI kalitga yoziladi (`address`, `position`,
+  `university`, `expectedSalary` …) — "Ishga olish", jadval va Sheets bitta
+  kod bilan ikki avlod arizani ko'radi. Yangi maydonlar: `ref`
+  (AK-260919-K7Q — nomzodga ko'rsatiladi), `branchId`/`branchName`, `load`,
+  `edu`, `source`, `telegram`, `consentAt`. Tekshiruv mijozda va serverda
+  bir xil (`lib/managementCv.ts`, `constants/managementCv.js` ro'yxatlari);
+  tuzoq maydoni (`website`) to'ldirilsa jimgina qabul qilinadi, saqlanmaydi.
+- **Filial**: nomzod filialni tanlaydi (yoki "qaysi filial bo'lsa ham" —
+  `branchId: null`). CRM'dagi Ishga qabul ro'yxati NAVBARDA tanlangan
+  filialniki (`cvBranchFilter` — serverda kesiladi; filial almashganda
+  sahifa qayta yuklanadi). `null` va eski (filialsiz) arizalar hamma
+  filialda ko'rinadi. "Ishga olish" xodimni arizadagi filialga yozadi.
+  Filial kartasida (Boshqaruv → Filiallar) yangi `address`/`phone` —
+  anketada filial tanlanganda ko'rsatiladi; bo'sh bo'lsa `location` va
+  bosh raqam (`CV_MAIN_PHONE`).
+- Google Sheets ulanishi avvalgidek (`#s=` havola); Apps Script HEADERS
+  yangi ustunlar bilan kengaytirildi (eski deploy'lar o'zgarmaydi).

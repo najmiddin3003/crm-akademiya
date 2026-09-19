@@ -26,7 +26,7 @@ import { useT } from "@/components/shared/Language";
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-const emptyForm = { name: "", location: "", leadTopic: "", paymentTopic: "" };
+const emptyForm = { name: "", location: "", address: "", phone: "", leadTopic: "", paymentTopic: "" };
 
 /** Ro'yxatdagi kichik belgi: topik bor — ko'k, yo'q — sariq. */
 function TopicBadge({ label, topic, missingTitle }: { label: string; topic: number | null | undefined; missingTitle: string }) {
@@ -79,6 +79,8 @@ export default function BranchesPage() {
     setForm({
       name: b.name,
       location: b.location,
+      address: b.address || "",
+      phone: b.phone || "",
       leadTopic: b.leadTopicId ? String(b.leadTopicId) : "",
       paymentTopic: b.paymentTopicId ? String(b.paymentTopicId) : "",
     });
@@ -106,6 +108,8 @@ export default function BranchesPage() {
         body: JSON.stringify({
           name,
           location: form.location,
+          address: form.address,
+          phone: form.phone,
           leadTopicId: form.leadTopic.trim(),
           paymentTopicId: form.paymentTopic.trim(),
         }),
@@ -235,6 +239,29 @@ export default function BranchesPage() {
                 className={inputCls}
                 placeholder={t("Masalan: Chortoq")}
               />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-medium mb-1.5">{t("Aniq manzil (ariza sahifasi uchun)")}</label>
+                <input
+                  value={form.address}
+                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                  className={inputCls}
+                  placeholder={t("Masalan: Temur kafe, 2-qavat")}
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium mb-1.5">{t("Filial telefoni")}</label>
+                <input
+                  value={form.phone}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  className={inputCls}
+                  placeholder="+998 94 111 88 55"
+                />
+              </div>
+              <p className="sm:col-span-2 -mt-1 text-[12px] text-muted-foreground">
+                {t("Ish arizasi (/ariza) sahifasida nomzod filialni tanlaganda shu manzil va telefon ko'rsatiladi. Bo'sh bo'lsa — yuqoridagi manzil va bosh raqam.")}
+              </p>
             </div>
             <div>
               <label className="block text-[13px] font-medium mb-1.5">{t("Telegram lid topigi")}</label>
