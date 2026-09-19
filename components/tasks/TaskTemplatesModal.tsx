@@ -5,6 +5,7 @@ import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import { TASK_TEMPLATES } from "@/lib/tasksData";
 import { useStudents } from "@/hooks/useStudents";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 export interface TaskTemplatesModalProps {
   open: boolean;
@@ -13,6 +14,7 @@ export interface TaskTemplatesModalProps {
 }
 
 export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTemplatesModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
@@ -27,16 +29,16 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
   const { names: studentNames, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
   if (!open) return null;
 
-  const pendingTpl = TASK_TEMPLATES.find((t) => t.id === pendingId);
+  const pendingTpl = TASK_TEMPLATES.find((tv) => tv.id === pendingId);
 
   return (
     <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={200} panelClassName="p-5 space-y-3 overflow-y-auto">
-        <h3 className="text-lg font-semibold">Tayyor shablonlar</h3>
+        <h3 className="text-lg font-semibold">{t("Tayyor shablonlar")}</h3>
 
         {pendingTpl ? (
           <div className="space-y-3">
             <div className="text-sm">
-              <strong>{pendingTpl.name}</strong> shablonini qaysi o&apos;quvchi uchun qo&apos;llaymiz?
+              <strong>{pendingTpl.name}</strong>{" "}{t("shablonini qaysi o'quvchi uchun qo'llaymiz?")}
             </div>
             {/* Ilgari bu yerda BUTUN ro'yxat (6 765 ta) xom <button>
                 sifatida, qidiruvsiz, id kamayish tartibida chizilardi —
@@ -45,12 +47,12 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
                 StudentSearchSelect qidiruvni, 50 qatorlik limitni va
                 "Yana N ta" hisoblagichini tayyor beradi. */}
             <StudentSearchSelect
-              label="O'quvchi"
+              label={t("O'quvchi")}
               value={studentName}
               onChange={setStudentName}
               options={studentNames}
               loading={studentsLoading}
-              placeholder="O'quvchini qidirish"
+              placeholder={t("O'quvchini qidirish")}
               subtitleOf={(n) => {
                 const phone = studentByName.get(n.trim().toLowerCase())?.phone;
                 return phone ? `+998 ${phone}` : "";
@@ -58,7 +60,7 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
             />
             <div className="flex justify-end gap-2">
               <button onClick={() => setPendingId(null)} className="inline-flex items-center h-9 px-3.5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
-                Orqaga
+                {t("Orqaga")}
               </button>
               <button
                 onClick={() => {
@@ -69,7 +71,7 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
                 }}
                 className="inline-flex items-center h-9 px-3.5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
-                Qo&apos;llash
+                {t("Qo'llash")}
               </button>
             </div>
           </div>
@@ -84,7 +86,7 @@ export default function TaskTemplatesModal({ open, onClose, onApply }: TaskTempl
                   <span>{tpl.name}</span>
                   <span className="text-[11px] font-normal opacity-60 ml-auto">{tpl.items.length} ta task</span>
                 </div>
-                <div className="template-card-desc">{tpl.description}</div>
+                <div className="template-card-desc">{t(tpl.description)}</div>
                 <div className="template-card-items">
                   {tpl.items.map((it, i) => (
                     <span key={i} className="template-item-chip">

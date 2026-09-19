@@ -9,6 +9,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import CourseCover from "./CourseCover";
 import OnlineCoursesIcons from "./OnlineCoursesIcons";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
+import { useT } from "@/components/shared/Language";
 
 // O'quv bo'limi → Onlayn kurs (crm-akademiya #view-online-courses). Manbada
 // jadval emas — KARTA GRID (grid-cols-1 md:grid-cols-2 lg:grid-cols-3).
@@ -24,6 +25,7 @@ const TABS = [
 ];
 
 export default function OnlineCoursesList() {
+  const { t } = useT();
   const { courses, loading, deleteCourse } = useOnlineCourses();
   const { showSuccess, showError } = useToast();
   const [tab, setTab] = useState<"active" | "incomplete">("active");
@@ -39,7 +41,7 @@ export default function OnlineCoursesList() {
       showError(error);
       return;
     }
-    showSuccess(`Onlayn kurs o'chirildi — ${deleting.name}`);
+    showSuccess(t("Onlayn kurs o'chirildi — {name}", { name: deleting.name }));
     setDeletingId(null);
   }
 
@@ -50,20 +52,20 @@ export default function OnlineCoursesList() {
       <div>
         <Link href="/online-courses/add" className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
-          <span>Kurs qo&apos;shish</span>
+          <span>{t("Kurs qo'shish")}</span>
         </Link>
       </div>
 
       <div className="flex items-center gap-2">
-        {TABS.map((t) => (
+        {TABS.map((tv) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tv.key}
+            onClick={() => setTab(tv.key)}
             className={`inline-flex items-center px-4 h-9 rounded-full text-[13px] font-medium ${
-              tab === t.key ? "bg-secondary/80 text-foreground" : "bg-transparent text-muted-foreground hover:bg-secondary/50"
+              tab === tv.key ? "bg-secondary/80 text-foreground" : "bg-transparent text-muted-foreground hover:bg-secondary/50"
             }`}
           >
-            {t.label}
+            {t(tv.label)}
           </button>
         ))}
       </div>
@@ -73,7 +75,7 @@ export default function OnlineCoursesList() {
           <SpinnerBlock />
         ) : filtered.length === 0 ? (
           <div className="flex items-center justify-center text-2xl md:text-3xl font-bold text-primary py-16">
-            <span>Afsuski kurs mavjud emas</span>
+            <span>{t("Afsuski kurs mavjud emas")}</span>
             {/* Referensda aynan shu emoji ishlatiladi (U+2639 U+FE0F). */}
             <span className="ml-3" style={{ fontSize: "1.1em" }}>☹️</span>
           </div>
@@ -89,7 +91,7 @@ export default function OnlineCoursesList() {
                     <h3 className="font-semibold text-[15px] truncate group-hover:text-primary">{c.name}</h3>
                     <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
                   </Link>
-                  <button onClick={() => setDeletingId(c.id)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0" title="O'chirish">
+                  <button onClick={() => setDeletingId(c.id)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0" title={t("O'chirish")}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -109,7 +111,7 @@ export default function OnlineCoursesList() {
 
       {deleting && (
         <DeleteConfirmModal
-          title="Kursni o'chirish"
+          title={t("Kursni o'chirish")}
           message="Rostdan ham o'chirmoqchimisiz:"
           name={deleting.name}
           onCancel={() => setDeletingId(null)}

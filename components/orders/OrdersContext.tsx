@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { applyOrderValues, type NewOrderValues, type Order } from "@/lib/ordersData";
 import { useToast } from "@/components/ui/Toast";
 import type { OrderMessage } from "@/components/orders/OrderMessagePanel";
+import { useT } from "@/components/shared/Language";
 
 // Shared orders store for the orders-list route segment (mounted by
 // app/(app)/orders-list/layout.tsx), backed by MongoDB via /api/orders. Both
@@ -38,6 +39,7 @@ interface OrdersContextValue {
 const OrdersContext = createContext<OrdersContextValue | null>(null);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
+  const { t } = useT();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [messagesByOrder, setMessagesByOrder] = useState<Record<number, OrderMessage[]>>({});
@@ -140,11 +142,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         }));
         return true;
       } catch {
-        showError("Izohni saqlab bo'lmadi");
+        showError(t("Izohni saqlab bo'lmadi"));
         return false;
       }
     },
-    [showError],
+    [showError, t],
   );
 
   return (

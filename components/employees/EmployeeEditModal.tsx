@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import PhoneField from "@/components/auth/PhoneField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 export interface EmployeeEditRow {
   id: string;
@@ -30,6 +31,7 @@ export interface EmployeeEditModalProps {
 // (agar o'rnatilgan bo'lsa) yangisini qo'yishdan oldin ko'rsatiladi.
 // O'chirish endi jadval qatoridagi ikonka orqali amalga oshiriladi.
 export default function EmployeeEditModal({ employee, onClose, onSaved }: EmployeeEditModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [fullName, setFullName] = useState(employee.fullName);
   const [phone, setPhone] = useState(employee.phone.startsWith("998") ? employee.phone.slice(3) : employee.phone);
@@ -67,15 +69,15 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
   const handleSave = async () => {
     setError("");
     if (!fullName.trim()) {
-      setError("F.I.Sh. kiriting");
+      setError(t("F.I.Sh. kiriting"));
       return;
     }
     if (phone.length < 9) {
-      setError("To'liq telefon raqamni kiriting");
+      setError(t("To'liq telefon raqamni kiriting"));
       return;
     }
     if (newPassword && newPassword.length < 8) {
-      setError("Yangi parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      setError(t("Yangi parol kamida 8 ta belgidan iborat bo'lishi kerak"));
       return;
     }
 
@@ -96,12 +98,12 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "Saqlanmadi");
+        setError(t(data.error || "Saqlanmadi"));
         return;
       }
       onSaved();
     } catch {
-      setError("Serverga ulanib bo'lmadi");
+      setError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -112,23 +114,23 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
 
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={200} panelClassName="p-5 space-y-4 overflow-y-auto">
-        <h3 className="text-lg font-semibold">Xodimni tahrirlash</h3>
+        <h3 className="text-lg font-semibold">{t("Xodimni tahrirlash")}</h3>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">F.I.Sh.</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("F.I.Sh.")}</label>
           <input className={inputCls} value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
 
         <PhoneField value={phone} onChange={setPhone} />
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Lavozim</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Lavozim")}</label>
           <input className={inputCls} value={position} onChange={(e) => setPosition(e.target.value)} />
         </div>
 
         {employee.status !== "invited" && (
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Holat</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Holat")}</label>
             <div className="grid grid-cols-3 gap-2">
               {STATUS_OPTIONS.map((opt) => (
                 <button
@@ -139,7 +141,7 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
                     status === opt.key ? "border-primary bg-primary/10 text-primary" : "border-border bg-background hover:bg-secondary"
                   }`}
                 >
-                  {opt.label}
+                  {t(opt.label)}
                 </button>
               ))}
             </div>
@@ -147,9 +149,9 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
         )}
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Joriy parol</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Joriy parol")}</label>
           {employee.status === "invited" ? (
-            <p className="text-[13px] text-muted-foreground">Hali parol o&apos;rnatilmagan (taklif kutilmoqda)</p>
+            <p className="text-[13px] text-muted-foreground">{t("Hali parol o'rnatilmagan (taklif kutilmoqda)")}</p>
           ) : (
             <div className="relative">
               <input
@@ -163,7 +165,7 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
                   type="button"
                   onClick={() => setPasswordVisible((v) => !v)}
                   className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center text-muted-foreground hover:text-foreground"
-                  title={passwordVisible ? "Yashirish" : "Ko'rsatish"}
+                  title={passwordVisible ? t("Yashirish") : t("Ko'rsatish")}
                 >
                   {passwordVisible ? (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -183,13 +185,13 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Yangi parol</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Yangi parol")}</label>
           <input
             type="text"
             className={inputCls}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Bo'sh qoldirsa parol o'zgarmaydi"
+            placeholder={t("Bo'sh qoldirsa parol o'zgarmaydi")}
           />
         </div>
 
@@ -197,10 +199,10 @@ export default function EmployeeEditModal({ employee, onClose, onSaved }: Employ
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <Button type="button" variant="outline" onClick={modal.close} disabled={saving}>
-            Bekor qilish
+            {t("Bekor qilish")}
           </Button>
           <Button type="button" variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </Button>
         </div>
       </Modal>

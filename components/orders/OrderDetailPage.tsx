@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import type { Order } from "@/lib/ordersData";
 import type { Group } from "@/lib/groups";
 import { enrollOrderInGroup, findPupilForOrder } from "@/lib/enrollStudent";
+import { useT } from "@/components/shared/Language";
 
 // Per-order detail page reached by clicking a row in the orders-list table
 // (akademiya.edutizim.uz/orders/order-list/edit/... reference): student
@@ -65,6 +66,7 @@ function sameStudent(a: Order, b: Order): boolean {
 }
 
 export default function OrderDetailPage({ orderId }: { orderId: number }) {
+  const { t } = useT();
   const { orders, createOrder, updateOrder, patchOrder, messagesByOrder, addMessage } = useOrders();
   const { pupils } = usePupils();
   // Fan nomini O'quv bo'limi > Oflayn kurslardagi kurs kartasiga bog'lash uchun.
@@ -85,10 +87,10 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
     return (
       <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
         <p className="text-sm text-muted-foreground">
-          Buyurtma topilmadi: <strong>{orderId}</strong>
+          {t("Buyurtma topilmadi:")}{" "}<strong>{orderId}</strong>
         </p>
         <Link href="/orders-list" className="text-primary hover:underline">
-          Buyurtmalar ro&apos;yxatiga qaytish
+          {t("Buyurtmalar ro'yxatiga qaytish")}
         </Link>
       </div>
     );
@@ -127,7 +129,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
 
     const res = await enrollOrderInGroup(row, group.id, pupils);
     if (!res.ok) {
-      showError(res.error || "Guruhga qo'shishda xatolik yuz berdi");
+      showError(t(res.error || "Guruhga qo'shishda xatolik yuz berdi"));
       return;
     }
 
@@ -137,11 +139,11 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
       groupId: group.id,
     });
     if (!updated) {
-      showError("Buyurtma holatini saqlashda xatolik yuz berdi");
+      showError(t("Buyurtma holatini saqlashda xatolik yuz berdi"));
       return;
     }
 
-    showSuccess(`O'quvchi "${groupLabel}" guruhiga qo'shildi`);
+    showSuccess(t("O'quvchi \"{groupLabel}\" guruhiga qo'shildi", { groupLabel }));
     setGroupPickerId(null);
   };
 
@@ -152,32 +154,32 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between">
         <Button variant="primary" onClick={() => setCreateOpen(true)}>
-          Buyurtma yaratish
+          {t("Buyurtma yaratish")}
         </Button>
         <Button variant="outline" onClick={() => setBranchPickerOpen(true)}>
-          Transfer
+          {t("Transfer")}
         </Button>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap items-center justify-between gap-4 text-sm">
         <div>
-          <span className="text-muted-foreground">O&apos;quvchini ismi:</span>{" "}
+          <span className="text-muted-foreground">{t("O'quvchini ismi:")}</span>{" "}
           <Link href={`/student-edit/${order.id}`} className="font-medium hover:text-primary hover:underline">
             {order.name}
           </Link>
         </div>
         <div>
-          <span className="text-muted-foreground">Tug&apos;ilgan sanasi:</span>{" "}
+          <span className="text-muted-foreground">{t("Tug'ilgan sanasi:")}</span>{" "}
           <span className="font-medium">
-            {!birthInfo ? "—" : birthInfo.age === null ? birthInfo.date : `${birthInfo.age} yosh (${birthInfo.date})`}
+            {!birthInfo ? "—" : birthInfo.age === null ? birthInfo.date : t("{age} yosh ({date})", { age: birthInfo.age, date: birthInfo.date })}
           </span>
         </div>
         <div className="flex items-center gap-3">
           <div>
-            <span className="text-muted-foreground">Telefon raqam:</span> <span className="font-medium">{phone}</span>
+            <span className="text-muted-foreground">{t("Telefon raqam:")}</span> <span className="font-medium">{phone}</span>
           </div>
           <Button variant="primary" onClick={() => setSmsOpen(true)}>
-            SMS yuborish
+            {t("SMS yuborish")}
           </Button>
         </div>
       </div>
@@ -187,13 +189,13 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           <table className="w-full text-sm">
             <thead className="bg-secondary/40">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ism</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh holati</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kun</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kurs vaqti</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh nomi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Birinchi darsga kelish sanasi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ism")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh holati")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kun")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kurs vaqti")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh nomi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Birinchi darsga kelish sanasi")}</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap"></th>
               </tr>
             </thead>
@@ -201,7 +203,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
               {studentOrders.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
-                    Bu o&apos;quvchining barcha buyurtmalari guruhga qo&apos;shilgan.
+                    {t("Bu o'quvchining barcha buyurtmalari guruhga qo'shilgan.")}
                   </td>
                 </tr>
               )}
@@ -225,7 +227,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
                       onClick={() => setMessageId(row.id)}
                       className="inline-flex items-center gap-1 text-primary hover:underline"
                     >
-                      + Izoh
+                      {t("+ Izoh")}
                     </button>
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">{row.group || "—"}</td>
@@ -237,20 +239,20 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
                         onClick={() => setGroupPickerId(row.id)}
                         className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-border bg-card text-xs font-medium hover:bg-secondary"
                       >
-                        ✓ Guruhga qo&apos;shish
+                        {t("✓ Guruhga qo'shish")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRejectId(row.id)}
                         className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-rose-300 text-rose-600 bg-card text-xs font-medium hover:bg-rose-50"
                       >
-                        ✗ Rad etish
+                        {t("✗ Rad etish")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditId(row.id)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                       >
                         <svg className="icon icon-xs">
                           <use href="#i-edit" />
@@ -273,10 +275,10 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           onSave={async (values) => {
             const created = await createOrder(values);
             if (created) {
-              showSuccess("Buyurtma muvaffaqiyatli yaratildi");
+              showSuccess(t("Buyurtma muvaffaqiyatli yaratildi"));
               setCreateOpen(false);
             } else {
-              showError("Buyurtma yaratishda xatolik yuz berdi");
+              showError(t("Buyurtma yaratishda xatolik yuz berdi"));
             }
           }}
         />
@@ -289,10 +291,10 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           onSave={async (values) => {
             const updated = await updateOrder(editOrder.id, values);
             if (updated) {
-              showSuccess("Buyurtma muvaffaqiyatli yangilandi");
+              showSuccess(t("Buyurtma muvaffaqiyatli yangilandi"));
               setEditId(null);
             } else {
-              showError("Buyurtmani yangilashda xatolik yuz berdi");
+              showError(t("Buyurtmani yangilashda xatolik yuz berdi"));
             }
           }}
         />
@@ -313,7 +315,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
             // saqlangandagina aytiladi (xato xabarini OrdersContext o'zi
             // ko'rsatadi, shu bois bu yerda takrorlanmaydi).
             const saved = await addMessage(messageOrder.id, text);
-            if (saved) showSuccess("Izoh qo'shildi");
+            if (saved) showSuccess(t("Izoh qo'shildi"));
           }}
         />
       )}
@@ -327,13 +329,13 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           onClose={() => setRejectId(null)}
           onConfirm={async (reason) => {
             const target = rowOf(rejectId);
-            const note = [target?.note, `Rad etish sababi: ${reason}`].filter(Boolean).join(" · ");
+            const note = [target?.note, t("Rad etish sababi: {reason}", { reason })].filter(Boolean).join(" · ");
             const updated = await patchOrder(rejectId, { status: "Bekor qilindi", note });
             if (updated) {
-              showSuccess("Buyurtma rad etildi");
+              showSuccess(t("Buyurtma rad etildi"));
               setRejectId(null);
             } else {
-              showError("Rad etishda xatolik yuz berdi");
+              showError(t("Rad etishda xatolik yuz berdi"));
             }
           }}
         />
@@ -347,8 +349,8 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           onSent={({ simulated }) => {
             // simulated = Eskiz sozlanmagan, SMS real jo'natilmadi (faqat
             // server konsoliga chiqdi va jurnalga yozildi) — buni yashirmaymiz.
-            if (simulated) showError("SMS jo'natilmadi: Eskiz sozlanmagan (jurnalga yozildi)");
-            else showSuccess("SMS yuborildi");
+            if (simulated) showError(t("SMS jo'natilmadi: Eskiz sozlanmagan (jurnalga yozildi)"));
+            else showSuccess(t("SMS yuborildi"));
             setSmsOpen(false);
           }}
           onError={showError}
@@ -361,10 +363,10 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
           onSelect={async (branch) => {
             const updated = await patchOrder(order.id, { toBranch: branch });
             if (updated) {
-              showSuccess("Filialga muvaffaqiyatli o'tkazildi");
+              showSuccess(t("Filialga muvaffaqiyatli o'tkazildi"));
               setBranchPickerOpen(false);
             } else {
-              showError("Filialga o'tkazishda xatolik yuz berdi");
+              showError(t("Filialga o'tkazishda xatolik yuz berdi"));
             }
           }}
         />

@@ -17,6 +17,7 @@ import {
 } from "@/lib/studentsData";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Guruh → Guruh o'quvchilari (sidebar: Guruh > Guruh o'quvchilari,
 // href /groups-students). Referens: akademiya.edutizim.uz/group/group-students
@@ -45,6 +46,7 @@ const STATUS_CLS: Record<string, string> = {
 
 
 export default function GroupStudentsPage() {
+  const { t } = useT();
   const { pupils, loading: pupilsLoading } = useStudents();
   const { groups, loading: groupsLoading } = useGroups();
   const loading = pupilsLoading || groupsLoading;
@@ -97,18 +99,18 @@ export default function GroupStudentsPage() {
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       {/* Filtr qatori */}
       <div className="flex items-center justify-end gap-3 flex-wrap">
-        <EmployeeToggle checked={frozenOnly} onChange={resetPage(setFrozenOnly)} label="Muzlatilgan" />
+        <EmployeeToggle checked={frozenOnly} onChange={resetPage(setFrozenOnly)} label={t("Muzlatilgan")} />
 
-        <Select value={teacher} onChange={(v) => resetPage(setTeacher)(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable size="sm" className="w-44" />
+        <Select value={teacher} onChange={(v) => resetPage(setTeacher)(v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("O'qituvchi")} clearable size="sm" className="w-44" />
 
-        <Select value={status} onChange={(v) => resetPage(setStatus)(v)} options={STUDENT_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="Guruh holati" clearable size="sm" className="w-40" />
+        <Select value={status} onChange={(v) => resetPage(setStatus)(v)} options={STUDENT_STATUSES.map((s) => ({ value: s, label: s }))} placeholder={t("Guruh holati")} clearable size="sm" className="w-40" />
 
-        <DateRangePicker value={dateRange} onChange={resetPage(setDateRange)} placeholder="Oraliqni tanlang" />
+        <DateRangePicker value={dateRange} onChange={resetPage(setDateRange)} placeholder={t("Oraliqni tanlang")} />
       </div>
 
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -121,10 +123,10 @@ export default function GroupStudentsPage() {
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ism</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruhlar</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;qituvchi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ism")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruhlar")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'qituvchi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Holati")}</th>
               </tr>
             </thead>
             <tbody>
@@ -140,7 +142,7 @@ export default function GroupStudentsPage() {
                   <td className="px-3 py-3 text-[13px]">{r.groupNames}</td>
                   <td className="px-3 py-3 text-[13px]"><PersonLink name={r.teacher} kind="staff" /></td>
                   <td className="px-3 py-3 text-[13px]">
-                    <span className={`font-medium ${STATUS_CLS[r.status] ?? ""}`}>{r.status}</span>
+                    <span className={`font-medium ${STATUS_CLS[r.status] ?? ""}`}>{t(r.status)}</span>
                   </td>
                 </tr>
               ))}

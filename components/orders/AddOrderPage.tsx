@@ -15,6 +15,7 @@ import { useModerators } from "@/hooks/useModerators";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 import { useTeachers } from "@/hooks/useTeachers";
+import { useT } from "@/components/shared/Language";
 
 // Full-page "Buyurtma qo'shish" flow reached from the Kanban toolbar's
 // "Qo'shish" button (akademiya.edutizim.uz/orders/add reference) — a
@@ -56,6 +57,7 @@ function parseFields(raw: unknown): CustomField[] {
 }
 
 export default function AddOrderPage() {
+  const { t } = useT();
   const router = useRouter();
   const { createOrder } = useOrders();
   const { pupils, loading: pupilLoading, phoneOf } = usePupils();
@@ -127,7 +129,7 @@ export default function AddOrderPage() {
       isNew: true,
       field: {
         id: crypto.randomUUID(),
-        label: "Yangi maydon",
+        label: t("Yangi maydon"),
         type: "text",
         stages: ORDER_STAGES.map((s) => s.key),
         apiOnly: false,
@@ -147,12 +149,12 @@ export default function AddOrderPage() {
       isOrder ? studentCustomFields : next,
     );
     if (!ok) {
-      showError("Maydon sozlamalarini saqlab bo'lmadi");
+      showError(t("Maydon sozlamalarini saqlab bo'lmadi"));
       return;
     }
     (isOrder ? setOrderCustomFields : setStudentCustomFields)(next);
     setEditingField(null);
-    showSuccess("Maydon sozlamalari saqlandi");
+    showSuccess(t("Maydon sozlamalari saqlandi"));
   };
 
   const deleteCustomField = async () => {
@@ -165,21 +167,21 @@ export default function AddOrderPage() {
       isOrder ? studentCustomFields : next,
     );
     if (!ok) {
-      showError("Maydonni o'chirib bo'lmadi");
+      showError(t("Maydonni o'chirib bo'lmadi"));
       return;
     }
     (isOrder ? setOrderCustomFields : setStudentCustomFields)(next);
     setEditingField(null);
-    showSuccess("Maydon o'chirildi");
+    showSuccess(t("Maydon o'chirildi"));
   };
 
   const handleSave = async () => {
     if (!course) {
-      setError("Kurs majburiy");
+      setError(t("Kurs majburiy"));
       return;
     }
     if (!firstName.trim() && !lastName.trim()) {
-      setError("Ism yoki Familiya kerak");
+      setError(t("Ism yoki Familiya kerak"));
       return;
     }
     setSaving(true);
@@ -200,10 +202,10 @@ export default function AddOrderPage() {
     });
     setSaving(false);
     if (created) {
-      showSuccess("Buyurtma muvaffaqiyatli saqlandi");
+      showSuccess(t("Buyurtma muvaffaqiyatli saqlandi"));
       router.push("/orders-list?layout=kanban");
     } else {
-      showError("Buyurtmani saqlashda xatolik yuz berdi");
+      showError(t("Buyurtmani saqlashda xatolik yuz berdi"));
     }
   };
 
@@ -223,10 +225,10 @@ export default function AddOrderPage() {
         <div className="shrink-0">
           <div className="flex gap-1 rounded-xl border border-border bg-background p-1">
             <button type="button" onClick={() => setActiveTab("asosiy")} style={{ paddingLeft: 20, paddingRight: 20 }} className={tabCls(activeTab === "asosiy")}>
-              Asosiy
+              {t("Asosiy")}
             </button>
             <button type="button" onClick={() => setActiveTab("sozlamalar")} style={{ paddingLeft: 20, paddingRight: 20 }} className={tabCls(activeTab === "sozlamalar")}>
-              Sozlamalar
+              {t("Sozlamalar")}
             </button>
           </div>
         </div>
@@ -236,7 +238,7 @@ export default function AddOrderPage() {
             <div className="space-y-6">
               <div>
                 <div className="mb-3">
-                  <SectionHeader icon={ClipboardList} title="Buyurtma maydonlari" />
+                  <SectionHeader icon={ClipboardList} title={t("Buyurtma maydonlari")} />
                 </div>
                 <div className="space-y-2">
                   {orderCustomFields.map((f) => (
@@ -246,7 +248,7 @@ export default function AddOrderPage() {
                       onClick={() => setEditingField({ scope: "order", field: f, isNew: false })}
                       className="w-full h-10 flex items-center rounded-lg border border-border bg-secondary/20 px-3 text-sm text-left hover:bg-secondary/30"
                     >
-                      {f.label}
+                      {t(f.label)}
                     </button>
                   ))}
                 </div>
@@ -255,13 +257,13 @@ export default function AddOrderPage() {
                   onClick={() => addCustomField("order")}
                   className="mt-2 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
                 >
-                  <Plus size={14} /> Maydon qo&apos;shish
+                  <Plus size={14} />{" "}{t("Maydon qo'shish")}
                 </button>
               </div>
 
               <div>
                 <div className="mb-3">
-                  <SectionHeader icon={Users} title="O'quvchi maydonlari" />
+                  <SectionHeader icon={Users} title={t("O'quvchi maydonlari")} />
                 </div>
                 <div className="space-y-2">
                   {studentCustomFields.map((f) => (
@@ -271,7 +273,7 @@ export default function AddOrderPage() {
                       onClick={() => setEditingField({ scope: "student", field: f, isNew: false })}
                       className="w-full h-10 flex items-center rounded-lg border border-border bg-secondary/20 px-3 text-sm text-left hover:bg-secondary/30"
                     >
-                      {f.label}
+                      {t(f.label)}
                     </button>
                   ))}
                 </div>
@@ -280,7 +282,7 @@ export default function AddOrderPage() {
                   onClick={() => addCustomField("student")}
                   className="mt-2 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary"
                 >
-                  <Plus size={14} /> Maydon qo&apos;shish
+                  <Plus size={14} />{" "}{t("Maydon qo'shish")}
                 </button>
               </div>
             </div>
@@ -323,10 +325,10 @@ export default function AddOrderPage() {
                 )}
               </div>
 
-              <SectionHeader icon={ClipboardList} title="Buyurtma ma'lumotlari" />
-              <FormRowSelect label="Mas'ul shaxs" value={moderator} onChange={setModerator} options={moderatorNames} loading={moderatorLoading} />
+              <SectionHeader icon={ClipboardList} title={t("Buyurtma ma'lumotlari")} />
+              <FormRowSelect label={t("Mas'ul shaxs")} value={moderator} onChange={setModerator} options={moderatorNames} loading={moderatorLoading} />
               <FormRowSelect
-                label="Kurs"
+                label={t("Kurs")}
                 required
                 value={course}
                 onChange={(v) => {
@@ -336,10 +338,10 @@ export default function AddOrderPage() {
                 options={courseNames}
                 loading={courseLoading}
               />
-              <FormRowSelect label="O'qituvchi" value={teacher} onChange={setTeacher} options={teacherNames} loading={teacherLoading} />
+              <FormRowSelect label={t("O'qituvchi")} value={teacher} onChange={setTeacher} options={teacherNames} loading={teacherLoading} />
               <StudentSearchSelect
                 variant="row"
-                label="Referal bergan o'quvchi"
+                label={t("Referal bergan o'quvchi")}
                 value={referral}
                 onChange={setReferral}
                 options={pupilNames}
@@ -353,17 +355,17 @@ export default function AddOrderPage() {
               {/* Referensda ikki bo'lim orasida 48px bo'shliq va 1px ajratgich bor */}
               <div className="mb-12" />
               <div className="border-t border-border" />
-              <SectionHeader icon={Users} title="O'quvchi ma'lumotlari" className="pt-1 pb-px" />
+              <SectionHeader icon={Users} title={t("O'quvchi ma'lumotlari")} className="pt-1 pb-px" />
               <FormRowText
-                label="Ism"
+                label={t("Ism")}
                 value={firstName}
                 onChange={(v) => {
                   setFirstName(v);
                   setError(null);
                 }}
               />
-              <FormRowText label="Familiya" value={lastName} onChange={setLastName} />
-              <FormRowText label="Telefon" value={phone} onChange={setPhone} />
+              <FormRowText label={t("Familiya")} value={lastName} onChange={setLastName} />
+              <FormRowText label={t("Telefon")} value={phone} onChange={setPhone} />
 
               {error && <div className="mt-3 text-sm text-red-600">⚠ {error}</div>}
             </>
@@ -380,7 +382,7 @@ export default function AddOrderPage() {
             style={{ paddingLeft: 20, paddingRight: 20 }}
             className="inline-flex h-9 items-center rounded-lg bg-primary text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </div>
       </div>
@@ -389,7 +391,7 @@ export default function AddOrderPage() {
       <div className="flex min-w-0 flex-1 flex-col px-3 pt-3 pb-2">
         <div className="mt-auto rounded-md border border-border">
           <div className="flex items-start gap-2.5 rounded-[5px] bg-secondary p-2">
-            <span className="shrink-0 text-[15px] leading-[23px] text-primary underline">Eslatma:</span>
+            <span className="shrink-0 text-[15px] leading-[23px] text-primary underline">{t("Eslatma:")}</span>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}

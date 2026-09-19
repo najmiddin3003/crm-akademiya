@@ -11,6 +11,7 @@ import {
   type PayrollPeriod,
 } from "@/lib/salary";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Kassa → Chiqim oynasidagi "Xodim ma'lumotlarini ko'rish" tugmasi ochadigan
 // modal (referens skrinshoti). Sarlavhasi "Xodimlar", yonidagi ikonka —
@@ -94,6 +95,7 @@ export default function EmployeeSalaryModal({
   employeeName: string;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [open, setOpen] = useState(true);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -143,10 +145,10 @@ export default function EmployeeSalaryModal({
           type="button"
           onClick={toggle}
           className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-secondary/40 transition-colors"
-          title={open ? "Yig'ish" : "Ochish"}
+          title={open ? t("Yig'ish") : t("Ochish")}
           aria-expanded={open}
         >
-          <span className="text-[17px] font-semibold">Xodimlar</span>
+          <span className="text-[17px] font-semibold">{t("Xodimlar")}</span>
           <ChevronDown
             className="icon icon-sm text-muted-foreground"
             style={{ transform: `rotate(${open ? 180 : 0}deg)`, transition: `transform ${ease}` }}
@@ -175,7 +177,7 @@ export default function EmployeeSalaryModal({
                 {rows.map((r) => (
                   <li key={r.label} className="flex items-center justify-between gap-4 py-3.5">
                     <span className="text-[14px]">
-                      {r.label}
+                      {t(r.label)}
                       {r.hint && <span className="text-[12px] text-muted-foreground"> ({r.hint})</span>}
                     </span>
                     <span className={`text-[14px] tabular-nums ${r.strong ? "font-semibold" : "font-medium"}`}>
@@ -186,9 +188,9 @@ export default function EmployeeSalaryModal({
               </ul>
             ) : (
               <div className="px-6 py-10 text-center">
-                <p className="text-[14px] font-medium">Oylik sozlanmagan</p>
+                <p className="text-[14px] font-medium">{t("Oylik sozlanmagan")}</p>
                 <p className="text-[12px] text-muted-foreground mt-1">
-                  Xodim kartasida ish haqi kiritilmagan — hisoblanadigan raqam yo&apos;q.
+                  {t("Xodim kartasida ish haqi kiritilmagan — hisoblanadigan raqam yo'q.")}
                 </p>
               </div>
             )}

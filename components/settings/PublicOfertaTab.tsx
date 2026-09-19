@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import SettingsNote from "./SettingsNote";
 import { OFERTA_NEW_SECTION, OFERTA_TEXTS } from "@/constants/settingsOferta";
+import { useT } from "@/components/shared/Language";
 
 // Umumiy sozlamalar → Ommaviy oferta. Oferta bo'limlarga bo'lingan matn
 // ko'rinishida saqlanadi. Mobil ilova bo'limlarni alohida kartochka +
@@ -60,6 +61,7 @@ function normalizeSection(s: Partial<OfertaSection> | null): OfertaSection {
 }
 
 export default function PublicOfertaTab() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<OfertaData>(() => ({ sections: [] }));
   const [loading, setLoading] = useState(true);
@@ -111,12 +113,12 @@ export default function PublicOfertaTab() {
       });
       const resData = await res.json();
       if (!resData.ok) {
-        showError(resData.error || "Saqlanmadi");
+        showError(t(resData.error || "Saqlanmadi"));
         return;
       }
-      showSuccess("Sozlamalar saqlandi");
+      showSuccess(t("Sozlamalar saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -133,8 +135,8 @@ export default function PublicOfertaTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-[15px] font-semibold">{T.title}</h3>
-        <p className="text-[13px] text-muted-foreground mt-1 max-w-3xl">{T.description}</p>
+        <h3 className="text-[15px] font-semibold">{t(T.title)}</h3>
+        <p className="text-[13px] text-muted-foreground mt-1 max-w-3xl">{t(T.description)}</p>
       </div>
 
       {/* Sahifa matni "mobil ilovada 'Tanishdim' bilan ko'rsatiladi" deb
@@ -143,8 +145,7 @@ export default function PublicOfertaTab() {
           repoda yo'q. Bo'limlar rost saqlanadi, lekin va'da hali
           bajarilmayotganini ochiq aytamiz. */}
       <SettingsNote>
-        Bo&apos;limlar saqlanadi, lekin ularni ko&apos;rsatadigan mobil ilova bu tizimga hali
-        ulanmagan &mdash; &quot;Tanishdim&quot; tasdig&apos;i hozircha hech qayerda so&apos;ralmaydi.
+        {t("Bo'limlar saqlanadi, lekin ularni ko'rsatadigan mobil ilova bu tizimga hali ulanmagan — \"Tanishdim\" tasdig'i hozircha hech qayerda so'ralmaydi.")}
       </SettingsNote>
 
       {/* Bo'limlar kartasi. Ro'yxat faqat "Saqlash"da serverga ketadi. */}
@@ -158,7 +159,7 @@ export default function PublicOfertaTab() {
           </div>
           <span className="text-[12px] text-muted-foreground shrink-0">
             {/* Shablon-satr: &apos; li matn oldidagi probel JSX'da yo'qolib qolardi. */}
-            {`${data.sections.length} ta bo'lim`}
+            {t("{sections} ta bo'lim", { sections: data.sections.length })}
           </span>
         </div>
 
@@ -182,7 +183,7 @@ export default function PublicOfertaTab() {
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Sarlavha</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Sarlavha")}</label>
                   <input
                     value={s.title}
                     onChange={(e) => updateSection(s.id, { title: e.target.value })}
@@ -191,7 +192,7 @@ export default function PublicOfertaTab() {
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Matni</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Matni")}</label>
                   <textarea
                     rows={4}
                     value={s.text}
@@ -211,7 +212,7 @@ export default function PublicOfertaTab() {
                     className="h-8 px-3 rounded-lg border border-border text-[13px] font-medium inline-flex items-center gap-1.5 text-rose-600 hover:bg-rose-500/10"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    O&apos;chirish
+                    {t("O'chirish")}
                   </button>
                 </div>
               </div>
@@ -239,7 +240,7 @@ export default function PublicOfertaTab() {
           disabled={saving}
           className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium shrink-0 hover:opacity-90 disabled:opacity-60"
         >
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </div>

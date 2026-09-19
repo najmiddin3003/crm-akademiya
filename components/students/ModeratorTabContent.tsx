@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useModerators } from "@/hooks/useModerators";
 import { useToast } from "@/components/ui/Toast";
 import { invalidateStudents } from "@/hooks/useStudents";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/src/app.js renderStudentEditModerator() (~line 34547),
 // upgraded to a searchable dropdown (matches the real site's moderator picker)
@@ -16,6 +17,7 @@ export default function ModeratorTabContent({
   initialModerator: string;
   pupilId?: number;
 }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const { names: moderatorNames } = useModerators();
   // Ro'yxat bazadan kelgani uchun boshlang'ich qiymat sifatida "birinchi
@@ -37,17 +39,17 @@ export default function ModeratorTabContent({
     setSaving(false);
     invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
-      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      showError(t(res?.error || "Saqlashda xatolik yuz berdi"));
       return;
     }
-    showSuccess("Moderator saqlandi");
+    showSuccess(t("Moderator saqlandi"));
   };
 
   return (
     <div className="rounded-2xl bg-card border border-border p-5">
       <div className="max-w-3xl space-y-4">
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Moderator</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Moderator")}</label>
           <div className="relative">
             <button
               type="button"
@@ -96,7 +98,7 @@ export default function ModeratorTabContent({
         </div>
         {!pupilId && (
           <p className="text-[12px] text-muted-foreground">
-            Bu yozuv o&apos;quvchilar bazasida topilmadi — moderatorni saqlab bo&apos;lmaydi.
+            {t("Bu yozuv o'quvchilar bazasida topilmadi — moderatorni saqlab bo'lmaydi.")}
           </p>
         )}
         <div className="flex justify-end">
@@ -106,7 +108,7 @@ export default function ModeratorTabContent({
             onClick={save}
             className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </div>
       </div>

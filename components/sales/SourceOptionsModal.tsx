@@ -7,6 +7,7 @@ import Spinner from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { StudentSourceOption } from "@/lib/studentSources";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Manba" tanlovlarini boshqarish oynasi — O'quvchilar oqimi sahifasidan
 // ochiladi. Bu yerda qo'shilgan qiymatlar o'quvchi qo'shish formasidagi
@@ -31,6 +32,7 @@ export default function SourceOptionsModal({
   /** Ro'yxat o'zgardi — sahifa taqsimotni qayta o'qisin. */
   onChanged: () => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
 
@@ -63,18 +65,18 @@ export default function SourceOptionsModal({
       const res = await fetch(init.url, init);
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return false;
       }
       setOptions(data.options as StudentSourceOption[]);
       // `renamed` — nom o'zgarganda tuzatilgan o'quvchilar soni. Amal
       // ko'rinmaydigan joyga ham tegadi, shuning uchun aytiladi.
       const n = Number(data.renamed ?? 0);
-      showSuccess(n > 0 ? `${okMsg} · ${n} ta o'quvchida ham yangilandi` : okMsg);
+      showSuccess(n > 0 ? t("{okMsg} · {n} ta o'quvchida ham yangilandi", { okMsg, n }) : okMsg);
       onChanged();
       return true;
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       return false;
     } finally {
       setBusy(false);
@@ -107,10 +109,9 @@ export default function SourceOptionsModal({
     <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={120}>
         <div className="flex items-start gap-3 px-5 py-4 border-b border-border">
           <div className="flex-1">
-            <h3 className="text-base font-semibold">Manbalar ro&apos;yxati</h3>
+            <h3 className="text-base font-semibold">{t("Manbalar ro'yxati")}</h3>
             <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-              Bu yerdagi qiymatlar o&apos;quvchi qo&apos;shish oynasidagi
-              &laquo;Manba&raquo; tanlovida chiqadi.
+              {t("Bu yerdagi qiymatlar o'quvchi qo'shish oynasidagi &laquo;Manba&raquo; tanlovida chiqadi.")}
             </p>
           </div>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center shrink-0">
@@ -125,11 +126,11 @@ export default function SourceOptionsModal({
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
               maxLength={60}
-              placeholder="Yangi manba, masalan: TikTok"
+              placeholder={t("Yangi manba, masalan: TikTok")}
               className={inputCls}
             />
             <Button onClick={add} disabled={busy || !newName.trim()} lucideIcon={Plus} className="shrink-0">
-              Qo&apos;shish
+              {t("Qo'shish")}
             </Button>
           </div>
 
@@ -152,10 +153,10 @@ export default function SourceOptionsModal({
                         maxLength={60}
                         className={inputCls}
                       />
-                      <button onClick={saveEdit} disabled={busy || !editName.trim()} title="Saqlash" className="h-9 w-9 shrink-0 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center justify-center disabled:opacity-50">
+                      <button onClick={saveEdit} disabled={busy || !editName.trim()} title={t("Saqlash")} className="h-9 w-9 shrink-0 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center justify-center disabled:opacity-50">
                         <Check className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setEditId(null)} title="Bekor qilish" className="h-9 w-9 shrink-0 rounded-lg border border-border hover:bg-secondary inline-flex items-center justify-center">
+                      <button onClick={() => setEditId(null)} title={t("Bekor qilish")} className="h-9 w-9 shrink-0 rounded-lg border border-border hover:bg-secondary inline-flex items-center justify-center">
                         <X className="w-4 h-4" />
                       </button>
                     </>
@@ -164,13 +165,13 @@ export default function SourceOptionsModal({
                       <span className="flex-1 text-[13px] truncate">
                         <strong>{o.name}</strong>{" "}o&apos;chirilsinmi?
                       </span>
-                      <Button variant="outline" onClick={() => setDeleteId(null)} className="shrink-0">Yo&apos;q</Button>
+                      <Button variant="outline" onClick={() => setDeleteId(null)} className="shrink-0">{t("Yo'q")}</Button>
                       <button
                         onClick={() => remove(o.id)}
                         disabled={busy}
                         className="h-9 px-3.5 shrink-0 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
                       >
-                        O&apos;chirish
+                        {t("O'chirish")}
                       </button>
                     </>
                   ) : (
@@ -181,22 +182,22 @@ export default function SourceOptionsModal({
                         // tugmalarning yo'qligi nosozlikdek tuyulardi.
                         <span
                           className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0"
-                          title="O'quvchilar ro'yxatidagi «Tavsiyalarni yuklash» tugmasi aynan shu nomga tayanadi"
+                          title={t("O'quvchilar ro'yxatidagi «Tavsiyalarni yuklash» tugmasi aynan shu nomga tayanadi")}
                         >
-                          <Lock className="w-3 h-3" /> tizimli
+                          <Lock className="w-3 h-3" />{" "}{t("tizimli")}
                         </span>
                       ) : (
                         <>
                           <button
                             onClick={() => { setEditId(o.id); setEditName(o.name); setDeleteId(null); }}
-                            title="Nomini o'zgartirish"
+                            title={t("Nomini o'zgartirish")}
                             className="h-8 w-8 shrink-0 rounded-md hover:bg-primary/10 hover:text-primary inline-flex items-center justify-center text-muted-foreground"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => { setDeleteId(o.id); setEditId(null); }}
-                            title="O'chirish"
+                            title={t("O'chirish")}
                             className="h-8 w-8 shrink-0 rounded-md hover:bg-rose-500/10 hover:text-rose-600 inline-flex items-center justify-center text-rose-500"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -208,7 +209,7 @@ export default function SourceOptionsModal({
                 </div>
               ))}
               {options.length === 0 && (
-                <div className="px-3 py-10 text-center text-sm text-muted-foreground">Ro&apos;yxat bo&apos;sh</div>
+                <div className="px-3 py-10 text-center text-sm text-muted-foreground">{t("Ro'yxat bo'sh")}</div>
               )}
             </div>
           )}
@@ -217,22 +218,19 @@ export default function SourceOptionsModal({
               tashqarida ta'sir qiladi, shuning uchun oldindan aytiladi. */}
           <ul className="text-[12px] text-muted-foreground leading-relaxed space-y-1">
             <li>
-              <strong>Nomi o&apos;zgartirilsa</strong> — shu manba yozilgan o&apos;quvchilarda ham
-              yangilanadi, ya&apos;ni taqsimotda ikkita ustun paydo bo&apos;lmaydi.
+              <strong>{t("Nomi o'zgartirilsa")}</strong>{" "}{t("— shu manba yozilgan o'quvchilarda ham yangilanadi, ya'ni taqsimotda ikkita ustun paydo bo'lmaydi.")}
             </li>
             <li>
-              <strong>O&apos;chirilsa</strong> — faqat tanlovlar ro&apos;yxatidan chiqadi. Ilgari shu
-              manba yozilgan o&apos;quvchilar o&apos;zgarmaydi va taqsimotda ko&apos;rinib turaveradi.
+              <strong>{t("O'chirilsa")}</strong>{" "}{t("— faqat tanlovlar ro'yxatidan chiqadi. Ilgari shu manba yozilgan o'quvchilar o'zgarmaydi va taqsimotda ko'rinib turaveradi.")}
             </li>
             <li>
-              &laquo;Boshqa&raquo; bu ro&apos;yxatda yo&apos;q — u tanlov emas, moderator manbani
-              o&apos;z so&apos;zi bilan yozadigan darvoza va doim turadi.
+              {t("&laquo;Boshqa&raquo; bu ro'yxatda yo'q — u tanlov emas, moderator manbani o'z so'zi bilan yozadigan darvoza va doim turadi.")}
             </li>
           </ul>
         </div>
 
         <div className="flex justify-end px-5 py-4 border-t border-border">
-          <Button variant="outline" onClick={modal.close}>Yopish</Button>
+          <Button variant="outline" onClick={modal.close}>{t("Yopish")}</Button>
         </div>
       </Modal>
   );

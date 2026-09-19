@@ -17,6 +17,7 @@ import { findPupilForOrder } from "@/lib/enrollStudent";
 import type { PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → Yangi o'quvchilar (crm-akademiya #view-new-students, sidebar:
 // O'quvchilar > Yangi o'quvchilar, href /new-students).
@@ -86,6 +87,7 @@ function downloadBlob(blob: Blob, filename: string) {
 const HEADERS = ["№", "ID", "O'quvchi ismi", "Telefon raqam", "Balans", "Guruh", "O'qituvchi", "Moderator"];
 
 export default function NewStudentsPage() {
+  const { t } = useT();
   const [orders, setOrders] = useState<Order[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
   // Buyurtma id'si bilan o'quvchi id'si BOSHQA-BOSHQA ketma-ketliklar —
@@ -242,7 +244,7 @@ export default function NewStudentsPage() {
           }`}
         >
           <Filter className="icon icon-sm" />
-          <span>Filtr</span>
+          <span>{t("Filtr")}</span>
           {activeFilterCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
               {activeFilterCount}
@@ -257,23 +259,23 @@ export default function NewStudentsPage() {
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
               type="text"
-              placeholder="Qidirish"
+              placeholder={t("Qidirish")}
               className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <div className="relative" ref={moreRef}>
-            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
               <MoreVertical className="icon icon-sm" />
             </button>
             {moreOpen && (
               <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
                 <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                  <span>CSV faylini yuklab olish</span>
+                  <span>{t("CSV faylini yuklab olish")}</span>
                 </button>
                 <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                  <span>EXCEL faylini yuklab olish</span>
+                  <span>{t("EXCEL faylini yuklab olish")}</span>
                 </button>
               </div>
             )}
@@ -284,14 +286,14 @@ export default function NewStudentsPage() {
       {/* Filtr paneli */}
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={filters.teacher} onChange={(v) => setFilter("teacher", v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable size="sm" className="w-44" />
-          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" className="w-44" />
-          <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" className="w-36" />
+          <Select value={filters.teacher} onChange={(v) => setFilter("teacher", v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("O'qituvchi")} clearable size="sm" className="w-44" />
+          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable size="sm" className="w-44" />
+          <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kurs")} clearable size="sm" className="w-36" />
           <button
             onClick={() => setFilters(EMPTY_ORDERS_FILTERS)}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
-            <X className="icon icon-xs" /> Tozalash
+            <X className="icon icon-xs" />{" "}{t("Tozalash")}
           </button>
         </div>
       )}
@@ -304,7 +306,7 @@ export default function NewStudentsPage() {
           <span className="text-emerald-600 font-medium">Haqdor {fmtUZS(credit)}</span>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -317,14 +319,14 @@ export default function NewStudentsPage() {
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;qituvchi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ilovani yuklab olish sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchi ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Balans")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'qituvchi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ilovani yuklab olish sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Shartnoma")}</th>
               </tr>
             </thead>
             <tbody>

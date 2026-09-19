@@ -18,6 +18,7 @@ import { downloadCsv, intOf, normHeader, readFileRows, type ParseResult } from "
 import Select from "@/components/ui/Select";
 import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Imtihon → UzBMB tabi. Referens HTML'dagi "UZBMB" konteyneri va uning uch
 // modali (natija kiritish, import, solishtirish) bilan bir xil.
@@ -103,6 +104,7 @@ const numInputCls =
   "w-full h-9 rounded-lg border border-border bg-background px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
 
   const [exams, setExams] = useState<UzbmbExam[]>([]);
@@ -219,9 +221,9 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
   async function saveEntry() {
     const student = entry.student.trim();
-    if (!student) return showError("⚠ O'quvchi ismini kiriting");
-    if (!entry.month) return showError("⚠ Oyni tanlang");
-    if (entry.b1s === entry.b2s) return showError("⚠ 1-blok va 2-blok fani bir xil bo'lmasin");
+    if (!student) return showError(t("⚠ O'quvchi ismini kiriting"));
+    if (!entry.month) return showError(t("⚠ Oyni tanlang"));
+    if (entry.b1s === entry.b2s) return showError(t("⚠ 1-blok va 2-blok fani bir xil bo'lmasin"));
     setSaving(true);
     try {
       const res = await fetch("/api/imtihon/uzbmb", {
@@ -231,7 +233,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       setExams(data.exams as UzbmbExam[]);
@@ -243,7 +245,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
         `${data.updated ? "Natija yangilandi" : "UzBMB natijasi saqlandi"} — ${student}: ${ubFmt(saved?.total ?? entryCalc.total)} / 189 ball`,
       );
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -255,14 +257,14 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
       const res = await fetch(`/api/imtihon/uzbmb/${r.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setExams((prev) => prev.filter((x) => x.id !== r.id));
       setCmpId((cur) => (cur === r.id ? null : cur));
-      showSuccess(`Natija o'chirildi — ${r.student} · ${imMonthLabel(r.month)}`);
+      showSuccess(t("Natija o'chirildi — {student} · {month}", { student: r.student, month: imMonthLabel(r.month) }));
     },
-    [showSuccess, showError],
+    [showSuccess, showError, t],
   );
 
   /* ---- Eksport / shablon ---- */
@@ -279,7 +281,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
       r.m1, r.m2, r.m3, ubFmt(r.maj), ubFmt(r.total), r.month,
     ]);
     downloadCsv([head, ...rows], "uzbmb" + (fm ? "_" + fm : "") + ".csv");
-    showSuccess(`📤 Yuklab olindi — ${list.length} ta UzBMB natijasi`);
+    showSuccess(t("📤 Yuklab olindi — {list} ta UzBMB natijasi", { list: list.length }));
   }
 
   function downloadTemplate() {
@@ -291,7 +293,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
       ],
       "uzbmb_shablon.csv",
     );
-    showSuccess("📄 Shablon yuklab olindi — Excel'da to'ldirib, shu oynaga yuklang");
+    showSuccess(t("📄 Shablon yuklab olindi — Excel'da to'ldirib, shu oynaga yuklang"));
   }
 
   /* ---- Import ---- */
@@ -331,13 +333,13 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
       const b1cRaw = intOf(r[iB1c]);
       const b2cRaw = intOf(r[iB2c]);
       if (b1cRaw > 30 || b2cRaw > 30) {
-        errors.push(`${i + 1}-qator (${student}): blok javoblari 30 dan oshmasin`);
+        errors.push(t("{i}-qator ({student}): blok javoblari 30 dan oshmasin", { i: i + 1, student }));
         continue;
       }
       const b1s = String(r[iB1s] || "").trim();
       const b2s = String(r[iB2s] || "").trim();
       if (!b1s || !b2s) {
-        errors.push(`${i + 1}-qator (${student}): blok fanlari bo'sh`);
+        errors.push(t("{i}-qator ({student}): blok fanlari bo'sh", { i: i + 1, student }));
         continue;
       }
       ok.push({
@@ -368,14 +370,14 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Yuklanmadi");
+        showError(t(data.error || "Yuklanmadi"));
         return;
       }
       setExams(data.exams as UzbmbExam[]);
       setImportOpen(false);
-      showSuccess(`📥 Bazaga qo'shildi — ${data.added} ta yangi, ${data.updated} ta yangilangan UzBMB natijasi`);
+      showSuccess(t("📥 Bazaga qo'shildi — {added} ta yangi, {updated} ta yangilangan UzBMB natijasi", { added: data.added, updated: data.updated }));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setApplying(false);
     }
@@ -404,21 +406,21 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
           <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">
             CSV
           </span>
-          <span>Shablon</span>
+          <span>{t("Shablon")}</span>
         </button>
         <button
           onClick={openImport}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15"
         >
           <ArrowDownSquare className="w-4 h-4" />
-          <span>Fayl yuklash (Excel/CSV)</span>
+          <span>{t("Fayl yuklash (Excel/CSV)")}</span>
         </button>
         <button
           onClick={exportCsv}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
         >
           <Share2 className="w-4 h-4" />
-          <span>Yuklab olish</span>
+          <span>{t("Yuklab olish")}</span>
         </button>
         <div className="flex-1" />
         <button
@@ -426,13 +428,13 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
           <FilePlus className="w-4 h-4" />
-          <span>Natija kiritish</span>
+          <span>{t("Natija kiritish")}</span>
         </button>
       </div>
 
       {/* Ball tizimi eslatmasi */}
       <div className="rounded-xl border border-border bg-secondary/20 px-4 py-2.5 flex items-center gap-4 flex-wrap text-[12px]">
-        <span className="font-semibold text-primary">UzBMB ball tizimi:</span>
+        <span className="font-semibold text-primary">{t("UzBMB ball tizimi:")}</span>
         <span>
           1-blok (asosiy fan): 30 savol × <b>3.1</b> = 93 ball
         </span>
@@ -442,10 +444,10 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
         </span>
         <span className="text-muted-foreground">·</span>
         <span>
-          3 majburiy fan: 10 tadan × <b>1.1</b> = 33 ball
+          {t("3 majburiy fan: 10 tadan ×")}{" "}<b>1.1</b> = 33 ball
         </span>
         <span className="text-muted-foreground">·</span>
-        <span className="font-bold">Maksimal: 189 ball</span>
+        <span className="font-bold">{t("Maksimal: 189 ball")}</span>
       </div>
 
       {/* Stats */}
@@ -456,19 +458,19 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
           sub="UzBMB imtihon natijasi"
         />
         <StatCard
-          label="O'rtacha ball"
+          label={t("O'rtacha ball")}
           value={ubFmt(avg)}
           sub="189 balldan"
           color={avg >= 151.2 ? "text-emerald-600" : avg >= 113.4 ? "text-amber-600" : "text-rose-500"}
         />
         <StatCard
-          label="Eng yuqori ball"
+          label={t("Eng yuqori ball")}
           value={best ? ubFmt(best.total) : "—"}
           sub={best ? best.student : ""}
           color="text-emerald-600"
         />
         <StatCard
-          label="150+ ball olganlar"
+          label={t("150+ ball olganlar")}
           value={strong}
           sub={items.length ? Math.round((strong / items.length) * 100) + "% o'quvchi" : ""}
           color="text-primary"
@@ -477,8 +479,8 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={fm} onChange={(v) => setFMonth(v)} options={months.map((m) => ({ value: m, label: imMonthLabel(m) }))} placeholder="Barcha oylar" clearable size="sm" className="w-40" />
-        <Select value={fSubject} onChange={(v) => setFSubject(v)} options={subjects.map((s) => ({ value: s, label: s }))} placeholder="1-blok fani — barchasi" clearable size="sm" className="w-44" />
+        <Select value={fm} onChange={(v) => setFMonth(v)} options={months.map((m) => ({ value: m, label: imMonthLabel(m) }))} placeholder={t("Barcha oylar")} clearable size="sm" className="w-40" />
+        <Select value={fSubject} onChange={(v) => setFSubject(v)} options={subjects.map((s) => ({ value: s, label: s }))} placeholder={t("1-blok fani — barchasi")} clearable size="sm" className="w-44" />
         <div className="flex-1" />
         <div className="relative w-72">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -486,12 +488,12 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             type="text"
-            placeholder="O'quvchi bo'yicha qidirish"
+            placeholder={t("O'quvchi bo'yicha qidirish")}
             className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{items.length}</span>
         </div>
       </div>
@@ -503,12 +505,12 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
             <thead className="bg-secondary/40">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-4 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">O&apos;quvchi</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("O'quvchi")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">1-blok (×3.1)</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">2-blok (×2.1)</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Majburiy (×1.1)</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Jami ball (189)</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Oy</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Majburiy (×1.1)")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Jami ball (189)")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Oy")}</th>
                 <th className="text-right px-4 py-3 whitespace-nowrap w-32" />
               </tr>
             </thead>
@@ -523,7 +525,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
               {!loading && items.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
-                    Natija topilmadi. &quot;Natija kiritish&quot; yoki fayl yuklashdan foydalaning.
+                    {t("Natija topilmadi. \"Natija kiritish\" yoki fayl yuklashdan foydalaning.")}
                   </td>
                 </tr>
               )}
@@ -572,7 +574,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                         }}
                         className="h-8 px-3 rounded-md bg-primary/10 text-primary text-[12px] font-medium hover:bg-primary/15"
                       >
-                        Solishtirish
+                        {t("Solishtirish")}
                       </button>
                       <button
                         onClick={(e) => {
@@ -580,7 +582,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                           remove(r);
                         }}
                         className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 inline-flex items-center justify-center text-muted-foreground"
-                        title="O'chirish"
+                        title={t("O'chirish")}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -597,7 +599,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
         <Modal onClose={() => setEntryOpen(false)} bare size="lg" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[16px] font-semibold">UzBMB natijasi</div>
+                <div className="text-[16px] font-semibold">{t("UzBMB natijasi")}</div>
                 <button
                   onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
@@ -610,14 +612,14 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[13px] font-medium mb-1.5">
-                      O&apos;quvchi<span className="text-rose-500">*</span>
+                      {t("O'quvchi")}<span className="text-rose-500">*</span>
                     </label>
                     <input
                       value={entry.student}
                       onChange={(e) => setEntry((f) => ({ ...f, student: e.target.value }))}
                       list="ub-students-dl"
                       type="text"
-                      placeholder="Ism yozing..."
+                      placeholder={t("Ism yozing...")}
                       className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                     <datalist id="ub-students-dl">
@@ -627,7 +629,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                     </datalist>
                   </div>
                   <div>
-                    <label className="block text-[13px] font-medium mb-1.5">Oy</label>
+                    <label className="block text-[13px] font-medium mb-1.5">{t("Oy")}</label>
                     <MonthYearPicker
                       value={monthYearFromIso(entry.month)}
                       onChange={(v) => setEntry((f) => ({ ...f, month: monthYearToIso(v) }))}
@@ -636,7 +638,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                 </div>
 
                 <div className="rounded-xl border border-border p-3 space-y-2.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-primary">Asosiy fanlar</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-primary">{t("Asosiy fanlar")}</div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[12px] font-medium mb-1">
@@ -646,7 +648,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                     </div>
                     <div>
                       <label className="block text-[12px] font-medium mb-1">
-                        {entry.b1cert ? "Sertifikat balli (0–93)" : "To'g'ri (0–30)"}
+                        {entry.b1cert ? t("Sertifikat balli (0–93)") : t("To'g'ri (0–30)")}
                       </label>
                       {entry.b1cert ? (
                         <input
@@ -656,7 +658,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                           min={0}
                           max={93}
                           step={0.1}
-                          placeholder="Ball (0–93)"
+                          placeholder={t("Ball (0–93)")}
                           className="w-full h-9 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm tabular-nums text-slate-900"
                         />
                       ) : (
@@ -677,7 +679,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                           onChange={(e) => setEntry((f) => ({ ...f, b1cert: e.target.checked }))}
                           className="h-3.5 w-3.5 rounded border-border accent-primary"
                         />
-                        <span>🏅 Sertifikat bor — ball qo&apos;lda</span>
+                        <span>{t("🏅 Sertifikat bor — ball qo'lda")}</span>
                       </label>
                     </div>
                     <div>
@@ -688,7 +690,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                     </div>
                     <div>
                       <label className="block text-[12px] font-medium mb-1">
-                        {entry.b2cert ? "Sertifikat balli (0–63)" : "To'g'ri (0–30)"}
+                        {entry.b2cert ? t("Sertifikat balli (0–63)") : t("To'g'ri (0–30)")}
                       </label>
                       {entry.b2cert ? (
                         <input
@@ -698,7 +700,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                           min={0}
                           max={63}
                           step={0.1}
-                          placeholder="Ball (0–63)"
+                          placeholder={t("Ball (0–63)")}
                           className="w-full h-9 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm tabular-nums text-slate-900"
                         />
                       ) : (
@@ -719,7 +721,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                           onChange={(e) => setEntry((f) => ({ ...f, b2cert: e.target.checked }))}
                           className="h-3.5 w-3.5 rounded border-border accent-primary"
                         />
-                        <span>🏅 Sertifikat bor — ball qo&apos;lda</span>
+                        <span>{t("🏅 Sertifikat bor — ball qo'lda")}</span>
                       </label>
                     </div>
                   </div>
@@ -727,7 +729,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
                 <div className="rounded-xl border border-border p-3 space-y-2.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                    Majburiy fanlar (10 tadan, ×1.1)
+                    {t("Majburiy fanlar (10 tadan, ×1.1)")}
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     {([["m1", "Ona tili"], ["m2", "Matematika"], ["m3", "O'zb. tarixi"]] as const).map(([k, label]) => (
@@ -753,7 +755,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                   </div>
                   <div className="text-center mt-1">
                     <span className={`text-[28px] font-bold tabular-nums ${entryBallCls}`}>{ubFmt(entryCalc.total)}</span>
-                    <span className="text-[14px] text-slate-500 font-medium"> / 189 ball</span>
+                    <span className="text-[14px] text-slate-500 font-medium">{" "}{t("/ 189 ball")}</span>
                   </div>
                   <div className="h-2 rounded-full bg-slate-200 overflow-hidden mt-1.5">
                     <div
@@ -770,14 +772,14 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                   disabled={saving}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm disabled:opacity-60"
                 >
-                  Bekor qilish
+                  {t("Bekor qilish")}
                 </button>
                 <button
                   onClick={saveEntry}
                   disabled={saving}
                   className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
                 >
-                  {saving ? "Saqlanmoqda…" : "Saqlash"}
+                  {saving ? t("Saqlanmoqda…") : t("Saqlash")}
                 </button>
               </div>
             </div>
@@ -789,7 +791,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
         <Modal onClose={() => setImportOpen(false)} bare size="xl" zIndex={120}>{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-[16px] font-semibold">UzBMB — Excel / CSV dan yuklash</div>
+                <div className="text-[16px] font-semibold">{t("UzBMB — Excel / CSV dan yuklash")}</div>
                 <button
                   onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
@@ -800,25 +802,24 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
               <div className="text-[13px] text-muted-foreground mb-3">
                 Ustunlar:{" "}
                 <b>
-                  O&apos;quvchi, 1-blok fani, 1-blok to&apos;g&apos;ri, 2-blok fani, 2-blok to&apos;g&apos;ri, Ona tili,
-                  Matematika, Tarix, Oy
+                  {t("O'quvchi, 1-blok fani, 1-blok to'g'ri, 2-blok fani, 2-blok to'g'ri, Ona tili, Matematika, Tarix, Oy")}
                 </b>
                 . Ballar avtomatik hisoblanadi.{" "}
                 <button onClick={downloadTemplate} className="text-primary font-medium hover:underline">
-                  Shablonni yuklab olish
+                  {t("Shablonni yuklab olish")}
                 </button>
               </div>
               <label className="block rounded-xl border-2 border-dashed border-border bg-secondary/20 p-6 text-center cursor-pointer hover:bg-secondary/40 transition-colors">
                 <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
                 <ArrowDownSquare className="mx-auto mb-2 text-muted-foreground" style={{ width: 28, height: 28 }} />
-                <div className="text-[13px] font-medium">Faylni tanlang</div>
-                <div className="text-[12px] text-muted-foreground mt-0.5">.xlsx, .xls yoki .csv</div>
+                <div className="text-[13px] font-medium">{t("Faylni tanlang")}</div>
+                <div className="text-[12px] text-muted-foreground mt-0.5">{t(".xlsx, .xls yoki .csv")}</div>
               </label>
               {parsed && (
                 <div className="mt-3 rounded-xl border border-border bg-secondary/20 p-3.5 text-[13px]">
                   <div className={`font-semibold ${parsed.ok.length ? "text-emerald-600" : "text-rose-500"}`}>
                     {parsed.ok.length
-                      ? `✓ ${parsed.ok.length} ta natija o'qildi (ballar avtomatik hisoblandi)`
+                      ? t("✓ {ok} ta natija o'qildi (ballar avtomatik hisoblandi)", { ok: parsed.ok.length })
                       : "⚠ Yaroqli qator topilmadi"}
                   </div>
                   {parsed.ok.length > 0 && (
@@ -845,14 +846,14 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                   onClick={modal.close}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm"
                 >
-                  Yopish
+                  {t("Yopish")}
                 </button>
                 <button
                   onClick={applyImport}
                   disabled={!parsed || parsed.ok.length === 0 || applying}
                   className="h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {applying ? "Qo'shilmoqda…" : "Bazaga qo'shish"}
+                  {applying ? t("Qo'shilmoqda…") : t("Bazaga qo'shish")}
                 </button>
               </div>
             </div>
@@ -880,7 +881,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <div className="text-[11px] text-muted-foreground">Jami ball</div>
+                  <div className="text-[11px] text-muted-foreground">{t("Jami ball")}</div>
                   <div
                     className={`text-[22px] font-bold tabular-nums ${
                       cmp.total / 189 >= 0.8 ? "text-emerald-600" : cmp.total / 189 >= 0.6 ? "text-amber-600" : "text-rose-500"
@@ -888,15 +889,15 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                   >
                     {ubFmt(cmp.total)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">189 balldan</div>
+                  <div className="text-[11px] text-muted-foreground">{t("189 balldan")}</div>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <div className="text-[11px] text-muted-foreground">Markaz bo&apos;yicha o&apos;rin</div>
+                  <div className="text-[11px] text-muted-foreground">{t("Markaz bo'yicha o'rin")}</div>
                   <div className="text-[22px] font-bold tabular-nums text-primary">{cmpData.rank}-o&apos;rin</div>
                   <div className="text-[11px] text-muted-foreground">{cmpData.pool.length} o&apos;quvchi ichida</div>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <div className="text-[11px] text-muted-foreground">O&apos;sish (oldingi oyga)</div>
+                  <div className="text-[11px] text-muted-foreground">{t("O'sish (oldingi oyga)")}</div>
                   <div
                     className={`text-[22px] font-bold tabular-nums ${
                       cmpData.trend > 0 ? "text-emerald-600" : cmpData.trend < 0 ? "text-rose-500" : "text-muted-foreground"
@@ -909,7 +910,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                 </div>
               </div>
 
-              <div className="text-[12px] font-bold uppercase tracking-wider text-primary mb-2">Bloklar kesimida</div>
+              <div className="text-[12px] font-bold uppercase tracking-wider text-primary mb-2">{t("Bloklar kesimida")}</div>
               <div className="space-y-3 mb-4">
                 <CmpBar
                   label={`1-blok — ${cmp.b1s}${cmp.b1cert ? " (🏅 Sertifikat)" : ` (${cmp.b1c}/30 × 3.1)`}`}
@@ -926,30 +927,30 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
                   bold
                 />
                 <CmpBar
-                  label={`Majburiy fanlar (${cmp.m1}+${cmp.m2}+${cmp.m3} × 1.1)`}
+                  label={t("Majburiy fanlar ({m1}+{m2}+{m3} × 1.1)", { m1: cmp.m1, m2: cmp.m2, m3: cmp.m3 })}
                   val={cmp.maj}
                   max={33}
                   color="#f59e0b"
                   bold
                 />
                 <CmpBar
-                  label={`Markaz o'rtachasi (${cmpData.pool.length} natija)`}
+                  label={t("Markaz o'rtachasi ({pool} natija)", { pool: cmpData.pool.length })}
                   val={cmpData.poolAvg}
                   max={189}
                   color="#94a3b8"
                 />
               </div>
 
-              <div className="text-[12px] font-bold uppercase tracking-wider text-primary mb-2">Imtihonlar tarixi</div>
+              <div className="text-[12px] font-bold uppercase tracking-wider text-primary mb-2">{t("Imtihonlar tarixi")}</div>
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-secondary/40">
                     <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                      <th className="text-left px-3 py-2">Oy</th>
-                      <th className="text-left px-3 py-2">1-blok</th>
-                      <th className="text-left px-3 py-2">2-blok</th>
-                      <th className="text-right px-3 py-2">Majburiy</th>
-                      <th className="text-left px-3 py-2">Jami</th>
+                      <th className="text-left px-3 py-2">{t("Oy")}</th>
+                      <th className="text-left px-3 py-2">{t("1-blok")}</th>
+                      <th className="text-left px-3 py-2">{t("2-blok")}</th>
+                      <th className="text-right px-3 py-2">{t("Majburiy")}</th>
+                      <th className="text-left px-3 py-2">{t("Jami")}</th>
                     </tr>
                   </thead>
                   <tbody>

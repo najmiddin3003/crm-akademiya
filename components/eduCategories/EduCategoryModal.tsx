@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import type { EduCategory } from "@/lib/eduCategories";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Kategoriya qo'shish / tahrirlash modali (O'quv bo'limi → Kategoriya).
 // `category` berilsa — tahrirlash (PATCH /api/edu-categories/:id), aks holda
@@ -20,6 +21,7 @@ export default function EduCategoryModal({
   onClose: () => void;
   onSaved: (category: EduCategory) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [name, setName] = useState(category?.name || "");
@@ -28,7 +30,7 @@ export default function EduCategoryModal({
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      showError("Kategoriya nomini kiriting");
+      showError(t("Kategoriya nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -38,7 +40,7 @@ export default function EduCategoryModal({
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
@@ -46,10 +48,10 @@ export default function EduCategoryModal({
       // yangi ro'yxatni oladi (lib/referenceCache.ts).
       invalidateEduCategories();
       onSaved(data.category as EduCategory);
-      showSuccess(category ? "Kategoriya yangilandi" : "Kategoriya qo'shildi");
+      showSuccess(category ? t("Kategoriya yangilandi") : t("Kategoriya qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -57,7 +59,7 @@ export default function EduCategoryModal({
   return (
     <Modal onClose={onClose} controller={modal} bare panelClassName="p-6">
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Nomi<span className="text-rose-500">*</span></label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Nomi")}<span className="text-rose-500">*</span></label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -70,10 +72,10 @@ export default function EduCategoryModal({
 
         <div className="flex items-center justify-end gap-2 mt-6">
           <button onClick={modal.close} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

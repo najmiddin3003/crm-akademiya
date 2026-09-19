@@ -10,6 +10,7 @@ import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { type Cashbox, type CashboxName } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -35,6 +36,7 @@ export default function CashboxTransferToDrawer({
   onClose: () => void;
   onSaved: (updated: { from: Cashbox; to: Cashbox }) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: loadingMethods } = usePaymentMethods();
@@ -116,22 +118,22 @@ export default function CashboxTransferToDrawer({
 
   async function save() {
     if (!toCashboxId) {
-      showError("Moliya bo'limini tanlang");
+      showError(t("Moliya bo'limini tanlang"));
       return;
     }
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
-      showError("Qiymatni to'g'ri kiriting");
+      showError(t("Qiymatni to'g'ri kiriting"));
       return;
     }
     if (!method) {
-      showError("To'lov turini tanlang");
+      showError(t("To'lov turini tanlang"));
       return;
     }
     // Mavjuddan ko'p summa serverda ham rad etiladi; bu yerda tekshirilishi
     // shunchaki javobni kutmaslik uchun.
     if (available !== null && amountNum > available) {
-      showError(`Mablag' yetarli emas — mavjud ${fmtSum(available)}`);
+      showError(t("Mablag' yetarli emas — mavjud {available}", { available: fmtSum(available) }));
       return;
     }
     setSaving(true);
@@ -150,17 +152,17 @@ export default function CashboxTransferToDrawer({
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved({ from: data.from as Cashbox, to: data.to as Cashbox });
       // "Ko'chirildi" DEB BO'LMAYDI: pul hali hech qayerga ketgani yo'q,
       // u qabul qiluvchi ✓ bosgunicha shu kassada turadi.
-      showSuccess("Ko'chirma jo'natildi — tasdiq kutilmoqda");
+      showSuccess(t("Ko'chirma jo'natildi — tasdiq kutilmoqda"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -171,7 +173,7 @@ export default function CashboxTransferToDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">Ko&apos;chirish</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{t("Ko'chirish")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
@@ -179,7 +181,7 @@ export default function CashboxTransferToDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Moliya bo&apos;limi</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Moliya bo'limi")}</label>
             {/* Manzil kassalari — faqat NOMLARI. Balans ataylab yozilmaydi:
                 bu boshqa odamning kassasi, uning puli bu yerda ko'rinmasin.
 
@@ -196,13 +198,13 @@ export default function CashboxTransferToDrawer({
                 hint: c.archived ? "arxivda" : undefined,
               }))}
               loading={cashboxesLoading}
-              placeholder={destinations.length === 0 ? "Boshqa kassa yo'q" : "Tanlang"}
+              placeholder={destinations.length === 0 ? t("Boshqa kassa yo'q") : t("Tanlang")}
               disabled={destinations.length === 0}
             />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
             <MoneyInput
               value={amount}
               onChange={setAmount}
@@ -211,7 +213,7 @@ export default function CashboxTransferToDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("To'lov turi")}</label>
             {/* Ro'yxat kelmaguncha "mablag' yo'q" deb yozib bo'lmaydi — bu
                 yolg'on bo'lardi: hali hech narsa o'qilmagan. Ilgari shu
                 shart qo'lda yozilgan edi; endi `loading` propining o'zi
@@ -221,7 +223,7 @@ export default function CashboxTransferToDrawer({
               onChange={setMethod}
               options={methodOptions}
               loading={loadingMethods}
-              placeholder={methodOptions.length === 0 ? "Kassada mablag' yo'q" : "Tanlang"}
+              placeholder={methodOptions.length === 0 ? t("Kassada mablag' yo'q") : t("Tanlang")}
               disabled={methodOptions.length === 0}
             />
             {/* Ro'yxatdagi summa kartadagi balansdan KICHIK bo'lishi
@@ -234,18 +236,18 @@ export default function CashboxTransferToDrawer({
                 chiqadi — kartadagi "3 000 000so'm" ham shundan). */}
             {held > 0 && (
               <p className="mt-1.5 text-[12px] text-amber-600">
-                {`${fmtSum(held)} tasdiq kutmoqda — bu summani qayta jo'natib bo'lmaydi.`}
+                {t("{held} tasdiq kutmoqda — bu summani qayta jo'natib bo'lmaydi.", { held: fmtSum(held) })}
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
             <DatePicker value={date} onChange={setDate} className="w-full" />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -257,10 +259,10 @@ export default function CashboxTransferToDrawer({
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

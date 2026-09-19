@@ -18,7 +18,6 @@ import {
   payrollMonthKey,
   payrollPaid,
   payrollPeriod,
-  payrollPeriodLabel,
   payrollPeriodOf,
   payrollTax,
   payrollTaxLines,
@@ -27,11 +26,11 @@ import {
   payrollCashLeg,
   payrollCashDue,
   payrollPayout,
-  UZ_MONTHS,
   type EmployeePayroll,
 } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Oylik chiqarish (/finance-payroll) — bo'limning BOSH sahifasi.
 //
@@ -120,6 +119,7 @@ function StatCard({ label, value, hint, title, sub, tone, loading = false }: Sta
 }
 
 export default function SalaryCreatePage() {
+  const { t, months } = useT();
   const { showSuccess, showError } = useToast();
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
   const [employees, setEmployees] = useState<EmployeePayroll[]>([]);
@@ -156,13 +156,13 @@ export default function SalaryCreatePage() {
   const currentMonthKey = useMemo(() => payrollMonthKey(payrollPeriod()), []);
   const [monthKey, setMonthKey] = useState(currentMonthKey);
   const period = useMemo(() => payrollPeriodOf(monthKey), [monthKey]);
-  const periodLabel = useMemo(() => payrollPeriodLabel(period), [period]);
+  const periodLabel = useMemo(() => t("1 — {day}-{month} ({day}/{daysIn} kun)", { day: period.day, month: months[period.month].toLowerCase(), daysIn: period.daysIn }), [period, months, t]);
   const isPastMonth = monthKey < currentMonthKey;
   // KELAJAK oy ham ko'riladi (o'quvchi oldindan to'lashi mumkin), lekin
   // undan pul CHIQARILMAYDI — hali ishlanmagan oy uchun oylik berilmaydi.
   // Server ham rad etadi, bu shunchaki tugmani oldindan o'chirib qo'yadi.
   const isFutureMonth = monthKey > currentMonthKey;
-  const monthLabel = `${UZ_MONTHS[period.month]} ${period.year}`;
+  const monthLabel = `${months[period.month]} ${period.year}`;
   // Sarlavhalar oyga qarab o'zgaradi: "shu kungacha" faqat JORIY oyda
   // to'g'ri — tugagan oy to'liq hisoblanadi, kelajak oyda esa umuman
   // hisoblanmaydi (faqat oldindan tushgan pul ko'rinadi).
@@ -426,7 +426,7 @@ export default function SalaryCreatePage() {
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
-        showError(data.error || "Oylik chiqarilmadi");
+        showError(t(data.error || "Oylik chiqarilmadi"));
         setSaving(false);
         return;
       }
@@ -435,14 +435,14 @@ export default function SalaryCreatePage() {
       // jadvalni qayta yuklaymiz: "To'langan oylik" va "Qolgan" darhol
       // yangilanadi, ya'ni chiqarish natijasi ko'z oldida ko'rinadi.
       // Kassadagi qoldiq ham kamaygani uchun kassalar qayta o'qiladi.
-      showSuccess(`Oylik chiqarildi — ${fmtSum(payoutTotal)}`);
+      showSuccess(t("Oylik chiqarildi — {payoutTotal}", { payoutTotal: fmtSum(payoutTotal) }));
       setConfirmOpen(false);
       setSelected(new Set());
       setSaving(false);
       load();
       loadCashboxes();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -453,8 +453,8 @@ export default function SalaryCreatePage() {
     employees.forEach((e) => set.add(e.turi));
     return Array.from(set);
   }, [employees]);
-  const turiLabel = (t: string) =>
-    t === "teacher" ? "O'qituvchilar" : t === "moderator" ? "Moderatorlar" : t === "admin" ? "Adminlar" : t;
+  const turiLabel = (tv: string) =>
+    tv === "teacher" ? "O'qituvchilar" : tv === "moderator" ? "Moderatorlar" : tv === "admin" ? "Adminlar" : tv;
 
   return (
     // `page-frame` — loyihaning mavjud naqshi (app/globals.css): sahifa
@@ -465,7 +465,7 @@ export default function SalaryCreatePage() {
       {/* Header — "Orqaga" YO'Q: bu bo'limning bosh sahifasi, qaytadigan
           yuqori sahifa yo'q. Tarixga o'tish o'ng tomondagi tugmada. */}
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-[18px] md:text-[20px] font-bold">Oylik hisob-kitob</h1>
+        <h1 className="text-[18px] md:text-[20px] font-bold">{t("Oylik hisob-kitob")}</h1>
         {/* Oy tanlagich — o'tgan oyni QAYTA hisoblash uchun. */}
         <MonthYearPicker
           className="w-[124px]"
@@ -483,12 +483,12 @@ export default function SalaryCreatePage() {
           // Tugagan oy TO'LIQ hisoblanadi (oklad kesilmaydi) — foydalanuvchi
           // joriy oydagi "shu kungacha" hisobidan farqini ko'rib tursin.
           <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[12px] font-semibold">
-            {`${monthLabel} — tugagan oy, to'liq hisoblanadi`}
+            {t("{monthLabel} — tugagan oy, to'liq hisoblanadi", { monthLabel })}
           </span>
         )}
         {isFutureMonth && (
           <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[12px] font-semibold">
-            {`${monthLabel} — oldindan tushgan pul, oylik chiqarilmaydi`}
+            {t("{monthLabel} — oldindan tushgan pul, oylik chiqarilmaydi", { monthLabel })}
           </span>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -497,23 +497,23 @@ export default function SalaryCreatePage() {
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             <History className="w-4 h-4" />
-            Chiqarishlar tarixi
+            {t("Chiqarishlar tarixi")}
           </Link>
           <button
             onClick={load}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             <RotateCcw className="w-4 h-4" />
-            Qayta hisoblash
+            {t("Qayta hisoblash")}
           </button>
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={selectedCount === 0 || isFutureMonth}
-            title={isFutureMonth ? "Kelajak oy uchun oylik chiqarilmaydi" : undefined}
+            title={isFutureMonth ? t("Kelajak oy uchun oylik chiqarilmaydi") : undefined}
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <DollarSign className="w-4 h-4" />
-            Oylikni chiqarish
+            {t("Oylikni chiqarish")}
             <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white/20 text-[11px] font-bold tabular-nums">
               {selectedCount}
             </span>
@@ -529,24 +529,24 @@ export default function SalaryCreatePage() {
             va uni yashil rangda ko'rsatish chalg'itardi. */}
         <StatCard
           tone="emerald"
-          label="Jami tushum"
+          label={t("Jami tushum")}
           value={cashflowNoma ? "—" : fmtSum(cashflow?.daromad ?? 0)}
           sub={
             cashflowNoma
               ? undefined
-              : { text: `Sof foyda: ${fmtSum(sofFoyda)}`, tone: sofFoyda < 0 ? "rose" : "emerald" }
+              : { text: t("Sof foyda: {sofFoyda}", { sofFoyda: fmtSum(sofFoyda) }), tone: sofFoyda < 0 ? "rose" : "emerald" }
           }
           hint={
             cashflowNoma
               ? "bu filialga kassa biriktirilmagan"
-              : `xarajat ${fmtNum(cashflow?.xarajat ?? 0)} · qolgan oylik ${fmtNum(stats.qolgan)}`
+              : t("xarajat {xarajat} · qolgan oylik {qolgan}", { xarajat: fmtNum(cashflow?.xarajat ?? 0), qolgan: fmtNum(stats.qolgan) })
           }
           title={
             cashflowNoma
               ? "Tushum va xarajat kassa orqali filialga bog'lanadi. Bu filialda bitta ham kassa yo'q, shuning uchun son hisoblanmadi."
               : cashflow
-                ? `Sof foyda = tushum ${fmtSum(cashflow.daromad)} − xarajat ${fmtSum(cashflow.xarajat)}` +
-                  ` − qolgan to'lanadigan oylik ${fmtSum(stats.qolgan)}.` +
+                ? t("Sof foyda = tushum {daromad} − xarajat {xarajat}", { daromad: fmtSum(cashflow.daromad), xarajat: fmtSum(cashflow.xarajat) }) +
+                  t(" − qolgan to'lanadigan oylik {qolgan}.", { qolgan: fmtSum(stats.qolgan) }) +
                   ` Xarajat ichida allaqachon berilgan avans va chiqarilgan oylik ham bor.` +
                   ` Kassalararo ko'chirmalar va bekor qilingan yozuvlar hisobga olinmaydi.`
                 : undefined
@@ -555,22 +555,22 @@ export default function SalaryCreatePage() {
         />
         <StatCard
           tone="cyan"
-          label={`Hisoblangan oylik (${calcSuffix})`}
-          value={fmtSum(stats.hisoblangan)}
-          hint={`${employees.length} ta xodim · ${periodHint}`}
+          label={t("Hisoblangan oylik ({calcSuffix})", { calcSuffix })}
+          value={t(fmtSum(stats.hisoblangan))}
+          hint={t("{employees} ta xodim · {periodHint}", { employees: employees.length, periodHint })}
           loading={loading}
         />
         <StatCard
           tone="amber"
-          label="Berilgan avans"
-          value={fmtSum(stats.avans)}
+          label={t("Berilgan avans")}
+          value={t(fmtSum(stats.avans))}
           hint="oylikdan ushlab qolinadi"
           loading={loading}
         />
         <StatCard
           tone="blue"
-          label="To'langan oylik"
-          value={fmtSum(stats.tolangan)}
+          label={t("To'langan oylik")}
+          value={t(fmtSum(stats.tolangan))}
           hint="kassadan chiqarilgan"
           loading={loading}
         />
@@ -580,21 +580,21 @@ export default function SalaryCreatePage() {
             O'tgan oy tafsiloti sichqoncha ostida. */}
         <StatCard
           tone="rose"
-          label="Qolgan to'lanadigan"
-          value={fmtSum(stats.qolgan)}
+          label={t("Qolgan to'lanadigan")}
+          value={t(fmtSum(stats.qolgan))}
           hint={
             anyPlastik
-              ? `kartaga ${fmtNum(stats.kartaga)} · naqd ${fmtNum(stats.naqd)}`
-                + (stats.qarzdorlik > 0 ? ` · xodim qarzi: ${fmtNum(stats.qarzdorlik)}` : "")
+              ? t("kartaga {kartaga} · naqd {naqd}", { kartaga: fmtNum(stats.kartaga), naqd: fmtNum(stats.naqd) })
+                + (stats.qarzdorlik > 0 ? t(" · xodim qarzi: {qarzdorlik}", { qarzdorlik: fmtNum(stats.qarzdorlik) }) : "")
               : stats.qarzdorlik > 0
-                ? `o'tgan oydan: ${fmtSum(stats.otganOydan)} · xodim qarzi: ${fmtSum(stats.qarzdorlik)}`
-                : `shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}`
+                ? t("o'tgan oydan: {otganOydan} · xodim qarzi: {qarzdorlik}", { otganOydan: fmtSum(stats.otganOydan), qarzdorlik: fmtSum(stats.qarzdorlik) })
+                : t("shu jumladan o'tgan oydan: {otganOydan}", { otganOydan: fmtSum(stats.otganOydan) })
           }
           title={
             anyPlastik
-              ? `Kartaga ${fmtSum(stats.kartaga)} — qoldiqdan birinchi, plastik summasigacha.` +
-                ` Naqd ${fmtSum(stats.naqd)} — kartadan keyin xodimlarga qo'lga beriladigani (jadvaldagi "Qolgan" ustuni).` +
-                ` Shu jumladan o'tgan oydan: ${fmtSum(stats.otganOydan)}.`
+              ? t("Kartaga {kartaga} — qoldiqdan birinchi, plastik summasigacha.", { kartaga: fmtSum(stats.kartaga) }) +
+                t(" Naqd {naqd} — kartadan keyin xodimlarga qo'lga beriladigani (jadvaldagi \"Qolgan\" ustuni).", { naqd: fmtSum(stats.naqd) }) +
+                t(" Shu jumladan o'tgan oydan: {otganOydan}.", { otganOydan: fmtSum(stats.otganOydan) })
               : undefined
           }
           loading={loading}
@@ -609,12 +609,12 @@ export default function SalaryCreatePage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ism yoki telefon raqami…"
+            placeholder={t("Ism yoki telefon raqami…")}
             className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-card text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
-        <Select value={turiFilter} onChange={(v) => setTuriFilter(v)} options={[{ value: "all", label: "Barcha xodimlar" }, ...turiOptions.map((t) => ({ value: t, label: turiLabel(t) }))]} className="min-w-[180px]" />
-        <Select value={hisoblash} onChange={(v) => setHisoblash(v as HisoblashFilter)} options={[{ value: "all", label: "Hisoblash: barchasi" }, { value: "foiz", label: "Hisoblash: foizli" }, { value: "fixed", label: "Hisoblash: okladli" }]} className="min-w-[200px]" />
+        <Select value={turiFilter} onChange={(v) => setTuriFilter(v)} options={[{ value: "all", label: t("Barcha xodimlar") }, ...turiOptions.map((tv) => ({ value: tv, label: turiLabel(tv) }))]} className="min-w-[180px]" />
+        <Select value={hisoblash} onChange={(v) => setHisoblash(v as HisoblashFilter)} options={[{ value: "all", label: t("Hisoblash: barchasi") }, { value: "foiz", label: t("Hisoblash: foizli") }, { value: "fixed", label: t("Hisoblash: okladli") }]} className="min-w-[200px]" />
       </div>
 
       {/* Table */}
@@ -628,12 +628,12 @@ export default function SalaryCreatePage() {
               onChange={toggleAll}
               className="rounded border-border w-4 h-4"
             />
-            <span className="font-medium">Hammasini tanlash</span>
+            <span className="font-medium">{t("Hammasini tanlash")}</span>
             <span className="text-muted-foreground">|</span>
             <span className="text-muted-foreground tabular-nums">{selectedCount} ta tanlangan</span>
           </label>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary text-xs">
-            <span className="font-medium">Umumiy soni:</span>
+            <span className="font-medium">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -647,13 +647,13 @@ export default function SalaryCreatePage() {
               <tr className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-3 py-3 w-10" />
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;liq ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Turi</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'liq ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Turi")}</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">{`Hisob-kitob (${calcSuffix})`}</th>
                 {/* Asosiy hisob zanjiri yonma-yon: hisoblangan → soliq →
                     olinganlar → qolgan. Bonus va jarima kamdan-kam
                     to'ldiriladi, shuning uchun ular OXIRGA surildi. */}
-                <th className="text-right px-3 py-3 whitespace-nowrap">Hisoblangan</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Hisoblangan")}</th>
                 {/* HISOBLANGAN → KARTAGA → SOLIQ → … → QOLGAN tartibi
                     ataylab: hisoblangandan avval karta (BIRINCHI), keyin
                     ushlanmalar, eng oxirida qo'lga tegadigan naqd. Qator
@@ -664,26 +664,26 @@ export default function SalaryCreatePage() {
                 {anyPlastik && (
                   <th
                     className="text-right px-3 py-3 whitespace-nowrap"
-                    title="Kartaga birinchi ketadi — plastik summasigacha; hisoblangan yetmasa shu oydagi qoldiqning o'zi"
+                    title={t("Kartaga birinchi ketadi — plastik summasigacha; hisoblangan yetmasa shu oydagi qoldiqning o'zi")}
                   >
-                    Kartaga
+                    {t("Kartaga")}
                   </th>
                 )}
-                <th className="text-right px-3 py-3 whitespace-nowrap">Soliq</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Avans olingan</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;langan oylik</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">O&apos;tgan oydan</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Bonus</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Soliq")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Avans olingan")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("To'langan oylik")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("O'tgan oydan")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Bonus")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Jarima")}</th>
                 {/* QOLGAN — qatorning ENG OXIRIDA, yakuniy raqam sifatida:
                     hisoblangan − soliq (+ o'tgan oydan − allaqachon
                     to'langani) − kartaga. Ya'ni kartadan KEYIN xodimga
                     qo'lga beriladigan naqd; karta qoplanmasa 0. */}
                 <th
                   className="text-right px-3 py-3 whitespace-nowrap"
-                  title="Kartadan keyin xodimga qo'lga beriladigan naqd. Hisoblangan kartani qoplamasa 0."
+                  title={t("Kartadan keyin xodimga qo'lga beriladigan naqd. Hisoblangan kartani qoplamasa 0.")}
                 >
-                  Qolgan
+                  {t("Qolgan")}
                 </th>
               </tr>
             </thead>
@@ -713,11 +713,11 @@ export default function SalaryCreatePage() {
                 // uni ochiq ko'rsatadi — "tushum nega kam" degan savol
                 // tug'ilmasin.
                 const collectedFormula = (e.refunded ?? 0) > 0
-                  ? `(${fmtNum(e.collected + e.refunded)} − qaytarim ${fmtNum(e.refunded)})`
+                  ? t("({refunded} − qaytarim {refunded2})", { refunded: fmtNum(e.collected + e.refunded), refunded2: fmtNum(e.refunded) })
                   : fmtNum(e.collected);
                 const formula = isFoiz
                   ? `${collectedFormula} × ${e.percent}% = ${fmtNum(base)}`
-                  : `${fmtNum(e.fixedSalary)} × ${period.day}/${period.daysIn} kun = ${fmtNum(base)}`;
+                  : t("{fixedSalary} × {day}/{daysIn} kun = {base}", { fixedSalary: fmtNum(e.fixedSalary), day: period.day, daysIn: period.daysIn, base: fmtNum(base) });
                 return (
                   <tr
                     key={e.id}
@@ -729,7 +729,7 @@ export default function SalaryCreatePage() {
                         checked={selected.has(e.id)}
                         onChange={() => toggleOne(e.id)}
                         disabled={!e.configured}
-                        title={e.configured ? undefined : "Ish haqi sozlanmagan — oylik chiqarib bo'lmaydi"}
+                        title={e.configured ? undefined : t("Ish haqi sozlanmagan — oylik chiqarib bo'lmaydi")}
                         className="rounded border-border w-4 h-4 disabled:opacity-40 disabled:cursor-not-allowed"
                       />
                     </td>
@@ -748,11 +748,11 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top">
                       {e.configured ? (
                         <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${badgeCls} whitespace-nowrap`}>
-                          {isFoiz ? `Foiz ${e.percent}%` : "Oklad"}
+                          {isFoiz ? t("Foiz {percent}%", { percent: e.percent }) : "Oklad"}
                         </span>
                       ) : (
                         <span className="inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium bg-amber-500/10 text-amber-700 border-amber-500/20 whitespace-nowrap">
-                          Sozlanmagan
+                          {t("Sozlanmagan")}
                         </span>
                       )}
                     </td>
@@ -761,7 +761,7 @@ export default function SalaryCreatePage() {
                         <div className="whitespace-nowrap">{formula}</div>
                       ) : (
                         <Link href={`/management-xodimlar/${e.id}`} className="text-[12px] text-primary hover:underline">
-                          Ish haqi kiritilmagan — sozlash
+                          {t("Ish haqi kiritilmagan — sozlash")}
                         </Link>
                       )}
                     </td>
@@ -777,9 +777,9 @@ export default function SalaryCreatePage() {
                         {e.plastikSalary > 0 ? (
                           <div
                             title={
-                              `Plastik oylik ${fmtNum(e.plastikSalary)}` +
-                              (e.paidPlastik > 0 ? ` − shu oyda kartadan berilgan ${fmtNum(e.paidPlastik)}` : "") +
-                              (plastikShort > 0 ? ` — hisoblangan yetmagani uchun ${fmtNum(plastik)} chiqadi` : "")
+                              t("Plastik oylik {plastikSalary}", { plastikSalary: fmtNum(e.plastikSalary) }) +
+                              (e.paidPlastik > 0 ? t(" − shu oyda kartadan berilgan {paidPlastik}", { paidPlastik: fmtNum(e.paidPlastik) }) : "") +
+                              (plastikShort > 0 ? t(" — hisoblangan yetmagani uchun {plastik} chiqadi", { plastik: fmtNum(plastik) }) : "")
                             }
                           >
                             <div className="font-medium text-sky-600">{fmtNum(plastik)}</div>
@@ -797,11 +797,11 @@ export default function SalaryCreatePage() {
                         "0 so'm soliq" bilan "soliq solinmaydi" farqlanadi. */}
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {!e.taxable ? (
-                        <span className="text-muted-foreground" title="Bu xodimga soliq solinmaydi">—</span>
+                        <span className="text-muted-foreground" title={t("Bu xodimga soliq solinmaydi")}>—</span>
                       ) : tax > 0 ? (
                         <span className="text-rose-600 font-medium" title={taxTitle}>−{fmtNum(tax)}</span>
                       ) : (
-                        <span className="text-muted-foreground" title="Soliq ro'yxati bo'sh yoki hisoblangan oylik 0">0</span>
+                        <span className="text-muted-foreground" title={t("Soliq ro'yxati bo'sh yoki hisoblangan oylik 0")}>0</span>
                       )}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
@@ -841,13 +841,13 @@ export default function SalaryCreatePage() {
                       {!e.configured ? (
                         <span className="text-muted-foreground font-normal">—</span>
                       ) : cashDue >= 0 ? (
-                        <span title={plastik > 0 ? `Qoldiq ${fmtNum(Math.max(cashDue + plastik, 0))} − kartaga ${fmtNum(plastik)}` : undefined}>
+                        <span title={plastik > 0 ? t("Qoldiq {plastik} − kartaga {plastik2}", { plastik: fmtNum(Math.max(cashDue + plastik, 0)), plastik2: fmtNum(plastik) }) : undefined}>
                           {fmtNum(cashDue)}
                         </span>
                       ) : (
                         <div>
                           <div className="text-amber-600">{fmtNum(cashDue)}</div>
-                          <div className="text-[11px] font-normal text-muted-foreground">qarzdor</div>
+                          <div className="text-[11px] font-normal text-muted-foreground">{t("qarzdor")}</div>
                         </div>
                       )}
                     </td>
@@ -873,29 +873,29 @@ export default function SalaryCreatePage() {
                 chiqadi va buni keyin faqat chiqarishni o'chirib qaytarish
                 mumkin. */}
             <p className="text-center text-[15px] font-semibold">
-              {`${monthLabel} — ${selectedCount} ta xodim uchun oylik chiqariladi`}
+              {t("{monthLabel} — {selectedCount} ta xodim uchun oylik chiqariladi", { monthLabel, selectedCount })}
             </p>
             <p className="text-center text-[12.5px] text-muted-foreground mt-1">
-              Pul tanlangan kassadan chiqadi va Tranzaksiyalar jurnaliga yoziladi.
+              {t("Pul tanlangan kassadan chiqadi va Tranzaksiyalar jurnaliga yoziladi.")}
             </p>
             {isPastMonth && (
               // Jurnaldagi sana o'sha oyning oxirgi kuni bo'ladi — aks holda
               // "to'langan oylik" o'tgan oyga bog'lanmasdi va bir summa ikki
               // marta chiqarilishi mumkin edi (app/api/salary-runs/route.ts).
               <p className="text-center text-[12.5px] text-amber-600 dark:text-amber-500 mt-1">
-                {`Chiqim yozuvi ${monthLabel} oyining oxirgi kuni bilan qayd etiladi.`}
+                {t("Chiqim yozuvi {monthLabel} oyining oxirgi kuni bilan qayd etiladi.", { monthLabel })}
               </p>
             )}
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="block text-[12px] font-medium mb-1">Kassa</label>
+                <label className="block text-[12px] font-medium mb-1">{t("Kassa")}</label>
                 <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={[...((cashboxesLoading || cashboxes.length === 0) ? [{ value: "", label: selectPlaceholder(cashboxesLoading, cashboxes.length, "Kassa topilmadi") }] : []), ...cashboxes.map((c) => ({ value: String(c.id), label: `${c.name} ${c.isPrimary ? " — bosh kassa" : ""}` }))]} disabled={saving || cashboxesLoading} />
               </div>
 
               <div>
                 <label className="block text-[12px] font-medium mb-1">
-                  {plastikTotal > 0 ? "Naqd qismi uchun to'lov turi" : "To'lov turi"}
+                  {plastikTotal > 0 ? t("Naqd qismi uchun to'lov turi") : t("To'lov turi")}
                 </label>
                 {/* Har bir tur yonida SHU KASSADAGI qoldiq turadi — qaysi
                     turdan oylik chiqarish mumkinligi ro'yxatning o'zidayoq
@@ -907,7 +907,7 @@ export default function SalaryCreatePage() {
                   // Ro'yxat kelayotganda "To'lov turi topilmadi" chiqmasin —
                   // `loading` bo'sh-holat matnidan ustun (ui/Select).
                   loading={methodsLoading}
-                  placeholder={paymentMethods.length === 0 ? "To'lov turi topilmadi" : "Tanlang"}
+                  placeholder={paymentMethods.length === 0 ? t("To'lov turi topilmadi") : t("Tanlang")}
                   options={paymentMethods.map((m) => ({
                     value: m.key,
                     label: m.name,
@@ -921,13 +921,13 @@ export default function SalaryCreatePage() {
                   bugungidek bitta tanlov bilan qoladi. */}
               {plastikTotal > 0 && (
                 <div>
-                  <label className="block text-[12px] font-medium mb-1">Plastik qismi uchun to&apos;lov turi</label>
+                  <label className="block text-[12px] font-medium mb-1">{t("Plastik qismi uchun to'lov turi")}</label>
                   <Select
                     value={plastikMethodKey}
                     onChange={setPlastikMethod}
                     disabled={saving}
                     loading={methodsLoading}
-                    placeholder={paymentMethods.length === 0 ? "To'lov turi topilmadi" : "Tanlang"}
+                    placeholder={paymentMethods.length === 0 ? t("To'lov turi topilmadi") : t("Tanlang")}
                     options={paymentMethods.map((m) => ({
                       value: m.key,
                       label: m.name,
@@ -945,40 +945,39 @@ export default function SalaryCreatePage() {
                 {plastikTotal > 0 ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Kartaga</span>
+                      <span className="text-muted-foreground">{t("Kartaga")}</span>
                       <span className={`tabular-nums ${plastikTotal > plastikAvailable ? "text-rose-600 font-semibold" : ""}`}>
-                        {fmtSum(plastikTotal)} <span className="text-muted-foreground">/ {fmtSum(plastikAvailable)}</span>
+                        {t(fmtSum(plastikTotal))} <span className="text-muted-foreground">/ {t(fmtSum(plastikAvailable))}</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Naqd</span>
+                      <span className="text-muted-foreground">{t("Naqd")}</span>
                       <span className={`tabular-nums ${naqdTotal > available ? "text-rose-600 font-semibold" : ""}`}>
-                        {fmtSum(naqdTotal)} <span className="text-muted-foreground">/ {fmtSum(available)}</span>
+                        {t(fmtSum(naqdTotal))} <span className="text-muted-foreground">/ {t(fmtSum(available))}</span>
                       </span>
                     </div>
                   </>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Kassada mavjud</span>
-                    <span className={`tabular-nums ${notEnough ? "text-rose-600 font-semibold" : ""}`}>{fmtSum(available)}</span>
+                    <span className="text-muted-foreground">{t("Kassada mavjud")}</span>
+                    <span className={`tabular-nums ${notEnough ? "text-rose-600 font-semibold" : ""}`}>{t(fmtSum(available))}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between border-t border-border pt-1 mt-1">
-                  <span className="text-muted-foreground">Chiqariladigan summa</span>
-                  <span className="font-semibold tabular-nums">{fmtSum(payoutTotal)}</span>
+                  <span className="text-muted-foreground">{t("Chiqariladigan summa")}</span>
+                  <span className="font-semibold tabular-nums">{t(fmtSum(payoutTotal))}</span>
                 </div>
               </div>
 
               {sameMethod && (
                 <p className="text-[12.5px] text-rose-600">
-                  Plastik va naqd uchun bir xil to&apos;lov turi tanlangan — birini o&apos;zgartiring,
-                  aks holda jurnalda ikki qism ajralmay qoladi.
+                  {t("Plastik va naqd uchun bir xil to'lov turi tanlangan — birini o'zgartiring, aks holda jurnalda ikki qism ajralmay qoladi.")}
                 </p>
               )}
 
               {payoutTotal === 0 && (
                 <p className="text-[12.5px] text-amber-600">
-                  Tanlangan xodimlarda to&apos;lanadigan qoldiq yo&apos;q — oylik allaqachon chiqarilgan yoki qarzdorlik bor.
+                  {t("Tanlangan xodimlarda to'lanadigan qoldiq yo'q — oylik allaqachon chiqarilgan yoki qarzdorlik bor.")}
                 </p>
               )}
               {/* Butun jumla bitta ifodada — JSX ifoda bilan undan keyingi
@@ -986,7 +985,7 @@ export default function SalaryCreatePage() {
                   chiqardi). */}
               {notEnough && (
                 <p className="text-[12.5px] text-rose-600">
-                  {`Mablag' yetarli emas — ${fmtSum(payoutTotal - available)} kam. Boshqa kassa yoki to'lov turini tanlang.`}
+                  {t("Mablag' yetarli emas — {available} kam. Boshqa kassa yoki to'lov turini tanlang.", { available: fmtSum(payoutTotal - available) })}
                 </p>
               )}
             </div>
@@ -997,14 +996,14 @@ export default function SalaryCreatePage() {
                 disabled={saving}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={confirmPayout}
                 disabled={saving || !canPayout}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? "Chiqarilmoqda…" : "Ha, chiqarish"}
+                {saving ? t("Chiqarilmoqda…") : t("Ha, chiqarish")}
               </button>
             </div>
           </>)}</Modal>

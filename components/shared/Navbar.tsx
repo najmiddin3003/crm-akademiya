@@ -383,11 +383,11 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
                           <svg className="icon icon-sm"><use href="#i-search" /></svg>
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{r.title}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{r.subtitle}</span>
+                          <span className="block truncate text-sm font-medium">{t(r.title)}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{t(r.subtitle)}</span>
                         </span>
                         <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {r.category}
+                          {t(r.category)}
                         </span>
                       </Link>
                     </li>

@@ -8,6 +8,7 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import { ALL_PERMISSION_PATHS, PERMISSION_GROUPS } from "@/lib/permissions";
 import type { Role } from "@/lib/roles";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Rollar (sidebar: Boshqaruv > Rollar, href /management-rollar).
 // Ma'lumot HAQIQIY — /api/roles va /api/hr-employees.
@@ -43,23 +44,24 @@ interface RoleCoverage {
  * bog'langan — Moderatorga qo'yilgan cheklov hech narsaga ta'sir qilmadi.
  */
 function CoveragePanel({ data }: { data: RoleCoverage }) {
+  const { t } = useT();
   const rows = ([
     {
       tone: "rose",
-      title: "Lavozimi belgilanmagan",
-      hint: "rol ruxsatlari bu xodimga QO'LLANMAYDI — u hamma bo'limni ko'radi",
+      title: t("Lavozimi belgilanmagan"),
+      hint: t("rol ruxsatlari bu xodimga QO'LLANMAYDI — u hamma bo'limni ko'radi"),
       people: data.unknownTuri,
     },
     {
       tone: "amber",
-      title: "Login hisobi yo'q",
-      hint: "lavozimi to'g'ri, lekin tizimga kira olmaydi — cheklovni sinab bo'lmaydi",
+      title: t("Login hisobi yo'q"),
+      hint: t("lavozimi to'g'ri, lekin tizimga kira olmaydi — cheklovni sinab bo'lmaydi"),
       people: data.noLogin,
     },
     {
       tone: "sky",
-      title: "Admin — cheklovdan ozod",
-      hint: "ataylab: aks holda admin o'ziga Rollar sahifasini yopib qo'yishi mumkin edi",
+      title: t("Admin — cheklovdan ozod"),
+      hint: t("ataylab: aks holda admin o'ziga Rollar sahifasini yopib qo'yishi mumkin edi"),
       people: data.adminBypass,
     },
   ] as const).filter((r) => r.people.length > 0);
@@ -77,9 +79,9 @@ function CoveragePanel({ data }: { data: RoleCoverage }) {
       {rows.map((r) => (
         <div key={r.title} className={`rounded-xl border px-4 py-3 ${tones[r.tone]}`}>
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-[13px] font-semibold">{r.title}</span>
+            <span className="text-[13px] font-semibold">{t(r.title)}</span>
             <span className="text-[12px] tabular-nums opacity-80">{r.people.length} ta</span>
-            <span className="text-[12px] text-muted-foreground">— {r.hint}</span>
+            <span className="text-[12px] text-muted-foreground">— {t(r.hint)}</span>
           </div>
           <div className="mt-1.5 text-[12.5px] text-foreground/80">
             {r.people.map((p) => p.name || `#${p.id}`).join(", ")}
@@ -91,6 +93,7 @@ function CoveragePanel({ data }: { data: RoleCoverage }) {
 }
 
 export default function RolesPage() {
+  const { t } = useT();
   const modal = useModalClose(closeAll);
   const { showSuccess, showError } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
@@ -217,7 +220,7 @@ export default function RolesPage() {
     const creating = createOpen;
     if (!creating && !roleTarget) return;
     if ((creating || !roleTarget?.key) && !name.trim()) {
-      showError("Rol nomini kiriting");
+      showError(t("Rol nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -229,19 +232,19 @@ export default function RolesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       if (creating) {
         setRoles((prev) => [...prev, data.role]);
-        showSuccess("Rol qo'shildi");
+        showSuccess(t("Rol qo'shildi"));
       } else {
         setRoles((prev) => prev.map((x) => (x.id === data.role.id ? data.role : x)));
-        showSuccess("Ruxsatlar saqlandi");
+        showSuccess(t("Ruxsatlar saqlandi"));
       }
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -254,13 +257,13 @@ export default function RolesPage() {
       const res = await fetch(`/api/roles/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setRoles((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      showSuccess("Rol o'chirildi");
+      showSuccess(t("Rol o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
       setDeleteTarget(null);
@@ -286,14 +289,14 @@ export default function RolesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       setEmployees((prev) => prev.map((x) => (x.id === data.employee.id ? data.employee : x)));
-      showSuccess(reset ? "Istisno olib tashlandi" : "Xodim ruxsatlari saqlandi");
+      showSuccess(reset ? t("Istisno olib tashlandi") : t("Xodim ruxsatlari saqlandi"));
       setEmpTarget(null);
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -317,14 +320,14 @@ export default function RolesPage() {
           onClick={openCreate}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
-          <span>+ Rol qo&apos;shish</span>
+          <span>{t("+ Rol qo'shish")}</span>
         </button>
         <button
           onClick={() => { setEmpSearch(""); setEmpListOpen(true); }}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium shrink-0"
         >
           <UserCog className="w-4 h-4" />
-          <span>Xodimga alohida ruxsat</span>
+          <span>{t("Xodimga alohida ruxsat")}</span>
           {overrideCount > 0 && (
             <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary/10 text-primary text-[11px] tabular-nums">
               {overrideCount}
@@ -338,7 +341,7 @@ export default function RolesPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{roles.length}</span>
           </div>
         </div>
@@ -347,10 +350,10 @@ export default function RolesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Nomi</th>
-                <th className="px-5 py-3 text-left">Izoh</th>
-                <th className="px-5 py-3 text-left">Ko&apos;rinadigan bo&apos;limlar</th>
-                <th className="px-5 py-3 text-right">Xodimlar</th>
+                <th className="px-5 py-3 text-left">{t("Nomi")}</th>
+                <th className="px-5 py-3 text-left">{t("Izoh")}</th>
+                <th className="px-5 py-3 text-left">{t("Ko'rinadigan bo'limlar")}</th>
+                <th className="px-5 py-3 text-right">{t("Xodimlar")}</th>
                 <th className="px-5 py-3 text-right pr-5 w-28" />
               </tr>
             </thead>
@@ -362,7 +365,7 @@ export default function RolesPage() {
                     <span className="font-medium">{r.name}</span>
                     {r.key && (
                       <span className="ml-2 inline-flex items-center h-5 px-1.5 rounded border border-border text-[10.5px] text-muted-foreground align-middle">
-                        lavozim
+                        {t("lavozim")}
                       </span>
                     )}
                   </td>
@@ -379,7 +382,7 @@ export default function RolesPage() {
                       <button
                         onClick={() => openRole(r)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                        title="Ruxsatlarni sozlash"
+                        title={t("Ruxsatlarni sozlash")}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -387,7 +390,7 @@ export default function RolesPage() {
                         <button
                           onClick={() => setDeleteTarget(r)}
                           className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                          title="O'chirish"
+                          title={t("O'chirish")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -413,9 +416,9 @@ export default function RolesPage() {
         <Modal onClose={closeAll} controller={modal} bare size="2xl" zIndex={110} panelClassName="h-[80vh]">
             <div className="shrink-0 px-6 pt-5 pb-4 space-y-3">
               <div>
-                <h3 className="text-[17px] font-semibold">Xodimga alohida ruxsat</h3>
+                <h3 className="text-[17px] font-semibold">{t("Xodimga alohida ruxsat")}</h3>
                 <p className="mt-0.5 text-[12px] text-muted-foreground">
-                  Ruxsatlarini o&apos;zgartirmoqchi bo&apos;lgan xodimni tanlang.
+                  {t("Ruxsatlarini o'zgartirmoqchi bo'lgan xodimni tanlang.")}
                 </p>
               </div>
               <div className="relative">
@@ -424,7 +427,7 @@ export default function RolesPage() {
                   value={empSearch}
                   onChange={(e) => setEmpSearch(e.target.value)}
                   className={`${inputCls} pl-9`}
-                  placeholder="Ism yoki telefon bo'yicha qidirish"
+                  placeholder={t("Ism yoki telefon bo'yicha qidirish")}
                 />
               </div>
             </div>
@@ -448,13 +451,13 @@ export default function RolesPage() {
                     </span>
                   ) : (
                     <span className="shrink-0 inline-flex items-center h-6 px-2 rounded-md border border-border text-muted-foreground text-[11px] whitespace-nowrap">
-                      Lavozim bo&apos;yicha
+                      {t("Lavozim bo'yicha")}
                     </span>
                   )}
                 </button>
               ))}
               {filteredEmployees.length === 0 && (
-                <p className="px-3 py-10 text-center text-sm text-muted-foreground">Xodim topilmadi</p>
+                <p className="px-3 py-10 text-center text-sm text-muted-foreground">{t("Xodim topilmadi")}</p>
               )}
             </div>
 
@@ -463,7 +466,7 @@ export default function RolesPage() {
                 onClick={modal.close}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
               >
-                Yopish
+                {t("Yopish")}
               </button>
             </div>
           </Modal>
@@ -479,7 +482,7 @@ export default function RolesPage() {
                     onClick={() => { setEmpTarget(null); setEmpListOpen(true); }}
                     disabled={saving}
                     className="mt-0.5 h-8 w-8 shrink-0 rounded-md border border-border hover:bg-secondary flex items-center justify-center disabled:opacity-60"
-                    title="Xodimlar ro'yxatiga qaytish"
+                    title={t("Xodimlar ro'yxatiga qaytish")}
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
@@ -488,8 +491,8 @@ export default function RolesPage() {
                     <p className="mt-0.5 text-[12px] text-muted-foreground">
                       Lavozimi: {roleNameOf(empTarget.turi)}.{" "}
                       {Array.isArray(empTarget.permissions)
-                        ? "Hozir alohida ro'yxat amal qilmoqda."
-                        : "Hozir lavozim ro'yxati amal qilmoqda — saqlasangiz istisno yaratiladi."}
+                        ? t("Hozir alohida ro'yxat amal qilmoqda.")
+                        : t("Hozir lavozim ro'yxati amal qilmoqda — saqlasangiz istisno yaratiladi.")}
                     </p>
                   </div>
                 </div>
@@ -497,7 +500,7 @@ export default function RolesPage() {
                 <>
                   <div>
                     <h3 className="text-[17px] font-semibold">
-                      {createOpen ? "Yangi rol" : `${roleTarget!.name} — ruxsatlar`}
+                      {createOpen ? "Yangi rol" : t("{name} — ruxsatlar", { name: roleTarget!.name })}
                     </h3>
                     {roleTarget?.key && (
                       <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -509,22 +512,22 @@ export default function RolesPage() {
                   <div className={`grid grid-cols-1 gap-4 ${nameEditable ? "md:grid-cols-2" : ""}`}>
                     {nameEditable && (
                       <div>
-                        <label className="block text-[13px] font-medium mb-1.5">Nomi</label>
+                        <label className="block text-[13px] font-medium mb-1.5">{t("Nomi")}</label>
                         <input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className={inputCls}
-                          placeholder="Masalan: Filial direktori"
+                          placeholder={t("Masalan: Filial direktori")}
                         />
                       </div>
                     )}
                     <div>
-                      <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+                      <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
                       <input
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         className={inputCls}
-                        placeholder="Bu rol nima qilishini qisqacha yozing"
+                        placeholder={t("Bu rol nima qilishini qisqacha yozing")}
                       />
                     </div>
                   </div>
@@ -546,7 +549,7 @@ export default function RolesPage() {
                   disabled={saving}
                   className="mr-auto h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
                 >
-                  Istisnoni olib tashlash
+                  {t("Istisnoni olib tashlash")}
                 </button>
               )}
               <button
@@ -554,14 +557,14 @@ export default function RolesPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={() => (empTarget ? saveEmployee() : saveRole())}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </Modal>
@@ -578,14 +581,14 @@ export default function RolesPage() {
                 disabled={saving}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={saving}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "O'chirilmoqda…" : "Ha"}
+                {saving ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>
@@ -595,6 +598,7 @@ export default function RolesPage() {
 }
 
 function PermBadge({ permissions }: { permissions?: string[] | null }) {
+  const { t } = useT();
   if (Array.isArray(permissions)) {
     return (
       <span className="inline-flex items-center h-6 px-2 rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-600 text-[11px] font-medium whitespace-nowrap">
@@ -604,7 +608,7 @@ function PermBadge({ permissions }: { permissions?: string[] | null }) {
   }
   return (
     <span className="inline-flex items-center h-6 px-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 text-[11px] font-medium whitespace-nowrap">
-      Cheklovsiz
+      {t("Cheklovsiz")}
     </span>
   );
 }
@@ -627,29 +631,30 @@ function PermissionPicker({
   onSetMany: (hrefs: string[], on: boolean) => void;
   forRole: boolean;
 }) {
+  const { t } = useT();
   const all = chosen.size === ALL_PERMISSION_PATHS.length;
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-6 py-2.5 border-y border-border bg-secondary/20">
-        <span className="text-[13px] font-semibold">Ko&apos;rinadigan bo&apos;limlar</span>
+        <span className="text-[13px] font-semibold">{t("Ko'rinadigan bo'limlar")}</span>
         <div className="flex items-center gap-3">
           <span className="text-[12px] text-muted-foreground tabular-nums">
             {chosen.size} / {ALL_PERMISSION_PATHS.length} tanlandi
-            {all && forRole && <span className="ml-1.5 text-emerald-600 font-medium">— cheklovsiz</span>}
+            {all && forRole && <span className="ml-1.5 text-emerald-600 font-medium">{t("— cheklovsiz")}</span>}
           </span>
           <button
             type="button"
             onClick={() => onSetMany(ALL_PERMISSION_PATHS, true)}
             className="text-[12px] text-primary hover:underline"
           >
-            Hammasi
+            {t("Hammasi")}
           </button>
           <button
             type="button"
             onClick={() => onSetMany(ALL_PERMISSION_PATHS, false)}
             className="text-[12px] text-primary hover:underline"
           >
-            Hech biri
+            {t("Hech biri")}
           </button>
         </div>
       </div>
@@ -670,7 +675,7 @@ function PermissionPicker({
                   <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${groupAll ? "bg-primary border-primary text-white" : on > 0 ? "bg-primary/30 border-primary" : "border-border"}`}>
                     {groupAll && <Check className="w-3 h-3" />}
                   </span>
-                  <span className="text-[13px] font-semibold flex-1 truncate">{g.label}</span>
+                  <span className="text-[13px] font-semibold flex-1 truncate">{t(g.label)}</span>
                   <span className="text-[11px] text-muted-foreground tabular-nums">{on}/{selectable.length}</span>
                 </button>
                 <div className="p-1.5 space-y-0.5">
@@ -687,7 +692,7 @@ function PermissionPicker({
                         onChange={() => onToggleItem(it.href)}
                         className="w-3.5 h-3.5 rounded border-border accent-primary"
                       />
-                      <span className="flex-1 truncate">{it.label}</span>
+                      <span className="flex-1 truncate">{t(it.label)}</span>
                     </label>
                   ))}
                 </div>

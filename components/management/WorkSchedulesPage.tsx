@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { WorkSchedule } from "@/lib/workSchedules";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Ish jadvali (sidebar: Boshqaruv > Ish jadvali, href
 // /management-ish-jadvali). Ma'lumot HAQIQIY — /api/work-schedules
@@ -17,6 +18,7 @@ const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function WorkSchedulesPage() {
+  const { t } = useT();
   const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<WorkSchedule[]>([]);
@@ -60,7 +62,7 @@ export default function WorkSchedulesPage() {
   async function save() {
     const name = form.name.trim();
     if (!name) {
-      showError("Nomini kiriting");
+      showError(t("Nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -73,19 +75,19 @@ export default function WorkSchedulesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       if (editing) {
         setRows((prev) => prev.map((x) => (x.id === data.schedule.id ? data.schedule : x)));
-        showSuccess("Ish jadvali yangilandi");
+        showSuccess(t("Ish jadvali yangilandi"));
       } else {
         setRows((prev) => [...prev, data.schedule]);
-        showSuccess("Ish jadvali qo'shildi");
+        showSuccess(t("Ish jadvali qo'shildi"));
       }
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -98,13 +100,13 @@ export default function WorkSchedulesPage() {
       const res = await fetch(`/api/work-schedules/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setRows((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      showSuccess("Ish jadvali o'chirildi");
+      showSuccess(t("Ish jadvali o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -120,14 +122,14 @@ export default function WorkSchedulesPage() {
           onClick={openAdd}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
-          <span>+ Qo&apos;shish</span>
+          <span>{t("+ Qo'shish")}</span>
         </button>
       </div>
 
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{rows.length}</span>
           </div>
         </div>
@@ -137,9 +139,9 @@ export default function WorkSchedulesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Nomi</th>
-                <th className="px-5 py-3 text-left">Kod</th>
-                <th className="px-5 py-3 text-left">Holati</th>
+                <th className="px-5 py-3 text-left">{t("Nomi")}</th>
+                <th className="px-5 py-3 text-left">{t("Kod")}</th>
+                <th className="px-5 py-3 text-left">{t("Holati")}</th>
                 <th className="px-5 py-3 text-right pr-5 w-28" />
               </tr>
             </thead>
@@ -155,7 +157,7 @@ export default function WorkSchedulesPage() {
                         s.active ? "text-emerald-700 bg-emerald-100" : "text-muted-foreground bg-secondary"
                       }`}
                     >
-                      {s.active ? "Faol" : "Nofaol"}
+                      {s.active ? t("Faol") : t("Nofaol")}
                     </span>
                   </td>
                   <td className="px-5 py-3 pr-5">
@@ -163,14 +165,14 @@ export default function WorkSchedulesPage() {
                       <button
                         onClick={() => openEdit(s)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(s)}
                         className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                        title="O'chirish"
+                        title={t("O'chirish")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -201,24 +203,24 @@ export default function WorkSchedulesPage() {
       {formOpen && (
         <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110} panelClassName="p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">
-              {editTarget ? "Ish jadvalini tahrirlash" : "Ish jadvali qo'shish"}
+              {editTarget ? t("Ish jadvalini tahrirlash") : t("Ish jadvali qo'shish")}
             </h3>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Nomi</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Nomi")}</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: To'liq stavka (09:00 - 18:00)"
+                placeholder={t("Masalan: To'liq stavka (09:00 - 18:00)")}
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Kod</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Kod")}</label>
               <input
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: FULL"
+                placeholder={t("Masalan: FULL")}
               />
             </div>
             <label className="flex items-center gap-2 text-[13px] cursor-pointer">
@@ -228,7 +230,7 @@ export default function WorkSchedulesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
                 className="h-4 w-4 rounded border-border accent-[var(--primary)]"
               />
-              <span>Faol</span>
+              <span>{t("Faol")}</span>
             </label>
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
@@ -236,14 +238,14 @@ export default function WorkSchedulesPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={save}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </Modal>
@@ -251,21 +253,21 @@ export default function WorkSchedulesPage() {
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

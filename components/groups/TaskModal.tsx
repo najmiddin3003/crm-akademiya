@@ -8,6 +8,7 @@ import type { GroupTask } from "@/lib/groupTasks";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Vazifa qo'shish / tahrirlash modali (skrinshot 2). `task` berilsa — tahrirlash
 // (inputlar oldingi qiymatlar bilan to'ldiriladi), PATCH /api/group-tasks/:id.
@@ -30,11 +31,12 @@ function deadlineToParts(s: string): { date: string; time: string } {
 }
 
 export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask; onClose: () => void; onSaved: (task: GroupTask) => void }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   // Topshiriq turlari — Topshiriqlar sahifasidagi bilan bir manba
   // (/api/task-types), ilgari constants'dagi qattiq ro'yxat edi.
   const { types } = useTaskTypes();
-  const typeNames = types.map((t) => t.name).filter(Boolean);
+  const typeNames = types.map((tv) => tv.name).filter(Boolean);
   const { showSuccess, showError } = useToast();
   // Sukut "Imtihon": bu oyna "Imtihon qo'shish" tugmasidan ochiladi va
   // server ham `type` bo'sh bo'lsa aynan shuni yozadi
@@ -55,11 +57,11 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      showError("Nomini kiriting");
+      showError(t("Nomini kiriting"));
       return;
     }
     if (!type) {
-      showError("Turini tanlang");
+      showError(t("Turini tanlang"));
       return;
     }
     setSaving(true);
@@ -73,15 +75,15 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.task as GroupTask);
-      showSuccess(task ? "Vazifa yangilandi" : "Vazifa qo'shildi");
+      showSuccess(task ? t("Vazifa yangilandi") : t("Vazifa qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -89,41 +91,41 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
   return (
     <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
-          <h3 className="text-[16px] font-semibold">{task ? "Vazifani tahrirlash" : "Vazifa qo'shish"}</h3>
+          <h3 className="text-[16px] font-semibold">{task ? t("Vazifani tahrirlash") : t("Vazifa qo'shish")}</h3>
         </div>
 
         <div className="px-6 py-2 space-y-3.5 overflow-y-auto flex-1">
           <div>
-            <label className={labelCls}>Turi<span className="text-rose-500">*</span></label>
-            <Select value={type} onChange={(v) => setType(v)} options={[...(type && !typeNames.includes(type) ? [{ value: type, label: type }] : []), ...typeNames.map((t) => ({ value: t, label: t }))]} placeholder="Tanlang" clearable size="lg" />
+            <label className={labelCls}>{t("Turi")}<span className="text-rose-500">*</span></label>
+            <Select value={type} onChange={(v) => setType(v)} options={[...(type && !typeNames.includes(type) ? [{ value: type, label: type }] : []), ...typeNames.map((tv) => ({ value: tv, label: tv }))]} placeholder={t("Tanlang")} clearable size="lg" />
             {typeNames.length === 0 && (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Turlar ro&apos;yxati bo&apos;sh — Topshiriqlar sahifasidan tur qo&apos;shsangiz shu yerda chiqadi.
+                {t("Turlar ro'yxati bo'sh — Topshiriqlar sahifasidan tur qo'shsangiz shu yerda chiqadi.")}
               </p>
             )}
           </div>
           <div>
-            <label className={labelCls}>Nomi<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>{t("Nomi")}<span className="text-rose-500">*</span></label>
             <input value={name} onChange={(e) => setName(e.target.value)} type="text" className={inputCls} />
           </div>
           {/* Sana — loyihaning O'Z tanlagichi (nativ datetime-local brauzer
               tiliga qarab formatini o'zgartirardi), vaqt esa yonida alohida. */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Topshirish sanasi<span className="text-rose-500">*</span></label>
+              <label className={labelCls}>{t("Topshirish sanasi")}<span className="text-rose-500">*</span></label>
               <DateField value={dDate} onChange={setDDate} variant="panel" />
             </div>
             <div>
-              <label className={labelCls}>Vaqti</label>
+              <label className={labelCls}>{t("Vaqti")}</label>
               <TimeField value={dTime} onChange={(v) => setDTime(v)} variant="panel" />
             </div>
           </div>
           <div>
-            <label className={labelCls}>Maksimal ball<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>{t("Maksimal ball")}<span className="text-rose-500">*</span></label>
             <input value={maxScore} onChange={(e) => setMaxScore(e.target.value)} type="number" min="0" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Izoh</label>
+            <label className={labelCls}>{t("Izoh")}</label>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div>
@@ -135,8 +137,8 @@ export default function TaskModal({ task, onClose, onSaved }: { task?: GroupTask
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">{t("Orqaga")}</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? t("Saqlanmoqda…") : t("Saqlash")}</button>
         </div>
       </Modal>
   );

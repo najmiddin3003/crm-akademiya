@@ -7,6 +7,7 @@ import { useModerators } from "@/hooks/useModerators";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import type { Cashbox } from "@/lib/cashboxes";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Yangi kassa qo'shish" / "Kassani o'zgartirish" — Moliya → Kassalar
 // sahifasidagi o'ng tomondan ochiladigan panel. `cashbox` berilsa —
@@ -32,6 +33,7 @@ export default function CashboxDrawer({
   onSaved: (c: Cashbox) => void;
   onDeleted?: (id: number) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const { names: moderatorNames, loading: loadingModerators } = useModerators();
@@ -52,7 +54,7 @@ export default function CashboxDrawer({
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      showError("Kassa nomini kiriting");
+      showError(t("Kassa nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -66,15 +68,15 @@ export default function CashboxDrawer({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.cashbox as Cashbox);
-      showSuccess(cashbox ? "Kassa yangilandi" : "Kassa qo'shildi");
+      showSuccess(cashbox ? t("Kassa yangilandi") : t("Kassa qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -86,15 +88,15 @@ export default function CashboxDrawer({
       const res = await fetch(`/api/cashboxes/${cashbox.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       onDeleted?.(cashbox.id);
-      showSuccess("Kassa o'chirildi");
+      showSuccess(t("Kassa o'chirildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setDeleting(false);
     }
   }
@@ -105,7 +107,7 @@ export default function CashboxDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">{cashbox ? "Kassani o'zgartirish" : "Yangi kassa qo'shish"}</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{cashbox ? t("Kassani o'zgartirish") : t("Yangi kassa qo'shish")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
@@ -113,7 +115,7 @@ export default function CashboxDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Ism</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Ism")}</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -126,35 +128,34 @@ export default function CashboxDrawer({
               Tanlangan qiymatni tozalash ro'yxat ichidagi "Tozalash" qatori
               orqali. */}
           <StudentSearchSelect
-            label="Moderator"
+            label={t("Moderator")}
             value={moderator}
             onChange={setModerator}
             options={moderatorNames}
             disabledOptions={takenModerators}
             disabledHint="Bu moderator boshqa kassaga biriktirilgan"
-            placeholder={loadingModerators ? "Yuklanmoqda…" : "Moderatorni tanlang"}
+            placeholder={loadingModerators ? t("Yuklanmoqda…") : t("Moderatorni tanlang")}
             searchPlaceholder="Moderatorni qidirish"
           />
           {!loadingModerators && moderatorNames.length === 0 && (
             <p className="-mt-2 text-[11px] text-muted-foreground">
-              Moderator yo&apos;q — Boshqaruv → Xodimlar&apos;da turi
-              &quot;moderator&quot; bo&apos;lgan xodim qo&apos;shing.
+              {t("Moderator yo'q — Boshqaruv → Xodimlar'da turi \"moderator\" bo'lgan xodim qo'shing.")}
             </p>
           )}
 
           <label className="flex items-center gap-2.5 text-[13px] cursor-pointer">
             <input type="checkbox" checked={onlinePayment} onChange={(e) => setOnlinePayment(e.target.checked)} className="rounded border-border w-4 h-4" />
-            Onlayn to&apos;lov qabul qiladi
+            {t("Onlayn to'lov qabul qiladi")}
           </label>
           <label className="flex items-center gap-2.5 text-[13px] cursor-pointer">
             <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} className="rounded border-border w-4 h-4" />
-            Kassani arxiv qilish
+            {t("Kassani arxiv qilish")}
           </label>
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           {cashbox && (
             <button
@@ -162,22 +163,22 @@ export default function CashboxDrawer({
               disabled={saving}
               className="h-9 px-5 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
             >
-              O&apos;chirish
+              {t("O'chirish")}
             </button>
           )}
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>{confirmDelete && (
         <Modal onClose={() => setConfirmDelete(false)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmDeleteCashbox} disabled={deleting} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { CV_QUESTIONS, PA_SHORT, PA_STEPS } from "@/constants/managementCv";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Ommaviy ish arizasi sahifasi (/ariza) — referens HTML'dagi
 // "OMMAVIY ARIZA SAHIFASI (#ariza)" bo'limining aynan o'zi: 3 bosqichli
@@ -50,6 +51,7 @@ function readSheetsUrlFromHash(): string {
 }
 
 export default function CvApplyPage() {
+  const { t } = useT();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<Values>({});
   const [warn, setWarn] = useState("");
@@ -128,7 +130,7 @@ export default function CvApplyPage() {
           .then((r) => r.json())
           .then((j) =>
             setSheetsNote(
-              j && j.ok ? "✓ Ariza markazga yetkazildi (Google Sheets)" : "Ariza saqlandi — aloqa tiklangach yetkaziladi",
+              j && j.ok ? t("✓ Ariza markazga yetkazildi (Google Sheets)") : t("Ariza saqlandi — aloqa tiklangach yetkaziladi"),
             ),
           )
           .catch(() => setSheetsNote("Ariza saqlandi — aloqa tiklangach yetkaziladi"));
@@ -183,7 +185,7 @@ export default function CvApplyPage() {
       let input: ReactNode;
       if (q.type === "select") {
         input = (
-          <Select value={String(v ?? "")} onChange={(v) => setField(k, v)} options={(q.opts || []).map((o) => ({ value: o, label: o }))} placeholder="Tanlang" clearable className={`${cls}`} id={`pa-${k}`} />
+          <Select value={String(v ?? "")} onChange={(v) => setField(k, v)} options={(q.opts || []).map((o) => ({ value: o, label: o }))} placeholder={t("Tanlang")} clearable className={`${cls}`} id={`pa-${k}`} />
         );
       } else if (q.type === "multi") {
         const on = (v as string[]) || [];
@@ -209,7 +211,7 @@ export default function CvApplyPage() {
             id={`pa-${k}`}
             className={cls}
             rows={2}
-            placeholder="Javobingiz..."
+            placeholder={t("Javobingiz...")}
             value={String(v ?? "")}
             onChange={(e) => setField(k, e.target.value)}
           />
@@ -247,7 +249,7 @@ export default function CvApplyPage() {
     }
     flush();
     return rows;
-  }, [step, data, invalid]);
+  }, [step, data, invalid, t]);
 
   return (
     <div className="pa-root">
@@ -256,7 +258,7 @@ export default function CvApplyPage() {
           {done ? (
             <div className="pa-success">
               <div className="big">✓</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>Arizangiz qabul qilindi!</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a" }}>{t("Arizangiz qabul qilindi!")}</div>
               <div
                 style={{
                   fontSize: 14,
@@ -267,8 +269,8 @@ export default function CvApplyPage() {
                   marginRight: "auto",
                 }}
               >
-                Hurmatli <b>{done.name}</b>, anketangiz Akademiya ma&apos;muriyatiga yetkazildi. Nomzodlar orasidan
-                munosiblari tanlab olinadi va siz bilan <b>{done.phone}</b> raqami orqali bog&apos;lanamiz.
+                {t("Hurmatli")}{" "}<b>{done.name}</b>, anketangiz Akademiya ma&apos;muriyatiga yetkazildi. Nomzodlar orasidan
+                munosiblari tanlab olinadi va siz bilan <b>{done.phone}</b>{" "}{t("raqami orqali bog'lanamiz.")}
               </div>
               <div className="pa-note" style={{ marginTop: 14 }}>
                 Ariza raqami: {done.sid.slice(-6).toUpperCase()} · {done.submitted}
@@ -278,7 +280,7 @@ export default function CvApplyPage() {
               </div>
               <div style={{ marginTop: 24 }}>
                 <button className="pa-btn pa-btn-ghost" onClick={restart}>
-                  Yana ariza topshirish
+                  {t("Yana ariza topshirish")}
                 </button>
               </div>
             </div>
@@ -297,16 +299,15 @@ export default function CvApplyPage() {
                         textTransform: "uppercase",
                       }}
                     >
-                      Akademiya o&apos;quv markazi
+                      {t("Akademiya o'quv markazi")}
                     </div>
                     <div style={{ fontSize: 21, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
-                      Jamoamizga qo&apos;shiling!
+                      {t("Jamoamizga qo'shiling!")}
                     </div>
                   </div>
                 </div>
                 <div style={{ fontSize: 13, color: "#64748b", marginTop: 10, lineHeight: 1.5 }}>
-                  Ishga qabul anketasini to&apos;ldiring. Faqat jiddiy nomzodlar ko&apos;rib chiqiladi — o&apos;rinlar
-                  cheklangan, eng yaxshi nomzodlar suhbatga taklif qilinadi.
+                  {t("Ishga qabul anketasini to'ldiring. Faqat jiddiy nomzodlar ko'rib chiqiladi — o'rinlar cheklangan, eng yaxshi nomzodlar suhbatga taklif qilinadi.")}
                 </div>
               </div>
 
@@ -314,7 +315,7 @@ export default function CvApplyPage() {
                 {STEPS.map((s) => (
                   <div key={s.n} className={`pa-step${s.n === step ? " active" : s.n < step ? " done" : ""}`}>
                     <div className="dot">{s.n < step ? "✓" : s.n}</div>
-                    <div className="lbl">{s.label}</div>
+                    <div className="lbl">{t(s.label)}</div>
                   </div>
                 ))}
               </div>
@@ -341,18 +342,18 @@ export default function CvApplyPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 22 }}>
                   {step > 1 ? (
                     <button className="pa-btn pa-btn-ghost" onClick={back} disabled={sending}>
-                      ← Orqaga
+                      {t("← Orqaga")}
                     </button>
                   ) : (
                     <span />
                   )}
                   {step < 3 ? (
                     <button className="pa-btn pa-btn-primary" onClick={next}>
-                      Keyingisi →
+                      {t("Keyingisi →")}
                     </button>
                   ) : (
                     <button className="pa-btn pa-btn-submit" onClick={next} disabled={sending}>
-                      {sending ? "Yuborilmoqda…" : "✓ Arizani yuborish"}
+                      {sending ? t("Yuborilmoqda…") : t("✓ Arizani yuborish")}
                     </button>
                   )}
                 </div>
@@ -365,7 +366,7 @@ export default function CvApplyPage() {
           )}
         </div>
         <div className="text-center mt-4" style={{ color: "rgba(255,255,255,.75)", fontSize: 12 }}>
-          Akademiya o&apos;quv markazi · Ishga qabul anketasi
+          {t("Akademiya o'quv markazi · Ishga qabul anketasi")}
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { useStudents } from "@/hooks/useStudents";
 import { useStaff } from "@/hooks/useStaff";
 import { MONTHS, WEEKDAYS_FULL } from "@/lib/i18n";
@@ -59,6 +59,7 @@ const tabCls = (active: boolean) =>
   }`;
 
 export default function BirthdaysPage() {
+  const { t } = useT();
   const [lang] = useLang();
   const now = new Date();
   const today = now;
@@ -109,7 +110,7 @@ export default function BirthdaysPage() {
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-[18px] font-semibold">Tug&apos;ilgan kunlar</h1>
+        <h1 className="text-[18px] font-semibold">{t("Tug'ilgan kunlar")}</h1>
 
         {/* Tartib referensdagidek: yil → oy → kim → ko'rinish */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -120,16 +121,16 @@ export default function BirthdaysPage() {
           )}
 
           <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">
-            {KIND_TABS.map((t) => (
-              <button key={t.key} onClick={() => setKind(t.key)} className={tabCls(kind === t.key)}>
-                {t.label}
+            {KIND_TABS.map((tv) => (
+              <button key={tv.key} onClick={() => setKind(tv.key)} className={tabCls(kind === tv.key)}>
+                {t(tv.label)}
               </button>
             ))}
           </div>
 
           <div className="inline-flex items-center gap-1 rounded-xl bg-card border border-border p-1.5">
-            <button onClick={() => setView("monthly")} className={tabCls(view === "monthly")}>Oylik</button>
-            <button onClick={() => setView("yearly")} className={tabCls(view === "yearly")}>Yillik</button>
+            <button onClick={() => setView("monthly")} className={tabCls(view === "monthly")}>{t("Oylik")}</button>
+            <button onClick={() => setView("yearly")} className={tabCls(view === "yearly")}>{t("Yillik")}</button>
           </div>
         </div>
       </div>
@@ -138,15 +139,15 @@ export default function BirthdaysPage() {
           yuklanmoqda, javob kelgach — rostdan bo'sh bo'lsa sababi bilan. */}
       {loading ? (
         <div className="rounded-[10px] border border-border bg-card px-4 py-3 text-[13px] text-muted-foreground">
-          Yuklanmoqda…
+          {t("Yuklanmoqda…")}
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
           {kind === "employee"
             ? "Hech bir xodimga tug'ilgan sana kiritilmagan — sanani \"Xodim qo'shish\" oynasida yoki xodim profilida saqlang."
             : kind === "student"
-              ? "Hech bir o'quvchiga tug'ilgan sana kiritilmagan — sanani o'quvchi profilidagi \"Tahrirlash\" tabida saqlang."
-              : "Bazada hali birorta tug'ilgan sana yo'q. O'quvchiniki — profildagi \"Tahrirlash\" tabida, xodimniki — xodim kartasida saqlanadi."}
+              ? t("Hech bir o'quvchiga tug'ilgan sana kiritilmagan — sanani o'quvchi profilidagi \"Tahrirlash\" tabida saqlang.")
+              : t("Bazada hali birorta tug'ilgan sana yo'q. O'quvchiniki — profildagi \"Tahrirlash\" tabida, xodimniki — xodim kartasida saqlanadi.")}
         </div>
       ) : null}
 
@@ -198,7 +199,7 @@ export default function BirthdaysPage() {
                 <div className="text-[14px] font-semibold mb-2">{name}</div>
                 {list.length === 0 ? (
                   <div className="text-[12px] text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Ma'lumot yo'q"}
+                    {loading ? t("Yuklanmoqda…") : t("Ma'lumot yo'q")}
                   </div>
                 ) : (
                   <ul className="space-y-1">
@@ -227,7 +228,7 @@ export default function BirthdaysPage() {
               {/* Yagona shablon-satr: JSX'da `{expr} matn&apos;li-so'z`
                   shaklida yozilsa probel yo'qoladi (README'dagi tuzoq). */}
               <h2 className="text-[17px] font-semibold">
-                {`${openDay} ${MONTHS[lang][month - 1]} ${year} - Tug'ilgan kunlar`}
+                {t("{openDay} {month} {year} - Tug'ilgan kunlar", { openDay, month: MONTHS[lang][month - 1], year })}
               </h2>
             </div>
 
@@ -252,7 +253,7 @@ export default function BirthdaysPage() {
                 onClick={modal.close}
                 className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
-                Orqaga
+                {t("Orqaga")}
               </button>
             </div>
           </>)}</Modal>

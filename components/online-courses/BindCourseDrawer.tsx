@@ -7,6 +7,7 @@ import { useOnlineCourses } from "./OnlineCoursesProvider";
 import type { EduCategory } from "@/lib/eduCategories";
 import type { Group } from "@/lib/groups";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // "Kurs biriktirish" — o'ngdan chiquvchi drawer (crm-akademiya
 // #bind-course-drawer). Guruh/Kurs rejimlari orasida almashadi.
@@ -23,6 +24,7 @@ import Select from "@/components/ui/Select";
 // POST /api/online-courses/:id/bind orqali kurs hujjatiga yozadi.
 
 export default function BindCourseDrawer({ courseId, onClose }: { courseId: number; onClose: () => void }) {
+  const { t } = useT();
   const [mode, setMode] = useState<"group" | "course">("group");
   const [value, setValue] = useState("");
   const [groups, setGroups] = useState<Group[]>([]);
@@ -56,7 +58,7 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
 
   async function save() {
     if (!value) {
-      showError(mode === "group" ? "Guruh tanlang" : "Kurs tanlang");
+      showError(mode === "group" ? t("Guruh tanlang") : t("Kurs tanlang"));
       return;
     }
     setSaving(true);
@@ -71,14 +73,14 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
       mode === "group"
         ? groups.find((g) => g.id === id)?.name || String(id)
         : categories.find((c) => c.id === id)?.name || String(id);
-    showSuccess(`Biriktirildi — ${label}`);
+    showSuccess(t("Biriktirildi — {label}", { label }));
     modal.close();
   }
 
   return (
     <Modal onClose={onClose} controller={modal} bare variant="drawer" zIndex={110}>
         <div className="px-6 pt-6 pb-4">
-          <h2 className="text-xl font-bold tracking-tight">Kurs biriktirish</h2>
+          <h2 className="text-xl font-bold tracking-tight">{t("Kurs biriktirish")}</h2>
         </div>
         <div className="px-6">
           <div className="grid grid-cols-2 gap-0 rounded-lg overflow-hidden border border-border">
@@ -86,38 +88,38 @@ export default function BindCourseDrawer({ courseId, onClose }: { courseId: numb
               onClick={() => { setMode("group"); setValue(""); }}
               className={`h-10 text-sm font-medium ${mode === "group" ? "bg-primary text-white" : "bg-card text-foreground hover:bg-secondary"}`}
             >
-              Guruh
+              {t("Guruh")}
             </button>
             <button
               onClick={() => { setMode("course"); setValue(""); }}
               className={`h-10 text-sm font-medium ${mode === "course" ? "bg-primary text-white" : "bg-card text-foreground hover:bg-secondary"}`}
             >
-              Kurs
+              {t("Kurs")}
             </button>
           </div>
 
           {mode === "group" ? (
             <div className="mt-6">
-              <label className="text-[13px] font-medium">Guruh</label>
-              <Select value={value} onChange={(v) => setValue(v)} options={groups.map((g) => ({ value: String(g.id), label: g.name || `#${g.id}` }))} placeholder={loading ? "Yuklanmoqda…" : groups.length ? "Guruh" : "Guruh yo'q"} clearable className="mt-2" disabled={loading} />
+              <label className="text-[13px] font-medium">{t("Guruh")}</label>
+              <Select value={value} onChange={(v) => setValue(v)} options={groups.map((g) => ({ value: String(g.id), label: g.name || `#${g.id}` }))} placeholder={loading ? "Yuklanmoqda…" : groups.length ? t("Guruh") : t("Guruh yo'q")} clearable className="mt-2" disabled={loading} />
             </div>
           ) : (
             <div className="mt-6">
-              <label className="text-[13px] font-medium">Kurs</label>
-              <Select value={value} onChange={(v) => setValue(v)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={loading ? "Yuklanmoqda…" : categories.length ? "Kurs" : "Kategoriya yo'q"} clearable className="mt-2" disabled={loading} />
+              <label className="text-[13px] font-medium">{t("Kurs")}</label>
+              <Select value={value} onChange={(v) => setValue(v)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={loading ? "Yuklanmoqda…" : categories.length ? t("Kurs") : t("Kategoriya yo'q")} clearable className="mt-2" disabled={loading} />
             </div>
           )}
         </div>
 
         <div className="flex-1" />
         <div className="flex items-center justify-end gap-4 px-6 py-4 border-t border-border">
-          <button onClick={modal.close} className="text-sm text-muted-foreground hover:text-foreground">Orqaga</button>
+          <button onClick={modal.close} className="text-sm text-muted-foreground hover:text-foreground">{t("Orqaga")}</button>
           <button
             onClick={save}
             disabled={saving}
             className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:pointer-events-none"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </div>
     </Modal>

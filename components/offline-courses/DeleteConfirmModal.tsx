@@ -1,6 +1,7 @@
 "use client";
 
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Umumiy o'chirishni tasdiqlash oynasi — kurs va daraja o'chirishda bir xil.
 // crm-akademiya/index-dev.html dagi #oc-delete-modal dizayni asosida.
@@ -15,6 +16,7 @@ export interface DeleteConfirmModalProps {
 }
 
 export default function DeleteConfirmModal({ title, message, name, onCancel, onConfirm, zIndex = 120 }: DeleteConfirmModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onCancel);
 
   return (
@@ -32,10 +34,10 @@ export default function DeleteConfirmModal({ title, message, name, onCancel, onC
         </div>
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
           <button onClick={modal.close} className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={onConfirm} className="h-9 px-5 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700">
-            O&apos;chirish
+            {t("O'chirish")}
           </button>
         </div>
     </Modal>

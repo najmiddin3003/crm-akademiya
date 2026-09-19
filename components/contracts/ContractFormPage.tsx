@@ -10,6 +10,7 @@ import { CONTRACT_TYPES, CONTRACT_FIELDS } from "@/constants/contracts";
 import type { Contract } from "@/lib/contracts";
 import type { RichTextEditorField } from "@/components/ui/RichTextEditor";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 const CONTRACT_FIELDS_MAP = CONTRACT_FIELDS as Record<string, RichTextEditorField[]>;
 
@@ -21,6 +22,7 @@ const CONTRACT_FIELDS_MAP = CONTRACT_FIELDS as Record<string, RichTextEditorFiel
 // joylashtiriladi — RichTextEditor'ning "@" tugmasi ham xuddi shu maydonlarni
 // bevosita kursor joyiga qo'yadi).
 export default function ContractFormPage({ contractId }: { contractId?: number }) {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
 
@@ -56,12 +58,12 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
 
   function copyToken(token: string) {
     navigator.clipboard.writeText(`{{${token}}}`);
-    showSuccess(`Nusxalandi: {{${token}}}`);
+    showSuccess(t("Nusxalandi: {{{token}}}", { token }));
   }
 
   async function save() {
     if (!title.trim()) {
-      showError("Sarlavhani kiriting");
+      showError(t("Sarlavhani kiriting"));
       return;
     }
     setSaving(true);
@@ -75,14 +77,14 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
-      showSuccess(contractId != null ? "Shartnoma yangilandi" : "Shartnoma yaratildi");
+      showSuccess(contractId != null ? t("Shartnoma yangilandi") : t("Shartnoma yaratildi"));
       router.push("/contract");
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -93,7 +95,7 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
   if (notFound) {
     return (
       <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-        <p className="text-sm text-muted-foreground">Shartnoma topilmadi.</p>
+        <p className="text-sm text-muted-foreground">{t("Shartnoma topilmadi.")}</p>
       </div>
     );
   }
@@ -101,10 +103,10 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
   return (
     <div className="flex flex-col md:flex-row gap-0" style={{ minHeight: "75vh" }}>
       <aside className="w-full md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-border p-4 space-y-4">
-        <h2 className="text-[16px] font-semibold">Shartnoma</h2>
+        <h2 className="text-[16px] font-semibold">{t("Shartnoma")}</h2>
         <div>
-          <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">Shartnoma turi</label>
-          <Select value={type} onChange={(v) => setType(v)} options={CONTRACT_TYPES.map((t) => ({ value: t.value, label: t.label }))} size="sm" />
+          <label className="block text-[12px] font-medium text-muted-foreground mb-1.5">{t("Shartnoma turi")}</label>
+          <Select value={type} onChange={(v) => setType(v)} options={CONTRACT_TYPES.map((tv) => ({ value: tv.value, label: tv.label }))} size="sm" />
         </div>
         <div className="space-y-1.5">
           {fields.map((f) => (
@@ -113,9 +115,9 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
               type="button"
               onClick={() => copyToken(f.token)}
               className="w-full flex items-center justify-between gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] text-left"
-              title="Nusxalash"
+              title={t("Nusxalash")}
             >
-              <span className="truncate">{f.label}</span>
+              <span className="truncate">{t(f.label)}</span>
               <Copy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             </button>
           ))}
@@ -128,11 +130,11 @@ export default function ContractFormPage({ contractId }: { contractId?: number }
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             type="text"
-            placeholder="Sarlavha"
+            placeholder={t("Sarlavha")}
             className="flex-1 h-10 rounded-lg border border-border bg-card px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
           <button onClick={save} disabled={saving} className="inline-flex items-center h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 shrink-0">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
 

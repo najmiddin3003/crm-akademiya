@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Parol o'rnatish".
 //
@@ -17,6 +18,7 @@ interface RoleState {
 }
 
 export default function ParolTabContent({ login, pupilId }: { login: string; pupilId?: number }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [sub, setSub] = useState<"oquvchi" | "otaona">("oquvchi");
   const [saved, setSaved] = useState<{ student: RoleState; parent: RoleState } | null>(null);
@@ -51,7 +53,7 @@ export default function ParolTabContent({ login, pupilId }: { login: string; pup
   const save = async () => {
     if (!pupilId) return;
     if (!loginValue.trim()) {
-      showError("Login majburiy");
+      showError(t("Login majburiy"));
       return;
     }
     setSaving(true);
@@ -62,7 +64,7 @@ export default function ParolTabContent({ login, pupilId }: { login: string; pup
     }).then((r) => r.json()).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
-      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      showError(t(res?.error || "Saqlashda xatolik yuz berdi"));
       return;
     }
     setSaved((prev) => ({
@@ -70,7 +72,7 @@ export default function ParolTabContent({ login, pupilId }: { login: string; pup
       parent: role === "parent" ? { login: res.login, hasPassword: res.passwordChanged || Boolean(prev?.parent.hasPassword) } : prev!.parent,
     }));
     patchDraft({ password: "" });
-    showSuccess(res.passwordChanged ? "Login va parol saqlandi" : "Login saqlandi");
+    showSuccess(res.passwordChanged ? t("Login va parol saqlandi") : t("Login saqlandi"));
   };
 
   const pill = (active: boolean) =>
@@ -82,22 +84,22 @@ export default function ParolTabContent({ login, pupilId }: { login: string; pup
     <div className="rounded-2xl bg-card border border-border p-5">
       <div className="flex gap-2 mb-5">
         <button type="button" onClick={() => setSub("oquvchi")} className={pill(sub === "oquvchi")}>
-          O&apos;quvchi
+          {t("O'quvchi")}
         </button>
         <button type="button" onClick={() => setSub("otaona")} className={pill(sub === "otaona")}>
-          Ota-ona
+          {t("Ota-ona")}
         </button>
       </div>
 
       <div className="space-y-4 max-w-3xl">
         {!pupilId && (
           <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
-            Bu yozuv o&apos;quvchilar bazasida topilmadi — kirish ma&apos;lumotlarini saqlab bo&apos;lmaydi.
+            {t("Bu yozuv o'quvchilar bazasida topilmadi — kirish ma'lumotlarini saqlab bo'lmaydi.")}
           </div>
         )}
 
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Login</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Login")}</label>
           <input
             type="text"
             value={loginValue}
@@ -110,19 +112,18 @@ export default function ParolTabContent({ login, pupilId }: { login: string; pup
           <label className="block text-[13px] font-medium mb-1.5">
             Parol
             {current?.hasPassword && (
-              <span className="ml-2 text-[12px] font-normal text-emerald-600">• o&apos;rnatilgan</span>
+              <span className="ml-2 text-[12px] font-normal text-emerald-600">{t("• o'rnatilgan")}</span>
             )}
           </label>
           <input
             type="password"
             value={password}
             onChange={(e) => patchDraft({ password: e.target.value })}
-            placeholder={current?.hasPassword ? "O'zgartirish uchun yangi parol" : "Kamida 6 belgi"}
+            placeholder={current?.hasPassword ? t("O'zgartirish uchun yangi parol") : t("Kamida 6 belgi")}
             className="w-full h-11 px-3 rounded-lg border border-border bg-secondary/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
           <p className="mt-1.5 text-[12px] text-muted-foreground">
-            Parol shifrlangan holda saqlanadi va qayta ko&apos;rsatilmaydi. Bo&apos;sh qoldirsangiz
-            faqat login yangilanadi.
+            {t("Parol shifrlangan holda saqlanadi va qayta ko'rsatilmaydi. Bo'sh qoldirsangiz faqat login yangilanadi.")}
           </p>
         </div>
 
@@ -133,7 +134,7 @@ export default function ParolTabContent({ login, pupilId }: { login: string; pup
             onClick={save}
             className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </div>
       </div>

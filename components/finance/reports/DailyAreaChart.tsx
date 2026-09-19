@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/shared/Language";
 
 export interface DailyPoint {
   date: string; // "YYYY-MM-DD"
@@ -27,9 +28,10 @@ export default function DailyAreaChart({
   points: DailyPoint[];
   variant?: "area" | "bar";
 }) {
+  const { t } = useT();
   const [hover, setHover] = useState<number | null>(null);
   if (points.length === 0) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Ma&apos;lumot topilmadi</div>;
+    return <div className="py-16 text-center text-sm text-muted-foreground">{t("Ma'lumot topilmadi")}</div>;
   }
 
   const maxVal = Math.max(1, ...points.map((p) => Math.max(p.income, p.expense)));

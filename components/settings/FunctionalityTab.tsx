@@ -6,6 +6,7 @@ import SettingsForm from "./SettingsForm";
 import SettingsNote from "./SettingsNote";
 import { FUNCTIONALITY_CARDS } from "@/constants/settingsFunctionality";
 import type { FunctionalityCard } from "@/lib/settings";
+import { useT } from "@/components/shared/Language";
 
 // Umumiy sozlamalar → Funksionallik. Referensdagi kabi: avval 8 ta karta
 // ro'yxati, kartaga bosilganda o'sha kartaning formasi ochiladi (orqaga
@@ -30,12 +31,13 @@ const NOT_WIRED_NOTE = (
 );
 
 function CardHeader({ card, onBack }: { card: FunctionalityCard; onBack: () => void }) {
+  const { t } = useT();
   return (
     <div className="rounded-2xl bg-card border border-border p-4 flex items-center gap-3">
       <button
         onClick={onBack}
         className="h-9 w-9 shrink-0 rounded-lg border border-border hover:bg-secondary flex items-center justify-center"
-        title="Orqaga"
+        title={t("Orqaga")}
       >
         <ArrowLeft className="w-4 h-4" />
       </button>
@@ -43,14 +45,15 @@ function CardHeader({ card, onBack }: { card: FunctionalityCard; onBack: () => v
         <svg className="icon icon-sm"><use href={`#${card.icon}`} /></svg>
       </span>
       <div className="min-w-0">
-        <div className="text-[15px] font-semibold truncate">{card.title}</div>
-        <div className="text-[12px] text-muted-foreground truncate">{card.description}</div>
+        <div className="text-[15px] font-semibold truncate">{t(card.title)}</div>
+        <div className="text-[12px] text-muted-foreground truncate">{t(card.description)}</div>
       </div>
     </div>
   );
 }
 
 export default function FunctionalityTab() {
+  const { t } = useT();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const card = CARDS.find((c) => c.key === openKey);
 
@@ -78,8 +81,8 @@ export default function FunctionalityTab() {
             <svg className="icon icon-sm"><use href={`#${c.icon}`} /></svg>
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-medium truncate">{c.title}</span>
-            <span className="block text-[12px] text-muted-foreground truncate">{c.description}</span>
+            <span className="block text-[14px] font-medium truncate">{t(c.title)}</span>
+            <span className="block text-[12px] text-muted-foreground truncate">{t(c.description)}</span>
           </span>
           <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
         </button>

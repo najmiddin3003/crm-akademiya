@@ -7,6 +7,7 @@ import Link from "@/components/ui/Link";
 import TapTest from "@/components/tezlik/TapTest";
 import WhyFast from "@/components/tezlik/WhyFast";
 import RobotFace from "@/components/tezlik/RobotFace";
+import { useT } from "@/components/shared/Language";
 
 // SUZUVCHI ROBOT — saytning har sahifasida turadigan, istalgan joyga
 // sudrab qo'yiladigan tugma (referens: akademiya.edutizim.uz dagi robot).
@@ -47,6 +48,7 @@ function loadPos(): Pos {
 }
 
 export default function SpeedFab() {
+  const { t } = useT();
   const [pos, setPos] = useState<Pos | null>(null);
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -99,8 +101,8 @@ export default function SpeedFab() {
     <>
       <button
         type="button"
-        aria-label="Sayt tezligini o'lchash"
-        title="Sayt tezligi — bosing (sudrab ko'chirish mumkin)"
+        aria-label={t("Sayt tezligini o'lchash")}
+        title={t("Sayt tezligi — bosing (sudrab ko'chirish mumkin)")}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -117,14 +119,14 @@ export default function SpeedFab() {
       {open && (
         <Modal
           onClose={() => setOpen(false)}
-          title="Tezlik sinovi"
-          subtitle="So'rov sizning qurilmangizdan serverga hozir yuboriladi — raqamlar jonli, taxmin emas."
+          title={t("Tezlik sinovi")}
+          subtitle={t("So'rov sizning qurilmangizdan serverga hozir yuboriladi — raqamlar jonli, taxmin emas.")}
           size="xl"
           bodyClassName="p-4 space-y-3"
           zIndex={1150}
           footer={
             <Link href="/tezlik" target="_blank" className="mr-auto inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground">
-              <ExternalLink className="w-3.5 h-3.5" /> Alohida sahifada ochish
+              <ExternalLink className="w-3.5 h-3.5" />{" "}{t("Alohida sahifada ochish")}
             </Link>
           }
         >

@@ -6,6 +6,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import { REVENUE_PLAN_STATUSES } from "@/constants/revenuePlan";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { FinanceContract } from "@/lib/financeContracts";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Tushum rejasi (sidebar: Moliya > Tushum rejasi, href
 // /finance-revenue-plan). Sof hisobot sahifasi (add/edit/delete yo'q) — bitta
@@ -65,6 +66,7 @@ function monthRange(d: Date): { start: Date; end: Date } {
 const STATUS_OPTIONS = REVENUE_PLAN_STATUSES.filter((s) => s === "Aktiv" || s === "Arxiv");
 
 export default function RevenuePlanPage() {
+  const { t } = useT();
   const [date, setDate] = useState<Date>(() => new Date());
   const [status, setStatus] = useState<string | null>(STATUS_OPTIONS[0]);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -145,10 +147,10 @@ export default function RevenuePlanPage() {
 
   const rows = [
     { label: "__DATE__", students: expectedStudents, amount: expectedAmount },
-    { label: "Eski oydan qarzdor bo'lib o'tgan o'quvchilar summasi", students: debtStudents, amount: -debtAmount },
-    { label: "Eski oydan o'quvchilar to'lab o'tgan summa", students: paidBeforeStudents, amount: paidBeforeAmount },
-    { label: "Shu oyda to'lagan summa", students: paidStudents, amount: paidAmount },
-    { label: "Qolgan kutilayotgan tushum", students: null as number | null, amount: remaining },
+    { label: t("Eski oydan qarzdor bo'lib o'tgan o'quvchilar summasi"), students: debtStudents, amount: -debtAmount },
+    { label: t("Eski oydan o'quvchilar to'lab o'tgan summa"), students: paidBeforeStudents, amount: paidBeforeAmount },
+    { label: t("Shu oyda to'lagan summa"), students: paidStudents, amount: paidAmount },
+    { label: t("Qolgan kutilayotgan tushum"), students: null as number | null, amount: remaining },
   ];
 
   return (
@@ -196,9 +198,9 @@ export default function RevenuePlanPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="text-left px-4 py-3 whitespace-nowrap">Tushum rejasi</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">O&apos;quvchi soni</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Umumiy kutilayotgan summa</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Tushum rejasi")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("O'quvchi soni")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Umumiy kutilayotgan summa")}</th>
               </tr>
             </thead>
             <tbody>

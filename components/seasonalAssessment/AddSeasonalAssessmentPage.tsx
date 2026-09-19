@@ -8,6 +8,7 @@ import MonthPicker from "@/components/ui/MonthPicker";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // O'quv bo'limi → Mavsumiy baholash → "Baholash" ("+ Baholash" tugmasi shu
 // sahifaga o'tadi). Bosqichma-bosqich ochiladi (manba: skrinshot 2-3):
@@ -26,6 +27,7 @@ interface Draft {
 }
 
 export default function AddSeasonalAssessmentPage() {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
 
@@ -80,7 +82,7 @@ export default function AddSeasonalAssessmentPage() {
       .filter((s) => drafts[s.id]?.ball.trim())
       .map((s) => ({ studentId: s.id, studentName: pupilName(s), ball: Number(drafts[s.id].ball) || 0, izoh: drafts[s.id].izoh }));
     if (entries.length === 0) {
-      showError("Kamida bitta o'quvchiga ball qo'ying");
+      showError(t("Kamida bitta o'quvchiga ball qo'ying"));
       return;
     }
     setSaving(true);
@@ -99,14 +101,14 @@ export default function AddSeasonalAssessmentPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
-      showSuccess(`Baholandi — ${entries.length} ta o'quvchi`);
+      showSuccess(t("Baholandi — {entries} ta o'quvchi", { entries: entries.length }));
       router.push("/seasonal-assessment");
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -115,7 +117,7 @@ export default function AddSeasonalAssessmentPage() {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-5">
       <div className="flex items-end gap-3 flex-wrap">
         <div>
-          <label className={labelCls}>Sana</label>
+          <label className={labelCls}>{t("Sana")}</label>
           <MonthPicker
             value={month}
             onChange={(m) => { setMonth(m); }}
@@ -127,17 +129,17 @@ export default function AddSeasonalAssessmentPage() {
         {month && (
           <>
             <div>
-              <label className={labelCls}>Kurs<span className="text-rose-500">*</span></label>
-              <Select value={course} onChange={(v) => { setCourse(v); setGroupId(null); setStudents(null); setDrafts({}); }} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kursni tanlang" clearable size="sm" className="w-48" />
+              <label className={labelCls}>{t("Kurs")}<span className="text-rose-500">*</span></label>
+              <Select value={course} onChange={(v) => { setCourse(v); setGroupId(null); setStudents(null); setDrafts({}); }} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kursni tanlang")} clearable size="sm" className="w-48" />
             </div>
 
             <div>
-              <label className={labelCls}>Guruh<span className="text-rose-500">*</span></label>
+              <label className={labelCls}>{t("Guruh")}<span className="text-rose-500">*</span></label>
               <Select value={String(groupId ?? "")} onChange={(v) => {
                     setGroupId(v ? Number(v) : null);
                     setStudents(null);
                     setDrafts({});
-                  }} options={groupOptions.map((g) => ({ value: String(g.id), label: `${g.name}—${g.teacher}` }))} placeholder="Guruhni tanlang" clearable size="sm" className="w-56" disabled={!course} />
+                  }} options={groupOptions.map((g) => ({ value: String(g.id), label: `${g.name}—${g.teacher}` }))} placeholder={t("Guruhni tanlang")} clearable size="sm" className="w-56" disabled={!course} />
             </div>
 
             <button
@@ -145,23 +147,23 @@ export default function AddSeasonalAssessmentPage() {
               disabled={!canSave || saving}
               className="inline-flex items-center h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saqlanmoqda…" : "Saqlash"}
+              {saving ? t("Saqlanmoqda…") : t("Saqlash")}
             </button>
           </>
         )}
       </div>
 
       <div>
-        <h2 className="text-[15px] font-semibold mb-3">O&apos;quvchilar ro&apos;yxati</h2>
+        <h2 className="text-[15px] font-semibold mb-3">{t("O'quvchilar ro'yxati")}</h2>
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-secondary/40">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap w-40">Bal</th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchi")}</th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap w-40">{t("Bal")}</th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -175,7 +177,7 @@ export default function AddSeasonalAssessmentPage() {
                         onChange={(e) => setDraft(s.id, { ball: e.target.value })}
                         type="number"
                         min="0"
-                        placeholder="Ball"
+                        placeholder={t("Ball")}
                         className="w-full h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                       />
                     </td>
@@ -184,7 +186,7 @@ export default function AddSeasonalAssessmentPage() {
                         value={drafts[s.id]?.izoh ?? ""}
                         onChange={(e) => setDraft(s.id, { izoh: e.target.value })}
                         type="text"
-                        placeholder="Izoh"
+                        placeholder={t("Izoh")}
                         className="w-full h-9 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                       />
                     </td>

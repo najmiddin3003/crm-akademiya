@@ -3,6 +3,7 @@ import { createInitialOrders, type Order } from "@/lib/ordersData";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
+import { getServerT } from "@/lib/serverT";
 
 // O'quvchi profili ikki xil ro'yxatdan ochilishi mumkin:
 //   • Buyurtmalar (lib/ordersData.ts demo generatori, id 2098-6013)
@@ -72,10 +73,11 @@ export default async function Page({
     : fromOrders() ?? (await orderFromPupil(numId));
 
   if (!order) {
+    const { t } = await getServerT();
     return (
       <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
         <p className="text-sm text-muted-foreground">
-          O&apos;quvchi topilmadi: <strong>{id}</strong>
+          {t("O'quvchi topilmadi:")} <strong>{id}</strong>
         </p>
       </div>
     );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { Order } from "@/lib/ordersData";
+import { useT } from "@/components/shared/Language";
 
 // "Izoh" (megaphone) tugmasi bosilganda o'ng-pastki burchakda ochiladigan kichik
 // izoh/chat oynasi (akademiya.edutizim.uz referens skrinshotiga mos): sarlavhada
@@ -25,6 +26,7 @@ export interface OrderMessagePanelProps {
 }
 
 export default function OrderMessagePanel({ order, messages, onClose, onSend }: OrderMessagePanelProps) {
+  const { t } = useT();
   const [text, setText] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
   useEscapeClose(onClose);
@@ -81,14 +83,14 @@ export default function OrderMessagePanel({ order, messages, onClose, onSend }: 
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSend();
           }}
-          placeholder="Izoh qoldirish"
+          placeholder={t("Izoh qoldirish")}
           className="flex-1 h-10 rounded-lg border border-border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
           type="button"
           onClick={handleSend}
           className="h-10 w-10 shrink-0 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90"
-          title="Yuborish"
+          title={t("Yuborish")}
         >
           <svg className="icon icon-sm">
             <use href="#i-send" />

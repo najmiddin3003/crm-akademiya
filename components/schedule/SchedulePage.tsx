@@ -27,6 +27,7 @@ import {
   type Lesson,
 } from "@/lib/schedule";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 type SchView = "day" | "week" | "month" | "teacher" | "room";
 type GroupBy = "room" | "teacher";
@@ -43,6 +44,7 @@ interface Filters {
 const EMPTY_FILTERS: Filters = { teacher: "", group: "", room: "", course: "", status: "" };
 
 export default function SchedulePage() {
+  const { t } = useT();
   const [day, setDay] = useState("payshanba");
   const [groupBy, setGroupBy] = useState<GroupBy>("room");
   const [layout, setLayout] = useState<Layout>("grid");
@@ -114,13 +116,13 @@ export default function SchedulePage() {
           id="page-title"
           className={`text-xl font-semibold tracking-tight${statsVisible ? "" : " collapsed"}`}
         >
-          Statistika
+          {t("Statistika")}
         </h1>
         <div className="flex gap-2">
           <button
             id="btn-statistika"
             onClick={toggleStats}
-            title={statsVisible ? "Statistikani yashirish" : "Statistikani ko'rsatish"}
+            title={statsVisible ? t("Statistikani yashirish") : t("Statistikani ko'rsatish")}
             className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-shadow${
               statsVisible ? "" : " ring-2 ring-white/60"
             }`}
@@ -128,7 +130,7 @@ export default function SchedulePage() {
             <svg className="icon icon-sm">
               <use href="#i-bar-chart" />
             </svg>{" "}
-            <span>Statistika</span>
+            <span>{t("Statistika")}</span>
           </button>
           <button
             id="btn-filter"
@@ -140,7 +142,7 @@ export default function SchedulePage() {
             <svg className="icon icon-sm">
               <use href="#i-filter" />
             </svg>{" "}
-            <span>Filtr</span>
+            <span>{t("Filtr")}</span>
             {activeFilterCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
                 {activeFilterCount}
@@ -172,7 +174,7 @@ export default function SchedulePage() {
             </div>
             <div className="min-w-0">
               <div className="text-[11px] font-medium text-muted-foreground leading-tight">
-                {c.label}
+                {t(c.label)}
               </div>
               <div className="text-xl font-bold leading-tight mt-1 tabular-nums">
                 {formatStatValue(STATS[c.key as keyof typeof STATS])}
@@ -188,35 +190,35 @@ export default function SchedulePage() {
           <FilterSelect
             value={filters.teacher}
             onChange={(v) => setFilters((f) => ({ ...f, teacher: v }))}
-            placeholder="O'qituvchi"
+            placeholder={t("O'qituvchi")}
             width="w-36"
             options={filterOptions.teachers.map((tch) => [tch, tch])}
           />
           <FilterSelect
             value={filters.group}
             onChange={(v) => setFilters((f) => ({ ...f, group: v }))}
-            placeholder="Guruh"
+            placeholder={t("Guruh")}
             width="w-32"
             options={filterOptions.groups.map((g) => [String(g), `№ ${g}`])}
           />
           <FilterSelect
             value={filters.room}
             onChange={(v) => setFilters((f) => ({ ...f, room: v }))}
-            placeholder="Xona"
+            placeholder={t("Xona")}
             width="w-32"
             options={ROOMS.map((r, i) => [String(i), `${r} - xona`])}
           />
           <FilterSelect
             value={filters.course}
             onChange={(v) => setFilters((f) => ({ ...f, course: v }))}
-            placeholder="Kurs"
+            placeholder={t("Kurs")}
             width="w-36"
             options={filterOptions.courses.map((c) => [c, c])}
           />
           <FilterSelect
             value={filters.status}
             onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
-            placeholder="Holati"
+            placeholder={t("Holati")}
             width="w-36"
             options={STATUSES.map((s) => [s.value, s.label])}
           />
@@ -234,7 +236,7 @@ export default function SchedulePage() {
 
       {/* "Dars jadvali" sub-heading + day tabs + view toggles */}
       <div className="space-y-3 pt-2">
-        <h2 className="text-lg font-semibold tracking-tight non-fullscreen">Dars jadvali</h2>
+        <h2 className="text-lg font-semibold tracking-tight non-fullscreen">{t("Dars jadvali")}</h2>
         <div className="flex flex-wrap items-center justify-between gap-3">
           {dayTabsVisible && (
             <div className="flex flex-wrap gap-1 rounded-lg bg-card border border-border p-1">
@@ -246,7 +248,7 @@ export default function SchedulePage() {
                     d === day ? "bg-primary text-white" : "hover:bg-secondary"
                   }`}
                 >
-                  {SCH_DAY_LONG[i]}
+                  {t(SCH_DAY_LONG[i])}
                 </button>
               ))}
             </div>
@@ -255,24 +257,24 @@ export default function SchedulePage() {
             {oldTogglesVisible && (
               <div className="flex items-center gap-2">
                 <div className="flex rounded-lg border border-border bg-card p-0.5">
-                  <ToggleBtn active={groupBy === "room"} onClick={() => setGroupBy("room")} title="Xona bo'yicha" icon="i-grid" />
-                  <ToggleBtn active={groupBy === "teacher"} onClick={() => setGroupBy("teacher")} title="O'qituvchi bo'yicha" icon="i-user" />
+                  <ToggleBtn active={groupBy === "room"} onClick={() => setGroupBy("room")} title={t("Xona bo'yicha")} icon="i-grid" />
+                  <ToggleBtn active={groupBy === "teacher"} onClick={() => setGroupBy("teacher")} title={t("O'qituvchi bo'yicha")} icon="i-user" />
                 </div>
                 <div className="flex rounded-lg border border-border bg-card p-0.5">
-                  <ToggleBtn active={layout === "grid"} onClick={() => setLayout("grid")} title="Ustun ko'rinishi" icon="i-grid" />
-                  <ToggleBtn active={layout === "row"} onClick={() => setLayout("row")} title="Qator ko'rinishi" icon="i-list" />
+                  <ToggleBtn active={layout === "grid"} onClick={() => setLayout("grid")} title={t("Ustun ko'rinishi")} icon="i-grid" />
+                  <ToggleBtn active={layout === "row"} onClick={() => setLayout("row")} title={t("Qator ko'rinishi")} icon="i-list" />
                 </div>
               </div>
             )}
             <button
               onClick={() => setFullscreen((v) => !v)}
-              title={fullscreen ? "Kichik xolatda ko'rish" : "To'liq ekran"}
+              title={fullscreen ? t("Kichik xolatda ko'rish") : t("To'liq ekran")}
               className="inline-flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-card hover:bg-secondary"
             >
               <svg className="icon icon-sm">
                 <use href={fullscreen ? "#i-minimize" : "#i-maximize"} />
               </svg>
-              {fullscreen && <span className="text-sm font-medium">Kichik xolatda ko&apos;rish</span>}
+              {fullscreen && <span className="text-sm font-medium">{t("Kichik xolatda ko'rish")}</span>}
             </button>
           </div>
         </div>
@@ -281,11 +283,11 @@ export default function SchedulePage() {
       {/* View picker */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3 non-fullscreen">
         <div className="sch-view-picker">
-          <ViewBtn active={schView === "day"} onClick={() => pickView("day")} icon="i-calendar" label="Kun" />
-          <ViewBtn active={schView === "week"} onClick={() => pickView("week")} icon="i-grid" label="Hafta" />
-          <ViewBtn active={schView === "month"} onClick={() => pickView("month")} icon="i-layers" label="Oy" />
-          <ViewBtn active={schView === "teacher"} onClick={() => pickView("teacher")} icon="i-user" label="O'qituvchi" />
-          <ViewBtn active={schView === "room"} onClick={() => pickView("room")} icon="i-archive" label="Xona" />
+          <ViewBtn active={schView === "day"} onClick={() => pickView("day")} icon="i-calendar" label={t("Kun")} />
+          <ViewBtn active={schView === "week"} onClick={() => pickView("week")} icon="i-grid" label={t("Hafta")} />
+          <ViewBtn active={schView === "month"} onClick={() => pickView("month")} icon="i-layers" label={t("Oy")} />
+          <ViewBtn active={schView === "teacher"} onClick={() => pickView("teacher")} icon="i-user" label={t("O'qituvchi")} />
+          <ViewBtn active={schView === "room"} onClick={() => pickView("room")} icon="i-archive" label={t("Xona")} />
         </div>
 
         <button
@@ -297,7 +299,7 @@ export default function SchedulePage() {
           <svg className="icon icon-sm">
             <use href="#i-file-plus" />
           </svg>
-          <span>Yangi dars</span>
+          <span>{t("Yangi dars")}</span>
         </button>
       </div>
 
@@ -310,13 +312,13 @@ export default function SchedulePage() {
             </svg>
           </div>
           <div className="text">
-            <b>{totalConflicts} ta jadval konflikti</b> aniqlandi
+            <b>{totalConflicts} ta jadval konflikti</b>{" "}{t("aniqlandi")}
             <div className="details">
               {summary.teacher} ta o&apos;qituvchi konflikti, {summary.room} ta xona konflikti ·{" "}
               {summary.dayList}
             </div>
           </div>
-          <button onClick={() => showConflictDetails()}>Tafsilot</button>
+          <button onClick={() => showConflictDetails()}>{t("Tafsilot")}</button>
         </div>
       )}
 
@@ -417,9 +419,10 @@ function buildMatrices(items: unknown[], lessons: (Lesson & { idx: number })[], 
 }
 
 function LessonCard({ L, cKeys, row }: { L: Lesson; cKeys: Set<string>; row?: boolean }) {
+  const { t } = useT();
   const isConflict = cKeys.has(`${L.groupNum}|${L.startSlot}`);
-  const roomLbl = `Xona: ${ROOMS[L.room]} - xona`;
-  const tip = `№${L.groupNum} · ${L.teacher} · ${ROOMS[L.room]}-xona`;
+  const roomLbl = t("Xona: {room} - xona", { room: ROOMS[L.room] });
+  const tip = t("№{groupNum} · {teacher} · {room}-xona", { groupNum: L.groupNum, teacher: L.teacher, room: ROOMS[L.room] });
   const extra = L.extra !== undefined && L.extra !== null ? <span>{L.extra}</span> : null;
 
   if (row) {
@@ -450,7 +453,7 @@ function LessonCard({ L, cKeys, row }: { L: Lesson; cKeys: Set<string>; row?: bo
           {extra}
         </div>
         {isConflict && (
-          <span className="conflict-badge" title="Konflikt: vaqtda boshqa dars bilan to'qnashadi">
+          <span className="conflict-badge" title={t("Konflikt: vaqtda boshqa dars bilan to'qnashadi")}>
             !
           </span>
         )}
@@ -485,7 +488,7 @@ function LessonCard({ L, cKeys, row }: { L: Lesson; cKeys: Set<string>; row?: bo
         {extra}
       </div>
       {isConflict && (
-        <span className="conflict-badge" title="Konflikt: vaqtda boshqa dars bilan to'qnashadi">
+        <span className="conflict-badge" title={t("Konflikt: vaqtda boshqa dars bilan to'qnashadi")}>
           !
         </span>
       )}
@@ -502,6 +505,7 @@ function GridLayout({
   lessons: (Lesson & { idx: number })[];
   cKeys: Set<string>;
 }) {
+  const { t } = useT();
   const { skip, start } = buildMatrices(items, lessons, false);
   const cols = `110px repeat(${items.length}, minmax(140px, 1fr))`;
   const minWidth = 110 + items.length * 140;
@@ -512,7 +516,7 @@ function GridLayout({
         <div className="sch-room" style={{ background: "hsl(var(--secondary) / 0.65)" }} />
         {items.map((it, i) => (
           <div key={`h${i}`} className="sch-room" title={it.full}>
-            {it.label}
+            {t(it.label)}
           </div>
         ))}
         {TIME_SLOTS.map((ts, s) => (
@@ -544,6 +548,7 @@ function RowLayout({
   lessons: (Lesson & { idx: number })[];
   cKeys: Set<string>;
 }) {
+  const { t } = useT();
   const { skip, start } = buildMatrices(items, lessons, true);
   const cols = `150px repeat(${TIME_SLOTS.length}, minmax(140px, 1fr))`;
   const minWidth = 150 + TIME_SLOTS.length * 140;
@@ -552,15 +557,15 @@ function RowLayout({
     <div className="overflow-x-auto rounded-2xl">
       <div className="schedule-row" style={{ gridTemplateColumns: cols, minWidth }}>
         <div className="sch-time-h" style={{ background: "hsl(var(--secondary) / 0.65)" }} />
-        {TIME_SLOTS.map((t, i) => (
+        {TIME_SLOTS.map((tv, i) => (
           <div key={`th${i}`} className="sch-time-h">
-            {t}
+            {tv}
           </div>
         ))}
         {items.map((it, r) => (
           <Fragment key={`row${r}`}>
             <div className="sch-room-side" title={it.full}>
-              {it.label}
+              {t(it.label)}
             </div>
             {TIME_SLOTS.map((_, s) => {
               if (skip[r][s]) return null;
@@ -582,13 +587,14 @@ function RowLayout({
 /* ============================ Hafta ko'rinishi ============================ */
 
 function WeekView() {
+  const { t } = useT();
   const todayDay = SCH_DAY_ORDER[new Date().getDay()];
   return (
     <div className="sch-week">
       <div className="sch-week-head" />
       {SCH_DAY_LONG.map((lbl, i) => (
         <div key={`wh${i}`} className={`sch-week-head${SCH_DAY_ORDER[i] === todayDay ? " today" : ""}`}>
-          {lbl}
+          {t(lbl)}
         </div>
       ))}
       {TIME_SLOTS.map((ts, s) => (
@@ -607,7 +613,7 @@ function WeekView() {
                       key={k}
                       className={`sch-week-lesson${isConflict ? " has-conflict" : ""}`}
                       style={{ background: L.color }}
-                      title={`№${L.groupNum} · ${L.teacher} · ${ROOMS[L.room]}-xona`}
+                      title={t("№{groupNum} · {teacher} · {room}-xona", { groupNum: L.groupNum, teacher: L.teacher, room: ROOMS[L.room] })}
                     >
                       №{L.groupNum} · {(L.teacher || "").split(" ")[0]}
                     </div>
@@ -625,6 +631,7 @@ function WeekView() {
 /* ============================ Oy ko'rinishi ============================ */
 
 function MonthView() {
+  const { t, months, weekdaysShort } = useT();
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -632,8 +639,7 @@ function MonthView() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const startCol = firstDay.getDay();
   const today = now.getDate();
-  const monthNames = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
-  const labels = ["Yak", "Du", "Se", "Cho", "Pa", "Ju", "Sha"];
+  const labels = weekdaysShort;
 
   const totalCells = startCol + daysInMonth;
   const trailing = (7 - (totalCells % 7)) % 7;
@@ -642,9 +648,9 @@ function MonthView() {
     <>
       <div style={{ marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>
-          {monthNames[month]} {year}
+          {months[month]} {year}
         </div>
-        <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>Bugun: {today}</div>
+        <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>{t("Bugun:")} {today}</div>
       </div>
       <div className="sch-month">
         {labels.map((lbl, i) => (

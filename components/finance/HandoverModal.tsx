@@ -7,6 +7,7 @@ import DateField from "@/components/ui/DateField";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { HandoverReport, HandoverRow } from "@/lib/handoverReport";
 import { uzDateIso } from "@/lib/uzTime";
+import { useT } from "@/components/shared/Language";
 
 // KUNLIK TOPSHIRUV — rahbar kassa uchun nazorat oynasi (Moliya → Kassalar
 // → rahbar kartochkasidagi ro'yxat ikonkasi).
@@ -39,6 +40,7 @@ function fmtUz(iso: string): string {
 }
 
 export default function HandoverModal({ onClose }: { onClose: () => void }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const today = uzDateIso();
   const [date, setDate] = useState(today);
@@ -75,7 +77,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
   const errorMsg = error?.date === date ? error.msg : null;
   const loading = !errorMsg && (report?.date !== date || refreshing);
   const rows = report?.date === date ? report.rows : [];
-  const t = report?.date === date ? report.totals : undefined;
+  const tv = report?.date === date ? report.totals : undefined;
   const isToday = date === today;
   const hasActivity = (r: HandoverRow) => r.income > 0 || r.expense > 0 || r.sentAccepted > 0 || r.sentPending > 0;
 
@@ -87,8 +89,8 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       controller={modal}
       size="5xl"
-      title="Kunlik topshiruv — rahbar kassa"
-      subtitle="Filial kassalari shu kuni qancha yig'di, sarfladi va rahbarga qanchasini topshirdi"
+      title={t("Kunlik topshiruv — rahbar kassa")}
+      subtitle={t("Filial kassalari shu kuni qancha yig'di, sarfladi va rahbarga qanchasini topshirdi")}
       bodyClassName="p-0"
     >
       {/* Sana boshqaruvi */}
@@ -97,7 +99,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={() => setDate((d) => shiftDay(d, -1))}
           className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary"
-          title="Oldingi kun"
+          title={t("Oldingi kun")}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -107,7 +109,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
           onClick={() => setDate((d) => shiftDay(d, 1))}
           disabled={isToday}
           className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Keyingi kun"
+          title={t("Keyingi kun")}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -117,13 +119,13 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
             onClick={() => setDate(today)}
             className="h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] font-medium"
           >
-            Bugun
+            {t("Bugun")}
           </button>
         )}
         <div className="flex-1" />
-        {t && t.pendingCount > 0 && (
+        {tv && tv.pendingCount > 0 && (
           <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 text-[12px] font-medium">
-            <Clock className="w-3.5 h-3.5" /> {t.pendingCount} ta ko&apos;chirma tasdiq kutmoqda
+            <Clock className="w-3.5 h-3.5" /> {tv.pendingCount} ta ko&apos;chirma tasdiq kutmoqda
           </span>
         )}
         <button
@@ -131,7 +133,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
           onClick={() => { setRefreshing(true); setTick((n) => n + 1); }}
           disabled={loading}
           className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary disabled:opacity-50"
-          title="Yangilash"
+          title={t("Yangilash")}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
@@ -139,27 +141,27 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
 
       {errorMsg ? (
         <div className="px-5 py-10 text-center text-sm text-rose-600">{errorMsg}</div>
-      ) : loading && !t ? (
+      ) : loading && !tv ? (
         <SpinnerBlock size={28} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead className="bg-secondary/40">
               <tr>
-                <th className={`${th} text-left`}>Kassa</th>
-                <th className={`${th} text-left`}>Egasi</th>
-                <th className={`${th} text-right`}>Tushum</th>
-                <th className={`${th} text-right`}>Chiqim</th>
-                <th className={`${th} text-right`} title="Tushum − Chiqim">Topshirishi kerak</th>
-                <th className={`${th} text-right`}>Jo&apos;natdi</th>
-                <th className={`${th} text-right text-emerald-700 dark:text-emerald-400`}>✓ Tasdiqlangan</th>
-                <th className={`${th} text-right text-amber-700 dark:text-amber-400`}>⏳ Kutilmoqda</th>
+                <th className={`${th} text-left`}>{t("Kassa")}</th>
+                <th className={`${th} text-left`}>{t("Egasi")}</th>
+                <th className={`${th} text-right`}>{t("Tushum")}</th>
+                <th className={`${th} text-right`}>{t("Chiqim")}</th>
+                <th className={`${th} text-right`} title={t("Tushum − Chiqim")}>{t("Topshirishi kerak")}</th>
+                <th className={`${th} text-right`}>{t("Jo'natdi")}</th>
+                <th className={`${th} text-right text-emerald-700 dark:text-emerald-400`}>{t("✓ Tasdiqlangan")}</th>
+                <th className={`${th} text-right text-amber-700 dark:text-amber-400`}>{t("⏳ Kutilmoqda")}</th>
               </tr>
             </thead>
             <tbody className={loading ? "opacity-60" : ""}>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">Filial kassalari yo&apos;q</td>
+                  <td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">{t("Filial kassalari yo'q")}</td>
                 </tr>
               )}
               {rows.map((r) => {
@@ -168,7 +170,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
                 return (
                   <tr key={r.cashboxId} className={`border-t border-border/60 ${active ? "" : "text-muted-foreground"}`}>
                     <td className={`${td} font-medium`}>{r.name}</td>
-                    <td className={td}>{r.moderator || <span className="text-muted-foreground">mas&apos;ul belgilanmagan</span>}</td>
+                    <td className={td}>{r.moderator || <span className="text-muted-foreground">{t("mas'ul belgilanmagan")}</span>}</td>
                     <td className={`${td} text-right`}>{active ? fmtNum(r.income) : "—"}</td>
                     <td className={`${td} text-right`}>{active ? fmtNum(r.expense) : "—"}</td>
                     <td className={`${td} text-right font-medium`}>{active ? fmtNum(r.mustSend) : "—"}</td>
@@ -182,16 +184,16 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
                 );
               })}
             </tbody>
-            {t && rows.length > 0 && (
+            {tv && rows.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-border bg-secondary/40 font-semibold">
-                  <td className={td} colSpan={2}>Jami</td>
-                  <td className={`${td} text-right`}>{fmtNum(t.income)}</td>
-                  <td className={`${td} text-right`}>{fmtNum(t.expense)}</td>
-                  <td className={`${td} text-right`}>{fmtNum(t.mustSend)}</td>
-                  <td className={`${td} text-right`}>{fmtNum(t.sentAccepted + t.sentPending)}</td>
-                  <td className={`${td} text-right text-emerald-700 dark:text-emerald-400`}>{fmtNum(t.sentAccepted)}</td>
-                  <td className={`${td} text-right text-amber-700 dark:text-amber-400`}>{fmtNum(t.sentPending)}</td>
+                  <td className={td} colSpan={2}>{t("Jami")}</td>
+                  <td className={`${td} text-right`}>{fmtNum(tv.income)}</td>
+                  <td className={`${td} text-right`}>{fmtNum(tv.expense)}</td>
+                  <td className={`${td} text-right`}>{fmtNum(tv.mustSend)}</td>
+                  <td className={`${td} text-right`}>{fmtNum(tv.sentAccepted + tv.sentPending)}</td>
+                  <td className={`${td} text-right text-emerald-700 dark:text-emerald-400`}>{fmtNum(tv.sentAccepted)}</td>
+                  <td className={`${td} text-right text-amber-700 dark:text-amber-400`}>{fmtNum(tv.sentPending)}</td>
                 </tr>
               </tfoot>
             )}
@@ -200,9 +202,9 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="px-5 py-3 border-t border-border text-[12px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-        <span><b className="font-semibold text-foreground">{fmtUz(date)}</b> uchun, jurnaldagi sana bo&apos;yicha</span>
-        <span>Topshirishi kerak = Tushum − Chiqim</span>
-        <span>Tasdiqlash — jurnaldagi ✓ / × tugmalarida</span>
+        <span><b className="font-semibold text-foreground">{fmtUz(date)}</b>{" "}{t("uchun, jurnaldagi sana bo'yicha")}</span>
+        <span>{t("Topshirishi kerak = Tushum − Chiqim")}</span>
+        <span>{t("Tasdiqlash — jurnaldagi ✓ / × tugmalarida")}</span>
       </div>
     </Modal>
   );

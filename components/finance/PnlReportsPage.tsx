@@ -8,8 +8,8 @@ import { FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import YearPicker from "./reports/YearPicker";
 import MonthPicker from "./reports/MonthPicker";
-import { MONTH_NAMES_UZ } from "@/constants/pnlReports";
 import type { PnlMonthRow } from "@/lib/pnl";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Moliya hisobotlari (P&L) (sidebar: Moliya > Moliya hisobotlari
 // (P&L), href /finance-pnl). Sof hisobot — add/edit/delete yo'q. Yil
@@ -36,6 +36,7 @@ interface PnlRow {
   amount: number;
 }
 export default function PnlReportsPage() {
+  const { t, months: monthNames } = useT();
   const { showSuccess, showError } = useToast();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState<number | null>(null);
@@ -91,7 +92,7 @@ export default function PnlReportsPage() {
     return out;
   }, [pnlRows]);
   const months = month ? yearData.filter((m) => m.month === month) : yearData;
-  const monthLabels = month ? [MONTH_NAMES_UZ[month - 1]] : MONTH_NAMES_UZ;
+  const monthLabels = month ? [monthNames[month - 1]] : monthNames;
 
   const rows = useMemo(() => {
     const jamiDaromad = months.map((m) => m.otherIncome + m.courseIncome);
@@ -101,14 +102,14 @@ export default function PnlReportsPage() {
     const boshqaXarajat = months.map((m) => m.otherExpense);
     const sofFoyda = jamiDaromad.map((v, i) => v - jamiXarajat[i]);
     return [
-      { label: "Jami daromad", values: jamiDaromad, tone: "green" as const, bold: true },
-      { label: "Dars bo'yicha daromad", values: darsDaromad, tone: "none" as const, bold: false },
-      { label: "Boshqa daromad", values: boshqaDaromad, tone: "none" as const, bold: false },
-      { label: "Jami xarajat", values: jamiXarajat, tone: "red" as const, bold: true },
-      { label: "Boshqa xarajat", values: boshqaXarajat, tone: "none" as const, bold: false },
-      { label: "Sof foyda", values: sofFoyda, tone: "yellow" as const, bold: true },
+      { label: t("Jami daromad"), values: jamiDaromad, tone: "green" as const, bold: true },
+      { label: t("Dars bo'yicha daromad"), values: darsDaromad, tone: "none" as const, bold: false },
+      { label: t("Boshqa daromad"), values: boshqaDaromad, tone: "none" as const, bold: false },
+      { label: t("Jami xarajat"), values: jamiXarajat, tone: "red" as const, bold: true },
+      { label: t("Boshqa xarajat"), values: boshqaXarajat, tone: "none" as const, bold: false },
+      { label: t("Sof foyda"), values: sofFoyda, tone: "yellow" as const, bold: true },
     ];
-  }, [months]);
+  }, [months, t]);
 
   const toneCls: Record<string, string> = {
     green: "bg-emerald-50",
@@ -135,22 +136,22 @@ export default function PnlReportsPage() {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "P&L");
       XLSX.writeFile(workbook, `pnl-hisoboti-${year}${month ? `-${String(month).padStart(2, "0")}` : ""}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-[18px] font-semibold">Moliya hisobotlari (P&amp;L)</h1>
+        <h1 className="text-[18px] font-semibold">{t("Moliya hisobotlari (P&L)")}</h1>
         <div className="flex items-center gap-2">
           <YearPicker value={year} onChange={(y) => { setYear(y); setMonth(null); }} />
           <MonthPicker year={year} value={month} onChange={(m, y) => { setMonth(m); setYear(y); }} />
           <button onClick={exportExcel} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
             <FileSpreadsheet className="w-4 h-4" />
-            Eksport
+            {t("Eksport")}
           </button>
         </div>
       </div>
@@ -166,11 +167,11 @@ export default function PnlReportsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left px-4 py-3 whitespace-nowrap font-semibold text-[13px]">Kategoriya</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{t("Kategoriya")}</th>
                 {monthLabels.map((label) => (
                   <th key={label} className="text-right px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{label}</th>
                 ))}
-                {!month && <th className="text-right px-4 py-3 whitespace-nowrap font-semibold text-[13px]">Jami</th>}
+                {!month && <th className="text-right px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{t("Jami")}</th>}
               </tr>
             </thead>
             <tbody>
@@ -178,7 +179,7 @@ export default function PnlReportsPage() {
                 const total = r.values.reduce((s, v) => s + v, 0);
                 return (
                   <tr key={r.label} className={`border-b border-border/50 ${toneCls[r.tone]}`}>
-                    <td className={`px-4 py-3 text-[13px] ${r.bold ? "font-semibold" : "pl-8 text-muted-foreground"}`}>{r.label}</td>
+                    <td className={`px-4 py-3 text-[13px] ${r.bold ? "font-semibold" : "pl-8 text-muted-foreground"}`}>{t(r.label)}</td>
                     {r.values.map((v, i) => (
                       <td key={i} className={`px-4 py-3 text-right text-[13px] tabular-nums ${r.bold ? "font-semibold" : ""} ${r.label === "Sof foyda" && v < 0 ? "text-rose-600" : ""}`}>
                         {fmtUZS(v)}

@@ -8,6 +8,7 @@ import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useStudents } from "@/hooks/useStudents";
 import { pupilFullName, pupilStatusOf } from "@/lib/pupilsData";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → Joriy oyda obunasi tugaydiganlar (href /expiring-subs).
 //
@@ -66,6 +67,7 @@ interface Row {
 }
 
 export default function ExpiringSubsPage() {
+  const { t } = useT();
   // SERVERDA filtrlanadi (pastda ham `Aktiv` sharti bor edi) va faqat
   // id/ism/telefon so'raladi — sahifa boshqa maydonni ishlatmaydi.
   const { pupils, loading: pupilsLoading } = useStudents({ light: true, status: "Aktiv" });
@@ -116,17 +118,17 @@ export default function ExpiringSubsPage() {
       {/* Statistika */}
       <div className="flex items-center gap-x-6 gap-y-2 flex-wrap text-[13px]">
         <span>
-          <span className="text-muted-foreground font-medium">Jami darslar narxi</span>
+          <span className="text-muted-foreground font-medium">{t("Jami darslar narxi")}</span>
           <span className="ml-1"><Dash /></span>
         </span>
         <span className="border-l border-border pl-6">
-          <span className="text-muted-foreground font-medium">Joriy balans</span>
+          <span className="text-muted-foreground font-medium">{t("Joriy balans")}</span>
           <span className={`font-semibold tabular-nums ml-1 ${currentBalance < 0 ? "text-rose-600" : "text-emerald-600"}`}>
             {loading ? "…" : fmtUZS(currentBalance)}
           </span>
         </span>
         <span className="border-l border-border pl-6">
-          <span className="text-muted-foreground font-medium">Kutilayotgan balans</span>
+          <span className="text-muted-foreground font-medium">{t("Kutilayotgan balans")}</span>
           <span className="ml-1"><Dash /></span>
         </span>
       </div>
@@ -135,9 +137,7 @@ export default function ExpiringSubsPage() {
       <div className="flex items-start gap-2.5 rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
         <p>
-          Tizimda obuna tugash sanasi ham, dars narxi × dars soni hisobi ham yuritilmaydi.
-          Shu sabab ro&apos;yxatni &quot;joriy oyda tugaydiganlar&quot; bo&apos;yicha ajratib
-          bo&apos;lmaydi — quyida barcha <span className="font-medium">aktiv</span>{" "}
+          {t("Tizimda obuna tugash sanasi ham, dars narxi × dars soni hisobi ham yuritilmaydi. Shu sabab ro'yxatni \"joriy oyda tugaydiganlar\" bo'yicha ajratib bo'lmaydi — quyida barcha")}{" "}<span className="font-medium">{t("aktiv")}</span>{" "}
           o&apos;quvchilar ko&apos;rsatilgan. &quot;Jami darslar narxi&quot; va &quot;Kutilayotgan balans&quot;
           ustunlari manbasiz, shuning uchun &quot;—&quot;. &quot;Joriy balans&quot; esa
           haqiqiy: bu o&apos;quvchi qilgan to&apos;lovlar yig&apos;indisi.
@@ -147,7 +147,7 @@ export default function ExpiringSubsPage() {
       {/* Umumiy soni */}
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{rows.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -163,11 +163,11 @@ export default function ExpiringSubsPage() {
                 <thead>
                   <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="text-left px-3 py-3 whitespace-nowrap w-12">№</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Jami darslar narxi</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Joriy balans</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Kutilayotgan balans</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchini ismi")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Jami darslar narxi")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Joriy balans")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kutilayotgan balans")}</th>
                     <th className="text-right px-3 py-3 whitespace-nowrap w-24" />
                   </tr>
                 </thead>
@@ -187,14 +187,14 @@ export default function ExpiringSubsPage() {
                       {/* Joriy balans − jami darslar narxi: ikkinchisi yo'q. */}
                       <td className="px-3 py-3 text-[13px]"><Dash /></td>
                       <td className="px-3 py-3 text-right whitespace-nowrap">
-                        <Link href={`/student-edit/${r.id}?src=list`} className="text-primary hover:underline text-[12px]">Batafsil</Link>
+                        <Link href={`/student-edit/${r.id}?src=list`} className="text-primary hover:underline text-[12px]">{t("Batafsil")}</Link>
                       </td>
                     </tr>
                   ))}
                   {slice.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                        Aktiv o&apos;quvchi topilmadi
+                        {t("Aktiv o'quvchi topilmadi")}
                       </td>
                     </tr>
                   )}

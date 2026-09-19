@@ -260,7 +260,7 @@ export default function RichTextEditor({
                     onClick={() => { insertAtSavedRange(`{{${f.token}}}`); setMentionOpen(false); }}
                     className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-secondary text-[12px]"
                   >
-                    {f.label}
+                    {t(f.label)}
                   </button>
                 ))}
               </div>
@@ -269,7 +269,7 @@ export default function RichTextEditor({
 
           <button type="button" onClick={toggleCodeView} className={`${toolBtn} ${codeView ? "bg-primary/10 text-primary" : ""}`} title={t("Kod ko'rinishi")}><Code className="w-4 h-4" /></button>
           <button type="button" onClick={printContent} className={toolBtn} title={t("Chop etish")}><Printer className="w-4 h-4" /></button>
-          <button type="button" onClick={() => setFullscreen((f) => !f)} className={`${toolBtn} ml-auto`} title={fullscreen ? "Kichraytirish" : "Kengaytirish"}>
+          <button type="button" onClick={() => setFullscreen((f) => !f)} className={`${toolBtn} ml-auto`} title={fullscreen ? t("Kichraytirish") : t("Kengaytirish")}>
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, LogOut } from "lucide-react";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
+import { useT } from "@/components/shared/Language";
 
 // Profil menyusi → "Qulflash" bosilganda chiqadigan ekran.
 // Sessiya tugatilmagan — foydalanuvchi tizimda qolgan, faqat ekran yopilgan.
@@ -15,6 +16,7 @@ export interface LockScreenProps {
 }
 
 export default function LockScreen({ fullName, phone }: LockScreenProps) {
+  const { t } = useT();
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -64,18 +66,18 @@ export default function LockScreen({ fullName, phone }: LockScreenProps) {
 
           <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-[12px] font-medium text-muted-foreground">
             <Lock className="h-3.5 w-3.5" />
-            Ekran qulflangan
+            {t("Ekran qulflangan")}
           </div>
         </div>
 
-        <label className="mt-5 mb-1.5 block text-[13px] font-medium">Parol</label>
+        <label className="mt-5 mb-1.5 block text-[13px] font-medium">{t("Parol")}</label>
         <input
           type="password"
           autoFocus
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") void unlock(); }}
-          placeholder="Parolingizni kiriting"
+          placeholder={t("Parolingizni kiriting")}
           className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         {error && <div className="mt-2 text-[13px] text-rose-600">{error}</div>}
@@ -85,7 +87,7 @@ export default function LockScreen({ fullName, phone }: LockScreenProps) {
           disabled={!password || busy}
           className="mt-4 h-10 w-full rounded-lg bg-primary text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
         >
-          {busy ? "Tekshirilmoqda…" : "Qulfni ochish"}
+          {busy ? t("Tekshirilmoqda…") : t("Qulfni ochish")}
         </button>
 
         <button
@@ -93,7 +95,7 @@ export default function LockScreen({ fullName, phone }: LockScreenProps) {
           className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:bg-secondary"
         >
           <LogOut className="h-4 w-4" />
-          Boshqa hisobga kirish
+          {t("Boshqa hisobga kirish")}
         </button>
       </div>
     </div>

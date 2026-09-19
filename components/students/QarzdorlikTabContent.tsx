@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { invalidateStudents } from "@/hooks/useStudents";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Qarzdorlik limiti".
 // Ilgari "Saqlash" hech nima qilmasdi; endi qiymat o'quvchi yozuviga
@@ -14,6 +15,7 @@ export default function QarzdorlikTabContent({
   pupilId?: number;
   initialLimit?: number;
 }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [limit, setLimit] = useState(initialLimit != null ? String(initialLimit) : "");
   const [saving, setSaving] = useState(false);
@@ -22,7 +24,7 @@ export default function QarzdorlikTabContent({
     if (!pupilId) return;
     const n = Number(limit);
     if (limit !== "" && (!Number.isFinite(n) || n < 0)) {
-      showError("Limit manfiy bo'lmagan son bo'lishi kerak");
+      showError(t("Limit manfiy bo'lmagan son bo'lishi kerak"));
       return;
     }
     setSaving(true);
@@ -34,16 +36,16 @@ export default function QarzdorlikTabContent({
     setSaving(false);
     invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
-      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      showError(t(res?.error || "Saqlashda xatolik yuz berdi"));
       return;
     }
-    showSuccess("Qarzdorlik limiti saqlandi");
+    showSuccess(t("Qarzdorlik limiti saqlandi"));
   };
 
   return (
     <div className="rounded-2xl bg-card border border-border p-5">
       <div className="max-w-3xl">
-        <label className="block text-[13px] font-medium mb-1.5">Qarzdorlik limiti</label>
+        <label className="block text-[13px] font-medium mb-1.5">{t("Qarzdorlik limiti")}</label>
         <div className="flex items-center gap-2">
           <input
             type="number"
@@ -58,12 +60,12 @@ export default function QarzdorlikTabContent({
             onClick={save}
             className="inline-flex items-center h-11 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 flex-shrink-0 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </div>
         {!pupilId && (
           <p className="mt-2 text-[12px] text-muted-foreground">
-            Bu yozuv o&apos;quvchilar bazasida topilmadi — limitni saqlab bo&apos;lmaydi.
+            {t("Bu yozuv o'quvchilar bazasida topilmadi — limitni saqlab bo'lmaydi.")}
           </p>
         )}
       </div>

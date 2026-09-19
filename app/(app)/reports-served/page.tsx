@@ -8,6 +8,7 @@ import { useGroups } from "@/hooks/useGroups";
 import { useTeachers } from "@/hooks/useTeachers";
 import type { Group } from "@/lib/groups";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Hisobotlar → O'quv markazga ishlab berilgan (href /reports-served).
 // Referensdagi sarlavha: "O'qituvchilar oylik to'lov analitikasi".
@@ -93,6 +94,7 @@ interface Row {
 }
 
 export default function Page() {
+  const { t } = useT();
   const { groups, loading: groupsLoading } = useGroups();
   const { names: teacherNames } = useTeachers();
   const [servedRows, setServedRows] = useState<ServedRow[]>([]);
@@ -195,27 +197,26 @@ export default function Page() {
   return (
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <h2 className="text-[18px] font-semibold tracking-tight">O&apos;qituvchilar oylik to&apos;lov analitikasi</h2>
+        <h2 className="text-[18px] font-semibold tracking-tight">{t("O'qituvchilar oylik to'lov analitikasi")}</h2>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           <DateRangePicker
             value={dateRange}
             onChange={(r) => { setDateRange(r); setPage(1); }}
-            placeholder="Oraliqni tanlang"
+            placeholder={t("Oraliqni tanlang")}
           />
           {/* O'qituvchilar bazadan (/api/teachers), qattiq yozilgan
               GROUP_TEACHERS ro'yxatidan emas. */}
-          <Select value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} options={teacherNames.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable className="w-52" />
+          <Select value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} options={teacherNames.map((tv) => ({ value: tv, label: tv }))} placeholder={t("O'qituvchi")} clearable className="w-52" />
         </div>
       </div>
 
       <div className="rounded-2xl bg-card border border-border p-5">
-        <div className="text-[13px] text-muted-foreground">Jami ishlab berilgan</div>
+        <div className="text-[13px] text-muted-foreground">{t("Jami ishlab berilgan")}</div>
         <div className="text-[22px] font-semibold tabular-nums">{total === null ? "—" : fmtUZS(total)}</div>
         {total === null ? (
           <div className="text-[12px] text-muted-foreground mt-1">
             Tanlangan oraliqdagi kirim yozuvlarida o&apos;qituvchi ko&apos;rsatilmagan
-            (<code>transaction_entries.teacherName</code> bo&apos;sh) — summani o&apos;qituvchilarga
-            taqsimlab bo&apos;lmaydi.
+            (<code>transaction_entries.teacherName</code>{" "}{t("bo'sh) — summani o'qituvchilarga taqsimlab bo'lmaydi.")}
           </div>
         ) : unattributedTotal > 0 ? (
           <div className="text-[12px] text-muted-foreground mt-1">
@@ -228,7 +229,7 @@ export default function Page() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{rows.length}</span>
           </div>
         </div>
@@ -238,10 +239,10 @@ export default function Page() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">O&apos;qituvchi</th>
-                <th className="px-5 py-3 text-right">Guruhlar</th>
-                <th className="px-5 py-3 text-right">O&apos;quvchilar</th>
-                <th className="px-5 py-3 text-right pr-5">Ishlab berilgan summa</th>
+                <th className="px-5 py-3 text-left">{t("O'qituvchi")}</th>
+                <th className="px-5 py-3 text-right">{t("Guruhlar")}</th>
+                <th className="px-5 py-3 text-right">{t("O'quvchilar")}</th>
+                <th className="px-5 py-3 text-right pr-5">{t("Ishlab berilgan summa")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

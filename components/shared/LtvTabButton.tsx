@@ -1,3 +1,5 @@
+"use client";
+
 import type { TabButtonProps } from "@/components/shared/TahrirlashTabButton";
 
 export default function LtvTabButton({ active = false, onClick }: TabButtonProps) {

@@ -8,6 +8,7 @@ import JournalTab from "./analytics/JournalTab";
 import CashFlowTab from "./analytics/CashFlowTab";
 import type { CashboxName } from "@/lib/cashboxes";
 import { fetchJson } from "@/lib/fetchJson";
+import { useT } from "@/components/shared/Language";
 
 /** summary?groupBy=method qaytaradigan qator. */
 type MethodRow = { method: string; amount: number };
@@ -38,6 +39,7 @@ function fmtUZS(n: number): string {
 }
 
 export default function FinancialAnalyticsPage() {
+  const { t } = useT();
   // Filial taqsimoti Sozlamalar → Moliya → To'lov turlaridan (barchasi —
   // nofaol qilingan turdagi eski summalar ham ko'rinishi kerak).
   const { methods: paymentMethods } = usePaymentMethods();
@@ -100,28 +102,28 @@ export default function FinancialAnalyticsPage() {
           <button
             onClick={() => setTab("kalendar")}
             className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-            title="Kalendar ko'rinishiga qaytish"
+            title={t("Kalendar ko'rinishiga qaytish")}
           >
             <Target className="w-4 h-4" />
           </button>
         </div>
 
         <div className="rounded-xl p-4 text-white" style={{ background: "linear-gradient(135deg,#7c3aed,#6d28d9)" }}>
-          <div className="text-[13px] font-medium opacity-90">Umumiy filiallar summasi</div>
+          <div className="text-[13px] font-medium opacity-90">{t("Umumiy filiallar summasi")}</div>
           <div className="text-[22px] font-bold tabular-nums mt-1">{fmtOrDash(totalBalance)}</div>
         </div>
 
         <div>
-          <div className="text-[13px] font-semibold text-muted-foreground mb-2">Filiallar</div>
+          <div className="text-[13px] font-semibold text-muted-foreground mb-2">{t("Filiallar")}</div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[14px]">Akademiya</span>
+              <span className="font-semibold text-[14px]">{t("Akademiya")}</span>
             </div>
             <div className="font-bold text-[15px] tabular-nums mt-0.5">{fmtOrDash(totalBalance)}</div>
             <div className="mt-3 space-y-2">
               {paymentMethods.map((m) => (
                 <div key={m.key} className="flex items-center justify-between text-[13px]">
-                  <span className="text-muted-foreground">{m.name}</span>
+                  <span className="text-muted-foreground">{t(m.name)}</span>
                   <span className="tabular-nums font-medium">{fmtOrDash(methodTotals[m.key] || 0)}</span>
                 </div>
               ))}
@@ -135,16 +137,16 @@ export default function FinancialAnalyticsPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="inline-flex items-center rounded-lg border border-border bg-card p-1">
             {[
-              { key: "kalendar" as const, label: "Kalendar" },
-              { key: "journal" as const, label: "Journal" },
-              { key: "pulOqimi" as const, label: "Pul oqimi" },
-            ].map((t) => (
+              { key: "kalendar" as const, label: t("Kalendar") },
+              { key: "journal" as const, label: t("Journal") },
+              { key: "pulOqimi" as const, label: t("Pul oqimi") },
+            ].map((tv) => (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`h-9 px-4 rounded-md text-sm font-medium ${tab === t.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+                key={tv.key}
+                onClick={() => setTab(tv.key)}
+                className={`h-9 px-4 rounded-md text-sm font-medium ${tab === tv.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
               >
-                {t.label}
+                {t(tv.label)}
               </button>
             ))}
           </div>

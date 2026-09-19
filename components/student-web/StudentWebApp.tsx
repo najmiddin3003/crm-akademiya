@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { StudentMe } from "@/components/student-web/types";
+import { useT } from "@/components/shared/Language";
 
 // O'QUVCHI WEB SAHIFASI — botdagi tugma orqali Telegram ichida ochiladi.
 //
@@ -48,13 +49,10 @@ function dmy(iso: string): string {
   return y && m && d ? `${d}.${m}.${y}` : iso || "—";
 }
 
-const MONTHS = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
-  "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
-
-function monthLabel(month: string): string {
+function monthLabel(month: string, months: string[]): string {
   const [y, m] = (month || "").split("-");
   const i = Number(m) - 1;
-  return i >= 0 && i < 12 ? `${MONTHS[i]} ${y}` : month;
+  return i >= 0 && i < 12 ? `${months[i]} ${y}` : month;
 }
 
 const MARK_LABEL: Record<string, string> = {
@@ -125,6 +123,7 @@ function initials(name: string): string {
 // ── Asosiy komponent ───────────────────────────────────────────────
 
 export default function StudentWebApp() {
+  const { t, months } = useT();
   const [data, setData] = useState<StudentMe | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<TabKey>("profil");
@@ -146,9 +145,9 @@ export default function StudentWebApp() {
       const ms = json.attendance.months;
       setMonth(ms.length > 0 ? ms[ms.length - 1] : "");
     } catch {
-      setError("Aloqa uzildi — internetni tekshiring");
+      setError(t("Aloqa uzildi — internetni tekshiring"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     // Telegram SDK sahifada bo'lmasligi mumkin (oddiy brauzerda ochilgan).
@@ -157,7 +156,7 @@ export default function StudentWebApp() {
     const start = () => {
       const app = tgApp();
       if (!app || !app.initData) {
-        setError("Bu sahifa Telegram boti orqali ochiladi");
+        setError(t("Bu sahifa Telegram boti orqali ochiladi"));
         return;
       }
       app.ready();
@@ -176,9 +175,9 @@ export default function StudentWebApp() {
     const s = document.createElement("script");
     s.src = TG_SDK;
     s.onload = start;
-    s.onerror = () => setError("Telegram bilan aloqa o'rnatilmadi");
+    s.onerror = () => setError(t("Telegram bilan aloqa o'rnatilmadi"));
     document.head.appendChild(s);
-  }, [load]);
+  }, [load, t]);
 
   if (error) {
     return (
@@ -220,13 +219,13 @@ export default function StudentWebApp() {
           <div className="min-w-0">
             <h1 className="truncate text-[17px] font-extrabold sm:text-xl">{p.fullName}</h1>
             <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-              {[p.role === "parent" ? "Ota-ona sifatida" : "O'quvchi", p.branch]
+              {[p.role === "parent" ? t("Ota-ona sifatida") : t("O'quvchi"), p.branch]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
             {p.status !== "Aktiv" ? (
               <span className="mt-1.5 inline-block rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                {p.status}
+                {t(p.status)}
               </span>
             ) : null}
           </div>
@@ -236,8 +235,8 @@ export default function StudentWebApp() {
             ya'ni u har doim 0 chiqib "to'lovim yo'qolibdi" degan savol
             tug'dirardi. Qarzdorlik ham tizimda yuritilmaydi. */}
         <div className="mt-4 grid grid-cols-2 gap-2.5">
-          <Stat label="Jami to'lov" value={`${fmtUZS(p.paid)} so'm`} />
-          <Stat label="Coin" value={fmtUZS(p.coin)} />
+          <Stat label={t("Jami to'lov")} value={`${fmtUZS(p.paid)} so'm`} />
+          <Stat label={t("Coin")} value={fmtUZS(p.coin)} />
         </div>
       </header>
 
@@ -247,7 +246,7 @@ export default function StudentWebApp() {
       {data.due.unpaid ? (
         <div className="mt-3 rounded-2xl border border-amber-400/50 bg-amber-500/10 p-4">
           <p className="text-[14px] font-bold text-amber-700 dark:text-amber-400">
-            {`${monthLabel(data.due.month)} oyi uchun to'lov hali qayd etilmagan`}
+            {t("{month} oyi uchun to'lov hali qayd etilmagan", { month: monthLabel(data.due.month, months) })}
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {"To'lovni o'quv markazida amalga oshirishingiz mumkin. Allaqachon to'lagan bo'lsangiz — kassada yozilgach eslatma yo'qoladi."}
@@ -257,39 +256,39 @@ export default function StudentWebApp() {
 
       {/* Tab paneli — mobilda gorizontal siljiydi, keng ekranda o'raladi. */}
       <nav className="mt-3 flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2.5 sm:flex-wrap sm:overflow-visible">
-        {TABS.map((t) => (
+        {TABS.map((tv) => (
           <button
-            key={t.key}
+            key={tv.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => setTab(tv.key)}
             className={`shrink-0 rounded-xl px-3.5 py-2 text-[13px] font-bold transition ${
-              tab === t.key
+              tab === tv.key
                 ? "bg-primary text-white"
                 : "bg-card-dim text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t.label}
+            {t(tv.label)}
           </button>
         ))}
       </nav>
 
       <div className="mt-3 space-y-3">
         {tab === "profil" && (
-          <Card title="Shaxsiy ma'lumotlar">
-            <Row label="F.I.O." value={p.fullName} />
-            <Row label="Filial" value={p.branch || "—"} />
-            <Row label="Holat" value={p.status} />
-            {p.category ? <Row label="Kategoriya" value={p.category} /> : null}
-            {p.birthDate ? <Row label="Tug'ilgan sana" value={p.birthDate} /> : null}
-            <Row label="Telefon" value={p.phone || "—"} />
-            <Row label="Jami to'lov" value={`${fmtUZS(p.paid)} so'm`} />
+          <Card title={t("Shaxsiy ma'lumotlar")}>
+            <Row label={t("F.I.O.")} value={p.fullName} />
+            <Row label={t("Filial")} value={p.branch || "—"} />
+            <Row label={t("Holat")} value={p.status} />
+            {p.category ? <Row label={t("Kategoriya")} value={p.category} /> : null}
+            {p.birthDate ? <Row label={t("Tug'ilgan sana")} value={p.birthDate} /> : null}
+            <Row label={t("Telefon")} value={p.phone || "—"} />
+            <Row label={t("Jami to'lov")} value={`${fmtUZS(p.paid)} so'm`} />
           </Card>
         )}
 
         {tab === "guruh" && (
           <>
             {data.nextLesson ? (
-              <Card title="Keyingi dars">
+              <Card title={t("Keyingi dars")}>
                 <p className="text-[13px]">
                   <b>{data.nextLesson.groupName}</b>
                   {` · ${dmy(data.nextLesson.iso)}`}
@@ -300,7 +299,7 @@ export default function StudentWebApp() {
                 </p>
               </Card>
             ) : null}
-            <Card title="Guruhlar">
+            <Card title={t("Guruhlar")}>
               {data.groups.length === 0 ? (
                 <Empty text="Guruhga qo'shilmagansiz." />
               ) : (
@@ -312,7 +311,7 @@ export default function StudentWebApp() {
                         {g.level ? <span>{`Bosqich: ${g.level}`}</span> : null}
                         {g.day ? <span>{`Kunlar: ${g.day}`}</span> : null}
                         {g.time ? <span>{`Vaqt: ${g.time}`}</span> : null}
-                        {g.teacher ? <span>{`O'qituvchi: ${g.teacher}`}</span> : null}
+                        {g.teacher ? <span>{t("O'qituvchi: {teacher}", { teacher: g.teacher })}</span> : null}
                         {g.room ? <span>{`Xona: ${g.room}`}</span> : null}
                       </div>
                     </div>
@@ -324,7 +323,7 @@ export default function StudentWebApp() {
         )}
 
         {tab === "davomat" && (
-          <Card title="Davomat">
+          <Card title={t("Davomat")}>
             {data.attendance.months.length > 1 ? (
               <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
                 {data.attendance.months.map((m) => (
@@ -336,7 +335,7 @@ export default function StudentWebApp() {
                       month === m ? "bg-primary text-white" : "bg-card-dim text-muted-foreground"
                     }`}
                   >
-                    {monthLabel(m)}
+                    {monthLabel(m, months)}
                   </button>
                 ))}
               </div>
@@ -369,7 +368,7 @@ export default function StudentWebApp() {
         )}
 
         {tab === "tolovlar" && (
-          <Card title="To'lovlar tarixi">
+          <Card title={t("To'lovlar tarixi")}>
             {data.payments.rows.length === 0 ? (
               <Empty text="To'lov yozuvi yo'q." />
             ) : (
@@ -383,7 +382,7 @@ export default function StudentWebApp() {
                       <div className="min-w-0">
                         <div className="text-[13px] font-semibold">{dmy(r.date)}</div>
                         <div className="truncate text-[12px] text-muted-foreground">
-                          {r.method}
+                          {t(r.method)}
                         </div>
                       </div>
                       <span
@@ -398,7 +397,7 @@ export default function StudentWebApp() {
                 </div>
                 {data.payments.totalCount > data.payments.rows.length ? (
                   <p className="mt-3 text-center text-[12px] text-muted-foreground">
-                    {`Jami ${data.payments.totalCount} ta yozuv, oxirgi ${data.payments.rows.length} tasi ko'rsatildi.`}
+                    {t("Jami {totalCount} ta yozuv, oxirgi {rows} tasi ko'rsatildi.", { totalCount: data.payments.totalCount, rows: data.payments.rows.length })}
                   </p>
                 ) : null}
               </>
@@ -407,21 +406,21 @@ export default function StudentWebApp() {
         )}
 
         {tab === "vazifa" && (
-          <Card title="Topshiriqlar">
+          <Card title={t("Topshiriqlar")}>
             {data.tasks.length === 0 ? (
               <Empty text="Hozircha topshiriq yo'q." />
             ) : (
               <div className="space-y-3">
-                {data.tasks.map((t) => (
-                  <div key={t.id} className="rounded-xl border border-border bg-card-dim p-3.5">
-                    <div className="font-bold">{t.name}</div>
+                {data.tasks.map((tv) => (
+                  <div key={tv.id} className="rounded-xl border border-border bg-card-dim p-3.5">
+                    <div className="font-bold">{tv.name}</div>
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-                      {t.type ? <span>{t.type}</span> : null}
-                      {t.deadline ? <span>{`Muddat: ${t.deadline}`}</span> : null}
-                      {t.maxScore ? <span>{`Maks. ball: ${t.maxScore}`}</span> : null}
-                      {t.groupName ? <span>{t.groupName}</span> : null}
+                      {tv.type ? <span>{t(tv.type)}</span> : null}
+                      {tv.deadline ? <span>{`Muddat: ${tv.deadline}`}</span> : null}
+                      {tv.maxScore ? <span>{t("Maks. ball: {maxScore}", { maxScore: tv.maxScore })}</span> : null}
+                      {tv.groupName ? <span>{tv.groupName}</span> : null}
                     </div>
-                    {t.note ? <p className="mt-1.5 text-[13px]">{t.note}</p> : null}
+                    {tv.note ? <p className="mt-1.5 text-[13px]">{tv.note}</p> : null}
                   </div>
                 ))}
               </div>
@@ -431,7 +430,7 @@ export default function StudentWebApp() {
 
         {tab === "imtihon" && (
           <>
-            <Card title="Oylik imtihonlar">
+            <Card title={t("Oylik imtihonlar")}>
               {data.exams.monthly.length === 0 ? (
                 <Empty text="Natija yo'q." />
               ) : (
@@ -443,7 +442,7 @@ export default function StudentWebApp() {
                     >
                       <div className="min-w-0">
                         <div className="truncate text-[13px] font-semibold">{e.subject}</div>
-                        <div className="text-[12px] text-muted-foreground">{monthLabel(e.month)}</div>
+                        <div className="text-[12px] text-muted-foreground">{monthLabel(e.month, months)}</div>
                       </div>
                       <span className="shrink-0 text-[13px] font-extrabold">{`${e.correct}/${e.total}`}</span>
                     </div>
@@ -451,7 +450,7 @@ export default function StudentWebApp() {
                 </div>
               )}
             </Card>
-            <Card title="UZBMB">
+            <Card title={t("UZBMB")}>
               {data.exams.uzbmb.length === 0 ? (
                 <Empty text="Natija yo'q." />
               ) : (
@@ -462,7 +461,7 @@ export default function StudentWebApp() {
                       className="flex items-center justify-between gap-3 rounded-lg bg-card-dim px-3 py-2"
                     >
                       <div className="min-w-0">
-                        <div className="text-[13px] font-semibold">{monthLabel(e.month)}</div>
+                        <div className="text-[13px] font-semibold">{monthLabel(e.month, months)}</div>
                         <div className="truncate text-[12px] text-muted-foreground">
                           {[
                             e.b1s ? `${e.b1s} ${e.b1}` : "",
@@ -483,7 +482,7 @@ export default function StudentWebApp() {
         )}
 
         {tab === "coin" && (
-          <Card title="Coin">
+          <Card title={t("Coin")}>
             <div className="py-4 text-center">
               <div className="text-4xl font-extrabold text-primary">{fmtUZS(p.coin)}</div>
               <p className="mt-2 text-[13px] text-muted-foreground">
@@ -494,7 +493,7 @@ export default function StudentWebApp() {
         )}
 
         {tab === "manzil" && (
-          <Card title="Manzillar">
+          <Card title={t("Manzillar")}>
             {data.addresses.length === 0 ? (
               <Empty text="Manzil kiritilmagan." />
             ) : (
@@ -502,7 +501,7 @@ export default function StudentWebApp() {
                 {data.addresses.map((a) => (
                   <div key={a.id} className="rounded-lg bg-card-dim px-3 py-2">
                     <div className="text-[13px] font-semibold">{a.name}</div>
-                    {a.type ? <div className="text-[12px] text-muted-foreground">{a.type}</div> : null}
+                    {a.type ? <div className="text-[12px] text-muted-foreground">{t(a.type)}</div> : null}
                   </div>
                 ))}
               </div>

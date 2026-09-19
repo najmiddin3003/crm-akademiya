@@ -6,6 +6,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { Order } from "@/lib/ordersData";
 import { buildFunnelReport, buildFunnelSteps, buildStageSummary } from "@/lib/salesFunnel";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Hisobotlar → Sotuv voronkasi (href /reports-funnel).
 //
@@ -74,6 +75,7 @@ function optionsOf(orders: Order[], pick: (o: Order) => string): string[] {
 }
 
 export default function SalesFunnelPage() {
+  const { t } = useT();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -164,12 +166,12 @@ export default function SalesFunnelPage() {
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* Filtrlar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
-        <Select value={source} onChange={(v) => setSource(v)} options={sourceOptions.map((s) => ({ value: s, label: s }))} placeholder="Marketing" clearable className="w-40" />
-        <Select value={course} onChange={(v) => setCourse(v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable className="w-40" />
-        <Select value={subcourse} onChange={(v) => setSubcourse(v)} options={subcourseOptions.map((c) => ({ value: c, label: c }))} placeholder="Subkurs" clearable className="w-40" />
-        <Select value={moderator} onChange={(v) => setModerator(v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable className="w-44" />
-        <Select value={teacher} onChange={(v) => setTeacher(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable className="w-48" />
+        <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Oraliqni tanlang")} />
+        <Select value={source} onChange={(v) => setSource(v)} options={sourceOptions.map((s) => ({ value: s, label: s }))} placeholder={t("Marketing")} clearable className="w-40" />
+        <Select value={course} onChange={(v) => setCourse(v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kurs")} clearable className="w-40" />
+        <Select value={subcourse} onChange={(v) => setSubcourse(v)} options={subcourseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Subkurs")} clearable className="w-40" />
+        <Select value={moderator} onChange={(v) => setModerator(v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable className="w-44" />
+        <Select value={teacher} onChange={(v) => setTeacher(v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("O'qituvchi")} clearable className="w-48" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -180,16 +182,16 @@ export default function SalesFunnelPage() {
               <thead className="bg-secondary/20">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="px-5 py-3 text-left w-12">№</th>
-                  <th className="px-5 py-3 text-left">Hisobot turlari</th>
-                  <th className="px-5 py-3 text-right w-24">Soni</th>
-                  <th className="px-5 py-3 text-right pr-5 w-32">Kurslar soni</th>
+                  <th className="px-5 py-3 text-left">{t("Hisobot turlari")}</th>
+                  <th className="px-5 py-3 text-right w-24">{t("Soni")}</th>
+                  <th className="px-5 py-3 text-right pr-5 w-32">{t("Kurslar soni")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.map((r, i) => (
                   <tr key={r.label} className="hover:bg-secondary/30 transition-colors">
                     <td className="px-5 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                    <td className="px-5 py-3">{r.label}</td>
+                    <td className="px-5 py-3">{t(r.label)}</td>
                     <td className="px-5 py-3 text-right tabular-nums font-medium">{fmt(r.count)}</td>
                     <td className="px-5 py-3 pr-5 text-right tabular-nums text-muted-foreground">{fmt(r.courses)}</td>
                   </tr>
@@ -206,13 +208,13 @@ export default function SalesFunnelPage() {
               onClick={() => setFunnelMode("student")}
               className={`h-8 px-4 rounded-md text-sm font-medium ${funnelMode === "student" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
             >
-              O&apos;quvchi
+              {t("O'quvchi")}
             </button>
             <button
               onClick={() => setFunnelMode("course")}
               className={`h-8 px-4 rounded-md text-sm font-medium ${funnelMode === "course" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
             >
-              Kurs
+              {t("Kurs")}
             </button>
           </div>
 
@@ -227,7 +229,7 @@ export default function SalesFunnelPage() {
                     <div className="text-[18px] font-semibold tabular-nums leading-tight">
                       {fmt(funnelMode === "course" ? rowByLabel.get(s.label)?.courses ?? 0 : s.count)}
                     </div>
-                    <div className="text-[12px] text-primary">{s.label}</div>
+                    <div className="text-[12px] text-primary">{t(s.label)}</div>
                     <div className="text-[12px] text-muted-foreground tabular-nums">{s.percent.toFixed(1)}%</div>
                   </div>
                   <div className="flex-1 h-12 flex items-center">
@@ -255,17 +257,17 @@ export default function SalesFunnelPage() {
                   leadState === s.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {s.label}
+                {t(s.label)}
               </button>
             ))}
           </div>
-          <div className="text-[14px] font-semibold mb-1">Lidlar soni</div>
+          <div className="text-[14px] font-semibold mb-1">{t("Lidlar soni")}</div>
           <div className="text-[13px] text-muted-foreground mb-4">{fmt(leadOrders.length)} ta</div>
           <div className="space-y-3">
             {stages.map((s) => (
               <div key={s.key}>
                 <div className="flex items-center justify-between text-[13px] mb-1">
-                  <span>{s.emoji} {s.label}</span>
+                  <span>{s.emoji} {t(s.label)}</span>
                   <span className="text-muted-foreground tabular-nums">{fmt(s.count)} ta lid · {s.percent.toFixed(1)}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -277,14 +279,14 @@ export default function SalesFunnelPage() {
         </div>
 
         <div className="rounded-2xl bg-card border border-border p-5">
-          <div className="text-[14px] font-semibold mb-4">Kurslar kesimida buyurtmalar taqsimoti</div>
+          <div className="text-[14px] font-semibold mb-4">{t("Kurslar kesimida buyurtmalar taqsimoti")}</div>
           {courseBreakdown.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Ma&apos;lumot topilmadi</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">{t("Ma'lumot topilmadi")}</div>
           ) : (
             <div className="space-y-3">
               {courseBreakdown.map((c) => (
                 <div key={c.label} className="flex items-center gap-3">
-                  <div className="w-32 shrink-0 text-[13px] truncate">{c.label}</div>
+                  <div className="w-32 shrink-0 text-[13px] truncate">{t(c.label)}</div>
                   <div className="relative flex-1 h-7 rounded-full overflow-hidden bg-secondary">
                     <div
                       className="h-full rounded-full bg-primary flex items-center justify-center"

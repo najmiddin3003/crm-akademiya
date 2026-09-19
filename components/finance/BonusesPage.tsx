@@ -11,6 +11,7 @@ import BonusDrawer from "./BonusDrawer";
 import type { Bonus } from "@/lib/bonuses";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Bonus (sidebar: Moliya > Bonus, href /finance-bonus). Ma'lumot
 // /api/bonuses dan. "Bonus yaratish" — BonusDrawer (o'ng panel), o'chirish —
@@ -66,6 +67,7 @@ function parseCreatedAt(s: string): Date | null {
 }
 
 export default function BonusesPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<BonusRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,16 +143,16 @@ export default function BonusesPage() {
   // Eksportda ham jadvaldagi bilan AYNAN bir xil qiymat chiqadi: noma'lum
   // maydon 0 yoki o'ylab topilgan ism emas, "—" bo'lib tushadi.
   const exportCols: { label: string; get: (b: BonusRow) => string | number }[] = [
-    { label: "Bonus turi", get: (b) => TYPE_LABEL[b.type] || b.type },
-    { label: "To'liq ismi", get: (b) => b.recipientName },
-    { label: "Kim tomonidan", get: (b) => b.givenBy || "—" },
-    { label: "Oldingi miqdor", get: (b) => b.before ?? "—" },
-    { label: "Miqdor", get: (b) => b.amount },
-    { label: "Keyingi miqdor", get: (b) => b.after ?? "—" },
-    { label: "Izoh", get: (b) => b.note || "" },
-    { label: "Sababi", get: (b) => b.reason || "" },
-    { label: "Holat", get: (b) => b.status || "" },
-    { label: "Sana", get: (b) => b.createdAt },
+    { label: t("Bonus turi"), get: (b) => TYPE_LABEL[b.type] || b.type },
+    { label: t("To'liq ismi"), get: (b) => b.recipientName },
+    { label: t("Kim tomonidan"), get: (b) => b.givenBy || "—" },
+    { label: t("Oldingi miqdor"), get: (b) => b.before ?? "—" },
+    { label: t("Miqdor"), get: (b) => b.amount },
+    { label: t("Keyingi miqdor"), get: (b) => b.after ?? "—" },
+    { label: t("Izoh"), get: (b) => b.note || "" },
+    { label: t("Sababi"), get: (b) => b.reason || "" },
+    { label: t("Holat"), get: (b) => b.status || "" },
+    { label: t("Sana"), get: (b) => b.createdAt },
   ];
 
   function exportCsv() {
@@ -167,9 +169,9 @@ export default function BonusesPage() {
       a.download = `bonuslar-${date}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showSuccess("CSV fayl yuklab olindi");
+      showSuccess(t("CSV fayl yuklab olindi"));
     } catch {
-      showError("CSV faylni yuklab bo'lmadi");
+      showError(t("CSV faylni yuklab bo'lmadi"));
     }
   }
 
@@ -185,9 +187,9 @@ export default function BonusesPage() {
       XLSX.utils.book_append_sheet(workbook, worksheet, "Bonuslar");
       const date = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(workbook, `bonuslar-${date}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
@@ -199,14 +201,14 @@ export default function BonusesPage() {
       const res = await fetch(`/api/bonuses/${b.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       setRows((prev) => prev.filter((x) => x.id !== b.id));
-      showSuccess("Bonus o'chirildi");
+      showSuccess(t("Bonus o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -217,11 +219,11 @@ export default function BonusesPage() {
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
-          <span>+ Bonus yaratish</span>
+          <span>{t("+ Bonus yaratish")}</span>
         </button>
 
-        <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={BONUS_TYPES.map((t) => ({ value: t.value, label: t.tableLabel }))} placeholder="Bonus turi" clearable size="sm" className="w-44" />
-        <Select value={recipientFilter} onChange={(v) => { setRecipientFilter(v); setPage(1); }} options={recipientOptions.map((n) => ({ value: n, label: n }))} placeholder="Talaba" clearable size="sm" className="w-44" />
+        <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={BONUS_TYPES.map((tv) => ({ value: tv.value, label: tv.tableLabel }))} placeholder={t("Bonus turi")} clearable size="sm" className="w-44" />
+        <Select value={recipientFilter} onChange={(v) => { setRecipientFilter(v); setPage(1); }} options={recipientOptions.map((n) => ({ value: n, label: n }))} placeholder={t("Talaba")} clearable size="sm" className="w-44" />
         {/* Bu yerda "To'lov" nomli o'chirilgan (disabled), hech qachon
             ishlamaydigan tanlov turardi — Bonus yozuvida to'lovga bog'lanish
             maydoni yo'q, shuning uchun u hech qachon filtrlay olmasdi.
@@ -231,7 +233,7 @@ export default function BonusesPage() {
             <button
               onClick={() => setFilterOpen((o) => !o)}
               className={`h-9 w-9 inline-flex items-center justify-center rounded-lg border text-muted-foreground ${filterOpen || dateRange.start ? "border-primary bg-primary/10 text-primary" : "border-border bg-card hover:bg-secondary"}`}
-              title="Filtr (sana oralig'i)"
+              title={t("Filtr (sana oralig'i)")}
             >
               <Filter className="w-4 h-4" />
               
@@ -246,7 +248,7 @@ export default function BonusesPage() {
             <button
               onClick={() => setExportMenuOpen((o) => !o)}
               className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-              title="Sozlamalar"
+              title={t("Sozlamalar")}
             >
               <Settings2 className="w-4 h-4" />
             </button>
@@ -260,7 +262,7 @@ export default function BonusesPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <FileText className="w-4 h-4" />
                   </span>
-                  <span>CSV faylini yuklab olish</span>
+                  <span>{t("CSV faylini yuklab olish")}</span>
                 </button>
                 <button
                   type="button"
@@ -270,7 +272,7 @@ export default function BonusesPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
                     <FileSpreadsheet className="w-4 h-4" />
                   </span>
-                  <span>Excel faylini yuklab olish</span>
+                  <span>{t("Excel faylini yuklab olish")}</span>
                 </button>
               </div>
             )}
@@ -279,7 +281,7 @@ export default function BonusesPage() {
             <button
               onClick={() => setColumnsOpen((o) => !o)}
               className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-              title="Ustunlar"
+              title={t("Ustunlar")}
             >
               <SlidersHorizontal className="w-4 h-4" />
             </button>
@@ -297,7 +299,7 @@ export default function BonusesPage() {
                       <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${visible ? "bg-primary border-primary text-white" : "border-border"}`}>
                         {visible && <Check className="w-3 h-3" />}
                       </span>
-                      <span>{c.label}</span>
+                      <span>{t(c.label)}</span>
                     </button>
                   );
                 })}
@@ -309,10 +311,10 @@ export default function BonusesPage() {
 
       <div className="flex items-center justify-between">
         <div className="text-[13px]">
-          <span className="font-semibold">Umumiy bonuslar</span> <span className="tabular-nums">{fmtUZS(totalAmount)}</span>
+          <span className="font-semibold">{t("Umumiy bonuslar")}</span> <span className="tabular-nums">{fmtUZS(totalAmount)}</span>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
         </div>
       </div>
@@ -323,17 +325,17 @@ export default function BonusesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                {!hiddenCols.has("type") && <th className="text-left px-3 py-3 whitespace-nowrap">Bonus turi</th>}
-                {!hiddenCols.has("recipient") && <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;liq ismi</th>}
-                {!hiddenCols.has("givenBy") && <th className="text-left px-3 py-3 whitespace-nowrap">Kim tomonidan</th>}
-                {!hiddenCols.has("before") && <th className="text-left px-3 py-3 whitespace-nowrap">Oldingi miqdor</th>}
-                {!hiddenCols.has("amount") && <th className="text-left px-3 py-3 whitespace-nowrap">Miqdor</th>}
-                {!hiddenCols.has("after") && <th className="text-left px-3 py-3 whitespace-nowrap">Keyingi miqdor</th>}
-                {!hiddenCols.has("note") && <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>}
-                {!hiddenCols.has("reason") && <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>}
-                {!hiddenCols.has("status") && <th className="text-left px-3 py-3 whitespace-nowrap">Holat</th>}
-                {!hiddenCols.has("date") && <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>}
-                {!hiddenCols.has("paymentTx") && <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;lov tranzaksiyasi</th>}
+                {!hiddenCols.has("type") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Bonus turi")}</th>}
+                {!hiddenCols.has("recipient") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'liq ismi")}</th>}
+                {!hiddenCols.has("givenBy") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kim tomonidan")}</th>}
+                {!hiddenCols.has("before") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Oldingi miqdor")}</th>}
+                {!hiddenCols.has("amount") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Miqdor")}</th>}
+                {!hiddenCols.has("after") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Keyingi miqdor")}</th>}
+                {!hiddenCols.has("note") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>}
+                {!hiddenCols.has("reason") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sababi")}</th>}
+                {!hiddenCols.has("status") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Holat")}</th>}
+                {!hiddenCols.has("date") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sana")}</th>}
+                {!hiddenCols.has("paymentTx") && <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'lov tranzaksiyasi")}</th>}
                 <th className="px-3 py-3 w-16" />
               </tr>
             </thead>
@@ -355,7 +357,7 @@ export default function BonusesPage() {
                   {!hiddenCols.has("date") && <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{b.createdAt}</td>}
                   {!hiddenCols.has("paymentTx") && <td className="px-3 py-3 text-[13px] text-muted-foreground">—</td>}
                   <td className="px-3 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => setDeleteTarget(b)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish">
+                    <button onClick={() => setDeleteTarget(b)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -377,13 +379,13 @@ export default function BonusesPage() {
       )}
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

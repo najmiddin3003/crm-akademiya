@@ -9,6 +9,7 @@ import { groupWeekdays, parsePeriod } from "@/lib/attendance";
 import type { Group } from "@/lib/groups";
 import { dateToIso, isoToDate, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
 import PersonLink from "@/components/shared/PersonDirectory";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Davomat qilinmagan guruhlar (/nazorat-missed-groups).
 //
@@ -67,6 +68,7 @@ function groupBounds(g: Group): { start: Date | null; end: Date | null } {
 }
 
 export default function NazoratMissedGroupsPage() {
+  const { t } = useT();
   const { groups, marks, loading } = useNazoratAttendance();
   const [dateRange, setDateRange] = useState<DateRange>(() => ({ start: startOfMonth(new Date()), end: new Date() }));
   const [page, setPage] = useState(1);
@@ -134,12 +136,12 @@ export default function NazoratMissedGroupsPage() {
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* Sana filtri + jami summa */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" />
+        <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder={t("Oraliqni tanlang")} />
         <div
           className="text-[14px]"
-          title="Qoldirilgan dars uchun yo'qotilgan tushumni hisoblab bo'lmaydi: bazada dars narxi maydoni yo'q."
+          title={t("Qoldirilgan dars uchun yo'qotilgan tushumni hisoblab bo'lmaydi: bazada dars narxi maydoni yo'q.")}
         >
-          <span className="font-semibold">Jami summa:</span>{" "}
+          <span className="font-semibold">{t("Jami summa:")}</span>{" "}
           <span className="tabular-nums text-muted-foreground">—</span>
         </div>
       </div>
@@ -151,8 +153,7 @@ export default function NazoratMissedGroupsPage() {
           <Info className="icon icon-sm shrink-0 mt-0.5" />
           <p>
             {unbounded.length} ta guruh bu hisobotdan tashqarida qoldi: ularda faoliyat
-            boshlanish sanasi yo&apos;q — <code className="font-mono">groups.startDate</code> maydoni
-            bo&apos;sh va zaxira manba bo&apos;lgan <code className="font-mono">groups.period</code>{" "}
+            boshlanish sanasi yo&apos;q — <code className="font-mono">groups.startDate</code>{" "}{t("maydoni bo'sh va zaxira manba bo'lgan")}{" "}<code className="font-mono">groups.period</code>{" "}
             ham bo&apos;sh. Guruh tanlangan sanada mavjud bo&apos;lgan-bo&apos;lmaganini baza
             aytmagani uchun ularga &laquo;dars qoldirildi&raquo; deb qator yozilmaydi. Guruh
             sahifasida boshlanish sanasini to&apos;ldirsangiz, ular shu zahoti hisobotga qo&apos;shiladi.
@@ -168,9 +169,9 @@ export default function NazoratMissedGroupsPage() {
               "hech kim dars qoldirmagan" degan yolg'on da'vo bo'lardi. */}
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium"
-            title={bounded.length === 0 ? "Faoliyat muddati ma'lum bo'lgan guruh yo'q — sanani baholab bo'lmaydi." : undefined}
+            title={bounded.length === 0 ? t("Faoliyat muddati ma'lum bo'lgan guruh yo'q — sanani baholab bo'lmaydi.") : undefined}
           >
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{bounded.length === 0 ? "—" : filtered.length}</span>
           </div>
         </div>
@@ -180,9 +181,9 @@ export default function NazoratMissedGroupsPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-16">№</th>
-                <th className="px-5 py-3 text-left">Nomi</th>
-                <th className="px-5 py-3 text-left">Sana</th>
-                <th className="px-5 py-3 text-left pr-5">O&apos;qituvchi</th>
+                <th className="px-5 py-3 text-left">{t("Nomi")}</th>
+                <th className="px-5 py-3 text-left">{t("Sana")}</th>
+                <th className="px-5 py-3 text-left pr-5">{t("O'qituvchi")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -200,8 +201,8 @@ export default function NazoratMissedGroupsPage() {
                     {loading
                       ? <Spinner size={22} />
                       : bounded.length === 0
-                        ? "Faoliyat muddati ma'lum bo'lgan guruh yo'q — hisobotni tuzib bo'lmaydi"
-                        : "Ma'lumotlar topilmadi"}
+                        ? t("Faoliyat muddati ma'lum bo'lgan guruh yo'q — hisobotni tuzib bo'lmaydi")
+                        : t("Ma'lumotlar topilmadi")}
                   </td>
                 </tr>
               )}

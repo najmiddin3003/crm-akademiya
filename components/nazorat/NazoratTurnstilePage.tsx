@@ -2,6 +2,7 @@
 
 import Link from "@/components/ui/Link";
 import { Info } from "lucide-react";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Turniket analitikasi (/nazorat-turnstile).
 //
@@ -34,9 +35,10 @@ import { Info } from "lucide-react";
 // ko'chirilmaydi.
 
 export default function NazoratTurnstilePage() {
+  const { t } = useT();
   return (
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
-      <h2 className="text-[18px] font-semibold tracking-tight">Turniket analitikasi</h2>
+      <h2 className="text-[18px] font-semibold tracking-tight">{t("Turniket analitikasi")}</h2>
 
       {/* Manba yo'qligini ochiq aytamiz. */}
       <div className="flex items-start gap-2 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-[13px] text-muted-foreground">
@@ -48,7 +50,7 @@ export default function NazoratTurnstilePage() {
           turi bo&apos;yicha filtrlar ko&apos;rsatilmaydi: filtrlaydigan yozuvning o&apos;zi yo&apos;q.
           Mavjud turniket ma&apos;lumoti kunlik jamlanma ko&apos;rinishida{" "}
           <Link href="/nazorat-turnstile-io" className="text-primary hover:underline">
-            Turniket kirish-chiqish analitikasi
+            {t("Turniket kirish-chiqish analitikasi")}
           </Link>{" "}
           sahifasida ko&apos;rsatiladi.
         </p>
@@ -62,9 +64,9 @@ export default function NazoratTurnstilePage() {
               voqealar umuman tizimga kelmaydi. */}
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium"
-            title="Turniket voqealari uchun manba yo'q — sonni hisoblab bo'lmaydi."
+            title={t("Turniket voqealari uchun manba yo'q — sonni hisoblab bo'lmaydi.")}
           >
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">—</span>
           </div>
         </div>
@@ -74,17 +76,17 @@ export default function NazoratTurnstilePage() {
             <thead>
               <tr className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-3 py-3 text-left w-12">№</th>
-                <th className="px-3 py-3 text-left min-w-[180px]">To&apos;liq ismi</th>
-                <th className="px-3 py-3 text-left">Foydalanuvchi turi</th>
-                <th className="px-3 py-3 text-left">Voqea turi</th>
-                <th className="px-3 py-3 text-left">Vaqti</th>
-                <th className="px-3 py-3 text-left">Rejalashtirilgan bo...</th>
-                <th className="px-3 py-3 text-left">Rejalashtirilgan tu...</th>
-                <th className="px-3 py-3 text-center">Kechikish mavjud</th>
-                <th className="px-3 py-3 text-right">Kechikish (daq.)</th>
-                <th className="px-3 py-3 text-center">Erta ketish mavjud</th>
-                <th className="px-3 py-3 text-right">Erta ketish (daq.)</th>
-                <th className="px-3 py-3 text-left pr-5">Turniket nomi</th>
+                <th className="px-3 py-3 text-left min-w-[180px]">{t("To'liq ismi")}</th>
+                <th className="px-3 py-3 text-left">{t("Foydalanuvchi turi")}</th>
+                <th className="px-3 py-3 text-left">{t("Voqea turi")}</th>
+                <th className="px-3 py-3 text-left">{t("Vaqti")}</th>
+                <th className="px-3 py-3 text-left">{t("Rejalashtirilgan bo...")}</th>
+                <th className="px-3 py-3 text-left">{t("Rejalashtirilgan tu...")}</th>
+                <th className="px-3 py-3 text-center">{t("Kechikish mavjud")}</th>
+                <th className="px-3 py-3 text-right">{t("Kechikish (daq.)")}</th>
+                <th className="px-3 py-3 text-center">{t("Erta ketish mavjud")}</th>
+                <th className="px-3 py-3 text-right">{t("Erta ketish (daq.)")}</th>
+                <th className="px-3 py-3 text-left pr-5">{t("Turniket nomi")}</th>
               </tr>
             </thead>
           </table>
@@ -94,9 +96,9 @@ export default function NazoratTurnstilePage() {
           <div className="h-16 w-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-4">
             <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-archive" /></svg>
           </div>
-          <h3 className="text-[15px] font-semibold mb-1">Ma&apos;lumotlar topilmadi</h3>
+          <h3 className="text-[15px] font-semibold mb-1">{t("Ma'lumotlar topilmadi")}</h3>
           <p className="text-[13px] text-muted-foreground max-w-sm">
-            Turniket voqealari tizimga hali kelmaydi.
+            {t("Turniket voqealari tizimga hali kelmaydi.")}
           </p>
         </div>
       </div>

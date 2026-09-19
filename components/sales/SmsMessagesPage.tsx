@@ -6,6 +6,7 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { SMS_STATUSES, SMS_TABS, formatSmsDate, smsChannelLabel, type SmsKind, type SmsMessage } from "@/lib/smsMessages";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Sotuv va marketing → Xabarlar ro'yhati (sidebar: Sotuv va marketing >
 // Xabarlar ro'yhati, href /sales-messages). Ma'lumot HAQIQIY —
@@ -44,6 +45,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export default function SmsMessagesPage() {
+  const { t } = useT();
   const [messages, setMessages] = useState<SmsMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,15 +103,15 @@ export default function SmsMessagesPage() {
       {/* Tablar + filtrlar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="inline-flex items-center rounded-lg border border-border bg-card p-1">
-          {SMS_TABS.map((t) => (
+          {SMS_TABS.map((tv) => (
             <button
-              key={t.key}
-              onClick={() => { setTab(t.key); setPage(1); }}
+              key={tv.key}
+              onClick={() => { setTab(tv.key); setPage(1); }}
               className={`h-8 px-4 rounded-md text-sm font-medium ${
-                tab === t.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
+                tab === tv.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {t.label}
+              {t(tv.label)}
             </button>
           ))}
         </div>
@@ -118,11 +120,11 @@ export default function SmsMessagesPage() {
           <DateRangePicker
             value={dateRange}
             onChange={(r) => { setDateRange(r); setPage(1); }}
-            placeholder="Oraliqni tanlang"
+            placeholder={t("Oraliqni tanlang")}
           />
-          <Select value={moderator} onChange={(v) => setFilter(setModerator, v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable className="w-44" />
-          <Select value={recipient} onChange={(v) => setFilter(setRecipient, v)} options={recipientOptions.map((r) => ({ value: r, label: r }))} placeholder="O'quvchi" clearable className="w-48" />
-          <Select value={status} onChange={(v) => setFilter(setStatus, v)} options={SMS_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="Holati" clearable className="w-40" />
+          <Select value={moderator} onChange={(v) => setFilter(setModerator, v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable className="w-44" />
+          <Select value={recipient} onChange={(v) => setFilter(setRecipient, v)} options={recipientOptions.map((r) => ({ value: r, label: r }))} placeholder={t("O'quvchi")} clearable className="w-48" />
+          <Select value={status} onChange={(v) => setFilter(setStatus, v)} options={SMS_STATUSES.map((s) => ({ value: s, label: s }))} placeholder={t("Holati")} clearable className="w-40" />
         </div>
       </div>
 
@@ -138,7 +140,7 @@ export default function SmsMessagesPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length.toLocaleString("ru-RU")}</span>
           </div>
         </div>
@@ -148,12 +150,12 @@ export default function SmsMessagesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left w-56">To&apos;liq ismi</th>
-                <th className="px-5 py-3 text-left">Xabar</th>
-                <th className="px-5 py-3 text-left w-44">Yaratilgan sanasi</th>
-                <th className="px-5 py-3 text-left w-36">Kanal</th>
-                <th className="px-5 py-3 text-left w-52">Moderator</th>
-                <th className="px-5 py-3 text-left pr-5 w-40">Holati</th>
+                <th className="px-5 py-3 text-left w-56">{t("To'liq ismi")}</th>
+                <th className="px-5 py-3 text-left">{t("Xabar")}</th>
+                <th className="px-5 py-3 text-left w-44">{t("Yaratilgan sanasi")}</th>
+                <th className="px-5 py-3 text-left w-36">{t("Kanal")}</th>
+                <th className="px-5 py-3 text-left w-52">{t("Moderator")}</th>
+                <th className="px-5 py-3 text-left pr-5 w-40">{t("Holati")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -175,7 +177,7 @@ export default function SmsMessagesPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-[13px]">{m.moderator || "-"}</td>
-                  <td className={`px-5 py-3 pr-5 text-[13px] font-medium ${STATUS_TONE[m.status] ?? ""}`}>{m.status}</td>
+                  <td className={`px-5 py-3 pr-5 text-[13px] font-medium ${STATUS_TONE[m.status] ?? ""}`}>{t(m.status)}</td>
                 </tr>
               ))}
               {slice.length === 0 && (
@@ -186,8 +188,8 @@ export default function SmsMessagesPage() {
                       : kindNote
                         // Filtrni o'zgartirish yordam bermaydi — bu turdagi
                         // xabar umuman yozilmaydi, sababi yuqorida.
-                        ? "Bu turdagi xabarlar hali yaratilmaydi"
-                        : "Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring."}
+                        ? t("Bu turdagi xabarlar hali yaratilmaydi")
+                        : t("Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring.")}
                   </td>
                 </tr>
               )}

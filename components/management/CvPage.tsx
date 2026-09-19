@@ -14,6 +14,7 @@ import {
 import type { CvApplication, CvStatus } from "@/lib/managementCv";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
 // bo'limining aynan o'zi: sarlavha + 4 ta amal tugmasi, 5 ta statistika
@@ -80,10 +81,11 @@ function emptyForm(): FormValues {
 }
 
 function StatusBadge({ status }: { status: CvStatus }) {
+  const { t } = useT();
   const s = CV_STATUS[status] || CV_STATUS.new;
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${s.cls}`}>
-      {s.label}
+      {t(s.label)}
     </span>
   );
 }
@@ -104,6 +106,7 @@ function DetailSection({ title }: { title: string }) {
 }
 
 export default function CvPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
 
   const [items, setItems] = useState<CvApplication[]>([]);
@@ -155,7 +158,7 @@ export default function CvPage() {
   const syncSheets = useCallback(
     async (manual: boolean) => {
       if (!sheetsUrl) {
-        if (manual) showError("Google Sheets ulanmagan — avval 'Google Sheets' tugmasi orqali sozlang");
+        if (manual) showError(t("Google Sheets ulanmagan — avval 'Google Sheets' tugmasi orqali sozlang"));
         return;
       }
       if (syncBusy.current) return;
@@ -165,7 +168,7 @@ export default function CvPage() {
         const data = await res.json();
         if (!data || !data.ok || !Array.isArray(data.items)) {
           setSheetsOk(false);
-          if (manual) showError("Sheets javobi noto'g'ri — 3-qadamni tekshiring");
+          if (manual) showError(t("Sheets javobi noto'g'ri — 3-qadamni tekshiring"));
           return;
         }
         setSheetsOk(true);
@@ -182,18 +185,18 @@ export default function CvPage() {
         }
         if (fresh.length > 0) {
           await load();
-          showSuccess(`📥 Google Sheets'dan ${fresh.length} ta yangi CV yuklandi`);
+          showSuccess(t("📥 Google Sheets'dan {fresh} ta yangi CV yuklandi", { fresh: fresh.length }));
         } else if (manual) {
-          showSuccess("Sheets bilan sinxron ✓ — yangi ariza yo'q");
+          showSuccess(t("Sheets bilan sinxron ✓ — yangi ariza yo'q"));
         }
       } catch {
         setSheetsOk(false);
-        if (manual) showError("Sheets'ga ulanib bo'lmadi — internet yoki URL ni tekshiring");
+        if (manual) showError(t("Sheets'ga ulanib bo'lmadi — internet yoki URL ni tekshiring"));
       } finally {
         syncBusy.current = false;
       }
     },
-    [sheetsUrl, items, load, showSuccess, showError],
+    [sheetsUrl, items, load, showSuccess, showError, t],
   );
 
   // Ulangan bo'lsa — ochilganda va har 60 soniyada avto-tekshirish. Birinchi
@@ -212,7 +215,7 @@ export default function CvPage() {
       clearInterval(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheetsUrl]);
+  }, [sheetsUrl, t]);
 
   /** CRM → Sheets: holat o'zgarishini jadvalga ham yozamiz. */
   const pushStatus = useCallback(
@@ -252,23 +255,23 @@ export default function CvPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        if (notify) showError(data.error || "Saqlanmadi");
+        if (notify) showError(t(data.error || "Saqlanmadi"));
         return null;
       }
       const updated = data.application as CvApplication;
       setItems((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       pushStatus(cv.sid, status);
       if (notify) {
-        if (status === "interview") showSuccess(`Suhbatga chaqirildi — ${updated.name}`);
-        else if (status === "rejected") showSuccess(`CV rad etildi — ${updated.name}`);
+        if (status === "interview") showSuccess(t("Suhbatga chaqirildi — {name}", { name: updated.name }));
+        else if (status === "rejected") showSuccess(t("CV rad etildi — {name}", { name: updated.name }));
         else if (status === "accepted") {
           const role = updated.position === "O'qituvchi" ? "O'qituvchi (foiz 40%)" : updated.position;
-          showSuccess(`Ishga olindi — Xodimlar ro'yxatiga qo'shildi: ${updated.name} · ${role}`);
+          showSuccess(t("Ishga olindi — Xodimlar ro'yxatiga qo'shildi: {name} · {role}", { name: updated.name, role }));
         }
       }
       return updated;
     },
-    [pushStatus, showSuccess, showError],
+    [pushStatus, showSuccess, showError, t],
   );
 
   /** Ariza ochilganda "Yangi" holati referensdagidek "Ko'rib chiqilgan"ga o'tadi. */
@@ -292,7 +295,7 @@ export default function CvPage() {
     // Havola Sheets manzilini o'zi bilan olib yuradi — nomzod istalgan
     // qurilmadan ochsa ham arizasi o'sha jadvalga tushadi.
     const link = sheetsUrl ? `${base}#s=${encodeURIComponent(btoa(sheetsUrl))}` : base;
-    const done = () => showSuccess(`🔗 Havola nusxalandi: ${link}`);
+    const done = () => showSuccess(t("🔗 Havola nusxalandi: {link}", { link }));
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link).then(done).catch(done);
     else done();
   }
@@ -305,7 +308,7 @@ export default function CvPage() {
   }
 
   function copyScript() {
-    const done = () => showSuccess("📋 Apps Script kodi nusxalandi — endi uni Apps Script muharririga qo'ying");
+    const done = () => showSuccess(t("📋 Apps Script kodi nusxalandi — endi uni Apps Script muharririga qo'ying"));
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(CV_APPS_SCRIPT).then(done).catch(done);
     else done();
   }
@@ -324,7 +327,7 @@ export default function CvPage() {
       if (data && data.ok !== undefined) {
         setSheetsTest("✓ Ulandi! Arizalar endi jadvalga tushadi.");
         setSheetsOk(true);
-        showSuccess("✓ Google Sheets ulandi — arizalar jadvalga yoziladi va shu yerda ko'rinadi");
+        showSuccess(t("✓ Google Sheets ulandi — arizalar jadvalga yoziladi va shu yerda ko'rinadi"));
       } else {
         setSheetsTest("⚠ Javob noto'g'ri — 3-qadamni tekshiring");
         setSheetsOk(false);
@@ -354,9 +357,9 @@ export default function CvPage() {
 
   async function submitForm() {
     const val = (k: string) => String(form[k] ?? "").trim();
-    if (!val("name")) return showError("⚠ Ism va familiyani kiriting");
-    if (!val("phone")) return showError("⚠ Telefon raqamni kiriting");
-    if (!val("position")) return showError("⚠ Yo'nalishni tanlang");
+    if (!val("name")) return showError(t("⚠ Ism va familiyani kiriting"));
+    if (!val("phone")) return showError(t("⚠ Telefon raqamni kiriting"));
+    if (!val("position")) return showError(t("⚠ Yo'nalishni tanlang"));
     setSubmitting(true);
     try {
       const res = await fetch("/api/management-cv", {
@@ -366,14 +369,14 @@ export default function CvPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       await load();
       setFormOpen(false);
-      showSuccess(`CV qabul qilindi — ${data.application.name}, ariza "Yangi" holatida`);
+      showSuccess(t("CV qabul qilindi — {name}, ariza \"Yangi\" holatida", { name: data.application.name }));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSubmitting(false);
     }
@@ -388,9 +391,9 @@ export default function CvPage() {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Ishga qabul — CV arizalari</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("Ishga qabul — CV arizalari")}</h1>
           <div className="text-[12px] text-muted-foreground mt-0.5">
-            Anketa asosida kelgan CV lar; munosiblarini tanlab Xodimlar ro&apos;yxatiga qo&apos;shing
+            {t("Anketa asosida kelgan CV lar; munosiblarini tanlab Xodimlar ro'yxatiga qo'shing")}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -399,14 +402,14 @@ export default function CvPage() {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
             <LayoutGrid className="w-4 h-4 text-emerald-600" />
-            <span>Google Sheets</span>
+            <span>{t("Google Sheets")}</span>
             {sheetsUrl && <span className={`h-2 w-2 rounded-full ${dotCls}`} />}
           </button>
           {sheetsUrl && (
             <button
               onClick={() => syncSheets(true)}
               className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary"
-              title="Sheets'dan yangilash"
+              title={t("Sheets'dan yangilash")}
             >
               <ArrowLeftRight className="w-4 h-4" />
             </button>
@@ -416,31 +419,31 @@ export default function CvPage() {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15"
           >
             <Link2 className="w-4 h-4" />
-            <span>Ariza havolasini ulashish</span>
+            <span>{t("Ariza havolasini ulashish")}</span>
           </button>
           <button
             onClick={openForm}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
           >
             <FilePlus className="w-4 h-4" />
-            <span>CV to&apos;ldirish (yangi ariza)</span>
+            <span>{t("CV to'ldirish (yangi ariza)")}</span>
           </button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatCard label="Jami CV" value={items.length} />
-        <StatCard label="Yangi" value={count("new")} color="text-blue-600" />
-        <StatCard label="Suhbatga chaqirilgan" value={count("interview")} color="text-amber-600" />
-        <StatCard label="Ishga olingan" value={count("accepted")} color="text-emerald-600" />
-        <StatCard label="Rad etilgan" value={count("rejected")} color="text-rose-500" />
+        <StatCard label={t("Jami CV")} value={items.length} />
+        <StatCard label={t("Yangi")} value={count("new")} color="text-blue-600" />
+        <StatCard label={t("Suhbatga chaqirilgan")} value={count("interview")} color="text-amber-600" />
+        <StatCard label={t("Ishga olingan")} value={count("accepted")} color="text-emerald-600" />
+        <StatCard label={t("Rad etilgan")} value={count("rejected")} color="text-rose-500" />
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={filterPos} onChange={(v) => setFilterPos(v)} options={(CV_POSITIONS as string[]).map((p) => ({ value: p, label: p }))} placeholder="Yo'nalish — barchasi" clearable size="sm" className="w-44" />
-        <Select value={filterStatus} onChange={(v) => setFilterStatus(v)} options={(CV_STATUS_ORDER as CvStatus[]).map((s) => ({ value: s, label: CV_STATUS[s].label }))} placeholder="Holat — barchasi" clearable size="sm" className="w-44" />
+        <Select value={filterPos} onChange={(v) => setFilterPos(v)} options={(CV_POSITIONS as string[]).map((p) => ({ value: p, label: p }))} placeholder={t("Yo'nalish — barchasi")} clearable size="sm" className="w-44" />
+        <Select value={filterStatus} onChange={(v) => setFilterStatus(v)} options={(CV_STATUS_ORDER as CvStatus[]).map((s) => ({ value: s, label: CV_STATUS[s].label }))} placeholder={t("Holat — barchasi")} clearable size="sm" className="w-44" />
         <div className="flex-1" />
         <div className="relative w-72">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -448,12 +451,12 @@ export default function CvPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             type="text"
-            placeholder="Ism, fan yoki telefon bo'yicha qidirish"
+            placeholder={t("Ism, fan yoki telefon bo'yicha qidirish")}
             className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{visible.length}</span>
         </div>
       </div>
@@ -465,14 +468,14 @@ export default function CvPage() {
             <thead className="bg-secondary/40">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-4 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">F.I.Sh</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Yo&apos;nalish</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Fan / soha</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Tajriba</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Kutilayotgan maosh</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Telefon</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Topshirilgan</th>
-                <th className="text-left px-4 py-3 whitespace-nowrap">Holati</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("F.I.Sh")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Yo'nalish")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Fan / soha")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Tajriba")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Kutilayotgan maosh")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Telefon")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Topshirilgan")}</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">{t("Holati")}</th>
                 <th className="text-right px-4 py-3 whitespace-nowrap w-24" />
               </tr>
             </thead>
@@ -487,7 +490,7 @@ export default function CvPage() {
               {!loading && visible.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
-                    CV topilmadi. Filterni o&apos;zgartirib ko&apos;ring.
+                    {t("CV topilmadi. Filterni o'zgartirib ko'ring.")}
                   </td>
                 </tr>
               )}
@@ -505,7 +508,7 @@ export default function CvPage() {
                     <td className="px-4 py-3 text-[13px] text-muted-foreground">
                       {(c.experience || "").split("—")[0].trim() || "-"}
                     </td>
-                    <td className="px-4 py-3 text-[13px] tabular-nums">{c.expectedSalary || "-"} so&apos;m</td>
+                    <td className="px-4 py-3 text-[13px] tabular-nums">{c.expectedSalary || "-"} {t("so'm")}</td>
                     <td className="px-4 py-3 text-[13px] tabular-nums">{c.phone}</td>
                     <td className="px-4 py-3 text-[13px] text-muted-foreground tabular-nums">{c.submitted}</td>
                     <td className="px-4 py-3">
@@ -519,7 +522,7 @@ export default function CvPage() {
                         }}
                         className="h-8 px-3 rounded-md bg-primary/10 text-primary text-[12px] font-medium hover:bg-primary/15"
                       >
-                        Ko&apos;rish
+                        {t("Ko'rish")}
                       </button>
                     </td>
                   </tr>
@@ -552,34 +555,34 @@ export default function CvPage() {
                 </button>
               </div>
 
-              <DetailSection title="Shaxsiy ma'lumotlar" />
-              <DetailRow label="Yashash manzili" value={detail.address} />
-              <DetailRow label="Tug'ilgan sana" value={detail.birth} />
-              <DetailRow label="Hozirgi ish holati" value={detail.currentJob} />
+              <DetailSection title={t("Shaxsiy ma'lumotlar")} />
+              <DetailRow label={t("Yashash manzili")} value={detail.address} />
+              <DetailRow label={t("Tug'ilgan sana")} value={detail.birth} />
+              <DetailRow label={t("Hozirgi ish holati")} value={detail.currentJob} />
 
-              <DetailSection title="Ta'lim va tajriba" />
-              <DetailRow label="Oliygoh" value={detail.university} />
-              <DetailRow label="Ish tajribasi" value={detail.experience} />
-              <DetailRow label="Qaysi o'quv markaz/maktablarda ishlagan" value={detail.schools} />
-              <DetailRow label="Yutuqlar va sertifikatlar" value={detail.achievements} />
-              <DetailRow label="Qanday darajadagi o'quvchilarga dars bera oladi" value={detail.levels} />
+              <DetailSection title={t("Ta'lim va tajriba")} />
+              <DetailRow label={t("Oliygoh")} value={detail.university} />
+              <DetailRow label={t("Ish tajribasi")} value={detail.experience} />
+              <DetailRow label={t("Qaysi o'quv markaz/maktablarda ishlagan")} value={detail.schools} />
+              <DetailRow label={t("Yutuqlar va sertifikatlar")} value={detail.achievements} />
+              <DetailRow label={t("Qanday darajadagi o'quvchilarga dars bera oladi")} value={detail.levels} />
 
-              <DetailSection title="Ish haqida" />
-              <DetailRow label="Qachondan boshlay oladi" value={detail.startDate} />
-              <DetailRow label="Kutilayotgan oylik maosh" value={`${detail.expectedSalary || "-"} so'm`} />
-              <DetailRow label="Qanday natija beradi" value={detail.results} />
+              <DetailSection title={t("Ish haqida")} />
+              <DetailRow label={t("Qachondan boshlay oladi")} value={detail.startDate} />
+              <DetailRow label={t("Kutilayotgan oylik maosh")} value={`${detail.expectedSalary || "-"} so'm`} />
+              <DetailRow label={t("Qanday natija beradi")} value={detail.results} />
 
-              <DetailSection title="Motivatsiya" />
-              <DetailRow label="Nega aynan bizning markaz" value={detail.whyUs} />
+              <DetailSection title={t("Motivatsiya")} />
+              <DetailRow label={t("Nega aynan bizning markaz")} value={detail.whyUs} />
               <DetailRow label="5 yillik rejalari" value={detail.plans5} />
-              <DetailRow label="Ish tanlashda muhim omillar" value={(detail.priorities || []).join(", ")} />
-              <DetailRow label="Kuchli tomonlari" value={(detail.strengths || []).join(", ")} />
-              <DetailRow label="Qo'shimcha" value={detail.extra} />
+              <DetailRow label={t("Ish tanlashda muhim omillar")} value={(detail.priorities || []).join(", ")} />
+              <DetailRow label={t("Kuchli tomonlari")} value={(detail.strengths || []).join(", ")} />
+              <DetailRow label={t("Qo'shimcha")} value={detail.extra} />
 
               <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-border flex-wrap">
                 {detail.status === "accepted" ? (
                   <span className="text-[13px] text-emerald-600 font-medium mr-auto">
-                    ✓ Xodimlar ro&apos;yxatiga qo&apos;shilgan
+                    {t("✓ Xodimlar ro'yxatiga qo'shilgan")}
                   </span>
                 ) : (
                   <>
@@ -588,21 +591,21 @@ export default function CvPage() {
                       disabled={acting}
                       className="h-9 px-4 rounded-lg border border-rose-300 bg-rose-50 text-rose-600 text-sm font-medium hover:bg-rose-100 disabled:opacity-60"
                     >
-                      Rad etish
+                      {t("Rad etish")}
                     </button>
                     <button
                       onClick={() => act(detail, "interview")}
                       disabled={acting}
                       className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
                     >
-                      Suhbatga chaqirish
+                      {t("Suhbatga chaqirish")}
                     </button>
                     <button
                       onClick={() => act(detail, "accepted")}
                       disabled={acting}
                       className="h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-600 disabled:opacity-60"
                     >
-                      ✓ Ishga olish
+                      {t("✓ Ishga olish")}
                     </button>
                   </>
                 )}
@@ -616,7 +619,7 @@ export default function CvPage() {
         <Modal onClose={() => setSheetsOpen(false)} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-1">
-                <div className="text-[17px] font-semibold">Google Sheets bilan bog&apos;lash</div>
+                <div className="text-[17px] font-semibold">{t("Google Sheets bilan bog'lash")}</div>
                 <button
                   onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
@@ -625,41 +628,38 @@ export default function CvPage() {
                 </button>
               </div>
               <div className="text-[13px] text-muted-foreground mb-4">
-                Bir marta sozlaysiz — keyin barcha arizalar to&apos;g&apos;ridan-to&apos;g&apos;ri Google jadvalingizga
-                tushadi va shu yerda ko&apos;rinadi (istalgan qurilmadan).
+                {t("Bir marta sozlaysiz — keyin barcha arizalar to'g'ridan-to'g'ri Google jadvalingizga tushadi va shu yerda ko'rinadi (istalgan qurilmadan).")}
               </div>
 
               <div className="space-y-3 text-[13px]">
                 <div className="rounded-xl border border-border bg-secondary/20 p-3.5">
-                  <div className="font-semibold mb-1">1-qadam. Yangi jadval oching</div>
+                  <div className="font-semibold mb-1">{t("1-qadam. Yangi jadval oching")}</div>
                   <div className="text-muted-foreground">
-                    Brauzerda <b>sheets.new</b> deb yozing — yangi Google Sheets ochiladi. Nomini masalan
-                    &quot;Akademiya CV&quot; qilib qo&apos;ying.
+                    {t("Brauzerda")}{" "}<b>sheets.new</b>{" "}{t("deb yozing — yangi Google Sheets ochiladi. Nomini masalan \"Akademiya CV\" qilib qo'ying.")}
                   </div>
                 </div>
                 <div className="rounded-xl border border-border bg-secondary/20 p-3.5">
-                  <div className="font-semibold mb-1">2-qadam. Apps Script kodini qo&apos;ying</div>
+                  <div className="font-semibold mb-1">{t("2-qadam. Apps Script kodini qo'ying")}</div>
                   <div className="text-muted-foreground mb-2">
-                    Jadvalda: <b>Kengaytmalar (Extensions) → Apps Script</b> — ochilgan muharrirdagi hamma narsani
-                    o&apos;chirib, quyidagi kodni qo&apos;ying va saqlang:
+                    {t("Jadvalda:")}{" "}<b>{t("Kengaytmalar (Extensions) → Apps Script")}</b>{" "}{t("— ochilgan muharrirdagi hamma narsani o'chirib, quyidagi kodni qo'ying va saqlang:")}
                   </div>
                   <button
                     onClick={copyScript}
                     className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-[13px] font-medium hover:opacity-90"
                   >
-                    📋 Kodni nusxalash
+                    {t("📋 Kodni nusxalash")}
                   </button>
                 </div>
                 <div className="rounded-xl border border-border bg-secondary/20 p-3.5">
-                  <div className="font-semibold mb-1">3-qadam. Web App qilib joylang</div>
+                  <div className="font-semibold mb-1">{t("3-qadam. Web App qilib joylang")}</div>
                   <div className="text-muted-foreground">
-                    Apps Script&apos;da: <b>Deploy → New deployment → Web app</b>. &quot;Execute as&quot; = <b>Me</b>,
-                    &quot;Who has access&quot; = <b>Anyone</b>. <b>Deploy</b> bosing, ruxsat bering va chiqqan{" "}
-                    <b>URL</b> ni nusxalang (…/exec bilan tugaydi).
+                    {t("Apps Script'da:")}{" "}<b>{t("Deploy → New deployment → Web app")}</b>. &quot;Execute as&quot; = <b>{t("Me")}</b>,
+                    &quot;Who has access&quot; = <b>{t("Anyone")}</b>. <b>{t("Deploy")}</b> bosing, ruxsat bering va chiqqan{" "}
+                    <b>URL</b>{" "}{t("ni nusxalang (…/exec bilan tugaydi).")}
                   </div>
                 </div>
                 <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3.5">
-                  <div className="font-semibold mb-1.5 text-slate-900">4-qadam. URL ni shu yerga qo&apos;ying</div>
+                  <div className="font-semibold mb-1.5 text-slate-900">{t("4-qadam. URL ni shu yerga qo'ying")}</div>
                   <input
                     value={sheetsDraft}
                     onChange={(e) => setSheetsDraft(e.target.value)}
@@ -672,14 +672,13 @@ export default function CvPage() {
                       onClick={saveSheetsUrl}
                       className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-[13px] font-medium hover:bg-emerald-600"
                     >
-                      Saqlash va tekshirish
+                      {t("Saqlash va tekshirish")}
                     </button>
                     <span className="text-[12px] text-muted-foreground">{sheetsTest}</span>
                   </div>
                 </div>
                 <div className="text-[12px] text-muted-foreground">
-                  Eslatma: &quot;Ariza havolasini ulashish&quot; tugmasi Sheets manzilini havola ichiga qo&apos;shib
-                  beradi — nomzod istalgan telefonda ochsa ham arizasi jadvalingizga tushadi.
+                  {t("Eslatma: \"Ariza havolasini ulashish\" tugmasi Sheets manzilini havola ichiga qo'shib beradi — nomzod istalgan telefonda ochsa ham arizasi jadvalingizga tushadi.")}
                 </div>
               </div>
             </div>
@@ -691,7 +690,7 @@ export default function CvPage() {
         <Modal onClose={() => setFormOpen(false)} bare size="2xl" zIndex={120} panelClassName="overflow-y-auto">{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-1">
-                <div className="text-[17px] font-semibold">Ishga qabul anketasi</div>
+                <div className="text-[17px] font-semibold">{t("Ishga qabul anketasi")}</div>
                 <button
                   onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
@@ -700,8 +699,7 @@ export default function CvPage() {
                 </button>
               </div>
               <div className="text-[12px] text-muted-foreground mb-4">
-                Akademiya o&apos;quv markazi — jamoamizga qo&apos;shilish uchun anketani to&apos;ldiring. Faqat jiddiy
-                nomzodlar ko&apos;rib chiqiladi.
+                {t("Akademiya o'quv markazi — jamoamizga qo'shilish uchun anketani to'ldiring. Faqat jiddiy nomzodlar ko'rib chiqiladi.")}
               </div>
 
               <div className="space-y-3">
@@ -712,7 +710,7 @@ export default function CvPage() {
                       {f.req && <span className="text-rose-500">*</span>}
                     </label>
                     {f.type === "select" ? (
-                      <Select value={String(form[f.k] ?? "")} onChange={(v) => setField(f.k, v)} options={(f.opts || []).map((o) => ({ value: o, label: o }))} placeholder="Tanlang" clearable />
+                      <Select value={String(form[f.k] ?? "")} onChange={(v) => setField(f.k, v)} options={(f.opts || []).map((o) => ({ value: o, label: o }))} placeholder={t("Tanlang")} clearable />
                     ) : f.type === "multi" ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                         {(f.opts || []).map((o) => (
@@ -752,14 +750,14 @@ export default function CvPage() {
                   disabled={submitting}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm disabled:opacity-60"
                 >
-                  Bekor qilish
+                  {t("Bekor qilish")}
                 </button>
                 <button
                   onClick={submitForm}
                   disabled={submitting}
                   className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
                 >
-                  {submitting ? "Yuborilmoqda…" : "Anketani yuborish"}
+                  {submitting ? t("Yuborilmoqda…") : t("Anketani yuborish")}
                 </button>
               </div>
             </div>

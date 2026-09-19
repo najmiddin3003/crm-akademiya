@@ -11,6 +11,7 @@ import {
   BILLING_TABS,
   BILLING_TEXTS,
 } from "@/constants/settingsBilling";
+import { useT } from "@/components/shared/Language";
 
 // Umumiy sozlamalar → Obuna. Bu tab asosan KO'RSATUV sahifasi: haqiqiy to'lov
 // integratsiyasi (Click/Payme va h.k.) ulanmagan, shu bois "To'lash" hech qanday
@@ -54,6 +55,7 @@ function formatSum(n: number) {
 // "—" bo'lib turadi (BILLING_TEXTS.untilUnknown).
 
 export default function BillingTab() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<BillingData>(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -116,13 +118,13 @@ export default function BillingTab() {
       });
       const resData = await res.json();
       if (!resData.ok) {
-        showError(resData.error || "Saqlanmadi");
+        showError(t(resData.error || "Saqlanmadi"));
         setData(prev); // qaytarib qo'yamiz
         return;
       }
-      showSuccess("Sozlamalar saqlandi");
+      showSuccess(t("Sozlamalar saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setData(prev);
     }
   }
@@ -130,15 +132,15 @@ export default function BillingTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1.5 flex-wrap rounded-2xl bg-card border border-border p-2">
-        {TABS.map((t) => (
+        {TABS.map((tv) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tv}
+            onClick={() => setTab(tv)}
             className={`h-8 px-3.5 rounded-lg text-[13px] font-medium transition-colors ${
-              tab === t ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
+              tab === tv ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
             }`}
           >
-            {t}
+            {tv}
           </button>
         ))}
       </div>
@@ -154,7 +156,7 @@ export default function BillingTab() {
       ) : (
         <>
           <div className="rounded-2xl bg-card border border-border p-5">
-            <h3 className="text-[15px] font-semibold">{BILLING_TEXTS.title}</h3>
+            <h3 className="text-[15px] font-semibold">{t(BILLING_TEXTS.title)}</h3>
             <p className="text-[12px] text-muted-foreground mt-1">{BILLING_TEXTS.trialNote}</p>
 
             <div className="divide-y divide-border mt-2">
@@ -182,7 +184,7 @@ export default function BillingTab() {
                   }`}
                 >
                   <div className="flex items-baseline gap-2">
-                    <span className="text-[15px] font-semibold">{p.label}</span>
+                    <span className="text-[15px] font-semibold">{t(p.label)}</span>
                     {/* Bonus oylar faqat uzoq tariflarda bor. */}
                     {p.bonus && (
                       <span className="text-[12px] font-medium text-primary">{p.bonus}</span>
@@ -210,7 +212,7 @@ export default function BillingTab() {
                 </div>
                 <div className="text-right">
                   <div className="text-[13px] font-medium">
-                    {selected.label}
+                    {t(selected.label)}
                     {selected.bonus ? ` ${selected.bonus}` : ""}
                   </div>
                   {/* Yagona shablon-satr: JSX matn tugunlariga bo'linganda
@@ -220,7 +222,7 @@ export default function BillingTab() {
                       soniga ko'paytiriladi deb da'vo qilardi — aslida tarif
                       narxi qat'iy. Endi son haqiqiy, "x" esa olib tashlandi. */}
                   <div className="text-[12px] text-muted-foreground">
-                    {pupilsLoading ? "" : `${studentCount} o'quvchi uchun`}
+                    {pupilsLoading ? "" : t("{studentCount} o'quvchi uchun", { studentCount })}
                   </div>
                 </div>
               </div>

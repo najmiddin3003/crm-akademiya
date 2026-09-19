@@ -7,6 +7,7 @@ import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useStudents } from "@/hooks/useStudents";
 import { pupilFullName } from "@/lib/pupilsData";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → O'quvchilar manzillari (href /student-addresses).
 //
@@ -50,6 +51,7 @@ function Dash() {
 }
 
 export default function StudentAddressesPage() {
+  const { t } = useT();
   // Manzil maydonlari standart to'plamda YO'Q — ataylab so'raymiz.
   // Manzili borlar serverda ajratiladi — ilgari 6 747 dan 198 tasi qolardi.
   const { pupils, loading } = useStudents({ extra: ["address", "addresses"] as const, hasAddress: true });
@@ -108,10 +110,10 @@ export default function StudentAddressesPage() {
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-[18px] font-semibold tracking-tight">O&apos;quvchilar manzillari</h1>
+        <h1 className="text-[18px] font-semibold tracking-tight">{t("O'quvchilar manzillari")}</h1>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-            <span className="text-muted-foreground">Umumiy soni:</span>
+            <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
           </div>
           <div className="relative w-64">
@@ -120,7 +122,7 @@ export default function StudentAddressesPage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               type="text"
-              placeholder="Qidirish"
+              placeholder={t("Qidirish")}
               className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
@@ -149,11 +151,11 @@ export default function StudentAddressesPage() {
                 <thead>
                   <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="text-left px-3 py-3 whitespace-nowrap w-12">№</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                    <th className="text-left px-3 py-3">Manzil</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Manzil turi</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Manba</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchini ismi")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                    <th className="text-left px-3 py-3">{t("Manzil")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Manzil turi")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Manba")}</th>
                     <th className="text-right px-3 py-3 whitespace-nowrap w-24" />
                   </tr>
                 </thead>
@@ -169,10 +171,10 @@ export default function StudentAddressesPage() {
                       </td>
                       <td className="px-3 py-3 text-[13px]">{r.text}</td>
                       <td className="px-3 py-3 text-[13px]">{r.type || <Dash />}</td>
-                      <td className="px-3 py-3 text-[12px] text-muted-foreground whitespace-nowrap">{r.source}</td>
+                      <td className="px-3 py-3 text-[12px] text-muted-foreground whitespace-nowrap">{t(r.source)}</td>
                       <td className="px-3 py-3 text-right whitespace-nowrap">
                         <Link href={`/student-edit/${r.pupilId}?src=list&tab=manzil`} className="text-primary hover:underline text-[12px]">
-                          Batafsil
+                          {t("Batafsil")}
                         </Link>
                       </td>
                     </tr>
@@ -181,8 +183,8 @@ export default function StudentAddressesPage() {
                     <tr>
                       <td colSpan={7} className="px-3 py-10 text-center text-sm text-muted-foreground">
                         {rows.length === 0
-                          ? "Hech bir o'quvchiga manzil kiritilmagan. Manzilni o'quvchi profilidagi \"Manzil\" tabida qo'shing."
-                          : "Manzil topilmadi"}
+                          ? t("Hech bir o'quvchiga manzil kiritilmagan. Manzilni o'quvchi profilidagi \"Manzil\" tabida qo'shing.")
+                          : t("Manzil topilmadi")}
                       </td>
                     </tr>
                   )}

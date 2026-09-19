@@ -1,12 +1,18 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useT } from "@/components/shared/Language";
 
 // Umumiy toast (bildirishnoma) tizimi — komponent bir marta yozilgan, butun
 // ilova bo'ylab useToast() orqali props kabi chaqiriladi (showSuccess/showError).
 // app/layout.tsx'ning ENG tepasida o'ralgan — login/register sahifalarida ham
 // ishlashi kerak, shuning uchun Sidebar/Navbar'ning global SVG sprite'iga
 // tayanmaydi, o'z ikonkalarini o'zi e'lon qiladi.
+//
+// TIL: xabar KO'RSATILAYOTGANDA `t()` dan o'tadi — chaqiruvchi o'rasa ham,
+// o'ramasa ham (backend `data.error` ni to'g'ridan-to'g'ri bergan joylar).
+// Lug'atda yo'q matn o'z holicha qoladi (lib/i18n.ts darvozasi), shuning
+// uchun allaqachon o'girilgan matn ikkinchi marta o'tsa ham buzilmaydi.
 
 export type ToastVariant = "success" | "error";
 
@@ -26,6 +32,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const AUTO_DISMISS_MS = 3500;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t: tr } = useT();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
 
@@ -100,7 +107,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <svg className="icon icon-sm shrink-0" style={{ marginTop: 1, color: accent }}>
                 <use href={t.variant === "success" ? "#i-toast-check" : "#i-toast-x"} />
               </svg>
-              <span className="flex-1 text-foreground">{t.message}</span>
+              <span className="flex-1 text-foreground">{tr(t.message)}</span>
             </div>
           );
         })}

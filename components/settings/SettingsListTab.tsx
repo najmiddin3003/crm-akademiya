@@ -8,6 +8,7 @@ import type { ListFieldKey, SettingsListItem } from "@/lib/settingsLists";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalardagi barcha oddiy CRUD ro'yxatlari uchun umumiy komponent
 // (Sabablar, To'lov turlari, Hamkorlar, grading tizimi, Hashtag …).
@@ -60,6 +61,7 @@ export default function SettingsListTab({
   fields: ListFieldDef[];
   computed?: ComputedColumnDef;
 }) {
+  const { t } = useT();
   const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [items, setItems] = useState<SettingsListItem[]>([]);
@@ -129,7 +131,7 @@ export default function SettingsListTab({
 
   async function save() {
     if (!String(form.name ?? "").trim()) {
-      showError("Nomini kiriting");
+      showError(t("Nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -145,16 +147,16 @@ export default function SettingsListTab({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       setItems((prev) =>
         editing ? prev.map((x) => (x.id === data.item.id ? data.item : x)) : [...prev, data.item],
       );
-      showSuccess(editing ? "Yangilandi" : "Qo'shildi");
+      showSuccess(editing ? t("Yangilandi") : t("Qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -167,13 +169,13 @@ export default function SettingsListTab({
       const res = await fetch(`/api/settings-lists/${deleteTarget.id}?kind=${kind}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setItems((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      showSuccess("O'chirildi");
+      showSuccess(t("O'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -255,9 +257,9 @@ export default function SettingsListTab({
                 <th className="px-5 py-3 text-left w-12">№</th>
                 {columns.map((c) =>
                   "field" in c ? (
-                    <th key={c.field.key} className="px-5 py-3 text-left whitespace-nowrap">{c.field.label}</th>
+                    <th key={c.field.key} className="px-5 py-3 text-left whitespace-nowrap">{t(c.field.label)}</th>
                   ) : (
-                    <th key="__computed" className="px-5 py-3 text-left whitespace-nowrap">{c.computed.label}</th>
+                    <th key="__computed" className="px-5 py-3 text-left whitespace-nowrap">{t(c.computed.label)}</th>
                   ),
                 )}
                 <th className="px-5 py-3 text-right pr-5 w-28" />
@@ -279,7 +281,7 @@ export default function SettingsListTab({
                       <button
                         onClick={() => openEdit(it)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -288,7 +290,7 @@ export default function SettingsListTab({
                         <button
                           onClick={() => setDeleteTarget(it)}
                           className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                          title="O'chirish"
+                          title={t("O'chirish")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -322,11 +324,11 @@ export default function SettingsListTab({
                       onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.checked }))}
                       className="h-4 w-4 rounded border-border accent-[var(--primary)]"
                     />
-                    <span>{f.label}</span>
+                    <span>{t(f.label)}</span>
                   </label>
                 ) : (
                   <>
-                    <label className="block text-[13px] font-medium mb-1.5">{f.label}</label>
+                    <label className="block text-[13px] font-medium mb-1.5">{t(f.label)}</label>
                     {f.input === "date" ? (
                       <DateField value={String(form[f.key] ?? "")} onChange={(v) => setForm((p) => ({ ...p, [f.key]: v }))} variant="form" />
                     ) : f.input === "color" ? (
@@ -371,14 +373,14 @@ export default function SettingsListTab({
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={save}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </Modal>
@@ -386,21 +388,21 @@ export default function SettingsListTab({
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

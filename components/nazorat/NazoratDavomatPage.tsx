@@ -18,6 +18,7 @@ import { dateToIso, isoToDate, isoToLabel, useNazoratAttendance } from "./useNaz
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Davomat (sidebar: Nazorat > Davomat, /nazorat-davomat).
 //
@@ -100,6 +101,7 @@ interface DavomatRow {
 }
 
 export default function NazoratDavomatPage() {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { groupById, marks, loading: attLoading } = useNazoratAttendance();
@@ -295,25 +297,25 @@ export default function NazoratDavomatPage() {
       showSuccess(wasArchived ? `${r.name} arxivdan chiqarildi` : `${r.name} arxivlandi`);
     } else {
       setArchived(archived);
-      showError("Saqlashda xatolik yuz berdi");
+      showError(t("Saqlashda xatolik yuz berdi"));
     }
   }
 
   async function saveComment(text: string) {
     if (!commentFor) return;
-    const t = text.trim();
+    const tv = text.trim();
     const next = { ...comments };
-    if (t) next[commentFor.pupilId] = t;
+    if (tv) next[commentFor.pupilId] = tv;
     else delete next[commentFor.pupilId];
     setBusy(true);
     const ok = await persist({ comments: next });
     setBusy(false);
     if (!ok) {
-      showError("Saqlashda xatolik yuz berdi");
+      showError(t("Saqlashda xatolik yuz berdi"));
       return;
     }
     setComments(next);
-    showSuccess(t ? "Sharh saqlandi" : "Sharh o'chirildi");
+    showSuccess(tv ? t("Sharh saqlandi") : t("Sharh o'chirildi"));
     setCommentFor(null);
   }
 
@@ -338,13 +340,13 @@ export default function NazoratDavomatPage() {
 
   function exportCSV() {
     downloadTableCsv(HEADERS, exportRows(), "davomat.csv");
-    showSuccess(`CSV yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("CSV yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
   function exportExcel() {
     downloadTableExcel(HEADERS, exportRows(), "davomat.xls");
-    showSuccess(`Excel yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("Excel yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
@@ -360,7 +362,7 @@ export default function NazoratDavomatPage() {
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
           <Eye className="icon icon-sm" />
-          <span>O&apos;quvchilarni davomatini ko&apos;rish</span>
+          <span>{t("O'quvchilarni davomatini ko'rish")}</span>
         </Link>
 
         <div className="relative" ref={moreRef}>
@@ -368,7 +370,7 @@ export default function NazoratDavomatPage() {
             type="button"
             onClick={() => setMoreOpen((o) => !o)}
             className="h-10 w-10 rounded-lg hover:bg-secondary inline-flex items-center justify-center"
-            title="Amallar"
+            title={t("Amallar")}
           >
             <MoreVertical className="icon icon-sm" />
           </button>
@@ -376,11 +378,11 @@ export default function NazoratDavomatPage() {
             <div className="absolute top-full right-0 mt-2 z-50 w-60 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
               <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                <span>CSV faylini yuklab olish</span>
+                <span>{t("CSV faylini yuklab olish")}</span>
               </button>
               <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                <span>EXCEL faylini yuklab olish</span>
+                <span>{t("EXCEL faylini yuklab olish")}</span>
               </button>
             </div>
           )}
@@ -390,29 +392,29 @@ export default function NazoratDavomatPage() {
       {/* Filtrlar 1 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         <SelectWrap>
-          <Select value={day} onChange={(v) => resetPage(setDay)(v)} options={WEEKDAY_NAMES.map((d) => ({ value: d, label: d }))} placeholder="Kun" clearable />
+          <Select value={day} onChange={(v) => resetPage(setDay)(v)} options={WEEKDAY_NAMES.map((d) => ({ value: d, label: t(d) }))} placeholder={t("Kun")} clearable />
         </SelectWrap>
         <SelectWrap>
-          <Select value={status} onChange={(v) => resetPage(setStatus)(v)} options={ATTENDANCE_OPTIONS.map((o) => ({ value: o.key, label: o.label }))} placeholder="Holati — barchasi" clearable />
+          <Select value={status} onChange={(v) => resetPage(setStatus)(v)} options={ATTENDANCE_OPTIONS.map((o) => ({ value: o.key, label: o.label }))} placeholder={t("Holati — barchasi")} clearable />
         </SelectWrap>
         <SelectWrap>
-          <Select value={moderator} onChange={(v) => resetPage(setModerator)(v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable />
+          <Select value={moderator} onChange={(v) => resetPage(setModerator)(v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable />
         </SelectWrap>
         <SelectWrap>
-          <Select value={teacher} onChange={(v) => resetPage(setTeacher)(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable />
+          <Select value={teacher} onChange={(v) => resetPage(setTeacher)(v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("O'qituvchi")} clearable />
         </SelectWrap>
         <SelectWrap>
-          <Select value={reason} onChange={(v) => resetPage(setReason)(v)} options={ABSENCE_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable />
+          <Select value={reason} onChange={(v) => resetPage(setReason)(v)} options={ABSENCE_REASONS.map((r) => ({ value: r, label: r }))} placeholder={t("Sababi")} clearable />
         </SelectWrap>
       </div>
 
       {/* Filtrlar 2 */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         <SelectWrap>
-          <Select value={group} onChange={(v) => resetPage(setGroup)(v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable />
+          <Select value={group} onChange={(v) => resetPage(setGroup)(v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder={t("Guruh")} clearable />
         </SelectWrap>
         <SelectWrap>
-          <Select value={groupStatus} onChange={(v) => resetPage(setGroupStatus)(v)} options={[{ value: "Aktiv", label: "Aktiv" }, { value: "Arxiv", label: "Arxiv" }]} placeholder="O'quvchini guruhdagi holati" clearable />
+          <Select value={groupStatus} onChange={(v) => resetPage(setGroupStatus)(v)} options={[{ value: "Aktiv", label: t("Aktiv") }, { value: "Arxiv", label: t("Arxiv") }]} placeholder={t("O'quvchini guruhdagi holati")} clearable />
         </SelectWrap>
         <div className="relative">
           <DateField value={date} onChange={(v) => resetPage(setDate)(v)} variant="form" />
@@ -426,7 +428,7 @@ export default function NazoratDavomatPage() {
         <DateRangePicker
           value={dateRange}
           onChange={(r) => { setDateRange(r); setPage(1); }}
-          placeholder="Oraliqni tanlang"
+          placeholder={t("Oraliqni tanlang")}
         />
 
         {/* Ro'yxatni QOLDIRILGAN DARSLAR soni bo'yicha saralaydi — son
@@ -438,7 +440,7 @@ export default function NazoratDavomatPage() {
             onChange={(e) => { setByMostMissed(e.target.checked); setPage(1); }}
             className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
           />
-          <span>Eng ko&apos;p dars qoldirganlar bo&apos;yicha</span>
+          <span>{t("Eng ko'p dars qoldirganlar bo'yicha")}</span>
         </label>
       </div>
 
@@ -449,7 +451,7 @@ export default function NazoratDavomatPage() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           type="text"
-          placeholder="Qidirish"
+          placeholder={t("Qidirish")}
           className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
       </div>
@@ -458,7 +460,7 @@ export default function NazoratDavomatPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -472,16 +474,16 @@ export default function NazoratDavomatPage() {
                 </th>
                 <th className="px-3 py-3 text-left w-12">№</th>
                 <th className="px-3 py-3 text-left">ID</th>
-                <th className="px-3 py-3 text-left">O&apos;quvchini ismi</th>
-                <th className="px-3 py-3 text-left">Telefon raqam</th>
-                <th className="px-3 py-3 text-right">Balans</th>
-                <th className="px-3 py-3 text-left">Guruh</th>
-                <th className="px-3 py-3 text-left">O&apos;qituvchi</th>
-                <th className="px-3 py-3 text-left">Moderator</th>
-                <th className="px-3 py-3 text-left">Dars sanasi</th>
-                <th className="px-3 py-3 text-left">Holati</th>
-                <th className="px-3 py-3 text-left">Sababi</th>
-                <th className="px-3 py-3 text-right pr-5">Amallar</th>
+                <th className="px-3 py-3 text-left">{t("O'quvchini ismi")}</th>
+                <th className="px-3 py-3 text-left">{t("Telefon raqam")}</th>
+                <th className="px-3 py-3 text-right">{t("Balans")}</th>
+                <th className="px-3 py-3 text-left">{t("Guruh")}</th>
+                <th className="px-3 py-3 text-left">{t("O'qituvchi")}</th>
+                <th className="px-3 py-3 text-left">{t("Moderator")}</th>
+                <th className="px-3 py-3 text-left">{t("Dars sanasi")}</th>
+                <th className="px-3 py-3 text-left">{t("Holati")}</th>
+                <th className="px-3 py-3 text-left">{t("Sababi")}</th>
+                <th className="px-3 py-3 text-right pr-5">{t("Amallar")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -504,7 +506,7 @@ export default function NazoratDavomatPage() {
                   </td>
                   <td className="px-3 py-3 tabular-nums text-[13px]">{r.phone || "—"}</td>
                   <td className={`px-3 py-3 text-right tabular-nums ${r.balance < 0 ? "text-rose-600" : r.balance > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
-                    {formatBalance(r.balance)}
+                    {t(formatBalance(r.balance))}
                   </td>
                   <td className="px-3 py-3">{r.groupName || "—"}</td>
                   <td className="px-3 py-3"><PersonLink name={r.teacher} kind="staff" /></td>
@@ -527,7 +529,7 @@ export default function NazoratDavomatPage() {
                       <button
                         type="button"
                         onClick={() => toggleArchive(r)}
-                        title={viewingArchive ? "Arxivdan chiqarish" : "Arxivlash"}
+                        title={viewingArchive ? t("Arxivdan chiqarish") : t("Arxivlash")}
                         className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground hover:text-primary"
                       >
                         {viewingArchive ? <ArchiveRestore className="icon icon-xs" /> : <Archive className="icon icon-xs" />}
@@ -535,7 +537,7 @@ export default function NazoratDavomatPage() {
                       <button
                         type="button"
                         onClick={() => setCommentFor(r)}
-                        title={comments[r.pupilId] ? "Sharhni tahrirlash" : "Sharh qo'shish"}
+                        title={comments[r.pupilId] ? t("Sharhni tahrirlash") : t("Sharh qo'shish")}
                         className={`h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary ${comments[r.pupilId] ? "text-primary" : "text-muted-foreground"}`}
                       >
                         <MessageSquare className="icon icon-xs" />
@@ -557,8 +559,8 @@ export default function NazoratDavomatPage() {
                       {!loading && (
                         <p className="text-[13px] text-muted-foreground">
                           {rows.length === 0
-                            ? "Hali birorta darsga davomat belgilanmagan."
-                            : "Filterni o'zgartirib ko'ring"}
+                            ? t("Hali birorta darsga davomat belgilanmagan.")
+                            : t("Filterni o'zgartirib ko'ring")}
                         </p>
                       )}
                     </div>

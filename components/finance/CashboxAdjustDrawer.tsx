@@ -35,6 +35,7 @@ import { invalidateTransactions } from "@/lib/cacheKeys";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -97,6 +98,7 @@ export default function CashboxAdjustDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
@@ -121,7 +123,7 @@ export default function CashboxAdjustDrawer({
   const [date, setDate] = useState<Date | null>(new Date());
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  // Turlar TO'LIQ saqlanadi. Ilgari bu yerda `.map((t) => t.name)` turardi
+  // Turlar TO'LIQ saqlanadi. Ilgari bu yerda `.map((tv) => tv.name)` turardi
   // va turning "Mijoz" maydoni aynan shu qatorda yo'qolardi — javobda u bor
   // edi, lekin brauzergacha yetib kelmasdi.
   const [categories, setCategories] = useState<TransactionType[]>([]);
@@ -134,7 +136,7 @@ export default function CashboxAdjustDrawer({
   // kaskad render bo'lardi (react-hooks/set-state-in-effect).
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const selectedType = useMemo(
-    () => categories.find((t) => t.id === categoryId) ?? null,
+    () => categories.find((tv) => tv.id === categoryId) ?? null,
     [categories, categoryId],
   );
   const category = selectedType?.name ?? "";
@@ -164,7 +166,7 @@ export default function CashboxAdjustDrawer({
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.ok) return;
-        setCategories((d.types as TransactionType[]).filter((t) => t.mainType === "chiqim"));
+        setCategories((d.types as TransactionType[]).filter((tv) => tv.mainType === "chiqim"));
       })
       .finally(() => { if (!cancelled) setCategoriesLoading(false); });
     return () => { cancelled = true; };
@@ -353,7 +355,7 @@ export default function CashboxAdjustDrawer({
   const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
   const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && total > remainingSalary;
   const exhaustedMessage = kartaYetmadi
-    ? `Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq ${fmtUZS(salaryBreakdown!.karta)} kartaga ketadi)`
+    ? t("Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq {karta} kartaga ketadi)", { karta: fmtUZS(salaryBreakdown!.karta) })
     : "Bu oyda xodimga chiqariladigan qoldiq yo'q — oylik to'liq chiqarilgan yoki hali hisoblanmagan";
 
   // O'quvchiga qaytariladigan summa uning balansidan oshmasligi kerak.
@@ -372,7 +374,7 @@ export default function CashboxAdjustDrawer({
 
   async function save() {
     if (!category) {
-      showError("Tranzaksiya turini tanlang");
+      showError(t("Tranzaksiya turini tanlang"));
       return;
     }
     // Tanlov maydoni ko'rinib turgan bo'lsa, u BO'SH qolmasin. Aks holda
@@ -384,15 +386,15 @@ export default function CashboxAdjustDrawer({
       return;
     }
     if (!total || total <= 0) {
-      showError("Qiymatni to'g'ri kiriting");
+      showError(t("Qiymatni to'g'ri kiriting"));
       return;
     }
     if (!method) {
-      showError("To'lov turini tanlang");
+      showError(t("To'lov turini tanlang"));
       return;
     }
     if (available != null && total > available) {
-      showError("Mablag' yetarli emas");
+      showError(t("Mablag' yetarli emas"));
       return;
     }
     if (salaryExhausted) {
@@ -404,7 +406,7 @@ export default function CashboxAdjustDrawer({
       return;
     }
     if (studentBalanceExceeds) {
-      showError(`Summa o'quvchi balansidan (${fmtUZS(studentBalance)}) ko'p bo'lishi mumkin emas`);
+      showError(t("Summa o'quvchi balansidan ({studentBalance}) ko'p bo'lishi mumkin emas", { studentBalance: fmtUZS(studentBalance) }));
       return;
     }
     setSaving(true);
@@ -437,15 +439,15 @@ export default function CashboxAdjustDrawer({
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.cashbox as Cashbox);
-      showSuccess("Chiqim amalga oshirildi");
+      showSuccess(t("Chiqim amalga oshirildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -456,7 +458,7 @@ export default function CashboxAdjustDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">Chiqim</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{t("Chiqim")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
@@ -464,13 +466,13 @@ export default function CashboxAdjustDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Tranzaksiya")}</label>
             <Select value={String(categoryId ?? "")} onChange={(v) => {
                   // Tur o'zgarsa avval tanlangan kishi kerak bo'lmay qolishi
                   // mumkin (o'quvchi → xodim yoki umuman tanlovsiz tur).
                   // Tozalanmasa, maydon yashirinib ketgan bo'lsa ham eski
                   // ism `studentName` bo'lib yozuvga tushardi.
-                  const next = categories.find((t) => t.id === Number(v)) ?? null;
+                  const next = categories.find((tv) => tv.id === Number(v)) ?? null;
                   if (txTarget(next) !== target) {
                     setPersonName("");
                     setRefundTeacher("");
@@ -500,7 +502,7 @@ export default function CashboxAdjustDrawer({
                 // birlashtirib yuborish xato bo'lardi — o'quvchi
                 // tanlanayotganda xodimlar ro'yxati kutilmasligi kerak.
                 loading={target === "employee" ? employeesLoading : studentsLoading}
-                placeholder={target === "employee" ? "Xodimni qidiring…" : "Tanlang"}
+                placeholder={target === "employee" ? t("Xodimni qidiring…") : t("Tanlang")}
                 subtitleOf={target === "employee" ? (n) => ROLE_LABELS[roleOf(n) as keyof typeof ROLE_LABELS] ?? roleOf(n) : undefined}
                 // Ism yonida shu oynada CHIQARISH MUMKIN bo'lgan summa —
                 // tanlangan to'lov turiga qarab (naqd: kartadan keyingi
@@ -508,7 +510,7 @@ export default function CashboxAdjustDrawer({
                 // Pastdagi `remainingSalary` bilan bir xil qoida.
                 trailingOf={target === "employee" ? (n) => {
                   const p = payrollOf(n);
-                  if (!p?.configured) return <span className="text-muted-foreground">Sozlanmagan</span>;
+                  if (!p?.configured) return <span className="text-muted-foreground">{t("Sozlanmagan")}</span>;
                   const can = isPlastikMethod ? payrollPayout(p, period) : payrollCashLeg(p, period);
                   return <span className={can > 0 ? "text-emerald-600" : "text-muted-foreground"}>{fmtUZS(can)}</span>;
                 } : target === "student" ? (n) => {
@@ -523,7 +525,7 @@ export default function CashboxAdjustDrawer({
                   ya'ni hozirgina qo'shilgan o'quvchini topa olmagan kassir
                   nima kutayotganini bilmasdi. */}
               {target === "student" && studentsRefreshing && (
-                <p className="text-[11px] text-muted-foreground">Ro&apos;yxat yangilanmoqda…</p>
+                <p className="text-[11px] text-muted-foreground">{t("Ro'yxat yangilanmoqda…")}</p>
               )}
 
               {selectedStudent && (
@@ -543,23 +545,22 @@ export default function CashboxAdjustDrawer({
                       o'quvchining oxirgi to'lovidagi ustoz o'zi tushadi
                       (yuqoridagi effekt), kassir o'zgartira oladi. */}
                   <StudentSearchSelect
-                    label="Ustozi (tushumidan ayriladi)"
+                    label={t("Ustozi (tushumidan ayriladi)")}
                     value={refundTeacher}
                     onChange={setRefundTeacher}
                     options={teacherNames}
                     loading={teachersLoading}
-                    placeholder="Ism bo'yicha qidiring…"
+                    placeholder={t("Ism bo'yicha qidiring…")}
                   />
                   <p className="text-[11.5px] text-muted-foreground leading-snug">
-                    Qaytarilgan summa o&apos;quvchi balansidan va ustozning shu oydagi tushumidan ayriladi —
-                    ustozning foizli oyligi shu summaning foizi qadar kamayadi, qolgani markaz hisobidan ketadi.
+                    {t("Qaytarilgan summa o'quvchi balansidan va ustozning shu oydagi tushumidan ayriladi — ustozning foizli oyligi shu summaning foizi qadar kamayadi, qolgani markaz hisobidan ketadi.")}
                   </p>
                   <button
                     type="button"
                     onClick={() => setGroupsOpen(true)}
                     className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
                   >
-                    O&apos;quvchi guruhlarini ko&apos;rish
+                    {t("O'quvchi guruhlarini ko'rish")}
                   </button>
                 </div>
               )}
@@ -574,21 +575,21 @@ export default function CashboxAdjustDrawer({
                       // karta va soliq avval ayriladi. Plastik turida
                       // chegara karta + naqd, ya'ni karta qatori chiqmaydi.
                       <div className="text-[12.5px] text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2.5 py-2">
-                        {isPlastikMethod ? "Kartaga chiqarish mumkin: " : "Naqd chiqarish mumkin: "}
+                        {isPlastikMethod ? t("Kartaga chiqarish mumkin: ") : t("Naqd chiqarish mumkin: ")}
                         <strong>{fmtUZS(remainingSalary)}</strong>
                         <span className="text-muted-foreground">
                           {" "}(Jami oylik {fmtUZS(employeeOylik)}
-                          {salaryBreakdown.tax > 0 ? ` − soliq ${fmtUZS(salaryBreakdown.tax)}` : ""}
-                          {salaryBreakdown.carryOver > 0 ? ` + o'tgan oydan ${fmtUZS(salaryBreakdown.carryOver)}` : ""}
-                          {salaryBreakdown.carryOver < 0 ? ` − o'tgan oy qarzdorligi ${fmtUZS(-salaryBreakdown.carryOver)}` : ""}
-                          {salaryBreakdown.paid > 0 ? ` − olingan ${fmtUZS(salaryBreakdown.paid)}` : ""}
-                          {!isPlastikMethod && salaryBreakdown.karta > 0 ? ` − kartaga ${fmtUZS(salaryBreakdown.karta)}` : ""}
+                          {salaryBreakdown.tax > 0 ? t(" − soliq {tax}", { tax: fmtUZS(salaryBreakdown.tax) }) : ""}
+                          {salaryBreakdown.carryOver > 0 ? t(" + o'tgan oydan {carryOver}", { carryOver: fmtUZS(salaryBreakdown.carryOver) }) : ""}
+                          {salaryBreakdown.carryOver < 0 ? t(" − o'tgan oy qarzdorligi {carryOver}", { carryOver: fmtUZS(-salaryBreakdown.carryOver) }) : ""}
+                          {salaryBreakdown.paid > 0 ? t(" − olingan {paid}", { paid: fmtUZS(salaryBreakdown.paid) }) : ""}
+                          {!isPlastikMethod && salaryBreakdown.karta > 0 ? t(" − kartaga {karta}", { karta: fmtUZS(salaryBreakdown.karta) }) : ""}
                           )
                         </span>
                       </div>
                     ) : (
                       <div className="text-[12.5px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-md px-2.5 py-2">
-                        Ish haqi sozlanmagan — chegara qo&apos;llanmaydi. Xodim profilida oylikni kiriting.
+                        {t("Ish haqi sozlanmagan — chegara qo'llanmaydi. Xodim profilida oylikni kiriting.")}
                       </div>
                     )
                   ) : (
@@ -611,7 +612,7 @@ export default function CashboxAdjustDrawer({
                     onClick={() => setSalaryOpen(true)}
                     className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
                   >
-                    Xodim ma&apos;lumotlarini ko&apos;rish
+                    {t("Xodim ma'lumotlarini ko'rish")}
                   </button>
                 </>
               )}
@@ -623,7 +624,7 @@ export default function CashboxAdjustDrawer({
             // qoldig'idan (yuqoridagi `oylikLocked` izohi). Qator qo'shish
             // ham yo'q: oylik bir necha bandga bo'linmaydi.
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
               <input
                 value={groupNumber(remainingSalary)}
                 readOnly
@@ -631,7 +632,7 @@ export default function CashboxAdjustDrawer({
                 className="w-full h-10 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums"
               />
               <div className="text-[12px] text-muted-foreground mt-1">
-                Oylik summasi hisobdan olinadi — qo&apos;lda o&apos;zgartirilmaydi.
+                {t("Oylik summasi hisobdan olinadi — qo'lda o'zgartirilmaydi.")}
               </div>
             </div>
           ) : (
@@ -639,11 +640,11 @@ export default function CashboxAdjustDrawer({
             {rows.map((row, i) => (
               <div key={row.id} className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
                   <MoneyInput
                     value={row.amount}
                     onChange={(v) => updateRow(row.id, { amount: v })}
-                    placeholder="Qiymat"
+                    placeholder={t("Qiymat")}
                     className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
@@ -652,7 +653,7 @@ export default function CashboxAdjustDrawer({
                     type="button"
                     onClick={() => removeRow(row.id)}
                     className="h-10 w-10 shrink-0 rounded-lg border border-border text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center"
-                    title="O'chirish"
+                    title={t("O'chirish")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -663,7 +664,7 @@ export default function CashboxAdjustDrawer({
               type="button"
               onClick={addRow}
               className="h-9 w-9 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center justify-center"
-              title="Qator qo'shish"
+              title={t("Qator qo'shish")}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -671,7 +672,7 @@ export default function CashboxAdjustDrawer({
           )}
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Umumiy summa</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Umumiy summa")}</label>
             <input
               value={groupNumber(total)}
               readOnly
@@ -681,20 +682,20 @@ export default function CashboxAdjustDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
-            <Select value={method} onChange={(v) => setMethod(v)} options={methodOptions.map(({ m, bal }) => ({ value: m.key, label: `${m.name} (${fmtSum(bal)})` }))} placeholder={selectPlaceholder(methodsLoading, methodOptions.length, "Kassada mablag' yo'q")} clearable disabled={methodsLoading} />
+            <label className="block text-[13px] font-medium mb-1.5">{t("To'lov turi")}</label>
+            <Select value={method} onChange={(v) => setMethod(v)} options={methodOptions.map(({ m, bal }) => ({ value: m.key, label: `${m.name} (${t(fmtSum(bal))})` }))} placeholder={selectPlaceholder(methodsLoading, methodOptions.length, "Kassada mablag' yo'q")} clearable disabled={methodsLoading} />
             {available != null && (
               <div className="text-[12px] text-muted-foreground mt-1">Mavjud: {fmtUZS(available)}</div>
             )}
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
             <DatePicker value={date} onChange={setDate} className="w-full" />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -706,14 +707,14 @@ export default function CashboxAdjustDrawer({
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button
             onClick={save}
             disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>{salaryOpen && selectedEmployee && (

@@ -9,6 +9,7 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { CashboxName } from "@/lib/cashboxes";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Tranzaksiyalar (sidebar: Moliya > Tranzakisyalar, href
 // /finance-transactions). Sof jurnal — add/edit/delete yo'q (manba saytida
@@ -40,6 +41,7 @@ function fmtDate(e: TransactionEntry): string {
 }
 
 export default function TransactionEntriesPage() {
+  const { t } = useT();
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
   const [cashboxes, setCashboxes] = useState<CashboxName[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,18 +105,18 @@ export default function TransactionEntriesPage() {
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        <Select value={cashboxId} onChange={(v) => { setCashboxId(v); setPage(1); }} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kassa" clearable size="sm" className="w-40" />
-        <Select value={txType} onChange={(v) => { setTxType(v); setPage(1); }} options={TX_TYPES.map((t) => ({ value: t.key, label: t.label }))} placeholder="Turi" clearable size="sm" className="w-40" />
-        <Select value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUSES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable size="sm" className="w-40" />
-        <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" className="w-52" />
+        <Select value={cashboxId} onChange={(v) => { setCashboxId(v); setPage(1); }} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={t("Kassa")} clearable size="sm" className="w-40" />
+        <Select value={txType} onChange={(v) => { setTxType(v); setPage(1); }} options={TX_TYPES.map((tv) => ({ value: tv.key, label: tv.label }))} placeholder={t("Turi")} clearable size="sm" className="w-40" />
+        <Select value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={STATUSES.map((s) => ({ value: s.key, label: s.label }))} placeholder={t("Holati")} clearable size="sm" className="w-40" />
+        <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder={t("Oraliqni tanlang")} className="w-52" />
         <div className="w-52">
-          <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder="O'quvchi" />
+          <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder={t("O'quvchi")} />
         </div>
       </div>
 
       <div className="flex justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{total}</span>
         </div>
       </div>
@@ -125,20 +127,20 @@ export default function TransactionEntriesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Miqdori</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Oldingi miqdor</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Keyingi miqdor</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Tranzaksiya turi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Tranzaksiya nomi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;lov turi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Dars sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sana")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Miqdori")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Oldingi miqdor")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Keyingi miqdor")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Tranzaksiya turi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Tranzaksiya nomi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'lov turi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Dars sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sababi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Holati")}</th>
               </tr>
             </thead>
             <tbody>
@@ -150,9 +152,9 @@ export default function TransactionEntriesPage() {
                   <td className={`px-3 py-3 text-[13px] tabular-nums font-medium ${e.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtUZS(e.amount)}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{fmtUZS(e.before)}</td>
                   <td className="px-3 py-3 text-[13px] tabular-nums">{fmtUZS(e.after)}</td>
-                  <td className="px-3 py-3 text-[13px]">{e.txType}</td>
+                  <td className="px-3 py-3 text-[13px]">{t(e.txType)}</td>
                   <td className="px-3 py-3 text-[13px]">{e.txName || "—"}</td>
-                  <td className="px-3 py-3 text-[13px]">{e.paymentType}</td>
+                  <td className="px-3 py-3 text-[13px]">{t(e.paymentType)}</td>
                   <td className="px-3 py-3 text-[13px]">{e.group || "—"}</td>
                   <td className="px-3 py-3 text-[13px]">{e.lessonDate || "—"}</td>
                   <td className="px-3 py-3 text-[13px] whitespace-nowrap"><PersonLink name={e.moderator} kind="staff" /></td>

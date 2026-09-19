@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import { useReasons } from "@/hooks/useSettingsList";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "✗ Rad etish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: "Izoh qoldiring" sarlavha, "Sabab"
@@ -27,6 +28,7 @@ export interface RejectReasonModalProps {
 }
 
 export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -49,17 +51,17 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={200}>
         <div className="p-5 pb-4 text-center border-b border-border">
-          <h3 className="text-xl font-semibold">Izoh qoldiring</h3>
+          <h3 className="text-xl font-semibold">{t("Izoh qoldiring")}</h3>
         </div>
 
         <div className="p-5 space-y-2">
-          <label className="block text-sm font-medium">Sabab</label>
+          <label className="block text-sm font-medium">{t("Sabab")}</label>
           <div className="relative">
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Sababni qidirish"
+              placeholder={t("Sababni qidirish")}
               className="w-full h-11 rounded-lg border border-border bg-secondary/20 px-3 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <svg className="icon icon-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -69,7 +71,7 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
 
           <div className="max-h-72 overflow-y-auto divide-y divide-border">
             {filtered.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-muted-foreground text-center">Topilmadi</div>
+              <div className="px-2 py-4 text-sm text-muted-foreground text-center">{t("Topilmadi")}</div>
             ) : (
               filtered.map((reason) => (
                 <button
@@ -90,16 +92,16 @@ export default function RejectReasonModal({ onClose, onConfirm }: RejectReasonMo
                 autoFocus
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
-                placeholder="Sababni yozing"
+                placeholder={t("Sababni yozing")}
                 rows={3}
                 className="w-full rounded-lg border border-border bg-secondary/20 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={modal.close}>
-                  Orqaga
+                  {t("Orqaga")}
                 </Button>
                 <Button variant="primary" onClick={() => onConfirm(customReason.trim() || OTHER)}>
-                  Saqlash
+                  {t("Saqlash")}
                 </Button>
               </div>
             </div>

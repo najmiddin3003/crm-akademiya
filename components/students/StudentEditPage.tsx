@@ -51,6 +51,7 @@ import DateField from "@/components/students/fields/DateField";
 import { invalidateStudents } from "@/hooks/useStudents";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/src/app.js renderStudentEdit() / renderStudentEditTahrirlash()
 // (~line 34100-35000, view: 'student-edit'). Only the "Tahrirlash" tab has real
@@ -89,6 +90,7 @@ const TABS: { key: string; label: string }[] = [
 ];
 
 export default function StudentEditPage({ order, initialTab }: { order: Order; initialTab?: string }) {
+  const { t } = useT();
   const [ism, ...rest] = order.name.trim().split(/\s+/);
   const familiya = rest.join(" ");
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "+998";
@@ -176,19 +178,19 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   const initials = order.name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
   const stats: ProfileStat[] = [
     {
-      label: "Qolgan darslar soni",
+      label: t("Qolgan darslar soni"),
       value: String(qolganDarslar ?? "—"),
       wrap: "bg-sky-500/10 text-sky-600",
       icon: <svg className="icon icon-sm"><use href="#i-book" /></svg>,
     },
     {
-      label: "To'lanish kerak",
+      label: t("To'lanish kerak"),
       value: tolanishKerak === null ? "—" : `${fmtSpace(tolanishKerak)} UZS`,
       wrap: "bg-amber-500/10 text-amber-600",
       icon: <svg className="icon icon-sm"><use href="#i-wallet" /></svg>,
     },
     {
-      label: "Balans",
+      label: t("Balans"),
       value: entriesLoading ? "…" : `${fmtSpace(balans)} UZS`,
       wrap: "bg-emerald-500/10 text-emerald-600",
       icon: <svg className="icon icon-sm"><use href="#i-shield" /></svg>,
@@ -198,7 +200,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   // Boshlangʻich tab ?tab= dan keladi — oʻquvchilar roʻyxatidagi qator
   // ikonkalari toʻgʻridan-toʻgʻri kerakli tabga olib boradi.
   const [activeTab, setActiveTab] = useState(
-    initialTab && TABS.some((t) => t.key === initialTab) ? initialTab : "tahrirlash",
+    initialTab && TABS.some((tv) => tv.key === initialTab) ? initialTab : "tahrirlash",
   );
   const [sozlashOpen, setSozlashOpen] = useState(false);
 
@@ -254,7 +256,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   const handleSave = async () => {
     if (!pupil) return;
     if (!form.firstName?.trim()) {
-      showError("Ism majburiy");
+      showError(t("Ism majburiy"));
       return;
     }
     setSaving(true);
@@ -266,12 +268,12 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     setSaving(false);
     invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
-      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      showError(t(res?.error || "Saqlashda xatolik yuz berdi"));
       return;
     }
     setPupil(res.pupil as Pupil);
     fillForm(res.pupil as Pupil);
-    showSuccess("O'quvchi ma'lumotlari saqlandi");
+    showSuccess(t("O'quvchi ma'lumotlari saqlandi"));
   };
 
   const handleDelete = async () => {
@@ -283,10 +285,10 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     setConfirmDelete(false);
     if (!res?.ok) {
-      showError(res?.error || "O'chirishda xatolik yuz berdi");
+      showError(t(res?.error || "O'chirishda xatolik yuz berdi"));
       return;
     }
-    showSuccess("O'quvchi o'chirildi");
+    showSuccess(t("O'quvchi o'chirildi"));
     router.push("/students-list");
   };
 
@@ -305,7 +307,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           <ProfileSideCard
             name={order.name}
             phone={phone}
-            onCopyPhone={() => { navigator.clipboard?.writeText(phone); showSuccess("Nusxa olindi"); }}
+            onCopyPhone={() => { navigator.clipboard?.writeText(phone); showSuccess(t("Nusxa olindi")); }}
             initials={initials}
             badge={null}
             stats={stats}
@@ -319,7 +321,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
             actions={[
               {
                 key: "message",
-                title: "Xabar yuborish",
+                title: t("Xabar yuborish"),
                 cls: "bg-violet-500/15 text-violet-600 hover:bg-violet-500/25",
                 icon: (
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -329,7 +331,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
               },
               {
                 key: "payment",
-                title: "To'lov",
+                title: t("To'lov"),
                 cls: "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25",
                 icon: (
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -341,7 +343,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
               // Xodim profilidagi bilan bir xil: telefon ilovasini ochamiz.
               {
                 key: "call",
-                title: "Qo'ng'iroq qilish",
+                title: t("Qo'ng'iroq qilish"),
                 cls: "bg-rose-500/15 text-rose-600 hover:bg-rose-500/25",
                 href: `tel:${phone.replace(/\s/g, "")}`,
                 icon: (
@@ -403,50 +405,50 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           <div className="rounded-2xl bg-card border border-border p-5 space-y-5">
             {!loadingPupil && !pupil && (
               <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
-                Bu yozuv o&apos;quvchilar bazasida topilmadi — maydonlarni saqlab bo&apos;lmaydi.
+                {t("Bu yozuv o'quvchilar bazasida topilmadi — maydonlarni saqlab bo'lmaydi.")}
               </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Ism" value={form.firstName ?? ism} onChange={set("firstName")} />
-              <TextField label="Familiya" value={form.lastName ?? familiya} onChange={set("lastName")} />
-              <PhoneField label="Telefon raqam" value={form.phone ?? phone} onChange={set("phone")} />
+              <TextField label={t("Ism")} value={form.firstName ?? ism} onChange={set("firstName")} />
+              <TextField label={t("Familiya")} value={form.lastName ?? familiya} onChange={set("lastName")} />
+              <PhoneField label={t("Telefon raqam")} value={form.phone ?? phone} onChange={set("phone")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Teglar" value={form.tags ?? ""} onChange={set("tags")} />
-              <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" value={form.email ?? ""} onChange={set("email")} />
-              <DateField label="Tug'ilgan sanasi" value={form.birthDate ?? ""} onChange={set("birthDate")} />
+              <TextField label={t("Teglar")} value={form.tags ?? ""} onChange={set("tags")} />
+              <TextField label={t("Elektron pochta")} type="email" placeholder={t("example@gmail.com")} value={form.email ?? ""} onChange={set("email")} />
+              <DateField label={t("Tug'ilgan sanasi")} value={form.birthDate ?? ""} onChange={set("birthDate")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
-              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
-              <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
+              <SelectField label={t("Dars vaqti")} placeholder={t("Dars shaklini tanlang")} options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
+              <SelectField label={t("O'quvchi kategoriyasi")} options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
+              <DateField label={t("O'quvchining pul to'lash sanasi")} value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <SelectField label="O'qish tili" options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
-              <TextField label="Marketing so'rovnomasi" value={form.survey ?? ""} onChange={set("survey")} />
-              <TextField label="Maqsadidagi universiteti" value={form.targetUniversity ?? ""} onChange={set("targetUniversity")} />
+              <SelectField label={t("O'qish tili")} options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
+              <TextField label={t("Marketing so'rovnomasi")} value={form.survey ?? ""} onChange={set("survey")} />
+              <TextField label={t("Maqsadidagi universiteti")} value={form.targetUniversity ?? ""} onChange={set("targetUniversity")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Otasining ismi" value={form.fatherName ?? ""} onChange={set("fatherName")} />
-              <PhoneField label="Telefon raqam" value={form.fatherPhone ?? ""} onChange={set("fatherPhone")} />
-              <TextField label="Otasining ish joyi" value={form.fatherWork ?? ""} onChange={set("fatherWork")} />
+              <TextField label={t("Otasining ismi")} value={form.fatherName ?? ""} onChange={set("fatherName")} />
+              <PhoneField label={t("Telefon raqam")} value={form.fatherPhone ?? ""} onChange={set("fatherPhone")} />
+              <TextField label={t("Otasining ish joyi")} value={form.fatherWork ?? ""} onChange={set("fatherWork")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Onasining ismi" value={form.motherName ?? ""} onChange={set("motherName")} />
-              <PhoneField label="Telefon raqam" value={form.motherPhone ?? ""} onChange={set("motherPhone")} />
-              <TextField label="Onasining ish joyi" value={form.motherWork ?? ""} onChange={set("motherWork")} />
+              <TextField label={t("Onasining ismi")} value={form.motherName ?? ""} onChange={set("motherName")} />
+              <PhoneField label={t("Telefon raqam")} value={form.motherPhone ?? ""} onChange={set("motherPhone")} />
+              <TextField label={t("Onasining ish joyi")} value={form.motherWork ?? ""} onChange={set("motherWork")} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <TextField label="Uy adresi" value={form.address ?? ""} onChange={set("address")} />
-              <TextField label="O'qish joyi" value={form.studyPlace ?? ""} onChange={set("studyPlace")} />
-              <TextField label="Izoh" value={form.note ?? ""} onChange={set("note")} />
+              <TextField label={t("Uy adresi")} value={form.address ?? ""} onChange={set("address")} />
+              <TextField label={t("O'qish joyi")} value={form.studyPlace ?? ""} onChange={set("studyPlace")} />
+              <TextField label={t("Izoh")} value={form.note ?? ""} onChange={set("note")} />
             </div>
           </div>
 
@@ -458,32 +460,32 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
               onClick={() => setConfirmDelete(true)}
               className="inline-flex items-center h-10 px-5 rounded-lg bg-rose-500 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
             >
-              O&apos;chirish
+              {t("O'chirish")}
             </button>
-            <Link href="/students-list" className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">Orqaga</Link>
+            <Link href="/students-list" className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">{t("Orqaga")}</Link>
             <button
               type="button"
               disabled={!pupil || saving}
               onClick={handleSave}
               className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
             >
-              {saving ? "Saqlanmoqda..." : "Saqlash"}
+              {saving ? t("Saqlanmoqda...") : t("Saqlash")}
             </button>
           </div>
 
           {confirmDelete && pupil && (
             <Modal onClose={() => setConfirmDelete(false)} bare size="sm" zIndex={300} panelClassName="p-5 space-y-4">{(modal) => (<>
-                <h3 className="text-lg font-semibold">O&apos;quvchini o&apos;chirish</h3>
+                <h3 className="text-lg font-semibold">{t("O'quvchini o'chirish")}</h3>
                 <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">{`${pupil.firstName} ${pupil.lastName}`.trim()}</strong>
                   {" "}o&apos;chiriladi va barcha guruhlardan chiqariladi. Bu amalni qaytarib bo&apos;lmaydi.
                 </p>
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={modal.close} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-                    Bekor qilish
+                    {t("Bekor qilish")}
                   </button>
                   <button type="button" disabled={deleting} onClick={handleDelete} className="h-9 rounded-lg bg-rose-500 px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
-                    {deleting ? "O'chirilmoqda..." : "O'chirish"}
+                    {deleting ? t("O'chirilmoqda...") : t("O'chirish")}
                   </button>
                 </div>
               </>)}</Modal>

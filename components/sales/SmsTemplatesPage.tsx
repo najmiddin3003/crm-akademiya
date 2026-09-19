@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SMS_AUDIENCES, SMS_PLACEHOLDERS, type SmsTemplate } from "@/lib/smsTemplates";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Sotuv va marketing → SMS shablonlari (sidebar: Sotuv va marketing >
 // SMS shablonlari, href /sales-sms). Ma'lumot HAQIQIY — /api/sms-templates
@@ -25,6 +26,7 @@ function truncate(s: string, n = 20): string {
 }
 
 export default function SmsTemplatesPage() {
+  const { t } = useT();
   const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [templates, setTemplates] = useState<SmsTemplate[]>([]);
@@ -56,9 +58,9 @@ export default function SmsTemplatesPage() {
     setForm({ title: "", audience: SMS_AUDIENCES[0], text: "" });
     setAddOpen(true);
   }
-  function openEdit(t: SmsTemplate) {
-    setForm({ title: t.title, audience: t.audience, text: t.text });
-    setEditTarget(t);
+  function openEdit(tv: SmsTemplate) {
+    setForm({ title: tv.title, audience: tv.audience, text: tv.text });
+    setEditTarget(tv);
   }
   function closeForm() {
     setAddOpen(false);
@@ -69,11 +71,11 @@ export default function SmsTemplatesPage() {
     const title = form.title.trim();
     const text = form.text.trim();
     if (!title) {
-      showError("Sarlavhani kiriting");
+      showError(t("Sarlavhani kiriting"));
       return;
     }
     if (!text) {
-      showError("SMS matnini kiriting");
+      showError(t("SMS matnini kiriting"));
       return;
     }
     setSaving(true);
@@ -86,19 +88,19 @@ export default function SmsTemplatesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       if (editing) {
         setTemplates((prev) => prev.map((x) => (x.id === data.template.id ? data.template : x)));
-        showSuccess("Shablon yangilandi");
+        showSuccess(t("Shablon yangilandi"));
       } else {
         setTemplates((prev) => [...prev, data.template]);
-        showSuccess("Shablon qo'shildi");
+        showSuccess(t("Shablon qo'shildi"));
       }
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -111,13 +113,13 @@ export default function SmsTemplatesPage() {
       const res = await fetch(`/api/sms-templates/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setTemplates((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      showSuccess("Shablon o'chirildi");
+      showSuccess(t("Shablon o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -133,14 +135,14 @@ export default function SmsTemplatesPage() {
           onClick={openAdd}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
-          <span>+ SMS shablon qo&apos;shish</span>
+          <span>{t("+ SMS shablon qo'shish")}</span>
         </button>
       </div>
 
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{templates.length}</span>
           </div>
         </div>
@@ -150,32 +152,32 @@ export default function SmsTemplatesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Sarlavha</th>
-                <th className="px-5 py-3 text-left w-40">Turi</th>
+                <th className="px-5 py-3 text-left">{t("Sarlavha")}</th>
+                <th className="px-5 py-3 text-left w-40">{t("Turi")}</th>
                 <th className="px-5 py-3 text-left">SMS</th>
                 <th className="px-5 py-3 text-right pr-5 w-28" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {slice.map((t, i) => (
-                <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+              {slice.map((tv, i) => (
+                <tr key={tv.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-5 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
-                  <td className="px-5 py-3 font-medium">{t.title}</td>
-                  <td className="px-5 py-3 text-[13px]">{t.audience}</td>
-                  <td className="px-5 py-3 text-[13px] text-muted-foreground">{truncate(t.text)}</td>
+                  <td className="px-5 py-3 font-medium">{t(tv.title)}</td>
+                  <td className="px-5 py-3 text-[13px]">{tv.audience}</td>
+                  <td className="px-5 py-3 text-[13px] text-muted-foreground">{truncate(tv.text)}</td>
                   <td className="px-5 py-3 pr-5">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() => openEdit(t)}
+                        onClick={() => openEdit(tv)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => setDeleteTarget(t)}
+                        onClick={() => setDeleteTarget(tv)}
                         className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                        title="O'chirish"
+                        title={t("O'chirish")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -206,23 +208,23 @@ export default function SmsTemplatesPage() {
       {formOpen && (
         <Modal onClose={closeForm} controller={modal} locked={saving} bare size="lg" zIndex={110} panelClassName="p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">
-              {editTarget ? "Shablonni tahrirlash" : "SMS shablon qo'shish"}
+              {editTarget ? t("Shablonni tahrirlash") : t("SMS shablon qo'shish")}
             </h3>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Sarlavha</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Sarlavha")}</label>
               <input
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: To'lov qiling"
+                placeholder={t("Masalan: To'lov qiling")}
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Turi</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Turi")}</label>
               <Select value={form.audience} onChange={(v) => setForm((f) => ({ ...f, audience: v }))} options={SMS_AUDIENCES.map((a) => ({ value: a, label: a }))} />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">SMS matni</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("SMS matni")}</label>
               <textarea
                 value={form.text}
                 onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
@@ -231,7 +233,7 @@ export default function SmsTemplatesPage() {
                 placeholder="Hurmatli {name}, ..."
               />
               <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <span className="text-[12px] text-muted-foreground">O&apos;rinbosarlar:</span>
+                <span className="text-[12px] text-muted-foreground">{t("O'rinbosarlar:")}</span>
                 {SMS_PLACEHOLDERS.map((p) => (
                   <button
                     key={p}
@@ -250,14 +252,14 @@ export default function SmsTemplatesPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={save}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </Modal>
@@ -265,21 +267,21 @@ export default function SmsTemplatesPage() {
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

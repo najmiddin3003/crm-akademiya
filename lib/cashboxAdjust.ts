@@ -171,8 +171,13 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
         );
       }
       if (amount > remaining) {
+        // Ikki alohida xabar (ichma-ich ternar emas): mijoz xabarni
+        // lug'atdagi andozaga teskari moslab tarjima qiladi (lib/i18n.ts).
+        const left = remaining.toLocaleString("ru-RU");
         return fail(
-          `Summa ${isPlastik ? "qolgan oylikdan" : "naqd chiqarish mumkin bo'lgan summadan"} ko'p bo'lmasin (qolgan: ${remaining.toLocaleString("ru-RU")} so'm)`,
+          isPlastik
+            ? `Summa qolgan oylikdan ko'p bo'lmasin (qolgan: ${left} so'm)`
+            : `Summa naqd chiqarish mumkin bo'lgan summadan ko'p bo'lmasin (qolgan: ${left} so'm)`,
         );
       }
     }

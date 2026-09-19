@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/shared/Language";
 
 export interface PasswordFieldProps {
   label: string;
@@ -24,6 +25,7 @@ export default function PasswordField({
   autoComplete,
   hint,
 }: PasswordFieldProps) {
+  const { t } = useT();
   const [visible, setVisible] = useState(false);
 
   return (
@@ -43,7 +45,7 @@ export default function PasswordField({
           type="button"
           onClick={() => setVisible((v) => !v)}
           className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-          title={visible ? "Parolni yashirish" : "Parolni ko'rsatish"}
+          title={visible ? t("Parolni yashirish") : t("Parolni ko'rsatish")}
         >
           {visible ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">

@@ -9,6 +9,7 @@ import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { useOfflineCourses, type CourseLevel, type CourseListItem, type CourseListKind } from "./OfflineCoursesProvider";
 import type { Group } from "@/lib/groups";
+import { useT } from "@/components/shared/Language";
 
 // Kurs tafsiloti — yuqorida tablar, standart "Darajalar" tabi ochiq.
 //
@@ -46,6 +47,7 @@ function countBy(groups: Group[], pick: (g: Group) => string | undefined): { val
 }
 
 export default function CourseDetail({ id }: { id: number }) {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { loading, getCourse, deleteLevel, addListItem, deleteListItem } = useOfflineCourses();
@@ -79,9 +81,9 @@ export default function CourseDetail({ id }: { id: number }) {
   if (!course) {
     return (
       <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-        <p className="text-sm text-muted-foreground">Kurs topilmadi.</p>
+        <p className="text-sm text-muted-foreground">{t("Kurs topilmadi.")}</p>
         <button onClick={() => router.push("/offline-courses")} className="mt-3 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
-          Orqaga
+          {t("Orqaga")}
         </button>
       </div>
     );
@@ -92,8 +94,8 @@ export default function CourseDetail({ id }: { id: number }) {
     const name = deleteTarget.name;
     const ok = await deleteLevel(id, deleteTarget.id);
     setDeleteTarget(null);
-    if (ok) showSuccess(`Daraja o'chirildi — ${name}`);
-    else showError("O'chirishda xatolik yuz berdi");
+    if (ok) showSuccess(t("Daraja o'chirildi — {name}", { name }));
+    else showError(t("O'chirishda xatolik yuz berdi"));
   }
 
   return (
@@ -112,7 +114,7 @@ export default function CourseDetail({ id }: { id: number }) {
                 : "bg-secondary/60 text-foreground hover:bg-secondary"
             }`}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </div>
@@ -125,7 +127,7 @@ export default function CourseDetail({ id }: { id: number }) {
               className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
             >
               <svg className="icon icon-sm"><use href="#i-plus" /></svg>
-              <span>Daraja qo&apos;shish</span>
+              <span>{t("Daraja qo'shish")}</span>
             </Link>
           </div>
 
@@ -135,9 +137,9 @@ export default function CourseDetail({ id }: { id: number }) {
                 <thead className="bg-secondary/40">
                   <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="text-left px-4 py-3 w-16">№</th>
-                    <th className="text-left px-4 py-3">Turlari</th>
-                    <th className="text-left px-4 py-3 w-48">Rang</th>
-                    <th className="text-right px-4 py-3 w-24">Action</th>
+                    <th className="text-left px-4 py-3">{t("Turlari")}</th>
+                    <th className="text-left px-4 py-3 w-48">{t("Rang")}</th>
+                    <th className="text-right px-4 py-3 w-24">{t("Action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,14 +155,14 @@ export default function CourseDetail({ id }: { id: number }) {
                           <Link
                             href={`/offline-courses/${course.id}/level-edit/${lvl.id}`}
                             className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary"
-                            title="Tahrirlash"
+                            title={t("Tahrirlash")}
                           >
                             <svg className="icon icon-xs"><use href="#i-edit" /></svg>
                           </Link>
                           <button
                             onClick={() => setDeleteTarget(lvl)}
                             className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                            title="O'chirish"
+                            title={t("O'chirish")}
                           >
                             <svg className="icon icon-xs"><use href="#i-trash" /></svg>
                           </button>
@@ -171,7 +173,7 @@ export default function CourseDetail({ id }: { id: number }) {
                   {course.levels.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                        Daraja qo&apos;shilmagan
+                        {t("Daraja qo'shilmagan")}
                       </td>
                     </tr>
                   )}
@@ -217,7 +219,7 @@ export default function CourseDetail({ id }: { id: number }) {
           kind="books"
           columnLabel="Kitob nomi"
           extraLabel="Muallif"
-          emptyText="Kitob qo'shilmagan"
+          emptyText={t("Kitob qo'shilmagan")}
           items={course.books ?? []}
           onAdd={(data) => addListItem(course.id, "books", data)}
           onDelete={(itemId) => deleteListItem(course.id, "books", itemId)}
@@ -229,7 +231,7 @@ export default function CourseDetail({ id }: { id: number }) {
           kind="topics"
           columnLabel="Mavzu"
           extraLabel="Izoh"
-          emptyText="Mavzu qo'shilmagan"
+          emptyText={t("Mavzu qo'shilmagan")}
           items={course.topics ?? []}
           onAdd={(data) => addListItem(course.id, "topics", data)}
           onDelete={(itemId) => deleteListItem(course.id, "topics", itemId)}
@@ -238,7 +240,7 @@ export default function CourseDetail({ id }: { id: number }) {
 
       {deleteTarget && (
         <DeleteConfirmModal
-          title="Darajani o'chirish"
+          title={t("Darajani o'chirish")}
           message="Quyidagi darajani o'chirmoqchimisiz:"
           name={deleteTarget.name}
           onCancel={() => setDeleteTarget(null)}
@@ -267,6 +269,7 @@ function GroupDerivedTable({
   rows: { value: string; count: number }[];
   courseName: string;
 }) {
+  const { t } = useT();
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -281,7 +284,7 @@ function GroupDerivedTable({
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
               <th className="text-left px-4 py-3 w-16">№</th>
               <th className="text-left px-4 py-3">{columnLabel}</th>
-              <th className="text-right px-4 py-3 w-32">Guruhlar soni</th>
+              <th className="text-right px-4 py-3 w-32">{t("Guruhlar soni")}</th>
             </tr>
           </thead>
           <tbody>
@@ -324,6 +327,7 @@ function CourseListTab({
   onAdd: (data: { name: string; extra: string }) => Promise<boolean>;
   onDelete: (itemId: number) => Promise<boolean>;
 }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [name, setName] = useState("");
   const [extra, setExtra] = useState("");
@@ -342,18 +346,18 @@ function CourseListTab({
     const ok = await onAdd({ name: trimmed, extra: extra.trim() });
     setBusy(false);
     if (!ok) {
-      showError("Saqlashda xatolik yuz berdi");
+      showError(t("Saqlashda xatolik yuz berdi"));
       return;
     }
     setName("");
     setExtra("");
-    showSuccess(`Qo'shildi — ${trimmed}`);
+    showSuccess(t("Qo'shildi — {trimmed}", { trimmed }));
   }
 
   async function remove(item: CourseListItem) {
     const ok = await onDelete(item.id);
-    if (ok) showSuccess(`O'chirildi — ${item.name}`);
-    else showError("O'chirishda xatolik yuz berdi");
+    if (ok) showSuccess(t("O'chirildi — {name}", { name: item.name }));
+    else showError(t("O'chirishda xatolik yuz berdi"));
   }
 
   return (
@@ -388,7 +392,7 @@ function CourseListTab({
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-60 disabled:pointer-events-none"
         >
           <svg className="icon icon-sm"><use href="#i-plus" /></svg>
-          <span>{busy ? "Saqlanmoqda…" : "Qo'shish"}</span>
+          <span>{busy ? t("Saqlanmoqda…") : t("Qo'shish")}</span>
         </button>
       </div>
 
@@ -400,7 +404,7 @@ function CourseListTab({
                 <th className="text-left px-4 py-3 w-16">№</th>
                 <th className="text-left px-4 py-3">{columnLabel}</th>
                 <th className="text-left px-4 py-3 w-64">{extraLabel}</th>
-                <th className="text-right px-4 py-3 w-24">Action</th>
+                <th className="text-right px-4 py-3 w-24">{t("Action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -414,7 +418,7 @@ function CourseListTab({
                     <button
                       onClick={() => remove(it)}
                       className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 inline-flex items-center justify-center text-rose-500"
-                      title="O'chirish"
+                      title={t("O'chirish")}
                     >
                       <svg className="icon icon-xs"><use href="#i-trash" /></svg>
                     </button>

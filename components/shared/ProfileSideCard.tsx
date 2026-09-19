@@ -136,7 +136,7 @@ export default function ProfileSideCard({
 
           {badge && (
             <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-white shadow ${badge.cls}`}>
-              {badge.label}
+              {t(badge.label)}
             </span>
           )}
 
@@ -179,7 +179,7 @@ export default function ProfileSideCard({
                 <a
                   key={a.key}
                   href={a.href}
-                  title={a.title}
+                  title={t(a.title)}
                   className={`h-9 w-9 rounded-full inline-flex items-center justify-center ${a.cls}`}
                 >
                   {a.icon}
@@ -189,7 +189,7 @@ export default function ProfileSideCard({
                   key={a.key}
                   type="button"
                   onClick={a.onClick}
-                  title={a.title}
+                  title={t(a.title)}
                   className={`h-9 w-9 rounded-full inline-flex items-center justify-center ${a.cls}`}
                 >
                   {a.icon}
@@ -210,9 +210,9 @@ export default function ProfileSideCard({
                 {s.icon}
               </span>
               <div className="flex-1 min-w-0 text-left">
-                <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                <div className="text-[11px] text-muted-foreground">{t(s.label)}</div>
                 <div className={`text-[14px] font-semibold tabular-nums ${s.valueCls ?? ""}`}>{s.value}</div>
-                {s.hint && <div className="text-[11px] text-muted-foreground tabular-nums">{s.hint}</div>}
+                {s.hint && <div className="text-[11px] text-muted-foreground tabular-nums">{t(s.hint)}</div>}
               </div>
             </li>
           ))}

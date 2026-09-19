@@ -10,6 +10,7 @@ import { useBranches } from "@/hooks/useBranches";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { useOfflineCourses, type OfflineCourse } from "./OfflineCoursesProvider";
+import { useT } from "@/components/shared/Language";
 
 // Oflayn kurslar ro'yxati (crm-akademiya #view-offline-courses / renderOfflineCourses).
 // Qidiruv nom bo'yicha filtrlaydi; sahifalash haqiqiy. "+" tugmasi va kurs
@@ -84,6 +85,7 @@ function branchCells(course: OfflineCourse, branchIds: number[]): (string | numb
 }
 
 export default function OfflineCoursesList() {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { courses, loading, deleteCourse, reload } = useOfflineCourses();
@@ -129,7 +131,7 @@ export default function OfflineCoursesList() {
     try {
       const rows = parseCsv(await file.text());
       if (rows.length < 2) {
-        showError("Faylda sarlavhadan boshqa qator yo'q");
+        showError(t("Faylda sarlavhadan boshqa qator yo'q"));
         return;
       }
       // Filial narx ustunlari SARLAVHA QATORIDAN o'qiladi. Ilgari sarlavha
@@ -156,7 +158,7 @@ export default function OfflineCoursesList() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Import qilinmadi");
+        showError(t(data.error || "Import qilinmadi"));
         return;
       }
       await reload();
@@ -164,11 +166,11 @@ export default function OfflineCoursesList() {
       const skipped = (data.skipped as { reason: string }[]).length;
       showSuccess(
         skipped > 0
-          ? `${data.created} ta kurs qo'shildi, ${skipped} tasi o'tkazib yuborildi`
-          : `${data.created} ta kurs qo'shildi`,
+          ? t("{created} ta kurs qo'shildi, {skipped} tasi o'tkazib yuborildi", { created: data.created, skipped })
+          : t("{created} ta kurs qo'shildi", { created: data.created }),
       );
     } catch {
-      showError("Faylni o'qib bo'lmadi");
+      showError(t("Faylni o'qib bo'lmadi"));
     } finally {
       setImporting(false);
     }
@@ -179,7 +181,7 @@ export default function OfflineCoursesList() {
     const csv = [headers, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     downloadBlob(blob, `oflayn_kurslar_${dateStamp()}.csv`);
-    showSuccess(`CSV yuklab olindi — ${filtered.length} ta yozuv`);
+    showSuccess(t("CSV yuklab olindi — {filtered} ta yozuv", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
@@ -210,7 +212,7 @@ export default function OfflineCoursesList() {
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${headRow}</thead><tbody>${bodyRows}</tbody></table></body></html>`;
     const blob = new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" });
     downloadBlob(blob, `oflayn_kurslar_${dateStamp()}.xls`);
-    showSuccess(`Excel yuklab olindi — ${filtered.length} ta yozuv`);
+    showSuccess(t("Excel yuklab olindi — {filtered} ta yozuv", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
@@ -219,8 +221,8 @@ export default function OfflineCoursesList() {
     const name = deleteTarget.name;
     const ok = await deleteCourse(deleteTarget.id);
     setDeleteTarget(null);
-    if (ok) showSuccess(`Kurs o'chirildi — ${name}`);
-    else showError("O'chirishda xatolik yuz berdi");
+    if (ok) showSuccess(t("Kurs o'chirildi — {name}", { name }));
+    else showError(t("O'chirishda xatolik yuz berdi"));
   }
 
   return (
@@ -234,7 +236,7 @@ export default function OfflineCoursesList() {
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
           <svg className="icon icon-sm"><use href="#i-plus" /></svg>
-          <span>Kurs qo&apos;shish</span>
+          <span>{t("Kurs qo'shish")}</span>
         </Link>
         <div className="flex-1" />
         <div className="relative w-64">
@@ -243,7 +245,7 @@ export default function OfflineCoursesList() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             type="text"
-            placeholder="Qidirish"
+            placeholder={t("Qidirish")}
             className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
@@ -263,7 +265,7 @@ export default function OfflineCoursesList() {
           <button
             onClick={() => setMoreOpen((o) => !o)}
             className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary"
-            title="Amallar"
+            title={t("Amallar")}
           >
             <svg className="icon icon-sm"><use href="#i-more-vertical" /></svg>
           </button>
@@ -275,15 +277,15 @@ export default function OfflineCoursesList() {
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors disabled:opacity-60"
               >
                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary"><svg className="icon icon-xs"><use href="#i-file-plus" /></svg></span>
-                <span>{importing ? "Import qilinmoqda…" : "Import (CSV)"}</span>
+                <span>{importing ? t("Import qilinmoqda…") : t("Import (CSV)")}</span>
               </button>
               <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                <span>CSV faylini yuklab olish</span>
+                <span>{t("CSV faylini yuklab olish")}</span>
               </button>
               <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                <span>EXCEL faylini yuklab olish</span>
+                <span>{t("EXCEL faylini yuklab olish")}</span>
               </button>
             </div>
           )}
@@ -293,7 +295,7 @@ export default function OfflineCoursesList() {
       {/* Total badge */}
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
         </div>
       </div>
@@ -305,8 +307,8 @@ export default function OfflineCoursesList() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="w-10" />
-                <th className="text-left px-3 py-3">Sarlavha</th>
-                <th className="text-left px-3 py-3 w-48">Rang</th>
+                <th className="text-left px-3 py-3">{t("Sarlavha")}</th>
+                <th className="text-left px-3 py-3 w-48">{t("Rang")}</th>
                 <th className="text-right px-3 py-3 w-24" />
               </tr>
             </thead>
@@ -317,7 +319,7 @@ export default function OfflineCoursesList() {
                     <Link
                       href={`/offline-courses/${c.id}`}
                       className="h-7 w-7 rounded-md hover:bg-secondary/80 inline-flex items-center justify-center text-muted-foreground"
-                      title="Tafsilotlar"
+                      title={t("Tafsilotlar")}
                     >
                       <svg className="icon icon-xs"><use href="#i-plus" /></svg>
                     </Link>
@@ -338,14 +340,14 @@ export default function OfflineCoursesList() {
                       <Link
                         href={`/offline-courses/${c.id}/edit`}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary"
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                       >
                         <svg className="icon icon-xs"><use href="#i-edit" /></svg>
                       </Link>
                       <button
                         onClick={() => setDeleteTarget(c)}
                         className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                        title="O'chirish"
+                        title={t("O'chirish")}
                       >
                         <svg className="icon icon-xs"><use href="#i-trash" /></svg>
                       </button>
@@ -375,7 +377,7 @@ export default function OfflineCoursesList() {
 
       {deleteTarget && (
         <DeleteConfirmModal
-          title="Kursni o'chirish"
+          title={t("Kursni o'chirish")}
           message="Quyidagi kursni o'chirmoqchimisiz:"
           name={deleteTarget.name}
           onCancel={() => setDeleteTarget(null)}

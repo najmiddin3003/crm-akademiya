@@ -1,3 +1,5 @@
+"use client";
+
 import type { ButtonHTMLAttributes } from "react";
 import type { LucideIcon } from "lucide-react";
 

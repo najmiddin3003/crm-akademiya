@@ -17,6 +17,7 @@ import type { Penalty } from "@/lib/penalties";
 import type { CashboxName } from "@/lib/cashboxes";
 import type { TransactionType } from "@/lib/transactionTypes";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Kirim chiqim (sidebar: Moliya > Kirim chiqim, href
 // /finance-cashflow). 4 tab: Kirim/Chiqim — HAQIQIY MongoDB `transactions`
@@ -75,6 +76,7 @@ function toIsoDay(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 export default function FinanceAnalyticsPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   // "To'lov turi" filtri Sozlamalar → Moliya → To'lov turlaridan.
   const { methods: paymentMethods } = usePaymentMethods();
@@ -107,8 +109,8 @@ export default function FinanceAnalyticsPage() {
     fetch("/api/transaction-types").then((r) => r.json()).then((d) => {
       if (!d.ok) return;
       const all = d.types as TransactionType[];
-      setIncomeCats(Array.from(new Set(all.filter((t) => t.mainType === "kirim").map((t) => t.name))));
-      setExpenseCats(Array.from(new Set(all.filter((t) => t.mainType === "chiqim").map((t) => t.name))));
+      setIncomeCats(Array.from(new Set(all.filter((tv) => tv.mainType === "kirim").map((tv) => tv.name))));
+      setExpenseCats(Array.from(new Set(all.filter((tv) => tv.mainType === "chiqim").map((tv) => tv.name))));
     });
   }, []);
 
@@ -155,17 +157,17 @@ export default function FinanceAnalyticsPage() {
       const inWindow = bonuses.filter(
         (b) => inRange(parseCreatedAt(b.createdAt), dateRange) && (selectedCashboxId == null || b.cashboxId === selectedCashboxId),
       );
-      return BONUS_TYPES.map((t) => ({
-        label: t.label,
-        value: inWindow.filter((b) => b.type === t.value).reduce((s, b) => s + b.amount, 0),
+      return BONUS_TYPES.map((tv) => ({
+        label: tv.label,
+        value: inWindow.filter((b) => b.type === tv.value).reduce((s, b) => s + b.amount, 0),
       }));
     }
     const inWindow = penalties.filter(
       (p) => p.status !== "cancelled" && inRange(parseCreatedAt(p.createdAt), dateRange) && (selectedCashboxId == null || p.cashboxId === selectedCashboxId),
     );
-    return PENALTY_TYPES.map((t) => ({
-      label: t.label,
-      value: inWindow.filter((p) => p.type === t.value).reduce((s, p) => s + p.amount, 0),
+    return PENALTY_TYPES.map((tv) => ({
+      label: tv.label,
+      value: inWindow.filter((p) => p.type === tv.value).reduce((s, p) => s + p.amount, 0),
     }));
   }, [tab, bonuses, penalties, catRows, incomeCats, expenseCats, dateRange, selectedCashboxId]);
 
@@ -181,7 +183,7 @@ export default function FinanceAnalyticsPage() {
     return () => document.removeEventListener("click", onDocClick);
   }, [exportMenuOpen]);
 
-  const tabLabel = TABS.find((t) => t.key === tab)?.label ?? tab;
+  const tabLabel = TABS.find((tv) => tv.key === tab)?.label ?? tab;
 
   function exportCsv() {
     try {
@@ -197,9 +199,9 @@ export default function FinanceAnalyticsPage() {
       a.download = `${tab}-${date}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showSuccess("CSV fayl yuklab olindi");
+      showSuccess(t("CSV fayl yuklab olindi"));
     } catch {
-      showError("CSV faylni yuklab bo'lmadi");
+      showError(t("CSV faylni yuklab bo'lmadi"));
     }
   }
 
@@ -215,9 +217,9 @@ export default function FinanceAnalyticsPage() {
       XLSX.utils.book_append_sheet(workbook, worksheet, tabLabel);
       const date = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(workbook, `${tab}-${date}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
@@ -225,26 +227,26 @@ export default function FinanceAnalyticsPage() {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="inline-flex items-center rounded-lg border border-border bg-card p-1">
-          {TABS.map((t) => (
+          {TABS.map((tv) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`h-9 px-4 rounded-md text-sm font-medium ${tab === t.key ? t.activeClass : "text-muted-foreground hover:bg-secondary"}`}
+              key={tv.key}
+              onClick={() => setTab(tv.key)}
+              className={`h-9 px-4 rounded-md text-sm font-medium ${tab === tv.key ? tv.activeClass : "text-muted-foreground hover:bg-secondary"}`}
             >
-              {t.label}
+              {t(tv.label)}
             </button>
           ))}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kassa" clearable size="sm" />
+          <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={t("Kassa")} clearable size="sm" />
           <DateRangePicker value={dateRange} onChange={setDateRange} className="w-52" />
-          <Select value={payType} onChange={(v) => setPayType(v)} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="To'lov turi" clearable size="sm" />
+          <Select value={payType} onChange={(v) => setPayType(v)} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder={t("To'lov turi")} clearable size="sm" />
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setExportMenuOpen((o) => !o)}
               className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary text-muted-foreground"
-              title="Sozlama"
+              title={t("Sozlama")}
             >
               <MoreVertical className="w-4 h-4" />
             </button>
@@ -258,7 +260,7 @@ export default function FinanceAnalyticsPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <FileText className="icon icon-sm" />
                   </span>
-                  <span>CSV faylini yuklab olish</span>
+                  <span>{t("CSV faylini yuklab olish")}</span>
                 </button>
                 <button
                   type="button"
@@ -268,7 +270,7 @@ export default function FinanceAnalyticsPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <FileSpreadsheet className="icon icon-sm" />
                   </span>
-                  <span>EXCEL faylini yuklab olish</span>
+                  <span>{t("EXCEL faylini yuklab olish")}</span>
                 </button>
               </div>
             )}
@@ -295,8 +297,8 @@ export default function FinanceAnalyticsPage() {
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-4 py-3 whitespace-nowrap w-14">№</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Turlari</th>
-                  <th className="text-right px-4 py-3 whitespace-nowrap">Summa</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Turlari")}</th>
+                  <th className="text-right px-4 py-3 whitespace-nowrap">{t("Summa")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -304,21 +306,21 @@ export default function FinanceAnalyticsPage() {
                   <tr key={s.label} className="border-b border-border/50">
                     <td className="px-4 py-3 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
                     <td className="px-4 py-3 text-[13px] font-medium" style={{ color: s.color }}>
-                      {s.label}
+                      {t(s.label)}
                     </td>
                     <td className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold">{fmtUZS(s.value)}</td>
                   </tr>
                 ))}
                 {slices.every((s) => s.value === 0) && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-10 text-center text-sm text-muted-foreground">Ma&apos;lumot topilmadi</td>
+                    <td colSpan={3} className="px-4 py-10 text-center text-sm text-muted-foreground">{t("Ma'lumot topilmadi")}</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
           <div className="flex items-center justify-between px-4 py-3 border-t border-border font-semibold text-[13px]">
-            <span>Jami</span>
+            <span>{t("Jami")}</span>
             <span className="tabular-nums">{fmtUZS(total)}</span>
           </div>
         </div>

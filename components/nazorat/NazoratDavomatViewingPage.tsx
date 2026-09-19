@@ -10,6 +10,7 @@ import { pupilFullName } from "@/lib/pupilsData";
 import type { TurnstileIoRecord } from "@/lib/turnstileIo";
 import { dateToIso, isoToLabel } from "./useNazoratAttendance";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Davomat > "O'quvchilarni davomatini ko'rish" (/nazorat-davomat/viewing).
 //
@@ -41,6 +42,7 @@ import Select from "@/components/ui/Select";
 type Tab = "keldi" | "ketdi";
 
 export default function NazoratDavomatViewingPage() {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const studentId = searchParams.get("studentId");
@@ -131,7 +133,7 @@ export default function NazoratDavomatViewingPage() {
             className="inline-flex items-center h-9 px-6 rounded-md text-sm font-medium transition-colors"
             style={tab === "keldi" ? { background: "#10b981", color: "#fff" } : { background: "#10b98115", color: "#059669" }}
           >
-            Keldi
+            {t("Keldi")}
           </button>
           <button
             type="button"
@@ -139,7 +141,7 @@ export default function NazoratDavomatViewingPage() {
             className="inline-flex items-center h-9 px-6 rounded-md text-sm font-medium transition-colors"
             style={tab === "ketdi" ? { background: "#f43f5e", color: "#fff" } : { background: "#f43f5e15", color: "#e11d48" }}
           >
-            Ketdi
+            {t("Ketdi")}
           </button>
         </div>
 
@@ -157,12 +159,12 @@ export default function NazoratDavomatViewingPage() {
               value=""
               onChange={(v) => { if (v) router.push(`/nazorat-davomat/viewing?student=${encodeURIComponent(v)}`); }}
               options={studentOptions.map((name) => ({ value: name, label: name }))}
-              placeholder="O'quvchi"
+              placeholder={t("O'quvchi")}
               searchPlaceholder="O'quvchini qidirish"
               className="w-56"
             />
           )}
-          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
+          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Oraliqni tanlang")} />
         </div>
       </div>
 
@@ -170,7 +172,7 @@ export default function NazoratDavomatViewingPage() {
       <div className="rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -181,9 +183,9 @@ export default function NazoratDavomatViewingPage() {
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
                 <th className="px-5 py-3 text-left">ID</th>
-                <th className="px-5 py-3 text-left">To&apos;liq ismi</th>
-                <th className="px-5 py-3 text-left">Kelish sanasi</th>
-                <th className="px-5 py-3 text-left">Ketish sanasi</th>
+                <th className="px-5 py-3 text-left">{t("To'liq ismi")}</th>
+                <th className="px-5 py-3 text-left">{t("Kelish sanasi")}</th>
+                <th className="px-5 py-3 text-left">{t("Ketish sanasi")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -215,7 +217,7 @@ export default function NazoratDavomatViewingPage() {
             </h3>
             {!busy && (
               <p className="text-[13px] text-muted-foreground max-w-sm">
-                Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.
+                {t("Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring.")}
               </p>
             )}
           </div>

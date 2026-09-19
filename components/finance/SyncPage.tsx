@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { ReconcileReport, SyncKind, SyncRunDoc, SyncTask } from "@/lib/sync/types";
 import { toUz } from "@/lib/uzTime";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Sinxronizatsiya (sidebar: Moliya > Sinxronizatsiya, href
 // /finance-sync).
@@ -86,6 +87,7 @@ function summarize(r: ReconcileReport): string {
 }
 
 export default function SyncPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,11 +99,11 @@ export default function SyncPage() {
       const res = await fetch("/api/sync");
       const d = (await res.json()) as StatusResponse;
       if (d.ok) setData(d);
-      else showError("Holat o'qilmadi");
+      else showError(t("Holat o'qilmadi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     }
-  }, [showError]);
+  }, [showError, t]);
 
   // Birinchi yuklash — loyihadagi odatiy naqsh (PlannedExpensesPage kabi):
   // effekt ichida setState sinxron chaqirilmaydi, faqat promise javob
@@ -132,20 +134,20 @@ export default function SyncPage() {
       });
       const d = await res.json();
       if (!d.ok) {
-        showError(d.error || "Amal bajarilmadi");
+        showError(t(d.error || "Amal bajarilmadi"));
       } else if (action === "test") {
-        if (d.bot?.ok) showSuccess(`Bot ishlayapti: @${d.bot.username}`);
-        else showError(d.bot?.error || "Bot javob bermadi");
+        if (d.bot?.ok) showSuccess(t("Bot ishlayapti: @{username}", { username: d.bot.username }));
+        else showError(t(d.bot?.error || "Bot javob bermadi"));
       } else if (action === "retry") {
-        showSuccess(`Qayta yuborildi: ${d.flush.succeeded} ta, xato: ${d.flush.failed} ta`);
+        showSuccess(t("Qayta yuborildi: {succeeded} ta, xato: {failed} ta", { succeeded: d.flush.succeeded, failed: d.flush.failed }));
       } else {
         const added = (d.reports as ReconcileReport[]).reduce((s, r) => s + r.added, 0);
         const updated = (d.reports as ReconcileReport[]).reduce((s, r) => s + r.updated, 0);
-        showSuccess(added + updated === 0 ? "Hammasi sinxron" : `${added} qo'shildi, ${updated} yangilandi`);
+        showSuccess(added + updated === 0 ? "Hammasi sinxron" : t("{added} qo'shildi, {updated} yangilandi", { added, updated }));
       }
       await load();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setBusy(null);
     }
@@ -163,7 +165,7 @@ export default function SyncPage() {
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-[18px] font-semibold">Sinxronizatsiya</h1>
+        <h1 className="text-[18px] font-semibold">{t("Sinxronizatsiya")}</h1>
         <div className="inline-flex items-center gap-2">
           <button
             onClick={() => act("test")}
@@ -171,7 +173,7 @@ export default function SyncPage() {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
           >
             <Send className="w-4 h-4" />
-            Ulanishni tekshirish
+            {t("Ulanishni tekshirish")}
           </button>
           <button
             onClick={() => act("retry")}
@@ -179,7 +181,7 @@ export default function SyncPage() {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
           >
             <RotateCw className={`w-4 h-4 ${busy === "retry" ? "animate-spin" : ""}`} />
-            Qayta yuborish
+            {t("Qayta yuborish")}
           </button>
           <button
             onClick={() => act("reconcile")}
@@ -187,7 +189,7 @@ export default function SyncPage() {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 ${busy === "reconcile" ? "animate-spin" : ""}`} />
-            To&apos;liq tekshirish
+            {t("To'liq tekshirish")}
           </button>
         </div>
       </div>
@@ -213,11 +215,11 @@ export default function SyncPage() {
             )}
             <div className="min-w-0">
               <p className="text-[14px] font-semibold">
-                {healthy ? "Hammasi sinxron" : "E'tibor talab qilinadi"}
+                {healthy ? t("Hammasi sinxron") : t("E'tibor talab qilinadi")}
               </p>
               <p className="text-[13px] text-muted-foreground mt-0.5">
                 Oxirgi tekshiruv: {fmtStamp(lastRun?.finishedAt ?? null)}
-                {lastRun ? ` · ${lastRun.trigger === "cron" ? "jadval bo'yicha" : "qo'lda"}` : ""}
+                {lastRun ? ` · ${lastRun.trigger === "cron" ? t("jadval bo'yicha") : t("qo'lda")}` : ""}
               </p>
               {issues.length > 0 && (
                 <ul className="mt-2 space-y-1">
@@ -234,11 +236,11 @@ export default function SyncPage() {
           {/* Raqamlar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: "Navbatda", value: counts?.pending ?? 0, tone: "text-amber-600" },
-              { label: "Xatolik bilan", value: counts?.failed ?? 0, tone: "text-rose-600" },
-              { label: "Yuborilgan", value: counts?.done ?? 0, tone: "text-emerald-600" },
+              { label: t("Navbatda"), value: counts?.pending ?? 0, tone: "text-amber-600" },
+              { label: t("Xatolik bilan"), value: counts?.failed ?? 0, tone: "text-rose-600" },
+              { label: t("Yuborilgan"), value: counts?.done ?? 0, tone: "text-emerald-600" },
               {
-                label: "Eng eski kutayotgan",
+                label: t("Eng eski kutayotgan"),
                 value: counts?.oldestPendingAt ? fmtStamp(counts.oldestPendingAt) : "—",
                 tone: "text-muted-foreground",
                 small: true,
@@ -246,7 +248,7 @@ export default function SyncPage() {
             ].map((c) => (
               <div key={c.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {c.label}
+                  {t(c.label)}
                 </p>
                 <p className={`mt-1 font-bold tabular-nums ${c.tone} ${c.small ? "text-[13px]" : "text-[22px]"}`}>
                   {c.value}
@@ -258,15 +260,15 @@ export default function SyncPage() {
           {/* Manzillar */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {KINDS.map((kind) => {
-              const t = data?.config.targets[kind];
-              if (!t) return null;
+              const tv = data?.config.targets[kind];
+              if (!tv) return null;
               return (
                 <div key={kind} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                  <p className="text-[14px] font-semibold">{t.label}</p>
-                  <p className="text-[12px] text-muted-foreground mt-0.5">Varaq: {t.tabName}</p>
+                  <p className="text-[14px] font-semibold">{t(tv.label)}</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">Varaq: {tv.tabName}</p>
                   <div className="flex items-center gap-4 mt-3">
                     <span className="inline-flex items-center gap-1.5 text-[13px]">
-                      {t.sheetReady ? (
+                      {tv.sheetReady ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       ) : (
                         <XCircle className="w-4 h-4 text-rose-500" />
@@ -278,20 +280,20 @@ export default function SyncPage() {
                         Oyliklar bundan ham nozik: u guruhga BORADI, lekin
                         oyda ikki marta xulosa bo'lib — shuni aytamiz. */}
                     <span className="inline-flex items-center gap-1.5 text-[13px]">
-                      {!t.telegramUsed ? (
+                      {!tv.telegramUsed ? (
                         <span className="text-muted-foreground">
-                          Telegram: {t.telegramNote || "kerak emas"}
+                          Telegram: {tv.telegramNote || "kerak emas"}
                         </span>
                       ) : (
                         <>
-                          {t.telegramReady ? (
+                          {tv.telegramReady ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                           ) : (
                             <XCircle className="w-4 h-4 text-rose-500" />
                           )}
                           Telegram
-                          {t.threadId && (
-                            <span className="text-muted-foreground">· topic {t.threadId}</span>
+                          {tv.threadId && (
+                            <span className="text-muted-foreground">· topic {tv.threadId}</span>
                           )}
                         </>
                       )}
@@ -305,9 +307,9 @@ export default function SyncPage() {
           {/* Muammoli yozuvlar */}
           <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
             <div className="px-4 pt-4 pb-2">
-              <p className="text-[14px] font-semibold">Yuborilmagan yozuvlar</p>
+              <p className="text-[14px] font-semibold">{t("Yuborilmagan yozuvlar")}</p>
               <p className="text-[12px] text-muted-foreground mt-0.5">
-                Bular yo&apos;qolmagan — navbatda turibdi va keyingi urinishda yuboriladi.
+                {t("Bular yo'qolmagan — navbatda turibdi va keyingi urinishda yuboriladi.")}
               </p>
             </div>
             <div className="table-scroll">
@@ -315,12 +317,12 @@ export default function SyncPage() {
                 <thead>
                   <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="text-left px-3 py-3 whitespace-nowrap w-20">ID</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Oqim</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Hodisa</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Sheets</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Telegram</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Urinish</th>
-                    <th className="text-left px-3 py-3">Xato</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Oqim")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Hodisa")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sheets")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telegram")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Urinish")}</th>
+                    <th className="text-left px-3 py-3">{t("Xato")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -342,7 +344,7 @@ export default function SyncPage() {
                   {problems.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                        Navbat bo&apos;sh — hamma yozuv yuborilgan
+                        {t("Navbat bo'sh — hamma yozuv yuborilgan")}
                       </td>
                     </tr>
                   )}
@@ -354,19 +356,19 @@ export default function SyncPage() {
           {/* Tekshiruvlar tarixi */}
           <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
             <div className="px-4 pt-4 pb-2">
-              <p className="text-[14px] font-semibold">Tekshiruvlar tarixi</p>
+              <p className="text-[14px] font-semibold">{t("Tekshiruvlar tarixi")}</p>
             </div>
             <div className="table-scroll">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Vaqt</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
-                    <th className="text-left px-3 py-3 whitespace-nowrap">Navbat</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Vaqt")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kim")}</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap">{t("Navbat")}</th>
                     {KINDS.map((k) => (
                       <th key={k} className="text-left px-3 py-3">{KIND_LABEL[k]}</th>
                     ))}
-                    <th className="text-left px-3 py-3 whitespace-nowrap w-20">Holat</th>
+                    <th className="text-left px-3 py-3 whitespace-nowrap w-20">{t("Holat")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -374,7 +376,7 @@ export default function SyncPage() {
                     return (
                       <tr key={r.id} className="border-b border-border/50">
                         <td className="px-3 py-3 text-[13px] whitespace-nowrap">{fmtStamp(r.finishedAt || r.startedAt)}</td>
-                        <td className="px-3 py-3 text-[13px]">{r.trigger === "cron" ? "Jadval" : "Qo'lda"}</td>
+                        <td className="px-3 py-3 text-[13px]">{r.trigger === "cron" ? t("Jadval") : t("Qo'lda")}</td>
                         <td className="px-3 py-3 text-[13px] tabular-nums">
                           {r.flushed}
                           {r.flushFailed > 0 && <span className="text-rose-600"> / {r.flushFailed} xato</span>}
@@ -392,7 +394,7 @@ export default function SyncPage() {
                   {runs.length === 0 && (
                     <tr>
                       <td colSpan={3 + KINDS.length + 1} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                        Hali tekshiruv o&apos;tkazilmagan
+                        {t("Hali tekshiruv o'tkazilmagan")}
                       </td>
                     </tr>
                   )}

@@ -17,6 +17,7 @@ import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { uzDateIso } from "@/lib/uzTime";
 import { groupAvgPct, imPct, imTier, type GroupExam } from "@/lib/imtihon";
 import TierBadge from "./TierBadge";
+import { useT } from "@/components/shared/Language";
 
 // Imtihon → "Natija kiritish" — o'ng tomondan ochiladigan panel.
 //
@@ -52,6 +53,7 @@ export default function GroupExamDrawer({
   onClose: () => void;
   onSaved: (exam: GroupExam) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
 
@@ -84,8 +86,8 @@ export default function GroupExamDrawer({
   const teacherOptions = useMemo(
     () =>
       teachers
-        .filter((t) => course && teachesCourse(t.kurs, course))
-        .map((t) => ({ value: String(t.id), label: t.name, sub: t.phone || undefined })),
+        .filter((tv) => course && teachesCourse(tv.kurs, course))
+        .map((tv) => ({ value: String(tv.id), label: tv.name, sub: tv.phone || undefined })),
     [teachers, course],
   );
 
@@ -97,9 +99,9 @@ export default function GroupExamDrawer({
           value: String(g.id),
           label: groupLabel(g),
           sub: g.teacher ? `Ustoz: ${g.teacher}` : undefined,
-          hint: `${g.studentIds?.length ?? 0} o'quvchi`,
+          hint: t("{studentIds} o'quvchi", { studentIds: g.studentIds?.length ?? 0 }),
         })),
-    [groups, course],
+    [groups, course, t],
   );
 
   const studentOptions = useMemo(
@@ -119,17 +121,17 @@ export default function GroupExamDrawer({
         const list: Pupil[] = d.ok ? (d.students as Pupil[]) : [];
         setLoaded({ groupId, list });
         setPicked(list.map((p) => String(p.id)));
-        if (!d.ok) showError(d.error || "O'quvchilar yuklanmadi");
+        if (!d.ok) showError(t(d.error || "O'quvchilar yuklanmadi"));
       })
       .catch(() => {
         if (cancelled) return;
         setLoaded({ groupId, list: [] });
-        showError("Serverga ulanib bo'lmadi");
+        showError(t("Serverga ulanib bo'lmadi"));
       });
     return () => {
       cancelled = true;
     };
-  }, [groupId, showError]);
+  }, [groupId, showError, t]);
 
   function changeCourse(v: string) {
     setCourse(v);
@@ -147,8 +149,8 @@ export default function GroupExamDrawer({
     // o'zi to'ladi (qo'lda tanlangani ustidan yozilmaydi).
     if (!teacherId && v) {
       const g = groups.find((x) => String(x.id) === v);
-      const t = g && teachers.find((x) => norm(x.name) === norm(g.teacher || ""));
-      if (t && teacherOptions.some((o) => o.value === String(t.id))) setTeacherId(String(t.id));
+      const tv = g && teachers.find((x) => norm(x.name) === norm(g.teacher || ""));
+      if (tv && teacherOptions.some((o) => o.value === String(tv.id))) setTeacherId(String(tv.id));
     }
   }
 
@@ -169,19 +171,19 @@ export default function GroupExamDrawer({
   const avg = groupAvgPct(filled.map((x) => ({ pct: x.pct })));
 
   async function save() {
-    if (!date) return showError("Imtihon sanasini tanlang");
-    if (!course) return showError("Fan yo'nalishini tanlang");
-    const teacher = teachers.find((t) => String(t.id) === teacherId);
-    if (!teacher) return showError("Ustozni tanlang");
-    if (!groupId) return showError("Guruhni tanlang");
-    if (rows.length === 0) return showError("Kamida bitta o'quvchi tanlang");
-    if (totalNum <= 0) return showError("Savollar sonini kiriting");
+    if (!date) return showError(t("Imtihon sanasini tanlang"));
+    if (!course) return showError(t("Fan yo'nalishini tanlang"));
+    const teacher = teachers.find((tv) => String(tv.id) === teacherId);
+    if (!teacher) return showError(t("Ustozni tanlang"));
+    if (!groupId) return showError(t("Guruhni tanlang"));
+    if (rows.length === 0) return showError(t("Kamida bitta o'quvchi tanlang"));
+    if (totalNum <= 0) return showError(t("Savollar sonini kiriting"));
     for (const p of rows) {
       const raw = correct[p.id];
-      if (raw === undefined || raw === "") return showError(`${pupilFullName(p)} uchun to'g'ri javoblar sonini kiriting`);
+      if (raw === undefined || raw === "") return showError(t("{p} uchun to'g'ri javoblar sonini kiriting", { p: pupilFullName(p) }));
       const c = Math.trunc(Number(raw));
       if (!Number.isFinite(c) || c < 0 || c > totalNum) {
-        return showError(`${pupilFullName(p)}: to'g'ri javoblar 0 dan ${totalNum} gacha bo'lishi kerak`);
+        return showError(t("{p}: to'g'ri javoblar 0 dan {totalNum} gacha bo'lishi kerak", { p: pupilFullName(p), totalNum }));
       }
     }
     setSaving(true);
@@ -200,16 +202,16 @@ export default function GroupExamDrawer({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       const exam = data.exam as GroupExam;
       onSaved(exam);
-      showSuccess(`Natija saqlandi — ${exam.groupLabel} · ${exam.studentCount} o'quvchi · o'rtacha ${exam.avgPct}%`);
+      showSuccess(t("Natija saqlandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct }));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -228,16 +230,16 @@ export default function GroupExamDrawer({
     <Modal onClose={onClose} controller={modal} bare variant="drawer" size="2xl" zIndex={110} locked={saving}>
       <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
         <div className="min-w-0">
-          <h3 className="text-[16px] font-semibold">Natija kiritish</h3>
+          <h3 className="text-[16px] font-semibold">{t("Natija kiritish")}</h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            Guruh bo&apos;yicha imtihon natijasi — o&apos;zlashtirish avtomatik hisoblanadi
+            {t("Guruh bo'yicha imtihon natijasi — o'zlashtirish avtomatik hisoblanadi")}
           </p>
         </div>
         <button
           type="button"
           onClick={modal.close}
           className="h-8 w-8 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
-          title="Yopish"
+          title={t("Yopish")}
         >
           <X className="w-4 h-4" />
         </button>
@@ -245,7 +247,7 @@ export default function GroupExamDrawer({
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
         <Select
-          label="Fan yo'nalish"
+          label={t("Fan yo'nalish")}
           required
           value={course}
           onChange={changeCourse}
@@ -257,7 +259,7 @@ export default function GroupExamDrawer({
         />
 
         <Select
-          label="Ustoz"
+          label={t("Ustoz")}
           required
           value={teacherId}
           onChange={setTeacherId}
@@ -267,12 +269,12 @@ export default function GroupExamDrawer({
           disabled={!course}
           searchable
           searchPlaceholder="Ustozni qidirish"
-          emptyText="Bu fan bo'yicha ustoz yo'q"
+          emptyText={t("Bu fan bo'yicha ustoz yo'q")}
           clearable
         />
 
         <Select
-          label="Guruh"
+          label={t("Guruh")}
           required
           value={groupId}
           onChange={changeGroup}
@@ -282,11 +284,11 @@ export default function GroupExamDrawer({
           disabled={!course}
           searchable
           searchPlaceholder="Guruhni qidirish"
-          emptyText="Bu fan bo'yicha guruh yo'q"
+          emptyText={t("Bu fan bo'yicha guruh yo'q")}
         />
 
         <Select
-          label="O'quvchilar"
+          label={t("O'quvchilar")}
           required
           multiple
           values={picked}
@@ -297,15 +299,15 @@ export default function GroupExamDrawer({
           disabled={!groupId}
           searchable
           searchPlaceholder="Ism yoki telefon"
-          emptyText="Guruhda o'quvchi yo'q"
-          summary={(n, all) => `${n} ta o'quvchi tanlandi (jami ${all})`}
+          emptyText={t("Guruhda o'quvchi yo'q")}
+          summary={(n, all) => t("{n} ta o'quvchi tanlandi (jami {all})", { n, all })}
           clearable
         />
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[13px] font-medium mb-1.5">
-              Savollar soni<span className="text-red-500">*</span>
+              {t("Savollar soni")}<span className="text-red-500">*</span>
             </label>
             <input
               value={total}
@@ -319,7 +321,7 @@ export default function GroupExamDrawer({
           </div>
           <div>
             <label className="block text-[13px] font-medium mb-1.5">
-              Imtihon sanasi<span className="text-red-500">*</span>
+              {t("Imtihon sanasi")}<span className="text-red-500">*</span>
             </label>
             <DateField value={date} onChange={setDate} variant="form" />
           </div>
@@ -331,9 +333,9 @@ export default function GroupExamDrawer({
             <thead className="bg-secondary/40">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-2.5 w-12">№</th>
-                <th className="text-left px-3 py-2.5">Ism familiya</th>
-                <th className="text-left px-3 py-2.5 w-36 whitespace-nowrap">To&apos;g&apos;ri javoblar</th>
-                <th className="text-left px-3 py-2.5 w-32">O&apos;zlashtirish</th>
+                <th className="text-left px-3 py-2.5">{t("Ism familiya")}</th>
+                <th className="text-left px-3 py-2.5 w-36 whitespace-nowrap">{t("To'g'ri javoblar")}</th>
+                <th className="text-left px-3 py-2.5 w-32">{t("O'zlashtirish")}</th>
               </tr>
             </thead>
             <tbody>
@@ -347,7 +349,7 @@ export default function GroupExamDrawer({
               {!studentsLoading && rows.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
-                    {groupId ? "Tanlangan o'quvchi yo'q" : "Guruhni tanlang — o'quvchilar shu yerda chiqadi"}
+                    {groupId ? t("Tanlangan o'quvchi yo'q") : t("Guruhni tanlang — o'quvchilar shu yerda chiqadi")}
                   </td>
                 </tr>
               )}
@@ -380,7 +382,7 @@ export default function GroupExamDrawer({
                       </td>
                       <td className="px-3 py-2">
                         {pct === null ? (
-                          <span className="text-[12px] text-muted-foreground">{over ? "⚠ savoldan ko'p" : "—"}</span>
+                          <span className="text-[12px] text-muted-foreground">{over ? t("⚠ savoldan ko'p") : "—"}</span>
                         ) : (
                           <TierBadge pct={pct} />
                         )}
@@ -395,7 +397,7 @@ export default function GroupExamDrawer({
                   <td colSpan={2} className="px-3 py-2.5 text-[12px] text-muted-foreground">
                     {rows.length} ta o&apos;quvchi · {filled.length} tasi kiritildi
                   </td>
-                  <td className="px-3 py-2.5 text-[12px] font-semibold whitespace-nowrap">Guruh o&apos;rtachasi</td>
+                  <td className="px-3 py-2.5 text-[12px] font-semibold whitespace-nowrap">{t("Guruh o'rtachasi")}</td>
                   <td className="px-3 py-2.5">
                     {filled.length ? (
                       <span className={`text-[14px] font-bold tabular-nums ${imTier(avg).text}`}>{avg}%</span>
@@ -416,7 +418,7 @@ export default function GroupExamDrawer({
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15"
         >
           <BarChart3 className="w-4 h-4" />
-          Sarhisob
+          {t("Sarhisob")}
         </Link>
         <div className="flex-1" />
         <button
@@ -424,14 +426,14 @@ export default function GroupExamDrawer({
           disabled={saving}
           className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
         >
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
         <button
           onClick={save}
           disabled={saving}
           className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
         >
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </Modal>

@@ -12,6 +12,7 @@ import type { StudentRow } from "@/lib/studentsData";
 import type { FinanceContract, ContractPart } from "@/lib/financeContracts";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Shartnoma yaratish" — Moliya → Shartnoma sahifasidagi o'ng tomondan
 // ochiladigan panel. `contract` berilsa — tahrirlash (PATCH
@@ -56,6 +57,7 @@ export default function FinanceContractDrawer({
   onClose: () => void;
   onSaved: (c: FinanceContract) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const { moderators, loading: moderatorsLoading } = useModerators();
@@ -99,12 +101,12 @@ export default function FinanceContractDrawer({
   async function save() {
     const student = students.find((s) => optionOf(s) === studentOption);
     if (!student) {
-      showError("O'quvchini tanlang");
+      showError(t("O'quvchini tanlang"));
       return;
     }
     const moderator = moderators.find((m) => m.id === Number(moderatorId));
     if (!moderator) {
-      showError("Moderatorni tanlang");
+      showError(t("Moderatorni tanlang"));
       return;
     }
     setSaving(true);
@@ -128,15 +130,15 @@ export default function FinanceContractDrawer({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.contract as FinanceContract);
-      showSuccess(contract ? "Shartnoma yangilandi" : "Shartnoma qo'shildi");
+      showSuccess(contract ? t("Shartnoma yangilandi") : t("Shartnoma qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -147,7 +149,7 @@ export default function FinanceContractDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">{contract ? "Shartnomani tahrirlash" : "Shartnoma yaratish"}</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{contract ? t("Shartnomani tahrirlash") : t("Shartnoma yaratish")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
@@ -155,24 +157,24 @@ export default function FinanceContractDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <StudentSearchSelect
-            label="O'quvchi"
+            label={t("O'quvchi")}
             required
             value={studentOption}
             onChange={setStudentOption}
             options={studentOptions}
-            placeholder="O'quvchini tanlang"
+            placeholder={t("O'quvchini tanlang")}
             loading={studentsLoading}
           />
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">
-              Moderator<span className="text-red-500"> *</span>
+              {t("Moderator")}<span className="text-red-500"> *</span>
             </label>
             <Select value={moderatorId} onChange={(v) => setModeratorId(v)} options={moderators.map((m) => ({ value: String(m.id), label: m.name }))} placeholder={selectPlaceholder(moderatorsLoading, moderators.length, "Moderator qo'shilmagan")} clearable disabled={moderatorsLoading} />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -191,14 +193,14 @@ export default function FinanceContractDrawer({
                     onClick={() => removePart(part.id)}
                     disabled={parts.length <= 1}
                     className="h-7 w-7 rounded-md hover:bg-rose-500/10 hover:text-rose-600 inline-flex items-center justify-center text-muted-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-                    title="O'chirish"
+                    title={t("O'chirish")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
                   <MoneyInput
                     value={part.amount}
                     onChange={(v) => updatePart(part.id, { amount: v })}
@@ -207,7 +209,7 @@ export default function FinanceContractDrawer({
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Shartnoma sanasi</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Shartnoma sanasi")}</label>
                   <DatePicker
                     value={part.date ? new Date(part.date) : null}
                     onChange={(d) => {
@@ -219,7 +221,7 @@ export default function FinanceContractDrawer({
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
                   <input
                     value={part.comment}
                     onChange={(e) => updatePart(part.id, { comment: e.target.value })}
@@ -236,16 +238,16 @@ export default function FinanceContractDrawer({
             onClick={addPart}
             className="w-full h-9 rounded-lg border border-dashed border-primary/50 text-primary text-sm font-medium hover:bg-primary/5"
           >
-            + Shartnoma qismini qo&apos;shish
+            {t("+ Shartnoma qismini qo'shish")}
           </button>
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

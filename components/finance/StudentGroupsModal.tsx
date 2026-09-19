@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useGroups } from "@/hooks/useGroups";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -29,6 +30,7 @@ export default function StudentGroupsModal({
   balance: number;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { groups, loading } = useGroups();
   const myGroups = groups.filter((g) => g.studentIds?.includes(pupilId));
@@ -37,7 +39,7 @@ export default function StudentGroupsModal({
     <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={300}>
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
           <div className="flex-1 min-w-0">
-            <h3 className="text-[17px] font-semibold">Guruhlar</h3>
+            <h3 className="text-[17px] font-semibold">{t("Guruhlar")}</h3>
             <p className="text-[12px] text-muted-foreground truncate">{studentName}</p>
           </div>
           <button onClick={modal.close} className="h-8 w-8 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center">
@@ -47,23 +49,23 @@ export default function StudentGroupsModal({
 
         <div className="px-6 py-4 space-y-4">
           <div className="text-[13px]">
-            Balans: <strong className={balance < 0 ? "text-rose-600" : "text-emerald-600"}>{fmtSom(balance)}</strong>
+            {t("Balans:")}{" "}<strong className={balance < 0 ? "text-rose-600" : "text-emerald-600"}>{t(fmtSom(balance))}</strong>
           </div>
 
           {loading ? (
-            <div className="text-center text-[13px] text-muted-foreground py-6">Yuklanmoqda…</div>
+            <div className="text-center text-[13px] text-muted-foreground py-6">{t("Yuklanmoqda…")}</div>
           ) : myGroups.length === 0 ? (
             <div className="text-center text-[13px] text-muted-foreground py-6">
-              Bu o&apos;quvchi hech qanday guruhga qo&apos;shilmagan
+              {t("Bu o'quvchi hech qanday guruhga qo'shilmagan")}
             </div>
           ) : (
             <div className="overflow-x-auto -mx-6 px-6">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-3 font-medium">Guruh nomi</th>
-                    <th className="py-2 pr-3 font-medium">O&apos;qituvchi</th>
-                    <th className="py-2 font-medium">Sana</th>
+                    <th className="py-2 pr-3 font-medium">{t("Guruh nomi")}</th>
+                    <th className="py-2 pr-3 font-medium">{t("O'qituvchi")}</th>
+                    <th className="py-2 font-medium">{t("Sana")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

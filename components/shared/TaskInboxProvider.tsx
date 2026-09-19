@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
 import type { InboxAnswer, InboxPayload, InboxTask } from "@/lib/taskInbox";
+import { useT } from "@/components/shared/Language";
 
 // XODIMNING SHAXSIY TOPSHIRIQ OYNASI — yagona klient manbasi.
 //
@@ -95,6 +96,7 @@ const EMPTY: TaskInboxValue = {
 const Ctx = createContext<TaskInboxValue>(EMPTY);
 
 export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useT();
   const { showSuccess } = useToast();
   const [pending, setPending] = useState<InboxTask[]>([]);
   const [reports, setReports] = useState<InboxTask[]>([]);
@@ -132,7 +134,7 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
         else {
           const nP = fresh.filter((k) => k.startsWith("p:")).length;
           const nR = fresh.length - nP;
-          if (nP > 0) showSuccess(nP === 1 ? "Sizga yangi topshiriq berildi" : `Sizga ${nP} ta yangi topshiriq berildi`);
+          if (nP > 0) showSuccess(nP === 1 ? "Sizga yangi topshiriq berildi" : t("Sizga {nP} ta yangi topshiriq berildi", { nP }));
           if (nR > 0) showSuccess(nR === 1 ? "Topshiriq bo'yicha hisobot keldi" : `${nR} ta topshiriq hisoboti keldi`);
         }
       }
@@ -148,7 +150,7 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
     } finally {
       busy.current = false;
     }
-  }, [showSuccess]);
+  }, [showSuccess, t]);
 
   // So'rov halqasi — components/shared/NotificationsProvider.tsx bilan bir xil.
   useEffect(() => {
@@ -192,7 +194,7 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
     // Server tasdiqladi — qator ro'yxatdan chiqadi. Optimistik EMAS: javob
     // rad etilsa (izoh bo'sh, allaqachon javob berilgan) qator joyida
     // qoladi va oyna xabarni ko'rsatadi.
-    setPending((cur) => cur.filter((t) => t.id !== a.id));
+    setPending((cur) => cur.filter((tv) => tv.id !== a.id));
   }, []);
 
   const markReportsSeen = useCallback(async (ids: number[]) => {
@@ -203,7 +205,7 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ seen: ids }),
     });
     const gone = new Set(ids);
-    setReports((cur) => cur.filter((t) => !gone.has(t.id)));
+    setReports((cur) => cur.filter((tv) => !gone.has(tv.id)));
   }, []);
 
   // Ochilganda ro'yxat yangilanadi: so'nggi so'rovdan beri (60 s gacha)

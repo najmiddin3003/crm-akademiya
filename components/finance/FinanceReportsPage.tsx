@@ -14,6 +14,7 @@ import type { CashboxName } from "@/lib/cashboxes";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Yig'indi SERVERDA — /api/transactions/summary. Ilgari bu sahifa butun
 // `transactions` kolleksiyasini yuklab (21 921 qator, 3.72 MB) hamma
@@ -173,6 +174,7 @@ const toSlices = (rows: { label: string; amount: number }[], offset = 0) =>
   rows.map((r, i) => ({ label: r.label, value: r.amount, color: CHART_COLORS[(i + offset) % CHART_COLORS.length] }));
 
 export default function FinanceReportsPage() {
+  const { t } = useT();
   const [dateRange, setDateRange] = useState<DateRange>(() => monthToDateRange());
   const [cashboxId, setCashboxId] = useState("");
   const [method, setMethod] = useState("");
@@ -354,32 +356,32 @@ export default function FinanceReportsPage() {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <DateRangePicker value={dateRange} onChange={setDateRange} className="w-52" />
-        <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kassa" clearable size="sm" />
-        <Select value={method} onChange={(v) => setMethod(v)} options={activeMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="To'lov turi" clearable size="sm" />
+        <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={t("Kassa")} clearable size="sm" />
+        <Select value={method} onChange={(v) => setMethod(v)} options={activeMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder={t("To'lov turi")} clearable size="sm" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard label="Kirim" value={curTotals.income} delta={pctDelta(curTotals.income, prevTotals.income)} slices={kirimStatSlices} />
-        <StatCard label="Chiqim" value={curTotals.expense} delta={pctDelta(curTotals.expense, prevTotals.expense)} slices={chiqimStatSlices} />
-        <StatCard label="Qoldiq" value={curTotals.net} delta={pctDelta(curTotals.net, prevTotals.net)} slices={[{ label: "Qoldiq", value: Math.max(curTotals.net, 0), color: CHART_COLORS[0] }]} />
+        <StatCard label={t("Kirim")} value={curTotals.income} delta={pctDelta(curTotals.income, prevTotals.income)} slices={kirimStatSlices} />
+        <StatCard label={t("Chiqim")} value={curTotals.expense} delta={pctDelta(curTotals.expense, prevTotals.expense)} slices={chiqimStatSlices} />
+        <StatCard label={t("Qoldiq")} value={curTotals.net} delta={pctDelta(curTotals.net, prevTotals.net)} slices={[{ label: t("Qoldiq"), value: Math.max(curTotals.net, 0), color: CHART_COLORS[0] }]} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-[14px] font-semibold">Grafik</div>
+            <div className="text-[14px] font-semibold">{t("Grafik")}</div>
             <div className="inline-flex items-center rounded-lg border border-border p-1">
               <button
                 onClick={() => setChartVariant("area")}
                 className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${chartVariant === "area" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
-                title="Chiziqli ko'rinish"
+                title={t("Chiziqli ko'rinish")}
               >
                 <AreaChart className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setChartVariant("bar")}
                 className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${chartVariant === "bar" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
-                title="Ustunli ko'rinish"
+                title={t("Ustunli ko'rinish")}
               >
                 <BarChart3 className="w-4 h-4" />
               </button>
@@ -387,16 +389,16 @@ export default function FinanceReportsPage() {
           </div>
           <DailyAreaChart points={dailyPoints} variant={chartVariant} />
           <div className="flex items-center justify-center gap-4 mt-2 text-[12px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />Kirim</span>
-            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />Chiqim</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />{t("Kirim")}</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />{t("Chiqim")}</span>
           </div>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5">
-          <div className="text-[14px] font-semibold mb-3">Tranzaksiya bo&apos;yicha</div>
+          <div className="text-[14px] font-semibold mb-3">{t("Tranzaksiya bo'yicha")}</div>
           <div className="inline-flex items-center rounded-lg border border-border p-1 mb-4">
-            <button onClick={() => setDonutFlow("income")} className={`h-8 px-3 rounded-md text-[13px] font-medium ${donutFlow === "income" ? "bg-primary text-white" : "text-muted-foreground"}`}>Kirim</button>
-            <button onClick={() => setDonutFlow("expense")} className={`h-8 px-3 rounded-md text-[13px] font-medium ${donutFlow === "expense" ? "bg-primary text-white" : "text-muted-foreground"}`}>Chiqim</button>
+            <button onClick={() => setDonutFlow("income")} className={`h-8 px-3 rounded-md text-[13px] font-medium ${donutFlow === "income" ? "bg-primary text-white" : "text-muted-foreground"}`}>{t("Kirim")}</button>
+            <button onClick={() => setDonutFlow("expense")} className={`h-8 px-3 rounded-md text-[13px] font-medium ${donutFlow === "expense" ? "bg-primary text-white" : "text-muted-foreground"}`}>{t("Chiqim")}</button>
           </div>
           <div className="flex justify-center">
             <DonutChart slices={flowDonutSlices} centerLabel={fmtUZS(flowDonutTotal)} />
@@ -404,7 +406,7 @@ export default function FinanceReportsPage() {
           <div className="mt-4 space-y-1.5">
             {flowDonutSlices.map((s) => (
               <div key={s.label} className="flex items-center justify-between text-[13px]">
-                <span className="inline-flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />{s.label}</span>
+                <span className="inline-flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />{t(s.label)}</span>
                 <span className="tabular-nums font-medium">{fmtUZS(s.value)}</span>
               </div>
             ))}
@@ -415,20 +417,20 @@ export default function FinanceReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-[14px] font-semibold">Kirim</div>
+            <div className="text-[14px] font-semibold">{t("Kirim")}</div>
             <div className="inline-flex items-center rounded-lg border border-border p-1">
-              <button onClick={() => setKirimMode("category")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${kirimMode === "category" ? "bg-primary text-white" : "text-muted-foreground"}`}>Tranzaksiya turi</button>
-              <button onClick={() => setKirimMode("method")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${kirimMode === "method" ? "bg-primary text-white" : "text-muted-foreground"}`}>To&apos;lov usuli</button>
+              <button onClick={() => setKirimMode("category")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${kirimMode === "category" ? "bg-primary text-white" : "text-muted-foreground"}`}>{t("Tranzaksiya turi")}</button>
+              <button onClick={() => setKirimMode("method")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${kirimMode === "method" ? "bg-primary text-white" : "text-muted-foreground"}`}>{t("To'lov usuli")}</button>
             </div>
           </div>
           <BreakdownBars rows={kirimRows} tone="green" />
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-[14px] font-semibold">Chiqim</div>
+            <div className="text-[14px] font-semibold">{t("Chiqim")}</div>
             <div className="inline-flex items-center rounded-lg border border-border p-1">
-              <button onClick={() => setChiqimMode("category")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${chiqimMode === "category" ? "bg-primary text-white" : "text-muted-foreground"}`}>Tranzaksiya turi</button>
-              <button onClick={() => setChiqimMode("method")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${chiqimMode === "method" ? "bg-primary text-white" : "text-muted-foreground"}`}>To&apos;lov usuli</button>
+              <button onClick={() => setChiqimMode("category")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${chiqimMode === "category" ? "bg-primary text-white" : "text-muted-foreground"}`}>{t("Tranzaksiya turi")}</button>
+              <button onClick={() => setChiqimMode("method")} className={`h-7 px-3 rounded-md text-[12px] font-medium ${chiqimMode === "method" ? "bg-primary text-white" : "text-muted-foreground"}`}>{t("To'lov usuli")}</button>
             </div>
           </div>
           <BreakdownBars rows={chiqimRows} tone="red" />

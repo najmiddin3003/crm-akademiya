@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Ported 1:1 from crm-akademiya/index-dev.html's #tablarni-sozlash-modal
 // (~line 2592) — opened by the "Ko'proq" tab button. Checkboxes are real
@@ -22,21 +23,22 @@ export default function TablarniSozlashModal({
   onClose: () => void;
   tabs: TabMeta[];
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(tabs.map((t) => [t.key, true]))
+    Object.fromEntries(tabs.map((tv) => [tv.key, true]))
   );
 
   if (!open) return null;
 
-  const visibleCount = tabs.filter((t) => checked[t.key]).length;
+  const visibleCount = tabs.filter((tv) => checked[tv.key]).length;
 
   return (
     <Modal onClose={onClose} controller={modal} bare variant="drawer" zIndex={50} panelStyle={{ width: "94%", maxWidth: 720, maxHeight: "90vh" }}>
         <div className="px-6 pt-5 pb-3 flex items-start justify-between flex-shrink-0">
           <div>
-            <h3 className="text-[18px] font-bold tracking-tight">Tablarni sozlash</h3>
-            <p className="text-[13px] text-muted-foreground mt-0.5">Profil sahifasida tepada ko&apos;rinadigan bo&apos;limlarni tanlang va tartibini o&apos;zgartiring</p>
+            <h3 className="text-[18px] font-bold tracking-tight">{t("Tablarni sozlash")}</h3>
+            <p className="text-[13px] text-muted-foreground mt-0.5">{t("Profil sahifasida tepada ko'rinadigan bo'limlarni tanlang va tartibini o'zgartiring")}</p>
           </div>
           <button
             type="button"
@@ -53,7 +55,7 @@ export default function TablarniSozlashModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h4 className="text-[13px] font-semibold mb-2">
-                Ko&apos;rinadigan tablar
+                {t("Ko'rinadigan tablar")}
                 <span className="inline-flex items-center h-5 px-1.5 rounded-md bg-primary/10 text-primary text-[11px] font-medium ml-1">{visibleCount}</span>
               </h4>
               <div className="space-y-1.5">
@@ -65,7 +67,7 @@ export default function TablarniSozlashModal({
                       onChange={() => setChecked((c) => ({ ...c, [tab.key]: !c[tab.key] }))}
                       className="rounded border-border text-primary"
                     />
-                    <span className="text-[13px] flex-1">{tab.label}</span>
+                    <span className="text-[13px] flex-1">{t(tab.label)}</span>
                     <svg viewBox="0 0 24 24" className="w-4 h-4 text-muted-foreground/60 group-hover:text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none" />
                       <circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none" />
@@ -80,11 +82,11 @@ export default function TablarniSozlashModal({
             </div>
             <div>
               <h4 className="text-[13px] font-semibold mb-2">
-                Ko&apos;proq ichidagi bo&apos;limlar
+                {t("Ko'proq ichidagi bo'limlar")}
                 <span className="inline-flex items-center h-5 px-1.5 rounded-md bg-secondary/60 text-muted-foreground text-[11px] font-medium ml-1">{tabs.length - visibleCount}</span>
               </h4>
               <div className="rounded-lg border border-dashed border-border bg-secondary/10 py-12 text-center text-[12px] text-muted-foreground">
-                Bu yerga sudrab tashlang
+                {t("Bu yerga sudrab tashlang")}
               </div>
             </div>
           </div>
@@ -92,14 +94,14 @@ export default function TablarniSozlashModal({
         <div className="flex items-center justify-between px-6 py-4 border-t border-border flex-shrink-0">
           <button
             type="button"
-            onClick={() => setChecked(Object.fromEntries(tabs.map((t) => [t.key, true])))}
+            onClick={() => setChecked(Object.fromEntries(tabs.map((tv) => [tv.key, true])))}
             className="text-[13px] font-medium text-primary hover:underline"
           >
-            Default holatga qaytarish
+            {t("Default holatga qaytarish")}
           </button>
           <div className="flex gap-2">
-            <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">Orqaga</button>
-            <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">Saqlash</button>
+            <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary/60">{t("Orqaga")}</button>
+            <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90">{t("Saqlash")}</button>
           </div>
         </div>
       </Modal>

@@ -7,6 +7,7 @@ import { uzDayKey } from "@/lib/uzTime";
 import DateField from "@/components/ui/DateField";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/src/app.js openMoveTaskModal()/confirmMoveTask() (~line 3676).
 // Shown when a task card is dropped onto the "Keyinchalik keladigan" (upcoming)
@@ -28,6 +29,7 @@ export interface MoveTaskModalProps {
 }
 
 export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const tomorrow = new Date(todayStart().getTime() + 86400000);
   const existing = new Date(task.date);
@@ -37,7 +39,7 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
 
   const handleConfirm = () => {
     if (!date) {
-      setError("Sanani tanlang");
+      setError(t("Sanani tanlang"));
       return;
     }
     const newDate = new Date(`${date}T${time || "09:00"}:00`);
@@ -45,7 +47,7 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
     // sana qaytaradi va uni bu yerdagi lokal sana bilan solishtirish
     // 5 soatlik xato berardi (lib/uzTime.ts).
     if (uzDayKey(newDate) <= uzDayKey()) {
-      setError("Iltimos, bugundan keyingi sanani tanlang!");
+      setError(t("Iltimos, bugundan keyingi sanani tanlang!"));
       return;
     }
     onConfirm(newDate.toISOString());
@@ -53,18 +55,18 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
 
   return (
     <Modal onClose={onClose} controller={modal} bare size="sm" zIndex={200} panelClassName="p-5 space-y-4">
-        <h3 className="text-lg font-semibold">Topshiriqni ko&apos;chirish</h3>
+        <h3 className="text-lg font-semibold">{t("Topshiriqni ko'chirish")}</h3>
         <p className="text-sm text-muted-foreground">
-          <strong className="text-foreground">{task.student}</strong> uchun yangi sanani tanlang. Sana bugundan kelajakda bo&apos;lishi kerak.
+          <strong className="text-foreground">{task.student}</strong>{" "}{t("uchun yangi sanani tanlang. Sana bugundan kelajakda bo'lishi kerak.")}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Sana</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Sana")}</label>
             <DateField value={date} onChange={(v) => { setDate(v); setError(null); }} error={!!error} />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Vaqt</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Vaqt")}</label>
             <TimeField value={time} onChange={(v) => setTime(v)} />
           </div>
         </div>
@@ -72,8 +74,8 @@ export default function MoveTaskModal({ task, onClose, onConfirm }: MoveTaskModa
         {error && <div className="text-sm text-red-600">⚠ {error}</div>}
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={modal.close}>Bekor qilish</Button>
-          <Button variant="primary" onClick={handleConfirm}>Ko&apos;chirish</Button>
+          <Button variant="outline" onClick={modal.close}>{t("Bekor qilish")}</Button>
+          <Button variant="primary" onClick={handleConfirm}>{t("Ko'chirish")}</Button>
         </div>
       </Modal>
   );

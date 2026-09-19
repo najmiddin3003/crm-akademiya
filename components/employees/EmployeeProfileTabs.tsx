@@ -12,6 +12,7 @@ import type { PerformanceRow } from "@/lib/performanceReport";
 import { STATE_KEYS, STATE_LABELS } from "@/lib/performanceReport";
 import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
 import PersonLink from "@/components/shared/PersonDirectory";
+import { useT } from "@/components/shared/Language";
 
 // Xodim profilidagi tablar mazmuni. Hammasi HAQIQIY backend ma'lumotidan
 // ishlaydi — manbasi yo'q tablar (Reyting, Qo'ng'iroqlar, Harakatlar tarixi,
@@ -59,11 +60,12 @@ function Caption({ children }: { children: React.ReactNode }) {
 }
 
 function Table({ head, children, count }: { head: string[]; children: React.ReactNode; count: number }) {
+  const { t } = useT();
   return (
     <>
       <div className="flex items-center justify-end mb-2">
         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium">
-          Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{count}</span>
+          {t("Umumiy soni:")}{" "}<span className="ml-1 tabular-nums font-semibold">{count}</span>
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -187,23 +189,23 @@ function withRunningTotals(rows: LedgerRow[]): (LedgerRow & { running: number })
 }
 
 export function BalanceTab({ rows }: { rows: LedgerRow[] }) {
+  const { t } = useT();
   if (rows.length === 0) {
-    return <EmptyState hint="Bu xodim uchun hali bonus, jarima yoki to'langan avans/oylik yozuvi yo'q." />;
+    return <EmptyState hint={t("Bu xodim uchun hali bonus, jarima yoki to'langan avans/oylik yozuvi yo'q.")} />;
   }
   const withRunning = withRunningTotals(rows);
   return (
     <>
       <Caption>
-        Bonus, jarima va to&apos;langan avans/oylik yozuvlari — vaqt bo&apos;yicha.
-        Ishlab topilgan oylik alohida hisoblanmaydi, shuning uchun oxirgi ustun
-        <strong> balans emas</strong>, aynan shu uch oqim yig&apos;indisi.
+        {t("Bonus, jarima va to'langan avans/oylik yozuvlari — vaqt bo'yicha. Ishlab topilgan oylik alohida hisoblanmaydi, shuning uchun oxirgi ustun")}
+        <strong>{" "}{t("balans emas")}</strong>, aynan shu uch oqim yig&apos;indisi.
       </Caption>
       <Table head={["№", "Sana", "Manba", "Izoh", "Qayd etgan", "O'zgarish", "Bonus − jarima − to'langan"]} count={withRunning.length}>
         {withRunning.map((r, i) => (
           <tr key={r.key} className="hover:bg-secondary/30 transition-colors">
             <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
             <td className="px-4 py-3 tabular-nums whitespace-nowrap">{r.dateLabel}</td>
-            <td className="px-4 py-3 whitespace-nowrap">{r.source}</td>
+            <td className="px-4 py-3 whitespace-nowrap">{t(r.source)}</td>
             <td className="px-4 py-3">{r.note}</td>
             <td className="px-4 py-3 whitespace-nowrap">{r.by}</td>
             <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${r.delta < 0 ? "text-rose-600" : "text-emerald-600"}`}>{nf(r.delta)}</td>
@@ -235,6 +237,7 @@ function fmtDuration(min: number | null): string {
 }
 
 export function WorkHoursTab({ records }: { records: TurnstileIoRecord[] }) {
+  const { t } = useT();
   const totals = useMemo(() => {
     let mins = 0;
     const byStatus = { kelgan: 0, kechikkan: 0, kelmagan: 0 } as Record<string, number>;
@@ -247,12 +250,12 @@ export function WorkHoursTab({ records }: { records: TurnstileIoRecord[] }) {
   }, [records]);
 
   if (records.length === 0) {
-    return <EmptyState hint="Turniketda bu xodim nomiga yozuv topilmadi. Turniket ma'lumoti `turnstile_io` kolleksiyasidan olinadi." />;
+    return <EmptyState hint={t("Turniketda bu xodim nomiga yozuv topilmadi. Turniket ma'lumoti `turnstile_io` kolleksiyasidan olinadi.")} />;
   }
 
   return (
     <>
-      <Caption>Turniket kirish-chiqish yozuvlari. Jami ishlangan vaqt: <strong>{fmtDuration(totals.mins)}</strong> · Kelgan {totals.byStatus.kelgan ?? 0} · Kechikkan {totals.byStatus.kechikkan ?? 0} · Kelmagan {totals.byStatus.kelmagan ?? 0}</Caption>
+      <Caption>{t("Turniket kirish-chiqish yozuvlari. Jami ishlangan vaqt:")}{" "}<strong>{fmtDuration(totals.mins)}</strong> · Kelgan {totals.byStatus.kelgan ?? 0} · Kechikkan {totals.byStatus.kechikkan ?? 0} · Kelmagan {totals.byStatus.kelmagan ?? 0}</Caption>
       <Table head={["№", "Sana", "Kirish vaqti", "Chiqish vaqti", "Ish soati", "Holati"]} count={records.length}>
         {records.map((r, i) => (
           <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
@@ -288,19 +291,20 @@ export interface UnpaidRow {
 }
 
 export function UnpaidTab({ rows, rosterEmpty }: { rows: UnpaidRow[]; rosterEmpty: boolean }) {
+  const { t } = useT();
   if (rows.length === 0) {
     return (
       <EmptyState
         hint={rosterEmpty
-          ? "Bu xodimga guruh biriktirilmagan. Guruhga o'qituvchi belgilangach, uning o'quvchilari qarzi shu yerda ko'rinadi."
-          : "Bu xodimning o'quvchilarida to'lanmagan summa yo'q."}
+          ? t("Bu xodimga guruh biriktirilmagan. Guruhga o'qituvchi belgilangach, uning o'quvchilari qarzi shu yerda ko'rinadi.")
+          : t("Bu xodimning o'quvchilarida to'lanmagan summa yo'q.")}
       />
     );
   }
   const total = rows.reduce((s, r) => s + (Number(r.totalUnpaid) || 0), 0);
   return (
     <>
-      <Caption>O&apos;qituvchining guruhlaridagi o&apos;quvchilar qarzi. Jami: <strong>{nf(total)}</strong></Caption>
+      <Caption>{t("O'qituvchining guruhlaridagi o'quvchilar qarzi. Jami:")}{" "}<strong>{nf(total)}</strong></Caption>
       <Table head={["№", "O'quvchi", "Guruh", "To'lanmagan darslar", "Summa"]} count={rows.length}>
         {rows.map((r, i) => (
           <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
@@ -320,12 +324,13 @@ export function UnpaidTab({ rows, rosterEmpty }: { rows: UnpaidRow[]; rosterEmpt
    Manba: transaction_entries — shu xodim qabul qilgan, lekin oxiriga
    yetmagan to'lovlar (bekor qilingan yoki kutilayotgan). */
 export function UnpaidHistoryTab({ entries }: { entries: TransactionEntry[] }) {
+  const { t } = useT();
   if (entries.length === 0) {
-    return <EmptyState hint="Bu xodimda bekor qilingan yoki kutilayotgan to'lov yozuvi yo'q." />;
+    return <EmptyState hint={t("Bu xodimda bekor qilingan yoki kutilayotgan to'lov yozuvi yo'q.")} />;
   }
   return (
     <>
-      <Caption>Shu xodim qabul qilgan, lekin oxiriga yetmagan to&apos;lovlar — bekor qilingan yoki kutilayotgan.</Caption>
+      <Caption>{t("Shu xodim qabul qilgan, lekin oxiriga yetmagan to'lovlar — bekor qilingan yoki kutilayotgan.")}</Caption>
       <Table head={["№", "Sana", "O'quvchi", "Tranzaksiya nomi", "To'lov turi", "Holati", "Izoh", "Miqdori"]} count={entries.length}>
         {entries.map((e, i) => (
           <tr key={e.id} className="hover:bg-secondary/30 transition-colors">
@@ -379,27 +384,28 @@ export function KpiTab({
   jarima: number;
   students: TeacherStudent[];
 }) {
+  const { t } = useT();
   const groups = new Set(students.map((s) => s.groupId)).size;
 
   const tiles: { label: string; value: string }[] = [
-    { label: "Qabul qilingan to'lovlar", value: String(paymentsCount) },
-    { label: "Qabul qilingan summa", value: nf(paymentsAmount) },
-    { label: "To'lov qilgan o'quvchilar", value: String(paymentsStudents) },
-    { label: "Bonus", value: nf(bonus) },
-    { label: "Jarima", value: nf(jarima) },
-    { label: "Avans", value: nf(avans) },
-    { label: "Oylik", value: nf(oylik) },
-    { label: "Guruhlar / o'quvchilar", value: `${groups} / ${students.length}` },
+    { label: t("Qabul qilingan to'lovlar"), value: String(paymentsCount) },
+    { label: t("Qabul qilingan summa"), value: nf(paymentsAmount) },
+    { label: t("To'lov qilgan o'quvchilar"), value: String(paymentsStudents) },
+    { label: t("Bonus"), value: nf(bonus) },
+    { label: t("Jarima"), value: nf(jarima) },
+    { label: t("Avans"), value: nf(avans) },
+    { label: t("Oylik"), value: nf(oylik) },
+    { label: t("Guruhlar / o'quvchilar"), value: `${groups} / ${students.length}` },
   ];
 
   return (
     <>
-      <Caption>Manbasi bor ko&apos;rsatkichlar. Davomat va akladi bu yerda yo&apos;q — ular uchun tizimda hisob yuritilmaydi.</Caption>
+      <Caption>{t("Manbasi bor ko'rsatkichlar. Davomat va akladi bu yerda yo'q — ular uchun tizimda hisob yuritilmaydi.")}</Caption>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {tiles.map((t) => (
-          <div key={t.label} className="rounded-xl border border-border bg-card p-4">
-            <div className="text-[12px] text-muted-foreground">{t.label}</div>
-            <div className="text-[17px] font-bold tabular-nums mt-1">{t.value}</div>
+        {tiles.map((tv) => (
+          <div key={tv.label} className="rounded-xl border border-border bg-card p-4">
+            <div className="text-[12px] text-muted-foreground">{t(tv.label)}</div>
+            <div className="text-[17px] font-bold tabular-nums mt-1">{tv.value}</div>
           </div>
         ))}
       </div>
@@ -410,12 +416,13 @@ export function KpiTab({
 /* ── O'qituvchining hisoboti ─────────────────────────────────────────────
    Manba: orders kolleksiyasi + lib/performanceReport.ts. */
 export function TeacherReportTab({ row }: { row: PerformanceRow | null }) {
+  const { t } = useT();
   if (!row) {
-    return <EmptyState hint="Bu xodimga biriktirilgan buyurtma topilmadi. Buyurtmada o'qituvchi/moderator ko'rsatilgach shu yerda hisobot chiqadi." />;
+    return <EmptyState hint={t("Bu xodimga biriktirilgan buyurtma topilmadi. Buyurtmada o'qituvchi/moderator ko'rsatilgach shu yerda hisobot chiqadi.")} />;
   }
   return (
     <>
-      <Caption>Buyurtmalar bo&apos;yicha holat — davr boshi, o&apos;zgarish va davr oxiri.</Caption>
+      <Caption>{t("Buyurtmalar bo'yicha holat — davr boshi, o'zgarish va davr oxiri.")}</Caption>
       <Table head={["Holat", "Davr boshida", "O'zgarish", "Davr oxirida"]} count={STATE_KEYS.length}>
         {STATE_KEYS.map((k) => (
           <tr key={k} className="hover:bg-secondary/30 transition-colors">
@@ -443,19 +450,20 @@ export function NotesTab({
   onDelete: (id: number) => void;
   busy: boolean;
 }) {
+  const { t } = useT();
   const [text, setText] = useState("");
   // Matn faqat saqlangandan KEYIN tozalanadi — aks holda tarmoq uzilsa
   // yozilgan eslatma yo'qoladi.
   const submit = async () => {
-    const t = text.trim();
-    if (!t || busy) return;
-    if (await onAdd(t)) setText("");
+    const tv = text.trim();
+    if (!tv || busy) return;
+    if (await onAdd(tv)) setText("");
   };
   return (
     <div className="flex flex-col gap-3 min-h-[420px]">
       <div className="flex-1 space-y-2 overflow-y-auto max-h-[420px] pr-1">
         {notes.length === 0 ? (
-          <div className="py-16 text-center text-[13px] text-muted-foreground">Hali eslatma yozilmagan.</div>
+          <div className="py-16 text-center text-[13px] text-muted-foreground">{t("Hali eslatma yozilmagan.")}</div>
         ) : notes.map((n) => (
           <div key={n.id} className="rounded-xl border border-border bg-secondary/20 p-3">
             <div className="flex items-start justify-between gap-3">
@@ -464,9 +472,9 @@ export function NotesTab({
                 type="button"
                 onClick={() => onDelete(n.id)}
                 className="text-[11px] text-muted-foreground hover:text-rose-600 shrink-0"
-                title="O'chirish"
+                title={t("O'chirish")}
               >
-                O&apos;chirish
+                {t("O'chirish")}
               </button>
             </div>
             <div className="text-[11px] text-muted-foreground mt-1.5">{n.author} · {n.createdAt}</div>
@@ -479,7 +487,7 @@ export function NotesTab({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) submit(); }}
           rows={2}
-          placeholder="Eslatma qoldirish… (Ctrl+Enter — yuborish)"
+          placeholder={t("Eslatma qoldirish… (Ctrl+Enter — yuborish)")}
           className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
@@ -488,7 +496,7 @@ export function NotesTab({
           disabled={busy || !text.trim()}
           className="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50"
         >
-          Yuborish
+          {t("Yuborish")}
         </button>
       </div>
     </div>

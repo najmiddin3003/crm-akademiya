@@ -8,6 +8,7 @@ import { PUPIL_STATUSES, isPupilStatus, type Pupil, type PupilStatus } from "@/l
 import { invalidateStudents } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchining holatini o'zgartirish oynasi.
 //
@@ -42,6 +43,7 @@ const fieldCls =
   "h-9 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
 export default function StudentStatusModal({ student, onClose, onSaved }: Props) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
 
@@ -77,16 +79,16 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
       invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
       if (!res.ok || !data.ok) {
         // Xato ikki joyda ko'rsatiladi: oynada (kontekst bilan) va toastda.
-        setError(data.error || "Saqlanmadi");
-        showError(data.error || "Holat o'zgartirilmadi");
+        setError(t(data.error || "Saqlanmadi"));
+        showError(t(data.error || "Holat o'zgartirilmadi"));
         return;
       }
       onSaved(data.pupil as Pupil);
-      showSuccess(`${student.name} — holati "${status}" ga o'zgartirildi`);
+      showSuccess(t("{name} — holati \"{status}\" ga o'zgartirildi", { name: student.name, status }));
       modal.close();
     } catch {
-      setError("Serverga ulanib bo'lmadi");
-      showError("Serverga ulanib bo'lmadi");
+      setError(t("Serverga ulanib bo'lmadi"));
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -97,7 +99,7 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
     // yo'lda qolib, natijasi ko'rinmay ketardi (loyihadagi tasdiq
     // oynalarining umumiy naqshi, qarang EmployeeArchiveModal).
     <Modal onClose={onClose} controller={modal} locked={saving} bare zIndex={200} panelClassName="p-5 space-y-4 overflow-y-auto">
-        <h3 className="text-lg font-semibold">Holatni o&apos;zgartirish</h3>
+        <h3 className="text-lg font-semibold">{t("Holatni o'zgartirish")}</h3>
 
         {/* Matn satr IFODASI sifatida yozilgan: ko'p qatorli JSX matnining
             bosh/oxirgi probeli qirqilib, "Ismning" bo'lib qolardi. */}
@@ -107,7 +109,7 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
         </p>
 
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Yangi holat</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Yangi holat")}</label>
           <Select value={status} onChange={(v) => {
                 const next = v;
                 if (isPupilStatus(next)) setStatus(next);
@@ -138,13 +140,12 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             disabled={saving}
-            placeholder={reasonRequired ? "Masalan: oilaviy sabablarga ko'ra" : "Ixtiyoriy"}
+            placeholder={reasonRequired ? t("Masalan: oilaviy sabablarga ko'ra") : t("Ixtiyoriy")}
             className={`${fieldCls} disabled:opacity-60`}
           />
           {reasonRequired && (
             <p className="mt-1.5 text-[12px] text-muted-foreground">
-              &laquo;Muzlatilgan&raquo; va &laquo;Arxiv&raquo; uchun sabab majburiy — u o&apos;quvchi
-              kartasida saqlanadi.
+              {t("&laquo;Muzlatilgan&raquo; va &laquo;Arxiv&raquo; uchun sabab majburiy — u o'quvchi kartasida saqlanadi.")}
             </p>
           )}
         </div>
@@ -155,10 +156,10 @@ export default function StudentStatusModal({ student, onClose, onSaved }: Props)
           {/* components/ui/Button.tsx da disabled uslubi bor, lekin loyihadagi
               boshqa modallar kabi ochiqroq bo'lishi uchun opacity qo'shilgan. */}
           <Button type="button" variant="outline" onClick={modal.close} disabled={saving} className="disabled:opacity-40">
-            Bekor qilish
+            {t("Bekor qilish")}
           </Button>
           <Button type="button" variant="primary" onClick={submit} disabled={!canSave} className="disabled:opacity-40">
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </Button>
         </div>
       </Modal>

@@ -19,6 +19,7 @@ import { pupilStatusOf, type PupilListItem } from "@/lib/pupilsData";
 import { GROUP_DAYS } from "@/constants/groups";
 import PersonLink from "@/components/shared/PersonDirectory";
 import TimeField from "@/components/ui/TimeField";
+import { useT } from "@/components/shared/Language";
 
 // Guruhlar ro'yxati (crm-akademiya #view-groups). SARIQ qator = bugun davomat
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
@@ -129,6 +130,7 @@ export interface GroupsListPageProps {
 }
 
 export default function GroupsListPage({ initialGroups, initialFrozenPupils }: GroupsListPageProps = {}) {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   // Filtr ro'yxatlari bazadan — ilgari constants'dagi qattiq ro'yxatlar
@@ -252,7 +254,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
     try {
       const rows = parseCsv(await file.text());
       if (rows.length < 2) {
-        showError("Faylda sarlavhadan boshqa qator yo'q");
+        showError(t("Faylda sarlavhadan boshqa qator yo'q"));
         return;
       }
       const body = rows.slice(1).map((r) => ({
@@ -266,7 +268,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Import qilinmadi");
+        showError(t(data.error || "Import qilinmadi"));
         return;
       }
       const fresh = await fetch("/api/groups").then((r) => r.json());
@@ -274,11 +276,11 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
       const skipped = (data.skipped as { reason: string }[]).length;
       showSuccess(
         skipped > 0
-          ? `${data.created} ta guruh qo'shildi, ${skipped} tasi o'tkazib yuborildi`
-          : `${data.created} ta guruh qo'shildi`,
+          ? t("{created} ta guruh qo'shildi, {skipped} tasi o'tkazib yuborildi", { created: data.created, skipped })
+          : t("{created} ta guruh qo'shildi", { created: data.created }),
       );
     } catch {
-      showError("Faylni o'qib bo'lmadi");
+      showError(t("Faylni o'qib bo'lmadi"));
     } finally {
       setImporting(false);
     }
@@ -290,7 +292,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
   function exportCSV() {
     const csv = [HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
     downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "guruhlar.csv");
-    showSuccess(`CSV yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("CSV yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
   function exportExcel() {
@@ -298,7 +300,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
     const rows = exportRows().map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${rows}</tbody></table></body></html>`;
     downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "guruhlar.xls");
-    showSuccess(`Excel yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("Excel yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
@@ -315,29 +317,29 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
-          <span>Qo&apos;shish</span>
+          <span>{t("Qo'shish")}</span>
         </button>
 
         {/* Filtrlar — qo'lda yasalgan ui/Select: bo'sh qiymat "hammasi",
             placeholder esa filtr nomi. Uzun ro'yxatlarda (o'qituvchi, kurs,
             xona) qidiruv o'zi chiqadi. */}
-        <Select size="sm" clearable className="w-36" value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} placeholder="O'qituvchi" searchPlaceholder="O'qituvchini qidirish" options={teacherNames.map((t) => ({ value: t, label: t }))} />
+        <Select size="sm" clearable className="w-36" value={teacher} onChange={(v) => { setTeacher(v); setPage(1); }} placeholder={t("O'qituvchi")} searchPlaceholder="O'qituvchini qidirish" options={teacherNames.map((tv) => ({ value: tv, label: tv }))} />
 
         {/* Vaqt filtrlari — TimeField: placeholder filtr nomi, tozalash X maydonning o'zida. */}
-        <TimeField value={startTime} onChange={(v) => { setStartTime(v); setPage(1); }} placeholder="Boshlanish vaqti" className="w-40" />
-        <TimeField value={endTime} onChange={(v) => { setEndTime(v); setPage(1); }} placeholder="Tugash vaqti" className="w-36" />
+        <TimeField value={startTime} onChange={(v) => { setStartTime(v); setPage(1); }} placeholder={t("Boshlanish vaqti")} className="w-40" />
+        <TimeField value={endTime} onChange={(v) => { setEndTime(v); setPage(1); }} placeholder={t("Tugash vaqti")} className="w-36" />
 
-        <Select size="sm" clearable className="w-28" value={day} onChange={(v) => { setDay(v); setPage(1); }} placeholder="Kun" options={dayNames.map((d) => ({ value: d, label: d }))} />
-        <Select size="sm" clearable className="w-32" value={course} onChange={(v) => { setCourse(v); setPage(1); }} placeholder="Kurs" searchPlaceholder="Kursni qidirish" options={courseNames.map((c) => ({ value: c, label: c }))} />
-        <Select size="sm" clearable className="w-28" value={room} onChange={(v) => { setRoom(v); setPage(1); }} placeholder="Xona" searchPlaceholder="Xonani qidirish" options={roomNames.map((r) => ({ value: r, label: r }))} />
+        <Select size="sm" clearable className="w-28" value={day} onChange={(v) => { setDay(v); setPage(1); }} placeholder={t("Kun")} options={dayNames.map((d) => ({ value: d, label: d }))} />
+        <Select size="sm" clearable className="w-32" value={course} onChange={(v) => { setCourse(v); setPage(1); }} placeholder={t("Kurs")} searchPlaceholder="Kursni qidirish" options={courseNames.map((c) => ({ value: c, label: c }))} />
+        <Select size="sm" clearable className="w-28" value={room} onChange={(v) => { setRoom(v); setPage(1); }} placeholder={t("Xona")} searchPlaceholder="Xonani qidirish" options={roomNames.map((r) => ({ value: r, label: r }))} />
         {/* Bo'sh qiymat "HAMMASI" degani, "aktivlar" emas — ilgari
             yorlig'i "Aktiv guruh" edi va arxivdagi guruh ro'yxatda
             turgani chalkashtirardi. */}
-        <Select size="sm" clearable className="w-32" value={status} onChange={(v) => { setStatus(v); setPage(1); }} placeholder="Guruh holati" options={STATUS_OPTIONS} />
+        <Select size="sm" clearable className="w-32" value={status} onChange={(v) => { setStatus(v); setPage(1); }} placeholder={t("Guruh holati")} options={STATUS_OPTIONS} />
 
         <div className="relative flex-1 min-w-[180px]">
           <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"><use href="#i-search" /></svg>
-          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidirish" className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder={t("Qidirish")} className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
         </div>
 
         <div className="relative" ref={moreRef}>
@@ -353,7 +355,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
               if (f) importCsv(f);
             }}
           />
-          <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+          <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
             <MoreVertical className="icon icon-sm" />
           </button>
           {moreOpen && (
@@ -364,15 +366,15 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left disabled:opacity-60"
               >
                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-[10px] font-bold text-primary">IN</span>
-                <span>{importing ? "Import qilinmoqda…" : "Import (CSV)"}</span>
+                <span>{importing ? t("Import qilinmoqda…") : t("Import (CSV)")}</span>
               </button>
               <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                <span>CSV faylini yuklab olish</span>
+                <span>{t("CSV faylini yuklab olish")}</span>
               </button>
               <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                <span>EXCEL faylini yuklab olish</span>
+                <span>{t("EXCEL faylini yuklab olish")}</span>
               </button>
             </div>
           )}
@@ -381,16 +383,16 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
 
       {/* Toq/Juft on right */}
       <div className="flex items-center justify-end">
-        <Select size="sm" clearable className="w-44" value={oddEven} onChange={(v) => { setOddEven(v); setPage(1); }} placeholder="Toq/Juft kunlar" options={ODD_EVEN_OPTIONS} />
+        <Select size="sm" clearable className="w-44" value={oddEven} onChange={(v) => { setOddEven(v); setPage(1); }} placeholder={t("Toq/Juft kunlar")} options={ODD_EVEN_OPTIONS} />
       </div>
 
       {/* Stats — javob kelmaguncha "—": bo'sh ro'yxat ustidan hisoblangan 0
           ham xuddi qattiq yozilgan 0 kabi noto'g'ri da'vo bo'lardi. */}
       <div className="flex items-center gap-4 text-[13px]">
-        <span className="text-muted-foreground">Jami o&apos;quvchilar soni: <span className="font-semibold text-foreground tabular-nums">{loading ? "—" : fmtCount(memberIds.size)}</span></span>
-        <span className="text-muted-foreground">Muzlatilgan o&apos;quvchilar soni: <span className="font-semibold text-foreground tabular-nums">{loading || pupilsLoading ? "—" : fmtCount(frozenStudents)}</span></span>
+        <span className="text-muted-foreground">{t("Jami o'quvchilar soni:")}{" "}<span className="font-semibold text-foreground tabular-nums">{loading ? "—" : fmtCount(memberIds.size)}</span></span>
+        <span className="text-muted-foreground">{t("Muzlatilgan o'quvchilar soni:")}{" "}<span className="font-semibold text-foreground tabular-nums">{loading || pupilsLoading ? "—" : fmtCount(frozenStudents)}</span></span>
         <div className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
         </div>
       </div>
@@ -402,18 +404,18 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh nomi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kurs</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Darajasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kun</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Dars vaqti</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh vaqti</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchilar</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;qituvchi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Xona</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telegram link</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruh holati</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Amallar</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh nomi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kurs")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Darajasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kun")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Dars vaqti")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh vaqti")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchilar")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'qituvchi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Xona")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telegram link")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruh holati")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Amallar")}</th>
               </tr>
             </thead>
             <tbody>
@@ -449,7 +451,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
                       <Link
                         href={`/groups/${g.id}?tab=attendance`}
                         onClick={(e) => e.stopPropagation()}
-                        title="Davomat"
+                        title={t("Davomat")}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary inline-flex items-center justify-center text-muted-foreground"
                       >
                         <CalendarCheck className="w-4 h-4" />
@@ -457,7 +459,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
                       <Link
                         href={`/groups/${g.id}?tab=history`}
                         onClick={(e) => e.stopPropagation()}
-                        title="Guruh tarixi"
+                        title={t("Guruh tarixi")}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary inline-flex items-center justify-center text-muted-foreground"
                       >
                         <History className="w-4 h-4" />

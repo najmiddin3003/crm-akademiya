@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Xodimlar reytingi (/nazorat-staff-rating).
 //
@@ -35,11 +36,12 @@ function StarIcon({ size = 16 }: { size?: number }) {
 }
 
 export default function NazoratStaffRatingPage() {
+  const { t } = useT();
   return (
     <div className="page-frame container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* O'rtacha reyting — yozuv yo'q, shuning uchun CHIZIQCHA. */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">O&apos;rtacha reyting:</span>
+        <span className="text-muted-foreground">{t("O'rtacha reyting:")}</span>
         <span className="inline-flex items-center gap-1.5 font-bold tabular-nums">
           <span>—</span>
           <StarIcon />
@@ -66,9 +68,9 @@ export default function NazoratStaffRatingPage() {
               baho umuman yig'ilmaydi. */}
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium"
-            title="Baho yozuvlari uchun manba yo'q — sonni hisoblab bo'lmaydi."
+            title={t("Baho yozuvlari uchun manba yo'q — sonni hisoblab bo'lmaydi.")}
           >
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">—</span>
           </div>
         </div>
@@ -78,20 +80,20 @@ export default function NazoratStaffRatingPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">O&apos;qituvchi</th>
-                <th className="px-5 py-3 text-left">O&apos;quvchi</th>
-                <th className="px-5 py-3 text-left">Kurs</th>
-                <th className="px-5 py-3 text-left">Guruh</th>
-                <th className="px-5 py-3 text-left">Dars sanasi</th>
-                <th className="px-5 py-3 text-left">Izoh</th>
-                <th className="px-5 py-3 text-left">Sana</th>
-                <th className="px-5 py-3 text-center pr-5">Baho</th>
+                <th className="px-5 py-3 text-left">{t("O'qituvchi")}</th>
+                <th className="px-5 py-3 text-left">{t("O'quvchi")}</th>
+                <th className="px-5 py-3 text-left">{t("Kurs")}</th>
+                <th className="px-5 py-3 text-left">{t("Guruh")}</th>
+                <th className="px-5 py-3 text-left">{t("Dars sanasi")}</th>
+                <th className="px-5 py-3 text-left">{t("Izoh")}</th>
+                <th className="px-5 py-3 text-left">{t("Sana")}</th>
+                <th className="px-5 py-3 text-center pr-5">{t("Baho")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               <tr>
                 <td colSpan={9} className="py-16 text-center text-muted-foreground">
-                  Baho yozuvlari tizimga kelmaydi
+                  {t("Baho yozuvlari tizimga kelmaydi")}
                 </td>
               </tr>
             </tbody>

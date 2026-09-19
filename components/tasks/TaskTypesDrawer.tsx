@@ -8,6 +8,7 @@ import TaskTypeModal from "@/components/tasks/TaskTypeModal";
 import { useToast } from "@/components/ui/Toast";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import type { TaskType } from "@/lib/taskTypes";
+import { useT } from "@/components/shared/Language";
 
 // Topshiriqlar → "⋮ → Topshiriq turi" — CHAP tomondan ochiladigan panel
 // (referens: akademiya.edutizim.uz). Turlar bazadan keladi va shu yerdan
@@ -30,6 +31,7 @@ export default function TaskTypesDrawer({
   onRemove,
   onClose,
 }: TaskTypesDrawerProps) {
+  const { t } = useT();
   // null — oyna yopiq, undefined — yangi tur, TaskType — tahrirlash.
   const [editing, setEditing] = useState<TaskType | null | undefined>(null);
   const [deleting, setDeleting] = useState<TaskType | null>(null);
@@ -48,7 +50,7 @@ export default function TaskTypesDrawer({
       showError(err);
       return;
     }
-    showSuccess(editing ? "Tur yangilandi" : "Yangi tur qo'shildi");
+    showSuccess(editing ? t("Tur yangilandi") : t("Yangi tur qo'shildi"));
     setEditing(null);
   };
 
@@ -56,7 +58,7 @@ export default function TaskTypesDrawer({
     if (!deleting) return;
     const err = await onRemove(deleting.id);
     if (err) showError(err);
-    else showSuccess("Tur o'chirildi");
+    else showSuccess(t("Tur o'chirildi"));
     setDeleting(null);
   };
 
@@ -68,12 +70,12 @@ export default function TaskTypesDrawer({
         <div className="st-drawer st-drawer-left" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between gap-3 p-5 pb-4 shrink-0">
             <div>
-              <h3 className="text-lg font-semibold">Topshiriq turlari</h3>
+              <h3 className="text-lg font-semibold">{t("Topshiriq turlari")}</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Topshiriqlar uchun maxsus turlarni boshqarish
+                {t("Topshiriqlar uchun maxsus turlarni boshqarish")}
               </p>
             </div>
-            <button type="button" className="st-drawer-close" onClick={onClose} title="Yopish (Esc)">
+            <button type="button" className="st-drawer-close" onClick={onClose} title={t("Yopish (Esc)")}>
               <svg className="icon icon-sm"><use href="#i-x-circle" /></svg>
             </button>
           </div>
@@ -85,13 +87,13 @@ export default function TaskTypesDrawer({
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
-              Topshiriq turi qo&apos;shish
+              {t("Topshiriq turi qo'shish")}
             </button>
           </div>
 
           <div className="flex items-center justify-between px-5 pb-2 shrink-0">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Mavjud turlar
+              {t("Mavjud turlar")}
             </span>
             <span className="text-[13px] font-semibold tabular-nums text-muted-foreground">{types.length}</span>
           </div>
@@ -99,34 +101,34 @@ export default function TaskTypesDrawer({
           <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-2">
             {types.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                {loading ? "Yuklanmoqda…" : "Hozircha tur yo'q. Yuqoridagi tugma orqali qo'shing."}
+                {loading ? t("Yuklanmoqda…") : t("Hozircha tur yo'q. Yuqoridagi tugma orqali qo'shing.")}
               </p>
             ) : (
-              types.map((t, i) => (
+              types.map((tv, i) => (
                 <div
-                  key={t.id}
+                  key={tv.id}
                   className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm"
                 >
                   <span className="w-4 shrink-0 text-[13px] tabular-nums text-muted-foreground">{i + 1}</span>
                   <span
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
-                    style={{ backgroundColor: t.color }}
+                    style={{ backgroundColor: tv.color }}
                   >
-                    <TaskTypeIcon icon={t.icon} className="h-4 w-4" />
+                    <TaskTypeIcon icon={tv.icon} className="h-4 w-4" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{tv.name}</span>
                   <button
                     type="button"
-                    title="Tahrirlash"
-                    onClick={() => { setError(null); setEditing(t); }}
+                    title={t("Tahrirlash")}
+                    onClick={() => { setError(null); setEditing(tv); }}
                     className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
-                    title="O'chirish"
-                    onClick={() => setDeleting(t)}
+                    title={t("O'chirish")}
+                    onClick={() => setDeleting(tv)}
                     className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-rose-50 hover:text-rose-600"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -143,7 +145,7 @@ export default function TaskTypesDrawer({
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-medium hover:bg-secondary"
             >
               <X className="h-4 w-4" />
-              Yopish
+              {t("Yopish")}
             </button>
           </div>
         </div>
@@ -161,7 +163,7 @@ export default function TaskTypesDrawer({
 
       {deleting && (
         <DeleteConfirmModal
-          title="Turni o'chirish"
+          title={t("Turni o'chirish")}
           message="Ushbu topshiriq turini o'chirmoqchimisiz:"
           name={deleting.name}
           zIndex={1200}

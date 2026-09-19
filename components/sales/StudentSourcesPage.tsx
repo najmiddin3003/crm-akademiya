@@ -5,6 +5,7 @@ import { Settings2 } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
 import Button from "@/components/ui/Button";
 import SourceOptionsModal from "@/components/sales/SourceOptionsModal";
+import { useT } from "@/components/shared/Language";
 
 // Sotuv va marketing → O'quvchilar oqimi (/sales-sources).
 //
@@ -84,11 +85,12 @@ function BarRow({ name, value, max, share }: { name: string; value: number; max:
 
 /** Bitta nisbat — to'ldirilgan yo'lakcha. Track bir xil hue'ning och qadami. */
 function Meter({ value, total }: { value: number; total: number }) {
+  const { t } = useT();
   const pct = total > 0 ? (value / total) * 100 : 0;
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <span className="text-[13px] font-medium">Manbasi ko&apos;rsatilgan o&apos;quvchilar</span>
+        <span className="text-[13px] font-medium">{t("Manbasi ko'rsatilgan o'quvchilar")}</span>
         <span className="text-[12px] text-muted-foreground tabular-nums">
           {value} / {total} · {pct.toFixed(1)}%
         </span>
@@ -114,6 +116,7 @@ function StatCard({ label, value, hint, color }: { label: string; value: string 
 }
 
 export default function StudentSourcesPage() {
+  const { t } = useT();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
@@ -143,35 +146,34 @@ export default function StudentSourcesPage() {
     <div className="container mx-auto max-w-[1000px] p-4 md:p-5 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[20px] font-semibold">O&apos;quvchilar oqimi</h1>
+          <h1 className="text-[20px] font-semibold">{t("O'quvchilar oqimi")}</h1>
           <p className="text-[13px] text-muted-foreground mt-1">
-            O&apos;quvchilar markazga qayerdan kelayotgani — qo&apos;shish oynasidagi
-            &laquo;Manba&raquo; maydoni bo&apos;yicha.
+            {t("O'quvchilar markazga qayerdan kelayotgani — qo'shish oynasidagi &laquo;Manba&raquo; maydoni bo'yicha.")}
           </p>
         </div>
         {/* Tanlovlar ro'yxati aynan SHU sahifadan boshqariladi: diagramma
             nimadan yasalgani va uni kim to'ldirishi bir joyda tursin. */}
         <Button variant="outline" lucideIcon={Settings2} onClick={() => setManageOpen(true)} className="shrink-0">
-          Manbalar ro&apos;yxati
+          {t("Manbalar ro'yxati")}
         </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <StatCard
-          label="Eng ko'p manba"
+          label={t("Eng ko'p manba")}
           value={top ? top.name : "—"}
           hint={top ? `${top.n} ta o'quvchi${lead && lead > 0 ? ` · 2-o'rindan +${lead}` : ""}` : "ma'lumot yig'ilmoqda"}
         />
         <StatCard
-          label="Manbasi ma'lum"
+          label={t("Manbasi ma'lum")}
           value={data?.known ?? 0}
           color="text-primary"
           hint="ulush shulardan hisoblanadi"
         />
         <StatCard
-          label="Ko'rsatilmagan"
+          label={t("Ko'rsatilmagan")}
           value={data?.unknown ?? 0}
-          hint="maydon qo'shilishidan oldingilar"
+          hint={t("maydon qo'shilishidan oldingilar")}
         />
       </div>
 
@@ -182,10 +184,7 @@ export default function StudentSourcesPage() {
           {data.unknown > 0 && (
             <p className="text-[12px] text-muted-foreground mt-3 leading-relaxed">
               <strong>{data.unknown}</strong> ta o&apos;quvchida manba ko&apos;rsatilmagan —
-              &laquo;Manba&raquo; maydoni <strong>04.09.2026</strong> da qo&apos;shilgan, undan
-              oldin qo&apos;shilganlar qayerdan kelgani ma&apos;lum emas. Quyidagi ulushlar
-              faqat manbasi ma&apos;lum <strong>{data.known}</strong> ta o&apos;quvchidan
-              hisoblangan.
+              &laquo;Manba&raquo; maydoni <strong>04.09.2026</strong>{" "}{t("da qo'shilgan, undan oldin qo'shilganlar qayerdan kelgani ma'lum emas. Quyidagi ulushlar faqat manbasi ma'lum")}{" "}<strong>{data.known}</strong>{" "}{t("ta o'quvchidan hisoblangan.")}
             </p>
           )}
         </div>
@@ -193,7 +192,7 @@ export default function StudentSourcesPage() {
 
       {/* Taqsimot — miqdorni solishtirish, gorizontal bar. */}
       <div className="rounded-2xl bg-card border border-border p-5">
-        <div className="text-[14px] font-semibold mb-4">Manbalar bo&apos;yicha taqsimot</div>
+        <div className="text-[14px] font-semibold mb-4">{t("Manbalar bo'yicha taqsimot")}</div>
         {loading ? (
           <div className="flex justify-center py-10"><Spinner size={22} /></div>
         ) : (data?.sources.length ?? 0) === 0 ? (
@@ -201,10 +200,9 @@ export default function StudentSourcesPage() {
             <div className="h-16 w-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-4">
               <svg className="icon" style={{ width: 32, height: 32, opacity: 0.45 }}><use href="#i-trending-up" /></svg>
             </div>
-            <h3 className="text-[15px] font-semibold mb-1">Hali ma&apos;lumot yig&apos;ilmagan</h3>
+            <h3 className="text-[15px] font-semibold mb-1">{t("Hali ma'lumot yig'ilmagan")}</h3>
             <p className="text-[13px] text-muted-foreground max-w-md">
-              Yangi o&apos;quvchi qo&apos;shilganda &laquo;Manba&raquo; tanlanadi va u shu yerda
-              ko&apos;rinadi.
+              {t("Yangi o'quvchi qo'shilganda &laquo;Manba&raquo; tanlanadi va u shu yerda ko'rinadi.")}
             </p>
           </div>
         ) : (
@@ -229,9 +227,9 @@ export default function StudentSourcesPage() {
           <table className="w-full text-sm">
             <thead className="bg-secondary/20">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="px-5 py-3 text-left">Manba</th>
-                <th className="px-5 py-3 text-right">O&apos;quvchi</th>
-                <th className="px-5 py-3 text-right">Ulush</th>
+                <th className="px-5 py-3 text-left">{t("Manba")}</th>
+                <th className="px-5 py-3 text-right">{t("O'quvchi")}</th>
+                <th className="px-5 py-3 text-right">{t("Ulush")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -245,7 +243,7 @@ export default function StudentSourcesPage() {
                 </tr>
               ))}
               <tr className="bg-secondary/10 font-medium">
-                <td className="px-5 py-2.5">Jami (manbasi ma&apos;lum)</td>
+                <td className="px-5 py-2.5">{t("Jami (manbasi ma'lum)")}</td>
                 <td className="px-5 py-2.5 text-right tabular-nums">{data!.known}</td>
                 <td className="px-5 py-2.5 text-right tabular-nums text-muted-foreground">100%</td>
               </tr>

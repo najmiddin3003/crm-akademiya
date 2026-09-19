@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { useT } from "@/components/shared/Language";
 
 // SEGMENT TUGMALAR — 2–4 variantli tanlov uchun select O'RNIGA.
 //
@@ -36,6 +37,7 @@ export default function Segmented({
   disabled?: boolean;
   className?: string;
 }) {
+  const { t } = useT();
   const index = Math.max(0, options.findIndex((o) => o.value === value));
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -69,14 +71,14 @@ export default function Segmented({
             aria-checked={active}
             tabIndex={active ? 0 : -1}
             disabled={disabled}
-            title={o.hint}
+            title={t(o.hint)}
             onClick={() => onChange(o.value)}
             className={`inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-[background-color,color,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
               size === "sm" ? "h-7 px-2 text-[12px]" : "h-8 px-3 text-[13px]"
             } ${active ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
-            <span className="truncate">{o.label}</span>
+            <span className="truncate">{t(o.label)}</span>
           </button>
         );
       })}

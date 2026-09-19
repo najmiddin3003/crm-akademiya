@@ -370,9 +370,9 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
     if (!openKey) return;
     const onResize = () => positionPanel(openKey);
     const onDocClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (panelRefs.current[openKey]?.contains(t)) return;
-      if (triggerRefs.current[openKey]?.contains(t)) return;
+      const tv = e.target as Node;
+      if (panelRefs.current[openKey]?.contains(tv)) return;
+      if (triggerRefs.current[openKey]?.contains(tv)) return;
       reallyClose();
     };
     window.addEventListener("resize", onResize);
@@ -636,7 +636,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
               className={`flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-left hover:bg-secondary ${inboxPending > 0 ? "text-red-600 dark:text-red-300" : "text-foreground/70"}`}
             >
               <svg className={`icon icon-sm ${inboxPending > 0 ? "" : "text-muted-foreground"}`}><use href="#i-task-inbox" /></svg>
-              <span className="flex-1">{inboxPending > 0 ? "Topshiriq bajarilishi kutilmoqda" : "Mening topshiriqlarim"}</span>
+              <span className="flex-1">{inboxPending > 0 ? t("Topshiriq bajarilishi kutilmoqda") : t("Mening topshiriqlarim")}</span>
               {inboxCount > 0 && (
                 <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white ${inboxPending > 0 ? "bg-red-500" : "bg-emerald-600"}`}>
                   {inboxCount}

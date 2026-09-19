@@ -1,6 +1,10 @@
+"use client";
+
 import type { TabButtonProps } from "@/components/shared/TahrirlashTabButton";
+import { useT } from "@/components/shared/Language";
 
 export default function CoinTabButton({ active = false, onClick }: TabButtonProps) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -9,7 +13,7 @@ export default function CoinTabButton({ active = false, onClick }: TabButtonProp
         active ? "bg-primary text-white shadow-sm" : "bg-secondary/40 text-foreground/80 hover:bg-secondary/70"
       }`}
     >
-      Coin tarixi
+      {t("Coin tarixi")}
     </button>
   );
 }

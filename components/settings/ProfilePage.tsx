@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalar → "Profil".
 // Joriy foydalanuvchining o'z ma'lumotlari (/api/profile). Faqat to'liq ism
@@ -25,6 +26,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function ProfilePage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [fullName, setFullName] = useState("");
@@ -38,24 +40,24 @@ export default function ProfilePage() {
       .then(({ status, data }) => {
         if (cancelled) return;
         if (status === 401) {
-          showError("Avtorizatsiya kerak");
+          showError(t("Avtorizatsiya kerak"));
           return;
         }
         if (!data.ok) {
-          showError(data.error || "Profilni yuklab bo'lmadi");
+          showError(t(data.error || "Profilni yuklab bo'lmadi"));
           return;
         }
         setProfile(data.profile as Profile);
         setFullName((data.profile as Profile).fullName || "");
       })
       .catch(() => {
-        if (!cancelled) showError("Serverga ulanib bo'lmadi");
+        if (!cancelled) showError(t("Serverga ulanib bo'lmadi"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [showError]);
+  }, [showError, t]);
 
   const save = async () => {
     setSaving(true);
@@ -66,20 +68,20 @@ export default function ProfilePage() {
         body: JSON.stringify({ fullName }),
       });
       if (res.status === 401) {
-        showError("Avtorizatsiya kerak");
+        showError(t("Avtorizatsiya kerak"));
         return;
       }
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       // Yuqoridagi doira va ism serverdagi qiymat bilan bir xil turishi uchun.
       setProfile((p) => (p ? { ...p, fullName: fullName.trim() } : p));
       setFullName((v) => v.trim());
-      showSuccess("Profil saqlandi");
+      showSuccess(t("Profil saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -90,7 +92,7 @@ export default function ProfilePage() {
 
   return (
     <div className="page-frame container mx-auto max-w-[720px] p-5 space-y-4">
-      <h1 className="text-[18px] font-bold tracking-tight">Profil</h1>
+      <h1 className="text-[18px] font-bold tracking-tight">{t("Profil")}</h1>
 
       {loading ? (
         <div className="rounded-2xl bg-card border border-border p-8">
@@ -98,7 +100,7 @@ export default function ProfilePage() {
         </div>
       ) : !profile ? (
         <div className="rounded-2xl bg-card border border-border p-8 text-center text-sm text-muted-foreground">
-          Profil ma&apos;lumotlari topilmadi
+          {t("Profil ma'lumotlari topilmadi")}
         </div>
       ) : (
         <div className="rounded-2xl bg-card border border-border p-5 space-y-5">
@@ -118,21 +120,21 @@ export default function ProfilePage() {
                 sarlavhasi emas. */}
             <div>
               <label htmlFor="prof-name" className="block text-[13px] font-medium mb-1.5">
-                To&apos;liq ism
+                {t("To'liq ism")}
               </label>
               <input
                 id="prof-name"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ism familiya"
+                placeholder={t("Ism familiya")}
                 className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
 
             <div>
               <label htmlFor="prof-phone" className="block text-[13px] font-medium mb-1.5">
-                Telefon raqam
+                {t("Telefon raqam")}
               </label>
               <input
                 id="prof-phone"
@@ -142,13 +144,13 @@ export default function ProfilePage() {
                 className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
               />
               <p className="mt-1.5 text-[12px] text-muted-foreground">
-                Telefon raqam login uchun ishlatiladi, o&apos;zgartirib bo&apos;lmaydi
+                {t("Telefon raqam login uchun ishlatiladi, o'zgartirib bo'lmaydi")}
               </p>
             </div>
 
             <div>
               <label htmlFor="prof-role" className="block text-[13px] font-medium mb-1.5">
-                Rol
+                {t("Rol")}
               </label>
               <input
                 id="prof-role"
@@ -166,7 +168,7 @@ export default function ProfilePage() {
               disabled={saving}
               className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
             >
-              {saving ? "Saqlanmoqda…" : "Saqlash"}
+              {saving ? t("Saqlanmoqda…") : t("Saqlash")}
             </button>
           </div>
         </div>

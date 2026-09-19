@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/components/shared/Language";
 
 // Gorizontal foiz-panjara ("Kirim"/"Chiqim" panellaridagi "Tranzaksiya turi"/
 // "To'lov usuli" taqsimoti). `tone` panel rangini belgilaydi (kirim=yashil,
@@ -14,13 +15,14 @@ function fmtUZS(n: number): string {
 }
 
 export default function BreakdownBars({ rows, tone }: { rows: BreakdownRow[]; tone: "green" | "red" }) {
+  const { t } = useT();
   const total = rows.reduce((s, r) => s + r.amount, 0);
   const sorted = [...rows].sort((a, b) => b.amount - a.amount);
   const trackCls = tone === "green" ? "bg-emerald-100" : "bg-rose-100";
   const fillCls = tone === "green" ? "bg-emerald-500" : "bg-rose-400";
 
   if (total <= 0) {
-    return <div className="py-10 text-center text-sm text-muted-foreground">Ma&apos;lumot topilmadi</div>;
+    return <div className="py-10 text-center text-sm text-muted-foreground">{t("Ma'lumot topilmadi")}</div>;
   }
 
   return (
@@ -29,7 +31,7 @@ export default function BreakdownBars({ rows, tone }: { rows: BreakdownRow[]; to
         const pct = (r.amount / total) * 100;
         return (
           <div key={r.label} className="flex items-center gap-3">
-            <div className="w-32 shrink-0 text-[13px] truncate">{r.label}</div>
+            <div className="w-32 shrink-0 text-[13px] truncate">{t(r.label)}</div>
             <div className={`relative flex-1 h-7 rounded-full overflow-hidden ${trackCls}`}>
               <div className={`h-full rounded-full ${fillCls} flex items-center justify-center transition-all`} style={{ width: `${Math.max(pct, 4)}%` }}>
                 {pct >= 8 && <span className="text-[11px] font-semibold text-white">{pct.toFixed(1)} %</span>}

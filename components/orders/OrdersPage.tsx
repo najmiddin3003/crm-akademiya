@@ -36,6 +36,7 @@ import {
 import { Menu } from "lucide-react";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/index-dev.html lines 880-1129 (id="view-orders-list")
 // + src/app.js (applyOrdersFilters/renderOrdersList/renderOrdersKanban/openAddOrderModal
@@ -99,6 +100,7 @@ const DEFAULT_VISIBLE_FIELDS: Record<string, boolean> = Object.fromEntries(FILTE
 const WEEKDAY_OPTIONS = WEEKDAY_NAMES.filter((d) => d !== "Yakshanba").concat("Yakshanba").map((d) => ({ value: d, label: d }));
 
 export default function OrdersPage() {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { orders, loading, createOrder, updateOrder, patchOrder, messagesByOrder, addMessage } = useOrders();
@@ -145,8 +147,8 @@ export default function OrdersPage() {
   const setOrderStage = async (orderId: number, stage: OrderStageKey) => {
     setStagePickerFor(null);
     const updated = await patchOrder(orderId, { stage });
-    if (updated) showSuccess("Bosqich o'zgartirildi");
-    else showError("Bosqichni o'zgartirib bo'lmadi");
+    if (updated) showSuccess(t("Bosqich o'zgartirildi"));
+    else showError(t("Bosqichni o'zgartirib bo'lmadi"));
   };
 
   const setFilter = <K extends keyof OrdersFilters>(key: K, value: OrdersFilters[K]) => {
@@ -234,28 +236,28 @@ export default function OrdersPage() {
 
   const handleDropStage = async (orderId: number, stage: OrderStageKey) => {
     const updated = await patchOrder(orderId, { stage });
-    if (updated) showSuccess("Bosqich yangilandi");
-    else showError("Bosqichni ko'chirib bo'lmadi");
+    if (updated) showSuccess(t("Bosqich yangilandi"));
+    else showError(t("Bosqichni ko'chirib bo'lmadi"));
   };
 
   const handleCreateOrder = async (values: NewOrderValues): Promise<boolean> => {
     const created = await createOrder(values);
     if (!created) {
-      showError("Buyurtmani yaratib bo'lmadi. Qaytadan urinib ko'ring");
+      showError(t("Buyurtmani yaratib bo'lmadi. Qaytadan urinib ko'ring"));
       return false;
     }
     setPage(1);
-    showSuccess("Buyurtma yaratildi");
+    showSuccess(t("Buyurtma yaratildi"));
     return true;
   };
 
   const handleUpdateOrder = async (orderId: number, values: NewOrderValues): Promise<boolean> => {
     const updated = await updateOrder(orderId, values);
     if (!updated) {
-      showError("Buyurtmani yangilab bo'lmadi. Qaytadan urinib ko'ring");
+      showError(t("Buyurtmani yangilab bo'lmadi. Qaytadan urinib ko'ring"));
       return false;
     }
-    showSuccess("Buyurtma yangilandi");
+    showSuccess(t("Buyurtma yangilandi"));
     return true;
   };
 
@@ -271,9 +273,9 @@ export default function OrdersPage() {
       a.download = `buyurtmalar-${date}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showSuccess("CSV fayl yuklab olindi");
+      showSuccess(t("CSV fayl yuklab olindi"));
     } catch {
-      showError("CSV faylni yuklab bo'lmadi");
+      showError(t("CSV faylni yuklab bo'lmadi"));
     }
   };
 
@@ -285,14 +287,14 @@ export default function OrdersPage() {
       const XLSX = await import("xlsx");
       const cols: { key: keyof Order; label: string }[] = [
         { key: "id", label: "ID" },
-        { key: "name", label: "O'quvchini ismi" },
-        { key: "phone", label: "Telefon raqam" },
-        { key: "created", label: "Yaratilgan sanasi" },
-        { key: "firstLesson", label: "Birinchi dars kuni" },
-        { key: "teacher", label: "O'qituvchi" },
-        { key: "course", label: "Kurs" },
-        { key: "moderator", label: "Moderator" },
-        { key: "status", label: "Status" },
+        { key: "name", label: t("O'quvchini ismi") },
+        { key: "phone", label: t("Telefon raqam") },
+        { key: "created", label: t("Yaratilgan sanasi") },
+        { key: "firstLesson", label: t("Birinchi dars kuni") },
+        { key: "teacher", label: t("O'qituvchi") },
+        { key: "course", label: t("Kurs") },
+        { key: "moderator", label: t("Moderator") },
+        { key: "status", label: t("Status") },
       ];
       const rows = filtered.map((o) => Object.fromEntries(cols.map((c) => [c.label, o[c.key] ?? ""])));
       const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -300,9 +302,9 @@ export default function OrdersPage() {
       XLSX.utils.book_append_sheet(workbook, worksheet, "Buyurtmalar");
       const date = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(workbook, `buyurtmalar-${date}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   };
 
@@ -342,7 +344,7 @@ export default function OrdersPage() {
           O'NGDA bitta qatorda. Kanban ko'rinishidagi keng qidiruv maydoni
           olib tashlandi — qidiruv filtrlar panelida. */}
       <div className="flex items-center flex-wrap justify-between gap-2 shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">Buyurtmalar ro&apos;yxati</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("Buyurtmalar ro'yxati")}</h1>
         {/* O'ngdagi hammasi BITTA blokda — shunda justify-between sarlavha
             bilan tugmalarni ikki chekkaga ajratadi. (mr-auto bilan bo'lmadi:
             u klass loyihaning CSS'ida umuman yo'q.) */}
@@ -370,11 +372,11 @@ export default function OrdersPage() {
                 variant="outline"
                 lucideIcon={Settings}
                 onClick={() => setSettingsOpen((o) => !o)}
-                title="Sozlash"
+                title={t("Sozlash")}
               />
               {settingsOpen && (
                 <div className="orders-settings-menu">
-                  <div className="osm-header">Sozlash</div>
+                  <div className="osm-header">{t("Sozlash")}</div>
                   <div className="osm-list">
                     {FILTER_FIELDS.map((f) => (
                       <label key={f.key} className="osm-item">
@@ -383,13 +385,13 @@ export default function OrdersPage() {
                           checked={visibleFields[f.key]}
                           onChange={() => toggleFieldVisible(f.key)}
                         />
-                        <span>{f.label}</span>
+                        <span>{t(f.label)}</span>
                       </label>
                     ))}
                   </div>
                   <div className="osm-footer">
                     <button type="button" onClick={resetVisibleFields}>
-                      Standartga qaytarish
+                      {t("Standartga qaytarish")}
                     </button>
                   </div>
                 </div>
@@ -399,20 +401,20 @@ export default function OrdersPage() {
             variant="outline"
             lucideIcon={Filter}
             onClick={() => setFiltersOpen((o) => !o)}
-            title="Filtrlar"
+            title={t("Filtrlar")}
           />
           <Button
             variant="outline"
             lucideIcon={XCircle}
             onClick={clearFilters}
-            title="Filtrlarni tozalash"
+            title={t("Filtrlarni tozalash")}
           />
           <div className="relative" ref={exportRef}>
             <Button
               variant="outline"
               lucideIcon={layout === "list" ? Share2 : MoreVertical}
               onClick={() => setExportMenuOpen((o) => !o)}
-              title={layout === "list" ? "Eksport" : "Ko'proq"}
+              title={layout === "list" ? t("Eksport") : t("Ko'proq")}
             />
             {exportMenuOpen && (
               <div className="absolute top-full right-0 mt-2 z-50 w-64 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
@@ -427,7 +429,7 @@ export default function OrdersPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <FileText className="icon icon-sm" />
                   </span>
-                  <span>CSV faylini yuklab olish</span>
+                  <span>{t("CSV faylini yuklab olish")}</span>
                 </button>
                 <button
                   type="button"
@@ -440,7 +442,7 @@ export default function OrdersPage() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <FileSpreadsheet className="icon icon-sm" />
                   </span>
-                  <span>EXCEL faylini yuklab olish</span>
+                  <span>{t("EXCEL faylini yuklab olish")}</span>
                 </button>
               </div>
             )}
@@ -451,7 +453,7 @@ export default function OrdersPage() {
             icon="i-file-plus"
             onClick={() => (layout === "list" ? setOrderModal({ mode: "add" }) : router.push("/orders-list/add"))}
           >
-            {layout === "list" ? "Buyurtma qo'shish" : "Qo'shish"}
+            {layout === "list" ? t("Buyurtma qo'shish") : t("Qo'shish")}
           </Button>
         </div>
         </div>
@@ -471,14 +473,14 @@ export default function OrdersPage() {
                 value={filters.search}
                 onChange={(e) => setFilter("search", e.target.value)}
                 type="text"
-                placeholder="Qidiruv"
+                placeholder={t("Qidiruv")}
                 className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           )}
           {visibleFields.from && (
             <DateRangePicker
-              placeholder="Sana"
+              placeholder={t("Sana")}
               value={{ start: fromIso(filters.from), end: fromIso(filters.to) }}
               onChange={(r) => {
                 setFilters((f) => ({ ...f, from: r.start ? toIso(r.start) : "", to: r.end ? toIso(r.end) : "" }));
@@ -490,56 +492,56 @@ export default function OrdersPage() {
             <DateField
               value={filters.firstLessonDate}
               onChange={(iso) => setFilter("firstLessonDate", iso)}
-              placeholder="Birinchi dars sanasi"
+              placeholder={t("Birinchi dars sanasi")}
             />
           )}
           {visibleFields.status1 && (
-            <Select value={filters.status1} onChange={(v) => setFilter("status1", v)} options={STATUSES.map((s) => ({ value: s.value, label: s.label }))} placeholder="Holatlar" clearable size="sm" />
+            <Select value={filters.status1} onChange={(v) => setFilter("status1", v)} options={STATUSES.map((s) => ({ value: s.value, label: s.label }))} placeholder={t("Holatlar")} clearable size="sm" />
           )}
           {visibleFields.course && (
-            <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" />
+            <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kurs")} clearable size="sm" />
           )}
           {visibleFields.subcourse && (
             /* Referensda ham bu maydon o'chirilgan (disabled) — ichki kurs
                ro'yxati hali hech qayerdan kelmaydi. */
-            <Select value={filters.subcourse} onChange={(v) => setFilter("subcourse", v)} options={SUBCOURSES.map((s) => ({ value: s, label: s }))} placeholder="Ichki kurs" clearable size="sm" disabled title="Hozircha mavjud emas" />
+            <Select value={filters.subcourse} onChange={(v) => setFilter("subcourse", v)} options={SUBCOURSES.map((s) => ({ value: s, label: s }))} placeholder={t("Ichki kurs")} clearable size="sm" disabled title={t("Hozircha mavjud emas")} />
           )}
           {visibleFields.group && (
-            <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" />
+            <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder={t("Guruh")} clearable size="sm" />
           )}
           {visibleFields.teacher && (
-            <Select value={filters.teacher} onChange={(v) => setFilter("teacher", v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="O'qituvchi" clearable size="sm" />
+            <Select value={filters.teacher} onChange={(v) => setFilter("teacher", v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("O'qituvchi")} clearable size="sm" />
           )}
           {visibleFields.moderator && (
-            <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" />
+            <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable size="sm" />
           )}
           {visibleFields.status && (
-            <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={ORDER_STAGES.map((s) => ({ value: s.key, label: `${s.emoji} ${s.label}` }))} placeholder="Status" clearable size="sm" />
+            <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={ORDER_STAGES.map((s) => ({ value: s.key, label: `${s.emoji} ${s.label}` }))} placeholder={t("Status")} clearable size="sm" />
           )}
           {visibleFields.source && (
-            <Select value={filters.source} onChange={(v) => setFilter("source", v)} options={sourceOptions.map((s) => ({ value: s, label: s }))} placeholder="Manba" clearable size="sm" />
+            <Select value={filters.source} onChange={(v) => setFilter("source", v)} options={sourceOptions.map((s) => ({ value: s, label: s }))} placeholder={t("Manba")} clearable size="sm" />
           )}
           {visibleFields.fromBranch && (
-            <Select value={filters.fromBranch} onChange={(v) => setFilter("fromBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder="Qaysi filialdan o'tkazilgan" clearable size="sm" />
+            <Select value={filters.fromBranch} onChange={(v) => setFilter("fromBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder={t("Qaysi filialdan o'tkazilgan")} clearable size="sm" />
           )}
           {visibleFields.toBranch && (
-            <Select value={filters.toBranch} onChange={(v) => setFilter("toBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder="Qaysi filialga o'tkazilgan" clearable size="sm" />
+            <Select value={filters.toBranch} onChange={(v) => setFilter("toBranch", v)} options={branchOptions.map((b) => ({ value: b, label: b }))} placeholder={t("Qaysi filialga o'tkazilgan")} clearable size="sm" />
           )}
           {visibleFields.day && (
-            <Select value={filters.day} onChange={(v) => setFilter("day", v)} options={WEEKDAY_OPTIONS} placeholder="Kun" clearable size="sm" title="Lid yaratilgan hafta kuni" />
+            <Select value={filters.day} onChange={(v) => setFilter("day", v)} options={WEEKDAY_OPTIONS} placeholder={t("Kun")} clearable size="sm" title={t("Lid yaratilgan hafta kuni")} />
           )}
           {visibleFields.firstLessonDay && (
-            <Select value={filters.firstLessonDay} onChange={(v) => setFilter("firstLessonDay", v)} options={WEEKDAY_OPTIONS} placeholder="Birinchi dars kuni" clearable size="sm" title="Birinchi darsga yozilgan hafta kuni" />
+            <Select value={filters.firstLessonDay} onChange={(v) => setFilter("firstLessonDay", v)} options={WEEKDAY_OPTIONS} placeholder={t("Birinchi dars kuni")} clearable size="sm" title={t("Birinchi darsga yozilgan hafta kuni")} />
           )}
           {visibleFields.category && (
-            <Select value={filters.category} onChange={(v) => setFilter("category", v)} options={categoryNames.map((c) => ({ value: c, label: c }))} placeholder="Kategoriya" clearable size="sm" />
+            <Select value={filters.category} onChange={(v) => setFilter("category", v)} options={categoryNames.map((c) => ({ value: c, label: c }))} placeholder={t("Kategoriya")} clearable size="sm" />
           )}
         </div>
       </div>
 
       <div className="flex items-center justify-end shrink-0">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">
             {filtered.length.toLocaleString("uz-UZ").replace(/,/g, " ")}
           </span>
@@ -558,32 +560,32 @@ export default function OrdersPage() {
                   <th className="text-left px-3 py-3 whitespace-nowrap">№</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    O&apos;quvchini ismi
+                    {t("O'quvchini ismi")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Telefon raqam
+                    {t("Telefon raqam")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Yaratilgan sanasi
+                    {t("Yaratilgan sanasi")}
                   </th>
                   {/* Referensning buyurtmalar jadvalida "Birinchi dars guni"
                       ustuni yo'q — u faqat "Birinchi darsga keladiganlar"
                       sahifasida ko'rsatiladi. Maydonning o'zi (o.firstLesson)
                       saqlanib qoldi, faqat bu jadvalda chiqarilmaydi. */}
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    O&apos;qituvchi
+                    {t("O'qituvchi")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Kurs
+                    {t("Kurs")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Kurs darajasi
+                    {t("Kurs darajasi")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Moderator
+                    {t("Moderator")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Izoh
+                    {t("Izoh")}
                   </th>
                   <th className="text-right px-3 py-3 whitespace-nowrap"></th>
                 </tr>
@@ -618,7 +620,7 @@ export default function OrdersPage() {
                       </Link>
                       {o.isNew && (
                         <span className="ml-1.5 inline-flex items-center rounded-full bg-rose-500 text-white text-[9px] font-semibold px-1.5 py-0.5">
-                          New
+                          {t("New")}
                         </span>
                       )}
                     </td>
@@ -686,7 +688,7 @@ export default function OrdersPage() {
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title="Chek chiqarish"
+                          title={t("Chek chiqarish")}
                           onClick={(e) => {
                             e.stopPropagation();
                             setReceiptFor(o);
@@ -696,7 +698,7 @@ export default function OrdersPage() {
                         </button>
                         <button
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title="Tahrirlash"
+                          title={t("Tahrirlash")}
                           onClick={(e) => {
                             e.stopPropagation();
                             setOrderModal({ mode: "edit", order: o });
@@ -706,7 +708,7 @@ export default function OrdersPage() {
                         </button>
                         <button
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title="Izoh yozish"
+                          title={t("Izoh yozish")}
                           onClick={(e) => {
                             e.stopPropagation();
                             setMessageFor(o);
@@ -758,14 +760,14 @@ export default function OrdersPage() {
           onSend={async (text) => {
             // Muvaffaqiyat toasti FAQAT izoh haqiqatan saqlangandan keyin
             // (ilgari POST umuman yo'q edi va toast har doim chiqardi).
-            if (await addMessage(messageFor.id, text)) showSuccess("Izoh qo'shildi");
+            if (await addMessage(messageFor.id, text)) showSuccess(t("Izoh qo'shildi"));
           }}
         />
       )}
 
       {receiptFor && (
         <LeadReceiptModal
-          receipt={{ docTitle: `Buyurtma #${orderNo(receiptFor)}`, heading: "BUYURTMA", rows: leadReceiptRows(receiptFor) }}
+          receipt={{ docTitle: t("Buyurtma #{receiptFor}", { receiptFor: orderNo(receiptFor) }), heading: t("BUYURTMA"), rows: leadReceiptRows(receiptFor) }}
           onClose={() => setReceiptFor(null)}
         />
       )}

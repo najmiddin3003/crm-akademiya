@@ -9,6 +9,7 @@ import BlockTestTypeModal from "./BlockTestTypeModal";
 import { BLOCK_TEST_KINDS } from "@/constants/blockTest";
 import type { BlockTestType } from "@/lib/blockTestTypes";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Blok test → Blok test turlari (referens akademiya.edutizim.uz/block-test/types,
 // sidebar: Blok test > Blok test turlari, href /blok-test-turlari). Ma'lumot
@@ -39,6 +40,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function BlockTestTypesPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [items, setItems] = useState<BlockTestType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,12 +84,12 @@ export default function BlockTestTypesPage() {
   const slice = filtered.slice(start, start + pageSize);
 
   function exportRows() {
-    return filtered.map((r, i) => [i + 1, r.name, r.code, r.durationMinutes, r.subjects.length, r.active ? "Faol" : "Nofaol", r.createdAt]);
+    return filtered.map((r, i) => [i + 1, r.name, r.code, r.durationMinutes, r.subjects.length, r.active ? t("Faol") : t("Nofaol"), r.createdAt]);
   }
   function exportCSV() {
     const csv = [HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
     downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "blok-test-turlari.csv");
-    showSuccess(`CSV yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("CSV yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
   function exportExcel() {
@@ -95,7 +97,7 @@ export default function BlockTestTypesPage() {
     const rows = exportRows().map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${rows}</tbody></table></body></html>`;
     downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "blok-test-turlari.xls");
-    showSuccess(`Excel yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("Excel yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
@@ -107,14 +109,14 @@ export default function BlockTestTypesPage() {
       const res = await fetch(`/api/block-test-types/${r.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       setItems((prev) => prev.filter((x) => x.id !== r.id));
-      showSuccess("Tur o'chirildi");
+      showSuccess(t("Tur o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -126,31 +128,31 @@ export default function BlockTestTypesPage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
-          <span>Tur qo&apos;shish</span>
+          <span>{t("Tur qo'shish")}</span>
         </button>
 
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-            <span className="text-muted-foreground">Umumiy soni:</span>
+            <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{filtered.length}</span>
           </div>
           <div className="relative">
             <svg className="icon icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"><use href="#i-search" /></svg>
-            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidirish" className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder={t("Qidirish")} className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div className="relative" ref={moreRef}>
-            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
               <MoreVertical className="icon icon-sm" />
             </button>
             {moreOpen && (
               <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
                 <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                  <span>CSV faylini yuklab olish</span>
+                  <span>{t("CSV faylini yuklab olish")}</span>
                 </button>
                 <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                  <span>EXCEL faylini yuklab olish</span>
+                  <span>{t("EXCEL faylini yuklab olish")}</span>
                 </button>
               </div>
             )}
@@ -164,12 +166,12 @@ export default function BlockTestTypesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Nomi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kodi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Davomiyligi (daqiqa)</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kurslar</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Qo&apos;shilgan sana</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Nomi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kodi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Davomiyligi (daqiqa)")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kurslar")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Holati")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Qo'shilgan sana")}</th>
                 <th className="px-3 py-3 w-24" />
               </tr>
             </thead>
@@ -188,16 +190,16 @@ export default function BlockTestTypesPage() {
                   </td>
                   <td className="px-3 py-3 text-[13px]">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${r.active ? "bg-emerald-100 text-emerald-700" : "bg-secondary text-muted-foreground"}`}>
-                      {r.active ? "Faol" : "Nofaol"}
+                      {r.active ? t("Faol") : t("Nofaol")}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground whitespace-nowrap">{r.createdAt}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      <button onClick={() => setEditItem(r)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title="Tahrirlash">
+                      <button onClick={() => setEditItem(r)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title={t("Tahrirlash")}>
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setDeleteTarget(r)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish">
+                      <button onClick={() => setDeleteTarget(r)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -229,13 +231,13 @@ export default function BlockTestTypesPage() {
       )}
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

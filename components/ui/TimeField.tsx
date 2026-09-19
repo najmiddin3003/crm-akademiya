@@ -118,8 +118,8 @@ export default function TimeField({
       col?.querySelector<HTMLElement>('[data-selected="true"]')?.scrollIntoView({ block: "center" });
     }
     const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (rootRef.current?.contains(t) || popRef.current?.contains(t)) return;
+      const tv = e.target as Node;
+      if (rootRef.current?.contains(tv) || popRef.current?.contains(tv)) return;
       setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
@@ -198,7 +198,7 @@ export default function TimeField({
       {text && !disabled && (
         <button
           type="button"
-          title="Vaqtni tozalash"
+          title={t("Vaqtni tozalash")}
           onClick={clear}
           className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         >
@@ -207,7 +207,7 @@ export default function TimeField({
       )}
       <button
         type="button"
-        title="Vaqtni tanlash"
+        title={t("Vaqtni tanlash")}
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : openPopup())}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:opacity-80 disabled:opacity-40"

@@ -1,9 +1,13 @@
+"use client";
+import { useT } from "@/components/shared/Language";
+
 export interface TabButtonProps {
   active?: boolean;
   onClick?: () => void;
 }
 
 export default function TahrirlashTabButton({ active = false, onClick }: TabButtonProps) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -12,7 +16,7 @@ export default function TahrirlashTabButton({ active = false, onClick }: TabButt
         active ? "bg-primary text-white shadow-sm" : "bg-secondary/40 text-foreground/80 hover:bg-secondary/70"
       }`}
     >
-      Tahrirlash
+      {t("Tahrirlash")}
     </button>
   );
 }

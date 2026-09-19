@@ -10,6 +10,7 @@ import { downloadTableCsv } from "@/lib/exportTable";
 import { ATTENDANCE_COLOR, ATTENDANCE_OPTIONS, type AttendanceStatus } from "@/lib/attendance";
 import { dateToIso, isoToLabel, useNazoratAttendance } from "./useNazoratAttendance";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Davomat analitikasi (/nazorat-davomat-analytics).
 //
@@ -63,6 +64,7 @@ function fmtCount(n: number): string {
 }
 
 export default function NazoratDavomatAnalyticsPage() {
+  const { t } = useT();
   const { groups, marks, loading } = useNazoratAttendance();
 
   const [dateRange, setDateRange] = useState<DateRange>(() => ({ start: startOfMonth(new Date()), end: new Date() }));
@@ -118,9 +120,9 @@ export default function NazoratDavomatAnalyticsPage() {
   }, [marks, visibleGroupIds, dateRange, holati]);
 
   const totals = useMemo(() => {
-    const t = SERIES.map(() => 0);
-    for (const d of days) for (let k = 0; k < t.length; k++) t[k] += d.vals[k];
-    return t;
+    const tv = SERIES.map(() => 0);
+    for (const d of days) for (let k = 0; k < tv.length; k++) tv[k] += d.vals[k];
+    return tv;
   }, [days]);
 
   function exportCsv() {
@@ -141,7 +143,7 @@ export default function NazoratDavomatAnalyticsPage() {
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
           <FileText className="icon icon-sm" />
-          <span>CSV faylini yuklab olish</span>
+          <span>{t("CSV faylini yuklab olish")}</span>
         </button>
       </div>
 
@@ -150,7 +152,7 @@ export default function NazoratDavomatAnalyticsPage() {
         {SERIES.map((s, k) => (
           <div key={s.key} className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[13px]">
             <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: s.color }} />
-            <span className="text-muted-foreground">{s.label}</span>
+            <span className="text-muted-foreground">{t(s.label)}</span>
             <span className="font-bold tabular-nums">{fmtCount(totals[k])}</span>
           </div>
         ))}
@@ -160,10 +162,10 @@ export default function NazoratDavomatAnalyticsPage() {
             yo'q). Shu sabab son o'ylab topilmaydi — chiziqcha turadi. */}
         <div
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[13px]"
-          title="O'quvchining guruhga qachon qo'shilgani bazada saqlanmaydi, shuning uchun o'tgan kunlardagi guruh ro'yxatini tiklab bo'lmaydi."
+          title={t("O'quvchining guruhga qachon qo'shilgani bazada saqlanmaydi, shuning uchun o'tgan kunlardagi guruh ro'yxatini tiklab bo'lmaydi.")}
         >
           <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#f97316" }} />
-          <span className="text-muted-foreground">Davomat qilinmagan</span>
+          <span className="text-muted-foreground">{t("Davomat qilinmagan")}</span>
           <span className="font-bold tabular-nums">—</span>
         </div>
         {/* "Muzlatilgan" — o'quvchining holati (pupils.status) KUNLIK emas,
@@ -172,10 +174,10 @@ export default function NazoratDavomatAnalyticsPage() {
             o'ylab topilmaydi — chiziqcha turadi. */}
         <div
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[13px]"
-          title="Muzlatilgan o'quvchilarning kunlik tarixi bazada yuritilmaydi (pupils.status faqat joriy holatni saqlaydi)."
+          title={t("Muzlatilgan o'quvchilarning kunlik tarixi bazada yuritilmaydi (pupils.status faqat joriy holatni saqlaydi).")}
         >
           <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: "#bae6fd" }} />
-          <span className="text-muted-foreground">Muzlatilgan</span>
+          <span className="text-muted-foreground">{t("Muzlatilgan")}</span>
           <span className="font-bold tabular-nums">—</span>
         </div>
       </div>
@@ -190,7 +192,7 @@ export default function NazoratDavomatAnalyticsPage() {
           sanasi ham bazada saqlanmaydi, shuning uchun o&apos;tgan kunlardagi guruh
           ro&apos;yxatini tiklab bo&apos;lmaydi. Qoldirilgan darslar ro&apos;yxati{" "}
           <Link href="/nazorat-missed-groups" className="text-primary hover:underline">
-            Davomat qilinmagan guruhlar
+            {t("Davomat qilinmagan guruhlar")}
           </Link>{" "}
           sahifasida — u o&apos;quvchi sonini emas, guruh-dars faktini sanaydi.
         </p>
@@ -200,13 +202,13 @@ export default function NazoratDavomatAnalyticsPage() {
         {/* Filtr paneli */}
         <div className="rounded-2xl bg-card border border-border p-5 self-start" style={{ alignSelf: "start" }}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[15px] font-semibold">Filtr</h3>
+            <h3 className="text-[15px] font-semibold">{t("Filtr")}</h3>
             {/* Yig'ish tugmasi endi haqiqatan panelni yopadi/ochadi. */}
             <button
               type="button"
               onClick={() => setFilterOpen((o) => !o)}
               className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
-              title={filterOpen ? "Yig'ish" : "Yoyish"}
+              title={filterOpen ? t("Yig'ish") : t("Yoyish")}
               aria-expanded={filterOpen}
             >
               {filterOpen ? <ChevronUp className="icon icon-sm" /> : <ChevronDown className="icon icon-sm" />}
@@ -215,24 +217,24 @@ export default function NazoratDavomatAnalyticsPage() {
           {filterOpen && (
             <div className="space-y-4">
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">Sana</label>
-                <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
+                <label className="block text-[13px] font-medium mb-1.5">{t("Sana")}</label>
+                <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Oraliqni tanlang")} />
               </div>
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">Kurs</label>
-                <Select value={kurs} onChange={(v) => setKurs(v)} options={kursOptions.map((k) => ({ value: k, label: k }))} placeholder="Tanlang" clearable />
+                <label className="block text-[13px] font-medium mb-1.5">{t("Kurs")}</label>
+                <Select value={kurs} onChange={(v) => setKurs(v)} options={kursOptions.map((k) => ({ value: k, label: k }))} placeholder={t("Tanlang")} clearable />
               </div>
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">Guruh</label>
-                <Select value={group} onChange={(v) => setGroup(v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Tanlang" clearable />
+                <label className="block text-[13px] font-medium mb-1.5">{t("Guruh")}</label>
+                <Select value={group} onChange={(v) => setGroup(v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder={t("Tanlang")} clearable />
               </div>
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">O&apos;qituvchi</label>
-                <Select value={teacher} onChange={(v) => setTeacher(v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="Tanlang" clearable />
+                <label className="block text-[13px] font-medium mb-1.5">{t("O'qituvchi")}</label>
+                <Select value={teacher} onChange={(v) => setTeacher(v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("Tanlang")} clearable />
               </div>
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">Holati</label>
-                <Select value={holati} onChange={(v) => setHolati(v)} options={ATTENDANCE_OPTIONS.map((o) => ({ value: o.key, label: o.label }))} placeholder="Tanlang" clearable />
+                <label className="block text-[13px] font-medium mb-1.5">{t("Holati")}</label>
+                <Select value={holati} onChange={(v) => setHolati(v)} options={ATTENDANCE_OPTIONS.map((o) => ({ value: o.key, label: o.label }))} placeholder={t("Tanlang")} clearable />
               </div>
             </div>
           )}
@@ -244,7 +246,7 @@ export default function NazoratDavomatAnalyticsPage() {
             {SERIES.map((s) => (
               <span key={s.key} className="inline-flex items-center gap-1.5">
                 <span className="inline-block w-4 h-3 rounded-sm" style={{ background: s.color }} />
-                {s.label}
+                {t(s.label)}
               </span>
             ))}
           </div>

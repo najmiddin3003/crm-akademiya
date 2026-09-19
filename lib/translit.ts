@@ -77,6 +77,11 @@ const EXCEPTIONS: Record<string, string> = {
 const KEEP = new Set([
   "excel", "word", "google", "sheets", "telegram", "click", "payme", "uzum", "cloudinary", "eskiz",
   "id", "url", "api", "crm", "kpi", "ok", "pdf", "csv", "sms", "qr", "utm", "ip", "vps", "html",
+  // Tashqi xizmatlarning o'z interfeysidagi so'zlar va texnik atamalar — lotincha qoladi.
+  "vercel", "apps", "script", "exec", "web", "app", "deploy", "deployment", "execute", "as", "who", "has",
+  "access", "me", "anyone", "new", "settings", "environment", "variables", "production", "action", "key",
+  "bold", "png", "jpg", "jpeg", "webp", "xlsx", "xls", "json", "http", "https", "www", "gmail", "com",
+  "example", "published", "unpublished", "edutizim", "openai", "atlas", "mongodb", "ctrl", "enter", "esc", "shift", "alt", "backspace",
 ]);
 
 function isUpper(ch: string): boolean {

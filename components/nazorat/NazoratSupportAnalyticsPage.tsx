@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatSupportTime, type SupportRecord } from "@/lib/supportAnalytics";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat → Support analitikasi (sidebar: Nazorat > Hisobotlar > Support
 // analitikasi, href /nazorat-support-analytics). Ma'lumot HAQIQIY —
@@ -25,6 +26,7 @@ function toIso(d: Date): string {
 }
 
 export default function NazoratSupportAnalyticsPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [records, setRecords] = useState<SupportRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,11 +74,11 @@ export default function NazoratSupportAnalyticsPage() {
   const slice = filtered.slice(start, start + pageSize);
 
   const exportCols: { label: string; get: (r: SupportRecord) => string | number }[] = [
-    { label: "O'quvchi FIO", get: (r) => r.studentName },
-    { label: "Kurs nomi", get: (r) => r.courseName },
-    { label: "Support Teacher FIO", get: (r) => r.supportTeacherName },
-    { label: "Vaqti", get: formatSupportTime },
-    { label: "Yozilganlar soni", get: (r) => r.writtenCount },
+    { label: t("O'quvchi FIO"), get: (r) => r.studentName },
+    { label: t("Kurs nomi"), get: (r) => r.courseName },
+    { label: t("Support Teacher FIO"), get: (r) => r.supportTeacherName },
+    { label: t("Vaqti"), get: formatSupportTime },
+    { label: t("Yozilganlar soni"), get: (r) => r.writtenCount },
   ];
 
   function exportCsv() {
@@ -93,9 +95,9 @@ export default function NazoratSupportAnalyticsPage() {
       a.download = `support-analitikasi-${date}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showSuccess("CSV fayl yuklab olindi");
+      showSuccess(t("CSV fayl yuklab olindi"));
     } catch {
-      showError("CSV faylni yuklab bo'lmadi");
+      showError(t("CSV faylni yuklab bo'lmadi"));
     }
   }
 
@@ -111,9 +113,9 @@ export default function NazoratSupportAnalyticsPage() {
       XLSX.utils.book_append_sheet(workbook, worksheet, "Support analitikasi");
       const date = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(workbook, `support-analitikasi-${date}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
@@ -131,16 +133,16 @@ export default function NazoratSupportAnalyticsPage() {
           <input
             value={query}
             onChange={(e) => setFilter(setQuery, e.target.value)}
-            placeholder="O'quvchini qidirish"
+            placeholder={t("O'quvchini qidirish")}
             className="h-10 w-64 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
-        <Select value={course} onChange={(v) => setFilter(setCourse, v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable className="w-48" />
-        <Select value={teacher} onChange={(v) => setFilter(setTeacher, v)} options={teacherOptions.map((t) => ({ value: t, label: t }))} placeholder="Support Teacher" clearable className="w-56" />
+        <Select value={course} onChange={(v) => setFilter(setCourse, v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kurs")} clearable className="w-48" />
+        <Select value={teacher} onChange={(v) => setFilter(setTeacher, v)} options={teacherOptions.map((tv) => ({ value: tv, label: tv }))} placeholder={t("Support Teacher")} clearable className="w-56" />
         <DateRangePicker
           value={dateRange}
           onChange={(r) => { setDateRange(r); setPage(1); }}
-          placeholder="Oraliqni tanlang"
+          placeholder={t("Oraliqni tanlang")}
         />
 
         <div className="flex items-center gap-2 ml-auto">
@@ -149,14 +151,14 @@ export default function NazoratSupportAnalyticsPage() {
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
           >
             <FileText className="w-4 h-4" />
-            <span>CSV faylini yuklab olish</span>
+            <span>{t("CSV faylini yuklab olish")}</span>
           </button>
           <button
             onClick={exportExcel}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>EXCEL faylini yuklab olish</span>
+            <span>{t("EXCEL faylini yuklab olish")}</span>
           </button>
         </div>
       </div>
@@ -165,7 +167,7 @@ export default function NazoratSupportAnalyticsPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -175,11 +177,11 @@ export default function NazoratSupportAnalyticsPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">O&apos;quvchi FIO</th>
-                <th className="px-5 py-3 text-left">Kurs nomi</th>
-                <th className="px-5 py-3 text-left">Support Teacher FIO</th>
-                <th className="px-5 py-3 text-left">Vaqti</th>
-                <th className="px-5 py-3 text-right pr-5">Yozilganlar soni</th>
+                <th className="px-5 py-3 text-left">{t("O'quvchi FIO")}</th>
+                <th className="px-5 py-3 text-left">{t("Kurs nomi")}</th>
+                <th className="px-5 py-3 text-left">{t("Support Teacher FIO")}</th>
+                <th className="px-5 py-3 text-left">{t("Vaqti")}</th>
+                <th className="px-5 py-3 text-right pr-5">{t("Yozilganlar soni")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -207,7 +209,7 @@ export default function NazoratSupportAnalyticsPage() {
             </h3>
             {!loading && (
               <p className="text-[13px] text-muted-foreground max-w-sm">
-                Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.
+                {t("Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring.")}
               </p>
             )}
           </div>

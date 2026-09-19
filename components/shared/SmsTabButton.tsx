@@ -1,3 +1,5 @@
+"use client";
+
 import type { TabButtonProps } from "@/components/shared/TahrirlashTabButton";
 
 export default function SmsTabButton({ active = false, onClick }: TabButtonProps) {

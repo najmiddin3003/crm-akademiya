@@ -5,6 +5,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { SalesPlanRow } from "@/lib/salesPlan";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Sotuv va marketing → Savdo plani (sidebar: Sotuv va marketing > Savdo
 // plani, href /sales-plan). Ma'lumot HAQIQIY — /api/sales-plans.
@@ -14,6 +15,7 @@ import Modal from "@/components/ui/Modal";
 // barcha moderatorlarning planini bir oynada tahrirlashga imkon beradi.
 
 export default function SalesPlanPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<SalesPlanRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,15 +52,15 @@ export default function SalesPlanPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       const planByName = new Map(plans.map((p) => [p.moderatorName, p.plan]));
       setRows((prev) => prev.map((r) => ({ ...r, plan: planByName.get(r.moderatorName) ?? r.plan })));
-      showSuccess("Plan saqlandi");
+      showSuccess(t("Plan saqlandi"));
       setSetupOpen(false);
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -72,7 +74,7 @@ export default function SalesPlanPage() {
           disabled={rows.length === 0}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-60"
         >
-          <span>Planni sozlash</span>
+          <span>{t("Planni sozlash")}</span>
         </button>
       </div>
 
@@ -82,9 +84,9 @@ export default function SalesPlanPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Moderator</th>
-                <th className="px-5 py-3 text-right">Plan</th>
-                <th className="px-5 py-3 text-right pr-5">To&apos;lovlar soni</th>
+                <th className="px-5 py-3 text-left">{t("Moderator")}</th>
+                <th className="px-5 py-3 text-right">{t("Plan")}</th>
+                <th className="px-5 py-3 text-right pr-5">{t("To'lovlar soni")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -110,7 +112,7 @@ export default function SalesPlanPage() {
 
       {setupOpen && (
         <Modal onClose={() => setSetupOpen(false)} locked={saving} bare size="lg" zIndex={110} panelClassName="p-6 space-y-4">{(modal) => (<>
-            <h3 className="text-[16px] font-semibold">Planni sozlash</h3>
+            <h3 className="text-[16px] font-semibold">{t("Planni sozlash")}</h3>
             <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
               {rows.map((r) => (
                 <div key={r.moderatorName} className="flex items-center gap-3">
@@ -131,14 +133,14 @@ export default function SalesPlanPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={savePlans}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </>)}</Modal>

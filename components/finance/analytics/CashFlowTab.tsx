@@ -9,6 +9,7 @@ import { CHART_COLORS } from "@/constants/financeAnalytics";
 import { useTransactionTypes, transactionTypeNames } from "@/hooks/useTransactionTypes";
 import { ErrorBlock } from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
+import { useT } from "@/components/shared/Language";
 
 /** summary?groupBy=month,sign va ?groupBy=category,sign qaytaradigan qatorlar. */
 type MonthRow = { month: string; sign: "pos" | "neg" | "zero"; amount: number };
@@ -64,6 +65,7 @@ function trailingMonths(): { year: number; month: number; key: string; label: st
 }
 
 export default function CashFlowTab() {
+  const { t } = useT();
   const [view, setView] = useState<"chart" | "table">("chart");
   const { showSuccess, showError } = useToast();
   // Kategoriyalar admin boshqaradigan HAQIQIY ro'yxatdan.
@@ -192,9 +194,9 @@ export default function CashFlowTab() {
       }
 
       XLSX.writeFile(workbook, `pul-oqimi-${new Date().toISOString().slice(0, 10)}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
@@ -215,13 +217,13 @@ export default function CashFlowTab() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <button onClick={exportExcel} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Download className="w-4 h-4" />
-          {view === "chart" ? "Grafiklarni Excel da eksport qilish" : "Jadvalni Excel da eksport qilish"}
+          {view === "chart" ? t("Grafiklarni Excel da eksport qilish") : t("Jadvalni Excel da eksport qilish")}
         </button>
         <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-          <button onClick={() => setView("chart")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "chart" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title="Grafik">
+          <button onClick={() => setView("chart")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "chart" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title={t("Grafik")}>
             <BarChart3 className="w-4 h-4" />
           </button>
-          <button onClick={() => setView("table")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "table" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title="Jadval">
+          <button onClick={() => setView("table")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "table" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title={t("Jadval")}>
             <List className="w-4 h-4" />
           </button>
         </div>
@@ -239,40 +241,40 @@ export default function CashFlowTab() {
                   <div className="w-full flex flex-col items-center gap-0.5" style={{ height: 100 }}>
                     <div className="w-2/3 bg-rose-400 rounded-b-sm" style={{ height: `${(m.expense / maxAbs) * 100}px` }} title={fmtUZS(-m.expense)} />
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">{m.label}</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">{t(m.label)}</div>
                 </div>
               ))}
             </div>
             <div className="flex items-center justify-center gap-4 mt-3 text-[12px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />Kirim</span>
-              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />Chiqim</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />{t("Kirim")}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" />{t("Chiqim")}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-border bg-card p-5">
-              <div className="text-[14px] font-semibold text-center mb-4">Kirimlar bo&apos;yicha taqsimot</div>
+              <div className="text-[14px] font-semibold text-center mb-4">{t("Kirimlar bo'yicha taqsimot")}</div>
               <div className="flex justify-center">
                 <DonutChart slices={incomeSlices} centerLabel={fmtMln(incomeTotal)} />
               </div>
               <div className="mt-4 space-y-1.5">
                 {incomeSlices.map((s) => (
                   <div key={s.label} className="flex items-center justify-between text-[13px]">
-                    <span className="inline-flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />{s.label}</span>
+                    <span className="inline-flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />{t(s.label)}</span>
                     <span className="tabular-nums font-medium">{fmtUZS(s.value)}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="rounded-xl border border-border bg-card p-5">
-              <div className="text-[14px] font-semibold text-center mb-4">Chiqimlar bo&apos;yicha Top 5 ta taqsimot</div>
+              <div className="text-[14px] font-semibold text-center mb-4">{t("Chiqimlar bo'yicha Top 5 ta taqsimot")}</div>
               <div className="flex justify-center">
                 <DonutChart slices={expenseSlices} centerLabel={fmtMln(expenseTotal)} />
               </div>
               <div className="mt-4 space-y-1.5">
                 {expenseSlices.map((s) => (
                   <div key={s.label} className="flex items-center justify-between text-[13px]">
-                    <span className="inline-flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />{s.label}</span>
+                    <span className="inline-flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />{t(s.label)}</span>
                     <span className="tabular-nums font-medium">{fmtUZS(s.value)}</span>
                   </div>
                 ))}
@@ -286,31 +288,31 @@ export default function CashFlowTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-3 whitespace-nowrap font-semibold text-[13px]">Qator nomi</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{t("Qator nomi")}</th>
                   {monthStats.map((m) => (
-                    <th key={m.key} className="text-right px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{m.label} {m.year}</th>
+                    <th key={m.key} className="text-right px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{t(m.label)} {m.year}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-border/50">
-                  <td className="px-4 py-3 text-[13px]">Oy boshidagi qoldiq</td>
+                  <td className="px-4 py-3 text-[13px]">{t("Oy boshidagi qoldiq")}</td>
                   {monthStats.map((m) => <td key={m.key} className="px-4 py-3 text-right text-[13px] tabular-nums">{fmtUZS(m.startBalance)}</td>)}
                 </tr>
                 <tr className="border-b border-border/50">
-                  <td className="px-4 py-3 text-[13px]">Oy oxiridagi qoldiq</td>
+                  <td className="px-4 py-3 text-[13px]">{t("Oy oxiridagi qoldiq")}</td>
                   {monthStats.map((m) => <td key={m.key} className="px-4 py-3 text-right text-[13px] tabular-nums">{fmtUZS(m.endBalance)}</td>)}
                 </tr>
                 <tr className="border-b border-border">
-                  <td className="px-4 py-3 text-[13px] font-medium">Sof pul oqimi</td>
+                  <td className="px-4 py-3 text-[13px] font-medium">{t("Sof pul oqimi")}</td>
                   {monthStats.map((m) => <td key={m.key} className="px-4 py-3 text-right text-[13px] tabular-nums font-medium">{fmtUZS(m.income - m.expense)}</td>)}
                 </tr>
                 <tr className="border-b border-border/50 bg-primary/5">
-                  <td className="px-4 py-3 text-[13px] font-semibold text-primary">Tushumlar</td>
+                  <td className="px-4 py-3 text-[13px] font-semibold text-primary">{t("Tushumlar")}</td>
                   {monthStats.map((m) => <td key={m.key} className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold text-primary">{fmtUZS(m.income)}</td>)}
                 </tr>
                 <tr className="bg-primary/5">
-                  <td className="px-4 py-3 text-[13px] font-semibold text-primary">Chiqimlar</td>
+                  <td className="px-4 py-3 text-[13px] font-semibold text-primary">{t("Chiqimlar")}</td>
                   {monthStats.map((m) => <td key={m.key} className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold text-primary">{fmtUZS(-m.expense)}</td>)}
                 </tr>
               </tbody>

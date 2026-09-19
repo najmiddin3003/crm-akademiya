@@ -1,6 +1,10 @@
+"use client";
+
 import type { TabButtonProps } from "@/components/shared/TahrirlashTabButton";
+import { useT } from "@/components/shared/Language";
 
 export default function QongiroqlarTabButton({ active = false, onClick }: TabButtonProps) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -9,7 +13,7 @@ export default function QongiroqlarTabButton({ active = false, onClick }: TabBut
         active ? "bg-primary text-white shadow-sm" : "bg-secondary/40 text-foreground/80 hover:bg-secondary/70"
       }`}
     >
-      Qo&apos;ng&apos;iroqlar tarixi
+      {t("Qo'ng'iroqlar tarixi")}
     </button>
   );
 }

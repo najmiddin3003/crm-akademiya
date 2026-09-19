@@ -9,6 +9,7 @@ import { EMPTY_PARENTS_FILTERS, PARENT_KINDS, type ParentsFilters } from "@/lib/
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Ota-ona sahifasining filtr modali.
 //
@@ -36,6 +37,7 @@ export interface ParentsFilterModalProps {
 }
 
 export default function ParentsFilterModal({ initialFilters, categoryOptions, onClose, onApply }: ParentsFilterModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { names: moderatorNames } = useModerators();
   const [draft, setDraft] = useState<ParentsFilters>(initialFilters);
@@ -47,27 +49,27 @@ export default function ParentsFilterModal({ initialFilters, categoryOptions, on
   return (
     <Modal onClose={onClose} controller={modal} bare size="3xl" zIndex={120}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h3 className="text-lg font-semibold tracking-tight">Filter</h3>
+          <h3 className="text-lg font-semibold tracking-tight">{t("Filter")}</h3>
           <button
             onClick={() => setDraft(EMPTY_PARENTS_FILTERS)}
             className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs"
           >
             <XCircle className="icon icon-xs" />
-            <span>Tozalash</span>
+            <span>{t("Tozalash")}</span>
           </button>
         </div>
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
-          <Select value={draft.kind} onChange={(v) => set("kind", v)} options={PARENT_KINDS.map((k) => ({ value: k, label: k }))} placeholder="Qarindoshligi" clearable />
+          <Select value={draft.kind} onChange={(v) => set("kind", v)} options={PARENT_KINDS.map((k) => ({ value: k, label: k }))} placeholder={t("Qarindoshligi")} clearable />
 
-          <Select value={draft.moderator} onChange={(v) => set("moderator", v)} options={moderatorNames.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable />
+          <Select value={draft.moderator} onChange={(v) => set("moderator", v)} options={moderatorNames.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable />
 
-          <Select value={draft.category} onChange={(v) => set("category", v)} options={categoryOptions.map((c) => ({ value: c, label: c }))} placeholder="Kategoriya" clearable />
+          <Select value={draft.category} onChange={(v) => set("category", v)} options={categoryOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kategoriya")} clearable />
 
-          <Select value={draft.status} onChange={(v) => set("status", v)} options={PUPIL_STATUSES.map((s) => ({ value: s, label: s }))} placeholder="O'quvchi holati" clearable />
+          <Select value={draft.status} onChange={(v) => set("status", v)} options={PUPIL_STATUSES.map((s) => ({ value: s, label: s }))} placeholder={t("O'quvchi holati")} clearable />
 
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Balans (dan)</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">{t("Balans (dan)")}</span>
             <input
               type="number"
               value={draft.balanceFrom}
@@ -76,7 +78,7 @@ export default function ParentsFilterModal({ initialFilters, categoryOptions, on
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Balans (gacha)</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">{t("Balans (gacha)")}</span>
             <input
               type="number"
               value={draft.balanceTo}
@@ -89,18 +91,18 @@ export default function ParentsFilterModal({ initialFilters, categoryOptions, on
               hech narsa qilmasdi. Endi ular farzandning HAQIQIY tug'ilgan
               sanasi (pupils.birthDate) bo'yicha oraliq — nomi ham shunga mos. */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Tug&apos;ilgan (dan)</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">{t("Tug'ilgan (dan)")}</span>
             <DateField value={draft.birthFrom} onChange={(v) => set("birthFrom", v)} variant="form" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Tug&apos;ilgan (gacha)</span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">{t("Tug'ilgan (gacha)")}</span>
             <DateField value={draft.birthTo} onChange={(v) => set("birthTo", v)} variant="form" />
           </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
-          <Button variant="outline" onClick={modal.close}>Orqaga</Button>
-          <Button variant="primary" onClick={() => onApply(draft)}>Saqlash</Button>
+          <Button variant="outline" onClick={modal.close}>{t("Orqaga")}</Button>
+          <Button variant="primary" onClick={() => onApply(draft)}>{t("Saqlash")}</Button>
         </div>
       </Modal>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useT } from "@/components/shared/Language";
 
 // Hisobotlar bo'limidagi sof jadvalli hisobotlar uchun umumiy qobiq
 // (To'lanmagan / Farqli to'lovlar / Bekor qilingan to'lovlar / Chegirmalar /
@@ -31,6 +32,7 @@ export default function ReportTablePage<T extends { id: number }>({
   // Jadval ustidagi ixtiyoriy jamlanma (masalan "Umumiy chegirmalar: …").
   summary?: (rows: T[]) => ReactNode;
 }) {
+  const { t } = useT();
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -55,7 +57,7 @@ export default function ReportTablePage<T extends { id: number }>({
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{rows.length}</span>
           </div>
         </div>
@@ -67,7 +69,7 @@ export default function ReportTablePage<T extends { id: number }>({
                 <th className="px-5 py-3 text-left w-12">№</th>
                 {columns.map((c) => (
                   <th key={c.key} className={`px-5 py-3 whitespace-nowrap ${c.align === "right" ? "text-right" : "text-left"}`}>
-                    {c.label}
+                    {t(c.label)}
                   </th>
                 ))}
               </tr>

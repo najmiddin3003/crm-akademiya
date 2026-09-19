@@ -51,7 +51,11 @@ for (const f of files) {
 
 /** Konstantalardagi yorliqlar — kodda `t(item.label)` bilan o'giriladi. */
 const CONSTANT_SOURCES = [
+  // Faqat teskari moslash bilan ishlatiladigan andozalar (lib/i18n.ts RENDERED_KEYS).
+  { file: "lib/i18n.ts", re: /RENDERED_KEYS = \[([^\]]*)\]/g, list: true },
   { file: "constants/sidebar.js", re: /\b(?:label|title):\s*"([^"]+)"/g },
+  // Tizimli to'lov turlari nomlari ("Naqd", "Plastik") — kassa kartalarida `t(m.name)`.
+  { file: "constants/settingsLists.js", re: /\bname:\s*"([^"]+)"/g },
   { file: "constants/navbar.js", re: /\bname:\s*"([^"]+)"/g, skip: true },
   { file: "constants/helpTopics.js", re: /\btitle:\s*"([^"]+)"/g },
   { file: "constants/notifications.js", re: /\b(?:payment|order|task):\s*"([^"]+)"/g },
@@ -69,10 +73,129 @@ for (const src of CONSTANT_SOURCES) {
   const s = fs.readFileSync(p, "utf8");
   let m;
   while ((m = src.re.exec(s))) {
-    const key = m[1];
-    if (!keys.has(key)) keys.set(key, new Set());
-    keys.get(key).add(src.file);
+    // `list: true` — bitta moslik ichida bir nechta "…" satr (massiv).
+    const found = src.list ? [...m[1].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((x) => x[1]) : [m[1]];
+    for (const key of found) {
+      if (!keys.has(key)) keys.set(key, new Set());
+      keys.get(key).add(src.file);
+    }
   }
+}
+
+/**
+ * BACKEND XABARLARI — API route va lib'dagi `error: "…"`, `fail("…")`,
+ * `throw new Error("…")` matnlari. Ular mijozga o'zbekcha (kalit) holida
+ * keladi va ekranda `t()` orqali o'giriladi (ToastProvider, ErrorBanner,
+ * `t(data.error)`). Andozali (`${x}`) xabarlar `{x}` ko'rinishida kalit
+ * bo'ladi: lib/i18n.ts render bo'lgan xabarni shu andozaga TESKARI
+ * moslab (reverse match) o'giradi — serverda til bilish shart emas.
+ *
+ * Tashqi kanallar (Telegram bot, SMS, Google Sheets) o'zbekcha qoladi —
+ * ular skanerdan chiqarilgan.
+ */
+const SERVER_DIRS = ["app/api", "lib"];
+const SERVER_SKIP = /[\\/](staffBot|studentBot|sync|telegram|eskiz|paymentSms|exportTable|receipt|referenceCache|fetchJson)/i;
+const SERVER_FIELDS = "error|reason|message|msg|hint|title|text|detail|label";
+const serverRe = new RegExp(
+  `\\b(?:(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|throw new Error|throw new ApiError)\\()\\s*(?:"((?:[^"\\\\\\n]|\\\\.)+)"|\`((?:[^\`\\\\]|\\\\.)+?)\`)`,
+  "g",
+);
+/** `${expr}` → `{name}` — nom ifodadagi oxirgi identifikator (kodmod 6-o'tishi bilan bir xil). */
+function templateKey(body) {
+  const params = [];
+  return body.replace(/\$\{([^}]*)\}/g, (_, expr) => {
+    // Satr literallari (`"ru-RU"`) nom bermasin.
+    const ids = expr.replace(/"[^"]*"|'[^']*'/g, "").match(/[A-Za-z_]\w*/g) || [];
+    let name = ids.length ? ids[ids.length - 1] : "v";
+    if (/^(String|Number|Math|toLocaleString|toFixed|padStart|length|trim|join|map|abs|round|name|id)$/.test(name) && ids.length > 1) name = ids[ids.length - 2];
+    let unique = name, k = 2;
+    while (params.includes(unique)) unique = `${name}${k++}`;
+    params.push(unique);
+    return `{${unique}}`;
+  });
+}
+/**
+ * CSS klass satri — "text-[12px] dark:text-amber-400", "border-t". Har bir
+ * bo'lak faqat kichik harf/raqam/belgi VA kamida bittasida harfdan keyin
+ * "-", ":", "[", "/" yoki "." bor. "1 oy", "3 - shaxs" kabi o'zbekcha
+ * iboralar klass EMAS (bo'lagida bunday belgi yo'q).
+ */
+function classLike(v) {
+  const toks = v.trim().split(/\s+/);
+  return toks.every((t) => /^[a-z0-9\-_:/.%[\]#!,]+$/.test(t)) && toks.some((t) => /^[a-z]+[-:[/.][a-z0-9\-_:/.%[\]#!,]*$/.test(t));
+}
+const serverKeys = new Map();
+// Ternar bilan yasalgan xabarlar: `fail(\n  cond\n    ? \`…\`\n    : "…",\n)` yoki
+// `error: left > 0 ? \`…\` : "…"` — maydon/chaqiruvdan keyin 4 qatorgacha
+// ichidagi barcha satr literallari olinadi (yuqoridagi regex faqat bevosita
+// kelgan satrni ko'radi).
+const ternaryRe = new RegExp(`(?:\\b(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|throw new Error|throw new ApiError)\\()\\s*(?=(?:[^"\`\\n]*\\n){0,2}[^"\`\\n]*\\?)((?:[^\\n]*\\n){0,4}[^\\n]*)`, "g");
+const litRe = /"((?:[^"\\\n]|\\.)+)"|`((?:[^`\\]|\\.)+?)`/g;
+for (const f of SERVER_DIRS.flatMap((d) => (fs.existsSync(path.join(ROOT, d)) ? walk(path.join(ROOT, d)) : []))) {
+  if (!/\.ts$/.test(f) || SERVER_SKIP.test(f)) continue;
+  const s = fs.readFileSync(f, "utf8");
+  const found = [];
+  let m;
+  while ((m = serverRe.exec(s))) found.push(m[1] !== undefined ? m[1].replace(/\\(.)/g, "$1") : templateKey(m[2]));
+  while ((m = ternaryRe.exec(s))) {
+    const block = m[1].split(/\n/).filter((ln) => !/^\s*\/\//.test(ln)).join("\n");
+    let lm;
+    while ((lm = litRe.exec(block))) found.push(lm[1] !== undefined ? lm[1].replace(/\\(.)/g, "$1") : templateKey(lm[2]));
+    // Ichki `${a ? "x" : "y"}` bo'laklari ham satr sifatida tushadi — ular
+    // gap emas (kichik harf, qisqa) — pastdagi filtr ushlab qoladi.
+  }
+  for (const key of found) {
+    // Param'dan tashqari harf yo'q (`{d}.{m}.{y}`), kod, URL, kalit — o'tkazib yuboriladi.
+    if (!/[A-Za-zЀ-ӿ]/.test(key.replace(/\{\w+\}/g, "")) || /^[A-Z_]+$/.test(key) || /^[a-z0-9_./:-]+$/.test(key)) continue;
+    if (/<\w|=>|\bhttp|_id\b|\bmongodb\b/i.test(key) || classLike(key)) continue; // klass ("text-amber-600 dark:…")
+    const rel = path.relative(ROOT, f);
+    if (!keys.has(key)) keys.set(key, new Set());
+    keys.get(key).add(rel);
+    if (!serverKeys.has(key)) serverKeys.set(key, new Set());
+    serverKeys.get(key).add(rel);
+  }
+}
+
+/**
+ * MODUL DARAJASIDAGI KONSTANTALAR — tab/ustun/holat ro'yxatlari
+ * (`{ key: "x", label: "Matn" }`, `["Aktiv", "Arxiv"]`). Kodda `{t(tab.label)}`
+ * / `{t(row.status)}` bilan o'giriladi — kalit shu yerdan yig'iladi.
+ * Faqat ko'rsatiladigan nomlar (label/title/…) va `constants`/`lib`
+ * dagi qiymat ro'yxatlari (`value:`). Komponent ichidagilari allaqachon
+ * `t("…")` bilan o'ralgan — `label: "…"` naqshiga tushmaydi.
+ */
+const CONST_FIELDS = "label|title|hint|placeholder|description|tableLabel|shortLabel|menuLabel|sub|subtitle|emptyText|tooltip|heading|caption";
+const constRe = new RegExp(`\\b(?:${CONST_FIELDS})\\s*:\\s*"((?:[^"\\\\\\n]|\\\\.)+)"`, "g");
+const enumRe = /\b(?:value|status|holat|type|turi|kind|source|day|category|level|reason|stage|priority|method)\s*:\s*"((?:[^"\\\n]|\\.)+)"/g;
+const constDirs = ["components", "constants", "lib", "app"].map((d) => path.join(ROOT, d)).filter(fs.existsSync);
+for (const f of constDirs.flatMap((d) => walk(d))) {
+  if (SERVER_SKIP.test(f) || /[\\/]api[\\/]/.test(f)) continue;
+  const s = fs.readFileSync(f, "utf8");
+  // constants/ dagi DEMO (seed) ma'lumot fayllari — ular interfeys matni
+  // emas, bazaga urug' (bosh izohida "demo" so'zi bor).
+  if (/[\\/]constants[\\/]/.test(f) && /demo/i.test(s.slice(0, 600))) continue;
+  const rel = path.relative(ROOT, f);
+  const add = (key) => {
+    if (!/[A-Za-zЀ-ӿ]/.test(key) || /^[A-Z_]+$/.test(key) || classLike(key) || /^\d+(px|%|ms|s|em|rem)$/.test(key)) return; // klass, "12px"
+    if (/<\w|=>|\bhttp|^\/|^#|^[a-z]+\.[A-Za-z]+$/.test(key)) return; // kod, URL, `keys.x` token
+    if (!keys.has(key)) keys.set(key, new Set());
+    keys.get(key).add(rel);
+  };
+  let m;
+  while ((m = constRe.exec(s))) add(m[1].replace(/\\(.)/g, "$1"));
+  if (/[\\/](constants|lib)[\\/]/.test(f)) {
+    while ((m = enumRe.exec(s))) {
+      const v = m[1].replace(/\\(.)/g, "$1");
+      // Faqat o'zbekcha ko'rinishdagi qiymatlar: bosh harf yoki bo'shliq/apostrof.
+      if (/^[A-Z]/.test(v) || /[\s'’ʻ]/.test(v)) add(v);
+    }
+  }
+}
+
+if (args.includes("--server")) {
+  for (const [k, fs_] of serverKeys) console.log(`${k}    ← ${[...fs_].slice(0, 2).join(", ")}`);
+  console.log(`\n${serverKeys.size} ta backend xabari.`);
+  process.exit(0);
 }
 
 const enPath = path.join(ROOT, "messages/en.json");

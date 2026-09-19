@@ -7,6 +7,7 @@ import { groupWeekdays, parsePeriod } from "@/lib/attendance";
 import { useGroups } from "@/hooks/useGroups";
 import { useRooms } from "@/hooks/useRooms";
 import type { Group } from "@/lib/groups";
+import { useT } from "@/components/shared/Language";
 
 // Hisobotlar → Xonalar analitikasi (href /reports-rooms).
 //
@@ -138,6 +139,7 @@ interface RoomStat {
 }
 
 export default function Page() {
+  const { t } = useT();
   const { rooms, loading: roomsLoading } = useRooms();
   const { groups, loading: groupsLoading } = useGroups();
   const [dateRange, setDateRange] = useState<DateRange>(currentMonth);
@@ -196,23 +198,23 @@ export default function Page() {
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <h2 className="text-[18px] font-semibold tracking-tight">Xonalar analitikasi</h2>
+        <h2 className="text-[18px] font-semibold tracking-tight">{t("Xonalar analitikasi")}</h2>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
+          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Oraliqni tanlang")} />
         </div>
       </div>
 
       <div className="text-[12px] text-muted-foreground">
         {fmtDay(start)} &ndash; {fmtDay(end)}. Nisbat — shu oraliqda xonada dars qiladigan ENG KATTA
         guruh / xona sig&apos;imi.
-        {unassigned > 0 && ` Xonasi biriktirilmagan faol guruhlar: ${unassigned} ta.`}
+        {unassigned > 0 && t(" Xonasi biriktirilmagan faol guruhlar: {unassigned} ta.", { unassigned })}
       </div>
 
       {loading ? (
         <SpinnerBlock size={22} />
       ) : stats.length === 0 ? (
         <div className="rounded-2xl bg-card border border-border py-12 text-center text-sm text-muted-foreground">
-          Xonalar topilmadi — Guruh &rarr; Xonalar sahifasida qo&apos;shiladi.
+          {t("Xonalar topilmadi — Guruh → Xonalar sahifasida qo'shiladi.")}
         </div>
       ) : (
         <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(190px,1fr))]">
@@ -241,7 +243,7 @@ export default function Page() {
               {/* Sig'im Guruh → Xonalar sahifasida kiritiladi; bo'sh bo'lsa
                   foiz hisoblab bo'lmaydi va 0% deb ko'rsatilmaydi. */}
               {r.capacity <= 0 && (
-                <div className="text-[11px] text-muted-foreground mt-1">Sig&apos;im kiritilmagan</div>
+                <div className="text-[11px] text-muted-foreground mt-1">{t("Sig'im kiritilmagan")}</div>
               )}
             </div>
           ))}

@@ -5,6 +5,7 @@ import { Info, MoreVertical } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
 import { useBranches } from "@/hooks/useBranches";
 import { downloadTableCsv, downloadTableExcel, type Cell } from "@/lib/exportTable";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Filiallar holati (/nazorat-branches).
 //
@@ -53,6 +54,7 @@ const METRICS: BranchMetric[] = [
 const NA = "—";
 
 export default function NazoratBranchesPage() {
+  const { t } = useT();
   const { branches, loading } = useBranches();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -99,7 +101,7 @@ export default function NazoratBranchesPage() {
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             className="h-10 w-10 rounded-lg hover:bg-secondary inline-flex items-center justify-center border border-border bg-card"
-            title="Eksport"
+            title={t("Eksport")}
           >
             <MoreVertical className="icon icon-sm" />
           </button>
@@ -109,13 +111,13 @@ export default function NazoratBranchesPage() {
                 <span className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100">
                   <span className="text-[9px] font-bold text-blue-700">CSV</span>
                 </span>
-                <span>CSV faylini yuklab olish</span>
+                <span>{t("CSV faylini yuklab olish")}</span>
               </button>
               <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                 <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100">
                   <span className="text-[9px] font-bold text-emerald-700">XLS</span>
                 </span>
-                <span>EXCEL faylini yuklab olish</span>
+                <span>{t("EXCEL faylini yuklab olish")}</span>
               </button>
             </div>
           )}
@@ -136,9 +138,9 @@ export default function NazoratBranchesPage() {
             <thead>
               <tr className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-3 py-3 text-left w-12 sticky left-0 bg-secondary/20 z-10">№</th>
-                <th className="px-3 py-3 text-left sticky left-12 bg-secondary/20 z-10 min-w-[140px]">Filial</th>
+                <th className="px-3 py-3 text-left sticky left-12 bg-secondary/20 z-10 min-w-[140px]">{t("Filial")}</th>
                 {METRICS.map((m, k) => (
-                  <th key={m.id} className={`px-3 py-3 text-right ${k === METRICS.length - 1 ? "pr-5" : ""}`}>{m.label}</th>
+                  <th key={m.id} className={`px-3 py-3 text-right ${k === METRICS.length - 1 ? "pr-5" : ""}`}>{t(m.label)}</th>
                 ))}
               </tr>
             </thead>
@@ -168,15 +170,15 @@ export default function NazoratBranchesPage() {
 
       {/* Umumiy natija */}
       <div>
-        <h3 className="text-[14px] font-semibold mb-2 text-muted-foreground">Umumiy natija</h3>
+        <h3 className="text-[14px] font-semibold mb-2 text-muted-foreground">{t("Umumiy natija")}</h3>
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-secondary/20">
               <tr className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Filial</th>
-                <th className="px-5 py-3 text-right">Aktiv</th>
-                <th className="px-5 py-3 text-right pr-5">Jami real bor</th>
+                <th className="px-5 py-3 text-left">{t("Filial")}</th>
+                <th className="px-5 py-3 text-right">{t("Aktiv")}</th>
+                <th className="px-5 py-3 text-right pr-5">{t("Jami real bor")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

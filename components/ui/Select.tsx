@@ -178,11 +178,12 @@ export default function Select({
     if (!open) return [];
     if (!q) return options;
     return options.filter((o) => {
-      const hay = `${o.label} ${o.sub ?? ""} ${o.hint ?? ""}`.toLowerCase();
+      // Tarjima qilingan yorliq ham qidiriladi (EN/kiril rejimida ko'ringan matn).
+      const hay = `${o.label} ${t(o.label)} ${o.sub ?? ""} ${o.hint ?? ""}`.toLowerCase();
       if (hay.includes(q)) return true;
       return qDigits.length >= 3 && hay.replace(/\D/g, "").includes(qDigits);
     });
-  }, [open, options, q, qDigits]);
+  }, [open, options, q, qDigits, t]);
   const shown = filtered.length > limit ? filtered.slice(0, limit) : filtered;
   const hidden = filtered.length - shown.length;
 
@@ -219,8 +220,8 @@ export default function Select({
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: MouseEvent) {
-      const t = e.target as Node;
-      if (rootRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      const tv = e.target as Node;
+      if (rootRef.current?.contains(tv) || menuRef.current?.contains(tv)) return;
       setOpen(false);
       setQuery("");
     }
@@ -375,7 +376,7 @@ export default function Select({
             onClick={() => { clear(); if (!multiple) close(); }}
             className="block w-full px-3 py-2 text-left text-[13px] text-muted-foreground hover:bg-secondary"
           >
-            Tozalash
+            {t("Tozalash")}
           </button>
         )}
         {loading ? (
@@ -410,10 +411,10 @@ export default function Select({
               >
                 <Check className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-primary" : "opacity-0"}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate">{o.label}</span>
-                  {o.sub && <span className="block truncate text-[11.5px] text-muted-foreground font-normal">{o.sub}</span>}
+                  <span className="block truncate">{t(o.label)}</span>
+                  {o.sub && <span className="block truncate text-[11.5px] text-muted-foreground font-normal">{t(o.sub)}</span>}
                 </span>
-                {o.hint && <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{o.hint}</span>}
+                {o.hint && <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">{t(o.hint)}</span>}
               </div>
               </div>
             );
@@ -455,7 +456,7 @@ export default function Select({
           <span className="truncate">{summary ? summary(values.length, options.length) : `${values.length} ta tanlandi`}</span>
         ) : selected ? (
           <span className="truncate">
-            {selected.label}
+            {t(selected.label)}
             {selected.hint && <span className="text-muted-foreground"> ({selected.hint})</span>}
           </span>
         ) : (

@@ -14,6 +14,7 @@ import { useGroups } from "@/hooks/useGroups";
 import { contractPartsTotal, type FinanceContract } from "@/lib/financeContracts";
 import FinanceContractDrawer from "./FinanceContractDrawer";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Shartnoma (sidebar: Moliya > Ma'lumotlar > Shartnoma, href
 // /finance-fin-contract). Aktiv/Arxiv — cashboxes'dagi bilan bir xil mahalliy
@@ -50,6 +51,7 @@ function parseCreatedAt(s: string): Date | null {
 }
 
 export default function FinanceContractsPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   // O'quvchilar bazadan: ism → karta (id, profil havolasi uchun).
   // `studentsLoading` drawer'ga uzatiladi: u ro'yxatni PROPDAN oladi va
@@ -148,13 +150,13 @@ export default function FinanceContractsPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Bajarilmadi");
+        showError(t(data.error || "Bajarilmadi"));
         return;
       }
       setContracts((prev) => prev.map((x) => (x.id === c.id ? (data.contract as FinanceContract) : x)));
-      showSuccess(c.archived ? "Arxivdan chiqarildi" : "Arxivga o'tkazildi");
+      showSuccess(c.archived ? t("Arxivdan chiqarildi") : t("Arxivga o'tkazildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setArchiveBusyId(null);
     }
@@ -167,24 +169,24 @@ export default function FinanceContractsPage() {
           onClick={() => setAddOpen(true)}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
-          <span>Shartnoma yaratish</span>
+          <span>{t("Shartnoma yaratish")}</span>
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <Select value={statusFilter} onChange={(v) => { setStatusFilter(v as "active" | "archived"); setPage(1); }} options={[{ value: "active", label: "Aktiv" }, { value: "archived", label: "Arxiv" }]} size="sm" className="w-40" />
-          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" className="w-56" />
-          <Select value={group} onChange={(v) => { setGroup(v); setPage(1); }} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" className="w-40" />
+          <Select value={statusFilter} onChange={(v) => { setStatusFilter(v as "active" | "archived"); setPage(1); }} options={[{ value: "active", label: t("Aktiv") }, { value: "archived", label: t("Arxiv") }]} size="sm" className="w-40" />
+          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder={t("Oraliqni tanlang")} className="w-56" />
+          <Select value={group} onChange={(v) => { setGroup(v); setPage(1); }} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder={t("Guruh")} clearable size="sm" className="w-40" />
           <div className="w-44">
             {/* Filtr ro'yxati shartnomalardan yig'iladi — ular kelmaguncha
                 ochilgan dropdownda "Topilmadi" yozilardi. */}
-            <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder="O'quvchi" loading={loading} />
+            <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder={t("O'quvchi")} loading={loading} />
           </div>
         </div>
       </div>
 
       <div className="flex justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
         </div>
       </div>
@@ -195,14 +197,14 @@ export default function FinanceContractsPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Miqdori</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kutilayotgan to&apos;lov miqd...</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;langan miqdor</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Balans")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Miqdori")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kutilayotgan to'lov miqd...")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'langan miqdor")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>
                 <th className="px-3 py-3 w-20" />
               </tr>
             </thead>
@@ -242,7 +244,7 @@ export default function FinanceContractsPage() {
                     <td className="px-3 py-3 text-[13px] text-muted-foreground max-w-[220px] truncate" title={c.comment}>{c.comment || "—"}</td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-1">
-                        <button onClick={() => setEditTarget(c)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title="Tahrirlash">
+                        <button onClick={() => setEditTarget(c)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title={t("Tahrirlash")}>
                           <Pencil className="w-4 h-4" />
                         </button>
                         {c.archived ? (
@@ -250,7 +252,7 @@ export default function FinanceContractsPage() {
                             onClick={() => toggleArchive(c)}
                             disabled={archiveBusyId === c.id}
                             className="h-8 w-8 rounded-md hover:bg-emerald-500/10 hover:text-emerald-600 flex items-center justify-center text-muted-foreground disabled:opacity-50"
-                            title="Arxivdan chiqarish"
+                            title={t("Arxivdan chiqarish")}
                           >
                             <ArrowDownToLine className="w-4 h-4" />
                           </button>
@@ -259,7 +261,7 @@ export default function FinanceContractsPage() {
                             onClick={() => toggleArchive(c)}
                             disabled={archiveBusyId === c.id}
                             className="h-8 w-8 rounded-md hover:bg-amber-500/10 hover:text-amber-600 flex items-center justify-center text-muted-foreground disabled:opacity-50"
-                            title="Arxivga o'tkazish"
+                            title={t("Arxivga o'tkazish")}
                           >
                             <ArrowUpToLine className="w-4 h-4" />
                           </button>

@@ -8,10 +8,11 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import SalaryReceiptModal from "./SalaryReceiptModal";
 import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
-import { UZ_MONTHS, payrollPeriod, payrollPeriodLabel } from "@/lib/salary";
+import { payrollPeriod, payrollPeriodLabel } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Oylik chiqarish → Chiqarishlar tarixi (/finance-payroll/history).
 // Har bir qator — bitta o'tkazilgan "oylik chiqarish" partiyasining
@@ -30,11 +31,10 @@ function fmtNum(n: number): string {
 }
 
 // "2026-08" → "2026 Avgust"
-function monthKeyLabel(key?: string): string {
+function monthKeyLabel(key: string | undefined, months: string[]): string {
   if (!key) return "";
   const [y, m] = key.split("-").map(Number);
-  const name = UZ_MONTHS[(m - 1) % 12] ?? "";
-  return `${y} ${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+  return `${y} ${months[(m - 1) % 12] ?? ""}`;
 }
 // "26.07.2026 | 16:10" → "26.07.2026"
 function datePart(createdAt: string): string {
@@ -68,6 +68,7 @@ function periodFor(r: SalaryRun) {
 }
 
 export default function SalaryRunsPage() {
+  const { t, months } = useT();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<SalaryRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,10 +122,10 @@ export default function SalaryRunsPage() {
     return rows.filter((r) => {
       if (monthFilter !== "all" && r.month !== monthFilter) return false;
       if (!q) return true;
-      const hay = `${r.id} ${r.createdAt} ${monthKeyLabel(r.month)}`.toLowerCase();
+      const hay = `${r.id} ${r.createdAt} ${monthKeyLabel(r.month, months)}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [rows, query, monthFilter]);
+  }, [rows, query, monthFilter, months]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -137,19 +138,19 @@ export default function SalaryRunsPage() {
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       setRows((prev) => prev.filter((r) => r.id !== confirmDel.id));
       showSuccess(
         data.refunded > 0
-          ? `Oylik chiqarish o'chirildi — ${fmtSum(data.refunded)} kassaga qaytarildi`
+          ? t("Oylik chiqarish o'chirildi — {refunded} kassaga qaytarildi", { refunded: fmtSum(data.refunded) })
           : "Oylik chiqarish o'chirildi",
       );
       setConfirmDel(null);
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
     }
@@ -166,7 +167,7 @@ export default function SalaryRunsPage() {
           className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium w-fit"
         >
           <ArrowLeft className="w-4 h-4" />
-          Oylik hisob-kitobga qaytish
+          {t("Oylik hisob-kitobga qaytish")}
         </Link>
         <div className="md:ml-auto flex flex-col sm:flex-row gap-2">
           <div className="relative">
@@ -175,20 +176,20 @@ export default function SalaryRunsPage() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Qidirish…"
+              placeholder={t("Qidirish…")}
               className="h-10 pl-9 pr-3 rounded-lg border border-border bg-card text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30 w-full sm:w-[220px]"
             />
           </div>
-          <Select value={monthFilter} onChange={(v) => { setMonthFilter(v); setPage(1); }} options={[{ value: "all", label: "Barcha oylar" }, ...monthOptions.map((m) => ({ value: m, label: monthKeyLabel(m) }))]} className="sm:w-[200px]" />
+          <Select value={monthFilter} onChange={(v) => { setMonthFilter(v); setPage(1); }} options={[{ value: "all", label: t("Barcha oylar") }, ...monthOptions.map((m) => ({ value: m, label: monthKeyLabel(m, months) }))]} className="sm:w-[200px]" />
         </div>
       </div>
 
       {/* Card */}
       <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-[15px] font-semibold">Oylik chiqarishlar tarixi</h2>
+          <h2 className="text-[15px] font-semibold">{t("Oylik chiqarishlar tarixi")}</h2>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary text-xs">
-            <span className="font-medium">Umumiy soni:</span>
+            <span className="font-medium">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -197,19 +198,19 @@ export default function SalaryRunsPage() {
             <thead className="bg-secondary/40">
               <tr className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Oylik</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Davomat</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Davomatdan f...</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Bonus</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Avans</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Jarima</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Soliq</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Akladi</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;langan</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">To&apos;lanmagan</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">Qarzdorlik</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sana</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap w-24">Amallar</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Oylik")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Davomat")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Davomatdan f...")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Bonus")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Avans")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Jarima")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Soliq")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Akladi")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("To'langan")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("To'lanmagan")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap">{t("Qarzdorlik")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sana")}</th>
+                <th className="text-right px-3 py-3 whitespace-nowrap w-24">{t("Amallar")}</th>
               </tr>
             </thead>
             <tbody>
@@ -218,7 +219,7 @@ export default function SalaryRunsPage() {
                 return (
                   <tr key={r.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                     <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                    <td className="px-3 py-3 text-[13px] tabular-nums font-semibold whitespace-nowrap">{fmtSum(r.oylik)}</td>
+                    <td className="px-3 py-3 text-[13px] tabular-nums font-semibold whitespace-nowrap">{t(fmtSum(r.oylik))}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.davomat > 0 ? fmtNum(r.davomat) : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.davomatFoizi > 0 ? fmtNum(r.davomatFoizi) : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(r.bonus)}</span> : <span className="text-muted-foreground">0</span>}</td>
@@ -236,36 +237,36 @@ export default function SalaryRunsPage() {
                         ekanini aynan shu ustun ko'rsatadi. */}
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       {paidOf(r) > 0
-                        ? <span className="text-emerald-600">{fmtSum(paidOf(r))}</span>
+                        ? <span className="text-emerald-600">{t(fmtSum(paidOf(r)))}</span>
                         : <span className="text-muted-foreground">0</span>}
                     </td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
-                      <span className={r.tolanmagan > 0 ? "text-rose-600" : "text-muted-foreground"}>{fmtSum(r.tolanmagan)}</span>
+                      <span className={r.tolanmagan > 0 ? "text-rose-600" : "text-muted-foreground"}>{t(fmtSum(r.tolanmagan))}</span>
                     </td>
                     {/* Xodimlarning akademiyaga qarzi — to'lanmaganning
                         teskarisi. Keyingi oy hisobidan ushlab qolinadi. */}
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums font-semibold whitespace-nowrap">
                       {debtOf(r) > 0
-                        ? <span className="text-amber-600">{fmtSum(debtOf(r))}</span>
+                        ? <span className="text-amber-600">{t(fmtSum(debtOf(r)))}</span>
                         : <span className="text-muted-foreground">0</span>}
                     </td>
                     <td className="px-3 py-3 text-[12.5px] text-muted-foreground whitespace-nowrap">
                       {datePart(r.createdAt)}
-                      {r.month && <> — {monthKeyLabel(r.month)} <span className="text-muted-foreground/70">({payrollPeriodLabel(p)})</span></>}
+                      {r.month && <> — {monthKeyLabel(r.month, months)} <span className="text-muted-foreground/70">({payrollPeriodLabel(p)})</span></>}
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setDetail(r)}
                           className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
-                          title="Ko'rish"
+                          title={t("Ko'rish")}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setConfirmDel(r)}
                           className="h-8 w-8 rounded-md hover:bg-rose-500/10 inline-flex items-center justify-center text-rose-500 hover:text-rose-600"
-                          title="O'chirish"
+                          title={t("O'chirish")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -292,51 +293,51 @@ export default function SalaryRunsPage() {
         <Modal onClose={() => setDetail(null)} bare size="lg" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <h3 className="text-[16px] font-semibold mb-1">Oylik chiqarish #{detail.id}</h3>
             <div className="text-[12.5px] text-muted-foreground mb-4">
-              {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month)}`} Â· {detail.employeeCount} ta xodim
+              {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month, months)}`} Â· {detail.employeeCount} ta xodim
               {detail.cashboxName && ` Â· ${detail.cashboxName}${detail.methodLabel ? ` (${detail.methodLabel})` : ""}`}
             </div>
             <div className="grid grid-cols-2 gap-3 text-[13px]">
               <div className="col-span-2 rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Oylik</div>
-                <div className="mt-1 font-semibold tabular-nums">{fmtSum(detail.oylik)}</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Oylik")}</div>
+                <div className="mt-1 font-semibold tabular-nums">{t(fmtSum(detail.oylik))}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">To&apos;langan</div>
-                <div className="mt-1 font-semibold tabular-nums text-emerald-600">{fmtSum(paidOf(detail))}</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("To'langan")}</div>
+                <div className="mt-1 font-semibold tabular-nums text-emerald-600">{t(fmtSum(paidOf(detail)))}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">To&apos;lanmagan</div>
-                <div className="mt-1 font-semibold tabular-nums text-rose-600">{fmtSum(detail.tolanmagan)}</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("To'lanmagan")}</div>
+                <div className="mt-1 font-semibold tabular-nums text-rose-600">{t(fmtSum(detail.tolanmagan))}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Bonus</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Bonus")}</div>
                 <div className="mt-1 tabular-nums text-emerald-600">{fmtNum(detail.bonus)}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Jarima</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Jarima")}</div>
                 <div className="mt-1 tabular-nums text-rose-600">{fmtNum(detail.jarima)}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Avans</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Avans")}</div>
                 <div className="mt-1 tabular-nums text-amber-600">{fmtNum(detail.avans)}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Akladi</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Akladi")}</div>
                 <div className="mt-1 tabular-nums">{fmtNum(detail.akladi)}</div>
               </div>
               <div className="rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Soliq</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Soliq")}</div>
                 <div className={`mt-1 tabular-nums ${(detail.soliq ?? 0) > 0 ? "text-rose-600" : ""}`}>
                   {fmtNum(detail.soliq ?? 0)}
                 </div>
               </div>
               <div className="col-span-2 rounded-lg border border-border p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Xodim qarzdorligi</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Xodim qarzdorligi")}</div>
                 <div className={`mt-1 font-semibold tabular-nums ${debtOf(detail) > 0 ? "text-amber-600" : ""}`}>
-                  {fmtSum(debtOf(detail))}
+                  {t(fmtSum(debtOf(detail)))}
                 </div>
                 <div className="mt-0.5 text-[11px] text-muted-foreground">
-                  keyingi oy hisobidan ushlab qolinadi
+                  {t("keyingi oy hisobidan ushlab qolinadi")}
                 </div>
               </div>
             </div>
@@ -345,11 +346,11 @@ export default function SalaryRunsPage() {
             {(detail.items?.length ?? 0) > 0 && (
               <div className="mt-4">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Xodimlar kesimi
+                  {t("Xodimlar kesimi")}
                 </div>
                 <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
                   {detail.items!.map((it) => {
-                    const name = it.name || empNames.get(it.employeeId) || `Xodim #${it.employeeId}`;
+                    const name = it.name || empNames.get(it.employeeId) || t("Xodim #{employeeId}", { employeeId: it.employeeId });
                     const debt = Math.max(-it.amount, 0);
                     const paid = Number(it.paid) || 0;
                     return (
@@ -360,7 +361,7 @@ export default function SalaryRunsPage() {
                           type="button"
                           onClick={() => setReceipt({ run: detail, item: it })}
                           className="h-7 w-7 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
-                          title={`${name} — chekni ko'rish`}
+                          title={t("{name} — chekni ko'rish", { name })}
                         >
                           <ReceiptText className="w-4 h-4" />
                         </button>
@@ -374,17 +375,17 @@ export default function SalaryRunsPage() {
                             yoki qarz esa yonida izoh bo'lib turadi. */}
                         {paid > 0 ? (
                           <span className="text-[13px] tabular-nums font-semibold text-emerald-600 whitespace-nowrap">
-                            {fmtSum(paid)} <span className="font-normal text-muted-foreground">to&apos;landi</span>
+                            {t(fmtSum(paid))} <span className="font-normal text-muted-foreground">{t("to'landi")}</span>
                           </span>
                         ) : debt > 0 ? (
                           <span className="text-[13px] tabular-nums font-semibold text-amber-600 whitespace-nowrap">
-                            −{fmtSum(debt)} <span className="font-normal text-muted-foreground">qarzdor</span>
+                            −{t(fmtSum(debt))} <span className="font-normal text-muted-foreground">{t("qarzdor")}</span>
                           </span>
                         ) : (
                           <span className="text-[13px] tabular-nums whitespace-nowrap">
                             {it.amount > 0
-                              ? <span className="text-rose-600 font-semibold">{fmtSum(it.amount)}</span>
-                              : <span className="text-muted-foreground">0 so&apos;m</span>}
+                              ? <span className="text-rose-600 font-semibold">{t(fmtSum(it.amount))}</span>
+                              : <span className="text-muted-foreground">{t("0 so'm")}</span>}
                           </span>
                         )}
                       </div>
@@ -399,7 +400,7 @@ export default function SalaryRunsPage() {
                 onClick={modal.close}
                 className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
               >
-                Yopish
+                {t("Yopish")}
               </button>
             </div>
           </>)}</Modal>
@@ -409,16 +410,16 @@ export default function SalaryRunsPage() {
       {confirmDel && (
         <Modal onClose={() => setConfirmDel(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">
-              Haqiqatdan ham bu oylik chiqarishni o&apos;chirishni xohlaysizmi?
+              {t("Haqiqatdan ham bu oylik chiqarishni o'chirishni xohlaysizmi?")}
             </p>
             <p className="text-center text-[12.5px] text-muted-foreground mt-1">
-              #{confirmDel.id} Â· {datePart(confirmDel.createdAt)} Â· {fmtSum(confirmDel.oylik)}
+              #{confirmDel.id} Â· {datePart(confirmDel.createdAt)} Â· {t(fmtSum(confirmDel.oylik))}
             </p>
             {/* O'chirish endi pulni ham qaytaradi — foydalanuvchi buni
                 oldindan bilishi kerak. */}
             {paidOf(confirmDel) > 0 && (
               <p className="text-center text-[12.5px] text-amber-600 mt-2">
-                {`Chiqarilgan ${fmtSum(paidOf(confirmDel))}${
+                {`Chiqarilgan ${t(fmtSum(paidOf(confirmDel)))}${
                   confirmDel.cashboxName ? ` "${confirmDel.cashboxName}" kassasiga` : " kassaga"
                 } qaytariladi, tranzaksiyalar bekor qilingan deb belgilanadi.`}
               </p>
@@ -429,14 +430,14 @@ export default function SalaryRunsPage() {
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={deleteRun}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg bg-rose-500 text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {deleting ? "O'chirilmoqda…" : "Ha, o'chirish"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha, o'chirish")}
               </button>
             </div>
           </>)}</Modal>

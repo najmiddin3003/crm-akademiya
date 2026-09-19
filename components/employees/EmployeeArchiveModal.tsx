@@ -8,6 +8,7 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Xodimni arxivlash / arxivdan chiqarish modali.
 //
@@ -45,6 +46,7 @@ function todayIso(): string {
 }
 
 export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }: Props) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [reason, setReason] = useState(EMP_LEAVE_REASONS[0]);
   const [date, setDate] = useState(todayIso());
@@ -60,18 +62,18 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
   // ogohlantiramiz: qaysi biri boshqa xodimga o'tkazilishi kerakligini
   // ko'rsatish foydaliroq.
   const busy: string[] = [];
-  if (isArchive && employee.aktivOq > 0) busy.push(`${employee.aktivOq} ta aktiv o'quvchi`);
+  if (isArchive && employee.aktivOq > 0) busy.push(t("{aktivOq} ta aktiv o'quvchi", { aktivOq: employee.aktivOq }));
   if (isArchive && employee.groups > 0) busy.push(`${employee.groups} ta guruh`);
 
   async function submit() {
     setError("");
     if (isArchive) {
       if (!reason) {
-        setError("Ketish sababini tanlang");
+        setError(t("Ketish sababini tanlang"));
         return;
       }
       if (!toStoredDate(date)) {
-        setError("Sanani to'g'ri kiriting");
+        setError(t("Sanani to'g'ri kiriting"));
         return;
       }
     }
@@ -90,12 +92,12 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "Saqlanmadi");
+        setError(t(data.error || "Saqlanmadi"));
         return;
       }
       onDone(data.employee as HrEmployee);
     } catch {
-      setError("Serverga ulanib bo'lmadi");
+      setError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -115,8 +117,8 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
         <p className="text-[13px] text-muted-foreground">
           <span className="text-foreground font-medium">{employee.name}</span>
           {isArchive
-            ? " arxivga o'tkaziladi. U ro'yxatdan yo'qolmaydi — «Holat: Arxiv» filtri orqali topiladi va istalgan vaqtda qaytariladi."
-            : " yana aktiv xodimlar qatoriga qaytadi, ketish sababi va sanasi o'chiriladi."}
+            ? t(" arxivga o'tkaziladi. U ro'yxatdan yo'qolmaydi — «Holat: Arxiv» filtri orqali topiladi va istalgan vaqtda qaytariladi.")
+            : t(" yana aktiv xodimlar qatoriga qaytadi, ketish sababi va sanasi o'chiriladi.")}
         </p>
 
         {busy.length > 0 && (
@@ -131,12 +133,12 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
         {isArchive && (
           <>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Ketish sababi</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Ketish sababi")}</label>
               <Select value={reason} onChange={(v) => setReason(v)} options={EMP_LEAVE_REASONS.map((r) => ({ value: r, label: r }))} size="sm" />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Ketish sanasi</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Ketish sanasi")}</label>
               <DateField value={date} onChange={(v) => setDate(v)} />
             </div>
           </>
@@ -148,10 +150,10 @@ export default function EmployeeArchiveModal({ employee, mode, onClose, onDone }
           {/* `components/ui/Button.tsx` da disabled uslubi yo'q — loyihadagi
               boshqa modallar kabi `disabled:opacity-40` qo'lda qo'shiladi. */}
           <Button type="button" variant="outline" onClick={modal.close} disabled={saving} className="disabled:opacity-40">
-            Bekor qilish
+            {t("Bekor qilish")}
           </Button>
           <Button type="button" variant="primary" onClick={submit} disabled={saving} className="disabled:opacity-40">
-            {saving ? "Saqlanmoqda..." : isArchive ? "Arxivlash" : "Arxivdan chiqarish"}
+            {saving ? "Saqlanmoqda..." : isArchive ? t("Arxivlash") : t("Arxivdan chiqarish")}
           </Button>
         </div>
       </Modal>

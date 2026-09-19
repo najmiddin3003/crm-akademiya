@@ -14,6 +14,7 @@ import UzbmbView from "./UzbmbView";
 import GroupExamDrawer from "./GroupExamDrawer";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Imtihon bo'limi — referens HTML'dagi "IMTIHON (Oylik imtihon) VIEW" ning
 // aynan o'zi: sarlavha + amal tugmalari, ichki tablar (Oylik imtihon | UzBMB),
@@ -75,6 +76,7 @@ function avgOf(arr: MonthlyExam[]): number {
 }
 
 export default function ImtihonPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
 
   // Tab holati manzilda: /imtihon (oylik) va /imtihon?tab=uzbmb. Shunda
@@ -171,14 +173,14 @@ export default function ImtihonPage() {
       const res = await fetch(`/api/imtihon/monthly/${r.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setExams((prev) => prev.filter((x) => x.id !== r.id));
       setCmpId((cur) => (cur === r.id ? null : cur));
-      showSuccess(`Natija o'chirildi — ${r.student} · ${r.subject} · ${imMonthLabel(r.month)}`);
+      showSuccess(t("Natija o'chirildi — {student} · {subject} · {month}", { student: r.student, subject: r.subject, month: imMonthLabel(r.month) }));
     },
-    [showSuccess, showError],
+    [showSuccess, showError, t],
   );
 
   /* ---- Eksport / shablon ---- */
@@ -187,7 +189,7 @@ export default function ImtihonPage() {
     const head = ["O'quvchi", "Fan", "Bosqich", "Oy", "Savollar soni", "To'g'ri javoblar", "O'zlashtirish (%)"];
     const rows = list.map((r) => [r.student, r.subject, r.level || "", r.month, r.total, r.correct, r.pct]);
     downloadCsv([head, ...rows], "oylik_imtihon" + (fm ? "_" + fm : "") + ".csv");
-    showSuccess(`📤 Yuklab olindi — ${list.length} ta natija (Excel'da ochiladi)`);
+    showSuccess(t("📤 Yuklab olindi — {list} ta natija (Excel'da ochiladi)", { list: list.length }));
   }
 
   function downloadTemplate() {
@@ -199,7 +201,7 @@ export default function ImtihonPage() {
       ],
       "imtihon_shablon.csv",
     );
-    showSuccess("📄 Shablon yuklab olindi — Excel'da to'ldirib, shu oynaga yuklang");
+    showSuccess(t("📄 Shablon yuklab olindi — Excel'da to'ldirib, shu oynaga yuklang"));
   }
 
   /* ---- Import ---- */
@@ -239,15 +241,15 @@ export default function ImtihonPage() {
       const total = intOf(r[iTotal]);
       const correct = intOf(r[iCorr]);
       if (!subject) {
-        errors.push(`${i + 1}-qator (${student}): fan bo'sh`);
+        errors.push(t("{i}-qator ({student}): fan bo'sh", { i: i + 1, student }));
         continue;
       }
       if (total <= 0) {
-        errors.push(`${i + 1}-qator (${student}): savollar soni noto'g'ri`);
+        errors.push(t("{i}-qator ({student}): savollar soni noto'g'ri", { i: i + 1, student }));
         continue;
       }
       if (correct > total) {
-        errors.push(`${i + 1}-qator (${student}): to'g'ri javob (${correct}) savollardan (${total}) ko'p`);
+        errors.push(t("{i}-qator ({student}): to'g'ri javob ({correct}) savollardan ({total}) ko'p", { i: i + 1, student, correct, total }));
         continue;
       }
       ok.push({ student, subject, level, month, total, correct, pct: imPct(correct, total) });
@@ -274,14 +276,14 @@ export default function ImtihonPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Yuklanmadi");
+        showError(t(data.error || "Yuklanmadi"));
         return;
       }
       setExams(data.exams as MonthlyExam[]);
       setImportOpen(false);
-      showSuccess(`📥 Bazaga qo'shildi — ${data.added} ta yangi, ${data.updated} ta yangilangan natija`);
+      showSuccess(t("📥 Bazaga qo'shildi — {added} ta yangi, {updated} ta yangilangan natija", { added: data.added, updated: data.updated }));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setApplying(false);
     }
@@ -311,9 +313,9 @@ export default function ImtihonPage() {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Imtihon</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("Imtihon")}</h1>
           <div className="text-[12px] text-muted-foreground mt-0.5">
-            Oylik imtihon va UzBMB natijalari — saqlanadi, avtomatik hisoblanadi va solishtiriladi
+            {t("Oylik imtihon va UzBMB natijalari — saqlanadi, avtomatik hisoblanadi va solishtiriladi")}
           </div>
         </div>
         {tab === "oylik" && (
@@ -321,40 +323,40 @@ export default function ImtihonPage() {
             <button
               onClick={downloadTemplate}
               className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
-              title="Import uchun tayyor shablon"
+              title={t("Import uchun tayyor shablon")}
             >
               <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">
                 CSV
               </span>
-              <span>Shablon</span>
+              <span>{t("Shablon")}</span>
             </button>
             <button
               onClick={openImport}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15"
             >
               <ArrowDownSquare className="w-4 h-4" />
-              <span>Fayl yuklash (Excel/CSV)</span>
+              <span>{t("Fayl yuklash (Excel/CSV)")}</span>
             </button>
             <button
               onClick={exportCsv}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
             >
               <Share2 className="w-4 h-4" />
-              <span>Yuklab olish</span>
+              <span>{t("Yuklab olish")}</span>
             </button>
             <Link
               href="/imtihon/sarhisob"
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/15"
             >
               <BarChart3 className="w-4 h-4" />
-              <span>Sarhisob</span>
+              <span>{t("Sarhisob")}</span>
             </Link>
             <button
               onClick={() => setDrawerOpen(true)}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
             >
               <FilePlus className="w-4 h-4" />
-              <span>Natija kiritish</span>
+              <span>{t("Natija kiritish")}</span>
             </button>
           </div>
         )}
@@ -366,13 +368,13 @@ export default function ImtihonPage() {
           onClick={() => setTab("oylik")}
           className={`h-8 px-3.5 rounded-md text-sm font-medium ${tab === "oylik" ? "bg-primary text-white" : "hover:bg-secondary"}`}
         >
-          Oylik imtihon
+          {t("Oylik imtihon")}
         </button>
         <button
           onClick={() => setTab("uzbmb")}
           className={`h-8 px-3.5 rounded-md text-sm font-medium ${tab === "uzbmb" ? "bg-primary text-white" : "hover:bg-secondary"}`}
         >
-          UzBMB
+          {t("UzBMB")}
         </button>
       </div>
 
@@ -387,13 +389,13 @@ export default function ImtihonPage() {
             sub="kiritilgan imtihon natijasi"
           />
           <StatCard
-            label="Markaz o'rtachasi"
+            label={t("Markaz o'rtachasi")}
             value={centerAvg + "%"}
             sub={fm ? imMonthLabel(fm) + " bo'yicha" : "barcha oylar"}
             color={pctCls(centerAvg)}
           />
           <StatCard
-            label="Eng yuqori natija"
+            label={t("Eng yuqori natija")}
             value={best ? best.pct + "%" : "—"}
             sub={best ? best.student : ""}
             color="text-emerald-600"
@@ -408,9 +410,9 @@ export default function ImtihonPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={fm} onChange={(v) => setFMonth(v)} options={months.map((m) => ({ value: m, label: imMonthLabel(m) }))} placeholder="Barcha oylar" clearable size="sm" className="w-40" />
-          <Select value={fSubject} onChange={(v) => setFSubject(v)} options={subjects.map((s) => ({ value: s, label: s }))} placeholder="Fan — barchasi" clearable size="sm" className="w-40" />
-          <Select value={fLevel} onChange={(v) => setFLevel(v)} options={levels.map((s) => ({ value: s, label: s }))} placeholder="Bosqich — barchasi" clearable size="sm" className="w-44" />
+          <Select value={fm} onChange={(v) => setFMonth(v)} options={months.map((m) => ({ value: m, label: imMonthLabel(m) }))} placeholder={t("Barcha oylar")} clearable size="sm" className="w-40" />
+          <Select value={fSubject} onChange={(v) => setFSubject(v)} options={subjects.map((s) => ({ value: s, label: s }))} placeholder={t("Fan — barchasi")} clearable size="sm" className="w-40" />
+          <Select value={fLevel} onChange={(v) => setFLevel(v)} options={levels.map((s) => ({ value: s, label: s }))} placeholder={t("Bosqich — barchasi")} clearable size="sm" className="w-44" />
           <div className="flex-1" />
           <div className="relative w-72">
             <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -418,12 +420,12 @@ export default function ImtihonPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               type="text"
-              placeholder="O'quvchi bo'yicha qidirish"
+              placeholder={t("O'quvchi bo'yicha qidirish")}
               className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-            <span className="text-muted-foreground">Umumiy soni:</span>
+            <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{items.length}</span>
           </div>
         </div>
@@ -435,14 +437,14 @@ export default function ImtihonPage() {
               <thead className="bg-secondary/40">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-4 py-3 whitespace-nowrap w-14">№</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">O&apos;quvchi</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Fan</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Bosqich</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Oy</th>
-                  <th className="text-right px-4 py-3 whitespace-nowrap">Savollar</th>
-                  <th className="text-right px-4 py-3 whitespace-nowrap">To&apos;g&apos;ri javoblar</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">O&apos;zlashtirish</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Markazga nisbatan</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("O'quvchi")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Fan")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Bosqich")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Oy")}</th>
+                  <th className="text-right px-4 py-3 whitespace-nowrap">{t("Savollar")}</th>
+                  <th className="text-right px-4 py-3 whitespace-nowrap">{t("To'g'ri javoblar")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("O'zlashtirish")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Markazga nisbatan")}</th>
                   <th className="text-right px-4 py-3 whitespace-nowrap w-32" />
                 </tr>
               </thead>
@@ -457,8 +459,7 @@ export default function ImtihonPage() {
                 {!loading && items.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
-                      Natija topilmadi. Filterni o&apos;zgartiring yoki &quot;Natija kiritish&quot; tugmasidan
-                      foydalaning.
+                      {t("Natija topilmadi. Filterni o'zgartiring yoki \"Natija kiritish\" tugmasidan foydalaning.")}
                     </td>
                   </tr>
                 )}
@@ -501,7 +502,7 @@ export default function ImtihonPage() {
                             }}
                             className="h-8 px-3 rounded-md bg-primary/10 text-primary text-[12px] font-medium hover:bg-primary/15"
                           >
-                            Solishtirish
+                            {t("Solishtirish")}
                           </button>
                           <button
                             onClick={(e) => {
@@ -509,7 +510,7 @@ export default function ImtihonPage() {
                               remove(r);
                             }}
                             className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 inline-flex items-center justify-center text-muted-foreground"
-                            title="O'chirish"
+                            title={t("O'chirish")}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -538,7 +539,7 @@ export default function ImtihonPage() {
         <Modal onClose={() => setImportOpen(false)} bare size="xl" zIndex={120}>{(modal) => (<>
             <div className="p-5">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-[16px] font-semibold">Excel / CSV dan yuklash</div>
+                <div className="text-[16px] font-semibold">{t("Excel / CSV dan yuklash")}</div>
                 <button
                   onClick={modal.close}
                   className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
@@ -547,22 +548,21 @@ export default function ImtihonPage() {
                 </button>
               </div>
               <div className="text-[13px] text-muted-foreground mb-3">
-                Ma&apos;lumotlarni Excel&apos;da jamlab, bir harakat bilan barcha o&apos;quvchilarni bazaga kiriting.
-                Ustunlar: <b>O&apos;quvchi, Fan, Bosqich, Oy (2026-08), Savollar soni, To&apos;g&apos;ri javoblar</b>.{" "}
+                {t("Ma'lumotlarni Excel'da jamlab, bir harakat bilan barcha o'quvchilarni bazaga kiriting. Ustunlar:")}{" "}<b>{t("O'quvchi, Fan, Bosqich, Oy (2026-08), Savollar soni, To'g'ri javoblar")}</b>.{" "}
                 <button onClick={downloadTemplate} className="text-primary font-medium hover:underline">
-                  Tayyor shablonni yuklab olish
+                  {t("Tayyor shablonni yuklab olish")}
                 </button>
               </div>
               <label className="block rounded-xl border-2 border-dashed border-border bg-secondary/20 p-6 text-center cursor-pointer hover:bg-secondary/40 transition-colors">
                 <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
                 <ArrowDownSquare className="mx-auto mb-2 text-muted-foreground" style={{ width: 28, height: 28 }} />
-                <div className="text-[13px] font-medium">Faylni tanlang yoki shu yerga tashlang</div>
-                <div className="text-[12px] text-muted-foreground mt-0.5">.xlsx, .xls yoki .csv</div>
+                <div className="text-[13px] font-medium">{t("Faylni tanlang yoki shu yerga tashlang")}</div>
+                <div className="text-[12px] text-muted-foreground mt-0.5">{t(".xlsx, .xls yoki .csv")}</div>
               </label>
               {parsed && (
                 <div className="mt-3 rounded-xl border border-border bg-secondary/20 p-3.5 text-[13px]">
                   <div className={`font-semibold ${parsed.ok.length ? "text-emerald-600" : "text-rose-500"}`}>
-                    {parsed.ok.length ? `✓ ${parsed.ok.length} ta natija o'qildi` : "⚠ Yaroqli qator topilmadi"}
+                    {parsed.ok.length ? t("✓ {ok} ta natija o'qildi", { ok: parsed.ok.length }) : "⚠ Yaroqli qator topilmadi"}
                   </div>
                   {parsed.ok.length > 0 && (
                     <div className="text-muted-foreground mt-1">
@@ -589,14 +589,14 @@ export default function ImtihonPage() {
                   onClick={modal.close}
                   className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm"
                 >
-                  Yopish
+                  {t("Yopish")}
                 </button>
                 <button
                   onClick={applyImport}
                   disabled={!parsed || parsed.ok.length === 0 || applying}
                   className="h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {applying ? "Qo'shilmoqda…" : "Bazaga qo'shish"}
+                  {applying ? t("Qo'shilmoqda…") : t("Bazaga qo'shish")}
                 </button>
               </div>
             </div>
@@ -625,19 +625,19 @@ export default function ImtihonPage() {
 
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <div className="text-[11px] text-muted-foreground">Natija</div>
+                  <div className="text-[11px] text-muted-foreground">{t("Natija")}</div>
                   <div className={`text-[22px] font-bold tabular-nums ${pctCls(cmp.pct)}`}>{cmp.pct}%</div>
                   <div className="text-[11px] text-muted-foreground">
                     {cmp.correct}/{cmp.total} savol
                   </div>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <div className="text-[11px] text-muted-foreground">Fan bo&apos;yicha o&apos;rin</div>
+                  <div className="text-[11px] text-muted-foreground">{t("Fan bo'yicha o'rin")}</div>
                   <div className="text-[22px] font-bold tabular-nums text-primary">{cmpData.rank}-o&apos;rin</div>
                   <div className="text-[11px] text-muted-foreground">{cmpData.subjPool.length} o&apos;quvchi ichida</div>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-3 text-center">
-                  <div className="text-[11px] text-muted-foreground">O&apos;sish (oldingi oyga)</div>
+                  <div className="text-[11px] text-muted-foreground">{t("O'sish (oldingi oyga)")}</div>
                   <div
                     className={`text-[22px] font-bold tabular-nums ${
                       cmpData.trend > 0 ? "text-emerald-600" : cmpData.trend < 0 ? "text-rose-500" : "text-muted-foreground"
@@ -656,18 +656,18 @@ export default function ImtihonPage() {
               <div className="space-y-3 mb-4">
                 <CmpBar label={cmp.student} val={cmp.pct} color="#2b38ff" bold />
                 <CmpBar
-                  label={`Markaz o'rtachasi (${cmpData.monthPool.length} natija)`}
+                  label={t("Markaz o'rtachasi ({monthPool} natija)", { monthPool: cmpData.monthPool.length })}
                   val={cmpData.centerAvg}
                   color="#94a3b8"
                 />
                 <CmpBar
-                  label={`${cmp.subject} o'rtachasi (${cmpData.subjPool.length})`}
+                  label={t("{subject} o'rtachasi ({subjPool})", { subject: cmp.subject, subjPool: cmpData.subjPool.length })}
                   val={cmpData.subjAvg}
                   color="#f59e0b"
                 />
                 {cmp.level ? (
                   <CmpBar
-                    label={`${cmp.level} o'rtachasi (${cmpData.lvlPool.length})`}
+                    label={t("{level} o'rtachasi ({lvlPool})", { level: cmp.level, lvlPool: cmpData.lvlPool.length })}
                     val={cmpData.lvlAvg}
                     color="#10b981"
                   />
@@ -681,10 +681,10 @@ export default function ImtihonPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-secondary/40">
                     <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                      <th className="text-left px-3 py-2">Oy</th>
-                      <th className="text-right px-3 py-2">Savollar</th>
-                      <th className="text-right px-3 py-2">To&apos;g&apos;ri</th>
-                      <th className="text-left px-3 py-2">O&apos;zlashtirish</th>
+                      <th className="text-left px-3 py-2">{t("Oy")}</th>
+                      <th className="text-right px-3 py-2">{t("Savollar")}</th>
+                      <th className="text-right px-3 py-2">{t("To'g'ri")}</th>
+                      <th className="text-left px-3 py-2">{t("O'zlashtirish")}</th>
                     </tr>
                   </thead>
                   <tbody>

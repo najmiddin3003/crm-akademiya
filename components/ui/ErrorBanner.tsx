@@ -20,7 +20,8 @@ export default function ErrorBanner({
   onRetry?: () => void;
 }) {
   const { t } = useT();
-  const text = message ?? t("Ma'lumot yuklanmadi — raqamlar to'liq emas.");
+  // Backend xabari ham (`data.error`) shu yerda o'giriladi — lug'atda bo'lsa.
+  const text = message ? t(message) : t("Ma'lumot yuklanmadi — raqamlar to'liq emas.");
   return (
     <div
       role="alert"

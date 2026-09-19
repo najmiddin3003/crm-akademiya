@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/ui/Pagination";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useT } from "@/components/shared/Language";
 
 // Hisobotlar → Balans (href /reports-balance). Ma'lumot /api/reports/balance
 // dan — xodimlar bo'yicha Bonus/Jarima/Avans jamlanmasi va shundan kelib
@@ -35,6 +36,7 @@ interface BalanceRow {
 const fmtUZS = (n: number) => n.toLocaleString("ru-RU") + " UZS";
 
 export default function Page() {
+  const { t } = useT();
   const [rows, setRows] = useState<BalanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -74,12 +76,12 @@ export default function Page() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">To&apos;liq ismi</th>
-                <th className="px-5 py-3 text-left">Telefon raqam</th>
-                <th className="px-5 py-3 text-right">Ish haqi</th>
-                <th className="px-5 py-3 text-right">Bonus</th>
-                <th className="px-5 py-3 text-right">Avans</th>
-                <th className="px-5 py-3 text-right pr-5">Jarima</th>
+                <th className="px-5 py-3 text-left">{t("To'liq ismi")}</th>
+                <th className="px-5 py-3 text-left">{t("Telefon raqam")}</th>
+                <th className="px-5 py-3 text-right">{t("Ish haqi")}</th>
+                <th className="px-5 py-3 text-right">{t("Bonus")}</th>
+                <th className="px-5 py-3 text-right">{t("Avans")}</th>
+                <th className="px-5 py-3 text-right pr-5">{t("Jarima")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -106,7 +108,7 @@ export default function Page() {
               <tfoot>
                 <tr className="bg-primary/5 border-t border-border font-semibold">
                   <td className="px-5 py-3" />
-                  <td className="px-5 py-3">Jami:</td>
+                  <td className="px-5 py-3">{t("Jami:")}</td>
                   <td className="px-5 py-3" />
                   <td className={`px-5 py-3 text-right tabular-nums ${totals.salary < 0 ? "text-rose-600" : ""}`}>{fmtUZS(totals.salary)}</td>
                   <td className="px-5 py-3 text-right tabular-nums">{fmtUZS(totals.bonus)}</td>

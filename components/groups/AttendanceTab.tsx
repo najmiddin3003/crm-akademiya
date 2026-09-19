@@ -21,7 +21,7 @@ import {
   type LessonDate,
 } from "@/lib/attendance";
 import { useReasons } from "@/hooks/useSettingsList";
-import { useLang } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { MONTHS } from "@/lib/i18n";
 import type { Group } from "@/lib/groups";
 import type { GroupNote } from "@/lib/groupNotes";
@@ -97,6 +97,7 @@ function StatusDot({ status }: { status: AttendanceStatus | null }) {
 }
 
 export default function AttendanceTab({ group, members, membersLoading, balanceOf }: AttendanceTabProps) {
+  const { t } = useT();
   // Dars qoldirish sabablari — Sozlamalar → O'quv → Sabablar ("Davomat"
   // turi). Sozlamada ro'yxat bo'sh bo'lsa lib/attendance.ts dagi standart
   // ro'yxat ishlatiladi (aks holda select butunlay bo'sh bo'lardi).
@@ -332,7 +333,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
   };
 
   const clearPupil = async (pupilId: number) => {
-    if (!confirm("Shu o'quvchining joriy oydagi davomati bekor qilinsinmi?")) return;
+    if (!confirm(t("Shu o'quvchining joriy oydagi davomati bekor qilinsinmi?"))) return;
     try {
       const res = await fetch(
         `/api/groups/${group.id}/attendance?pupilId=${pupilId}&year=${year}&month=${month}`,
@@ -397,7 +398,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
       {/* ---- Boshqaruv qatori ---- */}
       <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
         <div className="text-[13px]">
-          <span className="text-muted-foreground">Guruh nomi</span>{" "}
+          <span className="text-muted-foreground">{t("Guruh nomi")}</span>{" "}
           <span className="font-semibold">{group.name}</span>
         </div>
         <button
@@ -405,7 +406,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
         >
           <Download className="w-4 h-4" />
-          Export
+          {t("Export")}
         </button>
 
         <div className="flex-1" />
@@ -415,13 +416,13 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
             onClick={() => setSortMode("name")}
             className={`h-8 px-3 rounded-md ${sortMode === "name" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
           >
-            Ism bo&apos;yicha
+            {t("Ism bo'yicha")}
           </button>
           <button
             onClick={() => setSortMode("joined")}
             className={`h-8 px-3 rounded-md ${sortMode === "joined" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
           >
-            Qo&apos;shilgan sana bo&apos;yicha
+            {t("Qo'shilgan sana bo'yicha")}
           </button>
         </div>
 
@@ -430,18 +431,18 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
       </div>
 
       <div className="px-4 py-2 flex items-center gap-2">
-        <span className="text-primary font-semibold text-[14px]">Aktiv o&apos;quvchi</span>
+        <span className="text-primary font-semibold text-[14px]">{t("Aktiv o'quvchi")}</span>
         <span className="inline-flex items-center justify-center h-6 px-2 rounded-full bg-primary/10 text-primary text-[12px] font-bold tabular-nums">
           {members.length}
         </span>
-        {loading && <span className="text-[12px] text-muted-foreground">yuklanmoqda…</span>}
+        {loading && <span className="text-[12px] text-muted-foreground">{t("yuklanmoqda…")}</span>}
       </div>
 
       {/* Guruh jadvali yo'q bo'lsa ustunlarni to'qib chiqarmaymiz — sababni aytamiz. */}
       {lessons.length === 0 ? (
         <div className="px-4 py-10 text-center text-sm text-muted-foreground">
           {group.day
-            ? `${monthNames[month - 1]} ${year} da bu guruh uchun dars kuni yo'q (dars kunlari: ${group.day}).`
+            ? t("{month} {year} da bu guruh uchun dars kuni yo'q (dars kunlari: {day}).", { month: monthNames[month - 1], year, day: group.day })
             : "Guruhga dars kunlari belgilanmagan — davomat ustunlari shundan hosil bo'ladi."}
         </div>
       ) : (
@@ -450,17 +451,17 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
             <thead>
               <tr>
                 <th className={`${thCls} w-10`}>№</th>
-                <th className={thCls}>Ism</th>
-                <th className={thCls}>Balans</th>
-                <th className={`${thCls} text-center`}>Davomatni bekor qilish</th>
+                <th className={thCls}>{t("Ism")}</th>
+                <th className={thCls}>{t("Balans")}</th>
+                <th className={`${thCls} text-center`}>{t("Davomatni bekor qilish")}</th>
                 {lessons.map((l) => (
                   <th key={l.iso} className="px-2 py-2 text-center whitespace-nowrap">
                     <span className="block text-[10px] font-semibold text-primary">{l.index}-dars</span>
                     <span className="block text-[12px] font-bold tabular-nums">{l.short}</span>
                   </th>
                 ))}
-                <th className={`${thCls} text-center`}>O&apos;rtacha baho</th>
-                <th className={`${thCls} text-center`}>Izoh</th>
+                <th className={`${thCls} text-center`}>{t("O'rtacha baho")}</th>
+                <th className={`${thCls} text-center`}>{t("Izoh")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -475,7 +476,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                         onClick={() => clearPupil(p.id)}
                         className="h-7 w-7 rounded-md hover:bg-rose-500/10 inline-flex items-center justify-center"
                         style={{ color: "#e34a29" }}
-                        title="Davomatni bekor qilish"
+                        title={t("Davomatni bekor qilish")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -516,7 +517,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => setNotesFor(p)}
-                        title="Izoh qoldirish"
+                        title={t("Izoh qoldirish")}
                         className="h-7 w-7 rounded-md inline-flex items-center justify-center text-primary hover:bg-secondary"
                       >
                         <MessageSquare className="w-4 h-4" />
@@ -562,7 +563,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] hover:bg-secondary"
               >
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: o.color }} />
-                <span>{o.label}</span>
+                <span>{t(o.label)}</span>
               </button>
             ))}
 
@@ -572,7 +573,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 <button
                   key={g}
                   onClick={() => chooseGrade(menu.pupilId, menu.iso, g)}
-                  title={menu.pendingGrade === g ? `Baho ${g} — olib tashlash` : `Baho ${g}`}
+                  title={menu.pendingGrade === g ? t("Baho {g} — olib tashlash", { g }) : `Baho ${g}`}
                   className={`h-7 w-7 rounded-md text-[13px] font-bold text-white transition-transform hover:scale-110 ${
                     menu.pendingGrade === g ? "ring-2 ring-offset-1 ring-primary" : ""
                   }`}
@@ -589,7 +590,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-border px-2.5 py-2 text-[13px] hover:bg-secondary"
               >
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: "#fc0707" }} />
-                <span>Bekor qilish</span>
+                <span>{t("Bekor qilish")}</span>
               </button>
             )}
 
@@ -597,7 +598,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
               onClick={() => void openHistory()}
               className="mt-1 w-full rounded-lg border-t border-border px-2.5 py-2 text-left text-[13px] font-medium text-primary hover:bg-secondary"
             >
-              Tarixi
+              {t("Tarixi")}
             </button>
           </div>
         );
@@ -623,13 +624,13 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 className="inline-flex items-center gap-1 text-[13px] font-medium text-foreground hover:text-primary"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Ortga
+                {t("Ortga")}
               </button>
               <div className="flex flex-col items-end gap-0.5">
                 <button
                   onClick={() => setHistoryIdx((i) => Math.max(0, i - 1))}
                   disabled={!history || historyIdx === 0}
-                  title="Yangiroq"
+                  title={t("Yangiroq")}
                   className="text-muted-foreground hover:text-primary disabled:opacity-30"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -637,7 +638,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 <button
                   onClick={() => setHistoryIdx((i) => Math.min((history?.length ?? 1) - 1, i + 1))}
                   disabled={!history || historyIdx >= history.length - 1}
-                  title="Eskiroq"
+                  title={t("Eskiroq")}
                   className="text-muted-foreground hover:text-primary disabled:opacity-30"
                 >
                   <ArrowRight className="h-4 w-4" />
@@ -645,20 +646,20 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
               </div>
             </div>
 
-            {history === null && <div className="py-6 text-center text-[13px] text-muted-foreground">yuklanmoqda…</div>}
+            {history === null && <div className="py-6 text-center text-[13px] text-muted-foreground">{t("yuklanmoqda…")}</div>}
             {history !== null && history.length === 0 && (
-              <div className="py-6 text-center text-[13px] text-muted-foreground">Tarix yo&apos;q</div>
+              <div className="py-6 text-center text-[13px] text-muted-foreground">{t("Tarix yo'q")}</div>
             )}
             {entry && (
               <div className="space-y-3 text-[13px]">
                 <div className="font-medium">{entry.author}</div>
                 <div className="text-muted-foreground tabular-nums">{entry.createdAt}</div>
                 <div>
-                  <div className="text-muted-foreground">Baho o&apos;zgartirildi:</div>
+                  <div className="text-muted-foreground">{t("Baho o'zgartirildi:")}</div>
                   <div className="mt-0.5">{entry.grade ?? "-"}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Sharh qoldirildi:</div>
+                  <div className="text-muted-foreground">{t("Sharh qoldirildi:")}</div>
                   <div className="mt-0.5">{[entry.reason, entry.note].filter(Boolean).join(" — ") || "-"}</div>
                 </div>
                 {history && history.length > 1 && (
@@ -675,17 +676,17 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
       {/* "Izoh qoldiring" — Sababli tanlanganda */}
       {reasonModal && (
         <Modal onClose={() => setReasonModal(null)} bare zIndex={200} panelClassName="p-5">{(modal) => (<>
-            <h3 className="mb-4 text-center text-lg font-semibold">Izoh qoldiring</h3>
+            <h3 className="mb-4 text-center text-lg font-semibold">{t("Izoh qoldiring")}</h3>
 
-            <label className="mb-1.5 block text-[13px] font-medium">Sababi</label>
-            <Select value={reasonModal.reason} onChange={(v) => setReasonModal({ ...reasonModal, reason: v })} options={reasonNames.map((r) => ({ value: r, label: r }))} placeholder="Tanlang" clearable className="mb-4" />
+            <label className="mb-1.5 block text-[13px] font-medium">{t("Sababi")}</label>
+            <Select value={reasonModal.reason} onChange={(v) => setReasonModal({ ...reasonModal, reason: v })} options={reasonNames.map((r) => ({ value: r, label: r }))} placeholder={t("Tanlang")} clearable className="mb-4" />
 
-            <label className="mb-1.5 block text-[13px] font-medium">Izoh</label>
+            <label className="mb-1.5 block text-[13px] font-medium">{t("Izoh")}</label>
             <textarea
               value={reasonModal.note}
               onChange={(e) => setReasonModal({ ...reasonModal, note: e.target.value })}
               rows={4}
-              placeholder="Qo'shimcha izoh…"
+              placeholder={t("Qo'shimcha izoh…")}
               className="mb-4 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
 
@@ -694,11 +695,11 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 onClick={modal.close}
                 className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-medium hover:bg-secondary"
               >
-                Yopish
+                {t("Yopish")}
               </button>
               <button
                 onClick={() => {
-                  if (!reasonModal.reason) { showError("Sababni tanlang"); return; }
+                  if (!reasonModal.reason) { showError(t("Sababni tanlang")); return; }
                   void save(reasonModal.pupilId, reasonModal.iso, {
                     status: "sababli",
                     grade: reasonModal.grade,
@@ -709,7 +710,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                 }}
                 className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90"
               >
-                Saqlash
+                {t("Saqlash")}
               </button>
             </div>
           </>)}</Modal>
@@ -722,7 +723,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
               <button
                 onClick={modal.close}
                 className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-secondary inline-flex items-center justify-center"
-                title="Yopish"
+                title={t("Yopish")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -730,7 +731,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-3">
-              {notesLoading && <div className="text-center text-[13px] text-muted-foreground">yuklanmoqda…</div>}
+              {notesLoading && <div className="text-center text-[13px] text-muted-foreground">{t("yuklanmoqda…")}</div>}
 
               {notes.map((n) => (
                 <div key={n.id} className="mb-2 rounded-xl bg-primary/10 px-3 py-2">
@@ -740,7 +741,7 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
               ))}
 
               {!notesLoading && notes.length === 0 && (
-                <div className="py-10 text-center text-[13px] text-muted-foreground">Hozircha izoh yo&apos;q</div>
+                <div className="py-10 text-center text-[13px] text-muted-foreground">{t("Hozircha izoh yo'q")}</div>
               )}
               <div ref={notesEndRef} />
             </div>
@@ -754,13 +755,13 @@ export default function AttendanceTab({ group, members, membersLoading, balanceO
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendNote(); }
                 }}
                 rows={1}
-                placeholder="Izoh qoldirish"
+                placeholder={t("Izoh qoldirish")}
                 className="max-h-28 min-h-[38px] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
                 onClick={() => void sendNote()}
                 disabled={!noteText.trim() || sending}
-                title="Yuborish"
+                title={t("Yuborish")}
                 className="h-[38px] w-[38px] shrink-0 rounded-lg bg-primary text-white inline-flex items-center justify-center hover:opacity-90 disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />

@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import SettingsNote from "./SettingsNote";
 import { INTEGRATIONS, INTEGRATION_CATEGORIES } from "@/constants/integrations";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalar → Integratsiyalar. Referensdagidek: yuqorida kategoriya
 // filtrlari, pastda provayder kartalari va "O'rnatish / O'rnatilgan" holati.
@@ -28,6 +29,7 @@ const STORAGE_KEY = "integration.installed";
 const EXTRA_TABS = ["Installed", "Active"];
 
 export default function IntegrationsTab() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [installed, setInstalled] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -73,16 +75,16 @@ export default function IntegrationsTab() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setInstalled(installed); // qaytarib qo'yamiz
         return;
       }
       // Ilgari bu yerda "O'rnatildi" chiqardi — bu yolg'on da'vo edi: hech
       // narsa o'rnatilmaydi, faqat belgi saqlanadi. Toast endi aynan sodir
       // bo'lgan ishni aytadi.
-      showSuccess(next[key] ? "Belgilandi" : "Belgi olib tashlandi");
+      showSuccess(next[key] ? t("Belgilandi") : t("Belgi olib tashlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setInstalled(installed);
     }
   }
@@ -119,7 +121,7 @@ export default function IntegrationsTab() {
         </div>
       ) : grouped.length === 0 ? (
         <div className="rounded-2xl bg-card border border-border p-10 text-center text-sm text-muted-foreground">
-          Integratsiya topilmadi
+          {t("Integratsiya topilmadi")}
         </div>
       ) : (
         grouped.map(([category, items]) => (
@@ -144,7 +146,7 @@ export default function IntegrationsTab() {
                       {on ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                       {/* "O'rnatilgan" emas: hech qanday provayder o'rnatilmaydi,
                           faqat shu karta belgilanadi. */}
-                      {on ? "Belgilangan" : "Belgilash"}
+                      {on ? t("Belgilangan") : t("Belgilash")}
                     </button>
                   </div>
                 );

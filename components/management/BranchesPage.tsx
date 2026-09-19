@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { ManagementBranch } from "@/lib/managementBranches";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Filiallar (sidebar: Boshqaruv > Filiallar, href
 // /management-filiallar). Ma'lumot HAQIQIY — /api/branches (MongoDB
@@ -29,10 +30,11 @@ const emptyForm = { name: "", location: "", leadTopic: "", paymentTopic: "" };
 
 /** Ro'yxatdagi kichik belgi: topik bor — ko'k, yo'q — sariq. */
 function TopicBadge({ label, topic, missingTitle }: { label: string; topic: number | null | undefined; missingTitle: string }) {
+  const { t } = useT();
   return topic ? (
     <span
       className="shrink-0 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[12px] font-medium text-sky-600"
-      title={`${label} Telegram'da shu topikka tushadi`}
+      title={t("{label} Telegram'da shu topikka tushadi", { label })}
     >
       {label}: topik {topic}
     </span>
@@ -47,6 +49,7 @@ function TopicBadge({ label, topic, missingTitle }: { label: string; topic: numb
 }
 
 export default function BranchesPage() {
+  const { t } = useT();
   const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [branches, setBranches] = useState<ManagementBranch[]>([]);
@@ -89,7 +92,7 @@ export default function BranchesPage() {
   async function save() {
     const name = form.name.trim();
     if (!name) {
-      showError("Filial nomini kiriting");
+      showError(t("Filial nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -109,7 +112,7 @@ export default function BranchesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       // Kesh bekor qilinadi: keyin mount bo'ladigan iste'molchilar
@@ -117,14 +120,14 @@ export default function BranchesPage() {
       invalidateBranches();
       if (editing) {
         setBranches((prev) => prev.map((x) => (x.id === data.branch.id ? data.branch : x)));
-        showSuccess("Filial yangilandi");
+        showSuccess(t("Filial yangilandi"));
       } else {
         setBranches((prev) => [...prev, data.branch]);
-        showSuccess("Filial qo'shildi");
+        showSuccess(t("Filial qo'shildi"));
       }
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -137,14 +140,14 @@ export default function BranchesPage() {
       const res = await fetch(`/api/branches/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       invalidateBranches();
       setBranches((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      showSuccess("Filial o'chirildi");
+      showSuccess(t("Filial o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -160,7 +163,7 @@ export default function BranchesPage() {
           onClick={openAdd}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
-          <span>+ Filial qo&apos;shish</span>
+          <span>{t("+ Filial qo'shish")}</span>
         </button>
       </div>
 
@@ -170,12 +173,12 @@ export default function BranchesPage() {
             <span className="font-medium">{b.name}</span>
             <span className="ml-auto text-[13px] text-muted-foreground">{b.location}</span>
             <TopicBadge
-              label="Lidlar"
+              label={t("Lidlar")}
               topic={b.leadTopicId}
               missingTitle="Bu filialning lidlari umumiy topikka tushadi (u ham bo'lmasa — yuborilmaydi)"
             />
             <TopicBadge
-              label="To'lovlar"
+              label={t("To'lovlar")}
               topic={b.paymentTopicId}
               missingTitle="Bu filialning to'lovlari umumiy “To'lovlar” topigiga tushadi"
             />
@@ -189,14 +192,14 @@ export default function BranchesPage() {
               <button
                 onClick={() => openEdit(b)}
                 className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                title="Tahrirlash"
+                title={t("Tahrirlash")}
               >
                 <Pencil className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setDeleteTarget(b)}
                 className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                title="O'chirish"
+                title={t("O'chirish")}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -213,33 +216,33 @@ export default function BranchesPage() {
       {formOpen && (
         <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110} panelClassName="p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">
-              {editTarget ? "Filialni tahrirlash" : "Filial qo'shish"}
+              {editTarget ? t("Filialni tahrirlash") : t("Filial qo'shish")}
             </h3>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Nomi</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Nomi")}</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: Akademiya 3-filial"
+                placeholder={t("Masalan: Akademiya 3-filial")}
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Manzil</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Manzil")}</label>
               <input
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: Chortoq"
+                placeholder={t("Masalan: Chortoq")}
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Telegram lid topigi</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Telegram lid topigi")}</label>
               <input
                 value={form.leadTopic}
                 onChange={(e) => setForm((f) => ({ ...f, leadTopic: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: 45 yoki https://t.me/c/…/45"
+                placeholder={t("Masalan: 45 yoki https://t.me/c/…/45")}
               />
               <p className="mt-1.5 text-[12px] text-muted-foreground">
                 Shu filialda qo&apos;shilgan yangi lid &quot;Lidlar&quot; guruhining shu topigiga tushadi.
@@ -248,16 +251,15 @@ export default function BranchesPage() {
               </p>
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Telegram to&apos;lov topigi</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Telegram to'lov topigi")}</label>
               <input
                 value={form.paymentTopic}
                 onChange={(e) => setForm((f) => ({ ...f, paymentTopic: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: 3 yoki https://t.me/c/…/3"
+                placeholder={t("Masalan: 3 yoki https://t.me/c/…/3")}
               />
               <p className="mt-1.5 text-[12px] text-muted-foreground">
-                Shu filial kassalariga tushgan to&apos;lov to&apos;lovlar guruhining shu topigiga ketadi.
-                Bo&apos;sh qoldirilsa umumiy &quot;To&apos;lovlar&quot; topigi.
+                {t("Shu filial kassalariga tushgan to'lov to'lovlar guruhining shu topigiga ketadi. Bo'sh qoldirilsa umumiy \"To'lovlar\" topigi.")}
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
@@ -266,14 +268,14 @@ export default function BranchesPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={save}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </Modal>
@@ -281,21 +283,21 @@ export default function BranchesPage() {
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

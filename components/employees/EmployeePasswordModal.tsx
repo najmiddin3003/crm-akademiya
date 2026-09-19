@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import type { HrEmployeeFull } from "./employeeExtras";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Xodim profilidagi PAROL oynasi (chap kartadagi kalit ikonkasi).
 //
@@ -31,6 +32,7 @@ export default function EmployeePasswordModal({
   employee: HrEmployeeFull;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [info, setInfo] = useState<PasswordInfo | null>(null);
@@ -58,7 +60,7 @@ export default function EmployeePasswordModal({
 
   async function save() {
     if (next.length < 8) {
-      showError("Parol kamida 8 ta belgidan iborat bo'lsin");
+      showError(t("Parol kamida 8 ta belgidan iborat bo'lsin"));
       return;
     }
     setSaving(true);
@@ -70,14 +72,14 @@ export default function EmployeePasswordModal({
       });
       const d = await res.json();
       if (!d.ok) {
-        showError(d.error || "Parol o'zgartirilmadi");
+        showError(t(d.error || "Parol o'zgartirilmadi"));
         setSaving(false);
         return;
       }
-      showSuccess("Parol o'zgartirildi");
+      showSuccess(t("Parol o'zgartirildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -97,19 +99,19 @@ export default function EmployeePasswordModal({
   return (
     <Modal onClose={onClose} controller={modal} bare size="sm">
         <div className="px-6 py-4 border-b border-border">
-          <h3 className="text-[16px] font-semibold">Parol</h3>
+          <h3 className="text-[16px] font-semibold">{t("Parol")}</h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">{employee.name}</p>
         </div>
 
         <div className="p-6 space-y-4">
           {noAccount && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
-              Bu xodimda tizim hisobi yo&apos;q — avval unga faollashtirish taklifi yuborilishi kerak.
+              {t("Bu xodimda tizim hisobi yo'q — avval unga faollashtirish taklifi yuborilishi kerak.")}
             </div>
           )}
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Joriy parol</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Joriy parol")}</label>
             <div className="relative">
               <input
                 type={shown ? "text" : "password"}
@@ -122,7 +124,7 @@ export default function EmployeePasswordModal({
                 <button
                   type="button"
                   onClick={() => setShown((v) => !v)}
-                  title={shown ? "Yashirish" : "Ko'rsatish"}
+                  title={shown ? t("Yashirish") : t("Ko'rsatish")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                 >
                   {shown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -132,18 +134,18 @@ export default function EmployeePasswordModal({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Yangi parol</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Yangi parol")}</label>
             <input
               type="text"
               value={next}
               onChange={(e) => setNext(e.target.value)}
               disabled={noAccount}
-              placeholder="Kamida 8 ta belgi"
+              placeholder={t("Kamida 8 ta belgi")}
               className={`${inputCls} disabled:opacity-60`}
             />
             {info?.status === "invited" && (
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Xodim hali faollashtirilmagan. Parol qo&apos;yilsa hisob darhol ishlaydi va yuborilgan taklif kuchini yo&apos;qotadi.
+                {t("Xodim hali faollashtirilmagan. Parol qo'yilsa hisob darhol ishlaydi va yuborilgan taklif kuchini yo'qotadi.")}
               </p>
             )}
           </div>
@@ -151,14 +153,14 @@ export default function EmployeePasswordModal({
 
         <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
           <button onClick={modal.close} className="h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button
             onClick={save}
             disabled={saving || noAccount}
             className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
           >
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

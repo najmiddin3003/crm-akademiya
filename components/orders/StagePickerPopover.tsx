@@ -1,6 +1,7 @@
 "use client";
 
 import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
+import { useT } from "@/components/shared/Language";
 
 // Reuses the same 4 stages/colors already used by OrdersKanban's columns
 // (see .ok-stage-* in globals.css) as a quick-set popover triggered from the
@@ -23,6 +24,7 @@ export default function StagePickerPopover({
   onChange: (stage: OrderStageKey) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <>
       {/* Bu popover boshqa elementlar CSS bilan fixed/absolute joylashtirilgan
@@ -42,7 +44,7 @@ export default function StagePickerPopover({
             }`}
           >
             <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[st.key] }} />
-            <span>{st.emoji} {st.label}</span>
+            <span>{st.emoji} {t(st.label)}</span>
           </button>
         ))}
       </div>

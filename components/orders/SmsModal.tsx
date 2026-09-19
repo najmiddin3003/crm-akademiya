@@ -9,6 +9,7 @@ import { loadPupilsCached } from "@/hooks/useStudents";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "SMS yuborish" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: O'quvchilar (faqat ko'rsatiladi) →
@@ -92,6 +93,7 @@ function Toggle({
 }
 
 export default function SmsModal({ studentName, phone, onClose, onSent, onError }: SmsModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [options, setOptions] = useState<TemplateOption[]>([]);
   // Shablonlar ikki manbadan yig'ilib bo'lguncha ro'yxat bo'sh turadi — o'sha
@@ -118,8 +120,8 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
       const list: TemplateOption[] = [];
 
       if (tplRes?.ok) {
-        for (const t of tplRes.templates as SmsTemplate[]) {
-          if (t.text?.trim()) list.push({ value: `tpl:${t.id}`, label: t.title, text: t.text, group: "SMS shablonlari" });
+        for (const tv of tplRes.templates as SmsTemplate[]) {
+          if (tv.text?.trim()) list.push({ value: `tpl:${tv.id}`, label: tv.title, text: tv.text, group: "SMS shablonlari" });
         }
       }
 
@@ -145,8 +147,8 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
           (wantedDigits ? pupils.find((p) => digitsOf(p.phone) === wantedDigits) : undefined) ??
           pupils.find((p) => pupilFullName(p).toLowerCase() === wantedName);
         const found: Recipient[] = [];
-        if (pupil?.fatherPhone?.trim()) found.push({ phone: pupil.fatherPhone.trim(), name: `${studentName} — otasi` });
-        if (pupil?.motherPhone?.trim()) found.push({ phone: pupil.motherPhone.trim(), name: `${studentName} — onasi` });
+        if (pupil?.fatherPhone?.trim()) found.push({ phone: pupil.fatherPhone.trim(), name: t("{studentName} — otasi", { studentName }) });
+        if (pupil?.motherPhone?.trim()) found.push({ phone: pupil.motherPhone.trim(), name: t("{studentName} — onasi", { studentName }) });
         // Ota va ona bir xil raqam yozgan bo'lsa SMS ikki marta ketmasin.
         setParentPhones(found.filter((r, i) => found.findIndex((x) => digitsOf(x.phone) === digitsOf(r.phone)) === i));
       }
@@ -154,7 +156,7 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
       if (!cancelled) setTemplatesLoading(false);
     });
     return () => { cancelled = true; };
-  }, [phone, studentName]);
+  }, [phone, studentName, t]);
 
   const pick = (value: string) => {
     setPicked(value);
@@ -199,7 +201,7 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
         .catch(() => null);
       if (!res?.ok) {
         setSending(false);
-        onError(res?.error || `SMS yuborishda xatolik yuz berdi — ${r.name}`);
+        onError(res?.error || t("SMS yuborishda xatolik yuz berdi — {name}", { name: r.name }));
         return;
       }
       simulated = simulated || Boolean(res.simulated);
@@ -211,29 +213,29 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={200} panelClassName="overflow-y-auto">
         <div className="p-5 pb-4 text-center">
-          <h3 className="text-xl font-semibold">SMS yuborish</h3>
+          <h3 className="text-xl font-semibold">{t("SMS yuborish")}</h3>
         </div>
 
         <div className="px-5 pb-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5">O&apos;quvchilar</label>
+            <label className="block text-sm font-medium mb-1.5">{t("O'quvchilar")}</label>
             <p className="text-sm text-muted-foreground">{studentName}</p>
           </div>
 
           <div className="flex items-center gap-6">
             <Toggle
-              label="Ota onaga"
+              label={t("Ota onaga")}
               on={toParent}
               onChange={setToParent}
               disabled={!hasParents}
-              title={hasParents ? undefined : "O'quvchi kartochkasida ota-ona telefoni yozilmagan"}
+              title={hasParents ? undefined : t("O'quvchi kartochkasida ota-ona telefoni yozilmagan")}
             />
             <Toggle
-              label="Faqat ota-onaga"
+              label={t("Faqat ota-onaga")}
               on={onlyParent}
               onChange={setOnlyParent}
               disabled={!hasParents}
-              title={hasParents ? undefined : "O'quvchi kartochkasida ota-ona telefoni yozilmagan"}
+              title={hasParents ? undefined : t("O'quvchi kartochkasida ota-ona telefoni yozilmagan")}
             />
           </div>
 
@@ -246,7 +248,7 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">SMS shablon</label>
+            <label className="block text-sm font-medium mb-1.5">{t("SMS shablon")}</label>
             {/* Guruh sarlavhalari (ilgari <optgroup>) — Select `group` maydoni orqali. */}
             <Select
               size="lg"
@@ -260,7 +262,7 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">Xabar</label>
+            <label className="block text-sm font-medium mb-1.5">{t("Xabar")}</label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -272,10 +274,10 @@ export default function SmsModal({ studentName, phone, onClose, onSent, onError 
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={modal.close}>
-              Orqaga
+              {t("Orqaga")}
             </Button>
             <Button variant="primary" onClick={send} disabled={sending || recipients.length === 0}>
-              {sending ? "Yuborilmoqda..." : "Saqlash"}
+              {sending ? t("Yuborilmoqda...") : t("Saqlash")}
             </Button>
           </div>
         </div>

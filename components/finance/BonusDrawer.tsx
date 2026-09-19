@@ -12,6 +12,7 @@ import type { Bonus } from "@/lib/bonuses";
 import type { Cashbox } from "@/lib/cashboxes";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Bonus yaratish" — Moliya → Bonus sahifasidagi o'ng tomondan ochiladigan
 // panel (skrinshot 2/3). "Tranzaksiya turi"ga qarab pastda "Xodim" (oddiy
@@ -34,14 +35,15 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
  * barobar yomonlashtirardi.
  */
 function StudentPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useT();
   const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
   return (
     <StudentSearchSelect
-      label="O'quvchi"
+      label={t("O'quvchi")}
       value={value}
       onChange={onChange}
       options={studentNames}
-      placeholder="O'quvchini qidirish"
+      placeholder={t("O'quvchini qidirish")}
       loading={studentsLoading}
     />
   );
@@ -54,6 +56,7 @@ export default function BonusDrawer({
   onClose: () => void;
   onSaved: (b: Bonus) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState(BONUS_TYPES[0].value);
@@ -89,12 +92,12 @@ export default function BonusDrawer({
 
   async function save() {
     if (!recipientName) {
-      showError(type === "employee" ? "Xodimni tanlang" : "O'quvchini tanlang");
+      showError(type === "employee" ? t("Xodimni tanlang") : t("O'quvchini tanlang"));
       return;
     }
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
-      showError("Qiymatni to'g'ri kiriting");
+      showError(t("Qiymatni to'g'ri kiriting"));
       return;
     }
     setSaving(true);
@@ -106,15 +109,15 @@ export default function BonusDrawer({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.bonus as Bonus);
-      showSuccess("Bonus yaratildi");
+      showSuccess(t("Bonus yaratildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -123,7 +126,7 @@ export default function BonusDrawer({
     <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya turi</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Tranzaksiya turi")}</label>
             {/* Ro'yxat TANLANGANDA emas, OCHILGANDA isiy boshlaydi (onOpen) —
                 odatda 0.3-1.5 s oldinroq. Kalit bir xil ("pupils:light"),
                 shu bois "O'quvchi" tanlansa StudentPicker mount bo'lganda
@@ -134,13 +137,13 @@ export default function BonusDrawer({
               value={type}
               onChange={(v) => { setType(v); setEmployeeName(""); setStudentName(""); }}
               onOpen={() => { void loadPupilsCached({ light: true }); }}
-              options={BONUS_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              options={BONUS_TYPES.map((tv) => ({ value: tv.value, label: tv.label }))}
             />
           </div>
 
           {type === "employee" ? (
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Xodim</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Xodim")}</label>
               <Select value={employeeName} onChange={(v) => setEmployeeName(v)} options={employees.map((e) => ({ value: e.name, label: e.name }))} placeholder={selectPlaceholder(listsLoading, employees.length, "Xodim qo'shilmagan")} clearable disabled={listsLoading} />
             </div>
           ) : (
@@ -148,12 +151,12 @@ export default function BonusDrawer({
           )}
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Kassa</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Kassa")}</label>
             <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")} clearable disabled={listsLoading} />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
             <MoneyInput
               value={amount}
               onChange={setAmount}
@@ -162,7 +165,7 @@ export default function BonusDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -174,10 +177,10 @@ export default function BonusDrawer({
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

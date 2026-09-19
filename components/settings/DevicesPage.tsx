@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Monitor, ShieldCheck } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { useT } from "@/components/shared/Language";
 
 // Profil menyusi → "Aktiv qurilmalar".
 // Foydalanuvchining ochiq sessiyalari: qaysi qurilma/brauzer, qachon kirgan,
@@ -21,6 +22,7 @@ interface SessionRow {
 }
 
 export default function DevicesPage() {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<SessionRow[]>([]);
@@ -47,8 +49,8 @@ export default function DevicesPage() {
 
   const terminate = async (sid: string, current: boolean) => {
     if (current) {
-      if (!confirm("Bu joriy qurilma. Chiqarilsa tizimdan chiqib ketasiz. Davom etamizmi?")) return;
-    } else if (!confirm("Shu qurilma tizimdan chiqarilsinmi?")) {
+      if (!confirm(t("Bu joriy qurilma. Chiqarilsa tizimdan chiqib ketasiz. Davom etamizmi?"))) return;
+    } else if (!confirm(t("Shu qurilma tizimdan chiqarilsinmi?"))) {
       return;
     }
     setBusy(sid);
@@ -63,7 +65,7 @@ export default function DevicesPage() {
         return;
       }
       setRows((r) => r.filter((x) => x.sid !== sid));
-      showSuccess("Qurilma chiqarildi");
+      showSuccess(t("Qurilma chiqarildi"));
     } catch (e) {
       showError(e instanceof Error ? e.message : "Chiqarib bo'lmadi");
     } finally {
@@ -74,7 +76,7 @@ export default function DevicesPage() {
   const terminateOthers = async () => {
     const others = rows.filter((r) => !r.current).length;
     if (others === 0) return;
-    if (!confirm(`Boshqa ${others} ta qurilma tizimdan chiqarilsinmi?`)) return;
+    if (!confirm(t("Boshqa {others} ta qurilma tizimdan chiqarilsinmi?", { others }))) return;
     setBusy("all");
     try {
       const res = await fetch("/api/sessions?all=1", { method: "DELETE" });
@@ -94,7 +96,7 @@ export default function DevicesPage() {
   return (
     <div className="page-frame container mx-auto max-w-[900px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-[18px] font-bold tracking-tight">Aktiv qurilmalar</h1>
+        <h1 className="text-[18px] font-bold tracking-tight">{t("Aktiv qurilmalar")}</h1>
         <div className="flex-1" />
         <button
           onClick={() => void terminateOthers()}
@@ -102,12 +104,12 @@ export default function DevicesPage() {
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700 disabled:opacity-40"
         >
           <LogOut className="w-4 h-4" />
-          Boshqa qurilmalarni chiqarish
+          {t("Boshqa qurilmalarni chiqarish")}
         </button>
       </div>
 
       <p className="text-[13px] text-muted-foreground">
-        Hisobingizga kirilgan qurilmalar. Notanish qurilmani ko&apos;rsangiz — uni chiqaring va parolingizni almashtiring.
+        {t("Hisobingizga kirilgan qurilmalar. Notanish qurilmani ko'rsangiz — uni chiqaring va parolingizni almashtiring.")}
       </p>
 
       <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
@@ -115,11 +117,11 @@ export default function DevicesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qurilma</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Qurilma")}</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">IP</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kirgan vaqti</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Oxirgi faollik</th>
-                <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amal</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Kirgan vaqti")}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Oxirgi faollik")}</th>
+                <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Amal")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -131,11 +133,11 @@ export default function DevicesPage() {
                         <Monitor className="w-4 h-4" />
                       </span>
                       <div>
-                        <div className="text-[13px] font-medium">{r.label}</div>
+                        <div className="text-[13px] font-medium">{t(r.label)}</div>
                         {r.current && (
                           <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
                             <ShieldCheck className="w-3 h-3" />
-                            Joriy qurilma
+                            {t("Joriy qurilma")}
                           </span>
                         )}
                       </div>
@@ -151,7 +153,7 @@ export default function DevicesPage() {
                       className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-[13px] font-medium hover:bg-rose-500/10 hover:text-rose-600 disabled:opacity-40"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      Chiqarish
+                      {t("Chiqarish")}
                     </button>
                   </td>
                 </tr>

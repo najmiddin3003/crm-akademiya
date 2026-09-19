@@ -6,8 +6,10 @@ import Button from "@/components/ui/Button";
 import AuthShell from "@/components/auth/AuthShell";
 import PhoneField from "@/components/auth/PhoneField";
 import PasswordField from "@/components/auth/PasswordField";
+import { useT } from "@/components/shared/Language";
 
 export default function LoginPage() {
+  const { t } = useT();
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -17,7 +19,7 @@ export default function LoginPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (phone.length < 9 || !password.trim()) {
-      setError("Telefon raqam va parolni to'liq kiriting");
+      setError(t("Telefon raqam va parolni to'liq kiriting"));
       return;
     }
     setError("");
@@ -30,31 +32,31 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        setError(data.error || "Kirishda xatolik yuz berdi");
+        setError(t(data.error || "Kirishda xatolik yuz berdi"));
         setLoading(false);
         return;
       }
       router.push("/home");
       router.refresh();
     } catch {
-      setError("Server bilan bog'lanib bo'lmadi");
+      setError(t("Server bilan bog'lanib bo'lmadi"));
       setLoading(false);
     }
   };
 
   return (
     <AuthShell>
-      <h1 className="text-lg font-semibold tracking-tight">Kirish</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Telefon raqam va parolingizni kiriting</p>
+      <h1 className="text-lg font-semibold tracking-tight">{t("Kirish")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t("Telefon raqam va parolingizni kiriting")}</p>
 
       <form onSubmit={onSubmit} className="mt-5 space-y-3.5">
         <PhoneField value={phone} onChange={setPhone} />
-        <PasswordField label="Parol" value={password} onChange={setPassword} />
+        <PasswordField label={t("Parol")} value={password} onChange={setPassword} />
 
         {error && <p className="text-[13px] text-red-500">{error}</p>}
 
         <Button type="submit" className="w-full justify-center" disabled={loading}>
-          {loading ? "Kirilmoqda..." : "Kirish"}
+          {loading ? t("Kirilmoqda...") : t("Kirish")}
         </Button>
       </form>
 

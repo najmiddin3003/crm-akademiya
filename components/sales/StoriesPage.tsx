@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Story } from "@/lib/stories";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Sotuv va marketing → Hikoya (sidebar: Sotuv va marketing > Hikoya,
 // href /sales-stories). Ma'lumot HAQIQIY — /api/stories (MongoDB `stories`).
@@ -37,6 +38,7 @@ function fileLabel(url: string): string {
 }
 
 export default function StoriesPage() {
+  const { t } = useT();
   const modal = useModalClose(closeForm);
   const { showSuccess, showError } = useToast();
   const [stories, setStories] = useState<Story[]>([]);
@@ -95,7 +97,7 @@ export default function StoriesPage() {
   async function save() {
     const title = form.title.trim();
     if (!title) {
-      showError("Sarlavhani kiriting");
+      showError(t("Sarlavhani kiriting"));
       return;
     }
     setSaving(true);
@@ -114,7 +116,7 @@ export default function StoriesPage() {
         });
         const upData = await up.json().catch(() => null);
         if (!up.ok || !upData?.ok) {
-          showError(upData?.error || "Fayl yuklanmadi");
+          showError(t(upData?.error || "Fayl yuklanmadi"));
           return;
         }
         fileUrl = upData.url as string;
@@ -128,19 +130,19 @@ export default function StoriesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       if (editing) {
         setStories((prev) => prev.map((x) => (x.id === data.story.id ? data.story : x)));
-        showSuccess("Hikoya yangilandi");
+        showSuccess(t("Hikoya yangilandi"));
       } else {
         setStories((prev) => [data.story, ...prev]);
-        showSuccess("Hikoya qo'shildi");
+        showSuccess(t("Hikoya qo'shildi"));
       }
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -153,13 +155,13 @@ export default function StoriesPage() {
       const res = await fetch(`/api/stories/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       setStories((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      showSuccess("Hikoya o'chirildi");
+      showSuccess(t("Hikoya o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -175,14 +177,14 @@ export default function StoriesPage() {
           onClick={openAdd}
           className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
-          <span>+ Hikoya qo&apos;shish</span>
+          <span>{t("+ Hikoya qo'shish")}</span>
         </button>
         <div className="relative ml-auto">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            placeholder="Qidirish"
+            placeholder={t("Qidirish")}
             className="h-10 w-64 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
@@ -191,7 +193,7 @@ export default function StoriesPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -200,11 +202,11 @@ export default function StoriesPage() {
           <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="px-5 py-3 text-left w-24">Rasm</th>
-                <th className="px-5 py-3 text-left">Sarlavha</th>
-                <th className="px-5 py-3 text-left w-44">Sana</th>
-                <th className="px-5 py-3 text-left w-56">Fayl</th>
-                <th className="px-5 py-3 text-right pr-5 w-28">Amallar</th>
+                <th className="px-5 py-3 text-left w-24">{t("Rasm")}</th>
+                <th className="px-5 py-3 text-left">{t("Sarlavha")}</th>
+                <th className="px-5 py-3 text-left w-44">{t("Sana")}</th>
+                <th className="px-5 py-3 text-left w-56">{t("Fayl")}</th>
+                <th className="px-5 py-3 text-right pr-5 w-28">{t("Amallar")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -213,12 +215,12 @@ export default function StoriesPage() {
                   <td className="px-5 py-3">
                     {s.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.image} alt={s.title} className="h-10 w-10 rounded object-cover" />
+                      <img src={s.image} alt={t(s.title)} className="h-10 w-10 rounded object-cover" />
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 font-medium">{s.title}</td>
+                  <td className="px-5 py-3 font-medium">{t(s.title)}</td>
                   <td className="px-5 py-3 tabular-nums text-[12px] text-muted-foreground whitespace-nowrap">{s.createdAt}</td>
                   <td className="px-5 py-3 text-[13px] max-w-[224px]">
                     {/* Yuklangan fayl — ochiladigan havola. Eski yozuvlarda
@@ -236,7 +238,7 @@ export default function StoriesPage() {
                           {fileLabel(s.file)}
                         </a>
                       ) : (
-                        <span className="text-muted-foreground truncate block" title="Eski yozuv: bu shunchaki matn, yuklangan fayl emas">
+                        <span className="text-muted-foreground truncate block" title={t("Eski yozuv: bu shunchaki matn, yuklangan fayl emas")}>
                           {s.file}
                         </span>
                       )
@@ -249,14 +251,14 @@ export default function StoriesPage() {
                       <button
                         onClick={() => openEdit(s)}
                         className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(s)}
                         className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                        title="O'chirish"
+                        title={t("O'chirish")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -287,19 +289,19 @@ export default function StoriesPage() {
       {formOpen && (
         <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110} panelClassName="p-6 space-y-4">
             <h3 className="text-[16px] font-semibold">
-              {editTarget ? "Hikoyani tahrirlash" : "Hikoya qo'shish"}
+              {editTarget ? t("Hikoyani tahrirlash") : t("Hikoya qo'shish")}
             </h3>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Sarlavha</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Sarlavha")}</label>
               <input
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 className={inputCls}
-                placeholder="Hikoya sarlavhasi"
+                placeholder={t("Hikoya sarlavhasi")}
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Rasm (URL)</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Rasm (URL)")}</label>
               <input
                 value={form.image}
                 onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
@@ -308,7 +310,7 @@ export default function StoriesPage() {
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Fayl</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Fayl")}</label>
               <input
                 ref={fileRef}
                 type="file"
@@ -334,14 +336,14 @@ export default function StoriesPage() {
                     onClick={() => { setFileUpload(null); setForm((f) => ({ ...f, file: "" })); if (fileRef.current) fileRef.current.value = ""; }}
                     disabled={saving}
                     className="h-10 w-10 shrink-0 rounded-lg border border-border bg-card hover:bg-secondary flex items-center justify-center text-muted-foreground disabled:opacity-60"
-                    title="Faylni olib tashlash"
+                    title={t("Faylni olib tashlash")}
                   >
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
               <p className="text-[12px] text-muted-foreground mt-1.5">
-                Rasm: PNG, JPG yoki WEBP (5 MB gacha). Video: MP4, WEBM yoki MOV (50 MB gacha).
+                {t("Rasm: PNG, JPG yoki WEBP (5 MB gacha). Video: MP4, WEBM yoki MOV (50 MB gacha).")}
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
@@ -350,14 +352,14 @@ export default function StoriesPage() {
                 disabled={saving}
                 className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Bekor qilish
+                {t("Bekor qilish")}
               </button>
               <button
                 onClick={save}
                 disabled={saving}
                 className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {saving ? "Saqlanmoqda…" : "Saqlash"}
+                {saving ? t("Saqlanmoqda…") : t("Saqlash")}
               </button>
             </div>
           </Modal>
@@ -365,21 +367,21 @@ export default function StoriesPage() {
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
                 onClick={modal.close}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleting}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

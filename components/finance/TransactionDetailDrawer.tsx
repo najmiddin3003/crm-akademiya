@@ -10,6 +10,7 @@ import PersonLink from "@/components/shared/PersonDirectory";
 
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 const STATUS_LABELS: Record<string, string> = { "": "Qabul qilingan", waiting: "Kutilmoqda", cancelled: "Bekor qilingan" };
 
@@ -56,6 +57,7 @@ export default function TransactionDetailDrawer({
   /** Bekor qilinganda — yangilangan yozuv qaytariladi. */
   onChanged: (entry: TransactionEntry) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const [cancelling, setCancelling] = useState(false);
@@ -71,14 +73,14 @@ export default function TransactionDetailDrawer({
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
-        showError(data.error || "Bekor qilinmadi");
+        showError(t(data.error || "Bekor qilinmadi"));
         return;
       }
       onChanged(data.entry as TransactionEntry);
-      showSuccess("Tranzaksiya bekor qilindi");
+      showSuccess(t("Tranzaksiya bekor qilindi"));
       setConfirmOpen(false);
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setCancelling(false);
     }
@@ -90,15 +92,15 @@ export default function TransactionDetailDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">Ma&apos;lumot</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{t("Ma'lumot")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <Row label="Sana">{fmtEntryDate(entry)}</Row>
-          <Row label="Kim">
+          <Row label={t("Sana")}>{fmtEntryDate(entry)}</Row>
+          <Row label={t("Kim")}>
             {entry.studentName && studentId ? (
               <Link href={`/student-edit/${studentId}?src=list`} className="text-primary hover:underline">
                 {entry.studentName}
@@ -115,25 +117,25 @@ export default function TransactionDetailDrawer({
               entry.studentName || entry.moderator || "—"
             )}
           </Row>
-          <Row label="Kassa">{cashboxName || "—"}</Row>
+          <Row label={t("Kassa")}>{cashboxName || "—"}</Row>
           {/* Yozuv qaysi o'qituvchining oyligiga qo'shilishi yoki undan
               ayrilishi — kirimda o'quvchining ustozi, chiqimda puli
               chiqarilayotgan xodimning o'zi; o'quvchiga pul qaytarishda
               — ustozning shu oydagi TUSHUMIDAN (foizli oylik undan
               hisoblanadi, lib/studentRefund.ts). */}
-          <Row label={isStudentRefundEntry(entry) ? "Ustozi tushumidan ayriladi" : entry.txType === "payIn" ? "Ustoziga qo'shiladi" : "Oyligidan ayriladi"}>
+          <Row label={isStudentRefundEntry(entry) ? "Ustozi tushumidan ayriladi" : entry.txType === "payIn" ? t("Ustoziga qo'shiladi") : t("Oyligidan ayriladi")}>
             {entry.teacherName ? (
               <span className={entry.txType === "payIn" ? "text-emerald-600" : "text-rose-600"}>
                 {entry.txType === "payIn" ? "+" : "−"} <PersonLink name={entry.teacherName} kind="staff" />
               </span>
             ) : "—"}
           </Row>
-          <Row label="Izoh">{entry.note || "—"}</Row>
-          <Row label="Tranzaksiya nomi">{entry.txName || "—"}</Row>
-          <Row label="To'lov turi">{entry.paymentType || "—"}</Row>
-          <Row label="Tranzaksiya turi">{TX_TYPE_LABELS[entry.txType] || entry.txType}</Row>
-          <Row label="Holati">{STATUS_LABELS[entry.status] || entry.status}</Row>
-          <Row label="Miqdori">
+          <Row label={t("Izoh")}>{entry.note || "—"}</Row>
+          <Row label={t("Tranzaksiya nomi")}>{entry.txName || "—"}</Row>
+          <Row label={t("To'lov turi")}>{entry.paymentType || "—"}</Row>
+          <Row label={t("Tranzaksiya turi")}>{TX_TYPE_LABELS[entry.txType] || entry.txType}</Row>
+          <Row label={t("Holati")}>{STATUS_LABELS[entry.status] || entry.status}</Row>
+          <Row label={t("Miqdori")}>
             <span className={entry.amount >= 0 ? "text-emerald-600" : "text-rose-600"}>{fmtSignedUZS(entry.amount)}</span>
           </Row>
         </div>
@@ -144,20 +146,20 @@ export default function TransactionDetailDrawer({
               onClick={() => setConfirmOpen(true)}
               className="w-full h-9 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90"
             >
-              Tranzaksiyani bekor qilish
+              {t("Tranzaksiyani bekor qilish")}
             </button>
           </div>
         )}
       </Modal>{confirmOpen && (
         <Modal onClose={() => setConfirmOpen(false)} locked={cancelling} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Tranzaksiyani bekor qilmoqchimisiz?</p>
-            <p className="text-center text-[13px] text-muted-foreground mt-1.5">Kassa balansi ham teskari o&apos;zgaradi.</p>
+            <p className="text-center text-[15px] font-semibold">{t("Tranzaksiyani bekor qilmoqchimisiz?")}</p>
+            <p className="text-center text-[13px] text-muted-foreground mt-1.5">{t("Kassa balansi ham teskari o'zgaradi.")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmCancel} disabled={cancelling} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {cancelling ? "Bekor qilinmoqda…" : "Ha"}
+                {cancelling ? t("Bekor qilinmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

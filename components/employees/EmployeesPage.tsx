@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import PhoneField, { formatPhoneDigits } from "@/components/auth/PhoneField";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import EmployeeEditModal from "@/components/employees/EmployeeEditModal";
+import { useT } from "@/components/shared/Language";
 
 interface EmployeeRow {
   id: string;
@@ -73,6 +74,7 @@ function RetryIcon() {
 // (users status='invited' + SMS taklif). Ro'yxatda holat ko'rinadi, taklif
 // yetib bormasa qayta jo'natish, tahrirlash va o'chirish ikonkalar orqali.
 export default function EmployeesPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -156,8 +158,8 @@ export default function EmployeesPage() {
         data.smsSimulated
           ? "Xodim qo'shildi. SMS simulyatsiya qilindi (Eskiz credential yo'q — server logiga qarang)."
           : data.smsSent
-            ? "Xodim qo'shildi va SMS taklif yuborildi ✅"
-            : "Xodim qo'shildi, lekin SMS yuborilmadi (server logini tekshiring)."
+            ? t("Xodim qo'shildi va SMS taklif yuborildi ✅")
+            : t("Xodim qo'shildi, lekin SMS yuborilmadi (server logini tekshiring).")
       );
       setFullName("");
       setPhone("");
@@ -183,8 +185,8 @@ export default function EmployeesPage() {
       setNotice(
         res.ok
           ? data.smsSimulated
-            ? "Taklif qayta yuborildi (SMS simulyatsiya — server logi)."
-            : "Taklif qayta yuborildi ✅"
+            ? t("Taklif qayta yuborildi (SMS simulyatsiya — server logi).")
+            : t("Taklif qayta yuborildi ✅")
           : data.error || "Qayta yuborilmadi"
       );
     } catch {
@@ -195,7 +197,7 @@ export default function EmployeesPage() {
   };
 
   const remove = async (row: EmployeeRow) => {
-    if (!confirm(`${row.fullName} butunlay o'chirilsinmi? Bu amalni orqaga qaytarib bo'lmaydi.`)) return;
+    if (!confirm(t("{fullName} butunlay o'chirilsinmi? Bu amalni orqaga qaytarib bo'lmaydi.", { fullName: row.fullName }))) return;
     setDeletingId(row.id);
     setNotice("");
     try {
@@ -217,31 +219,31 @@ export default function EmployeesPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-5">
-        <h1 className="text-lg font-semibold tracking-tight">Xodimlar</h1>
-        <p className="text-sm text-muted-foreground">Yangi xodim qo&apos;shing — telefoniga SMS taklif yuboriladi</p>
+        <h1 className="text-lg font-semibold tracking-tight">{t("Xodimlar")}</h1>
+        <p className="text-sm text-muted-foreground">{t("Yangi xodim qo'shing — telefoniga SMS taklif yuboriladi")}</p>
       </div>
 
       {/* Ishga qabul formasi */}
       <form onSubmit={submit} className="mb-6 rounded-xl border border-border bg-card p-4 sm:p-5">
-        <h2 className="mb-3 text-sm font-semibold">Ishga qabul — yangi xodim</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("Ishga qabul — yangi xodim")}</h2>
         <div className="grid gap-3.5 sm:grid-cols-3">
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">F.I.Sh.</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("F.I.Sh.")}</label>
             <input
               className={inputCls}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ism Familiya"
+              placeholder={t("Ism Familiya")}
             />
           </div>
           <PhoneField value={phone} onChange={setPhone} />
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">Lavozim</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-foreground/80">{t("Lavozim")}</label>
             <input
               className={inputCls}
               value={position}
               onChange={(e) => setPosition(e.target.value)}
-              placeholder="O'qituvchi, admin..."
+              placeholder={t("O'qituvchi, admin...")}
             />
           </div>
         </div>
@@ -249,7 +251,7 @@ export default function EmployeesPage() {
         {notice && <p className="mt-3 text-[13px] text-emerald-600">{notice}</p>}
         <div className="mt-4">
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Yuborilmoqda..." : "Taklif yuborish"}
+            {submitting ? t("Yuborilmoqda...") : t("Taklif yuborish")}
           </Button>
         </div>
       </form>
@@ -264,17 +266,17 @@ export default function EmployeesPage() {
         ) : loadError ? (
           <div className="px-4 py-8 text-center text-sm text-red-500">{loadError}</div>
         ) : rows.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">Hozircha xodim yo&apos;q</div>
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground">{t("Hozircha xodim yo'q")}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-[13px] text-muted-foreground">
-                  <th className="px-4 py-2.5 font-medium">F.I.Sh.</th>
-                  <th className="px-4 py-2.5 font-medium">Telefon</th>
-                  <th className="px-4 py-2.5 font-medium">Lavozim</th>
-                  <th className="px-4 py-2.5 font-medium">Holat</th>
-                  <th className="px-4 py-2.5 font-medium">Amal</th>
+                  <th className="px-4 py-2.5 font-medium">{t("F.I.Sh.")}</th>
+                  <th className="px-4 py-2.5 font-medium">{t("Telefon")}</th>
+                  <th className="px-4 py-2.5 font-medium">{t("Lavozim")}</th>
+                  <th className="px-4 py-2.5 font-medium">{t("Holat")}</th>
+                  <th className="px-4 py-2.5 font-medium">{t("Amal")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -287,7 +289,7 @@ export default function EmployeesPage() {
                       <td className="px-4 py-2.5 text-muted-foreground">{r.position || "—"}</td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[12px] font-medium ${meta.cls}`}>
-                          {meta.label}
+                          {t(meta.label)}
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
@@ -296,7 +298,7 @@ export default function EmployeesPage() {
                             variant="icon"
                             type="button"
                             className={`${iconBtnCls} emp-icon-btn-danger`}
-                            title="Xodimni o'chirish"
+                            title={t("Xodimni o'chirish")}
                             disabled={deletingId === r.id}
                             onClick={() => remove(r)}
                           >
@@ -306,7 +308,7 @@ export default function EmployeesPage() {
                             variant="icon"
                             type="button"
                             className={iconBtnCls}
-                            title="Tahrirlash"
+                            title={t("Tahrirlash")}
                             onClick={() => setEditingRow(r)}
                           >
                             <EditIcon />
@@ -316,7 +318,7 @@ export default function EmployeesPage() {
                               variant="icon"
                               type="button"
                               className={iconBtnCls}
-                              title="Qayta yuborish"
+                              title={t("Qayta yuborish")}
                               disabled={resendingId === r.id}
                               onClick={() => resend(r.id)}
                             >

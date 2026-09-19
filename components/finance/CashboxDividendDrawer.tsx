@@ -10,6 +10,7 @@ import { type Cashbox, type CashboxMethodTotals } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -43,6 +44,7 @@ export default function CashboxDividendDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods } = usePaymentMethods();
@@ -85,15 +87,15 @@ export default function CashboxDividendDrawer({
 
   async function save() {
     if (!total || total <= 0) {
-      showError("Qiymatni to'g'ri kiriting");
+      showError(t("Qiymatni to'g'ri kiriting"));
       return;
     }
     if (!method) {
-      showError("To'lov turini tanlang");
+      showError(t("To'lov turini tanlang"));
       return;
     }
     if (available != null && total > available) {
-      showError("Mablag' yetarli emas");
+      showError(t("Mablag' yetarli emas"));
       return;
     }
     setSaving(true);
@@ -113,15 +115,15 @@ export default function CashboxDividendDrawer({
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.cashbox as Cashbox);
-      showSuccess("Divident to'landi");
+      showSuccess(t("Divident to'landi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -132,7 +134,7 @@ export default function CashboxDividendDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">Divident</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{t("Divident")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
@@ -143,11 +145,11 @@ export default function CashboxDividendDrawer({
             {rows.map((row, i) => (
               <div key={row.id} className="flex items-end gap-2">
                 <div className="flex-1">
-                  <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
                   <MoneyInput
                     value={row.amount}
                     onChange={(v) => updateRow(row.id, { amount: v })}
-                    placeholder="Qiymat"
+                    placeholder={t("Qiymat")}
                     className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
@@ -156,7 +158,7 @@ export default function CashboxDividendDrawer({
                     type="button"
                     onClick={() => removeRow(row.id)}
                     className="h-10 w-10 shrink-0 rounded-lg border border-border text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center"
-                    title="O'chirish"
+                    title={t("O'chirish")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -167,14 +169,14 @@ export default function CashboxDividendDrawer({
               type="button"
               onClick={addRow}
               className="h-9 w-9 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center justify-center"
-              title="Qator qo'shish"
+              title={t("Qator qo'shish")}
             >
               <Plus className="w-4 h-4" />
             </button>
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Umumiy summa</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Umumiy summa")}</label>
             <input
               value={groupNumber(total)}
               readOnly
@@ -184,20 +186,20 @@ export default function CashboxDividendDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
-            <Select value={method} onChange={(v) => setMethod(v)} options={investmentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="Tanlang" clearable />
+            <label className="block text-[13px] font-medium mb-1.5">{t("To'lov turi")}</label>
+            <Select value={method} onChange={(v) => setMethod(v)} options={investmentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder={t("Tanlang")} clearable />
             {available != null && (
               <div className="text-[12px] text-muted-foreground mt-1">Mavjud: {fmtUZS(available)}</div>
             )}
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
             <DatePicker value={date} onChange={setDate} className="w-full" />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -209,10 +211,10 @@ export default function CashboxDividendDrawer({
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

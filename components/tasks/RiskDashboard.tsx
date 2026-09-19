@@ -1,21 +1,25 @@
+"use client";
+
 import { computeTaskRisk, type Task } from "@/lib/tasksData";
+import { useT } from "@/components/shared/Language";
 
 export interface RiskDashboardProps {
   tasks: Task[];
 }
 
 export default function RiskDashboard({ tasks }: RiskDashboardProps) {
+  const { t } = useT();
   const stats = { overdue: 0, danger: 0, kritik: 0, total: 0, completed: 0 };
-  for (const t of tasks) {
+  for (const tv of tasks) {
     stats.total++;
-    if (t.state === "bajarilgan") {
+    if (tv.state === "bajarilgan") {
       stats.completed++;
       continue;
     }
-    const r = computeTaskRisk(t);
+    const r = computeTaskRisk(tv);
     if (r === "overdue") stats.overdue++;
     if (r === "danger") stats.danger++;
-    if (t.priority === "kritik") stats.kritik++;
+    if (tv.priority === "kritik") stats.kritik++;
   }
   const pct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
@@ -26,7 +30,7 @@ export default function RiskDashboard({ tasks }: RiskDashboardProps) {
           <svg className="icon icon-sm"><use href="#i-alert-triangle" /></svg>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground">Muddati o&apos;tgan</div>
+          <div className="text-[11px] text-muted-foreground">{t("Muddati o'tgan")}</div>
           <div className="text-[17px] font-bold tabular-nums">{stats.overdue}</div>
         </div>
       </div>
@@ -35,7 +39,7 @@ export default function RiskDashboard({ tasks }: RiskDashboardProps) {
           <svg className="icon icon-sm"><use href="#i-clock" /></svg>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground">Xavf ostida</div>
+          <div className="text-[11px] text-muted-foreground">{t("Xavf ostida")}</div>
           <div className="text-[17px] font-bold tabular-nums">{stats.danger}</div>
         </div>
       </div>
@@ -44,7 +48,7 @@ export default function RiskDashboard({ tasks }: RiskDashboardProps) {
           <svg className="icon icon-sm"><use href="#i-flag" /></svg>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground">KRITIK darajada</div>
+          <div className="text-[11px] text-muted-foreground">{t("KRITIK darajada")}</div>
           <div className="text-[17px] font-bold tabular-nums">{stats.kritik}</div>
         </div>
       </div>
@@ -53,7 +57,7 @@ export default function RiskDashboard({ tasks }: RiskDashboardProps) {
           <svg className="icon icon-sm"><use href="#i-check" /></svg>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground">Yakunlangan</div>
+          <div className="text-[11px] text-muted-foreground">{t("Yakunlangan")}</div>
           <div className="text-[17px] font-bold tabular-nums">{pct}%</div>
         </div>
       </div>

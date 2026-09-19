@@ -6,6 +6,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import SettingsNote from "./SettingsNote";
 import { FIELD_MODES } from "@/constants/settingsFields";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalar → Sotuv va marketing → "So'raladigan bo'limlar".
 // Yuqorida rejim tugmalari (o'quvchi / buyurtma / birinchi dars), pastda
@@ -53,6 +54,7 @@ function withDefaults(saved: unknown): FieldValues {
 }
 
 export default function FieldSettingsTab() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [mode, setMode] = useState(MODES[0].key);
   const [values, setValues] = useState<FieldValues>(buildDefaults);
@@ -101,13 +103,13 @@ export default function FieldSettingsTab() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       setInitial(values); // endi "Qaytarish" shu holatga qaytadi
-      showSuccess("Sozlamalar saqlandi");
+      showSuccess(t("Sozlamalar saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -124,7 +126,7 @@ export default function FieldSettingsTab() {
               mode === m.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
             }`}
           >
-            {m.label}
+            {t(m.label)}
           </button>
         ))}
       </div>
@@ -135,8 +137,7 @@ export default function FieldSettingsTab() {
           yerdagi belgi hozircha hech qaysi formaning ko'rinishini o'zgartirmaydi —
           shuni yashirmaymiz. */}
       <SettingsNote>
-        Tanlov saqlanadi, lekin o&apos;quvchi kartochkasi va buyurtma / birinchi dars formalari
-        hozircha uni o&apos;qimaydi &mdash; ular maydonlarni o&apos;zgarmas ro&apos;yxat bo&apos;yicha ko&apos;rsatadi.
+        {t("Tanlov saqlanadi, lekin o'quvchi kartochkasi va buyurtma / birinchi dars formalari hozircha uni o'qimaydi — ular maydonlarni o'zgarmas ro'yxat bo'yicha ko'rsatadi.")}
       </SettingsNote>
 
       {loading ? (
@@ -146,12 +147,12 @@ export default function FieldSettingsTab() {
       ) : (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            {active.label}
+            {t(active.label)}
           </div>
           <div className="divide-y divide-border">
             {active.fields.map((f) => (
               <div key={f.key} className="flex items-center justify-between gap-4 py-3">
-                <span className="text-[13px]">{f.label}</span>
+                <span className="text-[13px]">{t(f.label)}</span>
                 <Toggle
                   on={Boolean(values[active.key]?.[f.key])}
                   onChange={(v) => set(f.key, v)}
@@ -168,14 +169,14 @@ export default function FieldSettingsTab() {
           disabled={saving || loading}
           className="h-10 px-6 rounded-lg border border-border text-sm font-medium hover:bg-secondary disabled:opacity-60"
         >
-          Qaytarish
+          {t("Qaytarish")}
         </button>
         <button
           onClick={save}
           disabled={saving || loading}
           className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
         >
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </div>

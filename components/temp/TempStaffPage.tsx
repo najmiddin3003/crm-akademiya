@@ -11,6 +11,7 @@ import type { TempStaffRow } from "@/app/api/temp-staff/route";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Vaqtinchalik tugma" (sidebar → Sozlamalardan keyin, faqat admin).
 //
@@ -96,6 +97,7 @@ function toStoredDate(iso: string): string {
 }
 
 export default function TempStaffPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<TempStaffRow[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -260,15 +262,15 @@ export default function TempStaffPage() {
   // ko'rsatadi: SMS haqiqatan ketadi va pul turadi.
   function askSend(targets: TempStaffRow[]) {
     if (targets.length === 0) {
-      showError("Xodim tanlanmagan");
+      showError(t("Xodim tanlanmagan"));
       return;
     }
     // Server ham shu ikkalasini rad etadi; bu yerda esa ular ro'yxatga
     // umuman kirmaydi — tasdiq oynasidagi son HAQIQATDA ketadigan SMS
     // soni bo'lishi kerak.
-    const list = targets.filter((t) => t.accountStatus !== "active" && t.phone);
+    const list = targets.filter((tv) => tv.accountStatus !== "active" && tv.phone);
     if (list.length === 0) {
-      showError("Tanlanganlarning hammasi faollashgan yoki raqamsiz — yuboriladigan SMS yo'q");
+      showError(t("Tanlanganlarning hammasi faollashgan yoki raqamsiz — yuboriladigan SMS yo'q"));
       return;
     }
     setSmsResults(null);
@@ -285,24 +287,24 @@ export default function TempStaffPage() {
       const res = await fetch("/api/temp-staff/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: smsTargets.list.map((t) => t.id), twoFactor: smsTwoFactor }),
+        body: JSON.stringify({ ids: smsTargets.list.map((tv) => tv.id), twoFactor: smsTwoFactor }),
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Yuborilmadi");
+        showError(t(data.error || "Yuborilmadi"));
         return;
       }
       const results = data.results as InviteResult[];
       setSmsResults(results);
       setSmsTargets(null);
       if (data.failed === 0) {
-        showSuccess(`SMS yuborildi — ${data.sent} ta`);
+        showSuccess(t("SMS yuborildi — {sent} ta", { sent: data.sent }));
       } else {
-        showError(`Yuborildi: ${data.sent}, yuborilmadi: ${data.failed} — sabablari pastda`);
+        showError(t("Yuborildi: {sent}, yuborilmadi: {failed} — sabablari pastda", { sent: data.sent, failed: data.failed }));
       }
       await reload();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSending(false);
     }
@@ -325,7 +327,7 @@ export default function TempStaffPage() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Saqlanmadi");
-      showSuccess(approval === "approved" ? `${r.name} — kirishga ruxsat berildi` : `${r.name} — kirish rad etildi`);
+      showSuccess(approval === "approved" ? t("{name} — kirishga ruxsat berildi", { name: r.name }) : t("{name} — kirish rad etildi", { name: r.name }));
     } catch (e) {
       setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, approval: before } : x)));
       showError(e instanceof Error ? e.message : "Saqlanmadi");
@@ -345,7 +347,7 @@ export default function TempStaffPage() {
   async function saveEdit() {
     if (!editTarget) return;
     if (!form.name.trim()) {
-      showError("Ismni kiriting");
+      showError(t("Ismni kiriting"));
       return;
     }
     setSaving(true);
@@ -362,14 +364,14 @@ export default function TempStaffPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       setEditTarget(null);
-      showSuccess("Saqlandi");
+      showSuccess(t("Saqlandi"));
       await reload();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -388,7 +390,7 @@ export default function TempStaffPage() {
       ? { archReason: "", archDate: "" }
       : { archReason, archDate: toStoredDate(archDate) };
     if (!restore && (!archReason || !body.archDate)) {
-      showError("Sabab va sanani to'g'ri kiriting");
+      showError(t("Sabab va sanani to'g'ri kiriting"));
       return;
     }
     setSaving(true);
@@ -400,14 +402,14 @@ export default function TempStaffPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
       setArchiveTarget(null);
-      showSuccess(restore ? "Arxivdan chiqarildi" : "Arxivlandi");
+      showSuccess(restore ? t("Arxivdan chiqarildi") : t("Arxivlandi"));
       await reload();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -420,18 +422,18 @@ export default function TempStaffPage() {
       const res = await fetch(`/api/temp-staff/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         return;
       }
       const r = data.removed as { users: number; sessions: number; codes: number };
       // Nima o'chganini AYTAMIZ: sahifaning maqsadi raqamni bo'shatish, va
       // "hisob o'chdimi?" degan savol javobsiz qolmasligi kerak.
       showSuccess(
-        `O'chirildi — hisob: ${r.users}, sessiya: ${r.sessions}, SMS kodi: ${r.codes}. Raqam endi bo'sh.`,
+        t("O'chirildi — hisob: {users}, sessiya: {sessions}, SMS kodi: {codes}. Raqam endi bo'sh.", { users: r.users, sessions: r.sessions, codes: r.codes }),
       );
       setRows((prev) => prev.filter((x) => x.id !== deleteTarget.id));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -441,9 +443,8 @@ export default function TempStaffPage() {
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-3 text-[13px] text-amber-700 dark:text-amber-400">
-        <b>Vaqtinchalik bo&apos;lim.</b> To&apos;rtala filial xodimi bir ro&apos;yxatda. Bu yerdagi
-        &laquo;O&apos;chirish&raquo; xodimni <b>butunlay</b> o&apos;chiradi — hisobi, sessiyalari va
-        SMS kodlari bilan birga, ya&apos;ni telefon raqami qayta ishlatishga bo&apos;shaydi.
+        <b>{t("Vaqtinchalik bo'lim.")}</b> To&apos;rtala filial xodimi bir ro&apos;yxatda. Bu yerdagi
+        &laquo;O&apos;chirish&raquo; xodimni <b>{t("butunlay")}</b>{" "}{t("o'chiradi — hisobi, sessiyalari va SMS kodlari bilan birga, ya'ni telefon raqami qayta ishlatishga bo'shaydi.")}
       </div>
 
       {/* Oxirgi yuborish natijasi. Toast o'chib ketadi, sabab esa kerak
@@ -460,7 +461,7 @@ export default function TempStaffPage() {
               onClick={() => setSmsResults(null)}
               className="text-[12px] text-muted-foreground hover:text-foreground"
             >
-              Yopish
+              {t("Yopish")}
             </button>
           </div>
           <ul className="mt-2 space-y-1 text-[12.5px]">
@@ -488,18 +489,18 @@ export default function TempStaffPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ism, telefon, vazifa yoki filial"
+                placeholder={t("Ism, telefon, vazifa yoki filial")}
                 className={`${inputCls} pl-9`}
               />
             </div>
-            <Select value={branchFilter} onChange={(v) => setBranchFilter(v)} options={branches.map((b) => ({ value: String(b.id), label: b.name }))} placeholder="Barcha filiallar" clearable style={{ width: 190 }} />
-            <Select value={stateFilter} onChange={(v) => setStateFilter(v)} options={[{ value: "active", label: "Aktiv" }, { value: "archived", label: "Arxivda" }]} placeholder="Barcha holatlar" clearable style={{ width: 150 }} />
-            <Select value={accountFilter} onChange={(v) => setAccountFilter(v)} options={[{ value: "none", label: "Hisob yo'q" }, { value: "invited", label: "SMS ketgan — hali faollashmagan" }, { value: "pending", label: "Tasdiq kutmoqda" }, { value: "rejected", label: "Rad etilgan" }, { value: "active", label: "Faollashgan" }]} placeholder="Barcha hisoblar" clearable style={{ width: 235 }} />
+            <Select value={branchFilter} onChange={(v) => setBranchFilter(v)} options={branches.map((b) => ({ value: String(b.id), label: b.name }))} placeholder={t("Barcha filiallar")} clearable style={{ width: 190 }} />
+            <Select value={stateFilter} onChange={(v) => setStateFilter(v)} options={[{ value: "active", label: t("Aktiv") }, { value: "archived", label: t("Arxivda") }]} placeholder={t("Barcha holatlar")} clearable style={{ width: 150 }} />
+            <Select value={accountFilter} onChange={(v) => setAccountFilter(v)} options={[{ value: "none", label: t("Hisob yo'q") }, { value: "invited", label: t("SMS ketgan — hali faollashmagan") }, { value: "pending", label: t("Tasdiq kutmoqda") }, { value: "rejected", label: t("Rad etilgan") }, { value: "active", label: t("Faollashgan") }]} placeholder={t("Barcha hisoblar")} clearable style={{ width: 235 }} />
             <button
               onClick={() => askSend(rows.filter((r) => selected.has(r.id)))}
               disabled={selected.size === 0}
               className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-              title={selected.size === 0 ? "Avval xodimlarni belgilang" : undefined}
+              title={selected.size === 0 ? t("Avval xodimlarni belgilang") : undefined}
             >
               <Send className="w-4 h-4" />
               Tanlanganlarga SMS
@@ -512,7 +513,7 @@ export default function TempStaffPage() {
             )}
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Topildi:</span>
+            <span>{t("Topildi:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
             <span className="text-primary/60">/ {rows.length}</span>
           </div>
@@ -528,16 +529,16 @@ export default function TempStaffPage() {
                     checked={allFilteredSelected}
                     onChange={(e) => toggleAllFiltered(e.target.checked)}
                     className="w-4 h-4 rounded border-border accent-primary align-middle"
-                    title="Ko'rinib turgan qatorlarni belgilash"
+                    title={t("Ko'rinib turgan qatorlarni belgilash")}
                   />
                 </th>
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">To&apos;liq nomi</th>
-                <th className="px-5 py-3 text-left">Telefon</th>
-                <th className="px-5 py-3 text-left">Vazifasi</th>
-                <th className="px-5 py-3 text-left">Filiallar</th>
-                <th className="px-5 py-3 text-left">Hisob</th>
-                <th className="px-5 py-3 text-left">Holat</th>
+                <th className="px-5 py-3 text-left">{t("To'liq nomi")}</th>
+                <th className="px-5 py-3 text-left">{t("Telefon")}</th>
+                <th className="px-5 py-3 text-left">{t("Vazifasi")}</th>
+                <th className="px-5 py-3 text-left">{t("Filiallar")}</th>
+                <th className="px-5 py-3 text-left">{t("Hisob")}</th>
+                <th className="px-5 py-3 text-left">{t("Holat")}</th>
                 <th className="px-5 py-3 text-right pr-5 w-40" />
               </tr>
             </thead>
@@ -578,20 +579,20 @@ export default function TempStaffPage() {
                             kerak bo'lmasin. */}
                         {r.approval === "pending" && (
                           <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-600">
-                            {r.accountStatus === "active" ? "Tasdiq kutmoqda" : "Tasdiq talab qilinadi"}
+                            {r.accountStatus === "active" ? t("Tasdiq kutmoqda") : t("Tasdiq talab qilinadi")}
                           </span>
                         )}
                         {r.approval === "rejected" && (
                           <span className="inline-flex items-center rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-600">
-                            Rad etilgan
+                            {t("Rad etilgan")}
                           </span>
                         )}
                         {r.approval === "approved" && (
                           <span
                             className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600"
-                            title="Ikki bosqichli kirish — admin tasdiqlagan"
+                            title={t("Ikki bosqichli kirish — admin tasdiqlagan")}
                           >
-                            Tasdiqlangan
+                            {t("Tasdiqlangan")}
                           </span>
                         )}
                         {r.approval !== "" && (
@@ -600,7 +601,7 @@ export default function TempStaffPage() {
                               onClick={() => decideApproval(r, "approved")}
                               disabled={r.approval === "approved"}
                               className="h-6 w-6 rounded-md flex items-center justify-center text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-25 disabled:cursor-not-allowed"
-                              title="Kirishga ruxsat berish"
+                              title={t("Kirishga ruxsat berish")}
                             >
                               <Check className="w-4 h-4" />
                             </button>
@@ -608,7 +609,7 @@ export default function TempStaffPage() {
                               onClick={() => decideApproval(r, "rejected")}
                               disabled={r.approval === "rejected"}
                               className="h-6 w-6 rounded-md flex items-center justify-center text-rose-600 hover:bg-rose-500/10 disabled:opacity-25 disabled:cursor-not-allowed"
-                              title="Kirishni rad etish"
+                              title={t("Kirishni rad etish")}
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -622,11 +623,11 @@ export default function TempStaffPage() {
                           className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
                           title={`${r.archReason}${r.archDate ? ` — ${r.archDate}` : ""}`}
                         >
-                          Arxivda
+                          {t("Arxivda")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
-                          Aktiv
+                          {t("Aktiv")}
                         </span>
                       )}
                     </td>
@@ -640,28 +641,28 @@ export default function TempStaffPage() {
                           onClick={() => askSend([r])}
                           disabled={done}
                           className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={done ? "Hisob allaqachon faollashgan" : "Faollashtirish SMS'ini yuborish"}
+                          title={done ? t("Hisob allaqachon faollashgan") : t("Faollashtirish SMS'ini yuborish")}
                         >
                           <Send className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openEdit(r)}
                           className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                          title="Tahrirlash"
+                          title={t("Tahrirlash")}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openArchive(r)}
                           className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                          title={archived ? "Arxivdan chiqarish" : "Arxivlash"}
+                          title={archived ? t("Arxivdan chiqarish") : t("Arxivlash")}
                         >
                           {archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => setDeleteTarget(r)}
                           className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500"
-                          title="Butunlay o'chirish"
+                          title={t("Butunlay o'chirish")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -684,9 +685,9 @@ export default function TempStaffPage() {
 
       {editTarget && (
         <Dialog onClose={() => !saving && setEditTarget(null)} width="max-w-md">
-          <h3 className="text-[16px] font-semibold">Xodimni tahrirlash</h3>
+          <h3 className="text-[16px] font-semibold">{t("Xodimni tahrirlash")}</h3>
           <div>
-            <label className={labelCls}>Ism familiya</label>
+            <label className={labelCls}>{t("Ism familiya")}</label>
             <input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -694,7 +695,7 @@ export default function TempStaffPage() {
             />
           </div>
           <div>
-            <label className={labelCls}>Telefon raqam</label>
+            <label className={labelCls}>{t("Telefon raqam")}</label>
             <input
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
@@ -702,25 +703,24 @@ export default function TempStaffPage() {
               placeholder="+998 90 123 45 67"
             />
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Raqam o&apos;zgarsa hisob ham ergashadi — xodim yangi raqami bilan kiradi.
+              {t("Raqam o'zgarsa hisob ham ergashadi — xodim yangi raqami bilan kiradi.")}
             </p>
           </div>
           <div>
-            <label className={labelCls}>O&apos;quv markazidagi vazifasi</label>
-            <Select value={form.turi} onChange={(v) => setForm((f) => ({ ...f, turi: v }))} options={Object.entries(ROLE_LABELS).map(([key, label]) => ({ value: key, label: label as string }))} placeholder="Tanlang" clearable />
+            <label className={labelCls}>{t("O'quv markazidagi vazifasi")}</label>
+            <Select value={form.turi} onChange={(v) => setForm((f) => ({ ...f, turi: v }))} options={Object.entries(ROLE_LABELS).map(([key, label]) => ({ value: key, label: label as string }))} placeholder={t("Tanlang")} clearable />
           </div>
           <div>
-            <label className={labelCls}>Elektron pochta</label>
+            <label className={labelCls}>{t("Elektron pochta")}</label>
             <input
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               className={inputCls}
-              placeholder="example@gmail.com"
+              placeholder={t("example@gmail.com")}
             />
           </div>
           <p className="text-[11.5px] text-muted-foreground">
-            Filial, ish haqi, soliq va ruxsatlar bu yerda emas — ular Boshqaruv &rarr; Xodimlar
-            sahifasida, bir-biriga bog&apos;liq qoidalar bilan birga tahrirlanadi.
+            {t("Filial, ish haqi, soliq va ruxsatlar bu yerda emas — ular Boshqaruv → Xodimlar sahifasida, bir-biriga bog'liq qoidalar bilan birga tahrirlanadi.")}
           </p>
           <Actions
             onCancel={() => setEditTarget(null)}
@@ -735,25 +735,23 @@ export default function TempStaffPage() {
       {archiveTarget && (
         <Dialog onClose={() => !saving && setArchiveTarget(null)} width="max-w-md">
           <h3 className="text-[16px] font-semibold">
-            {archiveTarget.archReason ? "Arxivdan chiqarish" : "Arxivlash"}
+            {archiveTarget.archReason ? t("Arxivdan chiqarish") : t("Arxivlash")}
           </h3>
           {archiveTarget.archReason ? (
             <p className="text-[13px] text-muted-foreground">
-              <b className="text-foreground">{archiveTarget.name}</b> arxivdan chiqariladi va yana
-              aktiv xodimlar qatoriga qaytadi.
+              <b className="text-foreground">{archiveTarget.name}</b>{" "}{t("arxivdan chiqariladi va yana aktiv xodimlar qatoriga qaytadi.")}
             </p>
           ) : (
             <>
               <p className="text-[13px] text-muted-foreground">
-                <b className="text-foreground">{archiveTarget.name}</b> arxivga o&apos;tkaziladi. U
-                ro&apos;yxatdan yo&apos;qolmaydi va istalgan vaqtda qaytariladi.
+                <b className="text-foreground">{archiveTarget.name}</b>{" "}{t("arxivga o'tkaziladi. U ro'yxatdan yo'qolmaydi va istalgan vaqtda qaytariladi.")}
               </p>
               <div>
-                <label className={labelCls}>Ketish sababi</label>
+                <label className={labelCls}>{t("Ketish sababi")}</label>
                 <Select value={archReason} onChange={(v) => setArchReason(v)} options={EMP_LEAVE_REASONS.map((r: string) => ({ value: r, label: r }))} />
               </div>
               <div>
-                <label className={labelCls}>Ketgan sanasi</label>
+                <label className={labelCls}>{t("Ketgan sanasi")}</label>
                 <DateField value={archDate} onChange={(v) => setArchDate(v)} variant="form" />
               </div>
             </>
@@ -762,7 +760,7 @@ export default function TempStaffPage() {
             onCancel={() => setArchiveTarget(null)}
             onOk={() => saveArchive(Boolean(archiveTarget.archReason))}
             busy={saving}
-            okLabel={archiveTarget.archReason ? "Arxivdan chiqarish" : "Arxivlash"}
+            okLabel={archiveTarget.archReason ? t("Arxivdan chiqarish") : t("Arxivlash")}
             busyLabel="Saqlanmoqda…"
           />
         </Dialog>
@@ -770,20 +768,20 @@ export default function TempStaffPage() {
 
       {deleteTarget && (
         <Dialog onClose={() => !deleting && setDeleteTarget(null)} width="max-w-md">
-          <h3 className="text-[16px] font-semibold text-rose-600">Butunlay o&apos;chirish</h3>
+          <h3 className="text-[16px] font-semibold text-rose-600">{t("Butunlay o'chirish")}</h3>
           <p className="text-[13px]">
             <b>{deleteTarget.name}</b> — {formatPhoneDisplay(deleteTarget.phone)}
           </p>
           {/* Aynan nima o'chishi ro'yxat bo'lib turadi: bu amal qaytarilmaydi
               va "faqat jadvaldan yo'qoladi" deb o'ylash mumkin edi. */}
           <ul className="text-[12.5px] text-muted-foreground list-disc pl-5 space-y-1">
-            <li>xodim yozuvi</li>
-            <li>hisobi (shu raqamni band qilib turgani)</li>
-            <li>ochiq sessiyalari</li>
-            <li>faollashtirish SMS kodlari (soatlik chegara ham bo&apos;shaydi)</li>
+            <li>{t("xodim yozuvi")}</li>
+            <li>{t("hisobi (shu raqamni band qilib turgani)")}</li>
+            <li>{t("ochiq sessiyalari")}</li>
+            <li>{t("faollashtirish SMS kodlari (soatlik chegara ham bo'shaydi)")}</li>
           </ul>
           <p className="text-[12.5px] text-muted-foreground">
-            Shundan keyin bu raqam bilan yangi xodim qo&apos;shsa bo&apos;ladi. Amal qaytarilmaydi.
+            {t("Shundan keyin bu raqam bilan yangi xodim qo'shsa bo'ladi. Amal qaytarilmaydi.")}
           </p>
           <Actions
             onCancel={() => setDeleteTarget(null)}
@@ -798,19 +796,18 @@ export default function TempStaffPage() {
 
       {smsTargets && (
         <Dialog onClose={() => !sending && setSmsTargets(null)} width="max-w-md">
-          <h3 className="text-[16px] font-semibold">Faollashtirish SMS&apos;i</h3>
+          <h3 className="text-[16px] font-semibold">{t("Faollashtirish SMS'i")}</h3>
           {/* KIMGA ketishi ochiq ro'yxat bilan turadi. SMS haqiqatan
               yuboriladi va pul turadi — "N ta xodimga" degan mavhum son
               bilan tasdiqlatish xatoni ko'rinmas qilardi. */}
           <p className="text-[13px] text-muted-foreground">
-            Quyidagi <b className="text-foreground">{smsTargets.list.length} ta</b> raqamga
-            faollashtirish havolasi va kodi yuboriladi:
+            {t("Quyidagi")}{" "}<b className="text-foreground">{smsTargets.list.length} ta</b>{" "}{t("raqamga faollashtirish havolasi va kodi yuboriladi:")}
           </p>
           <ul className="max-h-52 overflow-y-auto rounded-lg border border-border divide-y divide-border text-[13px]">
-            {smsTargets.list.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="truncate">{t.name || `#${t.id}`}</span>
-                <span className="tabular-nums text-muted-foreground">{formatPhoneDisplay(t.phone)}</span>
+            {smsTargets.list.map((tv) => (
+              <li key={tv.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                <span className="truncate">{tv.name || `#${tv.id}`}</span>
+                <span className="tabular-nums text-muted-foreground">{formatPhoneDisplay(tv.phone)}</span>
               </li>
             ))}
           </ul>
@@ -825,17 +822,17 @@ export default function TempStaffPage() {
             <EmployeeToggle
               checked={smsTwoFactor}
               onChange={setSmsTwoFactor}
-              label="Ikki bosqichli tasdiqlash"
+              label={t("Ikki bosqichli tasdiqlash")}
             />
             <p className="text-[12px] text-muted-foreground">
               {smsTwoFactor
-                ? "Xodim havoladan o'tib parol qo'yadi, lekin TIZIMGA KIRA OLMAYDI — ruxsat kutib turadi. Siz shu jadvaldan ✓ bosganingizdan keyin kiradi."
-                : "Xodim parol qo'ygan zahoti tizimga kiraveradi."}
+                ? t("Xodim havoladan o'tib parol qo'yadi, lekin TIZIMGA KIRA OLMAYDI — ruxsat kutib turadi. Siz shu jadvaldan ✓ bosganingizdan keyin kiradi.")
+                : t("Xodim parol qo'ygan zahoti tizimga kiraveradi.")}
             </p>
           </div>
 
           <p className="text-[12px] text-muted-foreground">
-            SMS haqiqatan yuboriladi. Bitta raqamga soatiga 5 tadan ko&apos;p kod ketmaydi.
+            {t("SMS haqiqatan yuboriladi. Bitta raqamga soatiga 5 tadan ko'p kod ketmaydi.")}
           </p>
           <Actions
             onCancel={() => setSmsTargets(null)}
@@ -883,6 +880,7 @@ function Actions({
   busyLabel: string;
   danger?: boolean;
 }) {
+  const { t } = useT();
   return (
     <div className="flex items-center justify-end gap-2 pt-1">
       <button
@@ -890,7 +888,7 @@ function Actions({
         disabled={busy}
         className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
       >
-        Bekor qilish
+        {t("Bekor qilish")}
       </button>
       <button
         onClick={onOk}

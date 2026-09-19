@@ -13,6 +13,7 @@ import type { Contract } from "@/lib/contracts";
 import type { Pupil } from "@/lib/pupilsData";
 import { invalidateStudents } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Shartnoma biriktirish".
 //
@@ -122,6 +123,7 @@ export default function ShartnomaBiriktirishTabContent({
   /** StudentEditPage hali uzatmaydi — u holda id URL'dan olinadi. */
   pupilId?: number;
 }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const { pupilId, pupil, loading } = useProfilePupil(pupilIdProp);
 
@@ -167,7 +169,7 @@ export default function ShartnomaBiriktirishTabContent({
   const set = (k: string) => (v: string) => setEdits((e) => ({ ...e, [k]: v }));
 
   const template = useMemo(
-    () => templates.find((t) => String(t.id) === templateId) ?? null,
+    () => templates.find((tv) => String(tv.id) === templateId) ?? null,
     [templates, templateId],
   );
   const mergedHtml = useMemo(
@@ -178,7 +180,7 @@ export default function ShartnomaBiriktirishTabContent({
   const save = async () => {
     if (!pupil || pupilId === undefined) return;
     if (!form.firstName?.trim()) {
-      showError("Ism majburiy");
+      showError(t("Ism majburiy"));
       return;
     }
     setSaving(true);
@@ -192,21 +194,21 @@ export default function ShartnomaBiriktirishTabContent({
     setSaving(false);
     invalidateStudents(); // ro'yxat o'zgardi -> umumiy kesh bekor
     if (!res?.ok) {
-      showError(res?.error || "Saqlashda xatolik yuz berdi");
+      showError(t(res?.error || "Saqlashda xatolik yuz berdi"));
       return;
     }
     setSavedPupil(res.pupil as Pupil);
     setEdits({});
     // Faqat o'quvchi maydonlari saqlanadi — "Shartnoma turi" tanlovi emas
     // (uni saqlaydigan maydon yo'q). Xabar shuni aniq aytadi.
-    showSuccess("O'quvchi ma'lumotlari saqlandi");
+    showSuccess(t("O'quvchi ma'lumotlari saqlandi"));
   };
 
   return (
     <div className="space-y-4">
       {!loading && !pupil && (
         <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
-          Bu yozuv o&apos;quvchilar bazasida topilmadi — maydonlarni saqlab bo&apos;lmaydi.
+          {t("Bu yozuv o'quvchilar bazasida topilmadi — maydonlarni saqlab bo'lmaydi.")}
         </div>
       )}
 
@@ -218,50 +220,49 @@ export default function ShartnomaBiriktirishTabContent({
             <>
               {/* Andozalar bazadan; ro'yxat bo'sh bo'lsa buni ochiq aytamiz. */}
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">Shartnoma turi</label>
-                <Select value={templateId} onChange={(v) => setTemplateId(v)} options={templates.map((t) => ({ value: String(t.id), label: t.title }))} placeholder={templatesLoading ? "Yuklanmoqda…" : templates.length ? "Andozani tanlang" : "Andoza yo'q"} clearable size="lg" />
+                <label className="block text-[13px] font-medium mb-1.5">{t("Shartnoma turi")}</label>
+                <Select value={templateId} onChange={(v) => setTemplateId(v)} options={templates.map((tv) => ({ value: String(tv.id), label: tv.title }))} placeholder={templatesLoading ? "Yuklanmoqda…" : templates.length ? t("Andozani tanlang") : t("Andoza yo'q")} clearable size="lg" />
                 {/* Tanlangan andoza SAQLANMAYDI: `pupils` hujjatida ham,
                     shartnoma modellarida ham o'quvchiga biriktirilgan
                     andozani saqlaydigan maydon yo'q. Shuning uchun buni
                     ochiq aytamiz — aks holda Saqlash tugmasi uni ham
                     saqlagandek tuyulardi. */}
                 <p className="mt-1.5 text-[12px] text-muted-foreground">
-                  Andoza faqat quyidagi ko&apos;rinishni hosil qilish uchun — u o&apos;quvchiga
-                  biriktirilib saqlanmaydi (bazada mos maydon yo&apos;q).
+                  {t("Andoza faqat quyidagi ko'rinishni hosil qilish uchun — u o'quvchiga biriktirilib saqlanmaydi (bazada mos maydon yo'q).")}
                 </p>
               </div>
 
-              <TextField label="Ism" value={form.firstName ?? ""} onChange={set("firstName")} />
-              <TextField label="Familiya" value={form.lastName ?? ""} onChange={set("lastName")} />
-              <PhoneField label="Telefon raqam" value={form.phone ?? ""} onChange={set("phone")} />
-              <TextField label="Elektron pochta" type="email" placeholder="example@gmail.com" value={form.email ?? ""} onChange={set("email")} />
-              <DateField label="Tug'ilgan sanasi" value={form.birthDate ?? ""} onChange={set("birthDate")} />
-              <SelectField label="Dars vaqti" placeholder="Dars shaklini tanlang" options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
-              <SelectField label="O'quvchi kategoriyasi" options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
-              <SelectField label="O'qish tili" options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
-              <DateField label="O'quvchining pul to'lash sanasi" value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
+              <TextField label={t("Ism")} value={form.firstName ?? ""} onChange={set("firstName")} />
+              <TextField label={t("Familiya")} value={form.lastName ?? ""} onChange={set("lastName")} />
+              <PhoneField label={t("Telefon raqam")} value={form.phone ?? ""} onChange={set("phone")} />
+              <TextField label={t("Elektron pochta")} type="email" placeholder={t("example@gmail.com")} value={form.email ?? ""} onChange={set("email")} />
+              <DateField label={t("Tug'ilgan sanasi")} value={form.birthDate ?? ""} onChange={set("birthDate")} />
+              <SelectField label={t("Dars vaqti")} placeholder={t("Dars shaklini tanlang")} options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
+              <SelectField label={t("O'quvchi kategoriyasi")} options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
+              <SelectField label={t("O'qish tili")} options={LANGUAGES} value={form.language ?? ""} onChange={set("language")} />
+              <DateField label={t("O'quvchining pul to'lash sanasi")} value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
               {/* Marketing so'rovnomasi va Teglar — bazada erkin matn
                   (pupils.survey / pupils.tags), shuning uchun variantsiz
                   tanlov emas, matn maydoni. */}
-              <TextField label="Marketing so'rovnomasi" value={form.survey ?? ""} onChange={set("survey")} />
-              <TextField label="Maqsadidagi universiteti" value={form.targetUniversity ?? ""} onChange={set("targetUniversity")} />
-              <TextField label="Otasining ismi" value={form.fatherName ?? ""} onChange={set("fatherName")} />
-              <PhoneField label="Telefon raqam" value={form.fatherPhone ?? ""} onChange={set("fatherPhone")} />
-              <TextField label="Otasining ish joyi" value={form.fatherWork ?? ""} onChange={set("fatherWork")} />
-              <TextField label="Onasining ismi" value={form.motherName ?? ""} onChange={set("motherName")} />
-              <PhoneField label="Telefon raqam" value={form.motherPhone ?? ""} onChange={set("motherPhone")} />
-              <TextField label="Onasining ish joyi" value={form.motherWork ?? ""} onChange={set("motherWork")} />
-              <TextField label="Uy adresi" value={form.address ?? ""} onChange={set("address")} />
-              <TextField label="O'qish joyi" value={form.studyPlace ?? ""} onChange={set("studyPlace")} />
-              <TextField label="Izoh" value={form.note ?? ""} onChange={set("note")} />
-              <TextField label="Teglar" value={form.tags ?? ""} onChange={set("tags")} />
+              <TextField label={t("Marketing so'rovnomasi")} value={form.survey ?? ""} onChange={set("survey")} />
+              <TextField label={t("Maqsadidagi universiteti")} value={form.targetUniversity ?? ""} onChange={set("targetUniversity")} />
+              <TextField label={t("Otasining ismi")} value={form.fatherName ?? ""} onChange={set("fatherName")} />
+              <PhoneField label={t("Telefon raqam")} value={form.fatherPhone ?? ""} onChange={set("fatherPhone")} />
+              <TextField label={t("Otasining ish joyi")} value={form.fatherWork ?? ""} onChange={set("fatherWork")} />
+              <TextField label={t("Onasining ismi")} value={form.motherName ?? ""} onChange={set("motherName")} />
+              <PhoneField label={t("Telefon raqam")} value={form.motherPhone ?? ""} onChange={set("motherPhone")} />
+              <TextField label={t("Onasining ish joyi")} value={form.motherWork ?? ""} onChange={set("motherWork")} />
+              <TextField label={t("Uy adresi")} value={form.address ?? ""} onChange={set("address")} />
+              <TextField label={t("O'qish joyi")} value={form.studyPlace ?? ""} onChange={set("studyPlace")} />
+              <TextField label={t("Izoh")} value={form.note ?? ""} onChange={set("note")} />
+              <TextField label={t("Teglar")} value={form.tags ?? ""} onChange={set("tags")} />
             </>
           )}
         </div>
 
         <div className="rounded-2xl bg-card border border-border overflow-hidden flex flex-col" style={{ maxHeight: "70vh" }}>
           <div className="border-b border-border px-4 py-3">
-            <h3 className="text-[14px] font-semibold">Shartnoma matni</h3>
+            <h3 className="text-[14px] font-semibold">{t("Shartnoma matni")}</h3>
             <p className="text-[12px] text-muted-foreground mt-0.5">
               Andoza matni O&apos;quv bo&apos;limi &rarr; Shartnoma bo&apos;limida tahrirlanadi.
               Bu yerda u faqat ko&apos;rish uchun: {"{{ism}}"} kabi tokenlar o&apos;quvchining
@@ -272,8 +273,8 @@ export default function ShartnomaBiriktirishTabContent({
             {!template ? (
               <div className="py-16 text-center text-muted-foreground text-[13px]">
                 {templates.length
-                  ? "Chapdan shartnoma andozasini tanlang."
-                  : "Shartnoma andozalari yo'q — O'quv bo'limi → Shartnoma bo'limida qo'shiladi."}
+                  ? t("Chapdan shartnoma andozasini tanlang.")
+                  : t("Shartnoma andozalari yo'q — O'quv bo'limi → Shartnoma bo'limida qo'shiladi.")}
               </div>
             ) : (
               // Matn o'z bazamizdagi andozadan keladi; ichiga qo'yiladigan
@@ -292,7 +293,7 @@ export default function ShartnomaBiriktirishTabContent({
           onClick={save}
           className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
         >
-          {saving ? "Saqlanmoqda..." : "Saqlash"}
+          {saving ? t("Saqlanmoqda...") : t("Saqlash")}
         </button>
       </div>
     </div>

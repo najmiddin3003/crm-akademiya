@@ -11,6 +11,7 @@ import { KANBAN_STATES, formatTaskDate, type Task } from "@/lib/tasksData";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Vazifa".
 //
@@ -48,6 +49,7 @@ function stateLabel(t: Task): string {
 }
 
 export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: number }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const { pupil, fullName, loading: pupilLoading } = useProfilePupil(pupilIdProp);
   const { types: taskTypes, loading: typesLoading } = useTaskTypes();
@@ -85,8 +87,8 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
     const key = fullName.trim().toLowerCase();
     if (!key) return [];
     return tasks
-      .filter((t) => (t.student || "").trim().toLowerCase() === key)
-      .filter((t) => (status === "tugatilgan" ? t.state === "bajarilgan" : t.state !== "bajarilgan"))
+      .filter((tv) => (tv.student || "").trim().toLowerCase() === key)
+      .filter((tv) => (status === "tugatilgan" ? tv.state === "bajarilgan" : tv.state !== "bajarilgan"))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [tasks, fullName, status]);
 
@@ -110,7 +112,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
 
   const save = async () => {
     if (!pupil) {
-      showError("O'quvchi bazada topilmadi — topshiriq biriktirib bo'lmaydi");
+      showError(t("O'quvchi bazada topilmadi — topshiriq biriktirib bo'lmaydi"));
       return;
     }
     if (!complete) return;
@@ -136,7 +138,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
     }).then((r) => r.json()).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
-      showError(res?.error || "Topshiriqni saqlab bo'lmadi");
+      showError(t(res?.error || "Topshiriqni saqlab bo'lmadi"));
       return;
     }
     setTasks((prev) => [...prev, res.task as Task]);
@@ -144,14 +146,14 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
     setStatus("jarayonda");
     resetForm();
     setModalOpen(false);
-    showSuccess("Topshiriq qo'shildi");
+    showSuccess(t("Topshiriq qo'shildi"));
   };
 
   return (
     <div className="rounded-2xl bg-card border border-border p-5 space-y-4">
       {!pupilLoading && !pupil && (
         <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-3 text-[13px]">
-          Bu yozuv o&apos;quvchilar bazasida topilmadi — topshiriq biriktirib bo&apos;lmaydi.
+          {t("Bu yozuv o'quvchilar bazasida topilmadi — topshiriq biriktirib bo'lmaydi.")}
         </div>
       )}
 
@@ -166,7 +168,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Eslatma qo&apos;shish
+          {t("Eslatma qo'shish")}
         </button>
       </div>
 
@@ -197,7 +199,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
                 }}
                 className="flex items-center justify-between w-full text-left px-4 py-2.5 text-sm hover:bg-secondary/40"
               >
-                <span className={s.key === status ? "text-primary font-medium" : ""}>{s.label}</span>
+                <span className={s.key === status ? "text-primary font-medium" : ""}>{t(s.label)}</span>
                 {s.key === status && (
                   <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="20 6 9 17 4 12" />
@@ -216,26 +218,26 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
         </div>
       ) : mine.length === 0 ? (
         <div className="rounded-xl bg-secondary/20 border border-border py-8 text-center text-[14px] text-muted-foreground">
-          Eslatmalar yo&apos;q
+          {t("Eslatmalar yo'q")}
         </div>
       ) : (
         <div className="space-y-2">
-          {mine.map((t) => (
-            <div key={t.id} className="rounded-xl border border-border p-4">
+          {mine.map((tv) => (
+            <div key={tv.id} className="rounded-xl border border-border p-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <span className="text-[14px] font-semibold">{t.type || "Topshiriq"}</span>
+                <span className="text-[14px] font-semibold">{tv.type || "Topshiriq"}</span>
                 <span className="inline-flex items-center h-6 px-2.5 rounded-md bg-secondary/50 text-[12px] font-medium">
-                  {stateLabel(t)}
+                  {stateLabel(tv)}
                 </span>
               </div>
-              {t.description && <p className="mt-1.5 text-[13px] text-muted-foreground">{t.description}</p>}
+              {tv.description && <p className="mt-1.5 text-[13px] text-muted-foreground">{t(tv.description)}</p>}
               <div className="mt-2 flex items-center gap-4 flex-wrap text-[12px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5 tabular-nums">
                   <svg className="icon icon-xs"><use href="#i-calendar" /></svg>
-                  {formatTaskDate(t.date)}
+                  {formatTaskDate(tv.date)}
                 </span>
                 {/* Mas'ul shaxs yozuvda bo'lmasa "—" (0 yoki taxminiy ism emas). */}
-                <span>Moderator: {t.staff || "—"}</span>
+                <span>Moderator: {tv.staff || "—"}</span>
               </div>
             </div>
           ))}
@@ -245,7 +247,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
       {modalOpen && (
         <Modal onClose={closeModal} controller={modal} bare variant="drawer" zIndex={50} panelClassName="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%]">
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <h3 className="text-[18px] font-bold tracking-tight">Topshiriq</h3>
+              <h3 className="text-[18px] font-bold tracking-tight">{t("Topshiriq")}</h3>
               <button
                 type="button"
                 onClick={modal.close}
@@ -258,18 +260,18 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
               </button>
             </div>
             <div className="px-5 pb-4 space-y-3">
-              <Select value={moderator} onChange={(v) => setModerator(v)} options={moderatorNames.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="lg" />
+              <Select value={moderator} onChange={(v) => setModerator(v)} options={moderatorNames.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable size="lg" />
               {/* Ro'yxat bo'sh bo'lsa sababi aytiladi — aks holda "Saqlash"
                   nega yonmayotgani tushunarsiz bo'lardi. */}
               {!moderatorsLoading && moderatorNames.length === 0 && (
                 <p className="-mt-1 text-[12px] text-muted-foreground">
-                  Moderatorlar yo&apos;q — Boshqaruv &rarr; Xodimlar bo&apos;limida qo&apos;shiladi.
+                  {t("Moderatorlar yo'q — Boshqaruv → Xodimlar bo'limida qo'shiladi.")}
                 </p>
               )}
-              <Select value={type} onChange={(v) => setType(v)} options={taskTypes.map((t) => ({ value: t.name, label: t.name }))} placeholder="Topshiriq turi" clearable size="lg" />
+              <Select value={type} onChange={(v) => setType(v)} options={taskTypes.map((tv) => ({ value: tv.name, label: tv.name }))} placeholder={t("Topshiriq turi")} clearable size="lg" />
               {!typesLoading && taskTypes.length === 0 && (
                 <p className="-mt-1 text-[12px] text-muted-foreground">
-                  Topshiriq turlari yo&apos;q — Topshiriqlar sahifasidagi &quot;⋮ &rarr; Topshiriq turi&quot; oynasida qo&apos;shiladi.
+                  {t("Topshiriq turlari yo'q — Topshiriqlar sahifasidagi \"⋮ → Topshiriq turi\" oynasida qo'shiladi.")}
                 </p>
               )}
               {/* Sana — loyihaning o'z maydoni (DD/MM/YYYY niqobi + kalendar);
@@ -281,7 +283,7 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
                   <button
                     type="button"
                     onClick={() => setTime("")}
-                    title="Tozalash"
+                    title={t("Tozalash")}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -294,20 +296,20 @@ export default function VazifaTabContent({ pupilId: pupilIdProp }: { pupilId?: n
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Vazifani yozing..."
+                placeholder={t("Vazifani yozing...")}
                 rows={3}
                 className="w-full px-3 py-2 rounded-lg border border-border bg-secondary/30 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
             <div className="flex justify-end gap-2 px-5 pb-5">
-              <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 text-sm font-medium text-foreground/70 hover:text-foreground">Orqaga</button>
+              <button type="button" onClick={modal.close} className="inline-flex items-center h-10 px-5 text-sm font-medium text-foreground/70 hover:text-foreground">{t("Orqaga")}</button>
               <button
                 type="button"
                 onClick={save}
                 disabled={!complete || saving}
                 className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
               >
-                {saving ? "Saqlanmoqda..." : "Saqlash"}
+                {saving ? t("Saqlanmoqda...") : t("Saqlash")}
               </button>
             </div>
           </Modal>

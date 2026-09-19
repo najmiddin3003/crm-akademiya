@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { Order } from "@/lib/ordersData";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Harakatlar tarixi".
 //
@@ -38,6 +39,7 @@ interface ActivityEntry {
 // ko'rsatish uchun kerak edi), lekin StudentEditPage uni hali uzatadi —
 // tipda ixtiyoriy qilib qoldiramiz.
 export default function HarakatlarTabContent({ order }: { order: Order; balans?: number }) {
+  const { t } = useT();
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,9 +69,9 @@ export default function HarakatlarTabContent({ order }: { order: Order; balans?:
           <circle cx="12" cy="12" r="9" />
           <polyline points="12 7 12 12 15 14" />
         </svg>
-        <div className="text-[14px] font-medium">Harakatlar tarixi bo&apos;sh</div>
+        <div className="text-[14px] font-medium">{t("Harakatlar tarixi bo'sh")}</div>
         <div className="text-[12px] text-muted-foreground mt-1 max-w-md mx-auto">
-          Bu o&apos;quvchi bo&apos;yicha jurnalga (<code>pupil_activity</code>) hali birorta yozuv
+          Bu o&apos;quvchi bo&apos;yicha jurnalga (<code>{"pupil_activity"}</code>) hali birorta yozuv
           tushmagan — tizim o&apos;zgarishlarni hozircha qayd qilmaydi.
         </div>
       </div>
@@ -98,11 +100,11 @@ export default function HarakatlarTabContent({ order }: { order: Order; balans?:
             <table className="w-full text-sm border-collapse">
               <thead className="text-[12px] text-muted-foreground uppercase bg-secondary/20">
                 <tr>
-                  <th className="px-4 py-2.5 text-left font-medium border border-border">Ism</th>
-                  <th className="px-4 py-2.5 text-left font-medium border border-border">Harakatlar</th>
-                  <th className="px-4 py-2.5 text-left font-medium border border-border">Xodim</th>
-                  <th className="px-4 py-2.5 text-left font-medium border border-border">Turi</th>
-                  <th className="px-4 py-2.5 text-left font-medium border border-border">Qurilma nomi</th>
+                  <th className="px-4 py-2.5 text-left font-medium border border-border">{t("Ism")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium border border-border">{t("Harakatlar")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium border border-border">{t("Xodim")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium border border-border">{t("Turi")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium border border-border">{t("Qurilma nomi")}</th>
                 </tr>
               </thead>
               <tbody>

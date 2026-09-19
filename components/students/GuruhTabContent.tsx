@@ -6,6 +6,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useGroups } from "@/hooks/useGroups";
 import { useProfilePupilId } from "@/hooks/useProfilePupil";
 import { GROUP_STATUS_LABELS } from "@/lib/groupRules";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Guruh".
 //
@@ -29,6 +30,7 @@ import { GROUP_STATUS_LABELS } from "@/lib/groupRules";
 const STATUS_LABELS: Record<string, string> = GROUP_STATUS_LABELS;
 
 export default function GuruhTabContent({ pupilId: pupilIdProp }: { pupilId?: number }) {
+  const { t } = useT();
   // Faqat id kerak — o'quvchi yozuvining o'zi bu tabda ishlatilmaydi.
   const pupilId = useProfilePupilId(pupilIdProp);
   const { groups, loading } = useGroups();
@@ -41,7 +43,7 @@ export default function GuruhTabContent({ pupilId: pupilIdProp }: { pupilId?: nu
   return (
     <div className="rounded-2xl bg-card border border-border overflow-hidden">
       <div className="p-4 border-l-4 border-primary flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-bold">Guruhlar</h3>
+        <h3 className="text-[15px] font-bold">{t("Guruhlar")}</h3>
         {!loading && pupilId !== undefined && (
           <span className="inline-flex items-center h-7 px-3 rounded-md bg-secondary/50 text-[12px] font-medium tabular-nums">
             Umumiy soni: {myGroups.length}
@@ -54,11 +56,11 @@ export default function GuruhTabContent({ pupilId: pupilIdProp }: { pupilId?: nu
         <SpinnerBlock />
       ) : pupilId === undefined ? (
         <div className="px-4 pb-8 pt-2 text-center text-muted-foreground text-[14px]">
-          O&apos;quvchi aniqlanmadi — guruhlarni ko&apos;rsatib bo&apos;lmaydi.
+          {t("O'quvchi aniqlanmadi — guruhlarni ko'rsatib bo'lmaydi.")}
         </div>
       ) : myGroups.length === 0 ? (
         <div className="px-4 pb-8 pt-2 text-center text-muted-foreground text-[14px]">
-          O&apos;quvchi hech qanday guruhga qo&apos;shilmagan
+          {t("O'quvchi hech qanday guruhga qo'shilmagan")}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -66,14 +68,14 @@ export default function GuruhTabContent({ pupilId: pupilIdProp }: { pupilId?: nu
             <thead className="text-[12px] text-muted-foreground uppercase">
               <tr className="border-b border-border">
                 <th className="px-4 py-3 text-left font-medium">№</th>
-                <th className="px-4 py-3 text-left font-medium">Guruh</th>
-                <th className="px-4 py-3 text-left font-medium">Kurs</th>
-                <th className="px-4 py-3 text-left font-medium">O&apos;qituvchi</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Dars kuni</th>
-                <th className="px-4 py-3 text-left font-medium">Vaqti</th>
-                <th className="px-4 py-3 text-left font-medium">Xona</th>
-                <th className="px-4 py-3 text-left font-medium">Davri</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Guruh holati</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Guruh")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Kurs")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("O'qituvchi")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Dars kuni")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Vaqti")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Xona")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Davri")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Guruh holati")}</th>
               </tr>
             </thead>
             <tbody>

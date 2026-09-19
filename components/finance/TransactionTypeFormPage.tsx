@@ -9,6 +9,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { CUSTOMER_TYPES, CATEGORY_OPTIONS } from "@/constants/transactionTypes";
 import type { TransactionType } from "@/lib/transactionTypes";
+import { useT } from "@/components/shared/Language";
 
 const chipCls = (active: boolean) =>
   `h-9 px-4 rounded-lg text-[13px] font-medium border ${active ? "bg-primary text-white border-primary" : "border-border text-foreground hover:bg-secondary"}`;
@@ -32,6 +33,7 @@ const checkCls = (active: boolean) =>
 // yolg'on — shuning uchun olib tashlandi (rang kerak bo'lsa avval
 // schema'ga `color` maydonini qo'shish kerak).
 export default function TransactionTypeFormPage({ typeId }: { typeId?: number }) {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showSuccess, showError } = useToast();
@@ -60,7 +62,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.ok) return;
-        const found = (d.types as TransactionType[]).find((t) => t.id === typeId);
+        const found = (d.types as TransactionType[]).find((tv) => tv.id === typeId);
         if (!found) { setNotFound(true); setLoaded(true); return; }
         setName(found.name);
         setMinAmount(found.minAmount ? String(found.minAmount) : "");
@@ -104,7 +106,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
     // Kirim oynasida xodim tanlovi O'QITUVCHILAR ro'yxati bilan
     // to'ldiriladi (foizli oylik shu ism bo'yicha hisoblanadi), chiqimda
     // esa butun xodimlar ro'yxati. Yorliq shu bois turlicha.
-    if (hasEmployee) parts.push(mainType === "kirim" ? "«O'qituvchini tanlang»" : "«Xodimni tanlang»");
+    if (hasEmployee) parts.push(mainType === "kirim" ? t("«O'qituvchini tanlang»") : t("«Xodimni tanlang»"));
     if (hasThird) parts.push("(Qiymat + Oy) qatorlari");
     if (parts.length > 0) return `Kassa oynasida chiqadi: ${parts.join(" · ")}.`;
     if (customerTypes.length === 0) {
@@ -134,18 +136,18 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
    */
   const teacherWarning =
     mainType === "kirim" && customerTypes.length > 0 && !hasEmployee
-      ? "«Xodim» belgilanmagan — bu turdagi to'lovda o'qituvchi tanlanmaydi va uning foizli oyligiga qo'shilmaydi."
+      ? t("«Xodim» belgilanmagan — bu turdagi to'lovda o'qituvchi tanlanmaydi va uning foizli oyligiga qo'shilmaydi.")
       : "";
 
   async function save() {
     if (!name.trim()) {
-      showError("Ismni kiriting");
+      showError(t("Ismni kiriting"));
       return;
     }
     // Tugma o'chiq bo'lsa ham ikkinchi qorovul: klaviatura yoki eski
     // holat orqali bu yerga yetib kelmasin.
     if (!canSave) {
-      showError("«Mijoz» dan kamida bittasini belgilang");
+      showError(t("«Mijoz» dan kamida bittasini belgilang"));
       return;
     }
     setSaving(true);
@@ -166,17 +168,17 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       // Kesh bekor qilinadi: keyin mount bo'ladigan iste'molchilar
       // yangi ro'yxatni oladi (lib/referenceCache.ts).
       invalidateTransactionTypes();
-      showSuccess(typeId != null ? "Tranzaksiya turi yangilandi" : "Tranzaksiya turi qo'shildi");
+      showSuccess(typeId != null ? t("Tranzaksiya turi yangilandi") : t("Tranzaksiya turi qo'shildi"));
       router.push("/finance-tx-types");
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -185,16 +187,16 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
     return <div className="container mx-auto max-w-[1600px] p-4 md:p-5"><SpinnerBlock /></div>;
   }
   if (notFound) {
-    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">Tranzaksiya turi topilmadi.</div>;
+    return <div className="container mx-auto max-w-[1600px] p-4 md:p-5 text-sm text-muted-foreground">{t("Tranzaksiya turi topilmadi.")}</div>;
   }
 
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
       <div className="rounded-xl border border-border bg-card p-6 space-y-6 max-w-2xl">
-        <h1 className="text-[16px] font-semibold">{typeId != null ? "Tahrirlash" : "Qo'shish"}</h1>
+        <h1 className="text-[16px] font-semibold">{typeId != null ? t("Tahrirlash") : t("Qo'shish")}</h1>
 
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Ism</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Ism")}</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -205,7 +207,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Minimal miqdor</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Minimal miqdor")}</label>
             <MoneyInput
               value={minAmount}
               onChange={setMinAmount}
@@ -213,7 +215,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
             />
           </div>
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Maksimal miqdor</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Maksimal miqdor")}</label>
             <MoneyInput
               value={maxAmount}
               onChange={setMaxAmount}
@@ -228,7 +230,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
             boshqa sahifada ko'rinadi, ya'ni sinab ko'rish uchun kassaga
             borib qaytishga to'g'ri kelardi. */}
         <div>
-          <label className="block text-[13px] font-medium mb-2">Mijoz</label>
+          <label className="block text-[13px] font-medium mb-2">{t("Mijoz")}</label>
           <div className="flex items-center gap-2 flex-wrap">
             {CUSTOMER_TYPES.map((c) => {
               const on = customerTypes.includes(c);
@@ -261,7 +263,7 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
         </div>
 
         <div>
-          <label className="block text-[13px] font-medium mb-2">Kategoriyasi</label>
+          <label className="block text-[13px] font-medium mb-2">{t("Kategoriyasi")}</label>
           <div className="flex items-center gap-2 flex-wrap">
             {CATEGORY_OPTIONS.map((c) => (
               <button key={c} type="button" onClick={() => setCategory(c)} className={chipCls(category === c)}>{c}</button>
@@ -271,15 +273,15 @@ export default function TransactionTypeFormPage({ typeId }: { typeId?: number })
 
         <div className="flex items-center gap-2">
           <button onClick={() => router.push("/finance-tx-types")} disabled={saving} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button
             onClick={save}
             disabled={saving || !canSave}
-            title={canSave ? undefined : "«Mijoz» dan kamida bittasini belgilang"}
+            title={canSave ? undefined : t("«Mijoz» dan kamida bittasini belgilang")}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </div>

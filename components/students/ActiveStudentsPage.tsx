@@ -21,6 +21,7 @@ import {
   type StudentFilters,
 } from "@/lib/studentsData";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → Aktiv o'quvchilar (crm-akademiya #view-active-students,
 // sidebar: O'quvchilar > Aktiv o'quvchilar, href /active-students).
@@ -113,6 +114,7 @@ export interface ActiveStudentsPageProps {
 }
 
 export default function ActiveStudentsPage({ initialPupils, initialGroups }: ActiveStudentsPageProps = {}) {
+  const { t } = useT();
   // `status: "Aktiv"` — filtr SERVERDA. Ilgari 6 732 o'quvchi tortilib,
   // brauzerda 4 276 tasi qoldirilardi (pastdagi `.filter(s.status === "Aktiv")`
   // himoya sifatida joyida qoladi). `paymentDate` — "To'lov sanasi" ustuni.
@@ -305,7 +307,7 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
           }`}
         >
           <Filter className="icon icon-sm" />
-          <span>Filtr</span>
+          <span>{t("Filtr")}</span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -318,23 +320,23 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               type="text"
-              placeholder="Qidirish"
+              placeholder={t("Qidirish")}
               className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <div className="relative" ref={moreRef}>
-            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
               <MoreVertical className="icon icon-sm" />
             </button>
             {moreOpen && (
               <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
                 <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                  <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "CSV faylini yuklab olish"}</span>
+                  <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "CSV faylini yuklab olish"}</span>
                 </button>
                 <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                  <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "EXCEL faylini yuklab olish"}</span>
+                  <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "EXCEL faylini yuklab olish"}</span>
                 </button>
               </div>
             )}
@@ -345,14 +347,14 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
       {/* Filtr paneli */}
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" className="w-44" />
-          <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable size="sm" className="w-36" />
-          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Oraliqni tanlang" />
+          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable size="sm" className="w-44" />
+          <Select value={filters.course} onChange={(v) => setFilter("course", v)} options={courseOptions.map((c) => ({ value: c, label: c }))} placeholder={t("Kurs")} clearable size="sm" className="w-36" />
+          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder={t("Oraliqni tanlang")} />
           <button
             onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setSearch(""); setDateRange({ start: null, end: null }); setPage(1); }}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
-            <X className="icon icon-xs" /> Tozalash
+            <X className="icon icon-xs" />{" "}{t("Tozalash")}
           </button>
         </div>
       )}
@@ -365,7 +367,7 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
           <span className="text-emerald-600 font-medium">Haqdor {fmtUZS(credit)}</span>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -380,16 +382,16 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
                   <HeaderCheckbox checked={allPageSelected} indeterminate={somePageSelected} onChange={toggleAllOnPage} />
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;lov sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Taklif qilganlari</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ilovani yuklab olish sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchi ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Balans")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'lov sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Taklif qilganlari")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ilovani yuklab olish sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sababi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Shartnoma")}</th>
               </tr>
             </thead>
             <tbody>
@@ -437,7 +439,7 @@ export default function ActiveStudentsPage({ initialPupils, initialGroups }: Act
               )}
               {!loading && slice.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={12} className="px-3 py-10 text-center text-sm text-muted-foreground">{t("O'quvchi topilmadi")}</td>
                 </tr>
               )}
             </tbody>

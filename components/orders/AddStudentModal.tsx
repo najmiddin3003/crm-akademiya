@@ -10,6 +10,7 @@ import { SOURCE_OTHER, STUDENT_SOURCES } from "@/constants";
 import type { Pupil } from "@/lib/pupilsData";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "O'quvchi qo'shish" tugmasi bosilganda ochiladigan alohida modal — akademiya.edutizim.uz
 // dagi "Yangi buyurtma" panelining o'zida joylashgan xuddi shu nomdagi tugma ortidan
@@ -58,6 +59,7 @@ export interface AddStudentModalProps {
 }
 
 export default function AddStudentModal({ onClose, onSave }: AddStudentModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   // O'quvchi kategoriyalari — O'quv bo'limi → Kategoriya (`edu_categories`).
   const { names: categoryNames, loading: categoriesLoading } = useEduCategoryNames();
@@ -158,13 +160,13 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
 
   const handleSave = async () => {
     if (!firstName.trim()) {
-      setError("Ism majburiy");
+      setError(t("Ism majburiy"));
       return;
     }
     // Serverda ham tekshiriladi (POST /api/pupils) — bu yerdagisi shunchaki
     // so'rovni bekorga yubormaslik uchun, "Ism majburiy" bilan bir qolipda.
     if (!source) {
-      setError("Manba majburiy");
+      setError(t("Manba majburiy"));
       return;
     }
     setSaving(true);
@@ -180,11 +182,11 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
     });
     setSaving(false);
     if (!pupil) {
-      setError("Saqlashda xatolik yuz berdi");
-      showError("O'quvchi qo'shishda xatolik yuz berdi");
+      setError(t("Saqlashda xatolik yuz berdi"));
+      showError(t("O'quvchi qo'shishda xatolik yuz berdi"));
       return;
     }
-    showSuccess("O'quvchi muvaffaqiyatli qo'shildi");
+    showSuccess(t("O'quvchi muvaffaqiyatli qo'shildi"));
     onSave(pupil);
   };
 
@@ -194,13 +196,13 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
   return (
     <><Modal onClose={onClose} controller={modal} bare zIndex={1100} panelClassName="p-5 space-y-4 overflow-y-auto">
         <div>
-          <h3 className="text-lg font-semibold">Yangi o&apos;quvchi qo&apos;shish</h3>
-          <p className="text-xs text-muted-foreground mt-1">* Zarurligini bildiradi</p>
+          <h3 className="text-lg font-semibold">{t("Yangi o'quvchi qo'shish")}</h3>
+          <p className="text-xs text-muted-foreground mt-1">{t("* Zarurligini bildiradi")}</p>
         </div>
 
         <div>
           <label className="block text-[13px] font-medium mb-1.5">
-            Ism<span className="text-red-500"> *</span>
+            {t("Ism")}<span className="text-red-500"> *</span>
           </label>
           <input
             value={firstName}
@@ -208,39 +210,39 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
               setFirstName(e.target.value);
               setError(null);
             }}
-            placeholder="Ism"
+            placeholder={t("Ism")}
             className={`h-11 w-full rounded-lg border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${error === "Ism majburiy" ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
           />
         </div>
 
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Familiya</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Familiya")}</label>
           <input
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            placeholder="Familiya"
+            placeholder={t("Familiya")}
             className="h-11 w-full rounded-lg border border-border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
-        <PhoneInput label="Telefon raqam" value={phone} onChange={setPhone} />
+        <PhoneInput label={t("Telefon raqam")} value={phone} onChange={setPhone} />
 
-        <PanelSelect label="Kategoriyani tanlang" value={category} onChange={setCategory} options={categoryNames} placeholder="Kategoriyani tanlang" loading={categoriesLoading} />
+        <PanelSelect label={t("Kategoriyani tanlang")} value={category} onChange={setCategory} options={categoryNames} placeholder={t("Kategoriyani tanlang")} loading={categoriesLoading} />
 
         {/* Majburiy — `required` qizil yulduzcha, `error` esa qizil halqa
             chizadi (PanelSelect'da ikkala prop ham allaqachon bor). */}
         <PanelSelect
-          label="Manba"
+          label={t("Manba")}
           required
           value={source}
           onChange={pickSource}
           options={sourceOptions}
-          placeholder="O'quvchi qayerdan keldi?"
+          placeholder={t("O'quvchi qayerdan keldi?")}
           error={error === "Manba majburiy"}
         />
 
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Tug&apos;ilgan sanasi</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Tug'ilgan sanasi")}</label>
           <DateField value={birthDate} onChange={(v) => setBirthDate(v)} variant="panel" />
         </div>
 
@@ -251,10 +253,10 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
             onChange={(e) => setShowExtra(e.target.checked)}
             className="h-4 w-4 rounded border-border"
           />
-          Qo&apos;shimcha ma&apos;lumotlar
+          {t("Qo'shimcha ma'lumotlar")}
         </label>
 
-        {showExtra && <PhoneInput label="Qo'shimcha telefon raqam" value={extraPhone} onChange={setExtraPhone} />}
+        {showExtra && <PhoneInput label={t("Qo'shimcha telefon raqam")} value={extraPhone} onChange={setExtraPhone} />}
 
         {/* Majburiylik xatolari maydonning O'ZIDA ko'rsatiladi (qizil ramka /
             halqa), shu bois pastda takrorlanmaydi — aks holda bitta xato bir
@@ -265,18 +267,18 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={modal.close}>
-            Orqaga
+            {t("Orqaga")}
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </Button>
         </div>
       </Modal>{otherOpen && (
         <Modal onClose={closeOther} controller={otherModal} bare size="sm" zIndex={1200} panelClassName="p-5 space-y-4">
             <div>
-              <h3 className="text-base font-semibold">Manbani yozing</h3>
+              <h3 className="text-base font-semibold">{t("Manbani yozing")}</h3>
               <p className="text-xs text-muted-foreground mt-1">
-                O&apos;quvchi markazni qayerdan eshitgan?
+                {t("O'quvchi markazni qayerdan eshitgan?")}
               </p>
             </div>
 
@@ -293,19 +295,19 @@ export default function AddStudentModal({ onClose, onSave }: AddStudentModalProp
                 }
               }}
               maxLength={60}
-              placeholder="Masalan: Maktabdan eshitgan"
+              placeholder={t("Masalan: Maktabdan eshitgan")}
               className="h-11 w-full rounded-lg border border-border bg-secondary/30 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={otherModal.close}>
-                Orqaga
+                {t("Orqaga")}
               </Button>
               {/* Bo'sh matn bilan yopib bo'lmaydi: "Manba" majburiy maydon,
                   bo'sh qoldirilsa moderator buni faqat "Saqlash" bosganda
                   bilardi. */}
               <Button variant="primary" onClick={confirmOther} disabled={!otherText.trim()}>
-                Tasdiqlash
+                {t("Tasdiqlash")}
               </Button>
             </div>
           </Modal>

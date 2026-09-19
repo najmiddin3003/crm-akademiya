@@ -54,6 +54,7 @@ import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEn
 import { toUz } from "@/lib/uzTime";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 const TX_TYPE_MAP: Record<string, string> = {
   kirim: "payIn",
@@ -315,13 +316,14 @@ function ReceiptPreviewModal({
   onClose: () => void;
   onPrint: () => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const title =
     entry.txType === "payIn"
       ? "KIRIM CHEKI"
       : entry.txType === "payOut"
-        ? "CHIQIM CHEKI"
-        : "KO'CHIRISH CHEKI";
+        ? t("CHIQIM CHEKI")
+        : t("KO'CHIRISH CHEKI");
   const rows: [string, string][] = [
     ["Sana", fmtEntryDate(entry)],
     ["O'quvchi", entry.studentName || entry.moderator || "—"],
@@ -347,7 +349,7 @@ function ReceiptPreviewModal({
           <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
           <div className="space-y-1.5 text-[13px]">
             <div className="flex justify-between gap-3">
-              <span style={{ color: "#64748b" }}>Chek №</span>
+              <span style={{ color: "#64748b" }}>{t("Chek №")}</span>
               <span className="font-medium tabular-nums">{entry.id}</span>
             </div>
             {rows.map(([k, v]) => (
@@ -360,10 +362,10 @@ function ReceiptPreviewModal({
           <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
           <div className="flex justify-between items-baseline">
             <span className="text-[13px] italic" style={{ color: "#64748b" }}>
-              Jami
+              {t("Jami")}
             </span>
             <span className="text-[18px] font-bold tabular-nums">
-              {fmtSom(Math.abs(entry.amount))}
+              {t(fmtSom(Math.abs(entry.amount)))}
             </span>
           </div>
           <div className="my-3 border-t border-dashed" style={{ borderColor: "#cbd5e1" }} />
@@ -383,7 +385,7 @@ function ReceiptPreviewModal({
             className="h-9 flex-1 rounded-lg text-sm font-medium"
             style={{ border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a" }}
           >
-            Yopish
+            {t("Yopish")}
           </button>
           {/* "Chop etish" — brend rangida qolaveradi: u ikkala mavzuda
               ham oq matn bilan yetarli kontrast beradi. */}
@@ -392,7 +394,7 @@ function ReceiptPreviewModal({
             className="h-9 flex-1 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 inline-flex items-center justify-center gap-1.5"
           >
             <Printer className="w-3.5 h-3.5" />
-            Chop etish
+            {t("Chop etish")}
           </button>
         </div>
       </Modal>
@@ -413,6 +415,7 @@ function SearchFilter({
   options: string[];
   placeholder: string;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -452,7 +455,7 @@ function SearchFilter({
             onChange("");
             setOpen(false);
           }}
-          title="Tozalash"
+          title={t("Tozalash")}
           className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
         >
           ×
@@ -462,7 +465,7 @@ function SearchFilter({
         <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-lg border border-border bg-card shadow-xl">
           {list.length === 0 ? (
             <div className="px-3 py-3 text-[13px] text-muted-foreground text-center">
-              Topilmadi
+              {t("Topilmadi")}
             </div>
           ) : (
             list.map((o) => (
@@ -509,6 +512,7 @@ function StatusCell({
   /** So'rov ketayotgan payt — ikkala tugma ham o'chiriladi. */
   deciding: boolean;
 }) {
+  const { t } = useT();
   const status = entry.status;
   const edited = Array.isArray(entry.editHistory) && entry.editHistory.length > 0;
   // Qaror faqat pul KELAYOTGAN qatorda qabul qilinadi. Eski (edutizimdan
@@ -520,7 +524,7 @@ function StatusCell({
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {status === "cancelled" ? (
         <span className="inline-flex items-center gap-1 text-[13px] text-rose-500 font-medium">
-          <CircleX className="w-3.5 h-3.5" /> Bekor qilingan
+          <CircleX className="w-3.5 h-3.5" />{" "}{t("Bekor qilingan")}
         </span>
       ) : status === "waiting" ? (
         // × va ✓ — HAQIQIY tugmalar. Ilgari ikkalasi ham oddiy <span> edi,
@@ -539,7 +543,7 @@ function StatusCell({
             <button
               type="button"
               disabled={deciding}
-              title="Rad etish — pul jo'natuvchi kassada qoladi"
+              title={t("Rad etish — pul jo'natuvchi kassada qoladi")}
               onClick={(ev) => { ev.stopPropagation(); onDecide("reject"); }}
               className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px] hover:bg-rose-200 disabled:opacity-50"
             >
@@ -547,13 +551,13 @@ function StatusCell({
             </button>
           )}
           <span className="text-[13px] text-rose-600 font-medium">
-            Kutilmoqda
+            {t("Kutilmoqda")}
           </span>
           {canDecide && (
             <button
               type="button"
               disabled={deciding}
-              title="Tasdiqlash — pul jo'natuvchidan yechilib, shu kassaga qo'shiladi"
+              title={t("Tasdiqlash — pul jo'natuvchidan yechilib, shu kassaga qo'shiladi")}
               onClick={(ev) => { ev.stopPropagation(); onDecide("confirm"); }}
               className="h-6 w-6 rounded-md bg-emerald-100 inline-flex items-center justify-center text-emerald-600 hover:bg-emerald-200 disabled:opacity-50"
             >
@@ -563,11 +567,11 @@ function StatusCell({
         </span>
       ) : edited ? null : entry.txType === "payOut" ? (
         <span className="inline-flex items-center h-6 px-2 rounded-md text-[13px] font-medium bg-red-900 text-red-200">
-          To&apos;landi
+          {t("To'landi")}
         </span>
       ) : (
         <span className="inline-flex items-center h-6 px-2 rounded-md text-[13px] font-medium bg-emerald-500/20 text-emerald-700">
-          Qabul qilindi
+          {t("Qabul qilindi")}
         </span>
       )}
       {edited && (
@@ -575,9 +579,9 @@ function StatusCell({
           type="button"
           onClick={(ev) => { ev.stopPropagation(); onShowHistory(); }}
           className="inline-flex items-center h-5 px-1.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-700 hover:bg-amber-500/25"
-          title="Tahrirlar tarixini ko'rish"
+          title={t("Tahrirlar tarixini ko'rish")}
         >
-          Tahrirlangan
+          {t("Tahrirlangan")}
         </button>
       )}
     </span>
@@ -593,6 +597,7 @@ function EditHistoryModal({
   entry: TransactionEntry;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const items = Array.isArray(entry.editHistory) ? entry.editHistory : [];
   function fmtAt(iso: string): string {
@@ -606,7 +611,7 @@ function EditHistoryModal({
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={140}>
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <div className="text-[15px] font-semibold">Tahrirlar tarixi</div>
+          <div className="text-[15px] font-semibold">{t("Tahrirlar tarixi")}</div>
           <button
             onClick={modal.close}
             className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
@@ -617,7 +622,7 @@ function EditHistoryModal({
         <div className="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-3">
           {items.length === 0 && (
             <div className="text-[13px] text-muted-foreground text-center py-6">
-              Hozircha tahrir kiritilmagan.
+              {t("Hozircha tahrir kiritilmagan.")}
             </div>
           )}
           {items.map((h, i) => (
@@ -625,7 +630,7 @@ function EditHistoryModal({
               <div className="flex items-center justify-between text-[12px] text-muted-foreground">
                 <span>{fmtAt(h.at)}</span>
                 <span className="tabular-nums">
-                  {fmtNum(Math.abs(h.from))} → <span className="text-foreground font-medium">{fmtNum(Math.abs(h.to))}</span> so&apos;m
+                  {fmtNum(Math.abs(h.from))} → <span className="text-foreground font-medium">{fmtNum(Math.abs(h.to))}</span>{" "}{t("so'm")}
                 </span>
               </div>
               <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{h.reason || "—"}</div>
@@ -637,6 +642,7 @@ function EditHistoryModal({
 }
 
 export default function CashboxesPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   // Kassani BOSHQARISH (tahrirlash, bosh kassa qilish, hisobotni yuklab
   // olish) faqat administratorda. Kassa egasi — kassir — o'z kassasida
@@ -944,14 +950,14 @@ export default function CashboxesPage() {
       const res = await fetch(url, { method: "POST" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Amal bajarilmadi");
+        showError(t(data.error || "Amal bajarilmadi"));
         return;
       }
-      showSuccess(decision === "confirm" ? "Ko'chirma tasdiqlandi" : "Ko'chirma rad etildi");
+      showSuccess(decision === "confirm" ? t("Ko'chirma tasdiqlandi") : t("Ko'chirma rad etildi"));
       loadEntries();
       refreshCashboxes();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDecidingId(null);
     }
@@ -1229,16 +1235,16 @@ export default function CashboxesPage() {
     label: string;
     get: (e: TransactionEntry) => string | number;
   }[] = [
-    { label: "Kim", get: (e) => e.studentName || e.moderator || "" },
-    { label: "Miqdori", get: (e) => e.amount },
-    { label: "To'lov turi", get: (e) => e.paymentType },
-    { label: "Sana", get: fmtEntryDate },
-    { label: "Izoh", get: (e) => e.note || "" },
-    { label: "Oyligiga", get: (e) => e.teacherName || "" },
-    { label: "Tranzaksiya nomi", get: (e) => e.txName || "" },
-    { label: "Holati", get: (e) => e.status || "" },
+    { label: t("Kim"), get: (e) => e.studentName || e.moderator || "" },
+    { label: t("Miqdori"), get: (e) => e.amount },
+    { label: t("To'lov turi"), get: (e) => e.paymentType },
+    { label: t("Sana"), get: fmtEntryDate },
+    { label: t("Izoh"), get: (e) => e.note || "" },
+    { label: t("Oyligiga"), get: (e) => e.teacherName || "" },
+    { label: t("Tranzaksiya nomi"), get: (e) => e.txName || "" },
+    { label: t("Holati"), get: (e) => e.status || "" },
     {
-      label: "Tranzaksiya turi",
+      label: t("Tranzaksiya turi"),
       get: (e) => TX_TYPE_LABELS[e.txType] || e.txType,
     },
   ];
@@ -1275,9 +1281,9 @@ export default function CashboxesPage() {
       a.download = `tranzaksiyalar-${date}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      showSuccess("CSV fayl yuklab olindi");
+      showSuccess(t("CSV fayl yuklab olindi"));
     } catch {
-      showError("CSV faylni yuklab bo'lmadi");
+      showError(t("CSV faylni yuklab bo'lmadi"));
     }
   }
 
@@ -1296,9 +1302,9 @@ export default function CashboxesPage() {
       XLSX.utils.book_append_sheet(workbook, worksheet, "Tranzaksiyalar");
       const date = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(workbook, `tranzaksiyalar-${date}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
@@ -1320,7 +1326,7 @@ export default function CashboxesPage() {
             className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Yangi kassa qo&apos;shish</span>
+            <span>{t("Yangi kassa qo'shish")}</span>
           </button>
         )}
 
@@ -1330,19 +1336,19 @@ export default function CashboxesPage() {
             onClick={() => setStatusFilter("active")}
             className={segCls("active")}
           >
-            <CircleCheckBig className="w-3.5 h-3.5" /> Aktiv
+            <CircleCheckBig className="w-3.5 h-3.5" />{" "}{t("Aktiv")}
           </button>
           <button
             onClick={() => setStatusFilter("archived")}
             className={segCls("archived")}
           >
-            <Archive className="w-3.5 h-3.5" /> Arxiv
+            <Archive className="w-3.5 h-3.5" />{" "}{t("Arxiv")}
           </button>
           <button
             onClick={() => setStatusFilter("all")}
             className={segCls("all")}
           >
-            <LayoutGrid className="w-3.5 h-3.5" /> Barchasi
+            <LayoutGrid className="w-3.5 h-3.5" />{" "}{t("Barchasi")}
           </button>
         </div>
 
@@ -1432,7 +1438,7 @@ export default function CashboxesPage() {
                           className={`text-[12px] font-medium shrink-0 fc-chip ${labelMuted}`}
                           style={{ padding: "1px 8px", borderRadius: 9999 }}
                         >
-                          Arxiv
+                          {t("Arxiv")}
                         </span>
                       )}
                     </div>
@@ -1463,7 +1469,7 @@ export default function CashboxesPage() {
                             e.stopPropagation();
                             setHandoverOpen(true);
                           }}
-                          title="Kunlik topshiruv — filiallar bugun qancha topshirdi"
+                          title={t("Kunlik topshiruv — filiallar bugun qancha topshirdi")}
                           className="fc-card-btn relative shrink-0"
                         >
                           <ClipboardList className="w-4 h-4" />
@@ -1486,8 +1492,8 @@ export default function CashboxesPage() {
                         }}
                         title={
                           hideBalances
-                            ? "Summalarni ko'rsatish"
-                            : "Summalarni yashirish"
+                            ? t("Summalarni ko'rsatish")
+                            : t("Summalarni yashirish")
                         }
                         className="fc-card-btn shrink-0"
                         style={{ opacity: 0.75, height: 28, width: 28 }}
@@ -1499,7 +1505,7 @@ export default function CashboxesPage() {
                         )}
                       </button>
                       <div className="text-[28px] leading-tight font-bold tabular-nums truncate">
-                        {mask(c.balance)} so&apos;m
+                        {mask(c.balance)} {t("so'm")}
                       </div>
                     </div>
                     {!isSelected && (
@@ -1522,7 +1528,7 @@ export default function CashboxesPage() {
                         balansda YO'Q — ✓ bosilganda qo'shiladi. */}
                     {(c.isPrimary || (c.pendingIn ?? 0) > 0) && (
                       <div>
-                        {`Kutilayotgan ko'chirma summasi: ${mask(c.pendingIn ?? 0)} so'm`}
+                        {t("Kutilayotgan ko'chirma summasi: {pendingIn} so'm", { pendingIn: mask(c.pendingIn ?? 0) })}
                       </div>
                     )}
                     {/* Filial kassasi: rahbar oxirgi marta ✓ bosganidan beri
@@ -1533,10 +1539,10 @@ export default function CashboxesPage() {
                     {!c.isPrimary && (
                       <>
                         <div title={sinceTitle(c.sinceHandover?.since ?? null)}>
-                          {`Oxirgi topshiruvdan beri tushum: ${mask(c.sinceHandover?.income ?? 0)} so'm`}
+                          {t("Oxirgi topshiruvdan beri tushum: {income} so'm", { income: mask(c.sinceHandover?.income ?? 0) })}
                         </div>
                         <div title={sinceTitle(c.sinceHandover?.since ?? null)}>
-                          {`Oxirgi topshiruvdan beri chiqim: ${mask(c.sinceHandover?.expense ?? 0)} so'm`}
+                          {t("Oxirgi topshiruvdan beri chiqim: {expense} so'm", { expense: mask(c.sinceHandover?.expense ?? 0) })}
                         </div>
                       </>
                     )}
@@ -1551,7 +1557,7 @@ export default function CashboxesPage() {
                   <div className="fc-tiles mt-4" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }} onClick={(e) => e.stopPropagation()}>
                     <ActionTile
                       tone="#22c55e"
-                      label="Kirim"
+                      label={t("Kirim")}
                       onClick={() => {
                         setKirimTarget(c);
                         // Sahifa uzoq ochiq turgan bo'lsa ro'yxat
@@ -1567,7 +1573,7 @@ export default function CashboxesPage() {
                     </ActionTile>
                     <ActionTile
                       tone="#f97316"
-                      label="Chiqim"
+                      label={t("Chiqim")}
                       onClick={() => {
                         setAdjustState({ cashbox: c, mode: "chiqim" });
                         // Kirim plitkasidagi bilan bir xil: fonda, bosqich
@@ -1579,17 +1585,17 @@ export default function CashboxesPage() {
                       <Wallet />
                       <span className="fc-tile-badge"><Minus /></span>
                     </ActionTile>
-                    <ActionTile tone="#06b6d4" label="Ko'chirish" onClick={() => setTransferToTarget(c)}>
+                    <ActionTile tone="#06b6d4" label={t("Ko'chirish")} onClick={() => setTransferToTarget(c)}>
                       <ArrowLeftRight />
                     </ActionTile>
                   </div>
                 )}
                 {showActions && showMore && (
                   <div className="fc-tiles mt-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }} onClick={(e) => e.stopPropagation()}>
-                    <ActionTile tone="#f59e0b" label="Dividend" onClick={() => setDividendTarget(c)}>
+                    <ActionTile tone="#f59e0b" label={t("Dividend")} onClick={() => setDividendTarget(c)}>
                       <Coins />
                     </ActionTile>
-                    <ActionTile tone="#8b5cf6" label="Sarmoya" onClick={() => setInvestmentTarget(c)}>
+                    <ActionTile tone="#8b5cf6" label={t("Sarmoya")} onClick={() => setInvestmentTarget(c)}>
                       <ChartNoAxesCombined />
                     </ActionTile>
                   </div>
@@ -1622,9 +1628,9 @@ export default function CashboxesPage() {
                            HAM kerak: summalar yashirilganda izoh ularni
                            oshkor qilmasin. */
                         title={
-                          `${m.name} — kassada ${mask(val)} so'm` +
-                          ` · bugun ${mask(today)} so'm tushgan` +
-                          (c.archived ? "" : " · bosing: boshqa to'lov turiga ko'chirish")
+                          t("{name} — kassada {val} so'm", { name: m.name, val: mask(val) }) +
+                          t(" · bugun {today} so'm tushgan", { today: mask(today) }) +
+                          (c.archived ? "" : t(" · bosing: boshqa to'lov turiga ko'chirish"))
                         }
                         className={`flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-md ${c.archived ? "" : "cursor-grab active:cursor-grabbing"} ${dragKey === m.key ? "opacity-50" : ""}`}
                         style={{
@@ -1646,7 +1652,7 @@ export default function CashboxesPage() {
                           <span
                             className={`text-[14px] truncate ${labelMuted}`}
                           >
-                            {m.name}
+                            {t(m.name)}
                           </span>
                         </div>
                         <span className="text-[15px] font-semibold tabular-nums shrink-0">
@@ -1665,7 +1671,7 @@ export default function CashboxesPage() {
                   >
                     <button
                       onClick={() => setEditTarget(c)}
-                      title="Kassani o'zgartirish"
+                      title={t("Kassani o'zgartirish")}
                       className="fc-card-btn"
                     >
                       <Pencil className="w-4 h-4" />
@@ -1691,7 +1697,7 @@ export default function CashboxesPage() {
                     >
                       <button
                         onClick={() => setEditTarget(c)}
-                        title="Tahrirlash"
+                        title={t("Tahrirlash")}
                         className="fc-card-btn"
                       >
                         <Pencil className="w-4 h-4" />
@@ -1701,7 +1707,7 @@ export default function CashboxesPage() {
                           if (!c.isPrimary) setPrimaryConfirmTarget(c);
                         }}
                         title={
-                          c.isPrimary ? "Bosh kassa" : "Asosiy kassa qilish"
+                          c.isPrimary ? t("Bosh kassa") : t("Asosiy kassa qilish")
                         }
                         className="fc-card-btn"
                         style={{ color: "#fbbf24" }}
@@ -1714,7 +1720,7 @@ export default function CashboxesPage() {
                       <div className="relative" ref={exportRef}>
                         <button
                           onClick={() => setExportMenuOpen((o) => !o)}
-                          title="Hisobotni yuklab olish"
+                          title={t("Hisobotni yuklab olish")}
                           className="fc-card-btn"
                         >
                           <ArrowDownToLine className="w-4 h-4" />
@@ -1732,7 +1738,7 @@ export default function CashboxesPage() {
                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                                 <FileText className="w-4 h-4" />
                               </span>
-                              <span>CSV faylini yuklab olish</span>
+                              <span>{t("CSV faylini yuklab olish")}</span>
                             </button>
                             <button
                               type="button"
@@ -1745,7 +1751,7 @@ export default function CashboxesPage() {
                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
                                 <FileSpreadsheet className="w-4 h-4" />
                               </span>
-                              <span>EXCEL faylini yuklab olish</span>
+                              <span>{t("EXCEL faylini yuklab olish")}</span>
                             </button>
                           </div>
                         )}
@@ -1759,7 +1765,7 @@ export default function CashboxesPage() {
                       }}
                       className="inline-flex items-center gap-1 text-[13.5px] text-white/80 hover:text-white"
                     >
-                      {showMore ? "Less" : "More"}
+                      {showMore ? t("Kamroq") : t("Ko'proq")}
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? "rotate-180" : ""}`} />
                     </button>
                   </div>
@@ -1799,11 +1805,11 @@ export default function CashboxesPage() {
           <Select value={txType} onChange={(v) => {
                 setTxType(v);
                 setPage(1);
-              }} options={[{ value: "kirim", label: "Kirim" }, { value: "chiqim", label: "Chiqim" }, { value: "kochirish", label: "Ko'chirish" }]} placeholder="Tranzaksiya" clearable className="flex-1 min-w-[140px]" />
+              }} options={[{ value: "kirim", label: t("Kirim") }, { value: "chiqim", label: t("Chiqim") }, { value: "kochirish", label: t("Ko'chirish") }]} placeholder={t("Tranzaksiya")} clearable className="flex-1 min-w-[140px]" />
           <Select value={txName} onChange={(v) => {
                 setTxName(v);
                 setPage(1);
-              }} options={txNameOptions.map((n) => ({ value: n, label: n }))} placeholder="Tranzaksiya turi" clearable className="flex-1 min-w-[150px]" />
+              }} options={txNameOptions.map((n) => ({ value: n, label: n }))} placeholder={t("Tranzaksiya turi")} clearable className="flex-1 min-w-[150px]" />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -1814,12 +1820,12 @@ export default function CashboxesPage() {
               setPage(1);
             }}
             options={studentOptions}
-            placeholder="O'quvchini qidiring..."
+            placeholder={t("O'quvchini qidiring...")}
           />
           <Select value={payType} onChange={(v) => {
                 setPayType(v);
                 setPage(1);
-              }} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder="To'lov turi" clearable className="flex-1 min-w-[140px]" />
+              }} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder={t("To'lov turi")} clearable className="flex-1 min-w-[140px]" />
           <SearchFilter
             value={teacher}
             onChange={(v) => {
@@ -1827,25 +1833,25 @@ export default function CashboxesPage() {
               setPage(1);
             }}
             options={teacherOptions}
-            placeholder="O'qituvchini qidiring..."
+            placeholder={t("O'qituvchini qidiring...")}
           />
         </div>
 
         <div className="flex items-center justify-between flex-wrap gap-2">
           <span className="inline-flex items-center px-4 h-9 rounded-full bg-secondary/80 text-foreground text-[13px] font-medium">
-            Tranzaksiya
+            {t("Tranzaksiya")}
           </span>
           <div className="flex items-center gap-3 text-sm flex-wrap">
             <span className="inline-flex items-center gap-1 text-emerald-500 font-medium tabular-nums">
               <ArrowDownLeft className="w-3.5 h-3.5" />{" "}
-              {mask(entryTotals.income)} so&apos;m
+              {mask(entryTotals.income)} {t("so'm")}
             </span>
             <span className="inline-flex items-center gap-1 text-rose-500 font-medium tabular-nums">
               <ArrowUpRight className="w-3.5 h-3.5" />{" "}
-              {mask(entryTotals.expense)} so&apos;m
+              {mask(entryTotals.expense)} {t("so'm")}
             </span>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-              <span className="text-muted-foreground">Umumiy soni:</span>
+              <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
               <span className="font-bold tabular-nums">
                 {entryTotal}
               </span>
@@ -1867,33 +1873,33 @@ export default function CashboxesPage() {
                   <th className="text-left px-3 py-3 whitespace-nowrap w-14">
                     №
                   </th>
-                  <th className="text-center px-2 py-3 whitespace-nowrap w-14" title="Chek chiqarish">
-                    Chek
+                  <th className="text-center px-2 py-3 whitespace-nowrap w-14" title={t("Chek chiqarish")}>
+                    {t("Chek")}
                   </th>
-                  <th className="text-left px-3 py-3 whitespace-nowrap">Kim</th>
+                  <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kim")}</th>
                   <th className="text-right px-3 py-3 whitespace-nowrap">
-                    Miqdori
+                    {t("Miqdori")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    To&apos;lov turi
+                    {t("To'lov turi")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Sana
+                    {t("Sana")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Izoh
+                    {t("Izoh")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Oyligiga
+                    {t("Oyligiga")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Tranzaksiya nomi
+                    {t("Tranzaksiya nomi")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Holati
+                    {t("Holati")}
                   </th>
                   <th className="text-left px-3 py-3 whitespace-nowrap">
-                    Tranzaksiya turi
+                    {t("Tranzaksiya turi")}
                   </th>
                 </tr>
               </thead>
@@ -1928,7 +1934,7 @@ export default function CashboxesPage() {
                               ev.stopPropagation();
                               setReceiptEntry(e);
                             }}
-                            title="Chek chiqarish"
+                            title={t("Chek chiqarish")}
                             className="h-7 w-7 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary"
                           >
                             <Printer className="w-3.5 h-3.5" />
@@ -1961,7 +1967,7 @@ export default function CashboxesPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-[13px] text-foreground/80 whitespace-nowrap">
-                        {e.paymentType}
+                        {t(e.paymentType)}
                       </td>
                       <td className="px-3 py-3 text-foreground/80 text-[12px] tabular-nums whitespace-nowrap">
                         {fmtEntryDate(e)}
@@ -2020,20 +2026,20 @@ export default function CashboxesPage() {
                           yuqoridagi nol summalar haqiqiy deb o'ylanardi. */}
                       <div className="text-[14px] font-semibold">
                         {entriesError
-                          ? "Ma'lumotni yuklab bo'lmadi"
-                          : "Ma'lumotlar topilmadi"}
+                          ? t("Ma'lumotni yuklab bo'lmadi")
+                          : t("Ma'lumotlar topilmadi")}
                       </div>
                       <div className="text-[12px] text-muted-foreground mt-1">
                         {entriesError
-                          ? "Aloqa yoki server xatosi — yuqoridagi summalar ham to'liq emas."
-                          : "Filterni o'zgartirib ko'ring."}
+                          ? t("Aloqa yoki server xatosi — yuqoridagi summalar ham to'liq emas.")
+                          : t("Filterni o'zgartirib ko'ring.")}
                       </div>
                       {entriesError && (
                         <button
                           onClick={loadEntries}
                           className="mt-3 h-9 px-4 rounded-md bg-primary text-white text-[13px] font-medium"
                         >
-                          Qayta urinish
+                          {t("Qayta urinish")}
                         </button>
                       )}
                     </td>
@@ -2226,7 +2232,7 @@ export default function CashboxesPage() {
       {primaryConfirmTarget && (
         <Modal onClose={() => setPrimaryConfirmTarget(null)} locked={settingPrimary} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">
-              Bosh kassa qilmoqchimisiz?
+              {t("Bosh kassa qilmoqchimisiz?")}
             </p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button
@@ -2234,14 +2240,14 @@ export default function CashboxesPage() {
                 disabled={settingPrimary}
                 className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
               >
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button
                 onClick={confirmSetPrimary}
                 disabled={settingPrimary}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {settingPrimary ? "Saqlanmoqda…" : "Ha"}
+                {settingPrimary ? t("Saqlanmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

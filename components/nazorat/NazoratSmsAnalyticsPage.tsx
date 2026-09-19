@@ -5,6 +5,7 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import Spinner from "@/components/ui/Spinner";
 import { smsPurposeLabel, type SmsMessage } from "@/lib/smsMessages";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat → SMS analitikasi (/nazorat-sms-analytics).
 //
@@ -45,6 +46,7 @@ function StatCard({ label, value, hint, color }: { label: string; value: number 
 }
 
 export default function NazoratSmsAnalyticsPage() {
+  const { t } = useT();
   const [data, setData] = useState<Payload | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [status, setStatus] = useState("");
@@ -99,19 +101,19 @@ export default function NazoratSmsAnalyticsPage() {
     <div className="container mx-auto max-w-[1700px] p-4 md:p-5 space-y-4">
       {/* Ko'rsatkichlar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Jami yuborilgan" value={data?.total ?? 0} />
+        <StatCard label={t("Jami yuborilgan")} value={data?.total ?? 0} />
         <StatCard
-          label="Eskiz qabul qildi"
+          label={t("Eskiz qabul qildi")}
           value={s?.accepted ?? 0}
           color="text-emerald-600"
-          hint="telefonga yetgani ALOHIDA masala"
+          hint={t("telefonga yetgani ALOHIDA masala")}
         />
-        <StatCard label="Yuborilmadi" value={s?.failed ?? 0} color="text-rose-600" hint="Eskiz rad etdi" />
+        <StatCard label={t("Yuborilmadi")} value={s?.failed ?? 0} color="text-rose-600" hint={t("Eskiz rad etdi")} />
         <StatCard
-          label="Simulyatsiya"
+          label={t("Simulyatsiya")}
           value={s?.simulated ?? 0}
           color="text-amber-600"
-          hint="Eskiz sozlanmagan — SMS ketmagan"
+          hint={t("Eskiz sozlanmagan — SMS ketmagan")}
         />
       </div>
 
@@ -127,14 +129,14 @@ export default function NazoratSmsAnalyticsPage() {
                 : "bg-secondary text-muted-foreground"
             }`}
           >
-            To&apos;lov SMS i: <strong>{data.config.paymentSmsEnabled ? "yoqilgan" : "o'chiq"}</strong>
+            {t("To'lov SMS i:")}{" "}<strong>{data.config.paymentSmsEnabled ? "yoqilgan" : "o'chiq"}</strong>
             {/* "O'chiq" ning IKKI xil sababi bor va ular boshqa-boshqa ish
                 talab qiladi — sahifa qaysi biri ekanini aytadi. */}
             {!data.config.paymentSmsEnabled && (
               <span>
                 {data.config.paymentSmsVarSet
-                  ? "(PAYMENT_SMS_ENABLED qiymati rost emas)"
-                  : "(PAYMENT_SMS_ENABLED Production'da yo'q)"}
+                  ? t("(PAYMENT_SMS_ENABLED qiymati rost emas)")
+                  : t("(PAYMENT_SMS_ENABLED Production'da yo'q)")}
               </span>
             )}
           </span>
@@ -145,7 +147,7 @@ export default function NazoratSmsAnalyticsPage() {
                 : "bg-rose-100 text-rose-700"
             }`}
           >
-            Eskiz: <strong>{data.config.eskizConfigured ? "sozlangan" : "SOZLANMAGAN"}</strong>
+            {t("Eskiz:")}{" "}<strong>{data.config.eskizConfigured ? "sozlangan" : "SOZLANMAGAN"}</strong>
             {!data.config.eskizConfigured && <span>(ESKIZ_EMAIL / ESKIZ_PASSWORD)</span>}
           </span>
         </div>
@@ -155,11 +157,8 @@ export default function NazoratSmsAnalyticsPage() {
           o'tib ketmasin. */}
       {data && !data.config.eskizConfigured && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-[13px]">
-          <strong>Eskiz sozlanmagan.</strong> `ESKIZ_EMAIL` va `ESKIZ_PASSWORD` muhit
-          o&apos;zgaruvchilari yo&apos;q, ya&apos;ni SMS <strong>hech qayerga
-          ketmayapti</strong> — jurnaldagi qatorlar &laquo;simulyatsiya&raquo; bo&apos;ladi.
-          Ularni Vercel &rarr; Settings &rarr; Environment Variables ga qo&apos;shing va qayta
-          deploy qiling.
+          <strong>{t("Eskiz sozlanmagan.")}</strong> `ESKIZ_EMAIL` va `ESKIZ_PASSWORD` muhit
+          o&apos;zgaruvchilari yo&apos;q, ya&apos;ni SMS <strong>{t("hech qayerga ketmayapti")}</strong>{" "}{t("— jurnaldagi qatorlar &laquo;simulyatsiya&raquo; bo'ladi. Ularni Vercel → Settings → Environment Variables ga qo'shing va qayta deploy qiling.")}
         </div>
       )}
 
@@ -168,8 +167,8 @@ export default function NazoratSmsAnalyticsPage() {
           EMAS. Haqiqiy yetkazilishni bilish uchun Eskizdan alohida
           so'rash kerak va u hali qo'shilmagan. */}
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px]">
-        <strong>Diqqat:</strong> &laquo;Eskiz qabul qildi&raquo; degani xabar operatorga
-        topshirildi — <strong>telefonga yetib borgani emas</strong>. Haqiqiy yetkazilish
+        <strong>{t("Diqqat:")}</strong> &laquo;Eskiz qabul qildi&raquo; degani xabar operatorga
+        topshirildi — <strong>{t("telefonga yetib borgani emas")}</strong>. Haqiqiy yetkazilish
         holatini Eskizdan alohida so&apos;rash kerak, u hali ulanmagan. Shu sababli quyidagi
         jadvalda &laquo;Yetkazildi&raquo; ustuni yo&apos;q — bo&apos;lmagan ma&apos;lumotni
         ko&apos;rsatgandan ko&apos;ra yo&apos;qligini aytish to&apos;g&apos;ri.
@@ -177,15 +176,15 @@ export default function NazoratSmsAnalyticsPage() {
 
       {/* Filtrlar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Sana oralig'i" />
-        <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "Qabul qilindi", label: "Eskiz qabul qildi" }, { value: "Yuborilmadi", label: "Yuborilmadi" }, { value: "Kutilmoqda", label: "Kutilmoqda" }]} placeholder="Barcha holatlar" clearable />
-        <Select value={purpose} onChange={(v) => setPurpose(v)} options={[{ value: "payment", label: "To'lov qabul qilindi" }, { value: "invite", label: "Xodim taklifi" }, { value: "password-reset", label: "Parol tiklash" }, { value: "manual", label: "Qo'lda yuborilgan" }]} placeholder="Barcha maqsadlar" clearable />
+        <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Sana oralig'i")} />
+        <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "Qabul qilindi", label: t("Eskiz qabul qildi") }, { value: "Yuborilmadi", label: t("Yuborilmadi") }, { value: "Kutilmoqda", label: t("Kutilmoqda") }]} placeholder={t("Barcha holatlar")} clearable />
+        <Select value={purpose} onChange={(v) => setPurpose(v)} options={[{ value: "payment", label: t("To'lov qabul qilindi") }, { value: "invite", label: t("Xodim taklifi") }, { value: "password-reset", label: t("Parol tiklash") }, { value: "manual", label: t("Qo'lda yuborilgan") }]} placeholder={t("Barcha maqsadlar")} clearable />
       </div>
 
       {/* Kesimlar */}
       {(data?.byCashbox?.length ?? 0) > 0 && (
         <div className="rounded-2xl bg-card border border-border p-4">
-          <div className="text-[13px] font-semibold mb-2">Kassa bo&apos;yicha</div>
+          <div className="text-[13px] font-semibold mb-2">{t("Kassa bo'yicha")}</div>
           <div className="flex flex-wrap gap-2">
             {data!.byCashbox.map((c, i) => (
               <span key={i} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-[12px]">
@@ -200,7 +199,7 @@ export default function NazoratSmsAnalyticsPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Ko&apos;rsatilmoqda:</span>
+            <span>{t("Ko'rsatilmoqda:")}</span>
             <span className="tabular-nums">{rows.length}</span>
           </div>
         </div>
@@ -210,13 +209,13 @@ export default function NazoratSmsAnalyticsPage() {
             <thead className="bg-secondary/20">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-4 py-3 text-left">Sana</th>
-                <th className="px-4 py-3 text-left">Kimga</th>
-                <th className="px-4 py-3 text-left">Telefon</th>
-                <th className="px-4 py-3 text-left">Maqsad</th>
-                <th className="px-4 py-3 text-left">Kassa</th>
-                <th className="px-4 py-3 text-left">Holati</th>
-                <th className="px-4 py-3 text-left">Matn</th>
+                <th className="px-4 py-3 text-left">{t("Sana")}</th>
+                <th className="px-4 py-3 text-left">{t("Kimga")}</th>
+                <th className="px-4 py-3 text-left">{t("Telefon")}</th>
+                <th className="px-4 py-3 text-left">{t("Maqsad")}</th>
+                <th className="px-4 py-3 text-left">{t("Kassa")}</th>
+                <th className="px-4 py-3 text-left">{t("Holati")}</th>
+                <th className="px-4 py-3 text-left">{t("Matn")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -238,10 +237,10 @@ export default function NazoratSmsAnalyticsPage() {
                             : "bg-amber-100 text-amber-700"
                       }`}
                     >
-                      {m.status}
+                      {t(m.status)}
                     </span>
                     {m.simulated && (
-                      <span className="ml-1 text-[11px] text-amber-600">simulyatsiya</span>
+                      <span className="ml-1 text-[11px] text-amber-600">{t("simulyatsiya")}</span>
                     )}
                     {/* NEGA yuborilmagani. Eng ko'p uchraydigan sabab —
                         Eskizda shablon hali tasdiqlanmagani yoki matn
@@ -275,12 +274,10 @@ export default function NazoratSmsAnalyticsPage() {
             </h3>
             {!loading && (
               <p className="text-[13px] text-muted-foreground max-w-md">
-                Jurnal bo&apos;sh. To&apos;lov SMS i <strong>PAYMENT_SMS_ENABLED=true</strong> bo&apos;lganda
+                {t("Jurnal bo'sh. To'lov SMS i")}{" "}<strong>PAYMENT_SMS_ENABLED=true</strong> bo&apos;lganda
                 ishlaydi — o&apos;chiq bo&apos;lsa kassadagi kirimlarda xabar yuborilmaydi.
                 {data && !data.config.paymentSmsEnabled && !data.config.paymentSmsVarSet && (
-                  <> Hozir bu o&apos;zgaruvchi Production muhitida umuman yo&apos;q: Vercel &rarr;
-                  Settings &rarr; Environment Variables da <strong>Production</strong> belgilangan
-                  bo&apos;lishi va keyin qayta deploy qilinishi kerak.</>
+                  <>{" "}{t("Hozir bu o'zgaruvchi Production muhitida umuman yo'q: Vercel → Settings → Environment Variables da")}{" "}<strong>{t("Production")}</strong>{" "}{t("belgilangan bo'lishi va keyin qayta deploy qilinishi kerak.")}</>
                 )}
               </p>
             )}

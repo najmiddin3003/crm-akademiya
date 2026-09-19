@@ -10,6 +10,7 @@ import PenaltyDrawer from "./PenaltyDrawer";
 import type { Penalty } from "@/lib/penalties";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Jarima (sidebar: Moliya > Jarima, href /finance-penalty).
 // Ma'lumot /api/penalties dan. "Jarima qo'shish" — PenaltyDrawer. Chapdagi
@@ -31,6 +32,7 @@ type PenaltyRow = Omit<Penalty, "before" | "after"> & {
 };
 
 export default function PenaltiesPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<PenaltyRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,14 +72,14 @@ export default function PenaltiesPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Bekor qilinmadi");
+        showError(t(data.error || "Bekor qilinmadi"));
         setCancelling(false);
         return;
       }
       setRows((prev) => prev.map((x) => (x.id === p.id ? (data.penalty as PenaltyRow) : x)));
-      showSuccess("Jarima bekor qilindi");
+      showSuccess(t("Jarima bekor qilindi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setCancelling(false);
       setCancelTarget(null);
@@ -88,14 +90,14 @@ export default function PenaltiesPage() {
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center gap-2">
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
-          <span>+ Jarima qo&apos;shish</span>
+          <span>{t("+ Jarima qo'shish")}</span>
         </button>
       </div>
 
       <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="flex justify-end px-3 pt-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-            <span className="text-muted-foreground">Umumiy soni:</span>
+            <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{rows.length}</span>
           </div>
         </div>
@@ -104,16 +106,16 @@ export default function PenaltiesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;liq ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Oldingi miqdor</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Miqdori</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Keyingi miqdor</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Holati</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Rasm</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Harakatlar</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'liq ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Oldingi miqdor")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Miqdori")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Keyingi miqdor")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sababi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Holati")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Rasm")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Harakatlar")}</th>
               </tr>
             </thead>
             <tbody>
@@ -137,13 +139,13 @@ export default function PenaltiesPage() {
                   <td className="px-3 py-3 text-[13px] text-muted-foreground">
                     {p.image
                       ? (p.image.startsWith("http")
-                          ? <a href={p.image} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ko&apos;rish</a>
+                          ? <a href={p.image} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t("Ko'rish")}</a>
                           : p.image)
                       : "—"}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     {p.status !== "cancelled" && (
-                      <button onClick={() => openCancel(p)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="Bekor qilish">
+                      <button onClick={() => openCancel(p)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("Bekor qilish")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
@@ -166,14 +168,14 @@ export default function PenaltiesPage() {
       )}
       {cancelTarget && (
         <Modal onClose={() => setCancelTarget(null)} locked={cancelling} bare size="sm" zIndex={110} panelClassName="p-6 space-y-4">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham bekor qilmoqchimisiz?</p>
-            <Select value={cancelReason} onChange={(v) => setCancelReason(v)} options={PENALTY_CANCEL_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable />
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham bekor qilmoqchimisiz?")}</p>
+            <Select value={cancelReason} onChange={(v) => setCancelReason(v)} options={PENALTY_CANCEL_REASONS.map((r) => ({ value: r, label: r }))} placeholder={t("Sababi")} clearable />
             <div className="flex items-center justify-center gap-2">
               <button onClick={modal.close} disabled={cancelling} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmCancel} disabled={cancelling} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {cancelling ? "Bekor qilinmoqda…" : "Ha"}
+                {cancelling ? t("Bekor qilinmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

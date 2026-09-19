@@ -21,6 +21,7 @@ import { type Cashbox } from "@/lib/cashboxes";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -93,6 +94,7 @@ export default function CashboxKirimDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
@@ -104,7 +106,7 @@ export default function CashboxKirimDrawer({
   // Tanlangan tur ID bo'yicha saqlanadi, NOM bo'yicha emas — turning
   // "Mijoz" (`customerType`) maydoni ham kerak. Bu Chiqim oynasidagi
   // bilan bir xil qoida (CashboxAdjustDrawer): u yerda ilgari
-  // `.map((t) => t.name)` turgan va maydon aynan o'sha qatorda
+  // `.map((tv) => tv.name)` turgan va maydon aynan o'sha qatorda
   // yo'qolardi — javobda bor edi, lekin brauzergacha yetib kelmasdi.
   // Serverga baribir NOM ketadi: jurnal va analitika nom bo'yicha
   // guruhlanadi.
@@ -150,9 +152,9 @@ export default function CashboxKirimDrawer({
   // uchun o'qituvchini telefon raqami bo'yicha ham topsa bo'ladi.
   const teacherByName = useMemo(() => {
     const map = new Map<string, string>();
-    for (const t of teachers) {
-      const k = key(t.name);
-      if (!map.has(k)) map.set(k, t.phone ? `+998 ${t.phone}` : "");
+    for (const tv of teachers) {
+      const k = key(tv.name);
+      if (!map.has(k)) map.set(k, tv.phone ? `+998 ${tv.phone}` : "");
     }
     return map;
   }, [teachers]);
@@ -162,7 +164,7 @@ export default function CashboxKirimDrawer({
   const selectedBalance = studentName ? balanceOf(studentName) : 0;
 
   const selectedType = useMemo(
-    () => categories.find((t) => t.id === categoryId) ?? null,
+    () => categories.find((tv) => tv.id === categoryId) ?? null,
     [categories, categoryId],
   );
   // Serverga NOM ketadi — jurnal/analitika nom bo'yicha guruhlaydi.
@@ -228,12 +230,12 @@ export default function CashboxKirimDrawer({
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.ok) return;
-        // TURLAR TO'LIQ SAQLANADI. Ilgari bu yerda `.map((t) => t.name)`
+        // TURLAR TO'LIQ SAQLANADI. Ilgari bu yerda `.map((tv) => tv.name)`
         // turardi va turning "Mijoz" (`customerType`) maydoni aynan shu
         // qatorda yo'qolardi — javobda bor edi, lekin brauzergacha yetib
         // kelmasdi. Nom bo'yicha dedup ham olib tashlandi: endi kalit
         // `id`, ya'ni bir xil nomli ikki tur bir-birini yutmaydi.
-        const kirim = (d.types as TransactionType[]).filter((t) => t.mainType === "kirim");
+        const kirim = (d.types as TransactionType[]).filter((tv) => tv.mainType === "kirim");
         setCategories(kirim);
         // Moliya → Tranzaksiya turi sahifasining "Kirim" tabida BIRINCHI
         // turgan tur avtomatik tanlanadi (tartib API'dagi id bo'yicha).
@@ -254,7 +256,7 @@ export default function CashboxKirimDrawer({
 
   async function save() {
     if (!category) {
-      showError("Tranzaksiya turini tanlang");
+      showError(t("Tranzaksiya turini tanlang"));
       return;
     }
     // Tanlov maydoni KO'RINIB TURGAN bo'lsa, u bo'sh qolmasin. Aks holda
@@ -262,7 +264,7 @@ export default function CashboxKirimDrawer({
     // foizli oyligiga ham tushmaydi va shunchaki nomsiz tushum bo'lib
     // qoladi. Chiqim oynasida bu qorovul allaqachon bor.
     if (showStudent && !studentName.trim()) {
-      showError("O'quvchini tanlang");
+      showError(t("O'quvchini tanlang"));
       return;
     }
     // O'QITUVCHI faqat u YAGONA tanlov bo'lganda majburiy.
@@ -273,18 +275,18 @@ export default function CashboxKirimDrawer({
     // hali biriktirilmagan bo'lishi mumkin. Yagona tanlov bo'lgan holatda
     // esa uni bo'sh qoldirish yozuvni butunlay egasiz qilardi.
     if (showTeacher && !showStudent && !teacherName.trim()) {
-      showError("O'qituvchini tanlang");
+      showError(t("O'qituvchini tanlang"));
       return;
     }
     // "Uchinchi shaxs" turida summa QATORLARDAN yig'iladi, boshqa
     // turlarda — bitta maydondan.
     const amountNum = showRows ? total : Number(amount);
     if (!amountNum || amountNum <= 0) {
-      showError("Qiymatni to'g'ri kiriting");
+      showError(t("Qiymatni to'g'ri kiriting"));
       return;
     }
     if (!method) {
-      showError("To'lov turini tanlang");
+      showError(t("To'lov turini tanlang"));
       return;
     }
     // BITTA YOZUV, YIG'INDI BILAN — qatorlar alohida jurnal yozuvi
@@ -339,15 +341,15 @@ export default function CashboxKirimDrawer({
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       invalidateBalances();      // ...va o'quvchi balansi ham o'zgardi
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.cashbox as Cashbox);
-      showSuccess("Kirim qo'shildi");
+      showSuccess(t("Kirim qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -358,7 +360,7 @@ export default function CashboxKirimDrawer({
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <h3 className="text-[16px] font-semibold flex-1">Kirim</h3>
+          <h3 className="text-[16px] font-semibold flex-1">{t("Kirim")}</h3>
           <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-white/15 inline-flex items-center justify-center">
             <X className="w-4 h-4" />
           </button>
@@ -366,20 +368,20 @@ export default function CashboxKirimDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Tranzaksiya")}</label>
             <div className="relative">
               {/* Ikkala yo'l ham `pickType()` dan o'tadi — u yagona
                   darvoza (izohi funksiyaning o'zida). */}
               <Select value={String(categoryId ?? "")} onChange={(v) => {
                   const id = Number(v);
-                  pickType(categories.find((t) => t.id === id) ?? null);
+                  pickType(categories.find((tv) => tv.id === id) ?? null);
                 }} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(categoriesLoading, categories.length, "Kirim turi qo’shilmagan")} clearable disabled={categoriesLoading} />
               {categoryId !== null && (
                 <button
                   type="button"
                   onClick={() => pickType(null)}
                   className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  title="Tozalash"
+                  title={t("Tozalash")}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -401,12 +403,12 @@ export default function CashboxKirimDrawer({
                 topish uchun butun ro'yxatni aylantirishga to'g'ri kelardi,
                 telefon raqami esa umuman ko'rinmasdi. */}
             <StudentSearchSelect
-              label="O'qituvchini tanlang"
+              label={t("O'qituvchini tanlang")}
               value={teacherName}
               onChange={setTeacherName}
               options={teacherNames}
               loading={teachersLoading}
-              placeholder="Ism yoki telefon bo'yicha qidiring…"
+              placeholder={t("Ism yoki telefon bo'yicha qidiring…")}
               subtitleOf={(n) => teacherPhoneOf(n)}
             />
           </div>
@@ -415,16 +417,16 @@ export default function CashboxKirimDrawer({
           {showStudent && (
           <div>
             <StudentSearchSelect
-              label="O'quvchini tanlang"
+              label={t("O'quvchini tanlang")}
               value={studentName}
               onChange={setStudentName}
               options={studentNames}
               loading={studentsLoading}
-              placeholder="Ism yoki telefon bo'yicha qidiring…"
+              placeholder={t("Ism yoki telefon bo'yicha qidiring…")}
               subtitleOf={(n) => phoneOf(n)}
               trailingOf={(n) => {
                 const b = balanceOf(n);
-                return <span className={b < 0 ? "text-rose-600" : "text-muted-foreground"}>{fmtSom(b)}</span>;
+                return <span className={b < 0 ? "text-rose-600" : "text-muted-foreground"}>{t(fmtSom(b))}</span>;
               }}
             />
             {/* Ro'yxat fonda yangilanayotgan payt. Sababi ko'rinib tursin:
@@ -433,21 +435,21 @@ export default function CashboxKirimDrawer({
                 qo'shgan o'quvchini topa olmagan kassir nima kutayotganini
                 bilmasdi. */}
             {studentsRefreshing && (
-              <p className="mt-1 text-[11px] text-muted-foreground">Ro&apos;yxat yangilanmoqda…</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{t("Ro'yxat yangilanmoqda…")}</p>
             )}
             {/* Tanlangandan keyin — balans va telefon. */}
             {selectedStudent && (
               <div className="mt-2 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-[12px]">
                 <div>
                   Balans:{" "}
-                  <strong className={selectedBalance < 0 ? "text-rose-600" : "text-emerald-600"}>{fmtSom(selectedBalance)}</strong>
+                  <strong className={selectedBalance < 0 ? "text-rose-600" : "text-emerald-600"}>{t(fmtSom(selectedBalance))}</strong>
                   {selectedStudent.phone && <span className="text-muted-foreground"> · +998 {selectedStudent.phone}</span>}
                 </div>
                 <Link
                   href={`/student-edit/${selectedStudent.id}?src=list`}
                   className="mt-1.5 inline-flex items-center gap-1.5 text-primary hover:underline"
                 >
-                  O&apos;quvchi profilini ko&apos;rish
+                  {t("O'quvchi profilini ko'rish")}
                 </Link>
               </div>
             )}
@@ -457,7 +459,7 @@ export default function CashboxKirimDrawer({
           {/* ODATDAGI turlar — bitta Qiymat maydoni (bugungidek). */}
           {!showRows && (
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
               <MoneyInput
                 value={amount}
                 onChange={setAmount}
@@ -475,16 +477,16 @@ export default function CashboxKirimDrawer({
               {rows.map((row, i) => (
                 <div key={row.id} className="flex items-end gap-2">
                   <div className="flex-1 min-w-0">
-                    <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+                    <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
                     <MoneyInput
                       value={row.amount}
                       onChange={(v) => updateRow(row.id, { amount: v })}
-                      placeholder="Qiymat"
+                      placeholder={t("Qiymat")}
                       className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <label className="block text-[13px] font-medium mb-1.5">Oyni tanlang</label>
+                    <label className="block text-[13px] font-medium mb-1.5">{t("Oyni tanlang")}</label>
                     <MonthYearPicker
                       className="w-full"
                       value={{
@@ -503,7 +505,7 @@ export default function CashboxKirimDrawer({
                       type="button"
                       onClick={() => removeRow(row.id)}
                       className="h-10 w-10 shrink-0 rounded-lg border border-border text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center"
-                      title="O'chirish"
+                      title={t("O'chirish")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -514,7 +516,7 @@ export default function CashboxKirimDrawer({
                 type="button"
                 onClick={addRow}
                 className="h-9 w-9 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 inline-flex items-center justify-center"
-                title="Qator qo'shish"
+                title={t("Qator qo'shish")}
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -526,7 +528,7 @@ export default function CashboxKirimDrawer({
               ga EMAS: yuboriladigan summa ekranda ko'rinib turishi kerak. */}
           {rows.length > 1 && showRows && (
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Umumiy summa</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Umumiy summa")}</label>
               <input
                 value={groupNumber(total)}
                 readOnly
@@ -537,7 +539,7 @@ export default function CashboxKirimDrawer({
           )}
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">To&apos;lov turi</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("To'lov turi")}</label>
             <Select value={method} onChange={(v) => setMethod(v)} options={paymentMethods.map((m) => ({ value: m.key, label: m.name }))} placeholder={selectPlaceholder(methodsLoading, paymentMethods.length, "To’lov turi qo’shilmagan")} clearable disabled={methodsLoading} />
           </div>
 
@@ -545,7 +547,7 @@ export default function CashboxKirimDrawer({
               yerda faqat sana qoladi va grid bitta ustunga tushadi. */}
           <div className={showRows ? "" : "grid grid-cols-2 gap-3"}>
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Sanani tanlang</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
               <DatePicker
                 value={date}
                 onChange={(d) => {
@@ -560,7 +562,7 @@ export default function CashboxKirimDrawer({
             </div>
             {!showRows && (
               <div>
-                <label className="block text-[13px] font-medium mb-1.5">Qaysi oy uchun</label>
+                <label className="block text-[13px] font-medium mb-1.5">{t("Qaysi oy uchun")}</label>
                 <MonthYearPicker
                   className="w-full"
                   value={{ month: Number(periodMonth.slice(5, 7)), year: Number(periodMonth.slice(0, 4)) }}
@@ -585,12 +587,12 @@ export default function CashboxKirimDrawer({
               yozilgan izohlar chiqadi va yozgan sari filtrlanadi. Ro'yxat
               MAJBURLAMAYDI: yangi matn ham bemalol yoziladi. */}
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <SuggestInput
               value={note}
               onChange={setNote}
               options={noteOptions}
-              placeholder="Yozing yoki avvalgilaridan tanlang"
+              placeholder={t("Yozing yoki avvalgilaridan tanlang")}
               className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
@@ -598,10 +600,10 @@ export default function CashboxKirimDrawer({
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

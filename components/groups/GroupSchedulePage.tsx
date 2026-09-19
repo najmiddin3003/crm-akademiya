@@ -44,6 +44,7 @@ import {
   weekdaysForDayPattern,
 } from "@/constants/groupsSchedule";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 type GroupBy = "room" | "teacher";
 type Layout = "grid" | "row";
@@ -84,6 +85,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function GroupSchedulePage({ showStats = false }: { showStats?: boolean }) {
+  const { t, weekdaysShort } = useT();
   const { showSuccess } = useToast();
   const { names: roomNames } = useRooms();
   const { names: courseNames } = useOfflineCourseList();
@@ -216,17 +218,17 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
     const csv = [headers, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
     const dayIdx = SCHEDULE_DAY_ORDER.indexOf(day);
     downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), `dars-jadvali-${SCHEDULE_DAY_LONG[dayIdx] || day}.csv`);
-    showSuccess(`CSV yuklab olindi — ${filtered.length} ta`);
+    showSuccess(t("CSV yuklab olindi — {filtered} ta", { filtered: filtered.length }));
   }
 
   return (
     <div id="view-groups-schedule" className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       {/* Sarlavha + Export/Filtr */}
       <div className="flex items-center justify-between non-fullscreen">
-        <h1 className="text-lg font-semibold tracking-tight">Dars jadvali</h1>
+        <h1 className="text-lg font-semibold tracking-tight">{t("Dars jadvali")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" lucideIcon={Download} onClick={exportCSV}>
-            Export
+            {t("Export")}
           </Button>
           {/* Tugma FAQAT kartalar bo'lganda: xodim bironta ham kartani
               ko'ra olmasa (server bo'sh ro'yxat qaytaradi) u hech narsani
@@ -234,13 +236,13 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
           {showStats && kpis.length > 0 && (
             <button
               onClick={() => setStatsVisible((v) => !v)}
-              title="Statistika kartalarini ko'rsatish/yashirish"
+              title={t("Statistika kartalarini ko'rsatish/yashirish")}
               className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium transition-colors ${
                 statsVisible ? "bg-primary text-white hover:opacity-90" : "border border-border bg-card hover:bg-secondary"
               }`}
             >
               <BarChart3 className="icon icon-sm" />
-              <span>Statistika</span>
+              <span>{t("Statistika")}</span>
             </button>
           )}
           <button
@@ -250,7 +252,7 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
             }`}
           >
             <Filter className="icon icon-sm" />
-            <span>Filtr</span>
+            <span>{t("Filtr")}</span>
             {activeFilterCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
                 {activeFilterCount}
@@ -270,7 +272,7 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
                   <svg className="icon"><use href={`#${k.icon}`} /></svg>
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-[11px] leading-tight text-muted-foreground">{k.label}</span>
+                  <span className="block truncate text-[11px] leading-tight text-muted-foreground">{t(k.label)}</span>
                   <span className="block text-[17px] font-bold tabular-nums leading-tight">
                     {k.value === null ? "—" : k.value.toLocaleString("ru-RU").replace(/,/g, " ")}
                   </span>
@@ -297,28 +299,28 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
           <FilterSelect
             value={filters.teacher}
             onChange={(v) => setFilters((f) => ({ ...f, teacher: v }))}
-            placeholder="O'qituvchi"
+            placeholder={t("O'qituvchi")}
             width="w-40"
-            options={filterOptions.teachers.map((t) => [t, t] as [string, string])}
+            options={filterOptions.teachers.map((tv) => [tv, tv] as [string, string])}
           />
           <FilterSelect
             value={filters.course}
             onChange={(v) => setFilters((f) => ({ ...f, course: v }))}
-            placeholder="Kurs"
+            placeholder={t("Kurs")}
             width="w-36"
             options={courseNames.map((c) => [c, c] as [string, string])}
           />
           <FilterSelect
             value={filters.room}
             onChange={(v) => setFilters((f) => ({ ...f, room: v }))}
-            placeholder="Xona"
+            placeholder={t("Xona")}
             width="w-32"
             options={filterOptions.rooms.map((r) => [r, r] as [string, string])}
           />
           <FilterSelect
             value={filters.dayType}
             onChange={(v) => setFilters((f) => ({ ...f, dayType: v }))}
-            placeholder="Kun turi"
+            placeholder={t("Kun turi")}
             width="w-36"
             options={GROUP_DAYS.map((d) => [d, d] as [string, string])}
           />
@@ -326,7 +328,7 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
             onClick={clearFilters}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
-            <X className="icon icon-xs" /> Tozalash
+            <X className="icon icon-xs" />{" "}{t("Tozalash")}
           </button>
         </div>
       )}
@@ -340,26 +342,26 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
               onClick={() => setDay(d)}
               className={`px-3 py-1.5 rounded-md text-sm font-medium ${d === day ? "bg-primary text-white" : "hover:bg-secondary"}`}
             >
-              {SCHEDULE_DAY_LABELS[i]}
+              {weekdaysShort[i] ?? SCHEDULE_DAY_LABELS[i]}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-border bg-card p-0.5 non-fullscreen">
-            <ToggleBtn active={groupBy === "room"} onClick={() => setGroupBy("room")} title="Xona bo'yicha" Icon={DoorOpen} />
-            <ToggleBtn active={groupBy === "teacher"} onClick={() => setGroupBy("teacher")} title="O'qituvchi bo'yicha" Icon={User} />
+            <ToggleBtn active={groupBy === "room"} onClick={() => setGroupBy("room")} title={t("Xona bo'yicha")} Icon={DoorOpen} />
+            <ToggleBtn active={groupBy === "teacher"} onClick={() => setGroupBy("teacher")} title={t("O'qituvchi bo'yicha")} Icon={User} />
           </div>
           <div className="flex rounded-lg border border-border bg-card p-0.5 non-fullscreen">
-            <ToggleBtn active={layout === "grid"} onClick={() => setLayout("grid")} title="Ustun ko'rinishi" Icon={LayoutGrid} />
-            <ToggleBtn active={layout === "row"} onClick={() => setLayout("row")} title="Qator ko'rinishi" Icon={Rows3} />
+            <ToggleBtn active={layout === "grid"} onClick={() => setLayout("grid")} title={t("Ustun ko'rinishi")} Icon={LayoutGrid} />
+            <ToggleBtn active={layout === "row"} onClick={() => setLayout("row")} title={t("Qator ko'rinishi")} Icon={Rows3} />
           </div>
           <button
             onClick={() => setFullscreen((v) => !v)}
-            title={fullscreen ? "Kichik xolatda ko'rish" : "To'liq ekran"}
+            title={fullscreen ? t("Kichik xolatda ko'rish") : t("To'liq ekran")}
             className="inline-flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-card hover:bg-secondary"
           >
             {fullscreen ? <Minimize2 className="icon icon-sm" /> : <Maximize2 className="icon icon-sm" />}
-            {fullscreen && <span className="text-sm font-medium">Kichik xolatda ko&apos;rish</span>}
+            {fullscreen && <span className="text-sm font-medium">{t("Kichik xolatda ko'rish")}</span>}
           </button>
         </div>
       </div>
@@ -369,7 +371,7 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
         <div className="py-16 text-center text-sm text-muted-foreground"><SpinnerBlock /></div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center text-sm text-muted-foreground">
-          {SCHEDULE_DAY_LONG[SCHEDULE_DAY_ORDER.indexOf(day)]} kuni uchun dars topilmadi.
+          {t("{day} kuni uchun dars topilmadi.", { day: t(SCHEDULE_DAY_LONG[SCHEDULE_DAY_ORDER.indexOf(day)]) })}
         </div>
       ) : layout === "row" ? (
         <RowLayout columns={columns} lessons={placed} groupBy={groupBy} onHover={setHover} />
@@ -453,6 +455,7 @@ function LessonHoverPanel({
   onEnter: () => void;
   onLeave: () => void;
 }) {
+  const { t } = useT();
   const W = 280;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - W - 8));
   const below = rect.bottom + 8;
@@ -484,7 +487,7 @@ function LessonHoverPanel({
         href={`/groups/${g.id}`}
         className="mt-1 pt-1.5 border-t border-border block text-[11px] font-medium text-primary hover:underline"
       >
-        Guruh sahifasini ochish →
+        {t("Guruh sahifasini ochish →")}
       </Link>
     </div>
   );
@@ -501,6 +504,7 @@ function LessonCard({
   row?: boolean;
   onHover: (g: Group | null, rect: DOMRect | null) => void;
 }) {
+  const { t } = useT();
   const g = p.group;
   const tip = `№${g.name} · ${g.teacher} · ${g.room}`;
   const router = useRouter();
@@ -548,7 +552,7 @@ function LessonCard({
             to'sadi, ya'ni guruh sahifasi ochilib ketmaydi. */}
         <div className="tname"><PersonLink name={g.teacher} kind="staff" className="underline-offset-2 hover:underline" /></div>
         <div className="room">{groupBy === "room" ? `Xona: ${g.room}` : g.room}</div>
-        <div className="text-[10px] opacity-80 mt-0.5">{g.day}</div>
+        <div className="text-[10px] opacity-80 mt-0.5">{t(g.day)}</div>
       </div>
       <div className="meta">
         <span className="gnum" style={{ fontSize: 14 }}>
@@ -622,9 +626,9 @@ function RowLayoutInner({ columns, lessons, groupBy, onHover }: { columns: strin
     <div className="schedule-scroll">
       <div className="schedule-row" style={{ gridTemplateColumns: cols, minWidth }}>
         <div className="sch-time-h sch-corner" />
-        {SCHEDULE_TIME_SLOTS.map((t, i) => (
+        {SCHEDULE_TIME_SLOTS.map((tv, i) => (
           <div key={`th${i}`} className="sch-time-h">
-            {t}
+            {tv}
           </div>
         ))}
         {columns.map((c, r) => (

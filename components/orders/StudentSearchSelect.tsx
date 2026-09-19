@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONTROL_CLS, ROW_CLS_TIGHT, RowChevron, RowLabel } from "@/components/orders/FormRow";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { LOADING_TEXT } from "@/lib/selectPlaceholder";
+import { useT } from "@/components/shared/Language";
 
 export interface StudentSearchSelectProps {
   label: string;
@@ -97,6 +98,7 @@ export default function StudentSearchSelect({
   loading,
   emptyText,
 }: StudentSearchSelectProps) {
+  const { t } = useT();
   const isDisabled = (name: string) => Boolean(disabledOptions?.includes(name));
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -164,7 +166,7 @@ export default function StudentSearchSelect({
             }}
             className="block w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-secondary"
           >
-            Tozalash
+            {t("Tozalash")}
           </button>
         )}
         {/* Yuklanish "Topilmadi" dan USTUN: ro'yxat kelmaguncha bo'sh-holat
@@ -173,7 +175,7 @@ export default function StudentSearchSelect({
           <SpinnerBlock size={20} />
         ) : filtered.length === 0 ? (
           <div className="px-3 py-3 text-sm text-muted-foreground">
-            {options.length === 0 && emptyText ? emptyText : "Topilmadi"}
+            {options.length === 0 && emptyText ? emptyText : t("Topilmadi")}
           </div>
         ) : (
           shown.map((name, i) => (

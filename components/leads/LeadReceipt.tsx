@@ -1,6 +1,7 @@
 "use client";
 
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // LID CHEKI — avval ko'rib chiqish oynasi, keyin brauzerning bosma oynasi.
 //
@@ -84,13 +85,14 @@ export function printLeadReceipt(r: LeadReceipt) {
  * brauzerning bosma oynasi ochiladi.
  */
 export default function LeadReceiptModal({ receipt, onClose }: { receipt: LeadReceipt; onClose: () => void }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={300} panelClassName="p-5 space-y-4">
-      <h3 className="text-lg font-semibold">Chek — ko&apos;rib chiqish</h3>
+      <h3 className="text-lg font-semibold">{t("Chek — ko'rib chiqish")}</h3>
       <div className="rounded-xl border border-border bg-background p-4">
-        <div className="text-center text-[13px] font-bold tracking-[0.15em]">Akademiya CRM</div>
-        <div className="mt-1 text-center text-sm font-bold">{receipt.heading}</div>
+        <div className="text-center text-[13px] font-bold tracking-[0.15em]">{t("Akademiya CRM")}</div>
+        <div className="mt-1 text-center text-sm font-bold">{t(receipt.heading)}</div>
         <div className="my-3 border-t border-dashed border-border" />
         <div className="max-h-72 overflow-y-auto">
           {receipt.rows.map(([k, v]) => (
@@ -101,18 +103,18 @@ export default function LeadReceiptModal({ receipt, onClose }: { receipt: LeadRe
           ))}
         </div>
         <div className="my-3 border-t border-dashed border-border" />
-        <div className="text-center text-xs italic text-muted-foreground">Akademiya - ilm maskani!</div>
+        <div className="text-center text-xs italic text-muted-foreground">{t("Akademiya - ilm maskani!")}</div>
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={modal.close} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
         <button
           type="button"
           onClick={() => { printLeadReceipt(receipt); modal.close(); }}
           className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90"
         >
-          Chop etish
+          {t("Chop etish")}
         </button>
       </div>
     </Modal>

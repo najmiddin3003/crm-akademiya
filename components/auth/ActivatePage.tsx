@@ -8,6 +8,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import PhoneField, { formatPhoneDigits } from "@/components/auth/PhoneField";
 import OtpInput from "@/components/auth/OtpInput";
 import PasswordField from "@/components/auth/PasswordField";
+import { useT } from "@/components/shared/Language";
 
 type Step = "loading" | "phone" | "otp" | "password" | "done";
 
@@ -16,9 +17,10 @@ type Step = "loading" | "phone" | "otp" | "password" | "done";
 //  - Qo'lda: telefon -> SMS kod -> parol.
 // Parol o'rnatilgach status='active' bo'lib, kirish sahifasiga yo'naltiriladi.
 export default function ActivatePage() {
+  const { t } = useT();
   const router = useRouter();
   const params = useSearchParams();
-  const token = params.get("t") || "";
+  const token = params.get("tv") || "";
 
   const [step, setStep] = useState<Step>(token ? "loading" : "phone");
   const [maskedPhone, setMaskedPhone] = useState("");
@@ -51,12 +53,12 @@ export default function ActivatePage() {
           setMaskedPhone(data.phone || "");
           setStep("password");
         } else {
-          setError(data.error || "Havola yaroqsiz. Telefon raqamingiz orqali davom eting.");
+          setError(t(data.error || "Havola yaroqsiz. Telefon raqamingiz orqali davom eting."));
           setStep("phone");
         }
       } catch {
         if (!cancelled) {
-          setError("Serverga ulanib bo'lmadi.");
+          setError(t("Serverga ulanib bo'lmadi."));
           setStep("phone");
         }
       }
@@ -64,19 +66,19 @@ export default function ActivatePage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, t]);
 
   // OTP bosqichida qayta yuborish taymeri.
   useEffect(() => {
     if (step !== "otp" || secondsLeft <= 0) return;
-    const t = setTimeout(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearTimeout(t);
+    const tv = setTimeout(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(tv);
   }, [step, secondsLeft]);
 
   useEffect(() => {
     if (step !== "done") return;
-    const t = setTimeout(() => router.push("/"), 1600);
-    return () => clearTimeout(t);
+    const tv = setTimeout(() => router.push("/"), 1600);
+    return () => clearTimeout(tv);
   }, [step, router]);
 
   const timerLabel = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
@@ -85,7 +87,7 @@ export default function ActivatePage() {
   const requestCode = async (e: FormEvent) => {
     e.preventDefault();
     if (phone.length < 9) {
-      setError("To'liq telefon raqamni kiriting");
+      setError(t("To'liq telefon raqamni kiriting"));
       return;
     }
     setError("");
@@ -98,14 +100,14 @@ export default function ActivatePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Kod yuborilmadi");
+        setError(t(data.error || "Kod yuborilmadi"));
         return;
       }
       setOtp("");
       setSecondsLeft(120);
       setStep("otp");
     } catch {
-      setError("Serverga ulanib bo'lmadi.");
+      setError(t("Serverga ulanib bo'lmadi."));
     } finally {
       setBusy(false);
     }
@@ -130,7 +132,7 @@ export default function ActivatePage() {
   const confirmCode = (e: FormEvent) => {
     e.preventDefault();
     if (otp.length < 6) {
-      setError("6 xonali kodni to'liq kiriting");
+      setError(t("6 xonali kodni to'liq kiriting"));
       return;
     }
     setError("");
@@ -141,11 +143,11 @@ export default function ActivatePage() {
   const finish = async (e: FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
-      setError("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      setError(t("Parol kamida 8 ta belgidan iborat bo'lishi kerak"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Parollar mos kelmadi");
+      setError(t("Parollar mos kelmadi"));
       return;
     }
     setError("");
@@ -161,14 +163,14 @@ export default function ActivatePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Faollashtirib bo'lmadi");
+        setError(t(data.error || "Faollashtirib bo'lmadi"));
         // Kod bilan bog'liq xato bo'lsa, foydalanuvchini kod bosqichiga qaytaramiz.
         if (!tokenValid) setStep("otp");
         return;
       }
       setStep("done");
     } catch {
-      setError("Serverga ulanib bo'lmadi.");
+      setError(t("Serverga ulanib bo'lmadi."));
     } finally {
       setBusy(false);
     }
@@ -177,20 +179,20 @@ export default function ActivatePage() {
   return (
     <AuthShell>
       {step === "loading" && (
-        <div className="py-6 text-center text-sm text-muted-foreground">Havola tekshirilmoqda...</div>
+        <div className="py-6 text-center text-sm text-muted-foreground">{t("Havola tekshirilmoqda...")}</div>
       )}
 
       {step === "phone" && (
         <>
-          <h1 className="text-lg font-semibold tracking-tight">Akkauntni faollashtirish</h1>
+          <h1 className="text-lg font-semibold tracking-tight">{t("Akkauntni faollashtirish")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Sizga SMS orqali yuborilgan raqamni kiriting, tasdiqlash kodini yuboramiz
+            {t("Sizga SMS orqali yuborilgan raqamni kiriting, tasdiqlash kodini yuboramiz")}
           </p>
           <form onSubmit={requestCode} className="mt-5 space-y-3.5">
             <PhoneField value={phone} onChange={setPhone} />
             {error && <p className="text-[13px] text-red-500">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full justify-center">
-              {busy ? "Yuborilmoqda..." : "Kod yuborish"}
+              {busy ? t("Yuborilmoqda...") : t("Kod yuborish")}
             </Button>
           </form>
         </>
@@ -198,19 +200,19 @@ export default function ActivatePage() {
 
       {step === "otp" && (
         <>
-          <h1 className="text-lg font-semibold tracking-tight">Kodni tasdiqlang</h1>
+          <h1 className="text-lg font-semibold tracking-tight">{t("Kodni tasdiqlang")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">+998 {formatPhoneDigits(phone)}</span> raqamiga 6 xonali kod yuborildi
+            <span className="font-medium text-foreground">+998 {formatPhoneDigits(phone)}</span>{" "}{t("raqamiga 6 xonali kod yuborildi")}
           </p>
           <form onSubmit={confirmCode} className="mt-5 space-y-4">
             <div className="flex justify-center">
               <OtpInput value={otp} onChange={setOtp} />
             </div>
             {error && <p className="text-center text-[13px] text-red-500">{error}</p>}
-            <Button type="submit" className="w-full justify-center">Tasdiqlash</Button>
+            <Button type="submit" className="w-full justify-center">{t("Tasdiqlash")}</Button>
             {secondsLeft > 0 ? (
               <p className="text-center text-[13px] text-muted-foreground">
-                Qayta yuborish <span className="font-semibold tabular-nums text-foreground">{timerLabel}</span>
+                {t("Qayta yuborish")}{" "}<span className="font-semibold tabular-nums text-foreground">{timerLabel}</span>
               </p>
             ) : (
               <button
@@ -219,7 +221,7 @@ export default function ActivatePage() {
                 disabled={busy}
                 className="w-full text-center text-[13px] font-medium text-primary hover:underline"
               >
-                Qayta kod yuborish
+                {t("Qayta kod yuborish")}
               </button>
             )}
           </form>
@@ -227,24 +229,24 @@ export default function ActivatePage() {
       )}
 
       <div>
-        <h1>Kassalar</h1>
-        <img src="/images/cashiers.jpg" alt="Kassalar" />
+        <h1>{t("Kassalar")}</h1>
+        <img src="/images/cashiers.jpg" alt={t("Kassalar")} />
 
       </div>
 
 
       {step === "password" && (
         <>
-          <h1 className="text-lg font-semibold tracking-tight">Parol o&apos;rnating</h1>
+          <h1 className="text-lg font-semibold tracking-tight">{t("Parol o'rnating")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {maskedPhone ? `${maskedPhone} raqami uchun ` : ""}kamida 8 ta belgili parol kiriting
           </p>
           <form onSubmit={finish} className="mt-5 space-y-3.5">
-            <PasswordField label="Parolni kiriting" value={password} onChange={setPassword} />
-            <PasswordField label="Parolni tasdiqlang" value={confirmPassword} onChange={setConfirmPassword} />
+            <PasswordField label={t("Parolni kiriting")} value={password} onChange={setPassword} />
+            <PasswordField label={t("Parolni tasdiqlang")} value={confirmPassword} onChange={setConfirmPassword} />
             {error && <p className="text-[13px] text-red-500">{error}</p>}
             <Button type="submit" disabled={busy} className="w-full justify-center">
-              {busy ? "Saqlanmoqda..." : "Faollashtirish"}
+              {busy ? t("Saqlanmoqda...") : t("Faollashtirish")}
             </Button>
           </form>
         </>
@@ -257,8 +259,8 @@ export default function ActivatePage() {
               <path d="M20 6 9 17l-5-5" />
             </svg>
           </div>
-          <p className="text-sm font-medium">Akkaunt faollashtirildi!</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">Kirish sahifasiga yo&apos;naltirilmoqda...</p>
+          <p className="text-sm font-medium">{t("Akkaunt faollashtirildi!")}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">{t("Kirish sahifasiga yo'naltirilmoqda...")}</p>
         </div>
       )}
 
@@ -266,7 +268,7 @@ export default function ActivatePage() {
         <p className="mt-5 text-center text-[13px] text-muted-foreground">
           Akkountingiz faolmi?{" "}
           <Link href="/" className="font-medium text-primary hover:underline">
-            Kirish
+            {t("Kirish")}
           </Link>
         </p>
       )}

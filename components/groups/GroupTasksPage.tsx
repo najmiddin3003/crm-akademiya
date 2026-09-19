@@ -9,6 +9,7 @@ import TaskModal from "./TaskModal";
 import type { GroupTask } from "@/lib/groupTasks";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Guruh → Barcha vazifalar (crm-akademiya #view-groups-tasks). Barcha guruhlar
 // bo'ylab vazifalar (/api/group-tasks). "Imtihon qo'shish" → TaskModal (qo'shish),
@@ -16,6 +17,7 @@ import Modal from "@/components/ui/Modal";
 const thCls = "text-left px-3 py-3 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
 
 export default function GroupTasksPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [tasks, setTasks] = useState<GroupTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,16 +41,16 @@ export default function GroupTasksPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    const t = deleteTarget;
+    const tv = deleteTarget;
     setDeleteTarget(null);
     try {
-      const res = await fetch(`/api/group-tasks/${t.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/group-tasks/${tv.id}`, { method: "DELETE" });
       const data = await res.json();
-      if (!data.ok) { showError(data.error || "O'chirilmadi"); return; }
-      setTasks((prev) => prev.filter((x) => x.id !== t.id));
-      showSuccess("Vazifa o'chirildi");
+      if (!data.ok) { showError(t(data.error || "O'chirilmadi")); return; }
+      setTasks((prev) => prev.filter((x) => x.id !== tv.id));
+      showSuccess(t("Vazifa o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     }
   }
 
@@ -63,14 +65,14 @@ export default function GroupTasksPage() {
 
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
-          <Plus className="icon icon-sm" />Imtihon qo&apos;shish
+          <Plus className="icon icon-sm" />{t("Imtihon qo'shish")}
         </button>
       </div>
 
       <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="flex items-center justify-end px-4 py-2.5 border-b border-border">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-            <span className="text-muted-foreground">Umumiy soni:</span>
+            <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
             <span className="font-bold tabular-nums">{tasks.length}</span>
           </div>
         </div>
@@ -79,33 +81,33 @@ export default function GroupTasksPage() {
             <thead className="border-b border-border">
               <tr>
                 <th className={thCls}>№</th>
-                <th className={thCls}>Turi</th>
-                <th className={thCls}>Nomi</th>
-                <th className={thCls}>Topshirish muddati</th>
-                <th className={thCls}>O&apos;qituvchi</th>
-                <th className={thCls}>Guruh</th>
-                <th className={thCls}>Maksimal ball</th>
-                <th className={thCls}>Izoh</th>
-                <th className={thCls}>Yaratilgan sanasi</th>
+                <th className={thCls}>{t("Turi")}</th>
+                <th className={thCls}>{t("Nomi")}</th>
+                <th className={thCls}>{t("Topshirish muddati")}</th>
+                <th className={thCls}>{t("O'qituvchi")}</th>
+                <th className={thCls}>{t("Guruh")}</th>
+                <th className={thCls}>{t("Maksimal ball")}</th>
+                <th className={thCls}>{t("Izoh")}</th>
+                <th className={thCls}>{t("Yaratilgan sanasi")}</th>
                 <th className={`${thCls} text-right`} />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {slice.map((t, i) => (
-                <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+              {slice.map((tv, i) => (
+                <tr key={tv.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 text-[13px]">{t.type}</td>
-                  <td className="px-3 py-3"><span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary text-[13px] font-medium">{t.name}</span></td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{t.deadline || "—"}</td>
-                  <td className="px-3 py-3 text-[13px]"><PersonLink name={t.teacher} kind="staff" /></td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{t.groupName || "—"}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums">{t.maxScore}</td>
-                  <td className="px-3 py-3 text-[13px] text-muted-foreground truncate" style={{ maxWidth: 200 }}>{t.note || "—"}</td>
-                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{t.createdAt}</td>
+                  <td className="px-3 py-3 text-[13px]">{t(tv.type)}</td>
+                  <td className="px-3 py-3"><span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary text-[13px] font-medium">{tv.name}</span></td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{tv.deadline || "—"}</td>
+                  <td className="px-3 py-3 text-[13px]"><PersonLink name={tv.teacher} kind="staff" /></td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums">{tv.groupName || "—"}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums">{tv.maxScore}</td>
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground truncate" style={{ maxWidth: 200 }}>{tv.note || "—"}</td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{tv.createdAt}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      <button onClick={() => setEditTask(t)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title="Tahrirlash"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => setDeleteTarget(t)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => setEditTask(tv)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title={t("Tahrirlash")}><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => setDeleteTarget(tv)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -120,18 +122,18 @@ export default function GroupTasksPage() {
       </div>
 
       {addOpen && (
-        <TaskModal onClose={() => setAddOpen(false)} onSaved={(t) => setTasks((prev) => [t, ...prev])} />
+        <TaskModal onClose={() => setAddOpen(false)} onSaved={(tv) => setTasks((prev) => [tv, ...prev])} />
       )}
       {editTask && (
-        <TaskModal task={editTask} onClose={() => setEditTask(null)} onSaved={(t) => setTasks((prev) => prev.map((x) => (x.id === t.id ? t : x)))} />
+        <TaskModal task={editTask} onClose={() => setEditTask(null)} onSaved={(tv) => setTasks((prev) => prev.map((x) => (x.id === tv.id ? tv : x)))} />
       )}
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Vazifani o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Vazifani o'chirmoqchimisiz?")}</p>
             <p className="text-center text-[13px] text-muted-foreground mt-1">{deleteTarget.name}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
-              <button onClick={modal.close} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Yo&apos;q</button>
-              <button onClick={confirmDelete} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700">Ha</button>
+              <button onClick={modal.close} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">{t("Yo'q")}</button>
+              <button onClick={confirmDelete} className="h-9 px-6 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700">{t("Ha")}</button>
             </div>
           </>)}</Modal>
       )}

@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Xodim profili → "Ish haqi" oynasi.
 //
@@ -40,6 +41,7 @@ export default function EmployeeSalaryConfigModal({
   onClose: () => void;
   onSaved: (updated: HrEmployee) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [branches, setBranches] = useState<NamedId[]>([]);
@@ -129,13 +131,13 @@ export default function EmployeeSalaryConfigModal({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
-      showSuccess(total > 0 ? "Ish haqi saqlandi" : "Saqlandi — ish haqi kiritilmagani uchun xodim \"sozlanmagan\" bo'lib qoladi");
+      showSuccess(total > 0 ? t("Ish haqi saqlandi") : t("Saqlandi — ish haqi kiritilmagani uchun xodim \"sozlanmagan\" bo'lib qoladi"));
       onSaved(data.employee as HrEmployee);
     } catch {
-      showError("Tarmoq xatosi — saqlanmadi");
+      showError(t("Tarmoq xatosi — saqlanmadi"));
     } finally {
       setSaving(false);
     }
@@ -146,7 +148,7 @@ export default function EmployeeSalaryConfigModal({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-card">
           <div>
             <h3 className="text-[15px] font-semibold">Ish haqi — {employee.name}</h3>
-            <p className="text-[12px] text-muted-foreground mt-0.5">Filial bo&apos;yicha oklad kiriting. Oylik hisobi va kassadagi chiqim chegarasi shu qiymatlarga tayanadi.</p>
+            <p className="text-[12px] text-muted-foreground mt-0.5">{t("Filial bo'yicha oklad kiriting. Oylik hisobi va kassadagi chiqim chegarasi shu qiymatlarga tayanadi.")}</p>
           </div>
           <button type="button" onClick={modal.close} className="h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-secondary">
             <X className="w-4 h-4" />
@@ -155,24 +157,22 @@ export default function EmployeeSalaryConfigModal({
 
         <div className="p-5 space-y-4">
           {loading ? (
-            <div className="py-12 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</div>
+            <div className="py-12 text-center text-[13px] text-muted-foreground">{t("Yuklanmoqda…")}</div>
           ) : (
             <>
               {isTeacher && (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
                   <label className="block text-[13px] font-medium mb-1.5">
-                    Oladigan foizi <span className="text-muted-foreground font-normal">— o&apos;qituvchi uchun asosiy</span>
+                    {t("Oladigan foizi")}{" "}<span className="text-muted-foreground font-normal">{t("— o'qituvchi uchun asosiy")}</span>
                   </label>
-                  <Select value={percent} onChange={(v) => setPercent(v)} options={percentOpts.map((p) => ({ value: p.name, label: `${p.name} (${p.percent}%)` }))} placeholder="Tanlanmagan" clearable />
+                  <Select value={percent} onChange={(v) => setPercent(v)} options={percentOpts.map((p) => ({ value: p.name, label: `${p.name} (${p.percent}%)` }))} placeholder={t("Tanlanmagan")} clearable />
                   <p className="text-[11.5px] text-muted-foreground mt-1.5">
-                    O&apos;qituvchi yaxlit oklad emas, o&apos;quvchilari to&apos;lagan puldan
-                    <strong> shu foizni</strong> oladi. Oylik har oy tushumdan avtomatik hisoblanadi.
-                    Ro&apos;yxat Sozlamalar → Moliya → Oylik foizlari dan.
+                    {t("O'qituvchi yaxlit oklad emas, o'quvchilari to'lagan puldan")}
+                    <strong>{" "}{t("shu foizni")}</strong>{" "}{t("oladi. Oylik har oy tushumdan avtomatik hisoblanadi. Ro'yxat Sozlamalar → Moliya → Oylik foizlari dan.")}
                   </p>
                   {selectedPercentNum !== null && (
                     <p className="text-[12px] mt-2">
-                      Masalan o&apos;quvchi <strong>100 000</strong> so&apos;m to&apos;lasa —
-                      o&apos;qituvchiga <strong className="text-emerald-700">{Math.round(100000 * selectedPercentNum / 100).toLocaleString("ru-RU")}</strong> so&apos;m qo&apos;shiladi.
+                      {t("Masalan o'quvchi")}{" "}<strong>100 000</strong>{" "}{t("so'm to'lasa — o'qituvchiga")}{" "}<strong className="text-emerald-700">{Math.round(100000 * selectedPercentNum / 100).toLocaleString("ru-RU")}</strong>{" "}{t("so'm qo'shiladi.")}
                     </p>
                   )}
                 </div>
@@ -181,13 +181,13 @@ export default function EmployeeSalaryConfigModal({
               <div>
                 <div className="text-[13px] font-medium mb-1">
                   Oklad (filial bo&apos;yicha)
-                  {isTeacher && <span className="text-muted-foreground font-normal"> — ixtiyoriy, faqat qat&apos;iy maosh oladigan o&apos;qituvchi uchun</span>}
+                  {isTeacher && <span className="text-muted-foreground font-normal">{" "}{t("— ixtiyoriy, faqat qat'iy maosh oladigan o'qituvchi uchun")}</span>}
                 </div>
                 <div className="grid grid-cols-4 gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-2">
-                  <span>Filial</span><span>Rol</span><span>Ish jadvali</span><span>Ish haqi</span>
+                  <span>{t("Filial")}</span><span>{t("Rol")}</span><span>{t("Ish jadvali")}</span><span>{t("Ish haqi")}</span>
                 </div>
                 {branches.length === 0 ? (
-                  <div className="text-[13px] text-muted-foreground py-4">Filial topilmadi — avval Boshqaruv → Filiallar da qo&apos;shing.</div>
+                  <div className="text-[13px] text-muted-foreground py-4">{t("Filial topilmadi — avval Boshqaruv → Filiallar da qo'shing.")}</div>
                 ) : (
                   <div className="space-y-2">
                     {branches.map((branch) => {
@@ -204,13 +204,13 @@ export default function EmployeeSalaryConfigModal({
                             />
                             <span className="text-sm">{branch.name}</span>
                           </label>
-                          <Select value={row.roleId} onChange={(v) => update(branch.id, { roleId: v })} options={roles.map((r) => ({ value: String(r.id), label: r.name }))} placeholder="Rolni tanlang" clearable disabled={off} />
-                          <Select value={row.scheduleId} onChange={(v) => update(branch.id, { scheduleId: v })} options={schedules.map((s) => ({ value: String(s.id), label: s.name }))} placeholder="Ish jadvali" clearable disabled={off} />
+                          <Select value={row.roleId} onChange={(v) => update(branch.id, { roleId: v })} options={roles.map((r) => ({ value: String(r.id), label: r.name }))} placeholder={t("Rolni tanlang")} clearable disabled={off} />
+                          <Select value={row.scheduleId} onChange={(v) => update(branch.id, { scheduleId: v })} options={schedules.map((s) => ({ value: String(s.id), label: s.name }))} placeholder={t("Ish jadvali")} clearable disabled={off} />
                           <MoneyInput
                             value={row.salary}
                             onChange={(v) => update(branch.id, { salary: v })}
                             disabled={off}
-                            placeholder="Ish haqini kiriting"
+                            placeholder={t("Ish haqini kiriting")}
                             className={`${inputCls} tabular-nums disabled:opacity-40`}
                           />
                         </div>
@@ -225,18 +225,18 @@ export default function EmployeeSalaryConfigModal({
                   o'zgartirish uchun qoladi, bu yer esa asosiy joyi. */}
               <div className="rounded-xl border border-border p-3 space-y-2">
                 <label className="block text-[13px] font-medium" htmlFor="cfg-plastik">
-                  Plastik orqali beriladigan oylik
+                  {t("Plastik orqali beriladigan oylik")}
                 </label>
                 <div className="relative">
                   <MoneyInput
                     id="cfg-plastik"
                     value={plastik}
                     onChange={setPlastik}
-                    placeholder="Masalan 2 000 000"
+                    placeholder={t("Masalan 2 000 000")}
                     className={`${inputCls} tabular-nums pr-14`}
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">
-                    so&apos;m
+                    {t("so'm")}
                   </span>
                 </div>
                 <p className="text-[12px] text-muted-foreground">
@@ -247,12 +247,12 @@ export default function EmployeeSalaryConfigModal({
               </div>
 
               <div className="rounded-xl border border-border bg-secondary/20 p-3 text-[13px]">
-                Jami oklad: <strong className="tabular-nums">{total.toLocaleString("ru-RU")} UZS</strong>
+                {t("Jami oklad:")}{" "}<strong className="tabular-nums">{total.toLocaleString("ru-RU")} UZS</strong>
                 {total === 0 && !(isTeacher && percent) && (
-                  <span className="text-muted-foreground"> — kiritilmaguncha xodimning oylik hisobi ko&apos;rsatilmaydi</span>
+                  <span className="text-muted-foreground">{" "}{t("— kiritilmaguncha xodimning oylik hisobi ko'rsatilmaydi")}</span>
                 )}
                 {total === 0 && isTeacher && percent && (
-                  <span className="text-emerald-700"> — o&apos;qituvchi foiz bo&apos;yicha ishlaydi, oklad shart emas</span>
+                  <span className="text-emerald-700">{" "}{t("— o'qituvchi foiz bo'yicha ishlaydi, oklad shart emas")}</span>
                 )}
               </div>
             </>
@@ -260,9 +260,9 @@ export default function EmployeeSalaryConfigModal({
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border sticky bottom-0 bg-card">
-          <button type="button" onClick={modal.close} className="h-10 px-4 rounded-lg border border-border hover:bg-secondary text-sm">Bekor qilish</button>
+          <button type="button" onClick={modal.close} className="h-10 px-4 rounded-lg border border-border hover:bg-secondary text-sm">{t("Bekor qilish")}</button>
           <button type="button" onClick={save} disabled={saving || loading} className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

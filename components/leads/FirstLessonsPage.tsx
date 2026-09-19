@@ -39,6 +39,7 @@ import { loadPupilsCached } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
 // Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
@@ -117,6 +118,7 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export default function FirstLessonsPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,8 +210,8 @@ export default function FirstLessonsPage() {
   useEffect(() => {
     if (!menuFor) return;
     const onDown = (e: MouseEvent) => {
-      const t = e.target as Node | null;
-      if (t && menuRef.current?.contains(t)) return;
+      const tv = e.target as Node | null;
+      if (tv && menuRef.current?.contains(tv)) return;
       setMenuFor(null);
     };
     const close = () => setMenuFor(null);
@@ -251,7 +253,7 @@ export default function FirstLessonsPage() {
     const label = group.name || String(group.id);
     const res = await enrollOrderInGroup(order, group.id, pupils);
     if (!res.ok) {
-      showError(res.error || "Guruhga qo'shishda xatolik yuz berdi");
+      showError(t(res.error || "Guruhga qo'shishda xatolik yuz berdi"));
       return;
     }
     const ok = await patchOrder(order.id, {
@@ -261,17 +263,17 @@ export default function FirstLessonsPage() {
       groupId: group.id,
     });
     setGroupPickerFor(null);
-    if (ok) showSuccess(`O'quvchi "${label}" guruhiga qo'shildi`);
-    else showError("Buyurtma holatini saqlashda xatolik yuz berdi");
-  }, [pupils, patchOrder, showSuccess, showError]);
+    if (ok) showSuccess(t("O'quvchi \"{label}\" guruhiga qo'shildi", { label }));
+    else showError(t("Buyurtma holatini saqlashda xatolik yuz berdi"));
+  }, [pupils, patchOrder, showSuccess, showError, t]);
 
   /** Telefon raqamdagi bosqich ("rang") tanlagichidan chaqiriladi. */
   const setOrderStage = useCallback(async (orderId: number, stage: OrderStageKey) => {
     setStagePickerFor(null);
     const ok = await patchOrder(orderId, { stage });
-    if (ok) showSuccess("Bosqich o'zgartirildi");
-    else showError("Bosqichni o'zgartirib bo'lmadi");
-  }, [patchOrder, showSuccess, showError]);
+    if (ok) showSuccess(t("Bosqich o'zgartirildi"));
+    else showError(t("Bosqichni o'zgartirib bo'lmadi"));
+  }, [patchOrder, showSuccess, showError, t]);
 
   // Birinchi darsga YOZILGANLAR — sanasi belgilangan buyurtmalar.
   const rows = useMemo(() => orders.filter((o) => (o.firstLesson || "").trim()), [orders]);
@@ -323,7 +325,7 @@ export default function FirstLessonsPage() {
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: beforeTab.length, none: 0 };
-    for (const t of FIRST_LESSON_STATUSES) counts[t.value] = 0;
+    for (const tv of FIRST_LESSON_STATUSES) counts[tv.value] = 0;
     for (const o of beforeTab) {
       if (o.firstLessonStatus) counts[o.firstLessonStatus] = (counts[o.firstLessonStatus] ?? 0) + 1;
       else counts.none += 1;
@@ -368,7 +370,7 @@ export default function FirstLessonsPage() {
     const okCount = results.filter(Boolean).length;
     if (okCount === targets.length) {
       setSelectedIds([]);
-      showSuccess(`${okCount} ta lid holati o'zgartirildi`);
+      showSuccess(t("{okCount} ta lid holati o'zgartirildi", { okCount }));
     } else {
       showError(`${okCount}/${targets.length} ta lid holati o'zgartirildi`);
     }
@@ -390,19 +392,19 @@ export default function FirstLessonsPage() {
   }, [beforeTab]);
 
   const STAT_CARDS = [
-    { key: "today", label: "Bugun", value: stats.today, icon: CalendarClock, bg: "#dbeafe", fg: "#2563eb" },
-    { key: "came", label: "Kelganlar", value: stats.came, icon: CheckCircle2, bg: "#dcfce7", fg: "#16a34a" },
-    { key: "missed", label: "Kelmaganlar", value: stats.missed, icon: XCircle, bg: "#fee2e2", fg: "#dc2626" },
-    { key: "joined", label: "Guruhga qo'shildi", value: stats.joined, icon: Users, bg: "#dcfce7", fg: "#059669" },
-    { key: "conv", label: "Conversion", value: `${stats.conversion.toFixed(1)}`, sub: "%", icon: TrendingUp, bg: "#ede9fe", fg: "#7c3aed" },
-    { key: "contact", label: "Aloqa kerak", value: stats.needsContact, icon: Phone, bg: "#ffedd5", fg: "#ea580c" },
+    { key: "today", label: t("Bugun"), value: stats.today, icon: CalendarClock, bg: "#dbeafe", fg: "#2563eb" },
+    { key: "came", label: t("Kelganlar"), value: stats.came, icon: CheckCircle2, bg: "#dcfce7", fg: "#16a34a" },
+    { key: "missed", label: t("Kelmaganlar"), value: stats.missed, icon: XCircle, bg: "#fee2e2", fg: "#dc2626" },
+    { key: "joined", label: t("Guruhga qo'shildi"), value: stats.joined, icon: Users, bg: "#dcfce7", fg: "#059669" },
+    { key: "conv", label: t("Conversion"), value: `${stats.conversion.toFixed(1)}`, sub: "%", icon: TrendingUp, bg: "#ede9fe", fg: "#7c3aed" },
+    { key: "contact", label: t("Aloqa kerak"), value: stats.needsContact, icon: Phone, bg: "#ffedd5", fg: "#ea580c" },
   ];
 
 
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">Birinchi darsga yozilganlar</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("Birinchi darsga yozilganlar")}</h1>
       </div>
 
       {/* 1) KPI kartalari */}
@@ -413,10 +415,10 @@ export default function FirstLessonsPage() {
               <c.icon className="h-[18px] w-[18px]" />
             </span>
             <span className="min-w-0">
-              <span className="fl-stat-label block">{c.label}</span>
+              <span className="fl-stat-label block">{t(c.label)}</span>
               <span className="fl-stat-value tabular-nums">
                 {c.value}
-                {c.sub && <span className="fl-stat-value-sub">{c.sub}</span>}
+                {c.sub && <span className="fl-stat-value-sub">{t(c.sub)}</span>}
               </span>
             </span>
           </div>
@@ -425,24 +427,24 @@ export default function FirstLessonsPage() {
 
       {/* 2) Tez filtr tablari */}
       <div className="fl-quick-tabs">
-        {TABS.map((t) => (
+        {TABS.map((tv) => (
           <button
-            key={t.key}
+            key={tv.key}
             type="button"
-            onClick={() => { setTab(t.key); setPage(1); }}
-            className={`fl-quick-tab${tab === t.key ? " active" : ""}`}
+            onClick={() => { setTab(tv.key); setPage(1); }}
+            className={`fl-quick-tab${tab === tv.key ? " active" : ""}`}
           >
-            {t.label}
-            <span className="fl-quick-tab-count tabular-nums">{tabCounts[t.key] ?? 0}</span>
+            {t(tv.label)}
+            <span className="fl-quick-tab-count tabular-nums">{tabCounts[tv.key] ?? 0}</span>
           </button>
         ))}
       </div>
 
       {/* Filtrlar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-        <DateField value={dateFilter} onChange={(iso) => { setDateFilter(iso); setPage(1); }} placeholder="Birinchi dars sanasi" />
+        <DateField value={dateFilter} onChange={(iso) => { setDateFilter(iso); setPage(1); }} placeholder={t("Birinchi dars sanasi")} />
         <DateRangePicker
-          placeholder="Oraliqni tanlang"
+          placeholder={t("Oraliqni tanlang")}
           value={range}
           onChange={(r) => { setRange(r); setPage(1); }}
         />
@@ -454,23 +456,23 @@ export default function FirstLessonsPage() {
           value={courseFilter}
           onChange={(v) => { setCourseFilter(v); setPage(1); }}
           options={courseOptions}
-          placeholder="Kurs"
+          placeholder={t("Kurs")}
           searchPlaceholder="Qidirish"
         />
-        <Select value={levelFilter} onChange={(v) => { setLevelFilter(v); setPage(1); }} options={levelOptions.map((l) => ({ value: l, label: l }))} placeholder="Daraja" clearable size="sm" />
+        <Select value={levelFilter} onChange={(v) => { setLevelFilter(v); setPage(1); }} options={levelOptions.map((l) => ({ value: l, label: l }))} placeholder={t("Daraja")} clearable size="sm" />
         
-        <Select value={stageFilter} onChange={(v) => { setStageFilter(v); setPage(1); }} options={ORDER_STAGES.map((st) => ({ value: st.key, label: `${st.emoji} ${st.label}` }))} placeholder="Ranglar bo'yicha" clearable size="sm" />
+        <Select value={stageFilter} onChange={(v) => { setStageFilter(v); setPage(1); }} options={ORDER_STAGES.map((st) => ({ value: st.key, label: `${st.emoji} ${st.label}` }))} placeholder={t("Ranglar bo'yicha")} clearable size="sm" />
 
         
-        <Select value={dayFilter} onChange={(v) => { setDayFilter(v); setPage(1); }} options={LESSON_DAYS.map((d) => ({ value: d.code, label: d.label }))} placeholder="Kun" clearable size="sm" />
-        <Select value={oddEvenFilter} onChange={(v) => { setOddEvenFilter(v); setPage(1); }} options={[{ value: "toq", label: "Toq kunlar (Du-Ch-Ju)" }, { value: "juft", label: "Juft kunlar (Se-Pa-Sh)" }, { value: "boshqa", label: "Boshqa kunlar" }]} placeholder="Toq/Juft kunlar" clearable size="sm" />
+        <Select value={dayFilter} onChange={(v) => { setDayFilter(v); setPage(1); }} options={LESSON_DAYS.map((d) => ({ value: d.code, label: d.label }))} placeholder={t("Kun")} clearable size="sm" />
+        <Select value={oddEvenFilter} onChange={(v) => { setOddEvenFilter(v); setPage(1); }} options={[{ value: "toq", label: t("Toq kunlar (Du-Ch-Ju)") }, { value: "juft", label: t("Juft kunlar (Se-Pa-Sh)") }, { value: "boshqa", label: t("Boshqa kunlar") }]} placeholder={t("Toq/Juft kunlar")} clearable size="sm" />
         <StudentSearchSelect
           label=""
           variant="compact"
           value={moderatorFilter}
           onChange={(v) => { setModeratorFilter(v); setPage(1); }}
           options={moderatorOptions}
-          placeholder="Moderator"
+          placeholder={t("Moderator")}
           searchPlaceholder="Qidirish"
         />
         {/* O'qituvchilar ro'yxati ham uzun — Kurs va Moderator bilan AYNAN
@@ -482,14 +484,14 @@ export default function FirstLessonsPage() {
           value={teacherFilter}
           onChange={(v) => { setTeacherFilter(v); setPage(1); }}
           options={teacherOptions}
-          placeholder="O'qituvchi"
+          placeholder={t("O'qituvchi")}
           searchPlaceholder="Qidirish"
         />
         <input
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           type="text"
-          placeholder="Qidirish ..."
+          placeholder={t("Qidirish ...")}
           className="h-9 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
       </div>
@@ -505,21 +507,21 @@ export default function FirstLessonsPage() {
               onClick={() => setBulkStatusOpen(true)}
               className="h-8 rounded-lg bg-primary px-3 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none"
             >
-              Status o&apos;zgartirish
+              {t("Status o'zgartirish")}
             </button>
             <button
               type="button"
               onClick={() => setSelectedIds([])}
               className="h-8 rounded-lg border border-border px-3 text-[13px] hover:bg-secondary"
             >
-              Tanlovni bekor qilish
+              {t("Tanlovni bekor qilish")}
             </button>
           </div>
         ) : (
           <span />
         )}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
         </div>
       </div>
@@ -534,7 +536,7 @@ export default function FirstLessonsPage() {
                   <input
                     type="checkbox"
                     className="rounded border-border"
-                    aria-label="Sahifadagi hammasini tanlash"
+                    aria-label={t("Sahifadagi hammasini tanlash")}
                     checked={allOnPageSelected}
                     onChange={togglePage}
                     // Sahifaning bir qismi tanlangan bo'lsa — "aralash" holat.
@@ -545,16 +547,16 @@ export default function FirstLessonsPage() {
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Birinchi dars kuni</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;qituvchi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kurs</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kurs darajasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Status</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Izoh</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchini ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Birinchi dars kuni")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'qituvchi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kurs")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kurs darajasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Status")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Izoh")}</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap" />
               </tr>
             </thead>
@@ -582,7 +584,7 @@ export default function FirstLessonsPage() {
                     <input
                       type="checkbox"
                       className="rounded border-border"
-                      aria-label={`${o.name} — tanlash`}
+                      aria-label={t("{name} — tanlash", { name: o.name })}
                       checked={selectedIds.includes(o.id)}
                       onChange={() => toggleRow(o.id)}
                     />
@@ -638,7 +640,7 @@ export default function FirstLessonsPage() {
                         {firstLessonStatusLabel(o.firstLessonStatus)}
                       </span>
                     ) : (
-                      <span className="text-[12px] text-muted-foreground">Natija kiritilmagan</span>
+                      <span className="text-[12px] text-muted-foreground">{t("Natija kiritilmagan")}</span>
                     )}
                   </td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground max-w-[220px] truncate">{o.note || "—"}</td>
@@ -646,7 +648,7 @@ export default function FirstLessonsPage() {
                     <button
                       type="button"
                       className="fl-row-actions-btn"
-                      title="Amallar"
+                      title={t("Amallar")}
                       // `onMouseDown` da `stopPropagation()` YO'Q — u bu
                       // yerda hech narsa qilmasdi (yuqoridagi izohga qarang),
                       // faqat ishlayotgandek ko'rinardi. Menyuni yopish
@@ -665,7 +667,7 @@ export default function FirstLessonsPage() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={14} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "Birinchi darsga yozilgan o'quvchi yo'q"}
+                    {loading ? t("Yuklanmoqda…") : t("Birinchi darsga yozilgan o'quvchi yo'q")}
                   </td>
                 </tr>
               )}
@@ -690,31 +692,31 @@ export default function FirstLessonsPage() {
           style={{ top: menuFor.top, left: menuFor.left }}
         >
           <a className="fl-action-btn-row" href={telHref(menuFor.order.phone) ? `tel:${telHref(menuFor.order.phone)}` : undefined} onClick={() => setMenuFor(null)}>
-            <Phone /> Telefon qilish
+            <Phone />{" "}{t("Telefon qilish")}
           </a>
           <a
             className="fl-action-btn-row"
-            href={telHref(menuFor.order.phone) ? `https://t.me/${telHref(menuFor.order.phone)}` : undefined}
+            href={telHref(menuFor.order.phone) ? `https://tv.me/${telHref(menuFor.order.phone)}` : undefined}
             target="_blank"
             rel="noreferrer"
             onClick={() => setMenuFor(null)}
           >
-            <Send /> Telegram yozish
+            <Send />{" "}{t("Telegram yozish")}
           </a>
           <button type="button" className="fl-action-btn-row" onClick={() => { setReminderFor(menuFor.order); setMenuFor(null); }}>
-            <Bell /> Eslatma yuborish
+            <Bell />{" "}{t("Eslatma yuborish")}
           </button>
 
           <div className="fl-action-divider" />
 
           <button type="button" className="fl-action-btn-row" onClick={() => { setStatusFor(menuFor.order); setMenuFor(null); }}>
-            <CalendarCheck /> Status o&apos;zgartirish
+            <CalendarCheck />{" "}{t("Status o'zgartirish")}
           </button>
           <button type="button" className="fl-action-btn-row" onClick={() => { setRescheduleFor(menuFor.order); setMenuFor(null); }}>
-            <CalendarX2 /> Qayta dars belgilash
+            <CalendarX2 />{" "}{t("Qayta dars belgilash")}
           </button>
           <button type="button" className="fl-action-btn-row" onClick={() => { setGroupPickerFor(menuFor.order); setMenuFor(null); }}>
-            <Users /> Guruhga qo&apos;shish
+            <Users />{" "}{t("Guruhga qo'shish")}
           </button>
 
           <div className="fl-action-divider" />
@@ -723,34 +725,34 @@ export default function FirstLessonsPage() {
               detaliga o'tiladi (buyurtma va o'quvchi id fazolari boshqacha —
               shu bois ?src=list qo'shiladi, app/(app)/student-edit izohiga q.). */}
           <Link className="fl-action-btn-row" href={profileHref(menuFor.order)} onClick={() => setMenuFor(null)}>
-            <User /> Profilni ochish
+            <User />{" "}{t("Profilni ochish")}
           </Link>
           <button type="button" className="fl-action-btn-row" onClick={() => { setNoteFor(menuFor.order); setMenuFor(null); }}>
-            <StickyNote /> Izoh qo&apos;shish
+            <StickyNote />{" "}{t("Izoh qo'shish")}
           </button>
           <button type="button" className="fl-action-btn-row" onClick={() => { setPrintFor(menuFor.order); setMenuFor(null); }}>
-            <Printer /> Chop etish
+            <Printer />{" "}{t("Chop etish")}
           </button>
         </div>
       )}
 
       {statusFor && (
         <StatusModal
-          title={`Status — ${statusFor.name}`}
+          title={t("Status — {name}", { name: statusFor.name })}
           current={statusFor.firstLessonStatus}
           onClose={() => setStatusFor(null)}
           onPick={async (s) => {
             const ok = await patchOrder(statusFor.id, { firstLessonStatus: s });
             setStatusFor(null);
-            if (ok) showSuccess("Status o'zgartirildi");
-            else showError("Statusni o'zgartirib bo'lmadi");
+            if (ok) showSuccess(t("Status o'zgartirildi"));
+            else showError(t("Statusni o'zgartirib bo'lmadi"));
           }}
         />
       )}
 
       {bulkStatusOpen && (
         <StatusModal
-          title={`Status — ${selectedVisible.length} ta lid`}
+          title={t("Status — {selectedVisible} ta lid", { selectedVisible: selectedVisible.length })}
           onClose={() => setBulkStatusOpen(false)}
           onPick={applyBulkStatus}
         />
@@ -764,8 +766,8 @@ export default function FirstLessonsPage() {
           onSave={async (patch) => {
             const ok = await patchOrder(rescheduleFor.id, { ...patch, firstLessonStatus: "QAYTA_BELGILANDI" });
             setRescheduleFor(null);
-            if (ok) showSuccess("Dars qayta belgilandi");
-            else showError("Saqlab bo'lmadi");
+            if (ok) showSuccess(t("Dars qayta belgilandi"));
+            else showError(t("Saqlab bo'lmadi"));
           }}
         />
       )}
@@ -777,8 +779,8 @@ export default function FirstLessonsPage() {
           onSave={async (note) => {
             const ok = await patchOrder(noteFor.id, { note });
             setNoteFor(null);
-            if (ok) showSuccess("Izoh saqlandi");
-            else showError("Izohni saqlab bo'lmadi");
+            if (ok) showSuccess(t("Izoh saqlandi"));
+            else showError(t("Izohni saqlab bo'lmadi"));
           }}
         />
       )}
@@ -805,12 +807,12 @@ export default function FirstLessonsPage() {
             // kim unga qayta qo'ng'iroq qilmasdi. Endi xabar haqiqatan
             // ketmagan bo'lsa holatga TEGILMAYDI.
             if (simulated) {
-              showError("SMS jo'natilmadi: Eskiz sozlanmagan (faqat jurnalga yozildi) — holat \"Eslatildi\" ga o'zgartirilmadi");
+              showError(t("SMS jo'natilmadi: Eskiz sozlanmagan (faqat jurnalga yozildi) — holat \"Eslatildi\" ga o'zgartirilmadi"));
               return;
             }
             const ok = await patchOrder(o.id, { firstLessonStatus: "ESLATILDI" });
-            if (ok) showSuccess(`${o.name} — eslatma yuborildi`);
-            else showError("Eslatma yuborildi, ammo holatni belgilab bo'lmadi");
+            if (ok) showSuccess(t("{name} — eslatma yuborildi", { name: o.name }));
+            else showError(t("Eslatma yuborildi, ammo holatni belgilab bo'lmadi"));
           }}
           onError={showError}
         />
@@ -856,6 +858,7 @@ function StatusModal({
   onClose: () => void;
   onPick: (s: FirstLessonStatus) => void;
 }) {
+  const { t } = useT();
   return (
     <ModalShell title={title} onClose={onClose}>
       <div className="grid grid-cols-2 gap-2">
@@ -868,13 +871,13 @@ function StatusModal({
               current === s.value ? "border-primary bg-primary/10 font-medium text-primary" : "border-border"
             }`}
           >
-            <span className={`fl-status fl-status-${s.value}`}>{s.label}</span>
+            <span className={`fl-status fl-status-${s.value}`}>{t(s.label)}</span>
           </button>
         ))}
       </div>
       <div className="flex justify-end">
         <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-          Yopish
+          {t("Yopish")}
         </button>
       </div>
     </ModalShell>
@@ -897,6 +900,7 @@ function RescheduleModal({
   onClose: () => void;
   onSave: (patch: Partial<Order>) => void;
 }) {
+  const { t } = useT();
   const parsed = (order.firstLesson || "").split("|").map((s) => s.trim());
   const [date, setDate] = useState(() => firstLessonIso(order.firstLesson));
   const [time, setTime] = useState(() => (parsed[1] || "").slice(0, 5));
@@ -909,39 +913,39 @@ function RescheduleModal({
   const teacherOptions = teacher && !teachers.includes(teacher) ? [teacher, ...teachers] : teachers;
 
   return (
-    <ModalShell title={`Qayta dars belgilash — ${order.name}`} onClose={onClose}>
+    <ModalShell title={t("Qayta dars belgilash — {name}", { name: order.name })} onClose={onClose}>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Birinchi dars sanasi</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("Birinchi dars sanasi")}</label>
           <DateField value={date} onChange={setDate} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Birinchi dars vaqti</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("Birinchi dars vaqti")}</label>
           <TimeField value={time} onChange={(v) => setTime(v)} />
         </div>
       </div>
 
       <StudentSearchSelect
         variant="compact"
-        label="O'qituvchi"
+        label={t("O'qituvchi")}
         value={teacher}
         onChange={setTeacher}
         options={teacherOptions}
-        placeholder="Ustozni tanlang"
+        placeholder={t("Ustozni tanlang")}
         searchPlaceholder="Ustozni qidirish"
-        emptyText="Bu filialga o'qituvchi biriktirilmagan — Boshqaruv > Xodimlar bo'limidan biriktiring"
+        emptyText={t("Bu filialga o'qituvchi biriktirilmagan — Boshqaruv > Xodimlar bo'limidan biriktiring")}
       />
 
-      <PanelDaysField label="Dars kunlari" value={lessonDay} onChange={setLessonDay} />
+      <PanelDaysField label={t("Dars kunlari")} value={lessonDay} onChange={setLessonDay} />
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">Darsning boshlanish vaqti</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("Darsning boshlanish vaqti")}</label>
         <TimeField value={lessonStartTime} onChange={(v) => setLessonStartTime(v)} />
       </div>
 
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
         <button
           type="button"
@@ -957,7 +961,7 @@ function RescheduleModal({
           }}
           className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white disabled:opacity-50 disabled:pointer-events-none hover:opacity-90"
         >
-          Saqlash
+          {t("Saqlash")}
         </button>
       </div>
     </ModalShell>
@@ -973,6 +977,7 @@ function RescheduleModal({
  * blobida w-80/h-96/bottom-5 kabi utilitylar yo'q.
  */
 function NotePanel({ order, onClose, onSave }: { order: Order; onClose: () => void; onSave: (note: string) => void }) {
+  const { t } = useT();
   const [note, setNote] = useState(order.note || "");
   useEscapeClose(onClose);
   return (
@@ -982,7 +987,7 @@ function NotePanel({ order, onClose, onSave }: { order: Order; onClose: () => vo
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
         <span className="truncate text-sm font-semibold">Izoh — {order.name}</span>
-        <button type="button" onClick={onClose} title="Yopish" className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary">
+        <button type="button" onClick={onClose} title={t("Yopish")} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary">
           <svg className="icon icon-sm"><use href="#i-x-circle" /></svg>
         </button>
       </div>
@@ -992,16 +997,16 @@ function NotePanel({ order, onClose, onSave }: { order: Order; onClose: () => vo
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={6}
-          placeholder="Izoh qoldirish"
+          placeholder={t("Izoh qoldirish")}
           className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
       </div>
       <div className="flex shrink-0 justify-end gap-2 border-t border-border p-3">
         <button type="button" onClick={onClose} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
         <button type="button" onClick={() => onSave(note.trim())} className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90">
-          Saqlash
+          {t("Saqlash")}
         </button>
       </div>
     </div>
@@ -1045,9 +1050,10 @@ function receiptRows(order: Order): ReceiptRow[] {
 
 /** Umumiy chek oynasiga shu sahifa sarlavhasi va qatorlari bilan. */
 function PrintPreviewModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  const { t } = useT();
   return (
     <LeadReceiptModal
-      receipt={{ docTitle: `Birinchi dars #${orderNo(order)}`, heading: "BIRINCHI DARSGA YOZILISH", rows: receiptRows(order) }}
+      receipt={{ docTitle: t("Birinchi dars #{order}", { order: orderNo(order) }), heading: t("BIRINCHI DARSGA YOZILISH"), rows: receiptRows(order) }}
       onClose={onClose}
     />
   );

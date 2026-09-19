@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { useStaff } from "@/hooks/useStaff";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Mashg'ulot qo'shish" modali — Guruh tafsiloti > "Mashg'ulot qo'shish" tabi.
 // Ko'rinishi AddTaskModal.tsx bilan bir xil (bir xil overlay, kartochka,
@@ -29,6 +30,7 @@ const inputCls = "w-full h-11 rounded-lg border border-border bg-card px-3 text-
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
 export default function AddLessonModal({ groupId, onClose, onAdded }: { groupId: number; onClose: () => void; onAdded: (lesson: GroupLesson) => void }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const { names, loading: staffLoading } = useStaff();
@@ -43,7 +45,7 @@ export default function AddLessonModal({ groupId, onClose, onAdded }: { groupId:
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      showError("Mashg'ulot nomini kiriting");
+      showError(t("Mashg'ulot nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -55,15 +57,15 @@ export default function AddLessonModal({ groupId, onClose, onAdded }: { groupId:
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Mashg'ulot qo'shilmadi");
+        showError(t(data.error || "Mashg'ulot qo'shilmadi"));
         setSaving(false);
         return;
       }
       onAdded(data.lesson as GroupLesson);
-      showSuccess("Mashg'ulot qo'shildi");
+      showSuccess(t("Mashg'ulot qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -71,23 +73,23 @@ export default function AddLessonModal({ groupId, onClose, onAdded }: { groupId:
   return (
     <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
-          <h3 className="text-[16px] font-semibold">Mashg&apos;ulot qo&apos;shish</h3>
+          <h3 className="text-[16px] font-semibold">{t("Mashg'ulot qo'shish")}</h3>
         </div>
 
         <div className="px-6 py-2 space-y-3.5 overflow-y-auto flex-1">
           <div>
-            <label className={labelCls}>Mashg&apos;ulot nomi<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>{t("Mashg'ulot nomi")}<span className="text-rose-500">*</span></label>
             <input value={name} onChange={(e) => setName(e.target.value)} type="text" className={inputCls} />
           </div>
 
           <div>
-            <label className={labelCls}>Yordamchi o&apos;qituvchilar</label>
+            <label className={labelCls}>{t("Yordamchi o'qituvchilar")}</label>
             {/* Ko'p tanlovli ro'yxat. Balandlik inline style bilan berilgan —
                 loyihaning tayyor CSS blobida `max-h-*` klasslari yo'q. */}
             <div className="rounded-lg border border-border overflow-y-auto" style={{ maxHeight: 200 }}>
-              {staffLoading && <div className="px-3 py-3 text-[13px] text-muted-foreground">yuklanmoqda…</div>}
+              {staffLoading && <div className="px-3 py-3 text-[13px] text-muted-foreground">{t("yuklanmoqda…")}</div>}
               {!staffLoading && names.length === 0 && (
-                <div className="px-3 py-3 text-[13px] text-muted-foreground">Aktiv xodim topilmadi</div>
+                <div className="px-3 py-3 text-[13px] text-muted-foreground">{t("Aktiv xodim topilmadi")}</div>
               )}
               {names.map((person) => (
                 <label key={person} className="flex items-center gap-2 cursor-pointer px-3 py-2 hover:bg-secondary/30 transition-colors">
@@ -112,8 +114,8 @@ export default function AddLessonModal({ groupId, onClose, onAdded }: { groupId:
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">{t("Orqaga")}</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? t("Saqlanmoqda…") : t("Saqlash")}</button>
         </div>
       </Modal>
   );

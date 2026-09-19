@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "@/components/ui/Link";
 import { BILLING_TEXTS } from "@/constants/settingsBilling";
+import { useT } from "@/components/shared/Language";
 
 // Gamifikatsiya tablari uchun — "hali qurilmagan" o'rniga HAQIQIY sabab.
 //
@@ -13,6 +16,7 @@ import { BILLING_TEXTS } from "@/constants/settingsBilling";
 // yoki maydonlar rasmi bo'lgach, tab qurilishi mumkin.
 
 export default function ModuleNotEnabledTab({ title }: { title: string }) {
+  const { t } = useT();
   return (
     <div className="rounded-2xl bg-card border border-border p-10 text-center">
       <div className="text-[15px] font-semibold">{title}</div>
@@ -25,7 +29,7 @@ export default function ModuleNotEnabledTab({ title }: { title: string }) {
         href="/settings-general?tab=billing"
         className="mt-4 inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary"
       >
-        Obuna sahifasiga o&apos;tish
+        {t("Obuna sahifasiga o'tish")}
       </Link>
     </div>
   );

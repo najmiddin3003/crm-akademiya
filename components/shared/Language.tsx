@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useSyncExternalStore, type ReactNode } from "react";
-import { DEFAULT_LANG, htmlLang, normalizeLang, translate, type Lang, type TParams } from "@/lib/i18n";
+import { DEFAULT_LANG, MONTHS, MONTHS_SHORT, WEEKDAYS_SHORT, htmlLang, normalizeLang, translate, type Lang, type TParams } from "@/lib/i18n";
 
 // Navbardagi til tanlovi butun ilova bo'ylab ishlashi kerak: har bir
 // komponent `useT()` orqali matnni shu tilda oladi, sana tanlagichlar
@@ -97,9 +97,22 @@ export function useLang(): [Lang, (next: Lang) => void] {
  *
  * Kalit — o'zbekcha manba matn (lib/i18n.ts izohi). `t` tilga bog'liq:
  * til almashsa uni ishlatgan komponent qayta chiziladi.
+ *
+ * `t(row.status)` — bazadan/konstantadan kelgan qiymat ham beriladi:
+ * lug'atda bo'lsa o'giriladi, bo'lmasa o'z holicha qaytadi. Shu bois
+ * `null`/`undefined` ham qabul qilinadi (bo'sh satr qaytadi) — ixtiyoriy
+ * maydonni o'rash uchun har joyda `?? ""` yozilmasin.
  */
-export function useT(): { t: (key: string, params?: TParams) => string; lang: Lang } {
+export type TFn = (key: string | null | undefined, params?: TParams) => string;
+
+/**
+ * `months` / `monthsShort` — joriy tildagi oy nomlari (0 = Yanvar),
+ * `weekdaysShort` — qisqa hafta kunlari (0 = Yakshanba, `Date.getDay()` tartibi).
+ * Ilgari komponentlar `UZ_MONTHS`/`MONTH_NAMES_UZ` kabi qattiq o'zbekcha
+ * ro'yxatlardan olardi — ular o'girilmasdi.
+ */
+export function useT(): { t: TFn; lang: Lang; months: string[]; monthsShort: string[]; weekdaysShort: string[] } {
   const [lang] = useLang();
-  const t = useCallback((key: string, params?: TParams) => translate(lang, key, params), [lang]);
-  return { t, lang };
+  const t = useCallback<TFn>((key, params) => (key == null ? "" : translate(lang, key, params)), [lang]);
+  return { t, lang, months: MONTHS[lang], monthsShort: MONTHS_SHORT[lang], weekdaysShort: WEEKDAYS_SHORT[lang] };
 }

@@ -16,7 +16,7 @@ import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
-import { UZ_MONTHS, payrollCashLeg, payrollDue, payrollPeriod, payrollPlastikLeg, payrollTax, type EmployeePayroll } from "@/lib/salary";
+import { payrollCashLeg, payrollDue, payrollPeriod, payrollPlastikLeg, payrollTax, type EmployeePayroll } from "@/lib/salary";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeePasswordModal from "./EmployeePasswordModal";
@@ -36,6 +36,7 @@ import {
 import PersonLink from "@/components/shared/PersonDirectory";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
+import { useT } from "@/components/shared/Language";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
@@ -172,11 +173,12 @@ type LedgerMap = Map<number, SalaryLedgerRow>;
  * qoldig'i o'sha oyning daftaridan keladi va qo'shni qatorlardan sakrab
  * turadi — belgi buni tushuntiradi.
  */
-function periodTagOf(t: TransactionEntry): string | null {
+/** Yozuv boshqa oy uchun bo'lsa — o'sha oy nomi (tilga qarab), aks holda null. */
+function periodTagOf(t: TransactionEntry, months: string[]): string | null {
   const pm = String(t.periodMonth ?? "").trim();
   if (!pm || pm === String(t.date ?? "").slice(0, 7)) return null;
   const m = Number(pm.slice(5, 7)) - 1;
-  return UZ_MONTHS[m] ? `${UZ_MONTHS[m]} uchun` : `${pm} uchun`;
+  return months[m] ?? pm;
 }
 
 // Manbasi bo'lmagan tablar — nima uchun bo'shligini aniq aytamiz, chunki
@@ -227,6 +229,7 @@ const ACTION_CLS = {
 };
 
 export default function EmployeeProfilePage({ id }: { id: number }) {
+  const { t, months } = useT();
   const { showSuccess, showError } = useToast();
   // HrEmployeeFull — asosiy maydonlar + modal saqlaydigan qo'shimchalar
   // (tug'ilgan sana, izoh, maxsus maydonlar). Ilgari ular bu yerda ko'rinmasdi.
@@ -330,7 +333,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     if (next.has(tabId)) next.delete(tabId);
     else next.add(tabId);
     if (next.size >= EP_TABS.length) {
-      showError("Kamida bitta tab ochiq qolishi kerak");
+      showError(t("Kamida bitta tab ochiq qolishi kerak"));
       return;
     }
     const before = hiddenTabs;
@@ -343,13 +346,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     if (!res?.ok) {
       // Saqlanmagan o'zgarishni ekranda qoldirib bo'lmaydi — qaytaramiz.
       setHiddenTabs(before);
-      showError(res?.error || "Tab sozlamasi saqlanmadi");
+      showError(t(res?.error || "Tab sozlamasi saqlanmadi"));
     }
   }
 
-  const shownTabs = EP_TABS.filter((t) => !hiddenTabs.has(t.id));
-  const visibleTabs = shownTabs.filter((t) => !EP_MORE_IDS.includes(t.id));
-  const moreTabs = shownTabs.filter((t) => EP_MORE_IDS.includes(t.id));
+  const shownTabs = EP_TABS.filter((tv) => !hiddenTabs.has(tv.id));
+  const visibleTabs = shownTabs.filter((tv) => !EP_MORE_IDS.includes(tv.id));
+  const moreTabs = shownTabs.filter((tv) => EP_MORE_IDS.includes(tv.id));
 
   // Tanlangan tab yashirib qo'yilgan bo'lsa — birinchi ochiq tabga tushamiz.
   // Buni effekt ichida setState bilan qilish zanjirli render keltirib
@@ -556,10 +559,10 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
         setNotes((p) => [...p, data.note as EmployeeNote]);
         return true;
       }
-      showError(data.error || "Eslatma saqlanmadi");
+      showError(t(data.error || "Eslatma saqlanmadi"));
       return false;
     } catch {
-      showError("Tarmoq xatosi — eslatma saqlanmadi");
+      showError(t("Tarmoq xatosi — eslatma saqlanmadi"));
       return false;
     } finally {
       setNoteBusy(false);
@@ -571,9 +574,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       const res = await fetch(`/api/hr-employees/${id}/notes?noteId=${noteId}`, { method: "DELETE" });
       const data = await res.json();
       if (data.ok) setNotes((p) => p.filter((n) => n.id !== noteId));
-      else showError(data.error || "O'chirilmadi");
+      else showError(t(data.error || "O'chirilmadi"));
     } catch {
-      showError("Tarmoq xatosi — o'chirilmadi");
+      showError(t("Tarmoq xatosi — o'chirilmadi"));
     }
   }
 
@@ -583,8 +586,8 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   if (!emp) {
     return (
       <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
-        <p className="text-sm text-muted-foreground">Xodim topilmadi.</p>
-        <Link href="/management-xodimlar" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">Orqaga</Link>
+        <p className="text-sm text-muted-foreground">{t("Xodim topilmadi.")}</p>
+        <Link href="/management-xodimlar" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">{t("Orqaga")}</Link>
       </div>
     );
   }
@@ -656,9 +659,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     if (!payrollRow?.configured || !salaryLedger) return "";
     const tax = payrollTax(payrollRow, payrollPeriod());
     const parts: string[] = [];
-    if (payrollRow.bonus) parts.push(`bonus +${nf(payrollRow.bonus)}`);
-    if (payrollRow.jarima) parts.push(`jarima −${nf(payrollRow.jarima)}`);
-    if (tax) parts.push(`soliq −${nf(tax)}`);
+    if (payrollRow.bonus) parts.push(t("bonus +{bonus}", { bonus: nf(payrollRow.bonus) }));
+    if (payrollRow.jarima) parts.push(t("jarima −{jarima}", { jarima: nf(payrollRow.jarima) }));
+    if (tax) parts.push(t("soliq −{tax}", { tax: nf(tax) }));
     if (parts.length === 0) return "";
     return `«Qoldiq» ustuniga shu oy ${parts.join(", ")} kirmaydi — chap kartadagi «To'lanmagan» ${parts.length > 1 ? "ularni" : "buni"} hisobga oladi.`;
   })();
@@ -743,26 +746,26 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
         <Link href="/management-xodimlar" className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
           <ArrowLeft className="icon icon-sm" />
-          <span>Orqaga</span>
+          <span>{t("Orqaga")}</span>
         </Link>
         <div className="relative" ref={tabsCfgRef}>
           <button onClick={() => setTabsCfgOpen((o) => !o)} className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
             <Settings className="icon icon-sm text-primary" />
-            <span>Tablarni sozlash</span>
+            <span>{t("Tablarni sozlash")}</span>
           </button>
           {tabsCfgOpen && (
             <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border bg-card shadow-xl p-3 z-40">
-              <div className="text-[13px] font-semibold mb-2">Ko&apos;rinadigan tablar</div>
+              <div className="text-[13px] font-semibold mb-2">{t("Ko'rinadigan tablar")}</div>
               <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-                {EP_TABS.map((t) => (
-                  <label key={t.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary cursor-pointer">
+                {EP_TABS.map((tv) => (
+                  <label key={tv.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={!hiddenTabs.has(t.id)}
-                      onChange={() => toggleTabVisible(t.id)}
+                      checked={!hiddenTabs.has(tv.id)}
+                      onChange={() => toggleTabVisible(tv.id)}
                       className="w-4 h-4 rounded border-border accent-primary"
                     />
-                    <span className="text-[13px]">{t.label}</span>
+                    <span className="text-[13px]">{t(tv.label)}</span>
                   </label>
                 ))}
               </div>
@@ -780,7 +783,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           <ProfileSideCard
             name={emp.name}
             phone={phone}
-            onCopyPhone={() => { navigator.clipboard?.writeText(phone); showSuccess("Nusxa olindi"); }}
+            onCopyPhone={() => { navigator.clipboard?.writeText(phone); showSuccess(t("Nusxa olindi")); }}
             photoUrl={emp.photoUrl}
             initials={initials}
             badge={{ label: roleLabel, cls: ROLE_BADGE[emp.turi] ?? "bg-slate-400" }}
@@ -790,7 +793,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               // haqi sozlamasini ochardi; u endi yonidagi alohida tugmada.
               {
                 key: "password",
-                title: "Parol",
+                title: t("Parol"),
                 cls: ACTION_CLS.key,
                 onClick: () => setPasswordOpen(true),
                 icon: <KeyRound className="icon icon-sm" />,
@@ -801,7 +804,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               // chizilmaydi, ya'ni sozlamani qayta ochib bo'lmasdi.
               {
                 key: "salary",
-                title: "Ish haqini sozlash",
+                title: t("Ish haqini sozlash"),
                 cls: ACTION_CLS.salary,
                 onClick: () => setSalaryOpen(true),
                 icon: <DollarSign className="icon icon-sm" />,
@@ -816,7 +819,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               // Referensda bu "Qo'ng'iroq qilish" — telefon ilovasini ochamiz.
               {
                 key: "call",
-                title: "Qo'ng'iroq qilish",
+                title: t("Qo'ng'iroq qilish"),
                 cls: ACTION_CLS.call,
                 href: `tel:${phone.replace(/\s/g, "")}`,
                 icon: <Phone className="icon icon-sm" />,
@@ -824,7 +827,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               // Referensdagidek to'rtinchi tugma — xodimni TAHRIRLASH.
               {
                 key: "edit",
-                title: "Tahrirlash",
+                title: t("Tahrirlash"),
                 cls: ACTION_CLS.edit,
                 onClick: () => setEditOpen(true),
                 icon: <Edit className="icon icon-sm" />,
@@ -833,7 +836,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           >
             {archived && (
               <div className="mt-3 w-full rounded-lg bg-amber-50 px-3 py-2 text-left text-[12px] text-amber-700">
-                <div className="font-semibold">Arxivlangan</div>
+                <div className="font-semibold">{t("Arxivlangan")}</div>
                 {/* Yagona shablon-satr — JSX matni ifoda bilan yonma-yon
                     yozilsa probel yo'qoladi (README'dagi tuzoq). */}
                 <div className="mt-0.5">
@@ -849,7 +852,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                 onClick={() => setSalaryOpen(true)}
                 className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-500/20 text-left"
               >
-                <strong>Ish haqi sozlanmagan.</strong> Oylik hisobi shu xodim uchun ko&apos;rsatilmaydi — sozlash uchun bosing.
+                <strong>{t("Ish haqi sozlanmagan.")}</strong>{" "}{t("Oylik hisobi shu xodim uchun ko'rsatilmaydi — sozlash uchun bosing.")}
               </button>
             )}
           </ProfileSideCard>
@@ -861,11 +864,11 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
           {(emp.birthDate || emp.comment || Object.keys(emp.customFields ?? {}).length > 0) && (
             <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Qo&apos;shimcha ma&apos;lumot
+                {t("Qo'shimcha ma'lumot")}
               </div>
               {emp.birthDate && (
                 <div>
-                  <div className="text-[11px] text-muted-foreground">Tug&apos;ilgan sanasi</div>
+                  <div className="text-[11px] text-muted-foreground">{t("Tug'ilgan sanasi")}</div>
                   <div className="text-[13px] tabular-nums">{fmtBirthDate(emp.birthDate)}</div>
                 </div>
               )}
@@ -877,7 +880,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               ))}
               {emp.comment && (
                 <div>
-                  <div className="text-[11px] text-muted-foreground">Izoh</div>
+                  <div className="text-[11px] text-muted-foreground">{t("Izoh")}</div>
                   <div className="text-[13px] whitespace-pre-wrap">{emp.comment}</div>
                 </div>
               )}
@@ -889,13 +892,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
           <div className="px-4 pt-4 pb-2 border-b border-border">
             <div className="flex flex-wrap items-center gap-1.5">
-              {visibleTabs.map((t) => (
+              {visibleTabs.map((tv) => (
                 <button
-                  key={t.id}
-                  onClick={() => selectTab(t.id)}
-                  className={`h-9 px-4 rounded-full text-[13px] font-medium transition-all ${activeTab === t.id ? "bg-primary text-white shadow-sm" : "bg-secondary/50 text-foreground/80 hover:bg-secondary"}`}
+                  key={tv.id}
+                  onClick={() => selectTab(tv.id)}
+                  className={`h-9 px-4 rounded-full text-[13px] font-medium transition-all ${activeTab === tv.id ? "bg-primary text-white shadow-sm" : "bg-secondary/50 text-foreground/80 hover:bg-secondary"}`}
                 >
-                  {t.label}
+                  {t(tv.label)}
                 </button>
               ))}
               {/* "Ko'proq" faqat unda tab qolganda — hammasi yashirilgan
@@ -903,15 +906,15 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
               {moreTabs.length > 0 && (
                 <div className="relative">
                   <button onClick={() => setMoreOpen((o) => !o)} className="h-9 px-4 rounded-full text-[13px] font-medium bg-secondary/50 text-foreground/80 hover:bg-secondary inline-flex items-center gap-1.5">
-                    Ko&apos;proq
+                    {t("Ko'proq")}
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {moreOpen && (
                     <div className="absolute right-0 top-11 w-56 rounded-xl border border-border bg-card shadow-xl p-1 z-30">
-                      {moreTabs.map((t) => (
-                        <button key={t.id} onClick={() => selectTab(t.id)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
+                      {moreTabs.map((tv) => (
+                        <button key={tv.id} onClick={() => selectTab(tv.id)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                           <MoreVertical className="icon icon-xs text-muted-foreground" />
-                          <span>{t.label}</span>
+                          <span>{t(tv.label)}</span>
                         </button>
                       ))}
                     </div>
@@ -938,7 +941,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       value={fTxName}
                       onChange={(v) => { setFTxName(v); setPage(1); }}
                       options={txNameOptions}
-                      placeholder="Tranzaksiya turi"
+                      placeholder={t("Tranzaksiya turi")}
                       searchPlaceholder="Turni qidirish"
                     />
                   )}
@@ -951,7 +954,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       value={fStudent}
                       onChange={(v) => { setFStudent(v); setPage(1); }}
                       options={studentOptions}
-                      placeholder="O'quvchi"
+                      placeholder={t("O'quvchi")}
                       searchPlaceholder="O'quvchini qidirish"
                     />
                   )}
@@ -964,7 +967,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       value={fGroup}
                       onChange={(v) => { setFGroup(v); setFStudent(""); setPage(1); }}
                       options={groupOptions}
-                      placeholder="Guruh"
+                      placeholder={t("Guruh")}
                       searchPlaceholder="Guruhni qidirish"
                     />
                   )}
@@ -979,14 +982,14 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       }}
                       className="h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] font-medium"
                     >
-                      Tozalash
+                      {t("Tozalash")}
                     </button>
                   )}
                   <span className="text-[12px] text-muted-foreground">
                     {activeTab === "student-payments"
                       ? (payKey === "teacherName"
-                          ? "Shu ustozning o'quvchilari qilgan to'lovlar"
-                          : "Shu xodim qabul qilgan o'quvchi to'lovlari")
+                          ? t("Shu ustozning o'quvchilari qilgan to'lovlar")
+                          : t("Shu xodim qabul qilgan o'quvchi to'lovlari"))
                       : "Shu xodimga oid barcha kirim va chiqimlar (avans, oylik, o'quvchi to'lovlari)"}
                   </span>
                 </div>
@@ -999,7 +1002,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                   <span className="text-[11px] text-muted-foreground">{ledgerGapNote}</span>
                   {/* Sahifalangan tabda `rows.length` bir sahifadagi qatorlar
                       soni bo'lib qolardi — server qaytargan `total` kerak. */}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium whitespace-nowrap">Umumiy soni: <span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : totalRows}</span></span>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium whitespace-nowrap">{t("Umumiy soni:")}{" "}<span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : totalRows}</span></span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -1019,7 +1022,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                               h === "Oyligiga ta'siri"
                                 ? "Foizli o'qituvchida o'quvchi to'lovi × foiz (qaytarim ham foizi qadar); avans/oylik — olingan summa"
                                 : h.startsWith("Qoldiq")
-                                  ? "Xodimning oylik qoldig'i shu yozuvdan keyin/oldin. Oy boshida — o'tgan oydan qolgan qoldiq (okladli xodimda + shu oy okladi: o'tgan oyda to'liq, joriy oyda bugungi kungacha), keyin har yozuvning «Oyligiga ta'siri» qo'shilib boradi. Shu oyning bonus, jarima va solig'i bu ustunga kirmaydi — chap kartadagi «To'lanmagan» ularni ham hisobga oladi."
+                                  ? t("Xodimning oylik qoldig'i shu yozuvdan keyin/oldin. Oy boshida — o'tgan oydan qolgan qoldiq (okladli xodimda + shu oy okladi: o'tgan oyda to'liq, joriy oyda bugungi kungacha), keyin har yozuvning «Oyligiga ta'siri» qo'shilib boradi. Shu oyning bonus, jarima va solig'i bu ustunga kirmaydi — chap kartadagi «To'lanmagan» ularni ham hisobga oladi.")
                                   : undefined
                             }
                           >
@@ -1030,37 +1033,38 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {finLoading ? (
-                        <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
+                        <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">{t("Yuklanmoqda…")}</td></tr>
                       ) : rows.length === 0 ? (
-                        <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Ma&apos;lumotlar topilmadi</td></tr>
-                      ) : rows.map((t, i) => {
-                        const led = salaryLedger?.get(t.id) ?? null;
-                        const periodTag = periodTagOf(t);
+                        <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">{t("Ma'lumotlar topilmadi")}</td></tr>
+                      ) : rows.map((tv, i) => {
+                        const led = salaryLedger?.get(tv.id) ?? null;
+                        const periodMonth = periodTagOf(tv, months);
+                        const periodTag = periodMonth ? t("{month} uchun", { month: periodMonth }) : null;
                         const balCell = (v: number | null | undefined) =>
                           v === null || v === undefined
                             ? <td className="px-4 py-3 text-muted-foreground">—</td>
                             : <td className={`px-4 py-3 tabular-nums whitespace-nowrap ${v < 0 ? "text-rose-600" : ""}`}>{nf(v)}</td>;
                         return (
-                        <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+                        <tr key={tv.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{rowOffset + i + 1}</td>
                           <td className="px-4 py-3 tabular-nums whitespace-nowrap">
-                            {t.date}{t.time ? ` | ${t.time}` : ""}
+                            {tv.date}{tv.time ? ` | ${tv.time}` : ""}
                             {periodTag && (
-                              <span className="block text-[11px] text-muted-foreground" title="Kirim oynasida tanlangan davr — qoldiq o'sha oyning daftaridan">
+                              <span className="block text-[11px] text-muted-foreground" title={t("Kirim oynasida tanlangan davr — qoldiq o'sha oyning daftaridan")}>
                                 {periodTag}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={t.studentName} /></td>
-                          <td className="px-4 py-3 whitespace-nowrap">{groupByStudent.get(t.studentName) || "—"}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">{t.txName || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap"><PersonLink name={tv.studentName} /></td>
+                          <td className="px-4 py-3 whitespace-nowrap">{groupByStudent.get(tv.studentName) || "—"}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">{tv.txName || "—"}</td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${TX_STATUS_CLS[t.status || ""] ?? "bg-secondary text-foreground/70"}`}>
-                              {TX_STATUS_LABEL[t.status || ""] ?? t.status}
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${TX_STATUS_CLS[tv.status || ""] ?? "bg-secondary text-foreground/70"}`}>
+                              {TX_STATUS_LABEL[tv.status || ""] ?? tv.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3">{t.note || "—"}</td>
-                          <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${t.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{nf(t.amount)}</td>
+                          <td className="px-4 py-3">{tv.note || "—"}</td>
+                          <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${tv.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{nf(tv.amount)}</td>
                           {led ? (
                             <td className={`px-4 py-3 tabular-nums font-medium whitespace-nowrap ${led.effect < 0 ? "text-rose-600" : "text-emerald-600"}`}>
                               {led.effect < 0 ? "−" : "+"}{nf(Math.abs(led.effect))}
@@ -1089,9 +1093,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                 )}
               </>
             ) : finLoading ? (
-              <div className="py-20 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</div>
+              <div className="py-20 text-center text-[13px] text-muted-foreground">{t("Yuklanmoqda…")}</div>
             ) : finError ? (
-              <EmptyState text="Ma'lumot yuklanmadi" hint="Serverga ulanishda xato yuz berdi. Sahifani yangilab ko'ring." />
+              <EmptyState text="Ma'lumot yuklanmadi" hint={t("Serverga ulanishda xato yuz berdi. Sahifani yangilab ko'ring.")} />
             ) : activeTab === "advances" ? (
               <PayoutHistoryTab
                 entries={ownEntries.filter((e) => /avans/i.test(e.txName || ""))}
@@ -1172,7 +1176,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
             // so'rov kerak emas, PATCH `returnDocument: "after"` bilan ishlaydi.
             setEmp(updated);
             setArchiveMode(null);
-            showSuccess(updated.archReason ? "Xodim arxivlandi" : "Xodim arxivdan chiqarildi");
+            showSuccess(updated.archReason ? t("Xodim arxivlandi") : t("Xodim arxivdan chiqarildi"));
           }}
         />
       )}

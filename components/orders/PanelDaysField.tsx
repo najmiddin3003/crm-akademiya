@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LESSON_DAYS, LESSON_DAY_PRESETS, formatLessonDays, parseLessonDays } from "@/lib/ordersData";
+import { useT } from "@/components/shared/Language";
 
 // "Dars kunini tanlang" — BIR NECHTA kun tanlanadi (Dushanba + Chorshanba +
 // Juma ...). Ilgari bu bitta tanlovli select edi va tayyor naqshlar ro'yxatidan
@@ -29,6 +30,7 @@ export default function PanelDaysField({
   placeholder = "Kunlarni tanlang",
   error,
 }: PanelDaysFieldProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = parseLessonDays(value);
@@ -88,7 +90,7 @@ export default function PanelDaysField({
                 onClick={() => onChange(formatLessonDays(p.codes))}
                 className="inline-flex items-center h-7 px-2.5 rounded-md border border-border bg-secondary/40 text-[12px] font-medium hover:bg-secondary"
               >
-                {p.label}
+                {t(p.label)}
               </button>
             ))}
             {selected.length > 0 && (
@@ -97,7 +99,7 @@ export default function PanelDaysField({
                 onClick={() => onChange("")}
                 className="inline-flex items-center h-7 px-2.5 rounded-md text-[12px] text-muted-foreground hover:bg-secondary"
               >
-                Tozalash
+                {t("Tozalash")}
               </button>
             )}
           </div>
@@ -116,7 +118,7 @@ export default function PanelDaysField({
                     onChange={() => toggle(d.code)}
                     className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
                   />
-                  <span>{d.label}</span>
+                  <span>{t(d.label)}</span>
                   <span className="ml-auto text-[11.5px] text-muted-foreground tabular-nums">{d.code}</span>
                 </label>
               );

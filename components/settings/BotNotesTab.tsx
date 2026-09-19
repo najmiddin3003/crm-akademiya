@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { Toggle } from "./SettingsForm";
 import { BOT_NOTE_DEFAULTS, BOT_NOTE_TYPES, BOT_NOTE_VARIABLES } from "@/constants/settingsBotNotes";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalar → Sotuv va marketing → Bot eslatmalari.
 // Chapda shablon konstruktori, o'ngda Telegram xabarining jonli namunasi,
@@ -50,6 +51,7 @@ function newId(): string {
 }
 
 export default function BotNotesTab() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [templates, setTemplates] = useState<Template[]>(DEFAULTS.templates);
   const [loading, setLoading] = useState(true);
@@ -84,14 +86,14 @@ export default function BotNotesTab() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setTemplates(prev);
         return false;
       }
       showSuccess(okMsg);
       return true;
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setTemplates(prev);
       return false;
     } finally {
@@ -101,11 +103,11 @@ export default function BotNotesTab() {
 
   async function save() {
     if (!form.name.trim()) {
-      showError("Shablon nomini kiriting");
+      showError(t("Shablon nomini kiriting"));
       return;
     }
     if (!form.type) {
-      showError("Shablon turini tanlang");
+      showError(t("Shablon turini tanlang"));
       return;
     }
     const item: Template = {
@@ -117,27 +119,27 @@ export default function BotNotesTab() {
       active: form.active,
     };
     const next = form.id
-      ? templates.map((t) => (t.id === form.id ? item : t))
+      ? templates.map((tv) => (tv.id === form.id ? item : tv))
       : [...templates, item];
     const ok = await persist(next, "Sozlamalar saqlandi");
     if (ok) setForm(EMPTY_FORM);
   }
 
-  function edit(t: Template) {
+  function edit(tv: Template) {
     setForm({
-      id: t.id,
-      name: t.name,
-      type: t.type,
-      minutes: String(t.minutes ?? ""),
-      text: t.text ?? "",
-      active: Boolean(t.active),
+      id: tv.id,
+      name: tv.name,
+      type: tv.type,
+      minutes: String(tv.minutes ?? ""),
+      text: tv.text ?? "",
+      active: Boolean(tv.active),
     });
   }
 
-  function remove(t: Template) {
+  function remove(tv: Template) {
     // Tahrirlanayotgan shablon o'chsa, forma ham bo'shashi kerak.
-    if (form.id === t.id) setForm(EMPTY_FORM);
-    void persist(templates.filter((x) => x.id !== t.id), "Sozlamalar saqlandi");
+    if (form.id === tv.id) setForm(EMPTY_FORM);
+    void persist(templates.filter((x) => x.id !== tv.id), "Sozlamalar saqlandi");
   }
 
   // O'zgaruvchi chipi — kursor turgan joyga qo'shiladi, so'ng fokus qaytadi.
@@ -166,11 +168,11 @@ export default function BotNotesTab() {
         {/* CHAP — shablon konstruktori */}
         <div className="rounded-2xl bg-card border border-border p-5 space-y-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            {form.id ? "Shablonni tahrirlash" : "Yangi shablon"}
+            {form.id ? t("Shablonni tahrirlash") : t("Yangi shablon")}
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Shablon nomi</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Shablon nomi")}</label>
             <input
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
@@ -179,12 +181,12 @@ export default function BotNotesTab() {
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Shablon turi</label>
-            <Select value={form.type} onChange={(v) => setForm((p) => ({ ...p, type: v }))} options={BOT_NOTE_TYPES.map((t: string) => ({ value: t, label: t }))} placeholder="Tanlang" clearable />
+            <label className="block text-[13px] font-medium mb-1.5">{t("Shablon turi")}</label>
+            <Select value={form.type} onChange={(v) => setForm((p) => ({ ...p, type: v }))} options={BOT_NOTE_TYPES.map((tv: string) => ({ value: tv, label: tv }))} placeholder={t("Tanlang")} clearable />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Yuborish vaqti (minutda)</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Yuborish vaqti (minutda)")}</label>
             <input
               type="number"
               min={0}
@@ -195,7 +197,7 @@ export default function BotNotesTab() {
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Mavjud o&apos;zgaruvchilar</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Mavjud o'zgaruvchilar")}</label>
             <div className="flex flex-wrap gap-1.5">
               {BOT_NOTE_VARIABLES.map((v: string) => (
                 <button
@@ -211,7 +213,7 @@ export default function BotNotesTab() {
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Xabar matni</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Xabar matni")}</label>
             <textarea
               ref={textRef}
               rows={5}
@@ -222,7 +224,7 @@ export default function BotNotesTab() {
           </div>
 
           <div className="flex items-center justify-between gap-4 py-3 border-t border-border">
-            <span className="text-[13px]">Shablonni faollashtirish</span>
+            <span className="text-[13px]">{t("Shablonni faollashtirish")}</span>
             <Toggle on={form.active} onChange={(v) => setForm((p) => ({ ...p, active: v }))} />
           </div>
 
@@ -233,7 +235,7 @@ export default function BotNotesTab() {
               disabled={saving}
               className="h-10 px-6 rounded-lg border border-border text-sm font-medium hover:bg-secondary disabled:opacity-60"
             >
-              Orqaga
+              {t("Orqaga")}
             </button>
             <button
               type="button"
@@ -241,7 +243,7 @@ export default function BotNotesTab() {
               disabled={saving}
               className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
             >
-              {saving ? "Saqlanmoqda…" : "Saqlash"}
+              {saving ? t("Saqlanmoqda…") : t("Saqlash")}
             </button>
           </div>
         </div>
@@ -249,20 +251,20 @@ export default function BotNotesTab() {
         {/* O'NG — matn qanday yetib borishini ko'rsatuvchi namuna */}
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-            Shablon namunasi
+            {t("Shablon namunasi")}
           </div>
 
           <div className="mt-3 rounded-xl border border-border bg-secondary/25 p-4">
             <div className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground mb-3">
               <span aria-hidden>📱</span>
-              <span>Telegram</span>
+              <span>{t("Telegram")}</span>
             </div>
 
             <div className="max-w-[92%] rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 shadow-sm">
               {form.text.trim() ? (
                 <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words">{form.text}</p>
               ) : (
-                <p className="text-[13px] text-muted-foreground">Matn kiritsangiz shu yerda ko&apos;rinadi...</p>
+                <p className="text-[13px] text-muted-foreground">{t("Matn kiritsangiz shu yerda ko'rinadi...")}</p>
               )}
             </div>
           </div>
@@ -272,47 +274,47 @@ export default function BotNotesTab() {
       {/* PASTDA — saqlangan shablonlar */}
       <div className="rounded-2xl bg-card border border-border p-5">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-          Mavjud Shablonlar
+          {t("Mavjud Shablonlar")}
         </div>
 
         {templates.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">Shablon topilmadi</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">{t("Shablon topilmadi")}</div>
         ) : (
           <div className="mt-3 grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
-            {templates.map((t) => (
-              <div key={t.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
+            {templates.map((tv) => (
+              <div key={tv.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
                 <div className="flex items-start justify-between gap-3">
-                  <span className="text-[14px] font-semibold break-words">{t.name}</span>
+                  <span className="text-[14px] font-semibold break-words">{tv.name}</span>
                   <span
                     className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                      t.active ? "text-emerald-700 bg-emerald-100" : "text-muted-foreground bg-secondary"
+                      tv.active ? "text-emerald-700 bg-emerald-100" : "text-muted-foreground bg-secondary"
                     }`}
                   >
-                    {t.active ? "Aktiv" : "Nofaol"}
+                    {tv.active ? t("Aktiv") : t("Nofaol")}
                   </span>
                 </div>
 
-                <div className="text-[12px] text-muted-foreground">Vaqt: {t.minutes} daqiqa</div>
-                <div className="text-[12px] text-muted-foreground">Turi: {t.type || "—"}</div>
+                <div className="text-[12px] text-muted-foreground">Vaqt: {tv.minutes} daqiqa</div>
+                <div className="text-[12px] text-muted-foreground">Turi: {tv.type || "—"}</div>
 
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => edit(t)}
+                    onClick={() => edit(tv)}
                     disabled={saving}
                     className="h-8 px-3 rounded-lg border border-border text-[13px] font-medium inline-flex items-center gap-1.5 hover:bg-secondary disabled:opacity-60"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    Tahrirlash
+                    {t("Tahrirlash")}
                   </button>
                   <button
                     type="button"
-                    onClick={() => remove(t)}
+                    onClick={() => remove(tv)}
                     disabled={saving}
                     className="h-8 px-3 rounded-lg border border-border text-[13px] font-medium inline-flex items-center gap-1.5 text-rose-600 hover:bg-rose-500/10 disabled:opacity-60"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    O&apos;chirish
+                    {t("O'chirish")}
                   </button>
                 </div>
               </div>

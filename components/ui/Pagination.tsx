@@ -33,7 +33,7 @@ export default function Pagination({ totalItems, page, pageSize, onPageChange, o
           className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] font-medium"
         >
           <svg className="icon icon-xs text-muted-foreground"><use href="#i-list" /></svg>
-          <span>{pageSize} qator</span>
+          <span>{t("{n} qator", { n: pageSize })}</span>
           <svg className="icon icon-xs text-muted-foreground"><use href="#i-chevron-down" /></svg>
         </button>
         {sizeMenuOpen && (
@@ -45,7 +45,7 @@ export default function Pagination({ totalItems, page, pageSize, onPageChange, o
                 onClick={() => { onPageSizeChange(s); setSizeMenuOpen(false); }}
                 className={`w-full text-left px-3 py-1.5 rounded-md hover:bg-secondary text-sm ${s === pageSize ? "bg-primary/10 text-primary font-semibold" : ""}`}
               >
-                {s} qator
+                {t("{n} qator", { n: s })}
               </button>
             ))}
           </div>

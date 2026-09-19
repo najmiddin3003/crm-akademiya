@@ -1,3 +1,5 @@
+"use client";
+
 // login/register uchun umumiy vizual qobiq — Sidebar/Navbar mavjud emas
 // (bu sahifalar (app) guruhidan tashqarida, to'liq ekranli).
 export default function AuthShell({ children }: { children: React.ReactNode }) {

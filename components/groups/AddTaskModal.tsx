@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import type { GroupTask } from "@/lib/groupTasks";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Topshiriq qo'shish" modali (skrinshot 1-2). Saqlash → POST
 // /api/groups/:id/tasks. Fayl mahalliy (backendga faqat fayl NOMI yuboriladi —
@@ -13,6 +14,7 @@ const inputCls = "w-full h-11 rounded-lg border border-border bg-card px-3 text-
 const labelCls = "block text-[13px] font-medium mb-1.5";
 
 export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: number; onClose: () => void; onAdded: (task: GroupTask) => void }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { showSuccess, showError } = useToast();
   const [type, setType] = useState("Vazifa");
@@ -27,7 +29,7 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      showError("Topshiriq nomini kiriting");
+      showError(t("Topshiriq nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -39,15 +41,15 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Topshiriq qo'shilmadi");
+        showError(t(data.error || "Topshiriq qo'shilmadi"));
         setSaving(false);
         return;
       }
       onAdded(data.task as GroupTask);
-      showSuccess("Topshiriq qo'shildi");
+      showSuccess(t("Topshiriq qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -55,28 +57,28 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
   return (
     <Modal onClose={onClose} controller={modal} bare>
         <div className="px-6 pt-5 pb-2 flex-shrink-0">
-          <h3 className="text-[16px] font-semibold">Topshiriq qo&apos;shish</h3>
+          <h3 className="text-[16px] font-semibold">{t("Topshiriq qo'shish")}</h3>
         </div>
 
         <div className="px-6 py-2 space-y-3.5 overflow-y-auto flex-1">
           <div>
-            <label className={labelCls}>Turi<span className="text-rose-500">*</span></label>
-            <Select value={type} onChange={(v) => setType(v)} options={[{ value: "Vazifa", label: "Vazifa" }, { value: "Manba", label: "Manba" }]} size="lg" />
+            <label className={labelCls}>{t("Turi")}<span className="text-rose-500">*</span></label>
+            <Select value={type} onChange={(v) => setType(v)} options={[{ value: "Vazifa", label: t("Vazifa") }, { value: "Manba", label: t("Manba") }]} size="lg" />
           </div>
           <div>
-            <label className={labelCls}>Nomi<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>{t("Nomi")}<span className="text-rose-500">*</span></label>
             <input value={name} onChange={(e) => setName(e.target.value)} type="text" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Topshirish muddati<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>{t("Topshirish muddati")}<span className="text-rose-500">*</span></label>
             <input value={deadline} onChange={(e) => setDeadline(e.target.value)} type="datetime-local" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Maksimal ball<span className="text-rose-500">*</span></label>
+            <label className={labelCls}>{t("Maksimal ball")}<span className="text-rose-500">*</span></label>
             <input value={maxScore} onChange={(e) => setMaxScore(e.target.value)} type="number" min="0" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Izoh</label>
+            <label className={labelCls}>{t("Izoh")}</label>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div>
@@ -88,8 +90,8 @@ export default function AddTaskModal({ groupId, onClose, onAdded }: { groupId: n
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
-          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">Orqaga</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <button onClick={modal.close} className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">{t("Orqaga")}</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? t("Saqlanmoqda…") : t("Saqlash")}</button>
         </div>
       </Modal>
   );

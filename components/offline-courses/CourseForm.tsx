@@ -8,12 +8,14 @@ import { useToast } from "@/components/ui/Toast";
 import { useBranches } from "@/hooks/useBranches";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import { useOfflineCourses, type OfflineCourse } from "./OfflineCoursesProvider";
+import { useT } from "@/components/shared/Language";
 
 // Kurs qo'shish / tahrirlash formasi (crm-akademiya #view-add-course).
 // Tashqi komponent — kontekst yuklanishini kutadi; ichki `CourseFormBody`
 // faqat ma'lumot tayyor bo'lgach mount bo'ladi (shuning uchun useState boshlang'ich
 // qiymatlari to'g'ri — to'g'ridan-to'g'ri URL/reload'da ham).
 export default function CourseForm({ courseId, initialName }: { courseId?: number; initialName?: string }) {
+  const { t } = useT();
   const { loading, getCourse } = useOfflineCourses();
   const editing = courseId != null ? getCourse(courseId) : undefined;
 
@@ -24,8 +26,8 @@ export default function CourseForm({ courseId, initialName }: { courseId?: numbe
     if (!editing) {
       return (
         <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-          <p className="text-sm text-muted-foreground">Kurs topilmadi.</p>
-          <Link href="/offline-courses" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">Orqaga</Link>
+          <p className="text-sm text-muted-foreground">{t("Kurs topilmadi.")}</p>
+          <Link href="/offline-courses" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">{t("Orqaga")}</Link>
         </div>
       );
     }
@@ -54,6 +56,7 @@ function initialRows(existing?: { id: number; enabled: boolean; price: number }[
 // detalidagi fan hali kurslar ro'yxatida bo'lmasa, o'sha nom bilan ochiladi
 // va "Saqlash" uni bazaga yozadi.
 function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; initialName?: string }) {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { addCourse, updateCourse } = useOfflineCourses();
@@ -71,7 +74,7 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      showError("Kurs nomini kiriting");
+      showError(t("Kurs nomini kiriting"));
       return;
     }
     setSaving(true);
@@ -86,10 +89,10 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
     const ok = editing ? await updateCourse(editing.id, data) : await addCourse(data);
     setSaving(false);
     if (!ok) {
-      showError("Saqlashda xatolik yuz berdi");
+      showError(t("Saqlashda xatolik yuz berdi"));
       return;
     }
-    showSuccess(editing ? `Kurs yangilandi — ${trimmed}` : `Kurs qo'shildi — ${trimmed}`);
+    showSuccess(editing ? t("Kurs yangilandi — {trimmed}", { trimmed }) : t("Kurs qo'shildi — {trimmed}", { trimmed }));
     router.push("/offline-courses");
   }
 
@@ -101,7 +104,7 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
       <div className="rounded-xl border border-border bg-card shadow-sm p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="text-[14px] font-semibold text-foreground">Kurs nomi</label>
+            <label className="text-[14px] font-semibold text-foreground">{t("Kurs nomi")}</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -110,7 +113,7 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
             />
           </div>
           <div>
-            <label className="text-[14px] font-semibold text-foreground">Rang</label>
+            <label className="text-[14px] font-semibold text-foreground">{t("Rang")}</label>
             <input
               value={color}
               onChange={(e) => setColor(e.target.value)}
@@ -122,14 +125,14 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
       </div>
 
       {/* Branch availability */}
-      <h3 className="text-base font-semibold mt-2">Shu dars o&apos;qitiladigan filiallarni tanlang va bitta dars narxini kiriting</h3>
+      <h3 className="text-base font-semibold mt-2">{t("Shu dars o'qitiladigan filiallarni tanlang va bitta dars narxini kiriting")}</h3>
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-border">
             <tr className="text-foreground/70">
-              <th className="text-left px-6 py-4 font-semibold text-[14px] w-40">Mavjudligi</th>
-              <th className="text-left px-6 py-4 font-semibold text-[14px]">Filiallar</th>
-              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">Bitta dars narxi</th>
+              <th className="text-left px-6 py-4 font-semibold text-[14px] w-40">{t("Mavjudligi")}</th>
+              <th className="text-left px-6 py-4 font-semibold text-[14px]">{t("Filiallar")}</th>
+              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Bitta dars narxi")}</th>
             </tr>
           </thead>
           <tbody>
@@ -173,10 +176,10 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
       {/* Actions */}
       <div className="flex items-center justify-end gap-2 pt-2">
         <button onClick={() => router.push("/offline-courses")} className="h-10 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
-          Orqaga
+          {t("Orqaga")}
         </button>
         <button onClick={save} disabled={saving} className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </div>

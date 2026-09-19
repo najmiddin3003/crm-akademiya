@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SettingsGroup } from "@/lib/settings";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalardagi oddiy "maydonlar + Saqlash" formasi uchun umumiy komponent.
 // FunctionalityTab dagi kartalar ham, alohida tablar ham shundan foydalanadi —
@@ -49,6 +50,7 @@ export default function SettingsForm({
   // komponentda tushuntirilgan.
   note?: React.ReactNode;
 }) {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [values, setValues] = useState<Record<string, unknown>>(() => defaultsOfGroups(groups));
   const [loading, setLoading] = useState(true);
@@ -78,12 +80,12 @@ export default function SettingsForm({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         return;
       }
-      showSuccess("Sozlamalar saqlandi");
+      showSuccess(t("Sozlamalar saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -108,7 +110,7 @@ export default function SettingsForm({
           <div key={g.title ?? gi} className="rounded-2xl bg-card border border-border p-5">
             {g.title && (
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                {g.title}
+                {t(g.title)}
               </div>
             )}
             <div className="divide-y divide-border">
@@ -118,7 +120,7 @@ export default function SettingsForm({
                 if (f.type === "toggle") {
                   return (
                     <div key={f.key} className="flex items-center justify-between gap-4 py-3">
-                      <span className="text-[13px]">{f.label}</span>
+                      <span className="text-[13px]">{t(f.label)}</span>
                       <Toggle on={Boolean(value)} onChange={(v) => set(f.key, v)} />
                     </div>
                   );
@@ -129,7 +131,7 @@ export default function SettingsForm({
                 if (f.type === "radio") {
                   return (
                     <div key={f.key} className="py-3 space-y-2">
-                      {f.label && <div className="text-[13px] font-medium">{f.label}</div>}
+                      {f.label && <div className="text-[13px] font-medium">{t(f.label)}</div>}
                       {(f.options ?? []).map((o) => {
                         const [val, hint] = o.split("|");
                         return (
@@ -159,7 +161,7 @@ export default function SettingsForm({
 
                 return (
                   <div key={f.key} className="py-3">
-                    {f.label && <label className="block text-[13px] font-medium mb-1.5">{f.label}</label>}
+                    {f.label && <label className="block text-[13px] font-medium mb-1.5">{t(f.label)}</label>}
                     {f.type === "select" ? (
                       <Select value={String(value ?? "")} onChange={(v) => set(f.key, v)} options={(f.options ?? []).map((o) => ({ value: o, label: o }))} />
                     ) : (
@@ -193,7 +195,7 @@ export default function SettingsForm({
           disabled={saving || loading}
           className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
         >
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </div>

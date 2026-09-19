@@ -1,4 +1,7 @@
-import { CALENDAR_MONTHS_UZ, compareTasksForSort, type Task } from "@/lib/tasksData";
+"use client";
+
+import { compareTasksForSort, type Task } from "@/lib/tasksData";
+import { useT } from "@/components/shared/Language";
 
 export interface CalendarViewProps {
   month: Date;
@@ -10,6 +13,7 @@ export interface CalendarViewProps {
 }
 
 export default function CalendarView({ month, tasks, onNavigate, onToday, onDayClick, onTaskClick }: CalendarViewProps) {
+  const { t, months, weekdaysShort } = useT();
   const year = month.getFullYear();
   const monthIdx = month.getMonth();
   const firstDay = new Date(year, monthIdx, 1);
@@ -18,13 +22,13 @@ export default function CalendarView({ month, tasks, onNavigate, onToday, onDayC
   const daysInMonth = lastDay.getDate();
 
   const tasksByDay = new Map<number, Task[]>();
-  for (const t of tasks) {
-    const d = new Date(t.date);
+  for (const tv of tasks) {
+    const d = new Date(tv.date);
     if (isNaN(d.getTime())) continue;
     if (d.getFullYear() === year && d.getMonth() === monthIdx) {
       const key = d.getDate();
       const arr = tasksByDay.get(key) || [];
-      arr.push(t);
+      arr.push(tv);
       tasksByDay.set(key, arr);
     }
   }
@@ -43,18 +47,18 @@ export default function CalendarView({ month, tasks, onNavigate, onToday, onDayC
   return (
     <div>
       <div className="calendar-toolbar">
-        <button className="calendar-nav-btn" onClick={() => onNavigate(-1)} title="Oldingi oy">
+        <button className="calendar-nav-btn" onClick={() => onNavigate(-1)} title={t("Oldingi oy")}>
           <svg className="icon icon-sm"><use href="#i-arrow-left" /></svg>
         </button>
-        <div className="calendar-month-title">{CALENDAR_MONTHS_UZ[monthIdx]} {year}</div>
-        <button className="calendar-nav-btn" onClick={() => onNavigate(1)} title="Keyingi oy">
+        <div className="calendar-month-title">{months[monthIdx]} {year}</div>
+        <button className="calendar-nav-btn" onClick={() => onNavigate(1)} title={t("Keyingi oy")}>
           <svg className="icon icon-sm"><use href="#i-arrow-right" /></svg>
         </button>
-        <button className="calendar-today-btn" onClick={onToday}>Bugun</button>
+        <button className="calendar-today-btn" onClick={onToday}>{t("Bugun")}</button>
       </div>
 
       <div className="calendar-weekdays">
-        {["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"].map((w) => (
+        {[...weekdaysShort.slice(1), weekdaysShort[0]].map((w) => (
           <div key={w} className="calendar-weekday">{w}</div>
         ))}
       </div>
@@ -73,15 +77,15 @@ export default function CalendarView({ month, tasks, onNavigate, onToday, onDayC
               </div>
             )}
             <div className="calendar-cell-tasks">
-              {dayTasks.slice(0, 3).map((t) => {
-                const completed = t.state === "bajarilgan" ? " completed" : "";
-                const firstName = t.student.split(/\s+/)[0] || "";
+              {dayTasks.slice(0, 3).map((tv) => {
+                const completed = tv.state === "bajarilgan" ? " completed" : "";
+                const firstName = tv.student.split(/\s+/)[0] || "";
                 return (
                   <div
-                    key={t.id}
-                    className={`calendar-chip priority-${t.priority}${completed}`}
-                    onClick={(e) => { e.stopPropagation(); onTaskClick(t.id); }}
-                    title={`${t.student} — ${t.description}`}
+                    key={tv.id}
+                    className={`calendar-chip priority-${tv.priority}${completed}`}
+                    onClick={(e) => { e.stopPropagation(); onTaskClick(tv.id); }}
+                    title={`${tv.student} — ${tv.description}`}
                   >
                     {firstName}
                   </div>

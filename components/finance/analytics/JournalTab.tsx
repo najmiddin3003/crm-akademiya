@@ -8,6 +8,7 @@ import { ErrorBlock } from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
 import type { Transaction } from "@/lib/transactions";
 import type { CashboxName } from "@/lib/cashboxes";
+import { useT } from "@/components/shared/Language";
 // Bo'sh massiv MODUL DARAJASIDA: `?? []` har renderda YANGI massiv yasaydi
 // va uni bog'liqlik sifatida ishlatadigan useMemo har safar qayta hisoblanadi.
 const EMPTY: never[] = [];
@@ -39,6 +40,7 @@ function toIso(d: Date): string {
 }
 
 export default function JournalTab({ cashboxes }: { cashboxes: CashboxName[] }) {
+  const { t } = useT();
   const [dateRange, setDateRange] = useState<DateRange>(() => todayRange());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -98,9 +100,9 @@ export default function JournalTab({ cashboxes }: { cashboxes: CashboxName[] }) 
 
   const start = fresh?.start ?? 0;
 
-  function fmtDate(t: Transaction): string {
-    const [y, m, d] = t.date.split("-");
-    return `${d}.${m}.${y} | ${t.time}`;
+  function fmtDate(tv: Transaction): string {
+    const [y, m, d] = tv.date.split("-");
+    return `${d}.${m}.${y} | ${tv.time}`;
   }
 
   return (
@@ -108,7 +110,7 @@ export default function JournalTab({ cashboxes }: { cashboxes: CashboxName[] }) 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} className="w-52" />
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{error ? "—" : total}</span>
         </div>
       </div>
@@ -125,20 +127,20 @@ export default function JournalTab({ cashboxes }: { cashboxes: CashboxName[] }) 
               <thead className="bg-secondary/40">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="text-left px-4 py-3 whitespace-nowrap w-14">№</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Sana</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Miqdori</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">To&apos;lov turi</th>
-                  <th className="text-left px-4 py-3 whitespace-nowrap">Kassa</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Sana")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Miqdori")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("To'lov turi")}</th>
+                  <th className="text-left px-4 py-3 whitespace-nowrap">{t("Kassa")}</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((t, i) => (
-                  <tr key={t.id} className="border-b border-border/50">
+                {rows.map((tv, i) => (
+                  <tr key={tv.id} className="border-b border-border/50">
                     <td className="px-4 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                    <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtDate(t)}</td>
-                    <td className={`px-4 py-3 text-[13px] tabular-nums font-semibold ${t.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtUZS(t.amount)}</td>
-                    <td className="px-4 py-3 text-[13px]">{t.category}</td>
-                    <td className="px-4 py-3 text-[13px]">{cashboxName(t.cashboxId)}</td>
+                    <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{fmtDate(tv)}</td>
+                    <td className={`px-4 py-3 text-[13px] tabular-nums font-semibold ${tv.amount >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{fmtUZS(tv.amount)}</td>
+                    <td className="px-4 py-3 text-[13px]">{t(tv.category)}</td>
+                    <td className="px-4 py-3 text-[13px]">{cashboxName(tv.cashboxId)}</td>
                   </tr>
                 ))}
                 {rows.length === 0 && (

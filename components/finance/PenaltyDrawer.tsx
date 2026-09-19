@@ -13,6 +13,7 @@ import type { Penalty } from "@/lib/penalties";
 import type { Cashbox } from "@/lib/cashboxes";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Jarima qo'shish" — Moliya → Jarima sahifasidagi o'ng tomondan ochiladigan
 // panel. Bonus bilan bir xil "Tranzaksiya turi" → Xodim/O'quvchi mantig'i
@@ -32,6 +33,7 @@ export default function PenaltyDrawer({
   onClose: () => void;
   onSaved: (p: Penalty) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose, "drawer");
   // Faqat ismlar ro'yxati kerak — yengil rejim (3 654 KB → 544 KB).
   const { names: studentNames, loading: studentsLoading } = useStudents({ light: true });
@@ -72,16 +74,16 @@ export default function PenaltyDrawer({
 
   async function save() {
     if (!type) {
-      showError("Tranzaksiya turini tanlang");
+      showError(t("Tranzaksiya turini tanlang"));
       return;
     }
     if (!recipientName) {
-      showError(type === "employee" ? "Xodimni tanlang" : "O'quvchini tanlang");
+      showError(type === "employee" ? t("Xodimni tanlang") : t("O'quvchini tanlang"));
       return;
     }
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
-      showError("Qiymatni to'g'ri kiriting");
+      showError(t("Qiymatni to'g'ri kiriting"));
       return;
     }
     setSaving(true);
@@ -95,7 +97,7 @@ export default function PenaltyDrawer({
         const up = await fetch("/api/upload/image", { method: "POST", body: fd });
         const upData = await up.json();
         if (!up.ok || !upData.ok) {
-          showError(upData.error || "Rasm yuklanmadi");
+          showError(t(upData.error || "Rasm yuklanmadi"));
           setSaving(false);
           return;
         }
@@ -109,15 +111,15 @@ export default function PenaltyDrawer({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Saqlanmadi");
+        showError(t(data.error || "Saqlanmadi"));
         setSaving(false);
         return;
       }
       onSaved(data.penalty as Penalty);
-      showSuccess("Jarima qo'shildi");
+      showSuccess(t("Jarima qo'shildi"));
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -126,34 +128,34 @@ export default function PenaltyDrawer({
     <Modal onClose={onClose} controller={modal} bare variant="drawer" size="sm" zIndex={110}>
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Tranzaksiya turi</label>
-            <Select value={type} onChange={(v) => { setType(v); setEmployeeName(""); setStudentName(""); }} options={PENALTY_TYPES.map((t) => ({ value: t.value, label: t.label }))} placeholder="Tanlang" clearable />
+            <label className="block text-[13px] font-medium mb-1.5">{t("Tranzaksiya turi")}</label>
+            <Select value={type} onChange={(v) => { setType(v); setEmployeeName(""); setStudentName(""); }} options={PENALTY_TYPES.map((tv) => ({ value: tv.value, label: tv.label }))} placeholder={t("Tanlang")} clearable />
           </div>
 
           {type === "employee" && (
             <div>
-              <label className="block text-[13px] font-medium mb-1.5">Xodim</label>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Xodim")}</label>
               <Select value={employeeName} onChange={(v) => setEmployeeName(v)} options={employees.map((e) => ({ value: e.name, label: e.name }))} placeholder={selectPlaceholder(listsLoading, employees.length, "Xodim qo'shilmagan")} clearable disabled={listsLoading} />
             </div>
           )}
           {type === "student" && (
             <StudentSearchSelect
-              label="O'quvchi"
+              label={t("O'quvchi")}
               value={studentName}
               onChange={setStudentName}
               options={studentNames}
-              placeholder="O'quvchini qidirish"
+              placeholder={t("O'quvchini qidirish")}
               loading={studentsLoading}
             />
           )}
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Kassa</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Kassa")}</label>
             <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={cashboxes.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(listsLoading, cashboxes.length, "Kassa qo'shilmagan", "Tanlanmagan")} clearable disabled={listsLoading} />
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Qiymat</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
             <MoneyInput
               value={amount}
               onChange={setAmount}
@@ -162,7 +164,7 @@ export default function PenaltyDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -172,7 +174,7 @@ export default function PenaltyDrawer({
           </div>
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Rasm</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Rasm")}</label>
             {/* Endpoint faqat PNG/JPG/WEBP va 5 MB gacha qabul qiladi
                 (app/api/upload/image/route.ts) — tanlash oynasi ham shu
                 turlar bilan cheklanadi. */}
@@ -196,10 +198,10 @@ export default function PenaltyDrawer({
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-            Orqaga
+            {t("Orqaga")}
           </button>
           <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

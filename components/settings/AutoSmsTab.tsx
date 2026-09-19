@@ -13,6 +13,7 @@ import {
   AUTO_SMS_SCENARIOS,
 } from "@/constants/settingsAutoSms";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Sotuv va marketing → Avto sms. Yuqorida umumiy yoqish va filial, pastda
 // har bir hodisa uchun alohida karta: toggle + xabar matni + o'zgaruvchilar
@@ -116,6 +117,7 @@ function withDefaults(saved?: Partial<AutoSmsData>): AutoSmsData {
 }
 
 export default function AutoSmsTab() {
+  const { t } = useT();
   // Filiallar bazadan — ilgari bu ro'yxat faqat ["Tanlang"] edi, ya'ni
   // birorta haqiqiy filialni tanlab bo'lmasdi.
   const { branches, loading: branchesLoading } = useBranches();
@@ -176,13 +178,13 @@ export default function AutoSmsTab() {
       });
       const resData = await res.json();
       if (!resData.ok) {
-        showError(resData.error || "Saqlanmadi");
+        showError(t(resData.error || "Saqlanmadi"));
         return;
       }
       savedRef.current = data;
-      showSuccess("Sozlamalar saqlandi");
+      showSuccess(t("Sozlamalar saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -202,7 +204,7 @@ export default function AutoSmsTab() {
         {/* Referensda "Avto sms yoqish" — sarlavha, umumiy kalit emas: har bir
             ssenariy o'z toggle'i bilan mustaqil yoqiladi. `enabled` maydoni
             saqlash shaklida qoldirilgan, lekin UI'da ko'rsatilmaydi. */}
-        <h3 className="text-[15px] font-semibold">Avto sms yoqish</h3>
+        <h3 className="text-[15px] font-semibold">{t("Avto sms yoqish")}</h3>
 
         {/* NEGA BU IZOH BOR: sahifa nomi "Avto sms", lekin tizimda hodisani
             kutib turadigan rejalashtiruvchi (cron/queue) yo'q — toggle,
@@ -221,11 +223,11 @@ export default function AutoSmsTab() {
         </div>
 
         <div className="pt-3">
-          <label className="block text-[13px] font-medium mb-1.5">Filiallar</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Filiallar")}</label>
           <Select value={branchNames.includes(data.branch) ? data.branch : ""} onChange={(v) => setData((p) => ({ ...p, branch: v }))} options={branchNames.map((b) => ({ value: b, label: b }))} placeholder={branchesLoading
                   ? "Yuklanmoqda…"
                   : branchNames.length === 0
-                    ? "Filial qo'shilmagan"
+                    ? t("Filial qo'shilmagan")
                     : "Tanlang"} clearable />
         </div>
       </div>
@@ -235,19 +237,19 @@ export default function AutoSmsTab() {
         return (
           <div key={s.key} className="rounded-2xl bg-card border border-border p-5">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-[15px] font-semibold">{s.title}</h3>
+              <h3 className="text-[15px] font-semibold">{t(s.title)}</h3>
               <Toggle on={sc.on} onChange={(v) => setScenario(s.key, { on: v })} />
             </div>
 
             {s.extra === "absent" && (
               <div className="pt-3 space-y-3">
                 <div>
-                  <label className="block text-[13px] font-medium mb-1.5">Davomat holati</label>
+                  <label className="block text-[13px] font-medium mb-1.5">{t("Davomat holati")}</label>
                   <Select value={String(sc.status ?? "")} onChange={(v) => setScenario(s.key, { status: v })} options={(AUTO_SMS_ABSENT_STATUSES as string[]).map((st) => ({ value: st, label: st }))} />
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap text-[13px]">
-                  <span>Yo&apos;qlama qilgandan</span>
+                  <span>{t("Yo'qlama qilgandan")}</span>
                   <input
                     type="number"
                     // Bo'sh maydonni 0 ga aylantirmaymiz — tozalab qayta
@@ -260,14 +262,14 @@ export default function AutoSmsTab() {
                     }
                     className={`${inputCls} w-24`}
                   />
-                  <span>minut keyin sms yuborsin</span>
+                  <span>{t("minut keyin sms yuborsin")}</span>
                 </div>
               </div>
             )}
 
             {s.extra === "consecutive" && (
               <div className="pt-3 flex items-center gap-2 flex-wrap text-[13px]">
-                <span>Ketma-ket</span>
+                <span>{t("Ketma-ket")}</span>
                 <input
                   type="number"
                   value={String(sc.days ?? "")}
@@ -276,7 +278,7 @@ export default function AutoSmsTab() {
                   }
                   className={`${inputCls} w-24`}
                 />
-                <span>kun</span>
+                <span>{t("kun")}</span>
               </div>
             )}
 
@@ -301,7 +303,7 @@ export default function AutoSmsTab() {
                 return (
                   <div key={sub.key} className="mt-3 rounded-xl border border-border p-4">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-[13px] font-medium">{sub.title}</span>
+                      <span className="text-[13px] font-medium">{t(sub.title)}</span>
                       <Toggle on={sb.on} onChange={(v) => setSub(s.key, sub.key, { on: v })} />
                     </div>
                     <MessageField
@@ -325,14 +327,14 @@ export default function AutoSmsTab() {
           disabled={saving}
           className="h-10 px-6 rounded-lg border border-border text-sm font-medium hover:bg-secondary"
         >
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
         <button
           onClick={save}
           disabled={saving}
           className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
         >
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </div>
@@ -340,9 +342,10 @@ export default function AutoSmsTab() {
 }
 
 function MessageField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useT();
   return (
     <div className="pt-3">
-      <label className="block text-[13px] font-medium mb-1.5">Xabar matni</label>
+      <label className="block text-[13px] font-medium mb-1.5">{t("Xabar matni")}</label>
       <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className={areaCls} />
     </div>
   );
@@ -351,16 +354,17 @@ function MessageField({ value, onChange }: { value: string; onChange: (v: string
 // Kalit ustiga bosilganda o'sha blokning matniga qo'shiladi — shu bois
 // jadval har bir blok bilan birga chiziladi.
 function VarTable({ vars, onPick }: { vars: VarDef[]; onPick: (v: string) => void }) {
+  const { t } = useT();
   const rowCls = "grid grid-cols-[minmax(0,180px)_minmax(0,1fr)] items-center";
   return (
     <div className="pt-3">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-        Mavjud o&apos;zgaruvchilar
+        {t("Mavjud o'zgaruvchilar")}
       </div>
       <div className="rounded-lg border border-border overflow-hidden">
         <div className={`${rowCls} bg-secondary/50 text-[12px] font-medium text-muted-foreground`}>
-          <div className="px-3 py-2">Key</div>
-          <div className="px-3 py-2">Tavsif</div>
+          <div className="px-3 py-2">{t("Key")}</div>
+          <div className="px-3 py-2">{t("Tavsif")}</div>
         </div>
         <div className="divide-y divide-border border-t border-border">
           {vars.map((v) => (

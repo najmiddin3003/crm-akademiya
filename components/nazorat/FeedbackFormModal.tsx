@@ -11,6 +11,7 @@ import {
 } from "./feedbackTypes";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Fikr qo'shish" oynasi. NEGA kerak: fikr-mulohaza sahifasi ilgari faqat
 // qattiq yozilgan ro'yxatni ko'rsatardi va yangi fikr kelib tushadigan yo'l
@@ -49,6 +50,7 @@ export default function FeedbackFormModal({
   onClose: () => void;
   onSaved: (fb: FeedbackRecord) => void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const { branches } = useBranches();
   const [filial, setFilial] = useState("");
@@ -63,7 +65,7 @@ export default function FeedbackFormModal({
 
   async function save() {
     if (!izoh.trim()) {
-      setError("Izohni kiriting");
+      setError(t("Izohni kiriting"));
       return;
     }
     setBusy(true);
@@ -77,7 +79,7 @@ export default function FeedbackFormModal({
       .catch(() => null);
     setBusy(false);
     if (!res?.ok) {
-      setError(res?.error || "Saqlashda xatolik yuz berdi");
+      setError(t(res?.error || "Saqlashda xatolik yuz berdi"));
       return;
     }
     onSaved(res.feedback as FeedbackRecord);
@@ -86,7 +88,7 @@ export default function FeedbackFormModal({
   return (
     <Modal onClose={onClose} controller={modal} bare size="lg" zIndex={300}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <h3 className="text-[15px] font-semibold">Fikr-mulohaza qo&apos;shish</h3>
+          <h3 className="text-[15px] font-semibold">{t("Fikr-mulohaza qo'shish")}</h3>
           <button
             type="button"
             onClick={modal.close}
@@ -98,36 +100,36 @@ export default function FeedbackFormModal({
 
         <div className="p-5 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Filial">
+            <Field label={t("Filial")}>
               <SelectWrap>
-                <Select value={filial} onChange={(v) => setFilial(v)} options={branches.map((b) => ({ value: b.name, label: b.name }))} placeholder="Tanlang" clearable />
+                <Select value={filial} onChange={(v) => setFilial(v)} options={branches.map((b) => ({ value: b.name, label: b.name }))} placeholder={t("Tanlang")} clearable />
               </SelectWrap>
             </Field>
-            <Field label="Kimdan">
+            <Field label={t("Kimdan")}>
               <SelectWrap>
                 <Select value={from} onChange={(v) => setFrom(v)} options={FEEDBACK_FROM_OPTIONS.map((o) => ({ value: o, label: o }))} />
               </SelectWrap>
             </Field>
-            <Field label="Ism">
-              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Ism familiya" />
+            <Field label={t("Ism")}>
+              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder={t("Ism familiya")} />
             </Field>
-            <Field label="Telefon raqam">
+            <Field label={t("Telefon raqam")}>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} placeholder="+998 __ ___ __ __" />
             </Field>
           </div>
 
-          <Field label="Turi">
+          <Field label={t("Turi")}>
             <SelectWrap>
-              <Select value={type} onChange={(v) => setType(v as FeedbackType)} options={FEEDBACK_TYPES.map((t) => ({ value: t, label: t }))} />
+              <Select value={type} onChange={(v) => setType(v as FeedbackType)} options={FEEDBACK_TYPES.map((tv) => ({ value: tv, label: tv }))} />
             </SelectWrap>
           </Field>
 
-          <Field label="Izoh">
+          <Field label={t("Izoh")}>
             <textarea
               value={izoh}
               onChange={(e) => setIzoh(e.target.value)}
               rows={4}
-              placeholder="Fikr-mulohaza matni"
+              placeholder={t("Fikr-mulohaza matni")}
               className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </Field>
@@ -141,7 +143,7 @@ export default function FeedbackFormModal({
             onClick={modal.close}
             className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary"
           >
-            Bekor qilish
+            {t("Bekor qilish")}
           </button>
           <button
             type="button"
@@ -149,7 +151,7 @@ export default function FeedbackFormModal({
             onClick={save}
             className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
-            {busy ? "Saqlanmoqda..." : "Saqlash"}
+            {busy ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </div>
       </Modal>

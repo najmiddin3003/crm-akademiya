@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { formatSmsDate, type SmsMessage } from "@/lib/smsMessages";
 import type { Order } from "@/lib/ordersData";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "SMS".
 //
@@ -28,6 +29,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export default function SmsTabContent({ order }: { order: Order }) {
+  const { t } = useT();
   const [messages, setMessages] = useState<SmsMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,8 +65,8 @@ export default function SmsTabContent({ order }: { order: Order }) {
           <svg viewBox="0 0 24 24" className="w-12 h-12 mx-auto text-muted-foreground/40 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z" />
           </svg>
-          <div className="text-[14px] font-medium">Xabarlar topilmadi</div>
-          <div className="text-[12px] text-muted-foreground mt-0.5">Bu o&apos;quvchiga hali SMS yuborilmagan.</div>
+          <div className="text-[14px] font-medium">{t("Xabarlar topilmadi")}</div>
+          <div className="text-[12px] text-muted-foreground mt-0.5">{t("Bu o'quvchiga hali SMS yuborilmagan.")}</div>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -72,10 +74,10 @@ export default function SmsTabContent({ order }: { order: Order }) {
             <thead className="text-[12px] text-muted-foreground uppercase">
               <tr className="border-b border-border">
                 <th className="px-4 py-3 text-left font-medium whitespace-nowrap">№</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="px-4 py-3 text-left font-medium">Moderator</th>
-                <th className="px-4 py-3 text-left font-medium">Holati</th>
-                <th className="px-4 py-3 text-left font-medium">Xabar</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Moderator")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Holati")}</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Xabar")}</th>
               </tr>
             </thead>
             <tbody>

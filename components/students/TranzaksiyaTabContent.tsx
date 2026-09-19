@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { LegacyEntry } from "@/lib/legacyEntries";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchi profili → "Tranzaksiyalar tarixi".
 // Ma'lumot HAQIQIY: MongoDB `transaction_entries` dan
@@ -57,6 +58,7 @@ export default function TranzaksiyaTabContent({
   legacyEntries?: LegacyEntry[];
   loading?: boolean;
 }) {
+  const { t } = useT();
   const [paymentType, setPaymentType] = useState("");
   // Holat qiymati "" ham haqiqiy holat (tasdiqlangan) bo'lgani uchun
   // "hammasi" alohida sentinel bilan ajratiladi.
@@ -79,15 +81,15 @@ export default function TranzaksiyaTabContent({
   return (
     <div className="space-y-3">
       <div className="flex justify-end gap-2">
-        <Button variant="icon" title="Filtr">
+        <Button variant="icon" title={t("Filtr")}>
           <svg viewBox="0 0 24 24" className="icon icon-sm"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
         </Button>
-        <Button variant="icon" icon="i-settings" title="Sozlash" />
+        <Button variant="icon" icon="i-settings" title={t("Sozlash")} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Select value={paymentType} onChange={(v) => setPaymentType(v)} options={paymentTypes.map((p) => ({ value: p, label: p }))} placeholder="To'lov turi — hammasi" clearable />
-        <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "all", label: "Holat — hammasi" }, { value: "ok", label: "Tasdiqlangan" }, { value: "waiting", label: "Kutilmoqda" }, { value: "cancelled", label: "Bekor qilingan" }]} />
+        <Select value={paymentType} onChange={(v) => setPaymentType(v)} options={paymentTypes.map((p) => ({ value: p, label: p }))} placeholder={t("To'lov turi — hammasi")} clearable />
+        <Select value={status} onChange={(v) => setStatus(v)} options={[{ value: "all", label: t("Holat — hammasi") }, { value: "ok", label: t("Tasdiqlangan") }, { value: "waiting", label: t("Kutilmoqda") }, { value: "cancelled", label: t("Bekor qilingan") }]} />
       </div>
 
       <div className="rounded-2xl bg-card border border-border overflow-hidden">
@@ -101,28 +103,28 @@ export default function TranzaksiyaTabContent({
             <thead className="text-[12px] text-muted-foreground uppercase">
               <tr className="border-b border-border">
                 <th className="px-4 py-3 text-left font-medium">№</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Sana</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Miqdori</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Oldingi miqdor</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Keyingi miqdor</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya turi</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">To&apos;lov turi</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya nomi</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Sana")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Miqdori")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Oldingi miqdor")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Keyingi miqdor")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Tranzaksiya turi")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("To'lov turi")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Tranzaksiya nomi")}</th>
                 {/* IZOH — kassir kirim qilayotganda yozadigan matn
                     ("Musoxon avgust" kabi). U qaysi o'qituvchi va qaysi
                     oy uchun to'langanini aytadi, ya'ni tarixdagi eng
                     ma'noli ustunlardan biri. Arxiv jadvalida allaqachon
                     bor edi, jonli jadvalda esa yo'q edi. */}
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Izoh</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Qabul qilgan</th>
-                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Holati</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Izoh")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Qabul qilgan")}</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Holati")}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">Yuklanmoqda…</td></tr>
+                <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">{t("Yuklanmoqda…")}</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">To&apos;lovlar topilmadi</td></tr>
+                <tr><td colSpan={11} className="px-4 py-10 text-center text-[13px] text-muted-foreground">{t("To'lovlar topilmadi")}</td></tr>
               ) : (
                 rows.map((e, i) => (
                   <tr key={e.id} className="border-b border-border/50 last:border-0">
@@ -161,12 +163,11 @@ export default function TranzaksiyaTabContent({
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 p-3 border-b border-border">
             <div>
-              <div className="text-[13px] font-semibold">Edutizim arxivi</div>
+              <div className="text-[13px] font-semibold">{t("Edutizim arxivi")}</div>
               {/* Manba va CHEGARA aniq yozilgan: keyinroq "nega bu yerda
                   sentabr yo'q?" degan savol tug'ilmasin. */}
               <div className="text-[11.5px] text-muted-foreground mt-0.5">
-                Eski tizimdagi to&apos;lovlar (avgust 2026 gacha) — faqat ko&apos;rish uchun,
-                balansga qo&apos;shilmaydi
+                {t("Eski tizimdagi to'lovlar (avgust 2026 gacha) — faqat ko'rish uchun, balansga qo'shilmaydi")}
               </div>
             </div>
             <span className="inline-flex items-center h-7 px-3 rounded-md bg-secondary/50 text-[12px] font-medium tabular-nums shrink-0">
@@ -178,13 +179,13 @@ export default function TranzaksiyaTabContent({
               <thead className="text-[12px] text-muted-foreground uppercase">
                 <tr className="border-b border-border">
                   <th className="px-4 py-3 text-left font-medium">№</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Sana</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Miqdori</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">To&apos;lov turi</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Tranzaksiya nomi</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Izoh</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Qabul qilgan</th>
-                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Holati</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Sana")}</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Miqdori")}</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("To'lov turi")}</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Tranzaksiya nomi")}</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Izoh")}</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Qabul qilgan")}</th>
+                  <th className="px-4 py-3 text-left font-medium whitespace-nowrap">{t("Holati")}</th>
                 </tr>
               </thead>
               <tbody>

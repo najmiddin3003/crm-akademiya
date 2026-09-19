@@ -125,12 +125,107 @@ function interpolate(text: string, params?: TParams): string {
  * `key` — o'zbekcha (lotin) manba matn. Tartib: lug'at (en / uz-cyrl
  * istisno) → kiril uchun translit → `{param}` qo'yish. Param qiymatlari
  * o'girilMAYDI (foydalanuvchi ma'lumoti).
+ *
+ * DARVOZA: kirilga faqat LUG'ATDA BOR kalit (messages/en.json — barcha
+ * interfeys matnlarining ro'yxati) o'giriladi. `t(x.label)` ga ba'zan
+ * bazadan kelgan matn ham tushadi (guruh nomi, kurs nomi) — u lug'atda
+ * yo'q, demak o'z holicha qoladi. Aks holda "Alisher" → "Алишер" bo'lardi
+ * (foydalanuvchi qarori: ma'lumot o'girilmasin). Yangi matn qo'shganda
+ * `node scripts/i18n-scan.mjs --todo` uni lug'atga so'raydi.
  */
 export function translate(lang: Lang, key: string, params?: TParams): string {
-  let text = key;
-  if (lang === "en") text = EN[key] ?? key;
-  else if (lang === "uz-cyrl") text = CYRL[key] ?? toCyrillic(key);
+  if (lang === "uz" || !key) return interpolate(key, params);
+  if (!(key in EN)) {
+    // Lug'atda yo'q — balki bu RENDER BO'LGAN dinamik xabar (backend
+    // `Mablag' yetarli emas — 5 000 so'm tasdiq kutmoqda` deb yuborgan,
+    // kalit esa `… — {held} so'm …`). Andozaga teskari moslab ko'riladi.
+    const matched = matchRendered(key);
+    if (matched) {
+      // Ushlangan bo'laklar ham o'giriladi — ular ichma-ich render bo'lgan
+      // andoza bo'lishi mumkin ("Muddat: … — 2 kun kechikdi"). Foydalanuvchi
+      // ma'lumoti lug'atda yo'q, demak o'z holicha qoladi (darvoza).
+      const inner: TParams = {};
+      for (const [name, value] of Object.entries(matched.params)) inner[name] = translate(lang, String(value));
+      return translate(lang, matched.key, { ...inner, ...params });
+    }
+    return interpolate(key, params);
+  }
+  const text = lang === "en" ? EN[key] : (CYRL[key] ?? toCyrillic(key));
   return interpolate(text, params);
+}
+
+// ── Render bo'lgan xabarni andozaga qaytarish ──────────────────────
+//
+// BACKEND XABARLARI (app/api, lib) mijozga o'zbekcha TAYYOR matn holida
+// keladi: statiklari lug'atdagi kalit bilan bir xil, andozalilari esa
+// `${x}` bilan render bo'lgan. Serverga til o'rgatmasdan (cookie o'qish,
+// har route'ni o'zgartirish) ularni o'girish uchun: lug'atdagi `{param}`li
+// kalitlardan regex yasaladi (`{held}` → `(.+?)`), kelgan matn shu
+// naqshlarga solishtiriladi, mos kelsa kalit + ushlangan param'lar bilan
+// odatdagidek tarjima qilinadi. Kalit ro'yxati scripts/i18n-scan.mjs
+// ning SERVER manbasidan keladi — andoza o'zgarsa skan yangi kalit so'raydi.
+//
+// Narx: lug'atda yo'q har bir NOYOB satr uchun bir marta ~300 regex
+// (natija keshlanadi). Foydalanuvchi ma'lumoti (ism, guruh nomi) ham
+// shu yo'ldan o'tadi — mos kelmaydi va o'z holicha qoladi.
+/**
+ * Kodda `t(...)` chaqiruvi ko'rinishida UCHRAMAYDIGAN, faqat render bo'lgan matnni
+ * teskari moslash orqali ishlatiladigan andozalar — pul formatlovchilar
+ * ("82 000 so'm" → `{n} so'm`). scripts/i18n-scan.mjs shu ro'yxatni ham
+ * o'qiydi, aks holda ular "ishlatilmaydigan kalit" deb chiqardi.
+ */
+export const RENDERED_KEYS = [
+  "{n} so'm",
+  // lib/notifications.ts — relativeUz / overdueUz va topshiriq meta'si.
+  "Hozirgina", "Kecha", "{n} daqiqa oldin", "{n} soat oldin",
+  "{n} daqiqa kechikdi", "{n} soat kechikdi", "{n} kun kechikdi",
+  "Muddat: {stamp} — {overdue}",
+];
+
+type Pattern = { key: string; names: string[]; re: RegExp };
+let patterns: Pattern[] | null = null;
+const renderedCache = new Map<string, { key: string; params: TParams } | null>();
+const RENDERED_CACHE_LIMIT = 3000;
+
+function buildPatterns(): Pattern[] {
+  const out: Pattern[] = [];
+  for (const key of Object.keys(EN)) {
+    // Param'dan tashqari harf bo'lmasa (`{d}.{m}.{y}`) — o'giradigan narsa yo'q.
+    if (!key.includes("{") || !/[A-Za-zЀ-ӿ]/.test(key.replace(/\{\w+\}/g, ""))) continue;
+    const names: string[] = [];
+    const source = key
+      .split(/(\{\w+\})/)
+      .map((part) => {
+        const m = /^\{(\w+)\}$/.exec(part);
+        if (m) { names.push(m[1]); return "([\\s\\S]+?)"; }
+        return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      })
+      .join("");
+    if (!names.length) continue;
+    out.push({ key, names, re: new RegExp(`^${source}$`) });
+  }
+  // Uzunroq (aniqroq) andoza birinchi sinaladi.
+  out.sort((a, b) => b.key.length - a.key.length);
+  return out;
+}
+
+function matchRendered(text: string): { key: string; params: TParams } | null {
+  if (text.length > 600 || !/[A-Za-zЀ-ӿ]/.test(text)) return null;
+  const hit = renderedCache.get(text);
+  if (hit !== undefined) return hit;
+  patterns ??= buildPatterns();
+  let found: { key: string; params: TParams } | null = null;
+  for (const p of patterns) {
+    const m = p.re.exec(text);
+    if (!m) continue;
+    const params: TParams = {};
+    p.names.forEach((n, i) => { params[n] = m[i + 1]; });
+    found = { key: p.key, params };
+    break;
+  }
+  if (renderedCache.size >= RENDERED_CACHE_LIMIT) renderedCache.clear();
+  renderedCache.set(text, found);
+  return found;
 }
 
 /** Lug'atda inglizcha tarjimasi bormi — skriptlar va tekshiruvlar uchun. */

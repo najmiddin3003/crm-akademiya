@@ -24,6 +24,7 @@ import {
 } from "@/lib/studentsData";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → Arxiv o'quvchilar (crm-akademiya #view-archive-students,
 // sidebar: O'quvchilar > Arxiv o'quvchilar, href /archive-students).
@@ -115,6 +116,7 @@ export interface ArchiveStudentsPageProps {
 }
 
 export default function ArchiveStudentsPage({ initialPupils, initialGroups }: ArchiveStudentsPageProps = {}) {
+  const { t } = useT();
   // `status: "Arxiv"` — filtr SERVERDA: 6 732 tadan 2 456 tasi.
   // Pastdagi `.filter(s.status === "Arxiv")` himoya sifatida qoladi.
   //
@@ -305,7 +307,7 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
           }`}
         >
           <Filter className="icon icon-sm" />
-          <span>Filtr</span>
+          <span>{t("Filtr")}</span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -318,23 +320,23 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               type="text"
-              placeholder="Qidirish"
+              placeholder={t("Qidirish")}
               className="w-56 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           <div className="relative" ref={moreRef}>
-            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+            <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
               <MoreVertical className="icon icon-sm" />
             </button>
             {moreOpen && (
               <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
                 <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                  <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "CSV faylini yuklab olish"}</span>
+                  <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "CSV faylini yuklab olish"}</span>
                 </button>
                 <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                  <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "EXCEL faylini yuklab olish"}</span>
+                  <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "EXCEL faylini yuklab olish"}</span>
                 </button>
               </div>
             )}
@@ -345,14 +347,14 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
       {/* Filtr paneli */}
       {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={reason} onChange={(v) => { setReason(v); setPage(1); }} options={reasonOptions.map((r) => ({ value: r, label: r }))} placeholder="Sababi" clearable size="sm" className="w-52" />
-          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder="Moderator" clearable size="sm" className="w-44" />
-          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder="Arxivlangan sana oralig'i" />
+          <Select value={reason} onChange={(v) => { setReason(v); setPage(1); }} options={reasonOptions.map((r) => ({ value: r, label: r }))} placeholder={t("Sababi")} clearable size="sm" className="w-52" />
+          <Select value={filters.moderator} onChange={(v) => setFilter("moderator", v)} options={moderatorOptions.map((m) => ({ value: m, label: m }))} placeholder={t("Moderator")} clearable size="sm" className="w-44" />
+          <DateRangePicker value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} placeholder={t("Arxivlangan sana oralig'i")} />
           <button
             onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setReason(""); setSearch(""); setDateRange({ start: null, end: null }); setPage(1); }}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
           >
-            <X className="icon icon-xs" /> Tozalash
+            <X className="icon icon-xs" />{" "}{t("Tozalash")}
           </button>
         </div>
       )}
@@ -365,7 +367,7 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
           <span className="text-emerald-600 font-medium">Haqdor {fmtUZS(credit)}</span>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -381,18 +383,18 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Arxivlangan guruh</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Arxiv o&apos;qituvchisi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Pro arxivlangan sana</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Arxivlangan sana</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sababi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Oldingi holati</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchini ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Balans")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Arxivlangan guruh")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Arxiv o'qituvchisi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Pro arxivlangan sana")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Arxivlangan sana")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sababi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Oldingi holati")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Shartnoma")}</th>
                 <th className="px-3 py-3 w-20" />
               </tr>
             </thead>
@@ -449,7 +451,7 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
                             date: r.student.statusChangedAt ? fmtIsoDate(r.student.statusChangedAt) : "",
                           })
                         }
-                        title="To'liq sababni ko'rish"
+                        title={t("To'liq sababni ko'rish")}
                         className="text-left truncate max-w-full hover:text-primary hover:underline"
                       >
                         {r.student.statusReason}
@@ -471,14 +473,14 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
                       {/* ?src=list — yuqoridagi ism havolasidagi bilan bir xil
                           sabab: id fazolari kesishadi. */}
                       <Link
-                        title="To'lovlar"
+                        title={t("To'lovlar")}
                         href={`/student-edit/${r.student.id}?src=list&tab=tranzaksiya`}
                         className="p-1.5 rounded-md hover:bg-secondary"
                       >
                         <CreditCard className="h-4 w-4" />
                       </Link>
                       <button
-                        title={r.student.phone ? "Xabar" : "Telefon raqam yo'q"}
+                        title={r.student.phone ? t("Xabar") : t("Telefon raqam yo'q")}
                         disabled={!r.student.phone}
                         onClick={() => setSmsFor({ name: r.student.name, phone: r.student.phone })}
                         className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
@@ -498,7 +500,7 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
               )}
               {!loading && slice.length === 0 && (
                 <tr>
-                  <td colSpan={16} className="px-3 py-10 text-center text-sm text-muted-foreground">O&apos;quvchi topilmadi</td>
+                  <td colSpan={16} className="px-3 py-10 text-center text-sm text-muted-foreground">{t("O'quvchi topilmadi")}</td>
                 </tr>
               )}
             </tbody>
@@ -519,8 +521,8 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
           phone={smsFor.phone}
           onClose={() => setSmsFor(null)}
           onSent={({ simulated }) => {
-            if (simulated) showError("SMS jo'natilmadi: Eskiz sozlanmagan (jurnalga yozildi)");
-            else showSuccess("SMS yuborildi");
+            if (simulated) showError(t("SMS jo'natilmadi: Eskiz sozlanmagan (jurnalga yozildi)"));
+            else showSuccess(t("SMS yuborildi"));
             setSmsFor(null);
           }}
           onError={showError}
@@ -530,7 +532,7 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
       {reasonFor && (
         <Modal onClose={() => setReasonFor(null)} bare zIndex={120}>{(modal) => (<>
             <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-              <h3 className="text-[15px] font-semibold flex-1">Arxivlash sababi</h3>
+              <h3 className="text-[15px] font-semibold flex-1">{t("Arxivlash sababi")}</h3>
               <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
@@ -540,11 +542,11 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
                 <span className="font-medium">{reasonFor.name}</span>
                 {reasonFor.date && <span className="text-muted-foreground tabular-nums">{reasonFor.date}</span>}
               </div>
-              <p className="text-sm whitespace-pre-wrap break-words">{reasonFor.reason}</p>
+              <p className="text-sm whitespace-pre-wrap break-words">{t(reasonFor.reason)}</p>
             </div>
             <div className="flex justify-end px-5 py-4 border-t border-border">
               <button onClick={modal.close} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
-                Yopish
+                {t("Yopish")}
               </button>
             </div>
           </>)}</Modal>

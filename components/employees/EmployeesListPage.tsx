@@ -27,6 +27,7 @@ import {
   ROLE_LABELS,
 } from "@/constants/employees";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Xodimlar ro'yxati (crm-akademiya #view-management-xodimlar).
 // Toolbar ikonkalari (Sozlash / Filtr / 3-nuqta) Lidlar → Buyurtmalar ro'yxati
@@ -159,10 +160,12 @@ const ARCHIVED_HINT = "Xodim arxivda — oylik hisoblanmaydi, soliq va plastik t
 
 /** Sozlanmagan xodim uchun bir xil ko'rinish — hamma ustunda. */
 function NotConfigured() {
-  return <span className="text-[12px] text-muted-foreground" title="Xodim kartasida ish haqi kiritilmagan">Sozlanmagan</span>;
+  const { t } = useT();
+  return <span className="text-[12px] text-muted-foreground" title={t("Xodim kartasida ish haqi kiritilmagan")}>{t("Sozlanmagan")}</span>;
 }
 
 export default function EmployeesListPage() {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   // Kurs filtri bazadan (ilgari constants'dagi uchinchi, boshqalariga mos
@@ -381,7 +384,7 @@ export default function EmployeesListPage() {
     try {
       const parsed = parseCsv(await file.text());
       if (parsed.length < 2) {
-        showError("Faylda sarlavhadan boshqa qator yo'q");
+        showError(t("Faylda sarlavhadan boshqa qator yo'q"));
         return;
       }
       const body = parsed.slice(1).map((r) => ({
@@ -400,7 +403,7 @@ export default function EmployeesListPage() {
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Import qilinmadi");
+        showError(t(data.error || "Import qilinmadi"));
         return;
       }
       const fresh = await fetch("/api/hr-employees").then((r) => r.json()).catch(() => null);
@@ -408,11 +411,11 @@ export default function EmployeesListPage() {
       const skipped = (data.skipped as { reason: string }[]).length;
       showSuccess(
         skipped > 0
-          ? `${data.created} ta xodim qo'shildi, ${skipped} tasi o'tkazib yuborildi`
-          : `${data.created} ta xodim qo'shildi`,
+          ? t("{created} ta xodim qo'shildi, {skipped} tasi o'tkazib yuborildi", { created: data.created, skipped })
+          : t("{created} ta xodim qo'shildi", { created: data.created }),
       );
     } catch {
-      showError("Faylni o'qib bo'lmadi");
+      showError(t("Faylni o'qib bo'lmadi"));
     } finally {
       setImporting(false);
     }
@@ -420,7 +423,7 @@ export default function EmployeesListPage() {
   function exportCSV() {
     const csv = [EXPORT_HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
     downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "xodimlar.csv");
-    showSuccess(`CSV yuklab olindi — ${filtered.length} ta yozuv`);
+    showSuccess(t("CSV yuklab olindi — {filtered} ta yozuv", { filtered: filtered.length }));
     setMoreOpen(false);
   }
   function exportExcel() {
@@ -428,7 +431,7 @@ export default function EmployeesListPage() {
     const body = exportRows().map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${body}</tbody></table></body></html>`;
     downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "xodimlar.xls");
-    showSuccess(`Excel yuklab olindi — ${filtered.length} ta yozuv`);
+    showSuccess(t("Excel yuklab olindi — {filtered} ta yozuv", { filtered: filtered.length }));
     setMoreOpen(false);
   }
 
@@ -452,8 +455,8 @@ export default function EmployeesListPage() {
       if (!data.ok) throw new Error(data.error || "Saqlanmadi");
       showSuccess(
         next.length > 0
-          ? `${e.name} — ${next.length} ta soliq turi biriktirildi`
-          : `${e.name} — soliq o'chirildi`,
+          ? t("{name} — {next} ta soliq turi biriktirildi", { name: e.name, next: next.length })
+          : t("{name} — soliq o'chirildi", { name: e.name }),
       );
     } catch (err) {
       setRows((prev) => prev.map((r) => (r.id === e.id ? { ...r, taxIds: before } : r)));
@@ -492,8 +495,8 @@ export default function EmployeesListPage() {
       if (!data.ok) throw new Error(data.error || "Saqlanmadi");
       showSuccess(
         next != null
-          ? `${e.name} — plastik oylik ${groupNumber(next)} so'm`
-          : `${e.name} — plastik oylik olib tashlandi`,
+          ? t("{name} — plastik oylik {next} so'm", { name: e.name, next: groupNumber(next) })
+          : t("{name} — plastik oylik olib tashlandi", { name: e.name }),
       );
     } catch (err) {
       setRows((prev) => prev.map((r) => (r.id === e.id ? { ...r, plastikSalary: before } : r)));
@@ -536,7 +539,7 @@ export default function EmployeesListPage() {
           : "bg-violet-500/10 text-violet-600 border-violet-500/20";
         return (
           <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${turiBadge} whitespace-nowrap`}>
-            {e.turi}
+            {t(e.turi)}
           </span>
         );
       }
@@ -553,9 +556,9 @@ export default function EmployeesListPage() {
           return (
             <span
               className="inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium bg-rose-500/10 text-rose-600 border-rose-500/20 whitespace-nowrap"
-              title={`Arxivlangan: ${e.archReason} — oylik hisoblanmaydi`}
+              title={t("Arxivlangan: {archReason} — oylik hisoblanmaydi", { archReason: e.archReason })}
             >
-              Arxivda
+              {t("Arxivda")}
             </span>
           );
         }
@@ -567,7 +570,7 @@ export default function EmployeesListPage() {
           : "bg-sky-500/10 text-sky-600 border-sky-500/20";
         return (
           <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${cls} whitespace-nowrap`}>
-            {isFoiz ? `Foiz ${s.percent}%` : "Oklad"}
+            {isFoiz ? t("Foiz {percent}%", { percent: s.percent }) : "Oklad"}
           </span>
         );
       }
@@ -601,7 +604,7 @@ export default function EmployeesListPage() {
                 type="button"
                 onClick={() => setTaxTarget(e)}
                 className="text-[11px] text-primary hover:underline whitespace-nowrap"
-                title="Soliq turlarini o'zgartirish"
+                title={t("Soliq turlarini o'zgartirish")}
               >
                 {count} ta tur
               </button>
@@ -633,7 +636,7 @@ export default function EmployeesListPage() {
                 type="button"
                 onClick={() => setPlastikTarget(e)}
                 className="text-[11px] text-primary hover:underline whitespace-nowrap tabular-nums"
-                title="Plastik oylik summasini o'zgartirish"
+                title={t("Plastik oylik summasini o'zgartirish")}
               >
                 {groupNumber(amount)}
               </button>
@@ -666,7 +669,7 @@ export default function EmployeesListPage() {
       {/* Top action row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Button variant="primary" lucideIcon={Plus} onClick={() => setAddOpen(true)}>
-          Xodim qo&apos;shish
+          {t("Xodim qo'shish")}
         </Button>
         {/* "Ishga qabul / bo'shatish" va "HR davomat / ta'til" tugmalari OLIB
             TASHLANDI: ikkalasi ham faqat "(demo)" toast chiqarardi, ortida esa
@@ -677,7 +680,7 @@ export default function EmployeesListPage() {
           <div className="inline-flex items-center h-10 rounded-lg border border-border bg-card overflow-hidden">
             <button
               type="button"
-              title="Ro'yxat ko'rinishi"
+              title={t("Ro'yxat ko'rinishi")}
               onClick={() => setViewMode("list")}
               className={`h-full w-10 inline-flex items-center justify-center ${viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
             >
@@ -685,7 +688,7 @@ export default function EmployeesListPage() {
             </button>
             <button
               type="button"
-              title="Karta ko'rinishi"
+              title={t("Karta ko'rinishi")}
               onClick={() => setViewMode("grid")}
               className={`h-full w-10 inline-flex items-center justify-center border-l border-border ${viewMode === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
             >
@@ -693,25 +696,25 @@ export default function EmployeesListPage() {
             </button>
           </div>
           <div className="relative" ref={settingsRef}>
-            <Button variant="outline" lucideIcon={Settings} title="Sozlash" onClick={() => { setSettingsOpen((o) => !o); setMoreOpen(false); }} />
+            <Button variant="outline" lucideIcon={Settings} title={t("Sozlash")} onClick={() => { setSettingsOpen((o) => !o); setMoreOpen(false); }} />
             {settingsOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-border bg-card shadow-xl p-3 z-30">
-                <div className="text-[13px] font-semibold mb-2">Ustunlar</div>
+                <div className="text-[13px] font-semibold mb-2">{t("Ustunlar")}</div>
                 <div className="space-y-1 max-h-[60vh] overflow-y-auto">
                   {EMP_COLUMNS.filter((c) => c.id !== "num").map((c) => (
                     <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary cursor-pointer">
                       <input type="checkbox" checked={!hiddenCols.has(c.id)} onChange={() => toggleCol(c.id)} className="w-4 h-4 rounded border-border accent-primary" />
-                      <span className="text-[13px]">{c.label}</span>
+                      <span className="text-[13px]">{t(c.label)}</span>
                     </label>
                   ))}
                 </div>
                 <button onClick={() => { setHiddenCols(new Set()); setSettingsOpen(false); }} className="w-full mt-2 h-9 px-3 rounded-md hover:bg-secondary text-[13px] text-primary font-medium">
-                  Standartga qaytarish
+                  {t("Standartga qaytarish")}
                 </button>
               </div>
             )}
           </div>
-          <Button variant="outline" lucideIcon={Filter} title="Filtrlar" onClick={() => setFiltersOpen((o) => !o)} />
+          <Button variant="outline" lucideIcon={Filter} title={t("Filtrlar")} onClick={() => setFiltersOpen((o) => !o)} />
           <div className="relative" ref={moreRef}>
             <input
               ref={fileRef}
@@ -725,7 +728,7 @@ export default function EmployeesListPage() {
                 if (f) importCsv(f);
               }}
             />
-            <Button variant="outline" lucideIcon={MoreVertical} title="Ko'proq" onClick={() => { setMoreOpen((o) => !o); setSettingsOpen(false); }} />
+            <Button variant="outline" lucideIcon={MoreVertical} title={t("Ko'proq")} onClick={() => { setMoreOpen((o) => !o); setSettingsOpen(false); }} />
             {moreOpen && (
               <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-card shadow-xl p-1 z-30">
                 <button
@@ -734,15 +737,15 @@ export default function EmployeesListPage() {
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left disabled:opacity-60"
                 >
                   <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">IN</span>
-                  <span>{importing ? "Import qilinmoqda…" : "Import (CSV)"}</span>
+                  <span>{importing ? t("Import qilinmoqda…") : t("Import (CSV)")}</span>
                 </button>
                 <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-100 text-[9px] font-bold text-blue-700">CSV</span>
-                  <span>CSV faylini yuklab olish</span>
+                  <span>{t("CSV faylini yuklab olish")}</span>
                 </button>
                 <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left">
                   <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 text-[9px] font-bold text-emerald-700">XLS</span>
-                  <span>EXCEL faylini yuklab olish</span>
+                  <span>{t("EXCEL faylini yuklab olish")}</span>
                 </button>
               </div>
             )}
@@ -753,23 +756,23 @@ export default function EmployeesListPage() {
       {/* Filter grid */}
       {filtersOpen && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder="Qidiruv" className={inputCls} />
-          <Select value={stateFilter} onChange={(v) => { setStateFilter(v); setPage(1); }} options={EMP_STATES.map((s) => ({ value: s.value, label: s.label }))} placeholder="Holat" clearable />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} type="text" placeholder={t("Qidiruv")} className={inputCls} />
+          <Select value={stateFilter} onChange={(v) => { setStateFilter(v); setPage(1); }} options={EMP_STATES.map((s) => ({ value: s.value, label: s.label }))} placeholder={t("Holat")} clearable />
           <DateRangePicker
             value={activeDateRange}
             onChange={(r) => { setActiveDateRange(r); setPage(1); }}
-            placeholder="Faollik sanasi"
+            placeholder={t("Faollik sanasi")}
             className="w-full"
           />
           <DateRangePicker
             value={leaveDateRange}
             onChange={(r) => { setLeaveDateRange(r); setPage(1); }}
-            placeholder="Ketish sanasi"
+            placeholder={t("Ketish sanasi")}
             className="w-full"
           />
-          <Select value={roleFilter} onChange={(v) => { setRoleFilter(v); setPage(1); }} options={EMP_ROLES.map((r) => ({ value: r.value, label: r.label }))} placeholder="Rol" clearable />
-          <Select value={courseFilter} onChange={(v) => { setCourseFilter(v); setPage(1); }} options={courseNames.map((c) => ({ value: c, label: c }))} placeholder="Kurs" clearable />
-          <Select value={reasonFilter} onChange={(v) => { setReasonFilter(v); setPage(1); }} options={EMP_LEAVE_REASONS.map((r) => ({ value: r, label: r }))} placeholder="Ketish sababi" clearable />
+          <Select value={roleFilter} onChange={(v) => { setRoleFilter(v); setPage(1); }} options={EMP_ROLES.map((r) => ({ value: r.value, label: r.label }))} placeholder={t("Rol")} clearable />
+          <Select value={courseFilter} onChange={(v) => { setCourseFilter(v); setPage(1); }} options={courseNames.map((c) => ({ value: c, label: c }))} placeholder={t("Kurs")} clearable />
+          <Select value={reasonFilter} onChange={(v) => { setReasonFilter(v); setPage(1); }} options={EMP_LEAVE_REASONS.map((r) => ({ value: r, label: r }))} placeholder={t("Ketish sababi")} clearable />
         </div>
       )}
 
@@ -777,7 +780,7 @@ export default function EmployeesListPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -795,16 +798,16 @@ export default function EmployeesListPage() {
                           <button
                             type="button"
                             onClick={() => toggleSort(c.id)}
-                            title={active ? (sortDir === "asc" ? "O'sish bo'yicha — bosing: kamayish" : "Kamayish bo'yicha — bosing: bekor qilish") : "Saralash"}
+                            title={active ? (sortDir === "asc" ? t("O'sish bo'yicha — bosing: kamayish") : t("Kamayish bo'yicha — bosing: bekor qilish")) : "Saralash"}
                             className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-foreground ${active ? "text-primary" : ""}`}
                           >
-                            {c.label}
+                            {t(c.label)}
                             {active && sortDir === "desc"
                               ? <ArrowUp className="h-3 w-3" />
                               : <ArrowDown className={`h-3 w-3 ${active ? "" : "opacity-30"}`} />}
                           </button>
                         ) : (
-                          <span className="inline-flex items-center gap-1">{c.label}</span>
+                          <span className="inline-flex items-center gap-1">{t(c.label)}</span>
                         )}
                       </th>
                     );
@@ -819,7 +822,7 @@ export default function EmployeesListPage() {
                     // Hover, kursor va ARXIV foni — app/globals.css dagi
                     // `.emp-list-table` qoidalarida (sabab o'sha izohda).
                     className={e.archReason ? "is-archived" : undefined}
-                    title={e.archReason ? `Arxivlangan: ${e.archReason} — oylik hisoblanmaydi` : undefined}
+                    title={e.archReason ? t("Arxivlangan: {archReason} — oylik hisoblanmaydi", { archReason: e.archReason }) : undefined}
                   >
                     {visibleCols.map((c) => (
                       <td key={c.id} className="px-3 py-3 whitespace-nowrap">{renderCell(e, c.id, i)}</td>
@@ -852,7 +855,7 @@ export default function EmployeesListPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-semibold text-amber-600">{e.name}</div>
                         <span className={`inline-flex items-center h-5 px-2 rounded-md border text-[10.5px] font-medium ${e.turi === "teacher" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : e.turi === "moderator" ? "bg-sky-500/10 text-sky-600 border-sky-500/20" : "bg-violet-500/10 text-violet-600 border-violet-500/20"}`}>
-                          {e.turi}
+                          {t(e.turi)}
                         </span>
                       </div>
                       <div className="text-[12.5px] text-muted-foreground tabular-nums">{e.phone}</div>
@@ -863,19 +866,19 @@ export default function EmployeesListPage() {
                         ) : (
                           <>
                             <div>
-                              <div className="text-muted-foreground">Ish turi</div>
+                              <div className="text-muted-foreground">{t("Ish turi")}</div>
                               <div className="font-medium">{s.salaryType === "foiz" ? `Foiz ${s.percent}%` : "Oklad"}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Jami oylik</div>
+                              <div className="text-muted-foreground">{t("Jami oylik")}</div>
                               <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.jamiOylik)}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Jami avans</div>
+                              <div className="text-muted-foreground">{t("Jami avans")}</div>
                               <div className="font-medium text-amber-600 tabular-nums">{fmtNum(s.jamiAvans)}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Qolgan</div>
+                              <div className="text-muted-foreground">{t("Qolgan")}</div>
                               <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.qolganOylik)}</div>
                             </div>
                           </>

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode } from "react";
 import { SETTINGS_SECTIONS } from "@/constants/settings";
 import type { SettingsSection } from "@/lib/settings";
+import { useT } from "@/components/shared/Language";
 
 // Sozlamalar karkasi — referensdagi tuzilma: chapda kichik bo'limlar
 // ro'yxati, o'ngda tanlangan tab mazmuni.
@@ -30,11 +31,12 @@ export default function SettingsShell({
   sectionKey: string;
   children: (activeTab: string) => ReactNode;
 }) {
+  const { t } = useT();
   const router = useRouter();
   const { section, active } = useSettingsTab(sectionKey);
 
   if (!section) {
-    return <div className="p-5 text-sm text-muted-foreground">Sozlama bo&apos;limi topilmadi.</div>;
+    return <div className="p-5 text-sm text-muted-foreground">{t("Sozlama bo'limi topilmadi.")}</div>;
   }
 
   // Tabsiz bo'lim (Integratsiyalar) — chap panelsiz, butun kenglik.
@@ -46,15 +48,15 @@ export default function SettingsShell({
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 items-start">
         <nav className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
-          {section.tabs.map((t) => (
+          {section.tabs.map((tv) => (
             <button
-              key={t.key}
-              onClick={() => router.push(`${section.href}?tab=${t.key}`)}
+              key={tv.key}
+              onClick={() => router.push(`${section.href}?tab=${tv.key}`)}
               className={`w-full text-left px-5 py-3.5 text-sm transition-colors ${
-                active === t.key ? "text-primary font-medium bg-primary/5" : "hover:bg-secondary/40"
+                active === tv.key ? "text-primary font-medium bg-primary/5" : "hover:bg-secondary/40"
               }`}
             >
-              {t.label}
+              {t(tv.label)}
             </button>
           ))}
         </nav>

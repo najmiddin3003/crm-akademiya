@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ORDER_STAGES, type Order, type OrderStageKey } from "@/lib/ordersData";
 import PersonLink from "@/components/shared/PersonDirectory";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/src/app.js renderOrdersKanban()/renderOrderKanbanCard()
 // and the onOrderCardDragStart/onStageDrop family (~lines 24065-24598).
@@ -13,6 +14,7 @@ export interface OrdersKanbanProps {
 }
 
 export default function OrdersKanban({ orders, onDropStage }: OrdersKanbanProps) {
+  const { t } = useT();
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<OrderStageKey | null>(null);
 
@@ -45,7 +47,7 @@ export default function OrdersKanban({ orders, onDropStage }: OrdersKanbanProps)
             }}
           >
             {byStage[st.key].length === 0 ? (
-              <div className="ok-empty">Bo&apos;sh</div>
+              <div className="ok-empty">{t("Bo'sh")}</div>
             ) : (
               byStage[st.key].map((o) => (
                 <div

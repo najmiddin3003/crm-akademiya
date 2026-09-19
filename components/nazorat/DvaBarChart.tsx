@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Davomat analitikasi grafigi — kunlik stacked-bar (SVG, kutubxonasiz).
 //
@@ -46,8 +47,9 @@ function niceScale(max: number): { niceMax: number; step: number } {
 }
 
 export default function DvaBarChart({ days, series }: { days: DvaDay[]; series: DvaSeries[] }) {
+  const { t } = useT();
   if (days.length === 0) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">Ma&apos;lumot topilmadi</div>;
+    return <div className="py-16 text-center text-sm text-muted-foreground">{t("Ma'lumot topilmadi")}</div>;
   }
 
   const N = days.length;
@@ -122,7 +124,7 @@ export default function DvaBarChart({ days, series }: { days: DvaDay[]; series: 
               style={{ fontSize: 10, opacity: 0.6 }}
               transform={`rotate(-40, ${cx}, ${y})`}
             >
-              {d.label}
+              {t(d.label)}
             </text>
           );
         })}

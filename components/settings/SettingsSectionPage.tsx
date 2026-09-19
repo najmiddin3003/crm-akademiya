@@ -28,6 +28,7 @@ import {
   STUDENT_DISCOUNT_GROUPS,
 } from "@/constants/settingsForms";
 import type { SettingsGroup } from "@/lib/settings";
+import { useT } from "@/components/shared/Language";
 
 // Bo'lim sahifasi uchun umumiy qobiq. Tab uchun tayyor komponent bo'lsa
 // ko'rsatiladi, aks holda "hali qurilmagan" belgisi — bu yerda soxta forma
@@ -357,12 +358,12 @@ const BUILT: Record<string, () => ReactNode> = {
 };
 
 function NotBuilt({ label }: { label: string }) {
+  const { t } = useT();
   return (
     <div className="rounded-2xl bg-card border border-border p-10 text-center">
       <div className="text-[15px] font-semibold">{label}</div>
       <p className="text-[13px] text-muted-foreground mt-2 max-w-md mx-auto">
-        Bu bo&apos;lim hali qurilmagan — maydonlari referens saytdan ko&apos;chirilishi kerak.
-        Karkas va saqlash mexanizmi tayyor, faqat forma qo&apos;shiladi.
+        {t("Bu bo'lim hali qurilmagan — maydonlari referens saytdan ko'chirilishi kerak. Karkas va saqlash mexanizmi tayyor, faqat forma qo'shiladi.")}
       </p>
     </div>
   );

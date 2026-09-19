@@ -20,6 +20,7 @@ import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { uzStamp } from "@/lib/uzTime";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/src/app.js openTaskModal()/saveTask() (~line 4238).
 //
@@ -99,6 +100,7 @@ function valuesFromTask(task: Task): TaskModalValues {
 // Mounted only while open (see TasksPage), so this initializer runs fresh
 // every time the modal opens — no effect-based state sync needed.
 export default function TaskModal({ task, initialDate, onClose, onSave }: TaskModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [values, setValues] = useState<TaskModalValues>(() => (task ? valuesFromTask(task) : blankValues(initialDate)));
   const [dateError, setDateError] = useState(false);
@@ -136,7 +138,7 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
 
   return (
     <Modal onClose={onClose} controller={modal} bare size="2xl" zIndex={200} panelClassName="overflow-y-auto p-6 space-y-4">
-        <h3 className="text-lg font-semibold">{task ? "Topshiriqni o'zgartirish" : "Topshiriq"}</h3>
+        <h3 className="text-lg font-semibold">{task ? t("Topshiriqni o'zgartirish") : t("Topshiriq")}</h3>
 
         {/* Mas'ul xodimning HISOBOTI (xodim oynasidan kelgan javob). Faqat
             o'qish uchun — uni faqat xodimning o'zi yozadi. Muddat yoki
@@ -147,43 +149,43 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
           <div className={`rounded-xl border px-4 py-3 text-[13px] ${task.report.outcome === "bajarildi" ? "border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10" : "border-red-300 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10"}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className={`font-semibold ${task.report.outcome === "bajarildi" ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
-                {task.report.outcome === "bajarildi" ? "✓ Bajarildi" : "✗ Bajarilmadi"}
+                {task.report.outcome === "bajarildi" ? t("✓ Bajarildi") : t("✗ Bajarilmadi")}
                 {task.report.byName && <span className="font-normal"> — {task.report.byName}</span>}
               </span>
               {task.report.at && <span className="text-xs text-muted-foreground tabular-nums">{uzStamp(new Date(task.report.at))}</span>}
             </div>
             <div className="mt-1.5 whitespace-pre-wrap leading-snug">{task.report.comment}</div>
             <div className="mt-2 text-[11px] text-muted-foreground">
-              Muddat yoki mas&apos;ul shaxs o&apos;zgartirilsa hisobot o&apos;chadi va topshiriq xodimga qaytadan yuboriladi.
+              {t("Muddat yoki mas'ul shaxs o'zgartirilsa hisobot o'chadi va topshiriq xodimga qaytadan yuboriladi.")}
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Sana</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Sana")}</label>
             <DateField value={values.date} onChange={(iso) => set("date", iso)} error={dateError} />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Vaqt</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Vaqt")}</label>
             <TimeField value={values.time} onChange={(v) => set("time", v)} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Mas&apos;ul shaxs</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Mas'ul shaxs")}</label>
             <Select value={values.staff} onChange={(v) => set("staff", v)} options={staffNames.map((s) => ({ value: s, label: s }))} placeholder={selectPlaceholder(staffLoading, staffNames.length, "Xodim qo'shilmagan")} clearable size="sm" disabled={staffLoading} />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Topshiriq turi</label>
-            <Select value={values.type} onChange={(v) => set("type", v)} options={[...(values.type && !taskTypes.some((t) => t.name === values.type) ? [{ value: values.type, label: values.type }] : []), ...taskTypes.map((t) => ({ value: t.name, label: t.name }))]} placeholder={selectPlaceholder(typesLoading, taskTypes.length, "Topshiriq turi qo'shilmagan")} clearable size="sm" disabled={typesLoading} />
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Topshiriq turi")}</label>
+            <Select value={values.type} onChange={(v) => set("type", v)} options={[...(values.type && !taskTypes.some((tv) => tv.name === values.type) ? [{ value: values.type, label: values.type }] : []), ...taskTypes.map((tv) => ({ value: tv.name, label: tv.name }))]} placeholder={selectPlaceholder(typesLoading, taskTypes.length, "Topshiriq turi qo'shilmagan")} clearable size="sm" disabled={typesLoading} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Kimga</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Kimga")}</label>
             <Select value={values.targetKind} onChange={(v) => setTargetKind(v as TaskTargetKind)} options={TASK_TARGET_KINDS.map((k) => ({ value: k.value, label: k.label }))} size="sm" />
           </div>
           <StudentSearchSelect
@@ -201,17 +203,17 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Muhimlik</label>
-            <Select value={values.priority} onChange={(v) => set("priority", v as TaskPriority)} options={[{ value: "kritik", label: "Kritik" }, { value: "yuqori", label: "Yuqori" }, { value: "orta", label: "O'rta" }, { value: "past", label: "Past" }]} size="sm" />
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Muhimlik")}</label>
+            <Select value={values.priority} onChange={(v) => set("priority", v as TaskPriority)} options={[{ value: "kritik", label: t("Kritik") }, { value: "yuqori", label: t("Yuqori") }, { value: "orta", label: t("O'rta") }, { value: "past", label: t("Past") }]} size="sm" />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Takrorlanish</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Takrorlanish")}</label>
             <Select value={values.recurring} onChange={(v) => set("recurring", v as TaskRecurring)} options={RECURRENCE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} size="sm" />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Izoh</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("Izoh")}</label>
           <textarea
             value={values.note}
             onChange={(e) => set("note", e.target.value)}
@@ -221,8 +223,8 @@ export default function TaskModal({ task, initialDate, onClose, onSave }: TaskMo
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <Button variant="outline" onClick={modal.close}>Bekor qilish</Button>
-          <Button variant="primary" onClick={handleSave} disabled={!complete}>Saqlash</Button>
+          <Button variant="outline" onClick={modal.close}>{t("Bekor qilish")}</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!complete}>{t("Saqlash")}</Button>
         </div>
       </Modal>
   );

@@ -218,13 +218,13 @@ export default function NotificationsPanel({ variant, open, onNavigate }: Notifi
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <div className={`${D.title} font-medium truncate`}>{n.title}</div>
+                      <div className={`${D.title} font-medium truncate`}>{t(n.title)}</div>
                       {isNew && <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
                     </div>
                     <div className={`${D.body} text-muted-foreground line-clamp-2 mt-0.5`}>{n.body}</div>
                     {/* Topshiriqda muddat, qolganlarida nisbiy vaqt. */}
                     <div className={`${D.meta} text-muted-foreground mt-1`}>
-                      {n.meta ?? relativeUz(n.at, nowMs)}
+                      {t(n.meta ?? relativeUz(n.at, nowMs))}
                     </div>
                   </div>
                 </Link>

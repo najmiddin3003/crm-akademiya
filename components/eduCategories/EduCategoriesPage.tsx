@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import EduCategoryModal from "./EduCategoryModal";
 import type { EduCategory } from "@/lib/eduCategories";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // O'quv bo'limi → Kategoriya (sidebar: O'quv bo'limi > Kategoriya, href
 // /edu-category). Ma'lumot /api/edu-categories dan (constants/eduCategories.js
@@ -15,6 +16,7 @@ import Modal from "@/components/ui/Modal";
 // EduCategoryModal, o'chirish — pastdagi oddiy tasdiqlash oynasi (Ha/Yo'q).
 
 export default function EduCategoriesPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [categories, setCategories] = useState<EduCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,15 +43,15 @@ export default function EduCategoriesPage() {
       const res = await fetch(`/api/edu-categories/${c.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       invalidateEduCategories();
       setCategories((prev) => prev.filter((x) => x.id !== c.id));
-      showSuccess("Kategoriya o'chirildi");
+      showSuccess(t("Kategoriya o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -61,7 +63,7 @@ export default function EduCategoriesPage() {
       <div>
         <button onClick={() => setAddOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
-          <span>Kategoriya</span>
+          <span>{t("Kategoriya")}</span>
         </button>
       </div>
 
@@ -71,7 +73,7 @@ export default function EduCategoriesPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-dashed border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kategoriya</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kategoriya")}</th>
                 <th className="px-3 py-3 w-24" />
               </tr>
             </thead>
@@ -82,10 +84,10 @@ export default function EduCategoriesPage() {
                   <td className="px-3 py-3 text-[13px] font-medium">{c.name}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      <button onClick={() => setEditCategory(c)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title="Tahrirlash">
+                      <button onClick={() => setEditCategory(c)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title={t("Tahrirlash")}>
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setDeleteTarget(c)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish">
+                      <button onClick={() => setDeleteTarget(c)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -110,13 +112,13 @@ export default function EduCategoriesPage() {
       )}
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

@@ -6,6 +6,7 @@ import DateRangePicker, { type DateRange } from "@/components/ui/DateRangePicker
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { Order } from "@/lib/ordersData";
 import { STATE_KEYS, STATE_LABELS, buildPerformanceRows, type StateCounts } from "@/lib/performanceReport";
+import { useT } from "@/components/shared/Language";
 
 // Hisobotlar → O'qituvchilar / Adminstratorlar samaradorligi.
 // Ikkala sahifa ham AYNAN shu komponentdan foydalanadi, farqi faqat qaysi
@@ -45,6 +46,7 @@ export default function PerformanceReportPage({
   groupBy: "teacher" | "moderator";
   firstColumnLabel: string;
 }) {
+  const { t } = useT();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
@@ -74,17 +76,17 @@ export default function PerformanceReportPage({
         <DateRangePicker
           value={dateRange}
           onChange={(r) => { setDateRange(r); setPage(1); }}
-          placeholder="Oraliqni tanlang"
+          placeholder={t("Oraliqni tanlang")}
         />
         <div className="text-[12px] text-muted-foreground">
-          Sana oralig&apos;i tanlansa &mdash; shu davrda yaratilganlar &laquo;O&apos;zgarishlar&raquo; ustuniga tushadi.
+          {t("Sana oralig'i tanlansa — shu davrda yaratilganlar &laquo;O'zgarishlar&raquo; ustuniga tushadi.")}
         </div>
       </div>
 
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{rows.length}</span>
           </div>
         </div>

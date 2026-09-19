@@ -5,6 +5,7 @@ import { Calendar, ChevronLeft, ChevronRight, BarChart3, LayoutGrid } from "luci
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { ErrorBlock } from "@/components/ui/ErrorBanner";
 import { fetchJson } from "@/lib/fetchJson";
+import { useT } from "@/components/shared/Language";
 
 // Moliya analitikasi → "Kalendar" tab'i.
 //
@@ -33,6 +34,7 @@ function pad2(n: number): string {
 }
 
 export default function CalendarTab() {
+  const { t } = useT();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-12
@@ -140,10 +142,10 @@ export default function CalendarTab() {
           </div>
         </div>
         <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1">
-          <button onClick={() => setView("grid")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title="Kalendar ko'rinishi">
+          <button onClick={() => setView("grid")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title={t("Kalendar ko'rinishi")}>
             <LayoutGrid className="w-4 h-4" />
           </button>
-          <button onClick={() => setView("chart")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "chart" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title="Grafik ko'rinishi">
+          <button onClick={() => setView("chart")} className={`h-7 w-7 inline-flex items-center justify-center rounded-md ${view === "chart" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`} title={t("Grafik ko'rinishi")}>
             <BarChart3 className="w-4 h-4" />
           </button>
         </div>

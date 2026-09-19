@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleHelp, Fingerprint, Rabbit, RotateCcw, Turtle } from "lucide-react";
 import { burstConfetti } from "@/lib/confetti";
+import { useT } from "@/components/shared/Language";
 
 // BARMOQ SINOVI — oddiy foydalanuvchi uchun, so'z bilan. Ikki joyda
 // ishlatiladi:
@@ -115,6 +116,7 @@ const NO_PROBE: Probe = { sec: null, error: false };
 type Verdict = "fast" | "slow" | "error" | "wait";
 
 export default function TapTest({ compact = false }: { compact?: boolean }) {
+  const { t } = useT();
   const [ready, setReady] = useState(false);
   const [taps, setTaps] = useState<number[]>([]);
   const [probe, setProbe] = useState<Probe>(NO_PROBE);
@@ -140,7 +142,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
     if (!ready || tapCount.current >= TAPS || !base.current) return;
     const index = tapCount.current++;
     const now = performance.now();
-    setTaps((t) => [...t, now]);
+    setTaps((tv) => [...tv, now]);
     if (index > 0) return; // oxirgi bosish — faqat vaqt
     const myRound = round.current;
     timed(`${base.current}/api/health/db`, 10_000).then(
@@ -178,10 +180,10 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
     if (!finished) return null;
     if (verdict === "wait") return "Javob kelmoqda…";
     if (verdict === "error") return "Server javob bermadi — internet uzilgan bo'lishi mumkin, yana urinib ko'ring.";
-    if (beat) return `${praise} Siz serverdan tez bosdingiz (${fmtTime(gapSec! * 1000)}). Biroz sekinroq bosib ko'ring — server ulguradimi?`;
+    if (beat) return t("{praise} Siz serverdan tez bosdingiz ({gapSec}). Biroz sekinroq bosib ko'ring — server ulguradimi?", { praise, gapSec: fmtTime(gapSec! * 1000) });
     if (tooSlow) {
       return verdict === "fast"
-        ? `Sekin bosdingiz (${fmtTime(gapSec! * 1000)}) — bunday oraliqda deyarli har qanday server ulguradi. Tezroq bosib ko'ring.`
+        ? t("Sekin bosdingiz ({gapSec}) — bunday oraliqda deyarli har qanday server ulguradi. Tezroq bosib ko'ring.", { gapSec: fmtTime(gapSec! * 1000) })
         : "Sekin bosdingiz, server baribir ulgurmadi — tarmoq tebrangan bo'lishi mumkin, yana urinib ko'ring.";
     }
     if (tooFastHint) return "Juda tez bosdingiz, lekin server baribir ulgurdi — internetingiz juda tez!";
@@ -197,8 +199,8 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
 
   const cardText = (() => {
     switch (verdict) {
-      case "fast": return `ulgurdi — javob ${fmtTime(probe.sec! * 1000)} da keldi, siz ${fmtTime(gapSec! * 1000)} da bosdingiz`;
-      case "slow": return `ulgurmadi — javob ${fmtTime(probe.sec! * 1000)} da keldi, siz ${fmtTime(gapSec! * 1000)} da bosdingiz`;
+      case "fast": return t("ulgurdi — javob {sec} da keldi, siz {gapSec} da bosdingiz", { sec: fmtTime(probe.sec! * 1000), gapSec: fmtTime(gapSec! * 1000) });
+      case "slow": return t("ulgurmadi — javob {sec} da keldi, siz {gapSec} da bosdingiz", { sec: fmtTime(probe.sec! * 1000), gapSec: fmtTime(gapSec! * 1000) });
       case "error": return "javob kelmadi (xato yoki 10 s vaqt tugadi) — server haqida xulosa yo'q";
       default: return "javob kutilmoqda…";
     }
@@ -216,9 +218,9 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
   return (
     <section className={`rounded-2xl border border-border bg-card ${compact ? "p-4 space-y-4" : "p-5 space-y-5"}`}>
       <div className="text-center">
-        <h2 className="text-[15px] font-semibold">Barmoq sinovi</h2>
+        <h2 className="text-[15px] font-semibold">{t("Barmoq sinovi")}</h2>
         <p className="text-[13px] text-muted-foreground mt-0.5">
-          Doirani ketma-ket <span className="font-medium text-foreground">{TAPS} marta</span>{" "}bosing. Server sizning barmog&apos;ingizdan tezmi — ko&apos;ramiz.
+          {t("Doirani ketma-ket")}{" "}<span className="font-medium text-foreground">{TAPS} marta</span>{" "}bosing. Server sizning barmog&apos;ingizdan tezmi — ko&apos;ramiz.
         </p>
       </div>
 
@@ -227,7 +229,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={tap}
           disabled={!ready || finished}
-          aria-label="Bu yerga bosing"
+          aria-label={t("Bu yerga bosing")}
           className={`relative w-32 h-32 rounded-full border-4 flex flex-col items-center justify-center select-none transition-transform active:scale-95
             ${!ready || finished ? "border-border bg-secondary text-muted-foreground" : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 cursor-pointer"}`}
           style={{ touchAction: "manipulation" }}
@@ -248,7 +250,7 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
             <div className={`rounded-xl border px-3 py-2.5 flex items-center gap-3 ${cardTone}`}>
               <CardIcon className="w-6 h-6 shrink-0" />
               <div className="min-w-0">
-                <div className="text-[14px] font-semibold">Server <span className="font-normal opacity-70">· Eskiz VPS, Toshkent</span></div>
+                <div className="text-[14px] font-semibold">{t("Server")}{" "}<span className="font-normal opacity-70">{t("· Eskiz VPS, Toshkent")}</span></div>
                 <div className="text-[12.5px] opacity-90">{cardText}</div>
               </div>
             </div>
@@ -260,10 +262,10 @@ export default function TapTest({ compact = false }: { compact?: boolean }) {
           )}
           <div className="flex items-center justify-center gap-4">
             <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-[13px] font-medium">
-              <RotateCcw className="w-3.5 h-3.5" /> Yana
+              <RotateCcw className="w-3.5 h-3.5" />{" "}{t("Yana")}
             </button>
             <button type="button" onClick={() => setShowNumbers((v) => !v)} className="text-[12px] text-muted-foreground hover:text-foreground underline underline-offset-2">
-              {showNumbers ? "Raqamlarni yashirish" : "Raqamlar"}
+              {showNumbers ? t("Raqamlarni yashirish") : t("Raqamlar")}
             </button>
           </div>
         </div>

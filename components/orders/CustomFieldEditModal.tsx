@@ -6,6 +6,7 @@ import { STAGE_COLORS } from "@/components/orders/StagePickerPopover";
 import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // "Tahrirlash" modal for a single custom field definition, opened by clicking
 // a field row under the "Sozlamalar" tab (AddOrderPage.tsx) — reference:
@@ -47,6 +48,7 @@ export interface CustomFieldEditModalProps {
 }
 
 export default function CustomFieldEditModal({ field, onClose, onSave, onDelete }: CustomFieldEditModalProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [label, setLabel] = useState(field.label);
   const [type, setType] = useState<CustomFieldType>(field.type);
@@ -74,16 +76,16 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
 
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={200} panelClassName="p-6 space-y-4">
-        <h3 className="text-2xl font-semibold">Tahrirlash</h3>
+        <h3 className="text-2xl font-semibold">{t("Tahrirlash")}</h3>
 
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Maydon nomi"
+          placeholder={t("Maydon nomi")}
           className="w-full h-11 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
 
-        <Select value={type} onChange={(v) => setType(v as CustomFieldType)} options={FIELD_TYPES.map((t) => ({ value: t.value, label: t.label }))} size="lg" />
+        <Select value={type} onChange={(v) => setType(v as CustomFieldType)} options={FIELD_TYPES.map((tv) => ({ value: tv.value, label: tv.label }))} size="lg" />
 
         <div className="relative">
           <button
@@ -111,7 +113,7 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
                     className="h-4 w-4"
                   />
                   <span>
-                    {st.emoji} {st.label}
+                    {st.emoji} {t(st.label)}
                   </span>
                 </label>
               ))}
@@ -126,7 +128,7 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
             onChange={(e) => setApiOnly(e.target.checked)}
             className="h-4 w-4 rounded border-border"
           />
-          Faqat api bilan
+          {t("Faqat api bilan")}
         </label>
 
         {/* DIQQAT: `mr-auto` bu loyihaning oldindan tayyorlangan Tailwind
@@ -140,17 +142,17 @@ export default function CustomFieldEditModal({ field, onClose, onSave, onDelete 
               disabled={busy}
               className="h-9 rounded-lg border border-border px-4 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50 disabled:pointer-events-none"
             >
-              O&apos;chirish
+              {t("O'chirish")}
             </button>
           ) : (
             <span />
           )}
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={modal.close}>
-              Orqaga
+              {t("Orqaga")}
             </Button>
             <Button variant="primary" onClick={handleSave} disabled={busy}>
-              {busy ? "Saqlanmoqda..." : "Saqlash"}
+              {busy ? t("Saqlanmoqda...") : t("Saqlash")}
             </Button>
           </div>
         </div>

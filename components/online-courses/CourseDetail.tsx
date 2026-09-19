@@ -9,6 +9,7 @@ import { useOnlineCourses } from "./OnlineCoursesProvider";
 import BindCourseDrawer from "./BindCourseDrawer";
 import type { EduCategory } from "@/lib/eduCategories";
 import type { Group } from "@/lib/groups";
+import { useT } from "@/components/shared/Language";
 
 // Onlayn kurs detail sahifasi (crm-akademiya #view-online-course-detail).
 //
@@ -29,6 +30,7 @@ import type { Group } from "@/lib/groups";
 //    haqiqatan saqlaydi, natija shu yerda ko'rinadi va bekor qilinadi.
 
 export default function CourseDetail({ courseId }: { courseId: number }) {
+  const { t } = useT();
   const { getCourse, loading, togglePublish, unbindCourse } = useOnlineCourses();
   const { showSuccess, showError } = useToast();
   const course = getCourse(courseId);
@@ -65,8 +67,8 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
   if (!course) {
     return (
       <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-        <p className="text-sm text-muted-foreground">Kurs topilmadi.</p>
-        <Link href="/online-courses" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">Orqaga</Link>
+        <p className="text-sm text-muted-foreground">{t("Kurs topilmadi.")}</p>
+        <Link href="/online-courses" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">{t("Orqaga")}</Link>
       </div>
     );
   }
@@ -78,14 +80,14 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
   const removeBinding = async (groupId?: number) => {
     const error = await unbindCourse(course.id, groupId);
     if (error) showError(error);
-    else showSuccess("Biriktirish bekor qilindi");
+    else showSuccess(t("Biriktirish bekor qilindi"));
   };
 
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center gap-2">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{course.name}</h1>
-        <Link href={`/online-courses/${course.id}/edit`} className="h-8 w-8 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary" title="Tahrirlash">
+        <Link href={`/online-courses/${course.id}/edit`} className="h-8 w-8 rounded-md hover:bg-primary/10 inline-flex items-center justify-center text-primary" title={t("Tahrirlash")}>
           <Edit className="h-3.5 w-3.5" />
         </Link>
       </div>
@@ -95,18 +97,18 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
           onClick={() => setTab("clients")}
           className={`inline-flex items-center px-4 h-9 rounded-full text-[13px] font-medium ${tab === "clients" ? "bg-secondary/80 text-foreground" : "bg-transparent text-muted-foreground hover:bg-secondary/50"}`}
         >
-          Sotib olganlar
+          {t("Sotib olganlar")}
         </button>
         <button
           onClick={() => setTab("assignments")}
           className={`inline-flex items-center px-4 h-9 rounded-full text-[13px] font-medium ${tab === "assignments" ? "bg-secondary/80 text-foreground" : "bg-transparent text-muted-foreground hover:bg-secondary/50"}`}
         >
-          Topshiriqlar
+          {t("Topshiriqlar")}
         </button>
         <div className="flex-1" />
         <button onClick={() => setBindOpen(true)} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
           <Plus className="icon icon-sm" />
-          <span>Kurs biriktirish</span>
+          <span>{t("Kurs biriktirish")}</span>
         </button>
         <button
           disabled={publishing}
@@ -118,19 +120,19 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
           }}
           className={`inline-flex items-center h-9 px-4 rounded-lg text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 ${course.published ? "bg-emerald-600" : "bg-primary"}`}
         >
-          {course.published ? "Published" : "Unpublished"}
+          {course.published ? t("Published") : t("Unpublished")}
         </button>
       </div>
 
       {/* Biriktirilganlar — kurs hujjatidagi haqiqiy `groupIds`/`categoryId`. */}
       {(boundGroups.length > 0 || boundCategory) && (
         <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Biriktirilgan</div>
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">{t("Biriktirilgan")}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {boundCategory && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary/60 px-2.5 py-1 text-[13px]">
                 Kurs: {boundCategory.name}
-                <button type="button" onClick={() => removeBinding()} title="Biriktirishni bekor qilish" className="text-muted-foreground hover:text-rose-600">
+                <button type="button" onClick={() => removeBinding()} title={t("Biriktirishni bekor qilish")} className="text-muted-foreground hover:text-rose-600">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>
@@ -138,7 +140,7 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
             {boundGroups.map((g) => (
               <span key={g.id} className="inline-flex items-center gap-1.5 rounded-lg bg-secondary/60 px-2.5 py-1 text-[13px]">
                 Guruh: {g.name || `#${g.id}`}
-                <button type="button" onClick={() => removeBinding(g.id)} title="Biriktirishni bekor qilish" className="text-muted-foreground hover:text-rose-600">
+                <button type="button" onClick={() => removeBinding(g.id)} title={t("Biriktirishni bekor qilish")} className="text-muted-foreground hover:text-rose-600">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>
@@ -149,7 +151,7 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
 
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           {/* "—" ataylab: xaridlar/topshiriqlar kolleksiyasi yo'q, ya'ni son
               noma'lum. 0 yozish "hech kim yo'q" degan yolg'on tasdiq bo'lardi. */}
           <span className="font-bold tabular-nums">—</span>
@@ -159,11 +161,11 @@ export default function CourseDetail({ courseId }: { courseId: number }) {
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="py-16 text-center">
           <Archive className="mx-auto mb-3" style={{ width: 48, height: 48, opacity: 0.3 }} />
-          <p className="text-base font-medium text-muted-foreground">Ma&apos;lumot manbai yo&apos;q</p>
+          <p className="text-base font-medium text-muted-foreground">{t("Ma'lumot manbai yo'q")}</p>
           <p className="text-[12px] text-muted-foreground mt-1">
             {tab === "clients"
-              ? "Onlayn kurs xaridlari bazada yuritilmaydi — bunday kolleksiya hali yo'q."
-              : "Topshiriq topshirishlari bazada yuritilmaydi — bunday kolleksiya hali yo'q."}
+              ? t("Onlayn kurs xaridlari bazada yuritilmaydi — bunday kolleksiya hali yo'q.")
+              : t("Topshiriq topshirishlari bazada yuritilmaydi — bunday kolleksiya hali yo'q.")}
           </p>
         </div>
       </div>

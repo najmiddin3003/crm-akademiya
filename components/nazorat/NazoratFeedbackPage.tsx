@@ -15,6 +15,7 @@ import {
 } from "./feedbackTypes";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat > Fikr-mulohaza (sidebar: Nazorat > Fikr-mulohaza, /nazorat-feedback).
 //
@@ -37,6 +38,7 @@ function typeColor(type: string): string {
 }
 
 export default function NazoratFeedbackPage() {
+  const { t } = useT();
   const { showSuccess } = useToast();
   const { branches } = useBranches();
 
@@ -87,7 +89,7 @@ export default function NazoratFeedbackPage() {
     setFeedbacks((prev) => [fb, ...prev]);
     setAdding(false);
     setPage(1);
-    showSuccess("Fikr-mulohaza saqlandi");
+    showSuccess(t("Fikr-mulohaza saqlandi"));
   }
 
   return (
@@ -100,13 +102,13 @@ export default function NazoratFeedbackPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             type="text"
-            placeholder="Qidirish (ism, telefon, izoh)"
+            placeholder={t("Qidirish (ism, telefon, izoh)")}
             className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
-        <Select value={filial} onChange={(v) => { setFilial(v); setPage(1); }} options={filialOptions.map((f) => ({ value: f, label: f }))} placeholder="Filial — barchasi" clearable className="w-44" />
-        <Select value={type} onChange={(v) => { setType(v); setPage(1); }} options={FEEDBACK_TYPES.map((t) => ({ value: t, label: t }))} placeholder="Turi — barchasi" clearable className="w-36" />
-        <Select value={from} onChange={(v) => { setFrom(v); setPage(1); }} options={FEEDBACK_FROM_OPTIONS.map((o) => ({ value: o, label: o }))} placeholder="Kimdan" clearable className="w-36" />
+        <Select value={filial} onChange={(v) => { setFilial(v); setPage(1); }} options={filialOptions.map((f) => ({ value: f, label: f }))} placeholder={t("Filial — barchasi")} clearable className="w-44" />
+        <Select value={type} onChange={(v) => { setType(v); setPage(1); }} options={FEEDBACK_TYPES.map((tv) => ({ value: tv, label: tv }))} placeholder={t("Turi — barchasi")} clearable className="w-36" />
+        <Select value={from} onChange={(v) => { setFrom(v); setPage(1); }} options={FEEDBACK_FROM_OPTIONS.map((o) => ({ value: o, label: o }))} placeholder={t("Kimdan")} clearable className="w-36" />
 
         <button
           type="button"
@@ -114,7 +116,7 @@ export default function NazoratFeedbackPage() {
           className="ml-auto inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
         >
           <Plus className="icon icon-sm" />
-          <span>Fikr qo&apos;shish</span>
+          <span>{t("Fikr qo'shish")}</span>
         </button>
       </div>
 
@@ -122,7 +124,7 @@ export default function NazoratFeedbackPage() {
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
         <div className="flex items-center justify-end px-5 py-3 border-b border-border">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-medium">
-            <span>Umumiy soni:</span>
+            <span>{t("Umumiy soni:")}</span>
             <span className="tabular-nums">{filtered.length}</span>
           </div>
         </div>
@@ -132,13 +134,13 @@ export default function NazoratFeedbackPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-5 py-3 text-left w-12">№</th>
-                <th className="px-5 py-3 text-left">Filial</th>
-                <th className="px-5 py-3 text-left">Kimdan</th>
-                <th className="px-5 py-3 text-left">Ism</th>
-                <th className="px-5 py-3 text-left">Telefon raqam</th>
-                <th className="px-5 py-3 text-left">Turi</th>
-                <th className="px-5 py-3 text-left">Izoh</th>
-                <th className="px-5 py-3 text-left pr-5">Yaratilgan sanasi</th>
+                <th className="px-5 py-3 text-left">{t("Filial")}</th>
+                <th className="px-5 py-3 text-left">{t("Kimdan")}</th>
+                <th className="px-5 py-3 text-left">{t("Ism")}</th>
+                <th className="px-5 py-3 text-left">{t("Telefon raqam")}</th>
+                <th className="px-5 py-3 text-left">{t("Turi")}</th>
+                <th className="px-5 py-3 text-left">{t("Izoh")}</th>
+                <th className="px-5 py-3 text-left pr-5">{t("Yaratilgan sanasi")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -150,7 +152,7 @@ export default function NazoratFeedbackPage() {
                   <td className="px-5 py-3 font-medium">{f.name || "—"}</td>
                   <td className="px-5 py-3 tabular-nums text-[13px]">{f.phone || "—"}</td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${typeColor(f.type)}`}>{f.type}</span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${typeColor(f.type)}`}>{t(f.type)}</span>
                   </td>
                   <td className="px-5 py-3 text-[13px] max-w-xs truncate">{f.izoh}</td>
                   <td className="px-5 py-3 pr-5 tabular-nums text-[12px] text-muted-foreground">{formatFeedbackCreatedAt(f.createdAt)}</td>
@@ -171,8 +173,8 @@ export default function NazoratFeedbackPage() {
             {!loading && (
               <p className="text-[13px] text-muted-foreground max-w-sm">
                 {feedbacks.length === 0
-                  ? "Hozircha fikr-mulohaza yo'q. «Fikr qo'shish» orqali birinchisini qo'shing."
-                  : "Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring."}
+                  ? t("Hozircha fikr-mulohaza yo'q. «Fikr qo'shish» orqali birinchisini qo'shing.")
+                  : t("Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring.")}
               </p>
             )}
           </div>
@@ -193,29 +195,29 @@ export default function NazoratFeedbackPage() {
       {selected && (
         <Modal onClose={() => setSelected(null)} bare size="lg">{(modal) => (<>
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-              <h3 className="text-[15px] font-semibold">Fikr-mulohaza tafsilotlari</h3>
+              <h3 className="text-[15px] font-semibold">{t("Fikr-mulohaza tafsilotlari")}</h3>
               <button type="button" onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center">
                 <X className="icon icon-sm" />
               </button>
             </div>
             <div className="p-5 space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${typeColor(selected.type)}`}>{selected.type}</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${typeColor(selected.type)}`}>{t(selected.type)}</span>
                 <span className="text-[12px] text-muted-foreground tabular-nums">{formatFeedbackCreatedAt(selected.createdAt)}</span>
               </div>
               <div className="space-y-2 pt-2">
                 <div className="grid grid-cols-3 gap-2 text-[13px]">
-                  <div className="text-muted-foreground">Filial:</div>
+                  <div className="text-muted-foreground">{t("Filial:")}</div>
                   <div className="col-span-2 font-medium">{selected.filial || "—"}</div>
-                  <div className="text-muted-foreground">Kimdan:</div>
+                  <div className="text-muted-foreground">{t("Kimdan:")}</div>
                   <div className="col-span-2 font-medium">{selected.from || "—"}</div>
-                  <div className="text-muted-foreground">Ism:</div>
+                  <div className="text-muted-foreground">{t("Ism:")}</div>
                   <div className="col-span-2 font-medium">{selected.name || "—"}</div>
-                  <div className="text-muted-foreground">Telefon:</div>
+                  <div className="text-muted-foreground">{t("Telefon:")}</div>
                   <div className="col-span-2 font-medium tabular-nums">{selected.phone || "—"}</div>
                 </div>
                 <div className="pt-2">
-                  <div className="text-muted-foreground text-[13px] mb-1">Izoh:</div>
+                  <div className="text-muted-foreground text-[13px] mb-1">{t("Izoh:")}</div>
                   <div className="rounded-lg bg-secondary/30 p-3 text-[13px] leading-relaxed">{selected.izoh}</div>
                 </div>
               </div>

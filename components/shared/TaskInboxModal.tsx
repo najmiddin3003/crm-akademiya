@@ -169,8 +169,8 @@ export default function TaskInboxModal() {
             value={tab}
             onChange={(v) => setTab(v as Tab)}
             options={[
-              { value: "pending", label: `Menga berilgan (${pending.length})` },
-              { value: "reports", label: `Hisobotlar (${reports.length})` },
+              { value: "pending", label: t("Menga berilgan ({pending})", { pending: pending.length }) },
+              { value: "reports", label: t("Hisobotlar ({reports})", { reports: reports.length }) },
             ]}
           />
         </div>
@@ -216,7 +216,7 @@ export default function TaskInboxModal() {
             <div className="flex flex-wrap items-center gap-1.5">
               <span className={`priority-badge priority-${selected.priority}`}>{PRIORITY_META[selected.priority].label}</span>
               {selected.type && (
-                <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{selected.type}</span>
+                <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{t(selected.type)}</span>
               )}
             </div>
 
@@ -323,7 +323,7 @@ export default function TaskInboxModal() {
                     {t(OUTCOME_LABELS[rep.outcome])}
                   </span>
                   <span className={`priority-badge priority-${task.priority}`}>{t(PRIORITY_META[task.priority].label)}</span>
-                  {task.type && <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{task.type}</span>}
+                  {task.type && <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{t(task.type)}</span>}
                   <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">{stamp(rep.at)}</span>
                 </div>
                 <div className="mt-2 text-[13.5px] font-semibold leading-snug">{task.description || task.type || t("Topshiriq")}</div>

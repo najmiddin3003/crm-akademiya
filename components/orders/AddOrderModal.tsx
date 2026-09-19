@@ -13,6 +13,7 @@ import PanelDaysField from "@/components/orders/PanelDaysField";
 import PanelTimeField, { normalizeTime } from "@/components/orders/PanelTimeField";
 import AddStudentModal from "@/components/orders/AddStudentModal";
 import DateField from "@/components/ui/DateField";
+import { useT } from "@/components/shared/Language";
 
 // Redesigned (2026-07-16) to match the current production "Yangi buyurtma"
 // side panel (akademiya.edutizim.uz), which has moved on from the
@@ -43,6 +44,7 @@ function parseFirstLesson(firstLesson: string): { date: string; time: string } {
 }
 
 export default function AddOrderModal({ initialOrder, initialStudentName, initialStudentPhone, onClose, onSave }: AddOrderModalProps) {
+  const { t } = useT();
   // Kurs va guruh ro'yxatlari bazadan — ilgari constants'dagi qattiq
   // ro'yxatlar edi, ya'ni haqiqiy guruhga yozib bo'lmasdi.
   const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
@@ -119,21 +121,21 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
 
   const handleSave = async () => {
     if (!studentName) {
-      setError("O'quvchi majburiy");
+      setError(t("O'quvchi majburiy"));
       return;
     }
     if (!course) {
-      setError("Kurs majburiy");
+      setError(t("Kurs majburiy"));
       return;
     }
     if (!lessonDay) {
-      setError("Dars kunini tanlang majburiy");
+      setError(t("Dars kunini tanlang majburiy"));
       return;
     }
     // Vaqt sanasiz saqlanmaydi (lib/ordersData.ts → firstLessonFromValues),
     // shuning uchun jimgina yo'qotmasdan ogohlantiramiz.
     if (firstLessonTime && !firstLessonDate) {
-      setError("Birinchi darsga kelish sanasini tanlang");
+      setError(t("Birinchi darsga kelish sanasini tanlang"));
       return;
     }
     setSaving(true);
@@ -162,10 +164,10 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
       <div className={`st-drawer${mounted ? " visible" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-5 pb-0 shrink-0">
           <div>
-            <h3 className="text-lg font-semibold">Yangi buyurtma</h3>
-            <p className="text-xs text-muted-foreground mt-1">* Zarurligini bildiradi</p>
+            <h3 className="text-lg font-semibold">{t("Yangi buyurtma")}</h3>
+            <p className="text-xs text-muted-foreground mt-1">{t("* Zarurligini bildiradi")}</p>
           </div>
-          <button type="button" className="st-drawer-close" onClick={onClose} title="Yopish (Esc)">
+          <button type="button" className="st-drawer-close" onClick={onClose} title={t("Yopish (Esc)")}>
             <svg className="icon icon-sm">
               <use href="#i-x-circle" />
             </svg>
@@ -178,14 +180,14 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               yangi o'quvchi qo'shish ham mumkin emas. */}
           {!studentLocked && (
             <Button variant="primary" className="w-full justify-center" onClick={() => setAddStudentOpen(true)}>
-              O&apos;quvchi qo&apos;shish
+              {t("O'quvchi qo'shish")}
             </Button>
           )}
 
           {studentLocked ? (
             <div>
               <label className="block text-[13px] font-medium mb-1.5">
-                O&apos;quvchi<span className="text-red-500"> *</span>
+                {t("O'quvchi")}<span className="text-red-500"> *</span>
               </label>
               <div className="flex h-11 w-full items-center rounded-lg border border-border bg-secondary/30 px-3 text-sm text-muted-foreground">
                 {studentName}
@@ -193,7 +195,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             </div>
           ) : (
             <StudentSearchSelect
-              label="O'quvchi"
+              label={t("O'quvchi")}
               required
               value={studentName}
               onChange={(v) => {
@@ -212,7 +214,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
           )}
 
           <StudentSearchSelect
-            label="Referal bergan o'quvchi"
+            label={t("Referal bergan o'quvchi")}
             value={referral}
             onChange={setReferral}
             options={studentOptions}
@@ -221,7 +223,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
           />
 
           <StudentSearchSelect
-            label="Kurs"
+            label={t("Kurs")}
             required
             value={course}
             onChange={(v) => {
@@ -230,13 +232,13 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             }}
             options={courseNames}
             loading={coursesLoading}
-            placeholder="Kursni tanlang"
+            placeholder={t("Kursni tanlang")}
             searchPlaceholder="Kursni qidirish"
             error={error === "Kurs majburiy"}
           />
 
           <PanelDaysField
-            label="Dars kunini tanlang"
+            label={t("Dars kunini tanlang")}
             required
             value={lessonDay}
             onChange={(v) => {
@@ -246,32 +248,32 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
             error={error === "Dars kunini tanlang majburiy"}
           />
 
-          <PanelTimeField label="Darsning boshlanish vaqtini tanlang" value={lessonStartTime} onChange={setLessonStartTime} />
+          <PanelTimeField label={t("Darsning boshlanish vaqtini tanlang")} value={lessonStartTime} onChange={setLessonStartTime} />
 
           {/* O'qituvchi va guruh — brauzerning o'z <select> ro'yxati emas,
               yuqoridagi "O'quvchi" maydoni bilan bir xil qidiruvli tanlov
               (StudentSearchSelect): ro'yxat uzun bo'lsa ham yozib topiladi va
               ko'rinishi CRM'ning qolgan qismiga mos tushadi. */}
           <StudentSearchSelect
-            label="O'qituvchi"
+            label={t("O'qituvchi")}
             value={teacher}
             onChange={setTeacher}
             options={teacherOptions}
             loading={teachersLoading}
-            placeholder="Ustozni tanlang"
+            placeholder={t("Ustozni tanlang")}
             searchPlaceholder="Ustozni qidirish"
-            emptyText="Bu filialga o'qituvchi biriktirilmagan — Boshqaruv > Xodimlar bo'limidan biriktiring"
+            emptyText={t("Bu filialga o'qituvchi biriktirilmagan — Boshqaruv > Xodimlar bo'limidan biriktiring")}
           />
 
           <StudentSearchSelect
-            label="Yig'ilayotgan guruhni tanlang"
+            label={t("Yig'ilayotgan guruhni tanlang")}
             value={group}
             onChange={setGroup}
             options={groupNames}
             loading={groupsLoading}
-            placeholder="Yig'ilayotgan guruhni tanlang"
+            placeholder={t("Yig'ilayotgan guruhni tanlang")}
             searchPlaceholder="Guruhni qidirish"
-            emptyText="Bu filialda guruh yo'q — avval Guruh bo'limidan qo'shing"
+            emptyText={t("Bu filialda guruh yo'q — avval Guruh bo'limidan qo'shing")}
           />
 
           <div>
@@ -294,7 +296,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
           </div>
 
           <PanelTimeField
-            label="Birinchi darsga kelish vaqti"
+            label={t("Birinchi darsga kelish vaqti")}
             value={firstLessonTime}
             onChange={(v) => {
               setFirstLessonTime(v);
@@ -303,11 +305,11 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
           />
 
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">Izoh</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Izoh"
+              placeholder={t("Izoh")}
               rows={4}
               className="w-full min-h-24 px-3 py-2 rounded-lg border border-border bg-secondary/30 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
@@ -318,10 +320,10 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
 
         <div className="flex justify-end gap-2 p-4 border-t border-border bg-card shrink-0">
           <Button variant="outline" onClick={onClose}>
-            Orqaga
+            {t("Orqaga")}
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? t("Saqlanmoqda...") : t("Saqlash")}
           </Button>
         </div>
       </div>

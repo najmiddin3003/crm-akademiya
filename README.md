@@ -1800,28 +1800,78 @@ Foydalanuvchi ma'lumoti (ism, kurs, izoh) o'girilmaydi — faqat interfeys.
   (sana tanlagichlar uchun), `normalizeLang`, `htmlLang`.
   `components/shared/Language.tsx` — store, `LangProvider`, `useLang`, `useT`.
 
+### Backend xabarlari va bazadagi qiymatlar (19.09.2026)
+
+Backend (`app/api`, `lib`) xabarlari mijozga O'ZBEKCHA (kalit) holida keladi —
+serverga til o'rgatilmagan (cookie o'qish, har route'ni o'zgartirish yo'q).
+O'girish mijozda:
+
+- **Toast va banner** — `ToastProvider` (`components/ui/Toast.tsx`) va
+  `ErrorBanner` matnni KO'RSATAYOTGANDA `t()` dan o'tkazadi; chaqiruvchi
+  `showError(data.error)` deb bersa ham o'giriladi.
+- **Andozali xabarlar** (`Mablag' yetarli emas — 5 000 so'm tasdiq kutmoqda`) —
+  `translate()` lug'atda yo'q satrni lug'atdagi `{param}`li kalitlarga
+  TESKARI moslaydi (`{held}` → `(.+?)`), mos kelsa kalit + ushlangan
+  bo'laklar bilan o'giradi; ushlangan bo'laklar ham o'giriladi (ichma-ich
+  `Muddat: … — 2 kun kechikdi`). Natija keshlanadi.
+- **Darvoza**: kirilga faqat LUG'ATDA BOR kalit o'giriladi — `t(row.status)`,
+  `t(tab.label)` ga bazadan kelgan ism/guruh nomi tushsa o'z holicha qoladi
+  ("Alisher" → "Алишер" bo'lmaydi). Demak HAR BIR interfeys matni lug'atda
+  turishi shart — `i18n-scan.mjs --todo` yetishmaganini ko'rsatadi.
+- **Skaner manbalari**: `t("…")` chaqiruvlari; `app/api`+`lib` dagi
+  `error:`/`reason:`/`fail(`/`throw new Error(` satr va andozalari (ternar
+  bilan yasalganlari ham; `${x}` → `{x}`); komponent/konstanta/lib dagi
+  `label:`/`title:`/… va `value:`/`status:` ro'yxatlari (demo seed fayllar
+  — bosh izohida "demo" — chiqarilgan); `lib/i18n.ts RENDERED_KEYS` — faqat
+  teskari moslash bilan ishlatiladigan andozalar (`{n} so'm`, `{n} daqiqa
+  oldin`). Telegram bot, SMS, Google Sheets matnlari o'zbekcha qoladi.
+- **Sanab o'tiladigan qiymatlar** (holat, tur, to'lov turi, hafta kuni)
+  chizishda `t(x.status)` — kodmodning 4d-o'tishi; oy nomlari
+  `useT().months`/`weekdaysShort` dan (`UZ_MONTHS` kabi qattiq ro'yxatlar
+  komponentlarda ishlatilmaydi); pul formatlovchilar (`fmtSum`) natijasi
+  `{t(fmtSum(x))}` — `{n} so'm` kaliti orqali "UZS"/"сўм".
+- Server komponentda matn kerak bo'lsa: `const { t } = await getServerT()`
+  (`lib/serverT.ts`, cookie'dan).
+- `t()` `null`/`undefined` ni qabul qiladi (bo'sh satr) — ixtiyoriy maydon.
+
 ### Qoidalar (yangi kod yozganda)
 
-- Matn `"use client"` komponentda `t()` orqali; server komponentda matn
-  bo'lmasin (sahifalar faqat ma'lumot yuklaydi).
-- `t` nomi BAND — sikl o'zgaruvchisini `t` deb nomlamang (TaskInboxModal da
-  `task` ga o'zgartirildi).
+- Matn `"use client"` komponentda `t()` orqali; server komponentda
+  `getServerT()`.
+- `t` nomi BAND — sikl o'zgaruvchisini `t` deb nomlamang (kodmod lokal
+  `t` ni `tv` ga o'zgartiradi).
 - Konstantalardagi yorliqlar (`constants/sidebar.js`, `SOURCE_LABELS`,
   `OUTCOME_LABELS` …) o'zbekcha qoladi, chizishda `t(item.label)`.
-- Server xato xabari toast'ga chiqsa `t(error)` — lug'atda bo'lsa o'giriladi.
+- Backend xabari — oddiy o'zbekcha satr yoki `${x}` andoza; ichma-ich
+  ternar (`${a ? "x" : "y"}`) EMAS — ikki alohida xabar yozing.
+- Yangi matn qo'shgach: `node scripts/i18n-scan.mjs --todo` → inglizchasini
+  `messages/en.json` ga (alifbo tartibida) qo'shing.
 
 ### Skriptlar
 
+- `node scripts/i18n-wrap.mjs <papka> [--dry]` — kodmod: JSX matni,
+  atributlar, chaqiruvlar, ternar (ko'p qatorli/bir tomonlama ham),
+  `label:` xususiyatlari, `{row.status}` maydonlari, andozali satrlar;
+  `useT` importi va `const { t } = useT()` ni qo'yadi. Faqat
+  `"use client"` fayllar, faqat komponent tanalari. Natijani `tsc` +
+  `eslint` bilan tekshiring (CSS/SVG andozalari, `PATCH`/`POST` kabi
+  qiymatlar uchun qo'riqlovchilar bor, lekin diff ko'rib chiqiladi).
 - `node scripts/i18n-scan.mjs` — inglizchasi yo'q kalitlar (`--todo` →
   `messages/en.todo.json` skeleti, `--unused`, `--raw` — hali o'ralmagan JSX
-  matnlar soni fayl bo'yicha).
+  matnlar soni fayl bo'yicha, `--server` — backend xabarlari ro'yxati).
+- `node scripts/i18n-left.mjs <papka> [--count]` — kodmoddan keyin qolgan
+  qattiq satrlar (taxminiy).
 - `node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_i18n-check.mjs`
-  — `translate()` sinovi; `scripts/_translit-check.mjs` — kiril qoidalari.
+  — `translate()` sinovi (darvoza, teskari moslash, ko'plik);
+  `scripts/_translit-check.mjs` — kiril qoidalari.
+- Tip tekshiruvi: `npx tsc --noEmit -p tsconfig.check.json` (`.next` chiqarilgan —
+  eskirgan `.next/dev/types` semantik xatolarni yashirmasin).
 
 ### Bosqichlar
 
-1) Yadro + til tanlovi + qobiq (navbar, sidebar, bildirishnomalar,
-   topshiriq inbox, umumiy UI: tugmalar, sana/vaqt maydonlari, select,
-   paginatsiya, modal, matn muharriri) — QILINDI 18.09.2026 (249 kalit).
-2) Bo'limlar: Moliya → O'quvchilar → Guruhlar → Xodimlar → qolganlari.
-3) API xato xabarlari va sahifa sarlavhalari.
+1) Yadro + til tanlovi + qobiq — QILINDI 18.09.2026 (249 kalit).
+2) Barcha bo'limlar kodmod bilan (`components/**`, `app/**`) — QILINDI
+   19.09.2026; lug'at 2 800+ kalit. Qolgani: aralash JSX bo'laklari
+   (`i18n-scan.mjs --raw` ~250 ta, asosan kod/formula qismlari), /tezlik sahifasi.
+3) Backend xabarlari, bazadagi holat/tur qiymatlari, oy/hafta nomlari,
+   bildirishnoma matnlari — QILINDI 19.09.2026 (yuqoridagi bo'lim).

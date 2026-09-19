@@ -30,6 +30,7 @@ import {
 import { uzDayKey, uzDayKeyIn, uzWall } from "@/lib/uzTime";
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
+import { useT } from "@/components/shared/Language";
 
 // Ported from crm-akademiya/index-dev.html lines 551-877 (id="view-tasks") +
 // src/app.js (renderTasks/renderKanbanView/renderCalendarView/setTaskView).
@@ -64,6 +65,7 @@ interface Filters {
 const EMPTY_FILTERS: Filters = { responsible: "", student: "", type: "", group: "", status: "", from: "", to: "" };
 
 export default function TasksPage() {
+  const { t } = useT();
   const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
@@ -101,9 +103,9 @@ export default function TasksPage() {
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((f) => ({ ...f, [key]: value }));
 
-  const studentOptions = useMemo(() => Array.from(new Set(tasks.map((t) => t.student))).sort(), [tasks]);
+  const studentOptions = useMemo(() => Array.from(new Set(tasks.map((tv) => tv.student))).sort(), [tasks]);
   const groupOptions = useMemo(
-    () => Array.from(new Set(tasks.map((t) => t.group).filter((g): g is string => !!g))),
+    () => Array.from(new Set(tasks.map((tv) => tv.group).filter((g): g is string => !!g))),
     [tasks],
   );
 
@@ -117,39 +119,39 @@ export default function TasksPage() {
   }, [moreOpen]);
 
   const baseFiltered = useMemo(() => {
-    return tasks.filter((t) => {
-      if (filters.responsible && t.staff !== filters.responsible) return false;
-      if (filters.student && t.student !== filters.student) return false;
-      if (filters.type && t.type !== filters.type) return false;
-      if (filters.group && (t.group || "") !== filters.group) return false;
-      if (filters.from && new Date(t.date) < new Date(filters.from)) return false;
-      if (filters.to && new Date(t.date) > new Date(filters.to + "T23:59:59")) return false;
+    return tasks.filter((tv) => {
+      if (filters.responsible && tv.staff !== filters.responsible) return false;
+      if (filters.student && tv.student !== filters.student) return false;
+      if (filters.type && tv.type !== filters.type) return false;
+      if (filters.group && (tv.group || "") !== filters.group) return false;
+      if (filters.from && new Date(tv.date) < new Date(filters.from)) return false;
+      if (filters.to && new Date(tv.date) > new Date(filters.to + "T23:59:59")) return false;
       return true;
     });
   }, [tasks, filters]);
 
   const withStatus = useMemo(
-    () => baseFiltered.filter((t) => !filters.status || t.state === filters.status),
+    () => baseFiltered.filter((tv) => !filters.status || tv.state === filters.status),
     [baseFiltered, filters.status],
   );
 
   const timeFiltered = useMemo(() => {
-    return withStatus.filter((t) => {
+    return withStatus.filter((tv) => {
       if (dashFilter === "all") return true;
-      if (dashFilter === "today") return getTaskStatus(t) === "today";
-      if (dashFilter === "late") return getTaskStatus(t) === "overdue";
+      if (dashFilter === "today") return getTaskStatus(tv) === "today";
+      if (dashFilter === "late") return getTaskStatus(tv) === "overdue";
       if (dashFilter === "soon") {
         // Kunlar Toshkent taqvimi bo'yicha (lib/uzTime.ts).
-        return getTaskStatus(t) === "upcoming" && uzDayKey(new Date(t.date)) <= uzDayKeyIn(3);
+        return getTaskStatus(tv) === "upcoming" && uzDayKey(new Date(tv.date)) <= uzDayKeyIn(3);
       }
-      if (dashFilter === "done") return t.state === "bajarilgan";
+      if (dashFilter === "done") return tv.state === "bajarilgan";
       return true;
     });
   }, [withStatus, dashFilter]);
 
   const buckets = useMemo(() => {
     const b: Record<"overdue" | "today" | "upcoming", Task[]> = { overdue: [], today: [], upcoming: [] };
-    for (const t of timeFiltered) b[getTaskStatus(t)].push(t);
+    for (const tv of timeFiltered) b[getTaskStatus(tv)].push(tv);
     b.overdue.sort((a, c) => new Date(c.date).getTime() - new Date(a.date).getTime());
     b.today.sort((a, c) => new Date(a.date).getTime() - new Date(c.date).getTime());
     b.upcoming.sort((a, c) => new Date(a.date).getTime() - new Date(c.date).getTime());
@@ -158,7 +160,7 @@ export default function TasksPage() {
 
   const kanbanGroups = useMemo(() => {
     const g: Record<TaskState, Task[]> = { yangi: [], jarayonda: [], kutilmoqda: [], bajarilgan: [] };
-    for (const t of baseFiltered) g[t.state].push(t);
+    for (const tv of baseFiltered) g[tv.state].push(tv);
     (Object.keys(g) as TaskState[]).forEach((k) => g[k].sort(compareTasksForSort));
     return g;
   }, [baseFiltered]);
@@ -173,7 +175,7 @@ export default function TasksPage() {
     setModalInitialDate(undefined);
     setModalOpen(true);
   };
-  const editingTask = modalTaskId != null ? tasks.find((t) => t.id === modalTaskId) || null : null;
+  const editingTask = modalTaskId != null ? tasks.find((tv) => tv.id === modalTaskId) || null : null;
 
   /**
    * PATCH javobidagi hujjatdan FAQAT server o'zi hal qiladigan maydonlar
@@ -184,7 +186,7 @@ export default function TasksPage() {
   const syncFromServer = (id: number, doc: Record<string, unknown>) => {
     const report = parseTaskReport(doc.report);
     const staffId = Number(doc.staffId) > 0 ? Number(doc.staffId) : undefined;
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, report, staffId, state: isTaskState(doc.state) ? doc.state : t.state } : t)));
+    setTasks((prev) => prev.map((tv) => (tv.id === id ? { ...tv, report, staffId, state: isTaskState(doc.state) ? doc.state : tv.state } : tv)));
   };
 
   const handleSaveModal = async (values: TaskModalValues) => {
@@ -210,7 +212,7 @@ export default function TasksPage() {
         group: values.targetKind === "group" ? target : "",
         targetKind: values.targetKind,
       };
-      setTasks((prev) => prev.map((t) => (t.id === modalTaskId ? { ...t, ...patch, description: patch.description || t.description, staff: patch.staff || t.staff, type: patch.type || t.type } : t)));
+      setTasks((prev) => prev.map((tv) => (tv.id === modalTaskId ? { ...tv, ...patch, description: patch.description || tv.description, staff: patch.staff || tv.staff, type: patch.type || tv.type } : tv)));
       // Javobdan `report`/`staffId` olinadi: qayta berilgan (yangi muddat,
       // boshqa mas'ul) topshiriqning eski hisobotini server o'chiradi
       // (app/api/tasks/[id]) — karta ham o'sha zahoti "hisobotsiz" bo'lsin.
@@ -245,7 +247,7 @@ export default function TasksPage() {
   };
 
   const handleApplyTemplate = async (templateId: string, studentName: string) => {
-    const tpl = TASK_TEMPLATES.find((t) => t.id === templateId);
+    const tpl = TASK_TEMPLATES.find((tv) => tv.id === templateId);
     if (!tpl) return;
     const now = Date.now();
     // Ketma-ket yuboriladi (Promise.all emas) — /api/tasks POST'dagi id hisoblash
@@ -291,7 +293,7 @@ export default function TasksPage() {
   const onKanbanDrop = (e: React.DragEvent, state: TaskState) => {
     e.preventDefault();
     const id = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, state } : t)));
+    setTasks((prev) => prev.map((tv) => (tv.id === id ? { ...tv, state } : tv)));
     setDragOverState(null);
     // "Yangi" ga qaytarilganda server hisobotni o'chiradi — javobdan olinadi.
     fetch(`/api/tasks/${id}`, {
@@ -314,7 +316,7 @@ export default function TasksPage() {
     setTimeDraggingId(null);
     setTimeDragOverStatus(null);
   };
-  const draggingTimeTask = timeDraggingId != null ? tasks.find((t) => t.id === timeDraggingId) || null : null;
+  const draggingTimeTask = timeDraggingId != null ? tasks.find((tv) => tv.id === timeDraggingId) || null : null;
   const onTimeDragOver = (e: React.DragEvent, targetStatus: "overdue" | "today" | "upcoming") => {
     if (!draggingTimeTask || getTaskStatus(draggingTimeTask) === targetStatus) return;
     e.preventDefault();
@@ -328,7 +330,7 @@ export default function TasksPage() {
     e.preventDefault();
     setTimeDragOverStatus(null);
     const id = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    const task = tasks.find((t) => t.id === id);
+    const task = tasks.find((tv) => tv.id === id);
     if (!task || getTaskStatus(task) === targetStatus) return;
     if (targetStatus === "upcoming") {
       setMoveTaskId(id);
@@ -343,14 +345,14 @@ export default function TasksPage() {
     if (targetStatus !== "today") newDate.setDate(newDate.getDate() - 1);
     newDate.setHours(existing.getHours() || 9, existing.getMinutes() || 0, 0, 0);
     const isoDate = newDate.toISOString();
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, date: isoDate } : t)));
+    setTasks((prev) => prev.map((tv) => (tv.id === id ? { ...tv, date: isoDate } : tv)));
     fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date: isoDate }),
     }).catch(() => {});
   };
-  const moveTaskTarget = moveTaskId != null ? tasks.find((t) => t.id === moveTaskId) || null : null;
+  const moveTaskTarget = moveTaskId != null ? tasks.find((tv) => tv.id === moveTaskId) || null : null;
 
   const clearFilters = () => setFilters(EMPTY_FILTERS);
 
@@ -372,7 +374,7 @@ export default function TasksPage() {
       <TaskDashboardWidgets tasks={withStatus} active={dashFilter} onChange={setDashFilter} />
 
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">Topshiriqlar</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{t("Topshiriqlar")}</h1>
         <div className="flex items-center gap-2">
           <div className="view-toggle-group">
             {VIEW_TOGGLES.map((v) => (
@@ -382,25 +384,25 @@ export default function TasksPage() {
                 onClick={() => setViewMode(v.mode)}
               >
                 <svg className="icon" style={{ width: 14, height: 14 }}><use href={`#${v.icon}`} /></svg>
-                <span>{v.label}</span>
+                <span>{t(v.label)}</span>
               </button>
             ))}
           </div>
 
-          <Button variant="primary" icon="i-filter" onClick={() => setFiltersOpen((o) => !o)} title="Filterlarni ko'rsatish/yashirish">
-            Filtr
+          <Button variant="primary" icon="i-filter" onClick={() => setFiltersOpen((o) => !o)} title={t("Filterlarni ko'rsatish/yashirish")}>
+            {t("Filtr")}
           </Button>
-          <Button variant="outline" icon="i-layers" onClick={() => setTemplatesOpen(true)} title="Tayyor shablondan task'lar yaratish">
-            Shablon
+          <Button variant="outline" icon="i-layers" onClick={() => setTemplatesOpen(true)} title={t("Tayyor shablondan task'lar yaratish")}>
+            {t("Shablon")}
           </Button>
           <Button variant="primary" icon="i-file-plus" onClick={() => openAddModal()}>
-            Qo&apos;shish
+            {t("Qo'shish")}
           </Button>
 
           <div className="relative" ref={moreRef}>
             <button
               type="button"
-              title="Qo'shimcha amallar"
+              title={t("Qo'shimcha amallar")}
               onClick={() => setMoreOpen((o) => !o)}
               className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary ${moreOpen ? "bg-secondary" : ""}`}
             >
@@ -416,7 +418,7 @@ export default function TasksPage() {
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <TaskTypeIcon icon="list-checks" className="h-4 w-4" />
                   </span>
-                  <span>Topshiriq turi</span>
+                  <span>{t("Topshiriq turi")}</span>
                 </button>
               </div>
             )}
@@ -438,12 +440,12 @@ export default function TasksPage() {
                 onDrop={(e) => onKanbanDrop(e, st.key)}
               >
                 <div className="kanban-column-header">
-                  <div className="kanban-column-title">{st.label}</div>
+                  <div className="kanban-column-title">{t(st.label)}</div>
                   <span className="kanban-column-count">{kanbanGroups[st.key].length}</span>
                 </div>
                 <div className="kanban-cards">
                   {kanbanGroups[st.key].length === 0 ? (
-                    <div className="text-center py-10 text-[12px] text-muted-foreground opacity-50">Bo&apos;sh</div>
+                    <div className="text-center py-10 text-[12px] text-muted-foreground opacity-50">{t("Bo'sh")}</div>
                   ) : (
                     kanbanGroups[st.key].map((task) => (
                       <KanbanCard
@@ -469,7 +471,7 @@ export default function TasksPage() {
           month={calendarMonth}
           tasks={baseFiltered}
           onNavigate={(delta) => setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))}
-          onToday={() => { const t = todayStart(); setCalendarMonth(new Date(t.getFullYear(), t.getMonth(), 1)); }}
+          onToday={() => { const tv = todayStart(); setCalendarMonth(new Date(tv.getFullYear(), tv.getMonth(), 1)); }}
           onDayClick={(year, month, day) => {
             const dt = new Date(year, month, day);
             openAddModal(dt.toISOString().slice(0, 10));
@@ -480,17 +482,17 @@ export default function TasksPage() {
 
       {filtersOpen && (
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Select value={filters.responsible} onChange={(v) => setFilter("responsible", v)} options={staffNames.map((s) => ({ value: s, label: s }))} placeholder="Mas'ul shaxs" clearable size="sm" className="w-36" />
-          <Select value={filters.student} onChange={(v) => setFilter("student", v)} options={studentOptions.map((s) => ({ value: s, label: s }))} placeholder="O'quvchi" clearable size="sm" className="w-32" />
-          <Select value={filters.type} onChange={(v) => setFilter("type", v)} options={taskTypes.types.map((t) => ({ value: t.name, label: t.name }))} placeholder="Topshiriq turi" clearable size="sm" className="w-40" />
+          <Select value={filters.responsible} onChange={(v) => setFilter("responsible", v)} options={staffNames.map((s) => ({ value: s, label: s }))} placeholder={t("Mas'ul shaxs")} clearable size="sm" className="w-36" />
+          <Select value={filters.student} onChange={(v) => setFilter("student", v)} options={studentOptions.map((s) => ({ value: s, label: s }))} placeholder={t("O'quvchi")} clearable size="sm" className="w-32" />
+          <Select value={filters.type} onChange={(v) => setFilter("type", v)} options={taskTypes.types.map((tv) => ({ value: tv.name, label: tv.name }))} placeholder={t("Topshiriq turi")} clearable size="sm" className="w-40" />
           {groupOptions.length > 0 && (
-            <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder="Guruh" clearable size="sm" className="w-32" />
+            <Select value={filters.group} onChange={(v) => setFilter("group", v)} options={groupOptions.map((g) => ({ value: g, label: g }))} placeholder={t("Guruh")} clearable size="sm" className="w-32" />
           )}
           <DateField value={filters.from} onChange={(v) => setFilter("from", v)} />
           <DateField value={filters.to} onChange={(v) => setFilter("to", v)} />
-          <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={KANBAN_STATES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable size="sm" className="w-32" />
+          <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={KANBAN_STATES.map((s) => ({ value: s.key, label: s.label }))} placeholder={t("Holati")} clearable size="sm" className="w-32" />
           <button onClick={clearFilters} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
-            <svg className="icon icon-xs"><use href="#i-x-circle" /></svg> Tozalash
+            <svg className="icon icon-xs"><use href="#i-x-circle" /></svg>{" "}{t("Tozalash")}
           </button>
         </div>
       )}
@@ -499,9 +501,9 @@ export default function TasksPage() {
         const isDraggingTime = timeDraggingId != null;
         const sourceStatus = draggingTimeTask ? getTaskStatus(draggingTimeTask) : null;
         const columns: { status: "overdue" | "today" | "upcoming"; label: string; border: string; items: Task[] }[] = [
-          { status: "overdue", label: "O'tib ketgan", border: "border-red-300", items: buckets.overdue },
-          { status: "today", label: "Bugun", border: "border-emerald-300", items: buckets.today },
-          { status: "upcoming", label: "Keyinchalik keladigan", border: "border-blue-300", items: buckets.upcoming },
+          { status: "overdue", label: t("O'tib ketgan"), border: "border-red-300", items: buckets.overdue },
+          { status: "today", label: t("Bugun"), border: "border-emerald-300", items: buckets.today },
+          { status: "upcoming", label: t("Keyinchalik keladigan"), border: "border-blue-300", items: buckets.upcoming },
         ];
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
@@ -517,19 +519,19 @@ export default function TasksPage() {
                 onDrop={(e) => onTimeDrop(e, col.status)}
               >
                 <div className={`text-center pt-3 mb-3 border-t-[3px] ${col.border}`}>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{col.label}</div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t(col.label)}</div>
                   <div className="text-2xl font-bold mt-1 tabular-nums">{col.items.length}</div>
                 </div>
                 <div className="task-col space-y-2 overflow-y-auto pr-1">
                   {col.items.length === 0 ? (
-                    <div className="text-center py-8 text-sm text-muted-foreground">Bo&apos;sh</div>
+                    <div className="text-center py-8 text-sm text-muted-foreground">{t("Bo'sh")}</div>
                   ) : (
-                    col.items.map((t) => (
+                    col.items.map((tv) => (
                       <TaskCard
-                        key={t.id}
-                        task={t}
-                        blocked={isTaskBlocked(t, tasks)}
-                        isDragging={timeDraggingId === t.id}
+                        key={tv.id}
+                        task={tv}
+                        blocked={isTaskBlocked(tv, tasks)}
+                        isDragging={timeDraggingId === tv.id}
                         onOpen={openEditModal}
                         onDragStart={onTimeDragStart}
                         onDragEnd={onTimeDragEnd}
@@ -571,7 +573,7 @@ export default function TasksPage() {
           task={moveTaskTarget}
           onClose={() => setMoveTaskId(null)}
           onConfirm={(isoDate) => {
-            setTasks((prev) => prev.map((t) => (t.id === moveTaskTarget.id ? { ...t, date: isoDate } : t)));
+            setTasks((prev) => prev.map((tv) => (tv.id === moveTaskTarget.id ? { ...tv, date: isoDate } : tv)));
             fetch(`/api/tasks/${moveTaskTarget.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },

@@ -13,6 +13,7 @@ import {
   CHECK_TOGGLES,
 } from "@/constants/settingsCheck";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Umumiy sozlamalar → Chek. Chek "Moliya" va "Buyurtma" rejimlarida alohida
 // bosiladi, shuning uchun ikkala rejim bitta hujjatda mustaqil saqlanadi:
@@ -74,6 +75,7 @@ function emptyData(): CheckData {
 }
 
 export default function CheckTab() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [mode, setMode] = useState(MODES[0].key);
   const [data, setData] = useState<CheckData>(emptyData);
@@ -122,13 +124,13 @@ export default function CheckTab() {
       const res = await fetch("/api/upload/image", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        showError(data.error || "Rasm yuklanmadi");
+        showError(t(data.error || "Rasm yuklanmadi"));
         return;
       }
       set({ logoUrl: String(data.url), logoName: file.name });
-      showSuccess("Logotip yuklandi");
+      showSuccess(t("Logotip yuklandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setUploading(false);
     }
@@ -144,12 +146,12 @@ export default function CheckTab() {
       });
       const resData = await res.json();
       if (!resData.ok) {
-        showError(resData.error || "Saqlanmadi");
+        showError(t(resData.error || "Saqlanmadi"));
         return;
       }
-      showSuccess("Sozlamalar saqlandi");
+      showSuccess(t("Sozlamalar saqlandi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -177,7 +179,7 @@ export default function CheckTab() {
 
       <div className="rounded-2xl bg-card border border-border p-5">
         <div className="flex items-center justify-between gap-4 mb-2">
-          <h3 className="text-[15px] font-semibold">Chek sozlamalari</h3>
+          <h3 className="text-[15px] font-semibold">{t("Chek sozlamalari")}</h3>
           <div className="flex items-center gap-1.5">
             {MODES.map((m) => (
               <button
@@ -187,7 +189,7 @@ export default function CheckTab() {
                   mode === m.key ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {m.label}
+                {t(m.label)}
               </button>
             ))}
           </div>
@@ -195,7 +197,7 @@ export default function CheckTab() {
 
         <div className="divide-y divide-border">
           <div className="py-3">
-            <label className="block text-[13px] font-medium mb-1.5">Logo</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Logo")}</label>
             <input
               type="file"
               // /api/upload/image faqat shu uch turni qabul qiladi — brauzer
@@ -212,11 +214,11 @@ export default function CheckTab() {
               className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
             />
             <div className="mt-1.5 text-[12px] text-muted-foreground">
-              PNG, JPG yoki WEBP; 5 MB gacha.
+              {t("PNG, JPG yoki WEBP; 5 MB gacha.")}
             </div>
 
             {uploading && (
-              <div className="mt-2 text-[12px] text-muted-foreground">Yuklanmoqda…</div>
+              <div className="mt-2 text-[12px] text-muted-foreground">{t("Yuklanmoqda…")}</div>
             )}
 
             {/* Yuklangan rasmning O'ZINI ko'rsatamiz: fayl nomi ko'rinib
@@ -237,14 +239,14 @@ export default function CheckTab() {
                   onClick={() => set({ logoUrl: "", logoName: "" })}
                   className="h-8 px-3 shrink-0 rounded-lg border border-border text-[13px] font-medium text-rose-600 hover:bg-rose-500/10"
                 >
-                  O&apos;chirish
+                  {t("O'chirish")}
                 </button>
               </div>
             )}
           </div>
 
           <TextGroup
-            title="Sarlavha"
+            title={t("Sarlavha")}
             text={cur.titleText}
             size={cur.titleSize}
             bold={cur.titleBold}
@@ -254,7 +256,7 @@ export default function CheckTab() {
           />
 
           <TextGroup
-            title="Chek tag yozuvi"
+            title={t("Chek tag yozuvi")}
             text={cur.footerText}
             size={cur.footerSize}
             bold={cur.footerBold}
@@ -264,14 +266,14 @@ export default function CheckTab() {
           />
 
           <div className="py-3">
-            <label className="block text-[13px] font-medium mb-1.5">Chek tili</label>
+            <label className="block text-[13px] font-medium mb-1.5">{t("Chek tili")}</label>
             <Select value={cur.language} onChange={(v) => set({ language: v })} options={(CHECK_LANGUAGES as string[]).map((l) => ({ value: l, label: l }))} />
           </div>
 
-          {TOGGLES.map((t) => (
-            <div key={t.key} className="flex items-center justify-between gap-4 py-3">
-              <span className="text-[13px]">{t.label}</span>
-              <Toggle on={Boolean(cur[t.key])} onChange={(v) => set({ [t.key]: v })} />
+          {TOGGLES.map((tv) => (
+            <div key={tv.key} className="flex items-center justify-between gap-4 py-3">
+              <span className="text-[13px]">{t(tv.label)}</span>
+              <Toggle on={Boolean(cur[tv.key])} onChange={(v) => set({ [tv.key]: v })} />
             </div>
           ))}
         </div>
@@ -280,11 +282,11 @@ export default function CheckTab() {
       <div className="rounded-2xl bg-card border border-border p-5">
         {/* Ikkala karta sarlavhasi bir xil ko'rinsin — birinchisi ham
             text-[15px] font-semibold. */}
-        <h3 className="text-[15px] font-semibold mb-2">Chekda ko&apos;rinadigan maydonlar</h3>
+        <h3 className="text-[15px] font-semibold mb-2">{t("Chekda ko'rinadigan maydonlar")}</h3>
         <div className="divide-y divide-border">
           {FIELDS.map((f) => (
             <div key={f.key} className="flex items-center justify-between gap-4 py-3">
-              <span className="text-[13px]">{f.label}</span>
+              <span className="text-[13px]">{t(f.label)}</span>
               <Toggle on={Boolean(cur.fields[f.key])} onChange={(v) => setField(f.key, v)} />
             </div>
           ))}
@@ -297,7 +299,7 @@ export default function CheckTab() {
           disabled={saving}
           className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
         >
-          {saving ? "Saqlanmoqda…" : "Saqlash"}
+          {saving ? t("Saqlanmoqda…") : t("Saqlash")}
         </button>
       </div>
     </div>
@@ -323,6 +325,7 @@ function TextGroup({
   onSize: (v: number | "") => void;
   onBold: (v: boolean) => void;
 }) {
+  const { t } = useT();
   return (
     // Pastki bo'shliqni "Bold" qatorining py-3 i beradi — aks holda guruh
     // oxirida qo'shaloq padding chiqib, boshqa qatorlar bilan mos kelmaydi.
@@ -332,11 +335,11 @@ function TextGroup({
       </div>
       <div className="grid gap-3 grid-cols-[minmax(0,1fr)_140px] pt-1">
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Matni</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Matni")}</label>
           <input value={text} onChange={(e) => onText(e.target.value)} className={inputCls} />
         </div>
         <div>
-          <label className="block text-[13px] font-medium mb-1.5">Hajmi (px)</label>
+          <label className="block text-[13px] font-medium mb-1.5">{t("Hajmi (px)")}</label>
           <input
             type="number"
             placeholder="14"
@@ -349,7 +352,7 @@ function TextGroup({
         </div>
       </div>
       <div className="flex items-center justify-between gap-4 py-3">
-        <span className="text-[13px]">Bold</span>
+        <span className="text-[13px]">{t("Bold")}</span>
         <Toggle on={bold} onChange={onBold} />
       </div>
     </div>

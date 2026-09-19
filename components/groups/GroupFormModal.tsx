@@ -18,6 +18,7 @@ import { findRoomConflict, joinTime, missingGroupFields, parseTimeRange, roomCon
 import { courseLevelNames, findCourseByName, levelPlaceholder } from "@/lib/courseLevels";
 import { uzDateIso } from "@/lib/uzTime";
 import type { Group } from "@/lib/groups";
+import { useT } from "@/components/shared/Language";
 
 // Guruh QO'SHISH va TAHRIRLASH — bitta modal. `group` berilsa tahrirlash
 // (PATCH /api/groups/:id), bo'lmasa qo'shish (POST /api/groups).
@@ -91,6 +92,7 @@ function isoToDmy(s: string): string {
  * "nima qildim?" deb qoldirmasin.
  */
 function Actions({ saving, blocker, onSave }: { saving: boolean; blocker: string | null; onSave: (close: () => void) => void }) {
+  const { t } = useT();
   const { close } = useModal();
   return (
     <>
@@ -106,7 +108,7 @@ function Actions({ saving, blocker, onSave }: { saving: boolean; blocker: string
         disabled={saving}
         className="inline-flex items-center h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
       >
-        Orqaga
+        {t("Orqaga")}
       </button>
       <button
         type="button"
@@ -115,7 +117,7 @@ function Actions({ saving, blocker, onSave }: { saving: boolean; blocker: string
         title={blocker ?? undefined}
         className="inline-flex items-center h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {saving ? "Saqlanmoqda…" : "Saqlash"}
+        {saving ? t("Saqlanmoqda…") : t("Saqlash")}
       </button>
     </>
   );
@@ -135,6 +137,7 @@ export default function GroupFormModal({
   /** Qo'shilgan yoki yangilangan guruh (serverdan qaytgan hujjat). */
   onSaved?: (g: Group) => void;
 }) {
+  const { t } = useT();
   const editing = group !== undefined;
   const { showSuccess, showError } = useToast();
   const { courses, names: courseNames, loading: coursesLoading } = useOfflineCourseList();
@@ -216,15 +219,15 @@ export default function GroupFormModal({
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || (editing ? "Saqlanmadi" : "Guruh qo'shilmadi"));
+        showError(data.error || (editing ? t("Saqlanmadi") : t("Guruh qo'shilmadi")));
         setSaving(false);
         return;
       }
       onSaved?.(data.group as Group);
-      showSuccess(editing ? "Guruh yangilandi" : `Guruh qo'shildi — ${trimmed}`);
+      showSuccess(editing ? "Guruh yangilandi" : t("Guruh qo'shildi — {trimmed}", { trimmed }));
       close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -232,8 +235,8 @@ export default function GroupFormModal({
   return (
     <Modal
       onClose={onClose}
-      title={editing ? "Guruhni tahrirlash" : "Yangi guruh qo'shish"}
-      subtitle={<><span className="text-red-500">*</span> Zarurligini bildiradi</>}
+      title={editing ? t("Guruhni tahrirlash") : t("Yangi guruh qo'shish")}
+      subtitle={<><span className="text-red-500">*</span>{" "}{t("Zarurligini bildiradi")}</>}
       size="xl"
       locked={saving}
       footer={<Actions saving={saving} blocker={blocker} onSave={save} />}
@@ -243,23 +246,23 @@ export default function GroupFormModal({
           maydonlar juft-juft. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
         <div className="sm:col-span-2">
-          <label className={labelCls}>Guruh nomi<span className="text-red-500">*</span></label>
+          <label className={labelCls}>{t("Guruh nomi")}<span className="text-red-500">*</span></label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             type="text"
             autoFocus={!editing}
-            placeholder="Masalan: 12"
+            placeholder={t("Masalan: 12")}
             className={inputCls}
           />
         </div>
         <div className="sm:col-span-2">
-          <label className={labelCls}>Guruh holati<span className="text-red-500">*</span></label>
+          <label className={labelCls}>{t("Guruh holati")}<span className="text-red-500">*</span></label>
           <Segmented value={status} onChange={setStatus} options={STATUS_OPTIONS} />
         </div>
 
         <Select
-          label="Kurs"
+          label={t("Kurs")}
           required
           value={course}
           onChange={(v) => {
@@ -268,63 +271,63 @@ export default function GroupFormModal({
           }}
           options={withCurrent(courseNames, course).map((c) => ({ value: c, label: c }))}
           loading={coursesLoading}
-          placeholder="Kursni tanlang"
+          placeholder={t("Kursni tanlang")}
           searchPlaceholder="Kursni qidirish"
-          emptyText="Kurslar ro'yxati bo'sh — avval Oflayn kurslar bo'limida kurs oching"
+          emptyText={t("Kurslar ro'yxati bo'sh — avval Oflayn kurslar bo'limida kurs oching")}
         />
         <Select
-          label="Daraja (bosqich)"
+          label={t("Daraja (bosqich)")}
           value={level}
           onChange={setLevel}
           options={withCurrent(levelNames, level).map((l) => ({ value: l, label: l }))}
           placeholder={levelPlaceholder(Boolean(course), levelNames.length)}
           disabled={!course || (levelNames.length === 0 && !level)}
-          emptyText="Bu kursda bosqich yo'q — Oflayn kurslar → kurs sahifasida qo'shing"
+          emptyText={t("Bu kursda bosqich yo'q — Oflayn kurslar → kurs sahifasida qo'shing")}
           clearable
         />
 
         <Select
-          label="Dars kunlari"
+          label={t("Dars kunlari")}
           required
           value={day}
           onChange={setDay}
           options={DAY_OPTIONS}
-          placeholder="Tanlang"
+          placeholder={t("Tanlang")}
         />
         <div>
-          <label className={labelCls}>Dars vaqti<span className="text-red-500">*</span></label>
+          <label className={labelCls}>{t("Dars vaqti")}<span className="text-red-500">*</span></label>
           <div className="grid grid-cols-2 gap-2">
-            <TimeField value={startTime} onChange={setStartTime} variant="form" placeholder="Boshlanish" error={timeOrderError} />
-            <TimeField value={endTime} onChange={setEndTime} variant="form" placeholder="Tugash" error={timeOrderError} />
+            <TimeField value={startTime} onChange={setStartTime} variant="form" placeholder={t("Boshlanish")} error={timeOrderError} />
+            <TimeField value={endTime} onChange={setEndTime} variant="form" placeholder={t("Tugash")} error={timeOrderError} />
           </div>
         </div>
 
         <Select
-          label="O'qituvchi"
+          label={t("O'qituvchi")}
           required
           value={teacher}
           onChange={setTeacher}
-          options={withCurrent(teacherNames, teacher).map((t) => ({ value: t, label: t }))}
+          options={withCurrent(teacherNames, teacher).map((tv) => ({ value: tv, label: tv }))}
           loading={teachersLoading}
           placeholder={selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}
           searchPlaceholder="O'qituvchini qidirish"
-          emptyText="O'qituvchilar ro'yxati bo'sh — Boshqaruv → Xodimlar bo'limida o'qituvchi qo'shing"
+          emptyText={t("O'qituvchilar ro'yxati bo'sh — Boshqaruv → Xodimlar bo'limida o'qituvchi qo'shing")}
         />
         <Select
-          label="Yordamchi o'qituvchi"
+          label={t("Yordamchi o'qituvchi")}
           value={assistant}
           onChange={setAssistant}
-          options={withCurrent(teacherNames, assistant).map((t) => ({ value: t, label: t }))}
+          options={withCurrent(teacherNames, assistant).map((tv) => ({ value: tv, label: tv }))}
           loading={teachersLoading}
           placeholder={selectPlaceholder(teachersLoading, teacherNames.length, "O'qituvchi qo'shilmagan")}
           searchPlaceholder="O'qituvchini qidirish"
-          emptyText="O'qituvchilar ro'yxati bo'sh"
+          emptyText={t("O'qituvchilar ro'yxati bo'sh")}
           clearable
         />
 
         <div>
           <Select
-            label="Xona"
+            label={t("Xona")}
             required
             value={room}
             onChange={setRoom}
@@ -332,7 +335,7 @@ export default function GroupFormModal({
             loading={roomsLoading}
             placeholder={selectPlaceholder(roomsLoading, roomNames.length, "Xona qo'shilmagan")}
             searchPlaceholder="Xonani qidirish"
-            emptyText="Xonalar ro'yxati bo'sh — Guruh → Xonalar bo'limida xona qo'shing"
+            emptyText={t("Xonalar ro'yxati bo'sh — Guruh → Xonalar bo'limida xona qo'shing")}
             error={conflict !== null}
           />
           {conflictText && (
@@ -343,22 +346,22 @@ export default function GroupFormModal({
           )}
         </div>
         <div>
-          <label className={labelCls}>Ta&apos;lim turi<span className="text-red-500">*</span></label>
+          <label className={labelCls}>{t("Ta'lim turi")}<span className="text-red-500">*</span></label>
           <Segmented value={eduType} onChange={setEduType} options={FORMAT_OPTIONS} />
         </div>
 
         <div>
-          <label className={labelCls}>Boshlanish sanasi</label>
+          <label className={labelCls}>{t("Boshlanish sanasi")}</label>
           <DateField value={startDate} onChange={setStartDate} variant="form" placeholder="kk/oo/yyyy" />
         </div>
         <div>
-          <label className={labelCls}>Bitkazish sanasi</label>
+          <label className={labelCls}>{t("Bitkazish sanasi")}</label>
           <DateField value={endDate} onChange={setEndDate} variant="form" placeholder="kk/oo/yyyy" />
         </div>
 
         <div className="sm:col-span-2">
-          <label className={labelCls}>Telegram guruh havolasi</label>
-          <input value={telegram} onChange={(e) => setTelegram(e.target.value)} type="text" placeholder="https://t.me/..." className={inputCls} />
+          <label className={labelCls}>{t("Telegram guruh havolasi")}</label>
+          <input value={telegram} onChange={(e) => setTelegram(e.target.value)} type="text" placeholder="https://tv.me/..." className={inputCls} />
         </div>
       </div>
     </Modal>

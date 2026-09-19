@@ -19,6 +19,7 @@ import {
 import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
 // Saqlash → POST /api/hr-employees.
@@ -81,8 +82,9 @@ function DegreeSelect({
   onChange: (v: string) => void;
   empty?: string;
 }) {
+  const { t } = useT();
   return (
-    <Select value={value} onChange={(v) => onChange(v)} options={[...(value && !opts.some((d) => d.name === value) ? [{ value: value, label: `${value} — ro'yxatda yo'q (eski qiymat)` }] : []), ...opts.map((d) => ({ value: d.name, label: d.name }))]} placeholder={selectPlaceholder(loading, opts.length, empty, "Darajani tanlang")} clearable disabled={loading} />
+    <Select value={value} onChange={(v) => onChange(v)} options={[...(value && !opts.some((d) => d.name === value) ? [{ value: value, label: t("{value} — ro'yxatda yo'q (eski qiymat)", { value }) }] : []), ...opts.map((d) => ({ value: d.name, label: d.name }))]} placeholder={selectPlaceholder(loading, opts.length, empty, "Darajani tanlang")} clearable disabled={loading} />
   );
 }
 
@@ -163,6 +165,7 @@ type EmployeeFormProps =
   | { employee: HrEmployeeFull; onClose: () => void; onSaved?: (emp: HrEmployeeFull) => void; onCreated?: never };
 
 export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved }: EmployeeFormProps) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const editing = Boolean(employee);
   const { showSuccess, showError } = useToast();
@@ -233,20 +236,20 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "Maxsus maydon saqlanmadi");
+        showError(t(data.error || "Maxsus maydon saqlanmadi"));
         return false;
       }
       setCustomDefs(next);
       return true;
     } catch {
-      showError("Serverga ulanib bo'lmadi — maxsus maydon saqlanmadi");
+      showError(t("Serverga ulanib bo'lmadi — maxsus maydon saqlanmadi"));
       return false;
     }
   }
 
   async function addCustomField(draft: CustomFieldDraft) {
     if (customDefs.some((f) => f.name.toLowerCase() === draft.name.toLowerCase())) {
-      showError(`"${draft.name}" nomli maydon allaqachon bor`);
+      showError(t("\"{name}\" nomli maydon allaqachon bor", { name: draft.name }));
       return;
     }
     setSavingField(true);
@@ -255,7 +258,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
     setSavingField(false);
     if (!ok) return;
     setShowCustomField(false);
-    showSuccess(`Maxsus maydon qo'shildi — ${draft.name}`);
+    showSuccess(t("Maxsus maydon qo'shildi — {name}", { name: draft.name }));
   }
 
   async function removeCustomField(def: EmployeeCustomFieldDef) {
@@ -267,7 +270,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       delete next[def.name];
       return next;
     });
-    showSuccess(`Maxsus maydon o'chirildi — ${def.name}`);
+    showSuccess(t("Maxsus maydon o'chirildi — {name}", { name: def.name }));
   }
 
   // Vazifa tanlanganda pastda qo'shimcha maydonlar ochiladi. Ularning
@@ -479,11 +482,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   function pickPhoto(file: File | undefined) {
     if (!file) return;
     if (!/^image\/(png|jpeg)$/.test(file.type)) {
-      showError("Faqat PNG yoki JPG rasm tanlang");
+      showError(t("Faqat PNG yoki JPG rasm tanlang"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      showError("Rasm hajmi 5 MB dan oshmasin");
+      showError(t("Rasm hajmi 5 MB dan oshmasin"));
       return;
     }
     // Oldingi ko'rinish uchun yaratilgan URL bo'shatiladi (xotira oqmasin).
@@ -502,36 +505,36 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
     // Tahrirlashda ism BITTA maydonda (`ism`), yaratishda ikkitasi.
     const name = editing ? ism.trim() : `${ism.trim()} ${familiya.trim()}`.trim();
     if (!name) {
-      showError(editing ? "F.I.SH. ni kiriting" : "Ism va familiyani kiriting");
+      showError(editing ? t("F.I.SH. ni kiriting") : t("Ism va familiyani kiriting"));
       return;
     }
     // Maydon faqat raqam qabul qiladi, lekin 9 tasi TO'LIQ terilganini
     // baribir tekshiramiz — yarim raqam bilan saqlab bo'lmasin.
     if (!isValidPhoneClient(phone)) {
-      showError("Telefon raqamini to'liq kiriting — 9 ta raqam (masalan 90 123 45 67)");
+      showError(t("Telefon raqamini to'liq kiriting — 9 ta raqam (masalan 90 123 45 67)"));
       return;
     }
     // Filiallar ro'yxati hali kelmagan bo'lsa saqlashga yo'l qo'ymaymiz:
     // `branchAssignments` shu ro'yxatdan yig'iladi va bo'sh massiv
     // yuborilsa xodimning sozlangan ish haqi butunlay o'chib ketardi.
     if (editing && branches.length === 0) {
-      showError("Filiallar ro'yxati hali yuklanmadi — bir lahza kuting");
+      showError(t("Filiallar ro'yxati hali yuklanmadi — bir lahza kuting"));
       return;
     }
     // Referensda bu ikkisi yulduzcha bilan — faqat o'qituvchi uchun majburiy.
     if (isTeacher && !percent) {
-      showError("Oladigan foizini tanlang");
+      showError(t("Oladigan foizini tanlang"));
       return;
     }
     if (isTeacher && !kurs) {
-      showError("Kursni tanlang");
+      showError(t("Kursni tanlang"));
       return;
     }
     // Drawer'da "Majburiy maydon" yoqilgan bo'lsa — u haqiqatan majburiy
     // bo'lsin, aks holda toggle yana bir bo'sh va'da bo'lib qolardi.
     const missing = customDefs.find((f) => f.required && !(customValues[f.name] || "").trim());
     if (missing) {
-      showError(`"${missing.name}" maydonini to'ldiring`);
+      showError(t("\"{name}\" maydonini to'ldiring", { name: missing.name }));
       return;
     }
     setSaving(true);
@@ -547,7 +550,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
         const up = await fetch("/api/upload/image", { method: "POST", body: fd });
         const upData = await up.json();
         if (!up.ok || !upData.ok) {
-          showError(upData.error || "Rasm yuklanmadi");
+          showError(t(upData.error || "Rasm yuklanmadi"));
           setSaving(false);
           return;
         }
@@ -613,7 +616,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || (editing ? "Saqlanmadi" : "Xodim qo'shilmadi"));
+        showError(data.error || (editing ? t("Saqlanmadi") : t("Xodim qo'shilmadi")));
         setSaving(false);
         return;
       }
@@ -621,18 +624,18 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
         // Tahrirlashda SMS yuborilmaydi — faollashtirish taklifi faqat
         // yangi xodim yaratilganda ketadi.
         onSaved?.(data.employee as HrEmployeeFull);
-        showSuccess("Xodim ma'lumotlari saqlandi");
+        showSuccess(t("Xodim ma'lumotlari saqlandi"));
       } else {
         onCreated?.(data.employee as HrEmployeeFull);
         if (data.smsSent) {
-          showSuccess(`Xodim qo'shildi — ${name}. Faollashtirish SMS'i yuborildi.`);
+          showSuccess(t("Xodim qo'shildi — {name}. Faollashtirish SMS'i yuborildi.", { name }));
         } else {
-          showError(`Xodim qo'shildi — ${name}, lekin faollashtirish SMS'i yuborilmadi. Birozdan so'ng qayta urinib ko'ring.`);
+          showError(t("Xodim qo'shildi — {name}, lekin faollashtirish SMS'i yuborilmadi. Birozdan so'ng qayta urinib ko'ring.", { name }));
         }
       }
       modal.close();
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
       setSaving(false);
     }
   }
@@ -641,8 +644,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
     <><Modal onClose={onClose} controller={modal} bare size="3xl" panelClassName="overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-border sticky top-0 bg-card z-10">
-          <h3 className="text-[16px] font-semibold">{editing ? "Xodimni tahrirlash" : "Xodim qo'shish"}</h3>
-          <p className="text-[11px] text-muted-foreground"><span className="text-rose-500">*</span> Zarurligini bildiradi</p>
+          <h3 className="text-[16px] font-semibold">{editing ? t("Xodimni tahrirlash") : t("Xodim qo'shish")}</h3>
+          <p className="text-[11px] text-muted-foreground"><span className="text-rose-500">*</span>{" "}{t("Zarurligini bildiradi")}</p>
         </div>
 
         <div className="p-6 space-y-5">
@@ -653,23 +656,23 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                 (familiyasi oldinda yozilgan yozuvlar ag'darilib ketardi). */}
             {editing ? (
               <div className="md:col-span-2">
-                <label className={labelCls}>F.I.SH.<span className="text-rose-500">*</span></label>
+                <label className={labelCls}>{t("F.I.SH.")}<span className="text-rose-500">*</span></label>
                 <input type="text" value={ism} onChange={(e) => setIsm(e.target.value)} className={inputCls} />
               </div>
             ) : (
               <>
                 <div>
-                  <label className={labelCls}>Ism<span className="text-rose-500">*</span></label>
+                  <label className={labelCls}>{t("Ism")}<span className="text-rose-500">*</span></label>
                   <input type="text" value={ism} onChange={(e) => setIsm(e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Familiya<span className="text-rose-500">*</span></label>
+                  <label className={labelCls}>{t("Familiya")}<span className="text-rose-500">*</span></label>
                   <input type="text" value={familiya} onChange={(e) => setFamiliya(e.target.value)} className={inputCls} />
                 </div>
               </>
             )}
             <div>
-              <label className={labelCls}>Telefon raqam<span className="text-rose-500">*</span></label>
+              <label className={labelCls}>{t("Telefon raqam")}<span className="text-rose-500">*</span></label>
               {/* KIRISH oynasidagi maydonning AYNAN O'ZI (PhoneField):
                   "+998" qotib turadi, faqat 9 raqam kiritiladi va u
                   "(90) 123-45-67" bo'lib formatlanadi. Ilgari bu yerda
@@ -682,7 +685,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   raqamni ko'rsatgani bilan xodim eskisi bilan kirishda davom
                   etardi. Raqam band bo'lsa server 409 qaytaradi. */}
               {editing && (
-                <p className="mt-1 text-[11px] text-muted-foreground">Bu raqam bilan xodim tizimga kiradi — o&apos;zgartirilsa yangisi amal qiladi.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{t("Bu raqam bilan xodim tizimga kiradi — o'zgartirilsa yangisi amal qiladi.")}</p>
               )}
             </div>
           </div>
@@ -690,7 +693,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           {/* Row 2: Vazifa / Jinsi / Tug'ilgan sanasi */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className={labelCls}>O&apos;quv markazidagi vazifasi<span className="text-rose-500">*</span></label>
+              <label className={labelCls}>{t("O'quv markazidagi vazifasi")}<span className="text-rose-500">*</span></label>
               <Select value={vazifa} onChange={(v) => {
                     // Vazifaga tegishli bo'lmay qolgan maydonlar tozalanadi.
                     if (v !== "O'qituvchi") {
@@ -704,9 +707,9 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                     // <select> uni jimgina tashlab yuborardi.
                     setDaraja("");
                     setVazifa(v);
-                  }} options={[{ value: "O'qituvchi", label: "O'qituvchi" }, { value: "Moderator", label: "Moderator" }, { value: "Administrator", label: "Administrator" }]} placeholder="Tanlang" clearable />
+                  }} options={[{ value: "O'qituvchi", label: t("O'qituvchi") }, { value: "Moderator", label: t("Moderator") }, { value: "Administrator", label: t("Administrator") }]} placeholder={t("Tanlang")} clearable />
               <p className="mt-1 text-[11.5px] text-muted-foreground">
-                Ko&apos;rinadigan bo&apos;limlar ham shu vazifadan olinadi (Boshqaruv → Rollar).
+                {t("Ko'rinadigan bo'limlar ham shu vazifadan olinadi (Boshqaruv → Rollar).")}
               </p>
             </div>
             <div>
@@ -716,7 +719,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                     o'zidan o'zi to'lgandek tuyulardi. */}
                 {guessingGender && (
                   <span className="ml-2 font-normal text-[11.5px] text-muted-foreground">
-                    ismdan aniqlanmoqda…
+                    {t("ismdan aniqlanmoqda…")}
                   </span>
                 )}
               </label>
@@ -725,10 +728,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                     // umuman tegmaydi (yuqoridagi effektga qarang).
                     setGenderTouched(true);
                     setJinsi(v);
-                  }} options={[{ value: "Erkak", label: "Erkak" }, { value: "Ayol", label: "Ayol" }]} placeholder="Jinsini tanlang" clearable />
+                  }} options={[{ value: "Erkak", label: t("Erkak") }, { value: "Ayol", label: t("Ayol") }]} placeholder={t("Jinsini tanlang")} clearable />
             </div>
             <div>
-              <label className={labelCls}>Tug&apos;ilgan sanasi</label>
+              <label className={labelCls}>{t("Tug'ilgan sanasi")}</label>
               <DateField value={birthDate} onChange={(v) => setBirthDate(v)} variant="form" />
             </div>
           </div>
@@ -737,11 +740,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           {isTeacher && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className={labelCls}>Oladigan foizi<span className="text-rose-500">*</span></label>
-                <Select value={percent} onChange={(v) => setPercent(v)} options={[...(percent && !percentOpts.some((p) => p.name === percent) ? [{ value: percent, label: `${percent} — ro'yxatda yo'q (eski qiymat)` }] : []), ...percentOpts.map((p) => ({ value: p.name, label: `${p.name} (${p.percent}%)` }))]} placeholder={selectPlaceholder(roleListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")} clearable disabled={roleListsLoading} />
+                <label className={labelCls}>{t("Oladigan foizi")}<span className="text-rose-500">*</span></label>
+                <Select value={percent} onChange={(v) => setPercent(v)} options={[...(percent && !percentOpts.some((p) => p.name === percent) ? [{ value: percent, label: t("{percent} — ro'yxatda yo'q (eski qiymat)", { percent }) }] : []), ...percentOpts.map((p) => ({ value: p.name, label: `${p.name} (${p.percent}%)` }))]} placeholder={selectPlaceholder(roleListsLoading, percentOpts.length, "Foiz qo'shilmagan", "Foizni tanlang")} clearable disabled={roleListsLoading} />
               </div>
               <div>
-                <label className={labelCls}>Darajasi</label>
+                <label className={labelCls}>{t("Darajasi")}</label>
                 <DegreeSelect
                   loading={roleListsLoading}
                   opts={degreeOpts}
@@ -750,7 +753,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                 />
               </div>
               <div>
-                <label className={labelCls}>Kurslar<span className="text-rose-500">*</span></label>
+                <label className={labelCls}>{t("Kurslar")}<span className="text-rose-500">*</span></label>
                 <Select value={kurs} onChange={(v) => setKurs(v)} options={kursOpts.map((k) => ({ value: k, label: k }))} placeholder={selectPlaceholder(roleListsLoading, kursOpts.length, "Kurs qo'shilmagan")} clearable disabled={roleListsLoading} />
               </div>
             </div>
@@ -762,7 +765,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           {isModerator && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Darajasi</label>
+                <label className={labelCls}>{t("Darajasi")}</label>
                 <DegreeSelect
                   loading={roleListsLoading}
                   opts={degreeOpts}
@@ -772,25 +775,25 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                 />
               </div>
               <div>
-                <label className={labelCls}>Bandlik darajasi</label>
-                <Select value={bandlik} onChange={(v) => setBandlik(v)} options={BANDLIK_OPTS.map(({ label, key }) => { const rate = degreeOpts.find((d) => d.name === daraja)?.[key]; return { value: label, label: rate ? `${label} (${rate} UZS)` : label }; })} placeholder="Tanlang" clearable />
+                <label className={labelCls}>{t("Bandlik darajasi")}</label>
+                <Select value={bandlik} onChange={(v) => setBandlik(v)} options={BANDLIK_OPTS.map(({ label, key }) => { const rate = degreeOpts.find((d) => d.name === daraja)?.[key]; return { value: label, label: rate ? t("{label} ({rate} UZS)", { label, rate }) : label }; })} placeholder={t("Tanlang")} clearable />
               </div>
             </div>
           )}
 
           {/* Ish haqi chiqarish toggle */}
-          <EmployeeToggle checked={payroll} onChange={setPayroll} label="Ish haqi chiqarish" />
+          <EmployeeToggle checked={payroll} onChange={setPayroll} label={t("Ish haqi chiqarish")} />
 
           {/* Filiallar / Rollar / Ish jadvali / Ish haqi */}
           <div className="space-y-3">
             <div className="grid grid-cols-4 gap-3 text-[13px] font-semibold">
-              <div>Filiallar</div>
-              <div>Rollar</div>
-              <div>Ish jadvali</div>
+              <div>{t("Filiallar")}</div>
+              <div>{t("Rollar")}</div>
+              <div>{t("Ish jadvali")}</div>
               <div className="flex items-center justify-between">
-                <span>Ish haqi</span>
+                <span>{t("Ish haqi")}</span>
                 <label className="flex items-center gap-1 font-normal text-[12px] cursor-pointer">
-                  <input type="checkbox" checked={sameForAll} onChange={(e) => toggleSameForAll(e.target.checked)} className="w-4 h-4 rounded accent-primary" /> Hammasiga bir xil
+                  <input type="checkbox" checked={sameForAll} onChange={(e) => toggleSameForAll(e.target.checked)} className="w-4 h-4 rounded accent-primary" />{" "}{t("Hammasiga bir xil")}
                 </label>
               </div>
             </div>
@@ -824,7 +827,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                     value={row.salary}
                     onChange={(v) => updateRow(branch.id, { salary: v })}
                     disabled={off}
-                    placeholder="Ish haqini kiriting"
+                    placeholder={t("Ish haqini kiriting")}
                     className={`${inputCls} tabular-nums disabled:opacity-40`}
                   />
                 </div>
@@ -834,7 +837,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
 
           {/* Izoh */}
           <div>
-            <label className={labelCls}>Izoh</label>
+            <label className={labelCls}>{t("Izoh")}</label>
             <textarea
               rows={2}
               value={comment}
@@ -846,11 +849,11 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           {/* Elektron pochta / Profil rasmi / Ikki bosqichli tasdiqlash */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className={labelCls}>Elektron pochta</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@gmail.com" className={inputCls} />
+              <label className={labelCls}>{t("Elektron pochta")}</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("example@gmail.com")} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Profil rasmi</label>
+              <label className={labelCls}>{t("Profil rasmi")}</label>
               {/* Yashirin fayl maydoni + ko'rinadigan tugma — loyihadagi
                   naqsh (components/finance/PenaltyDrawer.tsx dagidek). */}
               <input
@@ -871,7 +874,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   <button
                     type="button"
                     onClick={clearPhoto}
-                    title="Rasmni olib tashlash"
+                    title={t("Rasmni olib tashlash")}
                     className="h-7 w-7 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                   >
                     <X className="w-4 h-4" />
@@ -883,13 +886,13 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   onClick={() => photoRef.current?.click()}
                   className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm text-left flex items-center justify-between hover:bg-secondary/30"
                 >
-                  <span className="inline-flex items-center gap-2 text-muted-foreground"><Upload className="icon icon-sm" /> Profil rasmi</span>
-                  <span className="text-[10px] font-semibold text-muted-foreground">PNG, JPG</span>
+                  <span className="inline-flex items-center gap-2 text-muted-foreground"><Upload className="icon icon-sm" />{" "}{t("Profil rasmi")}</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground">{t("PNG, JPG")}</span>
                 </button>
               )}
             </div>
             <div className="flex flex-col justify-end gap-1.5">
-              <EmployeeToggle checked={twoFactor} onChange={setTwoFactor} label="Ikki bosqichli tasdiqlash" />
+              <EmployeeToggle checked={twoFactor} onChange={setTwoFactor} label={t("Ikki bosqichli tasdiqlash")} />
               {/* Toggle qiymati bazaga rost yoziladi (hr_employees.twoFactor),
                   ammo uni O'QIYDIGAN kod yo'q: app/api/auth/login/route.ts
                   faqat telefon + parolni tekshiradi va hech qanday ikkinchi
@@ -899,8 +902,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                   Sozlamalar bo'limidagi kabi qisqa, xira rost izoh
                   (components/settings/SettingsNote.tsx qoidasi). */}
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Belgi xodim kartasiga saqlanadi, lekin hozircha amal qilmaydi &mdash; tizimga
-                kirishda faqat telefon raqam va parol tekshiriladi.
+                {t("Belgi xodim kartasiga saqlanadi, lekin hozircha amal qilmaydi — tizimga kirishda faqat telefon raqam va parol tekshiriladi.")}
               </p>
             </div>
           </div>
@@ -918,7 +920,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                     <button
                       type="button"
                       onClick={() => removeCustomField(f)}
-                      title="Maydonni o'chirish"
+                      title={t("Maydonni o'chirish")}
                       className="h-6 w-6 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -938,14 +940,14 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
           >
             <Plus className="icon icon-sm" />
-            <span>Maxsus maydon qo&apos;shish</span>
+            <span>{t("Maxsus maydon qo'shish")}</span>
           </button>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-border sticky bottom-0 bg-card">
-          <button onClick={modal.close} className="h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary">Orqaga</button>
-          <button onClick={save} disabled={saving} className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <button onClick={modal.close} className="h-10 px-4 rounded-lg border border-border bg-card text-sm font-medium hover:bg-secondary">{t("Orqaga")}</button>
+          <button onClick={save} disabled={saving} className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? t("Saqlanmoqda…") : t("Saqlash")}</button>
         </div>
       </Modal>{showCustomField && (
         <CustomFieldDrawer

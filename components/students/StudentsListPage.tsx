@@ -27,6 +27,7 @@ import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → O'quvchilar ro'yxati (sidebar: O'quvchilar > O'quvchilar
 // ro'yxati, href /students-list). Yangi/Aktiv/Arxiv o'quvchilar
@@ -105,15 +106,17 @@ function FilterSelect({ label, value, onChange, options }: {
   onChange: (v: string) => void;
   options: readonly FilterOption[];
 }) {
+  const { t } = useT();
   return (
     <div>
       <label className="mb-1 block text-[12px] text-muted-foreground">{label}</label>
-      <Select value={value} onChange={(v) => onChange(v)} options={options.map((o) => { const v = typeof o === "string" ? o : o.value; const l = typeof o === "string" ? o : o.label; return { value: v, label: l }; })} placeholder="Hammasi" clearable size="sm" />
+      <Select value={value} onChange={(v) => onChange(v)} options={options.map((o) => { const v = typeof o === "string" ? o : o.value; const l = typeof o === "string" ? o : o.label; return { value: v, label: l }; })} placeholder={t("Hammasi")} clearable size="sm" />
     </div>
   );
 }
 
 export default function StudentsListPage() {
+  const { t } = useT();
   // O'quvchilar — bazadan (PupilsProvider, app/(app)/students-list/layout.tsx).
   // Guruhlar ham bazadan: o'quvchining kursi/o'qituvchisi/dars kunlari u a'zo
   // bo'lgan guruhdan kelib chiqadi (lib/studentsData.ts → enrichStudents).
@@ -201,8 +204,8 @@ export default function StudentsListPage() {
   useEffect(() => {
     if (!smsMenu) return;
     const onDown = (e: MouseEvent) => {
-      const t = e.target as Node | null;
-      if (t && smsMenuRef.current?.contains(t)) return;
+      const tv = e.target as Node | null;
+      if (tv && smsMenuRef.current?.contains(tv)) return;
       setSmsMenu(null);
     };
     const close = () => setSmsMenu(null);
@@ -349,7 +352,7 @@ export default function StudentsListPage() {
       {/* Amallar qatori */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="primary" lucideIcon={Plus} onClick={() => setAddOpen(true)}>
-          O&apos;quvchi qo&apos;shish
+          {t("O'quvchi qo'shish")}
         </Button>
         <div className="flex-1" />
         <div className="relative w-64">
@@ -358,7 +361,7 @@ export default function StudentsListPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             type="text"
-            placeholder="Qidirish"
+            placeholder={t("Qidirish")}
             className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
@@ -368,10 +371,10 @@ export default function StudentsListPage() {
           onClick={() => setFiltersOpen((o) => !o)}
           className={filtersOpen ? "ring-2 ring-blue-300" : ""}
         >
-          Filtr
+          {t("Filtr")}
         </Button>
         <div className="relative" ref={moreRef}>
-          <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+          <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
             <MoreVertical className="icon icon-sm" />
           </button>
           {moreOpen && (
@@ -380,21 +383,21 @@ export default function StudentsListPage() {
                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary">
                   <svg className="icon icon-xs"><use href="#i-file-plus" /></svg>
                 </span>
-                <span>Import</span>
+                <span>{t("Import")}</span>
               </button>
               <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "CSV faylini yuklab olish"}</span>
+                <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "CSV faylini yuklab olish"}</span>
               </button>
               <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "EXCEL faylini yuklab olish"}</span>
+                <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "EXCEL faylini yuklab olish"}</span>
               </button>
               <button onClick={exportReferrals} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-violet-100 text-violet-700">
                   <Share2 className="icon icon-xs" />
                 </span>
-                <span>Referrals export</span>
+                <span>{t("Referrals export")}</span>
               </button>
             </div>
           )}
@@ -424,35 +427,35 @@ export default function StudentsListPage() {
           <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
             <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <div>
-                <label className="mb-1 block text-[12px] text-muted-foreground">O&apos;quvchi</label>
+                <label className="mb-1 block text-[12px] text-muted-foreground">{t("O'quvchi")}</label>
                 <input
                   value={filters.name}
                   onChange={(e) => setF("name", e.target.value)}
-                  placeholder="Ism bo'yicha"
+                  placeholder={t("Ism bo'yicha")}
                   className={inputCls}
                 />
               </div>
-              <FilterSelect label="Kurs" value={filters.course} onChange={(v) => setF("course", v)} options={courseOptions} />
-              <FilterSelect label="Guruh" value={filters.group} onChange={(v) => setF("group", v)} options={groupIdOptions} />
-              <FilterSelect label="Subkurs" value={filters.subcourse} onChange={(v) => setF("subcourse", v)} options={subcourseOptions} />
-              <FilterSelect label="Manba" value={filters.source} onChange={(v) => setF("source", v)} options={sourceOptions} />
+              <FilterSelect label={t("Kurs")} value={filters.course} onChange={(v) => setF("course", v)} options={courseOptions} />
+              <FilterSelect label={t("Guruh")} value={filters.group} onChange={(v) => setF("group", v)} options={groupIdOptions} />
+              <FilterSelect label={t("Subkurs")} value={filters.subcourse} onChange={(v) => setF("subcourse", v)} options={subcourseOptions} />
+              <FilterSelect label={t("Manba")} value={filters.source} onChange={(v) => setF("source", v)} options={sourceOptions} />
 
-              <FilterSelect label="Moderator" value={filters.moderator} onChange={(v) => setF("moderator", v)} options={moderatorOptions} />
-              <FilterSelect label="O'qituvchi" value={filters.teacher} onChange={(v) => setF("teacher", v)} options={teacherOptions} />
-              <FilterSelect label="Kategoriya" value={filters.category} onChange={(v) => setF("category", v)} options={categoryNames} />
-              <FilterSelect label="Guruhlar soni" value={filters.groupCount} onChange={(v) => setF("groupCount", v)} options={["0", "1", "2"]} />
-              <FilterSelect label="Kun" value={filters.day} onChange={(v) => setF("day", v)} options={dayOptions} />
+              <FilterSelect label={t("Moderator")} value={filters.moderator} onChange={(v) => setF("moderator", v)} options={moderatorOptions} />
+              <FilterSelect label={t("O'qituvchi")} value={filters.teacher} onChange={(v) => setF("teacher", v)} options={teacherOptions} />
+              <FilterSelect label={t("Kategoriya")} value={filters.category} onChange={(v) => setF("category", v)} options={categoryNames} />
+              <FilterSelect label={t("Guruhlar soni")} value={filters.groupCount} onChange={(v) => setF("groupCount", v)} options={["0", "1", "2"]} />
+              <FilterSelect label={t("Kun")} value={filters.day} onChange={(v) => setF("day", v)} options={dayOptions} />
 
-              <FilterSelect label="Toq/Juft kunlar" value={filters.oddEven} onChange={(v) => setF("oddEven", v)} options={["Toq", "Juft"]} />
+              <FilterSelect label={t("Toq/Juft kunlar")} value={filters.oddEven} onChange={(v) => setF("oddEven", v)} options={["Toq", "Juft"]} />
               {/* "Holati" — applyStudentFilters `r.status` bilan solishtiradi,
                   u esa pupilStatusOf() orqali BAZADAGI holatdan keladi (ilgari
                   enrichStudents hammaga "Aktiv" yozib qo'yardi). Qator ikonkasi
                   orqali holat o'zgargach `statusPatch` qatorni yangilaydi, shu
                   sababli filtr darhol yangi holatga qarab ishlaydi. */}
-              <FilterSelect label="Holati" value={filters.status} onChange={(v) => setF("status", v)} options={STUDENT_STATUSES} />
+              <FilterSelect label={t("Holati")} value={filters.status} onChange={(v) => setF("status", v)} options={STUDENT_STATUSES} />
 
               <div>
-                <label className="mb-1 block text-[12px] text-muted-foreground">Balans oralig&apos;i</label>
+                <label className="mb-1 block text-[12px] text-muted-foreground">{t("Balans oralig'i")}</label>
                 <div className="flex items-center gap-1.5">
                   <input value={filters.balanceFrom} onChange={(e) => setF("balanceFrom", e.target.value.replace(/[^\d-]/g, ""))} inputMode="numeric" placeholder="dan" className={inputCls} />
                   <span className="text-muted-foreground">—</span>
@@ -460,7 +463,7 @@ export default function StudentsListPage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-[12px] text-muted-foreground">Coin oralig&apos;i</label>
+                <label className="mb-1 block text-[12px] text-muted-foreground">{t("Coin oralig'i")}</label>
                 <div className="flex items-center gap-1.5">
                   <input value={filters.coinFrom} onChange={(e) => setF("coinFrom", e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="dan" className={inputCls} />
                   <span className="text-muted-foreground">—</span>
@@ -477,7 +480,7 @@ export default function StudentsListPage() {
                   onClick={() => { setFilters(EMPTY_STUDENT_FILTERS); setPage(1); }}
                   className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-card text-[13px] font-medium hover:bg-secondary"
                 >
-                  <X className="icon icon-xs" /> Tozalash
+                  <X className="icon icon-xs" />{" "}{t("Tozalash")}
                 </button>
               </div>
             )}
@@ -489,14 +492,14 @@ export default function StudentsListPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-4 text-[13px]">
           <span className="text-rose-600 font-medium">
-            Qarzdor<span className="text-rose-700 font-bold tabular-nums ml-1">{fmtUZS(debt)}</span>
+            {t("Qarzdor")}<span className="text-rose-700 font-bold tabular-nums ml-1">{fmtUZS(debt)}</span>
           </span>
           <span className="text-emerald-600 font-medium border-l border-border pl-4">
-            Haqdor<span className="text-emerald-700 font-bold tabular-nums ml-1">{fmtUZS(credit)}</span>
+            {t("Haqdor")}<span className="text-emerald-700 font-bold tabular-nums ml-1">{fmtUZS(credit)}</span>
           </span>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -512,19 +515,19 @@ export default function StudentsListPage() {
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap w-12">№</th>
                 <th className="text-left px-3 py-3 whitespace-nowrap">ID</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ism</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Coin</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">To&apos;lov sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Manba</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Moderator</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Guruhlar</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Taklif qilganlari</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ilovani yuklab olish sanasi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Kelmagan davri</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ism")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Coin")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Balans")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("To'lov sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Manba")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Moderator")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Guruhlar")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Taklif qilganlari")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ilovani yuklab olish sanasi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Shartnoma")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Kelmagan davri")}</th>
                 <th className="px-3 py-3 w-32" />
               </tr>
             </thead>
@@ -556,7 +559,7 @@ export default function StudentsListPage() {
                           // jadvalidagi "Muzlatilgan" kartasi), Arxiv — betaraf.
                           className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-medium ${r.status === "Muzlatilgan" ? "bg-cyan-100 text-cyan-700" : "bg-secondary text-muted-foreground"}`}
                         >
-                          {r.status}
+                          {t(r.status)}
                         </span>
                       )}
                     </td>
@@ -585,20 +588,20 @@ export default function StudentsListPage() {
                           oxirgisi esa holatni o'zgartiradi. */}
                       <div className="flex items-center gap-1 text-primary">
                         <button
-                          title="Guruhga qo'shish"
+                          title={t("Guruhga qo'shish")}
                           onClick={() => setGroupFor({ id: r.id, name: r.name })}
                           className="p-1.5 rounded-md hover:bg-secondary"
                         >
                           <CirclePlus className="h-4 w-4" />
                         </button>
-                        <Link title="Vazifalar" href={`/student-edit/${r.id}?src=list&tab=vazifa`} className="p-1.5 rounded-md hover:bg-secondary">
+                        <Link title={t("Vazifalar")} href={`/student-edit/${r.id}?src=list&tab=vazifa`} className="p-1.5 rounded-md hover:bg-secondary">
                           <ListChecks className="h-4 w-4" />
                         </Link>
-                        <Link title="Tarix" href={`/student-edit/${r.id}?src=list&tab=harakatlar`} className="p-1.5 rounded-md hover:bg-secondary">
+                        <Link title={t("Tarix")} href={`/student-edit/${r.id}?src=list&tab=harakatlar`} className="p-1.5 rounded-md hover:bg-secondary">
                           <History className="h-4 w-4" />
                         </Link>
                         <button
-                          title="Xabar"
+                          title={t("Xabar")}
                           onClick={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             setSmsMenu((cur) =>
@@ -611,7 +614,7 @@ export default function StudentsListPage() {
                         >
                           <MessageSquare className="h-4 w-4" />
                         </button>
-                        <Link title="Guruhlar" href={`/student-edit/${r.id}?src=list&tab=guruh`} className="p-1.5 rounded-md hover:bg-secondary">
+                        <Link title={t("Guruhlar")} href={`/student-edit/${r.id}?src=list&tab=guruh`} className="p-1.5 rounded-md hover:bg-secondary">
                           <Users className="h-4 w-4" />
                         </Link>
                         {/* Holatni o'zgartirishning YAGONA joyi: PATCH
@@ -619,7 +622,7 @@ export default function StudentsListPage() {
                             chaqirmaydi, shu sababli har bir o'quvchi abadiy
                             "Aktiv" bo'lib qolar edi. */}
                         <button
-                          title="Holatni o'zgartirish"
+                          title={t("Holatni o'zgartirish")}
                           onClick={() => setStatusFor({ id: r.id, name: r.name, status: r.status, statusReason: r.statusReason })}
                           className="p-1.5 rounded-md hover:bg-secondary"
                         >
@@ -633,7 +636,7 @@ export default function StudentsListPage() {
               {slice.length === 0 && (
                 <tr>
                   <td colSpan={17} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                    {loading ? "Yuklanmoqda…" : "O'quvchi topilmadi"}
+                    {loading ? t("Yuklanmoqda…") : t("O'quvchi topilmadi")}
                   </td>
                 </tr>
               )}
@@ -664,7 +667,7 @@ export default function StudentsListPage() {
               toastErr(res?.error || "Guruhga qo'shishda xatolik yuz berdi");
               return;
             }
-            toastOk(`${groupFor.name} — "${group.name || group.id}" guruhiga qo'shildi`);
+            toastOk(t("{name} — \"{id}\" guruhiga qo'shildi", { name: groupFor.name, id: group.name || group.id }));
             setGroupFor(null);
           }}
         />
@@ -683,10 +686,10 @@ export default function StudentsListPage() {
               setSmsMenu(null);
             }}
             disabled={!smsMenu.phone}
-            title={smsMenu.phone ? undefined : "Telefon raqam yo'q"}
+            title={smsMenu.phone ? undefined : t("Telefon raqam yo'q")}
             className="w-full text-left px-3 py-2 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
           >
-            SMS yuborish
+            {t("SMS yuborish")}
           </button>
           {/* SMS tarixi — profilning SMS tabi, `sms_messages` jurnalini o'qiydi.
               Telegram bandi ataylab yo'q: bitta o'quvchiga yozish uchun uning
@@ -696,7 +699,7 @@ export default function StudentsListPage() {
             onClick={() => setSmsMenu(null)}
             className="block px-3 py-2 hover:bg-secondary"
           >
-            SMS tarixi
+            {t("SMS tarixi")}
           </Link>
         </div>
       )}

@@ -11,6 +11,7 @@ import {
   type TurnstileIoRecord,
 } from "@/lib/turnstileIo";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Nazorat → Turniket kirish-chiqish analitikasi (sidebar: Nazorat >
 // Hisobotlar > Turniket kirish-chiqish analitikasi, href /nazorat-turnstile-io).
@@ -38,6 +39,7 @@ function toIso(d: Date): string {
 }
 
 export default function NazoratTurnstileIoPage() {
+  const { t } = useT();
   const [records, setRecords] = useState<TurnstileIoRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,12 +108,12 @@ export default function NazoratTurnstileIoPage() {
     <div className="page-frame-lg container mx-auto max-w-[1900px] p-4 md:p-5 space-y-4">
       {/* Sarlavha + filtrlar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-[18px] font-semibold tracking-tight">Turniket kirish-chiqish analitikasi</h2>
+        <h2 className="text-[18px] font-semibold tracking-tight">{t("Turniket kirish-chiqish analitikasi")}</h2>
         <div className="flex items-center gap-2 flex-wrap">
-          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder="Oraliqni tanlang" />
-          <Select value={personType} onChange={(v) => { setPersonType(v); setPerson(""); }} options={TURNSTILE_IO_PERSON_TYPES.map((t) => ({ value: t.key, label: t.label }))} className="w-36" />
-          <Select value={person} onChange={(v) => setPerson(v)} options={personOptions.map((n) => ({ value: n, label: n }))} placeholder={personType === "student" ? "O'quvchi" : "Xodim"} clearable className="w-52" />
-          <Select value={status} onChange={(v) => setStatus(v)} options={TURNSTILE_IO_STATUSES.map((s) => ({ value: s.key, label: s.label }))} placeholder="Holati" clearable className="w-36" />
+          <DateRangePicker value={dateRange} onChange={setDateRange} placeholder={t("Oraliqni tanlang")} />
+          <Select value={personType} onChange={(v) => { setPersonType(v); setPerson(""); }} options={TURNSTILE_IO_PERSON_TYPES.map((tv) => ({ value: tv.key, label: tv.label }))} className="w-36" />
+          <Select value={person} onChange={(v) => setPerson(v)} options={personOptions.map((n) => ({ value: n, label: n }))} placeholder={personType === "student" ? t("O'quvchi") : t("Xodim")} clearable className="w-52" />
+          <Select value={status} onChange={(v) => setStatus(v)} options={TURNSTILE_IO_STATUSES.map((s) => ({ value: s.key, label: s.label }))} placeholder={t("Holati")} clearable className="w-36" />
         </div>
       </div>
 
@@ -123,19 +125,19 @@ export default function NazoratTurnstileIoPage() {
       >
         {/* Statistika */}
         <div className="rounded-2xl bg-card border border-border p-5">
-          <h3 className="text-[15px] font-semibold mb-4">Bugungi statistika</h3>
+          <h3 className="text-[15px] font-semibold mb-4">{t("Bugungi statistika")}</h3>
           <div className="flex flex-col items-center gap-3">
             <DonutChart slices={slices} centerLabel="" size={240} />
             <div className="flex items-center justify-center gap-3 flex-wrap text-[12px]">
               {TURNSTILE_IO_STATUSES.map((s) => (
                 <span key={s.key} className="inline-flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: s.color }} />
-                  {s.label}
+                  {t(s.label)}
                 </span>
               ))}
             </div>
             <div className="text-[13px] text-muted-foreground">
-              Jami: <span className="font-semibold tabular-nums text-foreground">{chartRows.length}</span>
+              {t("Jami:")}{" "}<span className="font-semibold tabular-nums text-foreground">{chartRows.length}</span>
             </div>
           </div>
         </div>
@@ -146,10 +148,10 @@ export default function NazoratTurnstileIoPage() {
             <table className="w-full text-sm min-w-[700px]">
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                  <th className="px-5 py-3 text-left">To&apos;liq ismi</th>
-                  <th className="px-5 py-3 text-left">Kirgan vaqti</th>
-                  <th className="px-5 py-3 text-left">Chiqqan vaqti</th>
-                  <th className="px-5 py-3 text-left pr-5">Holati</th>
+                  <th className="px-5 py-3 text-left">{t("To'liq ismi")}</th>
+                  <th className="px-5 py-3 text-left">{t("Kirgan vaqti")}</th>
+                  <th className="px-5 py-3 text-left">{t("Chiqqan vaqti")}</th>
+                  <th className="px-5 py-3 text-left pr-5">{t("Holati")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -177,7 +179,7 @@ export default function NazoratTurnstileIoPage() {
               </h3>
               {!loading && (
                 <p className="text-[13px] text-muted-foreground max-w-sm">
-                  Ma&apos;lumotlar topilmadi. Filterni o&apos;zgartirib ko&apos;ring.
+                  {t("Ma'lumotlar topilmadi. Filterni o'zgartirib ko'ring.")}
                 </p>
               )}
             </div>

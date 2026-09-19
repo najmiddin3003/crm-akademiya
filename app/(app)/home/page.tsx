@@ -34,6 +34,7 @@ import { getCurrentUser, type CurrentUser } from "@/lib/auth";
 import { isPathAllowed } from "@/lib/permissions";
 import { ensureIndexes } from "@/lib/mongodb";
 import GroupSchedulePage from "@/components/groups/GroupSchedulePage";
+import { getServerT } from "@/lib/serverT";
 
 /** `hr_employees.turi` -> o'sha lavozimning bosh sahifasi. */
 const HOME_BY_POSITION: Record<string, string> = {
@@ -70,6 +71,7 @@ async function positionHome(user: CurrentUser): Promise<string | null> {
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  const { t } = await getServerT();
 
   if (user) {
     const target = await positionHome(user);
@@ -88,10 +90,10 @@ export default async function HomePage() {
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
       <div className="rounded-xl border border-border bg-card px-6 py-14 text-center">
         <h1 className="text-lg font-semibold tracking-tight">
-          Xush kelibsiz{name ? `, ${name}` : ""}
+          {t("Xush kelibsiz")}{name ? `, ${name}` : ""}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Chap tomondagi menyudan kerakli bo&apos;limni tanlang.
+          {t("Chap tomondagi menyudan kerakli bo'limni tanlang.")}
         </p>
       </div>
     </div>

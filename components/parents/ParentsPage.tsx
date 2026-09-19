@@ -17,6 +17,7 @@ import {
   type ParentsFilters,
 } from "@/lib/parentsData";
 import { useStudents } from "@/hooks/useStudents";
+import { useT } from "@/components/shared/Language";
 
 // O'quvchilar → Ota-ona (sidebar: O'quvchilar > Ota-ona, href /parents).
 //
@@ -73,6 +74,7 @@ function Dash() {
 }
 
 export default function ParentsPage() {
+  const { t } = useT();
   // Ota-ona maydonlari standart to'plamda YO'Q (ular 13 ta sahifadan
   // faqat shu ikkitasiga kerak) — ataylab so'raymiz.
   //
@@ -188,7 +190,7 @@ export default function ParentsPage() {
       {/* Amallar qatori */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="primary" lucideIcon={Filter} onClick={() => setFilterModalOpen(true)}>
-          Filtr
+          {t("Filtr")}
         </Button>
         <div className="flex-1" />
         <div className="relative w-64">
@@ -197,23 +199,23 @@ export default function ParentsPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             type="text"
-            placeholder="Qidirish"
+            placeholder={t("Qidirish")}
             className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
         <div className="relative" ref={moreRef}>
-          <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title="Amallar">
+          <button onClick={() => setMoreOpen((o) => !o)} className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card hover:bg-secondary" title={t("Amallar")}>
             <MoreVertical className="icon icon-sm" />
           </button>
           {moreOpen && (
             <div className="absolute top-full right-0 mt-2 z-50 w-60 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1">
               <button onClick={exportCSV} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">CSV</span>
-                <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "CSV faylini yuklab olish"}</span>
+                <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "CSV faylini yuklab olish"}</span>
               </button>
               <button onClick={exportExcel} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary text-sm text-left transition-colors">
                 <span className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700">XLS</span>
-                <span>{selected.size > 0 ? `Tanlanganlarni (${selected.size}) yuklab olish` : "EXCEL faylini yuklab olish"}</span>
+                <span>{selected.size > 0 ? t("Tanlanganlarni ({size}) yuklab olish", { size: selected.size }) : "EXCEL faylini yuklab olish"}</span>
               </button>
             </div>
           )}
@@ -223,7 +225,7 @@ export default function ParentsPage() {
       {/* Umumiy soni */}
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length.toLocaleString("ru-RU").replace(/,/g, " ")}</span>
         </div>
       </div>
@@ -238,14 +240,14 @@ export default function ParentsPage() {
                   <HeaderCheckbox checked={allPageSelected} indeterminate={somePageSelected} onChange={toggleAllOnPage} />
                 </th>
                 <th className="text-left px-3 py-3 whitespace-nowrap w-12">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchi ID</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">O&apos;quvchini ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Qarindoshligi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ota-onaning ismi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Telefon raqam</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ish joyi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Balans</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Ilovani yuklab olgan</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchi ID")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("O'quvchini ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Qarindoshligi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ota-onaning ismi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Telefon raqam")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ish joyi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Balans")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Ilovani yuklab olgan")}</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap w-20" />
               </tr>
             </thead>
@@ -265,7 +267,7 @@ export default function ParentsPage() {
                       <Link href={`/student-edit/${r.pupilId}`} className="hover:text-primary hover:underline">{r.pupilName}</Link>
                     </td>
                     <td className="px-3 py-3 text-[13px]">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] ${r.kind === "Ota" ? "bg-sky-500/10 text-sky-600" : "bg-fuchsia-500/10 text-fuchsia-600"}`}>{r.kind}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] ${r.kind === "Ota" ? "bg-sky-500/10 text-sky-600" : "bg-fuchsia-500/10 text-fuchsia-600"}`}>{t(r.kind)}</span>
                     </td>
                     {/* Faqat telefon kiritilgan bo'lsa ism bo'sh bo'lishi mumkin — "—". */}
                     <td className="px-3 py-3 text-[13px]">{r.name || <Dash />}</td>
@@ -281,14 +283,14 @@ export default function ParentsPage() {
                           olib boradi — ota-onaning alohida profili yo'q. */}
                       <div className="inline-flex items-center gap-1">
                         <Link
-                          title="Tarix"
+                          title={t("Tarix")}
                           href={`/student-edit/${r.pupilId}?src=list&tab=harakatlar`}
                           className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
                         >
                           <History className="h-4 w-4" />
                         </Link>
                         <Link
-                          title="Izoh"
+                          title={t("Izoh")}
                           href={`/student-edit/${r.pupilId}?src=list&tab=tahrirlash`}
                           className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
                         >
@@ -306,8 +308,8 @@ export default function ParentsPage() {
                     {loading
                       ? "Yuklanmoqda…"
                       : rows.length === 0
-                        ? "Hech bir o'quvchiga ota-ona ma'lumoti kiritilmagan. Ota-ona ismi va telefonini o'quvchi profilidagi \"Tahrirlash\" tabida saqlang."
-                        : "Ota-ona topilmadi"}
+                        ? t("Hech bir o'quvchiga ota-ona ma'lumoti kiritilmagan. Ota-ona ismi va telefonini o'quvchi profilidagi \"Tahrirlash\" tabida saqlang.")
+                        : t("Ota-ona topilmadi")}
                   </td>
                 </tr>
               )}

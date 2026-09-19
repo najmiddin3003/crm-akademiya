@@ -6,6 +6,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import type { SettingsListItem } from "@/lib/settingsLists";
 import { parseMoney } from "@/lib/taxes";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Xodimlar jadvalidagi SOLIQ tugmachasi bosilganda chiqadigan
 // tanlov: xodimga aynan QAYSI soliq turlari qo'llanishi belgilanadi.
@@ -43,6 +44,7 @@ export default function EmployeeTaxModal({
   onClose: () => void;
   onSave: (ids: number[]) => Promise<void> | void;
 }) {
+  const { t } = useT();
   const modal = useModalClose(onClose);
   const [items, setItems] = useState<SettingsListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export default function EmployeeTaxModal({
         // Nofaol turlar tanlovga chiqmaydi — lekin xodimda allaqachon
         // biriktirilgan bo'lsa ko'rsatiladi, aks holda uni yechib
         // bo'lmay qolardi.
-        setItems((d.items as SettingsListItem[]).filter((t) => t.active !== false || initialSelected.includes(t.id)));
+        setItems((d.items as SettingsListItem[]).filter((tv) => tv.active !== false || initialSelected.includes(tv.id)));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -95,7 +97,7 @@ export default function EmployeeTaxModal({
       //
       // Ro'yxat YUKLANMAGAN bo'lsa filtr QO'LLANMAYDI: aks holda so'rov
       // yiqilganda saqlash butun tanlovni o'chirib yuborardi.
-      const known = new Set(items.map((t) => t.id));
+      const known = new Set(items.map((tv) => tv.id));
       const next = items.length > 0 ? [...ids].filter((id) => known.has(id)) : [...ids];
       await onSave(next);
     } finally {
@@ -107,7 +109,7 @@ export default function EmployeeTaxModal({
     <Modal onClose={onClose} controller={modal} locked={saving} bare zIndex={120} panelClassName="overflow-y-auto">
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border sticky top-0 bg-card">
           <div>
-            <h3 className="text-[15px] font-semibold">Soliq turlari</h3>
+            <h3 className="text-[15px] font-semibold">{t("Soliq turlari")}</h3>
             <p className="text-[12px] text-muted-foreground mt-0.5">{employeeName}</p>
           </div>
           <button
@@ -115,7 +117,7 @@ export default function EmployeeTaxModal({
             onClick={modal.close}
             disabled={saving}
             className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg hover:bg-secondary"
-            aria-label="Yopish"
+            aria-label={t("Yopish")}
           >
             <X className="w-4 h-4" />
           </button>
@@ -126,22 +128,20 @@ export default function EmployeeTaxModal({
             <div className="py-8"><SpinnerBlock size={22} /></div>
           ) : items.length === 0 ? (
             <p className="text-[13px] text-muted-foreground py-4">
-              Soliq turlari ro&apos;yxati bo&apos;sh. Avval Sozlamalar &rarr; Moliya &rarr; Soliq
-              bo&apos;limida soliq turini qo&apos;shing.
+              {t("Soliq turlari ro'yxati bo'sh. Avval Sozlamalar → Moliya → Soliq bo'limida soliq turini qo'shing.")}
             </p>
           ) : (
             <>
               <p className="text-[12.5px] text-muted-foreground mb-3">
-                Bu xodimning oyligidan qaysi soliqlar ushlab qolinsin? Bir nechtasini
-                tanlash mumkin — faqat belgilanganlari hisoblanadi.
+                {t("Bu xodimning oyligidan qaysi soliqlar ushlab qolinsin? Bir nechtasini tanlash mumkin — faqat belgilanganlari hisoblanadi.")}
               </p>
               <div className="space-y-2">
-                {items.map((t) => {
-                  const on = ids.has(t.id);
-                  const inactive = t.active === false;
+                {items.map((tv) => {
+                  const on = ids.has(tv.id);
+                  const inactive = tv.active === false;
                   return (
                     <label
-                      key={t.id}
+                      key={tv.id}
                       className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
                         on ? "border-primary/40 bg-primary/5" : "border-border hover:bg-secondary/40"
                       }`}
@@ -149,17 +149,17 @@ export default function EmployeeTaxModal({
                       <input
                         type="checkbox"
                         checked={on}
-                        onChange={() => toggle(t.id)}
+                        onChange={() => toggle(tv.id)}
                         className="mt-0.5 w-4 h-4 rounded border-border accent-primary"
                       />
                       <span className="min-w-0">
                         <span className="block text-[13px] font-medium truncate">
-                          {t.name}
+                          {tv.name}
                           {inactive && (
-                            <span className="ml-1.5 text-[11px] font-normal text-amber-600">nofaol</span>
+                            <span className="ml-1.5 text-[11px] font-normal text-amber-600">{t("nofaol")}</span>
                           )}
                         </span>
-                        <span className="block text-[12px] text-muted-foreground tabular-nums">{describe(t)}</span>
+                        <span className="block text-[12px] text-muted-foreground tabular-nums">{describe(tv)}</span>
                       </span>
                     </label>
                   );
@@ -167,7 +167,7 @@ export default function EmployeeTaxModal({
               </div>
               {ids.size === 0 && (
                 <p className="text-[12px] text-muted-foreground mt-3">
-                  Hech biri tanlanmagan — saqlansa bu xodimga soliq solinmaydi.
+                  {t("Hech biri tanlanmagan — saqlansa bu xodimga soliq solinmaydi.")}
                 </p>
               )}
             </>
@@ -181,7 +181,7 @@ export default function EmployeeTaxModal({
             disabled={saving}
             className="h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60"
           >
-            Bekor qilish
+            {t("Bekor qilish")}
           </button>
           <button
             type="button"
@@ -189,7 +189,7 @@ export default function EmployeeTaxModal({
             disabled={saving || loading}
             className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
       </Modal>

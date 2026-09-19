@@ -10,6 +10,7 @@ import { useEduCategories } from "@/hooks/useEduCategories";
 import { COURSE_LANGUAGES, COURSE_LEVELS, type CourseSection, type OnlineCourse } from "@/lib/onlineCourses";
 import { useOnlineCourses } from "./OnlineCoursesProvider";
 import Select from "@/components/ui/Select";
+import { useT } from "@/components/shared/Language";
 
 // Kurs qo'shish/tahrirlash — crm-akademiya #view-online-course-add (4 bosqichli
 // "wizard"). Manba klonida bu sahifaning yarmi bezak edi: ikkala "Yuklash"
@@ -67,6 +68,7 @@ function fileNameFromUrl(url: string): string {
 }
 
 export default function CourseWizard({ courseId }: { courseId?: number }) {
+  const { t } = useT();
   const { getCourse, loading } = useOnlineCourses();
   const editing = courseId != null ? getCourse(courseId) : undefined;
 
@@ -82,8 +84,8 @@ export default function CourseWizard({ courseId }: { courseId?: number }) {
   if (courseId != null && !editing) {
     return (
       <div className="container mx-auto max-w-[1100px] p-4 md:p-5">
-        <p className="text-sm text-muted-foreground">Kurs topilmadi.</p>
-        <Link href="/online-courses" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">Orqaga</Link>
+        <p className="text-sm text-muted-foreground">{t("Kurs topilmadi.")}</p>
+        <Link href="/online-courses" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">{t("Orqaga")}</Link>
       </div>
     );
   }
@@ -92,6 +94,7 @@ export default function CourseWizard({ courseId }: { courseId?: number }) {
 }
 
 function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
+  const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   const { addCourse, updateCourse } = useOnlineCourses();
@@ -135,7 +138,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
 
   function saveSection() {
     if (!sectionName.trim() || !sectionOutcome.trim()) {
-      showError("Bo'lim nomi va natijani to'ldiring");
+      showError(t("Bo'lim nomi va natijani to'ldiring"));
       return;
     }
     setSections((prev) => [...prev, { name: sectionName.trim(), outcome: sectionOutcome.trim() }]);
@@ -177,17 +180,17 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
     setUploading(null);
 
     if (!data?.ok) {
-      showError(data?.error || (kind === "cover" ? "Rasm yuklanmadi" : "Video yuklanmadi"));
+      showError(data?.error || (kind === "cover" ? t("Rasm yuklanmadi") : t("Video yuklanmadi")));
       return;
     }
     if (kind === "cover") setCover(data.url as string);
     else setVideo(data.url as string);
-    showSuccess(kind === "cover" ? "Kurs rasmi yuklandi" : "Reklama video yuklandi");
+    showSuccess(kind === "cover" ? t("Kurs rasmi yuklandi") : t("Reklama video yuklandi"));
   }
 
   function gotoStep(n: number) {
     if (n > 1 && !name.trim()) {
-      showError("Kurs nomini kiriting");
+      showError(t("Kurs nomini kiriting"));
       return;
     }
     setStep(n);
@@ -195,7 +198,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
 
   async function saveAndNext() {
     if (step === 1 && !name.trim()) {
-      showError("Kurs nomini kiriting");
+      showError(t("Kurs nomini kiriting"));
       return;
     }
     if (step < 4) {
@@ -227,7 +230,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
       showError(error);
       return;
     }
-    showSuccess(editing ? `Kurs yangilandi — ${values.name}` : "Kurs aktivlandi");
+    showSuccess(editing ? t("Kurs yangilandi — {name}", { name: values.name }) : "Kurs aktivlandi");
     router.push("/online-courses");
   }
 
@@ -235,45 +238,45 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
     <div className="container mx-auto max-w-[1100px] p-4 md:p-5 pb-32 space-y-6">
       {step === 1 && (
         <div className="space-y-5">
-          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">Kurs yaratish</h1>
+          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">{t("Kurs yaratish")}</h1>
           <p className="text-[12px] text-muted-foreground leading-relaxed">
-            Kursning ochilish sahifasi Edu tizimdagi muvaffaqiyatingiz uchun juda muhimdir. Ushbu bo&apos;limni to&apos;ldirganingizdan so&apos;ng, kimdir sizning kursingizga yozilish istagini ko&apos;rsatadigan qiziqarli kurs sahifasini yaratish haqida o&apos;ylab ko&apos;ring.
+            {t("Kursning ochilish sahifasi Edu tizimdagi muvaffaqiyatingiz uchun juda muhimdir. Ushbu bo'limni to'ldirganingizdan so'ng, kimdir sizning kursingizga yozilish istagini ko'rsatadigan qiziqarli kurs sahifasini yaratish haqida o'ylab ko'ring.")}
           </p>
 
           <div>
-            <label className="text-[13px] font-medium text-foreground">Kurs nomi</label>
+            <label className="text-[13px] font-medium text-foreground">{t("Kurs nomi")}</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               type="text"
               className="w-full h-11 mt-2 rounded-lg border border-border bg-card px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
-            <p className="text-[11px] text-muted-foreground mt-1.5">Sizning sarlavhangiz diqqatni jalb qiluvchi, ma&apos;lumot beruvchi va qidiruv uchun optimallashtirilgan bo&apos;lishi kerak</p>
+            <p className="text-[11px] text-muted-foreground mt-1.5">{t("Sizning sarlavhangiz diqqatni jalb qiluvchi, ma'lumot beruvchi va qidiruv uchun optimallashtirilgan bo'lishi kerak")}</p>
           </div>
 
           <div>
-            <label className="text-[13px] font-medium text-foreground">Kurs tavsifi</label>
+            <label className="text-[13px] font-medium text-foreground">{t("Kurs tavsifi")}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className={textareaCls} />
           </div>
 
           <div>
-            <h3 className="text-base font-semibold">Asosiy ma&apos;lumot</h3>
+            <h3 className="text-base font-semibold">{t("Asosiy ma'lumot")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
               <div>
-                <label className="text-[12px] font-medium text-foreground/80">Kurs tili</label>
-                <Select value={language} onChange={(v) => setLanguage(v)} options={COURSE_LANGUAGES.map((l) => ({ value: l, label: l }))} placeholder="Kurs tili" clearable className="mt-1" />
+                <label className="text-[12px] font-medium text-foreground/80">{t("Kurs tili")}</label>
+                <Select value={language} onChange={(v) => setLanguage(v)} options={COURSE_LANGUAGES.map((l) => ({ value: l, label: l }))} placeholder={t("Kurs tili")} clearable className="mt-1" />
               </div>
               <div>
-                <label className="text-[12px] font-medium text-foreground/80">Kurs bosqichi</label>
-                <Select value={level} onChange={(v) => setLevel(v)} options={COURSE_LEVELS.map((l) => ({ value: l, label: l }))} placeholder="Kurs bosqichi" clearable className="mt-1" />
+                <label className="text-[12px] font-medium text-foreground/80">{t("Kurs bosqichi")}</label>
+                <Select value={level} onChange={(v) => setLevel(v)} options={COURSE_LEVELS.map((l) => ({ value: l, label: l }))} placeholder={t("Kurs bosqichi")} clearable className="mt-1" />
               </div>
               <div>
-                <label className="text-[12px] font-medium text-foreground/80">Kategoriya</label>
-                <Select value={categoryId} onChange={(v) => setCategoryId(v)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder="Kategoriya" clearable className="mt-1" disabled={!categoriesLoading && categories.length === 0} />
+                <label className="text-[12px] font-medium text-foreground/80">{t("Kategoriya")}</label>
+                <Select value={categoryId} onChange={(v) => setCategoryId(v)} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={t("Kategoriya")} clearable className="mt-1" disabled={!categoriesLoading && categories.length === 0} />
                 {!categoriesLoading && categories.length === 0 && (
                   <p className="text-[11px] text-muted-foreground mt-1.5">
                     Kategoriya yo&apos;q —{" "}
-                    <Link href="/edu-category" className="text-primary hover:underline">O&apos;quv bo&apos;limi → Kategoriya</Link>
+                    <Link href="/edu-category" className="text-primary hover:underline">{t("O'quv bo'limi → Kategoriya")}</Link>
                     {" "}da qo&apos;shing
                   </p>
                 )}
@@ -282,7 +285,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
           </div>
 
           <div>
-            <label className="text-[13px] font-medium text-foreground">Kursingizda asosan nima o&apos;rgatiladi?</label>
+            <label className="text-[13px] font-medium text-foreground">{t("Kursingizda asosan nima o'rgatiladi?")}</label>
             <input
               value={what}
               onChange={(e) => setWhat(e.target.value)}
@@ -294,25 +297,25 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
           {/* Kurs rasmi */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-[13px] font-medium text-foreground">Kurs rasmi</label>
+              <label className="text-[13px] font-medium text-foreground">{t("Kurs rasmi")}</label>
               <div className="mt-2 rounded-lg border-2 border-dashed border-border bg-secondary/20 aspect-[750/422] flex items-center justify-center text-muted-foreground overflow-hidden">
                 {coverUrl ? (
                   // Balandlik INLINE: preflight `img { height: auto }` qo'yadi,
                   // shuning uchun `h-full` klassi bu yerda ishlamaydi.
-                  <img src={coverUrl} alt="Kurs rasmi" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={coverUrl} alt={t("Kurs rasmi")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <Monitor style={{ width: 64, height: 64, opacity: 0.3 }} />
                 )}
               </div>
             </div>
             <div className="space-y-3">
-              <p className="text-[13px] font-semibold mt-2">O&apos;lcham: 750x422 piksel</p>
+              <p className="text-[13px] font-semibold mt-2">{t("O'lcham: 750x422 piksel")}</p>
               <p className="text-[12px] text-muted-foreground">(jpg, jpeg, png)</p>
               <div className="relative">
                 <input
                   type="text"
                   value={coverUrl ? fileNameFromUrl(coverUrl) : ""}
-                  placeholder="File yuklanmagan"
+                  placeholder={t("File yuklanmagan")}
                   readOnly
                   className="w-full h-10 rounded-lg border border-border bg-card pl-3 pr-9 text-sm"
                 />
@@ -320,7 +323,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                   <button
                     type="button"
                     onClick={() => setCover("")}
-                    title="Olib tashlash"
+                    title={t("Olib tashlash")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -340,7 +343,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                 onClick={() => coverRef.current?.click()}
                 className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {uploading === "cover" ? "Yuklanmoqda..." : "Yuklash"}
+                {uploading === "cover" ? t("Yuklanmoqda...") : t("Yuklash")}
               </button>
             </div>
           </div>
@@ -348,7 +351,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
           {/* Reklama video */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-[13px] font-medium text-foreground">Reklama video</label>
+              <label className="text-[13px] font-medium text-foreground">{t("Reklama video")}</label>
               <div className="mt-2 rounded-lg border-2 border-dashed border-border bg-secondary/20 aspect-[750/422] flex items-center justify-center text-muted-foreground overflow-hidden">
                 {video ? (
                   <video src={video} controls style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -358,13 +361,13 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
               </div>
             </div>
             <div className="space-y-3">
-              <p className="text-[13px] mt-2">Sizning reklama videoingiz o&apos;quvchilar uchun kursingizda nimani o&apos;rganishini oldindan ko&apos;rishning tez va jozibali usulidir.</p>
+              <p className="text-[13px] mt-2">{t("Sizning reklama videoingiz o'quvchilar uchun kursingizda nimani o'rganishini oldindan ko'rishning tez va jozibali usulidir.")}</p>
               <p className="text-[12px] text-muted-foreground">(mp4, webm, mov — 50 MB gacha)</p>
               <div className="relative">
                 <input
                   type="text"
                   value={video ? fileNameFromUrl(video) : ""}
-                  placeholder="File yuklanmagan"
+                  placeholder={t("File yuklanmagan")}
                   readOnly
                   className="w-full h-10 rounded-lg border border-border bg-card pl-3 pr-9 text-sm"
                 />
@@ -372,7 +375,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                   <button
                     type="button"
                     onClick={() => setVideo("")}
-                    title="Olib tashlash"
+                    title={t("Olib tashlash")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -392,7 +395,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                 onClick={() => videoRef.current?.click()}
                 className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
               >
-                {uploading === "video" ? "Yuklanmoqda..." : "Yuklash"}
+                {uploading === "video" ? t("Yuklanmoqda...") : t("Yuklash")}
               </button>
             </div>
           </div>
@@ -401,11 +404,11 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
 
       {step === 2 && (
         <div className="space-y-6">
-          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">Kurs talablari</h1>
+          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">{t("Kurs talablari")}</h1>
           {REQUIREMENT_FIELDS.map((f) => (
             <div key={f.key}>
               <h3 className="text-base font-semibold">{f.q}</h3>
-              <p className="text-[13px] mt-1.5">{f.hint}</p>
+              <p className="text-[13px] mt-1.5">{t(f.hint)}</p>
               <textarea
                 value={texts[f.key]}
                 onChange={(e) => setTexts((prev) => ({ ...prev, [f.key]: e.target.value }))}
@@ -418,9 +421,9 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
 
       {step === 3 && (
         <div className="space-y-5">
-          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">Narxlash</h1>
+          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">{t("Narxlash")}</h1>
           <div>
-            <label className="text-[13px] font-medium text-foreground">Kurs narxi</label>
+            <label className="text-[13px] font-medium text-foreground">{t("Kurs narxi")}</label>
             <input
               value={price}
               onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))}
@@ -442,14 +445,14 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                 style={{ transform: `translateX(${free ? 20 : 0}px)`, transition: "transform .2s cubic-bezier(.4,0,.2,1)" }}
               />
             </span>
-            <span className="text-[14px] font-medium">Tekin</span>
+            <span className="text-[14px] font-medium">{t("Tekin")}</span>
           </label>
         </div>
       )}
 
       {step === 4 && (
         <div className="space-y-5">
-          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">Kurs materiallari</h1>
+          <h1 className="text-center text-xl md:text-2xl font-semibold tracking-tight">{t("Kurs materiallari")}</h1>
           <div className="text-center">
             <button
               type="button"
@@ -457,16 +460,16 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
               className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm"
             >
               <Plus className="icon icon-sm" />
-              <span>Kurs materiali qo&apos;shish</span>
+              <span>{t("Kurs materiali qo'shish")}</span>
             </button>
           </div>
 
           {sectionEditorOpen && (
             <div className="rounded-xl border border-border bg-card shadow-sm p-5">
-              <p className="text-[12px] mb-4"><span className="text-rose-500">*</span> belgisi majburiyligini bildiradi</p>
+              <p className="text-[12px] mb-4"><span className="text-rose-500">*</span>{" "}{t("belgisi majburiyligini bildiradi")}</p>
               <div className="space-y-4">
                 <div>
-                  <label className="text-[12px] font-medium text-foreground/80">Bo&apos;lim nomi <span className="text-rose-500">*</span></label>
+                  <label className="text-[12px] font-medium text-foreground/80">{t("Bo'lim nomi")}{" "}<span className="text-rose-500">*</span></label>
                   <input
                     value={sectionName}
                     onChange={(e) => setSectionName(e.target.value)}
@@ -475,7 +478,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[12px] font-medium text-foreground/80">Ushbu bo&apos;lim oxirida o&apos;quvchilar nima qila oladilar? <span className="text-rose-500">*</span></label>
+                  <label className="text-[12px] font-medium text-foreground/80">{t("Ushbu bo'lim oxirida o'quvchilar nima qila oladilar?")}{" "}<span className="text-rose-500">*</span></label>
                   <input
                     value={sectionOutcome}
                     onChange={(e) => setSectionOutcome(e.target.value)}
@@ -485,8 +488,8 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 mt-4 text-[13px]">
-                <button type="button" onClick={() => { setSectionEditorOpen(false); setSectionName(""); setSectionOutcome(""); }} className="text-rose-600 hover:underline">O&apos;chirish</button>
-                <button type="button" onClick={saveSection} className="text-primary font-medium hover:underline">Saqlash</button>
+                <button type="button" onClick={() => { setSectionEditorOpen(false); setSectionName(""); setSectionOutcome(""); }} className="text-rose-600 hover:underline">{t("O'chirish")}</button>
+                <button type="button" onClick={saveSection} className="text-primary font-medium hover:underline">{t("Saqlash")}</button>
               </div>
             </div>
           )}
@@ -496,9 +499,9 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
               <div key={i} className="rounded-xl border border-border bg-card shadow-sm p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{s.name}</p>
-                  <p className="text-[12px] text-muted-foreground truncate">{s.outcome}</p>
+                  <p className="text-[12px] text-muted-foreground truncate">{t(s.outcome)}</p>
                 </div>
-                <button type="button" onClick={() => removeSection(i)} className="h-7 w-7 rounded-md hover:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0" title="O'chirish">
+                <button type="button" onClick={() => removeSection(i)} className="h-7 w-7 rounded-md hover:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0" title={t("O'chirish")}>
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -517,7 +520,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
                     <div className={`h-8 w-8 rounded-full text-[13px] font-semibold flex items-center justify-center ${s.n <= step ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
                       {s.n < step ? <Check className="h-4 w-4" /> : s.n}
                     </div>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{s.label}</span>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{t(s.label)}</span>
                   </button>
                   {i < STEPS.length - 1 && <div className="flex-1 h-px bg-border" />}
                 </div>
@@ -529,7 +532,7 @@ function CourseWizardBody({ editing }: { editing?: OnlineCourse }) {
             disabled={saving || uploading !== null}
             className="h-10 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm shrink-0 disabled:opacity-60"
           >
-            {saving ? "Saqlanmoqda..." : step < 4 ? "Saqlash" : "Aktivlash"}
+            {saving ? "Saqlanmoqda..." : step < 4 ? t("Saqlash") : t("Aktivlash")}
           </button>
         </div>
       </div>

@@ -9,6 +9,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { MAIN_TYPES } from "@/constants/transactionTypes";
 import type { TransactionType } from "@/lib/transactionTypes";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Tranzaksiya turi (sidebar: Moliya > Tranzaksiya turi, href
 // /finance-tx-types). Loyihaning boshqa Moliya sahifalarida (Bonus/Jarima/
@@ -25,6 +26,7 @@ const TAB_ACTIVE_CLS: Record<string, string> = {
 };
 
 export default function TransactionTypesPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [types, setTypes] = useState<TransactionType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,25 +43,25 @@ export default function TransactionTypesPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const visible = useMemo(() => types.filter((t) => t.mainType === tab), [types, tab]);
+  const visible = useMemo(() => types.filter((tv) => tv.mainType === tab), [types, tab]);
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    const t = deleteTarget;
+    const tv = deleteTarget;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/transaction-types/${t.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/transaction-types/${tv.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       invalidateTransactionTypes();
-      setTypes((prev) => prev.filter((x) => x.id !== t.id));
-      showSuccess("Tranzaksiya turi o'chirildi");
+      setTypes((prev) => prev.filter((x) => x.id !== tv.id));
+      showSuccess(t("Tranzaksiya turi o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -69,9 +71,9 @@ export default function TransactionTypesPage() {
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-[18px] font-semibold">Tranzaksiya turi</h1>
+        <h1 className="text-[18px] font-semibold">{t("Tranzaksiya turi")}</h1>
         <Link href={`/finance-tx-types/add?type=${tab}`} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
-          + Tranzaksiya turini qo&apos;shish
+          {t("+ Tranzaksiya turini qo'shish")}
         </Link>
       </div>
 
@@ -82,24 +84,24 @@ export default function TransactionTypesPage() {
             onClick={() => setTab(m.key)}
             className={`h-8 px-3.5 rounded-full text-[13px] font-medium ${tab === m.key ? TAB_ACTIVE_CLS[m.key] : "bg-secondary/60 text-muted-foreground hover:bg-secondary"}`}
           >
-            {m.label}
+            {t(m.label)}
           </button>
         ))}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="pl-6 border-l-2 border-dashed border-border ml-6 my-3">
-          {visible.map((t) => (
-            <div key={t.id} className="flex items-center justify-between gap-3 py-3 border-b border-border/50 last:border-b-0 pl-4 -ml-4 relative">
+          {visible.map((tv) => (
+            <div key={tv.id} className="flex items-center justify-between gap-3 py-3 border-b border-border/50 last:border-b-0 pl-4 -ml-4 relative">
               <span className="absolute left-0 top-1/2 -translate-y-1/2 w-4 border-t-2 border-dashed border-border" style={{ marginLeft: -16 }} />
-              <span className="text-[13px] font-medium">{t.name}</span>
+              <span className="text-[13px] font-medium">{tv.name}</span>
               <div className="flex items-center gap-4 ml-auto">
-                <span className="text-[13px] text-muted-foreground w-20 text-right">{t.category}</span>
+                <span className="text-[13px] text-muted-foreground w-20 text-right">{t(tv.category)}</span>
                 <div className="inline-flex items-center gap-1">
-                  <Link href={`/finance-tx-types/${t.id}/edit`} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title="Tahrirlash">
+                  <Link href={`/finance-tx-types/${tv.id}/edit`} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title={t("Tahrirlash")}>
                     <Pencil className="w-4 h-4" />
                   </Link>
-                  <button onClick={() => setDeleteTarget(t)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish">
+                  <button onClick={() => setDeleteTarget(tv)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -114,13 +116,13 @@ export default function TransactionTypesPage() {
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>

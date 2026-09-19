@@ -8,9 +8,9 @@ import { FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import YearPicker from "./reports/YearPicker";
 import MonthPicker from "./reports/MonthPicker";
-import { MONTH_NAMES_UZ } from "@/constants/pnlReports";
 import type { MonthlyFlow } from "@/lib/cashflowStatement";
 import type { TransactionType } from "@/lib/transactionTypes";
+import { useT } from "@/components/shared/Language";
 
 // Moliya → Pul oqimi (sidebar: Moliya > Pul oqimi, href /finance-flow). Sof
 // hisobot — add/edit/delete yo'q. Yil/oy tanlagichi — Moliya hisobotlari
@@ -76,6 +76,7 @@ interface FlowRow {
   amount: number;
 }
 export default function CashFlowStatementPage() {
+  const { t, months } = useT();
   const { showSuccess, showError } = useToast();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState<number | null>(null);
@@ -122,8 +123,8 @@ export default function CashFlowStatementPage() {
         setFlowRows(sum.rows);
         setOpeningBalance(Number(sum.before) || 0);
         const all = types.types;
-        setIncomeCats(Array.from(new Set(all.filter((t) => t.mainType === "kirim").map((t) => t.name))));
-        setExpenseCats(Array.from(new Set(all.filter((t) => t.mainType === "chiqim").map((t) => t.name))));
+        setIncomeCats(Array.from(new Set(all.filter((tv) => tv.mainType === "kirim").map((tv) => tv.name))));
+        setExpenseCats(Array.from(new Set(all.filter((tv) => tv.mainType === "chiqim").map((tv) => tv.name))));
         setError(false);
       })
       .catch(() => { if (!cancelled) setError(true); })
@@ -186,7 +187,7 @@ export default function CashFlowStatementPage() {
   }, [monthly, openingBalance]);
 
   const visible = month ? computed.filter((c) => c.month === month) : computed;
-  const monthLabels = month ? [MONTH_NAMES_UZ[month - 1]] : MONTH_NAMES_UZ;
+  const monthLabels = month ? [months[month - 1]] : months;
 
   // Jadval/eksportdagi kategoriya qatorlari. "Boshqa" faqat haqiqatan
   // ro'yxatdan tashqari pul bo'lganda qo'shiladi — bo'sh qator chizilmasin.
@@ -230,9 +231,9 @@ export default function CashFlowStatementPage() {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Pul oqimi");
       XLSX.writeFile(workbook, `pul-oqimi-${year}${month ? `-${String(month).padStart(2, "0")}` : ""}.xlsx`);
-      showSuccess("Excel fayl yuklab olindi");
+      showSuccess(t("Excel fayl yuklab olindi"));
     } catch {
-      showError("Excel faylni yuklab bo'lmadi");
+      showError(t("Excel faylni yuklab bo'lmadi"));
     }
   }
 
@@ -241,13 +242,13 @@ export default function CashFlowStatementPage() {
   return (
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-[18px] font-semibold">Pul oqimi hisoboti</h1>
+        <h1 className="text-[18px] font-semibold">{t("Pul oqimi hisoboti")}</h1>
         <div className="flex items-center gap-2">
           <YearPicker value={year} onChange={(y) => { setYear(y); setMonth(null); }} />
           <MonthPicker year={year} value={month} onChange={(m, y) => { setMonth(m); setYear(y); }} />
           <button onClick={exportExcel} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
             <FileSpreadsheet className="w-4 h-4" />
-            Eksport
+            {t("Eksport")}
           </button>
         </div>
       </div>
@@ -264,13 +265,13 @@ export default function CashFlowStatementPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left px-4 py-3 whitespace-nowrap font-semibold text-[13px]">Kategoriya</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap font-semibold text-[13px]">{t("Kategoriya")}</th>
                 {monthLabels.map((l) => <th key={l} className={thCls}>{l}</th>)}
               </tr>
             </thead>
             <tbody>
               <tr className="bg-emerald-50 border-b border-border/50">
-                <td className="px-4 py-3 text-[13px] font-semibold">Boshlang&apos;ich balans</td>
+                <td className="px-4 py-3 text-[13px] font-semibold">{t("Boshlang'ich balans")}</td>
                 {visible.map((v) => <td key={v.month} className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold">{fmtUZS(v.opening)}</td>)}
               </tr>
 
@@ -287,7 +288,7 @@ export default function CashFlowStatementPage() {
               ))}
 
               <tr className="bg-emerald-50 border-t-2 border-border">
-                <td className="px-4 py-3 text-[13px] font-semibold">Yakuniy balans</td>
+                <td className="px-4 py-3 text-[13px] font-semibold">{t("Yakuniy balans")}</td>
                 {visible.map((v) => <td key={v.month} className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold">{fmtUZS(v.closing)}</td>)}
               </tr>
             </tbody>
@@ -330,6 +331,7 @@ function SectionRows({
   incomeCategories: CategoryRow[];
   expenseCategories: CategoryRow[];
 }) {
+  const { t } = useT();
   return (
     <>
       <tr className="bg-secondary/40">
@@ -338,27 +340,27 @@ function SectionRows({
       {/* `withCategories` faqat Operatsion faoliyatda true — qolgan ikki
           bo'limda hisoblanadigan manba yo'q, shuning uchun son emas "—". */}
       <tr className="bg-emerald-50/70 border-b border-border/50">
-        <td className="px-4 py-3 text-[13px] font-semibold">Kirim — Jami</td>
+        <td className="px-4 py-3 text-[13px] font-semibold">{t("Kirim — Jami")}</td>
         {visible.map((v) => <td key={v.month} className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold">{withCategories ? fmtUZS(v.kirim) : "—"}</td>)}
       </tr>
       {withCategories && incomeCategories.map((c) => (
         <tr key={c.key} className="border-b border-border/50">
-          <td className="px-4 py-3 pl-8 text-[13px] text-muted-foreground">{c.label}</td>
+          <td className="px-4 py-3 pl-8 text-[13px] text-muted-foreground">{t(c.label)}</td>
           {visible.map((v) => <td key={v.month} className="px-4 py-3 text-right text-[13px] tabular-nums">{fmtUZS(v.income[c.key] || 0)}</td>)}
         </tr>
       ))}
       <tr className="bg-rose-50/70 border-b border-border/50">
-        <td className="px-4 py-3 text-[13px] font-semibold">Chiqim — Jami</td>
+        <td className="px-4 py-3 text-[13px] font-semibold">{t("Chiqim — Jami")}</td>
         {visible.map((v) => <td key={v.month} className="px-4 py-3 text-right text-[13px] tabular-nums font-semibold">{withCategories ? fmtUZS(v.chiqim) : "—"}</td>)}
       </tr>
       {withCategories && expenseCategories.map((c) => (
         <tr key={c.key} className="border-b border-border/50">
-          <td className="px-4 py-3 pl-8 text-[13px] text-muted-foreground">{c.label}</td>
+          <td className="px-4 py-3 pl-8 text-[13px] text-muted-foreground">{t(c.label)}</td>
           {visible.map((v) => <td key={v.month} className="px-4 py-3 text-right text-[13px] tabular-nums">{fmtUZS(v.expense[c.key] || 0)}</td>)}
         </tr>
       ))}
       <tr className="bg-amber-50 border-b border-border">
-        <td className="px-4 py-3 text-[13px] font-semibold">Sof</td>
+        <td className="px-4 py-3 text-[13px] font-semibold">{t("Sof")}</td>
         {visible.map((v) => {
           if (!withCategories) {
             return <td key={v.month} className="px-4 py-3 text-right text-[13px] text-muted-foreground">—</td>;

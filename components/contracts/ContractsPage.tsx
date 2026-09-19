@@ -8,6 +8,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { Contract } from "@/lib/contracts";
 import Modal from "@/components/ui/Modal";
+import { useT } from "@/components/shared/Language";
 
 // O'quv bo'limi → Shartnoma (sidebar: O'quv bo'limi > Shartnoma, href
 // /contract). Ma'lumot /api/contracts dan (constants/contracts.js
@@ -17,6 +18,7 @@ import Modal from "@/components/ui/Modal";
 // — loyihadagi boshqa sahifalar bilan bir xil pattern qayta ishlatildi).
 
 export default function ContractsPage() {
+  const { t } = useT();
   const { showSuccess, showError } = useToast();
   const [rows, setRows] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,14 +54,14 @@ export default function ContractsPage() {
       const res = await fetch(`/api/contracts/${r.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!data.ok) {
-        showError(data.error || "O'chirilmadi");
+        showError(t(data.error || "O'chirilmadi"));
         setDeleting(false);
         return;
       }
       setRows((prev) => prev.filter((x) => x.id !== r.id));
-      showSuccess("Shartnoma o'chirildi");
+      showSuccess(t("Shartnoma o'chirildi"));
     } catch {
-      showError("Serverga ulanib bo'lmadi");
+      showError(t("Serverga ulanib bo'lmadi"));
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -70,7 +72,7 @@ export default function ContractsPage() {
     <div className="page-frame container mx-auto max-w-[1600px] p-4 md:p-5 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <Link href="/contract/add" className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm">
-          <span>+ Shartnoma yaratish</span>
+          <span>{t("+ Shartnoma yaratish")}</span>
         </Link>
 
         <div className="relative ml-auto">
@@ -79,7 +81,7 @@ export default function ContractsPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             type="text"
-            placeholder="Qidirish"
+            placeholder={t("Qidirish")}
             className="w-72 h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
@@ -87,7 +89,7 @@ export default function ContractsPage() {
 
       <div className="flex justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">Umumiy soni:</span>
+          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
           <span className="font-bold tabular-nums">{filtered.length}</span>
         </div>
       </div>
@@ -98,9 +100,9 @@ export default function ContractsPage() {
             <thead>
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="text-left px-3 py-3 whitespace-nowrap w-14">№</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Sarlavha</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Shartnoma turi</th>
-                <th className="text-left px-3 py-3 whitespace-nowrap">Yaratilgan sana</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Sarlavha")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Shartnoma turi")}</th>
+                <th className="text-left px-3 py-3 whitespace-nowrap">{t("Yaratilgan sana")}</th>
                 <th className="px-3 py-3 w-24" />
               </tr>
             </thead>
@@ -108,15 +110,15 @@ export default function ContractsPage() {
               {slice.map((c, i) => (
                 <tr key={c.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 text-[13px] font-medium">{c.title}</td>
-                  <td className="px-3 py-3 text-[13px]">{c.type}</td>
+                  <td className="px-3 py-3 text-[13px] font-medium">{t(c.title)}</td>
+                  <td className="px-3 py-3 text-[13px]">{t(c.type)}</td>
                   <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums">{c.createdAt}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">
                     <div className="inline-flex items-center gap-1">
-                      <Link href={`/contract/${c.id}/edit`} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title="Tahrirlash">
+                      <Link href={`/contract/${c.id}/edit`} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-primary" title={t("Tahrirlash")}>
                         <Pencil className="w-4 h-4" />
                       </Link>
-                      <button onClick={() => setDeleteTarget(c)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title="O'chirish">
+                      <button onClick={() => setDeleteTarget(c)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -142,13 +144,13 @@ export default function ContractsPage() {
 
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <p className="text-center text-[15px] font-semibold">Rostdan ham o&apos;chirmoqchimisiz?</p>
+            <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
-                Yo&apos;q
+                {t("Yo'q")}
               </button>
               <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
-                {deleting ? "O'chirilmoqda…" : "Ha"}
+                {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>
           </>)}</Modal>
