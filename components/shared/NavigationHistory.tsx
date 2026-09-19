@@ -13,9 +13,13 @@ import { usePathname, useRouter } from "next/navigation";
 
 const STORAGE_KEY = "crm_nav_stack";
 const MAX_STACK = 50;
-// Kirish sahifasi — navigatsiya tarixiga yozilmaydi.
-const AUTH_PATHS = ["/"];
-const isAppPath = (p: string) => !AUTH_PATHS.includes(p);
+// Kirish sahifasi va OMMAVIY sahifalar (proxy.ts PUBLIC_PATHS bilan bir xil)
+// navigatsiya tarixiga yozilmaydi. 19.09.2026 gacha faqat "/" chiqarilgan
+// edi: /ariza (ish arizasi) ochilgan brauzerda keyin kirish sahifasi
+// "oxirgi sahifa"ga — /ariza ga — qaytarib yuborar, login umuman
+// ochilmas edi (chiqib ketgan xodim yoki nomzod bilan bir brauzer).
+const PUBLIC_PREFIXES = ["/activate", "/ariza", "/oquvchi", "/tezlik"];
+const isAppPath = (p: string) => p !== "/" && !PUBLIC_PREFIXES.some((x) => p === x || p.startsWith(x + "/") || p.startsWith(x + "?"));
 
 interface NavHistoryValue {
   canGoBack: boolean;

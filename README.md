@@ -1884,8 +1884,13 @@ forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
 
 - **Fayllar**: `app/ariza/page.tsx` (server — filiallarni bazadan beradi,
   shriftlar `next/font`: Anton, Montserrat, Inter), `app/ariza/ariza.css`
-  (dizayn CSS'i `.ariza` ildizi ostida, tungi rejim qo'llanmaydi),
+  (dizayn CSS'i `.ariza` ildizi ostida; tungi rejim `.dark .ariza {…}`
+  palitrasi bilan — ilova bilan bir xil `html.dark` kaliti),
   `components/management/CvApplyPage.tsx` (forma), rasmlar `public/ariza/`.
+  Sahifa tepasida til (uz / кирил / en) va mavzu tugmalari — navbar yo'q.
+  Tanlovlar `ui/Select` (guruhli), sanalar `ui/DateField` — native
+  `<select>`/`<input type="date">` ishlatilmaydi; shuning uchun dizayn
+  CSS'i faqat `.field > input/textarea` (bevosita bola) ga qo'llanadi.
 - **Ma'lumot**: `app/api/management-cv` POST endi `multipart/form-data` ham
   qabul qiladi — rasm (majburiy, brauzerda 900px JPEG'ga kichraytiriladi),
   CV fayli va sertifikat nusxalari (10 tagacha, 25 MB) Cloudinary'ga
@@ -1908,3 +1913,18 @@ forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
   bosh raqam (`CV_MAIN_PHONE`).
 - Google Sheets ulanishi avvalgidek (`#s=` havola); Apps Script HEADERS
   yangi ustunlar bilan kengaytirildi (eski deploy'lar o'zgarmaydi).
+- **Fayllarni ko'rish (PDF 401)**: Cloudinary ochiq yetkazishda PDF va ZIP
+  fayllarni bermaydi (imzoli URL ham 401). CRM'dagi fayl chiplari shuning
+  uchun `GET /api/management-cv/:id/file?kind=cv|doc&i=n` ga boradi —
+  server Cloudinary'ning imzoli `download` API'si orqali faylni olib
+  oqizadi (`lib/cloudinary.ts` → `privateDownloadUrl`), faqat kirgan
+  xodimga (`/management-cv` ruxsati). Chip bosilganda `FileViewer` modali:
+  PDF — iframe, rasm — img, DOC(X) — yuklab olish; "Yangi oynada ochish"
+  va "Yuklab olish" tugmalari. Sheets'dagi to'g'ridan-to'g'ri Cloudinary
+  havolalari PDF uchun 401 bo'lib qoladi — Cloudinary sozlamasida
+  "Allow delivery of PDF and ZIP files" yoqilsa ochiladi.
+- Jadvaldagi "Tajriba" ustuni 15 belgigacha qisqartiriladi (to'lig'i
+  `title` da va tafsilot oynasida) — eski erkin matnli anketalar jadvalni
+  buzardi. `NavigationHistory` ommaviy yo'llarni (`/ariza`, `/oquvchi`,
+  `/activate`, `/tezlik`) eslamaydi — aks holda kirish sahifasi `/ariza` ga
+  qaytarib yuborardi.

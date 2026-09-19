@@ -1,12 +1,14 @@
 "use client";
 
-/* eslint-disable no-restricted-syntax, @next/next/no-img-element --
-   Ommaviy nomzod sahifasi: dizayn (akademiya-ishga-ariza.html) o'z
-   ko'rinishidagi native <select> va sana maydonlarini ishlatadi, ilova
-   qobig'ining ui/Select va DateField'lari bu yerda mos kelmaydi (ular
-   CRM uslubida). Rasmlar — data: URL va Cloudinary, next/image kerak emas. */
+/* eslint-disable @next/next/no-img-element -- rasmlar data: URL va Cloudinary, next/image kerak emas. */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import { Moon, Sun } from "lucide-react";
+import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
+import { useTheme } from "@/components/shared/Theme";
+import { LANGS as LANG_LABELS } from "@/lib/navbar";
+import { LANGS, type Lang } from "@/lib/i18n";
 import {
   CV_ANY_BRANCH,
   CV_EDU_LEVELS,
@@ -22,7 +24,7 @@ import {
   CV_TEACHING_ROLES,
 } from "@/constants/managementCv";
 import { ageOf, formatUzPhone, type CvApplication } from "@/lib/managementCv";
-import { useT } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 
 // OMMAVIY ISH ARIZASI (/ariza) — dizayn foydalanuvchining
 // "akademiya-ishga-ariza.html" faylidan (19.09.2026): chap panelda jonli
@@ -43,6 +45,10 @@ import { useT } from "@/components/shared/Language";
 // Filiallar bazadan (app/ariza/page.tsx server komponenti beradi) —
 // tanlangan filial `branchId` bo'lib saqlanadi va CRM'da o'sha filial
 // ro'yxatida ko'rinadi; "qaysi filial bo'lsa ham" — hammasida.
+//
+// Tanlovlar va sanalar — CRM'ning o'z ui/Select va ui/DateField'lari
+// (loyiha qoidasi: native <select>/<input type="date"> ishlatilmaydi);
+// til va tungi rejim tugmalari sahifa tepasida (navbar yo'q).
 
 export interface ApplyBranch {
   id: number;
@@ -124,6 +130,8 @@ const PersonIcon = ({ size }: { size: number }) => (
 
 export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
   const { t } = useT();
+  const [lang, setLang] = useLang();
+  const [isDark, toggleTheme] = useTheme();
   const [v, setV] = useState<Values>(EMPTY);
   const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // tuzoq maydoni — odam ko'rmaydi
@@ -332,6 +340,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
       }
       if (!fieldOk(k)) mark(k);
     }
+    if (v.startDate && v.startDate < today) mark("startDate");
     if (teaching && !v.subject) mark("subject");
     if (!v.load) mark("load1");
     setConsentBad(!consent);
@@ -404,6 +413,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
       const files = [t("rasm")];
       if (docs.length) files.push(t("{n} ta sertifikat/diplom", { n: docs.length }));
       if (cvFile) files.push(t("CV fayli"));
+      if (draftTimer.current) clearTimeout(draftTimer.current);
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {
@@ -422,11 +432,21 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const birthMax = (() => {
-    const d = new Date();
-    d.setFullYear(d.getFullYear() - CV_MIN_AGE);
-    return d.toISOString().slice(0, 10);
-  })();
+  const roleOptions = useMemo(
+    () => CV_ROLE_GROUPS.flatMap((g) => g.roles.map((r) => ({ value: r, label: t(r), group: t(g.label) }))),
+    [t],
+  );
+  const subjectOptions = useMemo(
+    () => CV_SUBJECT_GROUPS.flatMap((g) => g.subjects.map((sub) => ({ value: sub, label: t(sub), group: t(g.label) }))),
+    [t],
+  );
+  const branchOptions = useMemo(
+    () => [
+      ...branches.map((b) => ({ value: String(b.id), label: b.name, sub: b.address || b.location || undefined })),
+      { value: "any", label: t(CV_ANY_BRANCH) },
+    ],
+    [branches, t],
+  );
   const fullName = `${v.firstName} ${v.lastName}`.trim();
   const fieldCls = (k: string, extra = "") => `field${extra ? " " + extra : ""}${bad.has(k) ? " bad" : ""}`;
 
@@ -444,7 +464,19 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
 
   return (
     <>
-      <main className="shell">
+      <div className="topbar">
+        <div className="seg" role="group" aria-label={t("Til")}>
+          {LANGS.map((code: Lang) => (
+            <button type="button" key={code} className={lang === code ? "on" : ""} onClick={() => setLang(code)} aria-pressed={lang === code}>
+              {LANG_LABELS[code].short}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="theme" onClick={toggleTheme} aria-label={isDark ? t("Kunduzgi rejim") : t("Tungi rejim")} title={isDark ? t("Kunduzgi rejim") : t("Tungi rejim")}>
+          {isDark ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+      </div>
+      <div className="shell" role="main">
         {/* ============ CHAP PANEL ============ */}
         <aside className="aside">
           <div className="aside-in">
@@ -473,7 +505,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                 {t("Filial:")} <b>{branchLabel || t("tanlanmagan")}</b>
               </div>
               <div className="card-foot">
-                <i className="dot" />
+                <i className={`dot${done ? " ok" : ""}`} />
                 <span>{done ? `${t("Yuborildi")} · ${done.ref}` : t("To'ldirilmoqda")}</span>
               </div>
             </div>
@@ -585,7 +617,9 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                     </div>
                     <div className={fieldCls("birth")}>
                       <label htmlFor="ar-birth">{t("Tug'ilgan sana")}</label>
-                      <input id="ar-birth" type="date" min="1950-01-01" max={birthMax} value={v.birth} onChange={(e) => set("birth", e.target.value)} />
+                      <div id="ar-birth" tabIndex={-1}>
+                        <DateField value={v.birth} onChange={(iso) => set("birth", iso)} variant="panel" error={bad.has("birth")} placeholder="kk/oo/yyyy" />
+                      </div>
                       <p className="err">{birthErr || t("Tug'ilgan sanangizni tanlang.")}</p>
                     </div>
                     <div className={fieldCls("phone")}>
@@ -624,59 +658,32 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                   <div className="grid">
                     <div className={fieldCls("role", "full")}>
                       <label htmlFor="ar-role">{t("Vakansiya turi")}</label>
-                      <select
+                      <Select
                         id="ar-role"
+                        size="lg"
                         value={v.role}
-                        onChange={(e) => {
-                          set("role", e.target.value);
-                          if (!CV_TEACHING_ROLES.includes(e.target.value)) set("subject", "");
+                        error={bad.has("role")}
+                        placeholder={t("Vakansiyani tanlang")}
+                        options={roleOptions}
+                        onChange={(val) => {
+                          set("role", val);
+                          if (!CV_TEACHING_ROLES.includes(val)) set("subject", "");
                         }}
-                      >
-                        <option value="">{t("Vakansiyani tanlang")}</option>
-                        {CV_ROLE_GROUPS.map((g) => (
-                          <optgroup key={g.label} label={t(g.label)}>
-                            {g.roles.map((r) => (
-                              <option key={r} value={r}>
-                                {t(r)}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
+                      />
                       <p className="err">{t("Vakansiya turini tanlang.")}</p>
                     </div>
 
                     {teaching && (
                       <div className={fieldCls("subject", "full")}>
                         <label htmlFor="ar-subject">{t("Qaysi fan yoki yo'nalish bo'yicha")}</label>
-                        <select id="ar-subject" value={v.subject} onChange={(e) => set("subject", e.target.value)}>
-                          <option value="">{t("Fanni tanlang")}</option>
-                          {CV_SUBJECT_GROUPS.map((g) => (
-                            <optgroup key={g.label} label={t(g.label)}>
-                              {g.subjects.map((s) => (
-                                <option key={s} value={s}>
-                                  {t(s)}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
+                        <Select id="ar-subject" size="lg" value={v.subject} error={bad.has("subject")} placeholder={t("Fanni tanlang")} options={subjectOptions} onChange={(val) => set("subject", val)} />
                         <p className="err">{t("Fan yoki yo'nalishni tanlang.")}</p>
                       </div>
                     )}
 
                     <div className={fieldCls("branch", "full")}>
                       <label htmlFor="ar-branch">{t("Filial")}</label>
-                      <select id="ar-branch" value={v.branch} onChange={(e) => set("branch", e.target.value)}>
-                        <option value="">{t("Filialni tanlang")}</option>
-                        {branches.map((b) => (
-                          <option key={b.id} value={String(b.id)}>
-                            {b.name}
-                            {b.address || b.location ? ` — ${b.address || b.location}` : ""}
-                          </option>
-                        ))}
-                        <option value="any">{t(CV_ANY_BRANCH)}</option>
-                      </select>
+                      <Select id="ar-branch" size="lg" value={v.branch} error={bad.has("branch")} placeholder={t("Filialni tanlang")} options={branchOptions} onChange={(val) => set("branch", val)} />
                       <p className="err">{t("Filialni tanlang.")}</p>
                       {v.branch && (
                         <div className="branch-info">
@@ -702,7 +709,9 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
 
                     <div className={fieldCls("startDate")}>
                       <label htmlFor="ar-startDate">{t("Qachondan boshlay olasiz")}</label>
-                      <input id="ar-startDate" type="date" min={today} value={v.startDate} onChange={(e) => set("startDate", e.target.value)} />
+                      <div id="ar-startDate" tabIndex={-1}>
+                        <DateField value={v.startDate} onChange={(iso) => set("startDate", iso)} variant="panel" error={bad.has("startDate")} placeholder="kk/oo/yyyy" />
+                      </div>
                       <p className="err">{t("Sanani tanlang.")}</p>
                     </div>
                     <div className={fieldCls("salary")}>
@@ -731,26 +740,12 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                   <div className="grid">
                     <div className={fieldCls("edu")}>
                       <label htmlFor="ar-edu">{t("Ta'lim darajasi")}</label>
-                      <select id="ar-edu" value={v.edu} onChange={(e) => set("edu", e.target.value)}>
-                        <option value="">{t("Tanlang")}</option>
-                        {CV_EDU_LEVELS.map((o) => (
-                          <option key={o} value={o}>
-                            {t(o)}
-                          </option>
-                        ))}
-                      </select>
+                      <Select id="ar-edu" size="lg" value={v.edu} error={bad.has("edu")} placeholder={t("Tanlang")} options={CV_EDU_LEVELS.map((o) => ({ value: o, label: t(o) }))} onChange={(val) => set("edu", val)} />
                       <p className="err">{t("Ta'lim darajangizni tanlang.")}</p>
                     </div>
                     <div className={fieldCls("exp")}>
                       <label htmlFor="ar-exp">{t("Ish tajribasi")}</label>
-                      <select id="ar-exp" value={v.exp} onChange={(e) => set("exp", e.target.value)}>
-                        <option value="">{t("Tanlang")}</option>
-                        {CV_EXP_LEVELS.map((o) => (
-                          <option key={o} value={o}>
-                            {t(o)}
-                          </option>
-                        ))}
-                      </select>
+                      <Select id="ar-exp" size="lg" value={v.exp} error={bad.has("exp")} placeholder={t("Tanlang")} options={CV_EXP_LEVELS.map((o) => ({ value: o, label: t(o) }))} onChange={(val) => set("exp", val)} />
                       <p className="err">{t("Tajribangizni tanlang.")}</p>
                     </div>
                     <div className={fieldCls("school", "full")}>
@@ -877,14 +872,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                       <label htmlFor="ar-source">
                         {t("Vakansiyani qayerdan bildingiz")} <i>{t("— ixtiyoriy")}</i>
                       </label>
-                      <select id="ar-source" value={v.source} onChange={(e) => set("source", e.target.value)}>
-                        <option value="">{t("Tanlang")}</option>
-                        {CV_SOURCES.map((o) => (
-                          <option key={o} value={o}>
-                            {t(o)}
-                          </option>
-                        ))}
-                      </select>
+                      <Select id="ar-source" size="lg" value={v.source} placeholder={t("Tanlang")} clearable options={CV_SOURCES.map((o) => ({ value: o, label: t(o) }))} onChange={(val) => set("source", val)} />
                     </div>
                     <div className="hp" aria-hidden="true">
                       <label htmlFor="ar-website">Website</label>
@@ -927,7 +915,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
             </>
           )}
         </section>
-      </main>
+      </div>
 
       {!done && (
         <div className="mobile-bar">

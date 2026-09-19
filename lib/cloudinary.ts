@@ -114,3 +114,50 @@ export function uploadVideo(file: File, folder: string): Promise<UploadResult> {
 export function uploadDocument(file: File, folder: string): Promise<UploadResult> {
   return upload(file, folder, "auto");
 }
+
+// ── Cheklangan fayllarni (PDF) server orqali berish ────────────────────
+//
+// Cloudinary bepul tarifida PDF/ZIP ochiq havoladan BERILMAYDI (401,
+// Settings → Security "Restricted media types"); imzolangan yetkazish
+// havolasi ham 401 qaytardi (19.09.2026 da sinaldi). Lekin API'ning
+// `download` endpointi (imzolangan, api_key bilan) faylni beradi — nomzod
+// hujjatlari shu orqali, o'z serverimizdan oqizib ko'rsatiladi
+// (app/api/management-cv/[id]/file). Qo'shimcha foyda: CV va diplom
+// nusxalari ochiq URL orqali emas, faqat tizimga kirgan xodimga ochiladi.
+
+export interface CloudinaryRef {
+  resourceType: "image" | "video" | "raw";
+  /** Papka bilan, kengaytmasiz (raw uchun — kengaytma bilan, Cloudinary shunday saqlaydi). */
+  publicId: string;
+  format: string;
+}
+
+/**
+ * `secure_url` → resurs turi, public_id va format.
+ *   https://res.cloudinary.com/<cloud>/image/upload/v123/nomzodlar/hujjatlar/abc.pdf
+ * Boshqa domen/shakl bo'lsa `null`.
+ */
+export function parseCloudinaryUrl(url: string): CloudinaryRef | null {
+  const m = /^https:\/\/res\.cloudinary\.com\/[^/]+\/(image|video|raw)\/upload\/(?:[^/]+\/)*?v\d+\/(.+)$/.exec(url);
+  if (!m) return null;
+  const resourceType = m[1] as CloudinaryRef["resourceType"];
+  const path = m[2];
+  if (resourceType === "raw") return { resourceType, publicId: path, format: "" };
+  const dot = path.lastIndexOf(".");
+  if (dot <= 0) return { resourceType, publicId: path, format: "" };
+  return { resourceType, publicId: path.slice(0, dot), format: path.slice(dot + 1) };
+}
+
+/** Imzolangan API `download` havolasi — asl faylni beradi (qisqa muddatli imzo). */
+export function privateDownloadUrl(ref: CloudinaryRef): string | null {
+  const cfg = cloudinaryConfig();
+  if (!cfg) return null;
+  const params: Record<string, string> = {
+    public_id: ref.publicId,
+    type: "upload",
+    timestamp: String(Math.floor(Date.now() / 1000)),
+  };
+  if (ref.format) params.format = ref.format;
+  const qs = new URLSearchParams({ ...params, api_key: cfg.apiKey, signature: sign(params, cfg.apiSecret) });
+  return `https://api.cloudinary.com/v1_1/${cfg.cloudName}/${ref.resourceType}/download?${qs.toString()}`;
+}

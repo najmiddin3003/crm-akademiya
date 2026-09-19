@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftRight, Building2, FilePlus, LayoutGrid, Link2, Paperclip, Search, XCircle } from "lucide-react";
+import { ArrowLeftRight, Building2, Download, ExternalLink, FilePlus, LayoutGrid, Link2, Paperclip, Search, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -102,13 +102,101 @@ function Avatar({ cv, size = 32 }: { cv: CvApplication; size?: number }) {
   );
 }
 
-function FileLink({ f }: { f: CvFile }) {
+/**
+ * "Tajriba" ustuni — eski anketada erkin matn (bir necha jumla) bo'lgani
+ * uchun jadval buzilib ketardi (19.09.2026). Faqat shu ustun 15 belgigacha
+ * qisqartiriladi, to'lig'i `title` da va tafsilot oynasida.
+ */
+const EXPERIENCE_MAX = 15;
+function shortExperience(v: string): string {
+  const s = v.split("—")[0].trim() || "-";
+  return s.length > EXPERIENCE_MAX ? s.slice(0, EXPERIENCE_MAX).trimEnd() + "…" : s;
+}
+
+function fmtBytes(size: number): string {
+  return size > 1048576 ? (size / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(size / 1024)) + " KB";
+}
+
+/**
+ * Nomzod fayli — CLOUDINARY HAVOLASI EMAS, o'z serverimiz orqali
+ * (/api/management-cv/:id/file): PDF'ni Cloudinary ochiq havoladan
+ * bermaydi (401), server esa API orqali olib oqizadi. Bosilganda modal
+ * ichida ochiladi (PDF — iframe, rasm — img, boshqasi — yuklab olish).
+ */
+function fileViewUrl(cvId: number, kind: "cv" | "doc", index = 0): string {
+  return `/api/management-cv/${cvId}/file?kind=${kind}&i=${index}`;
+}
+
+type FileView = { f: CvFile; url: string };
+
+function FileChip({ f, onOpen }: { f: CvFile; onOpen: () => void }) {
   return (
-    <a href={f.url} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2 py-1 text-[12px] hover:bg-secondary">
+    <button type="button" onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2 py-1 text-[12px] hover:bg-secondary">
       <Paperclip className="w-3.5 h-3.5 text-muted-foreground" />
       <span className="max-w-[220px] truncate">{f.name}</span>
-      <span className="text-muted-foreground">{f.size > 1048576 ? (f.size / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(f.size / 1024)) + " KB"}</span>
-    </a>
+      <span className="text-muted-foreground">{fmtBytes(f.size)}</span>
+    </button>
+  );
+}
+
+function isPdf(f: CvFile): boolean {
+  return f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+}
+function isImage(f: CvFile): boolean {
+  return /^image\//.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name);
+}
+
+/** Fayl ko'rish modali — PDF va rasm ichida ochiladi, DOC(X) faqat yuklab olinadi. */
+function FileViewer({ view, onClose }: { view: FileView; onClose: () => void }) {
+  const { t } = useT();
+  const { f, url } = view;
+  const inline = isPdf(f) || isImage(f);
+  return (
+    <Modal onClose={onClose} bare size="5xl" zIndex={140} panelClassName="overflow-hidden">
+      {(modal) => (
+        <div className="flex flex-col" style={{ height: "min(88vh, 900px)" }}>
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border">
+            <div className="min-w-0 flex items-center gap-2 text-[13px]">
+              <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="truncate font-medium">{f.name}</span>
+              <span className="text-muted-foreground shrink-0">{fmtBytes(f.size)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <a href={url} target="_blank" rel="noopener" title={t("Yangi oynada ochish")} className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-card hover:bg-secondary text-[12px]">
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t("Yangi oynada ochish")}</span>
+              </a>
+              <a href={url} download={f.name} title={t("Yuklab olish")} className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-card hover:bg-secondary text-[12px]">
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t("Yuklab olish")}</span>
+              </a>
+              <button onClick={modal.close} className="h-8 w-8 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground" aria-label={t("Yopish")}>
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 bg-secondary/40">
+            {isPdf(f) ? (
+              <iframe src={url} title={f.name} className="w-full h-full border-0 bg-white" />
+            ) : isImage(f) ? (
+              <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={f.name} className="max-w-full max-h-full object-contain rounded-md" />
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-[13px] text-muted-foreground p-6 text-center">
+                <span>{t("Bu turdagi faylni brauzerda ko'rsatib bo'lmaydi — yuklab olib oching.")}</span>
+                <a href={url} download={f.name} className="h-9 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-white text-[13px] font-medium hover:opacity-90">
+                  <Download className="w-4 h-4" />
+                  {t("Yuklab olish")}
+                </a>
+              </div>
+            )}
+            {!inline && null}
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -151,6 +239,7 @@ export default function CvPage() {
   const [search, setSearch] = useState("");
 
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [fileView, setFileView] = useState<FileView | null>(null);
   const [acting, setActing] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -568,8 +657,8 @@ export default function CvPage() {
                     <td className="px-4 py-3 text-[13px] text-muted-foreground">
                       {c.branchId ? c.branchName || c.branchId : c.branchId === null ? t("Istalgan") : "-"}
                     </td>
-                    <td className="px-4 py-3 text-[13px] text-muted-foreground">
-                      {(c.experience || "").split("—")[0].trim() || "-"}
+                    <td className="px-4 py-3 text-[13px] text-muted-foreground whitespace-nowrap" title={c.experience || undefined}>
+                      {c.experience ? shortExperience(c.experience) : "-"}
                     </td>
                     <td className="px-4 py-3 text-[13px] tabular-nums">{c.expectedSalary || "-"} {t("so'm")}</td>
                     <td className="px-4 py-3 text-[13px] tabular-nums">{c.phone}</td>
@@ -632,7 +721,7 @@ export default function CvPage() {
               <DetailRow label={t("Yashash manzili")} value={detail.address} />
               <DetailRow label={t("Tug'ilgan sana")} value={detail.birth} />
               <DetailRow label="Telegram" value={detail.telegram ? "@" + detail.telegram : ""} />
-              <DetailRow label={t("Hozirgi ish holati")} value={detail.currentJob} />
+              <DetailRow label={detail.ref ? t("Oxirgi ish joyi va lavozimi") : t("Hozirgi ish holati")} value={detail.currentJob} />
               <DetailRow label={t("Bandlik turi")} value={detail.load ? t(detail.load) : ""} />
               <DetailRow label={t("Vakansiyani qayerdan bilgan")} value={detail.source ? t(detail.source) : ""} />
 
@@ -660,9 +749,11 @@ export default function CvPage() {
                 <>
                   <DetailSection title={t("Fayllar")} />
                   <div className="flex flex-wrap gap-2 py-2">
-                    {detail.cvFile && <FileLink f={detail.cvFile} />}
+                    {detail.cvFile && (
+                      <FileChip f={detail.cvFile} onOpen={() => setFileView({ f: detail.cvFile as CvFile, url: fileViewUrl(detail.id, "cv") })} />
+                    )}
                     {(detail.docs || []).map((f, i) => (
-                      <FileLink key={`${f.url}-${i}`} f={f} />
+                      <FileChip key={`${f.url}-${i}`} f={f} onOpen={() => setFileView({ f, url: fileViewUrl(detail.id, "doc", i) })} />
                     ))}
                   </div>
                 </>
@@ -702,6 +793,8 @@ export default function CvPage() {
             </div>
           </Modal>
       )}
+
+      {fileView && <FileViewer view={fileView} onClose={() => setFileView(null)} />}
 
       {/* ===== GOOGLE SHEETS SOZLASH MODALI ===== */}
       {sheetsOpen && (
