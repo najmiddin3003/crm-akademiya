@@ -9826,6 +9826,86 @@ html.dark .nav-btn-task-info { color: #6ee7b7; background-color: rgba(16, 185, 1
   color: var(--shell-text);
 }
 .nav-field:focus-within { border-color: var(--shell-blue); }
+
+/* Til tanlovi (components/shared/Navbar.tsx) — 19.09.2026 dizayni:
+   kapsula tugma (globus + tilning to'liq nomi + chevron) va ostida
+   "Tilni tanlang" sarlavhali ro'yxat: har qatorda ikki harfli belgi,
+   tanlanganida galochka. Rang `--primary` dan — tungi rejimda u
+   yorqinroq teal'ga o'tadi (BREND PALITRASI: --brand-primary-dark),
+   `--shell-blue` esa ikkala rejimda bir xil to'q rang va qora fonda
+   xira ko'rinardi. Ro'yxat foni `.dropdown-menu` umumiy qoidasidan
+   (xira shisha) — navbardagi qolgan menyular bilan bir xil. */
+.nav-lang {
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--shell-line);
+  background-color: var(--shell-surface);
+  color: var(--shell-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.nav-lang svg { width: 18px; height: 18px; flex: none; color: hsl(var(--primary)); }
+.nav-lang .nav-lang-chev { width: 15px; height: 15px; transition: transform 0.15s ease; }
+.nav-lang:hover { border-color: hsl(var(--primary) / 0.55); background-color: hsl(var(--primary) / 0.06); }
+.nav-lang.is-open { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15); }
+.nav-lang.is-open .nav-lang-chev { transform: rotate(180deg); }
+
+.nav-lang-menu {
+  width: 236px;
+  padding: 6px;
+  border-radius: 16px;
+  transform-origin: top right;   /* ui-pop-in animatsiyasi o'ng burchakdan */
+}
+.nav-lang-head {
+  padding: 8px 10px 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+.nav-lang-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--shell-text);
+  text-align: left;
+  transition: background-color 0.12s ease;
+}
+.nav-lang-item:hover { background-color: var(--shell-hover); }
+.nav-lang-item.is-active { background-color: hsl(var(--primary) / 0.12); color: hsl(var(--primary)); font-weight: 600; }
+.nav-lang-item.is-active:hover { background-color: hsl(var(--primary) / 0.16); }
+.nav-lang-code {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
+}
+.nav-lang-item.is-active .nav-lang-code { background-color: hsl(var(--primary) / 0.14); color: hsl(var(--primary)); }
+.nav-lang-name { flex: 1; min-width: 0; }
+.nav-lang-check { width: 16px; height: 16px; flex: none; color: hsl(var(--primary)); }
+/* Tungi rejimda yarim shaffof teal qora fonda kuchsizroq ko'rinadi — biroz to'yinroq. */
+html.dark .nav-lang-item.is-active { background-color: hsl(var(--primary) / 0.18); }
+html.dark .nav-lang-item.is-active:hover { background-color: hsl(var(--primary) / 0.24); }
+html.dark .nav-lang-item.is-active .nav-lang-code { background-color: hsl(var(--primary) / 0.22); }
 .nav-kbd {                 /* "Ctrl K" chip */
   font-size: 11px;
   font-weight: 600;

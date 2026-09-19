@@ -11,7 +11,7 @@ import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
 import { useTaskInbox } from "@/components/shared/TaskInboxProvider";
 import { badgeLabel } from "@/lib/notifications";
-import type { Lang } from "@/lib/i18n";
+import { LANGS as LANG_CODES, type Lang } from "@/lib/i18n";
 import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { useBranch } from "@/components/shared/BranchContext";
@@ -21,6 +21,7 @@ import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { Check, ChevronDown, Globe } from "lucide-react";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
 
@@ -403,21 +404,45 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
           )}
         </div>
 
+        {/* Til tanlovi — kapsula: globus + tilning TO'LIQ nomi + chevron
+            (19.09.2026 dizayni). Ilgari bayroq + "O'zb" qisqartmasi edi.
+            Ro'yxatda har tilning ikki harfli belgisi (`code`) va tanlangan
+            qatorda galochka. Ikonkalar lucide'dan: `i-check` sprite id'si
+            TasksPage sahifa sprite'ida bor, ikkinchi nusxasi takroriy DOM id
+            bo'lardi (yuqoridagi `i-clock-alert` izohi). Uslublar
+            globals.css → "Til tanlovi" (.nav-lang*). */}
         <div className="hidden md:flex items-center ml-auto">
           <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); toggleMenu("lang"); }} className="dropdown-trigger inline-flex items-center gap-1.5 h-9 px-2 rounded-lg text-sm hover:bg-secondary" style={{ color: "var(--shell-text)" }}>
-              <span className="text-base leading-none">{LANGUAGES[lang].flag}</span>
-              <span className="text-sm">{LANGUAGES[lang].short}</span>
-              <svg className="icon icon-xs" style={{ color: "var(--shell-blue)" }}><use href="#i-chevron-down" /></svg>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggleMenu("lang"); }}
+              className={`dropdown-trigger nav-lang ${openMenu === "lang" ? "is-open" : ""}`}
+              aria-haspopup="listbox"
+              aria-expanded={openMenu === "lang"}
+              title={t("Til")}
+            >
+              <Globe aria-hidden="true" />
+              <span>{LANGUAGES[lang].name}</span>
+              <ChevronDown className="nav-lang-chev" aria-hidden="true" />
             </button>
-            <div className={`${openMenu === "lang" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-44 rounded-xl border border-border bg-card shadow-xl overflow-hidden p-1`}>
-              {(Object.keys(LANGUAGES) as Array<keyof typeof LANGUAGES>).map((code) => (
+            <div
+              role="listbox"
+              aria-label={t("Tilni tanlang")}
+              className={`${openMenu === "lang" ? "ui-pop-in" : "hidden"} dropdown-menu nav-lang-menu absolute top-full right-0 mt-2 z-50 border border-border bg-card shadow-xl`}
+            >
+              <div className="nav-lang-head">{t("Tilni tanlang")}</div>
+              {LANG_CODES.map((code) => (
                 <button
                   key={code}
-                  onClick={() => setLang(code as Lang)}
-                  className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm font-medium hover:bg-secondary text-left ${lang === code ? "bg-blue-50 text-primary font-semibold" : ""}`}
+                  type="button"
+                  role="option"
+                  aria-selected={lang === code}
+                  onClick={() => setLang(code)}
+                  className={`nav-lang-item ${lang === code ? "is-active" : ""}`}
                 >
-                  <span className="text-base leading-none">{LANGUAGES[code].flag}</span><span>{LANGUAGES[code].name}</span>
+                  <span className="nav-lang-code" aria-hidden="true">{LANGUAGES[code].code}</span>
+                  <span className="nav-lang-name">{LANGUAGES[code].name}</span>
+                  {lang === code && <Check className="nav-lang-check" aria-hidden="true" />}
                 </button>
               ))}
             </div>

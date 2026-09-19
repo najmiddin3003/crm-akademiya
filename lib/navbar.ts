@@ -10,6 +10,8 @@ export interface LanguageInfo {
   flag: string;
   name: string;
   short: string;
+  /** Navbar ro'yxatidagi ikki harfli belgi: UZ / ЎЗ / EN. */
+  code: string;
 }
 
 export const LANGS = LANGUAGES as Record<string, LanguageInfo>;
