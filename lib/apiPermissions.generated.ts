@@ -13,6 +13,8 @@ export const PUBLIC_API: readonly string[] = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/auth/resend-invite",
+  "/api/auth/force-logout",
+  "/api/auth/logout",
   "/api/sync/cron",
   "/api/telegram/webhook",
   "/api/telegram/student",
@@ -29,9 +31,7 @@ export const PUBLIC_API_METHODS: Record<string, readonly string[]> = {
 /** Sessiya yetarli — qo'shimcha ruxsat talab qilinmaydi. */
 export const SHARED_API: readonly string[] = [
   "/api/auth/change-password",
-  "/api/auth/force-logout",
   "/api/auth/lock",
-  "/api/auth/logout",
   "/api/auth/unlock",
   "/api/branch",
   "/api/home-stats",

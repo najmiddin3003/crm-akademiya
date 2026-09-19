@@ -31,6 +31,15 @@ const PUBLIC = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/auth/resend-invite",
+  // Chiqish — sessiyasi ENDI AMAL QILMAYDIGAN (bloklangan, muzlatilgan,
+  // o'chirilgan) xodim ham cookie'sini tozalay olishi kerak. Ilgari bu
+  // route "sessiya" darajasida edi: proxy uni handler'gacha 401 bilan
+  // to'sardi, (app) layout esa shu route'ga yo'naltirardi — foydalanuvchi
+  // `{"ok":false,"error":"Sessiya amal qilmaydi"}` JSON'ida qolib ketardi
+  // (19.09.2026, dev'da vaqtinchalik admin o'chirilganda ko'rindi).
+  // Xavfi yo'q: ikkalasi ham faqat o'z cookie'sini o'chiradi.
+  "/api/auth/force-logout",
+  "/api/auth/logout",
   // CRON_SECRET sarlavhasi bilan himoyalangan (app/api/sync/cron/route.ts).
   "/api/sync/cron",
   // Chaqiruvchi — Telegram serveri, uning sessiyasi yo'q. TELEGRAM_WEBHOOK_SECRET
