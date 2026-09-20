@@ -51,6 +51,6 @@ next-env.d.ts
 scripts/_backup-merged-employees.json
 # O'chirilgan yozuvlarning zaxiralari — ular ham shaxsiy ma'lumot saqlaydi.
 scripts/_deleted-*.json
-scripts/_course-branches-backup-*.json
+scripts/_course-prices-backup-*.json
 scripts/_plastik-migration-backup.json
 .salarytest/
