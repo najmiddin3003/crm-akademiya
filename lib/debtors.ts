@@ -3,7 +3,7 @@ import { withBranch, type BranchScope } from "@/lib/branchScope";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
-import type { DebtIssue, DebtorGroupPart, DebtorRow, DebtorsReport, GroupIssue } from "@/lib/debtorsTypes";
+import { lessonsPerMonthFor, type DebtIssue, type DebtorGroupPart, type DebtorRow, type DebtorsReport, type GroupIssue, type MonthlySummary } from "@/lib/debtorsTypes";
 import { findCourseByName } from "@/lib/courseLevels";
 import { groupWeekdays } from "@/lib/attendance";
 import {
@@ -45,15 +45,16 @@ import {
 //     o'quvchida muzlatilgan kun (`pupils.statusChangedAt`).
 //     "Yig'ilayotgan" (gathering) guruh darslari boshlanmagan — sanalmaydi.
 //
-//   • BITTA DARS NARXI — Oflayn kurslar bo'limidagi "Bitta dars narxi"
-//     (`offline_courses`): guruhning bosqichi (`level`) bo'lsa va shu
-//     filialda bosqich narxi (`levels[].branches[].summa`) kiritilgan bo'lsa
-//     — o'sha; aks holda kursning filial narxi (`branches[].price`). Ikkalasi
-//     ham yo'q — narx NOMA'LUM (issue "price"): summa to'qib chiqarilmaydi.
-//     Foydalanuvchi qoidasi: "1 oyda 13 ta dars bo'ladi har bitta fanda" —
-//     kursdagi dars narxi aynan oylik ÷ 13 (LESSONS_PER_MONTH,
-//     scripts/set-course-prices.mjs); sahifa oylik ekvivalentni shundan
-//     ko'rsatadi.
+//   • NARX — Oflayn kurslar bo'limidagi OYLIK narx (`offline_courses`; rasmiy
+//     2026–2027 ro'yxat, scripts/set-course-prices.mjs): guruhning bosqichi
+//     (`level`) bo'lsa va shu filialda bosqich narxi (`levels[].branches[].summa`)
+//     kiritilgan bo'lsa — o'sha; aks holda kursning filial narxi
+//     (`branches[].price`). Ikkalasi ham yo'q — narx NOMA'LUM (issue "price").
+//     BITTA DARS NARXI = oylik ÷ shu guruh jadvalidagi oylik darslar soni
+//     (lib/debtorsTypes.ts → lessonsPerMonthFor: haftasiga 3 kun → 13,
+//     5 kun → 22, 2 kun → 9) — foydalanuvchi qoidasi "1 oyda 13 ta dars"
+//     3 kunlik jadval uchun; har kuni o'qiydigan guruh (topik) ham oyiga
+//     aynan oylik narxni to'laydi.
 //
 //   • TO'LANGAN — /api/students/balances bilan AYNAN bir xil manba va shart
 //     (lib/studentRefund.ts → studentBalanceMatch: bekor qilinmagan payIn
@@ -95,12 +96,21 @@ interface PricedCourse {
 type GroupDoc = Group & { branchId?: number | null; archivedAt?: string | null };
 
 /**
- * Guruh uchun bitta dars narxi (yuqoridagi qoida). `null` — topilmadi.
+ * Oylik narx bundan kichik bo'lishi mumkin emas (ro'yxatdagi eng pasti
+ * 280 000). Kichigi — eski "bitta dars narxi" (21 538 kabi) qolib ketgan
+ * hujjat: uni oylik deb olsak qarz 13 barobar kam chiqardi. Shunday qiymat
+ * "narx kiritilmagan" deb olinadi — sahifada ogohlantirish chiqadi,
+ * scripts/set-course-prices.mjs qayta yurgiziladi.
+ */
+const MIN_MONTHLY_PRICE = 50_000;
+
+/**
+ * Guruh uchun OYLIK narx (yuqoridagi qoida). `null` — topilmadi.
  *
  * Musbat bo'lmagan narx (0) "kiritilmagan" deb olinadi: kurs formasi
  * o'chirilgan filialga ham `price: 0` yozadi.
  */
-export function lessonPriceFor(
+export function monthlyPriceFor(
   group: Pick<GroupDoc, "course" | "level" | "branchId">,
   courses: PricedCourse[],
 ): number | null {
@@ -113,11 +123,21 @@ export function lessonPriceFor(
   if (levelKey) {
     const level = (course.levels ?? []).find((l) => norm(l.name) === levelKey);
     const lb = level?.branches?.find((b) => Number(b.id) === branchId && b.enabled);
-    if (lb && Number(lb.summa) > 0) return Number(lb.summa);
+    if (lb && Number(lb.summa) >= MIN_MONTHLY_PRICE) return Number(lb.summa);
   }
   const cb = (course.branches ?? []).find((b) => Number(b.id) === branchId && b.enabled);
-  if (cb && Number(cb.price) > 0) return Number(cb.price);
+  if (cb && Number(cb.price) >= MIN_MONTHLY_PRICE) return Number(cb.price);
   return null;
+}
+
+/** Guruh jadvali uchun oydagi darslar soni (lib/debtorsTypes.ts → lessonsPerMonthFor). */
+export function lessonsPerMonthOf(day: string | undefined | null): number {
+  return lessonsPerMonthFor(groupWeekdays(day).length);
+}
+
+/** Bitta dars narxi = oylik ÷ shu jadvaldagi oylik darslar soni. */
+export function lessonPriceOf(monthly: number | null, day: string | undefined | null): number | null {
+  return monthly === null ? null : Math.round(monthly / lessonsPerMonthOf(day));
 }
 
 /** Guruh darslari hali boshlanmagan holat (lib/groupRules.ts → "gathering"). */
@@ -126,7 +146,24 @@ const NOT_STARTED_STATUS = "gathering";
 const minIso = (a: string, b: string | null) => (b !== null && b < a ? b : a);
 const maxIso = (a: string, b: string | null) => (b !== null && b > a ? b : a);
 
-export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): Promise<DebtorsReport> {
+/** "2026-09" → oyning birinchi va oxirgi kuni ("YYYY-MM-DD"). */
+function monthBounds(month: string): { from: string; to: string } {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
+}
+
+/**
+ * @param month — ixtiyoriy "YYYY-MM": berilsa javobda shu oy jamlanmasi
+ *   (`month`) ham qaytadi — oy bo'yicha KUTILAYOTGAN pul (oyning hamma dars
+ *   kunlari, hisob sanasidan keyingilari ham) va shu oyda TUSHGAN pul.
+ */
+export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, month?: string): Promise<DebtorsReport> {
+  const mb = month ? monthBounds(month) : null;
+  const emptyMonth: MonthlySummary | undefined = month
+    ? { month, expected: 0, received: 0, remaining: 0, students: 0, lessons: 0 }
+    : undefined;
+
   // 1) Joriy filial guruhlari — arxivlanganlari ham (a'zolik davridagi
   //    darslar qarz bo'lib qoladi). `arxivTugaganGuruhlarimiz` ga qaralmaydi:
   //    o'tgan mavsum, a'zolik yozuvlari ham u guruhlarga yo'q.
@@ -139,7 +176,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
       },
     })
     .toArray();
-  if (groups.length === 0) return { asOf, rows: [], issues: [] };
+  if (groups.length === 0) return { asOf, rows: [], issues: [], month: emptyMonth };
   const groupById = new Map(groups.map((g) => [g.id, g]));
 
   // 2) A'zolik oraliqlari — shu guruhlar bo'yicha hammasi (yopilganlari ham).
@@ -150,11 +187,22 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
       { projection: { _id: 0, groupId: 1, pupilId: 1, joinedAt: 1, leftAt: 1 } },
     )
     .toArray();
-  if (memberships.length === 0) return { asOf, rows: [], issues: [] };
+  if (memberships.length === 0) return { asOf, rows: [], issues: [], month: emptyMonth };
 
   // 3) O'quvchilar, kurs narxlari, to'lovlar — parallel.
   const pupilIds = [...new Set(memberships.map((m) => m.pupilId))];
-  const [pupils, courses, payments] = await Promise.all([
+  // To'langan — balans qoidasi + sana chegarasi. Yig'indi Mongo'da, ism
+  // kaliti JS'da (app/api/students/balances/route.ts izohiga qarang:
+  // o'zbek harflarida `$toLower` ishonchsiz).
+  const paidBetween = (from: string | null, to: string) =>
+    db
+      .collection("transaction_entries")
+      .aggregate<{ _id: unknown; total: number }>([
+        { $match: { $and: [studentBalanceMatch(), { date: from ? { $gte: from, $lte: to } : { $lte: to } }] } },
+        { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
+      ])
+      .toArray();
+  const [pupils, courses, payments, monthPayments] = await Promise.all([
     db
       .collection<Pupil>("pupils")
       .find(
@@ -166,30 +214,27 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
       .collection<PricedCourse>("offline_courses")
       .find({}, { projection: { _id: 0, name: 1, branches: 1, levels: 1 } })
       .toArray(),
-    // To'langan — balans qoidasi + sana chegarasi. Yig'indi Mongo'da, ism
-    // kaliti JS'da (app/api/students/balances/route.ts izohiga qarang:
-    // o'zbek harflarida `$toLower` ishonchsiz).
-    db
-      .collection("transaction_entries")
-      .aggregate<{ _id: unknown; total: number }>([
-        { $match: { $and: [studentBalanceMatch(), { date: { $lte: asOf } }] } },
-        { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
-      ])
-      .toArray(),
+    paidBetween(null, asOf),
+    mb ? paidBetween(mb.from, mb.to) : Promise.resolve([]),
   ]);
   const pupilById = new Map(pupils.map((p) => [p.id, p]));
 
-  const paidByName = new Map<string, number>();
-  for (const r of payments) {
-    const key = norm(String(r._id ?? ""));
-    if (!key) continue;
-    paidByName.set(key, (paidByName.get(key) ?? 0) + (Number(r.total) || 0));
-  }
+  const sumByName = (rows: { _id: unknown; total: number }[]) => {
+    const out = new Map<string, number>();
+    for (const r of rows) {
+      const key = norm(String(r._id ?? ""));
+      if (!key) continue;
+      out.set(key, (out.get(key) ?? 0) + (Number(r.total) || 0));
+    }
+    return out;
+  };
+  const paidByName = sumByName(payments);
+  const monthPaidByName = sumByName(monthPayments);
 
   // Guruh bo'yicha bir marta hisoblanadigan narsalar.
   const priceByGroup = new Map<number, number | null>();
-  const priceOf = (g: GroupDoc): number | null => {
-    if (!priceByGroup.has(g.id)) priceByGroup.set(g.id, lessonPriceFor(g, courses));
+  const monthlyOf = (g: GroupDoc): number | null => {
+    if (!priceByGroup.has(g.id)) priceByGroup.set(g.id, monthlyPriceFor(g, courses));
     return priceByGroup.get(g.id) ?? null;
   };
 
@@ -204,6 +249,9 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
       issueByGroup.set(key, { groupId: g.id, group: groupLabel(g), course: g.course || "", level: g.level || "", issue });
     }
   };
+  // Oy jamlanmasi: o'quvchi → shu oydagi hisob (kutilayotgan).
+  const monthExpectedByPupil = new Map<number, number>();
+  let monthLessons = 0;
 
   for (const m of memberships) {
     const g = groupById.get(m.groupId);
@@ -212,8 +260,9 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
     if ((g.status || "") === NOT_STARTED_STATUS) continue;
 
     const issues: DebtIssue[] = [];
-    const lessonPrice = priceOf(g);
-    if (lessonPrice === null) issues.push("price");
+    const monthlyPrice = monthlyOf(g);
+    const lessonPrice = lessonPriceOf(monthlyPrice, g.day);
+    if (monthlyPrice === null) issues.push("price");
     if (groupWeekdays(g.day).length === 0) issues.push("schedule");
 
     // Boshlangan kun: a'zolik sanasi, bo'lmasa guruh boshi; guruh boshidan
@@ -223,16 +272,30 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
     const start = joined !== null ? maxIso(joined, groupStart) : groupStart;
     if (start === null) issues.push("start");
 
-    // Tugash kuni: hisob sanasi, undan oldin — chiqarilgan kun, guruh tugashi,
-    // muzlatilgan kun. Muzlatilgan o'quvchi guruhda qoladi, lekin dars
-    // olmaydi; arxivlangan esa a'zolikdan chiqariladi (leftAt).
-    let end = minIso(asOf, isoDateOrNull(m.leftAt));
-    end = minIso(end, groupEndIso(g));
-    if ((g.status || "") === "archive") end = minIso(end, isoDateOrNull(g.archivedAt));
-    if (pupilStatusOf(p) === "Muzlatilgan") end = minIso(end, isoDateOrNull(p.statusChangedAt));
+    // Tugash chegarasi (hisob sanasidan MUSTAQIL qismi): chiqarilgan kun,
+    // guruh tugashi, arxivlangan kun, muzlatilgan kun. Muzlatilgan o'quvchi
+    // guruhda qoladi, lekin dars olmaydi; arxivlangan esa a'zolikdan
+    // chiqariladi (leftAt).
+    const bounds: (string | null)[] = [isoDateOrNull(m.leftAt), groupEndIso(g)];
+    if ((g.status || "") === "archive") bounds.push(isoDateOrNull(g.archivedAt));
+    if (pupilStatusOf(p) === "Muzlatilgan") bounds.push(isoDateOrNull(p.statusChangedAt));
+    let bound: string | null = null;
+    for (const b of bounds) if (b !== null) bound = bound === null ? b : minIso(bound, b);
+    const end = minIso(asOf, bound);
 
-    const counted = start !== null && issues.length === 0 ? lessonDaysBetween(g.day, start, end) : { count: 0, last: null };
+    const ok = start !== null && issues.length === 0;
+    const counted = ok ? lessonDaysBetween(g.day, start, end) : { count: 0, last: null };
     for (const issue of issues) addIssue(g, issue);
+
+    // Oy jamlanmasi — oyning HAMMA dars kunlari (bugundan keyingilari ham),
+    // a'zolik/guruh chegaralari ichida.
+    if (mb && ok && lessonPrice !== null) {
+      const inMonth = lessonDaysBetween(g.day, maxIso(mb.from, start), minIso(mb.to, bound)).count;
+      if (inMonth > 0) {
+        monthLessons += inMonth;
+        monthExpectedByPupil.set(m.pupilId, (monthExpectedByPupil.get(m.pupilId) ?? 0) + inMonth * lessonPrice);
+      }
+    }
 
     let perGroup = parts.get(m.pupilId);
     if (!perGroup) parts.set(m.pupilId, (perGroup = new Map()));
@@ -247,6 +310,8 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
         lessons: counted.count,
         startDate: start,
         lastDate: counted.last,
+        monthlyPrice,
+        lessonsPerMonth: lessonsPerMonthOf(g.day),
         lessonPrice,
         charged: lessonPrice === null ? 0 : counted.count * lessonPrice,
         issues,
@@ -296,5 +361,18 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
   rows.sort((a, b) => b.debt - a.debt || a.name.localeCompare(b.name));
 
   const issues = [...issueByGroup.values()].sort((a, b) => a.group.localeCompare(b.group) || a.issue.localeCompare(b.issue));
-  return { asOf, rows, issues };
+
+  // Oy jamlanmasi: kutilayotgan — shu oyda darsi bo'lgan o'quvchilar bo'yicha;
+  // tushgan — a'zoligi bor HAMMA o'quvchining shu oydagi to'lovi (darsi hali
+  // boshlanmagan bo'lsa ham to'lagan bo'lishi mumkin).
+  let monthSummary = emptyMonth;
+  if (month && mb) {
+    let expected = 0;
+    for (const v of monthExpectedByPupil.values()) expected += v;
+    let received = 0;
+    for (const p of pupils) received += monthPaidByName.get(norm(pupilFullName(p))) ?? 0;
+    monthSummary = { month, expected, received, remaining: expected - received, students: monthExpectedByPupil.size, lessons: monthLessons };
+  }
+
+  return { asOf, rows, issues, month: monthSummary };
 }

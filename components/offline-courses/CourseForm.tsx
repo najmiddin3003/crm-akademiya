@@ -125,14 +125,17 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
       </div>
 
       {/* Branch availability */}
-      <h3 className="text-base font-semibold mt-2">{t("Shu dars o'qitiladigan filiallarni tanlang va bitta dars narxini kiriting")}</h3>
+      {/* OYLIK narx (20.09.2026 dan; ilgari "bitta dars narxi" edi). Bitta
+          dars narxini Qarzdorlar hisoboti o'zi chiqaradi: oylik ÷ guruh
+          jadvalidagi oylik darslar soni (lib/debtorsTypes.ts). */}
+      <h3 className="text-base font-semibold mt-2">{t("Shu dars o'qitiladigan filiallarni tanlang va oylik narxini kiriting")}</h3>
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-border">
             <tr className="text-foreground/70">
               <th className="text-left px-6 py-4 font-semibold text-[14px] w-40">{t("Mavjudligi")}</th>
               <th className="text-left px-6 py-4 font-semibold text-[14px]">{t("Filiallar")}</th>
-              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Bitta dars narxi")}</th>
+              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Oylik narx")}</th>
             </tr>
           </thead>
           <tbody>

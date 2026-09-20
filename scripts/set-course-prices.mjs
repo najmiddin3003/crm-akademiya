@@ -10,10 +10,15 @@
 // NIMA VA NEGA (20.09.2026, Qarzdorlar hisoboti uchun — lib/debtors.ts)
 //
 // Manba — "AKADEMIYA 2026–2027 o'quv yili KURS NARXLARI" rasmi (foydalanuvchi
-// yubordi), OYLIK narxlar. Bazada (`offline_courses`) esa "Bitta dars narxi"
-// saqlanadi; foydalanuvchi qoidasi — "1 oyda 13 ta dars bo'ladi har bitta
-// fanda", ya'ni dars narxi = round(oylik / 13). Mavjud qiymatlar (Ingliz
-// tili 21 538 = 280 000/13 va h.k.) aynan shu formula bilan turibdi.
+// yubordi), OYLIK narxlar. Bazada (`offline_courses`) ham 20.09.2026 dan
+// OYLIK narx saqlanadi (birinchi yurgizishda oylik ÷ 13 = "bitta dars
+// narxi" yozilgan edi — Edutizim importidagi 21 538 = 280 000/13 kabi).
+// Bitta dars narxini hisobot o'zi chiqaradi: oylik ÷ guruh jadvalidagi
+// oylik darslar soni (lib/debtorsTypes.ts → lessonsPerMonthFor: haftasiga
+// 3 kun → 13, 5 kun → 22, 2 kun → 9) — har kuni o'qiydigan "topik" ham
+// oyiga aynan 400 000 to'laydi, 22 × 30 769 emas. Qayta yurgizish
+// XAVFSIZ: mavjud qiymat qanday bo'lishidan qat'i nazar ro'yxatdagi oylik
+// narx yoziladi.
 //
 // Kurs hujjatlaridagi filial ro'yxati ESKI edi (import davridagi uchta
 // yozuv: "Akademiya 2-filial", "Akademiya 3-filial", "Akademiya" — narx faqat
@@ -34,8 +39,8 @@
 // kursdan (nomi va rangi) ko'chiriladi — aks holda unga bosqichli guruh
 // ochib bo'lmasdi.
 //
-// Kurs darajasidagi "Bitta dars narxi" (bosqichsiz guruhlar uchun — masalan
-// 4-filialning barcha guruhlari) — oilaning ENG PAST qatori (280 000).
+// Kurs darajasidagi narx (bosqichsiz guruhlar uchun — masalan 4-filialning
+// barcha guruhlari) — oilaning ENG PAST qatori (280 000).
 //
 // XAVFSIZLIK: `--apply` bo'lmasa hech narsa yozilmaydi; yozishdan oldin
 // eski `branches`/`levels` zaxira faylga tushadi, `--undo` aynan qaytaradi.
@@ -58,9 +63,8 @@ const UNDO_FILE = UNDO_AT >= 0 ? args[UNDO_AT + 1] : null;
 const BR_AT = args.indexOf("--branches");
 const ONLY_BRANCHES = BR_AT >= 0 ? String(args[BR_AT + 1] || "").split(",").map(Number).filter(Number.isFinite) : null;
 
-/** Foydalanuvchi qoidasi: oyda 13 ta dars. */
-const LESSONS_PER_MONTH = 13;
-const perLesson = (monthly) => Math.round(monthly / LESSONS_PER_MONTH);
+/** Bazaga OYLIK narxning o'zi yoziladi (yuqoridagi izoh). */
+const stored = (monthly) => monthly;
 
 /** Rasmdagi OYLIK narxlar (so'm). Kalit — bazadagi bosqich nomi (kichik harfda solishtiriladi). */
 const FAMILIES = {
@@ -147,7 +151,7 @@ async function main() {
   function rebuild(oldList, key, monthly) {
     const old = new Map((oldList ?? []).map((b) => [Number(b.id), b]));
     return branches.map((b) => {
-      if (selected.includes(b)) return { id: b.id, name: b.name, enabled: true, [key]: perLesson(monthly) };
+      if (selected.includes(b)) return { id: b.id, name: b.name, enabled: true, [key]: stored(monthly) };
       const prev = old.get(b.id);
       // Eski nomli (import davridagi) yozuv id bo'yicha mos kelsa ham u
       // boshqa filialniki — faqat nomi hozirgi bilan bir xil bo'lsa saqlanadi.

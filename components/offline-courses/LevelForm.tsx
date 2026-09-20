@@ -134,7 +134,7 @@ function LevelFormBody({ courseId, editing }: { courseId: number; editing?: Cour
             <tr className="text-foreground/70">
               <th className="text-left px-6 py-4 font-semibold text-[14px] w-40">{t("Mavjudligi")}</th>
               <th className="text-left px-6 py-4 font-semibold text-[14px]">{t("Filiallar")}</th>
-              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Summa")}</th>
+              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Oylik narx")}</th>
             </tr>
           </thead>
           <tbody>

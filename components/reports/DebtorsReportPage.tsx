@@ -5,13 +5,14 @@ import { AlertTriangle, MoreVertical } from "lucide-react";
 import Link from "@/components/ui/Link";
 import Pagination from "@/components/ui/Pagination";
 import DateField from "@/components/ui/DateField";
+import MonthYearPicker, { monthYearFromIso, monthYearToIso } from "@/components/ui/MonthYearPicker";
 import Segmented from "@/components/ui/Segmented";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import PersonLink from "@/components/shared/PersonDirectory";
 import { useT } from "@/components/shared/Language";
 import { downloadTableCsv, downloadTableExcel, type Cell } from "@/lib/exportTable";
-import { LESSONS_PER_MONTH, type DebtIssue, type DebtorRow, type DebtorsReport } from "@/lib/debtorsTypes";
+import type { DebtIssue, DebtorRow, DebtorsReport } from "@/lib/debtorsTypes";
 import { uzDateIso } from "@/lib/uzTime";
 
 // Hisobotlar → Qarzdor o'quvchilar (href /reports-unpaid).
@@ -76,6 +77,9 @@ export default function DebtorsReportPage() {
   // Hisob sanasi — sukut bugun (Toshkent). Bo'sh qoldirilsa ham bugun.
   const [asOf, setAsOf] = useState(() => uzDateIso());
   const wanted = asOf || uzDateIso();
+  // Oylik jamlanma uchun oy — sukut joriy oy ("YYYY-MM").
+  const [month, setMonth] = useState(() => uzDateIso().slice(0, 7));
+  const requestKey = `${wanted}|${month}`;
 
   // Yuklanish holati ALOHIDA STATE EMAS — javobdagi `asOf` so'ralgan sana
   // bilan solishtiriladi (server so'ralgan `to` ni qaytaradi). Shunda
@@ -83,7 +87,8 @@ export default function DebtorsReportPage() {
   // almashganda eski javob "yangi" deb ko'rsatilmaydi.
   const [report, setReport] = useState<DebtorsReport | null>(null);
   const [error, setError] = useState<{ asOf: string; message: string } | null>(null);
-  const loading = report?.asOf !== wanted && error?.asOf !== wanted;
+  const reportKey = report ? `${report.asOf}|${report.month?.month ?? ""}` : "";
+  const loading = reportKey !== requestKey && error?.asOf !== requestKey;
 
   const [mode, setMode] = useState<Mode>("debtors");
   const [search, setSearch] = useState("");
@@ -95,16 +100,16 @@ export default function DebtorsReportPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/reports/debtors?to=${wanted}`)
+    fetch(`/api/reports/debtors?to=${wanted}&month=${month}`)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
         if (d?.ok) setReport(d as DebtorsReport);
-        else setError({ asOf: wanted, message: String(d?.error || "Hisobotni olib bo'lmadi") });
+        else setError({ asOf: requestKey, message: String(d?.error || "Hisobotni olib bo'lmadi") });
       })
-      .catch(() => { if (!cancelled) setError({ asOf: wanted, message: "Hisobotni olib bo'lmadi" }); });
+      .catch(() => { if (!cancelled) setError({ asOf: requestKey, message: "Hisobotni olib bo'lmadi" }); });
     return () => { cancelled = true; };
-  }, [wanted]);
+  }, [wanted, month, requestKey]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -117,7 +122,7 @@ export default function DebtorsReportPage() {
 
   // Faqat SO'RALGAN sanaga mos javob ko'rsatiladi — sana almashganda eski
   // jadval o'rniga spinner chiqadi.
-  const current = report?.asOf === wanted ? report : null;
+  const current = reportKey === requestKey ? report : null;
   const allRows = useMemo(() => current?.rows ?? [], [current]);
   const debtors = useMemo(() => allRows.filter((r) => r.debt > 0), [allRows]);
 
@@ -191,7 +196,7 @@ export default function DebtorsReportPage() {
   /* ---------- Bo'sh holat matni ---------- */
 
   let emptyText: string;
-  if (error && error.asOf === wanted) emptyText = t(error.message);
+  if (error && error.asOf === requestKey) emptyText = t(error.message);
   else if (allRows.length === 0) emptyText = t("Hisob sanasigacha guruhlarda dars bo'lmagan yoki guruhlarga o'quvchi qo'shilmagan");
   else if (filtered.length === 0 && !search.trim() && mode === "debtors") emptyText = t("Qarzdor o'quvchi yo'q");
   else emptyText = t("Ma'lumot topilmadi");
@@ -252,8 +257,40 @@ export default function DebtorsReportPage() {
       </div>
 
       <p className="text-[12px] text-muted-foreground">
-        {t("Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − to'langan.", { n: LESSONS_PER_MONTH })}
+        {t("Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi − to'langan. Bitta dars narxi = oylik narx (Oflayn kurslar) ÷ shu jadvaldagi oylik darslar soni (haftasiga 3 kun → 13, 5 kun → 22, 2 kun → 9).")}
       </p>
+
+      {/* OYLIK REJA (foydalanuvchi so'rovi): shu oyda hammadan qancha kutilyapti,
+          qanchasi tushdi, qanchasi qoldi. Kutilayotgan — oyning HAMMA dars
+          kunlari (kelajakdagilari ham), tushgan — shu oyda sana bo'yicha. */}
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-[13px] font-semibold">{t("Oylik reja")}</span>
+          <MonthYearPicker
+            value={monthYearFromIso(month)}
+            onChange={(v) => setMonth(monthYearToIso(v))}
+            className="w-[150px]"
+          />
+          <span className="text-[12px] text-muted-foreground">
+            {current?.month
+              ? t("{students} ta o'quvchi · {lessons} ta dars", { students: current.month.students, lessons: current.month.lessons })
+              : ""}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+          {[
+            { label: "Yig'ilishi kerak", value: current?.month ? fmt(current.month.expected) : "…", tone: "text-foreground", sub: t("oyning barcha darslari × narx") },
+            { label: "Tushdi", value: current?.month ? fmt(current.month.received) : "…", tone: "text-emerald-600", sub: t("shu oyda to'langan") },
+            { label: "Qoldi", value: current?.month ? fmt(current.month.remaining) : "…", tone: (current?.month?.remaining ?? 0) > 0 ? "text-rose-600" : "text-emerald-600", sub: t("yig'ilishi kerak − tushdi") },
+          ].map((c) => (
+            <div key={c.label} className="rounded-xl bg-secondary/40 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t(c.label)}</p>
+              <p className={`mt-1 font-bold tabular-nums text-[24px] ${c.tone}`}>{c.value}</p>
+              <p className="text-[11px] text-muted-foreground">{c.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Jamlanma */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -393,7 +430,7 @@ function DebtorTr({ row: r, index }: { row: DebtorRow; index: number }) {
                 ) : (
                   <span
                     className="tabular-nums"
-                    title={t("Oylik ekvivalenti: {monthly} ({price} × {n})", { monthly: fmt(g.lessonPrice * LESSONS_PER_MONTH), price: fmt(g.lessonPrice), n: LESSONS_PER_MONTH })}
+                    title={t("Oylik narx {monthly} ÷ oyda {n} dars = {price}", { monthly: fmt(g.monthlyPrice ?? 0), n: g.lessonsPerMonth, price: fmt(g.lessonPrice) })}
                   >
                     {g.startDate ? `${t("{date} dan", { date: isoToLabel(g.startDate) })} · ` : ""}
                     {g.lessons} × {fmt(g.lessonPrice)} = {fmt(g.charged)}

@@ -10,15 +10,29 @@ import type { PupilStatus } from "@/lib/pupilsData";
 // ("after ... only available in Server Components").
 
 /**
- * Oyda nechta dars — kursdagi "bitta dars narxi" bilan oylik to'lov
- * o'rtasidagi ko'prik. Hisobda ISHLATILMAYDI (narx allaqachon dars
- * uchun), faqat oylik ekvivalentni ko'rsatish uchun.
+ * Haftasiga 3 kun (Toq/Juft kunlar) o'qiydigan guruhda oyda nechta dars —
+ * foydalanuvchi qoidasi: "1 oyda 13 ta dars bo'ladi har bitta fanda".
+ * Boshqa jadvallar shundan proporsional olinadi (lessonsPerMonthFor).
  */
 export const LESSONS_PER_MONTH = 13;
 
 /**
+ * Guruh jadvalida haftasiga `weekdayCount` kun dars bo'lsa, oyda nechta
+ * dars: 3 kun → 13, 5 kun (Hafta kunlari) → 22, 2 kun → 9, 1 kun → 4.
+ *
+ * NEGA JADVALGA QARAB (20.09.2026): kurs narxi OYLIK (rasmiy ro'yxat:
+ * Sertifikat 400 000/oy). "topik" guruhi har kuni o'qiydi va o'quvchilari
+ * 400 000 to'laydi — oylik ÷ 13 qilinsa bir oyda 22 × 30 769 = 677 000
+ * hisoblanardi. Eski tizimda ham haftasiga 2 kunlik Arab tili oylik ÷ 9
+ * turgan edi — aynan shu formula.
+ */
+export function lessonsPerMonthFor(weekdayCount: number): number {
+  return Math.max(1, Math.round((weekdayCount * LESSONS_PER_MONTH) / 3));
+}
+
+/**
  * Guruh bo'yicha hisoblab bo'lmaslik sabablari:
- *   price    — kurs/bosqichda shu filial uchun bitta dars narxi yo'q;
+ *   price    — kurs/bosqichda shu filial uchun oylik narx yo'q;
  *   start    — o'quvchining guruhga qo'shilgan sanasi ham, guruhning
  *              boshlanish sanasi ham yo'q (nimadan sanashni bilib bo'lmaydi);
  *   schedule — guruhning dars kunlari (`day`) tanilmadi.
@@ -38,7 +52,11 @@ export interface DebtorGroupPart {
   startDate: string | null;
   /** Oxirgi sanalgan dars kuni ("YYYY-MM-DD"); dars bo'lmagan bo'lsa null. */
   lastDate: string | null;
-  /** Bitta dars narxi; `null` — kurs/bosqichda shu filial uchun narx yo'q. */
+  /** Oylik narx (Oflayn kurslar); `null` — kurs/bosqichda shu filial uchun narx yo'q. */
+  monthlyPrice: number | null;
+  /** Shu guruh jadvalida oyda nechta dars (lessonsPerMonthFor). */
+  lessonsPerMonth: number;
+  /** Bitta dars narxi = round(monthlyPrice / lessonsPerMonth); narx yo'q — null. */
   lessonPrice: number | null;
   /** lessons × lessonPrice (narx yo'q bo'lsa 0). */
   charged: number;
@@ -75,6 +93,26 @@ export interface GroupIssue {
   issue: DebtIssue;
 }
 
+/**
+ * Bitta OY bo'yicha jamlanma (foydalanuvchi so'rovi, 20.09.2026: "1 oyda
+ * o'quvchilardan qancha pul yig'ilishi kerak — masalan 50 mln kerak,
+ * 20 mln tushdi, 30 mln qarz").
+ */
+export interface MonthlySummary {
+  /** "YYYY-MM". */
+  month: string;
+  /** Shu oyda guruh jadvali bo'yicha o'tadigan (o'tgan) darslar × dars narxi — hamma a'zo bo'yicha. */
+  expected: number;
+  /** Shu oyda (sana bo'yicha) shu o'quvchilardan tushgan to'lovlar (qaytarimlar ayrilgan). */
+  received: number;
+  /** expected − received; musbat — hali yig'ilmagan. */
+  remaining: number;
+  /** Shu oyda darsi bo'lgan o'quvchilar soni. */
+  students: number;
+  /** Oy bo'yicha darslar soni (hamma a'zo). */
+  lessons: number;
+}
+
 export interface DebtorsReport {
   /** Hisob sanasi ("YYYY-MM-DD"). */
   asOf: string;
@@ -82,4 +120,6 @@ export interface DebtorsReport {
   rows: DebtorRow[];
   /** Hisoblab bo'lmagan guruhlar — sababi bilan (sahifa tepasidagi ogohlantirish). */
   issues: GroupIssue[];
+  /** So'ralgan oy bo'yicha jamlanma (`?month=YYYY-MM` berilganda). */
+  month?: MonthlySummary;
 }
