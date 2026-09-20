@@ -304,7 +304,7 @@ export const SIDEBAR_ITEMS = [
             // yangi sahifa emas, mavjud route'ga havola.
             { type: "text", label: "Kirim chiqim", href: "/finance-cashflow" },
             { type: "text", label: "Tushum rejasi", href: "/finance-revenue-plan" },
-            { type: "text", label: "O'quvchining umumiy to'lanmag...", href: "/reports-unpaid", truncate: true },
+            { type: "text", label: "Qarzdor o'quvchilar", href: "/reports-unpaid" },
             { type: "text", label: "Kurs narxidan farqli to'lovlar tra...", href: "/reports-diff-payments", truncate: true },
             { type: "text", label: "Bekor qilingan to'lovlar", href: "/reports-cancelled" },
             { type: "text", label: "Umumiy chegirmalar", href: "/reports-discounts" },

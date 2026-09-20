@@ -31,6 +31,8 @@
 import type { Db, Document, Filter } from "mongodb";
 import { withBranch, withPupilBranch, type BranchScope } from "./branchScope";
 import { withLeadScope } from "./leadScope";
+import { computeDebtors } from "./debtors";
+import { uzDateIso } from "./uzTime";
 
 export interface HomeKpi {
   key: string;
@@ -70,14 +72,13 @@ const KPIS: readonly KpiMeta[] = [
   // hisoblanardi, lekin bu qiymat bazaga HECH QAYERDA yozilmaydi (uni
   // faqat demo generator qo'yardi) — ya'ni haqiqiy bazada doim 0 edi.
   { key: "left-active", label: "Aktiv o'quvchidan ketganlar", bg: "#fee2e2", fg: "#dc2626", icon: "i-user", href: "/archive-students", note: "Bazada manba yo'q: aktivlikdan chiqish hodisasi (\"Yakunlandi\") saqlanmaydi." },
-  // MANBA YO'Q: tizim o'quvchi QANCHA TO'LASHI KERAKLIGINI yuritmaydi.
-  // /api/students/balances faqat TO'LANGAN pulni (payIn) qo'shadi va u
-  // hech qachon manfiy bo'lmaydi (kirim summasi musbat bo'lishi majburiy —
-  // app/api/cashboxes/[id]/adjust). Ya'ni "balansi manfiy o'quvchilar"
-  // doim 0 chiqardi — bu hisoblangandek ko'rinadigan qattiq 0.
-  // /reports-unpaid dagi `unpaid_students` kolleksiyasini ham hech bir kod
-  // to'ldirmaydi.
-  { key: "debtors", label: "Qarzdorlar", bg: "#e5e7eb", fg: "#111827", icon: "i-wallet", href: "/reports-unpaid", note: "Bazada manba yo'q: to'lanishi kerak bo'lgan summa yuritilmaydi, faqat to'langan pul saqlanadi." },
+  // 20.09.2026 gacha bu karta "—" edi: tizim o'quvchi QANCHA TO'LASHI
+  // KERAKLIGINI yuritmasdi (/api/students/balances faqat to'langan pulni
+  // qo'shadi). Endi manba bor — lib/debtors.ts: davomatda belgilangan
+  // darslar × bitta dars narxi − to'langan; karta /reports-unpaid
+  // sahifasining "Qarzdorlar" rejimi bilan AYNAN bir xil sonni beradi
+  // (bugungi sana, joriy filial guruhlari).
+  { key: "debtors", label: "Qarzdorlar", bg: "#e5e7eb", fg: "#111827", icon: "i-wallet", href: "/reports-unpaid" },
   { key: "groups", label: "Guruhlar", bg: "#dbeafe", fg: "#2563eb", icon: "i-users-group", href: "/groups" },
   // MANBA YO'Q: TransactionEntry'da "birinchi to'lov" tushunchasi yo'q —
   // to'lov yozuvi o'quvchining nechanchi to'lovi ekanini bilmaydi va
@@ -160,6 +161,18 @@ export async function computeHomeKpis({ db, scope, author, can }: HomeKpiInput):
   // GURUHLAR HAM FILIAL BO'YICHA KESILADI (qaror 2026-09-07) — /groups
   // sahifasi va sidebar sanog'i bilan bir xil qamrov.
   if (need.has("groups")) count("groups", "groups", withBranch({}, scope));
+
+  // QARZDORLAR — countDocuments emas, hisob (lib/debtors.ts): /reports-unpaid
+  // "Qarzdorlar" rejimidagi qatorlar soni — qarzi > 0 bo'lgan o'quvchilar,
+  // bugungi sana bo'yicha. Sahifa bilan bitta funksiya, ya'ni ikkita son
+  // hech qachon bir-biridan farq qilmaydi.
+  if (need.has("debtors")) {
+    jobs.push(
+      computeDebtors(db, scope, uzDateIso()).then((r) => {
+        values.debtors = r.rows.filter((x) => x.debt > 0).length;
+      }),
+    );
+  }
 
   await Promise.all(jobs);
 

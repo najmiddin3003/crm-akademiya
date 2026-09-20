@@ -1,6 +1,10 @@
 // Hisobotlar bo'limidagi o'quvchi to'lov/davomat hisobotlari uchun umumiy
 // tiplar. Har biri o'z MongoDB kolleksiyasiga ega:
-//   unpaid_students        → O'quvchining umumiy to'lanmagani
+//   unpaid_students        → (endi faqat xodim profilidagi "To'lanmagan
+//                            to'lovlar" tabi o'qiydi; /reports-unpaid
+//                            sahifasi 20.09.2026 dan lib/debtors.ts —
+//                            davomat × dars narxi − to'langan — bilan
+//                            ishlaydi, bu kolleksiyani hech kim to'ldirmaydi)
 //   price_differences      → Kurs narxidan farqli to'lovlar
 //   cancelled_payments     → Bekor qilingan to'lovlar
 //   student_discounts      → Umumiy chegirmalar
@@ -10,14 +14,6 @@
 // Seed'lar API route'larida `createInitialOrders()` dan (haqiqiy o'quvchi/
 // guruh/kurs/o'qituvchi nomlari) deterministik tarzda quriladi — shu sababli
 // hisobotlar loyihaning qolgan qismidagi ismlar bilan izchil bo'ladi.
-
-export interface UnpaidStudent {
-  id: number;
-  studentName: string;
-  groups: string; // Guruhlar (raqam yoki nom)
-  unpaidLessons: number; // To'lanmagan darslar
-  totalUnpaid: number; // Jami to'lanmagan
-}
 
 export interface PriceDifference {
   id: number;
