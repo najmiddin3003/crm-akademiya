@@ -116,15 +116,18 @@ function isoToDate(iso: string): Date {
 
 /**
  * `fromIso`..`toIso` (ikkalasi ham kiradi) oralig'ida guruh jadvaliga
- * to'g'ri keladigan dars kunlari soni va oxirgisi. `skip` — sanalmaydigan
- * kunlar (bayramlar, "YYYY-MM-DD"). Jadval tanilmasa (groupWeekdays bo'sh)
- * — 0: kun to'qib chiqarilmaydi.
+ * to'g'ri keladigan dars kunlari soni va oxirgisi. Jadval tanilmasa
+ * (groupWeekdays bo'sh) — 0: kun to'qib chiqarilmaydi.
+ *
+ * BAYRAM KUNLARI HAM SANALADI (foydalanuvchi qarori, 20.09.2026): ilgari
+ * Sozlamalar → Bayram kunlari chiqarib tashlanardi; foydalanuvchi "bayram
+ * kunida ham hisoblanishi kerak" dedi — dars kuni jadvalda bo'lsa, u
+ * to'lanadi.
  */
 export function lessonDaysBetween(
   day: string | undefined | null,
   fromIso: string,
   toIso: string,
-  skip?: Set<string>,
 ): { count: number; last: string | null } {
   const weekdays = groupWeekdays(day);
   if (weekdays.length === 0 || fromIso > toIso) return { count: 0, last: null };
@@ -133,32 +136,8 @@ export function lessonDaysBetween(
   const end = isoToDate(toIso);
   for (const d = isoToDate(fromIso); d <= end; d.setDate(d.getDate() + 1)) {
     if (!weekdays.includes(d.getDay())) continue;
-    const iso = toIsoDate(d);
-    if (skip?.has(iso)) continue;
     count += 1;
-    last = iso;
+    last = toIsoDate(d);
   }
   return { count, last };
-}
-
-/**
- * Sozlamalar → Bayram kunlari (`settings_holidays`: startDate..endDate)
- * dan sanalmaydigan kunlar to'plami. Bitta oraliq 366 kundan uzun
- * bo'lsa — buzilgan yozuv, kesiladi.
- */
-export async function loadHolidaySet(db: Db): Promise<Set<string>> {
-  const rows = await db
-    .collection<{ startDate?: string; endDate?: string }>("settings_holidays")
-    .find({}, { projection: { _id: 0, startDate: 1, endDate: 1 } })
-    .toArray();
-  const out = new Set<string>();
-  for (const r of rows) {
-    const from = isoDateOrNull(r.startDate);
-    if (!from) continue;
-    const to = isoDateOrNull(r.endDate) ?? from;
-    const end = isoToDate(to);
-    let n = 0;
-    for (const d = isoToDate(from); d <= end && n < 366; d.setDate(d.getDate() + 1), n++) out.add(toIsoDate(d));
-  }
-  return out;
 }

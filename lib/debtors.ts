@@ -12,7 +12,6 @@ import {
   groupStartIso,
   isoDateOrNull,
   lessonDaysBetween,
-  loadHolidaySet,
   type GroupMembership,
 } from "@/lib/groupMembership";
 
@@ -29,7 +28,8 @@ import {
 //     groupWeekdays) bo'yicha BOSHLANGAN KUNdan HISOB SANASIgacha (ikkalasi
 //     ham kiradi) tushadigan har bir dars kuni. Davomat qo'yilgan-qo'yilmagani
 //     AHAMIYATSIZ (foydalanuvchi: "guruhning darsi qaysi kuni bo'lsa avtomatik
-//     hisoblashi kerak"). Sozlamalar → Bayram kunlari sanalmaydi.
+//     hisoblashi kerak"). Bayram kunlari HAM sanaladi (foydalanuvchi qarori:
+//     "bayram kunida ham hisoblanishi kerak").
 //     20.09.2026 gacha darslar `attendance` belgilaridan sanalardi — davomat
 //     hech qachon qo'yilmagani uchun hisobot doim bo'sh edi.
 //
@@ -152,9 +152,9 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
     .toArray();
   if (memberships.length === 0) return { asOf, rows: [], issues: [] };
 
-  // 3) O'quvchilar, kurs narxlari, to'lovlar, bayramlar — parallel.
+  // 3) O'quvchilar, kurs narxlari, to'lovlar — parallel.
   const pupilIds = [...new Set(memberships.map((m) => m.pupilId))];
-  const [pupils, courses, payments, holidays] = await Promise.all([
+  const [pupils, courses, payments] = await Promise.all([
     db
       .collection<Pupil>("pupils")
       .find(
@@ -176,7 +176,6 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
         { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
       ])
       .toArray(),
-    loadHolidaySet(db),
   ]);
   const pupilById = new Map(pupils.map((p) => [p.id, p]));
 
@@ -232,7 +231,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string): 
     if ((g.status || "") === "archive") end = minIso(end, isoDateOrNull(g.archivedAt));
     if (pupilStatusOf(p) === "Muzlatilgan") end = minIso(end, isoDateOrNull(p.statusChangedAt));
 
-    const counted = start !== null && issues.length === 0 ? lessonDaysBetween(g.day, start, end, holidays) : { count: 0, last: null };
+    const counted = start !== null && issues.length === 0 ? lessonDaysBetween(g.day, start, end) : { count: 0, last: null };
     for (const issue of issues) addIssue(g, issue);
 
     let perGroup = parts.get(m.pupilId);

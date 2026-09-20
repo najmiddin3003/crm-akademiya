@@ -2057,7 +2057,7 @@
   "Qanday natija beradi": "What result it gives",
   "Qarindoshligi": "Relationship",
   "Qarz": "Debt",
-  "Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − to'langan. Bayram kunlari sanalmaydi.": "Debt = lessons on the group schedule from the start date to the as-of date × per-lesson price (Offline courses; monthly ÷ {n}) − paid. Holidays are not counted.",
+  "Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − to'langan.": "Debt = lessons on the group schedule from the start date to the as-of date × per-lesson price (Offline courses; monthly ÷ {n}) − paid.",
   "Qarz shu kundan, guruh jadvali bo'yicha hisoblanadi.": "Debt is calculated from this date by the group schedule.",
   "qarzdor": "in debt",
   "Qarzdor": "Debtor",

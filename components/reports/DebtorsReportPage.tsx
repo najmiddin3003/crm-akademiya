@@ -252,7 +252,7 @@ export default function DebtorsReportPage() {
       </div>
 
       <p className="text-[12px] text-muted-foreground">
-        {t("Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − to'langan. Bayram kunlari sanalmaydi.", { n: LESSONS_PER_MONTH })}
+        {t("Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − to'langan.", { n: LESSONS_PER_MONTH })}
       </p>
 
       {/* Jamlanma */}
