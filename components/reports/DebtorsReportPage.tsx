@@ -137,15 +137,24 @@ export default function DebtorsReportPage() {
   // Jamlanma — HAMMA davomati bor o'quvchi bo'yicha (qidiruvga bog'liq emas):
   // kartalar filialning umumiy holatini ko'rsatadi, jadval esa tanlangan
   // kesimni.
-  const totals = useMemo(
-    () => ({
+  //
+  // IKKI KESIM (foydalanuvchi savoli, 20.09.2026): "Hisoblangan" va
+  // "To'langan" HAMMA o'quvchi bo'yicha, "Jami qarz" esa faqat qarzdorlar
+  // bo'yicha — shuning uchun Hisoblangan − To'langan ≠ Jami qarz. Farq —
+  // oldindan to'laganlarning ortiqcha puli: birovning ortiqchasi boshqaning
+  // qarzini yopmaydi. Shu bois "Oldindan to'lagan" ham alohida karta va
+  // pastda sof qoldiq formulasi ko'rsatiladi.
+  const totals = useMemo(() => {
+    const prepaidRows = allRows.filter((r) => r.debt < 0);
+    return {
       debtors: debtors.length,
       debt: debtors.reduce((s, r) => s + r.debt, 0),
+      prepaidCount: prepaidRows.length,
+      prepaid: prepaidRows.reduce((s, r) => s - r.debt, 0),
       charged: allRows.reduce((s, r) => s + r.charged, 0),
       paid: allRows.reduce((s, r) => s + r.paid, 0),
-    }),
-    [allRows, debtors],
-  );
+    };
+  }, [allRows, debtors]);
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
@@ -247,19 +256,24 @@ export default function DebtorsReportPage() {
       </p>
 
       {/* Jamlanma */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: "Qarzdorlar", value: fmt(totals.debtors), tone: "text-rose-600" },
-          { label: "Jami qarz", value: fmt(totals.debt), tone: "text-rose-600" },
-          { label: "Hisoblangan", value: fmt(totals.charged), tone: "text-foreground" },
-          { label: "To'langan", value: fmt(totals.paid), tone: "text-emerald-600" },
+          { label: "Jami qarz", value: fmt(totals.debt), sub: t("{n} ta qarzdor", { n: totals.debtors }), tone: "text-rose-600" },
+          { label: "Oldindan to'lagan", value: fmt(totals.prepaid), sub: t("{n} ta o'quvchi", { n: totals.prepaidCount }), tone: "text-emerald-600" },
+          { label: "Hisoblangan", value: fmt(totals.charged), sub: t("{n} ta o'quvchi", { n: allRows.length }), tone: "text-foreground" },
+          { label: "To'langan", value: fmt(totals.paid), sub: t("{n} ta o'quvchi", { n: allRows.length }), tone: "text-emerald-600" },
+          { label: "Sof qoldiq", value: fmt(totals.charged - totals.paid), sub: t("Hisoblangan − To'langan"), tone: totals.charged - totals.paid > 0 ? "text-rose-600" : "text-emerald-600" },
         ].map((c) => (
           <div key={c.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t(c.label)}</p>
             <p className={`mt-1 font-bold tabular-nums text-[22px] ${c.tone}`}>{loading ? "…" : c.value}</p>
+            <p className="text-[11px] text-muted-foreground">{loading ? "" : c.sub}</p>
           </div>
         ))}
       </div>
+      <p className="text-[12px] text-muted-foreground -mt-2">
+        {t("Jami qarz faqat qarzdorlar bo'yicha; oldindan to'laganlarning ortiqcha puli boshqaning qarzini yopmaydi. Sof qoldiq = Jami qarz − Oldindan to'lagan.")}
+      </p>
 
       {/* Hisoblab bo'lmagan guruhlar — summa to'qib chiqarilmaydi, sabab bo'yicha ogohlantiriladi */}
       {current && (Object.keys(ISSUE_HINT) as DebtIssue[]).map((issue) => {
