@@ -83,13 +83,20 @@ export interface NavbarProps {
  * HECH QACHON bo'lmagan (referens saytdagi manzillar ko'chirilgan, lekin
  * sahifalari qurilmagan). Ya'ni menyu ochilardi-yu, ikkala tugma ham
  * 404 ga tushardi. Endi ular haqiqiy sahifalarga boradi:
- *   Buyurtma yaratish → /orders-list/add (Lidlar sahifasidagi "Buyurtma
- *                        qo'shish" bilan bir xil to'liq forma);
- *   Kassa             → /finance-cash (Moliya → Kassa: to'lov qabul qilish).
- * Ruxsat `isPathAllowed` bilan tekshiriladi — Sidebar'dagi qoida.
+ *   Buyurtma yaratish → /orders-list?add=1 — Lidlar ro'yxati ustida
+ *                        "Yangi buyurtma" oynasi (AddOrderModal) ochiq
+ *                        holda. 20.09.2026 gacha /orders-list/add ga
+ *                        borardi — bu Kanban'ning TO'LIQ SAHIFALI formasi
+ *                        (boshqa maydonlar: bosqich, mas'ul shaxs);
+ *                        foydalanuvchi aynan "yangi lid qo'shish oynasi"ni
+ *                        so'radi (components/orders/OrdersPage.tsx →
+ *                        `addFromUrl`).
+ *   Kassa             → /finance-cash (Moliya → Kassalar: to'lov qabul qilish).
+ * Ruxsat `isPathAllowed` bilan tekshiriladi — Sidebar'dagi qoida (u
+ * `?add=1` ni tashlab, faqat yo'lga qaraydi).
  */
 const QUICK_LINKS: { href: string; label: string; icon: string; tone: string }[] = [
-  { href: "/orders-list/add", label: "Buyurtma yaratish", icon: "#i-user-plus", tone: "bg-blue-100 text-blue-600" },
+  { href: "/orders-list?add=1", label: "Buyurtma yaratish", icon: "#i-user-plus", tone: "bg-blue-100 text-blue-600" },
   { href: "/finance-cash", label: "Kassa — to'lov qabul qilish", icon: "#i-wallet", tone: "bg-emerald-100 text-emerald-600" },
 ];
 

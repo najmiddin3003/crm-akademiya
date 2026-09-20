@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "@/components/ui/Link";
 import { Filter, FileSpreadsheet, FileText, MessageSquare, MoreVertical, Pencil, Printer, Settings, Share2, XCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
@@ -113,6 +113,21 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [orderModal, setOrderModal] = useState<{ mode: "add" } | { mode: "edit"; order: Order } | null>(null);
+  // "Yangi buyurtma" oynasi MANZILDAN ham ochiladi: /orders-list?add=1 —
+  // navbardagi "+" → "Buyurtma yaratish" shu havolaga olib boradi
+  // (components/shared/Navbar.tsx → QUICK_LINKS). Parametr — oynaning
+  // holati (state'ga ko'chirilmaydi): foydalanuvchi allaqachon shu
+  // sahifada turganda ham havola ishlashi kerak, `useState` boshlang'ich
+  // qiymati esa faqat birinchi chizishda o'qiladi. Naqsh GroupDetailPage
+  // dagi `?tab=` bilan bir xil; yopilganda parametr manzildan olib
+  // tashlanadi, aks holda sahifani yangilash oynani qayta ochardi.
+  const pathname = usePathname();
+  const addFromUrl = searchParams.get("add") === "1";
+  const activeModal = addFromUrl ? ({ mode: "add" } as const) : orderModal;
+  const closeOrderModal = () => {
+    setOrderModal(null);
+    if (addFromUrl) router.replace(pathname, { scroll: false });
+  };
   const [messageFor, setMessageFor] = useState<Order | null>(null);
   // Qatordagi "Chek chiqarish" — avval ko'rib chiqish oynasi (LeadReceipt).
   const [receiptFor, setReceiptFor] = useState<Order | null>(null);
@@ -738,16 +753,16 @@ export default function OrdersPage() {
         <OrdersKanban orders={filtered} onDropStage={handleDropStage} />
       )}
 
-      {orderModal && (
+      {activeModal && (
         <AddOrderModal
-          initialOrder={orderModal.mode === "edit" ? orderModal.order : undefined}
-          onClose={() => setOrderModal(null)}
+          initialOrder={activeModal.mode === "edit" ? activeModal.order : undefined}
+          onClose={closeOrderModal}
           onSave={async (values) => {
             const ok =
-              orderModal.mode === "edit"
-                ? await handleUpdateOrder(orderModal.order.id, values)
+              activeModal.mode === "edit"
+                ? await handleUpdateOrder(activeModal.order.id, values)
                 : await handleCreateOrder(values);
-            if (ok) setOrderModal(null);
+            if (ok) closeOrderModal();
           }}
         />
       )}
