@@ -11,21 +11,48 @@ import { useToast } from "@/components/ui/Toast";
 import PersonLink from "@/components/shared/PersonDirectory";
 import { useT } from "@/components/shared/Language";
 import { downloadTableCsv, downloadTableExcel, type Cell } from "@/lib/exportTable";
-import { LESSONS_PER_MONTH, type DebtorRow, type DebtorsReport } from "@/lib/debtorsTypes";
+import { LESSONS_PER_MONTH, type DebtIssue, type DebtorRow, type DebtorsReport } from "@/lib/debtorsTypes";
 import { uzDateIso } from "@/lib/uzTime";
 
 // Hisobotlar → Qarzdor o'quvchilar (href /reports-unpaid).
 //
 // ILGARI bu sahifa `unpaid_students` kolleksiyasidan o'qirdi — uni hech bir
-// kod to'ldirmasdi (bo'sh jadval). HOZIR: /api/reports/debtors — davomat ×
-// bitta dars narxi − to'langan (qoida va manbalar lib/debtors.ts da).
+// kod to'ldirmasdi (bo'sh jadval). HOZIR: /api/reports/debtors — guruh jadvali
+// bo'yicha o'tgan darslar × bitta dars narxi − to'langan (qoida va manbalar
+// lib/debtors.ts da).
 //
-// Sahifa serverdan HAMMA davomati bor o'quvchini oladi (qarzdor bo'lmaganlar
+// Sahifa serverdan a'zoligi bor HAMMA o'quvchini oladi (qarzdor bo'lmaganlar
 // ham) va rejimni o'zi almashtiradi: "Qarzdorlar" (qarz > 0, sukut) /
 // "Hammasi". Shunda rejim almashganda serverga qayta borilmaydi; ro'yxat
-// kichik (bir filialdagi davomati bor o'quvchilar).
+// kichik (bir filialdagi guruh a'zolari).
 
-const HEADERS = ["№", "O'quvchi", "Telefon", "Guruhlar", "Birinchi dars", "Darslar", "Hisoblangan", "To'langan", "Qarz"];
+const HEADERS = ["№", "O'quvchi", "Telefon", "Guruhlar", "Boshlangan", "Darslar", "Hisoblangan", "To'langan", "Qarz"];
+
+/** Guruh bo'yicha hisoblab bo'lmaslik sababi — qisqa yorliq (t() kaliti). */
+const ISSUE_LABEL: Record<DebtIssue, string> = {
+  price: "narx yo'q",
+  start: "boshlanish sanasi yo'q",
+  schedule: "dars kunlari yo'q",
+};
+
+/** Sahifa tepasidagi ogohlantirish matni va havolasi — sabab bo'yicha. */
+const ISSUE_HINT: Record<DebtIssue, { text: string; href: string; link: string }> = {
+  price: {
+    text: "{n} ta guruh uchun bitta dars narxi topilmadi — ularning darslari summaga kirmadi.",
+    href: "/offline-courses",
+    link: "Oflayn kurslar bo'limida shu filial uchun narxni kiriting",
+  },
+  start: {
+    text: "{n} ta guruhda boshlanish sanasi yo'q — qachondan sanashni bilib bo'lmaydi.",
+    href: "/groups",
+    link: "Guruhni tahrirlab \"Boshlanish sanasi\"ni kiriting",
+  },
+  schedule: {
+    text: "{n} ta guruhda dars kunlari tanilmadi — darslar sanalmadi.",
+    href: "/groups",
+    link: "Guruhni tahrirlab dars kunlarini tanlang",
+  },
+};
 
 const fmt = (n: number) => n.toLocaleString("ru-RU");
 
@@ -132,7 +159,7 @@ export default function DebtorsReportPage() {
       r.name,
       r.phone,
       r.groups.map((g) => `${g.group}: ${g.lessons} × ${g.lessonPrice === null ? "?" : g.lessonPrice}`).join("; "),
-      isoToLabel(r.firstDate),
+      r.startDate ? isoToLabel(r.startDate) : "—",
       r.lessons,
       r.charged,
       r.paid,
@@ -156,7 +183,7 @@ export default function DebtorsReportPage() {
 
   let emptyText: string;
   if (error && error.asOf === wanted) emptyText = t(error.message);
-  else if (allRows.length === 0) emptyText = t("Hisob sanasigacha davomat belgilanmagan — hisobot ustozlar davomat qo'ygach to'ladi");
+  else if (allRows.length === 0) emptyText = t("Hisob sanasigacha guruhlarda dars bo'lmagan yoki guruhlarga o'quvchi qo'shilmagan");
   else if (filtered.length === 0 && !search.trim() && mode === "debtors") emptyText = t("Qarzdor o'quvchi yo'q");
   else emptyText = t("Ma'lumot topilmadi");
 
@@ -216,7 +243,7 @@ export default function DebtorsReportPage() {
       </div>
 
       <p className="text-[12px] text-muted-foreground">
-        {t("Qarz = davomatda belgilangan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − hisob sanasigacha to'langan.", { n: LESSONS_PER_MONTH })}
+        {t("Qarz = guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar × bitta dars narxi (Oflayn kurslar; oylik ÷ {n}) − to'langan. Bayram kunlari sanalmaydi.", { n: LESSONS_PER_MONTH })}
       </p>
 
       {/* Jamlanma */}
@@ -234,24 +261,30 @@ export default function DebtorsReportPage() {
         ))}
       </div>
 
-      {/* Narxi topilmagan guruhlar — summa to'qib chiqarilmaydi, ogohlantiriladi */}
-      {current && current.unpriced.length > 0 && (
-        <div className="rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-400 flex gap-3">
-          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-medium">
-              {t("{n} ta guruh uchun bitta dars narxi topilmadi — ularning darslari summaga kirmadi.", { n: current.unpriced.length })}
-            </p>
-            <p className="mt-1">
-              {current.unpriced.map((g) => g.group).join(", ")}
-              {" — "}
-              <Link href="/offline-courses" className="underline hover:text-amber-900 dark:hover:text-amber-300">
-                {t("Oflayn kurslar bo'limida shu filial uchun narxni kiriting")}
-              </Link>
-            </p>
+      {/* Hisoblab bo'lmagan guruhlar — summa to'qib chiqarilmaydi, sabab bo'yicha ogohlantiriladi */}
+      {current && (Object.keys(ISSUE_HINT) as DebtIssue[]).map((issue) => {
+        const list = current.issues.filter((g) => g.issue === issue);
+        if (list.length === 0) return null;
+        const hint = ISSUE_HINT[issue];
+        return (
+          <div key={issue} className="rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-400 flex gap-3">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium">{t(hint.text, { n: list.length })}</p>
+              <p className="mt-1">
+                {list.map((g, i) => (
+                  <span key={g.groupId}>
+                    {i > 0 && ", "}
+                    <Link href={`/groups/${g.groupId}`} className="underline hover:text-amber-900 dark:hover:text-amber-300">{g.group}</Link>
+                  </span>
+                ))}
+                {" — "}
+                <Link href={hint.href} className="underline hover:text-amber-900 dark:hover:text-amber-300">{t(hint.link)}</Link>
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })}
 
       {/* Jadval */}
       <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
@@ -269,7 +302,7 @@ export default function DebtorsReportPage() {
                 <th className="px-4 py-3 text-left w-12">№</th>
                 <th className="px-4 py-3 text-left min-w-[200px]">{t("O'quvchi")}</th>
                 <th className="px-4 py-3 text-left min-w-[260px]">{t("Guruhlar")}</th>
-                <th className="px-4 py-3 text-left whitespace-nowrap">{t("Birinchi dars")}</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">{t("Boshlangan")}</th>
                 <th className="px-4 py-3 text-right whitespace-nowrap">{t("Darslar")}</th>
                 <th className="px-4 py-3 text-right whitespace-nowrap">{t("Hisoblangan")}</th>
                 <th className="px-4 py-3 text-right whitespace-nowrap">{t("To'langan")}</th>
@@ -341,15 +374,14 @@ function DebtorTr({ row: r, index }: { row: DebtorRow; index: number }) {
               <Link href={`/groups/${g.groupId}`} className="hover:text-primary hover:underline">{g.group}</Link>
               <span className="text-muted-foreground">
                 {" · "}
-                {g.lessonPrice === null ? (
-                  <span className="text-amber-600" title={t("Kurs/bosqichda shu filial uchun narx kiritilmagan")}>
-                    {t("{n} dars — narx yo'q", { n: g.lessons })}
-                  </span>
+                {g.issues.length > 0 || g.lessonPrice === null ? (
+                  <span className="text-amber-600">{g.issues.map((i) => t(ISSUE_LABEL[i])).join(", ")}</span>
                 ) : (
                   <span
                     className="tabular-nums"
                     title={t("Oylik ekvivalenti: {monthly} ({price} × {n})", { monthly: fmt(g.lessonPrice * LESSONS_PER_MONTH), price: fmt(g.lessonPrice), n: LESSONS_PER_MONTH })}
                   >
+                    {g.startDate ? `${t("{date} dan", { date: isoToLabel(g.startDate) })} · ` : ""}
                     {g.lessons} × {fmt(g.lessonPrice)} = {fmt(g.charged)}
                   </span>
                 )}
@@ -364,11 +396,11 @@ function DebtorTr({ row: r, index }: { row: DebtorRow; index: number }) {
           ))}
         </ul>
       </td>
-      <td className="px-4 py-3 align-top tabular-nums whitespace-nowrap">{isoToLabel(r.firstDate)}</td>
+      <td className="px-4 py-3 align-top tabular-nums whitespace-nowrap">{r.startDate ? isoToLabel(r.startDate) : "—"}</td>
       <td className="px-4 py-3 align-top text-right tabular-nums">{r.lessons}</td>
       <td className="px-4 py-3 align-top text-right tabular-nums">
         {fmt(r.charged)}
-        {r.priceMissing && <span className="ml-1 text-amber-600" title={t("Narxi yo'q guruh darslari kirmagan")}>*</span>}
+        {r.incomplete && <span className="ml-1 text-amber-600" title={t("Hisoblab bo'lmagan guruh darslari kirmagan")}>*</span>}
       </td>
       <td className="px-4 py-3 align-top text-right tabular-nums">{fmt(r.paid)}</td>
       <td className={`px-4 py-3 align-top pr-5 text-right tabular-nums font-semibold ${debtTone}`}>

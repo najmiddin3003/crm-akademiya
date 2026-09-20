@@ -116,7 +116,10 @@ export default function GroupDetailPage({ id }: { id: number }) {
   const [editOpen, setEditOpen] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiving, setArchiving] = useState(false);
-  const [members, setMembers] = useState<Pupil[]>([]);
+  // `joinedAt` — GET /api/groups/:id/students qo'shib beradi (a'zolik
+  // tarixi, lib/groupMembership.ts): darslar shu kundan sanaladi. Yo'q
+  // bo'lsa (sanasi noma'lum eski a'zolik) o'quvchi kartasi sanasi chiqadi.
+  const [members, setMembers] = useState<(Pupil & { joinedAt?: string })[]>([]);
   // Qator amallari: boshqa guruhga koʻchirish / guruhdan chiqarish.
   const [moveFor, setMoveFor] = useState<Pupil | null>(null);
   const [removeFor, setRemoveFor] = useState<Pupil | null>(null);
@@ -494,7 +497,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                         <tr key={m.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
                           <td className="px-4 py-3 text-[13px] font-medium">{pupilName(m)}</td>
-                          <td className="px-4 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{m.createdAt}</td>
+                          <td className="px-4 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{m.joinedAt ? m.joinedAt.split("-").reverse().join(".") : m.createdAt}</td>
                           <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{m.phone}</td>
                           <td className={`px-4 py-3 text-[13px] tabular-nums whitespace-nowrap ${balanceOf(m) < 0 ? "text-rose-600" : ""}`}>{nf(balanceOf(m))}</td>
                           {/* Narxi: guruh/kurs narxi sxemada yo'q — qattiq

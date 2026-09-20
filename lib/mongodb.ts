@@ -1,5 +1,6 @@
 import { MongoClient, Db } from "mongodb";
 import { ARCHIVED_GROUPS_COLLECTION } from "@/lib/groups";
+import { GROUP_MEMBERSHIPS } from "@/lib/groupMembership";
 import { LEGACY_COLLECTION } from "@/lib/legacyEntries";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
 
@@ -222,6 +223,13 @@ async function createAllIndexes(db: Db): Promise<void> {
   // Yuqoridagi qo'shma indeks bunga yaramaydi — uning birinchi ustuni
   // `groupId`, ya'ni u berilmasa indeks ochilmaydi.
   tasks.push(db.collection("attendance").createIndex({ pupilId: 1, date: -1 }));
+  // group_memberships — guruh a'zoligi tarixi (lib/groupMembership.ts):
+  // Qarzdorlar hisoboti darslarni a'zolik oralig'i bo'yicha sanaydi.
+  // So'rovlar: guruhlar bo'yicha hammasi (hisobot), (guruh, o'quvchi, ochiq)
+  // — qo'shish/chiqarish, o'quvchi bo'yicha ochiqlar — arxivlash/o'chirish.
+  tasks.push(db.collection(GROUP_MEMBERSHIPS).createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection(GROUP_MEMBERSHIPS).createIndex({ groupId: 1, pupilId: 1, leftAt: 1 }));
+  tasks.push(db.collection(GROUP_MEMBERSHIPS).createIndex({ pupilId: 1, leftAt: 1 }));
   // attendance_history — Davomat katakchasi bo'yicha o'zgarishlar tarixi
   // ("Tarixi" bo'limi). Yozuvlar hech qachon o'chirilmaydi.
   tasks.push(db.collection("attendance_history").createIndex({ id: 1 }, { unique: true }));

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
+import { closeMemberships } from "@/lib/groupMembership";
+import { uzDateIso } from "@/lib/uzTime";
 
 // Bitta o'quvchi (MongoDB `pupils`) — O'quvchi profili sahifasi uchun
 // (/student-edit/:id → components/students/StudentEditPage.tsx).
@@ -137,9 +139,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
   // O'quvchi guruhlardan ham chiqariladi — aks holda guruh ro'yxatida
-  // mavjud bo'lmagan id qolib ketadi.
+  // mavjud bo'lmagan id qolib ketadi. A'zolik tarixi ham yopiladi
+  // (lib/groupMembership.ts) — o'chirilgan o'quvchi hisobotga tushmaydi
+  // (pupils'da yo'q), lekin yozuv ochiq qolmasin.
   await db
     .collection<{ studentIds?: number[] }>("groups")
     .updateMany({ studentIds: pupilId }, { $pull: { studentIds: pupilId } });
+  await closeMemberships(db, pupilId, null, uzDateIso());
   return NextResponse.json({ ok: true });
 }

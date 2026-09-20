@@ -5,6 +5,7 @@ import { holdsRoom, validateGroupInput, type GroupFormInput } from "@/lib/groupR
 import { findRoomClashInDb } from "@/lib/groupRoomClash";
 import { checkGroupCourse } from "@/lib/groupCourseCheck";
 import type { Group } from "@/lib/groups";
+import { uzDateIso } from "@/lib/uzTime";
 
 // FILIAL QAMROVI har uchala amalda (lib/groupScope.ts). Kesilmasa, boshqa
 // filialning guruhini id bo'yicha ochish ham, tahrirlash ham, O'CHIRISH
@@ -60,10 +61,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Jadval bo'lagi yoki kurs/bosqich o'zgarsa hozirgi hujjat kerak —
   // o'zgarmagan maydonlar undan olinadi.
   const CHECKED = ["room", "day", "time", "startDate", "endDate", "status", "course", "level"];
+  const unset: Record<string, ""> = {};
   if (CHECKED.some((k) => k in set)) {
     const cur = await db.collection("groups").findOne(where, { projection: { _id: 0 } });
     if (!cur) return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
     const merged = { ...cur, ...set } as unknown as Group & { branchId?: number | null };
+
+    // ARXIVLANGAN KUN (`archivedAt`, "YYYY-MM-DD") — Qarzdorlar hisoboti
+    // (lib/debtors.ts) arxivlangan guruhning darslarini shu kungacha sanaydi;
+    // aks holda arxivdagi guruh a'zolariga qarz to'planaverardi. Allaqachon
+    // arxivda bo'lsa sana o'zgarmaydi; arxivdan qaytarilsa olib tashlanadi.
+    if ("status" in set) {
+      if (set.status === "archive") {
+        if (cur.status !== "archive" || !cur.archivedAt) (set as Record<string, unknown>).archivedAt = uzDateIso();
+      } else {
+        unset.archivedAt = "";
+      }
+    }
 
     // Kurs/bosqich FAQAT O'ZGARGANDA tekshiriladi (POST dagi qoida): eski
     // guruhda arxivdan qolgan "1-bosqich" turgan bo'lsa, telegram havolasini
@@ -97,7 +111,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const res = await db.collection("groups").findOneAndUpdate(
     where,
-    { $set: set },
+    Object.keys(unset).length ? { $set: set, $unset: unset } : { $set: set },
     { returnDocument: "after" },
   );
   if (!res) {

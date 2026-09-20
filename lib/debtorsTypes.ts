@@ -16,6 +16,15 @@ import type { PupilStatus } from "@/lib/pupilsData";
  */
 export const LESSONS_PER_MONTH = 13;
 
+/**
+ * Guruh bo'yicha hisoblab bo'lmaslik sabablari:
+ *   price    — kurs/bosqichda shu filial uchun bitta dars narxi yo'q;
+ *   start    — o'quvchining guruhga qo'shilgan sanasi ham, guruhning
+ *              boshlanish sanasi ham yo'q (nimadan sanashni bilib bo'lmaydi);
+ *   schedule — guruhning dars kunlari (`day`) tanilmadi.
+ */
+export type DebtIssue = "price" | "start" | "schedule";
+
 export interface DebtorGroupPart {
   groupId: number;
   /** "Ingliz tili (1-guruh)" — lib/groups.ts → groupLabel. */
@@ -23,16 +32,18 @@ export interface DebtorGroupPart {
   course: string;
   level: string;
   teacher: string;
-  /** Hisob sanasigacha davomat belgilangan darslar soni. */
+  /** Guruh jadvali bo'yicha boshlangan kundan hisob sanasigacha o'tgan darslar soni. */
   lessons: number;
-  /** Birinchi belgilangan dars ("YYYY-MM-DD"). */
-  firstDate: string;
-  /** Oxirgi belgilangan dars ("YYYY-MM-DD"). */
-  lastDate: string;
+  /** Hisob boshlangan kun ("YYYY-MM-DD"); `null` — noma'lum (issue "start"). */
+  startDate: string | null;
+  /** Oxirgi sanalgan dars kuni ("YYYY-MM-DD"); dars bo'lmagan bo'lsa null. */
+  lastDate: string | null;
   /** Bitta dars narxi; `null` — kurs/bosqichda shu filial uchun narx yo'q. */
   lessonPrice: number | null;
   /** lessons × lessonPrice (narx yo'q bo'lsa 0). */
   charged: number;
+  /** Shu guruhda hisob to'liq emasligining sabablari (bo'sh — hammasi joyida). */
+  issues: DebtIssue[];
 }
 
 export interface DebtorRow {
@@ -44,30 +55,31 @@ export interface DebtorRow {
   groups: DebtorGroupPart[];
   /** Barcha guruhlar bo'yicha darslar soni. */
   lessons: number;
-  /** Eng birinchi dars (guruhlar ichida eng kichigi). */
-  firstDate: string;
-  /** Hisoblangan summa (narxi bor guruhlar bo'yicha). */
+  /** Eng erta boshlangan kun (guruhlar ichida eng kichigi); hech birida yo'q — null. */
+  startDate: string | null;
+  /** Hisoblangan summa (hisoblab bo'lgan guruhlar bo'yicha). */
   charged: number;
   /** Hisob sanasigacha to'langan (qaytarimlar ayrilgan). */
   paid: number;
   /** charged − paid; musbat — qarz, manfiy — oldindan to'lagan. */
   debt: number;
-  /** Bironta guruhda narx topilmadi — `charged` to'liq emas. */
-  priceMissing: boolean;
+  /** Bironta guruhda hisob to'liq emas (issues bo'sh emas). */
+  incomplete: boolean;
 }
 
-export interface UnpricedGroup {
+export interface GroupIssue {
   groupId: number;
   group: string;
   course: string;
   level: string;
+  issue: DebtIssue;
 }
 
 export interface DebtorsReport {
   /** Hisob sanasi ("YYYY-MM-DD"). */
   asOf: string;
-  /** Davomati bor har bir o'quvchi (qarzdor bo'lmaganlar ham) — qarz bo'yicha kamayish tartibida. */
+  /** A'zoligi bor har bir o'quvchi (qarzdor bo'lmaganlar ham) — qarz bo'yicha kamayish tartibida. */
   rows: DebtorRow[];
-  /** Davomati bor, lekin narxi topilmagan guruhlar — kurs formasida to'ldirish uchun. */
-  unpriced: UnpricedGroup[];
+  /** Hisoblab bo'lmagan guruhlar — sababi bilan (sahifa tepasidagi ogohlantirish). */
+  issues: GroupIssue[];
 }

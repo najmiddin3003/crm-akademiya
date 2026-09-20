@@ -5,7 +5,9 @@ import { useToast } from "@/components/ui/Toast";
 import type { Pupil, PupilListItem } from "@/lib/pupilsData";
 import { loadPupilsCached } from "@/hooks/useStudents";
 import Select from "@/components/ui/Select";
+import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import { uzDateIso } from "@/lib/uzTime";
 import { useT } from "@/components/shared/Language";
 
 // "O'quvchini tanlang" modali (skrinshot 5). Serverdagi o'quvchilar
@@ -26,6 +28,9 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
   const [pupils, setPupils] = useState<PupilListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
+  // Darslar qaysi kundan sanaladi (Qarzdorlar hisoboti) — sukut bugun;
+  // o'quvchi avvalroq qatnay boshlagan bo'lsa orqaga suriladi.
+  const [joinedAt, setJoinedAt] = useState(() => uzDateIso());
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -52,7 +57,7 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
       const res = await fetch(`/api/groups/${groupId}/students`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pupilId }),
+        body: JSON.stringify({ pupilId, joinedAt: joinedAt || undefined }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -80,6 +85,9 @@ export default function AddStudentModal({ groupId, existingIds, onClose, onAdded
           {!loading && available.length === 0 && (
             <p className="mt-2 text-[12px] text-muted-foreground">{t("Serverda qo'shiladigan o'quvchi yo'q. Avval Lidlar → \"O'quvchi qo'shish\" orqali o'quvchi qo'shing.")}</p>
           )}
+          <label className="block text-[13px] font-medium mt-4 mb-1.5">{t("Darslar boshlangan sana")}</label>
+          <DateField value={joinedAt} onChange={setJoinedAt} variant="form" />
+          <p className="mt-1.5 text-[12px] text-muted-foreground">{t("Qarz shu kundan, guruh jadvali bo'yicha hisoblanadi.")}</p>
         </div>
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
           <button onClick={save} disabled={saving || loading} className="inline-flex items-center h-9 px-5 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">{saving ? t("Saqlanmoqda…") : t("Saqlash")}</button>

@@ -91,10 +91,15 @@ export async function enrollOrderInGroup(
     invalidateStudents(); // yangi o'quvchi qo'shildi -> umumiy kesh bekor
   }
 
+  // Darslar qaysi kundan sanaladi (Qarzdorlar hisoboti, lib/groupMembership.ts):
+  // lidning "Birinchi dars" sanasi bo'lsa — o'sha ("29.08.2026 | 10:00" →
+  // "2026-08-29"), bo'lmasa server bugunni yozadi.
+  const m = (order.firstLesson || "").match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+  const joinedAt = m ? `${m[3]}-${m[2]}-${m[1]}` : undefined;
   const res = await fetch(`/api/groups/${groupId}/students`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pupilId: pupil.id }),
+    body: JSON.stringify({ pupilId: pupil.id, joinedAt }),
   })
     .then((r) => r.json())
     .catch(() => null);

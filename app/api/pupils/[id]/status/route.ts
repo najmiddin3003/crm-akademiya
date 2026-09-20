@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { isPupilStatus, type Pupil } from "@/lib/pupilsData";
+import { closeMemberships } from "@/lib/groupMembership";
+import { uzDateIso } from "@/lib/uzTime";
 
 // PATCH /api/pupils/:id/status — { status, reason? }
 //
@@ -35,9 +37,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Sababni kiriting" }, { status: 400 });
   }
 
-  const now = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+  // Toshkent kuni (lib/uzTime.ts) — serverda UTC; ilgari `new Date()` ning
+  // lokal getterlari kechqurun bir kun orqaga yozardi.
+  const today = uzDateIso();
 
   // Boshqa filialning o'quvchisi bu yerdan o'zgartirilmaydi — qamrov
   // PATCH /api/pupils/:id dagi bilan bir xil (u yerdagi izohga qarang).
@@ -58,6 +60,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await db
       .collection<{ studentIds?: number[] }>("groups")
       .updateMany({ studentIds: pupilId }, { $pull: { studentIds: pupilId } });
+    // A'zolik tarixi ham shu kun yopiladi (lib/groupMembership.ts) —
+    // arxivgacha bo'lgan darslari Qarzdorlar hisobotida qoladi.
+    await closeMemberships(db, pupilId, null, today);
   }
 
   const { _id, studentPasswordHash, parentPasswordHash, ...pupil } = res;
