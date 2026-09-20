@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "@/components/ui/Link";
-import { CalendarCheck, History, MoreVertical, Plus } from "lucide-react";
+import { CalendarCheck, History, MoreVertical, Pencil, Plus } from "lucide-react";
 import Pagination from "@/components/ui/Pagination";
 import Select from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
@@ -165,6 +165,10 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
   const [pageSize, setPageSize] = useState(50);
   const [moreOpen, setMoreOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  // Qatordagi "Tahrirlash" (20.09.2026, foydalanuvchi so'rovi) — guruh
+  // tafsilotiga kirmasdan shu jadvalning o'zida tahrirlash. O'sha
+  // GroupFormModal, `group` berilsa tahrirlash rejimida ochiladi.
+  const [editFor, setEditFor] = useState<Group | null>(null);
   const [importing, setImporting] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -464,6 +468,14 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
                       >
                         <History className="w-4 h-4" />
                       </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setEditFor(g); }}
+                        title={t("Tahrirlash")}
+                        className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary inline-flex items-center justify-center text-muted-foreground"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -490,6 +502,15 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
           groups={groups}
           onClose={() => setAddOpen(false)}
           onSaved={(g) => setGroups((prev) => [...prev, g])}
+        />
+      )}
+
+      {editFor && (
+        <GroupFormModal
+          group={editFor}
+          groups={groups}
+          onClose={() => setEditFor(null)}
+          onSaved={(g) => setGroups((prev) => prev.map((x) => (x.id === g.id ? g : x)))}
         />
       )}
     </div>
