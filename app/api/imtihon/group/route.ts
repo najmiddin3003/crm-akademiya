@@ -7,6 +7,7 @@ import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { uzStamp } from "@/lib/uzTime";
 import {
   groupAvgPct,
+  groupExamMonth,
   imPct,
   sanitizeGroupExam,
   type GroupExam,
@@ -14,11 +15,11 @@ import {
   type MonthlyExam,
 } from "@/lib/imtihon";
 
-// Imtihon → "Natija kiritish" paneli backend'i (MongoDB `group_exams`).
+// Imtihon → Sarhisob — "Natija qo'shish" paneli backend'i (MongoDB `group_exams`).
 //
-// Bitta hujjat = bitta guruhning bitta imtihoni: fan, ustoz, guruh, sana,
-// savollar soni va har bir o'quvchining to'g'ri javoblari. Sarhisob
-// sahifasi (/imtihon/sarhisob) shu ro'yxatni ko'rsatadi.
+// Bitta hujjat = bitta guruhning bitta imtihoni (sarhisob): fan, ustoz,
+// guruh, oy, sana, savollar soni va har bir o'quvchining to'g'ri javoblari.
+// Sarhisob tabi (/imtihon) shu ro'yxatni ko'rsatadi.
 //
 // FILIAL BO'YICHA KESILADI: guruh joriy filialda bo'lishi shart (aks holda
 // 404), yozuvga ham shu filial yoziladi va GET faqat shu filialnikini
@@ -30,11 +31,14 @@ export async function GET() {
   const scope = await getBranchScope();
   if (!scope) return notLoggedIn();
   const db = await ensureIndexes();
-  const exams = (await db
+  const rows = (await db
     .collection("group_exams")
     .find(withBranch({}, scope), { projection: { _id: 0 } })
     .sort({ date: -1, id: -1 })
     .toArray()) as unknown as GroupExam[];
+  // `month` 21.09.2026 da qo'shildi — undan oldingi hujjatlarda yo'q,
+  // mijoz doim to'ldirilgan holda olsin.
+  const exams = rows.map((r) => ({ ...r, month: groupExamMonth(r) }));
   return NextResponse.json({ ok: true, exams });
 }
 
@@ -88,6 +92,7 @@ export async function POST(req: Request) {
   const exam: GroupExam = {
     id: (Number(last[0]?.id) || 0) + 1,
     date: input.date,
+    month: input.month,
     course: input.course,
     teacher: input.teacher,
     groupId: group.id,
@@ -104,14 +109,15 @@ export async function POST(req: Request) {
   };
   await col.insertOne({ ...exam });
 
-  // "OYLIK IMTIHON" JADVALIGA KO'CHIRISH. Ilgari "Natija kiritish" oynasi
-  // to'g'ridan-to'g'ri `monthly_exams` ga yozardi; panel uni almashtirdi,
-  // lekin o'sha jadval va uning statistikasi (markaz o'rtachasi, eng yuqori
-  // natija) yangi natijalarni ko'rishda davom etishi kerak. Kalit va
-  // yangilash qoidasi app/api/imtihon/monthly bilan bir xil:
-  // (o'quvchi + fan + oy) mavjud bo'lsa yangilanadi, aks holda qo'shiladi.
+  // `monthly_exams` GA KO'CHIRISH. CRM'da bu jadvalning o'z sahifasi endi
+  // yo'q ("Oylik imtihon" tabi 21.09.2026 da Sarhisobga almashdi), lekin
+  // O'QUVCHILAR BOTI o'quvchining natijalarini shu kolleksiyadan ism
+  // bo'yicha o'qiydi (lib/studentBot/data.ts → loadExams), shu bois
+  // ko'chirish qoladi. Kalit va yangilash qoidasi app/api/imtihon/monthly
+  // bilan bir xil: (o'quvchi + fan + oy) mavjud bo'lsa yangilanadi, aks
+  // holda qo'shiladi. Oy — sarhisobning oyi (sananing oyi emas).
   const monthly = db.collection("monthly_exams");
-  const month = input.date.slice(0, 7);
+  const month = input.month;
   const existing = (await monthly
     .find({ month }, { projection: { _id: 0, id: 1, student: 1, subject: 1 } })
     .toArray()) as unknown as Pick<MonthlyExam, "id" | "student" | "subject">[];

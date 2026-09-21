@@ -143,7 +143,9 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 256,
       items: [
-        { label: "Oylik imtihon", href: "/imtihon", icon: "i-calendar" },
+        // "Oylik imtihon" → "Sarhisob" (referens sarhisob.html, 21.09.2026):
+        // guruh bo'yicha kiritilgan imtihon natijalari. UzBMB o'zgarmaydi.
+        { label: "Sarhisob", href: "/imtihon", icon: "i-calendar" },
         { label: "UzBMB", href: "/imtihon?tab=uzbmb", icon: "i-award" },
       ],
     },

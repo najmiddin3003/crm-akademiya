@@ -1,7 +1,7 @@
-import SarhisobPage from "@/components/imtihon/SarhisobPage";
+import { redirect } from "next/navigation";
 
-// Imtihon → Sarhisob: guruh bo'yicha kiritilgan imtihon natijalari tarixi.
-// Ruxsat kaliti — birinchi bo'lak ("/imtihon"), lib/permissions.ts.
+// Sarhisob endi Imtihon sahifasining birinchi tabi (/imtihon) — 21.09.2026
+// gacha alohida sahifa edi; eski havolalar/xatcho'plar shu yerga tushadi.
 export default function Page() {
-  return <SarhisobPage />;
+  redirect("/imtihon");
 }

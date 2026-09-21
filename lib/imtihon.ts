@@ -2,8 +2,10 @@
 // klient komponentlar ham shu faylni bo'lishadi — shunda ball formulasi
 // bitta joyda turadi.
 //
-// MongoDB kolleksiyalari: `monthly_exams`, `uzbmb_exams` va `group_exams`
-// (guruh bo'yicha kiritilgan imtihon — "Natija kiritish" paneli).
+// MongoDB kolleksiyalari: `group_exams` (Sarhisob — guruh bo'yicha
+// kiritilgan imtihon, "Natija qo'shish" paneli), `uzbmb_exams` va
+// `monthly_exams` (o'quvchi-o'quvchi ko'zgu: CRM'da sahifasi yo'q,
+// o'quvchilar boti o'qiydi — app/api/imtihon/group ga qarang).
 
 import { MONTHLY_SEED_ROWS, UZBMB_SEED_ROWS, UZBMB_CERT_SEED } from "@/constants/imtihon";
 
@@ -130,18 +132,26 @@ export interface GroupExamStudent {
 }
 
 /**
- * Bitta guruhning bitta imtihoni — fan, ustoz, guruh, sana va har bir
- * o'quvchining natijasi bitta hujjatda. Sarhisob sahifasi shu ro'yxatni
- * ko'rsatadi.
+ * Bitta guruhning bitta imtihoni ("sarhisob") — fan, ustoz, guruh, oy,
+ * sana va har bir o'quvchining natijasi bitta hujjatda. Imtihon →
+ * Sarhisob tabi shu ro'yxatni ko'rsatadi.
  *
  * Har bir o'quvchi natijasi `monthly_exams` ga ham ko'chiriladi
- * (app/api/imtihon/group) — shunda "Oylik imtihon" jadvali va statistikasi
- * ham shu natijalarni ko'radi.
+ * (app/api/imtihon/group) — o'quvchilar boti (lib/studentBot/data.ts)
+ * o'quvchining natijalarini o'sha kolleksiyadan ism bo'yicha o'qiydi.
  */
 export interface GroupExam {
   id: number;
   /** Imtihon O'TKAZILGAN sana ("YYYY-MM-DD") — panelda tanlanadi, yozuv qo'shilgan sana emas. */
   date: string;
+  /**
+   * Sarhisob QAYSI OYGA tegishli ("YYYY-MM") — ro'yxat shu bo'yicha
+   * filtrlanadi. Odatda sananing oyi, lekin alohida tanlanadi: avgust
+   * sarhisobi 2-sentabrda o'tkazilsa ham avgustniki bo'lib qoladi.
+   * 21.09.2026 gacha yozilgan hujjatlarda maydon yo'q — GET route sanadan
+   * to'ldirib beradi.
+   */
+  month: string;
   /** Fan yo'nalishi — `offline_courses.name`. */
   course: string;
   teacher: string;
@@ -170,6 +180,8 @@ export function groupAvgPct(students: Pick<GroupExamStudent, "pct">[]): number {
 /** Mijozdan keladigan panel yuki — tekshiruvdan o'tgach `GroupExam` ga aylanadi. */
 export interface GroupExamInput {
   date: string;
+  /** "YYYY-MM" — berilmasa sananing oyi. */
+  month: string;
   course: string;
   teacher: string;
   groupId: number;
@@ -187,6 +199,9 @@ export function sanitizeGroupExam(raw: unknown): { ok: true; input: GroupExamInp
   const r = raw as Record<string, unknown>;
   const date = String(r.date || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Imtihon sanasini tanlang" };
+  // Oy ixtiyoriy — bo'sh kelsa sananing oyi (eski mijoz ham ishlayveradi).
+  const month = String(r.month || "").trim() || date.slice(0, 7);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { ok: false, error: "Sarhisob oyini tanlang" };
   const course = String(r.course || "").trim();
   if (!course) return { ok: false, error: "Fan yo'nalishini tanlang" };
   const teacher = String(r.teacher || "").trim();
@@ -211,7 +226,12 @@ export function sanitizeGroupExam(raw: unknown): { ok: true; input: GroupExamInp
     students.push({ pupilId, correct });
   }
   if (students.length === 0) return { ok: false, error: "Kamida bitta o'quvchi tanlang" };
-  return { ok: true, input: { date, course, teacher, groupId, total, students } };
+  return { ok: true, input: { date, month, course, teacher, groupId, total, students } };
+}
+
+/** Eski hujjatlarda `month` yo'q — sanadan olinadi (GET route va mijoz uchun bir xil qoida). */
+export function groupExamMonth(exam: Pick<GroupExam, "date"> & { month?: string }): string {
+  return exam.month || String(exam.date || "").slice(0, 7);
 }
 
 const MONTH_NAMES: Record<string, string> = {
@@ -306,35 +326,14 @@ export function buildUzbmbSeed(): UzbmbExam[] {
 }
 
 /* ============================================================
-   Mijozdan kelgan yozuvlarni tozalash (kiritish modali va import)
+   Mijozdan kelgan UzBMB yozuvlarini tozalash (kiritish modali va import)
    ============================================================ */
 
-type MonthlyInput = Omit<MonthlyExam, "id">;
 type UzbmbInput = Omit<UzbmbExam, "id">;
 
 function num(v: unknown, max?: number): number {
   const n = Math.max(0, Number(v) || 0);
   return max === undefined ? Math.trunc(n) : Math.min(max, Math.trunc(n));
-}
-
-export function sanitizeMonthly(raw: unknown): MonthlyInput | null {
-  if (!raw || typeof raw !== "object") return null;
-  const r = raw as Record<string, unknown>;
-  const student = String(r.student || "").trim();
-  const subject = String(r.subject || "").trim();
-  if (!student || !subject) return null;
-  const total = num(r.total);
-  const correct = num(r.correct);
-  if (total <= 0 || correct > total) return null;
-  return {
-    student,
-    subject,
-    level: String(r.level || "").trim(),
-    month: normalizeMonth(String(r.month || "")),
-    total,
-    correct,
-    pct: imPct(correct, total),
-  };
 }
 
 export function sanitizeUzbmb(raw: unknown): UzbmbInput | null {
