@@ -480,7 +480,8 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
             </tbody>
           </table>
         </div>
-        {list.length > pageSize && (
+        {/* Boshqa ro'yxat sahifalaridagidek pastda doim turadi (qator soni tanlovi bilan). */}
+        {list.length > 0 && (
           <div className="ld-pager">
             <Pagination
               totalItems={list.length}

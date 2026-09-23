@@ -178,7 +178,7 @@ export default function TaskList({ tasks, viewer, branches, employees, settings,
   const empty = !loading && animated.length === 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stk-listwrap">
       <div className="stk-kpis">
         {cards.map((c) => (
           <button key={c.status} type="button" className={`stk-kpi ${c.color} ${cardOn(c) ? "is-on" : ""}`} onClick={() => toggleCard(c)} aria-pressed={cardOn(c)}>
@@ -222,7 +222,8 @@ export default function TaskList({ tasks, viewer, branches, employees, settings,
         )}
       </div>
 
-      <div className="stk-card">
+      <div className="stk-card stk-fill">
+        <div className="stk-tscroll">
         <table className="stk-tbl stk-tasks">
           <thead>
             <tr>
@@ -341,6 +342,7 @@ export default function TaskList({ tasks, viewer, branches, employees, settings,
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

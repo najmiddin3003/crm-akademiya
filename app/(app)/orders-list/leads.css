@@ -172,6 +172,28 @@ html.dark {
 .ld-src { font-size: 12px; color: hsl(var(--muted-foreground)); }
 .ld-empty td { text-align: center; color: hsl(var(--muted-foreground)); padding: 44px 16px; line-height: 1.6; cursor: default; }
 
+/* ---------- Qotib turadigan sarlavha — boshqa ro'yxat sahifalaridagidek ----------
+   (app/globals.css → .page-frame / .table-frame / .table-scroll naqshi.)
+   Sahifa balandligi `main` ga teng: sarlavha, holat kartalari va filtrlar
+   joyida turadi, faqat jadval ichida scroll bo'ladi — thead tepada,
+   paginatsiya pastda qotadi. Telefonda (≤640px) jadval kartochkalarga
+   aylanadi (thead yo'q) va sahifa odatdagidek scroll bo'ladi. */
+@media (min-width: 641px) {
+  .ld-page { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .ld-page > .ld-list { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .ld-list > .ld-scroll { flex: 1; min-height: 0; overflow: auto; }
+  .ld-tbl thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    /* Shaffof bo'lsa ostidan o'tayotgan qatorlar ko'rinadi. Chegara soya
+       bilan: `border-collapse` da sticky th ning chegarasi scroll'da qoladi. */
+    background: color-mix(in srgb, hsl(var(--secondary)) 40%, hsl(var(--card)));
+    border-bottom: 0;
+    box-shadow: inset 0 -1px 0 hsl(var(--border));
+  }
+}
+
 /* Filtrlanganda qatorlar suzib kiradi / so'nadi / siljiydi (hooks/useAnimatedRows). */
 .ld-row-enter { animation: ld-row-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: var(--ld-delay, 0ms); }
 .ld-row-exit { animation: ld-row-out 0.16s ease-in forwards; pointer-events: none; }

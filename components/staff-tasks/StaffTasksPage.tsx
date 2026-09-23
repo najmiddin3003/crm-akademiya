@@ -214,7 +214,9 @@ export default function StaffTasksPage() {
         : t("Xodim: {name}", { name: viewer.name || "—" });
 
   return (
-    <div className="stk-page container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    // `is-framed` — ro'yxat tabida sahifa `main` balandligida qotadi va faqat
+    // jadval ichida scroll bo'ladi (thead tepada) — tasks.css izohiga qarang.
+    <div className={`stk-page container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4 ${tab === "list" ? "is-framed" : ""}`}>
       <header className="stk-head">
         <div>
           <h1>{t("Topshiriqlar")}</h1>
@@ -284,7 +286,7 @@ export default function StaffTasksPage() {
         </div>
       )}
 
-      <div key={tab} className="stk-fade-in">
+      <div key={tab} className="stk-fade-in stk-tabpane">
         {tab === "list" && (
           <TaskList
             tasks={data?.tasks ?? []}
