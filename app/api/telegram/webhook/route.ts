@@ -11,7 +11,7 @@ import type { Order } from "@/lib/ordersData";
 import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
 import { handleStaffUpdate, type TelegramUpdate } from "@/lib/staffBot/router";
 
-// POST /api/telegram/webhook — xodimlar botining (@tizimli_akademiya_bot)
+// POST /api/telegram/webhook — xodimlar botining (@akademiya_crm_bot)
 // webhook'i. IKKI OQIM bitta manzilda:
 //
 //   1) "Lidlar" topigidagi status tugmalari (`lead:…`, lib/leadStatus.ts):

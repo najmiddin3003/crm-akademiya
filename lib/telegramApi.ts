@@ -92,11 +92,30 @@ export async function callTelegram(
   payload: Record<string, unknown>,
   attempt = 0,
 ): Promise<TelegramApiResponse> {
-  const res = await fetch(`${API}/bot${token}/${method}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  // TARMOQ darajasidagi uzilish ("fetch failed" — ulanish tiklanmadi,
+  // DNS, TLS) ham qayta uriniladi. VPS'da (189.74.98.20) 15–19.09.2026
+  // oralig'ida kuniga 1–5 marta shunday bo'ldi: to'lov xabari guruhga
+  // ketmay `sync_outbox` da `failed` bo'lib qolgan, kassa botida esa
+  // kassir yozgan ismga javob umuman kelmagan. Bir soniyadan keyin
+  // ulanish odatda tiklanadi — ikki qisqa urinish yetadi. Oxirgi
+  // urinishda ham bo'lmasa xato sababi (ECONNRESET, ETIMEDOUT, ...)
+  // xabarga qo'shiladi, logda faqat "fetch failed" qolmasin.
+  let res: Response;
+  try {
+    res = await fetch(`${API}/bot${token}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 700 * 2 ** attempt));
+      return callTelegram(token, method, payload, attempt + 1);
+    }
+    const cause = (e as { cause?: { code?: string; message?: string } }).cause;
+    const why = cause?.code || cause?.message;
+    throw new Error(`Telegram ${method}: ${e instanceof Error ? e.message : String(e)}${why ? ` (${why})` : ""}`, { cause: e });
+  }
   const data = (await res.json()) as TelegramApiResponse;
 
   if (data.ok) return data;

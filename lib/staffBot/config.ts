@@ -1,4 +1,5 @@
-// XODIMLAR BOTI (@tizimli_akademiya_bot) — sozlama.
+// XODIMLAR BOTI (@akademiya_crm_bot — @tizimli_akademiya_bot EMAS, u
+// o'quvchilar boti, lib/studentBot) — sozlama.
 //
 // Bu O'SHA BOT: guruh topiklariga to'lov/oylik/lid xabarlarini yuboradigan
 // va lid tugmalarini qabul qiladigan (lib/sync/telegram.ts,
