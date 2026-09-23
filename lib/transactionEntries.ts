@@ -43,6 +43,21 @@ export interface TransactionEntry {
    * yozuvlar `scripts/backfill-entry-pupil-id.mjs` bilan belgilanadi.
    */
   pupilId?: number;
+  /**
+   * `pupilId` QO'LDA biriktirilgan bo'lsa — kim va qachon.
+   *
+   * Faqat qoldiqni hal qilgan yozuvlarda bo'ladi (app/api/
+   * transaction-entries/[id]/pupil): ism takrorlanib, mashina ajrata
+   * olmagan va odam qaror qilgan. Kassa oynasidan yozilgan yoki
+   * migratsiya belgilagan yozuvlarda YO'Q.
+   *
+   * Iz kerak, chunki bu qaror TAXMINGA asoslangan bo'lishi mumkin —
+   * "bu pul nega shu bolada?" degan savolga javob beradi.
+   */
+  pupilIdSetBy?: string;
+  pupilIdSetAt?: string;
+  /** Qayta biriktirilgan bo'lsa — OLDINGI egasi. */
+  pupilIdWas?: number;
   amount: number; // ishorali
   before: number;
   after: number | null; // transfer yozuvlarida ko'pincha bo'sh (manbada ham shunday)

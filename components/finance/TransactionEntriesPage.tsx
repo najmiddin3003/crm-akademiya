@@ -9,6 +9,8 @@ import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { CashboxName } from "@/lib/cashboxes";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
+import Button from "@/components/ui/Button";
+import UnassignedPupilModal from "@/components/finance/UnassignedPupilModal";
 import { useT } from "@/components/shared/Language";
 
 // Moliya → Tranzaksiyalar (sidebar: Moliya > Tranzakisyalar, href
@@ -55,6 +57,18 @@ export default function TransactionEntriesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
+  // EGASI ANIQLANMAGAN TO'LOVLAR — ismi takrorlangani uchun mashina
+  // qaysi o'quvchi ekanini ajrata olmagan qatorlar (lib/pupilEntries.ts).
+  // Ular jurnalda oddiy qator bo'lib turibdi, lekin o'quvchi profilida
+  // ISMDOSHLARNING IKKALASIDA ham ko'rinadi — shuning uchun yuqorida
+  // eslatma bo'lib chiqadi.
+  //
+  // BIR MARTALIK QOLDIQ: yangi to'lovlar kassa oynasida o'quvchi ID'si
+  // bilan yoziladi, ya'ni bu son faqat kamayadi. Nolga tushsa eslatma
+  // butunlay yo'qoladi — o'lik tugma qolmaydi.
+  const [unassigned, setUnassigned] = useState(0);
+  const [assignOpen, setAssignOpen] = useState(false);
+
   // Filtrlash ham, sahifalash ham SERVERDA. Ilgari bu sahifa butun
   // jadvalni (25 569 qator, ~11 MB) yuklab, hammasini brauzerda
   // filtrlab-kesardi — ekranda esa bir vaqtda 50 qator turadi.
@@ -67,10 +81,12 @@ export default function TransactionEntriesPage() {
     Promise.all([
       fetch("/api/cashboxes?names=1").then((r) => r.json()),
       fetch("/api/transaction-entries/students").then((r) => r.json()),
-    ]).then(([cb, st]) => {
+      fetch("/api/transaction-entries/unassigned").then((r) => r.json()).catch(() => null),
+    ]).then(([cb, st, un]) => {
       if (cancelled) return;
       if (cb.ok) setCashboxes(cb.cashboxes);
       if (st.ok) setStudentOptions(st.students);
+      if (un?.ok) setUnassigned(un.count as number);
     });
     return () => { cancelled = true; };
   }, []);
@@ -113,6 +129,19 @@ export default function TransactionEntriesPage() {
           <StudentSearchSelect label="" value={student} onChange={(v) => { setStudent(v); setPage(1); }} options={studentOptions} placeholder={t("O'quvchi")} />
         </div>
       </div>
+
+      {unassigned > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+          <div className="text-[12.5px] text-amber-800 dark:text-amber-300">
+            <strong>{t("{n} ta to'lovning o'quvchisi aniqlanmagan", { n: unassigned })}</strong>
+            {" — "}
+            {t("ismi takrorlangani uchun ular ismdosh o'quvchilarning IKKALASIDA ham ko'rinadi.")}
+          </div>
+          <Button variant="primary" className="shrink-0" onClick={() => setAssignOpen(true)}>
+            {t("Biriktirish")}
+          </Button>
+        </div>
+      )}
 
       <div className="flex justify-end">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/60 text-xs">
@@ -173,6 +202,13 @@ export default function TransactionEntriesPage() {
         </div>
         <Pagination totalItems={total} page={page} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
       </div>
+
+      {assignOpen && (
+        <UnassignedPupilModal
+          onClose={() => setAssignOpen(false)}
+          onChanged={setUnassigned}
+        />
+      )}
     </div>
   );
 }

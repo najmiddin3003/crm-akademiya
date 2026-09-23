@@ -160,3 +160,38 @@ export async function resolvePupilRef(
   if (hits.length !== 1) return null;
   return { id: Number(hits[0].id), name: pupilNameOfDoc(hits[0]) };
 }
+
+/**
+ * EGASI ANIQLANMAGAN yozuv — `GET /api/transaction-entries/unassigned`
+ * javobining shakli. Tip SHU YERDA (route faylida emas): uni klient
+ * oynasi ham o'qiydi (components/finance/UnassignedPupilModal.tsx) va
+ * route faylidan import qilish server kodini klient tomonga tortardi.
+ */
+export interface UnassignedCandidate {
+  id: number;
+  name: string;
+  phone: string;
+  status: string;
+  branchId: number | null;
+  /** "36 — Shaxlo Ziyamova" ko'rinishidagi guruhlar; bo'sh bo'lishi mumkin. */
+  groups: string[];
+  /** Shu o'quvchiga ALLAQACHON biriktirilgan to'lovlar soni va yig'indisi. */
+  paidCount: number;
+  paidTotal: number;
+}
+
+export interface UnassignedEntry {
+  id: number;
+  date: string;
+  time: string;
+  amount: number;
+  studentName: string;
+  teacherName: string;
+  txName: string;
+  paymentType: string;
+  moderator: string;
+  note: string;
+  /** Nomzodlarning telefoni bir xil — bitta o'quvchi ikki marta kiritilgan. */
+  samePerson: boolean;
+  candidates: UnassignedCandidate[];
+}
