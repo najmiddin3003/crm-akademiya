@@ -5,6 +5,7 @@ import { isPathAllowed } from "@/lib/permissions";
 import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
 import { withLeadScope } from "@/lib/leadScope";
+import { taskBadgeCount } from "@/lib/staffTasksServer";
 
 // SIDEBAR YONIDAGI SONLAR.
 //
@@ -23,7 +24,7 @@ import { withLeadScope } from "@/lib/leadScope";
 // chiqadi, aks holda sidebar bir son, sahifa boshqa son ko'rsatardi:
 //   /orders-list, /first-lessons → withLeadScope (app/api/orders/route.ts)
 //   /groups                      → filtrsiz (lib/listQueries.ts → loadGroups)
-//   /tasks                       → filtrsiz (o'z route'i ham kesmaydi)
+//   /tasks                       → taskScope (lib/staffTasksServer.ts)
 export async function GET() {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
@@ -60,13 +61,11 @@ export async function GET() {
     // aynan shu joyda ikki marta xato bergan naqsh.
     jobs.push(db.collection("groups").countDocuments(withBranch({}, scope)).then((n) => { counts.groups = n; }));
   }
-  if (can("/tasks")) {
-    jobs.push(
-      db.collection("tasks")
-        .countDocuments({ state: { $ne: "bajarilgan" } })
-        .then((n) => { counts.tasks = n; }),
-    );
-  }
+  // /tasks HAMMAGA ochiq (lib/permissions.ts → SELF_SERVICE_PATHS), ya'ni
+  // `can("/tasks")` doim rost. Nishon — HARAKAT kutayotganlar: o'zimga
+  // berilgan faol topshiriqlar + rahbarda tasdiq kutayotganlar. Sahifadagi
+  // qamrov bilan bir xil (lib/staffTasksServer.ts → taskScope).
+  jobs.push(taskBadgeCount(db, me).then((n) => { counts.tasks = n; }));
   await Promise.all(jobs);
 
   return NextResponse.json({ ok: true, counts });

@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import { branchCondition } from "@/lib/branchScope";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { notifyNewLead } from "@/lib/leadNotify";
+import { SURVEY_SOURCE, type LeadDaraja } from "@/lib/leadSettings";
 import { buildOrderFromValues, type NewOrderValues, type Order } from "@/lib/ordersData";
 
 // YANGI LID (buyurtma) YARATISH — yadro.
@@ -73,6 +74,50 @@ export async function pupilSourceFor(db: Db, studentName: string, phone: string)
   return tel ? sourceOf({ phone: tel }) : "";
 }
 
+type InsertedOrder = Order & { branchId: number; branchNo: number };
+
+/**
+ * Lidni yozadi: global `id` va filial ichidagi tartib raqami bilan.
+ *
+ * `id` GLOBAL ketma-ket (unique indeks butun kolleksiyada) — shu bois
+ * eng katta id filial bo'yicha KESILMASDAN qidiriladi, o'quvchilardagi
+ * bilan bir xil sabab: kesilsa ikkinchi filial mavjud id ni qayta
+ * ishlatib, unikal indeksga urilardi.
+ *
+ * FILIAL ICHIDAGI tartib raqami — foydalanuvchi ko'radigan "ID". `id`
+ * dan farqli, shu filialning eng katta raqamidan davom etadi
+ * (lib/ordersData.ts → Order.branchNo). Qidiruv `branchCondition` bilan:
+ * 1-filialda filialsiz eski lidlar ham bor (ular ham shu raqamlashda).
+ *
+ * IKKI SO'ROV BIR VAQTDA (ommaviy so'rovnoma — /sorovnoma — buni odatiy
+ * qiladi) bir xil `id` ni hisoblab qo'yadi: ikkinchisi unikal indeksga
+ * uriladi va raqamlar qayta hisoblanib yana urinadi.
+ */
+async function insertLead(db: Db, branchId: number, build: (id: number) => Order): Promise<InsertedOrder> {
+  const col = db.collection("orders");
+  const scope = { branchId, allowed: [branchId], isAdmin: false };
+  for (let attempt = 0; ; attempt++) {
+    const [last, lastInBranch] = await Promise.all([
+      col.find({}, { projection: { _id: 0, id: 1 } }).sort({ id: -1 }).limit(1).toArray(),
+      col.find(branchCondition(scope), { projection: { _id: 0, branchNo: 1 } }).sort({ branchNo: -1 }).limit(1).toArray(),
+    ]);
+    const order: InsertedOrder = {
+      ...build((Number(last[0]?.id) || 0) + 1),
+      branchId,
+      branchNo: (Number(lastInBranch[0]?.branchNo) || 0) + 1,
+    };
+    try {
+      // insertOne mutates its argument to add _id — insert a copy so the
+      // returned `order` (and whatever the client stores from it) stays clean.
+      await col.insertOne({ ...order });
+      return order;
+    } catch (e) {
+      if (attempt < 4 && (e as { code?: number } | null)?.code === 11000) continue;
+      throw e;
+    }
+  }
+}
+
 export async function createOrder(
   db: Db,
   body: NewOrderValues,
@@ -82,14 +127,6 @@ export async function createOrder(
   if (!body.studentName || !body.course || !body.lessonDay) {
     return { ok: false, error: "Majburiy maydonlar to'ldirilmagan", status: 400 };
   }
-
-  const col = db.collection("orders");
-  // `id` GLOBAL ketma-ket (unique indeks butun kolleksiyada) — shu bois
-  // eng katta id filial bo'yicha KESILMASDAN qidiriladi, o'quvchilardagi
-  // bilan bir xil sabab: kesilsa ikkinchi filial mavjud id ni qayta
-  // ishlatib, unikal indeksga urilardi.
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
-  const nextId = (last[0]?.id ?? 0) + 1;
 
   // LIDNI KIM QO'SHGANI. Ilgari bu maydon HAR BIR lidda bo'sh edi
   // (`buildOrderFromValues` uni faqat Kanbandagi to'liq sahifa formasidan
@@ -108,21 +145,7 @@ export async function createOrder(
 
   // Lid QAYSI filialda qo'shilgani — chaqiruvchidan.
   const branchId = ctx.branchId;
-  // FILIAL ICHIDAGI tartib raqami — foydalanuvchi ko'radigan "ID".
-  // `id` dan farqli, shu filialning eng katta raqamidan davom etadi
-  // (lib/ordersData.ts → Order.branchNo). Qidiruv `branchCondition` bilan:
-  // 1-filialda filialsiz eski lidlar ham bor (ular ham shu raqamlashda).
-  const scope = { branchId, allowed: [branchId], isAdmin: false };
-  const lastInBranch = await col.find(branchCondition(scope)).sort({ branchNo: -1 }).limit(1).toArray();
-  const branchNo = (Number(lastInBranch[0]?.branchNo) || 0) + 1;
-  const order = {
-    ...buildOrderFromValues(nextId, { ...body, moderator: author, source }),
-    branchId,
-    branchNo,
-  };
-  // insertOne mutates its argument to add _id — insert a copy so the
-  // returned `order` (and whatever the client stores from it) stays clean.
-  await col.insertOne({ ...order });
+  const order = await insertLead(db, branchId, (id) => buildOrderFromValues(id, { ...body, moderator: author, source }));
 
   // TELEGRAM — javobdan KEYIN (`defer`), lid qaysi filialda qo'shilganidan
   // qat'i nazar (lib/leadNotify.ts). Javob ichida yuborilsa moderator
@@ -131,4 +154,53 @@ export async function createOrder(
   deps.defer(() => notifyNewLead(db, order, branchId));
 
   return { ok: true, order };
+}
+
+/** Ommaviy so'rovnoma javoblari — app/api/sorovnoma tekshirib bo'lgan. */
+export interface SurveyLeadInput {
+  name: string;
+  /** "94 155 88 55" — bazadagi lid va o'quvchi raqamlari shaklida. */
+  phone: string;
+  branchId: number;
+  yonalish: string;
+  course: string;
+  daraja?: LeadDaraja;
+  sinf?: string;
+  qulayVaqt: string;
+  heardFrom: string;
+  note: string;
+}
+
+/**
+ * So'rovnomadan kelgan lid (/sorovnoma). Muallif yo'q — moderator bo'sh
+ * qoladi va lidni birinchi bo'lib ishlagan xodimga biriktiriladi
+ * (lib/leadHolatServer.ts → assignModerator). Manba — kanal:
+ * "Sayt so'rovnomasi"; odamning "bizni qayerdan bildingiz?" javobi
+ * alohida (`heardFrom`), `source` lug'ati aralashmasin.
+ */
+export async function createSurveyLead(db: Db, input: SurveyLeadInput, deps: AdjustDeps): Promise<InsertedOrder> {
+  const order = await insertLead(db, input.branchId, (id) => ({
+    ...buildOrderFromValues(id, {
+      studentName: input.name,
+      phone: input.phone,
+      referral: "",
+      course: input.course,
+      lessonDay: "",
+      lessonStartTime: "",
+      teacher: "",
+      group: "",
+      firstLessonDate: "",
+      firstLessonTime: "",
+      note: input.note,
+      moderator: "",
+      source: SURVEY_SOURCE,
+    }),
+    yonalish: input.yonalish,
+    ...(input.daraja ? { daraja: input.daraja } : {}),
+    ...(input.sinf ? { sinf: input.sinf } : {}),
+    qulayVaqt: input.qulayVaqt,
+    heardFrom: input.heardFrom,
+  }));
+  deps.defer(() => notifyNewLead(db, order, input.branchId));
+  return order;
 }

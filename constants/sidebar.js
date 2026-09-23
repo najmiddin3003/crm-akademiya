@@ -43,7 +43,9 @@ export const SIDEBAR_ITEMS = [
       variant: "list",
       width: 256,
       items: [
-        { label: "Buyurtmalar ro'yxati", href: "/orders-list", icon: "i-list-todo", countKey: "orders" },
+        // 23.09.2026 gacha "Buyurtmalar ro'yxati" — sahifa yangi Lidlar
+        // ro'yxatiga almashdi (components/leads/LeadsPage.tsx), manzil o'sha.
+        { label: "Lidlar ro'yxati", href: "/orders-list", icon: "i-list-todo", countKey: "orders" },
         { label: "Birinchi darsga yozilganlar", href: "/first-lessons", icon: "i-graduation-cap", countKey: "firstLessons" },
       ],
     },

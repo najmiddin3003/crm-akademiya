@@ -1,7 +1,8 @@
 import type { Db } from "mongodb";
 import { loadSyncConfig } from "@/lib/sync/config";
-import { esc, sendMessage } from "@/lib/sync/telegram";
+import { editMessage, esc, sendMessage } from "@/lib/sync/telegram";
 import { leadKeyboard, leadStatusLine } from "@/lib/leadStatus";
+import { darajaMatnUz, hasDaraja, loadLeadSettings } from "@/lib/leadSettings";
 import { orderNo, type Order } from "@/lib/ordersData";
 
 // YANGI LID -> TELEGRAM (filialning o'z topigi).
@@ -106,10 +107,10 @@ export function leadThreadId(branchTopic: number | null): string {
  * bosilganda aynan shu matn qayta yig'iladi (app/api/telegram/webhook),
  * ya'ni xabarning qolgan qismi bazadagi joriy holatdan chiqadi.
  */
-export function leadMessage(order: Order, branch: string): string {
+export function leadMessage(order: Order, branch: string, details: { daraja?: string } = {}): string {
   const lines = [
     `🆕 <b>Yangi lid</b> <code>#${orderNo(order)}</code>`,
-    leadStatusLine(order.leadStatus),
+    leadStatusLine(order),
     "",
     `👤 <b>${esc(order.name || DASH)}</b>`,
   ];
@@ -118,6 +119,10 @@ export function leadMessage(order: Order, branch: string): string {
   // butun xabarni rad etardi, shuning uchun u ham eskape qilinadi.
   if (order.phone) lines.push(`📞 ${esc(phoneForCall(order.phone))}`);
   lines.push(`📚 ${esc(order.course || DASH)}`);
+  // So'rovnoma javoblari (/sorovnoma) — daraja yoki sinf, qulay vaqt.
+  if (details.daraja) lines.push(`📊 Daraja: ${esc(details.daraja)}`);
+  if (order.sinf) lines.push(`🎒 ${esc(order.sinf)}`);
+  if (order.qulayVaqt) lines.push(`⏰ ${esc(order.qulayVaqt)}`);
 
   // Dars kuni va vaqti bitta qatorda — ikkalasi ham bo'lmasa qator
   // umuman qo'shilmaydi ("— · —" degan bo'sh qator foyda bermaydi).
@@ -128,11 +133,29 @@ export function leadMessage(order: Order, branch: string): string {
   if (order.group) lines.push(`👥 Guruh: ${esc(order.group)}`);
   if (order.firstLesson) lines.push(`🎯 Birinchi dars: ${esc(order.firstLesson)}`);
   if (order.source) lines.push(`📣 Manba: ${esc(order.source)}`);
+  if (order.heardFrom) lines.push(`🔎 Qayerdan bildi: ${esc(order.heardFrom)}`);
   if (branch) lines.push(`🏢 ${esc(branch)}`);
   if (order.moderator) lines.push(`✅ Qo'shdi: ${esc(order.moderator)}`);
   if (order.note) lines.push(`📝 ${esc(order.note)}`);
   if (order.created) lines.push(`🕐 ${esc(order.created)}`);
   return lines.join("\n");
+}
+
+/** So'rovnoma lidining daraja matni (xabar uchun) — sozlamadagi shkala bilan. */
+async function detailsOf(db: Db, order: Order): Promise<{ daraja?: string }> {
+  if (!order.daraja || !hasDaraja(order.yonalish)) return {};
+  const settings = await loadLeadSettings(db);
+  return { daraja: darajaMatnUz(order.daraja, settings.bosqichlar) };
+}
+
+/**
+ * Xabar matni bazadagi joriy holatdan — yuborishda ham, tahrirlashda ham
+ * (CRM yoki Telegram tugmasi) AYNAN bir xil yig'iladi: aks holda tugma
+ * bosilganda so'rovnoma qatorlari (daraja …) xabardan tushib qolardi.
+ */
+export async function buildLeadMessage(db: Db, order: Order): Promise<string> {
+  const branch = await branchInfo(db, order.branchId);
+  return leadMessage(order, branch.name, await detailsOf(db, order));
 }
 
 /**
@@ -165,9 +188,40 @@ export async function notifyNewLead(db: Db, order: Order, branchId: number | nul
     // xabarning shakli bir xil qoladi va webhook ulangan zahoti eski
     // lidlar ham ishlay boshlaydi. Aks holda tugmalarning bor-yo'qligi
     // yashirin sozlamaga bog'liq bo'lib qolardi.
-    await sendMessage(cfg, chatId, leadMessage(order, branch.name), threadId, leadKeyboard(order.id));
+    const sent = await sendMessage(
+      cfg,
+      chatId,
+      leadMessage(order, branch.name, await detailsOf(db, order)),
+      threadId,
+      leadKeyboard(order.id),
+    );
+    // Xabar manzili lidga yoziladi: holat CRM'da o'zgarganda (Lidlar
+    // sahifasi) aynan shu xabarning "Status:" qatori yangilanadi.
+    if (sent?.messageId) {
+      await db.collection("orders").updateOne({ id: order.id }, { $set: { tgMessage: { chatId, messageId: sent.messageId } } });
+    }
   } catch (e) {
     // Faqat jurnalga — lid allaqachon bazada.
     console.error("[leadNotify] yuborilmadi:", e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * CRM'da holat o'zgargach guruhdagi xabarni qayta chizadi (tugmalar bilan).
+ *
+ * Faqat xabari saqlangan lidlarda (`tgMessage`, 23.09.2026 dan yuborilganlar).
+ * Eskilarida xabar keyingi tugma bosilishida baribir bazadan qayta yig'iladi.
+ * HECH QACHON OTILMAYDI — holat allaqachon bazada.
+ */
+export async function refreshLeadMessage(db: Db, orderId: number): Promise<void> {
+  try {
+    const order = (await db.collection("orders").findOne({ id: orderId }, { projection: { _id: 0 } })) as unknown as Order | null;
+    const tg = order?.tgMessage;
+    if (!order || !tg?.chatId || !tg.messageId) return;
+    const cfg = loadSyncConfig();
+    if (!cfg.enabled || !cfg.telegramToken) return;
+    await editMessage(cfg, tg.chatId, tg.messageId, await buildLeadMessage(db, order), leadKeyboard(order.id));
+  } catch (e) {
+    console.error("[leadNotify] xabar yangilanmadi:", e instanceof Error ? e.message : e);
   }
 }

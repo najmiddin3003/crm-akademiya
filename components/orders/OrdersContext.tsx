@@ -34,6 +34,10 @@ interface OrdersContextValue {
   /** Izohni serverga yozadi. `true` — saqlandi (chaqiruvchi shunda muvaffaqiyat
    * toastini ko'rsatadi); xato bo'lsa xabarni shu yerning o'zi ko'rsatadi. */
   addMessage: (orderId: number, text: string) => Promise<boolean>;
+  /** Server qaytargan yangi nusxani joyiga qo'yadi (holat o'zgarishi — /holat). */
+  replaceOrder: (order: Order) => void;
+  /** Ro'yxatni serverdan qayta oladi (yangi so'rovnoma lidlari, Telegram belgilari). */
+  reload: () => Promise<void>;
 }
 
 const OrdersContext = createContext<OrdersContextValue | null>(null);
@@ -45,23 +49,31 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [messagesByOrder, setMessagesByOrder] = useState<Record<number, OrderMessage[]>>({});
   const { showError } = useToast();
 
+  /** Ro'yxat va izohlar — birinchi yuklash ham, qayta yuklash ham shu. */
+  const fetchOrders = useCallback(async (): Promise<{ list: Order[]; byOrder: Record<number, OrderMessage[]> } | null> => {
+    const data = await fetch("/api/orders", { cache: "no-store" })
+      .then((res) => res.json())
+      .catch(() => null);
+    if (!data?.ok) return null;
+    const list = data.orders as OrderWithComments[];
+    // Izohlar buyurtma hujjatining ichida keladi — alohida so'rov shart
+    // emas, va ro'yxat ham, detal sahifasi ham darhol to'liq ipni ko'radi.
+    const byOrder: Record<number, OrderMessage[]> = {};
+    for (const o of list) {
+      if (Array.isArray(o.comments) && o.comments.length > 0) {
+        byOrder[o.id] = o.comments.map((c) => ({ text: c.text, time: c.time }));
+      }
+    }
+    return { list, byOrder };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/orders")
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled || !data.ok) return;
-        const list = data.orders as OrderWithComments[];
-        setOrders(list);
-        // Izohlar buyurtma hujjatining ichida keladi — alohida so'rov shart
-        // emas, va ro'yxat ham, detal sahifasi ham darhol to'liq ipni ko'radi.
-        const byOrder: Record<number, OrderMessage[]> = {};
-        for (const o of list) {
-          if (Array.isArray(o.comments) && o.comments.length > 0) {
-            byOrder[o.id] = o.comments.map((c) => ({ text: c.text, time: c.time }));
-          }
-        }
-        setMessagesByOrder(byOrder);
+    fetchOrders()
+      .then((r) => {
+        if (cancelled || !r) return;
+        setOrders(r.list);
+        setMessagesByOrder(r.byOrder);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -69,6 +81,17 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, [fetchOrders]);
+
+  const reload = useCallback(async () => {
+    const r = await fetchOrders();
+    if (!r) return;
+    setOrders(r.list);
+    setMessagesByOrder(r.byOrder);
+  }, [fetchOrders]);
+
+  const replaceOrder = useCallback((order: Order) => {
+    setOrders((prev) => prev.map((o) => (o.id === order.id ? order : o)));
   }, []);
 
   const createOrder = useCallback(async (values: NewOrderValues) => {
@@ -150,7 +173,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <OrdersContext.Provider value={{ orders, loading, createOrder, updateOrder, patchOrder, messagesByOrder, addMessage }}>
+    <OrdersContext.Provider value={{ orders, loading, createOrder, updateOrder, patchOrder, messagesByOrder, addMessage, replaceOrder, reload }}>
       {children}
     </OrdersContext.Provider>
   );

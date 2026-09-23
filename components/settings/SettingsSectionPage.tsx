@@ -12,6 +12,7 @@ import PublicOfertaTab from "./PublicOfertaTab";
 import FieldSettingsTab from "./FieldSettingsTab";
 import AutoSmsTab from "./AutoSmsTab";
 import BotNotesTab from "./BotNotesTab";
+import LeadSettingsTab from "./LeadSettingsTab";
 import ModuleNotEnabledTab from "./ModuleNotEnabledTab";
 import { loadMonthlyPercentStaffCounts } from "./monthlyPercentStaff";
 import SettingsNote from "./SettingsNote";
@@ -248,6 +249,8 @@ const BUILT: Record<string, () => ReactNode> = {
   ),
 
   // ── Sotuv va marketing ───────────────────────────────────────────────
+  "sale-marketing:leads": () => <LeadSettingsTab />,
+
   "sale-marketing:color-list": () => (
     <SettingsListTab
       kind="lead-colors"

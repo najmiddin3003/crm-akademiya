@@ -17,6 +17,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const db = await ensureIndexes();
+  // Topshiriqlar bo'limidan tushgan jarima (bajarilmagan topshiriq) shu
+  // yerda bekor qilinmaydi: u yerdagi jarima "kuchda" qolib, bu yozuv
+  // bekor bo'lsa, ikki bo'lim bir-biriga zid bo'lib qolardi va keyingi
+  // qayta hisoblash (lib/staffTasksServer.ts → syncFinePenalties) uni
+  // baribir tiklardi.
+  const current = await db.collection("penalties").findOne({ id: penaltyId }, { projection: { _id: 0, source: 1 } });
+  if (current?.source?.kind === "staff_task") {
+    return NextResponse.json(
+      { ok: false, error: "Bu jarima Topshiriqlar bo'limidan tushgan — uni Topshiriqlar → Jarimalar tabida bekor qiling" },
+      { status: 409 },
+    );
+  }
   const res = await db.collection("penalties").findOneAndUpdate(
     { id: penaltyId },
     { $set: { status: "cancelled", reason: (body.reason || "").trim() } },

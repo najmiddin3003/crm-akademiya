@@ -7,15 +7,16 @@ import { employeeNameById, nameEq } from "@/lib/currentEmployee";
 import { getBranchScope, type BranchScope } from "@/lib/branchScope";
 import { withLeadScope } from "@/lib/leadScope";
 import { SOURCE_SCAN, SOURCE_SHOW, WINDOW_DAYS } from "@/constants/notifications";
-import { overdueUz, uzMoney, type NotifItem, type NotifKind, type NotifSource } from "@/lib/notifications";
-import { uzDateIso, uzParseStamp, uzStamp, uzWall } from "@/lib/uzTime";
+import { uzMoney, type NotifItem, type NotifKind, type NotifSource } from "@/lib/notifications";
+import { uzDateIso } from "@/lib/uzTime";
+import { loadTaskNotifications } from "@/lib/staffTasksServer";
 
 // Navbardagi qo'ng'iroq paneli — HAQIQIY hodisalar.
 //
 // Ilgari panel constants/navbar.js dagi beshta o'ylab topilgan qatorni
 // ko'rsatardi va qizil nuqta doim yonib turardi. Endi uch manba bazadan
-// o'qiladi: kassaga tushgan to'lov, yangi buyurtma (lid) va muddati o'tgan
-// topshiriq.
+// o'qiladi: kassaga tushgan to'lov, yangi buyurtma (lid) va xodim
+// topshiriqlari hodisalari (/tasks — lib/staffTasksServer.ts).
 //
 // JONLI SO'ROV, materiallashtirilgan `notifications` kolleksiyasi EMAS.
 // Sabab: qator — o'zgaruvchan haqiqatning proyeksiyasi, muzlatilgan da'vo
@@ -33,7 +34,6 @@ import { uzDateIso, uzParseStamp, uzStamp, uzWall } from "@/lib/uzTime";
 const PAY_ALL = "/finance-transactions";
 const PAY_OWN = "/finance-cash";
 const ORDERS = "/orders-list";
-const TASKS = "/tasks";
 
 /** AYNAN `toISOString()` shakli — pastdagi leksikografik taqqoslash shunga tayanadi. */
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -66,7 +66,9 @@ export async function GET() {
   const canPayOwn = isPathAllowed(PAY_OWN, me.permissions);
   const canPay = canPayAll || canPayOwn;
   const canOrder = isPathAllowed(ORDERS, me.permissions);
-  const canTask = isPathAllowed(TASKS, me.permissions);
+  // Topshiriq manbasi HAMMADA yoqiq: /tasks hammaga ochiq va har bir
+  // xodimga topshiriq berilishi mumkin — qamrov manbaning o'zida kesiladi
+  // (lib/staffTasksServer.ts → loadTaskNotifications).
 
   const now = new Date();
   const nowMs = now.getTime();
@@ -122,7 +124,7 @@ export async function GET() {
       ? Promise.all([getBranchScope(), employeeNameById(db, me.hrEmployeeId)])
           .then(([s, author]) => loadOrders(db, sinceMs, s, author))
       : Promise.resolve(null),
-    canTask ? loadTasks(db, sinceMs, nowMs) : Promise.resolve(null),
+    loadTaskNotifications(db, me, sinceMs, SOURCE_SCAN),
   ]);
 
   if (payRows) {
@@ -369,75 +371,6 @@ async function loadOrders(
     .sort({ _id: -1 })
     .limit(SOURCE_SCAN)
     .toArray();
-}
-
-/**
- * Muddati o'tgan topshiriqlar.
- *
- * FILIAL VA MAS'UL BO'YICHA KESILMAYDI — ATAYIN. `tasks` da `branchId` yo'q,
- * `staff` esa erkin matn (topshiriq shablonlari u yerga "Siz" deb yozadi),
- * ya'ni foydalanuvchi bilan solishtirib bo'lmaydi. Ismni taxminan
- * solishtirish bitta imlo farqida odamning ishini JIMGINA yashirardi.
- * `GET /api/tasks` ham kesmaydi, ya'ni qo'ng'iroq sahifa bilan bir xil.
- * Mas'ul ismi qatorning o'zida chiziladi — kimning ishi ekani ko'rinadi.
- */
-async function loadTasks(
-  db: Awaited<ReturnType<typeof ensureIndexes>>,
-  sinceMs: number,
-  nowMs: number,
-): Promise<NotifItem[]> {
-  // `$ne: "bajarilgan"` EMAS: inkor indeksda chegaralangan sakrash bermaydi.
-  // Ro'yxat yopiq va yozuvda `isTaskState` tekshiradi — uchta aniq sakrash.
-  const state = { $in: ["yangi", "jarayonda", "kutilmoqda"] };
-  // Xom oyna ATAYIN keng (±12 soat): `date` ikki xil shaklda saqlangan
-  // (devor-soati va haqiqiy lahza), satr chegarasi 5 soatgacha adashishi
-  // mumkin. HAQIQIY oyna pastda, JS'da, format-xabardor parser bilan
-  // kesiladi.
-  const lo = uzWall(new Date(sinceMs - 12 * 3_600_000));
-  const hi = uzWall(new Date(nowMs + 12 * 3_600_000));
-  const projection = { _id: 1, id: 1, student: 1, staff: 1, description: 1, date: 1 };
-  const col = db.collection("tasks");
-  const [byDeadline, byBirth] = await Promise.all([
-    col.find({ state, date: { $gte: lo, $lt: hi } }, { projection }).sort({ date: -1 }).limit(SOURCE_SCAN).toArray(),
-    // IKKINCHI so'rov "tug'ilishidanoq kechikkan" topshiriq uchun: bugun
-    // yaratilgan, muddati kecha bo'lgan yozuvning `date` i eng PAST va
-    // birinchi so'rovning limiti aynan uni tashlab yuborardi.
-    col.find({ state, date: { $gte: lo, $lt: hi } }, { projection }).sort({ _id: -1 }).limit(SOURCE_SCAN).toArray(),
-  ]);
-
-  const seen = new Set<number>();
-  const out: NotifItem[] = [];
-  for (const r of [...byDeadline, ...byBirth]) {
-    const id = Number(r.id);
-    if (!Number.isFinite(id) || seen.has(id)) continue;
-    seen.add(id);
-    const dl = uzParseStamp(r.date);
-    // Yaroqsiz sana — qator TASHLANADI, xato otilmaydi. Bitta buzuq yozuv
-    // butun qo'ng'iroqni har 60 soniyada 500 qilib turmasin.
-    if (dl === null) continue;
-    if (dl >= nowMs || dl < sinceMs) continue;
-    const born = (r._id as ObjectId).getTimestamp().getTime();
-    // `max` ORQAGA SANALASH uchun: bugun soat 16:00 da yaratilgan, muddati
-    // kecha bo'lgan topshiriq faqat muddat bo'yicha olinsa kursor ortida
-    // qolib, allaqachon "o'qilgan" bo'lib kelardi.
-    const at = new Date(Math.max(dl, born)).toISOString();
-    const student = String(r.student ?? "").trim();
-    const staff = String(r.staff ?? "").trim();
-    out.push({
-      id: `task:${id}`,
-      kind: "task",
-      title: "Kechikkan topshiriq",
-      body: `${student || "—"}${staff ? ` (${staff})` : ""} — ${String(r.description ?? "").trim() || "tavsifsiz"}`,
-      // Topshiriqda nisbiy vaqt O'RNIGA muddat chiziladi: `at` — kursor
-      // kaliti, ko'rsatiladigan qiymat emas. Muddati olti kun oldin
-      // o'tgan topshiriq uchun "Hozirgina" deb yozish yolg'on bo'lardi.
-      meta: `Muddat: ${uzStamp(new Date(dl))} — ${overdueUz(Math.floor((nowMs - dl) / 60_000))}`,
-      at,
-      href: TASKS,
-      unread: false,
-    });
-  }
-  return out;
 }
 
 // PATCH /api/notifications — panel ochilganda kursorni suradi.

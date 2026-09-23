@@ -683,7 +683,13 @@ function PermissionPicker({
                     <label
                       key={it.href}
                       className={`flex items-center gap-2 px-2 py-1 rounded-md text-[12.5px] ${it.always ? "opacity-60" : "hover:bg-secondary cursor-pointer"}`}
-                      title={it.always ? "Bu sahifa har doim ochiq" : it.href}
+                      title={
+                        it.always
+                          ? "Bu sahifa har doim ochiq"
+                          : it.selfService
+                            ? t("Belgilanmasa ham xodim o'z topshiriqlarini ko'radi. Belgilansa — boshqalarga topshiriq beradi va tasdiqlaydi.")
+                            : it.href
+                      }
                     >
                       <input
                         type="checkbox"
@@ -693,6 +699,9 @@ function PermissionPicker({
                         className="w-3.5 h-3.5 rounded border-border accent-primary"
                       />
                       <span className="flex-1 truncate">{t(it.label)}</span>
+                      {it.selfService && (
+                        <span className="shrink-0 rounded bg-primary/10 px-1.5 py-px text-[10.5px] font-medium text-primary">{t("rahbar")}</span>
+                      )}
                     </label>
                   ))}
                 </div>

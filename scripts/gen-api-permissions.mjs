@@ -68,6 +68,10 @@ const PUBLIC = [
  */
 const PUBLIC_METHODS = {
   "/api/management-cv": ["POST"],
+  // Ommaviy so'rovnoma (/sorovnoma) — javob yuborish. Sozlamalar sahifaga
+  // server komponentdan keladi, GET yo'q. Spamdan himoya route ichida
+  // (yashirin maydon, to'ldirish vaqti, IP va raqam bo'yicha chegara).
+  "/api/sorovnoma": ["POST"],
 };
 
 /** Faqat sessiya yetarli — har doim ochiq sahifalar ishlatadiganlar. */
@@ -99,6 +103,19 @@ const SHARED_EXTRA = [
   // uchun alohida kesiladi va yopiq kartaning soni umuman so'ralmaydi
   // (app/api/home-stats/route.ts, lib/homeStats.ts).
   "/api/home-stats",
+  // Xodim topshiriqlari (/tasks). Sahifa HAMMAGA ochiq (lib/permissions.ts
+  // → SELF_SERVICE_PATHS): oddiy xodim ham o'z topshirig'ini ko'radi va
+  // «Bajardim» bosadi. "/tasks" ga bog'lansa u 403 olardi. Qamrov va
+  // rahbar/direktor amallari HAR BIR handler ichida kesiladi
+  // (lib/staffTasksServer.ts → loadViewer, taskScope, canManage).
+  "/api/staff-tasks",
+  "/api/staff-tasks/[id]",
+  "/api/staff-tasks/[id]/file",
+  "/api/staff-tasks/fines",
+  "/api/staff-tasks/fines/[id]",
+  "/api/staff-tasks/stats",
+  "/api/staff-tasks/settings",
+  "/api/staff-tasks/upload",
 ];
 
 /**
@@ -119,6 +136,13 @@ const MANUAL = {
   // yetarli" darajasiga tushirib yuborardi, ya'ni xodimning oylik
   // to'lovlari har qanday kirgan odamga ochilardi. Avvalgi kesim saqlanadi.
   "/api/employee-salary-summary": ["/finance-cash"],
+  // Eski (o'quvchiga bog'langan) topshiriqni tahrirlash/o'chirish. 23.09.2026
+  // gacha uni /tasks sahifasi chaqirardi; u sahifa endi xodim topshiriqlari
+  // (/api/staff-tasks) va bu route'ni hech kim chaqirmaydi. Chaqiruvsiz
+  // qolgani uchun generator uni "sessiya yetarli" darajasiga tushirib,
+  // PATCH/DELETE ni har kirgan odamga ochib qo'yardi. Eski topshiriqlar
+  // o'quvchi profilida («Vazifa» tabi) yashaydi — kesim o'shanga.
+  "/api/tasks/[id]": ["/students-list"],
 };
 
 // lib/permissions.ts dagi ALWAYS_ALLOWED_PATHS bilan bir xil bo'lishi SHART

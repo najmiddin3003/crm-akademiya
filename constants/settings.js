@@ -61,6 +61,9 @@ export const SETTINGS_SECTIONS = [
       { key: "auto-sms", label: "Avto sms" },
       { key: "bot-notes", label: "Bot eslatmalari" },
       { key: "sms-device", label: "SMS qurilmalar" },
+      // Lidlar sahifasi va ommaviy so'rovnoma (/sorovnoma) ro'yxatlari —
+      // components/settings/LeadSettingsTab.tsx (23.09.2026).
+      { key: "leads", label: "Lidlar" },
     ],
   },
   {

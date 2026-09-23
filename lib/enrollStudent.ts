@@ -41,11 +41,15 @@ export interface EnrollResult {
  * har bir sahifa buni o'z holatiga mos ravishda qiladi.
  *
  * @param knownPupils allaqachon yuklangan o'quvchilar (berilmasa API'dan olinadi)
+ * @param opts.joinedAt guruhdagi birinchi dars ("YYYY-MM-DD") — Lidlar
+ *   sahifasidagi «Guruhga qo'shish» oynasida tanlanadi; berilmasa sinov
+ *   darsi sanasi, u ham bo'lmasa server bugunni yozadi.
  */
 export async function enrollOrderInGroup(
   order: Order,
   groupId: number,
   knownPupils?: PupilListItem[],
+  opts: { joinedAt?: string } = {},
 ): Promise<EnrollResult> {
   let pupils = knownPupils;
   if (!pupils) {
@@ -95,7 +99,7 @@ export async function enrollOrderInGroup(
   // lidning "Birinchi dars" sanasi bo'lsa — o'sha ("29.08.2026 | 10:00" →
   // "2026-08-29"), bo'lmasa server bugunni yozadi.
   const m = (order.firstLesson || "").match(/^(\d{2})\.(\d{2})\.(\d{4})/);
-  const joinedAt = m ? `${m[3]}-${m[2]}-${m[1]}` : undefined;
+  const joinedAt = opts.joinedAt || (m ? `${m[3]}-${m[2]}-${m[1]}` : undefined);
   const res = await fetch(`/api/groups/${groupId}/students`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

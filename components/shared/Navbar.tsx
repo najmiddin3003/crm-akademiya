@@ -83,7 +83,7 @@ export interface NavbarProps {
  * HECH QACHON bo'lmagan (referens saytdagi manzillar ko'chirilgan, lekin
  * sahifalari qurilmagan). Ya'ni menyu ochilardi-yu, ikkala tugma ham
  * 404 ga tushardi. Endi ular haqiqiy sahifalarga boradi:
- *   Buyurtma yaratish → /orders-list?add=1 — Lidlar ro'yxati ustida
+ *   Lid qo'shish      → /orders-list?add=1 — Lidlar ro'yxati ustida
  *                        "Yangi buyurtma" oynasi (AddOrderModal) ochiq
  *                        holda. 20.09.2026 gacha /orders-list/add ga
  *                        borardi — bu Kanban'ning TO'LIQ SAHIFALI formasi
@@ -96,7 +96,7 @@ export interface NavbarProps {
  * `?add=1` ni tashlab, faqat yo'lga qaraydi).
  */
 const QUICK_LINKS: { href: string; label: string; icon: string; tone: string }[] = [
-  { href: "/orders-list?add=1", label: "Buyurtma yaratish", icon: "#i-user-plus", tone: "bg-blue-100 text-blue-600" },
+  { href: "/orders-list?add=1", label: "Lid qo'shish", icon: "#i-user-plus", tone: "bg-blue-100 text-blue-600" },
   { href: "/finance-cash", label: "Kassa — to'lov qabul qilish", icon: "#i-wallet", tone: "bg-emerald-100 text-emerald-600" },
 ];
 

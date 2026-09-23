@@ -26,6 +26,7 @@ export const PUBLIC_API: readonly string[] = [
 /** Faqat shu HTTP metodlar uchun sessiyasiz ochiq. */
 export const PUBLIC_API_METHODS: Record<string, readonly string[]> = {
   "/api/management-cv": ["POST"],
+  "/api/sorovnoma": ["POST"],
 };
 
 /** Sessiya yetarli — qo'shimcha ruxsat talab qilinmaydi. */
@@ -43,6 +44,15 @@ export const SHARED_API: readonly string[] = [
   "/api/search/students",
   "/api/sessions",
   "/api/sidebar-counts",
+  "/api/sorovnoma",
+  "/api/staff-tasks",
+  "/api/staff-tasks/[id]",
+  "/api/staff-tasks/[id]/file",
+  "/api/staff-tasks/fines",
+  "/api/staff-tasks/fines/[id]",
+  "/api/staff-tasks/settings",
+  "/api/staff-tasks/stats",
+  "/api/staff-tasks/upload",
   "/api/tasks/inbox",
 ];
 
@@ -80,7 +90,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/gender-guess": ["/management-xodimlar"],
   "/api/group-tasks": ["/groups-tasks"],
   "/api/group-tasks/[id]": ["/groups-tasks"],
-  "/api/groups": ["/active-students", "/archive-students", "/blok-testlar", "/finance-cash", "/finance-fin-contract", "/first-lessons", "/groups", "/groups-schedule", "/groups-students", "/imtihon", "/management-xodimlar", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups", "/offline-courses", "/online-courses", "/orders-list", "/reports-rooms", "/reports-served", "/seasonal-assessment", "/students-list", "/tasks"],
+  "/api/groups": ["/active-students", "/archive-students", "/blok-testlar", "/finance-cash", "/finance-fin-contract", "/first-lessons", "/groups", "/groups-schedule", "/groups-students", "/imtihon", "/management-xodimlar", "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups", "/offline-courses", "/online-courses", "/orders-list", "/reports-rooms", "/reports-served", "/seasonal-assessment", "/students-list"],
   "/api/groups/[id]": ["/groups"],
   "/api/groups/[id]/attendance": ["/groups"],
   "/api/groups/[id]/attendance/history": ["/groups"],
@@ -89,7 +99,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/groups/[id]/students": ["/first-lessons", "/groups", "/imtihon", "/new-students", "/orders-list", "/seasonal-assessment", "/students-list"],
   "/api/groups/[id]/tasks": ["/groups"],
   "/api/groups/import": ["/groups"],
-  "/api/hr-employees": ["/blok-testlar", "/management-xodimlar", "/orders-list", "/tasks"],
+  "/api/hr-employees": ["/blok-testlar", "/management-xodimlar"],
   "/api/hr-employees/[id]": ["/management-rollar", "/management-xodimlar"],
   "/api/hr-employees/[id]/notes": ["/management-xodimlar"],
   "/api/hr-employees/[id]/password": ["/management-xodimlar"],
@@ -99,6 +109,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/imtihon/group": ["/imtihon"],
   "/api/imtihon/uzbmb": ["/imtihon"],
   "/api/imtihon/uzbmb/[id]": ["/imtihon"],
+  "/api/lead-settings": ["/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
   "/api/legacy-entries": ["/students-list"],
   "/api/management-cv": ["/management-cv"],
   "/api/management-cv/[id]": ["/management-cv"],
@@ -118,6 +129,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/orders": ["/first-lessons", "/management-xodimlar", "/new-students", "/orders-list", "/reports-admins-perf", "/reports-funnel", "/reports-teachers-perf"],
   "/api/orders/[id]": ["/first-lessons", "/orders-list"],
   "/api/orders/[id]/comments": ["/orders-list"],
+  "/api/orders/[id]/holat": ["/orders-list"],
   "/api/penalties": ["/finance-cashflow", "/finance-penalty", "/management-xodimlar"],
   "/api/penalties/[id]": ["/finance-penalty"],
   "/api/planned-expenses": ["/finance-planned"],
@@ -160,8 +172,8 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/sync": ["/finance-sync"],
   "/api/task-types": ["/groups-tasks", "/students-list", "/tasks"],
   "/api/task-types/[id]": ["/groups-tasks", "/students-list", "/tasks"],
-  "/api/tasks": ["/students-list", "/tasks"],
-  "/api/tasks/[id]": ["/tasks"],
+  "/api/tasks": ["/students-list"],
+  "/api/tasks/[id]": ["/students-list"],
   "/api/teachers": ["/finance-cash", "/first-lessons", "/groups", "/imtihon", "/orders-list", "/reports-served"],
   "/api/temp-staff": ["/vaqtinchalik"],
   "/api/temp-staff/[id]": ["/vaqtinchalik"],

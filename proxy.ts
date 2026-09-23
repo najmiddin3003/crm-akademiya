@@ -38,7 +38,10 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 // barcha ma'lumot /api/student-web/me dan keladi va imzo o'sha yerda
 // tekshiriladi.
 // "/tezlik" — ommaviy tezlik sinovi (components/tezlik/TapTestPage.tsx).
-const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik"];
+// "/sorovnoma" — sinov darsiga yozilish so'rovnomasi (reklama havolasi):
+// javob lid bo'lib Lidlar sahifasiga va filial Telegram topigiga tushadi.
+// Spamdan himoya POST ichida (app/api/sorovnoma/route.ts).
+const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([

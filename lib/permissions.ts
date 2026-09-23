@@ -24,6 +24,8 @@ export interface PermissionItem {
   label: string;
   /** Doim ochiq (galochkasi o'chirib bo'lmaydi) — ALWAYS_ALLOWED_PATHS. */
   always: boolean;
+  /** Sahifa hammaga ochiq, galochka rahbar rejimini beradi — SELF_SERVICE_PATHS. */
+  selfService: boolean;
 }
 
 export interface PermissionGroup {
@@ -57,6 +59,26 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   // tushishi uchun route'ning o'zi ochiq bo'lishi kerak.
   "/dashboard",
 ]);
+
+/**
+ * HAMMAGA OCHIQ, LEKIN RUXSAT KALITI SAQLANADIGAN sahifalar.
+ *
+ * `ALWAYS_ALLOWED_PATHS` dan FARQI: u yerdagi sahifa rollar oynasida
+ * "doim ochiq" bo'lib, kaliti hech narsani anglatmaydi. Bu yerdagisini esa
+ * HAR BIR xodim ochadi, kalit esa rollar oynasida belgilanadigan bo'lib
+ * qoladi va sahifa ICHIDA boshqa ma'noni beradi.
+ *
+ * /tasks (23.09.2026 qarori): topshiriq har bir xodimga beriladi, ya'ni
+ * o'qituvchi ham o'z topshirig'ini ko'rishi va «Bajardim» bosishi kerak.
+ * "/tasks" ruxsati endi RAHBAR rejimi — boshqalarga topshiriq berish,
+ * tasdiqlash va filial bo'yicha ko'rish (lib/staffTasksServer.ts).
+ *
+ * Kalitni "bor-yo'q" deb tekshirish uchun `isPathAllowed` EMAS,
+ * `hasSectionPermission` ishlatilsin — birinchisi bu sahifalar uchun HAR
+ * DOIM `true`. API qorovuli (proxy.ts) esa allaqachon ro'yxatning o'zini
+ * tekshiradi, ya'ni "/tasks" ga bog'langan route'lar rahbarlarga qoladi.
+ */
+export const SELF_SERVICE_PATHS = new Set(["/tasks"]);
 
 /**
  * Sidebarda o'z havolasi bo'lmagan, ammo boshqa sahifadan ochiladigan
@@ -101,7 +123,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = (SIDEBAR_ITEMS as RawTop[])
       const href = stripQuery(r.href);
       if (seen.has(href)) continue;
       seen.add(href);
-      items.push({ href, label: r.label, always: ALWAYS_ALLOWED_PATHS.has(href) });
+      items.push({ href, label: r.label, always: ALWAYS_ALLOWED_PATHS.has(href), selfService: SELF_SERVICE_PATHS.has(href) });
     }
     return { key: top.key, label: top.label, items };
   })
@@ -159,8 +181,18 @@ export function readPermissions(raw: unknown): string[] | null {
 export function isPathAllowed(pathname: string, permissions: string[] | null): boolean {
   if (permissions === null) return true;
   const key = permissionKeyOf(pathname);
-  if (ALWAYS_ALLOWED_PATHS.has(key)) return true;
+  if (ALWAYS_ALLOWED_PATHS.has(key) || SELF_SERVICE_PATHS.has(key)) return true;
   return permissions.includes(key);
+}
+
+/**
+ * Bo'lim RUXSATI rostdan bormi — sahifaga kira olishidan qat'i nazar.
+ * `SELF_SERVICE_PATHS` dagi sahifalar ichida "rahbarmi, oddiy xodimmi"
+ * degan savol shu bilan hal qilinadi.
+ */
+export function hasSectionPermission(pathname: string, permissions: string[] | null): boolean {
+  if (permissions === null) return true;
+  return permissions.includes(permissionKeyOf(pathname));
 }
 
 /**

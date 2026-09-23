@@ -166,10 +166,42 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("tasks").createIndex({ "createdBy.userId": 1, "report.at": -1 }));
   // task_types — Topshiriqlar sahifasidagi "Topshiriq turi" boshqaruvi.
   tasks.push(db.collection("task_types").createIndex({ id: 1 }, { unique: true }));
+  // staff_tasks — xodim topshiriqlari (/tasks, lib/staffTasksServer.ts).
+  // Avtomatika har daqiqada ikki so'rov qiladi: "deadline o'tdi" va
+  // "qayta muddat o'tdi" — ikkalasi ham holat + muddat oralig'i.
+  tasks.push(db.collection("staff_tasks").createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection("staff_tasks").createIndex({ status: 1, deadline: 1 }));
+  tasks.push(db.collection("staff_tasks").createIndex({ status: 1, redeadline: 1 }));
+  // Qamrov: xodim — o'zinikilar, rahbar — filial yoki o'zi berganlari;
+  // qo'ng'iroq esa yaqinda o'zgarganlarni `updatedAt` bo'yicha oladi.
+  tasks.push(db.collection("staff_tasks").createIndex({ employeeId: 1, status: 1 }));
+  tasks.push(db.collection("staff_tasks").createIndex({ branchId: 1, status: 1 }));
+  tasks.push(db.collection("staff_tasks").createIndex({ "createdBy.userId": 1 }));
+  tasks.push(db.collection("staff_tasks").createIndex({ batchId: 1 }));
+  tasks.push(db.collection("staff_tasks").createIndex({ updatedAt: -1 }));
+  // Bitta topshiriqqa ko'pi bilan BITTA jarima — ikki jarayon bir vaqtda
+  // "bajarilmadi" ni yozsa ham ikkinchisi shu indeksga uriladi.
+  tasks.push(db.collection("staff_task_fines").createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection("staff_task_fines").createIndex({ taskId: 1 }, { unique: true }));
+  tasks.push(db.collection("staff_task_fines").createIndex({ employeeId: 1, month: 1 }));
+  // Topshiriq jarimasidan yozilgan Moliya → Jarima qatori — har jarimaga
+  // bittadan (parallel sinxron ikki marta ayirmasin).
+  tasks.push(
+    db.collection("penalties").createIndex(
+      { "source.fineId": 1 },
+      { unique: true, partialFilterExpression: { "source.kind": "staff_task" } },
+    ),
+  );
   tasks.push(db.collection("orders").createIndex({ id: 1 }, { unique: true }));
   // Filial ichidagi tartib raqami (Order.branchNo) — POST /api/orders har
   // safar shu filialning eng kattasini qidiradi.
   tasks.push(db.collection("orders").createIndex({ branchId: 1, branchNo: -1 }));
+  // Ommaviy so'rovnoma (/sorovnoma) urinishlari — IP va raqam bo'yicha
+  // chegara uchun (app/api/sorovnoma/route.ts). Bir kundan keyin Mongo
+  // o'zi o'chiradi (TTL): bu jurnal emas, faqat qisqa muddatli hisoblagich.
+  tasks.push(db.collection("survey_hits").createIndex({ at: 1 }, { expireAfterSeconds: 86_400 }));
+  tasks.push(db.collection("survey_hits").createIndex({ ipHash: 1, at: -1 }));
+  tasks.push(db.collection("survey_hits").createIndex({ telHash: 1, at: -1 }));
   tasks.push(db.collection("pupils").createIndex({ id: 1 }, { unique: true }));
   // Aktiv/Arxiv o'quvchilar sahifalari `?status=` bilan SERVERDA
   // filtrlaydi (6 732 tadan 4 276 va 2 456). Saralash `id` bo'yicha

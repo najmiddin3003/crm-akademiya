@@ -6,6 +6,8 @@
 
 import { MANAGEMENT_BRANCH_NAMES } from "@/constants/managementBranches";
 import type { LeadStatusKey } from "./leadStatus";
+import type { LeadGuruh, LeadHolat, LeadHolatEvent, LeadHolatSnapshot } from "./leadHolat";
+import type { LeadDaraja } from "./leadSettings";
 import { uzNow } from "./uzTime";
 
 export type OrderStageKey = "bir_oylay" | "jaylang_e" | "rahmaaaat" | "ketdim";
@@ -105,6 +107,41 @@ export interface Order {
   leadStatusAt?: string;
   /** Tugmani bosgan Telegram foydalanuvchisining ko'rinadigan ismi. */
   leadStatusBy?: string;
+
+  // ── Lidlar sahifasi (23.09.2026) — voronka, lib/leadHolat.ts ─────────
+  /** Voronkadagi holat. Eski lidlarda yo'q — `holatOf()` hisoblaydi. */
+  holat?: LeadHolat;
+  /** Holat o'zgargan lahza (ISO) va kim o'zgartirgani. */
+  holatAt?: string;
+  holatBy?: string;
+  /** «Rad etdi» sababi (Sozlamalar → Lidlar ro'yxatidan). */
+  radSabab?: string;
+  /**
+   * Guruh tafsiloti (jadval, 1-dars sanasi) — «Guruhga qo'shish» oynasidan.
+   * Nomi va id'si `group`/`groupId` da ham turadi; eski sahifa guruhni
+   * o'zgartirsa bu maydon o'chiriladi (PATCH), eskirgan nusxa qolmasin.
+   * Sinov darsi uchun alohida maydon YO'Q — `firstLesson`/`teacher` o'zi
+   * (`sinovOf`), ikki nusxa bir-biridan ajrab ketmasin.
+   */
+  guruh?: LeadGuruh;
+  /** Lid kartasidagi tarix (eski lidlarda yo'q). */
+  holatTarix?: LeadHolatEvent[];
+  /** Bekor qilish uchun oldingi holatlar (oxirgisi — eng so'nggi). */
+  holatOldin?: LeadHolatSnapshot[];
+  // ── Ommaviy so'rovnoma javoblari (/sorovnoma) ─────────────────────────
+  /** Yo'nalish: "fan" | "til" | "pm" (lib/leadSettings.ts). */
+  yonalish?: string;
+  /** Chet tili darajasi (faqat "til" yo'nalishida). */
+  daraja?: LeadDaraja;
+  sinf?: string;
+  /** "Qaysi vaqt qulay?" javobi. */
+  qulayVaqt?: string;
+  /** "Bizni qayerdan bildingiz?" — `source` (kanal) dan alohida. */
+  heardFrom?: string;
+  /** Lid qaysi filialda (lib/branchScope.ts). Eski hujjatlarda yo'q bo'lishi mumkin. */
+  branchId?: number;
+  /** Telegram "Lidlar" topigidagi xabar — holat CRM'da o'zgarsa tahrirlanadi. */
+  tgMessage?: { chatId: string; messageId: number };
 }
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];

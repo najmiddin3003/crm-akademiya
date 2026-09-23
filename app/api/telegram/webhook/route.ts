@@ -5,8 +5,9 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { loadSyncConfig, type SyncConfig } from "@/lib/sync/config";
 import { answerCallback, editMessage } from "@/lib/sync/telegram";
 import { leadKeyboard, leadStatusOption, parseLeadCallback } from "@/lib/leadStatus";
-import { leadMessage } from "@/lib/leadNotify";
-import { uzStamp } from "@/lib/uzTime";
+import { buildLeadMessage } from "@/lib/leadNotify";
+import { canTransition, holatFromTelegram, holatMeta, holatOf } from "@/lib/leadHolat";
+import { applyHolatChange, recordTelegramPress } from "@/lib/leadHolatServer";
 import type { Order } from "@/lib/ordersData";
 import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
 import { handleStaffUpdate, type TelegramUpdate } from "@/lib/staffBot/router";
@@ -53,14 +54,15 @@ function senderName(from: CallbackQuery["from"]): string {
   return full || (from?.username ? `@${from.username}` : "");
 }
 
-/** Filial nomi — xabar qayta chizilganda kerak (lib/leadNotify.ts dagidek). */
-async function branchNameOf(db: Db, branchId: unknown): Promise<string> {
-  if (typeof branchId !== "number") return "";
-  const row = await db.collection("branches").findOne({ id: branchId }, { projection: { _id: 0, name: 1 } });
-  return typeof row?.name === "string" ? row.name : "";
-}
-
-/** Lid status tugmasi — bazaga yozish va xabarni yangilash. */
+/**
+ * Lid status tugmasi — bazaga yozish va xabarni yangilash.
+ *
+ * 23.09.2026 dan tugma Lidlar sahifasidagi HOLATNI yuritadi ("bitta
+ * ma'lumot"): 🟢 → Sinov darsiga yozildi, 🕒/💳 → Bog'lanildi, ❌ → Rad
+ * etdi. O'tish qoidasi CRM bilan bir xil (`canTransition`): guruhga
+ * qo'shilgan lidni tugma bilan ortga qaytarib bo'lmaydi — bosgan odamga
+ * sababi aytiladi, bazaga hech narsa yozilmaydi.
+ */
 async function handleLeadCallback(
   db: Db,
   cfg: SyncConfig,
@@ -71,17 +73,35 @@ async function handleLeadCallback(
   // Telegram o'sha tugmani qayta-qayta yuboraverardi.
   try {
     const col = db.collection("orders");
-    const order = (await col.findOne({ id: parsed.orderId })) as (Order & { branchId?: number }) | null;
+    const order = (await col.findOne({ id: parsed.orderId }, { projection: { _id: 0 } })) as unknown as Order | null;
     if (!order) {
       await answerCallback(cfg, cq.id, "Lid topilmadi — CRM'dan o'chirilgan bo'lishi mumkin");
       return;
     }
 
-    const by = senderName(cq.from);
-    await col.updateOne(
-      { id: parsed.orderId },
-      { $set: { leadStatus: parsed.key, leadStatusAt: uzStamp(), leadStatusBy: by } },
-    );
+    const by = senderName(cq.from) || "Telegram";
+    const opt = leadStatusOption(parsed.key);
+    const label = opt ? `${opt.emoji} ${opt.label}` : "";
+    const from = holatOf(order);
+    const to = holatFromTelegram(parsed.key);
+
+    let fresh: Order = order;
+    let answer = label || "Saqlandi";
+    if (to && to !== from && canTransition(from, to)) {
+      const r = await applyHolatChange(db, { id: order.id }, order, {
+        to,
+        by,
+        via: "telegram",
+        telegram: { key: parsed.key, label },
+      });
+      if (r.ok) fresh = r.order;
+      else answer = r.error;
+    } else if (to && to === from) {
+      // Holat o'sha — faqat tugmaning aniq javobi (keyinroq ↔ to'lov).
+      if (order.leadStatus !== parsed.key) fresh = (await recordTelegramPress(db, order, parsed.key, label, by)) ?? order;
+    } else {
+      answer = `Holat o'zgarmadi: lid «${holatMeta(from).nom}» bosqichida. O'zgartirish — CRM'dagi Lidlar sahifasida`;
+    }
 
     // Xabar BAZADAGI joriy holatdan qayta yig'iladi (eski matnni
     // tahrirlashga urinmaymiz): lid CRM'da o'zgargan bo'lsa, guruhdagi
@@ -94,13 +114,17 @@ async function handleLeadCallback(
     const chatId = cq.message?.chat?.id;
     const messageId = cq.message?.message_id;
     if (chatId !== undefined && messageId !== undefined) {
+      // Eski lid (xabari saqlanmagan) — shu bosishdan keyin CRM'dagi
+      // o'zgarishlar ham shu xabarga yetib borsin.
+      if (!fresh.tgMessage) {
+        await col.updateOne({ id: order.id, tgMessage: { $exists: false } }, { $set: { tgMessage: { chatId: String(chatId), messageId } } });
+      }
       try {
-        const fresh = { ...order, leadStatus: parsed.key } as Order;
         await editMessage(
           cfg,
           String(chatId),
           messageId,
-          leadMessage(fresh, await branchNameOf(db, order.branchId)),
+          await buildLeadMessage(db, fresh),
           // Tugmalar qoldiriladi — status keyin ham o'zgartirilishi mumkin.
           leadKeyboard(parsed.orderId),
         );
@@ -109,8 +133,7 @@ async function handleLeadCallback(
       }
     }
 
-    const opt = leadStatusOption(parsed.key);
-    await answerCallback(cfg, cq.id, opt ? `${opt.emoji} ${opt.label}` : "Saqlandi");
+    await answerCallback(cfg, cq.id, answer);
   } catch (e) {
     // Bu yerga faqat BAZA yiqilganda tushiladi — status yozilmagan.
     console.error("[telegram-webhook]", e instanceof Error ? e.message : e);
