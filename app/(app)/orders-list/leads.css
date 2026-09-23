@@ -231,6 +231,10 @@ html.dark {
 .ld-late { color: var(--ld-rad); background: var(--ld-rad-2); }
 .ld-today { color: #fff; background: var(--ld-sinov); }
 .ld-today.soft { background: transparent; color: var(--ld-sinov); border: 1px solid var(--ld-sinov); padding: 1px 6px; }
+/* Tungi rejimda to'q sariq TO'LIQ fon (oq yozuv bilan) ko'zni charchatardi —
+   yumshoq tus va sariq yozuv (qolgan belgilar bilan bir xil uslub). */
+html.dark .ld-today { background: color-mix(in srgb, var(--ld-sinov) 20%, transparent); color: var(--ld-sinov); }
+html.dark .ld-today.soft { background: transparent; }
 
 /* ---------- Mobil: jadval → kartochkalar (prototip) ---------- */
 @media (max-width: 640px) {

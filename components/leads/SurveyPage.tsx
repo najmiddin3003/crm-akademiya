@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
-import { useT } from "@/components/shared/Language";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { Loader2, Moon, Sun } from "lucide-react";
+import { useLang, useT } from "@/components/shared/Language";
+import { useTheme } from "@/components/shared/Theme";
+import { LANGS, type Lang } from "@/lib/i18n";
 import { darajaInfo, hasDaraja, type LeadFan, type LeadYonalish } from "@/lib/leadSettings";
+import { LANGS as LANG_LABELS } from "@/lib/navbar";
 import { maskSurveyPhone, phone9, type SurveyConfig, type SurveySubmission } from "@/lib/survey";
 import { SurveyIcon, hasFlag } from "./surveyIcons";
 
@@ -19,6 +22,10 @@ import { SurveyIcon, hasFlag } from "./surveyIcons";
 // Javob POST /api/sorovnoma ga ketadi va Lidlar sahifasiga "Sayt
 // so'rovnomasi" manbasi bilan, filialning Telegram topigiga tushadi.
 // Spamdan himoya: yashirin `website` maydoni va to'ldirish vaqti (`ms`).
+//
+// Tepada til (O'zb / Ўзб / Eng) va kunduzgi/tungi rejim tugmalari — /ariza
+// dagi qolip: til cookie'ga (components/shared/Language.tsx), mavzu ilova
+// bilan umumiy kalitga (components/shared/Theme.tsx) yoziladi.
 
 const SALOM = ["Hello", "Привет", "Merhaba", "안녕", "مرحبا", "Hallo"];
 
@@ -77,14 +84,14 @@ function DirArt({ id, salom, fade }: { id: string; salom: string; fade: boolean 
           <ellipse cx="60" cy="45" rx="36" ry="12" transform="rotate(60 60 45)" />
           <ellipse cx="60" cy="45" rx="36" ry="12" transform="rotate(120 60 45)" />
         </g>
-        <circle cx="60" cy="45" r="6" fill="#291ddb" />
-        <text className="floaty" x="4" y="20" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
+        <circle className="core" cx="60" cy="45" r="6" fill="#291ddb" />
+        <text className="floaty sym-1" x="4" y="20" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
           x²
         </text>
-        <text className="floaty f2" x="100" y="18" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="18" fill="#291ddb">
+        <text className="floaty f2 sym-2" x="100" y="18" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="18" fill="#291ddb">
           π
         </text>
-        <text className="floaty f3" x="98" y="86" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
+        <text className="floaty f3 sym-1" x="98" y="86" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
           ∑
         </text>
       </svg>
@@ -101,7 +108,7 @@ function DirArt({ id, salom, fade }: { id: string; salom: string; fade: boolean 
   return (
     <svg viewBox="0 0 120 90" aria-hidden="true">
       <path className="star" d="M60 5l3.5 7.6 8.3.9-6.2 5.6 1.8 8.2L60 23.1l-7.4 4.2 1.8-8.2-6.2-5.6 8.3-.9z" fill="#ffd400" />
-      <g fill="none" stroke="#fff" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
+      <g className="bld" fill="none" stroke="#fff" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
         <path d="M26 44L60 31l34 13z" />
         <path d="M30 48h60" />
         <path d="M37 52v24M51 52v24M69 52v24M83 52v24" />
@@ -149,8 +156,16 @@ const smooth = () => (window.matchMedia?.("(prefers-reduced-motion: reduce)").ma
 /** Sahifa ochilgandan beri o'tgan vaqt (ms) — faqat hodisa ichida chaqiriladi. */
 const clockMs = () => performance.now();
 
+/** Brauzer slayderidagidek: tugma markazi chekkadan yarim tugma (13px) ichkarida. */
+const THUMB_HALF = 13;
+
+/** Shkala foizi (0–100) → tugma markazining CSS joyi. */
+const tickLeft = (pct: number) => `calc(${THUMB_HALF}px + (100% - ${THUMB_HALF * 2}px) * ${pct / 100})`;
+
 export default function SurveyPage({ config }: { config: SurveyConfig }) {
   const { t } = useT();
+  const [lang, setLang] = useLang();
+  const [isDark, toggleTheme] = useTheme();
   const cfg = config;
   const [yonId, setYonId] = useState<string | null>(null);
   const [fan, setFan] = useState<string | null>(null);
@@ -173,6 +188,42 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLDivElement>(null);
   const startedAt = useRef(0);
+  const rangeRef = useRef<HTMLInputElement>(null);
+  const dragRef = useRef(false);
+  const [dragging, setDragging] = useState(false);
+
+  // DARAJA SHKALASINI TORTIB SURISH — Pointer Events bilan (sichqoncha,
+  // barmoq, qalam bir xil). Brauzerning o'z slayderini ba'zi brauzerlarda
+  // sichqoncha bilan tortib bo'lmasdi (foydalanuvchi xabari, 23.09.2026);
+  // endi u faqat klaviatura (←/→) va ekran o'quvchi uchun (CSS'da
+  // `pointer-events: none`). Shkalaning istalgan joyini bosish qiymatni
+  // o'sha joyga olib boradi va tortish davom etadi.
+  const lvlAt = (clientX: number): number => {
+    const el = rangeRef.current;
+    if (!el) return lvl;
+    const r = el.getBoundingClientRect();
+    const span = Math.max(1, r.width - 2 * THUMB_HALF);
+    const x = Math.min(Math.max(clientX - r.left - THUMB_HALF, 0), span);
+    return Math.round((x / span) * 100);
+  };
+  const onScaleDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (test || (e.pointerType === "mouse" && e.button !== 0)) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    rangeRef.current?.focus({ preventScroll: true });
+    dragRef.current = true;
+    setDragging(true);
+    setLvl(lvlAt(e.clientX));
+  };
+  const onScaleMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current) setLvl(lvlAt(e.clientX));
+  };
+  const onScaleEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = false;
+    setDragging(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+  };
 
   const yon: LeadYonalish | null = cfg.yonalishlar.find((y) => y.id === yonId) ?? null;
   const daraja = yon ? hasDaraja(yon.id) : false;
@@ -307,6 +358,24 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
   return (
     <div className="site-in">
       <div className="device">
+        <div className="topbar">
+          <div className="seg" role="group" aria-label={t("Til")}>
+            {LANGS.map((code: Lang) => (
+              <button type="button" key={code} className={lang === code ? "on" : ""} onClick={() => setLang(code)} aria-pressed={lang === code}>
+                {LANG_LABELS[code].short}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="theme"
+            onClick={toggleTheme}
+            aria-label={isDark ? t("Kunduzgi rejim") : t("Tungi rejim")}
+            title={isDark ? t("Kunduzgi rejim") : t("Tungi rejim")}
+          >
+            {isDark ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+        </div>
         <div className="hero">
           {/* eslint-disable-next-line @next/next/no-img-element -- statik logotip, o'lchami CSS'da */}
           <img className="logo" src="/sorovnoma/logo.png" alt={t("Akademiya o'quv markazi")} width={382} height={95} />
@@ -379,8 +448,15 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                           <span>{info.test ? t("Daraja testi kerak") : info.aniq ? t(info.near) : t("{lo} — {hi} orasida", { lo: t(info.lo), hi: t(info.hi) })}</span>
                           <span className="tag">{info.test ? t("test") : info.aniq ? t("aniq bosqich") : t("{near} ga yaqin", { near: t(info.near) })}</span>
                         </p>
-                        <div className="ms-wrap">
+                        <div
+                          className={`ms-wrap ${dragging ? "is-drag" : ""}`}
+                          onPointerDown={onScaleDown}
+                          onPointerMove={onScaleMove}
+                          onPointerUp={onScaleEnd}
+                          onPointerCancel={onScaleEnd}
+                        >
                           <input
+                            ref={rangeRef}
                             type="range"
                             min={0}
                             max={100}
@@ -390,14 +466,17 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                             style={{ "--p": `${lvl}%` } as CSSProperties}
                             onChange={(e) => setLvl(Number(e.target.value))}
                           />
+                          {/* Belgilar tugma markazi yuradigan oraliqda (chekkadan
+                              yarim tugma ichkarida) — bosilgan belgi aynan o'sha
+                              bosqichni tanlaydi. */}
                           <div className="ms-ticks">
                             {steps.map((s, i) => (
-                              <i key={s} className={!test && i === nearIdx ? "near" : ""} style={{ left: `${i * stepPct}%` }} />
+                              <i key={s} className={!test && i === nearIdx ? "near" : ""} style={{ left: tickLeft(i * stepPct) }} />
                             ))}
                           </div>
                           <div className="ms-labels">
                             {steps.map((s, i) => (
-                              <b key={s} className={!test && i === nearIdx ? "near" : ""} style={{ left: `${i * stepPct}%` }}>
+                              <b key={s} className={!test && i === nearIdx ? "near" : ""} style={{ left: tickLeft(i * stepPct) }}>
                                 <span className="lg">{t(s)}</span>
                                 <span className="sh">{i}</span>
                               </b>
