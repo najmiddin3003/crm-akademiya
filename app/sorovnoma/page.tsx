@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Manrope } from "next/font/google";
 import { connection } from "next/server";
 import SurveyPage from "@/components/leads/SurveyPage";
 import { ensureIndexes } from "@/lib/mongodb";
@@ -17,10 +16,15 @@ import "./sorovnoma.css";
 // o'zgarsa reklama havolasi darhol yangisini ko'rsatsin (build paytidagi
 // nusxada qotib qolmasin).
 //
-// Shriftlar prototipdagidek: Manrope (sarlavhalar), IBM Plex Sans (matn).
+// SHRIFTLAR prototipdagidek (Manrope — sarlavhalar, IBM Plex Sans — matn),
+// lekin `next/font/google` bilan EMAS: 23.09.2026 da VPS'dagi build aynan
+// Manrope'da yiqildi ("next/font/google queries have exactly one entry",
+// lokalda qaytarilmadi) va deploy to'xtadi. Build paytida Google'ga
+// bog'liqlik bo'lmasin — shrift brauzerda yuklanadi (React <link> ni
+// <head> ga o'zi ko'taradi); ulanmasa tizim shrifti chiqadi.
 
-const manrope = Manrope({ subsets: ["latin", "cyrillic"], weight: ["500", "600", "700", "800"], variable: "--font-srv-manrope", display: "swap" });
-const plex = IBM_Plex_Sans({ subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"], variable: "--font-srv-plex", display: "swap" });
+const FONTS_CSS =
+  "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap";
 
 export const metadata: Metadata = {
   title: "Akademiya o'quv markazi — Bepul sinov darsi",
@@ -33,8 +37,13 @@ export default async function Page() {
   const db = await ensureIndexes();
   const config = await loadSurveyConfig(db);
   return (
-    <div className={`srv ${manrope.variable} ${plex.variable}`}>
-      <SurveyPage config={config} />
-    </div>
+    <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link rel="stylesheet" href={FONTS_CSS} precedence="default" />
+      <div className="srv">
+        <SurveyPage config={config} />
+      </div>
+    </>
   );
 }

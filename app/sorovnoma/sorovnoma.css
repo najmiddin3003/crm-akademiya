@@ -12,8 +12,9 @@
   --brand-yellow: #ffd400;
   --brand-ink: #ffffff;
   --ink: #101833;
-  --ui: var(--font-srv-plex), "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --display: var(--font-srv-manrope), "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Shriftlar sahifadagi Google Fonts havolasidan (app/sorovnoma/page.tsx). */
+  --ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--brand);
