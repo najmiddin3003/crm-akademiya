@@ -284,8 +284,10 @@
 .srv .opt[aria-pressed="true"] .otel { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.25); color: #fff; }
 
 /* Sinf tugmalari */
-.srv .sinfs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
-@media (min-width: 620px) { .srv .sinfs { grid-template-columns: repeat(12, 1fr); } }
+/* `minmax(0, 1fr)` — ustun matni uzun bo'lsa ham kengaymaydi (oddiy `1fr`
+   eng uzun so'z kengligidan kichraymaydi va grid kartadan chiqib ketardi). */
+.srv .sinfs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+@media (min-width: 620px) { .srv .sinfs { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
 .srv .sn {
   aspect-ratio: 1;
   max-width: 100%;
@@ -306,7 +308,7 @@
 .srv .sn:hover { border-color: #bdb8f3; }
 .srv .sn[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
 .srv .sn[aria-pressed="true"] small { color: #cfcaff; }
-.srv .sn.grad { font-size: 10.5px; line-height: 1.1; padding: 2px; }
+.srv .sn.grad { font-size: 10.5px; line-height: 1.1; padding: 2px; overflow: hidden; overflow-wrap: anywhere; }
 
 .srv .grid2 { display: grid; gap: 12px; margin-bottom: 18px; }
 @media (min-width: 560px) { .srv .grid2 { grid-template-columns: 1fr 1fr; } }

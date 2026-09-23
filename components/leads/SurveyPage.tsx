@@ -111,6 +111,27 @@ function DirArt({ id, salom, fade }: { id: string; salom: string; fade: boolean 
   );
 }
 
+/**
+ * Raqamsiz sinf tugmasi (masalan «Maktabni tugatgan») — kvadrat tugmaga
+ * sig'maydi, shuning uchun prototipdagidek qisqa «Tugat-/gan». Sozlamada
+ * boshqa raqamsiz variant qo'shilsa, o'zi mayda yozuv bilan chiqadi (to'liq
+ * matn `title` da).
+ */
+function SinfWord({ v, t }: { v: string; t: (key: string) => string }) {
+  if (/tugat/i.test(v)) {
+    const [a, b] = t("Tugat-gan").split("-");
+    return b === undefined ? (
+      <span>{a}</span>
+    ) : (
+      <span>
+        {a}-<br />
+        {b}
+      </span>
+    );
+  }
+  return <span>{t(v)}</span>;
+}
+
 /** Fanlar ro'yxati — ketma-ket bir xil `guruh`lilar bitta sarlavha ostida. */
 function groupFans(fanlar: LeadFan[]): { nom: string; items: LeadFan[] }[] {
   const out: { nom: string; items: LeadFan[] }[] = [];
@@ -411,7 +432,7 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
                               }}
                             >
                               {Number.isNaN(n) ? (
-                                t(v)
+                                <SinfWord v={v} t={t} />
                               ) : (
                                 <span>
                                   {n}
