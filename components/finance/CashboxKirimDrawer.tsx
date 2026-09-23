@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
@@ -66,8 +66,7 @@ interface Row {
 // sahifasidagi HAQIQIY, admin boshqaradigan ro'yxatdan (mainType: "kirim").
 export default function CashboxKirimDrawer({
   cashbox,
-  studentNames,
-  studentByName,
+  students,
   studentsLoading,
   studentsRefreshing,
   onClose,
@@ -85,9 +84,7 @@ export default function CashboxKirimDrawer({
    * kelardi va `StudentSearchSelect` `disabled={loading}` bilan ~1.4 s
    * o'chib turardi. Endi so'rov umuman ketmaydi.
    */
-  studentNames: string[];
-  /** Ism → o'quvchi kartasi (telefon va profil havolasi uchun). */
-  studentByName: Map<string, StudentRow>;
+  students: StudentRow[];
   studentsLoading: boolean;
   /** Ro'yxat FONDA yangilanmoqda — maydon ishlaydi, faqat izoh chiqadi. */
   studentsRefreshing: boolean;
@@ -112,13 +109,21 @@ export default function CashboxKirimDrawer({
   // guruhlanadi.
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [teacherName, setTeacherName] = useState("");
-  const [studentName, setStudentName] = useState("");
+  // TANLANGAN O'QUVCHI — ID (satr ko'rinishida), ISM EMAS.
+  //
+  // NIMA NOTO'G'RI EDI: bu yerda ism turardi va ro'yxat ham ismlardan
+  // tuzilardi. Bazada 545 ta ism takrorlanadi — ismdosh ikki bola
+  // ro'yxatda BITTA qator bo'lib ko'rinardi, tanlanganda esa xaritadan
+  // har doim BIRINCHISI olinardi. Ya'ni kassir ikkinchi bolaga to'lov
+  // yozsa ham pul birinchisining hisobiga tushardi — foydalanuvchi aynan
+  // shundan shikoyat qildi (23.09.2026, lib/pupilEntries.ts).
+  const [studentKey, setStudentKey] = useState("");
   // Bo'sh boshlanadi — ilgari maydonda "0" turar va uni har safar
   // o'chirishga to'g'ri kelardi.
   const [amount, setAmount] = useState("");
   // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — tanlash
   // ro'yxatida va tanlangandan keyin ko'rsatiladi.
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   const [method, setMethod] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
   // QAYSI OY uchun tolov. Sana — pul KELGAN kun, bu esa tolov qaysi
@@ -143,8 +148,17 @@ export default function CashboxKirimDrawer({
   // uchun yuklanish holati shu yerda yaratiladi.
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const key = (n: string) => n.trim().toLowerCase();
-  const phoneOf = (n: string) => {
-    const s = studentByName.get(key(n));
+  // Ro'yxat variantlari — o'quvchi ID'lari; ko'rinadigan matn `labelOf`
+  // orqali beriladi (components/orders/StudentSearchSelect.tsx).
+  const studentById = useMemo(() => {
+    const map = new Map<string, StudentRow>();
+    for (const s of students) map.set(String(s.id), s);
+    return map;
+  }, [students]);
+  const studentOptions = useMemo(() => students.map((s) => String(s.id)), [students]);
+  const nameOf = (k: string) => studentById.get(k)?.name ?? "";
+  const phoneOf = (k: string) => {
+    const s = studentById.get(k);
     return s?.phone ? `+998 ${s.phone}` : "";
   };
   // O'qituvchi telefoni — tanlash ro'yxatidagi ikkinchi satr. Qidiruv shu
@@ -159,9 +173,12 @@ export default function CashboxKirimDrawer({
     return map;
   }, [teachers]);
   const teacherPhoneOf = (n: string) => teacherByName.get(key(n)) ?? "";
-  const balanceOf = (n: string) => balances[key(n)] ?? 0;
-  const selectedStudent = studentName ? studentByName.get(key(studentName)) : undefined;
-  const selectedBalance = studentName ? balanceOf(studentName) : 0;
+  const balanceOf = (k: string) => balances[Number(k)] ?? 0;
+  const selectedStudent = studentKey ? studentById.get(studentKey) : undefined;
+  const selectedBalance = studentKey ? balanceOf(studentKey) : 0;
+  // Serverga NOM ham ketadi — jurnaldagi "KIM" ustuni, Sheets va
+  // Telegram xabari shuni ko'rsatadi. Bog'lanish esa ID bo'yicha.
+  const studentName = selectedStudent?.name ?? "";
 
   const selectedType = useMemo(
     () => categories.find((tv) => tv.id === categoryId) ?? null,
@@ -205,7 +222,7 @@ export default function CashboxKirimDrawer({
     if ((next?.id ?? null) === categoryId) return;
     setCategoryId(next?.id ?? null);
     setTeacherName("");
-    setStudentName("");
+    setStudentKey("");
     setAmount("");
     setRows([{ id: 1, amount: "", periodMonth: monthOf(date) }]);
     setNextRowId(2);
@@ -225,7 +242,7 @@ export default function CashboxKirimDrawer({
 
   useEffect(() => {
     let cancelled = false;
-    loadBalancesCached().then((b)=>{ if(!cancelled) setBalances(b); }).catch(()=>{});
+    loadBalancesByIdCached().then((b)=>{ if(!cancelled) setBalances(b); }).catch(()=>{});
     fetch("/api/transaction-types")
       .then((r) => r.json())
       .then((d) => {
@@ -263,7 +280,7 @@ export default function CashboxKirimDrawer({
     // yozuv egasiz tug'iladi: to'lov o'quvchi balansiga ham, o'qituvchining
     // foizli oyligiga ham tushmaydi va shunchaki nomsiz tushum bo'lib
     // qoladi. Chiqim oynasida bu qorovul allaqachon bor.
-    if (showStudent && !studentName.trim()) {
+    if (showStudent && !studentKey) {
       showError(t("O'quvchini tanlang"));
       return;
     }
@@ -418,9 +435,10 @@ export default function CashboxKirimDrawer({
           <div>
             <StudentSearchSelect
               label={t("O'quvchini tanlang")}
-              value={studentName}
-              onChange={setStudentName}
-              options={studentNames}
+              value={studentKey}
+              onChange={setStudentKey}
+              options={studentOptions}
+              labelOf={nameOf}
               loading={studentsLoading}
               placeholder={t("Ism yoki telefon bo'yicha qidiring…")}
               subtitleOf={(n) => phoneOf(n)}

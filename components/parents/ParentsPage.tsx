@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { Filter, History, MessageSquare, MoreVertical } from "lucide-react";
@@ -92,12 +92,12 @@ export default function ParentsPage() {
   });
   // Balanslar alohida so'raladi: pupils.balance maydonini hech bir API
   // yangilamaydi, haqiqiy summa faqat transaction_entries dan yig'iladi.
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   const [balancesLoading, setBalancesLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       // Xato bo'lsa balans ustuni bo'sh qoladi — ilgari ham shunday edi.
       .catch(() => {})

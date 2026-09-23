@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { CreditCard, Filter, MessageSquare, MoreVertical, X } from "lucide-react";
@@ -78,11 +78,6 @@ function parseIsoDate(s: string): Date | null {
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
 }
 
-/** Moliya yozuvlarida o'quvchining id'si emas, ISMI saqlanadi (CashboxKirimDrawer bilan bir xil kalit). */
-function balanceKey(name: string): string {
-  return name.trim().toLowerCase();
-}
-
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -125,12 +120,12 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
   const { groups, loading: groupsLoading } = useGroups(initialGroups);
   // Balanslar alohida so'raladi: pupils.balance maydoni bazada yangilanmaydi,
   // haqiqiy summa faqat transaction_entries dan yig'iladi.
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   const [balancesLoading, setBalancesLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       // Xato bo'lsa balans ustuni bo'sh qoladi — ilgari ham shunday edi.
       .catch(() => {})
@@ -177,7 +172,8 @@ export default function ArchiveStudentsPage({ initialPupils, initialGroups }: Ar
         // "Arxiv o'quvchilar" = holati "Arxiv" bo'lganlar. Boshqa hech qanday
         // shart yo'q (ilgari bu yerda demo buyurtma statusi turardi).
         .filter((s) => s.status === "Arxiv")
-        .map((s) => ({ student: s, balance: balances[balanceKey(s.name)] ?? 0 })),
+        // Balans ID bo'yicha — ismdoshlar aralashmasin (lib/pupilEntries.ts).
+        .map((s) => ({ student: s, balance: balances[s.id] ?? 0 })),
     [pupils, groups, balances],
   );
 

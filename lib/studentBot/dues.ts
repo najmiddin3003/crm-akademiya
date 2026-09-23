@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { pupilEntryMatch } from "@/lib/pupilEntries";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
 import { BOT_USERS } from "@/lib/studentBot/users";
 import { uzNow } from "@/lib/uzTime";
@@ -24,30 +25,26 @@ export function currentPeriodMonth(now: Date = uzNow()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /**
  * Shu o'quvchi shu oy uchun to'laganmi.
  *
- * ISM BO'YICHA qidiriladi — `transaction_entries` da o'quvchi id'si
- * YO'Q (lib/studentBot/data.ts dagi bilan bir xil cheklov). Bu yerda
- * xato TOMONI MUHIM: bir xil ismli ikki o'quvchidan biri to'lagan
- * bo'lsa, ikkinchisi ham "to'lagan" hisoblanadi va eslatma OLMAYDI.
+ * O'QUVCHI ID'SI BO'YICHA (lib/pupilEntries.ts). `pupilId` belgilanmagan
+ * eski yozuvlar esa eskicha ism bo'yicha qo'shiladi — ya'ni ismdosh
+ * to'lagan bo'lsa, eski yozuvlar bo'yicha bu o'quvchi ham hali
+ * "to'lagan" hisoblanishi mumkin.
  *
- * Ataylab shu tomonga: to'lagan odamga "to'lovingiz yo'q" deb yozish
- * uni haqorat qiladi va markazga qo'ng'iroq qildiradi; eslatmani
+ * XATO TOMONI ATAYLAB SHUNDAY: to'lagan odamga "to'lovingiz yo'q" deb
+ * yozish uni haqorat qiladi va markazga qo'ng'iroq qildiradi; eslatmani
  * o'tkazib yuborish esa shunchaki bitta eslatma kam bo'lishi.
  */
 export async function hasPaidForMonth(db: Db, pupil: Pupil, month: string): Promise<boolean> {
   const name = pupilFullName(pupil).trim();
   if (!name) return true; // ismsiz o'quvchiga eslatma yubormaymiz
   const n = await db.collection("transaction_entries").countDocuments({
-    studentName: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
-    txType: "payIn",
-    periodMonth: month,
-    status: { $ne: "cancelled" },
+    $and: [
+      pupilEntryMatch({ id: pupil.id, name }),
+      { txType: "payIn", periodMonth: month, status: { $ne: "cancelled" } },
+    ],
   });
   return n > 0;
 }

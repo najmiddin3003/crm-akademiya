@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
 import { ArrowDownToLine, ArrowUpToLine, Pencil } from "lucide-react";
@@ -60,7 +60,7 @@ export default function FinanceContractsPage() {
   const { groups } = useGroups();
 
   const [contracts, setContracts] = useState<FinanceContract[]>([]);
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"active" | "archived">("active");
   const [group, setGroup] = useState("");
@@ -82,7 +82,7 @@ export default function FinanceContractsPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     // Balanslar alohida — jadval shartnomalarsiz ham chiziladi, balans esa
     // kechroq kelsa faqat shu ustun yangilanadi.
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -221,10 +221,14 @@ export default function FinanceContractsPage() {
                         {c.studentName}
                       </Link>
                     </td>
-                    {/* Ro'yxatda yo'q o'quvchi = hali birorta to'lov yozuvi
-                        yo'q, ya'ni 0 — bu taxmin emas, hisoblangan qiymat
-                        (Kirim oynasidagi bilan bir xil qoida). */}
-                    <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(balances[nameKey(c.studentName)] ?? 0)}</td>
+                    {/* Balans — yuqoridagi havola KIMGA borsa, O'SHANING
+                        balansi (`pupilOf` topgan o'quvchi id'si bo'yicha).
+                        Shartnomada o'quvchi ID'si saqlanmaydi, faqat ism —
+                        ismdoshda `pupilOf` birinchisini oladi va qator
+                        hech bo'lmasa O'ZIGA ZID bo'lmaydi
+                        (lib/pupilEntries.ts). Ro'yxatda yo'q o'quvchi = hali
+                        birorta to'lov yozuvi yo'q, ya'ni 0. */}
+                    <td className="px-3 py-3 text-[13px] tabular-nums">{fmtNum(balances[pupil?.id ?? -1] ?? 0)}</td>
                     <td className="px-3 py-3 text-[13px] whitespace-nowrap">
                       {c.moderatorId ? (
                         <Link href={`/management-xodimlar/${c.moderatorId}`} className="font-medium text-foreground hover:text-primary hover:underline">

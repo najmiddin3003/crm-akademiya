@@ -48,15 +48,6 @@ export interface ParentRow {
   birthDate: string;
 }
 
-/**
- * Moliya yozuvlarida o'quvchining id'si emas, ISMI saqlanadi, shuning uchun
- * balans ism bo'yicha topiladi (ActiveStudentsPage/CashboxKirimDrawer bilan
- * bir xil kalit).
- */
-export function balanceKey(name: string): string {
-  return name.trim().toLowerCase();
-}
-
 function clean(v: string | undefined): string {
   return (v ?? "").trim();
 }
@@ -64,9 +55,11 @@ function clean(v: string | undefined): string {
 /**
  * Bazadagi o'quvchilardan ota-ona qatorlari.
  *
- * @param balances /api/students/balances javobi (kichik harfli ism → summa).
- *                 pupils.balance maydoni HECH QACHON yangilanmaydi, shuning
- *                 uchun u o'qilmaydi.
+ * @param balances /api/students/balances javobidagi `byId` (pupils.id →
+ *                 summa). ID bo'yicha: ism bo'yicha kalitda ismdosh
+ *                 o'quvchilarning puli qo'shilib ketardi
+ *                 (lib/pupilEntries.ts). pupils.balance maydoni HECH
+ *                 QACHON yangilanmaydi, shuning uchun u o'qilmaydi.
  */
 /**
  * Kirish turi qo'shimcha maydonlarni TALAB qiladi: chaqiruvchi ularni
@@ -79,7 +72,7 @@ export type ParentSourcePupil = PupilListItem &
     | "fatherName" | "fatherPhone" | "fatherWork"
     | "motherName" | "motherPhone" | "motherWork">;
 
-export function buildParentRows(pupils: ParentSourcePupil[], balances: Record<string, number>): ParentRow[] {
+export function buildParentRows(pupils: ParentSourcePupil[], balances: Record<number, number>): ParentRow[] {
   const rows: ParentRow[] = [];
   for (const p of pupils) {
     const pupilName = pupilFullName(p);
@@ -88,7 +81,7 @@ export function buildParentRows(pupils: ParentSourcePupil[], balances: Record<st
       pupilName,
       // Balans — to'langan pul yig'indisi. Yozuv bo'lmasa 0: bu "ma'lumot
       // yo'q" emas, "hali hech qanday to'lov qilinmagan" degani.
-      balance: balances[balanceKey(pupilName)] ?? 0,
+      balance: balances[p.id] ?? 0,
       moderator: p.moderator ?? "",
       category: p.category ?? "",
       status: pupilStatusOf(p),

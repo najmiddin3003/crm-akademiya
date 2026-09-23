@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { studentBalanceMatch } from "@/lib/studentRefund";
+import { pupilNameOfDoc } from "@/lib/pupilEntries";
 
 // GET /api/students/balances — har bir o'quvchining balansi.
+//
+// JAVOBDA IKKI XARITA:
+//   `byId`     — `pupils.id` → summa. ASOSIYSI. Ismdoshlar ajraladi.
+//   `balances` — kichik harfli ism → summa. Eski kalit; id'si yo'q
+//                joylar (masalan jurnaldagi xom ism) uchun qoldi.
+// Nega ikkitasi va qoida qayerdan: lib/pupilEntries.ts.
 //
 // Manba: `transaction_entries` — o'quvchi qilgan to'lovlar (payIn) MINUS
 // unga qaytarib berilgan pul (payOut + `studentRefund: true`), bekor
@@ -33,16 +40,51 @@ export async function GET() {
       // Qaytarim yozuvi MANFIY summa bilan turadi — ishorali yig'indi uni
       // o'z-o'zidan ayiradi.
       { $match: studentBalanceMatch() },
-      { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
+      // ID bo'yicha ham, ism bo'yicha ham guruhlanadi — pastda ikkalasi
+      // ikki xil xaritaga ajratiladi.
+      { $group: { _id: { pupilId: "$pupilId", name: "$studentName" }, total: { $sum: "$amount" } } },
     ])
     .toArray();
 
+  // ISM BO'YICHA — eski xarita, o'zgarishsiz qoladi. Uni hali id'siz
+  // chaqiradigan joylar bor (masalan jurnaldagi xom ism), shu bois
+  // olib tashlanmadi.
   const balances: Record<string, number> = {};
+  // ID BO'YICHA — asosiy xarita (lib/pupilEntries.ts). `pupilId` bor
+  // yozuv FAQAT shu yerga tushadi va ismdoshga ko'rinmaydi.
+  const byId: Record<number, number> = {};
+  // `pupilId` SIZ eski yozuvlar — ism bo'yicha. Ular pastda o'sha ismli
+  // o'quvchi(lar)ga qo'shiladi, ya'ni bugungi xatti-harakat saqlanadi:
+  // belgilanmagan eski to'lov ismdoshlarda baribir umumiy ko'rinadi.
+  // Backfill (scripts/backfill-entry-pupil-id.mjs) bu qoldiqni kamaytiradi.
+  const legacyByName: Record<string, number> = {};
+
   for (const r of rows) {
-    const key = String(r._id ?? "").trim().toLowerCase();
-    if (!key) continue;
-    balances[key] = (balances[key] ?? 0) + (Number(r.total) || 0);
+    const total = Number(r.total) || 0;
+    const key = String(r._id?.name ?? "").trim().toLowerCase();
+    if (key) balances[key] = (balances[key] ?? 0) + total;
+
+    const pid = Number(r._id?.pupilId);
+    if (Number.isFinite(pid)) byId[pid] = (byId[pid] ?? 0) + total;
+    else if (key) legacyByName[key] = (legacyByName[key] ?? 0) + total;
   }
 
-  return NextResponse.json({ ok: true, balances });
+  // Eski yozuvlar egasiga ulanadi. `pupils` ro'yxati yengil o'qiladi
+  // (id + ism) — 7 130 hujjat, atigi ~0.2 MB.
+  //
+  // Belgilanmagan yozuv QOLMAGANDA (migratsiya to'liq o'tgach) bu so'rov
+  // umuman ketmaydi: ulanadigan hech narsa yo'q.
+  const pupils = Object.keys(legacyByName).length === 0 ? [] : await db
+    .collection("pupils")
+    .find({}, { projection: { _id: 0, id: 1, firstName: 1, lastName: 1 } })
+    .toArray();
+  for (const p of pupils) {
+    const id = Number(p.id);
+    if (!Number.isFinite(id)) continue;
+    const key = pupilNameOfDoc(p).toLowerCase();
+    const legacy = key ? legacyByName[key] ?? 0 : 0;
+    if (legacy !== 0 || byId[id] !== undefined) byId[id] = (byId[id] ?? 0) + legacy;
+  }
+
+  return NextResponse.json({ ok: true, balances, byId });
 }

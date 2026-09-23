@@ -5,6 +5,7 @@ import type { GroupTask } from "@/lib/groupTasks";
 import { LEGACY_COLLECTION, type LegacyEntry } from "@/lib/legacyEntries";
 import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
 import type { NewsItem } from "@/lib/news";
+import { pupilEntryMatch } from "@/lib/pupilEntries";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import { uzNow } from "@/lib/uzTime";
@@ -140,12 +141,14 @@ export interface PaymentsView {
  * ko'rgan raqam bilan kassadagi xodim ko'rgan raqam bir-biriga mos
  * kelmay qolardi.
  *
- * JONLI YOZUV ISM BO'YICHA topiladi — bu ma'lum kamchilik (bazada 511
- * ta ism takrorlanadi), lekin `transaction_entries` da `pupilId` maydoni
- * YO'Q va uni bu yerda o'ylab topib bo'lmaydi. CRM'ning o'zi ham aynan
- * shu so'rovni yuboradi, ya'ni bot xodim ko'rgan narsani ko'rsatadi.
- * Arxivda esa `pupilId` bor (ko'chirishda telefon orqali topilgan) va
- * o'sha ishlatiladi.
+ * JONLI YOZUV O'QUVCHI ID'SI BO'YICHA topiladi (lib/pupilEntries.ts).
+ * Ilgari ism bo'yicha edi va bu ENG OG'IR joyi bo'lgan: bola botda
+ * BEGONA, ismdosh o'quvchining to'lovlarini va balansini ko'rardi
+ * (bazada 545 ta ism takrorlanadi). Endi `pupilId` belgilangan yozuv
+ * faqat o'z egasiga ko'rinadi; belgilanmagan eskilari esa eskicha ism
+ * bo'yicha qo'shiladi — CRM'dagi profil bilan bir xil qoida.
+ * Arxivda `pupilId` ancha oldin bor edi (ko'chirishda telefon orqali
+ * topilgan) va o'sha ishlatiladi.
  */
 /**
  * ARXIV (edutizim davri) SUKUT BO'YICHA QO'SHILMAYDI.
@@ -167,13 +170,15 @@ export async function loadPayments(
 ): Promise<PaymentsView> {
   const name = pupilFullName(pupil).trim();
   // To'lovlar VA o'quvchiga qaytarilgan pul — CRM balansi bilan bir xil
-  // to'plam (lib/studentRefund.ts → studentBalanceMatch), faqat ism bu
-  // yerda regex bilan va bekor qilinganlar ham ro'yxatga kiradi (pastdagi
-  // izoh). Oddiy chiqim (`payOut` bayroqsiz) KIRMAYDI: u yerda
-  // `studentName` — xodim ismi bo'lishi mumkin (avans/oylik).
+  // to'plam (lib/studentRefund.ts → studentBalanceMatch), faqat bu yerda
+  // bekor qilinganlar ham ro'yxatga kiradi (pastdagi izoh). Oddiy chiqim
+  // (`payOut` bayroqsiz) KIRMAYDI: u yerda `studentName` — xodim ismi
+  // bo'lishi mumkin (avans/oylik).
   const liveMatch = {
-    studentName: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
-    $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }],
+    $and: [
+      pupilEntryMatch({ id: pupil.id, name }),
+      { $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }] },
+    ],
   };
 
   const [live, legacy, liveAgg, legacyAgg] = await Promise.all([

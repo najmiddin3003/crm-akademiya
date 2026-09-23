@@ -26,7 +26,20 @@ const TTL_MS = 15_000;
 /** Ism (kichik harfda, chetlari kesilgan) → to'langan summa. */
 export type StudentBalances = Record<string, number>;
 
-export function loadBalancesCached(): Promise<StudentBalances> {
+/** `pupils.id` → to'langan summa. ISMDOSHLAR AJRALGAN holat. */
+export type StudentBalancesById = Record<number, number>;
+
+interface BalancesResponse {
+  balances: StudentBalances;
+  byId: StudentBalancesById;
+}
+
+/**
+ * Javobning O'ZI keshlanadi (ikkala xarita bilan). Ism bo'yicha va id
+ * bo'yicha chaqiruvlar shu bitta so'rovni bo'lishadi — aks holda bir
+ * sahifada ikkita og'ir hisob ketardi.
+ */
+function loadBalancesResponse(): Promise<BalancesResponse> {
   return cachedGet(KEY, TTL_MS, () =>
     fetch("/api/students/balances")
       .then((r) => r.json())
@@ -34,8 +47,24 @@ export function loadBalancesCached(): Promise<StudentBalances> {
         // Xatoni bo'sh xaritaga aylantirmaymiz — aks holda "balans 0" deb
         // ko'rsatilib, ustiga o'sha noto'g'ri javob keshlanib qolardi.
         if (!d?.ok) throw new Error("balances: ok emas");
-        return d.balances as StudentBalances;
+        return { balances: (d.balances ?? {}) as StudentBalances, byId: (d.byId ?? {}) as StudentBalancesById };
       }));
+}
+
+export function loadBalancesCached(): Promise<StudentBalances> {
+  return loadBalancesResponse().then((d) => d.balances);
+}
+
+/**
+ * BALANS ID BO'YICHA — o'quvchisi ma'lum bo'lgan HAR JOY shuni ishlatsin.
+ *
+ * Ism bo'yicha xarita ismdoshlarni bitta kalitga qo'shib yuboradi: bazada
+ * 545 ta ism takrorlanadi va ular bir-birining to'lovini "o'ziniki" deb
+ * ko'rsatardi (lib/pupilEntries.ts). Ro'yxatlar o'quvchini baribir
+ * `pupils.id` bilan chizadi, ya'ni kalit tayyor turibdi.
+ */
+export function loadBalancesByIdCached(): Promise<StudentBalancesById> {
+  return loadBalancesResponse().then((d) => d.byId);
 }
 
 // invalidateBalances() ATAYLAB bu yerda emas — u lib/cacheKeys.ts da

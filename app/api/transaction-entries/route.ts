@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentEmployee, ownsCashbox } from "@/lib/currentEmployee";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import { pupilEntryMatch, pupilNameOfDoc } from "@/lib/pupilEntries";
 
 // Moliya → Tranzaksiyalar backend'i (MongoDB `transaction_entries`, faqat
 // o'qish uchun — bu sahifada qo'shish/tahrirlash/o'chirish yo'q). Demo seed
@@ -23,7 +24,9 @@ function nameFilter(value: string) {
 }
 
 // GET /api/transaction-entries
-//   ?studentName=…   — bitta o'quvchining to'lovlari (O'quvchi profili)
+//   ?pupilId=…      — bitta o'quvchining yozuvlari ID bo'yicha (O'quvchi
+//                    profili shuni ishlatadi; ismdoshlar aralashmaydi)
+//   ?studentName=…   — ESKI, ism bo'yicha kesim (jurnal filtrlari)
 //   ?moderator=…     — shu xodim QAYD ETGAN to'lovlar (kassir kesimi)
 //   ?teacherName=…   — shu USTOZNING o'quvchilari qilgan to'lovlar
 //   ?person=…        — shu xodimga OID hammasi (yuqoridagi uchtasining $or'i)
@@ -50,6 +53,33 @@ export async function GET(req: Request) {
 
   const studentName = sp.get("studentName");
   if (studentName?.trim()) filter.studentName = nameFilter(studentName);
+
+  // ?pupilId=… — BITTA O'QUVCHINING yozuvlari, ID bo'yicha.
+  //
+  // `?studentName=` NING O'RNIGA: ism yagona emas (bazada 545 ta ism
+  // takrorlanadi) va o'quvchi profili ismdoshning to'lovlarini o'ziniki
+  // qilib ko'rsatardi — foydalanuvchi aynan shundan shikoyat qildi
+  // (23.09.2026). Shart lib/pupilEntries.ts dan: `pupilId` bor yozuvlar
+  // + `pupilId` siz ESKI yozuvlar ism bo'yicha.
+  //
+  // O'quvchi topilmasa 404: bo'sh ro'yxat qaytarish "to'lovi yo'q" degan
+  // ma'noni berardi va xatoni yashirardi.
+  const pupilIdRaw = sp.get("pupilId");
+  if (pupilIdRaw !== null) {
+    const pupilId = Number(pupilIdRaw);
+    if (!Number.isFinite(pupilId)) {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri pupilId" }, { status: 400 });
+    }
+    const p = await db
+      .collection("pupils")
+      .findOne({ id: pupilId }, { projection: { _id: 0, id: 1, firstName: 1, lastName: 1 } });
+    if (!p) {
+      return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
+    }
+    // `$and` — pastdagi boshqa filtrlar (`$or: person`) bilan to'qnashmasin.
+    const own = pupilEntryMatch({ id: pupilId, name: pupilNameOfDoc(p) });
+    filter.$and = [...((filter.$and as unknown[]) ?? []), own];
+  }
 
   const moderator = sp.get("moderator");
   if (moderator?.trim()) {
@@ -249,6 +279,10 @@ export async function GET(req: Request) {
   if (sp.get("slim") === "1") {
     cursor = cursor.project({
       _id: 0, id: 1, date: 1, time: 1, studentName: 1, amount: 1,
+      // Yozuvning EGASI — jadvaldagi ism qaysi o'quvchining profiliga
+      // olib borishini shu hal qiladi (ism bo'yicha topish ismdoshda
+      // noto'g'ri profilga olib borardi).
+      pupilId: 1,
       before: 1, after: 1, txName: 1, status: 1, note: 1, paymentType: 1,
       // Xodim profilidagi jadval "Qabul qilgan" ustunini ko'rsatadi va
       // birlashgan ro'yxatda qator KIM orqali kelganini bilish kerak.

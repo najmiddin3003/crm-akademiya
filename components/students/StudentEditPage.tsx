@@ -95,11 +95,28 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   const familiya = rest.join(" ");
   const phone = order.phone ? `+998${order.phone.replace(/\s/g, "")}` : "+998";
 
+  /**
+   * BAZADAGI o'quvchi kartasi — `/api/pupils/:id` topgan bo'lsa.
+   *
+   * YUQORIDA TURADI (holat pastdagi forma bilan birga edi): to'lovlar
+   * shu o'quvchining ID'si bo'yicha so'raladi, ya'ni effekt undan oldin
+   * yozilsa `pupil` hali e'lon qilinmagan bo'lardi.
+   *
+   * `null` — bu sahifa BUYURTMA id'si bilan ochilgan (app/(app)/
+   * student-edit/[id]/page.tsx: ikki id fazosi bor); bunday profilda
+   * bog'lanadigan o'quvchi id'si yo'q.
+   */
+  const [pupil, setPupil] = useState<Pupil | null>(null);
+  const [loadingPupil, setLoadingPupil] = useState(true);
+
   // O'quvchining HAQIQIY to'lovlari (MongoDB `transaction_entries`).
-  // Bog'lanish kaliti — ism satri: to'lov yozuvida o'quvchining raqamli
-  // id'si saqlanmaydi (lib/transactionEntries.ts). Shu bois bir xil ismli
-  // o'quvchilar bir-birining to'lovini ko'rishi mumkin — bu ma'lumot
-  // sxemasidagi cheklov, keyinchalik yozuvga studentId qo'shilsa yopiladi.
+  //
+  // Bog'lanish kaliti — O'QUVCHINING ID'si (`?pupilId=`). Ilgari ism
+  // satri edi va ismdosh o'quvchilar bir-birining to'lovini ko'rardi —
+  // foydalanuvchi aynan shundan shikoyat qildi (23.09.2026). Endi
+  // yozuvda `pupilId` bor (lib/transactionEntries.ts), server esa
+  // belgilanmagan ESKI yozuvlarni ism bo'yicha qo'shadi
+  // (lib/pupilEntries.ts) — ya'ni tarix yo'qolmaydi.
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
   const [entriesLoading, setEntriesLoading] = useState(true);
   /**
@@ -114,12 +131,19 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   const [legacyEntries, setLegacyEntries] = useState<LegacyEntry[]>([]);
 
   useEffect(() => {
+    // O'QUVCHI ANIQLANMAGUNCHA KUTAMIZ: bu sahifa ikki xil id bilan
+    // ochilishi mumkin va `pupil` aynan shuni hal qiladi (yuqoridagi
+    // izoh). Kutish SHART — aks holda effekt avval ism bo'yicha so'rab,
+    // ismdoshning to'lovlarini bir lahzaga ko'rsatib olardi.
+    if (loadingPupil) return;
     // `entriesLoading` boshlanishida true — effekt tanasida qayta
     // o'rnatilsa, ortiqcha render zanjiri chiqadi (react-hooks qoidasi).
     let alive = true;
-    const q = encodeURIComponent(order.name);
+    // ID bo'lsa — ID bo'yicha. Kartasi yo'q (faqat buyurtma) profilda
+    // eskicha ism bo'yicha: u yerda bog'lanadigan id yo'q.
+    const q = pupil ? `pupilId=${pupil.id}` : `studentName=${encodeURIComponent(order.name)}`;
     Promise.all([
-      fetch(`/api/transaction-entries?studentName=${q}&txType=payIn`).then((r) => r.json()).catch(() => null),
+      fetch(`/api/transaction-entries?${q}&txType=payIn`).then((r) => r.json()).catch(() => null),
       // PUL QAYTARISH — chiqim yozuvi, shu bois yuqoridagi payIn so'roviga
       // tushmaydi. Alohida so'raladi va faqat QAYTARISH yozuvlari olinadi
       // — `studentRefund` bayrog'i bo'yicha (lib/transactionEntries.ts →
@@ -130,9 +154,11 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
       // NIMA UCHUN `txType` ni butunlay olib tashlab bo'lmaydi: xodimga
       // chiqarilgan avans/oylik yozuvida ham `studentName` maydoni bor —
       // u yerda XODIM ismi turadi (CashboxAdjustDrawer shunday yozadi,
-      // bazada 2 511 ta shunday qator). Ismdosh xodim topilsa uning avansi
-      // o'quvchi tarixiga tushib, balansni buzardi.
-      fetch(`/api/transaction-entries?studentName=${q}&txType=payOut`).then((r) => r.json()).catch(() => null),
+      // bazada 2 511 ta shunday qator). Bunday yozuvda `pupilId` YOZILMAYDI
+      // (lib/cashboxAdjust.ts), lekin belgilanmagan eski qatorlar ism
+      // bo'yicha zaxira shoxiga tushishi mumkin — ismdosh xodimning avansi
+      // o'quvchi tarixiga kirib, balansni buzardi.
+      fetch(`/api/transaction-entries?${q}&txType=payOut`).then((r) => r.json()).catch(() => null),
     ]).then(([inRes, outRes]) => {
       if (!alive) return;
       const rows: TransactionEntry[] = [];
@@ -145,11 +171,11 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
       setEntries(rows);
     }).finally(() => { if (alive) setEntriesLoading(false); });
     return () => { alive = false; };
-  }, [order.name]);
+  }, [loadingPupil, pupil, order.name]);
 
-  // Arxiv ALOHIDA so'raladi va ID bo'yicha: jonli tarix ism bo'yicha
-  // izlanadi (yuqoridagi izoh), arxivda esa ko'chirish paytida telefon
-  // orqali topilgan `pupilId` bor — ya'ni ismdoshlar aralashmaydi.
+  // Arxiv ALOHIDA so'raladi — boshqa kolleksiyadan (`legacy_entries`).
+  // U ham ID bo'yicha: ko'chirish paytida telefon orqali topilgan
+  // `pupilId` bor.
   useEffect(() => {
     let alive = true;
     fetch(`/api/legacy-entries?pupilId=${order.id}`)
@@ -211,8 +237,6 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   // PATCH /api/pupils/:id ga yuboriladi.
   const router = useRouter();
   const { showSuccess, showError } = useToast();
-  const [pupil, setPupil] = useState<Pupil | null>(null);
-  const [loadingPupil, setLoadingPupil] = useState(true);
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);

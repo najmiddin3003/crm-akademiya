@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
 import { Info } from "lucide-react";
@@ -49,11 +49,6 @@ function balCls(n: number): string {
   return n < 0 ? "text-rose-600 font-semibold" : n > 0 ? "text-emerald-600 font-semibold" : "text-muted-foreground";
 }
 
-/** Moliya yozuvlarida o'quvchining ISMI kalit bo'ladi (id emas). */
-function balanceKey(name: string): string {
-  return name.trim().toLowerCase();
-}
-
 /** Manbasi bo'lmagan qiymat. */
 function Dash() {
   return <span className="text-muted-foreground">—</span>;
@@ -71,14 +66,14 @@ export default function ExpiringSubsPage() {
   // SERVERDA filtrlanadi (pastda ham `Aktiv` sharti bor edi) va faqat
   // id/ism/telefon so'raladi — sahifa boshqa maydonni ishlatmaydi.
   const { pupils, loading: pupilsLoading } = useStudents({ light: true, status: "Aktiv" });
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   const [balancesLoading, setBalancesLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
   useEffect(() => {
     let cancelled = false;
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       // Xato bo'lsa balans ustuni bo'sh qoladi — ilgari ham shunday edi.
       .catch(() => {})
@@ -101,7 +96,7 @@ export default function ExpiringSubsPage() {
           phone: (p.phone ?? "").trim(),
           // To'lov yozuvi bo'lmasa 0 — bu "ma'lumot yo'q" emas, "hali
           // to'lov qilinmagan" degani (yig'indi bo'sh to'plam ustidan).
-          balance: balances[balanceKey(name)] ?? 0,
+          balance: balances[p.id] ?? 0,
         };
       });
   }, [pupils, balances]);

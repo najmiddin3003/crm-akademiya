@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/ui/Link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -161,7 +161,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
   // O'quvchilarning HAQIQIY balansi — ism bo'yicha kalitlangan
   // (/api/students/balances, `transaction_entries` dan hisoblanadi).
   // `pupils.balance` maydoni hech qaysi API tomonidan yangilanmaydi.
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
 
   // ===== "Mashg'ulot qo'shish" tabi =====
   const [lessons, setLessons] = useState<GroupLesson[]>([]);
@@ -190,13 +190,15 @@ export default function GroupDetailPage({ id }: { id: number }) {
     fetch(`/api/groups/${id}/tasks`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setTasks(d.tasks); });
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [id]);
 
-  const balanceOf = (p: Pupil) => balances[pupilName(p).trim().toLowerCase()] ?? 0;
+  // Balans ID bo'yicha — guruhda ismdosh ikki o'quvchi bo'lsa ularning
+  // puli bitta kalitga qo'shilib ketardi (lib/pupilEntries.ts).
+  const balanceOf = (p: Pupil) => balances[p.id] ?? 0;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

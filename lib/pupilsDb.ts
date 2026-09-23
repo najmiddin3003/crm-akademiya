@@ -10,6 +10,7 @@
 
 import type { Db } from "mongodb";
 import { studentBalanceMatch } from "@/lib/studentRefund";
+import { pupilBalanceMatch, resolvePupilRef, type EntryFilter, type PupilRef } from "@/lib/pupilEntries";
 
 // NIMA NOTO'G'RI EDI: bu faylda `findPupilByName()` + `pupilBalanceByName()`
 // juftligi bor edi va ikkinchisi `pupils.balance` maydonini o'qirdi. O'sha
@@ -34,6 +35,16 @@ import { studentBalanceMatch } from "@/lib/studentRefund";
 export async function studentPaidBalanceByName(db: Db, name: string): Promise<number> {
   const wanted = name.trim().toLowerCase();
   if (!wanted) return 0;
+
+  // ID BO'YICHA — asosiy yo'l. Ism takrorlanishi mumkin, id esa yo'q
+  // (lib/pupilEntries.ts). Ism yagona bo'lsa `resolvePupilRef` o'quvchini
+  // topadi va hisob o'sha o'quvchining yozuvlari bo'yicha ketadi.
+  //
+  // Topilmasa (ism takrorlangan yoki bazada bunday o'quvchi yo'q — masalan
+  // Bonus/Jarima oynasi XODIM ismi bilan chaqirsa) eskicha, ism bo'yicha
+  // hisoblanadi: bu funksiya o'quvchi bo'lmagan ismni ham qabul qiladi.
+  const ref = await resolvePupilRef(db, { name });
+  if (ref) return studentPaidBalance(db, ref);
 
   // Yig'indi Mongo'da guruhlanadi — ilgari BUTUN kolleksiya (16 937 qator,
   // 899 KB) Node'ga kelib, pastdagi tsikl bittadan boshqa hammasini
@@ -61,4 +72,24 @@ export async function studentPaidBalanceByName(db: Db, name: string): Promise<nu
   // /api/students/balances qaytaradigan qiymat (u yerda ham bunday o'quvchi
   // ro'yxatga tushmaydi va sahifalar `?? 0` bilan o'qiydi).
   return total;
+}
+
+/**
+ * BITTA o'quvchining balansi — ID bo'yicha (ism faqat `pupilId` siz eski
+ * yozuvlar uchun zaxira, lib/pupilEntries.ts).
+ *
+ * Yuqoridagi ism bo'yicha variantdan FARQI: ismdoshning `pupilId` bilan
+ * belgilangan to'lovi bu yig'indiga TUSHMAYDI. Shu bois kassadagi
+ * "o'quvchiga pul qaytarish" chegarasi ham, profil kartochkasidagi son
+ * ham endi haqiqiy egasiniki.
+ */
+export async function studentPaidBalance(db: Db, ref: PupilRef): Promise<number> {
+  const [agg] = await db
+    .collection("transaction_entries")
+    .aggregate([
+      { $match: pupilBalanceMatch(ref, studentBalanceMatch() as EntryFilter) },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ])
+    .toArray();
+  return Number(agg?.total) || 0;
 }

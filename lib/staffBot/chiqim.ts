@@ -1,6 +1,6 @@
 import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
-import { studentPaidBalanceByName } from "@/lib/pupilsDb";
+import { studentPaidBalance } from "@/lib/pupilsDb";
 import { refundTeacherOf } from "@/lib/studentRefund";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { txTarget } from "@/lib/txTarget";
@@ -312,9 +312,12 @@ export async function chiqimCallback(ctx: FlowCtx, data: string): Promise<Callba
     if (d.step !== "person" || d.target !== "student") return stale(ctx, d, cashbox);
     const hit = await loadPupilHit(ctx.db, pupilId);
     if (!hit) return stale(ctx, d, cashbox, "O'quvchi topilmadi");
+    // ID bo'yicha — kassir ro'yxatdan AYNAN shu o'quvchini tanlagan,
+    // ismdoshning balansi/ustozi aralashmasin (lib/pupilEntries.ts).
+    const ref = { id: hit.id, name: hit.name };
     const [balance, teacher] = await Promise.all([
-      studentPaidBalanceByName(ctx.db, hit.name),
-      refundTeacherOf(ctx.db, hit.name),
+      studentPaidBalance(ctx.db, ref),
+      refundTeacherOf(ctx.db, ref),
     ]);
     const next: ChiqimDraft = {
       ...d,
@@ -470,6 +473,11 @@ async function saveChiqim(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Pr
       // Jurnaldagi "KIM" ustuni — o'quvchi ham, xodim ham `studentName` da
       // (web'dagi Chiqim oynasi bilan bir xil kelishuv).
       studentName: d.personName ?? "",
+      // O'QUVCHIGA pul qaytarilganda yozuvning egasi ham yoziladi
+      // (`pupilId`). Xodimga chiqimda YUBORILMAYDI: u yerda `personId`
+      // xodimning id'si va uni o'quvchi deb belgilash yozuvni begona
+      // bolaning to'lovlari orasiga tashlab yuborardi.
+      ...(d.target === "student" && d.personId !== undefined ? { studentId: d.personId } : {}),
       // Yozuv KIMNING oyligiga tegishli: xodimga chiqim — o'sha xodim;
       // o'quvchiga qaytarish — tushumidan ayriladigan ustoz (bo'sh bo'lsa
       // yadro o'zi topadi).

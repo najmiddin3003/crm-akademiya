@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { Filter, MoreVertical, X } from "lucide-react";
@@ -64,11 +64,6 @@ function fmtUZS(n: number): string {
   return `${n.toLocaleString("ru-RU").replace(/,/g, " ")} UZS`;
 }
 
-/** Balans kaliti — CashboxKirimDrawer bilan bir xil: kichik harf + trim. */
-function balanceKey(name: string): string {
-  return String(name ?? "").trim().toLowerCase();
-}
-
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -89,7 +84,7 @@ const HEADERS = ["№", "ID", "O'quvchi ismi", "Telefon raqam", "Balans", "Guruh
 export default function NewStudentsPage() {
   const { t } = useT();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   // Buyurtma id'si bilan o'quvchi id'si BOSHQA-BOSHQA ketma-ketliklar —
   // ikkalasi ham 1 dan boshlanadi. Shuning uchun ism ustidagi havolani
   // buyurtma id'si bilan yasab bo'lmaydi: u boshqa odamning profilini
@@ -109,13 +104,13 @@ export default function NewStudentsPage() {
     let cancelled = false;
     Promise.all([
       fetch("/api/orders").then((r) => r.json()).catch(() => null),
-      loadBalancesCached().then((balances) => ({ ok: true, balances })).catch(() => null),
+      loadBalancesByIdCached().then((balances) => ({ ok: true, balances })).catch(() => null),
       loadPupilsCached(true).then((pupils) => ({ ok: true, pupils })).catch(() => null),
     ])
       .then(([o, b, p]) => {
         if (cancelled) return;
         if (o?.ok) setOrders(o.orders as Order[]);
-        if (b?.ok) setBalances(b.balances as Record<string, number>);
+        if (b?.ok) setBalances(b.balances as Record<number, number>);
         if (p?.ok) setPupils(p.pupils);
       })
       .finally(() => {
@@ -144,11 +139,15 @@ export default function NewStudentsPage() {
         .map((o) => ({
           order: o,
           group: o.group || (o.groupId ? String(o.groupId) : ""),
-          // Buyurtmada o'quvchi id'si yo'q, faqat ism bor — balans API'si ham
-          // aynan ism bo'yicha kalitlangan, shuning uchun mos tushadi.
-          balance: balances[balanceKey(o.name)] ?? 0,
+          // Buyurtmada o'quvchi id'si yo'q — o'quvchi TELEFON (bo'lmasa
+          // ism) bo'yicha topiladi, balans esa uning ID'si bo'yicha
+          // o'qiladi. Ilgari to'g'ridan-to'g'ri ism kaliti ishlatilardi va
+          // ismdosh o'quvchining puli lidning yonida ko'rinardi
+          // (lib/pupilEntries.ts). Bazada bunday o'quvchi bo'lmasa 0 —
+          // uning nomiga hali birorta to'lov yozilmagan.
+          balance: balances[findPupilForOrder(o, pupils)?.id ?? -1] ?? 0,
         })),
-    [orders, balances],
+    [orders, balances, pupils],
   );
 
   // Filtr ro'yxatlari buyurtmalarning O'ZIDAN yig'iladi. Ilgari bu yerda

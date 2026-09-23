@@ -979,6 +979,11 @@ export default function CashboxesPage() {
   // ya'ni kassir yozishni ham boshlay olmasdi. Ma'lumot esa shu
   // komponentning holatida turardi.
   const {
+    // Oynalarga BUTUN ro'yxat (id bilan) uzatiladi, ismlar EMAS:
+    // ismdosh o'quvchilar ro'yxatda bitta qator bo'lib ko'rinardi va
+    // kassir qaysi biriga to'lov yozayotganini bilmasdi
+    // (lib/pupilEntries.ts).
+    students: dbStudentRows,
     names: dbStudents,
     byName: studentByName,
     loading: studentsLoading,
@@ -1014,7 +1019,12 @@ export default function CashboxesPage() {
   function renderWhoCell(e: TransactionEntry) {
     const linkCls = "text-primary hover:underline";
     if (e.studentName) {
-      const studentId = studentIdByName.get(e.studentName.trim().toLowerCase());
+      // Yozuvning EGASI — `pupilId`. Ism bo'yicha qidirish ZAXIRA: u
+      // belgilanmagan eski yozuvlarda va xodim yozuvlarida qoladi.
+      // Ismdoshda ism bo'yicha qidiruv har doim BIRINCHISINI topardi,
+      // ya'ni havola boshqa bolaning profiliga olib borardi
+      // (lib/pupilEntries.ts).
+      const studentId = e.pupilId ?? studentIdByName.get(e.studentName.trim().toLowerCase());
       if (studentId !== undefined) {
         return (
           <Link
@@ -2106,8 +2116,7 @@ export default function CashboxesPage() {
         <CashboxAdjustDrawer
           cashbox={adjustState.cashbox}
           mode={adjustState.mode}
-          studentNames={dbStudents}
-          studentByName={studentByName}
+          students={dbStudentRows}
           studentsLoading={studentsLoading}
           studentsRefreshing={studentsRefreshing}
           onClose={() => setAdjustState(null)}
@@ -2123,8 +2132,7 @@ export default function CashboxesPage() {
       {kirimTarget && (
         <CashboxKirimDrawer
           cashbox={kirimTarget}
-          studentNames={dbStudents}
-          studentByName={studentByName}
+          students={dbStudentRows}
           studentsLoading={studentsLoading}
           studentsRefreshing={studentsRefreshing}
           onClose={() => setKirimTarget(null)}

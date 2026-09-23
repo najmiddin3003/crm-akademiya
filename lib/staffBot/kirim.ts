@@ -1,5 +1,5 @@
 import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
-import { studentPaidBalanceByName } from "@/lib/pupilsDb";
+import { studentPaidBalance, studentPaidBalanceByName } from "@/lib/pupilsDb";
 import { txAudience } from "@/lib/txTarget";
 import { uzDateIso } from "@/lib/uzTime";
 import type { BotCashbox } from "@/lib/staffBot/auth";
@@ -98,7 +98,13 @@ async function showStudent(ctx: FlowCtx, d: KirimDraft, cashbox: BotCashbox): Pr
 }
 
 async function showAmount(ctx: FlowCtx, d: KirimDraft, cashbox: BotCashbox): Promise<void> {
-  const paid = d.studentName ? await studentPaidBalanceByName(ctx.db, d.studentName) : null;
+  // Balans ID bo'yicha — kassir ro'yxatdan aynan shu o'quvchini
+  // tanlagan (`studentId`), ismdoshning puli qo'shilib ko'rinmasin.
+  const paid = d.studentId !== undefined && d.studentName
+    ? await studentPaidBalance(ctx.db, { id: d.studentId, name: d.studentName })
+    : d.studentName
+      ? await studentPaidBalanceByName(ctx.db, d.studentName)
+      : null;
   await show(ctx, { html: V.kirimAmountPrompt(d, cashbox, paid), keyboard: kirimCancelOnly() });
 }
 

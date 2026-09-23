@@ -16,6 +16,33 @@ export interface TransactionEntry {
   date: string; // "YYYY-MM-DD"
   time: string; // "HH:mm"
   studentName: string;
+  /**
+   * Yozuv QAYSI O'QUVCHIGA tegishli (`pupils.id`).
+   *
+   * NIMA NOTO'G'RI EDI (23.09.2026 gacha): yozuvda faqat `studentName`
+   * bor edi va o'quvchining to'lovlari ISM bo'yicha topilardi. Bazada
+   * 545 ta ism takrorlanadi (1 193 o'quvchi), ya'ni ismdosh ikki
+   * o'quvchi BIR-BIRINING to'lovini ko'rardi: profil tarixida ham,
+   * balansida ham, qarzdorlik hisobida ham, hatto o'quvchilar botida
+   * ham (begona bolaning puli). Kassir ro'yxatdan ismni tanlaganda esa
+   * ikkalasi bitta qator bo'lib ko'rinardi.
+   *
+   * Endi yozuvning EGASI shu maydon. Ism ham yoziladi — jurnal, Sheets
+   * va Telegram xabarlari uni ko'rsatadi, lekin BOG'LANISH kaliti emas.
+   *
+   * QACHON BO'LADI: faqat yozuv haqiqatan O'QUVCHIGA oid bo'lganda —
+   * kirim (o'quvchi to'ladi) va o'quvchiga pul qaytarish. Xodimga
+   * chiqarilgan avans/oylikda `studentName` da XODIM ismi turadi
+   * (lib/cashboxAdjust.ts), u yerda bu maydon YOZILMAYDI.
+   *
+   * QACHON BO'LMAYDI: bu o'zgarishdan oldingi yozuvlarda va o'quvchisi
+   * aniqlanmagan (ism takrorlanib, kassir qaysi biri ekanini
+   * ko'rsatmagan) yozuvlarda. Shu bois o'qish tomonida QOIDA:
+   * `pupilId` bor yozuv FAQAT o'sha o'quvchiniki, `pupilId` siz yozuv
+   * esa eskicha ism bo'yicha topiladi (lib/pupilEntries.ts). Eski
+   * yozuvlar `scripts/backfill-entry-pupil-id.mjs` bilan belgilanadi.
+   */
+  pupilId?: number;
   amount: number; // ishorali
   before: number;
   after: number | null; // transfer yozuvlarida ko'pincha bo'sh (manbada ham shunday)

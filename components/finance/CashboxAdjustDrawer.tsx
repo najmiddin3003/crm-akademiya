@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
@@ -74,8 +74,7 @@ interface Row {
 // (masalan `periodMonth`) qo'shilishi kerak.
 export default function CashboxAdjustDrawer({
   cashbox,
-  studentNames,
-  studentByName,
+  students,
   studentsLoading,
   studentsRefreshing,
   onClose,
@@ -90,8 +89,7 @@ export default function CashboxAdjustDrawer({
    * kaliti bilan qaytadan so'rardi va TTL (30 s) o'tgach 546 KB / ~1.4 s
    * kutardi — o'sha paytda tanlov maydoni `disabled` bo'lib turardi.
    */
-  studentNames: string[];
-  studentByName: Map<string, StudentRow>;
+  students: StudentRow[];
   studentsLoading: boolean;
   /** Ro'yxat FONDA yangilanmoqda — maydon ishlaydi, faqat izoh chiqadi. */
   studentsRefreshing: boolean;
@@ -110,13 +108,22 @@ export default function CashboxAdjustDrawer({
   // shu nom bo'yicha guruhlanadi.
   const [categoryId, setCategoryId] = useState<number | null>(null);
   // Tanlangan KIM — tranzaksiya turiga qarab o'quvchi yoki xodim.
-  const [personName, setPersonName] = useState("");
+  // TANLANGAN ODAM — bitta maydon, ikki ma'no:
+  //   xodim turida   → xodimning ISMI (xodimlar ro'yxati ism bilan
+  //                    ishlaydi, ular takrorlanmaydi);
+  //   o'quvchi turida→ o'quvchining ID'si (satr).
+  //
+  // NEGA O'QUVCHIDA ID: bazada 545 ta ism takrorlanadi va ro'yxatda
+  // ismdosh ikki bola bitta qator bo'lib ko'rinardi — kassir qaysi
+  // biridan pul qaytarayotganini bilmasdi, xaritadan esa doim
+  // BIRINCHISI olinardi (lib/pupilEntries.ts).
+  const [personKey, setPersonKey] = useState("");
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — Kirim oynasidagi
   // bilan bir xil manba (/api/students/balances).
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "" }]);
   const [nextRowId, setNextRowId] = useState(2);
   const [method, setMethod] = useState("");
@@ -220,19 +227,28 @@ export default function CashboxAdjustDrawer({
   // Arxivdagi xodimga oylik berilmaydi — ro'yxatda faqat aktivlar.
   const activeEmployees = employees.filter((e) => !e.archReason);
   const roleOf = (name: string) => activeEmployees.find((e) => e.name === name)?.turi ?? "";
-  const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personName) : undefined;
+  const selectedEmployee = target === "employee" ? activeEmployees.find((e) => e.name === personKey) : undefined;
 
   // O'quvchi balansi — faqat "o'quvchiga pul qaytarildi" turidagi
   // chiqimlarda kerak (target === "student"da har doim shu ma'no).
-  const studentKey = (n: string) => n.trim().toLowerCase();
-  const balanceOf = (n: string) => balances[studentKey(n)] ?? 0;
-  const selectedStudent = target === "student" ? studentByName.get(studentKey(personName)) : undefined;
-  const studentBalance = selectedStudent ? balanceOf(selectedStudent.name) : 0;
+  const studentById = useMemo(() => {
+    const map = new Map<string, StudentRow>();
+    for (const s of students) map.set(String(s.id), s);
+    return map;
+  }, [students]);
+  const studentOptions = useMemo(() => students.map((s) => String(s.id)), [students]);
+  const studentNameOf = (k: string) => studentById.get(k)?.name ?? "";
+  const balanceOf = (k: string) => balances[Number(k)] ?? 0;
+  const selectedStudent = target === "student" ? studentById.get(personKey) : undefined;
+  const studentBalance = selectedStudent ? balanceOf(personKey) : 0;
+  // Serverga va jurnalga ISM ketadi (xodim ham, o'quvchi ham "KIM"
+  // ustunida ko'rinadi); o'quvchida bog'lanish ID bo'yicha ketadi.
+  const personName = target === "student" ? selectedStudent?.name ?? "" : personKey;
 
   useEffect(() => {
     if (target !== "student") return;
     let cancelled = false;
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -254,12 +270,14 @@ export default function CashboxAdjustDrawer({
   // tozalaydi — effekt ichida sinxron setState yo'q
   // (react-hooks/set-state-in-effect).
   const [refundTeacher, setRefundTeacher] = useState("");
-  const refundStudentName = target === "student" ? selectedStudent?.name ?? "" : "";
+  // O'quvchining oxirgi to'lovi ID bo'yicha so'raladi: ism bo'yicha
+  // so'rovda ismdoshning to'lovi kelib, qaytarim BEGONA ustozning
+  // tushumidan ayrilib ketardi (lib/pupilEntries.ts).
+  const refundPupilId = target === "student" ? selectedStudent?.id ?? null : null;
   useEffect(() => {
-    if (!refundStudentName) return;
+    if (refundPupilId === null) return;
     let cancelled = false;
-    const q = encodeURIComponent(refundStudentName);
-    fetch(`/api/transaction-entries?studentName=${q}&txType=payIn&excludeCancelled=1&limit=1&slim=1`)
+    fetch(`/api/transaction-entries?pupilId=${refundPupilId}&txType=payIn&excludeCancelled=1&limit=1&slim=1`)
       .then((r) => r.json())
       .catch(() => null)
       .then((d) => {
@@ -269,7 +287,7 @@ export default function CashboxAdjustDrawer({
         setRefundTeacher((cur) => cur || String(last?.teacherName ?? "").trim());
       });
     return () => { cancelled = true; };
-  }, [refundStudentName]);
+  }, [refundPupilId]);
 
   // Qatorlar yig'indisi. "Oylik" turida summa qatorlardan EMAS, xodimning
   // hisoblangan qoldig'idan olinadi — pastdagi `total` ga qarang.
@@ -381,7 +399,7 @@ export default function CashboxAdjustDrawer({
     // yozuv egasiz tug'iladi: xodimga berilgan avans hech kimning oylik
     // hisobiga tushmaydi va oddiy xarajat bo'lib qoladi (jurnalda aynan
     // shunday bitta yozuv bor — "Avans", −20 000, xodimsiz).
-    if (target !== null && !personName.trim()) {
+    if (target !== null && !personKey.trim()) {
       showError(txTargetLabel(target));
       return;
     }
@@ -422,6 +440,11 @@ export default function CashboxAdjustDrawer({
           // Jurnaldagi "KIM" ustuni shu maydondan o'qiladi (o'quvchi ham,
           // xodim ham shu yerda ko'rsatiladi — referensda ham shunday).
           studentName: personName,
+          // O'QUVCHIGA pul qaytarilganda yozuvga o'quvchining ID'si ham
+          // tushadi (`pupilId`, lib/transactionEntries.ts) — ismdosh
+          // o'quvchining balansidan ayrilib ketmasin. Xodimga chiqimda
+          // yuborilmaydi: u yerda "KIM" — xodim.
+          studentId: target === "student" ? selectedStudent?.id : undefined,
           // Yozuv KIMNING oyligiga tegishli. Xodimga chiqim bo'lsa — o'sha
           // xodim. Server buni nomdagi "avans|oylik" so'ziga qarab ham
           // topadi, lekin "KPI bonusi", "Bayram mukofoti" kabi turlarda bu
@@ -474,7 +497,7 @@ export default function CashboxAdjustDrawer({
                   // ism `studentName` bo'lib yozuvga tushardi.
                   const next = categories.find((tv) => tv.id === Number(v)) ?? null;
                   if (txTarget(next) !== target) {
-                    setPersonName("");
+                    setPersonKey("");
                     setRefundTeacher("");
                   }
                   setCategoryId(next?.id ?? null);
@@ -489,14 +512,16 @@ export default function CashboxAdjustDrawer({
             <div className="space-y-2">
               <StudentSearchSelect
                 label={txTargetLabel(target)}
-                value={personName}
+                value={personKey}
                 onChange={(v) => {
-                  setPersonName(v);
+                  setPersonKey(v);
                   // Boshqa o'quvchi — oldingisining ustozi qolib ketmasin;
                   // yangisi effektda oxirgi to'lovidan qayta to'ladi.
                   setRefundTeacher("");
                 }}
-                options={target === "employee" ? activeEmployees.map((e) => e.name) : studentNames}
+                options={target === "employee" ? activeEmployees.map((e) => e.name) : studentOptions}
+                // O'quvchi turida variantlar ID, ko'rinadigan matn esa ism.
+                labelOf={target === "student" ? studentNameOf : undefined}
                 // Bitta tanlovni IKKI manba to'ldiradi — turga QARAB: xodim
                 // turida xodimlar ro'yxati, aks holda o'quvchilar. Ikkalasini
                 // birlashtirib yuborish xato bo'lardi — o'quvchi

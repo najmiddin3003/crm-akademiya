@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { useRouter } from "next/navigation";
@@ -108,10 +108,10 @@ export default function NazoratDavomatPage() {
   const { students, loading: pupilsLoading } = useStudents();
 
   // Balans YAGONA haqiqiy manbadan — to'langan payIn yozuvlari yig'indisi.
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   useEffect(() => {
     let cancelled = false;
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -180,7 +180,9 @@ export default function NazoratDavomatPage() {
         pupilId: m.pupilId,
         name: s.name,
         phone: s.phone,
-        balance: balances[s.name.trim().toLowerCase()] ?? 0,
+        // Balans ID bo'yicha — ismdoshlar aralashmasin
+        // (lib/pupilEntries.ts).
+        balance: balances[m.pupilId] ?? 0,
         groupName: g?.name ?? "",
         teacher: g?.teacher ?? "",
         moderator: s.moderator,

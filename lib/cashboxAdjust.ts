@@ -5,9 +5,10 @@ import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLo
 import { flushSoon } from "@/lib/sync/dispatch";
 import { buildPayrollRows } from "@/lib/payrollSources";
 import { payrollCashLeg, payrollPayout, payrollPeriodOf, payrollPlastikLeg } from "@/lib/salary";
-import { findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
+import { findTeacherOfPupil, findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { isStudentRefundCategory, refundTeacherOf } from "@/lib/studentRefund";
-import { studentPaidBalanceByName } from "@/lib/pupilsDb";
+import { studentPaidBalance, studentPaidBalanceByName } from "@/lib/pupilsDb";
+import { resolvePupilRef } from "@/lib/pupilEntries";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 import { notifyPayment } from "@/lib/studentBot/notify";
 import type { EntryOrigin } from "@/lib/transactionEntries";
@@ -55,13 +56,17 @@ export interface AdjustInput {
   /** To'lov qaysi oy uchun — "YYYY-MM". Boshqa shakl jimgina tashlanadi. */
   periodMonth?: string;
   /**
-   * Tanlangan o'quvchining ID si — faqat SMS/bot xabari uchun (Kirim
-   * oynasi yuboradi). Jurnal yozuvi bugungidek ISM bilan ishlaydi, bu
-   * maydon unga tegmaydi.
+   * Tanlangan o'quvchining ID si (`pupils.id`) — YOZUVNING EGASI.
    *
-   * NEGA ID KERAK: telefonni ism bo'yicha topib bo'lmaydi — bazada
-   * 511 ta ism takrorlanadi va ularning 501 tasida telefon har xil
-   * (lib/paymentSms.ts izohiga qarang).
+   * 23.09.2026 gacha bu maydon faqat SMS/bot xabariga ketardi, jurnal
+   * esa ism bilan ishlardi. Endi u yozuvning o'ziga `pupilId` bo'lib
+   * tushadi (lib/transactionEntries.ts): ismdosh o'quvchilar
+   * bir-birining to'lovini ko'rmasin.
+   *
+   * NEGA ID SHART: ism yagona emas — bazada 545 ta ism takrorlanadi
+   * (1 193 o'quvchi) va ularning aksariyatida telefon ham har xil
+   * (lib/paymentSms.ts izohiga qarang). Berilmasa server ism bo'yicha
+   * topishga uriniladi va faqat ism YAGONA bo'lsa belgilaydi.
    */
   studentId?: number;
   /** Yozuv qayerdan kiritilgani — web'da yozilmaydi, botda "telegram". */
@@ -197,13 +202,38 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   const studentRefund = mode === "chiqim"
     && !!(studentName || "").trim()
     && (await isStudentRefundCategory(db, category || ""));
+
+  // YOZUVNING O'QUVCHISI — `pupils.id`. Ism EMAS (lib/pupilEntries.ts):
+  // bazada 545 ta ism takrorlanadi va ismdoshlar bir-birining to'lovini
+  // ko'rardi.
+  //
+  // FAQAT haqiqatan o'quvchiga oid yozuvda aniqlanadi: kirim (o'quvchi
+  // to'ladi) va o'quvchiga pul qaytarish. Xodimga chiqarilgan avans/
+  // oylikda `studentName` da XODIM ismi turadi — u yerda o'quvchi
+  // qidirilsa ismdosh o'quvchi topilib, xodimning avansi uning
+  // to'lovlari orasiga tushib qolardi.
+  //
+  // `studentId` — oynadan/botdan kelgan tanlov; bo'lmasa ism YAGONA
+  // bo'lgandagina topiladi, takrorlansa `null` qoladi va yozuv eskicha
+  // (ism bo'yicha) ishlaydi.
+  const pupil = (mode === "kirim" || studentRefund) && (studentName || "").trim()
+    ? await resolvePupilRef(db, { id: studentId, name: studentName })
+    : null;
+
   let refundTeacher = "";
   if (studentRefund) {
-    const balance = await studentPaidBalanceByName(db, studentName || "");
+    // Chegara O'QUVCHINING O'Z balansidan olinadi. Ilgari ism bo'yicha
+    // hisoblanardi, ya'ni ismdoshning puli ham "bor" deb ko'rinib,
+    // o'quvchiga o'zi to'lamagan pul qaytarib berilishi mumkin edi.
+    const balance = pupil
+      ? await studentPaidBalance(db, pupil)
+      : await studentPaidBalanceByName(db, studentName || "");
     if (amount > balance) {
       return fail(`Summa o'quvchi balansidan ko'p bo'lmasin (balans: ${balance.toLocaleString("ru-RU")} so'm)`);
     }
-    refundTeacher = (teacherName || "").trim() || (await refundTeacherOf(db, studentName || "")) || "";
+    refundTeacher = (teacherName || "").trim()
+      || (await refundTeacherOf(db, pupil ?? (studentName || "")))
+      || "";
   }
 
   // QOROVUL SHARTNING O'ZI FILTRDA — `transfer-to` va `salary-runs` bilan
@@ -273,7 +303,15 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
       ? (studentName || "").trim()
       : (teacherName || "").trim();
   } else if (mode === "kirim") {
-    salaryTarget = (teacherName || "").trim() || (await findTeacherOfStudent(db, studentName || "")) || "";
+    // Ustoz o'quvchining GURUHIDAN topiladi — a'zolik `studentIds` da ID
+    // bo'yicha yuritiladi, shuning uchun o'quvchi aniqlangan bo'lsa
+    // ismdoshning ustozi tushib qolmaydi. Aniqlanmagan bo'lsa eskicha
+    // ism bo'yicha (u ham endi ism takrorlansa null qaytaradi).
+    salaryTarget = (teacherName || "").trim()
+      || (pupil
+        ? await findTeacherOfPupil(db, pupil.id)
+        : await findTeacherOfStudent(db, studentName || ""))
+      || "";
   }
 
   // Faqat "YYYY-MM" shakli qabul qilinadi.
@@ -285,6 +323,12 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     date: entryDate,
     time: nowTime(),
     studentName: studentName || "",
+    // Yozuvning EGASI. Ism yonida qoladi (jurnal, Sheets, Telegram uni
+    // ko'rsatadi), lekin bog'lanish endi shu maydon bo'yicha
+    // (lib/transactionEntries.ts → pupilId). O'quvchi aniqlanmagan
+    // yozuvda maydon UMUMAN yozilmaydi — `null` emas: o'qish tomonidagi
+    // zaxira shoxi `{ pupilId: { $exists: false } }` ga tayanadi.
+    ...(pupil ? { pupilId: pupil.id } : {}),
     amount: signedAmount,
     before: beforeTotal,
     after: afterTotal,
@@ -356,7 +400,11 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   if (mode === "kirim" && (studentName || "").trim() && paymentSmsEnabled()) {
     deps.defer(() =>
       sendPaymentSms(db, {
-        pupilId: Number.isFinite(Number(studentId)) ? Number(studentId) : null,
+        // Yozuv bilan BIR XIL o'quvchi — `pupil` yuqorida id yoki
+        // (id berilmasa) yagona ism bo'yicha aniqlangan. Ilgari bu yerda
+        // xom `studentId` turardi, ya'ni yozuv va SMS boshqa-boshqa
+        // manbaga qarashi mumkin edi.
+        pupilId: pupil ? pupil.id : null,
         pupilName: (studentName || "").trim(),
         amount,
         moderator: current.moderator || "",
@@ -372,16 +420,17 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   // xabari esa faqat botga ulanganlarga. Ikkalasini birlashtirish
   // ulanmagan o'quvchini xabarsiz qoldirardi.
   //
-  // FAQAT `studentId` BO'LGANDA. Ism bo'yicha qidirilmaydi — bazada
-  // 511 ta ism takrorlanadi va begona odamga boshqa birovning to'lovi
-  // haqida xabar ketishi mumkin edi (lib/studentBot/notify.ts).
+  // FAQAT O'QUVCHI ANIQLANGANDA (`pupil`). Ism bo'yicha taxmin
+  // qilinmaydi — bazada 545 ta ism takrorlanadi va begona odamga boshqa
+  // birovning to'lovi haqida xabar ketishi mumkin edi
+  // (lib/studentBot/notify.ts).
   //
   // `notifyPayment` o'zi hech qachon otmaydi va sozlama o'chiq bo'lsa
   // jimgina qaytadi.
-  if (mode === "kirim" && Number.isFinite(Number(studentId))) {
+  if (mode === "kirim" && pupil) {
     deps.defer(() =>
       notifyPayment(db, {
-        pupilId: Number(studentId),
+        pupilId: pupil.id,
         amount,
         method: methodLabel,
         date: entryDate,

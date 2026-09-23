@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesCached } from "@/lib/balancesClient";
+import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, Plus, Share2, UserCog, Users, X } from "lucide-react";
@@ -127,13 +127,13 @@ export default function StudentsListPage() {
   // yangilamaydi — u faqat seed skriptidagi qiymatlarni saqlaydi, ya'ni
   // ustunda ham, Qarzdor/Haqdor jamida ham, eksportda ham soxta son
   // ko'rinardi (Kassa Kirim oynasi bilan bir xil manba endi).
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<number, number>>({});
   useEffect(() => {
     let cancelled = false;
     fetch("/api/groups")
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); });
-    loadBalancesCached()
+    loadBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -151,7 +151,9 @@ export default function StudentsListPage() {
       enrichStudents(
         pupils.map((p) => {
           const row = studentRowFromPupil(statusPatch[p.id] ? { ...p, ...statusPatch[p.id] } : p);
-          return { ...row, balance: balances[row.name.trim().toLowerCase()] ?? 0 };
+          // Balans ID bo'yicha — ismdoshlarning puli qo'shilib
+          // ketmasin (lib/pupilEntries.ts).
+          return { ...row, balance: balances[row.id] ?? 0 };
         }),
         groups,
       ),

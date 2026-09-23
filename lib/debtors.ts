@@ -191,15 +191,20 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
 
   // 3) O'quvchilar, kurs narxlari, to'lovlar — parallel.
   const pupilIds = [...new Set(memberships.map((m) => m.pupilId))];
-  // To'langan — balans qoidasi + sana chegarasi. Yig'indi Mongo'da, ism
-  // kaliti JS'da (app/api/students/balances/route.ts izohiga qarang:
+  // To'langan — balans qoidasi + sana chegarasi. Yig'indi Mongo'da,
+  // kalit JS'da (app/api/students/balances/route.ts izohiga qarang:
   // o'zbek harflarida `$toLower` ishonchsiz).
+  //
+  // GURUHLASH ID BO'YICHA. Ilgari faqat `studentName` edi va ismdosh
+  // o'quvchilar bir-birining to'lovini "to'lagan" deb ko'rsatardi —
+  // qarzi bor bola hisobotdan tushib qolardi (lib/pupilEntries.ts).
+  // `pupilId` siz ESKI yozuvlar pastda ism bo'yicha qo'shiladi.
   const paidBetween = (from: string | null, to: string) =>
     db
       .collection("transaction_entries")
-      .aggregate<{ _id: unknown; total: number }>([
+      .aggregate<{ _id: { pupilId?: unknown; name?: unknown }; total: number }>([
         { $match: { $and: [studentBalanceMatch(), { date: from ? { $gte: from, $lte: to } : { $lte: to } }] } },
-        { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
+        { $group: { _id: { pupilId: "$pupilId", name: "$studentName" }, total: { $sum: "$amount" } } },
       ])
       .toArray();
   const [pupils, courses, payments, monthPayments] = await Promise.all([
@@ -219,17 +224,33 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
   ]);
   const pupilById = new Map(pupils.map((p) => [p.id, p]));
 
-  const sumByName = (rows: { _id: unknown; total: number }[]) => {
-    const out = new Map<string, number>();
+  // `pupils.id` -> to'langan summa. `pupilId` bor yozuv TO'G'RIDAN-TO'G'RI
+  // egasiga; belgilanmagan eskilari esa ism bo'yicha — o'sha ismli
+  // o'quvchi(lar)ga. Ikkinchisi bugungi xatti-harakat: backfill
+  // (scripts/backfill-entry-pupil-id.mjs) uni asta-sekin yo'qotadi.
+  const sumByPupil = (rows: { _id: { pupilId?: unknown; name?: unknown }; total: number }[]) => {
+    const byId = new Map<number, number>();
+    const legacy = new Map<string, number>();
     for (const r of rows) {
-      const key = norm(String(r._id ?? ""));
-      if (!key) continue;
-      out.set(key, (out.get(key) ?? 0) + (Number(r.total) || 0));
+      const total = Number(r.total) || 0;
+      const pid = Number(r._id?.pupilId);
+      if (Number.isFinite(pid)) {
+        byId.set(pid, (byId.get(pid) ?? 0) + total);
+        continue;
+      }
+      const key = norm(String(r._id?.name ?? ""));
+      if (key) legacy.set(key, (legacy.get(key) ?? 0) + total);
     }
-    return out;
+    if (legacy.size > 0) {
+      for (const p of pupils) {
+        const extra = legacy.get(norm(pupilFullName(p))) ?? 0;
+        if (extra) byId.set(p.id, (byId.get(p.id) ?? 0) + extra);
+      }
+    }
+    return byId;
   };
-  const paidByName = sumByName(payments);
-  const monthPaidByName = sumByName(monthPayments);
+  const paidByPupil = sumByPupil(payments);
+  const monthPaidByPupil = sumByPupil(monthPayments);
 
   // Guruh bo'yicha bir marta hisoblanadigan narsalar.
   const priceByGroup = new Map<number, number | null>();
@@ -340,7 +361,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
 
     const name = pupilFullName(p);
     const charged = groupParts.reduce((s, x) => s + x.charged, 0);
-    const paid = paidByName.get(norm(name)) ?? 0;
+    const paid = paidByPupil.get(p.id) ?? 0;
     const starts = groupParts.map((x) => x.startDate).filter((d): d is string => d !== null);
     rows.push({
       id: p.id,
@@ -370,7 +391,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
     let expected = 0;
     for (const v of monthExpectedByPupil.values()) expected += v;
     let received = 0;
-    for (const p of pupils) received += monthPaidByName.get(norm(pupilFullName(p))) ?? 0;
+    for (const p of pupils) received += monthPaidByPupil.get(p.id) ?? 0;
     monthSummary = { month, expected, received, remaining: expected - received, students: monthExpectedByPupil.size, lessons: monthLessons };
   }
 

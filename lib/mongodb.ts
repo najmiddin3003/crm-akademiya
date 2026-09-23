@@ -274,6 +274,11 @@ async function createAllIndexes(db: Db): Promise<void> {
   // O'quvchi va xodim profillari har ochilganda shu ikki maydon bo'yicha
   // so'rov ketadi (app/api/transaction-entries/route.ts).
   tasks.push(db.collection("transaction_entries").createIndex({ studentName: 1, date: -1 }));
+  // O'quvchi profili endi ID bo'yicha so'raydi (`?pupilId=`), balans va
+  // qarzdorlik hisobi ham shu maydonni o'qiydi (lib/pupilEntries.ts).
+  // Sparse: maydon faqat o'quvchiga oid yozuvlarda bo'ladi — xodimga
+  // chiqarilgan avans/oylikda va belgilanmagan eski yozuvlarda yo'q.
+  tasks.push(db.collection("transaction_entries").createIndex({ pupilId: 1, date: -1 }, { sparse: true }));
   tasks.push(db.collection("transaction_entries").createIndex({ moderator: 1, date: -1 }));
   // Kassalar sahifasi doim BITTA kassani va standart holatda bugungi
   // kunni ko'rsatadi — server tomondagi filtr shu indeksdan foydalanadi.

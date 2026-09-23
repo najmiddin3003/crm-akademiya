@@ -22,6 +22,17 @@ export interface StudentSearchSelectProps {
    * left, value+chevron right, bottom border only). "compact" = boxed'ning
    * pastroq (h-9) varianti — Topshiriq oynasidagi maydonlarga mos. */
   variant?: "boxed" | "row" | "compact";
+  /**
+   * Variantning KO'RINADIGAN matni. Berilmasa variantning o'zi chiziladi.
+   *
+   * NEGA KERAK: o'quvchi tanlashda `options` endi ISM emas, o'quvchining
+   * ID'si (satr ko'rinishida). Bazada 545 ta ism takrorlanadi — ism
+   * variant bo'lib turganda ikkala bola ro'yxatda BITTA qator bo'lib
+   * ko'rinardi va kassir qaysi biriga to'lov yozayotganini bilmasdi
+   * (lib/pupilEntries.ts). ID — yagona kalit, ism esa shu yerda
+   * ko'rsatiladi. Qidiruv ham shu matn ustida ishlaydi.
+   */
+  labelOf?: (option: string) => string;
   /** Ro'yxatdagi qatorga qo'shimcha satr (masalan telefon / lavozim). */
   subtitleOf?: (name: string) => ReactNode;
   /** Qatorning o'ng chekkasi (masalan balans / oylik). */
@@ -90,6 +101,7 @@ export default function StudentSearchSelect({
   searchPlaceholder,
   error,
   variant = "boxed",
+  labelOf,
   subtitleOf,
   trailingOf,
   disabledOptions,
@@ -119,9 +131,11 @@ export default function StudentSearchSelect({
   //
   // Qidiruv BUTUN ro'yxat bo'yicha ketadi; `limit` faqat ekranga chiziladigan
   // qatorlarga tegishli, shu bois qidirilgan yozuv doim topiladi.
+  const textOf = (option: string): string => labelOf?.(option) ?? option;
   const haystackOf = (name: string): string => {
     const sub = subtitleOf?.(name);
-    return typeof sub === "string" || typeof sub === "number" ? `${name} ${sub}` : name;
+    const text = textOf(name);
+    return typeof sub === "string" || typeof sub === "number" ? `${text} ${sub}` : text;
   };
   const q = query.trim().toLowerCase();
   const qDigits = query.replace(/\D/g, "");
@@ -137,7 +151,7 @@ export default function StudentSearchSelect({
       return qDigits.length >= 3 && hay.replace(/\D/g, "").includes(qDigits);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, options, q, qDigits, subtitleOf]);
+  }, [open, options, q, qDigits, subtitleOf, labelOf]);
   const shown = limit && filtered.length > limit ? filtered.slice(0, limit) : filtered;
   const hidden = filtered.length - shown.length;
 
@@ -200,7 +214,7 @@ export default function StudentSearchSelect({
               {subtitleOf || trailingOf ? (
                 <span className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block truncate font-medium">{name}</span>
+                    <span className="block truncate font-medium">{textOf(name)}</span>
                     {subtitleOf && (
                       <span className="block text-[11.5px] text-muted-foreground truncate">{subtitleOf(name)}</span>
                     )}
@@ -208,7 +222,7 @@ export default function StudentSearchSelect({
                   {trailingOf && <span className="shrink-0 text-[12px] tabular-nums">{trailingOf(name)}</span>}
                 </span>
               ) : (
-                name
+                textOf(name)
               )}
             </button>
           ))
@@ -237,7 +251,7 @@ export default function StudentSearchSelect({
             className={`block h-8 w-full rounded-md border-0 bg-secondary text-left text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-70 ${error ? "ring-2 ring-red-400" : ""}`}
           >
             <span className={`block truncate ${value ? "" : "text-muted-foreground"}`}>
-              {value || (loading ? LOADING_TEXT : placeholder)}
+              {value ? textOf(value) : (loading ? LOADING_TEXT : placeholder)}
             </span>
           </button>
           <RowChevron />
@@ -267,7 +281,7 @@ export default function StudentSearchSelect({
         disabled={loading}
         className={`w-full px-3 rounded-lg border text-sm flex items-center justify-between text-left focus:outline-none focus:ring-2 disabled:opacity-70 ${compact ? "h-9 bg-background focus:ring-blue-500" : "h-11 bg-secondary/30 focus:ring-primary/40"} ${error ? "border-red-400 ring-2 ring-red-400" : "border-border"}`}
       >
-        <span className={value ? "" : "text-muted-foreground"}>{value || (loading ? LOADING_TEXT : placeholder)}</span>
+        <span className={value ? "" : "text-muted-foreground"}>{value ? textOf(value) : (loading ? LOADING_TEXT : placeholder)}</span>
         <svg className="icon icon-sm text-muted-foreground shrink-0">
           <use href="#i-chevron-down" />
         </svg>

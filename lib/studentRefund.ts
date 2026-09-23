@@ -2,7 +2,8 @@ import type { Db, Filter } from "mongodb";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { TransactionType } from "@/lib/transactionTypes";
 import { txTarget } from "@/lib/txTarget";
-import { findTeacherOfStudent } from "@/lib/teacherOfStudent";
+import { findTeacherOfPupil, findTeacherOfStudent } from "@/lib/teacherOfStudent";
+import { nameEq, pupilEntryMatch, type EntryFilter, type PupilRef } from "@/lib/pupilEntries";
 
 // O'QUVCHIGA PUL QAYTARISH — server tomonidagi yagona qoidalar to'plami.
 //
@@ -71,30 +72,43 @@ export async function isStudentRefundCategory(db: Db, category: string): Promise
  * Tartib:
  *   1. o'quvchining ENG OXIRGI bekor qilinmagan to'lovidagi `teacherName`
  *      — aynan o'sha ustozga foiz hisoblangan, demak qaytarim ham undan;
- *   2. topilmasa — o'quvchining guruhidagi ustoz (findTeacherOfStudent,
+ *   2. topilmasa — o'quvchining guruhidagi ustoz (findTeacherOfPupil,
  *      Kirim oynasi bilan bir xil zaxira yo'l).
  * Ikkalasi ham bo'lmasa `null` — taxmin qilinmaydi, yozuv ustozsiz
  * qoladi va faqat o'quvchi balansiga ta'sir qiladi.
  */
-export async function refundTeacherOf(db: Db, studentName: string): Promise<string | null> {
-  const name = String(studentName ?? "").trim();
+export async function refundTeacherOf(db: Db, student: PupilRef | string): Promise<string | null> {
+  const name = String(typeof student === "string" ? student : student.name ?? "").trim();
   if (!name) return null;
-  // Ism — anchor'li regex, katta-kichik harfsiz, chetidagi probelga
-  // befarq: balans hisobidagi `trim().toLowerCase()` qoidasi bilan bir
-  // xil o'quvchi topilsin (bazadagi ismlarning chetida probel bor).
+  // KIMNING to'lovi qidiriladi. O'quvchi id bilan berilgan bo'lsa
+  // bog'lanish id bo'yicha (lib/pupilEntries.ts) — ismdoshning oxirgi
+  // to'lovidagi ustoz olinib, qaytarim BEGONA ustozning tushumidan
+  // ayrilib ketmasin. Faqat ism berilgan eski chaqiruvlarda esa avvalgi
+  // anchor'li regex qoladi.
+  const who: EntryFilter =
+    typeof student === "string" ? { studentName: nameEq(name) } : pupilEntryMatch(student);
   const last = await db
     .collection("transaction_entries")
     .find(
       {
-        txType: "payIn",
-        status: { $ne: "cancelled" },
-        studentName: { $regex: `^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, $options: "i" },
-        teacherName: { $nin: ["", null] },
+        $and: [
+          who,
+          {
+            txType: "payIn",
+            status: { $ne: "cancelled" },
+            teacherName: { $nin: ["", null] },
+          },
+        ],
       },
       { projection: { _id: 0, teacherName: 1 }, sort: { id: -1 }, limit: 1 },
     )
     .toArray();
   const fromPayment = String(last[0]?.teacherName ?? "").trim();
   if (fromPayment) return fromPayment;
-  return findTeacherOfStudent(db, name);
+  // Guruh a'zoligi ID bo'yicha yuritiladi (`groups.studentIds`), shuning
+  // uchun o'quvchi ma'lum bo'lsa ustoz ham aniq topiladi. Faqat ism
+  // berilgan bo'lsa eskicha — u ism takrorlansa null qaytaradi.
+  return typeof student === "string"
+    ? findTeacherOfStudent(db, name)
+    : findTeacherOfPupil(db, student.id);
 }
