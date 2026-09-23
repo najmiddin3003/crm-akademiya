@@ -359,6 +359,50 @@ export interface EmployeePayroll {
    * Faqat karta oyog'ining qolgan maqsadini hisoblashda ishlatiladi.
    */
   paidPlastik: number;
+  /**
+   * Shu xodimga BOSHQA filial kassalaridan berilgan avans/oylik, kassa
+   * filiali bo'yicha. `paidAvans`/`paidOylik` ning QISM to'plami — ular
+   * bilan qo'shilmaydi, hisobga ta'sir qilmaydi, faqat ko'rsatish uchun.
+   * Faqat Oylik sahifasining filial ko'rinishida to'ldiriladi
+   * (lib/payrollSources.ts → attachBranchPayouts).
+   */
+  paidElsewhere?: PaidElsewhere[];
+}
+
+/** Xodimga boshqa filial kassasidan berilgan pul (bitta filial bo'yicha). */
+export interface PaidElsewhere {
+  /** Kassa biriktirilgan filial nomi; kassa hech qaysi filialga biriktirilmagan bo'lsa "". */
+  branch: string;
+  avans: number;
+  oylik: number;
+}
+
+/**
+ * Oylik sahifasidagi "Berilgan avans" va "To'langan oylik" kartochkalari —
+ * pul QAYSI FILIAL KASSASIDAN chiqqani bo'yicha (foydalanuvchi, 23.09.2026:
+ * "kim avans bergan bo'lsa o'sha moderator filialida ko'rinsin").
+ *
+ * Jadval qatorlari esa avvalgidek XODIM bo'yicha qoladi: xodimning qolgan
+ * oyligidan qaysi kassadan olgani emas, HAMMA olgani ushlab qolinadi.
+ * Ikkalasining farqi shu yerdagi `toOthers` va `fromOthers` da ochiq turadi.
+ */
+export interface BranchPayouts {
+  /** Filialga bitta ham kassa biriktirilmagan — raqamlar ma'nosiz. */
+  hasCashbox: boolean;
+  /** Shu filial kassalaridan shu oy uchun berilgani — KIMGA bo'lsa ham. */
+  avans: number;
+  oylik: number;
+  /** Shundan shu filialning oylik ro'yxatida YO'Q xodimlarga berilgani. */
+  toOthers: {
+    name: string;
+    /** Xodimning oylik ro'yxati filiali; topilmasa "". */
+    branch: string;
+    archived: boolean;
+    avans: number;
+    oylik: number;
+  }[];
+  /** Shu filial ro'yxatidagi xodimlar BOSHQA filial kassalaridan olgani. */
+  fromOthers: { avans: number; oylik: number };
 }
 
 /** Shu oy uchun hisoblangan asos (oklad pro-rata yoki tushumdan foiz). */

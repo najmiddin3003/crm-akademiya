@@ -36,7 +36,10 @@ import { getBranchScope } from "@/lib/branchScope";
 // ham kesilishi kerak — aks holda bitta kartochkada bir filialning
 // oyligi butun tarmoqning daromadidan ayirilardi. `transactions` da
 // filial maydoni yo'q, shuning uchun kesish KASSA orqali:
-// `cashboxes.branchId`.
+// `cashboxes.branchId`. "Berilgan avans" va "To'langan oylik" ham
+// 23.09.2026 dan shu KASSA qamrovida (lib/payrollSources.ts →
+// attachBranchPayouts), ya'ni xarajat ichidagi avans bilan kartochkadagi
+// avans bir xil kassalardan.
 //
 // Filialga biriktirilmagan kassa (branchId yo'q) hech qaysi filialga
 // tushmaydi — bu ataylab: uni "hammaga" qo'shish yig'indini takrorlardi.

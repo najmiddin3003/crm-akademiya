@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { buildPayrollRows } from "@/lib/payrollSources";
+import { attachBranchPayouts, buildPayrollRows } from "@/lib/payrollSources";
 import { isMonthKey, payrollMonthKey, payrollPeriod, payrollPeriodOf } from "@/lib/salary";
 import { getBranchScope } from "@/lib/branchScope";
 
@@ -50,6 +50,11 @@ export async function GET(req: Request) {
   // bayroqni ISHLATMAYDI va ishlatmasligi ham kerak: u yerda kesish ikki
   // marta to'lashni to'sadi (pastdagi izohga qarang).
   const allBranches = (params.get("branch") ?? "").trim() === "all";
+  // `?given=1` — javobga KASSA bo'yicha yig'indi (`given`) va qatorlarga
+  // `paidElsewhere` qo'shiladi (lib/payrollSources.ts → attachBranchPayouts).
+  // Faqat Oylik sahifasi so'raydi: Xodimlar ro'yxati va profil bu route'ni
+  // o'z qatorlari uchun o'qiydi va ortiqcha so'rovlarga muhtoj emas.
+  const withGiven = !allBranches && (params.get("given") ?? "").trim() === "1";
   if (raw && !isMonthKey(raw)) {
     return NextResponse.json({ ok: false, error: "Oy noto'g'ri (YYYY-MM kutiladi)" }, { status: 400 });
   }
@@ -70,5 +75,11 @@ export async function GET(req: Request) {
   );
   // `month` QAYTARILADI: mijoz qaysi oy hisoblanganini taxmin qilmasin —
   // parametrsiz so'rovda ham server tanlagan oy aniq bo'lsin.
-  return NextResponse.json({ ok: true, month: payrollMonthKey(period), employees });
+  const month = payrollMonthKey(period);
+  if (!withGiven) return NextResponse.json({ ok: true, month, employees });
+
+  // "Berilgan avans" / "To'langan oylik" kartochkalari — pul QAYSI FILIAL
+  // KASSASIDAN chiqqani bo'yicha. Qatorlarning o'z raqamlari o'zgarmaydi.
+  const { rows, given } = await attachBranchPayouts(db, month, scope.branchId, employees);
+  return NextResponse.json({ ok: true, month, employees: rows, given });
 }

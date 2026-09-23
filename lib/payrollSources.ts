@@ -11,7 +11,9 @@ import {
   payrollTax,
   prevMonthKey,
   prevMonthName,
+  type BranchPayouts,
   type EmployeePayroll,
+  type PaidElsewhere,
   type PayrollPeriod,
 } from "@/lib/salary";
 import { loadTaxRules } from "@/lib/taxes";
@@ -77,14 +79,24 @@ export interface PaidByEmployee {
   plastik: number;
 }
 
+interface PayoutEntry {
+  studentName?: unknown;
+  txName?: unknown;
+  amount?: unknown;
+  paymentMethodKey?: unknown;
+  cashboxId?: unknown;
+}
+
 /**
- * Shu oyda xodimlarga kassadan chiqarilgan avans va oylik.
- * Manba: `transaction_entries` — chiqim yozuvida xodim ismi `studentName`
- * da turadi (app/api/cashboxes/[id]/adjust/route.ts), kategoriya `txName` da.
- * Bekor qilinganlar hisobga olinmaydi.
+ * Shu oyda xodimlarga kassadan chiqarilgan avans/oylik YOZUVLARI.
+ *
+ * `loadPaidByEmployee` (jadval qatorlari) va `attachBranchPayouts`
+ * (kartochkalar) IKKALASI shu yerdan o'qiydi — ya'ni qatordagi summa bilan
+ * kartochkadagi yig'indi bitta yozuvlar to'plamidan chiqadi va oy qoidasi
+ * ikki joyda ikki xil bo'lib qolmaydi.
  */
-export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<string, PaidByEmployee>> {
-  const rows = await db
+function loadPayoutEntries(db: Db, month: string): Promise<PayoutEntry[]> {
+  return db
     .collection("transaction_entries")
     .find({
       txType: "payOut",
@@ -93,9 +105,24 @@ export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<str
       status: { $ne: "cancelled" },
       txName: { $regex: "avans|oylik", $options: "i" },
     })
-    // Pastdagi tsikl faqat shu to'rttasini o'qiydi. 109 KB -> ~14 KB.
-    .project({ studentName: 1, txName: 1, amount: 1, paymentMethodKey: 1, _id: 0 })
+    // Pastdagi tsikllar faqat shu beshtasini o'qiydi. 109 KB -> ~15 KB.
+    .project<PayoutEntry>({ studentName: 1, txName: 1, amount: 1, paymentMethodKey: 1, cashboxId: 1, _id: 0 })
     .toArray();
+}
+
+/** Yozuv oylikmi yoki avansmi — `loadPaidByEmployee` bilan bir xil qoida. */
+function payoutKind(r: PayoutEntry): "avans" | "oylik" {
+  return /oylik/i.test(String(r.txName ?? "")) ? "oylik" : "avans";
+}
+
+/**
+ * Shu oyda xodimlarga kassadan chiqarilgan avans va oylik.
+ * Manba: `transaction_entries` — chiqim yozuvida xodim ismi `studentName`
+ * da turadi (app/api/cashboxes/[id]/adjust/route.ts), kategoriya `txName` da.
+ * Bekor qilinganlar hisobga olinmaydi.
+ */
+export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<string, PaidByEmployee>> {
+  const rows = await loadPayoutEntries(db, month);
 
   const map = new Map<string, PaidByEmployee>();
   for (const r of rows) {
@@ -103,7 +130,7 @@ export async function loadPaidByEmployee(db: Db, month: string): Promise<Map<str
     if (!k) continue; // egasi ko'rsatilmagan yozuv hech kimga tegishli emas
     const cur = map.get(k) ?? { avans: 0, oylik: 0, plastik: 0 };
     const amount = Math.abs(Number(r.amount) || 0);
-    if (/oylik/i.test(String(r.txName ?? ""))) cur.oylik += amount;
+    if (payoutKind(r) === "oylik") cur.oylik += amount;
     else cur.avans += amount;
     // KANAL — nom bo'yicha emas, BARQAROR kalit bo'yicha: ko'rinadigan nom
     // ("Plastik") Sozlamalardan o'zgartirilishi mumkin.
@@ -505,4 +532,116 @@ export async function buildPayrollRows(
       paidPlastik: paid.plastik,
     } satisfies EmployeePayroll;
   });
+}
+
+/**
+ * Filial ko'rinishi uchun avans/oylikni KASSA bo'yicha ham yig'adi.
+ *
+ * NEGA KERAK: jadval xodim bo'yicha (`payrollBranchId`) quriladi, "Berilgan
+ * avans" kartochkasi esa ilgari o'sha qatorlarning yig'indisi edi. Faol
+ * xodimlarning deyarli hammasi 1-filial ro'yxatida, shu bois 2-filial
+ * kassiri (Dilmurod) Chortoq o'qituvchilariga bergan avans 1-filial
+ * sahifasida chiqar, o'z filialida esa ko'rinmas edi. O'lchandi (sentabr
+ * 2026): Dilmurod kassasidan 8 253 000 avans chiqqan, 2-filial sahifasida
+ * 2 740 000 turgan; qolgan 5 513 000 1-filialning 55 789 000 ichida edi.
+ * Foydalanuvchi qarori (23.09.2026): pul kim bergan bo'lsa, o'sha
+ * kassaning filialida ko'rinsin.
+ *
+ * KASSA FILIALI — `cashboxes.branchId` ("Jami tushum" kartochkasi bilan
+ * bir xil qamrov, app/api/salary-runs/month-cashflow). Oy qoidasi esa
+ * jadval qatorlari bilan bir xil (`loadPayoutEntries` → `monthMatch`),
+ * ya'ni barcha filial kartochkalari yig'indisi barcha qatorlar
+ * yig'indisiga teng bo'ladi (filialga biriktirilmagan kassa bo'lmasa).
+ *
+ * HISOBGA TA'SIR QILMAYDI: qatorlarga faqat ko'rsatish uchun
+ * `paidElsewhere` qo'shiladi, `paidAvans`/`paidOylik` o'zgarmaydi — xodimning
+ * qolgan oyligidan qaysi kassadan olgani emas, HAMMA olgani ushlab qolinadi.
+ *
+ * `rows` — shu filialning oylik ro'yxati (`buildPayrollRows` natijasi).
+ */
+export async function attachBranchPayouts(
+  db: Db,
+  month: string,
+  branchId: number,
+  rows: EmployeePayroll[],
+): Promise<{ rows: EmployeePayroll[]; given: BranchPayouts }> {
+  const [entries, boxes, branches, emps] = await Promise.all([
+    loadPayoutEntries(db, month),
+    db.collection("cashboxes").find({}, { projection: { _id: 0, id: 1, branchId: 1 } }).toArray(),
+    db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).toArray(),
+    // Arxivdagilar ham o'qiladi: ular ro'yxatda yo'q, lekin ularga
+    // berilgan pul kartochka izohida kimga ketgani bilan ko'rinsin.
+    db.collection("hr_employees").find({}, { projection: { _id: 0, name: 1, payrollBranchId: 1, archReason: 1 } }).toArray(),
+  ]);
+
+  const toBranchId = (v: unknown): number | null => {
+    const n = Number(v);
+    return v === null || v === undefined || v === "" || !Number.isFinite(n) ? null : n;
+  };
+  const branchOfBox = new Map(boxes.map((b) => [Number(b.id), toBranchId(b.branchId)]));
+  const branchName = new Map(branches.map((b) => [Number(b.id), String(b.name ?? "")]));
+  const nameOfBranch = (id: number | null | undefined) => (id == null ? "" : branchName.get(id) ?? "");
+  // Ismdosh bo'lsa FAOL xodim ustun — arxivdagi ismdosh uni yashirmasin.
+  const empOf = new Map<string, { branch: number | null; archived: boolean }>();
+  for (const e of emps) {
+    const k = nameKey(e.name);
+    if (!k) continue;
+    const archived = !["", null, undefined].includes(e.archReason);
+    const prev = empOf.get(k);
+    if (!prev || (prev.archived && !archived)) empOf.set(k, { branch: toBranchId(e.payrollBranchId), archived });
+  }
+  const inList = new Set(rows.map((e) => nameKey(e.name)));
+
+  let avans = 0;
+  let oylik = 0;
+  const fromOthers = { avans: 0, oylik: 0 };
+  const toOthers = new Map<string, BranchPayouts["toOthers"][number]>();
+  const elsewhere = new Map<string, Map<string, PaidElsewhere>>();
+  for (const r of entries) {
+    const amount = Math.abs(Number(r.amount) || 0);
+    if (!amount) continue;
+    const k = nameKey(r.studentName);
+    const kind = payoutKind(r);
+    const boxBranch = branchOfBox.get(Number(r.cashboxId)) ?? null;
+    if (boxBranch === branchId) {
+      // SHU FILIAL KASSASIDAN chiqqan — kimga bo'lsa ham kartochkaga kiradi.
+      if (kind === "oylik") oylik += amount;
+      else avans += amount;
+      if (!inList.has(k)) {
+        const emp = empOf.get(k);
+        const cur = toOthers.get(k) ?? {
+          name: String(r.studentName ?? "").trim(),
+          branch: nameOfBranch(emp?.branch),
+          archived: emp?.archived ?? false,
+          avans: 0,
+          oylik: 0,
+        };
+        cur[kind] += amount;
+        toOthers.set(k, cur);
+      }
+    } else if (k && inList.has(k)) {
+      // Shu filial xodimi BOSHQA kassadan olgan — qatorda izoh bo'lib turadi.
+      fromOthers[kind] += amount;
+      const label = nameOfBranch(boxBranch);
+      const byBranch = elsewhere.get(k) ?? new Map<string, PaidElsewhere>();
+      const cur = byBranch.get(label) ?? { branch: label, avans: 0, oylik: 0 };
+      cur[kind] += amount;
+      byBranch.set(label, cur);
+      elsewhere.set(k, byBranch);
+    }
+  }
+
+  return {
+    rows: rows.map((e) => {
+      const x = elsewhere.get(nameKey(e.name));
+      return x ? { ...e, paidElsewhere: [...x.values()] } : e;
+    }),
+    given: {
+      hasCashbox: boxes.some((b) => toBranchId(b.branchId) === branchId),
+      avans,
+      oylik,
+      toOthers: [...toOthers.values()].sort((a, b) => b.avans + b.oylik - (a.avans + a.oylik)),
+      fromOthers,
+    },
+  };
 }

@@ -26,6 +26,7 @@ import {
   payrollCashLeg,
   payrollCashDue,
   payrollPayout,
+  type BranchPayouts,
   type EmployeePayroll,
 } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
@@ -46,6 +47,10 @@ import { useT } from "@/components/shared/Language";
 //   foiz    ← Sozlamalar > Moliya > Oylik foizlari
 //   avans / to'langan oylik ← kassadan chiqarilgan yozuvlar
 //   bonus / jarima ← o'z kolleksiyalari
+//
+// Qatorlar XODIM bo'yicha (`payrollBranchId`), "Berilgan avans" va
+// "To'langan oylik" kartochkalari esa KASSA bo'yicha — pul qaysi filial
+// kassasidan chiqqan bo'lsa, o'sha filialda (`givenCard` izohiga qarang).
 //
 // Ish haqi sozlanmagan xodimda raqam KO'RSATILMAYDI — "Sozlanmagan" deb
 // turadi va uni tanlab oylik chiqarib bo'lmaydi (server ham rad etadi).
@@ -175,11 +180,19 @@ export default function SalaryCreatePage() {
   // tartib raqami beriladi va faqat eng oxirgisi holatni yozadi (oy tez-tez
   // almashtirilsa javoblar tartibsiz kelishi mumkin).
   const reqSeq = useRef(0);
+  // "Berilgan avans" va "To'langan oylik" kartochkalari — pul QAYSI FILIAL
+  // KASSASIDAN chiqqani bo'yicha (lib/payrollSources.ts → attachBranchPayouts).
+  // Qatorlar bilan BITTA javobda keladi, ya'ni oy va filial har doim bir xil.
+  const [given, setGiven] = useState<BranchPayouts | null>(null);
   const fetchRows = useCallback(() => {
     const seq = ++reqSeq.current;
-    return fetch(`/api/salary-runs/employees-payroll?month=${monthKey}`)
+    return fetch(`/api/salary-runs/employees-payroll?month=${monthKey}&given=1`)
       .then((r) => r.json())
-      .then((d) => { if (seq === reqSeq.current && d.ok) setEmployees(d.employees); })
+      .then((d) => {
+        if (seq !== reqSeq.current || !d.ok) return;
+        setEmployees(d.employees);
+        setGiven(d.given ?? null);
+      })
       .finally(() => { if (seq === reqSeq.current) setLoading(false); });
   }, [monthKey]);
 
@@ -233,8 +246,10 @@ export default function SalaryCreatePage() {
     // "450 000 × 50%"), ya'ni ekranda noto'g'ri fakt turardi. Endi o'rniga
     // yuklash belgisi chiqadi.
     setEmployees([]);
-    // Kartochkadagi daromad/xarajat ham eski oyniki — o'chiriladi.
+    // Kartochkadagi daromad/xarajat va kassa bo'yicha avans ham eski
+    // oyniki — o'chiriladi.
     setCashflow(null);
+    setGiven(null);
   }
   // `fetchRows` oyga bog'langan — oy o'zgarsa qatorlar o'z-o'zidan qayta
   // yuklanadi.
@@ -302,12 +317,13 @@ export default function SalaryCreatePage() {
   // Faqat ish haqi SOZLANGAN xodimlar jamlanadi — sozlanmaganning
   // "hisoblangan"i 0 bo'ladi va uni yig'indiga qo'shish jami summani
   // haqiqatdan kichik ko'rsatgan bo'lardi.
+  //
+  // "Berilgan avans" va "To'langan oylik" bu yerda YIG'ILMAYDI — ular
+  // qatorlardan emas, kassa bo'yicha keladi (`given`, quyida `givenCard`).
   const stats = useMemo(() => {
-    let hisoblangan = 0, avans = 0, tolangan = 0, qolgan = 0, kartaga = 0, naqd = 0, otganOydan = 0, qarzdorlik = 0;
+    let hisoblangan = 0, qolgan = 0, kartaga = 0, naqd = 0, otganOydan = 0, qarzdorlik = 0;
     for (const e of employees.filter((x) => x.configured)) {
       hisoblangan += payrollEarned(e, period);
-      avans += e.paidAvans;
-      tolangan += e.paidOylik;
       // "Qolgan to'lanadigan" — kassadan CHIQADIGAN jami (lib/salary.ts →
       // payrollPayout = karta + naqd = musbat qoldiq). Karta va naqd
       // kesimi kartochka izohi uchun. Qarzdorlik ALOHIDA yig'iladi —
@@ -319,8 +335,55 @@ export default function SalaryCreatePage() {
       qarzdorlik += payrollDebt(e, period);
       otganOydan += e.carryOver;
     }
-    return { hisoblangan, avans, tolangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik };
+    return { hisoblangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik };
   }, [employees, period]);
+
+  /**
+   * "Berilgan avans" / "To'langan oylik" kartochkasi — pul QAYSI FILIAL
+   * KASSASIDAN chiqqani bo'yicha (foydalanuvchi, 23.09.2026: "kim avans
+   * bergan bo'lsa o'sha moderator filialida ko'rinsin").
+   *
+   * Jadval esa XODIM bo'yicha qoladi (qolgan oylikdan hamma olgani ushlab
+   * qolinadi), shuning uchun ikkalasining farqi izohda OCHIQ aytiladi —
+   * aks holda "kartochkada 8 253 000, jadvalda bitta odam 2 740 000"
+   * degan savol qaytib chiqardi:
+   *   • boshqa filial xodimlariga — shu kassadan, lekin ro'yxatda yo'q;
+   *   • xodimlar boshqa filialdan olgan — ro'yxatda bor, lekin pul
+   *     boshqa filial kassasidan chiqqan (o'sha filialda ko'rinadi).
+   */
+  function givenCard(kind: "avans" | "oylik"): { value: string; hint: string; title?: string } {
+    if (!given) return { value: "—", hint: "" };
+    if (!given.hasCashbox) return { value: "—", hint: t("bu filialga kassa biriktirilmagan") };
+    const total = given[kind];
+    const toOthers = given.toOthers.filter((o) => o[kind] > 0);
+    const toOthersSum = toOthers.reduce((s, o) => s + o[kind], 0);
+    const fromOthers = given.fromOthers[kind];
+    const hint: string[] = [];
+    if (toOthersSum > 0) hint.push(t("boshqa filial xodimlariga {amount}", { amount: fmtNum(toOthersSum) }));
+    if (fromOthers > 0) hint.push(t("xodimlar boshqa filialdan olgan {amount}", { amount: fmtNum(fromOthers) }));
+    const title = [
+      kind === "avans"
+        ? t("Shu filial kassalaridan berilgan avans: {amount}", { amount: fmtSum(total) })
+        : t("Shu filial kassalaridan chiqarilgan oylik: {amount}", { amount: fmtSum(total) }),
+    ];
+    if (toOthersSum > 0) {
+      title.push(t("Shundan boshqa filial xodimlariga — {amount}:", { amount: fmtSum(toOthersSum) }));
+      for (const o of toOthers) {
+        const where = o.archived ? t("arxivda") : o.branch || t("xodimlar ro'yxatida yo'q");
+        title.push(`  ${o.name || t("ism ko'rsatilmagan")} (${where}): ${fmtNum(o[kind])}`);
+      }
+    }
+    if (fromOthers > 0) {
+      title.push(t("Bu filial xodimlari boshqa filial kassalaridan olgan: {amount} — u o'sha filialda ko'rinadi, xodimning qolgan oyligidan esa baribir ushlab qolinadi.", { amount: fmtSum(fromOthers) }));
+    }
+    return {
+      value: t(fmtSum(total)),
+      hint: hint.length > 0 ? hint.join(" · ") : t("shu filial kassalaridan"),
+      title: title.join("\n"),
+    };
+  }
+  const avansCard = givenCard("avans");
+  const oylikCard = givenCard("oylik");
 
   /**
    * SOF FOYDA — barcha chiqimlardan keyin o'quv markazda qoladigan pul.
@@ -560,18 +623,22 @@ export default function SalaryCreatePage() {
           hint={t("{employees} ta xodim · {periodHint}", { employees: employees.length, periodHint })}
           loading={loading}
         />
+        {/* Ikkalasi KASSA bo'yicha: shu filial kassalaridan chiqqan pul,
+            kimga berilganidan qat'i nazar (`givenCard` izohiga qarang). */}
         <StatCard
           tone="amber"
           label={t("Berilgan avans")}
-          value={t(fmtSum(stats.avans))}
-          hint="oylikdan ushlab qolinadi"
+          value={avansCard.value}
+          hint={avansCard.hint}
+          title={avansCard.title}
           loading={loading}
         />
         <StatCard
           tone="blue"
           label={t("To'langan oylik")}
-          value={t(fmtSum(stats.tolangan))}
-          hint="kassadan chiqarilgan"
+          value={oylikCard.value}
+          hint={oylikCard.hint}
+          title={oylikCard.title}
           loading={loading}
         />
         {/* Kassadan CHIQADIGAN jami. Plastik bor bo'lsa izohda ikki oyoq
@@ -712,6 +779,16 @@ export default function SalaryCreatePage() {
                 // ayrilgan (lib/payrollSources.ts). Qaytarim bo'lsa formula
                 // uni ochiq ko'rsatadi — "tushum nega kam" degan savol
                 // tug'ilmasin.
+                // Boshqa filial kassasidan olingan qism — faqat KO'RSATISH
+                // uchun: "Qolgan" baribir hamma olinganni ayiradi. Kartochka
+                // kassa bo'yicha, qator xodim bo'yicha — farqi shu izohda.
+                const elsewhere = e.paidElsewhere ?? [];
+                const avansElsewhere = elsewhere.reduce((s, x) => s + x.avans, 0);
+                const oylikElsewhere = elsewhere.reduce((s, x) => s + x.oylik, 0);
+                const elsewhereTitle = (kind: "avans" | "oylik") => elsewhere
+                  .filter((x) => x[kind] > 0)
+                  .map((x) => t("{branch} kassasidan: {amount}", { branch: x.branch || t("filialga biriktirilmagan kassa"), amount: fmtNum(x[kind]) }))
+                  .join("\n");
                 const collectedFormula = (e.refunded ?? 0) > 0
                   ? t("({refunded} − qaytarim {refunded2})", { refunded: fmtNum(e.collected + e.refunded), refunded2: fmtNum(e.refunded) })
                   : fmtNum(e.collected);
@@ -806,9 +883,23 @@ export default function SalaryCreatePage() {
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {e.paidAvans > 0 ? <span className="text-amber-600 font-medium">{fmtNum(e.paidAvans)}</span> : <span className="text-muted-foreground">0</span>}
+                      {avansElsewhere > 0 && (
+                        <div className="text-[11px] text-muted-foreground" title={elsewhereTitle("avans")}>
+                          {avansElsewhere >= e.paidAvans
+                            ? t("boshqa filial kassasidan")
+                            : t("shundan {amount} boshqa filialdan", { amount: fmtNum(avansElsewhere) })}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {paid > e.paidAvans ? fmtNum(paid - e.paidAvans) : <span className="text-muted-foreground">0</span>}
+                      {oylikElsewhere > 0 && (
+                        <div className="text-[11px] text-muted-foreground" title={elsewhereTitle("oylik")}>
+                          {oylikElsewhere >= e.paidOylik
+                            ? t("boshqa filial kassasidan")
+                            : t("shundan {amount} boshqa filialdan", { amount: fmtNum(oylikElsewhere) })}
+                        </div>
+                      )}
                     </td>
                     {/* O'tgan oydan qolgan qoldiq ISHORALI: musbat —
                         akademiya qarzi, manfiy — xodimning qarzdorligi
