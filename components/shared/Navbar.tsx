@@ -612,34 +612,32 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
             >
               {initial}
             </button>
-            <div className={`${openMenu === "profile" ? "" : "hidden"} dropdown-menu absolute top-full right-0 mt-2 z-50 w-[280px] rounded-xl border border-border bg-card shadow-xl overflow-hidden`}>
-              <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-base font-bold">
-                  {initial}
-                </div>
+            {/* Ranglar va o'lchamlar globals.css → "Profil menyusi" (.nav-profile-*). */}
+            <div className={`${openMenu === "profile" ? "" : "hidden"} dropdown-menu nav-profile-menu absolute top-full right-0 mt-2 z-50 shadow-xl`}>
+              <div className="nav-profile-head">
+                <div className="nav-profile-avatar" aria-hidden="true">{initial}</div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold truncate" title={displayName}>{displayName}</div>
-                  {displayPhone && (
-                    <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">{displayPhone}</div>
-                  )}
+                  <div className="nav-profile-name" title={displayName}>{displayName}</div>
+                  {displayPhone && <div className="nav-profile-phone">{displayPhone}</div>}
                 </div>
               </div>
-              <div className="p-1">
-                <button onClick={() => void onProfileAction("devices")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                    <svg className="icon icon-sm"><use href="#i-monitor" /></svg>
+              <div className="nav-profile-list">
+                <button type="button" onClick={() => void onProfileAction("devices")} className="nav-profile-item">
+                  <span className="nav-profile-tile">
+                    <svg className="icon"><use href="#i-monitor" /></svg>
                   </span>
                   <span>{t("Aktiv qurilmalar")}</span>
                 </button>
-                <button onClick={() => void onProfileAction("lock")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-secondary text-left">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                    <svg className="icon icon-sm"><use href="#i-lock" /></svg>
+                <button type="button" onClick={() => void onProfileAction("lock")} className="nav-profile-item">
+                  <span className="nav-profile-tile">
+                    <svg className="icon"><use href="#i-lock" /></svg>
                   </span>
                   <span>{t("Qulflash")}</span>
                 </button>
-                <button onClick={() => void onProfileAction("logout")} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-red-50 text-left">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
-                    <svg className="icon icon-sm"><use href="#i-log-out" /></svg>
+                <div className="nav-profile-sep" aria-hidden="true" />
+                <button type="button" onClick={() => void onProfileAction("logout")} className="nav-profile-item is-danger">
+                  <span className="nav-profile-tile">
+                    <svg className="icon"><use href="#i-log-out" /></svg>
                   </span>
                   <span>{t("Chiqish")}</span>
                 </button>

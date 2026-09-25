@@ -9932,6 +9932,136 @@ html.dark .nav-lang-item.is-active .nav-lang-code { background-color: hsl(var(--
 }
 html.dark .nav-avatar { background-color: rgba(61, 104, 255, 0.18); }
 
+/* Profil menyusi (components/shared/Navbar.tsx) — 25.09.2026 dizayni:
+   sarlavhada avatar + ism + telefon, ostida qatorlar (ikonka katakchasi +
+   matn), "Chiqish" oldidan ajratuvchi chiziq. Ranglar foydalanuvchi bergan
+   palitradan, ikki rejim uchun alohida — `--primary` dan EMAS: u brend
+   bilan almashadi, bu menyu esa aynan shu ranglarda turishi kerak.
+   Ikonka doim teal. Hover faqat sichqoncha ustidagi qatorni bo'yaydi
+   (fon + matn), 150ms o'tish bilan; katakcha foni o'zgarmaydi.
+   "Chiqish" katakchasining foni palitrada alohida berilmagan — maketdagidek
+   uning hover fonining o'zi. */
+.nav-profile-menu {
+  --pm-bg: #FFFFFF;
+  --pm-text: #142332;
+  --pm-muted: #718294;
+  --pm-line: #DCE7ED;
+  --pm-hover-bg: #EFFBFC;
+  --pm-accent: #0796A6;
+  --pm-tile: #E5F6F8;
+  --pm-danger: #DC545E;
+  --pm-danger-bg: #FFF0F1;
+  width: 280px;
+  border: 1px solid var(--pm-line);
+  border-radius: 12px;
+  overflow: hidden;
+  color: var(--pm-text);
+}
+html.dark .nav-profile-menu {
+  --pm-bg: #1C222B;
+  --pm-text: #F2F6F9;
+  --pm-muted: #95A4B3;
+  --pm-line: #303D47;
+  --pm-hover-bg: #15343D;
+  --pm-accent: #2EBBD0;
+  --pm-tile: #173941;
+  --pm-danger: #F0787E;
+  --pm-danger-bg: #38262D;
+}
+/* `.dropdown-menu` umumiy qoidasi xira shisha fonni `!important` bilan
+   beradi (u ham qatlamsiz). Bu menyuga maketdagi yaxlit fon kerak — shu
+   bois ikki klassli, kuchliroq selektor. `.dropdown-menu` klassi esa
+   qoladi: tashqariga bosilganda menyuni yopadigan tekshiruv shunga qaraydi. */
+.dropdown-menu.nav-profile-menu {
+  background: var(--pm-bg) !important;
+  border-color: var(--pm-line) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.nav-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--pm-line);
+}
+.nav-profile-avatar {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--pm-tile);
+  color: var(--pm-accent);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+}
+.nav-profile-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--pm-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-profile-phone {
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--pm-muted);
+  font-variant-numeric: tabular-nums;
+}
+.nav-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+}
+.nav-profile-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--pm-text);
+  text-align: left;
+  transition: background-color 150ms, color 150ms;
+}
+.nav-profile-item:hover { background-color: var(--pm-hover-bg); color: var(--pm-accent); }
+/* Klaviatura bilan kelganda — rang emas, faqat chiziq (hover rangi
+   sichqoncha ustidagi qatorga tegishli bo'lib qolsin). */
+.nav-profile-item:focus-visible { outline: 2px solid var(--pm-accent); outline-offset: -2px; }
+.nav-profile-tile {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--pm-tile);
+  color: var(--pm-accent);
+}
+.nav-profile-item.is-danger,
+.nav-profile-item.is-danger:hover { color: var(--pm-danger); }
+.nav-profile-item.is-danger:hover { background-color: var(--pm-danger-bg); }
+.nav-profile-item.is-danger:focus-visible { outline-color: var(--pm-danger); }
+.nav-profile-item.is-danger .nav-profile-tile { background-color: var(--pm-danger-bg); color: var(--pm-danger); }
+.nav-profile-sep {
+  height: 1px;
+  margin: 2px 4px;
+  background-color: var(--pm-line);
+}
+
 /* ---------- Sidebar ---------- */
 .shell-sidebar {
   width: var(--shell-sidebar-w);
