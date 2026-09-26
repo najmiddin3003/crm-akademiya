@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchInCondition, getBranchScope } from "@/lib/branchScope";
-import { parseRoomBranch, roomInUseRefusal, sameNameRoomRefusal } from "@/lib/roomBranch";
+import { parseRoomBranch, renameRoomInGroups, roomInUseRefusal, sameNameRoomRefusal } from "@/lib/roomBranch";
 import { roomBranchId, type Room } from "@/lib/rooms";
 
 // Ikkala metod ham faqat foydalanuvchiga RUXSAT ETILGAN filiallardagi
@@ -68,8 +68,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!res) {
     return NextResponse.json({ ok: false, error: "Xona topilmadi" }, { status: 404 });
   }
+  // Yangi nom guruhlarga ham o'tadi. Filial almashsa ERGASHMAYDI: tirik
+  // guruh bo'lsa ko'chirish yuqorida to'silgan, arxivdagilar esa eski
+  // filial tarixida o'sha paytdagi nomi bilan qoladi.
+  const movedGroups = toBranch === fromBranch ? await renameRoomInGroups(db, fromBranch, curName, newName) : 0;
   const { _id, ...room } = res;
-  return NextResponse.json({ ok: true, room: room as unknown as Room });
+  return NextResponse.json({ ok: true, room: room as unknown as Room, movedGroups });
 }
 
 // DELETE /api/rooms/:id

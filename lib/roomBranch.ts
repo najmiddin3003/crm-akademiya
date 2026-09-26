@@ -10,8 +10,8 @@ import { ROOM_HOLDING_STATUSES } from "@/lib/groupRules";
 // almashtirmasdan boshqa filialga ham xona qo'shsa bo'ladi.
 //
 // Guruh xonaga NOMI bilan bog'lanadi (`groups.room`, o'z filiali ichida) va
-// bandlik ham shunday tekshiriladi (lib/groupRoomClash.ts). Ikki qoida
-// shundan kelib chiqadi:
+// bandlik ham shunday tekshiriladi (lib/groupRoomClash.ts). Uch qoida
+// shundan kelib chiqadi (3-si — `renameRoomInGroups`):
 //   1. Bir filialda bir xil nomli ikki xona bo'lmasin — bandlik ularni
 //      bitta xona deb hisoblardi. Boshqa filialda esa o'sha nom — boshqa
 //      xona ("201 - xona" ikkala binoda ham bor).
@@ -84,4 +84,19 @@ export async function roomInUseRefusal(db: Db, fromBranch: number, roomName: str
     status: 409,
     error: `Bu xonada ${count} ta guruh dars o'tadi (${names}) — filialni almashtirishdan oldin ularni boshqa xonaga o'tkazing`,
   };
+}
+
+/**
+ * 3-qoida. Xona NOMI o'zgarsa, shu filialda eski nomdagi guruhlar ham yangi
+ * nomga o'tadi — aks holda ular ro'yxatda yo'q xonaga ishora qilib qolardi
+ * (hisobotda "xonasiz", bandlik tekshiruvi yangi nom ostida ko'rmaydi).
+ * Hamma holat, arxiv ham: xona o'sha-o'sha, tarixi ham bir nomda tursin.
+ * Qaytaradi — nechta guruh o'zgardi.
+ */
+export async function renameRoomInGroups(db: Db, branchId: number, from: string, to: string): Promise<number> {
+  if (from === to) return 0;
+  const res = await db
+    .collection("groups")
+    .updateMany({ $and: [{ room: from }, branchInCondition([branchId])] }, { $set: { room: to } });
+  return res.modifiedCount;
 }

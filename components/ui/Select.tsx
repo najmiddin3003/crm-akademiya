@@ -33,7 +33,7 @@ import { useT } from "@/components/shared/Language";
 // KO'P TANLOV (`multiple`): `values` + `onChangeMany`. Qator bosilganda
 // ro'yxat YOPILMAYDI — belgi almashadi (imtihonda qatnashgan o'quvchilar
 // kabi 20–30 talik ro'yxatni birma-bir belgilash uchun). Ro'yxat boshida
-// "Hammasini tanlash" / "Tozalash" qatorlari; tugmada — tanlanganlar soni
+// bitta doimiy qatorda "Hammasini tanlash" va "Tozalash"; tugmada — tanlanganlar soni
 // (`summary` bilan o'zgartiriladi). Bitta komponent — ko'rinish, joylashuv
 // va klaviatura oddiy tanlov bilan aynan bir xil bo'lsin.
 
@@ -357,23 +357,41 @@ export default function Select({
         </div>
       )}
       <div ref={listRef} className="max-h-56 overflow-y-auto py-1">
-        {/* Ko'p tanlov: hammasini belgilash (ko'rinib turganlarni) — tozalash
-            qatori bilan bir qatorda; ikkalasi ham ro'yxatni yopmaydi. */}
-        {multiple && !loading && shown.some((o) => !o.disabled && !valueSet.has(o.value)) && (
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={selectAllShown}
-            className="block w-full px-3 py-2 text-left text-[13px] text-primary font-medium hover:bg-secondary"
-          >
-            {t("Hammasini tanlash")}
-          </button>
+        {/* Ko'p tanlov: "Hammasini tanlash" (ko'rinib turganlarni) va
+            "Tozalash" BITTA, DOIM turadigan qatorda — keraksizi faqat
+            xiralashadi; ikkalasi ham ro'yxatni yopmaydi. Ilgari ular alohida
+            qatorlar edi va birinchi belgi qo'yilganda "Tozalash" qatori
+            paydo bo'lib, ro'yxatni bir qatorga pastga surardi: keyingi bosish
+            boshqa variantga tushib, tanlovni bekor qilardi. */}
+        {multiple && !loading && (
+          <div className="flex flex-wrap items-center justify-between gap-x-2 px-1 pb-1 mb-1 border-b border-border/60">
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={selectAllShown}
+              disabled={!shown.some((o) => !o.disabled && !valueSet.has(o.value))}
+              className="whitespace-nowrap px-2.5 py-1.5 rounded-md text-[13px] text-primary font-medium hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-default"
+            >
+              {t("Hammasini tanlash")}
+            </button>
+            {clearable && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={clear}
+                disabled={!hasValue}
+                className="whitespace-nowrap px-2.5 py-1.5 rounded-md text-[13px] text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-default"
+              >
+                {t("Tozalash")}
+              </button>
+            )}
+          </div>
         )}
-        {clearable && hasValue && (
+        {!multiple && clearable && hasValue && (
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { clear(); if (!multiple) close(); }}
+            onClick={() => { clear(); close(); }}
             className="block w-full px-3 py-2 text-left text-[13px] text-muted-foreground hover:bg-secondary"
           >
             {t("Tozalash")}

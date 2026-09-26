@@ -72,10 +72,14 @@ export default function RoomModal({
       // tushgan xona undan chiqib ketadi, qayerga ketganini xabar aytadi.
       const savedBranch = roomBranchId(saved);
       const branchName = branches.find((b) => b.id === savedBranch)?.name ?? "";
+      // Nom o'zgarsa server guruhlarni ham yangi nomga o'tkazadi (lib/roomBranch.ts).
+      const movedGroups = Number(data.movedGroups) || 0;
       if (room && savedBranch !== roomBranchId(room)) {
         showSuccess(t("Xona «{branch}» filialiga o'tkazildi", { branch: branchName }));
       } else if (!room && currentBranchId !== null && savedBranch !== currentBranchId) {
         showSuccess(t("Xona «{branch}» filialiga qo'shildi", { branch: branchName }));
+      } else if (movedGroups > 0) {
+        showSuccess(t("Xona yangilandi — {n} ta guruh ham yangi nomga o'tdi", { n: movedGroups }));
       } else {
         showSuccess(room ? t("Xona yangilandi") : t("Xona qo'shildi"));
       }

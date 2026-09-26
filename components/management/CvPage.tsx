@@ -1,18 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftRight, Building2, Download, ExternalLink, FilePlus, LayoutGrid, Link2, Paperclip, Search, XCircle } from "lucide-react";
+import { ArrowLeftRight, Building2, Download, ExternalLink, FilePlus, LayoutGrid, Link2, Paperclip, Search, Wallet, X, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import {
   CV_ANY_BRANCH,
   CV_APPS_SCRIPT,
+  CV_EDU_LEVELS,
+  CV_EXP_LEVELS,
+  CV_LOADS,
   CV_POSITIONS,
+  CV_SOURCES,
   CV_STATUS,
   CV_STATUS_ORDER,
+  CV_SUBJECT_GROUPS,
 } from "@/constants/managementCv";
 import type { CvApplication, CvFile, CvStatus } from "@/lib/managementCv";
+import { activeCvFilters, cvMatches, NO_CV_FILTERS, subjectMatches, textKey, type CvFacet, type CvFilters } from "@/lib/cvFilters";
 import Select from "@/components/ui/Select";
+import MoneyInput from "@/components/ui/MoneyInput";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
@@ -217,8 +224,8 @@ export default function CvPage() {
   const [items, setItems] = useState<CvApplication[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [filterPos, setFilterPos] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filters, setFilters] = useState<CvFilters>(NO_CV_FILTERS);
+  const setFilter = <K extends keyof CvFilters>(key: K, value: CvFilters[K]) => setFilters((f) => ({ ...f, [key]: value }));
   const [search, setSearch] = useState("");
 
   const [detailId, setDetailId] = useState<number | null>(null);
@@ -330,29 +337,59 @@ export default function CvPage() {
     [sheetsUrl],
   );
 
-  /* ---- Filtr / qidiruv ---- */
-  const visible = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return items.filter((c) => {
-      if (filterPos && c.position !== filterPos) return false;
-      if (filterStatus && c.status !== filterStatus) return false;
-      if (!q) return true;
-      return (
-        c.name.toLowerCase().includes(q) ||
-        (c.subject || "").toLowerCase().includes(q) ||
-        (c.phone || "").includes(q)
-      );
-    });
-  }, [items, filterPos, filterStatus, search]);
+  /* ---- Filtr / qidiruv (lib/cvFilters.ts) ---- */
+  const q = search.toLowerCase().trim();
+  const visible = useMemo(() => items.filter((c) => cvMatches(c, filters, q)), [items, filters, q]);
+  const activeFilters = activeCvFilters(filters);
 
   const count = useCallback((k: CvStatus) => items.filter((c) => c.status === k).length, [items]);
 
-  // Filtr tanlovlari — eski ro'yxat + ma'lumotda uchraydigan yangi vakansiyalar.
-  const positionOptions = useMemo(() => {
+  // Yo'nalish tanlovlari — eski ro'yxat + ma'lumotda uchraydigan yangi vakansiyalar.
+  const positionValues = useMemo(() => {
     const seen = new Set<string>(CV_POSITIONS as string[]);
     for (const c of items) if (c.position) seen.add(c.position);
     return [...seen];
   }, [items]);
+
+  // Variant yonidagi son — BOSHQA filtrlar (va qidiruv) qo'llanganda shu
+  // variantga nechta ariza tushadi: tanlashdan oldin natija ko'rinib tursin.
+  const facetOptions = useMemo(() => {
+    const pool = (facet: CvFacet) => items.filter((c) => cvMatches(c, filters, q, facet));
+    const withCounts = (facet: CvFacet, values: string[], test: (c: CvApplication, v: string) => boolean) => {
+      const rows = pool(facet);
+      return values.map((v) => ({ value: v, label: v, hint: String(rows.filter((c) => test(c, v)).length) }));
+    };
+    // Fanlar anketadagi guruhlar bilan; standartga to'g'ri kelmaydigan qo'lda
+    // yozilganlari (eski anketa) "Boshqa" guruhida.
+    const standard = (CV_SUBJECT_GROUPS as { label: string; subjects: string[] }[]).flatMap((g) =>
+      g.subjects.map((s) => ({ s, group: t(g.label) })),
+    );
+    const extra = new Map<string, string>();
+    for (const c of items) {
+      const s = (c.subject || "").trim();
+      if (!s || s === "-" || standard.some((o) => subjectMatches(s, o.s))) continue;
+      if (!extra.has(textKey(s))) extra.set(textKey(s), s);
+    }
+    const subjectRows = pool("subject");
+    const subject = [...standard, ...[...extra.values()].map((s) => ({ s, group: t("Boshqa") }))].map(({ s, group }) => ({
+      value: s,
+      label: s,
+      group,
+      hint: String(subjectRows.filter((c) => subjectMatches(c.subject, s)).length),
+    }));
+    return {
+      position: withCounts("position", positionValues, (c, v) => c.position === v),
+      subject,
+      exp: withCounts("exp", CV_EXP_LEVELS as string[], (c, v) => (c.experience || "").trim() === v),
+      edu: withCounts("edu", CV_EDU_LEVELS as string[], (c, v) => c.edu === v),
+      load: withCounts("load", CV_LOADS as string[], (c, v) => c.load === v),
+      source: withCounts("source", CV_SOURCES as string[], (c, v) => c.source === v),
+      status: withCounts("status", CV_STATUS_ORDER as string[], (c, v) => c.status === v).map((o) => ({
+        ...o,
+        label: CV_STATUS[o.value as CvStatus].label,
+      })),
+    };
+  }, [items, filters, q, positionValues, t]);
 
   const detail = detailId === null ? null : items.find((c) => c.id === detailId) || null;
 
@@ -524,10 +561,60 @@ export default function CvPage() {
         <StatCard label={t("Rad etilgan")} value={count("rejected")} color="text-rose-500" />
       </div>
 
-      {/* Toolbar */}
+      {/* Filtrlar (lib/cvFilters.ts). Variant yonidagi son — boshqa filtrlar
+          bilan shu variantni tanlasangiz nechta ariza chiqadi. Har filtr
+          qat'iy kenglikdagi o'ramda: Select'ning o'z kengligi matnga qarab
+          o'zgaradi va qiymat tanlanganda qo'shni filtrlarni surib yuborardi. */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={filterPos} onChange={(v) => setFilterPos(v)} options={positionOptions.map((p) => ({ value: p, label: p }))} placeholder={t("Yo'nalish — barchasi")} clearable size="sm" className="w-52" />
-        <Select value={filterStatus} onChange={(v) => setFilterStatus(v)} options={(CV_STATUS_ORDER as CvStatus[]).map((s) => ({ value: s, label: CV_STATUS[s].label }))} placeholder={t("Holat — barchasi")} clearable size="sm" className="w-44" />
+        <div className="w-52 shrink-0">
+          <Select value={filters.position} onChange={(v) => setFilter("position", v)} options={facetOptions.position} placeholder={t("Yo'nalish — barchasi")} searchPlaceholder={t("Qidirish")} clearable size="sm" />
+        </div>
+        <div className="w-48 shrink-0">
+          <Select value={filters.subject} onChange={(v) => setFilter("subject", v)} options={facetOptions.subject} placeholder={t("Fan — barchasi")} searchPlaceholder={t("Qidirish")} clearable size="sm" />
+        </div>
+        <div className="w-44 shrink-0">
+          <Select
+            multiple
+            values={filters.exp}
+            onChangeMany={(v) => setFilter("exp", v)}
+            options={facetOptions.exp}
+            placeholder={t("Tajriba — barchasi")}
+            summary={(n) => (n === 1 ? t(filters.exp[0]) : t("Tajriba: {n} ta", { n }))}
+            clearable
+            size="sm"
+          />
+        </div>
+        <div
+          title={t("Kutilayotgan oylik maosh")}
+          className="inline-flex items-center gap-1.5 h-9 rounded-lg border border-border bg-card pl-2.5 pr-2 text-[13px] focus-within:ring-2 focus-within:ring-primary/30"
+        >
+          <Wallet className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="text-muted-foreground">{t("Maosh")}</span>
+          <MoneyInput value={filters.salaryFrom} onChange={(v) => setFilter("salaryFrom", v)} placeholder={t("dan")} aria-label={`${t("Maosh")} ${t("dan")}`} className="w-[84px] bg-transparent tabular-nums focus:outline-none" />
+          <span className="text-muted-foreground">–</span>
+          <MoneyInput value={filters.salaryTo} onChange={(v) => setFilter("salaryTo", v)} placeholder={t("gacha")} aria-label={`${t("Maosh")} ${t("gacha")}`} className="w-[84px] bg-transparent tabular-nums focus:outline-none" />
+        </div>
+        <div className="w-48 shrink-0">
+          <Select value={filters.edu} onChange={(v) => setFilter("edu", v)} options={facetOptions.edu} placeholder={t("Ta'lim — barchasi")} clearable size="sm" />
+        </div>
+        <div className="w-44 shrink-0">
+          <Select value={filters.load} onChange={(v) => setFilter("load", v)} options={facetOptions.load} placeholder={t("Bandlik — barchasi")} clearable size="sm" />
+        </div>
+        <div className="w-48 shrink-0">
+          <Select value={filters.source} onChange={(v) => setFilter("source", v)} options={facetOptions.source} placeholder={t("Manba — barchasi")} clearable size="sm" />
+        </div>
+        <div className="w-44 shrink-0">
+          <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={facetOptions.status} placeholder={t("Holat — barchasi")} clearable size="sm" />
+        </div>
+        {activeFilters > 0 && (
+          <button
+            onClick={() => setFilters(NO_CV_FILTERS)}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
+          >
+            <X className="w-3.5 h-3.5" />
+            {t("Tozalash")}
+          </button>
+        )}
         <div className="flex-1" />
         <div className="relative w-72">
           <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
