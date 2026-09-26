@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope, withBranch } from "@/lib/branchScope";
+import { parseRoomBranch, sameNameRoomRefusal } from "@/lib/roomBranch";
 import type { Room } from "@/lib/rooms";
 
 // Xonalar backend'i (MongoDB `rooms`). Demo seed YO'Q — xonalarni
@@ -31,15 +32,17 @@ export async function POST(req: Request) {
 
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
-  const branchId = branchForInsert(scope);
-  if (branchId === null) {
-    return NextResponse.json(
-      { ok: false, error: "Avval navbardan filialni tanlang — xona qaysi filialda?" },
-      { status: 400 },
-    );
-  }
+  // Filial oynada tanlanadi (lib/roomBranch.ts). Berilmasa — navbardagi.
+  const branch = body.branchId === undefined
+    ? { ok: true as const, branchId: branchForInsert(scope) }
+    : parseRoomBranch(body.branchId, scope);
+  if (!branch.ok) return NextResponse.json({ ok: false, error: branch.error }, { status: branch.status });
+  const { branchId } = branch;
 
   const db = await ensureIndexes();
+  const twin = await sameNameRoomRefusal(db, branchId, name);
+  if (twin) return NextResponse.json({ ok: false, error: twin.error }, { status: twin.status });
+
   const col = db.collection("rooms");
   // `id` GLOBAL ketma-ket — filial bo'yicha kesilmaydi (E11000 xavfi).
   const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
@@ -50,7 +53,9 @@ export async function POST(req: Request) {
     name,
     capacity: parseInt(String(body.capacity ?? ""), 10) || 0,
     note: (body.note || "").trim(),
+    branchId,
   };
-  await col.insertOne({ ...room, branchId });
+  // Nusxa — `insertOne` obyektga `_id` yozadi, javobga u tushmasin.
+  await col.insertOne({ ...room });
   return NextResponse.json({ ok: true, room });
 }

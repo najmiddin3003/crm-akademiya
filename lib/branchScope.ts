@@ -202,6 +202,22 @@ export function branchCondition(scope: BranchScope): Filter<Document> {
 }
 
 /**
+ * Hujjat `ids` filiallaridan BIRIDA — yozuvni id bo'yicha tahrirlash yoki
+ * o'chirishda "bu yozuv sizning filiallaringizdanmi?" savoli uchun
+ * (`scope.allowed`). Joriy filial emas, RUXSAT ETILGANLAR: formada filialni
+ * almashtirib bo'ladigan joyda (xonalar) yozuv navbardagidan boshqa
+ * filialga ham ko'chadi.
+ *
+ * `branchCondition` bilan bir xil qoida: 1-filialda maydoni yo'q eski
+ * hujjatlar ham.
+ */
+export function branchInCondition(ids: readonly number[]): Filter<Document> {
+  const or: Filter<Document>[] = [{ branchId: { $in: [...ids] } }];
+  if (ids.includes(1)) or.push({ branchId: { $exists: false } }, { branchId: null });
+  return or.length === 1 ? or[0] : { $or: or };
+}
+
+/**
  * Yangi hujjatga yoziladigan filial.
  *
  * Doim aniq bitta filial — "barcha filiallar" rejimi olib tashlangan.

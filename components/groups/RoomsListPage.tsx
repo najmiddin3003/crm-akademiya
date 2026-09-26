@@ -7,10 +7,11 @@ import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import RoomModal from "./RoomModal";
-import type { Room } from "@/lib/rooms";
+import { roomBranchId, type Room } from "@/lib/rooms";
 import type { Equipment } from "@/lib/equipment";
 import { roomEquipmentStats, conditionStats, brokenCount, totalValue } from "@/lib/roomAnalytics";
 import Modal from "@/components/ui/Modal";
+import { useBranch } from "@/components/shared/BranchContext";
 import { useT } from "@/components/shared/Language";
 
 // Guruh → Xonalar (crm-akademiya #view-groups-rooms, sidebar: Guruh > Xonalar,
@@ -55,6 +56,11 @@ export default function RoomsListPage() {
   const [deleteTarget, setDeleteTarget] = useState<Room | null>(null);
   const [deleting, setDeleting] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+
+  // Ro'yxat navbardagi filial bo'yicha (GET /api/rooms). Oynada boshqa
+  // filial tanlansa xona bu ro'yxatga kirmaydi yoki undan chiqadi.
+  const { branchId: currentBranchId } = useBranch();
+  const inView = (r: Room) => currentBranchId === null || roomBranchId(r) === currentBranchId;
 
   useEffect(() => {
     let cancelled = false;
@@ -313,10 +319,14 @@ export default function RoomsListPage() {
       </div>
 
       {addOpen && (
-        <RoomModal onClose={() => setAddOpen(false)} onSaved={(r) => setRooms((prev) => [r, ...prev])} />
+        <RoomModal onClose={() => setAddOpen(false)} onSaved={(r) => { if (inView(r)) setRooms((prev) => [r, ...prev]); }} />
       )}
       {editRoom && (
-        <RoomModal room={editRoom} onClose={() => setEditRoom(null)} onSaved={(r) => setRooms((prev) => prev.map((x) => (x.id === r.id ? r : x)))} />
+        <RoomModal
+          room={editRoom}
+          onClose={() => setEditRoom(null)}
+          onSaved={(r) => setRooms((prev) => (inView(r) ? prev.map((x) => (x.id === r.id ? r : x)) : prev.filter((x) => x.id !== r.id)))}
+        />
       )}
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
