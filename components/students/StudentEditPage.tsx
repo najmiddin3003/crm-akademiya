@@ -299,7 +299,13 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
     }
     setPupil(res.pupil as Pupil);
     fillForm(res.pupil as Pupil);
-    showSuccess(t("O'quvchi ma'lumotlari saqlandi"));
+    // Gamifikatsiya: sinf o'zgarib toifa almashgan bo'lsa, mos kelmay qolgan istaklar olinadi (TZ 4.21.4).
+    const removed = Number(res.removedWishes) || 0;
+    showSuccess(
+      removed
+        ? `${t("O'quvchi ma'lumotlari saqlandi")} · ${t("toifa o'zgargani uchun {n} ta istak olib tashlandi", { n: removed })}`
+        : t("O'quvchi ma'lumotlari saqlandi"),
+    );
   };
 
   const handleDelete = async () => {

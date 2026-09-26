@@ -15,6 +15,8 @@ import BotNotesTab from "./BotNotesTab";
 import LeadSettingsTab from "./LeadSettingsTab";
 import GamGeneralTab from "@/components/gamification/settings/GeneralTab";
 import GamReasonsTab from "@/components/gamification/settings/ReasonsTab";
+import GamGiftsTab from "@/components/gamification/settings/GiftsTab";
+import GamBranchesTab from "@/components/gamification/settings/BranchesTab";
 import { loadMonthlyPercentStaffCounts } from "./monthlyPercentStaff";
 import SettingsNote from "./SettingsNote";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -357,6 +359,10 @@ const BUILT: Record<string, () => ReactNode> = {
   "gamification:general": () => <GamGeneralTab />,
 
   "gamification:reasons": () => <GamReasonsTab />,
+
+  "gamification:gifts": () => <GamGiftsTab />,
+
+  "gamification:branches": () => <GamBranchesTab />,
 };
 
 function NotBuilt({ label }: { label: string }) {

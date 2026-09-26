@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
 import { Toggle } from "@/components/settings/SettingsForm";
 import { gamApi } from "../api";
+import { DiscountModal, type ShopItemView } from "../shop/ShopModals";
 import type { CoinReason, GamLevel, GamRole, GamSettings, NumericSettingKey } from "@/lib/gamification/types";
 
 // Sozlamalar → Gamifikatsiya → Umumiy (TZ 5.7, prototipdagi «Umumiy»).
@@ -150,6 +151,19 @@ export default function GamGeneralTab() {
   const [busy, setBusy] = useState(false);
   // Daraja qatorlari qayta chizilishi uchun (saqlanmagan qoralama qaytsin).
   const [levelsKey, setLevelsKey] = useState(0);
+  // «To'lovga chegirma» — katalogdagi maxsus yozuv (TZ 4.13.2, 5.7).
+  const [discount, setDiscount] = useState<ShopItemView | null>(null);
+  const [editDiscount, setEditDiscount] = useState(false);
+  const loadDiscount = useCallback(
+    () =>
+      gamApi<{ items: ShopItemView[] }>("/api/gamification/shop").then((res) => {
+        if (res.ok) setDiscount(res.items.find((i) => i.kind === "discount") ?? null);
+      }),
+    [],
+  );
+  useEffect(() => {
+    void loadDiscount();
+  }, [loadDiscount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,13 +189,21 @@ export default function GamGeneralTab() {
 
   const patch = useCallback(
     async (body: Record<string, unknown>): Promise<boolean> => {
-      const res = await gamApi<{ settings: GamSettings; streakRuleChanged: boolean }>("/api/gamification/settings", { method: "PUT", body });
+      const res = await gamApi<{ settings: GamSettings; streakRuleChanged: boolean; removedWishes?: number }>("/api/gamification/settings", {
+        method: "PUT",
+        body,
+      });
       if (!res.ok) {
         showError(t(res.error));
         return false;
       }
       setSettings(res.settings);
-      showSuccess(t("Saqlandi"));
+      // Kichiklar chegarasi o'zgarsa, mos kelmay qolgan istaklar olib tashlanadi (TZ 4.21.4).
+      showSuccess(
+        res.removedWishes
+          ? `${t("Saqlandi")} · ${t("toifa o'zgargani uchun {n} ta istak olib tashlandi", { n: res.removedWishes })}`
+          : t("Saqlandi"),
+      );
       return true;
     },
     [showError, showSuccess, t],
@@ -316,8 +338,24 @@ export default function GamGeneralTab() {
         </div>
 
         <div className={cardCls}>
-          <h3 className="mb-2 text-[15px] font-semibold">{t("Toifalar")}</h3>
+          <h3 className="mb-2 text-[15px] font-semibold">{t("Toifalar va chegirma")}</h3>
           {num("kidsMaxGrade", "Kichiklar toifasi: shu sinfgacha (qolganlari — kattalar)", "-sinf")}
+          {discount && (
+            <div className="border-b border-border/60 py-2 text-[12.5px] leading-relaxed text-muted-foreground">
+              {t("To'lovga chegirma: {pct}% · narxi {n} tanga · oyiga 1 marta, boshqa oyga o'tkazilmaydi, ustoz foizi to'liq narxdan", {
+                pct: discount.discountPercent ?? 5,
+                n: discount.priceCoins,
+              })}
+              {canEdit && (
+                <>
+                  {" · "}
+                  <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setEditDiscount(true)}>
+                    {t("tahrirlash")}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <RuleNote>
             {t("Tangalar yil oxirida yonmaydi — yig'ilib boradi · ketgan o'quvchi tangalari muzlatiladi, qaytsa tiklanadi · o'quvchi filial almashtirsa, tangalar u bilan ko'chadi")}
           </RuleNote>
@@ -337,6 +375,17 @@ export default function GamGeneralTab() {
         </div>
       </div>
 
+      {editDiscount && discount && (
+        <DiscountModal
+          item={discount}
+          kidsMaxGrade={settings.kidsMaxGrade}
+          onClose={() => setEditDiscount(false)}
+          onSaved={(m) => {
+            void loadDiscount();
+            showSuccess(m);
+          }}
+        />
+      )}
       {pending && (
         <ConfirmModal
           pending={pending}

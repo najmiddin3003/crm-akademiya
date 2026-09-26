@@ -103,7 +103,7 @@ spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
 `app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
 Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat —
 qilindi; 3) o'quvchilar/profil/storno — qilindi; 4) reyting, musobaqa, oy yakuni, nishonlar — qilindi;
-5) do'kon + chegirma; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
+5a) do'kon — qilindi; 5b) to'lovga chegirma (Moliyaga ulash); 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
 Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
 
 2-bosqich: sidebar → Gamifikatsiya → «Tanga berish» (`/gamification-lesson`,
@@ -134,6 +134,18 @@ tekshiriladi. G'olib va «Hozircha 1-o'rinda» — faqat o'rtacha > 0 bo'lsa. 13
 nishon (`student_badges`, har tanga amalidan keyin qayta tekshiriladi). Sarhisob:
 Imtihon → Sarhisob da natija saqlanganda 90/80/70% va o'sish tangalari
 (`lib/gamification/exams.ts`), sana — Sarhisob oyining oxirgi kuni.
+
+5a-bosqich: «Do'kon» (`/gamification-shop`, `lib/gamification/shop.ts`): katalog
+(`shop_items`: buyum/xizmat, rasm Cloudinary'ga — `/api/gamification/shop/image`,
+filial bo'yicha ombor, tannarx faqat direktorga), sovg'a berish (admin — o'z
+filiali, direktor; hamyon → byudjet qulfi, ombor atomik `$inc`), qaytarish (admin —
+shu kuni, direktor — istalgan; tanga to'liq, ombor +1, byudjet sarfidan chiqadi),
+oylik sovg'a byudjeti (`branch_gift_budgets`, faqat buyum tannarxi), istaklar
+(`wishlist_items`; toifa/sinf o'zgarsa mos kelmaganlari olinadi — sozlamalar va
+o'quvchi kartasi xabarida soni). Sozlamalarga «Sovg'alar» va «Filiallar va
+byudjet» tablari (filiallarning o'zi — Boshqaruv → Filiallar). Profilda «♥ Istaklari»
+va «🛍️ Sotib olganlari», tarixdagi xaridda «Qaytarish». «To'lovga chegirma» —
+katalogdagi yagona maxsus yozuv; uni berish 5b da (Moliyaga ulanadi).
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 
@@ -550,9 +562,9 @@ Optimizator ikkalasini "ortiqcha" deb tashlaydi, qoida bo'sh qolib butunlay o'ch
 # Sozlamalar bo'limi — holat va qolgan ishlar
 
 Referens marshruti: `/settings/<bo'lim>?status=<tab>`
-Bu loyihada: `/settings-<bo'lim>?tab=<tab>` (`constants/settings.js` — 8 bo'lim, 32 tab).
+Bu loyihada: `/settings-<bo'lim>?tab=<tab>` (`constants/settings.js` — 8 bo'lim, 35 tab).
 
-**Hozir: 31 tabning hammasi qurilgan** (Gamifikatsiya tablari — «Umumiy» va «Tanga sabablari» — 2026-09-26 da TZ v1.4 bo'yicha; «Sovg'alar» va «Filiallar va byudjet» 5-bosqichda qo'shiladi). Kalitlar mosligini tekshirish:
+**Hozir: 35 tabning hammasi qurilgan** (Gamifikatsiya tablari — «Umumiy», «Tanga sabablari», «Sovg'alar», «Filiallar va byudjet» — 2026-09-26 da TZ v1.4 bo'yicha). Kalitlar mosligini tekshirish:
 
 ```bash
 node -e "const f=require('fs'),p=f.readFileSync('components/settings/SettingsSectionPage.tsx','utf8');console.log([...p.matchAll(/^  \"([^\"]+)\":/gm)].length+' ta tab ro\\'yxatda')"

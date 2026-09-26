@@ -66,6 +66,7 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   "/gamification-students",
   "/gamification-ranking",
   "/gamification-competition",
+  "/gamification-shop",
 ]);
 
 /**

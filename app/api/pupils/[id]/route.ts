@@ -4,6 +4,7 @@ import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 import { closeMemberships } from "@/lib/groupMembership";
 import { uzDateIso } from "@/lib/uzTime";
+import { cleanWishes } from "@/lib/gamification/shop";
 
 // Bitta o'quvchi (MongoDB `pupils`) — O'quvchi profili sahifasi uchun
 // (/student-edit/:id → components/students/StudentEditPage.tsx).
@@ -128,7 +129,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!res) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
   }
-  return NextResponse.json({ ok: true, pupil: stripSecrets(res) as unknown as Pupil });
+  // GAMIFIKATSIYA (TZ 4.21.4): sinf o'zgarsa toifa ham o'zgarishi mumkin —
+  // mos kelmay qolgan istaklar olib tashlanadi va soni aytiladi.
+  let removedWishes = 0;
+  if ("grade" in set || "category" in set) {
+    removedWishes = await cleanWishes(db, [pupilId]).catch(() => 0);
+  }
+  return NextResponse.json({ ok: true, pupil: stripSecrets(res) as unknown as Pupil, removedWishes });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

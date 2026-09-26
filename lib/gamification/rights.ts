@@ -18,6 +18,23 @@ import { AUTO_TX_TYPES, type CoinTransaction, type GamSettings } from "./types";
 
 export type CancelDenial = { kind: "auto" | "shop" | "rights" | "spent" | "frozen"; message: string };
 
+/**
+ * Sovg'ani qaytarish huquqi (TZ 4.15): filial admini — o'z filialida shu
+ * kuni berilganini, direktor — istalganini. Qo'llangan (yoki muddati
+ * o'tgan) chegirma qaytarilmaydi — faqat hali faol chegirma.
+ */
+export function canReturnOrder(
+  actor: GamActor,
+  o: { status: string; discountId: number | null; branchId: number; givenDate: string },
+  today = uzDateIso(),
+  discountStatus: string | null = null,
+): boolean {
+  if (o.status !== "given") return false;
+  if (o.discountId !== null && discountStatus !== "active") return false;
+  if (actor.role === "director") return true;
+  return actor.role === "branch_admin" && actor.branchIds.includes(o.branchId) && o.givenDate === today;
+}
+
 export function cancelDenial(
   actor: GamActor,
   tx: CoinTransaction,

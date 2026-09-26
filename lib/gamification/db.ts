@@ -27,6 +27,12 @@ export const GAM = {
   badges: "student_badges",
   /** Oy yakuni — muzlatilgan natijalar (TZ 4.20, 6.13). */
   monthly: "monthly_results",
+  /** Do'kon (TZ 4.13–4.18, 6.6–6.11). Ombor soni sovg'a hujjatida (`stock`). */
+  shopItems: "shop_items",
+  shopOrders: "shop_orders",
+  budgets: "branch_gift_budgets",
+  wishlist: "wishlist_items",
+  discounts: "tuition_discounts",
 } as const;
 
 /**
@@ -57,6 +63,17 @@ async function createGamIndexes(db: Db): Promise<void> {
     db.collection(GAM.badges).createIndex({ pupilId: 1, code: 1, month: 1, groupId: 1 }, { unique: true }),
     // Oy bir marta yakunlanadi: (oy, guruh) takrorlanmaydi (TZ 6.13).
     db.collection(GAM.monthly).createIndex({ month: 1, groupId: 1 }, { unique: true }),
+    db.collection(GAM.shopItems).createIndex({ id: 1 }, { unique: true }),
+    // «To'lovga chegirma» — katalogda YAGONA yozuv (TZ 4.13.2).
+    db.collection(GAM.shopItems).createIndex({ kind: 1 }, { unique: true, partialFilterExpression: { kind: "discount" } }),
+    db.collection(GAM.shopOrders).createIndex({ id: 1 }, { unique: true }),
+    db.collection(GAM.shopOrders).createIndex({ branchId: 1, givenDate: -1 }),
+    db.collection(GAM.shopOrders).createIndex({ pupilId: 1, givenDate: -1 }),
+    db.collection(GAM.budgets).createIndex({ branchId: 1 }, { unique: true }),
+    db.collection(GAM.wishlist).createIndex({ pupilId: 1, itemId: 1 }, { unique: true }),
+    db.collection(GAM.discounts).createIndex({ id: 1 }, { unique: true }),
+    // O'quvchiga oyiga bitta faol/qo'llangan chegirma (TZ 6.9): `activeKey` faqat shu holatlarda.
+    db.collection(GAM.discounts).createIndex({ activeKey: 1 }, { unique: true, partialFilterExpression: { activeKey: text } }),
   ]);
 }
 

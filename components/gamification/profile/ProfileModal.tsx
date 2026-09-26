@@ -10,13 +10,15 @@ import type { GamLevel, GamRole } from "@/lib/gamification/types";
 import { gamApi } from "../api";
 import { btnGhost, btnSm, Chip, fmtDate, signed, Signed, withReward } from "../ui";
 import ReasonModal, { type ReasonDone, type ReasonOption } from "../lesson/ReasonModal";
+import { GiveModal, ReturnModal, type ReturnTarget } from "../shop/ShopModals";
 import CancelModal from "./CancelModal";
 import ReferralModal, { type ReferralDone } from "./ReferralModal";
+import ShopSections, { type WishItem } from "./ShopSections";
 
 // O'QUVCHI PROFILI — ko'rish oynasi (TZ 5.4; prototipdagi profile()).
 // Esc bilan yopiladi; sarlavha va «Yopish» yuqorida qotib turadi. Ichki
-// forma oynalari (sabab, do'st bonusi, bekor qilish) ustiga ochiladi va
-// yopilganda profilga qaytiladi.
+// forma oynalari (sabab, do'st bonusi, bekor qilish, sovg'a berish va
+// qaytarish) ustiga ochiladi va yopilganda profilga qaytiladi.
 
 type Toast = (text: string, opts?: { error?: boolean; undo?: () => Promise<void> | void }) => void;
 
@@ -70,7 +72,8 @@ interface HistoryRow {
   cancelledByName: string | null;
   cancelledAt: string | null;
   createdByName: string;
-  action: "cancel" | "excuse" | "unexcuse" | "expired" | null;
+  action: "cancel" | "excuse" | "unexcuse" | "expired" | "return" | null;
+  order: { id: number; itemName: string; priceCoins: number; givenDate: string; kind: "item" | "service" | "discount" } | null;
 }
 
 export function ToifaChip({ toifa }: { toifa: "kids" | "older" }) {
@@ -107,7 +110,16 @@ export default function ProfileModal({
   const [filter, setFilter] = useState<Filter>("all");
   const [hist, setHist] = useState<{ rows: HistoryRow[]; total: number } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [sub, setSub] = useState<null | { kind: "reason" } | { kind: "referral" } | { kind: "cancel"; txId: number }>(null);
+  const [sub, setSub] = useState<
+    | null
+    | { kind: "reason" }
+    | { kind: "referral" }
+    | { kind: "cancel"; txId: number }
+    | { kind: "give"; item: WishItem }
+    | { kind: "return"; order: ReturnTarget }
+  >(null);
+  // Do'kon bo'limlari (istaklar, xaridlar) shu kalit o'zgarganda qayta yuklanadi.
+  const [shopKey, setShopKey] = useState(0);
 
   const loadProfile = useCallback(
     () =>
@@ -134,6 +146,7 @@ export default function ProfileModal({
   }, [loadHistory, filter]);
 
   const refresh = useCallback(async () => {
+    setShopKey((k) => k + 1);
     await Promise.all([loadProfile(), loadHistory(filter, 0, false)]);
     onChanged?.();
   }, [loadProfile, loadHistory, filter, onChanged]);
@@ -333,6 +346,14 @@ export default function ProfileModal({
           </div>
         </section>
 
+        <ShopSections
+          pupilId={pupilId}
+          pupilName={p.pupil.name}
+          reloadKey={shopKey}
+          onGive={(item) => setSub({ kind: "give", item })}
+          onReturn={(order) => setSub({ kind: "return", order })}
+        />
+
         <section>
           <h3 className="mb-2 text-[14px] font-semibold">{t("Tanga tarixi")}</h3>
           <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label={t("Tarix filtri")}>
@@ -417,6 +438,21 @@ export default function ProfileModal({
                             </button>
                           )}
                           {r.action === "expired" && <span className="text-[12px] text-muted-foreground">{t("e'tiroz muddati o'tgan")}</span>}
+                          {r.action === "return" && r.order && (
+                            <button
+                              type="button"
+                              className={btnSm}
+                              onClick={() => {
+                                const o = r.order!;
+                                setSub({
+                                  kind: "return",
+                                  order: { id: o.id, pupilName: p.pupil.name, itemName: o.itemName, priceCoins: o.priceCoins, givenDate: o.givenDate, kind: o.kind },
+                                });
+                              }}
+                            >
+                              {t("Qaytarish")}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -490,6 +526,37 @@ export default function ProfileModal({
             toast(withReward(t, t("{name}: +{n} · do'st olib keldi", { name, n: res.amount }), name, res), {
               undo: () => undo(res.txId),
             });
+          }}
+        />
+      )}
+      {p && sub?.kind === "give" && (
+        <GiveModal
+          item={{
+            id: sub.item.itemId,
+            title: sub.item.title,
+            priceCoins: sub.item.price,
+            audience: sub.item.audience,
+            kind: sub.item.kind,
+            imageUrl: sub.item.imageUrl,
+            emoji: sub.item.emoji,
+          }}
+          branchId={null}
+          preselect={pupilId}
+          onClose={() => setSub(null)}
+          onDone={(r) => {
+            void refresh();
+            const msg = t("{name}: «{title}» berildi, −{n} tanga", { name: r.pupilName, title: t(r.title), n: r.price });
+            toast(withReward(t, r.wished ? `${msg} · ${t("istaklardan olindi")}` : msg, r.pupilName, r));
+          }}
+        />
+      )}
+      {sub?.kind === "return" && (
+        <ReturnModal
+          order={sub.order}
+          onClose={() => setSub(null)}
+          onDone={() => {
+            void refresh();
+            toast(t("{name}: «{title}» qaytarildi, +{n} tanga", { name: sub.order.pupilName, title: t(sub.order.itemName), n: sub.order.priceCoins }));
           }}
         />
       )}

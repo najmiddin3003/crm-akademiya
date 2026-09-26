@@ -9,7 +9,7 @@ import { GAM } from "./db";
 import { reasonsForRole } from "./lesson";
 import { groupRanking, monthRange, pupilName } from "./ranking";
 import { listReasons, systemReasonMap } from "./reasons";
-import { cancelDenial } from "./rights";
+import { cancelDenial, canReturnOrder } from "./rights";
 import { branchNames, groupInActorScope, toGamGroup, type GamGroup } from "./scope";
 import { loadSettings } from "./settings";
 import { levelIndexOf } from "./rules";
@@ -312,7 +312,9 @@ export interface HistoryRow {
   cancelledAt: string | null;
   createdByName: string;
   /** Qator amali (huquqqa qarab, TZ 5.4). */
-  action: "cancel" | "excuse" | "unexcuse" | "expired" | null;
+  action: "cancel" | "excuse" | "unexcuse" | "expired" | "return" | null;
+  /** Xarid qatori — «Qaytarish» oynasi uchun. */
+  order: { id: number; itemName: string; priceCoins: number; givenDate: string; kind: "item" | "service" | "discount" } | null;
 }
 
 const PAGE = 12;
@@ -370,9 +372,34 @@ export async function studentHistory(
     }
   }
 
+  // Xaridlar: yozuv → buyurtma (qaytarish huquqi buyurtmadan, TZ 4.15).
+  const shopTx = docs.filter((t) => t.type === "shop").map((t) => t.id);
+  const orders = shopTx.length
+    ? await db.collection(GAM.shopOrders).find({ transactionId: { $in: shopTx } }, { projection: { _id: 0 } }).toArray()
+    : [];
+  const orderByTx = new Map(orders.map((o) => [Number(o.transactionId), o]));
+  const discIds = orders.map((o) => o.discountId).filter((x) => x !== null && x !== undefined).map(Number);
+  const discStatus = new Map(
+    (discIds.length ? await db.collection(GAM.discounts).find({ id: { $in: discIds } }, { projection: { _id: 0, id: 1, status: 1 } }).toArray() : []).map((d) => [
+      Number(d.id),
+      String(d.status),
+    ]),
+  );
+
   const rows = docs.map((t): HistoryRow => {
     const g = t.groupId !== null ? gById.get(t.groupId) : undefined;
+    const o = t.type === "shop" ? orderByTx.get(t.id) : undefined;
     let action: HistoryRow["action"] = null;
+    if (o && settings.enabled) {
+      const disc = o.discountId !== null && o.discountId !== undefined ? Number(o.discountId) : null;
+      const ok = canReturnOrder(
+        actor,
+        { status: String(o.status), discountId: disc, branchId: Number(o.branchId), givenDate: String(o.givenDate) },
+        today,
+        disc !== null ? discStatus.get(disc) ?? null : null,
+      );
+      if (ok) action = "return";
+    }
     if ((t.type === "attendance" || t.type === "absence") && t.groupId !== null && g) {
       if (!frozen && settings.enabled) {
         const st = markOf(t.groupId, t.date);
@@ -418,6 +445,7 @@ export async function studentHistory(
       cancelledAt: t.cancelledAt ? uzDateIso(new Date(t.cancelledAt)) : null,
       createdByName: t.createdByName,
       action,
+      order: o ? { id: Number(o.id), itemName: String(o.itemName), priceCoins: Number(o.priceCoins), givenDate: String(o.givenDate), kind: o.kind } : null,
     };
   });
   return { rows, total };

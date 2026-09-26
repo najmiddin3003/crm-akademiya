@@ -97,10 +97,12 @@ export const SETTINGS_SECTIONS = [
     href: "/settings-gamification",
     label: "Gamifikatsiya",
     // TZ v1.4 (5.7): Umumiy · Tanga sabablari · Sovg'alar · Filiallar va
-    // byudjet. Oxirgi ikkitasi do'kon bosqichida qo'shiladi.
+    // byudjet. Filiallarning o'zi — umumiy ro'yxat (Boshqaruv → Filiallar).
     tabs: [
       { key: "general", label: "Umumiy" },
       { key: "reasons", label: "Tanga sabablari" },
+      { key: "gifts", label: "Sovg'alar" },
+      { key: "branches", label: "Filiallar va byudjet" },
     ],
   },
 ];
