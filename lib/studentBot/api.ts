@@ -55,6 +55,25 @@ function shouldRetryPlain(html: string, blocked: boolean): boolean {
   return !blocked && hasCustomEmoji(html);
 }
 
+let botUsername: string | null = null;
+
+/**
+ * Botning @nomi — «Telegramda ochish» havolasi uchun (`t.me/{nom}?start={token}`,
+ * TZ 5.8). `TELEGRAM_STUDENT_BOT_USERNAME` bo'lsa o'sha, aks holda `getMe`
+ * bir marta so'raladi (faqat muvaffaqiyat keshlanadi). Topilmasa bo'sh —
+ * sahifa Telegram tugmasini ko'rsatmaydi.
+ */
+export async function studentBotUsername(cfg: StudentBotConfig): Promise<string> {
+  const fromEnv = (process.env.TELEGRAM_STUDENT_BOT_USERNAME || "").trim().replace(/^@/, "");
+  if (fromEnv) return fromEnv;
+  if (botUsername) return botUsername;
+  if (!cfg.token) return "";
+  const data = await callTelegram(cfg.token, "getMe", {}).catch(() => null);
+  const name = String((data?.result as { username?: string } | undefined)?.username ?? "");
+  if (data?.ok && name) botUsername = name;
+  return name;
+}
+
 export async function sendToStudent(
   cfg: StudentBotConfig,
   chatId: number,

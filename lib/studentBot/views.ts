@@ -393,6 +393,37 @@ export function tasksView(pupil: Pupil, tasks: GroupTask[]): string {
 
 // ── Koinlar ─────────────────────────────────────────────────────────
 
+/** `/start {token}` dan keyin (TZ 5.8): «✅ {ism} sahifasi bog'landi…». */
+export function gameLinkedView(name: string): string {
+  return `✅ <b>${esc(name)}</b> sahifasi bog'landi. «Mening sahifam» tugmasini bosing.`;
+}
+
+/** Telefon bilan kirmagan, lekin havola orqali bog'langan akkaunt har qanday xabar yozsa. */
+export function gameHintView(names: string[]): string {
+  return [
+    `🏆 ${names.map((n) => `<b>${esc(n)}</b>`).join(", ")} sahifasini «Mening sahifam» tugmasi ochadi.`,
+    "",
+    "<i>To'liq kabinet (davomat, to'lovlar) uchun telefon raqamingizni yuboring.</i>",
+  ].join("\n");
+}
+
+/** «🪙 Koinlar» — gamifikatsiya yoqilganda: haqiqiy hamyon (TZ 5.8 xulosasi). */
+export function gameCoinsView(
+  pupil: Pupil,
+  s: { balance: number; earned: number; level: string; levelIndex: number; levels: number; nextName: string | null; toNext: number },
+): string {
+  return [
+    "🪙 <b>Tangalar</b>",
+    whoLine(pupil),
+    "",
+    `Balans: <b>${fmtUZS(s.balance)}</b> tanga`,
+    `Daraja: <b>${esc(s.level)}</b> (${s.levelIndex + 1}/${s.levels})`,
+    s.nextName ? `«${esc(s.nextName)}» darajasigacha: ${fmtUZS(s.toNext)} tanga` : "Eng yuqori daraja!",
+    "",
+    "<i>Istaklar, do'kon, guruhdagi o'rin va nishonlar — «Mening sahifam» da.</i>",
+  ].join("\n");
+}
+
 export function coinsView(pupil: Pupil): string {
   return [
     "🪙 <b>Koinlar</b>",

@@ -103,7 +103,7 @@ spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
 `app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
 Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat —
 qilindi; 3) o'quvchilar/profil/storno — qilindi; 4) reyting, musobaqa, oy yakuni, nishonlar — qilindi;
-5a) do'kon — qilindi; 5b) to'lovga chegirma (Moliyaga ulash) — qilindi; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
+5a) do'kon — qilindi; 5b) to'lovga chegirma (Moliyaga ulash) — qilindi; 6) o'quvchi sahifasi — qilindi. Modul feature-flag bilan (Sozlamalar →
 Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
 
 2-bosqich: sidebar → Gamifikatsiya → «Tanga berish» (`/gamification-lesson`,
@@ -164,6 +164,24 @@ biriktirilmaydi; qo'llangan chegirma qaytarilmaydi. M+1 tugagach tungi cron
 (`runGamificationNightly`) qo'llanmaganini `expired` qilib tangani qaytaradi. Kirim
 oynasi va xodimlar botida kassirga ogohlantirish, chek/Telegram/Sheets izohida
 chegirma qatori; Do'konda «{Oy} to'lovlariga chegirmalar» jadvali.
+
+6-bosqich — o'quvchi sahifasi (`lib/gamification/studentPage.ts`, `access.ts`,
+UI `components/gamification/student/*`): login'siz shaxsiy havola `/me/{token}`
+(`student_access_tokens`, o'quvchiga bitta faol token) — tangalar, daraja, seriya,
+istaklar (♡ bilan qo'shish/olib tashlash, `wishlistMax`), xaridlar, chegirmalar,
+o'z toifasidagi do'kon, guruhdagi top-5 va o'z o'rni, nishonlar, tarix. Havolani
+profil oynasidagi «O'quvchi havolasi va Telegram» bo'limi beradi (filial admini —
+o'z filiali, direktor; ustozga yo'q). «Qayta yaratish» eski havolani va barcha
+Telegram bog'lanishlarini darhol bekor qiladi. Sahifadagi «Telegramda ochish» →
+`t.me/{bot}?start={token}` → o'quvchilar boti akkauntni bog'laydi
+(`student_telegram_links`, o'quvchiga ko'pi bilan 3 ta), keyin botdagi
+«🏆 Mening sahifam» Mini App'ni ochadi (`/me/tg`, kirish — `initData` imzosi;
+telefon orqali bog'langan ota-onalar ham farzandlarini ko'radi). Kabinetdagi
+Coin tabi va botdagi «Koinlar» modul yoqilganda shu ma'lumotni ko'rsatadi, o'chiq
+paytda — eskicha. Ketgan o'quvchi sahifasi faqat ko'rish uchun. Ochiq API:
+`/api/me/[token]`, `/api/me/tg` (+ `wishlist/[itemId]`) — generator va
+`proxy.ts` PUBLIC ro'yxatida. Bot nomi `TELEGRAM_STUDENT_BOT_USERNAME` dan, bo'lmasa
+`getMe`; Mini App manzili `PUBLIC_SITE_URL` + `/me/tg`.
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 

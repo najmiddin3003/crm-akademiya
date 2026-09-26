@@ -1,5 +1,5 @@
 import type { InlineButton, InlineKeyboard, ReplyKeyboard } from "@/lib/telegramApi";
-import { studentWebUrl } from "@/lib/studentBot/config";
+import { studentGameUrl, studentWebUrl } from "@/lib/studentBot/config";
 import { plainEmoji } from "@/lib/studentBot/premiumEmoji";
 import type { NotifyKind, StudentBotUser } from "@/lib/studentBot/users";
 
@@ -140,6 +140,17 @@ export function mainMenu(opts: { hasSupport: boolean; multiKid: boolean }): Inli
 /** Ichki bo'limlarning pastidagi qaytish tugmasi. */
 export function backOnly(): InlineKeyboard {
   return { inline_keyboard: [[{ text: "⬅️ Asosiy menyu", callback_data: CB.home }]] };
+}
+
+/**
+ * GAMIFIKATSIYA (TZ 5.8): «Mening sahifam» — o'quvchi sahifasi Mini App'da
+ * (tangalar, daraja, istaklar, do'kon). `withMenu` — telefon bilan kirgan
+ * o'quvchida pastida «Asosiy menyu» ham.
+ */
+export function gamePageKeyboard(withMenu = false): InlineKeyboard {
+  const rows: InlineButton[][] = [[{ text: "🏆 Mening sahifam", web_app: { url: studentGameUrl() } }]];
+  if (withMenu) rows.push([{ text: "⬅️ Asosiy menyu", callback_data: CB.home }]);
+  return { inline_keyboard: rows };
 }
 
 /**

@@ -14,6 +14,7 @@ import { GiveModal, ReturnModal, type ReturnTarget } from "../shop/ShopModals";
 import CancelModal from "./CancelModal";
 import ReferralModal, { type ReferralDone } from "./ReferralModal";
 import ShopSections, { type WishItem } from "./ShopSections";
+import AccessSection from "./AccessSection";
 
 // O'QUVCHI PROFILI — ko'rish oynasi (TZ 5.4; prototipdagi profile()).
 // Esc bilan yopiladi; sarlavha va «Yopish» yuqorida qotib turadi. Ichki
@@ -279,6 +280,9 @@ export default function ProfileModal({
             )}
           </div>
         )}
+
+        {/* O'quvchi havolasi va Telegram (TZ 5.4) — admin va direktor. */}
+        {p.role !== "teacher" && <AccessSection pupilId={pupilId} toast={toast} />}
 
         <section>
           <h3 className="mb-2 text-[14px] font-semibold">{t("Guruhlar")}</h3>

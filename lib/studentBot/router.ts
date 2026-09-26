@@ -2,7 +2,7 @@ import type { Db } from "mongodb";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { loadSyncConfig } from "@/lib/sync/config";
 import { sendMessage } from "@/lib/sync/telegram";
-import type { InlineKeyboard } from "@/lib/telegramApi";
+import { esc, type InlineKeyboard } from "@/lib/telegramApi";
 import {
   answerStudent,
   dropReplyKeyboard,
@@ -29,6 +29,7 @@ import {
   attendanceNav,
   backOnly,
   contactKeyboard,
+  gamePageKeyboard,
   kidArg,
   kidsMenu,
   logoutConfirm,
@@ -53,6 +54,8 @@ import {
 } from "@/lib/studentBot/users";
 import * as V from "@/lib/studentBot/views";
 import { uzDateIso } from "@/lib/uzTime";
+import { isTokenShape, linkTelegram, telegramLinkedPupils } from "@/lib/gamification/access";
+import { pupilBrief, studentCoinSummary } from "@/lib/gamification/studentPage";
 
 // O'quvchilar boti — kelgan yangilanishni ishlaydigan yagona joy.
 //
@@ -198,8 +201,14 @@ async function sectionScreen(
       return { html: V.tasksView(pupil, tasks), keyboard: backOnly() };
     }
 
-    case CB.coins:
-      return { html: V.coinsView(pupil), keyboard: backOnly() };
+    case CB.coins: {
+      // Gamifikatsiya yoqilgan bo'lsa — haqiqiy hamyon va «Mening sahifam»
+      // (Mini App); o'chiq bo'lsa eskicha `pupils.coin`.
+      const game = await studentCoinSummary(db, pupil.id).catch(() => null);
+      return game
+        ? { html: V.gameCoinsView(pupil, game), keyboard: gamePageKeyboard(true) }
+        : { html: V.coinsView(pupil), keyboard: backOnly() };
+    }
 
     case CB.news:
       return { html: V.newsView(await loadNews(db)), keyboard: backOnly() };
@@ -429,6 +438,27 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
   }
 
   const text = (msg.text || "").trim();
+
+  // GAMIFIKATSIYA: `/start {token}` — shaxsiy havoladagi «Telegramda ochish»
+  // (TZ 5.8). Akkaunt o'quvchiga bog'lanadi (ko'pi bilan 3 ta); telefon
+  // bilan kirish shart emas. Boshqa `/start` lar — odatdagi oqim.
+  const startArg = /^\/start\s+(\S+)$/.exec(text)?.[1];
+  if (startArg && isTokenShape(startArg)) {
+    const res = await linkTelegram(db, startArg, {
+      userId: Number(msg.from?.id ?? chatId),
+      chatId,
+      username: String(msg.from?.username ?? ""),
+      firstName: String(msg.from?.first_name ?? ""),
+    });
+    if (!res.ok) {
+      await sendToStudent(cfg, chatId, `⚠️ ${esc(res.error)}`);
+      return;
+    }
+    const brief = await pupilBrief(db, res.pupilId);
+    await sendToStudent(cfg, chatId, V.gameLinkedView(brief.name), gamePageKeyboard());
+    return;
+  }
+
   const user = await getBotUser(db, chatId);
 
   if (!user) {
@@ -441,6 +471,14 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
     const typed = phoneKey(text);
     if (typed) {
       await handlePhoneText(db, cfg, msg, typed);
+      return;
+    }
+    // Havola orqali bog'langan (telefonsiz) akkaunt — «Mening sahifam» tugmasi.
+    const linked = await telegramLinkedPupils(db, Number(msg.from?.id ?? chatId)).catch(() => [] as number[]);
+    if (linked.length) {
+      const names = [];
+      for (const id of linked) names.push((await pupilBrief(db, id).catch(() => null))?.name ?? `#${id}`);
+      await sendToStudent(cfg, chatId, V.gameHintView(names), gamePageKeyboard());
       return;
     }
     // Raqam emas (masalan /start yoki oddiy so'z) — taklif ko'rsatiladi.

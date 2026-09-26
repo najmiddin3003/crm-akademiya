@@ -54,6 +54,14 @@ const PUBLIC = [
   // imzosi bot tokeni bilan tekshiriladi va o'quvchi bog'lanish
   // yozuvidan topiladi (lib/studentBot/webapp.ts). Marshrut faqat O'QIYDI.
   "/api/student-web/me",
+  // GAMIFIKATSIYA — O'QUVCHI SAHIFASI (TZ 5.8). Chaqiruvchi — o'quvchi yoki
+  // ota-onasi, CRM sessiyasi yo'q. Himoya: shaxsiy havoladagi tasodifiy token
+  // (43 belgi, faqat shu o'quvchi, faqat istak qo'shish) yoki Mini App'da
+  // Telegram `initData` imzosi (lib/gamification/meAuth.ts).
+  "/api/me/[token]",
+  "/api/me/[token]/wishlist/[itemId]",
+  "/api/me/tg",
+  "/api/me/tg/wishlist/[itemId]",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

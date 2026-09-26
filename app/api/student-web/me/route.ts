@@ -16,6 +16,7 @@ import {
 } from "@/lib/studentBot/data";
 import { dueFor } from "@/lib/studentBot/dues";
 import { authStudentWeb } from "@/lib/studentBot/webapp";
+import { studentCoinSummary } from "@/lib/gamification/studentPage";
 
 // O'QUVCHI WEB SAHIFASINING YAGONA MA'LUMOT MANBAI.
 //
@@ -68,6 +69,9 @@ export async function POST(req: Request) {
   ]);
   const tasks = await loadTasks(db, groups.map((g) => g.id));
   const due = await dueFor(db, pupil);
+  // Gamifikatsiya yoqilgan bo'lsa «Coin» — haqiqiy hamyon (tangalar), aks
+  // holda eskicha `pupils.coin`. Xato kabinetni yiqitmaydi.
+  const game = await studentCoinSummary(db, pupil.id).catch(() => null);
   const next = nextLesson(groups);
   const link = user.links.find((l) => l.pupilId === pupil.id);
 
@@ -82,7 +86,7 @@ export async function POST(req: Request) {
       category: pupil.category ?? "",
       birthDate: pupil.birthDate ?? "",
       phone: pupil.phone ?? "",
-      coin: pupil.coin ?? 0,
+      coin: game ? game.balance : pupil.coin ?? 0,
       // `balance` VA ARXIV BERILMAYDI. `pupils.balance` ni hech bir API
       // yangilamaydi (o'lik maydon) — u har doim 0 chiqib, o'quvchida
       // "to'lovim yo'qolibdi" degan savol tug'dirardi. Arxiv esa

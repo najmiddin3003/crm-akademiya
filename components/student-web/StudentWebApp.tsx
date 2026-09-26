@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { StudentMe } from "@/components/student-web/types";
 import { useT } from "@/components/shared/Language";
+import StudentGame from "@/components/gamification/student/StudentGame";
 
 // O'QUVCHI WEB SAHIFASI — botdagi tugma orqali Telegram ichida ochiladi.
 //
@@ -482,14 +483,24 @@ export default function StudentWebApp() {
         )}
 
         {tab === "coin" && (
-          <Card title={t("Coin")}>
-            <div className="py-4 text-center">
-              <div className="text-4xl font-extrabold text-primary">{fmtUZS(p.coin)}</div>
-              <p className="mt-2 text-[13px] text-muted-foreground">
-                {"Koinlar faollik va yutuqlar uchun beriladi. Sarflash tartibi haqida ustozingizdan so'rang."}
-              </p>
-            </div>
-          </Card>
+          // GAMIFIKATSIYA (TZ 5.8): modul yoqilgan bo'lsa — to'liq o'quvchi
+          // sahifasi (tangalar, daraja, istaklar, do'kon, reyting); o'chiq
+          // bo'lsa eskicha koin kartasi. Kirish — shu `initData` (app/api/me/tg).
+          <StudentGame
+            source={{ kind: "tg", initData: tgApp()?.initData ?? "" }}
+            pupilId={p.id}
+            embedded
+            fallback={
+              <Card title={t("Coin")}>
+                <div className="py-4 text-center">
+                  <div className="text-4xl font-extrabold text-primary">{fmtUZS(p.coin)}</div>
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    {"Koinlar faollik va yutuqlar uchun beriladi. Sarflash tartibi haqida ustozingizdan so'rang."}
+                  </p>
+                </div>
+              </Card>
+            }
+          />
         )}
 
         {tab === "manzil" && (

@@ -33,6 +33,9 @@ export const GAM = {
   budgets: "branch_gift_budgets",
   wishlist: "wishlist_items",
   discounts: "tuition_discounts",
+  /** O'quvchi sahifasi (TZ 5.8, 6.14, 6.16): shaxsiy havola va Telegram bog'lanishlari. */
+  accessTokens: "student_access_tokens",
+  tgLinks: "student_telegram_links",
 } as const;
 
 /**
@@ -78,6 +81,13 @@ async function createGamIndexes(db: Db): Promise<void> {
     db.collection(GAM.discounts).createIndex({ pupilId: 1, month: 1, status: 1 }),
     db.collection(GAM.discounts).createIndex({ status: 1, month: 1 }),
     db.collection(GAM.discounts).createIndex({ branchId: 1, month: 1 }),
+    // Havola: token bo'yicha qidiriladi (unikal); o'quvchida bitta FAOL token — `activeKey`.
+    db.collection(GAM.accessTokens).createIndex({ token: 1 }, { unique: true }),
+    db.collection(GAM.accessTokens).createIndex({ activeKey: 1 }, { unique: true, partialFilterExpression: { activeKey: text } }),
+    // Telegram: (o'quvchi, akkaunt) juftligi faol holatda bitta — `activeKey` (TZ 6.16).
+    db.collection(GAM.tgLinks).createIndex({ activeKey: 1 }, { unique: true, partialFilterExpression: { activeKey: text } }),
+    db.collection(GAM.tgLinks).createIndex({ telegramUserId: 1, revokedAt: 1 }),
+    db.collection(GAM.tgLinks).createIndex({ pupilId: 1, revokedAt: 1 }),
   ]);
 }
 

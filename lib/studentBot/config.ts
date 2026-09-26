@@ -68,6 +68,16 @@ export function studentWebUrl(): string {
   return `${base}/oquvchi`;
 }
 
+/**
+ * GAMIFIKATSIYA: o'quvchi sahifasining Mini App manzili (TZ 5.8 — botdagi
+ * «Mening sahifam» tugmasi). Kirish — `initData` imzosi, o'quvchi token
+ * yoki telefon orqali bog'lanishdan topiladi (app/api/me/tg).
+ */
+export function studentGameUrl(): string {
+  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || "https://www.tizimli24.uz";
+  return `${base}/me/tg`;
+}
+
 /** Bot yozishga tayyormi (token bor va o'chirilmagan). */
 export function isStudentBotReady(cfg: StudentBotConfig): boolean {
   return Boolean(cfg.enabled && cfg.token);
