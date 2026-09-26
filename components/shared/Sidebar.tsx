@@ -182,7 +182,7 @@ const IMPLEMENTED_ROUTES = new Set([
   "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
   "/settings-profile", "/settings-security",
   // Gamifikatsiya (TZ v1.4, 26.09.2026 dan bosqichma-bosqich)
-  "/gamification-lesson",
+  "/gamification-lesson", "/gamification-students",
   // Vaqtinchalik tugma (faqat admin)
   "/vaqtinchalik",
 ]);

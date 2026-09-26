@@ -84,6 +84,8 @@ export interface HolatChange {
   sinov?: LeadSinov;
   /** «Guruhga qo'shish» oynasidan — o'quvchi allaqachon guruhga yozilgan. */
   guruh?: LeadGuruh;
+  /** Lid aylangan o'quvchi — `orders.pupilId` (gamifikatsiya «Do'st olib keldi», TZ 4.12). */
+  pupilId?: number;
   radSabab?: string;
   /** Kim — xodim ismi (CRM) yoki Telegram foydalanuvchisi. */
   by: string;
@@ -136,6 +138,7 @@ export async function applyHolatChange(db: Db, filter: Filter<Document>, order: 
     set.guruh = c.guruh;
     set.group = c.guruh.nom;
     if (c.guruh.id > 0) set.groupId = c.guruh.id;
+    if (c.pupilId) set.pupilId = c.pupilId;
     set.status = "Qabul qilindi";
     if ((order.firstLesson || "").trim()) set.firstLessonStatus = "GURUHGA_QOSHILDI";
   }

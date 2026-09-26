@@ -109,5 +109,10 @@ export async function enrollOrderInGroup(
     .catch(() => null);
   if (!res?.ok) return { ok: false, error: res?.error || "Guruhga qo'shishda xatolik yuz berdi" };
 
+  // `pupil.id` ni chaqiruvchi lidga `pupilId` qilib yozadi (gamifikatsiya
+  // TZ 4.12 — «Do'st olib keldi» bonusida lidning to'lovi shu o'quvchi
+  // bo'yicha tekshiriladi). Bu yerda so'rov YUBORILMAYDI: fayl boshqa
+  // sahifalarga ham import qilinadi va ruxsatlar generatori undagi
+  // "/api/orders/…" yo'lini o'sha sahifalarga ham ochib qo'yardi.
   return { ok: true, pupil, created };
 }

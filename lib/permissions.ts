@@ -63,6 +63,7 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   // SERVERDA kesiladi (lib/gamification/*). Rollar oynasida yopilsa, TZ
   // bo'yicha huquqi bor ustoz yoki admin o'z ishini qila olmay qolardi.
   "/gamification-lesson",
+  "/gamification-students",
 ]);
 
 /**

@@ -80,6 +80,14 @@ export interface Order {
   dayPattern: string;
   taskStatus: string;
   referral: string;
+  /**
+   * «Referal bergan o'quvchi» ning id'si (26.09.2026 dan, gamifikatsiya TZ
+   * 4.12 — «Do'st olib keldi» bonusi). `referral` ismi ko'rinish uchun
+   * qoladi; ismdosh o'quvchilar bo'lsa id aniqlanmaydi (null).
+   */
+  referralPupilId?: number | null;
+  /** Lid qaysi o'quvchiga aylangani — «Guruhga qo'shish» da yoziladi (lib/enrollStudent.ts). */
+  pupilId?: number | null;
   lessonDay: string;
   lessonStartTime: string;
   /** Birinchi darsga yozilganlar sahifasidagi holat. Kiritilmagan bo'lishi mumkin. */
@@ -378,6 +386,8 @@ export interface NewOrderValues {
   studentName: string;
   phone: string;
   referral: string;
+  /** `referral` ismi YAGONA o'quvchiga tegishli bo'lsa — uning id'si (pupilIdByName). */
+  referralPupilId?: number | null;
   course: string;
   lessonDay: string;
   lessonStartTime: string;
@@ -403,6 +413,12 @@ export interface NewOrderValues {
   source?: string;
 }
 
+/** Referal o'quvchi id'si — faqat ism tanlangan va id butun son bo'lsa. */
+function refId(values: NewOrderValues): number | null {
+  const n = Number(values.referralPupilId);
+  return values.referral?.trim() && Number.isInteger(n) && n > 0 ? n : null;
+}
+
 function firstLessonFromValues(values: NewOrderValues): string {
   return values.firstLessonDate
     ? `${values.firstLessonDate.split("-").reverse().join(".")}${values.firstLessonTime ? ` | ${values.firstLessonTime}` : ""}`
@@ -423,6 +439,7 @@ export function buildOrderFromValues(nextId: number, values: NewOrderValues): Or
     name: values.studentName,
     phone: values.phone,
     referral: values.referral,
+    referralPupilId: refId(values),
     course: values.course,
     lessonDay: values.lessonDay,
     lessonStartTime: values.lessonStartTime,
@@ -462,6 +479,7 @@ export function applyOrderValues(order: Order, values: NewOrderValues): Order {
     name: values.studentName,
     phone: values.phone,
     referral: values.referral,
+    referralPupilId: refId(values),
     course: values.course,
     lessonDay: values.lessonDay,
     lessonStartTime: values.lessonStartTime,

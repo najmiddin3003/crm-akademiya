@@ -137,6 +137,8 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
       status: "Qabul qilindi",
       group: groupLabel,
       groupId: group.id,
+      // Lid qaysi o'quvchiga aylangani — gamifikatsiya «Do'st olib keldi» (TZ 4.12).
+      pupilId: res.pupil?.id ?? null,
     });
     if (!updated) {
       showError(t("Buyurtma holatini saqlashda xatolik yuz berdi"));

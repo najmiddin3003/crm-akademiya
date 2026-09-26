@@ -36,6 +36,11 @@ export interface Pupil {
   balance?: number;
   /** Gamifikatsiya koinlari. Yangi o'quvchida 0. */
   coin?: number;
+  /**
+   * Maktabdagi sinfi (1–11) — gamifikatsiyada toifa (kichiklar/kattalar)
+   * shundan aniqlanadi (TZ 4.21.4). Bo'sh — katta (masalan kattalar kursi).
+   */
+  grade?: number | null;
   /** O'quvchini olib borayotgan moderator. */
   moderator?: string;
   /** Qayerdan keldi (Instagram, Telegram, Tavsiya...). */
@@ -171,6 +176,18 @@ export interface NewPupilValues {
 /** "Ism Familiya" — ro'yxat/tanlov joylarida o'quvchining ko'rinadigan nomi. */
 export function pupilFullName(p: Pick<Pupil, "firstName" | "lastName">): string {
   return `${p.firstName} ${p.lastName}`.trim();
+}
+
+/**
+ * To'liq ism bo'yicha o'quvchi id'si — faqat ism YAGONA bo'lsa (ismdoshlar
+ * bo'lsa null: taxmin qilinmaydi). Lid formasidagi «Referal bergan
+ * o'quvchi» tanlovi ism bilan ishlaydi, id shu yerda aniqlanadi.
+ */
+export function pupilIdByName(pupils: Pick<Pupil, "id" | "firstName" | "lastName">[], name: string): number | null {
+  const key = name.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!key) return null;
+  const hits = pupils.filter((p) => pupilFullName(p).replace(/\s+/g, " ").toLowerCase() === key);
+  return hits.length === 1 ? hits[0].id : null;
 }
 
 export function buildPupilFromValues(nextId: number, values: NewPupilValues): Pupil {

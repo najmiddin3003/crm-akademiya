@@ -45,6 +45,8 @@
     text-align: left; margin-right: auto;
   }
   .gm-table td[data-l=""]::before { display: none; }
+  /* Amali yo'q qatorning bo'sh katagi kartochkada bo'sh joy qoldirmasin. */
+  .gm-table td:empty { display: none; }
   .gm-table td.gm-lead { order: -1; display: block; text-align: left; border-bottom: 1px solid hsl(var(--border)); padding-bottom: 8px; }
   .gm-table td.gm-lead::before { display: none; }
   .gm-scroll-card { padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }

@@ -16,6 +16,7 @@ import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { ORDER_STAGES, type OrderStageKey } from "@/lib/ordersData";
 import { useTeachers } from "@/hooks/useTeachers";
 import { useT } from "@/components/shared/Language";
+import { pupilIdByName } from "@/lib/pupilsData";
 
 // Full-page "Buyurtma qo'shish" flow reached from the Kanban toolbar's
 // "Qo'shish" button (akademiya.edutizim.uz/orders/add reference) — a
@@ -189,6 +190,7 @@ export default function AddOrderPage() {
       studentName: `${firstName} ${lastName}`.trim(),
       phone: phone.trim(),
       referral,
+      referralPupilId: pupilIdByName(pupils, referral),
       course,
       lessonDay: "",
       lessonStartTime: "",

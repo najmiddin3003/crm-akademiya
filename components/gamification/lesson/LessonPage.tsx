@@ -11,6 +11,7 @@ import type { GamRole } from "@/lib/gamification/types";
 import { gamApi } from "../api";
 import { btnSm, cardCls, Chip, fmtDate, signed, Signed, useGamToast } from "../ui";
 import ReasonModal, { type ReasonDone, type ReasonOption, type ReasonTarget } from "./ReasonModal";
+import ProfileModal from "../profile/ProfileModal";
 
 // Gamifikatsiya → Tanga berish — DARS JURNALI (TZ 5.1; prototipdagi
 // «Tanga berish»). Bugungi dars: davomat (Davomat bo'limidan avtomatik),
@@ -102,6 +103,7 @@ export default function LessonPage() {
   const [groupId, setGroupId] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [reasonFor, setReasonFor] = useState<ReasonTarget | null>(null);
+  const [profileOf, setProfileOf] = useState<number | null>(null);
 
   // setState faqat promise callback'ida (react-hooks/set-state-in-effect).
   const load = useCallback((gid: number | null): Promise<void> => {
@@ -483,7 +485,10 @@ export default function LessonPage() {
                   {view.rows.map((r) => (
                     <tr key={r.pupilId}>
                       <td data-l="" className="gm-lead">
-                        <div className="font-semibold">{r.name}</div>
+                        {/* Ism bosilsa — o'quvchi profili (TZ 5.1). */}
+                        <button type="button" className="text-left font-semibold text-primary hover:underline" onClick={() => setProfileOf(r.pupilId)}>
+                          {r.name}
+                        </button>
                         <div className="mt-0.5 text-[12px] text-muted-foreground">
                           🔥 {t("{n} dars ketma-ket", { n: r.streak.run })} · <span className="gm-coin">{r.balance}</span>
                         </div>
@@ -553,6 +558,9 @@ export default function LessonPage() {
         </>
       )}
 
+      {profileOf !== null && (
+        <ProfileModal pupilId={profileOf} onClose={() => setProfileOf(null)} toast={toast} onChanged={() => void reload()} />
+      )}
       {reasonFor && (
         <ReasonModal
           target={reasonFor}

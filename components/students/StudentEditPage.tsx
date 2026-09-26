@@ -47,6 +47,7 @@ import TablarniSozlashModal from "@/components/students/TablarniSozlashModal";
 import TextField from "@/components/students/fields/TextField";
 import PhoneField from "@/components/students/fields/PhoneField";
 import SelectField from "@/components/students/fields/SelectField";
+import Select from "@/components/ui/Select";
 import DateField from "@/components/students/fields/DateField";
 import { invalidateStudents } from "@/hooks/useStudents";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
@@ -248,6 +249,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
       phone: p.phone ?? "", email: p.email ?? "", tags: p.tags ?? "",
       birthDate: p.birthDate ?? "", lessonTime: p.lessonTime ?? "",
       category: p.category ?? "", paymentDate: p.paymentDate ?? "",
+      grade: p.grade ? String(p.grade) : "",
       language: p.language ?? "", survey: p.survey ?? "",
       targetUniversity: p.targetUniversity ?? "",
       fatherName: p.fatherName ?? "", fatherPhone: p.fatherPhone ?? "", fatherWork: p.fatherWork ?? "",
@@ -412,7 +414,7 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
           {activeTab === "guruh" && <GuruhTabContent pupilId={pupil?.id} />}
           {activeTab === "qarzdorlik" && <QarzdorlikTabContent pupilId={pupil?.id} initialLimit={pupil?.debtLimit} />}
           {activeTab === "vazifa" && <VazifaTabContent pupilId={pupil?.id} />}
-          {activeTab === "coin" && <CoinTabContent />}
+          {activeTab === "coin" && <CoinTabContent pupilId={pupil?.id ?? order.id} />}
           {activeTab === "blok" && <BlokTabContent />}
           {activeTab === "tranzaksiya" && <TranzaksiyaTabContent entries={entries} legacyEntries={legacyEntries} loading={entriesLoading} />}
           {activeTab === "buyurtma" && <BuyurtmaTabContent />}
@@ -445,9 +447,19 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
               <DateField label={t("Tug'ilgan sanasi")} value={form.birthDate ?? ""} onChange={set("birthDate")} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <SelectField label={t("Dars vaqti")} placeholder={t("Dars shaklini tanlang")} options={LESSON_TIMES} value={form.lessonTime ?? ""} onChange={set("lessonTime")} />
               <SelectField label={t("O'quvchi kategoriyasi")} options={categoryNames} value={form.category ?? ""} onChange={set("category")} loading={categoriesLoading} />
+              {/* Sinf — gamifikatsiyada toifa (kichiklar/kattalar) shundan (TZ 4.21.4). */}
+              <Select
+                label={t("Sinfi")}
+                size="lg"
+                value={form.grade ?? ""}
+                onChange={set("grade")}
+                options={Array.from({ length: 11 }, (_, i) => ({ value: String(i + 1), label: t("{n}-sinf", { n: i + 1 }) }))}
+                placeholder={t("Ko'rsatilmagan")}
+                clearable
+              />
               <DateField label={t("O'quvchining pul to'lash sanasi")} value={form.paymentDate ?? ""} onChange={set("paymentDate")} />
             </div>
 

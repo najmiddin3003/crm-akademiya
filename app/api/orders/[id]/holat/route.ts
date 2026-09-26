@@ -84,6 +84,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       sinov: sinov ?? undefined,
       guruh: guruh ?? undefined,
       radSabab: str(body.radSabab, 200) || undefined,
+      pupilId: Number.isInteger(Number(body.pupilId)) && Number(body.pupilId) > 0 ? Number(body.pupilId) : undefined,
       by,
       via: "crm",
       assignModerator: author || undefined,

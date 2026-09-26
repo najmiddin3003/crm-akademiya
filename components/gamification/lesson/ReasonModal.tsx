@@ -31,10 +31,16 @@ export interface ReasonTarget {
   deducted: number;
   /** Bugun shu o'quvchida ishlatilgan sabablar: reasonId → marta. */
   reasonUse: Record<number, number>;
-  groupId: number;
+  /**
+   * Dars sahifasidan — bitta guruh (bugungi dars). Profildan (`groups`
+   * berilsa) — guruh tanlanadi: o'quvchining guruhlaridan biri yoki
+   * «Guruhsiz — reytingga kirmaydi» (TZ 4.9.2).
+   */
+  groupId: number | null;
   groupLabel: string;
   /** Bugungi darsda yo'q — faqat beriladigan sabablar (TZ 4.5.7). */
   absent: boolean;
+  groups?: { id: number; label: string; absentToday: boolean }[];
 }
 
 export interface ReasonDone {
@@ -68,12 +74,15 @@ export default function ReasonModal({
 }) {
   const { t } = useT();
   const modal = useModalClose(onClose);
-  const list = useMemo(() => (target.absent ? reasons.filter((r) => r.direction > 0) : reasons), [reasons, target.absent]);
+  const fromProfile = !!target.groups;
+  // Profildan — ro'yxat to'liq; darsda yo'qlik tanlangan guruhga qarab tekshiriladi.
+  const list = useMemo(() => (!fromProfile && target.absent ? reasons.filter((r) => r.direction > 0) : reasons), [reasons, target.absent, fromProfile]);
+  const [groupSel, setGroupSel] = useState(String(target.groups?.[0]?.id ?? ""));
   const [reasonId, setReasonId] = useState(String(list[0]?.id ?? ""));
   const r = list.find((x) => String(x.id) === reasonId) ?? list[0];
   const [amount, setAmount] = useState(String(r?.amountMin ?? ""));
   const [note, setNote] = useState("");
-  const [errors, setErrors] = useState<{ amount?: string; note?: string; server?: string }>({});
+  const [errors, setErrors] = useState<{ amount?: string; note?: string; group?: string; server?: string }>({});
   const [busy, setBusy] = useState(false);
 
   if (!r) return null;
@@ -108,12 +117,20 @@ export default function ReasonModal({
     const v = r.amountMin === r.amountMax ? r.amountMin : intIn(amount, r.amountMin, Math.max(r.amountMin, hi));
     if (v === null) errs.amount = t("Miqdor {min}–{max} oralig'ida butun son bo'lsin", { min: r.amountMin, max: Math.max(r.amountMin, hi) });
     if (r.noteRequired && !note.trim()) errs.note = t("Izoh yozish majburiy");
+    const chosen = fromProfile ? target.groups!.find((g) => String(g.id) === groupSel) ?? null : null;
+    if (fromProfile && r.direction < 0 && chosen?.absentToday) {
+      errs.group = t("{name} bugun «{group}» darsida yo'q — bu guruh bo'yicha tanga ayirilmaydi", { name: target.name, group: chosen.label });
+    }
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setBusy(true);
+    const groupId = fromProfile ? (chosen?.id ?? null) : target.groupId;
     const res = await gamApi<Omit<ReasonDone, "reasonName" | "direction"> & { reasonName: string; direction: 1 | -1 }>(
       "/api/gamification/transactions",
-      { method: "POST", body: { pupilId: target.pupilId, groupId: target.groupId, reasonId: r.id, amount: v, note: note.trim(), from: "lesson" } },
+      {
+        method: "POST",
+        body: { pupilId: target.pupilId, groupId, reasonId: r.id, amount: v, note: note.trim(), from: fromProfile ? "profile" : "lesson" },
+      },
     );
     setBusy(false);
     if (!res.ok) {
@@ -129,7 +146,8 @@ export default function ReasonModal({
       <div className="gm-page p-5">
         <h2 className="text-[17px] font-semibold">{t("Sabab bo'yicha tanga")}</h2>
         <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-          {target.name} · {target.groupLabel} · {t("bugungi dars")} · {t("balans")}: <span className="gm-coin">{target.balance}</span>
+          {target.name} · {fromProfile ? t("o'quvchi profili") : `${target.groupLabel} · ${t("bugungi dars")}`} · {t("balans")}:{" "}
+          <span className="gm-coin">{target.balance}</span>
         </p>
         {target.absent && (
           <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12.5px]">
@@ -151,6 +169,24 @@ export default function ReasonModal({
               size="md"
             />
           </div>
+          {fromProfile && (
+            <div>
+              <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">{t("Qaysi guruh reytingiga yoziladi")}</span>
+              <Select
+                value={groupSel}
+                onChange={(v) => {
+                  setGroupSel(v);
+                  setErrors((x) => ({ ...x, group: undefined, server: undefined }));
+                }}
+                options={[
+                  ...target.groups!.map((g) => ({ value: String(g.id), label: g.label })),
+                  { value: "", label: t("Guruhsiz — reytingga kirmaydi") },
+                ]}
+                size="md"
+              />
+              <FieldError text={errors.group ?? ""} />
+            </div>
+          )}
           <div>
             {r.amountMin === r.amountMax ? (
               <>

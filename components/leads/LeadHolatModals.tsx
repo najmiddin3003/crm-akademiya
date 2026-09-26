@@ -25,7 +25,14 @@ import type { LeadFmt } from "./leadsCommon";
 // qo'shishda AVVAL o'quvchi haqiqatan guruhga yoziladi (lib/enrollStudent.ts
 // — o'quvchi yo'q bo'lsa lid ma'lumotidan yaratiladi), keyin holat.
 
-export type HolatSetBody = { to: LeadHolat; sinov?: LeadSinov; guruh?: LeadGuruh; radSabab?: string };
+export type HolatSetBody = {
+  to: LeadHolat;
+  sinov?: LeadSinov;
+  guruh?: LeadGuruh;
+  radSabab?: string;
+  /** «Guruhga qo'shish» — lid aylangan o'quvchi (gamifikatsiya TZ 4.12). */
+  pupilId?: number;
+};
 
 /** Holat so'rovi — javobda yangilangan lid. */
 export async function postHolat(orderId: number, body: HolatSetBody | { action: "undo" }) {
@@ -176,6 +183,7 @@ export function GuruhModal({ order, branchName, nowMs, fmt, onClose, onDone, onC
     const r = await postHolat(order.id, {
       to: "guruh",
       guruh: { id: chosen.id, nom: String(chosen.name || chosen.id), kun: chosen.day || "", vaqt: chosen.time || "", boshlash },
+      pupilId: enrolled.pupil?.id,
     });
     setBusy(false);
     if (!r.ok) {

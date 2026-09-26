@@ -102,7 +102,7 @@ Buyurtmachi paketi (`Gamifikatsiya_TZ.md` + prototip + namuna JSON) keldi — en
 spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
 `app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
 Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat —
-qilindi; 3) o'quvchilar/profil/storno; 4) reyting, musobaqa, oy yakuni, nishonlar;
+qilindi; 3) o'quvchilar/profil/storno — qilindi; 4) reyting, musobaqa, oy yakuni, nishonlar;
 5) do'kon + chegirma; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
 Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
 
@@ -114,6 +114,16 @@ route'idan chaqiriladi). Modul YOQILGANDA Davomat bo'limiga TZ 7 cheklovi
 tushadi: ustoz — o'z guruhi, faqat dars kuni; filial admini — o'z filiali,
 e'tiroz muddati ichida; direktor — istalgan sana (gamifikatsiya boshlangan
 kundan oldingi darslarga tegmaydi).
+
+3-bosqich: Gamifikatsiya → «O'quvchilar» (`/gamification-students`) va o'quvchi
+profili oynasi (ro'yxatdan, «Tanga berish» dagi ismdan va o'quvchi kartasidagi
+«Coin tarixi» → «Gamifikatsiya profili» dan): daraja, seriya, guruhdagi o'rni,
+filtrli tanga tarixi, storno (oldindan ko'rish, direktor sarflangan tangani
+kechiradi), «± Sabab bo'yicha tanga» (guruh yoki «Guruhsiz»), «Do'st olib
+keldi». O'quvchi kartasidagi «Coin tarixi» endi haqiqiy (avvalgi/yangi balans
+bilan). O'quvchiga **«Sinfi»** maydoni (toifa: kichiklar/kattalar). Lidlarda
+`referralPupilId` (tavsiya qilgan o'quvchi id'si) va `pupilId` (lid aylangan
+o'quvchi — «Guruhga qo'shish» da yoziladi).
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 

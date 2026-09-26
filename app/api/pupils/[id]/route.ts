@@ -94,6 +94,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (Number.isFinite(Number(body.debtLimit))) set.debtLimit = Number(body.debtLimit);
+  // Sinf (gamifikatsiya toifasi, TZ 4.21.4): bo'sh — null (katta), aks holda 1–11.
+  if ("grade" in body) {
+    const raw = String(body.grade ?? "").trim();
+    if (!raw) set.grade = null;
+    else if (/^\d+$/.test(raw) && Number(raw) >= 1 && Number(raw) <= 11) set.grade = Number(raw);
+    else return NextResponse.json({ ok: false, error: "Sinf 1–11 oralig'ida butun son bo'lsin" }, { status: 400 });
+  }
   if (Array.isArray(body.addresses)) {
     // Faqat kutilgan shakl saqlanadi — klient yuborgan boshqa maydonlar tushib qoladi.
     set.addresses = (body.addresses as Record<string, unknown>[]).map((x, i) => ({

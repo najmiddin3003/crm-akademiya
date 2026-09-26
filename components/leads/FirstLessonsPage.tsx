@@ -261,6 +261,8 @@ export default function FirstLessonsPage() {
       status: "Qabul qilindi",
       group: label,
       groupId: group.id,
+      // Lid qaysi o'quvchiga aylangani — gamifikatsiya «Do'st olib keldi» (TZ 4.12).
+      pupilId: res.pupil?.id ?? null,
     });
     setGroupPickerFor(null);
     if (ok) showSuccess(t("O'quvchi \"{label}\" guruhiga qo'shildi", { label }));

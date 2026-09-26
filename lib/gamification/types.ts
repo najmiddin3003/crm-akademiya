@@ -256,6 +256,14 @@ export type TxType = SystemReasonCode | "reason" | "shop";
 /** Manbadan (Davomat, Sarhisob) hisoblanadi — qo'lda bekor qilinmaydi (TZ 2, 4.11.3). */
 export const AUTO_TX_TYPES: readonly TxType[] = ["attendance", "absence", "streak", "exam_result", "growth"];
 
+/**
+ * Tarixdagi «Turi» (prototipdagi label()): qo'shimcha sabab — yozuvdagi
+ * sabab nomi nusxasi, tizim yozuvlari — qisqa tur nomi.
+ */
+export function txLabel(t: { type: TxType; reasonName?: string | null }): string {
+  return t.type === "reason" ? t.reasonName || "Sabab" : TX_TYPE_LABELS[t.type] ?? t.type;
+}
+
 export const TX_TYPE_LABELS: Record<TxType, string> = {
   attendance: "Davomat",
   absence: "Davomat",

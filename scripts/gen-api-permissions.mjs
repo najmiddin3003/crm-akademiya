@@ -149,7 +149,7 @@ const MANUAL = {
 // — BITTA ATAYLABGI ISTISNO bilan: "/home" pastdagi INTERNALLY_GATED da.
 const ALWAYS_ALLOWED = new Set([
   "/settings-profile", "/settings-security", "/settings-devices", "/birthdays", "/dashboard",
-  "/gamification-lesson",
+  "/gamification-lesson", "/gamification-students",
 ]);
 
 /**

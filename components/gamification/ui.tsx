@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useLang, useT } from "@/components/shared/Language";
 
 // Gamifikatsiya sahifalarining umumiy bo'laklari: tugma/maydon klasslari,
@@ -72,10 +73,14 @@ interface GamToastItem {
 
 const UNDO_MS = 8000;
 const PLAIN_MS = 4000;
+const noop = () => () => {};
+/** Brauzerda true (SSR da false) — portal faqat mijozda (ui/Modal dagi usul). */
+const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 
 export function useGamToast(): [ReactNode, (text: string, opts?: { error?: boolean; undo?: () => Promise<void> | void }) => void] {
   const { t } = useT();
   const [lang] = useLang();
+  const mounted = useMounted();
   // «Ortga» lug'atda "Back" (navigatsiya) — bu yerda ma'nosi "bekor qilish".
   const undoLabel = lang === "en" ? "Undo" : t("Ortga");
   const [items, setItems] = useState<GamToastItem[]>([]);
@@ -104,7 +109,9 @@ export function useGamToast(): [ReactNode, (text: string, opts?: { error?: boole
     [dismiss],
   );
 
-  const node = (
+  // `body` ga portal: xabar profil oynasi (ui/Modal, z 100) USTIDA ham
+  // ko'rinsin va oyna panelidagi transform uni siljitib yubormasin.
+  const node = !mounted ? null : createPortal(
     <div
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-4 z-[300] flex flex-col items-center gap-2 px-4"
@@ -142,7 +149,8 @@ export function useGamToast(): [ReactNode, (text: string, opts?: { error?: boole
           </button>
         </div>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
   return [node, show];
 }

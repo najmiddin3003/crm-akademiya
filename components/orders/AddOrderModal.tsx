@@ -14,6 +14,7 @@ import PanelTimeField, { normalizeTime } from "@/components/orders/PanelTimeFiel
 import AddStudentModal from "@/components/orders/AddStudentModal";
 import DateField from "@/components/ui/DateField";
 import { useT } from "@/components/shared/Language";
+import { pupilIdByName } from "@/lib/pupilsData";
 
 // Redesigned (2026-07-16) to match the current production "Yangi buyurtma"
 // side panel (akademiya.edutizim.uz), which has moved on from the
@@ -144,6 +145,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
         studentName,
         phone: phoneFor(studentName),
         referral,
+        referralPupilId: pupilIdByName(pupils, referral),
         course,
         lessonDay,
         lessonStartTime,
