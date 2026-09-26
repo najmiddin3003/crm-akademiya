@@ -16,8 +16,10 @@ import { ROOM_HOLDING_STATUSES } from "@/lib/groupRules";
 //      bitta xona deb hisoblardi. Boshqa filialda esa o'sha nom — boshqa
 //      xona ("201 - xona" ikkala binoda ham bor).
 //   2. Guruhlar dars o'tayotgan xona boshqa filialga ko'chirilmasin — eski
-//      filialdagi guruhlar ro'yxatda yo'q xonaga bog'lanib qolib, dars
-//      jadvalidan jimgina tushib qolardi (hooks/useRooms.ts izohi).
+//      filialdagi guruhlar o'z binosida yo'q xonaga bog'lanib qolardi:
+//      xonalar hisoboti ularni "xonasiz" deb sanaydi (/reports-rooms),
+//      yangi filial esa o'sha vaqtga boshqa guruh qo'ya olardi — bandlik
+//      faqat filial ichida tekshiriladi va eski guruhlarni ko'rmaydi.
 
 type Refusal = { ok: false; status: number; error: string };
 
