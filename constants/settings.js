@@ -96,9 +96,11 @@ export const SETTINGS_SECTIONS = [
     key: "gamification",
     href: "/settings-gamification",
     label: "Gamifikatsiya",
+    // TZ v1.4 (5.7): Umumiy · Tanga sabablari · Sovg'alar · Filiallar va
+    // byudjet. Oxirgi ikkitasi do'kon bosqichida qo'shiladi.
     tabs: [
-      { key: "general", label: "Funksionallik" },
-      { key: "auto-coin", label: "Auto coin" },
+      { key: "general", label: "Umumiy" },
+      { key: "reasons", label: "Tanga sabablari" },
     ],
   },
 ];

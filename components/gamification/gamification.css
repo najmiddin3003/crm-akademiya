@@ -1,0 +1,53 @@
+/* GAMIFIKATSIYA — umumiy uslublar (prefiks `gm-`).
+ *
+ * TZ 5.0: telefonda (< 860 px) jadvallar kartochkaga aylanadi va sahifa
+ * gorizontal aylantirilmaydi; bosiladigan elementlar kamida 40 px, kiritish
+ * maydonlarida shrift 16 px (iOS kattalashtirmasligi uchun). Katakdagi
+ * yorliq `data-l` atributidan olinadi; `gm-lead` — kartochka sarlavhasi.
+ */
+
+.gm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gm-table th {
+  text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: hsl(var(--muted-foreground)); padding: 10px 12px; border-bottom: 1px solid hsl(var(--border)); white-space: nowrap;
+}
+.gm-table td { padding: 10px 12px; border-bottom: 1px solid hsl(var(--border) / .6); vertical-align: middle; }
+.gm-table tr:last-child td { border-bottom: 0; }
+.gm-table tr.gm-off td:not(.gm-keep) { opacity: .45; }
+.gm-table tr.gm-cx td { background: hsl(var(--secondary) / .35); }
+.gm-table tr.gm-click { cursor: pointer; }
+.gm-table tr.gm-click:hover td { background: hsl(var(--secondary) / .4); }
+
+.gm-coin { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gm-coin::before {
+  content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 9999px; margin-right: 6px;
+  vertical-align: -1px; background: #fed700; border: 2px solid #e6b800;
+}
+.gm-pos { color: #12a150; font-weight: 700; }
+.gm-neg { color: #e0373f; font-weight: 700; }
+.dark .gm-pos { color: #3ecf7d; }
+.dark .gm-neg { color: #ff6b72; }
+.gm-strike { text-decoration: line-through; opacity: .55; }
+
+@media (max-width: 859px) {
+  .gm-table thead { display: none; }
+  .gm-table, .gm-table tbody { display: block; width: 100%; }
+  .gm-table tr {
+    display: flex; flex-direction: column; border: 1px solid hsl(var(--border)); border-radius: 12px;
+    padding: 6px 12px; margin-bottom: 10px; background: hsl(var(--card));
+  }
+  .gm-table td {
+    display: flex; justify-content: flex-end; align-items: center; gap: 8px 12px; border: 0; padding: 7px 0;
+    text-align: right; flex-wrap: wrap; min-height: 40px;
+  }
+  .gm-table td::before {
+    content: attr(data-l); font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground));
+    text-align: left; margin-right: auto;
+  }
+  .gm-table td[data-l=""]::before { display: none; }
+  .gm-table td.gm-lead { order: -1; display: block; text-align: left; border-bottom: 1px solid hsl(var(--border)); padding-bottom: 8px; }
+  .gm-table td.gm-lead::before { display: none; }
+  .gm-scroll-card { padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+  .gm-tap { min-height: 40px; min-width: 40px; }
+  .gm-page input:not([type="checkbox"]):not([type="radio"]), .gm-page textarea { font-size: 16px; min-height: 40px; }
+}

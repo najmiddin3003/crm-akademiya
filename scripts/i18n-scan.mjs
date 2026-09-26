@@ -69,6 +69,14 @@ const CONSTANT_SOURCES = [
   { file: "lib/taskInbox.ts", re: /\b(?:bajarildi|bajarilmadi):\s*"([^"]+)"/g },
   { file: "lib/tasksData.ts", re: /\b(?:kritik|yuqori|orta|past):\s*\{\s*label:\s*"([^"]+)"/g },
   { file: "lib/selectPlaceholder.ts", re: /(?:LOADING_TEXT =|ready =)\s*"([^"]+)"/g },
+  // Gamifikatsiya: tizim sabablari nomi va «Kim beradi», daraja/rol/yozuv turi yorliqlari — `t(r.name)`, `t(sys.who)`.
+  { file: "lib/gamification/types.ts", re: /\b(?:name|who):\s*"([^"]+)"/g },
+  // Sozlama maydonlari nomlari — server xatosida «{label}» bo'lib keladi va teskari moslashda o'giriladi.
+  { file: "lib/gamification/rules.ts", re: /^\s+[A-Za-z0-9]+:\s*"([^"]+)",\s*$/gm },
+  {
+    file: "lib/gamification/types.ts",
+    re: /\b(?:director|branch_admin|teacher|both|attendance|absence|homework_done|homework_missed|activity|exam_result|growth|streak|referral|reason|shop):\s*"([^"]+)"/g,
+  },
 ];
 for (const src of CONSTANT_SOURCES) {
   if (src.skip) continue;
@@ -100,8 +108,10 @@ for (const src of CONSTANT_SOURCES) {
 const SERVER_DIRS = ["app/api", "lib"];
 const SERVER_SKIP = /[\\/](staffBot|studentBot|sync|telegram|eskiz|paymentSms|exportTable|receipt|referenceCache|fetchJson)/i;
 const SERVER_FIELDS = "error|reason|message|msg|hint|title|text|detail|label";
+// `fail(403, "…")`, `new GamError(422, "…")` — xabar oldida HTTP kodi bo'lishi
+// mumkin (lib/gamification/http.ts, wallet.ts); u o'tkazib yuboriladi.
 const serverRe = new RegExp(
-  `\\b(?:(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|bad|throw new Error|throw new ApiError)\\()\\s*(?:"((?:[^"\\\\\\n]|\\\\.)+)"|\`((?:[^\`\\\\]|\\\\.)+?)\`)`,
+  `\\b(?:(?:${SERVER_FIELDS})\\s*:|\\b(?:fail|bad|throw new Error|throw new ApiError|new GamError|new GamBusyError)\\((?:\\s*\\d+\\s*,)?)\\s*(?:"((?:[^"\\\\\\n]|\\\\.)+)"|\`((?:[^\`\\\\]|\\\\.)+?)\`)`,
   "g",
 );
 /** `${expr}` → `{name}` — nom ifodadagi oxirgi identifikator (kodmod 6-o'tishi bilan bir xil). */

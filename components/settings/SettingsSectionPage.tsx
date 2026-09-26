@@ -13,7 +13,8 @@ import FieldSettingsTab from "./FieldSettingsTab";
 import AutoSmsTab from "./AutoSmsTab";
 import BotNotesTab from "./BotNotesTab";
 import LeadSettingsTab from "./LeadSettingsTab";
-import ModuleNotEnabledTab from "./ModuleNotEnabledTab";
+import GamGeneralTab from "@/components/gamification/settings/GeneralTab";
+import GamReasonsTab from "@/components/gamification/settings/ReasonsTab";
 import { loadMonthlyPercentStaffCounts } from "./monthlyPercentStaff";
 import SettingsNote from "./SettingsNote";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -352,12 +353,10 @@ const BUILT: Record<string, () => ReactNode> = {
     />
   ),
 
-  // ── Gamifikatsiya ────────────────────────────────────────────────────
-  // Modul sotib olinmagani uchun referensda ikkala tab ham bo'sh —
-  // ModuleNotEnabledTab.tsx dagi izohga qarang.
-  "gamification:general": () => <ModuleNotEnabledTab title="Funksionallik" />,
+  // ── Gamifikatsiya (TZ v1.4, components/gamification/settings) ─────────
+  "gamification:general": () => <GamGeneralTab />,
 
-  "gamification:auto-coin": () => <ModuleNotEnabledTab title="Auto coin" />,
+  "gamification:reasons": () => <GamReasonsTab />,
 };
 
 function NotBuilt({ label }: { label: string }) {

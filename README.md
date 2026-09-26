@@ -96,10 +96,15 @@ Batafsil pastda, "Sozlamalar bo'limi — holat va qolgan ishlar" bo'limida. Qisq
 **Obuna**, **Ommaviy oferta** (Umumiy sozlamalar) + **So'raladigan bo'limlar**, **Avto sms**,
 **Bot eslatmalari** (Sotuv va marketing).
 
-## 4. Qurilmaydi — Gamifikatsiya
+## 4. Gamifikatsiya — TZ v1.4 bo'yicha quriladi (2026-09-26 dan)
 
-Sababi pastda, "Qurilmaydigan" bo'limida — pullik qo'shimcha modul, referens akkauntda
-yoqilmagan.
+Buyurtmachi paketi (`Gamifikatsiya_TZ.md` + prototip + namuna JSON) keldi — endi
+spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
+`app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
+Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat;
+3) o'quvchilar/profil/storno; 4) reyting, musobaqa, oy yakuni, nishonlar;
+5) do'kon + chegirma; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
+Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 
@@ -299,7 +304,7 @@ ustunlar, filtrlar, tugmalar va jamlanma ko'rsatkichlar tekshirildi.
 
 | Bo'lim | Sahifa | Natija |
 |---|---|---|
-| Sozlamalar | 31 tab | 23 ta qurilgan edi → **6 tasi qurildi** (29/31). Qolgan 2 tasi — Gamifikatsiya, qurib bo'lmaydi |
+| Sozlamalar | 31 tab | 23 ta qurilgan edi → **6 tasi qurildi** (29/31). Qolgan 2 tasi — Gamifikatsiya (o'sha kuni spesifikatsiyasi yo'q edi; 2026-09-26 dan TZ v1.4 bo'yicha qurilmoqda) |
 | Hisobotlar | 12 | 7 tasi to'liq mos. Sotuv voronkasida **lid holati filtri qo'shildi** (`Hammasi`/`Hozir ishlanayotgan lidlar`/`Yopilganlar`) |
 | Moliya | 14 | Hammasi mos. `Voucher` → **`Vaucher`** |
 | Nazorat | 9 | Hammasi mos. `Filter` → **`Filtr`** |
@@ -400,7 +405,7 @@ Barcha bo'lim tekshirib chiqildi. Qolgan ishlar:
 
 1. Referensda ustunlari yashirin sahifalarda ustunlarni yoqib, qayta solishtirish
    (ro'yxat yuqorida)
-2. `Gamifikatsiya` moduli referensda sotib olinmagan — yoqilsa, 2 ta tab qurilishi mumkin
+2. ~~`Gamifikatsiya` moduli referensda sotib olinmagan~~ — 2026-09-26 dan buyurtmachi TZ v1.4 bo'yicha qurilmoqda (4-bo'lim)
 
 ### ✅ Qurilmagan 37 ta havola — hal qilindi (2026-08-16)
 
@@ -518,7 +523,7 @@ Optimizator ikkalasini "ortiqcha" deb tashlaydi, qoida bo'sh qolib butunlay o'ch
 Referens marshruti: `/settings/<bo'lim>?status=<tab>`
 Bu loyihada: `/settings-<bo'lim>?tab=<tab>` (`constants/settings.js` — 8 bo'lim, 32 tab).
 
-**Hozir: 31 tabdan 29 tasi qurilgan** (qolgan 2 tasi — Gamifikatsiya, pastga qarang). Kalitlar mosligini tekshirish:
+**Hozir: 31 tabning hammasi qurilgan** (Gamifikatsiya tablari — «Umumiy» va «Tanga sabablari» — 2026-09-26 da TZ v1.4 bo'yicha; «Sovg'alar» va «Filiallar va byudjet» 5-bosqichda qo'shiladi). Kalitlar mosligini tekshirish:
 
 ```bash
 node -e "const f=require('fs'),p=f.readFileSync('components/settings/SettingsSectionPage.tsx','utf8');console.log([...p.matchAll(/^  \"([^\"]+)\":/gm)].length+' ta tab ro\\'yxatda')"
@@ -604,12 +609,11 @@ ikki shakldan biri ishlatiladi.
 
 ## Qurilmaydigan
 
-**Gamifikatsiya** (`gamification:general`, `gamification:auto-coin`) — referensda ikkala tab ham butunlay bo'sh render bo'ladi. Obuna sahifasida «Gamifikatsiya to'lovi» alohida qator sifatida turibdi: bu **pullik qo'shimcha modul** va referens akkauntda yoqilmagan. Yoqilmaguncha xaritalab ham, qurib ham bo'lmaydi.
-
-Bu ikki tab endi umumiy «hali qurilmagan» belgisi o'rniga aynan shu sababni
-ko'rsatadi (`components/settings/ModuleNotEnabledTab.tsx`) — «maydonlari
-referensdan ko'chirilishi kerak» degani noto'g'ri edi, ko'chiriladigan maydon
-umuman yo'q.
+**Gamifikatsiya** — ENDI QURILMOQDA (2026-09-26, yuqoridagi 4-bo'lim): buyurtmachi
+TZ v1.4 va prototip berdi. Quyidagi tarix — nega shu kungacha qurilmagani:
+referensda `gamification:general` / `gamification:auto-coin` tablari bo'sh edi
+(pullik modul, referens akkauntda yoqilmagan), `ModuleNotEnabledTab` shu sababni
+ko'rsatardi (o'chirildi).
 
 **Statik klondagi gamifikatsiya sahifasi spesifikatsiya EMAS.**
 `crm-akademiya/index.html:18853` da 4 bo'limli (`tangalar` / `yutuqlar` /
