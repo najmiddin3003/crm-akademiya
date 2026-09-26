@@ -1,7 +1,7 @@
 "use client";
 
 import "../gamification.css";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -17,8 +17,8 @@ import SpaceBackdrop from "./SpaceBackdrop";
 // «Ekranga chiqarish»). Guruh ichida — joriy oy yoki jami reyting tangasi
 // (berilgan − ayirilgan, xarid kirmaydi). Teng tangali o'quvchilar bir xil
 // o'rinni oladi; o'quvchilarga faqat top-5 ko'rinadi. Proyektor ekrani
-// katta shriftli top-5 ni ochadi, Esc bilan yopiladi. Orqa fonda — jonli
-// kosmos (yulduzlar sekin suzadi, SpaceBackdrop.tsx).
+// katta shriftli top-5 ni ochadi, Esc bilan yopiladi; uning orqa fonida —
+// jonli kosmos (yulduzlar sekin suzadi, SpaceBackdrop.tsx).
 
 interface Row {
   pupilId: number;
@@ -41,19 +41,6 @@ interface View {
 }
 
 const PAGE = "gm-page container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
-// Kosmos fonidagi sarlavha matni — ikkala mavzuda ham och rang.
-const TITLE = "text-xl font-semibold text-white";
-const LEAD = "mt-1 text-[13px] leading-relaxed text-slate-300";
-
-/** Sahifa qobig'i: <main> ni to'liq to'ldiradi, orqasida kosmos. */
-function Stage({ children }: { children: ReactNode }) {
-  return (
-    <div className="relative isolate min-h-full">
-      <SpaceBackdrop />
-      <div className={PAGE}>{children}</div>
-    </div>
-  );
-}
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function RankBadge({ rank }: { rank: number }) {
@@ -94,7 +81,7 @@ function Projector({ title, sub, rows, onClose }: { title: string; sub: string; 
       </div>
       <ol className="mt-8 w-full max-w-4xl space-y-3">
         {top.map((r) => (
-          <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/[0.08] px-6 py-4 ring-1 ring-white/15">
+          <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur">
             <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{MEDAL[r.rank] ?? r.rank}</span>
             <span className="min-w-0 flex-1 truncate text-[clamp(22px,3vw,42px)] font-bold">{r.name}</span>
             <span className="text-[clamp(22px,3vw,42px)] font-extrabold tabular-nums text-amber-300">{r.points}</span>
@@ -138,26 +125,21 @@ export default function RankingPage() {
 
   if (error && !view) {
     return (
-      <Stage>
-        <h1 className={TITLE}>{t("Reyting")}</h1>
+      <div className={PAGE}>
+        <h1 className="text-xl font-semibold">{t("Reyting")}</h1>
         <div className={`${cardCls} text-sm text-muted-foreground`}>{t(error)}</div>
-      </Stage>
+      </div>
     );
   }
-  if (!view)
-    return (
-      <Stage>
-        <SpinnerBlock />
-      </Stage>
-    );
+  if (!view) return <div className={PAGE}><SpinnerBlock /></div>;
   const g = view.group;
 
   return (
-    <Stage>
+    <div className={PAGE}>
       {toastNode}
       <div>
-        <h1 className={TITLE}>{t("Reyting")}</h1>
-        <p className={LEAD}>
+        <h1 className="text-xl font-semibold">{t("Reyting")}</h1>
+        <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
           {period === "all"
             ? t("Guruh ichidagi reyting — shu guruhda jami olingan reyting tangasi bo'yicha (berilgan − ayirilgan; do'kon xaridlari ta'sir qilmaydi). Teng tangali o'quvchilar bir xil o'rinni oladi. Ekranda va o'quvchilarga faqat top-5 ko'rinadi.")
             : t("Guruh ichidagi reyting — {month} oyida shu guruhda olingan reyting tangasi bo'yicha (berilgan − ayirilgan; do'kon xaridlari ta'sir qilmaydi). Teng tangali o'quvchilar bir xil o'rinni oladi. Ekranda va o'quvchilarga faqat top-5 ko'rinadi.", {
@@ -266,6 +248,6 @@ export default function RankingPage() {
         />
       )}
       {open !== null && <ProfileModal pupilId={open} onClose={() => setOpen(null)} toast={toast} onChanged={() => void load(groupId, period)} />}
-    </Stage>
+    </div>
   );
 }

@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 
-// JONLI KOSMOS FONI — Reyting sahifasi va proyektor ekrani orqasida
-// yulduzlar sekin suzib yuradi, yorqinlarining bir qismi miltillaydi.
+// JONLI KOSMOS FONI — Reyting → «Ekranga chiqarish» (proyektor) oynasi
+// orqasida yulduzlar sekin suzib yuradi, yorqinlarining bir qismi
+// miltillaydi. Reyting sahifasining o'zi odatiy fonda qoladi.
 //
 // YENGIL: JS tsikli, taymer va qayta chizish yo'q. Yulduzlar SVG plitkada
 // bir marta chiziladi; qatlamlar faqat `transform` (suzish) va `opacity`

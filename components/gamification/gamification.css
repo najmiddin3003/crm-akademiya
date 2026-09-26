@@ -54,9 +54,9 @@
   .gm-page input:not([type="checkbox"]):not([type="radio"]), .gm-page textarea { font-size: 16px; min-height: 40px; }
 }
 
-/* JONLI KOSMOS FONI (Reyting, proyektor) — ranking/SpaceBackdrop.tsx.
- * Tashqi qatlam butun sahifa bo'yi turadi (`overflow: clip` — aylantirish
- * konteyneri EMAS, shuning uchun ichidagi `sticky` ko'rinish <main> ning
+/* JONLI KOSMOS FONI (Reyting → «Ekranga chiqarish» oynasi) — ranking/SpaceBackdrop.tsx.
+ * Tashqi qatlam oyna bo'yi turadi (`overflow: clip` — aylantirish
+ * konteyneri EMAS, shuning uchun ichidagi `sticky` ko'rinish oynaning
  * aylantirishiga yopishadi): kontent aylanganda osmon joyida qoladi va
  * qatlamlar ekran o'lchamidan oshmaydi. Harakat faqat transform/opacity. */
 .gm-space { position: absolute; inset: 0; z-index: -1; overflow: clip; pointer-events: none; background: #050816; }
