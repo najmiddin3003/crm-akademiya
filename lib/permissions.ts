@@ -64,6 +64,8 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   // bo'yicha huquqi bor ustoz yoki admin o'z ishini qila olmay qolardi.
   "/gamification-lesson",
   "/gamification-students",
+  "/gamification-ranking",
+  "/gamification-competition",
 ]);
 
 /**

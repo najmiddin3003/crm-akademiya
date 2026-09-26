@@ -110,7 +110,7 @@ export async function giveReferral(db: Db, actor: GamActor, input: { pupilId: nu
   if (lead.state === "not_in_group") throw new GamError(422, "Lid hali guruhga qo'shilmagan");
   if (lead.state === "no_payment") throw new GamError(422, "Lid hali to'lov qilmagan");
 
-  const { result, wallet, levelUp } = await withWallet(db, input.pupilId, async (w) => {
+  const { result, wallet, levelUp, badges } = await withWallet(db, input.pupilId, async (w) => {
     if (w.pupil.frozen || isFrozenStatus(w.pupil.status)) throw new GamError(422, "Ketgan o'quvchiga tanga yozilmaydi");
     if (actor.role === "branch_admin" && !actor.branchIds.includes(w.pupil.branchId)) {
       throw new GamError(403, "O'quvchi sizning filialingizda emas");
@@ -128,5 +128,5 @@ export async function giveReferral(db: Db, actor: GamActor, input: { pupilId: nu
       uniqKey: `ref:${lead.id}`,
     });
   });
-  return { txId: result.id, amount: result.amount, applied: result.applied, balance: wallet.balance, levelUp };
+  return { txId: result.id, amount: result.amount, applied: result.applied, balance: wallet.balance, levelUp, badges };
 }

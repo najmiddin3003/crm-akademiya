@@ -25,6 +25,7 @@ export interface ReferralDone {
   amount: number;
   leadName: string;
   levelUp: { name: string } | null;
+  badges: { name: string }[];
 }
 
 export default function ReferralModal({
@@ -68,7 +69,7 @@ export default function ReferralModal({
   async function submit() {
     if (pick === null || busy) return;
     setBusy(true);
-    const res = await gamApi<{ txId: number; amount: number; levelUp: { name: string } | null }>("/api/gamification/referral", {
+    const res = await gamApi<{ txId: number; amount: number; levelUp: { name: string } | null; badges: { name: string }[] }>("/api/gamification/referral", {
       method: "POST",
       body: { pupilId, leadId: pick },
     });
@@ -77,7 +78,7 @@ export default function ReferralModal({
       setErr(t(res.error));
       return;
     }
-    onDone({ txId: res.txId, amount: res.amount, leadName: leads?.find((l) => l.id === pick)?.name ?? "", levelUp: res.levelUp });
+    onDone({ txId: res.txId, amount: res.amount, leadName: leads?.find((l) => l.id === pick)?.name ?? "", levelUp: res.levelUp, badges: res.badges ?? [] });
     modal.close();
   }
 

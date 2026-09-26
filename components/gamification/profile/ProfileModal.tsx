@@ -8,7 +8,7 @@ import { useLang, useT } from "@/components/shared/Language";
 import { MONTHS } from "@/lib/i18n";
 import type { GamLevel, GamRole } from "@/lib/gamification/types";
 import { gamApi } from "../api";
-import { btnGhost, btnSm, Chip, fmtDate, signed, Signed } from "../ui";
+import { btnGhost, btnSm, Chip, fmtDate, signed, Signed, withReward } from "../ui";
 import ReasonModal, { type ReasonDone, type ReasonOption } from "../lesson/ReasonModal";
 import CancelModal from "./CancelModal";
 import ReferralModal, { type ReferralDone } from "./ReferralModal";
@@ -46,6 +46,7 @@ interface Profile {
   groups: GroupRow[];
   actions: { reason: boolean; referral: boolean };
   referralBonus: number;
+  badges: { code: string; emoji: string; name: string; desc: string; earned: boolean; earnedAt: string | null; times: number }[];
   reasons: ReasonOption[];
   reasonUse: Record<number, number>;
   deducted: number;
@@ -138,8 +139,6 @@ export default function ProfileModal({
   }, [loadProfile, loadHistory, filter, onChanged]);
 
   const monthName = (m: string) => (MONTHS[lang] ?? MONTHS.uz)[Number(m.slice(5, 7)) - 1] ?? m;
-  const withLevel = (msg: string, lv: { name: string } | null, name: string) =>
-    lv ? `${msg} · ${t("🎉 {name} «{level}» darajasiga ko'tarildi!", { name, level: t(lv.name) })}` : msg;
 
   async function undo(txId: number) {
     const res = await gamApi<object>(`/api/gamification/transactions/${txId}/undo`, { method: "POST", body: {} });
@@ -314,6 +313,27 @@ export default function ProfileModal({
         </section>
 
         <section>
+          <h3 className="mb-2 text-[14px] font-semibold">{t("Nishonlar")}</h3>
+          {/* 13 nishon (TZ 4.19): olinganlari rangli, olinmaganlari xira. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {p.badges.map((b) => (
+              <div
+                key={b.code}
+                title={b.earned ? t("Olingan") : t("Hali olinmagan")}
+                className={`rounded-xl border px-3 py-2.5 text-center ${b.earned ? "border-amber-400/50 bg-amber-400/10" : "border-border opacity-45 grayscale"}`}
+              >
+                <div className="text-[24px] leading-none">{b.emoji}</div>
+                <div className="mt-1 text-[12.5px] font-semibold">
+                  {t(b.name)}
+                  {b.times > 1 && <span className="ml-1 text-[11px] text-muted-foreground">×{b.times}</span>}
+                </div>
+                <div className="text-[11.5px] leading-snug text-muted-foreground">{t(b.desc)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
           <h3 className="mb-2 text-[14px] font-semibold">{t("Tanga tarixi")}</h3>
           <div className="mb-2 flex flex-wrap gap-1.5" role="group" aria-label={t("Tarix filtri")}>
             {filters.map(([k, label]) => (
@@ -454,7 +474,7 @@ export default function ProfileModal({
                   ? t("{name}: −{v} · {reason}", { name, v, reason: res.reasonName })
                   : t("{name}: balans yetmadi — hamyondan {x} ayirildi (reytingda −{y})", { name, x: -res.applied, y: v });
             const txId = res.txId;
-            toast(withLevel(msg, res.levelUp, name), { undo: txId ? () => undo(txId) : undefined });
+            toast(withReward(t, msg, name, res), { undo: txId ? () => undo(txId) : undefined });
           }}
         />
       )}
@@ -467,7 +487,7 @@ export default function ProfileModal({
           onDone={(res: ReferralDone) => {
             void refresh();
             const name = p.pupil.name;
-            toast(withLevel(t("{name}: +{n} · do'st olib keldi", { name, n: res.amount }), res.levelUp, name), {
+            toast(withReward(t, t("{name}: +{n} · do'st olib keldi", { name, n: res.amount }), name, res), {
               undo: () => undo(res.txId),
             });
           }}

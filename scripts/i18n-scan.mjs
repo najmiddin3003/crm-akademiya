@@ -71,6 +71,8 @@ const CONSTANT_SOURCES = [
   { file: "lib/selectPlaceholder.ts", re: /(?:LOADING_TEXT =|ready =)\s*"([^"]+)"/g },
   // Gamifikatsiya: tizim sabablari nomi va «Kim beradi», daraja/rol/yozuv turi yorliqlari — `t(r.name)`, `t(sys.who)`.
   { file: "lib/gamification/types.ts", re: /\b(?:name|who):\s*"([^"]+)"/g },
+  // Nishonlar (TZ 4.19) — profilda `t(b.name)`, `t(b.desc)`.
+  { file: "lib/gamification/badges.ts", re: /\b(?:name|desc):\s*"([^"]+)"/g },
   // Sozlama maydonlari nomlari — server xatosida «{label}» bo'lib keladi va teskari moslashda o'giriladi.
   { file: "lib/gamification/rules.ts", re: /^\s+[A-Za-z0-9]+:\s*"([^"]+)",\s*$/gm },
   {

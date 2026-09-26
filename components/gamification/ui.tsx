@@ -154,3 +154,26 @@ export function useGamToast(): [ReactNode, (text: string, opts?: { error?: boole
   );
   return [node, show];
 }
+
+type TFn = (k: string, p?: Record<string, string | number>) => string;
+
+/**
+ * Amaldan keyingi xabarga qo'shimcha: daraja ko'tarilishi (TZ 4.2.6) va
+ * yangi nishonlar (TZ 4.19) — «amalni bajargan xodimga».
+ */
+export function rewardText(
+  t: TFn,
+  name: string,
+  res: { levelUp?: { name: string } | null; badges?: { name: string }[] | null },
+): string {
+  const parts: string[] = [];
+  if (res.levelUp) parts.push(t("🎉 {name} «{level}» darajasiga ko'tarildi!", { name, level: t(res.levelUp.name) }));
+  for (const b of res.badges ?? []) parts.push(t("🏅 {name}: «{badge}» nishoni!", { name, badge: t(b.name) }));
+  return parts.join(" · ");
+}
+
+/** Xabar + mukofot qo'shimchasi (bo'lsa). */
+export function withReward(t: TFn, msg: string, name: string, res: Parameters<typeof rewardText>[2]): string {
+  const extra = rewardText(t, name, res);
+  return extra ? `${msg} · ${extra}` : msg;
+}

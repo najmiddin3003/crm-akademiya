@@ -4,6 +4,7 @@ import { groupLabel, type Group } from "@/lib/groups";
 import { uzDateIso } from "@/lib/uzTime";
 import type { GamActor } from "./actor";
 import { attendanceEditDenial, daysBetween, gamAttOf, isAbsentAtt, streakRun } from "./attendance";
+import { badgeBoard } from "./badges";
 import { GAM } from "./db";
 import { reasonsForRole } from "./lesson";
 import { groupRanking, monthRange, pupilName } from "./ranking";
@@ -26,7 +27,7 @@ import { GamError, isFrozenStatus } from "./wallet";
 export type Toifa = "kids" | "older";
 
 /** Sinf (1–11) — `pupils.grade`; bo'lmasa null (katta). */
-export function gradeOf(p: { grade?: unknown }): number | null {
+export function gradeOf(p: { grade?: unknown } | Document): number | null {
   const g = Number(p.grade);
   return Number.isInteger(g) && g >= 1 && g <= 11 ? g : null;
 }
@@ -281,6 +282,7 @@ export async function studentProfile(db: Db, actor: GamActor, pupilId: number) {
       referral: on && inBranch && !frozen && sys.get("referral")?.isActive === true,
     },
     referralBonus: settings.referralBonusCoins,
+    badges: await badgeBoard(db, pupilId, settings.levels),
     reasons,
     reasonUse,
     deducted,

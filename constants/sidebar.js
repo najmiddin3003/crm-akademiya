@@ -167,7 +167,9 @@ export const SIDEBAR_ITEMS = [
       width: 256,
       items: [
         { label: "Tanga berish", href: "/gamification-lesson", icon: "i-star" },
+        { label: "Reyting", href: "/gamification-ranking", icon: "i-trending-up" },
         { label: "O'quvchilar", href: "/gamification-students", icon: "i-user" },
+        { label: "Guruhlar musobaqasi", href: "/gamification-competition", icon: "i-award" },
       ],
     },
   },

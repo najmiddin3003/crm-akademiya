@@ -50,6 +50,7 @@ export interface ReasonDone {
   reasonName: string;
   direction: 1 | -1;
   levelUp: { name: string } | null;
+  badges: { name: string }[];
 }
 
 const amtLabel = (r: ReasonOption) => {

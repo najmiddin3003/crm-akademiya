@@ -9,7 +9,7 @@ import { useLang, useT } from "@/components/shared/Language";
 import { MONTHS, WEEKDAYS_FULL } from "@/lib/i18n";
 import type { GamRole } from "@/lib/gamification/types";
 import { gamApi } from "../api";
-import { btnSm, cardCls, Chip, fmtDate, signed, Signed, useGamToast } from "../ui";
+import { btnSm, cardCls, Chip, fmtDate, signed, Signed, useGamToast, withReward } from "../ui";
 import ReasonModal, { type ReasonDone, type ReasonOption, type ReasonTarget } from "./ReasonModal";
 import ProfileModal from "../profile/ProfileModal";
 
@@ -51,6 +51,10 @@ interface View {
     growthThresholdPp: number;
     streakLessons: number;
     streakBonusCoins: number;
+    examCoins90: number;
+    examCoins80: number;
+    examCoins70: number;
+    growthBonusCoins: number;
   };
   sys: Record<string, boolean>;
   reasons: ReasonOption[];
@@ -60,10 +64,18 @@ interface View {
   canExcuse: boolean;
   activityUsed: number;
   examMonths: { prev: string; cur: string } | null;
+  examDone: { results: number; growth: number } | null;
   rows: Row[];
 }
 
-type OpRes = { txId: number | null; amount: number; applied: number; balance: number; levelUp: { name: string } | null };
+type OpRes = {
+  txId: number | null;
+  amount: number;
+  applied: number;
+  balance: number;
+  levelUp: { name: string } | null;
+  badges: { name: string }[];
+};
 
 const GROUP_KEY = "gam.lesson.group";
 
@@ -151,8 +163,6 @@ export default function LessonPage() {
   const monthName = (m: string) => (MONTHS[lang] ?? MONTHS.uz)[Number(m.slice(5, 7)) - 1]?.toLowerCase() ?? m;
   const writable = view.enabled;
 
-  const withLevel = (msg: string, lv: { name: string } | null, name: string) =>
-    lv ? `${msg} · ${t("🎉 {name} «{level}» darajasiga ko'tarildi!", { name, level: t(lv.name) })}` : msg;
 
   async function run<T>(key: string, fn: () => Promise<{ ok: true } & T | { ok: false; error: string }>, after: (r: T) => void) {
     if (busy) return;
@@ -194,7 +204,7 @@ export default function LessonPage() {
               ? t("{name}: uy vazifasi bajarildi ({amount})", { name: r.name, amount: signed(res.amount) })
               : t("{name}: uy vazifasi bajarilmadi ({amount})", { name: r.name, amount: signed(res.amount) });
         const txId = res.txId;
-        toast(withLevel(msg, res.levelUp, r.name), {
+        toast(withReward(t, msg, r.name, res), {
           undo: txId
             ? () =>
                 void run<OpRes>(
@@ -215,7 +225,7 @@ export default function LessonPage() {
       () => gamApi("/api/gamification/activity", { method: "POST", body: { groupId: g!.id, pupilId: r.pupilId, coins: n } }),
       (res) => {
         const txId = res.txId;
-        toast(withLevel(t("{name}: faollik +{n}", { name: r.name, n }), res.levelUp, r.name), {
+        toast(withReward(t, t("{name}: faollik +{n}", { name: r.name, n }), r.name, res), {
           undo: txId
             ? () =>
                 void run<OpRes>(
@@ -287,7 +297,7 @@ export default function LessonPage() {
           ? t("{name}: −{v} · {reason}", { name: target.name, v, reason: res.reasonName })
           : t("{name}: balans yetmadi — hamyondan {x} ayirildi (reytingda −{y})", { name: target.name, x: -res.applied, y: v });
     const txId = res.txId;
-    toast(withLevel(msg, res.levelUp, target.name), {
+    toast(withReward(t, msg, target.name, res), {
       undo: txId
         ? () =>
             void run<OpRes>(
@@ -457,6 +467,33 @@ export default function LessonPage() {
               {showAct && <Chip tone={used >= lim ? "r" : "a"}>{t("Faollik: {used} / {limit}", { used, limit: lim })}</Chip>}
             </div>
           </div>
+
+          {(view.sys.exam_result || view.sys.growth) && view.examMonths && (
+            // Sarhisob kartasi (TZ 5.1): tanga qoidalari; oy natijasi saqlangach — «✓ Yozildi».
+            <div className={cardCls}>
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="min-w-[240px] flex-1">
+                  <b className="text-[14px]">{t("Sarhisob · {month} natijalari", { month: monthName(view.examMonths.cur) })}</b>
+                  <div className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                    {view.sys.exam_result && (
+                      <>
+                        {t("90%+ → +{a} · 80–89% → +{b} · 70–79% → +{c}.", { a: s.examCoins90, b: s.examCoins80, c: s.examCoins70 })}{" "}
+                      </>
+                    )}
+                    {view.sys.growth && (
+                      <>
+                        {t("O'tgan oyga nisbatan +{pp} foiz punkt va undan ko'p o'sish → +{n}.", { pp: s.growthThresholdPp, n: s.growthBonusCoins })}{" "}
+                      </>
+                    )}
+                    {t("Ustoz Imtihon → Sarhisob bo'limida guruh natijasini saqlaganda tangalar avtomatik yoziladi. Oy natijalariga (musobaqa, «Oy o'quvchisi») kirishi uchun natijani oy tugaguncha kiriting.")}
+                  </div>
+                </div>
+                {view.examDone && view.examDone.results + view.examDone.growth > 0 && (
+                  <Chip tone="g">{t("✓ Yozildi: {n} natija · {m} o'sish", { n: view.examDone.results, m: view.examDone.growth })}</Chip>
+                )}
+              </div>
+            </div>
+          )}
 
           {view.rows.length === 0 ? (
             <div className={`${cardCls} text-sm text-muted-foreground`}>{t("Bu guruhda faol o'quvchi yo'q.")}</div>

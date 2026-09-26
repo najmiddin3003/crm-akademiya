@@ -23,6 +23,10 @@ export const GAM = {
   audit: "audit_log",
   locks: "gam_locks",
   counters: "counters",
+  /** Nishonlar (TZ 4.19, 6.12). */
+  badges: "student_badges",
+  /** Oy yakuni — muzlatilgan natijalar (TZ 4.20, 6.13). */
+  monthly: "monthly_results",
 } as const;
 
 /**
@@ -49,6 +53,10 @@ async function createGamIndexes(db: Db): Promise<void> {
     db.collection(GAM.wallets).createIndex({ pupilId: 1 }, { unique: true }),
     db.collection(GAM.audit).createIndex({ id: 1 }, { unique: true }),
     db.collection(GAM.audit).createIndex({ entity: 1, createdAt: -1 }),
+    // Oddiy nishonda month/groupId = null; «Oy o'quvchisi» — har oy va guruhga bittadan.
+    db.collection(GAM.badges).createIndex({ pupilId: 1, code: 1, month: 1, groupId: 1 }, { unique: true }),
+    // Oy bir marta yakunlanadi: (oy, guruh) takrorlanmaydi (TZ 6.13).
+    db.collection(GAM.monthly).createIndex({ month: 1, groupId: 1 }, { unique: true }),
   ]);
 }
 

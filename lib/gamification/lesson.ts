@@ -13,12 +13,13 @@ import {
   type GamAtt,
 } from "./attendance";
 import { GAM, withLock } from "./db";
+import { examSummary } from "./exams";
 import { getReason, listReasons, systemReasonMap } from "./reasons";
 import { cancelDenial } from "./rights";
 import { actorGroup, actorGroups, branchNames, isOwnGroup, type GamGroup } from "./scope";
 import { loadSettings } from "./settings";
 import type { CoinReason, CoinTransaction, GamSettings, GamRole } from "./types";
-import { GamError, isFrozenStatus, withWallet, type LevelUp, type WalletSession } from "./wallet";
+import { GamError, isFrozenStatus, withWallet, type LevelUp, type NewBadge, type WalletSession } from "./wallet";
 
 // «TANGA BERISH» — DARS JURNALI (TZ 5.1, 4.5.4–4.5.7, 4.7, 4.9, 4.10).
 //
@@ -34,6 +35,8 @@ export interface OpResult {
   applied: number;
   balance: number;
   levelUp: LevelUp | null;
+  /** Yangi olingan nishonlar (TZ 4.19) — xabarga qo'shiladi. */
+  badges: NewBadge[];
 }
 
 function requireOn(settings: GamSettings): void {
@@ -77,7 +80,7 @@ function limitError(name: string, used: number, limit: number): GamError {
     : new GamError(422, `Bugungi ayirish limiti tugagan (${used}/${limit})`);
 }
 
-function result(tx: CoinTransaction | null, w: WalletSession): Omit<OpResult, "levelUp"> {
+function result(tx: CoinTransaction | null, w: WalletSession): Omit<OpResult, "levelUp" | "badges"> {
   return { txId: tx?.id ?? null, amount: tx?.amount ?? 0, applied: tx?.applied ?? 0, balance: w.balance };
 }
 
@@ -103,7 +106,7 @@ export async function setHomework(
   if (!att) throw new GamError(422, "Avval davomatni saqlang");
   if (isAbsentAtt(att)) throw new GamError(422, "Darsda yo'q o'quvchiga uy vazifasi belgisi qo'yilmaydi");
 
-  const { result: r, levelUp } = await withWallet(db, input.pupilId, async (w) => {
+  const { result: r, levelUp, badges } = await withWallet(db, input.pupilId, async (w) => {
     if (w.pupil.frozen) throw new GamError(422, "Ketgan o'quvchiga tanga yozilmaydi");
     const txActor = toTxActor(actor);
     const forgive = actor.role === "director";
@@ -146,7 +149,7 @@ export async function setHomework(
     });
     return { ...result(tx, w), removed: null, prev };
   });
-  return { ...r, levelUp };
+  return { ...r, levelUp, badges };
 }
 
 // ── Faollik (TZ 4.7.4) ────────────────────────────────────────────────
@@ -173,7 +176,7 @@ export async function addActivity(
   if (isAbsentAtt(att)) throw new GamError(422, "Darsda yo'q o'quvchiga faollik tangasi berilmaydi");
 
   const limit = settings.activityGroupLimitPerLesson;
-  const { result: r, levelUp } = await withWallet(db, input.pupilId, async (w) => {
+  const { result: r, levelUp, badges } = await withWallet(db, input.pupilId, async (w) => {
     if (w.pupil.frozen) throw new GamError(422, "Ketgan o'quvchiga tanga yozilmaydi");
     // Guruhning dars limiti bir nechta o'quvchiga umumiy — (guruh, kun)
     // bo'yicha qulf hamyon qulfidan KEYIN olinadi (TZ 4.1.8, tartib doim bir xil).
@@ -203,7 +206,7 @@ export async function addActivity(
       return { ...result(tx, w), used: used + input.coins, limit };
     });
   });
-  return { ...r, levelUp };
+  return { ...r, levelUp, badges };
 }
 
 // ── Qo'shimcha sabab bo'yicha tanga (TZ 4.9.2–4.9.3) ──────────────────
@@ -262,7 +265,7 @@ export async function giveByReason(
     }
   }
 
-  const { result: r, levelUp } = await withWallet(db, input.pupilId, async (w) => {
+  const { result: r, levelUp, badges } = await withWallet(db, input.pupilId, async (w) => {
     if (w.pupil.frozen) throw new GamError(422, "Ketgan o'quvchiga tanga yozilmaydi");
     if (!g && actor.role === "branch_admin" && !actor.branchIds.includes(w.pupil.branchId)) {
       throw new GamError(403, "O'quvchi sizning filialingizda emas");
@@ -295,7 +298,7 @@ export async function giveByReason(
     });
     return result(tx, w);
   });
-  return { ...r, levelUp, reasonName: reason.name, direction: reason.direction };
+  return { ...r, levelUp, badges, reasonName: reason.name, direction: reason.direction };
 }
 
 // ── «Ortga» (TZ 5.0) ───────────────────────────────────────────────────
@@ -321,7 +324,7 @@ export async function undoTx(
   }
   const reasons = await systemReasonMap(db);
 
-  const { result: r, levelUp } = await withWallet(db, found.pupilId, async (w) => {
+  const { result: r, levelUp, badges } = await withWallet(db, found.pupilId, async (w) => {
     const tx = (await db.collection(GAM.tx).findOne({ id: input.txId }, { projection: { _id: 0 } })) as unknown as CoinTransaction;
     if (tx.status !== "active") throw new GamError(409, "Yozuv allaqachon bekor qilingan");
     const deny = cancelDenial(actor, tx, { balance: w.balance, pupilBranchId: w.pupil.branchId, frozen: w.pupil.frozen, settings }, today);
@@ -355,7 +358,7 @@ export async function undoTx(
     }
     return result(restored, w);
   });
-  return { ...r, levelUp };
+  return { ...r, levelUp, badges };
 }
 
 // ── «Sababli qilish» / «Sababsizga qaytarish» (TZ 4.5.4–4.5.5) ─────────
@@ -476,12 +479,18 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
       growthThresholdPp: settings.growthThresholdPp,
       streakLessons: settings.streakLessons,
       streakBonusCoins: settings.streakBonusCoins,
+      examCoins90: settings.examCoins90,
+      examCoins80: settings.examCoins80,
+      examCoins70: settings.examCoins70,
+      growthBonusCoins: settings.growthBonusCoins,
     },
     sys: sysOn,
     reasons,
     groups: groups.map((g) => ({ id: g.id, label: g.label, branchName: names.get(g.branchId) ?? "" })),
   };
-  if (!groups.length) return { ...base, group: null, rows: [] as LessonRow[], canTeach: false, canExcuse: false, activityUsed: 0, examMonths: null };
+  if (!groups.length) {
+    return { ...base, group: null, rows: [] as LessonRow[], canTeach: false, canExcuse: false, activityUsed: 0, examMonths: null, examDone: null };
+  }
 
   const g = groups.find((x) => x.id === groupIdParam) ?? groups[0];
   const canTeach = actor.role === "director" || isOwnGroup(actor, g);
@@ -594,6 +603,8 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
     canExcuse,
     activityUsed,
     examMonths: { prev: prevM, cur: curM },
+    // Sarhisob kartasi (TZ 5.1): shu oy uchun yozilgan natija/o'sish soni.
+    examDone: await examSummary(db, g.id, curM),
     rows,
   };
 }

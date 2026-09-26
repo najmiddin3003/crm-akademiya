@@ -1,5 +1,6 @@
 import type { Db } from "mongodb";
 import { GAM, isDupKey, nextSeq, withLock } from "./db";
+import { badgeName, recheckBadges, type BadgeCode } from "./badges";
 import { levelIndexOf } from "./rules";
 import { loadSettings } from "./settings";
 import type { CoinTransaction, GamLevel, StudentWallet, TxCreatorRole, TxType } from "./types";
@@ -248,20 +249,27 @@ export class WalletSession {
   }
 }
 
+/** Yangi olingan nishon — xabar uchun (TZ 4.19: amalni bajargan xodimga). */
+export interface NewBadge {
+  code: BadgeCode;
+  name: string;
+}
+
 /**
  * O'quvchi hamyoni ustida qulf ostida ishlash. Natija bilan birga yangi
- * hamyon keshi va daraja ko'tarilgan bo'lsa — `levelUp` (xabar uchun, TZ 4.2.6).
- * Xato bo'lsa ham kesh qayta hisoblanadi (qisman yozilgan bo'lishi mumkin).
+ * hamyon keshi, daraja ko'tarilgan bo'lsa — `levelUp` (xabar uchun, TZ
+ * 4.2.6) va yangi olingan nishonlar (TZ 4.19). Xato bo'lsa ham kesh qayta
+ * hisoblanadi (qisman yozilgan bo'lishi mumkin).
  */
 export async function withWallet<T>(
   db: Db,
   pupilId: number,
   fn: (w: WalletSession) => Promise<T>,
-): Promise<{ result: T; wallet: StudentWallet; levelUp: LevelUp | null }> {
+): Promise<{ result: T; wallet: StudentWallet; levelUp: LevelUp | null; badges: NewBadge[] }> {
   return withLock(db, `wallet:${pupilId}`, async () => {
     const pupil = await loadPupil(db, pupilId);
     if (!pupil) throw new GamError(404, "O'quvchi topilmadi");
-    const { levels } = await loadSettings(db);
+    const { levels, startDate } = await loadSettings(db);
     const state = await computeWallet(db, pupilId);
     const before = levelIndexOf(state.earnedTotal, levels);
     const w = new WalletSession(db, pupil, state.balance, state.earnedTotal);
@@ -275,6 +283,14 @@ export async function withWallet<T>(
     const wallet = await syncWallet(db, pupilId, levels, { balance: w.balance, earnedTotal: w.earnedTotal });
     const after = wallet.levelPosition - 1;
     const levelUp = after > before ? { from: before + 1, to: after + 1, name: levels[after].name } : null;
-    return { result, wallet, levelUp };
+    // Nishonlar — yozuvlardan qayta tekshiriladi; xatosi amalni yiqitmaydi.
+    let badges: NewBadge[] = [];
+    try {
+      const codes = await recheckBadges(db, pupilId, wallet.earnedTotal, after, startDate);
+      badges = codes.map((code) => ({ code, name: badgeName(code, levels) }));
+    } catch (e) {
+      console.error("[gamification] nishon tekshiruvi", pupilId, e);
+    }
+    return { result, wallet, levelUp, badges };
   });
 }

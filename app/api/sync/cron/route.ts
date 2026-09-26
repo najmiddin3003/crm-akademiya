@@ -5,6 +5,7 @@ import { loadSyncConfig } from "@/lib/sync/config";
 import { runSyncCycle } from "@/lib/sync/run";
 import { digestLines, digestMessages, digestPeriodFor, runSalaryDigest } from "@/lib/sync/salaryDigest";
 import { runDueReminders } from "@/lib/studentBot/notify";
+import { runGamificationNightly } from "@/lib/gamification/competition";
 
 // GET /api/sync/cron — kunlik tekshiruv (sutkasiga bir marta).
 //
@@ -125,8 +126,15 @@ async function handle(req: Request) {
       skipped: e instanceof Error ? e.message : "xato",
     }));
 
+    // GAMIFIKATSIYA (TZ 8): oy yakuni vaqti kelgan bo'lsa — o'tgan oyni
+    // yakunlaydi; hamyon keshini yozuvlardan tekshiradi. Modul o'chiq
+    // bo'lsa darhol qaytadi; xatosi sinxronizatsiyani to'xtatmaydi.
+    const gamification = await runGamificationNightly(db).catch((e) => ({
+      error: e instanceof Error ? e.message : "xato",
+    }));
+
     const result = await runSyncCycle("cron", (maxDuration * 1000) - RESERVE_MS - DIGEST_MS);
-    return NextResponse.json({ ok: true, digest, dueReminders, ...result });
+    return NextResponse.json({ ok: true, digest, dueReminders, gamification, ...result });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "noma'lum xato" },

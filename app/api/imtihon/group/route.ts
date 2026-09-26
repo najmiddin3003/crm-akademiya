@@ -5,6 +5,7 @@ import { currentAuthorName } from "@/lib/currentEmployee";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { uzStamp } from "@/lib/uzTime";
+import { onExamSaved } from "@/lib/gamification/exams";
 import {
   groupAvgPct,
   groupExamMonth,
@@ -108,6 +109,15 @@ export async function POST(req: Request) {
     createdBy,
   };
   await col.insertOne({ ...exam });
+
+  // GAMIFIKATSIYA (TZ 4.8): natija saqlangani = guruh–oy yopildi →
+  // Sarhisob va o'sish tangalari (lib/gamification/exams.ts). Xatosi
+  // natija saqlanishini yiqitmaydi — logga yoziladi.
+  try {
+    await onExamSaved(db, group.id, input.month);
+  } catch (e) {
+    console.error("[gamification] Sarhisob hodisasi", { groupId: group.id, month: input.month }, e);
+  }
 
   // `monthly_exams` GA KO'CHIRISH. CRM'da bu jadvalning o'z sahifasi endi
   // yo'q ("Oylik imtihon" tabi 21.09.2026 da Sarhisobga almashdi), lekin

@@ -2,7 +2,7 @@ import type { Db } from "mongodb";
 import type { AttendanceStatus } from "@/lib/attendance";
 import { uzDateIso } from "@/lib/uzTime";
 import { getGamActor, type GamActor } from "./actor";
-import { GAM } from "./db";
+import { GAM, gamDb } from "./db";
 import { systemReasonMap } from "./reasons";
 import { isOwnGroup, type GamGroup } from "./scope";
 import { loadSettings } from "./settings";
@@ -270,6 +270,9 @@ export async function onAttendanceChanged(db: Db, e: AttendanceEvent): Promise<A
   if (before === after) return null;
   const settings = await loadSettings(db);
   if (!gamActiveFor(settings, e.date)) return null;
+  // Chaqiruvchi (davomat route'i) oddiy `ensureIndexes()` bazasi bilan keladi —
+  // gamifikatsiya unique indekslari yozuvdan OLDIN turishi shart (db.ts).
+  await gamDb();
   const reasons = await systemReasonMap(db);
   const { result } = await withWallet(db, e.pupilId, async (w) => {
     if (w.pupil.frozen) return null; // TZ 4.21: davomat hodisalari o'tkazib yuboriladi

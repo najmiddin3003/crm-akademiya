@@ -102,7 +102,7 @@ Buyurtmachi paketi (`Gamifikatsiya_TZ.md` + prototip + namuna JSON) keldi — en
 spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
 `app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
 Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat —
-qilindi; 3) o'quvchilar/profil/storno — qilindi; 4) reyting, musobaqa, oy yakuni, nishonlar;
+qilindi; 3) o'quvchilar/profil/storno — qilindi; 4) reyting, musobaqa, oy yakuni, nishonlar — qilindi;
 5) do'kon + chegirma; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
 Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
 
@@ -124,6 +124,16 @@ keldi». O'quvchi kartasidagi «Coin tarixi» endi haqiqiy (avvalgi/yangi balans
 bilan). O'quvchiga **«Sinfi»** maydoni (toifa: kichiklar/kattalar). Lidlarda
 `referralPupilId` (tavsiya qilgan o'quvchi id'si) va `pupilId` (lid aylangan
 o'quvchi — «Guruhga qo'shish» da yoziladi).
+
+4-bosqich: «Reyting» (`/gamification-ranking`, proyektor uchun «Ekranga
+chiqarish», Esc yopadi) va «Guruhlar musobaqasi» (`/gamification-competition`,
+filiallar bo'yicha o'rtacha, direktorga «Oyni yakunlash»). Oy yakuni bir marta:
+`monthly_results` + «Oy o'quvchisi» va «Aniq vaqt» nishonlari; avtomatik —
+/api/sync/cron (Toshkent 03:00, `monthCloseDay`-kuni), u yerda hamyon keshi ham
+tekshiriladi. G'olib va «Hozircha 1-o'rinda» — faqat o'rtacha > 0 bo'lsa. 13 ta
+nishon (`student_badges`, har tanga amalidan keyin qayta tekshiriladi). Sarhisob:
+Imtihon → Sarhisob da natija saqlanganda 90/80/70% va o'sish tangalari
+(`lib/gamification/exams.ts`), sana — Sarhisob oyining oxirgi kuni.
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 
