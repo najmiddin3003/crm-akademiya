@@ -109,6 +109,16 @@ export async function systemReason(db: Db, code: SystemReasonCode): Promise<Coin
   return (await db.collection(GAM.reasons).findOne({ code, isSystem: true }, { projection: { _id: 0 } })) as CoinReason | null;
 }
 
+/** Hamma tizim sabablari kod bo'yicha — hodisa va dars tugmalari uchun (bitta so'rov). */
+export async function systemReasonMap(db: Db): Promise<Map<SystemReasonCode, CoinReason>> {
+  await ensureReasons(db);
+  const rows = (await db
+    .collection(GAM.reasons)
+    .find({ isSystem: true }, { projection: { _id: 0 } })
+    .toArray()) as unknown as CoinReason[];
+  return new Map(rows.map((r) => [r.code as SystemReasonCode, r]));
+}
+
 type ReasonFields = Pick<
   CoinReason,
   "name" | "direction" | "amountMin" | "amountMax" | "allowedRoles" | "perDayLimit" | "noteRequired" | "isActive"

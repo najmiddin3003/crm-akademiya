@@ -153,6 +153,24 @@ export const SIDEBAR_ITEMS = [
     },
   },
   {
+    // Gamifikatsiya (TZ v1.4, 26.09.2026): modul yoqilganda hammaga, o'chiq
+    // paytda faqat adminga ko'rinadi (`feature`, Sidebar.tsx). Sahifalar
+    // hamma xodimga ochiq — kim nima qila olishi TZ rollari bo'yicha
+    // serverda kesiladi (lib/permissions.ts → ALWAYS_ALLOWED_PATHS).
+    key: "gamification",
+    icon: "i-star",
+    label: "Gamifikatsiya",
+    mobileHref: "/gamification-lesson",
+    feature: "gamification",
+    menu: {
+      variant: "list",
+      width: 256,
+      items: [
+        { label: "Tanga berish", href: "/gamification-lesson", icon: "i-star" },
+      ],
+    },
+  },
+  {
     key: "finance",
     icon: "i-wallet",
     label: "Moliya",

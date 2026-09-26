@@ -120,3 +120,17 @@ export async function saveLevels(
   if (ops.length) await db.collection(GAM.wallets).bulkWrite(ops, { ordered: false });
   return { ok: true, levels: checked.value, ...impact, saved: true };
 }
+
+/**
+ * Modul yoqilganmi — (app) layout sidebar'dagi «Gamifikatsiya» bo'limini
+ * ko'rsatish uchun har sahifada so'raydi, shu bois faqat bitta maydon.
+ * Xato bo'lsa — o'chiq (bo'lim shunchaki ko'rinmaydi).
+ */
+export async function gamificationEnabled(db: Db): Promise<boolean> {
+  try {
+    const doc = await db.collection(GAM.settings).findOne({ key: KEY }, { projection: { _id: 0, enabled: 1 } });
+    return doc?.enabled === true;
+  } catch {
+    return false;
+  }
+}

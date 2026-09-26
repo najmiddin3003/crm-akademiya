@@ -101,10 +101,19 @@ Batafsil pastda, "Sozlamalar bo'limi — holat va qolgan ishlar" bo'limida. Qisq
 Buyurtmachi paketi (`Gamifikatsiya_TZ.md` + prototip + namuna JSON) keldi — endi
 spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
 `app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
-Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat;
-3) o'quvchilar/profil/storno; 4) reyting, musobaqa, oy yakuni, nishonlar;
+Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat —
+qilindi; 3) o'quvchilar/profil/storno; 4) reyting, musobaqa, oy yakuni, nishonlar;
 5) do'kon + chegirma; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
 Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
+
+2-bosqich: sidebar → Gamifikatsiya → «Tanga berish» (`/gamification-lesson`,
+hamma xodimga ochiq — huquq TZ 3 rollari bo'yicha serverda). Davomatga
+**«Kechikdi»** holati qo'shildi. Davomat saqlanganda/o'chirilganda tanga yozuvi
+va seriya o'zi qayta hisoblanadi (`lib/gamification/attendance.ts`, davomat
+route'idan chaqiriladi). Modul YOQILGANDA Davomat bo'limiga TZ 7 cheklovi
+tushadi: ustoz — o'z guruhi, faqat dars kuni; filial admini — o'z filiali,
+e'tiroz muddati ichida; direktor — istalgan sana (gamifikatsiya boshlangan
+kundan oldingi darslarga tegmaydi).
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 

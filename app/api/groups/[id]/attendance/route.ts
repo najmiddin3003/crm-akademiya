@@ -5,6 +5,8 @@ import { notifyAttendance } from "@/lib/studentBot/notify";
 import { groupScopeFilter } from "@/lib/groupScope";
 import type { Group } from "@/lib/groups";
 import { toUz } from "@/lib/uzTime";
+import { attendanceGuard, onAttendanceChanged, type AttendanceEvent } from "@/lib/gamification/attendance";
+import { loadSettings } from "@/lib/gamification/settings";
 import {
   ABSENCE_REASONS,
   ATTENDANCE_OPTIONS,
@@ -32,6 +34,20 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 function parseGroupId(id: string): number | null {
   const n = Number(id);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * GAMIFIKATSIYA HODISASI (lib/gamification/attendance.ts): holat o'zgarsa
+ * tanga yozuvi va seriya qayta hisoblanadi. Javobdan OLDIN kutiladi — dars
+ * jurnali darhol to'g'ri holatni ko'rsin. Xato davomatni yiqitmaydi: belgi
+ * allaqachon saqlangan, xato logga yoziladi.
+ */
+async function gamEvent(db: Parameters<typeof onAttendanceChanged>[0], e: AttendanceEvent): Promise<void> {
+  try {
+    await onAttendanceChanged(db, e);
+  } catch (err) {
+    console.error("[gamification] davomat hodisasi", { groupId: e.groupId, pupilId: e.pupilId, date: e.date }, err);
+  }
 }
 
 // GET /api/groups/:id/attendance?year=2026&month=8
@@ -137,6 +153,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const key = { groupId, pupilId, date };
+  const col = db.collection<AttendanceMark>("attendance");
+
+  // GAMIFIKATSIYA YOQILGAN bo'lsa (TZ 7) davomat HOLATINI o'zgartirish
+  // cheklanadi: ustoz — o'z guruhi, faqat dars kuni; filial admini — o'z
+  // filiali, e'tiroz muddati ichida; direktor — istalgan sana. Faqat holat
+  // o'zgarganda — baho yoki izohni har doim o'zgartirish mumkin (tangaga
+  // ta'sir qilmaydi). Modul o'chiq bo'lsa hech narsa o'zgarmaydi.
+  const guard = await attendanceGuard(db, group as Group & { branchId?: number }, date);
+  if (guard.active && guard.denial) {
+    const existing = await col.findOne(key, { projection: { _id: 0, status: 1 } });
+    if ((existing?.status ?? null) !== status) {
+      return NextResponse.json({ ok: false, error: guard.denial }, { status: 403 });
+    }
+  }
 
   // Har bir o'zgarish tarixga yoziladi ("Tarixi" bo'limi) — eskisi o'chmaydi.
   const me = await getCurrentUser();
@@ -152,8 +182,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   };
 
   if (status === null) {
-    await db.collection<AttendanceMark>("attendance").deleteOne(key);
+    const prev = await col.findOneAndDelete(key);
     await writeHistory({ ...key, status: null, grade: null, reason: null, note: null });
+    if (guard.active) await gamEvent(db, { ...key, before: prev?.status ?? null, after: null, staff: guard.staff });
     return NextResponse.json({ ok: true, mark: null });
   }
   // Sabab/izoh faqat "sababli" holatida saqlanadi — boshqa holatga o'tilganda
@@ -165,7 +196,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reason: status === "sababli" ? reason : null,
     note: status === "sababli" ? note : null,
   };
-  await db.collection<AttendanceMark>("attendance").updateOne(key, { $set: mark }, { upsert: true });
+  // `before` — o'zgarishdan OLDINGI holat, atomik (gamifikatsiya hodisasi uchun).
+  const prev = await col.findOneAndUpdate(key, { $set: mark }, { upsert: true, returnDocument: "before" });
   await writeHistory({
     ...key,
     status,
@@ -173,6 +205,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reason: mark.reason ?? null,
     note: mark.note ?? null,
   });
+  if (guard.active) await gamEvent(db, { ...key, before: prev?.status ?? null, after: status, staff: guard.staff });
 
   // O'QUVCHILAR BOTI — "davomat belgilandi" xabari.
   //
@@ -226,6 +259,29 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   const db = await ensureIndexes();
-  const res = await db.collection<AttendanceMark>("attendance").deleteMany(filter);
+  const col = db.collection<AttendanceMark>("attendance");
+
+  // GAMIFIKATSIYA (TZ 7, 8): o'chiriladigan belgilar ichida modul
+  // qamraydigan darslar bo'lsa — har biri uchun huquq tekshiriladi va
+  // o'chirilgach «Davomat o'chirildi» hodisasi yuboriladi. Modul o'chiq
+  // bo'lsa bu blok umuman ishlamaydi — eski xatti-harakat aynan saqlanadi.
+  const gamOn = (await loadSettings(db)).enabled;
+  const doomed = gamOn ? await col.find(filter, { projection: { _id: 0, date: 1, status: 1 } }).toArray() : [];
+  const events: AttendanceEvent[] = [];
+  if (doomed.length > 0) {
+    const where = await groupScopeFilter<Group>({ id: groupId });
+    if (!where) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+    const group = await db.collection<Group>("groups").findOne(where);
+    if (!group) return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
+    for (const m of doomed) {
+      const guard = await attendanceGuard(db, group as Group & { branchId?: number }, m.date);
+      if (!guard.active) continue;
+      if (guard.denial) return NextResponse.json({ ok: false, error: guard.denial }, { status: 403 });
+      events.push({ groupId, pupilId, date: m.date, before: m.status, after: null, staff: guard.staff });
+    }
+  }
+
+  const res = await col.deleteMany(filter);
+  for (const e of events) await gamEvent(db, e);
   return NextResponse.json({ ok: true, deleted: res.deletedCount });
 }

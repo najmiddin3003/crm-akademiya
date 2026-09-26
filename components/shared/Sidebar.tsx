@@ -66,6 +66,12 @@ interface SidebarItem {
    * sozlanmagan rol bunday bo'limni ham ko'raverardi. lib/adminOnly.ts.
    */
   adminOnly?: boolean;
+  /**
+   * Modulga bog'langan bo'lim (masalan "gamification"): modul yoqilganda
+   * hammaga, o'chiq paytda faqat adminga ko'rinadi — admin uni yoqishdan
+   * oldin ko'rib chiqa olsin. Holat layout'dan keladi (`features`).
+   */
+  feature?: string;
 }
 
 // `hidden` shu YAGONA joyda kesiladi — kompyuter menyusi ham, mobil menyu
@@ -175,6 +181,8 @@ const IMPLEMENTED_ROUTES = new Set([
   "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
   "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
   "/settings-profile", "/settings-security",
+  // Gamifikatsiya (TZ v1.4, 26.09.2026 dan bosqichma-bosqich)
+  "/gamification-lesson",
   // Vaqtinchalik tugma (faqat admin)
   "/vaqtinchalik",
 ]);
@@ -189,9 +197,11 @@ export interface SidebarProps {
   permissions?: string[] | null;
   /** `users.role === "admin"` — `adminOnly` bo'limlar shu bayroqqa qarab chiziladi. */
   isAdmin?: boolean;
+  /** Yoqilgan modullar — `feature` bo'limlar uchun. */
+  features?: Record<string, boolean>;
 }
 
-export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null, isAdmin = false }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null, isAdmin = false, features }: SidebarProps) {
   // Xodim ko'ra oladigan bo'limlar. Bu FAQAT ko'rinish: haqiqiy to'siq
   // app/(app)/layout.tsx da (va `adminOnly` bo'limlar uchun sahifaning
   // o'zida), server tomonda.
@@ -199,9 +209,14 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // `adminOnly` ruxsat filtridan ALOHIDA kesiladi: u ruxsatlar daraxtida
   // yo'q (lib/permissions.ts uni ataylab tushirmaydi), ya'ni cheklovsiz
   // rol uchun `filterByPermissions` uni o'tkazib yuborardi.
+  const gamOn = !!features?.gamification;
   const items = useMemo(
-    () => filterByPermissions(ITEMS.filter((i) => !i.adminOnly || isAdmin), permissions),
-    [permissions, isAdmin],
+    () =>
+      filterByPermissions(
+        ITEMS.filter((i) => (!i.adminOnly || isAdmin) && (!i.feature || isAdmin || (i.feature === "gamification" && gamOn))),
+        permissions,
+      ),
+    [permissions, isAdmin, gamOn],
   );
   const [openKey, setOpenKey] = useState<string | null>(null);
   // Bir menyudan ikkinchisiga o'tishda fade/translate animatsiyasini o'chirish

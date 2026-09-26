@@ -24,6 +24,7 @@ export default function AppShell({
   permissions = null,
   user = null,
   isAdmin = false,
+  features = {},
 }: {
   children: React.ReactNode;
   /** Rol ruxsatlari — app/(app)/layout.tsx dan keladi. `null` = cheklovsiz. */
@@ -32,6 +33,8 @@ export default function AppShell({
   user?: ShellUser | null;
   /** `users.role === "admin"` — sidebar'dagi `adminOnly` bo'limlar uchun. */
   isAdmin?: boolean;
+  /** Yoqilgan modullar — sidebar'dagi `feature` bo'limlar uchun (layout'dan). */
+  features?: Record<string, boolean>;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -56,7 +59,7 @@ export default function AppShell({
       <div className="flex h-screen flex-col overflow-hidden">
         <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} permissions={permissions} />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} isAdmin={isAdmin} />
+          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} isAdmin={isAdmin} features={features} />
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
         </div>
       </div>

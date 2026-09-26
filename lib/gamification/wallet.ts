@@ -140,6 +140,7 @@ export interface NewTx {
   examId?: number | null;
   leadId?: number | null;
   shopOrderId?: number | null;
+  attStatus?: CoinTransaction["attStatus"];
 }
 
 export interface LevelUp {
@@ -168,7 +169,8 @@ export class WalletSession {
       }
       applied = t.amount;
     } else if (t.amount < 0) {
-      applied = -Math.min(-t.amount, this.balance);
+      // `|| 0` — balans 0 bo'lsa −0 emas, 0 yozilsin (bazada va xabarda «−0» chiqmasin).
+      applied = -Math.min(-t.amount, this.balance) || 0;
     } else {
       applied = t.amount;
     }
@@ -195,6 +197,7 @@ export class WalletSession {
       examId: t.examId ?? null,
       leadId: t.leadId ?? null,
       shopOrderId: t.shopOrderId ?? null,
+      ...(t.attStatus ? { attStatus: t.attStatus } : {}),
     };
     try {
       await this.db.collection(GAM.tx).insertOne({ ...tx, ...(t.uniqKey ? { uniqKey: t.uniqKey } : {}) });
@@ -222,13 +225,13 @@ export class WalletSession {
     let reversed: number;
     let notRecovered = 0;
     if (tx.applied > 0) {
-      reversed = -Math.min(tx.applied, this.balance);
+      reversed = -Math.min(tx.applied, this.balance) || 0;
       notRecovered = tx.applied + reversed;
       if (notRecovered > 0 && !forgive) {
         throw new GamError(403, "O'quvchi bu tangalarni sarflagan — bekor qilish uchun direktorga murojaat qiling");
       }
     } else {
-      reversed = -tx.applied;
+      reversed = -tx.applied || 0;
     }
     const now = new Date().toISOString();
     const res = await this.db.collection(GAM.tx).updateOne(

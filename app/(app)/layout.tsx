@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import AppShell from "@/components/shared/AppShell";
 import SpeedFab from "@/components/tezlik/SpeedFab";
 import { getCurrentUser } from "@/lib/auth";
+import { ensureIndexes } from "@/lib/mongodb";
+import { gamificationEnabled } from "@/lib/gamification/settings";
 import { firstAllowedPath, isPathAllowed, PATHNAME_HEADER } from "@/lib/permissions";
 
 // Sidebar+Navbar faqat shu guruhdagi (haqiqiy CRM) sahifalarga o'raladi.
@@ -39,6 +41,10 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
     redirect(firstAllowedPath(user.permissions));
   }
 
+  // Modulga bog'langan bo'limlar (sidebar `feature`) — hozir faqat
+  // Gamifikatsiya: modul o'chiq bo'lsa bo'lim faqat adminga ko'rinadi.
+  const gamOn = await gamificationEnabled(await ensureIndexes());
+
   // Navbardagi profil menyusi uchun HAQIQIY foydalanuvchi. Serverdan
   // uzatiladi — alohida so'rov ham, "avval noto'g'ri ism ko'rinib, keyin
   // to'g'rilanishi" ham bo'lmaydi. Parol/sessiya kabi maydonlar berilmaydi.
@@ -49,6 +55,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       // Sidebar'dagi `adminOnly` bo'limlar uchun. Bu FAQAT ko'rinish —
       // sahifaning o'zi ham qaytadan tekshiradi (lib/adminOnly.ts).
       isAdmin={user.role === "admin"}
+      features={{ gamification: gamOn }}
     >
       {children}
       {/* Suzuvchi robot — tezlik sinovi (components/tezlik/SpeedFab.tsx) */}

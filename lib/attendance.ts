@@ -7,7 +7,10 @@
 // tanlangan yil+oy ichida guruh jadvaliga to'g'ri keladigan har bir sana
 // alohida ustun bo'ladi ("1-dars 03.08", "2-dars 05.08", ...).
 
-export type AttendanceStatus = "keldi" | "birinchi" | "sababli" | "sababsiz";
+// "kechikdi" — 26.09.2026 da gamifikatsiya uchun qo'shildi (TZ 4.5.1: davomatda
+// to'rt holat — keldi, kechikdi, kelmadi, sababli). Hozir bo'lgan dars sifatida
+// sanaladi (lib/studentBot/views.ts), gamifikatsiyada «kechikib keldi» tangasi.
+export type AttendanceStatus = "keldi" | "kechikdi" | "birinchi" | "sababli" | "sababsiz";
 
 export interface AttendanceOption {
   key: AttendanceStatus;
@@ -19,6 +22,7 @@ export interface AttendanceOption {
 // Ranglar jonli referensdan (getComputedStyle) olingan — taxmin emas.
 export const ATTENDANCE_OPTIONS: AttendanceOption[] = [
   { key: "keldi", label: "Keldi", color: "#28d94f" },
+  { key: "kechikdi", label: "Kechikdi", color: "#f97316" },
   { key: "birinchi", label: "Birinchi dars", color: "#fbb500" },
   { key: "sababli", label: "Sababli", color: "#1f2937" },
   { key: "sababsiz", label: "Sababsiz", color: "#fc0707" },
@@ -26,6 +30,7 @@ export const ATTENDANCE_OPTIONS: AttendanceOption[] = [
 
 export const ATTENDANCE_COLOR: Record<AttendanceStatus, string> = {
   keldi: "#28d94f",
+  kechikdi: "#f97316",
   birinchi: "#fbb500",
   sababli: "#1f2937",
   sababsiz: "#fc0707",
@@ -35,6 +40,7 @@ export const ATTENDANCE_COLOR: Record<AttendanceStatus, string> = {
 export type AttendanceGlyph = "check" | "bang" | "minus";
 export const ATTENDANCE_GLYPH: Record<AttendanceStatus, AttendanceGlyph> = {
   keldi: "check",
+  kechikdi: "check",
   birinchi: "bang",
   sababli: "bang",
   sababsiz: "minus",

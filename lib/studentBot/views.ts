@@ -64,6 +64,7 @@ function weekdayName(jsDay: number): string {
 
 const STATUS_EMOJI: Record<AttendanceStatus, string> = {
   keldi: "✅",
+  kechikdi: "🟠",
   birinchi: "🟡",
   sababli: "🔵",
   sababsiz: "❌",
@@ -71,6 +72,7 @@ const STATUS_EMOJI: Record<AttendanceStatus, string> = {
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   keldi: "Keldi",
+  kechikdi: "Kechikdi",
   birinchi: "Birinchi dars",
   sababli: "Sababli",
   sababsiz: "Sababsiz",
@@ -208,17 +210,17 @@ export function attendanceView(pupil: Pupil, marks: AttendanceMark[], month: str
     return lines.join("\n");
   }
 
-  const count: Record<AttendanceStatus, number> = { keldi: 0, birinchi: 0, sababli: 0, sababsiz: 0 };
+  const count: Record<AttendanceStatus, number> = { keldi: 0, kechikdi: 0, birinchi: 0, sababli: 0, sababsiz: 0 };
   for (const m of marks) count[m.status] = (count[m.status] ?? 0) + 1;
 
-  // O'zlashtirish — "keldi" + "birinchi dars" HOZIR BO'LGAN darslar
+  // O'zlashtirish — "keldi" + "kechikdi" + "birinchi dars" HOZIR BO'LGAN darslar
   // hisoblanadi. "Sababli" ham qoldirilgan dars: uni maxrajdan chiqarib
   // yuborish foizni sun'iy ravishda ko'tarardi.
-  const present = count.keldi + count.birinchi;
+  const present = count.keldi + count.kechikdi + count.birinchi;
   const pct = marks.length > 0 ? Math.round((present / marks.length) * 100) : 0;
 
   lines.push(
-    `Darslar: <b>${marks.length}</b>  •  ✅ ${count.keldi}  ❌ ${count.sababsiz}  🔵 ${count.sababli}  🟡 ${count.birinchi}`,
+    `Darslar: <b>${marks.length}</b>  •  ✅ ${count.keldi}  🟠 ${count.kechikdi}  ❌ ${count.sababsiz}  🔵 ${count.sababli}  🟡 ${count.birinchi}`,
   );
   lines.push(`Qatnashish: <b>${pct}%</b>`);
   lines.push("");

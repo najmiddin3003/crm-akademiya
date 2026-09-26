@@ -58,6 +58,11 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   // Eski manzil — endi "/home" ga yo'naltiradi, lekin yo'naltirish ishga
   // tushishi uchun route'ning o'zi ochiq bo'lishi kerak.
   "/dashboard",
+  // GAMIFIKATSIYA (TZ v1.4, 26.09.2026). Kim nimani ko'rishi va qila olishi
+  // TZ 3-bo'limidagi rollar bo'yicha (direktor / filial admini / ustoz)
+  // SERVERDA kesiladi (lib/gamification/*). Rollar oynasida yopilsa, TZ
+  // bo'yicha huquqi bor ustoz yoki admin o'z ishini qila olmay qolardi.
+  "/gamification-lesson",
 ]);
 
 /**

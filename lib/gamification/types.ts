@@ -304,6 +304,13 @@ export interface CoinTransaction {
   examId?: number | null;
   leadId?: number | null;
   shopOrderId?: number | null;
+  /**
+   * `attendance`/`absence` yozuvi qaysi davomat holatini ifodalaydi — holat
+   * o'zgarganini miqdorga qaramay aniqlash uchun (sozlamadagi miqdor keyin
+   * o'zgarishi mumkin). TZ dagi `attendance_id` o'rnida dars kaliti —
+   * (groupId, pupilId, date): bizning davomatda alohida id yo'q.
+   */
+  attStatus?: "keldi" | "kechikdi" | "kelmadi" | null;
 }
 
 /** Hamyon keshi (TZ 6.5) — istalgan vaqtda yozuvlardan qayta hisoblanadi. */

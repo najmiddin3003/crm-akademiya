@@ -50,6 +50,7 @@ import { useT } from "@/components/shared/Language";
 // bazadagi haqiqiy belgilarni sanaydi, boshqa manba yo'q.
 const SERIES: (DvaSeries & { status: AttendanceStatus })[] = [
   { key: "keldi", status: "keldi", label: "Kelgan o'quvchilar", color: ATTENDANCE_COLOR.keldi },
+  { key: "kechikdi", status: "kechikdi", label: "Kechikib kelganlar", color: ATTENDANCE_COLOR.kechikdi },
   { key: "birinchi", status: "birinchi", label: "Birinchi darsga kelganlar", color: ATTENDANCE_COLOR.birinchi },
   { key: "sababli", status: "sababli", label: "Sababli o'quvchilar", color: ATTENDANCE_COLOR.sababli },
   { key: "sababsiz", status: "sababsiz", label: "Sababsiz o'quvchilar", color: ATTENDANCE_COLOR.sababsiz },
