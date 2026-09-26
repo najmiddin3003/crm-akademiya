@@ -1,6 +1,6 @@
 "use client";
 
-import { loadBalancesByIdCached } from "@/lib/balancesClient";
+import { loadCashBalancesByIdCached } from "@/lib/balancesClient";
 import { invalidateBalances } from "@/lib/cacheKeys";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
@@ -122,7 +122,8 @@ export default function CashboxAdjustDrawer({
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — Kirim oynasidagi
-  // bilan bir xil manba (/api/students/balances).
+  // bilan bir xil manba (/api/students/balances), lekin FAQAT NAQD: bu oyna
+  // pul QAYTARADI, tanga evaziga chegirma esa naqd qaytarilmaydi.
   const [balances, setBalances] = useState<Record<number, number>>({});
   const [rows, setRows] = useState<Row[]>([{ id: 1, amount: "" }]);
   const [nextRowId, setNextRowId] = useState(2);
@@ -248,7 +249,7 @@ export default function CashboxAdjustDrawer({
   useEffect(() => {
     if (target !== "student") return;
     let cancelled = false;
-    loadBalancesByIdCached()
+    loadCashBalancesByIdCached()
       .then((b) => { if (!cancelled) setBalances(b); })
       .catch(() => {});
     return () => { cancelled = true; };

@@ -256,6 +256,8 @@ export function paymentsView(pupil: Pupil, view: PaymentsView): string {
       .join(", ");
     const amount = r.cancelled ? `<s>${fmtUZS(r.amount)}</s>` : `<b>${fmtUZS(r.amount)}</b>`;
     lines.push(`${dmy(r.date)}  ${amount} so'm${tail ? `  <i>(${tail})</i>` : ""}`);
+    // Tanga evaziga chegirma — to'lovga qo'shib hisoblangan qism (jami summaga kiradi).
+    if (r.discount && !r.cancelled) lines.push(`   🏷️ + ${fmtUZS(r.discount)} so'm tanga evaziga chegirma`);
   }
   // `totalCount` — bazadagi HAMMA yozuv, `rows` esa kesilgan ro'yxat.
   if (view.totalCount > view.rows.length) {
@@ -574,15 +576,17 @@ export function groupAddedPush(pupil: Pupil, group: Group): string {
 
 export function paymentPush(
   pupil: Pupil,
-  opts: { amount: number; method: string; date: string },
+  opts: { amount: number; method: string; date: string; discount?: number },
 ): string {
   const lines = [
     "💳 <b>To'lov qabul qilindi</b>",
     "",
     `👤 ${esc(pupilFullName(pupil))}`,
     `💰 Summa: <b>${fmtUZS(opts.amount)} so'm</b>`,
-    `📅 ${dmy(opts.date)}`,
   ];
+  // Gamifikatsiya: tanga evaziga olingan chegirma shu to'lovga qo'llandi.
+  if (opts.discount) lines.push(`🏷️ Tanga evaziga chegirma: <b>${fmtUZS(opts.discount)} so'm</b>`);
+  lines.push(`📅 ${dmy(opts.date)}`);
   if (opts.method) lines.push(`💼 To'lov turi: ${esc(opts.method)}`);
   lines.push("");
   lines.push("<i>Rahmat! Batafsil tarixni botdagi \"To'lovlar\" bo'limida ko'rasiz.</i>");

@@ -174,6 +174,7 @@ export async function toPaymentRow(entry: TransactionEntry, ctx: SyncContext): P
     branch: await ctx.branchOfPayment(entry.cashboxId, String(entry.moderator ?? "")),
     note: String(entry.note ?? "").trim(),
     status: statusLabel(entry.status),
+    ...(Number(entry.discountSom) > 0 ? { discount: Number(entry.discountSom) } : {}),
   };
 }
 
@@ -263,7 +264,9 @@ export function paymentCells(r: PaymentRow): SheetCell[] {
     cell(r.cashboxName),
     cell(r.moderator),
     cell(r.branch),
-    cell(r.note),
+    // Ustunlar o'zgarmaydi — tanga evaziga chegirma izohga qo'shiladi
+    // (Summa ustuni NAQD bo'lib qoladi, jadvaldagi SUM() kassaga teng).
+    cell([r.note, r.discount ? `Chegirma (tanga): ${fmtMoney(r.discount)} so'm` : ""].filter(Boolean).join(" · ")),
     r.status,
     nowStamp(),
   ];
@@ -364,6 +367,9 @@ export function paymentMessage(r: PaymentRow): string {
   if (r.groupName) lines.push(`👥 ${esc(r.groupName)}`);
   if (r.teacherName) lines.push(`🧑‍🏫 Ustoz: ${esc(r.teacherName)}`);
   lines.push(`💵 <b>${fmtMoney(r.amount)} so'm</b> · ${esc(r.paymentType || DASH)}`);
+  // Tanga evaziga chegirma (gamifikatsiya) — kassaga tushmagan, lekin
+  // o'quvchining to'loviga qo'shilgan qism.
+  if (r.discount) lines.push(`🏷️ Chegirma (tanga evaziga): ${fmtMoney(r.discount)} so'm`);
   if (r.category) lines.push(`📋 ${esc(r.category)}`);
   lines.push(`🏦 ${esc(r.cashboxName)}${r.branch ? ` · ${esc(r.branch)}` : ""}`);
   if (r.moderator) lines.push(`✅ Qabul qildi: ${esc(r.moderator)}`);

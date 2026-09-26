@@ -39,6 +39,19 @@ interface View {
   items: ShopItemView[];
   budget: { branchId: number; name: string; spent: number; limit: number | null; left: number | null }[];
   wishRows: { itemId: number; title: string; price: number; wanted: number; ready: { pupilId: number; name: string; balance: number }[]; stock: number | null }[];
+  discounts: {
+    id: number;
+    month: string;
+    pupilId: number;
+    pupilName: string;
+    groupLabel: string;
+    teacherName: string;
+    monthlyPriceSom: number;
+    amountSom: number;
+    percent: number;
+    status: "active" | "applied";
+    appliedAt: string | null;
+  }[];
   orders: {
     id: number;
     pupilId: number;
@@ -267,8 +280,7 @@ export default function ShopPage() {
                     <button
                       type="button"
                       className={btnSm}
-                      disabled={!view.enabled || i.kind === "discount"}
-                      title={i.kind === "discount" ? t("Chegirma Moliyaga ulangach beriladi") : undefined}
+                      disabled={!view.enabled}
                       onClick={() => setGive({ item: i })}
                     >
                       {t("Berish")}
@@ -323,7 +335,7 @@ export default function ShopPage() {
                                   key={p.pupilId}
                                   type="button"
                                   className={btnSm}
-                                  disabled={!it || it.kind === "discount" || !view.enabled}
+                                  disabled={!it || !view.enabled}
                                   onClick={() => it && setGive({ item: it, pupilId: p.pupilId })}
                                 >
                                   {p.name} · {p.balance}
@@ -344,6 +356,64 @@ export default function ShopPage() {
           )}
         </div>
       )}
+
+      {/* To'lovga chegirmalar (TZ 5.5; prototipdagi discTable): shu va keyingi
+          oy to'lovlariga — Moliyada avtomatik qo'llanadi, ustoz foizi to'liq
+          narxdan. Oy bo'yicha alohida karta; bo'sh oy ko'rsatilmaydi. */}
+      {adm &&
+        [...new Set(view.discounts.map((d) => d.month))].map((m) => {
+          const rows = view.discounts.filter((d) => d.month === m);
+          return (
+            <div key={m} className={`${cardCls} space-y-2`}>
+              <h2 className="text-[15px] font-semibold">
+                {t("{month} to'lovlariga chegirmalar", { month: monthName(m) })}{" "}
+                <span className="text-[12.5px] font-medium text-muted-foreground">· {t("Moliyaga avtomatik")}</span>
+              </h2>
+              <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+                <table className="gm-table">
+                  <thead>
+                    <tr>
+                      <th>{t("O'quvchi")}</th>
+                      <th>{t("Kurs")}</th>
+                      <th>{t("Oylik narx")}</th>
+                      <th>{t("Chegirma")}</th>
+                      <th>{t("To'lanadi")}</th>
+                      <th>{t("Ustoz foizi")}</th>
+                      <th>{t("Holat")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((d) => (
+                      <tr key={d.id}>
+                        <td data-l="" className="gm-lead font-semibold">
+                          {d.pupilName}
+                        </td>
+                        <td data-l={t("Kurs")}>{d.groupLabel}</td>
+                        <td data-l={t("Oylik narx")}>{nfSom(d.monthlyPriceSom)}</td>
+                        <td data-l={t("Chegirma")}>
+                          <span className="gm-neg">
+                            −{nfSom(d.amountSom)} ({d.percent}%)
+                          </span>
+                        </td>
+                        <td data-l={t("To'lanadi")}>{nfSom(d.monthlyPriceSom - d.amountSom)}</td>
+                        <td data-l={t("Ustoz foizi")}>
+                          <span className="text-[12px]">{t("to'liq narxdan ({sum})", { sum: nfSom(d.monthlyPriceSom) })}</span>
+                        </td>
+                        <td data-l={t("Holat")}>
+                          {d.status === "applied" ? (
+                            <Chip tone="g">{d.appliedAt ? t("Qo'llandi · {date}", { date: fmtDate(d.appliedAt) }) : t("Qo'llandi")}</Chip>
+                          ) : (
+                            <Chip tone="a">{t("To'lov kutilmoqda")}</Chip>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
 
       {adm && (
         <div className={`${cardCls} space-y-2`}>

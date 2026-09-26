@@ -43,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const col = db.collection("transaction_entries");
   const entry = await col.findOne(
     { id: entryId },
-    { projection: { _id: 0, id: 1, txType: 1, studentRefund: 1, pupilId: 1, studentName: 1 } },
+    { projection: { _id: 0, id: 1, txType: 1, studentRefund: 1, pupilId: 1, studentName: 1, discountId: 1 } },
   );
   if (!entry) {
     return NextResponse.json({ ok: false, error: "Tranzaksiya topilmadi" }, { status: 404 });
@@ -53,6 +53,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!owned) {
     return NextResponse.json(
       { ok: false, error: "Bu yozuv o'quvchiga oid emas — unda xodim ismi turadi" },
+      { status: 400 },
+    );
+  }
+
+  // Tanga evaziga chegirma o'sha o'quvchiniki (gamifikatsiya) — bunday
+  // to'lovni boshqa o'quvchiga ko'chirib bo'lmaydi.
+  if (entry.discountId && Number(entry.pupilId) !== pupilId) {
+    return NextResponse.json(
+      { ok: false, error: "Bu to'lovga o'quvchining tanga evaziga chegirmasi qo'llangan — boshqa o'quvchiga biriktirib bo'lmaydi" },
       { status: 400 },
     );
   }

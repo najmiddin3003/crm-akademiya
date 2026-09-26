@@ -103,7 +103,7 @@ spesifikatsiya bor. Kod: `lib/gamification/*` (dvigatel, qoidalar, qulf), API
 `app/api/gamification/*`, UI `components/gamification/*`. Bosqichlar: 1) dvigatel +
 Sozlamalar (Umumiy, Tanga sabablari) — qilindi; 2) dars jurnali + davomat —
 qilindi; 3) o'quvchilar/profil/storno — qilindi; 4) reyting, musobaqa, oy yakuni, nishonlar — qilindi;
-5a) do'kon — qilindi; 5b) to'lovga chegirma (Moliyaga ulash); 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
+5a) do'kon — qilindi; 5b) to'lovga chegirma (Moliyaga ulash) — qilindi; 6) o'quvchi sahifasi. Modul feature-flag bilan (Sozlamalar →
 Gamifikatsiya → Umumiy): o'chiq paytda hech narsa yozilmaydi.
 
 2-bosqich: sidebar → Gamifikatsiya → «Tanga berish» (`/gamification-lesson`,
@@ -146,6 +146,24 @@ o'quvchi kartasi xabarida soni). Sozlamalarga «Sovg'alar» va «Filiallar va
 byudjet» tablari (filiallarning o'zi — Boshqaruv → Filiallar). Profilda «♥ Istaklari»
 va «🛍️ Sotib olganlari», tarixdagi xaridda «Qaytarish». «To'lovga chegirma» —
 katalogdagi yagona maxsus yozuv; uni berish 5b da (Moliyaga ulanadi).
+
+5b-bosqich — to'lovga chegirma ↔ Moliya (`lib/gamification/discounts.ts`,
+`tuition_discounts`): berishda kurs (o'quvchining faol guruhi) tanlanadi, summa =
+floor(oylik narx × foiz) — narx qarzdorlikdagi `monthlyPriceFor`, oy — keyingi (M+1),
+oyiga bitta (`activeKey`); M+1 to'lovi (shu ustozga) allaqachon bo'lsa bloklanadi.
+KIRIM YADROSI (`lib/cashboxAdjust.ts`, web va bot bitta): o'quvchining shu oy
+(`periodMonth`/sana) uchun, o'sha kurs ustoziga yozilayotgan to'loviga chegirma
+avtomatik qo'llanadi — yozuvga `discountId`/`discountSom`/`discountPercent`,
+`amount` esa kassaga tushgan NAQD. O'quvchi tomoni (balans, qarzdorlar, o'quvchilar
+boti, kartochka, «Xizmat ko'rsatilgan», ustoz tushumi va xodim daftari — ustoz
+foizi TO'LIQ narxdan) `amount + discountSom` ni sanaydi (`ENTRY_PAID_EXPR`,
+`entryPaidAmount`); kassa, daromad, P&L, Tushum rejasi va kassir KPI — faqat naqd.
+O'quvchiga pul QAYTARISH chegarasi — faqat naqd (chegirma naqd qaytarilmaydi).
+To'lov bekor qilinsa chegirma yana faol; chegirmali to'lov boshqa o'quvchiga
+biriktirilmaydi; qo'llangan chegirma qaytarilmaydi. M+1 tugagach tungi cron
+(`runGamificationNightly`) qo'llanmaganini `expired` qilib tangani qaytaradi. Kirim
+oynasi va xodimlar botida kassirga ogohlantirish, chek/Telegram/Sheets izohida
+chegirma qatori; Do'konda «{Oy} to'lovlariga chegirmalar» jadvali.
 
 ## 5. ✅ Guruh → Jihozlar yo'q edi — qilindi (2026-08-07)
 

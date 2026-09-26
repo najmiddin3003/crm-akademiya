@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { withBranch, type BranchScope } from "@/lib/branchScope";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { groupLabel, type Group } from "@/lib/groups";
@@ -204,7 +205,9 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
       .collection("transaction_entries")
       .aggregate<{ _id: { pupilId?: unknown; name?: unknown }; total: number }>([
         { $match: { $and: [studentBalanceMatch(), { date: from ? { $gte: from, $lte: to } : { $lte: to } }] } },
-        { $group: { _id: { pupilId: "$pupilId", name: "$studentName" }, total: { $sum: "$amount" } } },
+        // Tanga evaziga chegirma ham TO'LANGAN hisoblanadi (lib/transactionEntries.ts →
+        // discountSom): markaz kechgan qism qarz bo'lib qolmasin.
+        { $group: { _id: { pupilId: "$pupilId", name: "$studentName" }, total: { $sum: ENTRY_PAID_EXPR } } },
       ])
       .toArray();
   const [pupils, courses, payments, monthPayments] = await Promise.all([

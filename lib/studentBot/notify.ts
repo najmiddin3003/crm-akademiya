@@ -161,6 +161,8 @@ export interface PaymentNotice {
    */
   pupilId: number | null;
   amount: number;
+  /** Shu to'lovga qo'llangan tanga evaziga chegirma (so'm). */
+  discount?: number;
   method: string;
   /** "YYYY-MM-DD" */
   date: string;

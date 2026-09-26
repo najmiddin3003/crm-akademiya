@@ -180,6 +180,11 @@ export const RENDERED_KEYS = [
   "Hozirgina", "Kecha", "{n} daqiqa oldin", "{n} soat oldin",
   "{n} daqiqa kechikdi", "{n} soat kechikdi", "{n} kun kechikdi",
   "Muddat: {stamp} — {overdue}",
+  // Gamifikatsiya: chegirma buyurtmasi nomi bazada saqlanadi («Oktyabr
+  // to'loviga 5% chegirma», lib/gamification/discounts.ts) va oy nomi
+  // server xabarlari ichida keladi — teskari moslashda o'giriladi.
+  "{month} to'loviga {n}% chegirma",
+  "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr",
 ];
 
 type Pattern = { key: string; names: string[]; re: RegExp };

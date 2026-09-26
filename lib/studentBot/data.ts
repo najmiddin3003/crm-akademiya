@@ -7,7 +7,7 @@ import type { MonthlyExam, UzbmbExam } from "@/lib/imtihon";
 import type { NewsItem } from "@/lib/news";
 import { pupilEntryMatch } from "@/lib/pupilEntries";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
-import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
+import { ENTRY_PAID_EXPR, isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import { uzNow } from "@/lib/uzTime";
 
 // O'quvchilar boti KO'RSATADIGAN ma'lumot. FAQAT O'QISH — bu fayldagi
@@ -29,6 +29,11 @@ function escapeRegex(s: string): string {
 
 /** Yig'indi uchun: bekor qilingan yozuv 0 sifatida qo'shiladi. */
 const notCancelled = { $cond: [{ $eq: ["$status", "cancelled"] }, 0, "$amount"] };
+/**
+ * Jonli to'lovlar yig'indisi: naqd + tanga evaziga chegirma — CRM balansi
+ * bilan bir xil qoida (lib/transactionEntries.ts → discountSom).
+ */
+const notCancelledPaid = { $cond: [{ $eq: ["$status", "cancelled"] }, 0, ENTRY_PAID_EXPR] };
 
 /** O'quvchining to'liq hujjati — parol xeshlarisiz. */
 export async function loadPupil(db: Db, pupilId: number): Promise<Pupil | null> {
@@ -113,6 +118,8 @@ export interface PaymentRow {
   archive: boolean;
   /** O'quvchiga pul QAYTARILGAN yozuv (lib/studentRefund.ts). */
   refund: boolean;
+  /** Shu to'lovga qo'llangan tanga evaziga chegirma (so'm), bo'lmasa 0. */
+  discount: number;
 }
 
 export interface PaymentsView {
@@ -185,7 +192,7 @@ export async function loadPayments(
     name
       ? (db
           .collection("transaction_entries")
-          .find(liveMatch, { projection: { _id: 0, date: 1, amount: 1, paymentType: 1, status: 1, txType: 1, studentRefund: 1 } })
+          .find(liveMatch, { projection: { _id: 0, date: 1, amount: 1, discountSom: 1, paymentType: 1, status: 1, txType: 1, studentRefund: 1 } })
           .sort({ date: -1 })
           .limit(limit)
           .toArray() as unknown as Promise<TransactionEntry[]>)
@@ -214,7 +221,7 @@ export async function loadPayments(
     name
       ? db.collection("transaction_entries").aggregate([
           { $match: liveMatch },
-          { $group: { _id: null, total: { $sum: notCancelled }, n: { $sum: 1 } } },
+          { $group: { _id: null, total: { $sum: notCancelledPaid }, n: { $sum: 1 } } },
         ]).toArray()
       : Promise.resolve([]),
     includeArchive
@@ -233,6 +240,7 @@ export async function loadPayments(
       cancelled: e.status === "cancelled",
       archive: false,
       refund: isStudentRefundEntry(e),
+      discount: Number(e.discountSom) || 0,
     })),
     ...legacy.map((e) => ({
       date: String(e.date ?? ""),
@@ -241,6 +249,7 @@ export async function loadPayments(
       cancelled: e.status === "cancelled",
       archive: true,
       refund: false,
+      discount: 0,
     })),
   ]
     .sort((a, b) => b.date.localeCompare(a.date))

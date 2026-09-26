@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
 import { SpinnerBlock } from "@/components/ui/Spinner";
-import { useT } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
 import { intIn } from "@/lib/gamification/rules";
+import { MONTHS } from "@/lib/i18n";
 import { gamApi } from "../api";
 import { btnDanger, btnGhost, btnPrimary, btnSm, Chip, FieldError, fmtDate, inputCls } from "../ui";
 
@@ -86,6 +87,16 @@ export interface GiveDone {
   badges: { name: string }[];
 }
 
+/** Chegirma uchun kurs tanlovi (TZ 4.16.2): o'quvchining faol guruhlari. */
+interface DiscountOption {
+  groupId: number;
+  label: string;
+  monthlyPrice: number;
+  amount: number;
+  /** Shu kursga berib bo'lmasa — sababi (masalan, M+1 to'lovi allaqachon bor). */
+  error: string | null;
+}
+
 export function GiveModal({
   item,
   branchId,
@@ -100,6 +111,7 @@ export function GiveModal({
   onDone: (res: GiveDone) => void;
 }) {
   const { t } = useT();
+  const [lang] = useLang();
   const modal = useModalClose(onClose);
   const [rows, setRows] = useState<Eligible[] | null>(null);
   const [kidsMaxGrade, setKidsMaxGrade] = useState<number | null>(null);
@@ -108,6 +120,10 @@ export function GiveModal({
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  // To'lovga chegirma: tanlangan o'quvchining kurslari (M+1 to'lovi uchun).
+  const isDisc = item.kind === "discount";
+  const [disc, setDisc] = useState<{ pupilId: number; month: string; options: DiscountOption[] } | null>(null);
+  const [groupId, setGroupId] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -129,25 +145,50 @@ export function GiveModal({
     };
   }, [item.id, branchId, t]);
 
+  useEffect(() => {
+    if (!isDisc || sel === null) return;
+    let alive = true;
+    gamApi<{ month: string; options: DiscountOption[] }>(`/api/gamification/shop/discount-options?pupilId=${sel}`).then((res) => {
+      if (!alive) return;
+      if (res.ok) {
+        setDisc({ pupilId: sel, month: res.month, options: res.options });
+        setGroupId(res.options.find((o) => !o.error)?.groupId ?? null);
+      } else {
+        setDisc({ pupilId: sel, month: "", options: [] });
+        setErr(t(res.error));
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isDisc, sel, t]);
+
   const shown = useMemo(() => {
     const k = q.trim().toLowerCase();
     return (rows ?? []).filter((r) => !k || r.name.toLowerCase().includes(k));
   }, [rows, q]);
   const cur = rows?.find((r) => r.pupilId === sel) ?? null;
+  // Chegirmada kurs tanlanmaguncha (yoki tanlangan kursga berib bo'lmasa) berilmaydi.
+  const discFor = isDisc && disc && disc.pupilId === sel ? disc : null;
+  // Oy (M+1) nomi — gap ichida kichik harf bilan (TZ 9-bo'lim).
+  const discMonth = discFor?.month ? ((MONTHS[lang] ?? MONTHS.uz)[Number(discFor.month.slice(5, 7)) - 1] ?? discFor.month).toLowerCase() : "";
+  const course = discFor?.options.find((o) => o.groupId === groupId) ?? null;
+  const blocked = !cur || !!cur.error || (isDisc && (!course || !!course.error));
 
   async function give() {
-    if (!cur || cur.error || busy) return;
+    if (!cur || blocked || busy) return;
     setBusy(true);
     const res = await gamApi<{ order: { itemName: string }; wished: boolean; levelUp: { name: string } | null; badges: { name: string }[] }>(
       "/api/gamification/shop/orders",
-      { method: "POST", body: { pupilId: cur.pupilId, itemId: item.id } },
+      { method: "POST", body: { pupilId: cur.pupilId, itemId: item.id, ...(isDisc ? { groupId } : {}) } },
     );
     setBusy(false);
     if (!res.ok) {
       setErr(t(res.error));
       return;
     }
-    onDone({ pupilName: cur.name, title: item.title, price: item.priceCoins, wished: res.wished, levelUp: res.levelUp, badges: res.badges ?? [] });
+    // Chegirmada nom oyga bog'lanadi («Oktabr to'loviga 5% chegirma»).
+    onDone({ pupilName: cur.name, title: res.order.itemName, price: item.priceCoins, wished: res.wished, levelUp: res.levelUp, badges: res.badges ?? [] });
     modal.close();
   }
 
@@ -188,6 +229,7 @@ export function GiveModal({
                 onClick={() => {
                   setSel(r.pupilId);
                   setErr("");
+                  if (r.pupilId !== sel) setGroupId(null);
                 }}
                 className={`gm-tap flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left ${
                   sel === r.pupilId ? "border-primary ring-2 ring-primary/40" : "border-border"
@@ -211,12 +253,39 @@ export function GiveModal({
             ))
           )}
         </div>
+        {isDisc && (
+          <div className="mt-3">
+            <span className="mb-1 block text-[12px] font-semibold text-muted-foreground">
+              {discMonth ? t("Qaysi kurs to'loviga ({month})", { month: discMonth }) : t("Qaysi kurs to'loviga")}
+            </span>
+            <Select
+              value={groupId !== null ? String(groupId) : ""}
+              onChange={(v) => {
+                setGroupId(v ? Number(v) : null);
+                setErr("");
+              }}
+              options={(discFor?.options ?? []).map((o) => ({
+                value: String(o.groupId),
+                label: `${o.label} — ${nfSom(o.monthlyPrice)} → −${nfSom(o.amount)}${o.error ? ` (${t(o.error)})` : ""}`,
+              }))}
+              placeholder={!cur ? t("Avval o'quvchini tanlang") : !discFor ? t("Yuklanmoqda…") : discFor.options.length ? t("Kursni tanlang") : t("Faol kursi yo'q")}
+              disabled={!cur || !discFor || !discFor.options.length}
+              size="md"
+            />
+          </div>
+        )}
         <div className="mt-3">
           {!cur ? (
             <p className="text-[12.5px] text-muted-foreground">{t("Ro'yxatdan o'quvchini tanlang — sovg'a berish mumkin bo'lganlar yuqorida.")}</p>
-          ) : cur.error ? (
+          ) : cur.error || course?.error ? (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
-              {cur.name}: {t(cur.error)}.
+              {cur.name}: {t(cur.error ?? course?.error ?? "")}.
+            </div>
+          ) : isDisc ? (
+            <div className="rounded-xl bg-secondary/60 px-3 py-2 text-[13px]">
+              {t("{name} · balans {from} → {to}", { name: cur.name, from: cur.balance, to: cur.balance - item.priceCoins })}
+              {discMonth && <>. {t("Chegirma {month} to'loviga Moliya bo'limida avtomatik qo'llanadi", { month: discMonth })}</>}
+              {cur.wished && <>. {t("♥ Istaklar ro'yxatida — berilgach ro'yxatdan olinadi")}</>}.
             </div>
           ) : (
             <div className="rounded-xl bg-secondary/60 px-3 py-2 text-[13px]">
@@ -230,7 +299,7 @@ export function GiveModal({
           <button type="button" className={btnGhost} onClick={modal.close} disabled={busy}>
             {t("Bekor")}
           </button>
-          <button type="button" className={btnPrimary} onClick={give} disabled={busy || !cur || !!cur.error}>
+          <button type="button" className={btnPrimary} onClick={give} disabled={busy || blocked}>
             {busy ? t("Saqlanmoqda…") : t("Berish")}
           </button>
         </div>

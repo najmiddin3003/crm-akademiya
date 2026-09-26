@@ -50,6 +50,21 @@ function monthLabel(m: string): string {
  * Qatorlar KALKULYATOR — ular alohida jurnal yozuvi yaratmaydi, bitta
  * yozuvga yig'iladi (sabab `save()` izohida).
  */
+/**
+ * `/api/gamification/discounts/pending` javobi (lib/gamification/discounts.ts →
+ * PendingDiscount). Tip server modulidan import qilinmaydi: u Mongo
+ * kodini tortadi va ruxsatlar generatori importlarni kuzatadi.
+ */
+interface PendingDiscount {
+  id: number;
+  month: string;
+  percent: number;
+  amountSom: number;
+  groupLabel: string;
+  teacherName: string;
+  inGroup: boolean;
+}
+
 interface Row {
   id: number;
   amount: string;
@@ -179,6 +194,28 @@ export default function CashboxKirimDrawer({
   // Serverga NOM ham ketadi — jurnaldagi "KIM" ustuni, Sheets va
   // Telegram xabari shuni ko'rsatadi. Bog'lanish esa ID bo'yicha.
   const studentName = selectedStudent?.name ?? "";
+
+  // TANGA EVAZIGA CHEGIRMA (gamifikatsiya, TZ 4.16.4) — o'quvchi shu oy
+  // to'loviga chegirma olgan bo'lsa, kassir pulni olishdan OLDIN bilsin:
+  // o'quvchidan shuncha kam olinadi, chegirma saqlanganda o'zi qo'llanadi
+  // (lib/cashboxAdjust.ts). Javob pupil+oy kaliti bilan saqlanadi — tanlov
+  // o'zgarsa eski ogohlantirish ko'rinmaydi.
+  const [pendingDisc, setPendingDisc] = useState<(PendingDiscount & { key: string }) | null>(null);
+  const discPupilId = selectedStudent?.id ?? null;
+  const discKey = `${discPupilId}:${periodMonth}`;
+  useEffect(() => {
+    if (discPupilId === null) return;
+    let alive = true;
+    fetch(`/api/gamification/discounts/pending?pupilId=${discPupilId}&month=${periodMonth}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setPendingDisc(d?.ok && d.discount ? { ...(d.discount as PendingDiscount), key: `${discPupilId}:${periodMonth}` } : null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [discPupilId, periodMonth]);
 
   const selectedType = useMemo(
     () => categories.find((tv) => tv.id === categoryId) ?? null,
@@ -471,6 +508,31 @@ export default function CashboxKirimDrawer({
                 </Link>
               </div>
             )}
+            {/* Tanga evaziga chegirma — shu oy to'loviga (yuqoridagi izoh). */}
+            {selectedStudent && !showRows && pendingDisc && pendingDisc.key === discKey && (() => {
+              const d = pendingDisc;
+              const teacherSet = showTeacher && teacherName.trim() !== "";
+              const mismatch = teacherSet && d.teacherName.trim() !== "" && key(teacherName) !== key(d.teacherName);
+              return (
+                <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed">
+                  <div>
+                    🏷️ <strong>{t("Tanga evaziga chegirma: −{sum} ({pct}%)", { sum: t(fmtSom(d.amountSom)), pct: d.percent })}</strong> — {d.groupLabel}
+                  </div>
+                  {!d.inGroup ? (
+                    <div className="text-muted-foreground">{t("O'quvchi o'sha guruhda emas — chegirma qo'llanmaydi.")}</div>
+                  ) : mismatch ? (
+                    <div>
+                      {t("Chegirma faqat {teacher} to'loviga qo'llanadi.", { teacher: d.teacherName })}{" "}
+                      <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setTeacherName(d.teacherName)}>
+                        {t("Shu o'qituvchini tanlash")}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">{t("O'quvchidan shuncha kam oling — saqlanganda chegirma o'zi qo'llanadi.")}</div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           )}
 

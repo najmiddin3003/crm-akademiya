@@ -295,6 +295,9 @@ export async function GET(req: Request) {
       // oyiga emas, boshqa oyning oyligiga yozilgan bo'lsa qoldiq o'sha
       // oyning daftaridan keladi — belgisiz sakrash tushunarsiz edi.
       periodMonth: 1,
+      // Tanga evaziga chegirma (gamifikatsiya) — o'quvchi kartasidagi
+      // balans uni ham qo'shib sanaydi (lib/transactionEntries.ts).
+      discountSom: 1, discountPercent: 1,
     });
   }
 

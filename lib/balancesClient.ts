@@ -32,6 +32,8 @@ export type StudentBalancesById = Record<number, number>;
 interface BalancesResponse {
   balances: StudentBalances;
   byId: StudentBalancesById;
+  /** `byId` ning tanga evaziga chegirma qismi (faqat bori). */
+  discountById: StudentBalancesById;
 }
 
 /**
@@ -47,7 +49,11 @@ function loadBalancesResponse(): Promise<BalancesResponse> {
         // Xatoni bo'sh xaritaga aylantirmaymiz — aks holda "balans 0" deb
         // ko'rsatilib, ustiga o'sha noto'g'ri javob keshlanib qolardi.
         if (!d?.ok) throw new Error("balances: ok emas");
-        return { balances: (d.balances ?? {}) as StudentBalances, byId: (d.byId ?? {}) as StudentBalancesById };
+        return {
+          balances: (d.balances ?? {}) as StudentBalances,
+          byId: (d.byId ?? {}) as StudentBalancesById,
+          discountById: (d.discountById ?? {}) as StudentBalancesById,
+        };
       }));
 }
 
@@ -65,6 +71,20 @@ export function loadBalancesCached(): Promise<StudentBalances> {
  */
 export function loadBalancesByIdCached(): Promise<StudentBalancesById> {
   return loadBalancesResponse().then((d) => d.byId);
+}
+
+/**
+ * FAQAT NAQD to'langani — ID bo'yicha: balans minus tanga evaziga chegirma
+ * (lib/transactionEntries.ts → discountSom). O'quvchiga pul QAYTARISH
+ * chegarasi shu: chegirma balansda turadi, lekin naqd qaytarilmaydi
+ * (server ham xuddi shunday tekshiradi — lib/cashboxAdjust.ts).
+ */
+export function loadCashBalancesByIdCached(): Promise<StudentBalancesById> {
+  return loadBalancesResponse().then((d) => {
+    const out: StudentBalancesById = { ...d.byId };
+    for (const [id, disc] of Object.entries(d.discountById)) out[Number(id)] = (out[Number(id)] ?? 0) - disc;
+    return out;
+  });
 }
 
 // invalidateBalances() ATAYLAB bu yerda emas — u lib/cacheKeys.ts da

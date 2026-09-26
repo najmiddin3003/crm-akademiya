@@ -238,20 +238,49 @@ export function kirimNotePrompt(d: KirimDraft, cashbox: BotCashbox): string {
   return `${kirimHeader(d, cashbox)}\n👉 Izoh yozing yoki tugmani bosing:`;
 }
 
-export function kirimConfirmView(d: KirimDraft, cashbox: BotCashbox, dateIso: string): string {
+/**
+ * Tanga evaziga chegirma haqida kassirga ogohlantirish (gamifikatsiya, TZ
+ * 4.16.4): o'quvchi shu oy to'loviga chegirma olgan — undan shuncha KAM pul
+ * olinadi, chegirma saqlanganda o'zi qo'llanadi. Faqat to'lov o'sha kurs
+ * ustoziga yozilsa va o'quvchi hali o'sha guruhda bo'lsa.
+ */
+export interface KirimDiscountHint {
+  amountSom: number;
+  percent: number;
+  groupLabel: string;
+  teacherName: string;
+  /** Shu yozuvga qo'llanadimi (ustoz mos va o'quvchi guruhda). */
+  applies: boolean;
+}
+
+function discountHintLine(h: KirimDiscountHint): string {
+  return h.applies
+    ? `🏷️ <b>Tanga evaziga chegirma: −${so(h.amountSom)}</b> (${h.percent}%) — ${esc(h.groupLabel)}. O'quvchidan shuncha kam oling: saqlanganda chegirma o'zi qo'llanadi.`
+    : `🏷️ O'quvchida ${esc(h.groupLabel)} to'loviga −${so(h.amountSom)} chegirma bor, lekin u faqat ${esc(h.teacherName || "o'sha kurs")} to'loviga qo'llanadi — bu yozuvga qo'llanmaydi.`;
+}
+
+export function kirimConfirmView(d: KirimDraft, cashbox: BotCashbox, dateIso: string, discount?: KirimDiscountHint | null): string {
   return [
     kirimHeader(d, cashbox),
     `Sana: ${dmy(dateIso)} · Kassa: ${esc(cashbox.name)}`,
+    ...(discount ? ["", discountHintLine(discount)] : []),
     "",
     "Hammasi to'g'rimi? <b>Tasdiqlash</b> bosilgach pul kassaga yoziladi, Google Sheets va Telegram guruhiga xabar ketadi.",
   ].join("\n");
 }
 
-export function kirimSaved(d: KirimDraft, cashbox: BotCashbox, entryId: number, balanceAfter: number): string {
+export function kirimSaved(
+  d: KirimDraft,
+  cashbox: BotCashbox,
+  entryId: number,
+  balanceAfter: number,
+  discount?: { amountSom: number; percent: number } | null,
+): string {
   const who = d.studentName ? ` · ${esc(d.studentName)}` : "";
   return [
     `✅ <b>Saqlandi</b> — yozuv #${entryId}`,
     `${so(d.amount ?? 0)} · ${esc(d.methodName ?? "")}${who}`,
+    discount ? `🏷️ Tanga evaziga chegirma qo'llandi: ${so(discount.amountSom)} (${discount.percent}%)` : "",
     d.periodMonth ? `Oy: ${monthLabel(d.periodMonth)}` : "",
     "",
     `🏦 ${esc(cashbox.name)} qoldig'i: <b>${so(balanceAfter)}</b>`,

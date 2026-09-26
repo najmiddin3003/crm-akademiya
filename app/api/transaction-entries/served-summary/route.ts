@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { ensureIndexes } from "@/lib/mongodb";
 
 // GET /api/transaction-entries/served-summary?from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -69,7 +70,9 @@ export async function GET(req: Request) {
           date,
         },
       },
-      { $group: { _id: "$teacherName", amount: { $sum: "$amount" } } },
+      // Tanga evaziga chegirma ham ustozniki — oylikdagi `collected` bilan
+      // bir xil: ustoz foizi TO'LIQ narxdan (TZ 4.16.4).
+      { $group: { _id: "$teacherName", amount: { $sum: ENTRY_PAID_EXPR } } },
       // Tartib aniq bo'lsin — $group tartibi kafolatlanmaydi.
       { $sort: { _id: 1 } },
     ])

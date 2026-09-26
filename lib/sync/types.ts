@@ -93,6 +93,8 @@ export interface PaymentRow {
   branch: string;      // kassir filiali (izohga qarang: kelishilgan yechim)
   note: string;
   status: string;      // "Faol" | "Kutilmoqda" | "Bekor qilindi"
+  /** Tanga evaziga chegirma (so'm) — `amount` ga kirmaydi, alohida ko'rsatiladi. */
+  discount?: number;
 }
 
 export interface SalaryRow {

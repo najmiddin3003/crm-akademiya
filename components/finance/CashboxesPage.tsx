@@ -237,6 +237,8 @@ function printReceipt(e: TransactionEntry, cashboxName: string) {
   // Yozuv qaysi o'qituvchining oyligiga tegishli ekani.
   if (e.teacherName) rows.push(["Ustoz", e.teacherName]);
   if (e.note) rows.push(["Izoh", e.note]);
+  // Tanga evaziga chegirma (gamifikatsiya, TZ 4.16.4) — «Jami» naqd bo'lib qoladi.
+  if (e.discountSom) rows.push(["Chegirma (tanga)", `${fmtSom(e.discountSom)}${e.discountPercent ? ` · ${e.discountPercent}%` : ""}`]);
 
   const html = `<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek #${e.id}</title><style>
     @page{size:58mm auto;margin:3mm}
@@ -333,6 +335,8 @@ function ReceiptPreviewModal({
   ];
   if (entry.teacherName) rows.push(["Ustoz", entry.teacherName]);
   if (entry.note) rows.push(["Izoh", entry.note]);
+  // Tanga evaziga chegirma — bosma chek bilan bir xil qator.
+  if (entry.discountSom) rows.push([t("Chegirma (tanga)"), `${t(fmtSom(entry.discountSom))}${entry.discountPercent ? ` · ${entry.discountPercent}%` : ""}`]);
 
   return (
     <Modal onClose={onClose} controller={modal} bare size="xs" zIndex={130} panelStyle={{ background: "#fff", color: "#0f172a", border: "1px solid #e2e8f0" }}>

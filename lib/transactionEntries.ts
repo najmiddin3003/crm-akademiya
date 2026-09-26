@@ -210,7 +210,35 @@ export interface TransactionEntry {
    * xato aynan shu maydon bo'yicha ajratib topiladi.
    */
   origin?: EntryOrigin;
+  /**
+   * TANGA EVAZIGA CHEGIRMA (gamifikatsiya, TZ 4.16) — shu to'lovga qo'llangan
+   * `tuition_discounts` yozuvi va uning summasi (so'm).
+   *
+   * `amount` — kassaga TUSHGAN naqd pul (chegirmasiz qism), `discountSom` —
+   * markaz kechgan qism. Ikkalasi birga o'quvchining shu oy uchun
+   * TO'LAGANI hisoblanadi: balans, qarzdorlik, o'quvchilar boti va ustoz
+   * tushumi (foizi TO'LIQ narxdan, TZ 4.16.4) `entryPaidAmount` /
+   * `ENTRY_PAID_EXPR` bilan qo'shib sanaydi. Kassa, daromad, P&L va
+   * Sheets'dagi summa esa faqat `amount` — chegirma pul emas.
+   *
+   * Yozadigan yagona joy — lib/cashboxAdjust.ts (kirim); bekor qilinsa
+   * chegirma yana faol bo'ladi (transaction-entries/[id]/cancel).
+   */
+  discountId?: number;
+  discountSom?: number;
+  discountPercent?: number;
 }
+
+/**
+ * O'quvchiga hisoblanadigan summa: naqd + tanga evaziga chegirma (yuqoridagi
+ * `discountSom` izohi). Kassa va daromad hisoblarida ishlatilMAYDI.
+ */
+export function entryPaidAmount(e: { amount?: unknown; discountSom?: unknown }): number {
+  return (Number(e.amount) || 0) + (Number(e.discountSom) || 0);
+}
+
+/** Xuddi shu qoida Mongo yig'indisi uchun: `{ $sum: ENTRY_PAID_EXPR }`. */
+export const ENTRY_PAID_EXPR = { $add: ["$amount", { $ifNull: ["$discountSom", 0] }] };
 
 /** `TransactionEntry.origin` qiymatlari. */
 export type EntryOrigin = "telegram";

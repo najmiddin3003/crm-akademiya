@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { ensureIndexes } from "@/lib/mongodb";
 import { pupilNameOfDoc, type UnassignedEntry } from "@/lib/pupilEntries";
 import { studentBalanceMatch } from "@/lib/studentRefund";
@@ -84,7 +85,7 @@ export async function GET() {
       .collection("transaction_entries")
       .aggregate([
         { $match: { $and: [studentBalanceMatch(), { pupilId: { $exists: true } }] } },
-        { $group: { _id: "$pupilId", n: { $sum: 1 }, total: { $sum: "$amount" } } },
+        { $group: { _id: "$pupilId", n: { $sum: 1 }, total: { $sum: ENTRY_PAID_EXPR } } },
       ])
       .toArray(),
   ]);

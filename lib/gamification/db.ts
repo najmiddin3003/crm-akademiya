@@ -74,6 +74,10 @@ async function createGamIndexes(db: Db): Promise<void> {
     db.collection(GAM.discounts).createIndex({ id: 1 }, { unique: true }),
     // O'quvchiga oyiga bitta faol/qo'llangan chegirma (TZ 6.9): `activeKey` faqat shu holatlarda.
     db.collection(GAM.discounts).createIndex({ activeKey: 1 }, { unique: true, partialFilterExpression: { activeKey: text } }),
+    // Kirim yadrosi har to'lovda so'raydi (pupilId + oy + active); tungi muddat va do'kon jadvali.
+    db.collection(GAM.discounts).createIndex({ pupilId: 1, month: 1, status: 1 }),
+    db.collection(GAM.discounts).createIndex({ status: 1, month: 1 }),
+    db.collection(GAM.discounts).createIndex({ branchId: 1, month: 1 }),
   ]);
 }
 

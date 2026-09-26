@@ -315,8 +315,10 @@ export async function chiqimCallback(ctx: FlowCtx, data: string): Promise<Callba
     // ID bo'yicha — kassir ro'yxatdan AYNAN shu o'quvchini tanlagan,
     // ismdoshning balansi/ustozi aralashmasin (lib/pupilEntries.ts).
     const ref = { id: hit.id, name: hit.name };
+    // Qaytarish chegarasi — faqat NAQD to'langani (tanga evaziga chegirma
+    // balansda bor, lekin u naqd qaytarilmaydi; lib/pupilsDb.ts).
     const [balance, teacher] = await Promise.all([
-      studentPaidBalance(ctx.db, ref),
+      studentPaidBalance(ctx.db, ref, { cashOnly: true }),
       refundTeacherOf(ctx.db, ref),
     ]);
     const next: ChiqimDraft = {

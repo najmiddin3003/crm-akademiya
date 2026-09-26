@@ -5,6 +5,7 @@ import { uzDateIso } from "@/lib/uzTime";
 import { writeAudit, type GamActor } from "./actor";
 import { badgesCol } from "./badges";
 import { GAM, gamDb, isDupKey, withLock } from "./db";
+import { expireDiscounts } from "./discounts";
 import { lastDayOf, shiftMonth } from "./exams";
 import { groupRanking, monthRange } from "./ranking";
 import { branchNames, isOwnGroup, toGamGroup } from "./scope";
@@ -228,7 +229,10 @@ export async function closeMonth(db: Db, month: string, actor: GamActor | null) 
  */
 export async function runGamificationNightly(db: Db) {
   const settings = await loadSettings(db);
-  if (!settings.enabled || !settings.startDate) return { skipped: "o'chiq" };
+  // Muddati o'tgan chegirma — tanga qaytadi (TZ 4.16.6). Modul o'chiq
+  // bo'lsa ham: bu yangi tanga emas, o'quvchining o'z tangasi qaytishi.
+  const discounts = await expireDiscounts(db).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+  if (!settings.enabled || !settings.startDate) return { skipped: "o'chiq", discounts };
   await gamDb();
   const today = uzDateIso();
   const prev = shiftMonth(today.slice(0, 7), -1);
@@ -269,6 +273,6 @@ export async function runGamificationNightly(db: Db) {
       fixed++;
     }
   }
-  return { closed, checked: agg.length, fixed };
+  return { closed, checked: agg.length, fixed, discounts };
 }
 

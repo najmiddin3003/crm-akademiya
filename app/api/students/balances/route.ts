@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { pupilNameOfDoc } from "@/lib/pupilEntries";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 
 // GET /api/students/balances — har bir o'quvchining balansi.
 //
-// JAVOBDA IKKI XARITA:
+// JAVOBDA XARITALAR:
 //   `byId`     — `pupils.id` → summa. ASOSIYSI. Ismdoshlar ajraladi.
 //   `balances` — kichik harfli ism → summa. Eski kalit; id'si yo'q
 //                joylar (masalan jurnaldagi xom ism) uchun qoldi.
+//   `discountById` — shu summaning TANGA EVAZIGA CHEGIRMA qismi (faqat
+//                bori). Summa = naqd + chegirma (lib/transactionEntries.ts →
+//                discountSom); pul QAYTARISH chegarasi esa faqat naqd —
+//                Chiqim oynasi `byId − discountById` ni oladi.
 // Nega ikkitasi va qoida qayerdan: lib/pupilEntries.ts.
 //
 // Manba: `transaction_entries` — o'quvchi qilgan to'lovlar (payIn) MINUS
@@ -42,7 +47,13 @@ export async function GET() {
       { $match: studentBalanceMatch() },
       // ID bo'yicha ham, ism bo'yicha ham guruhlanadi — pastda ikkalasi
       // ikki xil xaritaga ajratiladi.
-      { $group: { _id: { pupilId: "$pupilId", name: "$studentName" }, total: { $sum: "$amount" } } },
+      {
+        $group: {
+          _id: { pupilId: "$pupilId", name: "$studentName" },
+          total: { $sum: ENTRY_PAID_EXPR },
+          discount: { $sum: { $ifNull: ["$discountSom", 0] } },
+        },
+      },
     ])
     .toArray();
 
@@ -58,6 +69,9 @@ export async function GET() {
   // belgilanmagan eski to'lov ismdoshlarda baribir umumiy ko'rinadi.
   // Backfill (scripts/backfill-entry-pupil-id.mjs) bu qoldiqni kamaytiradi.
   const legacyByName: Record<string, number> = {};
+  // Chegirma faqat `pupilId` li yozuvda bo'ladi (kirim yadrosi o'quvchi
+  // aniqlangandagina qo'llaydi) — eski ism bo'yicha shoxga kerak emas.
+  const discountById: Record<number, number> = {};
 
   for (const r of rows) {
     const total = Number(r.total) || 0;
@@ -65,8 +79,11 @@ export async function GET() {
     if (key) balances[key] = (balances[key] ?? 0) + total;
 
     const pid = Number(r._id?.pupilId);
-    if (Number.isFinite(pid)) byId[pid] = (byId[pid] ?? 0) + total;
-    else if (key) legacyByName[key] = (legacyByName[key] ?? 0) + total;
+    if (Number.isFinite(pid)) {
+      byId[pid] = (byId[pid] ?? 0) + total;
+      const disc = Number(r.discount) || 0;
+      if (disc) discountById[pid] = (discountById[pid] ?? 0) + disc;
+    } else if (key) legacyByName[key] = (legacyByName[key] ?? 0) + total;
   }
 
   // Eski yozuvlar egasiga ulanadi. `pupils` ro'yxati yengil o'qiladi
@@ -86,5 +103,5 @@ export async function GET() {
     if (legacy !== 0 || byId[id] !== undefined) byId[id] = (byId[id] ?? 0) + legacy;
   }
 
-  return NextResponse.json({ ok: true, balances, byId });
+  return NextResponse.json({ ok: true, balances, byId, discountById });
 }

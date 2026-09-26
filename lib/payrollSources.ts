@@ -191,8 +191,8 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
     })
-    // Pastdagi tsikl faqat shu uchtasini o'qiydi. 666 KB -> 73 KB.
-    .project({ teacherName: 1, amount: 1, txType: 1, _id: 0 })
+    // Pastdagi tsikl faqat shularni o'qiydi. 666 KB -> 73 KB.
+    .project({ teacherName: 1, amount: 1, discountSom: 1, txType: 1, _id: 0 })
     .toArray();
 
   const map = new Map<string, CollectedByTeacher>();
@@ -202,7 +202,10 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
     const cur = map.get(k) ?? { collected: 0, refunded: 0 };
     const amount = Math.abs(Number(r.amount) || 0);
     if (r.txType === "payIn") {
-      cur.collected += amount;
+      // USTOZ FOIZI TO'LIQ NARXDAN (gamifikatsiya, TZ 4.16.4): o'quvchi
+      // tanga evaziga chegirma olgan bo'lsa, kechilgan qism ham ustozning
+      // tushumiga qo'shiladi — farqni markaz ko'taradi.
+      cur.collected += amount + Math.abs(Number(r.discountSom) || 0);
     } else {
       cur.collected -= amount;
       cur.refunded += amount;

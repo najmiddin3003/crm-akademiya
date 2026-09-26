@@ -5,6 +5,7 @@ import { logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { classifyEntry, flushSoon } from "@/lib/sync/dispatch";
 import { enqueue, wasAnnounced } from "@/lib/sync/outbox";
+import { revertDiscountOnCancel } from "@/lib/gamification/discounts";
 
 // POST /api/transaction-entries/:id/cancel — Kassalar sahifasidagi
 // tranzaksiya tafsilot oynasidagi "Tranzaksiyani bekor qilish". Faqat
@@ -60,6 +61,14 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   }
 
   await entriesCol.updateOne({ id: entryId }, { $set: { status: "cancelled" } });
+
+  // Tanga evaziga chegirma qo'llangan to'lov bekor qilindi — chegirma yana
+  // FAOL: qayta kiritilgan to'lovga qo'llanadi, oyi o'tgan bo'lsa tungi ish
+  // tangani qaytaradi (lib/gamification/discounts.ts). Xato bekor qilishni
+  // to'xtatmaydi.
+  if (entry.discountId) {
+    await revertDiscountOnCancel(db, entry.discountId, entryId).catch((e) => console.error("[cancel] chegirma qaytmadi:", e));
+  }
 
   // Sinxronizatsiya: Sheet'dagi qator "Bekor qilindi" bo'lib yangilanadi
   // va guruhga ALOHIDA tuzatish xabari ketadi (eski xabar tahrirlanmaydi —

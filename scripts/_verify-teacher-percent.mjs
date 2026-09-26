@@ -28,7 +28,9 @@ const pct = new Map(teachers.map((t) => [String(t.name ?? "").trim(), t.percent]
 // Oy bo'yicha kirimlar (bekor qilinganlar chiqariladi).
 const rows = await db.collection("transaction_entries").aggregate([
   { $match: { txType: "payIn", status: { $ne: "cancelled" }, periodMonth: MONTH, teacherName: { $nin: ["", null] } } },
-  { $group: { _id: "$teacherName", baza: { $sum: "$amount" }, n: { $sum: 1 } } },
+  // Ustoz foizi TO'LIQ narxdan: tanga evaziga chegirma (`discountSom`) ham
+  // bazaga kiradi — lib/payrollSources.ts → loadCollectedByTeacher bilan bir xil.
+  { $group: { _id: "$teacherName", baza: { $sum: { $add: ["$amount", { $ifNull: ["$discountSom", 0] }] } }, n: { $sum: 1 } } },
   { $sort: { baza: -1 } },
 ]).toArray();
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { ensureIndexes } from "@/lib/mongodb";
 
 // GET /api/transaction-entries/moderator-summary?moderator=<ism>
@@ -66,7 +67,9 @@ export async function GET(req: Request) {
         $group: {
           _id: null,
           count: { $sum: 1 },
-          amount: { $sum: "$amount" },
+          // Kassir — qabul qilgan NAQD pul; ustoz — oylikdagi `collected`
+          // bilan bir xil (tanga evaziga chegirma ham, TZ 4.16.4).
+          amount: { $sum: moderator ? "$amount" : ENTRY_PAID_EXPR },
           students: { $addToSet: "$studentName" },
         },
       },

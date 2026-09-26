@@ -122,8 +122,7 @@ export default function ShopSections({
                     <button
                       type="button"
                       className={btnSm}
-                      disabled={!w.ready || w.kind === "discount"}
-                      title={w.kind === "discount" ? t("Chegirma Moliyaga ulangach beriladi") : undefined}
+                      disabled={!w.ready}
                       onClick={() => onGive(w)}
                     >
                       {t("Berish")}

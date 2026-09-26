@@ -12,6 +12,7 @@ import { resolvePupilRef } from "@/lib/pupilEntries";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 import { notifyPayment } from "@/lib/studentBot/notify";
 import type { EntryOrigin } from "@/lib/transactionEntries";
+import { attachDiscountEntry, claimDiscountForPayment, releaseDiscountClaim, type ClaimedDiscount } from "@/lib/gamification/discounts";
 
 // KASSAGA KIRIM / KASSADAN CHIQIM — yadro.
 //
@@ -102,6 +103,9 @@ export type AdjustOutcome =
         studentName: string;
         teacherName: string;
         periodMonth?: string;
+        /** Qo'llangan tanga evaziga chegirma (so'm) — tasdiq xabarida ko'rsatiladi. */
+        discountSom?: number;
+        discountPercent?: number;
       };
     }
   | { ok: false; error: string; status: 400 | 404 };
@@ -225,9 +229,11 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     // Chegara O'QUVCHINING O'Z balansidan olinadi. Ilgari ism bo'yicha
     // hisoblanardi, ya'ni ismdoshning puli ham "bor" deb ko'rinib,
     // o'quvchiga o'zi to'lamagan pul qaytarib berilishi mumkin edi.
+    // FAQAT NAQD (`cashOnly`): tanga evaziga chegirma o'quvchining
+    // balansida turadi, lekin u pul emas — uni naqd qaytarib bo'lmaydi.
     const balance = pupil
-      ? await studentPaidBalance(db, pupil)
-      : await studentPaidBalanceByName(db, studentName || "");
+      ? await studentPaidBalance(db, pupil, { cashOnly: true })
+      : await studentPaidBalanceByName(db, studentName || "", { cashOnly: true });
     if (amount > balance) {
       return fail(`Summa o'quvchi balansidan ko'p bo'lmasin (balans: ${balance.toLocaleString("ru-RU")} so'm)`);
     }
@@ -319,7 +325,28 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     ? periodMonth
     : undefined;
 
-  const entryId = await logEntry(db, {
+  // TANGA EVAZIGA CHEGIRMA (gamifikatsiya, TZ 4.16.4) — o'quvchining SHU OY
+  // (to'lov oyi: `periodMonth`, bo'lmasa sana oyi) uchun faol chegirmasi
+  // bo'lsa va to'lov o'sha kurs ustoziga yozilayotgan bo'lsa, chegirma
+  // shu yozuvga qo'llanadi: `amount` — kassaga tushgan naqd, `discountSom`
+  // — markaz kechgan qism (lib/transactionEntries.ts izohi). Kassa
+  // `$inc` i yuqorida faqat naqd bilan — chegirma pul emas.
+  //
+  // Xato bo'lsa to'lov CHEGIRMASIZ o'tadi: pul qabul qilish gamifikatsiya
+  // sababli to'xtamasin (chegirma faol qoladi, keyingi to'lovga yoki oy
+  // oxirida tanga qaytishiga).
+  let discount: ClaimedDiscount | null = null;
+  if (mode === "kirim" && pupil) {
+    try {
+      discount = await claimDiscountForPayment(db, { pupilId: pupil.id, month: period ?? entryDate.slice(0, 7), teacherName: salaryTarget });
+    } catch (e) {
+      console.error("[cashbox] chegirmani qo'llab bo'lmadi:", e);
+    }
+  }
+
+  let entryId: number;
+  try {
+    entryId = await logEntry(db, {
     date: entryDate,
     time: nowTime(),
     studentName: studentName || "",
@@ -371,7 +398,17 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     ...(studentRefund ? { studentRefund: true } : {}),
     // Qayerdan kiritilgani — faqat bot yozadi (lib/transactionEntries.ts).
     ...(input.origin ? { origin: input.origin } : {}),
+    // Qo'llangan chegirma (yuqoridagi izoh) — faqat bo'lsa yoziladi.
+    ...(discount ? { discountId: discount.id, discountSom: discount.amountSom, discountPercent: discount.percent } : {}),
   });
+  } catch (e) {
+    // Yozuv saqlanmadi — egallangan chegirma yana faol bo'lsin.
+    if (discount) await releaseDiscountClaim(db, discount.id).catch(() => {});
+    throw e;
+  }
+  if (discount) {
+    await attachDiscountEntry(db, discount.id, entryId).catch((e) => console.error("[cashbox] chegirma yozuvga bog'lanmadi:", e));
+  }
   await logTransaction(db, {
     date: entryDate,
     time: nowTime(),
@@ -432,6 +469,7 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
       notifyPayment(db, {
         pupilId: pupil.id,
         amount,
+        ...(discount ? { discount: discount.amountSom } : {}),
         method: methodLabel,
         date: entryDate,
         // Xabarlar jurnali uchun — SMS yozuvidagi bilan bir xil maydonlar.
@@ -456,6 +494,7 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
       studentName: studentName || "",
       teacherName: salaryTarget,
       periodMonth: period,
+      ...(discount ? { discountSom: discount.amountSom, discountPercent: discount.percent } : {}),
     },
   };
 }

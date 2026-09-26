@@ -130,7 +130,15 @@ export default function TranzaksiyaTabContent({
                   <tr key={e.id} className="border-b border-border/50 last:border-0">
                     <td className="px-4 py-3 text-[13px] text-muted-foreground tabular-nums">{i + 1}</td>
                     <td className="px-4 py-3 text-[13px] text-muted-foreground whitespace-nowrap tabular-nums">{e.date}{e.time ? ` | ${e.time}` : ""}</td>
-                    <td className={`px-4 py-3 text-[13px] tabular-nums font-medium whitespace-nowrap ${e.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSpace(e.amount)}</td>
+                    <td className={`px-4 py-3 text-[13px] tabular-nums font-medium whitespace-nowrap ${e.amount < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                      {fmtSpace(e.amount)}
+                      {/* Tanga evaziga chegirma — naqddan tashqari, balansga qo'shilgan qism. */}
+                      {!!e.discountSom && (
+                        <div className="text-[11.5px] font-normal text-amber-600" title={t("Tanga evaziga chegirma — balansga qo'shildi, kassaga tushmagan")}>
+                          🏷️ +{fmtSpace(e.discountSom)} {t("chegirma")}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-[13px] text-muted-foreground tabular-nums whitespace-nowrap">{fmtSpace(e.before)}</td>
                     <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{e.after === null ? "—" : fmtSpace(e.after)}</td>
                     <td className="px-4 py-3 text-[13px] whitespace-nowrap">{TX_TYPE_LABEL[e.txType] ?? e.txType}</td>

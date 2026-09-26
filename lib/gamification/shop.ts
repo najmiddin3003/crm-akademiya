@@ -9,6 +9,16 @@ import { intIn } from "./rules";
 import { branchNames } from "./scope";
 import { loadSettings } from "./settings";
 import { canSeePupil, gradeOf, toifaOf, type Toifa } from "./students";
+import {
+  activeKeyOf,
+  discountCourseOptions,
+  discountOrderName,
+  hasDiscountFor,
+  monthNameUz,
+  pupilsWithDiscount,
+  type TuitionDiscount,
+} from "./discounts";
+import { shiftMonth } from "./exams";
 import type { CoinTransaction } from "./types";
 import { GamError, isFrozenStatus, withWallet } from "./wallet";
 
@@ -326,12 +336,12 @@ async function pupilCtx(db: Db, pupilId: number) {
   };
 }
 
-export async function giveGift(db: Db, actor: GamActor, input: { pupilId: number; itemId: number }) {
+export async function giveGift(db: Db, actor: GamActor, input: { pupilId: number; itemId: number; groupId?: number | null }) {
   const settings = await loadSettings(db);
   if (!settings.enabled) throw new GamError(409, "Gamifikatsiya moduli o'chiq");
   if (actor.role === "teacher") throw new GamError(403, "Sovg'ani filial admini yoki direktor beradi");
   const item = await getItem(db, input.itemId);
-  if (item.kind === "discount") throw new GamError(409, "Chegirma alohida beriladi — kursni tanlang");
+  if (item.kind === "discount") return giveDiscount(db, actor, item, input);
   const pupil = await pupilCtx(db, input.pupilId);
   if (actor.role === "branch_admin" && !actor.branchIds.includes(pupil.branchId)) throw new GamError(403, "O'quvchi sizning filialingizda emas");
   const today = uzDateIso();
@@ -373,6 +383,112 @@ export async function giveGift(db: Db, actor: GamActor, input: { pupilId: number
   return { ...result, balance: wallet.balance, levelUp, badges };
 }
 
+// ── To'lovga chegirma (TZ 4.16) ────────────────────────────────────────
+
+/** Chegirma qaysi oyga: keyingi oy (M+1). */
+const discountMonth = (today = uzDateIso()) => shiftMonth(today.slice(0, 7), 1);
+
+/**
+ * O'quvchi darajasidagi to'siqlar (berish oynasi ro'yxati va server — bitta
+ * qoida): umumiy (ketgan, toifa, balans) + oyiga bitta + faol kursi bor.
+ * Kurs darajasidagisi (narx, M+1 to'lovi) — `discountCourseOptions`.
+ */
+/** «Oktyabr uchun chegirma olingan (oyiga 1 marta)» — TZ 9-bo'lim matni (bitta joyda). */
+function discountTakenError(month: string): GamError {
+  const monthName = monthNameUz(month);
+  return new GamError(422, `${monthName} uchun chegirma olingan (oyiga 1 marta)`);
+}
+
+function discountPupilError(c: GiveCtx, month: string, taken: boolean, hasGroup: boolean): GamError | null {
+  const base = giveError(c);
+  if (base) return base;
+  if (taken) return discountTakenError(month);
+  if (!hasGroup) return new GamError(422, "Faol kursi yo'q");
+  return null;
+}
+
+/** Berish oynasi: tanlangan o'quvchining kurslari (TZ 4.16.2). */
+export async function discountOptionsView(db: Db, actor: GamActor, pupilId: number) {
+  if (actor.role === "teacher") throw new GamError(403, "Sovg'ani filial admini yoki direktor beradi");
+  const pupil = await pupilCtx(db, pupilId);
+  if (actor.role === "branch_admin" && !actor.branchIds.includes(pupil.branchId)) throw new GamError(403, "O'quvchi sizning filialingizda emas");
+  const item = (await listItems(db)).find((i) => i.kind === "discount");
+  if (!item) throw new GamError(404, "Sovg'a topilmadi");
+  const month = discountMonth();
+  const options = await discountCourseOptions(db, { pupilId, pupilName: pupil.name }, item.discountPercent ?? 5, month);
+  return {
+    month,
+    options: options.map((o) => ({ groupId: o.groupId, label: o.label, monthlyPrice: o.monthlyPrice, amount: o.amount, error: o.error })),
+  };
+}
+
+/**
+ * Chegirma berish (TZ 4.14, 4.16): kurs (guruh) tanlanadi, summa muzlatiladi,
+ * `tuition_discounts` ga `active` yozuv; xarid yozuvi va buyurtma — oddiy
+ * sovg'adagidek, faqat ombor/byudjet yo'q. Oyiga bitta — `activeKey` unikal
+ * indeksi parallel xaridni ham to'sadi.
+ */
+async function giveDiscount(db: Db, actor: GamActor, item: ShopItem, input: { pupilId: number; itemId: number; groupId?: number | null }) {
+  const groupId = Number(input.groupId);
+  if (!Number.isFinite(groupId)) throw new GamError(422, "Kursni tanlang");
+  const pupil = await pupilCtx(db, input.pupilId);
+  if (actor.role === "branch_admin" && !actor.branchIds.includes(pupil.branchId)) throw new GamError(403, "O'quvchi sizning filialingizda emas");
+  const today = uzDateIso();
+  const month = discountMonth(today);
+  const percent = item.discountPercent ?? 5;
+  const options = await discountCourseOptions(db, { pupilId: pupil.id, pupilName: pupil.name }, percent, month);
+  const course = options.find((o) => o.groupId === groupId);
+  if (!course) {
+    if (!options.length) throw new GamError(422, "Faol kursi yo'q");
+    throw new GamError(422, "Tanlangan kurs o'quvchining faol guruhi emas");
+  }
+  if (course.error) throw new GamError(422, course.error);
+
+  const { result, wallet, levelUp, badges } = await withWallet(db, input.pupilId, async (w) => {
+    const fresh = await getItem(db, item.id);
+    const err = discountPupilError(
+      { item: fresh, pupil: { ...pupil, frozen: w.pupil.frozen || pupil.frozen }, balance: w.balance, budget: null, spent: 0 },
+      month,
+      await hasDiscountFor(db, pupil.id, month),
+      true,
+    );
+    if (err) throw err;
+    const now = new Date().toISOString();
+    const orderId = await nextSeq(db, GAM.shopOrders);
+    const discountId = await nextSeq(db, GAM.discounts);
+    const name = discountOrderName(month, percent);
+    // Avval chegirma — `activeKey` oyiga bittani kafolatlaydi (parallel xarid shu yerda to'xtaydi).
+    const disc: TuitionDiscount = {
+      id: discountId, pupilId: pupil.id, groupId: course.groupId, branchId: pupil.branchId, groupLabel: course.label,
+      courseName: course.courseName, teacherName: course.teacherName, month, percent, monthlyPriceSom: course.monthlyPrice,
+      amountSom: course.amount, orderId, status: "active", activeKey: activeKeyOf(pupil.id, month),
+      appliedEntryId: null, appliedAt: null, appliedAmountSom: null, createdByName: actor.name, createdAt: now, updatedAt: now,
+    };
+    try {
+      await db.collection(GAM.discounts).insertOne({ ...disc });
+    } catch (e) {
+      if (isDupKey(e)) throw discountTakenError(month);
+      throw e;
+    }
+    let tx: CoinTransaction;
+    try {
+      tx = await w.add({ groupId: null, date: today, type: "shop", amount: -fresh.priceCoins, note: name, actor: toTxActor(actor), shopOrderId: orderId });
+    } catch (e) {
+      await db.collection(GAM.discounts).deleteOne({ id: discountId });
+      throw e;
+    }
+    const order: ShopOrder = {
+      id: orderId, pupilId: pupil.id, itemId: fresh.id, branchId: pupil.branchId, itemName: name, kind: "discount",
+      priceCoins: fresh.priceCoins, costPriceSom: null, givenByUserId: actor.userId, givenByName: actor.name, givenAt: now,
+      givenDate: today, status: "given", transactionId: tx.id, discountId,
+    };
+    await db.collection(GAM.shopOrders).insertOne({ ...order });
+    const wished = (await db.collection(GAM.wishlist).deleteOne({ pupilId: pupil.id, itemId: fresh.id })).deletedCount > 0;
+    return { order, wished, discount: { month, percent, amountSom: course.amount, groupLabel: course.label } };
+  });
+  return { ...result, balance: wallet.balance, levelUp, badges };
+}
+
 // ── Qaytarish (TZ 4.15) ────────────────────────────────────────────────
 
 export async function returnGift(db: Db, actor: GamActor, input: { orderId: number; note: string }) {
@@ -387,25 +503,47 @@ export async function returnGift(db: Db, actor: GamActor, input: { orderId: numb
     const o = (await db.collection(GAM.shopOrders).findOne({ id: input.orderId }, PROJ)) as unknown as ShopOrder;
     const disc = o.discountId !== null ? await db.collection(GAM.discounts).findOne({ id: o.discountId }, { projection: { _id: 0, status: 1 } }) : null;
     if (o.status !== "given") throw new GamError(409, "Sovg'a allaqachon qaytarilgan");
+    // Qo'llangan chegirma qaytarilmaydi (TZ 4.15.3) — matn bitta joyda.
+    const appliedError = () => new GamError(403, "Qo'llangan chegirmani qaytarib bo'lmaydi — u Moliyada to'lovga kirib bo'lgan");
     if (!canReturnOrder(actor, o, uzDateIso(), disc ? String(disc.status) : null)) {
-      throw new GamError(403, o.discountId !== null && disc?.status === "applied"
-        ? "Qo'llangan chegirmani qaytarib bo'lmaydi — u Moliyada to'lovga kirib bo'lgan"
-        : "Sovg'ani admin faqat shu kuni qaytaradi — keyin direktor");
+      if (o.discountId !== null && disc?.status === "applied") throw appliedError();
+      throw new GamError(403, "Sovg'ani admin faqat shu kuni qaytaradi — keyin direktor");
     }
-    const tx = (await db.collection(GAM.tx).findOne({ id: o.transactionId }, PROJ)) as unknown as CoinTransaction | null;
-    // Xarid bekor — tanga to'liq qaytadi (reversed = −applied).
-    if (tx && tx.status === "active") await w.cancel(tx, `Sovg'a qaytarildi: ${note}`, toTxActor(actor), true);
-    const r = await db
-      .collection(GAM.shopOrders)
-      .updateOne(
-        { id: o.id, status: "given" },
-        { $set: { status: "returned", returnedByUserId: actor.userId, returnedByName: actor.name, returnedAt: new Date().toISOString(), returnNote: note } },
-      );
-    if (r.modifiedCount !== 1) throw new GamError(409, "Sovg'a allaqachon qaytarilgan");
-    if (o.kind === "item") await db.collection(GAM.shopItems).updateOne({ id: o.itemId }, { $inc: { [`stock.${o.branchId}`]: 1 } });
+    // CHEGIRMA AVVAL, ATOMIK: shu payt kassada to'lov kelib uni qo'llab
+    // qo'yishi mumkin (lib/cashboxAdjust.ts) — `active` shartli yangilash
+    // bittasini o'tkazadi. Aks holda tanga ham qaytib, chegirma ham to'lovda
+    // qolib ketardi.
     if (o.discountId !== null) {
-      await db.collection(GAM.discounts).updateOne({ id: o.discountId, status: "active" }, { $set: { status: "cancelled", updatedAt: new Date().toISOString() }, $unset: { activeKey: "" } });
+      const c = await db
+        .collection(GAM.discounts)
+        .updateOne({ id: o.discountId, status: "active" }, { $set: { status: "cancelled", updatedAt: new Date().toISOString() }, $unset: { activeKey: "" } });
+      if (c.modifiedCount !== 1) throw appliedError();
     }
+    try {
+      const tx = (await db.collection(GAM.tx).findOne({ id: o.transactionId }, PROJ)) as unknown as CoinTransaction | null;
+      // Xarid bekor — tanga to'liq qaytadi (reversed = −applied).
+      if (tx && tx.status === "active") await w.cancel(tx, `Sovg'a qaytarildi: ${note}`, toTxActor(actor), true);
+      const r = await db
+        .collection(GAM.shopOrders)
+        .updateOne(
+          { id: o.id, status: "given" },
+          { $set: { status: "returned", returnedByUserId: actor.userId, returnedByName: actor.name, returnedAt: new Date().toISOString(), returnNote: note } },
+        );
+      if (r.modifiedCount !== 1) throw new GamError(409, "Sovg'a allaqachon qaytarilgan");
+    } catch (e) {
+      // Qaytarish yarim qoldi — chegirma yana faol (tanga qaytmagan bo'lsa u o'quvchiniki).
+      if (o.discountId !== null) {
+        const d = (await db.collection(GAM.discounts).findOne({ id: o.discountId }, { projection: { _id: 0, pupilId: 1, month: 1 } })) as { pupilId: number; month: string } | null;
+        if (d) {
+          await db
+            .collection(GAM.discounts)
+            .updateOne({ id: o.discountId, status: "cancelled" }, { $set: { status: "active", activeKey: activeKeyOf(d.pupilId, d.month) } })
+            .catch(() => {});
+        }
+      }
+      throw e;
+    }
+    if (o.kind === "item") await db.collection(GAM.shopItems).updateOne({ id: o.itemId }, { $inc: { [`stock.${o.branchId}`]: 1 } });
     return o;
   });
   return { balance: wallet.balance };
@@ -469,6 +607,39 @@ export async function shopView(db: Db, actor: GamActor, branchFilter: number | n
       )
     : [];
 
+  // To'lovga chegirmalar (TZ 5.5 «Keyingi oy chegirmalari»): shu oy
+  // to'lovlariga (o'tgan oy olingan — qo'llangan yoki kutilmoqda) va
+  // keyingi oy to'lovlariga. Admin va direktor, filial doirasida.
+  const nextMonth = shiftMonth(month, 1);
+  const discDocs = (
+    adm && branches.length
+      ? await db
+          .collection(GAM.discounts)
+          .find({ branchId: { $in: branches }, month: { $in: [month, nextMonth] }, status: { $in: ["active", "applied"] } }, PROJ)
+          .sort({ month: 1, id: 1 })
+          .toArray()
+      : []
+  ) as unknown as TuitionDiscount[];
+  const discPupils = new Map(
+    (discDocs.length
+      ? await db.collection("pupils").find({ id: { $in: [...new Set(discDocs.map((d) => d.pupilId))] } }, { projection: { _id: 0, id: 1, firstName: 1, lastName: 1 } }).toArray()
+      : []
+    ).map((p) => [Number(p.id), pupilName(p)]),
+  );
+  const discounts = discDocs.map((d) => ({
+    id: d.id,
+    month: d.month,
+    pupilId: d.pupilId,
+    pupilName: discPupils.get(d.pupilId) ?? `#${d.pupilId}`,
+    groupLabel: d.groupLabel,
+    teacherName: d.teacherName,
+    monthlyPriceSom: d.monthlyPriceSom,
+    amountSom: d.amountSom,
+    percent: d.percent,
+    status: d.status,
+    appliedAt: d.appliedAt ? uzDateIso(new Date(d.appliedAt)) : null,
+  }));
+
   // Joriy oyda berilganlar (admin/direktor, filial doirasida).
   const orders = adm
     ? ((await db
@@ -515,6 +686,7 @@ export async function shopView(db: Db, actor: GamActor, branchFilter: number | n
     })),
     budget,
     wishRows,
+    discounts,
     orders: orders.map((o) => ({
       id: o.id,
       pupilId: o.pupilId,
@@ -557,6 +729,12 @@ export async function eligiblePupils(db: Db, actor: GamActor, itemId: number, br
     const limit = await budgetOf(db, b);
     budgets.set(b, { limit, spent: limit === null ? 0 : await spentSom(db, b, month) });
   }
+  // Chegirmada — oyiga bitta va faol kursi borligi (kurs darajasidagi to'siq
+  // o'quvchi tanlangach, `discountOptionsView` da).
+  const isDisc = item.kind === "discount";
+  const dMonth = discountMonth();
+  const taken = isDisc ? await pupilsWithDiscount(db, dMonth) : new Set<number>();
+  const inGroup = new Set(groups.flatMap((g) => (Array.isArray(g.studentIds) ? g.studentIds.map(Number) : [])));
   return pupils
     .map((p) => {
       const pid = Number(p.id);
@@ -565,7 +743,8 @@ export async function eligiblePupils(db: Db, actor: GamActor, itemId: number, br
       const toifa = toifaOf(grade, p.category, settings.kidsMaxGrade);
       const balance = wallets.get(pid) ?? 0;
       const bud = budgets.get(branchId) ?? { limit: null, spent: 0 };
-      const error = item.kind === "discount" ? null : giveError({ item, pupil: { id: pid, name: "", branchId, frozen: false, toifa }, balance, budget: bud.limit, spent: bud.spent })?.message ?? null;
+      const ctx: GiveCtx = { item, pupil: { id: pid, name: "", branchId, frozen: false, toifa }, balance, budget: bud.limit, spent: bud.spent };
+      const error = (isDisc ? discountPupilError(ctx, dMonth, taken.has(pid), inGroup.has(pid)) : giveError(ctx))?.message ?? null;
       return { pupilId: pid, name: pupilName(p), grade, branchName: names.get(branchId) ?? "", balance, wished: wished.has(pid), error };
     })
     .sort((a, b) => Number(!!a.error) - Number(!!b.error) || Number(b.wished) - Number(a.wished) || b.balance - a.balance || a.name.localeCompare(b.name, "uz"));

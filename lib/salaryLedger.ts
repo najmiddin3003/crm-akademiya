@@ -65,7 +65,7 @@ export interface SalaryLedger {
 /** Jadval va daftar o'qiydigan maydonlar. */
 export type LedgerEntry = Pick<
   TransactionEntry,
-  "id" | "date" | "time" | "txType" | "txName" | "amount" | "studentName" | "teacherName" | "studentRefund" | "status" | "periodMonth"
+  "id" | "date" | "time" | "txType" | "txName" | "amount" | "discountSom" | "studentName" | "teacherName" | "studentRefund" | "status" | "periodMonth"
 >;
 
 function nameKey(v: unknown): string {
@@ -102,7 +102,14 @@ export function salaryEffectOf(
   if (nameKey(t.teacherName) !== me) return null;
   if (!payroll?.configured || payroll.salaryType !== "foiz") return null;
   const share = abs * payroll.percent / 100;
-  if (t.txType === "payIn") return { amount: share, note: `${payroll.percent}%` };
+  if (t.txType === "payIn") {
+    // Ustoz foizi to'liq narxdan: tanga evaziga chegirma ham ulushga kiradi
+    // (lib/payrollSources.ts → loadCollectedByTeacher bilan bir xil).
+    const disc = Math.abs(Number(t.discountSom) || 0);
+    return disc
+      ? { amount: (abs + disc) * payroll.percent / 100, note: `${payroll.percent}% · chegirma bilan` }
+      : { amount: share, note: `${payroll.percent}%` };
+  }
   if (isStudentRefundEntry(t)) return { amount: -share, note: `${payroll.percent}% qaytarim` };
   return null;
 }
@@ -154,7 +161,7 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
     .collection("transaction_entries")
     .find({ status: { $ne: "cancelled" }, $or: or })
     .project({
-      _id: 0, id: 1, date: 1, time: 1, txType: 1, txName: 1, amount: 1,
+      _id: 0, id: 1, date: 1, time: 1, txType: 1, txName: 1, amount: 1, discountSom: 1,
       studentName: 1, teacherName: 1, studentRefund: 1, status: 1, periodMonth: 1,
     })
     // Jadval id bo'yicha kamayish tartibida — daftar ham id bo'yicha yuradi,

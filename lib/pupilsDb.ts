@@ -11,6 +11,18 @@
 import type { Db } from "mongodb";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { pupilBalanceMatch, resolvePupilRef, type EntryFilter, type PupilRef } from "@/lib/pupilEntries";
+import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
+
+/**
+ * Balans turi. Sukut — o'quvchiga HISOBLANGAN summa: naqd + tanga evaziga
+ * chegirma (lib/transactionEntries.ts → discountSom). `cashOnly` — faqat
+ * haqiqatan TO'LANGAN naqd: o'quvchiga pul QAYTARISH chegarasi shundan
+ * olinadi, aks holda markaz kechgan chegirma naqd bo'lib qaytib ketardi.
+ */
+export interface PaidBalanceOpts {
+  cashOnly?: boolean;
+}
+const sumExpr = (o?: PaidBalanceOpts) => (o?.cashOnly ? "$amount" : ENTRY_PAID_EXPR);
 
 // NIMA NOTO'G'RI EDI: bu faylda `findPupilByName()` + `pupilBalanceByName()`
 // juftligi bor edi va ikkinchisi `pupils.balance` maydonini o'qirdi. O'sha
@@ -32,7 +44,7 @@ import { pupilBalanceMatch, resolvePupilRef, type EntryFilter, type PupilRef } f
 // `findPupilByName()` olib tashlandi: undan faqat shu balans hisobi
 // foydalanardi va u `pupils` hujjatini (ichida o'sha yaroqsiz `balance`
 // maydoni bilan) tarqatib yurardi.
-export async function studentPaidBalanceByName(db: Db, name: string): Promise<number> {
+export async function studentPaidBalanceByName(db: Db, name: string, opts?: PaidBalanceOpts): Promise<number> {
   const wanted = name.trim().toLowerCase();
   if (!wanted) return 0;
 
@@ -44,7 +56,7 @@ export async function studentPaidBalanceByName(db: Db, name: string): Promise<nu
   // Bonus/Jarima oynasi XODIM ismi bilan chaqirsa) eskicha, ism bo'yicha
   // hisoblanadi: bu funksiya o'quvchi bo'lmagan ismni ham qabul qiladi.
   const ref = await resolvePupilRef(db, { name });
-  if (ref) return studentPaidBalance(db, ref);
+  if (ref) return studentPaidBalance(db, ref, opts);
 
   // Yig'indi Mongo'da guruhlanadi — ilgari BUTUN kolleksiya (16 937 qator,
   // 899 KB) Node'ga kelib, pastdagi tsikl bittadan boshqa hammasini
@@ -59,7 +71,7 @@ export async function studentPaidBalanceByName(db: Db, name: string): Promise<nu
     .collection("transaction_entries")
     .aggregate([
       { $match: studentBalanceMatch() },
-      { $group: { _id: "$studentName", total: { $sum: "$amount" } } },
+      { $group: { _id: "$studentName", total: { $sum: sumExpr(opts) } } },
     ])
     .toArray();
 
@@ -83,12 +95,12 @@ export async function studentPaidBalanceByName(db: Db, name: string): Promise<nu
  * "o'quvchiga pul qaytarish" chegarasi ham, profil kartochkasidagi son
  * ham endi haqiqiy egasiniki.
  */
-export async function studentPaidBalance(db: Db, ref: PupilRef): Promise<number> {
+export async function studentPaidBalance(db: Db, ref: PupilRef, opts?: PaidBalanceOpts): Promise<number> {
   const [agg] = await db
     .collection("transaction_entries")
     .aggregate([
       { $match: pupilBalanceMatch(ref, studentBalanceMatch() as EntryFilter) },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
+      { $group: { _id: null, total: { $sum: sumExpr(opts) } } },
     ])
     .toArray();
   return Number(agg?.total) || 0;

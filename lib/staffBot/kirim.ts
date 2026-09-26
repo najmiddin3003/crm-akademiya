@@ -1,4 +1,5 @@
 import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
+import { pendingDiscountFor } from "@/lib/gamification/discounts";
 import { studentPaidBalance, studentPaidBalanceByName } from "@/lib/pupilsDb";
 import { txAudience } from "@/lib/txTarget";
 import { uzDateIso } from "@/lib/uzTime";
@@ -126,8 +127,24 @@ async function showNote(ctx: FlowCtx, d: KirimDraft, cashbox: BotCashbox): Promi
   await show(ctx, { html: V.kirimNotePrompt(d, cashbox), keyboard: kirimNoteKeyboard(autoNote(d)) });
 }
 
+/**
+ * Tanga evaziga chegirma (gamifikatsiya, TZ 4.16.4): o'quvchining shu oy
+ * to'loviga kutilayotgan chegirmasi — kassir pulni olishdan OLDIN bilsin.
+ * Qo'llash qoidasi yadroda (lib/cashboxAdjust.ts); bu yerda faqat ko'rinish.
+ */
+async function discountHint(ctx: FlowCtx, d: KirimDraft): Promise<V.KirimDiscountHint | null> {
+  if (d.studentId === undefined) return null;
+  const p = await pendingDiscountFor(ctx.db, d.studentId, d.periodMonth || uzDateIso().slice(0, 7)).catch(() => null);
+  if (!p) return null;
+  const teacher = (d.teacherName ?? "").trim().toLowerCase();
+  const want = p.teacherName.trim().toLowerCase();
+  const applies = p.inGroup && (!want || !teacher || teacher === want);
+  return { amountSom: p.amountSom, percent: p.percent, groupLabel: p.groupLabel, teacherName: p.teacherName, applies };
+}
+
 async function showConfirm(ctx: FlowCtx, d: KirimDraft, cashbox: BotCashbox, note?: string): Promise<void> {
-  const html = note ? `${note}\n\n${V.kirimConfirmView(d, cashbox, uzDateIso())}` : V.kirimConfirmView(d, cashbox, uzDateIso());
+  const view = V.kirimConfirmView(d, cashbox, uzDateIso(), await discountHint(ctx, d));
+  const html = note ? `${note}\n\n${view}` : view;
   await show(ctx, { html, keyboard: kirimConfirmKeyboard(d.nonce) });
 }
 
@@ -393,7 +410,13 @@ async function saveKirim(ctx: FlowCtx, d: KirimDraft, cashbox: BotCashbox): Prom
   }
   await setDraft(ctx.db, ctx.chatId, null);
   await show(ctx, {
-    html: V.kirimSaved(d, cashbox, out.entryId, out.cashbox.balance),
+    html: V.kirimSaved(
+      d,
+      cashbox,
+      out.entryId,
+      out.cashbox.balance,
+      out.entry.discountSom ? { amountSom: out.entry.discountSom, percent: out.entry.discountPercent ?? 0 } : null,
+    ),
     keyboard: afterSaveKeyboard(),
   });
 }

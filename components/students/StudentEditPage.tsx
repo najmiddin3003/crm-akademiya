@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import type { Pupil } from "@/lib/pupilsData";
 import type { Order } from "@/lib/ordersData";
-import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
+import { entryPaidAmount, isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 import type { LegacyEntry } from "@/lib/legacyEntries";
 import TahrirlashTabButton from "@/components/shared/TahrirlashTabButton";
 import ParolTabButton from "@/components/shared/ParolTabButton";
@@ -191,9 +191,12 @@ export default function StudentEditPage({ order, initialTab }: { order: Order; i
   //
   // Qaytarish yozuvi MANFIY summa bilan keladi, ya'ni u shu yig'indidan
   // o'z-o'zidan ayriladi — alohida shart kerak emas.
+  //
+  // Tanga evaziga chegirma (gamifikatsiya) ham to'langan hisoblanadi —
+  // /api/students/balances bilan bir xil qoida (`entryPaidAmount`).
   const balans = entries
     .filter((e) => e.status !== "cancelled")
-    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    .reduce((s, e) => s + entryPaidAmount(e), 0);
   // Qolgan darslar va to'lanishi kerak bo'lgan summa uchun tizimda hali
   // dars/majburiyat hisobi yo'q — soxta 0 o'rniga "—" ko'rsatamiz.
   const qolganDarslar: number | null = null;
