@@ -53,3 +53,30 @@
   .gm-tap { min-height: 40px; min-width: 40px; }
   .gm-page input:not([type="checkbox"]):not([type="radio"]), .gm-page textarea { font-size: 16px; min-height: 40px; }
 }
+
+/* JONLI KOSMOS FONI (Reyting, proyektor) — ranking/SpaceBackdrop.tsx.
+ * Tashqi qatlam butun sahifa bo'yi turadi (`overflow: clip` — aylantirish
+ * konteyneri EMAS, shuning uchun ichidagi `sticky` ko'rinish <main> ning
+ * aylantirishiga yopishadi): kontent aylanganda osmon joyida qoladi va
+ * qatlamlar ekran o'lchamidan oshmaydi. Harakat faqat transform/opacity. */
+.gm-space { position: absolute; inset: 0; z-index: -1; overflow: clip; pointer-events: none; background: #050816; }
+.gm-space-view {
+  position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; contain: layout paint;
+  background:
+    radial-gradient(60% 55% at 12% 8%, rgb(79 70 229 / .32), transparent 70%),
+    radial-gradient(45% 45% at 88% 22%, rgb(192 38 211 / .16), transparent 70%),
+    radial-gradient(60% 50% at 55% 100%, rgb(14 165 233 / .17), transparent 70%),
+    linear-gradient(180deg, #050816 0%, #0a1030 55%, #120a28 100%);
+}
+.gm-space-layer {
+  position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + var(--t));
+  background-repeat: repeat; background-size: var(--t) var(--t);
+  will-change: transform;
+  animation: gm-drift var(--d) linear infinite;
+}
+.gm-space-twinkle { animation: gm-drift var(--d) linear infinite, gm-twinkle var(--tw) ease-in-out var(--twd) infinite alternate; }
+@keyframes gm-drift { to { transform: translate3d(calc(var(--t) * -1), 0, 0); } }
+@keyframes gm-twinkle { from { opacity: .15; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .gm-space-layer { animation: none; }
+}

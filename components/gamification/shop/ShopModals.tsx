@@ -371,6 +371,8 @@ export function ProductModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Maydon o'zgarsa — o'sha maydonning va server xatosi o'chadi.
+  const edited = (field: string) => setErrors((e) => (e[field] || e.server ? { ...e, [field]: "", server: "" } : e));
 
   async function pick(f: File | undefined) {
     if (!f) return;
@@ -450,7 +452,17 @@ export function ProductModal({
             <label htmlFor="pN" className="mb-1 block text-[12px] font-semibold text-muted-foreground">
               {t("Nomi")} *
             </label>
-            <input id="pN" value={name} maxLength={60} placeholder={t("Masalan: Akademiya ruchkasi")} onChange={(e) => setName(e.target.value)} className={inputCls} />
+            <input
+              id="pN"
+              value={name}
+              maxLength={60}
+              placeholder={t("Masalan: Akademiya ruchkasi")}
+              onChange={(e) => {
+                setName(e.target.value);
+                edited("name");
+              }}
+              className={inputCls}
+            />
             <FieldError text={errors.name ?? ""} />
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -458,7 +470,19 @@ export function ProductModal({
               <label htmlFor="pP" className="mb-1 block text-[12px] font-semibold text-muted-foreground">
                 {t("Narx (tanga)")} *
               </label>
-              <input id="pP" type="number" inputMode="numeric" min={1} step={1} value={price} onChange={(e) => setPrice(e.target.value)} className={inputCls} />
+              <input
+                id="pP"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  edited("price");
+                }}
+                className={inputCls}
+              />
               <FieldError text={errors.price ?? ""} />
             </div>
             <div>
@@ -493,7 +517,19 @@ export function ProductModal({
                 <label htmlFor="pC" className="mb-1 block text-[12px] font-semibold text-muted-foreground">
                   {t("Tannarx (so'm) — oylik sovg'a byudjetidan shu summa hisoblanadi")}
                 </label>
-                <input id="pC" type="number" inputMode="numeric" min={0} step={1} value={cost} onChange={(e) => setCost(e.target.value)} className={inputCls} />
+                <input
+                  id="pC"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  value={cost}
+                  onChange={(e) => {
+                    setCost(e.target.value);
+                    edited("cost");
+                  }}
+                  className={inputCls}
+                />
                 <FieldError text={errors.cost ?? ""} />
               </div>
               <div>

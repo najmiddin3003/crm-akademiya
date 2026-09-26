@@ -1,7 +1,7 @@
 "use client";
 
 import "../gamification.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -11,12 +11,14 @@ import type { GamRole } from "@/lib/gamification/types";
 import { gamApi } from "../api";
 import { btnPrimary, cardCls, Chip, Signed, useGamToast } from "../ui";
 import ProfileModal from "../profile/ProfileModal";
+import SpaceBackdrop from "./SpaceBackdrop";
 
 // Gamifikatsiya → Reyting (TZ 4.3, 5.2; prototipdagi «Reyting» va
 // «Ekranga chiqarish»). Guruh ichida — joriy oy yoki jami reyting tangasi
 // (berilgan − ayirilgan, xarid kirmaydi). Teng tangali o'quvchilar bir xil
 // o'rinni oladi; o'quvchilarga faqat top-5 ko'rinadi. Proyektor ekrani
-// katta shriftli top-5 ni ochadi, Esc bilan yopiladi.
+// katta shriftli top-5 ni ochadi, Esc bilan yopiladi. Orqa fonda — jonli
+// kosmos (yulduzlar sekin suzadi, SpaceBackdrop.tsx).
 
 interface Row {
   pupilId: number;
@@ -39,6 +41,19 @@ interface View {
 }
 
 const PAGE = "gm-page container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
+// Kosmos fonidagi sarlavha matni — ikkala mavzuda ham och rang.
+const TITLE = "text-xl font-semibold text-white";
+const LEAD = "mt-1 text-[13px] leading-relaxed text-slate-300";
+
+/** Sahifa qobig'i: <main> ni to'liq to'ldiradi, orqasida kosmos. */
+function Stage({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative isolate min-h-full">
+      <SpaceBackdrop />
+      <div className={PAGE}>{children}</div>
+    </div>
+  );
+}
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function RankBadge({ rank }: { rank: number }) {
@@ -67,9 +82,9 @@ function Projector({ title, sub, rows, onClose }: { title: string; sub: string; 
       role="dialog"
       aria-modal="true"
       aria-label={t("Reyting — top-5")}
-      className="fixed inset-0 z-[250] flex flex-col items-center justify-center overflow-y-auto p-6 text-white"
-      style={{ background: "radial-gradient(circle at 20% 10%, #1e3a8a 0%, #0f172a 45%, #020617 100%)" }}
+      className="fixed inset-0 z-[250] isolate flex flex-col items-center justify-center overflow-y-auto bg-[#050816] p-6 text-white"
     >
+      <SpaceBackdrop />
       <button type="button" onClick={onClose} className="absolute right-5 top-5 rounded-xl border border-white/30 px-4 py-2 text-[15px] font-semibold hover:bg-white/10">
         {t("Yopish")} · Esc
       </button>
@@ -79,7 +94,7 @@ function Projector({ title, sub, rows, onClose }: { title: string; sub: string; 
       </div>
       <ol className="mt-8 w-full max-w-4xl space-y-3">
         {top.map((r) => (
-          <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur">
+          <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/[0.08] px-6 py-4 ring-1 ring-white/15">
             <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{MEDAL[r.rank] ?? r.rank}</span>
             <span className="min-w-0 flex-1 truncate text-[clamp(22px,3vw,42px)] font-bold">{r.name}</span>
             <span className="text-[clamp(22px,3vw,42px)] font-extrabold tabular-nums text-amber-300">{r.points}</span>
@@ -123,21 +138,26 @@ export default function RankingPage() {
 
   if (error && !view) {
     return (
-      <div className={PAGE}>
-        <h1 className="text-xl font-semibold">{t("Reyting")}</h1>
+      <Stage>
+        <h1 className={TITLE}>{t("Reyting")}</h1>
         <div className={`${cardCls} text-sm text-muted-foreground`}>{t(error)}</div>
-      </div>
+      </Stage>
     );
   }
-  if (!view) return <div className={PAGE}><SpinnerBlock /></div>;
+  if (!view)
+    return (
+      <Stage>
+        <SpinnerBlock />
+      </Stage>
+    );
   const g = view.group;
 
   return (
-    <div className={PAGE}>
+    <Stage>
       {toastNode}
       <div>
-        <h1 className="text-xl font-semibold">{t("Reyting")}</h1>
-        <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+        <h1 className={TITLE}>{t("Reyting")}</h1>
+        <p className={LEAD}>
           {period === "all"
             ? t("Guruh ichidagi reyting — shu guruhda jami olingan reyting tangasi bo'yicha (berilgan − ayirilgan; do'kon xaridlari ta'sir qilmaydi). Teng tangali o'quvchilar bir xil o'rinni oladi. Ekranda va o'quvchilarga faqat top-5 ko'rinadi.")
             : t("Guruh ichidagi reyting — {month} oyida shu guruhda olingan reyting tangasi bo'yicha (berilgan − ayirilgan; do'kon xaridlari ta'sir qilmaydi). Teng tangali o'quvchilar bir xil o'rinni oladi. Ekranda va o'quvchilarga faqat top-5 ko'rinadi.", {
@@ -246,6 +266,6 @@ export default function RankingPage() {
         />
       )}
       {open !== null && <ProfileModal pupilId={open} onClose={() => setOpen(null)} toast={toast} onChanged={() => void load(groupId, period)} />}
-    </div>
+    </Stage>
   );
 }
