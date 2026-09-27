@@ -473,8 +473,9 @@ export default function RolesPage() {
       )}
 
       {/* ── Ruxsatlar oynasi: yangi rol / rol / xodim uchun bir xil ────── */}
+      {/* Kenglik style'da: Modal'ning `w-full max-w-md` klasslari `w-[90vw]` ni bosib ketib, oynani 448 px ga qisib qo'ygan edi. */}
       {(createOpen || roleTarget || empTarget) && (
-        <Modal onClose={closeAll} controller={modal} locked={saving} bare zIndex={110} panelClassName="w-[90vw] h-[90vh]">
+        <Modal onClose={closeAll} controller={modal} locked={saving} bare zIndex={110} panelClassName="h-[90vh]" panelStyle={{ width: "90vw", maxWidth: "none" }}>
             <div className="shrink-0 px-6 pt-5 pb-4 space-y-3">
               {empTarget ? (
                 <div className="flex items-start gap-3">
