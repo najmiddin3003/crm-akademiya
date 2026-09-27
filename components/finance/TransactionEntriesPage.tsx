@@ -42,6 +42,9 @@ function fmtDate(e: TransactionEntry): string {
   return `${d}.${m}.${y} | ${e.time}`;
 }
 
+/** «Egasi aniqlanmagan to'lovlar» eslatmasi — vaqtincha o'chiq (pastdagi izohga qarang). */
+const SHOW_UNASSIGNED_BANNER = false;
+
 export default function TransactionEntriesPage() {
   const { t } = useT();
   const [entries, setEntries] = useState<TransactionEntry[]>([]);
@@ -66,6 +69,12 @@ export default function TransactionEntriesPage() {
   // BIR MARTALIK QOLDIQ: yangi to'lovlar kassa oynasida o'quvchi ID'si
   // bilan yoziladi, ya'ni bu son faqat kamayadi. Nolga tushsa eslatma
   // butunlay yo'qoladi — o'lik tugma qolmaydi.
+  //
+  // VAQTINCHA YASHIRILGAN (28.09.2026, foydalanuvchi: "alert blokini o'chirib
+  // tur, keyinroq qilamiz"). Tekshiruv: 88 ta to'lov bazada BITTADAN (dublikat
+  // emas) — 73 tasi haqiqiy ismdosh, 11 tasida bitta bola ikki kartochkada,
+  // 4 tasining ismi o'quvchilarda yo'q. Ishga qaytilganda `true` qiling —
+  // "Biriktirish" oynasi (UnassignedPupilModal) va API o'zgarmagan.
   const [unassigned, setUnassigned] = useState(0);
   const [assignOpen, setAssignOpen] = useState(false);
 
@@ -81,7 +90,9 @@ export default function TransactionEntriesPage() {
     Promise.all([
       fetch("/api/cashboxes?names=1").then((r) => r.json()),
       fetch("/api/transaction-entries/students").then((r) => r.json()),
-      fetch("/api/transaction-entries/unassigned").then((r) => r.json()).catch(() => null),
+      SHOW_UNASSIGNED_BANNER
+        ? fetch("/api/transaction-entries/unassigned").then((r) => r.json()).catch(() => null)
+        : Promise.resolve(null),
     ]).then(([cb, st, un]) => {
       if (cancelled) return;
       if (cb.ok) setCashboxes(cb.cashboxes);
@@ -130,7 +141,7 @@ export default function TransactionEntriesPage() {
         </div>
       </div>
 
-      {unassigned > 0 && (
+      {SHOW_UNASSIGNED_BANNER && unassigned > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
           <div className="text-[12.5px] text-amber-800 dark:text-amber-300">
             <strong>{t("{n} ta to'lovning o'quvchisi aniqlanmagan", { n: unassigned })}</strong>
