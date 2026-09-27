@@ -57,7 +57,7 @@ interface PageData {
 }
 type Filter = "all" | "month" | "plus" | "minus" | "shop" | "cancelled";
 
-// Medal faqat tangasi 0 dan katta bo'lsa — Reyting sahifasidagi `medalOf` bilan bir xil.
+// O'rin belgisi faqat ro'yxatdagi dastlabki uch qatorda — Reyting sahifasidagi `placeMedal` bilan bir xil.
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const card = "rounded-2xl border border-border bg-card p-4";
 const pill = "gm-tap inline-flex items-center justify-center rounded-full border px-3.5 py-1.5 text-[13px] font-semibold";
@@ -400,9 +400,9 @@ export default function StudentGame({
               right={g.me ? <Chip tone="b">{t("{rank}-o'rin · {n} tadan", { rank: g.me.rank, n: g.total })}</Chip> : undefined}
             >
               <div className="divide-y divide-border/60">
-                {g.top.map((r) => (
+                {g.top.map((r, i) => (
                   <div key={`${r.rank}-${r.name}`} className={`flex items-center gap-3 py-2 text-[13.5px] ${r.me ? "rounded-lg bg-primary/10 px-2 font-bold" : ""}`}>
-                    <span className="w-8 text-center">{(r.points > 0 && MEDAL[r.rank]) || r.rank}</span>
+                    <span className="w-8 text-center">{MEDAL[i + 1]}</span>
                     <span className="min-w-0 flex-1 truncate">{r.me ? t("Sen") : r.name}</span>
                     <span className="gm-coin">{r.points}</span>
                   </div>

@@ -44,24 +44,14 @@ const PAGE = "gm-page page-frame-lg container mx-auto max-w-[1900px] space-y-4 p
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 /**
- * Medal faqat tangasi 0 dan KATTA o'quvchiga (27.09.2026, foydalanuvchi
- * tasdiqladi): teng tangalilar bir xil o'rinni oladi, shuning uchun hamma
- * 0 da bo'lsa hammaga 🥇 chiqardi. Musobaqadagi "g'olib faqat o'rtacha > 0"
- * qoidasi bilan bir xil. Qolganlarga o'rin raqami.
+ * O'rin belgisi RO'YXATDAGI TARTIB bo'yicha: faqat dastlabki uch qatorda
+ * 🥇🥈🥉, qolganlarida hech narsa (27.09.2026, foydalanuvchi: "faqat
+ * birinchi uchlikda 1, 2, 3 o'rinlar tursin"). Teng tangalilar bir xil
+ * o'rinni olgani uchun ilgari hamma 0 da hammaga 🥇, keyin "1, 1, 1…"
+ * chiqardi — ikkalasi ham xunuk ko'rindi. `index` — ro'yxatdagi o'rni (0 dan).
  */
-function medalOf(rank: number, points: number): string | undefined {
-  return points > 0 ? MEDAL[rank] : undefined;
-}
-
-function RankBadge({ rank, points }: { rank: number; points: number }) {
-  const medal = medalOf(rank, points);
-  return medal ? (
-    <span className="text-[18px]" aria-label={String(rank)}>
-      {medal}
-    </span>
-  ) : (
-    <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-secondary px-2 text-[12.5px] font-bold tabular-nums">{rank}</span>
-  );
+function placeMedal(index: number): string | undefined {
+  return MEDAL[index + 1];
 }
 
 /**
@@ -113,9 +103,9 @@ function Projector({ title, sub, rows, onClose }: { title: string; sub: string; 
           <div className="mt-1 text-[clamp(14px,1.6vw,22px)] text-white/70">{sub}</div>
         </div>
         <ol className="mt-8 w-full max-w-4xl space-y-3">
-          {top.map((r) => (
+          {top.map((r, i) => (
             <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur">
-              <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{medalOf(r.rank, r.points) ?? r.rank}</span>
+              <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{placeMedal(i)}</span>
               <span className="min-w-0 flex-1 truncate text-[clamp(22px,3vw,42px)] font-bold">{r.name}</span>
               <span className="text-[clamp(22px,3vw,42px)] font-extrabold tabular-nums text-amber-300">{r.points}</span>
             </li>
@@ -235,7 +225,7 @@ export default function RankingPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {view.rows.map((r) => (
+                    {view.rows.map((r, i) => (
                       <tr
                         key={r.pupilId}
                         className="gm-click"
@@ -246,7 +236,11 @@ export default function RankingPage() {
                         }}
                       >
                         <td data-l={t("O'rin")}>
-                          <RankBadge rank={r.rank} points={r.points} />
+                          {placeMedal(i) && (
+                            <span className="text-[18px]" aria-label={String(i + 1)}>
+                              {placeMedal(i)}
+                            </span>
+                          )}
                         </td>
                         <td data-l="" className="gm-lead">
                           <b>{r.name}</b>
