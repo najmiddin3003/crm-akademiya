@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { CV_UPLOAD_FOLDER, cloudinaryConfig, uploadDocument, uploadImage } from "@/lib/cloudinary";
 import {
   ageOf,
+  cvFromRow,
   formatSubmitted,
   makeCvRef,
   sanitizeCvInput,
@@ -36,13 +37,6 @@ import {
 // Cloudinary'ga yuklash `crypto` ishlatadi — Node ish muhiti kerak.
 export const runtime = "nodejs";
 
-function toApplication(row: Record<string, unknown>): CvApplication {
-  const { _id, ord, ...rest } = row;
-  void _id;
-  void ord;
-  return rest as unknown as CvApplication;
-}
-
 /**
  * FILIAL QAMROVI (19.09.2026, foydalanuvchi so'rovi: "sidebardagi ishga
  * qabul CV bo'limida alohida filialni ajratish kerak"). Navbardagi tanlov
@@ -61,7 +55,8 @@ export async function GET() {
   const db = await ensureIndexes();
   const col = db.collection("cv_applications");
   const rows = await col.find(cvBranchFilter(scope.branchId)).sort({ ord: 1 }).toArray();
-  const applications = rows.map((r) => toApplication(r as unknown as Record<string, unknown>));
+  // Admin izohi — faqat adminga (lib/managementCv.ts `cvFromRow`).
+  const applications = rows.map((r) => cvFromRow(r as unknown as Record<string, unknown>, scope.isAdmin));
   return NextResponse.json({ ok: true, applications, branchId: scope.branchId });
 }
 
@@ -225,7 +220,7 @@ async function createFromPublicForm(db: Db, form: FormData) {
   const col = db.collection("cv_applications");
   const sid = str("sid") || `pa${Date.now()}_${Math.floor(Math.random() * 9999)}`;
   const dup = await col.findOne({ sid });
-  if (dup) return NextResponse.json({ ok: true, dup: true, ref: dup.ref ?? "", application: toApplication(dup as unknown as Record<string, unknown>) });
+  if (dup) return NextResponse.json({ ok: true, dup: true, ref: dup.ref ?? "", application: cvFromRow(dup as unknown as Record<string, unknown>) });
 
   // Ariza raqami noyob bo'lsin — 3 belgi 32^3 = 32 768 variant, bir kunda
   // to'qnashuv ehtimoli kichik, lekin nol emas.
@@ -320,7 +315,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         dup: true,
-        application: toApplication(dup as unknown as Record<string, unknown>),
+        application: cvFromRow(dup as unknown as Record<string, unknown>),
       });
     }
   }

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isCvStatus, type CvApplication } from "@/lib/managementCv";
+import { CV_NOTE_MAX, cvFromRow, isCvStatus, type CvApplication } from "@/lib/managementCv";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
 import { getBranchScope } from "@/lib/branchScope";
+import { requireAdmin } from "@/lib/adminOnly";
 
 // PATCH /api/management-cv/:id — arizaning holatini o'zgartiradi.
 // `status: "accepted"` bo'lsa — referensdagi `cvHire()` kabi nomzod
 // Boshqaruv → Xodimlar ro'yxatiga (`hr_employees`) ham qo'shiladi.
+// `{ adminNote }` — admin izohi (faqat admin, `saveAdminNote`).
 
 function fmtNow(raw: Date): string {
   const d = toUz(raw);
@@ -89,12 +91,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
 
-  let body: { status?: unknown };
+  let body: { status?: unknown; adminNote?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
+  if (body.adminNote !== undefined) return saveAdminNote(cvId, body.adminNote);
   if (!isCvStatus(body.status)) {
     return NextResponse.json({ ok: false, error: "Noto'g'ri holat" }, { status: 400 });
   }
@@ -124,10 +127,36 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   await col.updateOne({ id: cvId }, { $set: set });
-  const application: CvApplication = { ...current, ...set } as CvApplication;
-  // `_id`/`ord` mijozga chiqmasin.
-  delete (application as unknown as Record<string, unknown>)._id;
-  delete (application as unknown as Record<string, unknown>).ord;
+  // `_id`/`ord` mijozga chiqmaydi; admin izohi — faqat adminga.
+  const application = cvFromRow({ ...row, ...set }, !!(await requireAdmin()));
 
   return NextResponse.json({ ok: true, application, employee });
+}
+
+/**
+ * Admin izohi (27.09.2026) — faqat `users.role === "admin"`. Bo'sh matn
+ * izohni o'chiradi. Kim va qachon yozgani ham saqlanadi.
+ */
+async function saveAdminNote(cvId: number, raw: unknown) {
+  const me = await requireAdmin();
+  if (!me) {
+    return NextResponse.json({ ok: false, error: "Izohni faqat admin yozadi" }, { status: 403 });
+  }
+  if (typeof raw !== "string") {
+    return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
+  }
+  const note = raw.trim();
+  if (note.length > CV_NOTE_MAX) {
+    return NextResponse.json({ ok: false, error: "Izoh juda uzun" }, { status: 422 });
+  }
+
+  const db = await ensureIndexes();
+  const update = note
+    ? { $set: { adminNote: note, adminNoteBy: me.fullName, adminNoteAt: new Date().toISOString() } }
+    : { $unset: { adminNote: "", adminNoteBy: "", adminNoteAt: "" } };
+  const row = await db.collection("cv_applications").findOneAndUpdate({ id: cvId }, update, { returnDocument: "after" });
+  if (!row) {
+    return NextResponse.json({ ok: false, error: "Ariza topilmadi" }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true, application: cvFromRow(row as unknown as Record<string, unknown>, true) });
 }

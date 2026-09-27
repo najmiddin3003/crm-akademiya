@@ -83,6 +83,31 @@ export interface CvApplication {
   submitted: string;
   /** "Ishga olish" bosilganda yaratilgan `hr_employees.id`. */
   hiredEmpId?: number;
+  /**
+   * Admin izohi (27.09.2026) — CV ko'rib chiqilgach nomzod bilan nima
+   * gaplashilgani. FAQAT ADMIN (`users.role === "admin"`) yozadi va ko'radi:
+   * boshqa rollarga va ommaviy POST javoblariga `cvFromRow` qo'shmaydi,
+   * Sheets'ga ham ketmaydi.
+   */
+  adminNote?: string;
+  /** Izohni oxirgi o'zgartirgan admin. */
+  adminNoteBy?: string;
+  /** Izoh oxirgi o'zgargan vaqt (ISO). */
+  adminNoteAt?: string;
+}
+
+/** Admin izohining eng uzun hajmi (belgi). */
+export const CV_NOTE_MAX = 2000;
+
+/**
+ * Bazadagi qator → mijozga ketadigan ariza: `_id`/`ord` olib tashlanadi,
+ * admin izohi esa faqat `withNote` bo'lsa (so'rovchi admin) qoladi.
+ */
+export function cvFromRow(row: Record<string, unknown>, withNote = false): CvApplication {
+  const { _id, ord, adminNote, adminNoteBy, adminNoteAt, ...rest } = row;
+  void _id;
+  void ord;
+  return (withNote ? { ...rest, adminNote, adminNoteBy, adminNoteAt } : rest) as unknown as CvApplication;
 }
 
 /** Erkin matn maydonlari — anketa savollari kalitlari bilan bir xil tartibda. */

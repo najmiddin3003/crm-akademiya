@@ -10,7 +10,12 @@ import type { CvApplication } from "@/lib/managementCv";
 //     bo'shliq farqsiz): "Ona tili" filtri "Ona tili va adabiyot" ni ham topadi;
 //   • maosh — matndan so'mga (`parseSalary`); raqami yo'q ariza
 //     ("Kelishilgan holda") oraliq berilganda chiqmaydi;
-//   • yo'nalish, tajriba, ta'lim, bandlik, manba, holat — aniq qiymat.
+//   • yo'nalish, tajriba, ta'lim, bandlik, manba, holat — aniq qiymat;
+//   • filial (27.09.2026) — filial id'si yoki "Istalgan" (`CV_BRANCH_ANY`:
+//     nomzod "qaysi filial bo'lsa ham" degan, `branchId: null`). Ro'yxat
+//     navbardagi filial bo'yicha kesilgani uchun amalda shu filial va
+//     "Istalgan" ajratiladi; filial yozilmagan eski arizalar faqat
+//     "barchasi" da ko'rinadi (jadvalda ham "-").
 //
 // Ro'yxat klientda filtrlanadi — arizalar oz va hammasi bitta so'rovda keladi.
 
@@ -26,7 +31,11 @@ export interface CvFilters {
   load: string;
   source: string;
   status: string;
+  /** "" — hammasi, `CV_BRANCH_ANY` — "Istalgan", aks holda filial id'si. */
+  branch: string;
 }
+
+export const CV_BRANCH_ANY = "any";
 
 export const NO_CV_FILTERS: CvFilters = {
   position: "",
@@ -38,14 +47,19 @@ export const NO_CV_FILTERS: CvFilters = {
   load: "",
   source: "",
   status: "",
+  branch: "",
 };
 
 /** Filtr nomi — `cvMatches(…, skip)` uchun (maosh oralig'i bitta filtr). */
-export type CvFacet = "position" | "subject" | "exp" | "salary" | "edu" | "load" | "source" | "status";
+export type CvFacet = "position" | "subject" | "exp" | "salary" | "edu" | "load" | "source" | "status" | "branch";
 
 /** Nechta filtr yoqilgan — "Tozalash" tugmasi shunga qarab chiqadi. */
 export function activeCvFilters(f: CvFilters): number {
-  return [f.position, f.subject, f.exp.length > 0, f.salaryFrom || f.salaryTo, f.edu, f.load, f.source, f.status].filter(Boolean).length;
+  return [f.position, f.subject, f.exp.length > 0, f.salaryFrom || f.salaryTo, f.edu, f.load, f.source, f.status, f.branch].filter(Boolean).length;
+}
+
+export function branchMatches(c: CvApplication, wanted: string): boolean {
+  return wanted === CV_BRANCH_ANY ? c.branchId === null : c.branchId === Number(wanted);
 }
 
 /** Solishtirish kaliti: kichik harf, tutuq belgilari bir xil, bo'shliqlar yig'ilgan. */
@@ -87,6 +101,7 @@ export function cvMatches(c: CvApplication, f: CvFilters, q: string, skip?: CvFa
   if (skip !== "load" && f.load && (c.load || "") !== f.load) return false;
   if (skip !== "source" && f.source && (c.source || "") !== f.source) return false;
   if (skip !== "status" && f.status && c.status !== f.status) return false;
+  if (skip !== "branch" && f.branch && !branchMatches(c, f.branch)) return false;
   if (skip !== "salary" && (f.salaryFrom || f.salaryTo)) {
     const n = parseSalary(c.expectedSalary);
     if (n === null) return false;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeftRight, Building2, Download, ExternalLink, FilePlus, LayoutGrid, Link2, Paperclip, Search, Wallet, X, XCircle } from "lucide-react";
+import { ArrowLeftRight, Building2, Download, ExternalLink, FilePlus, LayoutGrid, Link2, Lock, Paperclip, Search, Wallet, X, XCircle } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -16,8 +16,8 @@ import {
   CV_STATUS_ORDER,
   CV_SUBJECT_GROUPS,
 } from "@/constants/managementCv";
-import type { CvApplication, CvFile, CvStatus } from "@/lib/managementCv";
-import { activeCvFilters, cvMatches, NO_CV_FILTERS, subjectMatches, textKey, type CvFacet, type CvFilters } from "@/lib/cvFilters";
+import { CV_NOTE_MAX, type CvApplication, type CvFile, type CvStatus } from "@/lib/managementCv";
+import { activeCvFilters, CV_BRANCH_ANY, cvMatches, NO_CV_FILTERS, subjectMatches, textKey, type CvFacet, type CvFilters } from "@/lib/cvFilters";
 import Select from "@/components/ui/Select";
 import MoneyInput from "@/components/ui/MoneyInput";
 import Modal, { useModalClose } from "@/components/ui/Modal";
@@ -215,11 +215,119 @@ function DetailSection({ title }: { title: string }) {
   return <div className="text-[12px] font-bold uppercase tracking-wider text-primary mt-4 mb-1">{title}</div>;
 }
 
+/**
+ * Jadvaldagi "Izoh" ustuni — 10 belgidan keyin "…" (27.09.2026 talabi);
+ * to'lig'i `title` da va tafsilot oynasining oxirida.
+ */
+const NOTE_PREVIEW = 10;
+function shortNote(v: string): string {
+  const chars = Array.from(v.replace(/\s+/g, " ").trim());
+  return chars.length > NOTE_PREVIEW ? chars.slice(0, NOTE_PREVIEW).join("").trimEnd() + "…" : chars.join("");
+}
+
+function fmtNoteAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * Admin izohi — tafsilot oynasining OXIRIDA (CV ko'rib chiqilgach nomzod
+ * bilan nima gaplashilgani). Faqat adminga chiziladi; server ham faqat
+ * admindan qabul qiladi. Ariza almashganda `key` bilan qayta tug'iladi.
+ */
+function CvAdminNote({ cv, focus, onSaved }: { cv: CvApplication; focus: boolean; onSaved: (app: CvApplication) => void }) {
+  const { t } = useT();
+  const { showSuccess, showError } = useToast();
+  const [draft, setDraft] = useState(cv.adminNote ?? "");
+  const [saving, setSaving] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const dirty = draft.trim() !== (cv.adminNote ?? "");
+
+  // Jadvaldagi izoh bosilgan bo'lsa — oyna ochilishi bilan izohga tushamiz.
+  useEffect(() => {
+    if (focus) boxRef.current?.scrollIntoView({ block: "center" });
+  }, [focus]);
+
+  async function save() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/management-cv/${cv.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminNote: draft }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showError(t(data.error || "Saqlanmadi"));
+        return;
+      }
+      const app = data.application as CvApplication;
+      onSaved(app);
+      setDraft(app.adminNote ?? "");
+      showSuccess(app.adminNote ? t("Izoh saqlandi") : t("Izoh o'chirildi"));
+    } catch {
+      showError(t("Saqlanmadi"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div ref={boxRef}>
+      <div className="flex items-center justify-between gap-2 mt-4 mb-1">
+        <div className="text-[12px] font-bold uppercase tracking-wider text-primary">{t("Admin izohi")}</div>
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Lock className="w-3 h-3" />
+          {t("Faqat admin ko'radi")}
+        </span>
+      </div>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
+        maxLength={CV_NOTE_MAX}
+        rows={4}
+        placeholder={t("Suhbatda nima gaplashildi, kelishuvlar, taassurot…")}
+        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed resize-y min-h-[96px] focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+      <div className="flex items-center justify-between gap-2 flex-wrap mt-1.5">
+        <span className="text-[11.5px] text-muted-foreground">
+          {dirty
+            ? t("Saqlanmagan o'zgarish bor")
+            : cv.adminNote && cv.adminNoteAt
+              ? t("Oxirgi o'zgarish: {name} · {date}", { name: cv.adminNoteBy || "—", date: fmtNoteAt(cv.adminNoteAt) })
+              : ""}
+        </span>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={!dirty || saving}
+          className="h-8 px-3.5 rounded-lg bg-primary text-white text-[12.5px] font-medium hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? t("Saqlanmoqda…") : t("Izohni saqlash")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function CvPage() {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
   const branch = useBranch();
   const branchName = branch.branches.find((b) => b.id === branch.branchId)?.name ?? "";
+  // Admin izohi (ustun va tafsilotdagi bo'lim) — faqat adminga; server ham
+  // boshqalarga izohni bermaydi.
+  const isAdmin = branch.isAdmin;
+  const colCount = isAdmin ? 12 : 11;
 
   const [items, setItems] = useState<CvApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,6 +337,8 @@ export default function CvPage() {
   const [search, setSearch] = useState("");
 
   const [detailId, setDetailId] = useState<number | null>(null);
+  /** Tafsilot jadvaldagi izoh bosilib ochildi — oyna izohga tushadi. */
+  const [noteFocus, setNoteFocus] = useState(false);
   const [fileView, setFileView] = useState<FileView | null>(null);
   const [acting, setActing] = useState(false);
 
@@ -339,6 +449,14 @@ export default function CvPage() {
 
   /* ---- Filtr / qidiruv (lib/cvFilters.ts) ---- */
   const q = search.toLowerCase().trim();
+  // Filial filtri: navbardagi filial (ro'yxat shu bo'yicha kesilgan) va
+  // ro'yxatda uchragan boshqa filial bo'lsa o'sha; oxirida "Istalgan".
+  const branchIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (branch.branchId !== null) ids.add(branch.branchId);
+    for (const c of items) if (typeof c.branchId === "number") ids.add(c.branchId);
+    return [...ids].sort((a, b) => a - b);
+  }, [items, branch.branchId]);
   const visible = useMemo(() => items.filter((c) => cvMatches(c, filters, q)), [items, filters, q]);
   const activeFilters = activeCvFilters(filters);
 
@@ -371,6 +489,7 @@ export default function CvPage() {
       if (!extra.has(textKey(s))) extra.set(textKey(s), s);
     }
     const subjectRows = pool("subject");
+    const branchRows = pool("branch");
     const subject = [...standard, ...[...extra.values()].map((s) => ({ s, group: t("Boshqa") }))].map(({ s, group }) => ({
       value: s,
       label: s,
@@ -388,8 +507,16 @@ export default function CvPage() {
         ...o,
         label: CV_STATUS[o.value as CvStatus].label,
       })),
+      branch: [
+        ...branchIds.map((id) => ({
+          value: String(id),
+          label: branch.branches.find((b) => b.id === id)?.name || items.find((c) => c.branchId === id)?.branchName || String(id),
+          hint: String(branchRows.filter((c) => c.branchId === id).length),
+        })),
+        { value: CV_BRANCH_ANY, label: "Istalgan", hint: String(branchRows.filter((c) => c.branchId === null).length) },
+      ],
     };
-  }, [items, filters, q, positionValues, t]);
+  }, [items, filters, q, positionValues, branchIds, branch.branches, t]);
 
   const detail = detailId === null ? null : items.find((c) => c.id === detailId) || null;
 
@@ -423,7 +550,8 @@ export default function CvPage() {
   );
 
   /** Ariza ochilganda "Yangi" holati referensdagidek "Ko'rib chiqilgan"ga o'tadi. */
-  function openDetail(cv: CvApplication) {
+  function openDetail(cv: CvApplication, toNote = false) {
+    setNoteFocus(toNote);
     setDetailId(cv.id);
     if (cv.status === "new") setStatus(cv, "reviewed", false);
   }
@@ -562,17 +690,21 @@ export default function CvPage() {
       </div>
 
       {/* Filtrlar (lib/cvFilters.ts). Variant yonidagi son — boshqa filtrlar
-          bilan shu variantni tanlasangiz nechta ariza chiqadi. Har filtr
-          qat'iy kenglikdagi o'ramda: Select'ning o'z kengligi matnga qarab
-          o'zgaradi va qiymat tanlanganda qo'shni filtrlarni surib yuborardi. */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="w-52 shrink-0">
+          bilan shu variantni tanlasangiz nechta ariza chiqadi.
+          TO'R (27.09.2026, "2 qator to'liq"): keng ekranda (2xl, 6 ustun)
+          aniq 2 ta to'la qator — maosh va qidiruv 2 ustundan: 1-qator
+          yo'nalish·fan·tajriba·maosh(2)·ta'lim, 2-qator bandlik·manba·holat·
+          filial·qidiruv(2). lg–xl (4 ustun) — 3 to'la qator (qidiruv 3
+          ustun), sm (2 ustun) — 5 qator. Kataklar teng kenglikda, bo'sh joy
+          qolmaydi. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6 gap-2">
+        <div className="min-w-0">
           <Select value={filters.position} onChange={(v) => setFilter("position", v)} options={facetOptions.position} placeholder={t("Yo'nalish — barchasi")} searchPlaceholder={t("Qidirish")} clearable size="sm" />
         </div>
-        <div className="w-48 shrink-0">
+        <div className="min-w-0">
           <Select value={filters.subject} onChange={(v) => setFilter("subject", v)} options={facetOptions.subject} placeholder={t("Fan — barchasi")} searchPlaceholder={t("Qidirish")} clearable size="sm" />
         </div>
-        <div className="w-44 shrink-0">
+        <div className="min-w-0">
           <Select
             multiple
             values={filters.exp}
@@ -586,49 +718,53 @@ export default function CvPage() {
         </div>
         <div
           title={t("Kutilayotgan oylik maosh")}
-          className="inline-flex items-center gap-1.5 h-9 rounded-lg border border-border bg-card pl-2.5 pr-2 text-[13px] focus-within:ring-2 focus-within:ring-primary/30"
+          className="2xl:col-span-2 min-w-0 flex items-center gap-1.5 h-9 rounded-lg border border-border bg-card pl-2.5 pr-2 text-[13px] focus-within:ring-2 focus-within:ring-primary/30"
         >
           <Wallet className="w-4 h-4 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground">{t("Maosh")}</span>
-          <MoneyInput value={filters.salaryFrom} onChange={(v) => setFilter("salaryFrom", v)} placeholder={t("dan")} aria-label={`${t("Maosh")} ${t("dan")}`} className="w-[84px] bg-transparent tabular-nums focus:outline-none" />
-          <span className="text-muted-foreground">–</span>
-          <MoneyInput value={filters.salaryTo} onChange={(v) => setFilter("salaryTo", v)} placeholder={t("gacha")} aria-label={`${t("Maosh")} ${t("gacha")}`} className="w-[84px] bg-transparent tabular-nums focus:outline-none" />
+          <span className="text-muted-foreground shrink-0">{t("Maosh")}</span>
+          <MoneyInput value={filters.salaryFrom} onChange={(v) => setFilter("salaryFrom", v)} placeholder={t("dan")} aria-label={`${t("Maosh")} ${t("dan")}`} className="min-w-0 flex-1 bg-transparent tabular-nums focus:outline-none" />
+          <span className="text-muted-foreground shrink-0">–</span>
+          <MoneyInput value={filters.salaryTo} onChange={(v) => setFilter("salaryTo", v)} placeholder={t("gacha")} aria-label={`${t("Maosh")} ${t("gacha")}`} className="min-w-0 flex-1 bg-transparent tabular-nums focus:outline-none" />
         </div>
-        <div className="w-48 shrink-0">
+        <div className="min-w-0">
           <Select value={filters.edu} onChange={(v) => setFilter("edu", v)} options={facetOptions.edu} placeholder={t("Ta'lim — barchasi")} clearable size="sm" />
         </div>
-        <div className="w-44 shrink-0">
+        <div className="min-w-0">
           <Select value={filters.load} onChange={(v) => setFilter("load", v)} options={facetOptions.load} placeholder={t("Bandlik — barchasi")} clearable size="sm" />
         </div>
-        <div className="w-48 shrink-0">
+        <div className="min-w-0">
           <Select value={filters.source} onChange={(v) => setFilter("source", v)} options={facetOptions.source} placeholder={t("Manba — barchasi")} clearable size="sm" />
         </div>
-        <div className="w-44 shrink-0">
+        <div className="min-w-0">
           <Select value={filters.status} onChange={(v) => setFilter("status", v)} options={facetOptions.status} placeholder={t("Holat — barchasi")} clearable size="sm" />
         </div>
-        {activeFilters > 0 && (
-          <button
-            onClick={() => setFilters(NO_CV_FILTERS)}
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium"
-          >
-            <X className="w-3.5 h-3.5" />
-            {t("Tozalash")}
-          </button>
-        )}
-        <div className="flex-1" />
-        <div className="relative w-72">
-          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            type="text"
-            placeholder={t("Ism, fan yoki telefon bo'yicha qidirish")}
-            className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+        <div className="min-w-0">
+          <Select value={filters.branch} onChange={(v) => setFilter("branch", v)} options={facetOptions.branch} placeholder={t("Filial — barchasi")} clearable size="sm" />
         </div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs">
-          <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
-          <span className="font-bold tabular-nums">{visible.length}</span>
+        <div className="lg:col-span-3 2xl:col-span-2 min-w-0 flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              type="text"
+              placeholder={t("Ism, fan yoki telefon bo'yicha qidirish")}
+              className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          {activeFilters > 0 && (
+            <button
+              onClick={() => setFilters(NO_CV_FILTERS)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+              {t("Tozalash")}
+            </button>
+          )}
+          <div className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-secondary/60 text-xs shrink-0">
+            <span className="text-muted-foreground">{t("Umumiy soni:")}</span>
+            <span className="font-bold tabular-nums">{visible.length}</span>
+          </div>
         </div>
       </div>
 
@@ -648,20 +784,21 @@ export default function CvPage() {
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Telefon")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Topshirilgan")}</th>
                 <th className="text-left px-4 py-3 whitespace-nowrap">{t("Holati")}</th>
+                {isAdmin && <th className="text-left px-4 py-3 whitespace-nowrap">{t("Izoh")}</th>}
                 <th className="text-right px-4 py-3 whitespace-nowrap w-24" />
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8">
+                  <td colSpan={colCount} className="px-4 py-8">
                     <SpinnerBlock size={22} />
                   </td>
                 </tr>
               )}
               {!loading && visible.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
+                  <td colSpan={colCount} className="px-4 py-12 text-center text-muted-foreground text-[13px]">
                     {t("CV topilmadi. Filterni o'zgartirib ko'ring.")}
                   </td>
                 </tr>
@@ -700,6 +837,25 @@ export default function CvPage() {
                     <td className="px-4 py-3">
                       <StatusBadge status={c.status} />
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-[13px] whitespace-nowrap">
+                        {c.adminNote ? (
+                          <button
+                            type="button"
+                            title={c.adminNote}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDetail(c, true);
+                            }}
+                            className="text-left hover:text-primary hover:underline underline-offset-2"
+                          >
+                            {shortNote(c.adminNote)}
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">---</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={(e) => {
@@ -792,6 +948,15 @@ export default function CvPage() {
                     ))}
                   </div>
                 </>
+              )}
+
+              {isAdmin && (
+                <CvAdminNote
+                  key={detail.id}
+                  cv={detail}
+                  focus={noteFocus}
+                  onSaved={(app) => setItems((prev) => prev.map((c) => (c.id === app.id ? app : c)))}
+                />
               )}
 
               <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-border flex-wrap">
