@@ -100,7 +100,7 @@ export default function GamBranchesTab() {
         <p className="text-[12.5px] text-muted-foreground">
           {t("Filiallar — CRM'dagi umumiy ro'yxat: nomini o'zgartirish, qo'shish va o'chirish Boshqaruv → Filiallar sahifasida. Byudjet — oyiga shu filialda beriladigan buyumlar tannarxi chegarasi; bo'sh qoldirilsa cheklanmagan.")}
         </p>
-        <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+        <div className="gm-scroll-card table-box rounded-xl border border-border">
           <table className="gm-table">
             <thead>
               <tr>

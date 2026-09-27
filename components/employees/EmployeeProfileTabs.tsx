@@ -68,7 +68,7 @@ function Table({ head, children, count }: { head: string[]; children: React.Reac
           {t("Umumiy soni:")}{" "}<span className="ml-1 tabular-nums font-semibold">{count}</span>
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="table-box">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

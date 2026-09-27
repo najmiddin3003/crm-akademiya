@@ -688,7 +688,7 @@ export default function CvPage() {
   const dotCls = sheetsOk === true ? "bg-emerald-500" : sheetsOk === false ? "bg-rose-500" : "bg-slate-400";
 
   return (
-    <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
+    <div className="page-frame-lg container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{t("Ishga qabul — CV arizalari")}</h1>
@@ -826,9 +826,9 @@ export default function CvPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      {/* Table — thead tepada qotadi, faqat qatorlar scroll (globals.css .page-frame-lg) */}
+      <div className="table-frame rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="table-scroll">
           <table className="w-full text-sm">
             <thead className="bg-secondary/40">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

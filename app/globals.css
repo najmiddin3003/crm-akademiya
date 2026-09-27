@@ -10269,6 +10269,18 @@ a.kpi-card:hover {
 @media (min-width: 1024px) {
   .group-detail-grid { grid-template-columns: 320px minmax(0, 1fr); }
   .group-detail-grid.is-collapsed { grid-template-columns: 48px minmax(0, 1fr); }
+
+  /* Ekran balandligidagi ramka (27.09.2026, "hamma jadvalda thead va
+     paginatsiya qotsin"): sahifa ildizi `.page-frame-lg`, to'r qolgan
+     balandlikni oladi. Chap karta o'zi aylanadi; o'ngdagi tab kartasi
+     qolgan joyni egallaydi, O'quvchilar tabidagi jadval qutisi uning ichida
+     cho'ziladi — thead tepada, paginatsiya pastda turadi. Boshqa tablar
+     (cho'zilmaydigan) kartaning o'zida aylanadi. */
+  .page-frame-lg > .group-detail-grid { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .page-frame-lg > .group-detail-grid > .gd-aside { max-height: 100%; overflow-y: auto; }
+  .page-frame-lg .gd-right { display: flex; flex-direction: column; min-height: 0; }
+  .page-frame-lg .gd-content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .page-frame-lg .gd-content > .table-box { flex: 1; min-height: 0; max-height: none; }
 }
 
 /* ============ RO'YXAT SAHIFALARI: QOTIB TURADIGAN JADVAL ============
@@ -10361,14 +10373,50 @@ a.kpi-card:hover {
     grid-template-rows: minmax(0, 1fr);
   }
 }
+/* `.page-frame-lg` sahifalari 1024px dan torda ramkasiz (sahifa odatdagidek
+   aylanadi) — u yerda jadval `.table-box` kabi cheklangan quti bo'ladi,
+   thead baribir qotadi (27.09.2026: "hamma jadvalda"). */
+@media (max-width: 1023px) {
+  .page-frame-lg .table-scroll {
+    max-height: min(70vh, 760px);
+  }
+}
+/* ---------- Sahifa ichidagi jadval (tab, karta, modal) — `.table-box` ----------
+   Foydalanuvchi talabi (27.09.2026): loyihadagi HAMMA jadvalda thead qotib
+   tursin, faqat ma'lumot scroll bo'lsin. Sahifaning yagona asosiy qismi
+   bo'lmagan jadvallarda (profil tablari, modal, bir sahifada bir necha
+   jadval) `.page-frame` zanjirini qurib bo'lmaydi — ular balandligi
+   cheklangan qutiga olinadi: ichida scroll, sarlavha qutining tepasida
+   qotadi, paginatsiya qutidan keyin turadi. Kalta jadvalda quti sezilmaydi.
+   `overflow: auto` — gorizontal scroll ham shu quti ichida (eski
+   `overflow-x-auto` o'ramining o'rnini bosadi). */
+.table-box {
+  overflow: auto;
+  max-height: min(70vh, 760px);
+}
+/* Modal/drawer ichida — oynaning o'zi 90vh, jadval undan kichikroq bo'lsin. */
+.table-box.in-modal {
+  max-height: 55vh;
+}
+
 /* Sticky `<thead>` emas, `<th>` — `border-collapse: collapse` bilan thead'ning
    o'zi ba'zi brauzerlarda fon/chegara chizmaydi, `th` esa ishonchli ishlaydi. */
-.table-scroll table thead th {
+.table-scroll table thead th,
+.table-box table thead th {
   position: sticky;
   top: 0;
   z-index: 10;
   /* Shaffof fon bo'lsa, ostidan siljiyotgan qatorlar ko'rinib qoladi. */
   background-color: color-mix(in srgb, hsl(var(--secondary)) 40%, hsl(var(--card)));
+  /* `border-collapse` da qatorning pastki chegarasi scroll'da joyida
+     qoladi — qotgan sarlavha ostidagi chiziq soya bilan chiziladi. */
+  box-shadow: inset 0 -1px 0 hsl(var(--border));
+}
+/* Ikki qatorli thead (masalan Samaradorlik hisoboti): 2-qator 1-qatorning
+   ostida qotadi. 1-qator balandligi o'sha jadvalda `h-8` (32px) qilingan. */
+.table-scroll table thead tr.thead-row2 th,
+.table-box table thead tr.thead-row2 th {
+  top: 2rem;
 }
 
 /* ============ JADVAL QATORLARI: KIRISH ANIMATSIYASI ============

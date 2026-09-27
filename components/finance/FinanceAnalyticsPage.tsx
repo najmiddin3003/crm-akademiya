@@ -292,7 +292,7 @@ export default function FinanceAnalyticsPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col">
-          <div className="overflow-x-auto flex-1">
+          <div className="table-box flex-1">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

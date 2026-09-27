@@ -224,31 +224,33 @@ export default function StudentSourcesPage() {
           olish, saralash va skrinshotsiz o'qish uchun). */}
       {(data?.sources.length ?? 0) > 0 && (
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/20">
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="px-5 py-3 text-left">{t("Manba")}</th>
-                <th className="px-5 py-3 text-right">{t("O'quvchi")}</th>
-                <th className="px-5 py-3 text-right">{t("Ulush")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {data!.sources.map((s) => (
-                <tr key={s.name} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-2.5 font-medium">{s.name}</td>
-                  <td className="px-5 py-2.5 text-right tabular-nums">{s.n}</td>
-                  <td className="px-5 py-2.5 text-right tabular-nums text-muted-foreground">
-                    {data!.known > 0 ? ((s.n / data!.known) * 100).toFixed(1) : "0.0"}%
-                  </td>
+          <div className="table-box">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/20">
+                <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="px-5 py-3 text-left">{t("Manba")}</th>
+                  <th className="px-5 py-3 text-right">{t("O'quvchi")}</th>
+                  <th className="px-5 py-3 text-right">{t("Ulush")}</th>
                 </tr>
-              ))}
-              <tr className="bg-secondary/10 font-medium">
-                <td className="px-5 py-2.5">{t("Jami (manbasi ma'lum)")}</td>
-                <td className="px-5 py-2.5 text-right tabular-nums">{data!.known}</td>
-                <td className="px-5 py-2.5 text-right tabular-nums text-muted-foreground">100%</td>
-              </tr>
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data!.sources.map((s) => (
+                  <tr key={s.name} className="hover:bg-secondary/30 transition-colors">
+                    <td className="px-5 py-2.5 font-medium">{s.name}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums">{s.n}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-muted-foreground">
+                      {data!.known > 0 ? ((s.n / data!.known) * 100).toFixed(1) : "0.0"}%
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-secondary/10 font-medium">
+                  <td className="px-5 py-2.5">{t("Jami (manbasi ma'lum)")}</td>
+                  <td className="px-5 py-2.5 text-right tabular-nums">{data!.known}</td>
+                  <td className="px-5 py-2.5 text-right tabular-nums text-muted-foreground">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -177,7 +177,7 @@ export default function SalesFunnelPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Hisobot turlari */}
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="table-box">
             <table className="w-full text-sm">
               <thead className="bg-secondary/20">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

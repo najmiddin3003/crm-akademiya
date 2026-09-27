@@ -63,7 +63,7 @@ export default function GuruhTabContent({ pupilId: pupilIdProp }: { pupilId?: nu
           {t("O'quvchi hech qanday guruhga qo'shilmagan")}
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="table-box">
           <table className="w-full text-sm">
             <thead className="text-[12px] text-muted-foreground uppercase">
               <tr className="border-b border-border">

@@ -284,7 +284,7 @@ export default function CashFlowTab() {
         </>
       ) : (
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="table-box">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">

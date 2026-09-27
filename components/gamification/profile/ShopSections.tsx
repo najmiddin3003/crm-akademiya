@@ -150,7 +150,7 @@ export default function ShopSections({
         {d.orders.length === 0 ? (
           <div className="rounded-xl border border-border px-4 py-3 text-[13px] text-muted-foreground">{t("Hali do'kondan hech narsa olinmagan.")}</div>
         ) : (
-          <div className="gm-scroll-card overflow-x-auto rounded-2xl border border-border">
+          <div className="gm-scroll-card table-box in-modal rounded-2xl border border-border">
             <table className="gm-table">
               <thead>
                 <tr>

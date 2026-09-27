@@ -129,50 +129,52 @@ function LevelFormBody({ courseId, editing }: { courseId: number; editing?: Cour
 
       {/* Branch availability */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border">
-            <tr className="text-foreground/70">
-              <th className="text-left px-6 py-4 font-semibold text-[14px] w-40">{t("Mavjudligi")}</th>
-              <th className="text-left px-6 py-4 font-semibold text-[14px]">{t("Filiallar")}</th>
-              <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Oylik narx")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {branches.map((b) => {
-              const row = rows[b.id] ?? EMPTY_ROW;
-              return (
-                <tr key={b.id} className="border-t border-border">
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={row.enabled}
-                      onChange={(e) => setBranch(b.id, { enabled: e.target.checked })}
-                      className="rounded border-border w-5 h-5"
-                    />
-                  </td>
-                  <td className="px-6 py-4 text-foreground/80">{b.name}</td>
-                  <td className="px-6 py-4">
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={row.summa}
-                      onChange={(e) => setBranch(b.id, { summa: e.target.value })}
-                      className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    />
+        <div className="table-box">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border">
+              <tr className="text-foreground/70">
+                <th className="text-left px-6 py-4 font-semibold text-[14px] w-40">{t("Mavjudligi")}</th>
+                <th className="text-left px-6 py-4 font-semibold text-[14px]">{t("Filiallar")}</th>
+                <th className="text-left px-6 py-4 font-semibold text-[14px] w-72">{t("Oylik narx")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {branches.map((b) => {
+                const row = rows[b.id] ?? EMPTY_ROW;
+                return (
+                  <tr key={b.id} className="border-t border-border">
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={row.enabled}
+                        onChange={(e) => setBranch(b.id, { enabled: e.target.checked })}
+                        className="rounded border-border w-5 h-5"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-foreground/80">{b.name}</td>
+                    <td className="px-6 py-4">
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={row.summa}
+                        onChange={(e) => setBranch(b.id, { summa: e.target.value })}
+                        className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+              {branches.length === 0 && (
+                <tr className="border-t border-border">
+                  <td colSpan={3} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                    {branchesLoading ? <SpinnerBlock size={22} /> : "Filial topilmadi"}
                   </td>
                 </tr>
-              );
-            })}
-            {branches.length === 0 && (
-              <tr className="border-t border-border">
-                <td colSpan={3} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                  {branchesLoading ? <SpinnerBlock size={22} /> : "Filial topilmadi"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Actions */}

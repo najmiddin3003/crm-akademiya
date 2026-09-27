@@ -201,7 +201,7 @@ export default function ShopPage() {
               </Link>
             )}
           </div>
-          <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+          <div className="gm-scroll-card table-box rounded-xl border border-border">
             <table className="gm-table">
               <thead>
                 <tr>
@@ -302,7 +302,7 @@ export default function ShopPage() {
           {view.wishRows.length === 0 ? (
             <p className="text-[13px] text-muted-foreground">{t("Hali hech kim istak qo'shmagan.")}</p>
           ) : (
-            <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+            <div className="gm-scroll-card table-box rounded-xl border border-border">
               <table className="gm-table">
                 <thead>
                   <tr>
@@ -369,7 +369,7 @@ export default function ShopPage() {
                 {t("{month} to'lovlariga chegirmalar", { month: monthName(m) })}{" "}
                 <span className="text-[12.5px] font-medium text-muted-foreground">· {t("Moliyaga avtomatik")}</span>
               </h2>
-              <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+              <div className="gm-scroll-card table-box rounded-xl border border-border">
                 <table className="gm-table">
                   <thead>
                     <tr>
@@ -421,7 +421,7 @@ export default function ShopPage() {
           {view.orders.length === 0 ? (
             <p className="text-[13px] text-muted-foreground">{t("Bu oyda hali sovg'a berilmagan.")}</p>
           ) : (
-            <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+            <div className="gm-scroll-card table-box rounded-xl border border-border">
               <table className="gm-table">
                 <thead>
                   <tr>

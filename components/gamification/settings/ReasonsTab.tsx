@@ -162,87 +162,89 @@ export default function GamReasonsTab() {
             </button>
           )}
         </div>
-        <table className="gm-table">
-          <thead>
-            <tr>
-              <th>{t("Sabab")}</th>
-              <th>{t("Tanga")}</th>
-              <th>{t("Kim beradi")}</th>
-              <th>{t("Bir o'quvchiga")}</th>
-              <th>{t("Faol")}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const sys = r.code ? SYS.get(r.code) : undefined;
-              return (
-                <tr key={r.id} className={r.isActive ? "" : "gm-off"}>
-                  <td className="gm-lead" data-l="">
-                    <span className="font-semibold">{r.isSystem ? t(r.name) : r.name}</span>{" "}
-                    {r.isSystem ? (
-                      <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                        <Lock className="h-3 w-3" /> {t("Tizim")}
+        <div className="table-box">
+          <table className="gm-table">
+            <thead>
+              <tr>
+                <th>{t("Sabab")}</th>
+                <th>{t("Tanga")}</th>
+                <th>{t("Kim beradi")}</th>
+                <th>{t("Bir o'quvchiga")}</th>
+                <th>{t("Faol")}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const sys = r.code ? SYS.get(r.code) : undefined;
+                return (
+                  <tr key={r.id} className={r.isActive ? "" : "gm-off"}>
+                    <td className="gm-lead" data-l="">
+                      <span className="font-semibold">{r.isSystem ? t(r.name) : r.name}</span>{" "}
+                      {r.isSystem ? (
+                        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                          <Lock className="h-3 w-3" /> {t("Tizim")}
+                        </span>
+                      ) : (
+                        r.noteRequired && (
+                          <span className="ml-1 inline-flex rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("izoh majburiy")}</span>
+                        )
+                      )}
+                      {!r.isSystem && (r.usedCount ?? 0) > 0 && (
+                        <div className="text-[12px] text-muted-foreground">{t("{n} marta ishlatilgan", { n: r.usedCount ?? 0 })}</div>
+                      )}
+                    </td>
+                    <td data-l={t("Tanga")}>
+                      <span className={`whitespace-nowrap ${d > 0 ? "gm-pos" : "gm-neg"}`}>{r.isSystem ? sysAmount(r, settings, t) : customAmount(r)}</span>
+                    </td>
+                    <td data-l={t("Kim beradi")}>
+                      <span className="text-[12.5px] text-muted-foreground">
+                        {r.isSystem ? t(sys?.who ?? "") : t(ALLOWED_ROLE_LABELS[r.allowedRoles as ReasonAllowedRoles] ?? "")}
                       </span>
-                    ) : (
-                      r.noteRequired && (
-                        <span className="ml-1 inline-flex rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("izoh majburiy")}</span>
-                      )
-                    )}
-                    {!r.isSystem && (r.usedCount ?? 0) > 0 && (
-                      <div className="text-[12px] text-muted-foreground">{t("{n} marta ishlatilgan", { n: r.usedCount ?? 0 })}</div>
-                    )}
-                  </td>
-                  <td data-l={t("Tanga")}>
-                    <span className={`whitespace-nowrap ${d > 0 ? "gm-pos" : "gm-neg"}`}>{r.isSystem ? sysAmount(r, settings, t) : customAmount(r)}</span>
-                  </td>
-                  <td data-l={t("Kim beradi")}>
-                    <span className="text-[12.5px] text-muted-foreground">
-                      {r.isSystem ? t(sys?.who ?? "") : t(ALLOWED_ROLE_LABELS[r.allowedRoles as ReasonAllowedRoles] ?? "")}
-                    </span>
-                  </td>
-                  <td data-l={t("Bir o'quvchiga")}>
-                    <span className="text-[12.5px] text-muted-foreground">
-                      {r.isSystem ? "—" : r.perDayLimit ? t("kuniga {n} marta", { n: r.perDayLimit }) : t("cheklovsiz")}
-                    </span>
-                  </td>
-                  <td data-l={t("Faol")} className="gm-keep">
-                    {canEdit ? (
-                      <Toggle on={r.isActive} onChange={() => toggle(r)} />
-                    ) : (
-                      <span className="text-[12.5px]">{r.isActive ? t("Ha") : t("Yo'q")}</span>
-                    )}
-                  </td>
-                  <td data-l="" className="gm-keep">
-                    {canEdit && (
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          className={`${iconBtn} text-primary`}
-                          title={t("Tahrirlash")}
-                          aria-label={t("Tahrirlash")}
-                          onClick={() => (r.isSystem ? setSysEdit(r) : setForm({ reason: r, direction: r.direction }))}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${iconBtn} hover:text-rose-600`}
-                          disabled={r.isSystem}
-                          title={r.isSystem ? t("Tizim sababini o'chirib bo'lmaydi — to'xtatish mumkin") : t("O'chirish")}
-                          aria-label={t("O'chirish")}
-                          onClick={() => setDel(r)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td data-l={t("Bir o'quvchiga")}>
+                      <span className="text-[12.5px] text-muted-foreground">
+                        {r.isSystem ? "—" : r.perDayLimit ? t("kuniga {n} marta", { n: r.perDayLimit }) : t("cheklovsiz")}
+                      </span>
+                    </td>
+                    <td data-l={t("Faol")} className="gm-keep">
+                      {canEdit ? (
+                        <Toggle on={r.isActive} onChange={() => toggle(r)} />
+                      ) : (
+                        <span className="text-[12.5px]">{r.isActive ? t("Ha") : t("Yo'q")}</span>
+                      )}
+                    </td>
+                    <td data-l="" className="gm-keep">
+                      {canEdit && (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            className={`${iconBtn} text-primary`}
+                            title={t("Tahrirlash")}
+                            aria-label={t("Tahrirlash")}
+                            onClick={() => (r.isSystem ? setSysEdit(r) : setForm({ reason: r, direction: r.direction }))}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className={`${iconBtn} hover:text-rose-600`}
+                            disabled={r.isSystem}
+                            title={r.isSystem ? t("Tizim sababini o'chirib bo'lmaydi — to'xtatish mumkin") : t("O'chirish")}
+                            aria-label={t("O'chirish")}
+                            onClick={() => setDel(r)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         {custom.length === 0 && <p className="mt-2 text-[12.5px] text-muted-foreground">{t("Qo'shimcha sabab yo'q — «Sabab qo'shish» bilan qo'shing.")}</p>}
       </div>
     );

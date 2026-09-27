@@ -40,7 +40,7 @@ export default function StatsView({ viewer, branches, fmt, reloadKey }: Props) {
   return (
     <div className="stk-card">
       <h3>{t(viewer.role === "xodim" ? "Mening statistikam" : "Xodimlar bo'yicha statistika")}</h3>
-      <div className="stk-scroll">
+      <div className="stk-scroll table-box">
         <table className="stk-tbl stk-stack">
           <thead>
             <tr>

@@ -144,7 +144,7 @@ export default function HandoverModal({ onClose }: { onClose: () => void }) {
       ) : loading && !tv ? (
         <SpinnerBlock size={28} />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="table-box in-modal">
           <table className="w-full text-[13px]">
             <thead className="bg-secondary/40">
               <tr>

@@ -50,6 +50,9 @@
   .gm-table td.gm-lead { order: -1; display: block; text-align: left; border-bottom: 1px solid hsl(var(--border)); padding-bottom: 8px; }
   .gm-table td.gm-lead::before { display: none; }
   .gm-scroll-card { padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+  /* Telefonda jadval kartochka (thead yo'q) — qotadigan sarlavha qutisi
+     (globals.css .table-box / .table-scroll) kerak emas: sahifa aylanadi. */
+  .gm-scroll-card.table-box, .gm-scroll-card.table-box.in-modal, .gm-page .gm-scroll-card .table-scroll { max-height: none; overflow: visible; }
   .gm-tap { min-height: 40px; min-width: 40px; }
   .gm-page input:not([type="checkbox"]):not([type="radio"]), .gm-page textarea { font-size: 16px; min-height: 40px; }
 }

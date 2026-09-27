@@ -404,84 +404,86 @@ export default function GroupExamDrawer({
                 {t("O'quvchi qo'shish")}
               </button>
             </div>
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/40">
-                <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                  <th className="text-left px-3 py-2.5 w-12">№</th>
-                  <th className="text-left px-3 py-2.5">{t("O'quvchi")}</th>
-                  <th className="text-left px-3 py-2.5 w-36 whitespace-nowrap">{t("To'g'ri javob")}</th>
-                  <th className="text-left px-3 py-2.5 w-32">{t("O'zlashtirish")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {studentsLoading && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6">
-                      <SpinnerBlock size={20} />
-                    </td>
+            <div className="table-box in-modal">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/40">
+                  <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                    <th className="text-left px-3 py-2.5 w-12">№</th>
+                    <th className="text-left px-3 py-2.5">{t("O'quvchi")}</th>
+                    <th className="text-left px-3 py-2.5 w-36 whitespace-nowrap">{t("To'g'ri javob")}</th>
+                    <th className="text-left px-3 py-2.5 w-32">{t("O'zlashtirish")}</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {studentsLoading && (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6">
+                        <SpinnerBlock size={20} />
+                      </td>
+                    </tr>
+                  )}
+                  {!studentsLoading && students.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
+                        <div className="font-semibold text-foreground mb-0.5">{t("Guruhda o'quvchi yo'q")}</div>
+                        {t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}
+                      </td>
+                    </tr>
+                  )}
+                  {!studentsLoading &&
+                    students.map((p, i) => {
+                      const raw = correct[p.id] ?? "";
+                      const pct = pctOf(p);
+                      return (
+                        <tr key={p.id} className="border-b border-border/50 last:border-b-0">
+                          <td className="px-3 py-2 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
+                          <td className="px-3 py-2 text-[13px] font-medium">
+                            {pupilFullName(p)}
+                            {addedIds.includes(p.id) && (
+                              <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full bg-secondary text-[11px] font-medium text-muted-foreground">
+                                {t("Yangi")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              value={raw}
+                              onChange={(e) => mark(p.id, e.target.value)}
+                              type="number"
+                              min={0}
+                              max={totalNum}
+                              inputMode="numeric"
+                              placeholder="—"
+                              title={t("0 dan {totalNum} gacha", { totalNum })}
+                              className="w-24 h-9 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            {pct === null ? <span className="text-[12px] text-muted-foreground">—</span> : <TierBadge pct={pct} />}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+                {students.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-secondary/30 border-t border-border">
+                      <td colSpan={2} className="px-3 py-2.5 text-[12px] text-muted-foreground">
+                        {t("{n} ta o'quvchi · {filled} tasi kiritildi", { n: students.length, filled: filled.length })}
+                      </td>
+                      <td className="px-3 py-2.5 text-[12px] font-semibold whitespace-nowrap">{t("Guruh o'rtachasi")}</td>
+                      <td className="px-3 py-2.5">
+                        {filled.length ? (
+                          <span className={`text-[14px] font-bold tabular-nums ${imTier(avg).text}`}>{avg}%</span>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
                 )}
-                {!studentsLoading && students.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
-                      <div className="font-semibold text-foreground mb-0.5">{t("Guruhda o'quvchi yo'q")}</div>
-                      {t("«O'quvchi qo'shish» tugmasi bilan qo'shing.")}
-                    </td>
-                  </tr>
-                )}
-                {!studentsLoading &&
-                  students.map((p, i) => {
-                    const raw = correct[p.id] ?? "";
-                    const pct = pctOf(p);
-                    return (
-                      <tr key={p.id} className="border-b border-border/50 last:border-b-0">
-                        <td className="px-3 py-2 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
-                        <td className="px-3 py-2 text-[13px] font-medium">
-                          {pupilFullName(p)}
-                          {addedIds.includes(p.id) && (
-                            <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full bg-secondary text-[11px] font-medium text-muted-foreground">
-                              {t("Yangi")}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <input
-                            value={raw}
-                            onChange={(e) => mark(p.id, e.target.value)}
-                            type="number"
-                            min={0}
-                            max={totalNum}
-                            inputMode="numeric"
-                            placeholder="—"
-                            title={t("0 dan {totalNum} gacha", { totalNum })}
-                            className="w-24 h-9 rounded-lg border border-border bg-card px-3 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          {pct === null ? <span className="text-[12px] text-muted-foreground">—</span> : <TierBadge pct={pct} />}
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-              {students.length > 0 && (
-                <tfoot>
-                  <tr className="bg-secondary/30 border-t border-border">
-                    <td colSpan={2} className="px-3 py-2.5 text-[12px] text-muted-foreground">
-                      {t("{n} ta o'quvchi · {filled} tasi kiritildi", { n: students.length, filled: filled.length })}
-                    </td>
-                    <td className="px-3 py-2.5 text-[12px] font-semibold whitespace-nowrap">{t("Guruh o'rtachasi")}</td>
-                    <td className="px-3 py-2.5">
-                      {filled.length ? (
-                        <span className={`text-[14px] font-bold tabular-nums ${imTier(avg).text}`}>{avg}%</span>
-                      ) : (
-                        <span className="text-[12px] text-muted-foreground">—</span>
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+              </table>
+            </div>
           </div>
         )}
       </div>

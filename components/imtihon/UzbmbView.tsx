@@ -500,7 +500,7 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="table-box">
           <table className="w-full text-sm">
             <thead className="bg-secondary/40">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
@@ -943,30 +943,32 @@ export default function UzbmbView({ pupilNames }: { pupilNames: string[] }) {
 
               <div className="text-[12px] font-bold uppercase tracking-wider text-primary mb-2">{t("Imtihonlar tarixi")}</div>
               <div className="rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-secondary/40">
-                    <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                      <th className="text-left px-3 py-2">{t("Oy")}</th>
-                      <th className="text-left px-3 py-2">{t("1-blok")}</th>
-                      <th className="text-left px-3 py-2">{t("2-blok")}</th>
-                      <th className="text-right px-3 py-2">{t("Majburiy")}</th>
-                      <th className="text-left px-3 py-2">{t("Jami")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cmpData.history.map((h) => (
-                      <tr key={h.id} className={`border-b border-border/50 ${h.id === cmp.id ? "bg-primary/5" : ""}`}>
-                        <td className="px-3 py-2 text-[13px]">{imMonthLabel(h.month)}</td>
-                        <td className="px-3 py-2 text-[13px] tabular-nums">{ubFmt(h.b1)}</td>
-                        <td className="px-3 py-2 text-[13px] tabular-nums">{ubFmt(h.b2)}</td>
-                        <td className="px-3 py-2 text-[13px] tabular-nums text-right">{ubFmt(h.maj)}</td>
-                        <td className="px-3 py-2">
-                          <BallBadge total={h.total} />
-                        </td>
+                <div className="table-box in-modal">
+                  <table className="w-full text-sm">
+                    <thead className="bg-secondary/40">
+                      <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                        <th className="text-left px-3 py-2">{t("Oy")}</th>
+                        <th className="text-left px-3 py-2">{t("1-blok")}</th>
+                        <th className="text-left px-3 py-2">{t("2-blok")}</th>
+                        <th className="text-right px-3 py-2">{t("Majburiy")}</th>
+                        <th className="text-left px-3 py-2">{t("Jami")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {cmpData.history.map((h) => (
+                        <tr key={h.id} className={`border-b border-border/50 ${h.id === cmp.id ? "bg-primary/5" : ""}`}>
+                          <td className="px-3 py-2 text-[13px]">{imMonthLabel(h.month)}</td>
+                          <td className="px-3 py-2 text-[13px] tabular-nums">{ubFmt(h.b1)}</td>
+                          <td className="px-3 py-2 text-[13px] tabular-nums">{ubFmt(h.b2)}</td>
+                          <td className="px-3 py-2 text-[13px] tabular-nums text-right">{ubFmt(h.maj)}</td>
+                          <td className="px-3 py-2">
+                            <BallBadge total={h.total} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </>)}</Modal>

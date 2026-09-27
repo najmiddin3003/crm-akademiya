@@ -96,7 +96,7 @@ export default function HarakatlarTabContent({ order }: { order: Order; balans?:
               {entry.time || "—"}
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="table-box">
             <table className="w-full text-sm border-collapse">
               <thead className="text-[12px] text-muted-foreground uppercase bg-secondary/20">
                 <tr>

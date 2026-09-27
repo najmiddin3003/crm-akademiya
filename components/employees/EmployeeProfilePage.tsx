@@ -1004,7 +1004,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
                       soni bo'lib qolardi — server qaytargan `total` kerak. */}
                   <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-secondary/40 text-[11px] font-medium whitespace-nowrap">{t("Umumiy soni:")}{" "}<span className="ml-1 tabular-nums font-semibold">{finLoading ? "…" : totalRows}</span></span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-box">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

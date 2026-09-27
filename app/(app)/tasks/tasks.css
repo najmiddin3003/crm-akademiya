@@ -431,6 +431,8 @@ a.stk-tag:hover, button.stk-tag:hover { background: var(--stk-pri-2); color: var
   .stk-stack td { padding: 3px 0; border: 0; text-align: left !important; white-space: normal; }
   .stk-stack td[data-l]::before { content: attr(data-l) " "; color: hsl(var(--muted-foreground)); font-size: 12px; margin-right: 6px; }
   .stk-stack tr.stk-empty td { text-align: center !important; padding: 24px 0; }
+  /* Kartochka ko'rinishida (thead yo'q) qotadigan sarlavha qutisi kerak emas. */
+  .stk-scroll.table-box { max-height: none; overflow: visible; }
 }
 
 /* ---------- Drawer ichi ---------- */

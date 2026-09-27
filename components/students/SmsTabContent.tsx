@@ -69,7 +69,7 @@ export default function SmsTabContent({ order }: { order: Order }) {
           <div className="text-[12px] text-muted-foreground mt-0.5">{t("Bu o'quvchiga hali SMS yuborilmagan.")}</div>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="table-box">
           <table className="w-full text-sm">
             <thead className="text-[12px] text-muted-foreground uppercase">
               <tr className="border-b border-border">

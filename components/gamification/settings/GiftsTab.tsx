@@ -79,7 +79,7 @@ export default function GamGiftsTab() {
           )}
         </div>
         {!dir && <p className="text-[12.5px] text-muted-foreground">{t("Katalogni faqat direktor o'zgartiradi.")}</p>}
-        <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+        <div className="gm-scroll-card table-box rounded-xl border border-border">
           <table className="gm-table">
             <thead>
               <tr>

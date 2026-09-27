@@ -178,7 +178,7 @@ export default function SarhisobView() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="table-box">
             <table className="w-full text-sm">
               <thead className="bg-secondary/40">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

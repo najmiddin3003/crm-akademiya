@@ -118,7 +118,7 @@ export default function FinesView({ viewer, nowMs, fmt, reloadKey, onOpenTask, o
 
       <div className="stk-card">
         <h3>{t("Jarimalar ro'yxati")}</h3>
-        <div className="stk-scroll">
+        <div className="stk-scroll table-box">
           <table className="stk-tbl stk-stack">
             <thead>
               <tr>
@@ -219,7 +219,7 @@ export default function FinesView({ viewer, nowMs, fmt, reloadKey, onOpenTask, o
 
       <div className="stk-card">
         <h3>{t("Oylik moduliga tushadigan qatorlar — xodim va oy bo'yicha")}</h3>
-        <div className="stk-scroll">
+        <div className="stk-scroll table-box">
           <table className="stk-tbl stk-stack">
             <thead>
               <tr>

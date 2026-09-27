@@ -94,15 +94,17 @@ export default function PerformanceReportPage({
         <div className="table-scroll">
           <table className="w-full text-sm min-w-[1300px]">
             <thead>
-              {/* Guruhli sarlavha — referensdagi uch blok */}
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+              {/* Guruhli sarlavha — referensdagi uch blok. Ikki qatorli thead
+                  qotganda 2-qator 1-qatorning OSTIDA turishi uchun 1-qator
+                  balandligi qat'iy (h-8) va 2-qatorda `thead-row2` (globals.css). */}
+              <tr className="h-8 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-3 py-2 w-12" />
                 <th className="px-3 py-2" />
                 {GROUP_HEADERS.map((h) => (
                   <th key={h} colSpan={4} className="px-3 py-2 text-center border-l border-border">{h}</th>
                 ))}
               </tr>
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+              <tr className="thead-row2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="px-3 py-3 text-left w-12">№</th>
                 <th className="px-3 py-3 text-left min-w-[220px]">{firstColumnLabel}</th>
                 {GROUP_HEADERS.map((h) =>

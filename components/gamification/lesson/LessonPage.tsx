@@ -498,7 +498,7 @@ export default function LessonPage() {
           {view.rows.length === 0 ? (
             <div className={`${cardCls} text-sm text-muted-foreground`}>{t("Bu guruhda faol o'quvchi yo'q.")}</div>
           ) : (
-            <div className={`${cardCls} gm-scroll-card overflow-x-auto !p-0`}>
+            <div className={`${cardCls} gm-scroll-card table-box !p-0`}>
               <table className="gm-table">
                 <thead>
                   <tr>

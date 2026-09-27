@@ -91,7 +91,7 @@ export default function CoinTabContent({ pupilId }: { pupilId?: number }) {
           {t("Umumiy soni: {n}", { n: list.length })}
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="table-box">
         <table className="w-full text-sm">
           <thead className="text-[12px] text-muted-foreground uppercase">
             <tr className="border-b border-border">

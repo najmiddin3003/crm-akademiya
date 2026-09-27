@@ -305,6 +305,22 @@ Grid va ikki ustunli sahifalar uchun alohida klasslar: `.page-frame-row` /
 Ataylab tegilmagan: `FinanceAnalyticsPage`, `SalesFunnelPage` — bular ro'yxat emas,
 dashboarddagi kichik xulosa jadvallari.
 
+**2026-09-27 — HAMMA jadval** (foydalanuvchi talabi: "loyihadagi hamma table'da thead
+qotsin, faqat ma'lumot scroll bo'lsin, paginatsiya ham qotsin"):
+- To'liq ramkaga o'tdi: CV (`/management-cv`), Gamifikatsiya → O'quvchilar va Reyting,
+  Davomat ko'rish, Guruh sahifasi (`/groups/[id]`: chap karta o'zi aylanadi, o'ngdagi
+  tab kartasi cho'ziladi — `.gd-aside/.gd-right/.gd-content`). Sarlavhasi/filtri ko'p
+  sahifalarda ramka faqat desktopda (`.page-frame-lg`), torda jadval cheklangan quti.
+- Qolgan jadvallar (profil tablari, modal/drawer, bir sahifada bir necha jadval,
+  dashboard) — `.table-box`: balandligi `min(70vh, 760px)` quti (modalda
+  `.table-box.in-modal` — 55vh), ichida scroll, thead qotadi, paginatsiya qutidan keyin.
+  Kalta jadvalda quti sezilmaydi. Eski `overflow-x-auto` o'ramining o'rnini bosadi.
+- Telefonda kartochkaga aylanadigan jadvallar (`.gm-table`, `.stk-stack`) qutidan ozod.
+- Ikki qatorli thead: 1-qator `h-8`, 2-qatorga `thead-row2` (Samaradorlik hisoboti).
+- Qotgan th ostidagi chiziq `box-shadow: inset` bilan (border-collapse'da chegara qolardi).
+- Lidlar (`.ld-*`) va Topshiriqlar ro'yxati (`.stk-page.is-framed`) — o'z CSS'i bilan
+  avvaldan shunday. `RichTextEditor` jadvali — matn ichidagi, tegilmagan.
+
 ## 12. ✅ Davomat moduli — yangi (2026-08-15)
 
 Guruh → Davomat tabi. Ustunlar **qattiq yozilmagan**: guruhning dars kunlaridan

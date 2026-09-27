@@ -122,7 +122,7 @@ export default function JournalTab({ cashboxes }: { cashboxes: CashboxName[] }) 
         />
       ) : (
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="table-box">
             <table className="w-full text-sm">
               <thead className="bg-secondary/40">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

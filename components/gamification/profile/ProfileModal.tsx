@@ -289,7 +289,7 @@ export default function ProfileModal({
           {p.groups.length === 0 ? (
             <div className="rounded-xl border border-border px-4 py-3 text-[13px] text-muted-foreground">{t("O'quvchi hozir faol guruhda emas.")}</div>
           ) : (
-            <div className="gm-scroll-card overflow-x-auto rounded-2xl border border-border">
+            <div className="gm-scroll-card table-box in-modal rounded-2xl border border-border">
               <table className="gm-table">
                 <thead>
                   <tr>
@@ -379,7 +379,7 @@ export default function ProfileModal({
           ) : hist.rows.length === 0 ? (
             <div className="rounded-xl border border-border px-4 py-3 text-[13px] text-muted-foreground">{t("Bu filtr bo'yicha yozuv yo'q.")}</div>
           ) : (
-            <div className="gm-scroll-card overflow-x-auto rounded-2xl border border-border">
+            <div className="gm-scroll-card table-box in-modal rounded-2xl border border-border">
               <table className="gm-table">
                 <thead>
                   <tr>

@@ -179,7 +179,7 @@ export default function CompetitionPage() {
             {b.groups.length === 0 ? (
               <div className="text-[13px] text-muted-foreground">{t("Bu oyda faol guruh yo'q.")}</div>
             ) : (
-              <div className="gm-scroll-card overflow-x-auto rounded-xl border border-border">
+              <div className="gm-scroll-card table-box rounded-xl border border-border">
                 <table className="gm-table">
                   <thead>
                     <tr>

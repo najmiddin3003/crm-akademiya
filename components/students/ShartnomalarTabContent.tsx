@@ -26,7 +26,7 @@ export default function ShartnomalarTabContent() {
           {t("Qo'shish")}
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="table-box">
         <table className="w-full text-sm">
           <thead className="text-[12px] text-muted-foreground uppercase">
             <tr className="border-b border-border">

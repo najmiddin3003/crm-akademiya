@@ -40,7 +40,7 @@ interface View {
   rows: Row[];
 }
 
-const PAGE = "gm-page container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
+const PAGE = "gm-page page-frame-lg container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function RankBadge({ rank }: { rank: number }) {
@@ -187,54 +187,56 @@ export default function RankingPage() {
           {view.rows.length === 0 ? (
             <div className={`${cardCls} text-sm text-muted-foreground`}>{t("Bu guruhda faol o'quvchi yo'q.")}</div>
           ) : (
-            <div className={`${cardCls} gm-scroll-card overflow-x-auto !p-0`}>
-              <table className="gm-table">
-                <thead>
-                  <tr>
-                    <th>{t("O'rin")}</th>
-                    <th>{t("O'quvchi")}</th>
-                    <th>{t("Daraja")}</th>
-                    <th>{t("Reyting tangasi")}</th>
-                    <th>{t("Balans")}</th>
-                    <th>{t("O'quvchilarga")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.rows.map((r) => (
-                    <tr
-                      key={r.pupilId}
-                      className="gm-click"
-                      tabIndex={0}
-                      onClick={() => setOpen(r.pupilId)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") setOpen(r.pupilId);
-                      }}
-                    >
-                      <td data-l={t("O'rin")}>
-                        <RankBadge rank={r.rank} />
-                      </td>
-                      <td data-l="" className="gm-lead">
-                        <b>{r.name}</b>
-                        {r.grade !== null && <span className="ml-1.5 whitespace-nowrap text-[12px] text-muted-foreground">{t("{n}-sinf", { n: r.grade })}</span>}
-                      </td>
-                      <td data-l={t("Daraja")}>
-                        <Chip tone="b">
-                          {r.levelPosition} · {t(r.levelName)}
-                        </Chip>
-                      </td>
-                      <td data-l={t("Reyting tangasi")}>
-                        <Signed n={r.points} />
-                      </td>
-                      <td data-l={t("Balans")}>
-                        <span className="gm-coin">{r.balance}</span>
-                      </td>
-                      <td data-l={t("O'quvchilarga")}>
-                        {r.rank <= 5 ? <Chip tone="g">{t("Top-5 · ochiq")}</Chip> : <Chip tone="m">{t("Faqat o'ziga")}</Chip>}
-                      </td>
+            <div className={`${cardCls} gm-scroll-card table-frame overflow-hidden !p-0`}>
+              <div className="table-scroll">
+                <table className="gm-table">
+                  <thead>
+                    <tr>
+                      <th>{t("O'rin")}</th>
+                      <th>{t("O'quvchi")}</th>
+                      <th>{t("Daraja")}</th>
+                      <th>{t("Reyting tangasi")}</th>
+                      <th>{t("Balans")}</th>
+                      <th>{t("O'quvchilarga")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {view.rows.map((r) => (
+                      <tr
+                        key={r.pupilId}
+                        className="gm-click"
+                        tabIndex={0}
+                        onClick={() => setOpen(r.pupilId)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") setOpen(r.pupilId);
+                        }}
+                      >
+                        <td data-l={t("O'rin")}>
+                          <RankBadge rank={r.rank} />
+                        </td>
+                        <td data-l="" className="gm-lead">
+                          <b>{r.name}</b>
+                          {r.grade !== null && <span className="ml-1.5 whitespace-nowrap text-[12px] text-muted-foreground">{t("{n}-sinf", { n: r.grade })}</span>}
+                        </td>
+                        <td data-l={t("Daraja")}>
+                          <Chip tone="b">
+                            {r.levelPosition} · {t(r.levelName)}
+                          </Chip>
+                        </td>
+                        <td data-l={t("Reyting tangasi")}>
+                          <Signed n={r.points} />
+                        </td>
+                        <td data-l={t("Balans")}>
+                          <span className="gm-coin">{r.balance}</span>
+                        </td>
+                        <td data-l={t("O'quvchilarga")}>
+                          {r.rank <= 5 ? <Chip tone="g">{t("Top-5 · ochiq")}</Chip> : <Chip tone="m">{t("Faqat o'ziga")}</Chip>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>

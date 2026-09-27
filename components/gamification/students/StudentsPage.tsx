@@ -27,7 +27,7 @@ interface Row {
   frozen: boolean;
 }
 
-const PAGE = "gm-page container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
+const PAGE = "gm-page page-frame-lg container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
 
 export default function StudentsPage() {
   const { t } = useT();
@@ -86,56 +86,58 @@ export default function StudentsPage() {
           {list.length === 0 ? (
             <div className={`${cardCls} text-sm text-muted-foreground`}>{t("Hech kim topilmadi.")}</div>
           ) : (
-            <div className={`${cardCls} gm-scroll-card overflow-x-auto !p-0`}>
-              <table className="gm-table">
-                <thead>
-                  <tr>
-                    <th>{t("O'quvchi")}</th>
-                    <th>{t("Toifa")}</th>
-                    <th>{t("Filial")}</th>
-                    <th>{t("Guruh(lar)")}</th>
-                    <th>{t("Daraja")}</th>
-                    <th>{t("Balans")}</th>
-                    <th>{t("Holat")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((r) => (
-                    <tr
-                      key={r.pupilId}
-                      className="gm-click"
-                      tabIndex={0}
-                      onClick={() => setOpen(r.pupilId)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") setOpen(r.pupilId);
-                      }}
-                    >
-                      <td data-l="" className="gm-lead">
-                        <b>{r.name}</b>
-                        {r.grade !== null && <span className="ml-1.5 whitespace-nowrap text-[12px] text-muted-foreground">{t("{n}-sinf", { n: r.grade })}</span>}
-                      </td>
-                      <td data-l={t("Toifa")}>
-                        <ToifaChip toifa={r.toifa} />
-                      </td>
-                      <td data-l={t("Filial")} className="text-[12.5px]">
-                        {r.branchName}
-                      </td>
-                      <td data-l={t("Guruh(lar)")} className="text-[12.5px]">
-                        {r.groups.length ? r.groups.map((g) => <div key={g}>{g}</div>) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td data-l={t("Daraja")}>
-                        <Chip tone="b">
-                          {r.levelPosition} · {t(r.levelName)}
-                        </Chip>
-                      </td>
-                      <td data-l={t("Balans")}>
-                        <span className="gm-coin">{r.balance}</span>
-                      </td>
-                      <td data-l={t("Holat")}>{r.frozen ? <Chip tone="m">{t("Ketgan — muzlatilgan")}</Chip> : <Chip tone="g">{t("Faol")}</Chip>}</td>
+            <div className={`${cardCls} gm-scroll-card table-frame overflow-hidden !p-0`}>
+              <div className="table-scroll">
+                <table className="gm-table">
+                  <thead>
+                    <tr>
+                      <th>{t("O'quvchi")}</th>
+                      <th>{t("Toifa")}</th>
+                      <th>{t("Filial")}</th>
+                      <th>{t("Guruh(lar)")}</th>
+                      <th>{t("Daraja")}</th>
+                      <th>{t("Balans")}</th>
+                      <th>{t("Holat")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {list.map((r) => (
+                      <tr
+                        key={r.pupilId}
+                        className="gm-click"
+                        tabIndex={0}
+                        onClick={() => setOpen(r.pupilId)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") setOpen(r.pupilId);
+                        }}
+                      >
+                        <td data-l="" className="gm-lead">
+                          <b>{r.name}</b>
+                          {r.grade !== null && <span className="ml-1.5 whitespace-nowrap text-[12px] text-muted-foreground">{t("{n}-sinf", { n: r.grade })}</span>}
+                        </td>
+                        <td data-l={t("Toifa")}>
+                          <ToifaChip toifa={r.toifa} />
+                        </td>
+                        <td data-l={t("Filial")} className="text-[12.5px]">
+                          {r.branchName}
+                        </td>
+                        <td data-l={t("Guruh(lar)")} className="text-[12.5px]">
+                          {r.groups.length ? r.groups.map((g) => <div key={g}>{g}</div>) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td data-l={t("Daraja")}>
+                          <Chip tone="b">
+                            {r.levelPosition} · {t(r.levelName)}
+                          </Chip>
+                        </td>
+                        <td data-l={t("Balans")}>
+                          <span className="gm-coin">{r.balance}</span>
+                        </td>
+                        <td data-l={t("Holat")}>{r.frozen ? <Chip tone="m">{t("Ketgan — muzlatilgan")}</Chip> : <Chip tone="g">{t("Faol")}</Chip>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>

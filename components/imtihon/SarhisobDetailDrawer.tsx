@@ -113,50 +113,52 @@ export default function SarhisobDetailDrawer({
 
         <div className="rounded-xl border border-border overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border bg-secondary/30 text-[14px] font-semibold">{t("O'quvchilar natijasi")}</div>
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/40">
-              <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
-                <th className="text-left px-3 py-2 w-12">№</th>
-                <th className="text-left px-3 py-2">{t("O'quvchi")}</th>
-                <th className="text-right px-3 py-2 whitespace-nowrap">{t("To'g'ri")}</th>
-                <th className="text-left px-3 py-2 w-28">{t("O'zlashtirish")}</th>
-                <th className="text-right px-3 py-2 whitespace-nowrap">{t("Guruhga nisbatan")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exam.students.map((s, i) => {
-                const d = s.pct - exam.avgPct;
-                return (
-                  <tr key={s.pupilId} className="border-b border-border/50 last:border-b-0">
-                    <td className="px-3 py-2 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
-                    <td className="px-3 py-2 text-[13px]">{s.name}</td>
-                    <td className="px-3 py-2 text-[13px] tabular-nums text-right whitespace-nowrap">
-                      {s.correct} / {exam.total}
-                    </td>
-                    <td className="px-3 py-2">
-                      <TierBadge pct={s.pct} />
-                    </td>
-                    <td
-                      className={`px-3 py-2 text-[13px] tabular-nums text-right font-medium ${
-                        d > 0 ? "text-emerald-600 dark:text-emerald-400" : d < 0 ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground"
-                      }`}
-                    >
-                      {d > 0 ? "+" : ""}
-                      {d}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-secondary/30 border-t border-border">
-                <td colSpan={3} className="px-3 py-2 text-[12px] font-semibold">{t("Guruh o'rtachasi")}</td>
-                <td className="px-3 py-2" colSpan={2}>
-                  <TierBadge pct={exam.avgPct} />
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <div className="table-box in-modal">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/40">
+                <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                  <th className="text-left px-3 py-2 w-12">№</th>
+                  <th className="text-left px-3 py-2">{t("O'quvchi")}</th>
+                  <th className="text-right px-3 py-2 whitespace-nowrap">{t("To'g'ri")}</th>
+                  <th className="text-left px-3 py-2 w-28">{t("O'zlashtirish")}</th>
+                  <th className="text-right px-3 py-2 whitespace-nowrap">{t("Guruhga nisbatan")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exam.students.map((s, i) => {
+                  const d = s.pct - exam.avgPct;
+                  return (
+                    <tr key={s.pupilId} className="border-b border-border/50 last:border-b-0">
+                      <td className="px-3 py-2 text-muted-foreground tabular-nums text-[13px]">{i + 1}</td>
+                      <td className="px-3 py-2 text-[13px]">{s.name}</td>
+                      <td className="px-3 py-2 text-[13px] tabular-nums text-right whitespace-nowrap">
+                        {s.correct} / {exam.total}
+                      </td>
+                      <td className="px-3 py-2">
+                        <TierBadge pct={s.pct} />
+                      </td>
+                      <td
+                        className={`px-3 py-2 text-[13px] tabular-nums text-right font-medium ${
+                          d > 0 ? "text-emerald-600 dark:text-emerald-400" : d < 0 ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground"
+                        }`}
+                      >
+                        {d > 0 ? "+" : ""}
+                        {d}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-secondary/30 border-t border-border">
+                  <td colSpan={3} className="px-3 py-2 text-[12px] font-semibold">{t("Guruh o'rtachasi")}</td>
+                  <td className="px-3 py-2" colSpan={2}>
+                    <TierBadge pct={exam.avgPct} />
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
 
         <div className="text-[11px] text-muted-foreground">

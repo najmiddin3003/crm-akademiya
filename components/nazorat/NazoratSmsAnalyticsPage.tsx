@@ -204,7 +204,7 @@ export default function NazoratSmsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="table-box">
           <table className="w-full text-sm min-w-[1000px]">
             <thead className="bg-secondary/20">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">

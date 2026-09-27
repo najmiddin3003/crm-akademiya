@@ -347,13 +347,15 @@ export default function GroupDetailPage({ id }: { id: number }) {
   );
 
   return (
-    <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
-      {/* i-search sprite global (Navbar) — bor. */}
+    <div className="page-frame-lg container mx-auto max-w-[1900px] p-4 md:p-5">
+      {/* i-search sprite global (Navbar) — bor. Desktopda sahifa ekran
+          balandligida qotadi (globals.css .group-detail-grid ramkasi): chap
+          karta o'zi aylanadi, o'ngda jadval thead'i va paginatsiya qotadi. */}
       <div className={`group-detail-grid ${infoCollapsed ? "is-collapsed" : ""}`}>
         {/* LEFT: Guruh ma'lumotlari — yig'ilganda tor ikonka ustuni bo'ladi */}
         {infoCollapsed ? (
           <aside
-            className="hidden lg:flex w-12 flex-col items-center gap-1 rounded-2xl border border-border bg-card py-3"
+            className="gd-aside hidden lg:flex w-12 flex-col items-center gap-1 rounded-2xl border border-border bg-card py-3"
             style={{ alignSelf: "start" }}
           >
             <button
@@ -397,7 +399,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
             </button>
           </aside>
         ) : (
-        <aside className="rounded-2xl bg-card border border-border p-5" style={{ alignSelf: "start" }}>
+        <aside className="gd-aside rounded-2xl bg-card border border-border p-5" style={{ alignSelf: "start" }}>
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-primary" />
             <h2 className="text-[15px] font-bold tracking-tight">{t("Guruh ma'lumotlari")}</h2>
@@ -458,7 +460,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
         )}
 
         {/* RIGHT */}
-        <div className="space-y-4">
+        <div className="gd-right space-y-4">
           <div className="rounded-2xl bg-card border border-border p-2 flex flex-wrap items-center gap-1.5">
             {TABS.map((tab) => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`inline-flex items-center gap-2 h-9 px-4 rounded-full text-[13px] font-medium transition-colors ${activeTab === tab.key ? "bg-primary text-white shadow-sm" : "bg-secondary/50 text-foreground/80 hover:bg-secondary"}`}>
@@ -468,7 +470,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
             ))}
           </div>
 
-          <div className="rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="gd-content rounded-2xl bg-card border border-border overflow-hidden">
             {/* ===== O'QUVCHILAR ===== */}
             {activeTab === "students" && (
               <>
@@ -479,7 +481,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                     <span className="font-bold tabular-nums">{filtered.length}</span>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-box">
                   <table className="w-full text-sm">
                     <thead className="bg-secondary/40 border-b border-border">
                       <tr>
@@ -564,7 +566,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                 <div className="flex items-center justify-end px-4 py-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs"><span className="text-muted-foreground">{t("Umumiy soni:")}</span><span className="font-bold tabular-nums">{visibleTasks.length}</span></div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-box">
                   <table className="w-full text-sm">
                     <thead className="bg-secondary/40 border-b border-border">
                       <tr>{["№", "Turi", "Nomi", "Topshirish muddati", "O'qituvchi", "Guruh", "Maksimal ball", "Izoh", "Yaratilgan sanasi"].map((h) => <th key={h} className={thCls}>{h}</th>)}</tr>
@@ -603,7 +605,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                 <div className="flex items-center justify-end px-4 py-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs"><span className="text-muted-foreground">{t("Umumiy soni:")}</span><span className="font-bold tabular-nums">{lessons.length}</span></div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-box">
                   <table className="w-full text-sm">
                     <thead className="bg-secondary/40 border-b border-border">
                       {/* "Amallar" — referens ustunlariga qo'shimcha: qatorni
@@ -659,7 +661,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
                       bu yolg'on bo'lardi, shuning uchun "—". */}
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-secondary/60 text-xs"><span className="text-muted-foreground">{t("Umumiy soni:")}</span><span className="font-bold tabular-nums">{historyLoading ? "—" : historyEntries.length}</span></div>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-box">
                   <table className="w-full text-sm">
                     <thead className="bg-secondary/40 border-b border-border">
                       <tr>{["№", "O'quvchilar", "Moderator", "Eski o'qituvchi", "O'qituvchi", "Dars sanasi", "Turi"].map((h) => <th key={h} className={thCls}>{h}</th>)}</tr>

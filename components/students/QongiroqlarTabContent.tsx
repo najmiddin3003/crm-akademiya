@@ -11,7 +11,7 @@ export default function QongiroqlarTabContent() {
       <div className="flex justify-end p-3 border-b border-border">
         <span className="inline-flex items-center h-7 px-3 rounded-md bg-secondary/50 text-[12px] font-medium tabular-nums">{t("Umumiy soni: 0")}</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="table-box">
         <table className="w-full text-sm">
           <thead className="text-[12px] text-muted-foreground uppercase">
             <tr className="border-b border-border">

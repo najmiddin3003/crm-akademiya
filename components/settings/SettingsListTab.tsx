@@ -250,7 +250,7 @@ export default function SettingsListTab({
       </div>
 
       <div className="rounded-2xl bg-card border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="table-box">
           <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-secondary/20">
               <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
