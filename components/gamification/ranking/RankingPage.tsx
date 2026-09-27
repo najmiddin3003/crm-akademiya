@@ -43,10 +43,21 @@ interface View {
 const PAGE = "gm-page page-frame-lg container mx-auto max-w-[1900px] space-y-4 p-4 md:p-5";
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
-function RankBadge({ rank }: { rank: number }) {
-  return MEDAL[rank] ? (
+/**
+ * Medal faqat tangasi 0 dan KATTA o'quvchiga (27.09.2026, foydalanuvchi
+ * tasdiqladi): teng tangalilar bir xil o'rinni oladi, shuning uchun hamma
+ * 0 da bo'lsa hammaga 🥇 chiqardi. Musobaqadagi "g'olib faqat o'rtacha > 0"
+ * qoidasi bilan bir xil. Qolganlarga o'rin raqami.
+ */
+function medalOf(rank: number, points: number): string | undefined {
+  return points > 0 ? MEDAL[rank] : undefined;
+}
+
+function RankBadge({ rank, points }: { rank: number; points: number }) {
+  const medal = medalOf(rank, points);
+  return medal ? (
     <span className="text-[18px]" aria-label={String(rank)}>
-      {MEDAL[rank]}
+      {medal}
     </span>
   ) : (
     <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-secondary px-2 text-[12.5px] font-bold tabular-nums">{rank}</span>
@@ -104,7 +115,7 @@ function Projector({ title, sub, rows, onClose }: { title: string; sub: string; 
         <ol className="mt-8 w-full max-w-4xl space-y-3">
           {top.map((r) => (
             <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur">
-              <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{MEDAL[r.rank] ?? r.rank}</span>
+              <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{medalOf(r.rank, r.points) ?? r.rank}</span>
               <span className="min-w-0 flex-1 truncate text-[clamp(22px,3vw,42px)] font-bold">{r.name}</span>
               <span className="text-[clamp(22px,3vw,42px)] font-extrabold tabular-nums text-amber-300">{r.points}</span>
             </li>
@@ -235,7 +246,7 @@ export default function RankingPage() {
                         }}
                       >
                         <td data-l={t("O'rin")}>
-                          <RankBadge rank={r.rank} />
+                          <RankBadge rank={r.rank} points={r.points} />
                         </td>
                         <td data-l="" className="gm-lead">
                           <b>{r.name}</b>
