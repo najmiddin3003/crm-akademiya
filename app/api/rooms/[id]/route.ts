@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchInCondition, getBranchScope } from "@/lib/branchScope";
-import { parseRoomBranch, renameRoomInGroups, roomInUseRefusal, sameNameRoomRefusal } from "@/lib/roomBranch";
+import { groupsInRoom, parseRoomBranch, renameRoomInGroups, roomInUseRefusal, sameNameRoomRefusal } from "@/lib/roomBranch";
 import { roomBranchId, type Room } from "@/lib/rooms";
 
-// Ikkala metod ham faqat foydalanuvchiga RUXSAT ETILGAN filiallardagi
+// Hamma metodlar faqat foydalanuvchiga RUXSAT ETILGAN filiallardagi
 // xonaga tegadi (`scope.allowed`, navbardagisi emas — tahrirda filial
 // almashadi). Boshqa filialning xonasi — "Xona topilmadi".
 
@@ -74,6 +74,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const movedGroups = toBranch === fromBranch ? await renameRoomInGroups(db, fromBranch, curName, newName) : 0;
   const { _id, ...room } = res;
   return NextResponse.json({ ok: true, room: room as unknown as Room, movedGroups });
+}
+
+// GET /api/rooms/:id — xonada dars o'tadigan tirik guruhlar. O'chirish
+// oynasi shuni ko'rsatib ogohlantiradi (o'chirishni TO'SMAYDI — 27.09.2026
+// qarori: guruhlarda eski xona nomi qoladi, ma'lumot yo'qolmaydi).
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const roomId = Number(id);
+  if (!Number.isFinite(roomId)) {
+    return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
+  }
+  const scope = await getBranchScope();
+  if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+
+  const db = await ensureIndexes();
+  const room = await db
+    .collection("rooms")
+    .findOne({ $and: [{ id: roomId }, branchInCondition(scope.allowed)] }, { projection: { _id: 0, name: 1, branchId: 1 } });
+  if (!room) {
+    return NextResponse.json({ ok: false, error: "Xona topilmadi" }, { status: 404 });
+  }
+  const groups = await groupsInRoom(db, roomBranchId(room as Pick<Room, "branchId">), String(room.name ?? ""));
+  return NextResponse.json({ ok: true, groups });
 }
 
 // DELETE /api/rooms/:id

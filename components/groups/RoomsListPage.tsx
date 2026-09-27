@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import RoomModal from "./RoomModal";
 import { roomBranchId, type Room } from "@/lib/rooms";
+import type { RoomGroup } from "@/lib/roomBranch";
 import type { Equipment } from "@/lib/equipment";
 import { roomEquipmentStats, conditionStats, brokenCount, totalValue } from "@/lib/roomAnalytics";
 import Modal from "@/components/ui/Modal";
@@ -17,9 +18,14 @@ import { useT } from "@/components/shared/Language";
 // Guruh → Xonalar (crm-akademiya #view-groups-rooms, sidebar: Guruh > Xonalar,
 // href /groups-rooms). Ma'lumot /api/rooms dan (constants/rooms.js ROOM_SEED
 // asosida seed qilingan). "Xona qo'shish"/tahrirlash — RoomModal, o'chirish —
-// pastdagi oddiy tasdiqlash oynasi (Ha/Yo'q).
+// pastdagi oddiy tasdiqlash oynasi (Ha/Yo'q). Oyna ochilganda xonada dars
+// o'tadigan tirik guruhlar so'raladi (GET /api/rooms/:id) va bo'lsa
+// ogohlantiriladi — o'chirish TO'SILMAYDI, guruhlarda eski nom qoladi.
 
 const HEADERS = ["№", "Sarlavha", "O'quvchi sig'imi", "Izoh"];
+
+/** O'chirish ogohlantirishida nechta guruh nomi bilan ko'rsatiladi. */
+const SHOWN_GROUPS = 5;
 
 function csvCell(v: string | number): string {
   const s = String(v ?? "");
@@ -54,6 +60,8 @@ export default function RoomsListPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editRoom, setEditRoom] = useState<Room | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Room | null>(null);
+  /** O'chirilayotgan xonadagi tirik guruhlar; `null` — hali tekshirilmoqda. */
+  const [deleteUsage, setDeleteUsage] = useState<{ roomId: number; groups: RoomGroup[] } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -117,6 +125,18 @@ export default function RoomsListPage() {
     showSuccess(t("Excel yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
+
+  function openDelete(r: Room) {
+    setDeleteTarget(r);
+    setDeleteUsage(null);
+    fetch(`/api/rooms/${r.id}`)
+      .then((res) => res.json())
+      .then((d) => setDeleteUsage({ roomId: r.id, groups: d.ok && Array.isArray(d.groups) ? d.groups : [] }))
+      // Tekshiruv yiqilsa ham o'chirish ishlayversin — faqat ogohlantirish chiqmaydi.
+      .catch(() => setDeleteUsage({ roomId: r.id, groups: [] }));
+  }
+  const usageLoading = !!deleteTarget && deleteUsage?.roomId !== deleteTarget.id;
+  const inUse = deleteTarget && deleteUsage?.roomId === deleteTarget.id ? deleteUsage.groups : [];
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -294,7 +314,7 @@ export default function RoomsListPage() {
                       <button onClick={() => setEditRoom(r)} className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground" title={t("Tahrirlash")}>
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => setDeleteTarget(r)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
+                      <button onClick={() => openDelete(r)} className="h-8 w-8 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-rose-500" title={t("O'chirish")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -331,11 +351,34 @@ export default function RoomsListPage() {
       {deleteTarget && (
         <Modal onClose={() => setDeleteTarget(null)} locked={deleting} bare size="sm" zIndex={110} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">{t("Rostdan ham o'chirmoqchimisiz?")}</p>
+            {usageLoading ? (
+              <p className="mt-3 text-center text-[12.5px] text-muted-foreground">{t("Tekshirilmoqda…")}</p>
+            ) : inUse.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed">
+                <div className="font-semibold text-amber-600">⚠ {t("Bu xonada {n} ta guruh dars o'tadi:", { n: inUse.length })}</div>
+                {/* Nomlar ko'pincha bir xil ("JUTARIXSERTIFIKAT" ×4) — kun va vaqt bilan ajraladi. */}
+                <ul className="mt-1 space-y-0.5">
+                  {inUse.slice(0, SHOWN_GROUPS).map((g) => {
+                    const when = [g.day ? t(g.day) : "", g.time].filter(Boolean).join(", ");
+                    return (
+                      <li key={g.id} className="truncate">
+                        • <span className="font-medium">{g.name || `#${g.id}`}</span>
+                        {when && <span className="text-muted-foreground"> — {when}</span>}
+                      </li>
+                    );
+                  })}
+                  {inUse.length > SHOWN_GROUPS && <li className="text-muted-foreground">{t("va yana {n} ta", { n: inUse.length - SHOWN_GROUPS })}</li>}
+                </ul>
+                <div className="mt-1.5 text-muted-foreground">
+                  {t("O'chirilsa, bu guruhlarda eski xona nomi qoladi — avval ularni boshqa xonaga o'tkazgan ma'qul.")}
+                </div>
+              </div>
+            ) : null}
             <div className="flex items-center justify-center gap-2 mt-5">
               <button onClick={modal.close} disabled={deleting} className="h-9 px-6 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
                 {t("Yo'q")}
               </button>
-              <button onClick={confirmDelete} disabled={deleting} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
+              <button onClick={confirmDelete} disabled={deleting || usageLoading} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
                 {deleting ? t("O'chirilmoqda…") : t("Ha")}
               </button>
             </div>

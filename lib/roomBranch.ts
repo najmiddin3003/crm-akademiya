@@ -63,19 +63,37 @@ export async function sameNameRoomRefusal(
 }
 
 /**
+ * Filialdagi shu xonada dars o'tadigan TIRIK guruhlar (ROOM_HOLDING_STATUSES —
+ * arxiv xona egallamaydi). 2-qoida va xonani o'chirish ogohlantirishi
+ * (GET /api/rooms/:id) shu ro'yxatga tayanadi.
+ */
+export interface RoomGroup {
+  id: number;
+  name: string;
+  /** "Toq kunlar" / "Juft kunlar" / … — nomlari bir xil guruhlarni ajratish uchun. */
+  day: string;
+  time: string;
+}
+
+export async function groupsInRoom(db: Db, branchId: number, roomName: string): Promise<RoomGroup[]> {
+  const rows = await db
+    .collection("groups")
+    .find(
+      { $and: [{ room: roomName, status: { $in: [...ROOM_HOLDING_STATUSES] } }, branchInCondition([branchId])] },
+      { projection: { _id: 0, id: 1, name: 1, day: 1, time: 1 } },
+    )
+    .sort({ id: 1 })
+    .toArray();
+  return rows.map((g) => ({ id: Number(g.id), name: String(g.name ?? ""), day: String(g.day ?? ""), time: String(g.time ?? "") }));
+}
+
+/**
  * 2-qoida. `fromBranch` dagi tirik guruhlar (ROOM_HOLDING_STATUSES — arxiv
  * xona egallamaydi) shu xonada dars o'tadimi. Qaysilari ekani xabarda
  * aytiladi — foydalanuvchi ularni avval boshqa xonaga o'tkazadi.
  */
 export async function roomInUseRefusal(db: Db, fromBranch: number, roomName: string): Promise<Refusal | null> {
-  const rows = await db
-    .collection("groups")
-    .find(
-      { $and: [{ room: roomName, status: { $in: [...ROOM_HOLDING_STATUSES] } }, branchInCondition([fromBranch])] },
-      { projection: { _id: 0, name: 1 } },
-    )
-    .sort({ id: 1 })
-    .toArray();
+  const rows = await groupsInRoom(db, fromBranch, roomName);
   if (rows.length === 0) return null;
   const count = rows.length;
   const names = rows.slice(0, 3).map((g) => String(g.name ?? "")).join(", ") + (count > 3 ? ", …" : "");
