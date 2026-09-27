@@ -13,6 +13,11 @@ server {
     # yo'naltirib yuborardi — shuning uchun `location /` ichida).
     location /.well-known/acme-challenge/ { root /var/www/html; }
     location / { return 308 https://__DOMAIN__$request_uri; }
+
+    # HSTS (27.09.2026, audit): 180 kun, subdomenlarsiz — brauzer HTTPS'ni
+    # eslaydi. HTTP'da brauzer e'tiborsiz qoldiradi; certbot bu blokni 443 ga
+    # o'tkazgach ishlaydi.
+    add_header Strict-Transport-Security "max-age=15552000" always;
 }
 
 server {
@@ -26,9 +31,23 @@ server {
     proxy_read_timeout 120s;
     proxy_send_timeout 120s;
 
+    # HSTS (27.09.2026, audit): 180 kun, subdomenlarsiz. Qolgan xavfsizlik
+    # sarlavhalari Next.js'da (next.config.ts headers()).
+    add_header Strict-Transport-Security "max-age=15552000" always;
+
+    # Jurnalda javob vaqti: rt — to'liq, urt — Next.js (deploy/nginx-common.conf).
+    access_log /var/log/nginx/access.log timed;
+
     gzip on;
+    gzip_vary on;
     gzip_types text/plain text/css application/json application/javascript image/svg+xml;
     gzip_min_length 1024;
+    # Brotli (libnginx-mod-http-brotli-filter): gzip'dan ~15-20% kichik;
+    # qo'llamaydigan brauzer gzip oladi.
+    brotli on;
+    brotli_comp_level 5;
+    brotli_min_length 1024;
+    brotli_types text/plain text/css application/json application/javascript image/svg+xml;
 
     location / {
         proxy_pass http://127.0.0.1:3000;

@@ -22,7 +22,7 @@ echo "== Paketlar"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get upgrade -yq
-apt-get install -yq curl git nginx ufw unattended-upgrades ca-certificates
+apt-get install -yq curl git nginx libnginx-mod-http-brotli-filter ufw unattended-upgrades ca-certificates
 
 echo "== Node 24 LTS (NodeSource; lokal ishlab chiqish bilan bir xil) + pm2"
 if ! command -v node >/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 24 ]]; then
@@ -76,6 +76,8 @@ echo "== Nginx (HTTP; certbot keyin HTTPS qo'shadi)"
 # bilan yiqildi (CPU kesh qatori 32 deb aniqlanadi) — 64 qilinadi.
 sed -i -E 's/^[[:space:]]*#?[[:space:]]*server_names_hash_bucket_size .*/\tserver_names_hash_bucket_size 64;/' /etc/nginx/nginx.conf
 grep -q 'server_names_hash_bucket_size 64' /etc/nginx/nginx.conf || sed -i '/^http {/a \\tserver_names_hash_bucket_size 64;' /etc/nginx/nginx.conf
+# server_tokens off + `timed` jurnal formati (sayt bloki ishlatadi) — 27.09.2026.
+install -m 0644 "$HERE/nginx-common.conf" /etc/nginx/conf.d/crm-common.conf
 sed -e "s/__DOMAIN__/$DOMAIN/g" -e "s/__APEX__/$APEX/g" "$HERE/nginx.conf.template" > /etc/nginx/sites-available/crm
 ln -sfn /etc/nginx/sites-available/crm /etc/nginx/sites-enabled/crm
 rm -f /etc/nginx/sites-enabled/default
@@ -102,4 +104,6 @@ Tayyor. Keyingi qadamlar (deploy/README.md):
   3) sudo -iu $APP_USER bash $APP_DIR/shared/deploy.sh
   4) DNS: $APEX va $DOMAIN → shu server IP
   5) certbot --nginx -d $DOMAIN -d $APEX --redirect
+  6) HTTP/2: /etc/nginx/sites-available/crm dagi har bir "listen … 443 ssl" qatoriga
+     "http2" qo'shing (masalan "listen 443 ssl http2;") → nginx -t && systemctl reload nginx
 EOF
