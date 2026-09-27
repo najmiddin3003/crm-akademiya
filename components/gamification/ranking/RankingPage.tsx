@@ -1,7 +1,7 @@
 "use client";
 
 import "../gamification.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -53,9 +53,21 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-/** Proyektor uchun top-5 (TZ 4.3.7) — to'liq ekran, Esc yopadi. */
+/**
+ * Proyektor uchun top-5 (TZ 4.3.7) — to'liq ekran, Esc yopadi.
+ *
+ * AYLANTIRISH (27.09.2026, foydalanuvchi: "o'quvchi ko'p bo'lsa ekranga
+ * sig'mayapti, tepadagi ismlar ko'rinmayapti"): teng tangalilar bir xil
+ * o'rinni olgani uchun "top-5" ancha uzun bo'lishi mumkin. Ilgari ro'yxat
+ * `justify-center` bilan o'rtaga tekislanardi — sig'masa tepasi chegaradan
+ * chiqib, unga aylantirib ham yetib bo'lmasdi. Endi ichki o'ram `min-h-full`
+ * + `justify-center`: kalta ro'yxat o'rtada, uzuni tepadan boshlanib
+ * aylanadi. "Yopish" va yulduzli fon `fixed` — aylantirganda joyida turadi;
+ * oyna ochilganda fokus oladi — strelka/PageDown bilan ham aylanadi.
+ */
 function Projector({ title, sub, rows, onClose }: { title: string; sub: string; rows: Row[]; onClose: () => void }) {
   const { t } = useT();
+  const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -63,31 +75,42 @@ function Projector({ title, sub, rows, onClose }: { title: string; sub: string; 
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+  useEffect(() => {
+    boxRef.current?.focus();
+  }, []);
   const top = rows.filter((r) => r.rank <= 5);
   return createPortal(
     <div
+      ref={boxRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label={t("Reyting — top-5")}
-      className="fixed inset-0 z-[250] isolate flex flex-col items-center justify-center overflow-y-auto bg-[#050816] p-6 text-white"
+      className="fixed inset-0 z-[250] isolate overflow-y-auto overscroll-contain bg-[#050816] text-white outline-none"
     >
-      <SpaceBackdrop />
-      <button type="button" onClick={onClose} className="absolute right-5 top-5 rounded-xl border border-white/30 px-4 py-2 text-[15px] font-semibold hover:bg-white/10">
+      {/* -z-10 SHART: `fixed` o'zi qatlam (stacking context) hosil qiladi va
+          z-index'siz oddiy matndan KEYIN chiziladi — sarlavha fon ostida qolardi. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <SpaceBackdrop />
+      </div>
+      <button type="button" onClick={onClose} className="fixed right-5 top-5 z-10 rounded-xl border border-white/30 bg-[#050816]/60 px-4 py-2 text-[15px] font-semibold backdrop-blur hover:bg-white/10">
         {t("Yopish")} · Esc
       </button>
-      <div className="text-center">
-        <div className="text-[clamp(28px,4vw,56px)] font-extrabold tracking-tight">🏆 {title}</div>
-        <div className="mt-1 text-[clamp(14px,1.6vw,22px)] text-white/70">{sub}</div>
+      <div className="flex min-h-full flex-col items-center justify-center px-6 py-16">
+        <div className="text-center">
+          <div className="text-[clamp(28px,4vw,56px)] font-extrabold tracking-tight">🏆 {title}</div>
+          <div className="mt-1 text-[clamp(14px,1.6vw,22px)] text-white/70">{sub}</div>
+        </div>
+        <ol className="mt-8 w-full max-w-4xl space-y-3">
+          {top.map((r) => (
+            <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur">
+              <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{MEDAL[r.rank] ?? r.rank}</span>
+              <span className="min-w-0 flex-1 truncate text-[clamp(22px,3vw,42px)] font-bold">{r.name}</span>
+              <span className="text-[clamp(22px,3vw,42px)] font-extrabold tabular-nums text-amber-300">{r.points}</span>
+            </li>
+          ))}
+        </ol>
       </div>
-      <ol className="mt-8 w-full max-w-4xl space-y-3">
-        {top.map((r) => (
-          <li key={r.pupilId} className="flex items-center gap-5 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur">
-            <span className="w-14 text-center text-[clamp(28px,3.4vw,48px)] font-extrabold">{MEDAL[r.rank] ?? r.rank}</span>
-            <span className="min-w-0 flex-1 truncate text-[clamp(22px,3vw,42px)] font-bold">{r.name}</span>
-            <span className="text-[clamp(22px,3vw,42px)] font-extrabold tabular-nums text-amber-300">{r.points}</span>
-          </li>
-        ))}
-      </ol>
     </div>,
     document.body,
   );
