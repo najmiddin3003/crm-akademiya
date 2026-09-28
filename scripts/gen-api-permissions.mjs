@@ -62,6 +62,12 @@ const PUBLIC = [
   "/api/me/[token]/wishlist/[itemId]",
   "/api/me/tg",
   "/api/me/tg/wishlist/[itemId]",
+  // XODIMLAR BOTI — «👤 Profilim» Mini App (28.09.2026). Chaqiruvchi — xodim
+  // Telegram ichida, CRM sessiyasi yo'q. Himoya: `initData` imzosi xodimlar
+  // bot kaliti bilan + botdagi kirish (lib/staffBot/webapp.ts); javob faqat
+  // xodimning o'z ma'lumoti, faqat o'qish (app/api/xodim/data).
+  "/api/xodim/me",
+  "/api/xodim/data",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

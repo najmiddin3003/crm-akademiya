@@ -43,7 +43,9 @@ import { SESSION_COOKIE, verifySessionToken, type SessionPayload } from "@/lib/s
 // Spamdan himoya POST ichida (app/api/sorovnoma/route.ts).
 // "/me" — gamifikatsiya: o'quvchi sahifasi (`/me/{token}` shaxsiy havola va
 // `/me/tg` Telegram Mini App, TZ 5.8). Himoya API'da: token yoki `initData`.
-const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me"];
+// "/xodim" — xodimlar botining «👤 Profilim» Mini App'i (28.09.2026): sahifa
+// bo'sh qobiq, ma'lumot /api/xodim/* dan `initData` imzosi bilan keladi.
+const PUBLIC_PATHS = ["/", "/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim"];
 
 /** Ekran qulflangan bo'lsa ham ishlashi kerak bo'lgan API'lar. */
 const LOCKED_ALLOWED_API = new Set([

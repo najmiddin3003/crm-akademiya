@@ -10,7 +10,7 @@ import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { PerformanceRow } from "@/lib/performanceReport";
 import { STATE_KEYS, STATE_LABELS } from "@/lib/performanceReport";
-import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
+import type { TeacherStudent } from "@/lib/teacherRoster";
 import PersonLink from "@/components/shared/PersonDirectory";
 import { useT } from "@/components/shared/Language";
 

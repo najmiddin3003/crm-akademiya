@@ -22,7 +22,7 @@ import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeePasswordModal from "./EmployeePasswordModal";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import type { SalaryLedgerRow } from "@/lib/salaryLedger";
-import type { TeacherStudent } from "@/app/api/hr-employees/[id]/students/route";
+import type { TeacherStudent } from "@/lib/teacherRoster";
 import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { TurnstileIoRecord } from "@/lib/turnstileIo";
@@ -214,6 +214,26 @@ const ROLE_BADGE: Record<string, string> = {
   admin: "bg-slate-400",
 };
 
+/**
+ * Sahifaning GET so'rovlari SHU funksiya orqali ketadi: saytda oddiy
+ * `fetch`, xodimlar botining «Profilim» Mini App'ida esa Telegram imzosi
+ * bilan /api/xodim/data orqali (components/employees/StaffProfileTg.tsx).
+ * Manzillar ikkalasida bir xil — javobni o'sha route xodimning o'z
+ * ma'lumotigacha kesadi. Tarmoq yoki JSON xatosida `null`.
+ *
+ * Mini App'dagi funksiya BARQAROR bo'lishi shart (useCallback): u
+ * effektlarning bog'liqligida turadi.
+ */
+export type ProfileGetJson = (url: string) => ReturnType<Response["json"]>;
+
+const siteGetJson: ProfileGetJson = (url) => fetch(url).then((r) => r.json()).catch(() => null);
+
+/**
+ * Faqat ko'rish rejimida (Mini App) chiqmaydigan tablar: admin yozgan
+ * «Eslatma» va harakatlar (audit) tarixi — foydalanuvchi qarori, 28.09.2026.
+ */
+const READONLY_HIDDEN_TABS = ["notes", "actions", "actions-audit"];
+
 // Kartochka ostidagi to'rtta amal — referensdagi tartib va tooltiplar:
 // [Parol qo'shish] [<Rol>ni arxivlash] [Qo'ng'iroq qilish] [Tahrirlash].
 // Ilgari birinchisi "Guruhlar" edi — referensda unaqasi yo'q.
@@ -228,7 +248,29 @@ const ACTION_CLS = {
   edit: "bg-secondary text-foreground hover:bg-secondary/80",
 };
 
+/** Saytdagi xodim profili (Boshqaruv → Xodimlar → profil). */
 export default function EmployeeProfilePage({ id }: { id: number }) {
+  const { names } = useTransactionTypes();
+  return <EmployeeProfileView id={id} txTypeNames={names} />;
+}
+
+/**
+ * Profilning o'zi. `readOnly` — xodimlar botining «Profilim» Mini App'i:
+ * xodim O'Z profilini saytdagidek ko'radi, lekin tahrirlash, arxivlash,
+ * parol, ish haqi sozlamasi, tablarni sozlash va admin eslatmalari yo'q.
+ */
+export function EmployeeProfileView({
+  id,
+  txTypeNames,
+  readOnly = false,
+  getJson = siteGetJson,
+}: {
+  id: number;
+  /** Tranzaksiya turlari katalogi (filtr tanlovi); Mini App'da bo'sh — yozuvlardagi nomlar yetadi. */
+  txTypeNames: string[];
+  readOnly?: boolean;
+  getJson?: ProfileGetJson;
+}) {
   const { t, months } = useT();
   const { showSuccess, showError } = useToast();
   // HrEmployeeFull — asosiy maydonlar + modal saqlaydigan qo'shimchalar
@@ -295,7 +337,6 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // Filtr TANLOVLARI — butun ro'yxat bo'yicha (distinct), bir sahifadan
   // emas. Kassalar sahifasidagi bilan bir xil endpoint, `?person=` rejimi.
   const [facets, setFacets] = useState<{ txNames: string[]; studentNames: string[] }>({ txNames: [], studentNames: [] });
-  const { names: txTypeNames } = useTransactionTypes();
 
   // ── "Tablarni sozlash" ──────────────────────────────────────────────────
   // Ilgari bu tugma faqat "(demo)" toast chiqarardi. Endi yashiriladigan
@@ -308,16 +349,14 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/settings?key=${encodeURIComponent(EMPLOYEE_PROFILE_TABS_KEY)}`)
-      .then((r) => r.json())
+    getJson(`/api/settings?key=${encodeURIComponent(EMPLOYEE_PROFILE_TABS_KEY)}`)
       .then((d) => {
         if (cancelled || !d?.ok) return;
         const hidden = (d.values as { hidden?: unknown } | null)?.hidden;
         if (Array.isArray(hidden)) setHiddenTabs(new Set(hidden.map((h) => String(h))));
-      })
-      .catch(() => {});
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [getJson]);
 
   useEffect(() => {
     if (!tabsCfgOpen) return;
@@ -350,7 +389,12 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     }
   }
 
-  const shownTabs = EP_TABS.filter((tv) => !hiddenTabs.has(tv.id));
+  // Faqat ko'rish rejimida admin yashirganlariga eslatma/audit tablari
+  // qo'shiladi. Admin qolgan hamma tabni yashirgan bo'lsa ham xodimda bo'sh
+  // sahifa qolmasin — shunda faqat o'sha uchtasi chiqmaydi.
+  const roHidden = readOnly ? new Set([...hiddenTabs, ...READONLY_HIDDEN_TABS]) : hiddenTabs;
+  const roShown = EP_TABS.filter((tv) => !roHidden.has(tv.id));
+  const shownTabs = roShown.length > 0 ? roShown : EP_TABS.filter((tv) => !READONLY_HIDDEN_TABS.includes(tv.id));
   const visibleTabs = shownTabs.filter((tv) => !EP_MORE_IDS.includes(tv.id));
   const moreTabs = shownTabs.filter((tv) => EP_MORE_IDS.includes(tv.id));
 
@@ -358,15 +402,14 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
   // Buni effekt ichida setState bilan qilish zanjirli render keltirib
   // chiqaradi (react-hooks/set-state-in-effect), shuning uchun shunchaki
   // render paytida hisoblaymiz.
-  const activeTab = hiddenTabs.has(rawActiveTab) ? (shownTabs[0]?.id ?? rawActiveTab) : rawActiveTab;
+  const activeTab = shownTabs.some((tv) => tv.id === rawActiveTab) ? rawActiveTab : (shownTabs[0]?.id ?? rawActiveTab);
 
   // Xodim ma'lumotini backend'dan (/api/hr-employees/:id) yuklaymiz.
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/hr-employees/${id}`)
-      .then((res) => res.json())
+    getJson(`/api/hr-employees/${id}`)
       .then((data) => {
-        if (!cancelled && data.ok) setEmp(data.employee);
+        if (!cancelled && data?.ok) setEmp(data.employee);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -374,7 +417,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, getJson]);
 
   /**
    * "O'quvchilar to'lovlari" QAYSI maydon bo'yicha yig'iladi.
@@ -404,7 +447,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     // o'rnatilsa, effekt tanasidagi setState ortiqcha render zanjirini
     // keltirib chiqaradi (react-hooks qoidasi).
     const q = encodeURIComponent(name);
-    const get = (u: string) => fetch(u).then((r) => r.json()).catch(() => null);
+    const get = getJson;
     Promise.all([
       // Uchta yengil so'rov — ilgari shu yerda bitta 6 MB lik so'rov turardi.
       // "O'quvchilar to'lovlari" manbasi xodim TURIGA bog'liq:
@@ -480,7 +523,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       setFinLoading(false);
     });
     return () => { cancelled = true; };
-  }, [id, emp?.name, payKey, finVersion]);
+  }, [id, emp?.name, payKey, finVersion, getJson]);
 
   // "O'quvchilar to'lovlari" jadvalining BIR SAHIFASI.
   //
@@ -502,15 +545,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       slim: "1",
     });
     applyTableFilters(qs, { student: fStudent, txName: fTxName, range: fRange, group: fGroup, students });
-    fetch(`/api/transaction-entries?${qs}`)
-      .then((r) => r.json())
+    getJson(`/api/transaction-entries?${qs}`)
       .then((d) => {
         if (cancelled || !d?.ok) return;
         setPayPage({ entries: d.entries as TransactionEntry[], total: Number(d.total) || 0 });
-      })
-      .catch(() => {});
+      });
     return () => { cancelled = true; };
-  }, [emp?.name, activeTab, page, pageSize, fStudent, fTxName, fRange, fGroup, students, payKey]);
+  }, [emp?.name, activeTab, page, pageSize, fStudent, fTxName, fRange, fGroup, students, payKey, getJson]);
 
   // "Tranzaksiyalar tarixi" jadvalining BIR SAHIFASI — xodimga OID HAMMA
   // yozuv: unga chiqarilgan avans/oylik, o'quvchilari qilgan to'lovlar va
@@ -534,15 +575,13 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
       slim: "1",
     });
     applyTableFilters(qs, { student: fStudent, txName: fTxName, range: fRange, group: fGroup, students });
-    fetch(`/api/transaction-entries?${qs}`)
-      .then((r) => r.json())
+    getJson(`/api/transaction-entries?${qs}`)
       .then((d) => {
         if (cancelled || !d?.ok) return;
         setAllPage({ entries: d.entries as TransactionEntry[], total: Number(d.total) || 0 });
-      })
-      .catch(() => {});
+      });
     return () => { cancelled = true; };
-  }, [emp?.name, activeTab, page, pageSize, fStudent, fTxName, fRange, fGroup, students]);
+  }, [emp?.name, activeTab, page, pageSize, fStudent, fTxName, fRange, fGroup, students, getJson]);
 
   // true qaytarsa NotesTab kiritish maydonini tozalaydi — saqlanmagan matn
   // yo'qolib ketmasligi uchun.
@@ -587,7 +626,9 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
     return (
       <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
         <p className="text-sm text-muted-foreground">{t("Xodim topilmadi.")}</p>
-        <Link href="/management-xodimlar" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">{t("Orqaga")}</Link>
+        {!readOnly && (
+          <Link href="/management-xodimlar" className="mt-3 inline-flex h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm items-center">{t("Orqaga")}</Link>
+        )}
       </div>
     );
   }
@@ -742,37 +783,40 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
 
   return (
     <div className="container mx-auto max-w-[1900px] p-4 md:p-5">
-      {/* Top bar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-        <Link href="/management-xodimlar" className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
-          <ArrowLeft className="icon icon-sm" />
-          <span>{t("Orqaga")}</span>
-        </Link>
-        <div className="relative" ref={tabsCfgRef}>
-          <button onClick={() => setTabsCfgOpen((o) => !o)} className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
-            <Settings className="icon icon-sm text-primary" />
-            <span>{t("Tablarni sozlash")}</span>
-          </button>
-          {tabsCfgOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border bg-card shadow-xl p-3 z-40">
-              <div className="text-[13px] font-semibold mb-2">{t("Ko'rinadigan tablar")}</div>
-              <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-                {EP_TABS.map((tv) => (
-                  <label key={tv.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!hiddenTabs.has(tv.id)}
-                      onChange={() => toggleTabVisible(tv.id)}
-                      className="w-4 h-4 rounded border-border accent-primary"
-                    />
-                    <span className="text-[13px]">{t(tv.label)}</span>
-                  </label>
-                ))}
+      {/* Top bar — faqat saytda: Mini App'da orqaga qaytadigan ro'yxat ham,
+          tablarni sozlash ruxsati ham yo'q. */}
+      {!readOnly && (
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <Link href="/management-xodimlar" className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium">
+            <ArrowLeft className="icon icon-sm" />
+            <span>{t("Orqaga")}</span>
+          </Link>
+          <div className="relative" ref={tabsCfgRef}>
+            <button onClick={() => setTabsCfgOpen((o) => !o)} className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card hover:bg-secondary text-sm">
+              <Settings className="icon icon-sm text-primary" />
+              <span>{t("Tablarni sozlash")}</span>
+            </button>
+            {tabsCfgOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-border bg-card shadow-xl p-3 z-40">
+                <div className="text-[13px] font-semibold mb-2">{t("Ko'rinadigan tablar")}</div>
+                <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                  {EP_TABS.map((tv) => (
+                    <label key={tv.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-secondary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!hiddenTabs.has(tv.id)}
+                        onChange={() => toggleTabVisible(tv.id)}
+                        className="w-4 h-4 rounded border-border accent-primary"
+                      />
+                      <span className="text-[13px]">{t(tv.label)}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
         {/* LEFT */}
@@ -788,7 +832,7 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
             initials={initials}
             badge={{ label: roleLabel, cls: ROLE_BADGE[emp.turi] ?? "bg-slate-400" }}
             stats={stats}
-            actions={[
+            actions={readOnly ? [] : [
               // Kalit ikonkasi — PAROL (referensdagi tartib). Ilgari u ish
               // haqi sozlamasini ochardi; u endi yonidagi alohida tugmada.
               {
@@ -846,7 +890,12 @@ export default function EmployeeProfilePage({ id }: { id: number }) {
             )}
             {/* Oylik sozlanmagan bo'lsa buni ochiq aytamiz — chap
                 kartadagi "—" larning sababi shu. */}
-            {!finLoading && !salaryConfigured && (
+            {!finLoading && !salaryConfigured && readOnly && (
+              <div className="mt-3 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 text-left">
+                <strong>{t("Ish haqi sozlanmagan.")}</strong>{" "}{t("Oylik hisobini administrator sozlaydi.")}
+              </div>
+            )}
+            {!finLoading && !salaryConfigured && !readOnly && (
               <button
                 type="button"
                 onClick={() => setSalaryOpen(true)}

@@ -23,6 +23,8 @@ export const PUBLIC_API: readonly string[] = [
   "/api/me/[token]/wishlist/[itemId]",
   "/api/me/tg",
   "/api/me/tg/wishlist/[itemId]",
+  "/api/xodim/me",
+  "/api/xodim/data",
   "/api/health/ping",
   "/api/health/db",
 ];

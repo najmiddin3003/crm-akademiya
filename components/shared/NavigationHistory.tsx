@@ -18,7 +18,10 @@ const MAX_STACK = 50;
 // edi: /ariza (ish arizasi) ochilgan brauzerda keyin kirish sahifasi
 // "oxirgi sahifa"ga — /ariza ga — qaytarib yuborar, login umuman
 // ochilmas edi (chiqib ketgan xodim yoki nomzod bilan bir brauzer).
-const PUBLIC_PREFIXES = ["/activate", "/ariza", "/oquvchi", "/tezlik"];
+// "/sorovnoma", "/me" va "/xodim" (botlarning Mini App'lari) 28.09.2026 da
+// qo'shildi: ular ham tarixga tushib, keyin kirish sahifasi CRM o'rniga
+// o'sha yerga qaytarib yuborardi.
+const PUBLIC_PREFIXES = ["/activate", "/ariza", "/oquvchi", "/tezlik", "/sorovnoma", "/me", "/xodim"];
 const isAppPath = (p: string) => p !== "/" && !PUBLIC_PREFIXES.some((x) => p === x || p.startsWith(x + "/") || p.startsWith(x + "?"));
 
 interface NavHistoryValue {

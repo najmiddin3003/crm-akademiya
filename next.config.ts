@@ -8,9 +8,9 @@ import type { NextConfig } from "next";
 // ro'yxatini ifodalay olmaydi, bizga esa ikki istisno kerak:
 //   • o'z domenimiz — CV'dagi PDF ko'ruvchi `/api/management-cv/:id/file`
 //     ni iframe'da ochadi;
-//   • Telegram Web (web.telegram.org) — o'quvchilar botining Mini App'lari
-//     (`/oquvchi`, `/me/tg`) u yerda iframe ichida ochiladi. Telefon va
-//     desktop ilovalari o'z webview'ida ochadi (iframe emas).
+//   • Telegram Web (web.telegram.org) — botlarning Mini App'lari
+//     (`/oquvchi`, `/me/tg`, xodimlarniki `/xodim`) u yerda iframe ichida
+//     ochiladi. Telefon va desktop ilovalari o'z webview'ida ochadi.
 //
 // To'liq CSP (script-src/connect-src …) ATAYIN yo'q: Next.js'ning inline
 // skriptlari, tungi rejim skripti, Telegram SDK, Cloudinary rasmlari va
@@ -37,6 +37,8 @@ const nextConfig: NextConfig = {
       // key will override the first") — Mini App sahifalarida Telegram Web ham.
       { source: "/oquvchi/:path*", headers: [{ key: "Content-Security-Policy", value: FRAME_TELEGRAM }] },
       { source: "/me/:path*", headers: [{ key: "Content-Security-Policy", value: FRAME_TELEGRAM }] },
+      // Xodimlar botining «Profilim» Mini App'i (28.09.2026).
+      { source: "/xodim/:path*", headers: [{ key: "Content-Security-Policy", value: FRAME_TELEGRAM }] },
     ];
   },
   experimental: {
