@@ -7,6 +7,8 @@
 // standart konvensiya qo'llanildi: Toq kunlar = Du/Chor/Ju, Juft kunlar = Se/Pa/Sha.
 // Kerak bo'lsa DAY_PATTERN_MAP'ni backend qoidasiga moslab o'zgartirish oson.
 
+import { groupWeekdays } from "@/lib/attendance";
+
 export const SCHEDULE_DAY_ORDER = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
 export const SCHEDULE_DAY_LABELS = ["Yak", "Du", "Se", "Chor", "Pa", "Ju", "Sha"];
 export const SCHEDULE_DAY_LONG = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
@@ -36,7 +38,11 @@ const DAY_PATTERN_MAP = {
 };
 
 export function weekdaysForDayPattern(pattern) {
-  return DAY_PATTERN_MAP[pattern] || [];
+  if (DAY_PATTERN_MAP[pattern]) return DAY_PATTERN_MAP[pattern];
+  // Tayyor ro'yxatda yo'q — formada istalgan kunlar tanlangan ("Du,Ch,Sh",
+  // 28.09.2026). Davomat bilan bir xil qoida (lib/attendance.ts), aks holda
+  // bunday guruh jadvalda umuman ko'rinmasdi.
+  return groupWeekdays(pattern).map((i) => SCHEDULE_DAY_ORDER[i]);
 }
 
 // Kurs bo'yicha barqaror rang (constants/groups.js GROUP_COURSES bilan mos).

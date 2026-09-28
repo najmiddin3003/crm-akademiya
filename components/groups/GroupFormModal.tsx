@@ -12,7 +12,8 @@ import { useGroups } from "@/hooks/useGroups";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import { useRooms } from "@/hooks/useRooms";
 import { useTeachers } from "@/hooks/useTeachers";
-import { GROUP_DAYS, GROUP_FORMATS } from "@/constants/groups";
+import { GROUP_FORMATS } from "@/constants/groups";
+import GroupDaysField from "./GroupDaysField";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { findRoomConflict, joinTime, missingGroupFields, parseTimeRange, roomConflictText } from "@/lib/groupRules";
 import { courseLevelNames, findCourseByName, levelPlaceholder } from "@/lib/courseLevels";
@@ -61,7 +62,6 @@ const STATUS_OPTIONS = [
   { value: "archive", label: "Arxiv", icon: Archive },
 ];
 const FORMAT_OPTIONS = GROUP_FORMATS.map((f) => ({ value: f, label: f }));
-const DAY_OPTIONS = GROUP_DAYS.map((d) => ({ value: d, label: d }));
 
 const inputCls = "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 const labelCls = "block text-[13px] font-medium mb-1.5";
@@ -286,14 +286,7 @@ export default function GroupFormModal({
           clearable
         />
 
-        <Select
-          label={t("Dars kunlari")}
-          required
-          value={day}
-          onChange={setDay}
-          options={DAY_OPTIONS}
-          placeholder={t("Tanlang")}
-        />
+        <GroupDaysField value={day} onChange={setDay} />
         <div>
           <label className={labelCls}>{t("Dars vaqti")}<span className="text-red-500">*</span></label>
           <div className="grid grid-cols-2 gap-2">

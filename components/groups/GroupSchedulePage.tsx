@@ -161,6 +161,13 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
     [groups, day],
   );
 
+  // Kun turi filtri: tayyor variantlar + guruhlarda uchraydigan istalgan
+  // kunlar ("Du,Ch,Sh" — formadagi kun tugmalari, 28.09.2026).
+  const dayTypeOptions = useMemo(
+    () => [...new Set([...GROUP_DAYS, ...groups.map((g) => g.day).filter(Boolean)])],
+    [groups],
+  );
+
   const filterOptions = useMemo(() => {
     const teachers = [...new Set(dayGroups.map((g) => g.teacher).filter(Boolean))].sort();
     const rooms = [...new Set(dayGroups.map((g) => g.room).filter(Boolean))].sort();
@@ -322,7 +329,7 @@ export default function GroupSchedulePage({ showStats = false }: { showStats?: b
             onChange={(v) => setFilters((f) => ({ ...f, dayType: v }))}
             placeholder={t("Kun turi")}
             width="w-36"
-            options={GROUP_DAYS.map((d) => [d, d] as [string, string])}
+            options={dayTypeOptions.map((d) => [d, d] as [string, string])}
           />
           <button
             onClick={clearFilters}
