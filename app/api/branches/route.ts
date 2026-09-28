@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { BRANCH_TOPIC_FIELDS, parseLeadTopicId, type ManagementBranch } from "@/lib/managementBranches";
+import {
+  BRANCH_TOPIC_FIELDS,
+  parseLateGrace,
+  parseLeadTopicId,
+  parseWorkStart,
+  type ManagementBranch,
+} from "@/lib/managementBranches";
 import { getCurrentUser } from "@/lib/auth";
 
 // Boshqaruv → Filiallar backend'i (MongoDB `branches`). Demo seed YO'Q —
@@ -56,12 +62,17 @@ export async function POST(req: Request) {
 
   // Telegram topiklari — ixtiyoriy; forma tahrirlash bilan bir xil, shu bois
   // qo'shishda ham qabul qilinadi. Bo'sh bo'lsa maydon umuman yozilmaydi.
-  const topics: Partial<Pick<ManagementBranch, "leadTopicId" | "paymentTopicId">> = {};
+  const topics: Partial<Pick<ManagementBranch, "leadTopicId" | "paymentTopicId" | "attendanceTopicId">> = {};
   for (const field of BRANCH_TOPIC_FIELDS) {
     const topic = parseLeadTopicId(body[field]);
     if (!topic.ok) return NextResponse.json({ ok: false, error: topic.error }, { status: 400 });
     if (topic.value) topics[field] = topic.value;
   }
+  // «Ishga keldim» kechikish chegarasi — ixtiyoriy, bo'sh bo'lsa yozilmaydi.
+  const work = parseWorkStart(body.workStart);
+  if (!work.ok) return NextResponse.json({ ok: false, error: work.error }, { status: 400 });
+  const grace = parseLateGrace(body.lateGraceMin);
+  if (!grace.ok) return NextResponse.json({ ok: false, error: grace.error }, { status: 400 });
 
   const branch: ManagementBranch = {
     id: nextId,
@@ -70,6 +81,8 @@ export async function POST(req: Request) {
     address: (body.address || "").trim(),
     phone: (body.phone || "").trim(),
     ...topics,
+    ...(work.value ? { workStart: work.value } : {}),
+    ...(grace.value ? { lateGraceMin: grace.value } : {}),
   };
   await col.insertOne({ ...branch });
   return NextResponse.json({ ok: true, branch });

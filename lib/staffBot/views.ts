@@ -101,10 +101,84 @@ export function profileMenuView(name: string, webLogin: boolean): string {
   const lines = [
     `👤 <b>${esc(name || "Xodim")}</b>`,
     "",
+    "«📷 Ishga keldim» — filial ekranidagi QR kodni skanerlang.",
     "«👤 Profilim» — oylik, avans, tranzaksiyalar, o'quvchilar to'lovlari va boshqa ma'lumotlaringiz (saytdagidek).",
   ];
   if (webLogin) lines.push("", "Kassa amallari uchun «🔑 Parol bilan kirish» ni bosing.");
   return lines.join("\n");
+}
+
+// ── Ishga keldim (QR, 28.09.2026) ───────────────────────────────────
+
+export function checkinNeedsLogin(): string {
+  return "📷 QR kodni skanerlashdan oldin botga kiring: pastdagi tugma bilan raqamingizni yuboring, keyin ekrandagi kodni qayta skanerlang.";
+}
+
+export function checkinNoEmployee(): string {
+  return "❌ Hisobingiz xodimlar ro'yxatidagi profilga bog'lanmagan — davomat belgilanmaydi. Administratorga murojaat qiling.";
+}
+
+export function checkinFailed(error: string): string {
+  return `❌ ${esc(error)}`;
+}
+
+/** "9 soat 13 daqiqa" — kelish va ketish orasidagi vaqt. */
+function workedLabel(enter: string | null, exit: string | null): string {
+  const toMin = (hm: string | null) => {
+    const m = /^(\d{2}):(\d{2})$/.exec(hm ?? "");
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const a = toMin(enter);
+  const b = toMin(exit);
+  if (a === null || b === null || b < a) return "";
+  const h = Math.floor((b - a) / 60);
+  const m = (b - a) % 60;
+  return [h ? `${h} soat` : "", m || !h ? `${m} daqiqa` : ""].filter(Boolean).join(" ");
+}
+
+export interface CheckinView {
+  kind: "in" | "out";
+  /** false — bugun allaqachon belgilangan edi. */
+  fresh: boolean;
+  branchName: string;
+  enterTime: string | null;
+  exitTime: string | null;
+  lateMinutes: number;
+  expected: string | null;
+  expectedWhy: string | null;
+}
+
+export function checkinResult(v: CheckinView): string {
+  const branch = v.branchName ? `🏢 ${esc(v.branchName)}` : "";
+  const due = v.expected ? ` · kerak edi: ${esc(v.expected)}${v.expectedWhy ? ` (${esc(v.expectedWhy)})` : ""}` : "";
+  if (v.kind === "out") {
+    const worked = workedLabel(v.enterTime, v.exitTime);
+    return [
+      `🏁 <b>Ishdan ketdingiz</b> — ${esc(v.exitTime ?? "")}`,
+      branch,
+      `🕘 Kelgan: ${esc(v.enterTime ?? "—")}${worked ? ` · ishlagan vaqt: ${worked}` : ""}`,
+    ].filter(Boolean).join("\n");
+  }
+  if (!v.fresh) {
+    return [
+      `ℹ️ Bugun bu filialda kelganingiz allaqachon belgilangan: <b>${esc(v.enterTime ?? "")}</b>`,
+      branch,
+      v.lateMinutes > 0 ? `⚠️ ${v.lateMinutes} daqiqa kechikkansiz${due}` : "",
+    ].filter(Boolean).join("\n");
+  }
+  if (v.lateMinutes > 0) {
+    return [
+      `⚠️ <b>Ishga keldingiz — ${v.lateMinutes} daqiqa kechikdingiz</b>`,
+      `🕘 Keldingiz: ${esc(v.enterTime ?? "")}${due}`,
+      branch,
+      "Kechikish qayd etildi.",
+    ].filter(Boolean).join("\n");
+  }
+  return [
+    `✅ <b>Ishga keldingiz</b> — ${esc(v.enterTime ?? "")}`,
+    branch,
+    v.expected ? `⏱ Kerak edi: ${esc(v.expected)}${v.expectedWhy ? ` (${esc(v.expectedWhy)})` : ""}` : "",
+  ].filter(Boolean).join("\n");
 }
 
 export function menuView(name: string, cashbox: BotCashbox | null, isAdmin: boolean): string {

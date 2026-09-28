@@ -1,6 +1,6 @@
 import type { InlineButton, InlineKeyboard, ReplyKeyboard } from "@/lib/telegramApi";
 import type { BotCashbox } from "@/lib/staffBot/auth";
-import { staffProfileUrl } from "@/lib/staffBot/config";
+import { staffCheckinUrl, staffProfileUrl } from "@/lib/staffBot/config";
 
 // Tugmalar va ular ortidagi KALITLAR.
 //
@@ -100,19 +100,31 @@ export function contactKeyboard(): ReplyKeyboard {
 const profileButton = (): InlineButton => ({ text: "👤 Profilim", web_app: { url: staffProfileUrl() } });
 
 /**
- * Bosh menyu. Parol bilan kirgan: «Profilim» + 6 tugma (18.09.2026 tartibi).
- * Raqam ulashib kirgan (28.09.2026): faqat «Profilim», sayt hisobi bo'lsa
- * «Parol bilan kirish» (kassa amallari uchun) va «Chiqish».
+ * «📷 Ishga keldim» — QR skaner (Mini App). «🏁 Ishdan ketdim» faqat admin
+ * yoqqanda (lib/attendanceQr.ts → checkoutEnabled; 28.09.2026 da o'chiq).
  */
-export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean }): InlineKeyboard {
+function checkinRow(checkoutEnabled: boolean): InlineButton[] {
+  const row: InlineButton[] = [{ text: "📷 Ishga keldim", web_app: { url: staffCheckinUrl("in") } }];
+  if (checkoutEnabled) row.push({ text: "🏁 Ishdan ketdim", web_app: { url: staffCheckinUrl("out") } });
+  return row;
+}
+
+/**
+ * Bosh menyu. Parol bilan kirgan: «Ishga keldim», «Profilim» + 6 tugma
+ * (18.09.2026 tartibi). Raqam ulashib kirgan (28.09.2026): «Ishga keldim»,
+ * «Profilim», sayt hisobi bo'lsa «Parol bilan kirish» (kassa amallari
+ * uchun) va «Chiqish».
+ */
+export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checkoutEnabled: boolean }): InlineKeyboard {
   if (opts.profileOnly) {
-    const rows: InlineButton[][] = [[profileButton()]];
+    const rows: InlineButton[][] = [checkinRow(opts.checkoutEnabled), [profileButton()]];
     if (opts.webLogin) rows.push([btn("🔑 Parol bilan kirish (kassa)", CB.passwordLogin)]);
     rows.push([btn("🚪 Chiqish", CB.logout)]);
     return { inline_keyboard: rows };
   }
   return {
     inline_keyboard: [
+      checkinRow(opts.checkoutEnabled),
       [profileButton()],
       [btn("💵 Kirim", CB.kirim), btn("💸 Chiqim", CB.chiqim)],
       [btn("🔁 Ko'chirish", CB.transfer), btn("📋 Lid qo'shish", CB.lead)],

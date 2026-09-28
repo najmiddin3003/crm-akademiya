@@ -36,11 +36,51 @@ export interface ManagementBranch {
    * umumiy topikka tushadi.
    */
   paymentTopicId?: number | null;
+  /**
+   * «Ishga keldim» (QR, 28.09.2026) — KECHIKKAN xodim haqidagi xabar shu
+   * topikka tushadi (lib/attendanceNotify.ts). Yo'q bo'lsa
+   * `TELEGRAM_TOPIC_ATTENDANCE`, u ham bo'lmasa yuborilmaydi.
+   */
+  attendanceTopicId?: number | null;
+  /**
+   * Ish boshlanish vaqti ("HH:MM") — O'QITUVCHI BO'LMAGAN xodimning
+   * kechikishi shundan o'lchanadi (o'qituvchiniki — birinchi darsidan,
+   * lib/attendanceCheck.ts). Yo'q bo'lsa ular uchun kechikish o'lchanmaydi.
+   */
+  workStart?: string | null;
+  /** Ish boshlanishidan keyin necha daqiqagacha kechikish hisoblanmaydi (0–180). */
+  lateGraceMin?: number | null;
 }
 
 /** Filial hujjatidagi Telegram topik maydonlari — API va sahifa shu ro'yxat bo'ylab aylanadi. */
-export const BRANCH_TOPIC_FIELDS = ["leadTopicId", "paymentTopicId"] as const;
+export const BRANCH_TOPIC_FIELDS = ["leadTopicId", "paymentTopicId", "attendanceTopicId"] as const;
 export type BranchTopicField = (typeof BRANCH_TOPIC_FIELDS)[number];
+
+export type WorkStartParse = { ok: true; value: string | null } | { ok: false; error: string };
+
+/** Formadagi ish boshlanish vaqti: "9:00" / "09:00" / bo'sh (olib tashlash → null). */
+export function parseWorkStart(raw: unknown): WorkStartParse {
+  const s = String(raw ?? "").trim();
+  if (!s) return { ok: true, value: null };
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) {
+    return { ok: false, error: "Ish boshlanish vaqti SS:DD ko'rinishida bo'lsin (masalan 08:30)" };
+  }
+  return { ok: true, value: `${m[1].padStart(2, "0")}:${m[2]}` };
+}
+
+export type GraceParse = { ok: true; value: number | null } | { ok: false; error: string };
+
+/** Ruxsat etilgan kechikish (daqiqa): 0–180 butun son yoki bo'sh (→ null). */
+export function parseLateGrace(raw: unknown): GraceParse {
+  const s = String(raw ?? "").trim();
+  if (!s) return { ok: true, value: null };
+  if (!/^\d+$/.test(s) || Number(s) > 180) {
+    return { ok: false, error: "Ruxsat etilgan kechikish — 0 dan 180 gacha daqiqa" };
+  }
+  const n = Number(s);
+  return { ok: true, value: n > 0 ? n : null };
+}
 
 export type LeadTopicParse = { ok: true; value: number | null } | { ok: false; error: string };
 

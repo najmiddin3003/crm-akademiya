@@ -2,6 +2,10 @@ import type { Db } from "mongodb";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import { uzDateIso } from "@/lib/uzTime";
+import type { HrEmployee } from "@/lib/hrEmployees";
+import { loadAttendanceSettings, parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
+import { markAttendance } from "@/lib/attendanceCheck";
+import { notifyLate } from "@/lib/attendanceNotify";
 import { answerStaff, deleteUserMessage, dropReplyKeyboard, sendToStaff } from "@/lib/staffBot/api";
 import { clearPasswordAttempts, takePasswordAttempt } from "@/lib/staffBot/attempts";
 import { findEmployeeByPhone, hasWebLogin, listCashboxesForAdmin, resolveAccess, verifyStaffLogin, type StaffAccess } from "@/lib/staffBot/auth";
@@ -93,6 +97,8 @@ function greetName(u: TgUser | undefined): string {
 
 const COMMANDS = {
   start: /^\/start(@\w+)?$/i,
+  /** `/start <parametr>` — havola orqali kelgan (QR: "k_…" / "x_…", lib/attendanceQr.ts). */
+  startWith: /^\/start(?:@\w+)?\s+(\S+)$/i,
   kassa: /^\/kassa(@\w+)?$/i,
   logout: /^\/(chiqish|logout)(@\w+)?$/i,
 } as const;
@@ -122,16 +128,18 @@ export async function handleStaffUpdate(
 
 // ── Ekranlar ────────────────────────────────────────────────────────
 
-function menuScreen(access: StaffAccess): Screen {
+async function menuScreen(db: Db, access: StaffAccess): Promise<Screen> {
+  // «🏁 Ishdan ketdim» tugmasi faqat admin yoqqanda (QR ekranidagi sozlama).
+  const { checkoutEnabled } = await loadAttendanceSettings(db);
   if (access.profileOnly) {
     return {
       html: V.profileMenuView(access.identity.name, access.webLogin),
-      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin }),
+      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin, checkoutEnabled }),
     };
   }
   return {
     html: V.menuView(access.identity.name, access.cashbox, access.identity.isAdmin),
-    keyboard: mainMenu({ profileOnly: false, webLogin: true }),
+    keyboard: mainMenu({ profileOnly: false, webLogin: true, checkoutEnabled }),
   };
 }
 
@@ -236,7 +244,71 @@ async function acceptPassword(
     return;
   }
   if (warn) await sendToStaff(cfg, chatId, warn.trim());
-  await showScreen(db, cfg, chatId, undefined, menuScreen(access.access));
+  await showScreen(db, cfg, chatId, undefined, await menuScreen(db, access.access));
+}
+
+// ── Ishga keldim (QR havolasi) ──────────────────────────────────────
+
+/**
+ * Telefon kamerasi QR'dagi `t.me/<bot>?start=k_…` havolasini ochdi — Telegram
+ * `/start k_…` yubordi. Xodim — bot sessiyasidan (chatId), filial — imzolangan
+ * tokendan; yozuvning o'zi Mini App bilan bitta yo'ldan (lib/attendanceCheck.ts).
+ */
+async function attendanceByLink(
+  db: Db,
+  cfg: StaffBotConfig,
+  chatId: number,
+  user: StaffBotUser | null,
+  from: TgUser | undefined,
+  scanned: { kind: AttendanceKind; token: string },
+  defer: AdjustDeps["defer"],
+): Promise<void> {
+  if (!user || user.stage !== "in") {
+    await sendToStaff(cfg, chatId, V.checkinNeedsLogin());
+    await askPhone(db, cfg, chatId, from);
+    return;
+  }
+  await touchStaffUser(db, chatId);
+  const res = await resolveAccess(db, user);
+  if (!res.ok) {
+    await logoutStaff(db, chatId);
+    await sendToStaff(cfg, chatId, V.sessionInvalid(res.error));
+    return;
+  }
+  const empId = res.access.identity.employeeId;
+  const emp = empId === null
+    ? null
+    : await db.collection<HrEmployee>("hr_employees").findOne({ id: empId }, { projection: { _id: 0 } });
+  if (!emp) {
+    await sendToStaff(cfg, chatId, V.checkinNoEmployee(), backToMenu());
+    return;
+  }
+  const out = await markAttendance(db, emp, scanned.kind, scanned.token);
+  if (!out.ok) {
+    await sendToStaff(cfg, chatId, V.checkinFailed(out.error), backToMenu());
+    return;
+  }
+  const r = out.record;
+  if (out.fresh && out.kind === "in" && r.lateMinutes > 0) {
+    const { branch } = out;
+    const turi = emp.turi;
+    defer(() => notifyLate(r, branch, turi));
+  }
+  await sendToStaff(
+    cfg,
+    chatId,
+    V.checkinResult({
+      kind: out.kind,
+      fresh: out.fresh,
+      branchName: out.branch.name,
+      enterTime: r.enterTime,
+      exitTime: r.exitTime,
+      lateMinutes: r.lateMinutes,
+      expected: r.expected,
+      expectedWhy: r.expectedWhy,
+    }),
+    backToMenu(),
+  );
 }
 
 // ── Xabarlar ────────────────────────────────────────────────────────
@@ -252,8 +324,19 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
   const text = (msg.text || "").trim();
   const user = await getStaffUser(db, chatId);
 
+  // `/start k_…` — QR havolasi (telefon kamerasi bilan skanerlangan).
+  // Boshqa parametr — oddiy /start kabi.
+  const startArg = COMMANDS.startWith.exec(text);
+  if (startArg) {
+    const scanned = parseScanned(startArg[1]);
+    if (scanned) {
+      await attendanceByLink(db, cfg, chatId, user, msg.from, scanned, defer);
+      return;
+    }
+  }
+
   // /start — har qanday holatda: kirgan bo'lsa menyu, aks holda kirish.
-  if (COMMANDS.start.test(text)) {
+  if (COMMANDS.start.test(text) || startArg) {
     if (user?.stage === "in") {
       await openMenu(db, cfg, chatId, user);
       return;
@@ -334,7 +417,7 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
 
   // Har qanday boshqa matn — bosh menyu. Bot suhbatdosh emas: erkin
   // matnga javob bermaydi, aniq tugmalarni taklif qiladi.
-  await showScreen(db, cfg, chatId, undefined, menuScreen(access));
+  await showScreen(db, cfg, chatId, undefined, await menuScreen(db, access));
 }
 
 async function openMenu(db: Db, cfg: StaffBotConfig, chatId: number, user: StaffBotUser): Promise<void> {
@@ -344,7 +427,7 @@ async function openMenu(db: Db, cfg: StaffBotConfig, chatId: number, user: Staff
     await sendToStaff(cfg, chatId, V.sessionInvalid(res.error));
     return;
   }
-  await showScreen(db, cfg, chatId, undefined, menuScreen(res.access));
+  await showScreen(db, cfg, chatId, undefined, await menuScreen(db, res.access));
 }
 
 // ── Tugmalar ────────────────────────────────────────────────────────
@@ -409,7 +492,7 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
 
   switch (data) {
     case CB.menu:
-      await show(menuScreen(access));
+      await show(await menuScreen(db, access));
       break;
     case CB.kirim:
       await startKirim(ctx);
@@ -441,7 +524,7 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
     case CB.passwordLogin:
       // Profil rejimidan to'liq kirish: shu raqam uchun parol so'raladi.
       if (!access.profileOnly) {
-        await show(menuScreen(access));
+        await show(await menuScreen(db, access));
         break;
       }
       await setPendingPhone(db, chatId, access.identity.phone);

@@ -7,6 +7,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import type { ManagementBranch } from "@/lib/managementBranches";
 import Modal, { useModalClose } from "@/components/ui/Modal";
+import TimeField from "@/components/ui/TimeField";
 import { useT } from "@/components/shared/Language";
 
 // Boshqaruv → Filiallar (sidebar: Boshqaruv > Filiallar, href
@@ -22,11 +23,25 @@ import { useT } from "@/components/shared/Language";
 // (serverda `parseLeadTopicId` ikkalasini ham tushunadi). Ro'yxatda topigi
 // yo'q filial ATAYLAB ko'zga tashlanadi: lid umumiy topikka tushadi yoki
 // (u ham bo'lmasa) umuman yuborilmaydi; to'lov umumiy "To'lovlar" topigiga.
+//
+// «ISHGA KELDIM» (QR, 28.09.2026): davomat topigi (kechikish xabari) va
+// o'qituvchi bo'lmagan xodimlar uchun ish boshlanish vaqti + ruxsat etilgan
+// kechikish (lib/attendanceCheck.ts).
 
 const inputCls =
   "h-10 w-full rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
-const emptyForm = { name: "", location: "", address: "", phone: "", leadTopic: "", paymentTopic: "" };
+const emptyForm = {
+  name: "",
+  location: "",
+  address: "",
+  phone: "",
+  leadTopic: "",
+  paymentTopic: "",
+  attendanceTopic: "",
+  workStart: "",
+  lateGrace: "",
+};
 
 /** Ro'yxatdagi kichik belgi: topik bor — ko'k, yo'q — sariq. */
 function TopicBadge({ label, topic, missingTitle }: { label: string; topic: number | null | undefined; missingTitle: string }) {
@@ -83,6 +98,9 @@ export default function BranchesPage() {
       phone: b.phone || "",
       leadTopic: b.leadTopicId ? String(b.leadTopicId) : "",
       paymentTopic: b.paymentTopicId ? String(b.paymentTopicId) : "",
+      attendanceTopic: b.attendanceTopicId ? String(b.attendanceTopicId) : "",
+      workStart: b.workStart || "",
+      lateGrace: b.lateGraceMin ? String(b.lateGraceMin) : "",
     });
     setEditTarget(b);
   }
@@ -112,6 +130,9 @@ export default function BranchesPage() {
           phone: form.phone,
           leadTopicId: form.leadTopic.trim(),
           paymentTopicId: form.paymentTopic.trim(),
+          attendanceTopicId: form.attendanceTopic.trim(),
+          workStart: form.workStart,
+          lateGraceMin: form.lateGrace.trim(),
         }),
       });
       const data = await res.json();
@@ -185,6 +206,11 @@ export default function BranchesPage() {
               label={t("To'lovlar")}
               topic={b.paymentTopicId}
               missingTitle="Bu filialning to'lovlari umumiy “To'lovlar” topigiga tushadi"
+            />
+            <TopicBadge
+              label={t("Davomat")}
+              topic={b.attendanceTopicId}
+              missingTitle={t("Kechikish xabari umumiy davomat topigiga tushadi (u ham bo'lmasa — yuborilmaydi)")}
             />
             {/* Amal tugmalari DOIM ko'rinadi. Ilgari ular
                 `opacity-0 group-hover:opacity-100` bilan yashiringan edi —
@@ -287,6 +313,37 @@ export default function BranchesPage() {
               />
               <p className="mt-1.5 text-[12px] text-muted-foreground">
                 {t("Shu filial kassalariga tushgan to'lov to'lovlar guruhining shu topigiga ketadi. Bo'sh qoldirilsa umumiy \"To'lovlar\" topigi.")}
+              </p>
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Telegram davomat topigi")}</label>
+              <input
+                value={form.attendanceTopic}
+                onChange={(e) => setForm((f) => ({ ...f, attendanceTopic: e.target.value }))}
+                className={inputCls}
+                placeholder={t("Masalan: 7 yoki https://t.me/c/…/7")}
+              />
+              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                {t("«Ishga keldim» (QR) bo'yicha kechikkan xodim haqidagi xabar shu topikka tushadi.")}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] font-medium mb-1.5">{t("Ish boshlanish vaqti")}</label>
+                <TimeField value={form.workStart} onChange={(v) => setForm((f) => ({ ...f, workStart: v }))} variant="form" placeholder="08:30" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium mb-1.5">{t("Ruxsat etilgan kechikish (daqiqa)")}</label>
+                <input
+                  value={form.lateGrace}
+                  onChange={(e) => setForm((f) => ({ ...f, lateGrace: e.target.value.replace(/\D/g, "").slice(0, 3) }))}
+                  className={inputCls}
+                  inputMode="numeric"
+                  placeholder="0"
+                />
+              </div>
+              <p className="sm:col-span-2 -mt-1 text-[12px] text-muted-foreground">
+                {t("O'qituvchi bo'lmagan xodimlar shu vaqtdan kechiksa «Kechikkan» bo'ladi. O'qituvchilar — o'sha kungi birinchi darsidan. Vaqt bo'sh bo'lsa kechikish o'lchanmaydi.")}
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">

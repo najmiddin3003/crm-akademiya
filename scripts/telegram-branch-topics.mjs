@@ -2,7 +2,7 @@
 // (to'lovlar guruhi). Har filialga o'z topigi; lib/leadNotify.ts va
 // lib/sync/dispatch.ts xabarni shunga qarab yo'naltiradi.
 //
-//   node scripts/telegram-branch-topics.mjs [--leads | --payments]   holat (sukut --leads; hech narsa o'zgarmaydi)
+//   node scripts/telegram-branch-topics.mjs [--leads | --payments | --attendance]   holat (sukut --leads; hech narsa o'zgarmaydi)
 //   … --create          topigi yo'q har filial uchun guruhda topik OCHADI va bazaga yozadi
 //   … --set 3 45        3-filialga 45-topikni biriktiradi (raqam yoki topik havolasi; 0 — olib tashlash)
 //   … --test            har biriktirilgan topikka bittadan sinov xabari
@@ -10,6 +10,8 @@
 //
 // OQIMLAR: --leads → branches.leadTopicId, guruh TELEGRAM_CHAT_LEADS, topik nomi = filial nomi
 //          --payments → branches.paymentTopicId, guruh TELEGRAM_CHAT_PAYMENTS, topik nomi = "<filial> to'lovlari"
+//          --attendance → branches.attendanceTopicId (kechikish xabari, lib/attendanceNotify.ts),
+//                         guruh TELEGRAM_CHAT_ATTENDANCE (bo'lmasa TELEGRAM_CHAT_PAYMENTS), topik nomi = "<filial> davomati"
 //
 // QAYERDA ISHGA TUSHIRILADI: baza yozuvi MONGODB_URI ga ketadi. Prod bazasi
 // SERVERDA (lokal .env.local Atlas ko'zgusiga qaraydi):
@@ -67,8 +69,19 @@ const KINDS = {
     fallbackNote: "topigi yo'q filialning to'lovi umumiy oqimga tushadi",
     test: (b) => `🔧 Sinov: <b>${b.name}</b> kassalariga tushgan to'lovlar shu topikka tushadi.`,
   },
+  attendance: {
+    label: "DAVOMAT",
+    field: "attendanceTopicId",
+    chat: "TELEGRAM_CHAT_ATTENDANCE",
+    // Alohida guruh ochilmagan bo'lsa — to'lovlar guruhidagi topik (lib/attendanceNotify.ts bilan bir xil).
+    chatFallback: "TELEGRAM_CHAT_PAYMENTS",
+    fallback: "TELEGRAM_TOPIC_ATTENDANCE",
+    topicName: (b) => `${b.name} davomati`,
+    fallbackNote: "topigi yo'q filialning kechikish xabari YUBORILMAYDI",
+    test: (b) => `🔧 Sinov: <b>${b.name}</b> filialida kechikkan xodimlar haqidagi xabar shu topikka tushadi.`,
+  },
 };
-const kind = args.includes("--payments") ? KINDS.payments : KINDS.leads;
+const kind = args.includes("--attendance") ? KINDS.attendance : args.includes("--payments") ? KINDS.payments : KINDS.leads;
 const mode = args.includes("--create") ? "create"
   : args.includes("--test") ? "test"
   : args.includes("--set") ? "set"
@@ -76,7 +89,7 @@ const mode = args.includes("--create") ? "create"
   : "status";
 
 const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
-const chatId = (process.env[kind.chat] || "").trim();
+const chatId = (process.env[kind.chat] || "").trim() || (kind.chatFallback ? (process.env[kind.chatFallback] || "").trim() : "");
 const fallbackTopic = (process.env[kind.fallback] || "").trim();
 const mongoUri = (process.env.MONGODB_URI || "").trim();
 const dbName = (process.env.MONGODB_DB || "").trim() || "crm_akademiya";

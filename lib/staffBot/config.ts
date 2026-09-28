@@ -37,6 +37,14 @@ export function staffProfileUrl(): string {
   return `${base}/xodim`;
 }
 
+/**
+ * «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i — Telegram ichidagi QR
+ * skaner (28.09.2026, lib/attendanceQr.ts). Kirish — `initData` (app/api/xodim).
+ */
+export function staffCheckinUrl(kind: "in" | "out"): string {
+  return `${staffProfileUrl()}/keldim${kind === "out" ? "?k=out" : ""}`;
+}
+
 export function isStaffBotReady(cfg: StaffBotConfig): boolean {
   return cfg.token.length > 0;
 }

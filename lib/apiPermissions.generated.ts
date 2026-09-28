@@ -25,6 +25,7 @@ export const PUBLIC_API: readonly string[] = [
   "/api/me/tg/wishlist/[itemId]",
   "/api/xodim/me",
   "/api/xodim/data",
+  "/api/xodim/davomat",
   "/api/health/ping",
   "/api/health/db",
 ];
@@ -92,6 +93,7 @@ export const SHARED_API: readonly string[] = [
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */
 export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/attendance": ["/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups"],
+  "/api/attendance-qr": ["/nazorat-qr"],
   "/api/block-test-exams": ["/blok-testlar"],
   "/api/block-test-exams/[id]": ["/blok-testlar"],
   "/api/block-test-types": ["/blok-test-turlari", "/blok-testlar"],

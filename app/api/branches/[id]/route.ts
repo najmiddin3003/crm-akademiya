@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { BRANCH_TOPIC_FIELDS, parseLeadTopicId, type ManagementBranch } from "@/lib/managementBranches";
+import {
+  BRANCH_TOPIC_FIELDS,
+  parseLateGrace,
+  parseLeadTopicId,
+  parseWorkStart,
+  type ManagementBranch,
+} from "@/lib/managementBranches";
 
 // PATCH /api/branches/:id — filialni tahrirlaydi.
 //
-// `leadTopicId` / `paymentTopicId` — filial lidlari va to'lovlari
-// tushadigan Telegram topiklari (lib/leadNotify.ts, lib/sync/dispatch.ts).
+// `leadTopicId` / `paymentTopicId` / `attendanceTopicId` — filial lidlari,
+// to'lovlari va kechikishlari tushadigan Telegram topiklari
+// (lib/leadNotify.ts, lib/sync/dispatch.ts, lib/attendanceNotify.ts).
+// `workStart` / `lateGraceMin` — «Ishga keldim» (QR) kechikish chegarasi.
 // Bo'sh/null kelsa maydon OLIB TASHLANADI ($unset): `null` qoldirilsa ham
 // ishlaydi, lekin hujjatda "topik yo'q" degan ma'noda ikki xil ko'rinish
 // (maydon yo'q / null) yurmasin.
@@ -38,6 +46,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!topic.ok) return NextResponse.json({ ok: false, error: topic.error }, { status: 400 });
     if (topic.value === null) unset[field] = 1;
     else set[field] = topic.value;
+  }
+  if ("workStart" in body) {
+    const w = parseWorkStart(body.workStart);
+    if (!w.ok) return NextResponse.json({ ok: false, error: w.error }, { status: 400 });
+    if (w.value === null) unset.workStart = 1;
+    else set.workStart = w.value;
+  }
+  if ("lateGraceMin" in body) {
+    const g = parseLateGrace(body.lateGraceMin);
+    if (!g.ok) return NextResponse.json({ ok: false, error: g.error }, { status: 400 });
+    if (g.value === null) unset.lateGraceMin = 1;
+    else set.lateGraceMin = g.value;
   }
   if (Object.keys(set).length === 0 && Object.keys(unset).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });

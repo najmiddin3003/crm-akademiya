@@ -349,6 +349,15 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("finance_contracts").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("turnstile_io").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("turnstile_io").createIndex({ date: 1 }));
+  // «Ishga keldim» (QR, lib/attendanceCheck.ts): xodimga kuniga har filialda
+  // BITTA yozuv — ketma-ket ikki skanerlash ikki qator yaratmasin. Faqat QR
+  // yozuvlariga (turniket importi bu qoidaga bo'ysunmaydi).
+  tasks.push(
+    db.collection("turnstile_io").createIndex(
+      { date: 1, employeeId: 1, branchId: 1 },
+      { unique: true, partialFilterExpression: { source: "qr" }, name: "qr_day_employee_branch" },
+    ),
+  );
   tasks.push(db.collection("support_analytics").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("roles").createIndex({ id: 1 }, { unique: true }));
   // `key` — lavozim kaliti (teacher/moderator). Ruxsatlar shu bo'yicha

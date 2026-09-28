@@ -68,6 +68,9 @@ const PUBLIC = [
   // xodimning o'z ma'lumoti, faqat o'qish (app/api/xodim/data).
   "/api/xodim/me",
   "/api/xodim/data",
+  // «📷 Ishga keldim» Mini App'i — QR kodni yozadi (app/api/xodim/davomat):
+  // xodim initData'dan, filial imzolangan QR tokenidan (lib/attendanceQr.ts).
+  "/api/xodim/davomat",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

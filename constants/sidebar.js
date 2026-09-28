@@ -232,6 +232,7 @@ export const SIDEBAR_ITEMS = [
           items: [
             { label: "Davomat", href: "/nazorat-davomat", medium: true },
             { label: "Davomat analitikasi", href: "/nazorat-davomat-analytics" },
+            { label: "Ishga keldim (QR)", href: "/nazorat-qr" },
             { label: "Fikr-mulohaza", href: "/nazorat-feedback" },
           ],
         },

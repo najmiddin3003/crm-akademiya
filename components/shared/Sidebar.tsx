@@ -167,7 +167,7 @@ const IMPLEMENTED_ROUTES = new Set([
   "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract",
   "/finance-sync",
   // Nazorat
-  "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-feedback", "/nazorat-staff-rating",
+  "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-qr", "/nazorat-feedback", "/nazorat-staff-rating",
   "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile", "/nazorat-turnstile-io", "/nazorat-support-analytics",
   "/nazorat-sms-analytics",
   // Boshqaruv
