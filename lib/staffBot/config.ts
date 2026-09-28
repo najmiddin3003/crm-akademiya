@@ -28,6 +28,15 @@ export function loadStaffBotConfig(): StaffBotConfig {
   };
 }
 
+/**
+ * «👤 Profilim» Mini App manzili (28.09.2026) — xodim o'z profilini saytdagidek
+ * ko'radi. Kirish — `initData` imzosi shu bot kaliti bilan (app/api/xodim).
+ */
+export function staffProfileUrl(): string {
+  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || "https://www.tizimli24.uz";
+  return `${base}/xodim`;
+}
+
 export function isStaffBotReady(cfg: StaffBotConfig): boolean {
   return cfg.token.length > 0;
 }

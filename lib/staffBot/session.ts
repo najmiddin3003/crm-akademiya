@@ -164,8 +164,14 @@ export interface StaffBotUser {
   stage: LoginStage;
   /** `stage === "password"` — tekshirilayotgan raqam (`normalizePhone` shaklida). */
   pendingPhone?: string;
-  /** `users._id` (satr) — `stage === "in"` da bor. */
+  /** `users._id` (satr) — parol bilan kirganda bor; raqam ulashib kirganda YO'Q. */
   userId?: string;
+  /**
+   * Raqamni ULASHIB kirgan (28.09.2026): Telegram raqam egasini tasdiqlagan,
+   * parol so'ralmagan — faqat o'z profili (Mini App «Profilim»). Kassa
+   * amallari uchun parol bilan qayta kiriladi (lib/staffBot/auth.ts).
+   */
+  viaContact?: boolean;
   employeeId?: number | null;
   /** `hr_employees.name` — kassa `moderator` shu ism bilan topiladi. */
   name?: string;
@@ -215,7 +221,7 @@ export async function startLogin(db: Db, chatId: number, tg: TgIdentity): Promis
         lastSeenAt: uzStamp(),
         draft: null,
       },
-      $unset: { pendingPhone: "", userId: "", employeeId: "", name: "", isAdmin: "", phone: "", loggedInAt: "", cashboxId: "", blocked: "" },
+      $unset: { pendingPhone: "", userId: "", employeeId: "", name: "", isAdmin: "", phone: "", loggedInAt: "", cashboxId: "", blocked: "", viaContact: "" },
     },
     { upsert: true },
   );
@@ -253,7 +259,36 @@ export async function completeLogin(db: Db, chatId: number, id: LoginIdentity): 
         lastSeenAt: uzStamp(),
         draft: null,
       },
-      $unset: { pendingPhone: "", blocked: "" },
+      $unset: { pendingPhone: "", blocked: "", viaContact: "" },
+    },
+  );
+}
+
+/**
+ * Raqam ulashib kirish — PAROLSIZ, faqat profil (28.09.2026). Xodim CRM'dagi
+ * telefoni bo'yicha topilgan (lib/staffBot/auth.ts `findEmployeeByPhone`);
+ * `userId` yozilmaydi — kassa ruxsatlari parol bilan kirganlarga.
+ */
+export async function completeContactLogin(
+  db: Db,
+  chatId: number,
+  emp: { employeeId: number; name: string; phone: string },
+): Promise<void> {
+  await db.collection(STAFF_BOT_USERS).updateOne(
+    { chatId },
+    {
+      $set: {
+        stage: "in" satisfies LoginStage,
+        employeeId: emp.employeeId,
+        name: emp.name,
+        isAdmin: false,
+        phone: emp.phone,
+        viaContact: true,
+        loggedInAt: uzStamp(),
+        lastSeenAt: uzStamp(),
+        draft: null,
+      },
+      $unset: { pendingPhone: "", blocked: "", userId: "", cashboxId: "" },
     },
   );
 }

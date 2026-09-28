@@ -4,7 +4,7 @@ import { isValidPhone, normalizePhone } from "@/lib/invite";
 import { uzDateIso } from "@/lib/uzTime";
 import { answerStaff, deleteUserMessage, dropReplyKeyboard, sendToStaff } from "@/lib/staffBot/api";
 import { clearPasswordAttempts, takePasswordAttempt } from "@/lib/staffBot/attempts";
-import { listCashboxesForAdmin, resolveAccess, verifyStaffLogin, type StaffAccess } from "@/lib/staffBot/auth";
+import { findEmployeeByPhone, hasWebLogin, listCashboxesForAdmin, resolveAccess, verifyStaffLogin, type StaffAccess } from "@/lib/staffBot/auth";
 import type { StaffBotConfig } from "@/lib/staffBot/config";
 import { loadKassam, loadTodayEntries } from "@/lib/staffBot/data";
 import {
@@ -26,6 +26,7 @@ import { leadCallback, leadText, startLead } from "@/lib/staffBot/lead";
 import { startTransfer, transferCallback, transferText } from "@/lib/staffBot/transfer";
 import { showScreen, type Screen } from "@/lib/staffBot/screen";
 import {
+  completeContactLogin,
   completeLogin,
   getStaffUser,
   logoutStaff,
@@ -122,9 +123,15 @@ export async function handleStaffUpdate(
 // ── Ekranlar ────────────────────────────────────────────────────────
 
 function menuScreen(access: StaffAccess): Screen {
+  if (access.profileOnly) {
+    return {
+      html: V.profileMenuView(access.identity.name, access.webLogin),
+      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin }),
+    };
+  }
   return {
     html: V.menuView(access.identity.name, access.cashbox, access.identity.isAdmin),
-    keyboard: mainMenu(),
+    keyboard: mainMenu({ profileOnly: false, webLogin: true }),
   };
 }
 
@@ -162,6 +169,33 @@ async function acceptPhone(db: Db, cfg: StaffBotConfig, chatId: number, rawPhone
   // parol yoziladi va tugma chalg'itadi.
   await dropReplyKeyboard(cfg, chatId);
   await sendToStaff(cfg, chatId, V.passwordPrompt(phone));
+}
+
+/**
+ * O'Z raqami ulashildi (Telegram egasini tasdiqlagan) — faol xodim topilsa
+ * PAROLSIZ kiradi, faqat profil (28.09.2026, foydalanuvchi: "ikkala usul
+ * ham bo'lsin"). Xodimlar ro'yxatida yo'q, lekin sayt hisobi bor raqam —
+ * odatdagi parol oqimiga o'tadi.
+ */
+async function acceptContact(db: Db, cfg: StaffBotConfig, chatId: number, rawPhone: string): Promise<void> {
+  if (!isValidPhone(rawPhone)) {
+    await sendToStaff(cfg, chatId, V.loginFailed("Raqam noto'g'ri — 90 123 45 67 ko'rinishida yozing"), contactKeyboard());
+    return;
+  }
+  const phone = normalizePhone(rawPhone);
+  const emp = await findEmployeeByPhone(db, phone);
+  if (!emp) {
+    if (await hasWebLogin(db, phone)) {
+      await acceptPhone(db, cfg, chatId, phone);
+      return;
+    }
+    await sendToStaff(cfg, chatId, V.contactNotFound(), contactKeyboard());
+    return;
+  }
+  await completeContactLogin(db, chatId, { employeeId: emp.id, name: emp.name, phone });
+  await dropReplyKeyboard(cfg, chatId);
+  const fresh = await getStaffUser(db, chatId);
+  if (fresh) await openMenu(db, cfg, chatId, fresh);
 }
 
 async function acceptPassword(
@@ -239,7 +273,7 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
         return;
       }
       if (!user) await startLogin(db, chatId, { name: displayName(msg.from), username: msg.from.username ?? "" });
-      await acceptPhone(db, cfg, chatId, String(msg.contact.phone_number ?? ""));
+      await acceptContact(db, cfg, chatId, String(msg.contact.phone_number ?? ""));
       return;
     }
     if (text && isValidPhone(text)) {
@@ -253,9 +287,9 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
 
   // ── Parol kutilyapti ──
   if (user.stage === "password") {
-    // Raqamni almashtirish — kontakt yoki raqamga o'xshash matn.
+    // Raqamni almashtirish — o'z kontakti (parolsiz profil) yoki raqamga o'xshash matn.
     if (msg.contact && msg.contact.user_id === msg.from.id) {
-      await acceptPhone(db, cfg, chatId, String(msg.contact.phone_number ?? ""));
+      await acceptContact(db, cfg, chatId, String(msg.contact.phone_number ?? ""));
       return;
     }
     if (text && isValidPhone(text)) {
@@ -404,6 +438,15 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
       await show({ html: V.cashboxPickerView(), keyboard: cashboxPicker(list, access.cashbox?.id ?? null) });
       break;
     }
+    case CB.passwordLogin:
+      // Profil rejimidan to'liq kirish: shu raqam uchun parol so'raladi.
+      if (!access.profileOnly) {
+        await show(menuScreen(access));
+        break;
+      }
+      await setPendingPhone(db, chatId, access.identity.phone);
+      await show({ html: V.passwordPrompt(access.identity.phone) });
+      break;
     case CB.logout:
       await show({ html: V.logoutView(), keyboard: logoutConfirm() });
       break;

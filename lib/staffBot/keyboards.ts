@@ -1,5 +1,6 @@
 import type { InlineButton, InlineKeyboard, ReplyKeyboard } from "@/lib/telegramApi";
 import type { BotCashbox } from "@/lib/staffBot/auth";
+import { staffProfileUrl } from "@/lib/staffBot/config";
 
 // Tugmalar va ular ortidagi KALITLAR.
 //
@@ -24,6 +25,8 @@ export const CB = {
   cashboxes: "s:cbx",
   logout: "s:out",
   logoutYes: "s:out:y",
+  /** Profil rejimidan parol bilan to'liq kirish (kassa amallari uchun). */
+  passwordLogin: "s:pw",
   /** Kirim qadamlari — argumentli kalitlar quyidagi yordamchilar bilan quriladi. */
   kirimCancel: "s:k:x",
   kirimRestart: "s:k:re",
@@ -93,10 +96,24 @@ export function contactKeyboard(): ReplyKeyboard {
 
 // ── Bosh menyu ──────────────────────────────────────────────────────
 
-/** 6 tugma — foydalanuvchi bilan kelishilgan tartib (18.09.2026). */
-export function mainMenu(): InlineKeyboard {
+/** «👤 Profilim» — Mini App (saytdagi profil, faqat o'qish). Hamma xodimda. */
+const profileButton = (): InlineButton => ({ text: "👤 Profilim", web_app: { url: staffProfileUrl() } });
+
+/**
+ * Bosh menyu. Parol bilan kirgan: «Profilim» + 6 tugma (18.09.2026 tartibi).
+ * Raqam ulashib kirgan (28.09.2026): faqat «Profilim», sayt hisobi bo'lsa
+ * «Parol bilan kirish» (kassa amallari uchun) va «Chiqish».
+ */
+export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean }): InlineKeyboard {
+  if (opts.profileOnly) {
+    const rows: InlineButton[][] = [[profileButton()]];
+    if (opts.webLogin) rows.push([btn("🔑 Parol bilan kirish (kassa)", CB.passwordLogin)]);
+    rows.push([btn("🚪 Chiqish", CB.logout)]);
+    return { inline_keyboard: rows };
+  }
   return {
     inline_keyboard: [
+      [profileButton()],
       [btn("💵 Kirim", CB.kirim), btn("💸 Chiqim", CB.chiqim)],
       [btn("🔁 Ko'chirish", CB.transfer), btn("📋 Lid qo'shish", CB.lead)],
       [btn("📊 Kassam", CB.kassam), btn("🚪 Chiqish", CB.logout)],

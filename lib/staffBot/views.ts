@@ -39,10 +39,10 @@ export function loginPrompt(nick = ""): string {
   return [
     `👋 ${hello}`,
     "",
-    "Bu — <b>Akademiya CRM</b> kassa boti. Bu yerdan to'lov kiritish va kassa holatini ko'rish mumkin.",
+    "Bu — <b>Akademiya CRM</b> xodimlar boti: o'z profilingiz, kassirlar uchun esa to'lov kiritish va kassa holati.",
     "",
-    "Kirish uchun CRM'dagi <b>telefon raqamingiz</b> va <b>parolingiz</b> kerak.",
-    "Pastdagi tugmani bosing yoki raqamni yozing.",
+    "📱 <b>Pastdagi tugma</b> — raqamingizni yuboring: parolsiz kirasiz va profilingizni ko'rasiz.",
+    "⌨️ <b>Raqamni yozsangiz</b> — CRM parolingiz so'raladi (kassa amallari uchun).",
   ].join("\n");
 }
 
@@ -78,7 +78,16 @@ export function sessionInvalid(error: string): string {
 }
 
 export function logoutView(): string {
-  return "🚪 Botdan chiqasizmi?\n\nKeyingi safar telefon raqam va parol qayta so'raladi.";
+  return "🚪 Botdan chiqasizmi?\n\nKeyingi safar qayta kirish so'raladi.";
+}
+
+/** Ulashilgan raqam faol xodimlar ro'yxatida yo'q (yoki ikki xodimda bir xil). */
+export function contactNotFound(): string {
+  return [
+    "❌ Bu raqam CRM'dagi xodimlar ro'yxatida topilmadi.",
+    "",
+    "Administratorga murojaat qiling — Boshqaruv → Xodimlar bo'limida telefon raqamingiz to'g'ri yozilganini tekshirsin.",
+  ].join("\n");
 }
 
 export function loggedOut(): string {
@@ -86,6 +95,17 @@ export function loggedOut(): string {
 }
 
 // ── Bosh menyu ──────────────────────────────────────────────────────
+
+/** Raqam ulashib kirgan xodimning menyusi — faqat profil (28.09.2026). */
+export function profileMenuView(name: string, webLogin: boolean): string {
+  const lines = [
+    `👤 <b>${esc(name || "Xodim")}</b>`,
+    "",
+    "«👤 Profilim» — oylik, avans, tranzaksiyalar, o'quvchilar to'lovlari va boshqa ma'lumotlaringiz (saytdagidek).",
+  ];
+  if (webLogin) lines.push("", "Kassa amallari uchun «🔑 Parol bilan kirish» ni bosing.");
+  return lines.join("\n");
+}
 
 export function menuView(name: string, cashbox: BotCashbox | null, isAdmin: boolean): string {
   const lines = [`👤 <b>${esc(name || "Xodim")}</b>${isAdmin ? " · admin" : ""}`];

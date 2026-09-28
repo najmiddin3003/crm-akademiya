@@ -83,6 +83,13 @@ export interface BotCashbox {
 
 export interface StaffAccess {
   identity: LoginIdentity;
+  /**
+   * Raqam ulashib kirgan — faqat «Profilim» (28.09.2026). Kassa/lid
+   * tugmalari ko'rsatilmaydi, ruxsatlar `false`.
+   */
+  profileOnly: boolean;
+  /** Profil rejimida: shu raqamda sayt hisobi (parol) bor — «Parol bilan kirish» taklif qilinadi. */
+  webLogin: boolean;
   /** Kassa amallari ruxsati — `/finance-cash` (web'dagi bilan bir xil kalit). */
   canCash: boolean;
   /** Lid qo'shish ruxsati — `/orders-list` (POST /api/orders shu kalit bilan yopiq). */
@@ -139,7 +146,71 @@ export async function listCashboxesForAdmin(db: Db): Promise<BotCashbox[]> {
   return rows.map((r) => asBotCashbox(r as Record<string, unknown>)!).filter(Boolean);
 }
 
+/** Raqamdan faqat raqamlar, oxirgi 9 tasi — CRM'da raqam turli shaklda yozilgan. */
+const last9 = (v: unknown) => String(v ?? "").replace(/\D/g, "").slice(-9);
+
+/**
+ * Faol (arxivlanmagan) xodim telefon bo'yicha — raqam ULASHIB kirish uchun
+ * (28.09.2026). Bir raqam ikki faol xodimda bo'lsa — hech kim (taxmin
+ * qilinmaydi, administrator tuzatadi).
+ */
+export async function findEmployeeByPhone(db: Db, rawPhone: string): Promise<{ id: number; name: string } | null> {
+  const want = last9(rawPhone);
+  if (want.length !== 9) return null;
+  const rows = await db
+    .collection("hr_employees")
+    .find({ archReason: { $in: ["", null] } }, { projection: { _id: 0, id: 1, name: 1, phone: 1 } })
+    .toArray();
+  const hits = rows.filter((r) => last9(r.phone) === want);
+  if (hits.length !== 1) return null;
+  return { id: Number(hits[0].id), name: String(hits[0].name ?? "").trim() };
+}
+
+/** Shu raqamda parolli sayt hisobi bormi — profil rejimidagi «Parol bilan kirish» tugmasi uchun. */
+export async function hasWebLogin(db: Db, rawPhone: string): Promise<boolean> {
+  if (!isValidPhone(rawPhone)) return false;
+  const u = await db.collection("users").findOne(
+    { phone: normalizePhone(rawPhone), passwordHash: { $exists: true, $nin: ["", null] } },
+    { projection: { _id: 1 } },
+  );
+  return !!u;
+}
+
+/**
+ * Raqam ulashib kirgan xodim — faqat profil. Xodim arxivlansa yoki
+ * o'chirilsa bog'lanish yaroqsiz (keyingi bosishda chiqariladi).
+ */
+async function resolveProfileAccess(db: Db, user: StaffBotUser): Promise<AccessResult> {
+  const empId = Number(user.employeeId);
+  if (!Number.isFinite(empId)) return { ok: false, error: "Tizimga kirmagansiz", logout: true };
+  const emp = await db.collection("hr_employees").findOne(
+    { id: empId },
+    { projection: { _id: 0, name: 1, phone: 1, archReason: 1 } },
+  );
+  if (!emp) return { ok: false, error: "Xodim topilmadi — qayta kiring.", logout: true };
+  if (!["", null, undefined].includes(emp.archReason)) {
+    return { ok: false, error: "Siz xodimlar ro'yxatida faol emassiz. Administratorga murojaat qiling.", logout: true };
+  }
+  // Raqam CRM'da almashtirilgan bo'lsa — eski raqam bilan ulangan sessiya yopiladi.
+  if (last9(emp.phone) !== last9(user.phone)) {
+    return { ok: false, error: "Telefon raqamingiz CRM'da o'zgargan — qayta kiring.", logout: true };
+  }
+  const phone = String(user.phone ?? "");
+  return {
+    ok: true,
+    access: {
+      identity: { userId: "", employeeId: empId, name: String(emp.name ?? "").trim(), isAdmin: false, phone },
+      profileOnly: true,
+      webLogin: await hasWebLogin(db, phone),
+      canCash: false,
+      canLead: false,
+      cashbox: null,
+    },
+  };
+}
+
 export async function resolveAccess(db: Db, user: StaffBotUser): Promise<AccessResult> {
+  if (user.stage === "in" && user.viaContact) return resolveProfileAccess(db, user);
   if (user.stage !== "in" || !user.userId || !ObjectId.isValid(user.userId)) {
     return { ok: false, error: "Tizimga kirmagansiz", logout: true };
   }
@@ -174,6 +245,8 @@ export async function resolveAccess(db: Db, user: StaffBotUser): Promise<AccessR
     ok: true,
     access: {
       identity,
+      profileOnly: false,
+      webLogin: true,
       canCash: isPathAllowed("/finance-cash", perms),
       canLead: isPathAllowed("/orders-list", perms),
       cashbox: await findBotCashbox(db, { isAdmin, name, cashboxId: user.cashboxId }),
