@@ -5,7 +5,7 @@ import { getBranchScope } from "@/lib/branchScope";
 import { getCurrentUser } from "@/lib/auth";
 import { uzDateIso } from "@/lib/uzTime";
 import { DEFAULT_RADIUS_M, QR_SOURCE, type AttendanceRecord } from "@/lib/attendanceCheck";
-import { geocoderReady, isValidPoint } from "@/lib/geo";
+import { isValidPoint } from "@/lib/geo";
 import {
   loadAttendanceSettings,
   makeQrToken,
@@ -68,8 +68,6 @@ export async function GET() {
         geoSet: isValidPoint(branch?.geo),
         radiusM: Number(branch?.geoRadiusM) > 0 ? Number(branch?.geoRadiusM) : DEFAULT_RADIUS_M,
       },
-      // Yandex kaliti yo'q — manzil yozilmaydi (faqat masofa va koordinata).
-      geocoder: geocoderReady(),
       date: today,
       qr: { in: qrIn, out: qrOut },
       refreshInMs: msToNextSlot(now),

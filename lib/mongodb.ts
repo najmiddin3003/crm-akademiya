@@ -358,7 +358,7 @@ async function createAllIndexes(db: Db): Promise<void> {
       { unique: true, partialFilterExpression: { source: "qr" }, name: "qr_day_employee_branch" },
     ),
   );
-  // Joylashuv → manzil keshi (lib/geo.ts, Yandex Geocoder): ~11 m katak
+  // Joylashuv → manzil keshi (lib/geo.ts, OpenStreetMap Nominatim): ~11 m katak
   // bo'yicha bitta yozuv, 90 kundan keyin o'zi o'chadi (manzil yangilansin).
   tasks.push(db.collection("geo_address_cache").createIndex({ key: 1 }, { unique: true }));
   tasks.push(db.collection("geo_address_cache").createIndex({ createdAt: 1 }, { expireAfterSeconds: 90 * 86_400 }));

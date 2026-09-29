@@ -5,9 +5,9 @@ import type { Db } from "mongodb";
 // Foydalanuvchi qarorlari: xodim skanerlaganda joylashuv ham tekshiriladi —
 // filialdan uzoqda bo'lsa yoki joylashuvga ruxsat bermasa BELGILANMAYDI;
 // olingan joylashuv bazaga INSON O'QIYDIGAN matn bo'lib yoziladi (manzil —
-// Yandex Geocoder, kalit `YANDEX_GEOCODER_API_KEY`). Kalit bo'lmasa yoki
-// Yandex javob bermasa ham skanerlash to'xtamaydi: matnda filialgacha
-// masofa (va koordinata) qoladi.
+// OpenStreetMap Nominatim, kalitsiz; pastdagi bo'lim). Manzil xizmati javob
+// bermasa ham skanerlash to'xtamaydi: matnda filialgacha masofa (va
+// koordinata) qoladi, manzil keyinroq fonda to'ldiriladi.
 
 export interface GeoPoint {
   lat: number;
@@ -98,62 +98,109 @@ export function mapLink(p: GeoPoint): string {
   return `https://yandex.uz/maps/?pt=${p.lng},${p.lat}&z=17&l=map`;
 }
 
-// ── Manzil (Yandex Geocoder) ────────────────────────────────────────
+// ── Manzil (OpenStreetMap Nominatim) ────────────────────────────────
+//
+// 29.09.2026: Yandex Geocoder'ning bepul sharti faqat ommaviy saytlarga
+// ruxsat beradi (CRM yopiq — pullik litsenziya yiliga 195 000 ₽), foydalanuvchi
+// OpenStreetMap'ni tanladi ("openstreetmap qil"). Kalit kerak emas.
+// Nominatim qoidasi (operations.osmfoundation.org/policies/nominatim):
+// soniyasiga ko'pi bilan 1 so'rov, dasturni tanitadigan User-Agent, natijani
+// keshlash, «© OpenStreetMap» atributsiyasi (components/shared/AttendanceLocation.tsx).
+// Bizda kuniga bir necha o'nta skanerlash va 90 kunlik kesh — qoidadan ancha past.
 
 const CACHE = "geo_address_cache";
+const NOMINATIM = (process.env.NOMINATIM_URL || "https://nominatim.openstreetmap.org").trim().replace(/\/+$/, "");
+const USER_AGENT = "TizimliCRM/1.0 (+https://www.tizimli24.uz)";
+/** Soniyasiga 1 ta — biroz zaxira bilan. pm2 bitta jarayon (fork, 1), ya'ni navbat shu yerda. */
+const MIN_GAP_MS = 1_100;
+/** Nominatim rad etsa (429/403) — shuncha vaqt so'ramaymiz. */
+const BACKOFF_MS = 5 * 60_000;
+let nextSlotAt = 0;
 
-export function geocoderReady(): boolean {
-  return Boolean((process.env.YANDEX_GEOCODER_API_KEY || "").trim());
+/**
+ * Navbatdan joy band qiladi. Joy `maxWaitMs` ichida bo'shamasa band qilmaydi
+ * (false) — chaqiruvchi manzilni keyinroq to'ldiradi (lib/attendanceCheck.ts).
+ */
+async function takeSlot(maxWaitMs: number): Promise<boolean> {
+  const now = Date.now();
+  const at = Math.max(now, nextSlotAt);
+  if (at - now > maxWaitMs) return false;
+  nextSlotAt = at + MIN_GAP_MS;
+  if (at > now) await new Promise((r) => setTimeout(r, at - now));
+  return true;
 }
 
-/** "Oʻzbekiston, Namangan viloyati, …" → mamlakat nomisiz (hammasi O'zbekistonda). */
-function cleanAddress(text: string): string {
-  return text.replace(/^(O[ʻ'`‘’]?zbekiston|Uzbekistan|Узбекистан)\s*,\s*/i, "").trim();
+interface OsmReverse {
+  address?: Record<string, string | undefined>;
+  display_name?: string;
+  error?: string;
 }
 
-async function yandexLookup(apikey: string, p: GeoPoint): Promise<string | null> {
-  // `uz_UZ` qo'llanmasa (400) — ruscha; ikkalasi ham odam o'qiydi.
-  const langs = [(process.env.YANDEX_GEOCODER_LANG || "uz_UZ").trim(), "ru_RU"];
-  for (const lang of [...new Set(langs)]) {
-    const url =
-      `https://geocode-maps.yandex.ru/1.x/?apikey=${encodeURIComponent(apikey)}` +
-      `&geocode=${p.lng},${p.lat}&format=json&results=1&lang=${encodeURIComponent(lang)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3_000) });
-    if (res.status === 400) continue;
-    if (!res.ok) {
-      // Kalit URL ichida — butun manzil jurnalga yozilmaydi.
-      console.warn(`[geo] Yandex Geocoder javobi: ${res.status}`);
-      return null;
-    }
-    const data = (await res.json()) as {
-      response?: { GeoObjectCollection?: { featureMember?: { GeoObject?: { metaDataProperty?: { GeocoderMetaData?: { text?: string } } } }[] } };
-    };
-    const text = data.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject?.metaDataProperty?.GeocoderMetaData?.text;
-    return text ? cleanAddress(String(text)) : null;
-  }
-  return null;
+const COUNTRY = /^(O[ʻ'`‘’]?zbekiston|Uzbekistan|Узбекистан|Ўзбекистон)$/i;
+
+/**
+ * Nominatim javobi → qisqa manzil: ko'cha (va uy), mahalla, shahar/qishloq;
+ * ko'cha bo'lmasa tuman ham. Viloyat, indeks va mamlakat yozilmaydi
+ * (hammasi Namanganda). Nomlar OSM'dagidek — ba'zi ko'chalar kirillda.
+ */
+export function formatOsmAddress(r: OsmReverse): string | null {
+  const a = r.address ?? {};
+  const street = [a.road || a.pedestrian || a.footway || a.path || "", a.house_number || ""].filter(Boolean).join(" ");
+  const area = a.neighbourhood || a.quarter || a.suburb || a.residential || a.hamlet || "";
+  const place = a.city || a.town || a.village || a.municipality || "";
+  const district = street ? "" : a.city_district || a.district || a.county || "";
+  const parts = [...new Set([street, area, place, district].map((s) => s.trim()).filter(Boolean))];
+  if (parts.length) return parts.join(", ");
+  // Tarkibiy qismlar yo'q — umumiy satrdan (indeks va mamlakatsiz) boshidagi uchtasi.
+  const d = String(r.display_name || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s && !/^\d{5,6}$/.test(s) && !COUNTRY.test(s));
+  return d.length ? d.slice(0, 3).join(", ") : null;
+}
+
+/** `retry` — manzil topilmadi, lekin keyinroq topilishi mumkin (navbat, tarmoq). */
+export interface AddressLookup {
+  address: string | null;
+  retry: boolean;
 }
 
 /**
  * Koordinata → manzil matni. Natija ~11 m aniqlikda keshlanadi
  * (`geo_address_cache`, 90 kun): xodim har kuni o'sha binodan skanerlaydi —
- * Yandex'ga deyarli bormaydi (bepul chegara kuniga 1000 so'rov).
- * HECH QACHON OTILMAYDI: kalit yo'q, tarmoq xatosi yoki vaqt tugasa — null.
+ * Nominatim'ga deyarli bormaydi. `maxWaitMs` — navbatda ko'pi bilan qancha
+ * kutish (skanerlash so'rovi ichida qisqa, fonda uzun).
+ * HECH QACHON OTILMAYDI: tarmoq xatosi yoki vaqt tugasa — `address: null`.
  */
-export async function reverseGeocode(db: Db, p: GeoPoint): Promise<string | null> {
-  const apikey = (process.env.YANDEX_GEOCODER_API_KEY || "").trim();
-  if (!apikey) return null;
+export async function reverseGeocode(db: Db, p: GeoPoint, opts: { maxWaitMs?: number } = {}): Promise<AddressLookup> {
   const key = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
   try {
     const hit = await db.collection(CACHE).findOne({ key }, { projection: { _id: 0, address: 1 } });
-    if (typeof hit?.address === "string" && hit.address) return hit.address;
-    const address = await yandexLookup(apikey, p);
+    if (typeof hit?.address === "string" && hit.address) return { address: hit.address, retry: false };
+    if (!(await takeSlot(opts.maxWaitMs ?? 1_200))) return { address: null, retry: true };
+    const url = `${NOMINATIM}/reverse?format=jsonv2&lat=${p.lat}&lon=${p.lng}&zoom=18&addressdetails=1&accept-language=uz,ru`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+      signal: AbortSignal.timeout(4_000),
+    });
+    if (res.status === 429 || res.status === 403) {
+      nextSlotAt = Date.now() + BACKOFF_MS;
+      console.warn(`[geo] Nominatim rad etdi: ${res.status} — ${BACKOFF_MS / 60_000} daqiqa so'ralmaydi`);
+      return { address: null, retry: false };
+    }
+    if (!res.ok) {
+      console.warn(`[geo] Nominatim javobi: ${res.status}`);
+      return { address: null, retry: res.status >= 500 };
+    }
+    const data = (await res.json()) as OsmReverse;
+    // `error` — bu nuqtada manzil yo'q ("Unable to geocode"); qayta so'rash befoyda.
+    const address = data.error ? null : formatOsmAddress(data);
     if (address) {
       await db.collection(CACHE).updateOne({ key }, { $set: { key, address, createdAt: new Date() } }, { upsert: true });
     }
-    return address;
+    return { address, retry: false };
   } catch (e) {
     console.warn("[geo] manzil aniqlanmadi:", e instanceof Error ? e.name : e);
-    return null;
+    return { address: null, retry: true };
   }
 }

@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { staffFromInitData } from "@/lib/staffBot/webapp";
 import { parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
-import { markAttendance, type ScanLocation } from "@/lib/attendanceCheck";
+import { fillLocationAddress, markAttendance, type ScanLocation } from "@/lib/attendanceCheck";
 import { notifyLate } from "@/lib/attendanceNotify";
 import { isValidPoint } from "@/lib/geo";
 
@@ -66,6 +66,12 @@ export async function POST(req: Request) {
       const { record, branch } = res;
       const turi = auth.employee.turi;
       after(() => notifyLate(record, branch, turi));
+    }
+    // Manzil hozir topilmadi (ertalabki navbat yoki tarmoq) — fonda to'ldiriladi.
+    if (res.addressPending) {
+      const recordId = res.record.id;
+      const field = res.addressPending;
+      after(() => fillLocationAddress(db, recordId, field));
     }
 
     const r = res.record;

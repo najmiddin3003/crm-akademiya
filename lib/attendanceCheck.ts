@@ -86,22 +86,62 @@ export function checkLocation(branch: Pick<AttendanceBranch, "geo" | "geoRadiusM
   return { ok: true, distance: d };
 }
 
-/** Yozuvga tushadigan joylashuv — manzil (Yandex, keshlangan) va inson o'qiydigan satr. */
-async function locationRecord(db: Db, loc: ScanLocation, distance: number | null, branch: AttendanceBranch): Promise<TurnstileLocation> {
-  const address = await reverseGeocode(db, loc);
+/** Inson o'qiydigan satr: "manzil · filialdan 35 m" (manzilsiz — masofa, u ham yo'q bo'lsa koordinata). */
+function locationText(address: string | null, distance: number | null, p: GeoPoint): string {
   const parts: string[] = [];
   if (address) parts.push(address);
   if (distance !== null) parts.push(`filialdan ${formatDistance(distance)}`);
-  if (parts.length === 0) parts.push(`${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`);
+  if (parts.length === 0) parts.push(`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`);
+  return parts.join(" · ");
+}
+
+/**
+ * Yozuvga tushadigan joylashuv — manzil (OpenStreetMap, keshlangan) va inson
+ * o'qiydigan satr. `retry` — manzil hozir topilmadi (navbat band yoki tarmoq),
+ * javobdan keyin `fillLocationAddress` to'ldiradi.
+ */
+async function locationRecord(
+  db: Db,
+  loc: ScanLocation,
+  distance: number | null,
+  branch: AttendanceBranch,
+): Promise<{ location: TurnstileLocation; retry: boolean }> {
+  const { address, retry } = await reverseGeocode(db, loc);
   return {
-    lat: loc.lat,
-    lng: loc.lng,
-    acc: loc.acc !== null && Number.isFinite(loc.acc) ? Math.round(loc.acc) : null,
-    distanceM: distance === null ? null : Math.round(distance),
-    address,
-    text: parts.join(" · "),
-    branch: branch.geo && isValidPoint(branch.geo) ? { lat: branch.geo.lat, lng: branch.geo.lng } : null,
+    retry,
+    location: {
+      lat: loc.lat,
+      lng: loc.lng,
+      acc: loc.acc !== null && Number.isFinite(loc.acc) ? Math.round(loc.acc) : null,
+      distanceM: distance === null ? null : Math.round(distance),
+      address,
+      text: locationText(address, distance, loc),
+      branch: branch.geo && isValidPoint(branch.geo) ? { lat: branch.geo.lat, lng: branch.geo.lng } : null,
+    },
   };
+}
+
+/**
+ * Manzilni KEYIN to'ldirish — ertalabki navbatda (Nominatim: soniyasiga 1 ta)
+ * yoki tarmoq uzilganda skanerlash kutib turmaydi, manzil javobdan keyin
+ * yoziladi (app/api/xodim/davomat → `after`). Nuqta o'zgargan bo'lsa (ketishni
+ * qayta skanerlagan) — tegilmaydi. HECH QACHON OTILMAYDI.
+ */
+export async function fillLocationAddress(db: Db, recordId: number, field: "location" | "exitLocation"): Promise<void> {
+  try {
+    const col = db.collection<AttendanceRecord>("turnstile_io");
+    const row = await col.findOne({ id: recordId }, { projection: { _id: 0, [field]: 1 } });
+    const loc = row?.[field];
+    if (!loc || loc.address || !isValidPoint(loc)) return;
+    const { address } = await reverseGeocode(db, loc, { maxWaitMs: 60_000 });
+    if (!address) return;
+    await col.updateOne(
+      { id: recordId, [`${field}.lat`]: loc.lat, [`${field}.lng`]: loc.lng, [`${field}.address`]: null },
+      { $set: { [`${field}.address`]: address, [`${field}.text`]: locationText(address, loc.distanceM, loc) } },
+    );
+  } catch (e) {
+    console.warn("[attendance] manzil keyin ham yozilmadi:", e instanceof Error ? e.message : e);
+  }
 }
 
 export interface AttendanceRecord {
@@ -227,6 +267,8 @@ export type AttendanceOutcome =
       fresh: boolean;
       record: AttendanceRecord;
       branch: AttendanceBranch;
+      /** Manzil hozir topilmadi — chaqiruvchi javobdan keyin `fillLocationAddress` ni chaqiradi. */
+      addressPending?: "location" | "exitLocation";
     }
   | { ok: false; status: number; error: string; code?: LocationErrorCode };
 
@@ -271,10 +313,18 @@ export async function markAttendance(
     }
     const place = checkLocation(branch, loc);
     if (!place.ok) return { ok: false, status: place.status, error: place.error, code: place.code };
-    const exitLocation = loc ? await locationRecord(db, loc, place.distance, branch) : null;
+    const exit = loc ? await locationRecord(db, loc, place.distance, branch) : null;
+    const exitLocation = exit?.location ?? null;
     // Qayta skanerlansa oxirgisi qoladi — chiqib, qaytib kelib, yana ketish mumkin.
     await col.updateOne(key, { $set: { exitTime: hm, exitedAt: now, exitLocation } });
-    return { ok: true, kind, fresh: true, record: { ...existing, exitTime: hm, exitLocation }, branch };
+    return {
+      ok: true,
+      kind,
+      fresh: true,
+      record: { ...existing, exitTime: hm, exitLocation },
+      branch,
+      ...(exit?.retry ? { addressPending: "exitLocation" as const } : {}),
+    };
   }
 
   // Bugun allaqachon belgilangan — hech narsa yozilmaydi, joylashuv so'ralmaydi.
@@ -282,7 +332,8 @@ export async function markAttendance(
 
   const place = checkLocation(branch, loc);
   if (!place.ok) return { ok: false, status: place.status, error: place.error, code: place.code };
-  const location = loc ? await locationRecord(db, loc, place.distance, branch) : null;
+  const enter = loc ? await locationRecord(db, loc, place.distance, branch) : null;
+  const location = enter?.location ?? null;
 
   const exp = await expectationFor(db, emp, branch, date, u.getDay());
   const late = lateBy(nowMin, exp);
@@ -310,7 +361,7 @@ export async function markAttendance(
     const record: AttendanceRecord = { id: (Number(last?.id) || 0) + 1, ...base };
     try {
       await col.insertOne({ ...record });
-      return { ok: true, kind, fresh: true, record, branch };
+      return { ok: true, kind, fresh: true, record, branch, ...(enter?.retry ? { addressPending: "location" as const } : {}) };
     } catch (e) {
       if (!isDuplicateKey(e)) throw e;
       // Shu xodim ikki marta ketma-ket skanerlagan — birinchisi yozildi.

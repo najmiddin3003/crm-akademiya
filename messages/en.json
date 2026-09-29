@@ -2315,7 +2315,7 @@
   "Manzil qo'shish": "Add address",
   "Manzil topilmadi": "Address not found",
   "Manzil turi": "Address type",
-  "Manzil xizmati (Yandex) ulanmagan — joylashuv masofa va koordinata bilan yoziladi. Ulash uchun serverga YANDEX_GEOCODER_API_KEY qo'shiladi.": "The address service (Yandex) is not connected — location is saved as distance and coordinates. To connect it, add YANDEX_GEOCODER_API_KEY on the server.",
+  "Manzil: © OpenStreetMap hissadorlari": "Address: © OpenStreetMap contributors",
   "Manzillar": "Addresses",
   "Maosh": "Salary",
   "Maqsad": "Purpose",

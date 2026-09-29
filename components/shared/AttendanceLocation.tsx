@@ -10,8 +10,8 @@ import type { TurnstileLocation } from "@/lib/turnstileIo";
 //
 // Jadval katagida ixcham belgi: filialgacha masofa (yashil — radius ichida,
 // ya'ni qabul qilingan) va manzil. Bosilsa — oyna: to'liq manzil, aniqlik,
-// koordinata va xarita. Xarita — Yandex vidjeti (kalitsiz iframe), manzil
-// ham Yandex'dan (lib/geo.ts).
+// koordinata va xarita. Xarita — Yandex vidjeti (kalitsiz iframe), manzil —
+// OpenStreetMap'dan (lib/geo.ts, 29.09.2026; oynada manba ko'rsatiladi).
 //
 // Xaritada FAQAT skanerlangan nuqta: vidjet belgi rangini (`pm2rdl` …)
 // qabul qilmaydi — ikki nuqta bir xil ko'k chiqib, qaysi biri filial
@@ -104,6 +104,20 @@ function LocationModal({
           </p>
           <p className="mt-0.5 text-[12px] text-muted-foreground tabular-nums">
             {loc.lat.toFixed(6)}, {loc.lng.toFixed(6)}
+            {/* Manzil OpenStreetMap'dan — ODbL litsenziyasi manbani ko'rsatishni talab qiladi. */}
+            {loc.address && (
+              <>
+                {" · "}
+                <a
+                  href="https://www.openstreetmap.org/copyright"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  {t("Manzil: © OpenStreetMap hissadorlari")}
+                </a>
+              </>
+            )}
           </p>
         </div>
       </div>
