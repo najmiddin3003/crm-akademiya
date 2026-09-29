@@ -4,9 +4,14 @@ import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import {
-  payrollBase,
   payrollDue,
   payrollEarned,
+  payrollFoizPart,
+  payrollHasFoiz,
+  payrollHasOklad,
+  payrollOkladDays,
+  payrollOkladPart,
+  payrollStartsInPeriod,
   type EmployeePayroll,
   type PayrollPeriod,
 } from "@/lib/salary";
@@ -56,23 +61,31 @@ interface Row {
 }
 
 function rowsOf(e: EmployeePayroll, p: PayrollPeriod): Row[] {
-  const base = payrollBase(e, p);
   const earned = payrollEarned(e, p);
   const due = payrollDue(e, p);
+  const hasFoiz = payrollHasFoiz(e);
+  // Asos qatorlari: foiz qismi va/yoki oklad qismi. "Oklad + foiz" xodimda
+  // IKKALASI ham turadi — yig'indisi `payrollBase` (lib/salary.ts).
+  const baseRows: Row[] = [];
+  if (hasFoiz) baseRows.push({ label: "Davomatdan foizi", value: payrollFoizPart(e), hint: `${e.percent}%` });
+  if (payrollHasOklad(e)) {
+    baseRows.push({
+      label: "Oklad (shu kungacha)",
+      value: payrollOkladPart(e, p),
+      // Oy o'rtasida ishga kirgan bo'lsa — nechta kun hisoblangani.
+      hint: payrollStartsInPeriod(e, p) ? `${payrollOkladDays(e, p)}/${p.daysIn} kun` : undefined,
+    });
+  }
   return [
     // Foizli o'qituvchida asos — shu oyda u orqali tushgan pul (SOF:
-    // o'quvchilarga qaytarilgani ayrilgan, izohda ko'rinadi); oklad
+    // o'quvchilarga qaytarilgani ayrilgan, izohda ko'rinadi); faqat oklad
     // oladigan xodimda tushum oyligiga ta'sir qilmaydi, shuning uchun 0.
     {
       label: "Davomat",
-      value: e.salaryType === "foiz" ? e.collected : 0,
-      hint: e.salaryType === "foiz" && (e.refunded ?? 0) > 0 ? `qaytarim −${fmtUZS(e.refunded)}` : undefined,
+      value: hasFoiz ? e.collected : 0,
+      hint: hasFoiz && (e.refunded ?? 0) > 0 ? `qaytarim −${fmtUZS(e.refunded)}` : undefined,
     },
-    {
-      label: e.salaryType === "foiz" ? "Davomatdan foizi" : "Oklad (shu kungacha)",
-      value: base,
-      hint: e.salaryType === "foiz" ? `${e.percent}%` : undefined,
-    },
+    ...baseRows,
     { label: "Bonus", value: e.bonus },
     { label: "Jarima", value: e.jarima },
     { label: "Akladi", value: e.carryOver, hint: "o'tgan oydan" },
@@ -167,8 +180,10 @@ export default function EmployeeSalaryModal({
                 xodim ekani aniq bo'lishi uchun mayda sarlavha qoldirildi. */}
             <div className="px-6 pt-3 text-[12px] text-muted-foreground">
               {employeeName}
+              {/* `month` 0-11 (lib/salary.ts) — ilgari +1 qilinmagani uchun
+                  sentabr "8.2026" bo'lib chiqardi. */}
               {payroll?.configured && (
-                <span> · {period.month}.{period.year}</span>
+                <span> · {String(period.month + 1).padStart(2, "0")}.{period.year}</span>
               )}
             </div>
 

@@ -1,6 +1,6 @@
 import type { Db, Filter } from "mongodb";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
-import { fixedSalaryOf, isSalaryConfigured, plastikSalaryOf, type HrEmployee } from "@/lib/hrEmployees";
+import { fixedSalaryOf, isSalaryConfigured, plastikSalaryOf, sanitizeSalaryStartDate, type HrEmployee } from "@/lib/hrEmployees";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   payrollEarned,
@@ -15,6 +15,7 @@ import {
   type EmployeePayroll,
   type PaidElsewhere,
   type PayrollPeriod,
+  type SalaryType,
 } from "@/lib/salary";
 import { loadTaxRules } from "@/lib/taxes";
 
@@ -63,6 +64,15 @@ function monthMatch(month: string) {
 function monthOfCreatedAt(raw: unknown): string | null {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(raw ?? "").trim());
   return m ? `${m[3]}-${m[2]}` : null;
+}
+
+/**
+ * Xodim hujjatidagi `created` ("DD.MM.YYYY | HH:mm") → "YYYY-MM-DD".
+ * O'qib bo'lmasa "". Faqat eslatma uchun (EmployeePayroll.createdDate).
+ */
+function createdIso(raw: unknown): string {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(raw ?? "").trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
 }
 
 export interface PaidByEmployee {
@@ -497,7 +507,13 @@ export async function buildPayrollRows(
     //   • oklad — xodim kartasidagi filial bo'yicha ish haqi,
     //   • foiz  — o'qituvchiga biriktirilgan daraja (Oylik foizlari).
     // Ikkalasi ham yo'q bo'lsa xodim sozlanmagan.
-    const salaryType: "foiz" | "fixed" = hasOklad ? "fixed" : "foiz";
+    //
+    // IKKALASI HAM BOR — "OKLAD + FOIZ" (29.09.2026, foydalanuvchi: "1 mln
+    // oklad + har bir o'quvchi to'lovidan 30%"). Ilgari bu holat jimgina
+    // "fixed" bo'lardi va foiz tashlab yuborilardi. O'lchandi: 58 faol
+    // xodimdan faqat bittasida ikkalasi ham kiritilgan — aynan shunday
+    // ishlaydigan o'qituvchi, ya'ni boshqa hech kimning hisobi o'zgarmaydi.
+    const salaryType: SalaryType = hasOklad && percent !== null ? "mixed" : hasOklad ? "fixed" : "foiz";
     const configured = hasOklad || percent !== null;
 
     return {
@@ -508,6 +524,9 @@ export async function buildPayrollRows(
       configured,
       salaryType,
       fixedSalary,
+      // Oklad shu kundan hisoblanadi (lib/salary.ts → payrollOkladDays).
+      salaryStart: sanitizeSalaryStartDate(emp.salaryStartDate) ?? "",
+      createdDate: createdIso(emp.created),
       percent: percent ?? 0,
       // Shu oyda o'quvchilari to'lagan pul MINUS ularga qaytarilgani —
       // foizli oylik asosi (loadCollectedByTeacher izohiga qarang).

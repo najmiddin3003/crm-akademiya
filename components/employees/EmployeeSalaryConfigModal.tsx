@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import MoneyInput from "@/components/ui/MoneyInput";
+import DateField from "@/components/ui/DateField";
 import { useToast } from "@/components/ui/Toast";
 import type { HrEmployee, EmployeeBranchAssignment } from "@/lib/hrEmployees";
 import Select from "@/components/ui/Select";
@@ -53,6 +54,9 @@ export default function EmployeeSalaryConfigModal({
   // Plastik oylik — faqat raqamlardan iborat satr (MoneyInput kelishuvi).
   // Bo'sh satr = biriktirilmagan.
   const [plastik, setPlastik] = useState<string>("");
+  // Ishga kirgan (oylik yoziladigan) sana, "YYYY-MM-DD". Bo'sh — cheklov
+  // yo'q, oklad oy boshidan (lib/salary.ts → payrollOkladDays).
+  const [startDate, setStartDate] = useState<string>(employee.salaryStartDate ?? "");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -127,6 +131,8 @@ export default function EmployeeSalaryConfigModal({
           branchAssignments: assignments,
           percent,
           plastikSalary: plastik === "" ? null : Number(plastik),
+          // Bo'sh → `null` (cheklov yo'q).
+          salaryStartDate: startDate || null,
         }),
       });
       const data = await res.json();
@@ -170,6 +176,9 @@ export default function EmployeeSalaryConfigModal({
                     {t("O'qituvchi yaxlit oklad emas, o'quvchilari to'lagan puldan")}
                     <strong>{" "}{t("shu foizni")}</strong>{" "}{t("oladi. Oylik har oy tushumdan avtomatik hisoblanadi. Ro'yxat Sozlamalar → Moliya → Oylik foizlari dan.")}
                   </p>
+                  <p className="text-[11.5px] text-muted-foreground mt-1">
+                    {t("Pastda oklad ham kiritilsa — oklad + foiz: ikkalasi qo'shiladi (masalan 1 000 000 + 30%).")}
+                  </p>
                   {selectedPercentNum !== null && (
                     <p className="text-[12px] mt-2">
                       {t("Masalan o'quvchi")}{" "}<strong>100 000</strong>{" "}{t("so'm to'lasa — o'qituvchiga")}{" "}<strong className="text-emerald-700">{Math.round(100000 * selectedPercentNum / 100).toLocaleString("ru-RU")}</strong>{" "}{t("so'm qo'shiladi.")}
@@ -181,7 +190,7 @@ export default function EmployeeSalaryConfigModal({
               <div>
                 <div className="text-[13px] font-medium mb-1">
                   Oklad (filial bo&apos;yicha)
-                  {isTeacher && <span className="text-muted-foreground font-normal">{" "}{t("— ixtiyoriy, faqat qat'iy maosh oladigan o'qituvchi uchun")}</span>}
+                  {isTeacher && <span className="text-muted-foreground font-normal">{" "}{t("— ixtiyoriy: qat'iy maosh yoki foiz bilan birga (oklad + foiz)")}</span>}
                 </div>
                 <div className="grid grid-cols-4 gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-2">
                   <span>{t("Filial")}</span><span>{t("Rol")}</span><span>{t("Ish jadvali")}</span><span>{t("Ish haqi")}</span>
@@ -220,6 +229,19 @@ export default function EmployeeSalaryConfigModal({
                 )}
               </div>
 
+              {/* ISHGA KIRGAN SANA — oklad shu kundan hisoblanadi (29.09.2026:
+                  "oy o'rtasidan kirsa ham to'liq oy uchun hisoblayapti").
+                  Bo'sh qolsa — cheklov yo'q, avvalgidek oy boshidan. */}
+              <div className="rounded-xl border border-border p-3 space-y-2">
+                <label className="block text-[13px] font-medium">{t("Ishga kirgan sana")}</label>
+                <div className="max-w-[220px]">
+                  <DateField value={startDate} onChange={setStartDate} variant="form" placeholder="kk/oo/yyyy" />
+                </div>
+                <p className="text-[12px] text-muted-foreground">
+                  {t("Oylik shu kundan yoziladi: oy o'rtasida kirgan xodimga o'sha oy uchun faqat ishlagan kunlari hisoblanadi (oklad × kun / oy kunlari). Bo'sh qolsa — oy boshidan.")}
+                </p>
+              </div>
+
               {/* PLASTIK OYLIK — oklad yonida turadi, chunki bu ham ish
                   haqi sozlamasi. Xodimlar ro'yxatidagi tugmacha tez
                   o'zgartirish uchun qoladi, bu yer esa asosiy joyi. */}
@@ -253,6 +275,12 @@ export default function EmployeeSalaryConfigModal({
                 )}
                 {total === 0 && isTeacher && percent && (
                   <span className="text-emerald-700">{" "}{t("— o'qituvchi foiz bo'yicha ishlaydi, oklad shart emas")}</span>
+                )}
+                {/* OKLAD + FOIZ — ikkalasi ham kiritilgan (lib/payrollSources.ts). */}
+                {total > 0 && isTeacher && percent && (
+                  <span className="text-violet-700 dark:text-violet-400">
+                    {" "}{t("— oklad + foiz: okladga o'quvchilar to'lovidan {percent}% qo'shiladi", { percent: selectedPercentNum ?? percent })}
+                  </span>
                 )}
               </div>
             </>

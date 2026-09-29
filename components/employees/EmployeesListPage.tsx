@@ -17,7 +17,7 @@ import EmployeePlastikModal from "./EmployeePlastikModal";
 import { groupNumber } from "@/components/ui/MoneyInput";
 import type { HrEmployeeFull } from "./employeeExtras";
 import type { Group } from "@/lib/groups";
-import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll } from "@/lib/salary";
+import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll, type SalaryType } from "@/lib/salary";
 import {
   EMP_COLUMNS,
   EMP_LEAVE_REASONS,
@@ -130,7 +130,7 @@ function fmtNum(n: number): string {
 // Oyligi sozlanmagan xodim uchun null qaytadi: bunday xodimda hisoblangan
 // raqam yo'q, "0" esa yolg'on bo'lardi.
 interface SalaryView {
-  salaryType: "foiz" | "fixed";
+  salaryType: SalaryType;
   percent: number;
   fixedSalary: number;
   jamiOylik: number;
@@ -330,7 +330,10 @@ export default function EmployeesListPage() {
         default: {
           const s = salaryFor(e, period, payrollById);
           if (!s) return null;
-          if (sortKey === "ishTuri") return s.salaryType === "foiz" ? `Foiz ${String(s.percent).padStart(3, "0")}` : "Oklad";
+          if (sortKey === "ishTuri") {
+            if (s.salaryType === "mixed") return `Oklad+ ${String(s.percent).padStart(3, "0")}`;
+            return s.salaryType === "foiz" ? `Foiz ${String(s.percent).padStart(3, "0")}` : "Oklad";
+          }
           return null;
         }
       }
@@ -565,12 +568,17 @@ export default function EmployeesListPage() {
         const s = salaryFor(e, period, payrollById);
         if (!s) return <NotConfigured />;
         const isFoiz = s.salaryType === "foiz";
-        const cls = isFoiz
-          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-          : "bg-sky-500/10 text-sky-600 border-sky-500/20";
+        const isMixed = s.salaryType === "mixed";
+        const cls = isMixed
+          ? "bg-violet-500/10 text-violet-600 border-violet-500/20"
+          : isFoiz
+            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+            : "bg-sky-500/10 text-sky-600 border-sky-500/20";
         return (
           <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${cls} whitespace-nowrap`}>
-            {isFoiz ? t("Foiz {percent}%", { percent: s.percent }) : "Oklad"}
+            {isMixed
+              ? t("Oklad + {percent}%", { percent: s.percent })
+              : isFoiz ? t("Foiz {percent}%", { percent: s.percent }) : "Oklad"}
           </span>
         );
       }
@@ -867,7 +875,11 @@ export default function EmployeesListPage() {
                           <>
                             <div>
                               <div className="text-muted-foreground">{t("Ish turi")}</div>
-                              <div className="font-medium">{s.salaryType === "foiz" ? `Foiz ${s.percent}%` : "Oklad"}</div>
+                              <div className="font-medium">
+                                {s.salaryType === "mixed"
+                                  ? t("Oklad + {percent}%", { percent: s.percent })
+                                  : s.salaryType === "foiz" ? `Foiz ${s.percent}%` : "Oklad"}
+                              </div>
                             </div>
                             <div>
                               <div className="text-muted-foreground">{t("Jami oylik")}</div>

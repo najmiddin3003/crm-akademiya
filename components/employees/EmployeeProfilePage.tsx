@@ -690,7 +690,12 @@ export function EmployeeProfileView({
       : null,
   });
 
-  const salaryConfigured = isSalaryConfigured(emp);
+  // Oylik qatori bor bo'lsa — o'sha (oklad YOKI foiz sozlangan). Ilgari faqat
+  // `isSalaryConfigured` (oklad) tekshirilardi va foiz bilan ishlaydigan
+  // o'qituvchida ham "Ish haqi sozlanmagan" chiqardi, holbuki oyligi
+  // hisoblanadi. Qator yo'q bo'lsa (xodim boshqa filial oylik ro'yxatida) —
+  // eski tekshiruv, lekin foizini ham hisobga olib.
+  const salaryConfigured = payrollRow ? payrollRow.configured : isSalaryConfigured(emp) || Boolean(emp.percent);
   const cashboxName = (cid: number) => cashboxNames[cid] ?? (cid ? `Kassa ${cid}` : "—");
 
   // Jadvaldagi "Qoldiq" bilan chap kartadagi "To'lanmagan" orasidagi
@@ -910,7 +915,7 @@ export function EmployeeProfileView({
               Ilgari bu qiymatlar hech qayerda saqlanmasdi ham, ko'rinmasdi
               ham. Bo'sh bo'lsa karta umuman chizilmaydi — bo'sh "—" lar
               qatorini ko'rsatishdan ma'no yo'q. */}
-          {(emp.birthDate || emp.comment || Object.keys(emp.customFields ?? {}).length > 0) && (
+          {(emp.birthDate || emp.salaryStartDate || emp.comment || Object.keys(emp.customFields ?? {}).length > 0) && (
             <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("Qo'shimcha ma'lumot")}
@@ -919,6 +924,13 @@ export function EmployeeProfileView({
                 <div>
                   <div className="text-[11px] text-muted-foreground">{t("Tug'ilgan sanasi")}</div>
                   <div className="text-[13px] tabular-nums">{fmtBirthDate(emp.birthDate)}</div>
+                </div>
+              )}
+              {/* Oklad shu kundan hisoblanadi — "Ish haqi" oynasida o'zgaradi. */}
+              {emp.salaryStartDate && (
+                <div>
+                  <div className="text-[11px] text-muted-foreground">{t("Ishga kirgan sana")}</div>
+                  <div className="text-[13px] tabular-nums">{fmtBirthDate(emp.salaryStartDate)}</div>
                 </div>
               )}
               {Object.entries(emp.customFields ?? {}).map(([k, v]) => (

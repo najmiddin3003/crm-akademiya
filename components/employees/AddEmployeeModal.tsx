@@ -8,6 +8,7 @@ import PhoneField, { phoneDigits } from "@/components/auth/PhoneField";
 import { useBranches } from "@/hooks/useBranches";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
+import { uzDateIso } from "@/lib/uzTime";
 import EmployeeToggle from "./EmployeeToggle";
 import CustomFieldDrawer, { type CustomFieldDraft } from "./CustomFieldDrawer";
 import {
@@ -198,6 +199,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   const [guessingGender, setGuessingGender] = useState(false);
   const [email, setEmail] = useState(employee?.email ?? "");
   const [birthDate, setBirthDate] = useState(employee?.birthDate ?? "");
+  // ISHGA KIRGAN (OYLIK YOZILADIGAN) SANA. Yangi xodimda sukut — BUGUN:
+  // oy o'rtasida qo'shilgan xodimga to'liq oy yozilmasin (29.09.2026).
+  // Tahrirlashda — saqlangani (eski xodimlarda bo'sh: cheklov yo'q).
+  const [salaryStart, setSalaryStart] = useState(editing ? employee?.salaryStartDate ?? "" : uzDateIso());
   const [comment, setComment] = useState(employee?.comment ?? "");
   const [payroll, setPayroll] = useState(employee?.payroll ?? false);
   const [twoFactor, setTwoFactor] = useState(employee?.twoFactor ?? false);
@@ -612,6 +617,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           photoUrl: finalPhotoUrl,
           branchAssignments,
           branchIds,
+          // Bo'sh → `null` (cheklov yo'q, oklad oy boshidan).
+          salaryStartDate: salaryStart || null,
         }),
       });
       const data = await res.json();
@@ -783,6 +790,18 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
 
           {/* Ish haqi chiqarish toggle */}
           <EmployeeToggle checked={payroll} onChange={setPayroll} label={t("Ish haqi chiqarish")} />
+
+          {/* Ishga kirgan sana — oklad shu kundan hisoblanadi
+              (lib/salary.ts → payrollOkladDays). */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className={labelCls}>{t("Ishga kirgan sana")}</label>
+              <DateField value={salaryStart} onChange={setSalaryStart} variant="form" placeholder="kk/oo/yyyy" />
+            </div>
+            <p className="md:col-span-2 self-end text-[11.5px] text-muted-foreground pb-1">
+              {t("Oylik shu kundan yoziladi: oy o'rtasida kirgan xodimga o'sha oy uchun faqat ishlagan kunlari hisoblanadi (oklad × kun / oy kunlari). Bo'sh qolsa — oy boshidan.")}
+            </p>
+          </div>
 
           {/* Filiallar / Rollar / Ish jadvali / Ish haqi */}
           <div className="space-y-3">

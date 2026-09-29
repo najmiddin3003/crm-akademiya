@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizeAssignments, sanitizePlastikSalary, type HrEmployee } from "@/lib/hrEmployees";
+import { sanitizeAssignments, sanitizePlastikSalary, sanitizeSalaryStartDate, type HrEmployee } from "@/lib/hrEmployees";
 import { sanitizePermissions } from "@/lib/permissions";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import {
@@ -102,6 +102,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // 0 yozib qo'yardi. `sanitizePlastikSalary` bu farqni saqlaydi.
   if (body.plastikSalary !== undefined) {
     set.plastikSalary = sanitizePlastikSalary(body.plastikSalary);
+  }
+  // Ishga kirgan (oylik yoziladigan) sana — oklad shu kundan hisoblanadi.
+  // Bo'sh yoki noto'g'ri qiymat `null` bo'ladi: cheklov yo'q, oy boshidan.
+  if (body.salaryStartDate !== undefined) {
+    set.salaryStartDate = sanitizeSalaryStartDate(body.salaryStartDate);
   }
   // `branchAssignments` quyida, filial qoidasi bilan BIRGA ishlanadi:
   // qatorlar a'zolik ichiga kesilishi kerak, ya'ni `branchIds` aniq

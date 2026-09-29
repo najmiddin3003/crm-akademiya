@@ -1,7 +1,15 @@
 import type { Db } from "mongodb";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { buildPayrollRows, loadPayrollRefs } from "@/lib/payrollSources";
-import { payrollBase, payrollMonthKey, payrollPeriod, payrollPeriodOf, type EmployeePayroll } from "@/lib/salary";
+import {
+  payrollHasFoiz,
+  payrollMonthKey,
+  payrollOkladPart,
+  payrollPeriod,
+  payrollPeriodOf,
+  type EmployeePayroll,
+  type SalaryType,
+} from "@/lib/salary";
 import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
 
 // XODIMNING OYLIK DAFTARI — Xodim profili → "Tranzaksiyalar tarixi"
@@ -20,12 +28,14 @@ import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEn
 //   • oy boshidagi qoldiq: o'tgan oydan qolgan (`loadCarryOver` —
 //     yopilgan oyda muzlatilgan, yopilmaganida jonli) — chap kartadagi
 //     "To'lanmagan" ham aynan shundan boshlanadi; okladli xodimda unga
-//     shu oy okladi (`payrollBase`: o'tgan oyda to'liq, joriy oyda bugungi
-//     kungacha pro-rata) qo'shiladi;
+//     shu oy okladi (`payrollOkladPart`: o'tgan oyda to'liq, joriy oyda
+//     bugungi kungacha pro-rata, ishga kirgan kundan) qo'shiladi;
 //   • kirim, `teacherName` — shu xodim, foizli    → +summa × foiz
 //   • o'quvchiga qaytarim, `teacherName` — shu xodim → −summa × foiz
 //   • chiqim avans/oylik, `studentName` — shu xodim  → −summa (olingan)
-//   • okladli xodimda o'quvchi to'lovi oylikka tegmaydi;
+//   • faqat okladli xodimda o'quvchi to'lovi oylikka tegmaydi; "oklad +
+//     foiz" xodimda ikkalasi ham ishlaydi (oklad oy boshida, foiz
+//     yozuvma-yozuv);
 //   • bekor qilingan yozuv hisobga kirmaydi.
 //
 // Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollDue` — bonus,
@@ -56,7 +66,7 @@ export interface SalaryLedgerRow {
 
 export interface SalaryLedger {
   configured: boolean;
-  salaryType: "foiz" | "fixed";
+  salaryType: SalaryType;
   percent: number;
   /** Faqat oylikka ta'sir qiladigan yozuvlar, xronologik (id bo'yicha). */
   rows: SalaryLedgerRow[];
@@ -100,7 +110,8 @@ export function salaryEffectOf(
     return { amount: -abs, note: "olingan" };
   }
   if (nameKey(t.teacherName) !== me) return null;
-  if (!payroll?.configured || payroll.salaryType !== "foiz") return null;
+  // Foiz qismi bor xodim — "foiz" va "oklad + foiz".
+  if (!payroll?.configured || !payrollHasFoiz(payroll)) return null;
   const share = abs * payroll.percent / 100;
   if (t.txType === "payIn") {
     // Ustoz foizi to'liq narxdan: tanga evaziga chegirma ham ulushga kiradi
@@ -152,7 +163,7 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
   const or: Record<string, unknown>[] = [
     { txType: "payOut", studentName: n, txName: { $regex: "avans|oylik", $options: "i" } },
   ];
-  if (me.configured && me.salaryType === "foiz") {
+  if (me.configured && payrollHasFoiz(me)) {
     or.push({
       $and: [{ $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }] }, { teacherName: n }],
     });
@@ -182,8 +193,9 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
       const { period, row } = m === nowKey ? current : await rowOf(m);
       if (!row) return;
       // Okladli xodimda oklad oy boshida yoziladi (o'tgan oyda to'liq,
-      // joriy oyda bugungi kungacha); foizlida asos yozuvma-yozuv keladi.
-      openings.set(m, row.carryOver + (row.salaryType === "fixed" ? payrollBase(row, period) : 0));
+      // joriy oyda bugungi kungacha, ishga kirgan kundan); foiz qismi esa
+      // yozuvma-yozuv keladi. Faqat foizli xodimda oklad qismi 0.
+      openings.set(m, row.carryOver + payrollOkladPart(row, period));
     }));
   }
 

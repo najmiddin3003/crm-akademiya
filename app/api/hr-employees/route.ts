@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizeAssignments, sanitizePlastikSalary, type HrEmployee } from "@/lib/hrEmployees";
+import { sanitizeAssignments, sanitizePlastikSalary, sanitizeSalaryStartDate, type HrEmployee } from "@/lib/hrEmployees";
 // Qo'shimcha maydonlar tipi vaqtincha komponentlar yonida turadi — sabab
 // components/employees/employeeExtras.ts izohida. `import type` bo'lgani
 // uchun bu bog'lanish kompilyatsiyada butunlay yo'qoladi.
@@ -210,6 +210,10 @@ export async function POST(req: Request) {
       ? [...new Set(body.taxIds.map(Number).filter((n) => Number.isFinite(n) && n > 0))]
       : [],
     plastikSalary: sanitizePlastikSalary(body.plastikSalary),
+    // Ishga kirgan sana — Xodim qo'shish oynasi sukut bo'yicha BUGUNNI
+    // yuboradi (yangi xodim oy o'rtasida kelsa, to'liq oy yozilmasin).
+    // Yuborilmasa (boshqa yo'llar) — cheklov yo'q, avvalgi xulq.
+    salaryStartDate: sanitizeSalaryStartDate(body.salaryStartDate),
   };
   await col.insertOne({ ...employee });
 

@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import { isSheetsReady, SALARY_SUMMARY_TAB, type SyncConfig } from "@/lib/sync/config";
 import { ensureTab, replaceRows, type SheetCell } from "@/lib/sync/googleSheets";
 import { digestLines } from "@/lib/sync/salaryDigest";
+import { salaryTypeTag } from "@/lib/salary";
 
 // "XODIM OYLIKLARI" VARAG'I — hisoblangan oylik holati.
 //
@@ -103,7 +104,7 @@ export async function writeSalarySummary(
     const rows: SheetCell[][] = [...teachers, ...others].map((l) => [
       l.name,
       positionLabel(l.turi),
-      l.salaryType === "foiz" ? `${l.percent}%` : "oklad",
+      salaryTypeTag(l),
       Math.round(l.earned),
       Math.round(l.tax),
       Math.round(l.paid),

@@ -4,6 +4,10 @@ import type { SalaryRun, SalaryRunItem } from "@/lib/salary";
 import {
   isMonthKey,
   payrollBase,
+  payrollFoizPart,
+  payrollHasOklad,
+  payrollOkladDays,
+  payrollOkladPart,
   payrollEarned,
   payrollDue,
   payrollTax,
@@ -274,6 +278,13 @@ export async function POST(req: Request) {
         refunded: ep.refunded,
         day: period.day,
         daysIn: period.daysIn,
+        // Oklad QAYSI KUNDAN va nechta kun uchun hisoblangani (ishga
+        // kirgan sana). Xodim kartasidagi sana keyin o'zgarsa ham chek
+        // o'sha paytdagi hisobni ko'rsatsin.
+        salaryStart: ep.salaryStart || undefined,
+        okladDays: payrollHasOklad(ep) ? payrollOkladDays(ep, period) : undefined,
+        okladPart: payrollOkladPart(ep, period),
+        foizPart: payrollFoizPart(ep),
         base: payrollBase(ep, period),
         bonus: ep.bonus,
         jarima: ep.jarima,

@@ -88,11 +88,23 @@ export default function SalaryReceiptModal({
   const collectedFormula = refunded > 0
     ? t("({refunded} − qaytarim {refunded2})", { refunded: fmtNum((r?.collected ?? 0) + refunded), refunded2: fmtNum(refunded) })
     : fmtNum(r?.collected ?? 0);
+  // Oklad kunlari: 29.09.2026 dan chekda `okladDays` muzlatiladi (ishga
+  // kirgan sana hisobga olingan); eski cheklarda — davr kuni (`day`).
+  const okladFormula = r
+    ? t("{fixedSalary} × {day}/{daysIn} kun", { fixedSalary: fmtNum(r.fixedSalary ?? 0), day: r.okladDays ?? r.day ?? 0, daysIn: r.daysIn ?? 0 })
+    : "";
+  const foizFormula = r ? `${collectedFormula} × ${r.percent ?? 0}%` : "";
   const baseFormula =
     !r ? ""
-    : r.salaryType === "foiz"
-      ? `${collectedFormula} × ${r.percent ?? 0}%`
-      : t("{fixedSalary} × {day}/{daysIn} kun", { fixedSalary: fmtNum(r.fixedSalary ?? 0), day: r.day ?? 0, daysIn: r.daysIn ?? 0 });
+    : r.salaryType === "mixed" ? `${okladFormula} + ${foizFormula}`
+    : r.salaryType === "foiz" ? foizFormula
+    : okladFormula;
+  // Ishga kirgan sana shu oyda bo'lsa — chekda ham ko'rinsin.
+  const startLabel = (() => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r?.salaryStart ?? "");
+    if (!m || !run.month || `${m[1]}-${m[2]}` < run.month) return "";
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  })();
 
   // Soliq chegaraga urganmi (hisoblangan oylikdan oshib ketgan).
   const taxLines = r?.taxLines ?? [];
@@ -133,9 +145,14 @@ export default function SalaryReceiptModal({
           {r && (
             <Row
               label={t("Hisob turi")}
-              value={r.salaryType === "foiz" ? t("Foiz {percent}%", { percent: r.percent ?? 0 }) : "Oklad"}
+              value={
+                r.salaryType === "mixed" ? t("Oklad + {percent}%", { percent: r.percent ?? 0 })
+                : r.salaryType === "foiz" ? t("Foiz {percent}%", { percent: r.percent ?? 0 })
+                : "Oklad"
+              }
             />
           )}
+          {startLabel && <Row label={t("Ishga kirgan sana")} value={startLabel} />}
 
           {!r ? (
             // Bu maydon qo'shilishidan OLDINGI chiqarishlarda kesim yo'q —

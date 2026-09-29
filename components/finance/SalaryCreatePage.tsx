@@ -15,10 +15,15 @@ import {
   payrollBase,
   payrollDebt,
   payrollEarned,
+  payrollFoizPart,
+  payrollHasOklad,
   payrollMonthKey,
+  payrollOkladDays,
+  payrollOkladPart,
   payrollPaid,
   payrollPeriod,
   payrollPeriodOf,
+  payrollStartsInPeriod,
   payrollTax,
   payrollTaxLines,
   payrollPlastikLeg,
@@ -61,8 +66,13 @@ function fmtNum(n: number): string {
 function fmtSum(n: number): string {
   return fmtNum(n) + " so'm";
 }
+/** "2026-09-23" → "23.09.2026". */
+function fmtIsoDay(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
 
-type HisoblashFilter = "all" | "foiz" | "fixed";
+type HisoblashFilter = "all" | "foiz" | "fixed" | "mixed";
 
 interface StatCardProps {
   label: string;
@@ -462,9 +472,28 @@ export default function SalaryCreatePage() {
     ? available < payoutTotal
     : (naqdTotal > available) || (plastikTotal > plastikAvailable);
   const needsPlastikMethod = plastikTotal > 0 && !plastikMethodKey;
+  // Qancha YETMAYDI — har bir chelak o'zi bo'yicha. Ilgari xabarda doim
+  // `payoutTotal − naqd` turardi: naqd yetarli-yu karta chelagi yetmaganda
+  // u MANFIY son ("−57 000 000 so'm kam") chiqarardi.
+  const shortfall = sameMethod
+    ? Math.max(payoutTotal - available, 0)
+    : Math.max(naqdTotal - available, 0) + Math.max(plastikTotal - plastikAvailable, 0);
   const canPayout =
     Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0
     && !notEnough && !isFutureMonth && !sameMethod && !needsPlastikMethod;
+
+  /**
+   * "Oylikni chiqarish" tugmasi. Xodim TANLANMAGAN bo'lsa tugma o'chirilmaydi
+   * — bosilganda nima qilish kerakligi aytiladi. Ilgari u jimgina kulrang
+   * turardi va "tugma ishlamayapti" deb o'qilardi (29.09.2026).
+   */
+  function openConfirm() {
+    if (selected.size === 0) {
+      showError(t("Avval jadvaldan xodimlarni belgilang — chap tomondagi katakchalar"));
+      return;
+    }
+    setConfirmOpen(true);
+  }
 
   async function confirmPayout() {
     setSaving(true);
@@ -570,9 +599,13 @@ export default function SalaryCreatePage() {
             {t("Qayta hisoblash")}
           </button>
           <button
-            onClick={() => setConfirmOpen(true)}
-            disabled={selectedCount === 0 || isFutureMonth}
-            title={isFutureMonth ? t("Kelajak oy uchun oylik chiqarilmaydi") : undefined}
+            onClick={openConfirm}
+            disabled={isFutureMonth}
+            title={
+              isFutureMonth ? t("Kelajak oy uchun oylik chiqarilmaydi")
+              : selectedCount === 0 ? t("Avval jadvaldan xodimlarni belgilang — chap tomondagi katakchalar")
+              : undefined
+            }
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <DollarSign className="w-4 h-4" />
@@ -681,7 +714,7 @@ export default function SalaryCreatePage() {
           />
         </div>
         <Select value={turiFilter} onChange={(v) => setTuriFilter(v)} options={[{ value: "all", label: t("Barcha xodimlar") }, ...turiOptions.map((tv) => ({ value: tv, label: turiLabel(tv) }))]} className="min-w-[180px]" />
-        <Select value={hisoblash} onChange={(v) => setHisoblash(v as HisoblashFilter)} options={[{ value: "all", label: t("Hisoblash: barchasi") }, { value: "foiz", label: t("Hisoblash: foizli") }, { value: "fixed", label: t("Hisoblash: okladli") }]} className="min-w-[200px]" />
+        <Select value={hisoblash} onChange={(v) => setHisoblash(v as HisoblashFilter)} options={[{ value: "all", label: t("Hisoblash: barchasi") }, { value: "foiz", label: t("Hisoblash: foizli") }, { value: "fixed", label: t("Hisoblash: okladli") }, { value: "mixed", label: t("Hisoblash: oklad + foiz") }]} className="min-w-[200px]" />
       </div>
 
       {/* Table */}
@@ -772,9 +805,15 @@ export default function SalaryCreatePage() {
                   .map((l) => `${l.name} (${l.detail}): ${fmtNum(l.amount)}`)
                   .join("\n");
                 const isFoiz = e.salaryType === "foiz";
-                const badgeCls = isFoiz
-                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                  : "bg-sky-500/10 text-sky-600 border-sky-500/20";
+                const isMixed = e.salaryType === "mixed";
+                const badgeCls = isMixed
+                  ? "bg-violet-500/10 text-violet-600 border-violet-500/20"
+                  : isFoiz
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                    : "bg-sky-500/10 text-sky-600 border-sky-500/20";
+                const badgeLabel = isMixed
+                  ? t("Oklad + {percent}%", { percent: e.percent })
+                  : isFoiz ? t("Foiz {percent}%", { percent: e.percent }) : "Oklad";
                 // Foizli asos SOF tushum: o'quvchilarga qaytarilgan pul
                 // ayrilgan (lib/payrollSources.ts). Qaytarim bo'lsa formula
                 // uni ochiq ko'rsatadi — "tushum nega kam" degan savol
@@ -792,9 +831,36 @@ export default function SalaryCreatePage() {
                 const collectedFormula = (e.refunded ?? 0) > 0
                   ? t("({refunded} − qaytarim {refunded2})", { refunded: fmtNum(e.collected + e.refunded), refunded2: fmtNum(e.refunded) })
                   : fmtNum(e.collected);
-                const formula = isFoiz
-                  ? `${collectedFormula} × ${e.percent}% = ${fmtNum(base)}`
-                  : t("{fixedSalary} × {day}/{daysIn} kun = {base}", { fixedSalary: fmtNum(e.fixedSalary), day: period.day, daysIn: period.daysIn, base: fmtNum(base) });
+                // OKLAD qismi ishga kirgan kundan sanaladi (lib/salary.ts →
+                // payrollOkladDays): 23-sentabrda kirgan xodimda "× 8/30 kun".
+                // "Oklad + foiz" xodimda ikki qator: oklad, ostida foiz.
+                const hasOklad = payrollHasOklad(e);
+                const okladFormula = t("{fixedSalary} × {day}/{daysIn} kun = {base}", {
+                  fixedSalary: fmtNum(e.fixedSalary),
+                  day: payrollOkladDays(e, period),
+                  daysIn: period.daysIn,
+                  base: fmtNum(isMixed ? payrollOkladPart(e, period) : base),
+                });
+                const formula = isMixed
+                  ? okladFormula
+                  : isFoiz
+                    ? `${collectedFormula} × ${e.percent}% = ${fmtNum(base)}`
+                    : okladFormula;
+                const foizLine = isMixed ? `+ ${collectedFormula} × ${e.percent}% = ${fmtNum(payrollFoizPart(e))}` : "";
+                // Ishga kirgan sana SHU (yoki keyingi) oyda bo'lsa — izoh.
+                const startNote = hasOklad && e.salaryStart && payrollStartsInPeriod(e, period)
+                  ? t("ishga kirgan sana: {date}", { date: fmtIsoDay(e.salaryStart) })
+                  : "";
+                // ESLATMA: shu oyda (yoki keyin) CRM'ga qo'shilgan okladli
+                // xodimda ishga kirgan sana kiritilmagan — unga to'liq oy
+                // yozilyapti. Tuzatish xodim profilidagi "Ish haqi" oynasida.
+                // `created` AVTOMATIK sana qilib olinmaydi: qayta yaratilgan
+                // xodimlar (Nilufar 02.09, Dilmurod 03.09) oldindan ishlaydi.
+                // Oyning 1-kunida qo'shilgan xodimga baribir to'liq oy — izohsiz.
+                const createdMonth = (e.createdDate ?? "").slice(0, 7);
+                const startMissing = hasOklad && !e.salaryStart && !!createdMonth
+                  && createdMonth >= monthKey
+                  && !(createdMonth === monthKey && (e.createdDate ?? "").endsWith("-01"));
                 return (
                   <tr
                     key={e.id}
@@ -825,7 +891,7 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top">
                       {e.configured ? (
                         <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${badgeCls} whitespace-nowrap`}>
-                          {isFoiz ? t("Foiz {percent}%", { percent: e.percent }) : "Oklad"}
+                          {badgeLabel}
                         </span>
                       ) : (
                         <span className="inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium bg-amber-500/10 text-amber-700 border-amber-500/20 whitespace-nowrap">
@@ -835,7 +901,22 @@ export default function SalaryCreatePage() {
                     </td>
                     <td className="px-3 py-3 align-top text-[12.5px] tabular-nums">
                       {e.configured ? (
-                        <div className="whitespace-nowrap">{formula}</div>
+                        <>
+                          <div className="whitespace-nowrap">{formula}</div>
+                          {foizLine && <div className="whitespace-nowrap">{foizLine}</div>}
+                          {startNote && (
+                            <div className="text-[11px] text-muted-foreground whitespace-nowrap">{startNote}</div>
+                          )}
+                          {startMissing && (
+                            <Link
+                              href={`/management-xodimlar/${e.id}`}
+                              className="block text-[11px] text-amber-600 hover:underline whitespace-nowrap"
+                              title={t("Ishga kirgan sana kiritilmasa oklad oy boshidan — to'liq oy uchun hisoblanadi")}
+                            >
+                              {t("{date} da qo'shilgan — ishga kirgan sanani kiriting", { date: fmtIsoDay(e.createdDate ?? "") })}
+                            </Link>
+                          )}
+                        </>
                       ) : (
                         <Link href={`/management-xodimlar/${e.id}`} className="text-[12px] text-primary hover:underline">
                           {t("Ish haqi kiritilmagan — sozlash")}
@@ -1076,8 +1157,20 @@ export default function SalaryCreatePage() {
                   chiqardi). */}
               {notEnough && (
                 <p className="text-[12.5px] text-rose-600">
-                  {t("Mablag' yetarli emas — {available} kam. Boshqa kassa yoki to'lov turini tanlang.", { available: fmtSum(payoutTotal - available) })}
+                  {t("Mablag' yetarli emas — {available} kam. Boshqa kassa yoki to'lov turini tanlang.", { available: fmtSum(shortfall) })}
                 </p>
+              )}
+              {/* Tugma o'chiq bo'lishining QOLGAN sabablari ham ochiq
+                  aytiladi — "Ha, chiqarish" hech qachon izohsiz kulrang
+                  turmasin. */}
+              {!cashboxesLoading && !cashboxId && (
+                <p className="text-[12.5px] text-rose-600">{t("Kassani tanlang")}</p>
+              )}
+              {!methodsLoading && !methodKey && (
+                <p className="text-[12.5px] text-rose-600">{t("To'lov turini tanlang")}</p>
+              )}
+              {needsPlastikMethod && (
+                <p className="text-[12.5px] text-rose-600">{t("Plastik qismi uchun to'lov turini tanlang")}</p>
               )}
             </div>
 

@@ -133,6 +133,39 @@ export interface HrEmployee {
    * biriktirish ma'noli, ikkita plastik summa esa — qo'sh hisob.
    */
   plastikSalary?: number | null;
+  /**
+   * ISHGA KIRGAN (OYLIK YOZILADIGAN) SANA, "YYYY-MM-DD" (29.09.2026).
+   *
+   * Oklad shu kundan hisoblanadi: oy o'rtasida kirgan xodimga o'sha oy
+   * uchun `oklad × ishlagan kunlar / oy kunlari` yoziladi, to'liq oy emas
+   * (lib/salary.ts → payrollOkladDays). Foiz qismiga TEGMAYDI — u
+   * o'quvchilar to'lovidan, to'lov esa xodim kelgandan keyin paydo bo'ladi.
+   *
+   * `null` yoki maydon yo'q → cheklov yo'q: oklad oy boshidan (eski xulq,
+   * ya'ni bazadagi hamma eski xodim o'zgarishsiz hisoblanadi).
+   *
+   * `created` (CRM'ga qo'shilgan payt) bilan ADASHTIRILMASIN: eski xodimlar
+   * migratsiyada bir kunda yaratilgan, ular esa yillardan beri ishlaydi.
+   */
+  salaryStartDate?: string | null;
+}
+
+/**
+ * Ishga kirgan sanani tozalaydi: haqiqiy "YYYY-MM-DD" bo'lsa o'zi, aks
+ * holda `null` (cheklov yo'q). Bo'sh satr ham `null` — "sanani olib
+ * tashlash" so'rovi shu bilan ifodalanadi.
+ */
+export function sanitizeSalaryStartDate(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (y < 2000 || y > 2100 || mo < 1 || mo > 12 || d < 1) return null;
+  // 31.02 kabi yo'q kunlar rad etiladi.
+  if (d > new Date(Date.UTC(y, mo, 0)).getUTCDate()) return null;
+  return s;
 }
 
 /**

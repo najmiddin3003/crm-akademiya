@@ -50,10 +50,20 @@ export interface SalaryRunItem {
 /** Bitta xodimning bitta chiqarishdagi to'liq hisob-kitobi (chek uchun). */
 export interface SalaryReceipt {
   turi?: string;
-  salaryType?: "foiz" | "fixed";
+  salaryType?: SalaryType;
   /** Oklad (qat'iy maosh) yoki foiz asosi. */
   fixedSalary?: number;
   percent?: number;
+  /**
+   * Ishga kirgan sana ("YYYY-MM-DD") va shu davrda oklad hisoblangan kunlar
+   * — chekdagi "oklad × kun/oy" formulasi uchun (29.09.2026 dan). Eski
+   * cheklarda yo'q: u yerda oklad `day` bo'yicha hisoblangan.
+   */
+  salaryStart?: string;
+  okladDays?: number;
+  /** Asosning ikki qismi — "oklad + foiz" xodimda chekda alohida ko'rinadi. */
+  okladPart?: number;
+  foizPart?: number;
   /**
    * Shu oyda o'qituvchi orqali tushgan pul — foizli hisob asosi (SOF:
    * o'quvchilarga qaytarilgani ayrilgan).
@@ -179,6 +189,9 @@ export interface SalaryRun {
 // oy kunlari), foizli xodimda esa shu oyda haqiqatan tushgan pul asos
 // bo'ladi. Shuning uchun sahifada davr yorlig'i ("1 — 19-avgust (19/31
 // kun)") ko'rsatiladi: raqamlar aynan shu oraliq uchun.
+//
+// Xodim oy o'rtasida ishga kirgan bo'lsa (`salaryStart`), oklad o'sha
+// kundan sanaladi — `payrollOkladDays` (29.09.2026).
 
 export const UZ_MONTHS = [
   "yanvar", "fevral", "mart", "aprel", "may", "iyun",
@@ -280,6 +293,19 @@ export function prevMonthName(p: PayrollPeriod): string {
   return n.charAt(0).toUpperCase() + n.slice(1);
 }
 
+/**
+ * Ish haqi turi:
+ *   "fixed" — oklad (xodim kartasidagi filial bo'yicha ish haqi);
+ *   "foiz"  — o'qituvchi o'quvchilari to'lagan puldan foiz oladi;
+ *   "mixed" — OKLAD + FOIZ (29.09.2026): ikkalasi ham kiritilgan xodim,
+ *             masalan 1 000 000 oklad + har bir o'quvchi to'lovidan 30%.
+ *
+ * "mixed" dan oldin okladi ham, foizi ham bor xodim JIMGINA "fixed"
+ * hisoblanardi — foiz tashlab yuborilardi (bazada shunday bitta o'qituvchi
+ * bor edi, 1 000 000 + 30%).
+ */
+export type SalaryType = "foiz" | "fixed" | "mixed";
+
 // Xodim uchun joriy hisoblangan oylik-komponentlar (Oylik chiqarish →
 // xodim tanlash jadvalidagi bitta qator).
 export interface EmployeePayroll {
@@ -294,10 +320,22 @@ export interface EmployeePayroll {
    * "Oylik sozlanmagan" ko'rsatishi kerak, soxta 0 emas.
    */
   configured: boolean;
-  /** "foiz" — o'qituvchi tushumdan foiz oladi; "fixed" — oklad. */
-  salaryType: "foiz" | "fixed";
+  /** "foiz", "fixed" yoki "mixed" (oklad + foiz) — `SalaryType` izohiga qarang. */
+  salaryType: SalaryType;
   /** Oklad (xodim kartasidagi filiallar bo'yicha ish haqi yig'indisi). */
   fixedSalary: number;
+  /**
+   * ISHGA KIRGAN (oylik yoziladigan) sana, "YYYY-MM-DD"; kiritilmagan
+   * bo'lsa "" yoki yo'q. Oklad shu kundan hisoblanadi (`payrollOkladDays`).
+   */
+  salaryStart?: string;
+  /**
+   * Xodim CRM'ga qo'shilgan kun, "YYYY-MM-DD" ("" — o'qib bo'lmadi).
+   * HISOBGA KIRMAYDI — faqat eslatma uchun: shu oyda qo'shilgan okladli
+   * xodimda ishga kirgan sana kiritilmagan bo'lsa, Oylik sahifasi buni
+   * aytadi (aks holda unga to'liq oy yozilayotgani ko'rinmasdi).
+   */
+  createdDate?: string;
   /** O'qituvchi foizi (%). */
   percent: number;
   /**
@@ -405,11 +443,83 @@ export interface BranchPayouts {
   fromOthers: { avans: number; oylik: number };
 }
 
-/** Shu oy uchun hisoblangan asos (oklad pro-rata yoki tushumdan foiz). */
+/** Oklad qismi bormi — "fixed" va "mixed" (oklad + foiz). */
+export function payrollHasOklad(e: Pick<EmployeePayroll, "salaryType">): boolean {
+  return e.salaryType === "fixed" || e.salaryType === "mixed";
+}
+
+/** Foiz qismi bormi — "foiz" va "mixed" (oklad + foiz). */
+export function payrollHasFoiz(e: Pick<EmployeePayroll, "salaryType">): boolean {
+  return e.salaryType === "foiz" || e.salaryType === "mixed";
+}
+
+/** "YYYY-MM-DD" → { year, month (0-11), day }; o'qib bo'lmasa `null`. */
+function parseIsoDay(v: unknown): { year: number; month: number; day: number } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v ?? "").trim());
+  if (!m) return null;
+  const month = Number(m[2]) - 1;
+  const day = Number(m[3]);
+  if (month < 0 || month > 11 || day < 1) return null;
+  return { year: Number(m[1]), month, day };
+}
+
+/**
+ * Shu davrda OKLAD hisoblanadigan kunlar soni (29.09.2026).
+ *
+ *   ishga kirgan sana yo'q yoki davrdan OLDIN → `p.day` (eski xulq: oy
+ *     boshidan; joriy oyda bugungacha, tugagan oyda to'liq);
+ *   sana SHU OYDA → `p.day − kirgan kun + 1` (kirgan kuni ham sanaladi):
+ *     23-sentabrda kirgan xodimga to'liq sentabr uchun 8/30 kun;
+ *   sana KEYINGI OYLARDA → 0 (hali ishga kirmagan).
+ *
+ * NIMA NOTO'G'RI EDI: oklad doim `oy boshidan` bo'linardi, ya'ni oy
+ * o'rtasida kirgan xodimga ham TO'LIQ oy yozilardi (foydalanuvchi:
+ * "oy o'rtasidan kirsa ham to'liq oy uchun hisoblayapti").
+ */
+export function payrollOkladDays(e: Pick<EmployeePayroll, "salaryStart">, p: PayrollPeriod): number {
+  const s = parseIsoDay(e.salaryStart);
+  if (!s) return p.day;
+  if (s.year > p.year || (s.year === p.year && s.month > p.month)) return 0;
+  if (s.year === p.year && s.month === p.month) return Math.max(0, p.day - s.day + 1);
+  return p.day;
+}
+
+/**
+ * Ishga kirgan sana SHU DAVRGA ta'sir qiladimi — shu oyda yoki keyin kirgan.
+ * Interfeys formulada "(23-sentabrdan)" kabi izohni faqat shunda ko'rsatadi.
+ */
+export function payrollStartsInPeriod(e: Pick<EmployeePayroll, "salaryStart">, p: PayrollPeriod): boolean {
+  const s = parseIsoDay(e.salaryStart);
+  return !!s && (s.year > p.year || (s.year === p.year && s.month >= p.month));
+}
+
+/** Oklad qismi: oklad × ishlagan kunlar / oy kunlari. Foizli xodimda 0. */
+export function payrollOkladPart(e: EmployeePayroll, p: PayrollPeriod): number {
+  if (!payrollHasOklad(e) || p.daysIn <= 0) return 0;
+  return Math.round(e.fixedSalary * payrollOkladDays(e, p) / p.daysIn);
+}
+
+/** Foiz qismi: shu oydagi sof tushum × foiz. Faqat okladli xodimda 0. */
+export function payrollFoizPart(e: EmployeePayroll): number {
+  return payrollHasFoiz(e) ? Math.round(e.collected * e.percent / 100) : 0;
+}
+
+/**
+ * Shu oy uchun hisoblangan asos: oklad qismi (ishga kirgan kundan, pro-rata)
+ * + foiz qismi (tushumdan). Oddiy okladli yoki foizli xodimda ikkinchi qism
+ * 0 — natija avvalgi formula bilan bir xil.
+ */
 export function payrollBase(e: EmployeePayroll, p: PayrollPeriod): number {
-  return e.salaryType === "fixed"
-    ? Math.round(e.fixedSalary * p.day / p.daysIn)
-    : Math.round(e.collected * e.percent / 100);
+  return payrollOkladPart(e, p) + payrollFoizPart(e);
+}
+
+/**
+ * Ish haqi turining qisqa yozuvi — Sheets va Telegram xulosasi uchun
+ * (o'zbekcha, `t()` siz): "oklad", "50%", "oklad + 30%".
+ */
+export function salaryTypeTag(e: Pick<EmployeePayroll, "salaryType" | "percent">): string {
+  if (e.salaryType === "mixed") return `oklad + ${e.percent}%`;
+  return e.salaryType === "foiz" ? `${e.percent}%` : "oklad";
 }
 
 /** Shu oyda hisoblangan oylik: asos + bonus - jarima. */

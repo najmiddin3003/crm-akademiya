@@ -10,8 +10,10 @@ import {
   payrollPlastikLeg,
   payrollPeriod,
   payrollTax,
+  salaryTypeTag,
   type EmployeePayroll,
   type PayrollPeriod,
+  type SalaryType,
 } from "@/lib/salary";
 import { esc, sendMessage } from "@/lib/sync/telegram";
 
@@ -86,7 +88,7 @@ interface Line {
   name: string;
   turi: string;
   percent: number;
-  salaryType: "foiz" | "fixed";
+  salaryType: SalaryType;
   earned: number;
   paid: number;
   /** Hisoblangan − soliq + o'tgan oydan − olingan (ishorali). */
@@ -153,7 +155,7 @@ export async function digestLines(db: Db, at: Date): Promise<{ teachers: Line[];
 function itemsOf(lines: Line[]): string[] {
   const out: string[] = [];
   for (const l of lines) {
-    const tag = l.salaryType === "foiz" ? `${l.percent}%` : "oklad";
+    const tag = salaryTypeTag(l);
     // Soliq faqat bor bo'lsa ko'rsatiladi — aks holda "hisoblangan −
     // olingan = qolgan" ayirmasi o'quvchiga tushunarsiz bo'lib qolardi.
     const tax = l.tax > 0 ? ` · soliq ${money(l.tax)}` : "";

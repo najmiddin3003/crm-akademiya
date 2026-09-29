@@ -43,6 +43,7 @@ fs.writeFileSync(salaryPath, fs.readFileSync(salaryPath, "utf8").replace('"@/lib
 const {
   payrollEarned, payrollTax, payrollTaxLines, payrollDue,
   payrollPlastikLeg, payrollCashLeg, payrollCashDue, payrollPayout,
+  payrollBase, payrollOkladDays, payrollOkladPart, payrollFoizPart, payrollStartsInPeriod, salaryTypeTag,
 } = await import(pathToFileURL(path.resolve(salaryPath)).href);
 
 // Davrlar: 30 kunlik oyning turli kunlari.
@@ -190,6 +191,49 @@ const capped = emp({ salaryType: "foiz", collected: 200000, percent: 50, taxable
 check("hisoblangan", payrollEarned(capped, P30), 100000);
 check("soliq 216k → 100k ga qisildi", payrollTax(capped, P30), 100000);
 check("to'lanadigan", payrollDue(capped, P30), 0);
+
+// ── ISHGA KIRGAN SANA (29.09.2026) ─────────────────────────────────────
+// Oklad ishga kirgan kundan: 23-sentabrda kirgan xodimga sentabr uchun
+// 8/30 kun, to'liq oy EMAS. Sana yo'q yoki oldingi oyda — avvalgidek.
+console.log("\nK) ISHGA KIRGAN SANA — oklad shu kundan");
+const k23 = emp({ fixedSalary: 5000000, salaryStart: "2026-09-23" });
+check("30-sentabr: kunlar (23..30)", payrollOkladDays(k23, P30), 8);
+check("30-sentabr: oklad 5 mln × 8/30", payrollBase(k23, P30), 1333333);
+check("15-sentabr: hali kirmagan → 0 kun", payrollOkladDays(k23, P15), 0);
+check("15-sentabr: oklad 0", payrollBase(k23, P15), 0);
+check("sana shu oyda → izoh chiqadi", payrollStartsInPeriod(k23, P30), true);
+const kAug = emp({ fixedSalary: 5000000, salaryStart: "2026-08-10" });
+check("avgustda kirgan → sentabr to'liq", payrollBase(kAug, P30), 5000000);
+check("avgustda kirgan → izoh yo'q", payrollStartsInPeriod(kAug, P30), false);
+const kOct = emp({ fixedSalary: 5000000, salaryStart: "2026-10-01" });
+check("oktabrda kiradi → sentabrga 0", payrollBase(kOct, P30), 0);
+const kNone = emp({ fixedSalary: 5000000 });
+check("sanasiz — eski xulq, to'liq oy", payrollBase(kNone, P30), 5000000);
+check("sanasiz — 15-kuni yarmi", payrollBase(kNone, P15), 2500000);
+check("1-sanada kirgan = to'liq oy", payrollBase(emp({ fixedSalary: 3000000, salaryStart: "2026-09-01" }), P30), 3000000);
+check("noto'g'ri sana e'tiborsiz", payrollBase(emp({ fixedSalary: 3000000, salaryStart: "23.09.2026" }), P30), 3000000);
+check("foizli xodimga sana ta'sir qilmaydi",
+  payrollBase(emp({ salaryType: "foiz", collected: 1000000, percent: 50, salaryStart: "2026-09-23" }), P30), 500000);
+
+// ── OKLAD + FOIZ (29.09.2026) ──────────────────────────────────────────
+// Foydalanuvchi misoli: 1 000 000 oklad + har bir o'quvchi to'lovidan 30%.
+console.log("\nL) OKLAD + FOIZ — ikkalasi qo'shiladi");
+const mix = emp({ salaryType: "mixed", fixedSalary: 1000000, percent: 30, collected: 2000000 });
+check("oklad qismi (to'liq oy)", payrollOkladPart(mix, P30), 1000000);
+check("foiz qismi 2 mln × 30%", payrollFoizPart(mix), 600000);
+check("asos = 1 000 000 + 600 000", payrollBase(mix, P30), 1600000);
+check("hisoblangan (+bonus −jarima)", payrollEarned({ ...mix, bonus: 50000, jarima: 20000 }, P30), 1630000);
+check("to'lanadigan (avans 400 000)", payrollDue({ ...mix, paidAvans: 400000 }, P30), 1200000);
+check("15-kuni: oklad yarmi + to'liq foiz", payrollBase(mix, P15), 1100000);
+const mix26 = { ...mix, salaryStart: "2026-09-26" };
+check("26-sentabrda kirgan: oklad 5/30", payrollOkladPart(mix26, P30), 166667);
+check("26-sentabrda kirgan: asos", payrollBase(mix26, P30), 766667);
+check("faqat oklad — foiz qo'shilmaydi", payrollBase(emp({ fixedSalary: 1000000, percent: 30, collected: 2000000 }), P30), 1000000);
+check("faqat foiz — oklad qo'shilmaydi", payrollBase(emp({ salaryType: "foiz", fixedSalary: 1000000, percent: 30, collected: 2000000 }), P30), 600000);
+check("yorliq (Sheets/Telegram)", salaryTypeTag(mix), "oklad + 30%");
+scenario("L2) Oklad + foiz, plastik 1 000 000, soliq 216 000",
+  emp({ salaryType: "mixed", fixedSalary: 1000000, percent: 30, collected: 2000000, taxable: true, taxRules: [TAX_216], plastikSalary: 1000000 }), P30,
+  { gross: 1600000, tax: 216000, due: 1384000, plastik: 1000000, naqd: 384000 });
 
 console.log(`\n${fail === 0 ? "NATIJA: ✅ hamma tekshiruv o'tdi" : `NATIJA: ❌ ${fail} ta xato`}`);
 process.exit(fail === 0 ? 0 : 1);
