@@ -5,6 +5,8 @@ import { Maximize2, Minimize2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
+import { LocationChip } from "@/components/shared/AttendanceLocation";
+import type { TurnstileLocation } from "@/lib/turnstileIo";
 
 // Nazorat → «Ishga keldim (QR)» (sidebar: Nazorat > Amallar, href /nazorat-qr).
 //
@@ -26,10 +28,12 @@ interface Arrival {
   status: "kelgan" | "kechikkan";
   lateMinutes: number;
   expected: string | null;
+  location?: TurnstileLocation | null;
 }
 
 interface QrData {
-  branch: { id: number; name: string };
+  branch: { id: number; name: string; geoSet: boolean; radiusM: number };
+  geocoder: boolean;
   date: string;
   qr: { in: string; out: string | null };
   refreshInMs: number;
@@ -187,6 +191,20 @@ export default function AttendanceQrPage() {
 
         {error && <p className="text-[13px] text-rose-600">{error}</p>}
 
+        {/* Joylashuv tekshiruvi shu filialda ishlamayapti — ekran oldidagilar
+            buni bilsin (koordinata Boshqaruv → Filiallar'da kiritiladi). */}
+        {!data.branch.geoSet && !full && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-200">
+            <strong>{t("Filial joylashuvi kiritilmagan.")}</strong>{" "}
+            {t("Skanerlashda joylashuv yoziladi, lekin filialdan uzoqligi tekshirilmaydi — Boshqaruv → Filiallar'da filial koordinatasini kiriting.")}
+          </div>
+        )}
+        {data.branch.geoSet && !data.geocoder && data.canConfigure && !full && (
+          <div className="rounded-xl border border-border bg-secondary/40 px-4 py-2.5 text-[12px] text-muted-foreground">
+            {t("Manzil xizmati (Yandex) ulanmagan — joylashuv masofa va koordinata bilan yoziladi. Ulash uchun serverga YANDEX_GEOCODER_API_KEY qo'shiladi.")}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className={`grid gap-6 ${data.qr.out ? "sm:grid-cols-2" : ""} justify-items-center`}>
@@ -223,6 +241,11 @@ export default function AttendanceQrPage() {
                     <span className="w-12 shrink-0 text-[14px] font-semibold tabular-nums">{a.enterTime ?? "—"}</span>
                     <span className="min-w-0 flex-1 truncate text-[14px]">{a.personName}</span>
                     {a.exitTime && <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">→ {a.exitTime}</span>}
+                    {a.location && (
+                      <span className="shrink-0">
+                        <LocationChip loc={a.location} person={a.personName} when={`${data.date} · ${a.enterTime ?? ""}`} compact />
+                      </span>
+                    )}
                     {a.status === "kechikkan" ? (
                       <span className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
                         {t("{n} daq. kech", { n: a.lateMinutes })}

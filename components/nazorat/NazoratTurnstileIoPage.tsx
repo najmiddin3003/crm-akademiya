@@ -12,6 +12,7 @@ import {
 } from "@/lib/turnstileIo";
 import Select from "@/components/ui/Select";
 import { useT } from "@/components/shared/Language";
+import { LocationChip } from "@/components/shared/AttendanceLocation";
 
 // Nazorat → Turniket kirish-chiqish analitikasi (sidebar: Nazorat >
 // Hisobotlar > Turniket kirish-chiqish analitikasi, href /nazorat-turnstile-io).
@@ -145,12 +146,13 @@ export default function NazoratTurnstileIoPage() {
         {/* Jadval */}
         <div className="table-frame rounded-2xl bg-card border border-border overflow-hidden">
           <div className="table-scroll">
-            <table className="w-full text-sm min-w-[700px]">
+            <table className="w-full text-sm min-w-[860px]">
               <thead>
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                   <th className="px-5 py-3 text-left">{t("To'liq ismi")}</th>
                   <th className="px-5 py-3 text-left">{t("Kirgan vaqti")}</th>
                   <th className="px-5 py-3 text-left">{t("Chiqqan vaqti")}</th>
+                  <th className="px-5 py-3 text-left">{t("Joylashuv")}</th>
                   <th className="px-5 py-3 text-left pr-5">{t("Holati")}</th>
                 </tr>
               </thead>
@@ -160,6 +162,10 @@ export default function NazoratTurnstileIoPage() {
                     <td className="px-5 py-3 font-medium">{r.personName}</td>
                     <td className="px-5 py-3 tabular-nums text-[13px]">{r.enterTime || "-"}</td>
                     <td className="px-5 py-3 tabular-nums text-[13px]">{r.exitTime || "-"}</td>
+                    {/* «Ishga keldim» (QR) joylashuvi — bosilsa xarita. */}
+                    <td className="px-5 py-3 max-w-[300px]">
+                      <LocationChip loc={r.location} person={r.personName} when={`${r.date} · ${r.enterTime ?? ""}`} />
+                    </td>
                     <td className={`px-5 py-3 pr-5 text-[13px] font-medium ${STATUS_TONE[r.status]}`}>
                       {TURNSTILE_IO_STATUS_LABELS[r.status]}
                     </td>

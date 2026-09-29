@@ -4,7 +4,8 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope } from "@/lib/branchScope";
 import { getCurrentUser } from "@/lib/auth";
 import { uzDateIso } from "@/lib/uzTime";
-import { QR_SOURCE, type AttendanceRecord } from "@/lib/attendanceCheck";
+import { DEFAULT_RADIUS_M, QR_SOURCE, type AttendanceRecord } from "@/lib/attendanceCheck";
+import { geocoderReady, isValidPoint } from "@/lib/geo";
 import {
   loadAttendanceSettings,
   makeQrToken,
@@ -34,7 +35,7 @@ export async function GET() {
 
   const db = await ensureIndexes();
   const [branch, settings, me] = await Promise.all([
-    db.collection("branches").findOne({ id: scope.branchId }, { projection: { _id: 0, id: 1, name: 1 } }),
+    db.collection("branches").findOne({ id: scope.branchId }, { projection: { _id: 0, id: 1, name: 1, geo: 1, geoRadiusM: 1 } }),
     loadAttendanceSettings(db),
     getCurrentUser(),
   ]);
@@ -51,7 +52,7 @@ export async function GET() {
     .collection<AttendanceRecord>("turnstile_io")
     .find(
       { source: QR_SOURCE, date: today, branchId: scope.branchId },
-      { projection: { _id: 0, id: 1, personName: 1, enterTime: 1, exitTime: 1, status: 1, lateMinutes: 1, expected: 1 } },
+      { projection: { _id: 0, id: 1, personName: 1, enterTime: 1, exitTime: 1, status: 1, lateMinutes: 1, expected: 1, location: 1 } },
     )
     .sort({ enterTime: -1, id: -1 })
     .limit(300)
@@ -60,7 +61,15 @@ export async function GET() {
   return NextResponse.json(
     {
       ok: true,
-      branch: { id: scope.branchId, name: String(branch?.name ?? "") },
+      branch: {
+        id: scope.branchId,
+        name: String(branch?.name ?? ""),
+        // Filialga koordinata kiritilmagan — joylashuv tekshirilmaydi (ekranda ogohlantirish).
+        geoSet: isValidPoint(branch?.geo),
+        radiusM: Number(branch?.geoRadiusM) > 0 ? Number(branch?.geoRadiusM) : DEFAULT_RADIUS_M,
+      },
+      // Yandex kaliti yo'q — manzil yozilmaydi (faqat masofa va koordinata).
+      geocoder: geocoderReady(),
       date: today,
       qr: { in: qrIn, out: qrOut },
       refreshInMs: msToNextSlot(now),

@@ -4,6 +4,8 @@ import { lessonExpectedOn, parseTimeRange } from "@/lib/groupRules";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
 import { loadAttendanceSettings, verifyQrToken, type AttendanceKind } from "@/lib/attendanceQr";
+import { distanceM, formatDistance, isValidPoint, reverseGeocode, type GeoPoint } from "@/lib/geo";
+import type { TurnstileLocation } from "@/lib/turnstileIo";
 
 // «ISHGA KELDIM» YOZUVI (28.09.2026) — `turnstile_io` kolleksiyasiga.
 //
@@ -28,8 +30,79 @@ import { loadAttendanceSettings, verifyQrToken, type AttendanceKind } from "@/li
 //     daqiqalar (Boshqaruv → Filiallar). Vaqt kiritilmagan bo'lsa kechikish
 //     o'lchanmaydi.
 // Kechikkanda filialning davomat topigiga xabar ketadi (lib/attendanceNotify.ts).
+//
+// JOYLASHUV (29.09.2026, foydalanuvchi qarorlari): filialga koordinata
+// kiritilgan bo'lsa skanerlash joylashuvsiz, aniqligi past (±300 m dan
+// yomon) yoki filialdan radiusdan (sukut 200 m) uzoqda bo'lsa QABUL
+// QILINMAYDI. GPS xatoligi hisobga olinadi: masofadan aniqlik radiusi
+// ayriladi (300 m gacha — undan kattasi "GPS'ni yoqing" deb rad etiladi,
+// aks holda aniq joylashuvni o'chirib tekshiruvni chetlab o'tish mumkin
+// bo'lardi). Qabul qilingan joylashuv yozuvga inson o'qiydigan matn bilan
+// tushadi (`location.text`, lib/geo.ts).
 
 export const QR_SOURCE = "qr";
+
+/** Filialga koordinata kiritilganda sukut radius, m. */
+export const DEFAULT_RADIUS_M = 200;
+/** Bundan yomon aniqlik (m) — joylashuv yetarli emas deb rad etiladi. */
+export const MAX_ACCURACY_M = 300;
+
+/** Mini App yuborgan joylashuv (Telegram LocationManager yoki brauzer). */
+export interface ScanLocation extends GeoPoint {
+  /** Aniqlik radiusi, m; noma'lum bo'lsa null. */
+  acc: number | null;
+}
+
+/** Mini App shu kod bo'yicha qayta urinish/sozlama tugmasini ko'rsatadi. */
+export type LocationErrorCode = "location_required" | "location_inaccurate" | "too_far";
+
+export type LocationCheck =
+  | { ok: true; distance: number | null }
+  | { ok: false; status: number; code: LocationErrorCode; error: string };
+
+/**
+ * Joylashuv qoidasi (sof funksiya — sinov shu orqali). Filialda koordinata
+ * yo'q — tekshiruv yo'q (masofa null).
+ */
+export function checkLocation(branch: Pick<AttendanceBranch, "geo" | "geoRadiusM">, loc: ScanLocation | null): LocationCheck {
+  if (!branch.geo || !isValidPoint(branch.geo)) return { ok: true, distance: null };
+  if (!loc || !isValidPoint(loc)) {
+    return { ok: false, status: 400, code: "location_required", error: "Joylashuv aniqlanmadi — Telegram'da joylashuvga ruxsat bering" };
+  }
+  const acc = loc.acc !== null && Number.isFinite(loc.acc) && loc.acc > 0 ? loc.acc : 0;
+  if (acc > MAX_ACCURACY_M) {
+    return {
+      ok: false,
+      status: 400,
+      code: "location_inaccurate",
+      error: `Joylashuv aniq emas (±${Math.round(acc)} m) — telefonda GPS'ni yoqib, qayta urinib ko'ring`,
+    };
+  }
+  const d = distanceM(branch.geo, loc);
+  const radius = Number(branch.geoRadiusM) > 0 ? Number(branch.geoRadiusM) : DEFAULT_RADIUS_M;
+  if (d - acc > radius) {
+    return { ok: false, status: 403, code: "too_far", error: `Siz filialdan ${formatDistance(d)} uzoqdasiz — belgilanmadi` };
+  }
+  return { ok: true, distance: d };
+}
+
+/** Yozuvga tushadigan joylashuv — manzil (Yandex, keshlangan) va inson o'qiydigan satr. */
+async function locationRecord(db: Db, loc: ScanLocation, distance: number | null, branch: AttendanceBranch): Promise<TurnstileLocation> {
+  const address = await reverseGeocode(db, loc);
+  const parts: string[] = [];
+  if (address) parts.push(address);
+  if (distance !== null) parts.push(`filialdan ${formatDistance(distance)}`);
+  if (parts.length === 0) parts.push(`${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`);
+  return {
+    lat: loc.lat,
+    lng: loc.lng,
+    acc: loc.acc !== null && Number.isFinite(loc.acc) ? Math.round(loc.acc) : null,
+    distanceM: distance === null ? null : Math.round(distance),
+    address,
+    text: parts.join(" · "),
+    branch: branch.geo && isValidPoint(branch.geo) ? { lat: branch.geo.lat, lng: branch.geo.lng } : null,
+  };
+}
 
 export interface AttendanceRecord {
   id: number;
@@ -50,6 +123,9 @@ export interface AttendanceRecord {
   expected: string | null;
   /** Nimaga qarab: «…» guruhi darsi / filial ish vaqti. */
   expectedWhy: string | null;
+  /** Kelgan / ketgan paytdagi joylashuv (29.09.2026 dan). */
+  location?: TurnstileLocation | null;
+  exitLocation?: TurnstileLocation | null;
   enteredAt?: Date;
   exitedAt?: Date;
 }
@@ -61,6 +137,9 @@ export interface AttendanceBranch {
   workStart?: string | null;
   lateGraceMin?: number | null;
   attendanceTopicId?: number | null;
+  /** Filial binosi — skanerlash shundan `geoRadiusM` ichida bo'lishi kerak. */
+  geo?: GeoPoint | null;
+  geoRadiusM?: number | null;
 }
 
 const p2 = (n: number) => String(n).padStart(2, "0");
@@ -149,22 +228,24 @@ export type AttendanceOutcome =
       record: AttendanceRecord;
       branch: AttendanceBranch;
     }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: number; error: string; code?: LocationErrorCode };
 
 const isDuplicateKey = (e: unknown) => (e as { code?: number } | null)?.code === 11000;
 
 /**
  * QR bo'yicha kelish/ketishni yozadi. Xodim kimligini CHAQIRUVCHI aniqlaydi
- * (bot sessiyasi yoki Mini App `initData`) — bu yerga faqat tekshirilgan
- * `HrEmployee` keladi; filial esa imzolangan tokendan.
+ * (Mini App `initData`) — bu yerga faqat tekshirilgan `HrEmployee` keladi;
+ * filial imzolangan tokendan, joylashuv qurilmadan (`loc`).
  */
 export async function markAttendance(
   db: Db,
   emp: HrEmployee,
   kind: AttendanceKind,
   token: string,
-  now: Date = new Date(),
+  opts: { now?: Date; loc?: ScanLocation | null } = {},
 ): Promise<AttendanceOutcome> {
+  const now = opts.now ?? new Date();
+  const loc = opts.loc ?? null;
   const v = verifyQrToken(token, now.getTime());
   if (!v.ok) return { ok: false, status: 400, error: v.error };
   if (kind === "out" && !(await loadAttendanceSettings(db)).checkoutEnabled) {
@@ -172,7 +253,7 @@ export async function markAttendance(
   }
   const branch = (await db.collection("branches").findOne(
     { id: v.branchId },
-    { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1 } },
+    { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1, geo: 1, geoRadiusM: 1 } },
   )) as AttendanceBranch | null;
   if (!branch) return { ok: false, status: 404, error: "Filial topilmadi" };
 
@@ -188,12 +269,20 @@ export async function markAttendance(
     if (!existing?.enterTime) {
       return { ok: false, status: 409, error: "Bugun bu filialda kelganingiz belgilanmagan — avval «Ishga keldim»" };
     }
+    const place = checkLocation(branch, loc);
+    if (!place.ok) return { ok: false, status: place.status, error: place.error, code: place.code };
+    const exitLocation = loc ? await locationRecord(db, loc, place.distance, branch) : null;
     // Qayta skanerlansa oxirgisi qoladi — chiqib, qaytib kelib, yana ketish mumkin.
-    await col.updateOne(key, { $set: { exitTime: hm, exitedAt: now } });
-    return { ok: true, kind, fresh: true, record: { ...existing, exitTime: hm }, branch };
+    await col.updateOne(key, { $set: { exitTime: hm, exitedAt: now, exitLocation } });
+    return { ok: true, kind, fresh: true, record: { ...existing, exitTime: hm, exitLocation }, branch };
   }
 
+  // Bugun allaqachon belgilangan — hech narsa yozilmaydi, joylashuv so'ralmaydi.
   if (existing?.enterTime) return { ok: true, kind, fresh: false, record: existing, branch };
+
+  const place = checkLocation(branch, loc);
+  if (!place.ok) return { ok: false, status: place.status, error: place.error, code: place.code };
+  const location = loc ? await locationRecord(db, loc, place.distance, branch) : null;
 
   const exp = await expectationFor(db, emp, branch, date, u.getDay());
   const late = lateBy(nowMin, exp);
@@ -210,6 +299,7 @@ export async function markAttendance(
     lateMinutes: late,
     expected: exp ? minToHm(exp.at) : null,
     expectedWhy: exp?.why ?? null,
+    location,
     enteredAt: now,
   };
 

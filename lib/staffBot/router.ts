@@ -2,10 +2,7 @@ import type { Db } from "mongodb";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import { uzDateIso } from "@/lib/uzTime";
-import type { HrEmployee } from "@/lib/hrEmployees";
 import { loadAttendanceSettings, parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
-import { markAttendance } from "@/lib/attendanceCheck";
-import { notifyLate } from "@/lib/attendanceNotify";
 import { answerStaff, deleteUserMessage, dropReplyKeyboard, sendToStaff } from "@/lib/staffBot/api";
 import { clearPasswordAttempts, takePasswordAttempt } from "@/lib/staffBot/attempts";
 import { findEmployeeByPhone, hasWebLogin, listCashboxesForAdmin, resolveAccess, verifyStaffLogin, type StaffAccess } from "@/lib/staffBot/auth";
@@ -16,6 +13,7 @@ import {
   backToMenu,
   cashboxArg,
   cashboxPicker,
+  checkinKeyboard,
   contactKeyboard,
   isStaffCallback,
   kassamKeyboard,
@@ -251,8 +249,12 @@ async function acceptPassword(
 
 /**
  * Telefon kamerasi QR'dagi `t.me/<bot>?start=k_…` havolasini ochdi — Telegram
- * `/start k_…` yubordi. Xodim — bot sessiyasidan (chatId), filial — imzolangan
- * tokendan; yozuvning o'zi Mini App bilan bitta yo'ldan (lib/attendanceCheck.ts).
+ * `/start k_…` yubordi.
+ *
+ * 29.09.2026 dan bu yo'l BELGILAMAYDI (foydalanuvchi qarori: "faqat bot
+ * ichidagi skaner"): joylashuv tekshiriladi, uni esa ishonchli faqat Mini
+ * App qurilma GPS'idan oladi — botga yuborilgan joylashuvni xaritadan qo'lda
+ * tanlab aldash mumkin. Xodimga skaner tugmasi beriladi.
  */
 async function attendanceByLink(
   db: Db,
@@ -261,7 +263,6 @@ async function attendanceByLink(
   user: StaffBotUser | null,
   from: TgUser | undefined,
   scanned: { kind: AttendanceKind; token: string },
-  defer: AdjustDeps["defer"],
 ): Promise<void> {
   if (!user || user.stage !== "in") {
     await sendToStaff(cfg, chatId, V.checkinNeedsLogin());
@@ -275,40 +276,8 @@ async function attendanceByLink(
     await sendToStaff(cfg, chatId, V.sessionInvalid(res.error));
     return;
   }
-  const empId = res.access.identity.employeeId;
-  const emp = empId === null
-    ? null
-    : await db.collection<HrEmployee>("hr_employees").findOne({ id: empId }, { projection: { _id: 0 } });
-  if (!emp) {
-    await sendToStaff(cfg, chatId, V.checkinNoEmployee(), backToMenu());
-    return;
-  }
-  const out = await markAttendance(db, emp, scanned.kind, scanned.token);
-  if (!out.ok) {
-    await sendToStaff(cfg, chatId, V.checkinFailed(out.error), backToMenu());
-    return;
-  }
-  const r = out.record;
-  if (out.fresh && out.kind === "in" && r.lateMinutes > 0) {
-    const { branch } = out;
-    const turi = emp.turi;
-    defer(() => notifyLate(r, branch, turi));
-  }
-  await sendToStaff(
-    cfg,
-    chatId,
-    V.checkinResult({
-      kind: out.kind,
-      fresh: out.fresh,
-      branchName: out.branch.name,
-      enterTime: r.enterTime,
-      exitTime: r.exitTime,
-      lateMinutes: r.lateMinutes,
-      expected: r.expected,
-      expectedWhy: r.expectedWhy,
-    }),
-    backToMenu(),
-  );
+  const { checkoutEnabled } = await loadAttendanceSettings(db);
+  await sendToStaff(cfg, chatId, V.checkinUseButton(scanned.kind), checkinKeyboard(checkoutEnabled));
 }
 
 // ── Xabarlar ────────────────────────────────────────────────────────
@@ -330,7 +299,7 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
   if (startArg) {
     const scanned = parseScanned(startArg[1]);
     if (scanned) {
-      await attendanceByLink(db, cfg, chatId, user, msg.from, scanned, defer);
+      await attendanceByLink(db, cfg, chatId, user, msg.from, scanned);
       return;
     }
   }

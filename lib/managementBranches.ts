@@ -50,6 +50,27 @@ export interface ManagementBranch {
   workStart?: string | null;
   /** Ish boshlanishidan keyin necha daqiqagacha kechikish hisoblanmaydi (0–180). */
   lateGraceMin?: number | null;
+  /**
+   * Filial binosining joylashuvi (29.09.2026) — «Ishga keldim» skanerlashi
+   * shundan `geoRadiusM` ichida bo'lishi shart (lib/attendanceCheck.ts).
+   * Yo'q bo'lsa joylashuv tekshirilmaydi (faqat yoziladi).
+   */
+  geo?: { lat: number; lng: number } | null;
+  /** Ruxsat etilgan radius, m (30–2000; bo'sh — 200). */
+  geoRadiusM?: number | null;
+}
+
+export type RadiusParse = { ok: true; value: number | null } | { ok: false; error: string };
+
+/** Radius (m): 30–2000 butun son yoki bo'sh (→ null, ya'ni sukut 200). */
+export function parseGeoRadius(raw: unknown): RadiusParse {
+  const s = String(raw ?? "").trim();
+  if (!s) return { ok: true, value: null };
+  const n = Number(s);
+  if (!/^\d+$/.test(s) || n < 30 || n > 2000) {
+    return { ok: false, error: "Radius — 30 dan 2000 metrgacha" };
+  }
+  return { ok: true, value: n };
 }
 
 /** Filial hujjatidagi Telegram topik maydonlari — API va sahifa shu ro'yxat bo'ylab aylanadi. */

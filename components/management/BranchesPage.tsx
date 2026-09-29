@@ -9,6 +9,7 @@ import type { ManagementBranch } from "@/lib/managementBranches";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import TimeField from "@/components/ui/TimeField";
 import { useT } from "@/components/shared/Language";
+import { parseGeo } from "@/lib/geo";
 
 // Boshqaruv → Filiallar (sidebar: Boshqaruv > Filiallar, href
 // /management-filiallar). Ma'lumot HAQIQIY — /api/branches (MongoDB
@@ -41,7 +42,15 @@ const emptyForm = {
   attendanceTopic: "",
   workStart: "",
   lateGrace: "",
+  geo: "",
+  radius: "",
 };
+
+/** Formadagi joylashuv satri → xarita ko'rinishi (tushunilmasa null). */
+function previewPoint(raw: string): { lat: number; lng: number } | null {
+  const p = parseGeo(raw);
+  return p.ok ? p.value : null;
+}
 
 /** Ro'yxatdagi kichik belgi: topik bor — ko'k, yo'q — sariq. */
 function TopicBadge({ label, topic, missingTitle }: { label: string; topic: number | null | undefined; missingTitle: string }) {
@@ -101,6 +110,8 @@ export default function BranchesPage() {
       attendanceTopic: b.attendanceTopicId ? String(b.attendanceTopicId) : "",
       workStart: b.workStart || "",
       lateGrace: b.lateGraceMin ? String(b.lateGraceMin) : "",
+      geo: b.geo ? `${b.geo.lat.toFixed(6)}, ${b.geo.lng.toFixed(6)}` : "",
+      radius: b.geoRadiusM ? String(b.geoRadiusM) : "",
     });
     setEditTarget(b);
   }
@@ -133,6 +144,8 @@ export default function BranchesPage() {
           attendanceTopicId: form.attendanceTopic.trim(),
           workStart: form.workStart,
           lateGraceMin: form.lateGrace.trim(),
+          geo: form.geo.trim(),
+          geoRadiusM: form.radius.trim(),
         }),
       });
       const data = await res.json();
@@ -179,7 +192,30 @@ export default function BranchesPage() {
     }
   }
 
+  // «📍 Hozirgi joylashuvim» — admin filial binosida turib bosadi (telefonda aniqroq).
+  const [locating, setLocating] = useState(false);
+  function takeMyLocation() {
+    if (!navigator.geolocation) {
+      showError(t("Bu brauzer joylashuvni bera olmaydi"));
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocating(false);
+        setForm((f) => ({ ...f, geo: `${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}` }));
+        showSuccess(t("Joylashuv olindi (±{m} m)", { m: Math.round(p.coords.accuracy) }));
+      },
+      () => {
+        setLocating(false);
+        showError(t("Joylashuv olinmadi — brauzerga ruxsat bering"));
+      },
+      { enableHighAccuracy: true, timeout: 15_000 },
+    );
+  }
+
   const formOpen = addOpen || editTarget !== null;
+  const geoPreview = previewPoint(form.geo);
 
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5 space-y-4">
@@ -212,6 +248,15 @@ export default function BranchesPage() {
               topic={b.attendanceTopicId}
               missingTitle={t("Kechikish xabari umumiy davomat topigiga tushadi (u ham bo'lmasa — yuborilmaydi)")}
             />
+            {b.geo ? (
+              <span className="shrink-0 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[12px] font-medium text-sky-600" title={t("«Ishga keldim» shu joydan {m} m ichida qabul qilinadi", { m: b.geoRadiusM || 200 })}>
+                📍 {b.geoRadiusM || 200} m
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[12px] font-medium text-amber-700 dark:text-amber-400" title={t("Filial joylashuvi kiritilmagan — skanerlashda masofa tekshirilmaydi")}>
+                📍 {t("joylashuv yo'q")}
+              </span>
+            )}
             {/* Amal tugmalari DOIM ko'rinadi. Ilgari ular
                 `opacity-0 group-hover:opacity-100` bilan yashiringan edi —
                 sichqonchasiz (sensorli ekran, klaviatura) ularni topib
@@ -344,6 +389,54 @@ export default function BranchesPage() {
               </div>
               <p className="sm:col-span-2 -mt-1 text-[12px] text-muted-foreground">
                 {t("O'qituvchi bo'lmagan xodimlar shu vaqtdan kechiksa «Kechikkan» bo'ladi. O'qituvchilar — o'sha kungi birinchi darsidan. Vaqt bo'sh bo'lsa kechikish o'lchanmaydi.")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[13px] font-medium">{t("Filial joylashuvi («Ishga keldim» tekshiruvi)")}</label>
+              <div className="flex gap-2">
+                <input
+                  value={form.geo}
+                  onChange={(e) => setForm((f) => ({ ...f, geo: e.target.value }))}
+                  className={inputCls}
+                  placeholder={t("41.068900, 71.823600 yoki Google/Yandex xarita havolasi")}
+                />
+                <button
+                  type="button"
+                  onClick={takeMyLocation}
+                  disabled={locating}
+                  className="h-10 shrink-0 rounded-lg border border-border bg-card px-3 text-[13px] font-medium hover:bg-secondary disabled:opacity-60"
+                >
+                  {locating ? t("Olinmoqda…") : t("📍 Hozirgi joylashuvim")}
+                </button>
+              </div>
+              <div className="grid grid-cols-[140px_1fr] items-center gap-3">
+                <input
+                  value={form.radius}
+                  onChange={(e) => setForm((f) => ({ ...f, radius: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                  className={inputCls}
+                  inputMode="numeric"
+                  placeholder="200"
+                />
+                <span className="text-[12px] text-muted-foreground">
+                  {t("metr — xodim shu radius ichida skanerlashi kerak (bo'sh — 200 m)")}
+                </span>
+              </div>
+              {form.geo.trim() && !geoPreview && (
+                <p className="text-[12px] text-rose-600">{t("Joylashuv tushunilmadi — koordinatani yoki xarita havolasini tekshiring")}</p>
+              )}
+              {geoPreview && (
+                <div className="overflow-hidden rounded-xl border border-border">
+                  <iframe
+                    title={t("Xarita")}
+                    src={`https://yandex.ru/map-widget/v1/?ll=${geoPreview.lng}%2C${geoPreview.lat}&z=16&pt=${geoPreview.lng}%2C${geoPreview.lat}`}
+                    className="block h-44 w-full"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
+              <p className="text-[12px] text-muted-foreground">
+                {t("Kiritilsa, xodim QR kodni faqat shu joy yaqinida skanerlay oladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).")}
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">

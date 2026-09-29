@@ -12,6 +12,7 @@ import type { PerformanceRow } from "@/lib/performanceReport";
 import { STATE_KEYS, STATE_LABELS } from "@/lib/performanceReport";
 import type { TeacherStudent } from "@/lib/teacherRoster";
 import PersonLink from "@/components/shared/PersonDirectory";
+import { LocationChip } from "@/components/shared/AttendanceLocation";
 import { useT } from "@/components/shared/Language";
 
 // Xodim profilidagi tablar mazmuni. Hammasi HAQIQIY backend ma'lumotidan
@@ -256,7 +257,7 @@ export function WorkHoursTab({ records }: { records: TurnstileIoRecord[] }) {
   return (
     <>
       <Caption>{t("Turniket kirish-chiqish yozuvlari. Jami ishlangan vaqt:")}{" "}<strong>{fmtDuration(totals.mins)}</strong> · Kelgan {totals.byStatus.kelgan ?? 0} · Kechikkan {totals.byStatus.kechikkan ?? 0} · Kelmagan {totals.byStatus.kelmagan ?? 0}</Caption>
-      <Table head={["№", "Sana", "Kirish vaqti", "Chiqish vaqti", "Ish soati", "Holati"]} count={records.length}>
+      <Table head={["№", "Sana", "Kirish vaqti", "Chiqish vaqti", "Ish soati", "Joylashuv", "Holati"]} count={records.length}>
         {records.map((r, i) => (
           <tr key={r.id} className="hover:bg-secondary/30 transition-colors">
             <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
@@ -264,6 +265,10 @@ export function WorkHoursTab({ records }: { records: TurnstileIoRecord[] }) {
             <td className="px-4 py-3 tabular-nums whitespace-nowrap">{r.enterTime ?? "—"}</td>
             <td className="px-4 py-3 tabular-nums whitespace-nowrap">{r.exitTime ?? "—"}</td>
             <td className="px-4 py-3 tabular-nums whitespace-nowrap">{fmtDuration(workedMinutes(r))}</td>
+            {/* «Ishga keldim» (QR) joylashuvi — turniket importida yo'q ("—"). */}
+            <td className="px-4 py-3 max-w-[280px]">
+              <LocationChip loc={r.location} person={r.personName} when={`${r.date} · ${r.enterTime ?? ""}`} />
+            </td>
             <td className="px-4 py-3 whitespace-nowrap">
               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
                 r.status === "kelgan" ? "bg-emerald-500/10 text-emerald-600"

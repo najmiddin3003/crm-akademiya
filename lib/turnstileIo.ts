@@ -8,6 +8,24 @@
 // shundan kelib chiqadigan holat.
 export type TurnstileIoStatus = "kelgan" | "kechikkan" | "kelmagan";
 
+/**
+ * «Ishga keldim» (QR) skanerlangan joy (29.09.2026, lib/attendanceCheck.ts).
+ * `text` — bazadagi inson o'qiydigan satr (manzil · filialgacha masofa).
+ */
+export interface TurnstileLocation {
+  lat: number;
+  lng: number;
+  /** Qurilma aytgan aniqlik radiusi, m. */
+  acc: number | null;
+  /** Filialgacha, m — filial joylashuvi kiritilmagan bo'lsa null. */
+  distanceM: number | null;
+  /** Yandex manzili (kalit yo'q yoki topilmasa null). */
+  address: string | null;
+  text: string;
+  /** Skanerlangan paytdagi filial nuqtasi — xaritada ikkalasi ko'rinsin. */
+  branch: { lat: number; lng: number } | null;
+}
+
 export interface TurnstileIoRecord {
   id: number;
   date: string; // "YYYY-MM-DD"
@@ -16,6 +34,9 @@ export interface TurnstileIoRecord {
   enterTime: string | null; // "HH:mm" — kelmagan bo'lsa null
   exitTime: string | null;
   status: TurnstileIoStatus;
+  /** QR yozuvlarida: kelgan/ketgan paytdagi joylashuv. Turniket importida yo'q. */
+  location?: TurnstileLocation | null;
+  exitLocation?: TurnstileLocation | null;
 }
 
 export const TURNSTILE_IO_PERSON_TYPES: { key: TurnstileIoRecord["personType"]; label: string }[] = [

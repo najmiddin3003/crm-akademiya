@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import {
   BRANCH_TOPIC_FIELDS,
+  parseGeoRadius,
   parseLateGrace,
   parseLeadTopicId,
   parseWorkStart,
   type ManagementBranch,
 } from "@/lib/managementBranches";
+import { parseGeoInput } from "@/lib/geo";
 
 // PATCH /api/branches/:id — filialni tahrirlaydi.
 //
@@ -58,6 +60,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!g.ok) return NextResponse.json({ ok: false, error: g.error }, { status: 400 });
     if (g.value === null) unset.lateGraceMin = 1;
     else set.lateGraceMin = g.value;
+  }
+  // Filial joylashuvi — formadan satr ("41.06891, 71.82361" yoki xarita havolasi).
+  if ("geo" in body) {
+    const geo = parseGeoInput(body.geo);
+    if (!geo.ok) return NextResponse.json({ ok: false, error: geo.error }, { status: 400 });
+    if (geo.value === null) unset.geo = 1;
+    else set.geo = geo.value;
+  }
+  if ("geoRadiusM" in body) {
+    const r = parseGeoRadius(body.geoRadiusM);
+    if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: 400 });
+    if (r.value === null) unset.geoRadiusM = 1;
+    else set.geoRadiusM = r.value;
   }
   if (Object.keys(set).length === 0 && Object.keys(unset).length === 0) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });

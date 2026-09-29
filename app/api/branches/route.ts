@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import {
   BRANCH_TOPIC_FIELDS,
+  parseGeoRadius,
   parseLateGrace,
   parseLeadTopicId,
   parseWorkStart,
   type ManagementBranch,
 } from "@/lib/managementBranches";
+import { parseGeoInput } from "@/lib/geo";
 import { getCurrentUser } from "@/lib/auth";
 
 // Boshqaruv → Filiallar backend'i (MongoDB `branches`). Demo seed YO'Q —
@@ -73,6 +75,10 @@ export async function POST(req: Request) {
   if (!work.ok) return NextResponse.json({ ok: false, error: work.error }, { status: 400 });
   const grace = parseLateGrace(body.lateGraceMin);
   if (!grace.ok) return NextResponse.json({ ok: false, error: grace.error }, { status: 400 });
+  const geo = parseGeoInput(body.geo);
+  if (!geo.ok) return NextResponse.json({ ok: false, error: geo.error }, { status: 400 });
+  const radius = parseGeoRadius(body.geoRadiusM);
+  if (!radius.ok) return NextResponse.json({ ok: false, error: radius.error }, { status: 400 });
 
   const branch: ManagementBranch = {
     id: nextId,
@@ -83,6 +89,8 @@ export async function POST(req: Request) {
     ...topics,
     ...(work.value ? { workStart: work.value } : {}),
     ...(grace.value ? { lateGraceMin: grace.value } : {}),
+    ...(geo.value ? { geo: geo.value } : {}),
+    ...(radius.value ? { geoRadiusM: radius.value } : {}),
   };
   await col.insertOne({ ...branch });
   return NextResponse.json({ ok: true, branch });

@@ -133,6 +133,11 @@ export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checko
   };
 }
 
+/** QR havolasi kamera bilan ochilganda — Telegram ichidagi skanerga yo'naltirish. */
+export function checkinKeyboard(checkoutEnabled: boolean): InlineKeyboard {
+  return { inline_keyboard: [checkinRow(checkoutEnabled), [btn("🏠 Bosh menyu", CB.menu)]] };
+}
+
 export function backToMenu(): InlineKeyboard {
   return { inline_keyboard: [[btn("🏠 Bosh menyu", CB.menu)]] };
 }

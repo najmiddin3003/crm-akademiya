@@ -2,11 +2,18 @@ import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { staffFromInitData } from "@/lib/staffBot/webapp";
 import { parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
-import { markAttendance } from "@/lib/attendanceCheck";
+import { markAttendance, type ScanLocation } from "@/lib/attendanceCheck";
 import { notifyLate } from "@/lib/attendanceNotify";
+import { isValidPoint } from "@/lib/geo";
 
 // POST /api/xodim/davomat — «📷 Ishga keldim» Mini App'i (/xodim/keldim)
-// skanerlagan QR kodni yozadi. Body: { code: <skanerlangan matn>, kind?: "in"|"out" }.
+// skanerlagan QR kodni yozadi.
+// Body: { code: <skanerlangan matn>, kind?: "in"|"out", loc?: { lat, lng, acc } }.
+//
+// `loc` — qurilma joylashuvi (Telegram LocationManager, 29.09.2026). Filialga
+// koordinata kiritilgan bo'lsa usiz yoki uzoqdan skanerlash qabul qilinmaydi
+// (lib/attendanceCheck.ts → checkLocation); javobdagi `code` Mini App'ga
+// qaysi tugmani (sozlama / qayta urinish) ko'rsatishni aytadi.
 //
 // Xodim — Telegram `initData` dan (lib/staffBot/webapp.ts, bot bilan bir xil
 // tekshiruv), filial — imzolangan QR tokenidan (lib/attendanceQr.ts). Klient
@@ -19,8 +26,18 @@ import { notifyLate } from "@/lib/attendanceNotify";
 const NO_STORE = { "Cache-Control": "private, no-store" };
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: NO_STORE });
 
+/** Klient yuborgan joylashuv — raqamlar va chegaralar tekshiriladi, qolgani tashlanadi. */
+function readLocation(raw: unknown): ScanLocation | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as { lat?: unknown; lng?: unknown; acc?: unknown };
+  const p = { lat: Number(r.lat), lng: Number(r.lng) };
+  if (!isValidPoint(p)) return null;
+  const acc = r.acc === null || r.acc === undefined ? null : Number(r.acc);
+  return { ...p, acc: acc !== null && Number.isFinite(acc) && acc >= 0 ? acc : null };
+}
+
 export async function POST(req: Request) {
-  let body: { code?: unknown; kind?: unknown };
+  let body: { code?: unknown; kind?: unknown; loc?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -41,8 +58,8 @@ export async function POST(req: Request) {
     const auth = await staffFromInitData(db, req.headers.get("x-telegram-init-data") || "");
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
-    const res = await markAttendance(db, auth.employee, scanned.kind, scanned.token);
-    if (!res.ok) return json({ ok: false, error: res.error }, res.status);
+    const res = await markAttendance(db, auth.employee, scanned.kind, scanned.token, { loc: readLocation(body.loc) });
+    if (!res.ok) return json({ ok: false, error: res.error, code: res.code ?? null }, res.status);
 
     // Javob xodimga ketgandan KEYIN — Telegram sekin bo'lsa ham skaner kutmaydi.
     if (res.fresh && res.kind === "in" && res.record.lateMinutes > 0) {
@@ -64,6 +81,7 @@ export async function POST(req: Request) {
       lateMinutes: r.lateMinutes,
       expected: r.expected,
       expectedWhy: r.expectedWhy,
+      locationText: (res.kind === "out" ? r.exitLocation : r.location)?.text ?? null,
     });
   } catch (e) {
     console.error("[xodim/davomat]", e);
