@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import { loadStaffBotConfig } from "@/lib/staffBot/config";
+import { legacyStaffBotToken, loadStaffBotConfig } from "@/lib/staffBot/config";
 import { resolveAccess } from "@/lib/staffBot/auth";
 import { getStaffUser } from "@/lib/staffBot/session";
 import { verifyInitData } from "@/lib/studentBot/webapp";
@@ -7,9 +7,9 @@ import type { HrEmployee } from "@/lib/hrEmployees";
 
 // XODIMLAR BOTI — «👤 Profilim» Mini App kirishi (28.09.2026).
 //
-// `initData` XODIMLAR bot kaliti (TELEGRAM_BOT_TOKEN) bilan tekshiriladi —
-// o'quvchilar botiniki bilan emas: tugma shu botda, Telegram imzoni shu
-// kalit bilan qo'yadi. Imzo tekshiruvi umumiy (lib/studentBot/webapp.ts,
+// `initData` xodimlar ishlaydigan bot kaliti bilan tekshiriladi — 29.09.2026
+// dan @tizimli_akademiya_bot (TELEGRAM_STUDENT_BOT_TOKEN, lib/staffBot/config.ts):
+// tugma shu botda, Telegram imzoni shu kalit bilan qo'yadi. Imzo tekshiruvi umumiy (lib/studentBot/webapp.ts,
 // HMAC-SHA256, 24 soatdan eski emas).
 //
 // XODIM ID'SI KLIENTDAN OLINMAYDI: Telegram foydalanuvchisi → botdagi
@@ -32,11 +32,23 @@ export type StaffTgAuth =
 const AUTH_TTL_MS = 15_000;
 const authCache = new Map<string, { at: number; req: Promise<StaffTgAuth> }>();
 
+/**
+ * Eski botning (@akademiya_crm_bot) menyusidagi tugma ochgan sahifa — xodimga
+ * yangi botni ko'rsatamiz ("Imzo to'g'ri kelmadi" o'rniga).
+ */
+export const MOVED_TO_NEW_BOT = "Xodimlar bo'limi @tizimli_akademiya_bot ga ko'chdi. O'sha botni oching va /start bosing.";
+
 async function resolveStaff(db: Db, initData: string): Promise<StaffTgAuth> {
   const cfg = loadStaffBotConfig();
   if (!cfg.token) return { ok: false, status: 503, error: "Bot sozlanmagan" };
   const v = verifyInitData(initData, cfg.token);
-  if (!v.ok) return { ok: false, status: 401, error: v.error };
+  if (!v.ok) {
+    const legacy = legacyStaffBotToken();
+    if (legacy && legacy !== cfg.token && verifyInitData(initData, legacy).ok) {
+      return { ok: false, status: 403, error: MOVED_TO_NEW_BOT };
+    }
+    return { ok: false, status: 401, error: v.error };
+  }
 
   const user = await getStaffUser(db, v.tgUserId);
   if (!user || user.stage !== "in") {

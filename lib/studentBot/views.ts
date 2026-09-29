@@ -113,7 +113,11 @@ export function startPrompt(nick = ""): string {
     "Yoki raqamingizni shu yerga yozing — qanday yozsangiz ham bo'ladi:",
     "<code>90 123 45 67</code>, <code>90-123-45-67</code>, <code>+998901234567</code>.",
     "",
-    `${pe("lock")} <i>Raqamingiz bazadagi o'quvchi yoki ota-ona ma'lumotlari bilan tekshiriladi.</i>`,
+    // 29.09.2026 dan xodimlar ham shu botda (lib/botDispatch.ts) — raqami
+    // xodimniki bo'lsa bot o'zi xodimlar bo'limini ochadi.
+    "👔 <b>Markaz xodimimisiz?</b> Shu tugma bilan raqamingizni yuboring — bot sizni taniydi va xodimlar bo'limini ochadi.",
+    "",
+    `${pe("lock")} <i>Raqamingiz bazadagi o'quvchi, ota-ona yoki xodim ma'lumotlari bilan tekshiriladi.</i>`,
   ].join("\n");
 }
 
@@ -125,7 +129,8 @@ export function phoneNotFound(phone: string): string {
     "",
     "Sabablari:",
     "• raqam CRM'da boshqacha yozilgan bo'lishi mumkin;",
-    "• o'quvchi hali ro'yxatga olinmagan bo'lishi mumkin.",
+    "• o'quvchi hali ro'yxatga olinmagan bo'lishi mumkin;",
+    "• xodim bo'lsangiz — telefoningiz Boshqaruv → Xodimlar bo'limida boshqacha yozilgan.",
     "",
     "Iltimos, o'quv markaziga murojaat qiling — raqamingizni yangilashsin.",
     "So'ng /start ni qayta bosing.",

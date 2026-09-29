@@ -1711,7 +1711,12 @@ kutayotganlar" kabi savolga javob berib bo'lmasdi):
 
 ## Xodimlar boti: kassa amallari Telegram'dan (2026-09-18)
 
-@tizimli_akademiya_bot — o'sha bot (guruhlarga to'lov/oylik/lid xabarlari,
+> **29.09.2026 dan xodimlar @tizimli_akademiya_bot da** (o'quvchilar bilan
+> bitta bot) — pastdagi «Bitta bot: o'quvchi + xodim» bo'limiga qarang.
+> Quyidagi 18.09 matnidagi "o'sha bot" — @akademiya_crm_bot; u endi faqat
+> guruh boti.
+
+@akademiya_crm_bot — o'sha bot (guruhlarga to'lov/oylik/lid xabarlari,
 lid tugmalari) — endi kassir bilan SHAXSIY yozishmada ham ishlaydi.
 Foydalanuvchi bilan kelishilgan: 6 tugma (Kirim · Chiqim · Ko'chirish ·
 Lid qo'shish · Kassam · Chiqish), kirish web'dagi telefon + parol bilan,
@@ -1750,7 +1755,7 @@ har birining tafsiloti pastda.
 
 ### Fayllar
 
-`lib/staffBot/` — `config` (token = `TELEGRAM_BOT_TOKEN`), `session`
+`lib/staffBot/` — `config` (token = 29.09 dan `TELEGRAM_STUDENT_BOT_TOKEN`), `session`
 (`staff_bot_users`), `auth`, `attempts`, `api` (yuborish/tahrirlash/o'chirish),
 `keyboards` (`s:` prefiksli kalitlar — lid tugmalari `lead:` bilan
 to'qnashmaydi), `views`, `data`, `screen`, `kirim` (oqim), `router`.
@@ -1782,6 +1787,41 @@ PUL YOZILADI va lokal `.env` prod kalitlariga qarasa haqiqiy guruhga xabar ketad
   import qiladi — Node skriptida `scripts/_ts-alias-hooks.mjs` ularni
   `next/server.js` ga o'giradi; `lib/sync/dispatch.ts` dagi parameter
   property uchun `--experimental-transform-types` shart.
+
+### Bitta bot: o'quvchi + xodim (2026-09-29)
+
+Foydalanuvchi: "tizimli_akademiya botida xodimlar ishlashi kerak,
+crm_akademiya botimiz faqat to'lovlarni guruhga yozadi". Shu kundan:
+
+| Bot | Kalit | Webhook | Vazifasi |
+| --- | --- | --- | --- |
+| @tizimli_akademiya_bot | `TELEGRAM_STUDENT_BOT_TOKEN` | `/api/telegram/student` | o'quvchi/ota-ona VA xodim (profil, «Ishga keldim», kassa, lid) |
+| @akademiya_crm_bot | `TELEGRAM_BOT_TOKEN` | `/api/telegram/webhook` | faqat guruh: to'lov/oylik/lid xabarlari, lid tugmalari, «Ustozga savol», kechikish xabari |
+
+- **Ajratish** — `lib/botDispatch.ts` (`pickSide`), routerlar o'zgarmagan:
+  `s:` tugma → xodim; `/start k_…|x_…` (QR), `/start xodim`, `/xodim` →
+  xodim; kirgan xodim → xodim; yangi odamning raqami (tugma yoki qo'lda)
+  faol xodimniki yoki CRM paroli bor hisobniki bo'lsa → xodim, aks holda
+  o'quvchi; bog'langan o'quvchi → o'quvchi. Raqam ham xodimda, ham o'quvchi
+  yozuvida bo'lsa (29.09 da 53 tadan 21 tasi) — XODIM ustun. O'quvchi
+  sifatida bog'langan xodim `/xodim` bilan o'tadi.
+- **Sessiyalar ko'chmaydi** — `staff_bot_users.chatId` Telegram foydalanuvchi
+  id'si, u ikki botda bir xil: eski botda kirgan xodim yangi botda /start
+  bosishi bilan menyusini ko'radi. Bot odamga birinchi bo'lib yoza olmaydi —
+  xodim yangi botni bir marta ochishi SHART (ko'chirma pushi shungacha 403,
+  `blocked` belgisi xodim yozganda olinadi — `touchStaffUser`).
+- **Eski bot** (`lib/staffBot/moved.ts`) shaxsiy xabarga va eski menyu
+  tugmasiga yangi botga havola beradi (`t.me/tizimli_akademiya_bot?start=xodim`);
+  eski menyudagi Mini App tugmasi ochgan sahifa ham eski imzoni tanib
+  "ko'chdi" deydi (`lib/staffBot/webapp.ts`).
+- **QR** havolasi yangi botga (`staffBotUsername()`,
+  `TELEGRAM_STUDENT_BOT_USERNAME` bo'lmasa `tizimli_akademiya_bot`); eski
+  havola ham skanerda tanilaveradi.
+
+Deploydan keyin (Telegram'ga yozadi — ruxsat bilan):
+`node scripts/set-student-bot-webhook.mjs --commands` (/start /menu /xodim) va
+`node scripts/set-telegram-webhook.mjs --commands` (eski botning /start /kassa
+/chiqish menyusi o'chadi). Webhook manzillari o'zgarmaydi.
 
 ### 2-bosqich — Chiqim (2026-09-18)
 

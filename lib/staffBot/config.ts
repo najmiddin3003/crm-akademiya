@@ -1,18 +1,19 @@
-// XODIMLAR BOTI (@akademiya_crm_bot — @tizimli_akademiya_bot EMAS, u
-// o'quvchilar boti, lib/studentBot) — sozlama.
+// XODIMLAR BOTI — sozlama.
 //
-// Bu O'SHA BOT: guruh topiklariga to'lov/oylik/lid xabarlarini yuboradigan
-// va lid tugmalarini qabul qiladigan (lib/sync/telegram.ts,
-// app/api/telegram/webhook). 18.09.2026 dan u kassir bilan SHAXSIY
-// yozishmada ham ishlaydi — to'lov kiritish va kassa holati
-// (lib/staffBot/*). Yangi token yo'q: `TELEGRAM_BOT_TOKEN` ning o'zi.
+// 29.09.2026 dan xodimlar @tizimli_akademiya_bot da ishlaydi (foydalanuvchi:
+// "tizimli_akademiya botida xodimlar ishlashi kerak, crm_akademiya botimiz
+// faqat to'lovlarni guruhga yozadi"). Token — o'quvchilar botiniki
+// (`TELEGRAM_STUDENT_BOT_TOKEN`), webhook — `/api/telegram/student`: bitta
+// botda ikki oqim, yozgan odam xodimmi yoki o'quvchi/ota-onami —
+// lib/botDispatch.ts ajratadi.
 //
-// Webhook `allowed_updates` ga `message` QO'SHILGAN bo'lishi shart
-// (scripts/set-telegram-webhook.mjs), aks holda Telegram xabarlarni
-// umuman yubormaydi va bot faqat tugmalarga javob beradi.
+// @akademiya_crm_bot (`TELEGRAM_BOT_TOKEN`) endi faqat GURUH boti: to'lov/
+// oylik/lid xabarlari va lid tugmalari (lib/sync/telegram.ts,
+// app/api/telegram/webhook). Unga shaxsiy yozgan xodim yangi botga
+// yo'naltiriladi (lib/staffBot/moved.ts).
 
 export interface StaffBotConfig {
-  /** `TELEGRAM_BOT_TOKEN` — xodimlar botining kaliti. */
+  /** `TELEGRAM_STUDENT_BOT_TOKEN` — @tizimli_akademiya_bot kaliti (o'quvchilar bilan umumiy). */
   token: string;
   /**
    * Kassaga oid HAR BIR amal jurnalda shu belgi bilan yoziladi
@@ -23,9 +24,34 @@ export interface StaffBotConfig {
 
 export function loadStaffBotConfig(): StaffBotConfig {
   return {
-    token: (process.env.TELEGRAM_BOT_TOKEN || "").trim(),
+    token: (process.env.TELEGRAM_STUDENT_BOT_TOKEN || "").trim(),
     origin: "telegram",
   };
+}
+
+/**
+ * Botning @nomi — QR havolasi (lib/attendanceQr.ts) va eski botdagi
+ * yo'naltirish tugmasi uchun. `getMe` so'ralmaydi (QR ekrani har 30 soniyada
+ * yangilanadi): `TELEGRAM_STUDENT_BOT_USERNAME`, bo'lmasa @tizimli_akademiya_bot.
+ */
+export function staffBotUsername(): string {
+  return (process.env.TELEGRAM_STUDENT_BOT_USERNAME || "").trim().replace(/^@/, "") || "tizimli_akademiya_bot";
+}
+
+/**
+ * `t.me/<bot>?start=xodim` — xodimlar bo'limini ochadigan havola parametri
+ * (eski botdagi yo'naltirish tugmasi, lib/staffBot/moved.ts; lib/botDispatch.ts
+ * uni xodim oqimiga beradi).
+ */
+export const STAFF_START_PARAM = "xodim";
+
+/**
+ * ESKI xodimlar botining (@akademiya_crm_bot) kaliti — faqat uning menyusida
+ * qolgan Mini App tugmasini TANISH uchun (lib/staffBot/webapp.ts): imzo shu
+ * kalitga mos kelsa, xodimga "bot ko'chdi" deyiladi.
+ */
+export function legacyStaffBotToken(): string {
+  return (process.env.TELEGRAM_BOT_TOKEN || "").trim();
 }
 
 /**

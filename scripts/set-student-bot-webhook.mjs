@@ -15,11 +15,12 @@
 //                                      aynan shuni tekshiradi
 //                                      (app/api/telegram/student).
 //
-// DIQQAT — BU XODIMLAR BOTI EMAS. Xodimlar boti alohida skript bilan
-// sozlanadi (scripts/set-telegram-webhook.mjs) va uning `allowed_updates`
-// ro'yxatida faqat `callback_query` bor. Ikkalasini adashtirmang:
-// bu yerdagi token bilan xodimlar botining webhook'ini yozib yuborsangiz,
-// guruhdagi lid tugmalari ishlamay qoladi.
+// 29.09.2026 dan bu bot (@tizimli_akademiya_bot) XODIMLAR boti ham —
+// o'quvchi va xodim bitta webhook'da, lib/botDispatch.ts ajratadi.
+// GURUH boti (@akademiya_crm_bot) alohida skript bilan sozlanadi
+// (scripts/set-telegram-webhook.mjs). Ikkalasini adashtirmang: bu yerdagi
+// token bilan guruh botining webhook'ini yozib yuborsangiz, guruhdagi lid
+// tugmalari ishlamay qoladi.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -85,12 +86,15 @@ if (arg === "--delete") {
 }
 
 // Telegram menyusidagi buyruqlar ro'yxati ("/" bosilganda chiqadi).
-// Bot bitta buyruq bilan ishlaydi — qolgani tugmalar orqali.
+// Bot bitta buyruq bilan ishlaydi — qolgani tugmalar orqali. 29.09.2026 dan
+// xodimlar ham shu botda (lib/botDispatch.ts): /xodim — xodimlar bo'limi
+// (raqamini o'quvchi sifatida bog'lagan xodim ham shu bilan o'tadi).
 if (arg === "--commands") {
   const res = await call("setMyCommands", {
     commands: [
       { command: "start", description: "Boshlash / asosiy menyu" },
       { command: "menu", description: "Asosiy menyu" },
+      { command: "xodim", description: "Xodimlar bo'limi (profil, Ishga keldim, kassa)" },
     ],
   });
   console.log(res.ok ? "Buyruqlar ro'yxati yozildi." : `Xato: ${JSON.stringify(res)}`);

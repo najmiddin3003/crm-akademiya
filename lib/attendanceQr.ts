@@ -1,12 +1,13 @@
 import crypto from "node:crypto";
 import type { Db } from "mongodb";
+import { staffBotUsername } from "@/lib/staffBot/config";
 
 // XODIMLAR DAVOMATI — «Ishga keldim» QR KODI (28.09.2026).
 //
 // Foydalanuvchi qarori: QR filial qabulxonasidagi EKRANDA turadi va har
 // 30 soniyada yangilanadi (Nazorat → Ishga keldim (QR), /nazorat-qr) —
-// rasmini olib uydan skanerlab bo'lmasin. Xodim uni xodimlar botidagi
-// «📷 Ishga keldim» tugmasi (Telegram ichidagi skaner, /xodim/keldim) yoki
+// rasmini olib uydan skanerlab bo'lmasin. Xodim uni botdagi (29.09.2026
+// dan @tizimli_akademiya_bot) «📷 Ishga keldim» tugmasi (Telegram ichidagi skaner, /xodim/keldim) yoki
 // oddiy telefon kamerasi bilan skanerlaydi: QR ichida bot havolasi
 // `t.me/<bot>?start=k_<token>`, ya'ni kamera ham botni ochib, kodni o'zi
 // yuboradi (lib/staffBot/router.ts).
@@ -91,13 +92,11 @@ export function parseScanned(text: string): { kind: AttendanceKind; token: strin
 }
 
 /**
- * Xodimlar botining @nomi — QR havolasi uchun. `getMe` so'ralmaydi (ekran har
- * 30 soniyada yangilanadi, Telegram'ga har safar borish shart emas):
- * `TELEGRAM_BOT_USERNAME`, bo'lmasa @akademiya_crm_bot (lib/staffBot/config.ts).
+ * Xodimlar botining @nomi — QR havolasi uchun. 29.09.2026 dan
+ * @tizimli_akademiya_bot (lib/staffBot/config.ts). Eski @akademiya_crm_bot
+ * havolasi ham tanilaveradi: `parseScanned` bot nomiga qaramaydi.
  */
-export function staffBotUsername(): string {
-  return (process.env.TELEGRAM_BOT_USERNAME || "").trim().replace(/^@/, "") || "akademiya_crm_bot";
-}
+export { staffBotUsername };
 
 export function qrLink(kind: AttendanceKind, token: string): string {
   return `https://t.me/${staffBotUsername()}?start=${startPayload(kind, token)}`;

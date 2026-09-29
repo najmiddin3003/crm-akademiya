@@ -1,16 +1,17 @@
 import { timingSafeEqual } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { dispatchBotUpdate } from "@/lib/botDispatch";
 import { ensureIndexes } from "@/lib/mongodb";
-import { isStudentBotReady, loadStudentBotConfig } from "@/lib/studentBot/config";
-import { handleStudentUpdate, type TelegramUpdate } from "@/lib/studentBot/router";
+import { loadStudentBotConfig } from "@/lib/studentBot/config";
+import type { TelegramUpdate } from "@/lib/studentBot/router";
 
-// POST /api/telegram/student — O'QUVCHILAR botining webhook'i.
+// POST /api/telegram/student — @tizimli_akademiya_bot webhook'i.
 //
-// XODIMLAR BOTINIKIDAN ALOHIDA (`/api/telegram/webhook`) — ataylab.
-// U yerda `allowed_updates: ["callback_query"]`, ya'ni ichki guruhlarga
-// yozadigan bot begona odamning xabarini umuman ko'rmaydi. Bu yerda esa
-// `message` KERAK, chunki o'quvchi telefon raqamini yuboradi. Ikkalasini
-// bitta route'ga qo'shish o'sha chegarani buzardi.
+// 29.09.2026 dan bu bot O'QUVCHILAR va XODIMLAR uchun bitta (foydalanuvchi:
+// "tizimli_akademiya botida xodimlar ishlashi kerak"): yangilanish
+// lib/botDispatch.ts da o'quvchilar (lib/studentBot) yoki xodimlar
+// (lib/staffBot) routeriga beriladi. Guruhlarga yozadigan @akademiya_crm_bot
+// webhook'i alohida (`/api/telegram/webhook`) — u endi faqat guruh boti.
 //
 // SESSIYASIZ OCHIQ — chaqiruvchi Telegram serveri, uning cookie'si yo'q.
 // Himoya `setWebhook` dagi `secret_token` bilan: Telegram uni HAR BIR
@@ -27,7 +28,7 @@ import { handleStudentUpdate, type TelegramUpdate } from "@/lib/studentBot/route
 
 export const runtime = "nodejs";
 
-/** Vaqt bo'yicha xavfsiz solishtirish (cron va xodimlar webhook'i bilan bir xil sabab). */
+/** Vaqt bo'yicha xavfsiz solishtirish (cron va guruh boti webhook'i bilan bir xil sabab). */
 function secretMatches(provided: string, expected: string): boolean {
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
@@ -43,10 +44,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  // Token yo'q yoki modul o'chirilgan — 200 qaytaramiz. 500 bo'lsa
-  // Telegram navbatni to'ldirib, o'sha yangilanishlarni soatlab qayta
-  // yuboraverardi.
-  if (!isStudentBotReady(cfg)) return NextResponse.json({ ok: true });
+  // Token yo'q — 200 qaytaramiz. 500 bo'lsa Telegram navbatni to'ldirib,
+  // o'sha yangilanishlarni soatlab qayta yuboraverardi. (`STUDENT_BOT_ENABLED`
+  // faqat o'quvchilar oqimini o'chiradi — handleStudentUpdate o'zi tekshiradi.)
+  if (!cfg.token) return NextResponse.json({ ok: true });
 
   let update: TelegramUpdate;
   try {
@@ -56,9 +57,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const db = await ensureIndexes();
-  // `handleStudentUpdate` o'zi hech qachon otmaydi (router.ts).
-  await handleStudentUpdate(db, cfg, update);
+  // BAZA ULANISHI HAM `try` ICHIDA — yiqilsa ham Telegram'ga 200.
+  try {
+    const db = await ensureIndexes();
+    // `after` — xodim to'lov yozganda Sheets/Telegram navbati javobdan KEYIN
+    // yuriladi (lib/cashboxAdjust.ts → defer). Dispatch o'zi hech qachon otmaydi.
+    await dispatchBotUpdate(db, update, after);
+  } catch (e) {
+    console.error("[telegram-student]", e instanceof Error ? e.message : e);
+  }
 
   // Telegram uchun DOIM 200.
   return NextResponse.json({ ok: true });

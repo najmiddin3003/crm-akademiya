@@ -298,8 +298,14 @@ export async function logoutStaff(db: Db, chatId: number): Promise<void> {
   await db.collection(STAFF_BOT_USERS).deleteOne({ chatId });
 }
 
+/**
+ * Xodim botga yozdi — `blocked` belgisi ham olinadi: u endi yetib boriladigan
+ * chat. Muhim 29.09.2026 ko'chishida: yangi botga hali /start bosmagan xodimga
+ * push (ko'chirma) 403 bilan qaytib `blocked` bo'lib qolardi va /start
+ * bosgandan keyin ham pushlar o'tkazib yuborilaverardi.
+ */
 export async function touchStaffUser(db: Db, chatId: number): Promise<void> {
-  await db.collection(STAFF_BOT_USERS).updateOne({ chatId }, { $set: { lastSeenAt: uzStamp() } });
+  await db.collection(STAFF_BOT_USERS).updateOne({ chatId }, { $set: { lastSeenAt: uzStamp() }, $unset: { blocked: "" } });
 }
 
 export async function setMenuMessage(db: Db, chatId: number, messageId: number): Promise<void> {

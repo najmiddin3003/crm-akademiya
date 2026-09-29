@@ -116,8 +116,9 @@ const { getDb } = await import("@/lib/mongodb");
 // ── 1. Sozlamalar ───────────────────────────────────────────────────
 rule("SOZLAMALAR");
 const cfg = loadStaffBotConfig();
-line(`  TELEGRAM_BOT_TOKEN:       ${cfg.token ? "bor" : "YO'Q"}`);
-line(`  TELEGRAM_WEBHOOK_SECRET:  ${(process.env.TELEGRAM_WEBHOOK_SECRET || "").trim() ? "bor" : "YO'Q"}`);
+// 29.09.2026 dan xodimlar @tizimli_akademiya_bot da (lib/staffBot/config.ts).
+line(`  TELEGRAM_STUDENT_BOT_TOKEN:       ${cfg.token ? "bor" : "YO'Q"}`);
+line(`  TELEGRAM_STUDENT_WEBHOOK_SECRET:  ${(process.env.TELEGRAM_STUDENT_WEBHOOK_SECRET || "").trim() ? "bor" : "YO'Q"}`);
 line(`  Bot tayyor: ${isStaffBotReady(cfg) ? "HA" : "YO'Q"}`);
 
 // ── 2. Webhook holati (haqiqiy so'rov — faqat o'qiydi) ──────────────

@@ -42,11 +42,11 @@ import * as V from "@/lib/staffBot/views";
 
 // Xodimlar boti — SHAXSIY yozishmadagi yangilanishni ishlaydigan yagona joy.
 //
-// Webhook (app/api/telegram/webhook) lid tugmalarini (`lead:…`) o'zi
-// ishlaydi, qolgan hammasini — shaxsiy xabar va `s:` tugmalar — shu yerga
-// beradi. GURUH XABARLARI BU YERDA TASHLANADI: bot guruhlarda admin va
-// `allowed_updates` ga `message` qo'shilgach u yerdagi har bir xabar ham
-// keladi; ularga javob berilmaydi va ular o'qilmaydi ham.
+// 29.09.2026 dan @tizimli_akademiya_bot da (o'quvchilar bilan bitta bot):
+// webhook (app/api/telegram/student) yangilanishni lib/botDispatch.ts ga
+// beradi, u `s:` tugmalarni, xodim sessiyasini va xodim raqamini shu yerga,
+// qolganini o'quvchilar routeriga yo'naltiradi. GURUH XABARLARI BU YERDA HAM
+// TASHLANADI — ularga javob berilmaydi va ular o'qilmaydi ham.
 //
 // XAVFSIZLIK CHEGARASI. Kim ekani `chatId` bo'yicha `staff_bot_users`
 // dan o'qiladi (Telegram beradi, klient to'qib bo'lmaydi); ruxsat va
@@ -95,6 +95,8 @@ function greetName(u: TgUser | undefined): string {
 
 const COMMANDS = {
   start: /^\/start(@\w+)?$/i,
+  /** `/xodim` — xodimlar kirishi (o'quvchilar bilan umumiy botda, lib/botDispatch.ts). */
+  xodim: /^\/xodim(@\w+)?$/i,
   /** `/start <parametr>` — havola orqali kelgan (QR: "k_…" / "x_…", lib/attendanceQr.ts). */
   startWith: /^\/start(?:@\w+)?\s+(\S+)$/i,
   kassa: /^\/kassa(@\w+)?$/i,
@@ -322,8 +324,8 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
     }
   }
 
-  // /start — har qanday holatda: kirgan bo'lsa menyu, aks holda kirish.
-  if (COMMANDS.start.test(text) || startArg) {
+  // /start (/xodim) — har qanday holatda: kirgan bo'lsa menyu, aks holda kirish.
+  if (COMMANDS.start.test(text) || COMMANDS.xodim.test(text) || startArg) {
     if (user?.stage === "in") {
       await openMenu(db, cfg, chatId, user);
       return;
@@ -410,6 +412,7 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
 }
 
 async function openMenu(db: Db, cfg: StaffBotConfig, chatId: number, user: StaffBotUser): Promise<void> {
+  await touchStaffUser(db, chatId);
   const res = await resolveAccess(db, user);
   if (!res.ok) {
     await logoutStaff(db, chatId);

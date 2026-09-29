@@ -366,9 +366,9 @@ async function linkAndOpen(
 /**
  * Savolni xodimlar guruhiga yuboradi.
  *
- * XODIMLAR BOTI ORQALI, o'quvchilar boti orqali EMAS — u guruhga
- * qo'shilmagan va qo'shilishi ham shart emas (bitta bot kamroq
- * sozlash). Xodimlar boti allaqachon guruhlarda admin.
+ * GURUH BOTI (@akademiya_crm_bot, lib/sync) ORQALI, shu bot orqali
+ * EMAS — u guruhga qo'shilmagan va qo'shilishi ham shart emas (bitta
+ * bot kamroq sozlash). Guruh boti allaqachon guruhlarda admin.
  *
  * `false` qaytsa o'quvchiga "yuborildi" DEYILMAYDI: bu yolg'on bo'lardi
  * va u javob kutib o'tirardi.

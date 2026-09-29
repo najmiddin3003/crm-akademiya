@@ -1,19 +1,18 @@
-// Telegram webhook'ini ro'yxatdan o'tkazadi — lid xabari tagidagi status
-// tugmalari ham, kassirning botdagi to'lov kiritishi ham (lib/staffBot)
-// SHUSIZ ishlamaydi (bosilganda hech narsa bo'lmaydi).
+// GURUH botining (@akademiya_crm_bot, TELEGRAM_BOT_TOKEN) webhook'ini
+// ro'yxatdan o'tkazadi — lid xabari tagidagi status tugmalari SHUSIZ
+// ishlamaydi (bosilganda hech narsa bo'lmaydi).
 //
 // Bir marta ishga tushiriladi:
 //   node scripts/set-telegram-webhook.mjs            — o'rnatadi va holatni ko'rsatadi
 //   node scripts/set-telegram-webhook.mjs --info     — faqat holatni ko'rsatadi
 //   node scripts/set-telegram-webhook.mjs --delete   — webhook'ni olib tashlaydi
-//   node scripts/set-telegram-webhook.mjs --commands — botning "/" buyruqlar menyusini o'rnatadi
+//   node scripts/set-telegram-webhook.mjs --commands — shaxsiy chatlardagi "/" menyuni o'chiradi
 //
-// 18.09.2026: `allowed_updates` ga `message` QO'SHILDI — kassir botga
-// shaxsiy yozadi (telefon, parol, o'quvchi ismi, summa). Bot guruhlarda
-// admin bo'lgani uchun guruh xabarlari ham kela boshlaydi; router ularni
-// o'qimasdan tashlaydi (lib/staffBot/router.ts). Eski webhook sozlamasi
-// (faqat callback_query) turgan bo'lsa bot xabarlarni KO'RMAYDI — deploydan
-// keyin shu skriptni qayta yurgizish shart.
+// 18–29.09.2026 da shu bot xodimlar boti ham edi (kassa, profil, QR).
+// 29.09.2026 dan xodimlar @tizimli_akademiya_bot da (lib/staffBot/config.ts);
+// `message` faqat eski botga yozgan xodimni yangi botga YO'NALTIRISH uchun
+// qoldi (lib/staffBot/moved.ts). Bot guruhlarda admin — guruh xabarlari ham
+// keladi va o'qilmay tashlanadi.
 //
 // KERAKLI SOZLAMALAR (.env.local va Vercel > Environment Variables):
 //   TELEGRAM_BOT_TOKEN       — bot kaliti (allaqachon bor)
@@ -87,19 +86,13 @@ if (arg === "--delete") {
   process.exit(res.ok ? 0 : 1);
 }
 
-// "/" buyruqlar menyusi — Telegram kirish maydonining yonida ko'rsatadi.
-// Faqat SHAXSIY chatlar uchun (`scope: all_private_chats`): guruhlarda
-// bot buyruq qabul qilmaydi va u yerda menyu chalg'itardi.
+// "/" buyruqlar menyusi — 29.09.2026 dan O'CHIRILADI: xodimlar
+// @tizimli_akademiya_bot ga ko'chdi (lib/staffBot/config.ts), bu bot faqat
+// guruhga yozadi. 18.09 da `all_private_chats` doirasida /start /kassa
+// /chiqish o'rnatilgan edi — aynan o'sha doira tozalanadi.
 if (arg === "--commands") {
-  const res = await call("setMyCommands", {
-    commands: [
-      { command: "start", description: "Bosh menyu / kirish" },
-      { command: "kassa", description: "Kassam — qoldiq va bugungi tushum" },
-      { command: "chiqish", description: "Botdan chiqish" },
-    ],
-    scope: { type: "all_private_chats" },
-  });
-  console.log(res.ok ? "Buyruqlar o'rnatildi: /start /kassa /chiqish" : `Xato: ${JSON.stringify(res)}`);
+  const res = await call("deleteMyCommands", { scope: { type: "all_private_chats" } });
+  console.log(res.ok ? "Buyruqlar olib tashlandi (shaxsiy chatlar menyusi bo'sh)" : `Xato: ${JSON.stringify(res)}`);
   process.exit(res.ok ? 0 : 1);
 }
 
@@ -118,8 +111,8 @@ if (!base.startsWith("https://")) {
 }
 
 const url = `${base}/api/telegram/webhook`;
-// `callback_query` — lid tugmalari va botdagi menyu tugmalari;
-// `message`        — kassirning shaxsiy xabarlari (kirish, qidiruv, summa).
+// `callback_query` — lid tugmalari (va eski xodim menyusi tugmalari → yo'naltirish);
+// `message`        — eski botga shaxsiy yozgan xodimni yangi botga yo'naltirish.
 // Boshqa turlar (a'zolik o'zgarishi, tahrirlangan xabar …) so'ralmaydi —
 // ular bekorga trafik va bekorga funksiya chaqiruvi bo'lardi.
 const res = await call("setWebhook", {

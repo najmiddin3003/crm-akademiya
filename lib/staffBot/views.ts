@@ -39,7 +39,7 @@ export function loginPrompt(nick = ""): string {
   return [
     `👋 ${hello}`,
     "",
-    "Bu — <b>Akademiya CRM</b> xodimlar boti: o'z profilingiz, kassirlar uchun esa to'lov kiritish va kassa holati.",
+    "👔 <b>Xodimlar bo'limi</b>: o'z profilingiz, «📷 Ishga keldim», kassirlar uchun esa to'lov kiritish va kassa holati.",
     "",
     "📱 <b>Pastdagi tugma</b> — raqamingizni yuboring: parolsiz kirasiz va profilingizni ko'rasiz.",
     "⌨️ <b>Raqamni yozsangiz</b> — CRM parolingiz so'raladi (kassa amallari uchun).",
@@ -54,6 +54,8 @@ export function passwordPrompt(phone: string): string {
     "",
     "<i>Parol yozilgan xabar darhol o'chiriladi — chatda qolmaydi.</i>",
     "Boshqa raqam bilan kirish uchun /start ni bosing.",
+    "",
+    "Sayt parolingiz yo'qmi? /start ni bosing va raqamni «📱 Telefon raqamimni yuborish» tugmasi bilan yuboring — parolsiz kirasiz (profil va «Ishga keldim»).",
   ].join("\n");
 }
 
