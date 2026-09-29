@@ -93,9 +93,10 @@ export function parseGeoInput(raw: unknown): GeoParse {
   return parseGeo(raw);
 }
 
-/** Xaritada ochish havolasi (Yandex, nuqta belgisi bilan). */
+/** Xaritada ochish havolasi (Yandex «Bu yerda nima?» — nuqta manzili kartochkasi bilan). */
 export function mapLink(p: GeoPoint): string {
-  return `https://yandex.uz/maps/?pt=${p.lng},${p.lat}&z=17&l=map`;
+  const q = `${p.lng}%2C${p.lat}`;
+  return `https://yandex.uz/maps/?ll=${q}&z=17&mode=whatshere&whatshere%5Bpoint%5D=${q}&whatshere%5Bzoom%5D=17`;
 }
 
 // ── Manzil (OpenStreetMap Nominatim) ────────────────────────────────
@@ -131,17 +132,25 @@ async function takeSlot(maxWaitMs: number): Promise<boolean> {
 }
 
 interface OsmReverse {
+  /** Nuqtadagi obyekt nomi (maktab, do'kon, ko'cha …). */
+  name?: string;
+  /** Obyekt turi: amenity, shop, building, highway, place … */
+  category?: string;
   address?: Record<string, string | undefined>;
   display_name?: string;
   error?: string;
 }
 
+/** Bu turdagi obyekt nomi manzil boshiga yozilmaydi: ko'cha, aholi punkti, chegara — ular allaqachon manzilda. */
+const NOT_A_PLACE = new Set(["highway", "place", "boundary", "landuse", "natural", "railway", "waterway"]);
+
 const COUNTRY = /^(O[ʻ'`‘’]?zbekiston|Uzbekistan|Узбекистан|Ўзбекистон)$/i;
 
 /**
- * Nominatim javobi → qisqa manzil: ko'cha (va uy), mahalla, shahar/qishloq;
- * ko'cha bo'lmasa tuman ham. Viloyat, indeks va mamlakat yozilmaydi
- * (hammasi Namanganda). Nomlar OSM'dagidek — ba'zi ko'chalar kirillda.
+ * Nominatim javobi → qisqa manzil: nuqtadagi nomli joy (texnikum, do'kon …),
+ * ko'cha (va uy), mahalla, shahar/qishloq; ko'cha bo'lmasa tuman ham. Viloyat,
+ * indeks va mamlakat yozilmaydi (hammasi Namanganda). Nomlar OSM'dagidek —
+ * ba'zi ko'chalar kirillda, yo'llar raqam bilan ("D110").
  */
 export function formatOsmAddress(r: OsmReverse): string | null {
   const a = r.address ?? {};
@@ -149,7 +158,9 @@ export function formatOsmAddress(r: OsmReverse): string | null {
   const area = a.neighbourhood || a.quarter || a.suburb || a.residential || a.hamlet || "";
   const place = a.city || a.town || a.village || a.municipality || "";
   const district = street ? "" : a.city_district || a.district || a.county || "";
-  const parts = [...new Set([street, area, place, district].map((s) => s.trim()).filter(Boolean))];
+  // 29.09.2026: "D110, Chortoq" dan ko'ra "Chortoq tuman 1-son texnikumi, D110, Chortoq" tushunarli.
+  const poi = r.name && !NOT_A_PLACE.has(String(r.category ?? "")) ? r.name : "";
+  const parts = [...new Set([poi, street, area, place, district].map((s) => s.trim()).filter(Boolean))];
   if (parts.length) return parts.join(", ");
   // Tarkibiy qismlar yo'q — umumiy satrdan (indeks va mamlakatsiz) boshidagi uchtasi.
   const d = String(r.display_name || "")

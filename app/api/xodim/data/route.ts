@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { Db } from "mongodb";
+import { healMissingAddresses } from "@/lib/attendanceCheck";
 import { ensureIndexes } from "@/lib/mongodb";
 import { staffFromInitData } from "@/lib/staffBot/webapp";
 import { loadTeacherRoster } from "@/lib/teacherRoster";
@@ -8,6 +9,7 @@ import { buildPayrollRows } from "@/lib/payrollSources";
 import { payrollMonthKey, payrollPeriod } from "@/lib/salary";
 import { EMPLOYEE_PROFILE_TABS_KEY } from "@/components/employees/employeeExtras";
 import type { HrEmployee } from "@/lib/hrEmployees";
+import type { TurnstileIoRecord } from "@/lib/turnstileIo";
 import { GET as entriesGet } from "@/app/api/transaction-entries/route";
 import { GET as summaryGet } from "@/app/api/transaction-entries/moderator-summary/route";
 import { GET as entryStudentsGet } from "@/app/api/transaction-entries/students/route";
@@ -142,7 +144,10 @@ async function dispatch(db: Db, emp: HrEmployee, url: URL): Promise<Response> {
         .find({ personType: "employee" }, { projection: { _id: 0 } })
         .sort({ date: -1, id: 1 })
         .toArray();
-      return json({ ok: true, records: rows.filter((r) => mine(r.personName)) });
+      const records = rows.filter((r) => mine(r.personName));
+      // Manzili yo'q QR joylashuvi — fonda to'ldiriladi (saytdagi /api/turnstile-io bilan bir xil).
+      healMissingAddresses(db, records as unknown as TurnstileIoRecord[], after);
+      return json({ ok: true, records });
     }
 
     // "O'qituvchining hisoboti" — lidlar xodim bo'yicha sanaladi. Lid

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import QRCode from "qrcode";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope } from "@/lib/branchScope";
 import { getCurrentUser } from "@/lib/auth";
 import { uzDateIso } from "@/lib/uzTime";
-import { DEFAULT_RADIUS_M, QR_SOURCE, type AttendanceRecord } from "@/lib/attendanceCheck";
+import { DEFAULT_RADIUS_M, QR_SOURCE, healMissingAddresses, type AttendanceRecord } from "@/lib/attendanceCheck";
 import { isValidPoint } from "@/lib/geo";
 import {
   loadAttendanceSettings,
@@ -57,6 +57,8 @@ export async function GET() {
     .sort({ enterTime: -1, id: -1 })
     .limit(300)
     .toArray();
+  // Manzili yo'q joylashuv — fonda to'ldiriladi, ekran keyingi yangilanishda ko'rsatadi.
+  healMissingAddresses(db, rows, after);
 
   return NextResponse.json(
     {

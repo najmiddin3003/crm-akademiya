@@ -24,8 +24,13 @@ function mapWidgetUrl(loc: TurnstileLocation): string {
   return `https://yandex.ru/map-widget/v1/?ll=${loc.lng}%2C${loc.lat}&z=17&pt=${loc.lng}%2C${loc.lat}`;
 }
 
+/**
+ * Yandex «Bu yerda nima?» rejimi — xarita nuqtaning MANZIL kartochkasi bilan
+ * ochiladi (29.09.2026: oddiy `pt=` belgisida manzil ko'rinmasdi).
+ */
 function mapLink(loc: TurnstileLocation): string {
-  return `https://yandex.uz/maps/?pt=${loc.lng},${loc.lat}&z=17&l=map`;
+  const p = `${loc.lng}%2C${loc.lat}`;
+  return `https://yandex.uz/maps/?ll=${p}&z=17&mode=whatshere&whatshere%5Bpoint%5D=${p}&whatshere%5Bzoom%5D=17`;
 }
 
 /** Jadval katagi / ro'yxat qatori uchun ixcham belgi. */
@@ -137,7 +142,7 @@ function LocationModal({
         )}
         {loc.distanceM === null && (
           <span className="inline-flex items-center rounded-full bg-amber-500/12 px-3 py-1 text-[12px] font-medium text-amber-700 dark:text-amber-300">
-            {t("Filial joylashuvi kiritilmagan — masofa o'lchanmagan")}
+            {t("Filial koordinatasi kiritilmagan — filialgacha masofa o'lchanmadi")}
           </span>
         )}
       </div>

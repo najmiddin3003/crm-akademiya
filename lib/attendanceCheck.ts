@@ -144,6 +144,43 @@ export async function fillLocationAddress(db: Db, recordId: number, field: "loca
   }
 }
 
+/** Bir yozuvning manzili shu vaqtdan tez-tez qayta so'ralmaydi (QR ekrani har 30 s so'raydi). */
+const HEAL_RETRY_MS = 30 * 60_000;
+const healTried = new Map<string, number>();
+
+/**
+ * Ko'rsatilayotgan yozuvlarda manzili yo'q joylashuv bo'lsa — fonda to'ldiradi
+ * (29.09.2026: OpenStreetMap'dan oldingi yozuvlar, yoki skanerlashda xizmat
+ * uzoq javob bermagan). Javob kutmaydi: manzil keyingi ochishda ko'rinadi.
+ * Bir so'rovda ko'pi bilan `limit` ta, bir joy 30 daqiqada bir martadan ko'p emas.
+ */
+export function healMissingAddresses(
+  db: Db,
+  rows: readonly { id?: unknown; location?: TurnstileLocation | null; exitLocation?: TurnstileLocation | null }[],
+  defer: (fn: () => Promise<void>) => void,
+  limit = 5,
+): void {
+  const now = Date.now();
+  const todo: [number, "location" | "exitLocation"][] = [];
+  for (const r of rows) {
+    const id = Number(r.id);
+    if (!Number.isFinite(id)) continue;
+    for (const field of ["location", "exitLocation"] as const) {
+      const loc = r[field];
+      if (!loc || loc.address || !isValidPoint(loc) || todo.length >= limit) continue;
+      const k = `${id}:${field}`;
+      if (now - (healTried.get(k) ?? 0) < HEAL_RETRY_MS) continue;
+      healTried.set(k, now);
+      todo.push([id, field]);
+    }
+    if (todo.length >= limit) break;
+  }
+  if (todo.length === 0) return;
+  defer(async () => {
+    for (const [id, field] of todo) await fillLocationAddress(db, id, field);
+  });
+}
+
 export interface AttendanceRecord {
   id: number;
   /** "YYYY-MM-DD" — Toshkent kuni. */
