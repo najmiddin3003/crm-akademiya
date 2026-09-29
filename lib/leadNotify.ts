@@ -193,7 +193,7 @@ export async function notifyNewLead(db: Db, order: Order, branchId: number | nul
       chatId,
       leadMessage(order, branch.name, await detailsOf(db, order)),
       threadId,
-      leadKeyboard(order.id),
+      leadKeyboard(order),
     );
     // Xabar manzili lidga yoziladi: holat CRM'da o'zgarganda (Lidlar
     // sahifasi) aynan shu xabarning "Status:" qatori yangilanadi.
@@ -220,7 +220,7 @@ export async function refreshLeadMessage(db: Db, orderId: number): Promise<void>
     if (!order || !tg?.chatId || !tg.messageId) return;
     const cfg = loadSyncConfig();
     if (!cfg.enabled || !cfg.telegramToken) return;
-    await editMessage(cfg, tg.chatId, tg.messageId, await buildLeadMessage(db, order), leadKeyboard(order.id));
+    await editMessage(cfg, tg.chatId, tg.messageId, await buildLeadMessage(db, order), leadKeyboard(order));
   } catch (e) {
     console.error("[leadNotify] xabar yangilanmadi:", e instanceof Error ? e.message : e);
   }

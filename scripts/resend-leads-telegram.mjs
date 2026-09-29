@@ -90,7 +90,7 @@ try {
     for (const o of ready) {
       const b = topicOf.get(o.branchId);
       try {
-        await sendHtml(token, chatId, leadMessage(o, b.name), { threadId: String(b.leadTopicId), replyMarkup: leadKeyboard(o.id) });
+        await sendHtml(token, chatId, leadMessage(o, b.name), { threadId: String(b.leadTopicId), replyMarkup: leadKeyboard(o) });
         ok++;
         console.log(`  ✅ #${o.id} ${o.name || ""} → ${b.name} (topik ${b.leadTopicId})`);
       } catch (e) {

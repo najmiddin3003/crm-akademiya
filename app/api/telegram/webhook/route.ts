@@ -60,10 +60,13 @@ function senderName(from: CallbackQuery["from"]): string {
  * Lid status tugmasi — bazaga yozish va xabarni yangilash.
  *
  * 23.09.2026 dan tugma Lidlar sahifasidagi HOLATNI yuritadi ("bitta
- * ma'lumot"): 🟢 → Sinov darsiga yozildi, 🕒/💳 → Bog'lanildi, ❌ → Rad
- * etdi. O'tish qoidasi CRM bilan bir xil (`canTransition`): guruhga
- * qo'shilgan lidni tugma bilan ortga qaytarib bo'lmaydi — bosgan odamga
- * sababi aytiladi, bazaga hech narsa yozilmaydi.
+ * ma'lumot"). 29.09.2026 dan tugmalarning o'zi CRM holatlari: 📞
+ * Bog'lanildi, 🟢 Sinov darsiga yozildi, ❌ Rad etdi — va xabarda faqat
+ * mumkin bo'lganlari turadi (lib/leadStatus.ts `leadKeyboard`). Eski
+ * xabarlardagi tugmalar (🕒/💳 → Bog'lanildi) ham ishlaydi. O'tish qoidasi
+ * CRM bilan bir xil (`canTransition`): guruhga qo'shilgan lidni tugma bilan
+ * ortga qaytarib bo'lmaydi — bosgan odamga sababi aytiladi, bazaga hech
+ * narsa yozilmaydi.
  */
 async function handleLeadCallback(
   db: Db,
@@ -127,8 +130,9 @@ async function handleLeadCallback(
           String(chatId),
           messageId,
           await buildLeadMessage(db, fresh),
-          // Tugmalar qoldiriladi — status keyin ham o'zgartirilishi mumkin.
-          leadKeyboard(parsed.orderId),
+          // Tugmalar YANGI holatga qarab qayta chiziladi — faqat mumkin
+          // bo'lgan keyingi qadamlar (guruhga qo'shilganda tugma qolmaydi).
+          leadKeyboard(fresh),
         );
       } catch (e) {
         console.error("[telegram-webhook] xabar tahrirlanmadi:", e instanceof Error ? e.message : e);

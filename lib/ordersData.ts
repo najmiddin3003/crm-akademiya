@@ -5,7 +5,7 @@
 // getPageButtons (~line 22910).
 
 import { MANAGEMENT_BRANCH_NAMES } from "@/constants/managementBranches";
-import type { LeadStatusKey } from "./leadStatus";
+import type { AnyLeadStatusKey } from "./leadStatus";
 import type { LeadGuruh, LeadHolat, LeadHolatEvent, LeadHolatSnapshot } from "./leadHolat";
 import type { LeadDaraja } from "./leadSettings";
 import { uzNow } from "./uzTime";
@@ -108,9 +108,10 @@ export interface Order {
    * Buyurtmaning `status` maydonidan ALOHIDA: u CRM'dagi ish jarayoni
    * ("Yangi", "Qabul qilindi" …), bu esa moderatorning guruhdagi tezkor
    * belgisi — lid bilan bog'lanildimi va natija nima. Bo'sh bo'lsa
-   * xabarda "Hali bog'lanilmadi" turadi.
+   * xabarda "Hali bog'lanilmadi" turadi. 29.09.2026 gacha bosilganlarda
+   * eski kalit ("first", "later", "pay", "reject") qolgan.
    */
-  leadStatus?: LeadStatusKey;
+  leadStatus?: AnyLeadStatusKey;
   /** Status qo'yilgan payt — "DD.MM.YYYY | HH:MM" (loyihadagi ko'rinish). */
   leadStatusAt?: string;
   /** Tugmani bosgan Telegram foydalanuvchisining ko'rinadigan ismi. */

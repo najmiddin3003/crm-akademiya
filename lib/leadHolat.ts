@@ -156,8 +156,12 @@ export function canTransition(from: LeadHolat, to: LeadHolat): boolean {
   return HOLAT_STEPS.indexOf(to) > HOLAT_STEPS.indexOf(from);
 }
 
-/** Telegram tugmasi → holat (lib/leadStatus.ts dagi kalitlar). */
+/**
+ * Telegram tugmasi → holat (lib/leadStatus.ts dagi kalitlar). 29.09.2026 dan
+ * tugma kaliti holatning o'zi; eski kalitlar (guruhdagi eski xabarlar) ham.
+ */
 export function holatFromTelegram(key: string): LeadHolat | null {
+  if (key === "bog" || key === "sinov" || key === "rad") return key;
   if (key === "first") return "sinov";
   if (key === "later" || key === "pay") return "bog";
   if (key === "reject") return "rad";

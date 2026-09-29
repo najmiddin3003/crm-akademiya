@@ -1,8 +1,9 @@
 // LID STATUSI — Telegram guruhidagi tugmalar bilan belgilanadi.
 //
-// Guruhga tushgan har bir lid xabarining tagida to'rtta tugma turadi;
+// Guruhga tushgan har bir lid xabarining tagida holat tugmalari turadi
+// (29.09.2026 dan CRM holatlari, faqat mumkin bo'lganlari — `leadKeyboard`);
 // bosilgani xabarning o'zidagi "Status:" qatorini almashtiradi va bazaga
-// yoziladi (`orders.leadStatus`).
+// yoziladi (`orders.leadStatus`, `orders.holat`).
 //
 // NEGA ALOHIDA FAYL: bu ro'yxatni IKKI tomon o'qiydi — xabarni YUBORUVCHI
 // (lib/leadNotify.ts) va tugma bosilganda uni TAHRIRLOVCHI
@@ -17,18 +18,37 @@
 // Ikkalasi bir maydonga sig'maydi: CRM dagi holat ish jarayonini
 // boshqaradi, bu esa aloqa natijasini qayd etadi.
 
-import { guruhOf, holatOf, sinovOf, type HolatSource, type LeadGuruh } from "./leadHolat";
+import type { InlineKeyboard } from "./telegramApi";
+import { canTransition, guruhOf, holatFromTelegram, holatOf, sinovOf, type HolatSource, type LeadGuruh } from "./leadHolat";
 
-export type LeadStatusKey = "first" | "later" | "pay" | "reject";
+/**
+ * 29.09.2026 dan tugmalar — Lidlar sahifasidagi HOLATLAR (foydalanuvchi:
+ * "statusli tugmalar o'zgartirilmay qolib ketibdi"; qaror — CRM holatlari,
+ * 3 ta). «Guruhga qo'shildi» tugma emas: u CRM'da guruh tanlab qilinadi.
+ */
+export type LeadStatusKey = "bog" | "sinov" | "rad";
+/**
+ * 23–29.09 gacha bo'lgan tugmalar kaliti. Guruhdagi eski xabarlarda va
+ * `orders.leadStatus` da qolgan — tanilaveradi (bosilsa ham ishlaydi).
+ */
+export type LegacyLeadStatusKey = "first" | "later" | "pay" | "reject";
+export type AnyLeadStatusKey = LeadStatusKey | LegacyLeadStatusKey;
 
 export interface LeadStatusOption {
-  key: LeadStatusKey;
+  key: AnyLeadStatusKey;
   emoji: string;
   label: string;
 }
 
-/** Tugmalar tartibi — guruhda ham shu tartibda chiqadi. */
+/** Tugmalar tartibi — guruhda ham shu tartibda chiqadi (voronka tartibi). */
 export const LEAD_STATUSES: readonly LeadStatusOption[] = [
+  { key: "bog", emoji: "📞", label: "Bog'lanildi" },
+  { key: "sinov", emoji: "🟢", label: "Sinov darsiga yozildi" },
+  { key: "rad", emoji: "❌", label: "Rad etdi" },
+];
+
+/** Eski tugmalar — faqat tanish va tarixda ko'rsatish uchun (yangi xabarga qo'yilmaydi). */
+const LEGACY_STATUSES: readonly LeadStatusOption[] = [
   { key: "first", emoji: "🟢", label: "Birinchi darsga yozildi" },
   { key: "later", emoji: "🕒", label: "Keyinroq keladi" },
   { key: "pay", emoji: "💳", label: "O'qish niyatida / to'lov qilmoqchi" },
@@ -39,7 +59,7 @@ export const LEAD_STATUSES: readonly LeadStatusOption[] = [
 const NOT_CONTACTED = "⚪ Hali bog'lanilmadi";
 
 export function leadStatusOption(key: unknown): LeadStatusOption | null {
-  return LEAD_STATUSES.find((s) => s.key === key) ?? null;
+  return LEAD_STATUSES.find((s) => s.key === key) ?? LEGACY_STATUSES.find((s) => s.key === key) ?? null;
 }
 
 const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -93,7 +113,8 @@ export function leadCallbackData(orderId: number, key: LeadStatusKey): string {
   return `lead:${orderId}:${key}`;
 }
 
-export function parseLeadCallback(data: unknown): { orderId: number; key: LeadStatusKey } | null {
+/** Yangi VA eski kalitlar tanilaveradi — guruhdagi eski xabar tugmalari ham ishlaydi. */
+export function parseLeadCallback(data: unknown): { orderId: number; key: AnyLeadStatusKey } | null {
   const parts = String(data ?? "").split(":");
   if (parts.length !== 3 || parts[0] !== "lead") return null;
   const orderId = Number(parts[1]);
@@ -102,11 +123,18 @@ export function parseLeadCallback(data: unknown): { orderId: number; key: LeadSt
   return opt ? { orderId, key: opt.key } : null;
 }
 
-/** Xabar tagidagi tugmalar. Har biri alohida qatorda — yorliqlar uzun. */
-export function leadKeyboard(orderId: number) {
-  return {
-    inline_keyboard: LEAD_STATUSES.map((s) => [
-      { text: `${s.emoji} ${s.label}`, callback_data: leadCallbackData(orderId, s.key) },
-    ]),
-  };
+/**
+ * Xabar tagidagi tugmalar — FAQAT shu holatdan MUMKIN bo'lgan qadamlar
+ * (29.09.2026, foydalanuvchi qarori; qoida CRM bilan bitta — `canTransition`):
+ * yangi → uchalasi; bog'lanildi → sinov, rad; sinov → rad; rad → bog'lanildi,
+ * sinov; guruhga qo'shilgan → tugma yo'q (`undefined` — Telegram tugmalarni
+ * olib tashlaydi). Har biri alohida qatorda.
+ */
+export function leadKeyboard(order: HolatSource & { id: number }): InlineKeyboard | undefined {
+  const from = holatOf(order);
+  const rows = LEAD_STATUSES.filter((s) => {
+    const to = holatFromTelegram(s.key);
+    return to !== null && to !== from && canTransition(from, to);
+  }).map((s) => [{ text: `${s.emoji} ${s.label}`, callback_data: leadCallbackData(order.id, s.key as LeadStatusKey) }]);
+  return rows.length ? { inline_keyboard: rows } : undefined;
 }
