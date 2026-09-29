@@ -10267,8 +10267,20 @@ a.kpi-card:hover {
   gap: 1rem;
 }
 @media (min-width: 1024px) {
-  .group-detail-grid { grid-template-columns: 320px minmax(0, 1fr); }
+  .group-detail-grid {
+    grid-template-columns: 320px minmax(0, 1fr);
+    /* Yig'ish/ochish SILLIQ (29.09.2026, foydalanuvchi: "transition bilan
+       animatsiyalik"): chap ustun kengligi o'zgaradi, karta ichi o'z
+       kengligida qoladi va kesiladi — matn har kadrda qayta oqmaydi.
+       Kontentni almashtirish — components/groups/GroupDetailPage.tsx. */
+    transition: grid-template-columns .3s cubic-bezier(.32, .72, 0, 1);
+  }
   .group-detail-grid.is-collapsed { grid-template-columns: 48px minmax(0, 1fr); }
+  .group-detail-grid > .gd-aside { min-width: 0; overflow-x: hidden; }
+  .gd-aside-inner { width: 318px; transition: opacity .2s ease; }
+  .gd-aside-leaving .gd-aside-inner { opacity: 0; }
+  .gd-aside-entering .gd-aside-inner { animation: ui-fade-in .3s ease-out; }
+  .gd-rail-in { animation: ui-fade-in .2s ease-out; }
 
   /* Ekran balandligidagi ramka (27.09.2026, "hamma jadvalda thead va
      paginatsiya qotsin"): sahifa ildizi `.page-frame-lg`, to'r qolgan
@@ -10932,10 +10944,20 @@ body.sidebar-hidden #sidebar-toggle { left: 6px; }
 @keyframes ui-drawer-in  { from { transform: translateX(100%); } to { transform: none; } }
 @keyframes ui-drawer-out { from { transform: none; } to { transform: translateX(100%); } }
 
+/* O'ng-pastki burchakdagi kichik oyna (izoh/chat — components/orders/
+   OrderMessagePanel.tsx): pastdan chiqadi, pastga tushib yopiladi.
+   Yopilish vaqti useModalClose("drawer") bilan bir xil — 180 ms. */
+.ui-dock-in  { animation: ui-dock-in .28s cubic-bezier(.16, 1, .3, 1); }
+.ui-dock-out { animation: ui-dock-out .18s ease-in forwards; }
+@keyframes ui-dock-in  { from { opacity: 0; transform: translateY(calc(100% + 20px)); } to { opacity: 1; transform: none; } }
+@keyframes ui-dock-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(calc(100% + 20px)); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .ui-pop-in, .ui-overlay-in, .ui-overlay-out, .ui-modal-in, .ui-modal-out, .ui-drawer-in, .ui-drawer-out {
+  .ui-pop-in, .ui-overlay-in, .ui-overlay-out, .ui-modal-in, .ui-modal-out, .ui-drawer-in, .ui-drawer-out,
+  .ui-dock-in, .ui-dock-out, .gd-rail-in, .gd-aside-entering .gd-aside-inner {
     animation-duration: .01ms;
   }
+  .group-detail-grid, .gd-aside-inner { transition: none; }
 }
 
 /* ---------- Kassa kartochkasidagi AMAL PLITKALARI (Kirim/Chiqim/…) ----------

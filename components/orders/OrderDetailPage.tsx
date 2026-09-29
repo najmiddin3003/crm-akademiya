@@ -304,7 +304,7 @@ export default function OrderDetailPage({ orderId }: { orderId: number }) {
 
       {messageOrder && (
         <OrderMessagePanel
-          order={messageOrder}
+          title={messageOrder.name}
           messages={messagesByOrder[messageOrder.id] ?? []}
           onClose={() => setMessageId(null)}
           onSend={async (text) => {

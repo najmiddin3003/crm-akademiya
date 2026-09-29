@@ -385,6 +385,9 @@ async function createAllIndexes(db: Db): Promise<void> {
   // olinadi, shuning uchun qo'shma indeks.
   tasks.push(db.collection("pupil_activity").createIndex({ pupilId: 1, date: -1 }));
   tasks.push(db.collection("pupil_activity").createIndex({ id: 1 }, { unique: true }));
+  // O'quvchi izohlari (lib/pupilComments.ts): id noyob; o'quvchi bo'yicha oxirgisi.
+  tasks.push(db.collection("pupil_comments").createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection("pupil_comments").createIndex({ pupilId: 1, createdAt: -1 }));
   // legacy_entries — edutizimdan ko'chirilgan to'lov arxivi (25 561 yozuv).
   // O'quvchi profili ham, o'quvchilar boti ham uni `pupilId` bo'yicha
   // so'raydi va `at` bo'yicha saralaydi. Indekssiz bu har safar to'liq

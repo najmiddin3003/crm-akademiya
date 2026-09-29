@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import type { Order } from "@/lib/ordersData";
+import { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 
 // "Izoh" (megaphone) tugmasi bosilganda o'ng-pastki burchakda ochiladigan kichik
@@ -12,24 +12,36 @@ import { useT } from "@/components/shared/Language";
 // berilgan — globals.css'dagi pre-compiled Tailwind blobida w-80/h-96/bottom-5/
 // right-5 kabi utilitylar mavjud emas (bracket bo'lmagan standart o'lchamlar ham
 // original HTML'da ishlatilmagani uchun chiqarilmagan).
+//
+// 29.09.2026: lidlardan tashqari guruh sahifasidagi o'quvchi izohlari ham shu
+// oynada (components/groups/GroupDetailPage.tsx) — shu bois `order` o'rniga
+// `title`. Oyna pastdan chiqadi va pastga tushib yopiladi (`.ui-dock-in/out`,
+// globals.css).
 
 export interface OrderMessage {
   text: string;
   time: string;
+  /** Yozgan xodim — bo'lsa vaqt yonida ko'rsatiladi. */
+  by?: string;
 }
 
 export interface OrderMessagePanelProps {
-  order: Order;
+  /** Sarlavha — kimning izohlari (lid yoki o'quvchi ismi). */
+  title: string;
   messages: OrderMessage[];
   onClose: () => void;
   onSend: (text: string) => void;
+  /** Izohlar hali yuklanmoqda (o'quvchi izohlari serverdan keladi). */
+  loading?: boolean;
 }
 
-export default function OrderMessagePanel({ order, messages, onClose, onSend }: OrderMessagePanelProps) {
+export default function OrderMessagePanel({ title, messages, onClose, onSend, loading = false }: OrderMessagePanelProps) {
   const { t } = useT();
   const [text, setText] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
-  useEscapeClose(onClose);
+  // Yopilish ham animatsiyali: avval pastga tushadi, keyin `onClose`.
+  const { closing, close } = useModalClose(onClose, "drawer");
+  useEscapeClose(close);
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
@@ -44,7 +56,7 @@ export default function OrderMessagePanel({ order, messages, onClose, onSend }: 
 
   return (
     <div
-      className="rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden"
+      className={`rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden ${closing ? "ui-dock-out" : "ui-dock-in"}`}
       style={{ position: "fixed", bottom: 20, right: 20, width: 320, maxWidth: "calc(100vw - 40px)", height: 384, zIndex: 150 }}
     >
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
@@ -57,8 +69,8 @@ export default function OrderMessagePanel({ order, messages, onClose, onSend }: 
       </svg>
 
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <span className="font-semibold text-sm truncate">{order.name}</span>
-        <button type="button" onClick={onClose} className="h-7 w-7 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground">
+        <span className="font-semibold text-sm truncate">{title}</span>
+        <button type="button" onClick={close} title={t("Yopish")} className="h-7 w-7 rounded-md hover:bg-secondary flex items-center justify-center text-muted-foreground">
           <svg className="icon icon-sm">
             <use href="#i-x-circle" />
           </svg>
@@ -66,11 +78,13 @@ export default function OrderMessagePanel({ order, messages, onClose, onSend }: 
       </div>
 
       <div ref={bodyRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+        {loading && <p className="py-6 text-center text-xs text-muted-foreground">{t("Yuklanmoqda…")}</p>}
+        {!loading && messages.length === 0 && <p className="py-6 text-center text-xs text-muted-foreground">{t("Hali izoh yo'q")}</p>}
         {messages.map((m, i) => (
           <div key={i} className="ml-auto rounded-lg bg-primary/10 px-3 py-2 text-sm" style={{ maxWidth: "85%" }}>
-            <div>{m.text}</div>
+            <div className="whitespace-pre-wrap break-words">{m.text}</div>
             <div className="text-right mt-1" style={{ fontSize: 11 }}>
-              <span className="text-muted-foreground">{m.time}</span>
+              <span className="text-muted-foreground">{m.by ? `${m.by} · ${m.time}` : m.time}</span>
             </div>
           </div>
         ))}
@@ -78,6 +92,7 @@ export default function OrderMessagePanel({ order, messages, onClose, onSend }: 
 
       <div className="flex items-center gap-2 p-3 border-t border-border shrink-0">
         <input
+          autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

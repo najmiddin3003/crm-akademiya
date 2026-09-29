@@ -560,7 +560,7 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
 
       {messageFor && (
         <OrderMessagePanel
-          order={messageFor}
+          title={messageFor.name}
           messages={messagesByOrder[messageFor.id] ?? []}
           onClose={() => setMessageFor(null)}
           onSend={async (text) => {

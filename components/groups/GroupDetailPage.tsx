@@ -1,7 +1,7 @@
 "use client";
 
 import { loadBalancesByIdCached } from "@/lib/balancesClient";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -30,6 +30,8 @@ import type { Pupil } from "@/lib/pupilsData";
 import type { GroupTask } from "@/lib/groupTasks";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Modal from "@/components/ui/Modal";
+import OrderMessagePanel, { type OrderMessage } from "@/components/orders/OrderMessagePanel";
+import type { PupilCommentView } from "@/lib/pupilComments";
 import { useT } from "@/components/shared/Language";
 
 // Guruh tafsiloti (skrinshot 1-5). Chap "Guruh ma'lumotlari" kartasi guruh
@@ -56,6 +58,13 @@ function nf(n: number): string {
 }
 function pupilName(p: Pupil): string {
   return `${p.firstName} ${p.lastName || ""}`.trim();
+}
+
+/** Qo'ng'iroq havolasi: "94 408 57 97" → "+998944085797" (FirstLessonsPage bilan bir xil). */
+function telHref(phone: string | undefined): string {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return `+${digits.length === 9 ? `998${digits}` : digits}`;
 }
 
 // "DD.MM.YYYY | HH:mm" (yoki "DD.MM.YYYY") → Date (faqat kun).
@@ -145,7 +154,44 @@ export default function GroupDetailPage({ id }: { id: number }) {
   // Chap "Guruh ma'lumotlari" kartasi yig'ilganmi. Yig'ilganda u tor ikonka
   // ustuniga aylanadi va o'ngdagi jadval bo'shagan joyni egallaydi — davomat
   // jadvali keng bo'lgani uchun bu ayniqsa foydali.
+  //
+  // ANIMATSIYA (29.09.2026): ustun kengligi CSS transition bilan o'zgaradi
+  // (globals.css .group-detail-grid). Yig'ilayotganda to'liq karta ustun
+  // torayguncha ko'rinib, xiralashib turadi (`railShown` hali false), keyin tor
+  // ikonka ustuni chiqadi; ochilganda karta darhol chiziladi va ustun bilan
+  // birga kengayib, ochilib boradi.
   const [infoCollapsed, setInfoCollapsed] = useState(false);
+  const [railShown, setRailShown] = useState(false);
+  /** Foydalanuvchi bosganmi — sahifa ochilganda karta animatsiyasiz chiqsin. */
+  const [infoToggled, setInfoToggled] = useState(false);
+  const railTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (railTimer.current !== null) window.clearTimeout(railTimer.current); }, []);
+  const collapseInfo = () => {
+    setInfoToggled(true);
+    setInfoCollapsed(true);
+    if (railTimer.current !== null) window.clearTimeout(railTimer.current);
+    railTimer.current = window.setTimeout(() => {
+      railTimer.current = null;
+      setRailShown(true);
+    }, 280);
+  };
+  const expandInfo = () => {
+    if (railTimer.current !== null) {
+      window.clearTimeout(railTimer.current);
+      railTimer.current = null;
+    }
+    setInfoToggled(true);
+    setRailShown(false);
+    setInfoCollapsed(false);
+  };
+  // «Izoh» oynasi (o'ng-pastki burchak, OrderMessagePanel) va jadvaldagi
+  // «Oxirgi izoh» — o'quvchi izohlari, lib/pupilComments.ts (29.09.2026).
+  const [commentFor, setCommentFor] = useState<Pupil | null>(null);
+  const [comments, setComments] = useState<OrderMessage[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [lastComments, setLastComments] = useState<Record<number, PupilCommentView>>({});
+  /** Hozir ochiq oyna qaysi o'quvchiniki — kechikkan javob boshqa o'quvchiga tushmasin. */
+  const commentPupilRef = useRef<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -199,6 +245,61 @@ export default function GroupDetailPage({ id }: { id: number }) {
   // Balans ID bo'yicha — guruhda ismdosh ikki o'quvchi bo'lsa ularning
   // puli bitta kalitga qo'shilib ketardi (lib/pupilEntries.ts).
   const balanceOf = (p: Pupil) => balances[p.id] ?? 0;
+
+  // «Oxirgi izoh» ustuni — a'zolar ro'yxati o'zgarganda bitta so'rov.
+  const memberIdsKey = useMemo(() => members.map((m) => m.id).join(","), [members]);
+  useEffect(() => {
+    if (!memberIdsKey) return;
+    let cancelled = false;
+    fetch(`/api/pupils/last-comments?ids=${memberIdsKey}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d.ok) setLastComments(d.last); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [memberIdsKey]);
+
+  const commentMsg = (c: PupilCommentView): OrderMessage => ({ text: c.text, time: `${isoToUz(c.date)} ${c.time}`, by: c.by });
+
+  function openComments(p: Pupil) {
+    commentPupilRef.current = p.id;
+    setCommentFor(p);
+    setComments([]);
+    setCommentsLoading(true);
+    fetch(`/api/pupils/${p.id}/comments`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (commentPupilRef.current !== p.id) return;
+        if (d.ok) setComments((d.comments as PupilCommentView[]).map(commentMsg));
+        else showError(t(d.error || "Izohlar yuklanmadi"));
+      })
+      .catch(() => { if (commentPupilRef.current === p.id) showError(t("Izohlar yuklanmadi")); })
+      .finally(() => { if (commentPupilRef.current === p.id) setCommentsLoading(false); });
+  }
+
+  function closeComments() {
+    commentPupilRef.current = null;
+    setCommentFor(null);
+  }
+
+  async function sendComment(p: Pupil, text: string) {
+    try {
+      const res = await fetch(`/api/pupils/${p.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const d = await res.json();
+      if (!d.ok) {
+        showError(t(d.error || "Izohni saqlab bo'lmadi"));
+        return;
+      }
+      const c = d.comment as PupilCommentView;
+      if (commentPupilRef.current === p.id) setComments((prev) => [...prev, commentMsg(c)]);
+      setLastComments((prev) => ({ ...prev, [p.id]: c }));
+    } catch {
+      showError(t("Izohni saqlab bo'lmadi"));
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -353,13 +454,13 @@ export default function GroupDetailPage({ id }: { id: number }) {
           karta o'zi aylanadi, o'ngda jadval thead'i va paginatsiya qotadi. */}
       <div className={`group-detail-grid ${infoCollapsed ? "is-collapsed" : ""}`}>
         {/* LEFT: Guruh ma'lumotlari — yig'ilganda tor ikonka ustuni bo'ladi */}
-        {infoCollapsed ? (
+        {railShown ? (
           <aside
-            className="gd-aside hidden lg:flex w-12 flex-col items-center gap-1 rounded-2xl border border-border bg-card py-3"
+            className="gd-aside gd-rail-in hidden lg:flex w-12 flex-col items-center gap-1 rounded-2xl border border-border bg-card py-3"
             style={{ alignSelf: "start" }}
           >
             <button
-              onClick={() => setInfoCollapsed(false)}
+              onClick={expandInfo}
               title={t("Guruh ma'lumotlarini ochish")}
               className="h-8 w-8 rounded-lg text-primary hover:bg-secondary inline-flex items-center justify-center"
             >
@@ -374,7 +475,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
             ].map(({ icon: Icon, label }) => (
               <button
                 key={label}
-                onClick={() => setInfoCollapsed(false)}
+                onClick={expandInfo}
                 title={label}
                 className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary inline-flex items-center justify-center"
               >
@@ -399,13 +500,19 @@ export default function GroupDetailPage({ id }: { id: number }) {
             </button>
           </aside>
         ) : (
-        <aside className="gd-aside rounded-2xl bg-card border border-border p-5" style={{ alignSelf: "start" }}>
+        <aside
+          className={`gd-aside rounded-2xl bg-card border border-border ${infoCollapsed ? "gd-aside-leaving" : infoToggled ? "gd-aside-entering" : ""}`}
+          style={{ alignSelf: "start" }}
+        >
+          {/* Ichki qism o'z kengligida (lg: 318 px) — ustun torayganda matn
+              qayta oqmaydi, kesiladi (globals.css .gd-aside-inner). */}
+          <div className="gd-aside-inner p-5">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-primary" />
             <h2 className="text-[15px] font-bold tracking-tight">{t("Guruh ma'lumotlari")}</h2>
             <div className="flex-1" />
             <button
-              onClick={() => setInfoCollapsed(true)}
+              onClick={collapseInfo}
               title={t("Yig'ish")}
               className="hidden lg:inline-flex h-7 w-7 shrink-0 rounded-lg text-muted-foreground hover:bg-secondary hover:text-primary items-center justify-center"
             >
@@ -456,6 +563,7 @@ export default function GroupDetailPage({ id }: { id: number }) {
             <button onClick={() => setArchiveConfirm(true)} className="flex-1 inline-flex items-center justify-center gap-2 h-9 rounded-lg bg-rose-600 text-white text-[13px] font-medium hover:bg-rose-700">{t("Guruhni arxivlash")}</button>
             <button onClick={() => setEditOpen(true)} className="flex-1 inline-flex items-center justify-center gap-2 h-9 rounded-lg bg-primary text-white text-[13px] font-medium hover:opacity-90"><Pencil className="w-3.5 h-3.5" />{t("Tahrirlash")}</button>
           </div>
+          </div>
         </aside>
         )}
 
@@ -500,20 +608,55 @@ export default function GroupDetailPage({ id }: { id: number }) {
                       {slice.map((m, i) => (
                         <tr key={m.id} className="hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3 text-muted-foreground tabular-nums">{start + i + 1}</td>
-                          <td className="px-4 py-3 text-[13px] font-medium">{pupilName(m)}</td>
+                          <td className="px-4 py-3 text-[13px] font-medium">
+                            <Link
+                              href={`/student-edit/${m.id}?src=list`}
+                              className="cursor-pointer underline-offset-2 transition-colors hover:text-primary hover:underline"
+                              title={t("O'quvchi profili")}
+                            >
+                              {pupilName(m)}
+                            </Link>
+                          </td>
                           <td className="px-4 py-3 text-[13px] tabular-nums text-muted-foreground whitespace-nowrap">{m.joinedAt ? m.joinedAt.split("-").reverse().join(".") : m.createdAt}</td>
-                          <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">{m.phone}</td>
+                          <td className="px-4 py-3 text-[13px] tabular-nums whitespace-nowrap">
+                            {/* `tel:` — telefonda qo'ng'iroq oynasi, kompyuterda qo'ng'iroq ilovasi ochiladi. */}
+                            {telHref(m.phone) ? (
+                              <a
+                                href={`tel:${telHref(m.phone)}`}
+                                className="underline-offset-2 transition-colors hover:text-primary hover:underline"
+                                title={t("Qo'ng'iroq qilish")}
+                              >
+                                {m.phone}
+                              </a>
+                            ) : (
+                              m.phone || "—"
+                            )}
+                          </td>
                           <td className={`px-4 py-3 text-[13px] tabular-nums whitespace-nowrap ${balanceOf(m) < 0 ? "text-rose-600" : ""}`}>{nf(balanceOf(m))}</td>
                           {/* Narxi: guruh/kurs narxi sxemada yo'q — qattiq
                               yozilgan 270 000 o'rniga "—" (soxta son emas). */}
                           <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
                           <td className="px-4 py-3 text-[13px] tabular-nums">{m.coin ?? 0}</td>
-                          <td className="px-4 py-3 text-[13px] text-muted-foreground">—</td>
+                          <td className="px-4 py-3 text-[13px] text-muted-foreground">
+                            {lastComments[m.id] ? (
+                              <button
+                                type="button"
+                                onClick={() => openComments(m)}
+                                className="block max-w-[220px] truncate text-left transition-colors hover:text-primary"
+                                title={`${lastComments[m.id].text}\n— ${lastComments[m.id].by}, ${isoToUz(lastComments[m.id].date)} ${lastComments[m.id].time}`}
+                              >
+                                {lastComments[m.id].text}
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-right whitespace-nowrap">
                             {/* "Ko'chirish" — boshqa guruhga o'tkazadi (shu
                                 guruhdan chiqarib, tanlanganiga qo'shadi).
-                                "Izoh" o'quvchi profilini ochadi. Sertifikat
-                                uchun tizimda hali manba yo'q. */}
+                                "Izoh" — o'ng-pastki burchakda izoh oynasi
+                                (29.09.2026; profil endi ism ustida).
+                                Sertifikat uchun tizimda hali manba yo'q. */}
                             <div className="inline-flex items-center gap-1 text-muted-foreground">
                               <button
                                 onClick={() => setMoveFor(m)}
@@ -522,13 +665,13 @@ export default function GroupDetailPage({ id }: { id: number }) {
                               >
                                 <UserPlus className="w-4 h-4" />
                               </button>
-                              <Link
-                                href={`/student-edit/${m.id}?src=list`}
-                                className="h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary"
-                                title={t("O'quvchi profili")}
+                              <button
+                                onClick={() => openComments(m)}
+                                className={`h-7 w-7 rounded-md hover:bg-secondary inline-flex items-center justify-center hover:text-primary ${commentFor?.id === m.id ? "bg-secondary text-primary" : ""}`}
+                                title={t("Izoh yozish")}
                               >
                                 <MessageSquare className="w-4 h-4" />
-                              </Link>
+                              </button>
                               <button
                                 onClick={() => setRemoveFor(m)}
                                 className="h-7 w-7 rounded-md hover:bg-rose-500/10 inline-flex items-center justify-center hover:text-rose-600"
@@ -828,6 +971,18 @@ export default function GroupDetailPage({ id }: { id: number }) {
           group={group}
           onClose={() => setEditOpen(false)}
           onSaved={(g) => setGroup(g)}
+        />
+      )}
+
+      {/* O'quvchi izohlari — o'ng-pastki burchakda (lidlardagi oyna bilan bitta komponent). */}
+      {commentFor && (
+        <OrderMessagePanel
+          key={commentFor.id}
+          title={pupilName(commentFor)}
+          messages={comments}
+          loading={commentsLoading}
+          onClose={closeComments}
+          onSend={(text) => void sendComment(commentFor, text)}
         />
       )}
 
