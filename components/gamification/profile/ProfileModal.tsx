@@ -480,7 +480,9 @@ export default function ProfileModal({
   return (
     <>
       <Modal onClose={onClose} controller={modal} bare size="4xl" panelClassName="gm-page">
-        <div aria-labelledby="gm-profile-title" className="flex max-h-[90vh] min-h-0 flex-col">
+        {/* Balandlikni panel cheklaydi (max-h 90vh, ui/Modal) — bu yerda yana
+            90vh berilsa panel chegarasidan 2 px oshib, tashqi aylantirish chiqardi. */}
+        <div aria-labelledby="gm-profile-title" className="flex min-h-0 flex-col">
           <div className="shrink-0">{header}</div>
           <div className="min-h-0 flex-1 overflow-y-auto">{body}</div>
         </div>

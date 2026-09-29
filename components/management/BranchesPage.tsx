@@ -289,10 +289,13 @@ export default function BranchesPage() {
       </div>
 
       {formOpen && (
-        <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110} panelClassName="p-6 space-y-4">
-            <h3 className="text-[16px] font-semibold">
+        <Modal onClose={closeForm} controller={modal} locked={saving} bare zIndex={110}>
+            <h3 className="shrink-0 px-6 pt-6 pb-3 text-[16px] font-semibold">
               {editTarget ? t("Filialni tahrirlash") : t("Filial qo'shish")}
             </h3>
+            {/* Forma uzun (topiklar, ish vaqti, joylashuv, xarita) — 90vh ga
+                sig'maydi: maydonlar aylanadi, sarlavha va tugmalar joyida. */}
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pt-1 pb-4">
             <div>
               <label className="block text-[13px] font-medium mb-1.5">{t("Nomi")}</label>
               <input
@@ -439,7 +442,8 @@ export default function BranchesPage() {
                 {t("Kiritilsa, xodim QR kodni faqat shu joy yaqinida skanerlay oladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).")}
               </p>
             </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-6 py-4">
               <button
                 onClick={modal.close}
                 disabled={saving}

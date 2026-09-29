@@ -217,9 +217,15 @@ export default function Modal({
   if (!mounted) return null;
 
   const isDrawer = variant === "drawer";
-  // Eski modal o'z panelida overflow boshqarsa (`overflow-y-auto`), bizning
-  // `overflow-hidden` u bilan to'qnashmasin.
-  const overflowCls = /overflow-/.test(panelClassName) ? "" : "overflow-hidden";
+  // Panel 90vh dan (drawer — ekrandan) oshsa AYLANADI, kesilmaydi: `bare`
+  // modal o'z tanasini aylantirmasa ortiqcha qism ko'rinmay, tugmalarga yetib
+  // bo'lmasdi (29.09.2026, «Filialni tahrirlash»). Gorizontal — doim kesiladi.
+  // Panel o'z overflow'ini bersa (`overflow-y-auto`, `overflow-hidden`) —
+  // vertikal o'shaniki. (Naqshdagi `\b` 11.09 dan beri backspace belgisi bo'lib
+  // yozilgan edi va hech qachon mos kelmasdi: o'sha panellarga `overflow-hidden`
+  // ham qo'shilardi — CSS tartibida `overflow-y-auto` keyin turgani uchun
+  // vertikal aylanardi, gorizontal kesilardi. Shu natija saqlandi.)
+  const overflowCls = /\boverflow-/.test(panelClassName) ? "overflow-x-hidden" : "overflow-x-hidden overflow-y-auto";
   const panelCls = isDrawer
     ? `relative h-full w-full ${SIZE_CLS[size]} bg-card border-l border-border shadow-2xl flex flex-col outline-none ${overflowCls} ${closing ? "ui-drawer-out" : "ui-drawer-in"} ${panelClassName}`
     : `relative w-full ${SIZE_CLS[size]} rounded-2xl bg-card border border-border shadow-2xl max-h-[90vh] flex flex-col outline-none ${overflowCls} ${closing ? "ui-modal-out" : "ui-modal-in"} ${panelClassName}`;
