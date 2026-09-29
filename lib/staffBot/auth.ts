@@ -90,6 +90,13 @@ export interface StaffAccess {
   profileOnly: boolean;
   /** Profil rejimida: shu raqamda sayt hisobi (parol) bor — «Parol bilan kirish» taklif qilinadi. */
   webLogin: boolean;
+  /**
+   * O'QITUVCHI (`hr_employees.turi === "teacher"`, admin emas) — 29.09.2026,
+   * foydalanuvchi: "o'qituvchi botida kirim/chiqim/ko'chirish/lid/kassam
+   * kerak emas, moderatorda kerak". Menyuda faqat «Ishga keldim», «Profilim»,
+   * «Chiqish»; kassa/lid tugmalari (eski menyu xabaridan bosilsa ham) ochilmaydi.
+   */
+  isTeacher: boolean;
   /** Kassa amallari ruxsati — `/finance-cash` (web'dagi bilan bir xil kalit). */
   canCash: boolean;
   /** Lid qo'shish ruxsati — `/orders-list` (POST /api/orders shu kalit bilan yopiq). */
@@ -185,7 +192,7 @@ async function resolveProfileAccess(db: Db, user: StaffBotUser): Promise<AccessR
   if (!Number.isFinite(empId)) return { ok: false, error: "Tizimga kirmagansiz", logout: true };
   const emp = await db.collection("hr_employees").findOne(
     { id: empId },
-    { projection: { _id: 0, name: 1, phone: 1, archReason: 1 } },
+    { projection: { _id: 0, name: 1, phone: 1, archReason: 1, turi: 1 } },
   );
   if (!emp) return { ok: false, error: "Xodim topilmadi — qayta kiring.", logout: true };
   if (!["", null, undefined].includes(emp.archReason)) {
@@ -202,6 +209,7 @@ async function resolveProfileAccess(db: Db, user: StaffBotUser): Promise<AccessR
       identity: { userId: "", employeeId: empId, name: String(emp.name ?? "").trim(), isAdmin: false, phone },
       profileOnly: true,
       webLogin: await hasWebLogin(db, phone),
+      isTeacher: emp.turi === "teacher",
       canCash: false,
       canLead: false,
       cashbox: null,
@@ -241,12 +249,17 @@ export async function resolveAccess(db: Db, user: StaffBotUser): Promise<AccessR
   });
 
   const identity: LoginIdentity = { userId: user.userId, employeeId, name, isAdmin, phone: String(account.phone ?? "") };
+  // Lavozim — o'qituvchiga kassa/lid bo'limlari ko'rsatilmaydi (admin istisno).
+  const turi = employeeId === null
+    ? ""
+    : String((await db.collection("hr_employees").findOne({ id: employeeId }, { projection: { _id: 0, turi: 1 } }))?.turi ?? "");
   return {
     ok: true,
     access: {
       identity,
       profileOnly: false,
       webLogin: true,
+      isTeacher: turi === "teacher" && !isAdmin,
       canCash: isPathAllowed("/finance-cash", perms),
       canLead: isPathAllowed("/orders-list", perms),
       cashbox: await findBotCashbox(db, { isAdmin, name, cashboxId: user.cashboxId }),

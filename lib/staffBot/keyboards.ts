@@ -113,9 +113,14 @@ function checkinRow(checkoutEnabled: boolean): InlineButton[] {
  * Bosh menyu. Parol bilan kirgan: «Ishga keldim», «Profilim» + 6 tugma
  * (18.09.2026 tartibi). Raqam ulashib kirgan (28.09.2026): «Ishga keldim»,
  * «Profilim», sayt hisobi bo'lsa «Parol bilan kirish» (kassa amallari
- * uchun) va «Chiqish».
+ * uchun) va «Chiqish». O'QITUVCHI (29.09.2026, qanday kirganidan qat'i
+ * nazar): faqat «Ishga keldim», «Profilim», «Chiqish» — kassa va lid unga
+ * kerak emas.
  */
-export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checkoutEnabled: boolean }): InlineKeyboard {
+export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checkoutEnabled: boolean; teacher: boolean }): InlineKeyboard {
+  if (opts.teacher) {
+    return { inline_keyboard: [checkinRow(opts.checkoutEnabled), [profileButton()], [btn("🚪 Chiqish", CB.logout)]] };
+  }
   if (opts.profileOnly) {
     const rows: InlineButton[][] = [checkinRow(opts.checkoutEnabled), [profileButton()]];
     if (opts.webLogin) rows.push([btn("🔑 Parol bilan kirish (kassa)", CB.passwordLogin)]);

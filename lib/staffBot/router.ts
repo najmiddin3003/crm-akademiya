@@ -129,16 +129,34 @@ export async function handleStaffUpdate(
 async function menuScreen(db: Db, access: StaffAccess): Promise<Screen> {
   // «🏁 Ishdan ketdim» tugmasi faqat admin yoqqanda (QR ekranidagi sozlama).
   const { checkoutEnabled } = await loadAttendanceSettings(db);
+  // O'qituvchi — kassa/lidsiz menyu (qanday kirganidan qat'i nazar).
+  if (access.isTeacher) {
+    return {
+      html: V.profileMenuView(access.identity.name, false),
+      keyboard: mainMenu({ profileOnly: true, webLogin: false, checkoutEnabled, teacher: true }),
+    };
+  }
   if (access.profileOnly) {
     return {
       html: V.profileMenuView(access.identity.name, access.webLogin),
-      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin, checkoutEnabled }),
+      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin, checkoutEnabled, teacher: false }),
     };
   }
   return {
     html: V.menuView(access.identity.name, access.cashbox, access.identity.isAdmin),
-    keyboard: mainMenu({ profileOnly: false, webLogin: true, checkoutEnabled }),
+    keyboard: mainMenu({ profileOnly: false, webLogin: true, checkoutEnabled, teacher: false }),
   };
+}
+
+/**
+ * O'qituvchiga yopiq tugma/buyruq — kassa va lid bo'limlari. Menyuda
+ * ko'rinmaydi, lekin eski menyu xabarida (o'zgarishdan oldin chizilgan)
+ * turgan bo'lishi mumkin — bosilsa yangi menyu ko'rsatiladi.
+ */
+function teacherClosed(data: string): boolean {
+  if (/^s:(k|c|t|l):/.test(data)) return true;
+  const closed: string[] = [CB.kirim, CB.chiqim, CB.transfer, CB.lead, CB.kassam, CB.today, CB.cashboxes, CB.passwordLogin];
+  return closed.includes(data) || cashboxArg(data) !== null;
 }
 
 async function kassamScreen(db: Db, access: StaffAccess): Promise<Screen> {
@@ -372,12 +390,14 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
     return;
   }
   if (COMMANDS.kassa.test(text)) {
-    await showScreen(db, cfg, chatId, undefined, await kassamScreen(db, access));
+    // O'qituvchiga kassa yo'q — bosh menyu.
+    await showScreen(db, cfg, chatId, undefined, access.isTeacher ? await menuScreen(db, access) : await kassamScreen(db, access));
     return;
   }
 
   // Qoralama matn kutayotgan bo'lsa — unga (har oqim o'z qoralamasini taniydi).
-  if (text && !text.startsWith("/")) {
+  // O'qituvchida kassa/lid oqimi yo'q (eski qoralama qolgan bo'lsa ham).
+  if (text && !text.startsWith("/") && !access.isTeacher) {
     if (await kirimText(ctx, text)) return;
     if (await chiqimText(ctx, text)) return;
     if (await transferText(ctx, text)) return;
@@ -436,6 +456,12 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
   const access = res.access;
   const ctx: FlowCtx = { db, cfg, chatId, user, access, messageId, defer };
   const show = (screen: Screen) => showScreen(db, cfg, chatId, messageId, screen);
+
+  if (access.isTeacher && teacherClosed(data)) {
+    await answerStaff(cfg, cq.id, "Bu bo'lim o'qituvchilar uchun emas");
+    await show(await menuScreen(db, access));
+    return;
+  }
 
   // Oqim tugmalari — har oqim o'z prefiksini o'zi taniydi.
   if (data.startsWith("s:k:")) {

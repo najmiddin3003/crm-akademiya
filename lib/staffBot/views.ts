@@ -129,11 +129,9 @@ export function checkinUseButton(kind: "in" | "out"): string {
 
 export function menuView(name: string, cashbox: BotCashbox | null, isAdmin: boolean): string {
   const lines = [`👤 <b>${esc(name || "Xodim")}</b>${isAdmin ? " · admin" : ""}`];
-  if (cashbox) {
-    lines.push(`🏦 ${esc(cashbox.name)} — qoldiq <b>${so(cashbox.balance)}</b>`);
-  } else {
-    lines.push("🏦 Kassa biriktirilmagan — kassa amallari yopiq.");
-  }
+  // Kassasiz xodimga "kassa biriktirilmagan" satri YOZILMAYDI (29.09.2026,
+  // foydalanuvchi: "kerak emas") — «Kirim» bosilsa sababi o'sha yerda aytiladi.
+  if (cashbox) lines.push(`🏦 ${esc(cashbox.name)} — qoldiq <b>${so(cashbox.balance)}</b>`);
   lines.push("", "Bo'limni tanlang:");
   return lines.join("\n");
 }
