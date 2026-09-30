@@ -388,6 +388,10 @@ async function createAllIndexes(db: Db): Promise<void> {
   // O'quvchi izohlari (lib/pupilComments.ts): id noyob; o'quvchi bo'yicha oxirgisi.
   tasks.push(db.collection("pupil_comments").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("pupil_comments").createIndex({ pupilId: 1, createdAt: -1 }));
+  // Ustoz almashuvi (lib/teacherHandover.ts) — bir oyda bitta eski ustozga
+  // bitta yozuv; oylik hisobi oy bo'yicha, profil daftari eski ustoz bo'yicha o'qiydi.
+  tasks.push(db.collection("teacher_handovers").createIndex({ month: 1, fromKey: 1 }, { unique: true }));
+  tasks.push(db.collection("teacher_handovers").createIndex({ fromKey: 1 }));
   // legacy_entries — edutizimdan ko'chirilgan to'lov arxivi (25 561 yozuv).
   // O'quvchi profili ham, o'quvchilar boti ham uni `pupilId` bo'yicha
   // so'raydi va `at` bo'yicha saralaydi. Indekssiz bu har safar to'liq

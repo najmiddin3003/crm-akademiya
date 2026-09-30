@@ -285,6 +285,8 @@ export async function POST(req: Request) {
         okladDays: payrollHasOklad(ep) ? payrollOkladDays(ep, period) : undefined,
         okladPart: payrollOkladPart(ep, period),
         foizPart: payrollFoizPart(ep),
+        // Ustoz almashuvi (lib/teacherHandover.ts) — tushum qanday bo'lingani.
+        ...(ep.handovers?.length ? { handovers: ep.handovers } : {}),
         base: payrollBase(ep, period),
         bonus: ep.bonus,
         jarima: ep.jarima,

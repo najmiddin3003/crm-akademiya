@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
-import { DollarSign, History, RotateCcw, Search } from "lucide-react";
+import { ArrowLeftRight, DollarSign, History, RotateCcw, Search } from "lucide-react";
+import TeacherHandoverModal from "@/components/finance/TeacherHandoverModal";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -141,6 +142,8 @@ export default function SalaryCreatePage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Ustoz almashuvi oynasi — qaysi o'qituvchi uchun ochiq (components/finance/TeacherHandoverModal.tsx).
+  const [handoverFor, setHandoverFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Pul QAYSI kassadan chiqishi — oylik chiqarish haqiqiy chiqim yozuvlari
   // yaratadi, shuning uchun kassa va to'lov turi tanlanishi shart.
@@ -902,8 +905,55 @@ export default function SalaryCreatePage() {
                     <td className="px-3 py-3 align-top text-[12.5px] tabular-nums">
                       {e.configured ? (
                         <>
-                          <div className="whitespace-nowrap">{formula}</div>
-                          {foizLine && <div className="whitespace-nowrap">{foizLine}</div>}
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <span>{formula}</span>
+                            {/* USTOZ ALMASHUVI — faqat foiz qismi bor o'qituvchida
+                                (to'lovlari ustoz nomi bo'yicha bo'linadi). */}
+                            {!isMixed && isFoiz && (
+                              <button
+                                type="button"
+                                onClick={() => setHandoverFor(e.name)}
+                                title={t("Ustoz almashuvi — oy o'rtasida o'quvchilar boshqa ustozga o'tgan bo'lsa")}
+                                aria-label={t("Ustoz almashuvi")}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary hover:text-primary"
+                              >
+                                <ArrowLeftRight className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          {foizLine && (
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                              <span>{foizLine}</span>
+                              <button
+                                type="button"
+                                onClick={() => setHandoverFor(e.name)}
+                                title={t("Ustoz almashuvi — oy o'rtasida o'quvchilar boshqa ustozga o'tgan bo'lsa")}
+                                aria-label={t("Ustoz almashuvi")}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary hover:text-primary"
+                              >
+                                <ArrowLeftRight className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                          {/* Almashuv izohi — `collected` allaqachon bo'lingan. */}
+                          {(e.handovers ?? []).map((h, hi) => (
+                            <div key={hi} className="text-[11px] text-violet-600 dark:text-violet-400 whitespace-nowrap">
+                              {h.dir === "out"
+                                ? t("{date} gacha ({days}/{daysIn} kun) · {amount} tushum → {other}", {
+                                    date: fmtIsoDay(h.lastDay),
+                                    days: h.days,
+                                    daysIn: h.daysIn,
+                                    amount: fmtNum(h.amount),
+                                    other: h.other || t("hech kimga"),
+                                  })
+                                : t("+{amount} tushum — {other}dan ({days}/{daysIn} kun)", {
+                                    amount: fmtNum(h.amount),
+                                    other: h.other,
+                                    days: h.days,
+                                    daysIn: h.daysIn,
+                                  })}
+                            </div>
+                          ))}
                           {startNote && (
                             <div className="text-[11px] text-muted-foreground whitespace-nowrap">{startNote}</div>
                           )}
@@ -1037,6 +1087,16 @@ export default function SalaryCreatePage() {
           </table>
         </div>
       </div>
+
+      {handoverFor && (
+        <TeacherHandoverModal
+          teacher={handoverFor}
+          month={monthKey}
+          monthLabel={monthLabel}
+          onClose={() => setHandoverFor(null)}
+          onSaved={load}
+        />
+      )}
 
       {confirmOpen && (
         <Modal onClose={() => setConfirmOpen(false)} locked={saving} bare zIndex={110} panelClassName="p-6">{(modal) => (<>

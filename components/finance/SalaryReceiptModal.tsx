@@ -169,6 +169,25 @@ export default function SalaryReceiptModal({
               <Divider />
 
               <Row label={t("Asos")} value={t(fmtSum(r.base ?? 0))} hint={baseFormula ? `(${baseFormula})` : undefined} />
+              {/* Ustoz almashuvi — tushum kunlarga qarab bo'lingani (chiqarish paytidagi holat). */}
+              {(r.handovers ?? []).map((h, i) => (
+                <p key={i} className="text-[11px] text-muted-foreground">
+                  {h.dir === "out"
+                    ? t("{date} gacha ({days}/{daysIn} kun) · {amount} tushum → {other}", {
+                        date: h.lastDay.split("-").reverse().join("."),
+                        days: h.days,
+                        daysIn: h.daysIn,
+                        amount: fmtNum(h.amount),
+                        other: h.other || t("hech kimga"),
+                      })
+                    : t("+{amount} tushum — {other}dan ({days}/{daysIn} kun)", {
+                        amount: fmtNum(h.amount),
+                        other: h.other,
+                        days: h.days,
+                        daysIn: h.daysIn,
+                      })}
+                </p>
+              ))}
               {(r.bonus ?? 0) > 0 && <Row label={t("Bonus")} value={`+${t(fmtSum(r.bonus ?? 0))}`} tone="plus" />}
               {(r.jarima ?? 0) > 0 && <Row label={t("Jarima")} value={`−${t(fmtSum(r.jarima ?? 0))}`} tone="minus" />}
               <Row label={t("Hisoblangan")} value={t(fmtSum(r.gross ?? 0))} strong />

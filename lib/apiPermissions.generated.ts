@@ -219,6 +219,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/task-types/[id]": ["/groups-tasks", "/students-list", "/tasks"],
   "/api/tasks": ["/students-list"],
   "/api/tasks/[id]": ["/students-list"],
+  "/api/teacher-handovers": ["/finance-payroll"],
   "/api/teachers": ["/finance-cash", "/first-lessons", "/groups", "/imtihon", "/orders-list", "/reports-served"],
   "/api/temp-staff": ["/vaqtinchalik"],
   "/api/temp-staff/[id]": ["/vaqtinchalik"],

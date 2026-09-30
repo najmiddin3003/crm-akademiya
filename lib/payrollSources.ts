@@ -14,10 +14,12 @@ import {
   type BranchPayouts,
   type EmployeePayroll,
   type PaidElsewhere,
+  type PayrollHandover,
   type PayrollPeriod,
   type SalaryType,
 } from "@/lib/salary";
 import { loadTaxRules } from "@/lib/taxes";
+import { buildHandoverIndex, handoverFor, handoverRatio, loadHandovers } from "@/lib/teacherHandover";
 
 // Oylik hisobiga kiradigan HAQIQIY manbalar. Ilgari bu yig'ish uch joyda
 // (employees-payroll, salary-runs, Xodimlar ro'yxati) takrorlanardi va har
@@ -47,7 +49,7 @@ function nameKey(v: unknown): string {
  * ham avgustga yozilmasa — avgust abadiy "to'lanmagan" bo'lib qolardi va
  * ikkinchi marta to'lash mumkin bo'lardi.
  */
-function monthMatch(month: string) {
+export function monthMatch(month: string) {
   return [
     { periodMonth: month },
     { periodMonth: { $exists: false }, date: { $regex: `^${month}-` } },
@@ -167,6 +169,8 @@ export interface CollectedByTeacher {
   collected: number;
   /** Shu oyda ustozning o'quvchilariga QAYTARILGAN pul (musbat, ma'lumot uchun). */
   refunded: number;
+  /** Ustoz almashuvi izohlari (lib/teacherHandover.ts) — faqat ko'rsatish uchun. */
+  handovers?: PayrollHandover[];
 }
 
 /**
@@ -183,6 +187,11 @@ export interface CollectedByTeacher {
  * (lib/studentRefund.ts); oy qoidasi kirim bilan bir xil (`monthMatch`).
  */
 export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map<string, CollectedByTeacher>> {
+  // USTOZ ALMASHUVI (30.09.2026) — oy o'rtasida o'quvchilar boshqa ustozga
+  // o'tgan bo'lsa, ESKI ustoz nomidagi to'lovlar kalendar kunlariga qarab
+  // bo'linadi (lib/teacherHandover.ts). Almashuv bo'lmagan oyda indeks bo'sh
+  // va hisob avvalgidek.
+  const handoversP = loadHandovers(db, month);
   const rows = await db
     .collection("transaction_entries")
     .find({
@@ -201,26 +210,77 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
     })
-    // Pastdagi tsikl faqat shularni o'qiydi. 666 KB -> 73 KB.
-    .project({ teacherName: 1, amount: 1, discountSom: 1, txType: 1, _id: 0 })
+    // Pastdagi tsikl faqat shularni o'qiydi. 666 KB -> 73 KB. `pupilId` va
+    // `studentName` — ustoz almashuvida qaysi o'quvchi ekanini topish uchun.
+    .project({ teacherName: 1, amount: 1, discountSom: 1, txType: 1, pupilId: 1, studentName: 1, _id: 0 })
     .toArray();
+  const handovers = await handoversP;
+  const index = buildHandoverIndex(handovers);
 
   const map = new Map<string, CollectedByTeacher>();
+  const bucket = (k: string): CollectedByTeacher => {
+    let cur = map.get(k);
+    if (!cur) {
+      cur = { collected: 0, refunded: 0 };
+      map.set(k, cur);
+    }
+    return cur;
+  };
+  // Izohlar: bitta almashuv → eski ustozga bitta "out", har yangi ustozga bitta "in".
+  const notes = new Map<string, { owner: string; note: PayrollHandover; names: Set<string> }>();
+  const note = (key: string, owner: string, init: () => PayrollHandover) => {
+    let n = notes.get(key);
+    if (!n) {
+      n = { owner, note: init(), names: new Set() };
+      notes.set(key, n);
+    }
+    return n;
+  };
+
   for (const r of rows) {
     const k = nameKey(r.teacherName);
     if (!k) continue;
-    const cur = map.get(k) ?? { collected: 0, refunded: 0 };
     const amount = Math.abs(Number(r.amount) || 0);
-    if (r.txType === "payIn") {
-      // USTOZ FOIZI TO'LIQ NARXDAN (gamifikatsiya, TZ 4.16.4): o'quvchi
-      // tanga evaziga chegirma olgan bo'lsa, kechilgan qism ham ustozning
-      // tushumiga qo'shiladi — farqni markaz ko'taradi.
-      cur.collected += amount + Math.abs(Number(r.discountSom) || 0);
-    } else {
-      cur.collected -= amount;
-      cur.refunded += amount;
-    }
-    map.set(k, cur);
+    const isPay = r.txType === "payIn";
+    // USTOZ FOIZI TO'LIQ NARXDAN (gamifikatsiya, TZ 4.16.4): o'quvchi tanga
+    // evaziga chegirma olgan bo'lsa, kechilgan qism ham ustozning tushumiga
+    // qo'shiladi — farqni markaz ko'taradi. Qaytarim — manfiy.
+    const signed = isPay ? amount + Math.abs(Number(r.discountSom) || 0) : -amount;
+
+    const match = handoverFor(index, month, r);
+    const ratio = match ? handoverRatio(match.handover) : null;
+    const keep = ratio ? ratio.old : 1;
+
+    const own = bucket(k);
+    own.collected += signed * keep;
+    if (!isPay) own.refunded += amount * keep;
+    if (!match || !ratio || keep >= 1) continue;
+
+    // Oxirgi dars kunidan keyingi qism — yangi ustozga (bo'lmasa hech kimga).
+    const moved = signed * (1 - keep);
+    const h = match.handover;
+    const toName = String(match.pupil.toTeacher ?? "").trim();
+    const fk = nameKey(h.fromTeacher);
+    const out = note(`${h.month}|${fk}|out`, k, () => ({
+      dir: "out", other: "", lastDay: h.lastDay, days: ratio.oldDays, daysIn: ratio.daysIn, amount: 0,
+    }));
+    out.note.amount += moved;
+    if (toName) out.names.add(toName);
+    if (!toName) continue;
+    const to = nameKey(toName);
+    const tgt = bucket(to);
+    tgt.collected += moved;
+    if (!isPay) tgt.refunded += amount * (1 - keep);
+    const inn = note(`${h.month}|${fk}|in|${to}`, to, () => ({
+      dir: "in", other: h.fromTeacher, lastDay: h.lastDay, days: ratio.newDays, daysIn: ratio.daysIn, amount: 0,
+    }));
+    inn.note.amount += moved;
+  }
+
+  for (const { owner, note: n, names } of notes.values()) {
+    if (n.dir === "out") n.other = [...names].join(", ");
+    const cur = bucket(owner);
+    (cur.handovers ??= []).push(n);
   }
   return map;
 }
@@ -532,6 +592,8 @@ export async function buildPayrollRows(
       // foizli oylik asosi (loadCollectedByTeacher izohiga qarang).
       collected: collected.collected,
       refunded: collected.refunded,
+      // Ustoz almashuvi izohlari — `collected` allaqachon bo'lingan.
+      ...(collected.handovers?.length ? { handovers: collected.handovers } : {}),
       futureCollected: 0,
       bonus: sumFor(bonusesOfMonth, k),
       jarima: sumFor(penaltiesOfMonth, k),

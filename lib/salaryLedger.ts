@@ -11,6 +11,13 @@ import {
   type SalaryType,
 } from "@/lib/salary";
 import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEntries";
+import {
+  TEACHER_HANDOVERS,
+  buildHandoverIndex,
+  handoverFor,
+  handoverRatio,
+  type TeacherHandover,
+} from "@/lib/teacherHandover";
 
 // XODIMNING OYLIK DAFTARI — Xodim profili → "Tranzaksiyalar tarixi"
 // jadvalidagi "Oyligiga ta'siri" va "Qoldiq oldin/keyin" ustunlari
@@ -36,6 +43,9 @@ import { isStudentRefundEntry, type TransactionEntry } from "@/lib/transactionEn
 //   • faqat okladli xodimda o'quvchi to'lovi oylikka tegmaydi; "oklad +
 //     foiz" xodimda ikkalasi ham ishlaydi (oklad oy boshida, foiz
 //     yozuvma-yozuv);
+//   • USTOZ ALMASHUVI (lib/teacherHandover.ts): eski ustoz to'lovidan
+//     faqat oxirgi dars kunigacha bo'lgan ulushni oladi (izohda "20/30
+//     kun"), yangi ustozga o'tgan qism uning oy boshiga qo'shiladi;
 //   • bekor qilingan yozuv hisobga kirmaydi.
 //
 // Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollDue` — bonus,
@@ -99,6 +109,11 @@ export function salaryEffectOf(
   t: LedgerEntry,
   empName: string,
   payroll: Pick<EmployeePayroll, "configured" | "salaryType" | "percent"> | null,
+  /**
+   * USTOZ ALMASHUVI (lib/teacherHandover.ts): shu to'lovdan ustozda qoladigan
+   * ulush (masalan 20/30) va izoh. Yo'q — to'liq.
+   */
+  split?: { factor: number; note: string } | null,
 ): { amount: number; note: string } | null {
   if (t.status === "cancelled") return null;
   const me = nameKey(empName);
@@ -112,16 +127,18 @@ export function salaryEffectOf(
   if (nameKey(t.teacherName) !== me) return null;
   // Foiz qismi bor xodim — "foiz" va "oklad + foiz".
   if (!payroll?.configured || !payrollHasFoiz(payroll)) return null;
-  const share = abs * payroll.percent / 100;
+  const f = split ? split.factor : 1;
+  const tag = split ? ` · ${split.note}` : "";
+  const share = abs * payroll.percent / 100 * f;
   if (t.txType === "payIn") {
     // Ustoz foizi to'liq narxdan: tanga evaziga chegirma ham ulushga kiradi
     // (lib/payrollSources.ts → loadCollectedByTeacher bilan bir xil).
     const disc = Math.abs(Number(t.discountSom) || 0);
     return disc
-      ? { amount: (abs + disc) * payroll.percent / 100, note: `${payroll.percent}% · chegirma bilan` }
-      : { amount: share, note: `${payroll.percent}%` };
+      ? { amount: (abs + disc) * payroll.percent / 100 * f, note: `${payroll.percent}% · chegirma bilan${tag}` }
+      : { amount: share, note: `${payroll.percent}%${tag}` };
   }
-  if (isStudentRefundEntry(t)) return { amount: -share, note: `${payroll.percent}% qaytarim` };
+  if (isStudentRefundEntry(t)) return { amount: -share, note: `${payroll.percent}% qaytarim${tag}` };
   return null;
 }
 
@@ -168,21 +185,37 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
       $and: [{ $or: [{ txType: "payIn" }, { txType: "payOut", studentRefund: true }] }, { teacherName: n }],
     });
   }
-  const entries = (await db
-    .collection("transaction_entries")
-    .find({ status: { $ne: "cancelled" }, $or: or })
-    .project({
-      _id: 0, id: 1, date: 1, time: 1, txType: 1, txName: 1, amount: 1, discountSom: 1,
-      studentName: 1, teacherName: 1, studentRefund: 1, status: 1, periodMonth: 1,
-    })
-    // Jadval id bo'yicha kamayish tartibida — daftar ham id bo'yicha yuradi,
-    // shunda qatorning "oldin"i keyingi qatorning "keyin"iga teng chiqadi.
-    .sort({ id: 1 })
-    .toArray()) as unknown as LedgerEntry[];
+  const [entries, ownHandovers] = await Promise.all([
+    db
+      .collection("transaction_entries")
+      .find({ status: { $ne: "cancelled" }, $or: or })
+      .project({
+        _id: 0, id: 1, date: 1, time: 1, txType: 1, txName: 1, amount: 1, discountSom: 1,
+        studentName: 1, teacherName: 1, studentRefund: 1, status: 1, periodMonth: 1, pupilId: 1,
+      })
+      // Jadval id bo'yicha kamayish tartibida — daftar ham id bo'yicha yuradi,
+      // shunda qatorning "oldin"i keyingi qatorning "keyin"iga teng chiqadi.
+      .sort({ id: 1 })
+      .toArray() as unknown as Promise<(LedgerEntry & { pupilId?: number })[]>,
+    // USTOZ ALMASHUVI — shu xodim ESKI ustoz bo'lgan almashuvlar: uning
+    // to'lovlaridan faqat oxirgi dars kunigacha bo'lgan ulushi qoladi
+    // (payrollSources.ts → loadCollectedByTeacher bilan bir xil qoida).
+    db.collection<TeacherHandover>(TEACHER_HANDOVERS)
+      .find({ fromKey: nameKey(name) }, { projection: { _id: 0 } })
+      .toArray() as Promise<TeacherHandover[]>,
+  ]);
+  const handoverIndex = buildHandoverIndex(ownHandovers);
+  const splitOf = (e: LedgerEntry & { pupilId?: number }) => {
+    if (nameKey(e.teacherName) !== nameKey(name)) return null;
+    const match = handoverFor(handoverIndex, payrollMonthOfEntry(e), e);
+    if (!match) return null;
+    const r = handoverRatio(match.handover);
+    return r.old < 1 ? { factor: r.old, note: `${r.oldDays}/${r.daysIn} kun` } : null;
+  };
 
   const effects = entries
-    .map((e) => ({ e, eff: salaryEffectOf(e, name, me) }))
-    .filter((x): x is { e: LedgerEntry; eff: { amount: number; note: string } } => x.eff !== null);
+    .map((e) => ({ e, eff: salaryEffectOf(e, name, me, splitOf(e)) }))
+    .filter((x): x is { e: LedgerEntry & { pupilId?: number }; eff: { amount: number; note: string } } => x.eff !== null);
 
   // Har bir oy uchun oy boshidagi qoldiq — o'sha oyning `EmployeePayroll`
   // qatoridan. Oylar bir-biriga bog'liq emas, parallel o'qiladi.
@@ -195,7 +228,15 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
       // Okladli xodimda oklad oy boshida yoziladi (o'tgan oyda to'liq,
       // joriy oyda bugungi kungacha, ishga kirgan kundan); foiz qismi esa
       // yozuvma-yozuv keladi. Faqat foizli xodimda oklad qismi 0.
-      openings.set(m, row.carryOver + payrollOkladPart(row, period));
+      //
+      // USTOZ ALMASHUVIDA boshqa ustozdan KELGAN ulush ham oy boshiga
+      // qo'shiladi: o'sha to'lovlar bu xodimning jadvalida qator bo'lib
+      // chiqmaydi (ular eski ustoz nomida), aks holda "Qoldiq" ustuni
+      // sababsiz sakrardi.
+      const incoming = payrollHasFoiz(row)
+        ? (row.handovers ?? []).filter((h) => h.dir === "in").reduce((s, h) => s + h.amount, 0) * row.percent / 100
+        : 0;
+      openings.set(m, row.carryOver + payrollOkladPart(row, period) + incoming);
     }));
   }
 

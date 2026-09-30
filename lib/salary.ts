@@ -47,6 +47,26 @@ export interface SalaryRunItem {
   receipt?: SalaryReceipt;
 }
 
+/**
+ * USTOZ ALMASHUVI izohi (lib/teacherHandover.ts, 30.09.2026) — oy o'rtasida
+ * o'quvchilar boshqa ustozga o'tganda tushum kunlarga qarab bo'linadi.
+ * HISOBGA TA'SIR QILMAYDI: `collected` allaqachon bo'lingan, bu faqat nima
+ * sababdan ekanini ko'rsatish uchun.
+ */
+export interface PayrollHandover {
+  /** "out" — shu ustozdan boshqaga o'tgan tushum; "in" — boshqa ustozdan kelgani. */
+  dir: "out" | "in";
+  /** out: yangi ustoz(lar) ismi ("" — hech kimga o'tmagan); in: eski ustoz ismi. */
+  other: string;
+  /** Eski ustozning oxirgi dars kuni, "YYYY-MM-DD". */
+  lastDay: string;
+  /** out: eski ustozda qolgan kunlar; in: yangi ustozga o'tgan kunlar. */
+  days: number;
+  daysIn: number;
+  /** Ko'chgan TUSHUM (so'm, yaxlitlanmagan; qaytarim bo'lsa manfiy qismi bilan). */
+  amount: number;
+}
+
 /** Bitta xodimning bitta chiqarishdagi to'liq hisob-kitobi (chek uchun). */
 export interface SalaryReceipt {
   turi?: string;
@@ -64,6 +84,8 @@ export interface SalaryReceipt {
   /** Asosning ikki qismi — "oklad + foiz" xodimda chekda alohida ko'rinadi. */
   okladPart?: number;
   foizPart?: number;
+  /** Ustoz almashuvi izohlari — chiqarish paytidagi holat (30.09.2026 dan). */
+  handovers?: PayrollHandover[];
   /**
    * Shu oyda o'qituvchi orqali tushgan pul — foizli hisob asosi (SOF:
    * o'quvchilarga qaytarilgani ayrilgan).
@@ -353,6 +375,12 @@ export interface EmployeePayroll {
    * tegmaydi. Yalpi tushum = `collected + refunded`.
    */
   refunded: number;
+  /**
+   * Ustoz almashuvi (oy o'rtasida o'quvchilar boshqa ustozga o'tgan) —
+   * `collected` ALLAQACHON kunlarga qarab bo'lingan; bu faqat izoh.
+   * Yo'q yoki bo'sh — almashuv yo'q.
+   */
+  handovers?: PayrollHandover[];
   /** Kelgusi oylar uchun oldindan tushgan pul — o'z oyida hisoblanadi. */
   futureCollected: number;
   /** Shu oydagi bonus/jarima yig'indisi. */
