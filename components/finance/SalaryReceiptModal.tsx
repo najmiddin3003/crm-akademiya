@@ -142,6 +142,10 @@ export default function SalaryReceiptModal({
             {run.month && (
               <div className="text-[12px] text-muted-foreground">{monthKeyLabel(run.month, months)} uchun</div>
             )}
+            {/* «Faqat kartani chiqarish» — naqd qismi keyin beriladi. */}
+            {run.kind === "karta" && (
+              <div className="text-[12px] font-semibold text-sky-600">{t("Faqat karta qismi")}</div>
+            )}
           </div>
 
           <Divider />
@@ -244,15 +248,16 @@ export default function SalaryReceiptModal({
                   bo'yicha fonni bosmaydi), ya'ni bu qator qog'ozda faqat
                   ramka bilan ajralib turadi. */}
               <div className="mt-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 flex items-baseline justify-between gap-3">
-                <span className="text-[13px] font-semibold">{t("Qo'lga tegdi")}</span>
+                <span className="text-[13px] font-semibold">{run.kind === "karta" ? t("Kartaga o'tkazildi") : t("Qo'lga tegdi")}</span>
                 <span className="text-[17px] font-bold tabular-nums">{t(fmtSum(paid))}</span>
               </div>
 
               {/* KANAL BO'YICHA BO'LINISH — faqat ikki oyoqli chiqarishda.
                   Eski cheklarda bu maydonlar yo'q va ular bitta kanaldan
                   chiqqan; u yerda bo'linishni ko'rsatish o'ylab topilgan
-                  raqam bo'lardi. */}
-              {(r.paidPlastik ?? 0) > 0 && (
+                  raqam bo'lardi. «Faqat karta»da hammasi kartaga — bo'linish
+                  ("naqd 0") shovqin bo'lardi. */}
+              {(r.paidPlastik ?? 0) > 0 && run.kind !== "karta" && (
                 <div className="mt-1.5 pl-3 space-y-0.5">
                   <Row label={t("↳ kartaga")} value={t(fmtSum(r.paidPlastik ?? 0))} />
                   <Row label={t("↳ naqd")} value={t(fmtSum(r.paidNaqd ?? 0))} />

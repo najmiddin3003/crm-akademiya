@@ -219,7 +219,15 @@ export default function SalaryRunsPage() {
                 return (
                   <tr key={r.id} className="border-b border-border/50 transition-colors hover:bg-secondary/30">
                     <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                    <td className="px-3 py-3 text-[13px] tabular-nums font-semibold whitespace-nowrap">{t(fmtSum(r.oylik))}</td>
+                    <td className="px-3 py-3 text-[13px] tabular-nums font-semibold whitespace-nowrap">
+                      {t(fmtSum(r.oylik))}
+                      {/* Faqat karta qismi chiqarilgan — naqd qismi keyin. */}
+                      {r.kind === "karta" && (
+                        <span className="ml-1.5 inline-flex items-center h-5 px-1.5 rounded bg-sky-500/10 text-sky-600 text-[10.5px] font-semibold align-middle">
+                          {t("faqat karta")}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.davomat > 0 ? fmtNum(r.davomat) : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.davomatFoizi > 0 ? fmtNum(r.davomatFoizi) : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-3 py-3 text-right text-[13px] tabular-nums">{r.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(r.bonus)}</span> : <span className="text-muted-foreground">0</span>}</td>
@@ -291,10 +299,17 @@ export default function SalaryRunsPage() {
       {/* Detail modal */}
       {detail && (
         <Modal onClose={() => setDetail(null)} bare size="lg" zIndex={110} panelClassName="p-6">{(modal) => (<>
-            <h3 className="text-[16px] font-semibold mb-1">Oylik chiqarish #{detail.id}</h3>
+            <h3 className="text-[16px] font-semibold mb-1">
+              Oylik chiqarish #{detail.id}
+              {detail.kind === "karta" && (
+                <span className="ml-2 inline-flex items-center h-5 px-1.5 rounded bg-sky-500/10 text-sky-600 text-[11px] font-semibold align-middle">
+                  {t("faqat karta")}
+                </span>
+              )}
+            </h3>
             <div className="text-[12.5px] text-muted-foreground mb-4">
-              {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month, months)}`} Â· {detail.employeeCount} ta xodim
-              {detail.cashboxName && ` Â· ${detail.cashboxName}${detail.methodLabel ? ` (${detail.methodLabel})` : ""}`}
+              {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month, months)}`} · {detail.employeeCount} ta xodim
+              {detail.cashboxName && ` · ${detail.cashboxName}${detail.methodLabel ? ` (${detail.methodLabel})` : ""}`}
             </div>
             <div className="grid grid-cols-2 gap-3 text-[13px]">
               <div className="col-span-2 rounded-lg border border-border p-3">
@@ -413,7 +428,7 @@ export default function SalaryRunsPage() {
               {t("Haqiqatdan ham bu oylik chiqarishni o'chirishni xohlaysizmi?")}
             </p>
             <p className="text-center text-[12.5px] text-muted-foreground mt-1">
-              #{confirmDel.id} Â· {datePart(confirmDel.createdAt)} Â· {t(fmtSum(confirmDel.oylik))}
+              #{confirmDel.id} · {datePart(confirmDel.createdAt)} · {t(fmtSum(confirmDel.oylik))}
             </p>
             {/* O'chirish endi pulni ham qaytaradi — foydalanuvchi buni
                 oldindan bilishi kerak. */}

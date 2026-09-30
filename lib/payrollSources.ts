@@ -10,6 +10,7 @@ import {
 } from "@/lib/hrEmployees";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
+  CLOSING_SALARY_RUN,
   payrollEarned,
   payrollMonthKey,
   payrollPaid,
@@ -355,9 +356,16 @@ export function resolvePercent(raw: unknown, byTier: Map<string, number>): numbe
  */
 export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs): Promise<Map<number, number>> {
   const prev = prevMonthKey(p);
+  // «FAQAT KARTA» CHIQARISHLARI OYNI YOPMAYDI (30.09.2026) — ular olinmaydi.
+  // Sabab: undan keyin naqd qismi odatda kassadan beriladi va muzlatilgan
+  // qoldiq (kartadan keyingi naqd) eskirib, keyingi oyga "to'lanmagan" bo'lib
+  // o'tardi. Kartaga chiqqan pul esa oddiy plastik chiqim yozuvi — pastdagi
+  // jonli hisobda "to'langan" bo'lib o'zi turadi. Yana: bitta karta
+  // chiqarishi boshqa HAMMA xodimning qoldig'ini 0 ga tushirib yuborardi
+  // (yopilgan oyda ro'yxatda yo'q xodimga qoldiq o'tmaydi).
   const prevRuns = await db
     .collection("salary_runs")
-    .find({ month: prev })
+    .find({ month: prev, ...CLOSING_SALARY_RUN })
     .sort({ id: 1 })
     .toArray();
 

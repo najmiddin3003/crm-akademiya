@@ -208,9 +208,25 @@ export interface SalaryRun {
    * o'chira olmasdi. Qorovul shu bois `undefined` ni ALOHIDA qaraydi.
    */
   branchId?: number;
+  /**
+   * "karta" — FAQAT KARTA QISMI chiqarilgan (30.09.2026, «Faqat kartani
+   * chiqarish» tugmasi): bank kartaga o'tkazgan pul, naqd qismi keyin
+   * beriladi. Bunday chiqarish OYNI YOPMAYDI — keyingi oyga o'tadigan qoldiq
+   * (lib/payrollSources.ts → loadCarryOver) va jarimalarni bekor qilish
+   * qulfi (lib/staffTasksServer.ts → loadClosedMonths) uni hisobga olmaydi;
+   * to'lovning o'zi esa oddiy plastik chiqim yozuvi sifatida "to'langan
+   * oylik"ka kiradi. Yo'q — oddiy (karta + naqd) chiqarish.
+   */
+  kind?: "karta";
   /** Xodim kesimidagi qoldiqlar. Eski yozuvlarda yo'q. */
   items?: SalaryRunItem[];
 }
+
+/**
+ * Oyni YOPADIGAN chiqarishlar filtri (Mongo) — «faqat karta» chiqarishlar
+ * bundan tashqarida (`SalaryRun.kind` izohiga qarang).
+ */
+export const CLOSING_SALARY_RUN = { kind: { $ne: "karta" } } as const;
 
 // ---------- Oylik davri: shu oy boshidan bugungi kungacha (pro-rata) ----------
 //

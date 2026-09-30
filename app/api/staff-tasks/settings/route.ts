@@ -11,6 +11,7 @@ import {
   type StaffFineDoc,
 } from "@/lib/staffTasksServer";
 import { normalizeSettings, uzMonthOf } from "@/lib/staffTasks";
+import { CLOSING_SALARY_RUN } from "@/lib/salary";
 
 // Sozlamalar → Topshiriqlar (faqat direktor).
 //
@@ -43,7 +44,8 @@ export async function GET() {
 
   const [settings, runs, fineMonths] = await Promise.all([
     loadSettings(db),
-    db.collection("salary_runs").find({ month: { $type: "string" } }, { projection: { _id: 0, month: 1, branchId: 1 } }).toArray(),
+    // «Faqat karta» chiqarish oyni yopmaydi (lib/salary.ts → SalaryRun.kind).
+    db.collection("salary_runs").find({ month: { $type: "string" }, ...CLOSING_SALARY_RUN }, { projection: { _id: 0, month: 1, branchId: 1 } }).toArray(),
     db.collection<StaffFineDoc>(FINES_COL).distinct("month"),
   ]);
   const runsBy = new Map<string, number>();

@@ -3,6 +3,7 @@ import type { CurrentUser } from "@/lib/auth";
 import { allBranchIds, employeeBranchIds } from "@/lib/branchScope";
 import { employeeNameById } from "@/lib/currentEmployee";
 import { fixedSalaryOf, type EmployeeBranchAssignment } from "@/lib/hrEmployees";
+import { CLOSING_SALARY_RUN } from "@/lib/salary";
 import { hasSectionPermission } from "@/lib/permissions";
 import { cloudinaryConfig, parseCloudinaryUrl } from "@/lib/cloudinary";
 import { toUz } from "@/lib/uzTime";
@@ -293,9 +294,11 @@ export async function insertWithNextId<T extends { id: number }>(db: Db, col: st
  * hisoblanadi (ehtiyot tomonga).
  */
 export async function loadClosedMonths(db: Db): Promise<(employeeId: number, month: string) => boolean> {
+  // «Faqat karta» chiqarish oyni yopmaydi — naqd qismi hali berilmagan
+  // (lib/salary.ts → SalaryRun.kind).
   const runs = await db
     .collection("salary_runs")
-    .find({ month: { $type: "string" } }, { projection: { _id: 0, month: 1, "items.employeeId": 1 } })
+    .find({ month: { $type: "string" }, ...CLOSING_SALARY_RUN }, { projection: { _id: 0, month: 1, "items.employeeId": 1 } })
     .toArray();
   const byMonth = new Map<string, Set<number> | "all">();
   for (const r of runs) {

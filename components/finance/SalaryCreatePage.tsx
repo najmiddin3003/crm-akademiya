@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
-import { ArrowLeftRight, DollarSign, History, RotateCcw, Search } from "lucide-react";
+import { ArrowLeftRight, CreditCard, DollarSign, History, RotateCcw, Search } from "lucide-react";
 import TeacherHandoverModal from "@/components/finance/TeacherHandoverModal";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -143,6 +143,8 @@ export default function SalaryCreatePage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Tasdiqlash oynasi «Faqat kartani chiqarish» rejimidami (30.09.2026).
+  const [kartaOnly, setKartaOnly] = useState(false);
   // Ustoz almashuvi oynasi — qaysi o'qituvchi uchun ochiq (components/finance/TeacherHandoverModal.tsx).
   const [handoverFor, setHandoverFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -486,6 +488,31 @@ export default function SalaryCreatePage() {
     Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0
     && !notEnough && !isFutureMonth && !sameMethod && !needsPlastikMethod;
 
+  // «FAQAT KARTANI CHIQARISH» (30.09.2026) — bank kartaga o'tkazgan pulni
+  // bir bosishda qayd etish: tanlanganlarning (hech kim tanlanmagan bo'lsa —
+  // ro'yxatdagi kartasi bor HAMMANING) faqat karta oyog'i. Naqd qismi
+  // "Qolgan" ustunida qoladi va keyin «Oylikni chiqarish» yoki kassadan
+  // beriladi. Server aynan shu funksiya bilan hisoblaydi (`only: "karta"`).
+  const kartaRows = employees
+    .filter((e) => e.configured && (selected.size === 0 || selected.has(e.id)))
+    .map((e) => ({ e, amount: payrollPlastikLeg(e, period) }))
+    .filter((x) => x.amount > 0);
+  const kartaTotal = kartaRows.reduce((s, x) => s + x.amount, 0);
+  const kartaShort = Math.max(kartaTotal - plastikAvailable, 0);
+  const canKarta =
+    Boolean(cashboxId) && Boolean(plastikMethodKey) && kartaTotal > 0 && kartaShort === 0 && !isFutureMonth;
+
+  function openKartaConfirm() {
+    if (kartaRows.length === 0) {
+      showError(selected.size > 0
+        ? t("Tanlangan xodimlarda kartaga chiqariladigan summa yo'q")
+        : t("Kartaga chiqariladigan summa yo'q — shu oy kartalari to'langan"));
+      return;
+    }
+    setKartaOnly(true);
+    setConfirmOpen(true);
+  }
+
   /**
    * "Oylikni chiqarish" tugmasi. Xodim TANLANMAGAN bo'lsa tugma o'chirilmaydi
    * — bosilganda nima qilish kerakligi aytiladi. Ilgari u jimgina kulrang
@@ -496,6 +523,7 @@ export default function SalaryCreatePage() {
       showError(t("Avval jadvaldan xodimlarni belgilang — chap tomondagi katakchalar"));
       return;
     }
+    setKartaOnly(false);
     setConfirmOpen(true);
   }
 
@@ -511,13 +539,22 @@ export default function SalaryCreatePage() {
         // ko'rinardi (app/api/salary-runs/route.ts → entryDate).
         // `method` — NAQD oyog'i (va plastigi yo'q xodimlarning yagonasi).
         // `plastikMethod` faqat karta oyog'i bo'lganda ishlatiladi.
-        body: JSON.stringify({
-          employeeIds: Array.from(selected),
-          cashboxId: Number(cashboxId),
-          method: methodKey,
-          plastikMethod: plastikTotal > 0 ? plastikMethodKey : undefined,
-          month: monthKey,
-        }),
+        // «Faqat karta»da naqd oyog'i yo'q — faqat plastik turi ketadi.
+        body: JSON.stringify(kartaOnly
+          ? {
+              employeeIds: kartaRows.map((x) => x.e.id),
+              cashboxId: Number(cashboxId),
+              plastikMethod: plastikMethodKey,
+              month: monthKey,
+              only: "karta",
+            }
+          : {
+              employeeIds: Array.from(selected),
+              cashboxId: Number(cashboxId),
+              method: methodKey,
+              plastikMethod: plastikTotal > 0 ? plastikMethodKey : undefined,
+              month: monthKey,
+            }),
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
@@ -531,8 +568,11 @@ export default function SalaryCreatePage() {
       // jadvalni qayta yuklaymiz: "To'langan oylik" va "Qolgan" darhol
       // yangilanadi, ya'ni chiqarish natijasi ko'z oldida ko'rinadi.
       // Kassadagi qoldiq ham kamaygani uchun kassalar qayta o'qiladi.
-      showSuccess(t("Oylik chiqarildi — {payoutTotal}", { payoutTotal: fmtSum(payoutTotal) }));
+      showSuccess(kartaOnly
+        ? t("Kartaga chiqarildi — {kartaTotal}", { kartaTotal: fmtSum(kartaTotal) })
+        : t("Oylik chiqarildi — {payoutTotal}", { payoutTotal: fmtSum(payoutTotal) }));
       setConfirmOpen(false);
+      setKartaOnly(false);
       setSelected(new Set());
       setSaving(false);
       load();
@@ -602,6 +642,26 @@ export default function SalaryCreatePage() {
             <RotateCcw className="w-4 h-4" />
             {t("Qayta hisoblash")}
           </button>
+          {/* Faqat karta qismi — ro'yxatda plastik oyligi bor xodim
+              bo'lsagina. Soni: tanlanganlardan (tanlanmagan bo'lsa —
+              hammadan) kartaga chiqadiganlar. */}
+          {anyPlastik && (
+            <button
+              onClick={openKartaConfirm}
+              disabled={isFutureMonth}
+              title={
+                isFutureMonth ? t("Kelajak oy uchun oylik chiqarilmaydi")
+                : t("Faqat karta qismi chiqariladi — naqd qismi «Qolgan» ustunida qoladi")
+              }
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/15 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CreditCard className="w-4 h-4" />
+              {t("Faqat kartani chiqarish")}
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-sky-500/15 text-[11px] font-bold tabular-nums">
+                {kartaRows.length}
+              </span>
+            </button>
+          )}
           <button
             onClick={openConfirm}
             disabled={isFutureMonth}
@@ -1027,6 +1087,12 @@ export default function SalaryCreatePage() {
                             {plastikShort > 0 && (
                               <div className="text-[11px] text-muted-foreground">{`${fmtNum(plastikShort)} yetmadi`}</div>
                             )}
+                            {/* Shu oy kartaga allaqachon chiqqani («Faqat
+                                kartani chiqarish» yoki kassadan plastik) —
+                                ustundagi 0 "karta yo'q" deb o'qilmasin. */}
+                            {e.paidPlastik > 0 && (
+                              <div className="text-[11px] text-emerald-600">{t("{paidPlastik} to'landi", { paidPlastik: fmtNum(e.paidPlastik) })}</div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -1132,16 +1198,20 @@ export default function SalaryCreatePage() {
       )}
 
       {confirmOpen && (
-        <Modal onClose={() => setConfirmOpen(false)} locked={saving} bare zIndex={110} panelClassName="p-6">{(modal) => (<>
+        <Modal onClose={() => { setConfirmOpen(false); setKartaOnly(false); }} locked={saving} bare zIndex={110} panelClassName="p-6">{(modal) => (<>
             {/* QAYSI OY — tasdiqlash oynasida ko'rinishi SHART: o'tgan oy
                 tanlangan holda tugma bosilsa, pul boshqa oyning hisobiga
                 chiqadi va buni keyin faqat chiqarishni o'chirib qaytarish
                 mumkin. */}
             <p className="text-center text-[15px] font-semibold">
-              {t("{monthLabel} — {selectedCount} ta xodim uchun oylik chiqariladi", { monthLabel, selectedCount })}
+              {kartaOnly
+                ? t("{monthLabel} — {count} ta xodimning karta qismi chiqariladi", { monthLabel, count: kartaRows.length })
+                : t("{monthLabel} — {selectedCount} ta xodim uchun oylik chiqariladi", { monthLabel, selectedCount })}
             </p>
             <p className="text-center text-[12.5px] text-muted-foreground mt-1">
-              {t("Pul tanlangan kassadan chiqadi va Tranzaksiyalar jurnaliga yoziladi.")}
+              {kartaOnly
+                ? t("Faqat karta (plastik) qismi. Naqd qismi «Qolgan» ustunida qoladi — keyin «Oylikni chiqarish» yoki kassadan beriladi.")
+                : t("Pul tanlangan kassadan chiqadi va Tranzaksiyalar jurnaliga yoziladi.")}
             </p>
             {isPastMonth && (
               // Jurnaldagi sana o'sha oyning oxirgi kuni bo'ladi — aks holda
@@ -1158,7 +1228,7 @@ export default function SalaryCreatePage() {
                 <Select value={cashboxId} onChange={(v) => setCashboxId(v)} options={[...((cashboxesLoading || cashboxes.length === 0) ? [{ value: "", label: selectPlaceholder(cashboxesLoading, cashboxes.length, "Kassa topilmadi") }] : []), ...cashboxes.map((c) => ({ value: String(c.id), label: `${c.name} ${c.isPrimary ? " — bosh kassa" : ""}` }))]} disabled={saving || cashboxesLoading} />
               </div>
 
-              <div>
+              {!kartaOnly && (<div>
                 <label className="block text-[12px] font-medium mb-1">
                   {plastikTotal > 0 ? t("Naqd qismi uchun to'lov turi") : t("To'lov turi")}
                 </label>
@@ -1179,12 +1249,12 @@ export default function SalaryCreatePage() {
                     hint: fmtSum(Number(activeCashbox?.methodTotals?.[m.key]) || 0),
                   }))}
                 />
-              </div>
+              </div>)}
 
               {/* PLASTIK oyog'i — faqat kartaga pul ketadigan bo'lsa
                   ko'rinadi. Plastigi yo'q xodimlar bilan ishlaganda oyna
                   bugungidek bitta tanlov bilan qoladi. */}
-              {plastikTotal > 0 && (
+              {(kartaOnly || plastikTotal > 0) && (
                 <div>
                   <label className="block text-[12px] font-medium mb-1">{t("Plastik qismi uchun to'lov turi")}</label>
                   <Select
@@ -1206,6 +1276,27 @@ export default function SalaryCreatePage() {
                   "Kartaga" va "Qolgan" (= naqd) ustunlari bilan bir xil
                   o'qiladi. Har kanal yonida SHU KASSADAGI qoldiq turadi,
                   ya'ni pul yetmasligi tugma bosilishidan OLDIN ko'rinadi. */}
+              {/* «Faqat karta»: KIMGA qancha ketishi ro'yxati — tanlov
+                  bo'sh bo'lsa ro'yxatdagi hamma kartasi borlar olinadi,
+                  shuning uchun tasdiqdan oldin ismlar ko'rinib tursin. */}
+              {kartaOnly ? (
+                <div className="rounded-lg border border-border bg-secondary/20 p-3 text-[13px] space-y-1">
+                  <div className="max-h-44 overflow-y-auto space-y-0.5 pr-1">
+                    {kartaRows.map(({ e, amount }) => (
+                      <div key={e.id} className="flex items-center justify-between gap-3">
+                        <span className="truncate">{e.name}</span>
+                        <span className="tabular-nums text-sky-600">{fmtNum(amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border pt-1 mt-1">
+                    <span className="text-muted-foreground">{t("Kartaga")}</span>
+                    <span className={`font-semibold tabular-nums ${kartaShort > 0 ? "text-rose-600" : ""}`}>
+                      {t(fmtSum(kartaTotal))} <span className="font-normal text-muted-foreground">/ {t(fmtSum(plastikAvailable))}</span>
+                    </span>
+                  </div>
+                </div>
+              ) : (
               <div className="rounded-lg border border-border bg-secondary/20 p-3 text-[13px] space-y-1">
                 {plastikTotal > 0 ? (
                   <>
@@ -1233,14 +1324,15 @@ export default function SalaryCreatePage() {
                   <span className="font-semibold tabular-nums">{t(fmtSum(payoutTotal))}</span>
                 </div>
               </div>
+              )}
 
-              {sameMethod && (
+              {!kartaOnly && sameMethod && (
                 <p className="text-[12.5px] text-rose-600">
                   {t("Plastik va naqd uchun bir xil to'lov turi tanlangan — birini o'zgartiring, aks holda jurnalda ikki qism ajralmay qoladi.")}
                 </p>
               )}
 
-              {payoutTotal === 0 && (
+              {!kartaOnly && payoutTotal === 0 && (
                 <p className="text-[12.5px] text-amber-600">
                   {t("Tanlangan xodimlarda to'lanadigan qoldiq yo'q — oylik allaqachon chiqarilgan yoki qarzdorlik bor.")}
                 </p>
@@ -1248,9 +1340,9 @@ export default function SalaryCreatePage() {
               {/* Butun jumla bitta ifodada — JSX ifoda bilan undan keyingi
                   matn orasidagi bo'shliqni yeb qo'yadi (so'mkam bo'lib
                   chiqardi). */}
-              {notEnough && (
+              {(kartaOnly ? kartaShort > 0 : notEnough) && (
                 <p className="text-[12.5px] text-rose-600">
-                  {t("Mablag' yetarli emas — {available} kam. Boshqa kassa yoki to'lov turini tanlang.", { available: fmtSum(shortfall) })}
+                  {t("Mablag' yetarli emas — {available} kam. Boshqa kassa yoki to'lov turini tanlang.", { available: fmtSum(kartaOnly ? kartaShort : shortfall) })}
                 </p>
               )}
               {/* Tugma o'chiq bo'lishining QOLGAN sabablari ham ochiq
@@ -1259,10 +1351,10 @@ export default function SalaryCreatePage() {
               {!cashboxesLoading && !cashboxId && (
                 <p className="text-[12.5px] text-rose-600">{t("Kassani tanlang")}</p>
               )}
-              {!methodsLoading && !methodKey && (
+              {!kartaOnly && !methodsLoading && !methodKey && (
                 <p className="text-[12.5px] text-rose-600">{t("To'lov turini tanlang")}</p>
               )}
-              {needsPlastikMethod && (
+              {(kartaOnly ? !methodsLoading && !plastikMethodKey : needsPlastikMethod) && (
                 <p className="text-[12.5px] text-rose-600">{t("Plastik qismi uchun to'lov turini tanlang")}</p>
               )}
             </div>
@@ -1277,10 +1369,10 @@ export default function SalaryCreatePage() {
               </button>
               <button
                 onClick={confirmPayout}
-                disabled={saving || !canPayout}
+                disabled={saving || !(kartaOnly ? canKarta : canPayout)}
                 className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? t("Chiqarilmoqda…") : t("Ha, chiqarish")}
+                {saving ? t("Chiqarilmoqda…") : kartaOnly ? t("Ha, kartaga chiqarish") : t("Ha, chiqarish")}
               </button>
             </div>
           </>)}</Modal>

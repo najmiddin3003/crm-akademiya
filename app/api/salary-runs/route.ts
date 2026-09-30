@@ -120,6 +120,14 @@ export async function POST(req: Request) {
      */
     plastikMethod?: string;
     month?: string;
+    /**
+     * "karta" — FAQAT KARTA QISMI chiqariladi (30.09.2026, «Faqat kartani
+     * chiqarish» tugmasi): bank kartaga o'tkazgan pul qayd etiladi, naqd
+     * qismi xodimda "Qolgan" bo'lib qoladi. `method` bu holda kerak emas.
+     * Hujjat `kind: "karta"` bilan yoziladi — u oyni yopmaydi
+     * (lib/salary.ts → SalaryRun.kind).
+     */
+    only?: string;
   };
   try {
     body = await req.json();
@@ -147,14 +155,20 @@ export async function POST(req: Request) {
   const db = await ensureIndexes();
 
   // ---- Kassa va to'lov turi ----------------------------------------
+  const kartaOnly = body.only === "karta";
   const methods = await loadPaymentMethods(db);
-  const chosenMethod = methods.find((m) => m.key === body.method);
-  if (!chosenMethod) {
-    return NextResponse.json({ ok: false, error: "To'lov turini tanlang" }, { status: 400 });
-  }
   // PLASTIK oyog'ining turi. Ko'rsatilmasa standart "Plastik" ishlatiladi.
   // Plastik oyog'i bo'lmagan chiqarishda bu qiymat umuman ishlatilmaydi.
   const plastikMethod = methods.find((m) => m.key === (body.plastikMethod || PLASTIK_METHOD_KEY));
+  // «Faqat karta»da naqd oyog'i yo'q — hujjatdagi `method` (yagona oyoq)
+  // plastik turi bo'ladi; bekor qilish ham shunga tayanadi.
+  const chosenMethod = kartaOnly ? plastikMethod : methods.find((m) => m.key === body.method);
+  if (!chosenMethod) {
+    return NextResponse.json(
+      { ok: false, error: kartaOnly ? "Plastik qismi uchun to'lov turini tanlang" : "To'lov turini tanlang" },
+      { status: 400 },
+    );
+  }
   const cashboxId = Number(body.cashboxId);
   if (!Number.isFinite(cashboxId)) {
     return NextResponse.json({ ok: false, error: "Kassani tanlang" }, { status: 400 });
@@ -229,7 +243,12 @@ export async function POST(req: Request) {
     // Sahifa (`payoutTotal`) aynan shu funksiyalarni chaqiradi, shuning
     // uchun ekrandagi va kassadan chiqadigan raqam bir xil.
     const empPlastik = payrollPlastikLeg(ep, period);
-    const empNaqd = payrollCashLeg(ep, period);
+    // «FAQAT KARTA»: naqd oyog'i chiqmaydi — kartadan keyingi naqd xodimda
+    // "Qolgan" bo'lib turaveradi. Kartaga chiqadigani yo'q xodim (plastigi
+    // yo'q yoki shu oy kartasi allaqachon to'langan) bu chiqarishga umuman
+    // kirmaydi — tarixda "0 so'm" qatorlari bo'lmasin.
+    if (kartaOnly && empPlastik <= 0) continue;
+    const empNaqd = kartaOnly ? 0 : payrollCashLeg(ep, period);
     const empPaid = empPlastik + empNaqd;
     // Soliq `payrollDue` ichida allaqachon ayrilgan — bu yerda faqat
     // hisobot va chek uchun alohida qayd etiladi.
@@ -315,7 +334,12 @@ export async function POST(req: Request) {
 
   if (tolangan <= 0) {
     return NextResponse.json(
-      { ok: false, error: "Tanlangan xodimlarda to'lanadigan summa yo'q — oylik allaqachon chiqarilgan yoki qarzdorlik bor" },
+      {
+        ok: false,
+        error: kartaOnly
+          ? "Tanlangan xodimlarda kartaga chiqariladigan summa yo'q — kartasi allaqachon to'langan yoki plastik oyligi yo'q"
+          : "Tanlangan xodimlarda to'lanadigan summa yo'q — oylik allaqachon chiqarilgan yoki qarzdorlik bor",
+      },
       { status: 400 },
     );
   }
@@ -465,7 +489,8 @@ export async function POST(req: Request) {
 
   const run: SalaryRun = {
     id: nextId,
-    employeeCount: chosen.length,
+    // `items` — «faqat karta»da kartasi yo'q tanlanganlar tushib qoladi.
+    employeeCount: items.length,
     oylik,
     davomat: 0,
     davomatFoizi: 0,
@@ -489,6 +514,7 @@ export async function POST(req: Request) {
     createdAt: fmtNow(new Date()),
     month: payrollMonthKey(period),
     branchId: scope.branchId,
+    ...(kartaOnly ? { kind: "karta" as const } : {}),
     items,
   };
 
@@ -557,7 +583,7 @@ export async function POST(req: Request) {
         // bu xodimning o'zi (adjust route'idagi bilan bir xil qoida).
         teacherName: p.name,
         reason: "-",
-        note: `Oylik chiqarish #${nextId}`,
+        note: kartaOnly ? `Oylik chiqarish #${nextId} (faqat karta)` : `Oylik chiqarish #${nextId}`,
         status: "",
         cashboxId,
         salaryRunId: nextId,
