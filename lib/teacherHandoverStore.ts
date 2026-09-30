@@ -4,6 +4,7 @@ import {
   TEACHER_HANDOVERS,
   daysInMonthKey,
   handoverNameKey,
+  lessonCounts,
   type HandoverPupil,
   type TeacherHandover,
 } from "@/lib/teacherHandover";
@@ -34,6 +35,8 @@ export interface HandoverCandidate {
   count: number;
   /** O'quvchining HOZIRGI guruhidagi boshqa ustoz — yangi ustoz taklifi. */
   currentTeacher: string | null;
+  /** O'sha guruhning dars kunlari (`groups.day`, "toq kunlar" kabi) — jadval taklifi uchun. */
+  currentDays: string | null;
 }
 
 export interface HandoverCandidates {
@@ -82,7 +85,7 @@ export async function loadHandoverCandidates(db: Db, month: string, teacher: str
     const key = pid != null ? `p:${pid}` : `n:${handoverNameKey(name)}`;
     const amount = Math.abs(Number(e.amount) || 0);
     const signed = e.txType === "payIn" ? amount + Math.abs(Number(e.discountSom) || 0) : -amount;
-    const cur = byPupil.get(key) ?? { pupilId: pid, name, total: 0, count: 0, currentTeacher: null };
+    const cur = byPupil.get(key) ?? { pupilId: pid, name, total: 0, count: 0, currentTeacher: null, currentDays: null };
     cur.total += signed;
     cur.count += 1;
     if (name) cur.name = name;
@@ -93,14 +96,16 @@ export async function loadHandoverCandidates(db: Db, month: string, teacher: str
   const ids = [...byPupil.values()].map((p) => p.pupilId).filter((x): x is number => x != null);
   const groups = ids.length
     ? await db.collection("groups")
-      .find({ studentIds: { $in: ids } }, { projection: { _id: 0, teacher: 1, studentIds: 1 } })
+      .find({ studentIds: { $in: ids } }, { projection: { _id: 0, teacher: 1, studentIds: 1, day: 1 } })
       .toArray()
     : [];
-  const currentOf = new Map<number, string>();
+  // Guruhning dars kunlari ham — oyna jadvalni shundan taklif qiladi.
+  const currentOf = new Map<number, { teacher: string; day: string | null }>();
   for (const g of groups) {
     const t = String(g.teacher ?? "").trim();
     if (!t || handoverNameKey(t) === fromKey) continue;
-    for (const pid of (g.studentIds ?? []) as number[]) if (!currentOf.has(pid)) currentOf.set(pid, t);
+    const day = String(g.day ?? "").trim() || null;
+    for (const pid of (g.studentIds ?? []) as number[]) if (!currentOf.has(pid)) currentOf.set(pid, { teacher: t, day });
   }
 
   return {
@@ -110,7 +115,10 @@ export async function loadHandoverCandidates(db: Db, month: string, teacher: str
     daysIn: daysInMonthKey(month),
     handover,
     pupils: [...byPupil.values()]
-      .map((p) => ({ ...p, currentTeacher: p.pupilId != null ? currentOf.get(p.pupilId) ?? null : null }))
+      .map((p) => {
+        const c = p.pupilId != null ? currentOf.get(p.pupilId) : undefined;
+        return { ...p, currentTeacher: c?.teacher ?? null, currentDays: c?.day ?? null };
+      })
       .sort((a, b) => a.name.localeCompare(b.name)),
     teachers: teachers
       .filter((t) => handoverNameKey(t.name) !== fromKey)
@@ -125,7 +133,7 @@ export type SaveHandoverResult =
 /** Almashuvni saqlaydi (oy + eski ustoz bo'yicha bitta yozuv, qayta saqlansa almashtiriladi). */
 export async function saveHandover(
   db: Db,
-  input: { month?: unknown; teacher?: unknown; lastDay?: unknown; pupils?: unknown },
+  input: { month?: unknown; teacher?: unknown; lastDay?: unknown; pupils?: unknown; mode?: unknown; weekdays?: unknown },
   updatedBy: string,
 ): Promise<SaveHandoverResult> {
   const fail = (error: string): SaveHandoverResult => ({ ok: false, error });
@@ -137,7 +145,19 @@ export async function saveHandover(
   if (!ld || ld[1] !== month || Number(ld[2]) < 1 || Number(ld[2]) > daysIn) {
     return fail("Oxirgi dars kuni shu oy ichida bo'lishi kerak");
   }
-  if (Number(ld[2]) === daysIn) return fail("Oxirgi dars kuni oy oxiri — bo'linadigan kun yo'q");
+  // BO'LISH USULI — maydonsiz so'rov eski xulq ("days").
+  const mode: "days" | "lessons" = input.mode === "lessons" ? "lessons" : "days";
+  const weekdays = mode === "lessons" && Array.isArray(input.weekdays)
+    ? [...new Set((input.weekdays as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort((a, b) => a - b)
+    : [];
+  if (mode === "lessons") {
+    if (weekdays.length === 0) return fail("Dars kunlarini tanlang");
+    if (lessonCounts(month, lastDay, weekdays).after === 0) {
+      return fail("Oxirgi dars kunidan keyin shu oyda dars yo'q — bo'linadigan dars yo'q");
+    }
+  } else if (Number(ld[2]) === daysIn) {
+    return fail("Oxirgi dars kuni oy oxiri — bo'linadigan kun yo'q");
+  }
 
   const from = await findEmployee(db, String(input.teacher ?? ""));
   if (!from) return fail("Ustoz topilmadi");
@@ -174,15 +194,17 @@ export async function saveHandover(
     fromTeacher,
     fromKey,
     lastDay,
+    mode,
+    ...(mode === "lessons" ? { weekdays } : {}),
     pupils,
     updatedAt: new Date().toISOString(),
     updatedBy,
   };
   // `dismissed` o'chiriladi — ilgari eslatma yashirilgan bo'lsa ham endi
-  // haqiqiy almashuv.
+  // haqiqiy almashuv. "days" usulida eski `weekdays` ham qolib ketmasin.
   await db.collection(TEACHER_HANDOVERS).updateOne(
     { month, fromKey },
-    { $set: doc, $unset: { dismissed: "" } },
+    { $set: doc, $unset: mode === "lessons" ? { dismissed: "" } : { dismissed: "", weekdays: "" } },
     { upsert: true },
   );
   return { ok: true, handover: doc };

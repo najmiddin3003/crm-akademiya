@@ -5,16 +5,19 @@ import { X } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import DateField from "@/components/ui/DateField";
 import Select from "@/components/ui/Select";
+import Segmented from "@/components/ui/Segmented";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
-import type { TeacherHandover } from "@/lib/teacherHandover";
+import { groupWeekdays } from "@/lib/attendance";
+import { WEEKDAY_PRESETS, handoverRatio, lessonCounts, type TeacherHandover } from "@/lib/teacherHandover";
 
 // USTOZ ALMASHUVI OYNASI — Moliya → Oylik hisob-kitob, foizli o'qituvchi
 // qatoridan ochiladi (30.09.2026). Oy o'rtasida o'quvchilar boshqa ustozga
-// o'tgan bo'lsa, eski ustoz nomidagi shu oy to'lovlari kalendar kunlariga
-// qarab bo'linadi: oxirgi dars kunigacha — eski ustozga, qolgani — yangi
-// ustozga (lib/teacherHandover.ts). Kassa va jurnalga tegilmaydi.
+// o'tgan bo'lsa, eski ustoz nomidagi shu oy to'lovlari bo'linadi: oxirgi dars
+// kunigacha — eski ustozga, qolgani — yangi ustozga (lib/teacherHandover.ts).
+// Sukut — DARS KUNLARI bo'yicha (foydalanuvchi: "eng halol — nechta dars
+// o'tilganiga qarab"), xohlasa kalendar kunlari. Kassa va jurnalga tegilmaydi.
 
 interface PupilRow {
   pupilId: number | null;
@@ -22,6 +25,14 @@ interface PupilRow {
   total: number;
   count: number;
   currentTeacher: string | null;
+  currentDays?: string | null;
+}
+
+/** Hafta kunlari ro'yxatiga mos tayyor jadval kaliti; mos kelmasa null. */
+function presetOf(days: number[] | undefined): string | null {
+  if (!days?.length) return null;
+  const s = [...days].sort((a, b) => a - b).join(",");
+  return WEEKDAY_PRESETS.find((p) => p.days.join(",") === s)?.key ?? null;
 }
 
 interface Loaded {
@@ -62,6 +73,9 @@ export default function TeacherHandoverModal({
   const [lastDay, setLastDay] = useState("");
   // O'quvchi kaliti → yangi ustoz ("" — hech kimga).
   const [targets, setTargets] = useState<Record<string, string>>({});
+  // Bo'lish usuli va dars kunlari (tayyor jadval kaliti, WEEKDAY_PRESETS).
+  const [mode, setMode] = useState<"lessons" | "days">("lessons");
+  const [presetKey, setPresetKey] = useState("toq");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -87,15 +101,36 @@ export default function TeacherHandoverModal({
         for (const p of loaded.pupils) init[rowKey(p)] = saved.has(rowKey(p)) ? saved.get(rowKey(p))! : p.currentTeacher ?? "";
         setTargets(init);
         setLastDay(active?.lastDay ?? "");
+        // Usul: saqlangan almashuvniki (eski yozuv — kalendar kunlari); yangi
+        // almashuvda — dars kunlari. Jadval: saqlangani, bo'lmasa o'quvchilar
+        // hozirgi guruhlarining eng ko'p uchragan jadvali, bo'lmasa toq kunlar.
+        if (active) {
+          setMode(active.mode === "lessons" ? "lessons" : "days");
+          setPresetKey(presetOf(active.weekdays) ?? "toq");
+        } else {
+          const count = new Map<string, number>();
+          for (const p of loaded.pupils) {
+            const k = presetOf(groupWeekdays(p.currentDays ?? ""));
+            if (k) count.set(k, (count.get(k) ?? 0) + 1);
+          }
+          const best = [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+          setMode("lessons");
+          setPresetKey(best ?? "toq");
+        }
       });
     return () => { alive = false; };
   }, [teacher, month, showError, t]);
 
   const daysIn = data?.daysIn ?? 0;
+  const weekdays = WEEKDAY_PRESETS.find((p) => p.key === presetKey)?.days ?? [1, 3, 5];
   const ld = /^(\d{4}-\d{2})-(\d{2})$/.exec(lastDay);
   const oldDays = ld && ld[1] === month ? Number(ld[2]) : 0;
-  const dayValid = oldDays >= 1 && oldDays < daysIn;
-  const oldRatio = dayValid ? oldDays / daysIn : 1;
+  const lessons = mode === "lessons" && oldDays >= 1 ? lessonCounts(month, lastDay, weekdays) : { before: 0, after: 0 };
+  const dayValid = mode === "lessons"
+    ? oldDays >= 1 && lessons.after > 0
+    : oldDays >= 1 && oldDays < daysIn;
+  const ratio = handoverRatio({ month, lastDay, mode, weekdays });
+  const oldRatio = dayValid ? ratio.old : 1;
   const newDays = dayValid ? daysIn - oldDays : 0;
 
   const teacherOptions = useMemo(
@@ -104,16 +139,16 @@ export default function TeacherHandoverModal({
   );
   const percentOf = (name: string) => data?.teachers.find((x) => x.name === name)?.percent ?? null;
 
-  // Oldindan ko'rish: eski ustozda qoladigan va har yangi ustozga o'tadigan tushum.
-  const preview = useMemo(() => {
-    const total = (data?.pupils ?? []).reduce((s, p) => s + p.total, 0);
-    const byTarget = new Map<string, number>();
-    for (const p of data?.pupils ?? []) {
-      const to = targets[rowKey(p)] ?? "";
-      byTarget.set(to, (byTarget.get(to) ?? 0) + p.total * (1 - oldRatio));
-    }
-    return { total, keep: total * oldRatio, byTarget };
-  }, [data, targets, oldRatio]);
+  // Oldindan ko'rish: eski ustozda qoladigan va har yangi ustozga o'tadigan
+  // tushum. Qo'lda useMemo YO'Q — React Compiler o'zi eslab qoladi (qo'lda
+  // yozilgani `oldRatio` tufayli "memoization could not be preserved" berardi).
+  const previewTotal = (data?.pupils ?? []).reduce((s, p) => s + p.total, 0);
+  const previewByTarget = new Map<string, number>();
+  for (const p of data?.pupils ?? []) {
+    const to = targets[rowKey(p)] ?? "";
+    previewByTarget.set(to, (previewByTarget.get(to) ?? 0) + p.total * (1 - oldRatio));
+  }
+  const preview = { total: previewTotal, keep: previewTotal * oldRatio, byTarget: previewByTarget };
 
   function setAll(to: string) {
     setTargets((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, to])));
@@ -122,7 +157,9 @@ export default function TeacherHandoverModal({
   async function save() {
     if (!data) return;
     if (!dayValid) {
-      showError(t("Oxirgi dars kunini shu oy ichidan tanlang (oy oxiri emas)"));
+      showError(mode === "lessons"
+        ? t("Oxirgi dars kunidan keyin shu oyda dars yo'q — bo'linadigan dars yo'q")
+        : t("Oxirgi dars kunini shu oy ichidan tanlang (oy oxiri emas)"));
       return;
     }
     setSaving(true);
@@ -134,6 +171,8 @@ export default function TeacherHandoverModal({
           month,
           teacher: data.teacher,
           lastDay,
+          mode,
+          weekdays: mode === "lessons" ? weekdays : undefined,
           pupils: data.pupils.map((p) => ({ pupilId: p.pupilId, name: p.name, toTeacher: targets[rowKey(p)] || null })),
         }),
       });
@@ -218,7 +257,7 @@ export default function TeacherHandoverModal({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
         {/* Qisqa (foydalanuvchi, 30.09.2026: "qisqaroq tushuntirib ber"). */}
         <p className="text-[12.5px] text-muted-foreground">
-          {t("Har bir to'lov kunlarga bo'linadi: oxirgi dars kunigacha — {teacher}ga, qolgan kunlari — yangi ustozga (o'z foizi bilan). Kassaga tegilmaydi.", { teacher })}
+          {t("Har bir to'lov bo'linadi: oxirgi dars kunigacha — {teacher}ga, qolgani — yangi ustozga (o'z foizi bilan). Kassaga tegilmaydi.", { teacher })}
         </p>
 
         {!data ? (
@@ -230,16 +269,49 @@ export default function TeacherHandoverModal({
                 {t("Bu oy uchun «almashuv yo'q» deb belgilangan — eslatma yashirilgan. Almashuvni saqlasangiz, bu belgi o'chadi.")}
               </p>
             )}
+            {/* BO'LISH USULI — sukut: dars kunlari (bitta dars narxi = to'lov ÷ oydagi darslar). */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Segmented
+                size="sm"
+                value={mode}
+                onChange={(v) => setMode(v === "days" ? "days" : "lessons")}
+                options={[
+                  { value: "lessons", label: t("Dars kunlari bo'yicha") },
+                  { value: "days", label: t("Kalendar kunlari bo'yicha") },
+                ]}
+              />
+              {mode === "lessons" && (
+                <div className="w-[240px]">
+                  <Select
+                    value={presetKey}
+                    onChange={(v) => setPresetKey(v || "toq")}
+                    options={WEEKDAY_PRESETS.map((p) => ({ value: p.key, label: t(p.label) }))}
+                    size="sm"
+                  />
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-[12px] font-medium">{t("Oxirgi dars kuni")}</label>
                 <DateField value={lastDay} onChange={setLastDay} variant="form" placeholder="kk/oo/yyyy" error={!!lastDay && !dayValid} />
                 {dayValid ? (
                   <p className="mt-1 text-[11.5px] text-muted-foreground">
-                    {t("{teacher}ga {old}/{daysIn} kun, yangi ustozga {neww}/{daysIn} kun", { teacher, old: oldDays, neww: newDays, daysIn })}
+                    {mode === "lessons"
+                      ? t("{teacher}ga {old}/{total} dars, yangi ustozga {neww}/{total} dars", {
+                          teacher,
+                          old: lessons.before,
+                          neww: lessons.after,
+                          total: lessons.before + lessons.after,
+                        })
+                      : t("{teacher}ga {old}/{daysIn} kun, yangi ustozga {neww}/{daysIn} kun", { teacher, old: oldDays, neww: newDays, daysIn })}
                   </p>
                 ) : lastDay ? (
-                  <p className="mt-1 text-[11.5px] text-rose-600">{t("Oxirgi dars kunini shu oy ichidan tanlang (oy oxiri emas)")}</p>
+                  <p className="mt-1 text-[11.5px] text-rose-600">
+                    {mode === "lessons"
+                      ? t("Oxirgi dars kunidan keyin shu oyda dars yo'q — bo'linadigan dars yo'q")
+                      : t("Oxirgi dars kunini shu oy ichidan tanlang (oy oxiri emas)")}
+                  </p>
                 ) : null}
               </div>
               <div>

@@ -210,7 +210,7 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
     const match = handoverFor(handoverIndex, payrollMonthOfEntry(e), e);
     if (!match) return null;
     const r = handoverRatio(match.handover);
-    return r.old < 1 ? { factor: r.old, note: `${r.oldDays}/${r.daysIn} kun` } : null;
+    return r.old < 1 ? { factor: r.old, note: `${r.oldDays}/${r.daysIn} ${r.unit === "lessons" ? "dars" : "kun"}` } : null;
   };
 
   const effects = entries

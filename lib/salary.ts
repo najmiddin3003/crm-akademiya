@@ -60,9 +60,14 @@ export interface PayrollHandover {
   other: string;
   /** Eski ustozning oxirgi dars kuni, "YYYY-MM-DD". */
   lastDay: string;
-  /** out: eski ustozda qolgan kunlar; in: yangi ustozga o'tgan kunlar. */
+  /**
+   * out: eski ustozda qolgan kunlar/darslar; in: yangi ustozga o'tgani.
+   * `daysIn` — oy kunlari yoki oydagi jami darslar (`unit` ga qarab).
+   */
   days: number;
   daysIn: number;
+  /** "lessons" — dars kunlari bo'yicha; yo'q yoki "days" — kalendar kunlari. */
+  unit?: "days" | "lessons";
   /** Ko'chgan TUSHUM (so'm, yaxlitlanmagan; qaytarim bo'lsa manfiy qismi bilan). */
   amount: number;
 }

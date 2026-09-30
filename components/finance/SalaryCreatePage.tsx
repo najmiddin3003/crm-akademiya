@@ -954,14 +954,18 @@ export default function SalaryCreatePage() {
                           {(e.handovers ?? []).map((h, hi) => (
                             <div key={hi} className="text-[11px] text-violet-600 dark:text-violet-400 whitespace-nowrap">
                               {h.dir === "out"
-                                ? t("{date} gacha ({days}/{daysIn} kun) · {amount} tushum → {other}", {
+                                ? t(h.unit === "lessons"
+                                    ? "{date} gacha ({days}/{daysIn} dars) · {amount} tushum → {other}"
+                                    : "{date} gacha ({days}/{daysIn} kun) · {amount} tushum → {other}", {
                                     date: fmtIsoDay(h.lastDay),
                                     days: h.days,
                                     daysIn: h.daysIn,
                                     amount: fmtNum(h.amount),
                                     other: h.other || t("hech kimga"),
                                   })
-                                : t("+{amount} tushum — {other}dan ({days}/{daysIn} kun)", {
+                                : t(h.unit === "lessons"
+                                    ? "+{amount} tushum — {other}dan ({days}/{daysIn} dars)"
+                                    : "+{amount} tushum — {other}dan ({days}/{daysIn} kun)", {
                                     amount: fmtNum(h.amount),
                                     other: h.other,
                                     days: h.days,

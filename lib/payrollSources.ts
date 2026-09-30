@@ -262,7 +262,7 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
     const toName = String(match.pupil.toTeacher ?? "").trim();
     const fk = nameKey(h.fromTeacher);
     const out = note(`${h.month}|${fk}|out`, k, () => ({
-      dir: "out", other: "", lastDay: h.lastDay, days: ratio.oldDays, daysIn: ratio.daysIn, amount: 0,
+      dir: "out", other: "", lastDay: h.lastDay, days: ratio.oldDays, daysIn: ratio.daysIn, amount: 0, unit: ratio.unit,
     }));
     out.note.amount += moved;
     if (toName) out.names.add(toName);
@@ -272,7 +272,7 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
     tgt.collected += moved;
     if (!isPay) tgt.refunded += amount * (1 - keep);
     const inn = note(`${h.month}|${fk}|in|${to}`, to, () => ({
-      dir: "in", other: h.fromTeacher, lastDay: h.lastDay, days: ratio.newDays, daysIn: ratio.daysIn, amount: 0,
+      dir: "in", other: h.fromTeacher, lastDay: h.lastDay, days: ratio.newDays, daysIn: ratio.daysIn, amount: 0, unit: ratio.unit,
     }));
     inn.note.amount += moved;
   }

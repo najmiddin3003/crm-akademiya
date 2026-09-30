@@ -42,6 +42,18 @@ export interface TeacherHandover {
   fromKey: string;
   /** Eski ustozning OXIRGI dars kuni, "YYYY-MM-DD" — shu kun ham unga. */
   lastDay: string;
+  /**
+   * BO'LISH USULI (30.09.2026, foydalanuvchi: "eng halol — nechta dars
+   * o'tilganiga qarab"):
+   *   "lessons" — guruh jadvalidagi DARS KUNLARI bo'yicha: oxirgi kungacha
+   *               o'tgan darslar / oydagi jami darslar (`weekdays`);
+   *   "days"    — kalendar kunlari (20/30). Maydonsiz eski yozuvlar — "days".
+   * Bitta dars narxi = to'langan summa ÷ oydagi darslar, ya'ni to'liq
+   * to'lagan o'quvchida kurs narxidan chiqqan dars narxining o'zi.
+   */
+  mode?: "days" | "lessons";
+  /** Dars kunlari (0 = yakshanba … 6 = shanba) — "lessons" usulida. */
+  weekdays?: number[];
   pupils: HandoverPupil[];
   updatedAt: string;
   updatedBy: string;
@@ -65,21 +77,60 @@ export function daysInMonthKey(month: string): number {
   return new Date(Number(m[1]), Number(m[2]), 0).getDate();
 }
 
+/** Tayyor jadvallar — oynadagi tanlov va guruh jadvalini tanish uchun. */
+export const WEEKDAY_PRESETS: { key: string; label: string; days: number[] }[] = [
+  { key: "toq", label: "Toq kunlar (Du-Chor-Ju)", days: [1, 3, 5] },
+  { key: "juft", label: "Juft kunlar (Se-Pay-Shan)", days: [2, 4, 6] },
+  { key: "hafta", label: "Hafta kunlari (Du–Ju)", days: [1, 2, 3, 4, 5] },
+  { key: "har", label: "Har kuni (Du–Shan)", days: [1, 2, 3, 4, 5, 6] },
+];
+
 /**
- * Bo'linish nisbati. `oldDays` — oy boshidan oxirgi dars kunigacha (shu kun
- * ham), `newDays` — qolgani. Oxirgi kun oydan tashqarida bo'lsa — bo'linmaydi.
+ * Oydagi dars kunlari soni: `before` — 1-sanadan oxirgi dars kunigacha (shu
+ * kun ham), `after` — undan keyin oy oxirigacha. Bayram kunlari ham sanaladi
+ * (qarzdorlar hisobotidagi qaror bilan bir xil).
  */
-export function handoverRatio(h: Pick<TeacherHandover, "month" | "lastDay">): {
+export function lessonCounts(month: string, lastDay: string, weekdays: number[]): { before: number; after: number } {
+  const m = /^(\d{4})-(\d{2})$/.exec(month);
+  const ld = /^(\d{4}-\d{2})-(\d{2})$/.exec(lastDay ?? "");
+  if (!m || !ld || ld[1] !== month) return { before: 0, after: 0 };
+  const set = new Set(weekdays);
+  const daysIn = daysInMonthKey(month);
+  const last = Number(ld[2]);
+  let before = 0;
+  let after = 0;
+  for (let d = 1; d <= daysIn; d++) {
+    if (!set.has(new Date(Number(m[1]), Number(m[2]) - 1, d).getDay())) continue;
+    if (d <= last) before += 1;
+    else after += 1;
+  }
+  return { before, after };
+}
+
+/**
+ * Bo'linish nisbati.
+ *   "days"    — `oldDays` oy boshidan oxirgi dars kunigacha (shu kun ham),
+ *               `daysIn` — oy kunlari;
+ *   "lessons" — `oldDays`/`newDays` DARSLAR soni, `daysIn` — oydagi jami darslar.
+ * Oxirgi kun oydan tashqarida bo'lsa (yoki oyda dars yo'q) — bo'linmaydi.
+ */
+export function handoverRatio(h: Pick<TeacherHandover, "month" | "lastDay" | "mode" | "weekdays">): {
   oldDays: number;
   newDays: number;
   daysIn: number;
   old: number;
+  unit: "days" | "lessons";
 } {
   const daysIn = daysInMonthKey(h.month);
   const m = /^(\d{4}-\d{2})-(\d{2})$/.exec(h.lastDay ?? "");
-  if (!daysIn || !m || m[1] !== h.month) return { oldDays: daysIn, newDays: 0, daysIn, old: 1 };
+  if (!daysIn || !m || m[1] !== h.month) return { oldDays: daysIn, newDays: 0, daysIn, old: 1, unit: "days" };
+  if (h.mode === "lessons" && Array.isArray(h.weekdays) && h.weekdays.length > 0) {
+    const { before, after } = lessonCounts(h.month, h.lastDay, h.weekdays);
+    const total = before + after;
+    if (total > 0) return { oldDays: before, newDays: after, daysIn: total, old: before / total, unit: "lessons" };
+  }
   const oldDays = Math.min(Math.max(Number(m[2]), 0), daysIn);
-  return { oldDays, newDays: daysIn - oldDays, daysIn, old: oldDays / daysIn };
+  return { oldDays, newDays: daysIn - oldDays, daysIn, old: oldDays / daysIn, unit: "days" };
 }
 
 export interface HandoverMatch {

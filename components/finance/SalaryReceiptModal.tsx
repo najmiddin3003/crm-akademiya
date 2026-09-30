@@ -173,14 +173,18 @@ export default function SalaryReceiptModal({
               {(r.handovers ?? []).map((h, i) => (
                 <p key={i} className="text-[11px] text-muted-foreground">
                   {h.dir === "out"
-                    ? t("{date} gacha ({days}/{daysIn} kun) · {amount} tushum → {other}", {
+                    ? t(h.unit === "lessons"
+                        ? "{date} gacha ({days}/{daysIn} dars) · {amount} tushum → {other}"
+                        : "{date} gacha ({days}/{daysIn} kun) · {amount} tushum → {other}", {
                         date: h.lastDay.split("-").reverse().join("."),
                         days: h.days,
                         daysIn: h.daysIn,
                         amount: fmtNum(h.amount),
                         other: h.other || t("hech kimga"),
                       })
-                    : t("+{amount} tushum — {other}dan ({days}/{daysIn} kun)", {
+                    : t(h.unit === "lessons"
+                        ? "+{amount} tushum — {other}dan ({days}/{daysIn} dars)"
+                        : "+{amount} tushum — {other}dan ({days}/{daysIn} kun)", {
                         amount: fmtNum(h.amount),
                         other: h.other,
                         days: h.days,
