@@ -43,7 +43,7 @@ fs.writeFileSync(salaryPath, fs.readFileSync(salaryPath, "utf8").replace('"@/lib
 const {
   payrollEarned, payrollTax, payrollTaxLines, payrollDue,
   payrollPlastikLeg, payrollCashLeg, payrollCashDue, payrollPayout,
-  payrollBase, payrollOkladDays, payrollOkladPart, payrollFoizPart, payrollStartsInPeriod, salaryTypeTag,
+  payrollBase, payrollOkladDays, payrollOkladPart, payrollFoizPart, payrollStartsInPeriod, payrollEndsInPeriod, salaryTypeTag,
 } = await import(pathToFileURL(path.resolve(salaryPath)).href);
 
 // Davrlar: 30 kunlik oyning turli kunlari.
@@ -214,6 +214,21 @@ check("1-sanada kirgan = to'liq oy", payrollBase(emp({ fixedSalary: 3000000, sal
 check("noto'g'ri sana e'tiborsiz", payrollBase(emp({ fixedSalary: 3000000, salaryStart: "23.09.2026" }), P30), 3000000);
 check("foizli xodimga sana ta'sir qilmaydi",
   payrollBase(emp({ salaryType: "foiz", collected: 1000000, percent: 50, salaryStart: "2026-09-23" }), P30), 500000);
+
+// ── ISHDAN KETGAN SANA (30.09.2026) ────────────────────────────────────
+// Oklad oxirgi ish kunigacha (shu kun ham): 15-sentabrda ketgan — 15/30.
+console.log("\nM) ISHDAN KETGAN SANA — oklad shu kungacha");
+check("15-sentabrda ketgan: 5 mln × 15/30", payrollBase(emp({ fixedSalary: 5000000, salaryEnd: "2026-09-15" }), P30), 2500000);
+check("avgustda ketgan → sentabrga 0", payrollBase(emp({ fixedSalary: 5000000, salaryEnd: "2026-08-31" }), P30), 0);
+check("oktabrda ketadi → sentabr to'liq", payrollBase(emp({ fixedSalary: 5000000, salaryEnd: "2026-10-05" }), P30), 5000000);
+check("10-kirib 20-ketgan: 11 kun", payrollOkladDays(emp({ salaryStart: "2026-09-10", salaryEnd: "2026-09-20" }), P30), 11);
+check("10-kirib 20-ketgan: 3 mln × 11/30", payrollBase(emp({ fixedSalary: 3000000, salaryStart: "2026-09-10", salaryEnd: "2026-09-20" }), P30), 1100000);
+check("15-kuni ko'rilsa, 20-ketadi → 15 kun", payrollOkladDays(emp({ salaryEnd: "2026-09-20" }), P15), 15);
+check("ketgan sana kirgandan oldin → 0", payrollOkladDays(emp({ salaryStart: "2026-09-20", salaryEnd: "2026-09-10" }), P30), 0);
+check("izoh: shu oyda ketgan", payrollEndsInPeriod(emp({ salaryEnd: "2026-09-15" }), P30), true);
+check("izoh: keyingi oyda ketadi — yo'q", payrollEndsInPeriod(emp({ salaryEnd: "2026-10-05" }), P30), false);
+check("oklad + foiz: ketgunicha oklad + to'liq foiz",
+  payrollBase(emp({ salaryType: "mixed", fixedSalary: 1000000, percent: 30, collected: 2000000, salaryEnd: "2026-09-15" }), P30), 1100000);
 
 // ── OKLAD + FOIZ (29.09.2026) ──────────────────────────────────────────
 // Foydalanuvchi misoli: 1 000 000 oklad + har bir o'quvchi to'lovidan 30%.

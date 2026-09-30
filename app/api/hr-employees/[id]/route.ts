@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizeAssignments, sanitizePlastikSalary, sanitizeSalaryStartDate, type HrEmployee } from "@/lib/hrEmployees";
+import {
+  sanitizeAssignments,
+  sanitizePlastikSalary,
+  sanitizeSalaryEndDate,
+  sanitizeSalaryStartDate,
+  type HrEmployee,
+} from "@/lib/hrEmployees";
 import { sanitizePermissions } from "@/lib/permissions";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import {
@@ -108,6 +114,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.salaryStartDate !== undefined) {
     set.salaryStartDate = sanitizeSalaryStartDate(body.salaryStartDate);
   }
+  // Ishdan ketgan sana (oxirgi ish kuni) — oklad shu kungacha hisoblanadi.
+  if (body.salaryEndDate !== undefined) {
+    set.salaryEndDate = sanitizeSalaryEndDate(body.salaryEndDate);
+  }
   // `branchAssignments` quyida, filial qoidasi bilan BIRGA ishlanadi:
   // qatorlar a'zolik ichiga kesilishi kerak, ya'ni `branchIds` aniq
   // bo'lgandan keyin.
@@ -153,6 +163,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // 403 EMAS, 404: boshqa filialda bunday xodim BORLIGI ham oshkor
     // bo'lmasin.
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+  }
+  // Ishga kirgan va ishdan ketgan sana bir-biriga zid bo'lmasin — so'rovda
+  // bittasi kelsa, ikkinchisi bazadagi qiymat.
+  {
+    const start = "salaryStartDate" in set ? (set.salaryStartDate as string | null) : current.salaryStartDate ?? null;
+    const end = "salaryEndDate" in set ? (set.salaryEndDate as string | null) : current.salaryEndDate ?? null;
+    if (start && end && end < start) {
+      return NextResponse.json(
+        { ok: false, error: "Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas" },
+        { status: 400 },
+      );
+    }
   }
 
   // ── FILIAL QOIDASI ───────────────────────────────────────────────

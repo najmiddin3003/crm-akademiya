@@ -282,6 +282,7 @@ export async function POST(req: Request) {
         // kirgan sana). Xodim kartasidagi sana keyin o'zgarsa ham chek
         // o'sha paytdagi hisobni ko'rsatsin.
         salaryStart: ep.salaryStart || undefined,
+        salaryEnd: ep.salaryEnd || undefined,
         okladDays: payrollHasOklad(ep) ? payrollOkladDays(ep, period) : undefined,
         okladPart: payrollOkladPart(ep, period),
         foizPart: payrollFoizPart(ep),

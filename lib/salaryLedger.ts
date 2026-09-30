@@ -158,7 +158,8 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
   // (o'tgan oy qoldig'ining jonli hisobi ham shu bitta xodim uchun).
   // Arxivlangan xodim `loadPayrollRefs` ro'yxatiga tushmaydi — bu yerda
   // u ham ochiq, chunki profil arxivdagi xodimda ham ochiladi.
-  const refs = { ...(await loadPayrollRefs(db)), employees: [emp] };
+  // `keepArchived` — arxivdagi xodim oy bo'yicha filtrlanmasin (buildPayrollRows).
+  const refs = { ...(await loadPayrollRefs(db)), employees: [emp], keepArchived: true };
   const rowOf = async (month: string) => {
     const period = payrollPeriodOf(month);
     const [row] = await buildPayrollRows(db, period, { refs });

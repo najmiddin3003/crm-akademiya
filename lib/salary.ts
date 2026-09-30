@@ -85,6 +85,8 @@ export interface SalaryReceipt {
    * cheklarda yo'q: u yerda oklad `day` bo'yicha hisoblangan.
    */
   salaryStart?: string;
+  /** Ishdan ketgan sana ("YYYY-MM-DD") — chiqarish paytidagi holat. */
+  salaryEnd?: string;
   okladDays?: number;
   /** Asosning ikki qismi — "oklad + foiz" xodimda chekda alohida ko'rinadi. */
   okladPart?: number;
@@ -357,6 +359,13 @@ export interface EmployeePayroll {
    */
   salaryStart?: string;
   /**
+   * ISHDAN KETGAN sana (oxirgi ish kuni), "YYYY-MM-DD"; yo'q — hali ishlayapti.
+   * Oklad shu kungacha hisoblanadi (`payrollOkladDays`).
+   */
+  salaryEnd?: string;
+  /** Xodim arxivda (ketgan) — faqat ishdan ketgan oyigacha ro'yxatda bo'ladi. */
+  archived?: boolean;
+  /**
    * Xodim CRM'ga qo'shilgan kun, "YYYY-MM-DD" ("" — o'qib bo'lmadi).
    * HISOBGA KIRMAYDI — faqat eslatma uchun: shu oyda qo'shilgan okladli
    * xodimda ishga kirgan sana kiritilmagan bo'lsa, Oylik sahifasi buni
@@ -516,12 +525,33 @@ function parseIsoDay(v: unknown): { year: number; month: number; day: number } |
  * o'rtasida kirgan xodimga ham TO'LIQ oy yozilardi (foydalanuvchi:
  * "oy o'rtasidan kirsa ham to'liq oy uchun hisoblayapti").
  */
-export function payrollOkladDays(e: Pick<EmployeePayroll, "salaryStart">, p: PayrollPeriod): number {
+export function payrollOkladDays(e: Pick<EmployeePayroll, "salaryStart" | "salaryEnd">, p: PayrollPeriod): number {
+  // Oyning qaysi kunidan (1-sana yoki ishga kirgan kun) qaysi kunigacha
+  // (bugun / oy oxiri yoki ISHDAN KETGAN kun — shu kun ham) sanaladi.
+  let from = 1;
+  let to = p.day;
   const s = parseIsoDay(e.salaryStart);
-  if (!s) return p.day;
-  if (s.year > p.year || (s.year === p.year && s.month > p.month)) return 0;
-  if (s.year === p.year && s.month === p.month) return Math.max(0, p.day - s.day + 1);
-  return p.day;
+  if (s) {
+    if (s.year > p.year || (s.year === p.year && s.month > p.month)) return 0; // hali kirmagan
+    if (s.year === p.year && s.month === p.month) from = s.day;
+  }
+  // ISHDAN KETGAN SANA (30.09.2026): oy o'rtasida ketgan xodimga to'liq oy
+  // yozilmaydi; oldingi oyda ketgan bo'lsa — bu oyga oklad yo'q.
+  const en = parseIsoDay(e.salaryEnd);
+  if (en) {
+    if (en.year < p.year || (en.year === p.year && en.month < p.month)) return 0;
+    if (en.year === p.year && en.month === p.month) to = Math.min(to, en.day);
+  }
+  return Math.max(0, to - from + 1);
+}
+
+/**
+ * Ishdan ketgan sana SHU (yoki oldingi) oyda — interfeys formulada
+ * "ishdan ketgan sana: …" izohini faqat shunda ko'rsatadi.
+ */
+export function payrollEndsInPeriod(e: Pick<EmployeePayroll, "salaryEnd">, p: PayrollPeriod): boolean {
+  const en = parseIsoDay(e.salaryEnd);
+  return !!en && (en.year < p.year || (en.year === p.year && en.month <= p.month));
 }
 
 /**

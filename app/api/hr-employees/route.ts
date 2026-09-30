@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { sanitizeAssignments, sanitizePlastikSalary, sanitizeSalaryStartDate, type HrEmployee } from "@/lib/hrEmployees";
+import {
+  sanitizeAssignments,
+  sanitizePlastikSalary,
+  sanitizeSalaryEndDate,
+  sanitizeSalaryStartDate,
+  type HrEmployee,
+} from "@/lib/hrEmployees";
 // Qo'shimcha maydonlar tipi vaqtincha komponentlar yonida turadi — sabab
 // components/employees/employeeExtras.ts izohida. `import type` bo'lgani
 // uchun bu bog'lanish kompilyatsiyada butunlay yo'qoladi.
@@ -214,7 +220,15 @@ export async function POST(req: Request) {
     // yuboradi (yangi xodim oy o'rtasida kelsa, to'liq oy yozilmasin).
     // Yuborilmasa (boshqa yo'llar) — cheklov yo'q, avvalgi xulq.
     salaryStartDate: sanitizeSalaryStartDate(body.salaryStartDate),
+    // Yangi xodimda odatda bo'sh (hali ishlayapti).
+    salaryEndDate: sanitizeSalaryEndDate(body.salaryEndDate),
   };
+  if (employee.salaryStartDate && employee.salaryEndDate && employee.salaryEndDate < employee.salaryStartDate) {
+    return NextResponse.json(
+      { ok: false, error: "Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas" },
+      { status: 400 },
+    );
+  }
   await col.insertOne({ ...employee });
 
   // DIQQAT: bu HAQIQIY lahza — `createdAt` va taklif muddati shundan

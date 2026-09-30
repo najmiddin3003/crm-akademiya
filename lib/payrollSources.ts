@@ -1,6 +1,13 @@
 import type { Db, Filter } from "mongodb";
 import { SETTINGS_LIST_KINDS } from "@/lib/settingsLists";
-import { fixedSalaryOf, isSalaryConfigured, plastikSalaryOf, sanitizeSalaryStartDate, type HrEmployee } from "@/lib/hrEmployees";
+import {
+  fixedSalaryOf,
+  isSalaryConfigured,
+  plastikSalaryOf,
+  sanitizeSalaryEndDate,
+  sanitizeSalaryStartDate,
+  type HrEmployee,
+} from "@/lib/hrEmployees";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   payrollEarned,
@@ -66,6 +73,20 @@ export function monthMatch(month: string) {
 function monthOfCreatedAt(raw: unknown): string | null {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(raw ?? "").trim());
   return m ? `${m[3]}-${m[2]}` : null;
+}
+
+/**
+ * Xodim shu davr oylik ro'yxatidami. Faol — doim; ARXIVDAGI — faqat ishdan
+ * ketgan sanasi kiritilgan va u shu oy yoki keyin bo'lsa (oxirgi oyligini
+ * chiqarish uchun). Sanasiz arxivdagi — hech qachon (avvalgi xulq).
+ */
+export function isInPayrollPeriod(
+  emp: Pick<HrEmployee, "archReason" | "salaryEndDate">,
+  p: PayrollPeriod,
+): boolean {
+  if (["", null, undefined].includes(emp.archReason as string | null | undefined)) return true;
+  const end = sanitizeSalaryEndDate(emp.salaryEndDate);
+  return !!end && end.slice(0, 7) >= payrollMonthKey(p);
 }
 
 /**
@@ -451,6 +472,12 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs
  */
 export interface PayrollRefs {
   employees: HrEmployee[];
+  /**
+   * Arxivdagi xodimlar OY BO'YICHA FILTRLANMASIN — profil daftari (arxivdagi
+   * xodim profili ham ochiladi, lib/salaryLedger.ts). Sukut: faqat faollar va
+   * ishdan ketgan oyigacha arxivdagilar (`isInPayrollPeriod`).
+   */
+  keepArchived?: boolean;
   bonusRows: { recipientName?: string; amount?: number; createdAt?: unknown }[];
   penaltyRows: { recipientName?: string; amount?: number; createdAt?: unknown }[];
   percentByTier: Map<string, number>;
@@ -474,7 +501,15 @@ export async function loadPayrollRefs(
     payrollBranchId?: number;
   } = {},
 ): Promise<PayrollRefs> {
-  const empFilter: Filter<HrEmployee> = { archReason: { $in: ["", null] } } as Filter<HrEmployee>;
+  // Faollar + ISHDAN KETGAN SANASI kiritilgan arxivdagilar (30.09.2026): ular
+  // ketgan oyigacha ro'yxatda qoladi — oxirgi oyligini chiqarib bo'lsin. Qaysi
+  // oyda ko'rinishi `buildPayrollRows` → `isInPayrollPeriod` da.
+  const empFilter: Filter<HrEmployee> = {
+    $or: [
+      { archReason: { $in: ["", null] } },
+      { salaryEndDate: { $regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
+    ],
+  } as Filter<HrEmployee>;
   if (opts.payrollBranchId !== undefined) {
     (empFilter as Record<string, unknown>).payrollBranchId = opts.payrollBranchId;
   }
@@ -520,7 +555,9 @@ export async function buildPayrollRows(
   const withCarry = opts.carryOver !== false;
   const month = payrollMonthKey(p);
   const refs = opts.refs ?? (await loadPayrollRefs(db, { payrollBranchId: opts.payrollBranchId }));
-  const { employees, bonusRows, penaltyRows, percentByTier, taxRules } = refs;
+  const { bonusRows, penaltyRows, percentByTier, taxRules } = refs;
+  // Arxivdagi xodim faqat ISHDAN KETGAN oyigacha (profil daftari bundan mustasno).
+  const employees = refs.keepArchived ? refs.employees : refs.employees.filter((e) => isInPayrollPeriod(e, p));
   const [paidBy, carryBy, collectedBy] = await Promise.all([
     loadPaidByEmployee(db, month),
     withCarry ? loadCarryOver(db, p, refs) : Promise.resolve(new Map<number, number>()),
@@ -586,6 +623,10 @@ export async function buildPayrollRows(
       fixedSalary,
       // Oklad shu kundan hisoblanadi (lib/salary.ts → payrollOkladDays).
       salaryStart: sanitizeSalaryStartDate(emp.salaryStartDate) ?? "",
+      // Oklad shu kungacha (ishdan ketgan kun) — payrollOkladDays.
+      salaryEnd: sanitizeSalaryEndDate(emp.salaryEndDate) ?? "",
+      // Arxivdagi (ketgan) xodim — sahifada belgi uchun.
+      ...(["", null, undefined].includes(emp.archReason as string | null | undefined) ? {} : { archived: true }),
       createdDate: createdIso(emp.created),
       percent: percent ?? 0,
       // Shu oyda o'quvchilari to'lagan pul MINUS ularga qaytarilgani —

@@ -148,6 +148,17 @@ export interface HrEmployee {
    * migratsiyada bir kunda yaratilgan, ular esa yillardan beri ishlaydi.
    */
   salaryStartDate?: string | null;
+  /**
+   * ISHDAN KETGAN SANA (oxirgi ish kuni), "YYYY-MM-DD" (30.09.2026). Oklad
+   * shu kungacha (shu kun ham) hisoblanadi — oy o'rtasida ketgan xodimga
+   * to'liq oy yozilmaydi. Foiz qismiga tegmaydi.
+   *
+   * ARXIVLANGAN xodim odatda oylik ro'yxatidan tushadi; shu sana kiritilgan
+   * bo'lsa esa u ketgan OYGACHA ro'yxatda qoladi — oxirgi oyligini
+   * chiqarib bo'lsin (lib/payrollSources.ts → isInPayrollPeriod).
+   * `null`/yo'q — hali ishlayapti (cheklov yo'q).
+   */
+  salaryEndDate?: string | null;
 }
 
 /**
@@ -167,6 +178,9 @@ export function sanitizeSalaryStartDate(raw: unknown): string | null {
   if (d > new Date(Date.UTC(y, mo, 0)).getUTCDate()) return null;
   return s;
 }
+
+/** Ishdan ketgan sana — ishga kirgan sana bilan bir xil qoida ("YYYY-MM-DD" yoki `null`). */
+export const sanitizeSalaryEndDate = sanitizeSalaryStartDate;
 
 /**
  * Mijozdan kelgan filial biriktiruvlarini xavfsiz ko'rinishga keltiradi.

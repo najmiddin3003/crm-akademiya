@@ -203,6 +203,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   // oy o'rtasida qo'shilgan xodimga to'liq oy yozilmasin (29.09.2026).
   // Tahrirlashda — saqlangani (eski xodimlarda bo'sh: cheklov yo'q).
   const [salaryStart, setSalaryStart] = useState(editing ? employee?.salaryStartDate ?? "" : uzDateIso());
+  // Ishdan ketgan sana (oxirgi ish kuni) — bo'sh: hali ishlayapti.
+  const [salaryEnd, setSalaryEnd] = useState(employee?.salaryEndDate ?? "");
   const [comment, setComment] = useState(employee?.comment ?? "");
   const [payroll, setPayroll] = useState(employee?.payroll ?? false);
   const [twoFactor, setTwoFactor] = useState(employee?.twoFactor ?? false);
@@ -619,6 +621,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           branchIds,
           // Bo'sh → `null` (cheklov yo'q, oklad oy boshidan).
           salaryStartDate: salaryStart || null,
+          salaryEndDate: salaryEnd || null,
         }),
       });
       const data = await res.json();
@@ -791,15 +794,27 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           {/* Ish haqi chiqarish toggle */}
           <EmployeeToggle checked={payroll} onChange={setPayroll} label={t("Ish haqi chiqarish")} />
 
-          {/* Ishga kirgan sana — oklad shu kundan hisoblanadi
-              (lib/salary.ts → payrollOkladDays). */}
+          {/* Ishga kirgan va ishdan ketgan sana — oklad shu kunlar orasida
+              hisoblanadi (lib/salary.ts → payrollOkladDays). */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className={labelCls}>{t("Ishga kirgan sana")}</label>
               <DateField value={salaryStart} onChange={setSalaryStart} variant="form" placeholder="kk/oo/yyyy" />
             </div>
-            <p className="md:col-span-2 self-end text-[11.5px] text-muted-foreground pb-1">
-              {t("Oylik shu kundan yoziladi: oy o'rtasida kirgan xodimga o'sha oy uchun faqat ishlagan kunlari hisoblanadi (oklad × kun / oy kunlari). Bo'sh qolsa — oy boshidan.")}
+            <div>
+              <label className={labelCls}>{t("Ishdan ketgan sana")}</label>
+              <DateField
+                value={salaryEnd}
+                onChange={setSalaryEnd}
+                variant="form"
+                placeholder="kk/oo/yyyy"
+                error={!!salaryStart && !!salaryEnd && salaryEnd < salaryStart}
+              />
+            </div>
+            <p className="self-end text-[11.5px] text-muted-foreground pb-1">
+              {!!salaryStart && !!salaryEnd && salaryEnd < salaryStart
+                ? <span className="text-rose-600">{t("Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas")}</span>
+                : t("Oklad faqat shu kunlar orasida hisoblanadi. Ishdan ketgan sana bo'sh — hali ishlayapti.")}
             </p>
           </div>
 

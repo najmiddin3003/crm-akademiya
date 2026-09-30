@@ -105,6 +105,12 @@ export default function SalaryReceiptModal({
     if (!m || !run.month || `${m[1]}-${m[2]}` < run.month) return "";
     return `${m[3]}.${m[2]}.${m[1]}`;
   })();
+  // Ishdan ketgan sana shu (yoki oldingi) oyda bo'lsa — oklad shu kungacha.
+  const endLabel = (() => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r?.salaryEnd ?? "");
+    if (!m || !run.month || `${m[1]}-${m[2]}` > run.month) return "";
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  })();
 
   // Soliq chegaraga urganmi (hisoblangan oylikdan oshib ketgan).
   const taxLines = r?.taxLines ?? [];
@@ -153,6 +159,7 @@ export default function SalaryReceiptModal({
             />
           )}
           {startLabel && <Row label={t("Ishga kirgan sana")} value={startLabel} />}
+          {endLabel && <Row label={t("Ishdan ketgan sana")} value={endLabel} />}
 
           {!r ? (
             // Bu maydon qo'shilishidan OLDINGI chiqarishlarda kesim yo'q —

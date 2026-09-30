@@ -25,6 +25,7 @@ import {
   payrollPeriod,
   payrollPeriodOf,
   payrollStartsInPeriod,
+  payrollEndsInPeriod,
   payrollTax,
   payrollTaxLines,
   payrollPlastikLeg,
@@ -854,6 +855,10 @@ export default function SalaryCreatePage() {
                 const startNote = hasOklad && e.salaryStart && payrollStartsInPeriod(e, period)
                   ? t("ishga kirgan sana: {date}", { date: fmtIsoDay(e.salaryStart) })
                   : "";
+                // Ishdan ketgan sana SHU (yoki oldingi) oyda — oklad shu kungacha.
+                const endNote = hasOklad && e.salaryEnd && payrollEndsInPeriod(e, period)
+                  ? t("ishdan ketgan sana: {date}", { date: fmtIsoDay(e.salaryEnd) })
+                  : "";
                 // ESLATMA: shu oyda (yoki keyin) CRM'ga qo'shilgan okladli
                 // xodimda ishga kirgan sana kiritilmagan — unga to'liq oy
                 // yozilyapti. Tuzatish xodim profilidagi "Ish haqi" oynasida.
@@ -889,6 +894,12 @@ export default function SalaryCreatePage() {
                       >
                         {e.name}
                       </Link>
+                      {/* Ketgan (arxivdagi) xodim — faqat ishdan ketgan oyigacha ro'yxatda. */}
+                      {e.archived && (
+                        <span className="ml-1.5 inline-flex h-5 items-center rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 text-[10.5px] font-medium text-rose-600">
+                          {t("arxivda")}
+                        </span>
+                      )}
                       <div className="text-[11px] text-muted-foreground tabular-nums">{e.phone}</div>
                     </td>
                     <td className="px-3 py-3 align-top">
@@ -975,6 +986,9 @@ export default function SalaryCreatePage() {
                           ))}
                           {startNote && (
                             <div className="text-[11px] text-muted-foreground whitespace-nowrap">{startNote}</div>
+                          )}
+                          {endNote && (
+                            <div className="text-[11px] text-rose-600 whitespace-nowrap">{endNote}</div>
                           )}
                           {startMissing && (
                             <Link

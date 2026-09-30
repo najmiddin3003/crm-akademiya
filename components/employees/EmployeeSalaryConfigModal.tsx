@@ -57,6 +57,8 @@ export default function EmployeeSalaryConfigModal({
   // Ishga kirgan (oylik yoziladigan) sana, "YYYY-MM-DD". Bo'sh — cheklov
   // yo'q, oklad oy boshidan (lib/salary.ts → payrollOkladDays).
   const [startDate, setStartDate] = useState<string>(employee.salaryStartDate ?? "");
+  // Ishdan ketgan sana (oxirgi ish kuni). Bo'sh — hali ishlayapti.
+  const [endDate, setEndDate] = useState<string>(employee.salaryEndDate ?? "");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -133,6 +135,7 @@ export default function EmployeeSalaryConfigModal({
           plastikSalary: plastik === "" ? null : Number(plastik),
           // Bo'sh → `null` (cheklov yo'q).
           salaryStartDate: startDate || null,
+          salaryEndDate: endDate || null,
         }),
       });
       const data = await res.json();
@@ -233,12 +236,28 @@ export default function EmployeeSalaryConfigModal({
                   "oy o'rtasidan kirsa ham to'liq oy uchun hisoblayapti").
                   Bo'sh qolsa — cheklov yo'q, avvalgidek oy boshidan. */}
               <div className="rounded-xl border border-border p-3 space-y-2">
-                <label className="block text-[13px] font-medium">{t("Ishga kirgan sana")}</label>
-                <div className="max-w-[220px]">
-                  <DateField value={startDate} onChange={setStartDate} variant="form" placeholder="kk/oo/yyyy" />
+                {/* ISHGA KIRGAN va ISHDAN KETGAN sana yonma-yon (30.09.2026). */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[13px] font-medium">{t("Ishga kirgan sana")}</label>
+                    <DateField value={startDate} onChange={setStartDate} variant="form" placeholder="kk/oo/yyyy" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[13px] font-medium">{t("Ishdan ketgan sana")}</label>
+                    <DateField
+                      value={endDate}
+                      onChange={setEndDate}
+                      variant="form"
+                      placeholder="kk/oo/yyyy"
+                      error={!!startDate && !!endDate && endDate < startDate}
+                    />
+                  </div>
                 </div>
+                {!!startDate && !!endDate && endDate < startDate && (
+                  <p className="text-[12px] text-rose-600">{t("Ishdan ketgan sana ishga kirgan sanadan oldin bo'lishi mumkin emas")}</p>
+                )}
                 <p className="text-[12px] text-muted-foreground">
-                  {t("Oylik shu kundan yoziladi: oy o'rtasida kirgan xodimga o'sha oy uchun faqat ishlagan kunlari hisoblanadi (oklad × kun / oy kunlari). Bo'sh qolsa — oy boshidan.")}
+                  {t("Oklad faqat shu kunlar orasida hisoblanadi (oklad × ishlagan kun / oy kunlari). Ishga kirgan sana bo'sh — oy boshidan, ishdan ketgan sana bo'sh — hali ishlayapti. Ketgan xodim arxivlansa ham o'sha oy oylik ro'yxatida qoladi.")}
                 </p>
               </div>
 
@@ -289,7 +308,7 @@ export default function EmployeeSalaryConfigModal({
 
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border sticky bottom-0 bg-card">
           <button type="button" onClick={modal.close} className="h-10 px-4 rounded-lg border border-border hover:bg-secondary text-sm">{t("Bekor qilish")}</button>
-          <button type="button" onClick={save} disabled={saving || loading} className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50">
+          <button type="button" onClick={save} disabled={saving || loading || (!!startDate && !!endDate && endDate < startDate)} className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50">
             {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
