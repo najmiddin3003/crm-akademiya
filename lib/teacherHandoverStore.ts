@@ -178,8 +178,131 @@ export async function saveHandover(
     updatedAt: new Date().toISOString(),
     updatedBy,
   };
+  // `dismissed` o'chiriladi — ilgari eslatma yashirilgan bo'lsa ham endi
+  // haqiqiy almashuv.
+  await db.collection(TEACHER_HANDOVERS).updateOne(
+    { month, fromKey },
+    { $set: doc, $unset: { dismissed: "" } },
+    { upsert: true },
+  );
+  return { ok: true, handover: doc };
+}
+
+/**
+ * "Almashuv yo'q" — Oylik sahifasidagi eslatmani shu oy uchun yashiradi.
+ * Hisobga ta'sir qilmaydi (pupils bo'sh). Haqiqiy almashuv bor bo'lsa rad etiladi.
+ */
+export async function dismissHandoverHint(
+  db: Db,
+  input: { month?: unknown; teacher?: unknown },
+  updatedBy: string,
+): Promise<SaveHandoverResult> {
+  const month = String(input.month ?? "").trim();
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { ok: false, error: "Oy noto'g'ri (YYYY-MM kutiladi)" };
+  const from = await findEmployee(db, String(input.teacher ?? ""));
+  if (!from) return { ok: false, error: "Ustoz topilmadi" };
+  const fromTeacher = String(from.name).trim();
+  const fromKey = handoverNameKey(fromTeacher);
+  const existing = await db.collection<TeacherHandover>(TEACHER_HANDOVERS).findOne({ month, fromKey });
+  if (existing && !existing.dismissed) {
+    return { ok: false, error: "Bu oy uchun ustoz almashuvi allaqachon kiritilgan" };
+  }
+  const doc: TeacherHandover = {
+    month,
+    fromTeacher,
+    fromKey,
+    lastDay: "",
+    pupils: [],
+    updatedAt: new Date().toISOString(),
+    updatedBy,
+    dismissed: true,
+  };
   await db.collection(TEACHER_HANDOVERS).updateOne({ month, fromKey }, { $set: doc }, { upsert: true });
   return { ok: true, handover: doc };
+}
+
+/**
+ * ESLATMA — Oylik sahifasi uchun (foydalanuvchi, 30.09.2026: "keyin ham
+ * shunaqa holat bo'lsa?"). Shu oy ustoz nomiga to'lagan o'quvchilardan qaysilari
+ * endi FAQAT boshqa ustozning SHU FANDAGI guruhida, almashuv esa kiritilmagan.
+ *
+ * FAN SHARTI SHART: sentabr ma'lumotida fansiz qoida 38 ustozdan 15 tasiga
+ * eslatma chiqarardi — o'quvchi boshqa fanni boshqa ustozda o'qishi yoki
+ * umuman guruhsiz turishi odatiy. Fan (`groups.course` ∈ ustoz `kurs`
+ * ro'yxati, vergul bilan) bilan — 4 tasi, hammasi tekshirishga arziydi.
+ * Guruhsiz o'quvchi sanalmaydi (ketgan bo'lishi mumkin).
+ *
+ * `rows` — oylik qatorlari; faqat foiz qismi bor ustozlar ko'riladi.
+ */
+export async function detectMovedPupils(
+  db: Db,
+  month: string,
+  teachers: string[],
+): Promise<Map<string, { count: number; teachers: string[] }>> {
+  const out = new Map<string, { count: number; teachers: string[] }>();
+  const keys = new Set(teachers.map(handoverNameKey).filter(Boolean));
+  if (keys.size === 0) return out;
+
+  const [entries, docs, groups, emps] = await Promise.all([
+    db.collection("transaction_entries")
+      .find({
+        txType: "payIn",
+        status: { $ne: "cancelled" },
+        teacherName: { $nin: ["", null] },
+        pupilId: { $ne: null },
+        $or: monthMatch(month),
+      })
+      .project<{ teacherName?: string; pupilId?: number }>({ _id: 0, teacherName: 1, pupilId: 1 })
+      .toArray(),
+    // Almashuv kiritilgan YOKI eslatma yashirilgan ustozlar — eslatma yo'q.
+    db.collection(TEACHER_HANDOVERS).find({ month }, { projection: { _id: 0, fromKey: 1 } }).toArray(),
+    db.collection("groups")
+      .find({}, { projection: { _id: 0, teacher: 1, studentIds: 1, course: 1 } })
+      .toArray(),
+    db.collection("hr_employees")
+      .find({ turi: "teacher" }, { projection: { _id: 0, name: 1, kurs: 1 } })
+      .toArray(),
+  ]);
+  const done = new Set(docs.map((d) => String(d.fromKey)));
+  const kursOf = new Map(emps.map((e) => [
+    handoverNameKey(e.name),
+    String(e.kurs ?? "").split(",").map(handoverNameKey).filter(Boolean),
+  ]));
+  const groupsOf = new Map<number, { teacher: string; course: string }[]>();
+  for (const g of groups) {
+    const t = String(g.teacher ?? "").trim();
+    if (!t) continue;
+    for (const pid of (g.studentIds ?? []) as number[]) {
+      const list = groupsOf.get(pid) ?? [];
+      list.push({ teacher: t, course: handoverNameKey(g.course) });
+      groupsOf.set(pid, list);
+    }
+  }
+  const pupilsOf = new Map<string, Set<number>>();
+  for (const e of entries) {
+    const k = handoverNameKey(e.teacherName);
+    const pid = Number(e.pupilId);
+    if (!keys.has(k) || done.has(k) || !Number.isFinite(pid)) continue;
+    const set = pupilsOf.get(k) ?? new Set<number>();
+    set.add(pid);
+    pupilsOf.set(k, set);
+  }
+  for (const [k, pupils] of pupilsOf) {
+    const kurs = kursOf.get(k) ?? [];
+    if (kurs.length === 0) continue;
+    let count = 0;
+    const others = new Set<string>();
+    for (const pid of pupils) {
+      const gs = groupsOf.get(pid) ?? [];
+      if (gs.some((g) => handoverNameKey(g.teacher) === k)) continue; // hali o'z guruhida
+      const same = gs.filter((g) => handoverNameKey(g.teacher) !== k && kurs.includes(g.course));
+      if (same.length === 0) continue;
+      count += 1;
+      for (const g of same) others.add(g.teacher);
+    }
+    if (count > 0) out.set(k, { count, teachers: [...others] });
+  }
+  return out;
 }
 
 /** Almashuvni olib tashlaydi — to'lovlar yana to'liq eski ustozda. */

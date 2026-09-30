@@ -80,11 +80,13 @@ export default function TeacherHandoverModal({
         const loaded = d as Loaded;
         setData(loaded);
         // Saqlangan almashuv bo'lsa — o'sha; bo'lmasa HOZIRGI guruh ustozi taklif.
-        const saved = new Map((loaded.handover?.pupils ?? []).map((p) => [rowKey(p), p.toTeacher ?? ""]));
+        // "Eslatma yashirilgan" yozuvi almashuv emas — bo'sh forma.
+        const active = loaded.handover && !loaded.handover.dismissed ? loaded.handover : null;
+        const saved = new Map((active?.pupils ?? []).map((p) => [rowKey(p), p.toTeacher ?? ""]));
         const init: Record<string, string> = {};
         for (const p of loaded.pupils) init[rowKey(p)] = saved.has(rowKey(p)) ? saved.get(rowKey(p))! : p.currentTeacher ?? "";
         setTargets(init);
-        setLastDay(loaded.handover?.lastDay ?? "");
+        setLastDay(active?.lastDay ?? "");
       });
     return () => { alive = false; };
   }, [teacher, month, showError, t]);
@@ -152,6 +154,7 @@ export default function TeacherHandoverModal({
 
   async function remove() {
     if (!data) return;
+    const wasDismissed = !!data.handover?.dismissed;
     setSaving(true);
     try {
       const res = await fetch(`/api/teacher-handovers?month=${month}&teacher=${encodeURIComponent(data.teacher)}`, { method: "DELETE" });
@@ -160,7 +163,7 @@ export default function TeacherHandoverModal({
         showError(t(d.error || "O'chirilmadi"));
         return;
       }
-      showSuccess(t("Ustoz almashuvi olib tashlandi"));
+      showSuccess(wasDismissed ? t("Eslatma qaytarildi") : t("Ustoz almashuvi olib tashlandi"));
       onSaved();
       modal.close();
     } catch {
@@ -169,6 +172,34 @@ export default function TeacherHandoverModal({
       setSaving(false);
     }
   }
+
+  /** "Almashuv yo'q" — Oylik sahifasidagi eslatmani shu oy uchun yashiradi (hisobga ta'sir qilmaydi). */
+  async function dismiss() {
+    if (!data) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/teacher-handovers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "dismiss", month, teacher: data.teacher }),
+      });
+      const d = await res.json();
+      if (!d.ok) {
+        showError(t(d.error || "Saqlanmadi"));
+        return;
+      }
+      showSuccess(t("Eslatma yashirildi — to'lovlar to'liq shu ustozda qoladi"));
+      onSaved();
+      modal.close();
+    } catch {
+      showError(t("Serverga ulanib bo'lmadi"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const activeHandover = data?.handover && !data.handover.dismissed ? data.handover : null;
+  const dismissedHint = !!data?.handover?.dismissed;
 
   const pct = data?.teacherPercent ?? null;
 
@@ -185,14 +216,20 @@ export default function TeacherHandoverModal({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        {/* Qisqa (foydalanuvchi, 30.09.2026: "qisqaroq tushuntirib ber"). */}
         <p className="text-[12.5px] text-muted-foreground">
-          {t("Oy o'rtasida o'quvchilar boshqa ustozga o'tgan bo'lsa, shu oyning to'lovlari kalendar kunlariga qarab bo'linadi: oxirgi dars kunigacha — shu ustozga, qolgani — yangi ustozga (o'z foizi bilan). Kassa va jurnalga tegilmaydi.")}
+          {t("Har bir to'lov kunlarga bo'linadi: oxirgi dars kunigacha — {teacher}ga, qolgan kunlari — yangi ustozga (o'z foizi bilan). Kassaga tegilmaydi.", { teacher })}
         </p>
 
         {!data ? (
           <SpinnerBlock size={22} />
         ) : (
           <>
+            {dismissedHint && (
+              <p className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-[12px] text-muted-foreground">
+                {t("Bu oy uchun «almashuv yo'q» deb belgilangan — eslatma yashirilgan. Almashuvni saqlasangiz, bu belgi o'chadi.")}
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-[12px] font-medium">{t("Oxirgi dars kuni")}</label>
@@ -206,8 +243,11 @@ export default function TeacherHandoverModal({
                 ) : null}
               </div>
               <div>
-                <label className="mb-1 block text-[12px] font-medium">{t("Hammasini bitta ustozga")}</label>
+                <label className="mb-1 block text-[12px] font-medium">{t("Barcha o'quvchilarga bir xil yangi ustoz")}</label>
                 <Select value="" onChange={setAll} options={teacherOptions} placeholder={t("Tanlang")} />
+                <p className="mt-1 text-[11.5px] text-muted-foreground">
+                  {t("Faqat pastdagi ro'yxatni to'ldiradi — keyin har birini alohida o'zgartirsa bo'ladi.")}
+                </p>
               </div>
             </div>
 
@@ -222,7 +262,11 @@ export default function TeacherHandoverModal({
                     <tr>
                       <th className="px-3 py-2 text-left">{t("O'quvchi")}</th>
                       <th className="px-3 py-2 text-right">{t("To'lov")}</th>
-                      <th className="px-3 py-2 text-left">{t("Yangi ustoz")}</th>
+                      <th className="px-3 py-2 text-left">
+                        {dayValid
+                          ? t("Yangi ustoz ({from}–{to} kunlar)", { from: oldDays + 1, to: daysIn })
+                          : t("Yangi ustoz")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -237,7 +281,14 @@ export default function TeacherHandoverModal({
                           <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
                             {fmtNum(p.total)}
                             {dayValid && (
-                              <div className="text-[11px] text-muted-foreground">
+                              <div
+                                className="text-[11px] text-muted-foreground"
+                                title={t("{teacher}ga {old} · yangi ustozga {neww}", {
+                                  teacher,
+                                  old: fmtNum(p.total * oldRatio),
+                                  neww: fmtNum(p.total - p.total * oldRatio),
+                                })}
+                              >
                                 {`${fmtNum(p.total * oldRatio)} + ${fmtNum(p.total - p.total * oldRatio)}`}
                               </div>
                             )}
@@ -290,7 +341,7 @@ export default function TeacherHandoverModal({
 
       <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-5 py-3">
         <div>
-          {data?.handover && (
+          {activeHandover ? (
             <button
               type="button"
               onClick={remove}
@@ -299,7 +350,26 @@ export default function TeacherHandoverModal({
             >
               {t("Almashuvni olib tashlash")}
             </button>
-          )}
+          ) : dismissedHint ? (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={saving}
+              className="h-9 rounded-lg border border-border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            >
+              {t("Eslatmani qaytarish")}
+            </button>
+          ) : data ? (
+            <button
+              type="button"
+              onClick={dismiss}
+              disabled={saving}
+              title={t("O'quvchilar boshqa ustozga o'tmagan bo'lsa — eslatma shu oy uchun yashiriladi, to'lovlar to'liq shu ustozda qoladi")}
+              className="h-9 rounded-lg border border-border px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            >
+              {t("Almashuv yo'q — eslatmani yashirish")}
+            </button>
+          ) : null}
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={modal.close} disabled={saving} className="h-9 rounded-lg border border-border bg-card px-4 text-sm font-medium hover:bg-secondary disabled:opacity-60">

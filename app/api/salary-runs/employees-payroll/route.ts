@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { attachBranchPayouts, buildPayrollRows } from "@/lib/payrollSources";
-import { isMonthKey, payrollMonthKey, payrollPeriod, payrollPeriodOf } from "@/lib/salary";
+import { isMonthKey, payrollHasFoiz, payrollMonthKey, payrollPeriod, payrollPeriodOf, prevMonthKey } from "@/lib/salary";
 import { getBranchScope } from "@/lib/branchScope";
+import { detectMovedPupils } from "@/lib/teacherHandoverStore";
 
 // GET /api/salary-runs/employees-payroll[?month=YYYY-MM]
 // Oylik chiqarish → xodim tanlash jadvali uchun har bir xodimning
@@ -81,5 +82,21 @@ export async function GET(req: Request) {
   // "Berilgan avans" / "To'langan oylik" kartochkalari — pul QAYSI FILIAL
   // KASSASIDAN chiqqani bo'yicha. Qatorlarning o'z raqamlari o'zgarmaydi.
   const { rows, given } = await attachBranchPayouts(db, month, scope.branchId, employees);
-  return NextResponse.json({ ok: true, month, employees: rows, given });
+
+  // USTOZ ALMASHUVI ESLATMASI — faqat JORIY va O'TGAN oy: o'quvchining
+  // "hozirgi guruhi" eski oylar uchun ma'nosiz, o'tgan oy esa oy boshida
+  // oylik chiqarilayotganda kerak (lib/teacherHandoverStore.ts).
+  const cur = payrollPeriod();
+  const recent = month === payrollMonthKey(cur) || month === prevMonthKey(cur);
+  if (!recent) return NextResponse.json({ ok: true, month, employees: rows, given });
+  const hints = await detectMovedPupils(
+    db,
+    month,
+    rows.filter((e) => e.configured && payrollHasFoiz(e)).map((e) => e.name),
+  );
+  const withHints = hints.size === 0 ? rows : rows.map((e) => {
+    const h = hints.get(String(e.name ?? "").trim().toLowerCase());
+    return h ? { ...e, movedHint: h } : e;
+  });
+  return NextResponse.json({ ok: true, month, employees: withHints, given });
 }

@@ -935,6 +935,21 @@ export default function SalaryCreatePage() {
                               </button>
                             </div>
                           )}
+                          {/* ESLATMA — o'quvchilari shu fanda boshqa ustoz guruhida,
+                              almashuv esa kiritilmagan (lib/teacherHandoverStore.ts). */}
+                          {e.movedHint && (
+                            <button
+                              type="button"
+                              onClick={() => setHandoverFor(e.name)}
+                              className="block text-left text-[11px] text-amber-600 hover:underline whitespace-nowrap"
+                              title={t("Bosing — ustoz almashuvini kiritish yoki eslatmani yashirish")}
+                            >
+                              {t("⚠ {n} ta o'quvchisi endi {teachers} guruhida — ustoz almashuvini kiriting", {
+                                n: e.movedHint.count,
+                                teachers: e.movedHint.teachers.join(", "),
+                              })}
+                            </button>
+                          )}
                           {/* Almashuv izohi — `collected` allaqachon bo'lingan. */}
                           {(e.handovers ?? []).map((h, hi) => (
                             <div key={hi} className="text-[11px] text-violet-600 dark:text-violet-400 whitespace-nowrap">

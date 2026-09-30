@@ -381,6 +381,13 @@ export interface EmployeePayroll {
    * Yo'q yoki bo'sh — almashuv yo'q.
    */
   handovers?: PayrollHandover[];
+  /**
+   * ESLATMA (faqat Oylik sahifasi, joriy va o'tgan oy): shu oy ustoz nomiga
+   * to'lagan o'quvchilardan `count` tasi endi FAQAT boshqa ustozning SHU
+   * FANDAGI guruhida (`teachers`), ustoz almashuvi esa kiritilmagan.
+   * Hisobga ta'sir qilmaydi — lib/teacherHandoverStore.ts → detectMovedPupils.
+   */
+  movedHint?: { count: number; teachers: string[] };
   /** Kelgusi oylar uchun oldindan tushgan pul — o'z oyida hisoblanadi. */
   futureCollected: number;
   /** Shu oydagi bonus/jarima yig'indisi. */

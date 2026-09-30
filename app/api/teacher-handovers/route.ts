@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { isMonthKey } from "@/lib/salary";
-import { deleteHandover, loadHandoverCandidates, saveHandover } from "@/lib/teacherHandoverStore";
+import { deleteHandover, dismissHandoverHint, loadHandoverCandidates, saveHandover } from "@/lib/teacherHandoverStore";
 
 // USTOZ ALMASHUVI — Moliya → Oylik hisob-kitob sahifasidagi oyna
 // (components/finance/TeacherHandoverModal.tsx). Qoida lib/teacherHandover.ts
@@ -11,7 +11,8 @@ import { deleteHandover, loadHandoverCandidates, saveHandover } from "@/lib/teac
 // lib/teacherHandoverStore.ts da, bu yupqa qobiq.
 //
 // GET    ?month=YYYY-MM&teacher=Ism — oyna ma'lumoti.
-// POST   { month, teacher, lastDay, pupils: [{ pupilId, name, toTeacher }] } — saqlash.
+// POST   { month, teacher, lastDay, pupils: [{ pupilId, name, toTeacher }] } — saqlash;
+//        { action: "dismiss", month, teacher } — "almashuv yo'q", eslatmani yashirish.
 // DELETE ?month=YYYY-MM&teacher=Ism — almashuvni olib tashlash.
 //
 // KASSA VA JURNALGA TEGMAYDI — faqat oylik hisobidagi taqsimot. Ruxsat —
@@ -43,7 +44,10 @@ export async function POST(req: Request) {
     return bad("Noto'g'ri so'rov");
   }
   const db = await ensureIndexes();
-  const r = await saveHandover(db, body, me.fullName || "");
+  // `action: "dismiss"` — "almashuv yo'q": Oylik sahifasidagi eslatmani yashirish.
+  const r = body.action === "dismiss"
+    ? await dismissHandoverHint(db, body, me.fullName || "")
+    : await saveHandover(db, body, me.fullName || "");
   return r.ok ? NextResponse.json(r) : bad(r.error);
 }
 

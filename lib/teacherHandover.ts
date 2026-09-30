@@ -45,6 +45,12 @@ export interface TeacherHandover {
   pupils: HandoverPupil[];
   updatedAt: string;
   updatedBy: string;
+  /**
+   * "Almashuv yo'q" — Oylik sahifasidagi eslatma (o'quvchilari boshqa ustoz
+   * guruhida) shu oy uchun yashirilgan. Bunday yozuvda `pupils` bo'sh va
+   * HISOBGA TA'SIR QILMAYDI; haqiqiy almashuv saqlansa bu bayroq o'chadi.
+   */
+  dismissed?: boolean;
 }
 
 /** Oylik manbalari bilan bir xil ism kaliti: chetidagi probel va harf kattaligi farqlanmaydi. */
@@ -117,11 +123,11 @@ export function handoverFor(
   return nk ? index.get(`${month}|${from}|n:${nk}`) ?? null : null;
 }
 
-/** Shu oyning almashuvlari. */
+/** Shu oyning almashuvlari (yashirilgan eslatma yozuvlari hisobga kirmaydi). */
 export async function loadHandovers(db: Db, month: string): Promise<TeacherHandover[]> {
   return db
     .collection<TeacherHandover>(TEACHER_HANDOVERS)
-    .find({ month }, { projection: { _id: 0 } })
+    .find({ month, dismissed: { $ne: true } }, { projection: { _id: 0 } })
     .toArray() as Promise<TeacherHandover[]>;
 }
 

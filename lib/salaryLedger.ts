@@ -201,7 +201,7 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
     // to'lovlaridan faqat oxirgi dars kunigacha bo'lgan ulushi qoladi
     // (payrollSources.ts → loadCollectedByTeacher bilan bir xil qoida).
     db.collection<TeacherHandover>(TEACHER_HANDOVERS)
-      .find({ fromKey: nameKey(name) }, { projection: { _id: 0 } })
+      .find({ fromKey: nameKey(name), dismissed: { $ne: true } }, { projection: { _id: 0 } })
       .toArray() as Promise<TeacherHandover[]>,
   ]);
   const handoverIndex = buildHandoverIndex(ownHandovers);
