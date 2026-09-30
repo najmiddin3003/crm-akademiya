@@ -810,6 +810,8 @@
   "Boshqa kunlar": "Other days",
   "Boshqa kurslar guruhlari ({n})": "Groups of other courses ({n})",
   "Boshqa markazni tanladi": "Chose another center",
+  "Boshqa oynada filial almashtirildi: {name}. Bu oynadagi ma'lumotlar eskirgan.": "The branch was switched in another window: {name}. The data in this window is out of date.",
+  "Boshqa oynada filial almashtirildi. Bu oynadagi ma'lumotlar eskirgan.": "The branch was switched in another window. The data in this window is out of date.",
   "Boshqa qurilmalarni chiqarish": "Sign out other devices",
   "Boshqa rasm": "Another photo",
   "Boshqa sabab": "Other reason",

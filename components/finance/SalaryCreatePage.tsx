@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { ArrowLeftRight, CreditCard, DollarSign, History, RotateCcw, Search } from "lucide-react";
 import TeacherHandoverModal from "@/components/finance/TeacherHandoverModal";
+import { useBranchChangedElsewhere } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -81,11 +82,11 @@ function fmtIsoDay(iso: string): string {
 // HAMMA oynalari uchun BITTA. Bir oynada 1-filial ro'yxati ochiq turib,
 // ikkinchisida 2-filial tanlansa, birinchisi eski ro'yxatni ko'rsatib
 // turaverardi, «Oylikni chiqarish» esa server'da 2-filial ro'yxatidan
-// qidirib "Xodim topilmadi" berardi (30.09.2026, 6 ta urinish). Endi oyna
-// qaytib ochilganda cookie o'zgargani seziladi va sahifa to'liq qayta
-// yuklanadi (navbardagi filial almashtirish ham aynan shunday qiladi —
-// components/shared/BranchContext.tsx izohi), server ham mos kelmagan
-// filialni rad etadi (app/api/salary-runs/route.ts).
+// qidirib "Xodim topilmadi" berardi (30.09.2026, 6 ta urinish). Endi:
+//   • boshqa oynada navbardan filial almashsa, bu sahifa DARHOL to'liq qayta
+//     yuklanadi (BroadcastChannel — components/shared/BranchContext.tsx);
+//   • zaxira: oyna qaytib ochilganda cookie o'zgargani seziladi;
+//   • server ham mos kelmagan filialni rad etadi (app/api/salary-runs/route.ts).
 
 /** `branch` cookie'sining xom qiymati; yo'q bo'lsa "". */
 function readBranchCookie(): string {
@@ -246,8 +247,13 @@ export default function SalaryCreatePage() {
       .finally(() => { if (seq === reqSeq.current) setLoading(false); });
   }, [monthKey]);
 
-  // Oyna qayta ko'rinsa/fokus olsa — boshqa oynada filial almashganmi.
-  // Qayta yuklangach sababi bir marta aytiladi.
+  // Boshqa oynada navbardan filial almashtirilsa — DARHOL qayta yuklanadi,
+  // bu oynaga o'tishni kutmasdan (components/shared/BranchContext.tsx).
+  useBranchChangedElsewhere(reloadForBranchChange);
+
+  // Zaxira: oyna qayta ko'rinsa/fokus olsa — cookie o'zgarganmi (masalan
+  // eski brauzerda xabar kelmagan bo'lsa). Qayta yuklangach sababi bir
+  // marta aytiladi.
   useEffect(() => {
     try {
       if (sessionStorage.getItem(BRANCH_CHANGED_FLAG)) {
