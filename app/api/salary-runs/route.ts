@@ -128,6 +128,12 @@ export async function POST(req: Request) {
      * (lib/salary.ts → SalaryRun.kind).
      */
     only?: string;
+    /**
+     * Sahifadagi ro'yxat QAYSI FILIAL uchun tuzilgani (employees-payroll
+     * javobidagi `branchId`). Joriy filial bilan mos kelmasa rad etiladi —
+     * quyidagi qorovul izohiga qarang. Eski mijozda yo'q (tekshirilmaydi).
+     */
+    branchId?: number;
   };
   try {
     body = await req.json();
@@ -186,11 +192,30 @@ export async function POST(req: Request) {
   if (!scope) {
     return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
   }
+  // FILIAL BOSHQA OYNADA ALMASHTIRILGANMI (30.09.2026).
+  //
+  // Filial tanlovi cookie'da va brauzerning HAMMA oynalari uchun bitta. Bir
+  // oynada 1-filial ro'yxati ochiq turib, ikkinchisida 2-filial tanlansa,
+  // birinchi oyna eski ro'yxatni ko'rsatib turaveradi, bu yerda esa
+  // `scope` allaqachon 2-filial — tanlangan xodimlarning birortasi topilmay
+  // "Xodim topilmadi" chiqardi (30.09 21:47–21:49 da 6 marta). Endi sahifa
+  // ro'yxat filialini yuboradi va mos kelmasa sababi aniq aytiladi. Hech
+  // narsa yozilmaydi — qorovul pulga tegadigan hamma qadamdan oldin.
+  if (body.branchId !== undefined && Number(body.branchId) !== scope.branchId) {
+    return NextResponse.json(
+      { ok: false, error: "Filial boshqa oynada almashtirilgan — sahifani yangilang", branchChanged: true },
+      { status: 409 },
+    );
+  }
   // FAQAT SHU FILIALNING oylik ro'yxati (`payrollBranchId`).
   const all = await buildPayrollRows(db, period, { payrollBranchId: scope.branchId });
   const chosen = all.filter((e) => employeeIds.includes(e.id));
   if (chosen.length === 0) {
-    return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+    // Eski (filialni yubormaydigan) sahifada ham sabab tushunarli bo'lsin.
+    return NextResponse.json(
+      { ok: false, error: "Tanlangan xodimlar shu filialning oylik ro'yxatida yo'q — sahifani yangilang" },
+      { status: 404 },
+    );
   }
   // Interfeysda filtrlash YETARLI EMAS: so'rovni qo'lda yuborib boshqa
   // filialning xodimini ro'yxatga qo'shib bo'lardi.

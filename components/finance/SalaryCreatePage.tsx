@@ -74,6 +74,33 @@ function fmtIsoDay(iso: string): string {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
 }
 
+// FILIAL BOSHQA OYNADA ALMASHTIRILSA (30.09.2026).
+//
+// Filial tanlovi `branch` cookie'sida (lib/branchScope.ts → BRANCH_COOKIE;
+// modul server'niki, shu bois nom shu yerda takrorlanadi) va brauzerning
+// HAMMA oynalari uchun BITTA. Bir oynada 1-filial ro'yxati ochiq turib,
+// ikkinchisida 2-filial tanlansa, birinchisi eski ro'yxatni ko'rsatib
+// turaverardi, «Oylikni chiqarish» esa server'da 2-filial ro'yxatidan
+// qidirib "Xodim topilmadi" berardi (30.09.2026, 6 ta urinish). Endi oyna
+// qaytib ochilganda cookie o'zgargani seziladi va sahifa to'liq qayta
+// yuklanadi (navbardagi filial almashtirish ham aynan shunday qiladi —
+// components/shared/BranchContext.tsx izohi), server ham mos kelmagan
+// filialni rad etadi (app/api/salary-runs/route.ts).
+
+/** `branch` cookie'sining xom qiymati; yo'q bo'lsa "". */
+function readBranchCookie(): string {
+  const m = /(?:^|;\s*)branch=([^;]*)/.exec(document.cookie);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+/** Qayta yuklangandan keyin sababini aytish uchun belgi (sessionStorage). */
+const BRANCH_CHANGED_FLAG = "payroll:branchChanged";
+
+function reloadForBranchChange() {
+  try { sessionStorage.setItem(BRANCH_CHANGED_FLAG, "1"); } catch { /* xabarsiz ham qayta yuklanadi */ }
+  window.location.reload();
+}
+
 type HisoblashFilter = "all" | "foiz" | "fixed" | "mixed";
 
 interface StatCardProps {
@@ -200,6 +227,11 @@ export default function SalaryCreatePage() {
   // KASSASIDAN chiqqani bo'yicha (lib/payrollSources.ts → attachBranchPayouts).
   // Qatorlar bilan BITTA javobda keladi, ya'ni oy va filial har doim bir xil.
   const [given, setGiven] = useState<BranchPayouts | null>(null);
+  // Ro'yxat QAYSI FILIAL uchun tuzilgani (server javobidan) va o'sha paytdagi
+  // `branch` cookie'si — boshqa oynada filial almashganini sezish uchun
+  // (yuqoridagi `readBranchCookie` izohi).
+  const [listBranchId, setListBranchId] = useState<number | null>(null);
+  const branchCookieAtLoad = useRef<string | null>(null);
   const fetchRows = useCallback(() => {
     const seq = ++reqSeq.current;
     return fetch(`/api/salary-runs/employees-payroll?month=${monthKey}&given=1`)
@@ -208,9 +240,34 @@ export default function SalaryCreatePage() {
         if (seq !== reqSeq.current || !d.ok) return;
         setEmployees(d.employees);
         setGiven(d.given ?? null);
+        setListBranchId(typeof d.branchId === "number" ? d.branchId : null);
+        branchCookieAtLoad.current = readBranchCookie();
       })
       .finally(() => { if (seq === reqSeq.current) setLoading(false); });
   }, [monthKey]);
+
+  // Oyna qayta ko'rinsa/fokus olsa — boshqa oynada filial almashganmi.
+  // Qayta yuklangach sababi bir marta aytiladi.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(BRANCH_CHANGED_FLAG)) {
+        sessionStorage.removeItem(BRANCH_CHANGED_FLAG);
+        showError(t("Filial boshqa oynada almashtirilgan edi — sahifa yangilandi. Filialni tekshirib, xodimlarni qayta belgilang."));
+      }
+    } catch { /* sessionStorage yopiq — izohsiz davom etadi */ }
+    function check() {
+      if (document.visibilityState !== "visible") return;
+      const at = branchCookieAtLoad.current;
+      if (at === null || readBranchCookie() === at) return;
+      reloadForBranchChange();
+    }
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, [showError, t]);
 
   // OYNING TUSHUMI VA XARAJATI — "Jami tushum" kartochkasi uchun
   // (/api/salary-runs/month-cashflow). Xodimlar jadvali bilan bir xil
@@ -540,6 +597,8 @@ export default function SalaryCreatePage() {
         // `method` — NAQD oyog'i (va plastigi yo'q xodimlarning yagonasi).
         // `plastikMethod` faqat karta oyog'i bo'lganda ishlatiladi.
         // «Faqat karta»da naqd oyog'i yo'q — faqat plastik turi ketadi.
+        // `branchId` — ro'yxat qaysi filialniki; boshqa oynada filial
+        // almashgan bo'lsa server rad etadi (409, `branchChanged`).
         body: JSON.stringify(kartaOnly
           ? {
               employeeIds: kartaRows.map((x) => x.e.id),
@@ -547,6 +606,7 @@ export default function SalaryCreatePage() {
               plastikMethod: plastikMethodKey,
               month: monthKey,
               only: "karta",
+              branchId: listBranchId ?? undefined,
             }
           : {
               employeeIds: Array.from(selected),
@@ -554,13 +614,20 @@ export default function SalaryCreatePage() {
               method: methodKey,
               plastikMethod: plastikTotal > 0 ? plastikMethodKey : undefined,
               month: monthKey,
+              branchId: listBranchId ?? undefined,
             }),
       });
       const data = await res.json();
       invalidateTransactions(); // yangi tranzaksiya yozildi -> kesh bekor
       if (!data.ok) {
-        showError(t(data.error || "Oylik chiqarilmadi"));
         setSaving(false);
+        // Ro'yxat eskirgan (filial boshqa oynada almashgan) — sahifa yangi
+        // filial bo'yicha qayta yuklanadi, sababi yuklangach aytiladi.
+        if (data.branchChanged) {
+          reloadForBranchChange();
+          return;
+        }
+        showError(t(data.error || "Oylik chiqarilmadi"));
         return;
       }
       // Ilgari bu yerdan tarix sahifasiga o'tilardi — endi hisob-kitob

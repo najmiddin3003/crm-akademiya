@@ -77,7 +77,13 @@ export async function GET(req: Request) {
   // `month` QAYTARILADI: mijoz qaysi oy hisoblanganini taxmin qilmasin —
   // parametrsiz so'rovda ham server tanlagan oy aniq bo'lsin.
   const month = payrollMonthKey(period);
-  if (!withGiven) return NextResponse.json({ ok: true, month, employees });
+  // `branchId` — ro'yxat QAYSI FILIAL uchun tuzilgani (30.09.2026). Oylik
+  // sahifasi uni «Oylikni chiqarish» so'rovida qaytaradi: filial tanlovi
+  // cookie'da va brauzerning HAMMA oynalari uchun bitta — boshqa oynada
+  // almashtirilsa, bu oyna eski ro'yxatni ko'rsatib turaveradi
+  // (app/api/salary-runs/route.ts → POST dagi qorovul).
+  const branchId = allBranches ? null : scope.branchId;
+  if (!withGiven) return NextResponse.json({ ok: true, month, branchId, employees });
 
   // "Berilgan avans" / "To'langan oylik" kartochkalari — pul QAYSI FILIAL
   // KASSASIDAN chiqqani bo'yicha. Qatorlarning o'z raqamlari o'zgarmaydi.
@@ -88,7 +94,7 @@ export async function GET(req: Request) {
   // oylik chiqarilayotganda kerak (lib/teacherHandoverStore.ts).
   const cur = payrollPeriod();
   const recent = month === payrollMonthKey(cur) || month === prevMonthKey(cur);
-  if (!recent) return NextResponse.json({ ok: true, month, employees: rows, given });
+  if (!recent) return NextResponse.json({ ok: true, month, branchId, employees: rows, given });
   const hints = await detectMovedPupils(
     db,
     month,
@@ -98,5 +104,5 @@ export async function GET(req: Request) {
     const h = hints.get(String(e.name ?? "").trim().toLowerCase());
     return h ? { ...e, movedHint: h } : e;
   });
-  return NextResponse.json({ ok: true, month, employees: withHints, given });
+  return NextResponse.json({ ok: true, month, branchId, employees: withHints, given });
 }
