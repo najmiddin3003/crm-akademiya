@@ -14,7 +14,7 @@ import { detectMovedPupils } from "@/lib/teacherHandoverStore";
 //   paidAvans/paidOylik ← transaction_entries (shu oydagi chiqimlar)
 //   fixedSalary ← xodim kartasidagi filiallar bo'yicha ish haqi
 //   percent ← Sozlamalar > Moliya > Oylik foizlari (daraja nomi orqali)
-//   carryOver ← o'tgan oy yopilgan salary_runs yozuvi
+//   carryOver ← o'tgan oylarning jonli qoldig'i (loadCarryOver)
 //
 // `configured: false` bo'lgan xodimning raqamlari ma'nosiz — interfeys
 // ularni "Oylik sozlanmagan" deb ko'rsatishi kerak.

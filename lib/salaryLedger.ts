@@ -32,8 +32,8 @@ import {
 //
 // QOIDA — lib/payrollSources.ts bilan BIR XIL, ikkinchi nusxa emas:
 //   • oy chegarasi: `periodMonth`, u bo'lmasa `date` ning oyi (monthMatch);
-//   • oy boshidagi qoldiq: o'tgan oydan qolgan (`loadCarryOver` —
-//     yopilgan oyda muzlatilgan, yopilmaganida jonli) — chap kartadagi
+//   • oy boshidagi qoldiq: o'tgan oylardan qolgan (`loadCarryOver` —
+//     o'tgan oylarning jonli sof qoldig'i, 02.10.2026 dan) — chap kartadagi
 //     "To'lanmagan" ham aynan shundan boshlanadi; okladli xodimda unga
 //     shu oy okladi (`payrollOkladPart`: o'tgan oyda to'liq, joriy oyda
 //     bugungi kungacha pro-rata, ishga kirgan kundan) qo'shiladi;

@@ -18,8 +18,10 @@ export interface SalaryRunItem {
    *   musbat — akademiya xodimga qarzdor (to'lanmagan qism),
    *   manfiy — XODIM akademiyaga qarzdor (masalan, avans olgan, ammo
    *            uni qoplagan tushum keyin bekor qilingan).
-   * Ikkala tomon ham keyingi oyga o'tadi (lib/payrollSources.ts →
-   * loadCarryOver).
+   * Tarix va chek uchun — CHIQARISH PAYTIDAGI holat. 02.10.2026 dan keyingi
+   * oyga o'tadigan qoldiq bu maydondan EMAS, o'tgan oylarning jonli
+   * hisobidan olinadi (lib/payrollSources.ts → loadCarryOver): chiqarishdan
+   * keyin o'sha oy uchun kelgan to'lov ham o'tsin.
    *
    * DIQQAT: bu TO'LOVDAN KEYINGI qoldiq. Chiqarish paytida pul kassadan
    * haqiqatan chiqarilgani uchun to'liq to'langan xodimda u 0 bo'ladi —
@@ -211,8 +213,7 @@ export interface SalaryRun {
   /**
    * "karta" — FAQAT KARTA QISMI chiqarilgan (30.09.2026, «Faqat kartani
    * chiqarish» tugmasi): bank kartaga o'tkazgan pul, naqd qismi keyin
-   * beriladi. Bunday chiqarish OYNI YOPMAYDI — keyingi oyga o'tadigan qoldiq
-   * (lib/payrollSources.ts → loadCarryOver) va jarimalarni bekor qilish
+   * beriladi. Bunday chiqarish OYNI YOPMAYDI — jarimalarni bekor qilish
    * qulfi (lib/staffTasksServer.ts → loadClosedMonths) uni hisobga olmaydi;
    * to'lovning o'zi esa oddiy plastik chiqim yozuvi sifatida "to'langan
    * oylik"ka kiradi. Yo'q — oddiy (karta + naqd) chiqarish.

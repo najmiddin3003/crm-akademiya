@@ -22,6 +22,7 @@ import { invalidateTransactions } from "@/lib/cacheKeys";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { monthsInNote, nearestMonthKey } from "@/lib/noteMonth";
 
 function fmtSom(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -106,7 +107,7 @@ export default function CashboxKirimDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
-  const { t } = useT();
+  const { t, months } = useT();
   const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
@@ -149,6 +150,14 @@ export default function CashboxKirimDrawer({
     const d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
   });
+  // Oy QO'LDA tanlanganmi. Tanlangan bo'lsa, sana o'zgarganda u endi
+  // sananing oyiga qaytib ketmaydi (02.10.2026 gacha qaytib ketardi:
+  // avval «Avgust» tanlab, keyin sanani bosgan kassirning to'lovi jimgina
+  // sentabrga yozilardi).
+  const [periodTouched, setPeriodTouched] = useState(false);
+  // Izoh va oy farqi haqidagi ogohlantirishni kassir ko'rib, baribir saqlamoqchi
+  // bo'lgan holat — `${note}|${periodMonth}` kaliti (biri o'zgarsa yana so'raladi).
+  const [mismatchAck, setMismatchAck] = useState("");
   // "Uchinchi shaxs" turidagi kirim qatorlari (Qiymat + Oy). Boshqa
   // turlarda ishlatilmaydi — u yerda yuqoridagi bitta `amount` qoladi.
   const [rows, setRows] = useState<Row[]>(() => [{ id: 1, amount: "", periodMonth: monthOf(null) }]);
@@ -242,6 +251,17 @@ export default function CashboxKirimDrawer({
   const showRows = audience.thirdParty;
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
+  // IZOHDAGI OY ≠ TANLANGAN OY (lib/noteMonth.ts izohi): kassir oyni izohga
+  // yozib, «Qaysi oy uchun» ni o'zgartirmasa — ustoz ulushi boshqa oyga
+  // tushadi. Faqat oy maydoni va o'qituvchi chiqadigan turda tekshiriladi
+  // (aks holda `periodMonth` hech kimning oyligiga ta'sir qilmaydi).
+  const noteMonthNums = useMemo(() => monthsInNote(note), [note]);
+  const noteMismatch = !showRows && showTeacher && noteMonthNums.length > 0
+    && !noteMonthNums.includes(Number(periodMonth.slice(5, 7)));
+  // Izohda BITTA oy bo'lsa — bir bosishda o'shanga o'tkazish taklif qilinadi.
+  const noteTarget = noteMismatch && noteMonthNums.length === 1 ? nearestMonthKey(noteMonthNums[0], periodMonth) : null;
+  const monthName = (key: string) => `${months[Number(key.slice(5, 7)) - 1] ?? key} ${key.slice(0, 4)}`;
+
   /**
    * Tranzaksiya turini almashtirishning YAGONA darvozasi.
    *
@@ -264,6 +284,7 @@ export default function CashboxKirimDrawer({
     setRows([{ id: 1, amount: "", periodMonth: monthOf(date) }]);
     setNextRowId(2);
     setPeriodMonth(monthOf(date));
+    setPeriodTouched(false);
   }
 
   function addRow() {
@@ -341,6 +362,14 @@ export default function CashboxKirimDrawer({
     }
     if (!method) {
       showError(t("To'lov turini tanlang"));
+      return;
+    }
+    // Izohda boshqa oy yozilgan — birinchi bosishda to'xtab ko'rsatiladi,
+    // ikkinchi bosishda (kassir ataylab shunday qoldirgan) saqlanadi.
+    const ackKey = `${note}|${periodMonth}`;
+    if (noteMismatch && mismatchAck !== ackKey) {
+      setMismatchAck(ackKey);
+      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi. Oyni to'g'rilang yoki yana «Saqlash»ni bosing."));
       return;
     }
     // BITTA YOZUV, YIG'INDI BILAN — qatorlar alohida jurnal yozuvi
@@ -634,8 +663,9 @@ export default function CashboxKirimDrawer({
                   setDate(d);
                   // Sana o'zgarsa oy ham ergashadi — kassir odatda bugungi
                   // kun uchun to'lov qabul qiladi va ikkinchi maydonga
-                  // umuman tegishi shart emas.
-                  if (d) setPeriodMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+                  // umuman tegishi shart emas. Oy QO'LDA tanlangan bo'lsa
+                  // — tegilmaydi (`periodTouched` izohi).
+                  if (d && !periodTouched) setPeriodMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
                 }}
                 className="w-full"
               />
@@ -646,7 +676,10 @@ export default function CashboxKirimDrawer({
                 <MonthYearPicker
                   className="w-full"
                   value={{ month: Number(periodMonth.slice(5, 7)), year: Number(periodMonth.slice(0, 4)) }}
-                  onChange={(v) => setPeriodMonth(`${v.year}-${String(v.month).padStart(2, "0")}`)}
+                  onChange={(v) => {
+                    setPeriodMonth(`${v.year}-${String(v.month).padStart(2, "0")}`);
+                    setPeriodTouched(true);
+                  }}
                 />
               </div>
             )}
@@ -657,9 +690,28 @@ export default function CashboxKirimDrawer({
               Shart `showTeacher` ni ham tekshiradi: o'qituvchi tanlovi
               chiqmaydigan turda bu ogohlantirish YOLG'ON bo'lardi — u
               yerda hech kimning oyligi o'zgarmaydi. */}
-          {!showRows && showTeacher && periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
+          {noteMismatch ? (
+            <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
+              {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
+                note: noteMonthNums.map((m) => months[m - 1]).join(", "),
+                month: monthName(periodMonth),
+              })}
+              {noteTarget && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeriodMonth(noteTarget);
+                    setPeriodTouched(true);
+                  }}
+                  className="ml-1 font-semibold text-primary hover:underline"
+                >
+                  {t("{month} oyiga o'tkazish", { month: monthName(noteTarget) })}
+                </button>
+              )}
+            </div>
+          ) : !showRows && showTeacher && periodMonth !== (date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` : "") && (
             <p className="-mt-1 text-[11px] text-amber-600">
-              To&apos;lov {periodMonth} oyiga yoziladi — o&apos;qituvchining o&apos;sha oydagi oyligiga qo&apos;shiladi.
+              {t("To'lov {month} oyiga yoziladi — o'qituvchining o'sha oydagi oyligiga qo'shiladi.", { month: monthName(periodMonth) })}
             </p>
           )}
 

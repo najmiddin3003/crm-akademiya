@@ -50,6 +50,13 @@
 //
 // IDEMPOTENT: avgust uchun yozuv allaqachon bo'lsa, skript hech narsa
 // qilmaydi.
+//
+// 02.10.2026 DAN: bu hujjat (kassasi yo'q) "NOL-YOPISH" deb taniladi
+// (lib/payrollSources.ts → isPureCloseRun). Avgustning okladi, soliqi,
+// bonus/jarimasi yopiq qoladi, lekin FOIZLI ustozlarning «Avgust» tanlab
+// kiritilgan to'lovlardan ulushi keyingi oyga o'tadi — o'quvchilar avgust
+// uchun sentabrda ham to'layverdi va u ulush hech qayerga o'tmay qolardi
+// (foydalanuvchi qarori; loadCarryOver izohi).
 
 import fs from "fs";
 import { MongoClient } from "mongodb";

@@ -12,6 +12,8 @@ import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   CLOSING_SALARY_RUN,
   payrollEarned,
+  payrollFoizPart,
+  payrollHasFoiz,
   payrollMonthKey,
   payrollPaid,
   payrollPeriod,
@@ -337,122 +339,125 @@ export function resolvePercent(raw: unknown, byTier: Map<string, number>): numbe
 }
 
 /**
- * O'tgan oyda yopilgan hisobdan o'tadigan qoldiq, ISHORALI:
+ * Oyni FAQAT YOPADIGAN, pul chiqarmagan hujjat — `scripts/close-august-payroll.mjs`
+ * yozgan 2026-08 "nol-yopish": kassasi yo'q, hamma `items[].amount` 0.
+ * Haqiqiy chiqarish (app/api/salary-runs → POST) doim kassa bilan yoziladi.
+ */
+export function isPureCloseRun(run: { cashboxId?: unknown }): boolean {
+  const c = run?.cashboxId;
+  return c === undefined || c === null || c === "";
+}
+
+/**
+ * Bitta o'tgan oyning keyingi oyga qo'shadigan SOF ULUSHI, ishorali.
+ *
+ *   oddiy oy       — hisoblangan − soliq − olingan;
+ *   nol-yopish oyi — FAQAT foiz ulushi − olingan. O'sha oyning okladi,
+ *                    soliqi va bonus/jarimasi eski tizimda hal qilingan
+ *                    (close-august-payroll.mjs sarlavhasi), o'quvchilar esa
+ *                    o'sha oy uchun keyin ham to'layveradi — ustoz ulushi
+ *                    yo'qolmasligi kerak (foydalanuvchi, 02.10.2026).
+ *
+ * Ish haqi sozlanmagan xodimda 0 — uning "hisoblangan"i ma'nosiz.
+ */
+export function carryContribution(e: EmployeePayroll, p: PayrollPeriod, pureClose: boolean): number {
+  if (!e.configured) return 0;
+  if (pureClose) return payrollHasFoiz(e) ? payrollFoizPart(e) - payrollPaid(e) : 0;
+  return payrollEarned(e, p) - payrollTax(e, p) - payrollPaid(e);
+}
+
+/** Qoldiq zanjiri orqaga yuradigan oylar soni — himoya chegarasi. */
+const CARRY_MAX_MONTHS = 24;
+
+/**
+ * O'tgan oylardan o'tadigan qoldiq, ISHORALI:
  *   musbat — akademiya xodimga qarzdor (to'lanmagan oylik),
- *   manfiy — XODIM akademiyaga qarzdor.
+ *   manfiy — XODIM akademiyaga qarzdor (masalan, avans olgan, keyin uni
+ *            qoplagan o'quvchi to'lovi bekor qilingan) — shu oyning
+ *            hisobidan ushlab qolinadi.
  *
- * NIMA NOTO'G'RI EDI: bu yerda `amount > 0` sharti turardi, ya'ni faqat
- * akademiyaning qarzi o'tardi. Xodimning qarzi (manfiy qoldiq) esa
- * o'tmasdi va butunlay yo'qolardi. Amaldagi holat: o'qituvchiga avans
- * berilgan, keyin uni qoplagan o'quvchi to'lovi bekor qilingan —
- * o'qituvchida olingan, lekin ishlanmagan pul qoladi. Endi u manfiy
- * `carryOver` sifatida keyingi oyga o'tadi va o'sha oyning hisobidan
- * ushlab qolinadi.
+ * QOIDA (02.10.2026 dan): o'tgan oylarning JONLI sof qoldiqlari yig'indisi —
+ * har oy uchun `carryContribution`, zanjir o'tgan oydan orqaga yuradi:
+ *   • moliyaviy yozuvi UMUMAN yo'q oyda to'xtaydi. Okladli xodimning
+ *     "hisoblangan"i har oy o'z-o'zidan paydo bo'ladi, "to'langan"i esa
+ *     faqat kassadan keladi — yozuvsiz oyni sanash YOZUV YO'QLIGINI qarz
+ *     qilib ko'rsatardi (tizimdan oldingi davr);
+ *   • NOL-YOPISH oyini (`isPureCloseRun`) qo'shib, undan keyin to'xtaydi —
+ *     undan oldingi hisob yopiq;
+ *   • CARRY_MAX_MONTHS — himoya.
  *
- * Bir oyda bir necha marta oylik chiqarilgan bo'lsa, xodim uchun ENG
- * OXIRGI chiqarishdagi qoldiq olinadi (avvalgisi allaqachon eskirgan).
- * Ilgari `findOne` ishlatilardi — u tartibsiz bitta yozuvni olardi va
- * boshqa chiqarishlardagi xodimlar umuman tushib qolardi.
+ * NIMA NOTO'G'RI EDI: oy uchun oylik chiqarilgan bo'lsa (`salary_runs`),
+ * qoldiq o'sha chiqarishda MUZLATILGAN `items[].amount` dan olinardi:
+ *   – chiqarishdan KEYIN o'sha oy uchun kelgan to'lov (Kirim → «Qaysi oy
+ *     uchun: Sentabr», 1–2 oktabrda) ustoz oyligiga qo'shilardi-yu, keyingi
+ *     oyga HECH QACHON o'tmasdi — faqat o'sha oy sahifasida turardi;
+ *   – chiqarishga KIRMAGAN xodimning qoldig'i ham butunlay tushib qolardi:
+ *     bitta filialning chiqarishi oyni HAMMA uchun "yopardi" (4-filialda
+ *     sentabr oyligi umuman chiqarilmagan edi);
+ *   – avgust nol-yopishidan keyin «Avgust» tanlab kiritilgan to'lovlarning
+ *     ustoz ulushi hech qayerga o'tmasdi.
+ * O'lchandi (prod, 02.10.2026): avgustda 8 ustozda 2 586 500, sentabrda
+ * 3 517 667 so'm shunday "osilib" qolgan edi (Muhammadjon Ahmadjanov:
+ * 690 000 + 600 000).
+ *
+ * JONLI = muzlatilgan + keyingi o'zgarishlar: chiqarishdan keyin hech narsa
+ * o'zgarmagan bo'lsa natija muzlatilgan qoldiq bilan aynan bir xil
+ * (chiqarish `payrollDue` ni to'laydi). IKKI MARTA TO'LASH YO'Q: chiqarilgan
+ * pul o'sha oyning "olingan"ida turadi (yozuvning `periodMonth` i — o'sha oy).
+ *
+ * NARXI: zanjirdagi har oy uchun bitta `buildPayrollRows` (carryOver: false,
+ * `refs` umumiy), PARALLEL. Hozir 1–2 oy, har oy bittaga o'sadi; sekinlashsa
+ * — oylik yig'indilarni bitta agregatsiyada (oy bo'yicha guruhlab) hisoblash.
  */
 export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs): Promise<Map<number, number>> {
-  const prev = prevMonthKey(p);
-  // «FAQAT KARTA» CHIQARISHLARI OYNI YOPMAYDI (30.09.2026) — ular olinmaydi.
-  // Sabab: undan keyin naqd qismi odatda kassadan beriladi va muzlatilgan
-  // qoldiq (kartadan keyingi naqd) eskirib, keyingi oyga "to'lanmagan" bo'lib
-  // o'tardi. Kartaga chiqqan pul esa oddiy plastik chiqim yozuvi — pastdagi
-  // jonli hisobda "to'langan" bo'lib o'zi turadi. Yana: bitta karta
-  // chiqarishi boshqa HAMMA xodimning qoldig'ini 0 ga tushirib yuborardi
-  // (yopilgan oyda ro'yxatda yo'q xodimga qoldiq o'tmaydi).
-  const prevRuns = await db
+  // Nol-yopish oylari — bitta so'rov. «Faqat karta» hujjatlari oyni yopmaydi
+  // (CLOSING_SALARY_RUN), ularda kassa ham bor — bu yerga baribir tushmaydi.
+  const runs = await db
     .collection("salary_runs")
-    .find({ month: prev, ...CLOSING_SALARY_RUN })
-    .sort({ id: 1 })
+    .find<{ month?: string; cashboxId?: unknown }>(
+      { month: { $type: "string" }, ...CLOSING_SALARY_RUN },
+      { projection: { _id: 0, month: 1, cashboxId: 1 } },
+    )
     .toArray();
+  const pure = new Set(runs.filter((r) => isPureCloseRun(r)).map((r) => String(r.month)));
 
-  // O'TGAN OY UMUMAN YOPILMAGAN BO'LSA — QOLDIQ JONLI HISOBLANADI.
-  //
-  // NIMA NOTO'G'RI EDI: qoldiq FAQAT `salary_runs` dan o'qilardi, ya'ni
-  // "O'tgan oydan" ustuni faqat oylik AYNAN SHU SAHIFA orqali chiqarilgan
-  // bo'lsagina to'lardi. Amalda esa oyliklar to'g'ridan-to'g'ri kassadan
-  // beriladi va `salary_runs` bo'sh — demak ustun hech qachon to'lmasdi va
-  // o'tgan oyda ishlab, lekin olinmagan pul keyingi oyga umuman o'tmasdi.
-  // (O'lchandi: avgustda 238 745 400 hisoblangan, 114 845 000 to'langan —
-  // 121 572 400 so'm hech qayerda ko'rinmasdi.)
-  //
-  // Endi yopilmagan oy uchun o'sha oyning OCHIQ QOLDIG'I hisoblanadi:
-  //   hisoblangan − soliq − to'langan (avans + oylik)
-  //
-  // ATAYLAB FAQAT BITTA OY ORQAGA qaraladi, zanjir qurilmaydi. Sabab
-  // o'lchangan: har bir oyda ~120-160 mln so'm ochiq qoldiq bor va 12 oy
-  // zanjiri ekranga 1.5 mlrd so'mlik "qarz" chiqarardi — bu raqamning
-  // ortida biznes qarori turadi, kod uni o'zi qabul qila olmaydi. Bir oy
-  // esa foydalanuvchi so'ragan holatni to'liq qoplaydi: sentabrda kelib
-  // "avgust uchun" deb belgilangan to'lov avgust oyligiga qo'shiladi va
-  // olinmagan bo'lsa sentabr sahifasida "O'tgan oydan" bo'lib chiqadi.
-  //
-  // IKKI MARTA SANASH XAVFI YO'Q: oylik shu sahifadan chiqarilishi bilan
-  // `salary_runs` yozuvi paydo bo'ladi va yuqoridagi shox ishlaydi —
-  // muzlatilgan qoldiq jonli hisobdan USTUN.
-  if (prevRuns.length === 0) {
-    // O'TGAN OYDA MOLIYAVIY YOZUV UMUMAN BO'LMASA — O'TKAZILADIGAN QOLDIQ
-    // YO'Q.
-    //
-    // NIMA UCHUN: oklad oladigan xodimning "hisoblangan"i har oy o'z-o'zidan
-    // paydo bo'ladi (fixedSalary × kun/kun), "to'langan"i esa faqat kassa
-    // yozuvidan keladi. Kassada o'sha oyga oid birorta yozuv bo'lmasa,
-    // natija "hamma to'liq to'lanmagan" bo'lib chiqadi va har oy ustma-ust
-    // yig'ilib boraveradi — bu QARZ emas, YOZUV YO'QLIGI.
-    //
-    // Amalda uchradi: to'lovlar jurnali ataylab tozalangandan keyin
-    // avgustda 39 000 000 "hisoblangan" ustiga iyuldan 38 412 000 "o'tgan
-    // oydan" qo'shilib, hech kim olmagan pul ikki barobar ko'rinardi.
-    //
-    // Tizim ishlatila boshlashi bilan bu shart o'z-o'zidan ochiladi:
-    // o'tgan oyda bitta kirim yoki chiqim bo'lishi kifoya.
-    const anyPrev = await db.collection("transaction_entries").countDocuments(
-      { $or: monthMatch(prev), status: { $ne: "cancelled" } },
-      { limit: 1 },
-    );
-    if (anyPrev === 0) return new Map();
+  const chain: { month: string; pureClose: boolean }[] = [];
+  let month = prevMonthKey(p);
+  for (let i = 0; i < CARRY_MAX_MONTHS; i++) {
+    const pureClose = pure.has(month);
+    if (!pureClose) {
+      const any = await db.collection("transaction_entries").countDocuments(
+        { $or: monthMatch(month), status: { $ne: "cancelled" } },
+        { limit: 1 },
+      );
+      if (any === 0) break;
+    }
+    chain.push({ month, pureClose });
+    if (pureClose) break;
+    month = prevMonthKey(payrollPeriodOf(month));
+  }
+  if (chain.length === 0) return new Map();
 
-    const prevPeriod = payrollPeriodOf(prev);
-    // `carryOver: false` — REKURSIYA CHEGARASI. Usiz buildPayrollRows
-    // yana loadCarryOver ni chaqirib, cheksiz zanjir hosil bo'lardi.
-    //
-    // `refs` — chaqiruvchi allaqachon o'qigan, OYGA BOG'LIQ BO'LMAGAN
-    // ma'lumot (xodimlar, bonus/jarima, foiz darajalari, soliqlar). Uni
-    // qayta o'qish o'tgan oy hisobiga 5 ta ortiqcha Atlas so'rovi
-    // qo'shardi va sahifa ochilishi ikki barobar sekinlashardi
-    // (o'lchandi: 1.5 s → 2.9 s).
-    const rows = await buildPayrollRows(db, prevPeriod, { carryOver: false, refs });
-    const live = new Map<number, number>();
+  // `carryOver: false` — REKURSIYA CHEGARASI: zanjirning o'zi har oyni bir
+  // marta sanaydi. `refs` — oyga bog'liq bo'lmagan ma'lumot (xodimlar,
+  // bonus/jarima, foiz darajalari, soliqlar) qayta o'qilmaydi.
+  const parts = await Promise.all(
+    chain.map(async (c) => {
+      const period = payrollPeriodOf(c.month);
+      const rows = await buildPayrollRows(db, period, { carryOver: false, refs });
+      return { period, pureClose: c.pureClose, rows };
+    }),
+  );
+
+  const carry = new Map<number, number>();
+  for (const { period, pureClose, rows } of parts) {
     for (const e of rows) {
-      // Ish haqi sozlanmagan xodimning "hisoblangan"i ma'nosiz (0) —
-      // uni qoldiq sifatida o'tkazish soxta raqam bo'lardi.
-      if (!e.configured) continue;
-      const open = payrollEarned(e, prevPeriod) - payrollTax(e, prevPeriod) - payrollPaid(e);
-      if (open !== 0) live.set(e.id, open);
-    }
-    return live;
-  }
-
-  const map = new Map<number, number>();
-  for (const run of prevRuns) {
-    for (const it of (run?.items ?? []) as { employeeId?: number; amount?: number }[]) {
-      const id = Number(it?.employeeId);
-      const amount = Number(it?.amount);
-      // NOL QIYMAT HAM YOZILADI. Ilgari bu yerda `amount === 0` ni tashlab
-      // yuboradigan shart turardi va u endi ZARARLI: chiqarish pulni
-      // haqiqatan to'lagandan keyin to'liq yopilgan xodimda qoldiq aynan
-      // 0 bo'ladi (app/api/salary-runs/route.ts → `amount: empDue - empPaid`).
-      // Shart qolsa, o'sha oydagi AVVALGI chiqarishda yozilgan manfiy qoldiq
-      // (xodim qarzi) map'da qolib ketardi va allaqachon yopilgan qarz
-      // keyingi oy oyligidan IKKINCHI marta ushlab qolinardi.
-      if (!Number.isFinite(id) || !Number.isFinite(amount)) continue;
-      map.set(id, amount);
+      const v = carryContribution(e, period, pureClose);
+      if (v !== 0) carry.set(e.id, (carry.get(e.id) ?? 0) + v);
     }
   }
-  return map;
+  for (const [id, v] of carry) if (v === 0) carry.delete(id);
+  return carry;
 }
 
 /**
