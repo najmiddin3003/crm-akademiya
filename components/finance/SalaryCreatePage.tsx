@@ -1399,12 +1399,10 @@ export default function SalaryCreatePage() {
                                 amount: fmtSum(covered),
                                 current: pendingMonthLabel(monthKey),
                               })}
-                              className="mt-1 text-right text-[11px] leading-tight text-rose-600 dark:text-rose-400"
+                              className="mt-1 text-right text-[11px] leading-tight text-rose-600 dark:text-rose-400 cursor-help"
                             >
                               <span className="block font-medium">{`${pendingMonthLabel(pm.month)}: ${fmtNum(pm.amount)}`}</span>
-                              <span className="block">
-                                {t("ehtimol {month} oyida berilgan — qayta chiqarmang", { month: pendingMonthLabel(monthKey) })}
-                              </span>
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[11px] font-medium leading-none text-rose-600 dark:text-rose-400 cursor-help whitespace-nowrap">⚠ {t("Qayta chiqarmang")}</span>
                             </div>
                           );
                         }
@@ -1457,18 +1455,19 @@ export default function SalaryCreatePage() {
                           joriy oyda joriy oy yozuvi bo'lib berilgan bo'lishi
                           mumkin (04.10.2026, `maybePaidIn` — o'tish davri
                           qorovuli). Raqam o'zgarmaydi, faqat ogohlantiriladi. */}
+                      {/* QISQA BELGI (04.10.2026): uzun matn tor ustunda 7 qatorga
+                          cho'zilardi — to'liq izoh sichqoncha ostida (title). */}
                       {e.configured && e.maybePaidIn && (
-                        <div
-                          className="mt-1 text-[11px] font-normal leading-tight text-rose-600 dark:text-rose-400 whitespace-normal max-w-[180px] ml-auto"
+                        <div className="mt-1">
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[11px] font-medium leading-none text-rose-600 dark:text-rose-400 cursor-help whitespace-nowrap"
                           title={t("Shu oy qoldig'idan {amount} {month} oyida {month} yozuvi bo'lib berilgan bo'lishi mumkin — u yerda shuncha ortiqcha oylik bor. Qayta chiqarilsa xodim uni ikki marta oladi: avval o'sha yozuvning oyini tekshiring.", {
                             amount: fmtSum(e.maybePaidIn.amount),
                             month: pendingMonthLabel(e.maybePaidIn.month),
                           })}
                         >
-                          {t("{amount} ehtimol {month} oyida berilgan — qayta chiqarmang", {
-                            amount: fmtNum(e.maybePaidIn.amount),
-                            month: pendingMonthLabel(e.maybePaidIn.month),
-                          })}
+                          ⚠ {t("Qayta chiqarmang")}
+                        </span>
                         </div>
                       )}
                     </td>
