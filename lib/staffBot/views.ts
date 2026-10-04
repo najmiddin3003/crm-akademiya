@@ -767,3 +767,15 @@ export function leadCancelled(): string {
 export function noLeadPermission(): string {
   return "🔒 Lidlar bo'limiga ruxsatingiz yo'q. Administratorga murojaat qiling.";
 }
+
+/**
+ * IZOHDAGI OY ≠ TANLANGAN OY (04.10.2026 dan MAJBURIY, lib/noteMonth.ts →
+ * noteMonthConflict) — izoh qabul qilinmaydi, shu matn bilan qayta so'raladi.
+ * Server ham rad etadi: bu yerda to'xtatilmasa kassir xatoni faqat
+ * «Tasdiqlash»da ko'rardi.
+ */
+export function noteMonthClash(noteMonths: number[], periodMonth: string): string {
+  const names = noteMonths.map((m) => MONTHS.uz[m - 1] ?? String(m)).join(", ");
+  return `⚠️ Izohda <b>${esc(names)}</b> yozilgan, lekin to'lov <b>${esc(monthLabel(periodMonth))}</b> uchun. `
+    + "Izohdagi oyni to'g'rilang yoki izohsiz davom eting.";
+}

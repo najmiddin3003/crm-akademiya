@@ -155,9 +155,6 @@ export default function CashboxKirimDrawer({
   // avval «Avgust» tanlab, keyin sanani bosgan kassirning to'lovi jimgina
   // sentabrga yozilardi).
   const [periodTouched, setPeriodTouched] = useState(false);
-  // Izoh va oy farqi haqidagi ogohlantirishni kassir ko'rib, baribir saqlamoqchi
-  // bo'lgan holat — `${note}|${periodMonth}` kaliti (biri o'zgarsa yana so'raladi).
-  const [mismatchAck, setMismatchAck] = useState("");
   // "Uchinchi shaxs" turidagi kirim qatorlari (Qiymat + Oy). Boshqa
   // turlarda ishlatilmaydi — u yerda yuqoridagi bitta `amount` qoladi.
   const [rows, setRows] = useState<Row[]>(() => [{ id: 1, amount: "", periodMonth: monthOf(null) }]);
@@ -255,6 +252,7 @@ export default function CashboxKirimDrawer({
   // yozib, «Qaysi oy uchun» ni o'zgartirmasa — ustoz ulushi boshqa oyga
   // tushadi. Faqat oy maydoni va o'qituvchi chiqadigan turda tekshiriladi
   // (aks holda `periodMonth` hech kimning oyligiga ta'sir qilmaydi).
+  // 04.10.2026 dan MAJBURIY: farq bo'lsa «Saqlash» o'chiq (save() izohi).
   const noteMonthNums = useMemo(() => monthsInNote(note), [note]);
   const noteMismatch = !showRows && showTeacher && noteMonthNums.length > 0
     && !noteMonthNums.includes(Number(periodMonth.slice(5, 7)));
@@ -364,12 +362,13 @@ export default function CashboxKirimDrawer({
       showError(t("To'lov turini tanlang"));
       return;
     }
-    // Izohda boshqa oy yozilgan — birinchi bosishda to'xtab ko'rsatiladi,
-    // ikkinchi bosishda (kassir ataylab shunday qoldirgan) saqlanadi.
-    const ackKey = `${note}|${periodMonth}`;
-    if (noteMismatch && mismatchAck !== ackKey) {
-      setMismatchAck(ackKey);
-      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi. Oyni to'g'rilang yoki yana «Saqlash»ni bosing."));
+    // Izohda boshqa oy yozilgan — MAJBURIY (04.10.2026, foydalanuvchi:
+    // "majburiy qil"): oy yoki izoh to'g'rilanmaguncha SAQLANMAYDI. Ilgari
+    // ikkinchi «Saqlash» o'tkazib yuborardi va 03.10 da 20 ta «sentabr»
+    // izohli kirim shu yo'l bilan oktabrga yozildi. Server ham rad etadi
+    // (lib/cashboxAdjust.ts → noteMonthConflict).
+    if (noteMismatch) {
+      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang"));
       return;
     }
     // BITTA YOZUV, YIG'INDI BILAN — qatorlar alohida jurnal yozuvi
@@ -691,11 +690,12 @@ export default function CashboxKirimDrawer({
               chiqmaydigan turda bu ogohlantirish YOLG'ON bo'lardi — u
               yerda hech kimning oyligi o'zgarmaydi. */}
           {noteMismatch ? (
-            <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
+            <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-400">
               {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
                 note: noteMonthNums.map((m) => months[m - 1]).join(", "),
                 month: monthName(periodMonth),
-              })}
+              })}{" "}
+              {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
               {noteTarget && (
                 <button
                   type="button"
@@ -734,7 +734,7 @@ export default function CashboxKirimDrawer({
           <button onClick={modal.close} disabled={saving} className="h-9 px-5 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-60">
             {t("Orqaga")}
           </button>
-          <button onClick={save} disabled={saving} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
+          <button onClick={save} disabled={saving || noteMismatch} className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60">
             {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>

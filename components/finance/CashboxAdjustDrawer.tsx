@@ -166,9 +166,6 @@ export default function CashboxAdjustDrawer({
   // Tur yoki xodim ALMASHSA — yana sananing oyiga qaytadi (`resetPeriod`);
   // xodimni BIRINCHI marta tanlash almashish emas.
   const [periodTouched, setPeriodTouched] = useState(false);
-  // Izohdagi oy ≠ tanlangan oy ogohlantirishini kassir ko'rib, baribir
-  // saqlamoqchi — `${note}|${periodMonth}` kaliti (biri o'zgarsa yana so'raladi).
-  const [mismatchAck, setMismatchAck] = useState("");
   // JORIY oy — TOSHKENT vaqti (`payrollPeriod` → uzNow), server kelajak
   // oyni aynan shu bilan rad etadi (lib/cashboxAdjust.ts). Holatda: oyna
   // ochiq turgan paytda o'zgarmaydi va render "toza" qoladi.
@@ -286,7 +283,6 @@ export default function CashboxAdjustDrawer({
   function resetPeriod(): void {
     setPeriodMonth(monthOf(date));
     setPeriodTouched(false);
-    setMismatchAck("");
   }
 
   // "Xodim" turiga o'tilgan, lekin ro'yxat hali kelmagan payt — aynan shu
@@ -591,13 +587,11 @@ export default function CashboxAdjustDrawer({
       showError(t("Summa o'quvchi balansidan ({studentBalance}) ko'p bo'lishi mumkin emas", { studentBalance: fmtUZS(studentBalance) }));
       return;
     }
-    // Izohda boshqa oy yozilgan — birinchi bosishda to'xtab ko'rsatiladi,
-    // ikkinchi bosishda (kassir ataylab shunday qoldirgan) saqlanadi.
-    // Kirim oynasi bilan bir xil qoida va matn.
-    const ackKey = `${note}|${periodMonth}`;
-    if (noteMismatch && mismatchAck !== ackKey) {
-      setMismatchAck(ackKey);
-      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi. Oyni to'g'rilang yoki yana «Saqlash»ni bosing."));
+    // Izohda boshqa oy yozilgan — MAJBURIY (04.10.2026): oy yoki izoh
+    // to'g'rilanmaguncha saqlanmaydi. Kirim oynasi bilan bir xil qoida va
+    // matn; server ham rad etadi (lib/cashboxAdjust.ts → noteMonthConflict).
+    if (noteMismatch) {
+      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang"));
       return;
     }
     setSaving(true);
@@ -961,11 +955,12 @@ export default function CashboxAdjustDrawer({
               {t("Yopilgan oy uchun avans yoki oylik berilmaydi")}.
             </div>
           ) : noteMismatch ? (
-            <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
+            <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-400">
               {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
                 note: noteMonthNums.map((m) => months[m - 1]).join(", "),
                 month: monthName(periodMonth),
-              })}
+              })}{" "}
+              {t("Oy yoki izoh to'g'rilanmaguncha saqlanmaydi.")}
               {noteTarget && (
                 <button
                   type="button"
@@ -1019,7 +1014,7 @@ export default function CashboxAdjustDrawer({
           </button>
           <button
             onClick={save}
-            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds || periodBlocked || payrollPending}
+            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds || periodBlocked || payrollPending || noteMismatch}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? t("Saqlanmoqda…") : t("Saqlash")}

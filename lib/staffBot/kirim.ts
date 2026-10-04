@@ -3,6 +3,7 @@ import { pendingDiscountFor } from "@/lib/gamification/discounts";
 import { studentPaidBalance, studentPaidBalanceByName } from "@/lib/pupilsDb";
 import { txAudience } from "@/lib/txTarget";
 import { uzDateIso } from "@/lib/uzTime";
+import { noteMonthConflict } from "@/lib/noteMonth";
 import type { BotCashbox } from "@/lib/staffBot/auth";
 import {
   loadActiveMethods,
@@ -363,7 +364,19 @@ export async function kirimText(ctx: FlowCtx, text: string): Promise<boolean> {
     }
     case "note": {
       // 500 belgi — jurnal "Izoh" ustuni va Telegram xabari uchun yetarli.
-      const next: KirimDraft = { ...d, note: text.trim().slice(0, 500), step: "confirm" };
+      const note = text.trim().slice(0, 500);
+      // IZOHDAGI OY ≠ TANLANGAN OY — MAJBURIY (04.10.2026): izoh qabul
+      // qilinmaydi va qayta so'raladi. Shart serverdagi bilan bir xil
+      // (lib/cashboxAdjust.ts): oy tanlangan va ustoz bor.
+      const clash = d.periodMonth && (d.teacherName ?? "").trim() ? noteMonthConflict(note, d.periodMonth) : null;
+      if (clash && d.periodMonth) {
+        await show(ctx, {
+          html: `${V.noteMonthClash(clash, d.periodMonth)}\n\n${V.kirimNotePrompt(d, cashbox)}`,
+          keyboard: kirimNoteKeyboard(autoNote(d)),
+        });
+        return true;
+      }
+      const next: KirimDraft = { ...d, note, step: "confirm" };
       await advance(ctx, next);
       await showConfirm(ctx, next, cashbox);
       return true;

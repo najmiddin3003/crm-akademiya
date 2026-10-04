@@ -12,6 +12,7 @@ import { resolvePupilRef } from "@/lib/pupilEntries";
 import { paymentSmsEnabled, sendPaymentSms } from "@/lib/paymentSms";
 import { notifyPayment } from "@/lib/studentBot/notify";
 import type { EntryOrigin } from "@/lib/transactionEntries";
+import { noteMonthConflict } from "@/lib/noteMonth";
 import { attachDiscountEntry, claimDiscountForPayment, releaseDiscountClaim, type ClaimedDiscount } from "@/lib/gamification/discounts";
 
 // KASSAGA KIRIM / KASSADAN CHIQIM — yadro.
@@ -185,6 +186,22 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     if (closed && payMonth <= closed) {
       return fail("Yopilgan oy uchun avans yoki oylik berilmaydi");
     }
+  }
+
+  // IZOHDAGI OY ≠ «QAYSI OY UCHUN» — MAJBURIY (04.10.2026, lib/noteMonth.ts →
+  // noteMonthConflict). Faqat oy kimningdir oyligini belgilaydigan joyda va
+  // oy ANIQ yuborilganda (eski mijoz — tekshirilmaydi):
+  //   • kirim + ustoz — ustoz ulushi shu oyga tushadi (Kirim oynasi
+  //     `teacherName` ni faqat ustoz maydoni bor turda yuboradi — oyna ham
+  //     aynan shu holatda to'sadi);
+  //   • xodimga avans/oylik — o'sha oyning oyligidan ayriladi.
+  // Oynalar ham, bot ham buni oldindan to'sadi; bu — zaxira qorovul.
+  const noteCheck = !!period && (
+    (mode === "kirim" && String(teacherName ?? "").trim() !== "")
+    || employeePayout
+  );
+  if (noteCheck && noteMonthConflict(note, period)) {
+    return fail("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi — oyni yoki izohni to'g'rilang");
   }
 
   // Xodimga oylik/avans chiqarilsa — summa xodimning shu oyda CHIQARISH

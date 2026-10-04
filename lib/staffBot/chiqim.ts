@@ -2,6 +2,7 @@ import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { studentPaidBalance } from "@/lib/pupilsDb";
 import { payrollMonthKey, payrollPeriod, prevMonthKey } from "@/lib/salary";
+import { noteMonthConflict } from "@/lib/noteMonth";
 import { refundTeacherOf } from "@/lib/studentRefund";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { txTarget } from "@/lib/txTarget";
@@ -510,7 +511,19 @@ export async function chiqimText(ctx: FlowCtx, text: string): Promise<boolean> {
       return true;
     }
     case "note": {
-      const next: ChiqimDraft = { ...d, note: text.trim().slice(0, 500), step: "confirm" };
+      const note = text.trim().slice(0, 500);
+      // IZOHDAGI OY ≠ TANLANGAN OY — MAJBURIY (04.10.2026): faqat oy
+      // tanlangan Avans/Oylikda (server ham shu holatda rad etadi —
+      // lib/cashboxAdjust.ts); izoh qabul qilinmaydi va qayta so'raladi.
+      const clash = d.salaryPayout && d.periodMonth ? noteMonthConflict(note, d.periodMonth) : null;
+      if (clash && d.periodMonth) {
+        await show(ctx, {
+          html: `${V.noteMonthClash(clash, d.periodMonth)}\n\n${V.chiqimNotePrompt(d, cashbox)}`,
+          keyboard: chiqimNoteKeyboard(),
+        });
+        return true;
+      }
+      const next: ChiqimDraft = { ...d, note, step: "confirm" };
       await advance(ctx, next);
       await showConfirm(ctx, next, cashbox);
       return true;

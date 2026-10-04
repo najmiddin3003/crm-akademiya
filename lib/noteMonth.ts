@@ -56,3 +56,21 @@ export function nearestMonthKey(month: number, around: string): string {
   }
   return `${best}-${String(month).padStart(2, "0")}`;
 }
+
+/**
+ * IZOHDAGI OY ≠ TO'LOV OYI — 04.10.2026 dan MAJBURIY qoida (foydalanuvchi:
+ * "majburiy qil"). Ogohlantirish yetmadi: 03.10 da bitta kassada 20 ta
+ * «sentabr» izohli kirim ikkinchi «Saqlash» bilan baribir oktabrga yozildi.
+ *
+ * Izohda oy(lar) bor va ularning HECH BIRI `periodMonth` ("YYYY-MM") oyi
+ * emas — izohdagi oy raqamlari; aks holda `null`. Izohda bir nechta oy
+ * bo'lib, ulardan biri tanlangan oy bo'lsa («sentabr oktabr» + Oktabr) —
+ * ziddiyat yo'q. Qo'llanadigan joylar: Kirim oynasi, Chiqim oynasi
+ * (xodimga avans/oylik), server (lib/cashboxAdjust.ts), xodimlar boti.
+ */
+export function noteMonthConflict(note: unknown, periodMonth: string): number[] | null {
+  const ms = monthsInNote(note);
+  if (ms.length === 0) return null;
+  const m = Number(String(periodMonth ?? "").slice(5, 7));
+  return ms.includes(m) ? null : ms;
+}
