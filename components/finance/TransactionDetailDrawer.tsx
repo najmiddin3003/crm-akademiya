@@ -57,7 +57,7 @@ export default function TransactionDetailDrawer({
   /** Bekor qilinganda — yangilangan yozuv qaytariladi. */
   onChanged: (entry: TransactionEntry) => void;
 }) {
-  const { t } = useT();
+  const { t, months } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
   const [cancelling, setCancelling] = useState(false);
@@ -100,6 +100,26 @@ export default function TransactionDetailDrawer({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <Row label={t("Sana")}>{fmtEntryDate(entry)}</Row>
+          {/* QAYSI OY UCHUN (04.10.2026, foydalanuvchi so'rovi) — to'lov
+              qaysi oyning hisobiga yozilgan: Kirim/Chiqim oynasidagi
+              «Qaysi oy uchun» (`periodMonth`). Ustoz ulushi ham, xodim
+              oyligidan ayrilishi ham AYNAN shu oyga tushadi
+              (lib/payrollSources.ts → monthMatch). Maydon bo'lmagan eski
+              yozuvda — sananing oyi. Sanadan boshqa oy bo'lsa sariq.
+              Faqat kimningdir oyligiga tegadigan yozuvda (kirim, ustozi
+              yoki xodimi bor chiqim). */}
+          {(entry.txType === "payIn" || (entry.txType === "payOut" && !!entry.teacherName)) && (() => {
+            const dateMonth = entry.date.slice(0, 7);
+            const pm = /^\d{4}-(0[1-9]|1[0-2])$/.test(entry.periodMonth ?? "") ? entry.periodMonth! : "";
+            const key = pm || dateMonth;
+            const label = `${months[Number(key.slice(5, 7)) - 1] ?? key} ${key.slice(0, 4)}`;
+            return (
+              <Row label={t("Qaysi oy uchun")}>
+                <span className={pm && pm !== dateMonth ? "text-amber-600" : ""}>{label}</span>
+                {!pm && <span className="block text-[11px] font-normal text-muted-foreground">{t("to'lov sanasi bo'yicha")}</span>}
+              </Row>
+            );
+          })()}
           <Row label={t("Kim")}>
             {entry.studentName && studentId ? (
               <Link href={`/student-edit/${studentId}?src=list`} className="text-primary hover:underline">
