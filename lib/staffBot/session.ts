@@ -61,10 +61,13 @@ export interface KirimDraft {
   updatedAt: number;
 }
 
-/** Chiqim qoralamasining qadamlari — tartib bilan (lib/staffBot/chiqim.ts). */
-export type ChiqimStep = "type" | "person" | "method" | "amount" | "note" | "confirm" | "saving";
+/**
+ * Chiqim qoralamasining qadamlari — tartib bilan (lib/staffBot/chiqim.ts).
+ * `month` — faqat xodimga Avans/Oylikda, `person` dan keyin (04.10.2026).
+ */
+export type ChiqimStep = "type" | "person" | "month" | "method" | "amount" | "note" | "confirm" | "saving";
 
-/** Xodimning shu oydagi oylik hisobi — Avans/Oylik chegarasi uchun (lib/salary.ts). */
+/** Xodimning TANLANGAN oydagi oylik hisobi — Avans/Oylik chegarasi uchun (lib/salary.ts). */
 export interface SalaryInfo {
   /** Ish haqi sozlanganmi — sozlanmaganda chegara qo'llanmaydi (server ham shunday). */
   configured: boolean;
@@ -105,6 +108,15 @@ export interface ChiqimDraft {
   /** O'quvchiga qaytarishda: balans va tushumidan ayriladigan ustoz. */
   studentBalance?: number;
   refundTeacher?: string;
+  /**
+   * Avans/Oylik QAYSI OY uchun — "YYYY-MM" (04.10.2026). Faqat `salaryPayout`
+   * da so'raladi: o'tgan oy yoki shu oy, kelajak yo'q. `salary` aynan shu
+   * oyning qatoridan olinadi va yadroga `periodMonth` bo'lib ketadi — yozuv
+   * sana oyiga emas, shu oyga tushadi (lib/cashboxAdjust.ts).
+   * Bo'sh — oy bosqichidan oldingi (eski) qoralama: yadro sana oyini oladi,
+   * `salary` ham o'shanda bugungi oydan olingan — ikkalasi mos.
+   */
+  periodMonth?: string;
   salary?: SalaryInfo;
   methodKey?: string;
   methodName?: string;

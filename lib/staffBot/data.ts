@@ -100,15 +100,21 @@ export async function loadEmployeeHit(db: Db, id: number): Promise<EmployeeHit |
 }
 
 /**
- * Xodimning SHU OYDAGI oylik hisobi — Avans/Oylik chegarasi uchun.
+ * Xodimning TANLANGAN OYDAGI oylik hisobi — Avans/Oylik chegarasi uchun.
  *
  * Oylik hisob-kitob sahifasi, Chiqim oynasi va server (lib/cashboxAdjust.ts)
  * bilan AYNAN BIR XIL funksiyalar (lib/salary.ts). Qator butun kompaniya
  * bo'yicha quriladi (filialga kesilmaydi) — server ham shunday tekshiradi.
  * `null` — xodim oylik ro'yxatida yo'q.
+ *
+ * `monthKey` — "YYYY-MM", botdagi "Qaysi oy uchun" tanlovi (04.10.2026).
+ * Ilgari bu yerga bugungi sana berilardi: oktabrda SENTABR oyligi
+ * berilganda chegara oktabr qatoridan olinardi, server esa endi
+ * `periodMonth` bo'yicha (sentabr) tekshiradi — ikkalasi ajralmasin.
+ * "YYYY-MM-DD" berilsa ham ishlaydi (oyi olinadi).
  */
-export async function employeeSalaryInfo(db: Db, name: string, dateIso: string): Promise<SalaryInfo | null> {
-  const period = payrollPeriodOf(dateIso.slice(0, 7));
+export async function employeeSalaryInfo(db: Db, name: string, monthKey: string): Promise<SalaryInfo | null> {
+  const period = payrollPeriodOf(monthKey.slice(0, 7));
   const rows = await buildPayrollRows(db, period);
   const key = name.trim().toLowerCase();
   const row = rows.find((e) => e.name.trim().toLowerCase() === key);

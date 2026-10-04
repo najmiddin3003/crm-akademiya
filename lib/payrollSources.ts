@@ -366,6 +366,29 @@ export function carryContribution(e: EmployeePayroll, p: PayrollPeriod, pureClos
   return payrollEarned(e, p) - payrollTax(e, p) - payrollPaid(e);
 }
 
+/**
+ * OXIRGI NOL-YOPISH OYI ("YYYY-MM") yoki `null` (04.10.2026). Filtr
+ * `loadCarryOver` dagi bilan bir xil — qoldiq zanjiri aynan shu oyda
+ * to'xtaydi, shuning uchun shu oy va undan oldingilarga avans/oylik
+ * yozilmaydi (lib/cashboxAdjust.ts; Chiqim oynasi uni
+ * employees-payroll?branch=all javobidagi `closedThrough` dan oladi).
+ */
+export async function loadLastPureCloseMonth(db: Db): Promise<string | null> {
+  const runs = await db
+    .collection("salary_runs")
+    .find<{ month?: string; cashboxId?: unknown }>(
+      { month: { $type: "string" }, ...CLOSING_SALARY_RUN },
+      { projection: { _id: 0, month: 1, cashboxId: 1 } },
+    )
+    .toArray();
+  let last: string | null = null;
+  for (const r of runs) {
+    const m = String(r.month ?? "").trim();
+    if (isPureCloseRun(r) && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) && (last === null || m > last)) last = m;
+  }
+  return last;
+}
+
 /** Qoldiq zanjiri orqaga yuradigan oylar soni — himoya chegarasi. */
 const CARRY_MAX_MONTHS = 24;
 

@@ -1,6 +1,7 @@
 import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { studentPaidBalance } from "@/lib/pupilsDb";
+import { payrollMonthKey, payrollPeriod, prevMonthKey } from "@/lib/salary";
 import { refundTeacherOf } from "@/lib/studentRefund";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { txTarget } from "@/lib/txTarget";
@@ -27,12 +28,15 @@ import {
   chiqimEmployeeArg,
   chiqimMethodArg,
   chiqimMethodKeyboard,
+  chiqimMonthArg,
+  chiqimMonthKeyboard,
   chiqimNoteKeyboard,
   chiqimPageArg,
   chiqimPersonKeyboard,
   chiqimStudentArg,
   chiqimTypeArg,
   chiqimTypeKeyboard,
+  type MonthOption,
 } from "@/lib/staffBot/keyboards";
 import {
   claimDraftForSave,
@@ -43,16 +47,17 @@ import {
 } from "@/lib/staffBot/session";
 import * as V from "@/lib/staffBot/views";
 import { formatPhone } from "@/lib/studentBot/phone";
-import { fmtUZS } from "@/lib/studentBot/views";
+import { fmtUZS, monthLabel } from "@/lib/studentBot/views";
 
 // 💸 CHIQIM — botdagi kassadan chiqim oqimi.
 //
 // Web'dagi Chiqim oynasi (components/finance/CashboxAdjustDrawer.tsx)
 // bilan BIR XIL qoidalar:
 //   • tur → KIM (turning "Mijoz" sozlamasiga qarab xodim yoki o'quvchi,
-//     yoki hech kim — lib/txTarget.ts) → to'lov turi → summa → izoh → tasdiq;
+//     yoki hech kim — lib/txTarget.ts) → (Avans/Oylikda: OY) → to'lov
+//     turi → summa → izoh → tasdiq;
 //   • to'lov turlari — faqat kassada qoldig'i borlari;
-//   • Avans/Oylik — xodimning shu oydagi qoldig'idan oshmaydi (naqd:
+//   • Avans/Oylik — xodimning TANLANGAN oydagi qoldig'idan oshmaydi (naqd:
 //     `payrollCashLeg`, plastik: `payrollPayout` — 16.09.2026 "karta
 //     birinchi" qoidasi); "Oylik" da summa qo'lda terilmaydi, qoldiqning
 //     o'zi (18.09.2026 qoidasi); oyligi sozlanmagan xodimga chegara yo'q;
@@ -63,9 +68,37 @@ import { fmtUZS } from "@/lib/studentBot/views";
 // oldin qancha mumkinligini ko'rishi kerak.
 // Yozishning o'zi yadroda (lib/cashboxAdjust.ts) — web bilan bitta kod;
 // u chegaralarni yana bir bor tekshiradi.
+//
+// "QAYSI OY UCHUN" (04.10.2026, web'dagi Chiqim oynasi bilan birga): xodimga
+// Avans/Oylikda xodim tanlangach oy so'raladi — O'TGAN yoki SHU oy (shu oy
+// belgilangan, kelajak yo'q). Oylik hisobi (`salary` → chegara, "Oylik"
+// qulflangan summasi) aynan shu oy qatoridan olinadi va oy yadroga
+// `periodMonth` bo'lib ketadi; sana o'zgarmaydi (bugun).
+// NIMA NOTO'G'RI EDI: bot doim bugungi sanani yuborardi va chegarani ham
+// bugungi oydan olardi — oktabrda berilgan SENTABR oyligi oktabrga
+// yozilardi: sentabr sahifasida ayrilmasdi, keyin sentabr uchun "Oylikni
+// chiqarish" uni IKKINCHI marta to'lardi.
+// Tartib: tur → xodim → OY → to'lov turi → summa (Oylikda yo'q) → izoh →
+// tasdiq. Boshqa turlarda oy bosqichi yo'q.
 
 function cashboxOrNull(ctx: FlowCtx): BotCashbox | null {
   return ctx.access.cashbox;
+}
+
+/**
+ * Avans/Oylik oy tugmalari: O'TGAN · SHU (belgilangan). KELAJAK yo'q — server
+ * ham rad etadi. "Shu oy" TOSHKENT vaqti bo'yicha `payrollPeriod` dan —
+ * server kelajak oyni aynan shu bilan tekshiradi (lib/cashboxAdjust.ts),
+ * ya'ni oy almashadigan tunda bot va server bir-biriga zid bo'lmaydi.
+ */
+function payoutMonthOptions(): MonthOption[] {
+  const p = payrollPeriod();
+  const cur = payrollMonthKey(p);
+  const prev = prevMonthKey(p);
+  return [
+    { month: prev, label: monthLabel(prev), current: false },
+    { month: cur, label: monthLabel(cur), current: true },
+  ];
 }
 
 async function advance(ctx: FlowCtx, d: ChiqimDraft): Promise<void> {
@@ -146,7 +179,13 @@ async function showMethod(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, not
     return;
   }
   const html = note ? `${note}` : V.chiqimMethodPrompt(d, cashbox);
-  await show(ctx, { html, keyboard: chiqimMethodKeyboard(methods) });
+  // Oy tanlangan Avans/Oylikda — oyga qaytish tugmasi (eski, oysiz qoralamada yo'q).
+  await show(ctx, { html, keyboard: chiqimMethodKeyboard(methods, !!(d.salaryPayout && d.periodMonth)) });
+}
+
+async function showMonth(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Promise<void> {
+  const options = payoutMonthOptions();
+  await show(ctx, { html: V.chiqimMonthPrompt(d, cashbox, options[0].month), keyboard: chiqimMonthKeyboard(options) });
 }
 
 async function showAmount(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox, note?: string): Promise<void> {
@@ -173,6 +212,7 @@ async function showCurrent(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): P
   switch (d.step) {
     case "type": return showType(ctx, d, cashbox);
     case "person": return showPerson(ctx, d, cashbox);
+    case "month": return showMonth(ctx, d, cashbox);
     case "method": return showMethod(ctx, d, cashbox);
     case "amount": return showAmount(ctx, d, cashbox);
     case "note": return showNote(ctx, d, cashbox);
@@ -290,20 +330,49 @@ export async function chiqimCallback(ctx: FlowCtx, data: string): Promise<Callba
     if (d.step !== "person" || d.target !== "employee") return stale(ctx, d, cashbox);
     const emp = await loadEmployeeHit(ctx.db, empId);
     if (!emp) return stale(ctx, d, cashbox, "Xodim topilmadi");
-    // Oylik hisobi FAQAT Avans/Oylik turlarida — boshqa xodim turlarida
-    // (KPI bonusi, mukofot) chegara yo'q va hisob so'rovi bekorga bo'lardi.
-    const salary = d.salaryPayout ? await employeeSalaryInfo(ctx.db, emp.name, uzDateIso()) : undefined;
+    // Avans/Oylik — avval OY so'raladi (04.10.2026): oylik hisobi (chegara)
+    // o'sha oyning qatoridan, shu bois u oy tanlangach yuklanadi. Boshqa
+    // xodim turlarida (KPI bonusi, mukofot) chegara ham, oy ham yo'q —
+    // to'g'ridan-to'g'ri to'lov turiga.
     const next: ChiqimDraft = {
       ...d,
       personId: emp.id,
       personName: emp.name,
       personPhone: emp.phone,
       personRole: emp.turi,
-      salary: salary ?? undefined,
-      step: "method",
+      step: d.salaryPayout ? "month" : "method",
     };
     await advance(ctx, next);
+    if (d.salaryPayout) await showMonth(ctx, next, cashbox);
+    else await showMethod(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  const month = chiqimMonthArg(data);
+  if (month !== null) {
+    if (d.step !== "month" || !d.salaryPayout || !d.personName) return stale(ctx, d, cashbox);
+    // Faqat HOZIR ko'rsatiladigan oylar (o'tgan · shu). Tun yarmida oy
+    // almashgan bo'lsa eski xabardagi tugma rad etiladi va yangi tugmalar
+    // chiziladi; to'qib yuborilgan kelajak oy ham shu yerda to'xtaydi.
+    if (!payoutMonthOptions().some((o) => o.month === month)) {
+      return stale(ctx, d, cashbox, "Oy almashdi — qaytadan tanlang");
+    }
+    // Chegara TANLANGAN oy qatoridan — server ham `periodMonth` bo'yicha
+    // aynan shu qatorni tekshiradi (lib/cashboxAdjust.ts).
+    const salary = await employeeSalaryInfo(ctx.db, d.personName, month);
+    const next: ChiqimDraft = { ...d, periodMonth: month, salary: salary ?? undefined, step: "method" };
+    await advance(ctx, next);
     await showMethod(ctx, next, cashbox);
+    return { handled: true };
+  }
+
+  if (data === CHIQIM_CB.monthBack) {
+    // Faqat to'lov turi qadamida (to'lov turi hali tanlanmagan) — keyingi
+    // qadamlarda summa allaqachon eski oy chegarasi bilan tekshirilgan.
+    if (d.step !== "method" || !d.salaryPayout || !d.periodMonth) return stale(ctx, d, cashbox);
+    const next: ChiqimDraft = { ...d, periodMonth: undefined, salary: undefined, step: "month" };
+    await advance(ctx, next);
+    await showMonth(ctx, next, cashbox);
     return { handled: true };
   }
 
@@ -484,7 +553,13 @@ async function saveChiqim(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Pr
       // o'quvchiga qaytarish — tushumidan ayriladigan ustoz (bo'sh bo'lsa
       // yadro o'zi topadi).
       teacherName: d.target === "employee" ? (d.personName ?? "") : d.target === "student" ? (d.refundTeacher ?? "") : "",
+      // Sana — BUGUN (pul hozir chiqdi), oy esa tanlangani (04.10.2026):
+      // yozuv o'sha oyning oyligidan ayriladi va server chegarani ham o'sha
+      // oy qatoridan tekshiradi. Faqat Avans/Oylikda — boshqa chiqim hech
+      // kimning oyligiga tegmaydi (web ham yubormaydi). Oysiz eski qoralama
+      // — yubormaydi: yadro sana oyini oladi, `salary` ham bugungi oydan edi.
       date: uzDateIso(),
+      ...(d.salaryPayout && d.periodMonth ? { periodMonth: d.periodMonth } : {}),
       note: d.note ?? "",
       origin: ctx.cfg.origin,
     },

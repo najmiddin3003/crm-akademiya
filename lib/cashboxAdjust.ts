@@ -3,8 +3,8 @@ import { normalizeCashbox, type Cashbox, type CashboxMethodTotals } from "@/lib/
 import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import { flushSoon } from "@/lib/sync/dispatch";
-import { buildPayrollRows } from "@/lib/payrollSources";
-import { payrollCashLeg, payrollPayout, payrollPeriodOf, payrollPlastikLeg } from "@/lib/salary";
+import { buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
+import { isMonthKey, payrollCashLeg, payrollMonthKey, payrollPayout, payrollPeriod, payrollPeriodOf, payrollPlastikLeg } from "@/lib/salary";
 import { findTeacherOfPupil, findTeacherOfStudent, isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { isStudentRefundCategory, refundTeacherOf } from "@/lib/studentRefund";
 import { studentPaidBalance, studentPaidBalanceByName } from "@/lib/pupilsDb";
@@ -54,7 +54,16 @@ export interface AdjustInput {
   /** "YYYY-MM-DD"; bo'sh bo'lsa bugun. */
   date?: string;
   note?: string;
-  /** To'lov qaysi oy uchun — "YYYY-MM". Boshqa shakl jimgina tashlanadi. */
+  /**
+   * To'lov qaysi oy uchun — "YYYY-MM". Berilmasa yoki bo'sh bo'lsa —
+   * sananing oyi (eski mijozlar va bot uchun xulq o'zgarmaydi).
+   *
+   * Kirimda va boshqa chiqimlarda noto'g'ri shakl jimgina tashlanadi.
+   * XODIMGA AVANS/OYLIK chiqimida (04.10.2026 dan) esa oy chegarani
+   * belgilaydi, shuning uchun noto'g'ri shakl ham, KELAJAK oy ham,
+   * YOPILGAN oy (oxirgi nol-yopish va undan oldingilar) ham rad etiladi —
+   * pastdagi `applyCashboxAdjust` izohiga qarang.
+   */
   periodMonth?: string;
   /**
    * Tanlangan o'quvchining ID si (`pupils.id`) — YOZUVNING EGASI.
@@ -135,6 +144,49 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   const available = (current.methodTotals as CashboxMethodTotals)[chosen.key] ?? 0;
   if (mode === "chiqim" && available < amount) return fail("Mablag' yetarli emas");
 
+  // TO'LOV QAYSI OY UCHUN — "YYYY-MM" (oy 01–12, `isMonthKey`). 04.10.2026
+  // dan CHEGARADAN OLDIN aniqlanadi: xodimga avans/oylikda chegara aynan
+  // shu oyning oylik qatoridan olinadi (pastda).
+  const period = typeof periodMonth === "string" && isMonthKey(periodMonth)
+    ? periodMonth.trim()
+    : undefined;
+
+  // XODIMGA AVANS/OYLIK — tur nomida "avans"/"oylik" (jurnal ham shu qoida
+  // bilan yig'adi: lib/payrollSources.ts → loadPayoutEntries).
+  const employeePayout = mode === "chiqim" && isEmployeePayoutCategory(category);
+  // Yozuv oylik hisobida QAYSI OYGA tushadi (`monthMatch`): oy berilgan
+  // bo'lsa — o'sha, aks holda (eski mijoz) sananing oyi. Chegara ham,
+  // yopilgan oy tekshiruvi ham shu bitta oydan.
+  const payMonth = period ?? (date || todayIso()).slice(0, 7);
+  if (employeePayout) {
+    // Oy YUBORILGAN, lekin shakli noto'g'ri — jimgina sana oyiga tushirilmaydi:
+    // aynan shu (pul boshqa oyga yozilib, o'sha oyda ikkinchi marta
+    // chiqarilishi) tuzatilayapti. Bo'sh satr — "oy yuborilmagan" degani.
+    if (typeof periodMonth === "string" && periodMonth.trim() && !period) return fail("Noto'g'ri oy");
+    // KELAJAK oy uchun avans/oylik berilmaydi: u oy hali ishlanmagan
+    // (payrollPeriodOf da `day = 0`) va "Oylik chiqarish" ham kelajak oyni
+    // rad etadi (app/api/salary-runs/route.ts) — bir xil qoida. Joriy oy
+    // TOSHKENT vaqti bo'yicha (`payrollPeriod` → uzNow). Kirimda kelajak oy
+    // RUXSAT (oldindan to'lov) — bu shart faqat xodimga chiqimda.
+    if (period && period > payrollMonthKey(payrollPeriod())) {
+      return fail("Kelajak oy uchun avans yoki oylik berilmaydi");
+    }
+    // YOPILGAN oy uchun ham berilmaydi (04.10.2026): oxirgi NOL-YOPISH oyi
+    // (hozir 2026-08) va undan oldingilar. `loadCarryOver` zanjiri o'sha
+    // oyda to'xtaydi — bunday oyga yozilgan pul keyingi oylarning hech
+    // qaysi "O'tgan oydan" qatoridan ayrilmasdi (okladli xodimda nol-yopish
+    // oyining ulushi 0), ya'ni kassadan chiqib, oylik hisobidan tashqarida
+    // qolardi. O'sha oy qatori esa tizimdan oldingi davrdan quriladi va
+    // butun okladni "to'lanmagan" ko'rsatib, chegarani asossiz katta
+    // qilardi. Ilgari bunga sanani orqaga surib yetilardi; «Qaysi oy uchun»
+    // tanlovi bilan bir bosishda ochilib qolmasin. Oyna ham shu oyni
+    // oldindan to'sadi (CashboxAdjustDrawer → closedThrough).
+    const closed = await loadLastPureCloseMonth(db);
+    if (closed && payMonth <= closed) {
+      return fail("Yopilgan oy uchun avans yoki oylik berilmaydi");
+    }
+  }
+
   // Xodimga oylik/avans chiqarilsa — summa xodimning shu oyda CHIQARISH
   // MUMKIN bo'lgan qoldig'idan oshmasligi kerak. Frontend (Chiqim oynasi)
   // ham tekshiradi, bu backend zaxira — ikkalasi BIR XIL funksiyalar bilan
@@ -160,19 +212,27 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   // Qator BUTUN KOMPANIYA bo'yicha quriladi (filialga kesilmaydi) — Chiqim
   // oynasi ham `branch=all` bilan so'raydi; xodim boshqa filialning oylik
   // ro'yxatida bo'lsa ham chegara o'sha yerdagi raqam bilan bir xil.
-  if (mode === "chiqim" && studentName && /avans|oylik/i.test(category || "")) {
-    const dateIso = date || todayIso();
-    const period = payrollPeriodOf(dateIso.slice(0, 7));
-    const rows = await buildPayrollRows(db, period);
+  //
+  // QAYSI OY QATORI (04.10.2026): `periodMonth` berilgan bo'lsa — O'SHA oy
+  // (Chiqim oynasidagi "Qaysi oy uchun"), aks holda avvalgidek sananing
+  // oyi. NIMA NOTO'G'RI EDI: chegara faqat sana oyidan olinardi va oy
+  // yozuvga ham yozilmasdi — oktabrda berilgan SENTABR oyligi oktabrga
+  // tushardi: sentabr sahifasida ayrilmasdi, oktabrda "O'tgan oydan"
+  // kamaymasdi, keyin sentabr uchun "Oylikni chiqarish" uni IKKINCHI marta
+  // to'lardi. Endi chegara ham, yozuvning oyi ham (`monthMatch`) bitta
+  // oydan — oyna, server va oylik sahifasi bitta qatorga qaraydi.
+  if (employeePayout && studentName) {
+    const payPeriod = payrollPeriodOf(payMonth);
+    const rows = await buildPayrollRows(db, payPeriod);
     const key = studentName.trim().toLowerCase();
     const row = rows.find((e) => e.name.trim().toLowerCase() === key);
     if (row && row.configured) {
       const isPlastik = chosen.key === PLASTIK_METHOD_KEY;
-      const remaining = isPlastik ? payrollPayout(row, period) : payrollCashLeg(row, period);
+      const remaining = isPlastik ? payrollPayout(row, payPeriod) : payrollCashLeg(row, payPeriod);
       if (remaining <= 0) {
         // Sabab AYNAN aytiladi: karta hali qoplanmagan bo'lsa "oylik
         // tugagan" degan xabar yolg'on bo'lardi.
-        const karta = payrollPlastikLeg(row, period);
+        const karta = payrollPlastikLeg(row, payPeriod);
         return fail(
           !isPlastik && karta > 0
             ? `Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq ${karta.toLocaleString("ru-RU")} so'm kartaga ketadi)`
@@ -320,11 +380,6 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
       || "";
   }
 
-  // Faqat "YYYY-MM" shakli qabul qilinadi.
-  const period = typeof periodMonth === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)
-    ? periodMonth
-    : undefined;
-
   // TANGA EVAZIGA CHEGIRMA (gamifikatsiya, TZ 4.16.4) — o'quvchining SHU OY
   // (to'lov oyi: `periodMonth`, bo'lmasa sana oyi) uchun faol chegirmasi
   // bo'lsa va to'lov o'sha kurs ustoziga yozilayotgan bo'lsa, chegirma
@@ -388,7 +443,10 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
     note: note || "",
     status: "",
     cashboxId,
-    // To'lov QAYSI OY uchun ekani — Kirim oynasida tanlanadi.
+    // To'lov QAYSI OY uchun ekani — Kirim oynasida, 04.10.2026 dan Chiqim
+    // oynasida ham (xodimga avans/oylik) tanlanadi. `date` O'ZGARMAYDI:
+    // pul bugun chiqdi, bu maydon faqat qaysi oyga tegishliligini aytadi
+    // (oylik hisobi uni `monthMatch` bilan o'qiydi).
     // Sana bilan bir xil bo'lsa ham yoziladi: keyinchalik "bu yozuvda oy
     // ataylab tanlanganmi yoki eski yozuvmi?" degan savol tug'ilmasin.
     ...(period ? { periodMonth: period } : {}),

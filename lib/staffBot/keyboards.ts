@@ -271,6 +271,8 @@ export const chiqimPageCb = (page: number) => `s:c:pg:${page}`;
 export const chiqimEmployeeCb = (id: number) => `s:c:e:${id}`;
 export const chiqimStudentCb = (pupilId: number) => `s:c:s:${pupilId}`;
 export const chiqimMethodCb = (key: string) => `s:c:m:${key}`;
+/** Avans/Oylik qaysi oy uchun — "s:c:p:2026-09" (13 bayt; Kirimdagi `s:k:p:` bilan bir xil shakl). */
+export const chiqimMonthCb = (month: string) => `s:c:p:${month}`;
 export const chiqimConfirmCb = (nonce: string) => `s:c:ok:${nonce}`;
 
 export const CHIQIM_CB = {
@@ -279,6 +281,8 @@ export const CHIQIM_CB = {
   /** Summa = chegara/qoldiqning o'zi ("Hammasi" tugmasi). */
   amountMax: "s:c:a:max",
   noteSkip: "s:c:n:0",
+  /** To'lov turi qadamidan oy tanloviga qaytish (faqat Avans/Oylik). */
+  monthBack: "s:c:mb",
 } as const;
 
 const numArg = (data: string, prefix: string): number | null => {
@@ -292,6 +296,11 @@ export const chiqimEmployeeArg = (data: string) => numArg(data, "s:c:e:");
 export const chiqimStudentArg = (data: string) => numArg(data, "s:c:s:");
 export function chiqimMethodArg(data: string): string | null {
   const m = data.match(/^s:c:m:([A-Za-z0-9_-]{1,32})$/);
+  return m ? m[1] : null;
+}
+/** "s:c:p:2026-09" -> "2026-09". `s:c:pg:` (turlar sahifasi) bunga tushmaydi — shakl qat'iy. */
+export function chiqimMonthArg(data: string): string | null {
+  const m = data.match(/^s:c:p:(\d{4}-(?:0[1-9]|1[0-2]))$/);
   return m ? m[1] : null;
 }
 export function chiqimConfirmArg(data: string): string | null {
@@ -338,12 +347,31 @@ export function chiqimPersonKeyboard(options: PersonOption[], kind: "employee" |
   return { inline_keyboard: [...options.map((o) => [btn(o.label, cb(o.id))]), chiqimCancelRow()] };
 }
 
-/** To'lov turlari — faqat kassada mablag'i borlari (web'dagi Chiqim oynasi bilan bir xil). */
-export function chiqimMethodKeyboard(methods: { key: string; name: string; balance: number }[]): InlineKeyboard {
+/**
+ * Avans/Oylik qaysi oy uchun (04.10.2026): O'TGAN oy · SHU oy (belgilangan).
+ * KELAJAK oy YO'Q — u oy hali ishlanmagan, server ham rad etadi
+ * (lib/cashboxAdjust.ts). Kirimdagi oy tugmalari bilan bir xil ko'rinish.
+ */
+export function chiqimMonthKeyboard(options: MonthOption[]): InlineKeyboard {
+  return {
+    inline_keyboard: [
+      options.map((o) => btn(o.current ? `• ${o.label} •` : o.label, chiqimMonthCb(o.month))),
+      chiqimCancelRow(),
+    ],
+  };
+}
+
+/**
+ * To'lov turlari — faqat kassada mablag'i borlari (web'dagi Chiqim oynasi bilan bir xil).
+ * `monthBack` — Avans/Oylikda "Oyni o'zgartirish": noto'g'ri oy tanlangan
+ * bo'lsa (masalan o'sha oyda qoldiq yo'q) kassir boshidan boshlamasin.
+ */
+export function chiqimMethodKeyboard(methods: { key: string; name: string; balance: number }[], monthBack = false): InlineKeyboard {
   const rows: InlineButton[][] = [];
   for (let i = 0; i < methods.length; i += 2) {
     rows.push(methods.slice(i, i + 2).map((m) => btn(`${m.name} · ${fmtButtonAmount(m.balance)}`, chiqimMethodCb(m.key))));
   }
+  if (monthBack) rows.push([btn("📅 Oyni o'zgartirish", CHIQIM_CB.monthBack)]);
   rows.push(chiqimCancelRow());
   return { inline_keyboard: rows };
 }

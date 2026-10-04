@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import DatePicker from "@/components/ui/DatePicker";
+import MonthYearPicker from "@/components/ui/MonthYearPicker";
 import StudentSearchSelect from "@/components/orders/StudentSearchSelect";
 import EmployeeSalaryModal from "./EmployeeSalaryModal";
 import StudentGroupsModal from "./StudentGroupsModal";
@@ -21,12 +22,14 @@ import { txTarget, txTargetLabel } from "@/lib/txTarget";
 import {
   payrollCashLeg,
   payrollEarned,
+  payrollMonthKey,
   payrollPaid,
   payrollPayout,
   payrollPeriod,
   payrollPeriodOf,
   payrollPlastikLeg,
   payrollTax,
+  prevMonthKey,
   type EmployeePayroll,
 } from "@/lib/salary";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
@@ -36,6 +39,7 @@ import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { monthsInNote, nearestMonthKey } from "@/lib/noteMonth";
 
 function fmtUZS(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " UZS";
@@ -47,6 +51,23 @@ function toIso(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+/** Sanadan "YYYY-MM". Sana bo'lmasa — bugungi oy (Kirim oynasidagi bilan bir xil). */
+function monthOf(d: Date | null): string {
+  const x = d ?? new Date();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0");
+}
+
+// OXIRGI NOL-YOPISH OYI (04.10.2026) — shu oy va undan oldingilar uchun
+// avans/oylik berilmaydi. lib/payrollSources.ts → loadCarryOver zanjiri
+// aynan shu oyda to'xtaydi: unga (yoki undan oldingi oyga) yozilgan pul
+// keyingi oylarning hech qaysi "O'tgan oydan" qatoridan ayrilmasdi —
+// kassadan chiqib, oylik hisobidan tashqarida qolardi; o'sha oy qatori esa
+// tizimdan oldingi davrdan qurilib, butun okladni "to'lanmagan" ko'rsatardi.
+// Oy SERVERDAN keladi (employees-payroll?branch=all → `closedThrough`,
+// lib/payrollSources.ts → loadLastPureCloseMonth); bu — javob kelguncha
+// sukut. Haqiqiy qorovul baribir serverda (lib/cashboxAdjust.ts).
+const CLOSED_THROUGH_FALLBACK = "2026-08";
 
 interface Row {
   id: number;
@@ -64,14 +85,19 @@ interface Row {
 // — Moliya → Tranzaksiya turi (/finance-tx-types) sahifasidagi HAQIQIY,
 // admin boshqaradigan ro'yxatdan (mainType: "chiqim").
 //
-// OLIB TASHLANGAN: har bir qatorda "Oyni tanlang" degan, hatto yulduzcha
-// bilan MAJBURIY deb belgilangan tanlagich turardi. Tanlangan oy hech
-// qachon hech qayerga yuborilmasdi — /api/cashboxes/:id/adjust so'rov
-// tanasida bunday maydon yo'q, `transaction_entries` yozuvida ham xarajat
-// qaysi OYGA tegishli ekanini saqlaydigan maydon yo'q. Ya'ni foydalanuvchi
-// "iyul oyiga" deb belgilab saqlardi, natijada esa hech qanday farq
-// bo'lmasdi. Qayta tiklash uchun avval jurnal yozuviga davr maydoni
-// (masalan `periodMonth`) qo'shilishi kerak.
+// "QAYSI OY UCHUN" (04.10.2026) — FAQAT xodimga AVANS/OYLIK turida, sana
+// yonida (Kirim oynasidagi kabi). Tanlangan oy `periodMonth` bo'lib
+// yozuvga tushadi va oylik hisobi uni `monthMatch` bilan o'qiydi
+// (lib/payrollSources.ts); chegara ham, "Oylik" qulflangan summasi ham
+// AYNAN shu oy qatoridan. Sukut — sananing oyi.
+//
+// NIMA NOTO'G'RI EDI: oy yuborilmasdi va yozuv SANA oyiga tushardi —
+// oktabrda berilgan SENTABR oyligi sentabr sahifasida ayrilmasdi,
+// oktabrda "O'tgan oydan" kamaymasdi, keyin sentabr uchun "Oylikni
+// chiqarish" uni IKKINCHI marta to'lardi. (Ilgari har qatorda turgan
+// "Oyni tanlang" esa hech qayerga yuborilmasdi va olib tashlangan edi —
+// bu boshqa narsa: bitta oy, butun yozuv uchun.) Boshqa chiqim turlarida
+// oy tanlanmaydi va yuborilmaydi — ular hech kimning oyligiga tegmaydi.
 export default function CashboxAdjustDrawer({
   cashbox,
   students,
@@ -96,7 +122,7 @@ export default function CashboxAdjustDrawer({
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
 }) {
-  const { t } = useT();
+  const { t, months } = useT();
   const modal = useModalClose(onClose, "drawer");
   // To'lov turlari Sozlamalar → Moliya → To'lov turlaridan (faqat faollari).
   const { active: paymentMethods, loading: methodsLoading } = usePaymentMethods();
@@ -129,6 +155,24 @@ export default function CashboxAdjustDrawer({
   const [nextRowId, setNextRowId] = useState(2);
   const [method, setMethod] = useState("");
   const [date, setDate] = useState<Date | null>(new Date());
+  // QAYSI OY UCHUN — faqat xodimga avans/oylikda ishlatiladi va
+  // yuboriladi (fayl boshidagi izoh). Sana — pul CHIQQAN kun, bu esa u
+  // qaysi oyning oyligi ekani. Sukut — sananing oyi: odatdagi holatda
+  // kassir bu maydonga tegmaydi.
+  const [periodMonth, setPeriodMonth] = useState<string>(() => monthOf(new Date()));
+  // Oy QO'LDA tanlanganmi — tanlangan bo'lsa, sana o'zgarganda oy sananing
+  // oyiga qaytib ketmaydi (Kirim oynasidagi qoida: avval «Sentyabr» tanlab,
+  // keyin sanani bosgan kassirning to'lovi jimgina oktabrga yozilmasin).
+  // Tur yoki xodim ALMASHSA — yana sananing oyiga qaytadi (`resetPeriod`);
+  // xodimni BIRINCHI marta tanlash almashish emas.
+  const [periodTouched, setPeriodTouched] = useState(false);
+  // Izohdagi oy ≠ tanlangan oy ogohlantirishini kassir ko'rib, baribir
+  // saqlamoqchi — `${note}|${periodMonth}` kaliti (biri o'zgarsa yana so'raladi).
+  const [mismatchAck, setMismatchAck] = useState("");
+  // JORIY oy — TOSHKENT vaqti (`payrollPeriod` → uzNow), server kelajak
+  // oyni aynan shu bilan rad etadi (lib/cashboxAdjust.ts). Holatda: oyna
+  // ochiq turgan paytda o'zgarmaydi va render "toza" qoladi.
+  const [nowMonthKey] = useState(() => payrollMonthKey(payrollPeriod()));
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   // Turlar TO'LIQ saqlanadi. Ilgari bu yerda `.map((tv) => tv.name)` turardi
@@ -148,22 +192,22 @@ export default function CashboxAdjustDrawer({
     [categories, categoryId],
   );
   const category = selectedType?.name ?? "";
-  // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan.
-  const [payroll, setPayroll] = useState<Map<string, EmployeePayroll>>(new Map());
-  // Tanlangan SANANING oyi — oylik qatori (hisoblangan ham, "shu oyda
-  // allaqachon berilgan" ham) AYNAN shu oy uchun so'raladi.
+  // Xodimlarning HAQIQIY oylik qatorlari — ism bo'yicha kalitlangan, QAYSI
+  // OY uchun so'ralgani (`month`) bilan birga.
   //
-  // Ilgari `period` doim JORIY oy edi va "olingan" alohida so'rov bilan
-  // tanlangan sana oyidan olinardi. Kassir sanani o'tgan oyga qo'yganda
-  // "hisoblangan oylik" sentabrniki, "olingan" esa avgustniki bo'lib
-  // chiqardi — chegara ikki xil oydan yig'ilardi va o'tgan oy uchun avans
-  // berishga to'sqinlik qilardi. Endi hammasi bitta qatordan.
-  const monthKey = useMemo(() => {
-    if (!date) return "";
-    const p = (n: number) => String(n).padStart(2, "0");
-    return `${date.getFullYear()}-${p(date.getMonth() + 1)}`;
-  }, [date]);
-  const period = useMemo(() => (monthKey ? payrollPeriodOf(monthKey) : payrollPeriod()), [monthKey]);
+  // NEGA OY BILAN (04.10.2026): oy almashganda yangi javob kelguncha ESKI
+  // oyning qatori YANGI oy davri bilan hisoblanardi — "Oylik" turida
+  // qulflangan summa (pastda `oylikLocked`) o'sha soniyalarda boshqa oyning
+  // qoldig'ini ko'rsatib turardi va kassir uni saqlab yuborishi mumkin edi.
+  // Endi qator faqat `month === monthKey` bo'lganda o'qiladi (`payrollReady`).
+  const [payroll, setPayroll] = useState<{ month: string; rows: Map<string, EmployeePayroll> }>(
+    () => ({ month: "", rows: new Map() }),
+  );
+  // Oxirgi nol-yopish oyi — `CLOSED_THROUGH_FALLBACK` izohi.
+  const [closedThrough, setClosedThrough] = useState(CLOSED_THROUGH_FALLBACK);
+  // Tanlangan SANANING oyi — "Qaysi oy uchun" sukuti; avans/oylikdan
+  // BOSHQA turlarda oylik qatori ham shu oy uchun so'raladi.
+  const dateMonthKey = useMemo(() => (date ? monthOf(date) : ""), [date]);
 
   // Maosh/guruh modali ochiq bo'lsa Escape faqat o'shani yopsin — aks holda
   // ikkala tinglovchi ham ishga tushib, chekma ham yopilib ketardi.
@@ -182,6 +226,69 @@ export default function CashboxAdjustDrawer({
 
   // Xodimlar ro'yxati faqat kerak bo'lganda (xodimga oylik/avans) yuklanadi.
   const target = txTarget(selectedType);
+
+  // "Hodimga oylik" va "Hodimga avans" turlarida umumiy summa xodimning shu
+  // oyda qolgan oyligidan oshmasligi kerak (referens qoida: avans oylikdan
+  // ayrilib beriladi, tugasa keyingi oygacha yana chiqarilmaydi). Nomlar
+  // admin boshqaradigan ro'yxatdan olinadi, shuning uchun so'zga qaraymiz.
+  // "Qaysi oy uchun" ham FAQAT shu turlarda chiqadi va yuboriladi.
+  const isSalaryPayoutCategory = target === "employee" && /avans|oylik/i.test(category);
+
+  // OYLIK QATORI QAYSI OY UCHUN so'raladi (hisoblangan ham, "shu oyda
+  // allaqachon berilgan" ham — bitta qatordan):
+  //   avans/oylik      → "Qaysi oy uchun" da tanlangan oy — chegara, "Oylik"
+  //                      qulflangan summasi va ro'yxatdagi raqamlar shu oy
+  //                      qatoridan; server ham aynan shu oy qatoridan
+  //                      tekshiradi (lib/cashboxAdjust.ts);
+  //   boshqa xodim turi → sananing oyi (avvalgidek).
+  //
+  // Ilgari `period` doim JORIY oy edi va "olingan" alohida so'rov bilan
+  // tanlangan sana oyidan olinardi. Kassir sanani o'tgan oyga qo'yganda
+  // "hisoblangan oylik" sentabrniki, "olingan" esa avgustniki bo'lib
+  // chiqardi — chegara ikki xil oydan yig'ilardi. Endi hammasi bitta qatordan.
+  const monthKey = isSalaryPayoutCategory ? periodMonth : dateMonthKey;
+  // Davr — payrollPeriodOf (server va Oylik sahifasi bilan bir xil): TUGAGAN
+  // oy TO'LIQ (day = daysIn — o'tgan oy okladi 4/30 ga kesilib qolmaydi),
+  // joriy oy bugungacha (pro-rata), kelajak oy day = 0.
+  const period = useMemo(() => (monthKey ? payrollPeriodOf(monthKey) : payrollPeriod()), [monthKey]);
+  const payrollReady = payroll.month === monthKey;
+  // KELAJAK oy uchun avans/oylik berilmaydi (foydalanuvchi, 04.10.2026):
+  // u oy hali ishlanmagan. Server ham aynan shu shart bilan rad etadi —
+  // joriy oy Toshkent vaqti bo'yicha. "YYYY-MM" satrlari leksik
+  // solishtiriladi (yil-oy tartibi bilan bir xil).
+  const periodFuture = isSalaryPayoutCategory && periodMonth > nowMonthKey;
+  // YOPILGAN oy (oxirgi nol-yopish va undan oldingilar) uchun ham berilmaydi
+  // — `CLOSED_THROUGH_FALLBACK` izohi; server ham rad etadi.
+  const periodClosed = isSalaryPayoutCategory && periodMonth <= closedThrough;
+  // Ikkalasida ham oy qatori hisobi ko'rsatilmaydi va "Saqlash" o'chiq.
+  const periodBlocked = periodFuture || periodClosed;
+  const monthName = (key: string) => `${months[Number(key.slice(5, 7)) - 1] ?? key} ${key.slice(0, 4)}`;
+
+  // IZOHDAGI OY ≠ TANLANGAN OY (lib/noteMonth.ts) — Kirim oynasidagi qoida:
+  // kassir "sentabr oyligi" deb izohga yozib, «Qaysi oy uchun» ga tegmasa
+  // pul boshqa oyning oyligidan ayrilardi. Faqat avans/oylikda: boshqa
+  // turlarda oy umuman yuborilmaydi.
+  const noteMonthNums = useMemo(() => monthsInNote(note), [note]);
+  const noteMismatch = isSalaryPayoutCategory && noteMonthNums.length > 0
+    && !noteMonthNums.includes(Number(periodMonth.slice(5, 7)));
+  // Izohda BITTA oy bo'lsa — bir bosishda o'shanga o'tkazish. Kelajak va
+  // yopilgan oyga tugma taklif qilinmaydi: o'tkazilsa baribir rad etilardi.
+  const noteTargetRaw = noteMismatch && noteMonthNums.length === 1 ? nearestMonthKey(noteMonthNums[0], periodMonth) : null;
+  const noteTarget = noteTargetRaw && noteTargetRaw <= nowMonthKey && noteTargetRaw > closedThrough ? noteTargetRaw : null;
+
+  /**
+   * Oyni sananing oyiga QAYTARISH — tur yoki xodim almashganda (xodimni
+   * birinchi marta tanlashda EMAS — xodim tanlovidagi izohga qarang). Oldingi
+   * tanlov yangi xodim/turga tegishli bo'lmasligi mumkin: kassir bir
+   * xodimga sentabr oyligini bergach, boshqasini tanlasa, sentabr jimgina
+   * qolib ketmasin.
+   */
+  function resetPeriod(): void {
+    setPeriodMonth(monthOf(date));
+    setPeriodTouched(false);
+    setMismatchAck("");
+  }
+
   // "Xodim" turiga o'tilgan, lekin ro'yxat hali kelmagan payt — aynan shu
   // oraliqda tanlov bo'sh turadi. Hosila bayroq: effekt tanasida
   // `setState` chaqirilmaydi.
@@ -202,7 +309,8 @@ export default function CashboxAdjustDrawer({
     return () => { cancelled = true; };
   }, [target, employees.length]);
 
-  // Oylik qatorlari ALOHIDA yuklanadi va SANA o'zgarsa qayta so'raladi:
+  // Oylik qatorlari ALOHIDA yuklanadi va OY (`monthKey` — avans/oylikda
+  // "Qaysi oy uchun", aks holda sana oyi) o'zgarsa qayta so'raladi:
   // xodimlar ro'yxati oydan qat'i nazar bir xil, hisoblangan oylik esa
   // oyga bog'liq. Ilgari ikkalasi bitta so'rovda edi va faqat bir marta
   // yuklanardi — sana o'tgan oyga surilganda ekranda joriy oyning
@@ -219,8 +327,17 @@ export default function CashboxAdjustDrawer({
       .then((r) => r.json())
       .catch(() => null)
       .then((pay) => {
-        if (cancelled || !pay?.ok) return;
-        setPayroll(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.name.trim().toLowerCase(), e])));
+        if (cancelled) return;
+        // So'rov yiqilsa ham shu oy "yuklangan" deb belgilanadi (bo'sh
+        // qatorlar bilan): aks holda "Saqlash" abadiy o'chiq qolardi.
+        // Chegarani baribir SERVER qo'llaydi (lib/cashboxAdjust.ts) — bu
+        // avvalgi xulq bilan bir xil.
+        const rows = pay?.ok
+          ? new Map((pay.employees as EmployeePayroll[]).map((e) => [e.name.trim().toLowerCase(), e] as const))
+          : new Map<string, EmployeePayroll>();
+        setPayroll({ month: monthKey, rows });
+        // null — nol-yopish yo'q: hech qaysi oy yopiq emas ("" har oydan kichik).
+        if (pay?.ok && "closedThrough" in pay) setClosedThrough(typeof pay.closedThrough === "string" ? pay.closedThrough : "");
       });
     return () => { cancelled = true; };
   }, [target, monthKey]);
@@ -306,18 +423,20 @@ export default function CashboxAdjustDrawer({
     [paymentMethods, cashbox.methodTotals],
   );
 
-  // "Hodimga oylik" va "Hodimga avans" turlarida umumiy summa xodimning shu
-  // oyda qolgan oyligidan oshmasligi kerak (referens qoida: avans oylikdan
-  // ayrilib beriladi, tugasa keyingi oygacha yana chiqarilmaydi). Nomlar
-  // admin boshqaradigan ro'yxatdan olinadi, shuning uchun so'zga qaraymiz.
-  const isSalaryPayoutCategory = target === "employee" && /avans|oylik/i.test(category);
+  // `isSalaryPayoutCategory` — yuqorida, `target` yonida: "Qaysi oy uchun"
+  // va oylik qatorining oyi undan oldin kerak.
 
   // Xodimning HAQIQIY oylik qatori (/api/salary-runs/employees-payroll).
   // Ilgari bu yerda xodim id'sidan hisoblanadigan demo funksiya turardi va
   // o'ylab topilgan raqam haqiqiy pulning chiqishini boshqarardi.
-  const payrollOf = (name: string) => payroll.get(name.trim().toLowerCase());
+  // Faqat TANLANGAN oyning javobi o'qiladi (`payroll` izohiga qarang).
+  const payrollOf = (name: string) => (payrollReady ? payroll.rows.get(name.trim().toLowerCase()) : undefined);
   const selectedPayroll = selectedEmployee ? payrollOf(selectedEmployee.name) : undefined;
   const salaryConfigured = !!selectedPayroll?.configured;
+  // Avans/oylikda tanlangan oyning qatori hali kelmagan — chegara ham,
+  // qulflangan summa ham noma'lum: "Saqlash" o'chiq turadi (aks holda
+  // "Sozlanmagan" deb o'qilib, chegara jimgina o'chib qolardi).
+  const payrollPending = isSalaryPayoutCategory && !!selectedEmployee && !payrollReady && !periodBlocked;
   // Hisoblangan oylik = asos + bonus - jarima (lib/salary.ts).
   const employeeOylik = selectedPayroll && selectedPayroll.configured
     ? payrollEarned(selectedPayroll, period)
@@ -367,15 +486,44 @@ export default function CashboxAdjustDrawer({
   // FAQAT oyligi sozlangan xodimda: sozlanmaganda qoldiq ma'nosiz (0) va
   // chegara ham qo'llanmaydi — maydon erkin qoladi. To'lov turi
   // almashtirilsa (naqd ↔ plastik) summa o'zi qayta hisoblanadi.
-  const oylikLocked = target === "employee" && /oylik/i.test(category) && !!selectedEmployee && salaryConfigured;
-  const total = oylikLocked ? remainingSalary : rowsTotal;
+  //
+  // Qoldiq — "Qaysi oy uchun" da TANLANGAN oy qatoridan (04.10.2026): oktabrda
+  // sentabr tanlansa, sentabrda qolgan oylik. Shu oyning qatori hali
+  // kelmagan payt (`payrollPending`) ham maydon QULFLI qoladi — bo'sh
+  // turadi va erkin maydonga aylanib ketmaydi.
+  const oylikLocked = target === "employee" && /oylik/i.test(category) && !!selectedEmployee && (salaryConfigured || payrollPending);
+  // Kelajak oyda ham 0: u oy qatorida "o'tgan oydan" (joriy oy qoldig'i)
+  // turishi mumkin va u kelajak oyning "oyligi" bo'lib ko'rinmasin.
+  // Yopilgan oyda ham 0 — u oy qatori tizimdan oldingi davrdan quriladi.
+  const total = oylikLocked ? (payrollPending || periodBlocked ? 0 : remainingSalary) : rowsTotal;
   // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) —
-  // aks holda 0 deb o'qilib, hamma to'lov rad etilgan bo'lardi.
-  const salaryExhausted = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
-  const salaryExceeds = isSalaryPayoutCategory && !!selectedEmployee && salaryConfigured && total > remainingSalary;
+  // aks holda 0 deb o'qilib, hamma to'lov rad etilgan bo'lardi. Kelajak va
+  // yopilgan oyda bu xabarlar o'rniga bitta aniq sabab chiqadi (`periodBlocked`).
+  const salaryExhausted = isSalaryPayoutCategory && !periodBlocked && !!selectedEmployee && salaryConfigured && remainingSalary <= 0;
+  const salaryExceeds = isSalaryPayoutCategory && !periodBlocked && !!selectedEmployee && salaryConfigured && total > remainingSalary;
   const exhaustedMessage = kartaYetmadi
     ? t("Hisoblangan oylik karta summasidan oshmaydi — naqd avans yoki oylik chiqarib bo'lmaydi (qoldiq {karta} kartaga ketadi)", { karta: fmtUZS(salaryBreakdown!.karta) })
-    : "Bu oyda xodimga chiqariladigan qoldiq yo'q — oylik to'liq chiqarilgan yoki hali hisoblanmagan";
+    : t("Bu oyda xodimga chiqariladigan qoldiq yo'q — oylik to'liq chiqarilgan yoki hali hisoblanmagan");
+  // "Hisoblangan" yorlig'i QAYSI oyniki ekani bilan — ilgari bu yerda
+  // "Jami oylik" turardi va kassir uni "qolgan oylik" deb o'qirdi (u
+  // olinganni AYIRMAYDI). Davrning o'zidan olinadi, ya'ni ko'rsatilgan
+  // raqam bilan bir oy: joriy oy — "Shu oy", boshqasi — oy nomi bilan.
+  const periodKey = payrollMonthKey(period);
+  const earnedLabel = periodKey === nowMonthKey
+    ? t("Shu oy hisoblangan")
+    : t("{month} hisoblangan", { month: monthName(periodKey) });
+  // O'TGAN OY QOLDIG'I JORIY OY SUMMASIDA (04.10.2026). Sukut oy — sananing
+  // oyi: oktabrda "Oylik" tanlanib oyga tegilmasa, summa oktabr qatoridan
+  // olinadi va unda sentabr qoldig'i ("+ o'tgan oydan X") ham bor. Pul
+  // oktabrga yoziladi, sentabr sahifasida esa X "to'lanmagan" bo'lib
+  // qoladi — keyin sentabr uchun «Oylikni chiqarish» uni IKKINCHI marta
+  // to'laydi (foydalanuvchi aytgan aynan o'sha holat). Sukut o'zgarmaydi
+  // (foydalanuvchi qarori) — faqat ogohlantiriladi va bir bosishda o'tgan
+  // oyga o'tkaziladi. O'tgan oy yopilgan bo'lsa ogohlantirish yo'q: u oyga
+  // baribir yozib bo'lmaydi.
+  const prevPayKey = prevMonthKey(payrollPeriodOf(nowMonthKey));
+  const carryHint = isSalaryPayoutCategory && !periodBlocked && periodMonth === nowMonthKey
+    && !!salaryBreakdown && salaryBreakdown.carryOver > 0 && prevPayKey > closedThrough;
 
   // O'quvchiga qaytariladigan summa uning balansidan oshmasligi kerak.
   const studentBalanceExceeds = target === "student" && !!selectedStudent && total > studentBalance;
@@ -404,6 +552,21 @@ export default function CashboxAdjustDrawer({
       showError(txTargetLabel(target));
       return;
     }
+    // Summa tekshiruvidan OLDIN: kelajak (va yopilgan) oyda "Oylik" summasi
+    // 0 bo'ladi va kassir haqiqiy sabab o'rniga "Qiymatni to'g'ri kiriting"
+    // ni ko'rardi.
+    if (periodFuture) {
+      showError(t("Kelajak oy uchun avans yoki oylik berilmaydi"));
+      return;
+    }
+    if (periodClosed) {
+      showError(t("Yopilgan oy uchun avans yoki oylik berilmaydi"));
+      return;
+    }
+    if (payrollPending) {
+      showError(t("Yuklanmoqda…"));
+      return;
+    }
     if (!total || total <= 0) {
       showError(t("Qiymatni to'g'ri kiriting"));
       return;
@@ -426,6 +589,15 @@ export default function CashboxAdjustDrawer({
     }
     if (studentBalanceExceeds) {
       showError(t("Summa o'quvchi balansidan ({studentBalance}) ko'p bo'lishi mumkin emas", { studentBalance: fmtUZS(studentBalance) }));
+      return;
+    }
+    // Izohda boshqa oy yozilgan — birinchi bosishda to'xtab ko'rsatiladi,
+    // ikkinchi bosishda (kassir ataylab shunday qoldirgan) saqlanadi.
+    // Kirim oynasi bilan bir xil qoida va matn.
+    const ackKey = `${note}|${periodMonth}`;
+    if (noteMismatch && mismatchAck !== ackKey) {
+      setMismatchAck(ackKey);
+      showError(t("Izohdagi oy «Qaysi oy uchun» maydonidagi oydan farq qiladi. Oyni to'g'rilang yoki yana «Saqlash»ni bosing."));
       return;
     }
     setSaving(true);
@@ -455,6 +627,11 @@ export default function CashboxAdjustDrawer({
           teacherName: target === "employee" ? personName
             : target === "student" ? (refundTeacher || undefined)
             : undefined,
+          // QAYSI OY oyligidan — FAQAT xodimga avans/oylikda (fayl boshidagi
+          // izoh). Sana oyi bilan bir xil bo'lsa ham yuboriladi: server
+          // chegarani shu oy qatoridan oladi va yozuvga yozadi. Boshqa
+          // turlarda yuborilmaydi — ular hech kimning oyligiga tegmaydi.
+          ...(isSalaryPayoutCategory ? { periodMonth } : {}),
           date: date ? toIso(date) : undefined,
           note,
         }),
@@ -501,6 +678,9 @@ export default function CashboxAdjustDrawer({
                     setPersonKey("");
                     setRefundTeacher("");
                   }
+                  // "Qaysi oy uchun" ham sananing oyiga qaytadi (`resetPeriod`) —
+                  // faqat tur HAQIQATAN almashganda.
+                  if ((next?.id ?? null) !== categoryId) resetPeriod();
                   setCategoryId(next?.id ?? null);
                 }} options={categories.map((c) => ({ value: String(c.id), label: c.name }))} placeholder={selectPlaceholder(categoriesLoading, categories.length, "Chiqim turi qo'shilmagan")} clearable disabled={categoriesLoading} />
           </div>
@@ -519,6 +699,14 @@ export default function CashboxAdjustDrawer({
                   // Boshqa o'quvchi — oldingisining ustozi qolib ketmasin;
                   // yangisi effektda oxirgi to'lovidan qayta to'ladi.
                   setRefundTeacher("");
+                  // Boshqa xodim — oldingisi uchun tanlangan oy qolib ketmasin.
+                  // Faqat HAQIQIY almashishda (oldin boshqa xodim tanlangan
+                  // bo'lsa; tozalash ham shunga kiradi). BIRINCHI tanlovda
+                  // (personKey bo'sh) oy tegilmaydi: kassir avval «Sentyabr»
+                  // ni tanlab, xodimni keyin tanlasa, oy jimgina sananing
+                  // oyiga qaytib, sentabr oyligi oktabrga yozilib ketardi
+                  // (04.10.2026, ko'rib chiquvchi topgan).
+                  if (personKey && v !== personKey) resetPeriod();
                 }}
                 options={target === "employee" ? activeEmployees.map((e) => e.name) : studentOptions}
                 // O'quvchi turida variantlar ID, ko'rinadigan matn esa ism.
@@ -535,6 +723,9 @@ export default function CashboxAdjustDrawer({
                 // qoldiq; plastik: karta + naqd), jami hisoblangan emas.
                 // Pastdagi `remainingSalary` bilan bir xil qoida.
                 trailingOf={target === "employee" ? (n) => {
+                  // Tanlangan oyning qatorlari hali kelmagan — "Sozlanmagan"
+                  // deyilsa yolg'on bo'lardi.
+                  if (!payrollReady) return <span className="text-muted-foreground">…</span>;
                   const p = payrollOf(n);
                   if (!p?.configured) return <span className="text-muted-foreground">{t("Sozlanmagan")}</span>;
                   const can = isPlastikMethod ? payrollPayout(p, period) : payrollCashLeg(p, period);
@@ -594,8 +785,16 @@ export default function CashboxAdjustDrawer({
               {selectedEmployee && (
                 <>
                   {/* Xodim tanlangach — nimadan qancha chiqarish mumkinligi. */}
+                  {/* Kelajak va yopilgan oyda hisob ko'rsatilmaydi — sababi
+                      «Qaysi oy uchun» tagida aytiladi (`periodBlocked`).
+                      Tanlangan oy qatori kelguncha — "Yuklanmoqda…",
+                      "Sozlanmagan" emas. */}
                   {isSalaryPayoutCategory ? (
-                    salaryConfigured && salaryBreakdown ? (
+                    periodBlocked ? null
+                    : payrollPending ? (
+                      <div className="text-[12.5px] text-muted-foreground">{t("Yuklanmoqda…")}</div>
+                    )
+                    : salaryConfigured && salaryBreakdown ? (
                       // Hisob zanjiri OCHIQ yoziladi — kassir naqd nega
                       // kam (yoki 0) ekanini shu yerning o'zida ko'rsin:
                       // karta va soliq avval ayriladi. Plastik turida
@@ -604,7 +803,7 @@ export default function CashboxAdjustDrawer({
                         {isPlastikMethod ? t("Kartaga chiqarish mumkin: ") : t("Naqd chiqarish mumkin: ")}
                         <strong>{fmtUZS(remainingSalary)}</strong>
                         <span className="text-muted-foreground">
-                          {" "}(Jami oylik {fmtUZS(employeeOylik)}
+                          {" "}({earnedLabel} {fmtUZS(employeeOylik)}
                           {salaryBreakdown.tax > 0 ? t(" − soliq {tax}", { tax: fmtUZS(salaryBreakdown.tax) }) : ""}
                           {salaryBreakdown.carryOver > 0 ? t(" + o'tgan oydan {carryOver}", { carryOver: fmtUZS(salaryBreakdown.carryOver) }) : ""}
                           {salaryBreakdown.carryOver < 0 ? t(" − o'tgan oy qarzdorligi {carryOver}", { carryOver: fmtUZS(-salaryBreakdown.carryOver) }) : ""}
@@ -620,7 +819,7 @@ export default function CashboxAdjustDrawer({
                     )
                   ) : (
                     <div className="text-[13px] text-muted-foreground">
-                      {salaryConfigured ? `Oylik: ${fmtUZS(employeeOylik)}` : "Ish haqi sozlanmagan"}
+                      {!payrollReady ? t("Yuklanmoqda…") : salaryConfigured ? `${earnedLabel}: ${fmtUZS(employeeOylik)}` : t("Ish haqi sozlanmagan")}
                     </div>
                   )}
                   {isSalaryPayoutCategory && salaryExhausted && (
@@ -651,8 +850,11 @@ export default function CashboxAdjustDrawer({
             // ham yo'q: oylik bir necha bandga bo'linmaydi.
             <div>
               <label className="block text-[13px] font-medium mb-1.5">{t("Qiymat")}</label>
+              {/* Tanlangan oy qatori kelguncha bo'sh — boshqa oyning
+                  qoldig'i bir lahza ham ko'rinmasin (`payroll` izohi). */}
               <input
-                value={groupNumber(remainingSalary)}
+                value={payrollPending || periodBlocked ? "" : groupNumber(remainingSalary)}
+                placeholder={payrollPending ? t("Yuklanmoqda…") : undefined}
                 readOnly
                 type="text"
                 className="w-full h-10 rounded-lg border border-border bg-secondary/30 px-3 text-sm tabular-nums"
@@ -715,10 +917,90 @@ export default function CashboxAdjustDrawer({
             )}
           </div>
 
-          <div>
-            <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
-            <DatePicker value={date} onChange={setDate} className="w-full" />
+          {/* Sana + "Qaysi oy uchun" — Kirim oynasidagi joylashuv. Oy faqat
+              xodimga avans/oylikda chiqadi; boshqa turlarda grid bitta
+              ustunga tushadi va faqat sana qoladi. */}
+          <div className={isSalaryPayoutCategory ? "grid grid-cols-2 gap-3" : ""}>
+            <div>
+              <label className="block text-[13px] font-medium mb-1.5">{t("Sanani tanlang")}</label>
+              <DatePicker
+                value={date}
+                onChange={(d) => {
+                  setDate(d);
+                  // Sana o'zgarsa oy ham ergashadi; oy QO'LDA tanlangan
+                  // bo'lsa — tegilmaydi (`periodTouched` izohi).
+                  if (d && !periodTouched) setPeriodMonth(monthOf(d));
+                }}
+                className="w-full"
+              />
+            </div>
+            {isSalaryPayoutCategory && (
+              <div>
+                <label className="block text-[13px] font-medium mb-1.5">{t("Qaysi oy uchun")}</label>
+                <MonthYearPicker
+                  className="w-full"
+                  value={{ month: Number(periodMonth.slice(5, 7)), year: Number(periodMonth.slice(0, 4)) }}
+                  onChange={(v) => {
+                    setPeriodMonth(`${v.year}-${String(v.month).padStart(2, "0")}`);
+                    setPeriodTouched(true);
+                  }}
+                />
+              </div>
+            )}
           </div>
+          {/* Oy bo'yicha izohlar — faqat avans/oylikda. Ustuvorlik: kelajak
+              yoki yopilgan oy (saqlab bo'lmaydi) → izohdagi oy farqi →
+              summada o'tgan oy qoldig'i (`carryHint`) → oy sanadan farqli
+              (pul qaysi oyning oyligidan ayrilishi). */}
+          {isSalaryPayoutCategory && (periodFuture ? (
+            <div className="-mt-1 text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
+              {t("Kelajak oy uchun avans yoki oylik berilmaydi")}.
+            </div>
+          ) : periodClosed ? (
+            <div className="-mt-1 text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
+              {t("Yopilgan oy uchun avans yoki oylik berilmaydi")}.
+            </div>
+          ) : noteMismatch ? (
+            <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
+              {t("Izohda {note} yozilgan, lekin to'lov {month} oyiga yoziladi.", {
+                note: noteMonthNums.map((m) => months[m - 1]).join(", "),
+                month: monthName(periodMonth),
+              })}
+              {noteTarget && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeriodMonth(noteTarget);
+                    setPeriodTouched(true);
+                  }}
+                  className="ml-1 font-semibold text-primary hover:underline"
+                >
+                  {t("{month} oyiga o'tkazish", { month: monthName(noteTarget) })}
+                </button>
+              )}
+            </div>
+          ) : carryHint ? (
+            <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
+              {t("Qoldiqda o'tgan oydan {carryOver} bor. Agar bu {month} oyligi bo'lsa, oyni almashtiring — aks holda {month} oyida u to'lanmagan bo'lib qoladi.", {
+                carryOver: fmtUZS(salaryBreakdown!.carryOver),
+                month: monthName(prevPayKey),
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodMonth(prevPayKey);
+                  setPeriodTouched(true);
+                }}
+                className="ml-1 font-semibold text-primary hover:underline"
+              >
+                {t("{month} oyiga o'tkazish", { month: monthName(prevPayKey) })}
+              </button>
+            </div>
+          ) : periodMonth !== dateMonthKey && (
+            <p className="-mt-1 text-[11px] text-amber-600">
+              {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: monthName(periodMonth) })}
+            </p>
+          ))}
 
           <div>
             <label className="block text-[13px] font-medium mb-1.5">{t("Izoh")}</label>
@@ -737,7 +1019,7 @@ export default function CashboxAdjustDrawer({
           </button>
           <button
             onClick={save}
-            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds}
+            disabled={saving || salaryExceeds || salaryExhausted || studentBalanceExceeds || periodBlocked || payrollPending}
             className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? t("Saqlanmoqda…") : t("Saqlash")}

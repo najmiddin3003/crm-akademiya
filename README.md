@@ -1827,12 +1827,17 @@ Deploydan keyin (Telegram'ga yozadi — ruxsat bilan):
 
 `lib/staffBot/chiqim.ts`. Web'dagi Chiqim oynasi bilan bir xil qoidalar:
 tur (HAMMA 24 tur, 8 tadan sahifalab — foydalanuvchi qarori) → KIM
-(`txTarget`: xodim / o'quvchi / hech kim) → to'lov turi (faqat kassada
-qoldig'i borlari, tugmada qoldiq) → summa → izoh → tasdiq.
+(`txTarget`: xodim / o'quvchi / hech kim) → (Avans/Oylikda: OY) → to'lov
+turi (faqat kassada qoldig'i borlari, tugmada qoldiq) → summa → izoh →
+tasdiq.
 
-- **Avans/Oylik** (`isEmployeePayoutCategory`): xodim tanlangach oylik
-  hisobi ko'rsatiladi (`employeeSalaryInfo` — `buildPayrollRows` +
-  `lib/salary.ts`, server bilan aynan bir xil): hisoblangan · soliq ·
+- **Avans/Oylik** (`isEmployeePayoutCategory`): xodim tanlangach "qaysi oy
+  uchun" so'raladi (2026-10-04: o'tgan · shu oy, kelajak yo'q) va o'sha
+  oyning oylik hisobi ko'rsatiladi (`employeeSalaryInfo(db, name,
+  monthKey)` — `buildPayrollRows(payrollPeriodOf(oy))` + `lib/salary.ts`,
+  server bilan aynan bir xil; oy yadroga `periodMonth` bo'lib ketadi, sana
+  — bugun). Ilgari bugungi sana berilardi va oktabrda berilgan sentabr
+  oyligi oktabrga yozilardi. Hisob: hisoblangan · soliq ·
   karta · olingan → "chiqarish mumkin: naqd X · plastik Y". Chegara
   to'lov turiga bog'liq (naqd `payrollCashLeg`, plastik `payrollPayout`),
   shu bois to'lov turi SUMMADAN OLDIN so'raladi. **"Oylik"** da summa
@@ -1853,7 +1858,8 @@ qoldig'i borlari, tugmada qoldiq) → summa → izoh → tasdiq.
   (`archReason` bo'sh), filialga kesilmaydi (`/api/hr-employees/ref` kabi).
 
 Sinov: `--flow chiqim --type "Avans" --person Nilufar --method Naqd --amount 150000`
-(`--type Oylik --method Plastik` — qulflangan summa; `--type "O'quvchiga pul
+(`--month 2026-09` — o'tgan oy, sukut shu oy; `--type Oylik --method
+Plastik` — qulflangan summa; `--type "O'quvchiga pul
 qaytarildi" --person "93 065 34 35"` — balans chegarasi).
 
 ### 3-bosqich — Ko'chirish va qabul ✓/✗ (2026-09-18)

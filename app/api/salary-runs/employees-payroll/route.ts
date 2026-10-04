@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { attachBranchPayouts, buildPayrollRows } from "@/lib/payrollSources";
+import { attachBranchPayouts, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { isMonthKey, payrollHasFoiz, payrollMonthKey, payrollPeriod, payrollPeriodOf, prevMonthKey } from "@/lib/salary";
 import { getBranchScope } from "@/lib/branchScope";
 import { detectMovedPupils } from "@/lib/teacherHandoverStore";
@@ -83,6 +83,14 @@ export async function GET(req: Request) {
   // almashtirilsa, bu oyna eski ro'yxatni ko'rsatib turaveradi
   // (app/api/salary-runs/route.ts → POST dagi qorovul).
   const branchId = allBranches ? null : scope.branchId;
+  // `closedThrough` — oxirgi NOL-YOPISH oyi (04.10.2026): Chiqim oynasi
+  // (`branch=all`) shu oy va undan oldingilar uchun avans/oylikni oldindan
+  // to'sadi. Kassir /api/salary-runs ni o'qiy olmaydi, shuning uchun shu
+  // yerda. Haqiqiy qorovul serverda (lib/cashboxAdjust.ts).
+  if (allBranches) {
+    const closedThrough = await loadLastPureCloseMonth(db);
+    return NextResponse.json({ ok: true, month, branchId, employees, closedThrough });
+  }
   if (!withGiven) return NextResponse.json({ ok: true, month, branchId, employees });
 
   // "Berilgan avans" / "To'langan oylik" kartochkalari — pul QAYSI FILIAL
