@@ -17,7 +17,7 @@ import EmployeePlastikModal from "./EmployeePlastikModal";
 import { groupNumber } from "@/components/ui/MoneyInput";
 import type { HrEmployeeFull } from "./employeeExtras";
 import type { Group } from "@/lib/groups";
-import { payrollDue, payrollEarned, payrollPeriod, type EmployeePayroll, type SalaryType } from "@/lib/salary";
+import { payrollEarned, payrollOwedTotal, payrollPeriod, type EmployeePayroll, type SalaryType } from "@/lib/salary";
 import {
   EMP_COLUMNS,
   EMP_LEAVE_REASONS,
@@ -135,7 +135,18 @@ interface SalaryView {
   fixedSalary: number;
   jamiOylik: number;
   jamiAvans: number;
+  /**
+   * Xodimga JAMI qancha qarzmiz (`payrollOwedTotal`): shu oyda
+   * to'lanadigani + o'tgan oylarda to'lanmagani. Kartochka "xodim
+   * holati"ni ko'rsatadi, chiqarish chegarasini emas.
+   */
   qolganOylik: number;
+  /**
+   * Shundan o'tgan oylarda to'lanmagan qism (`carryPending`, ≥ 0) — u
+   * joriy oyda TO'LANMAYDI, o'z oyining Oylik sahifasidan chiqariladi
+   * (04.10.2026, "faqat o'z oyidan chiqarilsin"). 0 — yo'q.
+   */
+  otganOylar: number;
 }
 
 function salaryFor(
@@ -151,7 +162,12 @@ function salaryFor(
     fixedSalary: row.fixedSalary,
     jamiOylik: payrollEarned(row, p),
     jamiAvans: row.paidAvans,
-    qolganOylik: payrollDue(row, p),
+    // 04.10.2026 gacha `payrollDue` edi — u o'shanda o'tgan oylar qoldig'ini
+    // ham to'liq olardi. Endi `payrollDue` faqat SHU OYDA to'lanadiganini
+    // oladi; kartochka raqami avvalgidek JAMI qolsin (sentabr qoldig'i
+    // ro'yxatdan "yo'qolmasin") — `payrollOwedTotal`, qismi pastda alohida.
+    qolganOylik: payrollOwedTotal(row, p),
+    otganOylar: Math.max(row.carryPending ?? 0, 0),
   };
 }
 
@@ -894,6 +910,19 @@ export default function EmployeesListPage() {
                             <div>
                               <div className="text-muted-foreground">{t("Qolgan")}</div>
                               <div className="font-semibold text-amber-600 tabular-nums">{fmtNum(s.qolganOylik)}</div>
+                              {/* O'tgan oylarda to'lanmagan qism ("Qolgan"
+                                  ichida) — joriy oyda chiqarilmaydi, o'z oyi
+                                  sahifasidan (04.10.2026). "shundan" deyilmaydi:
+                                  shu oy manfiy bo'lsa (sentabr puli oktabr
+                                  yozuvi bo'lib berilgan) jami undan kichik. */}
+                              {s.otganOylar > 0 && (
+                                <div
+                                  className="text-[11px] text-muted-foreground tabular-nums"
+                                  title={t("O'tgan oylarda to'lanmagan qoldiq joriy oyda chiqarilmaydi — o'z oyining Oylik sahifasidan chiqariladi")}
+                                >
+                                  {t("o'tgan oylardan: {amount}", { amount: fmtNum(s.otganOylar) })}
+                                </div>
+                              )}
                             </div>
                           </>
                         )}

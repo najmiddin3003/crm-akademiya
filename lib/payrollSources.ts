@@ -11,17 +11,18 @@ import {
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   CLOSING_SALARY_RUN,
-  payrollEarned,
-  payrollFoizPart,
-  payrollHasFoiz,
+  carryContribution,
+  carryFoldsByEmployee,
+  payrollDue,
   payrollMonthKey,
-  payrollPaid,
   payrollPeriod,
   payrollPeriodOf,
-  payrollTax,
+  pendingMaybePaidByMonth,
   prevMonthKey,
   prevMonthName,
   type BranchPayouts,
+  type CarryFold,
+  type CarryPendingMonth,
   type EmployeePayroll,
   type PaidElsewhere,
   type PayrollHandover,
@@ -348,23 +349,9 @@ export function isPureCloseRun(run: { cashboxId?: unknown }): boolean {
   return c === undefined || c === null || c === "";
 }
 
-/**
- * Bitta o'tgan oyning keyingi oyga qo'shadigan SOF ULUSHI, ishorali.
- *
- *   oddiy oy       — hisoblangan − soliq − olingan;
- *   nol-yopish oyi — FAQAT foiz ulushi − olingan. O'sha oyning okladi,
- *                    soliqi va bonus/jarimasi eski tizimda hal qilingan
- *                    (close-august-payroll.mjs sarlavhasi), o'quvchilar esa
- *                    o'sha oy uchun keyin ham to'layveradi — ustoz ulushi
- *                    yo'qolmasligi kerak (foydalanuvchi, 02.10.2026).
- *
- * Ish haqi sozlanmagan xodimda 0 — uning "hisoblangan"i ma'nosiz.
- */
-export function carryContribution(e: EmployeePayroll, p: PayrollPeriod, pureClose: boolean): number {
-  if (!e.configured) return 0;
-  if (pureClose) return payrollHasFoiz(e) ? payrollFoizPart(e) - payrollPaid(e) : 0;
-  return payrollEarned(e, p) - payrollTax(e, p) - payrollPaid(e);
-}
+// Bitta o'tgan oyning SOF ULUSHI — 04.10.2026 dan lib/salary.ts da (sof
+// formula, sinov skripti uni bazasiz chaqiradi). Eski import yo'li buzilmasin.
+export { carryContribution };
 
 /**
  * OXIRGI NOL-YOPISH OYI ("YYYY-MM") yoki `null` (04.10.2026). Filtr
@@ -393,14 +380,31 @@ export async function loadLastPureCloseMonth(db: Db): Promise<string | null> {
 const CARRY_MAX_MONTHS = 24;
 
 /**
- * O'tgan oylardan o'tadigan qoldiq, ISHORALI:
- *   musbat — akademiya xodimga qarzdor (to'lanmagan oylik),
- *   manfiy — XODIM akademiyaga qarzdor (masalan, avans olgan, keyin uni
- *            qoplagan o'quvchi to'lovi bekor qilingan) — shu oyning
- *            hisobidan ushlab qolinadi.
+ * O'tgan oylar qoldig'i, xodim id → `CarryFold` (lib/salary.ts):
+ *   `carryOver` — SHU OYDA TO'LANADIGAN qism, ishorali:
+ *       musbat — faqat nol-yopish oyining ulushi (yopilgan oy chiqarilmaydi);
+ *       manfiy — XODIM akademiyaga qarzdor (masalan, avans olgan, keyin uni
+ *                qoplagan o'quvchi to'lovi bekor qilingan) — shu oyning
+ *                hisobidan ushlab qolinadi;
+ *   `pending`   — o'tgan oylarda TO'LANMAGAN musbat qoldiqlar, oy bo'yicha:
+ *       har biri FAQAT o'z oyining sahifasidan chiqariladi, shu oyda ma'lumot.
+ * Ikkalasi ham nol bo'lgan xodim xaritada YO'Q.
  *
- * QOIDA (02.10.2026 dan): o'tgan oylarning JONLI sof qoldiqlari yig'indisi —
- * har oy uchun `carryContribution`, zanjir o'tgan oydan orqaga yuradi:
+ * "FAQAT O'Z OYIDAN" (04.10.2026, foydalanuvchi qarori) — zanjir ESKIDAN
+ * YANGIGA yig'iladi (`foldCarryChain`): musbat `due` li oddiy oy pending
+ * bo'ladi va keyingi oyga 0 o'tkazadi; nol-yopish oyi va qarzdorlik
+ * avvalgidek o'tadi.
+ * NIMA NOTO'G'RI EDI: 02.10 dagi qoida barcha ulushlarni CHIZIQLI yig'ib,
+ * hammasini to'lanadigan `carryOver` ga qo'shardi. Oktabrda "O'tgan oydan"
+ * bilan birga chiqarilgan pul OKTABR yozuvi bo'lardi, sentabr sahifasi esa
+ * hamon "Qolgan" ko'rsatardi → ikkinchi marta to'lash (sinov bazasida
+ * isbotlandi). Uchqo'rg'onda sentabr umuman chiqarilmagan — endi oktabrda
+ * to'lanadigan qoldiq 0, sentabr qoldig'i pending; filialga xos shart yo'q.
+ * INVARIANT: `carryOver + Σ pending` = 02.10 dagi chiziqli yig'indi (aniq).
+ *
+ * ZANJIR (02.10.2026 dan, o'zgarmagan): o'tgan oylarning JONLI sof
+ * qoldiqlari — har oy uchun `carryContribution`, zanjir o'tgan oydan orqaga
+ * quriladi:
  *   • moliyaviy yozuvi UMUMAN yo'q oyda to'xtaydi. Okladli xodimning
  *     "hisoblangan"i har oy o'z-o'zidan paydo bo'ladi, "to'langan"i esa
  *     faqat kassadan keladi — yozuvsiz oyni sanash YOZUV YO'QLIGINI qarz
@@ -426,13 +430,15 @@ const CARRY_MAX_MONTHS = 24;
  * JONLI = muzlatilgan + keyingi o'zgarishlar: chiqarishdan keyin hech narsa
  * o'zgarmagan bo'lsa natija muzlatilgan qoldiq bilan aynan bir xil
  * (chiqarish `payrollDue` ni to'laydi). IKKI MARTA TO'LASH YO'Q: chiqarilgan
- * pul o'sha oyning "olingan"ida turadi (yozuvning `periodMonth` i — o'sha oy).
+ * pul o'sha oyning "olingan"ida turadi (yozuvning `periodMonth` i — o'sha oy),
+ * 04.10.2026 dan esa o'tgan oyning musbat qoldig'i boshqa oy sahifasidan
+ * umuman to'lanmaydi.
  *
  * NARXI: zanjirdagi har oy uchun bitta `buildPayrollRows` (carryOver: false,
  * `refs` umumiy), PARALLEL. Hozir 1–2 oy, har oy bittaga o'sadi; sekinlashsa
  * — oylik yig'indilarni bitta agregatsiyada (oy bo'yicha guruhlab) hisoblash.
  */
-export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs): Promise<Map<number, number>> {
+export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs): Promise<Map<number, CarryFold>> {
   // Nol-yopish oylari — bitta so'rov. «Faqat karta» hujjatlari oyni yopmaydi
   // (CLOSING_SALARY_RUN), ularda kassa ham bor — bu yerga baribir tushmaydi.
   const runs = await db
@@ -468,19 +474,60 @@ export async function loadCarryOver(db: Db, p: PayrollPeriod, refs?: PayrollRefs
     chain.map(async (c) => {
       const period = payrollPeriodOf(c.month);
       const rows = await buildPayrollRows(db, period, { carryOver: false, refs });
-      return { period, pureClose: c.pureClose, rows };
+      return { month: c.month, period, pureClose: c.pureClose, rows };
     }),
   );
 
-  const carry = new Map<number, number>();
-  for (const { period, pureClose, rows } of parts) {
-    for (const e of rows) {
-      const v = carryContribution(e, period, pureClose);
-      if (v !== 0) carry.set(e.id, (carry.get(e.id) ?? 0) + v);
-    }
+  // Qadamlarni yig'ish (ulushi 0 oy ham qadam, qatori yo'q oy — emas) va
+  // eskidan yangiga fold — sof funksiyada (lib/salary.ts →
+  // carryFoldsByEmployee), bazasiz sinaladi (scripts/_test-salary.mjs, N8).
+  return carryFoldsByEmployee(parts);
+}
+
+/**
+ * O'TGAN OY qatorlariga `maybePaidIn` qo'yadi (04.10.2026, o'tish davri
+ * qorovuli — lib/salary.ts → payrollPendingMaybePaid izohi): shu oy
+ * qoldig'ining qancha qismi JORIY oyda joriy oy yozuvi bo'lib berilgan
+ * bo'lishi mumkin. Oylik sahifasi, Chiqim oynasi va bot o'tgan oyni
+ * ochganda shu qatorlarda "qayta chiqarmang" deydi.
+ *
+ * NEGA KERAK: shubha JORIY oy qatorida ko'rinadi (u yerda ortiqcha to'lov
+ * bor), pul esa O'TGAN oy sahifasidan chiqadi — o'sha sahifa joriy oyni
+ * bilmaydi va 180 000 ni oddiy "Qolgan" deb ko'rsatardi.
+ *
+ * Faqat ochiq o'tgan oyda ishlaydi (joriy/kelajak/yopilgan oyda — hech
+ * narsa qilmaydi) va faqat shu sahifada musbat qoldig'i bor xodim bo'lsa.
+ * NARXI: bitta qo'shimcha `buildPayrollRows(joriy oy)` (qoldiq zanjiri
+ * bilan) — faqat o'tgan oy ochilganda. Joriy oy qatori FILIALGA
+ * KESILMAYDI: xodimning oylik filiali oylar orasida o'zgargan bo'lsa ham
+ * topilsin (qorovul jim qolib ketmasin).
+ *
+ * Qatorlar O'ZGARTIRILMAYDI — yangi massiv qaytadi.
+ */
+export async function attachMaybePaidIn(
+  db: Db,
+  p: PayrollPeriod,
+  rows: EmployeePayroll[],
+): Promise<EmployeePayroll[]> {
+  const month = payrollMonthKey(p);
+  const cur = payrollPeriod();
+  const curKey = payrollMonthKey(cur);
+  if (month >= curKey) return rows;
+  const atRisk = rows.filter((e) => e.configured && payrollDue(e, p) > 0);
+  if (atRisk.length === 0) return rows;
+  const closed = await loadLastPureCloseMonth(db);
+  if (closed && month <= closed) return rows;
+
+  const curRows = await buildPayrollRows(db, cur);
+  const hit = new Map<number, CarryPendingMonth>();
+  const ids = new Set(atRisk.map((e) => e.id));
+  for (const e of curRows) {
+    if (!ids.has(e.id)) continue;
+    const part = pendingMaybePaidByMonth(e, cur).find((x) => x.month === month);
+    if (part) hit.set(e.id, { month: curKey, amount: part.amount });
   }
-  for (const [id, v] of carry) if (v === 0) carry.delete(id);
-  return carry;
+  if (hit.size === 0) return rows;
+  return rows.map((e) => (hit.has(e.id) ? { ...e, maybePaidIn: hit.get(e.id) } : e));
 }
 
 /**
@@ -596,7 +643,7 @@ export async function buildPayrollRows(
   const employees = refs.keepArchived ? refs.employees : refs.employees.filter((e) => isInPayrollPeriod(e, p));
   const [paidBy, carryBy, collectedBy] = await Promise.all([
     loadPaidByEmployee(db, month),
-    withCarry ? loadCarryOver(db, p, refs) : Promise.resolve(new Map<number, number>()),
+    withCarry ? loadCarryOver(db, p, refs) : Promise.resolve(new Map<number, CarryFold>()),
     loadCollectedByTeacher(db, month),
   ]);
 
@@ -630,7 +677,12 @@ export async function buildPayrollRows(
     const fixedSalary = fixedSalaryOf(emp);
     const hasOklad = isSalaryConfigured(emp);
     const percent = resolvePercent(emp.percent, percentByTier);
-    const carryOver = carryBy.get(emp.id) ?? 0;
+    // To'lanadigan qism va o'z oyidan chiqariladigan qism (04.10.2026) —
+    // `loadCarryOver` izohiga qarang.
+    const carry = carryBy.get(emp.id);
+    const carryOver = carry?.carryOver ?? 0;
+    const carryPendingMonths = carry?.pending ?? [];
+    const carryPending = carryPendingMonths.reduce((s, x) => s + x.amount, 0);
     const collected = collectedBy.get(k) ?? { collected: 0, refunded: 0 };
     const empTaxRules = (Array.isArray(emp.taxIds) ? emp.taxIds : [])
       .map((id) => taxById.get(Number(id)))
@@ -677,10 +729,17 @@ export async function buildPayrollRows(
       paidAvans: paid.avans,
       paidOylik: paid.oylik,
       carryOver,
+      // Izoh faqat TO'LANADIGAN qism haqida (04.10.2026): musbati endi
+      // faqat nol-yopish oyidan keladi va u zanjirning eng yangisi, ya'ni
+      // aynan o'tgan oy ("Avgust oyidan qolgan"); manfiysi ham o'tgan oy
+      // qatoridan o'tadi. O'z oyidan chiqariladigan qism (`carryPending`)
+      // bu yerga yozilmaydi — uni interfeys oy nomi bilan alohida ko'rsatadi.
       carryNote:
         carryOver > 0 ? `${prevMonth} oyidan qolgan`
         : carryOver < 0 ? `${prevMonth} oyidan qarzdorlik`
         : "",
+      // Qoldiq hisoblanmagan (`carryOver: false` — zanjirning o'zi) qatorda yo'q.
+      ...(withCarry ? { carryPending, carryPendingMonths } : {}),
       // Soliq faqat xodimga ATAYLAB biriktirilgan turlar bo'yicha
       // hisoblanadi. Sozlamalarda o'chirilgan yoki o'chirib tashlangan
       // qoida `taxById` da bo'lmaydi va o'z-o'zidan tushib qoladi.

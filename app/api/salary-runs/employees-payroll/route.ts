@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { attachBranchPayouts, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
+import { attachBranchPayouts, attachMaybePaidIn, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { isMonthKey, payrollHasFoiz, payrollMonthKey, payrollPeriod, payrollPeriodOf, prevMonthKey } from "@/lib/salary";
 import { getBranchScope } from "@/lib/branchScope";
 import { detectMovedPupils } from "@/lib/teacherHandoverStore";
@@ -14,7 +14,11 @@ import { detectMovedPupils } from "@/lib/teacherHandoverStore";
 //   paidAvans/paidOylik ← transaction_entries (shu oydagi chiqimlar)
 //   fixedSalary ← xodim kartasidagi filiallar bo'yicha ish haqi
 //   percent ← Sozlamalar > Moliya > Oylik foizlari (daraja nomi orqali)
-//   carryOver ← o'tgan oylarning jonli qoldig'i (loadCarryOver)
+//   carryOver ← o'tgan oylardan SHU OYDA TO'LANADIGAN qism (loadCarryOver):
+//               nol-yopish ulushi yoki qarzdorlik
+//   carryPending, carryPendingMonths ← o'tgan oylarda to'lanmagan, FAQAT
+//               o'z oyidan chiqariladigan qoldiq (04.10.2026) — bu oyda
+//               ma'lumot, `payrollDue`/chegaraga kirmaydi
 //
 // `configured: false` bo'lgan xodimning raqamlari ma'nosiz — interfeys
 // ularni "Oylik sozlanmagan" deb ko'rsatishi kerak.
@@ -69,11 +73,17 @@ export async function GET(req: Request) {
   // OYLIK RO'YXATI — `payrollBranchId` bo'yicha, `branchIds` bo'yicha EMAS.
   // Ikki filialda ishlaydigan xodim faqat BITTA filialning ro'yxatida
   // turadi, ya'ni oylik ikki marta chiqarilishi mumkin emas.
-  const employees = await buildPayrollRows(
+  const built = await buildPayrollRows(
     db,
     period,
     allBranches ? {} : { payrollBranchId: scope.branchId },
   );
+  // O'TGAN OY ochilganda — "bu oy puli joriy oyda allaqachon berilgan
+  // bo'lishi mumkin" belgisi (`maybePaidIn`, 04.10.2026, o'tish davri
+  // qorovuli: lib/payrollSources.ts → attachMaybePaidIn). Joriy/kelajak
+  // oyda hech narsa qilmaydi. Oylik sahifasi va Chiqim oynasi shu bilan
+  // "qayta chiqarmang" deydi.
+  const employees = await attachMaybePaidIn(db, period, built);
   // `month` QAYTARILADI: mijoz qaysi oy hisoblanganini taxmin qilmasin —
   // parametrsiz so'rovda ham server tanlagan oy aniq bo'lsin.
   const month = payrollMonthKey(period);
@@ -93,6 +103,11 @@ export async function GET(req: Request) {
   }
   if (!withGiven) return NextResponse.json({ ok: true, month, branchId, employees });
 
+  // `closedThrough` Oylik sahifasiga ham (04.10.2026): yopilgan oy (hozir
+  // 2026-08) tanlanganda chiqarish tugmalari o'chadi. Server ham rad etadi
+  // (app/api/salary-runs/route.ts → POST), bu oldindan ko'rsatish.
+  const closedThrough = await loadLastPureCloseMonth(db);
+
   // "Berilgan avans" / "To'langan oylik" kartochkalari — pul QAYSI FILIAL
   // KASSASIDAN chiqqani bo'yicha. Qatorlarning o'z raqamlari o'zgarmaydi.
   const { rows, given } = await attachBranchPayouts(db, month, scope.branchId, employees);
@@ -102,7 +117,7 @@ export async function GET(req: Request) {
   // oylik chiqarilayotganda kerak (lib/teacherHandoverStore.ts).
   const cur = payrollPeriod();
   const recent = month === payrollMonthKey(cur) || month === prevMonthKey(cur);
-  if (!recent) return NextResponse.json({ ok: true, month, branchId, employees: rows, given });
+  if (!recent) return NextResponse.json({ ok: true, month, branchId, employees: rows, given, closedThrough });
   const hints = await detectMovedPupils(
     db,
     month,
@@ -112,5 +127,5 @@ export async function GET(req: Request) {
     const h = hints.get(String(e.name ?? "").trim().toLowerCase());
     return h ? { ...e, movedHint: h } : e;
   });
-  return NextResponse.json({ ok: true, month, branchId, employees: withHints, given });
+  return NextResponse.json({ ok: true, month, branchId, employees: withHints, given, closedThrough });
 }

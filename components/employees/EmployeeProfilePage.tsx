@@ -16,7 +16,10 @@ import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
-import { payrollCashLeg, payrollDue, payrollPeriod, payrollPlastikLeg, payrollTax, type EmployeePayroll } from "@/lib/salary";
+import {
+  payrollCashLeg, payrollDue, payrollOwedTotal, payrollPeriod, payrollPlastikLeg, payrollTax,
+  type CarryPendingMonth, type EmployeePayroll,
+} from "@/lib/salary";
 import EmployeeSalaryConfigModal from "./EmployeeSalaryConfigModal";
 import AddEmployeeModal from "./AddEmployeeModal";
 import EmployeePasswordModal from "./EmployeePasswordModal";
@@ -36,7 +39,7 @@ import {
 import PersonLink from "@/components/shared/PersonDirectory";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
-import { useT } from "@/components/shared/Language";
+import { useT, type TFn } from "@/components/shared/Language";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
@@ -106,26 +109,77 @@ interface StatInput {
    */
   payroll?: {
     fixedSalary: number;
+    /**
+     * Xodimga JAMI qancha qarzmiz (`payrollOwedTotal`): shu oyda
+     * to'lanadigani + o'tgan oylarda to'lanmagani (`pending`).
+     *
+     * 04.10.2026 gacha `payrollDue` edi va o'shanda u o'tgan oylar
+     * qoldig'ini ham to'liq olardi. Endi o'tgan oyning to'lanmagan musbat
+     * qoldig'i joriy oyda TO'LANMAYDI (faqat o'z oyi sahifasidan) va
+     * `payrollDue` dan chiqdi — "To'lanmagan" esa xodimning JAMI haqi
+     * bo'lib qolishi kerak (Mini App'da xodim ham shuni ko'radi), aks holda
+     * sentabr puli profildan "yo'qolardi".
+     */
+    owed: number;
+    /** Shu oyda to'lanadigan qism, ishorali (`payrollDue`) — kesim uchun. */
     due: number;
     configured: boolean;
     /**
-     * `due` ning ikki oyog'i (lib/salary.ts): kartaga ketadigani va
-     * qo'lga beriladigan naqd. Oylik hisob-kitob sahifasining "Qolgan"
-     * ustuni AYNAN `naqd` — shu bois karta bor xodimda profil "To'lanmagan"
-     * (karta + naqd) o'sha ustundan katta ko'rinadi va bu xato emas;
-     * kesim ostida ko'rsatiladi, ikki raqam bir-biriga mos tushsin.
+     * Shu oyda TO'LANADIGAN qismning ikki oyog'i (lib/salary.ts): kartaga
+     * ketadigani va qo'lga beriladigan naqd. Oylik hisob-kitob sahifasining
+     * "Qolgan" ustuni AYNAN `naqd` — shu bois karta bor xodimda profil
+     * "To'lanmagan" (karta + naqd + o'tgan oylardan) o'sha ustundan katta
+     * ko'rinadi va bu xato emas; kesim ostida ko'rsatiladi, raqamlar bir-
+     * biriga mos tushsin.
      */
     karta: number;
     naqd: number;
+    /**
+     * O'tgan oylarda to'lanmagan, o'z oyidan chiqariladigan qoldiqlar
+     * (`carryPendingMonths`, eskidan yangiga) — `owed` ichida bor, kesimda
+     * alohida yoziladi.
+     */
+    pending: CarryPendingMonth[];
   } | null;
+  /** Kesim izohi tayyor (o'girilgan) matn bo'lib chiqadi. */
+  t: TFn;
+  /** Tildagi oy nomlari (`useT().months`) — "Sentyabr 2026". */
+  months: string[];
 }
 
-function buildStats({ bonus, jarima, avans, oylik, ready, payroll }: StatInput): ProfileStat[] {
+/** "2026-09" → "Sentyabr 2026" (tilga qarab); o'qib bo'lmasa o'zi. */
+function monthKeyLabel(month: string, months: string[]): string {
+  const i = Number(month.slice(5, 7)) - 1;
+  return i >= 0 && i < 12 ? `${months[i]} ${month.slice(0, 4)}` : month;
+}
+
+function buildStats({ bonus, jarima, avans, oylik, ready, payroll, t, months }: StatInput): ProfileStat[] {
   const v = (n: number) => (ready ? nf(n) : "…");
   const none = ready ? "—" : "…";
   // Oyligi sozlanmagan xodimda 0 ko'rsatish yolg'on bo'lardi — "—" qoladi.
   const p = (n: number | undefined) =>
     !ready ? "…" : payroll?.configured && n !== undefined ? nf(n) : "—";
+  // "To'lanmagan" kesimi: shu oyda kartaga/naqd (faqat karta bor xodimda)
+  // va o'tgan oylardan o'z oyidan chiqariladigani (bo'lsa). Kesim bo'laklari
+  // yig'indisi doim kartadagi raqamga teng: karta yo'q, lekin o'tgan oylardan
+  // qoldiq bor xodimda "shu oy" alohida yoziladi — u manfiy (qarzdorlik)
+  // bo'lishi ham mumkin, masalan sentabr puli oktabr yozuvi bo'lib
+  // berilganda: sentabr 180 000, shu oy −180 000, jami 0. Matn shu yerda
+  // o'giriladi — ProfileSideCard dagi t() tayyor matnni o'zgartirmaydi.
+  const owedParts: string[] = [];
+  if (ready && payroll?.configured) {
+    if (payroll.karta > 0) {
+      owedParts.push(t("kartaga {kartaga} · naqd {naqd}", { kartaga: nf(payroll.karta), naqd: nf(payroll.naqd) }));
+    } else if (payroll.pending.length > 0) {
+      owedParts.push(t("shu oy: {amount}", { amount: nf(payroll.due) }));
+    }
+    if (payroll.pending.length > 0) {
+      // Kalit Oylik sahifasidagi "Qolgan to'lanadigan" izohi bilan bir xil;
+      // `{amount}` o'rniga oylar kesimi: "314 000 UZS (Sentyabr 2026)".
+      const amount = payroll.pending.map((pm) => `${nf(pm.amount)} (${monthKeyLabel(pm.month, months)})`).join(", ");
+      owedParts.push(t("o'tgan oylarda to'lanmagan: {amount} — o'z oyidan", { amount }));
+    }
+  }
   return [
     { label: "Davomat", value: none, icon: <Check className="w-4 h-4" />, wrap: "bg-emerald-100 text-emerald-600" },
     { label: "Davomatdan foizi", value: none, icon: <Percent className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-600" },
@@ -136,15 +190,14 @@ function buildStats({ bonus, jarima, avans, oylik, ready, payroll }: StatInput):
     { label: "Oylik", value: v(oylik), icon: <CreditCard className="w-4 h-4" />, wrap: "bg-blue-100 text-blue-700" },
     {
       label: "To'lanmagan",
-      value: p(payroll?.due),
+      value: p(payroll?.owed),
       icon: <DollarSign className="w-4 h-4" />,
       wrap: "bg-emerald-100 text-emerald-700",
-      valueCls: (payroll?.due ?? 0) < 0 ? "text-rose-600" : "",
-      // Karta bor xodimda kesim: Oylik hisob-kitob sahifasidagi "Qolgan"
-      // — bu yerdagi `naqd`. Kartasiz xodimda kesim ma'nosiz — yozilmaydi.
-      hint: ready && payroll?.configured && payroll.karta > 0
-        ? `kartaga ${nf(payroll.karta)} · naqd ${nf(payroll.naqd)}`
-        : undefined,
+      valueCls: (payroll?.owed ?? 0) < 0 ? "text-rose-600" : "",
+      // Kesim: karta bor xodimda Oylik hisob-kitob sahifasidagi "Qolgan"
+      // — bu yerdagi `naqd`; o'tgan oylardan to'lanmagan — alohida.
+      // Ikkalasi ham yo'q bo'lsa kesim ma'nosiz — yozilmaydi.
+      hint: owedParts.length > 0 ? owedParts.join(" · ") : undefined,
     },
   ];
 }
@@ -682,12 +735,16 @@ export function EmployeeProfileView({
     payroll: payrollRow
       ? {
           fixedSalary: payrollRow.fixedSalary,
+          owed: payrollOwedTotal(payrollRow, payrollPeriod()),
           due: payrollDue(payrollRow, payrollPeriod()),
           configured: payrollRow.configured,
           karta: payrollPlastikLeg(payrollRow, payrollPeriod()),
           naqd: payrollCashLeg(payrollRow, payrollPeriod()),
+          pending: (payrollRow.carryPendingMonths ?? []).filter((pm) => pm.amount > 0),
         }
       : null,
+    t,
+    months,
   });
 
   // Oylik qatori bor bo'lsa — o'sha (oklad YOKI foiz sozlangan). Ilgari faqat

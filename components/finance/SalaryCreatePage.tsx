@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "@/components/ui/Link";
-import { ArrowLeftRight, CreditCard, DollarSign, History, RotateCcw, Search } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, CreditCard, DollarSign, History, RotateCcw, Search } from "lucide-react";
 import TeacherHandoverModal from "@/components/finance/TeacherHandoverModal";
 import { useBranchChangedElsewhere } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
@@ -34,8 +34,12 @@ import {
   payrollCashLeg,
   payrollCashDue,
   payrollPayout,
+  payrollPendingMaybePaid,
+  pendingMaybePaidByMonth,
   type BranchPayouts,
+  type CarryPendingMonth,
   type EmployeePayroll,
+  type PayrollPeriod,
 } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Modal from "@/components/ui/Modal";
@@ -62,6 +66,19 @@ import { useT } from "@/components/shared/Language";
 //
 // Ish haqi sozlanmagan xodimda raqam KO'RSATILMAYDI — "Sozlanmagan" deb
 // turadi va uni tanlab oylik chiqarib bo'lmaydi (server ham rad etadi).
+//
+// O'TGAN OYLAR QOLDIG'I — "FAQAT O'Z OYIDAN" (04.10.2026, foydalanuvchi).
+// "O'tgan oydan" ustuni, "Qolgan" va chiqariladigan summa faqat SHU OYDA
+// to'lanadigan qismni oladi (`carryOver`: nol-yopish oyining ulushi yoki
+// qarzdorlik). O'tgan oyning TO'LANMAGAN musbat qoldig'i
+// (`carryPendingMonths`, lib/salary.ts → foldCarryChain) bu sahifada FAQAT
+// MA'LUMOT: ustun ostida "Sentabr: 314 000" turadi, bosilsa oy tanlagichi
+// o'sha oyga o'tadi va pul o'sha oy sahifasidan chiqariladi. "Qolgan
+// to'lanadigan" kartochkasida va tasdiqlash oynasida ham alohida aytiladi.
+// NIMA NOTO'G'RI EDI: ilgari u shu oyning "Qolgan"iga qo'shilardi —
+// oktabrda chiqarilgan pul OKTABR yozuvi bo'lardi, sentabr sahifasi esa
+// hamon "Qolgan" ko'rsatardi, ya'ni bir summani ikki marta to'lash mumkin
+// edi (sinov bazasida isbotlangan).
 
 function fmtNum(n: number): string {
   return Math.round(n).toLocaleString("ru-RU");
@@ -73,6 +90,30 @@ function fmtSum(n: number): string {
 function fmtIsoDay(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
+
+/**
+ * Qatorlarning o'z oyidan chiqariladigan qoldiqlarini (`carryPendingMonths`)
+ * OY BO'YICHA jamlaydi, eskidan yangiga. Faqat ko'rsatish uchun — bu summa
+ * shu oyda to'lanmaydi (yuqoridagi "faqat o'z oyidan" izohi).
+ *
+ * Shu oyda shu oy yozuvi bo'lib berilgan bo'lishi MUMKIN bo'lgan qism
+ * (`pendingMaybePaidByMonth`, 04.10.2026 o'tish davri qorovuli) AYRILADI:
+ * "o'sha oy sahifasidan chiqariladi" deb aytilmasin — u yerda yana
+ * chiqarilsa ikki marta to'lanadi. U qism alohida ogohlantiriladi.
+ */
+function sumPendingByMonth(rows: readonly EmployeePayroll[], p: PayrollPeriod): CarryPendingMonth[] {
+  const byMonth = new Map<string, number>();
+  for (const e of rows) {
+    const covered = pendingMaybePaidByMonth(e, p);
+    for (const pm of e.carryPendingMonths ?? []) {
+      const amount = pm.amount - (covered.find((x) => x.month === pm.month)?.amount ?? 0);
+      if (amount > 0) byMonth.set(pm.month, (byMonth.get(pm.month) ?? 0) + amount);
+    }
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([month, amount]) => ({ month, amount }));
 }
 
 // FILIAL BOSHQA OYNADA ALMASHTIRILSA (30.09.2026).
@@ -117,6 +158,13 @@ interface StatCardProps {
    * bo'lib qolib ketmaydi.
    */
   sub?: { text: string; tone: "emerald" | "rose" };
+  /**
+   * `hint` ostidagi qo'shimcha OGOHLANTIRISH qatori (ixtiyoriy, sariq) —
+   * masalan "Qolgan to'lanadigan" kartochkasida o'tgan oylarda to'lanmagan,
+   * lekin bu summaga KIRMAYDIGAN qoldiq (04.10.2026). Ichida tugma bo'lishi
+   * mumkin, shuning uchun matn emas, element.
+   */
+  note?: ReactNode;
   tone: "cyan" | "amber" | "blue" | "rose" | "emerald";
   /**
    * Yuklanayotganda RAQAM KO'RSATILMAYDI.
@@ -128,7 +176,7 @@ interface StatCardProps {
    */
   loading?: boolean;
 }
-function StatCard({ label, value, hint, title, sub, tone, loading = false }: StatCardProps) {
+function StatCard({ label, value, hint, title, sub, note, tone, loading = false }: StatCardProps) {
   const tones = {
     cyan:    { bar: "bg-cyan-500",    text: "text-cyan-500",    dot: "bg-cyan-500" },
     amber:   { bar: "bg-amber-500",   text: "text-amber-500",   dot: "bg-amber-500" },
@@ -159,6 +207,9 @@ function StatCard({ label, value, hint, title, sub, tone, loading = false }: Sta
         </div>
       )}
       <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>
+      {note && !loading && (
+        <div className="mt-0.5 text-[11px] leading-snug text-amber-600 dark:text-amber-500">{note}</div>
+      )}
     </div>
   );
 }
@@ -204,6 +255,11 @@ export default function SalaryCreatePage() {
   // o'tgan oyning butun tushumi ko'zdan g'oyib bo'lardi.
   const currentMonthKey = useMemo(() => payrollMonthKey(payrollPeriod()), []);
   const [monthKey, setMonthKey] = useState(currentMonthKey);
+  // Oxirgi NOL-YOPISH oyi ("YYYY-MM", hozir 2026-08) — serverdan (04.10.2026).
+  // O'sha oy va undan oldingilar uchun oylik CHIQARILMAYDI: server rad etadi
+  // (app/api/salary-runs/route.ts), bu yerda tugmalar oldindan o'chadi.
+  // Javob kelguncha "" — to'smaydi (server baribir to'sadi).
+  const [closedThrough, setClosedThrough] = useState("");
   const period = useMemo(() => payrollPeriodOf(monthKey), [monthKey]);
   const periodLabel = useMemo(() => t("1 — {day}-{month} ({day}/{daysIn} kun)", { day: period.day, month: months[period.month].toLowerCase(), daysIn: period.daysIn }), [period, months, t]);
   const isPastMonth = monthKey < currentMonthKey;
@@ -211,6 +267,12 @@ export default function SalaryCreatePage() {
   // undan pul CHIQARILMAYDI — hali ishlanmagan oy uchun oylik berilmaydi.
   // Server ham rad etadi, bu shunchaki tugmani oldindan o'chirib qo'yadi.
   const isFutureMonth = monthKey > currentMonthKey;
+  // YOPILGAN oy (nol-yopish, 04.10.2026) — ko'riladi, lekin chiqarilmaydi.
+  const isClosedMonth = !!closedThrough && monthKey <= closedThrough;
+  // Chiqarish tugmalari bitta sabab bilan o'chadi (kelajak yoki yopilgan oy).
+  const payoutBlockedReason = isFutureMonth
+    ? t("Kelajak oy uchun oylik chiqarilmaydi")
+    : isClosedMonth ? t("Yopilgan oy uchun oylik chiqarilmaydi") : "";
   const monthLabel = `${months[period.month]} ${period.year}`;
   // Sarlavhalar oyga qarab o'zgaradi: "shu kungacha" faqat JORIY oyda
   // to'g'ri — tugagan oy to'liq hisoblanadi, kelajak oyda esa umuman
@@ -219,6 +281,15 @@ export default function SalaryCreatePage() {
   // Kelajak oyda davr yorlig'i "1 — 0-oktabr (0/31 kun)" bo'lib chiqadi —
   // izohlarda uning o'rniga oddiy oy nomi ko'rsatiladi.
   const periodHint = isFutureMonth ? monthLabel : periodLabel;
+  /**
+   * O'z oyidan chiqariladigan qoldiq oyining nomi: "2026-09" → "Sentabr";
+   * sahifadagi oydan boshqa yilniki bo'lsa yil bilan ("Dekabr 2025").
+   */
+  function pendingMonthLabel(key: string): string {
+    const [y, m] = key.split("-").map(Number);
+    const name = months[m - 1] ?? key;
+    return y === period.year ? name : `${name} ${y}`;
+  }
 
   // Kechikkan javob YANGI oyning raqamlarini bosib ketmasin: har so'rovga
   // tartib raqami beriladi va faqat eng oxirgisi holatni yozadi (oy tez-tez
@@ -242,6 +313,7 @@ export default function SalaryCreatePage() {
         setEmployees(d.employees);
         setGiven(d.given ?? null);
         setListBranchId(typeof d.branchId === "number" ? d.branchId : null);
+        if (typeof d.closedThrough === "string") setClosedThrough(d.closedThrough);
         branchCookieAtLoad.current = readBranchCookie();
       })
       .finally(() => { if (seq === reqSeq.current) setLoading(false); });
@@ -401,7 +473,8 @@ export default function SalaryCreatePage() {
   // qatorlardan emas, kassa bo'yicha keladi (`given`, quyida `givenCard`).
   const stats = useMemo(() => {
     let hisoblangan = 0, qolgan = 0, kartaga = 0, naqd = 0, otganOydan = 0, qarzdorlik = 0;
-    for (const e of employees.filter((x) => x.configured)) {
+    const configured = employees.filter((x) => x.configured);
+    for (const e of configured) {
       hisoblangan += payrollEarned(e, period);
       // "Qolgan to'lanadigan" — kassadan CHIQADIGAN jami (lib/salary.ts →
       // payrollPayout = karta + naqd = musbat qoldiq). Karta va naqd
@@ -412,9 +485,19 @@ export default function SalaryCreatePage() {
       kartaga += payrollPlastikLeg(e, period);
       naqd += payrollCashLeg(e, period);
       qarzdorlik += payrollDebt(e, period);
+      // Faqat SHU OYDA to'lanadigan qism (04.10.2026 dan): nol-yopish
+      // oyining ulushi yoki qarzdorlik.
       otganOydan += e.carryOver;
     }
-    return { hisoblangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik };
+    // O'tgan oylarda to'lanmagan, lekin shu oyda TO'LANMAYDIGAN qoldiq —
+    // `qolgan` ga ATAYLAB qo'shilmaydi (aks holda u ikki sahifadan
+    // to'lanardi). Kartochkada alohida, oy nomi bilan ko'rinadi.
+    const pendingMonths = sumPendingByMonth(configured, period);
+    const pending = pendingMonths.reduce((s, x) => s + x.amount, 0);
+    // Pending'dan shu oyda shu oy yozuvi bo'lib berilgan bo'lishi mumkin
+    // bo'lgan qism — yuqoridagidan AYRILGAN, alohida ogohlantiriladi.
+    const maybePaid = configured.reduce((s, e) => s + payrollPendingMaybePaid(e, period), 0);
+    return { hisoblangan, qolgan, kartaga, naqd, otganOydan, qarzdorlik, pending, pendingMonths, maybePaid };
   }, [employees, period]);
 
   /**
@@ -503,6 +586,25 @@ export default function SalaryCreatePage() {
     return sum;
   }, [employees, selected, period]);
 
+  // Tanlanganlarning O'TGAN OYLARDA to'lanmagan qoldig'i — bu chiqarishga
+  // KIRMAYDI (04.10.2026, "faqat o'z oyidan"). Tasdiqlash oynasida ochiq
+  // aytiladi, aks holda "sentabr qoldig'i ham shu bilan chiqdi" deb
+  // o'ylanib, o'sha oy sahifasida ochiq qolib ketardi.
+  const selectedPending = useMemo(
+    () => sumPendingByMonth(employees.filter((e) => e.configured && selected.has(e.id)), period),
+    [employees, selected, period],
+  );
+  const selectedPendingTotal = selectedPending.reduce((s, x) => s + x.amount, 0);
+
+  // O'TGAN OY sahifasida: tanlanganlardan bu oy puli JORIY oyda allaqachon
+  // berilgan bo'lishi mumkin bo'lganlari (`maybePaidIn`, 04.10.2026 o'tish
+  // davri qorovuli). Tasdiqlash oynasida ogohlantiriladi va bir bosishda
+  // tanlovdan chiqariladi — chiqarish summasi o'zi O'ZGARMAYDI.
+  const selectedMaybePaid = useMemo(
+    () => employees.filter((e) => e.configured && selected.has(e.id) && e.maybePaidIn && payrollPayout(e, period) > 0),
+    [employees, selected, period],
+  );
+
   // Ro'yxatda umuman plastik oyligi bor xodim bormi — ikkita qo'shimcha
   // ustun faqat shunda chiziladi.
   const anyPlastik = useMemo(() => employees.some((e) => e.plastikSalary > 0), [employees]);
@@ -549,7 +651,7 @@ export default function SalaryCreatePage() {
     : Math.max(naqdTotal - available, 0) + Math.max(plastikTotal - plastikAvailable, 0);
   const canPayout =
     Boolean(cashboxId) && Boolean(methodKey) && payoutTotal > 0
-    && !notEnough && !isFutureMonth && !sameMethod && !needsPlastikMethod;
+    && !notEnough && !payoutBlockedReason && !sameMethod && !needsPlastikMethod;
 
   // «FAQAT KARTANI CHIQARISH» (30.09.2026) — bank kartaga o'tkazgan pulni
   // bir bosishda qayd etish: tanlanganlarning (hech kim tanlanmagan bo'lsa —
@@ -563,7 +665,7 @@ export default function SalaryCreatePage() {
   const kartaTotal = kartaRows.reduce((s, x) => s + x.amount, 0);
   const kartaShort = Math.max(kartaTotal - plastikAvailable, 0);
   const canKarta =
-    Boolean(cashboxId) && Boolean(plastikMethodKey) && kartaTotal > 0 && kartaShort === 0 && !isFutureMonth;
+    Boolean(cashboxId) && Boolean(plastikMethodKey) && kartaTotal > 0 && kartaShort === 0 && !payoutBlockedReason;
 
   function openKartaConfirm() {
     if (kartaRows.length === 0) {
@@ -688,7 +790,13 @@ export default function SalaryCreatePage() {
             {periodLabel}
           </span>
         )}
-        {isPastMonth && (
+        {isClosedMonth ? (
+          // YOPILGAN oy (nol-yopish) — raqamlar tizimdan oldingi davrdan
+          // quriladi va pul chiqarilmaydi (server ham rad etadi).
+          <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[12px] font-semibold">
+            {t("{monthLabel} — yopilgan oy, oylik chiqarilmaydi", { monthLabel })}
+          </span>
+        ) : isPastMonth && (
           // Tugagan oy TO'LIQ hisoblanadi (oklad kesilmaydi) — foydalanuvchi
           // joriy oydagi "shu kungacha" hisobidan farqini ko'rib tursin.
           <span className="inline-flex items-center h-7 px-2.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[12px] font-semibold">
@@ -721,11 +829,8 @@ export default function SalaryCreatePage() {
           {anyPlastik && (
             <button
               onClick={openKartaConfirm}
-              disabled={isFutureMonth}
-              title={
-                isFutureMonth ? t("Kelajak oy uchun oylik chiqarilmaydi")
-                : t("Faqat karta qismi chiqariladi — naqd qismi «Qolgan» ustunida qoladi")
-              }
+              disabled={!!payoutBlockedReason}
+              title={payoutBlockedReason || t("Faqat karta qismi chiqariladi — naqd qismi «Qolgan» ustunida qoladi")}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/15 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CreditCard className="w-4 h-4" />
@@ -737,11 +842,10 @@ export default function SalaryCreatePage() {
           )}
           <button
             onClick={openConfirm}
-            disabled={isFutureMonth}
+            disabled={!!payoutBlockedReason}
             title={
-              isFutureMonth ? t("Kelajak oy uchun oylik chiqarilmaydi")
-              : selectedCount === 0 ? t("Avval jadvaldan xodimlarni belgilang — chap tomondagi katakchalar")
-              : undefined
+              payoutBlockedReason
+              || (selectedCount === 0 ? t("Avval jadvaldan xodimlarni belgilang — chap tomondagi katakchalar") : undefined)
             }
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -823,16 +927,64 @@ export default function SalaryCreatePage() {
             anyPlastik
               ? t("kartaga {kartaga} · naqd {naqd}", { kartaga: fmtNum(stats.kartaga), naqd: fmtNum(stats.naqd) })
                 + (stats.qarzdorlik > 0 ? t(" · xodim qarzi: {qarzdorlik}", { qarzdorlik: fmtNum(stats.qarzdorlik) }) : "")
-              : stats.qarzdorlik > 0
-                ? t("o'tgan oydan: {otganOydan} · xodim qarzi: {qarzdorlik}", { otganOydan: fmtSum(stats.otganOydan), qarzdorlik: fmtSum(stats.qarzdorlik) })
-                : t("shu jumladan o'tgan oydan: {otganOydan}", { otganOydan: fmtSum(stats.otganOydan) })
+              // "O'tgan oydan" 0 bo'lsa aytilmaydi (04.10.2026): musbat qismi
+              // endi faqat nol-yopishdan keyingi oyda bo'ladi, oktabrdan
+              // boshlab doim "0 so'm" chiqib, pastdagi "o'tgan oylarda
+              // to'lanmagan: X — o'z oyidan" izohi bilan zid o'qilardi.
+              : stats.otganOydan !== 0
+                ? stats.qarzdorlik > 0
+                  ? t("o'tgan oydan: {otganOydan} · xodim qarzi: {qarzdorlik}", { otganOydan: fmtSum(stats.otganOydan), qarzdorlik: fmtSum(stats.qarzdorlik) })
+                  : t("shu jumladan o'tgan oydan: {otganOydan}", { otganOydan: fmtSum(stats.otganOydan) })
+                : stats.qarzdorlik > 0
+                  ? t("xodim qarzi: {qarzdorlik}", { qarzdorlik: fmtSum(stats.qarzdorlik) })
+                  : t("faqat shu oy hisobidan")
           }
           title={
-            anyPlastik
+            ((anyPlastik
               ? t("Kartaga {kartaga} — qoldiqdan birinchi, plastik summasigacha.", { kartaga: fmtSum(stats.kartaga) }) +
                 t(" Naqd {naqd} — kartadan keyin xodimlarga qo'lga beriladigani (jadvaldagi \"Qolgan\" ustuni).", { naqd: fmtSum(stats.naqd) }) +
-                t(" Shu jumladan o'tgan oydan: {otganOydan}.", { otganOydan: fmtSum(stats.otganOydan) })
-              : undefined
+                (stats.otganOydan !== 0 ? t(" Shu jumladan o'tgan oydan: {otganOydan}.", { otganOydan: fmtSum(stats.otganOydan) }) : "")
+              : "") +
+              (stats.pending > 0
+                ? t(" O'tgan oylarda to'lanmagan {amount} bu summaga kirmaydi — har oyniki o'z oyining sahifasidan chiqariladi: {list}.", {
+                    amount: fmtSum(stats.pending),
+                    list: stats.pendingMonths.map((pm) => `${pendingMonthLabel(pm.month)} ${fmtNum(pm.amount)}`).join(", "),
+                  })
+                : "")
+            ).trim() || undefined
+          }
+          // O'TGAN OYLARDA TO'LANMAGAN (04.10.2026) — yuqoridagi summaga
+          // KIRMAYDI; har oy nomi tugma: bosilsa oy tanlagichi o'sha oyga
+          // o'tadi va pul o'sha sahifadan chiqariladi.
+          note={
+            stats.pending > 0 || stats.maybePaid > 0 ? (
+              <>
+                {stats.pending > 0 && t("o'tgan oylarda to'lanmagan: {amount} — o'z oyidan", { amount: fmtNum(stats.pending) })}
+                {stats.pendingMonths.map((pm) => (
+                  <button
+                    key={pm.month}
+                    type="button"
+                    onClick={() => changeMonth(pm.month)}
+                    title={t("{month} oyiga o'tish — to'lanmagan {amount} o'sha sahifadan chiqariladi", {
+                      month: pendingMonthLabel(pm.month),
+                      amount: fmtSum(pm.amount),
+                    })}
+                    className="ml-1.5 inline-flex items-center gap-0.5 font-medium underline underline-offset-2 hover:no-underline"
+                  >
+                    {pendingMonthLabel(pm.month)}
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                ))}
+                {/* O'tish davri: pending'ning shu oyda shu oy yozuvi bo'lib
+                    berilgan bo'lishi mumkin qismi — o'sha oy sahifasiga
+                    yo'naltirilmaydi (04.10.2026). */}
+                {stats.maybePaid > 0 && (
+                  <span className="block text-rose-600 dark:text-rose-400">
+                    {t("{amount} ehtimol shu oyda berilgan — o'z oyidan qayta chiqarmang", { amount: fmtNum(stats.maybePaid) })}
+                  </span>
+                )}
+              </>
+            ) : undefined
           }
           loading={loading}
         />
@@ -909,7 +1061,12 @@ export default function SalaryCreatePage() {
                 <th className="text-right px-3 py-3 whitespace-nowrap">{t("Soliq")}</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">{t("Avans olingan")}</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">{t("To'langan oylik")}</th>
-                <th className="text-right px-3 py-3 whitespace-nowrap">{t("O'tgan oydan")}</th>
+                <th
+                  className="text-right px-3 py-3 whitespace-nowrap"
+                  title={t("Shu oyda to'lanadigan o'tgan oy qoldig'i: yopilgan oy ulushi yoki qarzdorlik (manfiy). O'tgan oylarning to'lanmagan qoldig'i ostida faqat ma'lumot — u o'z oyining sahifasidan chiqariladi.")}
+                >
+                  {t("O'tgan oydan")}
+                </th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">{t("Bonus")}</th>
                 <th className="text-right px-3 py-3 whitespace-nowrap">{t("Jarima")}</th>
                 {/* QOLGAN — qatorning ENG OXIRIDA, yakuniy raqam sifatida:
@@ -936,6 +1093,11 @@ export default function SalaryCreatePage() {
                 const plastik = payrollPlastikLeg(e, period);
                 const plastikShort = payrollPlastikTarget(e) - plastik;
                 const cashDue = payrollCashDue(e, period);
+                // O'TISH DAVRI QOROVULI (04.10.2026, lib/salary.ts →
+                // payrollPendingMaybePaid): pending oy puli shu oyda shu oy
+                // yozuvi bo'lib berilgan bo'lishi mumkin bo'lsa — "o'sha oy
+                // sahifasidan chiqariladi" tugmasi o'rniga ogohlantirish.
+                const maybePaid = pendingMaybePaidByMonth(e, period);
                 const tax = payrollTax(e, period);
                 // Sichqoncha ostida qaysi soliqlardan yig'ilgani ko'rinsin.
                 const taxTitle = payrollTaxLines(e, period)
@@ -1206,7 +1368,12 @@ export default function SalaryCreatePage() {
                     </td>
                     {/* O'tgan oydan qolgan qoldiq ISHORALI: musbat —
                         akademiya qarzi, manfiy — xodimning qarzdorligi
-                        (o'tgan oyda ortiqcha olgan pul). */}
+                        (o'tgan oyda ortiqcha olgan pul). 04.10.2026 dan
+                        bu raqam faqat SHU OYDA to'lanadigan qism (musbati
+                        faqat nol-yopish oyidan). O'tgan oyning to'lanmagan
+                        qoldig'i ostida sariq MA'LUMOT bo'lib turadi va
+                        "Qolgan"ga kirmaydi — bosilsa o'sha oy sahifasiga
+                        o'tiladi, pul o'sha yerdan chiqariladi. */}
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {e.carryOver !== 0 ? (
                         <div>
@@ -1218,6 +1385,48 @@ export default function SalaryCreatePage() {
                       ) : (
                         <span className="text-muted-foreground">0</span>
                       )}
+                      {(e.carryPendingMonths ?? []).map((pm) => {
+                        // Shu oyda ORTIQCHA OYLIK bor va u shu pending oy
+                        // puli bo'lishi mumkin — o'sha sahifaga YO'NALTIRILMAYDI
+                        // (u yerda yana chiqarilsa ikki marta to'lanadi).
+                        const covered = maybePaid.find((x) => x.month === pm.month)?.amount ?? 0;
+                        if (covered > 0) {
+                          return (
+                            <div
+                              key={pm.month}
+                              title={t("{month} qoldig'idan {amount} {current} oyida {current} yozuvi bo'lib berilgan bo'lishi mumkin — shu oyda ortiqcha oylik bor. {month} sahifasidan qayta chiqarmang: avval o'sha yozuvning oyini tekshiring.", {
+                                month: pendingMonthLabel(pm.month),
+                                amount: fmtSum(covered),
+                                current: pendingMonthLabel(monthKey),
+                              })}
+                              className="mt-1 text-right text-[11px] leading-tight text-rose-600 dark:text-rose-400"
+                            >
+                              <span className="block font-medium">{`${pendingMonthLabel(pm.month)}: ${fmtNum(pm.amount)}`}</span>
+                              <span className="block">
+                                {t("ehtimol {month} oyida berilgan — qayta chiqarmang", { month: pendingMonthLabel(monthKey) })}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <button
+                            key={pm.month}
+                            type="button"
+                            onClick={() => changeMonth(pm.month)}
+                            title={t("{month} oyidan to'lanmagan {amount} — bu oyda to'lanmaydi, faqat {month} sahifasidan chiqariladi. Bosing: {month} oyiga o'tish.", {
+                              month: pendingMonthLabel(pm.month),
+                              amount: fmtSum(pm.amount),
+                            })}
+                            className="mt-1 block w-full text-right text-[11px] leading-tight text-amber-600 dark:text-amber-500 hover:underline"
+                          >
+                            <span className="block font-medium">{`${pendingMonthLabel(pm.month)}: ${fmtNum(pm.amount)}`}</span>
+                            <span className="inline-flex items-center gap-0.5 opacity-80">
+                              {t("{month} sahifasidan chiqariladi", { month: pendingMonthLabel(pm.month) })}
+                              <ArrowRight className="w-3 h-3" />
+                            </span>
+                          </button>
+                        );
+                      })}
                     </td>
                     <td className="px-3 py-3 align-top text-right text-[13px] tabular-nums whitespace-nowrap">
                       {e.bonus > 0 ? <span className="text-emerald-600 font-medium">{fmtNum(e.bonus)}</span> : <span className="text-muted-foreground">0</span>}
@@ -1242,6 +1451,24 @@ export default function SalaryCreatePage() {
                         <div>
                           <div className="text-amber-600">{fmtNum(cashDue)}</div>
                           <div className="text-[11px] font-normal text-muted-foreground">{t("qarzdor")}</div>
+                        </div>
+                      )}
+                      {/* O'TGAN OY sahifasida: shu "Qolgan"ning bir qismi
+                          joriy oyda joriy oy yozuvi bo'lib berilgan bo'lishi
+                          mumkin (04.10.2026, `maybePaidIn` — o'tish davri
+                          qorovuli). Raqam o'zgarmaydi, faqat ogohlantiriladi. */}
+                      {e.configured && e.maybePaidIn && (
+                        <div
+                          className="mt-1 text-[11px] font-normal leading-tight text-rose-600 dark:text-rose-400 whitespace-normal max-w-[180px] ml-auto"
+                          title={t("Shu oy qoldig'idan {amount} {month} oyida {month} yozuvi bo'lib berilgan bo'lishi mumkin — u yerda shuncha ortiqcha oylik bor. Qayta chiqarilsa xodim uni ikki marta oladi: avval o'sha yozuvning oyini tekshiring.", {
+                            amount: fmtSum(e.maybePaidIn.amount),
+                            month: pendingMonthLabel(e.maybePaidIn.month),
+                          })}
+                        >
+                          {t("{amount} ehtimol {month} oyida berilgan — qayta chiqarmang", {
+                            amount: fmtNum(e.maybePaidIn.amount),
+                            month: pendingMonthLabel(e.maybePaidIn.month),
+                          })}
                         </div>
                       )}
                     </td>
@@ -1409,6 +1636,43 @@ export default function SalaryCreatePage() {
                 <p className="text-[12.5px] text-amber-600">
                   {t("Tanlangan xodimlarda to'lanadigan qoldiq yo'q — oylik allaqachon chiqarilgan yoki qarzdorlik bor.")}
                 </p>
+              )}
+              {/* O'TGAN OYLARDA TO'LANMAGAN qoldiq bu chiqarishga KIRMAYDI
+                  (04.10.2026, "faqat o'z oyidan") — bu yerda aytilmasa,
+                  u ham shu bilan chiqdi deb o'ylanib, o'sha oy sahifasida
+                  ochiq qolib ketardi. */}
+              {!kartaOnly && selectedPendingTotal > 0 && (
+                <p className="text-[12.5px] text-amber-600 dark:text-amber-500">
+                  {t("Tanlanganlarning o'tgan oylardan to'lanmagan {amount} qoldig'i bu summaga kirmaydi — u {months} sahifasidan chiqariladi.", {
+                    amount: fmtSum(selectedPendingTotal),
+                    months: selectedPending.map((pm) => pendingMonthLabel(pm.month)).join(", "),
+                  })}
+                </p>
+              )}
+              {/* O'TGAN OY sahifasi: bu oy puli joriy oyda allaqachon berilgan
+                  bo'lishi mumkin bo'lgan tanlanganlar (04.10.2026, o'tish
+                  davri qorovuli) — chiqarilsa xodim ikki marta oladi. */}
+              {!kartaOnly && selectedMaybePaid.length > 0 && (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-700 dark:text-rose-300">
+                  {t("{count} ta tanlangan xodimda bu oy puli keyingi oyda allaqachon berilgan bo'lishi mumkin: {list}. Qayta chiqarilsa ikki marta to'lanadi — avval o'sha yozuvlarning oyini tekshiring.", {
+                    count: selectedMaybePaid.length,
+                    list: selectedMaybePaid
+                      .map((e) => `${e.name} — ${fmtNum(e.maybePaidIn!.amount)} (${pendingMonthLabel(e.maybePaidIn!.month)})`)
+                      .join(", "),
+                  })}
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setSelected((prev) => {
+                      const next = new Set(prev);
+                      for (const e of selectedMaybePaid) next.delete(e.id);
+                      return next;
+                    })}
+                    className="ml-1 font-semibold underline underline-offset-2 hover:no-underline disabled:opacity-50"
+                  >
+                    {t("Ularni tanlovdan chiqarish")}
+                  </button>
+                </div>
               )}
               {/* Butun jumla bitta ifodada — JSX ifoda bilan undan keyingi
                   matn orasidagi bo'shliqni yeb qo'yadi (so'mkam bo'lib

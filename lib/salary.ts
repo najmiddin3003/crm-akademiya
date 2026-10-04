@@ -429,13 +429,51 @@ export interface EmployeePayroll {
   /** Shu oyda kassadan chiqarilgan oylik. */
   paidOylik: number;
   /**
-   * O'tgan oydan o'tgan qoldiq, ishorali: musbat — to'lanmagan qism,
-   * MANFIY — xodimning akademiyaga qarzdorligi (o'tgan oyda avans olgan,
-   * lekin uni qoplagan tushum bekor qilingan). Manfiysi shu oyning
-   * hisobidan ushlab qolinadi.
+   * O'tgan oylardan SHU OYDA TO'LANADIGAN qoldiq, ishorali — `payrollDue`
+   * ga kiradi (lib/payrollSources.ts → loadCarryOver → `foldCarryChain`):
+   *   musbat — FAQAT nol-yopish oyining ulushi (hozir avgust): yopilgan oy
+   *            chiqarilmaydi, uning qoldig'i keyingi oyda to'lanadi;
+   *   MANFIY — xodimning akademiyaga qarzdorligi (o'tgan oyda avans olgan,
+   *            lekin uni qoplagan tushum bekor qilingan) — shu oyning
+   *            hisobidan ushlab qolinadi.
+   *
+   * 04.10.2026 DAN oddiy o'tgan oyning MUSBAT qoldig'i bu yerga TUSHMAYDI —
+   * u `carryPending` da (o'z oyidan chiqariladi).
    */
   carryOver: number;
   carryNote: string;
+  /**
+   * O'TGAN OYLARDA TO'LANMAGAN, lekin SHU OYDA TO'LANMAYDIGAN qoldiq (≥ 0,
+   * so'm) — 04.10.2026 dan (foydalanuvchi: "faqat o'z oyidan chiqarilsin").
+   * Har bir oyniki o'sha oyning Oylik chiqarish sahifasidan (oy tanlagichida
+   * o'sha oy) chiqariladi; bu yerda FAQAT MA'LUMOT: `payrollDue`,
+   * `payrollPayout`, `payrollCashLeg` va kassa chegarasiga KIRMAYDI.
+   * "Xodimga jami qancha qarzmiz" — `payrollOwedTotal`.
+   *
+   * NIMA NOTO'G'RI EDI: o'tgan oyning to'lanmagan qoldig'i keyingi oyning
+   * `carryOver`iga qo'shilardi. Oktabrda u bilan birga chiqarilgan pul
+   * OKTABR yozuvi bo'lardi, sentabr sahifasi esa hamon "Qolgan" ko'rsatardi
+   * — ikkinchi marta to'lash mumkin edi (sinov bazasida isbotlandi).
+   *
+   * `buildPayrollRows` uni qoldiq hisoblanganda (`carryOver: false` emas)
+   * DOIM to'ldiradi (0 bo'lishi mumkin); yo'q bo'lsa 0 deb o'qilsin.
+   */
+  carryPending?: number;
+  /**
+   * `carryPending` ning oylar bo'yicha kesimi: ESKIDAN YANGIGA (eng yangisi
+   * oxirida), har bir `amount` > 0, yig'indisi `carryPending` ga teng.
+   * Bo'sh — o'tgan oylardan to'lanmagan yo'q.
+   */
+  carryPendingMonths?: CarryPendingMonth[];
+  /**
+   * O'TGAN OY sahifasida: shu oy qoldig'ining (`payrollDue`) qancha qismi
+   * KEYINGI oyda ({month} — joriy oy) o'sha oy yozuvi bo'lib berilgan
+   * bo'lishi mumkin — `payrollPendingMaybePaid` (04.10.2026, o'tish davri
+   * qorovuli). Faqat OGOHLANTIRISH: "Qolgan" va chiqarish o'zgarmaydi.
+   * Faqat o'tgan oy so'ralganda va shubha bo'lsa to'ldiriladi
+   * (lib/payrollSources.ts → attachMaybePaidIn).
+   */
+  maybePaidIn?: CarryPendingMonth;
   /**
    * Bu xodimga soliq solinadimi (Boshqaruv → Xodimlar dagi tugmacha,
    * `hr_employees.taxIds` bo'sh emasmi). HOSILA qiymat: quyidagi `taxRules`
@@ -665,6 +703,10 @@ export function payrollTax(e: EmployeePayroll, p: PayrollPeriod): number {
  *
  * SOLIQ shu yerda ayriladi, ya'ni kassadan chiqadigan summa allaqachon
  * sof oylik bo'ladi (Moliya → Oylik chiqarish shu qiymatni to'laydi).
+ *
+ * "O'tgan oydan" — faqat SHU OYDA to'lanadigan qism (`carryOver`).
+ * 04.10.2026 dan o'tgan oyning to'lanmagan musbat qoldig'i bu yerga
+ * kirmaydi (`carryPending`, o'z oyidan chiqariladi); jami — `payrollOwedTotal`.
  */
 export function payrollDue(e: EmployeePayroll, p: PayrollPeriod): number {
   return payrollEarned(e, p) - payrollTax(e, p) + e.carryOver - payrollPaid(e);
@@ -676,6 +718,244 @@ export function payrollDue(e: EmployeePayroll, p: PayrollPeriod): number {
  */
 export function payrollDebt(e: EmployeePayroll, p: PayrollPeriod): number {
   return Math.max(-payrollDue(e, p), 0);
+}
+
+// ---------- O'tgan oylar qoldig'i: "faqat o'z oyidan" (04.10.2026) ----------
+//
+// O'tgan oyning TO'LANMAGAN (musbat) qoldig'i keyingi oyda TO'LANMAYDI —
+// u faqat o'sha oyning Oylik chiqarish sahifasidan chiqariladi, keyingi
+// oyda esa MA'LUMOT bo'lib ko'rinadi (`carryPending`). Keyingi oyga faqat
+// ikki narsa o'tadi:
+//   • nol-yopish oyining ulushi (yopilgan oy chiqarilmaydi — avvalgidek);
+//   • QARZDORLIK (ortiqcha to'langan) — keyingi oydan ushlab qolinadi.
+//
+// NIMA NOTO'G'RI EDI (02.10–04.10.2026): o'tgan oylar ulushlari CHIZIQLI
+// yig'ilib, hammasi `carryOver` ga — ya'ni joriy oyda to'lanadigan summaga —
+// qo'shilardi. Oktabrda "O'tgan oydan" bilan birga chiqarilgan pul OKTABR
+// yozuvi bo'lardi (sentabrning "olingan"iga tushmasdi), sentabr sahifasi
+// esa hamon "Qolgan" ko'rsatardi → o'sha pulni ikkinchi marta to'lash
+// mumkin edi (sinov bazasida isbotlandi). Foydalanuvchi: "faqat o'z oyidan
+// chiqarilsin".
+
+/** O'tgan oyning o'z oyidan chiqarilishi kutilayotgan to'lanmagan qoldig'i. */
+export interface CarryPendingMonth {
+  /** "YYYY-MM" — qaysi oyning sahifasidan chiqariladi. */
+  month: string;
+  /** To'lanmagan summa, so'm, doim > 0. */
+  amount: number;
+}
+
+/** Qoldiq zanjirining bitta oyi — `foldCarryChain` kirishi. */
+export interface CarryStep {
+  /** "YYYY-MM" */
+  month: string;
+  /** Oy NOL-YOPISH bilan yopilgan (lib/payrollSources.ts → isPureCloseRun). */
+  pureClose: boolean;
+  /** Shu oyning o'z sof ulushi, ishorali — `carryContribution`. */
+  contribution: number;
+}
+
+export interface CarryFold {
+  /** Joriy oyda TO'LANADIGAN qism, ishorali → `EmployeePayroll.carryOver`. */
+  carryOver: number;
+  /** O'z oyidan chiqariladigan qoldiqlar, eskidan yangiga → `carryPendingMonths`. */
+  pending: CarryPendingMonth[];
+}
+
+/**
+ * Bitta o'tgan oyning SOF ULUSHI, ishorali — o'sha oyning o'z hisobi,
+ * oldingi oylar qoldig'isiz:
+ *
+ *   oddiy oy       — hisoblangan − soliq − olingan;
+ *   nol-yopish oyi — FAQAT foiz ulushi − olingan. O'sha oyning okladi,
+ *                    soliqi va bonus/jarimasi eski tizimda hal qilingan
+ *                    (close-august-payroll.mjs sarlavhasi), o'quvchilar esa
+ *                    o'sha oy uchun keyin ham to'layveradi — ustoz ulushi
+ *                    yo'qolmasligi kerak (foydalanuvchi, 02.10.2026).
+ *
+ * Ish haqi sozlanmagan xodimda 0 — uning "hisoblangan"i ma'nosiz.
+ * `e` — `carryOver: false` bilan qurilgan qator (o'z `carryOver`i 0).
+ *
+ * 04.10.2026 da lib/payrollSources.ts dan shu yerga ko'chdi (o'zgarishsiz):
+ * sof formula, sinov skripti (scripts/_test-salary.mjs) uni bazasiz chaqiradi.
+ */
+export function carryContribution(e: EmployeePayroll, p: PayrollPeriod, pureClose: boolean): number {
+  if (!e.configured) return 0;
+  if (pureClose) return payrollHasFoiz(e) ? payrollFoizPart(e) - payrollPaid(e) : 0;
+  return payrollEarned(e, p) - payrollTax(e, p) - payrollPaid(e);
+}
+
+/**
+ * Bitta xodimning o'tgan oylar zanjirini ESKIDAN YANGIGA yig'adi:
+ *
+ *     c = 0
+ *     har oy m:  due = ulush(m) + c        // = o'sha oy sahifasidagi payrollDue
+ *       nol-yopish oyi → c = due           // yopilgan oy chiqarilmaydi, hammasi o'tadi
+ *       due > 0        → pending += (m, due); c = 0   // o'z oyidan chiqariladi
+ *       aks holda      → c = due           // qarzdorlik keyingi oydan ushlanadi
+ *     natija: carryOver = c, pending
+ *
+ * `due` aynan o'sha oy sahifasidagi `payrollDue` (zanjirning o'sha oygacha
+ * bo'lgan qismi o'sha oyning o'z zanjiri bilan bir xil) — ya'ni ma'lumot
+ * bo'lib ko'rinadigan "Sentabr: 314 000" sentabr sahifasidagi qoldiqning
+ * o'zi. U yerdan chiqarilgach sentabr ulushi shuncha kamayadi, `due` 0 ga
+ * tushadi va keyingi oyda pending yo'qoladi.
+ *
+ * INVARIANT (teleskopik, ANIQ): `carryOver + Σ pending.amount` =
+ * Σ ulushlar = 02.10.2026 dagi chiziqli `carryOver`. Pul yo'qolmaydi va
+ * qo'shilmaydi — faqat qaysi oy sahifasidan to'lanishi o'zgaradi.
+ *
+ * Kirish tartibi muhim emas — oylar shu yerda saralanadi ("YYYY-MM").
+ */
+export function foldCarryChain(steps: readonly CarryStep[]): CarryFold {
+  const ordered = [...steps].sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
+  let c = 0;
+  const pending: CarryPendingMonth[] = [];
+  for (const s of ordered) {
+    const due = s.contribution + c;
+    if (s.pureClose) c = due;
+    else if (due > 0) {
+      pending.push({ month: s.month, amount: due });
+      c = 0;
+    } else c = due;
+  }
+  return { carryOver: c, pending };
+}
+
+/** Zanjirning bitta oyi, hamma xodim qatorlari bilan — `carryFoldsByEmployee` kirishi. */
+export interface CarryChainPart {
+  /** "YYYY-MM" */
+  month: string;
+  period: PayrollPeriod;
+  /** Oy NOL-YOPISH bilan yopilgan (lib/payrollSources.ts → isPureCloseRun). */
+  pureClose: boolean;
+  /** Shu oy uchun `carryOver: false` bilan qurilgan qatorlar. */
+  rows: readonly EmployeePayroll[];
+}
+
+/**
+ * Zanjir oylari → xodim id → `CarryFold` (lib/payrollSources.ts →
+ * loadCarryOver shu yerga beradi; zanjirni qurish va bazani o'qish o'sha
+ * yerda, QADAMLARNI YIG'ISH esa shu yerda — sof, bazasiz sinaladi:
+ * scripts/_test-salary.mjs, N8). 04.10.2026.
+ *
+ * QADAM QOIDALARI:
+ *   • ulushi 0 bo'lgan oy ham QADAM bo'lib kiradi: nol-yopishdan kelgan
+ *     musbat qoldiq o'sha oyda turib qoladi (o'sha oy sahifasida "Qolgan"
+ *     bo'lib ko'rinadi va o'sha yerdan chiqariladi). Tashlab yuborilsa,
+ *     keyingi oyga TO'LANADIGAN bo'lib o'tib ketardi — `if (v !== 0)` kabi
+ *     filtr qaytmasin;
+ *   • xodim qatori YO'Q oy (ro'yxatda emas — o'sha sahifadan to'lab
+ *     bo'lmaydi) qadam emas: qoldiq undan o'tib ketadi;
+ *   • `carryOver` ham 0, pending ham bo'sh bo'lgan xodim xaritada YO'Q;
+ *     `carryOver` 0, lekin pending bor xodim — BOR.
+ */
+export function carryFoldsByEmployee(parts: readonly CarryChainPart[]): Map<number, CarryFold> {
+  const steps = new Map<number, CarryStep[]>();
+  for (const part of parts) {
+    for (const e of part.rows) {
+      let list = steps.get(e.id);
+      if (!list) steps.set(e.id, (list = []));
+      list.push({
+        month: part.month,
+        pureClose: part.pureClose,
+        contribution: carryContribution(e, part.period, part.pureClose),
+      });
+    }
+  }
+  // `foldCarryChain` oylarni o'zi ESKIDAN YANGIGA saralaydi (zanjir orqaga
+  // qurilgan).
+  const out = new Map<number, CarryFold>();
+  for (const [id, list] of steps) {
+    const f = foldCarryChain(list);
+    if (f.carryOver !== 0 || f.pending.length > 0) out.set(id, f);
+  }
+  return out;
+}
+
+/**
+ * O'tgan oylardan JAMI qoldiq (to'lanadigan + o'z oyidan chiqariladigan),
+ * ishorali — 02.10.2026 dagi chiziqli `carryOver` ning o'zi. Xodim oylik
+ * daftarining oy ochilishi kabi "jami" ko'rinishlar uchun.
+ */
+export function payrollCarryTotal(e: Pick<EmployeePayroll, "carryOver" | "carryPending">): number {
+  return e.carryOver + (e.carryPending ?? 0);
+}
+
+/**
+ * XODIMGA JAMI QANCHA QARZMIZ, ishorali: shu oyda to'lanadigan qoldiq +
+ * o'tgan oylarda to'lanmagan (o'z oyidan chiqariladigan) qism.
+ *
+ * FAQAT KO'RSATISH uchun ("jami qarz" ma'nosidagi raqamlar: xodimlar
+ * ro'yxati, profil, bot). Chiqarish, kassa chegarasi va "Qolgan" ustuni —
+ * `payrollDue` / `payrollCashLeg` / `payrollPayout`: ular `carryPending`
+ * ni ATAYLAB olmaydi, aks holda o'tgan oy puli ikki sahifadan to'lanardi.
+ */
+export function payrollOwedTotal(e: EmployeePayroll, p: PayrollPeriod): number {
+  return payrollDue(e, p) + (e.carryPending ?? 0);
+}
+
+// ---------- O'tish davri qorovuli: o'tgan oy puli SHU OY yozuvi bo'lib berilganmi (04.10.2026) ----------
+//
+// NIMA BO'LDI: 02.10.2026 (reliz 20261002143008) dan "faqat o'z oyidan"
+// deploy qilinguncha sentabr qoldig'i oktabrning "Qolgan"ida turardi. O'sha
+// paytda u bilan birga chiqarilgan pul OKTABR yozuvi bo'ldi (Oylik
+// chiqarish — month 2026-10; Chiqim — «Qaysi oy uchun» hali yo'q, sana oyi).
+// Yangi qoidada o'sha pul oktabrda ORTIQCHA to'lov (`payrollDue` < 0)
+// bo'lib ko'rinadi, sentabr sahifasi esa hamon "Qolgan" ko'rsatadi. Sentabr
+// sahifasidan yana chiqarilsa xodim o'sha pulni IKKINCHI marta oladi —
+// keyingi oylikdan ushlanadi, ishdan ketsa umuman qaytmaydi. Ko'zguda
+// (04.10.2026): #14 — oktabrda «Oylik chiqarish #6» 180 000, oktabr
+// `payrollDue` −180 000, sentabr pending 180 000, jami qarz 0.
+//
+// Fold va invariant O'ZGARMAYDI (pul baribir to'g'ri hisoblanadi —
+// `payrollOwedTotal` 0). Bu yerda faqat SHUBHA o'lchanadi va interfeys
+// (oylik sahifasi, Chiqim oynasi, bot) "o'sha oydan chiqaring" deyish
+// o'rniga "qayta chiqarmang, yozuvning oyini tekshiring" deydi. Mavjud
+// yozuvning oyini o'zgartiradigan API yo'q — tuzatish bir martalik
+// (scripts/_check-pending-paid-later.mjs ro'yxat beradi).
+
+/**
+ * O'tgan oylarning to'lanmagan qoldig'idan (`carryPending`) QANCHASI shu
+ * oyda shu oy yozuvi bo'lib allaqachon berilgan bo'lishi mumkin, so'm ≥ 0:
+ *
+ *   min(carryPending, shu oydagi ortiqcha to'lov (−payrollDue),
+ *       shu oy OYLIK yozuvlari + o'tgan oydan kelgan qarzdorlik)
+ *
+ * NEGA "oylik + qarzdorlik", "olingan" emas: oy boshida AVANS hisoblangan
+ * okladdan oshishi odatiy (oklad kun sayin yig'iladi) — u ham `payrollDue`
+ * ni manfiy qiladi, lekin o'tgan oy puli emas; har avansga ogohlantirish
+ * chiqsa u e'tiborsiz qolardi. O'tgan oy puli esa OYLIK bo'lib berilgan
+ * (Oylik chiqarish / Chiqim «Oylik»), yoki o'rtadagi oyda ortiqcha to'lov
+ * bo'lib `carryOver` < 0 ga aylangan.
+ *
+ * 0 — shubha yo'q: pending'ni o'z oyidan bemalol chiqarish mumkin (u jami
+ * qarzdan oshmaydi). Sozlanmagan xodimda doim 0.
+ */
+export function payrollPendingMaybePaid(e: EmployeePayroll, p: PayrollPeriod): number {
+  const pending = e.carryPending ?? 0;
+  if (!e.configured || pending <= 0) return 0;
+  const over = -payrollDue(e, p);
+  if (over <= 0) return 0;
+  const oylikLike = Math.max(e.paidOylik, 0) + Math.max(-e.carryOver, 0);
+  return Math.max(0, Math.min(pending, over, oylikLike));
+}
+
+/**
+ * `payrollPendingMaybePaid` ni pending OYLARIGA bo'ladi — ENG YANGISIDAN
+ * boshlab (odatda aynan o'tgan oy puli keyingi oyda berilgan), natija
+ * eskidan yangiga. Bo'sh — shubha yo'q.
+ */
+export function pendingMaybePaidByMonth(e: EmployeePayroll, p: PayrollPeriod): CarryPendingMonth[] {
+  let left = payrollPendingMaybePaid(e, p);
+  const out: CarryPendingMonth[] = [];
+  const months = e.carryPendingMonths ?? [];
+  for (let i = months.length - 1; i >= 0 && left > 0; i--) {
+    const amount = Math.min(months[i].amount, left);
+    if (amount > 0) out.unshift({ month: months[i].month, amount });
+    left -= amount;
+  }
+  return out;
 }
 
 // ---------- To'lovning ikki oyog'i: PLASTIK va NAQD ----------

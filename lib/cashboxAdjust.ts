@@ -238,6 +238,16 @@ export async function applyCashboxAdjust(db: Db, input: AdjustInput, deps: Adjus
   // kamaymasdi, keyin sentabr uchun "Oylikni chiqarish" uni IKKINCHI marta
   // to'lardi. Endi chegara ham, yozuvning oyi ham (`monthMatch`) bitta
   // oydan — oyna, server va oylik sahifasi bitta qatorga qaraydi.
+  //
+  // O'TGAN OYLARNING TO'LANMAGAN QOLDIG'I CHEGARAGA KIRMAYDI (04.10.2026,
+  // foydalanuvchi: "faqat o'z oyidan chiqarilsin"). `payrollCashLeg` /
+  // `payrollPayout` faqat shu oyda TO'LANADIGAN `carryOver` ni oladi
+  // (nol-yopish ulushi yoki qarzdorlik), `carryPending` ni — ATAYLAB — emas.
+  // NIMA NOTO'G'RI EDI: sentabrning to'lanmagan qoldig'i oktabr chegarasida
+  // turardi; oktabrda u bilan birga berilgan pul OKTABR yozuvi bo'lib,
+  // sentabr sahifasi uni hamon "Qolgan" ko'rsatardi — ikkinchi marta
+  // to'lash mumkin edi. Sentabr puli endi faqat `periodMonth` = sentabr
+  // bilan chiqadi (Chiqim oynasi `carryHint` bilan o'sha oyga o'tkazadi).
   if (employeePayout && studentName) {
     const payPeriod = payrollPeriodOf(payMonth);
     const rows = await buildPayrollRows(db, payPeriod);

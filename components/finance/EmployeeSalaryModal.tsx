@@ -11,12 +11,13 @@ import {
   payrollHasOklad,
   payrollOkladDays,
   payrollOkladPart,
+  payrollOwedTotal,
   payrollStartsInPeriod,
   type EmployeePayroll,
   type PayrollPeriod,
 } from "@/lib/salary";
 import Modal, { useModalClose } from "@/components/ui/Modal";
-import { useT } from "@/components/shared/Language";
+import { useT, type TFn } from "@/components/shared/Language";
 
 // Kassa → Chiqim oynasidagi "Xodim ma'lumotlarini ko'rish" tugmasi ochadigan
 // modal (referens skrinshoti). Sarlavhasi "Xodimlar", yonidagi ikonka —
@@ -33,6 +34,14 @@ import { useT } from "@/components/shared/Language";
 //   Balans = Oylik − Avans − Olingan oylik   (ya'ni QOLGAN oylik)
 // "Olingan oylik" qatori referensda yo'q, lekin bizda alohida hisoblanadi —
 // usiz Balans qayerdan kelganini tushunib bo'lmasdi.
+//
+// O'TGAN OYLARDA TO'LANMAGAN (04.10.2026, "faqat o'z oyidan chiqarilsin"):
+// "Akladi (o'tgan oydan)" va "Balans" — SHU OYDA to'lanadigan qism, Chiqim
+// oynasidagi chegara bilan bir xil (`payrollDue`). O'tgan oyning to'lanmagan
+// musbat qoldig'i bu oyda chiqarilmaydi — u Balansga kirmaydi, ostida
+// alohida MA'LUMOT qatori bo'lib turadi ("Sentyabr 2026 — o'z oyidan") va
+// "Jami to'lanmagan" (`payrollOwedTotal`) xodimga jami qancha qolganini
+// aytadi. Ikkalasi faqat shunday qoldiq bor bo'lsa chiziladi.
 //
 // ── Animatsiya haqida ────────────────────────────────────────────────────
 // 1. Tailwind klasslari ISHLATILMAYDI. Bu loyihada CSS kompilyatsiya qilingan
@@ -60,9 +69,30 @@ interface Row {
   strong?: boolean;
 }
 
-function rowsOf(e: EmployeePayroll, p: PayrollPeriod): Row[] {
+/** "2026-09" → "Sentyabr 2026" (tilga qarab); o'qib bo'lmasa o'zi. */
+function monthKeyLabel(month: string, months: string[]): string {
+  const i = Number(month.slice(5, 7)) - 1;
+  return i >= 0 && i < 12 ? `${months[i]} ${month.slice(0, 4)}` : month;
+}
+
+function rowsOf(e: EmployeePayroll, p: PayrollPeriod, t: TFn, months: string[]): Row[] {
   const earned = payrollEarned(e, p);
   const due = payrollDue(e, p);
+  // O'tgan oylarda to'lanmagan, o'z oyidan chiqariladigan qoldiqlar —
+  // Balansga KIRMAYDI (yuqoridagi izoh).
+  const pending = (e.carryPendingMonths ?? []).filter((pm) => pm.amount > 0);
+  const pendingRows: Row[] = pending.length > 0
+    ? [
+        {
+          label: "O'tgan oylarda to'lanmagan",
+          value: pending.reduce((s, pm) => s + pm.amount, 0),
+          hint: t("{months} — o'z oyidan chiqariladi", {
+            months: pending.map((pm) => monthKeyLabel(pm.month, months)).join(", "),
+          }),
+        },
+        { label: "Jami to'lanmagan", value: payrollOwedTotal(e, p), strong: true },
+      ]
+    : [];
   const hasFoiz = payrollHasFoiz(e);
   // Asos qatorlari: foiz qismi va/yoki oklad qismi. "Oklad + foiz" xodimda
   // IKKALASI ham turadi — yig'indisi `payrollBase` (lib/salary.ts).
@@ -93,6 +123,7 @@ function rowsOf(e: EmployeePayroll, p: PayrollPeriod): Row[] {
     { label: "Avans", value: e.paidAvans },
     { label: "Olingan oylik", value: e.paidOylik },
     { label: "Balans", value: due, hint: "qolgan", strong: true },
+    ...pendingRows,
   ];
 }
 
@@ -108,7 +139,7 @@ export default function EmployeeSalaryModal({
   employeeName: string;
   onClose: () => void;
 }) {
-  const { t } = useT();
+  const { t, months } = useT();
   const modal = useModalClose(onClose);
   const [open, setOpen] = useState(true);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -117,7 +148,7 @@ export default function EmployeeSalaryModal({
 
   const duration = reduceMotion ? "0s" : ".3s";
   const ease = `${duration} cubic-bezier(.4,0,.2,1)`;
-  const rows = payroll?.configured ? rowsOf(payroll, period) : null;
+  const rows = payroll?.configured ? rowsOf(payroll, period, t, months) : null;
 
   /** Ochilib bo'lgach balandlikni `auto` ga qaytaradi — kontent o'zgarsa
    *  yoki oyna kengligi o'zgarib qator ikkiga bo'linsa kesilmasin. */

@@ -1,7 +1,6 @@
 import { applyCashboxAdjust } from "@/lib/cashboxAdjust";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { studentPaidBalance } from "@/lib/pupilsDb";
-import { payrollMonthKey, payrollPeriod, prevMonthKey } from "@/lib/salary";
 import { noteMonthConflict } from "@/lib/noteMonth";
 import { refundTeacherOf } from "@/lib/studentRefund";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
@@ -93,9 +92,9 @@ function cashboxOrNull(ctx: FlowCtx): BotCashbox | null {
  * ya'ni oy almashadigan tunda bot va server bir-biriga zid bo'lmaydi.
  */
 function payoutMonthOptions(): MonthOption[] {
-  const p = payrollPeriod();
-  const cur = payrollMonthKey(p);
-  const prev = prevMonthKey(p);
+  // Oylar bitta manbadan (views.ts → payoutMonthKeys) — kartadagi pending
+  // ko'rsatmasi ham shunga qarab "(Oy: «…»)" yoki web deydi (04.10.2026).
+  const [prev, cur] = V.payoutMonthKeys();
   return [
     { month: prev, label: monthLabel(prev), current: false },
     { month: cur, label: monthLabel(cur), current: true },

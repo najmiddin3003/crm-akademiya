@@ -20,7 +20,7 @@ import {
   payrollPlastikTarget,
   payrollCashLeg,
 } from "@/lib/salary";
-import { buildPayrollRows } from "@/lib/payrollSources";
+import { buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import { getBranchScope } from "@/lib/branchScope";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
@@ -159,6 +159,26 @@ export async function POST(req: Request) {
   const period = monthRaw ? payrollPeriodOf(monthRaw) : current;
 
   const db = await ensureIndexes();
+
+  // YOPILGAN OY uchun ham chiqarilmaydi (04.10.2026) — oxirgi NOL-YOPISH oyi
+  // (hozir 2026-08) va undan oldingilar. Chiqim oynasi va bot bilan BIR XIL
+  // qoida (lib/cashboxAdjust.ts → "Yopilgan oy uchun avans yoki oylik
+  // berilmaydi").
+  // NIMA NOTO'G'RI EDI: bu route faqat kelajak oyni rad etardi. Oy
+  // tanlagichida Avgust tanlab chiqarish mumkin edi — o'sha oy qatori
+  // tizimdan oldingi davrdan quriladi va butun okladni "to'lanmagan"
+  // ko'rsatadi (ko'zguda avgust sahifasining jami chiqariladigani 26 478 007
+  // so'm). U yerga chiqarilgan pul hech qayerdan ayrilmasdi: zanjir
+  // nol-yopish oyida to'xtaydi va u oyning ulushi faqat "foiz − olingan"
+  // (okladlida 0) — pul kassadan chiqib, oylik hisobidan tashqarida
+  // qolardi. «Faqat karta» ham shu qorovuldan o'tadi.
+  const closedThrough = await loadLastPureCloseMonth(db);
+  if (closedThrough && payrollMonthKey(period) <= closedThrough) {
+    return NextResponse.json(
+      { ok: false, error: "Yopilgan oy uchun oylik chiqarilmaydi", closedThrough },
+      { status: 400 },
+    );
+  }
 
   // ---- Kassa va to'lov turi ----------------------------------------
   const kartaOnly = body.only === "karta";

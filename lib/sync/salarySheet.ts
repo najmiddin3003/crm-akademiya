@@ -46,9 +46,14 @@ import { salaryTypeTag } from "@/lib/salary";
 // DIQQAT: mavjud varaqda `columnCount` yetmasa yangi ustun JIMGINA
 // yozilmasdi. `ensureTab` endi gridni kengaytiradi va sarlavhani
 // yangilaydi (lib/sync/googleSheets.ts).
+//
+// "O'tgan oylardan" (04.10.2026, "faqat o'z oyidan chiqarilsin") — o'tgan
+// oylarda to'lanmagan, shu oyda TO'LANMAYDIGAN qoldiq (lib/sync/salaryDigest.ts
+// → Line.pending): "Qolgan"ga kirmaydi, har biri o'z oyining sahifasidan
+// chiqariladi. OXIRIGA qo'shildi — mavjud ustunlar joyidan siljimasin.
 const HEADERS = [
   "Xodim", "Lavozim", "Stavka", "Hisoblangan", "Soliq", "Olingan", "Qolgan",
-  "Kartaga", "Naqd", "Davr", "Yangilangan",
+  "Kartaga", "Naqd", "Davr", "Yangilangan", "O'tgan oylardan",
 ];
 
 /** `turi` kodini odam o'qiydigan yorliqqa. */
@@ -113,6 +118,7 @@ export async function writeSalarySummary(
       Math.round(Math.max(l.cashDue, 0)),
       periodLabel,
       stamp,
+      Math.round(l.pending),
     ]);
 
     const target = cfg.targets.salary;

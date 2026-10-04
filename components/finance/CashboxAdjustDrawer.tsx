@@ -27,9 +27,9 @@ import {
   payrollPayout,
   payrollPeriod,
   payrollPeriodOf,
+  payrollPendingMaybePaid,
   payrollPlastikLeg,
   payrollTax,
-  prevMonthKey,
   type EmployeePayroll,
 } from "@/lib/salary";
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
@@ -461,6 +461,9 @@ export default function CashboxAdjustDrawer({
         tax: payrollTax(selectedPayroll, period),
         karta: payrollPlastikLeg(selectedPayroll, period),
         paid: payrollPaid(selectedPayroll),
+        // Faqat SHU OYDA TO'LANADIGAN qism (04.10.2026): nol-yopish oyining
+        // ulushi (+) yoki qarzdorlik (−). O'tgan oylarning to'lanmagan
+        // qoldig'i bu yerda YO'Q — u o'z oyidan chiqariladi (`carryHint`).
         carryOver: selectedPayroll.carryOver,
         naqd: payrollCashLeg(selectedPayroll, period),
         jami: payrollPayout(selectedPayroll, period),
@@ -488,8 +491,9 @@ export default function CashboxAdjustDrawer({
   // kelmagan payt (`payrollPending`) ham maydon QULFLI qoladi — bo'sh
   // turadi va erkin maydonga aylanib ketmaydi.
   const oylikLocked = target === "employee" && /oylik/i.test(category) && !!selectedEmployee && (salaryConfigured || payrollPending);
-  // Kelajak oyda ham 0: u oy qatorida "o'tgan oydan" (joriy oy qoldig'i)
-  // turishi mumkin va u kelajak oyning "oyligi" bo'lib ko'rinmasin.
+  // Kelajak oyda ham 0: u oy hali ishlanmagan — qatoridagi o'tgan oylar
+  // qoldig'i (qarzdorlik/nol-yopish ulushi) kelajak oyning "oyligi" bo'lib
+  // ko'rinmasin.
   // Yopilgan oyda ham 0 — u oy qatori tizimdan oldingi davrdan quriladi.
   const total = oylikLocked ? (payrollPending || periodBlocked ? 0 : remainingSalary) : rowsTotal;
   // Oyligi sozlanmagan xodimga chegara qo'llanmaydi (server ham shunday) —
@@ -508,18 +512,48 @@ export default function CashboxAdjustDrawer({
   const earnedLabel = periodKey === nowMonthKey
     ? t("Shu oy hisoblangan")
     : t("{month} hisoblangan", { month: monthName(periodKey) });
-  // O'TGAN OY QOLDIG'I JORIY OY SUMMASIDA (04.10.2026). Sukut oy — sananing
-  // oyi: oktabrda "Oylik" tanlanib oyga tegilmasa, summa oktabr qatoridan
-  // olinadi va unda sentabr qoldig'i ("+ o'tgan oydan X") ham bor. Pul
-  // oktabrga yoziladi, sentabr sahifasida esa X "to'lanmagan" bo'lib
-  // qoladi — keyin sentabr uchun «Oylikni chiqarish» uni IKKINCHI marta
-  // to'laydi (foydalanuvchi aytgan aynan o'sha holat). Sukut o'zgarmaydi
-  // (foydalanuvchi qarori) — faqat ogohlantiriladi va bir bosishda o'tgan
-  // oyga o'tkaziladi. O'tgan oy yopilgan bo'lsa ogohlantirish yo'q: u oyga
-  // baribir yozib bo'lmaydi.
-  const prevPayKey = prevMonthKey(payrollPeriodOf(nowMonthKey));
-  const carryHint = isSalaryPayoutCategory && !periodBlocked && periodMonth === nowMonthKey
-    && !!salaryBreakdown && salaryBreakdown.carryOver > 0 && prevPayKey > closedThrough;
+  // O'TGAN OYLARDA TO'LANMAGAN QOLDIQ — "FAQAT O'Z OYIDAN" (04.10.2026).
+  //
+  // Tanlangan oy qatorining `carryPendingMonths` i — o'tgan oylarning
+  // to'lanmagan (musbat) qoldig'i. 04.10.2026 dan u bu oyning chegarasiga
+  // ham, "Oylik" qulflangan summasiga ham KIRMAYDI (lib/salary.ts →
+  // foldCarryChain): har biri faqat o'z oyidan chiqariladi. Shu bois kassir
+  // ko'rsin — qancha, qaysi oydan va u bu yerdan to'lanmasligi — hamda bir
+  // bosishda o'sha oyga o'tsin (eng yangi pending oy; yopilgan, kelajak va
+  // tanlangan oyning o'zi taklif qilinmaydi — zanjir tuzilishiga ko'ra
+  // pending oy doim `closedThrough` dan keyin keladi, bu faqat qorovul).
+  //
+  // NIMA NOTO'G'RI EDI: ogohlantirish `carryOver > 0` ga tayanardi — o'tgan
+  // oy qoldig'i JORIY oy summasida ("+ o'tgan oydan X") turgan davrda.
+  // Oktabrda u bilan birga chiqarilgan pul OKTABR yozuvi bo'lardi, sentabr
+  // sahifasi esa hamon "Qolgan" ko'rsatardi → ikkinchi marta to'lash.
+  // Endi musbat `carryOver` faqat nol-yopish oyidan (avgust) keladi va u
+  // haqiqatan shu oyda to'lanadi — hisob zanjiridagi "+ o'tgan oydan"
+  // o'shani ko'rsatadi; bu ogohlantirish esa faqat pending haqida.
+  const pendingMonths = isSalaryPayoutCategory && !periodBlocked && selectedPayroll
+    ? (selectedPayroll.carryPendingMonths ?? []).filter((m) => m.amount > 0)
+    : [];
+  // O'TISH DAVRI QOROVULI (04.10.2026, lib/salary.ts → payrollPendingMaybePaid).
+  // Tanlangan oyda ORTIQCHA OYLIK bor va u pending oy puli bo'lishi mumkin
+  // (02.10–deploy oralig'ida sentabr puli oktabr yozuvi bo'lib berilgan;
+  // ko'zguda #14: oktabr −180 000, sentabr pending 180 000, jami qarz 0).
+  // Shunda oddiy ko'rsatma o'rniga ogohlantirish chiqadi va "{month} oyiga
+  // o'tkazish" TAKLIF QILINMAYDI: bu tugma mavjud yozuvni ko'chirmaydi
+  // (oynada tahrir rejimi yo'q), faqat YANGI chiqimni o'sha oyga yozadi —
+  // ya'ni aynan ikkinchi to'lovni yaratardi.
+  const pendingMaybePaid = pendingMonths.length > 0 && selectedPayroll?.configured
+    ? payrollPendingMaybePaid(selectedPayroll, period)
+    : 0;
+  const pendingTarget = pendingMaybePaid > 0 ? null : [...pendingMonths].reverse()
+    .find((m) => m.month > closedThrough && m.month <= nowMonthKey && m.month !== periodMonth)?.month ?? null;
+  const carryHint = pendingMonths.length > 0;
+  // Tanlangan oy O'TGAN oy va uning puli JORIY oyda joriy oy yozuvi bo'lib
+  // berilgan bo'lishi mumkin (`maybePaidIn`, server qo'yadi:
+  // lib/payrollSources.ts → attachMaybePaidIn) — "qayta bermang". Chegara
+  // O'ZGARMAYDI (qaror kassirda), faqat ogohlantiriladi.
+  const paidLater = isSalaryPayoutCategory && !periodBlocked && selectedPayroll?.configured
+    ? selectedPayroll.maybePaidIn ?? null
+    : null;
 
   // O'quvchiga qaytariladigan summa uning balansidan oshmasligi kerak.
   const studentBalanceExceeds = target === "student" && !!selectedStudent && total > studentBalance;
@@ -944,8 +978,11 @@ export default function CashboxAdjustDrawer({
           </div>
           {/* Oy bo'yicha izohlar — faqat avans/oylikda. Ustuvorlik: kelajak
               yoki yopilgan oy (saqlab bo'lmaydi) → izohdagi oy farqi →
-              summada o'tgan oy qoldig'i (`carryHint`) → oy sanadan farqli
-              (pul qaysi oyning oyligidan ayrilishi). */}
+              aks holda HAMMASI (birini boshqasi yashirmaydi): bu oy puli
+              keyingi oyda berilgan bo'lishi mumkin (`paidLater`), o'tgan
+              oylarda to'lanmagan qoldiq (`carryHint`; shu oyda ortiqcha
+              oylik bo'lsa — "qayta chiqarmang", 04.10.2026) va oy sanadan
+              farqli (pul qaysi oyning oyligidan ayrilishi). */}
           {isSalaryPayoutCategory && (periodFuture ? (
             <div className="-mt-1 text-[12px] text-rose-600 bg-rose-500/10 border border-rose-500/20 rounded-md px-2.5 py-1.5">
               {t("Kelajak oy uchun avans yoki oylik berilmaydi")}.
@@ -974,27 +1011,57 @@ export default function CashboxAdjustDrawer({
                 </button>
               )}
             </div>
-          ) : carryHint ? (
-            <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700">
-              {t("Qoldiqda o'tgan oydan {carryOver} bor. Agar bu {month} oyligi bo'lsa, oyni almashtiring — aks holda {month} oyida u to'lanmagan bo'lib qoladi.", {
-                carryOver: fmtUZS(salaryBreakdown!.carryOver),
-                month: monthName(prevPayKey),
-              })}
-              <button
-                type="button"
-                onClick={() => {
-                  setPeriodMonth(prevPayKey);
-                  setPeriodTouched(true);
-                }}
-                className="ml-1 font-semibold text-primary hover:underline"
-              >
-                {t("{month} oyiga o'tkazish", { month: monthName(prevPayKey) })}
-              </button>
-            </div>
-          ) : periodMonth !== dateMonthKey && (
-            <p className="-mt-1 text-[11px] text-amber-600">
-              {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: monthName(periodMonth) })}
-            </p>
+          ) : (
+            <>
+              {paidLater && (
+                <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-300">
+                  {t("{month} qoldig'idan {amount} {later} oyida {later} yozuvi bo'lib berilgan bo'lishi mumkin — u yerda shuncha ortiqcha oylik bor. Qayta bermang: avval o'sha yozuvning oyini tekshiring.", {
+                    month: monthName(periodMonth),
+                    amount: fmtUZS(paidLater.amount),
+                    later: monthName(paidLater.month),
+                  })}
+                </div>
+              )}
+              {carryHint && pendingMaybePaid > 0 ? (
+                <div className="-mt-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-700 dark:text-rose-300">
+                  {t("{current} oyida {amount} ortiqcha oylik berilgan — bu {months} puli bo'lishi mumkin. O'sha oydan qayta chiqarmang: avval yozuvning oyini tekshiring.", {
+                    current: monthName(periodMonth),
+                    amount: fmtUZS(pendingMaybePaid),
+                    months: pendingMonths.map((m) => monthName(m.month)).join(", "),
+                  })}
+                </div>
+              ) : carryHint && (
+                <div className="-mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-400">
+                  {pendingMonths.length === 1
+                    ? t("{month} oyidan {amount} to'lanmagan — u {current} hisobidan emas, {month} oyligidan chiqariladi.", {
+                        month: monthName(pendingMonths[0].month),
+                        amount: fmtUZS(pendingMonths[0].amount),
+                        current: monthName(periodMonth),
+                      })
+                    : t("O'tgan oylardan to'lanmagan: {list} — ular {current} hisobidan emas, har biri o'z oyligidan chiqariladi.", {
+                        list: pendingMonths.map((m) => `${monthName(m.month)} — ${fmtUZS(m.amount)}`).join(", "),
+                        current: monthName(periodMonth),
+                      })}
+                  {pendingTarget && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPeriodMonth(pendingTarget);
+                        setPeriodTouched(true);
+                      }}
+                      className="ml-1 font-semibold text-primary hover:underline"
+                    >
+                      {t("{month} oyiga o'tkazish", { month: monthName(pendingTarget) })}
+                    </button>
+                  )}
+                </div>
+              )}
+              {periodMonth !== dateMonthKey && (
+                <p className="-mt-1 text-[11px] text-amber-600">
+                  {t("To'lov {month} oyiga yoziladi — xodimning o'sha oydagi oyligidan ayriladi.", { month: monthName(periodMonth) })}
+                </p>
+              )}
+            </>
           ))}
 
           <div>

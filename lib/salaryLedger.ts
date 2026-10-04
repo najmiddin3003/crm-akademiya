@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { buildPayrollRows, loadPayrollRefs } from "@/lib/payrollSources";
 import {
+  payrollCarryTotal,
   payrollHasFoiz,
   payrollMonthKey,
   payrollOkladPart,
@@ -32,11 +33,14 @@ import {
 //
 // QOIDA — lib/payrollSources.ts bilan BIR XIL, ikkinchi nusxa emas:
 //   • oy chegarasi: `periodMonth`, u bo'lmasa `date` ning oyi (monthMatch);
-//   • oy boshidagi qoldiq: o'tgan oylardan qolgan (`loadCarryOver` —
-//     o'tgan oylarning jonli sof qoldig'i, 02.10.2026 dan) — chap kartadagi
-//     "To'lanmagan" ham aynan shundan boshlanadi; okladli xodimda unga
-//     shu oy okladi (`payrollOkladPart`: o'tgan oyda to'liq, joriy oyda
-//     bugungi kungacha pro-rata, ishga kirgan kundan) qo'shiladi;
+//   • oy boshidagi qoldiq: o'tgan oylardan JAMI qolgan
+//     (`payrollCarryTotal` = shu oyda to'lanadigan `carryOver` + o'z oyidan
+//     chiqariladigan `carryPending`; ikkalasi `loadCarryOver` dan — o'tgan
+//     oylarning jonli sof qoldig'i, 02.10.2026 dan) — chap kartadagi
+//     "To'lanmagan" (`payrollOwedTotal`) ham aynan shundan boshlanadi;
+//     okladli xodimda unga shu oy okladi (`payrollOkladPart`: o'tgan oyda
+//     to'liq, joriy oyda bugungi kungacha pro-rata, ishga kirgan kundan)
+//     qo'shiladi;
 //   • kirim, `teacherName` — shu xodim, foizli    → +summa × foiz
 //   • o'quvchiga qaytarim, `teacherName` — shu xodim → −summa × foiz
 //   • chiqim avans/oylik, `studentName` — shu xodim  → −summa (olingan)
@@ -48,9 +52,19 @@ import {
 //     kun"), yangi ustozga o'tgan qism uning oy boshiga qo'shiladi;
 //   • bekor qilingan yozuv hisobga kirmaydi.
 //
-// Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollDue` — bonus,
-// jarima va soliqsiz (ular kassa yozuvi emas, jadvalda ko'rinmaydi;
+// Ya'ni oyning OXIRGI qatoridagi "Qoldiq keyin" = `payrollOwedTotal` —
+// bonus, jarima va soliqsiz (ular kassa yozuvi emas, jadvalda ko'rinmaydi;
 // tooltip shuni aytadi).
+//
+// NEGA JAMI, TO'LANADIGAN EMAS (04.10.2026, "faqat o'z oyidan
+// chiqarilsin"): o'tgan oyning to'lanmagan musbat qoldig'i endi joriy oyda
+// TO'LANMAYDI (`carryPending`, o'z oyi sahifasidan chiqariladi) — lekin u
+// xodimning puli bo'lib qolaveradi. Daftar xodimning O'Z hisobi: oy
+// ochilishi faqat `carryOver` bo'lsa, sentabr qoldig'i oktabr daftaridan
+// sababsiz "yo'qolib", oktabr qatorlari sentabr oxiridan shuncha past
+// boshlanardi, chap kartadagi "To'lanmagan" bilan ham ajralardi.
+// `payrollCarryTotal` — 02.10 dagi chiziqli qoldiqning o'zi, ya'ni daftar
+// raqamlari 04.10 qoidasi bilan O'ZGARMAYDI.
 //
 // ULUSH YAXLITLANMAY yig'iladi, faqat ko'rsatishda yaxlitlanadi: aks holda
 // har qatorda ±0.5 so'm yig'ilib, oy yakuni `round(collected × foiz)` dan
@@ -237,7 +251,9 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
       const incoming = payrollHasFoiz(row)
         ? (row.handovers ?? []).filter((h) => h.dir === "in").reduce((s, h) => s + h.amount, 0) * row.percent / 100
         : 0;
-      openings.set(m, row.carryOver + payrollOkladPart(row, period) + incoming);
+      // Oy ochilishi — o'tgan oylardan JAMI qoldiq (to'lanadigan +
+      // o'z oyidan chiqariladigan; yuqoridagi "NEGA JAMI" izohi, 04.10.2026).
+      openings.set(m, payrollCarryTotal(row) + payrollOkladPart(row, period) + incoming);
     }));
   }
 

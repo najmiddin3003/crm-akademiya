@@ -78,7 +78,29 @@ export interface SalaryInfo {
   karta: number;
   /** Shu oyda olingan (avans + oylik). */
   paid: number;
+  /** O'tgan oylardan SHU OYDA to'lanadigan qism, ishorali (EmployeePayroll.carryOver). */
   carryOver: number;
+  /**
+   * O'tgan oylarda to'lanmagan, o'z oyidan chiqariladigan qoldiqlar
+   * (EmployeePayroll.carryPendingMonths, eskidan yangiga) — FAQAT MA'LUMOT:
+   * `naqd`/`jami` chegarasiga kirmaydi (04.10.2026, "faqat o'z oyidan
+   * chiqarilsin"). Ixtiyoriy: 04.10 dan oldin saqlangan qoralamada yo'q.
+   */
+  pending?: { month: string; amount: number }[];
+  /**
+   * O'TISH DAVRI QOROVULI (04.10.2026, lib/salary.ts →
+   * pendingMaybePaidByMonth): pending'ning SHU OYDA shu oy yozuvi bo'lib
+   * berilgan bo'lishi mumkin qismi, oy bo'yicha. Bu qism `pending` dan
+   * AYRILGAN — "o'sha oydan chiqariladi" deyilmaydi, "qayta chiqarmang"
+   * deyiladi. Ixtiyoriy (eski qoralamada yo'q).
+   */
+  pendingMaybePaid?: { month: string; amount: number }[];
+  /**
+   * Tanlangan oy O'TGAN oy bo'lsa: shu oy qoldig'idan `amount` JORIY oyda
+   * (`month`) joriy oy yozuvi bo'lib berilgan bo'lishi mumkin
+   * (EmployeePayroll.maybePaidIn). Faqat ogohlantirish — chegara o'zgarmaydi.
+   */
+  paidLater?: { month: string; amount: number };
   /** Naqd (va boshqa) turida chiqarish mumkin bo'lgan qoldiq. */
   naqd: number;
   /** Plastik turida — karta + naqd. */
