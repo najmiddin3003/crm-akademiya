@@ -173,7 +173,9 @@ export default function EmployeesListPage() {
   const { names: courseNames } = useOfflineCourseList();
 
   const [search, setSearch] = useState("");
-  const [stateFilter, setStateFilter] = useState("");
+  // Sukut — «Aktiv» (foydalanuvchi, 04.10.2026): ro'yxat ochilganda arxivdagilar
+  // aralashmasin. Tozalansa (×) — hammasi, «Arxiv» — faqat arxivdagilar.
+  const [stateFilter, setStateFilter] = useState("active");
   const [roleFilter, setRoleFilter] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
   const [reasonFilter, setReasonFilter] = useState("");
