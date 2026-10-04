@@ -634,7 +634,16 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
         // Tahrirlashda SMS yuborilmaydi — faollashtirish taklifi faqat
         // yangi xodim yaratilganda ketadi.
         onSaved?.(data.employee as HrEmployeeFull);
-        showSuccess(t("Xodim ma'lumotlari saqlandi"));
+        // Ism o'zgargan bo'lsa server eski ism yozilgan to'lov/kassa/guruh/lidlarni
+        // yangi ismga ko'chiradi (lib/employeeRename.ts) — natijasi aytiladi.
+        const rs = data.renameSync as { total?: number; skipped?: string; namesakes?: string[] } | undefined;
+        if (rs?.skipped === "ambiguous") {
+          showError(t("Saqlandi, lekin bir xil ismli boshqa faol xodim bor ({names}) — eski to'lovlar yangi ismga avtomatik o'tkazilmadi.", { names: (rs.namesakes ?? []).join(", ") }));
+        } else if (rs && (rs.total ?? 0) > 0) {
+          showSuccess(t("Xodim ma'lumotlari saqlandi. Eski ism yozilgan {n} ta yozuv yangi ismga o'tkazildi.", { n: rs.total ?? 0 }));
+        } else {
+          showSuccess(t("Xodim ma'lumotlari saqlandi"));
+        }
       } else {
         onCreated?.(data.employee as HrEmployeeFull);
         if (data.smsSent) {

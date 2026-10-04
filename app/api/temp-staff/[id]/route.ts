@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/adminOnly";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
 import { APPROVAL_FIELD } from "@/lib/adminApproval";
+import { syncEmployeeRename } from "@/lib/employeeRename";
 
 // "Vaqtinchalik tugma" sahifasining bitta xodim ustidagi amallari.
 // Ikkalasi ham FILIAL QAMROVISIZ ishlaydi (sabab: ../route.ts izohi).
@@ -121,7 +122,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await db.collection("users").updateOne(filter, { $set: userSet });
   }
 
-  return NextResponse.json({ ok: true });
+  // Ism o'zgardi — eski ism yozilgan bog'lanishlar ham ko'chadi (lib/employeeRename.ts).
+  const renameSync =
+    typeof set.name === "string" && set.name.trim() !== String(row.name ?? "").trim()
+      ? await syncEmployeeRename(db, empId, row.name, set.name)
+      : undefined;
+  return NextResponse.json({ ok: true, ...(renameSync ? { renameSync } : {}) });
 }
 
 // DELETE /api/temp-staff/:id — XODIMNI VA UNING IZLARINI BUTUNLAY O'CHIRISH.

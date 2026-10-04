@@ -18,6 +18,7 @@ import {
   validateBranchIds,
 } from "@/lib/employeeBranches";
 import { getBranchScope } from "@/lib/branchScope";
+import { syncEmployeeRename } from "@/lib/employeeRename";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
@@ -274,8 +275,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (Object.keys(userSet).length > 0) {
     await db.collection("users").updateOne({ hrEmployeeId: empId }, { $set: userSet });
   }
+  // ISM O'ZGARDI — eski ism yozilgan to'lovlar, avans, kassa mas'uli, guruh, lid,
+  // bonus/jarima ham yangi ismga ko'chadi (lib/employeeRename.ts izohi). Kutiladi:
+  // keyingi oylik o'qishi allaqachon yangi ism bilan ko'rsin.
+  const renameSync =
+    typeof set.name === "string" && set.name.trim() !== String(current.name ?? "").trim()
+      ? await syncEmployeeRename(db, empId, current.name, set.name)
+      : undefined;
   const { _id, ...employee } = res;
-  return NextResponse.json({ ok: true, employee: employee as unknown as HrEmployee });
+  return NextResponse.json({ ok: true, employee: employee as unknown as HrEmployee, ...(renameSync ? { renameSync } : {}) });
 }
 
 // DELETE /api/hr-employees/:id
