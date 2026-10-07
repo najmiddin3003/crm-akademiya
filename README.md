@@ -2083,3 +2083,128 @@ forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
   kiritgani `enteredBy` ga yoziladi va tafsilotda "CRM'da kiritdi" bo'lib
   ko'rinadi; filial navbardagi filialdan boshlanadi. Sessiyasiz (nomzod)
   kelganda rasm va rozilik avvalgidek majburiy.
+
+## AI yordamchi — robot tugmasi (2026-10-07)
+
+Foydalanuvchi bilan kelishilgan: xodimlar web CRM'da robot tugmasini
+(`components/tezlik/SpeedFab.tsx`) bosib, ruxsati bor bo'limlar bo'yicha
+savol beradi ("Eng katta qarzdorlar kimlar?", "Shu oyda kirim qancha?") va
+CRM'dan foydalanish yordamini oladi ("Lid qanday qo'shiladi?"). Provayder —
+OpenAI, kalit `/api/gender-guess` bilan umumiy. **1-bosqich — FAQAT
+O'QISH**: yordamchi hech narsani yaratmaydi, o'zgartirmaydi, o'chirmaydi.
+
+### Qanday ishlaydi
+
+- **Panel** (`components/ai/AssistantPanel.tsx`) — ikki tab: «Yordamchi» va
+  «Tezlik sinovi» (avvalgi robot oynasining o'zi). Yordamchi o'chiq yoki
+  kalit yo'q bo'lsa sababi yoziladi va panel tezlik sinovidan ochiladi;
+  adminga — sozlamaga havola.
+- **Oqim**: `POST /api/ai/chat` → NDJSON (`lib/ai/protocol.ts`: `meta`,
+  `tool`, `delta`, `ping`, `done`, `error`). Sessiya, yoqilganmi, kalit,
+  savol uzunligi (2000 belgi) va limit oqim BOSHLANISHIDAN OLDIN
+  tekshiriladi — xato bo'lsa oddiy JSON. Javob `done` siz uzilsa panel
+  "Javob oxirigacha kelmadi" deydi — chala javob to'liqdek ko'rinmaydi.
+- **Model ↔ vositalar sikli** (`lib/ai/chat.ts`): ko'pi bilan 6 murojaat
+  (oxirgisida vositalar berilmaydi — model javob yozishga majbur), bir
+  murojaatda 4 vosita (navbat bilan — Mongo pool'i kichik), bitta murojaat
+  60 s, butun javob 100 s (nginx `proxy_read_timeout 120s` dan oldin
+  tushunarli xabar), har 15 s da `ping`.
+- **Vositalar** (`lib/ai/tools/`) sahifalar ishlatadigan yadrolarni
+  chaqiradi, o'zi hisob qilmaydi — raqamlar sahifadagi bilan bir xil:
+
+| Vosita | Ruxsat (sahifa) | Manba |
+| --- | --- | --- |
+| `overview` | hammaga (ichida har ko'rsatkich o'z ruxsati bilan) | `computeHomeKpis` |
+| `search_pupils`, `pupil_details` | `/students-list` | `pupilSearchFilter`, `studentPaidBalance` |
+| `debtors_report` | `/reports-unpaid` | `computeDebtors` |
+| `list_groups` | `/groups` | `groups` |
+| `leads_summary` | `/orders-list` | `withLeadScope` |
+| `finance_summary` | `/finance-reports`, `-analytics`, `-cashflow`, `-flow`, `-pnl` | `transactions` (barcha filiallar — sahifadagidek) |
+| `cashbox_balances` | `/finance-cash` | admin — hammasi, xodim — faqat o'z kassasi (`moderator`) |
+| `payroll_summary` | `/finance-payroll` | `buildPayrollRows` |
+| `crm_help` | hammaga | `lib/ai/knowledge.ts` (19 bo'lim) + ochiq sahifalar |
+
+- **Ruxsat**: vosita modelga faqat sahifasi xodimga ochiq bo'lsa
+  ko'rsatiladi va bajarishda QAYTA tekshiriladi (model ro'yxatda yo'q nomni
+  yozsa — "ruxsat yo'q"). Filial qamrovi va ruxsatlar so'rov boshida bir
+  marta yechiladi (`lib/ai/context.ts`) — vositalar oqim davomida, route
+  qaytgandan keyin ishlaydi va cookie'ga tayanmaydi.
+- **Raqamlar**: model faqat vosita qaytargan sonni aytadi; noma'lum qiymat
+  "—", hech qachon 0 emas (tizim ko'rsatmasi `lib/ai/prompt.ts`, inglizcha —
+  javob tili interfeys tilidan).
+- **Maxfiylik**: OpenAI'ga savol, o'quvchi/xodim ismlari va summalar
+  ketadi; telefon raqamlari yashiriladi (`94 *** ** 55` —
+  `lib/ai/mask.ts`). Kalit serverda: sozlama route'i faqat "bor/yo'q" va
+  model nomini qaytaradi. Javobdagi havolalar faqat ichki (`/…`), tashqi
+  havola matn bo'lib qoladi, HTML chizilmaydi (`components/ai/aiMarkdown.ts`).
+- **Limit**: xodimga kuniga N savol (sukut 50, 1–1000) — `ai_usage` da
+  bitta atomik so'rov (`count < limit` + `{userId, day}` noyob indeksi,
+  Toshkent kuni). Xizmat xatosida savol qaytariladi; xodim o'zi
+  to'xtatsa — qaytarilmaydi (aks holda "oxirigacha o'qib, to'xtatish"
+  limitni chetlab o'tardi).
+- **Suhbatlar** `ai_conversations` da oxirgi xabardan 30 kun (TTL), faqat
+  egasiga; faqat matn saqlanadi (vosita natijalari emas). Tarix mijozdan
+  OLINMAYDI — serverdagi suhbatdan, oxirgi 16 xabar.
+
+### Fayllar
+
+- `lib/ai/` — `config` (env, chegaralar), `db` (kolleksiyalar, indekslar),
+  `settings`, `usage`, `store`, `context`, `prompt`, `chat`, `openai` +
+  `sse` (oqimni o'qish; SDK emas, `fetch`), `mask`, `knowledge`,
+  `toolLabels`, `protocol`, `tools/`.
+- `app/api/ai/` — `status` (GET), `chat` (POST, oqim), `conversations`
+  (GET/DELETE, faqat o'ziniki), `settings` (GET/PUT, faqat admin). To'rttasi
+  `scripts/gen-api-permissions.mjs` → `SHARED_EXTRA` da: darvozada sessiya
+  yetadi, ma'lumot ruxsati vosita ichida.
+- `components/ai/` — `AssistantPanel`, `useAiChat`, `MessageText`,
+  `aiMarkdown`; `components/settings/AiAssistantTab.tsx`.
+
+### Sozlash
+
+1. `.env` ga yangi kalit shart emas — `OPENAI_URL_API` (kerak bo'lsa
+   `OPENAI_BASE_URL`) jins aniqlash bilan umumiy. Model:
+   `AI_ASSISTANT_MODEL` → `OPENAI_MODEL` → `lib/genderGuess.ts` dagi sukut.
+   Model vosita chaqiruvini (function calling) qo'llashi SHART.
+2. Sukut — **O'CHIQ**. Admin: Sozlamalar → Ilova sozlamalari → «AI
+   yordamchi» (`/settings-app?tab=ai`) — yoqish va kunlik limit. Qayta
+   ishga tushirish shart emas (bazada, `ai_settings`).
+3. Kolleksiya va indekslar o'zi yaratiladi: `ai_settings`, `ai_usage`
+   (3 kundan keyin o'chadi), `ai_conversations`.
+
+### Sinov
+
+```
+node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_verify-ai.mjs
+```
+
+Bazasiz, tashqi tarmoqqa chiqmaydi: raqam yashirish, oqim bo'laklari,
+markdown, vosita ruxsatlari, argumentlar, qo'llanma qidiruvi; soxta OpenAI
+serveri (127.0.0.1) bilan — so'rov shakli, bo'laklangan vosita chaqiruvi,
+murojaat/vosita chegaralari, HTTP xato kodlari (kalit xodimga
+ko'rinmaydi), oqimsiz javob, "To'xtatish".
+
+**Tekshirilmagani**: haqiqiy baza va OpenAI bilan uchidan-uchiga (ishlab
+chiqilgan muhitda MongoDB yuklab bo'lmadi). Dev'da: yoqish → robot →
+"Bugungi asosiy ko'rsatkichlar qanday?"; cheklangan rolli xodim (masalan,
+faqat Guruhlar) bilan oylik so'rash → "ruxsatingiz yo'q".
+
+### Tuzoqlar
+
+- Yangi vosita: `lib/ai/tools/index.ts` ro'yxati + `pages` (qaysi sahifa
+  ruxsati) + `lib/ai/toolLabels.ts` dagi yorliq va uning inglizchasi.
+  Vosita tavsiflari va natijalari MODELGA yoziladi (inglizcha) — i18n
+  skaneridan chiqarilgan (`SERVER_SKIP`).
+- `lib/ai/knowledge.ts` dagi tugma va sahifa nomlari interfeysdagidek
+  aynan yozilgan — interfeys o'zgarsa qo'llanma ham yangilanadi.
+- So'rov tanasiga `temperature`/`max_tokens` qo'shmang — yangi modellar
+  rad etadi (jins aniqlashdagi bilan bir xil sabab).
+- `finance_summary` barcha filiallar bo'yicha (Moliya hisobotlari sahifasi
+  ham shunday). Xodim boshqa filial pulini ko'rmasin desangiz — moliya
+  hisobotlari ruxsatini bermang.
+
+### 2-bosqich (keyin)
+
+Amallar — lid qo'shish, kirim/chiqim: model qoralama tuzadi, panelda
+tasdiq kartasi, bosilganda o'sha yadro (`createOrder`,
+`applyCashboxAdjust`) bir martalik kalit bilan (xodimlar botidagidek) va
+jurnalga yozuv.

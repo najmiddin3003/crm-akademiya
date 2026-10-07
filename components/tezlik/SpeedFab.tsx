@@ -1,21 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
-import Modal from "@/components/ui/Modal";
-import Link from "@/components/ui/Link";
-import TapTest from "@/components/tezlik/TapTest";
-import WhyFast from "@/components/tezlik/WhyFast";
+import AssistantPanel from "@/components/ai/AssistantPanel";
 import RobotFace from "@/components/tezlik/RobotFace";
 import { useT } from "@/components/shared/Language";
 
 // SUZUVCHI ROBOT — saytning har sahifasida turadigan, istalgan joyga
 // sudrab qo'yiladigan tugma (referens: akademiya.edutizim.uz dagi robot).
-// Bosilsa barmoq sinovi (TapTest.tsx) modalda ochiladi; sudralsa —
-// faqat ko'chadi (5 px dan kam siljish = bosish). Joyi localStorage'da
-// saqlanadi (qurilma bo'yicha), oyna kichraysa ekran ichiga qaytariladi.
-// app/(app)/layout.tsx da mount qilinadi — ya'ni faqat kirgan
-// foydalanuvchilarga ko'rinadi; ommaviy sahifalarda (login, /ariza) yo'q.
+// Bosilsa AI yordamchi paneli ochiladi (components/ai/AssistantPanel.tsx,
+// 07.10.2026); avvalgi barmoq sinovi (TapTest.tsx) o'sha panelning
+// «Tezlik sinovi» tabida — yordamchi o'chiq bo'lsa panel shu tabdan
+// ochiladi. Sudralsa — faqat ko'chadi (5 px dan kam siljish = bosish).
+// Joyi localStorage'da saqlanadi (qurilma bo'yicha), oyna kichraysa ekran
+// ichiga qaytariladi. app/(app)/layout.tsx da mount qilinadi — ya'ni faqat
+// kirgan foydalanuvchilarga ko'rinadi; ommaviy sahifalarda (login, /ariza) yo'q.
 
 const STORAGE_KEY = "tizimli:speed-fab";
 const SIZE = 56;
@@ -101,8 +99,8 @@ export default function SpeedFab() {
     <>
       <button
         type="button"
-        aria-label={t("Sayt tezligini o'lchash")}
-        title={t("Sayt tezligi — bosing (sudrab ko'chirish mumkin)")}
+        aria-label={t("AI yordamchi va tezlik sinovi")}
+        title={t("AI yordamchi — bosing (sudrab ko'chirish mumkin)")}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -116,24 +114,7 @@ export default function SpeedFab() {
         <RobotFace className="w-9 h-9 relative" />
       </button>
 
-      {open && (
-        <Modal
-          onClose={() => setOpen(false)}
-          title={t("Tezlik sinovi")}
-          subtitle={t("So'rov sizning qurilmangizdan serverga hozir yuboriladi — raqamlar jonli, taxmin emas.")}
-          size="xl"
-          bodyClassName="p-4 space-y-3"
-          zIndex={1150}
-          footer={
-            <Link href="/tezlik" target="_blank" className="mr-auto inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground">
-              <ExternalLink className="w-3.5 h-3.5" />{" "}{t("Alohida sahifada ochish")}
-            </Link>
-          }
-        >
-          <TapTest compact />
-          <WhyFast compact />
-        </Modal>
-      )}
+      {open && <AssistantPanel onClose={() => setOpen(false)} />}
     </>
   );
 }

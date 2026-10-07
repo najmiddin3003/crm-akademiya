@@ -13,6 +13,7 @@ import FieldSettingsTab from "./FieldSettingsTab";
 import AutoSmsTab from "./AutoSmsTab";
 import BotNotesTab from "./BotNotesTab";
 import LeadSettingsTab from "./LeadSettingsTab";
+import AiAssistantTab from "./AiAssistantTab";
 import GamGeneralTab from "@/components/gamification/settings/GeneralTab";
 import GamReasonsTab from "@/components/gamification/settings/ReasonsTab";
 import GamGiftsTab from "@/components/gamification/settings/GiftsTab";
@@ -354,6 +355,9 @@ const BUILT: Record<string, () => ReactNode> = {
       note={APP_NOT_WIRED_NOTE}
     />
   ),
+
+  // Robot tugmasidagi AI yordamchi — faqat admin o'zgartiradi (o'z route'i bilan).
+  "app-settings:ai": () => <AiAssistantTab />,
 
   // ── Gamifikatsiya (TZ v1.4, components/gamification/settings) ─────────
   "gamification:general": () => <GamGeneralTab />,

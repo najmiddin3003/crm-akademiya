@@ -133,6 +133,15 @@ const SHARED_EXTRA = [
   "/api/staff-tasks/stats",
   "/api/staff-tasks/settings",
   "/api/staff-tasks/upload",
+  // AI YORDAMCHI (lib/ai, 07.10.2026). Robot HAR sahifada turadi (qobiq),
+  // ya'ni uni bironta bo'lim ruxsatiga bog'lab bo'lmaydi. Ma'lumotga ruxsat
+  // HAR BIR VOSITA ichida kesiladi (lib/ai/tools → `pages`): xodim CRM'da
+  // ko'ra olmaydigan narsani AI orqali ham ololmaydi. Sozlamalar route'i
+  // ichida `requireAdmin`.
+  "/api/ai/status",
+  "/api/ai/chat",
+  "/api/ai/conversations",
+  "/api/ai/settings",
 ];
 
 /**
