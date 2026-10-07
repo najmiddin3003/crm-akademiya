@@ -6,6 +6,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
+import { uzStamp } from "@/lib/uzTime";
 import type { AiSettings } from "@/lib/ai/settings";
 import { Toggle } from "./SettingsForm";
 import SettingsNote from "./SettingsNote";
@@ -140,7 +141,7 @@ export default function AiAssistantTab() {
             <div>
               {t("Oxirgi o'zgarish: {who}, {when}", {
                 who: settings.updatedBy ?? "—",
-                when: new Date(settings.updatedAt).toLocaleString(),
+                when: uzStamp(new Date(settings.updatedAt)),
               })}
             </div>
           )}
