@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { actionViews, historyWithActionNotes } from "@/lib/ai/actions/store";
 import { runChatTurn } from "@/lib/ai/chat";
 import { aiProviderConfig, KEEPALIVE_MS, MAX_MESSAGE_CHARS } from "@/lib/ai/config";
 import { loadAiContext } from "@/lib/ai/context";
@@ -34,10 +35,10 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const db = await aiDb();
-  const ctx = await loadAiContext(db);
+  const settings = await loadAiSettings(db);
+  const ctx = await loadAiContext(db, { actions: settings.actionsEnabled });
   if (!ctx) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
-  const settings = await loadAiSettings(db);
   if (!settings.enabled) {
     return NextResponse.json({ ok: false, error: "AI yordamchi o'chirilgan" }, { status: 403 });
   }
@@ -69,6 +70,10 @@ export async function POST(req: Request) {
   }
 
   const lang = normalizeLang((await cookies()).get(LANG_COOKIE)?.value);
+  // Oldingi javoblardagi qoralamalar qanday tugagani modelga ham ko'rinsin
+  // ("saqlandimi?" savoliga taxmin bilan javob bermasin).
+  const past = conversation?.messages ?? [];
+  const history = historyWithActionNotes(past, await actionViews(db, ctx.userId, past.flatMap((m) => m.actionIds ?? [])));
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -86,16 +91,19 @@ export async function POST(req: Request) {
       emit({ type: "meta", conversationId: conversation?.id ?? "", remaining: quota.remaining, limit });
 
       try {
-        const { answer } = await runChatTurn({
+        const turn = await runChatTurn({
           ctx,
           cfg,
           lang,
-          history: conversation?.messages ?? [],
+          history,
           question: message,
           emit,
           signal: req.signal,
         });
         if (req.signal.aborted) return; // chala javob saqlanmaydi
+        const { actionIds } = turn;
+        // Model faqat qoralama tuzib, matn yozmagan bo'lsa ham karta bor — javob bo'sh qolmasin.
+        const answer = turn.answer || (actionIds.length ? "Qoralama tayyor — kartani tekshirib, «Tasdiqlash» ni bosing." : "");
         if (!answer) {
           await refundQuota(db, ctx.userId);
           emit({ type: "error", message: "AI javob qaytarmadi. Savolni boshqacha yozib ko'ring." });
@@ -103,7 +111,7 @@ export async function POST(req: Request) {
         }
         const id = await saveTurn(db, ctx.userId, conversation?.id ?? null, [
           { role: "user", content: message, at: new Date().toISOString() },
-          { role: "assistant", content: answer, at: new Date().toISOString() },
+          { role: "assistant", content: answer, at: new Date().toISOString(), ...(actionIds.length ? { actionIds } : {}) },
         ]);
         emit({ type: "meta", conversationId: id, remaining: quota.remaining, limit });
         emit({ type: "done" });

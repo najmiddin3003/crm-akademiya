@@ -56,7 +56,7 @@ export default function AiAssistantTab() {
     };
   }, []);
 
-  async function save(patch: { enabled?: boolean; dailyLimit?: number }): Promise<boolean> {
+  async function save(patch: { enabled?: boolean; actionsEnabled?: boolean; dailyLimit?: number }): Promise<boolean> {
     setSaving(true);
     try {
       const res = await fetch("/api/ai/settings", {
@@ -113,6 +113,16 @@ export default function AiAssistantTab() {
           <Toggle on={settings.enabled} onChange={(v) => { if (!saving) void save({ enabled: v }); }} />
         </div>
 
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 py-3">
+          <div className="min-w-0">
+            <div className="text-[14px] font-semibold">{t("Amallarga ruxsat berish")}</div>
+            <div className="text-[12px] text-muted-foreground">
+              {t("Yordamchi lid, kirim va chiqim qoralamasini tayyorlaydi; yozuv xodim «Tasdiqlash» ni bosgandagina saqlanadi.")}
+            </div>
+          </div>
+          <Toggle on={settings.actionsEnabled} onChange={(v) => { if (!saving) void save({ actionsEnabled: v }); }} />
+        </div>
+
         <div className="flex items-center justify-between gap-3 py-3">
           <label htmlFor="ai-daily-limit" className="min-w-0 flex-1 text-[13px]">
             {t("Bitta xodimga kuniga savollar soni")}
@@ -150,7 +160,7 @@ export default function AiAssistantTab() {
 
       <SettingsNote>
         {t(
-          "Yordamchi faqat xodimga ruxsat berilgan bo'limlar ma'lumotini oladi va ma'lumotni o'zgartirmaydi. Savol, o'quvchi va xodim ismlari hamda summalar OpenAI xizmatiga yuboriladi; telefon raqamlari yashiriladi. Suhbatlar 30 kun saqlanadi.",
+          "Yordamchi faqat xodimga ruxsat berilgan bo'limlar ma'lumotini oladi va hech narsani o'zi saqlamaydi: amallar yoqilgan bo'lsa ham har yozuvni xodim kartadagi «Tasdiqlash» tugmasi bilan tasdiqlaydi. Savol, o'quvchi va xodim ismlari hamda summalar OpenAI xizmatiga yuboriladi; telefon raqamlari yashiriladi. Suhbatlar 30 kun saqlanadi.",
         )}
       </SettingsNote>
     </div>

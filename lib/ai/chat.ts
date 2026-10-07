@@ -53,6 +53,8 @@ export interface ChatTurnResult {
   answer: string;
   /** Ishlatilgan vositalar nomi — jurnal uchun. */
   usedTools: string[];
+  /** Shu javobda tuzilgan amal qoralamalari — suhbatga bog'lanadi (lib/ai/store.ts). */
+  actionIds: string[];
 }
 
 export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
@@ -68,6 +70,7 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
   const deadline = Date.now() + TOTAL_DEADLINE_MS;
   let answer = "";
   const usedTools: string[] = [];
+  const actionIds: string[] = [];
 
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     if (signal.aborted) break;
@@ -106,10 +109,14 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
       emit({ type: "tool", id: call.id, label: toolLabel(call.function.name), status: "start" });
       const result = await runTool(ctx, call.function.name, call.function.arguments);
       emit({ type: "tool", id: call.id, label: toolLabel(call.function.name), status: result.ok ? "done" : "error" });
+      if (result.action) {
+        emit({ type: "action", action: result.action });
+        actionIds.push(result.action.id);
+      }
       messages.push({ role: "tool", tool_call_id: call.id, content: result.content });
       usedTools.push(call.function.name);
     }
   }
 
-  return { answer: answer.trim(), usedTools };
+  return { answer: answer.trim(), usedTools, actionIds };
 }

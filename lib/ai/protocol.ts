@@ -17,6 +17,8 @@ export type AiStreamEvent =
   | { type: "tool"; id: string; label: string; status: AiToolStatus }
   /** Javob matnining navbatdagi bo'lagi. */
   | { type: "delta"; text: string }
+  /** Amal qoralamasi tayyor — panel tasdiq kartasini chizadi (2-bosqich). */
+  | { type: "action"; action: AiActionView }
   /** Ulanish tirikligi — kutish uzoq cho'zilganda (Nginx uzib qo'ymasin). */
   | { type: "ping" }
   | { type: "done" }
@@ -28,6 +30,58 @@ export interface AiChatMessage {
   content: string;
   /** ISO vaqt. */
   at: string;
+  /** Shu javobda tayyorlangan amal qoralamalari (`ai_actions.id`) — faqat bazada. */
+  actionIds?: string[];
+  /** Panelga: qoralamalarning HOZIRGI holati (GET /api/ai/conversations to'ldiradi). */
+  actions?: AiActionView[];
+}
+
+// ── AMALLAR (2-bosqich) ─────────────────────────────────────────────
+//
+// Model hech narsani o'zi SAQLAMAYDI: u faqat qoralama tuzadi
+// (lib/ai/actions), panel uni karta qilib ko'rsatadi va yozuv xodim
+// «Tasdiqlash» ni bosgandagina bo'ladi (POST /api/ai/actions/:id).
+
+export type AiActionKind = "lead" | "kirim" | "chiqim";
+
+/** `expired` bazada yozilmaydi — muddati o'tgan qoralama ko'rsatishda shunday chiqadi. */
+export type AiActionStatus = "draft" | "executing" | "done" | "failed" | "cancelled" | "expired";
+
+/** Kartadagi qator. Yorliq mijozda (`key` bo'yicha, `t()` bilan), qiymat — tayyor matn. */
+export type AiActionFieldKey =
+  | "type"
+  | "pupil"
+  | "employee"
+  | "group"
+  | "teacher"
+  | "course"
+  | "days"
+  | "amount"
+  | "method"
+  | "month"
+  | "cashbox"
+  | "branch"
+  | "author"
+  | "discount"
+  | "note";
+
+export interface AiActionField {
+  key: AiActionFieldKey;
+  value: string;
+}
+
+export interface AiActionView {
+  id: string;
+  kind: AiActionKind;
+  status: AiActionStatus;
+  fields: AiActionField[];
+  /** ISO — qoralama shu vaqtgacha tasdiqlanishi mumkin. */
+  expiresAt: string;
+  /** Saqlangandan keyin: yozuv raqami ("#708") va sahifa havolasi. */
+  resultText?: string;
+  resultHref?: string;
+  /** Saqlab bo'lmagan bo'lsa — sabab (o'zbekcha, mijoz `t()` qiladi). */
+  error?: string;
 }
 
 /** GET /api/ai/status javobi. */
@@ -39,4 +93,6 @@ export interface AiStatus {
   isAdmin: boolean;
   limit: number;
   remaining: number;
+  /** Amallar (lid, kirim, chiqim — tasdiq bilan) shu xodimga ochiqmi. */
+  actions: boolean;
 }

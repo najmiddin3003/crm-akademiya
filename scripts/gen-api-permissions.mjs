@@ -142,6 +142,9 @@ const SHARED_EXTRA = [
   "/api/ai/chat",
   "/api/ai/conversations",
   "/api/ai/settings",
+  // Qoralamani tasdiqlash/bekor qilish — amalning o'z ruxsati (lid: /orders-list,
+  // kassa: /finance-cash + kassa egaligi) route ichida qayta tekshiriladi.
+  "/api/ai/actions/[id]",
 ];
 
 /**

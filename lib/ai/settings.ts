@@ -14,9 +14,15 @@ import { AI } from "./db";
 // SUKUT — O'CHIQ. Yordamchi o'quvchi ismlari va summalarni tashqi
 // xizmatga (OpenAI) yuboradi; bu qarorni admin ongli ravishda yoqishi
 // kerak, deploy o'zi yoqib yubormasin.
+//
+// AMALLAR (2-bosqich: lid qo'shish, kirim, chiqim) — ALOHIDA kalit, u ham
+// sukut bo'yicha o'chiq. Savol-javobni yoqqan admin pul yozuvlarini ham
+// yoqib qo'ygan bo'lib qolmasin: bu boshqa darajadagi qaror.
 
 export interface AiSettings {
   enabled: boolean;
+  /** Amallar qoralamasi + tasdiq (lib/ai/actions). Faqat `enabled` bilan birga ishlaydi. */
+  actionsEnabled: boolean;
   /** Bitta xodimga kuniga nechta savol (Toshkent kuni). */
   dailyLimit: number;
   /** Kim va qachon oxirgi marta o'zgartirgan — Sozlamalarda ko'rinadi. */
@@ -34,6 +40,7 @@ export function normalizeAiSettings(raw: unknown): AiSettings {
   const limit = Number(r.dailyLimit);
   return {
     enabled: r.enabled === true,
+    actionsEnabled: r.actionsEnabled === true,
     dailyLimit:
       Number.isInteger(limit) && limit >= 1 && limit <= MAX_DAILY_LIMIT ? limit : DEFAULT_DAILY_LIMIT,
     updatedBy: typeof r.updatedBy === "string" ? r.updatedBy : null,
@@ -55,13 +62,17 @@ export type SaveAiSettingsResult = { ok: true; settings: AiSettings } | { ok: fa
  */
 export async function saveAiSettings(
   db: Db,
-  patch: { enabled?: unknown; dailyLimit?: unknown },
+  patch: { enabled?: unknown; actionsEnabled?: unknown; dailyLimit?: unknown },
   by: string,
 ): Promise<SaveAiSettingsResult> {
   const set: Record<string, unknown> = {};
   if (patch.enabled !== undefined) {
     if (typeof patch.enabled !== "boolean") return { ok: false, error: "Noto'g'ri qiymat" };
     set.enabled = patch.enabled;
+  }
+  if (patch.actionsEnabled !== undefined) {
+    if (typeof patch.actionsEnabled !== "boolean") return { ok: false, error: "Noto'g'ri qiymat" };
+    set.actionsEnabled = patch.actionsEnabled;
   }
   if (patch.dailyLimit !== undefined) {
     const n = Number(patch.dailyLimit);

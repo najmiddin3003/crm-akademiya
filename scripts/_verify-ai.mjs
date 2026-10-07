@@ -122,8 +122,16 @@ check(
 
 // ── Vositalar ruxsati ──────────────────────────────────────────────────
 console.log("\n— vositalar ruxsati");
-const toolsFor = (perms) => AI_TOOLS.filter((tool) => toolAllowed(tool, (href) => isPathAllowed(href, perms))).map((tool) => tool.name).sort();
-check("admin / cheklovsiz — hammasi", toolsFor(null).length === AI_TOOLS.length);
+const toolsFor = (perms, actions = false) =>
+  AI_TOOLS.filter((tool) => toolAllowed(tool, (href) => isPathAllowed(href, perms), actions)).map((tool) => tool.name).sort();
+check("admin / cheklovsiz — o'qish vositalari hammasi", toolsFor(null).length === AI_TOOLS.filter((x) => !x.action).length);
+check("amallar yoqilsa — admin uchun hammasi", toolsFor(null, true).length === AI_TOOLS.length);
+check(
+  "amallar: kassa ruxsati — kirim/chiqim, lid emas",
+  eq(toolsFor(["/finance-cash"], true).filter((n) => n.startsWith("propose") || n === "action_options"), ["action_options", "propose_chiqim", "propose_kirim"]),
+  JSON.stringify(toolsFor(["/finance-cash"], true)),
+);
+check("amallar o'chiq — amal vositasi ko'rinmaydi", !toolsFor(null, false).some((n) => n.startsWith("propose")));
 check(
   "faqat Guruh ruxsati — guruhlar + umumiylar",
   eq(toolsFor(["/groups"]), ["crm_help", "list_groups", "overview"]),
@@ -138,10 +146,12 @@ check("Kassa ruxsati oylikni ochmaydi", !toolsFor(["/finance-cash"]).includes("p
 check("Moliya hisobotlari — finance_summary", toolsFor(["/finance-reports"]).includes("finance_summary"));
 check("har vositaning yorlig'i bor", AI_TOOLS.every((tool) => TOOL_LABELS.some((x) => x.name === tool.name)));
 
-const fakeCtx = (perms) => ({ can: (href) => isPathAllowed(href, perms) });
+const fakeCtx = (perms, actions = false) => ({ can: (href) => isPathAllowed(href, perms), actions });
 {
   const r = await runTool(fakeCtx(["/groups"]), "payroll_summary", "{}");
   check("ruxsatsiz vosita bajarilmaydi", !r.ok && r.content.includes("no access"), r.content);
+  const off = await runTool(fakeCtx(null, false), "propose_kirim", "{}");
+  check("amallar o'chiq — amal vositasi bajarilmaydi", !off.ok && off.content.includes("turned off"), off.content);
   const u = await runTool(fakeCtx(null), "drop_database", "{}");
   check("noma'lum vosita", !u.ok && u.content.includes("Unknown tool"));
   const j = await runTool(fakeCtx(null), "crm_help", "{not json");
@@ -176,9 +186,42 @@ check("mos kelmasa bo'sh", findHelpSections("ob-havo qanaqa").length === 0);
 
 // ── Sozlamalar ─────────────────────────────────────────────────────────
 console.log("\n— sozlamalar");
-check("sukut — o'chiq", eq(normalizeAiSettings(null), { enabled: false, dailyLimit: DEFAULT_DAILY_LIMIT, updatedBy: null, updatedAt: null }));
+check(
+  "sukut — o'chiq (amallar ham)",
+  eq(normalizeAiSettings(null), { enabled: false, actionsEnabled: false, dailyLimit: DEFAULT_DAILY_LIMIT, updatedBy: null, updatedAt: null }),
+);
+check("amallar faqat true bo'lsa", normalizeAiSettings({ actionsEnabled: "true" }).actionsEnabled === false && normalizeAiSettings({ actionsEnabled: true }).actionsEnabled === true);
 check("yaroqsiz limit sukutga", normalizeAiSettings({ enabled: true, dailyLimit: 0 }).dailyLimit === DEFAULT_DAILY_LIMIT);
 check("enabled faqat true bo'lsa", normalizeAiSettings({ enabled: "true" }).enabled === false);
+
+// ── Amallar (2-bosqich) — bazasiz qism ─────────────────────────────────
+console.log("\n— amallar");
+{
+  const { lessonDayCodes, pickByName, fmtSum, allowedMonths } = await import("@/lib/ai/actions/prepare");
+  const { viewOf, historyWithActionNotes } = await import("@/lib/ai/actions/store");
+  const { systemPrompt } = await import("@/lib/ai/prompt");
+  check("dars kunlari: toq / juft / har kuni", eq(lessonDayCodes("toq kunlar"), ["Du", "Ch", "Ju"]) && eq(lessonDayCodes("Juft"), ["Se", "Pa", "Sh"]) && lessonDayCodes("har kuni").length === 6);
+  check("dars kunlari: aniq kunlar", eq(lessonDayCodes("Ch, Du"), ["Du", "Ch"]) && lessonDayCodes("ertaga").length === 0);
+  const items = ["Kurs to'lovi", "Kitob sotuvi", "Kurs to'lovi (qarz)"];
+  check("nom: aniq moslik ustun", pickByName(items, (x) => x, "kurs to’lovi") === "Kurs to'lovi");
+  check("nom: noaniq qisman moslik — taxmin yo'q", pickByName(items, (x) => x, "kurs") === null && pickByName(items, (x) => x, "kitob") === "Kitob sotuvi");
+  check("summa ko'rinishi", fmtSum(1250000) === "1 250 000 so'm");
+  const km = allowedMonths("kirim");
+  const pm = allowedMonths("payout");
+  check("oylar: kirim 3 ta (o'tgan·shu·keyingi), oylik 2 ta", km.months.length === 3 && km.months[1] === km.current && pm.months.length === 2 && pm.months[1] === pm.current);
+  const doc = { id: "a1", kind: "kirim", status: "draft", fields: [], payload: {}, draftUntil: new Date(Date.now() - 1000) };
+  check("muddati o'tgan qoralama — expired", viewOf(doc).status === "expired" && viewOf({ ...doc, draftUntil: new Date(Date.now() + 60_000) }).status === "draft");
+  const notes = historyWithActionNotes(
+    [{ role: "assistant", content: "Tayyor.", at: "", actionIds: ["a1"] }],
+    new Map([["a1", { id: "a1", kind: "kirim", status: "done", fields: [], expiresAt: "", resultText: "#7" }]]),
+  );
+  check("tarixda qoralama taqdiri modelga yoziladi", /saved \(#7\)/.test(notes[0].content) && !("actionIds" in notes[0]), notes[0].content);
+  const base = { today: "2026-10-07", branchName: "Markaz", userName: "X", isAdmin: false };
+  check(
+    "ko'rsatma: amallar yoqilsa — tasdiq qoidasi, o'chiq bo'lsa — o'zgartira olmaydi",
+    /must press «Tasdiqlash»/.test(systemPrompt({ ...base, actions: true }, "uz")) && /You cannot change any data/.test(systemPrompt({ ...base, actions: false }, "uz")),
+  );
+}
 
 // ── Model ↔ vositalar sikli (soxta OpenAI serveri) ─────────────────────
 // Tarmoqqa chiqmaydi: 127.0.0.1 da OpenAI kabi javob beradigan kichik
@@ -244,6 +287,7 @@ const chatCtx = (perms) => ({
   branchName: "Markaz",
   today: "2026-10-07",
   can: (href) => isPathAllowed(href, perms),
+  actions: false,
 });
 async function turn(ctx, question, { history = [], signal = new AbortController().signal, onEvent, conf = cfg } = {}) {
   const events = [];

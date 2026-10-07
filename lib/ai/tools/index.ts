@@ -1,6 +1,8 @@
 import type { AiContext } from "../context";
 import { MAX_TOOL_RESULT_CHARS } from "../config";
 import type { ToolSpec } from "../openai";
+import type { AiActionView } from "../protocol";
+import { actionOptions, proposeChiqim, proposeKirim, proposeLead } from "./actions";
 import { cashboxBalances, financeSummary } from "./finance";
 import { listGroups } from "./groups";
 import { crmHelp } from "./help";
@@ -8,12 +10,13 @@ import { leadsSummary } from "./leads";
 import { payrollSummary } from "./payroll";
 import { pupilDetails, searchPupils } from "./pupils";
 import { debtorsReport, overview } from "./reports";
-import { ToolInputError, type AiTool, type ToolArgs } from "./types";
+import { DraftCreated, ToolInputError, type AiTool, type ToolArgs } from "./types";
 
 // VOSITALAR RO'YXATI va ularni ishga tushirish.
 //
-// Faqat O'QISH. Ma'lumotni o'zgartiradigan vosita bu bosqichda yo'q —
-// yozish amallari keyingi bosqichda alohida tasdiq oynasi bilan keladi.
+// O'qish vositalari + amal vositalari (2-bosqich). Amal vositalari ham
+// HECH NARSA YOZMAYDI — faqat qoralama tuzadi (lib/ai/tools/actions.ts);
+// yozuv xodim panelda «Tasdiqlash» ni bosgandagina bo'ladi.
 
 export const AI_TOOLS: readonly AiTool[] = [
   overview,
@@ -26,12 +29,24 @@ export const AI_TOOLS: readonly AiTool[] = [
   cashboxBalances,
   payrollSummary,
   crmHelp,
+  actionOptions,
+  proposeLead,
+  proposeKirim,
+  proposeChiqim,
 ];
 
 const BY_NAME = new Map(AI_TOOLS.map((tool) => [tool.name, tool]));
 
-/** Xodim ishlata oladimi: `pages` dan biri ochiq bo'lsa (bo'sh — hammaga). */
-export function toolAllowed(tool: Pick<AiTool, "pages">, can: (href: string) => boolean): boolean {
+/**
+ * Xodim ishlata oladimi: `pages` dan biri ochiq bo'lsa (bo'sh — hammaga).
+ * Amal vositasi — faqat Sozlamalarda amallar yoqilgan bo'lsa (`actions`).
+ */
+export function toolAllowed(
+  tool: Pick<AiTool, "pages" | "action">,
+  can: (href: string) => boolean,
+  actions = false,
+): boolean {
+  if (tool.action && !actions) return false;
   return tool.pages.length === 0 || tool.pages.some((p) => can(p));
 }
 
@@ -41,7 +56,7 @@ export function toolAllowed(tool: Pick<AiTool, "pages">, can: (href: string) => 
  * ma'lumot bor" degan taxminni ham bermaydi.
  */
 export function toolsFor(ctx: AiContext): AiTool[] {
-  return AI_TOOLS.filter((t) => toolAllowed(t, ctx.can));
+  return AI_TOOLS.filter((t) => toolAllowed(t, ctx.can, ctx.actions));
 }
 
 export function toolSpecs(tools: readonly AiTool[]): ToolSpec[] {
@@ -55,6 +70,8 @@ export interface ToolRunResult {
   ok: boolean;
   /** Modelga ketadigan JSON matn (hajmi cheklangan). */
   content: string;
+  /** Amal vositasi qoralama tuzdi — panel kartasi (lib/ai/chat.ts uzatadi). */
+  action?: AiActionView;
 }
 
 /**
@@ -68,7 +85,8 @@ export interface ToolRunResult {
 export async function runTool(ctx: AiContext, name: string, rawArgs: string): Promise<ToolRunResult> {
   const tool = BY_NAME.get(name);
   if (!tool) return fail(`Unknown tool "${name}".`);
-  if (!toolAllowed(tool, ctx.can)) return fail("The user has no access to this data. Tell them it is outside their permissions.");
+  if (tool.action && !ctx.actions) return fail("Actions are turned off by the administrator. Explain how to do it in the CRM instead.");
+  if (!toolAllowed(tool, ctx.can, ctx.actions)) return fail("The user has no access to this data. Tell them it is outside their permissions.");
 
   let args: ToolArgs;
   try {
@@ -81,6 +99,9 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
 
   try {
     const result = await tool.run(ctx, args);
+    if (result instanceof DraftCreated) {
+      return { ok: true, content: clip(JSON.stringify(result.forModel)), action: result.view };
+    }
     return { ok: true, content: clip(JSON.stringify(result ?? null)) };
   } catch (e) {
     if (e instanceof ToolInputError) return fail(`Invalid arguments: ${e.message}`);

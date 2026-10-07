@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AiChatMessage, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
+import type { AiActionView, AiChatMessage, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
 
 // AI PANELINING HOLATI — yordamchi holati, xabarlar va oqimni o'qish.
 //
@@ -13,6 +13,13 @@ export interface UiToolChip {
   id: string;
   label: string;
   status: AiToolStatus;
+}
+
+/** Tasdiq kartasi + mijozdagi holat (so'rov ketyapti / vaqtinchalik xato). */
+export interface UiAction extends AiActionView {
+  busy?: boolean;
+  /** Tugma bosilganda kelgan xato (o'zbekcha, `t()` bilan chiziladi). */
+  note?: string;
 }
 
 export interface UiMessage {
@@ -28,13 +35,15 @@ export interface UiMessage {
   stopped?: boolean;
   /** Oqim yakun belgisisiz uzildi — javob chala bo'lishi mumkin. */
   cutOff?: boolean;
+  /** Shu javobdagi amal qoralamalari (2-bosqich). */
+  actions?: UiAction[];
 }
 
 let seq = 0;
 const nextKey = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
 
 function fromStored(m: AiChatMessage): UiMessage {
-  return { key: nextKey(), role: m.role, content: m.content };
+  return { key: nextKey(), role: m.role, content: m.content, ...(m.actions?.length ? { actions: m.actions } : {}) };
 }
 
 async function errorOf(res: Response): Promise<string> {
@@ -68,7 +77,14 @@ export function useAiChat() {
         const st = (await s.json()) as AiStatus & { ok: boolean };
         const cv = c.ok ? await c.json().catch(() => null) : null;
         if (!alive) return;
-        setStatus({ enabled: st.enabled, configured: st.configured, isAdmin: st.isAdmin, limit: st.limit, remaining: st.remaining });
+        setStatus({
+          enabled: st.enabled,
+          configured: st.configured,
+          isAdmin: st.isAdmin,
+          limit: st.limit,
+          remaining: st.remaining,
+          actions: st.actions === true,
+        });
         if (cv?.conversation) {
           setConversationId(String(cv.conversation.id));
           setMessages((cv.conversation.messages as AiChatMessage[]).map(fromStored));
@@ -104,6 +120,8 @@ export function useAiChat() {
           const tools = (m.tools ?? []).filter((x) => x.id !== e.id);
           return { ...m, tools: [...tools, { id: e.id, label: e.label, status: e.status }] };
         });
+      } else if (e.type === "action") {
+        patchLast((m) => ({ ...m, actions: [...(m.actions ?? []).filter((a) => a.id !== e.action.id), e.action] }));
       } else if (e.type === "error") {
         patchLast((m) => ({ ...m, error: e.message }));
       }
@@ -177,6 +195,43 @@ export function useAiChat() {
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
 
+  /** Kartani yangilash — qaysi xabarda bo'lsa ham (suhbat davomida yangi javoblar qo'shilgan bo'lishi mumkin). */
+  const patchAction = useCallback((id: string, fn: (a: UiAction) => UiAction) => {
+    setMessages((list) =>
+      list.map((m) =>
+        m.actions?.some((a) => a.id === id) ? { ...m, actions: m.actions.map((a) => (a.id === id ? fn(a) : a)) } : m,
+      ),
+    );
+  }, []);
+
+  /**
+   * «Tasdiqlash» / «Bekor qilish». Javobda kartaning yangi holati keladi
+   * (saqlandi, bekor qilindi, eskirgan …); u bo'lmasa — xato kartaning
+   * ostida yoziladi.
+   */
+  const decide = useCallback(
+    async (id: string, op: "confirm" | "cancel") => {
+      patchAction(id, (a) => ({ ...a, busy: true, note: undefined }));
+      try {
+        const res = await fetch(`/api/ai/actions/${encodeURIComponent(id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ op }),
+        });
+        const d = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; action?: AiActionView } | null;
+        patchAction(id, (a) => ({
+          ...(d?.action ?? a),
+          busy: false,
+          // Saqlab bo'lmagan yozuvning sababi kartaning o'zida (`error`) — ikki marta yozilmasin.
+          note: d?.ok || d?.action?.status === "failed" ? undefined : d?.error || "Serverga ulanib bo'lmadi",
+        }));
+      } catch {
+        patchAction(id, (a) => ({ ...a, busy: false, note: "Serverga ulanib bo'lmadi" }));
+      }
+    },
+    [patchAction],
+  );
+
   /** Yangi suhbat — eskisi bazada qoladi (30 kundan keyin o'zi o'chadi). */
   const newChat = useCallback(() => {
     abortRef.current?.abort();
@@ -191,5 +246,5 @@ export function useAiChat() {
     if (id) await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
   }, [conversationId, newChat]);
 
-  return { status, loadError, messages, busy, conversationId, send, stop, newChat, deleteChat };
+  return { status, loadError, messages, busy, conversationId, send, stop, newChat, deleteChat, decide };
 }

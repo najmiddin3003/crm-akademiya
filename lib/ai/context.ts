@@ -35,10 +35,16 @@ export interface AiContext {
   today: string;
   /** Xodim shu sahifani ko'ra oladimi — vositalar ruxsati shu bilan kesiladi. */
   can: (href: string) => boolean;
+  /**
+   * Amallar (qoralama + tasdiq) yoqilganmi — Sozlamalardagi alohida kalit
+   * (lib/ai/settings.ts → actionsEnabled). O'chiq bo'lsa amal vositalari
+   * modelga umuman ko'rsatilmaydi.
+   */
+  actions: boolean;
 }
 
 /** `null` — tizimga kirilmagan yoki sessiya amal qilmaydi. */
-export async function loadAiContext(db: Db): Promise<AiContext | null> {
+export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): Promise<AiContext | null> {
   const me = await getCurrentUser();
   if (!me) return null;
   const scope = await getBranchScope();
@@ -61,6 +67,7 @@ export async function loadAiContext(db: Db): Promise<AiContext | null> {
     branchName: String(branch?.name ?? "").trim() || `#${scope.branchId}`,
     today: uzDateIso(),
     can: (href) => isPathAllowed(href, permissions),
+    actions: opts.actions === true,
   };
 }
 

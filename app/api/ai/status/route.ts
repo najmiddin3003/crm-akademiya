@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { ACTION_PAGES } from "@/lib/ai/actions/pages";
 import { aiProviderConfig } from "@/lib/ai/config";
 import { aiDb } from "@/lib/ai/db";
 import type { AiStatus } from "@/lib/ai/protocol";
 import { loadAiSettings } from "@/lib/ai/settings";
 import { readQuota } from "@/lib/ai/usage";
+import { isPathAllowed } from "@/lib/permissions";
 
 // GET /api/ai/status — robot paneli ochilganda: yordamchi yoqilganmi,
 // serverda kalit bormi, bugun yana nechta savol berish mumkin.
@@ -25,6 +27,9 @@ export async function GET() {
     isAdmin: me.role === "admin",
     limit: quota.limit,
     remaining: quota.remaining,
+    // Amallar: Sozlamalarda yoqilgan VA xodimda kamida bitta amal sahifasi ochiq.
+    actions:
+      settings.actionsEnabled && Object.values(ACTION_PAGES).some((page) => isPathAllowed(page, me.permissions)),
   };
   return NextResponse.json({ ok: true, ...status });
 }

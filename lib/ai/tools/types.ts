@@ -1,4 +1,5 @@
 import type { AiContext } from "../context";
+import type { AiActionView } from "../protocol";
 
 // AI VOSITASI — model chaqira oladigan bitta server funksiyasi.
 //
@@ -29,7 +30,26 @@ export interface AiTool {
    * (ichida o'zi kesadi, masalan bosh sahifa kartalari).
    */
   pages: readonly string[];
+  /**
+   * Amal vositasi (qoralama tuzadi, 2-bosqich) — faqat Sozlamalarda
+   * amallar yoqilganda ko'rsatiladi (`ctx.actions`).
+   */
+  action?: boolean;
   run: (ctx: AiContext, args: ToolArgs) => Promise<unknown>;
+}
+
+/**
+ * Amal vositasi qoralama TUZDI: modelga `forModel` ketadi, panelga esa
+ * karta (`view`) — lib/ai/chat.ts uni `{type: "action"}` hodisasi qilib
+ * yuboradi. Oddiy natijadan `instanceof` bilan ajratiladi.
+ */
+export class DraftCreated {
+  readonly view: AiActionView;
+  readonly forModel: Record<string, unknown>;
+  constructor(view: AiActionView, forModel: Record<string, unknown>) {
+    this.view = view;
+    this.forModel = forModel;
+  }
 }
 
 /** Model yuborgan argument yaroqsiz — xato matni modelga qaytadi, u tuzatib qayta so'raydi. */

@@ -20,6 +20,10 @@ export const TOOL_LABELS: readonly { name: string; label: string }[] = [
   { name: "cashbox_balances", label: "Kassa qoldiqlari olinmoqda" },
   { name: "payroll_summary", label: "Oylik hisobi olinmoqda" },
   { name: "crm_help", label: "Qo'llanma ko'rilmoqda" },
+  { name: "action_options", label: "Tanlovlar olinmoqda" },
+  { name: "propose_lead", label: "Lid qoralamasi tayyorlanmoqda" },
+  { name: "propose_kirim", label: "Kirim qoralamasi tayyorlanmoqda" },
+  { name: "propose_chiqim", label: "Chiqim qoralamasi tayyorlanmoqda" },
   { name: "*", label: "Ma'lumot olinmoqda" },
 ];
 

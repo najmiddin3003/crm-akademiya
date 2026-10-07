@@ -2198,13 +2198,78 @@ faqat Guruhlar) bilan oylik so'rash → "ruxsatingiz yo'q".
   aynan yozilgan — interfeys o'zgarsa qo'llanma ham yangilanadi.
 - So'rov tanasiga `temperature`/`max_tokens` qo'shmang — yangi modellar
   rad etadi (jins aniqlashdagi bilan bir xil sabab).
+- Amal qoidasi (kirim/chiqim/lid) web oynasida yoki botda o'zgarsa —
+  lib/ai/actions/prepare.ts ham o'sha qoidaga keltiriladi (yadro baribir
+  tekshiradi, lekin qoralama kartasi xato ma'lumot ko'rsatmasin).
 - `finance_summary` barcha filiallar bo'yicha (Moliya hisobotlari sahifasi
   ham shunday). Xodim boshqa filial pulini ko'rmasin desangiz — moliya
   hisobotlari ruxsatini bermang.
 
-### 2-bosqich (keyin)
+### 2-bosqich — amallar: qoralama + tasdiq (2026-10-07)
 
-Amallar — lid qo'shish, kirim/chiqim: model qoralama tuzadi, panelda
-tasdiq kartasi, bosilganda o'sha yadro (`createOrder`,
-`applyCashboxAdjust`) bir martalik kalit bilan (xodimlar botidagidek) va
-jurnalga yozuv.
+Yordamchi endi **lid qo'shish**, **kirim** va **chiqim** QORALAMASINI
+tayyorlaydi. Model hech narsani o'zi saqlamaydi: panelda tasdiq kartasi
+chiqadi va yozuv faqat xodim «Tasdiqlash» ni bosganda bo'ladi. Bu tugmani
+model bosa olmaydi — matn ichidagi "buyruq" (o'quvchi izohi, lid izohi)
+pul yozdira olmaydi.
+
+- **Yoqish — ALOHIDA kalit**, sukut bo'yicha O'CHIQ: Sozlamalar → Ilova
+  sozlamalari → «AI yordamchi» → «Amallarga ruxsat berish»
+  (`ai_settings.actionsEnabled`). O'chiq bo'lsa amal vositalari modelga
+  umuman ko'rsatilmaydi.
+- **Oqim**: `propose_lead` / `propose_kirim` / `propose_chiqim`
+  (lib/ai/tools/actions.ts) → qiymatlar tekshiriladi (lib/ai/actions/prepare.ts)
+  → `ai_actions` ga `draft` → oqimda `{type: "action"}` → panel kartasi →
+  `POST /api/ai/actions/:id {op: "confirm" | "cancel"}` → ruxsat QAYTA
+  tekshiriladi → atomik band qilish (`draft` → `executing`; ikkinchi bosish
+  hech narsa yozmaydi) → yadro (lib/ai/actions/execute.ts) → `done`/`failed`.
+- **Yadrolar o'sha**: lid — `createOrder` (lib/ordersCreate.ts), kirim/chiqim —
+  `applyCashboxAdjust` (lib/cashboxAdjust.ts). Kassa qoldig'i, oylik/avans
+  chegarasi, o'quvchi balansi, yopilgan oy, izohdagi oy — yadroda yana bir
+  bor tekshiriladi. Kassa yozuvida `origin: "ai"` (lib/transactionEntries.ts).
+- **Qoidalar xodimlar botidan** (lib/staffBot/lead.ts, kirim.ts, chiqim.ts —
+  ular web oynalari bilan bir xil): lid faqat CRM'da MAVJUD o'quvchiga, kurs
+  Sozlamalardagi ro'yxatdan, kunlar toq/juft/har kuni yoki aniq kunlar; kirimda
+  tur → o'quvchi (turga qarab) → summa → to'lov turi → oy (o'tgan · shu ·
+  keyingi); chiqimda tur → xodim/o'quvchi/hech kim → oy (avans/oylik: o'tgan ·
+  shu) → to'lov turi → summa («Oylik» da summa — qoldiqning o'zi). Sana —
+  tasdiqlangan kun.
+- **Taxmin yo'q**: tur, to'lov turi, kurs, o'quvchi, xodim ro'yxatdan
+  qidiriladi; topilmasa yoki bir nechtasi mos kelsa qoralama tuzilmaydi —
+  modelga nomzodlar (telefon yashirilgan) qaytadi va u xodimdan so'raydi.
+  Summa aytilmagan bo'lsa ham so'raydi.
+- **Ruxsat**: lid — `/orders-list`, kirim/chiqim — `/finance-cash` (bot bilan
+  bir xil kalitlar). Kassa: admin — bosh kassa (yoki tanlagani), xodim —
+  FAQAT o'zi mas'ul kassa (`moderator` = xodim ismi). Tasdiq paytida sahifa
+  ruxsati, filial va kassa egaligi qayta tekshiriladi. Qoralama faqat
+  egasiga ko'rinadi va faqat u tasdiqlaydi.
+- **Muddat**: qoralama 15 daqiqa amal qiladi (kassa qoldig'i, oylik o'zgarishi
+  mumkin), keyin «Eskirgan». `ai_actions` — audit izi (kim, qachon, nima,
+  natija id'si), 180 kundan keyin o'chadi.
+- **Suhbatda**: karta javob bilan saqlanadi (`actionIds`), qayta ochilganda
+  HOZIRGI holati bilan chiqadi; modelga ham "saqlandi / bekor qilindi /
+  eskirgan" eslatmasi ketadi — "saqlandimi?" savoliga taxmin qilmaydi.
+
+Fayllar: `lib/ai/actions/` (`store` — `ai_actions`, `prepare` — tekshiruv,
+`execute` — yadro, `pages` — ruxsat kalitlari), `lib/ai/tools/actions.ts`,
+`app/api/ai/actions/[id]/route.ts`, panelda `ActionCard`
+(components/ai/AssistantPanel.tsx).
+
+Sinov (haqiqiy MongoDB, faqat lokal, alohida `crm_ai_actions_test` bazasida —
+oxirida o'chiriladi):
+
+```
+node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_verify-ai-actions.mjs
+```
+
+Tekshirilgan (07.10.2026, lokal MongoDB 8 + soxta model, brauzerda ham):
+qoralama → «Tasdiqlash» → kassa qoldig'i va jurnal (`origin: "ai"`); ikkinchi
+tasdiq — 409, hech narsa yozilmaydi; «Bekor qilish»; xodim boshqa kassani
+tanlay olmaydi; ruxsatsiz xodimda amal vositasi yo'q va begona qoralama — 404;
+eskirgan qoralama tasdiqlanmaydi; qayta ochilganda kartalar holati.
+**Tekshirilmagan**: haqiqiy OpenAI modeli bilan (bu muhitda tarmoq yopiq) —
+dev'da birinchi navbatda shu: amallarni yoqib, kichik summa bilan kirim →
+tasdiq → kassada ko'rinishi → web'da bekor qilish.
+
+Keyin (ixtiyoriy): ko'chirish (kassalar orasida), mavjud yozuvni tahrirlash
+yoki bekor qilish — hozircha yo'q, model CRM'da qanday qilishni tushuntiradi.

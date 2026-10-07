@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { attachActionViews } from "@/lib/ai/actions/store";
 import { aiDb } from "@/lib/ai/db";
 import { deleteConversation, findConversation, latestConversation } from "@/lib/ai/store";
 
@@ -15,7 +16,9 @@ export async function GET(req: Request) {
   if (!me) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
   const id = (new URL(req.url).searchParams.get("id") || "").slice(0, 64);
   const db = await aiDb();
-  const conversation = id ? await findConversation(db, me.id, id) : await latestConversation(db, me.id);
+  const found = id ? await findConversation(db, me.id, id) : await latestConversation(db, me.id);
+  // Qoralama kartalari HOZIRGI holati bilan (tasdiqlangan, bekor qilingan, eskirgan).
+  const conversation = found ? { ...found, messages: await attachActionViews(db, me.id, found.messages) } : null;
   return NextResponse.json({ ok: true, conversation });
 }
 

@@ -16,6 +16,12 @@ export const AI = {
   usage: "ai_usage",
   /** Suhbatlar tarixi (lib/ai/store.ts); 30 kun ishlatilmasa o'zi o'chadi. */
   conversations: "ai_conversations",
+  /**
+   * Amal qoralamalari va ularning taqdiri (lib/ai/actions/store.ts) — kim,
+   * qachon, nimani tayyorlatdi va tasdiqladi. Audit izi: 180 kundan keyin
+   * o'chadi; pul yozuvining o'zi jurnalda abadiy (`origin: "ai"`).
+   */
+  actions: "ai_actions",
 } as const;
 
 let ready: Promise<void> | null = null;
@@ -28,6 +34,9 @@ async function createAiIndexes(db: Db): Promise<void> {
     db.collection(AI.conversations).createIndex({ id: 1 }, { unique: true }),
     db.collection(AI.conversations).createIndex({ userId: 1, updatedAt: -1 }),
     db.collection(AI.conversations).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    db.collection(AI.actions).createIndex({ id: 1 }, { unique: true }),
+    db.collection(AI.actions).createIndex({ userId: 1, createdAt: -1 }),
+    db.collection(AI.actions).createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 }),
   ]);
 }
 
