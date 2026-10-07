@@ -77,22 +77,40 @@ export function adminDetail(logDetail: string): string {
   return logDetail.replace(/sk-[A-Za-z0-9_*-]{6,}/g, "sk-…").slice(0, 400);
 }
 
-// OQIMNI RAD ETGAN MODEL. OpenAI yangi modellarda tashkilot tasdiqlanmagan
-// bo'lsa `stream: true` ni 400 bilan rad etadi ("Your organization must be
-// verified to stream this model", `param: "stream"`) — oqimsiz so'rov esa
-// o'tadi (jins aniqlash ham oqimsiz so'raydi). Shunda bir marta oqimsiz qayta
-// so'raladi va shu jarayonda bu model boshqa oqim bilan so'ralmaydi: javob
-// bo'laklab emas, bir yo'la keladi.
-const noStream = new Set<string>();
+// MODELGA MOSLASHUV. Ba'zi modellar so'rovni 400 bilan rad etib, nima
+// o'zgartirish kerakligini o'zi aytadi:
+//   • `reasoningNone` — gpt-5.6 Chat Completions'da vositalarni faqat
+//     fikrlashsiz qabul qiladi: "Function tools with reasoning_effort are not
+//     supported for gpt-5.6 in /v1/chat/completions … set reasoning_effort to
+//     'none'" (sinov saytida 07.10.2026 da ko'rildi). Eski modellar esa bu
+//     maydonni umuman tanimaydi — shuning uchun oldindan yuborilmaydi;
+//   • `noStream` — tashkilot tasdiqlanmagan bo'lsa yangi modellar oqimni rad
+//     etadi ("Your organization must be verified to stream this model",
+//     `param: "stream"`): javob bo'laklab emas, bir yo'la keladi.
+// Har biri birinchi rad javobidan keyin qo'llanib, so'rov qayta yuboriladi
+// va shu jarayonda o'sha model (baseUrl + model) uchun eslab qolinadi.
+// Boshqa 400 da qayta so'ralmaydi.
+interface ModelQuirks {
+  reasoningNone?: boolean;
+  noStream?: boolean;
+}
+const quirks = new Map<string, ModelQuirks>();
 
-function streamRefused(status: number, raw: string): boolean {
-  if (status !== 400) return false;
+/** 400 javobi qaysi moslashuvni so'rayapti (hech qaysi — `null`). */
+function quirkFor(status: number, raw: string): keyof ModelQuirks | null {
+  if (status !== 400) return null;
+  let param = "";
+  let text = raw;
   try {
     const err = JSON.parse(raw)?.error;
-    return err?.param === "stream" || /\bstream/i.test(String(err?.message ?? ""));
+    param = String(err?.param ?? "");
+    text = String(err?.message ?? "");
   } catch {
-    return /\bstream/i.test(raw);
+    // JSON emas — xom matn
   }
+  if (param === "reasoning_effort" || (/reasoning_effort/i.test(text) && /\bnone\b/i.test(text))) return "reasoningNone";
+  if (param === "stream" || /\bstream/i.test(text)) return "noStream";
+  return null;
 }
 
 export interface CompletionResult {
@@ -109,7 +127,9 @@ export async function streamChatCompletion(
   cfg: AiProviderConfig,
   req: { messages: ChatMessage[]; tools: ToolSpec[]; signal: AbortSignal; onText: (text: string) => void },
 ): Promise<CompletionResult> {
-  const send = async (stream: boolean): Promise<Response> => {
+  const modelKey = `${cfg.baseUrl} ${cfg.model}`;
+  const q = quirks.get(modelKey) ?? {};
+  const send = async (): Promise<Response> => {
     try {
       return await fetch(`${cfg.baseUrl}/chat/completions`, {
         method: "POST",
@@ -118,7 +138,8 @@ export async function streamChatCompletion(
           model: cfg.model,
           messages: req.messages,
           ...(req.tools.length ? { tools: req.tools } : {}),
-          stream,
+          ...(q.reasoningNone ? { reasoning_effort: "none" } : {}),
+          stream: !q.noStream,
         }),
         signal: req.signal,
       });
@@ -128,14 +149,16 @@ export async function streamChatCompletion(
     }
   };
 
-  const modelKey = `${cfg.baseUrl} ${cfg.model}`;
-  const streamed = !noStream.has(modelKey);
-  let res = await send(streamed);
+  let res = await send();
   let raw = res.ok ? "" : await res.text().catch(() => "");
-  if (streamed && streamRefused(res.status, raw)) {
-    noStream.add(modelKey);
-    console.warn(`[ai] ${cfg.model}: oqim rad etildi — oqimsiz so'rovga o'tildi`);
-    res = await send(false);
+  // Ikkala moslashuv ham kerak bo'lishi mumkin — har biri bir martadan.
+  for (let i = 0; i < 2 && !res.ok; i++) {
+    const fix = quirkFor(res.status, raw);
+    if (!fix || q[fix]) break;
+    q[fix] = true;
+    quirks.set(modelKey, q);
+    console.warn(`[ai] ${cfg.model}: ${fix} — so'rov moslashtirilib qayta yuborildi`);
+    res = await send();
     raw = res.ok ? "" : await res.text().catch(() => "");
   }
 

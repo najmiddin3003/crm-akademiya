@@ -318,7 +318,7 @@ const deltas = (r) => r.events.filter((e) => e.type === "delta").map((e) => e.te
   check(
     "so'rov: manzil, kalit, model, oqim; ortiqcha maydon yo'q",
     seen[0]?.path === "/v1/chat/completions" && seen[0]?.auth === "Bearer sk-test-123" && q1?.model === "fake-model" &&
-      q1?.stream === true && !("temperature" in q1) && !("max_tokens" in q1) && !("stream_options" in q1),
+      q1?.stream === true && !("temperature" in q1) && !("max_tokens" in q1) && !("stream_options" in q1) && !("reasoning_effort" in q1),
     JSON.stringify(seen[0] ?? r.error?.logDetail ?? null).slice(0, 300),
   );
   const offered = (q1?.tools ?? []).map((x) => x.function.name).sort();
@@ -460,6 +460,60 @@ for (const [status, text] of [
   );
   const shown = adminDetail("HTTP 401 (m): Incorrect API key provided: sk-proj-abc1234567890***wxyz. See docs.");
   check("admin tafsilotida kalit yashiriladi", shown.includes("HTTP 401") && !/sk-proj-abc|wxyz/.test(shown), shown);
+}
+{
+  // gpt-5.6 (sinov saytida ko'rilgan haqiqiy javob): vositalar faqat
+  // `reasoning_effort: "none"` bilan. Eski modellarga bu maydon yuborilmaydi.
+  const effortRefusal = {
+    status: 400,
+    json: {
+      error: {
+        message:
+          "Function tools with reasoning_effort are not supported for gpt-5.6 in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.",
+        type: "invalid_request_error",
+        param: null,
+        code: null,
+      },
+    },
+  };
+  const effortOk = (body) => !body.tools || body.reasoning_effort === "none";
+  reply = (body, n) => {
+    if (!effortOk(body)) return effortRefusal;
+    return body.messages.some((m) => m.role === "tool")
+      ? { sse: textChunks("Bugun 3 ta lid.") }
+      : { sse: callChunks([{ id: `e${n}`, name: "crm_help", args: { topic: "lid" } }]) };
+  };
+  const conf = { ...cfg, model: "effort-model" };
+  const r = await turn(chatCtx(null), "Bugungi lidlar", { conf });
+  check(
+    "reasoning_effort rad etilsa — \"none\" bilan qayta so'raladi, javob oqimda keladi",
+    r.answer === "Bugun 3 ta lid." &&
+      eq(seen.map((s) => s.body.reasoning_effort ?? "—"), ["—", "none", "none"]) &&
+      seen.every((s) => s.body.stream === true) &&
+      deltas(r).join("") === "Bugun 3 ta lid." &&
+      eq(r.usedTools, ["crm_help"]),
+    JSON.stringify({ effort: seen.map((s) => s.body.reasoning_effort ?? "—"), answer: r.answer, error: r.error?.logDetail }),
+  );
+  const again = await turn(chatCtx(null), "Yana", { conf });
+  check(
+    "keyingi savolda \"none\" darhol yuboriladi (rad javobi takrorlanmaydi)",
+    again.answer === "Bugun 3 ta lid." && seen.every((s) => s.body.reasoning_effort === "none"),
+    JSON.stringify({ effort: seen.map((s) => s.body.reasoning_effort ?? "—"), error: again.error?.logDetail }),
+  );
+
+  // Ikkalasi birga: avval reasoning_effort, keyin oqim rad etiladi.
+  reply = (body) => {
+    if (!effortOk(body)) return effortRefusal;
+    if (body.stream) return { status: 400, json: { error: { message: "Your organization must be verified to stream this model.", param: "stream" } } };
+    return { json: { choices: [{ index: 0, message: { role: "assistant", content: "Ikkalasi bilan javob." }, finish_reason: "stop" }] } };
+  };
+  const both = await turn(chatCtx(null), "Salom", { conf: { ...cfg, model: "both-quirks-model" } });
+  check(
+    "ikkala moslashuv ketma-ket qo'llanadi (3 so'rov), javob keladi",
+    both.answer === "Ikkalasi bilan javob." &&
+      eq(seen.map((s) => [s.body.reasoning_effort ?? "—", s.body.stream]), [["—", true], ["none", true], ["none", false]]),
+    JSON.stringify({ reqs: seen.map((s) => [s.body.reasoning_effort ?? "—", s.body.stream]), error: both.error?.logDetail }),
+  );
 }
 {
   reply = () => ({ sse: [{ error: { message: "server_error" } }] });
