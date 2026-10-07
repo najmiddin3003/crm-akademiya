@@ -3364,6 +3364,7 @@
   "Ruxsatlarini o'zgartirmoqchi bo'lgan xodimni tanlang.": "Select the employee whose permissions you want to change.",
   "Ruxsatlarni sozlash": "Configure permissions",
   "Sabab": "Reason",
+  "Sabab (faqat admin ko'radi)": "Reason (visible to admins only)",
   "Sabab bo'yicha tanga": "Coins by reason",
   "Sabab nomi": "Reason name",
   "Sabab nomi 1–80 belgi bo'lsin": "Reason name must be 1–80 characters",

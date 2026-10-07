@@ -233,7 +233,7 @@ console.log("\n— runChatTurn (soxta OpenAI)");
 const { createServer } = await import("node:http");
 const { runChatTurn } = await import("@/lib/ai/chat");
 const { MAX_ROUNDS, HISTORY_MESSAGES } = await import("@/lib/ai/config");
-const { AiProviderError, PROVIDER_ERRORS } = await import("@/lib/ai/openai");
+const { adminDetail, AiProviderError, PROVIDER_ERRORS } = await import("@/lib/ai/openai");
 const { toolLabel } = await import("@/lib/ai/toolLabels");
 
 /** Joriy ssenariy: (so'rov tanasi, tartib raqami) → javob. */
@@ -413,6 +413,53 @@ for (const [status, text] of [
     r.error instanceof AiProviderError && r.error.message === text && !r.error.message.includes("sk-") && r.error.logDetail.includes(`HTTP ${status}`),
     String(r.error?.message ?? r.answer),
   );
+}
+{
+  // OpenAI yangi modellarda tashkilot tasdiqlanmagan bo'lsa oqimni rad etadi
+  // (400, param "stream") — oqimsiz so'rov o'tadi, vositalar sikli ham ishlaydi.
+  const refusal = {
+    status: 400,
+    json: {
+      error: {
+        message: "Your organization must be verified to stream this model. Please go to: https://platform.openai.com/settings/organization/general and click on Verify Organization.",
+        type: "invalid_request_error",
+        param: "stream",
+        code: "unsupported_value",
+      },
+    },
+  };
+  const message = (m) => ({ json: { choices: [{ index: 0, message: { role: "assistant", ...m }, finish_reason: m.tool_calls ? "tool_calls" : "stop" }] } });
+  const call = { id: "ns1", type: "function", function: { name: "crm_help", arguments: JSON.stringify({ topic: "lid" }) } };
+  let streamed = 0;
+  reply = (body) => {
+    if (body.stream) {
+      streamed++;
+      return refusal;
+    }
+    return body.messages.some((m) => m.role === "tool") ? message({ content: "Oqimsiz javob." }) : message({ content: null, tool_calls: [call] });
+  };
+  const conf = { ...cfg, model: "verify-needed-model" };
+  const r = await turn(chatCtx(null), "Lid qanday qo'shiladi?", { conf });
+  check(
+    "oqim rad etilsa — oqimsiz qayta so'raladi, vosita sikli ishlaydi",
+    r.answer === "Oqimsiz javob." && eq(seen.map((s) => s.body.stream), [true, false, false]) && eq(r.usedTools, ["crm_help"]),
+    JSON.stringify({ stream: seen.map((s) => s.body.stream), answer: r.answer, error: r.error?.logDetail }),
+  );
+  const again = await turn(chatCtx(null), "Yana", { conf });
+  check(
+    "keyingi savolda shu model darhol oqimsiz (rad etilgan so'rov takrorlanmaydi)",
+    streamed === 1 && seen.length >= 1 && seen.every((s) => s.body.stream === false),
+    JSON.stringify({ streamed, stream: seen.map((s) => s.body.stream), error: again.error?.logDetail }),
+  );
+  reply = () => ({ status: 400, json: { error: { message: "Invalid schema for function 'x'", param: "tools" } } });
+  const other = await turn(chatCtx(null), "Salom", { conf: { ...cfg, model: "other-400-model" } });
+  check(
+    "boshqa 400 xatoda qayta so'ralmaydi",
+    other.error instanceof AiProviderError && other.error.message === PROVIDER_ERRORS.rejected.message && seen.length === 1,
+    JSON.stringify({ requests: seen.length, error: other.error?.logDetail }),
+  );
+  const shown = adminDetail("HTTP 401 (m): Incorrect API key provided: sk-proj-abc1234567890***wxyz. See docs.");
+  check("admin tafsilotida kalit yashiriladi", shown.includes("HTTP 401") && !/sk-proj-abc|wxyz/.test(shown), shown);
 }
 {
   reply = () => ({ sse: [{ error: { message: "server_error" } }] });

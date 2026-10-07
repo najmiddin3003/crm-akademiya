@@ -68,6 +68,33 @@ function providerMessage(status: number): string {
   return PROVIDER_ERRORS.rejected.message;
 }
 
+/**
+ * Xato tafsiloti ADMINGA (panelda, xodimlarga emas): xizmatning asl matni.
+ * Kalitga o'xshagan bo'lak yashiriladi — OpenAI 401 matnida kalitning
+ * boshi va oxiri bo'ladi, proksi esa butun sarlavhani qaytarishi mumkin.
+ */
+export function adminDetail(logDetail: string): string {
+  return logDetail.replace(/sk-[A-Za-z0-9_*-]{6,}/g, "sk-…").slice(0, 400);
+}
+
+// OQIMNI RAD ETGAN MODEL. OpenAI yangi modellarda tashkilot tasdiqlanmagan
+// bo'lsa `stream: true` ni 400 bilan rad etadi ("Your organization must be
+// verified to stream this model", `param: "stream"`) — oqimsiz so'rov esa
+// o'tadi (jins aniqlash ham oqimsiz so'raydi). Shunda bir marta oqimsiz qayta
+// so'raladi va shu jarayonda bu model boshqa oqim bilan so'ralmaydi: javob
+// bo'laklab emas, bir yo'la keladi.
+const noStream = new Set<string>();
+
+function streamRefused(status: number, raw: string): boolean {
+  if (status !== 400) return false;
+  try {
+    const err = JSON.parse(raw)?.error;
+    return err?.param === "stream" || /\bstream/i.test(String(err?.message ?? ""));
+  } catch {
+    return /\bstream/i.test(raw);
+  }
+}
+
 export interface CompletionResult {
   content: string;
   toolCalls: ToolCall[];
@@ -82,26 +109,37 @@ export async function streamChatCompletion(
   cfg: AiProviderConfig,
   req: { messages: ChatMessage[]; tools: ToolSpec[]; signal: AbortSignal; onText: (text: string) => void },
 ): Promise<CompletionResult> {
-  let res: Response;
-  try {
-    res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
-      body: JSON.stringify({
-        model: cfg.model,
-        messages: req.messages,
-        ...(req.tools.length ? { tools: req.tools } : {}),
-        stream: true,
-      }),
-      signal: req.signal,
-    });
-  } catch (e) {
-    if (req.signal.aborted) throw new AiProviderError(PROVIDER_ERRORS.timeout.message, "timeout");
-    throw new AiProviderError(PROVIDER_ERRORS.network.message, String((e as Error)?.message ?? e));
+  const send = async (stream: boolean): Promise<Response> => {
+    try {
+      return await fetch(`${cfg.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: req.messages,
+          ...(req.tools.length ? { tools: req.tools } : {}),
+          stream,
+        }),
+        signal: req.signal,
+      });
+    } catch (e) {
+      if (req.signal.aborted) throw new AiProviderError(PROVIDER_ERRORS.timeout.message, "timeout");
+      throw new AiProviderError(PROVIDER_ERRORS.network.message, String((e as Error)?.message ?? e));
+    }
+  };
+
+  const modelKey = `${cfg.baseUrl} ${cfg.model}`;
+  const streamed = !noStream.has(modelKey);
+  let res = await send(streamed);
+  let raw = res.ok ? "" : await res.text().catch(() => "");
+  if (streamed && streamRefused(res.status, raw)) {
+    noStream.add(modelKey);
+    console.warn(`[ai] ${cfg.model}: oqim rad etildi — oqimsiz so'rovga o'tildi`);
+    res = await send(false);
+    raw = res.ok ? "" : await res.text().catch(() => "");
   }
 
   if (!res.ok) {
-    const raw = await res.text().catch(() => "");
     let detail = raw.slice(0, 500);
     try {
       detail = String(JSON.parse(raw)?.error?.message ?? detail);

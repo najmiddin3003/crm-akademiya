@@ -2198,6 +2198,14 @@ faqat Guruhlar) bilan oylik so'rash → "ruxsatingiz yo'q".
   aynan yozilgan — interfeys o'zgarsa qo'llanma ham yangilanadi.
 - So'rov tanasiga `temperature`/`max_tokens` qo'shmang — yangi modellar
   rad etadi (jins aniqlashdagi bilan bir xil sabab).
+- OpenAI tashkiloti tasdiqlanmagan (Verify Organization) bo'lsa, yangi
+  modellar `stream: true` ni 400 bilan rad etadi (`param: "stream"`).
+  `lib/ai/openai.ts` shunda bir marta oqimsiz qayta so'raydi va shu
+  jarayonda o'sha modelni boshqa oqim bilan so'ramaydi — javob bo'laklab
+  emas, bir yo'la keladi. Boshqa 400 da qayta so'ralmaydi.
+- Xizmat xatosining asl sababi (`HTTP 400 (model): …`, kalit yashirilgan)
+  panelda faqat ADMINGA ko'rinadi (`error.detail`), xodim faqat umumiy
+  xabarni ko'radi; to'liq matn server jurnalida `[ai]` bilan.
 - Amal qoidasi (kirim/chiqim/lid) web oynasida yoki botda o'zgarsa —
   lib/ai/actions/prepare.ts ham o'sha qoidaga keltiriladi (yadro baribir
   tekshiradi, lekin qoralama kartasi xato ma'lumot ko'rsatmasin).

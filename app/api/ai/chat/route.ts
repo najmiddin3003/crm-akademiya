@@ -5,7 +5,7 @@ import { runChatTurn } from "@/lib/ai/chat";
 import { aiProviderConfig, KEEPALIVE_MS, MAX_MESSAGE_CHARS } from "@/lib/ai/config";
 import { loadAiContext } from "@/lib/ai/context";
 import { aiDb } from "@/lib/ai/db";
-import { AiProviderError } from "@/lib/ai/openai";
+import { adminDetail, AiProviderError } from "@/lib/ai/openai";
 import type { AiStreamEvent } from "@/lib/ai/protocol";
 import { loadAiSettings } from "@/lib/ai/settings";
 import { findConversation, saveTurn } from "@/lib/ai/store";
@@ -125,7 +125,10 @@ export async function POST(req: Request) {
         await refundQuota(db, ctx.userId);
         if (e instanceof AiProviderError) {
           console.error("[ai]", e.logDetail);
-          emit({ type: "error", message: e.message });
+          // Sababni (model nomi, OpenAI matni) faqat admin ko'radi — kalitni
+          // almashtirish yoki hisobni to'ldirish uning qo'lida.
+          const detail = ctx.isAdmin ? adminDetail(e.logDetail) : undefined;
+          emit({ type: "error", message: e.message, detail });
         } else {
           console.error("[ai] kutilmagan xato", e);
           emit({ type: "error", message: "Kutilmagan xato yuz berdi. Birozdan keyin qayta urinib ko'ring." });

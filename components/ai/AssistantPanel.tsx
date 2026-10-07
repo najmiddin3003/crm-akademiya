@@ -301,6 +301,11 @@ function Bubble({ m, onNavigate, onDecide }: { m: UiMessage; onNavigate: () => v
             <span>{m.error ? t(m.error) : t("Javob oxirigacha kelmadi. Qayta urinib ko'ring.")}</span>
           </p>
         )}
+        {m.error && m.errorDetail && (
+          <p className="break-words rounded-md bg-secondary px-2 py-1 font-mono text-[11px] text-muted-foreground">
+            {t("Sabab (faqat admin ko'radi)")}: {m.errorDetail}
+          </p>
+        )}
       </div>
     </div>
   );

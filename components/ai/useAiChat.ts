@@ -29,6 +29,8 @@ export interface UiMessage {
   tools?: UiToolChip[];
   /** Xato matni (o'zbekcha, chizishda `t()` dan o'tadi). */
   error?: string;
+  /** Xatoning asl sababi — server faqat adminga yuboradi, tarjima qilinmaydi. */
+  errorDetail?: string;
   /** Javob hali kelmoqda. */
   pending?: boolean;
   /** Xodim "To'xtatish" ni bosdi. */
@@ -123,7 +125,7 @@ export function useAiChat() {
       } else if (e.type === "action") {
         patchLast((m) => ({ ...m, actions: [...(m.actions ?? []).filter((a) => a.id !== e.action.id), e.action] }));
       } else if (e.type === "error") {
-        patchLast((m) => ({ ...m, error: e.message }));
+        patchLast((m) => ({ ...m, error: e.message, errorDetail: e.detail }));
       }
     },
     [patchLast],

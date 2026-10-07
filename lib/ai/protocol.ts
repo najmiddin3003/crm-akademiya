@@ -22,7 +22,8 @@ export type AiStreamEvent =
   /** Ulanish tirikligi — kutish uzoq cho'zilganda (Nginx uzib qo'ymasin). */
   | { type: "ping" }
   | { type: "done" }
-  | { type: "error"; message: string };
+  /** `detail` — faqat ADMINGA: xizmatning asl xato matni (kalit yashirilgan). */
+  | { type: "error"; message: string; detail?: string };
 
 /** Saqlangan suhbatdagi bitta xabar (GET /api/ai/conversations). */
 export interface AiChatMessage {
