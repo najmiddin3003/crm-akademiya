@@ -85,7 +85,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   let outcome: ActionOutcome;
   try {
     // `after` — Sheets/Telegram navbati, SMS javob ketgandan keyin (kassa oynasi bilan bir xil).
-    outcome = await executeAction(db, claimed, { defer: after });
+    outcome = await executeAction(ctx, claimed, { defer: after });
   } catch (e) {
     console.error("[ai] amalni yozishda xato", claimed.id, e);
     outcome = { ok: false, error: "Kutilmagan xato: yozuv saqlanmagan bo'lishi mumkin — jurnalni tekshiring" };

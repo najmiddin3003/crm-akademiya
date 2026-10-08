@@ -152,6 +152,9 @@ const KIND_FOR_MODEL: Record<AiActionKind, string> = {
   lead: "new lead",
   kirim: "income (kirim)",
   chiqim: "expense (chiqim)",
+  transfer: "cashbox transfer (after saving, the receiving cashbox still has to accept it)",
+  comment: "student comment",
+  task: "staff task",
 };
 
 function statusForModel(v: AiActionView): string {

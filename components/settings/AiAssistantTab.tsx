@@ -117,7 +117,7 @@ export default function AiAssistantTab() {
           <div className="min-w-0">
             <div className="text-[14px] font-semibold">{t("Amallarga ruxsat berish")}</div>
             <div className="text-[12px] text-muted-foreground">
-              {t("Yordamchi lid, kirim va chiqim qoralamasini tayyorlaydi; yozuv xodim «Tasdiqlash» ni bosgandagina saqlanadi.")}
+              {t("Yordamchi lid, kirim, chiqim, boshqa kassaga ko'chirish, o'quvchiga izoh va topshiriq qoralamasini tayyorlaydi; yozuv xodim «Tasdiqlash» ni bosgandagina saqlanadi.")}
             </div>
           </div>
           <Toggle on={settings.actionsEnabled} onChange={(v) => { if (!saving) void save({ actionsEnabled: v }); }} />

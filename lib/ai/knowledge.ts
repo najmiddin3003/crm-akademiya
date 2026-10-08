@@ -226,8 +226,8 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     keywords: ["yordamchi", "ai", "sun'iy intellekt", "limit", "nima qila olasan", "qoralama", "tasdiqlash"],
     pages: [],
     text: [
-      "Faqat sizga ruxsat berilgan bo'limlar bo'yicha javob beradi: qarzdorlar, tushum va xarajat, kassalar, guruhlar, lidlar, oylik, o'quvchi kartasi.",
-      "Administrator amallarni yoqqan bo'lsa (Sozlamalar → Ilova sozlamalari → AI yordamchi → «Amallarga ruxsat berish»), lid qo'shish, kirim va chiqim QORALAMASINI tayyorlaydi: panelda karta chiqadi, yozuv faqat «Tasdiqlash» bosilganda saqlanadi. «Bekor qilish» — hech narsa yozilmaydi. Qoralama 15 daqiqa amal qiladi.",
+      "Faqat sizga ruxsat berilgan bo'limlar bo'yicha javob beradi: qarzdorlar, tushum va xarajat, kassalar, guruhlar, lidlar, oylik, o'quvchi kartasi, o'quvchilar va xodimlar davomati, topshiriqlar, sotuv voronkasi.",
+      "Administrator amallarni yoqqan bo'lsa (Sozlamalar → Ilova sozlamalari → AI yordamchi → «Amallarga ruxsat berish»), lid qo'shish, kirim, chiqim, boshqa kassaga ko'chirish, o'quvchiga izoh va xodimga topshiriq QORALAMASINI tayyorlaydi: panelda karta chiqadi, yozuv faqat «Tasdiqlash» bosilganda saqlanadi. «Bekor qilish» — hech narsa yozilmaydi. Qoralama 15 daqiqa amal qiladi.",
       "Amallar o'chiq bo'lsa yoki boshqa ishlar uchun — CRM'da qanday bajarishni tushuntiradi va sahifaga havola beradi. Mavjud yozuvni o'zgartirmaydi va o'chirmaydi.",
       "Kunlik savollar soni cheklangan; telefon raqamlari AI xizmatiga yuborilmaydi.",
     ].join("\n"),

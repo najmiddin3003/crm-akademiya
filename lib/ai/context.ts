@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getBranchScope, type BranchScope } from "@/lib/branchScope";
 import { employeeNameById } from "@/lib/currentEmployee";
 import { isPathAllowed } from "@/lib/permissions";
+import { loadViewer, type StaffTaskViewer } from "@/lib/staffTasksServer";
 import { uzDateIso } from "@/lib/uzTime";
 
 // SAVOL BERAYOTGAN XODIM — vositalar uchun yagona kontekst.
@@ -26,6 +27,8 @@ export interface AiContext {
    * bo'lishi mumkin (hisob xodimlar ro'yxatiga bog'lanmagan).
    */
   employeeName: string;
+  /** `users.hrEmployeeId` — topshiriqlar qamrovi shunga qaraydi; hisob bog'lanmagan bo'lsa null. */
+  employeeId: number | null;
   isAdmin: boolean;
   /** `null` — cheklov yo'q (lib/permissions.ts). */
   permissions: string[] | null;
@@ -61,6 +64,7 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
     userId: me.id,
     userName: String(me.fullName ?? "").trim(),
     employeeName,
+    employeeId: me.hrEmployeeId,
     isAdmin: me.role === "admin",
     permissions,
     scope,
@@ -77,4 +81,20 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
  */
 export function authorNameOf(ctx: AiContext): string {
   return ctx.employeeName || ctx.userName;
+}
+
+/**
+ * Topshiriqlarda kim nimani ko'radi va kim beradi — /tasks sahifasi bilan
+ * BIR XIL qoida (lib/staffTasksServer.ts → loadViewer): direktor — hammasi,
+ * rahbar (/tasks ruxsati) — o'z filiallari, xodim — faqat o'ziga berilgan.
+ */
+export function taskViewerOf(ctx: AiContext): Promise<StaffTaskViewer> {
+  return loadViewer(ctx.db, {
+    id: ctx.userId,
+    // loadViewer faqat "admin" ni ajratadi — qolgan rollar bir xil.
+    role: ctx.isAdmin ? "admin" : "employee",
+    permissions: ctx.permissions,
+    hrEmployeeId: ctx.employeeId ?? null,
+    fullName: ctx.userName,
+  });
 }

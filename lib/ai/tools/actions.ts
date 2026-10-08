@@ -1,15 +1,31 @@
+import { hasSectionPermission } from "@/lib/permissions";
 import { listCashboxesForAdmin } from "@/lib/staffBot/auth";
-import { loadActiveMethods, loadChiqimTypes, loadCourseNames, loadKirimTypes } from "@/lib/staffBot/data";
+import { loadActiveMethods, loadChiqimTypes, loadCourseNames, loadKirimTypes, loadTransferDestinations } from "@/lib/staffBot/data";
+import { PRIORITIES } from "@/lib/staffTasks";
+import { fineFor, loadPickableEmployees, loadSettings } from "@/lib/staffTasksServer";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
+import { loadPendingOut } from "@/lib/transferPending";
 import { txAudience, txTarget } from "@/lib/txTarget";
-import { authorNameOf, type AiContext } from "../context";
+import { authorNameOf, taskViewerOf, type AiContext } from "../context";
 import { ACTION_PAGES } from "../actions/pages";
-import { allowedMonths, prepareChiqim, prepareKirim, prepareLead, resolveCashbox, usableKirimTypes, type PrepareResult } from "../actions/prepare";
+import {
+  allowedMonths,
+  prepareChiqim,
+  prepareKirim,
+  prepareLead,
+  preparePupilComment,
+  prepareTask,
+  prepareTransfer,
+  resolveCashbox,
+  usableKirimTypes,
+  type PrepareResult,
+} from "../actions/prepare";
 import { createDraft, DRAFT_TTL_MS, viewOf } from "../actions/store";
 import type { AiActionKind } from "../protocol";
 import { DraftCreated, optString, ToolInputError, type AiTool, type ToolArgs } from "./types";
 
-// AMAL VOSITALARI (2-bosqich) — lid qo'shish, kirim, chiqim.
+// AMAL VOSITALARI — 2-bosqich: lid qo'shish, kirim, chiqim; 3-bosqich:
+// boshqa kassaga ko'chirish, o'quvchiga izoh, xodimga topshiriq.
 //
 // HECH BIRI YOZMAYDI. `propose_*` faqat qoralama tuzadi va panelda karta
 // chiqadi; yozuv xodim «Tasdiqlash» ni bosgandagina (app/api/ai/actions/[id]).
@@ -48,24 +64,73 @@ const PERSON_PARAMS = {
   pupilId: { type: "integer", description: "Student id from the candidates list of a previous call." },
 } as const;
 
+/**
+ * Topshiriq BERISH — faqat rahbar (/tasks bo'lim ruxsati) va direktor
+ * (lib/staffTasksServer.ts → loadViewer bilan bir xil shart). /tasks
+ * sahifasi esa hammaga ochiq — `pages` buni ajrata olmaydi.
+ */
+export function canAssignTasks(ctx: Pick<AiContext, "isAdmin" | "permissions">): boolean {
+  return ctx.isAdmin === true || hasSectionPermission("/tasks", ctx.permissions ?? null);
+}
+
+const OPTION_KINDS = ["lead", "kirim", "chiqim", "transfer", "task"] as const;
+type OptionKind = (typeof OPTION_KINDS)[number];
+
 export const actionOptions: AiTool = {
   name: "action_options",
   description:
     "Valid values for preparing an action draft: for 'lead' — courses and lesson-day options; for 'kirim'/'chiqim' — " +
     "the user's cashbox with available money per payment method, transaction types (and who they are for), " +
-    "payment methods and allowed months. Call it before propose_* when you are not sure about a value.",
+    "payment methods and allowed months; for 'transfer' — the user's cashbox, money available to send per payment method " +
+    "and the cashboxes it can be sent to; for 'task' — employees the user can assign tasks to, priorities and their fines. " +
+    "Call it before propose_* when you are not sure about a value.",
   parameters: {
     type: "object",
-    properties: { kind: { type: "string", enum: ["lead", "kirim", "chiqim"] } },
+    properties: { kind: { type: "string", enum: [...OPTION_KINDS] } },
     required: ["kind"],
     additionalProperties: false,
   },
-  pages: ["/orders-list", "/finance-cash"],
+  pages: ["/orders-list", "/finance-cash", "/tasks"],
   action: true,
   async run(ctx, args) {
-    const kind = optString(args, "kind", 10) as AiActionKind;
-    if (!["lead", "kirim", "chiqim"].includes(kind)) throw new ToolInputError('"kind" must be lead, kirim or chiqim');
+    const kind = optString(args, "kind", 10) as OptionKind;
+    if (!OPTION_KINDS.includes(kind)) throw new ToolInputError(`"kind" must be one of ${OPTION_KINDS.join(", ")}`);
     if (!ctx.can(ACTION_PAGES[kind])) return { problem: "The user has no access to this action." };
+
+    if (kind === "task") {
+      if (!canAssignTasks(ctx)) return { problem: "Only managers and administrators can assign tasks." };
+      const v = await taskViewerOf(ctx);
+      const [employees, settings] = await Promise.all([loadPickableEmployees(ctx.db, v), loadSettings(ctx.db)]);
+      return {
+        employees: employees.slice(0, 80).map((e) => ({ employeeId: e.id, name: e.name, position: e.pos || undefined })),
+        moreEmployees: employees.length > 80 || undefined,
+        priorities: PRIORITIES.map((p) => ({ priority: p, fineIfNotDone: fineFor(settings, p) })),
+        deadlineFormat: "YYYY-MM-DD HH:mm, Tashkent time (today is " + ctx.today + ")",
+      };
+    }
+
+    if (kind === "transfer") {
+      const cashbox = await resolveCashbox(ctx, null);
+      if (!cashbox.ok) return cashbox.reply;
+      const from = cashbox.value;
+      const [methods, pendingMap, dests] = await Promise.all([
+        loadActiveMethods(ctx.db),
+        loadPendingOut(ctx.db, [from.id]),
+        loadTransferDestinations(ctx.db, from.id),
+      ]);
+      const pending = pendingMap.get(from.id) ?? {};
+      return {
+        from: from.name,
+        availableToSend: methods.map((m) => ({
+          method: m.name,
+          amount: Math.max(0, (from.methodTotals[m.key] ?? 0) - (pending[m.key] ?? 0)),
+        })),
+        to: dests.map((d) => ({ cashboxId: d.id, name: d.name, primary: d.isPrimary || undefined })),
+        otherSourceCashboxes: ctx.isAdmin
+          ? (await listCashboxesForAdmin(ctx.db)).map((c) => ({ cashboxId: c.id, name: c.name, primary: c.isPrimary || undefined }))
+          : undefined,
+      };
+    }
 
     if (kind === "lead") {
       return {
@@ -188,4 +253,72 @@ export const proposeChiqim: AiTool = {
   pages: [ACTION_PAGES.chiqim],
   action: true,
   run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "chiqim", await prepareChiqim(ctx, args)),
+};
+
+export const proposeTransfer: AiTool = {
+  name: "propose_transfer",
+  description:
+    "Prepare a DRAFT of sending money from the user's cashbox to ANOTHER cashbox (ko'chirish), e.g. the daily takings to the " +
+    "main cashbox. Required: receiving cashbox, payment method and amount; optional note. The money stays in the sender's " +
+    "cashbox until the receiver accepts it. Nothing is saved: the user confirms the draft on a card.",
+  parameters: {
+    type: "object",
+    properties: {
+      to: { type: "string", description: "Receiving cashbox name from action_options." },
+      toCashboxId: { type: "integer", description: "Receiving cashbox id from action_options or a previous call." },
+      method: { type: "string", description: "Payment method name (e.g. Naqd)." },
+      amount: { type: "integer", description: "Exact amount in so'm, as the user said it." },
+      note: { type: "string", description: "Optional note, only if the user gave one." },
+      cashboxId: { type: "integer", description: "Administrators only: send from another cashbox." },
+    },
+    additionalProperties: false,
+  },
+  pages: [ACTION_PAGES.transfer],
+  action: true,
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "transfer", await prepareTransfer(ctx, args)),
+};
+
+export const proposePupilComment: AiTool = {
+  name: "propose_pupil_comment",
+  description:
+    "Prepare a DRAFT of a comment (izoh) on a student — the same comments as the «Izoh» button on the group page. " +
+    "The text must be the user's own words (you may fix spelling, never add facts). Nothing is saved: the user confirms " +
+    "the draft on a card.",
+  parameters: {
+    type: "object",
+    properties: {
+      ...PERSON_PARAMS,
+      text: { type: "string", description: "The comment text, as the user said it." },
+    },
+    additionalProperties: false,
+  },
+  pages: [ACTION_PAGES.comment],
+  action: true,
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "comment", await preparePupilComment(ctx, args)),
+};
+
+export const proposeTask: AiTool = {
+  name: "propose_task",
+  description:
+    "Prepare a DRAFT of a staff task (topshiriq) for one or more employees — the same as «Topshiriq berish» on the " +
+    "Topshiriqlar page; each employee gets a separate task. Required: title, employee(s), deadline (Tashkent time) and " +
+    "priority 1–5 (it sets the fine if the task is not done). Optional description and link. Nothing is saved: the user " +
+    "confirms the draft on a card.",
+  parameters: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Short task title." },
+      description: { type: "string", description: "Optional details, only what the user said." },
+      employees: { type: "array", items: { type: "string" }, description: "Employee names to search." },
+      employeeIds: { type: "array", items: { type: "integer" }, description: "Employee ids from action_options or a previous call." },
+      deadline: { type: "string", description: "YYYY-MM-DD HH:mm in Tashkent time (YYYY-MM-DD alone means 18:00)." },
+      priority: { type: "integer", description: "1 (low) … 5 (high), as the user said it." },
+      link: { type: "string", description: "Optional http(s) link." },
+    },
+    additionalProperties: false,
+  },
+  pages: [ACTION_PAGES.task],
+  action: true,
+  visible: canAssignTasks,
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "task", await prepareTask(ctx, args)),
 };

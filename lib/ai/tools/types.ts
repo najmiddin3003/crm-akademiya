@@ -35,6 +35,13 @@ export interface AiTool {
    * amallar yoqilganda ko'rsatiladi (`ctx.actions`).
    */
   action?: boolean;
+  /**
+   * Sahifa ruxsatidan TASHQARI qo'shimcha shart (ixtiyoriy). Masalan /tasks
+   * sahifasi hammaga ochiq, topshiriq BERISH esa faqat rahbar va direktorga
+   * — `pages` buni ifodalay olmaydi. `false` bo'lsa vosita modelga
+   * ko'rsatilmaydi va bajarilmaydi (lib/ai/tools/index.ts).
+   */
+  visible?: (ctx: AiContext) => boolean;
   run: (ctx: AiContext, args: ToolArgs) => Promise<unknown>;
 }
 

@@ -58,7 +58,7 @@ await (await getDb()).dropDatabase();
 
 const { aiDb } = await import("@/lib/ai/db");
 const { isPathAllowed } = await import("@/lib/permissions");
-const { prepareKirim, prepareChiqim, prepareLead } = await import("@/lib/ai/actions/prepare");
+const { prepareKirim, prepareChiqim, prepareLead, prepareTransfer, preparePupilComment, prepareTask } = await import("@/lib/ai/actions/prepare");
 const { claimDraft, cancelDraft, finishAction, findAction, viewOf, attachActionViews, historyWithActionNotes, actionViews } = await import("@/lib/ai/actions/store");
 const { checkAccess, executeAction } = await import("@/lib/ai/actions/execute");
 const { runTool, toolsFor } = await import("@/lib/ai/tools/index");
@@ -73,12 +73,13 @@ const check = (name, ok, detail = "") => {
 const j = (x) => JSON.stringify(x);
 const noDefer = { defer: () => {} };
 
-function ctxOf({ userId, userName, employeeName = "", isAdmin = false, permissions = null, actions = true }) {
+function ctxOf({ userId, userName, employeeName = "", employeeId = null, isAdmin = false, permissions = null, actions = true }) {
   return {
     db,
     userId,
     userName,
     employeeName,
+    employeeId,
     isAdmin,
     permissions,
     scope: { branchId: 1, allowed: [1, 2], isAdmin },
@@ -89,16 +90,21 @@ function ctxOf({ userId, userName, employeeName = "", isAdmin = false, permissio
   };
 }
 const admin = ctxOf({ userId: "admin-1", userName: "Sinov Admin", isAdmin: true });
-const dilmurod = ctxOf({ userId: "emp-6", userName: "Dilmurod Komilov", employeeName: "Dilmurod Komilov", permissions: ["/finance-cash", "/orders-list", "/students-list"] });
-const kamola = ctxOf({ userId: "emp-9", userName: "Kamola Ergasheva", employeeName: "Kamola Ergasheva", permissions: ["/groups"] });
+const dilmurod = ctxOf({ userId: "emp-6", userName: "Dilmurod Komilov", employeeName: "Dilmurod Komilov", employeeId: 6, permissions: ["/finance-cash", "/orders-list", "/students-list"] });
+const kamola = ctxOf({ userId: "emp-9", userName: "Kamola Ergasheva", employeeName: "Kamola Ergasheva", employeeId: 9, permissions: ["/groups"] });
 const cashbox = async (id) => db.collection("cashboxes").findOne({ id }, { projection: { _id: 0, balance: 1, methodTotals: 1 } });
 
 // ── Vositalar ro'yxati ────────────────────────────────────────────────
 console.log("\n— ruxsat va bayroq");
 const names = (c) => toolsFor(c).map((t) => t.name).filter((n) => n.startsWith("propose") || n === "action_options").sort();
-check("admin + amallar yoqiq — 4 ta amal vositasi", j(names(admin)) === j(["action_options", "propose_chiqim", "propose_kirim", "propose_lead"]), j(names(admin)));
+check(
+  "admin + amallar yoqiq — 7 ta amal vositasi",
+  j(names(admin)) === j(["action_options", "propose_chiqim", "propose_kirim", "propose_lead", "propose_pupil_comment", "propose_task", "propose_transfer"]),
+  j(names(admin)),
+);
 check("amallar o'chiq — amal vositasi yo'q", names({ ...admin, actions: false }).length === 0);
-check("faqat Guruh ruxsati — amal vositasi yo'q", names(kamola).length === 0, j(names(kamola)));
+// /tasks hammaga ochiq — action_options ko'rinadi, lekin topshiriq berish (propose_task) rahbarga.
+check("faqat Guruh ruxsati — faqat izoh (+ tanlovlar)", j(names(kamola)) === j(["action_options", "propose_pupil_comment"]), j(names(kamola)));
 {
   const r = await runTool(kamola, "propose_kirim", j({ type: "Kurs to'lovi", pupil: "Ozodbek", amount: 1000, method: "Naqd" }));
   check("ruxsatsiz xodim propose_kirim chaqira olmaydi", !r.ok && r.content.includes("no access"), r.content);
@@ -136,7 +142,7 @@ console.log("\n— kirim");
   const again = await claimDraft(db, admin.userId, view.id);
   check("tasdiq atomik: ikkinchi bosish hech narsa qilmaydi", claimed?.status === "executing" && again === null);
   check("tasdiq paytida ruxsat bor", (await checkAccess(admin, claimed)) === null);
-  const out = await executeAction(db, claimed, noDefer);
+  const out = await executeAction(admin, claimed, noDefer);
   check("yadro yozdi", out.ok && /^#\d+$/.test(out.resultText), j(out));
   const fin = await finishAction(db, claimed.id, out);
   check("qoralama — done", fin?.status === "done" && viewOf(fin).resultText === out.resultText);
@@ -172,7 +178,7 @@ console.log("\n— chiqim");
   check("kommunal chiqim qoralamasi", r.ok && r.action?.kind === "chiqim", r.content);
   const claimed = await claimDraft(db, dilmurod.userId, r.action.id);
   check("xodim o'z kassasi uchun ruxsatli", (await checkAccess(dilmurod, claimed)) === null);
-  const out = await executeAction(db, claimed, noDefer);
+  const out = await executeAction(dilmurod, claimed, noDefer);
   await finishAction(db, claimed.id, out);
   const after = await cashbox(2);
   check("kassa −120 000, origin ai", out.ok && after.balance === before.balance - 120000, j(out));
@@ -195,10 +201,80 @@ console.log("\n— lid");
   const doc = await claimDraft(db, admin.userId, r.action.id);
   const outside = { ...doc, payload: { ...doc.payload, branchId: 4 } };
   check("ruxsat yo'q filialga lid — rad", (await checkAccess(admin, outside))?.error === "Bu filialga ruxsatingiz yo'q");
-  const out = await executeAction(db, doc, noDefer);
+  const out = await executeAction(admin, doc, noDefer);
   await finishAction(db, doc.id, out);
   const order = await db.collection("orders").findOne({ id: out.result.orderId }, { projection: { _id: 0 } });
   check("lid yozildi: kurs, kunlar, muallif, filial", order?.course === "Matematika" && order.lessonDay === "Se,Pa,Sh" && order.moderator === "Sinov Admin" && order.branchId === 1, j(order).slice(0, 300));
+}
+
+// ── 3-bosqich: boshqa kassaga ko'chirish ────────────────────────────
+console.log("\n— ko'chirish");
+{
+  const box2 = await cashbox(2);
+  const tooMuch = await prepareTransfer(dilmurod, { to: "Bosh", method: "Naqd", amount: box2.methodTotals.naqd + 1 });
+  check("kassada yetarli pul yo'q — rad", !tooMuch.ok && /Not enough money/.test(tooMuch.reply.problem), j(tooMuch));
+  const noDest = await prepareTransfer(dilmurod, { method: "Naqd", amount: 1000 });
+  check("qabul qiluvchi aytilmagan — kassalar ro'yxati", !noDest.ok && j(noDest.reply.cashboxes) === j(["Bosh kassa"]), j(noDest));
+
+  const r = await runTool(dilmurod, "propose_transfer", j({ to: "bosh kassa", method: "naqd", amount: 200000, note: "Kunlik tushum" }));
+  check("ko'chirish qoralamasi: qayerdan → qayerga", r.ok && r.action?.kind === "transfer" && r.action.fields.some((f) => f.key === "to_cashbox" && f.value === "Bosh kassa"), r.content);
+  const claimed = await claimDraft(db, dilmurod.userId, r.action.id);
+  check("xodim o'z kassasidan jo'natadi — ruxsatli", (await checkAccess(dilmurod, claimed)) === null);
+  check("arxivdagi/yo'q kassaga — rad", (await checkAccess(dilmurod, { ...claimed, payload: { ...claimed.payload, toCashboxId: 99 } }))?.error === "Qabul qiluvchi kassa topilmadi yoki arxivlangan");
+  const out = await executeAction(dilmurod, claimed, noDefer);
+  await finishAction(db, claimed.id, out);
+  const after = await cashbox(2);
+  check("pul qabul qilinmaguncha jo'natuvchida turadi", out.ok && after.balance === box2.balance && after.methodTotals.naqd === box2.methodTotals.naqd, j({ out, box2, after }));
+  const pair = await db.collection("transaction_entries").find({ transferId: out.result.outEntryId }, { projection: { _id: 0 } }).toArray();
+  check(
+    "jurnalda juft yozuv: kutilmoqda, origin ai",
+    pair.length === 2 && pair.every((e) => e.status === "waiting" && e.origin === "ai" && e.txType === "transfer") &&
+      pair.some((e) => e.transferRole === "out" && e.cashboxId === 2 && e.amount === -200000) && pair.some((e) => e.transferRole === "in" && e.cashboxId === 1),
+    j(pair).slice(0, 400),
+  );
+  const rest = await prepareTransfer(dilmurod, { to: "Bosh kassa", method: "Naqd", amount: box2.methodTotals.naqd - 100000 });
+  check("mavjud = qoldiq − tasdiq kutayotgani", !rest.ok && rest.reply.available === box2.methodTotals.naqd - 200000, j(rest));
+}
+
+// ── 3-bosqich: o'quvchiga izoh ──────────────────────────────────────
+console.log("\n— izoh");
+{
+  const noText = await preparePupilComment(kamola, { pupil: "Sardor" });
+  check("matn yo'q — so'raladi, model o'zi yozmaydi", !noText.ok && /comment say/.test(noText.reply.problem), j(noText));
+  const r = await runTool(kamola, "propose_pupil_comment", j({ pupil: "Sardor Qodirov", text: "Bugun darsga kech keldi" }));
+  check("izoh qoralamasi", r.ok && r.action?.kind === "comment" && r.action.fields.some((f) => f.key === "comment" && f.value === "Bugun darsga kech keldi"), r.content);
+  const claimed = await claimDraft(db, kamola.userId, r.action.id);
+  check("Guruh ruxsati bor — tasdiqlay oladi", (await checkAccess(kamola, claimed)) === null);
+  check("Guruh ruxsati yo'q xodim — rad", (await checkAccess(dilmurod, claimed))?.error === "Bu amalga ruxsatingiz yo'q");
+  const out = await executeAction(kamola, claimed, noDefer);
+  await finishAction(db, claimed.id, out);
+  const c = await db.collection("pupil_comments").findOne({ id: out.result?.commentId }, { projection: { _id: 0 } });
+  check("izoh yozildi: o'quvchi, matn, muallif", out.ok && c?.pupilId === 3 && c.text === "Bugun darsga kech keldi" && c.by === "Kamola Ergasheva", j({ out, c }));
+}
+
+// ── 3-bosqich: xodimga topshiriq ────────────────────────────────────
+console.log("\n— topshiriq");
+{
+  const deadline = `${new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10)} 18:00`;
+  const denied = await runTool(kamola, "propose_task", j({ title: "X", employees: ["Otabek"], deadline, priority: 2 }));
+  check("rahbar bo'lmagan xodim — vosita yo'q", !denied.ok && denied.content.includes("no access"), denied.content);
+  const noPriority = await prepareTask(admin, { title: "Hisobot", employees: ["Otabek"], deadline });
+  check("muhimlik aytilmagan — jarimalar bilan so'raladi", !noPriority.ok && noPriority.reply.priorities?.length === 5, j(noPriority));
+
+  const r = await runTool(admin, "propose_task", j({ title: "Oylik hisobot", employees: ["Otabek", "Dilmurod"], deadline, priority: 2, description: "Shu hafta" }));
+  check("topshiriq qoralamasi: ikki xodim, jarima ko'rinadi", r.ok && r.action?.kind === "task" && r.action.fields.some((f) => f.key === "fine" && f.value === "20 000 so'm"), r.content);
+  const claimed = await claimDraft(db, admin.userId, r.action.id);
+  check("direktor — ruxsatli", (await checkAccess(admin, claimed)) === null);
+  check("oddiy xodim kontekstida — rad", (await checkAccess(kamola, claimed))?.error === "Topshiriq berish uchun ruxsatingiz yo'q");
+  const out = await executeAction(admin, claimed, noDefer);
+  await finishAction(db, claimed.id, out);
+  const tasks = await db.collection("staff_tasks").find({ id: { $in: out.result?.taskIds ?? [] } }, { projection: { _id: 0, history: 0 } }).toArray();
+  check(
+    "har xodimga alohida topshiriq, bitta to'plam",
+    out.ok && tasks.length === 2 && new Set(tasks.map((t) => t.batchId)).size === 1 &&
+      tasks.every((t) => t.status === "yangi" && t.priority === 2 && t.fineAmount === 20000 && t.createdBy.userId === "admin-1"),
+    j({ out, tasks }).slice(0, 500),
+  );
 }
 
 // ── Muddat va suhbat bilan bog'lash ─────────────────────────────────

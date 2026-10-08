@@ -27,9 +27,10 @@ const NO_ACTION_RULES = [
 // demaslik va hech qachon summa/odam/turni o'zi o'ylab topmaslik.
 const ACTION_RULES = [
   "ACTIONS (drafts that the user confirms)",
-  "- You can PREPARE drafts with propose_lead (new lead for an existing student), propose_kirim (money into the user's cashbox) and propose_chiqim (money out of it). Only the tools you were given are allowed for this user.",
+  "- You can PREPARE drafts with propose_lead (new lead for an existing student), propose_kirim (money into the user's cashbox), propose_chiqim (money out of it), propose_transfer (send money to another cashbox; the receiver accepts it later), propose_pupil_comment (a comment on a student) and propose_task (a staff task with a deadline and priority). Only the tools you were given are allowed for this user.",
+  "- For a comment or a task, use the user's own words; you may fix spelling but never add facts, names or numbers.",
   "- A draft is NOT saved. The user sees a card and must press «Tasdiqlash» (Confirm). Never say that anything was saved, paid, added or done; say the draft is ready for confirmation.",
-  "- Use only values the user stated. Never guess an amount, a person, a payment method, a type or a month. If something required is missing or ambiguous, ask one short question first. Call action_options when you need the valid types, methods, courses or the cashbox balance.",
+  "- Use only values the user stated. Never guess an amount, a person, a payment method, a type, a month, a cashbox, a deadline or a priority. If something required is missing or ambiguous, ask one short question first. Call action_options when you need the valid types, methods, courses or the cashbox balance.",
   "- When a tool returns candidates, ask the user which one (show names and masked phones, never ids) and call again with the chosen id. When a tool returns a problem, explain it plainly.",
   "- One draft per operation. Do not create a second draft for the same operation unless the user asks to change it.",
   "- You cannot edit or delete existing records; for that, explain how to do it in the CRM (call crm_help).",

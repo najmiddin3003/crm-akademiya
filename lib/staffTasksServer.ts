@@ -128,7 +128,14 @@ export interface StaffTaskViewer extends StaffTaskViewerInfo {
 
 // ── Kim ko'rmoqda ────────────────────────────────────────────────────
 
-export async function loadViewer(db: Db, me: CurrentUser): Promise<StaffTaskViewer> {
+/**
+ * `me` — sessiyadagi foydalanuvchi; faqat shu maydonlar kerak (AI
+ * yordamchi ham shu qoidadan o'tadi — lib/ai/context.ts → taskViewerOf).
+ */
+export async function loadViewer(
+  db: Db,
+  me: Pick<CurrentUser, "id" | "role" | "permissions" | "hrEmployeeId" | "fullName">,
+): Promise<StaffTaskViewer> {
   const isAdmin = me.role === "admin";
   const manager = isAdmin || hasSectionPermission("/tasks", me.permissions);
   const employeeId = me.hrEmployeeId;
@@ -793,3 +800,95 @@ export function cleanPriority(v: unknown): StaffTaskPriority | null {
 }
 
 export const isActiveStatus = (s: StaffTaskStatus) => ACTIVE_STATUSES.includes(s);
+
+// ── Yangi topshiriq ──────────────────────────────────────────────────
+//
+// POST /api/staff-tasks va AI yordamchi (lib/ai/actions/execute.ts) shu
+// yadrodan o'tadi — tekshiruvlar va xatolar ikkalasida bir xil.
+
+export type CreateTasksOutcome =
+  | { ok: true; docs: StaffTaskDoc[] }
+  | { ok: false; error: string; status: 400 | 403 };
+
+/**
+ * Bir nechta xodim tanlansa HAR BIRIGA ALOHIDA topshiriq yaratiladi (o'z
+ * holati, o'z jarimasi bilan) va ular bitta `batchId` bilan bog'lanadi
+ * ("3 xodimga berilgan").
+ */
+export async function createStaffTasks(
+  db: Db,
+  v: StaffTaskViewer,
+  body: Record<string, unknown>,
+  nowMs = Date.now(),
+): Promise<CreateTasksOutcome> {
+  const bad = (error: string, status: 400 | 403 = 400): CreateTasksOutcome => ({ ok: false, error, status });
+  if (v.role === "xodim") return bad("Topshiriq berish uchun ruxsatingiz yo'q", 403);
+
+  const title = cleanText(body.title, TITLE_MAX);
+  if (!title) return bad("Sarlavhani kiriting");
+  const desc = cleanText(body.desc, TEXT_MAX);
+  const deadline = cleanDeadline(body.deadline, nowMs);
+  if (!deadline) return bad("Deadline hozirgi vaqtdan keyin bo'lishi kerak");
+  const priority = cleanPriority(body.priority);
+  if (!priority) return bad("Muhimlik darajasini tanlang");
+  const link = cleanLink(body.link);
+  if (link === null) return bad("Havola http:// yoki https:// bilan boshlanishi kerak");
+  const attachments = cleanFiles(body.attachments);
+  if (attachments === null) return bad("Biriktirma yaroqsiz — faylni qaytadan yuklang");
+
+  const ids = Array.isArray(body.employeeIds) ? [...new Set(body.employeeIds.map(Number).filter(Number.isFinite))] : [];
+  if (!ids.length) return bad("Kamida bitta xodim tanlang");
+  if (ids.length > 100) return bad("Bir martada ko'pi bilan 100 ta xodim");
+
+  // Faqat QAMROVDAGI faol xodimlar: rahbar boshqa filial xodimiga
+  // topshiriq bera olmaydi (ro'yxat ham shu funksiyadan chiziladi).
+  const [pickable, settings] = await Promise.all([loadPickableEmployees(db, v), loadSettings(db)]);
+  const byId = new Map(pickable.map((e) => [e.id, e]));
+  const chosen = ids.map((id) => byId.get(id));
+  if (chosen.some((e) => !e)) return bad("Tanlangan xodim ro'yxatda yo'q — sahifani yangilang");
+
+  const nowIso = new Date(nowMs).toISOString();
+  const fineAmount = fineFor(settings, priority);
+  const created: StaffTaskDoc[] = [];
+  let batchId = 0;
+  for (const emp of chosen) {
+    if (!emp) continue;
+    const ev: StaffTaskEvent = { at: nowIso, kind: "created", by: v.name, byUserId: v.userId, deadline, priority };
+    const doc = await insertWithNextId<StaffTaskDoc>(db, TASKS_COL, (id) => ({
+      id,
+      // To'plam raqami — birinchi topshiriqning o'z raqami.
+      batchId: batchId || id,
+      title,
+      desc,
+      employeeId: emp.id,
+      employeeName: emp.name,
+      branchId: emp.branchId,
+      priority,
+      fineAmount,
+      deadline,
+      originalDeadline: deadline,
+      redeadline: null,
+      attachments,
+      link,
+      seenAt: null,
+      doneAt: null,
+      doneNote: "",
+      resultLink: "",
+      resultFile: null,
+      isLate: false,
+      status: "yangi",
+      returnCount: 0,
+      cancelReason: "",
+      completedAt: null,
+      completedLate: false,
+      failedAt: null,
+      createdBy: { userId: v.userId, employeeId: v.employeeId, name: v.name },
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      history: [ev],
+    }));
+    if (!batchId) batchId = doc.id;
+    created.push(doc);
+  }
+  return { ok: true, docs: created };
+}

@@ -122,36 +122,57 @@ check(
 
 // ── Vositalar ruxsati ──────────────────────────────────────────────────
 console.log("\n— vositalar ruxsati");
+// `visible` — sahifadan tashqari shart (topshiriq berish faqat rahbar/direktorga), toolsFor() dagi kabi.
 const toolsFor = (perms, actions = false) =>
-  AI_TOOLS.filter((tool) => toolAllowed(tool, (href) => isPathAllowed(href, perms), actions)).map((tool) => tool.name).sort();
+  AI_TOOLS.filter(
+    (tool) => toolAllowed(tool, (href) => isPathAllowed(href, perms), actions) && (!tool.visible || tool.visible({ isAdmin: false, permissions: perms })),
+  ).map((tool) => tool.name).sort();
 check("admin / cheklovsiz — o'qish vositalari hammasi", toolsFor(null).length === AI_TOOLS.filter((x) => !x.action).length);
 check("amallar yoqilsa — admin uchun hammasi", toolsFor(null, true).length === AI_TOOLS.length);
 check(
-  "amallar: kassa ruxsati — kirim/chiqim, lid emas",
-  eq(toolsFor(["/finance-cash"], true).filter((n) => n.startsWith("propose") || n === "action_options"), ["action_options", "propose_chiqim", "propose_kirim"]),
+  "amallar: kassa ruxsati — kirim/chiqim/ko'chirish; lid, izoh, topshiriq emas",
+  eq(toolsFor(["/finance-cash"], true).filter((n) => n.startsWith("propose") || n === "action_options"), ["action_options", "propose_chiqim", "propose_kirim", "propose_transfer"]),
   JSON.stringify(toolsFor(["/finance-cash"], true)),
 );
 check("amallar o'chiq — amal vositasi ko'rinmaydi", !toolsFor(null, false).some((n) => n.startsWith("propose")));
 check(
-  "faqat Guruh ruxsati — guruhlar + umumiylar",
-  eq(toolsFor(["/groups"]), ["crm_help", "list_groups", "overview"]),
+  "faqat Guruh ruxsati — guruhlar, davomat + umumiylar (topshiriqlar hammaga)",
+  eq(toolsFor(["/groups"]), ["attendance_report", "crm_help", "list_groups", "overview", "staff_tasks"]),
   JSON.stringify(toolsFor(["/groups"])),
 );
 check(
   "Lidlar + O'quvchilar",
-  eq(toolsFor(["/orders-list", "/students-list"]), ["crm_help", "leads_summary", "overview", "pupil_details", "search_pupils"]),
+  eq(toolsFor(["/orders-list", "/students-list"]), ["crm_help", "leads_summary", "overview", "pupil_details", "search_pupils", "staff_tasks"]),
   JSON.stringify(toolsFor(["/orders-list", "/students-list"])),
 );
 check("Kassa ruxsati oylikni ochmaydi", !toolsFor(["/finance-cash"]).includes("payroll_summary") && toolsFor(["/finance-cash"]).includes("cashbox_balances"));
 check("Moliya hisobotlari — finance_summary", toolsFor(["/finance-reports"]).includes("finance_summary"));
+check(
+  "Nazorat → Davomat — o'quvchi va xodim davomati",
+  ["attendance_report", "staff_attendance"].every((n) => toolsFor(["/nazorat-davomat"]).includes(n)),
+  JSON.stringify(toolsFor(["/nazorat-davomat"])),
+);
+check(
+  "xodim davomati — turniket yoki Xodimlar ruxsati, Guruh emas",
+  toolsFor(["/nazorat-turnstile-io"]).includes("staff_attendance") && toolsFor(["/management-xodimlar"]).includes("staff_attendance") &&
+    !toolsFor(["/groups"]).includes("staff_attendance"),
+);
+check("voronka — faqat Sotuv voronkasi ruxsati", toolsFor(["/reports-funnel"]).includes("sales_funnel") && !toolsFor(["/orders-list"]).includes("sales_funnel"));
+check(
+  "topshiriq berish — faqat /tasks bo'lim ruxsati yoki direktor",
+  toolsFor(["/tasks"], true).includes("propose_task") && toolsFor(null, true).includes("propose_task") && !toolsFor(["/finance-cash", "/groups"], true).includes("propose_task"),
+);
+check("izoh — Guruh ruxsati", toolsFor(["/groups"], true).includes("propose_pupil_comment") && !toolsFor(["/students-list"], true).includes("propose_pupil_comment"));
 check("har vositaning yorlig'i bor", AI_TOOLS.every((tool) => TOOL_LABELS.some((x) => x.name === tool.name)));
 
-const fakeCtx = (perms, actions = false) => ({ can: (href) => isPathAllowed(href, perms), actions });
+const fakeCtx = (perms, actions = false) => ({ can: (href) => isPathAllowed(href, perms), actions, permissions: perms, isAdmin: false });
 {
   const r = await runTool(fakeCtx(["/groups"]), "payroll_summary", "{}");
   check("ruxsatsiz vosita bajarilmaydi", !r.ok && r.content.includes("no access"), r.content);
   const off = await runTool(fakeCtx(null, false), "propose_kirim", "{}");
   check("amallar o'chiq — amal vositasi bajarilmaydi", !off.ok && off.content.includes("turned off"), off.content);
+  const task = await runTool(fakeCtx(["/finance-cash"], true), "propose_task", "{}");
+  check("rahbar bo'lmagan xodim topshiriq qoralamasini tuza olmaydi", !task.ok && task.content.includes("no access"), task.content);
   const u = await runTool(fakeCtx(null), "drop_database", "{}");
   check("noma'lum vosita", !u.ok && u.content.includes("Unknown tool"));
   const j = await runTool(fakeCtx(null), "crm_help", "{not json");
@@ -221,6 +242,142 @@ console.log("\n— amallar");
     "ko'rsatma: amallar yoqilsa — tasdiq qoidasi, o'chiq bo'lsa — o'zgartira olmaydi",
     /must press «Tasdiqlash»/.test(systemPrompt({ ...base, actions: true }, "uz")) && /You cannot change any data/.test(systemPrompt({ ...base, actions: false }, "uz")),
   );
+  check(
+    "ko'rsatma: 3-bosqich amallari tilga olingan",
+    ["propose_transfer", "propose_pupil_comment", "propose_task"].every((n) => systemPrompt({ ...base, actions: true }, "uz").includes(n)),
+  );
+  const tnote = historyWithActionNotes(
+    [{ role: "assistant", content: "Tayyor.", at: "", actionIds: ["t1"] }],
+    new Map([["t1", { id: "t1", kind: "transfer", status: "done", fields: [], expiresAt: "", resultText: "#55" }]]),
+  );
+  check("ko'chirma taqdiri modelga: qabul qiluvchi hali tasdiqlaydi", /cashbox transfer/.test(tnote[0].content) && /saved \(#55\)/.test(tnote[0].content), tnote[0].content);
+}
+
+// ── 3-bosqich: davomat, topshiriqlar, voronka, qoralama yordamchilari ──
+// Sof hisob — bazasiz (vositalar shu funksiyalarni chaqiradi).
+console.log("\n— 3-bosqich (sof hisob)");
+{
+  const { dayRange, summarizeAttendance, missingCheckIns } = await import("@/lib/ai/tools/attendance");
+  const today = "2026-10-08"; // payshanba
+  check("oraliq: sukut — bugun", eq(dayRange({}, today), { from: today, to: today }));
+  check("oraliq: faqat from — bugungacha; faqat to — o'sha kun", eq(dayRange({ from: "2026-10-01" }, today), { from: "2026-10-01", to: today }) && eq(dayRange({ to: "2026-10-03" }, today), { from: "2026-10-03", to: "2026-10-03" }));
+  check("oraliq: teskari va juda uzun rad etiladi", throwsInput(() => dayRange({ from: "2026-10-05", to: "2026-10-01" }, today)) && throwsInput(() => dayRange({ from: "2026-01-01", to: "2026-10-01" }, today)));
+
+  const groups = [
+    { id: 1, label: "Ingliz tili (101-guruh)", teacher: "Otabek Rasulov", status: "active", day: "Toq kunlar" },
+    { id: 2, label: "Matematika (102-guruh)", teacher: "Kamola Ergasheva", status: "frozen", day: "Toq kunlar" },
+  ];
+  const marks = [
+    { groupId: 1, pupilId: 1, date: "2026-10-05", status: "keldi" },
+    { groupId: 1, pupilId: 2, date: "2026-10-05", status: "sababsiz" },
+    { groupId: 1, pupilId: 3, date: "2026-10-05", status: "sababli", reason: "Qattiq kasal bo'lgan" },
+    { groupId: 2, pupilId: 4, date: "2026-10-06", status: "kechikdi" },
+  ];
+  const names = new Map([[2, "Malika Yusupova"], [3, "Sardor Qodirov"], [4, "Ozodbek Nazarov"]]);
+  const s = summarizeAttendance({ from: "2026-10-05", to: today, today, groups, marks, pupilNames: names, status: "" });
+  check(
+    "davomat: keldi+kechikdi — bor, sababli+sababsiz — qoldirgan, foiz",
+    s.totalMarks === 4 && s.present === 2 && s.missed === 2 && s.attendancePercent === 50,
+    JSON.stringify({ total: s.totalMarks, present: s.present, missed: s.missed, pct: s.attendancePercent }),
+  );
+  check(
+    "davomat: ro'yxatda qoldirganlar, ism va sabab bilan",
+    s.marksTotal === 2 && s.marks.some((m) => m.student === "Sardor Qodirov" && m.reason === "Qattiq kasal bo'lgan") && s.marks.every((m) => m.mark !== "Keldi"),
+    JSON.stringify(s.marks),
+  );
+  check(
+    "davomat qilinmagan: aktiv guruhning chorshanbasi, muzlatilgan guruh emas",
+    s.notMarkedTotal === 1 && s.notMarked[0].date === "2026-10-07" && s.notMarked[0].group === "Ingliz tili (101-guruh)",
+    JSON.stringify(s.notMarked),
+  );
+  check("davomat: guruhlar kesimi — eng ko'p qoldirgan birinchi", s.groups[0].group === "Ingliz tili (101-guruh)" && s.groups[0].attendancePercent === 33.3 && s.groups[1].attendancePercent === 100);
+  const late = summarizeAttendance({ from: "2026-10-05", to: today, today, groups, marks, pupilNames: names, status: "kechikdi" });
+  check("davomat: belgi filtri — faqat shu belgi", late.marksTotal === 1 && late.marks[0].student === "Ozodbek Nazarov");
+
+  const missing = missingCheckIns({
+    date: today,
+    today,
+    nowMin: 600,
+    staff: [
+      { id: 1, name: "Otabek Rasulov", turi: "teacher" },
+      { id: 2, name: "Kamola Ergasheva", turi: "teacher" },
+      { id: 6, name: "Dilmurod Komilov", turi: "moderator" },
+      { id: 9, name: "Ali Valiyev", turi: "admin" },
+      { id: 10, name: "Zarina", turi: "moderator" },
+    ],
+    groups: [{ label: "Ingliz tili (101-guruh)", teacher: "otabek  rasulov ", time: "14:00 - 15:30", status: "active", day: "Hafta kunlari" }],
+    workStart: "09:00",
+    records: [
+      { date: today, personName: "Ali Valiyev", employeeId: 9, enterTime: "08:55", exitTime: null, status: "kelgan" },
+      { date: today, personName: "zarina", employeeId: null, enterTime: "09:10", exitTime: null, status: "kechikkan" },
+    ],
+  });
+  check(
+    "kelmaganlar: darsi bor ustoz (hali vaqti emas) va ish vaqti o'tgan xodim; darssiz ustoz va kelganlar yo'q",
+    eq(missing.map((m) => [m.employee, m.expectedAt, !!m.notYetDue]), [["Dilmurod Komilov", "09:00", false], ["Otabek Rasulov", "14:00", true]]),
+    JSON.stringify(missing),
+  );
+  check("kelmaganlar: kelajak kuni va ish vaqti yo'q filial", missingCheckIns({ date: "2026-10-09", today, nowMin: 0, staff: [{ id: 6, name: "D", turi: "moderator" }], groups: [], workStart: "09:00", records: [] }).length === 0 && missingCheckIns({ date: today, today, nowMin: 0, staff: [{ id: 6, name: "D", turi: "moderator" }], groups: [], workStart: null, records: [] }).length === 0);
+
+  const { summarizeTasks, isOverdue } = await import("@/lib/ai/tools/tasks");
+  const now = Date.parse("2026-10-08T07:00:00Z");
+  const task = (id, employeeName, status, deadline, extra = {}) => ({ id, title: `T${id}`, employeeId: id, employeeName, priority: 3, deadline, status, updatedAt: `2026-10-0${id}`, ...extra });
+  const tasks = [
+    task(1, "Ali", "yangi", "2026-10-07T13:00:00.000Z"),
+    task(2, "Ali", "yangi", "2026-10-10T13:00:00.000Z"),
+    task(3, "Vali", "muddati_otdi", "2026-10-05T13:00:00.000Z"),
+    task(4, "Vali", "tasdiq_kutilmoqda", "2026-10-06T13:00:00.000Z"),
+    task(5, "Vali", "yakunlandi", "2026-10-01T13:00:00.000Z", { completedLate: true }),
+    task(6, "Ali", "bajarilmadi", "2026-10-02T13:00:00.000Z"),
+  ];
+  const open = summarizeTasks(tasks, "open", now);
+  check("topshiriqlar: muddati o'tgan — avtomatika kechiksa ham", open.overdue === 2 && isOverdue(tasks[0], now) && !isOverdue(tasks[3], now) && !isOverdue(tasks[4], now));
+  check("topshiriqlar: ochiqlar tartibi — avval muddati o'tganlar", eq(open.tasks.map((t) => t.id), [3, 1, 4, 2]), JSON.stringify(open.tasks.map((t) => t.id)));
+  check(
+    "topshiriqlar: filtrlar va xodimlar kesimi",
+    eq(summarizeTasks(tasks, "overdue", now).tasks.map((t) => t.id), [3, 1]) && eq(summarizeTasks(tasks, "done", now).tasks.map((t) => t.id), [5]) &&
+      eq(open.byEmployee.map((e) => [e.employee, e.open, e.overdue]), [["Ali", 2, 1], ["Vali", 2, 1]]),
+    JSON.stringify(open.byEmployee),
+  );
+
+  const { funnelSummary } = await import("@/lib/ai/tools/funnel");
+  const fs = funnelSummary([
+    { status: "Kelmoqda", stage: "", source: "bot", course: "Ingliz tili" },
+    { status: "Qabul qilindi", stage: "rahmaaaat", source: "bot", course: "Ingliz tili" },
+    { status: "Bekor qilindi", stage: "", source: "Sayt", course: "Matematika" },
+  ]);
+  check("voronka: 4 qadam sahifadagi bilan bir xil", eq(fs.steps.map((x) => x.count), [3, 1, 1, 1]) && fs.steps[1].percentOfAll === 33.3, JSON.stringify(fs.steps));
+  check(
+    "voronka: manbalar kesimi",
+    eq(fs.bySource.find((x) => x.source === "bot"), { source: "bot", leads: 2, trialBooked: 1, cameToTrial: 1, firstPayment: 1, paidPercent: 50 }),
+    JSON.stringify(fs.bySource),
+  );
+
+  const { parseTaskDeadline, resolveAssignees } = await import("@/lib/ai/actions/prepare");
+  const d1 = parseTaskDeadline("2026-10-09 18:00", now);
+  check("muddat: Toshkent vaqti", d1.ok && d1.value.iso === "2026-10-09T13:00:00.000Z" && d1.value.label === "09.10.2026 | 18:00" && !d1.value.defaultedTime, JSON.stringify(d1));
+  const d2 = parseTaskDeadline("2026-10-09", now);
+  check("muddat: faqat sana — 18:00 va modelga aytiladi", d2.ok && d2.value.label === "09.10.2026 | 18:00" && d2.value.defaultedTime);
+  check("muddat: o'tgan vaqt — so'raladi", !parseTaskDeadline("2026-10-08T09:30", now).ok && !parseTaskDeadline("", now).ok);
+  check(
+    "muddat: yo'q sana / soat rad etiladi",
+    throwsInput(() => parseTaskDeadline("2026-02-30 10:00", now)) && throwsInput(() => parseTaskDeadline("2026-10-09 24:00", now)) && throwsInput(() => parseTaskDeadline("9 oktabr", now)),
+  );
+
+  const pick = [
+    { id: 1, name: "Ali Valiyev", pos: "Moderator", branchId: 1 },
+    { id: 2, name: "Ali Karimov", pos: "", branchId: 1 },
+    { id: 3, name: "Vali Toshev", pos: "", branchId: 1 },
+  ];
+  const ids = (r) => (r.ok ? r.value.map((e) => e.id) : r.reply);
+  check("kimga: aniq ism (katta-kichik harfsiz) va yagona qisman moslik", eq(ids(resolveAssignees(pick, { employees: ["ali valiyev"] })), [1]) && eq(ids(resolveAssignees(pick, { employees: "Toshev" })), [3]));
+  const amb = resolveAssignees(pick, { employees: ["ali"] });
+  check("kimga: noaniq — nomzodlar, taxmin yo'q", !amb.ok && amb.reply.candidates?.length === 3, JSON.stringify(amb));
+  check(
+    "kimga: id + ism; ro'yxatda yo'q id va bo'sh — so'raladi",
+    eq(ids(resolveAssignees(pick, { employeeIds: [1], employees: ["Toshev"] })), [1, 3]) && !resolveAssignees(pick, { employeeIds: [99] }).ok && !resolveAssignees(pick, {}).ok,
+  );
+  check("kimga: noto'g'ri tur rad etiladi", throwsInput(() => resolveAssignees(pick, { employees: [5] })) && throwsInput(() => resolveAssignees(pick, { employeeIds: "1" })));
 }
 
 // ── Model ↔ vositalar sikli (soxta OpenAI serveri) ─────────────────────
@@ -322,7 +479,8 @@ const deltas = (r) => r.events.filter((e) => e.type === "delta").map((e) => e.te
     JSON.stringify(seen[0] ?? r.error?.logDetail ?? null).slice(0, 300),
   );
   const offered = (q1?.tools ?? []).map((x) => x.function.name).sort();
-  check("modelga faqat ruxsat etilgan vositalar beriladi", eq(offered, ["crm_help", "leads_summary", "overview"]), JSON.stringify(offered));
+  // staff_tasks — /tasks hammaga ochiq (oddiy xodim faqat o'z topshiriqlarini ko'radi).
+  check("modelga faqat ruxsat etilgan vositalar beriladi", eq(offered, ["crm_help", "leads_summary", "overview", "staff_tasks"]), JSON.stringify(offered));
   const msgs = q1?.messages ?? [];
   check(
     `tarix: tizim ko'rsatmasi + oxirgi ${HISTORY_MESSAGES} xabar + savol`,

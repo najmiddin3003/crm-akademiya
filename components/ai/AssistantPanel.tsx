@@ -3,12 +3,15 @@
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowDownLeft,
+  ArrowLeftRight,
   ArrowUpRight,
   Bot,
   Check,
   CircleAlert,
+  ClipboardList,
   ExternalLink,
   Gauge,
+  MessageSquarePlus,
   SendHorizontal,
   Settings,
   Square,
@@ -321,6 +324,9 @@ const ACTION_TITLES: { kind: AiActionKind; label: string; icon: LucideIcon }[] =
   { kind: "lead", label: "Lid qo'shish", icon: UserPlus },
   { kind: "kirim", label: "Kirim", icon: ArrowDownLeft },
   { kind: "chiqim", label: "Chiqim", icon: ArrowUpRight },
+  { kind: "transfer", label: "Boshqa kassaga ko'chirish", icon: ArrowLeftRight },
+  { kind: "comment", label: "O'quvchiga izoh", icon: MessageSquarePlus },
+  { kind: "task", label: "Topshiriq berish", icon: ClipboardList },
 ];
 
 const FIELD_LABELS: { key: AiActionFieldKey; label: string }[] = [
@@ -339,6 +345,15 @@ const FIELD_LABELS: { key: AiActionFieldKey; label: string }[] = [
   { key: "branch", label: "Filial" },
   { key: "author", label: "Kim qo'shadi" },
   { key: "note", label: "Izoh" },
+  { key: "from_cashbox", label: "Qaysi kassadan" },
+  { key: "to_cashbox", label: "Qaysi kassaga" },
+  { key: "comment", label: "Izoh matni" },
+  { key: "title", label: "Topshiriq" },
+  { key: "description", label: "Tavsif" },
+  { key: "deadline", label: "Muddat" },
+  { key: "priority", label: "Muhimlik" },
+  { key: "fine", label: "Bajarilmasa jarima" },
+  { key: "link", label: "Havola" },
 ];
 
 const STATUS_LABELS: { status: AiActionStatus; label: string; cls: string }[] = [
@@ -382,7 +397,7 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
     }
     if (key === "days") return value.split(", ").map((d) => t(d)).join(", ");
     // Summalar ("{n} so'm"), to'lov turi, tranzaksiya turi — lug'atda bo'lsa o'giriladi, bo'lmasa o'z holicha.
-    if (key === "amount" || key === "discount" || key === "method" || key === "type") return t(value);
+    if (key === "amount" || key === "discount" || key === "fine" || key === "method" || key === "type") return t(value);
     return value;
   };
 

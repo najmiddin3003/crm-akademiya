@@ -43,7 +43,12 @@ export interface AiChatMessage {
 // (lib/ai/actions), panel uni karta qilib ko'rsatadi va yozuv xodim
 // «Tasdiqlash» ni bosgandagina bo'ladi (POST /api/ai/actions/:id).
 
-export type AiActionKind = "lead" | "kirim" | "chiqim";
+/**
+ * 2-bosqich: lid, kirim, chiqim. 3-bosqich (08.10.2026): boshqa kassaga
+ * ko'chirish (qabul qiluvchi keyin ✓/✗ qiladi), o'quvchiga izoh, xodimga
+ * topshiriq.
+ */
+export type AiActionKind = "lead" | "kirim" | "chiqim" | "transfer" | "comment" | "task";
 
 /** `expired` bazada yozilmaydi — muddati o'tgan qoralama ko'rsatishda shunday chiqadi. */
 export type AiActionStatus = "draft" | "executing" | "done" | "failed" | "cancelled" | "expired";
@@ -64,7 +69,16 @@ export type AiActionFieldKey =
   | "branch"
   | "author"
   | "discount"
-  | "note";
+  | "note"
+  | "from_cashbox"
+  | "to_cashbox"
+  | "comment"
+  | "title"
+  | "description"
+  | "deadline"
+  | "priority"
+  | "fine"
+  | "link";
 
 export interface AiActionField {
   key: AiActionFieldKey;
@@ -94,6 +108,6 @@ export interface AiStatus {
   isAdmin: boolean;
   limit: number;
   remaining: number;
-  /** Amallar (lid, kirim, chiqim — tasdiq bilan) shu xodimga ochiqmi. */
+  /** Amallar (lid, kirim, chiqim, ko'chirish, izoh, topshiriq — tasdiq bilan) shu xodimga ochiqmi. */
   actions: boolean;
 }

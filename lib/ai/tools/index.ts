@@ -2,19 +2,30 @@ import type { AiContext } from "../context";
 import { MAX_TOOL_RESULT_CHARS } from "../config";
 import type { ToolSpec } from "../openai";
 import type { AiActionView } from "../protocol";
-import { actionOptions, proposeChiqim, proposeKirim, proposeLead } from "./actions";
+import {
+  actionOptions,
+  proposeChiqim,
+  proposeKirim,
+  proposeLead,
+  proposePupilComment,
+  proposeTask,
+  proposeTransfer,
+} from "./actions";
+import { attendanceReport, staffAttendance } from "./attendance";
 import { cashboxBalances, financeSummary } from "./finance";
+import { salesFunnel } from "./funnel";
 import { listGroups } from "./groups";
 import { crmHelp } from "./help";
 import { leadsSummary } from "./leads";
 import { payrollSummary } from "./payroll";
 import { pupilDetails, searchPupils } from "./pupils";
 import { debtorsReport, overview } from "./reports";
+import { staffTasks } from "./tasks";
 import { DraftCreated, ToolInputError, type AiTool, type ToolArgs } from "./types";
 
 // VOSITALAR RO'YXATI va ularni ishga tushirish.
 //
-// O'qish vositalari + amal vositalari (2-bosqich). Amal vositalari ham
+// O'qish vositalari + amal vositalari (2–3-bosqich). Amal vositalari ham
 // HECH NARSA YOZMAYDI — faqat qoralama tuzadi (lib/ai/tools/actions.ts);
 // yozuv xodim panelda «Tasdiqlash» ni bosgandagina bo'ladi.
 
@@ -24,7 +35,11 @@ export const AI_TOOLS: readonly AiTool[] = [
   pupilDetails,
   debtorsReport,
   listGroups,
+  attendanceReport,
+  staffAttendance,
+  staffTasks,
   leadsSummary,
+  salesFunnel,
   financeSummary,
   cashboxBalances,
   payrollSummary,
@@ -33,6 +48,9 @@ export const AI_TOOLS: readonly AiTool[] = [
   proposeLead,
   proposeKirim,
   proposeChiqim,
+  proposeTransfer,
+  proposePupilComment,
+  proposeTask,
 ];
 
 const BY_NAME = new Map(AI_TOOLS.map((tool) => [tool.name, tool]));
@@ -56,7 +74,7 @@ export function toolAllowed(
  * ma'lumot bor" degan taxminni ham bermaydi.
  */
 export function toolsFor(ctx: AiContext): AiTool[] {
-  return AI_TOOLS.filter((t) => toolAllowed(t, ctx.can, ctx.actions));
+  return AI_TOOLS.filter((t) => toolAllowed(t, ctx.can, ctx.actions) && (!t.visible || t.visible(ctx)));
 }
 
 export function toolSpecs(tools: readonly AiTool[]): ToolSpec[] {
@@ -86,7 +104,9 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
   const tool = BY_NAME.get(name);
   if (!tool) return fail(`Unknown tool "${name}".`);
   if (tool.action && !ctx.actions) return fail("Actions are turned off by the administrator. Explain how to do it in the CRM instead.");
-  if (!toolAllowed(tool, ctx.can, ctx.actions)) return fail("The user has no access to this data. Tell them it is outside their permissions.");
+  if (!toolAllowed(tool, ctx.can, ctx.actions) || (tool.visible && !tool.visible(ctx))) {
+    return fail("The user has no access to this data. Tell them it is outside their permissions.");
+  }
 
   let args: ToolArgs;
   try {

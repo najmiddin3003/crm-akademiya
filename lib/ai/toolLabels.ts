@@ -15,7 +15,11 @@ export const TOOL_LABELS: readonly { name: string; label: string }[] = [
   { name: "pupil_details", label: "O'quvchi ma'lumotlari olinmoqda" },
   { name: "debtors_report", label: "Qarzdorlar hisoblanmoqda" },
   { name: "list_groups", label: "Guruhlar olinmoqda" },
+  { name: "attendance_report", label: "O'quvchilar davomati olinmoqda" },
+  { name: "staff_attendance", label: "Xodimlar davomati olinmoqda" },
+  { name: "staff_tasks", label: "Topshiriqlar olinmoqda" },
   { name: "leads_summary", label: "Lidlar hisoblanmoqda" },
+  { name: "sales_funnel", label: "Sotuv voronkasi hisoblanmoqda" },
   { name: "finance_summary", label: "Moliya hisoboti tayyorlanmoqda" },
   { name: "cashbox_balances", label: "Kassa qoldiqlari olinmoqda" },
   { name: "payroll_summary", label: "Oylik hisobi olinmoqda" },
@@ -24,6 +28,9 @@ export const TOOL_LABELS: readonly { name: string; label: string }[] = [
   { name: "propose_lead", label: "Lid qoralamasi tayyorlanmoqda" },
   { name: "propose_kirim", label: "Kirim qoralamasi tayyorlanmoqda" },
   { name: "propose_chiqim", label: "Chiqim qoralamasi tayyorlanmoqda" },
+  { name: "propose_transfer", label: "Ko'chirish qoralamasi tayyorlanmoqda" },
+  { name: "propose_pupil_comment", label: "Izoh qoralamasi tayyorlanmoqda" },
+  { name: "propose_task", label: "Topshiriq qoralamasi tayyorlanmoqda" },
   { name: "*", label: "Ma'lumot olinmoqda" },
 ];
 

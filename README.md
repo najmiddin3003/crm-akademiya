@@ -2122,6 +2122,10 @@ O'QISH**: yordamchi hech narsani yaratmaydi, o'zgartirmaydi, o'chirmaydi.
 | `finance_summary` | `/finance-reports`, `-analytics`, `-cashflow`, `-flow`, `-pnl` | `transactions` (barcha filiallar — sahifadagidek) |
 | `cashbox_balances` | `/finance-cash` | admin — hammasi, xodim — faqat o'z kassasi (`moderator`) |
 | `payroll_summary` | `/finance-payroll` | `buildPayrollRows` |
+| `attendance_report` | `/nazorat-davomat`, `-davomat-analytics`, `-missed-groups`, `/groups` | `attendance` + `lessonExpectedOn` (3-bosqich) |
+| `staff_attendance` | `/nazorat-turnstile-io`, `/nazorat-davomat`, `/management-xodimlar` | `turnstile_io` — «Ishga keldim» QR (3-bosqich) |
+| `staff_tasks` | `/tasks` (hammaga; qamrov `taskScope`) | `staff_tasks` (3-bosqich) |
+| `sales_funnel` | `/reports-funnel` | `lib/salesFunnel.ts` (3-bosqich) |
 | `crm_help` | hammaga | `lib/ai/knowledge.ts` (19 bo'lim) + ochiq sahifalar |
 
 - **Ruxsat**: vosita modelga faqat sahifasi xodimga ochiq bo'lsa
@@ -2287,5 +2291,80 @@ eskirgan qoralama tasdiqlanmaydi; qayta ochilganda kartalar holati.
 dev'da birinchi navbatda shu: amallarni yoqib, kichik summa bilan kirim →
 tasdiq → kassada ko'rinishi → web'da bekor qilish.
 
-Keyin (ixtiyoriy): ko'chirish (kassalar orasida), mavjud yozuvni tahrirlash
-yoki bekor qilish — hozircha yo'q, model CRM'da qanday qilishni tushuntiradi.
+Keyin (ixtiyoriy): mavjud yozuvni tahrirlash yoki bekor qilish — hozircha
+yo'q, model CRM'da qanday qilishni tushuntiradi. (Kassalar orasida ko'chirish
+3-bosqichda qo'shildi.)
+
+### 3-bosqich — davomat, topshiriqlar, voronka; ko'chirish, izoh, topshiriq (2026-10-08)
+
+Foydalanuvchi tanlovi: 4 ta yangi o'qish vositasi va 3 ta yangi amal. Hammasi
+sahifalar va xodimlar boti ishlatadigan O'SHA yadrolarni chaqiradi — vosita
+o'zi hisob qilmaydi, raqamlar sahifadagi bilan bir xil.
+
+**O'qish vositalari** (jadval yuqorida):
+
+- `attendance_report` — o'quvchilar davomati, joriy filial guruhlari
+  (`withBranch`), oraliq sukut bo'yicha bugun (ko'pi bilan 62 kun). Belgilar
+  bo'yicha jamlanma; "qoldirgan" = Sababli + Sababsiz (Nazorat → Davomat
+  sahifasidagi kabi); guruhlar kesimi; qoldirganlar ro'yxati sababi bilan;
+  "davomat qilinmagan" — guruh aktiv va o'sha kun dars kuni
+  (`lessonExpectedOn`), lekin birorta belgi yo'q.
+- `staff_attendance` — «Ishga keldim» (QR) va turniket yozuvlari
+  (`turnstile_io`, xodimlar): kim qachon keldi, kim necha daqiqa kechikdi
+  (yozuv paytida hisoblangan kechikish, qayta hisoblanmaydi). Joriy filial
+  (`branchCondition`) yoki `allBranches`. BITTA kun va joriy filial uchun
+  "kelmaganlar": o'qituvchi — o'sha kuni shu filialda darsi bo'lsa, boshqa
+  xodim — filialda ish boshlanish vaqti kiritilgan bo'lsa (kechikish qoidasi
+  bilan bir xil); bugun va vaqti hali kelmagan bo'lsa `notYetDue`.
+- `staff_tasks` — /tasks bilan bir xil qamrov (`taskViewerOf` → `loadViewer`,
+  `taskScope`): direktor — hammasi, rahbar — o'z filiallari, xodim — faqat
+  o'ziniki. HECH NARSA YOZMAYDI: sahifadagi `runAutomation` chaqirilmaydi,
+  shuning uchun "muddati o'tgan" vosita o'zi sanaydi (bajarilishi kerak va
+  muddat o'tgan — avtomatika kechiksa ham).
+- `sales_funnel` — /reports-funnel bilan bir xil buyurtmalar (`withLeadScope`)
+  va funksiyalar (`buildFunnelReport`, `buildFunnelSteps`,
+  `buildStageSummary`); qo'shimcha — manbalar va kurslar kesimida o'sha
+  voronka.
+
+**Amallar** (qoralama → karta → «Tasdiqlash»; 2-bosqich qoidalari o'zgarmagan):
+
+| Amal | Vosita | Ruxsat | Yadro |
+| --- | --- | --- | --- |
+| Boshqa kassaga ko'chirish | `propose_transfer` | `/finance-cash`, xodim — faqat o'z kassasidan | `applyCashboxTransferTo` (lib/cashboxTransfer.ts) |
+| O'quvchiga izoh | `propose_pupil_comment` | `/groups` (izoh route'i bilan bir xil) | `addPupilComment` (lib/pupilComments.ts) |
+| Xodimga topshiriq | `propose_task` | /tasks bo'lim RUXSATI (rahbar) yoki direktor | `createStaffTasks` (lib/staffTasksServer.ts) |
+
+- **Ko'chirish**: mavjud = qoldiq − tasdiq kutayotgan ko'chirmalar (yadro va bot
+  bilan bir xil); tasdiqdan keyin ham pul QABUL QILUVCHI ✓ bosmaguncha
+  jo'natuvchida turadi (jurnalda juft `waiting` yozuv, `origin: "ai"`);
+  qabul qiluvchiga botda "📥 ko'chirma keldi" xabari ketadi. Tasdiqda kassa
+  egaligi va qabul qiluvchi kassa arxivlanmagani qayta tekshiriladi.
+- **Izoh**: o'quvchi joriy filial hovuzidan (`withPupilBranch`), matn — xodim
+  aytgani (model fakt qo'shmaydi — tizim ko'rsatmasi), muallif — tasdiqlagan
+  xodim (`users.fullName`, route bilan bir xil).
+- **Topshiriq**: kimga — faqat xodim topshiriq bera oladiganlar
+  (`loadPickableEmployees`), noaniq ism — nomzodlar; muddat — Toshkent vaqti
+  ("YYYY-MM-DD HH:mm"; faqat sana — 18:00 va model buni aytadi); muhimlik
+  1–5 SHART (jarima shunga bog'liq — kartada ko'rinadi); bir nechta xodim —
+  har biriga alohida topshiriq, bitta `batchId`. Biriktirma (fayl) — faqat
+  sahifada.
+- **Ko'rinish sharti** (`AiTool.visible`): /tasks sahifasi hammaga ochiq,
+  topshiriq BERISH esa faqat rahbar/direktorga — `pages` buni ifodalay
+  olmaydi, shuning uchun `propose_task` da qo'shimcha shart bor
+  (`toolsFor` va `runTool` ikkalasi ham tekshiradi).
+- **Yadrolar route'lardan ko'chirildi** (route'lar yupqa qobiq, mantiq
+  o'zgarmagan): `POST /api/staff-tasks` → `createStaffTasks`,
+  `POST /api/pupils/:id/comments` → `addPupilComment`.
+- `executeAction(ctx, doc, deps)` — endi AI kontekstini oladi (izoh muallifi,
+  topshiriq beruvchi).
+
+Sinov:
+
+- `scripts/_verify-ai.mjs` — 116 tekshiruv (bazasiz): yangi vositalar ruxsati,
+  davomat / kelmaganlar / topshiriqlar / voronka hisobi, muddat va xodim
+  tanlash, ko'rsatma.
+- `scripts/_verify-ai-actions.mjs` — ko'chirish, izoh, topshiriq bo'limlari
+  qo'shildi (lokal MongoDB kerak). **08.10.2026 da ishga TUSHIRILMADI** —
+  ishlab chiqilgan mashinada MongoDB yo'q edi; birinchi imkoniyatda lokal
+  bazada ishga tushiring.
+- `tsc` (`tsconfig.check.json`) va `eslint` toza.

@@ -3,6 +3,7 @@ import { pendingDiscountFor } from "@/lib/gamification/discounts";
 import { noteMonthConflict } from "@/lib/noteMonth";
 import { formatLessonDays, lessonDaysLabel, parseLessonDays } from "@/lib/ordersData";
 import { PLASTIK_METHOD_KEY, type PaymentMethod } from "@/lib/paymentMethods";
+import { MAX_COMMENT_LEN } from "@/lib/pupilComments";
 import { studentPaidBalance } from "@/lib/pupilsDb";
 import { pupilFullName } from "@/lib/pupilsData";
 import { pupilSearchFilter } from "@/lib/pupilSearch";
@@ -14,15 +15,20 @@ import {
   loadChiqimTypes,
   loadCourseNames,
   loadKirimTypes,
+  loadTransferDestinations,
   pupilGroupInfo,
   searchEmployees,
 } from "@/lib/staffBot/data";
+import { PRIORITIES, uzWallToMs, type StaffTaskEmployee, type StaffTaskPriority } from "@/lib/staffTasks";
+import { cleanLink, fineFor, loadPickableEmployees, loadSettings, TEXT_MAX, TITLE_MAX } from "@/lib/staffTasksServer";
 import { formatPhone } from "@/lib/studentBot/phone";
 import { refundTeacherOf } from "@/lib/studentRefund";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import type { TransactionType } from "@/lib/transactionTypes";
+import { loadPendingOut } from "@/lib/transferPending";
 import { txAudience, txTarget } from "@/lib/txTarget";
-import { authorNameOf, type AiContext } from "../context";
+import { uzStamp } from "@/lib/uzTime";
+import { authorNameOf, taskViewerOf, type AiContext } from "../context";
 import { maskPhone } from "../mask";
 import type { AiActionField, AiActionKind } from "../protocol";
 import { optInt, optMonth, optString, ToolInputError, type ToolArgs } from "../tools/types";
@@ -574,6 +580,251 @@ export async function prepareChiqim(ctx: AiContext, args: ToolArgs): Promise<Pre
         method: method.value.name,
         cashbox: cb.name,
         note: note || undefined,
+      },
+    },
+  };
+}
+
+// ── 3-bosqich (08.10.2026): ko'chirish, izoh, topshiriq ─────────────
+
+/**
+ * BOSHQA KASSAGA KO'CHIRISH — botdagi «📤 Boshqa kassaga» va web'dagi
+ * oyna bilan bir xil (yadro: lib/cashboxTransfer.ts → applyCashboxTransferTo).
+ * Jo'natuvchi — xodimning O'Z kassasi (admin — tanlagani yoki bosh kassa).
+ * Pul qabul qiluvchi ✓ bosmaguncha jo'natuvchida turadi, shuning uchun
+ * MAVJUD = qoldiq − tasdiq kutayotgan ko'chirmalar (yadro ham shunday hisoblaydi).
+ */
+export async function prepareTransfer(ctx: AiContext, args: ToolArgs): Promise<PrepareResult> {
+  const cashbox = await resolveCashbox(ctx, optInt(args, "cashboxId", 1, 1_000_000_000));
+  if (!cashbox.ok) return cashbox;
+  const from = cashbox.value;
+
+  const dests = await loadTransferDestinations(ctx.db, from.id);
+  if (dests.length === 0) return ask({ problem: "There is no other active cashbox to send money to." });
+  const destNames = dests.map((d) => d.name);
+  const toId = optInt(args, "toCashboxId", 1, 1_000_000_000);
+  let dest = toId !== null ? (dests.find((d) => d.id === toId) ?? null) : null;
+  if (toId !== null && !dest) {
+    return ask({ problem: "That receiving cashbox does not exist, is archived or is the user's own cashbox.", cashboxes: destNames });
+  }
+  if (!dest) {
+    const toIn = optString(args, "to", 100);
+    if (!toIn) return ask({ problem: "Which cashbox should receive the money? Ask the user.", cashboxes: destNames });
+    dest = pickByName(dests, (d) => d.name, toIn);
+    if (!dest) return ask({ problem: `Unknown or ambiguous cashbox "${toIn}". Use one of the listed names.`, cashboxes: destNames });
+  }
+
+  const method = await resolveMethod(ctx, args);
+  if (!method.ok) return method;
+  const amount = requiredAmount(args);
+  if (!amount.ok) return amount;
+
+  const pending = (await loadPendingOut(ctx.db, [from.id])).get(from.id) ?? {};
+  const available = Math.max(0, (from.methodTotals[method.value.key] ?? 0) - (pending[method.value.key] ?? 0));
+  if (amount.value > available) {
+    return ask({
+      problem: `Not enough money for this payment method: at most ${available} so'm can be sent (balance minus transfers still waiting for acceptance).`,
+      available,
+    });
+  }
+  const note = optString(args, "note", 500);
+
+  return {
+    ok: true,
+    draft: {
+      kind: "transfer",
+      payload: { cashboxId: from.id, toCashboxId: dest.id, method: method.value.key, amount: amount.value, note },
+      fields: [
+        { key: "from_cashbox", value: from.name },
+        { key: "to_cashbox", value: dest.name },
+        { key: "amount", value: fmtSum(amount.value) },
+        { key: "method", value: method.value.name },
+        ...(note ? [{ key: "note" as const, value: note }] : []),
+      ],
+      forModel: {
+        action: "cashbox transfer",
+        from: from.name,
+        to: dest.name,
+        amount: amount.value,
+        method: method.value.name,
+        note: note || undefined,
+        afterConfirm:
+          "After the user confirms, the money still stays in the sender's cashbox until the owner of the receiving cashbox " +
+          "accepts the transfer (✓) in the CRM or in the staff bot; they can also reject it (✗).",
+      },
+    },
+  };
+}
+
+/**
+ * O'QUVCHIGA IZOH — guruh sahifasidagi «Izoh» oynasi bilan bir xil
+ * (lib/pupilComments.ts → addPupilComment). O'quvchi joriy filial
+ * qamrovidan (`resolvePupil` → withPupilBranch, route bilan bir xil).
+ * Matn — xodim aytgani; model o'zidan yozmaydi (tizim ko'rsatmasi).
+ */
+export async function preparePupilComment(ctx: AiContext, args: ToolArgs): Promise<PrepareResult> {
+  const pupil = await resolvePupil(ctx, args);
+  if (!pupil.ok) return pupil;
+  const text = optString(args, "text", MAX_COMMENT_LEN);
+  if (!text) return ask({ problem: "What should the comment say? Ask the user for the text; do not write it yourself." });
+  const p = pupil.value;
+  const group = await pupilGroupInfo(ctx.db, p.id);
+  const by = ctx.userName || authorNameOf(ctx);
+
+  return {
+    ok: true,
+    draft: {
+      kind: "comment",
+      payload: { pupilId: p.id, text },
+      fields: [
+        { key: "pupil", value: p.phone ? `${p.name} · ${formatPhone(p.phone)}` : p.name },
+        ...(group.groupLabel ? [{ key: "group" as const, value: group.groupLabel }] : []),
+        { key: "comment", value: text },
+        { key: "author", value: by || "—" },
+      ],
+      forModel: { action: "student comment", student: p.name, group: group.groupLabel || undefined, text },
+    },
+  };
+}
+
+const MAX_ASSIGNEES = 20;
+
+/**
+ * Topshiriq muddati — "YYYY-MM-DD HH:mm" (yoki "T" bilan), TOSHKENT vaqti.
+ * Faqat sana aytilsa — 18:00 (topshiriq oynasidagi «Bugun 18:00» kabi) va
+ * modelga buni aytish so'raladi. Hozirdan keyin bo'lishi shart
+ * (lib/staffTasksServer.ts → cleanDeadline bilan bir xil, 1 daqiqa zaxira).
+ */
+export function parseTaskDeadline(
+  input: string,
+  nowMs: number,
+): Step<{ iso: string; label: string; defaultedTime: boolean }> {
+  const s = input.trim();
+  if (!s) return ask({ problem: "What is the deadline? Ask the user for the date and time (Tashkent time)." });
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{1,2}):(\d{2}))?$/.exec(s);
+  const bad = () => new ToolInputError('"deadline" must be a real date and time like "2026-10-09 18:00" (Tashkent time)');
+  if (!m) throw bad();
+  const date = m[1];
+  const calendar = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(calendar.getTime()) || calendar.toISOString().slice(0, 10) !== date) throw bad();
+  const h = m[2] === undefined ? 18 : Number(m[2]);
+  const min = m[3] === undefined ? 0 : Number(m[3]);
+  if (h > 23 || min > 59) throw bad();
+  const t = uzWallToMs(date, `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`);
+  if (!Number.isFinite(t)) throw bad();
+  if (t <= nowMs + 60_000) return ask({ problem: "The deadline must be in the future. Ask the user for a later date or time." });
+  return ok({ iso: new Date(t).toISOString(), label: uzStamp(new Date(t)), defaultedTime: m[2] === undefined });
+}
+
+/**
+ * Kimga — faqat xodim TOPSHIRIQ BERA OLADIGANLAR ichidan
+ * (loadPickableEmployees: direktor — hamma, rahbar — o'z filiali; web
+ * oynasidagi ro'yxat bilan bir xil). Ism bo'yicha aniq yoki yagona qisman
+ * moslik; bir nechtasi mos kelsa — nomzodlar qaytadi.
+ */
+export function resolveAssignees(pickable: readonly StaffTaskEmployee[], args: ToolArgs): Step<StaffTaskEmployee[]> {
+  const rawIds = args.employeeIds;
+  const rawNames = typeof args.employees === "string" ? [args.employees] : args.employees;
+  if (rawIds !== undefined && rawIds !== null && !Array.isArray(rawIds)) throw new ToolInputError('"employeeIds" must be an array of integers');
+  if (rawNames !== undefined && rawNames !== null && !Array.isArray(rawNames)) throw new ToolInputError('"employees" must be an array of names');
+  const ids = (rawIds ?? []) as unknown[];
+  const names = ((rawNames ?? []) as unknown[]).map((n) => {
+    if (typeof n !== "string") throw new ToolInputError('"employees" must be an array of names');
+    return n.trim();
+  }).filter(Boolean);
+  if (ids.length + names.length === 0) return ask({ problem: "Who should do the task? Ask the user for the employee name(s)." });
+  if (ids.length + names.length > MAX_ASSIGNEES) {
+    return ask({ problem: `At most ${MAX_ASSIGNEES} employees per task through the assistant; for more, use the Topshiriqlar page.` });
+  }
+
+  const byId = new Map(pickable.map((e) => [e.id, e]));
+  const chosen = new Map<number, StaffTaskEmployee>();
+  for (const raw of ids) {
+    const id = Number(raw);
+    if (!Number.isInteger(id)) throw new ToolInputError('"employeeIds" must be an array of integers');
+    const e = byId.get(id);
+    if (!e) return ask({ problem: `Employee id ${id} is not among the employees this user can assign tasks to. Search by name instead.` });
+    chosen.set(e.id, e);
+  }
+  for (const name of names) {
+    const e = pickByName(pickable, (x) => x.name, name);
+    if (e) {
+      chosen.set(e.id, e);
+      continue;
+    }
+    const similar = pickable.filter((x) => norm(x.name).includes(norm(name)));
+    if (similar.length === 0) {
+      return ask({ problem: `No employee this user can assign tasks to matches "${name}". Ask the user to check the name.` });
+    }
+    return ask({
+      problem: `Several employees match "${name}". Ask the user which one, then call again with employeeIds.`,
+      candidates: similar.slice(0, CANDIDATES).map((x) => ({ employeeId: x.id, name: x.name, position: x.pos || undefined })),
+      more: similar.length > CANDIDATES || undefined,
+    });
+  }
+  return ok([...chosen.values()]);
+}
+
+/**
+ * XODIMGA TOPSHIRIQ — /tasks sahifasidagi «Topshiriq berish» bilan bir xil
+ * (yadro: lib/staffTasksServer.ts → createStaffTasks). Faqat rahbar va
+ * direktor; jarima muhimlik darajasidan (Sozlamalar). Biriktirma (fayl) —
+ * faqat sahifada.
+ */
+export async function prepareTask(ctx: AiContext, args: ToolArgs): Promise<PrepareResult> {
+  const v = await taskViewerOf(ctx);
+  if (v.role === "xodim") {
+    return ask({ problem: "Only managers (with the Topshiriqlar permission) and administrators can assign tasks. Tell the user." });
+  }
+  const title = optString(args, "title", TITLE_MAX);
+  if (!title) return ask({ problem: "What is the task? Ask the user for a short title." });
+
+  const pickable = await loadPickableEmployees(ctx.db, v);
+  if (pickable.length === 0) return ask({ problem: "There are no employees this user can assign tasks to." });
+  const who = resolveAssignees(pickable, args);
+  if (!who.ok) return who;
+
+  const deadline = parseTaskDeadline(optString(args, "deadline", 20), Date.now());
+  if (!deadline.ok) return deadline;
+
+  const settings = await loadSettings(ctx.db);
+  const priority = optInt(args, "priority", 1, 5) as StaffTaskPriority | null;
+  if (priority === null) {
+    return ask({
+      problem: "Which priority (1–5)? Ask the user. If the task is not done in time, the fine below is applied.",
+      priorities: PRIORITIES.map((p) => ({ priority: p, fineIfNotDone: fineFor(settings, p) })),
+    });
+  }
+  const desc = optString(args, "description", TEXT_MAX);
+  const link = cleanLink(optString(args, "link", 500));
+  if (link === null) return ask({ problem: "The link must start with http:// or https://." });
+
+  const fine = fineFor(settings, priority);
+  const names = who.value.map((e) => e.name);
+  return {
+    ok: true,
+    draft: {
+      kind: "task",
+      payload: { title, desc, deadline: deadline.value.iso, priority, link, employeeIds: who.value.map((e) => e.id) },
+      fields: [
+        { key: "title", value: title },
+        { key: "employee", value: names.join(", ") },
+        { key: "deadline", value: deadline.value.label },
+        { key: "priority", value: `${priority} / 5` },
+        { key: "fine", value: fmtSum(fine) },
+        ...(desc ? [{ key: "description" as const, value: desc }] : []),
+        ...(link ? [{ key: "link" as const, value: link }] : []),
+      ],
+      forModel: {
+        action: "assign task",
+        title,
+        employees: names,
+        separateTaskForEach: names.length > 1 || undefined,
+        deadline: deadline.value.label,
+        deadlineNote: deadline.value.defaultedTime ? "No time was given, so 18:00 was used — tell the user." : undefined,
+        priority,
+        fineIfNotDone: fine,
+        description: desc || undefined,
       },
     },
   };

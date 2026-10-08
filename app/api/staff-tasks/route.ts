@@ -4,17 +4,9 @@ import { ensureIndexes } from "@/lib/mongodb";
 import {
   FINES_COL,
   TASKS_COL,
-  TEXT_MAX,
-  TITLE_MAX,
   batchSizes,
-  cleanDeadline,
-  cleanFiles,
-  cleanLink,
-  cleanPriority,
-  cleanText,
-  fineFor,
+  createStaffTasks,
   fineInfo,
-  insertWithNextId,
   loadBranches,
   loadClosedMonths,
   loadPickableEmployees,
@@ -27,7 +19,7 @@ import {
   type StaffFineDoc,
   type StaffTaskDoc,
 } from "@/lib/staffTasksServer";
-import type { StaffTask, StaffTaskEvent, StaffTasksPayload } from "@/lib/staffTasks";
+import type { StaffTask, StaffTasksPayload } from "@/lib/staffTasks";
 
 // XODIM TOPSHIRIQLARI (/tasks) — ro'yxat va yangi topshiriq.
 //
@@ -82,8 +74,9 @@ export async function GET() {
 }
 
 // POST /api/staff-tasks — yangi topshiriq. Bir nechta xodim tanlansa HAR
-// BIRIGA ALOHIDA topshiriq yaratiladi (o'z holati, o'z jarimasi bilan) va
-// ular bitta `batchId` bilan bog'lanadi ("3 xodimga berilgan").
+// BIRIGA ALOHIDA topshiriq yaratiladi. Butun mantiq (tekshiruv, qamrov,
+// jarima, batchId) lib/staffTasksServer.ts → createStaffTasks da — AI
+// yordamchi ham o'sha yadrodan o'tadi.
 export async function POST(req: Request) {
   const me = await getCurrentUser();
   if (!me) return bad("Tizimga kirmagansiz", 401);
@@ -96,76 +89,9 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
   const v = await loadViewer(db, me);
-  if (v.role === "xodim") return bad("Topshiriq berish uchun ruxsatingiz yo'q", 403);
+  const out = await createStaffTasks(db, v, body);
+  if (!out.ok) return bad(out.error, out.status);
 
-  const nowMs = Date.now();
-  const title = cleanText(body.title, TITLE_MAX);
-  if (!title) return bad("Sarlavhani kiriting");
-  const desc = cleanText(body.desc, TEXT_MAX);
-  const deadline = cleanDeadline(body.deadline, nowMs);
-  if (!deadline) return bad("Deadline hozirgi vaqtdan keyin bo'lishi kerak");
-  const priority = cleanPriority(body.priority);
-  if (!priority) return bad("Muhimlik darajasini tanlang");
-  const link = cleanLink(body.link);
-  if (link === null) return bad("Havola http:// yoki https:// bilan boshlanishi kerak");
-  const attachments = cleanFiles(body.attachments);
-  if (attachments === null) return bad("Biriktirma yaroqsiz — faylni qaytadan yuklang");
-
-  const ids = Array.isArray(body.employeeIds) ? [...new Set(body.employeeIds.map(Number).filter(Number.isFinite))] : [];
-  if (!ids.length) return bad("Kamida bitta xodim tanlang");
-  if (ids.length > 100) return bad("Bir martada ko'pi bilan 100 ta xodim");
-
-  // Faqat QAMROVDAGI faol xodimlar: rahbar boshqa filial xodimiga
-  // topshiriq bera olmaydi (ro'yxat ham shu funksiyadan chiziladi).
-  const [pickable, settings] = await Promise.all([loadPickableEmployees(db, v), loadSettings(db)]);
-  const byId = new Map(pickable.map((e) => [e.id, e]));
-  const chosen = ids.map((id) => byId.get(id));
-  if (chosen.some((e) => !e)) return bad("Tanlangan xodim ro'yxatda yo'q — sahifani yangilang");
-
-  const nowIso = new Date(nowMs).toISOString();
-  const fineAmount = fineFor(settings, priority);
-  const created: StaffTaskDoc[] = [];
-  let batchId = 0;
-  for (const emp of chosen) {
-    if (!emp) continue;
-    const ev: StaffTaskEvent = { at: nowIso, kind: "created", by: v.name, byUserId: v.userId, deadline, priority };
-    const doc = await insertWithNextId<StaffTaskDoc>(db, TASKS_COL, (id) => ({
-      id,
-      // To'plam raqami — birinchi topshiriqning o'z raqami.
-      batchId: batchId || id,
-      title,
-      desc,
-      employeeId: emp.id,
-      employeeName: emp.name,
-      branchId: emp.branchId,
-      priority,
-      fineAmount,
-      deadline,
-      originalDeadline: deadline,
-      redeadline: null,
-      attachments,
-      link,
-      seenAt: null,
-      doneAt: null,
-      doneNote: "",
-      resultLink: "",
-      resultFile: null,
-      isLate: false,
-      status: "yangi",
-      returnCount: 0,
-      cancelReason: "",
-      completedAt: null,
-      completedLate: false,
-      failedAt: null,
-      createdBy: { userId: v.userId, employeeId: v.employeeId, name: v.name },
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      history: [ev],
-    }));
-    if (!batchId) batchId = doc.id;
-    created.push(doc);
-  }
-
-  const tasks: StaffTask[] = created.map((d) => toClientTask(d, v, { batchSize: created.length }));
+  const tasks: StaffTask[] = out.docs.map((d) => toClientTask(d, v, { batchSize: out.docs.length }));
   return NextResponse.json({ ok: true, tasks });
 }
