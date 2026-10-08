@@ -208,9 +208,40 @@ check("mos kelmasa bo'sh", findHelpSections("ob-havo qanaqa").length === 0);
 // ── Sozlamalar ─────────────────────────────────────────────────────────
 console.log("\n— sozlamalar");
 check(
-  "sukut — o'chiq (amallar ham)",
-  eq(normalizeAiSettings(null), { enabled: false, actionsEnabled: false, dailyLimit: DEFAULT_DAILY_LIMIT, updatedBy: null, updatedAt: null }),
+  "sukut — o'chiq (amallar ham); modellar — admin tanlamagan, «Tezlik» — Tez",
+  eq(normalizeAiSettings(null), {
+    enabled: false,
+    actionsEnabled: false,
+    dailyLimit: DEFAULT_DAILY_LIMIT,
+    models: null,
+    defaultModel: null,
+    defaultEffort: "low",
+    updatedBy: null,
+    updatedAt: null,
+  }),
+  JSON.stringify(normalizeAiSettings(null)),
 );
+check(
+  "modellar: yaroqsiz va takror tashlanadi, bo'sh ro'yxat — null",
+  eq(normalizeAiSettings({ models: ["gpt-6-sol", "gpt-6-sol", "bad id", 5] }).models, ["gpt-6-sol"]) && normalizeAiSettings({ models: [] }).models === null,
+);
+check(
+  "sukut daraja: noma'lumi (max) — Tez",
+  normalizeAiSettings({ defaultEffort: "max" }).defaultEffort === "low" && normalizeAiSettings({ defaultEffort: "high" }).defaultEffort === "high",
+);
+{
+  // Yaroqsiz qiymat bazaga yetmasdan rad etiladi (db kerak emas).
+  const { saveAiSettings, MAX_MODELS } = await import("@/lib/ai/settings");
+  const errOf = async (patch) => (await saveAiSettings(null, patch, "sinov")).error;
+  check(
+    "sozlama saqlash: bo'sh ro'yxat, yomon ID, juda ko'p model, noma'lum daraja — rad",
+    (await errOf({ models: [] })) === "Kamida bitta model tanlang" &&
+      (await errOf({ models: ["a b"] })) === "Model nomi noto'g'ri" &&
+      (await errOf({ models: Array.from({ length: MAX_MODELS + 1 }, (_, i) => `m${i}`) })) === `Ko'pi bilan ${MAX_MODELS} ta model` &&
+      (await errOf({ defaultEffort: "max" })) === "Noto'g'ri qiymat" &&
+      (await errOf({ defaultModel: "../x" })) === "Model nomi noto'g'ri",
+  );
+}
 check("amallar faqat true bo'lsa", normalizeAiSettings({ actionsEnabled: "true" }).actionsEnabled === false && normalizeAiSettings({ actionsEnabled: true }).actionsEnabled === true);
 check("yaroqsiz limit sukutga", normalizeAiSettings({ enabled: true, dailyLimit: 0 }).dailyLimit === DEFAULT_DAILY_LIMIT);
 check("enabled faqat true bo'lsa", normalizeAiSettings({ enabled: "true" }).enabled === false);
@@ -380,6 +411,144 @@ console.log("\n— 3-bosqich (sof hisob)");
   check("kimga: noto'g'ri tur rad etiladi", throwsInput(() => resolveAssignees(pick, { employees: [5] })) && throwsInput(() => resolveAssignees(pick, { employeeIds: "1" })));
 }
 
+// ── 4-bosqich: model va «Tezlik», Responses oqimi — sof qism ───────────
+console.log("\n— 4-bosqich (modellar, Responses oqimi, ekran)");
+{
+  const { AI_MODEL_CATALOG, nearestEffort, isModelId, modelInfo } = await import("@/lib/ai/models");
+  const { modelChoices, resolveChoice, adminModelIds } = await import("@/lib/ai/modelChoice");
+  const { screenOf } = await import("@/lib/ai/tools/index");
+  const R = await import("@/lib/ai/responsesSse");
+
+  check("daraja: bor bo'lsa o'zi", nearestEffort("medium", ["low", "medium", "high"]) === "medium");
+  check("daraja: Astra'da «Tezkor» yo'q — «Tez»", nearestEffort("none", ["low", "medium", "high"]) === "low");
+  check("daraja: teng masofada chuqurrog'i", nearestEffort("medium", ["low", "high"]) === "high");
+  check("daraja: ro'yxat bo'sh — null (yuborilmaydi)", nearestEffort("low", []) === null);
+  check(
+    "model ID: yaroqli / yaroqsiz",
+    isModelId("gpt-6.1-sol") && isModelId("ft:gpt-5.6:org:x") && !isModelId("") && !isModelId("a b") && !isModelId("../x") && !isModelId("x".repeat(65)),
+  );
+  check("katalogda yo'q model — nomi ID, hamma darajalar", modelInfo("my-model").name === "my-model" && modelInfo("my-model").efforts.length === 4);
+  check(
+    "faqat Responses'da ishlaydiganlar — Astra va 6.1 Sol",
+    AI_MODEL_CATALOG.filter((m) => m.responsesOnly).map((m) => m.id).sort().join() === "gpt-6-astra,gpt-6.1-sol",
+  );
+
+  const base = { models: null, defaultModel: null, defaultEffort: "low" };
+  const resp = modelChoices({ model: "gpt-5.6", api: "responses" }, base);
+  check(
+    "sukut ro'yxat: .env modeli boshida + katalog (taxallussiz), sukut — .env modeli",
+    resp.models[0].id === "gpt-5.6" && resp.models.length === AI_MODEL_CATALOG.filter((m) => !m.alias).length + 1 &&
+      resp.defaultModel === "gpt-5.6" && resp.defaultEffort === "low" && resp.models[0].efforts.length === 4,
+    JSON.stringify(resp.models.map((m) => m.id)),
+  );
+  const chat = modelChoices({ model: "gpt-5.6", api: "chat" }, base);
+  check(
+    "proksi (Chat Completions): Astra / 6.1 Sol yo'q, «Tezlik» tanlanmaydi",
+    !chat.models.some((m) => m.id === "gpt-6-astra" || m.id === "gpt-6.1-sol") && chat.models.every((m) => m.efforts.length === 0) && chat.defaultEffort === null,
+  );
+  const avail = modelChoices({ model: "gpt-5.6", api: "responses" }, base, new Set(["gpt-6-sol", "gpt-6-luna"]));
+  check(
+    "hisobda yo'q model ko'rinmaydi, .env modeli qoladi",
+    eq(avail.models.map((m) => m.id), ["gpt-5.6", "gpt-6-sol", "gpt-6-luna"]),
+    JSON.stringify(avail.models.map((m) => m.id)),
+  );
+  const admin = modelChoices(
+    { model: "gpt-5.6", api: "responses" },
+    { models: ["gpt-6-astra", "gpt-6-luna"], defaultModel: "gpt-6-astra", defaultEffort: "none" },
+  );
+  check(
+    "admin ro'yxati — aynan shu; sukut — admin tanlagani; «Tezkor» Astra'da «Tez» ga",
+    eq(admin.models.map((m) => m.id), ["gpt-6-astra", "gpt-6-luna"]) && admin.defaultModel === "gpt-6-astra" && admin.defaultEffort === "low",
+    JSON.stringify(admin),
+  );
+  check("xodim ro'yxatda yo'q modelni so'rasa — sukut model", resolveChoice(admin, "gpt-5.6-sol", "high").model === "gpt-6-astra");
+  check("model qabul qilmaydigan daraja — eng yaqini", eq(resolveChoice(admin, "gpt-6-astra", "none"), { model: "gpt-6-astra", effort: "low" }));
+  check("noto'g'ri daraja (max) — sukut daraja", eq(resolveChoice(admin, "gpt-6-luna", "max"), { model: "gpt-6-luna", effort: "low" }));
+  check("proksi rejimida daraja yuborilmaydi", resolveChoice(chat, "gpt-6-sol", "high").effort === null);
+  check("admin ro'yxati bo'sh bo'lmaydi: .env modeli birinchi", adminModelIds({ models: null }, "custom-x")[0] === "custom-x");
+
+  // Qaysi API: OpenAI'ning o'zi — Responses, boshqa manzil (proksi) — Chat Completions.
+  {
+    const { aiProviderConfig } = await import("@/lib/ai/config");
+    const names = ["OPENAI_URL_API", "OPENAI_BASE_URL", "AI_ASSISTANT_API"];
+    const keep = Object.fromEntries(names.map((n) => [n, process.env[n]]));
+    process.env.OPENAI_URL_API = "sk-test";
+    delete process.env.OPENAI_BASE_URL;
+    delete process.env.AI_ASSISTANT_API;
+    const official = aiProviderConfig()?.api;
+    process.env.OPENAI_BASE_URL = "https://proxy.example/v1/";
+    const proxy = aiProviderConfig()?.api;
+    process.env.AI_ASSISTANT_API = "responses";
+    const forced = aiProviderConfig()?.api;
+    for (const n of names) {
+      if (keep[n] === undefined) delete process.env[n];
+      else process.env[n] = keep[n];
+    }
+    check("API: OpenAI — Responses, proksi — Chat Completions, AI_ASSISTANT_API majburlaydi", official === "responses" && proxy === "chat" && forced === "responses", JSON.stringify({ official, proxy, forced }));
+  }
+
+  // Ekranda ko'rsatish: faqat ichki va xodim ocha oladigan sahifa.
+  const cashier = { can: (p) => isPathAllowed(p, ["/finance-cash"]) };
+  check("ekran: ruxsatli ichki sahifa", eq(screenOf(cashier, "/finance-cash"), { screen: "/finance-cash" }));
+  check(
+    "ekran: ruxsatsiz, tashqi, yo'q — ochilmaydi",
+    eq(screenOf(cashier, "/finance-payroll"), {}) && eq(screenOf(cashier, "https://x.uz"), {}) && eq(screenOf(cashier, "//x.uz/a"), {}) &&
+      eq(screenOf(cashier, "javascript:alert(1)"), {}) && eq(screenOf(cashier, undefined), {}),
+  );
+
+  // Responses oqimi.
+  {
+    const s = R.emptyResponseState();
+    const texts = [
+      { type: "response.created", response: { id: "resp_1", status: "in_progress", output: [] } },
+      { type: "response.output_item.added", output_index: 0, item: { type: "reasoning", id: "rs_1" } },
+      { type: "response.output_item.done", output_index: 0, item: { type: "reasoning", id: "rs_1", encrypted_content: "enc", summary: [] } },
+      { type: "response.output_text.delta", item_id: "msg_1", output_index: 1, content_index: 0, delta: "Sa" },
+      { type: "response.output_text.delta", item_id: "msg_1", output_index: 1, content_index: 0, delta: "lom" },
+      { type: "response.function_call_arguments.delta", item_id: "fc_1", output_index: 2, delta: '{"to' },
+      { type: "response.output_item.done", output_index: 2, item: { type: "function_call", id: "fc_1", call_id: "call_1", name: "crm_help", arguments: '{"topic":"lid"}' } },
+    ].map((ev) => R.applyResponseEvent(s, ev));
+    check("Responses: matn bo'laklari", s.content === "Salom" && eq(texts.filter(Boolean), ["Sa", "lom"]), JSON.stringify(s));
+    check(
+      "Responses: yakuniy hodisa kelmasa — tugagan elementlar (to'liq argument bilan)",
+      R.itemsOf(s).length === 2 && eq(R.functionCallsOf(R.itemsOf(s)), [{ callId: "call_1", name: "crm_help", arguments: '{"topic":"lid"}' }]),
+    );
+    R.applyResponseEvent(s, {
+      type: "response.completed",
+      response: { status: "completed", output: [{ type: "message", id: "msg_1", content: [{ type: "output_text", text: "Salom" }] }] },
+    });
+    check("Responses: yakuniy ro'yxat ustun", s.status === "completed" && R.itemsOf(s).length === 1 && R.functionCallsOf(R.itemsOf(s)).length === 0);
+  }
+  {
+    const failed = R.emptyResponseState();
+    R.applyResponseEvent(failed, { type: "response.failed", response: { status: "failed", error: { code: "server_error", message: "boom" } } });
+    const err = R.emptyResponseState();
+    R.applyResponseEvent(err, { type: "error", code: "rate_limit", message: "rate limited" });
+    check("Responses: xato hodisalari", failed.error === "boom" && err.error === "rate limited");
+    const body = R.responseStateFromBody({
+      id: "resp_2",
+      status: "completed",
+      error: null,
+      output: [
+        { type: "reasoning", id: "rs_2", encrypted_content: "e2", summary: [] },
+        { type: "message", id: "msg_2", role: "assistant", content: [{ type: "output_text", text: "Bir " }, { type: "output_text", text: "yo'la" }] },
+      ],
+    });
+    check("Responses: oqimsiz javob", body.content === "Bir yo'la" && body.error === null && body.status === "completed", JSON.stringify(body));
+    check("Responses: oqimsiz xato tanasi", R.responseStateFromBody({ error: { message: "bad" } }).error === "bad");
+  }
+  {
+    const sealed = [{ type: "reasoning", id: "rs_1", encrypted_content: "x" }, { type: "function_call", id: "fc_1", call_id: "c1", name: "a", arguments: "{}" }];
+    check("qaytarish: shifrlangan fikrlash — o'zgarmaydi", eq(R.replayItems(sealed), sealed));
+    const open = [{ type: "reasoning", id: "rs_1", summary: [] }, { type: "function_call", id: "fc_1", call_id: "c1", name: "a", arguments: "{}" }];
+    check(
+      "qaytarish: shifrsiz — fikrlash tashlanadi, id olinadi",
+      eq(R.replayItems(open), [{ type: "function_call", call_id: "c1", name: "a", arguments: "{}" }]),
+    );
+    check("plainItems: oddiy xabarga tegmaydi", eq(R.plainItems([{ role: "user", content: "x" }]), [{ role: "user", content: "x" }]));
+  }
+}
+
 // ── Model ↔ vositalar sikli (soxta OpenAI serveri) ─────────────────────
 // Tarmoqqa chiqmaydi: 127.0.0.1 da OpenAI kabi javob beradigan kichik
 // server. Sinaladi: so'rov shakli, bo'laklab kelgan vosita chaqiruvi,
@@ -446,7 +615,7 @@ const chatCtx = (perms) => ({
   can: (href) => isPathAllowed(href, perms),
   actions: false,
 });
-async function turn(ctx, question, { history = [], signal = new AbortController().signal, onEvent, conf = cfg } = {}) {
+async function turn(ctx, question, { history = [], signal = new AbortController().signal, onEvent, conf = cfg, effort } = {}) {
   const events = [];
   seen.length = 0;
   const started = Date.now();
@@ -455,7 +624,7 @@ async function turn(ctx, question, { history = [], signal = new AbortController(
     onEvent?.(e);
   };
   try {
-    const r = await runChatTurn({ ctx, cfg: conf, lang: "uz", history, question, emit, signal });
+    const r = await runChatTurn({ ctx, cfg: conf, lang: "uz", history, question, emit, signal, effort });
     return { ...r, events, ms: Date.now() - started };
   } catch (error) {
     return { error, events, ms: Date.now() - started };
@@ -687,6 +856,186 @@ for (const [status, text] of [
   const stop = new AbortController();
   const r = await turn(chatCtx(null), "Salom", { signal: stop.signal, onEvent: (e) => e.type === "delta" && stop.abort() });
   check("to'xtatilganda kutib qolmaydi", r.ms < 5000 && eq(deltas(r), ["Bir"]), `${r.ms} ms, ${String(r.error?.logDetail ?? r.answer)}`);
+}
+
+// ── 4-bosqich: Responses API (soxta server) ──────────────────────────
+// OpenAI'ning o'zi bilan shu yo'l ishlaydi (lib/ai/config.ts → api).
+console.log("\n— runChatTurn: Responses API (soxta OpenAI)");
+const rcfg = { ...cfg, api: "responses", model: "fake-responses" };
+const rText = (...parts) => [
+  ...parts.map((delta) => ({ type: "response.output_text.delta", item_id: "msg_x", output_index: 0, content_index: 0, delta })),
+  {
+    type: "response.completed",
+    response: {
+      status: "completed",
+      output: [{ type: "message", id: "msg_x", role: "assistant", status: "completed", content: [{ type: "output_text", text: parts.join(""), annotations: [] }] }],
+    },
+  },
+];
+/** Fikrlash (shifrlangan) + vosita chaqiruvlari — OpenAI kabi. */
+function rCalls(calls) {
+  const items = [
+    { type: "reasoning", id: "rs_A", summary: [], encrypted_content: "ENC_A" },
+    ...calls.map((c) => ({ type: "function_call", id: `fc_${c.id}`, call_id: c.id, name: c.name, arguments: JSON.stringify(c.args ?? {}), status: "completed" })),
+  ];
+  return [
+    ...items.map((item, output_index) => ({ type: "response.output_item.done", output_index, item })),
+    { type: "response.completed", response: { status: "completed", output: items } },
+  ];
+}
+{
+  const question = "Lid qanday qo'shiladi?";
+  reply = (_, n) =>
+    n === 1 ? { sse: rCalls([{ id: "call_r1", name: "crm_help", args: { topic: question } }]) } : { sse: rText("Lidlar ", "[sahifasida](/orders-list).") };
+  const history = [
+    { role: "user", content: "oldin", at: "" },
+    { role: "assistant", content: "javob", at: "" },
+  ];
+  const r = await turn(chatCtx(["/orders-list"]), question, { history, conf: rcfg, effort: "medium" });
+  const [q1, q2] = seen.map((s) => s.body);
+  check(
+    "Responses so'rovi: manzil, model, store:false, oqim, daraja, ortiqcha maydon yo'q",
+    seen[0]?.path === "/v1/responses" && q1?.model === "fake-responses" && q1.store === false && q1.stream === true &&
+      eq(q1.reasoning, { effort: "medium" }) && q1.tool_choice === "auto" && typeof q1.instructions === "string" && q1.instructions.includes("2026-10-07") &&
+      !("temperature" in q1) && !("max_output_tokens" in q1) && !("include" in q1) && !("messages" in q1),
+    JSON.stringify(q1 ?? r.error?.logDetail ?? null).slice(0, 300),
+  );
+  check(
+    "input: tarix + savol (tizim ko'rsatmasi — instructions'da)",
+    eq(q1?.input, [
+      { role: "user", content: "oldin" },
+      { role: "assistant", content: "javob" },
+      { role: "user", content: question },
+    ]),
+    JSON.stringify(q1?.input),
+  );
+  const tools = q1?.tools ?? [];
+  check(
+    "vositalar: tekis shakl, strict:false, faqat ruxsat etilganlari",
+    tools.length > 0 && tools.every((x) => x.type === "function" && x.strict === false && x.name && x.parameters && !("function" in x)) &&
+      eq(tools.map((x) => x.name).sort(), ["crm_help", "leads_summary", "overview", "staff_tasks"]),
+    JSON.stringify(tools.map((x) => x.name)),
+  );
+  const input2 = q2?.input ?? [];
+  const out = input2.find((it) => it.type === "function_call_output");
+  check(
+    "2-murojaat: fikrlash va chaqiruv o'zgarmay qaytadi, natija call_id bilan",
+    input2.length === 6 && eq(input2[3], { type: "reasoning", id: "rs_A", summary: [], encrypted_content: "ENC_A" }) &&
+      input2[4]?.type === "function_call" && input2[4].id === "fc_call_r1" && out?.call_id === "call_r1" &&
+      JSON.parse(out.output).sections?.[0]?.title === "Lid qo'shish",
+    JSON.stringify(input2).slice(0, 400),
+  );
+  check(
+    "javob oqimda, vosita hodisalari start → done",
+    r.answer === "Lidlar [sahifasida](/orders-list)." && deltas(r).join("") === r.answer &&
+      eq(r.events.filter((e) => e.type === "tool").map((e) => [e.id, e.status]), [["call_r1", "start"], ["call_r1", "done"]]),
+    JSON.stringify({ answer: r.answer, error: r.error?.logDetail }),
+  );
+}
+{
+  reply = (body) =>
+    body.tool_choice === "auto" ? { sse: rCalls([{ id: `k${seen.length}`, name: "crm_help", args: { topic: "parol" } }]) } : { sse: rText("Yakuniy.") };
+  const r = await turn(chatCtx(null), "Aylanib qol", { conf: rcfg });
+  check(
+    `Responses: ${MAX_ROUNDS} murojaat, oxirgisida tool_choice "none" (ro'yxat turadi)`,
+    seen.length === MAX_ROUNDS && seen.at(-1).body.tool_choice === "none" && Array.isArray(seen.at(-1).body.tools) && r.answer === "Yakuniy.",
+    JSON.stringify({ n: seen.length, last: seen.at(-1)?.body.tool_choice, error: r.error?.logDetail }),
+  );
+  check("daraja berilmasa — reasoning yuborilmaydi", seen.every((s) => !("reasoning" in s.body)));
+}
+{
+  const refusal = {
+    status: 400,
+    json: {
+      error: {
+        message: "Unsupported value: 'none' is not supported with the 'gpt-6-astra' model. Supported values are: 'low', 'medium', 'high', 'xhigh', and 'max'.",
+        type: "invalid_request_error",
+        param: "reasoning.effort",
+        code: "unsupported_value",
+      },
+    },
+  };
+  reply = (body) => (body.reasoning?.effort === "none" ? refusal : { sse: rText("Tayyor.") });
+  const conf = { ...rcfg, model: "astra-like" };
+  const r = await turn(chatCtx(null), "Salom", { conf, effort: "none" });
+  check(
+    "daraja rad etilsa — OpenAI sanagan eng yaqini (low) bilan qayta",
+    r.answer === "Tayyor." && eq(seen.map((s) => s.body.reasoning?.effort), ["none", "low"]),
+    JSON.stringify({ e: seen.map((s) => s.body.reasoning?.effort), error: r.error?.logDetail }),
+  );
+  const again = await turn(chatCtx(null), "Yana", { conf, effort: "none" });
+  check("keyingi savolda darhol «low» (rad javobi takrorlanmaydi)", again.answer === "Tayyor." && eq(seen.map((s) => s.body.reasoning?.effort), ["low"]));
+  const high = await turn(chatCtx(null), "Chuqur", { conf, effort: "high" });
+  check("boshqa daraja o'z holicha", high.answer === "Tayyor." && eq(seen.map((s) => s.body.reasoning?.effort), ["high"]));
+}
+{
+  reply = (body) =>
+    body.reasoning
+      ? { status: 400, json: { error: { message: "Unsupported parameter: 'reasoning.effort' is not supported with this model.", param: "reasoning.effort", code: "unsupported_parameter" } } }
+      : { sse: rText("Oddiy model.") };
+  const r = await turn(chatCtx(null), "Salom", { conf: { ...rcfg, model: "plain-model" }, effort: "low" });
+  check("fikrlamaydigan model — reasoning'siz qayta so'raladi", r.answer === "Oddiy model." && seen.length === 2 && !("reasoning" in seen[1].body), JSON.stringify(r.error?.logDetail ?? null));
+}
+{
+  // Tashkilot tasdiqlanmagan: oqim rad etiladi — JSON javob, vosita sikli ham ishlaydi.
+  const json = (output) => ({ json: { id: "resp", status: "completed", error: null, output } });
+  reply = (body) => {
+    if (body.stream) return { status: 400, json: { error: { message: "Your organization must be verified to stream this model.", param: "stream", code: "unsupported_value" } } };
+    return body.input.some((it) => it.type === "function_call_output")
+      ? json([{ type: "message", id: "m1", role: "assistant", content: [{ type: "output_text", text: "Oqimsiz javob." }] }])
+      : json([
+          { type: "reasoning", id: "rs9", encrypted_content: "E9", summary: [] },
+          { type: "function_call", id: "fc9", call_id: "c9", name: "crm_help", arguments: '{"topic":"lid"}' },
+        ]);
+  };
+  const r = await turn(chatCtx(null), "Lid?", { conf: { ...rcfg, model: "verify-model-r" }, effort: "low" });
+  check(
+    "Responses: oqim rad etilsa — oqimsiz, vosita sikli ishlaydi",
+    r.answer === "Oqimsiz javob." && eq(seen.map((s) => s.body.stream), [true, false, false]) && eq(r.usedTools, ["crm_help"]) &&
+      seen[2].body.input.some((it) => it.type === "reasoning" && it.encrypted_content === "E9"),
+    JSON.stringify({ stream: seen.map((s) => s.body.stream), answer: r.answer, error: r.error?.logDetail }),
+  );
+}
+{
+  // Zaxira: OpenAI oldingi elementlarni qabul qilmasa — fikrlashsiz, id siz qayta.
+  reply = (body) => {
+    if (body.input.some((it) => it.type === "reasoning")) {
+      return { status: 400, json: { error: { message: "Item with id 'rs_A' not found. Items are not persisted when `store` is set to false.", param: "input", code: null } } };
+    }
+    return body.input.some((it) => it.type === "function_call_output")
+      ? { sse: rText("Fikrlashsiz davom.") }
+      : { sse: rCalls([{ id: "p1", name: "crm_help", args: { topic: "lid" } }]) };
+  };
+  const r = await turn(chatCtx(null), "Lid?", { conf: { ...rcfg, model: "plain-input-model" } });
+  const last = seen.at(-1)?.body.input ?? [];
+  check(
+    "oldingi elementlar rad etilsa — fikrlashsiz, id siz qayta yuboriladi",
+    r.answer === "Fikrlashsiz davom." && seen.length === 3 && !last.some((it) => it.type === "reasoning" || "id" in it) &&
+      last.some((it) => it.type === "function_call" && it.call_id === "p1"),
+    JSON.stringify({ n: seen.length, error: r.error?.logDetail }),
+  );
+}
+{
+  reply = () => ({ sse: [{ type: "response.failed", response: { status: "failed", error: { code: "server_error", message: "boom" } } }] });
+  const r = await turn(chatCtx(null), "Salom", { conf: rcfg });
+  check(
+    "Responses: oqimdagi xato — xodimga umumiy xabar, tafsilot jurnalda",
+    r.error instanceof AiProviderError && r.error.message === PROVIDER_ERRORS.down.message && r.error.logDetail.includes("boom"),
+    String(r.error?.logDetail ?? r.answer),
+  );
+}
+{
+  const { accountModels } = await import("@/lib/ai/openai");
+  reply = () => ({ json: { object: "list", data: [{ id: "gpt-6-sol", object: "model" }, { id: "gpt-6-luna", object: "model" }] } });
+  seen.length = 0;
+  const ids = await accountModels(cfg);
+  const again = await accountModels(cfg);
+  check(
+    "hisobdagi modellar: GET /v1/models, eslab qolinadi",
+    ids?.has("gpt-6-sol") && ids.size === 2 && again === ids && seen.length === 1 && seen[0].path === "/v1/models" && seen[0].auth === "Bearer sk-test-123",
+    JSON.stringify({ ids: ids ? [...ids] : null, n: seen.length }),
+  );
+  check("ro'yxatni olib bo'lmasa — null (tekshirilmaydi)", (await accountModels({ ...cfg, baseUrl: "http://127.0.0.1:1/v1" })) === null);
 }
 server.closeAllConnections();
 server.close();

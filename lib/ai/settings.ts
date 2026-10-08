@@ -1,5 +1,7 @@
 import type { Db } from "mongodb";
 import { AI } from "./db";
+import { DEFAULT_EFFORT, isEffort, isModelId } from "./models";
+import type { AiEffort } from "./protocol";
 
 // AI YORDAMCHI SOZLAMALARI — Sozlamalar → Ilova sozlamalari → AI yordamchi.
 //
@@ -18,6 +20,11 @@ import { AI } from "./db";
 // AMALLAR (2-bosqich: lid qo'shish, kirim, chiqim) — ALOHIDA kalit, u ham
 // sukut bo'yicha o'chiq. Savol-javobni yoqqan admin pul yozuvlarini ham
 // yoqib qo'ygan bo'lib qolmasin: bu boshqa darajadagi qaror.
+//
+// MODELLAR (4-bosqich, 08.10.2026): xodim panelda qaysi modellarni va
+// qaysi «Tezlik» ni tanlay olishi. Modellar narxi o'n barobargacha farq
+// qiladi — ro'yxatni admin belgilaydi. `models: null` — admin hali
+// tanlamagan: katalogdagi hammasi + .env modeli (lib/ai/modelChoice.ts).
 
 export interface AiSettings {
   enabled: boolean;
@@ -25,6 +32,12 @@ export interface AiSettings {
   actionsEnabled: boolean;
   /** Bitta xodimga kuniga nechta savol (Toshkent kuni). */
   dailyLimit: number;
+  /** Xodimlarga ochiq modellar, paneldagi tartibda. `null` — admin tanlamagan (sukut ro'yxati). */
+  models: string[] | null;
+  /** Xodim tanlamaguncha shu model; `null` — .env dagisi. */
+  defaultModel: string | null;
+  /** Xodim tanlamaguncha shu «Tezlik». */
+  defaultEffort: AiEffort;
   /** Kim va qachon oxirgi marta o'zgartirgan — Sozlamalarda ko'rinadi. */
   updatedBy: string | null;
   updatedAt: string | null;
@@ -32,8 +45,17 @@ export interface AiSettings {
 
 export const DEFAULT_DAILY_LIMIT = 50;
 export const MAX_DAILY_LIMIT = 1000;
+/** Panel ro'yxati uzun bo'lib ketmasin. */
+export const MAX_MODELS = 20;
 
 const KEY = "main";
+
+/** Takrorsiz, yaroqli ID'lar; bo'sh ro'yxat — `null`. */
+function modelList(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const list = [...new Set(raw.filter(isModelId))].slice(0, MAX_MODELS);
+  return list.length ? list : null;
+}
 
 export function normalizeAiSettings(raw: unknown): AiSettings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
@@ -43,6 +65,9 @@ export function normalizeAiSettings(raw: unknown): AiSettings {
     actionsEnabled: r.actionsEnabled === true,
     dailyLimit:
       Number.isInteger(limit) && limit >= 1 && limit <= MAX_DAILY_LIMIT ? limit : DEFAULT_DAILY_LIMIT,
+    models: modelList(r.models),
+    defaultModel: isModelId(r.defaultModel) ? r.defaultModel : null,
+    defaultEffort: isEffort(r.defaultEffort) ? r.defaultEffort : DEFAULT_EFFORT,
     updatedBy: typeof r.updatedBy === "string" ? r.updatedBy : null,
     updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : null,
   };
@@ -62,10 +87,32 @@ export type SaveAiSettingsResult = { ok: true; settings: AiSettings } | { ok: fa
  */
 export async function saveAiSettings(
   db: Db,
-  patch: { enabled?: unknown; actionsEnabled?: unknown; dailyLimit?: unknown },
+  patch: {
+    enabled?: unknown;
+    actionsEnabled?: unknown;
+    dailyLimit?: unknown;
+    models?: unknown;
+    defaultModel?: unknown;
+    defaultEffort?: unknown;
+  },
   by: string,
 ): Promise<SaveAiSettingsResult> {
   const set: Record<string, unknown> = {};
+  if (patch.models !== undefined) {
+    if (!Array.isArray(patch.models) || !patch.models.every(isModelId)) return { ok: false, error: "Model nomi noto'g'ri" };
+    if (patch.models.length > MAX_MODELS) return { ok: false, error: `Ko'pi bilan ${MAX_MODELS} ta model` };
+    const list = modelList(patch.models);
+    if (!list) return { ok: false, error: "Kamida bitta model tanlang" };
+    set.models = list;
+  }
+  if (patch.defaultModel !== undefined) {
+    if (patch.defaultModel !== null && !isModelId(patch.defaultModel)) return { ok: false, error: "Model nomi noto'g'ri" };
+    set.defaultModel = patch.defaultModel;
+  }
+  if (patch.defaultEffort !== undefined) {
+    if (!isEffort(patch.defaultEffort)) return { ok: false, error: "Noto'g'ri qiymat" };
+    set.defaultEffort = patch.defaultEffort;
+  }
   if (patch.enabled !== undefined) {
     if (typeof patch.enabled !== "boolean") return { ok: false, error: "Noto'g'ri qiymat" };
     set.enabled = patch.enabled;

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import AiScreenRefresh from "@/components/ai/AiScreenRefresh";
 import AppShell from "@/components/shared/AppShell";
 import SpeedFab from "@/components/tezlik/SpeedFab";
 import { getCurrentUser } from "@/lib/auth";
@@ -57,7 +58,8 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       isAdmin={user.role === "admin"}
       features={{ gamification: gamOn }}
     >
-      {children}
+      {/* AI yozuvni saqlagach sahifa shu o'ram orqali qayta chiziladi (components/ai/AiScreenRefresh.tsx) */}
+      <AiScreenRefresh>{children}</AiScreenRefresh>
       {/* Suzuvchi robot — tezlik sinovi (components/tezlik/SpeedFab.tsx) */}
       <SpeedFab />
     </AppShell>

@@ -40,6 +40,16 @@ const CONFIRM_INSTRUCTION =
   "A confirmation card is now shown to the user. NOTHING IS SAVED YET. Tell the user to check the card and press " +
   "«Tasdiqlash» (Confirm) to save it or «Bekor qilish» (Cancel). Never say it was saved, paid or added.";
 
+/**
+ * Qoralama tuzilganda ekranda ochiladigan sahifa — yozuv saqlangach o'sha
+ * yerda ko'rinadi (lid — Lidlar, pul — Kassalar, izoh — o'quvchi profili).
+ * Xodim ocha olmasa runTool uni tashlaydi.
+ */
+function draftScreen(kind: AiActionKind, payload: Record<string, unknown>): string | undefined {
+  if (kind === "comment") return Number.isInteger(payload.pupilId) ? `/student-edit/${payload.pupilId}?src=list` : undefined;
+  return ACTION_PAGES[kind];
+}
+
 async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResult): Promise<unknown> {
   if (!prepared.ok) return prepared.reply;
   const { draft } = prepared;
@@ -50,13 +60,17 @@ async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResu
     payload: draft.payload,
     fields: draft.fields,
   });
-  return new DraftCreated(viewOf(doc), {
-    draftId: doc.id,
-    status: "awaiting_user_confirmation",
-    expiresInMinutes: Math.round(DRAFT_TTL_MS / 60_000),
-    ...draft.forModel,
-    instruction: CONFIRM_INSTRUCTION,
-  });
+  return new DraftCreated(
+    viewOf(doc),
+    {
+      draftId: doc.id,
+      status: "awaiting_user_confirmation",
+      expiresInMinutes: Math.round(DRAFT_TTL_MS / 60_000),
+      ...draft.forModel,
+      instruction: CONFIRM_INSTRUCTION,
+    },
+    draftScreen(kind, draft.payload),
+  );
 }
 
 const PERSON_PARAMS = {

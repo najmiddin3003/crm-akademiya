@@ -10,11 +10,37 @@
 
 export type AiToolStatus = "start" | "done" | "error";
 
+/**
+ * Fikrlash darajasi — panelda «Tezlik» (tezdan chuqurga). OpenAI'ning
+ * `reasoning.effort` qiymatlari; qaysi model qaysi birini qabul qilishi
+ * lib/ai/models.ts da.
+ */
+export type AiEffort = "none" | "low" | "medium" | "high";
+
+/** Panelda tanlanadigan model (GET /api/ai/status → `models`). */
+export interface AiModelOption {
+  id: string;
+  /** Ko'rinadigan nom ("GPT-6 Sol") — tarjima qilinmaydi. */
+  name: string;
+  /** Qisqa tavsif (o'zbekcha, mijoz `t()` qiladi); noma'lum modelda bo'sh. */
+  hint: string;
+  /** Shu modelda tanlash mumkin bo'lgan darajalar; bo'sh — tezlik tanlanmaydi. */
+  efforts: AiEffort[];
+}
+
 export type AiStreamEvent =
-  /** Birinchi hodisa: suhbat id'si (yangi bo'lsa ham) va qolgan limit. */
-  | { type: "meta"; conversationId: string; remaining: number; limit: number }
-  /** Vosita ishga tushdi / tugadi — panelda "… olinmoqda" belgisi. */
-  | { type: "tool"; id: string; label: string; status: AiToolStatus }
+  /**
+   * Birinchi hodisa: suhbat id'si (yangi bo'lsa ham) va qolgan limit.
+   * `model`/`effort` — shu javobni HAQIQATAN qaysi model va daraja yozyapti
+   * (tanlov ruxsat etilmagan bo'lsa server sukutga almashtiradi).
+   */
+  | { type: "meta"; conversationId: string; remaining: number; limit: number; model?: string; effort?: AiEffort | null }
+  /**
+   * Vosita ishga tushdi / tugadi — panelda "… olinmoqda" belgisi. `href` —
+   * vosita ko'rgan ma'lumotning CRM sahifasi (faqat `done` da, xodim ocha
+   * oladigan bo'lsa): panel kichrayib, ekranda shu sahifani ko'rsatadi.
+   */
+  | { type: "tool"; id: string; label: string; status: AiToolStatus; href?: string }
   /** Javob matnining navbatdagi bo'lagi. */
   | { type: "delta"; text: string }
   /** Amal qoralamasi tayyor — panel tasdiq kartasini chizadi (2-bosqich). */
@@ -99,6 +125,19 @@ export interface AiActionView {
   error?: string;
 }
 
+/** Sozlamalardagi modellar ro'yxatining qatori (GET /api/ai/settings → `modelRows`). */
+export interface AiModelRow {
+  id: string;
+  name: string;
+  hint: string;
+  /** OpenAI hisobida bormi; `null` — tekshirib bo'lmadi. */
+  available: boolean | null;
+  /** Vosita bilan faqat Responses API'da — proksi (Chat Completions) rejimida xodimlarga ko'rinmaydi. */
+  responsesOnly: boolean;
+  /** Katalogda yo'q (admin qo'lda qo'shgan yoki .env dagi). */
+  custom: boolean;
+}
+
 /** GET /api/ai/status javobi. */
 export interface AiStatus {
   /** Admin yoqqanmi (Sozlamalar). */
@@ -110,4 +149,9 @@ export interface AiStatus {
   remaining: number;
   /** Amallar (lid, kirim, chiqim, ko'chirish, izoh, topshiriq — tasdiq bilan) shu xodimga ochiqmi. */
   actions: boolean;
+  /** Tanlash mumkin bo'lgan modellar (admin ochgan va OpenAI hisobida bor). */
+  models: AiModelOption[];
+  /** Xodim hali tanlamagan bo'lsa — shu model va daraja. */
+  defaultModel: string;
+  defaultEffort: AiEffort | null;
 }

@@ -1,6 +1,6 @@
 import type { AiContext } from "../context";
 import { MAX_TOOL_RESULT_CHARS } from "../config";
-import type { ToolSpec } from "../openai";
+import type { ResponseToolSpec, ToolSpec } from "../openai";
 import type { AiActionView } from "../protocol";
 import {
   actionOptions,
@@ -84,12 +84,31 @@ export function toolSpecs(tools: readonly AiTool[]): ToolSpec[] {
   }));
 }
 
+/** Responses API shakli — `function` ichiga o'ralmagan, `strict: false` (lib/ai/openai.ts → ResponseToolSpec). */
+export function responseToolSpecs(tools: readonly AiTool[]): ResponseToolSpec[] {
+  return tools.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters, strict: false }));
+}
+
 export interface ToolRunResult {
   ok: boolean;
   /** Modelga ketadigan JSON matn (hajmi cheklangan). */
   content: string;
   /** Amal vositasi qoralama tuzdi — panel kartasi (lib/ai/chat.ts uzatadi). */
   action?: AiActionView;
+  /**
+   * Natija ko'rinadigan CRM sahifasi (4-bosqich): panel kichrayib, ekranda
+   * shu sahifani ochadi — "AI nima qilyapti" ko'rinib tursin. Faqat ichki
+   * yo'l va faqat xodim ocha oladigan sahifa.
+   */
+  screen?: string;
+}
+
+/** `/finance-cash`, `/student-edit/12?src=list` — components/ai/aiMarkdown.ts → isInternalHref bilan bir xil. */
+const INTERNAL_PATH = /^\/(?!\/)[A-Za-z0-9\-._~%/?=&#]*$/;
+
+/** Vosita natijasidagi `page` (yoki qoralama sahifasi) → ekranda ochiladigan sahifa. */
+export function screenOf(ctx: Pick<AiContext, "can">, page: unknown): { screen?: string } {
+  return typeof page === "string" && INTERNAL_PATH.test(page) && ctx.can(page) ? { screen: page } : {};
 }
 
 /**
@@ -120,9 +139,9 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
   try {
     const result = await tool.run(ctx, args);
     if (result instanceof DraftCreated) {
-      return { ok: true, content: clip(JSON.stringify(result.forModel)), action: result.view };
+      return { ok: true, content: clip(JSON.stringify(result.forModel)), action: result.view, ...screenOf(ctx, result.screen) };
     }
-    return { ok: true, content: clip(JSON.stringify(result ?? null)) };
+    return { ok: true, content: clip(JSON.stringify(result ?? null)), ...screenOf(ctx, (result as { page?: unknown } | null)?.page) };
   } catch (e) {
     if (e instanceof ToolInputError) return fail(`Invalid arguments: ${e.message}`);
     console.error("[ai] vosita xatosi", name, e);

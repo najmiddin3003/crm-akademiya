@@ -5,6 +5,7 @@ import { runChatTurn } from "@/lib/ai/chat";
 import { aiProviderConfig, KEEPALIVE_MS, MAX_MESSAGE_CHARS } from "@/lib/ai/config";
 import { loadAiContext } from "@/lib/ai/context";
 import { aiDb } from "@/lib/ai/db";
+import { modelChoices, resolveChoice } from "@/lib/ai/modelChoice";
 import { adminDetail, AiProviderError } from "@/lib/ai/openai";
 import type { AiStreamEvent } from "@/lib/ai/protocol";
 import { loadAiSettings } from "@/lib/ai/settings";
@@ -13,8 +14,12 @@ import { refundQuota, takeQuota } from "@/lib/ai/usage";
 import { normalizeLang } from "@/lib/i18n";
 import { LANG_COOKIE } from "@/lib/serverT";
 
-// POST /api/ai/chat  { message, conversationId? }  →  NDJSON oqim
-// (hodisalar shakli: lib/ai/protocol.ts).
+// POST /api/ai/chat  { message, conversationId?, model?, effort? }  →  NDJSON
+// oqim (hodisalar shakli: lib/ai/protocol.ts).
+//
+// `model` / `effort` — paneldagi tanlov (4-bosqich). Admin ochmagan model
+// yoki model qabul qilmaydigan daraja so'ralsa — sukutga almashadi
+// (lib/ai/modelChoice.ts); haqiqatda qaysi biri ishlatilgani `meta` da.
 //
 // TARTIB — hammasi oqim BOSHLANISHIDAN OLDIN tekshiriladi (sessiya,
 // yoqilganmi, kalit, savol, limit): xato bo'lsa oddiy JSON qaytadi va
@@ -47,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "AI yordamchi sozlanmagan: serverda kalit yo'q" }, { status: 503 });
   }
 
-  let body: { message?: unknown; conversationId?: unknown };
+  let body: { message?: unknown; conversationId?: unknown; model?: unknown; effort?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -69,6 +74,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `Bugungi limit tugadi: kuniga ${limit} ta savol.` }, { status: 429 });
   }
 
+  // Hisobdagi modellar ro'yxati bu yerda so'ralmaydi (har savolga ortiqcha
+  // kutish) — tanlov admin ro'yxatiga qarab tekshiriladi; hisobda yo'q
+  // modelni OpenAI o'zi rad etadi.
+  const choice = resolveChoice(modelChoices(cfg, settings), body.model, body.effort);
+  const turnCfg = { ...cfg, model: choice.model };
+
   const lang = normalizeLang((await cookies()).get(LANG_COOKIE)?.value);
   // Oldingi javoblardagi qoralamalar qanday tugagani modelga ham ko'rinsin
   // ("saqlandimi?" savoliga taxmin bilan javob bermasin).
@@ -88,17 +99,19 @@ export async function POST(req: Request) {
         }
       };
       const keepalive = setInterval(() => emit({ type: "ping" }), KEEPALIVE_MS);
-      emit({ type: "meta", conversationId: conversation?.id ?? "", remaining: quota.remaining, limit });
+      const used = { model: choice.model, effort: choice.effort };
+      emit({ type: "meta", conversationId: conversation?.id ?? "", remaining: quota.remaining, limit, ...used });
 
       try {
         const turn = await runChatTurn({
           ctx,
-          cfg,
+          cfg: turnCfg,
           lang,
           history,
           question: message,
           emit,
           signal: req.signal,
+          effort: choice.effort,
         });
         if (req.signal.aborted) return; // chala javob saqlanmaydi
         const { actionIds } = turn;
@@ -113,7 +126,7 @@ export async function POST(req: Request) {
           { role: "user", content: message, at: new Date().toISOString() },
           { role: "assistant", content: answer, at: new Date().toISOString(), ...(actionIds.length ? { actionIds } : {}) },
         ]);
-        emit({ type: "meta", conversationId: id, remaining: quota.remaining, limit });
+        emit({ type: "meta", conversationId: id, remaining: quota.remaining, limit, ...used });
         emit({ type: "done" });
       } catch (e) {
         // Xodim o'zi to'xtatdi (yoki sahifani yopdi) — xato emas va savol

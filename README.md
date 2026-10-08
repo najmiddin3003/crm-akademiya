@@ -2154,14 +2154,15 @@ O'QISH**: yordamchi hech narsani yaratmaydi, o'zgartirmaydi, o'chirmaydi.
 
 - `lib/ai/` — `config` (env, chegaralar), `db` (kolleksiyalar, indekslar),
   `settings`, `usage`, `store`, `context`, `prompt`, `chat`, `openai` +
-  `sse` (oqimni o'qish; SDK emas, `fetch`), `mask`, `knowledge`,
+  `sse` / `responsesSse` (oqimni o'qish; SDK emas, `fetch`), `models` +
+  `modelChoice` (model va «Tezlik», 4-bosqich), `mask`, `knowledge`,
   `toolLabels`, `protocol`, `tools/`.
 - `app/api/ai/` — `status` (GET), `chat` (POST, oqim), `conversations`
   (GET/DELETE, faqat o'ziniki), `settings` (GET/PUT, faqat admin). To'rttasi
   `scripts/gen-api-permissions.mjs` → `SHARED_EXTRA` da: darvozada sessiya
   yetadi, ma'lumot ruxsati vosita ichida.
-- `components/ai/` — `AssistantPanel`, `useAiChat`, `MessageText`,
-  `aiMarkdown`; `components/settings/AiAssistantTab.tsx`.
+- `components/ai/` — `AssistantPanel`, `ModelPicker`, `AiScreenRefresh`,
+  `useAiChat`, `MessageText`, `aiMarkdown`; `components/settings/AiAssistantTab.tsx`.
 
 ### Sozlash
 
@@ -2214,7 +2215,8 @@ faqat Guruhlar) bilan oylik so'rash → "ruxsatingiz yo'q".
     keladi.
 
   Boshqa 400 da qayta so'ralmaydi. Fikrlash bilan vosita ishlatish faqat
-  `/v1/responses` da — kerak bo'lsa keyin o'sha API'ga o'tiladi.
+  `/v1/responses` da — 4-bosqichda o'sha API'ga o'tildi (pastda); yuqoridagi
+  moslashuvlar endi faqat proksi (Chat Completions) rejimida ishlaydi.
 - Xizmat xatosining asl sababi (`HTTP 400 (model): …`, kalit yashirilgan)
   panelda faqat ADMINGA ko'rinadi (`error.detail`), xodim faqat umumiy
   xabarni ko'radi; to'liq matn server jurnalida `[ai]` bilan.
@@ -2368,3 +2370,78 @@ Sinov:
   ishlab chiqilgan mashinada MongoDB yo'q edi; birinchi imkoniyatda lokal
   bazada ishga tushiring.
 - `tsc` (`tsconfig.check.json`) va `eslint` toza.
+
+### 4-bosqich — model va «Tezlik» tanlash; to'liq ekran va suzuvchi oyna (2026-10-08)
+
+Foydalanuvchi so'rovi: ChatGPT'dagi kabi model va tezlik tanlash, AI
+oynasi to'liq ekranda, AI ish boshlasa oyna kichrayib ish ekranda
+ko'rinsin, chat istalgan joyga sudralsin.
+
+**Responses API.** OpenAI'ning o'zi bilan endi `/v1/responses`
+(`lib/ai/config.ts` → `api`): GPT-5.6, GPT-6 Sol/Luna Chat Completions'da
+vositani faqat `reasoning_effort: "none"` bilan qabul qiladi, GPT-6 Astra va
+GPT-6.1 Sol esa vositani u yerda umuman qabul qilmaydi — «Tezlik» faqat
+Responses'da ma'noli. `OPENAI_BASE_URL` boshqa manzilga (proksi) qaratilgan
+bo'lsa — eski Chat Completions (tezlik tanlanmaydi, Astra/6.1 Sol ro'yxatda
+yo'q). Majburlash: `AI_ASSISTANT_API=responses | chat`.
+
+- So'rov: `instructions` (tizim ko'rsatmasi), `input` (tarix + savol, keyin
+  har murojaatda modelning fikrlash va `function_call` elementlari
+  O'ZGARTIRILMAY + `function_call_output`), vositalar tekis shaklda
+  `strict: false` (Responses'da sukut `true` — bizdagi ixtiyoriy argumentlar
+  bilan 400 bo'lardi), `reasoning: {effort}`, `store: false` (OpenAI suhbatni
+  saqlamaydi), `stream`. Oxirgi murojaatda `tool_choice: "none"`.
+- Oqim: `lib/ai/responsesSse.ts` (sof, sinaladi) — `output_text.delta`
+  panelga oqadi, chaqiruvlar `output_item.done` / `response.completed` dan.
+- Moslashuv (`responsesQuirkFor`, har biri bir marta, model bo'yicha eslab
+  qolinadi): daraja rad etilsa — OpenAI sanagan qiymatlardan eng yaqini
+  (Astra `none` ni rad etadi → `low`), ro'yxat bo'lmasa `reasoning`siz;
+  tashkilot tasdiqlanmagan — oqimsiz; oldingi elementlar rad etilsa —
+  fikrlashsiz va `id` siz (zaxira, hujjat bo'yicha bo'lmasligi kerak).
+
+**Model va «Tezlik»** (`lib/ai/models.ts` — katalog, `lib/ai/modelChoice.ts`):
+
+- Katalog: GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna, GPT-5.6
+  Sol/Terra/Luna (+ `gpt-5.6` taxallusi). Darajalar: Tezkor (`none`), Tez
+  (`low`), O'rtacha (`medium`), Chuqur (`high`); `xhigh`/`max` yo'q — javobga
+  100 soniya. Astra va 6.1 Sol'da Tezkor yo'q.
+- Ro'yxat — admin ochganlari (`ai_settings.models`; tanlamagan bo'lsa .env
+  modeli + katalog), OpenAI hisobida yo'g'i panelda ko'rinmaydi
+  (`accountModels` → GET /v1/models, 10 daqiqa eslab qolinadi). Sukut —
+  admin tanlagani yoki .env modeli; sukut daraja — `ai_settings.defaultEffort`
+  (o'zi — Tez).
+- Xodim tanlovi localStorage'da (`tizimli:ai-choice`); serverda QAYTA
+  tekshiriladi (`resolveChoice`): ro'yxatda yo'q model — sukut, model qabul
+  qilmaydigan daraja — eng yaqini. Qaysi biri ishlatilgani `meta` hodisasida
+  — javob ostida "GPT-6 Sol · Tez".
+- Sozlamalar → AI yordamchi → «Modellar»: yoqish/o'chirish, «Sukut qilish»,
+  qo'lda model ID qo'shish, «Xodim tanlamaguncha Tezlik»; har model yonida
+  hisobda bor-yo'qligi.
+
+**Oyna** (`components/ai/AssistantPanel.tsx`, `ModelPicker.tsx`):
+
+- Robot bosilsa — TO'LIQ EKRAN (ChatGPT kabi: bo'sh suhbatda o'rtada savol
+  maydoni va takliflar). Yozish maydoni ichida model va tezlik tugmasi:
+  ro'yxat + surgich.
+- SUZUVCHI OYNA — sarlavhasidan sudraladi (joyi `tizimli:ai-float`),
+  orqadagi sahifa ishlayveradi, robot tugmasi panel ochiq paytda yashirinadi.
+- AI ISHI EKRANDA: vosita ma'lumot olganda server sahifani yuboradi
+  (`tool.href` — natijadagi `page`, faqat ichki yo'l va xodim ocha olsa —
+  `screenOf`; qoralamada — yozuv ko'rinadigan sahifa). Panel kichrayadi va
+  CRM shu sahifani ochadi (bir qadamdagi bir nechta vositadan faqat oxirgisi);
+  yozuv saqlansa — `resultHref`, o'sha sahifada turgan bo'lsa sahifa qayta
+  chiziladi (`components/ai/AiScreenRefresh.tsx` — layout'dagi kalitli o'ram,
+  robot o'ramdan tashqarida, suhbat saqlanadi). Ish davomida ekran chetida nur
+  (`.ai-working-glow`). Sarlavhadagi ekran tugmasi bilan o'chiriladi
+  (`tizimli:ai-follow`).
+
+Sinov: `scripts/_verify-ai.mjs` — 163 tekshiruv (avval 116): katalog,
+darajalar, tanlov va uni serverda tekshirish, sozlama validatsiyasi, API
+tanlash, Responses oqimi va qaytarish, soxta server bilan Responses sikli
+(so'rov shakli, vosita, oxirgi murojaat, daraja/oqim/element moslashuvlari,
+xato), hisobdagi modellar. `_verify-ai-actions.mjs` ga qoralama ekrani
+tekshiruvi qo'shildi (lokal MongoDB kerak — bu muhitda ishga tushmadi).
+
+**Tekshirilmagani**: haqiqiy OpenAI bilan (kalit yo'q) va brauzerda ko'z
+bilan — sinov saytida: robot → to'liq ekran → modelni almashtirish →
+"Bugun kim kelmadi?" (oyna kichrayib Davomat sahifasi ochilishi kerak).

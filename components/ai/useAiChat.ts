@@ -1,13 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AiActionView, AiChatMessage, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
+import { DEFAULT_EFFORT, isEffort, nearestEffort } from "@/lib/ai/models";
+import type { AiActionView, AiChatMessage, AiEffort, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
 
 // AI PANELINING HOLATI — yordamchi holati, xabarlar va oqimni o'qish.
 //
 // Javob NDJSON oqim bo'lib keladi (lib/ai/protocol.ts): har qator bitta
 // hodisa. `fetch` + `ReadableStream` bilan o'qiladi — EventSource faqat
 // GET yuboradi.
+//
+// MODEL VA «TEZLIK» (4-bosqich) — xodim tanlovi shu qurilmada eslab
+// qolinadi (localStorage); ro'yxat o'zgargan bo'lsa (admin modelni
+// yopgan) sukutga qaytadi. Server tanlovni baribir qayta tekshiradi.
+//
+// EKRANDA KO'RSATISH — vosita ko'rgan ma'lumot sahifasi (`tool.href`) va
+// saqlangan yozuv sahifasi (`resultHref`) `onScreen` ga uzatiladi: panel
+// kichrayib, CRM'da o'sha sahifani ochadi.
 
 export interface UiToolChip {
   id: string;
@@ -39,6 +48,47 @@ export interface UiMessage {
   cutOff?: boolean;
   /** Shu javobdagi amal qoralamalari (2-bosqich). */
   actions?: UiAction[];
+  /** Javobni qaysi model va daraja yozdi (`meta` hodisasidan) — ostida kichik yozuv. */
+  via?: { model: string; effort: AiEffort | null };
+}
+
+/** Paneldagi tanlov. `model: ""` — holat hali yuklanmagan. */
+export interface AiChoice {
+  model: string;
+  effort: AiEffort | null;
+}
+
+const CHOICE_KEY = "tizimli:ai-choice";
+
+function loadChoice(): Partial<AiChoice> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHOICE_KEY) || "{}") as Record<string, unknown>;
+    return { model: typeof raw.model === "string" ? raw.model : undefined, effort: isEffort(raw.effort) ? raw.effort : undefined };
+  } catch {
+    return {}; // localStorage yo'q/yopiq — sukut
+  }
+}
+
+function saveChoice(c: AiChoice): void {
+  try {
+    localStorage.setItem(CHOICE_KEY, JSON.stringify(c));
+  } catch {
+    // eslab qolinmasa ham ishlaydi
+  }
+}
+
+/** Tanlov hali ruxsat etilganmi: model ro'yxatda, daraja shu modelda bor — aks holda eng yaqini yoki sukut. */
+export function fitChoice(status: Pick<AiStatus, "models" | "defaultModel" | "defaultEffort">, want: Partial<AiChoice>): AiChoice {
+  const model =
+    status.models.find((m) => m.id === want.model) ?? status.models.find((m) => m.id === status.defaultModel) ?? status.models[0];
+  if (!model) return { model: "", effort: null };
+  const effort = isEffort(want.effort) ? want.effort : (status.defaultEffort ?? DEFAULT_EFFORT);
+  return { model: model.id, effort: nearestEffort(effort, model.efforts) };
+}
+
+export interface AiChatOptions {
+  /** Ekranda ko'rsatiladigan sahifa; `refresh` — yozuv saqlandi, sahifa yangilansin. */
+  onScreen?: (href: string, refresh: boolean) => void;
 }
 
 let seq = 0;
@@ -58,13 +108,19 @@ async function errorOf(res: Response): Promise<string> {
   return res.status === 429 ? "Bugungi limit tugadi" : "Serverga ulanib bo'lmadi";
 }
 
-export function useAiChat() {
+export function useAiChat(opts: AiChatOptions = {}) {
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [loadError, setLoadError] = useState("");
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [conversationId, setConversationId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [choice, setChoiceState] = useState<AiChoice>({ model: "", effort: null });
   const abortRef = useRef<AbortController | null>(null);
+  // Eng so'nggi `onScreen` — oqim o'qilayotgan paytda ham (ref effektda yangilanadi).
+  const onScreenRef = useRef(opts.onScreen);
+  useEffect(() => {
+    onScreenRef.current = opts.onScreen;
+  }, [opts.onScreen]);
 
   // Panel ochilganda: holat va oxirgi suhbat (parallel).
   useEffect(() => {
@@ -79,14 +135,19 @@ export function useAiChat() {
         const st = (await s.json()) as AiStatus & { ok: boolean };
         const cv = c.ok ? await c.json().catch(() => null) : null;
         if (!alive) return;
-        setStatus({
+        const next: AiStatus = {
           enabled: st.enabled,
           configured: st.configured,
           isAdmin: st.isAdmin,
           limit: st.limit,
           remaining: st.remaining,
           actions: st.actions === true,
-        });
+          models: Array.isArray(st.models) ? st.models : [],
+          defaultModel: String(st.defaultModel ?? ""),
+          defaultEffort: isEffort(st.defaultEffort) ? st.defaultEffort : null,
+        };
+        setStatus(next);
+        setChoiceState(fitChoice(next, loadChoice()));
         if (cv?.conversation) {
           setConversationId(String(cv.conversation.id));
           setMessages((cv.conversation.messages as AiChatMessage[]).map(fromStored));
@@ -115,6 +176,8 @@ export function useAiChat() {
       if (e.type === "meta") {
         if (e.conversationId) setConversationId(e.conversationId);
         setStatus((s) => (s ? { ...s, remaining: e.remaining, limit: e.limit } : s));
+        const model = e.model;
+        if (model) patchLast((m) => (m.role === "assistant" ? { ...m, via: { model, effort: e.effort ?? null } } : m));
       } else if (e.type === "delta") {
         patchLast((m) => ({ ...m, content: m.content + e.text }));
       } else if (e.type === "tool") {
@@ -122,6 +185,7 @@ export function useAiChat() {
           const tools = (m.tools ?? []).filter((x) => x.id !== e.id);
           return { ...m, tools: [...tools, { id: e.id, label: e.label, status: e.status }] };
         });
+        if (e.status === "done" && e.href) onScreenRef.current?.(e.href, false);
       } else if (e.type === "action") {
         patchLast((m) => ({ ...m, actions: [...(m.actions ?? []).filter((a) => a.id !== e.action.id), e.action] }));
       } else if (e.type === "error") {
@@ -147,7 +211,12 @@ export function useAiChat() {
         const res = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: q, conversationId }),
+          body: JSON.stringify({
+            message: q,
+            conversationId,
+            ...(choice.model ? { model: choice.model } : {}),
+            ...(choice.effort ? { effort: choice.effort } : {}),
+          }),
           signal: ctl.signal,
         });
         const type = res.headers.get("content-type") || "";
@@ -192,7 +261,18 @@ export function useAiChat() {
         setBusy(false);
       }
     },
-    [busy, conversationId, handle, patchLast],
+    [busy, choice, conversationId, handle, patchLast],
+  );
+
+  /** Model yoki «Tezlik» almashtirildi — ruxsat etilganiga moslanib, eslab qolinadi. */
+  const setChoice = useCallback(
+    (next: Partial<AiChoice>) => {
+      if (!status) return;
+      const fitted = fitChoice(status, { ...choice, ...next });
+      setChoiceState(fitted);
+      saveChoice(fitted);
+    },
+    [choice, status],
   );
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
@@ -227,6 +307,8 @@ export function useAiChat() {
           // Saqlab bo'lmagan yozuvning sababi kartaning o'zida (`error`) — ikki marta yozilmasin.
           note: d?.ok || d?.action?.status === "failed" ? undefined : d?.error || "Serverga ulanib bo'lmadi",
         }));
+        // Saqlandi — yozuv ko'rinadigan sahifa ekranda ochiladi (o'sha sahifada turgan bo'lsa — yangilanadi).
+        if (d?.action?.status === "done" && d.action.resultHref) onScreenRef.current?.(d.action.resultHref, true);
       } catch {
         patchAction(id, (a) => ({ ...a, busy: false, note: "Serverga ulanib bo'lmadi" }));
       }
@@ -248,5 +330,5 @@ export function useAiChat() {
     if (id) await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
   }, [conversationId, newChat]);
 
-  return { status, loadError, messages, busy, conversationId, send, stop, newChat, deleteChat, decide };
+  return { status, loadError, messages, busy, conversationId, choice, setChoice, send, stop, newChat, deleteChat, decide };
 }

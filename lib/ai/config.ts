@@ -11,12 +11,26 @@ import { DEFAULT_BASE_URL, DEFAULT_MODEL } from "@/lib/genderGuess";
 //
 // YOQISH/O'CHIRISH VA KUNLIK LIMIT .env DA EMAS — bazada (lib/ai/settings.ts):
 // admin Sozlamalardan o'zgartiradi, serverga kirib qayta ishga tushirish
-// shart emas (filial topiklari bilan bir xil qaror).
+// shart emas (filial topiklari bilan bir xil qaror). Xodimlar tanlaydigan
+// modellar ro'yxati ham o'sha yerda; .env dagi model — sukut.
+//
+// QAYSI API (08.10.2026). OpenAI'ning o'zi bilan — Responses API
+// (`/v1/responses`): yangi modellar vosita bilan fikrlashni (panelda
+// «Tezlik») faqat shu yerda qo'llaydi, GPT-6 Astra va GPT-6.1 Sol esa
+// vositani Chat Completions'da umuman qabul qilmaydi. OPENAI_BASE_URL
+// boshqa manzilga (proksi) qaratilgan bo'lsa — eski Chat Completions,
+// chunki proksilar odatda faqat shuni biladi. Majburlash:
+// AI_ASSISTANT_API=responses | chat.
+
+export type AiApi = "responses" | "chat";
 
 export interface AiProviderConfig {
   apiKey: string;
   baseUrl: string;
+  /** Sukut model (.env); xodim tanlovi so'rovda shu maydonni almashtiradi (app/api/ai/chat). */
   model: string;
+  /** Berilmasa — Chat Completions (sinov skriptidagi soxta server shunday). */
+  api?: AiApi;
 }
 
 /** `null` — kalit sozlanmagan: yordamchi ishlamaydi, robot faqat tezlik sinovini ochadi. */
@@ -26,7 +40,10 @@ export function aiProviderConfig(): AiProviderConfig | null {
   const model =
     (process.env.AI_ASSISTANT_MODEL || "").trim() || (process.env.OPENAI_MODEL || "").trim() || DEFAULT_MODEL;
   const baseUrl = ((process.env.OPENAI_BASE_URL || "").trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
-  return { apiKey, baseUrl, model };
+  const forced = (process.env.AI_ASSISTANT_API || "").trim().toLowerCase();
+  const api: AiApi =
+    forced === "responses" || forced === "chat" ? forced : baseUrl === DEFAULT_BASE_URL ? "responses" : "chat";
+  return { apiKey, baseUrl, model, api };
 }
 
 /**

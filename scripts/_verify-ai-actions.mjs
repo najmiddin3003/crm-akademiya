@@ -130,6 +130,7 @@ console.log("\n— kirim");
   const tool = await runTool(admin, "propose_kirim", j({ type: "kurs to'lovi", pupil: "Ozodbek Nazarov", amount: 300000, method: "naqd", note: "AI sinov" }));
   const view = tool.action;
   check("qoralama tuzildi (karta + modelga xulosa)", tool.ok && view?.status === "draft" && JSON.parse(tool.content).status === "awaiting_user_confirmation", tool.content.slice(0, 200));
+  check("qoralama paytida ekranda — Kassalar sahifasi (4-bosqich)", tool.screen === "/finance-cash", String(tool.screen));
   check("modelga to'liq telefon ketmaydi", !/93 214 55 07|932145507/.test(tool.content), tool.content);
   const doc = await findAction(db, admin.userId, view.id);
   check("bazada draft, kassa — bosh kassa (#1)", doc?.status === "draft" && doc.payload.cashboxId === 1 && doc.payload.amount === 300000, j(doc?.payload));
@@ -243,6 +244,8 @@ console.log("\n— izoh");
   check("matn yo'q — so'raladi, model o'zi yozmaydi", !noText.ok && /comment say/.test(noText.reply.problem), j(noText));
   const r = await runTool(kamola, "propose_pupil_comment", j({ pupil: "Sardor Qodirov", text: "Bugun darsga kech keldi" }));
   check("izoh qoralamasi", r.ok && r.action?.kind === "comment" && r.action.fields.some((f) => f.key === "comment" && f.value === "Bugun darsga kech keldi"), r.content);
+  // Profil (/student-edit) «O'quvchilar ro'yxati» ruxsatiga bog'langan — faqat Guruh ruxsatli xodimga ochilmaydi.
+  check("ekran: ruxsati yo'q profil ochilmaydi", r.screen === undefined, String(r.screen));
   const claimed = await claimDraft(db, kamola.userId, r.action.id);
   check("Guruh ruxsati bor — tasdiqlay oladi", (await checkAccess(kamola, claimed)) === null);
   check("Guruh ruxsati yo'q xodim — rad", (await checkAccess(dilmurod, claimed))?.error === "Bu amalga ruxsatingiz yo'q");

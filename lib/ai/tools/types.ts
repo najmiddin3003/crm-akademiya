@@ -48,14 +48,17 @@ export interface AiTool {
 /**
  * Amal vositasi qoralama TUZDI: modelga `forModel` ketadi, panelga esa
  * karta (`view`) — lib/ai/chat.ts uni `{type: "action"}` hodisasi qilib
- * yuboradi. Oddiy natijadan `instanceof` bilan ajratiladi.
+ * yuboradi. Oddiy natijadan `instanceof` bilan ajratiladi. `screen` — yozuv
+ * saqlangach ko'rinadigan sahifa (panel ekranda ochadi, 4-bosqich).
  */
 export class DraftCreated {
   readonly view: AiActionView;
   readonly forModel: Record<string, unknown>;
-  constructor(view: AiActionView, forModel: Record<string, unknown>) {
+  readonly screen: string | undefined;
+  constructor(view: AiActionView, forModel: Record<string, unknown>, screen?: string) {
     this.view = view;
     this.forModel = forModel;
+    this.screen = screen;
   }
 }
 
