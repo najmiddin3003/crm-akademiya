@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type AnimationEvent } from "react";
 import AssistantPanel from "@/components/ai/AssistantPanel";
-import RobotFace from "@/components/tezlik/RobotFace";
+import MohiraAvatar from "@/components/ai/MohiraAvatar";
 import { useT } from "@/components/shared/Language";
+import { ASSISTANT_NAME } from "@/lib/ai/brand";
 
 // SUZUVCHI ROBOT — saytning har sahifasida turadigan, istalgan joyga
 // sudrab qo'yiladigan tugma (referens: akademiya.edutizim.uz dagi robot).
@@ -15,6 +16,12 @@ import { useT } from "@/components/shared/Language";
 // Joyi localStorage'da saqlanadi (qurilma bo'yicha), oyna kichraysa ekran
 // ichiga qaytariladi. app/(app)/layout.tsx da mount qilinadi — ya'ni faqat
 // kirgan foydalanuvchilarga ko'rinadi; ommaviy sahifalarda (login, /ariza) yo'q.
+//
+// MOHIRAAI (08.10.2026): tugmada milliy libosli, harakatlanuvchi robot
+// (components/ai/MohiraAvatar.tsx), atlas ranglaridagi halqa; ustiga
+// kelinsa Mac'dagi Dock kabi nomi chiqadi. Oyna shu tugmadan «genie» bo'lib
+// chiqadi va yopilganda unga qaytib kiradi — tugma oynani «qabul qilib»
+// bir silkinadi (`.mh-fab-land`).
 
 const STORAGE_KEY = "tizimli:speed-fab";
 const SIZE = 56;
@@ -51,6 +58,8 @@ export default function SpeedFab() {
   const [pos, setPos] = useState<Pos | null>(null);
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  /** Oyna tugmaga qaytib kirdi — tugma bir silkinadi. */
+  const [landing, setLanding] = useState(false);
   const drag = useRef<{ startX: number; startY: number; origin: Pos; moved: boolean } | null>(null);
 
   // Joy faqat brauzerda ma'lum — server render'ida tugma chizilmaydi
@@ -94,6 +103,16 @@ export default function SpeedFab() {
     }
   }, []);
 
+  const onClose = useCallback(() => {
+    setOpen(false);
+    setLanding(true);
+  }, []);
+
+  // Faqat tugmaning o'z «qo'nish» animatsiyasi — ichidagi robot animatsiyalari ham shu yerga ko'tariladi.
+  const onAnimationEnd = (e: AnimationEvent<HTMLButtonElement>) => {
+    if (e.target === e.currentTarget && e.animationName === "mh-fab-land") setLanding(false);
+  };
+
   if (!pos) return null;
 
   // Panel ochiq bo'lsa tugma yashirinadi — kichraygan panel (suzuvchi oyna)
@@ -103,23 +122,29 @@ export default function SpeedFab() {
       {!open && (
         <button
           type="button"
-          aria-label={t("AI yordamchi va tezlik sinovi")}
-          title={t("AI yordamchi — bosing (sudrab ko'chirish mumkin)")}
+          aria-label={t("{name} — AI yordamchi. Bosing yoki sudrab ko'chiring", { name: ASSISTANT_NAME })}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onAnimationEnd={onAnimationEnd}
           style={{ position: "fixed", left: pos.x, top: pos.y, width: SIZE, height: SIZE, touchAction: "none", zIndex: 90 }}
-          className={`group rounded-full bg-white dark:bg-slate-100 shadow-lg shadow-blue-500/30 ring-2 ring-blue-500/30 flex items-center justify-center select-none
-            transition-transform ${dragging ? "scale-110 cursor-grabbing" : "cursor-grab hover:scale-105"}`}
+          className={`mh-fab group flex select-none items-center justify-center rounded-full transition-transform
+            ${dragging ? "scale-110 cursor-grabbing" : "cursor-grab hover:scale-105"} ${landing ? "mh-fab-land" : ""}`}
         >
           {/* Nafas olayotgan halqa — e'tiborni tortadi, sudrashda o'chadi */}
-          {!dragging && <span className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" style={{ animationDuration: "2.4s" }} />}
-          <RobotFace className="w-9 h-9 relative" />
+          {!dragging && <span className="mh-fab-halo absolute inset-0 rounded-full animate-ping" style={{ animationDuration: "2.4s" }} />}
+          <MohiraAvatar className="relative h-11 w-11" />
+          {/* Mac'dagi Dock kabi — ustiga kelinsa nomi chiqadi (tepada joy bo'lmasa — pastda). */}
+          {!dragging && (
+            <span aria-hidden className={`mh-fab-label ${pos.y < 44 ? "mh-fab-label-below" : ""}`}>
+              {ASSISTANT_NAME}
+            </span>
+          )}
         </button>
       )}
 
-      {open && <AssistantPanel onClose={() => setOpen(false)} />}
+      {open && <AssistantPanel origin={{ x: pos.x, y: pos.y, w: SIZE, h: SIZE }} onClose={onClose} />}
     </>
   );
 }

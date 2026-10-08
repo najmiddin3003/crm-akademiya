@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
 import { uzStamp } from "@/lib/uzTime";
+import { ASSISTANT_NAME } from "@/lib/ai/brand";
 import { AI_EFFORTS, EFFORT_LABELS, isModelId } from "@/lib/ai/models";
 import type { AiEffort, AiModelRow } from "@/lib/ai/protocol";
 import type { AiSettings } from "@/lib/ai/settings";
@@ -162,7 +163,7 @@ export default function AiAssistantTab() {
           <div className="min-w-0">
             <div className="text-[14px] font-semibold">{t("AI yordamchini yoqish")}</div>
             <div className="text-[12px] text-muted-foreground">
-              {t("Robot tugmasi orqali xodimlar CRM ma'lumotlari bo'yicha savol bera oladi.")}
+              {t("{name} (robot tugmasi) orqali xodimlar CRM ma'lumotlari bo'yicha savol bera oladi.", { name: ASSISTANT_NAME })}
             </div>
           </div>
           <Toggle on={settings.enabled} onChange={(v) => { if (!saving) void save({ enabled: v }); }} />

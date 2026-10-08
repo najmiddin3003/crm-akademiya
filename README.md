@@ -2155,14 +2155,15 @@ O'QISH**: yordamchi hech narsani yaratmaydi, o'zgartirmaydi, o'chirmaydi.
 - `lib/ai/` — `config` (env, chegaralar), `db` (kolleksiyalar, indekslar),
   `settings`, `usage`, `store`, `context`, `prompt`, `chat`, `openai` +
   `sse` / `responsesSse` (oqimni o'qish; SDK emas, `fetch`), `models` +
-  `modelChoice` (model va «Tezlik», 4-bosqich), `mask`, `knowledge`,
+  `modelChoice` (model va «Tezlik», 4-bosqich), `brand` (MohiraAI nomi), `mask`, `knowledge`,
   `toolLabels`, `protocol`, `tools/`.
 - `app/api/ai/` — `status` (GET), `chat` (POST, oqim), `conversations`
   (GET/DELETE, faqat o'ziniki), `settings` (GET/PUT, faqat admin). To'rttasi
   `scripts/gen-api-permissions.mjs` → `SHARED_EXTRA` da: darvozada sessiya
   yetadi, ma'lumot ruxsati vosita ichida.
 - `components/ai/` — `AssistantPanel`, `ModelPicker`, `AiScreenRefresh`,
-  `useAiChat`, `MessageText`, `aiMarkdown`; `components/settings/AiAssistantTab.tsx`.
+  `useAiChat`, `MessageText`, `aiMarkdown`, `MohiraAvatar`, `HistorySidebar`,
+  `genie`, `history` (6-bosqich); `components/settings/AiAssistantTab.tsx`.
 
 ### Sozlash
 
@@ -2515,3 +2516,62 @@ chegarasi (soxta server). **Bazali sinov yo'q**: 5-bosqich amallari uchun
 `_verify-ai-actions.mjs` ga bo'lim qo'shilmadi (lokal MongoDB yo'q) — sinov
 saytida kichik misol bilan tekshiring. `next build` lokal qilinmadi (diskda
 joy qolmagan) — tsc va eslint toza, build — Vercel'da.
+
+### 6-bosqich — MohiraAI: Mac'dagi kabi ochilish, suhbatlar tarixi, animatsiyalar (2026-10-08)
+
+Foydalanuvchi talabi: AI oynasi Mac'da ilova ochilgandagi kabi animatsiya
+bilan ochilib-yopilsin; to'liq ekranda suhbatlar tarixi chap tomonda
+tursin; akkordeonlar silliq ochilsin; buyruq berilganda AI saytlaridagi
+kabi animatsiya chiqsin; robot milliy ko'rinishdagi harakatlanuvchi
+robotga almashsin, nomi — MohiraAI.
+
+- **Nom** — `lib/ai/brand.ts` (`ASSISTANT_NAME`). `t()` dan o'tmaydi
+  (kirilga ham o'girilmaydi), gap ichida `{name}` parametri. Tizim
+  ko'rsatmasi: model o'zini MohiraAI deb taniydi; qo'llanmada «MohiraAI
+  (AI yordamchi) haqida».
+- **Robot** — `components/ai/MohiraAvatar.tsx` (SVG): chust do'ppi (oq
+  «qalampir» naqsh), sochpopukli kokillar, oltin zirak, atlas naqshli
+  yelka, firuza ko'zlar. Holatlar: `idle` (nafas, ko'z qirpish, kokil va
+  zirak chayqaladi), `thinking` (ko'zlar qaraydi, bosh qiyshayadi, naqsh
+  yaltiraydi, uchqunlar), `talking` (og'iz gapiradi). Eski xabarlar
+  yonidagi rasm — `still` (harakatsiz). Avvalgi
+  `components/tezlik/RobotFace.tsx` o'chirildi.
+- **Ochilish/yopilish — «genie»** (`components/ai/genie.ts`): oyna robot
+  tugmasidan voronka bo'lib chiqadi va yopilganda unga qaytib kiradi
+  (560 / 480 ms). Ikki qatlam: butun ekranli sahna — `clip-path:
+  polygon(...)` (voronka, yonlari S-egri), oyna — `transform`. Kadrlar sof
+  funksiya (28 kadr × 32 nuqta), ijro — Web Animations. Ochilish tugamay
+  yopilsa — o'sha joyidan orqaga buriladi. Tugma Mac'dagi Dock kabi:
+  ustiga kelinsa nomi chiqadi, oyna qaytib kirganda «qo'nish» silkinishi.
+- **To'liq ekran ↔ suzuvchi oyna** — View Transitions (`html.ai-vt`,
+  ~420 ms; nom faqat o'tish paytida). Brauzer bilmasa — darhol almashadi.
+- **Suhbatlar tarixi** — `components/ai/HistorySidebar.tsx`: to'liq
+  ekranning chapida, sana guruhlari (Bugun / Kecha / Oxirgi 7 kun /
+  Oxirgi 30 kun), nom bo'yicha qidiruv, ochish, o'chirish (ikkinchi bosish
+  bilan tasdiq). `GET /api/ai/conversations?list=1` — faqat nom va vaqt,
+  100 tagacha (`{ userId, updatedAt }` indeksi). Javob saqlangach suhbat
+  ro'yxat tepasiga chiqadi, qayta so'ralmaydi (`components/ai/history.ts`).
+  Kompyuterda eni silliq ochiladi (tanlov eslab qolinadi), telefonda —
+  chapdan suriladigan parda (har ochilishda yopiq).
+- **AI ishlayotganda**: robot o'ylaydi / gapiradi; «O'ylayapti…» —
+  sakrovchi rangli nuqtalar va ustidan nur yuguradigan yozuv; yozish
+  maydoni chetida aylanuvchi rangli halqa; javob yozilayotganda matn
+  oxirida miltillovchi nuqta; xabar, qadam va kartalar paydo bo'lish
+  animatsiyasi bilan; panel kichraygan bo'lsa ekran chetlari bo'ylab
+  rangli nur aylanadi (faqat `transform` / `opacity` — kompozitorda).
+- **Akkordeonlar** («Reja», «Ish jarayoni») — `grid-template-rows: 0fr ↔
+  1fr` (`.ai-collapse`). Yuqoridagi 2026-08-19 eslatmasidan farqli,
+  Chrome 152 da o'lchandi — interpolatsiya bor: ochish 0 → 115 → 168 →
+  197 → 200 px, yopish 200 → 85 → 32 → 4 → 0 (o'sha safargi xato boshqa
+  sababdan bo'lgan ko'rinadi). «Ish jarayoni» javob tugagach o'zi silliq
+  yig'iladi; rejada jarayon chizig'i. Model va «Tezlik» ro'yxati ham
+  silliq yopiladi (`.ai-pop-out`).
+- `prefers-reduced-motion` — hammasi o'chadi (genie ham).
+
+Sinov: `scripts/_verify-ai.mjs` — 201 tekshiruv (avval 186): genie tomoni
+va kadrlari (boshida — oyna o'z joyida, oxirida — tugma ichida va
+ko'rinmas, nuqtalar soni bir xil, NaN yo'q), tarix guruhlari, ro'yxatni
+yangilash, qidiruv, ko'rsatmadagi nom. Ko'z bilan: lokal dev'da soxta API
+bilan (vaqtinchalik sahifa, commit qilinmadi) — genie (sekinlashtirib,
+kadrma-kadr), tarix, o'ylash holati, kichrayish va qayta kattalashish,
+telefondagi parda, tungi rejim; konsolda xato yo'q.

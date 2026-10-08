@@ -10,8 +10,9 @@ import {
   useSyncExternalStore,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
@@ -22,7 +23,6 @@ import {
   CalendarCheck,
   Check,
   ChevronDown,
-  ChevronUp,
   Circle,
   CircleAlert,
   CircleCheck,
@@ -36,6 +36,8 @@ import {
   Milestone,
   Minimize2,
   MonitorPlay,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Square,
   SquarePen,
@@ -52,32 +54,45 @@ import Segmented from "@/components/ui/Segmented";
 import Spinner, { SpinnerBlock } from "@/components/ui/Spinner";
 import TapTest from "@/components/tezlik/TapTest";
 import WhyFast from "@/components/tezlik/WhyFast";
-import RobotFace from "@/components/tezlik/RobotFace";
 import { useT } from "@/components/shared/Language";
+import { ASSISTANT_NAME } from "@/lib/ai/brand";
 import { effortLabel } from "@/lib/ai/models";
 import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiPlanStep } from "@/lib/ai/protocol";
 import { refreshScreen } from "./AiScreenRefresh";
 import { isInternalHref } from "./aiMarkdown";
+import { endGenie, genieDone, playGenie, rectOf, reducedMotion, type Box } from "./genie";
+import HistorySidebar from "./HistorySidebar";
 import MessageText from "./MessageText";
 import ModelPicker from "./ModelPicker";
+import MohiraAvatar, { type MohiraState } from "./MohiraAvatar";
 import { useAiChat, type UiAction, type UiMessage, type UiToolChip } from "./useAiChat";
 
-// ROBOT PANELI — AI yordamchi va tezlik sinovi (components/tezlik/SpeedFab.tsx
-// ochadi). Ikki tab:
+// MOHIRAAI PANELI — AI yordamchi va tezlik sinovi (components/tezlik/
+// SpeedFab.tsx ochadi). Ikki tab:
 //   • Yordamchi — admin yoqqan va serverda kalit bo'lsa; aks holda sababi
 //     yoziladi (adminga — sozlamaga havola) va panel tezlik sinovidan ochiladi;
 //   • Tezlik sinovi — avvalgi robot oynasining o'zi.
 //
 // IKKI KO'RINISH (08.10.2026, ChatGPT oynasi kabi):
-//   • TO'LIQ EKRAN — ochilganda. Yozish maydoni ichida model va «Tezlik»
-//     tanlovi (components/ai/ModelPicker.tsx);
+//   • TO'LIQ EKRAN — ochilganda. Chapda suhbatlar tarixi (HistorySidebar),
+//     yozish maydoni ichida model va «Tezlik» tanlovi (ModelPicker);
 //   • SUZUVCHI OYNA — kichik, sarlavhasidan sudrab istalgan joyga qo'yiladi
 //     (joyi shu qurilmada eslab qolinadi), orqadagi sahifa ishlayveradi.
 // AI ishga kirishsa (vosita ma'lumot olsa, qoralama tuzsa, yozuv saqlansa)
 // panel O'ZI kichrayadi va CRM'da o'sha ish sahifasini ochadi — xodim AI
-// nima qilayotganini ekranda ko'radi; ish davomida ekran chetida nur
-// yonadi. Buni sarlavhadagi «ekranda ko'rsatish» tugmasi bilan o'chirish
-// mumkin (tanlov eslab qolinadi).
+// nima qilayotganini ekranda ko'radi; ish davomida ekran chetlarida rangli
+// nur aylanadi. Buni sarlavhadagi «ekranda ko'rsatish» tugmasi bilan
+// o'chirish mumkin (tanlov eslab qolinadi).
+//
+// ANIMATSIYALAR (08.10.2026, 6-bosqich):
+//   • ochilish/yopilish — Mac'dagi «genie»: oyna robot tugmasidan voronka
+//     bo'lib chiqadi va unga qaytib kiradi (components/ai/genie.ts);
+//   • to'liq ekran ↔ suzuvchi oyna — View Transitions: oyna joyidan yangi
+//     joyiga silliq o'tadi (brauzer bilmasa — darhol almashadi);
+//   • javob kutilayotganda — robot o'ylaydi, «O'ylayapti…» yaltiraydi,
+//     yozish maydoni chetida rangli halqa aylanadi, matn oxirida nuqta
+//     miltillaydi; «Reja» va «Ish jarayoni» silliq ochilib-yopiladi.
+// Hammasi `prefers-reduced-motion` da o'chadi (app/globals.css).
 //
 // Javob matni model yozganidek chiziladi (tarjima qilinmaydi — model
 // interfeys tilida yozadi). Interfeysning o'z matnlari `t()` dan o'tadi.
@@ -104,9 +119,14 @@ const MAX_CHARS = 2000;
 
 const FOLLOW_KEY = "tizimli:ai-follow";
 const FLOAT_KEY = "tizimli:ai-float";
+const SIDE_KEY = "tizimli:ai-history";
 const FLOAT_MARGIN = 12;
 /** Bir qadamda bir nechta vosita ishlasa — ekranda faqat oxirgisi ochiladi. */
 const SCREEN_DELAY_MS = 350;
+/** To'liq ekrandan kichrayish animatsiyasi (`.ai-vt`, ~420 ms) tugagach sahifa ochiladi. */
+const MORPH_WAIT_MS = 480;
+/** Tarix pardasi telefonda (shu kenglikdan tor ekranda) — ustma-ust ochiladi. */
+const NARROW = "(max-width: 767px)";
 
 interface Pos {
   x: number;
@@ -149,11 +169,65 @@ function loadFollow(): boolean {
   }
 }
 
+/**
+ * Tarix ochiqmi: telefonda doim yopiq (parda suhbatni yopib qo'ymasin),
+ * kompyuterda — oxirgi tanlov, bo'lmasa keng ekranda ochiq.
+ */
+function loadSide(): boolean {
+  try {
+    if (window.matchMedia(NARROW).matches) return false;
+    const saved = localStorage.getItem(SIDE_KEY);
+    return saved === null ? window.innerWidth >= 1024 : saved === "1";
+  } catch {
+    return false;
+  }
+}
+
+const isNarrow = () => typeof window !== "undefined" && !!window.matchMedia?.(NARROW).matches;
+
+/**
+ * To'liq ekran ↔ suzuvchi oyna: View Transitions bilan oyna eski joyidan
+ * yangisiga silliq o'tadi (rasmlari almashib). Nom (`view-transition-name`)
+ * faqat o'tish paytida beriladi; uslubi — `html.ai-vt` (app/globals.css).
+ * Brauzer bilmasa — o'zgarish darhol.
+ */
+function morph(panel: HTMLElement, update: () => void): ViewTransition | null {
+  if (typeof document.startViewTransition !== "function") {
+    update();
+    return null;
+  }
+  const root = document.documentElement;
+  const end = () => {
+    panel.style.removeProperty("view-transition-name");
+    root.classList.remove("ai-vt");
+  };
+  panel.style.setProperty("view-transition-name", "ai-panel");
+  root.classList.add("ai-vt");
+  try {
+    const vt = document.startViewTransition(() => flushSync(update));
+    vt.ready.catch(() => {}); // o'tish bekor bo'lsa — xato emas
+    vt.finished.then(end, end);
+    return vt;
+  } catch {
+    end();
+    update();
+    return null;
+  }
+}
+
 // SSR'da portal chizib bo'lmaydi (components/ui/Modal.tsx bilan bir xil yo'l).
 const subscribeNoop = () => () => {};
 const useMounted = () => useSyncExternalStore(subscribeNoop, () => true, () => false);
 
-export default function AssistantPanel({ onClose }: { onClose: () => void }) {
+export default function AssistantPanel({
+  onClose,
+  origin = null,
+}: {
+  /** Yopilish animatsiyasi tugagach chaqiriladi. */
+  onClose: () => void;
+  /** Robot tugmasining joyi — oyna shundan chiqadi va shunga qaytib kiradi. */
+  origin?: Box | null;
+}) {
   const { t } = useT();
   const router = useRouter();
   const mounted = useMounted();
@@ -162,6 +236,22 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
   const [pos, setPos] = useState<Pos | null>(null);
   const [draft, setDraft] = useState("");
   const [picked, setPicked] = useState<Tab | null>(null);
+  const [sideOpen, setSideOpen] = useState(loadSide);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  /** Hozirgi ko'rinish — oqim davomidagi chaqiruvlar uchun (state kechikadi). */
+  const viewRef = useRef<View>("full");
+  /** Ochilish animatsiyasi ketyapti (yopish bossa — shu joyidan orqaga buriladi). */
+  const genieRef = useRef<Animation[] | null>(null);
+  const vtRef = useRef<ViewTransition | null>(null);
+  const closingRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  const originRef = useRef(origin);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    originRef.current = origin;
+  }, [onClose, origin]);
 
   // Ekranda ko'rsatish: panel kichrayadi, sahifa ochiladi (oqim davomida
   // keladi — eng so'nggi `follow` ref orqali o'qiladi).
@@ -174,19 +264,33 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
     if (navTimer.current !== null) window.clearTimeout(navTimer.current);
   }, []);
 
+  const changeView = useCallback((next: View) => {
+    if (viewRef.current === next) return;
+    viewRef.current = next;
+    const apply = () => {
+      // Suzuvchi oynaning joyi o'tishdan OLDIN ma'lum bo'lsin — yangi holat shu joyda suratga olinadi.
+      if (next === "float") setPos((p) => p ?? loadFloatPos());
+      setView(next);
+    };
+    const panel = panelRef.current;
+    if (!panel || genieRef.current || closingRef.current || reducedMotion()) apply();
+    else vtRef.current = morph(panel, apply);
+  }, []);
+
   const showOnScreen = useCallback(
     (href: string, refresh: boolean) => {
       if (!followRef.current || !isInternalHref(href)) return;
-      setView("float");
+      const wait = viewRef.current === "full" ? MORPH_WAIT_MS : SCREEN_DELAY_MS;
+      changeView("float");
       if (navTimer.current !== null) window.clearTimeout(navTimer.current);
       navTimer.current = window.setTimeout(() => {
         navTimer.current = null;
         const here = `${window.location.pathname}${window.location.search}`;
         if (here !== href) router.push(href);
         else if (refresh) refreshScreen();
-      }, SCREEN_DELAY_MS);
+      }, wait);
     },
-    [router],
+    [changeView, router],
   );
 
   const chat = useAiChat({ onScreen: showOnScreen });
@@ -195,6 +299,53 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
   // Tanlanmagan bo'lsa: yordamchi tayyor bo'lsa — u, aks holda tezlik sinovi.
   const tab: Tab = picked ?? (status && !ready ? "speed" : "assistant");
   const full = view === "full" || tab === "speed" || !ready;
+  const withHistory = full && ready && tab === "assistant";
+
+  // OCHILISH — oyna robot tugmasidan chiqadi (genie). Tugma joyi
+  // berilmagan bo'lsa yoki harakat kamaytirilgan bo'lsa — animatsiyasiz.
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    const stage = stageRef.current;
+    const panel = panelRef.current;
+    const icon = originRef.current;
+    if (!stage || !panel || !icon || reducedMotion()) return;
+    const anims = playGenie(stage, panel, rectOf(panel), icon, "open");
+    if (!anims) return;
+    genieRef.current = anims;
+    void genieDone(anims).then(() => {
+      if (genieRef.current !== anims) return; // yopilish uni teskari burib oldi
+      genieRef.current = null;
+      endGenie(anims, panel);
+    });
+    return () => {
+      if (genieRef.current === anims) genieRef.current = null;
+      endGenie(anims, panel);
+    };
+  }, [mounted]);
+
+  /**
+   * YOPILISH — oyna robot tugmasiga qaytib kiradi, animatsiya tugagach
+   * `onClose`. Ochilish hali tugamagan bo'lsa — o'sha joyidan orqaga.
+   */
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    vtRef.current?.skipTransition();
+    const finish = () => onCloseRef.current();
+    const running = genieRef.current;
+    if (running) {
+      genieRef.current = null;
+      for (const a of running) a.reverse();
+      void genieDone(running).then(finish);
+      return;
+    }
+    const stage = stageRef.current;
+    const panel = panelRef.current;
+    const icon = originRef.current;
+    const anims = stage && panel && icon && !reducedMotion() ? playGenie(stage, panel, rectOf(panel), icon, "close") : null;
+    if (anims) void genieDone(anims).then(finish);
+    else finish();
+  }, []);
 
   // Suzuvchi oyna joyi: birinchi kichrayishda o'qiladi, oyna o'lchami o'zgarsa ekran ichiga qaytadi.
   useEffect(() => {
@@ -218,14 +369,36 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const toggleSide = () => {
+    const next = !sideOpen;
+    setSideOpen(next);
+    if (isNarrow()) return; // telefondagi parda eslab qolinmaydi
+    try {
+      localStorage.setItem(SIDE_KEY, next ? "1" : "0");
+    } catch {
+      // eslab qolinmasa ham ishlaydi
+    }
+  };
+
+  // Tarixdan tanlandi / yangi suhbat — telefonda parda yopiladi (suhbat ko'rinsin).
+  const pickConversation = (id: string) => {
+    void chat.openConversation(id);
+    if (isNarrow()) setSideOpen(false);
+  };
+  const startNewChat = () => {
+    chat.newChat();
+    setDraft("");
+    if (isNarrow()) setSideOpen(false);
+  };
+
   // Havola bosildi (javobdagi yoki kartadagi) — sahifa ochiladi, suhbat kichrayib qoladi.
-  const onNavigate = useCallback(() => setView("float"), []);
+  const onNavigate = useCallback(() => changeView("float"), [changeView]);
 
   // Esc — to'liq ekranda panelni yopadi (ichidagi ro'yxatlar Esc'ni o'zi ushlaydi).
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape" && full) {
       e.stopPropagation();
-      onClose();
+      requestClose();
     }
   };
 
@@ -258,7 +431,7 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
         {status.isAdmin && status.configured && (
           <Link
             href="/settings-app?tab=ai"
-            onClick={onClose}
+            onClick={requestClose}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
           >
             <Settings className="h-3.5 w-3.5" />{" "}{t("Sozlamalarda yoqish")}
@@ -271,37 +444,67 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
 
   const node = (
     <>
-      {/* AI ishlayapti — ekran chetida nur (panel kichraygan, sahifa ko'rinib turibdi). */}
-      {!full && busy && <div aria-hidden className="ai-working-glow pointer-events-none fixed inset-0 z-[1149]" />}
-      <div
-        role="dialog"
-        aria-modal={full}
-        aria-label={t("AI yordamchi")}
-        onKeyDown={onKeyDown}
-        className={
-          full
-            ? "ui-modal-in ai-screen fixed inset-0 z-[1150] flex flex-col"
-            : "ui-modal-in fixed z-[1150] flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
-        }
-        style={full ? undefined : pos ? { left: pos.x, top: pos.y, width: floatSize().w, height: floatSize().h } : { visibility: "hidden" }}
-      >
-        {full ? (
-          <FullHeader
-            tab={tab}
-            onTab={setPicked}
-            ready={ready}
-            remaining={status && ready ? status.remaining : null}
-            follow={follow}
-            onFollow={toggleFollow}
-            canNewChat={ready && tab === "assistant" && chat.messages.length > 0 && !busy}
-            onNewChat={chat.newChat}
-            onShrink={() => setView("float")}
-            onClose={onClose}
-          />
-        ) : (
-          <FloatHeader chat={chat} follow={follow} onFollow={toggleFollow} onExpand={() => setView("full")} onClose={onClose} pos={pos} onMove={setPos} />
-        )}
-        {body}
+      {/* AI ishlayapti — ekran chetlarida rangli nur (panel kichraygan, sahifa ko'rinib turibdi). */}
+      {!full && busy && <WorkingGlow />}
+      {/* SAHNA — butun ekran: genie paytida voronka shaklida kesiladi; to'liq ekranda fon ham shu. */}
+      <div ref={stageRef} className={`pointer-events-none fixed inset-0 z-[1150] ${full ? "ai-screen" : ""}`}>
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal={full}
+          aria-label={ASSISTANT_NAME}
+          onKeyDown={onKeyDown}
+          className={
+            full
+              ? "ai-screen pointer-events-auto absolute inset-0 flex flex-col"
+              : "pointer-events-auto absolute flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+          }
+          style={full ? undefined : pos ? { left: pos.x, top: pos.y, width: floatSize().w, height: floatSize().h } : { visibility: "hidden" }}
+        >
+          {full ? (
+            <FullHeader
+              chat={chat}
+              tab={tab}
+              onTab={setPicked}
+              ready={ready}
+              follow={follow}
+              onFollow={toggleFollow}
+              sideOpen={withHistory && sideOpen}
+              onSide={withHistory ? toggleSide : null}
+              onNewChat={startNewChat}
+              onShrink={() => changeView("float")}
+              onClose={requestClose}
+            />
+          ) : (
+            <FloatHeader
+              chat={chat}
+              follow={follow}
+              onFollow={toggleFollow}
+              onExpand={() => changeView("full")}
+              onClose={requestClose}
+              pos={pos}
+              onMove={setPos}
+            />
+          )}
+          {withHistory ? (
+            <div className="relative flex min-h-0 flex-1">
+              <HistorySidebar
+                open={sideOpen}
+                items={chat.history.items}
+                at={chat.history.at}
+                activeId={chat.conversationId}
+                busy={busy}
+                onOpen={pickConversation}
+                onNew={startNewChat}
+                onDelete={(id) => void chat.removeConversation(id)}
+                onDismiss={() => setSideOpen(false)}
+              />
+              <div className="flex min-w-0 flex-1 flex-col">{body}</div>
+            </div>
+          ) : (
+            body
+          )}
+        </div>
       </div>
     </>
   );
@@ -343,30 +546,53 @@ function IconButton({
   );
 }
 
+/** Hozir nima bo'lyapti — sarlavhada: ishlayotgan vosita yorlig'i, javob yozilyapti yoki o'ylayapti. */
+function stepOf(chat: Chat): { tool: string } | { plan: string } | "writing" | "thinking" | null {
+  const last = chat.messages[chat.messages.length - 1];
+  if (!chat.busy || !last || last.role !== "assistant") return null;
+  const running = [...(last.tools ?? [])].reverse().find((x) => x.status === "start");
+  if (running) return { tool: running.label };
+  // Reja bo'lsa — hozirgi qadam (model yozgan matn, tarjima qilinmaydi).
+  const active = last.plan?.find((s) => s.status === "active");
+  if (active) return { plan: active.title };
+  return last.content ? "writing" : "thinking";
+}
+
+/** Robotning holati: javob yozilyapti — gapiradi, boshqa ish — o'ylaydi. */
+function moodOf(chat: Chat): MohiraState {
+  const s = stepOf(chat);
+  return s === null ? "idle" : s === "writing" ? "talking" : "thinking";
+}
+
 function FullHeader({
+  chat,
   tab,
   onTab,
   ready,
-  remaining,
   follow,
   onFollow,
-  canNewChat,
+  sideOpen,
+  onSide,
   onNewChat,
   onShrink,
   onClose,
 }: {
+  chat: Chat;
   tab: Tab;
   onTab: (t: Tab) => void;
   ready: boolean;
-  remaining: number | null;
   follow: boolean;
   onFollow: () => void;
-  canNewChat: boolean;
+  sideOpen: boolean;
+  /** Tarixni ochish/yopish — faqat yordamchi tabida. */
+  onSide: (() => void) | null;
   onNewChat: () => void;
   onShrink: () => void;
   onClose: () => void;
 }) {
   const { t } = useT();
+  const { status, busy } = chat;
+  const remaining = status && ready ? status.remaining : null;
   const tabs = (
     <Segmented
       size="sm"
@@ -380,10 +606,18 @@ function FullHeader({
   );
   return (
     <>
-      <div className="flex shrink-0 items-center gap-3 border-b border-border/70 px-3 py-2.5 md:px-5">
-        <RobotFace className="h-9 w-9 shrink-0" />
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-border/70 px-3 py-2 md:px-4">
+        {onSide && (
+          <IconButton
+            title={sideOpen ? t("Tarixni yopish") : t("Suhbatlar tarixi")}
+            icon={sideOpen ? PanelLeftClose : PanelLeftOpen}
+            active={sideOpen}
+            onClick={onSide}
+          />
+        )}
+        <MohiraAvatar className="h-10 w-10 shrink-0" state={moodOf(chat)} />
         <div className="min-w-0 flex-1 sm:flex-none">
-          <h3 className="truncate text-base font-semibold">{t("AI yordamchi")}</h3>
+          <h3 className="truncate text-base font-semibold tracking-tight">{ASSISTANT_NAME}</h3>
           <p className="truncate text-[11px] text-muted-foreground">
             {remaining !== null ? t("Bugun yana {n} ta savol", { n: remaining }) : t("Savol bering yoki sayt tezligini o'lchang")}
           </p>
@@ -398,7 +632,10 @@ function FullHeader({
                 active={follow}
                 onClick={onFollow}
               />
-              <IconButton title={t("Yangi suhbat")} icon={SquarePen} onClick={onNewChat} disabled={!canNewChat} />
+              {/* Tarix ochiq bo'lsa «Yangi suhbat» o'sha yerda. */}
+              {!sideOpen && (
+                <IconButton title={t("Yangi suhbat")} icon={SquarePen} onClick={onNewChat} disabled={busy || chat.messages.length === 0} />
+              )}
               <IconButton title={t("Kichraytirish")} icon={Minimize2} onClick={onShrink} />
             </>
           )}
@@ -408,18 +645,6 @@ function FullHeader({
       <div className="shrink-0 border-b border-border/70 px-3 py-2 sm:hidden">{tabs}</div>
     </>
   );
-}
-
-/** Hozir nima bo'lyapti — kichik oyna sarlavhasida: ishlayotgan vosita yorlig'i, javob yozilyapti yoki o'ylayapti. */
-function stepOf(chat: Chat): { tool: string } | { plan: string } | "writing" | "thinking" | null {
-  const last = chat.messages[chat.messages.length - 1];
-  if (!chat.busy || !last || last.role !== "assistant") return null;
-  const running = [...(last.tools ?? [])].reverse().find((x) => x.status === "start");
-  if (running) return { tool: running.label };
-  // Reja bo'lsa — hozirgi qadam (model yozgan matn, tarjima qilinmaydi).
-  const active = last.plan?.find((s) => s.status === "active");
-  if (active) return { plan: active.title };
-  return last.content ? "writing" : "thinking";
 }
 
 function FloatHeader({
@@ -478,15 +703,12 @@ function FloatHeader({
       title={t("Sudrab ko'chirish mumkin")}
       className="flex shrink-0 cursor-grab touch-none select-none items-center gap-2 border-b border-border bg-card px-3 py-2 active:cursor-grabbing"
     >
-      <RobotFace className={`h-7 w-7 shrink-0 ${chat.busy ? "animate-pulse" : ""}`} />
+      <MohiraAvatar className="h-8 w-8 shrink-0" state={moodOf(chat)} />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-semibold">{t("AI yordamchi")}</div>
+        <div className="truncate text-[13px] font-semibold">{ASSISTANT_NAME}</div>
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           {step ? (
-            <>
-              <Spinner size={10} />
-              <span className="truncate">{step}</span>
-            </>
+            <span className="ai-shimmer truncate font-medium">{step}</span>
           ) : (
             <span className="truncate">{chat.status ? t("Bugun yana {n} ta savol", { n: chat.status.remaining }) : ""}</span>
           )}
@@ -505,6 +727,18 @@ function FloatHeader({
   );
 }
 
+/** Ekran chetlari bo'ylab aylanuvchi rangli nur — AI ishlayotganda (Siri/Gemini kabi). */
+function WorkingGlow() {
+  return (
+    <div aria-hidden className="ai-glow pointer-events-none fixed inset-0 z-[1149]">
+      <span className="ai-glow-edge ai-glow-t" />
+      <span className="ai-glow-edge ai-glow-r" />
+      <span className="ai-glow-edge ai-glow-b" />
+      <span className="ai-glow-edge ai-glow-l" />
+    </div>
+  );
+}
+
 /** `text` — allaqachon o'girilgan (chaqiruvchi `t()` qiladi: skaner kalitni o'sha yerda ko'radi). */
 function Notice({ text }: { text: string }) {
   return (
@@ -512,6 +746,32 @@ function Notice({ text }: { text: string }) {
       <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
       <span>{text}</span>
     </div>
+  );
+}
+
+/**
+ * Silliq ochilib-yopiladigan qism (akkordeon): balandlik `grid-template-rows`
+ * 0fr ↔ 1fr bilan o'zgaradi — o'lchash shart emas. Yopiq qism `inert`.
+ */
+function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div className="ai-collapse" data-open={open ? "" : undefined} inert={!open}>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+/** «O'ylayapti…» — sakrovchi nuqtalar va yaltiroq yozuv (AI saytlaridagi kabi). */
+function Thinking({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 py-0.5" role="status">
+      <span className="ai-dots" aria-hidden>
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="ai-shimmer font-medium">{label}</span>
+    </span>
   );
 }
 
@@ -532,7 +792,7 @@ function ChatBody({
 }) {
   const { t } = useT();
   const listRef = useRef<HTMLDivElement>(null);
-  const { messages, busy, status } = chat;
+  const { messages, busy, status, opening } = chat;
   const noQuota = (status?.remaining ?? 0) <= 0;
   const examples = status?.actions ? [...EXAMPLES, ...ACTION_EXAMPLES] : EXAMPLES;
 
@@ -562,13 +822,14 @@ function ChatBody({
 
   const exampleChips = (
     <div className={`flex flex-wrap gap-2 ${full ? "justify-center" : ""}`}>
-      {examples.map((ex) => (
+      {examples.map((ex, i) => (
         <button
           key={ex.label}
           type="button"
           disabled={busy || noQuota}
           onClick={() => submit(t(ex.label))}
-          className="rounded-full border border-border bg-card px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-secondary disabled:opacity-50"
+          style={{ animationDelay: `${120 + i * 50}ms` }}
+          className="ai-msg-in rounded-full border border-border bg-card px-3 py-1.5 text-left text-[12px] transition-colors hover:bg-secondary disabled:opacity-50"
         >
           {t(ex.label)}
         </button>
@@ -578,12 +839,26 @@ function ChatBody({
 
   const bubbles = messages.map((m) => <Bubble key={m.key} m={m} chat={chat} onNavigate={onNavigate} />);
 
+  if (opening) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <Spinner size={22} />
+      </div>
+    );
+  }
+
   if (full && messages.length === 0) {
-    // ChatGPT'ning bo'sh oynasi kabi: o'rtada savol, yozish maydoni va takliflar.
+    // ChatGPT'ning bo'sh oynasi kabi: o'rtada Mohira, savol, yozish maydoni va takliflar.
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-10">
         <div className="w-full max-w-3xl space-y-5">
-          <h2 className="text-center text-2xl font-semibold tracking-tight md:text-3xl">{t("Qanday yordam bera olaman?")}</h2>
+          <div className="ai-msg-in flex flex-col items-center gap-2 text-center">
+            <div className="ai-hero relative h-24 w-24">
+              <MohiraAvatar className="relative h-24 w-24" />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("Salom, men {name}!", { name: ASSISTANT_NAME })}</h2>
+            <p className="text-[15px] text-muted-foreground">{t("Qanday yordam bera olaman?")}</p>
+          </div>
           {composer}
           {exampleChips}
           <p className="text-center text-[12px] text-muted-foreground">
@@ -599,7 +874,11 @@ function ChatBody({
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className={full ? "mx-auto w-full max-w-3xl space-y-4 px-4 py-6" : "space-y-3 p-3"}>
           {messages.length === 0 ? (
-            <div className="space-y-3">
+            <div className="ai-msg-in space-y-3">
+              <div className="flex items-center gap-2.5">
+                <MohiraAvatar className="h-10 w-10 shrink-0" />
+                <p className="text-[13px] font-medium">{t("Salom, men {name}!", { name: ASSISTANT_NAME })}</p>
+              </div>
               <p className="text-[13px] text-muted-foreground">
                 {t("Salom! Ruxsatingiz bor bo'limlar bo'yicha savol bering: qarzdorlar, tushum, guruhlar, lidlar, oylik yoki CRM'dan qanday foydalanish.")}
               </p>
@@ -632,7 +911,8 @@ function ChatBody({
 
 /**
  * Yozish maydoni — ChatGPT'dagi kabi bitta yumaloq quti: matn, ostida model
- * va «Tezlik» tanlovi, o'ngda yuborish / to'xtatish.
+ * va «Tezlik» tanlovi, o'ngda yuborish / to'xtatish. AI ishlayotganda
+ * chetida rangli halqa aylanadi (`.ai-composer[data-busy]`).
  */
 function Composer({
   chat,
@@ -676,47 +956,49 @@ function Composer({
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-card shadow-sm transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
-        onKeyDown={onKeyDown}
-        rows={1}
-        maxLength={MAX_CHARS}
-        disabled={disabled}
-        placeholder={disabled ? t("Bugungi limit tugadi") : t("Savolingizni yozing…")}
-        aria-label={t("Savolingizni yozing…")}
-        className={`block w-full resize-none bg-transparent px-4 pt-3 focus:outline-none disabled:opacity-60 ${compact ? "text-[13px]" : "text-[15px]"}`}
-        style={{ maxHeight: max }}
-      />
-      <div className="flex items-center gap-2 px-2 pb-2 pt-1">
-        {chat.status && (
-          <ModelPicker models={chat.status.models} choice={chat.choice} onChange={chat.setChoice} disabled={busy} compact={compact} />
-        )}
-        <span className="flex-1" />
-        {busy ? (
-          <button
-            type="button"
-            onClick={chat.stop}
-            title={t("To'xtatish")}
-            aria-label={t("To'xtatish")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-85"
-          >
-            <Square className="h-3.5 w-3.5 fill-current" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={!value.trim() || disabled}
-            title={t("Yuborish")}
-            aria-label={t("Yuborish")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-opacity disabled:opacity-40"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </button>
-        )}
+    <div data-busy={busy ? "" : undefined} className="ai-composer">
+      <div className="ai-composer-box rounded-3xl border border-border bg-card shadow-sm transition-shadow focus-within:border-primary/40 focus-within:shadow-md">
+        <textarea
+          ref={ref}
+          value={value}
+          onChange={(e) => onChange(e.target.value.slice(0, MAX_CHARS))}
+          onKeyDown={onKeyDown}
+          rows={1}
+          maxLength={MAX_CHARS}
+          disabled={disabled}
+          placeholder={disabled ? t("Bugungi limit tugadi") : t("Savolingizni yozing…")}
+          aria-label={t("Savolingizni yozing…")}
+          className={`block w-full resize-none bg-transparent px-4 pt-3 focus:outline-none disabled:opacity-60 ${compact ? "text-[13px]" : "text-[15px]"}`}
+          style={{ maxHeight: max }}
+        />
+        <div className="flex items-center gap-2 px-2 pb-2 pt-1">
+          {chat.status && (
+            <ModelPicker models={chat.status.models} choice={chat.choice} onChange={chat.setChoice} disabled={busy} compact={compact} />
+          )}
+          <span className="flex-1" />
+          {busy ? (
+            <button
+              type="button"
+              onClick={chat.stop}
+              title={t("To'xtatish")}
+              aria-label={t("To'xtatish")}
+              className="ai-stop flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-85"
+            >
+              <Square className="h-3.5 w-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={!value.trim() || disabled}
+              title={t("Yuborish")}
+              aria-label={t("Yuborish")}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-[opacity,transform] active:scale-90 disabled:opacity-40"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -726,26 +1008,26 @@ function Bubble({ m, chat, onNavigate }: { m: UiMessage; chat: Chat; onNavigate:
   const { t } = useT();
   if (m.role === "user") {
     return (
-      <div className="flex justify-end">
+      <div className="ai-msg-in ai-msg-user flex justify-end">
         <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3 py-2 text-[13px] text-white">
           {m.content}
         </div>
       </div>
     );
   }
-  const working = m.pending && !m.content;
+  const tools = m.tools ?? [];
+  const toolRunning = tools.some((x) => x.status === "start");
+  // Javob kutilyapti: hali matn yo'q va hech bir vosita ishlamayapti — model o'ylayapti.
+  const thinking = !!m.pending && !m.content && !toolRunning;
+  const mood: MohiraState = !m.pending ? "idle" : m.content ? "talking" : "thinking";
   return (
-    <div className="flex gap-2">
-      <RobotFace className="mt-0.5 h-6 w-6 shrink-0" />
+    <div className="ai-msg-in flex gap-2.5">
+      <MohiraAvatar className="mt-0.5 h-7 w-7 shrink-0" state={mood} still={!m.pending} />
       <div className="min-w-0 flex-1 space-y-1.5 text-[13px]">
         {m.plan && m.plan.length > 0 && <PlanCard steps={m.plan} live={!!m.pending} />}
-        {m.tools && m.tools.length > 0 && <WorkLog tools={m.tools} live={!!m.pending} onNavigate={onNavigate} />}
-        {working && (!m.tools || m.tools.length === 0) && (
-          <span className="inline-flex items-center gap-2 text-muted-foreground">
-            <Spinner size={14} /> {t("O'ylayapti…")}
-          </span>
-        )}
-        {m.content && <MessageText text={m.content} onNavigate={onNavigate} />}
+        {tools.length > 0 && <WorkLog tools={tools} live={!!m.pending} onNavigate={onNavigate} />}
+        {thinking && <Thinking label={t("O'ylayapti…")} />}
+        {m.content && <MessageText text={m.content} onNavigate={onNavigate} caret={!!m.pending} />}
         {m.actions?.map((a) => <ActionCard key={a.id} a={a} onDecide={chat.decide} onNavigate={onNavigate} />)}
         {m.stopped && <p className="text-[11px] text-muted-foreground">{t("To'xtatildi")}</p>}
         {(m.error || m.cutOff) && (
@@ -775,94 +1057,123 @@ function Bubble({ m, chat, onNavigate }: { m: UiMessage; chat: Chat; onNavigate:
 //
 // Xodim AI nima qilayotganini ko'rib turadi: model yozgan reja (belgilanadigan
 // ro'yxat) va har vosita — bitta qadam (holat, natija yozuvi, sahifa
-// havolasi). Javob tugagach qadamlar bitta qatorga yig'iladi, bosilsa ochiladi.
+// havolasi). Ikkalasi ham akkordeon: sarlavhasi bosilsa silliq yig'iladi /
+// ochiladi; «Ish jarayoni» javob tugagach o'zi yig'iladi.
 
 /** `update_plan` rejasi. Qadam matnlari — model yozgan (xodim tilida), tarjima qilinmaydi. */
 function PlanCard({ steps, live }: { steps: AiPlanStep[]; live: boolean }) {
   const { t } = useT();
+  const [open, setOpen] = useState(true);
   const done = steps.filter((s) => s.status === "done").length;
   return (
-    <div className="rounded-xl border border-border bg-card/70 px-3 py-2">
-      <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="ai-msg-in rounded-xl border border-border bg-card/70 px-3 py-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+      >
         <span className="inline-flex items-center gap-1.5">
           <ListChecks className="h-3.5 w-3.5" />
           {t("Reja")}
         </span>
-        <span className="tabular-nums">
-          {done}/{steps.length}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="tabular-nums">
+            {done}/{steps.length}
+          </span>
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
         </span>
+      </button>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-secondary">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
+          style={{ width: `${steps.length ? Math.round((done / steps.length) * 100) : 0}%` }}
+        />
       </div>
-      <ol className="space-y-1">
-        {steps.map((s, i) => (
-          <li key={i} className="flex items-start gap-2 text-[12px]">
-            <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-              {s.status === "done" ? (
-                <CircleCheck className="h-3.5 w-3.5 text-emerald-600" />
-              ) : s.status === "active" && live ? (
-                <Spinner size={12} />
-              ) : (
-                <Circle className="h-3.5 w-3.5 text-muted-foreground/50" />
-              )}
-            </span>
-            <span className={s.status === "done" ? "text-muted-foreground" : s.status === "active" ? "font-medium" : ""}>{s.title}</span>
-          </li>
-        ))}
-      </ol>
+      <Collapse open={open}>
+        <ol className="space-y-1 pt-2">
+          {steps.map((s, i) => (
+            <li key={i} className="flex items-start gap-2 text-[12px]">
+              <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                {s.status === "done" ? (
+                  <CircleCheck className="ai-pop h-3.5 w-3.5 text-emerald-600" />
+                ) : s.status === "active" && live ? (
+                  <Spinner size={12} />
+                ) : (
+                  <Circle className="h-3.5 w-3.5 text-muted-foreground/50" />
+                )}
+              </span>
+              <span
+                className={
+                  s.status === "done"
+                    ? "text-muted-foreground"
+                    : s.status === "active" && live
+                      ? "ai-shimmer font-medium"
+                      : s.status === "active"
+                        ? "font-medium"
+                        : ""
+                }
+              >
+                {s.title}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </Collapse>
     </div>
   );
 }
 
-/** Ish jarayoni — har vosita bitta qadam. Javob kelayotganda ochiq, tugagach yig'iladi. */
+/**
+ * Ish jarayoni — har vosita bitta qadam. Javob kelayotganda ochiq, tugagach
+ * o'zi silliq yig'iladi (xodim o'zi ochib-yopgan bo'lsa — tanlovi qoladi).
+ */
 function WorkLog({ tools, live, onNavigate }: { tools: UiToolChip[]; live: boolean; onNavigate: () => void }) {
   const { t } = useT();
-  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<boolean | null>(null);
+  const open = picked ?? live;
   const errors = tools.filter((x) => x.status === "error").length;
-  if (!live && !open) {
-    return (
+  return (
+    <div>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        onClick={() => setPicked(!open)}
+        aria-expanded={open}
+        className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-secondary/70 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ListChecks className="h-3.5 w-3.5" />
-        {t("{n} ta qadam bajarildi", { n: tools.length })}
-        {errors > 0 && <span className="text-rose-600">· {t("{n} ta xato", { n: errors })}</span>}
-        <ChevronDown className="h-3 w-3" />
+        {live ? <Spinner size={11} /> : <ListChecks className="h-3.5 w-3.5 shrink-0" />}
+        <span className={`truncate ${live ? "ai-shimmer font-medium" : ""}`}>
+          {live ? t("Ish jarayoni") : t("{n} ta qadam bajarildi", { n: tools.length })}
+        </span>
+        {errors > 0 && <span className="shrink-0 text-rose-600">· {t("{n} ta xato", { n: errors })}</span>}
+        <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
-    );
-  }
-  return (
-    <div className="space-y-1.5 rounded-xl border border-border/70 bg-secondary/30 px-2.5 py-2">
-      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        <span>{t("Ish jarayoni")}</span>
-        {!live && (
-          <button type="button" onClick={() => setOpen(false)} title={t("Yig'ish")} aria-label={t("Yig'ish")} className="rounded p-0.5 hover:bg-secondary">
-            <ChevronUp className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-      {tools.map((x) => (
-        <div key={x.id} className="flex items-start gap-2 text-[12px]">
-          <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-            {x.status === "start" ? (
-              <Spinner size={12} />
-            ) : x.status === "error" ? (
-              <CircleAlert className="h-3.5 w-3.5 text-rose-500" />
-            ) : (
-              <Check className="h-3.5 w-3.5 text-emerald-600" />
-            )}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className={x.status === "error" ? "text-rose-600" : ""}>{t(x.label)}</div>
-            {x.note && <div className="text-[11px] text-muted-foreground">{x.note}</div>}
-          </div>
-          {x.href && isInternalHref(x.href) && (
-            <Link href={x.href} onClick={onNavigate} title={t("Sahifani ochish")} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          )}
+      <Collapse open={open}>
+        <div className="mt-1.5 space-y-1.5 rounded-xl border border-border/70 bg-secondary/30 px-2.5 py-2">
+          {tools.map((x) => (
+            <div key={x.id} className="ai-step-in flex items-start gap-2 text-[12px]">
+              <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                {x.status === "start" ? (
+                  <Spinner size={12} />
+                ) : x.status === "error" ? (
+                  <CircleAlert className="ai-pop h-3.5 w-3.5 text-rose-500" />
+                ) : (
+                  <Check className="ai-pop h-3.5 w-3.5 text-emerald-600" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className={x.status === "error" ? "text-rose-600" : x.status === "start" ? "ai-shimmer font-medium" : ""}>{t(x.label)}</div>
+                {x.note && <div className="text-[11px] text-muted-foreground">{x.note}</div>}
+              </div>
+              {x.href && isInternalHref(x.href) && (
+                <Link href={x.href} onClick={onNavigate} title={t("Sahifani ochish")} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
+      </Collapse>
     </div>
   );
 }
@@ -980,7 +1291,7 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="ai-msg-in rounded-xl border border-border bg-card p-3">
       <div className="mb-2 flex items-center gap-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
@@ -1020,7 +1331,7 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
       )}
       {status === "done" && (
         <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-emerald-700">
-          <Check className="h-3.5 w-3.5 shrink-0" />
+          <Check className="ai-pop h-3.5 w-3.5 shrink-0" />
           {/* Yozuv raqami ("#708") o'zicha qoladi; "guruhga qo'shildi" kabi so'zlar lug'atda bo'lsa o'giriladi. */}
           <span>{t("Saqlandi: {ref}", { ref: t(a.resultText ?? "") })}</span>
           {a.resultHref && isInternalHref(a.resultHref) && (

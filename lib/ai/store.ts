@@ -51,6 +51,28 @@ export async function findConversation(db: Db, userId: string, id: string): Prom
   return d ? view(d) : null;
 }
 
+export interface AiConversationSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+/** To'liq ekranning chap ro'yxati uchun ko'rsatiladigan suhbatlar soni (30 kunlik). */
+const LIST_LIMIT = 100;
+
+/**
+ * Suhbatlar ro'yxati — faqat nom va vaqt (xabarlar o'qilmaydi), yangisi
+ * birinchi. Indeks: `{ userId: 1, updatedAt: -1 }` (lib/ai/db.ts).
+ */
+export async function listConversations(db: Db, userId: string): Promise<AiConversationSummary[]> {
+  const docs = await col(db)
+    .find({ userId }, { projection: { _id: 0, id: 1, title: 1, updatedAt: 1 } })
+    .sort({ updatedAt: -1 })
+    .limit(LIST_LIMIT)
+    .toArray();
+  return docs.map((d) => ({ id: d.id, title: d.title ?? "", updatedAt: new Date(d.updatedAt).toISOString() }));
+}
+
 /** Panel ochilganda — oxirgi suhbat davom ettiriladi. */
 export async function latestConversation(db: Db, userId: string): Promise<AiConversationView | null> {
   const [d] = await col(db).find({ userId }, { projection: { _id: 0 } }).sort({ updatedAt: -1 }).limit(1).toArray();

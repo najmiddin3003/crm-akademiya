@@ -90,23 +90,39 @@ function Table({ header, rows, onNavigate }: { header: string[]; rows: string[][
   );
 }
 
-export default function MessageText({ text, onNavigate }: { text: string; onNavigate?: () => void }) {
+/** Javob yozilayotganda matn oxirida miltillovchi nuqta (AI saytlaridagi kabi). */
+const Caret = () => <span aria-hidden className="ai-caret" />;
+
+export default function MessageText({ text, onNavigate, caret = false }: { text: string; onNavigate?: () => void; caret?: boolean }) {
   const blocks = useMemo(() => parseAiMarkdown(text), [text]);
+  const lastBlock = blocks.length - 1;
   return (
     <div className="space-y-2 break-words">
       {blocks.map((b, i) => {
-        if (b.kind === "table") return <Table key={i} header={b.header} rows={b.rows} onNavigate={onNavigate} />;
-        if (b.kind === "ul") {
+        // Nuqta oxirgi qatorning davomida turadi; jadvaldan keyin — alohida.
+        const tail = caret && i === lastBlock;
+        if (b.kind === "table") {
           return (
-            <ul key={i} className="list-disc space-y-1 pl-5">
-              {b.items.map((it, j) => <li key={j}><Inlines parts={it} onNavigate={onNavigate} /></li>)}
-            </ul>
+            <Fragment key={i}>
+              <Table header={b.header} rows={b.rows} onNavigate={onNavigate} />
+              {tail && <Caret />}
+            </Fragment>
           );
         }
-        if (b.kind === "ol") {
-          return (
+        if (b.kind === "ul" || b.kind === "ol") {
+          const items = b.items.map((it, j) => (
+            <li key={j}>
+              <Inlines parts={it} onNavigate={onNavigate} />
+              {tail && j === b.items.length - 1 && <Caret />}
+            </li>
+          ));
+          return b.kind === "ul" ? (
+            <ul key={i} className="list-disc space-y-1 pl-5">
+              {items}
+            </ul>
+          ) : (
             <ol key={i} start={b.start} className="list-decimal space-y-1 pl-5">
-              {b.items.map((it, j) => <li key={j}><Inlines parts={it} onNavigate={onNavigate} /></li>)}
+              {items}
             </ol>
           );
         }
@@ -118,9 +134,11 @@ export default function MessageText({ text, onNavigate }: { text: string; onNavi
                 <Inlines parts={ln} onNavigate={onNavigate} />
               </Fragment>
             ))}
+            {tail && <Caret />}
           </p>
         );
       })}
+      {caret && blocks.length === 0 && <Caret />}
     </div>
   );
 }

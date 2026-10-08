@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_EFFORT, isEffort, nearestEffort } from "@/lib/ai/models";
 import type { AiActionView, AiChatMessage, AiEffort, AiPlanStep, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
+import { touchHistory, type AiHistoryItem } from "./history";
 
 // AI PANELINING HOLATI — yordamchi holati, xabarlar va oqimni o'qish.
 //
@@ -17,6 +18,10 @@ import type { AiActionView, AiChatMessage, AiEffort, AiPlanStep, AiStatus, AiStr
 // EKRANDA KO'RSATISH — vosita ko'rgan ma'lumot sahifasi (`tool.href`) va
 // saqlangan yozuv sahifasi (`resultHref`) `onScreen` ga uzatiladi: panel
 // kichrayib, CRM'da o'sha sahifani ochadi.
+//
+// SUHBATLAR TARIXI (08.10.2026) — to'liq ekranning chap ro'yxati: panel
+// ochilganda yuklanadi, javob saqlangach suhbat tepaga chiqadi (qayta
+// so'ramasdan), ro'yxatdan boshqa suhbatni ochish va o'chirish shu yerda.
 
 export interface UiToolChip {
   id: string;
@@ -114,6 +119,12 @@ async function errorOf(res: Response): Promise<string> {
   return res.status === 429 ? "Bugungi limit tugadi" : "Serverga ulanib bo'lmadi";
 }
 
+/** Chap ro'yxat: `items: null` — hali yuklanmoqda; `at` — olingan vaqt (guruhlash shunga nisbatan). */
+export interface AiHistory {
+  items: AiHistoryItem[] | null;
+  at: number;
+}
+
 export function useAiChat(opts: AiChatOptions = {}) {
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -121,16 +132,28 @@ export function useAiChat(opts: AiChatOptions = {}) {
   const [conversationId, setConversationId] = useState("");
   const [busy, setBusy] = useState(false);
   const [choice, setChoiceState] = useState<AiChoice>({ model: "", effort: null });
+  const [history, setHistory] = useState<AiHistory>({ items: null, at: 0 });
+  /** Ro'yxatdan tanlangan suhbat yuklanmoqda. */
+  const [opening, setOpening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  /** Ketma-ket bosilgan suhbatlardan faqat oxirgisi ochilsin. */
+  const openSeq = useRef(0);
   // Eng so'nggi `onScreen` — oqim o'qilayotgan paytda ham (ref effektda yangilanadi).
   const onScreenRef = useRef(opts.onScreen);
   useEffect(() => {
     onScreenRef.current = opts.onScreen;
   }, [opts.onScreen]);
 
-  // Panel ochilganda: holat va oxirgi suhbat (parallel).
+  // Panel ochilganda: holat, oxirgi suhbat va suhbatlar ro'yxati (parallel).
+  // Ro'yxat olinmasa ham panel ishlayveradi — chap tomon bo'sh qoladi.
   useEffect(() => {
     let alive = true;
+    void fetch("/api/ai/conversations?list=1", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d: { conversations?: AiHistoryItem[] } | null) => {
+        if (alive) setHistory({ items: Array.isArray(d?.conversations) ? d.conversations : [], at: Date.now() });
+      });
     (async () => {
       try {
         const [s, c] = await Promise.all([
@@ -241,6 +264,9 @@ export function useAiChat(opts: AiChatOptions = {}) {
         const decoder = new TextDecoder();
         let buf = "";
         let finished = false;
+        // Saqlangan suhbat id'si (oxirgi `meta`) va javob to'liq saqlandimi (`done`).
+        let savedId = "";
+        let saved = false;
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -257,12 +283,19 @@ export function useAiChat(opts: AiChatOptions = {}) {
               continue; // buzilgan qator — o'tkazib yuboriladi
             }
             if (ev.type === "done" || ev.type === "error") finished = true;
+            if (ev.type === "meta" && ev.conversationId) savedId = ev.conversationId;
+            if (ev.type === "done") saved = true;
             handle(ev);
           }
         }
         // Oqim `done`/`error` siz tugadi (server qayta ishga tushdi, ulanish
         // uzildi) — chala javob to'liqdek ko'rinib qolmasin.
         if (!finished) patchLast((m) => ({ ...m, cutOff: true }));
+        // Chap ro'yxat: suhbat tepaga chiqadi (yangisi qo'shiladi).
+        if (saved && savedId) {
+          const at = Date.now();
+          setHistory((h) => ({ items: touchHistory(h.items, savedId, q, new Date(at).toISOString()), at }));
+        }
       } catch {
         if (ctl.signal.aborted) patchLast((m) => ({ ...m, stopped: true }));
         else patchLast((m) => ({ ...m, error: "Serverga ulanib bo'lmadi" }));
@@ -330,16 +363,78 @@ export function useAiChat(opts: AiChatOptions = {}) {
   /** Yangi suhbat — eskisi bazada qoladi (30 kundan keyin o'zi o'chadi). */
   const newChat = useCallback(() => {
     abortRef.current?.abort();
+    openSeq.current++; // yuklanayotgan suhbat bo'lsa — endi kerak emas
+    setOpening(false);
     setMessages([]);
     setConversationId("");
   }, []);
 
+  /**
+   * Ro'yxatdan suhbatni ochish. Javob kelayotganda — yo'q (yarim javob
+   * yo'qolmasin). Suhbat topilmasa (muddati o'tgan, boshqa qurilmada
+   * o'chirilgan) — ro'yxatdan olib tashlanadi.
+   */
+  const openConversation = useCallback(
+    async (id: string) => {
+      if (busy || !id || id === conversationId) return;
+      const seq = ++openSeq.current;
+      setOpening(true);
+      try {
+        const res = await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+        const d = res.ok ? ((await res.json().catch(() => null)) as { conversation?: { id: string; messages: AiChatMessage[] } | null } | null) : null;
+        if (seq !== openSeq.current) return;
+        if (d?.conversation) {
+          setConversationId(String(d.conversation.id));
+          setMessages(d.conversation.messages.map(fromStored));
+        } else if (res.ok) {
+          setHistory((h) => ({ ...h, items: h.items?.filter((x) => x.id !== id) ?? h.items }));
+        }
+      } catch {
+        // tarmoq — joriy suhbat o'z holicha qoladi
+      } finally {
+        if (seq === openSeq.current) setOpening(false);
+      }
+    },
+    [busy, conversationId],
+  );
+
+  /** Suhbatni bazadan butunlay o'chirish (ro'yxatdan yoki joriysini). */
+  const removeConversation = useCallback(
+    async (id: string) => {
+      if (!id) return;
+      if (id === conversationId) {
+        if (busy) return;
+        newChat();
+      }
+      setHistory((h) => ({ ...h, items: h.items?.filter((x) => x.id !== id) ?? h.items }));
+      await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+    },
+    [busy, conversationId, newChat],
+  );
+
   /** Joriy suhbatni bazadan butunlay o'chirish. */
   const deleteChat = useCallback(async () => {
     const id = conversationId;
-    newChat();
-    if (id) await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
-  }, [conversationId, newChat]);
+    if (id) await removeConversation(id);
+    else newChat();
+  }, [conversationId, newChat, removeConversation]);
 
-  return { status, loadError, messages, busy, conversationId, choice, setChoice, send, stop, newChat, deleteChat, decide };
+  return {
+    status,
+    loadError,
+    messages,
+    busy,
+    conversationId,
+    choice,
+    setChoice,
+    send,
+    stop,
+    newChat,
+    deleteChat,
+    decide,
+    history,
+    opening,
+    openConversation,
+    removeConversation,
+  };
 }

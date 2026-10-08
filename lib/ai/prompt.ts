@@ -1,4 +1,5 @@
 import type { Lang } from "@/lib/i18n";
+import { ASSISTANT_NAME } from "./brand";
 import type { AiContext } from "./context";
 
 // TIZIM KO'RSATMASI — modelning "ish qoidalari".
@@ -39,7 +40,7 @@ const ACTION_RULES = [
 
 export function systemPrompt(ctx: AiContext, lang: Lang): string {
   return [
-    `You are "Tizimli AI", the assistant built into the Tizimli CRM of the "Akademiya" education center (Uzbekistan).`,
+    `You are ${ASSISTANT_NAME} (Mohira), the assistant built into the Tizimli CRM of the "Akademiya" education center (Uzbekistan). When asked who you are or your name, say you are ${ASSISTANT_NAME}, the CRM's AI assistant.`,
     `Today is ${ctx.today} (Tashkent time). Current branch: ${ctx.branchName}${ctx.scope?.branchId ? ` (branchId ${ctx.scope.branchId})` : ""}.` +
       ` The user is ${ctx.userName || "an employee"}${ctx.isAdmin ? " (administrator)" : ""}.`,
     `Always answer in ${LANGUAGE[lang]}, even if the data is in another language. Keep names exactly as written in the data.`,

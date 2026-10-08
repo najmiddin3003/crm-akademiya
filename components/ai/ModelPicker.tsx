@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Check, ChevronDown, Sparkles } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import { EFFORT_LABELS, effortLabel } from "@/lib/ai/models";
@@ -13,7 +13,11 @@ import type { AiChoice } from "./useAiChat";
 //   • «Tezlik» surgichi — tanlangan model qabul qiladigan darajalar
 //     (Tezkor → Chuqur). Model darajani qo'llamasa (proksi rejimi) — yo'q.
 // Tanlov keyingi savoldan kuchga kiradi va shu qurilmada eslab qolinadi
-// (components/ai/useAiChat.ts).
+// (components/ai/useAiChat.ts). Ro'yxat silliq ochiladi va silliq yopiladi
+// (`.ai-pop-out`, 6-bosqich).
+
+/** Yopilish animatsiyasi (`.ai-pop-out`, app/globals.css) bilan bir xil. */
+const CLOSE_MS = 120;
 
 export default function ModelPicker({
   models,
@@ -31,18 +35,43 @@ export default function ModelPicker({
 }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  /** Yopilish animatsiyasi ketyapti — ro'yxat hali chizilgan, lekin so'nyapti. */
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const model = models.find((m) => m.id === choice.model);
+  const shown = open && !closing;
+
+  const close = useCallback(() => {
+    if (closeTimer.current !== null) return;
+    setClosing(true);
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = null;
+      setOpen(false);
+      setClosing(false);
+    }, reduced ? 0 : CLOSE_MS);
+  }, []);
+  /** Ochish (yopilayotgan bo'lsa — yopilish bekor bo'ladi). */
+  const reopen = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+    setClosing(false);
+    setOpen(true);
+  };
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+  }, []);
 
   // Tashqariga bosilsa yopiladi.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) close();
     };
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
-  }, [open]);
+  }, [open, close]);
 
   if (!model) return null;
   const efforts = model.efforts;
@@ -54,7 +83,7 @@ export default function ModelPicker({
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape" && open) {
       e.stopPropagation();
-      setOpen(false);
+      close();
     }
   };
 
@@ -63,9 +92,9 @@ export default function ModelPicker({
       <button
         type="button"
         disabled={disabled || !interactive}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (shown ? close() : reopen())}
         aria-haspopup="dialog"
-        aria-expanded={open}
+        aria-expanded={shown}
         title={t("Model va tezlik")}
         className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-secondary/50 px-3 py-1.5 text-[12px] font-medium text-foreground/80 transition-colors hover:bg-secondary disabled:cursor-default disabled:hover:bg-secondary/50"
       >
@@ -74,14 +103,14 @@ export default function ModelPicker({
           {model.name}
           {choice.effort && <span className="text-muted-foreground"> · {t(effortLabel(choice.effort))}</span>}
         </span>
-        {interactive && <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />}
+        {interactive && <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${shown ? "rotate-180" : ""}`} />}
       </button>
 
       {open && (
         <div
           role="dialog"
           aria-label={t("Model va tezlik")}
-          className="ui-pop-in ui-pop-up absolute bottom-full left-0 z-20 mb-2 w-[min(330px,calc(100vw-32px))] rounded-2xl border border-border bg-card p-2 shadow-xl"
+          className={`${closing ? "ai-pop-out" : "ui-pop-in ui-pop-up"} absolute bottom-full left-0 z-20 mb-2 w-[min(330px,calc(100vw-32px))] rounded-2xl border border-border bg-card p-2 shadow-xl`}
         >
           <div className="px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("Model")}</div>
           <div className={`space-y-0.5 overflow-y-auto overscroll-contain ${compact ? "max-h-[170px]" : "max-h-[260px]"}`}>

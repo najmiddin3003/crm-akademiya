@@ -649,6 +649,92 @@ console.log("\n— 5-bosqich (reja, query_data, jadval, guruh/davomat yordamchil
   }
 }
 
+// ── 6-bosqich: MohiraAI — genie animatsiyasi, suhbatlar tarixi, nom ────
+console.log("\n— 6-bosqich (genie kadrlari, suhbatlar tarixi, MohiraAI)");
+{
+  const { genieSide, genieFrames } = await import("@/components/ai/genie");
+  const { groupHistory, touchHistory, historyTitle, filterHistory } = await import("@/components/ai/history");
+  const { ASSISTANT_NAME } = await import("@/lib/ai/brand");
+  const { systemPrompt } = await import("@/lib/ai/prompt");
+
+  const screen = { x: 0, y: 0, w: 1440, h: 900 };
+  const fab = { x: 16, y: 756, w: 56, h: 56 }; // standart joy: chap-past
+  const float = { x: 1016, y: 296, w: 400, h: 580 };
+  check(
+    "genie: tomon — to'liq ekrandan pastga, suzuvchi oynadan chapga, yon/tepa tugmaga o'shanga",
+    genieSide(screen, fab) === "bottom" && genieSide(float, fab) === "left" &&
+      genieSide(screen, { x: 1376, y: 420, w: 56, h: 56 }) === "right" && genieSide(screen, { x: 700, y: 8, w: 56, h: 56 }) === "top",
+  );
+
+  /** clip-path ko'pburchagining nuqtalari va chegarasi. */
+  const pts = (clip) => [...clip.matchAll(/(-?[\d.]+)px (-?[\d.]+)px/g)].map((m) => [Number(m[1]), Number(m[2])]);
+  const bounds = (p) => ({
+    x0: Math.min(...p.map((q) => q[0])),
+    x1: Math.max(...p.map((q) => q[0])),
+    y0: Math.min(...p.map((q) => q[1])),
+    y1: Math.max(...p.map((q) => q[1])),
+  });
+  const near = (a, b) => Math.abs(a - b) <= 0.15;
+  for (const [name, win] of [["to'liq ekran", screen], ["suzuvchi oyna", float]]) {
+    const fr = genieFrames(win, fab);
+    const counts = new Set(fr.map((f) => pts(f.clip).length));
+    check(`genie (${name}): kadrlar 0→1, nuqtalar soni bir xil`, fr.length === 29 && fr[0].offset === 0 && fr[28].offset === 1 &&
+      fr.every((f, i) => i === 0 || f.offset > fr[i - 1].offset) && counts.size === 1 && [...counts][0] === 32, `${fr.length} ${[...counts]}`);
+    const first = fr[0];
+    const b0 = bounds(pts(first.clip));
+    check(`genie (${name}): boshida oyna o'z joyida`, first.transform === "translate(0px, 0px) scale(1, 1)" && first.opacity === 1 &&
+      near(b0.x0, win.x) && near(b0.x1, win.x + win.w) && near(b0.y0, win.y) && near(b0.y1, win.y + win.h), `${first.transform} ${JSON.stringify(b0)}`);
+    const last = fr[28];
+    const b1 = bounds(pts(last.clip));
+    const m = last.transform.match(/translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+), ([\d.]+)\)/);
+    check(
+      `genie (${name}): oxirida tugma ichida, ko'rinmas`,
+      last.opacity === 0 && !!m && near(Number(m[1]), fab.x - win.x) && near(Number(m[2]), fab.y - win.y) &&
+        Math.abs(Number(m[3]) - fab.w / win.w) < 1e-3 && Math.abs(Number(m[4]) - fab.h / win.h) < 1e-3 &&
+        near(b1.x0, fab.x) && near(b1.x1, fab.x + fab.w) && near(b1.y0, fab.y) && near(b1.y1, fab.y + fab.h),
+      `${last.transform} ${JSON.stringify(b1)}`,
+    );
+  }
+  {
+    // Tugma oyna o'rtasida — g'alati holat ham son bersin (NaN emas).
+    const fr = genieFrames(screen, { x: 692, y: 422, w: 56, h: 56 });
+    check("genie: tugma oyna o'rtasida — NaN yo'q", fr.every((f) => !/NaN|Infinity/.test(f.clip + f.transform + f.opacity)));
+  }
+
+  const now = new Date(2026, 9, 8, 15, 0); // mahalliy vaqt — sinov soat mintaqasiga bog'liq emas
+  const at = (d, h) => new Date(2026, 9, d, h).toISOString();
+  const items = [
+    { id: "a", title: "Bugungi to'lovlar", updatedAt: at(8, 10) },
+    { id: "b", title: "Qarzdorlar", updatedAt: at(7, 23) },
+    { id: "c", title: "Davomat", updatedAt: at(4, 9) },
+    { id: "d", title: "Oylik", updatedAt: at(1, 9) },
+    { id: "e", title: "Eski", updatedAt: new Date(2026, 7, 20).toISOString() },
+  ];
+  const g = groupHistory(items, now);
+  check(
+    "tarix: Bugun / Kecha / 7 kun / 30 kun / oldinroq",
+    eq(g.map((x) => [x.group, x.items.map((i) => i.id)]), [["today", ["a"]], ["yesterday", ["b"]], ["week", ["c"]], ["month", ["d"]], ["older", ["e"]]]),
+    JSON.stringify(g.map((x) => [x.group, x.items.map((i) => i.id)])),
+  );
+  check("tarix: bo'sh guruh chiqmaydi", eq(groupHistory([items[2], items[0]], now).map((x) => x.group), ["today", "week"]));
+  check("tarix: nom — server kabi (bo'shliqlar yig'iladi, 80 belgi)", historyTitle("  Bugun\n kim   to'ladi?  ") === "Bugun kim to'ladi?" && historyTitle("x".repeat(90)).length === 80);
+  {
+    const list = items.slice(0, 2);
+    const added = touchHistory(list, "z", "Yangi  savol", at(8, 14));
+    const moved = touchHistory(list, "b", "boshqa savol", at(8, 14));
+    check(
+      "tarix: yangi suhbat tepaga qo'shiladi, eskisi tepaga chiqadi (nomi o'zgarmaydi)",
+      eq(added.map((x) => x.id), ["z", "a", "b"]) && added[0].title === "Yangi savol" &&
+        eq(moved.map((x) => x.id), ["b", "a"]) && moved[0].title === "Qarzdorlar" && moved[0].updatedAt === at(8, 14) &&
+        touchHistory(null, "z", "q", at(8, 14)) === null,
+    );
+  }
+  check("tarix qidiruvi: katta-kichik harf va apostrof turlari", eq(filterHistory([{ title: "Bugungi TO‘LOVLAR" }, { title: "Davomat" }], "to'lov").map((x) => x.title), ["Bugungi TO‘LOVLAR"]));
+
+  check("nom: MohiraAI", ASSISTANT_NAME === "MohiraAI");
+  check("ko'rsatma: yordamchi o'zini MohiraAI deb taniydi", systemPrompt({ today: "2026-10-08", branchName: "Markaz", userName: "X", isAdmin: false, actions: false }, "uz").includes("You are MohiraAI"));
+}
+
 // ── Model ↔ vositalar sikli (soxta OpenAI serveri) ─────────────────────
 // Tarmoqqa chiqmaydi: 127.0.0.1 da OpenAI kabi javob beradigan kichik
 // server. Sinaladi: so'rov shakli, bo'laklab kelgan vosita chaqiruvi,
