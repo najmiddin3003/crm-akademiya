@@ -31,6 +31,14 @@ export const TOOL_LABELS: readonly { name: string; label: string }[] = [
   { name: "propose_transfer", label: "Ko'chirish qoralamasi tayyorlanmoqda" },
   { name: "propose_pupil_comment", label: "Izoh qoralamasi tayyorlanmoqda" },
   { name: "propose_task", label: "Topshiriq qoralamasi tayyorlanmoqda" },
+  { name: "update_plan", label: "Reja tuzilmoqda" },
+  { name: "payments_list", label: "To'lovlar ro'yxati olinmoqda" },
+  { name: "query_data", label: "Ma'lumotlar bazasidan qidirilmoqda" },
+  { name: "propose_new_pupil", label: "O'quvchi qoralamasi tayyorlanmoqda" },
+  { name: "propose_group_membership", label: "Guruh qoralamasi tayyorlanmoqda" },
+  { name: "propose_attendance", label: "Davomat qoralamasi tayyorlanmoqda" },
+  { name: "propose_pupil_status", label: "Holat qoralamasi tayyorlanmoqda" },
+  { name: "propose_lead_stage", label: "Lid bosqichi qoralamasi tayyorlanmoqda" },
   { name: "*", label: "Ma'lumot olinmoqda" },
 ];
 

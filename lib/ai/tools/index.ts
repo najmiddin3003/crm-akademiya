@@ -1,7 +1,7 @@
 import type { AiContext } from "../context";
 import { MAX_TOOL_RESULT_CHARS } from "../config";
 import type { ResponseToolSpec, ToolSpec } from "../openai";
-import type { AiActionView } from "../protocol";
+import type { AiActionView, AiPlanStep } from "../protocol";
 import {
   actionOptions,
   proposeChiqim,
@@ -12,24 +12,31 @@ import {
   proposeTransfer,
 } from "./actions";
 import { attendanceReport, staffAttendance } from "./attendance";
+import { queryData } from "./dataQuery";
 import { cashboxBalances, financeSummary } from "./finance";
 import { salesFunnel } from "./funnel";
 import { listGroups } from "./groups";
 import { crmHelp } from "./help";
 import { leadsSummary } from "./leads";
+import { paymentsList } from "./payments";
 import { payrollSummary } from "./payroll";
+import { updatePlan } from "./plan";
 import { pupilDetails, searchPupils } from "./pupils";
 import { debtorsReport, overview } from "./reports";
+import { proposeAttendance, proposeGroupMembership, proposeLeadStage, proposeNewPupil, proposePupilStatus } from "./studentActions";
 import { staffTasks } from "./tasks";
 import { DraftCreated, ToolInputError, type AiTool, type ToolArgs } from "./types";
 
 // VOSITALAR RO'YXATI va ularni ishga tushirish.
 //
-// O'qish vositalari + amal vositalari (2–3-bosqich). Amal vositalari ham
-// HECH NARSA YOZMAYDI — faqat qoralama tuzadi (lib/ai/tools/actions.ts);
-// yozuv xodim panelda «Tasdiqlash» ni bosgandagina bo'ladi.
+// O'qish vositalari + amal vositalari (2–3–5-bosqich). Amal vositalari ham
+// HECH NARSA YOZMAYDI — faqat qoralama tuzadi (lib/ai/tools/actions.ts,
+// studentActions.ts); yozuv xodim panelda «Tasdiqlash» ni bosgandagina
+// bo'ladi. 5-bosqichda: to'lovlar ro'yxati, admin uchun istalgan ma'lumot
+// (query_data) va vazifa rejasi (update_plan, Cowork kabi).
 
 export const AI_TOOLS: readonly AiTool[] = [
+  updatePlan,
   overview,
   searchPupils,
   pupilDetails,
@@ -42,7 +49,9 @@ export const AI_TOOLS: readonly AiTool[] = [
   salesFunnel,
   financeSummary,
   cashboxBalances,
+  paymentsList,
   payrollSummary,
+  queryData,
   crmHelp,
   actionOptions,
   proposeLead,
@@ -51,7 +60,18 @@ export const AI_TOOLS: readonly AiTool[] = [
   proposeTransfer,
   proposePupilComment,
   proposeTask,
+  proposeNewPupil,
+  proposeGroupMembership,
+  proposeAttendance,
+  proposePupilStatus,
+  proposeLeadStage,
 ];
+
+/** Panelda vosita belgisi chiqmaydigan vositalar — reja o'zi ko'rinadi. */
+const SILENT_TOOLS = new Set(["update_plan"]);
+export function isSilentTool(name: string): boolean {
+  return SILENT_TOOLS.has(name);
+}
 
 const BY_NAME = new Map(AI_TOOLS.map((tool) => [tool.name, tool]));
 
@@ -101,6 +121,21 @@ export interface ToolRunResult {
    * yo'l va faqat xodim ocha oladigan sahifa.
    */
   screen?: string;
+  /** Ish jarayoni ro'yxatida qadam ostidagi qisqa yozuv ("23 ta yozuv · 4 500 000 so'm"). */
+  note?: string;
+  /** `update_plan` — panelga ketadigan reja. */
+  plan?: AiPlanStep[];
+}
+
+/**
+ * Natijadagi PANEL qismi (`_ui`: note, plan) ajratiladi — modelga ketmaydi.
+ * Vositalar shu kalit bilan panelga qisqa yozuv yoki reja beradi.
+ */
+function takeUi(result: unknown): { result: unknown; note?: string; plan?: AiPlanStep[] } {
+  if (!result || typeof result !== "object" || Array.isArray(result) || !("_ui" in result)) return { result };
+  const { _ui, ...rest } = result as Record<string, unknown> & { _ui?: { note?: unknown; plan?: AiPlanStep[] } };
+  const note = typeof _ui?.note === "string" && _ui.note ? _ui.note.slice(0, 160) : undefined;
+  return { result: rest, ...(note ? { note } : {}), ...(_ui?.plan ? { plan: _ui.plan } : {}) };
 }
 
 /** `/finance-cash`, `/student-edit/12?src=list` — components/ai/aiMarkdown.ts → isInternalHref bilan bir xil. */
@@ -137,11 +172,20 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
   }
 
   try {
-    const result = await tool.run(ctx, args);
-    if (result instanceof DraftCreated) {
-      return { ok: true, content: clip(JSON.stringify(result.forModel)), action: result.view, ...screenOf(ctx, result.screen) };
+    const raw = await tool.run(ctx, args);
+    if (raw instanceof DraftCreated) {
+      return { ok: true, content: clip(JSON.stringify(raw.forModel)), action: raw.view, ...screenOf(ctx, raw.screen) };
     }
-    return { ok: true, content: clip(JSON.stringify(result ?? null)), ...screenOf(ctx, (result as { page?: unknown } | null)?.page) };
+    const { result, note, plan } = takeUi(raw);
+    // Vosita "xato" natijasi (`{error}`) — ruxsat yoki qamrov sababi: panelda qizil belgi.
+    const failed = !!result && typeof result === "object" && "error" in (result as object);
+    return {
+      ok: !failed,
+      content: clip(JSON.stringify(result ?? null)),
+      ...(failed ? {} : screenOf(ctx, (result as { page?: unknown } | null)?.page)),
+      ...(note ? { note } : {}),
+      ...(plan ? { plan } : {}),
+    };
   } catch (e) {
     if (e instanceof ToolInputError) return fail(`Invalid arguments: ${e.message}`);
     console.error("[ai] vosita xatosi", name, e);

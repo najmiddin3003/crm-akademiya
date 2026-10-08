@@ -14,7 +14,7 @@ import {
 import { systemPrompt } from "./prompt";
 import type { AiChatMessage, AiEffort, AiStreamEvent } from "./protocol";
 import { toolLabel } from "./toolLabels";
-import { responseToolSpecs, runTool, tooManyCallsResult, toolSpecs, toolsFor } from "./tools";
+import { isSilentTool, responseToolSpecs, runTool, tooManyCallsResult, toolSpecs, toolsFor } from "./tools";
 
 // BITTA SAVOL — model ↔ vositalar sikli.
 //
@@ -181,21 +181,32 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
 
     if (calls.length === 0) break;
 
-    for (const [i, call] of calls.entries()) {
-      if (i >= MAX_CALLS_PER_ROUND) {
+    let executed = 0;
+    for (const call of calls) {
+      // Reja (update_plan) hisobga kirmaydi va panelda belgi bermaydi — reja o'zi ko'rinadi.
+      const silent = isSilentTool(call.name);
+      if (!silent && executed >= MAX_CALLS_PER_ROUND) {
         dialog.answer(call.id, tooManyCallsResult(MAX_CALLS_PER_ROUND));
         continue;
       }
-      emit({ type: "tool", id: call.id, label: toolLabel(call.name), status: "start" });
+      if (!silent) {
+        executed++;
+        emit({ type: "tool", id: call.id, label: toolLabel(call.name), status: "start" });
+      }
       const result = await runTool(ctx, call.name, call.arguments);
-      emit({
-        type: "tool",
-        id: call.id,
-        label: toolLabel(call.name),
-        status: result.ok ? "done" : "error",
-        // Panel kichrayib, ekranda shu sahifani ochadi (4-bosqich).
-        ...(result.ok && result.screen ? { href: result.screen } : {}),
-      });
+      if (result.plan) emit({ type: "plan", steps: result.plan });
+      if (!silent) {
+        emit({
+          type: "tool",
+          id: call.id,
+          label: toolLabel(call.name),
+          status: result.ok ? "done" : "error",
+          // Panel kichrayib, ekranda shu sahifani ochadi (4-bosqich).
+          ...(result.ok && result.screen ? { href: result.screen } : {}),
+          // Ish jarayoni ro'yxatida qadam ostidagi yozuv (5-bosqich).
+          ...(result.note ? { note: result.note } : {}),
+        });
+      }
       if (result.action) {
         emit({ type: "action", action: result.action });
         actionIds.push(result.action.id);

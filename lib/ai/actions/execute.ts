@@ -1,12 +1,14 @@
-import { withPupilBranch } from "@/lib/branchScope";
+import { withBranch, withPupilBranch } from "@/lib/branchScope";
 import { applyCashboxAdjust, type AdjustDeps } from "@/lib/cashboxAdjust";
 import { applyCashboxTransferTo } from "@/lib/cashboxTransfer";
+import { withLeadScope } from "@/lib/leadScope";
 import { createOrder } from "@/lib/ordersCreate";
 import { addPupilComment } from "@/lib/pupilComments";
 import { findBotCashbox } from "@/lib/staffBot/auth";
 import { createStaffTasks } from "@/lib/staffTasksServer";
 import { uzDateIso } from "@/lib/uzTime";
-import { taskViewerOf, type AiContext } from "../context";
+import { authorNameOf, taskViewerOf, type AiContext } from "../context";
+import { executeStudentAction } from "./executeStudents";
 import { ACTION_PAGES } from "./pages";
 import type { ActionDoc, ActionOutcome } from "./store";
 
@@ -45,6 +47,27 @@ export async function checkAccess(ctx: AiContext, doc: ActionDoc): Promise<{ err
     // Xodimlar qamrovini yadro (createStaffTasks) yana bir bor tekshiradi.
     const v = await taskViewerOf(ctx);
     return v.role === "xodim" ? { error: "Topshiriq berish uchun ruxsatingiz yo'q" } : null;
+  }
+  // 5-bosqich. Yadrolar filial qamrovini o'zi ham tekshiradi — bu yerda
+  // tushunarli xabar uchun oldindan.
+  if (doc.kind === "pupil") {
+    return ctx.scope.allowed.includes(num(doc.payload.branchId)) ? null : { error: "Bu filialga ruxsatingiz yo'q" };
+  }
+  if (doc.kind === "membership" || doc.kind === "attendance") {
+    const found = await ctx.db.collection("groups").findOne(withBranch({ id: num(doc.payload.groupId) }, ctx.scope), { projection: { _id: 1 } });
+    return found ? null : { error: "Guruh joriy filialda topilmadi" };
+  }
+  if (doc.kind === "status") {
+    const found = await ctx.db
+      .collection("pupils")
+      .findOne(withPupilBranch({ id: num(doc.payload.pupilId) }, ctx.scope), { projection: { _id: 1 } });
+    return found ? null : { error: "O'quvchi joriy filialda topilmadi" };
+  }
+  if (doc.kind === "stage") {
+    const found = await ctx.db
+      .collection("orders")
+      .findOne(withLeadScope({ id: num(doc.payload.orderId) }, ctx.scope, authorNameOf(ctx)), { projection: { _id: 1 } });
+    return found ? null : { error: "Lid topilmadi yoki sizga ko'rinmaydi" };
   }
   // Kassa: admin — har qanday faol kassa; xodim — faqat o'zi mas'ul kassa (bot bilan bir xil qoida).
   const cashboxId = num(doc.payload.cashboxId);
@@ -143,6 +166,10 @@ export async function executeAction(ctx: AiContext, doc: ActionDoc, deps: Adjust
       resultHref: "/tasks",
       result: { taskIds: out.docs.map((d) => d.id), batchId: first.batchId },
     };
+  }
+
+  if (doc.kind === "pupil" || doc.kind === "membership" || doc.kind === "attendance" || doc.kind === "status" || doc.kind === "stage") {
+    return executeStudentAction(ctx, doc, deps);
   }
 
   const studentId = num(p.studentId);

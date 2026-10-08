@@ -22,7 +22,9 @@ export type Inline =
 export type Block =
   | { kind: "p"; lines: Inline[][] }
   | { kind: "ul"; items: Inline[][] }
-  | { kind: "ol"; start: number; items: Inline[][] };
+  | { kind: "ol"; start: number; items: Inline[][] }
+  /** Jadval (5-bosqich) — kataklar XOM matn: chizishda parseInline, CSV'da plainText. */
+  | { kind: "table"; header: string[]; rows: string[][] };
 
 /** Faqat ilova ichidagi nisbiy yo'l: "/..." (lekin "//host" emas). */
 export function isInternalHref(href: string): boolean {
@@ -52,6 +54,46 @@ export function parseInline(src: string): Inline[] {
 const UL = /^\s*[-*•]\s+(.*)$/;
 const OL = /^\s*(\d{1,3})[.)]\s+(.*)$/;
 const HEADING = /^\s*#{1,6}\s+(.*)$/;
+/** Jadval ajratkichi: "| --- | :---: |" (chetidagi chiziqlar ixtiyoriy). */
+const TABLE_RULE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+const MAX_TABLE_ROWS = 300;
+
+/** "| a | b |" → ["a", "b"]; `\|` — katak ichidagi chiziq. */
+export function tableCells(line: string): string[] {
+  const s = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  const cells: string[] = [];
+  let cur = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && s[i + 1] === "|") {
+      cur += "|";
+      i++;
+    } else if (s[i] === "|") {
+      cells.push(cur.trim());
+      cur = "";
+    } else {
+      cur += s[i];
+    }
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+/** Katak matni — belgilarsiz (CSV va qidiruv uchun). */
+export function plainText(src: string): string {
+  return parseInline(src)
+    .map((p) => p.text)
+    .join("");
+}
+
+/**
+ * CSV — Excel'da to'g'ri ochilsin: UTF-8 BOM (apostrof va kirill harflar),
+ * ajratkich ";" (rus/o'zbek Excel'i vergulni ustun deb tanimaydi).
+ */
+export function tableCsv(header: readonly string[], rows: readonly (readonly string[])[]): string {
+  const esc = (s: string) => (/[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const line = (cells: readonly string[]) => cells.map((c) => esc(plainText(c))).join(";");
+  return `﻿${[line(header), ...rows.map(line)].join("\r\n")}`;
+}
 
 export function parseAiMarkdown(src: string): Block[] {
   const blocks: Block[] = [];
@@ -62,10 +104,29 @@ export function parseAiMarkdown(src: string): Block[] {
     para = null;
   };
 
-  for (const raw of src.replace(/\r\n?/g, "\n").split("\n")) {
-    const line = raw.trimEnd();
+  const lines = src.replace(/\r\n?/g, "\n").split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trimEnd();
     if (!line.trim()) {
       closePara();
+      continue;
+    }
+    // Jadval: sarlavha qatori + ajratkich, keyin "|" li qatorlar.
+    if (line.includes("|") && i + 1 < lines.length && TABLE_RULE.test(lines[i + 1])) {
+      closePara();
+      const header = tableCells(line);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].includes("|") && lines[i].trim()) {
+        if (rows.length < MAX_TABLE_ROWS) {
+          const cells = tableCells(lines[i]);
+          // Qator sarlavhadan qisqa/uzun bo'lsa — sarlavha kengligiga keltiriladi.
+          rows.push(header.map((_, k) => cells[k] ?? ""));
+        }
+        i++;
+      }
+      i--; // tsikl o'zi oshiradi
+      blocks.push({ kind: "table", header, rows });
       continue;
     }
     const ul = UL.exec(line);

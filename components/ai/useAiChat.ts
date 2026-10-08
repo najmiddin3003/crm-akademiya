@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_EFFORT, isEffort, nearestEffort } from "@/lib/ai/models";
-import type { AiActionView, AiChatMessage, AiEffort, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
+import type { AiActionView, AiChatMessage, AiEffort, AiPlanStep, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
 
 // AI PANELINING HOLATI — yordamchi holati, xabarlar va oqimni o'qish.
 //
@@ -22,6 +22,10 @@ export interface UiToolChip {
   id: string;
   label: string;
   status: AiToolStatus;
+  /** Natija haqida qisqa yozuv (server, o'zbekcha) — ish jarayoni ro'yxatida. */
+  note?: string;
+  /** Shu qadam ko'rgan sahifa — ro'yxatdan bosib ochish mumkin. */
+  href?: string;
 }
 
 /** Tasdiq kartasi + mijozdagi holat (so'rov ketyapti / vaqtinchalik xato). */
@@ -50,6 +54,8 @@ export interface UiMessage {
   actions?: UiAction[];
   /** Javobni qaysi model va daraja yozdi (`meta` hodisasidan) — ostida kichik yozuv. */
   via?: { model: string; effort: AiEffort | null };
+  /** Vazifa rejasi (`update_plan`, 5-bosqich) — eng so'nggi holati. */
+  plan?: AiPlanStep[];
 }
 
 /** Paneldagi tanlov. `model: ""` — holat hali yuklanmagan. */
@@ -181,11 +187,16 @@ export function useAiChat(opts: AiChatOptions = {}) {
       } else if (e.type === "delta") {
         patchLast((m) => ({ ...m, content: m.content + e.text }));
       } else if (e.type === "tool") {
+        // Qadam o'z joyida yangilanadi (tartib — boshlangan tartibda).
         patchLast((m) => {
-          const tools = (m.tools ?? []).filter((x) => x.id !== e.id);
-          return { ...m, tools: [...tools, { id: e.id, label: e.label, status: e.status }] };
+          const tools = m.tools ?? [];
+          const chip: UiToolChip = { id: e.id, label: e.label, status: e.status, ...(e.note ? { note: e.note } : {}), ...(e.href ? { href: e.href } : {}) };
+          const at = tools.findIndex((x) => x.id === e.id);
+          return { ...m, tools: at >= 0 ? tools.map((x, i) => (i === at ? chip : x)) : [...tools, chip] };
         });
         if (e.status === "done" && e.href) onScreenRef.current?.(e.href, false);
+      } else if (e.type === "plan") {
+        patchLast((m) => ({ ...m, plan: e.steps }));
       } else if (e.type === "action") {
         patchLast((m) => ({ ...m, actions: [...(m.actions ?? []).filter((a) => a.id !== e.action.id), e.action] }));
       } else if (e.type === "error") {

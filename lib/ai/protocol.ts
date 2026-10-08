@@ -10,6 +10,12 @@
 
 export type AiToolStatus = "start" | "done" | "error";
 
+/** Vazifa rejasining qadami (`update_plan` vositasi). Matn — model yozgan (xodim tilida). */
+export interface AiPlanStep {
+  title: string;
+  status: "pending" | "active" | "done";
+}
+
 /**
  * Fikrlash darajasi — panelda «Tezlik» (tezdan chuqurga). OpenAI'ning
  * `reasoning.effort` qiymatlari; qaysi model qaysi birini qabul qilishi
@@ -39,8 +45,15 @@ export type AiStreamEvent =
    * Vosita ishga tushdi / tugadi — panelda "… olinmoqda" belgisi. `href` —
    * vosita ko'rgan ma'lumotning CRM sahifasi (faqat `done` da, xodim ocha
    * oladigan bo'lsa): panel kichrayib, ekranda shu sahifani ko'rsatadi.
+   * `note` — natija haqida qisqa yozuv ("23 ta to'lov · 4 500 000 so'm"),
+   * ish jarayoni ro'yxatida qadam ostida chiqadi (o'zbekcha, `t()` siz).
    */
-  | { type: "tool"; id: string; label: string; status: AiToolStatus; href?: string }
+  | { type: "tool"; id: string; label: string; status: AiToolStatus; href?: string; note?: string }
+  /**
+   * Vazifa rejasi (5-bosqich, Cowork kabi) — model `update_plan` bilan
+   * yozadi va yangilaydi; panel uni belgilanadigan ro'yxat qilib ko'rsatadi.
+   */
+  | { type: "plan"; steps: AiPlanStep[] }
   /** Javob matnining navbatdagi bo'lagi. */
   | { type: "delta"; text: string }
   /** Amal qoralamasi tayyor — panel tasdiq kartasini chizadi (2-bosqich). */
@@ -72,9 +85,22 @@ export interface AiChatMessage {
 /**
  * 2-bosqich: lid, kirim, chiqim. 3-bosqich (08.10.2026): boshqa kassaga
  * ko'chirish (qabul qiluvchi keyin ✓/✗ qiladi), o'quvchiga izoh, xodimga
- * topshiriq.
+ * topshiriq. 5-bosqich (08.10.2026): yangi o'quvchi (`pupil`), guruhga
+ * qo'shish/chiqarish (`membership`), davomat (`attendance`), o'quvchi
+ * holati (`status` — Aktiv/Muzlatilgan/Arxiv), lid bosqichi (`stage`).
  */
-export type AiActionKind = "lead" | "kirim" | "chiqim" | "transfer" | "comment" | "task";
+export type AiActionKind =
+  | "lead"
+  | "kirim"
+  | "chiqim"
+  | "transfer"
+  | "comment"
+  | "task"
+  | "pupil"
+  | "membership"
+  | "attendance"
+  | "status"
+  | "stage";
 
 /** `expired` bazada yozilmaydi — muddati o'tgan qoralama ko'rsatishda shunday chiqadi. */
 export type AiActionStatus = "draft" | "executing" | "done" | "failed" | "cancelled" | "expired";
@@ -104,7 +130,23 @@ export type AiActionFieldKey =
   | "deadline"
   | "priority"
   | "fine"
-  | "link";
+  | "link"
+  // 5-bosqich
+  | "phone"
+  | "birth_date"
+  | "category"
+  | "source"
+  | "joined_at"
+  | "op"
+  | "date"
+  | "marks"
+  | "summary"
+  | "status"
+  | "reason"
+  | "lead"
+  | "stage"
+  | "trial"
+  | "effect";
 
 export interface AiActionField {
   key: AiActionFieldKey;

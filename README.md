@@ -2445,3 +2445,73 @@ tekshiruvi qo'shildi (lokal MongoDB kerak — bu muhitda ishga tushmadi).
 **Tekshirilmagani**: haqiqiy OpenAI bilan (kalit yo'q) va brauzerda ko'z
 bilan — sinov saytida: robot → to'liq ekran → modelni almashtirish →
 "Bugun kim kelmadi?" (oyna kichrayib Davomat sahifasi ochilishi kerak).
+
+### 5-bosqich — Cowork kabi ish: reja, ish jarayoni, istalgan savol, yangi amallar (2026-10-08)
+
+Foydalanuvchi talabi: "bugun to'lov qilgan o'quvchilar ro'yxatini ber"
+kabi savollarga javob bersin, admin bergan barcha savollarga javob
+bersin va aytilgan ishlarni qilsin, AI nima qilayotgani oynada ko'rinsin
+(Claude Cowork kabi). Amallar foydalanuvchi tanlovi bilan: o'quvchi
+qo'shish, davomat, holatni o'zgartirish (SMS — yo'q).
+
+**O'qish:**
+
+- `payments_list` — Tranzaksiyalar jurnali (`transaction_entries`) qatorma-qator:
+  kim, qancha, to'lov turi, toifa, kassa, kim qabul qildi. Sukut — bugungi
+  kirim, bekor qilinganlarsiz (jami ularsiz). Tranzaksiyalar ruxsati — butun
+  jurnal; faqat Kassalar ruxsati — faqat o'z kassasi.
+- `query_data` — FAQAT ADMIN, FAQAT O'QISH: model Mongo so'rovini o'zi tuzadi
+  (`describe` → `find` / `count` / `distinct` / `aggregate`) oq ro'yxatdagi
+  ~30 kolleksiya ustida. `$where`/`$function`/`$out`/`$merge` rad etiladi,
+  `$lookup` faqat oq ro'yxatga; parol/xesh/token/sessiya maydonlari
+  natijadan o'chadi, telefonlar yashiriladi; 8 s, ≤ 100/200 qator, ~16 ming
+  belgi. Foydalanuvchilar, sessiyalar, tasdiq kodlari, sinxron navbatlari
+  ro'yxatda yo'q (`lib/ai/tools/dataQuery.ts`).
+
+**Cowork kabi ko'rinish:**
+
+- `update_plan` — model ko'p qadamli ishni rejalaydi va har qadamni
+  yangilaydi; panelda «Reja» (belgilanadigan ro'yxat), suzuvchi oyna
+  sarlavhasida hozirgi qadam. Vosita belgisi chiqmaydi va bir qadamdagi
+  vositalar chegarasiga (4) kirmaydi.
+- «Ish jarayoni» — har vosita bir qadam: holat, natija yozuvi
+  (`_ui.note`, masalan "23 ta yozuv · 4 500 000 so'm" — modelga ketmaydi),
+  sahifa havolasi. Javob tugagach "N ta qadam bajarildi" bo'lib yig'iladi.
+- Jadval — javobdagi markdown jadval (`aiMarkdown.ts`, HTML'siz) skroll
+  bilan chiziladi; «CSV» — Excel uchun fayl (UTF-8 BOM, `;`), brauzerda.
+- Ko'p qadamli vazifa uchun: murojaatlar 6 → 10, butun javob 100 → 170 s,
+  bitta murojaat 60 → 90 s, vosita natijasi 12 → 20 ming belgi
+  (`lib/ai/config.ts`).
+
+**Amallar** (qoralama → karta → «Tasdiqlash», 2-bosqich qoidalari):
+
+| Amal | Vosita | Ruxsat | Yadro |
+| --- | --- | --- | --- |
+| Yangi o'quvchi (+ guruhga) | `propose_new_pupil` | `/students-list` | `lib/pupilWrite.ts` → `createPupil` |
+| Guruhga qo'shish / chiqarish | `propose_group_membership` | `/groups` | `lib/groupStudents.ts` |
+| Davomat | `propose_attendance` | `/groups` | `lib/attendanceWrite.ts` → `saveAttendanceMark` |
+| O'quvchi holati | `propose_pupil_status` | `/students-list` | `lib/pupilWrite.ts` → `setPupilStatus` |
+| Lid bosqichi | `propose_lead_stage` | `/orders-list` | `lib/leadHolatServer.ts` → `applyHolatChange` |
+
+- Yadrolar route'lardan ko'chirildi (route'lar yupqa qobiq, mantiq
+  o'zgarmagan): `POST /api/pupils`, `PATCH /api/pupils/:id/status`,
+  `POST|DELETE /api/groups/:id/students`, `POST /api/groups/:id/attendance`.
+  `createPupil` endi E11000 da 3 marta qayta urinadi.
+- Yangi o'quvchi: ism va manba majburiy (manba — ro'yxatdan; `customSource`
+  faqat xodim talab qilsa); shu telefonli o'quvchi bo'lsa qoralama
+  tuzilmaydi (aka-uka — `allowDuplicatePhone`); ismdoshlar haqida eslatma.
+- Davomat: faqat guruh a'zolari, faqat dars kuni (`lessonExpectedOn`),
+  kelajakka emas; `others` — qolgan hammaga bitta holat; o'zgarmaydigan
+  belgi yozilmaydi; gamifikatsiya cheklovi har belgida yadroda (rad
+  etilganlari kartada).
+- Lid → «guruh»: o'quvchi telefon/ism bo'yicha topiladi, bo'lmasa lid
+  ma'lumotidan yaratiladi (manba «Buyurtmadan»), guruhga qo'shiladi, keyin
+  holat (Lidlar sahifasidagi oyna tartibi).
+
+Sinov: `scripts/_verify-ai.mjs` — 186 tekshiruv (avval 163): yangi
+vositalar ruxsati, guruh qidiruvi, davomat holatlari, reja, query_data
+xavfsizlik filtri va tozalash, jadval/CSV, reja hodisasi va vositalar
+chegarasi (soxta server). **Bazali sinov yo'q**: 5-bosqich amallari uchun
+`_verify-ai-actions.mjs` ga bo'lim qo'shilmadi (lokal MongoDB yo'q) — sinov
+saytida kichik misol bilan tekshiring. `next build` lokal qilinmadi (diskda
+joy qolmagan) — tsc va eslint toza, build — Vercel'da.

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
-import { isPupilStatus, type Pupil } from "@/lib/pupilsData";
-import { closeMemberships } from "@/lib/groupMembership";
-import { uzDateIso } from "@/lib/uzTime";
+import { getBranchScope } from "@/lib/branchScope";
+import { setPupilStatus } from "@/lib/pupilWrite";
 
 // PATCH /api/pupils/:id/status — { status, reason? }
 //
@@ -14,6 +12,8 @@ import { uzDateIso } from "@/lib/uzTime";
 //
 // Arxivga o'tkazilgan o'quvchi guruhlardan ham chiqariladi — aks holda u
 // davomat jadvalida va guruh ro'yxatida qolib ketardi.
+//
+// Mantiq lib/pupilWrite.ts da (AI yordamchi ham shuni chaqiradi).
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const pupilId = Number(id);
@@ -28,44 +28,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
 
-  const status = body.status;
-  if (!isPupilStatus(status)) {
-    return NextResponse.json({ ok: false, error: "Holat noto'g'ri" }, { status: 400 });
-  }
-  const reason = String(body.reason ?? "").trim();
-  if (status !== "Aktiv" && !reason) {
-    return NextResponse.json({ ok: false, error: "Sababni kiriting" }, { status: 400 });
-  }
-
-  // Toshkent kuni (lib/uzTime.ts) — serverda UTC; ilgari `new Date()` ning
-  // lokal getterlari kechqurun bir kun orqaga yozardi.
-  const today = uzDateIso();
-
   // Boshqa filialning o'quvchisi bu yerdan o'zgartirilmaydi — qamrov
   // PATCH /api/pupils/:id dagi bilan bir xil (u yerdagi izohga qarang).
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
   const db = await ensureIndexes();
-  const res = await db.collection("pupils").findOneAndUpdate(
-    withPupilBranch({ id: pupilId }, scope),
-    { $set: { status, statusChangedAt: today, statusReason: status === "Aktiv" ? "" : reason } },
-    { returnDocument: "after" },
-  );
-  if (!res) {
-    return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
-  }
-
-  if (status === "Arxiv") {
-    await db
-      .collection<{ studentIds?: number[] }>("groups")
-      .updateMany({ studentIds: pupilId }, { $pull: { studentIds: pupilId } });
-    // A'zolik tarixi ham shu kun yopiladi (lib/groupMembership.ts) —
-    // arxivgacha bo'lgan darslari Qarzdorlar hisobotida qoladi.
-    await closeMemberships(db, pupilId, null, today);
-  }
-
-  const { _id, studentPasswordHash, parentPasswordHash, ...pupil } = res;
-  void _id; void studentPasswordHash; void parentPasswordHash;
-  return NextResponse.json({ ok: true, pupil: pupil as unknown as Pupil });
+  const out = await setPupilStatus(db, scope, pupilId, body.status, body.reason);
+  if (!out.ok) return NextResponse.json({ ok: false, error: out.error }, { status: out.status });
+  return NextResponse.json({ ok: true, pupil: out.pupil });
 }

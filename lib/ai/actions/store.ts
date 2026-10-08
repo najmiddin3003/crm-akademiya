@@ -155,6 +155,12 @@ const KIND_FOR_MODEL: Record<AiActionKind, string> = {
   transfer: "cashbox transfer (after saving, the receiving cashbox still has to accept it)",
   comment: "student comment",
   task: "staff task",
+  pupil: "new student",
+  membership: "group membership change",
+  attendance: "attendance marks",
+  // Qo'shtirnoqda — i18n skaneri `status: "…"` ni interfeys qiymati deb o'qimasin (bu matn modelga).
+  "status": "student status change",
+  "stage": "lead stage change",
 };
 
 function statusForModel(v: AiActionView): string {

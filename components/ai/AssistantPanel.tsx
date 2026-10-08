@@ -19,20 +19,30 @@ import {
   ArrowUp,
   ArrowUpRight,
   Bot,
+  CalendarCheck,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Circle,
   CircleAlert,
+  CircleCheck,
   ClipboardList,
   ExternalLink,
   Gauge,
+  GraduationCap,
+  ListChecks,
   Maximize2,
   MessageSquarePlus,
+  Milestone,
   Minimize2,
   MonitorPlay,
   Settings,
   Square,
   SquarePen,
   Trash2,
+  UserCog,
   UserPlus,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -45,12 +55,12 @@ import WhyFast from "@/components/tezlik/WhyFast";
 import RobotFace from "@/components/tezlik/RobotFace";
 import { useT } from "@/components/shared/Language";
 import { effortLabel } from "@/lib/ai/models";
-import type { AiActionFieldKey, AiActionKind, AiActionStatus } from "@/lib/ai/protocol";
+import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiPlanStep } from "@/lib/ai/protocol";
 import { refreshScreen } from "./AiScreenRefresh";
 import { isInternalHref } from "./aiMarkdown";
 import MessageText from "./MessageText";
 import ModelPicker from "./ModelPicker";
-import { useAiChat, type UiAction, type UiMessage } from "./useAiChat";
+import { useAiChat, type UiAction, type UiMessage, type UiToolChip } from "./useAiChat";
 
 // ROBOT PANELI — AI yordamchi va tezlik sinovi (components/tezlik/SpeedFab.tsx
 // ochadi). Ikki tab:
@@ -401,11 +411,14 @@ function FullHeader({
 }
 
 /** Hozir nima bo'lyapti — kichik oyna sarlavhasida: ishlayotgan vosita yorlig'i, javob yozilyapti yoki o'ylayapti. */
-function stepOf(chat: Chat): { tool: string } | "writing" | "thinking" | null {
+function stepOf(chat: Chat): { tool: string } | { plan: string } | "writing" | "thinking" | null {
   const last = chat.messages[chat.messages.length - 1];
   if (!chat.busy || !last || last.role !== "assistant") return null;
   const running = [...(last.tools ?? [])].reverse().find((x) => x.status === "start");
   if (running) return { tool: running.label };
+  // Reja bo'lsa — hozirgi qadam (model yozgan matn, tarjima qilinmaydi).
+  const active = last.plan?.find((s) => s.status === "active");
+  if (active) return { plan: active.title };
   return last.content ? "writing" : "thinking";
 }
 
@@ -429,7 +442,8 @@ function FloatHeader({
   const { t } = useT();
   const drag = useRef<{ sx: number; sy: number; origin: Pos } | null>(null);
   const s = stepOf(chat);
-  const step = s === null ? "" : s === "writing" ? t("Javob yozilmoqda…") : s === "thinking" ? t("O'ylayapti…") : t(s.tool);
+  const step =
+    s === null ? "" : s === "writing" ? t("Javob yozilmoqda…") : s === "thinking" ? t("O'ylayapti…") : "tool" in s ? t(s.tool) : s.plan;
 
   // Sarlavhadan sudrash (tugmalar bundan mustasno). Joy qo'yib yuborilganda eslab qolinadi.
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -724,21 +738,8 @@ function Bubble({ m, chat, onNavigate }: { m: UiMessage; chat: Chat; onNavigate:
     <div className="flex gap-2">
       <RobotFace className="mt-0.5 h-6 w-6 shrink-0" />
       <div className="min-w-0 flex-1 space-y-1.5 text-[13px]">
-        {m.tools && m.tools.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {m.tools.map((x) => (
-              <span
-                key={x.id}
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${
-                  x.status === "error" ? "bg-rose-100 text-rose-600" : "bg-secondary text-muted-foreground"
-                }`}
-              >
-                {x.status === "start" && <Spinner size={10} />}
-                {t(x.label)}
-              </span>
-            ))}
-          </div>
-        )}
+        {m.plan && m.plan.length > 0 && <PlanCard steps={m.plan} live={!!m.pending} />}
+        {m.tools && m.tools.length > 0 && <WorkLog tools={m.tools} live={!!m.pending} onNavigate={onNavigate} />}
         {working && (!m.tools || m.tools.length === 0) && (
           <span className="inline-flex items-center gap-2 text-muted-foreground">
             <Spinner size={14} /> {t("O'ylayapti…")}
@@ -770,6 +771,102 @@ function Bubble({ m, chat, onNavigate }: { m: UiMessage; chat: Chat; onNavigate:
   );
 }
 
+// ── Reja va ish jarayoni (5-bosqich, Cowork kabi) ───────────────────
+//
+// Xodim AI nima qilayotganini ko'rib turadi: model yozgan reja (belgilanadigan
+// ro'yxat) va har vosita — bitta qadam (holat, natija yozuvi, sahifa
+// havolasi). Javob tugagach qadamlar bitta qatorga yig'iladi, bosilsa ochiladi.
+
+/** `update_plan` rejasi. Qadam matnlari — model yozgan (xodim tilida), tarjima qilinmaydi. */
+function PlanCard({ steps, live }: { steps: AiPlanStep[]; live: boolean }) {
+  const { t } = useT();
+  const done = steps.filter((s) => s.status === "done").length;
+  return (
+    <div className="rounded-xl border border-border bg-card/70 px-3 py-2">
+      <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <ListChecks className="h-3.5 w-3.5" />
+          {t("Reja")}
+        </span>
+        <span className="tabular-nums">
+          {done}/{steps.length}
+        </span>
+      </div>
+      <ol className="space-y-1">
+        {steps.map((s, i) => (
+          <li key={i} className="flex items-start gap-2 text-[12px]">
+            <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+              {s.status === "done" ? (
+                <CircleCheck className="h-3.5 w-3.5 text-emerald-600" />
+              ) : s.status === "active" && live ? (
+                <Spinner size={12} />
+              ) : (
+                <Circle className="h-3.5 w-3.5 text-muted-foreground/50" />
+              )}
+            </span>
+            <span className={s.status === "done" ? "text-muted-foreground" : s.status === "active" ? "font-medium" : ""}>{s.title}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Ish jarayoni — har vosita bitta qadam. Javob kelayotganda ochiq, tugagach yig'iladi. */
+function WorkLog({ tools, live, onNavigate }: { tools: UiToolChip[]; live: boolean; onNavigate: () => void }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const errors = tools.filter((x) => x.status === "error").length;
+  if (!live && !open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ListChecks className="h-3.5 w-3.5" />
+        {t("{n} ta qadam bajarildi", { n: tools.length })}
+        {errors > 0 && <span className="text-rose-600">· {t("{n} ta xato", { n: errors })}</span>}
+        <ChevronDown className="h-3 w-3" />
+      </button>
+    );
+  }
+  return (
+    <div className="space-y-1.5 rounded-xl border border-border/70 bg-secondary/30 px-2.5 py-2">
+      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span>{t("Ish jarayoni")}</span>
+        {!live && (
+          <button type="button" onClick={() => setOpen(false)} title={t("Yig'ish")} aria-label={t("Yig'ish")} className="rounded p-0.5 hover:bg-secondary">
+            <ChevronUp className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {tools.map((x) => (
+        <div key={x.id} className="flex items-start gap-2 text-[12px]">
+          <span className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+            {x.status === "start" ? (
+              <Spinner size={12} />
+            ) : x.status === "error" ? (
+              <CircleAlert className="h-3.5 w-3.5 text-rose-500" />
+            ) : (
+              <Check className="h-3.5 w-3.5 text-emerald-600" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className={x.status === "error" ? "text-rose-600" : ""}>{t(x.label)}</div>
+            {x.note && <div className="text-[11px] text-muted-foreground">{x.note}</div>}
+          </div>
+          {x.href && isInternalHref(x.href) && (
+            <Link href={x.href} onClick={onNavigate} title={t("Sahifani ochish")} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary">
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Tasdiq kartasi (2-bosqich) ──────────────────────────────────────
 //
 // AI tuzgan qoralama. Yozuv FAQAT shu yerdagi «Tasdiqlash» bilan bo'ladi
@@ -785,6 +882,11 @@ const ACTION_TITLES: { kind: AiActionKind; label: string; icon: LucideIcon }[] =
   { kind: "transfer", label: "Boshqa kassaga ko'chirish", icon: ArrowLeftRight },
   { kind: "comment", label: "O'quvchiga izoh", icon: MessageSquarePlus },
   { kind: "task", label: "Topshiriq berish", icon: ClipboardList },
+  { kind: "pupil", label: "Yangi o'quvchi", icon: GraduationCap },
+  { kind: "membership", label: "Guruh a'zoligi", icon: Users },
+  { kind: "attendance", label: "Davomat", icon: CalendarCheck },
+  { kind: "status", label: "O'quvchi holati", icon: UserCog },
+  { kind: "stage", label: "Lid bosqichi", icon: Milestone },
 ];
 
 const FIELD_LABELS: { key: AiActionFieldKey; label: string }[] = [
@@ -812,6 +914,21 @@ const FIELD_LABELS: { key: AiActionFieldKey; label: string }[] = [
   { key: "priority", label: "Muhimlik" },
   { key: "fine", label: "Bajarilmasa jarima" },
   { key: "link", label: "Havola" },
+  { key: "phone", label: "Telefon" },
+  { key: "birth_date", label: "Tug'ilgan sana" },
+  { key: "category", label: "Kategoriya" },
+  { key: "source", label: "Manba" },
+  { key: "joined_at", label: "Darslar boshlanadi" },
+  { key: "op", label: "Amal" },
+  { key: "date", label: "Sana" },
+  { key: "marks", label: "Belgilar" },
+  { key: "summary", label: "Jami" },
+  { key: "status", label: "Holat" },
+  { key: "reason", label: "Sabab" },
+  { key: "lead", label: "Lid" },
+  { key: "stage", label: "Bosqich" },
+  { key: "trial", label: "Sinov darsi" },
+  { key: "effect", label: "Natija" },
 ];
 
 const STATUS_LABELS: { status: AiActionStatus; label: string; cls: string }[] = [
@@ -855,7 +972,10 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
     }
     if (key === "days") return value.split(", ").map((d) => t(d)).join(", ");
     // Summalar ("{n} so'm"), to'lov turi, tranzaksiya turi — lug'atda bo'lsa o'giriladi, bo'lmasa o'z holicha.
-    if (key === "amount" || key === "discount" || key === "fine" || key === "method" || key === "type") return t(value);
+    // Amal nomi va oqibati (5-bosqich) ham — o'zgarmas matn bo'lsa lug'atdan.
+    if (key === "amount" || key === "discount" || key === "fine" || key === "method" || key === "type" || key === "op" || key === "effect") {
+      return t(value);
+    }
     return value;
   };
 
@@ -873,7 +993,7 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
         {a.fields.map((f) => (
           <Fragment key={f.key}>
             <dt className="text-muted-foreground">{t(FIELD_LABELS.find((x) => x.key === f.key)?.label ?? f.key)}</dt>
-            <dd className="min-w-0 break-words font-medium">{shown(f.key, f.value)}</dd>
+            <dd className="min-w-0 whitespace-pre-line break-words font-medium">{shown(f.key, f.value)}</dd>
           </Fragment>
         ))}
       </dl>
@@ -901,7 +1021,8 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
       {status === "done" && (
         <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-emerald-700">
           <Check className="h-3.5 w-3.5 shrink-0" />
-          <span>{t("Saqlandi: {ref}", { ref: a.resultText ?? "" })}</span>
+          {/* Yozuv raqami ("#708") o'zicha qoladi; "guruhga qo'shildi" kabi so'zlar lug'atda bo'lsa o'giriladi. */}
+          <span>{t("Saqlandi: {ref}", { ref: t(a.resultText ?? "") })}</span>
           {a.resultHref && isInternalHref(a.resultHref) && (
             <Link href={a.resultHref} onClick={onNavigate} className="font-medium text-primary hover:underline">
               {t("Sahifani ochish")}

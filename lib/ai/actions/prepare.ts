@@ -62,16 +62,16 @@ export interface Draft {
 /** `reply` — modelga qaytadigan javob: nima yetishmaydi yoki noaniq, va tanlov ro'yxati. */
 export type PrepareResult = { ok: true; draft: Draft } | { ok: false; reply: Record<string, unknown> };
 
-type Step<T> = { ok: true; value: T } | { ok: false; reply: Record<string, unknown> };
-const ok = <T>(value: T): Step<T> => ({ ok: true, value });
-const ask = (reply: Record<string, unknown>): { ok: false; reply: Record<string, unknown> } => ({ ok: false, reply });
+export type Step<T> = { ok: true; value: T } | { ok: false; reply: Record<string, unknown> };
+export const ok = <T>(value: T): Step<T> => ({ ok: true, value });
+export const ask = (reply: Record<string, unknown>): { ok: false; reply: Record<string, unknown> } => ({ ok: false, reply });
 
 /** "1 250 000 so'm" — kartadagi ko'rinish (mijoz `t()` bilan o'giradi). */
 export function fmtSum(n: number): string {
   return `${Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} so'm`;
 }
 
-const norm = (s: string) => s.toLowerCase().replace(/[‘’ʻʼ`´]/g, "'").replace(/\s+/g, " ").trim();
+export const norm = (s: string) => s.toLowerCase().replace(/[‘’ʻʼ`´]/g, "'").replace(/\s+/g, " ").trim();
 
 /** Aniq nom, bo'lmasa YAGONA qisman moslik. Bir nechtasi mos kelsa — `null` (taxmin qilinmaydi). */
 export function pickByName<T>(items: readonly T[], nameOf: (x: T) => string, wanted: string): T | null {
@@ -139,7 +139,7 @@ export interface PupilPick {
   phone: string;
 }
 
-const CANDIDATES = 5;
+export const CANDIDATES = 5;
 
 /**
  * O'quvchi — `pupilId` (avvalgi qadamdagi nomzodlardan) yoki ism/telefon
@@ -147,7 +147,7 @@ const CANDIDATES = 5;
  * web'dagi Kirim oynasi va lid oynasi bilan bir xil. Bir nechta mos
  * kelsa — nomzodlar qaytadi, model xodimdan qaysi biri ekanini so'raydi.
  */
-async function resolvePupil(ctx: AiContext, args: ToolArgs): Promise<Step<PupilPick>> {
+export async function resolvePupil(ctx: AiContext, args: ToolArgs): Promise<Step<PupilPick>> {
   const projection = { _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1 };
   const toPick = (r: Record<string, unknown>): PupilPick => ({
     id: Number(r.id),

@@ -46,11 +46,17 @@ const CONFIRM_INSTRUCTION =
  * Xodim ocha olmasa runTool uni tashlaydi.
  */
 function draftScreen(kind: AiActionKind, payload: Record<string, unknown>): string | undefined {
-  if (kind === "comment") return Number.isInteger(payload.pupilId) ? `/student-edit/${payload.pupilId}?src=list` : undefined;
+  if (kind === "comment" || kind === "status") {
+    return Number.isInteger(payload.pupilId) ? `/student-edit/${payload.pupilId}?src=list` : undefined;
+  }
+  if (kind === "membership" || kind === "attendance") {
+    return Number.isInteger(payload.groupId) ? `/groups/${payload.groupId}` : ACTION_PAGES[kind];
+  }
   return ACTION_PAGES[kind];
 }
 
-async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResult): Promise<unknown> {
+/** Qoralamani saqlaydi va karta + modelga xulosa qaytaradi (5-bosqich vositalari ham shuni ishlatadi). */
+export async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResult): Promise<unknown> {
   if (!prepared.ok) return prepared.reply;
   const { draft } = prepared;
   const doc = await createDraft(ctx.db, {

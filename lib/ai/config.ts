@@ -49,19 +49,24 @@ export function aiProviderConfig(): AiProviderConfig | null {
 /**
  * Bitta savolda modelga ko'pi bilan necha marta murojaat qilinadi (har
  * vosita chaqiruvi — yana bitta murojaat). Model aylanib qolsa javob shu
- * yerda to'xtaydi va hisob (pul) cheksiz o'smaydi.
+ * yerda to'xtaydi va hisob (pul) cheksiz o'smaydi. 5-bosqichdan (Cowork
+ * kabi ko'p qadamli vazifalar: reja → bir necha vosita → qoralamalar) 6
+ * dan 10 ga oshirildi.
  */
-export const MAX_ROUNDS = 6;
+export const MAX_ROUNDS = 10;
 
-/** Bitta OpenAI so'rovining vaqt chegarasi. */
-export const ROUND_TIMEOUT_MS = 60_000;
+/** Bitta OpenAI so'rovining vaqt chegarasi («Chuqur» darajada fikrlash uzoqroq). */
+export const ROUND_TIMEOUT_MS = 90_000;
 
 /**
- * Butun javobning chegarasi. Nginx'da `proxy_read_timeout 120s`
- * (deploy/nginx.conf.template) — undan oldin o'zimiz to'xtatamiz va
- * foydalanuvchi uzilgan ulanish emas, tushunarli xabar ko'radi.
+ * Butun javobning chegarasi. Nginx'dagi `proxy_read_timeout 120s`
+ * (deploy/nginx.conf.template) IKKI O'QISH ORASIDAGI vaqt — oqimda har
+ * 15 soniyada "tirikman" belgisi ketadi (KEEPALIVE_MS), shuning uchun u
+ * uzmaydi. Vercel funksiyasining chegarasi (Fluid compute, 300 s) dan esa
+ * ancha oldin to'xtaymiz va foydalanuvchi uzilgan ulanish emas, tushunarli
+ * xabar ko'radi.
  */
-export const TOTAL_DEADLINE_MS = 100_000;
+export const TOTAL_DEADLINE_MS = 170_000;
 
 /** Javob kutilayotganda shuncha vaqtda bir "tirikman" belgisi yuboriladi. */
 export const KEEPALIVE_MS = 15_000;
@@ -77,4 +82,4 @@ export const HISTORY_MESSAGES = 16;
  * Vositalar o'zi qisqa javob qaytaradi; bu — kutilmagan katta natijaga
  * qarshi zaxira chegara (har belgi pul turadi).
  */
-export const MAX_TOOL_RESULT_CHARS = 12_000;
+export const MAX_TOOL_RESULT_CHARS = 20_000;

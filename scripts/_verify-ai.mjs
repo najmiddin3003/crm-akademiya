@@ -123,9 +123,10 @@ check(
 // ── Vositalar ruxsati ──────────────────────────────────────────────────
 console.log("\n— vositalar ruxsati");
 // `visible` — sahifadan tashqari shart (topshiriq berish faqat rahbar/direktorga), toolsFor() dagi kabi.
-const toolsFor = (perms, actions = false) =>
+// `isAdmin` — sukut bo'yicha cheklovsiz (perms === null) xodim admin (query_data faqat adminga).
+const toolsFor = (perms, actions = false, isAdmin = perms === null) =>
   AI_TOOLS.filter(
-    (tool) => toolAllowed(tool, (href) => isPathAllowed(href, perms), actions) && (!tool.visible || tool.visible({ isAdmin: false, permissions: perms })),
+    (tool) => toolAllowed(tool, (href) => isPathAllowed(href, perms), actions) && (!tool.visible || tool.visible({ isAdmin, permissions: perms })),
   ).map((tool) => tool.name).sort();
 check("admin / cheklovsiz — o'qish vositalari hammasi", toolsFor(null).length === AI_TOOLS.filter((x) => !x.action).length);
 check("amallar yoqilsa — admin uchun hammasi", toolsFor(null, true).length === AI_TOOLS.length);
@@ -136,14 +137,30 @@ check(
 );
 check("amallar o'chiq — amal vositasi ko'rinmaydi", !toolsFor(null, false).some((n) => n.startsWith("propose")));
 check(
-  "faqat Guruh ruxsati — guruhlar, davomat + umumiylar (topshiriqlar hammaga)",
-  eq(toolsFor(["/groups"]), ["attendance_report", "crm_help", "list_groups", "overview", "staff_tasks"]),
+  "faqat Guruh ruxsati — guruhlar, davomat + umumiylar (topshiriqlar va reja hammaga)",
+  eq(toolsFor(["/groups"]), ["attendance_report", "crm_help", "list_groups", "overview", "staff_tasks", "update_plan"]),
   JSON.stringify(toolsFor(["/groups"])),
 );
 check(
   "Lidlar + O'quvchilar",
-  eq(toolsFor(["/orders-list", "/students-list"]), ["crm_help", "leads_summary", "overview", "pupil_details", "search_pupils", "staff_tasks"]),
+  eq(toolsFor(["/orders-list", "/students-list"]), ["crm_help", "leads_summary", "overview", "pupil_details", "search_pupils", "staff_tasks", "update_plan"]),
   JSON.stringify(toolsFor(["/orders-list", "/students-list"])),
+);
+// 5-bosqich vositalari.
+check("query_data — faqat admin", toolsFor(null).includes("query_data") && !toolsFor(null, false, false).includes("query_data") && !toolsFor(["/groups"]).includes("query_data"));
+check(
+  "payments_list — Tranzaksiyalar yoki Kassalar ruxsati",
+  toolsFor(["/finance-transactions"]).includes("payments_list") && toolsFor(["/finance-cash"]).includes("payments_list") && !toolsFor(["/groups"]).includes("payments_list"),
+);
+check(
+  "yangi amallar — o'z sahifasi ruxsati bilan",
+  eq(
+    toolsFor(["/students-list"], true).filter((n) => n.startsWith("propose")),
+    ["propose_new_pupil", "propose_pupil_status"],
+  ) &&
+    eq(toolsFor(["/groups"], true).filter((n) => n.startsWith("propose")), ["propose_attendance", "propose_group_membership", "propose_pupil_comment"]) &&
+    eq(toolsFor(["/orders-list"], true).filter((n) => n.startsWith("propose")), ["propose_lead", "propose_lead_stage"]),
+  JSON.stringify([toolsFor(["/students-list"], true), toolsFor(["/groups"], true), toolsFor(["/orders-list"], true)]),
 );
 check("Kassa ruxsati oylikni ochmaydi", !toolsFor(["/finance-cash"]).includes("payroll_summary") && toolsFor(["/finance-cash"]).includes("cashbox_balances"));
 check("Moliya hisobotlari — finance_summary", toolsFor(["/finance-reports"]).includes("finance_summary"));
@@ -549,6 +566,89 @@ console.log("\n— 4-bosqich (modellar, Responses oqimi, ekran)");
   }
 }
 
+// ── 5-bosqich: Cowork rejasi, istalgan ma'lumot, jadval, yangi amallar ──
+console.log("\n— 5-bosqich (reja, query_data, jadval, guruh/davomat yordamchilari)");
+{
+  const { matchGroups, describeGroup, attendanceStatusOf, dmy } = await import("@/lib/ai/actions/prepareStudents");
+  const { parsePlan } = await import("@/lib/ai/tools/plan");
+  const { assertSafe, redact, isSecretKey, fieldSchema } = await import("@/lib/ai/tools/dataQuery");
+  const { parseAiMarkdown: md, tableCells, tableCsv, plainText } = await import("@/components/ai/aiMarkdown");
+
+  const groups = [
+    { id: 101, name: "5", course: "Ingliz tili", level: "A1", teacher: "Dilnoza Karimova", day: "Toq kunlar", time: "14:00 - 16:00", status: "active" },
+    { id: 102, name: "12", course: "Matematika", teacher: "Otabek Rasulov", day: "Juft kunlar", time: "10:00 - 12:00", status: "active" },
+    { id: 103, name: "15", course: "Ingliz tili", level: "B1", teacher: "Dilnoza Karimova", day: "Juft kunlar", time: "16:00 - 18:00", status: "finished" },
+  ];
+  const ids = (q) => matchGroups(groups, q).map((g) => g.id);
+  check("guruh: raqam / '5-guruh' / '#12' — nomi bo'yicha", eq(ids("5"), [101]) && eq(ids("5-guruh"), [101]) && eq(ids("#12"), [102]));
+  check("guruh: kurs + ustoz so'zlari (guruh/ustoz so'zlari e'tiborsiz)", eq(ids("ingliz dilnoza ustozning guruhi"), [101, 103]) && eq(ids("matematika"), [102]));
+  check("guruh: kurs + daraja aniqlaydi, mos kelmasa bo'sh", eq(ids("ingliz b1"), [103]) && eq(ids("kimyo"), []));
+  check("guruh tavsifi", describeGroup(groups[0]) === "Ingliz tili (5-guruh) · Dilnoza Karimova · Toq kunlar 14:00 - 16:00", describeGroup(groups[0]));
+  check(
+    "davomat holati: kalit, yorliq, sinonim; noma'lumi — null",
+    attendanceStatusOf("keldi") === "keldi" && attendanceStatusOf("Sababsiz") === "sababsiz" && attendanceStatusOf("kelmadi") === "sababsiz" &&
+      attendanceStatusOf("Birinchi dars") === "birinchi" && attendanceStatusOf("bilmadim") === null,
+  );
+  check("sana ko'rinishi", dmy("2026-10-08") === "08.10.2026");
+
+  check(
+    "reja: qadamlar, noma'lum holat — pending, matn kesiladi",
+    eq(parsePlan([{ title: " To'lovlarni olish ", status: "active" }, { title: "Xulosa", status: "?" }]), [
+      { title: "To'lovlarni olish", status: "active" },
+      { title: "Xulosa", status: "pending" },
+    ]),
+  );
+  check(
+    "reja: bo'sh, sarlavhasiz va 8 tadan ko'p — rad",
+    throwsInput(() => parsePlan([])) && throwsInput(() => parsePlan([{ status: "done" }])) &&
+      throwsInput(() => parsePlan(Array.from({ length: 9 }, (_, i) => ({ title: `q${i}`, status: "pending" })))),
+  );
+  {
+    const r = await runTool({ can: () => true, actions: false, isAdmin: false, permissions: ["/groups"] }, "update_plan", JSON.stringify({ steps: [{ title: "A", status: "done" }] }));
+    check("update_plan: panelga reja, modelga faqat ok (_ui ketmaydi)", r.ok && eq(r.plan, [{ title: "A", status: "done" }]) && r.content === '{"ok":true}', JSON.stringify(r));
+  }
+
+  const rejects = (q) => throwsInput(() => assertSafe(q));
+  check(
+    "query_data: JS va yozuv operatorlari rad etiladi",
+    rejects({ $where: "1" }) && rejects([{ $match: { $expr: { $function: { body: "x" } } } }]) && rejects([{ $merge: "pupils" }]) && rejects([{ $out: "x" }]),
+  );
+  check(
+    "query_data: $lookup faqat oq ro'yxatga",
+    rejects([{ $lookup: { from: "users", localField: "a", foreignField: "b", as: "u" } }]) &&
+      !throwsInput(() => assertSafe([{ $lookup: { from: "pupils", localField: "pupilId", foreignField: "id", as: "p" } }])) &&
+      rejects([{ $unionWith: "user_sessions" }]),
+  );
+  check(
+    "sir kalitlar: parol, xesh, token o'chadi; 'passed' kabi maydon qoladi",
+    isSecretKey("studentPasswordHash") && isSecretKey("access_token") && isSecretKey("tgChatId") && !isSecretKey("passed") && !isSecretKey("phone"),
+  );
+  {
+    const r = redact({ _id: "x", id: 7, phone: "94 155 88 55", parentPasswordHash: "h", nested: { motherPhone: "+998931112233", note: "a".repeat(400) } });
+    check(
+      "redact: _id va sirlar yo'q, telefonlar yashirin, uzun matn qisqa",
+      eq(Object.keys(r), ["id", "phone", "nested"]) && r.phone === "94 *** ** 55" && r.nested.motherPhone.includes("***") && r.nested.note.length <= 301,
+      JSON.stringify(r).slice(0, 200),
+    );
+    const s = fieldSchema([{ id: 1, phone: "94 155 88 55", tags: [] }, { id: 2, phone: null, tags: ["a"] }]);
+    check("describe: maydon turi va yashirin namuna", s.id.type === "number" && s.id.seenIn === 2 && s.phone.example === "94 *** ** 55" && s.tags.type === "array", JSON.stringify(s));
+  }
+
+  const t1 = md("Bugungi to'lovlar:\n\n| O'quvchi | Summa |\n|---|---:|\n| **Ali** | 300 000 |\n| Vali \\| Akbar | 150 000 |\n\nJami: 2 ta");
+  check(
+    "markdown jadval: sarlavha, qatorlar, \\| katak ichida, atrofdagi matn",
+    t1.length === 3 && t1[1].kind === "table" && eq(t1[1].header, ["O'quvchi", "Summa"]) && eq(t1[1].rows, [["**Ali**", "300 000"], ["Vali | Akbar", "150 000"]]) &&
+      t1[0].kind === "p" && t1[2].kind === "p",
+    JSON.stringify(t1),
+  );
+  check("jadval qatori sarlavha kengligiga keltiriladi", eq(md("| a | b | c |\n|--|--|--|\n| 1 |")[0].rows, [["1", "", ""]]));
+  check("katak matni belgilarsiz", plainText("**Ali** [profil](/student-edit/1?src=list)") === "Ali profil" && eq(tableCells("|a|b\\|c|"), ["a", "b|c"]));
+  {
+    const csv = tableCsv(["Ism", "Izoh"], [["**Ali**", 'dedi: "ha"; keyin']]);
+    check("CSV: BOM, ';' ajratkich, qo'shtirnoq qochiriladi", csv.startsWith("﻿") && csv.includes("Ism;Izoh") && csv.includes('Ali;"dedi: ""ha""; keyin"'), JSON.stringify(csv));
+  }
+}
+
 // ── Model ↔ vositalar sikli (soxta OpenAI serveri) ─────────────────────
 // Tarmoqqa chiqmaydi: 127.0.0.1 da OpenAI kabi javob beradigan kichik
 // server. Sinaladi: so'rov shakli, bo'laklab kelgan vosita chaqiruvi,
@@ -649,7 +749,7 @@ const deltas = (r) => r.events.filter((e) => e.type === "delta").map((e) => e.te
   );
   const offered = (q1?.tools ?? []).map((x) => x.function.name).sort();
   // staff_tasks — /tasks hammaga ochiq (oddiy xodim faqat o'z topshiriqlarini ko'radi).
-  check("modelga faqat ruxsat etilgan vositalar beriladi", eq(offered, ["crm_help", "leads_summary", "overview", "staff_tasks"]), JSON.stringify(offered));
+  check("modelga faqat ruxsat etilgan vositalar beriladi", eq(offered, ["crm_help", "leads_summary", "overview", "staff_tasks", "update_plan"]), JSON.stringify(offered));
   const msgs = q1?.messages ?? [];
   check(
     `tarix: tizim ko'rsatmasi + oxirgi ${HISTORY_MESSAGES} xabar + savol`,
@@ -913,7 +1013,7 @@ function rCalls(calls) {
   check(
     "vositalar: tekis shakl, strict:false, faqat ruxsat etilganlari",
     tools.length > 0 && tools.every((x) => x.type === "function" && x.strict === false && x.name && x.parameters && !("function" in x)) &&
-      eq(tools.map((x) => x.name).sort(), ["crm_help", "leads_summary", "overview", "staff_tasks"]),
+      eq(tools.map((x) => x.name).sort(), ["crm_help", "leads_summary", "overview", "staff_tasks", "update_plan"]),
     JSON.stringify(tools.map((x) => x.name)),
   );
   const input2 = q2?.input ?? [];
@@ -1036,6 +1136,38 @@ function rCalls(calls) {
     JSON.stringify({ ids: ids ? [...ids] : null, n: seen.length }),
   );
   check("ro'yxatni olib bo'lmasa — null (tekshirilmaydi)", (await accountModels({ ...cfg, baseUrl: "http://127.0.0.1:1/v1" })) === null);
+}
+{
+  // 5-bosqich (Cowork): model reja yozadi va bir qadamda bir nechta vosita chaqiradi.
+  console.log("\n— runChatTurn: reja (update_plan)");
+  const steps = [
+    { title: "Qo'llanmani ko'rish", status: "active" },
+    { title: "Javob yozish", status: "pending" },
+  ];
+  reply = (_, n) =>
+    n === 1
+      ? {
+          sse: callChunks([
+            { id: "p1", name: "update_plan", args: { steps } },
+            { id: "h1", name: "crm_help", args: { topic: "lid" } },
+            ...Array.from({ length: 4 }, (_, i) => ({ id: `x${i}`, name: "crm_help", args: { topic: "parol" } })),
+          ]),
+        }
+      : { sse: textChunks("Tayyor.") };
+  const r = await turn(chatCtx(null), "Lid va parol haqida");
+  const plans = r.events.filter((e) => e.type === "plan");
+  const toolEvents = r.events.filter((e) => e.type === "tool");
+  const results = (seen[1]?.body.messages ?? []).filter((m) => m.role === "tool");
+  check(
+    "reja: panelga plan hodisasi, update_plan uchun vosita belgisi yo'q",
+    plans.length === 1 && eq(plans[0].steps, steps) && !toolEvents.some((e) => e.id === "p1") && toolEvents.length === 8,
+    JSON.stringify({ plans: plans.length, tools: toolEvents.map((e) => `${e.id}:${e.status}`) }),
+  );
+  check(
+    "reja vositalar chegarasiga kirmaydi: 4 ta vosita bajarildi, 5-chisi rad",
+    results.length === 6 && results.filter((m) => m.content.includes("At most 4")).length === 1 && r.usedTools.filter((x) => x !== "update_plan").length === 4,
+    JSON.stringify({ results: results.length, used: r.usedTools }),
+  );
 }
 server.closeAllConnections();
 server.close();
