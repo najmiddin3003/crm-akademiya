@@ -3,6 +3,7 @@ import type { Db, Filter, Document } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentEmployee } from "@/lib/currentEmployee";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { branchPool, expandBranchPools } from "@/lib/branchPools";
 
 // FILIAL QAMROVI — navbardagi tanlov saytdagi ma'lumotni haqiqatan
 // o'zgartirishi uchun yagona manba.
@@ -16,6 +17,10 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 //   • Bitta xodim BIR NECHTA filialda ishlashi mumkin.
 //   • "Barcha filiallar" rejimi YO'Q — hamma, admin ham, aniq bitta
 //     filialda turadi. Sukut — birinchi filial.
+//   • HOVUZ (09.10.2026): 1- va 2-filial (Chortoq) KASSA va OYLIKDAN
+//     boshqa hamma joyda bitta — `branchCondition` hovuzni oladi
+//     (lib/branchPools.ts). Kassa, oylik va xodim davomati uchun —
+//     `strictBranchCondition`.
 //
 // NIMA UCHUN COOKIE: tanlov SERVERGA yetib borishi shart, chunki kesish
 // serverda bo'ladi (klientda kesish — ma'lumot baribir tarmoqdan
@@ -179,26 +184,44 @@ async function loadBranchScope(
 }
 
 /**
- * Mongo filtriga filial shartini qo'shadi.
+ * Mongo filtriga filial shartini qo'shadi — HOVUZ bilan (09.10.2026 dan):
+ * 1- yoki 2-filialda turib ikkalasining yozuvi ko'rinadi.
  *
- * BIRINCHI filialda maydoni YO'Q hujjatlar ham qo'shiladi: migratsiya
- * oralig'ida (yoki u yiqilib qolsa) ma'lumot ko'rinmay qolmasligi uchun.
+ * BIRINCHI filial hovuzda bo'lsa maydoni YO'Q hujjatlar ham qo'shiladi:
+ * migratsiya oralig'ida (yoki u yiqilib qolsa) ma'lumot ko'rinmay
+ * qolmasligi uchun.
  */
 export function withBranch<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
   return { $and: [filter, branchCondition(scope)] } as Filter<T>;
 }
 
 /**
- * Filial shartining O'ZI — boshqa shart bilan `$or` qilish uchun.
+ * Filial shartining O'ZI — boshqa shart bilan `$or` qilish uchun. HOVUZNI
+ * oladi: guruhlar, xonalar, lidlar, imtihonlar, gamifikatsiya — hammasi.
  *
  * Kerak bo'ldi: lidlar qamrovi "shu filial YOKI o'zim qo'shganim"
  * (lib/leadScope.ts), ya'ni shartni `withBranch` ichidan ajratib olish
  * zarur. Nusxa ko'chirilsa ikki joy vaqt o'tib bir-biridan uzoqlashardi.
+ *
+ * Lid tartib raqami (`branchNo`, lib/ordersCreate.ts) ham shu shart bilan
+ * hisoblanadi — hovuzda yangi lidlar bitta ketma-ketlikda davom etadi.
  */
 export function branchCondition(scope: BranchScope): Filter<Document> {
-  return scope.branchId === 1
-    ? { $or: [{ branchId: 1 }, { branchId: { $exists: false } }, { branchId: null }] }
-    : { branchId: scope.branchId };
+  return branchInCondition(branchPool(scope.branchId));
+}
+
+/**
+ * FAQAT joriy filial, hovuzsiz — kassa, oylik va xodim davomati (jismoniy
+ * bino) uchun (lib/branchPools.ts dagi ro'yxat). 09.10.2026 gacha
+ * `branchCondition` aynan shu edi.
+ */
+export function strictBranchCondition(scope: BranchScope): Filter<Document> {
+  return branchInCondition([scope.branchId]);
+}
+
+/** `withBranch` ning hovuzsiz varianti (`strictBranchCondition`). */
+export function withStrictBranch<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
+  return { $and: [filter, strictBranchCondition(scope)] } as Filter<T>;
 }
 
 /**
@@ -218,6 +241,18 @@ export function branchInCondition(ids: readonly number[]): Filter<Document> {
 }
 
 /**
+ * `branchInCondition` — filiallar HOVUZLARI bilan (09.10.2026). Yozuvni id
+ * bo'yicha tahrirlash/o'chirishda (`scope.allowed`) va xona/guruh
+ * qoidalarida (nom noyobligi, bandlik): ro'yxatda ko'rinib turgan hovuzdosh
+ * filial yozuvi "topilmadi" bo'lib qolmasin. O'zi `branchInCondition`
+ * QAT'IY qoladi — filiallar bo'ylab aylanadigan joylar (xodim davomati
+ * kutilmasi, lib/attendanceCheck.ts) hovuzni ikki marta sanamasin.
+ */
+export function pooledBranchInCondition(ids: readonly number[]): Filter<Document> {
+  return branchInCondition(expandBranchPools(ids));
+}
+
+/**
  * Yangi hujjatga yoziladigan filial.
  *
  * Doim aniq bitta filial — "barcha filiallar" rejimi olib tashlangan.
@@ -227,47 +262,24 @@ export function branchForInsert(scope: BranchScope): number {
 }
 
 /**
- * O'QUVCHILAR UCHUN UMUMIY HOVUZLAR (qaror 07.09.2026, foydalanuvchi so'rovi).
+ * O'QUVCHILAR UCHUN FILIAL SHARTI (qaror 07.09.2026) — hovuz bilan.
  *
- * Bitta hovuzdagi filiallar bir-birining o'quvchisini KO'RADI. Sabab amaliy:
- * "Akademiya 1 Chortoq" va "Akademiya 2 Chortoq" — bitta shahardagi ikki
- * bino, o'quvchi ikkalasiga ham qatnaydi va kassada to'lovni qaysi binoda
- * bo'lsa o'sha yerda topshiradi. Ularni ajratish kassirni ishlashdan
- * to'sardi: "Kirim" oynasida o'quvchi topilmasdi.
+ * 07.09.2026 da hovuz FAQAT o'quvchilar uchun edi: "Akademiya 1 Chortoq"
+ * va "Akademiya 2 Chortoq" — bitta shahardagi ikki bino, o'quvchi
+ * ikkalasiga ham qatnaydi va kassada to'lovni qaysi binoda bo'lsa o'sha
+ * yerda topshiradi (ajratish kassirni to'sardi: "Kirim" oynasida o'quvchi
+ * topilmasdi). 09.10.2026 dan hovuz hamma joyda (lib/branchPools.ts) va
+ * bu funksiya `branchCondition` bilan BIR XIL — o'quvchi o'qiydigan
+ * joylar uni ishlatishda davom etadi (ma'nosi aniq ko'rinib tursin).
  *
  * "Akademiya 4 Uchqo'rg'on" — BOSHQA SHAHAR, o'z bazasi bilan; u hech bir
- * hovuzda emas, ya'ni uning o'quvchilari boshqa filialda ko'rinmaydi va
- * boshqa filialnikilar u yerda ko'rinmaydi. "Akademiya 3 Uychi" ham
- * shunday (hozircha bo'sh).
+ * hovuzda emas. "Akademiya 3 Uychi" ham shunday.
  *
- * FAQAT O'QUVCHILARGA tegishli. Guruhlar, xonalar, kassalar va lidlar
- * o'z filialida qoladi — ular bino bilan bog'liq, o'quvchi esa odam.
- *
- * Yangi filial qo'shilsa shu ro'yxatni yangilash kerak; sozlamalar oynasi
- * hozircha yo'q, chunki qoida bitta va u kamdan-kam o'zgaradi.
- */
-const PUPIL_BRANCH_POOLS: readonly (readonly number[])[] = [[1, 2]];
-
-/** Filial -> u qatnashadigan hovuz (yo'q bo'lsa — o'zi yolg'iz). */
-function pupilPool(branchId: number): readonly number[] {
-  return PUPIL_BRANCH_POOLS.find((p) => p.includes(branchId)) ?? [branchId];
-}
-
-/**
- * O'QUVCHILAR uchun filial sharti — hovuzni hisobga oladi.
- *
- * `branchCondition` DAN FARQI shu: u aniq bitta filialni qidiradi, bu esa
- * butun hovuzni. Ikkalasi bir joyda aralashib ketmasin — o'quvchi o'qiydigan
- * har bir ro'yxat SHU funksiyadan foydalanadi (app/api/pupils va h.k.).
+ * Maydoni YO'Q eski hujjatlar 1-filialga tegishli deb hisoblanadi (bazada
+ * 7 ta shunday o'quvchi bor) — hovuzda 1-filial bo'lsa ular ham ko'rinadi.
  */
 export function pupilBranchCondition(scope: BranchScope): Filter<Document> {
-  const pool = pupilPool(scope.branchId);
-  const or: Filter<Document>[] = [{ branchId: { $in: [...pool] } }];
-  // Maydoni YO'Q eski hujjatlar 1-filialga tegishli deb hisoblanadi
-  // (bazada 7 ta shunday yozuv bor) — hovuzda 1-filial bo'lsa ular ham
-  // ko'rinishi kerak, aks holda eski o'quvchilar g'oyib bo'lardi.
-  if (pool.includes(1)) or.push({ branchId: { $exists: false } }, { branchId: null });
-  return or.length === 1 ? or[0] : { $or: or };
+  return branchCondition(scope);
 }
 
 /** `withBranch` ning o'quvchilar uchun varianti (hovuz bilan). */

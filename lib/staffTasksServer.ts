@@ -1,6 +1,7 @@
 import type { Db, Document, Filter, WithId } from "mongodb";
 import type { CurrentUser } from "@/lib/auth";
 import { allBranchIds, employeeBranchIds } from "@/lib/branchScope";
+import { expandBranchPools } from "@/lib/branchPools";
 import { employeeNameById } from "@/lib/currentEmployee";
 import { fixedSalaryOf, type EmployeeBranchAssignment } from "@/lib/hrEmployees";
 import { CLOSING_SALARY_RUN } from "@/lib/salary";
@@ -147,7 +148,8 @@ export async function loadViewer(
   // birinchi filial, aks holda uni bo'limdan uzib qo'yardik.
   const [all, mine] = await Promise.all([allBranchIds(db), employeeBranchIds(db, employeeId)]);
   const allowed = mine.filter((id) => all.includes(id));
-  return { role: "rahbar", userId: me.id, employeeId, name, branchIds: allowed.length ? allowed : [all[0] ?? 1] };
+  // HOVUZ (09.10.2026, lib/branchPools.ts): 1+2 rahbari ikkala filial topshiriqlarini ko'radi.
+  return { role: "rahbar", userId: me.id, employeeId, name, branchIds: expandBranchPools(allowed.length ? allowed : [all[0] ?? 1]) };
 }
 
 export function viewerInfo(v: StaffTaskViewer): StaffTaskViewerInfo {

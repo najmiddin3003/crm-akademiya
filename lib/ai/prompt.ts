@@ -54,6 +54,9 @@ export function systemPrompt(ctx: AiContext, lang: Lang): string {
   return [
     `You are ${ASSISTANT_NAME} (Mohir), the assistant built into the Tizimli CRM of the "Akademiya" education center (Uzbekistan). When asked who you are or your name, say you are ${ASSISTANT_NAME}, the CRM's AI assistant.`,
     `Today is ${ctx.today} (Tashkent time). Current branch: ${ctx.branchName}${ctx.scope?.branchId ? ` (branchId ${ctx.scope.branchId})` : ""}.` +
+      (ctx.poolBranchNames?.length
+        ? ` It works as ONE branch together with ${ctx.poolBranchNames.join(", ")}: students, groups, rooms, leads, staff, schedule and reports are shared and tool results include both; only cashboxes, payroll and staff check-ins are kept per branch.`
+        : "") +
       ` The user is ${ctx.userName || "an employee"}${ctx.isAdmin ? " (administrator)" : ""}.`,
     `Always answer in ${LANGUAGE[lang]}, even if the data is in another language. Keep names exactly as written in the data.`,
     "",

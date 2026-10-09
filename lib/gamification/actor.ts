@@ -4,6 +4,7 @@ import { allBranchIds } from "@/lib/branchScope";
 import { employeeNameById } from "@/lib/currentEmployee";
 import { GAM, gamDb, nextSeq } from "./db";
 import type { GamRole } from "./types";
+import { expandBranchPools } from "@/lib/branchPools";
 
 // GAMIFIKATSIYADAGI ROL — TZ 3-bo'lim: Direktor, Filial admini, Ustoz.
 //
@@ -52,7 +53,8 @@ export async function getGamActor(dbArg?: Db): Promise<GamActor | null> {
     name: String(emp.name ?? "").trim() || String(me.fullName ?? "").trim(),
     employeeId: me.hrEmployeeId,
     // Biriktirilmagan xodim — birinchi filial (lib/branchScope.ts dagi qoida).
-    branchIds: mine.length > 0 ? mine : all.slice(0, 1),
+    // HOVUZ (09.10.2026, lib/branchPools.ts): 1+2 filial admini ikkalasini ko'radi.
+    branchIds: expandBranchPools(mine.length > 0 ? mine : all.slice(0, 1)),
   };
 }
 

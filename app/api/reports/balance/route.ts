@@ -5,7 +5,7 @@ import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { getBranchScope } from "@/lib/branchScope";
-import { scopedEmployeeFilter } from "@/lib/employeeBranches";
+import { strictScopedEmployeeFilter } from "@/lib/employeeBranches";
 
 // Hisobotlar → Balans (href /reports-balance).
 //
@@ -62,7 +62,8 @@ export async function GET() {
   }
 
   const [employees, bonuses, penalties, entries] = await Promise.all([
-    db.collection("hr_employees").find(scopedEmployeeFilter({}, scope)).sort({ id: 1 }).toArray(),
+    // Oylik filial bo'yicha qoladi (lib/branchPools.ts) — balans ham qat'iy.
+    db.collection("hr_employees").find(strictScopedEmployeeFilter({}, scope)).sort({ id: 1 }).toArray(),
     db.collection("bonuses").find({}).toArray(),
     db.collection("penalties").find({}).toArray(),
     db

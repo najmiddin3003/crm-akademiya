@@ -241,7 +241,10 @@ export default function EmployeesListPage() {
     let cancelled = false;
     Promise.all([
       fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
-      fetch("/api/salary-runs/employees-payroll").then((r) => r.json()).catch(() => null),
+      // `branch=pool` — ro'yxat 1+2 hovuzi bo'yicha (lib/branchPools.ts), oylik
+      // qatorlari ham o'sha hovuzdan bo'lsin, aks holda boshqa filial
+      // oyligidagi xodim «Sozlanmagan» chiqardi.
+      fetch("/api/salary-runs/employees-payroll?branch=pool").then((r) => r.json()).catch(() => null),
       fetch("/api/groups").then((r) => r.json()).catch(() => null),
     ])
       .then(([emps, pay, grps]) => {

@@ -14,6 +14,7 @@ import { roomEquipmentStats, conditionStats, brokenCount, totalValue } from "@/l
 import Modal from "@/components/ui/Modal";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useT } from "@/components/shared/Language";
+import { sameBranchPool } from "@/lib/branchPools";
 
 // Guruh → Xonalar (crm-akademiya #view-groups-rooms, sidebar: Guruh > Xonalar,
 // href /groups-rooms). Ma'lumot /api/rooms dan (constants/rooms.js ROOM_SEED
@@ -65,10 +66,11 @@ export default function RoomsListPage() {
   const [deleting, setDeleting] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Ro'yxat navbardagi filial bo'yicha (GET /api/rooms). Oynada boshqa
-  // filial tanlansa xona bu ro'yxatga kirmaydi yoki undan chiqadi.
+  // Ro'yxat navbardagi filial bo'yicha (GET /api/rooms) — HOVUZ bilan
+  // (09.10.2026, lib/branchPools.ts: 1+2 da xonalar umumiy). Oynada hovuzdan
+  // tashqari filial tanlansa xona bu ro'yxatdan chiqadi.
   const { branchId: currentBranchId } = useBranch();
-  const inView = (r: Room) => currentBranchId === null || roomBranchId(r) === currentBranchId;
+  const inView = (r: Room) => currentBranchId === null || sameBranchPool(roomBranchId(r), currentBranchId);
 
   useEffect(() => {
     let cancelled = false;

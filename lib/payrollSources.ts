@@ -582,6 +582,13 @@ export async function loadPayrollRefs(
      * yopiladi: har bir xodim har oyda aniq bitta ro'yxatda turadi.
      */
     payrollBranchId?: number;
+    /**
+     * Bir nechta filial oyligi BIRGA — faqat KO'RISH uchun (09.10.2026: Xodimlar
+     * ro'yxati va profil 1+2 hovuzida, `employees-payroll?branch=pool`). Har
+     * xodim baribir bitta `payrollBranchId` da — ro'yxatda bir marta. Oylik
+     * CHIQARISH buni ishlatmaydi.
+     */
+    payrollBranchIds?: readonly number[];
   } = {},
 ): Promise<PayrollRefs> {
   // Faollar + ISHDAN KETGAN SANASI kiritilgan arxivdagilar (30.09.2026): ular
@@ -593,7 +600,9 @@ export async function loadPayrollRefs(
       { salaryEndDate: { $regex: "^\\d{4}-\\d{2}-\\d{2}$" } },
     ],
   } as Filter<HrEmployee>;
-  if (opts.payrollBranchId !== undefined) {
+  if (opts.payrollBranchIds !== undefined) {
+    (empFilter as Record<string, unknown>).payrollBranchId = { $in: [...opts.payrollBranchIds] };
+  } else if (opts.payrollBranchId !== undefined) {
     (empFilter as Record<string, unknown>).payrollBranchId = opts.payrollBranchId;
   }
   const [employees, bonusRows, penaltyRows, percentByTier, taxRules] = await Promise.all([
@@ -630,14 +639,14 @@ export async function loadPayrollRefs(
 export async function buildPayrollRows(
   db: Db,
   p: PayrollPeriod = payrollPeriod(),
-  opts: { carryOver?: boolean; refs?: PayrollRefs; payrollBranchId?: number } = {},
+  opts: { carryOver?: boolean; refs?: PayrollRefs; payrollBranchId?: number; payrollBranchIds?: readonly number[] } = {},
 ): Promise<EmployeePayroll[]> {
   // `carryOver: false` — o'tgan oyning ochiq qoldig'ini hisoblayotganda
   // beriladi (loadCarryOver ichida). Usiz ikkalasi bir-birini cheksiz
   // chaqirar edi.
   const withCarry = opts.carryOver !== false;
   const month = payrollMonthKey(p);
-  const refs = opts.refs ?? (await loadPayrollRefs(db, { payrollBranchId: opts.payrollBranchId }));
+  const refs = opts.refs ?? (await loadPayrollRefs(db, { payrollBranchId: opts.payrollBranchId, payrollBranchIds: opts.payrollBranchIds }));
   const { bonusRows, penaltyRows, percentByTier, taxRules } = refs;
   // Arxivdagi xodim faqat ISHDAN KETGAN oyigacha (profil daftari bundan mustasno).
   const employees = refs.keepArchived ? refs.employees : refs.employees.filter((e) => isInPayrollPeriod(e, p));

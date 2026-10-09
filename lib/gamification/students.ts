@@ -1,5 +1,5 @@
 import type { Db, Document } from "mongodb";
-import { branchCondition, getBranchScope } from "@/lib/branchScope";
+import { branchCondition, getBranchScope, pupilBranchCondition } from "@/lib/branchScope";
 import { groupLabel, type Group } from "@/lib/groups";
 import { uzDateIso } from "@/lib/uzTime";
 import type { GamActor } from "./actor";
@@ -115,7 +115,7 @@ export async function listStudents(db: Db, actor: GamActor): Promise<StudentRow[
       const extra = await db
         .collection("pupils")
         .find(
-          { $and: [{ id: { $in: walletIds.filter((x) => !ids.has(x)) } }, ...(scope ? [pupilBranch(scope.branchId)] : [])] },
+          { $and: [{ id: { $in: walletIds.filter((x) => !ids.has(x)) } }, ...(scope ? [pupilBranchCondition(scope)] : [])] },
           { projection: { _id: 0, id: 1, branchId: 1 } },
         )
         .toArray();
@@ -151,12 +151,6 @@ export async function listStudents(db: Db, actor: GamActor): Promise<StudentRow[
   return rows.sort((a, b) => Number(a.frozen) - Number(b.frozen) || b.balance - a.balance || a.name.localeCompare(b.name, "uz"));
 }
 
-/** O'quvchi filiali sharti (lib/branchScope.ts → pupilBranchCondition bilan bir xil ma'no). */
-function pupilBranch(branchId: number) {
-  return branchId === 1
-    ? { $or: [{ branchId: 1 }, { branchId: { $exists: false } }, { branchId: null }] }
-    : { branchId };
-}
 
 // ── Profil ─────────────────────────────────────────────────────────────
 

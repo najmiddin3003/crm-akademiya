@@ -1,5 +1,6 @@
 import type { Db, Document, Filter } from "mongodb";
 import type { BranchScope } from "@/lib/branchScope";
+import { branchPool } from "@/lib/branchPools";
 import type { EmployeeBranchAssignment } from "@/lib/hrEmployees";
 
 // XODIM VA FILIAL — ikkita ALOHIDA savol, ikkita alohida maydon.
@@ -122,11 +123,23 @@ export function resolvePayrollBranch(ids: number[], wanted: unknown): number {
  * YASHIRARDI. Filialsiz xodim — bu bug va u ko'rinishi kerak.
  */
 export function employeeBranchCondition(scope: BranchScope): Filter<Document> {
-  return { branchIds: scope.branchId };
+  // HOVUZ (09.10.2026, lib/branchPools.ts): 1- yoki 2-filialda turib
+  // ikkalasining xodimi ko'rinadi — ro'yxat, o'qituvchi/moderator tanlovi.
+  const pool = branchPool(scope.branchId);
+  return pool.length === 1 ? { branchIds: pool[0] } : { branchIds: { $in: [...pool] } };
 }
 
 export function withEmployeeBranch<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
   return { $and: [filter, employeeBranchCondition(scope)] } as Filter<T>;
+}
+
+/**
+ * FAQAT joriy filial xodimlari, hovuzsiz — oylikka bog'liq hisobotlar uchun
+ * (Xodimlar balansi, app/api/reports/balance): oylik filial bo'yicha qoladi
+ * (lib/branchPools.ts), ya'ni pul raqamlari ham o'sha qamrovda.
+ */
+export function strictScopedEmployeeFilter<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
+  return { $and: [filter, { branchIds: scope.branchId }] } as Filter<T>;
 }
 
 /**
@@ -146,10 +159,16 @@ export function withEmployeeBranch<T extends Document>(filter: Filter<T>, scope:
  *    bo'yicha qidiradi va topolmagach HAMMASINI "Sozlanmagan" deb
  *    ko'rsatardi — go'yo 53 xodimning oyligi yo'qolgandek.
  *
- * QOIDA: xodim ro'yxati va oylik ro'yxati BIR XIL filialda turishi shart.
+ * QOIDA: xodim ro'yxati va oylik ro'yxati BIR XIL qamrovda turishi shart.
  * Ular har xil maydon bo'yicha kesiladi (`branchIds` va
  * `payrollBranchId`) — bu ataylab — lekin ikkalasi ham JORIY filialga
  * nisbatan, istisnosiz.
+ *
+ * 09.10.2026 dan ro'yxat HOVUZ bo'yicha (1+2), Oylik sahifasi esa filial
+ * bo'yicha qoldi. Shuning uchun Xodimlar ro'yxati va profil oylik
+ * qatorlarini `employees-payroll?branch=pool` dan oladi (hovuzning ikkala
+ * filiali) — aks holda boshqa filial oyligidagi xodim «Sozlanmagan»
+ * bo'lib ko'rinardi. Oylik chiqarish sahifasi esa parametrsiz — qat'iy.
  */
 export function scopedEmployeeFilter<T extends Document>(filter: Filter<T>, scope: BranchScope): Filter<T> {
   return withEmployeeBranch(filter, scope);

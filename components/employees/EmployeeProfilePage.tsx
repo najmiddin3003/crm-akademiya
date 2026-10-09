@@ -524,7 +524,9 @@ export function EmployeeProfileView({
       get(`/api/hr-employees/${id}/notes`),
       // Chap kartadagi "Akladi" va "To'lanmagan" uchun — Oylik hisob-kitob
       // sahifasi bilan AYNAN bir xil manba (lib/payrollSources.ts).
-      get("/api/salary-runs/employees-payroll"),
+      // `branch=pool` — profil 1+2 hovuzidagi xodimga ham ochiladi, uning
+      // oylik qatori esa o'z filialida bo'lishi mumkin (lib/branchPools.ts).
+      get("/api/salary-runs/employees-payroll?branch=pool"),
       // Jadval filtrlarining tanlovlari — BUTUN ro'yxat bo'yicha, ochiq
       // turgan 50 qatordan emas.
       get(`/api/transaction-entries/facets?person=${q}`),

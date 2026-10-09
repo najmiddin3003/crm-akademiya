@@ -1,6 +1,6 @@
 import { ROLE_LABELS } from "@/constants/employees";
 import { ATTENDANCE_OPTIONS, type AttendanceStatus } from "@/lib/attendance";
-import { allBranchIds, branchCondition, branchInCondition, withBranch } from "@/lib/branchScope";
+import { allBranchIds, branchInCondition, strictBranchCondition, withBranch } from "@/lib/branchScope";
 import { groupBoundsIso, lessonExpectedOn, parseTimeRange, timeToMinutes } from "@/lib/groupRules";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName } from "@/lib/pupilsData";
@@ -404,7 +404,8 @@ export const staffAttendance: AiTool = {
     const rows = (await ctx.db
       .collection("turnstile_io")
       .find(
-        all ? base : { $and: [base, branchCondition(ctx.scope)] },
+        // Xodim davomati — JISMONIY bino (QR/turniket), hovuzsiz (lib/branchPools.ts).
+        all ? base : { $and: [base, strictBranchCondition(ctx.scope)] },
         {
           projection: {
             _id: 0, date: 1, personName: 1, enterTime: 1, exitTime: 1, status: 1,
