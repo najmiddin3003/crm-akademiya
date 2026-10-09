@@ -11123,7 +11123,7 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
 @keyframes ai-msg-in-user { from { opacity: 0; transform: translate(12px, 6px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes ai-pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
 
-/* Bo'sh suhbat — Mohira ortida konseptdagi kabi ikki yumshoq halqa (nafas oladi). */
+/* Bo'sh suhbat — Mohir ortida konseptdagi kabi ikki yumshoq halqa (nafas oladi). */
 .mh-stage { position: relative; display: grid; place-items: center; }
 .mh-stage::before, .mh-stage::after {
   content: "";
@@ -11197,7 +11197,7 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
   .ai-side-inner { width: 100%; }
 }
 
-/* MOHIRA — robot (components/ai/MohiraAvatar.tsx, 09.10.2026, «Robot va
+/* MOHIR — robot (components/ai/MohiraAvatar.tsx, 09.10.2026, «Robot va
    interfeys — konsept 01»). Chizma 480×550 koordinatalarda; bo'laklar
    `transform-box: fill-box` bilan o'z chegarasi bo'yicha aylanadi (view-box
    boshi variantga qarab o'zgaradi — foiz ishonchliroq). Doimiy
@@ -11306,7 +11306,7 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
   100% { transform: translateY(24px); opacity: 0; }
 }
 
-/* Salomlashish (bo'sh suhbatdagi katta Mohira): o'ng qo'l silkinadi, ko'zlar ◠ ◠.
+/* Salomlashish (bo'sh suhbatdagi katta Mohir): o'ng qo'l silkinadi, ko'zlar ◠ ◠.
    `backwards` — tugagach kayfiyat qoidalari o'z holiga qaytadi. */
 .mh[data-greet] .mh-arm-r { animation: mh-sway-r 4.2s ease-in-out infinite, mh-hello 2.2s ease-in-out .35s; }
 .mh[data-greet] .mh-blink { animation: mh-blink 6.4s ease-in-out infinite, mh-greet-out 2.5s linear .3s backwards; }
@@ -11343,10 +11343,25 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / .09), 0 4px 12px -6px rgb(0 0 0 / .5);
 }
 
-/* Sarlavha tasmasi (konsept 03: «MohiraAI · AI · Sizning aqlli
-   yordamchingiz» va holat nuqtasi). Tungi rejimda ham to'q firuza. */
-.mh-band { background: linear-gradient(120deg, #17353c 0%, #142b31 55%, #0f232a 100%); color: #fff; }
-.mh-band-card { box-shadow: 0 14px 30px -20px rgb(10 30 36 / .8), inset 0 1px 0 rgb(255 255 255 / .06); }
+/* Sarlavha tasmasi (konsept 03: «MohirAI · AI · Sizning aqlli
+   yordamchingiz» va holat nuqtasi). 09.10.2026 dan BREND RANGIDA (to'q
+   rang «xunuk turibdi» deyildi): --primary → --primary-2, ya'ni
+   Sozlamalardagi asosiy rang tanlovi bilan birga o'zgaradi; chap-tepada
+   yumshoq yaltiroq. Tungi rejimda rang biroz so'nikroq (karta ustida). */
+.mh-band {
+  background:
+    radial-gradient(130% 170% at 0% 0%, rgb(255 255 255 / .22) 0%, rgb(255 255 255 / 0) 55%),
+    linear-gradient(115deg, hsl(var(--primary)) 0%, hsl(var(--primary-2)) 100%);
+  color: #fff;
+}
+.dark .mh-band {
+  background:
+    radial-gradient(130% 170% at 0% 0%, rgb(255 255 255 / .12) 0%, rgb(255 255 255 / 0) 55%),
+    linear-gradient(115deg, hsl(var(--primary) / .8) 0%, hsl(var(--primary-2) / .72) 100%),
+    hsl(var(--card));
+}
+.mh-band-card { box-shadow: 0 12px 28px -16px hsl(var(--primary) / .55), inset 0 1px 0 rgb(255 255 255 / .22); }
+.dark .mh-band-card { box-shadow: 0 12px 28px -16px rgb(0 0 0 / .6), inset 0 1px 0 rgb(255 255 255 / .1); }
 .mh-band .mh-disc,
 .dark .mh-band .mh-disc {
   background: radial-gradient(circle at 34% 26%, #ffffff 0%, #f3f9f9 60%, #dcebea 100%);
@@ -11355,9 +11370,9 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .mh-band .ai-shimmer {
     background-image: linear-gradient(90deg,
-      rgb(255 255 255 / .55) 0%, rgb(255 255 255 / .55) 38%,
+      rgb(255 255 255 / .72) 0%, rgb(255 255 255 / .72) 38%,
       #ffffff 50%,
-      rgb(255 255 255 / .55) 62%, rgb(255 255 255 / .55) 100%);
+      rgb(255 255 255 / .72) 62%, rgb(255 255 255 / .72) 100%);
   }
 }
 .mh-ai-tag {
@@ -11365,12 +11380,12 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
   align-items: center;
   height: 16px;
   padding: 0 5px;
-  border: 1px solid rgb(255 255 255 / .3);
+  border: 1px solid rgb(255 255 255 / .4);
   border-radius: 5px;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: .05em;
-  color: rgb(255 255 255 / .85);
+  color: #ffffff;
 }
 
 /* Holat nuqtasi (konsept: Tayyor · O'ylayapti · Javob tayyor; hafa — qizil). */
@@ -11390,6 +11405,8 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
 }
 .mh-state[data-mood="happy"] { background: #22c3d6; box-shadow: 0 0 0 3px rgb(34 195 214 / .22); }
 .mh-state[data-mood="sad"] { background: #f87171; box-shadow: 0 0 0 3px rgb(248 113 113 / .22); }
+/* Rangli tasmada nuqta oq halqa bilan ajralib tursin (yashil firuza ustida ko'rinmay qolardi). */
+.mh-band .mh-state, .mh-band .mh-state[data-mood] { box-shadow: 0 0 0 2px rgb(255 255 255 / .92), 0 0 0 5px rgb(255 255 255 / .2); }
 @keyframes mh-state { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 
 /* Robot tugmasi (konsept 02: «Doim yoningizda»): oq doira, onlayn nuqta;

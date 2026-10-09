@@ -2708,3 +2708,40 @@ Brauzerda soxta API bilan (vaqtinchalik sahifa, commit qilinmadi) ko'rildi:
 hamma kayfiyat, o'tishlar (o'ylaydi → gapiradi → hursand → odatiy; xato →
 hafa), nigoh, salomlashish, suzuvchi oyna, tungi rejim. Haqiqiy model bilan
 sinalmadi.
+
+### MohirAI — nom, rang, samimiyroq murojaat, tezlik (2026-10-09)
+
+Sinov saytida (Vercel) ko'rgandan keyingi foydalanuvchi talablari.
+
+- **Nom — MohirAI** («Mohira emas, Mohir bo'lsin»): `lib/ai/brand.ts`.
+  Tizim ko'rsatmasi «MohirAI (Mohir)», qo'llanma bo'limi (`knowledge.ts`)
+  ham yangilandi; qidiruvda eski nom («mohira») ham topiladi. Ichki
+  nomlar (`MohiraAvatar`, `.mh-*`) o'zgarmadi.
+- **Tasma rangi**: to'q tasma «xunuk» deyildi — endi BREND rangida
+  (`--primary` → `--primary-2`, chap-tepada yumshoq yaltiroq). Sozlamadagi
+  asosiy rang tanlovi bilan birga o'zgaradi. Yozuvlar oqroq, holat nuqtasida
+  oq halqa (yashil nuqta firuza ustida ko'rinmay qolardi).
+- **Adminga samimiyroq** (`lib/ai/prompt.ts → ADMIN_TONE`, faqat
+  `role === "admin"`):
+  - insondek iliq ohangda javob beradi (aniqlik va qisqalik baribir birinchi);
+  - har 2–3 javobda bir marta (ketma-ket emas, bitta javobda bir martadan
+    ko'p emas) «afandim», «shefim», «boss», «xo'jayin», «rahbar» kabi
+    murojaat qiladi, so'zni almashtirib turadi. Kirilda va inglizchada —
+    o'sha tildagi muqobili.
+
+  Boshqa xodimlarga uslub o'zgarmadi.
+- **Kichraytirish / kattalashtirish qotardi**: ikki ko'rinishda panel
+  ichidagi daraxt har xil edi. Har almashishda butun suhbat qaytadan
+  qurilar, har xabar «paydo bo'lish» animatsiyasini qaytadan o'ynardi.
+  Endi daraxt bir xil va xabarlar `memo`: o'zgarmagani qayta chizilmaydi
+  (javob oqimida ham — faqat oxirgisi). Dev'da 16 xabarli suhbatda:
+  - kichraytirish — o'tish oldidagi qotish 167 → 41 ms;
+  - kattalashtirish — 136 → 58 ms.
+- **Ochilish animatsiyasining qirralari**: voronka chetida 16 nuqta bor
+  edi. To'liq ekranda bir bo'lak ~155 px gacha bo'lib, egri chiziq siniq
+  ko'rinardi. Endi `GENIE_POINTS = 64` (bo'lak ~14 px).
+
+Sinov: `_verify-ai.mjs` (nom, ko'rsatma: adminga murojaat bor, xodimga
+yo'q; voronka nuqtalari 2 × 64), tsc, eslint, i18n. Brauzerda soxta API va
+uzun suhbat bilan (vaqtinchalik sahifa, commit qilinmadi) tezlik o'lchandi.
+Rang yorug' va tungi rejimda ko'rildi.

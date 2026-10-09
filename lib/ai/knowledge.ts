@@ -222,8 +222,10 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: "assistant",
-    title: "MohiraAI (AI yordamchi) haqida",
+    title: "MohirAI (AI yordamchi) haqida",
     keywords: [
+      "mohir",
+      "mohirai",
       "mohira",
       "mohiraai",
       "yordamchi",
@@ -242,7 +244,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     ],
     pages: [],
     text: [
-      "CRM'dagi AI yordamchining nomi — MohiraAI (Mohira): ekrandagi do'ppili robot tugmasi.",
+      "CRM'dagi AI yordamchining nomi — MohirAI (Mohir): ekrandagi robot tugmasi (sukut bo'yicha o'ng-past burchakda, sudrab boshqa joyga qo'yish mumkin).",
       "Faqat sizga ruxsat berilgan bo'limlar bo'yicha javob beradi: qarzdorlar, tushum va xarajat, to'lovlar ro'yxati (kim, qancha, qaysi kassaga), kassalar, guruhlar, lidlar, oylik, o'quvchi kartasi, o'quvchilar va xodimlar davomati, topshiriqlar, sotuv voronkasi. Administratorga bazadagi istalgan ma'lumot bo'yicha ham javob beradi (faqat o'qiydi).",
       "Administrator amallarni yoqqan bo'lsa (Sozlamalar → Ilova sozlamalari → AI yordamchi → «Amallarga ruxsat berish»), QORALAMA tayyorlaydi: lid qo'shish, kirim, chiqim, boshqa kassaga ko'chirish, o'quvchiga izoh, xodimga topshiriq, yangi o'quvchi, guruhga qo'shish yoki chiqarish, davomat, o'quvchi holati (muzlatish, arxiv) va lid bosqichi. Panelda karta chiqadi, yozuv faqat «Tasdiqlash» bosilganda saqlanadi. «Bekor qilish» — hech narsa yozilmaydi. Qoralama 15 daqiqa amal qiladi.",
       "Katta vazifa (bir necha qadam) berilsa, AI avval reja tuzadi va oynada qadamlar ro'yxati ko'rinadi; har qadam (nima qidirdi, nima topdi) «Ish jarayoni» da chiqadi. Ro'yxatlar jadval bo'lib chiqadi, jadvalni «CSV» tugmasi bilan Excel'ga yuklab olish mumkin.",

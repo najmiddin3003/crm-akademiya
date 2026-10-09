@@ -18,7 +18,7 @@ import { ASSISTANT_NAME } from "@/lib/ai/brand";
 // ichiga qaytariladi. app/(app)/layout.tsx da mount qilinadi — ya'ni faqat
 // kirgan foydalanuvchilarga ko'rinadi; ommaviy sahifalarda (login, /ariza) yo'q.
 //
-// MOHIRAAI (09.10.2026, «Robot va interfeys — konsept 01», 02-kartochka):
+// MOHIRAI (09.10.2026, «Robot va interfeys — konsept 01», 02-kartochka):
 // oq doira ichida robot boshi (components/ai/MohiraAvatar.tsx), ko'zlari
 // sichqonchaga qaraydi, pastki burchakda onlayn nuqta. Standart joyi —
 // o'ng-past burchak (saqlangan joyi bo'lsa — o'sha). Ustiga kelinsa yoki

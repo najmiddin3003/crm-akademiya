@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, type RefObject } from "react";
 
-// MOHIRA — AI yordamchining roboti (09.10.2026, «Robot va interfeys —
+// MOHIR — AI yordamchining roboti (09.10.2026, «Robot va interfeys —
 // konsept 01»; avvalgi milliy libosli robot o'rnida). Chizma —
 // foydalanuvchi bergan MohiraAI_robot.svg (koordinatalar o'sha, 480×550):
 // oq sopol bosh, qora-firuza ekran, kapsula ko'zlar, antenna va yon
@@ -228,7 +228,7 @@ export default function MohiraAvatar({
             <path d="M179 323C183 306 206 299 228 299" stroke="white" strokeWidth="5" strokeLinecap="round" opacity=".9" />
             <ellipse cx="240" cy="365" rx="38" ry="37" fill={url("belly")} />
             <ellipse cx="240" cy="365" rx="37.5" ry="36.5" stroke="#C8DEDC" />
-            {/* Ko'krakdagi «m» — robot va MohiraAI belgisi bitta. */}
+            {/* Ko'krakdagi «m» — robot va MohirAI belgisi bitta. */}
             <path
               d="M221 374V360C221 350 238 350 240 360V374M240 360C242 350 259 350 259 360V374"
               stroke="#0696A0"

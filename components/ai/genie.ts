@@ -43,6 +43,12 @@ const BEND_PART = 0.42;
 const FADE_FROM = 0.82;
 /** Mac'dagi kabi pastga (Dock tomon) ketish tabiiyroq — vertikal o'q biroz ustun. */
 const VERTICAL_BIAS = 1.5;
+/**
+ * Voronkaning har chetidagi nuqtalar soni. 16 da S-egri siniq chiziq bo'lib
+ * ko'rinardi (09.10.2026: «qirralari bilinib qolyapti» — to'liq ekranda bir
+ * bo'lak ~55 px edi); 64 da bo'lak ~14 px, chet silliq egri bo'lib ko'rinadi.
+ */
+export const GENIE_POINTS = 64;
 
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -118,7 +124,7 @@ function axisOf(win: Box, icon: Box, side: GenieSide): Axis {
  *   2-bosqich: oynaning uzoq cheti voronka bo'ylab tugmaga yetib keladi,
  *              eni ham voronka eniga torayadi.
  */
-export function genieFrames(win: Box, icon: Box, frames = 28, points = 16): GenieFrame[] {
+export function genieFrames(win: Box, icon: Box, frames = 28, points = GENIE_POINTS): GenieFrame[] {
   const a = axisOf(win, icon, genieSide(win, icon));
   const iu0 = Math.max(a.iu0, 1);
   const iu1 = Math.max(a.iu1, iu0 + 1);

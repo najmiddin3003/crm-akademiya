@@ -692,7 +692,7 @@ console.log("\n— 5-bosqich (reja, query_data, jadval, guruh/davomat yordamchil
 // ── 6-bosqich: MohiraAI — genie animatsiyasi, suhbatlar tarixi, nom ────
 console.log("\n— 6-bosqich (genie kadrlari, suhbatlar tarixi, MohiraAI)");
 {
-  const { genieSide, genieFrames } = await import("@/components/ai/genie");
+  const { genieSide, genieFrames, GENIE_POINTS } = await import("@/components/ai/genie");
   const { groupHistory, touchHistory, historyTitle, filterHistory } = await import("@/components/ai/history");
   const { ASSISTANT_NAME } = await import("@/lib/ai/brand");
   const { systemPrompt } = await import("@/lib/ai/prompt");
@@ -719,7 +719,7 @@ console.log("\n— 6-bosqich (genie kadrlari, suhbatlar tarixi, MohiraAI)");
     const fr = genieFrames(win, fab);
     const counts = new Set(fr.map((f) => pts(f.clip).length));
     check(`genie (${name}): kadrlar 0→1, nuqtalar soni bir xil`, fr.length === 29 && fr[0].offset === 0 && fr[28].offset === 1 &&
-      fr.every((f, i) => i === 0 || f.offset > fr[i - 1].offset) && counts.size === 1 && [...counts][0] === 32, `${fr.length} ${[...counts]}`);
+      fr.every((f, i) => i === 0 || f.offset > fr[i - 1].offset) && counts.size === 1 && [...counts][0] === 2 * GENIE_POINTS && GENIE_POINTS >= 48, `${fr.length} ${[...counts]}`);
     const first = fr[0];
     const b0 = bounds(pts(first.clip));
     check(`genie (${name}): boshida oyna o'z joyida`, first.transform === "translate(0px, 0px) scale(1, 1)" && first.opacity === 1 &&
@@ -771,8 +771,16 @@ console.log("\n— 6-bosqich (genie kadrlari, suhbatlar tarixi, MohiraAI)");
   }
   check("tarix qidiruvi: katta-kichik harf va apostrof turlari", eq(filterHistory([{ title: "Bugungi TO‘LOVLAR" }, { title: "Davomat" }], "to'lov").map((x) => x.title), ["Bugungi TO‘LOVLAR"]));
 
-  check("nom: MohiraAI", ASSISTANT_NAME === "MohiraAI");
-  check("ko'rsatma: yordamchi o'zini MohiraAI deb taniydi", systemPrompt({ today: "2026-10-08", branchName: "Markaz", userName: "X", isAdmin: false, actions: false }, "uz").includes("You are MohiraAI"));
+  check("nom: MohirAI (09.10 dan, «Mohira emas — Mohir»)", ASSISTANT_NAME === "MohirAI");
+  check("ko'rsatma: yordamchi o'zini MohirAI deb taniydi", systemPrompt({ today: "2026-10-08", branchName: "Markaz", userName: "X", isAdmin: false, actions: false }, "uz").includes("You are MohirAI (Mohir)"));
+  {
+    // Adminga samimiyroq: ba'zan «afandim / shefim / boss»; oddiy xodimga — yo'q.
+    const p = (isAdmin) => systemPrompt({ today: "2026-10-09", branchName: "Markaz", userName: "X", isAdmin, actions: false }, "uz");
+    check(
+      "ko'rsatma: adminga ba'zan «afandim, shefim, boss», xodimga emas",
+      ["afandim", "shefim", "boss", "never in two answers in a row"].every((w) => p(true).includes(w)) && !p(false).includes("afandim") && !p(false).includes("TONE"),
+    );
+  }
 }
 
 // ── Model ↔ vositalar sikli (soxta OpenAI serveri) ─────────────────────

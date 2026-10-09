@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -57,7 +58,7 @@ import WhyFast from "@/components/tezlik/WhyFast";
 import { useT } from "@/components/shared/Language";
 import { ASSISTANT_NAME, ASSISTANT_TAG } from "@/lib/ai/brand";
 import { effortLabel } from "@/lib/ai/models";
-import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiPlanStep } from "@/lib/ai/protocol";
+import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiModelOption, AiPlanStep } from "@/lib/ai/protocol";
 import { refreshScreen } from "./AiScreenRefresh";
 import { isInternalHref } from "./aiMarkdown";
 import { endGenie, genieDone, playGenie, rectOf, reducedMotion, type Box } from "./genie";
@@ -94,8 +95,8 @@ import { useAiChat, type UiAction, type UiMessage, type UiToolChip } from "./use
 //     miltillaydi; «Reja» va «Ish jarayoni» silliq ochilib-yopiladi.
 // Hammasi `prefers-reduced-motion` da o'chadi (app/globals.css).
 //
-// MOHIRA KAYFIYATI (09.10.2026, «Robot va interfeys — konsept 01»):
-// sarlavha — to'q firuza tasma (robot, «MohiraAI · AI», holat nuqtasi).
+// MOHIR KAYFIYATI (09.10.2026, «Robot va interfeys — konsept 01»):
+// sarlavha — brend rangidagi tasma (robot, «MohirAI · AI», holat nuqtasi).
 // Robot ishga qarab: o'ylaydi / gapiradi; javob xatosiz tugasa yoki amal
 // saqlansa bir necha soniya HURSAND (`useJoy`); xato, uzilgan javob,
 // saqlanmagan amal, tugagan limit yoki o'chiq yordamchida — HAFA;
@@ -499,8 +500,12 @@ export default function AssistantPanel({
               onMove={setPos}
             />
           )}
-          {withHistory ? (
-            <div className="relative flex min-h-0 flex-1">
+          {/* Daraxt ikkala ko'rinishda BIR XIL: kichraytirish/kattalashtirishda suhbat
+              qayta qurilmaydi. Avval bu yerda ikki xil daraxt edi — har almashishda
+              butun suhbat qaytadan chizilib (uzun suhbatda ~150 ms qotish), har xabar
+              «paydo bo'lish» animatsiyasini qaytadan o'ynardi (09.10.2026). */}
+          <div className="relative flex min-h-0 flex-1">
+            {withHistory && (
               <HistorySidebar
                 open={sideOpen}
                 items={chat.history.items}
@@ -512,11 +517,9 @@ export default function AssistantPanel({
                 onDelete={(id) => void chat.removeConversation(id)}
                 onDismiss={() => setSideOpen(false)}
               />
-              <div className="flex min-w-0 flex-1 flex-col">{body}</div>
-            </div>
-          ) : (
-            body
-          )}
+            )}
+            <div className="flex min-w-0 flex-1 flex-col">{body}</div>
+          </div>
         </div>
       </div>
     </>
@@ -547,8 +550,8 @@ function IconButton({
 }) {
   const tone = band
     ? active
-      ? "bg-white/15 text-white hover:bg-white/20"
-      : "text-white/70 hover:bg-white/10 hover:text-white"
+      ? "bg-white/20 text-white hover:bg-white/25"
+      : "text-white/85 hover:bg-white/15 hover:text-white"
     : active
       ? "bg-primary/10 text-primary hover:bg-primary/15"
       : "text-muted-foreground hover:bg-secondary hover:text-foreground";
@@ -674,7 +677,7 @@ function BandTabs({ value, onChange }: { value: Tab; onChange: (t: Tab) => void 
     { value: "speed" as const, label: "Tezlik sinovi", icon: Gauge },
   ];
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-full bg-white/10 p-0.5">
+    <div className="inline-flex items-center gap-0.5 rounded-full bg-white/15 p-0.5">
       {options.map((o) => {
         const active = o.value === value;
         const Icon = o.icon;
@@ -685,7 +688,7 @@ function BandTabs({ value, onChange }: { value: Tab; onChange: (t: Tab) => void 
             aria-pressed={active}
             onClick={() => onChange(o.value)}
             className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors ${
-              active ? "bg-white text-[#12303a] shadow-sm" : "text-white/70 hover:bg-white/10 hover:text-white"
+              active ? "bg-white text-primary shadow-sm" : "text-white/85 hover:bg-white/15 hover:text-white"
             }`}
           >
             <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -748,7 +751,7 @@ function FullHeader({
               <h3 className="truncate text-base font-semibold tracking-tight">{ASSISTANT_NAME}</h3>
               <span className="mh-ai-tag">{ASSISTANT_TAG}</span>
             </div>
-            <p className="truncate text-[11px] text-white/60">
+            <p className="truncate text-[11px] text-white/80">
               {step ? (
                 <span className="ai-shimmer font-medium">{step}</span>
               ) : ready ? (
@@ -860,7 +863,7 @@ function FloatHeader({
           <span className="truncate text-[13px] font-semibold">{ASSISTANT_NAME}</span>
           <span className="mh-ai-tag">{ASSISTANT_TAG}</span>
         </div>
-        <div className="truncate text-[11px] text-white/60">
+        <div className="truncate text-[11px] text-white/80">
           {step ? <span className="ai-shimmer font-medium">{step}</span> : t("Sizning aqlli yordamchingiz")}
         </div>
       </div>
@@ -995,7 +998,15 @@ function ChatBody({
   );
 
   const bubbles = messages.map((m, i) => (
-    <Bubble key={m.key} m={m} chat={chat} onNavigate={onNavigate} joyKey={joyKey} last={i === messages.length - 1} />
+    <Bubble
+      key={m.key}
+      m={m}
+      models={status?.models}
+      decide={chat.decide}
+      onNavigate={onNavigate}
+      joy={joyKey === m.key}
+      last={i === messages.length - 1}
+    />
   ));
 
   if (opening) {
@@ -1007,7 +1018,7 @@ function ChatBody({
   }
 
   if (full && messages.length === 0) {
-    // ChatGPT'ning bo'sh oynasi kabi: o'rtada Mohira (konseptdagi to'liq
+    // ChatGPT'ning bo'sh oynasi kabi: o'rtada Mohir (konseptdagi to'liq
     // gavda, halqalar ichida, qo'l silkitib salomlashadi), savol, yozish
     // maydoni va takliflar. Markazlash `my-auto` bilan: ekran past bo'lsa
     // (justify-center'dan farqli) tepasi kesilmaydi — aylantirib ko'riladi;
@@ -1172,17 +1183,26 @@ function Composer({
   );
 }
 
-function Bubble({
+/**
+ * Bitta xabar. `memo` — o'zgarmagan xabar qayta chizilmaydi: javob oqimida
+ * faqat oxirgisi yangilanadi, ko'rinish almashganda (to'liq ekran ↔ suzuvchi
+ * oyna) hech biri. Shu sabab `chat` emas, kerakli bo'laklari uzatiladi
+ * (`decide` — barqaror useCallback, `models` — holat bilan bir xil havola).
+ */
+const Bubble = memo(function Bubble({
   m,
-  chat,
+  models,
+  decide,
   onNavigate,
-  joyKey,
+  joy,
   last,
 }: {
   m: UiMessage;
-  chat: Chat;
+  models: AiModelOption[] | undefined;
+  decide: Chat["decide"];
   onNavigate: () => void;
-  joyKey: string | null;
+  /** Shu javob hozirgina tugadi — robot xursand. */
+  joy: boolean;
   /** Suhbatning oxirgi xabari — yonidagi robot «tirik» (qolganlari harakatsiz). */
   last: boolean;
 }) {
@@ -1207,7 +1227,7 @@ function Bubble({
       : "thinking"
     : wentWrong(m)
       ? "sad"
-      : joyKey === m.key
+      : joy
         ? "happy"
         : "idle";
   return (
@@ -1218,7 +1238,7 @@ function Bubble({
         {tools.length > 0 && <WorkLog tools={tools} live={!!m.pending} onNavigate={onNavigate} />}
         {thinking && <Thinking label={t("O'ylayapti…")} />}
         {m.content && <MessageText text={m.content} onNavigate={onNavigate} caret={!!m.pending} />}
-        {m.actions?.map((a) => <ActionCard key={a.id} a={a} onDecide={chat.decide} onNavigate={onNavigate} />)}
+        {m.actions?.map((a) => <ActionCard key={a.id} a={a} onDecide={decide} onNavigate={onNavigate} />)}
         {m.stopped && <p className="text-[11px] text-muted-foreground">{t("To'xtatildi")}</p>}
         {(m.error || m.cutOff) && (
           <p className="flex items-start gap-1.5 text-[12px] text-rose-600">
@@ -1234,14 +1254,14 @@ function Bubble({
         {m.via && !m.pending && (
           <p className="text-[10px] text-muted-foreground/80">
             {/* "GPT-6 Sol · Tez" — ro'yxatda bo'lsa nomi, bo'lmasa ID. */}
-            {chat.status?.models.find((x) => x.id === m.via?.model)?.name ?? m.via.model}
+            {models?.find((x) => x.id === m.via?.model)?.name ?? m.via.model}
             {m.via.effort ? ` · ${t(effortLabel(m.via.effort))}` : ""}
           </p>
         )}
       </div>
     </div>
   );
-}
+});
 
 // ── Reja va ish jarayoni (5-bosqich, Cowork kabi) ───────────────────
 //
