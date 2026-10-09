@@ -55,7 +55,7 @@ import Spinner, { SpinnerBlock } from "@/components/ui/Spinner";
 import TapTest from "@/components/tezlik/TapTest";
 import WhyFast from "@/components/tezlik/WhyFast";
 import { useT } from "@/components/shared/Language";
-import { ASSISTANT_NAME } from "@/lib/ai/brand";
+import { ASSISTANT_NAME, ASSISTANT_TAG } from "@/lib/ai/brand";
 import { effortLabel } from "@/lib/ai/models";
 import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiPlanStep } from "@/lib/ai/protocol";
 import { refreshScreen } from "./AiScreenRefresh";
@@ -64,7 +64,7 @@ import { endGenie, genieDone, playGenie, rectOf, reducedMotion, type Box } from 
 import HistorySidebar from "./HistorySidebar";
 import MessageText from "./MessageText";
 import ModelPicker from "./ModelPicker";
-import MohiraAvatar, { type MohiraState } from "./MohiraAvatar";
+import MohiraAvatar, { type MohiraMood } from "./MohiraAvatar";
 import { useAiChat, type UiAction, type UiMessage, type UiToolChip } from "./useAiChat";
 
 // MOHIRAAI PANELI — AI yordamchi va tezlik sinovi (components/tezlik/
@@ -93,6 +93,13 @@ import { useAiChat, type UiAction, type UiMessage, type UiToolChip } from "./use
 //     yozish maydoni chetida rangli halqa aylanadi, matn oxirida nuqta
 //     miltillaydi; «Reja» va «Ish jarayoni» silliq ochilib-yopiladi.
 // Hammasi `prefers-reduced-motion` da o'chadi (app/globals.css).
+//
+// MOHIRA KAYFIYATI (09.10.2026, «Robot va interfeys — konsept 01»):
+// sarlavha — to'q firuza tasma (robot, «MohiraAI · AI», holat nuqtasi).
+// Robot ishga qarab: o'ylaydi / gapiradi; javob xatosiz tugasa yoki amal
+// saqlansa bir necha soniya HURSAND (`useJoy`); xato, uzilgan javob,
+// saqlanmagan amal, tugagan limit yoki o'chiq yordamchida — HAFA;
+// qolgan paytda — odatiy (`moodOf`).
 //
 // Javob matni model yozganidek chiziladi (tarjima qilinmaydi — model
 // interfeys tilida yozadi). Interfeysning o'z matnlari `t()` dan o'tadi.
@@ -127,6 +134,8 @@ const SCREEN_DELAY_MS = 350;
 const MORPH_WAIT_MS = 480;
 /** Tarix pardasi telefonda (shu kenglikdan tor ekranda) — ustma-ust ochiladi. */
 const NARROW = "(max-width: 767px)";
+/** «Javob tayyor» — javob tugagach yoki amal saqlangach robot shuncha vaqt xursand turadi. */
+const JOY_MS = 4500;
 
 interface Pos {
   x: number;
@@ -296,6 +305,8 @@ export default function AssistantPanel({
   const chat = useAiChat({ onScreen: showOnScreen });
   const { status, busy } = chat;
   const ready = !!status && status.enabled && status.configured;
+  const joyKey = useJoy(chat.messages);
+  const mood = moodOf(chat, ready, joyKey);
   // Tanlanmagan bo'lsa: yordamchi tayyor bo'lsa — u, aks holda tezlik sinovi.
   const tab: Tab = picked ?? (status && !ready ? "speed" : "assistant");
   const full = view === "full" || tab === "speed" || !ready;
@@ -439,7 +450,7 @@ export default function AssistantPanel({
         )}
       </div>
     ) : (
-      <ChatBody chat={chat} full={full} draft={draft} setDraft={setDraft} onNavigate={onNavigate} />
+      <ChatBody chat={chat} full={full} draft={draft} setDraft={setDraft} onNavigate={onNavigate} mood={mood} joyKey={joyKey} />
     );
 
   const node = (
@@ -464,6 +475,7 @@ export default function AssistantPanel({
           {full ? (
             <FullHeader
               chat={chat}
+              mood={mood}
               tab={tab}
               onTab={setPicked}
               ready={ready}
@@ -478,6 +490,7 @@ export default function AssistantPanel({
           ) : (
             <FloatHeader
               chat={chat}
+              mood={mood}
               follow={follow}
               onFollow={toggleFollow}
               onExpand={() => changeView("full")}
@@ -521,6 +534,7 @@ function IconButton({
   active,
   disabled,
   small,
+  band,
 }: {
   title: string;
   icon: LucideIcon;
@@ -528,7 +542,16 @@ function IconButton({
   active?: boolean;
   disabled?: boolean;
   small?: boolean;
+  /** To'q sarlavha tasmasi ustida (`.mh-band`) — oq ranglar. */
+  band?: boolean;
 }) {
+  const tone = band
+    ? active
+      ? "bg-white/15 text-white hover:bg-white/20"
+      : "text-white/70 hover:bg-white/10 hover:text-white"
+    : active
+      ? "bg-primary/10 text-primary hover:bg-primary/15"
+      : "text-muted-foreground hover:bg-secondary hover:text-foreground";
   return (
     <button
       type="button"
@@ -537,9 +560,7 @@ function IconButton({
       title={title}
       aria-label={title}
       aria-pressed={active}
-      className={`flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${small ? "h-7 w-7" : "h-8 w-8"} ${
-        active ? "bg-primary/10 text-primary hover:bg-primary/15" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-      }`}
+      className={`flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${small ? "h-7 w-7" : "h-8 w-8"} ${tone}`}
     >
       <Icon className={small ? "h-3.5 w-3.5" : "h-4 w-4"} />
     </button>
@@ -558,14 +579,127 @@ function stepOf(chat: Chat): { tool: string } | { plan: string } | "writing" | "
   return last.content ? "writing" : "thinking";
 }
 
-/** Robotning holati: javob yozilyapti — gapiradi, boshqa ish — o'ylaydi. */
-function moodOf(chat: Chat): MohiraState {
+/** Sarlavha ostidagi yozuv: hozirgi qadam (vosita / reja / yozilmoqda / o'ylayapti) yoki bo'sh. */
+function useStepText(chat: Chat): string {
+  const { t } = useT();
   const s = stepOf(chat);
-  return s === null ? "idle" : s === "writing" ? "talking" : "thinking";
+  return s === null ? "" : s === "writing" ? t("Javob yozilmoqda…") : s === "thinking" ? t("O'ylayapti…") : "tool" in s ? t(s.tool) : s.plan;
+}
+
+function lastAssistant(messages: UiMessage[]): UiMessage | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") return messages[i];
+  return undefined;
+}
+
+/** Javob ko'ngilsiz tugadimi: xato, uzilgan oqim yoki saqlanmagan amal. */
+function wentWrong(m: UiMessage | undefined): boolean {
+  return !!m && (!!m.error || !!m.cutOff || !!m.actions?.some((a) => a.status === "failed"));
+}
+
+/**
+ * Robotning kayfiyati: ish ketyapti — o'ylaydi / gapiradi; oxirgi javob
+ * ko'ngilsiz tugagan, limit tugagan yoki yordamchi ishlamayapti — hafa;
+ * javob hozirgina tugagan (`joyKey`) — hursand; qolgan paytda — odatiy.
+ */
+function moodOf(chat: Chat, ready: boolean, joyKey: string | null): MohiraMood {
+  const s = stepOf(chat);
+  if (s === "writing") return "talking";
+  if (s !== null) return "thinking";
+  const { status } = chat;
+  if (chat.loadError || (status && (!ready || status.remaining <= 0))) return "sad";
+  if (wentWrong(lastAssistant(chat.messages))) return "sad";
+  return joyKey ? "happy" : "idle";
+}
+
+/**
+ * «Javob tayyor» — shu oynada xatosiz tugagan javob (yoki saqlangan amal)
+ * xabarining kaliti, JOY_MS davomida; keyin `null`. Tarixdan ochilgan
+ * eski javoblar sanalmaydi — faqat ko'z oldida tugaganlari.
+ */
+function useJoy(messages: UiMessage[]): string | null {
+  const [joy, setJoy] = useState<string | null>(null);
+  const seen = useRef<{ pending: Set<string>; actions: Map<string, AiActionStatus> } | null>(null);
+  const hideTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
+  useEffect(() => {
+    seen.current ??= { pending: new Set(), actions: new Map() };
+    const { pending, actions } = seen.current;
+    let key: string | null = null;
+    for (const m of messages) {
+      if (m.role !== "assistant") continue;
+      if (m.pending) pending.add(m.key);
+      else if (pending.delete(m.key) && !wentWrong(m) && !m.stopped) key = m.key;
+      for (const a of m.actions ?? []) {
+        const before = actions.get(a.id);
+        if (before && before !== a.status && a.status === "done") key = m.key;
+        actions.set(a.id, a.status);
+      }
+    }
+    if (!key) return;
+    const k = key;
+    // Holat effekt ichida darhol emas, navbatda yangilanadi. Taymerlar oqim
+    // hodisalarida bekor qilinmaydi — aks holda robot xursandligicha qolib ketardi.
+    window.setTimeout(() => setJoy(k), 0);
+    window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => setJoy(null), JOY_MS);
+  }, [messages]);
+  return joy;
+}
+
+/** Holat nuqtasi (konsept: Tayyor · O'ylayapti · Javob tayyor; hafa — qizil). Ustida — bugungi qolgan savollar. */
+function StateDot({ chat, mood }: { chat: Chat; mood: MohiraMood }) {
+  const { t } = useT();
+  const { status } = chat;
+  const label =
+    mood === "thinking"
+      ? t("O'ylayapti…")
+      : mood === "talking"
+        ? t("Javob yozilmoqda…")
+        : mood === "happy"
+          ? t("Javob tayyor")
+          : mood === "sad"
+            ? status && status.remaining <= 0
+              ? t("Bugungi limit tugadi")
+              : t("Xato")
+            : t("Tayyor");
+  const title = status ? `${label} · ${t("Bugun yana {n} ta savol", { n: status.remaining })}` : label;
+  return <span className="mh-state" data-mood={mood} title={title} role="img" aria-label={title} />;
+}
+
+/** Tasmadagi tablar — to'q fonda oq «tabletka» (telefonda tasma ostida oddiy Segmented). */
+function BandTabs({ value, onChange }: { value: Tab; onChange: (t: Tab) => void }) {
+  const { t } = useT();
+  const options = [
+    { value: "assistant" as const, label: "Yordamchi", icon: Bot },
+    { value: "speed" as const, label: "Tezlik sinovi", icon: Gauge },
+  ];
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-full bg-white/10 p-0.5">
+      {options.map((o) => {
+        const active = o.value === value;
+        const Icon = o.icon;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(o.value)}
+            className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors ${
+              active ? "bg-white text-[#12303a] shadow-sm" : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            {t(o.label)}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function FullHeader({
   chat,
+  mood,
   tab,
   onTab,
   ready,
@@ -578,6 +712,7 @@ function FullHeader({
   onClose,
 }: {
   chat: Chat;
+  mood: MohiraMood;
   tab: Tab;
   onTab: (t: Tab) => void;
   ready: boolean;
@@ -591,64 +726,81 @@ function FullHeader({
   onClose: () => void;
 }) {
   const { t } = useT();
-  const { status, busy } = chat;
-  const remaining = status && ready ? status.remaining : null;
-  const tabs = (
-    <Segmented
-      size="sm"
-      value={tab}
-      onChange={(v) => onTab(v as Tab)}
-      options={[
-        { value: "assistant", label: "Yordamchi", icon: Bot },
-        { value: "speed", label: "Tezlik sinovi", icon: Gauge },
-      ]}
-    />
-  );
+  const { busy } = chat;
+  const step = useStepText(chat);
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-border/70 px-3 py-2 md:px-4">
-        {onSide && (
-          <IconButton
-            title={sideOpen ? t("Tarixni yopish") : t("Suhbatlar tarixi")}
-            icon={sideOpen ? PanelLeftClose : PanelLeftOpen}
-            active={sideOpen}
-            onClick={onSide}
-          />
-        )}
-        <MohiraAvatar className="h-10 w-10 shrink-0" state={moodOf(chat)} />
-        <div className="min-w-0 flex-1 sm:flex-none">
-          <h3 className="truncate text-base font-semibold tracking-tight">{ASSISTANT_NAME}</h3>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {remaining !== null ? t("Bugun yana {n} ta savol", { n: remaining }) : t("Savol bering yoki sayt tezligini o'lchang")}
-          </p>
-        </div>
-        <div className="mx-auto hidden w-64 sm:block">{tabs}</div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {ready && tab === "assistant" && (
-            <>
-              <IconButton
-                title={follow ? t("AI ishini ekranda ko'rsatish: yoqilgan") : t("AI ishini ekranda ko'rsatish: o'chirilgan")}
-                icon={MonitorPlay}
-                active={follow}
-                onClick={onFollow}
-              />
-              {/* Tarix ochiq bo'lsa «Yangi suhbat» o'sha yerda. */}
-              {!sideOpen && (
-                <IconButton title={t("Yangi suhbat")} icon={SquarePen} onClick={onNewChat} disabled={busy || chat.messages.length === 0} />
-              )}
-              <IconButton title={t("Kichraytirish")} icon={Minimize2} onClick={onShrink} />
-            </>
+      {/* Konseptdagi to'q tasma — sahifa chetidan biroz ichkarida, yumaloq. */}
+      <div className="shrink-0 px-2 pt-2 md:px-3 md:pt-3">
+        <div className="mh-band mh-band-card flex items-center gap-2.5 rounded-2xl px-2.5 py-2 md:px-3">
+          {onSide && (
+            <IconButton
+              band
+              title={sideOpen ? t("Tarixni yopish") : t("Suhbatlar tarixi")}
+              icon={sideOpen ? PanelLeftClose : PanelLeftOpen}
+              active={sideOpen}
+              onClick={onSide}
+            />
           )}
-          <IconButton title={t("Yopish")} icon={X} onClick={onClose} />
+          <MohiraAvatar disc gaze mood={mood} className="h-11 w-11" />
+          <div className="min-w-0 flex-1 sm:flex-none">
+            <div className="flex items-center gap-1.5">
+              <h3 className="truncate text-base font-semibold tracking-tight">{ASSISTANT_NAME}</h3>
+              <span className="mh-ai-tag">{ASSISTANT_TAG}</span>
+            </div>
+            <p className="truncate text-[11px] text-white/60">
+              {step ? (
+                <span className="ai-shimmer font-medium">{step}</span>
+              ) : ready ? (
+                t("Sizning aqlli yordamchingiz")
+              ) : (
+                t("Savol bering yoki sayt tezligini o'lchang")
+              )}
+            </p>
+          </div>
+          <div className="mx-auto hidden sm:block">
+            <BandTabs value={tab} onChange={onTab} />
+          </div>
+          {ready && <StateDot chat={chat} mood={mood} />}
+          <div className="flex shrink-0 items-center gap-0.5">
+            {ready && tab === "assistant" && (
+              <>
+                <IconButton
+                  band
+                  title={follow ? t("AI ishini ekranda ko'rsatish: yoqilgan") : t("AI ishini ekranda ko'rsatish: o'chirilgan")}
+                  icon={MonitorPlay}
+                  active={follow}
+                  onClick={onFollow}
+                />
+                {/* Tarix ochiq bo'lsa «Yangi suhbat» o'sha yerda. */}
+                {!sideOpen && (
+                  <IconButton band title={t("Yangi suhbat")} icon={SquarePen} onClick={onNewChat} disabled={busy || chat.messages.length === 0} />
+                )}
+                <IconButton band title={t("Kichraytirish")} icon={Minimize2} onClick={onShrink} />
+              </>
+            )}
+            <IconButton band title={t("Yopish")} icon={X} onClick={onClose} />
+          </div>
         </div>
       </div>
-      <div className="shrink-0 border-b border-border/70 px-3 py-2 sm:hidden">{tabs}</div>
+      <div className="shrink-0 px-3 pt-2 sm:hidden">
+        <Segmented
+          size="sm"
+          value={tab}
+          onChange={(v) => onTab(v as Tab)}
+          options={[
+            { value: "assistant", label: "Yordamchi", icon: Bot },
+            { value: "speed", label: "Tezlik sinovi", icon: Gauge },
+          ]}
+        />
+      </div>
     </>
   );
 }
 
 function FloatHeader({
   chat,
+  mood,
   follow,
   onFollow,
   onExpand,
@@ -657,6 +809,7 @@ function FloatHeader({
   onMove,
 }: {
   chat: Chat;
+  mood: MohiraMood;
   follow: boolean;
   onFollow: () => void;
   onExpand: () => void;
@@ -666,9 +819,7 @@ function FloatHeader({
 }) {
   const { t } = useT();
   const drag = useRef<{ sx: number; sy: number; origin: Pos } | null>(null);
-  const s = stepOf(chat);
-  const step =
-    s === null ? "" : s === "writing" ? t("Javob yozilmoqda…") : s === "thinking" ? t("O'ylayapti…") : "tool" in s ? t(s.tool) : s.plan;
+  const step = useStepText(chat);
 
   // Sarlavhadan sudrash (tugmalar bundan mustasno). Joy qo'yib yuborilganda eslab qolinadi.
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -701,28 +852,29 @@ function FloatHeader({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       title={t("Sudrab ko'chirish mumkin")}
-      className="flex shrink-0 cursor-grab touch-none select-none items-center gap-2 border-b border-border bg-card px-3 py-2 active:cursor-grabbing"
+      className="mh-band flex shrink-0 cursor-grab touch-none select-none items-center gap-2.5 px-3 py-2 active:cursor-grabbing"
     >
-      <MohiraAvatar className="h-8 w-8 shrink-0" state={moodOf(chat)} />
+      <MohiraAvatar disc gaze mood={mood} className="h-9 w-9" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-semibold">{ASSISTANT_NAME}</div>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          {step ? (
-            <span className="ai-shimmer truncate font-medium">{step}</span>
-          ) : (
-            <span className="truncate">{chat.status ? t("Bugun yana {n} ta savol", { n: chat.status.remaining }) : ""}</span>
-          )}
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-semibold">{ASSISTANT_NAME}</span>
+          <span className="mh-ai-tag">{ASSISTANT_TAG}</span>
+        </div>
+        <div className="truncate text-[11px] text-white/60">
+          {step ? <span className="ai-shimmer font-medium">{step}</span> : t("Sizning aqlli yordamchingiz")}
         </div>
       </div>
+      <StateDot chat={chat} mood={mood} />
       <IconButton
         small
+        band
         title={follow ? t("AI ishini ekranda ko'rsatish: yoqilgan") : t("AI ishini ekranda ko'rsatish: o'chirilgan")}
         icon={MonitorPlay}
         active={follow}
         onClick={onFollow}
       />
-      <IconButton small title={t("To'liq ekran")} icon={Maximize2} onClick={onExpand} />
-      <IconButton small title={t("Yopish")} icon={X} onClick={onClose} />
+      <IconButton small band title={t("To'liq ekran")} icon={Maximize2} onClick={onExpand} />
+      <IconButton small band title={t("Yopish")} icon={X} onClick={onClose} />
     </div>
   );
 }
@@ -783,12 +935,17 @@ function ChatBody({
   draft,
   setDraft,
   onNavigate,
+  mood,
+  joyKey,
 }: {
   chat: Chat;
   full: boolean;
   draft: string;
   setDraft: (v: string) => void;
   onNavigate: () => void;
+  mood: MohiraMood;
+  /** Hozirgina tugagan javob — uning yonidagi robot xursand. */
+  joyKey: string | null;
 }) {
   const { t } = useT();
   const listRef = useRef<HTMLDivElement>(null);
@@ -837,7 +994,9 @@ function ChatBody({
     </div>
   );
 
-  const bubbles = messages.map((m) => <Bubble key={m.key} m={m} chat={chat} onNavigate={onNavigate} />);
+  const bubbles = messages.map((m, i) => (
+    <Bubble key={m.key} m={m} chat={chat} onNavigate={onNavigate} joyKey={joyKey} last={i === messages.length - 1} />
+  ));
 
   if (opening) {
     return (
@@ -848,22 +1007,30 @@ function ChatBody({
   }
 
   if (full && messages.length === 0) {
-    // ChatGPT'ning bo'sh oynasi kabi: o'rtada Mohira, savol, yozish maydoni va takliflar.
+    // ChatGPT'ning bo'sh oynasi kabi: o'rtada Mohira (konseptdagi to'liq
+    // gavda, halqalar ichida, qo'l silkitib salomlashadi), savol, yozish
+    // maydoni va takliflar. Markazlash `my-auto` bilan: ekran past bo'lsa
+    // (justify-center'dan farqli) tepasi kesilmaydi — aylantirib ko'riladi;
+    // past ekranda robot ham kichrayadi.
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-10">
-        <div className="w-full max-w-3xl space-y-5">
+      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 pb-10 pt-4">
+        <div className="my-auto w-full max-w-3xl space-y-5">
           <div className="ai-msg-in flex flex-col items-center gap-2 text-center">
-            <div className="ai-hero relative h-24 w-24">
-              <MohiraAvatar className="relative h-24 w-24" />
+            <div className="mh-stage mb-2 h-36 w-[113px] md:h-44 md:w-[138px] [@media(max-height:720px)]:h-28 [@media(max-height:720px)]:w-[88px]">
+              <MohiraAvatar variant="full" greet gaze mood={mood} className="relative z-[1] h-full w-full" />
             </div>
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("Salom, men {name}!", { name: ASSISTANT_NAME })}</h2>
-            <p className="text-[15px] text-muted-foreground">{t("Qanday yordam bera olaman?")}</p>
+            {/* `relative` — halqalar (mutlaq joylashgan) yozuv ustiga tushmasin. */}
+            <h2 className="relative text-2xl font-semibold tracking-tight md:text-3xl">{t("Salom, men {name}!", { name: ASSISTANT_NAME })}</h2>
+            <p className="relative text-[15px] text-muted-foreground">{t("Qanday yordam bera olaman?")}</p>
           </div>
           {composer}
           {exampleChips}
           <p className="text-center text-[12px] text-muted-foreground">
             {t("Salom! Ruxsatingiz bor bo'limlar bo'yicha savol bering: qarzdorlar, tushum, guruhlar, lidlar, oylik yoki CRM'dan qanday foydalanish.")}
           </p>
+          {status && (
+            <p className="text-center text-[11px] text-muted-foreground/80">{t("Bugun yana {n} ta savol", { n: status.remaining })}</p>
+          )}
         </div>
       </div>
     );
@@ -876,7 +1043,7 @@ function ChatBody({
           {messages.length === 0 ? (
             <div className="ai-msg-in space-y-3">
               <div className="flex items-center gap-2.5">
-                <MohiraAvatar className="h-10 w-10 shrink-0" />
+                <MohiraAvatar disc gaze mood={mood} className="h-10 w-10" />
                 <p className="text-[13px] font-medium">{t("Salom, men {name}!", { name: ASSISTANT_NAME })}</p>
               </div>
               <p className="text-[13px] text-muted-foreground">
@@ -891,8 +1058,9 @@ function ChatBody({
       </div>
       <div className={full ? "mx-auto w-full max-w-3xl shrink-0 px-4 pb-3" : "shrink-0 border-t border-border p-2"}>
         {composer}
-        <div className="mt-1.5 flex items-center justify-between gap-2 px-1 text-[11px] text-muted-foreground">
-          <span className="min-w-0 truncate">{t("AI xato qilishi mumkin — muhim raqamlarni sahifadan tekshiring.")}</span>
+        <div className="mt-1.5 flex items-center gap-2 px-1 text-[11px] text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate">{t("AI xato qilishi mumkin — muhim raqamlarni sahifadan tekshiring.")}</span>
+          {status && <span className="shrink-0 tabular-nums">{t("Bugun yana {n} ta savol", { n: status.remaining })}</span>}
           {messages.length > 0 && (
             <span className="flex shrink-0 items-center gap-1">
               <button type="button" onClick={chat.newChat} disabled={busy} title={t("Yangi suhbat")} className="rounded p-1 hover:bg-secondary disabled:opacity-50">
@@ -1004,7 +1172,20 @@ function Composer({
   );
 }
 
-function Bubble({ m, chat, onNavigate }: { m: UiMessage; chat: Chat; onNavigate: () => void }) {
+function Bubble({
+  m,
+  chat,
+  onNavigate,
+  joyKey,
+  last,
+}: {
+  m: UiMessage;
+  chat: Chat;
+  onNavigate: () => void;
+  joyKey: string | null;
+  /** Suhbatning oxirgi xabari — yonidagi robot «tirik» (qolganlari harakatsiz). */
+  last: boolean;
+}) {
   const { t } = useT();
   if (m.role === "user") {
     return (
@@ -1019,10 +1200,19 @@ function Bubble({ m, chat, onNavigate }: { m: UiMessage; chat: Chat; onNavigate:
   const toolRunning = tools.some((x) => x.status === "start");
   // Javob kutilyapti: hali matn yo'q va hech bir vosita ishlamayapti — model o'ylayapti.
   const thinking = !!m.pending && !m.content && !toolRunning;
-  const mood: MohiraState = !m.pending ? "idle" : m.content ? "talking" : "thinking";
+  // Yozilayotgan javob — o'ylaydi / gapiradi; ko'ngilsiz tugagan — hafa; hozirgina tugagan — hursand.
+  const mood: MohiraMood = m.pending
+    ? m.content
+      ? "talking"
+      : "thinking"
+    : wentWrong(m)
+      ? "sad"
+      : joyKey === m.key
+        ? "happy"
+        : "idle";
   return (
     <div className="ai-msg-in flex gap-2.5">
-      <MohiraAvatar className="mt-0.5 h-7 w-7 shrink-0" state={mood} still={!m.pending} />
+      <MohiraAvatar disc mood={mood} still={!m.pending && !last} className="mt-0.5 h-8 w-8" />
       <div className="min-w-0 flex-1 space-y-1.5 text-[13px]">
         {m.plan && m.plan.length > 0 && <PlanCard steps={m.plan} live={!!m.pending} />}
         {tools.length > 0 && <WorkLog tools={tools} live={!!m.pending} onNavigate={onNavigate} />}

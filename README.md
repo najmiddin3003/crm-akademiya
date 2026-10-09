@@ -2535,7 +2535,8 @@ robotga almashsin, nomi — MohiraAI.
   zirak chayqaladi), `thinking` (ko'zlar qaraydi, bosh qiyshayadi, naqsh
   yaltiraydi, uchqunlar), `talking` (og'iz gapiradi). Eski xabarlar
   yonidagi rasm — `still` (harakatsiz). Avvalgi
-  `components/tezlik/RobotFace.tsx` o'chirildi.
+  `components/tezlik/RobotFace.tsx` o'chirildi. *09.10.2026 dan yangi
+  qiyofa — pastdagi «Mohira — yangi qiyofa va kayfiyatlar» bo'limi.*
 - **Ochilish/yopilish — «genie»** (`components/ai/genie.ts`): oyna robot
   tugmasidan voronka bo'lib chiqadi va yopilganda unga qaytib kiradi
   (560 / 480 ms). Ikki qatlam: butun ekranli sahna — `clip-path:
@@ -2652,3 +2653,58 @@ tekshirildi (payments_list, payroll_summary, attendance_report,
 query_data, findPupilForLead, prepareAttendance). Qoralama →
 tasdiq oqimi (`_verify-ai-actions.mjs`) lokal MongoDB talab qiladi va
 yurgizilmadi.
+
+### Mohira — yangi qiyofa va kayfiyatlar (2026-10-09)
+
+Foydalanuvchi bergan chizma (`MohiraAI_robot.svg`) va «Robot va interfeys —
+konsept 01» bo'yicha: robotning yuzi tirik bo'lsin, kayfiyati — odatiy,
+hursand, hafa. Avvalgi milliy libosli robot (do'ppi, kokil) o'rnida.
+
+- **Robot** — `components/ai/MohiraAvatar.tsx`, koordinatalar SVG'dagidek
+  (480×550). `variant`: `head` — faqat bosh (tugma, sarlavha, xabar
+  yonida; konseptdagi 32 / 48 / 72 px), `full` — butun gavda (bo'sh
+  suhbatda). `disc` — oq doira ichida.
+- **Kayfiyat** (`mood`):
+  - `idle` — suzadi, ko'z qirpiydi (ba'zan ikki marta), atrofga qaraydi;
+  - `thinking` — ko'zlar tepada, u yoq-bu yoqqa; antenna va yon
+    chiroqlar tez yonadi;
+  - `talking` — og'iz gapiradi;
+  - `happy` — ko'zlar ◠ ◠, ochiq kulgi, sakraydi;
+  - `sad` — qoshlar tushgan, ko'zlar pastda, labi osilgan, antenna
+    egilgan, ko'zdan yosh oqadi.
+
+  Hamma yuz bir vaqtda chizilgan, CSS (`data-mood`, `app/globals.css` →
+  «MOHIRA») faqat ko'rinishini almashtiradi, shuning uchun o'tish silliq.
+- **Qachon qaysi** — `AssistantPanel.tsx`:
+  - ish ketayotganda o'ylaydi yoki gapiradi;
+  - javob xatosiz tugasa yoki amal saqlansa 4.5 s hursand (`useJoy`;
+    tarixdan ochilgan eski javoblar sanalmaydi);
+  - xato, uzilgan javob, saqlanmagan amal, tugagan limit yoki o'chiq
+    yordamchida — hafa (`moodOf`).
+
+  Oxirgi javob yonidagi robot tirik, eskilari harakatsiz (`still`).
+- **Nigoh** (`gaze`) — ko'zlar sichqonchaga qaraydi (faqat sichqoncha).
+  2.6 s qimirlamasa atrofga qarashga qaytadi. Tugmada, sarlavhada va bo'sh
+  suhbatda ishlaydi.
+- **Tugma** (`components/tezlik/SpeedFab.tsx`) — oq doira, onlayn nuqta,
+  72 px (telefonda 60). Standart joyi o'ng-past burchak (saqlangan joy
+  o'zgarmaydi). Ustiga kelinsa yoki sudralsa robot xursand bo'ladi, yonida
+  «Qanday yordam beray?» chiqadi (Dock'dagi nom o'rnida). Bu yozuv kuniga
+  bir marta o'zi ham ko'rinadi (`tizimli:mohira-hello`).
+- **Sarlavha** — to'q firuza tasma (`.mh-band`): robot, «MohiraAI · AI»,
+  ostida hozirgi qadam yoki «Sizning aqlli yordamchingiz». Holat nuqtasi
+  (`.mh-state`): yashil — tayyor, sariq — ishlayapti, havorang — javob
+  tayyor, qizil — xato yoki limit. To'liq ekranda tasma yumaloq, tablar
+  uning ichida (telefonda — ostida). «Bugun yana N ta savol» endi pastki
+  qatorda va nuqta ustida.
+- **Bo'sh suhbat** — to'liq gavdali Mohira halqalar (`.mh-stage`) ichida,
+  paydo bo'lganda qo'l silkitib salomlashadi (`greet`). Markazlash
+  `my-auto` bilan: past ekranda tepasi kesilmaydi (avvalgi `justify-center`
+  kesardi), robot ham kichrayadi.
+- `prefers-reduced-motion` — harakat to'xtaydi, kayfiyat yuzi qoladi.
+
+Sinov: tsc, eslint, `i18n-scan` / `_i18n-check` / `_translit-check`.
+Brauzerda soxta API bilan (vaqtinchalik sahifa, commit qilinmadi) ko'rildi:
+hamma kayfiyat, o'tishlar (o'ylaydi → gapiradi → hursand → odatiy; xato →
+hafa), nigoh, salomlashish, suzuvchi oyna, tungi rejim. Haqiqiy model bilan
+sinalmadi.

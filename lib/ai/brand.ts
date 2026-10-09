@@ -5,3 +5,6 @@
 // qiymatlari o'girilmaydi — lib/i18n.ts). Panel sarlavhasi, robot tugmasi
 // va tizim ko'rsatmasi (lib/ai/prompt.ts) shu yerdan oladi.
 export const ASSISTANT_NAME = "MohiraAI";
+
+/** Sarlavhada nom yonidagi kichik belgi (konsept: «MohiraAI · AI») — u ham o'girilmaydi. */
+export const ASSISTANT_TAG = "AI";
