@@ -8,6 +8,7 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useT } from "@/components/shared/Language";
+import { branchBuildingLabel, buildingNo } from "@/lib/branchPools";
 
 // Xona qo'shish / tahrirlash modali (Guruh → Xonalar, skrinshot 2/3).
 // `room` berilsa — tahrirlash (PATCH /api/rooms/:id), aks holda qo'shish
@@ -40,8 +41,9 @@ export default function RoomModal({
   // tanlovda ko'rinsin — aks holda Select bo'sh turardi.
   const ownBranch = room ? roomBranchId(room) : null;
   const branchOptions = [
-    ...branches.map((b) => ({ value: String(b.id), label: b.name })),
-    ...(ownBranch !== null && !branches.some((b) => b.id === ownBranch) ? [{ value: String(ownBranch), label: t("{n}-filial", { n: ownBranch }) }] : []),
+    // Xona — jismoniy bino: 1+2 «Akademiya Chortoq» da «1-bino» / «2-bino».
+    ...branches.map((b) => ({ value: String(b.id), label: branchBuildingLabel(b, (n) => t("{n}-bino", { n })) })),
+    ...(ownBranch !== null && !branches.some((b) => b.id === ownBranch) ? [{ value: String(ownBranch), label: t(buildingNo(ownBranch) !== null ? "{n}-bino" : "{n}-filial", { n: buildingNo(ownBranch) ?? ownBranch }) }] : []),
   ];
   const [name, setName] = useState(room?.name || "");
   const [capacity, setCapacity] = useState(room ? String(room.capacity) : "");

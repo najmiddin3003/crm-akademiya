@@ -121,7 +121,8 @@ export default function AutoSmsTab() {
   // Filiallar bazadan — ilgari bu ro'yxat faqat ["Tanlang"] edi, ya'ni
   // birorta haqiqiy filialni tanlab bo'lmasdi.
   const { branches, loading: branchesLoading } = useBranches();
-  const branchNames = branches.map((b) => b.name).filter(Boolean);
+  // Takror nom bir marta: 1+2 «Akademiya Chortoq» ikkala bino hujjatida bir xil.
+  const branchNames = [...new Set(branches.map((b) => b.name).filter(Boolean))];
   const { showSuccess, showError } = useToast();
   const [data, setData] = useState<AutoSmsData>(withDefaults);
   const [loading, setLoading] = useState(true);

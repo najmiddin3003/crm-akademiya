@@ -23,7 +23,7 @@ import MoneyInput from "@/components/ui/MoneyInput";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
-import { branchPool } from "@/lib/branchPools";
+import { branchPool, collapseBranchPools, sameBranchPool } from "@/lib/branchPools";
 import CvFormModal from "./CvFormModal";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
@@ -380,14 +380,14 @@ export default function CvPage() {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
   const branch = useBranch();
-  // 1+2 HOVUZI (09.10.2026, lib/branchPools.ts): ro'yxat ikkala Chortoq
-  // filiali arizalarini oladi (app/api/management-cv → cvBranchFilter) —
-  // belgi ham ikkala nomni ko'rsatadi, aks holda «faqat shu filial» deb
-  // aldardi. Ro'yxatda nomi yo'q filial (xodimga biriktirilmagan) — raqami.
-  const poolIds = branch.branchId == null ? [] : branchPool(branch.branchId);
-  const branchName = poolIds
-    .map((id) => branch.branches.find((b) => b.id === id)?.name || t("{n}-filial", { n: id }))
-    .join(" + ");
+  // 1+2 HOVUZI (lib/branchPools.ts): ro'yxat ikkala bino arizalarini oladi
+  // (app/api/management-cv → cvBranchFilter). 10.10.2026 dan ikkalasining nomi
+  // bitta («Akademiya Chortoq») — takror nom bir marta; nomlar har xil bo'lsa
+  // hammasi ko'rinadi, aks holda belgi «faqat shu filial» deb aldardi.
+  const branchNames = branch.branchId == null
+    ? []
+    : [...new Set(branchPool(branch.branchId).map((id) => branch.branches.find((b) => b.id === id)?.name ?? "").filter(Boolean))];
+  const branchName = branchNames.join(" + ");
   // Admin izohi (ustun va tafsilotdagi bo'lim) — faqat adminga; server ham
   // boshqalarga izohni bermaydi.
   const isAdmin = branch.isAdmin;
@@ -521,7 +521,8 @@ export default function CvPage() {
     const ids = new Set<number>();
     if (branch.branchId !== null) ids.add(branch.branchId);
     for (const c of items) if (typeof c.branchId === "number") ids.add(c.branchId);
-    return [...ids].sort((a, b) => a - b);
+    // Hovuz (1+2 «Akademiya Chortoq») — bitta qator (lib/branchPools.ts).
+    return collapseBranchPools([...ids].sort((a, b) => a - b).map((id) => ({ id })), branch.branchId).map((x) => x.id);
   }, [items, branch.branchId]);
   const visible = useMemo(() => items.filter((c) => cvMatches(c, filters, q)), [items, filters, q]);
   const activeFilters = activeCvFilters(filters);
@@ -577,7 +578,7 @@ export default function CvPage() {
         ...branchIds.map((id) => ({
           value: String(id),
           label: branch.branches.find((b) => b.id === id)?.name || items.find((c) => c.branchId === id)?.branchName || String(id),
-          hint: String(branchRows.filter((c) => c.branchId === id).length),
+          hint: String(branchRows.filter((c) => typeof c.branchId === "number" && sameBranchPool(c.branchId, id)).length),
         })),
         { value: CV_BRANCH_ANY, label: "Istalgan", hint: String(branchRows.filter((c) => c.branchId === null).length) },
       ],
@@ -708,7 +709,7 @@ export default function CvPage() {
               <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
               <span>{branchName}</span>
               <span className="text-muted-foreground">
-                · {poolIds.length > 1 ? t("shu filiallar arizalari (+ filial tanlamaganlar)") : t("shu filial arizalari (+ filial tanlamaganlar)")}
+                · {branchNames.length > 1 ? t("shu filiallar arizalari (+ filial tanlamaganlar)") : t("shu filial arizalari (+ filial tanlamaganlar)")}
               </span>
             </div>
           )}

@@ -11,6 +11,7 @@ import { applyHolatChange, recordTelegramPress } from "@/lib/leadHolatServer";
 import type { Order } from "@/lib/ordersData";
 import { redirectToNewBot } from "@/lib/staffBot/moved";
 import type { TelegramUpdate } from "@/lib/staffBot/router";
+import { logAction } from "@/lib/actionLog";
 
 // POST /api/telegram/webhook — GURUH botining (@akademiya_crm_bot) webhook'i:
 //
@@ -46,7 +47,7 @@ function secretMatches(provided: string, expected: string): boolean {
 interface CallbackQuery {
   id: string;
   data?: string;
-  from?: { first_name?: string; last_name?: string; username?: string };
+  from?: { id?: number; first_name?: string; last_name?: string; username?: string };
   message?: { message_id: number; chat?: { id: number | string } };
 }
 
@@ -54,6 +55,36 @@ interface CallbackQuery {
 function senderName(from: CallbackQuery["from"]): string {
   const full = [from?.first_name, from?.last_name].filter(Boolean).join(" ").trim();
   return full || (from?.username ? `@${from.username}` : "");
+}
+
+/**
+ * AMALLAR JURNALI (lib/actionLog.ts): guruhdagi lid tugmasini kim bosgani.
+ * Bosgan odam xodimlar botida kirgan bo'lsa (`staff_bot_users.chatId` =
+ * Telegram id) — o'sha xodim, aks holda Telegram'dagi ismi.
+ */
+async function auditLeadPress(db: Db, cq: CallbackQuery, by: string, orderId: number, details: Record<string, unknown>) {
+  const tgId = Number(cq.from?.id);
+  const staff = Number.isFinite(tgId)
+    ? await db
+        .collection("staff_bot_users")
+        .findOne({ chatId: tgId }, { projection: { _id: 0, employeeId: 1, name: 1, userId: 1 } })
+        .catch(() => null)
+    : null;
+  await logAction(db, {
+    actor: {
+      kind: "bot",
+      tgId: Number.isFinite(tgId) ? tgId : null,
+      name: String(staff?.name ?? "").trim() || by,
+      employeeId: Number.isFinite(Number(staff?.employeeId)) ? Number(staff?.employeeId) : null,
+      userId: staff?.userId ? String(staff.userId) : null,
+    },
+    source: "bot",
+    section: "orders",
+    action: "lead_holat",
+    target: String(orderId),
+    status: 200,
+    details,
+  });
 }
 
 /**
@@ -99,11 +130,16 @@ async function handleLeadCallback(
         via: "telegram",
         telegram: { key: parsed.key, label },
       });
-      if (r.ok) fresh = r.order;
-      else answer = r.error;
+      if (r.ok) {
+        fresh = r.order;
+        await auditLeadPress(db, cq, by, order.id, { from, to, button: label });
+      } else answer = r.error;
     } else if (to && to === from) {
       // Holat o'sha — faqat tugmaning aniq javobi (keyinroq ↔ to'lov).
-      if (order.leadStatus !== parsed.key) fresh = (await recordTelegramPress(db, order, parsed.key, label, by)) ?? order;
+      if (order.leadStatus !== parsed.key) {
+        fresh = (await recordTelegramPress(db, order, parsed.key, label, by)) ?? order;
+        await auditLeadPress(db, cq, by, order.id, { button: label });
+      }
     } else {
       answer = `Holat o'zgarmadi: lid «${holatMeta(from).nom}» bosqichida. O'zgartirish — CRM'dagi Lidlar sahifasida`;
     }

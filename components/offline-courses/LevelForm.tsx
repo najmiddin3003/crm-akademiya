@@ -9,6 +9,7 @@ import { useBranches } from "@/hooks/useBranches";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import { useOfflineCourses, type CourseLevel } from "./OfflineCoursesProvider";
 import { useT } from "@/components/shared/Language";
+import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 
 // Daraja qo'shish / tahrirlash formasi. Tashqi komponent kontekst yuklanishini
 // kutadi; ichki `LevelFormBody` faqat ma'lumot tayyor bo'lgach mount bo'ladi.
@@ -71,7 +72,14 @@ function LevelFormBody({ courseId, editing }: { courseId: number; editing?: Cour
   const detailHref = `/offline-courses/${courseId}`;
 
   function setBranch(id: number, patch: Partial<BranchRow>) {
-    setRows((prev) => ({ ...prev, [id]: { ...(prev[id] ?? EMPTY_ROW), ...patch } }));
+    // 1+2 «Akademiya Chortoq» — bitta qator (lib/branchPools.ts): o'zgarish
+    // hovuzning HAMMA binosiga yoziladi.
+    setRows((prev) => {
+      const next = { ...prev };
+      const base = { ...(prev[id] ?? EMPTY_ROW), ...patch };
+      for (const m of branchPool(id)) next[m] = base;
+      return next;
+    });
   }
 
   async function save() {
@@ -139,7 +147,7 @@ function LevelFormBody({ courseId, editing }: { courseId: number; editing?: Cour
               </tr>
             </thead>
             <tbody>
-              {branches.map((b) => {
+              {collapseBranchPools(branches).map((b) => {
                 const row = rows[b.id] ?? EMPTY_ROW;
                 return (
                   <tr key={b.id} className="border-t border-border">

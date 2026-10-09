@@ -41,3 +41,54 @@ export function expandBranchPools(ids: readonly number[]): number[] {
   for (const id of ids) for (const b of branchPool(id)) if (!out.includes(b)) out.push(b);
   return out;
 }
+
+// ── KO'RINISH: hovuz BITTA filial (10.10.2026) ──────────────────────────
+//
+// Foydalanuvchi: «filial 1 va filial 2 ni bitta yagona Akademiya Chortoq ga
+// o'tkazamiz … kassa shundoq holicha qoladi, faqat ko'rinish o'zgarsin».
+// MA'LUMOT KO'CHIRILMAYDI: har yozuv o'z binosining `branchId` si bilan
+// qoladi, ikkala filial hujjatining NOMI esa bir xil («Akademiya Chortoq»).
+//
+//   • TANLOV ro'yxatlari (navbar, filtrlar, ommaviy formalar) — hovuz BITTA
+//     qator (`collapseBranchPools`); filtr qiymati hovuzning vakili,
+//     solishtirish `sameBranchPool` bilan.
+//   • BINO kerak joylar (xodimning filial qatorlari, xona, Filiallar
+//     boshqaruvi, Oylik va QR almashtirgichi) — nom yoniga «1-bino»,
+//     «2-bino» (`buildingNo`): oylik, kassa va xodim davomati bino bo'yicha.
+
+/**
+ * Tanlov ro'yxatida hovuzni BITTA qatorga yig'adi (tartib saqlanadi).
+ * Hovuzdan `prefer` (masalan joriy navbar filiali) ro'yxatda bo'lsa — o'sha
+ * qoladi, aks holda hovuzdan ro'yxatda birinchi uchragani.
+ */
+export function collapseBranchPools<T extends { id: number }>(list: readonly T[], prefer?: number | null): T[] {
+  const out: T[] = [];
+  const seen = new Set<number>();
+  for (const b of list) {
+    const pool = branchPool(b.id);
+    if (pool.length < 2) {
+      out.push(b);
+      continue;
+    }
+    if (seen.has(pool[0])) continue;
+    seen.add(pool[0]);
+    const preferred = prefer != null && pool.includes(prefer) ? list.find((x) => x.id === prefer) : undefined;
+    out.push(preferred ?? b);
+  }
+  return out;
+}
+
+/** Hovuzdagi bino raqami (1, 2 …); hovuzsiz filialda `null`. */
+export function buildingNo(branchId: number): number | null {
+  const pool = branchPool(branchId);
+  return pool.length < 2 ? null : pool.indexOf(branchId) + 1;
+}
+
+/**
+ * Bino kerak joylar uchun yorliq: «Akademiya Chortoq · 2-bino». `word` —
+ * tarjima qilingan «{n}-bino» (`(n) => t("{n}-bino", { n })`).
+ */
+export function branchBuildingLabel(b: { id: number; name: string }, word: (n: number) => string): string {
+  const n = buildingNo(b.id);
+  return n === null ? b.name : `${b.name} · ${word(n)}`;
+}

@@ -97,6 +97,7 @@ export const SHARED_API: readonly string[] = [
 
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */
 export const API_PERMISSIONS: Record<string, readonly string[]> = {
+  "/api/action-log": ["/amallar-jurnali"],
   "/api/attendance": ["/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups"],
   "/api/attendance-qr": ["/nazorat-qr"],
   "/api/block-test-exams": ["/blok-testlar"],
@@ -105,7 +106,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/block-test-types/[id]": ["/blok-test-turlari"],
   "/api/bonuses": ["/finance-bonus", "/finance-cashflow", "/management-xodimlar"],
   "/api/bonuses/[id]": ["/finance-bonus"],
-  "/api/branches": ["/management-filiallar", "/management-xodimlar", "/nazorat-branches", "/nazorat-feedback", "/offline-courses", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
+  "/api/branches": ["/amallar-jurnali", "/management-filiallar", "/management-xodimlar", "/nazorat-branches", "/nazorat-feedback", "/offline-courses", "/orders-list", "/settings-academic", "/settings-app", "/settings-finance", "/settings-gamification", "/settings-general", "/settings-integrations", "/settings-management", "/settings-sales"],
   "/api/branches/[id]": ["/management-filiallar"],
   "/api/cashboxes": ["/finance-analytics", "/finance-bonus", "/finance-cash", "/finance-cashflow", "/finance-payroll", "/finance-penalty", "/finance-reports", "/finance-transactions", "/management-xodimlar"],
   "/api/cashboxes/[id]": ["/finance-cash"],

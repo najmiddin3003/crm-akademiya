@@ -5,7 +5,7 @@ import type { Bonus } from "@/lib/bonuses";
 import type { Penalty } from "@/lib/penalties";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { getBranchScope } from "@/lib/branchScope";
-import { strictScopedEmployeeFilter } from "@/lib/employeeBranches";
+import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 
 // Hisobotlar → Balans (href /reports-balance).
 //
@@ -62,8 +62,10 @@ export async function GET() {
   }
 
   const [employees, bonuses, penalties, entries] = await Promise.all([
-    // Oylik filial bo'yicha qoladi (lib/branchPools.ts) — balans ham qat'iy.
-    db.collection("hr_employees").find(strictScopedEmployeeFilter({}, scope)).sort({ id: 1 }).toArray(),
+    // 10.10.2026 dan HOVUZ bilan: 1+2 «Akademiya Chortoq» navbarda bitta qator
+    // (lib/branchPools.ts) — qat'iy kesish 2-binodagi xodimni hisobotdan
+    // yashirardi. Raqamlar xodim bo'yicha, ikki marta sanalmaydi.
+    db.collection("hr_employees").find(scopedEmployeeFilter({}, scope)).sort({ id: 1 }).toArray(),
     db.collection("bonuses").find({}).toArray(),
     db.collection("penalties").find({}).toArray(),
     db

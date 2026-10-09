@@ -12,6 +12,7 @@ import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { collapseBranchPools, sameBranchPool } from "@/lib/branchPools";
 
 // "Vaqtinchalik tugma" (sidebar → Sozlamalardan keyin, faqat admin).
 //
@@ -201,7 +202,8 @@ export default function TempStaffPage() {
     return rows.filter((r) => {
       // Filial: xodim BIR NECHTA filialda bo'lishi mumkin, shu bois
       // tenglik emas, a'zolik tekshiriladi.
-      if (branchId !== null && !r.branchIds.includes(branchId)) return false;
+      // Hovuz (1+2 «Akademiya Chortoq») — bitta filial (lib/branchPools.ts).
+      if (branchId !== null && !r.branchIds.some((id) => sameBranchPool(id, branchId))) return false;
 
       const archived = Boolean(r.archReason);
       if (stateFilter === "active" && archived) return false;
@@ -493,7 +495,7 @@ export default function TempStaffPage() {
                 className={`${inputCls} pl-9`}
               />
             </div>
-            <Select value={branchFilter} onChange={(v) => setBranchFilter(v)} options={branches.map((b) => ({ value: String(b.id), label: b.name }))} placeholder={t("Barcha filiallar")} clearable style={{ width: 190 }} />
+            <Select value={branchFilter} onChange={(v) => setBranchFilter(v)} options={collapseBranchPools(branches).map((b) => ({ value: String(b.id), label: b.name }))} placeholder={t("Barcha filiallar")} clearable style={{ width: 190 }} />
             <Select value={stateFilter} onChange={(v) => setStateFilter(v)} options={[{ value: "active", label: t("Aktiv") }, { value: "archived", label: t("Arxivda") }]} placeholder={t("Barcha holatlar")} clearable style={{ width: 150 }} />
             <Select value={accountFilter} onChange={(v) => setAccountFilter(v)} options={[{ value: "none", label: t("Hisob yo'q") }, { value: "invited", label: t("SMS ketgan — hali faollashmagan") }, { value: "pending", label: t("Tasdiq kutmoqda") }, { value: "rejected", label: t("Rad etilgan") }, { value: "active", label: t("Faollashgan") }]} placeholder={t("Barcha hisoblar")} clearable style={{ width: 235 }} />
             <button
@@ -568,7 +570,7 @@ export default function TempStaffPage() {
                     <td className="px-5 py-3 text-[12px] text-muted-foreground">
                       {r.branchIds.length === 0
                         ? "-"
-                        : r.branchIds.map((id) => branchName.get(id) ?? `Filial ${id}`).join(", ")}
+                        : [...new Set(r.branchIds.map((id) => branchName.get(id) ?? `Filial ${id}`))].join(", ")}
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">

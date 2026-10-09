@@ -15,6 +15,7 @@ import { LANGS as LANG_CODES, type Lang } from "@/lib/i18n";
 import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { useBranch } from "@/components/shared/BranchContext";
+import { collapseBranchPools } from "@/lib/branchPools";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { isPathAllowed } from "@/lib/permissions";
 import { HELP_TOPICS } from "@/constants/helpTopics";
@@ -349,7 +350,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
                 return;
               }
               void select(Number(v));
-            }} options={[...((branchLoading || allowedBranches.length === 0) ? [{ value: "", label: t(selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…")) }] : []), ...allowedBranches.map((b) => ({ value: String(b.id), label: b.name })), ...(isAdmin ? [{ value: FILIAL_ADD_OPTION, label: t(FILIAL_ADD_OPTION) }] : [])]} disabled={branchLoading} />
+            }} options={[...((branchLoading || allowedBranches.length === 0) ? [{ value: "", label: t(selectPlaceholder(branchLoading, allowedBranches.length, "Filial qo'shilmagan", "Filial…")) }] : []), ...collapseBranchPools(allowedBranches, branchId).map((b) => ({ value: String(b.id), label: b.name })), ...(isAdmin ? [{ value: FILIAL_ADD_OPTION, label: t(FILIAL_ADD_OPTION) }] : [])]} disabled={branchLoading} />
           
         </div>
 

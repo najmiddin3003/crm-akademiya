@@ -362,6 +362,12 @@ async function createAllIndexes(db: Db): Promise<void> {
   // bo'yicha bitta yozuv, 90 kundan keyin o'zi o'chadi (manzil yangilansin).
   tasks.push(db.collection("geo_address_cache").createIndex({ key: 1 }, { unique: true }));
   tasks.push(db.collection("geo_address_cache").createIndex({ createdAt: 1 }, { expireAfterSeconds: 90 * 86_400 }));
+  // AMALLAR JURNALI (lib/actionLog.ts, 10.10.2026): kim, qachon, nima qildi.
+  // 1 yil saqlanadi (TTL `at` bo'yicha); qidiruv shaxs, bo'lim va vaqt bo'yicha.
+  tasks.push(db.collection("action_log").createIndex({ at: 1 }, { expireAfterSeconds: 365 * 86_400, name: "action_log_ttl" }));
+  tasks.push(db.collection("action_log").createIndex({ "actor.userId": 1, at: -1 }));
+  tasks.push(db.collection("action_log").createIndex({ "actor.employeeId": 1, at: -1 }));
+  tasks.push(db.collection("action_log").createIndex({ section: 1, at: -1 }));
   tasks.push(db.collection("support_analytics").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("roles").createIndex({ id: 1 }, { unique: true }));
   // `key` — lavozim kaliti (teacher/moderator). Ruxsatlar shu bo'yicha

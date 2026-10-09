@@ -11,6 +11,7 @@ import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { useOfflineCourses, type OfflineCourse } from "./OfflineCoursesProvider";
 import { useT } from "@/components/shared/Language";
+import { collapseBranchPools } from "@/lib/branchPools";
 
 // Oflayn kurslar ro'yxati (crm-akademiya #view-offline-courses / renderOfflineCourses).
 // Qidiruv nom bo'yicha filtrlaydi; sahifalash haqiqiy. "+" tugmasi va kurs
@@ -101,8 +102,11 @@ export default function OfflineCoursesList() {
   const moreRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const headers = useMemo(() => ["ID", "Sarlavha", "Rang", ...branches.map((b) => b.name)], [branches]);
-  const branchIds = useMemo(() => branches.map((b) => b.id), [branches]);
+  // 1+2 «Akademiya Chortoq» — bitta ustun (lib/branchPools.ts; narx ikkala
+  // binoda bir xil, forma ikkalasiga yozadi). Import nom bo'yicha ikkalasiga.
+  const shownBranches = useMemo(() => collapseBranchPools(branches), [branches]);
+  const headers = useMemo(() => ["ID", "Sarlavha", "Rang", ...shownBranches.map((b) => b.name)], [shownBranches]);
+  const branchIds = useMemo(() => shownBranches.map((b) => b.id), [shownBranches]);
 
   // 3-nuqta menyusini tashqariga bosilganda yopish.
   useEffect(() => {

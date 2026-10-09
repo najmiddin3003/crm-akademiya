@@ -38,7 +38,10 @@ find "$DIR" -name 'crm-*.gz' -mtime +"$KEEP_DAYS" -delete
 if [[ -s /root/.mongo-atlas-uri ]]; then
   echo "   Atlas'ga ko'chirilmoqda…"
   if mongorestore --uri="$(cat /root/.mongo-atlas-uri)" --gzip --archive="$OUT" \
-       --nsInclude="$DB.*" --drop --quiet; then
+       --nsInclude="$DB.*" --nsExclude="$DB.action_log" --drop --quiet; then
+    # `action_log` (Amallar jurnali, lib/actionLog.ts, 10.10.2026) Atlas'ga
+    # KO'CHIRILMAYDI: yiliga yuzlab MB bo'ladi, M0 chegarasi esa 512 MB.
+    # U yuqoridagi lokal nusxada to'liq turadi.
     echo "   Atlas: ok"
   else
     echo "   Atlas: XATO (lokal nusxa saqlangan)"

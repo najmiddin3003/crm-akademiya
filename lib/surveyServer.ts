@@ -3,6 +3,7 @@ import { SOURCE_OTHER } from "@/constants";
 import { loadLeadSettings } from "@/lib/leadSettings";
 import { listSourceOptions } from "@/lib/studentSources";
 import type { SurveyConfig } from "@/lib/survey";
+import { collapseBranchPools } from "@/lib/branchPools";
 
 /**
  * So'rovnoma sozlamalari — sahifa (server komponent) ham, qabul route'i ham
@@ -28,7 +29,9 @@ export async function loadSurveyConfig(db: Db): Promise<SurveyConfig> {
     bosqichlar: s.bosqichlar,
     sinflar: s.sinflar,
     vaqtlar: s.vaqtlar,
-    filiallar: branches
+    // 1+2 «Akademiya Chortoq» — bitta karta (lib/branchPools.ts): lid 1-filialga
+    // yoziladi va hovuz bo'yicha ikkala binoda ko'rinadi.
+    filiallar: collapseBranchPools(branches
       .map((b) => ({
         id: Number(b.id),
         nom: String(b.name ?? "").trim(),
@@ -36,7 +39,7 @@ export async function loadSurveyConfig(db: Db): Promise<SurveyConfig> {
         shahar: String(b.location ?? "").trim(),
         telefon: String(b.phone ?? "").trim(),
       }))
-      .filter((b) => b.id > 0 && b.nom),
+      .filter((b) => b.id > 0 && b.nom)),
     manbalar: [...manbalar, SOURCE_OTHER],
   };
 }

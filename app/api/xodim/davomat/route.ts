@@ -5,6 +5,7 @@ import { parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
 import { fillLocationAddress, markAttendance, type ScanLocation } from "@/lib/attendanceCheck";
 import { notifyLate } from "@/lib/attendanceNotify";
 import { isValidPoint } from "@/lib/geo";
+import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 
 // POST /api/xodim/davomat — «📷 Ishga keldim» Mini App'i (/xodim/keldim)
 // skanerlagan QR kodni yozadi.
@@ -61,6 +62,26 @@ export async function POST(req: Request) {
     const res = await markAttendance(db, auth.employee, scanned.kind, scanned.token, { loc: readLocation(body.loc) });
     if (!res.ok) return json({ ok: false, error: res.error, code: res.code ?? null }, res.status);
 
+    // AMALLAR JURNALI (lib/actionLog.ts): «Ishga keldim/ketdim» — kim, qaysi
+    // bino. Mini App sessiyasiz keladi, proxy uni yozmaydi. Takror skaner — yo'q.
+    if (res.fresh) {
+      const emp = auth.employee;
+      const rec = res.record;
+      after(() =>
+        logAction(db, {
+          actor: { kind: "miniapp", employeeId: emp.id, name: emp.name || null },
+          source: "miniapp",
+          section: "attendance-qr",
+          action: res.kind === "in" ? "qr_in" : "qr_out",
+          target: String(emp.id),
+          status: 200,
+          ip: clientIp(req.headers),
+          ua: clientUa(req.headers),
+          branchId: res.branch.id,
+          details: { date: rec.date, time: res.kind === "in" ? rec.enterTime : rec.exitTime, lateMinutes: rec.lateMinutes ?? 0 },
+        }),
+      );
+    }
     // Javob xodimga ketgandan KEYIN — Telegram sekin bo'lsa ham skaner kutmaydi.
     if (res.fresh && res.kind === "in" && res.record.lateMinutes > 0) {
       const { record, branch } = res;

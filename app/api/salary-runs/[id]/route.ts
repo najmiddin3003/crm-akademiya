@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadPaymentMethods } from "@/lib/paymentMethods";
-import { getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 import { logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { classifyEntry, flushSoon } from "@/lib/sync/dispatch";
@@ -37,7 +37,9 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   // qaytarishning yagona yo'li shu o'chirish.
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
-  if (run.branchId !== undefined && !scope.isAdmin && run.branchId !== scope.branchId) {
+  // 1+2 «Akademiya Chortoq» (10.10.2026): hovuzdosh bino chiqarishi ham —
+  // agar o'sha bino xodimga ruxsat etilgan bo'lsa (`payrollBuilding`).
+  if (run.branchId !== undefined && !scope.isAdmin && payrollBuilding(scope, run.branchId) === null) {
     return NextResponse.json(
       { ok: false, error: "Bu chiqarish boshqa filialda bajarilgan — uni o'sha filialdan o'chiring" },
       { status: 403 },

@@ -3,7 +3,7 @@ import { allBranchIds, employeeBranchIds } from "@/lib/branchScope";
 import { createOrder } from "@/lib/ordersCreate";
 import { formatLessonDays } from "@/lib/ordersData";
 import { loadCourseNames, loadPupilHit, searchPupils } from "@/lib/staffBot/data";
-import { newNonce, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
+import { auditBot, newNonce, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
 import {
   LEAD_CB,
   LEAD_DAY_PRESETS,
@@ -272,6 +272,13 @@ async function saveLead(ctx: FlowCtx, d: LeadDraft, branch: { id: number; name: 
     return;
   }
   await setDraft(ctx.db, ctx.chatId, null);
+  auditBot(ctx, "orders", "lead", {
+    orderId: out.order.id,
+    leadNo: out.order.branchNo,
+    student: d.studentName,
+    course: d.course,
+    branchId: branch.id,
+  }, out.order.id);
   await show(ctx, {
     html: V.leadSaved(d, branch.name, out.order.id, out.order.branchNo),
     keyboard: afterLeadKeyboard(),

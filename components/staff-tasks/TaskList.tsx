@@ -29,6 +29,7 @@ import {
 import { DueCell, PriorityBadge, StatusChip } from "./bits";
 import type { StaffFmt } from "./format";
 import { useAnimatedRows, useFlipRows } from "@/hooks/useAnimatedRows";
+import { collapseBranchPools, sameBranchPool } from "@/lib/branchPools";
 
 // «Topshiriqlar» tabi: filtr-kartalar, qidiruv/filtrlar va jadval.
 //
@@ -84,7 +85,8 @@ export default function TaskList({ tasks, viewer, branches, employees, settings,
   const branchOptions = useMemo(() => {
     const allowed = viewer.branchIds;
     const list = allowed === null ? branches : branches.filter((b) => allowed.includes(b.id));
-    return list.map((b) => ({ value: String(b.id), label: b.name }));
+    // 1+2 «Akademiya Chortoq» — bitta qator (lib/branchPools.ts).
+    return collapseBranchPools(list).map((b) => ({ value: String(b.id), label: b.name }));
   }, [branches, viewer.branchIds]);
   const showBranch = mgr && branchOptions.length > 1;
   const branchName = useMemo(() => new Map(branches.map((b) => [b.id, b.name])), [branches]);
@@ -153,7 +155,7 @@ export default function TaskList({ tasks, viewer, branches, employees, settings,
         } else if (f.status && x.status !== f.status) return false;
         if (mgr) {
           if (f.emp && String(x.employeeId) !== f.emp) return false;
-          if (f.branch && String(x.branchId) !== f.branch) return false;
+          if (f.branch && !sameBranchPool(Number(x.branchId), Number(f.branch))) return false;
           if (f.prio && String(x.priority) !== f.prio) return false;
         }
         return matchesDue(x, f.due, nowMs);

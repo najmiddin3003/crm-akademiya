@@ -3,7 +3,7 @@ import type { Db, Filter, Document } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getCurrentEmployee } from "@/lib/currentEmployee";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
-import { branchPool, expandBranchPools } from "@/lib/branchPools";
+import { branchPool, expandBranchPools, sameBranchPool } from "@/lib/branchPools";
 
 // FILIAL QAMROVI — navbardagi tanlov saytdagi ma'lumotni haqiqatan
 // o'zgartirishi uchun yagona manba.
@@ -259,6 +259,23 @@ export function pooledBranchInCondition(ids: readonly number[]): Filter<Document
  */
 export function branchForInsert(scope: BranchScope): number {
   return scope.branchId;
+}
+
+/**
+ * OYLIK (va QR kiosk) BINOSI — 10.10.2026.
+ *
+ * 1+2 «Akademiya Chortoq» navbarda BITTA qator (lib/branchPools.ts →
+ * `collapseBranchPools`), oylik, kassa kartochkalari va xodim davomati esa
+ * bino bo'yicha qoladi. Shu bois Oylik va QR sahifalari binoni o'zi tanlaydi
+ * (`?building=` yoki tanadagi `branchId`). Ruxsat: navbar filiali bilan
+ * BITTA hovuzda va xodimga ruxsat etilgan bino (admin — har qaysi).
+ * Berilmasa — navbar filiali (eski xulq). `null` — ruxsat yo'q.
+ */
+export function payrollBuilding(scope: BranchScope, raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === "") return scope.branchId;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || !sameBranchPool(n, scope.branchId)) return null;
+  return scope.isAdmin || scope.allowed.includes(n) ? n : null;
 }
 
 /**

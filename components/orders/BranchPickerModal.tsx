@@ -5,6 +5,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useBranches } from "@/hooks/useBranches";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { collapseBranchPools } from "@/lib/branchPools";
 
 // "Transfer" tugmasi bosilganda ochiladigan modal (OrderDetailPage.tsx) —
 // akademiya.edutizim.uz referensiga mos: "Filialni tanlang" sarlavha,
@@ -24,7 +25,8 @@ export default function BranchPickerModal({ onClose, onSelect }: BranchPickerMod
   const [query, setQuery] = useState("");
   const { branches, loading } = useBranches();
 
-  const filtered = branches.filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
+  // 1+2 «Akademiya Chortoq» — bitta qator (lib/branchPools.ts).
+  const filtered = collapseBranchPools(branches).filter((b) => b.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <Modal onClose={onClose} controller={modal} bare zIndex={200}>
