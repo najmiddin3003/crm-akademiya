@@ -38,6 +38,11 @@ export const PUBLIC_API_METHODS: Record<string, readonly string[]> = {
 
 /** Sessiya yetarli — qo'shimcha ruxsat talab qilinmaydi. */
 export const SHARED_API: readonly string[] = [
+  "/api/ai/actions/[id]",
+  "/api/ai/chat",
+  "/api/ai/conversations",
+  "/api/ai/settings",
+  "/api/ai/status",
   "/api/auth/change-password",
   "/api/auth/lock",
   "/api/auth/unlock",

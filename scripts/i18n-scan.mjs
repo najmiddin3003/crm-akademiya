@@ -108,7 +108,11 @@ for (const src of CONSTANT_SOURCES) {
  * ular skanerdan chiqarilgan.
  */
 const SERVER_DIRS = ["app/api", "lib"];
-const SERVER_SKIP = /[\\/](staffBot|studentBot|sync|telegram|eskiz|paymentSms|exportTable|receipt|referenceCache|fetchJson)/i;
+// AI yordamchining MODELGA yoziladigan matnlari ham tashqi kanal (07.10.2026):
+// vosita ta'riflari va xatolari (lib/ai/tools), qo'llanma (lib/ai/knowledge.ts),
+// tizim ko'rsatmasi (lib/ai/prompt.ts) — ular interfeysda ko'rinmaydi. Panelda
+// ko'rinadigan vosita yorliqlari alohida faylda (lib/ai/toolLabels.ts) — skanerlanadi.
+const SERVER_SKIP = /[\\/](staffBot|studentBot|sync|telegram|eskiz|paymentSms|exportTable|receipt|referenceCache|fetchJson|ai[\\/]tools|ai[\\/]knowledge|ai[\\/]prompt)/i;
 const SERVER_FIELDS = "error|reason|message|msg|hint|title|text|detail|label";
 // `fail(403, "…")`, `new GamError(422, "…")` — xabar oldida HTTP kodi bo'lishi
 // mumkin (lib/gamification/http.ts, wallet.ts); u o'tkazib yuboriladi.

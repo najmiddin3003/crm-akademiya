@@ -2083,3 +2083,665 @@ forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
   kiritgani `enteredBy` ga yoziladi va tafsilotda "CRM'da kiritdi" bo'lib
   ko'rinadi; filial navbardagi filialdan boshlanadi. Sessiyasiz (nomzod)
   kelganda rasm va rozilik avvalgidek majburiy.
+
+## AI yordamchi — robot tugmasi (2026-10-07)
+
+Foydalanuvchi bilan kelishilgan: xodimlar web CRM'da robot tugmasini
+(`components/tezlik/SpeedFab.tsx`) bosib, ruxsati bor bo'limlar bo'yicha
+savol beradi ("Eng katta qarzdorlar kimlar?", "Shu oyda kirim qancha?") va
+CRM'dan foydalanish yordamini oladi ("Lid qanday qo'shiladi?"). Provayder —
+OpenAI, kalit `/api/gender-guess` bilan umumiy. **1-bosqich — FAQAT
+O'QISH**: yordamchi hech narsani yaratmaydi, o'zgartirmaydi, o'chirmaydi.
+
+### Qanday ishlaydi
+
+- **Panel** (`components/ai/AssistantPanel.tsx`) — ikki tab: «Yordamchi» va
+  «Tezlik sinovi» (avvalgi robot oynasining o'zi). Yordamchi o'chiq yoki
+  kalit yo'q bo'lsa sababi yoziladi va panel tezlik sinovidan ochiladi;
+  adminga — sozlamaga havola.
+- **Oqim**: `POST /api/ai/chat` → NDJSON (`lib/ai/protocol.ts`: `meta`,
+  `tool`, `delta`, `ping`, `done`, `error`). Sessiya, yoqilganmi, kalit,
+  savol uzunligi (2000 belgi) va limit oqim BOSHLANISHIDAN OLDIN
+  tekshiriladi — xato bo'lsa oddiy JSON. Javob `done` siz uzilsa panel
+  "Javob oxirigacha kelmadi" deydi — chala javob to'liqdek ko'rinmaydi.
+- **Model ↔ vositalar sikli** (`lib/ai/chat.ts`): ko'pi bilan 6 murojaat
+  (oxirgisida vositalar berilmaydi — model javob yozishga majbur), bir
+  murojaatda 4 vosita (navbat bilan — Mongo pool'i kichik), bitta murojaat
+  60 s, butun javob 100 s (nginx `proxy_read_timeout 120s` dan oldin
+  tushunarli xabar), har 15 s da `ping`.
+- **Vositalar** (`lib/ai/tools/`) sahifalar ishlatadigan yadrolarni
+  chaqiradi, o'zi hisob qilmaydi — raqamlar sahifadagi bilan bir xil:
+
+| Vosita | Ruxsat (sahifa) | Manba |
+| --- | --- | --- |
+| `overview` | hammaga (ichida har ko'rsatkich o'z ruxsati bilan) | `computeHomeKpis` |
+| `search_pupils`, `pupil_details` | `/students-list` | `pupilSearchFilter`, `studentPaidBalance` |
+| `debtors_report` | `/reports-unpaid` | `computeDebtors` |
+| `list_groups` | `/groups` | `groups` |
+| `leads_summary` | `/orders-list` | `withLeadScope` |
+| `finance_summary` | `/finance-reports`, `-analytics`, `-cashflow`, `-flow`, `-pnl` | `transactions` (barcha filiallar — sahifadagidek) |
+| `cashbox_balances` | `/finance-cash` | admin — hammasi, xodim — faqat o'z kassasi (`moderator`) |
+| `payroll_summary` | `/finance-payroll` | `buildPayrollRows` |
+| `attendance_report` | `/nazorat-davomat`, `-davomat-analytics`, `-missed-groups`, `/groups` | `attendance` + `lessonExpectedOn` (3-bosqich) |
+| `staff_attendance` | `/nazorat-turnstile-io`, `/nazorat-davomat`, `/management-xodimlar` | `turnstile_io` — «Ishga keldim» QR (3-bosqich) |
+| `staff_tasks` | `/tasks` (hammaga; qamrov `taskScope`) | `staff_tasks` (3-bosqich) |
+| `sales_funnel` | `/reports-funnel` | `lib/salesFunnel.ts` (3-bosqich) |
+| `crm_help` | hammaga | `lib/ai/knowledge.ts` (19 bo'lim) + ochiq sahifalar |
+
+- **Ruxsat**: vosita modelga faqat sahifasi xodimga ochiq bo'lsa
+  ko'rsatiladi va bajarishda QAYTA tekshiriladi (model ro'yxatda yo'q nomni
+  yozsa — "ruxsat yo'q"). Filial qamrovi va ruxsatlar so'rov boshida bir
+  marta yechiladi (`lib/ai/context.ts`) — vositalar oqim davomida, route
+  qaytgandan keyin ishlaydi va cookie'ga tayanmaydi.
+- **Raqamlar**: model faqat vosita qaytargan sonni aytadi; noma'lum qiymat
+  "—", hech qachon 0 emas (tizim ko'rsatmasi `lib/ai/prompt.ts`, inglizcha —
+  javob tili interfeys tilidan).
+- **Maxfiylik**: OpenAI'ga savol, o'quvchi/xodim ismlari va summalar
+  ketadi; telefon raqamlari yashiriladi (`94 *** ** 55` —
+  `lib/ai/mask.ts`). Kalit serverda: sozlama route'i faqat "bor/yo'q" va
+  model nomini qaytaradi. Javobdagi havolalar faqat ichki (`/…`), tashqi
+  havola matn bo'lib qoladi, HTML chizilmaydi (`components/ai/aiMarkdown.ts`).
+- **Limit**: xodimga kuniga N savol (sukut 50, 1–1000) — `ai_usage` da
+  bitta atomik so'rov (`count < limit` + `{userId, day}` noyob indeksi,
+  Toshkent kuni). Xizmat xatosida savol qaytariladi; xodim o'zi
+  to'xtatsa — qaytarilmaydi (aks holda "oxirigacha o'qib, to'xtatish"
+  limitni chetlab o'tardi).
+- **Suhbatlar** `ai_conversations` da oxirgi xabardan 30 kun (TTL), faqat
+  egasiga; faqat matn saqlanadi (vosita natijalari emas). Tarix mijozdan
+  OLINMAYDI — serverdagi suhbatdan, oxirgi 16 xabar.
+
+### Fayllar
+
+- `lib/ai/` — `config` (env, chegaralar), `db` (kolleksiyalar, indekslar),
+  `settings`, `usage`, `store`, `context`, `prompt`, `chat`, `openai` +
+  `sse` / `responsesSse` (oqimni o'qish; SDK emas, `fetch`), `models` +
+  `modelChoice` (model va «Tezlik», 4-bosqich), `brand` (MohiraAI nomi), `mask`, `knowledge`,
+  `toolLabels`, `protocol`, `tools/`.
+- `app/api/ai/` — `status` (GET), `chat` (POST, oqim), `conversations`
+  (GET/DELETE, faqat o'ziniki), `settings` (GET/PUT, faqat admin). To'rttasi
+  `scripts/gen-api-permissions.mjs` → `SHARED_EXTRA` da: darvozada sessiya
+  yetadi, ma'lumot ruxsati vosita ichida.
+- `components/ai/` — `AssistantPanel`, `ModelPicker`, `AiScreenRefresh`,
+  `useAiChat`, `MessageText`, `aiMarkdown`, `MohiraAvatar`, `HistorySidebar`,
+  `genie`, `history` (6-bosqich); `components/settings/AiAssistantTab.tsx`.
+
+### Sozlash
+
+1. `.env` ga yangi kalit shart emas — `OPENAI_URL_API` (kerak bo'lsa
+   `OPENAI_BASE_URL`) jins aniqlash bilan umumiy. Model:
+   `AI_ASSISTANT_MODEL` → `OPENAI_MODEL` → `lib/genderGuess.ts` dagi sukut.
+   Model vosita chaqiruvini (function calling) qo'llashi SHART.
+2. Sukut — **O'CHIQ**. Admin: Sozlamalar → Ilova sozlamalari → «AI
+   yordamchi» (`/settings-app?tab=ai`) — yoqish va kunlik limit. Qayta
+   ishga tushirish shart emas (bazada, `ai_settings`).
+3. Kolleksiya va indekslar o'zi yaratiladi: `ai_settings`, `ai_usage`
+   (3 kundan keyin o'chadi), `ai_conversations`.
+
+### Sinov
+
+```
+node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_verify-ai.mjs
+```
+
+Bazasiz, tashqi tarmoqqa chiqmaydi: raqam yashirish, oqim bo'laklari,
+markdown, vosita ruxsatlari, argumentlar, qo'llanma qidiruvi; soxta OpenAI
+serveri (127.0.0.1) bilan — so'rov shakli, bo'laklangan vosita chaqiruvi,
+murojaat/vosita chegaralari, HTTP xato kodlari (kalit xodimga
+ko'rinmaydi), oqimsiz javob, "To'xtatish".
+
+**Tekshirilmagani**: haqiqiy baza va OpenAI bilan uchidan-uchiga (ishlab
+chiqilgan muhitda MongoDB yuklab bo'lmadi). Dev'da: yoqish → robot →
+"Bugungi asosiy ko'rsatkichlar qanday?"; cheklangan rolli xodim (masalan,
+faqat Guruhlar) bilan oylik so'rash → "ruxsatingiz yo'q".
+
+### Tuzoqlar
+
+- Yangi vosita: `lib/ai/tools/index.ts` ro'yxati + `pages` (qaysi sahifa
+  ruxsati) + `lib/ai/toolLabels.ts` dagi yorliq va uning inglizchasi.
+  Vosita tavsiflari va natijalari MODELGA yoziladi (inglizcha) — i18n
+  skaneridan chiqarilgan (`SERVER_SKIP`).
+- `lib/ai/knowledge.ts` dagi tugma va sahifa nomlari interfeysdagidek
+  aynan yozilgan — interfeys o'zgarsa qo'llanma ham yangilanadi.
+- So'rov tanasiga `temperature`/`max_tokens` qo'shmang — yangi modellar
+  rad etadi (jins aniqlashdagi bilan bir xil sabab).
+- **Modelga moslashuv** (`lib/ai/openai.ts` → `quirkFor`). Model so'rovni
+  400 bilan rad etib, nima kerakligini aytsa, so'rov bir marta moslashtirib
+  qayta yuboriladi va shu jarayonda o'sha model uchun eslab qolinadi:
+  - `gpt-5.6` Chat Completions'da vositalarni faqat `reasoning_effort:
+    "none"` bilan qabul qiladi ("Function tools with reasoning_effort are
+    not supported…") — 07.10.2026 da sinov saytida ko'rildi. Eski modellar
+    bu maydonni tanimaydi, shuning uchun u oldindan yuborilmaydi;
+  - OpenAI tashkiloti tasdiqlanmagan (Verify Organization) bo'lsa, yangi
+    modellar `stream: true` ni rad etadi — javob bo'laklab emas, bir yo'la
+    keladi.
+
+  Boshqa 400 da qayta so'ralmaydi. Fikrlash bilan vosita ishlatish faqat
+  `/v1/responses` da — 4-bosqichda o'sha API'ga o'tildi (pastda); yuqoridagi
+  moslashuvlar endi faqat proksi (Chat Completions) rejimida ishlaydi.
+- Xizmat xatosining asl sababi (`HTTP 400 (model): …`, kalit yashirilgan)
+  panelda faqat ADMINGA ko'rinadi (`error.detail`), xodim faqat umumiy
+  xabarni ko'radi; to'liq matn server jurnalida `[ai]` bilan.
+- Amal qoidasi (kirim/chiqim/lid) web oynasida yoki botda o'zgarsa —
+  lib/ai/actions/prepare.ts ham o'sha qoidaga keltiriladi (yadro baribir
+  tekshiradi, lekin qoralama kartasi xato ma'lumot ko'rsatmasin).
+- `finance_summary` barcha filiallar bo'yicha (Moliya hisobotlari sahifasi
+  ham shunday). Xodim boshqa filial pulini ko'rmasin desangiz — moliya
+  hisobotlari ruxsatini bermang.
+
+### 2-bosqich — amallar: qoralama + tasdiq (2026-10-07)
+
+Yordamchi endi **lid qo'shish**, **kirim** va **chiqim** QORALAMASINI
+tayyorlaydi. Model hech narsani o'zi saqlamaydi: panelda tasdiq kartasi
+chiqadi va yozuv faqat xodim «Tasdiqlash» ni bosganda bo'ladi. Bu tugmani
+model bosa olmaydi — matn ichidagi "buyruq" (o'quvchi izohi, lid izohi)
+pul yozdira olmaydi.
+
+- **Yoqish — ALOHIDA kalit**, sukut bo'yicha O'CHIQ: Sozlamalar → Ilova
+  sozlamalari → «AI yordamchi» → «Amallarga ruxsat berish»
+  (`ai_settings.actionsEnabled`). O'chiq bo'lsa amal vositalari modelga
+  umuman ko'rsatilmaydi.
+- **Oqim**: `propose_lead` / `propose_kirim` / `propose_chiqim`
+  (lib/ai/tools/actions.ts) → qiymatlar tekshiriladi (lib/ai/actions/prepare.ts)
+  → `ai_actions` ga `draft` → oqimda `{type: "action"}` → panel kartasi →
+  `POST /api/ai/actions/:id {op: "confirm" | "cancel"}` → ruxsat QAYTA
+  tekshiriladi → atomik band qilish (`draft` → `executing`; ikkinchi bosish
+  hech narsa yozmaydi) → yadro (lib/ai/actions/execute.ts) → `done`/`failed`.
+- **Yadrolar o'sha**: lid — `createOrder` (lib/ordersCreate.ts), kirim/chiqim —
+  `applyCashboxAdjust` (lib/cashboxAdjust.ts). Kassa qoldig'i, oylik/avans
+  chegarasi, o'quvchi balansi, yopilgan oy, izohdagi oy — yadroda yana bir
+  bor tekshiriladi. Kassa yozuvida `origin: "ai"` (lib/transactionEntries.ts).
+- **Qoidalar xodimlar botidan** (lib/staffBot/lead.ts, kirim.ts, chiqim.ts —
+  ular web oynalari bilan bir xil): lid faqat CRM'da MAVJUD o'quvchiga, kurs
+  Sozlamalardagi ro'yxatdan, kunlar toq/juft/har kuni yoki aniq kunlar; kirimda
+  tur → o'quvchi (turga qarab) → summa → to'lov turi → oy (o'tgan · shu ·
+  keyingi); chiqimda tur → xodim/o'quvchi/hech kim → oy (avans/oylik: o'tgan ·
+  shu) → to'lov turi → summa («Oylik» da summa — qoldiqning o'zi). Sana —
+  tasdiqlangan kun.
+- **Taxmin yo'q**: tur, to'lov turi, kurs, o'quvchi, xodim ro'yxatdan
+  qidiriladi; topilmasa yoki bir nechtasi mos kelsa qoralama tuzilmaydi —
+  modelga nomzodlar (telefon yashirilgan) qaytadi va u xodimdan so'raydi.
+  Summa aytilmagan bo'lsa ham so'raydi.
+- **Ruxsat**: lid — `/orders-list`, kirim/chiqim — `/finance-cash` (bot bilan
+  bir xil kalitlar). Kassa: admin — bosh kassa (yoki tanlagani), xodim —
+  FAQAT o'zi mas'ul kassa (`moderator` = xodim ismi). Tasdiq paytida sahifa
+  ruxsati, filial va kassa egaligi qayta tekshiriladi. Qoralama faqat
+  egasiga ko'rinadi va faqat u tasdiqlaydi.
+- **Muddat**: qoralama 15 daqiqa amal qiladi (kassa qoldig'i, oylik o'zgarishi
+  mumkin), keyin «Eskirgan». `ai_actions` — audit izi (kim, qachon, nima,
+  natija id'si), 180 kundan keyin o'chadi.
+- **Suhbatda**: karta javob bilan saqlanadi (`actionIds`), qayta ochilganda
+  HOZIRGI holati bilan chiqadi; modelga ham "saqlandi / bekor qilindi /
+  eskirgan" eslatmasi ketadi — "saqlandimi?" savoliga taxmin qilmaydi.
+
+Fayllar: `lib/ai/actions/` (`store` — `ai_actions`, `prepare` — tekshiruv,
+`execute` — yadro, `pages` — ruxsat kalitlari), `lib/ai/tools/actions.ts`,
+`app/api/ai/actions/[id]/route.ts`, panelda `ActionCard`
+(components/ai/AssistantPanel.tsx).
+
+Sinov (haqiqiy MongoDB, faqat lokal, alohida `crm_ai_actions_test` bazasida —
+oxirida o'chiriladi):
+
+```
+node --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_verify-ai-actions.mjs
+```
+
+Tekshirilgan (07.10.2026, lokal MongoDB 8 + soxta model, brauzerda ham):
+qoralama → «Tasdiqlash» → kassa qoldig'i va jurnal (`origin: "ai"`); ikkinchi
+tasdiq — 409, hech narsa yozilmaydi; «Bekor qilish»; xodim boshqa kassani
+tanlay olmaydi; ruxsatsiz xodimda amal vositasi yo'q va begona qoralama — 404;
+eskirgan qoralama tasdiqlanmaydi; qayta ochilganda kartalar holati.
+**Tekshirilmagan**: haqiqiy OpenAI modeli bilan (bu muhitda tarmoq yopiq) —
+dev'da birinchi navbatda shu: amallarni yoqib, kichik summa bilan kirim →
+tasdiq → kassada ko'rinishi → web'da bekor qilish.
+
+Keyin (ixtiyoriy): mavjud yozuvni tahrirlash yoki bekor qilish — hozircha
+yo'q, model CRM'da qanday qilishni tushuntiradi. (Kassalar orasida ko'chirish
+3-bosqichda qo'shildi.)
+
+### 3-bosqich — davomat, topshiriqlar, voronka; ko'chirish, izoh, topshiriq (2026-10-08)
+
+Foydalanuvchi tanlovi: 4 ta yangi o'qish vositasi va 3 ta yangi amal. Hammasi
+sahifalar va xodimlar boti ishlatadigan O'SHA yadrolarni chaqiradi — vosita
+o'zi hisob qilmaydi, raqamlar sahifadagi bilan bir xil.
+
+**O'qish vositalari** (jadval yuqorida):
+
+- `attendance_report` — o'quvchilar davomati, joriy filial guruhlari
+  (`withBranch`), oraliq sukut bo'yicha bugun (ko'pi bilan 62 kun). Belgilar
+  bo'yicha jamlanma; "qoldirgan" = Sababli + Sababsiz (Nazorat → Davomat
+  sahifasidagi kabi); guruhlar kesimi; qoldirganlar ro'yxati sababi bilan;
+  "davomat qilinmagan" — guruh aktiv va o'sha kun dars kuni
+  (`lessonExpectedOn`), lekin birorta belgi yo'q.
+- `staff_attendance` — «Ishga keldim» (QR) va turniket yozuvlari
+  (`turnstile_io`, xodimlar): kim qachon keldi, kim necha daqiqa kechikdi
+  (yozuv paytida hisoblangan kechikish, qayta hisoblanmaydi). Joriy filial
+  (`branchCondition`) yoki `allBranches`. BITTA kun va joriy filial uchun
+  "kelmaganlar": o'qituvchi — o'sha kuni shu filialda darsi bo'lsa, boshqa
+  xodim — filialda ish boshlanish vaqti kiritilgan bo'lsa (kechikish qoidasi
+  bilan bir xil); bugun va vaqti hali kelmagan bo'lsa `notYetDue`.
+- `staff_tasks` — /tasks bilan bir xil qamrov (`taskViewerOf` → `loadViewer`,
+  `taskScope`): direktor — hammasi, rahbar — o'z filiallari, xodim — faqat
+  o'ziniki. HECH NARSA YOZMAYDI: sahifadagi `runAutomation` chaqirilmaydi,
+  shuning uchun "muddati o'tgan" vosita o'zi sanaydi (bajarilishi kerak va
+  muddat o'tgan — avtomatika kechiksa ham).
+- `sales_funnel` — /reports-funnel bilan bir xil buyurtmalar (`withLeadScope`)
+  va funksiyalar (`buildFunnelReport`, `buildFunnelSteps`,
+  `buildStageSummary`); qo'shimcha — manbalar va kurslar kesimida o'sha
+  voronka.
+
+**Amallar** (qoralama → karta → «Tasdiqlash»; 2-bosqich qoidalari o'zgarmagan):
+
+| Amal | Vosita | Ruxsat | Yadro |
+| --- | --- | --- | --- |
+| Boshqa kassaga ko'chirish | `propose_transfer` | `/finance-cash`, xodim — faqat o'z kassasidan | `applyCashboxTransferTo` (lib/cashboxTransfer.ts) |
+| O'quvchiga izoh | `propose_pupil_comment` | `/groups` (izoh route'i bilan bir xil) | `addPupilComment` (lib/pupilComments.ts) |
+| Xodimga topshiriq | `propose_task` | /tasks bo'lim RUXSATI (rahbar) yoki direktor | `createStaffTasks` (lib/staffTasksServer.ts) |
+
+- **Ko'chirish**: mavjud = qoldiq − tasdiq kutayotgan ko'chirmalar (yadro va bot
+  bilan bir xil); tasdiqdan keyin ham pul QABUL QILUVCHI ✓ bosmaguncha
+  jo'natuvchida turadi (jurnalda juft `waiting` yozuv, `origin: "ai"`);
+  qabul qiluvchiga botda "📥 ko'chirma keldi" xabari ketadi. Tasdiqda kassa
+  egaligi va qabul qiluvchi kassa arxivlanmagani qayta tekshiriladi.
+- **Izoh**: o'quvchi joriy filial hovuzidan (`withPupilBranch`), matn — xodim
+  aytgani (model fakt qo'shmaydi — tizim ko'rsatmasi), muallif — tasdiqlagan
+  xodim (`users.fullName`, route bilan bir xil).
+- **Topshiriq**: kimga — faqat xodim topshiriq bera oladiganlar
+  (`loadPickableEmployees`), noaniq ism — nomzodlar; muddat — Toshkent vaqti
+  ("YYYY-MM-DD HH:mm"; faqat sana — 18:00 va model buni aytadi); muhimlik
+  1–5 SHART (jarima shunga bog'liq — kartada ko'rinadi); bir nechta xodim —
+  har biriga alohida topshiriq, bitta `batchId`. Biriktirma (fayl) — faqat
+  sahifada.
+- **Ko'rinish sharti** (`AiTool.visible`): /tasks sahifasi hammaga ochiq,
+  topshiriq BERISH esa faqat rahbar/direktorga — `pages` buni ifodalay
+  olmaydi, shuning uchun `propose_task` da qo'shimcha shart bor
+  (`toolsFor` va `runTool` ikkalasi ham tekshiradi).
+- **Yadrolar route'lardan ko'chirildi** (route'lar yupqa qobiq, mantiq
+  o'zgarmagan): `POST /api/staff-tasks` → `createStaffTasks`,
+  `POST /api/pupils/:id/comments` → `addPupilComment`.
+- `executeAction(ctx, doc, deps)` — endi AI kontekstini oladi (izoh muallifi,
+  topshiriq beruvchi).
+
+Sinov:
+
+- `scripts/_verify-ai.mjs` — 116 tekshiruv (bazasiz): yangi vositalar ruxsati,
+  davomat / kelmaganlar / topshiriqlar / voronka hisobi, muddat va xodim
+  tanlash, ko'rsatma.
+- `scripts/_verify-ai-actions.mjs` — ko'chirish, izoh, topshiriq bo'limlari
+  qo'shildi (lokal MongoDB kerak). **08.10.2026 da ishga TUSHIRILMADI** —
+  ishlab chiqilgan mashinada MongoDB yo'q edi; birinchi imkoniyatda lokal
+  bazada ishga tushiring.
+- `tsc` (`tsconfig.check.json`) va `eslint` toza.
+
+### 4-bosqich — model va «Tezlik» tanlash; to'liq ekran va suzuvchi oyna (2026-10-08)
+
+Foydalanuvchi so'rovi: ChatGPT'dagi kabi model va tezlik tanlash, AI
+oynasi to'liq ekranda, AI ish boshlasa oyna kichrayib ish ekranda
+ko'rinsin, chat istalgan joyga sudralsin.
+
+**Responses API.** OpenAI'ning o'zi bilan endi `/v1/responses`
+(`lib/ai/config.ts` → `api`): GPT-5.6, GPT-6 Sol/Luna Chat Completions'da
+vositani faqat `reasoning_effort: "none"` bilan qabul qiladi, GPT-6 Astra va
+GPT-6.1 Sol esa vositani u yerda umuman qabul qilmaydi — «Tezlik» faqat
+Responses'da ma'noli. `OPENAI_BASE_URL` boshqa manzilga (proksi) qaratilgan
+bo'lsa — eski Chat Completions (tezlik tanlanmaydi, Astra/6.1 Sol ro'yxatda
+yo'q). Majburlash: `AI_ASSISTANT_API=responses | chat`.
+
+- So'rov: `instructions` (tizim ko'rsatmasi), `input` (tarix + savol, keyin
+  har murojaatda modelning fikrlash va `function_call` elementlari
+  O'ZGARTIRILMAY + `function_call_output`), vositalar tekis shaklda
+  `strict: false` (Responses'da sukut `true` — bizdagi ixtiyoriy argumentlar
+  bilan 400 bo'lardi), `reasoning: {effort}`, `store: false` (OpenAI suhbatni
+  saqlamaydi), `stream`. Oxirgi murojaatda `tool_choice: "none"`.
+- Oqim: `lib/ai/responsesSse.ts` (sof, sinaladi) — `output_text.delta`
+  panelga oqadi, chaqiruvlar `output_item.done` / `response.completed` dan.
+- Moslashuv (`responsesQuirkFor`, har biri bir marta, model bo'yicha eslab
+  qolinadi): daraja rad etilsa — OpenAI sanagan qiymatlardan eng yaqini
+  (Astra `none` ni rad etadi → `low`), ro'yxat bo'lmasa `reasoning`siz;
+  tashkilot tasdiqlanmagan — oqimsiz; oldingi elementlar rad etilsa —
+  fikrlashsiz va `id` siz (zaxira, hujjat bo'yicha bo'lmasligi kerak).
+
+**Model va «Tezlik»** (`lib/ai/models.ts` — katalog, `lib/ai/modelChoice.ts`):
+
+- Katalog: GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna, GPT-5.6
+  Sol/Terra/Luna (+ `gpt-5.6` taxallusi). Darajalar: Tezkor (`none`), Tez
+  (`low`), O'rtacha (`medium`), Chuqur (`high`); `xhigh`/`max` yo'q — javobga
+  100 soniya. Astra va 6.1 Sol'da Tezkor yo'q.
+- Ro'yxat — admin ochganlari (`ai_settings.models`; tanlamagan bo'lsa .env
+  modeli + katalog), OpenAI hisobida yo'g'i panelda ko'rinmaydi
+  (`accountModels` → GET /v1/models, 10 daqiqa eslab qolinadi). Sukut —
+  admin tanlagani yoki .env modeli; sukut daraja — `ai_settings.defaultEffort`
+  (o'zi — Tez).
+- Xodim tanlovi localStorage'da (`tizimli:ai-choice`); serverda QAYTA
+  tekshiriladi (`resolveChoice`): ro'yxatda yo'q model — sukut, model qabul
+  qilmaydigan daraja — eng yaqini. Qaysi biri ishlatilgani `meta` hodisasida
+  — javob ostida "GPT-6 Sol · Tez".
+- Sozlamalar → AI yordamchi → «Modellar»: yoqish/o'chirish, «Sukut qilish»,
+  qo'lda model ID qo'shish, «Xodim tanlamaguncha Tezlik»; har model yonida
+  hisobda bor-yo'qligi.
+
+**Oyna** (`components/ai/AssistantPanel.tsx`, `ModelPicker.tsx`):
+
+- Robot bosilsa — TO'LIQ EKRAN (ChatGPT kabi: bo'sh suhbatda o'rtada savol
+  maydoni va takliflar). Yozish maydoni ichida model va tezlik tugmasi:
+  ro'yxat + surgich.
+- SUZUVCHI OYNA — sarlavhasidan sudraladi (joyi `tizimli:ai-float`),
+  orqadagi sahifa ishlayveradi, robot tugmasi panel ochiq paytda yashirinadi.
+- AI ISHI EKRANDA: vosita ma'lumot olganda server sahifani yuboradi
+  (`tool.href` — natijadagi `page`, faqat ichki yo'l va xodim ocha olsa —
+  `screenOf`; qoralamada — yozuv ko'rinadigan sahifa). Panel kichrayadi va
+  CRM shu sahifani ochadi (bir qadamdagi bir nechta vositadan faqat oxirgisi);
+  yozuv saqlansa — `resultHref`, o'sha sahifada turgan bo'lsa sahifa qayta
+  chiziladi (`components/ai/AiScreenRefresh.tsx` — layout'dagi kalitli o'ram,
+  robot o'ramdan tashqarida, suhbat saqlanadi). Ish davomida ekran chetida nur
+  (`.ai-working-glow`). Sarlavhadagi ekran tugmasi bilan o'chiriladi
+  (`tizimli:ai-follow`).
+
+Sinov: `scripts/_verify-ai.mjs` — 163 tekshiruv (avval 116): katalog,
+darajalar, tanlov va uni serverda tekshirish, sozlama validatsiyasi, API
+tanlash, Responses oqimi va qaytarish, soxta server bilan Responses sikli
+(so'rov shakli, vosita, oxirgi murojaat, daraja/oqim/element moslashuvlari,
+xato), hisobdagi modellar. `_verify-ai-actions.mjs` ga qoralama ekrani
+tekshiruvi qo'shildi (lokal MongoDB kerak — bu muhitda ishga tushmadi).
+
+**Tekshirilmagani**: haqiqiy OpenAI bilan (kalit yo'q) va brauzerda ko'z
+bilan — sinov saytida: robot → to'liq ekran → modelni almashtirish →
+"Bugun kim kelmadi?" (oyna kichrayib Davomat sahifasi ochilishi kerak).
+
+### 5-bosqich — Cowork kabi ish: reja, ish jarayoni, istalgan savol, yangi amallar (2026-10-08)
+
+Foydalanuvchi talabi: "bugun to'lov qilgan o'quvchilar ro'yxatini ber"
+kabi savollarga javob bersin, admin bergan barcha savollarga javob
+bersin va aytilgan ishlarni qilsin, AI nima qilayotgani oynada ko'rinsin
+(Claude Cowork kabi). Amallar foydalanuvchi tanlovi bilan: o'quvchi
+qo'shish, davomat, holatni o'zgartirish (SMS — yo'q).
+
+**O'qish:**
+
+- `payments_list` — Tranzaksiyalar jurnali (`transaction_entries`) qatorma-qator:
+  kim, qancha, to'lov turi, toifa, kassa, kim qabul qildi. Sukut — bugungi
+  kirim, bekor qilinganlarsiz (jami ularsiz). Tranzaksiyalar ruxsati — butun
+  jurnal; faqat Kassalar ruxsati — faqat o'z kassasi.
+- `query_data` — FAQAT ADMIN, FAQAT O'QISH: model Mongo so'rovini o'zi tuzadi
+  (`describe` → `find` / `count` / `distinct` / `aggregate`) oq ro'yxatdagi
+  ~30 kolleksiya ustida. `$where`/`$function`/`$out`/`$merge` rad etiladi,
+  `$lookup` faqat oq ro'yxatga; parol/xesh/token/sessiya maydonlari
+  natijadan o'chadi, telefonlar yashiriladi; 8 s, ≤ 100/200 qator, ~16 ming
+  belgi. Foydalanuvchilar, sessiyalar, tasdiq kodlari, sinxron navbatlari
+  ro'yxatda yo'q (`lib/ai/tools/dataQuery.ts`).
+
+**Cowork kabi ko'rinish:**
+
+- `update_plan` — model ko'p qadamli ishni rejalaydi va har qadamni
+  yangilaydi; panelda «Reja» (belgilanadigan ro'yxat), suzuvchi oyna
+  sarlavhasida hozirgi qadam. Vosita belgisi chiqmaydi va bir qadamdagi
+  vositalar chegarasiga (4) kirmaydi.
+- «Ish jarayoni» — har vosita bir qadam: holat, natija yozuvi
+  (`_ui.note`, masalan "23 ta yozuv · 4 500 000 so'm" — modelga ketmaydi),
+  sahifa havolasi. Javob tugagach "N ta qadam bajarildi" bo'lib yig'iladi.
+- Jadval — javobdagi markdown jadval (`aiMarkdown.ts`, HTML'siz) skroll
+  bilan chiziladi; «CSV» — Excel uchun fayl (UTF-8 BOM, `;`), brauzerda.
+- Ko'p qadamli vazifa uchun: murojaatlar 6 → 10, butun javob 100 → 170 s,
+  bitta murojaat 60 → 90 s, vosita natijasi 12 → 20 ming belgi
+  (`lib/ai/config.ts`).
+
+**Amallar** (qoralama → karta → «Tasdiqlash», 2-bosqich qoidalari):
+
+| Amal | Vosita | Ruxsat | Yadro |
+| --- | --- | --- | --- |
+| Yangi o'quvchi (+ guruhga) | `propose_new_pupil` | `/students-list` | `lib/pupilWrite.ts` → `createPupil` |
+| Guruhga qo'shish / chiqarish | `propose_group_membership` | `/groups` | `lib/groupStudents.ts` |
+| Davomat | `propose_attendance` | `/groups` | `lib/attendanceWrite.ts` → `saveAttendanceMark` |
+| O'quvchi holati | `propose_pupil_status` | `/students-list` | `lib/pupilWrite.ts` → `setPupilStatus` |
+| Lid bosqichi | `propose_lead_stage` | `/orders-list` | `lib/leadHolatServer.ts` → `applyHolatChange` |
+
+- Yadrolar route'lardan ko'chirildi (route'lar yupqa qobiq, mantiq
+  o'zgarmagan): `POST /api/pupils`, `PATCH /api/pupils/:id/status`,
+  `POST|DELETE /api/groups/:id/students`, `POST /api/groups/:id/attendance`.
+  `createPupil` endi E11000 da 3 marta qayta urinadi.
+- Yangi o'quvchi: ism va manba majburiy (manba — ro'yxatdan; `customSource`
+  faqat xodim talab qilsa); shu telefonli o'quvchi bo'lsa qoralama
+  tuzilmaydi (aka-uka — `allowDuplicatePhone`); ismdoshlar haqida eslatma.
+- Davomat: faqat guruh a'zolari, faqat dars kuni (`lessonExpectedOn`),
+  kelajakka emas; `others` — qolgan hammaga bitta holat; o'zgarmaydigan
+  belgi yozilmaydi; gamifikatsiya cheklovi har belgida yadroda (rad
+  etilganlari kartada).
+- Lid → «guruh»: o'quvchi telefon/ism bo'yicha topiladi, bo'lmasa lid
+  ma'lumotidan yaratiladi (manba «Buyurtmadan»), guruhga qo'shiladi, keyin
+  holat (Lidlar sahifasidagi oyna tartibi).
+
+Sinov: `scripts/_verify-ai.mjs` — 186 tekshiruv (avval 163): yangi
+vositalar ruxsati, guruh qidiruvi, davomat holatlari, reja, query_data
+xavfsizlik filtri va tozalash, jadval/CSV, reja hodisasi va vositalar
+chegarasi (soxta server). **Bazali sinov yo'q**: 5-bosqich amallari uchun
+`_verify-ai-actions.mjs` ga bo'lim qo'shilmadi (lokal MongoDB yo'q) — sinov
+saytida kichik misol bilan tekshiring. `next build` lokal qilinmadi (diskda
+joy qolmagan) — tsc va eslint toza, build — Vercel'da.
+
+### 6-bosqich — MohiraAI: Mac'dagi kabi ochilish, suhbatlar tarixi, animatsiyalar (2026-10-08)
+
+Foydalanuvchi talabi: AI oynasi Mac'da ilova ochilgandagi kabi animatsiya
+bilan ochilib-yopilsin; to'liq ekranda suhbatlar tarixi chap tomonda
+tursin; akkordeonlar silliq ochilsin; buyruq berilganda AI saytlaridagi
+kabi animatsiya chiqsin; robot milliy ko'rinishdagi harakatlanuvchi
+robotga almashsin, nomi — MohiraAI.
+
+- **Nom** — `lib/ai/brand.ts` (`ASSISTANT_NAME`). `t()` dan o'tmaydi
+  (kirilga ham o'girilmaydi), gap ichida `{name}` parametri. Tizim
+  ko'rsatmasi: model o'zini MohiraAI deb taniydi; qo'llanmada «MohiraAI
+  (AI yordamchi) haqida».
+- **Robot** — `components/ai/MohiraAvatar.tsx` (SVG): chust do'ppi (oq
+  «qalampir» naqsh), sochpopukli kokillar, oltin zirak, atlas naqshli
+  yelka, firuza ko'zlar. Holatlar: `idle` (nafas, ko'z qirpish, kokil va
+  zirak chayqaladi), `thinking` (ko'zlar qaraydi, bosh qiyshayadi, naqsh
+  yaltiraydi, uchqunlar), `talking` (og'iz gapiradi). Eski xabarlar
+  yonidagi rasm — `still` (harakatsiz). Avvalgi
+  `components/tezlik/RobotFace.tsx` o'chirildi. *09.10.2026 dan yangi
+  qiyofa — pastdagi «Mohira — yangi qiyofa va kayfiyatlar» bo'limi.*
+- **Ochilish/yopilish — «genie»** (`components/ai/genie.ts`): oyna robot
+  tugmasidan voronka bo'lib chiqadi va yopilganda unga qaytib kiradi
+  (560 / 480 ms). Ikki qatlam: butun ekranli sahna — `clip-path:
+  polygon(...)` (voronka, yonlari S-egri), oyna — `transform`. Kadrlar sof
+  funksiya (28 kadr × 32 nuqta), ijro — Web Animations. Ochilish tugamay
+  yopilsa — o'sha joyidan orqaga buriladi. Tugma Mac'dagi Dock kabi:
+  ustiga kelinsa nomi chiqadi, oyna qaytib kirganda «qo'nish» silkinishi.
+- **To'liq ekran ↔ suzuvchi oyna** — View Transitions (`html.ai-vt`,
+  ~420 ms; nom faqat o'tish paytida). Brauzer bilmasa — darhol almashadi.
+- **Suhbatlar tarixi** — `components/ai/HistorySidebar.tsx`: to'liq
+  ekranning chapida, sana guruhlari (Bugun / Kecha / Oxirgi 7 kun /
+  Oxirgi 30 kun), nom bo'yicha qidiruv, ochish, o'chirish (ikkinchi bosish
+  bilan tasdiq). `GET /api/ai/conversations?list=1` — faqat nom va vaqt,
+  100 tagacha (`{ userId, updatedAt }` indeksi). Javob saqlangach suhbat
+  ro'yxat tepasiga chiqadi, qayta so'ralmaydi (`components/ai/history.ts`).
+  Kompyuterda eni silliq ochiladi (tanlov eslab qolinadi), telefonda —
+  chapdan suriladigan parda (har ochilishda yopiq).
+- **AI ishlayotganda**: robot o'ylaydi / gapiradi; «O'ylayapti…» —
+  sakrovchi rangli nuqtalar va ustidan nur yuguradigan yozuv; yozish
+  maydoni chetida aylanuvchi rangli halqa; javob yozilayotganda matn
+  oxirida miltillovchi nuqta; xabar, qadam va kartalar paydo bo'lish
+  animatsiyasi bilan; panel kichraygan bo'lsa ekran chetlari bo'ylab
+  rangli nur aylanadi (faqat `transform` / `opacity` — kompozitorda).
+- **Akkordeonlar** («Reja», «Ish jarayoni») — `grid-template-rows: 0fr ↔
+  1fr` (`.ai-collapse`). Yuqoridagi 2026-08-19 eslatmasidan farqli,
+  Chrome 152 da o'lchandi — interpolatsiya bor: ochish 0 → 115 → 168 →
+  197 → 200 px, yopish 200 → 85 → 32 → 4 → 0 (o'sha safargi xato boshqa
+  sababdan bo'lgan ko'rinadi). «Ish jarayoni» javob tugagach o'zi silliq
+  yig'iladi; rejada jarayon chizig'i. Model va «Tezlik» ro'yxati ham
+  silliq yopiladi (`.ai-pop-out`).
+- `prefers-reduced-motion` — hammasi o'chadi (genie ham).
+
+Sinov: `scripts/_verify-ai.mjs` — 201 tekshiruv (avval 186): genie tomoni
+va kadrlari (boshida — oyna o'z joyida, oxirida — tugma ichida va
+ko'rinmas, nuqtalar soni bir xil, NaN yo'q), tarix guruhlari, ro'yxatni
+yangilash, qidiruv, ko'rsatmadagi nom. Ko'z bilan: lokal dev'da soxta API
+bilan (vaqtinchalik sahifa, commit qilinmadi) — genie (sekinlashtirib,
+kadrma-kadr), tarix, o'ylash holati, kichrayish va qayta kattalashish,
+telefondagi parda, tungi rejim; konsolda xato yo'q.
+
+### Ko'rib chiqish tuzatishlari (2026-10-09)
+
+Chuqur kod ko'rib chiqishi (max) topgan 15 ta nuqson tuzatildi. Pul ikki
+marta yozilishining uch yo'li yopildi:
+
+- **Oylik «qayta bermang»** — `lib/ai/actions/prepare.ts → prepareChiqim`.
+  Bot va Chiqim oynasidagi o'tish davri ogohlantirishi (`paidLater` /
+  `pendingMaybePaid`) endi AI kartasida qizil «Diqqat» qatori bo'lib
+  chiqadi. Tanlangan oy qoldig'i boshqa oyda berilgan bo'lishi mumkin
+  bo'lsa (`paidLater`), qoralama umuman tuzilmaydi: model avval xodimga
+  aytadi, faqat «berilmagan» desa `paidLaterChecked: true` bilan qayta
+  chaqiradi. Chegara o'zgarmaydi — qaror kassirda (web bilan bir xil).
+- **O'zgartirilgan qoralama** — `lib/ai/actions/store.ts → supersedeDrafts`.
+  Har qoralamada `subject` kaliti (`draftSubject`: kim va qayerda — summa,
+  oy va to'lov turi kirmaydi). Yangi qoralama shu amalning OLDINGI
+  so'rovlardagi kutayotgan qoralamasini bekor qiladi (`replacedBy`,
+  kartada «Almashtirildi»). Model ham `replacesDraftId` beradi: o'quvchi
+  yoki oy almashtirilganda kalit o'zgaradi. Bitta javobdagi ikki alohida
+  amalga («Aliga 300 000, Valiga 200 000») tegilmaydi. Shu amal so'nggi
+  bir soatda allaqachon saqlangan bo'lsa (kirim, chiqim, ko'chirma, lid,
+  yangi o'quvchi), yangi kartada «Diqqat: … allaqachon saqlangan» qatori
+  chiqadi. Panel eski kartani o'z joyida yangilaydi
+  (`{type: "action_update"}`).
+- **To'xtatilgan / uzilgan javob** — `app/api/ai/chat/route.ts`. Yangi
+  suhbat id'si oqim boshida (birinchi `meta`) beriladi. Qoralama kartasi
+  chiqqandan keyin javob to'xtatilsa yoki xato bilan tugasa, navbat
+  qoralamalari bilan saqlanadi (`saveInterrupted`), shuning uchun model
+  keyingi savolda uni ko'radi. Qoralamasiz chala javob avvalgidek
+  saqlanmaydi.
+
+Boshqalari:
+
+- **Davomat bahosi** endi o'chmaydi: bajaruvchi joriy bahoni o'qib uzatadi
+  (`executeStudents.ts`), web jadvali bilan bir xil. Har belgi alohida
+  try/catch'da bajariladi. Qoralamadagi «Belgisiz qoladi» butun ro'yxat
+  bo'yicha hisoblanadi. «Sababli»da faqat sababi o'zgargani ham yoziladi,
+  sabab aytilmasa oldingisi qoladi.
+- **Lid → «guruh»**: `canTransition` o'quvchi yaratilib guruhga
+  qo'shilishidan OLDIN tekshiriladi. `findPupilForLead` webdagi qoidaga
+  keltirildi: telefon bo'yicha bir nechta mos kelsa avval ismi tengi,
+  bo'lmasa eng yangisi olinadi; ism esa to'liq solishtiriladi.
+  `joinedAt` sukut bo'yicha sinov darsi sanasi (u bugun yoki keyin
+  bo'lsa). Lid qidiruvida har qanday tutuq belgisi mos keladi.
+- **Arxiv guruh**: `"finished"` tekshiruvi o'lik edi (bunday holat yo'q),
+  endi `status: "archive"` tekshiriladi.
+- **payments_list**: jami faqat QABUL QILINGAN qatorlardan olinadi,
+  kirim va chiqim alohida (`/api/transaction-entries?withTotals=1`
+  qoidasi). Tasdiq kutayotgan ko'chirmalar `awaitingAcceptance` da
+  alohida turadi. Bitta o'quvchi uchun `pupilId` beriladi
+  (`pupilEntryMatch`, ismdoshlar aralashmaydi).
+- **payroll_summary**: Oylik sahifasining zanjiri ishlatiladi
+  (`attachMaybePaidIn` → `attachBranchPayouts`). `toPay` va `debt`
+  alohida hisoblanadi, kassa kartochkalari (`cashboxPayouts`) qo'shildi,
+  o'tgan oy qatorida `possiblyAlreadyPaid` belgisi chiqadi.
+- **attendance_report**: boshlanish sanasi yo'q guruh «davomat
+  qilinmagan»ga sanalmaydi (`/nazorat-missed-groups` kabi), u alohida
+  `groupsWithoutStartDate` da ko'rsatiladi.
+- **query_data**: so'rovning o'zi tekshiriladi.
+  - Rad etiladi: `$$ROOT`/`$$CURRENT`, sir maydoniga har qanday murojaat
+    (taxallus, `$$this.x`, filtr kaliti), ifodadagi telefon maydoni
+    (`$phone`), telefon ichida qidiruv (`$regex`/oraliq), shuningdek
+    `$getField` / `$objectToArray` kabi nom bilan oluvchi operatorlar.
+  - `_id` endi tashlanmaydi, chunki guruh kaliti shu yerda (hujjat
+    ObjectId'si baribir chiqmaydi).
+  - Telefonlar ro'yxati ham yashiriladi.
+  - Kolleksiyalar ta'rifi haqiqiy maydonlarga keltirildi: penalties,
+    bonuses, turnstile_io, pupil_comments, staff_tasks, guruh holatlari;
+    `pupils.balance` endi ishlatilmaydi.
+
+Sinov: `scripts/_verify-ai.mjs` — yangi tekshiruvlar: redact/assertSafe,
+qoralama kaliti, ogohlantirish tarjimasi, boshlanish sanasiz guruh.
+Bazali qismi Atlas ko'zgusida FAQAT O'QISH smoke-sinovi bilan
+tekshirildi (payments_list, payroll_summary, attendance_report,
+query_data, findPupilForLead, prepareAttendance). Qoralama →
+tasdiq oqimi (`_verify-ai-actions.mjs`) lokal MongoDB talab qiladi va
+yurgizilmadi.
+
+### Mohira — yangi qiyofa va kayfiyatlar (2026-10-09)
+
+Foydalanuvchi bergan chizma (`MohiraAI_robot.svg`) va «Robot va interfeys —
+konsept 01» bo'yicha: robotning yuzi tirik bo'lsin, kayfiyati — odatiy,
+hursand, hafa. Avvalgi milliy libosli robot (do'ppi, kokil) o'rnida.
+
+- **Robot** — `components/ai/MohiraAvatar.tsx`, koordinatalar SVG'dagidek
+  (480×550). `variant`: `head` — faqat bosh (tugma, sarlavha, xabar
+  yonida; konseptdagi 32 / 48 / 72 px), `full` — butun gavda (bo'sh
+  suhbatda). `disc` — oq doira ichida.
+- **Kayfiyat** (`mood`):
+  - `idle` — suzadi, ko'z qirpiydi (ba'zan ikki marta), atrofga qaraydi;
+  - `thinking` — ko'zlar tepada, u yoq-bu yoqqa; antenna va yon
+    chiroqlar tez yonadi;
+  - `talking` — og'iz gapiradi;
+  - `happy` — ko'zlar ◠ ◠, ochiq kulgi, sakraydi;
+  - `sad` — qoshlar tushgan, ko'zlar pastda, labi osilgan, antenna
+    egilgan, ko'zdan yosh oqadi.
+
+  Hamma yuz bir vaqtda chizilgan, CSS (`data-mood`, `app/globals.css` →
+  «MOHIRA») faqat ko'rinishini almashtiradi, shuning uchun o'tish silliq.
+- **Qachon qaysi** — `AssistantPanel.tsx`:
+  - ish ketayotganda o'ylaydi yoki gapiradi;
+  - javob xatosiz tugasa yoki amal saqlansa 4.5 s hursand (`useJoy`;
+    tarixdan ochilgan eski javoblar sanalmaydi);
+  - xato, uzilgan javob, saqlanmagan amal, tugagan limit yoki o'chiq
+    yordamchida — hafa (`moodOf`).
+
+  Oxirgi javob yonidagi robot tirik, eskilari harakatsiz (`still`).
+- **Nigoh** (`gaze`) — ko'zlar sichqonchaga qaraydi (faqat sichqoncha).
+  2.6 s qimirlamasa atrofga qarashga qaytadi. Tugmada, sarlavhada va bo'sh
+  suhbatda ishlaydi.
+- **Tugma** (`components/tezlik/SpeedFab.tsx`) — oq doira, onlayn nuqta,
+  72 px (telefonda 60). Standart joyi o'ng-past burchak (saqlangan joy
+  o'zgarmaydi). Ustiga kelinsa yoki sudralsa robot xursand bo'ladi, yonida
+  «Qanday yordam beray?» chiqadi (Dock'dagi nom o'rnida). Bu yozuv kuniga
+  bir marta o'zi ham ko'rinadi (`tizimli:mohira-hello`).
+- **Sarlavha** — to'q firuza tasma (`.mh-band`): robot, «MohiraAI · AI»,
+  ostida hozirgi qadam yoki «Sizning aqlli yordamchingiz». Holat nuqtasi
+  (`.mh-state`): yashil — tayyor, sariq — ishlayapti, havorang — javob
+  tayyor, qizil — xato yoki limit. To'liq ekranda tasma yumaloq, tablar
+  uning ichida (telefonda — ostida). «Bugun yana N ta savol» endi pastki
+  qatorda va nuqta ustida.
+- **Bo'sh suhbat** — to'liq gavdali Mohira halqalar (`.mh-stage`) ichida,
+  paydo bo'lganda qo'l silkitib salomlashadi (`greet`). Markazlash
+  `my-auto` bilan: past ekranda tepasi kesilmaydi (avvalgi `justify-center`
+  kesardi), robot ham kichrayadi.
+- `prefers-reduced-motion` — harakat to'xtaydi, kayfiyat yuzi qoladi.
+
+Sinov: tsc, eslint, `i18n-scan` / `_i18n-check` / `_translit-check`.
+Brauzerda soxta API bilan (vaqtinchalik sahifa, commit qilinmadi) ko'rildi:
+hamma kayfiyat, o'tishlar (o'ylaydi → gapiradi → hursand → odatiy; xato →
+hafa), nigoh, salomlashish, suzuvchi oyna, tungi rejim. Haqiqiy model bilan
+sinalmadi.
+
+### MohirAI — nom, rang, samimiyroq murojaat, tezlik (2026-10-09)
+
+Sinov saytida (Vercel) ko'rgandan keyingi foydalanuvchi talablari.
+
+- **Nom — MohirAI** («Mohira emas, Mohir bo'lsin»): `lib/ai/brand.ts`.
+  Tizim ko'rsatmasi «MohirAI (Mohir)», qo'llanma bo'limi (`knowledge.ts`)
+  ham yangilandi; qidiruvda eski nom («mohira») ham topiladi. Ichki
+  nomlar (`MohiraAvatar`, `.mh-*`) o'zgarmadi.
+- **Tasma rangi**: to'q tasma «xunuk» deyildi — endi BREND rangida
+  (`--primary` → `--primary-2`, chap-tepada yumshoq yaltiroq). Sozlamadagi
+  asosiy rang tanlovi bilan birga o'zgaradi. Yozuvlar oqroq, holat nuqtasida
+  oq halqa (yashil nuqta firuza ustida ko'rinmay qolardi).
+- **Adminga samimiyroq** (`lib/ai/prompt.ts → ADMIN_TONE`, faqat
+  `role === "admin"`):
+  - insondek iliq ohangda javob beradi (aniqlik va qisqalik baribir birinchi);
+  - har 2–3 javobda bir marta (ketma-ket emas, bitta javobda bir martadan
+    ko'p emas) «afandim», «shefim», «boss», «xo'jayin», «rahbar» kabi
+    murojaat qiladi, so'zni almashtirib turadi. Kirilda va inglizchada —
+    o'sha tildagi muqobili.
+
+  Boshqa xodimlarga uslub o'zgarmadi.
+- **Kichraytirish / kattalashtirish qotardi**: ikki ko'rinishda panel
+  ichidagi daraxt har xil edi. Har almashishda butun suhbat qaytadan
+  qurilar, har xabar «paydo bo'lish» animatsiyasini qaytadan o'ynardi.
+  Endi daraxt bir xil va xabarlar `memo`: o'zgarmagani qayta chizilmaydi
+  (javob oqimida ham — faqat oxirgisi). Dev'da 16 xabarli suhbatda:
+  - kichraytirish — o'tish oldidagi qotish 167 → 41 ms;
+  - kattalashtirish — 136 → 58 ms.
+- **Ochilish animatsiyasining qirralari**: voronka chetida 16 nuqta bor
+  edi. To'liq ekranda bir bo'lak ~155 px gacha bo'lib, egri chiziq siniq
+  ko'rinardi. Endi `GENIE_POINTS = 64` (bo'lak ~14 px).
+
+Sinov: `_verify-ai.mjs` (nom, ko'rsatma: adminga murojaat bor, xodimga
+yo'q; voronka nuqtalari 2 × 64), tsc, eslint, i18n. Brauzerda soxta API va
+uzun suhbat bilan (vaqtinchalik sahifa, commit qilinmadi) tezlik o'lchandi.
+Rang yorug' va tungi rejimda ko'rildi.

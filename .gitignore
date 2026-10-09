@@ -54,3 +54,8 @@ scripts/_deleted-*.json
 scripts/_course-prices-backup-*.json
 scripts/_plastik-migration-backup.json
 .salarytest/
+
+# Graphify kod grafi (`graphify extract . --code-only`) — mashinaga xos:
+# graph.json ~12 MB, ichida mutlaq yo'llar (.graphify_root) va AST keshi bor.
+# Har sessiyada qayta quriladi (~25 s), shuning uchun repozitoriyga tushmaydi.
+/graphify-out/

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { branchForInsert, getBranchScope, withPupilBranch } from "@/lib/branchScope";
-import { buildPupilFromValues, PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
+import { PUPIL_EXTRA_FIELDS, type NewPupilValues, type Pupil } from "@/lib/pupilsData";
+import { createPupil } from "@/lib/pupilWrite";
 
 // GET /api/pupils — "O'quvchi qo'shish" orqali qo'shilgan haqiqiy o'quvchilar
 // ro'yxati (constants/index.js'dagi statik demo STUDENTS'dan ajratilgan).
@@ -176,18 +177,17 @@ export async function POST(req: Request) {
 
   // Manba (o'quvchi qayerdan keldi) — qo'shish formasida MAJBURIY.
   //
-  // TRIM shu yerda kerak: POST boshqa hech narsani kesmaydi (PATCH esa
-  // kesadi). "Manba" filtri variantlarni MAVJUD yozuvlardan quradi va
-  // solishtiruv qat'iy tenglik bo'yicha ketadi — ya'ni "Instagram " (ortiqcha
-  // probel bilan) filtrga ikkinchi, ko'zga bir xil ko'rinadigan element
-  // qo'shib qo'yardi.
+  // TRIM kerak (yadroda — lib/pupilWrite.ts): POST boshqa hech narsani
+  // kesmaydi (PATCH esa kesadi). "Manba" filtri variantlarni MAVJUD
+  // yozuvlardan quradi va solishtiruv qat'iy tenglik bo'yicha ketadi —
+  // ya'ni "Instagram " (ortiqcha probel bilan) filtrga ikkinchi, ko'zga bir
+  // xil ko'rinadigan element qo'shib qo'yardi.
   //
   // Qiymat ro'yxat ICHIDA ekani ATAYLAB tekshirilmaydi: qo'shni `category`
   // maydonida ham server tekshiruvi yo'q, va yopiq ro'yxat — UI cheklovi,
   // server invarianti emas. Aks holda ro'yxatdan olib tashlangan eski
   // manbali o'quvchini keyinchalik tahrirlab bo'lmay qolardi.
-  const source = typeof body.source === "string" ? body.source.trim() : "";
-  if (!source) {
+  if (!(typeof body.source === "string" ? body.source.trim() : "")) {
     return NextResponse.json({ ok: false, error: "Manba majburiy" }, { status: 400 });
   }
 
@@ -203,19 +203,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // Yozish — lib/pupilWrite.ts (AI yordamchi ham shuni chaqiradi). `id`
+  // GLOBAL ketma-ket: eng katta id filial bo'yicha KESILMASDAN qidiriladi,
+  // kesilsa ikkinchi filial mavjud id ni qayta ishlatib, E11000 ga urilardi.
   const db = await ensureIndexes();
-  const col = db.collection("pupils");
-  // `id` GLOBAL ketma-ket (unique indeks butun kolleksiyada) — shu bois
-  // eng katta id filial bo'yicha KESILMASDAN qidiriladi. Kesilsa ikkinchi
-  // filial mavjud id ni qayta ishlatib, E11000 ga urilardi.
-  const last = await col.find({}).sort({ id: -1 }).limit(1).toArray();
-  const nextId = (last[0]?.id ?? 0) + 1;
-
-  // Normallashtirilgan `source` bilan — yuqoridagi trim izohiga qarang.
-  const pupil = { ...buildPupilFromValues(nextId, { ...body, source }), branchId };
-  // insertOne mutates its argument to add _id — insert a copy so the
-  // returned `pupil` stays clean (same gotcha as app/api/orders/route.ts).
-  await col.insertOne({ ...pupil });
-
-  return NextResponse.json({ ok: true, pupil });
+  const out = await createPupil(db, branchId, body);
+  if (!out.ok) return NextResponse.json({ ok: false, error: out.error }, { status: out.status });
+  return NextResponse.json({ ok: true, pupil: out.pupil });
 }

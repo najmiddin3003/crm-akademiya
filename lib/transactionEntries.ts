@@ -208,6 +208,10 @@ export interface TransactionEntry {
    * (lib/cashboxAdjust.ts), shu bois yozuvning o'zi hech narsada farq
    * qilmaydi — belgi faqat "bu qayerdan kelgan?" savoli uchun: botdagi
    * xato aynan shu maydon bo'yicha ajratib topiladi.
+   *
+   * `"ai"` — CRM'dagi AI yordamchi tayyorlagan qoralama, xodim panelda
+   * «Tasdiqlash» ni bosgan (lib/ai/actions, 07.10.2026). Yadro yana o'sha;
+   * qoralamaning o'zi `ai_actions` da (kim, qachon, qaysi suhbatdan).
    */
   origin?: EntryOrigin;
   /**
@@ -241,7 +245,7 @@ export function entryPaidAmount(e: { amount?: unknown; discountSom?: unknown }):
 export const ENTRY_PAID_EXPR = { $add: ["$amount", { $ifNull: ["$discountSom", 0] }] };
 
 /** `TransactionEntry.origin` qiymatlari. */
-export type EntryOrigin = "telegram";
+export type EntryOrigin = "telegram" | "ai";
 
 /**
  * Yozuv o'quvchiga pul qaytarish yozuvimi — YAGONA qoida, klient va server

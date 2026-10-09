@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { getCurrentUser } from "@/lib/auth";
-import { uzNow } from "@/lib/uzTime";
-import { commentView, MAX_COMMENT_LEN, PUPIL_COMMENTS, type PupilComment } from "@/lib/pupilComments";
+import { addPupilComment, commentView, MAX_COMMENT_LEN, PUPIL_COMMENTS, type PupilComment } from "@/lib/pupilComments";
 
 // GET  /api/pupils/:id/comments — o'quvchi izohlari (eskisidan yangisiga).
 // POST /api/pupils/:id/comments — { text } → izoh qo'shadi.
@@ -56,29 +55,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (ok === null) return notLoggedIn();
   if (!ok) return notFound();
 
-  const now = uzNow();
-  const pad = (n: number) => String(n).padStart(2, "0");
+  // Yozuv lib/pupilComments.ts da — AI yordamchi ham o'sha yadrodan o'tadi.
   const db = await ensureIndexes();
-  const col = db.collection<PupilComment>(PUPIL_COMMENTS);
-  // `id` — eng kattasidan keyingisi (loyihadagi naqsh); bir lahzada ikki xodim
-  // yozsa ikkinchisi noyob indeksga urilib qayta oladi.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const [last] = await col.find({}, { projection: { _id: 0, id: 1 } }).sort({ id: -1 }).limit(1).toArray();
-    const comment: PupilComment = {
-      id: (Number(last?.id) || 0) + 1,
-      pupilId,
-      text,
-      date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-      time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-      by: String(user.fullName || "").trim(),
-      createdAt: new Date(),
-    };
-    try {
-      await col.insertOne({ ...comment });
-      return NextResponse.json({ ok: true, comment: commentView(comment) });
-    } catch (e) {
-      if ((e as { code?: number } | null)?.code !== 11000) throw e;
-    }
-  }
-  return NextResponse.json({ ok: false, error: "Hozir band — qayta urinib ko'ring" }, { status: 503 });
+  const out = await addPupilComment(db, { pupilId, text, by: String(user.fullName || "") });
+  if (!out.ok) return NextResponse.json({ ok: false, error: out.error }, { status: out.status });
+  return NextResponse.json({ ok: true, comment: commentView(out.comment) });
 }

@@ -90,6 +90,8 @@ export const SETTINGS_SECTIONS = [
       { key: "content", label: "Kontent" },
       { key: "teacher", label: "Xodim super ilovasi" },
       { key: "student", label: "O'quvchi super ilovasi" },
+      // Referensda yo'q — bizning AI yordamchimiz (07.10.2026, components/settings/AiAssistantTab.tsx).
+      { key: "ai", label: "AI yordamchi" },
     ],
   },
   {
