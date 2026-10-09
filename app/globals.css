@@ -9221,6 +9221,26 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   .sch-lesson .tname { font-size: 13px; font-weight: 500; }
   .sch-lesson .room  { font-size: 11px; opacity: .85; }
   .sch-lesson .meta  { display: flex; gap: 10px; align-items: center; font-size: 11px; opacity: .95; font-variant-numeric: tabular-nums; }
+  /* Haqiqiy dars jadvali (GroupSchedulePage) — pastki qatordagi guruh nomi.
+     Uzun nom («OHBIOLOGIYA4G», «JUTARIXSERTIFIKAT») bitta qatorga sig'masdi:
+     karta chetidan toshib kesilar, harflar siqilgan (-0.02em) ko'rinar,
+     o'quvchilar soni esa chetga surilib yo'qolardi (09.10.2026). Endi kerak
+     bo'lsa so'z ichidan ham bo'linadi, ko'pi bilan 2 qator, soni doim
+     o'ng-pastda. Demo jadvaldagi qisqa `.gnum` (G-12) o'zgarmaydi. */
+  .sch-lesson .meta .sch-gname {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.2;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+  .sch-lesson .meta .sch-count { flex-shrink: 0; align-self: flex-end; }
 
   /* Blok ustiga sichqoncha kelganda chiqadigan ma'lumot paneli
      (GroupSchedulePage → LessonHoverPanel).
@@ -9340,6 +9360,9 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   .sch-lesson-row .tname { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sch-lesson-row .room  { opacity: .85; white-space: nowrap; font-size: 12px; flex-shrink: 0; }
   .sch-lesson-row .meta  { display: flex; gap: 14px; align-items: center; font-size: 12px; opacity: .95; white-space: nowrap; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  /* Qator ko'rinishida ham: qisqa dars (tor qator) uzun nomni sig'dirmasa —
+     nom «…» bilan qisqaradi, to'liq nomi blok ustidagi yozuvda (title). */
+  .sch-lesson-row .sch-gname { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0; }
 
   /* ---------- Fullscreen mode ---------- */
   body.fullscreen-mode aside,
