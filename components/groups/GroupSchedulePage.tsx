@@ -531,7 +531,7 @@ function LessonCard({
   if (row) {
     return (
       <div className="sch-lesson-row" style={{ background: p.color, gridColumn: `span ${p.span}` }} title={tip} {...handlers}>
-        <span className="gnum">{g.name}</span>
+        <span className="gnum sch-gname">{g.name}</span>
         <div className="info">
           <span className="tname">{g.course}</span>
           <span className="room">
@@ -561,11 +561,12 @@ function LessonCard({
         <div className="room">{groupBy === "room" ? `Xona: ${g.room}` : g.room}</div>
         <div className="text-[10px] opacity-80 mt-0.5">{t(g.day)}</div>
       </div>
+      {/* Guruh nomi kerak bo'lsa so'z ichidan ham bo'linadi (ko'pi bilan 2
+          qator, globals.css → .sch-gname): uzun nom karta chetidan toshib
+          kesilmasin, o'quvchilar soni ko'rinib tursin. */}
       <div className="meta">
-        <span className="gnum" style={{ fontSize: 14 }}>
-          №{g.name}
-        </span>
-        <span className="flex items-center gap-0.5">
+        <span className="gnum sch-gname">№{g.name}</span>
+        <span className="sch-count flex items-center gap-0.5">
           <Users className="icon icon-xs" />
           {g.students}
         </span>
