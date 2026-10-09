@@ -1,4 +1,4 @@
-import { branchInCondition, withPupilBranch } from "@/lib/branchScope";
+import { pooledBranchInCondition, withPupilBranch } from "@/lib/branchScope";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilEntryMatch, pupilNameOfDoc } from "@/lib/pupilEntries";
 import { pupilSearchFilter } from "@/lib/pupilSearch";
@@ -59,7 +59,7 @@ export const searchPupils: AiTool = {
     const groups = ids.length
       ? await ctx.db
           .collection("groups")
-          .find({ $and: [{ studentIds: { $in: ids } }, branchInCondition(ctx.scope.allowed)] }, { projection: groupProjection })
+          .find({ $and: [{ studentIds: { $in: ids } }, pooledBranchInCondition(ctx.scope.allowed)] }, { projection: groupProjection })
           .toArray()
       : [];
 
@@ -115,7 +115,7 @@ export const pupilDetails: AiTool = {
     const [groups, totalPaid, payments, attendance] = await Promise.all([
       ctx.db
         .collection("groups")
-        .find({ $and: [{ studentIds: id }, branchInCondition(ctx.scope.allowed)] }, { projection: groupProjection })
+        .find({ $and: [{ studentIds: id }, pooledBranchInCondition(ctx.scope.allowed)] }, { projection: groupProjection })
         .toArray(),
       // Balansning yagona qoidasi (lib/pupilsDb.ts): to'lovlar − qaytarilgan pul,
       // tanga evaziga chegirma ham to'langan hisoblanadi.

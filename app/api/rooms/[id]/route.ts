@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { branchInCondition, getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, pooledBranchInCondition } from "@/lib/branchScope";
 import { groupsInRoom, parseRoomBranch, renameRoomInGroups, roomInUseRefusal, sameNameRoomRefusal } from "@/lib/roomBranch";
 import { roomBranchId, type Room } from "@/lib/rooms";
+import { sameBranchPool } from "@/lib/branchPools";
 
 // Hamma metodlar faqat foydalanuvchiga RUXSAT ETILGAN filiallardagi
 // xonaga tegadi (`scope.allowed`, navbardagisi emas — tahrirda filial
@@ -32,21 +33,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (body.capacity !== undefined) set.capacity = parseInt(String(body.capacity), 10) || 0;
   if (typeof body.note === "string") set.note = body.note.trim();
-  if (body.branchId !== undefined) {
-    const branch = parseRoomBranch(body.branchId, scope);
-    if (!branch.ok) return NextResponse.json({ ok: false, error: branch.error }, { status: branch.status });
-    set.branchId = branch.branchId;
-  }
-  if (Object.keys(set).length === 0) {
+  // Filial — xona topilgandan KEYIN tekshiriladi (pastda): o'zgarmagan filial
+  // ruxsat talab qilmaydi. 1+2 hovuzida ro'yxat umumiy, `scope.allowed` esa
+  // qat'iy — oyna xonaning o'z filialini qayta yuborsa 403 bo'lardi va
+  // saqlashning yagona yo'li xonani boshqa binoga ko'chirish edi (09.10.2026).
+  const rawBranch = body.branchId;
+  if (Object.keys(set).length === 0 && rawBranch === undefined) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
   const db = await ensureIndexes();
   const col = db.collection("rooms");
-  const mine = { $and: [{ id: roomId }, branchInCondition(scope.allowed)] };
+  const mine = { $and: [{ id: roomId }, pooledBranchInCondition(scope.allowed)] };
   const cur = await col.findOne(mine, { projection: { _id: 0, name: 1, branchId: 1 } });
   if (!cur) {
     return NextResponse.json({ ok: false, error: "Xona topilmadi" }, { status: 404 });
+  }
+  if (rawBranch !== undefined && Number(rawBranch) !== roomBranchId(cur as Pick<Room, "branchId">)) {
+    const branch = parseRoomBranch(rawBranch, scope);
+    if (!branch.ok) return NextResponse.json({ ok: false, error: branch.error }, { status: branch.status });
+    set.branchId = branch.branchId;
+  }
+  if (Object.keys(set).length === 0) {
+    return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
   // Nom yoki filial o'zgarsagina tekshiriladi — eski yozuvlardagi
@@ -59,7 +68,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const twin = await sameNameRoomRefusal(db, toBranch, newName, roomId);
     if (twin) return NextResponse.json({ ok: false, error: twin.error }, { status: twin.status });
   }
-  if (toBranch !== fromBranch) {
+  // Hovuz ichida (1 ↔ 2, lib/branchPools.ts) ko'chirish guruhlarni xonasiz
+  // qoldirmaydi — ular xonani baribir ko'radi, ya'ni to'silmaydi.
+  if (!sameBranchPool(toBranch, fromBranch)) {
     const busy = await roomInUseRefusal(db, fromBranch, curName);
     if (busy) return NextResponse.json({ ok: false, error: busy.error }, { status: busy.status });
   }
@@ -71,7 +82,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Yangi nom guruhlarga ham o'tadi. Filial almashsa ERGASHMAYDI: tirik
   // guruh bo'lsa ko'chirish yuqorida to'silgan, arxivdagilar esa eski
   // filial tarixida o'sha paytdagi nomi bilan qoladi.
-  const movedGroups = toBranch === fromBranch ? await renameRoomInGroups(db, fromBranch, curName, newName) : 0;
+  const movedGroups = sameBranchPool(toBranch, fromBranch) ? await renameRoomInGroups(db, fromBranch, curName, newName) : 0;
   const { _id, ...room } = res;
   return NextResponse.json({ ok: true, room: room as unknown as Room, movedGroups });
 }
@@ -91,7 +102,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const db = await ensureIndexes();
   const room = await db
     .collection("rooms")
-    .findOne({ $and: [{ id: roomId }, branchInCondition(scope.allowed)] }, { projection: { _id: 0, name: 1, branchId: 1 } });
+    .findOne({ $and: [{ id: roomId }, pooledBranchInCondition(scope.allowed)] }, { projection: { _id: 0, name: 1, branchId: 1 } });
   if (!room) {
     return NextResponse.json({ ok: false, error: "Xona topilmadi" }, { status: 404 });
   }
@@ -110,7 +121,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
   const db = await ensureIndexes();
-  const res = await db.collection("rooms").deleteOne({ $and: [{ id: roomId }, branchInCondition(scope.allowed)] });
+  const res = await db.collection("rooms").deleteOne({ $and: [{ id: roomId }, pooledBranchInCondition(scope.allowed)] });
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "Xona topilmadi" }, { status: 404 });
   }

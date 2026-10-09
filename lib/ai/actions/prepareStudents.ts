@@ -19,6 +19,7 @@ import { maskPhone } from "../mask";
 import type { AiActionField } from "../protocol";
 import { optDate, optInt, optString, ToolInputError, type ToolArgs } from "../tools/types";
 import { ask, CANDIDATES, norm, ok, pickByName, resolvePupil, type PrepareResult, type Step } from "./prepare";
+import { sameBranchPool } from "@/lib/branchPools";
 
 // 5-BOSQICH QORALAMALARI (08.10.2026) — yangi o'quvchi, guruhga qo'shish /
 // chiqarish, davomat, o'quvchi holati, lid bosqichi. lib/ai/actions/prepare.ts
@@ -804,7 +805,12 @@ export async function prepareLeadStage(ctx: AiContext, args: ToolArgs): Promise<
     if (!group.ok) return group;
     const g = group.value;
     if (isArchivedGroup(g)) return ask({ problem: "That group is archived. Ask the user for another group." });
-    if (o.branchId !== undefined && g.branchId !== undefined && g.branchId !== o.branchId) {
+    // Lid va guruh bitta filialda yoki bitta HOVUZda bo'lsin (1+2 — lib/branchPools.ts,
+    // Lidlar sahifasidagi «Guruhga qo'shish» oynasi bilan bir xil). Maydoni yo'q
+    // yoki null eski yozuv — 1-filial.
+    const lb = Number(o.branchId ?? 1) || 1;
+    const gb = Number(g.branchId ?? 1) || 1;
+    if (!sameBranchPool(gb, lb)) {
       return ask({ problem: "That group belongs to another branch than the lead. Ask the user for a group of the lead's branch." });
     }
     // Darslar qachondan sanaladi — Lidlar sahifasidagi «Guruhga qo'shish»

@@ -88,6 +88,9 @@ type InsertedOrder = Order & { branchId: number; branchNo: number };
  * dan farqli, shu filialning eng katta raqamidan davom etadi
  * (lib/ordersData.ts → Order.branchNo). Qidiruv `branchCondition` bilan:
  * 1-filialda filialsiz eski lidlar ham bor (ular ham shu raqamlashda).
+ * 09.10.2026 dan u HOVUZNI oladi (lib/branchPools.ts): 1- va 2-filial
+ * lidlari bitta ro'yxat, yangi raqam ikkalasining eng kattasidan davom
+ * etadi (eski №1–№92 ikki filialda takrorlanib qolgan — ular o'zgarmaydi).
  *
  * IKKI SO'ROV BIR VAQTDA (ommaviy so'rovnoma — /sorovnoma — buni odatiy
  * qiladi) bir xil `id` ni hisoblab qo'yadi: ikkinchisi unikal indeksga

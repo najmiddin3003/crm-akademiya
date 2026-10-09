@@ -1,13 +1,18 @@
 import type { Db } from "mongodb";
 import { findRoomConflict, roomConflictText, ROOM_HOLDING_STATUSES, type RoomSlot } from "@/lib/groupRules";
 import { uzDateIso } from "@/lib/uzTime";
+import { pooledBranchInCondition } from "@/lib/branchScope";
 
 // Xona bandligi — SERVER tomoni (POST /api/groups, PATCH /api/groups/:id).
 // Qoida lib/groupRules.ts da (klient bilan bir xil); bu yerda faqat
-// nomzod bilan bir filialdagi, bir xonadagi tirik guruhlar o'qiladi.
+// nomzod bilan bir filialdagi (yoki filial HOVUZIDAGI), bir xonadagi tirik
+// guruhlar o'qiladi.
 //
 // Filial bo'yicha kesiladi: xona jismoniy, "201 - xona" ikki filialda ham
-// bo'lishi mumkin va ular bir-biriga xalaqit bermaydi.
+// bo'lishi mumkin va ular bir-biriga xalaqit bermaydi. ISTISNO — hovuz
+// (09.10.2026, lib/branchPools.ts): 1- va 2-filial xonalari umumiy, nomi
+// hovuz ichida noyob (lib/roomBranch.ts), shuning uchun bandlik ikkala
+// filial guruhlariga qaraydi.
 
 /** To'qnashgan guruh haqida 409 javobga qo'shiladigan ma'lumot. */
 export interface RoomClash {
@@ -24,7 +29,9 @@ export async function findRoomClashInDb(
   if (!candidate.room || !candidate.day || !candidate.time) return null;
   const rows = await db
     .collection("groups")
-    .find({ branchId, room: candidate.room, status: { $in: [...ROOM_HOLDING_STATUSES] } })
+    // HOVUZ (09.10.2026): 1+2 da xona umumiy — 2-filial guruhi 1-binodagi
+    // xonani ham oladi, bandlik ikkala filial guruhlariga qaraydi (lib/roomBranch.ts).
+    .find({ $and: [{ room: candidate.room, status: { $in: [...ROOM_HOLDING_STATUSES] } }, pooledBranchInCondition([branchId])] })
     .project<{ id: number; name: string; room: string; day: string; time: string; status: string; period?: string; startDate?: string; endDate?: string }>({
       _id: 0, id: 1, name: 1, room: 1, day: 1, time: 1, status: 1, period: 1, startDate: 1, endDate: 1,
     })

@@ -16,6 +16,7 @@ import type { Order } from "@/lib/ordersData";
 import { DAY_MS, uzDateOf } from "@/lib/staffTasks";
 import type { Teacher } from "@/lib/teachersData";
 import type { LeadFmt } from "./leadsCommon";
+import { sameBranchPool } from "@/lib/branchPools";
 
 // HOLAT OYNALARI — prototipdagi modal(): «Sinov darsiga yozish», «Guruhga
 // qo'shish», «Rad etish sababi». ui/Modal — kirish/chiqish animatsiyasi
@@ -156,10 +157,11 @@ export function GuruhModal({ order, branchName, nowMs, fmt, onClose, onDone, onC
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  // Yakunlangan guruhga yozilmaydi; filiali ma'lum bo'lsa — shu filialniki.
+  // Yakunlangan guruhga yozilmaydi; filiali ma'lum bo'lsa — shu filial (yoki
+  // u bilan bitta hovuzdagi filial, lib/branchPools.ts) guruhi.
   const { match, other } = useMemo(() => {
     const live = ((groups ?? []) as GroupWithBranch[]).filter(
-      (g) => g.status !== "finished" && (g.branchId === undefined || order.branchId === undefined || g.branchId === order.branchId),
+      (g) => g.status !== "finished" && (g.branchId == null || order.branchId == null || sameBranchPool(g.branchId, order.branchId)),
     );
     const c = norm(order.course);
     const isMatch = (g: Group) => !!c && norm(g.course) === c;

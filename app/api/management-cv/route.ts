@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Db, Filter, Document } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope } from "@/lib/branchScope";
+import { branchPool } from "@/lib/branchPools";
 import { getCurrentUser } from "@/lib/auth";
 import { CV_UPLOAD_FOLDER, cloudinaryConfig, uploadDocument, uploadImage } from "@/lib/cloudinary";
 import {
@@ -45,8 +46,9 @@ export const runtime = "nodejs";
  * yozilmagan arizalar HAMMA filialda ko'rinadi — ular hech kimniki emas,
  * yo'qolib qolmasin.
  */
+// HOVUZ (09.10.2026, lib/branchPools.ts): 1+2 da arizalar umumiy.
 function cvBranchFilter(branchId: number): Filter<Document> {
-  return { $or: [{ branchId }, { branchId: null }, { branchId: { $exists: false } }] };
+  return { $or: [{ branchId: { $in: [...branchPool(branchId)] } }, { branchId: null }, { branchId: { $exists: false } }] };
 }
 
 export async function GET() {

@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import { branchInCondition, type BranchScope } from "@/lib/branchScope";
+import { pooledBranchInCondition, type BranchScope } from "@/lib/branchScope";
 import { ROOM_HOLDING_STATUSES } from "@/lib/groupRules";
 
 // XONANING FILIALI — server qoidalari (POST /api/rooms, PATCH /api/rooms/:id).
@@ -20,6 +20,13 @@ import { ROOM_HOLDING_STATUSES } from "@/lib/groupRules";
 //      xonalar hisoboti ularni "xonasiz" deb sanaydi (/reports-rooms),
 //      yangi filial esa o'sha vaqtga boshqa guruh qo'ya olardi — bandlik
 //      faqat filial ichida tekshiriladi va eski guruhlarni ko'rmaydi.
+//
+// HOVUZ (09.10.2026, lib/branchPools.ts): 1- va 2-filial (Chortoq) bitta —
+// uchala qoida HOVUZ bo'yicha. Umumiy ekranda 2-filial guruhiga 1-binodagi
+// xona ham tanlanadi, ya'ni hovuzda nom noyob bo'lishi, bandlik va nom
+// o'zgarishi esa ikkala filial guruhlariga birdek ishlashi shart. Hovuz
+// ichida filial almashsa (1 ↔ 2) guruhlar xonani yo'qotmaydi — ko'chirish
+// to'silmaydi (app/api/rooms/[id] → PATCH).
 
 type Refusal = { ok: false; status: number; error: string };
 
@@ -54,7 +61,7 @@ export async function sameNameRoomRefusal(
   const key = nameKey(wanted);
   const rows = await db
     .collection("rooms")
-    .find(branchInCondition([branchId]), { projection: { _id: 0, id: 1, name: 1 } })
+    .find(pooledBranchInCondition([branchId]), { projection: { _id: 0, id: 1, name: 1 } })
     .toArray();
   const twin = rows.find((r) => r.id !== excludeId && nameKey(String(r.name ?? "")) === key);
   if (!twin) return null;
@@ -79,7 +86,7 @@ export async function groupsInRoom(db: Db, branchId: number, roomName: string): 
   const rows = await db
     .collection("groups")
     .find(
-      { $and: [{ room: roomName, status: { $in: [...ROOM_HOLDING_STATUSES] } }, branchInCondition([branchId])] },
+      { $and: [{ room: roomName, status: { $in: [...ROOM_HOLDING_STATUSES] } }, pooledBranchInCondition([branchId])] },
       { projection: { _id: 0, id: 1, name: 1, day: 1, time: 1 } },
     )
     .sort({ id: 1 })
@@ -115,6 +122,6 @@ export async function renameRoomInGroups(db: Db, branchId: number, from: string,
   if (from === to) return 0;
   const res = await db
     .collection("groups")
-    .updateMany({ $and: [{ room: from }, branchInCondition([branchId])] }, { $set: { room: to } });
+    .updateMany({ $and: [{ room: from }, pooledBranchInCondition([branchId])] }, { $set: { room: to } });
   return res.modifiedCount;
 }

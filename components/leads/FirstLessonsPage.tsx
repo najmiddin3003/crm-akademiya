@@ -40,6 +40,7 @@ import Select from "@/components/ui/Select";
 import TimeField from "@/components/ui/TimeField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import LeadNo from "@/components/leads/LeadNo";
 // Lidlar → Birinchi darsga yozilganlar (referens: akademiya.edutizim.uz).
 //
 // Ma'lumot manbai — HAQIQIY buyurtmalar (MongoDB `orders` → /api/orders):
@@ -592,7 +593,7 @@ export default function FirstLessonsPage() {
                     />
                   </td>
                   <td className="px-3 py-3 text-muted-foreground tabular-nums text-[13px]">{start + i + 1}</td>
-                  <td className="px-3 py-3 tabular-nums font-medium text-[13px]">{orderNo(o)}</td>
+                  <td className="px-3 py-3 tabular-nums font-medium text-[13px]"><LeadNo order={o} /></td>
                   <td className="px-3 py-3 text-[13px]">
                     <Link href={`/orders-list/${o.id}`} className="text-foreground hover:text-primary hover:underline">
                       {o.name}

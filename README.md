@@ -2745,3 +2745,116 @@ Sinov: `_verify-ai.mjs` (nom, ko'rsatma: adminga murojaat bor, xodimga
 yo'q; voronka nuqtalari 2 × 64), tsc, eslint, i18n. Brauzerda soxta API va
 uzun suhbat bilan (vaqtinchalik sahifa, commit qilinmadi) tezlik o'lchandi.
 Rang yorug' va tungi rejimda ko'rildi.
+
+## 1- va 2-filial bitta — Chortoq hovuzi (2026-10-09)
+
+Foydalanuvchi qarori: «2 ta filialni kassasidan boshqa hamma yerni bitta
+qilishimiz kerak». Tanlov: «Akademiya 1 Chortoq» + «Akademiya 2 Chortoq»
+(bitta shahardagi ikki bino). Oylik ham kassa kabi filial bo'yicha qoladi.
+
+**Qanday ishlaydi.** `lib/branchPools.ts` → `BRANCH_POOLS = [[1, 2]]`.
+`lib/branchScope.ts → branchCondition` (`withBranch`, `groupScopeFilter`,
+lidlar qamrovi) va `lib/employeeBranches.ts → employeeBranchCondition`
+hovuzni oladi. Ma'lumot KO'CHIRILMAYDI: har yozuv o'z `branchId` si bilan
+qoladi, yangi yozuv navbardagi filialga yoziladi. Navbarda ikkala nom ham
+qoladi — ular qaysi kassa bilan ishlayotganingizni bildiradi. 07.09.2026
+dan hovuz faqat o'quvchilar uchun edi (`PUPIL_BRANCH_POOLS`) — endi hamma
+joyda.
+
+**Bitta bo'lganlar** (1- yoki 2-filialda turib ikkalasi ko'rinadi):
+
+- o'quvchilar, guruhlar va dars jadvali, xonalar, lidlar;
+- xodimlar ro'yxati, o'qituvchi/moderator tanlovlari;
+- imtihonlar, ish arizalari (CV), topshiriqlar (rahbar ikkala filialni
+  ko'radi), gamifikatsiya;
+- bosh sahifa KPI, sidebar sanoqlari, qarzdorlar, AI yordamchi.
+
+**Alohida qolganlar** (`strictBranchCondition`, `strictScopedEmployeeFilter`):
+
+- kassa — u filialga emas, mas'ul shaxsga qarab kesiladi
+  (`GET /api/cashboxes`), hovuz unga tegmaydi;
+- oylik — `payrollBranchId`, oy qulfi va yopish (app/api/salary-runs/*,
+  `lib/ai/tools/payroll.ts`), Xodimlar balansi hisoboti;
+- xodim davomati (QR / turniket) — jismoniy bino va uning ish vaqti
+  (`lib/attendanceCheck.ts`, AI davomat vositasi).
+
+**Nozik joylar:**
+
+- **Xodimlar ro'yxati va profil** oylik qatorlarini
+  `employees-payroll?branch=pool` dan oladi (`memberOfBranchIds` — hovuz
+  A'ZOLARI, ro'yxat bilan aynan bir qamrov, faqat ko'rish). Qator xodim
+  bo'yicha — har xodim bir marta. Aks holda boshqa filial oyligidagi xodim
+  «Sozlanmagan» bo'lardi. Oylik chiqarish sahifasi parametrsiz — qat'iy
+  (`payrollBranchId`).
+- **Xonalar** (`lib/roomBranch.ts`, `lib/groupRoomClash.ts`): guruh xonaga
+  NOMI bilan bog'lanadi, endi 2-filial guruhiga 1-binodagi xona ham
+  tanlanadi. Shu sabab:
+  - nom hovuzda noyob (hozir to'qnashuv yo'q: «201 - xona» va «201»);
+  - bandlik ikkala filial guruhlariga qaraydi;
+  - nom o'zgarsa ikkala filial guruhlari ergashadi;
+  - hovuz ichida xonani 1 ↔ 2 ko'chirish to'silmaydi.
+- **Lid raqami** (`branchNo`, `lib/ordersCreate.ts`) hovuz bo'yicha davom
+  etadi: yangi lid ikkalasining eng kattasidan keyingi raqamni oladi. Eski
+  №1–№92 ikki filialda takrorlanib qolgan — ular o'zgarmaydi. Shuning
+  uchun 2-filial lidi raqami yonida kichik «2-filial» belgisi turadi
+  (`components/leads/LeadNo.tsx`).
+
+**Audit tuzatishlari (09.10.2026)** — hovuz ochgan teshiklar:
+
+- **Xodimni tahrirlash va o'chirish** (`app/api/hr-employees/[id]`): ro'yxat
+  umumiy bo'lgach 2-filial HR xodimi 1-filial oyligidagi o'qituvchining
+  foizini, kartasini, arxivini o'zgartira yoki uni o'chira olardi. Endi
+  oylikka ta'sir qiladigan maydonlar (`PAYROLL_FIELDS`: foiz, karta,
+  soliq, ish sanalari, arxiv, ruxsatlar…; telefon, filiallar, oylik
+  filiali) va o'chirish — faqat xodimning OYLIK FILIALI xodimiga yoki
+  adminga (`lib/employeeBranches.ts → canManageEmployeePayroll`,
+  `scope.allowed` qat'iy). Xodimni filialdan CHIQARISH ham faqat o'sha
+  filialga ruxsati borga (`remove-out-of-scope`).
+- **Xona filiali** (`app/api/rooms/[id]`, `RoomModal`): forma o'zgarmagan
+  `branchId` ni ham yuborardi — ruxsati faqat 2-filialga bo'lgan xodim
+  1-binodagi xonani tahrirlay olmasdi. Endi filial faqat O'ZGARGANDA
+  tekshiriladi, oynada xonaning o'z filiali ham variant.
+- **Ustoz kechikishi** (QR «Ishga keldim»): guruh `branchId` si — uni
+  yaratgan navbar, bino emas. Dars qaysi binoda — XONASI bo'yicha
+  (`lib/attendanceCheck.ts → groupsInBuilding`; xona topilmasa — guruh
+  filiali). AI davomat vositasi ham shu bilan.
+- **Yangi kassa filiali** (`POST /api/cashboxes`): mas'ul xodimning oylik
+  filialidan (navbar bilan bitta hovuzda bo'lsa) — oylik kartochkalari,
+  month-cashflow va Telegram topigi to'g'ri binoga.
+- **Qarzdorlar narxi** (`lib/debtors.ts → monthlyPriceFor`): o'z filiali
+  qatori yo'q bo'lsa — hovuzdosh filial narxi (kurs asosiy narxiga
+  jimgina tushmasin).
+- **Lid → guruh**: AI qoralamasi (`lib/ai/actions/prepareStudents.ts`) va
+  lid holati oynasi guruhni hovuzdagi istalgan filialdan oladi. Lidlar
+  filtri maydonsiz eski lidni 1-filial deb oladi.
+- Matnlar: CV belgisi ikkala filial nomi bilan; AI qo'llanmasi
+  (`lib/ai/knowledge.ts`) va ma'lumot katalogi (`lib/ai/tools/dataQuery.ts`)
+  hovuzni tushuntiradi.
+
+Ochiq qolgan (foydalanuvchi qarori bilan keyinga): gamifikatsiya — do'kon
+zaxirasi/byudjeti o'quvchi filiali bo'yicha, musobaqada ikki g'olib.
+Tekshirilmagan nomzodlar: QR kiosk navbar cookie'sini o'qiydi, yangi
+guruh filiali xonadan emas navbardan, xona 1 ↔ 2 ko'chganda guruhlar eski
+filial bilan qoladi.
+
+**Sinov** (faqat o'qiydi, haqiqiy funksiyalar bilan):
+
+```
+node --env-file=.env.local --experimental-transform-types --import ./scripts/_ts-alias.mjs scripts/_probe-branch-pool.mjs
+```
+
+Atlas ko'zgusida (09.10.2026, kechagi prod nusxasi) natija:
+
+- 1- va 2-filialda turib bir xil ko'rinadi: guruh 72 (avval 59 / 13),
+  xona 42 (19 / 23), lid 354 (263 / 91), o'quvchi 7 257, xodim 48
+  (43 / 18). 3- va 4-filial o'zgarmadi.
+- Oylik qatorlari: 1-filialda 34, 2-filialda 14 (alohida); hovuz
+  ko'rinishida 48, takror yo'q; ro'yxatdagi 48 xodimning hammasida qator bor.
+- Qarzdorlar narxi: 71 tirik guruhning hammasi o'z filiali narxidan
+  (hovuzdoshdan 0, narxsiz 0). Faol guruhlar binosi xonasi bo'yicha:
+  1-bino 58, 2-bino 13, ikkalasida yoki hech birida — 0.
+
+**Qaytarish:** `BRANCH_POOLS` ni `[]` qilish yetadi. Shunda kod 07.09.2026
+gacha bo'lgan holatga qaytadi, o'quvchilar hovuzi ham ketadi. Faqat
+o'quvchilarni qoldirish uchun esa `pupilBranchCondition` ga alohida ro'yxat
+kerak.

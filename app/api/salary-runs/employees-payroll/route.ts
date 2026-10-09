@@ -3,6 +3,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { attachBranchPayouts, attachMaybePaidIn, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { isMonthKey, payrollHasFoiz, payrollMonthKey, payrollPeriod, payrollPeriodOf, prevMonthKey } from "@/lib/salary";
 import { getBranchScope } from "@/lib/branchScope";
+import { branchPool } from "@/lib/branchPools";
 import { detectMovedPupils } from "@/lib/teacherHandoverStore";
 
 // GET /api/salary-runs/employees-payroll[?month=YYYY-MM]
@@ -55,11 +56,19 @@ export async function GET(req: Request) {
   // bayroqni ISHLATMAYDI va ishlatmasligi ham kerak: u yerda kesish ikki
   // marta to'lashni to'sadi (pastdagi izohga qarang).
   const allBranches = (params.get("branch") ?? "").trim() === "all";
+  // `?branch=pool` — joriy filial HOVUZI (1+2, lib/branchPools.ts) a'zolari
+  // (`branchIds`, Xodimlar ro'yxati bilan bir xil qamrov) oylik qatorlari, har
+  // xodim bir marta.
+  // Faqat KO'RISH uchun — Xodimlar ro'yxati va profil (ular hovuz bo'yicha,
+  // 09.10.2026), aks holda boshqa filial oyligidagi xodim «Sozlanmagan»
+  // chiqardi. Oylik chiqarish sahifasi buni ISHLATMAYDI — oylik filial
+  // bo'yicha qoladi.
+  const pooled = !allBranches && (params.get("branch") ?? "").trim() === "pool";
   // `?given=1` — javobga KASSA bo'yicha yig'indi (`given`) va qatorlarga
   // `paidElsewhere` qo'shiladi (lib/payrollSources.ts → attachBranchPayouts).
   // Faqat Oylik sahifasi so'raydi: Xodimlar ro'yxati va profil bu route'ni
   // o'z qatorlari uchun o'qiydi va ortiqcha so'rovlarga muhtoj emas.
-  const withGiven = !allBranches && (params.get("given") ?? "").trim() === "1";
+  const withGiven = !allBranches && !pooled && (params.get("given") ?? "").trim() === "1";
   if (raw && !isMonthKey(raw)) {
     return NextResponse.json({ ok: false, error: "Oy noto'g'ri (YYYY-MM kutiladi)" }, { status: 400 });
   }
@@ -76,7 +85,11 @@ export async function GET(req: Request) {
   const built = await buildPayrollRows(
     db,
     period,
-    allBranches ? {} : { payrollBranchId: scope.branchId },
+    allBranches
+      ? {}
+      : pooled
+        ? { memberOfBranchIds: branchPool(scope.branchId) }
+        : { payrollBranchId: scope.branchId },
   );
   // O'TGAN OY ochilganda — "bu oy puli joriy oyda allaqachon berilgan
   // bo'lishi mumkin" belgisi (`maybePaidIn`, 04.10.2026, o'tish davri
@@ -92,7 +105,7 @@ export async function GET(req: Request) {
   // cookie'da va brauzerning HAMMA oynalari uchun bitta — boshqa oynada
   // almashtirilsa, bu oyna eski ro'yxatni ko'rsatib turaveradi
   // (app/api/salary-runs/route.ts → POST dagi qorovul).
-  const branchId = allBranches ? null : scope.branchId;
+  const branchId = allBranches || pooled ? null : scope.branchId;
   // `closedThrough` — oxirgi NOL-YOPISH oyi (04.10.2026): Chiqim oynasi
   // (`branch=all`) shu oy va undan oldingilar uchun avans/oylikni oldindan
   // to'sadi. Kassir /api/salary-runs ni o'qiy olmaydi, shuning uchun shu
