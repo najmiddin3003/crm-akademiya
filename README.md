@@ -2781,10 +2781,11 @@ joyda.
 **Nozik joylar:**
 
 - **Xodimlar ro'yxati va profil** oylik qatorlarini
-  `employees-payroll?branch=pool` dan oladi (`payrollBranchIds`, faqat
-  ko'rish). Har xodim baribir bitta `payrollBranchId` da, ya'ni bir marta
-  chiqadi. Aks holda boshqa filial oyligidagi xodim «Sozlanmagan» bo'lardi.
-  Oylik chiqarish sahifasi parametrsiz — qat'iy.
+  `employees-payroll?branch=pool` dan oladi (`memberOfBranchIds` — hovuz
+  A'ZOLARI, ro'yxat bilan aynan bir qamrov, faqat ko'rish). Qator xodim
+  bo'yicha — har xodim bir marta. Aks holda boshqa filial oyligidagi xodim
+  «Sozlanmagan» bo'lardi. Oylik chiqarish sahifasi parametrsiz — qat'iy
+  (`payrollBranchId`).
 - **Xonalar** (`lib/roomBranch.ts`, `lib/groupRoomClash.ts`): guruh xonaga
   NOMI bilan bog'lanadi, endi 2-filial guruhiga 1-binodagi xona ham
   tanlanadi. Shu sabab:
@@ -2794,7 +2795,47 @@ joyda.
   - hovuz ichida xonani 1 ↔ 2 ko'chirish to'silmaydi.
 - **Lid raqami** (`branchNo`, `lib/ordersCreate.ts`) hovuz bo'yicha davom
   etadi: yangi lid ikkalasining eng kattasidan keyingi raqamni oladi. Eski
-  №1–№92 ikki filialda takrorlanib qolgan — ular o'zgarmaydi.
+  №1–№92 ikki filialda takrorlanib qolgan — ular o'zgarmaydi. Shuning
+  uchun 2-filial lidi raqami yonida kichik «2-filial» belgisi turadi
+  (`components/leads/LeadNo.tsx`).
+
+**Audit tuzatishlari (09.10.2026)** — hovuz ochgan teshiklar:
+
+- **Xodimni tahrirlash va o'chirish** (`app/api/hr-employees/[id]`): ro'yxat
+  umumiy bo'lgach 2-filial HR xodimi 1-filial oyligidagi o'qituvchining
+  foizini, kartasini, arxivini o'zgartira yoki uni o'chira olardi. Endi
+  oylikka ta'sir qiladigan maydonlar (`PAYROLL_FIELDS`: foiz, karta,
+  soliq, ish sanalari, arxiv, ruxsatlar…; telefon, filiallar, oylik
+  filiali) va o'chirish — faqat xodimning OYLIK FILIALI xodimiga yoki
+  adminga (`lib/employeeBranches.ts → canManageEmployeePayroll`,
+  `scope.allowed` qat'iy). Xodimni filialdan CHIQARISH ham faqat o'sha
+  filialga ruxsati borga (`remove-out-of-scope`).
+- **Xona filiali** (`app/api/rooms/[id]`, `RoomModal`): forma o'zgarmagan
+  `branchId` ni ham yuborardi — ruxsati faqat 2-filialga bo'lgan xodim
+  1-binodagi xonani tahrirlay olmasdi. Endi filial faqat O'ZGARGANDA
+  tekshiriladi, oynada xonaning o'z filiali ham variant.
+- **Ustoz kechikishi** (QR «Ishga keldim»): guruh `branchId` si — uni
+  yaratgan navbar, bino emas. Dars qaysi binoda — XONASI bo'yicha
+  (`lib/attendanceCheck.ts → groupsInBuilding`; xona topilmasa — guruh
+  filiali). AI davomat vositasi ham shu bilan.
+- **Yangi kassa filiali** (`POST /api/cashboxes`): mas'ul xodimning oylik
+  filialidan (navbar bilan bitta hovuzda bo'lsa) — oylik kartochkalari,
+  month-cashflow va Telegram topigi to'g'ri binoga.
+- **Qarzdorlar narxi** (`lib/debtors.ts → monthlyPriceFor`): o'z filiali
+  qatori yo'q bo'lsa — hovuzdosh filial narxi (kurs asosiy narxiga
+  jimgina tushmasin).
+- **Lid → guruh**: AI qoralamasi (`lib/ai/actions/prepareStudents.ts`) va
+  lid holati oynasi guruhni hovuzdagi istalgan filialdan oladi. Lidlar
+  filtri maydonsiz eski lidni 1-filial deb oladi.
+- Matnlar: CV belgisi ikkala filial nomi bilan; AI qo'llanmasi
+  (`lib/ai/knowledge.ts`) va ma'lumot katalogi (`lib/ai/tools/dataQuery.ts`)
+  hovuzni tushuntiradi.
+
+Ochiq qolgan (foydalanuvchi qarori bilan keyinga): gamifikatsiya — do'kon
+zaxirasi/byudjeti o'quvchi filiali bo'yicha, musobaqada ikki g'olib.
+Tekshirilmagan nomzodlar: QR kiosk navbar cookie'sini o'qiydi, yangi
+guruh filiali xonadan emas navbardan, xona 1 ↔ 2 ko'chganda guruhlar eski
+filial bilan qoladi.
 
 **Sinov** (faqat o'qiydi, haqiqiy funksiyalar bilan):
 
@@ -2808,7 +2849,10 @@ Atlas ko'zgusida (09.10.2026, kechagi prod nusxasi) natija:
   xona 42 (19 / 23), lid 354 (263 / 91), o'quvchi 7 257, xodim 48
   (43 / 18). 3- va 4-filial o'zgarmadi.
 - Oylik qatorlari: 1-filialda 34, 2-filialda 14 (alohida); hovuz
-  ko'rinishida 48, takror yo'q.
+  ko'rinishida 48, takror yo'q; ro'yxatdagi 48 xodimning hammasida qator bor.
+- Qarzdorlar narxi: 71 tirik guruhning hammasi o'z filiali narxidan
+  (hovuzdoshdan 0, narxsiz 0). Faol guruhlar binosi xonasi bo'yicha:
+  1-bino 58, 2-bino 13, ikkalasida yoki hech birida — 0.
 
 **Qaytarish:** `BRANCH_POOLS` ni `[]` qilish yetadi. Shunda kod 07.09.2026
 gacha bo'lgan holatga qaytadi, o'quvchilar hovuzi ham ketadi. Faqat

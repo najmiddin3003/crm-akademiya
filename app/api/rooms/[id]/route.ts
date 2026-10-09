@@ -33,12 +33,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (body.capacity !== undefined) set.capacity = parseInt(String(body.capacity), 10) || 0;
   if (typeof body.note === "string") set.note = body.note.trim();
-  if (body.branchId !== undefined) {
-    const branch = parseRoomBranch(body.branchId, scope);
-    if (!branch.ok) return NextResponse.json({ ok: false, error: branch.error }, { status: branch.status });
-    set.branchId = branch.branchId;
-  }
-  if (Object.keys(set).length === 0) {
+  // Filial — xona topilgandan KEYIN tekshiriladi (pastda): o'zgarmagan filial
+  // ruxsat talab qilmaydi. 1+2 hovuzida ro'yxat umumiy, `scope.allowed` esa
+  // qat'iy — oyna xonaning o'z filialini qayta yuborsa 403 bo'lardi va
+  // saqlashning yagona yo'li xonani boshqa binoga ko'chirish edi (09.10.2026).
+  const rawBranch = body.branchId;
+  if (Object.keys(set).length === 0 && rawBranch === undefined) {
     return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
@@ -48,6 +48,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const cur = await col.findOne(mine, { projection: { _id: 0, name: 1, branchId: 1 } });
   if (!cur) {
     return NextResponse.json({ ok: false, error: "Xona topilmadi" }, { status: 404 });
+  }
+  if (rawBranch !== undefined && Number(rawBranch) !== roomBranchId(cur as Pick<Room, "branchId">)) {
+    const branch = parseRoomBranch(rawBranch, scope);
+    if (!branch.ok) return NextResponse.json({ ok: false, error: branch.error }, { status: branch.status });
+    set.branchId = branch.branchId;
+  }
+  if (Object.keys(set).length === 0) {
+    return NextResponse.json({ ok: false, error: "Yangilanadigan maydon yo'q" }, { status: 400 });
   }
 
   // Nom yoki filial o'zgarsagina tekshiriladi — eski yozuvlardagi

@@ -9,6 +9,7 @@ import { HOLAT_STEPS, UNDO_MINUTES, guruhOf, sinovOf, type LeadHolat } from "@/l
 import { SURVEY_SOURCE, hasDaraja, type LeadSettings } from "@/lib/leadSettings";
 import type { ManagementBranch } from "@/lib/managementBranches";
 import { orderNo } from "@/lib/ordersData";
+import { LeadBranchTag } from "@/components/leads/LeadNo";
 import { timelineOf, type LeadFmt, type LeadRow } from "./leadsCommon";
 
 // LID KARTASI — o'ngdan chiqadigan panel (prototipdagi drawer): holat
@@ -90,6 +91,7 @@ function DrawerBody({ row, settings, branch, isAdmin, nowMs, fmt, busy, comments
           <h2>{o.name || "—"}</h2>
           <p>
             {t("ID {n}", { n: orderNo(o) })}
+            <LeadBranchTag branchId={o.branchId} />
             {o.phone && (
               <>
                 {" · "}

@@ -23,6 +23,7 @@ import MoneyInput from "@/components/ui/MoneyInput";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
+import { branchPool } from "@/lib/branchPools";
 import CvFormModal from "./CvFormModal";
 
 // Boshqaruv → Ishga qabul (CV). Referens HTML'dagi "ISHGA QABUL (CV) VIEW"
@@ -379,7 +380,14 @@ export default function CvPage() {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
   const branch = useBranch();
-  const branchName = branch.branches.find((b) => b.id === branch.branchId)?.name ?? "";
+  // 1+2 HOVUZI (09.10.2026, lib/branchPools.ts): ro'yxat ikkala Chortoq
+  // filiali arizalarini oladi (app/api/management-cv → cvBranchFilter) —
+  // belgi ham ikkala nomni ko'rsatadi, aks holda «faqat shu filial» deb
+  // aldardi. Ro'yxatda nomi yo'q filial (xodimga biriktirilmagan) — raqami.
+  const poolIds = branch.branchId == null ? [] : branchPool(branch.branchId);
+  const branchName = poolIds
+    .map((id) => branch.branches.find((b) => b.id === id)?.name || t("{n}-filial", { n: id }))
+    .join(" + ");
   // Admin izohi (ustun va tafsilotdagi bo'lim) — faqat adminga; server ham
   // boshqalarga izohni bermaydi.
   const isAdmin = branch.isAdmin;
@@ -699,7 +707,9 @@ export default function CvPage() {
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2 py-0.5 text-[12px]">
               <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
               <span>{branchName}</span>
-              <span className="text-muted-foreground">· {t("shu filial arizalari (+ filial tanlamaganlar)")}</span>
+              <span className="text-muted-foreground">
+                · {poolIds.length > 1 ? t("shu filiallar arizalari (+ filial tanlamaganlar)") : t("shu filial arizalari (+ filial tanlamaganlar)")}
+              </span>
             </div>
           )}
         </div>

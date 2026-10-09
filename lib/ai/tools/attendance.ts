@@ -1,12 +1,13 @@
 import { ROLE_LABELS } from "@/constants/employees";
 import { ATTENDANCE_OPTIONS, type AttendanceStatus } from "@/lib/attendance";
-import { allBranchIds, branchInCondition, strictBranchCondition, withBranch } from "@/lib/branchScope";
+import { allBranchIds, pooledBranchInCondition, strictBranchCondition, withBranch } from "@/lib/branchScope";
 import { groupBoundsIso, lessonExpectedOn, parseTimeRange, timeToMinutes } from "@/lib/groupRules";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName } from "@/lib/pupilsData";
 import { TURNSTILE_IO_STATUS_LABELS, type TurnstileIoStatus } from "@/lib/turnstileIo";
 import { uzTimeHm } from "@/lib/uzTime";
 import { daysInclusive, optDate, optString, ToolInputError, type AiTool, type ToolArgs } from "./types";
+import { groupsInBuilding } from "@/lib/attendanceCheck";
 
 // DAVOMAT — o'quvchilar (guruh davomati) va xodimlar («Ishga keldim» QR).
 //
@@ -430,7 +431,7 @@ export const staffAttendance: AiTool = {
     // "Kelmaganlar" — faqat bitta kun, joriy filial.
     let notCheckedIn: ReturnType<typeof missingCheckIns> | undefined;
     if (from === to && !all && from <= ctx.today) {
-      const [allIds, branch, staffRows, groupRows] = await Promise.all([
+      const [allIds, branch, staffRows, pooledGroupRows] = await Promise.all([
         allBranchIds(ctx.db),
         ctx.db.collection("branches").findOne({ id: branchId }, { projection: { _id: 0, workStart: 1 } }),
         ctx.db
@@ -443,22 +444,31 @@ export const staffAttendance: AiTool = {
         ctx.db
           .collection("groups")
           .find(
-            { $and: [{ status: "active" }, branchInCondition([branchId])] },
+            // Hovuz bo'yicha olinadi, keyin XONASI shu binoda bo'lganlari qoladi
+            // (lib/attendanceCheck.ts → groupsInBuilding, 09.10.2026).
+            { $and: [{ status: "active" }, pooledBranchInCondition([branchId])] },
             {
               projection: {
                 _id: 0, id: 1, name: 1, course: 1, teacher: 1, assistant: 1,
-                time: 1, status: 1, day: 1, startDate: 1, endDate: 1, period: 1,
+                time: 1, status: 1, day: 1, startDate: 1, endDate: 1, period: 1, room: 1, branchId: 1,
               },
             },
           )
           .toArray(),
       ]);
+      const groupRows = await groupsInBuilding(ctx.db, branchId, pooledGroupRows);
+      // Shu binoda bugun dars beradigan ustozlar — boshqa filialga biriktirilgan
+      // bo'lsa ham (1+2 hovuzida 1-filial ustozi 2-binodagi xonada dars beradi).
+      const teachesHere = new Set(
+        groupRows.flatMap((g) => [g.teacher, g.assistant]).map((n) => norm(String(n ?? ""))).filter(Boolean),
+      );
       // Filialga biriktirilgan xodimlar — biriktirilmagani birinchi filialda
       // hisoblanadi (navbardagi qamrov va topshiriqlardagi qoida bilan bir xil).
       const staff: StaffMember[] = staffRows
         .filter((r) => {
           const own = (Array.isArray(r.branchIds) ? r.branchIds : []).map(Number).filter((b: number) => allIds.includes(b));
-          return (own.length ? own : [allIds[0] ?? 1]).includes(branchId);
+          if ((own.length ? own : [allIds[0] ?? 1]).includes(branchId)) return true;
+          return String(r.turi ?? "") === "teacher" && teachesHere.has(norm(String(r.name ?? "")));
         })
         .map((r) => ({ id: Number(r.id), name: String(r.name ?? "").trim(), turi: String(r.turi ?? "") }))
         .filter((e) => e.name && (!q || norm(e.name).includes(q)));

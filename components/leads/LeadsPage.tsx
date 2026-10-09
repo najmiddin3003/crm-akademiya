@@ -150,7 +150,8 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
         const byNo = /^#?\d+$/.test(q) && String(orderNo(r.o)) === q.replace("#", "");
         if (!byName && !byPhone && !byNo) return false;
       }
-      if (f.filial && String(r.o.branchId ?? "") !== f.filial) return false;
+      // Maydoni yo'q eski lidlar (42 ta) — 1-filial (lib/branchScope.ts qoidasi).
+      if (f.filial && String(r.o.branchId ?? 1) !== f.filial) return false;
       if (f.yonalish && r.yon !== f.yonalish) return false;
       if (f.manba && (r.o.source || "") !== f.manba) return false;
       return inPeriod(r.at, f.sana, nowMs);
@@ -193,7 +194,7 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
   // ── Ochiq lid va amallar ──
   const openRow = openId !== null ? rows.find((r) => r.o.id === openId) ?? null : null;
   const modalRow = holatModal ? rows.find((r) => r.o.id === holatModal.id) ?? null : null;
-  const branchName = (r: LeadRow | null) => (r && r.o.branchId !== undefined ? branchById.get(r.o.branchId)?.name ?? "" : "");
+  const branchName = (r: LeadRow | null) => (r ? branchById.get(r.o.branchId ?? 1)?.name ?? "" : "");
 
   const onConflict = useCallback(() => void reload(), [reload]);
   const onHolatDone = useCallback(

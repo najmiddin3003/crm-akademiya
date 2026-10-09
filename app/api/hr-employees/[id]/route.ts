@@ -12,6 +12,7 @@ import { isValidPhone, normalizePhone } from "@/lib/invite";
 import {
   branchIdsErrorText,
   branchNameMap,
+  canManageEmployeePayroll,
   pruneAssignments,
   resolvePayrollBranch,
   scopedEmployeeFilter,
@@ -20,6 +21,58 @@ import {
 import { getBranchScope } from "@/lib/branchScope";
 import { syncEmployeeRename } from "@/lib/employeeRename";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
+
+/**
+ * Oylikka va hisobga ta'sir qiladigan maydonlar (09.10.2026, 1+2 hovuzi).
+ * Ular HAQIQATAN o'zgarsa — xodimning oylik filialiga biriktirilgan xodim
+ * yoki admin kerak (`canManageEmployeePayroll`). Tahrir oynasi hamma
+ * maydonni qayta yuboradi, shuning uchun qiymat bazadagi bilan
+ * solishtiriladi: hovuzdosh xodimning ismini tuzatish to'silmasin.
+ */
+const PAYROLL_FIELDS = [
+  "percent", "plastikSalary", "taxIds", "salaryStartDate", "salaryEndDate", "payroll",
+  "archReason", "archDate", "permissions", "twoFactor", "turi", "degree", "employmentRate",
+] as const;
+
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+const sortedNums = (v: unknown) => (Array.isArray(v) ? v.map(Number).filter((n) => Number.isFinite(n) && n > 0).sort((x, y) => x - y) : []);
+const sortedStrs = (v: unknown) => (Array.isArray(v) ? v.map(String).sort() : null);
+const assignKey = (rows: { branchId: number }[]) => [...rows].sort((a, b) => a.branchId - b.branchId);
+
+function changedPayrollFields(set: Record<string, unknown>, current: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  for (const k of PAYROLL_FIELDS) {
+    if (!(k in set)) continue;
+    const next = set[k];
+    const prev = current[k];
+    let same: boolean;
+    switch (k) {
+      case "taxIds":
+        same = sameJson(sortedNums(next), sortedNums(prev));
+        break;
+      case "plastikSalary":
+        same = sameJson(next, sanitizePlastikSalary(prev));
+        break;
+      case "salaryStartDate":
+        same = sameJson(next, sanitizeSalaryStartDate(prev));
+        break;
+      case "salaryEndDate":
+        same = sameJson(next, sanitizeSalaryEndDate(prev));
+        break;
+      case "payroll":
+      case "twoFactor":
+        same = Boolean(next) === Boolean(prev);
+        break;
+      case "permissions":
+        same = sameJson(sortedStrs(next), prev === null || prev === undefined ? null : sortedStrs(sanitizePermissions(prev)));
+        break;
+      default:
+        same = String(next ?? "") === String(prev ?? "");
+    }
+    if (!same) out.push(k);
+  }
+  return out;
+}
 
 // GET /api/hr-employees/:id — bitta xodim (profil sahifasi uchun).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -188,6 +241,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const rawAssign = body.branchAssignments;
   const rawPayrollBranch = (body as { payrollBranchId?: unknown }).payrollBranchId;
 
+  // Oylik va hisobga ta'sir qiladigan HAQIQIY o'zgarishlar (PAYROLL_FIELDS
+  // izohi). Quyidagi filial qoidasi ham shu ro'yxatga qo'shadi.
+  const payrollChanges = changedPayrollFields(set, current as unknown as Record<string, unknown>);
+  if (newPhone !== null && newPhone !== String(current.phone ?? "")) payrollChanges.push("phone");
+
   if (rawIds !== undefined || rawAssign !== undefined || rawPayrollBranch !== undefined) {
     const currentIds = Array.isArray(current.branchIds) ? current.branchIds.map(Number) : [];
     const assignments = rawAssign !== undefined ? sanitizeAssignments(rawAssign) : (current.branchAssignments ?? []);
@@ -204,7 +262,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ? rawIds
       : [...new Set([...currentIds, ...assignments.map((a) => a.branchId)])];
 
-    const checked = await validateBranchIds(db, wanted, scope);
+    // Faqat O'ZGARISH tekshiriladi (bor a'zolik tegilmaydi) — 1+2 hovuzida
+    // hovuzdosh xodimni tahrirlash 400 bermasin (lib/employeeBranches.ts).
+    const checked = await validateBranchIds(db, wanted, scope, currentIds);
     if (!checked.ok) {
       const names = await branchNameMap(db);
       return NextResponse.json(
@@ -234,6 +294,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       );
     }
     if (rawAssign !== undefined) set.branchAssignments = kept;
+
+    if (rawAssign !== undefined && !sameJson(assignKey(kept), assignKey(sanitizeAssignments(current.branchAssignments ?? [])))) {
+      payrollChanges.push("branchAssignments");
+    }
+    if (Number(set.payrollBranchId) !== Number(current.payrollBranchId)) payrollChanges.push("payrollBranchId");
+  }
+
+  // OYLIK UYI QOIDASI (09.10.2026): hovuzdosh filial xodimi bu xodimning
+  // oylik va hisob sozlamalarini o'zgartira olmaydi — oylik filial bo'yicha.
+  if (payrollChanges.length > 0 && !canManageEmployeePayroll(current, scope)) {
+    const names = await branchNameMap(db);
+    const home = Number(current.payrollBranchId);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Bu o'zgarishni faqat xodimning oylik filiali (${names.get(home) ?? home}) xodimi yoki admin qila oladi`,
+      },
+      { status: 403 },
+    );
   }
 
   if (Object.keys(set).length === 0 && newPhone === null) {
@@ -299,6 +378,25 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
   }
   // Boshqa filial xodimini o'chirib bo'lmaydi.
+  const current = await db
+    .collection("hr_employees")
+    .findOne(scopedEmployeeFilter({ id: empId }, scope), { projection: { _id: 0, payrollBranchId: 1, branchIds: 1 } });
+  if (!current) {
+    return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
+  }
+  // 1+2 hovuzida ro'yxat umumiy, o'chirish esa oylik uyi qoidasi bilan —
+  // hovuzdosh filial xodimi hamkasbni oylik ro'yxatidan o'chirib yubormasin.
+  if (!canManageEmployeePayroll(current, scope)) {
+    const names = await branchNameMap(db);
+    const home = Number(current.payrollBranchId);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Bu o'zgarishni faqat xodimning oylik filiali (${names.get(home) ?? home}) xodimi yoki admin qila oladi`,
+      },
+      { status: 403 },
+    );
+  }
   const res = await db.collection("hr_employees").deleteOne(scopedEmployeeFilter({ id: empId }, scope));
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });

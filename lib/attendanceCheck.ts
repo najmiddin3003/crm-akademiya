@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import { branchInCondition } from "@/lib/branchScope";
+import { pooledBranchInCondition } from "@/lib/branchScope";
 import { lessonExpectedOn, parseTimeRange } from "@/lib/groupRules";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
@@ -281,16 +281,54 @@ export function branchExpectation(branch: AttendanceBranch): Expectation | null 
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** Xona nomi kaliti — lib/roomBranch.ts dagi bilan bir xil (katta-kichik harf, bo'shliq farq qilmaydi). */
+const roomKey = (name: unknown) => String(name ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * Guruhlardan shu BINODA (filialda) dars o'tadiganlari — XONASI bo'yicha
+ * (09.10.2026, 1+2 hovuzi). Hovuzda guruhning `branchId` si faqat uni
+ * yaratgan navbar filiali: 2-filial guruhiga 1-binodagi xona ham beriladi
+ * (xona nomi hovuzda noyob — lib/roomBranch.ts). Xona bo'sh yoki ro'yxatda
+ * yo'q bo'lsa — guruhning o'z filiali (maydoni yo'q bo'lsa — 1-filial).
+ *
+ * Chaqiruvchi guruhlarni HOVUZ bo'yicha olib keladi (`pooledBranchInCondition`),
+ * bu funksiya ulardan binonikini ajratadi. Xodim davomati qat'iy — jismoniy bino.
+ *
+ * `G extends object`: Mongo hujjati (`WithId<Document>`) ham, tipli guruh ham
+ * o'tadi — faqat-ixtiyoriy maydonli tip (weak type) bazadagi hujjatni rad etardi.
+ */
+export async function groupsInBuilding<G extends object>(
+  db: Db,
+  buildingId: number,
+  groups: G[],
+): Promise<G[]> {
+  const rooms = await db
+    .collection("rooms")
+    .find(pooledBranchInCondition([buildingId]), { projection: { _id: 0, name: 1, branchId: 1 } })
+    .toArray();
+  const buildingOf = new Map<string, number>();
+  for (const r of rooms) buildingOf.set(roomKey(r.name), typeof r.branchId === "number" ? r.branchId : 1);
+  return groups.filter((row) => {
+    const g = row as { room?: unknown; branchId?: unknown };
+    const own = Number(g.branchId);
+    const fallback = g.branchId !== null && g.branchId !== undefined && Number.isFinite(own) ? own : 1;
+    return (buildingOf.get(roomKey(g.room)) ?? fallback) === buildingId;
+  });
+}
+
 async function expectationFor(db: Db, emp: HrEmployee, branch: AttendanceBranch, iso: string, weekday: number): Promise<Expectation | null> {
   if (emp.turi !== "teacher") return branchExpectation(branch);
   const who = { $regex: `^\\s*${escapeRegex(emp.name.trim())}\\s*$`, $options: "i" };
-  const groups = await db
+  // Hovuz bo'yicha olinadi, keyin XONASI shu binoda bo'lganlari qoladi
+  // (groupsInBuilding): ustoz kechikishi jismoniy bino bo'yicha.
+  const pooled = await db
     .collection("groups")
     .find(
-      { $and: [{ status: "active" }, branchInCondition([branch.id]), { $or: [{ teacher: who }, { assistant: who }] }] },
-      { projection: { _id: 0, id: 1, name: 1, status: 1, day: 1, time: 1, startDate: 1, endDate: 1, period: 1 } },
+      { $and: [{ status: "active" }, pooledBranchInCondition([branch.id]), { $or: [{ teacher: who }, { assistant: who }] }] },
+      { projection: { _id: 0, id: 1, name: 1, status: 1, day: 1, time: 1, startDate: 1, endDate: 1, period: 1, room: 1, branchId: 1 } },
     )
     .toArray();
+  const groups = await groupsInBuilding(db, branch.id, pooled);
   const first = firstLessonOf(groups as LessonGroup[], iso, weekday);
   if (!first) return null;
   return { at: first.at, why: `«${first.group.name || first.group.id}» guruhi darsi`, grace: 0 };

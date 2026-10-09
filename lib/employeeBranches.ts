@@ -39,7 +39,8 @@ import type { EmployeeBranchAssignment } from "@/lib/hrEmployees";
 export type BranchIdsError =
   | { code: "empty" }
   | { code: "unknown"; ids: number[] }
-  | { code: "out-of-scope"; ids: number[] };
+  | { code: "out-of-scope"; ids: number[] }
+  | { code: "remove-out-of-scope"; ids: number[] };
 
 export interface BranchIdsResult {
   ok: boolean;
@@ -51,6 +52,18 @@ export async function validateBranchIds(
   db: Db,
   raw: unknown,
   scope: Pick<BranchScope, "allowed" | "isAdmin">,
+  /**
+   * Xodimning HOZIRGI a'zoligi (tahrirda). Faqat O'ZGARISH tekshiriladi:
+   * qo'shilayotgan va olib tashlanayotgan filiallar `scope.allowed` da
+   * bo'lishi kerak, bor a'zolik esa tegilmaydi. Yangi xodimda — bo'sh.
+   *
+   * NEGA (09.10.2026, 1+2 hovuzi): ro'yxat hovuz bo'yicha, `scope.allowed`
+   * esa qat'iy — 1-filial HR xodimi 2-filialdagi xodimning ismini tuzatsa
+   * ham forma uning `branchIds: [2]` ini qayta yuborardi va 400 olardi.
+   * Olib tashlash ham tekshiriladi: aks holda 2-filial xodimi hamkasbni
+   * 1-filialdan (va uning oyligidan) chiqarib yuborardi.
+   */
+  current: readonly number[] = [],
 ): Promise<BranchIdsResult> {
   const rows = await db.collection("branches").find({}, { projection: { id: 1, _id: 0 } }).toArray();
   const valid = new Set(rows.map((r) => Number(r.id)).filter(Number.isFinite));
@@ -72,8 +85,11 @@ export async function validateBranchIds(
   //
   // Admin bundan mustasno — u hamma filialni ko'radi.
   if (!scope.isAdmin) {
-    const outside = ids.filter((id) => !scope.allowed.includes(id));
-    if (outside.length > 0) return { ok: false, ids, error: { code: "out-of-scope", ids: outside } };
+    const had = new Set(current);
+    const added = ids.filter((id) => !had.has(id) && !scope.allowed.includes(id));
+    if (added.length > 0) return { ok: false, ids, error: { code: "out-of-scope", ids: added } };
+    const removed = current.filter((id) => !ids.includes(id) && !scope.allowed.includes(id));
+    if (removed.length > 0) return { ok: false, ids, error: { code: "remove-out-of-scope", ids: removed } };
   }
 
   return { ok: true, ids };
@@ -88,7 +104,34 @@ export function branchIdsErrorText(e: BranchIdsError, nameOf: (id: number) => st
       return `Filial topilmadi: ${e.ids.join(", ")}`;
     case "out-of-scope":
       return `Sizda ${e.ids.map(nameOf).join(", ")} filialiga xodim biriktirish huquqi yo'q`;
+    case "remove-out-of-scope":
+      return `Sizda xodimni ${e.ids.map(nameOf).join(", ")} filialidan chiqarish huquqi yo'q`;
   }
+}
+
+/**
+ * Xodimning OYLIK UYI — oylikka va hisobga ta'sir qiladigan o'zgarishlar
+ * (foiz, karta, soliq, sanalar, arxiv, telefon, ruxsatlar, o'chirish) shu
+ * filialga biriktirilgan xodimga yoki adminga ruxsat etiladi (09.10.2026).
+ *
+ * NEGA: 1+2 hovuzida Xodimlar ro'yxati umumiy, oylik esa filial bo'yicha
+ * (lib/branchPools.ts). Bu qoidasiz 2-filial HR xodimi 1-filial oyligidagi
+ * o'qituvchining foizini o'zgartirishi, uni arxivlashi yoki o'chirishi
+ * mumkin edi — o'zi esa 1-filial Oylik sahifasini ochib natijani ko'ra
+ * olmasdi. `scope.allowed` QAT'IY (hovuz bilan kengaytirilmaydi).
+ */
+export function canManageEmployeePayroll(
+  // `object`: Mongo hujjati ham, `HrEmployee` ham o'tsin (faqat-ixtiyoriy
+  // maydonli tip — weak type — `WithId<Document>` ni rad etardi).
+  row: object,
+  scope: Pick<BranchScope, "allowed" | "isAdmin">,
+): boolean {
+  if (scope.isAdmin) return true;
+  const emp = row as { payrollBranchId?: unknown; branchIds?: unknown };
+  const ids = Array.isArray(emp.branchIds) ? emp.branchIds.map(Number).filter(Number.isFinite) : [];
+  const home = Number(emp.payrollBranchId);
+  const payrollHome = Number.isFinite(home) && emp.payrollBranchId !== null && emp.payrollBranchId !== undefined ? home : ids[0];
+  return payrollHome !== undefined && scope.allowed.includes(payrollHome);
 }
 
 /**

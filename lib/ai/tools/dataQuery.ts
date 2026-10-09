@@ -36,11 +36,11 @@ export const DATA_COLLECTIONS: Record<string, string> = {
   pupils:
     "Students. id, firstName, lastName, phone, status (Aktiv | Muzlatilgan | Arxiv; missing = Aktiv), statusReason, statusChangedAt (YYYY-MM-DD), " +
     "createdAt ('DD.MM.YYYY | HH:mm' string), source, category, birthDate (YYYY-MM-DD), coin, moderator, father*/mother* (parents), " +
-    "branchId (missing = branch 1; branches 1 and 2 share their students). NEVER use the `balance` field: it is stale and never updated — " +
+    "branchId (missing = branch 1). NEVER use the `balance` field: it is stale and never updated — " +
     "debts and paid money come from debtors_report / pupil_details.",
   groups:
     "Groups (current season). id, name (usually a number), course, level, teacher, assistant, day ('Toq kunlar', 'Juft kunlar', 'Du,Ju' …), " +
-    "time ('14:00 - 16:00'), room, status (gathering | active | frozen | archive), archivedAt, studentIds [pupils.id], startDate, endDate, branchId.",
+    "time ('14:00 - 16:00'), room, status (gathering | active | frozen | archive), archivedAt, studentIds [pupils.id], startDate, endDate, branchId (missing = branch 1).",
   group_memberships: "Membership history: groupId, pupilId, joinedAt (YYYY-MM-DD), leftAt (null = still in the group).",
   attendance: "Attendance marks: groupId, pupilId, date (YYYY-MM-DD), status (keldi | kechikdi | birinchi | sababli | sababsiz), grade (1–5), reason, note.",
   transaction_entries:
@@ -50,10 +50,10 @@ export const DATA_COLLECTIONS: Record<string, string> = {
   transactions: "Finance report rows (Moliya hisobotlari): date (YYYY-MM-DD), amount (+ income / − expense), category, method, cashboxId.",
   cashboxes: "Cashboxes: id, name, balance, methodTotals {methodKey: amount}, moderator (responsible employee), isPrimary, archived.",
   orders:
-    "Leads (Lidlar): id, branchNo (number shown as #N), name, phone, course, level, created ('DD.MM.YYYY | HH:mm'), holat (yangi | bog | sinov | " +
-    "guruh | rad; missing on old leads), status, firstLesson ('DD.MM.YYYY | HH:mm'), teacher, group, groupId, moderator, source, radSabab, branchId.",
+    "Leads (Lidlar): id, branchNo (number shown as #N; branches 1 and 2 share one count since 2026-10-09, older numbers repeat in both), name, phone, course, level, created ('DD.MM.YYYY | HH:mm'), holat (yangi | bog | sinov | " +
+    "guruh | rad; missing on old leads), status, firstLesson ('DD.MM.YYYY | HH:mm'), teacher, group, groupId, moderator, source, radSabab, branchId (missing = branch 1).",
   hr_employees:
-    "Employees: id, name, phone, turi (role, e.g. teacher), kurs (subjects), percent (teacher %), branchIds [..], archReason (non-empty = archived), " +
+    "Employees: id, name, phone, turi (role, e.g. teacher), kurs (subjects), percent (teacher %), branchIds [branches the employee works in], payrollBranchId (the ONE branch whose payroll pays them), archReason (non-empty = archived), " +
     "archDate, created, lastActive.",
   staff_tasks:
     "Staff tasks (Topshiriqlar): id, title, desc, employeeId, employeeName, branchId, deadline (ISO), priority (1–5), status, " +
@@ -296,8 +296,11 @@ export const queryData: AiTool = {
     "pipeline. Dates are mostly 'YYYY-MM-DD' strings; some are 'DD.MM.YYYY | HH:mm' strings (use $regex on them). Phones come back masked " +
     "and secret fields are removed; $$ROOT, phone or secret fields inside expressions and searching inside phone numbers are rejected. " +
     "In grouped results ($group, $sortByCount, $bucket) the group key is in _id. " +
-    "Prefer the specialised tools when they fit (their numbers match the CRM pages). Say which branch your numbers " +
-    `cover. Collections: ${Object.entries(DATA_COLLECTIONS)
+    "Prefer the specialised tools when they fit (their numbers match the CRM pages). Say which branch your numbers cover. " +
+    "Branches 1 and 2 (Chortoq) are ONE pool: their students, groups, rooms, leads, attendance and employee list are shown together, " +
+    "so for a branch 1 or 2 question match branchId $in [1, 2] (a missing branchId means branch 1; employees: branchIds). Only cashboxes " +
+    "(cashboxes.branchId, by responsible person), payroll (hr_employees.payrollBranchId) and staff check-ins (turnstile_io.branchId = building) " +
+    `stay per branch. Collections: ${Object.entries(DATA_COLLECTIONS)
       .map(([k, v]) => `${k} — ${v}`)
       .join(" | ")}`,
   parameters: {

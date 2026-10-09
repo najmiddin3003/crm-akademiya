@@ -1,6 +1,7 @@
 import type { Db } from "mongodb";
 import { ENTRY_PAID_EXPR } from "@/lib/transactionEntries";
 import { withBranch, type BranchScope } from "@/lib/branchScope";
+import { branchPool } from "@/lib/branchPools";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
@@ -119,15 +120,24 @@ export function monthlyPriceFor(
   if (!course) return null;
   // Maydoni yo'q eski guruh 1-filialniki (lib/branchScope.ts → branchCondition).
   const branchId = Number(group.branchId) || 1;
+  // 1+2 HOVUZI (09.10.2026, lib/branchPools.ts): guruhning `branchId` si —
+  // uni yaratgan navbar filiali, bino emas. Avval o'z filiali qatori, u
+  // yo'q yoki o'chiq bo'lsa — hovuzdosh filial qatori. Aks holda bir xil
+  // kursdagi umumiy ro'yxat guruhlari jimgina kurs asosiy narxiga tushardi.
+  const order = [branchId, ...branchPool(branchId).filter((b) => b !== branchId)];
 
   const levelKey = norm(group.level);
   if (levelKey) {
     const level = (course.levels ?? []).find((l) => norm(l.name) === levelKey);
-    const lb = level?.branches?.find((b) => Number(b.id) === branchId && b.enabled);
-    if (lb && Number(lb.summa) >= MIN_MONTHLY_PRICE) return Number(lb.summa);
+    for (const bid of order) {
+      const lb = level?.branches?.find((b) => Number(b.id) === bid && b.enabled);
+      if (lb && Number(lb.summa) >= MIN_MONTHLY_PRICE) return Number(lb.summa);
+    }
   }
-  const cb = (course.branches ?? []).find((b) => Number(b.id) === branchId && b.enabled);
-  if (cb && Number(cb.price) >= MIN_MONTHLY_PRICE) return Number(cb.price);
+  for (const bid of order) {
+    const cb = (course.branches ?? []).find((b) => Number(b.id) === bid && b.enabled);
+    if (cb && Number(cb.price) >= MIN_MONTHLY_PRICE) return Number(cb.price);
+  }
   return null;
 }
 

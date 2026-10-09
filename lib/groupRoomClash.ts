@@ -5,10 +5,14 @@ import { pooledBranchInCondition } from "@/lib/branchScope";
 
 // Xona bandligi — SERVER tomoni (POST /api/groups, PATCH /api/groups/:id).
 // Qoida lib/groupRules.ts da (klient bilan bir xil); bu yerda faqat
-// nomzod bilan bir filialdagi, bir xonadagi tirik guruhlar o'qiladi.
+// nomzod bilan bir filialdagi (yoki filial HOVUZIDAGI), bir xonadagi tirik
+// guruhlar o'qiladi.
 //
 // Filial bo'yicha kesiladi: xona jismoniy, "201 - xona" ikki filialda ham
-// bo'lishi mumkin va ular bir-biriga xalaqit bermaydi.
+// bo'lishi mumkin va ular bir-biriga xalaqit bermaydi. ISTISNO — hovuz
+// (09.10.2026, lib/branchPools.ts): 1- va 2-filial xonalari umumiy, nomi
+// hovuz ichida noyob (lib/roomBranch.ts), shuning uchun bandlik ikkala
+// filial guruhlariga qaraydi.
 
 /** To'qnashgan guruh haqida 409 javobga qo'shiladigan ma'lumot. */
 export interface RoomClash {

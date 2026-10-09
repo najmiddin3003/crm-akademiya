@@ -124,7 +124,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       "Hisobotlar → «Qarzdor o'quvchilar».",
       "Qarz = guruh jadvali bo'yicha o'tgan darslar × bitta dars narxi − to'langan pul.",
       "Bitta dars narxi = oylik kurs narxi ÷ oydagi darslar (haftasiga 3 kun → 13 dars).",
-      "Kurs narxi O'quv bo'limi → Oflayn kurslarda filial bo'yicha kiritiladi; narxi yo'q guruh hisobotda alohida ko'rsatiladi.",
+      "Kurs narxi O'quv bo'limi → Oflayn kurslarda filial bo'yicha kiritiladi (Chortoqdagi 1 va 2-filialda bittasiga kiritilgani ikkinchisiga ham o'tadi); narxi yo'q guruh hisobotda alohida ko'rsatiladi.",
     ].join("\n"),
   },
   {
@@ -153,11 +153,13 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   {
     id: "branch",
     title: "Filial tanlash",
-    keywords: ["filial", "branch", "almashtirish", "boshqa filial"],
+    keywords: ["filial", "branch", "almashtirish", "boshqa filial", "chortoq", "1 va 2", "ikkala filial"],
     pages: [],
     text: [
       "Tepadagi filial tanlagichi: o'quvchilar, guruhlar, davomat, lidlar va oylik tanlangan filial bo'yicha ko'rsatiladi; sozlamalar umumiy.",
-      "Chortoqdagi 1 va 2-filial o'quvchilari umumiy.",
+      "Chortoqdagi 1 va 2-filial bitta: o'quvchilar, guruhlar, xonalar, dars jadvali, davomat, lidlar va xodimlar ro'yxati ikkalasida bir xil ko'rinadi.",
+      "Ular orasida faqat kassa va oylik alohida: kassa mas'ul xodimga, oylik xodimning oylik filialiga bog'langan; xodimning «Ishga keldim» belgisi ham har bino uchun o'zi.",
+      "Yangi yozuv (lid, guruh, o'quvchi) tepada tanlangan filialga yoziladi.",
       "Xodim faqat o'ziga biriktirilgan filiallarni tanlay oladi.",
     ].join("\n"),
   },

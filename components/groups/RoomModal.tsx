@@ -36,6 +36,13 @@ export default function RoomModal({
   // Qo'shishda sukut holatga YOZILMAYDI: filiallar oyna ochilgandan keyin
   // kelsa ham tanlov bo'sh qolmasin.
   const branchValue = branch || (currentBranchId !== null ? String(currentBranchId) : "");
+  // Xonaning o'z filiali ro'yxatda bo'lmasa ham (1+2 hovuzi: hovuzdosh bino)
+  // tanlovda ko'rinsin — aks holda Select bo'sh turardi.
+  const ownBranch = room ? roomBranchId(room) : null;
+  const branchOptions = [
+    ...branches.map((b) => ({ value: String(b.id), label: b.name })),
+    ...(ownBranch !== null && !branches.some((b) => b.id === ownBranch) ? [{ value: String(ownBranch), label: t("{n}-filial", { n: ownBranch }) }] : []),
+  ];
   const [name, setName] = useState(room?.name || "");
   const [capacity, setCapacity] = useState(room ? String(room.capacity) : "");
   const [note, setNote] = useState(room?.note || "");
@@ -52,7 +59,11 @@ export default function RoomModal({
       return;
     }
     setSaving(true);
-    const payload = { name: trimmed, capacity, note: note.trim(), branchId: Number(branchValue) };
+    // Tahrirda filial faqat O'ZGARTIRILGANDA yuboriladi: 1+2 hovuzida boshqa
+    // binodagi xona ham ochiladi, uning filiali esa navbar ro'yxatida bo'lmasligi
+    // mumkin — qayta yuborilsa server ruxsat so'rardi (09.10.2026).
+    const branchChanged = !room || Number(branchValue) !== roomBranchId(room);
+    const payload = { name: trimmed, capacity, note: note.trim(), ...(branchChanged ? { branchId: Number(branchValue) } : {}) };
     const url = room ? `/api/rooms/${room.id}` : "/api/rooms";
     const method = room ? "PATCH" : "POST";
     try {
@@ -102,7 +113,7 @@ export default function RoomModal({
             <Select
               value={branchValue}
               onChange={(v) => setBranch(v)}
-              options={branches.map((b) => ({ value: String(b.id), label: b.name }))}
+              options={branchOptions}
               placeholder={t("Filialni tanlang")}
               loading={branchesLoading}
               size="lg"

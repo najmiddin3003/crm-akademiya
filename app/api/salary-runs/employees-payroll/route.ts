@@ -56,8 +56,9 @@ export async function GET(req: Request) {
   // bayroqni ISHLATMAYDI va ishlatmasligi ham kerak: u yerda kesish ikki
   // marta to'lashni to'sadi (pastdagi izohga qarang).
   const allBranches = (params.get("branch") ?? "").trim() === "all";
-  // `?branch=pool` — joriy filial HOVUZI (1+2, lib/branchPools.ts) oylik
-  // qatorlari: har xodim o'z `payrollBranchId` si bo'yicha bir marta.
+  // `?branch=pool` — joriy filial HOVUZI (1+2, lib/branchPools.ts) a'zolari
+  // (`branchIds`, Xodimlar ro'yxati bilan bir xil qamrov) oylik qatorlari, har
+  // xodim bir marta.
   // Faqat KO'RISH uchun — Xodimlar ro'yxati va profil (ular hovuz bo'yicha,
   // 09.10.2026), aks holda boshqa filial oyligidagi xodim «Sozlanmagan»
   // chiqardi. Oylik chiqarish sahifasi buni ISHLATMAYDI — oylik filial
@@ -87,7 +88,7 @@ export async function GET(req: Request) {
     allBranches
       ? {}
       : pooled
-        ? { payrollBranchIds: branchPool(scope.branchId) }
+        ? { memberOfBranchIds: branchPool(scope.branchId) }
         : { payrollBranchId: scope.branchId },
   );
   // O'TGAN OY ochilganda — "bu oy puli joriy oyda allaqachon berilgan

@@ -6,6 +6,7 @@ import { loadPendingOut } from "@/lib/transferPending";
 import { loadCardStats } from "@/lib/cashboxStats";
 import { getCurrentEmployee, nameEq } from "@/lib/currentEmployee";
 import { branchForInsert, getBranchScope } from "@/lib/branchScope";
+import { sameBranchPool } from "@/lib/branchPools";
 
 // Moliya → Kassalar backend'i (MongoDB `cashboxes`). Demo seed YO'Q —
 // kassalarni foydalanuvchi o'zi qo'shadi.
@@ -151,6 +152,24 @@ export async function POST(req: Request) {
   // (lib/sync/lookups.ts); ilgari yozilmasdi va yangi kassalar filialsiz
   // qolardi (Uychi va Uchqo'rg'on kassalari shunday ochilgan edi).
   const scope = await getBranchScope();
+  // 1+2 HOVUZI (09.10.2026): mas'ul shaxs tanlovi (/api/moderators) endi
+  // ikkala Chortoq filialidan, kassa esa PUL — filial bo'yicha qat'iy
+  // (lib/branchPools.ts). Navbar qaysi binoda qolib ketgani tasodif: kassa
+  // filiali mas'ul xodimning OYLIK FILIALIDAN olinadi, agar u navbar bilan
+  // bitta hovuzda bo'lsa. Aks holda — avvalgidek navbar. Bu maydon oylik
+  // kartochkalari (attachBranchPayouts), month-cashflow va Telegram topigini
+  // hal qiladi — noto'g'ri filial kassir pullarini boshqa binoga yozardi.
+  let branchId = scope ? branchForInsert(scope) : null;
+  if (scope && moderator) {
+    const emp = await db
+      .collection("hr_employees")
+      .findOne(
+        { $and: [{ name: nameEq(moderator) }, { $or: [{ archReason: { $exists: false } }, { archReason: null }, { archReason: "" }] }] },
+        { projection: { _id: 0, payrollBranchId: 1 } },
+      );
+    const home = Number(emp?.payrollBranchId);
+    if (Number.isFinite(home) && sameBranchPool(home, scope.branchId)) branchId = home;
+  }
 
   const cashbox: Cashbox = {
     id: nextId,
@@ -160,7 +179,7 @@ export async function POST(req: Request) {
     onlinePayment: !!body.onlinePayment,
     archived: !!body.archived,
     isPrimary: false,
-    ...(scope ? { branchId: branchForInsert(scope) } : {}),
+    ...(branchId !== null ? { branchId } : {}),
     methodTotals: zeroMethodTotals(await loadPaymentMethodKeys(db)),
   };
   await col.insertOne({ ...cashbox });

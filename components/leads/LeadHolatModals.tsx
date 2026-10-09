@@ -161,7 +161,7 @@ export function GuruhModal({ order, branchName, nowMs, fmt, onClose, onDone, onC
   // u bilan bitta hovuzdagi filial, lib/branchPools.ts) guruhi.
   const { match, other } = useMemo(() => {
     const live = ((groups ?? []) as GroupWithBranch[]).filter(
-      (g) => g.status !== "finished" && (g.branchId === undefined || order.branchId === undefined || sameBranchPool(g.branchId, order.branchId)),
+      (g) => g.status !== "finished" && (g.branchId == null || order.branchId == null || sameBranchPool(g.branchId, order.branchId)),
     );
     const c = norm(order.course);
     const isMatch = (g: Group) => !!c && norm(g.course) === c;
