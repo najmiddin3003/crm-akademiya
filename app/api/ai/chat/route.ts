@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { actionViews, historyWithActionNotes } from "@/lib/ai/actions/store";
@@ -37,6 +38,9 @@ import { LANG_COOKIE } from "@/lib/serverT";
 // siqish ham bo'laklarni ushlab turmaydi.
 
 export const runtime = "nodejs";
+
+/** Model faqat qoralama tuzib, matn yozmagan javob — suhbatda bo'sh qolmasin. */
+const DRAFT_ONLY_ANSWER = "Qoralama tayyor — kartani tekshirib, «Tasdiqlash» ni bosing.";
 
 export async function POST(req: Request) {
   const db = await aiDb();
@@ -86,11 +90,19 @@ export async function POST(req: Request) {
   const past = conversation?.messages ?? [];
   const history = historyWithActionNotes(past, await actionViews(db, ctx.userId, past.flatMap((m) => m.actionIds ?? [])));
   const encoder = new TextEncoder();
+  // Yangi suhbatning id'si OLDINDAN, birinchi `meta` da mijozga ketadi: javob
+  // to'xtatilsa yoki uzilsa ham mijoz keyingi savolni shu suhbatga yuboradi
+  // (qoralama tuzilgan bo'lsa navbat baribir saqlanadi — pastda).
+  const turnConversationId = conversation?.id ?? randomUUID();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
+      // Mijozga ketgan matn va qoralamalar — navbat oxiriga yetmasa ham ma'lum.
+      const sent = { text: "", actionIds: [] as string[] };
       const emit = (e: AiStreamEvent) => {
+        if (e.type === "delta") sent.text += e.text;
+        else if (e.type === "action") sent.actionIds.push(e.action.id);
         if (closed) return;
         try {
           controller.enqueue(encoder.encode(`${JSON.stringify(e)}\n`));
@@ -98,9 +110,35 @@ export async function POST(req: Request) {
           closed = true; // mijoz ketib qolgan
         }
       };
+      /**
+       * Navbat to'xtatildi/uzildi, lekin qoralama KARTASI chiqib bo'lgan — u
+       * 15 daqiqa tasdiqlanadigan bo'lib turadi. Navbat saqlanmasa model
+       * keyingi savolda uni bilmay ikkinchisini tuzar, ikkalasi tasdiqlansa
+       * pul ikki marta yozilardi (09.10.2026). Shuning uchun chala javob
+       * qoralamalari bilan suhbatga yoziladi; qoralamasiz chala javob —
+       * avvalgidek saqlanmaydi.
+       */
+      const saveInterrupted = async () => {
+        if (!sent.actionIds.length) return;
+        const at = new Date().toISOString();
+        try {
+          await saveTurn(
+            db,
+            ctx.userId,
+            conversation?.id ?? null,
+            [
+              { role: "user", content: message, at },
+              { role: "assistant", content: sent.text.trim() || DRAFT_ONLY_ANSWER, at, actionIds: [...sent.actionIds] },
+            ],
+            { newId: turnConversationId },
+          );
+        } catch (e) {
+          console.error("[ai] uzilgan navbatni saqlab bo'lmadi", e);
+        }
+      };
       const keepalive = setInterval(() => emit({ type: "ping" }), KEEPALIVE_MS);
       const used = { model: choice.model, effort: choice.effort };
-      emit({ type: "meta", conversationId: conversation?.id ?? "", remaining: quota.remaining, limit, ...used });
+      emit({ type: "meta", conversationId: turnConversationId, remaining: quota.remaining, limit, ...used });
 
       try {
         const turn = await runChatTurn({
@@ -113,26 +151,37 @@ export async function POST(req: Request) {
           signal: req.signal,
           effort: choice.effort,
         });
-        if (req.signal.aborted) return; // chala javob saqlanmaydi
+        if (req.signal.aborted) {
+          // Chala javob saqlanmaydi — qoralamasi bo'lsa saqlanadi (yuqorida).
+          await saveInterrupted();
+          return;
+        }
         const { actionIds } = turn;
         // Model faqat qoralama tuzib, matn yozmagan bo'lsa ham karta bor — javob bo'sh qolmasin.
-        const answer = turn.answer || (actionIds.length ? "Qoralama tayyor — kartani tekshirib, «Tasdiqlash» ni bosing." : "");
+        const answer = turn.answer || (actionIds.length ? DRAFT_ONLY_ANSWER : "");
         if (!answer) {
           await refundQuota(db, ctx.userId);
           emit({ type: "error", message: "AI javob qaytarmadi. Savolni boshqacha yozib ko'ring." });
           return;
         }
-        const id = await saveTurn(db, ctx.userId, conversation?.id ?? null, [
-          { role: "user", content: message, at: new Date().toISOString() },
-          { role: "assistant", content: answer, at: new Date().toISOString(), ...(actionIds.length ? { actionIds } : {}) },
-        ]);
+        const id = await saveTurn(
+          db,
+          ctx.userId,
+          conversation?.id ?? null,
+          [
+            { role: "user", content: message, at: new Date().toISOString() },
+            { role: "assistant", content: answer, at: new Date().toISOString(), ...(actionIds.length ? { actionIds } : {}) },
+          ],
+          { newId: turnConversationId },
+        );
         emit({ type: "meta", conversationId: id, remaining: quota.remaining, limit, ...used });
         emit({ type: "done" });
       } catch (e) {
         // Xodim o'zi to'xtatdi (yoki sahifani yopdi) — xato emas va savol
         // qaytarilmaydi: javobning bir qismi kelgan, OpenAI'ga pul ketgan.
         // Aks holda "deyarli oxirigacha o'qib, to'xtatish" limitni chetlab
-        // o'tardi.
+        // o'tardi. Qoralama kartasi chiqqan bo'lsa — navbat suhbatga yoziladi.
+        await saveInterrupted();
         if (req.signal.aborted) return;
         // Xizmat aybi — xodim limitini yo'qotmasin.
         await refundQuota(db, ctx.userId);

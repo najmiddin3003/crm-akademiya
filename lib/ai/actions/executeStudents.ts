@@ -3,7 +3,7 @@ import { saveAttendanceMark } from "@/lib/attendanceWrite";
 import { withBranch } from "@/lib/branchScope";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { addPupilToGroup, removePupilFromGroup } from "@/lib/groupStudents";
-import { holatMeta, isHolat, type LeadGuruh, type LeadSinov } from "@/lib/leadHolat";
+import { canTransition, holatMeta, holatOf, isHolat, type LeadGuruh, type LeadSinov } from "@/lib/leadHolat";
 import { applyHolatChange } from "@/lib/leadHolatServer";
 import { refreshLeadMessage } from "@/lib/leadNotify";
 import { withLeadScope } from "@/lib/leadScope";
@@ -80,25 +80,45 @@ export async function executeStudentAction(ctx: AiContext, doc: ActionDoc, deps:
     const date = str(p.date);
     const marks = (Array.isArray(p.marks) ? p.marks : []) as { pupilId?: unknown; status?: unknown; reason?: unknown; note?: unknown }[];
     const author = ctx.userName || authorNameOf(ctx);
+    // Baho holatdan MUSTAQIL (README → davomat: "1..5 baho — holatdan
+    // mustaqil"): web jadval holatni almashtirganda joriy bahoni qayta
+    // yuboradi. Yadro berilmagan bahoni `null` qilib yozadi — shuning uchun
+    // bu yerda ham hozirgi baho o'qilib uzatiladi, aks holda "Ali keldi"
+    // tasdiqlanganda uning 5 bahosi o'chardi (09.10.2026).
+    const pupilIds = marks.map((m) => num(m.pupilId)).filter((id) => Number.isFinite(id));
+    const gradeRows = await db
+      .collection("attendance")
+      .find({ groupId, date, pupilId: { $in: pupilIds } }, { projection: { _id: 0, pupilId: 1, grade: 1 } })
+      .toArray();
+    const gradeOf = new Map(gradeRows.map((r) => [Number(r.pupilId), typeof r.grade === "number" ? r.grade : null]));
     let saved = 0;
     const failed: string[] = [];
     for (const m of marks) {
-      const out = await saveAttendanceMark(
-        db,
-        ctx.scope,
-        {
-          groupId,
-          pupilId: num(m.pupilId),
-          date,
-          status: str(m.status) as AttendanceStatus,
-          reason: str(m.reason) || null,
-          note: str(m.note) || null,
-        },
-        author,
-        deps,
-      );
-      if (out.ok) saved++;
-      else failed.push(out.error);
+      const pupilId = num(m.pupilId);
+      try {
+        const out = await saveAttendanceMark(
+          db,
+          ctx.scope,
+          {
+            groupId,
+            pupilId,
+            date,
+            status: str(m.status) as AttendanceStatus,
+            grade: gradeOf.get(pupilId) ?? null,
+            reason: str(m.reason) || null,
+            note: str(m.note) || null,
+          },
+          author,
+          deps,
+        );
+        if (out.ok) saved++;
+        else failed.push(out.error);
+      } catch (e) {
+        // Bitta belgining kutilmagan xatosi (masalan tarix id'si to'qnashuvi)
+        // qolganlarini to'xtatmasin — saqlanganlar soni kartada to'g'ri chiqsin.
+        console.error("[ai] davomat belgisi yozilmadi", groupId, pupilId, e);
+        failed.push("Kutilmagan xato");
+      }
     }
     if (saved === 0) return { ok: false, error: failed[0] ?? "Davomat saqlanmadi" };
     const reasons = [...new Set(failed)].join("; ");
@@ -125,6 +145,15 @@ export async function executeStudentAction(ctx: AiContext, doc: ActionDoc, deps:
   const filter = withLeadScope({ id: orderId }, ctx.scope, author);
   const order = (await db.collection("orders").findOne(filter, { projection: { _id: 0 } })) as unknown as Order | null;
   if (!order) return { ok: false, error: "Lid topilmadi" };
+  // Bosqich o'tishi ENG AVVAL — «guruh» da o'quvchi yaratilib guruhga
+  // qo'shilishidan (o'quvchiga Telegram xabari, qarz hisobi) OLDIN:
+  // qoralamadan beri lid Telegram'da rad etilgan yoki boshqa guruhga
+  // yozilgan bo'lishi mumkin (ikkinchi «guruh» qoralamasi ham). Yozish
+  // paytida applyHolatChange yana tekshiradi (09.10.2026).
+  const from = holatOf(order);
+  if (!canTransition(from, to)) {
+    return { ok: false, error: `«${holatMeta(from).nom}» holatidan «${holatMeta(to).nom}» ga o'tib bo'lmaydi` };
+  }
 
   let guruh: LeadGuruh | undefined;
   let pupilId: number | undefined;

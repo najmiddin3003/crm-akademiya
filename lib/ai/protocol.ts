@@ -58,6 +58,12 @@ export type AiStreamEvent =
   | { type: "delta"; text: string }
   /** Amal qoralamasi tayyor — panel tasdiq kartasini chizadi (2-bosqich). */
   | { type: "action"; action: AiActionView }
+  /**
+   * OLDINGI javobdagi kartaning yangi holati — masalan, xodim qoralamani
+   * o'zgartirishni so'radi va eskisi yangisi bilan ALMASHTIRILDI (bekor
+   * qilindi). Panel kartani qaysi xabarda bo'lsa ham o'z joyida yangilaydi.
+   */
+  | { type: "action_update"; action: AiActionView }
   /** Ulanish tirikligi — kutish uzoq cho'zilganda (Nginx uzib qo'ymasin). */
   | { type: "ping" }
   | { type: "done" }
@@ -146,7 +152,10 @@ export type AiActionFieldKey =
   | "lead"
   | "stage"
   | "trial"
-  | "effect";
+  | "effect"
+  // Qizil qator: tasdiqdan oldin albatta ko'rilsin (masalan, oylik ikki marta
+  // to'lanishi mumkin — «qayta bermang», 09.10.2026).
+  | "warning";
 
 export interface AiActionField {
   key: AiActionFieldKey;
@@ -165,6 +174,8 @@ export interface AiActionView {
   resultHref?: string;
   /** Saqlab bo'lmagan bo'lsa — sabab (o'zbekcha, mijoz `t()` qiladi). */
   error?: string;
+  /** Yangi qoralama bilan almashtirilgan (status `cancelled`) — yangisining id'si. */
+  replacedBy?: string;
 }
 
 /** Sozlamalardagi modellar ro'yxatining qatori (GET /api/ai/settings → `modelRows`). */

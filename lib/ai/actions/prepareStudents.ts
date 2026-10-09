@@ -5,7 +5,7 @@ import { scopedEmployeeFilter } from "@/lib/employeeBranches";
 import { lessonExpectedOn } from "@/lib/groupRules";
 import { groupLabel } from "@/lib/groups";
 import type { HrEmployee } from "@/lib/hrEmployees";
-import { canTransition, holatMeta, holatOf, HOLATLAR, isHolat, type LeadHolat } from "@/lib/leadHolat";
+import { canTransition, holatMeta, holatOf, HOLATLAR, isHolat, sinovOf, type LeadHolat } from "@/lib/leadHolat";
 import { withLeadScope } from "@/lib/leadScope";
 import { loadLeadSettings } from "@/lib/leadSettings";
 import type { Order } from "@/lib/ordersData";
@@ -81,6 +81,16 @@ const GROUP_FIELDS = {
 export function describeGroup(g: GroupDoc): string {
   const when = [g.day, g.time].filter(Boolean).join(" ");
   return [groupLabel({ id: g.id, name: g.name ?? "", course: g.course ?? "" }), g.teacher, when].filter(Boolean).join(" · ");
+}
+
+/**
+ * Arxivdagi guruh — Guruh sahifasidagi «Arxivlash» `status: "archive"`
+ * yozadi (lib/groupRules.ts → GROUP_STATUS_VALUES: gathering | active |
+ * frozen | archive). Unga o'quvchi qo'shilmaydi. Ilgari bu yerda "finished"
+ * tekshirilardi — bunday qiymat tizimda yo'q, tekshiruv hech qachon ishlamasdi.
+ */
+function isArchivedGroup(g: GroupDoc): boolean {
+  return (g.status ?? "") === "archive";
 }
 
 /** So'rovdagi "guruh", "ustoz" kabi so'zlar moslikka xalaqit bermasin. */
@@ -245,7 +255,7 @@ export async function preparePupilCreate(ctx: AiContext, args: ToolArgs): Promis
   if (optString(args, "group", 100) || args.groupId !== undefined) {
     const g = await resolveGroup(ctx, args);
     if (!g.ok) return g;
-    if (g.value.status === "finished") return ask({ problem: "That group is finished; a student cannot be added to it. Ask the user for another group." });
+    if (isArchivedGroup(g.value)) return ask({ problem: "That group is archived; a student cannot be added to it. Ask the user for another group." });
     group = g.value;
     joinedAt = dateOr(args, "joinedAt", ctx.today);
   }
@@ -318,7 +328,7 @@ export async function prepareMembership(ctx: AiContext, args: ToolArgs): Promise
   const status = (await pupilNames(ctx, [p.id])).get(p.id)?.status ?? "Aktiv";
 
   if (op === "add") {
-    if (g.status === "finished") return ask({ problem: "That group is finished; a student cannot be added to it. Ask the user for another group." });
+    if (isArchivedGroup(g)) return ask({ problem: "That group is archived; a student cannot be added to it. Ask the user for another group." });
     if (inGroup) return ask({ problem: `${p.name} is already in this group. Nothing to do — tell the user.` });
     const joinedAt = dateOr(args, "joinedAt", ctx.today);
     return {
@@ -502,11 +512,20 @@ export async function prepareAttendance(ctx: AiContext, args: ToolArgs): Promise
     for (const r of roster) if (!chosen.has(r.pupilId)) chosen.set(r.pupilId, { status: others, reason: null, note: null });
   }
 
+  // Mavjud belgilar BUTUN ro'yxat bo'yicha (faqat aytilganlar emas) —
+  // aks holda webda allaqachon belgilangan, lekin so'rovda aytilmagan har
+  // bir o'quvchi "Belgisiz qoladi" deb chiqardi (09.10.2026).
   const existing = new Map(
     (await ctx.db
       .collection("attendance")
-      .find({ groupId: g.id, date, pupilId: { $in: [...chosen.keys()] } }, { projection: { _id: 0, pupilId: 1, status: 1 } })
-      .toArray()).map((x) => [Number(x.pupilId), String(x.status ?? "")]),
+      .find(
+        { groupId: g.id, date, pupilId: { $in: roster.map((r) => r.pupilId) } },
+        { projection: { _id: 0, pupilId: 1, status: 1, reason: 1, note: 1 } },
+      )
+      .toArray()).map((x) => [
+      Number(x.pupilId),
+      { status: String(x.status ?? ""), reason: typeof x.reason === "string" ? x.reason : null, note: typeof x.note === "string" ? x.note : null },
+    ]),
   );
 
   const lines: string[] = [];
@@ -514,17 +533,26 @@ export async function prepareAttendance(ctx: AiContext, args: ToolArgs): Promise
   const counts = new Map<string, number>();
   let unchanged = 0;
   for (const r of roster) {
-    const c = chosen.get(r.pupilId);
-    if (!c) continue;
+    const asked = chosen.get(r.pupilId);
+    if (!asked) continue;
     const before = existing.get(r.pupilId);
-    if (before === c.status) {
+    // «Sababli» qayta aytilib, sabab aytilmasa — web oynasi kabi oldingi sabab va izoh qoladi.
+    const c =
+      asked.status === "sababli" && before?.status === "sababli" && asked.reason === null
+        ? { ...asked, reason: before.reason, note: asked.note ?? before.note }
+        : asked;
+    // O'zgarishsiz — holat ham, «Sababli» da sabab va izoh ham bir xil (faqat sababi o'zgargani ham yoziladi).
+    const same = before?.status === c.status && (c.status !== "sababli" || (before.reason === c.reason && before.note === c.note));
+    if (same) {
       unchanged++;
       continue;
     }
     marks.push({ pupilId: r.pupilId, ...c });
     const label = STATUS_LABEL.get(c.status) ?? c.status;
     counts.set(label, (counts.get(label) ?? 0) + 1);
-    const was = before ? ` (oldin: ${STATUS_LABEL.get(before as AttendanceStatus) ?? before})` : "";
+    const was = before
+      ? ` (oldin: ${STATUS_LABEL.get(before.status as AttendanceStatus) ?? before.status}${before.reason ? `, ${before.reason}` : ""})`
+      : "";
     lines.push(`${r.name} — ${label}${c.reason ? `, ${c.reason}` : ""}${was}`);
   }
   if (marks.length === 0) return ask({ problem: "All these marks are already saved exactly like this. Nothing to change — tell the user." });
@@ -664,7 +692,15 @@ async function resolveLead(ctx: AiContext, args: ToolArgs): Promise<Step<LeadDoc
     const pattern = phoneSearchPattern(query);
     filter = /^[\d\s()+-]+$/.test(query) && pattern
       ? { phone: { $regex: pattern } }
-      : { $and: norm(query).split(" ").filter((t) => t.length >= 2).slice(0, 4).map((t) => ({ name: { $regex: escapeRx(t), $options: "i" } })) };
+      : {
+          // `norm` so'rovdagi ‘ ’ ʻ ʼ ni ' ga aylantiradi; bazadagi ism esa xom
+          // ("Ma’mura" — iPhone klaviaturasi) — har qanday tutuq belgisi mos kelsin.
+          $and: norm(query)
+            .split(" ")
+            .filter((t) => t.length >= 2)
+            .slice(0, 4)
+            .map((t) => ({ name: { $regex: escapeRx(t).replace(/'/g, "['‘’ʻʼ`´]"), $options: "i" } })),
+        };
     if (Array.isArray(filter.$and) && filter.$and.length === 0) return ask({ problem: "The lead search text is too short." });
   }
   const rows = (await ctx.db
@@ -767,11 +803,15 @@ export async function prepareLeadStage(ctx: AiContext, args: ToolArgs): Promise<
     const group = await resolveGroup(ctx, args);
     if (!group.ok) return group;
     const g = group.value;
-    if (g.status === "finished") return ask({ problem: "That group is finished. Ask the user for another group." });
+    if (isArchivedGroup(g)) return ask({ problem: "That group is archived. Ask the user for another group." });
     if (o.branchId !== undefined && g.branchId !== undefined && g.branchId !== o.branchId) {
       return ask({ problem: "That group belongs to another branch than the lead. Ask the user for a group of the lead's branch." });
     }
-    const joinedAt = dateOr(args, "joinedAt", ctx.today);
+    // Darslar qachondan sanaladi — Lidlar sahifasidagi «Guruhga qo'shish»
+    // oynasi kabi: sinov darsi bugun yoki keyin bo'lsa o'sha kundan (aks holda
+    // sinovgacha bo'lgan darslar qarz bo'lib sanalardi), bo'lmasa bugundan.
+    const sinov = sinovOf(o);
+    const joinedAt = dateOr(args, "joinedAt", sinov && sinov.sana >= ctx.today ? sinov.sana : ctx.today);
     const existing = await findPupilForLead(ctx, o);
     payload.groupId = g.id;
     payload.joinedAt = joinedAt;
@@ -789,10 +829,20 @@ export async function prepareLeadStage(ctx: AiContext, args: ToolArgs): Promise<
   return { ok: true, draft: { kind: "stage", payload, fields, forModel } };
 }
 
+/** Ism solishtirish — web'dagi `pupilFullName(p).toLowerCase() === name` (bo'shliqlar bitta). */
+const fullNameKey = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
 /**
- * Lidning o'quvchisi — avval telefon, bo'lmasa to'liq ism bo'yicha
- * (lib/enrollStudent.ts → findPupilForOrder bilan bir xil tartib), filial
- * hovuzida. Topilmasa `null` — tasdiqda lid ma'lumotidan yaratiladi.
+ * Lidning o'quvchisi — lib/enrollStudent.ts → findPupilForOrder (Lidlar
+ * sahifasidagi «Guruhga qo'shish») bilan BIR XIL qoida, filial hovuzida:
+ *   1) telefon bo'yicha — bir nechta o'quvchi (aka-uka bitta telefonda)
+ *      bo'lsa avval ISMI lidnikiga teng bo'lgani, bo'lmasa ENG YANGISI
+ *      (web ro'yxati `id` kamayish tartibida va birinchisini oladi);
+ *   2) bo'lmasa TO'LIQ ism bo'yicha (ism/familiya qanday bo'linganidan
+ *      qat'i nazar: "Abdul Aziz" + "Karimov" ham, "Ali Valiyev" + "" ham).
+ * Ilgari ism ikkiga bo'lib qidirilardi va topilmay dublikat o'quvchi
+ * yaratilardi; telefonda esa tasodifiy aka-uka olinardi (09.10.2026).
+ * Topilmasa `null` — tasdiqda lid ma'lumotidan yaratiladi.
  */
 export async function findPupilForLead(ctx: AiContext, o: Pick<Order, "name" | "phone">): Promise<{ id: number; name: string } | null> {
   const projection = { _id: 0, id: 1, firstName: 1, lastName: 1 };
@@ -800,26 +850,29 @@ export async function findPupilForLead(ctx: AiContext, o: Pick<Order, "name" | "
     id: Number(r.id),
     name: pupilFullName({ firstName: String(r.firstName ?? ""), lastName: String(r.lastName ?? "") }),
   });
+  const name = (o.name ?? "").trim();
+  const wanted = fullNameKey(name);
   const key = phoneKey(o.phone);
   const pattern = key ? phoneSearchPattern(key) : null;
   if (pattern) {
-    const byPhone = await ctx.db.collection("pupils").findOne(withPupilBranch({ phone: { $regex: pattern } }, ctx.scope), { projection });
-    if (byPhone) return toPick(byPhone);
+    const byPhone = (await ctx.db
+      .collection("pupils")
+      .find(withPupilBranch({ phone: { $regex: pattern } }, ctx.scope), { projection })
+      .sort({ id: -1 })
+      .limit(20)
+      .toArray()).map(toPick);
+    if (byPhone.length) return byPhone.find((p) => wanted && fullNameKey(p.name) === wanted) ?? byPhone[0];
   }
-  const name = (o.name ?? "").trim();
   if (!name) return null;
-  const [first, ...rest] = name.split(/\s+/);
-  const byName = await ctx.db.collection("pupils").findOne(
-    withPupilBranch(
-      {
-        firstName: { $regex: `^${escapeRx(first)}$`, $options: "i" },
-        lastName: { $regex: `^${escapeRx(rest.join(" "))}$`, $options: "i" },
-      },
-      ctx.scope,
-    ),
-    { projection },
-  );
-  return byName ? toPick(byName) : null;
+  // Nomzodlar ismning birinchi so'zi bilan boshlanadiganlar, keyin to'liq ism aniq solishtiriladi.
+  const [first] = name.split(/\s+/);
+  const byName = (await ctx.db
+    .collection("pupils")
+    .find(withPupilBranch({ firstName: { $regex: `^${escapeRx(first)}`, $options: "i" } }, ctx.scope), { projection })
+    .sort({ id: -1 })
+    .limit(200)
+    .toArray()).map(toPick);
+  return byName.find((p) => fullNameKey(p.name) === wanted) ?? null;
 }
 
 /** Lid ma'lumotidan yangi o'quvchining qiymatlari (lib/enrollStudent.ts bilan bir xil: manba — «Buyurtmadan»). */

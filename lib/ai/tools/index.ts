@@ -115,6 +115,8 @@ export interface ToolRunResult {
   content: string;
   /** Amal vositasi qoralama tuzdi — panel kartasi (lib/ai/chat.ts uzatadi). */
   action?: AiActionView;
+  /** Shu qoralama almashtirgan eski kartalarning yangi holati (`action_update`). */
+  updates?: AiActionView[];
   /**
    * Natija ko'rinadigan CRM sahifasi (4-bosqich): panel kichrayib, ekranda
    * shu sahifani ochadi — "AI nima qilyapti" ko'rinib tursin. Faqat ichki
@@ -174,7 +176,13 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
   try {
     const raw = await tool.run(ctx, args);
     if (raw instanceof DraftCreated) {
-      return { ok: true, content: clip(JSON.stringify(raw.forModel)), action: raw.view, ...screenOf(ctx, raw.screen) };
+      return {
+        ok: true,
+        content: clip(JSON.stringify(raw.forModel)),
+        action: raw.view,
+        ...(raw.replaced.length ? { updates: raw.replaced } : {}),
+        ...screenOf(ctx, raw.screen),
+      };
     }
     const { result, note, plan } = takeUi(raw);
     // Vosita "xato" natijasi (`{error}`) — ruxsat yoki qamrov sababi: panelda qizil belgi.

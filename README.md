@@ -2575,3 +2575,80 @@ yangilash, qidiruv, ko'rsatmadagi nom. Ko'z bilan: lokal dev'da soxta API
 bilan (vaqtinchalik sahifa, commit qilinmadi) — genie (sekinlashtirib,
 kadrma-kadr), tarix, o'ylash holati, kichrayish va qayta kattalashish,
 telefondagi parda, tungi rejim; konsolda xato yo'q.
+
+### Ko'rib chiqish tuzatishlari (2026-10-09)
+
+Chuqur kod ko'rib chiqishi (max) topgan 15 ta nuqson tuzatildi. Pul ikki
+marta yozilishining uch yo'li yopildi:
+
+- **Oylik «qayta bermang»** — `lib/ai/actions/prepare.ts → prepareChiqim`.
+  Bot va Chiqim oynasidagi o'tish davri ogohlantirishi (`paidLater` /
+  `pendingMaybePaid`) endi AI kartasida qizil «Diqqat» qatori bo'lib
+  chiqadi. Tanlangan oy qoldig'i boshqa oyda berilgan bo'lishi mumkin
+  bo'lsa (`paidLater`), qoralama umuman tuzilmaydi: model avval xodimga
+  aytadi, faqat «berilmagan» desa `paidLaterChecked: true` bilan qayta
+  chaqiradi. Chegara o'zgarmaydi — qaror kassirda (web bilan bir xil).
+- **O'zgartirilgan qoralama** — `lib/ai/actions/store.ts → supersedeDrafts`.
+  Har qoralamada `subject` kaliti (`draftSubject`: kim va qayerda — summa,
+  oy va to'lov turi kirmaydi). Yangi qoralama shu amalning OLDINGI
+  so'rovlardagi kutayotgan qoralamasini bekor qiladi (`replacedBy`,
+  kartada «Almashtirildi»). Model ham `replacesDraftId` beradi: o'quvchi
+  yoki oy almashtirilganda kalit o'zgaradi. Bitta javobdagi ikki alohida
+  amalga («Aliga 300 000, Valiga 200 000») tegilmaydi. Shu amal so'nggi
+  bir soatda allaqachon saqlangan bo'lsa (kirim, chiqim, ko'chirma, lid,
+  yangi o'quvchi), yangi kartada «Diqqat: … allaqachon saqlangan» qatori
+  chiqadi. Panel eski kartani o'z joyida yangilaydi
+  (`{type: "action_update"}`).
+- **To'xtatilgan / uzilgan javob** — `app/api/ai/chat/route.ts`. Yangi
+  suhbat id'si oqim boshida (birinchi `meta`) beriladi. Qoralama kartasi
+  chiqqandan keyin javob to'xtatilsa yoki xato bilan tugasa, navbat
+  qoralamalari bilan saqlanadi (`saveInterrupted`), shuning uchun model
+  keyingi savolda uni ko'radi. Qoralamasiz chala javob avvalgidek
+  saqlanmaydi.
+
+Boshqalari:
+
+- **Davomat bahosi** endi o'chmaydi: bajaruvchi joriy bahoni o'qib uzatadi
+  (`executeStudents.ts`), web jadvali bilan bir xil. Har belgi alohida
+  try/catch'da bajariladi. Qoralamadagi «Belgisiz qoladi» butun ro'yxat
+  bo'yicha hisoblanadi. «Sababli»da faqat sababi o'zgargani ham yoziladi,
+  sabab aytilmasa oldingisi qoladi.
+- **Lid → «guruh»**: `canTransition` o'quvchi yaratilib guruhga
+  qo'shilishidan OLDIN tekshiriladi. `findPupilForLead` webdagi qoidaga
+  keltirildi: telefon bo'yicha bir nechta mos kelsa avval ismi tengi,
+  bo'lmasa eng yangisi olinadi; ism esa to'liq solishtiriladi.
+  `joinedAt` sukut bo'yicha sinov darsi sanasi (u bugun yoki keyin
+  bo'lsa). Lid qidiruvida har qanday tutuq belgisi mos keladi.
+- **Arxiv guruh**: `"finished"` tekshiruvi o'lik edi (bunday holat yo'q),
+  endi `status: "archive"` tekshiriladi.
+- **payments_list**: jami faqat QABUL QILINGAN qatorlardan olinadi,
+  kirim va chiqim alohida (`/api/transaction-entries?withTotals=1`
+  qoidasi). Tasdiq kutayotgan ko'chirmalar `awaitingAcceptance` da
+  alohida turadi. Bitta o'quvchi uchun `pupilId` beriladi
+  (`pupilEntryMatch`, ismdoshlar aralashmaydi).
+- **payroll_summary**: Oylik sahifasining zanjiri ishlatiladi
+  (`attachMaybePaidIn` → `attachBranchPayouts`). `toPay` va `debt`
+  alohida hisoblanadi, kassa kartochkalari (`cashboxPayouts`) qo'shildi,
+  o'tgan oy qatorida `possiblyAlreadyPaid` belgisi chiqadi.
+- **attendance_report**: boshlanish sanasi yo'q guruh «davomat
+  qilinmagan»ga sanalmaydi (`/nazorat-missed-groups` kabi), u alohida
+  `groupsWithoutStartDate` da ko'rsatiladi.
+- **query_data**: so'rovning o'zi tekshiriladi.
+  - Rad etiladi: `$$ROOT`/`$$CURRENT`, sir maydoniga har qanday murojaat
+    (taxallus, `$$this.x`, filtr kaliti), ifodadagi telefon maydoni
+    (`$phone`), telefon ichida qidiruv (`$regex`/oraliq), shuningdek
+    `$getField` / `$objectToArray` kabi nom bilan oluvchi operatorlar.
+  - `_id` endi tashlanmaydi, chunki guruh kaliti shu yerda (hujjat
+    ObjectId'si baribir chiqmaydi).
+  - Telefonlar ro'yxati ham yashiriladi.
+  - Kolleksiyalar ta'rifi haqiqiy maydonlarga keltirildi: penalties,
+    bonuses, turnstile_io, pupil_comments, staff_tasks, guruh holatlari;
+    `pupils.balance` endi ishlatilmaydi.
+
+Sinov: `scripts/_verify-ai.mjs` — yangi tekshiruvlar: redact/assertSafe,
+qoralama kaliti, ogohlantirish tarjimasi, boshlanish sanasiz guruh.
+Bazali qismi Atlas ko'zgusida FAQAT O'QISH smoke-sinovi bilan
+tekshirildi (payments_list, payroll_summary, attendance_report,
+query_data, findPupilForLead, prepareAttendance). Qoralama →
+tasdiq oqimi (`_verify-ai-actions.mjs`) lokal MongoDB talab qiladi va
+yurgizilmadi.

@@ -312,8 +312,10 @@ console.log("\n— 3-bosqich (sof hisob)");
   check("oraliq: teskari va juda uzun rad etiladi", throwsInput(() => dayRange({ from: "2026-10-05", to: "2026-10-01" }, today)) && throwsInput(() => dayRange({ from: "2026-01-01", to: "2026-10-01" }, today)));
 
   const groups = [
-    { id: 1, label: "Ingliz tili (101-guruh)", teacher: "Otabek Rasulov", status: "active", day: "Toq kunlar" },
-    { id: 2, label: "Matematika (102-guruh)", teacher: "Kamola Ergasheva", status: "frozen", day: "Toq kunlar" },
+    { id: 1, label: "Ingliz tili (101-guruh)", teacher: "Otabek Rasulov", status: "active", day: "Toq kunlar", startDate: "2026-09-01" },
+    { id: 2, label: "Matematika (102-guruh)", teacher: "Kamola Ergasheva", status: "frozen", day: "Toq kunlar", startDate: "2026-09-01" },
+    // Boshlanish sanasi yo'q — /nazorat-missed-groups kabi "davomat qilinmagan" ga sanalmaydi.
+    { id: 3, label: "Fizika (103-guruh)", teacher: "Dilshod Aliyev", status: "active", day: "Toq kunlar", startDate: "" },
   ];
   const marks = [
     { groupId: 1, pupilId: 1, date: "2026-10-05", status: "keldi" },
@@ -337,6 +339,11 @@ console.log("\n— 3-bosqich (sof hisob)");
     "davomat qilinmagan: aktiv guruhning chorshanbasi, muzlatilgan guruh emas",
     s.notMarkedTotal === 1 && s.notMarked[0].date === "2026-10-07" && s.notMarked[0].group === "Ingliz tili (101-guruh)",
     JSON.stringify(s.notMarked),
+  );
+  check(
+    "davomat qilinmagan: boshlanish sanasiz guruh sanalmaydi, alohida aytiladi",
+    !s.notMarked.some((x) => x.group === "Fizika (103-guruh)") && eq(s.groupsWithoutStartDate, ["Fizika (103-guruh)"]),
+    JSON.stringify({ notMarked: s.notMarked, without: s.groupsWithoutStartDate }),
   );
   check("davomat: guruhlar kesimi — eng ko'p qoldirgan birinchi", s.groups[0].group === "Ingliz tili (101-guruh)" && s.groups[0].attendancePercent === 33.3 && s.groups[1].attendancePercent === 100);
   const late = summarizeAttendance({ from: "2026-10-05", to: today, today, groups, marks, pupilNames: names, status: "kechikdi" });
@@ -577,7 +584,7 @@ console.log("\n— 5-bosqich (reja, query_data, jadval, guruh/davomat yordamchil
   const groups = [
     { id: 101, name: "5", course: "Ingliz tili", level: "A1", teacher: "Dilnoza Karimova", day: "Toq kunlar", time: "14:00 - 16:00", status: "active" },
     { id: 102, name: "12", course: "Matematika", teacher: "Otabek Rasulov", day: "Juft kunlar", time: "10:00 - 12:00", status: "active" },
-    { id: 103, name: "15", course: "Ingliz tili", level: "B1", teacher: "Dilnoza Karimova", day: "Juft kunlar", time: "16:00 - 18:00", status: "finished" },
+    { id: 103, name: "15", course: "Ingliz tili", level: "B1", teacher: "Dilnoza Karimova", day: "Juft kunlar", time: "16:00 - 18:00", status: "archive" },
   ];
   const ids = (q) => matchGroups(groups, q).map((g) => g.id);
   check("guruh: raqam / '5-guruh' / '#12' — nomi bo'yicha", eq(ids("5"), [101]) && eq(ids("5-guruh"), [101]) && eq(ids("#12"), [102]));
@@ -624,11 +631,44 @@ console.log("\n— 5-bosqich (reja, query_data, jadval, guruh/davomat yordamchil
     isSecretKey("studentPasswordHash") && isSecretKey("access_token") && isSecretKey("tgChatId") && !isSecretKey("passed") && !isSecretKey("phone"),
   );
   {
-    const r = redact({ _id: "x", id: 7, phone: "94 155 88 55", parentPasswordHash: "h", nested: { motherPhone: "+998931112233", note: "a".repeat(400) } });
+    const r = redact({
+      _id: "x",
+      id: 7,
+      phone: "94 155 88 55",
+      parentPasswordHash: "h",
+      phones: ["+998941558855", "998931112233"],
+      nested: { motherPhone: "+998931112233", note: "a".repeat(400) },
+    });
     check(
-      "redact: _id va sirlar yo'q, telefonlar yashirin, uzun matn qisqa",
-      eq(Object.keys(r), ["id", "phone", "nested"]) && r.phone === "94 *** ** 55" && r.nested.motherPhone.includes("***") && r.nested.note.length <= 301,
+      "redact: sirlar yo'q, guruh kaliti (_id) qoladi, telefonlar (ro'yxati ham) yashirin, uzun matn qisqa",
+      eq(Object.keys(r), ["_id", "id", "phone", "phones", "nested"]) &&
+        r._id === "x" &&
+        r.phone === "94 *** ** 55" &&
+        r.phones.every((p) => p.includes("***")) &&
+        r.nested.motherPhone.includes("***") &&
+        r.nested.note.length <= 301,
       JSON.stringify(r).slice(0, 200),
+    );
+    const oid = redact({ _id: { toHexString: () => "65f0aa" }, id: 1 });
+    check("redact: hujjatning ObjectId'si chiqmaydi (kaliti ham)", eq(Object.keys(oid), ["id"]), JSON.stringify(oid));
+    check(
+      "query_data: sir maydonga murojaat (taxallus, $$ROOT, $getField, filtr) rad etiladi",
+      rejects([{ $project: { h: "$studentPasswordHash" } }]) &&
+        rejects([{ $project: { kv: { $objectToArray: "$$ROOT" } } }]) &&
+        rejects([{ $replaceWith: "$$ROOT" }]) &&
+        rejects({ studentPasswordHash: { $regex: "^\\$2a" } }) &&
+        rejects([{ $project: { x: { $getField: "parentPasswordHash" } } }]) &&
+        rejects([{ $project: { m: { $map: { input: "$kids", in: "$$this.passwordHash" } } } }]),
+    );
+    check(
+      "query_data: telefon ifodada va qism bo'yicha qidiruvda rad; nomi bilan va bo'sh/bor-yo'qligi — mumkin",
+      rejects([{ $group: { _id: "$groupId", phones: { $push: "$phone" } } }]) &&
+        rejects({ phone: { $regex: "^99894" } }) &&
+        rejects({ "parents.fatherPhone": { $gt: "9989" } }) &&
+        !throwsInput(() => assertSafe({ phone: "" })) &&
+        !throwsInput(() => assertSafe({ phone: { $exists: true } })) &&
+        !throwsInput(() => assertSafe([{ $project: { firstName: 1, phone: 1 } }])) &&
+        !throwsInput(() => assertSafe([{ $group: { _id: "$teacherName", total: { $sum: "$amount" } } }])),
     );
     const s = fieldSchema([{ id: 1, phone: "94 155 88 55", tags: [] }, { id: 2, phone: null, tags: ["a"] }]);
     check("describe: maydon turi va yashirin namuna", s.id.type === "number" && s.id.seenIn === 2 && s.phone.example === "94 *** ** 55" && s.tags.type === "array", JSON.stringify(s));
@@ -1257,6 +1297,32 @@ function rCalls(calls) {
 }
 server.closeAllConnections();
 server.close();
+
+// ── 09.10.2026 ko'rib chiqish tuzatishlari (bazasiz qismi) ───────────
+console.log("\n— Ko'rib chiqish tuzatishlari (qoralama kaliti, ogohlantirish tarjimasi)");
+{
+  const { draftSubject } = await import("@/lib/ai/actions/store");
+  const a = draftSubject("kirim", { cashboxId: 4, studentId: 12, amount: 300000, method: "naqd", category: "Kurs to'lovi", periodMonth: "2026-10" });
+  const b = draftSubject("kirim", { cashboxId: 4, studentId: 12, amount: 350000, method: "plastik", category: "Kurs to'lovi", periodMonth: "2026-09" });
+  const c = draftSubject("kirim", { cashboxId: 4, studentId: 13, amount: 300000, category: "Kurs to'lovi" });
+  check("qoralama kaliti: summa/oy/to'lov turi o'zgarsa — o'sha amal; boshqa o'quvchi — boshqa amal", a === b && a !== c, JSON.stringify({ a, b, c }));
+  check(
+    "qoralama kaliti: davomat — guruh + kun; yangi o'quvchi — telefon raqamlari; topshiriq — xodimlar tartibsiz",
+    draftSubject("attendance", { groupId: 5, date: "2026-10-09", marks: [] }) === "attendance|5|2026-10-09" &&
+      draftSubject("pupil", { values: { phone: "+998 94 155 88 55", firstName: "Ali" } }) === "pupil|998941558855" &&
+      draftSubject("task", { employeeIds: [9, 3] }) === draftSubject("task", { employeeIds: [3, 9] }),
+  );
+}
+{
+  const { translate } = await import("@/lib/i18n");
+  const paidLater = translate("en", "Oktyabr oyida bu oy qoldig'idan 180 000 so'm berilgan bo'lishi mumkin — qayta bermang, avval o'sha yozuvni tekshiring.");
+  const saved = translate("en", "Shu amal 09.10.2026 | 14:05 da allaqachon saqlangan (#708) — ikkinchi marta yozilmasin.");
+  check(
+    "kartadagi qizil ogohlantirishlar inglizchaga o'giriladi (teskari moslash)",
+    paidLater.startsWith("Up to") && paidLater.includes("October") && saved.startsWith("This operation was already saved") && saved.includes("#708"),
+    JSON.stringify({ paidLater, saved }),
+  );
+}
 
 console.log(bad ? `\n${bad} ta tekshiruv o'tmadi.` : "\nHammasi to'g'ri.");
 process.exit(bad ? 1 : 0);

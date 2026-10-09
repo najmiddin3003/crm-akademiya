@@ -1240,6 +1240,7 @@ const FIELD_LABELS: { key: AiActionFieldKey; label: string }[] = [
   { key: "stage", label: "Bosqich" },
   { key: "trial", label: "Sinov darsi" },
   { key: "effect", label: "Natija" },
+  { key: "warning", label: "Diqqat" },
 ];
 
 const STATUS_LABELS: { status: AiActionStatus; label: string; cls: string }[] = [
@@ -1250,6 +1251,9 @@ const STATUS_LABELS: { status: AiActionStatus; label: string; cls: string }[] = 
   { status: "cancelled", label: "Bekor qilindi", cls: "bg-secondary text-muted-foreground" },
   { status: "expired", label: "Eskirgan", cls: "bg-secondary text-muted-foreground" },
 ];
+
+/** Xodim qoralamani o'zgartirdi — eskisi yangisi bilan almashtirilgan (status `cancelled` + `replacedBy`). */
+const REPLACED_BADGE = { label: "Almashtirildi", cls: "bg-secondary text-muted-foreground" };
 
 const hm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -1273,7 +1277,7 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
   const expired = useExpired(a.expiresAt, a.status === "draft");
   const status: AiActionStatus = a.status === "draft" && expired ? "expired" : a.status;
   const meta = ACTION_TITLES.find((x) => x.kind === a.kind) ?? ACTION_TITLES[0];
-  const badge = STATUS_LABELS.find((x) => x.status === status) ?? STATUS_LABELS[0];
+  const badge = status === "cancelled" && a.replacedBy ? REPLACED_BADGE : (STATUS_LABELS.find((x) => x.status === status) ?? STATUS_LABELS[0]);
   const Icon = meta.icon;
 
   const shown = (key: AiActionFieldKey, value: string): string => {
@@ -1284,7 +1288,7 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
     if (key === "days") return value.split(", ").map((d) => t(d)).join(", ");
     // Summalar ("{n} so'm"), to'lov turi, tranzaksiya turi — lug'atda bo'lsa o'giriladi, bo'lmasa o'z holicha.
     // Amal nomi va oqibati (5-bosqich) ham — o'zgarmas matn bo'lsa lug'atdan.
-    if (key === "amount" || key === "discount" || key === "fine" || key === "method" || key === "type" || key === "op" || key === "effect") {
+    if (key === "amount" || key === "discount" || key === "fine" || key === "method" || key === "type" || key === "op" || key === "effect" || key === "warning") {
       return t(value);
     }
     return value;
@@ -1301,10 +1305,15 @@ function ActionCard({ a, onDecide, onNavigate }: { a: UiAction; onDecide: Decide
       </div>
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
-        {a.fields.map((f) => (
-          <Fragment key={f.key}>
-            <dt className="text-muted-foreground">{t(FIELD_LABELS.find((x) => x.key === f.key)?.label ?? f.key)}</dt>
-            <dd className="min-w-0 whitespace-pre-line break-words font-medium">{shown(f.key, f.value)}</dd>
+        {/* Kalit + tartib: ogohlantirish (`warning`) bir kartada bir nechta bo'lishi mumkin. */}
+        {a.fields.map((f, i) => (
+          <Fragment key={`${f.key}-${i}`}>
+            <dt className={f.key === "warning" ? "font-medium text-rose-600" : "text-muted-foreground"}>
+              {t(FIELD_LABELS.find((x) => x.key === f.key)?.label ?? f.key)}
+            </dt>
+            <dd className={`min-w-0 whitespace-pre-line break-words font-medium${f.key === "warning" ? " text-rose-600" : ""}`}>
+              {shown(f.key, f.value)}
+            </dd>
           </Fragment>
         ))}
       </dl>

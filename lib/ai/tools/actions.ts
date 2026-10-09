@@ -6,6 +6,7 @@ import { fineFor, loadPickableEmployees, loadSettings } from "@/lib/staffTasksSe
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
 import { loadPendingOut } from "@/lib/transferPending";
 import { txAudience, txTarget } from "@/lib/txTarget";
+import { uzStamp } from "@/lib/uzTime";
 import { authorNameOf, taskViewerOf, type AiContext } from "../context";
 import { ACTION_PAGES } from "../actions/pages";
 import {
@@ -20,7 +21,7 @@ import {
   usableKirimTypes,
   type PrepareResult,
 } from "../actions/prepare";
-import { createDraft, DRAFT_TTL_MS, viewOf } from "../actions/store";
+import { alreadySavedWarning, createDraft, draftSubject, DRAFT_TTL_MS, recentlySaved, supersedeDrafts, viewOf } from "../actions/store";
 import type { AiActionKind } from "../protocol";
 import { DraftCreated, optString, ToolInputError, type AiTool, type ToolArgs } from "./types";
 
@@ -55,16 +56,55 @@ function draftScreen(kind: AiActionKind, payload: Record<string, unknown>): stri
   return ACTION_PAGES[kind];
 }
 
+/**
+ * Har `propose_*` vositasida: xodim kutayotgan qoralamani O'ZGARTIRSA,
+ * model eskisining id'sini beradi — u bekor qilinadi (lib/ai/actions/store.ts →
+ * supersedeDrafts). Aks holda ikkala karta ham «Tasdiqlash» bilan turardi.
+ */
+export const REPLACES_PARAM = {
+  replacesDraftId: {
+    type: "string",
+    description:
+      "Only when the user CHANGES a draft that is still waiting for confirmation (other amount, student, month, group…): " +
+      "the draftId of that old draft. The old card is cancelled and replaced by the new one.",
+  },
+} as const;
+
+/** Shu turlarda amal yaqinda saqlangan bo'lsa yangi kartada qizil ogohlantirish (ikkinchi marta pul / dublikat o'quvchi). */
+const WARN_IF_SAVED: ReadonlySet<AiActionKind> = new Set(["kirim", "chiqim", "transfer", "lead", "pupil"]);
+const RECENT_SAVED_MS = 60 * 60_000;
+
 /** Qoralamani saqlaydi va karta + modelga xulosa qaytaradi (5-bosqich vositalari ham shuni ishlatadi). */
-export async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResult): Promise<unknown> {
+export async function propose(ctx: AiContext, kind: AiActionKind, prepared: PrepareResult, args: ToolArgs = {}): Promise<unknown> {
   if (!prepared.ok) return prepared.reply;
   const { draft } = prepared;
+  const subject = draftSubject(kind, draft.payload);
+  const replaces = typeof args.replacesDraftId === "string" ? args.replacesDraftId.trim().slice(0, 64) : "";
+
+  // Xodim "saqlandi"dan keyin "aslida 350 000 edi" desa — model eskisini
+  // tuzatish o'rniga ikkinchisini tuzishi mumkin. Kartada ko'rinib tursin.
+  const saved = WARN_IF_SAVED.has(kind) ? await recentlySaved(ctx.db, { userId: ctx.userId, kind, subject, sinceMs: RECENT_SAVED_MS }) : null;
+  const savedAt = saved?.finishedAt ? uzStamp(new Date(saved.finishedAt)) : "";
+  const fields = saved
+    ? [...draft.fields, { key: "warning" as const, value: alreadySavedWarning(savedAt, saved.resultText || "—").text }]
+    : draft.fields;
+
   const doc = await createDraft(ctx.db, {
     userId: ctx.userId,
     userName: authorNameOf(ctx),
     kind,
     payload: draft.payload,
-    fields: draft.fields,
+    fields,
+    subject,
+  });
+  // Yangisi yozilgandan KEYIN — yaratib bo'lmasa eskisi tegilmay qoladi.
+  const replaced = await supersedeDrafts(ctx.db, {
+    userId: ctx.userId,
+    kind,
+    replacedBy: doc.id,
+    ids: replaces ? [replaces] : [],
+    subject,
+    before: ctx.startedAt ?? new Date(0),
   });
   return new DraftCreated(
     viewOf(doc),
@@ -73,9 +113,23 @@ export async function propose(ctx: AiContext, kind: AiActionKind, prepared: Prep
       status: "awaiting_user_confirmation",
       expiresInMinutes: Math.round(DRAFT_TTL_MS / 60_000),
       ...draft.forModel,
+      ...(replaced.length
+        ? {
+            replacedDrafts: replaced.map((d) => d.id),
+            replacedNote: "The earlier waiting draft of this operation was cancelled; tell the user this new card replaces it.",
+          }
+        : {}),
+      ...(saved
+        ? {
+            alreadySaved:
+              `The same operation was already confirmed and saved at ${savedAt} (${saved.resultText || "ok"}). ` +
+              "Warn the user that confirming this card writes it a SECOND time; to correct the saved one they should fix it in the CRM.",
+          }
+        : {}),
       instruction: CONFIRM_INSTRUCTION,
     },
     draftScreen(kind, draft.payload),
+    replaced.map((d) => viewOf(d)),
   );
 }
 
@@ -217,12 +271,13 @@ export const proposeLead: AiTool = {
       course: { type: "string", description: "Course name from action_options." },
       days: { type: "string", description: "toq | juft | har kuni, or day codes like 'Du,Ch'." },
       note: { type: "string", description: "Optional note, only if the user gave one." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: [ACTION_PAGES.lead],
   action: true,
-  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "lead", await prepareLead(ctx, args)),
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "lead", await prepareLead(ctx, args), args),
 };
 
 export const proposeKirim: AiTool = {
@@ -241,12 +296,13 @@ export const proposeKirim: AiTool = {
       month: { type: "string", description: "Which month the payment is for, YYYY-MM." },
       note: { type: "string" },
       cashboxId: { type: "integer", description: "Administrators only: another cashbox." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: [ACTION_PAGES.kirim],
   action: true,
-  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "kirim", await prepareKirim(ctx, args)),
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "kirim", await prepareKirim(ctx, args), args),
 };
 
 export const proposeChiqim: AiTool = {
@@ -265,14 +321,20 @@ export const proposeChiqim: AiTool = {
       amount: { type: "integer", description: "Exact amount in so'm, as the user said it." },
       method: { type: "string", description: "Payment method name (e.g. Naqd, Plastik)." },
       month: { type: "string", description: "Salary/advance: which month it is for, YYYY-MM (previous or current)." },
+      paidLaterChecked: {
+        type: "boolean",
+        description:
+          "true only after the user checked the journal and confirmed that the possibly already paid part (possiblyAlreadyPaid) was NOT this salary.",
+      },
       note: { type: "string" },
       cashboxId: { type: "integer", description: "Administrators only: another cashbox." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: [ACTION_PAGES.chiqim],
   action: true,
-  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "chiqim", await prepareChiqim(ctx, args)),
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "chiqim", await prepareChiqim(ctx, args), args),
 };
 
 export const proposeTransfer: AiTool = {
@@ -290,12 +352,13 @@ export const proposeTransfer: AiTool = {
       amount: { type: "integer", description: "Exact amount in so'm, as the user said it." },
       note: { type: "string", description: "Optional note, only if the user gave one." },
       cashboxId: { type: "integer", description: "Administrators only: send from another cashbox." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: [ACTION_PAGES.transfer],
   action: true,
-  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "transfer", await prepareTransfer(ctx, args)),
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "transfer", await prepareTransfer(ctx, args), args),
 };
 
 export const proposePupilComment: AiTool = {
@@ -309,12 +372,13 @@ export const proposePupilComment: AiTool = {
     properties: {
       ...PERSON_PARAMS,
       text: { type: "string", description: "The comment text, as the user said it." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: [ACTION_PAGES.comment],
   action: true,
-  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "comment", await preparePupilComment(ctx, args)),
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "comment", await preparePupilComment(ctx, args), args),
 };
 
 export const proposeTask: AiTool = {
@@ -334,11 +398,12 @@ export const proposeTask: AiTool = {
       deadline: { type: "string", description: "YYYY-MM-DD HH:mm in Tashkent time (YYYY-MM-DD alone means 18:00)." },
       priority: { type: "integer", description: "1 (low) … 5 (high), as the user said it." },
       link: { type: "string", description: "Optional http(s) link." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: [ACTION_PAGES.task],
   action: true,
   visible: canAssignTasks,
-  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "task", await prepareTask(ctx, args)),
+  run: async (ctx: AiContext, args: ToolArgs) => propose(ctx, "task", await prepareTask(ctx, args), args),
 };

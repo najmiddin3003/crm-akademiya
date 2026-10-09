@@ -44,10 +44,17 @@ export interface AiContext {
    * modelga umuman ko'rsatilmaydi.
    */
   actions: boolean;
+  /**
+   * So'rov boshlangan vaqt. Shu so'rovda tuzilgan qoralamalar bundan keyin,
+   * oldingi javoblardagilar oldin — eskisini almashtirishda ajratiladi
+   * (lib/ai/actions/store.ts → supersedeDrafts).
+   */
+  startedAt: Date;
 }
 
 /** `null` — tizimga kirilmagan yoki sessiya amal qilmaydi. */
 export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): Promise<AiContext | null> {
+  const startedAt = new Date();
   const me = await getCurrentUser();
   if (!me) return null;
   const scope = await getBranchScope();
@@ -72,6 +79,7 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
     today: uzDateIso(),
     can: (href) => isPathAllowed(href, permissions),
     actions: opts.actions === true,
+    startedAt,
   };
 }
 

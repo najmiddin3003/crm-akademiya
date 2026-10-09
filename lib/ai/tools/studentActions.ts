@@ -5,7 +5,7 @@ import {
   preparePupilCreate,
   preparePupilStatus,
 } from "../actions/prepareStudents";
-import { propose } from "./actions";
+import { propose, REPLACES_PARAM } from "./actions";
 import type { AiTool } from "./types";
 
 // 5-BOSQICH AMAL VOSITALARI (08.10.2026, foydalanuvchi tanlovi): yangi
@@ -45,12 +45,13 @@ export const proposeNewPupil: AiTool = {
       allowDuplicatePhone: { type: "boolean", description: "true only after the user confirmed it is a different person with the same phone." },
       ...GROUP_PARAMS,
       joinedAt: { type: "string", description: "First lesson date in the group, YYYY-MM-DD (default today)." },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: ["/students-list"],
   action: true,
-  run: async (ctx, args) => propose(ctx, "pupil", await preparePupilCreate(ctx, args)),
+  run: async (ctx, args) => propose(ctx, "pupil", await preparePupilCreate(ctx, args), args),
 };
 
 export const proposeGroupMembership: AiTool = {
@@ -65,13 +66,14 @@ export const proposeGroupMembership: AiTool = {
       ...PUPIL_PARAMS,
       ...GROUP_PARAMS,
       joinedAt: { type: "string", description: "op add: first lesson date, YYYY-MM-DD (default today)." },
+      ...REPLACES_PARAM,
     },
     required: ["op"],
     additionalProperties: false,
   },
   pages: ["/groups"],
   action: true,
-  run: async (ctx, args) => propose(ctx, "membership", await prepareMembership(ctx, args)),
+  run: async (ctx, args) => propose(ctx, "membership", await prepareMembership(ctx, args), args),
 };
 
 export const proposeAttendance: AiTool = {
@@ -102,12 +104,13 @@ export const proposeAttendance: AiTool = {
           additionalProperties: false,
         },
       },
+      ...REPLACES_PARAM,
     },
     additionalProperties: false,
   },
   pages: ["/groups"],
   action: true,
-  run: async (ctx, args) => propose(ctx, "attendance", await prepareAttendance(ctx, args)),
+  run: async (ctx, args) => propose(ctx, "attendance", await prepareAttendance(ctx, args), args),
 };
 
 export const proposePupilStatus: AiTool = {
@@ -121,13 +124,14 @@ export const proposePupilStatus: AiTool = {
       ...PUPIL_PARAMS,
       status: { type: "string", enum: ["Aktiv", "Muzlatilgan", "Arxiv"] },
       reason: { type: "string" },
+      ...REPLACES_PARAM,
     },
     required: ["status"],
     additionalProperties: false,
   },
   pages: ["/students-list"],
   action: true,
-  run: async (ctx, args) => propose(ctx, "status", await preparePupilStatus(ctx, args)),
+  run: async (ctx, args) => propose(ctx, "status", await preparePupilStatus(ctx, args), args),
 };
 
 export const proposeLeadStage: AiTool = {
@@ -148,11 +152,12 @@ export const proposeLeadStage: AiTool = {
       reason: { type: "string", description: "rad: rejection reason." },
       ...GROUP_PARAMS,
       joinedAt: { type: "string", description: "guruh: first lesson date YYYY-MM-DD (default today)." },
+      ...REPLACES_PARAM,
     },
     required: ["to"],
     additionalProperties: false,
   },
   pages: ["/orders-list"],
   action: true,
-  run: async (ctx, args) => propose(ctx, "stage", await prepareLeadStage(ctx, args)),
+  run: async (ctx, args) => propose(ctx, "stage", await prepareLeadStage(ctx, args), args),
 };

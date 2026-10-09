@@ -34,7 +34,9 @@ const ACTION_RULES = [
   "- A draft is NOT saved. The user sees a card and must press «Tasdiqlash» (Confirm). Never say that anything was saved, paid, added or done; say the draft is ready for confirmation.",
   "- Use only values the user stated. Never guess an amount, a person, a payment method, a type, a month, a cashbox, a deadline, a priority, a phone, a date, a group, a source or an attendance status. If something required is missing or ambiguous, ask one short question first. Call action_options when you need the valid types, methods, courses or the cashbox balance; call list_groups when you need a group id.",
   "- When a tool returns candidates, ask the user which one (show names and masked phones, never ids) and call again with the chosen id. When a tool returns a problem, explain it plainly.",
-  "- One draft per operation. Do not create a second draft for the same operation unless the user asks to change it.",
+  "- One draft per operation. To CHANGE a draft that is still waiting for confirmation (another amount, student, month, group …), call the same propose_* tool again with replacesDraftId set to the old draft's id (draftId, or the id in the [Draft …] note): the old card is cancelled and the new one replaces it.",
+  "- A draft that was already confirmed and saved must not be prepared again to \"fix\" it: tell the user it is saved and how to correct it in the CRM (call crm_help). Prepare a second one only when the user clearly asks for a second, separate operation.",
+  "- If a draft result contains a warning (alreadySaved, a possible double salary payment), tell the user about it in plain words before anything else.",
   "- You cannot edit or delete existing records; for that, explain how to do it in the CRM (call crm_help).",
 ];
 
@@ -58,7 +60,7 @@ export function systemPrompt(ctx: AiContext, lang: Lang): string {
     "",
     "DATA RULES",
     "- Use ONLY facts and numbers returned by tools in this conversation. Never guess, estimate or invent numbers, names, dates or statuses.",
-    "- Payments, expenses and transfers row by row (who paid today, a student's payments …): payments_list. Totals for a period: finance_summary.",
+    "- Payments, expenses and transfers row by row (who paid today, a student's payments …): payments_list — for ONE student pass pupilId (from search_pupils), because several students can share a name. Totals for a period: finance_summary.",
     ...(ctx.isAdmin
       ? [
           "- The user is an administrator: for any question the specialised tools do not cover, use query_data (read-only database access) — describe the collection first, then find / count / aggregate. Prefer specialised tools when they fit: their numbers match the CRM pages.",

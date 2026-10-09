@@ -81,13 +81,15 @@ export async function latestConversation(db: Db, userId: string): Promise<AiConv
 
 /**
  * Savol va javobni yozadi. `id` berilmasa (yoki boshqa odamniki bo'lsa)
- * yangi suhbat ochiladi. Qaytaradi — suhbat id'si.
+ * yangi suhbat ochiladi — `newId` bilan (route uni oqim boshida mijozga
+ * aytib qo'ygan bo'ladi), bo'lmasa yangi UUID. Qaytaradi — suhbat id'si.
  */
 export async function saveTurn(
   db: Db,
   userId: string,
   id: string | null,
   turn: [AiChatMessage, AiChatMessage],
+  opts: { newId?: string } = {},
 ): Promise<string> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + RETENTION_MS);
@@ -101,7 +103,7 @@ export async function saveTurn(
     );
     if (res.matchedCount > 0) return id;
   }
-  const newId = randomUUID();
+  const newId = opts.newId || randomUUID();
   await col(db).insertOne({
     id: newId,
     userId,

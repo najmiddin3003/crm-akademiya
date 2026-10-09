@@ -55,10 +55,13 @@ export class DraftCreated {
   readonly view: AiActionView;
   readonly forModel: Record<string, unknown>;
   readonly screen: string | undefined;
-  constructor(view: AiActionView, forModel: Record<string, unknown>, screen?: string) {
+  /** Shu qoralama bilan ALMASHTIRILGAN (bekor qilingan) eski kartalar — panel ularni o'z joyida yangilaydi. */
+  readonly replaced: AiActionView[];
+  constructor(view: AiActionView, forModel: Record<string, unknown>, screen?: string, replaced: AiActionView[] = []) {
     this.view = view;
     this.forModel = forModel;
     this.screen = screen;
+    this.replaced = replaced;
   }
 }
 

@@ -17,6 +17,8 @@ import { optInt, optString, ToolInputError, type AiTool, type ToolArgs } from ".
 //     $unionWith / $graphLookup faqat oq ro'yxatdagi kolleksiyaga;
 //   • parol, xesh, token, sessiya kabi maydonlar natijadan O'CHIRILADI,
 //     telefonlar yashiriladi (94 *** ** 55) — butun AI bilan bir xil qoida;
+//     so'rovning O'ZIDA ham ularga murojaat (taxallus, $$ROOT, filtr) rad
+//     etiladi — `assertSafe` (09.10.2026);
 //   • har so'rov 8 soniya, natija — ko'pi bilan 100 qator va ~16 ming belgi.
 // Kolleksiyalar: foydalanuvchilar, sessiyalar, tasdiq kodlari, sinxron
 // navbatlari va Telegram bog'lanishlari ro'yxatda YO'Q.
@@ -29,13 +31,16 @@ const SAMPLE = 30;
 
 /** Kolleksiya → modelga qisqa tavsif (asosiy maydonlar va formatlar). */
 export const DATA_COLLECTIONS: Record<string, string> = {
+  // Maydonlar YOZADIGAN koddagi shakldan (09.10.2026 tekshirildi) — model
+  // noto'g'ri maydon bilan filtrlasa "0 ta" deb xato javob berardi.
   pupils:
     "Students. id, firstName, lastName, phone, status (Aktiv | Muzlatilgan | Arxiv; missing = Aktiv), statusReason, statusChangedAt (YYYY-MM-DD), " +
-    "createdAt ('DD.MM.YYYY | HH:mm' string), source, category, birthDate (YYYY-MM-DD), balance, coin, moderator, father*/mother* (parents), " +
-    "branchId (missing = branch 1; branches 1 and 2 share their students).",
+    "createdAt ('DD.MM.YYYY | HH:mm' string), source, category, birthDate (YYYY-MM-DD), coin, moderator, father*/mother* (parents), " +
+    "branchId (missing = branch 1; branches 1 and 2 share their students). NEVER use the `balance` field: it is stale and never updated — " +
+    "debts and paid money come from debtors_report / pupil_details.",
   groups:
     "Groups (current season). id, name (usually a number), course, level, teacher, assistant, day ('Toq kunlar', 'Juft kunlar', 'Du,Ju' …), " +
-    "time ('14:00 - 16:00'), room, status (active | new | frozen | completing | finished | problematic), studentIds [pupils.id], startDate, endDate, branchId.",
+    "time ('14:00 - 16:00'), room, status (gathering | active | frozen | archive), archivedAt, studentIds [pupils.id], startDate, endDate, branchId.",
   group_memberships: "Membership history: groupId, pupilId, joinedAt (YYYY-MM-DD), leftAt (null = still in the group).",
   attendance: "Attendance marks: groupId, pupilId, date (YYYY-MM-DD), status (keldi | kechikdi | birinchi | sababli | sababsiz), grade (1–5), reason, note.",
   transaction_entries:
@@ -50,16 +55,26 @@ export const DATA_COLLECTIONS: Record<string, string> = {
   hr_employees:
     "Employees: id, name, phone, turi (role, e.g. teacher), kurs (subjects), percent (teacher %), branchIds [..], archReason (non-empty = archived), " +
     "archDate, created, lastActive.",
-  staff_tasks: "Staff tasks (Topshiriqlar): id, title, desc, employeeId, deadline (ISO), priority (1–5), status, createdAt, doneAt, fine.",
-  turnstile_io: "Check-ins (turnstile / 'Ishga keldim'): personType (employee | pupil), personId, name, date (YYYY-MM-DD), time, direction, lateMinutes, branchId.",
+  staff_tasks:
+    "Staff tasks (Topshiriqlar): id, title, desc, employeeId, employeeName, branchId, deadline (ISO), priority (1–5), status, " +
+    "fineAmount (fine if not done), createdAt, doneAt.",
+  turnstile_io:
+    "Check-ins (turnstile / 'Ishga keldim' QR): date (YYYY-MM-DD), personType (employee | student), personName, enterTime / exitTime " +
+    "('HH:mm'; null = did not come / did not leave), status (kelgan | kechikkan | kelmagan); QR records also have source 'qr', employeeId, " +
+    "branchId, lateMinutes.",
   branches: "Branches: id, name.",
   rooms: "Rooms: id, name, capacity, branchId.",
   offline_courses: "Offline courses: id, name, price and levels.",
   online_courses: "Online courses.",
   salary_runs: "Payroll runs (Oylik chiqarish): id, month (YYYY-MM), employees and amounts.",
-  penalties: "Employee penalties (jarimalar): employee, amount, date, reason.",
-  bonuses: "Employee bonuses: employee, amount, date, reason.",
-  pupil_comments: "Comments on students: id, pupilId, text, by, at.",
+  penalties:
+    "Penalties (jarimalar) of employees AND students: id, type (employee | student), recipientName, amount, note (what the penalty is for), " +
+    "status ('' | cancelled — always exclude cancelled; `reason` is the cancellation reason), createdAt ('DD.MM.YYYY HH:mm' string), cashboxId. " +
+    "Payroll counts only type employee and status not cancelled.",
+  bonuses:
+    "Bonuses of employees and students: id, type (employee | student), recipientName, givenBy, amount, note, " +
+    "createdAt ('DD.MM.YYYY HH:mm' string), cashboxId.",
+  pupil_comments: "Comments on students: id, pupilId, text, date (YYYY-MM-DD), time (HH:mm), by (author), createdAt.",
   group_exams: "Group exams and results.",
   monthly_exams: "Monthly exam results.",
   contracts: "Student contracts.",
@@ -84,8 +99,31 @@ export function isSecretKey(k: string): boolean {
 }
 const PHONE_KEY = /phone|telefon|tel$|mobile/i;
 
-/** Rad etiladigan operatorlar (JS bajarish, yozish, server holati). */
-const BANNED_OPS = new Set(["$where", "$function", "$accumulator", "$out", "$merge", "$currentOp", "$listSessions", "$listLocalSessions", "$planCacheStats", "$indexStats", "$collStats", "$changeStream"]);
+/**
+ * Rad etiladigan operatorlar: JS bajarish, yozish, server holati — va
+ * maydon NOMINI satr bilan oladiganlar ($getField "studentPasswordHash",
+ * $objectToArray: hujjatni {k, v} juftlariga aylantirib, sirni yoki
+ * telefonni oddiy "v" kaliti ostida chiqarardi).
+ */
+const BANNED_OPS = new Set([
+  "$where",
+  "$function",
+  "$accumulator",
+  "$out",
+  "$merge",
+  "$currentOp",
+  "$listSessions",
+  "$listLocalSessions",
+  "$planCacheStats",
+  "$indexStats",
+  "$collStats",
+  "$changeStream",
+  "$getField",
+  "$setField",
+  "$unsetField",
+  "$objectToArray",
+  "$arrayToObject",
+]);
 const ALLOWED_STAGES = new Set([
   "$match",
   "$project",
@@ -110,9 +148,42 @@ const ALLOWED_STAGES = new Set([
   "$sample",
 ]);
 
-/** So'rov ichidagi har kalitni tekshiradi; boshqa kolleksiyaga murojaat faqat oq ro'yxatga. */
+/** "$a.b" → ["a", "b"]; "$$this.phone" → ["phone"] (o'zgaruvchi nomi tushiriladi). */
+function refSegments(ref: string): string[] {
+  const path = ref.startsWith("$$") ? ref.slice(2).split(".").slice(1) : ref.slice(1).split(".");
+  return path.filter(Boolean);
+}
+
+/** Telefon maydonida ruxsat etilmaydigan filtr operatorlari — qism/oraliq bo'yicha qidiruv raqamni bosqichma-bosqich tiklardi. */
+const PHONE_FILTER_OPS = new Set(["$regex", "$options", "$gt", "$gte", "$lt", "$lte", "$in", "$nin", "$all", "$not", "$elemMatch"]);
+
+/**
+ * So'rov ichidagi HAR kalit va $-havolani tekshiradi (09.10.2026). Ilgari
+ * faqat natija KALITI nomi bo'yicha tozalanardi — `{$project: {h:
+ * "$studentPasswordHash"}}`, `$$ROOT` yoki `{$push: "$phone"}` bilan parol
+ * xeshi va to'liq telefon OpenAI'ga ketardi. Endi KIRISHda:
+ *   • `$$ROOT` / `$$CURRENT` (butun hujjat) — rad;
+ *   • sir maydoniga har qanday murojaat (kalit, `$yo'l`, `$$o'zgaruvchi.yo'l`) — rad
+ *     (filtr ham: `{studentPasswordHash: {$regex}}` xeshni harfma-harf tiklardi);
+ *   • telefon maydoni ifodada (`$phone`) — rad; nomi bilan chiqarish mumkin
+ *     (`{phone: 1}` — natijada yashirilgan bo'ladi), filtrda faqat tenglik/bor-yo'qligi.
+ * Boshqa kolleksiyaga murojaat faqat oq ro'yxatga.
+ */
 export function assertSafe(value: unknown, depth = 0): void {
   if (depth > 30) throw new ToolInputError("query is nested too deeply");
+  if (typeof value === "string") {
+    if (/^\$\$(ROOT|CURRENT)\b/i.test(value)) {
+      throw new ToolInputError("whole-document variables ($$ROOT, $$CURRENT) are not allowed; name the fields you need");
+    }
+    if (value.length > 1 && value.startsWith("$")) {
+      const seg = refSegments(value);
+      if (seg.some((s) => isSecretKey(s))) throw new ToolInputError("this field is not available");
+      if (seg.some((s) => PHONE_KEY.test(s))) {
+        throw new ToolInputError("phone fields cannot be used inside expressions; request them by name (they come back masked)");
+      }
+    }
+    return;
+  }
   if (Array.isArray(value)) {
     for (const v of value) assertSafe(v, depth + 1);
     return;
@@ -120,6 +191,20 @@ export function assertSafe(value: unknown, depth = 0): void {
   if (!value || typeof value !== "object") return;
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (BANNED_OPS.has(k)) throw new ToolInputError(`operator ${k} is not allowed (read-only, no JavaScript)`);
+    if (!k.startsWith("$")) {
+      // Maydon yo'li kalit sifatida (filtr, proyeksiya, saralash, chiqish nomi).
+      const seg = k.split(".");
+      if (seg.some((s) => isSecretKey(s))) throw new ToolInputError("this field is not available");
+      if (
+        seg.some((s) => PHONE_KEY.test(s)) &&
+        v &&
+        typeof v === "object" &&
+        !Array.isArray(v) &&
+        Object.keys(v).some((op) => PHONE_FILTER_OPS.has(op))
+      ) {
+        throw new ToolInputError("searching inside phone numbers is not allowed here; use search_pupils to find a student by phone");
+      }
+    }
     if ((k === "$lookup" || k === "$graphLookup" || k === "$unionWith") && v && typeof v === "object") {
       const from = typeof v === "string" ? v : String((v as Record<string, unknown>).from ?? (v as Record<string, unknown>).coll ?? "");
       if (!ALLOWED.has(from)) throw new ToolInputError(`${k} may only use these collections: ${[...ALLOWED].join(", ")}`);
@@ -147,12 +232,23 @@ export function redact(value: unknown, depth = 0): unknown {
     if ((o as { _bsontype?: unknown })._bsontype === "Decimal128") return Number(String(o));
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(o)) {
-      if (k === "_id" || isSecretKey(k)) continue;
-      if (PHONE_KEY.test(k) && (typeof v === "string" || typeof v === "number")) {
-        out[k] = maskPhone(String(v));
-        continue;
+      // `_id` TASHLANMAYDI: $group / $sortByCount / $bucket natijasida guruh
+      // kaliti aynan shu yerda (ustoz nomi, oy …). Hujjatning ObjectId'si
+      // yuqoridagi `toHexString` tarmog'ida baribir tushib qoladi.
+      if (isSecretKey(k)) continue;
+      if (PHONE_KEY.test(k)) {
+        if (typeof v === "string" || typeof v === "number") {
+          out[k] = maskPhone(String(v));
+          continue;
+        }
+        // Telefonlar ro'yxati (`extraPhones`, `$push` natijasi) — har biri yashiriladi.
+        if (Array.isArray(v)) {
+          out[k] = v.slice(0, 50).map((x) => (typeof x === "string" || typeof x === "number" ? maskPhone(String(x)) : redact(x, depth + 1)));
+          continue;
+        }
       }
-      out[k] = redact(v, depth + 1);
+      const r = redact(v, depth + 1);
+      if (r !== undefined) out[k] = r; // ObjectId (hujjatning `_id`) — kalit ham chiqmasin
     }
     return out;
   }
@@ -197,8 +293,10 @@ export const queryData: AiTool = {
   description:
     "ADMIN ONLY, READ-ONLY access to the CRM database for any question the other tools do not cover. Steps: (1) op 'describe' on a " +
     "collection to see its real fields and example values; (2) op 'find' / 'count' / 'distinct' / 'aggregate' with a MongoDB filter or " +
-    "pipeline. Dates are mostly 'YYYY-MM-DD' strings; some are 'DD.MM.YYYY | HH:mm' strings (use $regex on them). Phones are masked and " +
-    "secrets are removed. Prefer the specialised tools when they fit (their numbers match the CRM pages). Say which branch your numbers " +
+    "pipeline. Dates are mostly 'YYYY-MM-DD' strings; some are 'DD.MM.YYYY | HH:mm' strings (use $regex on them). Phones come back masked " +
+    "and secret fields are removed; $$ROOT, phone or secret fields inside expressions and searching inside phone numbers are rejected. " +
+    "In grouped results ($group, $sortByCount, $bucket) the group key is in _id. " +
+    "Prefer the specialised tools when they fit (their numbers match the CRM pages). Say which branch your numbers " +
     `cover. Collections: ${Object.entries(DATA_COLLECTIONS)
       .map(([k, v]) => `${k} — ${v}`)
       .join(" | ")}`,
@@ -268,6 +366,7 @@ export const queryData: AiTool = {
       const projection = objArg(args, "projection");
       const sort = objArg(args, "sort");
       if (projection) assertSafe(projection);
+      if (sort) assertSafe(sort);
       const limit = optInt(args, "limit", 1, MAX_FIND) ?? 30;
       const skip = optInt(args, "skip", 0, 1_000_000) ?? 0;
       const [rowsRaw, total] = await Promise.all([

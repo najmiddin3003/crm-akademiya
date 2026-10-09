@@ -211,6 +211,8 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
         emit({ type: "action", action: result.action });
         actionIds.push(result.action.id);
       }
+      // Almashtirilgan eski kartalar — oldingi javoblarda turgan bo'lsa ham, o'z joyida "bekor qilindi".
+      for (const u of result.updates ?? []) emit({ type: "action_update", action: u });
       dialog.answer(call.id, result.content);
       usedTools.push(call.name);
     }

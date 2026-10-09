@@ -1,7 +1,7 @@
 import { ROLE_LABELS } from "@/constants/employees";
 import { ATTENDANCE_OPTIONS, type AttendanceStatus } from "@/lib/attendance";
 import { allBranchIds, branchCondition, branchInCondition, withBranch } from "@/lib/branchScope";
-import { lessonExpectedOn, parseTimeRange, timeToMinutes } from "@/lib/groupRules";
+import { groupBoundsIso, lessonExpectedOn, parseTimeRange, timeToMinutes } from "@/lib/groupRules";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName } from "@/lib/pupilsData";
 import { TURNSTILE_IO_STATUS_LABELS, type TurnstileIoStatus } from "@/lib/turnstileIo";
@@ -132,12 +132,17 @@ export function summarizeAttendance(input: {
   const groupName = (id: number) => byGroup.get(id)?.label ?? `#${id}`;
 
   // Dars bo'lishi kerak edi, lekin birorta belgi qo'yilmagan — kelajak kunlari emas.
+  // Boshlanish sanasi (startDate yoki period) yo'q guruh SANALMAYDI — xuddi
+  // /nazorat-missed-groups sahifasidagi kabi: aks holda guruh hali ochilmagan
+  // o'tgan kunlar ham "davomat qilinmagan" bo'lib chiqardi (09.10.2026).
   const notMarked: { date: string; group: string; teacher: string; page: string }[] = [];
+  const dated = groups.filter((g) => !!groupBoundsIso(g).start);
+  const withoutStartDate = groups.filter((g) => g.status === "active" && !groupBoundsIso(g).start).map((g) => g.label);
   const last = to < today ? to : today;
   if (from <= last) {
     for (const iso of eachDay(from, last)) {
       const wd = weekdayOf(iso);
-      for (const g of groups) {
+      for (const g of dated) {
         if (lessonExpectedOn(g, iso, wd) && !markedDays.has(`${g.id}|${iso}`)) {
           notMarked.push({ date: iso, group: g.label, teacher: g.teacher || "—", page: `/groups/${g.id}` });
         }
@@ -176,6 +181,9 @@ export function summarizeAttendance(input: {
     marksTotal: listed.length,
     notMarked: notMarked.slice(0, LIST),
     notMarkedTotal: notMarked.length,
+    ...(withoutStartDate.length
+      ? { groupsWithoutStartDate: withoutStartDate.slice(0, LIST), groupsWithoutStartDateNote: "not checked for missing attendance: their start date is empty (as on the missed-attendance page)" }
+      : {}),
   };
 }
 

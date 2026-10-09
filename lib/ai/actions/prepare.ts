@@ -21,6 +21,7 @@ import {
 } from "@/lib/staffBot/data";
 import { PRIORITIES, uzWallToMs, type StaffTaskEmployee, type StaffTaskPriority } from "@/lib/staffTasks";
 import { cleanLink, fineFor, loadPickableEmployees, loadSettings, TEXT_MAX, TITLE_MAX } from "@/lib/staffTasksServer";
+import { MONTHS } from "@/lib/i18n";
 import { formatPhone } from "@/lib/studentBot/phone";
 import { refundTeacherOf } from "@/lib/studentRefund";
 import { isEmployeePayoutCategory } from "@/lib/teacherOfStudent";
@@ -456,6 +457,28 @@ export async function prepareKirim(ctx: AiContext, args: ToolArgs): Promise<Prep
   };
 }
 
+// ── Oylik: «qayta bermang» (04.10.2026 o'tish davri qorovuli) ────────
+//
+// Bot (lib/staffBot/views.ts → salaryLines) va Chiqim oynasi
+// (CashboxAdjustDrawer → paidLater) ko'rsatadigan ogohlantirish. Chegara
+// O'ZGARMAYDI (qaror kassirda) — ogohlantirish YAGONA himoya, shuning
+// uchun AI uni jim o'tkazib yubormaydi (09.10.2026): kartada qizil qator,
+// tanlangan oy qoldig'i boshqa oyda berilgan bo'lishi mumkin bo'lsa —
+// avval xodimdan so'raladi. Matn text maydonida — i18n skaneri andozani kalit qiladi.
+
+/** "2026-10" → "Oktyabr" — lug'atdagi oy nomi (ingliz interfeysida o'giriladi). */
+function monthName(key: string): string {
+  return MONTHS.uz[Number(key.slice(5, 7)) - 1] ?? key;
+}
+
+function paidLaterWarning(month: string, amount: string): { text: string } {
+  return { text: `${month} oyida bu oy qoldig'idan ${amount} berilgan bo'lishi mumkin — qayta bermang, avval o'sha yozuvni tekshiring.` };
+}
+
+function pendingPaidWarning(month: string, amount: string): { text: string } {
+  return { text: `${month} oyidan ${amount} shu oyda berilgan bo'lishi mumkin — o'sha oydan qayta chiqarmang.` };
+}
+
 export async function prepareChiqim(ctx: AiContext, args: ToolArgs): Promise<PrepareResult> {
   const cashbox = await resolveCashbox(ctx, optInt(args, "cashboxId", 1, 1_000_000_000));
   if (!cashbox.ok) return cashbox;
@@ -494,6 +517,10 @@ export async function prepareChiqim(ctx: AiContext, args: ToolArgs): Promise<Pre
 
   let periodMonth: string | undefined;
   let limit: number | null = null;
+  // Kartadagi qizil qatorlar (o'zbekcha, mijoz `t()` qiladi) va modelga o'sha gap inglizcha.
+  const warnings: { text: string }[] = [];
+  const warningsForModel: string[] = [];
+  let unpaidEarlierMonths: { month: string; amount: number }[] | undefined;
   if (salaryPayout && employee) {
     const m = resolveMonth(optMonth(args, "month"), "payout");
     if (!m.ok) return m;
@@ -511,6 +538,29 @@ export async function prepareChiqim(ctx: AiContext, args: ToolArgs): Promise<Pre
             : `Nothing can be paid to this employee for ${periodMonth}: the salary is fully paid or not calculated yet.`,
         });
       }
+      // Tanlangan oy qoldig'i keyingi oyda o'sha oy yozuvi bo'lib berilgan
+      // bo'lishi mumkin — xodim jurnalni ko'rmaguncha qoralama tuzilmaydi.
+      const pl = salary.paidLater;
+      if (pl) {
+        if (args.paidLaterChecked !== true) {
+          return ask({
+            problem:
+              `Up to ${pl.amount} so'm of ${employee.name}'s ${periodMonth} salary may ALREADY have been paid in ${pl.month} ` +
+              `(recorded as a ${pl.month} payment). Paying it again would pay the salary twice. Tell the user and ask them to check ` +
+              `that ${pl.month} record in the cashbox journal; only if they confirm it was NOT this salary, call again with paidLaterChecked: true.`,
+            possiblyAlreadyPaid: { month: pl.month, amount: pl.amount },
+          });
+        }
+        warnings.push(paidLaterWarning(monthName(pl.month), fmtSum(pl.amount)));
+        warningsForModel.push(`Up to ${pl.amount} so'm of this month's remainder may already have been paid in ${pl.month}.`);
+      }
+      // Teskarisi: shu oyda ortiqcha oylik bor — u o'tgan oy puli bo'lishi mumkin.
+      for (const pm of salary.pendingMaybePaid ?? []) {
+        warnings.push(pendingPaidWarning(monthName(pm.month), fmtSum(pm.amount)));
+        warningsForModel.push(`${pm.amount} so'm of ${pm.month}'s salary may have been paid in ${periodMonth}; do not pay ${pm.month} again.`);
+      }
+      // O'tgan oy(lar)ning to'lanmagan qoldig'i bu oy chegarasiga kirmaydi — o'sha oyni tanlab chiqariladi.
+      if (salary.pending?.length) unpaidEarlierMonths = salary.pending.map((x) => ({ month: x.month, amount: x.amount }));
     }
   } else if (target === "student") {
     limit = Math.max(0, studentBalance ?? 0);
@@ -568,6 +618,7 @@ export async function prepareChiqim(ctx: AiContext, args: ToolArgs): Promise<Pre
         { key: "method", value: method.value.name },
         { key: "cashbox", value: cb.name },
         ...(note ? [{ key: "note" as const, value: note }] : []),
+        ...warnings.map((w) => ({ key: "warning" as const, value: w.text })),
       ],
       forModel: {
         action: "expense (chiqim)",
@@ -580,6 +631,8 @@ export async function prepareChiqim(ctx: AiContext, args: ToolArgs): Promise<Pre
         method: method.value.name,
         cashbox: cb.name,
         note: note || undefined,
+        ...(warningsForModel.length ? { warnings: warningsForModel } : {}),
+        ...(unpaidEarlierMonths ? { unpaidEarlierMonths, unpaidEarlierNote: "Not part of this month's limit; pay it by choosing that month." } : {}),
       },
     },
   };

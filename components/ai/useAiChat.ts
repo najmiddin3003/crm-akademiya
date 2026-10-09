@@ -200,6 +200,15 @@ export function useAiChat(opts: AiChatOptions = {}) {
     });
   }, []);
 
+  /** Kartani yangilash — qaysi xabarda bo'lsa ham (suhbat davomida yangi javoblar qo'shilgan bo'lishi mumkin). */
+  const patchAction = useCallback((id: string, fn: (a: UiAction) => UiAction) => {
+    setMessages((list) =>
+      list.map((m) =>
+        m.actions?.some((a) => a.id === id) ? { ...m, actions: m.actions.map((a) => (a.id === id ? fn(a) : a)) } : m,
+      ),
+    );
+  }, []);
+
   const handle = useCallback(
     (e: AiStreamEvent) => {
       if (e.type === "meta") {
@@ -222,11 +231,14 @@ export function useAiChat(opts: AiChatOptions = {}) {
         patchLast((m) => ({ ...m, plan: e.steps }));
       } else if (e.type === "action") {
         patchLast((m) => ({ ...m, actions: [...(m.actions ?? []).filter((a) => a.id !== e.action.id), e.action] }));
+      } else if (e.type === "action_update") {
+        // Eski karta (oldingi javobda) yangisi bilan almashtirildi — o'z joyida "bekor qilindi".
+        patchAction(e.action.id, (a) => ({ ...e.action, busy: a.busy, note: undefined }));
       } else if (e.type === "error") {
         patchLast((m) => ({ ...m, error: e.message, errorDetail: e.detail }));
       }
     },
-    [patchLast],
+    [patchAction, patchLast],
   );
 
   const send = useCallback(
@@ -320,15 +332,6 @@ export function useAiChat(opts: AiChatOptions = {}) {
   );
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
-
-  /** Kartani yangilash — qaysi xabarda bo'lsa ham (suhbat davomida yangi javoblar qo'shilgan bo'lishi mumkin). */
-  const patchAction = useCallback((id: string, fn: (a: UiAction) => UiAction) => {
-    setMessages((list) =>
-      list.map((m) =>
-        m.actions?.some((a) => a.id === id) ? { ...m, actions: m.actions.map((a) => (a.id === id ? fn(a) : a)) } : m,
-      ),
-    );
-  }, []);
 
   /**
    * «Tasdiqlash» / «Bekor qilish». Javobda kartaning yangi holati keladi
