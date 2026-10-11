@@ -99,7 +99,7 @@ export interface SalaryLedger {
 /** Jadval va daftar o'qiydigan maydonlar. */
 export type LedgerEntry = Pick<
   TransactionEntry,
-  "id" | "date" | "time" | "txType" | "txName" | "amount" | "discountSom" | "studentName" | "teacherName" | "studentRefund" | "status" | "periodMonth"
+  "id" | "date" | "time" | "txType" | "txName" | "amount" | "discountSom" | "studentName" | "teacherName" | "studentRefund" | "status" | "periodMonth" | "teacherShareSettled"
 >;
 
 function nameKey(v: unknown): string {
@@ -141,6 +141,12 @@ export function salaryEffectOf(
   if (nameKey(t.teacherName) !== me) return null;
   // Foiz qismi bor xodim — "foiz" va "oklad + foiz".
   if (!payroll?.configured || !payrollHasFoiz(payroll)) return null;
+  // Ulushi tizimdan tashqarida berilgan kirim (lib/transactionEntries.ts →
+  // teacherShareSettled) — oylikka qo'shilmaydi (loadCollectedByTeacher
+  // ham sanamaydi), daftarda esa izoh bilan 0 bo'lib ko'rinadi.
+  if (t.teacherShareSettled && (t.txType === "payIn" || isStudentRefundEntry(t))) {
+    return { amount: 0, note: "ulush berilgan" };
+  }
   const f = split ? split.factor : 1;
   const tag = split ? ` · ${split.note}` : "";
   const share = abs * payroll.percent / 100 * f;
@@ -206,7 +212,7 @@ export async function buildSalaryLedger(db: Db, emp: HrEmployee): Promise<Salary
       .find({ status: { $ne: "cancelled" }, $or: or })
       .project({
         _id: 0, id: 1, date: 1, time: 1, txType: 1, txName: 1, amount: 1, discountSom: 1,
-        studentName: 1, teacherName: 1, studentRefund: 1, status: 1, periodMonth: 1, pupilId: 1,
+        studentName: 1, teacherName: 1, studentRefund: 1, status: 1, periodMonth: 1, pupilId: 1, teacherShareSettled: 1,
       })
       // Jadval id bo'yicha kamayish tartibida — daftar ham id bo'yicha yuradi,
       // shunda qatorning "oldin"i keyingi qatorning "keyin"iga teng chiqadi.
