@@ -28,6 +28,7 @@ import {
   CircleAlert,
   CircleCheck,
   ClipboardList,
+  Copy,
   ExternalLink,
   Gauge,
   GraduationCap,
@@ -39,6 +40,7 @@ import {
   MonitorPlay,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
   Settings,
   Square,
   SquarePen,
@@ -55,10 +57,12 @@ import Segmented from "@/components/ui/Segmented";
 import Spinner, { SpinnerBlock } from "@/components/ui/Spinner";
 import TapTest from "@/components/tezlik/TapTest";
 import WhyFast from "@/components/tezlik/WhyFast";
-import { useT } from "@/components/shared/Language";
+import { useLang, useT } from "@/components/shared/Language";
+import { MONTHS } from "@/lib/i18n";
 import { ASSISTANT_NAME, ASSISTANT_TAG } from "@/lib/ai/brand";
 import { effortLabel } from "@/lib/ai/models";
-import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiModelOption, AiPlanStep } from "@/lib/ai/protocol";
+import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiModelOption, AiPlanStep, AiQuestion } from "@/lib/ai/protocol";
+import { answerText, clockOf, dateParts, dayKind, needsSeparator, splitRecommended } from "./conversation";
 import { refreshScreen } from "./AiScreenRefresh";
 import { isInternalHref } from "./aiMarkdown";
 import { endGenie, genieDone, playGenie, rectOf, reducedMotion, type Box } from "./genie";
@@ -510,11 +514,14 @@ export default function AssistantPanel({
                 open={sideOpen}
                 items={chat.history.items}
                 at={chat.history.at}
+                archivedView={chat.history.archived}
                 activeId={chat.conversationId}
                 busy={busy}
                 onOpen={pickConversation}
                 onNew={startNewChat}
                 onDelete={(id) => void chat.removeConversation(id)}
+                onArchive={(id, archived) => void chat.archiveConversation(id, archived)}
+                onFilter={chat.setHistoryFilter}
                 onDismiss={() => setSideOpen(false)}
               />
             )}
@@ -997,16 +1004,35 @@ function ChatBody({
     </div>
   );
 
+  // Tahrirlash va intervyu javobi — barqaror havola (Bubble `memo`): `chat.*`
+  // har xabar o'zgarishida yangilanadi, oqim paytida hamma xabar qayta chizilmasin.
+  const editRef = useRef(chat.editMessage);
+  const sendRef = useRef(chat.send);
+  useEffect(() => {
+    editRef.current = chat.editMessage;
+    sendRef.current = chat.send;
+  });
+  const onEdit = useCallback((key: string, text: string) => void editRef.current(key, text), []);
+  const onAnswer = useCallback((text: string) => void sendRef.current(text), []);
+  // Kun yorlig'i («Bugun», «Kecha») — ro'yxat olingan vaqtga nisbatan (render ichida soat o'qilmaydi).
+  const now = chat.history.at;
+
   const bubbles = messages.map((m, i) => (
-    <Bubble
-      key={m.key}
-      m={m}
-      models={status?.models}
-      decide={chat.decide}
-      onNavigate={onNavigate}
-      joy={joyKey === m.key}
-      last={i === messages.length - 1}
-    />
+    <Fragment key={m.key}>
+      {/* Suhbat boshlangan vaqt va keyin yozilgan kun/vaqt (11.10.2026). */}
+      {m.at && needsSeparator(messages[i - 1]?.at, m.at) && <TimeDivider at={m.at} first={i === 0} now={now} />}
+      <Bubble
+        m={m}
+        models={status?.models}
+        decide={chat.decide}
+        onNavigate={onNavigate}
+        joy={joyKey === m.key}
+        last={i === messages.length - 1}
+        idle={!busy}
+        onEdit={onEdit}
+        onAnswer={onAnswer}
+      />
+    </Fragment>
   ));
 
   if (opening) {
@@ -1196,6 +1222,9 @@ const Bubble = memo(function Bubble({
   onNavigate,
   joy,
   last,
+  idle,
+  onEdit,
+  onAnswer,
 }: {
   m: UiMessage;
   models: AiModelOption[] | undefined;
@@ -1205,14 +1234,47 @@ const Bubble = memo(function Bubble({
   joy: boolean;
   /** Suhbatning oxirgi xabari — yonidagi robot «tirik» (qolganlari harakatsiz). */
   last: boolean;
+  /** AI hozir javob yozmayapti — tahrirlash va intervyu javobi mumkin. */
+  idle: boolean;
+  onEdit: (key: string, text: string) => void;
+  onAnswer: (text: string) => void;
 }) {
   const { t } = useT();
+  const [editing, setEditing] = useState(false);
   if (m.role === "user") {
     return (
-      <div className="ai-msg-in ai-msg-user flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3 py-2 text-[13px] text-white">
-          {m.content}
-        </div>
+      <div className="ai-msg-in ai-msg-user flex flex-col items-end gap-1">
+        {editing ? (
+          <EditBox
+            initial={m.content}
+            onCancel={() => setEditing(false)}
+            onSave={(text) => {
+              setEditing(false);
+              if (text.trim() && text.trim() !== m.content) onEdit(m.key, text);
+            }}
+          />
+        ) : (
+          <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-3 py-2 text-[13px] text-white">
+            {m.content}
+          </div>
+        )}
+        {!editing && (
+          <div className="ai-msg-tools flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            {m.at && <span className="px-1 tabular-nums">{clockOf(m.at)}</span>}
+            <CopyButton text={m.content} />
+            {idle && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                title={t("Tahrirlash")}
+                aria-label={t("Tahrirlash")}
+                className="rounded p-1 hover:bg-secondary hover:text-foreground"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -1238,6 +1300,9 @@ const Bubble = memo(function Bubble({
         {tools.length > 0 && <WorkLog tools={tools} live={!!m.pending} onNavigate={onNavigate} />}
         {thinking && <Thinking label={t("O'ylayapti…")} />}
         {m.content && <MessageText text={m.content} onNavigate={onNavigate} caret={!!m.pending} />}
+        {m.questions && m.questions.length > 0 && (
+          <QuestionCard questions={m.questions} active={last && idle && !m.pending} onAnswer={onAnswer} />
+        )}
         {m.actions?.map((a) => <ActionCard key={a.id} a={a} onDecide={decide} onNavigate={onNavigate} />)}
         {m.stopped && <p className="text-[11px] text-muted-foreground">{t("To'xtatildi")}</p>}
         {(m.error || m.cutOff) && (
@@ -1251,17 +1316,244 @@ const Bubble = memo(function Bubble({
             {t("Sabab (faqat admin ko'radi)")}: {m.errorDetail}
           </p>
         )}
-        {m.via && !m.pending && (
-          <p className="text-[10px] text-muted-foreground/80">
-            {/* "GPT-6 Sol · Tez" — ro'yxatda bo'lsa nomi, bo'lmasa ID. */}
-            {models?.find((x) => x.id === m.via?.model)?.name ?? m.via.model}
-            {m.via.effort ? ` · ${t(effortLabel(m.via.effort))}` : ""}
-          </p>
+        {!m.pending && (m.content || m.via || m.at) && (
+          <div className="ai-msg-tools flex items-center gap-1 text-[10px] text-muted-foreground/80">
+            {m.at && <span className="tabular-nums">{clockOf(m.at)}</span>}
+            {m.via && (
+              <span>
+                {m.at ? "· " : ""}
+                {/* "GPT-6 Sol · Tez" — ro'yxatda bo'lsa nomi, bo'lmasa ID. */}
+                {models?.find((x) => x.id === m.via?.model)?.name ?? m.via.model}
+                {m.via.effort ? ` · ${t(effortLabel(m.via.effort))}` : ""}
+              </span>
+            )}
+            {m.content && <CopyButton text={m.content} />}
+          </div>
         )}
       </div>
     </div>
   );
 });
+
+// ── Vaqt, nusxa, tahrirlash, intervyu (11.10.2026) ─────────────────────
+//
+// Foydalanuvchi: «yangi chat ochilib yozilsa yuqorida chat boshlangan vaqt
+// tursin, 1–2 kundan keyin yozilsa o'sha yozilgan vaqt ko'rinib chat davom
+// etsin, copy qilish, edit qilishlar bo'lsin» va «intervyu qilib so'rasin …
+// user tanlab javob bersin». Sof qoidalar — components/ai/conversation.ts.
+
+/** Kun ajratgichi: «Suhbat boshlandi · Bugun, 09:44» yoki «11-oktyabr, 14:05». */
+function TimeDivider({ at, first, now }: { at: string; first: boolean; now: number }) {
+  const { t } = useT();
+  const [lang] = useLang();
+  const kind = now ? dayKind(at, new Date(now)) : "date";
+  const { day, month, year } = dateParts(at);
+  const sameYear = !now || new Date(now).getFullYear() === year;
+  const name = MONTHS[lang][month] ?? "";
+  const date =
+    kind === "today"
+      ? t("Bugun")
+      : kind === "yesterday"
+        ? t("Kecha")
+        : `${lang === "en" ? `${day} ${name}` : `${day}-${name.toLowerCase()}`}${sameYear ? "" : ` ${year}`}`;
+  return (
+    <div className="ai-msg-in flex items-center gap-3 py-1 text-[11px] text-muted-foreground" role="separator">
+      <span className="h-px flex-1 bg-border" />
+      <span className="shrink-0 tabular-nums">
+        {first ? `${t("Suhbat boshlandi")} · ` : ""}
+        {date}, {clockOf(at)}
+      </span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/** Xabar matnini nusxalash — bir lahza «belgi» ko'rsatadi. */
+function CopyButton({ text }: { text: string }) {
+  const { t } = useT();
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!done) return;
+    const id = window.setTimeout(() => setDone(false), 1500);
+    return () => window.clearTimeout(id);
+  }, [done]);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard?.writeText(text).then(
+          () => setDone(true),
+          () => {},
+        );
+      }}
+      title={done ? t("Nusxa olindi") : t("Nusxa olish")}
+      aria-label={done ? t("Nusxa olindi") : t("Nusxa olish")}
+      className="rounded p-1 hover:bg-secondary hover:text-foreground"
+    >
+      {done ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
+/** Savolni joyida tahrirlash: Enter — yuborish, Esc — bekor qilish. */
+function EditBox({ initial, onCancel, onSave }: { initial: string; onCancel: () => void; onSave: (text: string) => void }) {
+  const { t } = useT();
+  const [value, setValue] = useState(initial);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  }, [value]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
+  return (
+    <div className="w-full max-w-[85%] rounded-2xl border border-primary/40 bg-card p-2 shadow-sm">
+      <textarea
+        ref={ref}
+        value={value}
+        rows={1}
+        maxLength={MAX_CHARS}
+        onChange={(e) => setValue(e.target.value.slice(0, MAX_CHARS))}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onCancel();
+          else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            onSave(value);
+          }
+        }}
+        aria-label={t("Tahrirlash")}
+        className="block w-full resize-none bg-transparent px-1.5 py-1 text-[13px] focus:outline-none"
+      />
+      <div className="mt-1 flex items-center justify-end gap-1.5">
+        <span className="mr-auto px-1 text-[10px] text-muted-foreground">{t("Keyingi javoblar yangisi bilan almashadi")}</span>
+        <button type="button" onClick={onCancel} className="rounded-lg px-2.5 py-1 text-[12px] text-muted-foreground hover:bg-secondary">
+          {t("Bekor qilish")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave(value)}
+          disabled={!value.trim()}
+          className="rounded-lg bg-primary px-2.5 py-1 text-[12px] font-medium text-white disabled:opacity-40"
+        >
+          {t("Yuborish")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * INTERVYU KARTASI (`ask_user`, Claude'dagi kabi): har savolda variantlar
+ * (bittasi yoki bir nechtasi) va «Boshqa» — o'zi yozadi. «Javob berish»
+ * tanlovni keyingi xabar qilib yuboradi. Oxirgi xabar bo'lmasa (javob
+ * berilgan) yoki AI yozayotganda — faqat ko'rish uchun.
+ */
+function QuestionCard({ questions, active, onAnswer }: { questions: AiQuestion[]; active: boolean; onAnswer: (text: string) => void }) {
+  const { t } = useT();
+  const [picked, setPicked] = useState<string[][]>(() => questions.map(() => []));
+  const [other, setOther] = useState<string[]>(() => questions.map(() => ""));
+  const [sent, setSent] = useState(false);
+  const disabled = !active || sent;
+  const valuesOf = (i: number) => [...(picked[i] ?? []), ...((other[i] ?? "").trim() ? [other[i].trim()] : [])];
+  const ready = questions.every((_, i) => valuesOf(i).length > 0);
+
+  const pick = (qi: number, label: string) => {
+    const multi = questions[qi].multiSelect === true;
+    setPicked((p) => p.map((arr, i) => (i !== qi ? arr : multi ? (arr.includes(label) ? arr.filter((x) => x !== label) : [...arr, label]) : [label])));
+    // Bitta tanlov: variant bosilsa yozilgan «Boshqa» bekor bo'ladi.
+    if (!multi) setOther((o) => o.map((v, i) => (i === qi ? "" : v)));
+  };
+  const typeOther = (qi: number, value: string) => {
+    setOther((o) => o.map((v, i) => (i === qi ? value.slice(0, 200) : v)));
+    if (!questions[qi].multiSelect && value.trim()) setPicked((p) => p.map((arr, i) => (i === qi ? [] : arr)));
+  };
+  const submit = () => {
+    if (disabled || !ready) return;
+    setSent(true);
+    onAnswer(answerText(questions, questions.map((_, i) => valuesOf(i).map((v) => splitRecommended(v).text))));
+  };
+
+  return (
+    <div className={`ai-msg-in space-y-3 rounded-xl border border-primary/30 bg-card p-3 ${disabled ? "opacity-70" : ""}`}>
+      {questions.map((q, qi) => (
+        <fieldset key={qi} disabled={disabled} className="space-y-1.5">
+          <legend className="mb-1.5 flex flex-wrap items-center gap-2">
+            {q.header && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">{q.header}</span>}
+            <span className="text-[13px] font-medium">{q.question}</span>
+            {q.multiSelect && <span className="text-[11px] text-muted-foreground">{t("bir nechtasini tanlash mumkin")}</span>}
+          </legend>
+          <div className="grid gap-1.5">
+            {q.options.map((o) => {
+              const { text, recommended } = splitRecommended(o.label);
+              const on = (picked[qi] ?? []).includes(o.label);
+              return (
+                <button
+                  key={o.label}
+                  type="button"
+                  role={q.multiSelect ? "checkbox" : "radio"}
+                  aria-checked={on}
+                  onClick={() => pick(qi, o.label)}
+                  className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[13px] transition-colors ${
+                    on ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
+                  }`}
+                >
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border ${q.multiSelect ? "rounded" : "rounded-full"} ${
+                      on ? "border-primary bg-primary text-white" : "border-border"
+                    }`}
+                  >
+                    {on && <Check className="h-3 w-3" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="font-medium">{text}</span>
+                    {recommended && (
+                      <span className="ml-1.5 rounded bg-emerald-500/10 px-1 py-px text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                        {t("Tavsiya")}
+                      </span>
+                    )}
+                    {o.description && <span className="block text-[11px] text-muted-foreground">{o.description}</span>}
+                  </span>
+                </button>
+              );
+            })}
+            <input
+              value={other[qi] ?? ""}
+              onChange={(e) => typeOther(qi, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder={t("Boshqa — o'zingiz yozing")}
+              aria-label={t("Boshqa — o'zingiz yozing")}
+              className="rounded-lg border border-dashed border-border bg-transparent px-2.5 py-1.5 text-[13px] focus:border-primary focus:outline-none"
+            />
+          </div>
+        </fieldset>
+      ))}
+      {!disabled && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!ready}
+            className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:opacity-40"
+          >
+            {t("Javob berish")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Reja va ish jarayoni (5-bosqich, Cowork kabi) ───────────────────
 //

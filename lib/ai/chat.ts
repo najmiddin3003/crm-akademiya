@@ -12,7 +12,7 @@ import {
   type ToolSpec,
 } from "./openai";
 import { systemPrompt } from "./prompt";
-import type { AiChatMessage, AiEffort, AiStreamEvent } from "./protocol";
+import type { AiChatMessage, AiEffort, AiQuestion, AiStreamEvent } from "./protocol";
 import { toolLabel } from "./toolLabels";
 import { isSilentTool, responseToolSpecs, runTool, tooManyCallsResult, toolSpecs, toolsFor } from "./tools";
 
@@ -72,6 +72,22 @@ export interface ChatTurnResult {
   usedTools: string[];
   /** Shu javobda tuzilgan amal qoralamalari — suhbatga bog'lanadi (lib/ai/store.ts). */
   actionIds: string[];
+  /** Xodimga berilgan intervyu savollari (`ask_user`) — javob shu bilan tugagan. */
+  questions?: AiQuestion[];
+}
+
+/**
+ * Tarixdagi intervyu savollari modelga matn bo'lib boradi — keyingi savolda
+ * («Filial: Barcha filiallar») u nimaga javob berilayotganini bilsin.
+ */
+export function historyWithQuestionNotes(messages: readonly AiChatMessage[]): AiChatMessage[] {
+  return messages.map((m) => {
+    if (!m.questions?.length) return m;
+    const asked = m.questions
+      .map((q) => `${q.header ? `${q.header} — ` : ""}${q.question} Options: ${q.options.map((o) => o.label).join(" / ")}`)
+      .join("; ");
+    return { ...m, content: `${m.content}${m.content ? "\n\n" : ""}[You asked the user with ask_user: ${asked}]` };
+  });
 }
 
 interface ModelCall {
@@ -152,6 +168,7 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
   let answer = "";
   const usedTools: string[] = [];
   const actionIds: string[] = [];
+  let questions: AiQuestion[] | undefined;
 
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     if (signal.aborted) break;
@@ -195,6 +212,10 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
       }
       const result = await runTool(ctx, call.name, call.arguments);
       if (result.plan) emit({ type: "plan", steps: result.plan });
+      if (result.questions) {
+        questions = result.questions;
+        emit({ type: "questions", questions: result.questions });
+      }
       if (!silent) {
         emit({
           type: "tool",
@@ -216,7 +237,10 @@ export async function runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult>
       dialog.answer(call.id, result.content);
       usedTools.push(call.name);
     }
+    // INTERVYU: savollar panelda — model xodimning tanlovini kutadi, bu navbat
+    // shu yerda tugaydi (javob keyingi xabar bo'lib keladi).
+    if (questions) break;
   }
 
-  return { answer: answer.trim(), usedTools, actionIds };
+  return { answer: answer.trim(), usedTools, actionIds, ...(questions ? { questions } : {}) };
 }

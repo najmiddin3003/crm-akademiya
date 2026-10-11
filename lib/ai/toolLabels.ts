@@ -32,6 +32,7 @@ export const TOOL_LABELS: readonly { name: string; label: string }[] = [
   { name: "propose_pupil_comment", label: "Izoh qoralamasi tayyorlanmoqda" },
   { name: "propose_task", label: "Topshiriq qoralamasi tayyorlanmoqda" },
   { name: "update_plan", label: "Reja tuzilmoqda" },
+  { name: "ask_user", label: "Savol berilmoqda" },
   { name: "payments_list", label: "To'lovlar ro'yxati olinmoqda" },
   { name: "query_data", label: "Ma'lumotlar bazasidan qidirilmoqda" },
   { name: "propose_new_pupil", label: "O'quvchi qoralamasi tayyorlanmoqda" },

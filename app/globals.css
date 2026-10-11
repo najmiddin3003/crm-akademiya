@@ -11198,6 +11198,11 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
 }
 .ai-side[data-open] { width: 272px; border-right-color: hsl(var(--border) / .7); }
 .ai-side-inner { width: 272px; height: 100%; }
+/* Xabar ostidagi vaqt, «Nusxa olish», «Tahrirlash» (11.10.2026) — sichqoncha
+   ustiga kelganda; telefonda (hover yo'q) doim ko'rinadi. */
+.ai-msg-tools { opacity: 0; transition: opacity .15s; }
+.ai-msg-in:hover > .ai-msg-tools, .ai-msg-in:hover > div > .ai-msg-tools, .ai-msg-tools:focus-within { opacity: 1; }
+@media (hover: none) { .ai-msg-tools { opacity: 1; } }
 .ai-side-del { opacity: 0; transition: opacity .15s; }
 .ai-side-row:hover .ai-side-del, .ai-side-del:focus-visible { opacity: 1; }
 @media (hover: none) { .ai-side-del { opacity: 1; } }

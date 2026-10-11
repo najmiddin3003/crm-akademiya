@@ -2,7 +2,7 @@ import type { AiContext } from "../context";
 import { branchPool, buildingNo, sameBranchPool } from "@/lib/branchPools";
 import { MAX_TOOL_RESULT_CHARS } from "../config";
 import type { ResponseToolSpec, ToolSpec } from "../openai";
-import type { AiActionView, AiPlanStep } from "../protocol";
+import type { AiActionView, AiPlanStep, AiQuestion } from "../protocol";
 import {
   actionOptions,
   proposeChiqim,
@@ -12,6 +12,7 @@ import {
   proposeTask,
   proposeTransfer,
 } from "./actions";
+import { askUser } from "./ask";
 import { attendanceReport, staffAttendance } from "./attendance";
 import { queryData } from "./dataQuery";
 import { cashboxBalances, financeSummary } from "./finance";
@@ -38,6 +39,7 @@ import { DraftCreated, ToolInputError, type AiTool, type ToolArgs } from "./type
 
 export const AI_TOOLS: readonly AiTool[] = [
   updatePlan,
+  askUser,
   overview,
   searchPupils,
   pupilDetails,
@@ -68,8 +70,8 @@ export const AI_TOOLS: readonly AiTool[] = [
   proposeLeadStage,
 ];
 
-/** Panelda vosita belgisi chiqmaydigan vositalar — reja o'zi ko'rinadi. */
-const SILENT_TOOLS = new Set(["update_plan"]);
+/** Panelda vosita belgisi chiqmaydigan vositalar — reja va intervyu kartasi o'zi ko'rinadi. */
+const SILENT_TOOLS = new Set(["update_plan", "ask_user"]);
 export function isSilentTool(name: string): boolean {
   return SILENT_TOOLS.has(name);
 }
@@ -197,17 +199,26 @@ export interface ToolRunResult {
   note?: string;
   /** `update_plan` — panelga ketadigan reja. */
   plan?: AiPlanStep[];
+  /** `ask_user` — xodimga intervyu savollari; javob shu yerda tugaydi (lib/ai/chat.ts). */
+  questions?: AiQuestion[];
 }
 
 /**
  * Natijadagi PANEL qismi (`_ui`: note, plan) ajratiladi — modelga ketmaydi.
  * Vositalar shu kalit bilan panelga qisqa yozuv yoki reja beradi.
  */
-function takeUi(result: unknown): { result: unknown; note?: string; plan?: AiPlanStep[] } {
+function takeUi(result: unknown): { result: unknown; note?: string; plan?: AiPlanStep[]; questions?: AiQuestion[] } {
   if (!result || typeof result !== "object" || Array.isArray(result) || !("_ui" in result)) return { result };
-  const { _ui, ...rest } = result as Record<string, unknown> & { _ui?: { note?: unknown; plan?: AiPlanStep[] } };
+  const { _ui, ...rest } = result as Record<string, unknown> & {
+    _ui?: { note?: unknown; plan?: AiPlanStep[]; questions?: AiQuestion[] };
+  };
   const note = typeof _ui?.note === "string" && _ui.note ? _ui.note.slice(0, 160) : undefined;
-  return { result: rest, ...(note ? { note } : {}), ...(_ui?.plan ? { plan: _ui.plan } : {}) };
+  return {
+    result: rest,
+    ...(note ? { note } : {}),
+    ...(_ui?.plan ? { plan: _ui.plan } : {}),
+    ...(_ui?.questions?.length ? { questions: _ui.questions } : {}),
+  };
 }
 
 /** `/finance-cash`, `/student-edit/12?src=list` — components/ai/aiMarkdown.ts → isInternalHref bilan bir xil. */
@@ -266,7 +277,7 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
         ...screenOf(ctx, raw.screen),
       };
     }
-    const { result, note, plan } = takeUi(raw);
+    const { result, note, plan, questions } = takeUi(raw);
     // Vosita "xato" natijasi (`{error}`) — ruxsat yoki qamrov sababi: panelda qizil belgi.
     const failed = !!result && typeof result === "object" && "error" in (result as object);
     return {
@@ -275,6 +286,7 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
       ...(failed ? {} : screenOf(ctx, (result as { page?: unknown } | null)?.page)),
       ...(note ? { note } : {}),
       ...(plan ? { plan } : {}),
+      ...(questions ? { questions } : {}),
     };
   } catch (e) {
     if (e instanceof ToolInputError) return fail(`Invalid arguments: ${e.message}`);

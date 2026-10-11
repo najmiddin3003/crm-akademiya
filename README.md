@@ -2989,3 +2989,51 @@ ruxsatsiz filial rad etilishi, sxema). Model bilan to'liq sinov —
 `scripts/_replay-ai-chat.mjs` (`AI_DEBUG_TOOLS=1` — vosita argumentlari):
 AI kaliti faqat serverda, shuning uchun deploydan keyin serverda yurgiziladi
 (faqat o'qiydi: amallar o'chiq, suhbat saqlanmaydi).
+
+## AI panel: vaqt, nusxa/tahrir, arxiv, intervyu (2026-10-11)
+
+Foydalanuvchi so'rovlari (11.10.2026): suhbatda boshlangan va keyin yozilgan
+vaqt ko'rinsin, nusxa olish va tahrirlash bo'lsin; suhbat tarixida arxiv
+(savatcha oldida) va «Faol / Arxiv» filtri, 30 kundan keyin o'chmasdan arxivga
+tushsin, har suhbat bazada saqlansin; AI noaniq savolda Claude'dagidek
+intervyu qilsin (variantli savol, xodim tanlaydi), to'liqroq javob bersin,
+4 filialni jamlay olsin.
+
+**Vaqt** (`components/ai/conversation.ts`, `AssistantPanel → TimeDivider`):
+birinchi xabar oldida «Suhbat boshlandi · Bugun, 09:44»; keyingi xabar boshqa
+kunda yoki 1 soatdan ko'p tanaffusdan keyin bo'lsa — kun va vaqt ajratgichi
+(«Kecha, 14:05», «8-oktyabr, 10:12»). Har xabar ostida soat (sichqoncha ustida;
+telefonda doim — `.ai-msg-tools`).
+
+**Nusxa / tahrir:** har xabarda «Nusxa olish»; o'z savolida «Tahrirlash» —
+joyida o'zgartiriladi (Enter — yuborish, Esc — bekor), keyingi xabarlar
+olib tashlanadi va yangi javob olinadi. Server: `POST /api/ai/chat` →
+`editFrom: { index, content }` (indeks faqat bazaga yozilgan xabarlar bo'yicha
+sanaladi, matn mos kelmasa 409), `saveTurn(… replaceFrom)` suhbatni o'sha
+joydan qayta yozadi; birinchi savol tahrirlansa — nom ham.
+
+**Arxiv** (`lib/ai/store.ts`): `expiresAt` TTL indeksi olib tashlandi
+(`lib/ai/db.ts → dropIndex("expiresAt_1")`) — suhbat bazadan O'CHMAYDI. 30 kun
+yozilmagan suhbat ro'yxat ochilganda arxivga o'tadi (`autoArchive`,
+`archivedBy: "auto"`), xodim o'zi arxivlaydi/qaytaradi
+(`PATCH /api/ai/conversations?id=… {archived}`), arxivdagiga yozilsa — yana
+faol. Savatcha — yumshoq o'chirish (`deletedAt`): xodimdan yashiriladi,
+bazada qoladi. Xabarlar chegarasi 60 → 500 (modelga baribir oxirgilari).
+
+**Intervyu** (`lib/ai/tools/ask.ts`, `ask_user`): model so'rov noaniq bo'lsa
+(qaysi filial yoki hammasi, davr, oy, xodimlar …) 1–3 savolni 2–5 variant bilan
+beradi, eng ehtimoliysi « (Tavsiya)» bilan. `lib/ai/chat.ts` savollarni panelga
+`{type: "questions"}` qilib yuboradi va navbatni TO'XTATADI; karta
+(`QuestionCard`) variantlar, «Boshqa — o'zingiz yozing» va «Javob berish»
+bilan, tanlov keyingi xabar bo'lib ketadi («Filial: Barcha filiallar»).
+Savollar suhbatda saqlanadi (`AiChatMessage.questions`) va keyingi so'rovda
+modelga matn bo'lib boradi (`historyWithQuestionNotes`).
+
+**Ko'rsatma:** to'liq javob (bo'linma, jami, davr, filial, qanday sanalgani),
+INTERVIEW qoidasi (aytilganini so'ramaslik), admin butun markazni so'rasa —
+barcha filiallar (`branch: "all"` / `allBranches`). Boshqa xodimlar uchun
+ruxsatlar o'zgarmagan.
+
+**Sinov:** `scripts/_verify-ai.mjs` — intervyu savollarini tekshirish, javob
+matni, ajratgich/kun qoidalari, tarix izohi, soxta OpenAI bilan `ask_user`
+navbatni to'xtatishi.
