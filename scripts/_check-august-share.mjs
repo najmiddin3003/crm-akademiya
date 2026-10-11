@@ -139,7 +139,8 @@ for (const a of augRows) {
     augCollected: a.collected,
     augFoiz: payrollFoizPart(a),
     augPaid: payrollPaid(a),
-    augPaidSettled: a.paidSettled ?? 0,
+    augAvans: a.paidAvans,
+    augClosed: a.closedMonth === true,
     augEarned: payrollEarned(a, pAug),
     augTax: payrollTax(a, pAug),
     augDue: payrollDue(a, pAug),
@@ -155,7 +156,7 @@ for (const a of augRows) {
   };
   report.push(row);
   console.log(
-    `\n■ #${a.id} ${a.name} — ${a.percent}% | avgust tushumi ${fmt(a.collected)}, ulush ${fmt(row.augFoiz)}, soliq ${fmt(row.augTax)}, olgan ${fmt(row.augPaid)}${row.augPaidSettled ? ` (shundan qo'lda ${fmt(row.augPaidSettled)})` : ""}, avgust «Qolgan» ${fmt(row.augDue)} → sentabrga o'tadigan ${fmt(share)}`,
+    `\n■ #${a.id} ${a.name} — ${a.percent}% | avgust tushumi ${fmt(a.collected)}, ulush ${fmt(row.augFoiz)}, soliq ${fmt(row.augTax)}, avans ${fmt(row.augAvans)}, oylik ${fmt(row.augPaid - row.augAvans)}, avgust «Qolgan» ${fmt(row.augDue)}${row.augClosed ? " (yopilgan oy)" : ""} → sentabrga o'tadigan ${fmt(share)}`,
   );
   console.log(
     `    sentabr chiqarishida oldin yozilganlar ulushi ${fmt(row.before)}, keyin yozilganlar ${fmt(row.after)}${row.settled ? `, berilgan deb belgilangan ${fmt(row.settled)}` : ""}`,
@@ -177,6 +178,12 @@ console.log(`  sentabr chiqarishidan KEYIN yozilgan kirimlar ulushi:  ${fmt(sum(
 console.log(`  «berilgan» deb belgilangan (oylikka kirmaydi):        ${fmt(sum((r) => r.settled))}`);
 console.log(`  sentabr chiqarishida chekka kirgan «O'tgan oydan»: ${fmt(sum((r) => r.sepPayouts.reduce((s, x) => s + x.carryInReceipt, 0)))}`);
 console.log(`  HOZIR sentabr «Qolgan» (shu ustozlar, musbat): ${fmt(sum((r) => Math.max(r.sepDueNow ?? 0, 0)))}`);
+// Butun avgust sahifasi: yopilgan oy — hech kimda «Qolgan» bo'lmasligi kerak.
+const augOpen = augRows.filter((e) => e.configured && payrollDue(e, pAug) !== 0);
+console.log(
+  `\nAVGUST SAHIFASI: ${augRows.length} xodim, «Qolgan» 0 emas: ${augOpen.length} ta` +
+    (augOpen.length ? ` (${augOpen.slice(0, 5).map((e) => `${e.name} ${fmt(payrollDue(e, pAug))}`).join(", ")}…)` : ""),
+);
 if (jsonOut) {
   fs.writeFileSync(jsonOut, JSON.stringify({ runs: runs.map(({ items, ...r }) => ({ ...r, items: items?.length })), report }, null, 1), "utf8");
   console.log(`JSON: ${jsonOut}`);

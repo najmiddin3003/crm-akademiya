@@ -426,21 +426,24 @@ export interface EmployeePayroll {
   jarima: number;
   /** Shu oyda berilgan avans. */
   paidAvans: number;
-  /**
-   * Shu oyda kassadan chiqarilgan oylik. `paidSettled` bo'lsa — u ham shu
-   * ichida (qo'lda berilgan ulush, quyida).
-   */
+  /** Shu oyda kassadan chiqarilgan oylik. */
   paidOylik: number;
   /**
    * QO'LDA BERILGAN ULUSH (11.10.2026) — `teacherShareSettled` belgili
-   * kirimlardan (lib/transactionEntries.ts). Tushum (`collected`) ularni O'Z
-   * ICHIGA OLADI — sahifada ko'rinadi; ulush esa tizimdan tashqarida berilgan:
-   *   `settledShare` — o'sha kirimlarning yalpi foiz ulushi;
-   *   `paidSettled`  — uning soliqdan keyingi qismi, `paidOylik` ICHIDA.
-   * Natija: shu oy «Qolgan»ida bu ulush 0. Hisob — `applySettledShare`.
+   * kirimlarning yalpi foiz ulushi (lib/transactionEntries.ts). Tushum va
+   * hisoblanganda KO'RINADI; nol-yopish zanjiri uni keyingi oyga
+   * o'tkazmaydi (carryContribution). «To'langan»ga QO'SHILMAYDI — u faqat
+   * kassa yozuvlaridan (foydalanuvchi: «qancha oylik, qancha avans berilgan
+   * — shu ko'rinib tursin»). Hisob — `applySettledShare`.
    */
   settledShare?: number;
-  paidSettled?: number;
+  /**
+   * YOPILGAN OY (11.10.2026) — nol-yopish oyi va undan oldingilari
+   * (lib/payrollSources.ts → loadLastPureCloseMonth). Oylik to'liq berilgan
+   * (foydalanuvchi: «qolgan to'lanadiganda esa 0 tursin»): `payrollDue` 0,
+   * tushum/hisoblangan/soliq/avans/oylik esa yozuvlardagidek ko'rinadi.
+   */
+  closedMonth?: boolean;
   /**
    * O'tgan oylardan SHU OYDA TO'LANADIGAN qoldiq, ishorali — `payrollDue`
    * ga kiradi (lib/payrollSources.ts → loadCarryOver → `foldCarryChain`):
@@ -722,6 +725,10 @@ export function payrollTax(e: EmployeePayroll, p: PayrollPeriod): number {
  * kirmaydi (`carryPending`, o'z oyidan chiqariladi); jami — `payrollOwedTotal`.
  */
 export function payrollDue(e: EmployeePayroll, p: PayrollPeriod): number {
+  // Yopilgan oy (nol-yopish va undan oldingi) — oylik to'liq berilgan,
+  // to'lanadigan qoldiq yo'q (11.10.2026). Zanjir bu yerga tayanmaydi:
+  // nol-yopish ulushi carryContribution'da alohida hisoblanadi.
+  if (e.closedMonth) return 0;
   return payrollEarned(e, p) - payrollTax(e, p) + e.carryOver - payrollPaid(e);
 }
 
@@ -794,42 +801,33 @@ export interface CarryFold {
  */
 export function carryContribution(e: EmployeePayroll, p: PayrollPeriod, pureClose: boolean): number {
   if (!e.configured) return 0;
-  // Nol-yopish oyi SOLIQSIZ o'tadi — qo'lda berilgan ulush ikki tomondan ham
-  // ayriladi (yalpi ulush va uning to'langan sof qismi), aks holda uning
-  // soliq qismi keyingi oyga "qarz" bo'lib o'tib ketardi (applySettledShare).
-  if (pureClose) {
-    return payrollHasFoiz(e)
-      ? payrollFoizPart(e) - (e.settledShare ?? 0) - (payrollPaid(e) - (e.paidSettled ?? 0))
-      : 0;
-  }
+  // Nol-yopish oyi SOLIQSIZ o'tadi; qo'lda berilgan ulush (applySettledShare)
+  // o'tmaydi — u berilgan.
+  if (pureClose) return payrollHasFoiz(e) ? payrollFoizPart(e) - (e.settledShare ?? 0) - payrollPaid(e) : 0;
   return payrollEarned(e, p) - payrollTax(e, p) - payrollPaid(e);
 }
 
 /**
- * QO'LDA BERILGAN ULUSHNI qatorga qo'llaydi (11.10.2026).
+ * QO'LDA BERILGAN ULUSHNI qatorga yozadi (11.10.2026).
  *
  * `settledBase` — shu oy tushumidagi `teacherShareSettled` kirimlari
  * yig'indisi (lib/payrollSources.ts → loadCollectedByTeacher → `settled`).
- * Tushum O'ZGARMAYDI (sahifada ko'rinadi — foydalanuvchi: «tushum ko'rinib
- * tursin»), ulush esa berilgan deb `paidOylik` ga qo'shiladi:
+ * Tushum, hisoblangan va «To'langan» O'ZGARMAYDI — sahifada qancha tushum
+ * bo'lgan, qancha oylik va avans berilgan bo'lsa, shuning o'zi ko'rinadi
+ * (foydalanuvchi). Faqat yalpi ulush belgilanadi:
  *
- *     settledShare = foiz(tushum) − foiz(tushum − belgilangan)        // yalpi
- *     paidSettled  = settledShare − (soliq(to'liq) − soliq(belgilangansiz))
+ *     settledShare = foiz(tushum) − foiz(tushum − belgilangan)
  *
- * Soliq farq orqali: ulush hisoblangan oylikni oshiradi, soliq ham o'sadi
- * (qat'iy soliq — hisoblangangacha); xodimga berilgani — soliqdan keyingisi.
- * Natija: shu oy «Qolgan»i bu ulushdan 0 (hisoblangan − soliq − berilgan).
- * Nol-yopish oyi zanjiri soliqsiz — carryContribution ikkalasini ayiradi.
+ * va nol-yopish zanjiri uni keyingi oyga o'tkazmaydi (carryContribution).
+ * Belgili kirimlar hozir faqat avgustda — yopilgan oy, «Qolgan» u yerda
+ * baribir 0 (`closedMonth`).
  *
  * Sof funksiya — scripts/_test-salary.mjs bazasiz sinaydi.
  */
-export function applySettledShare(e: EmployeePayroll, p: PayrollPeriod, settledBase: number): EmployeePayroll {
+export function applySettledShare(e: EmployeePayroll, settledBase: number): EmployeePayroll {
   if (!settledBase || !e.configured || !payrollHasFoiz(e)) return e;
-  const without: EmployeePayroll = { ...e, collected: e.collected - settledBase };
-  const settledShare = payrollFoizPart(e) - payrollFoizPart(without);
-  if (!settledShare) return e;
-  const paidSettled = settledShare - (payrollTax(e, p) - payrollTax(without, p));
-  return { ...e, settledShare, paidSettled, paidOylik: e.paidOylik + paidSettled };
+  const settledShare = payrollFoizPart(e) - payrollFoizPart({ ...e, collected: e.collected - settledBase });
+  return settledShare ? { ...e, settledShare } : e;
 }
 
 /**

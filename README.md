@@ -3105,22 +3105,27 @@ o'zgarmaydi. Yozish: `scripts/settle-august-share-20261011.mjs --apply`
 (kvitansiya `/var/www/crm/shared/settle-august-share-20261011.json`,
 `--undo`). Prod'da bajarildi (923a2c4).
 
-**Tushum ko'rinib tursin (o'sha kuni, foydalanuvchi: «avgust oyligi to'liq
-berilgan, tushumni 0 qildingmi?» → «xa shunday qil, tushum ko'rinib
-tursin»).** Birinchi variant belgili kirimni `loadCollectedByTeacher` dan
-butunlay chiqarardi — avgust sahifasida «Tushum» 0 edi. Endi kirim tushumda
-QOLADI (`collected`, alohida `settled`), ulush esa «berilgan»
-(lib/salary.ts → `applySettledShare`):
+**Avgust sahifasi — yakuniy ko'rinish (o'sha kuni, ikki bosqichda).**
+Foydalanuvchi: «avgust oyligi to'liq berilgan, tushumni 0 qildingmi?», keyin
+«avgustda qancha tushum bo'lgan, qancha oylik, qancha avans berilgan — shu
+ko'rinib tursin, qolgan to'lanadiganda esa 0 tursin» va «avgustga
+edutizimdagi nusxadan qo'shma».
 
-    settledShare = foiz(tushum) − foiz(tushum − belgilangan)        yalpi
-    paidSettled  = settledShare − (soliq(to'liq) − soliq(belgilangansiz))
+1. Birinchi variant (923a2c4) belgili kirimni `loadCollectedByTeacher` dan
+   butunlay chiqarardi — «Tushum» 0 edi. Endi kirim tushumda QOLADI
+   (`collected`, alohida `settled`); `applySettledShare` faqat yalpi
+   ulushni belgilaydi (`settledShare`), nol-yopish zanjiri uni o'tkazmaydi
+   (`carryContribution`: foiz − settledShare − olingan).
+2. Ikkinchi variant (0c9ee75) ulushni sintetik «qo'lda berilgan» bo'lib
+   `paidOylik` ga qo'shardi — RAD ETILDI: «To'langan» faqat kassa
+   yozuvlaridan bo'lishi kerak. Olib tashlandi.
+3. YOPILGAN OY (`closedMonth`): nol-yopish oyi va undan oldingilari
+   (`loadLastPureCloseMonth`, `PayrollRefs.closedThrough`) — `payrollDue` 0
+   (qarzdorlik ham, chiqariladigan ham 0). Tushum, hisoblangan, soliq, avans,
+   oylik — yozuvlardagidek. Avgust sahifasida 59 xodimning hammasida «Qolgan»
+   0 (okladlilar ham — oylik tizimdan tashqarida berilgan). Zanjir
+   `payrollDue` ga tayanmaydi — sentabr o'zgarmaydi.
 
-`paidSettled` `paidOylik` ICHIDA — avgust «Qolgan» 0, Oylik sahifasida
-«qo'lda berilgan» izohi. Soliq farq orqali: uch ustozda qat'iy soliq bor
-(Abdushukur 216 000, Musoxon 240 000, Yaxyoxo'ja 202 500 — hisoblangangacha)
-— yalpi ulushni «olingan» qilish ularni minusga (qarzdorlik) tushirardi.
-Nol-yopish zanjiri soliqsiz, shuning uchun `carryContribution` ikkalasini
-ham ayiradi — sentabrga 0 o'tadi. Xodim daftarida belgili kirim «ulush
-berilgan» bilan 0. Sinov: `_test-salary` (Q bo'limi), Atlas nusxasida
-apply → `_check-august-share` (avgust «Qolgan» 9 ustozda 0, sentabr
-o'zgarmagan) → `_check-salary-ledger` 9 xodim MISMATCH 0 → undo.
+Sinov: `_test-salary` (Q bo'limi), Atlas nusxasida apply →
+`_check-august-share` («AVGUST SAHIFASI: «Qolgan» 0 emas: 0 ta», sentabr
+o'zgarmagan) → `_check-salary-ledger` (66 xodim MISMATCH 0) → undo.
