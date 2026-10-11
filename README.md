@@ -3084,3 +3084,26 @@ ruxsatlar o'zgarmagan.
 **Sinov:** `scripts/_verify-ai.mjs` — intervyu savollarini tekshirish, javob
 matni, ajratgich/kun qoidalari, tarix izohi, soxta OpenAI bilan `ask_user`
 navbatni to'xtatishi.
+
+## Avgust kirimlari: ustoz ulushi «berilgan» (2026-10-11)
+
+**Savol (foydalanuvchi):** avgust yopilmaganmidi? Sentabr oyligi to'liq
+berilgandan KEYIN avgustni tanlab yozilgan to'lov bo'lsa — qolsin; sentabr
+oyligi chiqarilishidan OLDINGI avgust to'lovlari — 0, chunki ular berilgan.
+
+**Tekshiruv** (`scripts/_check-august-share.mjs`, faqat o'qiydi): avgust —
+nol-yopish oyi, undan faqat foizli ustozning «Avgust» kirimlari ulushi
+sentabrga «O'tgan oydan» bo'lib o'tadi (lib/salary.ts → foldCarryChain).
+Prod'da: 9 ustoz, 21 kirim, ulush 2 586 507 so'm; kirimlarning hammasi
+30.09.2026 21:50–21:53 dagi sentabr oyligi chiqarilishidan oldin (02.09–30.09)
+yozilgan, chiqarish chekida «O'tgan oydan» 0 (o'sha paytda avgust o'tmas edi).
+Keyin yozilgani yo'q; 4-filialda sentabr chiqarilmagan (tegilmadi).
+
+**Qaror:** «Ha, hammasini 0 qil». Kirimga `teacherShareSettled`
+(lib/transactionEntries.ts) — ulush oylikka kirmaydi
+(`loadCollectedByTeacher` sanamaydi), xodim daftarida «ulush berilgan» bilan
+0. O'quvchi to'lovi, balans, kassa, tushum/KPI — o'zgarmaydi. Yozish:
+`scripts/settle-august-share-20261011.mjs --apply` (kvitansiya
+`/var/www/crm/shared/settle-august-share-20261011.json`, `--undo`). Atlas
+nusxasida sinaldi: sentabr «O'tgan oydan» 9 ustozda 0, `_test-salary` va
+`_check-salary-ledger` (9 xodim) — xato yo'q.

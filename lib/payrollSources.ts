@@ -234,6 +234,9 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
       ],
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
+      // Ulushi tizimdan tashqarida berilgan kirim (11.10.2026, avgust) —
+      // ustoz oyligiga kirmaydi (lib/transactionEntries.ts → teacherShareSettled).
+      teacherShareSettled: { $exists: false },
     })
     // Pastdagi tsikl faqat shularni o'qiydi. 666 KB -> 73 KB. `pupilId` va
     // `studentName` — ustoz almashuvida qaysi o'quvchi ekanini topish uchun.

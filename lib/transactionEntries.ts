@@ -163,6 +163,19 @@ export interface TransactionEntry {
    */
   createdAt?: string;
   /**
+   * USTOZ ULUSHI BERILGAN (11.10.2026) — shu kirimdan ustozning foizli
+   * ulushi oylikda HISOBLANMAYDI: u tizimdan tashqarida (qo'lda) berilgan.
+   * O'quvchi to'lovi, balansi, kassa va tushum/KPI hisobotlari O'ZGARMAYDI —
+   * faqat oylik: lib/payrollSources.ts → loadCollectedByTeacher (sanamaydi)
+   * va lib/salaryLedger.ts (daftarda 0 bilan ko'rinadi).
+   *
+   * Birinchi qo'llanishi: avgust «nol-yopish» oyining 30.09.2026 dagi
+   * sentabr oyligi chiqarilishidan OLDIN yozilgan kirimlari (foydalanuvchi:
+   * «u to'lovlar berilgan bo'ladi, 0 qilamiz») —
+   * scripts/settle-august-share-20261011.mjs (kvitansiya, --undo).
+   */
+  teacherShareSettled?: { at: string; reason: string };
+  /**
    * To'lov QAYSI OY uchun ekani — "YYYY-MM".
    *
    * `date` dan FARQI: `date` — pul kassaga kelgan kun, bu esa u qoplaydigan
