@@ -11145,6 +11145,12 @@ html.ai-vt::view-transition-new(root) { animation-duration: .34s; }
 @keyframes ai-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes ai-msg-in-user { from { opacity: 0; transform: translate(12px, 6px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes ai-pop { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+/* Intervyu kartasi: savol almashganda yondan suriladi — «Keyingi» o'ngdan, «Orqaga» chapdan (11.10.2026). */
+.ai-q-next { animation: ai-q-next .24s cubic-bezier(.2, .85, .25, 1) both; }
+.ai-q-prev { animation: ai-q-prev .24s cubic-bezier(.2, .85, .25, 1) both; }
+@keyframes ai-q-next { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes ai-q-prev { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ai-q-next, .ai-q-prev { animation: none; } }
 
 /* Bo'sh suhbat — Mohir ortida konseptdagi kabi ikki yumshoq halqa (nafas oladi). */
 .mh-stage { position: relative; display: grid; place-items: center; }

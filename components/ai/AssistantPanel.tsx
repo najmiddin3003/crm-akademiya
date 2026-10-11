@@ -24,6 +24,8 @@ import {
   CalendarCheck,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   CircleAlert,
   CircleCheck,
@@ -1301,7 +1303,7 @@ const Bubble = memo(function Bubble({
         {thinking && <Thinking label={t("O'ylayapti…")} />}
         {m.content && <MessageText text={m.content} onNavigate={onNavigate} caret={!!m.pending} />}
         {m.questions && m.questions.length > 0 && (
-          <QuestionCard questions={m.questions} active={last && idle && !m.pending} onAnswer={onAnswer} />
+          <QuestionCard questions={m.questions} active={last && idle && !m.pending} done={!last} onAnswer={onAnswer} />
         )}
         {m.actions?.map((a) => <ActionCard key={a.id} a={a} onDecide={decide} onNavigate={onNavigate} />)}
         {m.stopped && <p className="text-[11px] text-muted-foreground">{t("To'xtatildi")}</p>}
@@ -1449,25 +1451,107 @@ function EditBox({ initial, onCancel, onSave }: { initial: string; onCancel: () 
 }
 
 /**
- * INTERVYU KARTASI (`ask_user`, Claude'dagi kabi): har savolda variantlar
- * (bittasi yoki bir nechtasi) va «Boshqa» — o'zi yozadi. «Javob berish»
- * tanlovni keyingi xabar qilib yuboradi. Oxirgi xabar bo'lmasa (javob
- * berilgan) yoki AI yozayotganda — faqat ko'rish uchun.
+ * INTERVYU KARTASI (`ask_user`, Claude'dagi kabi) — savollar BITTALAB.
+ *
+ * 11.10.2026, foydalanuvchi: «savollar almashib chiqsin, hozir barcha
+ * savollar birdaniga ko'rinib chiqyapti». Endi bir vaqtda bitta savol:
+ * tepada qadamlar (savol yorlig'i, javob berilgani ✓ — bosib istalganiga
+ * o'tiladi), pastda «Orqaga» / «Keyingi». Bitta tanlovli savolda variant
+ * bosilsa keyingi JAVOBSIZ savolga o'zi o'tadi; savol bir nechta bo'lsa
+ * oxirida «Tekshirish» qadami — hamma javoblar ro'yxati (qatorni bosib
+ * o'zgartiriladi) va «Javob berish». Har savolda «Boshqa» — o'zi yozadi.
+ *
+ * AI yozayotganda — faqat ko'rish uchun. Javob berilgan karta (undan keyin
+ * xabar bor) — ixcham ro'yxat: variantlar endi kerak emas, tanlov esa
+ * keyingi xabarda turibdi.
  */
-function QuestionCard({ questions, active, onAnswer }: { questions: AiQuestion[]; active: boolean; onAnswer: (text: string) => void }) {
+function QuestionCard({
+  questions,
+  active,
+  done,
+  onAnswer,
+}: {
+  questions: AiQuestion[];
+  /** Hozir javob berish mumkin — oxirgi xabar va AI yozmayapti. */
+  active: boolean;
+  /** Javob berilgan — bu xabardan keyin suhbat davom etgan. */
+  done: boolean;
+  onAnswer: (text: string) => void;
+}) {
   const { t } = useT();
+  const n = questions.length;
+  // «Tekshirish» qadamining raqami; bitta savolda bunday qadam yo'q (−1).
+  const review = n > 1 ? n : -1;
+  const [step, setStep] = useState(0);
+  // Qaysi tomonga surilgani — faqat almashtirilgandan keyin (birinchi chizilishda animatsiya yo'q).
+  const [dir, setDir] = useState<"next" | "prev" | null>(null);
   const [picked, setPicked] = useState<string[][]>(() => questions.map(() => []));
   const [other, setOther] = useState<string[]>(() => questions.map(() => ""));
   const [sent, setSent] = useState(false);
+  const timer = useRef<number | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const shown = useRef(false);
   const disabled = !active || sent;
+
   const valuesOf = (i: number) => [...(picked[i] ?? []), ...((other[i] ?? "").trim() ? [other[i].trim()] : [])];
-  const ready = questions.every((_, i) => valuesOf(i).length > 0);
+  const answered = (i: number) => valuesOf(i).length > 0;
+  const ready = questions.every((_, i) => answered(i));
+
+  useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    [],
+  );
+  // Savol almashganda karta ko'rinib tursin: yangi savol balandroq bo'lsa
+  // tugmalar ro'yxat pastiga tushib qolmasin (ro'yxat o'zi faqat yangi
+  // xabarda pastga aylanadi). Birinchi chizilishda — tegilmaydi.
+  useEffect(() => {
+    if (!shown.current) {
+      shown.current = true;
+      return;
+    }
+    boxRef.current?.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
+  }, [step]);
+
+  const stopTimer = () => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  };
+  const go = (to: number) => {
+    stopTimer();
+    if (to === step) return;
+    setDir(to < step ? "prev" : "next");
+    setStep(to);
+  };
+  // Javob berilgach qayerga: keyingi JAVOBSIZ savol (oldingilari ham —
+  // aylanib), hammasiga javob bo'lsa «Tekshirish» (bitta savolda −1).
+  const afterAnswer = (qi: number) => {
+    for (let k = 1; k < n; k++) {
+      const j = (qi + k) % n;
+      if (!answered(j)) return j;
+    }
+    return review;
+  };
 
   const pick = (qi: number, label: string) => {
+    if (disabled) return;
     const multi = questions[qi].multiSelect === true;
     setPicked((p) => p.map((arr, i) => (i !== qi ? arr : multi ? (arr.includes(label) ? arr.filter((x) => x !== label) : [...arr, label]) : [label])));
-    // Bitta tanlov: variant bosilsa yozilgan «Boshqa» bekor bo'ladi.
-    if (!multi) setOther((o) => o.map((v, i) => (i === qi ? "" : v)));
+    if (multi) return;
+    // Bitta tanlov: yozilgan «Boshqa» bekor bo'ladi va keyingi savolga
+    // o'tiladi — tanlov ko'zga ilinib ulgursin deb ozgina kechikib.
+    setOther((o) => o.map((v, i) => (i === qi ? "" : v)));
+    const to = afterAnswer(qi);
+    if (to < 0) return;
+    stopTimer();
+    timer.current = window.setTimeout(() => {
+      timer.current = null;
+      setDir(to < qi ? "prev" : "next");
+      setStep(to);
+    }, 260);
   };
   const typeOther = (qi: number, value: string) => {
     setOther((o) => o.map((v, i) => (i === qi ? value.slice(0, 200) : v)));
@@ -1475,80 +1559,204 @@ function QuestionCard({ questions, active, onAnswer }: { questions: AiQuestion[]
   };
   const submit = () => {
     if (disabled || !ready) return;
+    stopTimer();
     setSent(true);
     onAnswer(answerText(questions, questions.map((_, i) => valuesOf(i).map((v) => splitRecommended(v).text))));
   };
+  // «Boshqa» da Enter: javob bo'lsa — keyingisiga (bitta savolda — yuboradi).
+  const enterOther = (qi: number) => {
+    if (!answered(qi)) return;
+    if (n === 1) submit();
+    else go(afterAnswer(qi));
+  };
 
+  // Javob berilgan — ixcham ro'yxat.
+  if (done || sent) {
+    return (
+      <div className="ai-msg-in space-y-1 rounded-xl border border-border bg-card/60 px-3 py-2 text-[12px]">
+        {questions.map((q, i) => {
+          const vals = valuesOf(i).map((v) => splitRecommended(v).text);
+          return (
+            <p key={i} className="flex flex-wrap items-baseline gap-x-1.5">
+              <span className="tabular-nums text-muted-foreground">{i + 1}.</span>
+              <span className="font-medium">{q.header || q.question}</span>
+              {vals.length > 0 ? (
+                <span className="text-primary">— {vals.join(", ")}</span>
+              ) : (
+                q.header && <span className="text-muted-foreground">{q.question}</span>
+              )}
+            </p>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const q = step >= 0 && step < n ? questions[step] : null;
+  const slide = dir === "next" ? "ai-q-next" : dir === "prev" ? "ai-q-prev" : "";
   return (
-    <div className={`ai-msg-in space-y-3 rounded-xl border border-primary/30 bg-card p-3 ${disabled ? "opacity-70" : ""}`}>
-      {questions.map((q, qi) => (
-        <fieldset key={qi} disabled={disabled} className="space-y-1.5">
-          <legend className="mb-1.5 flex flex-wrap items-center gap-2">
-            {q.header && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">{q.header}</span>}
-            <span className="text-[13px] font-medium">{q.question}</span>
-            {q.multiSelect && <span className="text-[11px] text-muted-foreground">{t("bir nechtasini tanlash mumkin")}</span>}
-          </legend>
-          <div className="grid gap-1.5">
-            {q.options.map((o) => {
-              const { text, recommended } = splitRecommended(o.label);
-              const on = (picked[qi] ?? []).includes(o.label);
-              return (
-                <button
-                  key={o.label}
-                  type="button"
-                  role={q.multiSelect ? "checkbox" : "radio"}
-                  aria-checked={on}
-                  onClick={() => pick(qi, o.label)}
-                  className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[13px] transition-colors ${
-                    on ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
+    <div ref={boxRef} className={`ai-msg-in overflow-hidden rounded-xl border border-primary/30 bg-card ${disabled ? "opacity-70" : ""}`}>
+      {n > 1 && (
+        <nav aria-label={t("Savollar")} className="flex items-center gap-1 overflow-x-auto border-b border-border/70 px-2 py-1.5">
+          {questions.map((qq, i) => {
+            const on = step === i;
+            const ok = answered(i);
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={disabled}
+                aria-current={on ? "step" : undefined}
+                aria-label={qq.header ? undefined : qq.question}
+                onClick={() => go(i)}
+                className={`flex min-w-0 shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                  on ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] tabular-nums ${
+                    ok ? "bg-primary text-white" : on ? "border border-primary" : "border border-border"
                   }`}
                 >
-                  <span
-                    aria-hidden
-                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border ${q.multiSelect ? "rounded" : "rounded-full"} ${
-                      on ? "border-primary bg-primary text-white" : "border-border"
-                    }`}
-                  >
-                    {on && <Check className="h-3 w-3" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="font-medium">{text}</span>
-                    {recommended && (
-                      <span className="ml-1.5 rounded bg-emerald-500/10 px-1 py-px text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                        {t("Tavsiya")}
-                      </span>
-                    )}
-                    {o.description && <span className="block text-[11px] text-muted-foreground">{o.description}</span>}
-                  </span>
-                </button>
-              );
-            })}
-            <input
-              value={other[qi] ?? ""}
-              onChange={(e) => typeOther(qi, e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder={t("Boshqa — o'zingiz yozing")}
-              aria-label={t("Boshqa — o'zingiz yozing")}
-              className="rounded-lg border border-dashed border-border bg-transparent px-2.5 py-1.5 text-[13px] focus:border-primary focus:outline-none"
-            />
-          </div>
-        </fieldset>
-      ))}
-      {!disabled && (
-        <div className="flex justify-end">
+                  {ok ? <Check className="h-2.5 w-2.5" /> : i + 1}
+                </span>
+                {qq.header && <span className="max-w-[120px] truncate">{qq.header}</span>}
+              </button>
+            );
+          })}
           <button
             type="button"
-            onClick={submit}
-            disabled={!ready}
-            className="rounded-lg bg-primary px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:opacity-40"
+            disabled={disabled || !ready}
+            aria-current={step === review ? "step" : undefined}
+            onClick={() => go(review)}
+            className={`ml-auto flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-40 ${
+              step === review ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
+            }`}
           >
-            {t("Javob berish")}
+            <ListChecks className="h-3.5 w-3.5" />
+            {t("Tekshirish")}
           </button>
+        </nav>
+      )}
+      <div key={step} className={`p-3 ${slide}`}>
+        {q ? (
+          <fieldset disabled={disabled} className="space-y-1.5">
+            <legend className="mb-1.5 flex flex-wrap items-center gap-2">
+              {n === 1 && q.header && (
+                <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">{q.header}</span>
+              )}
+              <span className="text-[13px] font-medium">{q.question}</span>
+              {q.multiSelect && <span className="text-[11px] text-muted-foreground">{t("bir nechtasini tanlash mumkin")}</span>}
+            </legend>
+            <div className="grid gap-1.5">
+              {q.options.map((o) => {
+                const { text, recommended } = splitRecommended(o.label);
+                const on = (picked[step] ?? []).includes(o.label);
+                return (
+                  <button
+                    key={o.label}
+                    type="button"
+                    role={q.multiSelect ? "checkbox" : "radio"}
+                    aria-checked={on}
+                    onClick={() => pick(step, o.label)}
+                    className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[13px] transition-colors ${
+                      on ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border ${q.multiSelect ? "rounded" : "rounded-full"} ${
+                        on ? "border-primary bg-primary text-white" : "border-border"
+                      }`}
+                    >
+                      {on && <Check className="h-3 w-3" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{text}</span>
+                      {recommended && (
+                        <span className="ml-1.5 rounded bg-emerald-500/10 px-1 py-px text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          {t("Tavsiya")}
+                        </span>
+                      )}
+                      {o.description && <span className="block text-[11px] text-muted-foreground">{o.description}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+              <input
+                value={other[step] ?? ""}
+                onChange={(e) => typeOther(step, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    enterOther(step);
+                  }
+                }}
+                placeholder={t("Boshqa — o'zingiz yozing")}
+                aria-label={t("Boshqa — o'zingiz yozing")}
+                className="rounded-lg border border-dashed border-border bg-transparent px-2.5 py-1.5 text-[13px] focus:border-primary focus:outline-none"
+              />
+            </div>
+          </fieldset>
+        ) : (
+          <div className="space-y-1.5">
+            <p className="text-[12px] font-medium text-muted-foreground">{t("Javoblaringizni tekshiring")}</p>
+            {questions.map((qq, i) => (
+              <button
+                key={i}
+                type="button"
+                disabled={disabled}
+                onClick={() => go(i)}
+                className="flex w-full items-start gap-2 rounded-lg border border-border px-2.5 py-1.5 text-left text-[13px] transition-colors hover:bg-secondary"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] text-muted-foreground">{qq.header || qq.question}</span>
+                  <span className="font-medium">{valuesOf(i).map((v) => splitRecommended(v).text).join(", ")}</span>
+                </span>
+                <Pencil aria-hidden className="mt-1 h-3 w-3 shrink-0 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {!disabled && (
+        <div className="flex items-center gap-1.5 border-t border-border/70 px-3 py-2">
+          {step > 0 && (
+            <button
+              type="button"
+              onClick={() => go(step - 1)}
+              className="flex items-center gap-0.5 rounded-lg px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-secondary"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              {t("Orqaga")}
+            </button>
+          )}
+          {q && n > 1 ? (
+            <>
+              <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
+                {step + 1}/{n}
+              </span>
+              <button
+                type="button"
+                onClick={() => go(step + 1 < n ? step + 1 : review)}
+                disabled={!answered(step)}
+                className="flex items-center gap-0.5 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:opacity-40"
+              >
+                {t("Keyingi")}
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!ready}
+              className="ml-auto rounded-lg bg-primary px-3 py-1.5 text-[12px] font-medium text-white transition-opacity disabled:opacity-40"
+            >
+              {t("Javob berish")}
+            </button>
+          )}
         </div>
       )}
     </div>

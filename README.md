@@ -3029,6 +3029,16 @@ bilan, tanlov keyingi xabar bo'lib ketadi («Filial: Barcha filiallar»).
 Savollar suhbatda saqlanadi (`AiChatMessage.questions`) va keyingi so'rovda
 modelga matn bo'lib boradi (`historyWithQuestionNotes`).
 
+Savollar BITTALAB chiqadi (foydalanuvchi: «savollar almashib chiqsin, hozir
+barcha savollar birdaniga ko'rinib chiqyapti»): tepada qadamlar (yorliq, ✓ —
+bosib istalganiga o'tiladi), pastda «Orqaga» / «Keyingi» va «2/3». Bitta
+tanlovli savolda variant bosilsa ~0,26 s dan keyin keyingi JAVOBSIZ savolga
+o'tadi (multi-tanlovda — «Keyingi» bilan); «Boshqa» da Enter ham o'tkazadi.
+Savol bir nechta bo'lsa oxirida «Tekshirish»: hamma javob, qatorni bosib
+o'zgartiriladi, «Javob berish» yuboradi. Almashuv yondan suriladi
+(`.ai-q-next` / `.ai-q-prev`, reduced-motion'da yo'q). Javob berilgan karta —
+ixcham ro'yxat (savol — javob).
+
 **Ko'rsatma:** to'liq javob (bo'linma, jami, davr, filial, qanday sanalgani),
 INTERVIEW qoidasi (aytilganini so'ramaslik), admin butun markazni so'rasa —
 barcha filiallar (`branch: "all"` / `allBranches`). Boshqa xodimlar uchun
