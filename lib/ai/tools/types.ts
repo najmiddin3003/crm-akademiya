@@ -42,6 +42,14 @@ export interface AiTool {
    * ko'rsatilmaydi va bajarilmaydi (lib/ai/tools/index.ts).
    */
   visible?: (ctx: AiContext) => boolean;
+  /**
+   * Natija NAVBAR FILIALIGA bog'liq (`ctx.scope.branchId`). Shunday vositaga
+   * runner `branch` argumentini qo'shadi: xodim ocha oladigan boshqa filial
+   * id'si yoki "all" — har filial uchun alohida natija (lib/ai/tools/index.ts
+   * → runTool, 11.10.2026). Vositaning o'zi hech narsa qilmaydi — unga
+   * filiali almashtirilgan kontekst beriladi, ruxsat navbardagidek.
+   */
+  branchAware?: boolean;
   run: (ctx: AiContext, args: ToolArgs) => Promise<unknown>;
 }
 

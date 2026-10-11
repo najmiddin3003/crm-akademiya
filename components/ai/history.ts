@@ -1,6 +1,7 @@
 // SUHBATLAR TARIXI — to'liq ekrandagi chap ro'yxat uchun sof yordamchilar
 // (08.10.2026). Ro'yxat GET /api/ai/conversations?list=1 dan keladi
-// (faqat o'z suhbatlari, 30 kun saqlanadi — lib/ai/store.ts); bu yerda —
+// (faqat o'z suhbatlari; 30 kun yozilmagani arxivga o'tadi, o'chmaydi —
+// lib/ai/store.ts); bu yerda —
 // sana bo'yicha guruhlash (ChatGPT'dagi kabi) va javob saqlangandan keyin
 // ro'yxatni joyida yangilash. scripts/_verify-ai.mjs sinaydi.
 
@@ -9,6 +10,8 @@ export interface AiHistoryItem {
   title: string;
   /** ISO vaqt — oxirgi xabar. */
   updatedAt: string;
+  /** Arxivda (11.10.2026). */
+  archived?: boolean;
 }
 
 export type HistoryGroup = "today" | "yesterday" | "week" | "month" | "older";

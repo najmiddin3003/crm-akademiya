@@ -190,6 +190,8 @@ export function summarizeAttendance(input: {
 
 export const attendanceReport: AiTool = {
   name: "attendance_report",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Student attendance (davomat) of the current branch's groups for a date range (default: today): counts by mark " +
     "(Keldi, Kechikdi, Birinchi dars, Sababli, Sababsiz), attendance percent, per-group summary, the list of students who " +

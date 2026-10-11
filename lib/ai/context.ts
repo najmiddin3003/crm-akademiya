@@ -5,7 +5,7 @@ import { employeeNameById } from "@/lib/currentEmployee";
 import { isPathAllowed } from "@/lib/permissions";
 import { loadViewer, type StaffTaskViewer } from "@/lib/staffTasksServer";
 import { uzDateIso } from "@/lib/uzTime";
-import { branchPool, buildingNo } from "@/lib/branchPools";
+import { branchPool, buildingNo, collapseBranchPools } from "@/lib/branchPools";
 
 // SAVOL BERAYOTGAN XODIM — vositalar uchun yagona kontekst.
 //
@@ -42,6 +42,12 @@ export interface AiContext {
    */
   buildingCount?: number;
   building?: number | null;
+  /**
+   * Xodim OCHA OLADIGAN filiallar (navbar bilan bir xil: hovuz bitta qator,
+   * 11.10.2026). Vositalarning `branch` argumenti shu id'lardan biri yoki
+   * "all" (lib/ai/tools/index.ts → runTool) — model ularni ko'rsatmadan biladi.
+   */
+  branches?: { id: number; name: string }[];
   /** Toshkent kuni, "YYYY-MM-DD". */
   today: string;
   /** Xodim shu sahifani ko'ra oladimi — vositalar ruxsati shu bilan kesiladi. */
@@ -69,10 +75,14 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
   if (!scope) return null;
 
   const pool = branchPool(scope.branchId);
-  const [employeeName, branch] = await Promise.all([
+  const [employeeName, branchRows] = await Promise.all([
     employeeNameById(db, me.hrEmployeeId),
-    db.collection("branches").findOne({ id: scope.branchId }, { projection: { _id: 0, name: 1 } }),
+    db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).sort({ id: 1 }).toArray(),
   ]);
+  const branch = branchRows.find((b) => Number(b.id) === scope.branchId);
+  const openable = branchRows
+    .map((b) => ({ id: Number(b.id), name: String(b.name ?? "").trim() || `#${b.id}` }))
+    .filter((b) => scope.allowed.includes(b.id));
 
   const permissions = me.permissions;
   return {
@@ -87,6 +97,7 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
     branchName: String(branch?.name ?? "").trim() || `#${scope.branchId}`,
     buildingCount: pool.length > 1 ? pool.length : 0,
     building: buildingNo(scope.branchId),
+    branches: collapseBranchPools(openable, scope.branchId),
     today: uzDateIso(),
     can: (href) => isPathAllowed(href, permissions),
     actions: opts.actions === true,

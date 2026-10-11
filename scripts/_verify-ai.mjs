@@ -138,12 +138,12 @@ check(
 check("amallar o'chiq — amal vositasi ko'rinmaydi", !toolsFor(null, false).some((n) => n.startsWith("propose")));
 check(
   "faqat Guruh ruxsati — guruhlar, davomat + umumiylar (topshiriqlar va reja hammaga)",
-  eq(toolsFor(["/groups"]), ["attendance_report", "crm_help", "list_groups", "overview", "staff_tasks", "update_plan"]),
+  eq(toolsFor(["/groups"]), ["ask_user", "attendance_report", "crm_help", "list_groups", "overview", "staff_tasks", "update_plan"]),
   JSON.stringify(toolsFor(["/groups"])),
 );
 check(
   "Lidlar + O'quvchilar",
-  eq(toolsFor(["/orders-list", "/students-list"]), ["crm_help", "leads_summary", "overview", "pupil_details", "search_pupils", "staff_tasks", "update_plan"]),
+  eq(toolsFor(["/orders-list", "/students-list"]), ["ask_user", "crm_help", "leads_summary", "overview", "pupil_details", "search_pupils", "staff_tasks", "update_plan"]),
   JSON.stringify(toolsFor(["/orders-list", "/students-list"])),
 );
 // 5-bosqich vositalari.
@@ -883,7 +883,8 @@ const deltas = (r) => r.events.filter((e) => e.type === "delta").map((e) => e.te
   );
   const offered = (q1?.tools ?? []).map((x) => x.function.name).sort();
   // staff_tasks — /tasks hammaga ochiq (oddiy xodim faqat o'z topshiriqlarini ko'radi).
-  check("modelga faqat ruxsat etilgan vositalar beriladi", eq(offered, ["crm_help", "leads_summary", "overview", "staff_tasks", "update_plan"]), JSON.stringify(offered));
+  // ask_user — intervyu (11.10.2026), ma'lumotga tegmaydi, hammaga.
+  check("modelga faqat ruxsat etilgan vositalar beriladi", eq(offered, ["ask_user", "crm_help", "leads_summary", "overview", "staff_tasks", "update_plan"]), JSON.stringify(offered));
   const msgs = q1?.messages ?? [];
   check(
     `tarix: tizim ko'rsatmasi + oxirgi ${HISTORY_MESSAGES} xabar + savol`,
@@ -1147,7 +1148,7 @@ function rCalls(calls) {
   check(
     "vositalar: tekis shakl, strict:false, faqat ruxsat etilganlari",
     tools.length > 0 && tools.every((x) => x.type === "function" && x.strict === false && x.name && x.parameters && !("function" in x)) &&
-      eq(tools.map((x) => x.name).sort(), ["crm_help", "leads_summary", "overview", "staff_tasks", "update_plan"]),
+      eq(tools.map((x) => x.name).sort(), ["ask_user", "crm_help", "leads_summary", "overview", "staff_tasks", "update_plan"]),
     JSON.stringify(tools.map((x) => x.name)),
   );
   const input2 = q2?.input ?? [];
@@ -1303,6 +1304,26 @@ function rCalls(calls) {
     JSON.stringify({ results: results.length, used: r.usedTools }),
   );
 }
+{
+  // 11.10.2026: intervyu — model savol beradi, navbat shu yerda tugaydi.
+  console.log("\n— runChatTurn: intervyu (ask_user)");
+  const questions = [
+    { header: "Filial", question: "Qaysi filial bo'yicha?", options: [{ label: "Barcha filiallar (Tavsiya)" }, { label: "Akademiya Chortoq" }] },
+  ];
+  reply = (_, n) =>
+    n === 1
+      ? { sse: callChunks([{ id: "q1", name: "ask_user", args: { questions } }], "Aniqlashtirib olaman.") }
+      : { sse: textChunks("BU MUROJAAT BO'LMASLIGI KERAK") };
+  const r = await turn(chatCtx(null), "Oylik qancha chiqyapti?");
+  const qs = r.events.filter((e) => e.type === "questions");
+  check(
+    "intervyu: savollar panelga, navbat to'xtaydi (modelga ikkinchi murojaat yo'q)",
+    seen.length === 1 && qs.length === 1 && eq(r.questions, qs[0].questions) && r.questions?.[0]?.options.length === 2 &&
+      !r.events.some((e) => e.type === "tool" && e.id === "q1"),
+    JSON.stringify({ calls: seen.length, qs, answer: r.answer, err: r.error?.message }),
+  );
+  check("intervyu: model yozgan qisqa matn javob bo'lib qoladi", r.answer === "Aniqlashtirib olaman.", JSON.stringify(r.answer));
+}
 server.closeAllConnections();
 server.close();
 
@@ -1330,6 +1351,69 @@ console.log("\n— Ko'rib chiqish tuzatishlari (qoralama kaliti, ogohlantirish t
     paidLater.startsWith("Up to") && paidLater.includes("October") && saved.startsWith("This operation was already saved") && saved.includes("#708"),
     JSON.stringify({ paidLater, saved }),
   );
+}
+
+// ── 11.10.2026: intervyu savollari, vaqt belgilari, tarix ───────────
+console.log("\n— Intervyu, vaqt belgilari (11.10.2026)");
+{
+  const { parseQuestions } = await import("@/lib/ai/tools/ask");
+  const { answerText, splitRecommended, needsSeparator, dayKind, clockOf } = await import("@/components/ai/conversation");
+  const { historyWithQuestionNotes } = await import("@/lib/ai/chat");
+  const parsed = parseQuestions([
+    { header: "  Filial ", question: " Qaysi  filial? ", options: [{ label: "A" }, { label: "a" }, { label: "B", description: "izoh" }] },
+  ]);
+  check(
+    "savollar: tozalanadi, takror variant olib tashlanadi",
+    eq(parsed, [{ header: "Filial", question: "Qaysi filial?", options: [{ label: "A" }, { label: "B", description: "izoh" }] }]),
+    JSON.stringify(parsed),
+  );
+  const reject = (raw) => {
+    try {
+      parseQuestions(raw);
+      return "";
+    } catch (e) {
+      return String(e.message);
+    }
+  };
+  check("savollar: bitta variant — rad", /at least 2/.test(reject([{ question: "X", options: [{ label: "yolg'iz" }] }])));
+  check(
+    "savollar: 3 tadan ko'p — rad",
+    /at most 3/.test(reject(Array.from({ length: 4 }, () => ({ question: "X", options: [{ label: "a" }, { label: "b" }] })))),
+  );
+  check(
+    "javob matni: «Filial: …» qatorlari",
+    answerText(
+      [
+        { header: "Filial", question: "?", options: [] },
+        { question: "Qaysi davr?", options: [] },
+      ],
+      [["Barcha filiallar"], ["Shu oy", "O'tgan oy"]],
+    ) === "Filial: Barcha filiallar\nQaysi davr?: Shu oy, O'tgan oy",
+  );
+  check(
+    "tavsiya belgisi ajraladi",
+    eq(splitRecommended("Barcha filiallar (Tavsiya)"), { text: "Barcha filiallar", recommended: true }) && !splitRecommended("Shu oy").recommended,
+  );
+  const iso = (s) => new Date(s).toISOString();
+  check(
+    "ajratgich: birinchi xabar, boshqa kun, 1 soatdan ko'p tanaffus — ha; 20 daqiqa — yo'q",
+    needsSeparator(undefined, iso("2026-10-10T09:00:00")) &&
+      !needsSeparator(iso("2026-10-10T09:00:00"), iso("2026-10-10T09:20:00")) &&
+      needsSeparator(iso("2026-10-10T09:00:00"), iso("2026-10-10T10:30:00")) &&
+      needsSeparator(iso("2026-10-10T23:50:00"), iso("2026-10-11T00:05:00")),
+  );
+  const now = new Date("2026-10-11T12:00:00");
+  check(
+    "kun turi: bugun / kecha / sana",
+    dayKind(iso("2026-10-11T08:00:00"), now) === "today" &&
+      dayKind(iso("2026-10-10T20:00:00"), now) === "yesterday" &&
+      dayKind(iso("2026-10-01T08:00:00"), now) === "date",
+  );
+  check("soat: HH:mm", clockOf(iso("2026-10-11T09:05:00")) === "09:05");
+  const notes = historyWithQuestionNotes([
+    { role: "assistant", content: "", at: "", questions: [{ header: "Filial", question: "Qaysi?", options: [{ label: "A" }, { label: "B" }] }] },
+  ]);
+  check("tarix: berilgan savollar modelga matn bo'lib boradi", notes[0].content.includes("ask_user") && notes[0].content.includes("A / B"), notes[0].content);
 }
 
 console.log(bad ? `\n${bad} ta tekshiruv o'tmadi.` : "\nHammasi to'g'ri.");

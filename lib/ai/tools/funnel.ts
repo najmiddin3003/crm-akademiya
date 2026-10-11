@@ -57,6 +57,8 @@ export function funnelSummary(orders: Order[]) {
 
 export const salesFunnel: AiTool = {
   name: "sales_funnel",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Sales funnel (Sotuv voronkasi) — the same numbers as the Reports → Sales funnel page: all leads → booked a trial lesson → " +
     "came to the trial → made the first payment, with percentages; the 11-row report (left, transferred, finished…), " +

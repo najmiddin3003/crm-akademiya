@@ -28,6 +28,8 @@ const groupProjection = { _id: 0, id: 1, name: 1, course: 1, level: 1, teacher: 
 
 export const searchPupils: AiTool = {
   name: "search_pupils",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Find students (o'quvchilar) in the current branch by first/last name, phone digits or student ID. " +
     "Returns up to 10 matches with id, status and groups. Use it before pupil_details when only a name is known; " +
@@ -87,6 +89,8 @@ export const searchPupils: AiTool = {
 
 export const pupilDetails: AiTool = {
   name: "pupil_details",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Details of ONE student by id: status, groups (course, teacher, days, time), total amount paid, " +
     "last 5 payments and attendance counts for the last 30 days. Get the id from search_pupils first.",

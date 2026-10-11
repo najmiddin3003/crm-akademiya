@@ -20,6 +20,8 @@ const ISSUE_TEXT: Record<DebtIssue, string> = {
 
 export const debtorsReport: AiTool = {
   name: "debtors_report",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Debtor students (qarzdorlar) of the current branch, computed exactly like the 'Qarzdor o'quvchilar' report: " +
     "lessons held by the group schedule × price of one lesson − amount paid, as of a date. " +
@@ -72,6 +74,8 @@ export const debtorsReport: AiTool = {
 
 export const overview: AiTool = {
   name: "overview",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Key counts of the current branch from the home page: leads, first-lesson sign-ups, new / active / frozen / archived students, " +
     "debtors, groups. Only cards this user may see are returned. A null value means there is NO data source — show '—', never 0.",

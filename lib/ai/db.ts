@@ -14,7 +14,7 @@ export const AI = {
   settings: "ai_settings",
   /** Xodim × kun hisoblagichi (lib/ai/usage.ts); bir necha kundan keyin o'zi o'chadi. */
   usage: "ai_usage",
-  /** Suhbatlar tarixi (lib/ai/store.ts); 30 kun ishlatilmasa o'zi o'chadi. */
+  /** Suhbatlar tarixi (lib/ai/store.ts); 11.10.2026 dan O'CHMAYDI — 30 kundan keyin arxivga o'tadi. */
   conversations: "ai_conversations",
   /**
    * Amal qoralamalari va ularning taqdiri (lib/ai/actions/store.ts) — kim,
@@ -33,7 +33,10 @@ async function createAiIndexes(db: Db): Promise<void> {
     db.collection(AI.usage).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     db.collection(AI.conversations).createIndex({ id: 1 }, { unique: true }),
     db.collection(AI.conversations).createIndex({ userId: 1, updatedAt: -1 }),
-    db.collection(AI.conversations).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    // ESKI TTL indeksi (30 kundan keyin o'chirardi) — olib tashlanadi: suhbat endi
+    // bazada qoladi, 30 kun yozilmagani arxivga o'tadi (lib/ai/store.ts → autoArchive).
+    // Indeks yo'q bo'lsa (yangi baza yoki allaqachon o'chirilgan) — xato yutiladi.
+    db.collection(AI.conversations).dropIndex("expiresAt_1").catch(() => undefined),
     db.collection(AI.actions).createIndex({ id: 1 }, { unique: true }),
     db.collection(AI.actions).createIndex({ userId: 1, createdAt: -1 }),
     db.collection(AI.actions).createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 }),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, MessageSquare, Search, SquarePen, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, MessageSquare, Search, SquarePen, Trash2, X } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import { filterHistory, groupHistory, HISTORY_GROUPS, type AiHistoryItem } from "./history";
 
@@ -9,6 +9,12 @@ import { filterHistory, groupHistory, HISTORY_GROUPS, type AiHistoryItem } from 
 // kabi): «Yangi suhbat», nom bo'yicha qidiruv, sana guruhlari (Bugun,
 // Kecha …). Bosilsa suhbat ochiladi, savatcha — o'chiradi (ikkinchi bosish
 // bilan tasdiqlanadi). Javob kelayotganda boshqa suhbatga o'tib bo'lmaydi.
+//
+// ARXIV (11.10.2026, foydalanuvchi: «trash ikonka oldiga archive ikonka ham
+// qo'shamiz … archive va aktiv suhbatlarni filter qilish imkoniyati»):
+// tepada «Faol / Arxiv» tanlovi, har qatorda savatcha oldida arxivlash (arxiv
+// ko'rinishida — qaytarish). 30 kun yozilmagan suhbat o'zi arxivga o'tadi;
+// savatcha ham suhbatni bazadan o'chirmaydi (lib/ai/store.ts).
 //
 // Ochilib-yopilishi CSS'da (`.ai-side`, app/globals.css): kompyuterda eni
 // silliq o'zgaradi, telefonda chapdan suriladigan parda bo'ladi. Yopiq
@@ -18,11 +24,14 @@ export default function HistorySidebar({
   open,
   items,
   at,
+  archivedView,
   activeId,
   busy,
   onOpen,
   onNew,
   onDelete,
+  onArchive,
+  onFilter,
   onDismiss,
 }: {
   open: boolean;
@@ -30,11 +39,16 @@ export default function HistorySidebar({
   items: AiHistoryItem[] | null;
   /** Ro'yxat olingan vaqt (ms) — guruhlash shunga nisbatan (render ichida soat o'qilmaydi). */
   at: number;
+  /** «Arxiv» tanlangan. */
+  archivedView: boolean;
   activeId: string;
   busy: boolean;
   onOpen: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  /** Arxivlash (`true`) yoki arxivdan qaytarish (`false`). */
+  onArchive: (id: string, archived: boolean) => void;
+  onFilter: (archived: boolean) => void;
   /** Telefonda — pardani yopish (orqa fon bosilganda). */
   onDismiss: () => void;
 }) {
@@ -75,6 +89,27 @@ export default function HistorySidebar({
                 </button>
               )}
             </label>
+            {/* Faol / Arxiv — har almashganda ro'yxat serverdan olinadi. */}
+            <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-border bg-card/60 p-0.5 text-[12px]" role="tablist" aria-label={t("Suhbatlar")}>
+              {[false, true].map((arch) => {
+                const on = archivedView === arch;
+                return (
+                  <button
+                    key={String(arch)}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => !on && onFilter(arch)}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg py-1 font-medium transition-colors ${
+                      on ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {arch ? <Archive className="h-3.5 w-3.5" /> : <MessageSquare className="h-3.5 w-3.5" />}
+                    {arch ? t("Arxiv") : t("Faol")}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
@@ -85,7 +120,9 @@ export default function HistorySidebar({
                 ))}
               </div>
             ) : groups.length === 0 ? (
-              <p className="px-2 pt-3 text-[12px] text-muted-foreground">{query ? t("Hech narsa topilmadi") : t("Hali suhbatlar yo'q")}</p>
+              <p className="px-2 pt-3 text-[12px] text-muted-foreground">
+                {query ? t("Hech narsa topilmadi") : archivedView ? t("Arxivda suhbat yo'q") : t("Hali suhbatlar yo'q")}
+              </p>
             ) : (
               groups.map((g) => (
                 <section key={g.group} className="pt-2">
@@ -137,16 +174,28 @@ export default function HistorySidebar({
                               </button>
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmId(it.id)}
-                              disabled={busy && active}
-                              title={t("Suhbatni o'chirish")}
-                              aria-label={t("Suhbatni o'chirish")}
-                              className="ai-side-del shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-rose-600 disabled:hidden"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <span className="flex shrink-0 items-center">
+                              <button
+                                type="button"
+                                onClick={() => onArchive(it.id, !archivedView)}
+                                disabled={busy && active}
+                                title={archivedView ? t("Arxivdan qaytarish") : t("Arxivlash")}
+                                aria-label={archivedView ? t("Arxivdan qaytarish") : t("Arxivlash")}
+                                className="ai-side-del rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-primary disabled:hidden"
+                              >
+                                {archivedView ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmId(it.id)}
+                                disabled={busy && active}
+                                title={t("Suhbatni o'chirish")}
+                                aria-label={t("Suhbatni o'chirish")}
+                                className="ai-side-del rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-rose-600 disabled:hidden"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </span>
                           )}
                         </li>
                       );
@@ -157,7 +206,11 @@ export default function HistorySidebar({
             )}
           </div>
 
-          <p className="border-t border-border/70 px-3 py-2 text-[11px] text-muted-foreground">{t("Suhbatlar 30 kun saqlanadi")}</p>
+          <p className="border-t border-border/70 px-3 py-2 text-[11px] text-muted-foreground">
+            {archivedView
+              ? t("Arxivdagi suhbatga yozsangiz, u yana faol bo'ladi")
+              : t("30 kun yozilmagan suhbat arxivga o'tadi — o'chmaydi")}
+          </p>
         </div>
       </aside>
     </>

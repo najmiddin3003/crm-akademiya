@@ -13,6 +13,8 @@ const LIMIT = 40;
 
 export const listGroups: AiTool = {
   name: "list_groups",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Groups (guruhlar) of the current branch: course, level, teacher, lesson days and time, room, status and number of students. " +
     "Optional text filter by course, group number or teacher name.",

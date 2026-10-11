@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_EFFORT, isEffort, nearestEffort } from "@/lib/ai/models";
-import type { AiActionView, AiChatMessage, AiEffort, AiPlanStep, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
+import type { AiActionView, AiChatMessage, AiEffort, AiPlanStep, AiQuestion, AiStatus, AiStreamEvent, AiToolStatus } from "@/lib/ai/protocol";
 import { touchHistory, type AiHistoryItem } from "./history";
 
 // AI PANELINING HOLATI — yordamchi holati, xabarlar va oqimni o'qish.
@@ -61,6 +61,16 @@ export interface UiMessage {
   via?: { model: string; effort: AiEffort | null };
   /** Vazifa rejasi (`update_plan`, 5-bosqich) — eng so'nggi holati. */
   plan?: AiPlanStep[];
+  /** Xabar vaqti (ISO) — suhbat boshlangan vaqt va kun ajratgichlari (11.10.2026). */
+  at?: string;
+  /** Intervyu savollari (`ask_user`) — panel tanlov kartasini chizadi. */
+  questions?: AiQuestion[];
+  /**
+   * Xabar SERVERDA saqlangan (bazadan kelgan yoki javob `done` bilan tugagan).
+   * Tahrirlashda serverdagi indeks faqat shular bo'yicha sanaladi — xato bilan
+   * tugagan navbat bazaga yozilmaydi.
+   */
+  saved?: boolean;
 }
 
 /** Paneldagi tanlov. `model: ""` — holat hali yuklanmagan. */
@@ -106,7 +116,15 @@ let seq = 0;
 const nextKey = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
 
 function fromStored(m: AiChatMessage): UiMessage {
-  return { key: nextKey(), role: m.role, content: m.content, ...(m.actions?.length ? { actions: m.actions } : {}) };
+  return {
+    key: nextKey(),
+    role: m.role,
+    content: m.content,
+    saved: true,
+    ...(m.at ? { at: m.at } : {}),
+    ...(m.actions?.length ? { actions: m.actions } : {}),
+    ...(m.questions?.length ? { questions: m.questions } : {}),
+  };
 }
 
 async function errorOf(res: Response): Promise<string> {
@@ -119,10 +137,24 @@ async function errorOf(res: Response): Promise<string> {
   return res.status === 429 ? "Bugungi limit tugadi" : "Serverga ulanib bo'lmadi";
 }
 
-/** Chap ro'yxat: `items: null` — hali yuklanmoqda; `at` — olingan vaqt (guruhlash shunga nisbatan). */
+/**
+ * Chap ro'yxat: `items: null` — hali yuklanmoqda; `at` — olingan vaqt (guruhlash
+ * shunga nisbatan); `archived` — «Arxiv» tanlangan (11.10.2026).
+ */
 export interface AiHistory {
   items: AiHistoryItem[] | null;
   at: number;
+  archived: boolean;
+}
+
+/** Tahrirlangan savol — serverdagi indeksi va asl matni (app/api/ai/chat → `editFrom`). */
+interface EditFrom {
+  index: number;
+  content: string;
+}
+
+function listUrl(archived: boolean): string {
+  return archived ? "/api/ai/conversations?list=1&archived=1" : "/api/ai/conversations?list=1";
 }
 
 export function useAiChat(opts: AiChatOptions = {}) {
@@ -132,7 +164,7 @@ export function useAiChat(opts: AiChatOptions = {}) {
   const [conversationId, setConversationId] = useState("");
   const [busy, setBusy] = useState(false);
   const [choice, setChoiceState] = useState<AiChoice>({ model: "", effort: null });
-  const [history, setHistory] = useState<AiHistory>({ items: null, at: 0 });
+  const [history, setHistory] = useState<AiHistory>({ items: null, at: 0, archived: false });
   /** Ro'yxatdan tanlangan suhbat yuklanmoqda. */
   const [opening, setOpening] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -148,11 +180,11 @@ export function useAiChat(opts: AiChatOptions = {}) {
   // Ro'yxat olinmasa ham panel ishlayveradi — chap tomon bo'sh qoladi.
   useEffect(() => {
     let alive = true;
-    void fetch("/api/ai/conversations?list=1", { cache: "no-store" })
+    void fetch(listUrl(false), { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((d: { conversations?: AiHistoryItem[] } | null) => {
-        if (alive) setHistory({ items: Array.isArray(d?.conversations) ? d.conversations : [], at: Date.now() });
+        if (alive) setHistory({ items: Array.isArray(d?.conversations) ? d.conversations : [], at: Date.now(), archived: false });
       });
     (async () => {
       try {
@@ -229,6 +261,8 @@ export function useAiChat(opts: AiChatOptions = {}) {
         if (e.status === "done" && e.href) onScreenRef.current?.(e.href, false);
       } else if (e.type === "plan") {
         patchLast((m) => ({ ...m, plan: e.steps }));
+      } else if (e.type === "questions") {
+        patchLast((m) => ({ ...m, questions: e.questions }));
       } else if (e.type === "action") {
         patchLast((m) => ({ ...m, actions: [...(m.actions ?? []).filter((a) => a.id !== e.action.id), e.action] }));
       } else if (e.type === "action_update") {
@@ -242,14 +276,15 @@ export function useAiChat(opts: AiChatOptions = {}) {
   );
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, editFrom?: EditFrom) => {
       const q = text.trim();
       if (!q || busy) return;
       setBusy(true);
+      const now = new Date().toISOString();
       setMessages((list) => [
         ...list,
-        { key: nextKey(), role: "user", content: q },
-        { key: nextKey(), role: "assistant", content: "", pending: true },
+        { key: nextKey(), role: "user", content: q, at: now },
+        { key: nextKey(), role: "assistant", content: "", pending: true, at: now },
       ]);
       const ctl = new AbortController();
       abortRef.current = ctl;
@@ -262,6 +297,7 @@ export function useAiChat(opts: AiChatOptions = {}) {
             conversationId,
             ...(choice.model ? { model: choice.model } : {}),
             ...(choice.effort ? { effort: choice.effort } : {}),
+            ...(editFrom ? { editFrom } : {}),
           }),
           signal: ctl.signal,
         });
@@ -303,10 +339,17 @@ export function useAiChat(opts: AiChatOptions = {}) {
         // Oqim `done`/`error` siz tugadi (server qayta ishga tushdi, ulanish
         // uzildi) — chala javob to'liqdek ko'rinib qolmasin.
         if (!finished) patchLast((m) => ({ ...m, cutOff: true }));
-        // Chap ro'yxat: suhbat tepaga chiqadi (yangisi qo'shiladi).
         if (saved && savedId) {
+          // Savol va javob endi bazada — tahrirlash indeksi ularni ham sanaydi.
+          setMessages((list) => list.map((m, i) => (i >= list.length - 2 ? { ...m, saved: true } : m)));
+          // Chap ro'yxat: suhbat tepaga chiqadi (yangisi qo'shiladi). Arxivdagi
+          // suhbatga yozilsa u yana faol — arxiv ro'yxatidan chiqadi.
           const at = Date.now();
-          setHistory((h) => ({ items: touchHistory(h.items, savedId, q, new Date(at).toISOString()), at }));
+          setHistory((h) =>
+            h.archived
+              ? { ...h, items: h.items?.filter((x) => x.id !== savedId) ?? h.items, at }
+              : { ...h, items: touchHistory(h.items, savedId, q, new Date(at).toISOString()), at },
+          );
         }
       } catch {
         if (ctl.signal.aborted) patchLast((m) => ({ ...m, stopped: true }));
@@ -363,7 +406,7 @@ export function useAiChat(opts: AiChatOptions = {}) {
     [patchAction],
   );
 
-  /** Yangi suhbat — eskisi bazada qoladi (30 kundan keyin o'zi o'chadi). */
+  /** Yangi suhbat — eskisi bazada qoladi (30 kun yozilmasa arxivga o'tadi). */
   const newChat = useCallback(() => {
     abortRef.current?.abort();
     openSeq.current++; // yuklanayotgan suhbat bo'lsa — endi kerak emas
@@ -401,7 +444,49 @@ export function useAiChat(opts: AiChatOptions = {}) {
     [busy, conversationId],
   );
 
-  /** Suhbatni bazadan butunlay o'chirish (ro'yxatdan yoki joriysini). */
+  /**
+   * TAHRIRLASH (11.10.2026): xodim o'z savolini o'zgartirdi — shu savoldan
+   * keyingi xabarlar olib tashlanadi va yangi savol yuboriladi. Savol bazada
+   * bo'lsa, server ham suhbatni shu joydan qayta yozadi (`editFrom`); xato bilan
+   * tugagan (bazaga yozilmagan) savol shunchaki qayta yuboriladi.
+   */
+  const editMessage = useCallback(
+    async (key: string, text: string) => {
+      if (busy || !text.trim()) return;
+      const i = messages.findIndex((m) => m.key === key);
+      const target = messages[i];
+      if (!target || target.role !== "user") return;
+      const index = messages.slice(0, i).filter((m) => m.saved).length;
+      setMessages((list) => list.slice(0, i));
+      await send(text, target.saved && conversationId ? { index, content: target.content } : undefined);
+    },
+    [busy, conversationId, messages, send],
+  );
+
+  /** Ro'yxat filtri: faol yoki arxiv suhbatlar (har almashganda serverdan). */
+  const setHistoryFilter = useCallback((archived: boolean) => {
+    setHistory({ items: null, at: Date.now(), archived });
+    void fetch(listUrl(archived), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d: { conversations?: AiHistoryItem[] } | null) => {
+        // Kechikkan javob boshqa filtrning ro'yxatini bosib ketmasin.
+        setHistory((h) => (h.archived === archived ? { items: Array.isArray(d?.conversations) ? d.conversations : [], at: Date.now(), archived } : h));
+      });
+  }, []);
+
+  /** Arxivlash / arxivdan qaytarish — joriy ro'yxatdan darhol chiqadi. */
+  const archiveConversation = useCallback(async (id: string, archived: boolean) => {
+    if (!id) return;
+    setHistory((h) => ({ ...h, items: h.items?.filter((x) => x.id !== id) ?? h.items }));
+    await fetch(`/api/ai/conversations?id=${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived }),
+    }).catch(() => {});
+  }, []);
+
+  /** Suhbatni o'chirish (savatcha): xodim endi ko'rmaydi, bazada qoladi. */
   const removeConversation = useCallback(
     async (id: string) => {
       if (!id) return;
@@ -439,5 +524,8 @@ export function useAiChat(opts: AiChatOptions = {}) {
     opening,
     openConversation,
     removeConversation,
+    editMessage,
+    setHistoryFilter,
+    archiveConversation,
   };
 }

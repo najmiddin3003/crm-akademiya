@@ -2,21 +2,26 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { actionViews, historyWithActionNotes } from "@/lib/ai/actions/store";
-import { runChatTurn } from "@/lib/ai/chat";
+import { historyWithQuestionNotes, runChatTurn } from "@/lib/ai/chat";
 import { aiProviderConfig, KEEPALIVE_MS, MAX_MESSAGE_CHARS } from "@/lib/ai/config";
 import { loadAiContext } from "@/lib/ai/context";
 import { aiDb } from "@/lib/ai/db";
 import { modelChoices, resolveChoice } from "@/lib/ai/modelChoice";
 import { adminDetail, AiProviderError } from "@/lib/ai/openai";
-import type { AiStreamEvent } from "@/lib/ai/protocol";
+import type { AiChatMessage, AiStreamEvent } from "@/lib/ai/protocol";
 import { loadAiSettings } from "@/lib/ai/settings";
 import { findConversation, saveTurn } from "@/lib/ai/store";
 import { refundQuota, takeQuota } from "@/lib/ai/usage";
 import { normalizeLang } from "@/lib/i18n";
 import { LANG_COOKIE } from "@/lib/serverT";
 
-// POST /api/ai/chat  { message, conversationId?, model?, effort? }  →  NDJSON
+// POST /api/ai/chat  { message, conversationId?, model?, effort?, editFrom? }  →  NDJSON
 // oqim (hodisalar shakli: lib/ai/protocol.ts).
+//
+// `editFrom: { index, content }` — TAHRIRLANGAN SAVOL (11.10.2026): suhbat shu
+// indeksdagi xodim savolidan boshlab qayta yoziladi (keyingi xabarlar
+// almashtiriladi). Indeks va asl matn mos kelmasa (boshqa qurilmada suhbat
+// o'zgargan) — 409, hech narsa yozilmaydi.
 //
 // `model` / `effort` — paneldagi tanlov (4-bosqich). Admin ochmagan model
 // yoki model qabul qilmaydigan daraja so'ralsa — sukutga almashadi
@@ -56,7 +61,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "AI yordamchi sozlanmagan: serverda kalit yo'q" }, { status: 503 });
   }
 
-  let body: { message?: unknown; conversationId?: unknown; model?: unknown; effort?: unknown };
+  let body: { message?: unknown; conversationId?: unknown; model?: unknown; effort?: unknown; editFrom?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -71,6 +76,21 @@ export async function POST(req: Request) {
   // Suhbat faqat egasiniki — begona id berilsa yangi suhbat boshlanadi.
   const conversationId = typeof body.conversationId === "string" ? body.conversationId.slice(0, 64) : "";
   const conversation = conversationId ? await findConversation(db, ctx.userId, conversationId) : null;
+
+  // Tahrirlash: faqat shu suhbatdagi XODIM savoli, matni o'sha bo'lsa.
+  let replaceFrom: { index: number; kept: AiChatMessage[] } | undefined;
+  if (body.editFrom !== undefined && body.editFrom !== null) {
+    const edit = body.editFrom as { index?: unknown; content?: unknown };
+    const index = Number(edit.index);
+    const target = conversation && Number.isInteger(index) && index >= 0 ? conversation.messages[index] : undefined;
+    if (!target || target.role !== "user" || target.content !== String(edit.content ?? "")) {
+      return NextResponse.json(
+        { ok: false, error: "Tahrirlanadigan xabar topilmadi — suhbatni qayta oching" },
+        { status: 409 },
+      );
+    }
+    replaceFrom = { index, kept: conversation!.messages.slice(0, index) };
+  }
 
   const limit = settings.dailyLimit;
   const quota = await takeQuota(db, ctx.userId, limit);
@@ -87,8 +107,13 @@ export async function POST(req: Request) {
   const lang = normalizeLang((await cookies()).get(LANG_COOKIE)?.value);
   // Oldingi javoblardagi qoralamalar qanday tugagani modelga ham ko'rinsin
   // ("saqlandimi?" savoliga taxmin bilan javob bermasin).
-  const past = conversation?.messages ?? [];
-  const history = historyWithActionNotes(past, await actionViews(db, ctx.userId, past.flatMap((m) => m.actionIds ?? [])));
+  // Tahrirlashda — tahrirlangan savolgacha bo'lgan qism. Intervyu savollari ham
+  // matn bo'lib boradi (model nimaga javob berilayotganini bilsin).
+  const past = replaceFrom ? replaceFrom.kept : (conversation?.messages ?? []);
+  const history = historyWithActionNotes(
+    historyWithQuestionNotes(past),
+    await actionViews(db, ctx.userId, past.flatMap((m) => m.actionIds ?? [])),
+  );
   const encoder = new TextEncoder();
   // Yangi suhbatning id'si OLDINDAN, birinchi `meta` da mijozga ketadi: javob
   // to'xtatilsa yoki uzilsa ham mijoz keyingi savolni shu suhbatga yuboradi
@@ -130,7 +155,7 @@ export async function POST(req: Request) {
               { role: "user", content: message, at },
               { role: "assistant", content: sent.text.trim() || DRAFT_ONLY_ANSWER, at, actionIds: [...sent.actionIds] },
             ],
-            { newId: turnConversationId },
+            { newId: turnConversationId, replaceFrom },
           );
         } catch (e) {
           console.error("[ai] uzilgan navbatni saqlab bo'lmadi", e);
@@ -156,10 +181,11 @@ export async function POST(req: Request) {
           await saveInterrupted();
           return;
         }
-        const { actionIds } = turn;
+        const { actionIds, questions } = turn;
         // Model faqat qoralama tuzib, matn yozmagan bo'lsa ham karta bor — javob bo'sh qolmasin.
+        // Intervyu kartasi (`questions`) — matnsiz ham to'liq javob.
         const answer = turn.answer || (actionIds.length ? DRAFT_ONLY_ANSWER : "");
-        if (!answer) {
+        if (!answer && !questions?.length) {
           await refundQuota(db, ctx.userId);
           emit({ type: "error", message: "AI javob qaytarmadi. Savolni boshqacha yozib ko'ring." });
           return;
@@ -170,9 +196,15 @@ export async function POST(req: Request) {
           conversation?.id ?? null,
           [
             { role: "user", content: message, at: new Date().toISOString() },
-            { role: "assistant", content: answer, at: new Date().toISOString(), ...(actionIds.length ? { actionIds } : {}) },
+            {
+              role: "assistant",
+              content: answer,
+              at: new Date().toISOString(),
+              ...(actionIds.length ? { actionIds } : {}),
+              ...(questions?.length ? { questions } : {}),
+            },
           ],
-          { newId: turnConversationId },
+          { newId: turnConversationId, replaceFrom },
         );
         emit({ type: "meta", conversationId: id, remaining: quota.remaining, limit, ...used });
         emit({ type: "done" });

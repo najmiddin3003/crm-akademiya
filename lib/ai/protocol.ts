@@ -10,6 +10,26 @@
 
 export type AiToolStatus = "start" | "done" | "error";
 
+/**
+ * INTERVYU (11.10.2026, Claude'dagi kabi): model `ask_user` vositasi bilan
+ * xodimga 1–3 ta qisqa savol beradi, panel ularni bosiladigan variantlar
+ * bilan karta qilib chizadi; tanlangan javob keyingi xabar bo'lib ketadi.
+ * Matnlar — model yozgan (xodim tilida), tarjima qilinmaydi.
+ */
+export interface AiQuestionOption {
+  label: string;
+  description?: string;
+}
+
+export interface AiQuestion {
+  /** Juda qisqa yorliq ("Filial", "Davr") — javobda shu nom bilan yoziladi. */
+  header?: string;
+  question: string;
+  options: AiQuestionOption[];
+  /** Bir nechta variant tanlash mumkin. */
+  multiSelect?: boolean;
+}
+
 /** Vazifa rejasining qadami (`update_plan` vositasi). Matn — model yozgan (xodim tilida). */
 export interface AiPlanStep {
   title: string;
@@ -54,6 +74,8 @@ export type AiStreamEvent =
    * yozadi va yangilaydi; panel uni belgilanadigan ro'yxat qilib ko'rsatadi.
    */
   | { type: "plan"; steps: AiPlanStep[] }
+  /** Model xodimga savol berdi (`ask_user`) — panel tanlov kartasini chizadi; javob shu yerda tugaydi. */
+  | { type: "questions"; questions: AiQuestion[] }
   /** Javob matnining navbatdagi bo'lagi. */
   | { type: "delta"; text: string }
   /** Amal qoralamasi tayyor — panel tasdiq kartasini chizadi (2-bosqich). */
@@ -80,6 +102,8 @@ export interface AiChatMessage {
   actionIds?: string[];
   /** Panelga: qoralamalarning HOZIRGI holati (GET /api/ai/conversations to'ldiradi). */
   actions?: AiActionView[];
+  /** Shu javobda xodimga berilgan intervyu savollari (`ask_user`). */
+  questions?: AiQuestion[];
 }
 
 // ── AMALLAR (2-bosqich) ─────────────────────────────────────────────
