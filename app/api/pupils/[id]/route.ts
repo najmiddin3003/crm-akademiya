@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
+import { pupilNameOfDoc } from "@/lib/pupilEntries";
+import { PAYMENTS_BLOCK_DELETE, paymentsOrphanedBy } from "@/lib/pupilDeleteGuard";
 import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import type { Pupil } from "@/lib/pupilsData";
 import { closeMemberships } from "@/lib/groupMembership";
@@ -148,6 +150,20 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const where = await scopedFilter(pupilId);
   if (!where) return notLoggedIn();
   const db = await ensureIndexes();
+  const doc = await db
+    .collection("pupils")
+    .findOne(where, { projection: { _id: 0, id: 1, firstName: 1, lastName: 1 } });
+  if (!doc) {
+    return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });
+  }
+  // To'lovi bor karta o'chirilmaydi — to'lovlar yetim qolardi (lib/pupilDeleteGuard.ts).
+  const payments = await paymentsOrphanedBy(db, { id: pupilId, name: pupilNameOfDoc(doc) });
+  if (payments > 0) {
+    return NextResponse.json(
+      { ok: false, error: PAYMENTS_BLOCK_DELETE, payments },
+      { status: 409 },
+    );
+  }
   const res = await db.collection("pupils").deleteOne(where);
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "O'quvchi topilmadi" }, { status: 404 });

@@ -2948,3 +2948,40 @@ o'chirish/kirish/bot/tizim/rad etilgan), matn. Yorliqlar
 yangi nom bilan).
 
 Gamifikatsiyaning o'z `audit_log` i (before/after) alohida qoldi.
+
+## To'lovi bor o'quvchi o'chirilmaydi (2026-10-11)
+
+**Hodisa (filial 4, guruh #121):** Mushtariybonu Manyazova to'lov qilgan,
+lekin guruh sahifasida balansi 0. Sabab — kartasi (#16989) o'chirilib,
+o'quvchi 07.10 da yangi karta (#17347) bo'lib qayta kiritilgan; 02.10 dagi
+ikki to'lov (225 000 + 225 000) o'chirilgan kartaning `pupilId` si bilan
+qolgan. Balans `pupilId` bo'yicha bog'lanadi (lib/pupilEntries.ts), ya'ni
+bunday to'lov HECH KIMDA ko'rinmaydi.
+
+**Topish (faqat o'qiydi):**
+`node --env-file=.env.local scripts/_check-orphan-payments.mjs [--branch=4] [--json=fayl]`
+— A) o'chirilgan kartaga bog'langan to'lovlar (+ shu ismli tirik karta
+nomzodlari), B) `pupilId` siz va ismi hech bir kartaga mos kelmaydigan
+to'lovlar, C) yozuvdagi ism kartadagidan farq qiladigan to'lovlar
+(ma'lumot uchun).
+
+**Tuzatish (prod, 11.10.2026):** `scripts/fix-orphan-payments-20261011.mjs`
+— #2172, #2173 → #17347 (Mushtariybonu), #620 → #17045 (Noila Asadullayeva,
+ism xato yozilgan). Faqat `pupilId` yoziladi; har yozuv oldin tekshiriladi;
+kvitansiya `/var/www/crm/shared/fix-orphan-payments-20261011.json`,
+`--undo` bilan qaytadi; nuqtaviy zaxira
+`/var/backups/crm/fix-orphan-payments-20261011`. Ikkinchi to'plam
+(`--batch=b`): #1085 «Sarkor Joraboyev» (22.09, 200 000, f1, kartasiz) →
+#17118 «Joraboyev Sarkorbek» — foydalanuvchi ko'rsatdi; kvitansiya
+`…/fix-orphan-payments-20261011-b.json`, zaxira
+`/var/backups/crm/fix-orphan-payments-20261011-b`. Shundan keyin A = 0,
+B (filial 1) = 0.
+
+**Endi to'siladi:** `DELETE /api/pupils/:id` to'lovi bor kartani
+o'chirmaydi — 409 va «O'rniga holatini «Arxiv» ga o'tkazing» xabari
+(`lib/pupilDeleteGuard.ts`). Sanaladi (balans to'plami —
+`studentBalanceMatch`): `pupilId` shu karta bo'lgan to'lovlar va
+qaytarimlar; `pupilId` siz eski yozuvlar ism bo'yicha — faqat shu ismli
+boshqa karta bo'lmasa (ikki marta kiritilgan dublikatni o'chirish
+to'silmaydi, to'lov qolgan kartada ko'rinadi). Bekor qilingan yozuvlar
+sanalmaydi.

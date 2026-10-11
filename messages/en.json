@@ -953,6 +953,7 @@
   "Bu o'quvchiga hali SMS yuborilmagan.": "No SMS has been sent to this student yet.",
   "Bu o'quvchiga ko'pi bilan {max} ta Telegram akkaunt bog'lanadi.": "At most {max} Telegram accounts can be linked to this student.",
   "Bu o'quvchining barcha buyurtmalari guruhga qo'shilgan.": "All of this student's orders have been added to a group.",
+  "Bu o'quvchining to'lovlari bor — o'chirib bo'lmaydi. O'rniga holatini «Arxiv» ga o'tkazing.": "This student has payments, so they cannot be deleted. Set their status to «Archive» instead.",
   "Bu o'zgarishni faqat xodimning oylik filiali ({home}) xodimi yoki admin qila oladi": "Only staff of the employee's payroll branch ({home}) or an admin can make this change",
   "Bu oraliqda yozuv yo'q": "No records in this period",
   "Bu oy": "This month",
