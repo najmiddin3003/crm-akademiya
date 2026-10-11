@@ -21,7 +21,7 @@ import fs from "node:fs";
 
 const { getDb } = await import("@/lib/mongodb");
 const { buildPayrollRows, monthMatch } = await import("@/lib/payrollSources");
-const { payrollPeriodOf, payrollFoizPart, payrollPaid, payrollDue, payrollHasFoiz, CLOSING_SALARY_RUN } = await import("@/lib/salary");
+const { payrollPeriodOf, payrollFoizPart, payrollPaid, payrollDue, payrollHasFoiz, payrollEarned, payrollTax, carryContribution, CLOSING_SALARY_RUN } = await import("@/lib/salary");
 
 const AUG = "2026-08";
 const SEP = "2026-09";
@@ -106,7 +106,8 @@ const report = [];
 for (const a of augRows) {
   if (!a.configured || !payrollHasFoiz(a)) continue;
   const entries = byTeacher.get(key(a.name)) ?? [];
-  const share = payrollFoizPart(a) - payrollPaid(a);
+  // Zanjirdagi bilan bir xil: nol-yopish oyi ulushi (qo'lda berilgani ayrilgan).
+  const share = carryContribution(a, pAug, true);
   if (!entries.length && share === 0) continue;
   const pays = (sepPay.get(a.id) ?? []).filter((x) => x.kind !== "karta");
   const payAt = pays.length ? pays.reduce((m, x) => (x.at && (!m || x.at > m) ? x.at : m), null) : null;
@@ -138,6 +139,10 @@ for (const a of augRows) {
     augCollected: a.collected,
     augFoiz: payrollFoizPart(a),
     augPaid: payrollPaid(a),
+    augPaidSettled: a.paidSettled ?? 0,
+    augEarned: payrollEarned(a, pAug),
+    augTax: payrollTax(a, pAug),
+    augDue: payrollDue(a, pAug),
     share,
     before: Math.round(before),
     settled: Math.round(settled),
@@ -150,7 +155,7 @@ for (const a of augRows) {
   };
   report.push(row);
   console.log(
-    `\n■ #${a.id} ${a.name} — ${a.percent}% | avgust tushumi ${fmt(a.collected)}, ulush ${fmt(row.augFoiz)}, avgustda olgan ${fmt(row.augPaid)} → sentabrga o'tadigan ${fmt(share)}`,
+    `\n■ #${a.id} ${a.name} — ${a.percent}% | avgust tushumi ${fmt(a.collected)}, ulush ${fmt(row.augFoiz)}, soliq ${fmt(row.augTax)}, olgan ${fmt(row.augPaid)}${row.augPaidSettled ? ` (shundan qo'lda ${fmt(row.augPaidSettled)})` : ""}, avgust «Qolgan» ${fmt(row.augDue)} → sentabrga o'tadigan ${fmt(share)}`,
   );
   console.log(
     `    sentabr chiqarishida oldin yozilganlar ulushi ${fmt(row.before)}, keyin yozilganlar ${fmt(row.after)}${row.settled ? `, berilgan deb belgilangan ${fmt(row.settled)}` : ""}`,

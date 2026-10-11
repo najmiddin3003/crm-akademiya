@@ -1410,6 +1410,17 @@ export default function SalaryCreatePage() {
                             : t("shundan {amount} boshqa filialdan", { amount: fmtNum(oylikElsewhere) })}
                         </div>
                       )}
+                      {/* Ulushi qo'lda berilgan kirimlar (11.10.2026, lib/salary.ts → applySettledShare). */}
+                      {(e.paidSettled ?? 0) > 0 && (
+                        <div
+                          className="text-[11px] text-muted-foreground"
+                          title={t("O'quvchi to'lovi kassaga tushgan, ustoz ulushi esa tizimdan tashqarida (qo'lda) berilgan")}
+                        >
+                          {(e.paidSettled ?? 0) >= e.paidOylik
+                            ? t("qo'lda berilgan")
+                            : t("shundan {amount} qo'lda berilgan", { amount: fmtNum(e.paidSettled ?? 0) })}
+                        </div>
+                      )}
                     </td>
                     {/* O'tgan oydan qolgan qoldiq ISHORALI: musbat —
                         akademiya qarzi, manfiy — xodimning qarzdorligi

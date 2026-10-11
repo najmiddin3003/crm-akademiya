@@ -142,8 +142,9 @@ export function salaryEffectOf(
   // Foiz qismi bor xodim — "foiz" va "oklad + foiz".
   if (!payroll?.configured || !payrollHasFoiz(payroll)) return null;
   // Ulushi tizimdan tashqarida berilgan kirim (lib/transactionEntries.ts →
-  // teacherShareSettled) — oylikka qo'shilmaydi (loadCollectedByTeacher
-  // ham sanamaydi), daftarda esa izoh bilan 0 bo'lib ko'rinadi.
+  // teacherShareSettled) — ulush hisoblanadi va o'sha zahoti «berilgan»
+  // (lib/salary.ts → applySettledShare), ya'ni qoldiqqa ta'siri 0: daftarda
+  // izoh bilan 0 bo'lib ko'rinadi.
   if (t.teacherShareSettled && (t.txType === "payIn" || isStudentRefundEntry(t))) {
     return { amount: 0, note: "ulush berilgan" };
   }

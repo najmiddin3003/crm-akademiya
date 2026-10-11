@@ -121,7 +121,12 @@ function rowsOf(e: EmployeePayroll, p: PayrollPeriod, t: TFn, months: string[]):
     { label: "Akladi", value: e.carryOver, hint: "o'tgan oydan" },
     { label: "Oylik", value: earned, strong: true },
     { label: "Avans", value: e.paidAvans },
-    { label: "Olingan oylik", value: e.paidOylik },
+    {
+      label: "Olingan oylik",
+      value: e.paidOylik,
+      // Ulushi qo'lda berilgan kirimlar (11.10.2026, lib/salary.ts → applySettledShare).
+      hint: (e.paidSettled ?? 0) > 0 ? t("shundan {amount} qo'lda berilgan", { amount: fmtUZS(e.paidSettled ?? 0) }) : undefined,
+    },
     { label: "Balans", value: due, hint: "qolgan", strong: true },
     ...pendingRows,
   ];

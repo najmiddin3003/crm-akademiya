@@ -426,8 +426,21 @@ export interface EmployeePayroll {
   jarima: number;
   /** Shu oyda berilgan avans. */
   paidAvans: number;
-  /** Shu oyda kassadan chiqarilgan oylik. */
+  /**
+   * Shu oyda kassadan chiqarilgan oylik. `paidSettled` bo'lsa — u ham shu
+   * ichida (qo'lda berilgan ulush, quyida).
+   */
   paidOylik: number;
+  /**
+   * QO'LDA BERILGAN ULUSH (11.10.2026) — `teacherShareSettled` belgili
+   * kirimlardan (lib/transactionEntries.ts). Tushum (`collected`) ularni O'Z
+   * ICHIGA OLADI — sahifada ko'rinadi; ulush esa tizimdan tashqarida berilgan:
+   *   `settledShare` — o'sha kirimlarning yalpi foiz ulushi;
+   *   `paidSettled`  — uning soliqdan keyingi qismi, `paidOylik` ICHIDA.
+   * Natija: shu oy «Qolgan»ida bu ulush 0. Hisob — `applySettledShare`.
+   */
+  settledShare?: number;
+  paidSettled?: number;
   /**
    * O'tgan oylardan SHU OYDA TO'LANADIGAN qoldiq, ishorali — `payrollDue`
    * ga kiradi (lib/payrollSources.ts → loadCarryOver → `foldCarryChain`):
@@ -781,8 +794,42 @@ export interface CarryFold {
  */
 export function carryContribution(e: EmployeePayroll, p: PayrollPeriod, pureClose: boolean): number {
   if (!e.configured) return 0;
-  if (pureClose) return payrollHasFoiz(e) ? payrollFoizPart(e) - payrollPaid(e) : 0;
+  // Nol-yopish oyi SOLIQSIZ o'tadi — qo'lda berilgan ulush ikki tomondan ham
+  // ayriladi (yalpi ulush va uning to'langan sof qismi), aks holda uning
+  // soliq qismi keyingi oyga "qarz" bo'lib o'tib ketardi (applySettledShare).
+  if (pureClose) {
+    return payrollHasFoiz(e)
+      ? payrollFoizPart(e) - (e.settledShare ?? 0) - (payrollPaid(e) - (e.paidSettled ?? 0))
+      : 0;
+  }
   return payrollEarned(e, p) - payrollTax(e, p) - payrollPaid(e);
+}
+
+/**
+ * QO'LDA BERILGAN ULUSHNI qatorga qo'llaydi (11.10.2026).
+ *
+ * `settledBase` — shu oy tushumidagi `teacherShareSettled` kirimlari
+ * yig'indisi (lib/payrollSources.ts → loadCollectedByTeacher → `settled`).
+ * Tushum O'ZGARMAYDI (sahifada ko'rinadi — foydalanuvchi: «tushum ko'rinib
+ * tursin»), ulush esa berilgan deb `paidOylik` ga qo'shiladi:
+ *
+ *     settledShare = foiz(tushum) − foiz(tushum − belgilangan)        // yalpi
+ *     paidSettled  = settledShare − (soliq(to'liq) − soliq(belgilangansiz))
+ *
+ * Soliq farq orqali: ulush hisoblangan oylikni oshiradi, soliq ham o'sadi
+ * (qat'iy soliq — hisoblangangacha); xodimga berilgani — soliqdan keyingisi.
+ * Natija: shu oy «Qolgan»i bu ulushdan 0 (hisoblangan − soliq − berilgan).
+ * Nol-yopish oyi zanjiri soliqsiz — carryContribution ikkalasini ayiradi.
+ *
+ * Sof funksiya — scripts/_test-salary.mjs bazasiz sinaydi.
+ */
+export function applySettledShare(e: EmployeePayroll, p: PayrollPeriod, settledBase: number): EmployeePayroll {
+  if (!settledBase || !e.configured || !payrollHasFoiz(e)) return e;
+  const without: EmployeePayroll = { ...e, collected: e.collected - settledBase };
+  const settledShare = payrollFoizPart(e) - payrollFoizPart(without);
+  if (!settledShare) return e;
+  const paidSettled = settledShare - (payrollTax(e, p) - payrollTax(without, p));
+  return { ...e, settledShare, paidSettled, paidOylik: e.paidOylik + paidSettled };
 }
 
 /**
