@@ -200,7 +200,8 @@ export interface CollectedByTeacher {
   /**
    * `collected` ICHIDAGI ulushi qo'lda berilgan kirimlar (11.10.2026,
    * lib/transactionEntries.ts → teacherShareSettled). Tushum o'zgarmaydi —
-   * buildPayrollRows → applySettledShare ulushni «berilgan» qiladi.
+   * buildPayrollRows → applySettledShare ulushini belgilaydi (keyingi oyga
+   * o'tmaydi).
    */
   settled?: number;
 }
@@ -576,6 +577,12 @@ export interface PayrollRefs {
   penaltyRows: { recipientName?: string; amount?: number; createdAt?: unknown }[];
   percentByTier: Map<string, number>;
   taxRules: Awaited<ReturnType<typeof loadTaxRules>>;
+  /**
+   * Oxirgi NOL-YOPISH oyi (`loadLastPureCloseMonth`) — shu va undan oldingi
+   * oylar YOPIQ: qatorda `closedMonth`, «Qolgan» 0 (11.10.2026). Berilmasa
+   * buildPayrollRows o'zi o'qiydi.
+   */
+  closedThrough?: string | null;
 }
 
 export async function loadPayrollRefs(
@@ -617,7 +624,7 @@ export async function loadPayrollRefs(
   } else if (opts.payrollBranchId !== undefined) {
     (empFilter as Record<string, unknown>).payrollBranchId = opts.payrollBranchId;
   }
-  const [employees, bonusRows, penaltyRows, percentByTier, taxRules] = await Promise.all([
+  const [employees, bonusRows, penaltyRows, percentByTier, taxRules, closedThrough] = await Promise.all([
     // ARXIVLANGAN (ishdan ketgan) XODIM OYLIK HISOBIGA KIRMAYDI.
     //
     // NIMA NOTO'G'RI EDI: bu yerda `find({})` turardi, ya'ni arxivdagi
@@ -638,6 +645,7 @@ export async function loadPayrollRefs(
     db.collection("penalties").find({ type: "employee", status: { $ne: "cancelled" } }).toArray(),
     loadPercentByTier(db),
     loadTaxRules(db),
+    loadLastPureCloseMonth(db),
   ]);
   return {
     employees,
@@ -645,6 +653,7 @@ export async function loadPayrollRefs(
     penaltyRows: penaltyRows as PayrollRefs["penaltyRows"],
     percentByTier,
     taxRules,
+    closedThrough,
   };
 }
 
@@ -660,6 +669,11 @@ export async function buildPayrollRows(
   const month = payrollMonthKey(p);
   const refs = opts.refs ?? (await loadPayrollRefs(db, { payrollBranchId: opts.payrollBranchId, memberOfBranchIds: opts.memberOfBranchIds }));
   const { bonusRows, penaltyRows, percentByTier, taxRules } = refs;
+  // YOPILGAN OY (11.10.2026, foydalanuvchi: «avgustda qancha tushum bo'lgan,
+  // qancha oylik, qancha avans berilgan — shu ko'rinib tursin, qolgan
+  // to'lanadiganda esa 0 tursin»): nol-yopish oyi va undan oldingilari.
+  const closedThrough = refs.closedThrough !== undefined ? refs.closedThrough : await loadLastPureCloseMonth(db);
+  const closedMonth = closedThrough !== null && month <= closedThrough;
   // Arxivdagi xodim faqat ISHDAN KETGAN oyigacha (profil daftari bundan mustasno).
   const employees = refs.keepArchived ? refs.employees : refs.employees.filter((e) => isInPayrollPeriod(e, p));
   const [paidBy, carryBy, collectedBy] = await Promise.all([
@@ -759,6 +773,8 @@ export async function buildPayrollRows(
         carryOver > 0 ? `${prevMonth} oyidan qolgan`
         : carryOver < 0 ? `${prevMonth} oyidan qarzdorlik`
         : "",
+      // Yopilgan oy — «Qolgan» 0 (lib/salary.ts → payrollDue).
+      ...(closedMonth ? { closedMonth: true } : {}),
       // Qoldiq hisoblanmagan (`carryOver: false` — zanjirning o'zi) qatorda yo'q.
       ...(withCarry ? { carryPending, carryPendingMonths } : {}),
       // Soliq faqat xodimga ATAYLAB biriktirilgan turlar bo'yicha
@@ -772,9 +788,9 @@ export async function buildPayrollRows(
       // maqsadini hisoblash uchun. Soliq asosiga TA'SIR QILMAYDI.
       paidPlastik: paid.plastik,
     } satisfies EmployeePayroll;
-    // Ulushi qo'lda berilgan kirimlar (11.10.2026): tushumda ko'rinadi, ulush
-    // esa «berilgan» — soliqdan keyingisi `paidOylik` ga (lib/salary.ts).
-    return applySettledShare(row, p, collected.settled ?? 0);
+    // Ulushi qo'lda berilgan kirimlar (11.10.2026): tushumda ko'rinadi,
+    // ulushi keyingi oyga o'tmaydi (lib/salary.ts → applySettledShare).
+    return applySettledShare(row, collected.settled ?? 0);
   });
 }
 
