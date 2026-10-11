@@ -164,10 +164,13 @@ export interface TransactionEntry {
   createdAt?: string;
   /**
    * USTOZ ULUSHI BERILGAN (11.10.2026) — shu kirimdan ustozning foizli
-   * ulushi oylikda HISOBLANMAYDI: u tizimdan tashqarida (qo'lda) berilgan.
-   * O'quvchi to'lovi, balansi, kassa va tushum/KPI hisobotlari O'ZGARMAYDI —
-   * faqat oylik: lib/payrollSources.ts → loadCollectedByTeacher (sanamaydi)
-   * va lib/salaryLedger.ts (daftarda 0 bilan ko'rinadi).
+   * ulushi tizimdan tashqarida (qo'lda) berilgan. Kirim ustozning TUSHUMIDA
+   * QOLADI (Oylik sahifasida ko'rinadi), ulushi esa «berilgan»: soliqdan
+   * keyingisi `paidOylik` ga qo'shiladi va «Qolgan»ga ta'sir qilmaydi
+   * (lib/payrollSources.ts → loadCollectedByTeacher `settled`,
+   * lib/salary.ts → applySettledShare); xodim daftarida 0 bilan ko'rinadi
+   * (lib/salaryLedger.ts). O'quvchi to'lovi, balansi, kassa va tushum/KPI
+   * hisobotlari O'ZGARMAYDI.
    *
    * Birinchi qo'llanishi: avgust «nol-yopish» oyining 30.09.2026 dagi
    * sentabr oyligi chiqarilishidan OLDIN yozilgan kirimlari (foydalanuvchi:

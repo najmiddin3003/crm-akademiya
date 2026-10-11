@@ -3100,10 +3100,27 @@ yozilgan, chiqarish chekida «O'tgan oydan» 0 (o'sha paytda avgust o'tmas edi).
 Keyin yozilgani yo'q; 4-filialda sentabr chiqarilmagan (tegilmadi).
 
 **Qaror:** «Ha, hammasini 0 qil». Kirimga `teacherShareSettled`
-(lib/transactionEntries.ts) — ulush oylikka kirmaydi
-(`loadCollectedByTeacher` sanamaydi), xodim daftarida «ulush berilgan» bilan
-0. O'quvchi to'lovi, balans, kassa, tushum/KPI — o'zgarmaydi. Yozish:
-`scripts/settle-august-share-20261011.mjs --apply` (kvitansiya
-`/var/www/crm/shared/settle-august-share-20261011.json`, `--undo`). Atlas
-nusxasida sinaldi: sentabr «O'tgan oydan» 9 ustozda 0, `_test-salary` va
-`_check-salary-ledger` (9 xodim) — xato yo'q.
+(lib/transactionEntries.ts). O'quvchi to'lovi, balans, kassa, tushum/KPI —
+o'zgarmaydi. Yozish: `scripts/settle-august-share-20261011.mjs --apply`
+(kvitansiya `/var/www/crm/shared/settle-august-share-20261011.json`,
+`--undo`). Prod'da bajarildi (923a2c4).
+
+**Tushum ko'rinib tursin (o'sha kuni, foydalanuvchi: «avgust oyligi to'liq
+berilgan, tushumni 0 qildingmi?» → «xa shunday qil, tushum ko'rinib
+tursin»).** Birinchi variant belgili kirimni `loadCollectedByTeacher` dan
+butunlay chiqarardi — avgust sahifasida «Tushum» 0 edi. Endi kirim tushumda
+QOLADI (`collected`, alohida `settled`), ulush esa «berilgan»
+(lib/salary.ts → `applySettledShare`):
+
+    settledShare = foiz(tushum) − foiz(tushum − belgilangan)        yalpi
+    paidSettled  = settledShare − (soliq(to'liq) − soliq(belgilangansiz))
+
+`paidSettled` `paidOylik` ICHIDA — avgust «Qolgan» 0, Oylik sahifasida
+«qo'lda berilgan» izohi. Soliq farq orqali: uch ustozda qat'iy soliq bor
+(Abdushukur 216 000, Musoxon 240 000, Yaxyoxo'ja 202 500 — hisoblangangacha)
+— yalpi ulushni «olingan» qilish ularni minusga (qarzdorlik) tushirardi.
+Nol-yopish zanjiri soliqsiz, shuning uchun `carryContribution` ikkalasini
+ham ayiradi — sentabrga 0 o'tadi. Xodim daftarida belgili kirim «ulush
+berilgan» bilan 0. Sinov: `_test-salary` (Q bo'limi), Atlas nusxasida
+apply → `_check-august-share` (avgust «Qolgan» 9 ustozda 0, sentabr
+o'zgarmagan) → `_check-salary-ledger` 9 xodim MISMATCH 0 → undo.

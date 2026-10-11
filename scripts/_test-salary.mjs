@@ -52,7 +52,7 @@ const {
   payrollPlastikLeg, payrollCashLeg, payrollCashDue, payrollPayout,
   payrollBase, payrollOkladDays, payrollOkladPart, payrollFoizPart, payrollStartsInPeriod, payrollEndsInPeriod, salaryTypeTag,
   carryContribution, foldCarryChain, payrollOwedTotal, payrollCarryTotal,
-  carryFoldsByEmployee, payrollPendingMaybePaid, pendingMaybePaidByMonth,
+  carryFoldsByEmployee, payrollPendingMaybePaid, pendingMaybePaidByMonth, applySettledShare,
 } = await import(pathToFileURL(path.resolve(salaryPath)).href);
 
 // Davrlar: 30 kunlik oyning turli kunlari.
@@ -474,6 +474,40 @@ const twoMonths2 = { ...twoMonths, paidOylik: 350000 };
 check("ikki oy: oshsa eskisiga", pendingMaybePaidByMonth(twoMonths2, POCT).map((x) => `${x.month}:${x.amount}`).join(","), "2026-08:50000,2026-09:300000");
 // Qorovul faqat ko'rsatadi — chegara/chiqarish o'zgarmaydi.
 check("#14: chiqariladigan baribir 0", payrollPayout(g14, POCT), 0);
+
+// ── QO'LDA BERILGAN ULUSH (11.10.2026, applySettledShare) ─────────────
+// Avgust (nol-yopish) kirimlari ulushi tizimdan tashqarida berilgan: tushum
+// ko'rinadi, ulush «berilgan» (soliqdan keyingisi paidOylik'ka), shu oy
+// «Qolgan» 0 va keyingi oyga (soliqsiz zanjir) hech narsa o'tmaydi.
+console.log("\nQ) Qo'lda berilgan ulush");
+// Abdushukur: tushum 1 040 000, 50%, qat'iy soliq 216 000.
+const sq1 = applySettledShare(emp({ salaryType: "foiz", percent: 50, collected: 1040000, taxable: true, taxRules: [TAX_216] }), PAUG, 1040000);
+check("soliqli: tushum o'zgarmaydi", sq1.collected, 1040000);
+check("soliqli: yalpi ulush", sq1.settledShare, 520000);
+check("soliqli: berilgani (sof)", sq1.paidSettled, 304000);
+check("soliqli: paidOylik", sq1.paidOylik, 304000);
+check("soliqli: avgust Qolgan 0", payrollDue(sq1, PAUG), 0);
+check("soliqli: sentabrga 0 o'tadi", carryContribution(sq1, PAUG, true), 0);
+// Yaxyoxo'ja: soliq hisoblangangacha qisilgan — berilgan sof 0.
+const sq2 = applySettledShare(emp({ salaryType: "foiz", percent: 50, collected: 405000, taxable: true, taxRules: [TAX_216] }), PAUG, 405000);
+check("soliq = ulush: berilgani 0", sq2.paidSettled, 0);
+check("soliq = ulush: Qolgan 0", payrollDue(sq2, PAUG), 0);
+check("soliq = ulush: o'tadi 0", carryContribution(sq2, PAUG, true), 0);
+// Muhammadjon: soliqsiz, 60%.
+const sq3 = applySettledShare(emp({ salaryType: "foiz", percent: 60, collected: 1150000 }), PAUG, 1150000);
+check("soliqsiz: berilgani = ulush", sq3.paidSettled, 690000);
+check("soliqsiz: Qolgan 0", payrollDue(sq3, PAUG), 0);
+check("soliqsiz: o'tadi 0", carryContribution(sq3, PAUG, true), 0);
+// Qisman: 1 000 000 dan 400 000 belgilangan — qolgan 600 000 ning ulushi o'tadi.
+const sq4 = applySettledShare(emp({ salaryType: "foiz", percent: 50, collected: 1000000 }), PAUG, 400000);
+check("qisman: Qolgan 300 000", payrollDue(sq4, PAUG), 300000);
+check("qisman: o'tadi 300 000", carryContribution(sq4, PAUG, true), 300000);
+check("qisman: oddiy oyda ham 300 000", carryContribution(sq4, PAUG, false), 300000);
+// Belgilangan yo'q / okladli — qator o'zgarmaydi (o'sha obyekt).
+const plain = emp({ salaryType: "foiz", percent: 50, collected: 1000000 });
+check("belgisiz: o'zgarmaydi", applySettledShare(plain, PAUG, 0) === plain, true);
+const okl = emp({ fixedSalary: 3000000 });
+check("okladli: o'zgarmaydi", applySettledShare(okl, PAUG, 500000) === okl, true);
 
 console.log(`\n${fail === 0 ? "NATIJA: ✅ hamma tekshiruv o'tdi" : `NATIJA: ❌ ${fail} ta xato`}`);
 process.exit(fail === 0 ? 0 : 1);

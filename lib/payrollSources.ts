@@ -11,6 +11,7 @@ import {
 import { PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
 import {
   CLOSING_SALARY_RUN,
+  applySettledShare,
   carryContribution,
   carryFoldsByEmployee,
   payrollDue,
@@ -196,6 +197,12 @@ export interface CollectedByTeacher {
   refunded: number;
   /** Ustoz almashuvi izohlari (lib/teacherHandover.ts) — faqat ko'rsatish uchun. */
   handovers?: PayrollHandover[];
+  /**
+   * `collected` ICHIDAGI ulushi qo'lda berilgan kirimlar (11.10.2026,
+   * lib/transactionEntries.ts → teacherShareSettled). Tushum o'zgarmaydi —
+   * buildPayrollRows → applySettledShare ulushni «berilgan» qiladi.
+   */
+  settled?: number;
 }
 
 /**
@@ -234,13 +241,11 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
       ],
       status: { $ne: "cancelled" },
       teacherName: { $nin: ["", null] },
-      // Ulushi tizimdan tashqarida berilgan kirim (11.10.2026, avgust) —
-      // ustoz oyligiga kirmaydi (lib/transactionEntries.ts → teacherShareSettled).
-      teacherShareSettled: { $exists: false },
     })
     // Pastdagi tsikl faqat shularni o'qiydi. 666 KB -> 73 KB. `pupilId` va
     // `studentName` — ustoz almashuvida qaysi o'quvchi ekanini topish uchun.
-    .project({ teacherName: 1, amount: 1, discountSom: 1, txType: 1, pupilId: 1, studentName: 1, _id: 0 })
+    // `teacherShareSettled` — ulushi qo'lda berilgan kirim (`settled` ga ham).
+    .project({ teacherName: 1, amount: 1, discountSom: 1, txType: 1, pupilId: 1, studentName: 1, teacherShareSettled: 1, _id: 0 })
     .toArray();
   const handovers = await handoversP;
   const index = buildHandoverIndex(handovers);
@@ -281,6 +286,8 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
 
     const own = bucket(k);
     own.collected += signed * keep;
+    const settled = Boolean(r.teacherShareSettled);
+    if (settled) own.settled = (own.settled ?? 0) + signed * keep;
     if (!isPay) own.refunded += amount * keep;
     if (!match || !ratio || keep >= 1) continue;
 
@@ -298,6 +305,7 @@ export async function loadCollectedByTeacher(db: Db, month: string): Promise<Map
     const to = nameKey(toName);
     const tgt = bucket(to);
     tgt.collected += moved;
+    if (settled) tgt.settled = (tgt.settled ?? 0) + moved;
     if (!isPay) tgt.refunded += amount * (1 - keep);
     const inn = note(`${h.month}|${fk}|in|${to}`, to, () => ({
       dir: "in", other: h.fromTeacher, lastDay: h.lastDay, days: ratio.newDays, daysIn: ratio.daysIn, amount: 0, unit: ratio.unit,
@@ -714,7 +722,7 @@ export async function buildPayrollRows(
     const salaryType: SalaryType = hasOklad && percent !== null ? "mixed" : hasOklad ? "fixed" : "foiz";
     const configured = hasOklad || percent !== null;
 
-    return {
+    const row = {
       id: emp.id,
       name: emp.name,
       phone: emp.phone,
@@ -764,6 +772,9 @@ export async function buildPayrollRows(
       // maqsadini hisoblash uchun. Soliq asosiga TA'SIR QILMAYDI.
       paidPlastik: paid.plastik,
     } satisfies EmployeePayroll;
+    // Ulushi qo'lda berilgan kirimlar (11.10.2026): tushumda ko'rinadi, ulush
+    // esa «berilgan» — soliqdan keyingisi `paidOylik` ga (lib/salary.ts).
+    return applySettledShare(row, p, collected.settled ?? 0);
   });
 }
 
