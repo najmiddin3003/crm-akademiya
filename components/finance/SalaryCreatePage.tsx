@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Link from "@/components/ui/Link";
 import { ArrowLeftRight, ArrowRight, CreditCard, DollarSign, History, RotateCcw, Search } from "lucide-react";
 import TeacherHandoverModal from "@/components/finance/TeacherHandoverModal";
-import { useBranchChangedElsewhere } from "@/components/shared/BranchContext";
+import { useBranch, useBranchChangedElsewhere } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import Select from "@/components/ui/Select";
@@ -44,6 +44,7 @@ import {
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Modal from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { branchPool, buildingNo } from "@/lib/branchPools";
 
 // Moliya → Oylik chiqarish (/finance-payroll) — bo'limning BOSH sahifasi.
 //
@@ -260,6 +261,17 @@ export default function SalaryCreatePage() {
   // (app/api/salary-runs/route.ts), bu yerda tugmalar oldindan o'chadi.
   // Javob kelguncha "" — to'smaydi (server baribir to'sadi).
   const [closedThrough, setClosedThrough] = useState("");
+  // BINO (10.10.2026): 1+2 «Akademiya Chortoq» navbarda BITTA qator, oylik
+  // esa bino bo'yicha qoladi (lib/branchScope.ts → `payrollBuilding`). Sukut —
+  // navbar filiali; almashtirgich faqat hovuzning ikkala binosiga ruxsat
+  // bo'lsa chiqadi. Server ruxsatni o'zi tekshiradi.
+  const { branchId: navBranchId, branches: allowedBranches } = useBranch();
+  const buildings = useMemo(
+    () => (navBranchId === null ? [] : branchPool(navBranchId).filter((id) => allowedBranches.some((b) => b.id === id))),
+    [navBranchId, allowedBranches],
+  );
+  const [building, setBuilding] = useState<number | null>(null);
+  const buildingQuery = building !== null ? `&building=${building}` : "";
   const period = useMemo(() => payrollPeriodOf(monthKey), [monthKey]);
   const periodLabel = useMemo(() => t("1 — {day}-{month} ({day}/{daysIn} kun)", { day: period.day, month: months[period.month].toLowerCase(), daysIn: period.daysIn }), [period, months, t]);
   const isPastMonth = monthKey < currentMonthKey;
@@ -306,7 +318,7 @@ export default function SalaryCreatePage() {
   const branchCookieAtLoad = useRef<string | null>(null);
   const fetchRows = useCallback(() => {
     const seq = ++reqSeq.current;
-    return fetch(`/api/salary-runs/employees-payroll?month=${monthKey}&given=1`)
+    return fetch(`/api/salary-runs/employees-payroll?month=${monthKey}&given=1${buildingQuery}`)
       .then((r) => r.json())
       .then((d) => {
         if (seq !== reqSeq.current || !d.ok) return;
@@ -317,7 +329,7 @@ export default function SalaryCreatePage() {
         branchCookieAtLoad.current = readBranchCookie();
       })
       .finally(() => { if (seq === reqSeq.current) setLoading(false); });
-  }, [monthKey]);
+  }, [monthKey, buildingQuery]);
 
   // Boshqa oynada navbardan filial almashtirilsa — DARHOL qayta yuklanadi,
   // bu oynaga o'tishni kutmasdan (components/shared/BranchContext.tsx).
@@ -363,14 +375,14 @@ export default function SalaryCreatePage() {
     // Manzil QATTIQ yozilgan (shablon ichida emas): ruxsatlar jadvali
     // route fayllari bo'yicha yig'iladi va u chaqiruv manzilini matndan
     // topadi — scripts/gen-api-permissions.mjs.
-    return fetch(`/api/salary-runs/month-cashflow?month=${monthKey}`)
+    return fetch(`/api/salary-runs/month-cashflow?month=${monthKey}${buildingQuery}`)
       .then((r) => r.json())
       .then((d) => {
         if (seq !== cashflowSeq.current || !d?.ok) return;
         setCashflow({ daromad: d.daromad, xarajat: d.xarajat, hasCashbox: !!d.hasCashbox });
       })
       .catch(() => {});
-  }, [monthKey]);
+  }, [monthKey, buildingQuery]);
   useEffect(() => { fetchCashflow(); }, [fetchCashflow]);
 
   /** "Qayta hisoblash" tugmasi — spinnerni qayta yoqadi. */
@@ -399,6 +411,20 @@ export default function SalaryCreatePage() {
     setEmployees([]);
     // Kartochkadagi daromad/xarajat va kassa bo'yicha avans ham eski
     // oyniki — o'chiriladi.
+    setCashflow(null);
+    setGiven(null);
+  }
+  /**
+   * Binoni almashtirish (1+2 «Akademiya Chortoq»). Oy almashgandagidek tanlov
+   * va eski raqamlar TOZALANADI — boshqa bino ro'yxatidagi belgilangan xodim
+   * bilan oylik chiqarib yuborish xato bo'lardi.
+   */
+  function changeBuilding(next: number) {
+    if (next === (building ?? navBranchId)) return;
+    setBuilding(next);
+    setSelected(new Set());
+    setLoading(true);
+    setEmployees([]);
     setCashflow(null);
     setGiven(null);
   }
@@ -783,6 +809,25 @@ export default function SalaryCreatePage() {
           value={{ month: period.month + 1, year: period.year }}
           onChange={(v) => changeMonth(`${v.year}-${String(v.month).padStart(2, "0")}`)}
         />
+        {buildings.length > 1 && (
+          <div className="inline-flex h-8 items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-[12px] font-semibold" role="tablist" aria-label={t("Bino")}>
+            {buildings.map((id) => {
+              const on = (building ?? navBranchId) === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => changeBuilding(id)}
+                  className={`h-7 rounded-md px-2.5 ${on ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+                >
+                  {t("{n}-bino", { n: buildingNo(id) ?? id })}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {/* Kelajak oyda davr yorlig'i ma'nosiz ("0-oktabr") — o'rniga
             nima ko'rsatilayotgani aytiladi. */}
         {!isFutureMonth && (

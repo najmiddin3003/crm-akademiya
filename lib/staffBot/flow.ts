@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { Db } from "mongodb";
+import { logAction } from "@/lib/actionLog";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import type { StaffAccess } from "@/lib/staffBot/auth";
 import type { StaffBotConfig } from "@/lib/staffBot/config";
@@ -49,4 +50,40 @@ export function parseAmount(text: string): number | null {
 export interface CallbackResult {
   handled: boolean;
   toast?: string;
+}
+
+/**
+ * AMALLAR JURNALI (lib/actionLog.ts, 10.10.2026) — botdagi YAKUNIY amal
+ * (kirim, chiqim, o'tkazma, lid) qaysi xodim hisobidan bajarilgani. Bot
+ * so'rovlari CRM sessiyasisiz keladi va proxy ularni yozmaydi — shu bois
+ * amal saqlangan joyda. Javobdan keyin (`defer`) — bot sekinlashmaydi;
+ * yozib bo'lmasa amal baribir bajarilgan.
+ */
+export function auditBot(
+  ctx: FlowCtx,
+  section: string,
+  action: string,
+  details: Record<string, unknown>,
+  target: string | number | null = null,
+): void {
+  const id = ctx.access.identity;
+  ctx.defer(() =>
+    logAction(ctx.db, {
+      actor: {
+        kind: "bot",
+        userId: id.userId || null,
+        employeeId: id.employeeId ?? null,
+        name: id.name || null,
+        role: id.isAdmin ? "admin" : null,
+        phone: id.phone || null,
+        tgId: ctx.chatId,
+      },
+      source: "bot",
+      section,
+      action,
+      target: target === null ? null : String(target),
+      status: 200,
+      details,
+    }),
+  );
 }

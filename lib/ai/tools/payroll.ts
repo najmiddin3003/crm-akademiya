@@ -12,7 +12,9 @@ import {
   payrollTax,
   salaryTypeTag,
 } from "@/lib/salary";
-import { optMonth, optString, type AiTool } from "./types";
+import { payrollBuilding } from "@/lib/branchScope";
+import { branchPool, buildingNo } from "@/lib/branchPools";
+import { optInt, optMonth, optString, ToolInputError, type AiTool } from "./types";
 
 // OYLIK — "Oylik chiqarish" sahifasi bilan bir xil hisob.
 //
@@ -46,6 +48,12 @@ export const payrollSummary: AiTool = {
     properties: {
       month: { type: "string", description: "Month YYYY-MM. Default: current month." },
       employee: { type: "string", description: "Optional: part of the employee name." },
+      building: {
+        type: "integer",
+        description:
+          "Only for a branch with several buildings (Akademiya Chortoq: 1 and 2) — payroll is kept per building. " +
+          "Default: the user's current building; the answer lists otherBuildings.",
+      },
     },
     additionalProperties: false,
   },
@@ -56,16 +64,31 @@ export const payrollSummary: AiTool = {
     const p = month ? payrollPeriodOf(month) : payrollPeriod();
     const monthKey = payrollMonthKey(p);
 
+    // BINO (10.10.2026): 1+2 «Akademiya Chortoq» — oylik bino bo'yicha
+    // (lib/branchScope.ts → payrollBuilding), Oylik sahifasidagi almashtirgich kabi.
+    // `building` — bino RAQAMI (1, 2 …), hovuzdagi o'rni; filial id'siga aylantiriladi.
+    const bn = optInt(args, "building", 1, 9);
+    const wanted = bn === null ? undefined : branchPool(ctx.scope.branchId)[bn - 1];
+    if (bn !== null && wanted === undefined) throw new ToolInputError("This branch has no such building");
+    const building = payrollBuilding(ctx.scope, wanted);
+    if (building === null) throw new ToolInputError("This building is not available to the user");
+    const otherBuildings = branchPool(building).filter(
+      (b) => b !== building && (ctx.scope.isAdmin || ctx.scope.allowed.includes(b)),
+    );
+
     // GET /api/salary-runs/employees-payroll?given=1 bilan bir xil tartib.
-    const built = await buildPayrollRows(ctx.db, p, { payrollBranchId: ctx.scope.branchId });
+    const built = await buildPayrollRows(ctx.db, p, { payrollBranchId: building });
     const flagged = await attachMaybePaidIn(ctx.db, p, built);
-    const { rows, given } = await attachBranchPayouts(ctx.db, monthKey, ctx.scope.branchId, flagged);
+    const { rows, given } = await attachBranchPayouts(ctx.db, monthKey, building, flagged);
     const hit = who ? rows.filter((e) => String(e.name ?? "").toLowerCase().includes(who)) : rows;
     const configured = hit.filter((e) => e.configured);
     const sum = (f: (e: (typeof configured)[number]) => number) => configured.reduce((s, e) => s + f(e), 0);
 
     return {
       branch: ctx.branchName,
+      ...(buildingNo(building) !== null
+        ? { building: buildingNo(building), otherBuildings: otherBuildings.map((b) => buildingNo(b)) }
+        : {}),
       month: monthKey,
       rule:
         "remaining = earned − tax + carry-over − paid. toPay sums only positive remainders (what the cashbox still has to pay out); " +

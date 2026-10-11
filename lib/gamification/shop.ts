@@ -6,7 +6,8 @@ import { GAM, isDupKey, nextSeq, raiseSeq, withLock } from "./db";
 import { pupilName } from "./ranking";
 import { canReturnOrder } from "./rights";
 import { intIn } from "./rules";
-import { branchNames } from "./scope";
+// Ombor/byudjet va musobaqa HAR BINO alohida — nomi «· 1-bino» bilan (scope.ts).
+import { branchBuildingNames as branchNames } from "./scope";
 import { loadSettings } from "./settings";
 import { canSeePupil, gradeOf, toifaOf, type Toifa } from "./students";
 import {

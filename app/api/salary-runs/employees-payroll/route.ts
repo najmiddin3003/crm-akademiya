@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { attachBranchPayouts, attachMaybePaidIn, buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { isMonthKey, payrollHasFoiz, payrollMonthKey, payrollPeriod, payrollPeriodOf, prevMonthKey } from "@/lib/salary";
-import { getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 import { branchPool } from "@/lib/branchPools";
 import { detectMovedPupils } from "@/lib/teacherHandoverStore";
 
@@ -79,6 +79,13 @@ export async function GET(req: Request) {
   if (!scope) {
     return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
   }
+  // BINO (10.10.2026): 1+2 «Akademiya Chortoq» navbarda bitta qator, oylik
+  // esa bino bo'yicha — Oylik sahifasi `?building=` bilan tanlaydi
+  // (lib/branchScope.ts → `payrollBuilding`). Berilmasa — navbar filiali.
+  const building = payrollBuilding(scope, params.get("building"));
+  if (building === null) {
+    return NextResponse.json({ ok: false, error: "Bu bino sizga biriktirilmagan" }, { status: 403 });
+  }
   // OYLIK RO'YXATI — `payrollBranchId` bo'yicha, `branchIds` bo'yicha EMAS.
   // Ikki filialda ishlaydigan xodim faqat BITTA filialning ro'yxatida
   // turadi, ya'ni oylik ikki marta chiqarilishi mumkin emas.
@@ -89,7 +96,7 @@ export async function GET(req: Request) {
       ? {}
       : pooled
         ? { memberOfBranchIds: branchPool(scope.branchId) }
-        : { payrollBranchId: scope.branchId },
+        : { payrollBranchId: building },
   );
   // O'TGAN OY ochilganda — "bu oy puli joriy oyda allaqachon berilgan
   // bo'lishi mumkin" belgisi (`maybePaidIn`, 04.10.2026, o'tish davri
@@ -105,7 +112,7 @@ export async function GET(req: Request) {
   // cookie'da va brauzerning HAMMA oynalari uchun bitta — boshqa oynada
   // almashtirilsa, bu oyna eski ro'yxatni ko'rsatib turaveradi
   // (app/api/salary-runs/route.ts → POST dagi qorovul).
-  const branchId = allBranches || pooled ? null : scope.branchId;
+  const branchId = allBranches || pooled ? null : building;
   // `closedThrough` — oxirgi NOL-YOPISH oyi (04.10.2026): Chiqim oynasi
   // (`branch=all`) shu oy va undan oldingilar uchun avans/oylikni oldindan
   // to'sadi. Kassir /api/salary-runs ni o'qiy olmaydi, shuning uchun shu
@@ -123,7 +130,7 @@ export async function GET(req: Request) {
 
   // "Berilgan avans" / "To'langan oylik" kartochkalari — pul QAYSI FILIAL
   // KASSASIDAN chiqqani bo'yicha. Qatorlarning o'z raqamlari o'zgarmaydi.
-  const { rows, given } = await attachBranchPayouts(db, month, scope.branchId, employees);
+  const { rows, given } = await attachBranchPayouts(db, month, building, employees);
 
   // USTOZ ALMASHUVI ESLATMASI — faqat JORIY va O'TGAN oy: o'quvchining
   // "hozirgi guruhi" eski oylar uchun ma'nosiz, o'tgan oy esa oy boshida

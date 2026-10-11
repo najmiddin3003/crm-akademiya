@@ -16,7 +16,7 @@ import {
   searchEmployees,
   searchPupils,
 } from "@/lib/staffBot/data";
-import { newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
+import { auditBot, newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
 import {
   CHIQIM_CB,
   afterSaveKeyboard,
@@ -583,6 +583,17 @@ async function saveChiqim(ctx: FlowCtx, d: ChiqimDraft, cashbox: BotCashbox): Pr
     return;
   }
   await setDraft(ctx.db, ctx.chatId, null);
+  auditBot(ctx, "cashboxes", "chiqim", {
+    cashboxId: cashbox.id,
+    cashbox: cashbox.name,
+    amount: d.amount,
+    method: d.methodKey,
+    category: d.typeName,
+    person: d.personName ?? null,
+    target: d.target ?? null,
+    periodMonth: d.salaryPayout ? (d.periodMonth ?? null) : null,
+    entryId: out.entryId,
+  }, out.entryId);
   await show(ctx, {
     html: V.chiqimSaved(d, cashbox, out.entryId, out.cashbox.balance),
     keyboard: afterSaveKeyboard("chiqim"),

@@ -22,7 +22,7 @@ import {
 } from "@/lib/salary";
 import { buildPayrollRows, loadLastPureCloseMonth } from "@/lib/payrollSources";
 import { loadPaymentMethods, PLASTIK_METHOD_KEY } from "@/lib/paymentMethods";
-import { getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 import { logEntry, logTransaction, nowTime, todayIso } from "@/lib/transactionLog";
 import { flushSoon } from "@/lib/sync/dispatch";
 import type { CashboxMethodTotals } from "@/lib/cashboxes";
@@ -221,14 +221,19 @@ export async function POST(req: Request) {
   // "Xodim topilmadi" chiqardi (30.09 21:47–21:49 da 6 marta). Endi sahifa
   // ro'yxat filialini yuboradi va mos kelmasa sababi aniq aytiladi. Hech
   // narsa yozilmaydi — qorovul pulga tegadigan hamma qadamdan oldin.
-  if (body.branchId !== undefined && Number(body.branchId) !== scope.branchId) {
+  //
+  // 10.10.2026 dan `branchId` — ro'yxat BINOSI ham: 1+2 «Akademiya Chortoq»
+  // navbarda bitta qator, oylik esa bino bo'yicha (lib/branchScope.ts →
+  // `payrollBuilding`). Hovuzdan tashqari yoki ruxsatsiz bino — eski 409.
+  const building = payrollBuilding(scope, body.branchId);
+  if (building === null) {
     return NextResponse.json(
       { ok: false, error: "Filial boshqa oynada almashtirilgan — sahifani yangilang", branchChanged: true },
       { status: 409 },
     );
   }
-  // FAQAT SHU FILIALNING oylik ro'yxati (`payrollBranchId`).
-  const all = await buildPayrollRows(db, period, { payrollBranchId: scope.branchId });
+  // FAQAT SHU FILIAL (bino) oylik ro'yxati (`payrollBranchId`).
+  const all = await buildPayrollRows(db, period, { payrollBranchId: building });
   const chosen = all.filter((e) => employeeIds.includes(e.id));
   if (chosen.length === 0) {
     // Eski (filialni yubormaydigan) sahifada ham sabab tushunarli bo'lsin.
@@ -469,7 +474,7 @@ export async function POST(req: Request) {
   //
   // TTL indeksi 120 s — jarayon o'ldirilsa qulf o'z-o'zidan ochiladi
   // (lib/mongodb.ts).
-  const lockId = `${payrollMonthKey(period)}:${scope.branchId}`;
+  const lockId = `${payrollMonthKey(period)}:${building}`;
   const locks = db.collection("salary_run_locks");
   try {
     await locks.insertOne({ _id: lockId as unknown as never, createdAt: new Date() });
@@ -558,7 +563,7 @@ export async function POST(req: Request) {
     naqdTolangan,
     createdAt: fmtNow(new Date()),
     month: payrollMonthKey(period),
-    branchId: scope.branchId,
+    branchId: building,
     ...(kartaOnly ? { kind: "karta" as const } : {}),
     items,
   };

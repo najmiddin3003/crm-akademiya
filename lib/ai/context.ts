@@ -5,7 +5,7 @@ import { employeeNameById } from "@/lib/currentEmployee";
 import { isPathAllowed } from "@/lib/permissions";
 import { loadViewer, type StaffTaskViewer } from "@/lib/staffTasksServer";
 import { uzDateIso } from "@/lib/uzTime";
-import { branchPool } from "@/lib/branchPools";
+import { branchPool, buildingNo } from "@/lib/branchPools";
 
 // SAVOL BERAYOTGAN XODIM — vositalar uchun yagona kontekst.
 //
@@ -36,10 +36,12 @@ export interface AiContext {
   scope: BranchScope;
   branchName: string;
   /**
-   * Joriy filial bilan bitta HOVUZdagi boshqa filiallar nomi (lib/branchPools.ts,
-   * 09.10.2026: 1+2 kassa va oylikdan boshqa hamma joyda bitta). Bo'sh — hovuz yo'q.
+   * Filial nechta BINOdan iborat (lib/branchPools.ts; 10.10.2026 dan 1+2 —
+   * bitta «Akademiya Chortoq», ikki bino) va foydalanuvchi qaysi binoda.
+   * 0 / null — oddiy filial.
    */
-  poolBranchNames?: string[];
+  buildingCount?: number;
+  building?: number | null;
   /** Toshkent kuni, "YYYY-MM-DD". */
   today: string;
   /** Xodim shu sahifani ko'ra oladimi — vositalar ruxsati shu bilan kesiladi. */
@@ -67,12 +69,9 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
   if (!scope) return null;
 
   const pool = branchPool(scope.branchId);
-  const [employeeName, branch, poolRows] = await Promise.all([
+  const [employeeName, branch] = await Promise.all([
     employeeNameById(db, me.hrEmployeeId),
     db.collection("branches").findOne({ id: scope.branchId }, { projection: { _id: 0, name: 1 } }),
-    pool.length > 1
-      ? db.collection("branches").find({ id: { $in: pool.filter((b) => b !== scope.branchId) } }, { projection: { _id: 0, name: 1 } }).toArray()
-      : Promise.resolve([]),
   ]);
 
   const permissions = me.permissions;
@@ -86,7 +85,8 @@ export async function loadAiContext(db: Db, opts: { actions?: boolean } = {}): P
     permissions,
     scope,
     branchName: String(branch?.name ?? "").trim() || `#${scope.branchId}`,
-    poolBranchNames: poolRows.map((b) => String(b.name ?? "").trim()).filter(Boolean),
+    buildingCount: pool.length > 1 ? pool.length : 0,
+    building: buildingNo(scope.branchId),
     today: uzDateIso(),
     can: (href) => isPathAllowed(href, permissions),
     actions: opts.actions === true,

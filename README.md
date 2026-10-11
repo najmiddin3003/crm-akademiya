@@ -2858,3 +2858,93 @@ Atlas ko'zgusida (09.10.2026, kechagi prod nusxasi) natija:
 gacha bo'lgan holatga qaytadi, o'quvchilar hovuzi ham ketadi. Faqat
 o'quvchilarni qoldirish uchun esa `pupilBranchCondition` ga alohida ro'yxat
 kerak.
+
+## «Akademiya Chortoq» — bitta filial ko'rinishi (2026-10-10)
+
+Foydalanuvchi: «filial 1 va filial 2 ni bitta yagona Akademiya Chortoq ga
+o'tkazamiz … kassaga tegilmaydi, kassa shundoq holicha qoladi, faqat
+ko'rinish o'zgarsin qolgan sahifalarda». Ma'lumot ko'chirish (2 → 1)
+taklif qilingan edi — rad etildi: MA'LUMOT O'Z JOYIDA, faqat ko'rinish.
+
+**Nomlar.** `scripts/rename-chortoq-branches.mjs --apply` — 1- va
+2-filial hujjatining nomi «Akademiya Chortoq» (eski nom `nameBefore` da,
+`--undo` qaytaradi), nom nusxalari ham: ish arizalari (`branchName`) va
+kurs narx qatorlari. Kassalar (nomi ham) va Telegram topiklari tegilmaydi.
+
+**Tanlov ro'yxatlari — bitta qator** (`lib/branchPools.ts →
+collapseBranchPools`, solishtirish `sameBranchPool`): navbar, lidlar va
+topshiriqlar filtri, CV (ro'yxat, filtr, /ariza), /sorovnoma kartasi, lid
+ko'chirish oynasi, Nazorat sahifalari, avto-SMS, vaqtinchalik xodimlar
+filtri, kurs narxi (forma bitta qatorni ikkala binoga yozadi; eksport bitta
+ustun; import nom bo'yicha ikkalasiga).
+
+**Bino kerak joylar — «1-bino / 2-bino»** (`buildingNo`,
+`branchBuildingLabel`): xodimning filial qatorlari (ikkala modal), xona
+oynasi, Filiallar boshqaruvi, gamifikatsiya do'koni va musobaqasi
+(`branchBuildingNames`, direktor ro'yxatlari), lid raqami belgisi (eski
+№1–№92 takrori).
+
+**Oylik va QR — bino bo'yicha, logika o'zgarmadi.** Navbarda 2-bino
+yo'q, shuning uchun sahifaning o'zida almashtirgich (`lib/branchScope.ts →
+payrollBuilding`: navbar filiali bilan bitta hovuzdagi va ruxsat etilgan
+bino; berilmasa — navbar filiali):
+
+- Oylik: `employees-payroll?building=`, `month-cashflow?building=`,
+  `POST /api/salary-runs` tanadagi `branchId` (30.09 qorovuli endi
+  hovuzdosh binoni ham qabul qiladi), bekor qilish (`[id]` DELETE).
+- QR kiosk: `/api/attendance-qr?building=`; har kompyuter binosini
+  `localStorage` da eslab qoladi (2-binodagi ekran navbarsiz ham 2-bino).
+- AI `payroll_summary` — `building` argumenti; Xodimlar balansi hisoboti
+  endi hovuz bo'yicha (xodim bo'yicha, takrorsiz).
+
+Telegram: yangi lid yaratgan xodimning navbar a'zosiga qarab 1 yoki
+2-filial topigiga tushadi (avvalgidek); kassa to'lovlari kassa filiali
+bo'yicha (tegilmagan). Topiklarni birlashtirish kerak bo'lsa — Boshqaruv →
+Filiallar'da 2-binoga 1-binoning topik raqamini yozish kifoya.
+
+**Sinov:** `scripts/_verify-chortoq-view.mjs` (bazasiz, haqiqiy funksiyalar:
+navbar yig'ish, bino yorlig'i, `payrollBuilding` ruxsatlari, jurnal
+yashirish va nomlari).
+
+## Amallar jurnali (2026-10-10)
+
+Foydalanuvchi: «qanaqa amal bajarilayotgan bo'lsa kimning akkauntidan
+ekanligini db ga yozib borilishi ham kerak». 15.09 dagi oylik o'chirish
+hodisasida iz faqat nginx jurnalida edi — endi bazada.
+
+**Kolleksiya `action_log`** (`lib/actionLog.ts`): `at`, `actor` {kind:
+user | bot | miniapp | public | system, userId, employeeId, name (o'sha
+paytdagi), role, phone, tgId}, `source`, `section` (API yo'lining birinchi
+segmenti), `action` (HTTP usuli yoki maxsus), `path`, `query`, `target`,
+`status`, `denied`, `ip` (nginx `X-Real-IP`), `ua`, `sid`, `branchId`
+(navbar), `body` (parol/kod/token/initData/apiKey «***», uzun satrlar
+qisqartirilgan), `details`. TTL — 1 yil (`lib/mongodb.ts`). Atlas
+ko'zgusiga KO'CHIRILMAYDI (`deploy/backup-mongo.sh --nsExclude`, M0 512 MB),
+lokal zaxirada to'liq.
+
+**Qayerdan yoziladi:**
+
+- `proxy.ts` — HAR BIR o'zgartiruvchi `/api` so'rov (POST/PUT/PATCH/DELETE)
+  `waitUntil` bilan fonda: javob kutmaydi, yozib bo'lmasa so'rov o'tadi.
+  Rad etilgan urinishlar (401/403) ham. Route'ga o'tgan so'rovning natijasi
+  (`status`) proxy'ga ko'rinmaydi — `null`. Yozilmaydi: kirish (route o'zi),
+  Telegram webhook'lari, Mini App, «ko'rildi» belgisi, navbar filial
+  tanlovi, AI savollari, fayl yuklash.
+- `app/api/auth/login` — kirish va XATO urinish sababi bilan (hisob topilmadi,
+  parol noto'g'ri, muzlatilgan, tasdiq kutilmoqda).
+- Telegram xodimlar boti (`lib/staffBot/flow.ts → auditBot`): kirim, chiqim,
+  o'tkazma, to'lov turini almashtirish, o'tkazma qarori, lid — kirgan xodim
+  hisobi bilan.
+- Guruh botidagi lid tugmalari — bosgan odam (xodimlar botida kirgan
+  bo'lsa — o'sha xodim).
+- «Ishga keldim/ketdim» QR (Mini App) — xodim, bino, kechikish.
+- Muddati o'tgan topshiriq jarimasi — «Tizim».
+
+**Ko'rish:** admin uchun «Amallar jurnali» (`/amallar-jurnali`, sidebar
+`adminOnly`; sahifa va `GET /api/action-log` ikkalasi ham `requireAdmin`).
+Filtrlar: sana oralig'i, odam, bo'lim, amal turi (qo'shish/o'zgartirish/
+o'chirish/kirish/bot/tizim/rad etilgan), matn. Yorliqlar
+`lib/actionLogLabels.ts` da (bazada xom kalit — nom o'zgarsa eskilari ham
+yangi nom bilan).
+
+Gamifikatsiyaning o'z `audit_log` i (before/after) alohida qoldi.

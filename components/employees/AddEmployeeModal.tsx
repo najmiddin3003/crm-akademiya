@@ -21,6 +21,7 @@ import Select from "@/components/ui/Select";
 import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { branchBuildingLabel } from "@/lib/branchPools";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
 // Saqlash → POST /api/hr-employees.
@@ -862,7 +863,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
                       onChange={(e) => updateRow(branch.id, { checked: e.target.checked })}
                       className="w-4 h-4 rounded border-border accent-primary"
                     />
-                    <span className="text-sm">{branch.name}</span>
+                    <span className="text-sm">{branchBuildingLabel(branch, (n) => t("{n}-bino", { n }))}</span>
                   </label>
                   <Select value={row.roleId} onChange={(v) => updateRow(branch.id, { roleId: v })} options={roles.map((r) => ({ value: String(r.id), label: r.name }))} placeholder={selectPlaceholder(branchListsLoading, roles.length, "Rol qo'shilmagan", "Rolni tanlang")} clearable disabled={off || branchListsLoading} />
                   <Select value={row.scheduleId} onChange={(v) => updateRow(branch.id, { scheduleId: v })} options={schedules.map((s) => ({ value: String(s.id), label: s.name }))} placeholder={selectPlaceholder(branchListsLoading, schedules.length, "Faol ish jadvali yo'q", "Ish jadvali")} clearable disabled={off || branchListsLoading} />

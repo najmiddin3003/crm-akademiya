@@ -6,6 +6,7 @@ import Spinner from "@/components/ui/Spinner";
 import { useBranches } from "@/hooks/useBranches";
 import { downloadTableCsv, downloadTableExcel, type Cell } from "@/lib/exportTable";
 import { useT } from "@/components/shared/Language";
+import { collapseBranchPools } from "@/lib/branchPools";
 
 // Nazorat > Filiallar holati (/nazorat-branches).
 //
@@ -55,7 +56,9 @@ const NA = "—";
 
 export default function NazoratBranchesPage() {
   const { t } = useT();
-  const { branches, loading } = useBranches();
+  const { branches: allBranches, loading } = useBranches();
+  // 1+2 «Akademiya Chortoq» — bitta qator (lib/branchPools.ts).
+  const branches = collapseBranchPools(allBranches);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

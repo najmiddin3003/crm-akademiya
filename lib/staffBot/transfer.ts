@@ -12,7 +12,7 @@ import {
   loadTransferDestinations,
   type IncomingTransfer,
 } from "@/lib/staffBot/data";
-import { newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
+import { auditBot, newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
 import {
   TRANSFER_CB,
   afterDecisionKeyboard,
@@ -384,6 +384,14 @@ async function saveTransfer(ctx: FlowCtx, d: TransferDraft, cashbox: BotCashbox)
       return;
     }
     await setDraft(ctx.db, ctx.chatId, null);
+    auditBot(ctx, "cashboxes", "transfer", {
+      cashboxId: cashbox.id,
+      cashbox: cashbox.name,
+      toCashboxId: d.destId ?? null,
+      amount: d.amount,
+      method: d.fromKey,
+      entryId: out.outId,
+    }, out.outId);
     await show(ctx, { html: V.transferSaved(d, cashbox, out.outId, null), keyboard: afterTransferKeyboard() });
     return;
   }
@@ -399,6 +407,14 @@ async function saveTransfer(ctx: FlowCtx, d: TransferDraft, cashbox: BotCashbox)
     return;
   }
   await setDraft(ctx.db, ctx.chatId, null);
+  auditBot(ctx, "cashboxes", "method_transfer", {
+    cashboxId: cashbox.id,
+    cashbox: cashbox.name,
+    amount: d.amount,
+    from: d.fromKey,
+    to: d.toKey ?? null,
+    entryId: out.outId,
+  }, out.outId);
   await show(ctx, { html: V.transferSaved(d, cashbox, out.outId, out.cashbox.balance), keyboard: afterTransferKeyboard() });
 }
 
@@ -416,6 +432,12 @@ async function decide(ctx: FlowCtx, cashbox: BotCashbox, entryId: number, decisi
     await showInbox(ctx, cashbox, V.transferDecisionFailed(out.error));
     return;
   }
+  auditBot(ctx, "transaction-entries", decision === "confirm" ? "transfer_confirm" : "transfer_reject", {
+    entryId,
+    amount: out.amount,
+    fromCashbox: it?.fromCashboxName || null,
+    cashbox: cashbox.name,
+  }, entryId);
   // Sheets qatori kunlik cron'ni kutmasdan yangilansin (web route bilan bir xil).
   ctx.defer(() => flushSoon(ctx.db));
   await show(ctx, {

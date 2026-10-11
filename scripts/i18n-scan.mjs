@@ -51,6 +51,9 @@ for (const f of files) {
 
 /** Konstantalardagi yorliqlar — kodda `t(item.label)` bilan o'giriladi. */
 const CONSTANT_SOURCES = [
+  // Amallar jurnali yorliqlari (bo'lim, amal, kim turi) — sahifada `t(sectionLabel(…))`.
+  { file: "lib/actionLogLabels.ts", re: /^\s+(?!value\b)"?[\w-]+"?:\s*"([^"]+)",?$/gm },
+  { file: "lib/actionLogLabels.ts", re: /\blabel:\s*"([^"]+)"/g },
   // Faqat teskari moslash bilan ishlatiladigan andozalar (lib/i18n.ts RENDERED_KEYS).
   { file: "lib/i18n.ts", re: /RENDERED_KEYS = \[([^\]]*)\]/g, list: true },
   { file: "constants/sidebar.js", re: /\b(?:label|title):\s*"([^"]+)"/g },

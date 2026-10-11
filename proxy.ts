@@ -1,4 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { actorForSession, bodyForLog, clientIp, clientUa, logAction, sectionOf, type ActionActor } from "@/lib/actionLog";
+import { ensureIndexes } from "@/lib/mongodb";
 import { apiAccessFor } from "@/lib/apiPermissions";
 import { LOCK_COOKIE } from "@/lib/lock";
 import { firstAllowedPath, isPathAllowed, PATHNAME_HEADER } from "@/lib/permissions";
@@ -134,6 +136,73 @@ function movedResponse(req: NextRequest, target: string) {
   });
 }
 
+// ── AMALLAR JURNALI (10.10.2026, lib/actionLog.ts) ──────────────────────
+//
+// CRM'dagi HAR BIR o'zgartiruvchi /api so'rov (POST, PUT, PATCH, DELETE)
+// kim tomonidan yuborilgani bilan bazaga yoziladi. Shu yerda — chunki bu
+// har so'rov o'tadigan yagona joy (yuqoridagi izoh): 160+ route'ga
+// tarqatilsa birortasi unutilardi. Yozuv `waitUntil` bilan FONDA — javob
+// kutmaydi va yozib bo'lmasa so'rov baribir o'tadi.
+//
+// Bu yerda YOZILMAYDIGANLAR — o'z joyida natijasi bilan yoziladi yoki
+// shovqin: kirish (route o'zi yozadi), Telegram bot va Mini App (sessiya
+// yo'q — amal joyida xodimi bilan), «ko'rildi» belgisi, navbar filial
+// tanlovi, AI savollari (suhbatlarda saqlanadi), fayl yuklash.
+const LOGGED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const LOG_SKIP_EXACT = new Set([
+  "/api/auth/login",
+  "/api/auth/verify-token",
+  "/api/branch",
+  "/api/ai/chat",
+  "/api/gender-guess",
+  "/api/sync/cron",
+]);
+const LOG_SKIP_PREFIX = ["/api/telegram/", "/api/xodim/", "/api/notifications", "/api/student-web/", "/api/me/", "/api/upload/"];
+
+function shouldLog(pathname: string, method: string): boolean {
+  if (!LOGGED_METHODS.has(method)) return false;
+  if (LOG_SKIP_EXACT.has(pathname)) return false;
+  return !LOG_SKIP_PREFIX.some((p) => pathname.startsWith(p));
+}
+
+/** Navbar filiali cookie'si (lib/branchScope.ts → BRANCH_COOKIE; proxy'ga og'ir modulni tortmaslik uchun nomi shu yerda). */
+const BRANCH_COOKIE_NAME = "branch";
+
+async function logApiRequest(req: NextRequest, session: SessionPayload | null, res: Response): Promise<void> {
+  try {
+    // `NextResponse.next()` — so'rov route'ga o'tdi, natijasini proxy ko'rmaydi.
+    const passed = res.headers.get("x-middleware-next") === "1";
+    const { pathname, search } = req.nextUrl;
+    const { section, target } = sectionOf(pathname);
+    // Tana faqat kichik JSON bo'lsa (fayl yuklash va multipart — yo'q). Next
+    // tanani proxy va route uchun alohida saqlaydi (proxyClientMaxBodySize.md).
+    const type = req.headers.get("content-type") ?? "";
+    const size = Number(req.headers.get("content-length") ?? "0");
+    const text = type.includes("application/json") && size <= 64_000 ? await req.text().catch(() => null) : null;
+    const db = await ensureIndexes();
+    const actor: ActionActor = session ? await actorForSession(db, session) : { kind: "public" };
+    const branch = Number(req.cookies.get(BRANCH_COOKIE_NAME)?.value);
+    await logAction(db, {
+      actor,
+      source: session ? "web" : "public",
+      section,
+      action: req.method,
+      path: pathname,
+      ...(search ? { query: search.slice(0, 300) } : {}),
+      target,
+      status: passed ? null : res.status,
+      ...(!passed && (res.status === 401 || res.status === 403) ? { denied: true } : {}),
+      ip: clientIp(req.headers),
+      ua: clientUa(req.headers),
+      sid: session?.sid ?? null,
+      branchId: Number.isFinite(branch) && branch > 0 ? branch : null,
+      body: bodyForLog(text),
+    });
+  } catch (e) {
+    console.error("[action-log] proxy:", (e as Error)?.message ?? e);
+  }
+}
+
 function deny(status: number, error: string) {
   return NextResponse.json({ ok: false, error }, { status });
 }
@@ -197,7 +266,7 @@ async function handleApi(
   return NextResponse.next();
 }
 
-export async function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest, event: NextFetchEvent) {
   const { pathname } = req.nextUrl;
 
   // Eski server — hech qanday tekshiruvdan OLDIN (yuqoridagi izoh).
@@ -209,7 +278,9 @@ export async function proxy(req: NextRequest) {
   const locked = Boolean(session) && req.cookies.get(LOCK_COOKIE)?.value === "1";
 
   if (pathname.startsWith("/api/")) {
-    return handleApi(pathname, req.method, session, locked);
+    const res = await handleApi(pathname, req.method, session, locked);
+    if (shouldLog(pathname, req.method)) event.waitUntil(logApiRequest(req, session, res));
+    return res;
   }
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

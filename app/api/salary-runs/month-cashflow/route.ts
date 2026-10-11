@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { isMonthKey, payrollMonthKey, payrollPeriod } from "@/lib/salary";
-import { getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 
 // GET /api/salary-runs/month-cashflow[?month=YYYY-MM]
 //
@@ -64,9 +64,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
   }
 
+  // Bino (1+2 «Akademiya Chortoq» — Oylik sahifasidagi almashtirgich).
+  const building = payrollBuilding(scope, new URL(req.url).searchParams.get("building"));
+  if (building === null) {
+    return NextResponse.json({ ok: false, error: "Bu bino sizga biriktirilmagan" }, { status: 403 });
+  }
   const boxes = await db
     .collection("cashboxes")
-    .find({ branchId: scope.branchId }, { projection: { id: 1, _id: 0 } })
+    .find({ branchId: building }, { projection: { id: 1, _id: 0 } })
     .toArray();
   const cashboxIds = boxes.map((b) => Number(b.id)).filter(Number.isFinite);
   if (cashboxIds.length === 0) {

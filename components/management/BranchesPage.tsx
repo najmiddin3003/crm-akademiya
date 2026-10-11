@@ -10,6 +10,7 @@ import Modal, { useModalClose } from "@/components/ui/Modal";
 import TimeField from "@/components/ui/TimeField";
 import { useT } from "@/components/shared/Language";
 import { parseGeo } from "@/lib/geo";
+import { branchBuildingLabel } from "@/lib/branchPools";
 
 // Boshqaruv → Filiallar (sidebar: Boshqaruv > Filiallar, href
 // /management-filiallar). Ma'lumot HAQIQIY — /api/branches (MongoDB
@@ -231,7 +232,7 @@ export default function BranchesPage() {
       <div className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
         {branches.map((b) => (
           <div key={b.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary/30 transition-colors">
-            <span className="font-medium">{b.name}</span>
+            <span className="font-medium">{branchBuildingLabel(b, (n) => t("{n}-bino", { n }))}</span>
             <span className="ml-auto text-[13px] text-muted-foreground">{b.location}</span>
             <TopicBadge
               label={t("Lidlar")}

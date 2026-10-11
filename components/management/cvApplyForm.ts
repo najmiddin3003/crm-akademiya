@@ -15,6 +15,7 @@ import {
 } from "@/constants/managementCv";
 import { ageOf, type CvApplication } from "@/lib/managementCv";
 import { useT } from "@/components/shared/Language";
+import { collapseBranchPools } from "@/lib/branchPools";
 
 // ISHGA ARIZA ANKETASI — UMUMIY MANTIQ (19.09.2026).
 //
@@ -199,7 +200,8 @@ export function useCvApplyForm(opts: CvApplyFormOptions) {
   );
   const branchOptions = useMemo(
     () => [
-      ...branches.map((b) => ({ value: String(b.id), label: b.name, sub: b.address || b.location || undefined })),
+      // 1+2 «Akademiya Chortoq» — bitta qator (lib/branchPools.ts); CV ro'yxati hovuz bo'yicha.
+      ...collapseBranchPools(branches).map((b) => ({ value: String(b.id), label: b.name, sub: b.address || b.location || undefined })),
       { value: "any", label: t(CV_ANY_BRANCH) },
     ],
     [branches, t],

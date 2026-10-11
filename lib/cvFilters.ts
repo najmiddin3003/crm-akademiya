@@ -1,4 +1,5 @@
 import type { CvApplication } from "@/lib/managementCv";
+import { sameBranchPool } from "@/lib/branchPools";
 
 // Boshqaruv → Ishga qabul (CV) ro'yxatining FILTRLARI (26.09.2026).
 //
@@ -59,7 +60,8 @@ export function activeCvFilters(f: CvFilters): number {
 }
 
 export function branchMatches(c: CvApplication, wanted: string): boolean {
-  return wanted === CV_BRANCH_ANY ? c.branchId === null : c.branchId === Number(wanted);
+  // Hovuz (1+2 «Akademiya Chortoq») — bitta filial (lib/branchPools.ts).
+  return wanted === CV_BRANCH_ANY ? c.branchId === null : typeof c.branchId === "number" && sameBranchPool(c.branchId, Number(wanted));
 }
 
 /** Solishtirish kaliti: kichik harf, tutuq belgilari bir xil, bo'shliqlar yig'ilgan. */

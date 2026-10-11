@@ -8,7 +8,8 @@ import { GAM, gamDb, isDupKey, withLock } from "./db";
 import { expireDiscounts } from "./discounts";
 import { lastDayOf, shiftMonth } from "./exams";
 import { groupRanking, monthRange } from "./ranking";
-import { branchNames, isOwnGroup, toGamGroup } from "./scope";
+// Ombor/byudjet va musobaqa HAR BINO alohida — nomi «· 1-bino» bilan (scope.ts).
+import { branchBuildingNames as branchNames, isOwnGroup, toGamGroup } from "./scope";
 import { loadSettings } from "./settings";
 import { levelIndexOf } from "./rules";
 import { GamError, isFrozenStatus, withWallet } from "./wallet";

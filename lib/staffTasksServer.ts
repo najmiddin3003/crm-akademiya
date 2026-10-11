@@ -30,6 +30,7 @@ import {
   type StaffTaskStatus,
   type StaffTaskViewerInfo,
 } from "@/lib/staffTasks";
+import { logAction } from "@/lib/actionLog";
 
 // XODIM TOPSHIRIQLARI — SERVER QISMI (lib/staffTasks.ts izohiga qarang).
 //
@@ -560,6 +561,23 @@ async function automate(db: Db, nowMs: number): Promise<number> {
       loggedAt: nowIso,
     };
     await col.updateOne({ id: doc.id }, { $push: { history: ev } });
+    // AMALLAR JURNALI (lib/actionLog.ts): jarimani TIZIM qo'ydi — bu o'tish
+    // kimningdir so'rovi ichida yurgani (dangasa avtomatika) uning amali emas.
+    await logAction(db, {
+      actor: { kind: "system", name: "Tizim" },
+      source: "cron",
+      section: "staff-tasks",
+      action: "task_failed_fine",
+      target: String(doc.id),
+      status: 200,
+      details: {
+        task: String(doc.title ?? ""),
+        employeeId: doc.employeeId ?? null,
+        employee: String(doc.employeeName ?? ""),
+        fine: fine?.amount ?? 0,
+        month: fine?.month ?? null,
+      },
+    });
     n++;
   }
   return n;

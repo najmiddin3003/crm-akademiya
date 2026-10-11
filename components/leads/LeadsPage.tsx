@@ -25,6 +25,7 @@ import LeadDrawer from "./LeadDrawer";
 import { GuruhModal, RadModal, SinovModal, postHolat } from "./LeadHolatModals";
 import LeadReceiptModal, { type ReceiptRow } from "./LeadReceipt";
 import { SANA_OPTIONS, buildRows, guruhText, inPeriod, levelText, sinovText, useLeadFmt, type LeadFmt, type LeadRow } from "./leadsCommon";
+import { collapseBranchPools, sameBranchPool } from "@/lib/branchPools";
 
 // LIDLAR (/orders-list) — foydalanuvchi prototipi «lidlar-tayyorlangan-ohiri»
 // (23.09.2026). Eski «Buyurtmalar ro'yxati» (Kanban, bosqich chiplari) shu
@@ -151,7 +152,8 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
         if (!byName && !byPhone && !byNo) return false;
       }
       // Maydoni yo'q eski lidlar (42 ta) — 1-filial (lib/branchScope.ts qoidasi).
-      if (f.filial && String(r.o.branchId ?? 1) !== f.filial) return false;
+      // Hovuz (1+2 «Akademiya Chortoq») filtrda bitta qator — ikkala bino lidi.
+      if (f.filial && !sameBranchPool(r.o.branchId ?? 1, Number(f.filial))) return false;
       if (f.yonalish && r.yon !== f.yonalish) return false;
       if (f.manba && (r.o.source || "") !== f.manba) return false;
       return inPeriod(r.at, f.sana, nowMs);
@@ -182,7 +184,7 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
   const anyFilter = Object.values(f).some(Boolean);
 
   // ── Filtr variantlari ──
-  const branchOptions = useMemo(() => branches.map((b) => ({ value: String(b.id), label: b.name })), [branches]);
+  const branchOptions = useMemo(() => collapseBranchPools(branches).map((b) => ({ value: String(b.id), label: b.name })), [branches]);
   const yonOptions = useMemo(() => (settings?.yonalishlar ?? []).map((y) => ({ value: y.id, label: t(y.nom) })), [settings, t]);
   const manbaOptions = useMemo(() => {
     const seen = new Set(orders.map((o) => (o.source || "").trim()).filter(Boolean));

@@ -12,6 +12,7 @@ import {
 import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { collapseBranchPools } from "@/lib/branchPools";
 
 // "Fikr qo'shish" oynasi. NEGA kerak: fikr-mulohaza sahifasi ilgari faqat
 // qattiq yozilgan ro'yxatni ko'rsatardi va yangi fikr kelib tushadigan yo'l
@@ -102,7 +103,7 @@ export default function FeedbackFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label={t("Filial")}>
               <SelectWrap>
-                <Select value={filial} onChange={(v) => setFilial(v)} options={branches.map((b) => ({ value: b.name, label: b.name }))} placeholder={t("Tanlang")} clearable />
+                <Select value={filial} onChange={(v) => setFilial(v)} options={collapseBranchPools(branches).map((b) => ({ value: b.name, label: b.name }))} placeholder={t("Tanlang")} clearable />
               </SelectWrap>
             </Field>
             <Field label={t("Kimdan")}>

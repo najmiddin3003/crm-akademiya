@@ -57,7 +57,14 @@ export async function POST(req: Request) {
   const col = db.collection("offline_courses");
 
   const branchRows = await db.collection("branches").find({}, { projection: { id: 1, name: 1 } }).toArray();
-  const branchByName = new Map(branchRows.map((b) => [str(b.name).toLowerCase(), { id: Number(b.id), name: str(b.name) }]));
+  // Nom → HAMMA mos filiallar: 1+2 «Akademiya Chortoq» ikkala bino hujjatida
+  // bir xil nom (lib/branchPools.ts) — narx ikkalasiga yoziladi. Map'ning
+  // o'zi oxirgisini qoldirib, 1-bino narxsiz qolardi.
+  const branchByName = new Map<string, { id: number; name: string }[]>();
+  for (const b of branchRows) {
+    const key = str(b.name).toLowerCase();
+    branchByName.set(key, [...(branchByName.get(key) ?? []), { id: Number(b.id), name: str(b.name) }]);
+  }
 
   const existing = await col.find({}, { projection: { id: 1, name: 1 } }).toArray();
   const takenNames = new Set(existing.map((c) => str(c.name).toLowerCase()));
@@ -86,7 +93,10 @@ export async function POST(req: Request) {
       // o'ylab topilgan filial yaratmaymiz.
       if (!known) continue;
       const price = parsePrice(b.price);
-      branches.push({ id: known.id, name: known.name, enabled: price !== null, price: price ?? 0 });
+      for (const k of known) {
+        if (branches.some((x) => x.id === k.id)) continue;
+        branches.push({ id: k.id, name: k.name, enabled: price !== null, price: price ?? 0 });
+      }
     }
 
     // Rang "#rrggbb" ko'rinishida bo'lmasa qora — CSV'da bo'sh qolishi mumkin.

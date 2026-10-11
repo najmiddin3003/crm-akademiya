@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import QRCode from "qrcode";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getBranchScope } from "@/lib/branchScope";
+import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 import { getCurrentUser } from "@/lib/auth";
 import { uzDateIso } from "@/lib/uzTime";
 import { DEFAULT_RADIUS_M, QR_SOURCE, healMissingAddresses, type AttendanceRecord } from "@/lib/attendanceCheck";
@@ -29,19 +29,26 @@ const NO_STORE = { "Cache-Control": "private, no-store" };
 
 const svgOf = (text: string) => QRCode.toString(text, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
 
-export async function GET() {
+export async function GET(req: Request) {
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+  // BINO (10.10.2026): 1+2 «Akademiya Chortoq» navbarda bitta qator, xodim
+  // davomati esa jismoniy bino bo'yicha — kiosk binoni o'zi tanlaydi va
+  // eslab qoladi (`?building=`, lib/branchScope.ts → payrollBuilding).
+  const branchId = payrollBuilding(scope, new URL(req.url).searchParams.get("building"));
+  if (branchId === null) {
+    return NextResponse.json({ ok: false, error: "Bu bino sizga biriktirilmagan" }, { status: 403, headers: NO_STORE });
+  }
 
   const db = await ensureIndexes();
   const [branch, settings, me] = await Promise.all([
-    db.collection("branches").findOne({ id: scope.branchId }, { projection: { _id: 0, id: 1, name: 1, geo: 1, geoRadiusM: 1 } }),
+    db.collection("branches").findOne({ id: branchId }, { projection: { _id: 0, id: 1, name: 1, geo: 1, geoRadiusM: 1 } }),
     loadAttendanceSettings(db),
     getCurrentUser(),
   ]);
 
   const now = Date.now();
-  const token = makeQrToken(scope.branchId, qrSlot(now));
+  const token = makeQrToken(branchId, qrSlot(now));
   const [qrIn, qrOut] = await Promise.all([
     svgOf(qrLink("in", token)),
     settings.checkoutEnabled ? svgOf(qrLink("out", token)) : Promise.resolve(null),
@@ -51,7 +58,7 @@ export async function GET() {
   const rows = await db
     .collection<AttendanceRecord>("turnstile_io")
     .find(
-      { source: QR_SOURCE, date: today, branchId: scope.branchId },
+      { source: QR_SOURCE, date: today, branchId },
       { projection: { _id: 0, id: 1, personName: 1, enterTime: 1, exitTime: 1, status: 1, lateMinutes: 1, expected: 1, location: 1 } },
     )
     .sort({ enterTime: -1, id: -1 })
@@ -64,7 +71,7 @@ export async function GET() {
     {
       ok: true,
       branch: {
-        id: scope.branchId,
+        id: branchId,
         name: String(branch?.name ?? ""),
         // Filialga koordinata kiritilmagan — joylashuv tekshirilmaydi (ekranda ogohlantirish).
         geoSet: isValidPoint(branch?.geo),

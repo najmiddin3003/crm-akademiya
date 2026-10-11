@@ -404,4 +404,15 @@ export const SIDEBAR_ITEMS = [
     mobileHref: "/vaqtinchalik",
     adminOnly: true,
   },
+  // AMALLAR JURNALI (10.10.2026) — kim, qachon, nima qildi (lib/actionLog.ts).
+  // `adminOnly` — yuqoridagi band bilan bir xil ikki joyda o'qiladi; haqiqiy
+  // to'siq sahifada (app/(app)/amallar-jurnali/page.tsx) va API'da.
+  {
+    key: "action-log",
+    icon: "i-shield",
+    label: "Amallar jurnali",
+    href: "/amallar-jurnali",
+    mobileHref: "/amallar-jurnali",
+    adminOnly: true,
+  },
 ];

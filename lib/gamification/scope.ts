@@ -2,6 +2,7 @@ import type { Db, Document, Filter } from "mongodb";
 import { branchCondition, getBranchScope } from "@/lib/branchScope";
 import { groupLabel, type Group } from "@/lib/groups";
 import type { GamActor } from "./actor";
+import { branchBuildingLabel } from "@/lib/branchPools";
 
 // GAMIFIKATSIYADA KIM QAYSI GURUHNI KO'RADI (TZ 3, «Ko'rish doirasi»):
 //   • direktor      — hamma guruh;
@@ -76,4 +77,16 @@ export async function actorGroup(db: Db, actor: GamActor, groupId: number): Prom
 export async function branchNames(db: Db): Promise<Map<number, string>> {
   const rows = await db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).toArray();
   return new Map(rows.map((r) => [Number(r.id), String(r.name ?? "").trim() || `#${r.id}`]));
+}
+
+/**
+ * Bino bo'yicha ajratilgan nomlar — do'kon (ombor, byudjet) va musobaqa
+ * kabi HAR BINO alohida hisoblanadigan direktor ro'yxatlari uchun. 1+2
+ * «Akademiya Chortoq» ikkala hujjatda bir xil nom (lib/branchPools.ts), shu
+ * bois «· 1-bino» / «· 2-bino» qo'shiladi; o'quvchi va ustoz ekranlari
+ * oddiy `branchNames` dan.
+ */
+export async function branchBuildingNames(db: Db): Promise<Map<number, string>> {
+  const names = await branchNames(db);
+  return new Map([...names].map(([id, name]) => [id, branchBuildingLabel({ id, name }, (n) => `${n}-bino`)]));
 }

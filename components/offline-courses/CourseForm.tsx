@@ -9,6 +9,7 @@ import { useBranches } from "@/hooks/useBranches";
 import OfflineCoursesIcons from "./OfflineCoursesIcons";
 import { useOfflineCourses, type OfflineCourse } from "./OfflineCoursesProvider";
 import { useT } from "@/components/shared/Language";
+import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 
 // Kurs qo'shish / tahrirlash formasi (crm-akademiya #view-add-course).
 // Tashqi komponent — kontekst yuklanishini kutadi; ichki `CourseFormBody`
@@ -67,8 +68,15 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
   const [rows, setRows] = useState<Record<number, BranchRow>>(() => initialRows(editing?.branches));
   const [saving, setSaving] = useState(false);
 
+  // 1+2 «Akademiya Chortoq» — bitta qator (lib/branchPools.ts): o'zgarish
+  // hovuzning HAMMA binosiga yoziladi, narx ikkalasida bir xil qoladi.
   function setBranch(id: number, patch: Partial<BranchRow>) {
-    setRows((prev) => ({ ...prev, [id]: { ...(prev[id] ?? EMPTY_ROW), ...patch } }));
+    setRows((prev) => {
+      const next = { ...prev };
+      const base = { ...(prev[id] ?? EMPTY_ROW), ...patch };
+      for (const m of branchPool(id)) next[m] = base;
+      return next;
+    });
   }
 
   async function save() {
@@ -140,7 +148,7 @@ function CourseFormBody({ editing, initialName }: { editing?: OfflineCourse; ini
               </tr>
             </thead>
             <tbody>
-              {branches.map((b) => {
+              {collapseBranchPools(branches).map((b) => {
                 const row = rows[b.id] ?? EMPTY_ROW;
                 return (
                   <tr key={b.id} className="border-t border-border">

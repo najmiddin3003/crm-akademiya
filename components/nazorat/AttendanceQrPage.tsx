@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
 import { LocationChip } from "@/components/shared/AttendanceLocation";
 import type { TurnstileLocation } from "@/lib/turnstileIo";
+import { useBranch } from "@/components/shared/BranchContext";
+import { branchBuildingLabel, branchPool, buildingNo } from "@/lib/branchPools";
+
+/**
+ * Kiosk QAYSI BINODA turgani (10.10.2026): 1+2 «Akademiya Chortoq» navbarda
+ * bitta qator, xodim davomati esa bino bo'yicha — har kompyuter o'z binosini
+ * eslab qoladi (shu brauzer uchun qulaylik; bo'lmasa navbar filiali).
+ */
+const QR_BUILDING_KEY = "crm:qrBuilding";
 
 // Nazorat → «Ishga keldim (QR)» (sidebar: Nazorat > Amallar, href /nazorat-qr).
 //
@@ -72,6 +81,28 @@ export default function AttendanceQrPage() {
   const [saving, setSaving] = useState(false);
   const [full, setFull] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
+  const { branchId: navBranchId, branches: allowedBranches } = useBranch();
+  const buildings = useMemo(
+    () => (navBranchId === null ? [] : branchPool(navBranchId).filter((id) => allowedBranches.some((b) => b.id === id))),
+    [navBranchId, allowedBranches],
+  );
+  // Boshlang'ich qiymat brauzer xotirasidan (serverda — yo'q). Birinchi
+  // chizish unga bog'liq emas: QR so'rovi effektda ketadi.
+  const [building, setBuilding] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const v = Number(localStorage.getItem(QR_BUILDING_KEY));
+      return Number.isInteger(v) && v > 0 ? v : null;
+    } catch {
+      return null; // saqlab bo'lmaydi — navbar filiali
+    }
+  });
+  // Eslab qolingan bino hozirgi navbar hovuzida bo'lmasa — e'tiborsiz.
+  const effective = building !== null && buildings.includes(building) ? building : null;
+  function chooseBuilding(id: number) {
+    setBuilding(id);
+    try { localStorage.setItem(QR_BUILDING_KEY, String(id)); } catch { /* faqat shu sessiya */ }
+  }
 
   // Kod aynan yangilangan paytda qayta so'raladi (server keyingi slotgacha
   // qolgan vaqtni aytadi — kompyuter soati noto'g'ri bo'lsa ham to'g'ri).
@@ -80,7 +111,7 @@ export default function AttendanceQrPage() {
     let timer: number | undefined;
     const load = async () => {
       try {
-        const r = await fetch("/api/attendance-qr", { cache: "no-store" });
+        const r = await fetch(effective !== null ? `/api/attendance-qr?building=${effective}` : "/api/attendance-qr", { cache: "no-store" });
         const d = await r.json();
         if (cancelled) return;
         if (d?.ok) {
@@ -104,7 +135,7 @@ export default function AttendanceQrPage() {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [t, version]);
+  }, [t, version, effective]);
 
   // Sekundomer — yangilanishgacha qolgan vaqt chizig'i uchun.
   useEffect(() => {
@@ -162,7 +193,7 @@ export default function AttendanceQrPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-[20px] font-bold tracking-tight">{t("Ishga keldim")}</h2>
-            <p className="text-[13px] text-muted-foreground">{data.branch.name}</p>
+            <p className="text-[13px] text-muted-foreground">{branchBuildingLabel(data.branch, (n) => t("{n}-bino", { n }))}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {data.canConfigure && !full && (
@@ -176,6 +207,25 @@ export default function AttendanceQrPage() {
                 />
                 <span>{t("«Ishdan ketdim» ham ishlasin")}</span>
               </label>
+            )}
+            {buildings.length > 1 && !full && (
+              <div className="inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-[13px]" role="tablist" aria-label={t("Bino")}>
+                {buildings.map((id) => {
+                  const on = data.branch.id === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => chooseBuilding(id)}
+                      className={`h-8 rounded-md px-3 ${on ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+                    >
+                      {t("{n}-bino", { n: buildingNo(id) ?? id })}
+                    </button>
+                  );
+                })}
+              </div>
             )}
             <button
               type="button"

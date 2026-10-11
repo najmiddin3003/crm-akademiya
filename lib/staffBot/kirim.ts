@@ -30,7 +30,7 @@ import {
   backToMenu,
   type MonthOption,
 } from "@/lib/staffBot/keyboards";
-import { newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
+import { auditBot, newNonce, parseAmount, show, type CallbackResult, type FlowCtx } from "@/lib/staffBot/flow";
 import {
   claimDraftForSave,
   liveDraft,
@@ -422,6 +422,18 @@ async function saveKirim(ctx: FlowCtx, d: KirimDraft, cashbox: BotCashbox): Prom
     return;
   }
   await setDraft(ctx.db, ctx.chatId, null);
+  auditBot(ctx, "cashboxes", "kirim", {
+    cashboxId: cashbox.id,
+    cashbox: cashbox.name,
+    amount: d.amount,
+    method: d.methodKey,
+    category: d.typeName,
+    student: d.studentName ?? null,
+    studentId: d.studentId ?? null,
+    teacher: d.teacherName ?? null,
+    periodMonth: d.periodMonth ?? null,
+    entryId: out.entryId,
+  }, out.entryId);
   await show(ctx, {
     html: V.kirimSaved(
       d,

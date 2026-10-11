@@ -297,10 +297,10 @@ export const queryData: AiTool = {
     "and secret fields are removed; $$ROOT, phone or secret fields inside expressions and searching inside phone numbers are rejected. " +
     "In grouped results ($group, $sortByCount, $bucket) the group key is in _id. " +
     "Prefer the specialised tools when they fit (their numbers match the CRM pages). Say which branch your numbers cover. " +
-    "Branches 1 and 2 (Chortoq) are ONE pool: their students, groups, rooms, leads, attendance and employee list are shown together, " +
-    "so for a branch 1 or 2 question match branchId $in [1, 2] (a missing branchId means branch 1; employees: branchIds). Only cashboxes " +
-    "(cashboxes.branchId, by responsible person), payroll (hr_employees.payrollBranchId) and staff check-ins (turnstile_io.branchId = building) " +
-    `stay per branch. Collections: ${Object.entries(DATA_COLLECTIONS)
+    "Branch ids 1 and 2 are the two BUILDINGS of one branch, «Akademiya Chortoq»: students, groups, rooms, leads, attendance and the " +
+    "employee list are shared, so for a Chortoq question match branchId $in [1, 2] (a missing branchId means 1; employees: branchIds). Only " +
+    "cashboxes (cashboxes.branchId, by responsible person), payroll (hr_employees.payrollBranchId) and staff check-ins " +
+    `(turnstile_io.branchId) stay per building. Collections: ${Object.entries(DATA_COLLECTIONS)
       .map(([k, v]) => `${k} — ${v}`)
       .join(" | ")}`,
   parameters: {
