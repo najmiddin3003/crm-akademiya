@@ -9,28 +9,50 @@
 //     karta — #17045 «Noila Asadullayeva».
 // Faqat `pupilId` yoziladi; yozuvdagi ism (kassir yozgani) o'zgarmaydi.
 //
-//   node --env-file=.env.local scripts/fix-orphan-payments-20261011.mjs            # faqat ko'rsatadi
-//   node --env-file=.env.local scripts/fix-orphan-payments-20261011.mjs --apply    # yozadi (+ kvitansiya)
-//   node --env-file=.env.local scripts/fix-orphan-payments-20261011.mjs --undo     # kvitansiyadan qaytaradi
+// Ikkinchi to'plam (--batch=b): «Sarkor Joraboyev» #1085 (22.09, 200 000,
+// filial 1, kartasiz) — foydalanuvchi: «Joraboyev Sarkorbek o'quvchi bor
+// ekan, shunga yozib qo'yaver». Karta #17118 to'lovdan 1 daqiqa oldin
+// kiritilgan (ism-familiya teskari tartibda).
+//
+//   node --env-file=.env.local scripts/fix-orphan-payments-20261011.mjs [--batch=b]            # faqat ko'rsatadi
+//   node --env-file=.env.local scripts/fix-orphan-payments-20261011.mjs [--batch=b] --apply    # yozadi (+ kvitansiya)
+//   node --env-file=.env.local scripts/fix-orphan-payments-20261011.mjs [--batch=b] --undo     # kvitansiyadan qaytaradi
 //
 // Har yozuv yozishdan OLDIN tekshiriladi (kutilgan holatda bo'lmasa — tegilmaydi).
-// Kvitansiya: RECEIPT (eski qiymatlar). Amal `action_log` ga «Skript» nomidan.
+// Kvitansiya: to'plamniki (eski qiymatlar). Amal `action_log` ga «Skript» nomidan.
 import fs from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { MongoClient } = require("mongodb");
 
-const RECEIPT = process.env.RECEIPT || "/var/www/crm/shared/fix-orphan-payments-20261011.json";
+/** entryId → { from: kutilgan pupilId (null — yo'q), to: yangi pupilId, name: yozuvdagi ism (normallashgan) } */
+const BATCHES = {
+  // 11.10.2026, birinchi: Mushtariybonu (o'chirilgan karta) va Noila (ism xato). PROD'DA BAJARILGAN.
+  a: {
+    receipt: "/var/www/crm/shared/fix-orphan-payments-20261011.json",
+    plan: [
+      { entryId: 2172, from: 16989, to: 17347, name: "mushtariybonu manyazova" },
+      { entryId: 2173, from: 16989, to: 17347, name: "mushtariybonu manyazova" },
+      { entryId: 620, from: null, to: 17045, name: "noila asadulayeva" },
+    ],
+  },
+  // 11.10.2026, ikkinchi: kartasiz yozuv → foydalanuvchi ko'rsatgan karta.
+  b: {
+    receipt: "/var/www/crm/shared/fix-orphan-payments-20261011-b.json",
+    plan: [{ entryId: 1085, from: null, to: 17118, name: "sarkor joraboyev" }],
+  },
+};
+const batchKey = process.argv.find((a) => a.startsWith("--batch="))?.split("=")[1] ?? "a";
+const batch = BATCHES[batchKey];
+if (!batch) {
+  console.log(`Bunday to'plam yo'q: ${batchKey} (bor: ${Object.keys(BATCHES).join(", ")})`);
+  process.exit(1);
+}
+const PLAN = batch.plan;
+const RECEIPT = process.env.RECEIPT || batch.receipt;
 const apply = process.argv.includes("--apply");
 const undo = process.argv.includes("--undo");
-
-/** entryId → { from: kutilgan pupilId (null — yo'q), to: yangi pupilId, name: yozuvdagi ism (normallashgan) } */
-const PLAN = [
-  { entryId: 2172, from: 16989, to: 17347, name: "mushtariybonu manyazova" },
-  { entryId: 2173, from: 16989, to: 17347, name: "mushtariybonu manyazova" },
-  { entryId: 620, from: null, to: 17045, name: "noila asadulayeva" },
-];
 
 const norm = (s) =>
   String(s ?? "")
@@ -57,7 +79,7 @@ async function audit(action, details) {
     section: "transaction-entries",
     action,
     status: 200,
-    details: { script: "scripts/fix-orphan-payments-20261011.mjs", ...details },
+    details: { script: "scripts/fix-orphan-payments-20261011.mjs", batch: batchKey, ...details },
   });
 }
 

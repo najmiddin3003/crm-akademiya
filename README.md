@@ -2970,8 +2970,12 @@ to'lovlar, C) yozuvdagi ism kartadagidan farq qiladigan to'lovlar
 ism xato yozilgan). Faqat `pupilId` yoziladi; har yozuv oldin tekshiriladi;
 kvitansiya `/var/www/crm/shared/fix-orphan-payments-20261011.json`,
 `--undo` bilan qaytadi; nuqtaviy zaxira
-`/var/backups/crm/fix-orphan-payments-20261011`. Qolgani: B ro'yxatida
-«Sarkor Joraboyev» (#1085, 200 000, f1) — kimligi aniqlanishi kerak.
+`/var/backups/crm/fix-orphan-payments-20261011`. Ikkinchi to'plam
+(`--batch=b`): #1085 «Sarkor Joraboyev» (22.09, 200 000, f1, kartasiz) →
+#17118 «Joraboyev Sarkorbek» — foydalanuvchi ko'rsatdi; kvitansiya
+`…/fix-orphan-payments-20261011-b.json`, zaxira
+`/var/backups/crm/fix-orphan-payments-20261011-b`. Shundan keyin A = 0,
+B (filial 1) = 0.
 
 **Endi to'siladi:** `DELETE /api/pupils/:id` to'lovi bor kartani
 o'chirmaydi — 409 va «O'rniga holatini «Arxiv» ga o'tkazing» xabari
