@@ -2948,3 +2948,44 @@ o'chirish/kirish/bot/tizim/rad etilgan), matn. Yorliqlar
 yangi nom bilan).
 
 Gamifikatsiyaning o'z `audit_log` i (before/after) alohida qoldi.
+
+## AI tahlilchi — 10.10 suhbatlari bo'yicha tuzatishlar (2026-10-11)
+
+Foydalanuvchi: «kecha berilgan savollarga kutilgandek javob bermadi».
+`ai_conversations` (Atlas ko'zgusi) dagi 7 savol ko'rib chiqildi, raqamlar
+haqiqiy vositalar bilan qayta hisoblandi (`scripts/_replay-ai-tools.mjs`).
+Moliya va qarzdorlar javoblari to'g'ri edi; xatolar oylik va avansda:
+
+- «barcha xodimlarga qancha oylik» — model «oktabr oyligi hali
+  shakllantirilmagan, `salary_runs` da yozuv yo'q» deb hisoblamadi. Oylik
+  JONLI hisoblanadi (`buildPayrollRows`), `salary_runs` — faqat chiqarilgan
+  pul. To'g'ri javob: hisoblangan ~40,1 mln, to'lanadigan ~31,7 mln (4 ro'yxat).
+- «ustozlar qancha avans olgan» — avval faqat navbar filiali (Uychi: 0), keyin
+  `transaction_entries` ni to'lov SANASI bo'yicha yig'ib 10,1 mln dedi (18 ta
+  sentabr yozuvi aralashgan). Oylik sahifasidagidek (oy bo'yicha) — 5,78 mln,
+  ustozlarga 2,26 mln.
+- «barcha filiallar uchun yarat» — hisobot o'rniga «draft tayyorlaymi?» deb so'radi.
+
+**Tuzatishlar:**
+
+- `payroll_summary` (`lib/ai/tools/payroll.ts`): `allBranches` — xodim ocha
+  oladigan har oylik ro'yxati (bino) alohida va umumiy jami; har xodimda
+  `advance` va `salaryPaid` alohida (oy bo'yicha); `position` filtri
+  («ustoz» = teacher); tavsifda «jonli hisob, salary_runs — to'lovlar».
+- Umumiy `branch` argumenti (`lib/ai/tools/index.ts → runTool`,
+  `AiTool.branchAware`): qarzdorlar, bosh ko'rsatkichlar, guruhlar, davomat,
+  lidlar, voronka, o'quvchi qidiruvi/kartasi — boshqa filial id'si yoki
+  "all" (har filial alohida). Ruxsat navbardagidek (`scope.allowed`); kontekstda
+  ocha oladigan filiallar ro'yxati (`ctx.branches`), ko'rsatmada id bilan.
+- Ko'rsatma (`lib/ai/prompt.ts`): BRANCHES, PAYROLL, ADVANCES, WORDS qoidalari
+  («yarat/hisobla/ko'rsat» — hisobot, draft emas), keraksiz aniqlashtiruvchi
+  savol bermaslik.
+- `query_data` katalogi: `salary_runs` — to'lovlar (hisob emas);
+  `transaction_entries.moderator` — kassa mas'uli; `periodMonth` ma'nosi.
+
+**Sinov:** `scripts/_replay-ai-tools.mjs` (haqiqiy runner, ko'zgu bazada,
+15 tekshiruv: barcha filiallar oyligi, ustozlar avansi, qarzdorlar "all",
+ruxsatsiz filial rad etilishi, sxema). Model bilan to'liq sinov —
+`scripts/_replay-ai-chat.mjs` (`AI_DEBUG_TOOLS=1` — vosita argumentlari):
+AI kaliti faqat serverda, shuning uchun deploydan keyin serverda yurgiziladi
+(faqat o'qiydi: amallar o'chiq, suhbat saqlanmaydi).

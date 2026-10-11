@@ -1,4 +1,5 @@
 import type { AiContext } from "../context";
+import { branchPool, buildingNo, sameBranchPool } from "@/lib/branchPools";
 import { MAX_TOOL_RESULT_CHARS } from "../config";
 import type { ResponseToolSpec, ToolSpec } from "../openai";
 import type { AiActionView, AiPlanStep } from "../protocol";
@@ -97,16 +98,85 @@ export function toolsFor(ctx: AiContext): AiTool[] {
   return AI_TOOLS.filter((t) => toolAllowed(t, ctx.can, ctx.actions) && (!t.visible || t.visible(ctx)));
 }
 
+// ── FILIAL ARGUMENTI (11.10.2026) ────────────────────────────────────────
+//
+// NIMA NOTO'G'RI EDI: hisobot vositalari faqat NAVBARDAGI filialni ko'rardi.
+// Admin navbarda Uychi'da turib «barcha filiallar bo'yicha» so'rasa, model
+// faqat Uychi raqamini aytar yoki «hisoblab bo'lmaydi» deb to'xtardi
+// (10.10.2026 suhbatlari). Endi `branchAware` vositaga `branch` argumenti
+// qo'shiladi: xodim OCHA OLADIGAN boshqa filial id'si yoki "all". Vosita
+// o'zgarmaydi — unga filiali almashtirilgan kontekst beriladi, ya'ni ruxsat
+// navbarda o'sha filialni tanlagandagidek (`scope.allowed`).
+
+const BRANCH_PARAM = {
+  type: "string",
+  description:
+    'Optional branch: a branch id from the list in your instructions, or "all" for every branch the user can open ' +
+    "(the result then has one entry per branch). Default: the user's current branch.",
+};
+
+/** Modelga ko'rsatiladigan argumentlar — `branchAware` vositaga `branch` qo'shiladi. */
+export function toolParameters(t: AiTool): Record<string, unknown> {
+  if (!t.branchAware) return t.parameters;
+  const props = (t.parameters as { properties?: Record<string, unknown> }).properties ?? {};
+  return { ...t.parameters, properties: { ...props, branch: BRANCH_PARAM } };
+}
+
 export function toolSpecs(tools: readonly AiTool[]): ToolSpec[] {
   return tools.map((t) => ({
     type: "function",
-    function: { name: t.name, description: t.description, parameters: t.parameters },
+    function: { name: t.name, description: t.description, parameters: toolParameters(t) },
   }));
 }
 
 /** Responses API shakli — `function` ichiga o'ralmagan, `strict: false` (lib/ai/openai.ts → ResponseToolSpec). */
 export function responseToolSpecs(tools: readonly AiTool[]): ResponseToolSpec[] {
-  return tools.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters, strict: false }));
+  return tools.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: toolParameters(t), strict: false }));
+}
+
+/**
+ * `branch` argumenti → qaysi filiallar. "all" — xodim ocha oladiganlarning
+ * hammasi (hovuz bitta: `ctx.branches`); id — faqat `scope.allowed` ichida.
+ */
+export function resolveBranchArg(ctx: Pick<AiContext, "scope" | "branches">, raw: unknown): number[] {
+  const list = ctx.branches ?? [];
+  if (String(raw).trim().toLowerCase() === "all") {
+    const ids = list.map((b) => b.id);
+    return ids.length ? ids : [ctx.scope.branchId];
+  }
+  const id = Number(raw);
+  if (!Number.isInteger(id)) throw new ToolInputError('"branch" must be a branch id or "all"');
+  if (!ctx.scope.allowed.includes(id)) throw new ToolInputError("This branch is not available to the user");
+  return [id];
+}
+
+/** Filiali almashtirilgan kontekst (navbarda o'sha filial tanlangandagidek). */
+function contextForBranch(ctx: AiContext, id: number): AiContext {
+  const pool = branchPool(id);
+  const name = (ctx.branches ?? []).find((b) => sameBranchPool(b.id, id))?.name ?? `#${id}`;
+  return {
+    ...ctx,
+    scope: { ...ctx.scope, branchId: id },
+    branchName: name,
+    building: buildingNo(id),
+    buildingCount: pool.length > 1 ? pool.length : 0,
+  };
+}
+
+async function runForBranches(ctx: AiContext, tool: AiTool, raw: unknown, args: ToolArgs): Promise<unknown> {
+  const ids = resolveBranchArg(ctx, raw);
+  if (ids.length === 1) return tool.run(contextForBranch(ctx, ids[0]), args);
+  const perBranch = await Promise.all(
+    ids.map(async (id) => {
+      const sub = contextForBranch(ctx, id);
+      const { result } = takeUi(await tool.run(sub, args));
+      return { branchId: id, branch: sub.branchName, result };
+    }),
+  );
+  return {
+    perBranch,
+    note: "One result per branch. When the user wants one number, add the branch totals and say it is the sum of these branches.",
+  };
 }
 
 export interface ToolRunResult {
@@ -157,6 +227,9 @@ export function screenOf(ctx: Pick<AiContext, "can">, page: unknown): { screen?:
  * yozib yuborishi mumkin (ko'rsatilmagan vositani "eslab qolgan" bo'lsa).
  */
 export async function runTool(ctx: AiContext, name: string, rawArgs: string): Promise<ToolRunResult> {
+  // Sinov uchun (scripts/_replay-ai-chat.mjs): model qaysi vositani qanday
+  // argument bilan chaqirgani. Prod'da o'rnatilmagan — hech narsa chiqmaydi.
+  if (process.env.AI_DEBUG_TOOLS === "1") console.log(`[ai-tool] ${name} ${rawArgs}`);
   const tool = BY_NAME.get(name);
   if (!tool) return fail(`Unknown tool "${name}".`);
   if (tool.action && !ctx.actions) return fail("Actions are turned off by the administrator. Explain how to do it in the CRM instead.");
@@ -174,7 +247,16 @@ export async function runTool(ctx: AiContext, name: string, rawArgs: string): Pr
   }
 
   try {
-    const raw = await tool.run(ctx, args);
+    // `branch` — faqat `branchAware` vositada (boshqasida e'tiborsiz qoladi).
+    const branchArg = tool.branchAware ? args.branch : undefined;
+    let raw: unknown;
+    if (branchArg !== undefined && branchArg !== null && branchArg !== "") {
+      const { branch: _omit, ...rest } = args;
+      void _omit;
+      raw = await runForBranches(ctx, tool, branchArg, rest);
+    } else {
+      raw = await tool.run(ctx, args);
+    }
     if (raw instanceof DraftCreated) {
       return {
         ok: true,

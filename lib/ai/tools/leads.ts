@@ -26,6 +26,8 @@ function topCounts(values: string[]): { name: string; count: number }[] {
 
 export const leadsSummary: AiTool = {
   name: "leads_summary",
+  // Navbar filialiga bog'liq — admin boshqa filial yoki "all" so'ray oladi (index.ts → runTool).
+  branchAware: true,
   description:
     "Leads (lidlar / buyurtmalar) of the current branch plus leads this user added: counts by status " +
     "(Yangi → Bog'lanildi → Sinov darsiga yozildi → Guruhga qo'shildi, or Rad etdi), by course, source and responsible employee. " +

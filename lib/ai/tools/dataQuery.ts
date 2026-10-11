@@ -45,8 +45,9 @@ export const DATA_COLLECTIONS: Record<string, string> = {
   attendance: "Attendance marks: groupId, pupilId, date (YYYY-MM-DD), status (keldi | kechikdi | birinchi | sababli | sababsiz), grade (1–5), reason, note.",
   transaction_entries:
     "Cash journal (Tranzaksiyalar): id, date (YYYY-MM-DD), time (HH:mm), studentName (student or person), pupilId, amount (+ in, − out), " +
-    "txType (payIn | payOut | transfer), txName (category), paymentType (method name), cashboxId, group, teacherName, moderator (who recorded), " +
-    "status ('' | waiting | cancelled — exclude cancelled from sums), periodMonth (YYYY-MM), note.",
+    "txType (payIn | payOut | transfer), txName (category), paymentType (method name), cashboxId, group, teacherName, moderator (the cashbox's " +
+    "responsible employee, NOT who recorded the row), status ('' | waiting | cancelled — exclude cancelled from sums), periodMonth (YYYY-MM: " +
+    "for salary advances and payouts — the salary month the money is FOR; the Oylik page counts by it, not by date), note.",
   transactions: "Finance report rows (Moliya hisobotlari): date (YYYY-MM-DD), amount (+ income / − expense), category, method, cashboxId.",
   cashboxes: "Cashboxes: id, name, balance, methodTotals {methodKey: amount}, moderator (responsible employee), isPrimary, archived.",
   orders:
@@ -66,7 +67,10 @@ export const DATA_COLLECTIONS: Record<string, string> = {
   rooms: "Rooms: id, name, capacity, branchId.",
   offline_courses: "Offline courses: id, name, price and levels.",
   online_courses: "Online courses.",
-  salary_runs: "Payroll runs (Oylik chiqarish): id, month (YYYY-MM), employees and amounts.",
+  salary_runs:
+    "Payouts already made with 'Oylik chiqarish' (who was paid, from which cashbox, how much): id, month (YYYY-MM), branchId, kind, " +
+    "items. NOT the payroll calculation — the payroll is calculated live by payroll_summary; a month without runs only means nothing " +
+    "was paid out through that page yet.",
   penalties:
     "Penalties (jarimalar) of employees AND students: id, type (employee | student), recipientName, amount, note (what the penalty is for), " +
     "status ('' | cancelled — always exclude cancelled; `reason` is the cancellation reason), createdAt ('DD.MM.YYYY HH:mm' string), cashboxId. " +
