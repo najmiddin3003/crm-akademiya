@@ -10,6 +10,9 @@
 name = "tizimli24-qorovul"
 main = "worker.js"
 compatibility_date = "2026-10-01"
+# Ochiq workers.dev manzili YO'Q — faqat cron (12.10.2026). Holat:
+#   npx wrangler kv key get state --binding STATE --remote
+workers_dev = false
 
 [vars]
 ALERT_PHONES = "998336263006"
@@ -20,4 +23,4 @@ crons = ["* * * * *"]
 
 [[kv_namespaces]]
 binding = "STATE"
-id = "KV_ID_SHU_YERGA"
+id = "cfd9b07843cf4c7e8d0c9021a8fe7c86"
