@@ -3200,3 +3200,13 @@ wrangler.toml da, `npx wrangler deploy`. Holat: `GET /status`; sinov SMS:
 `GET /test-sms?key=<TEST_KEY>`. Eskiz yangi SMS matnini moderatsiyadan o'tkazishni
 talab qilsa — kabinetda shablon qo'shiladi. Eslatma: Eskiz SMS xizmatining o'zi
 ham o'chsa xabar kelmaydi (zaxira kanal — Telegram — keyinroq qo'shilishi mumkin).
+
+Joylandi (12.10.2026): Cloudflare worker `tizimli24-qorovul`, KV `STATE`, `workers_dev = false`
+(ochiq manzil yo'q — /status, /test-sms ishlamaydi; holat `npx wrangler kv key get state
+--binding STATE --remote`, loglar `npx wrangler tail`). Eskiz sirlari — `secret_text` (panelda
+«Text» qo'shilsa `secret put` 10053 beradi va keyingi deploy o'chiradi). Sinovda Eskiz 400:
+«Этот смс текст еще не прошёл модерацию» — matnlar O'ZGARMAS qilindi (tutuq belgisisiz) va
+my.eskiz.uz → SMS → «Mening matnlarim» ga aynan shunday qo'shilishi kerak:
+
+    DIQQAT: tizimli24.uz sayti ishlamayapti, server javob bermayapti. Eskiz VPS tekshirilsin.
+    tizimli24.uz sayti qayta ishlayapti. Uzilish tugadi.

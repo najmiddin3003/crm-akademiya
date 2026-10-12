@@ -34,13 +34,20 @@ export function tashkent(ms) {
   return `${d.slice(8, 10)}.${d.slice(5, 7)} ${d.slice(11, 16)}`;
 }
 
-export function downText(sinceMs) {
-  return `DIQQAT: tizimli24.uz ishlamayapti - ${tashkent(sinceMs)} dan beri server javob bermayapti. Sabab Eskiz VPS bo'lishi mumkin.`;
+// SMS MATNLARI O'ZGARMAS (12.10.2026): Eskiz faqat moderatsiyadan o'tgan matnni
+// yuboradi («Этот смс текст еще не прошёл модерацию…», 400) — kabinetdagi
+// my.eskiz.uz → SMS → «Mening matnlarim» bilan HARFMA-HARF bir xil bo'lishi
+// shart. Shuning uchun vaqt/davomiylik yo'q (SMS kelgan vaqtning o'zi ko'rsatadi)
+// va tutuq belgisi yo'q (ʻ/’/' adashmasin). Vaqtlar logda va KV holatida.
+export const DOWN_TEXT = "DIQQAT: tizimli24.uz sayti ishlamayapti, server javob bermayapti. Eskiz VPS tekshirilsin.";
+export const UP_TEXT = "tizimli24.uz sayti qayta ishlayapti. Uzilish tugadi.";
+
+export function downText() {
+  return DOWN_TEXT;
 }
 
-export function upText(sinceMs, nowMs) {
-  const min = Math.max(1, Math.round((nowMs - sinceMs) / 60_000));
-  return `tizimli24.uz qayta ishlayapti (${tashkent(nowMs)}). Uzilish ${min} daqiqa davom etdi.`;
+export function upText() {
+  return UP_TEXT;
 }
 
 /** Bir marta tekshirish: { ok, status, ms }. `ok` — HTTP 2xx va javobda `ok: true`. */
@@ -120,9 +127,11 @@ export async function runCheck(env, deps = {}) {
 
   if (r.ok) {
     if (prev.down) {
-      const sent = await sendSms(env, upText(prev.since ?? prev.firstFailAt ?? t, t), fetchFn);
-      await env.STATE.put("state", JSON.stringify({ down: false, fails: 0, firstFailAt: null, since: null, lastUp: t, lastSms: { kind: "up", at: t, sent } }));
-      return { event: "up", sent };
+      const since = prev.since ?? prev.firstFailAt ?? t;
+      const sent = await sendSms(env, upText(), fetchFn);
+      const downMin = Math.max(1, Math.round((t - since) / 60_000));
+      await env.STATE.put("state", JSON.stringify({ down: false, fails: 0, firstFailAt: null, since: null, lastUp: t, lastDownMin: downMin, lastSms: { kind: "up", at: t, sent } }));
+      return { event: "up", sent, downMin, since: tashkent(since) };
     }
     if (prev.fails > 0) await env.STATE.put("state", JSON.stringify({ ...prev, fails: 0, firstFailAt: null }));
     return { event: "ok", ms: r.ms };
@@ -131,7 +140,7 @@ export async function runCheck(env, deps = {}) {
   const fails = (prev.fails || 0) + 1;
   const firstFailAt = prev.firstFailAt ?? t;
   if (!prev.down && fails >= need) {
-    const sent = await sendSms(env, downText(firstFailAt), fetchFn);
+    const sent = await sendSms(env, downText(), fetchFn);
     await env.STATE.put("state", JSON.stringify({ down: true, fails, firstFailAt, since: firstFailAt, lastSms: { kind: "down", at: t, sent } }));
     return { event: "down", sent, status: r.status };
   }
@@ -151,7 +160,8 @@ const worker = {
     }
     if (url.pathname === "/test-sms") {
       if (!env.TEST_KEY || url.searchParams.get("key") !== env.TEST_KEY) return new Response("Forbidden", { status: 403 });
-      const sent = await sendSms(env, `tizimli24.uz qorovuli: sinov SMS (${tashkent(Date.now())}). Sayt o'chsa shu raqamga xabar keladi.`);
+      // Sinov — tasdiqlangan «ishlamayapti» matni bilan (alohida matn moderatsiyadan o'tmagan).
+      const sent = await sendSms(env, DOWN_TEXT);
       return Response.json({ sent });
     }
     return new Response("tizimli24 qorovuli", { status: 200 });
