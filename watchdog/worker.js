@@ -18,7 +18,11 @@
 //   ALERT_PHONES — vergul bilan, masalan "998336263006";
 //   ESKIZ_FROM   — ixtiyoriy (sukut "4546", CRM'dagi bilan bir xil);
 //   TARGET_URL   — ixtiyoriy; FAILS_TO_ALERT — ixtiyoriy;
-//   TEST_KEY     — ixtiyoriy SECRET: GET /test-sms?key=… sinov SMS yuboradi.
+//   TEST_KEY     — ixtiyoriy SECRET: GET /test-sms?key=… sinov SMS yuboradi;
+//   TELEGRAM_BOT_TOKEN — SECRET (@tizimli_akademiya_bot, serverda
+//                  TELEGRAM_STUDENT_BOT_TOKEN); TELEGRAM_CHAT_IDS — vergul bilan.
+// Telegram (12.10.2026, foydalanuvchi: «SMS tasdiqlanguncha ancha vaqt o'tarkan,
+// Telegram botga xabar borsin»): moderatsiya yo'q — vaqt va davomiylik bilan.
 // Holatni ko'rish: GET /status (sirlar chiqmaydi).
 
 const DEFAULT_URL = "https://www.tizimli24.uz/api/health/db";
@@ -48,6 +52,60 @@ export function downText() {
 
 export function upText() {
   return UP_TEXT;
+}
+
+/** Telegram xabari — batafsil (moderatsiya yo'q). */
+export function tgDownText(sinceMs, status) {
+  const why = status ? `HTTP ${status}` : "ulanib bo'lmadi";
+  return `🔴 tizimli24.uz ishlamayapti
+${tashkent(sinceMs)} dan beri server javob bermayapti (${why}).
+Sabab Eskiz VPS bo'lishi mumkin.`;
+}
+
+export function tgUpText(sinceMs, nowMs) {
+  const min = Math.max(1, Math.round((nowMs - sinceMs) / 60_000));
+  return `🟢 tizimli24.uz qayta ishlayapti (${tashkent(nowMs)}).
+Uzilish ${min} daqiqa davom etdi.`;
+}
+
+/** Telegram — hamma TELEGRAM_CHAT_IDS ga. Qaytaradi: yuborilganlar soni. */
+export async function sendTelegram(env, text, fetchFn = fetch) {
+  const ids = String(env.TELEGRAM_CHAT_IDS ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => /^-?\d+$/.test(x));
+  if (ids.length === 0 || !env.TELEGRAM_BOT_TOKEN) return 0;
+  let sent = 0;
+  for (const chatId of ids) {
+    try {
+      const res = await fetchFn(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json?.ok) sent++;
+      // Manzilda token bor — logga faqat holat va tavsif.
+      else console.log(`Telegram yuborilmadi ${chatId}: ${res.status} ${json?.description ?? ""}`);
+    } catch (e) {
+      console.log(`Telegram yuborilmadi ${chatId}: ${String(e?.name || e)}`);
+    }
+  }
+  return sent;
+}
+
+/** Ikkala kanal: SMS (o'zgarmas matn) va Telegram (batafsil). */
+async function notify(env, kind, info, fetchFn) {
+  const smsText = kind === "down" ? downText() : upText();
+  const tgText = kind === "down" ? tgDownText(info.since, info.status) : tgUpText(info.since, info.now);
+  const [sms, tg] = await Promise.all([
+    sendSms(env, smsText, fetchFn).catch((e) => {
+      console.log(`SMS xato: ${String(e?.message || e)}`);
+      return 0;
+    }),
+    sendTelegram(env, tgText, fetchFn),
+  ]);
+  return { sms, tg };
 }
 
 /** Bir marta tekshirish: { ok, status, ms }. `ok` — HTTP 2xx va javobda `ok: true`. */
@@ -128,10 +186,10 @@ export async function runCheck(env, deps = {}) {
   if (r.ok) {
     if (prev.down) {
       const since = prev.since ?? prev.firstFailAt ?? t;
-      const sent = await sendSms(env, upText(), fetchFn);
+      const sent = await notify(env, "up", { since, now: t }, fetchFn);
       const downMin = Math.max(1, Math.round((t - since) / 60_000));
-      await env.STATE.put("state", JSON.stringify({ down: false, fails: 0, firstFailAt: null, since: null, lastUp: t, lastDownMin: downMin, lastSms: { kind: "up", at: t, sent } }));
-      return { event: "up", sent, downMin, since: tashkent(since) };
+      await env.STATE.put("state", JSON.stringify({ down: false, fails: 0, firstFailAt: null, since: null, lastUp: t, lastDownMin: downMin, lastAlert: { kind: "up", at: t, ...sent } }));
+      return { event: "up", ...sent, downMin, since: tashkent(since) };
     }
     if (prev.fails > 0) await env.STATE.put("state", JSON.stringify({ ...prev, fails: 0, firstFailAt: null }));
     return { event: "ok", ms: r.ms };
@@ -140,9 +198,9 @@ export async function runCheck(env, deps = {}) {
   const fails = (prev.fails || 0) + 1;
   const firstFailAt = prev.firstFailAt ?? t;
   if (!prev.down && fails >= need) {
-    const sent = await sendSms(env, downText(), fetchFn);
-    await env.STATE.put("state", JSON.stringify({ down: true, fails, firstFailAt, since: firstFailAt, lastSms: { kind: "down", at: t, sent } }));
-    return { event: "down", sent, status: r.status };
+    const sent = await notify(env, "down", { since: firstFailAt, status: r.status }, fetchFn);
+    await env.STATE.put("state", JSON.stringify({ down: true, fails, firstFailAt, since: firstFailAt, lastAlert: { kind: "down", at: t, ...sent } }));
+    return { event: "down", ...sent, status: r.status };
   }
   await env.STATE.put("state", JSON.stringify({ ...prev, fails, firstFailAt }));
   return { event: prev.down ? "still-down" : "fail", fails, status: r.status };
