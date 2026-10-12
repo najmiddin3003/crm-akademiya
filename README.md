@@ -3178,3 +3178,25 @@ ko'rasizmi afandim, mana link»). Tanlovlar: CRM ichida, AI panelida;
   «Ko'rish →». POST amallar jurnaliga yozilmaydi (proxy LOG_SKIP_EXACT).
 - Sinov: sof funksiyalar (16 holat), Atlas nusxasida to'liq yig'ish (6 lid
   xabari, 1 guruh), karta brauzerda vaqtinchalik sahifa bilan.
+
+## Qorovul: sayt o'chsa SMS (2026-10-12)
+
+12.10 da Eskiz'da elektr uzilishi — VPS ikki marta to'satdan o'chdi (~11 va ~8
+daqiqa; Eskiz javobi: «elektr ta'minoti liniyalari»). Foydalanuvchi: «server
+o'chganda 33 626 30 06 raqamiga Eskiz SMS shlyuzi orqali xabar borsin».
+
+Server o'zi haqida SMS yubora olmaydi — qorovul TASHQARIDA: `watchdog/`
+(Cloudflare Worker, bepul, cron har daqiqa). Har daqiqada
+`https://www.tizimli24.uz/api/health/db` (ilova + baza, ommaviy) tekshiriladi;
+javob kelmasa 15 s dan keyin yana bir marta. 2 daqiqa ketma-ket ishlamasa —
+«ishlamayapti» SMS, tiklansa — «qayta ishlayapti, uzilish N daqiqa». Holat KV'da
+(faqat o'zgarganda yoziladi). SMS — Eskiz (`lib/eskiz.ts` bilan bir xil:
+form-urlencoded, Bearer token, `from` 4546).
+
+O'rnatish (`watchdog/wrangler.toml` boshidagi tartib): `npx wrangler login`
+(foydalanuvchi), `kv namespace create STATE` (id → wrangler.toml), sirlar
+`ESKIZ_EMAIL`, `ESKIZ_PASSWORD` (foydalanuvchi o'zi kiritadi), `ALERT_PHONES`
+wrangler.toml da, `npx wrangler deploy`. Holat: `GET /status`; sinov SMS:
+`GET /test-sms?key=<TEST_KEY>`. Eskiz yangi SMS matnini moderatsiyadan o'tkazishni
+talab qilsa — kabinetda shablon qo'shiladi. Eslatma: Eskiz SMS xizmatining o'zi
+ham o'chsa xabar kelmaydi (zaxira kanal — Telegram — keyinroq qo'shilishi mumkin).

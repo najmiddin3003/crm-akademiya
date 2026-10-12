@@ -59,3 +59,6 @@ scripts/_plastik-migration-backup.json
 # graph.json ~12 MB, ichida mutlaq yo'llar (.graphify_root) va AST keshi bor.
 # Har sessiyada qayta quriladi (~25 s), shuning uchun repozitoriyga tushmaydi.
 /graphify-out/
+
+# Cloudflare qorovuli (watchdog/) — wrangler ish papkasi
+watchdog/.wrangler/
