@@ -185,6 +185,9 @@ const IMPLEMENTED_ROUTES = new Set([
   "/gamification-lesson", "/gamification-students", "/gamification-ranking", "/gamification-competition", "/gamification-shop",
   // Vaqtinchalik tugma (faqat admin)
   "/vaqtinchalik",
+  // Amallar jurnali (faqat admin, 10.10.2026) — ro'yxatga qo'shilmay qolgani
+  // uchun sidebar'da «Hali tayyor emas» qulfi bilan turardi (12.10.2026).
+  "/amallar-jurnali",
 ]);
 
 export interface SidebarProps {
