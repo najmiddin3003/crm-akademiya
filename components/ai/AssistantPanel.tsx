@@ -66,6 +66,8 @@ import { effortLabel } from "@/lib/ai/models";
 import type { AiActionFieldKey, AiActionKind, AiActionStatus, AiModelOption, AiPlanStep, AiQuestion } from "@/lib/ai/protocol";
 import { answerText, clockOf, dateParts, dayKind, needsSeparator, splitRecommended } from "./conversation";
 import { refreshScreen } from "./AiScreenRefresh";
+import AlertsCard from "./AlertsCard";
+import type { AiAlertsApi } from "./useAiAlerts";
 import { isInternalHref } from "./aiMarkdown";
 import { endGenie, genieDone, playGenie, rectOf, reducedMotion, type Box } from "./genie";
 import HistorySidebar from "./HistorySidebar";
@@ -238,11 +240,14 @@ const useMounted = () => useSyncExternalStore(subscribeNoop, () => true, () => f
 export default function AssistantPanel({
   onClose,
   origin = null,
+  alerts,
 }: {
   /** Yopilish animatsiyasi tugagach chaqiriladi. */
   onClose: () => void;
   /** Robot tugmasining joyi — oyna shundan chiqadi va shunga qaytib kiradi. */
   origin?: Box | null;
+  /** Adminga ogohlantirishlar (12.10.2026, components/ai/AlertsCard.tsx) — faqat admin'da. */
+  alerts?: AiAlertsApi;
 }) {
   const { t } = useT();
   const router = useRouter();
@@ -527,7 +532,10 @@ export default function AssistantPanel({
                 onDismiss={() => setSideOpen(false)}
               />
             )}
-            <div className="flex min-w-0 flex-1 flex-col">{body}</div>
+            <div className="flex min-w-0 flex-1 flex-col">
+              {alerts && tab !== "speed" && <AlertsCard api={alerts} onNavigate={onNavigate} />}
+              {body}
+            </div>
           </div>
         </div>
       </div>

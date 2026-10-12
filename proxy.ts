@@ -154,6 +154,7 @@ const LOG_SKIP_EXACT = new Set([
   "/api/auth/verify-token",
   "/api/branch",
   "/api/ai/chat",
+  "/api/ai/alerts",
   "/api/gender-guess",
   "/api/sync/cron",
 ]);

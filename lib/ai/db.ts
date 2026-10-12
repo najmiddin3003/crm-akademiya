@@ -22,6 +22,12 @@ export const AI = {
    * o'chadi; pul yozuvining o'zi jurnalda abadiy (`origin: "ai"`).
    */
   actions: "ai_actions",
+  /** Adminga ogohlantirish HODISALARI (bo'shagan xona) — lib/ai/alerts.ts; 30 kundan keyin o'chadi. */
+  alertEvents: "ai_alert_events",
+  /** Admin × ogohlantirish kaliti — «ko'rildi» (lib/ai/alerts.ts); 90 kundan keyin o'chadi. */
+  alertSeen: "ai_alert_seen",
+  /** Ogohlantirish holati (xonalar bandligi surati, `_id: "rooms"`) — lib/ai/alerts.ts. */
+  alertState: "ai_alert_state",
 } as const;
 
 let ready: Promise<void> | null = null;
@@ -40,6 +46,10 @@ async function createAiIndexes(db: Db): Promise<void> {
     db.collection(AI.actions).createIndex({ id: 1 }, { unique: true }),
     db.collection(AI.actions).createIndex({ userId: 1, createdAt: -1 }),
     db.collection(AI.actions).createIndex({ purgeAt: 1 }, { expireAfterSeconds: 0 }),
+    db.collection(AI.alertEvents).createIndex({ key: 1 }, { unique: true }),
+    db.collection(AI.alertEvents).createIndex({ at: 1 }, { expireAfterSeconds: 30 * 86_400 }),
+    db.collection(AI.alertSeen).createIndex({ userId: 1, key: 1 }, { unique: true }),
+    db.collection(AI.alertSeen).createIndex({ at: 1 }, { expireAfterSeconds: 90 * 86_400 }),
   ]);
 }
 
