@@ -791,7 +791,7 @@ export default function SalaryCreatePage() {
     return Array.from(set);
   }, [employees]);
   const turiLabel = (tv: string) =>
-    tv === "teacher" ? "O'qituvchilar" : tv === "moderator" ? "Moderatorlar" : tv === "admin" ? "Adminlar" : tv;
+    tv === "teacher" ? "O'qituvchilar" : tv === "moderator" ? "Moderatorlar" : tv === "admin" ? "Adminlar" : tv === "staff" ? "Boshqa xodimlar" : tv;
 
   return (
     // `page-frame` — loyihaning mavjud naqshi (app/globals.css): sahifa

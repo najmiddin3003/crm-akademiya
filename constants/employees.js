@@ -50,6 +50,9 @@ export const ROLE_LABELS = {
   teacher: "O'qituvchi",
   moderator: "Moderator",
   admin: "Administrator",
+  // Qo'lda qo'shilgan rol (hr_employees.centerRoleId) — aniq nomi Rollar'dan;
+  // ro'yxat kelmaguncha / topilmasa shu umumiy yorliq (12.10.2026).
+  staff: "Xodim",
 };
 
 export const GENDER_LABELS = { male: "Erkak", female: "Ayol" };
@@ -63,6 +66,8 @@ export const EMP_ROLES = [
   { value: "teacher", label: "Teacher" },
   { value: "moderator", label: "Moderator" },
   { value: "admin", label: "Admin" },
+  // Rollar'da qo'lda qo'shilgan rol (hr_employees.centerRoleId), 12.10.2026.
+  { value: "staff", label: "Boshqa rol" },
 ];
 export const EMP_COURSES = ["Ona tili", "Biologiya", "Turk tili", "Ingliz tili", "Kimyo", "Rus tili"];
 export const EMP_LEAVE_REASONS = ["Shaxsiy", "Ish o'zgarishi", "Boshqa"];

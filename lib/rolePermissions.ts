@@ -81,12 +81,25 @@ export async function resolvePermissions(db: Db, user: UserForPermissions): Prom
 
   const emp = await db.collection("hr_employees").findOne(
     { id: empId },
-    { projection: { turi: 1, permissions: 1 } },
+    { projection: { turi: 1, permissions: 1, centerRoleId: 1 } },
   );
   if (!emp) return null;
 
   // Xodim kesimidagi istisno — lavozimdan USTUN.
   if (Array.isArray(emp.permissions)) return readPermissions(emp.permissions);
+
+  // QO'LDA QO'SHILGAN ROL (12.10.2026, lib/roles.ts → STAFF_TURI): bo'limlar
+  // aynan shu roldan. Rol topilmasa (o'chirilgan) — hech narsa ochilmaydi:
+  // «faqat ruxsat» roli ochiq tomonga xatolashmasin (xizmat xodimiga butun
+  // CRM ochilib qolardi). O'chirish rol biriktirilgan bo'lsa to'siladi
+  // (app/api/roles/[id]/route.ts), ya'ni bu holat amalda bo'lmaydi.
+  if (emp.centerRoleId !== null && emp.centerRoleId !== undefined) {
+    const role = await db.collection("roles").findOne(
+      { id: Number(emp.centerRoleId) },
+      { projection: { permissions: 1 } },
+    );
+    return role ? readPermissions(role.permissions) : [];
+  }
 
   if (!isRoleKey(emp.turi)) return null;
 

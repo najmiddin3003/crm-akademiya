@@ -3,6 +3,9 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { sanitizePermissions } from "@/lib/permissions";
 import { ensureRoles, isRoleKey, type Role } from "@/lib/roles";
 
+/** Mijozga ko'rsatiladigan xabar (messages/en.json da kalit). */
+const ROLE_IN_USE = "Bu rol xodimlarga berilgan — avval ularning vazifasini o'zgartiring";
+
 // PATCH /api/roles/:id — rolni tahrirlaydi.
 //
 // O'rnatilgan rolda (teacher/moderator) NOMI o'zgarmaydi: u
@@ -77,6 +80,17 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json(
       { ok: false, error: "O'rnatilgan lavozimni o'chirib bo'lmaydi" },
       { status: 400 },
+    );
+  }
+  // XODIMGA BERILGAN ROL O'CHIRILMAYDI (12.10.2026): «O'quv markazidagi
+  // vazifasi» shu rol bo'lgan xodim rolsiz qolib, hech bir bo'limni ko'rmay
+  // qolardi (lib/rolePermissions.ts). Arxivdagilar ham sanaladi — qaytsa
+  // ham roli joyida bo'lsin.
+  const assigned = await db.collection("hr_employees").countDocuments({ centerRoleId: roleId });
+  if (assigned > 0) {
+    return NextResponse.json(
+      { ok: false, error: ROLE_IN_USE, count: assigned },
+      { status: 409 },
     );
   }
   await db.collection("roles").deleteOne({ id: roleId });
