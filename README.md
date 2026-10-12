@@ -3179,34 +3179,33 @@ ko'rasizmi afandim, mana link»). Tanlovlar: CRM ichida, AI panelida;
 - Sinov: sof funksiyalar (16 holat), Atlas nusxasida to'liq yig'ish (6 lid
   xabari, 1 guruh), karta brauzerda vaqtinchalik sahifa bilan.
 
-## Qorovul: sayt o'chsa SMS (2026-10-12)
+## Qorovul: sayt o'chsa Telegram xabari (2026-10-12)
 
 12.10 da Eskiz'da elektr uzilishi — VPS ikki marta to'satdan o'chdi (~11 va ~8
-daqiqa; Eskiz javobi: «elektr ta'minoti liniyalari»). Foydalanuvchi: «server
-o'chganda 33 626 30 06 raqamiga Eskiz SMS shlyuzi orqali xabar borsin».
+daqiqa; Eskiz javobi: «elektr ta'minoti liniyalari»). Server o'zi haqida xabar
+yubora olmaydi — qorovul TASHQARIDA: `watchdog/` (Cloudflare Worker, bepul, cron
+har daqiqa). Har daqiqada `https://www.tizimli24.uz/api/health/db` (ilova + baza,
+ommaviy) tekshiriladi; javob kelmasa 15 s dan keyin yana bir marta. 2 daqiqa
+ketma-ket ishlamasa — @tizimli_akademiya_bot orqali `TELEGRAM_CHAT_IDS` ga
+«🔴 ishlamayapti, DD.MM HH:MM dan beri (HTTP holati)», tiklansa — «🟢 qayta
+ishlayapti, uzilish N daqiqa». 🔴 yetib bormasa (Telegram javob bermasa) keyingi
+daqiqalarda qayta yuboriladi (`pending`). Holat KV'da (faqat o'zgarganda
+yoziladi); oxirgi xabar va Telegram xatosi sababi `lastAlert` da (token chiqmaydi).
 
-Server o'zi haqida SMS yubora olmaydi — qorovul TASHQARIDA: `watchdog/`
-(Cloudflare Worker, bepul, cron har daqiqa). Har daqiqada
-`https://www.tizimli24.uz/api/health/db` (ilova + baza, ommaviy) tekshiriladi;
-javob kelmasa 15 s dan keyin yana bir marta. 2 daqiqa ketma-ket ishlamasa —
-«ishlamayapti» SMS, tiklansa — «qayta ishlayapti, uzilish N daqiqa». Holat KV'da
-(faqat o'zgarganda yoziladi). SMS — Eskiz (`lib/eskiz.ts` bilan bir xil:
-form-urlencoded, Bearer token, `from` 4546).
+Eskiz SMS ham qilingan edi — 12.10 da OLIB TASHLANDI (foydalanuvchi: «Eskiz SMS ni
+qilmaymiz»): har bir SMS matni Eskiz moderatsiyasidan o'tishi kerak edi. Worker'dagi
+Eskiz sirlari va keshlangan Eskiz tokeni ham o'chirildi.
 
 O'rnatish (`watchdog/wrangler.toml` boshidagi tartib): `npx wrangler login`
-(foydalanuvchi), `kv namespace create STATE` (id → wrangler.toml), sirlar
-`ESKIZ_EMAIL`, `ESKIZ_PASSWORD` (foydalanuvchi o'zi kiritadi), `ALERT_PHONES`
-wrangler.toml da, `npx wrangler deploy`. Holat: `GET /status`; sinov SMS:
-`GET /test-sms?key=<TEST_KEY>`. Eskiz yangi SMS matnini moderatsiyadan o'tkazishni
-talab qilsa — kabinetda shablon qo'shiladi. Eslatma: Eskiz SMS xizmatining o'zi
-ham o'chsa xabar kelmaydi (zaxira kanal — Telegram — keyinroq qo'shilishi mumkin).
+(foydalanuvchi), `kv namespace create STATE` (id → wrangler.toml), sir
+`TELEGRAM_BOT_TOKEN` (serverdagi `TELEGRAM_STUDENT_BOT_TOKEN` qiymati —
+foydalanuvchi o'zi kiritadi), `npx wrangler deploy`. Har bir chat id egasi botda
+Start bosgan bo'lishi shart (aks holda Telegram 403).
 
-Joylandi (12.10.2026): Cloudflare worker `tizimli24-qorovul`, KV `STATE`, `workers_dev = false`
-(ochiq manzil yo'q — /status, /test-sms ishlamaydi; holat `npx wrangler kv key get state
---binding STATE --remote`, loglar `npx wrangler tail`). Eskiz sirlari — `secret_text` (panelda
-«Text» qo'shilsa `secret put` 10053 beradi va keyingi deploy o'chiradi). Sinovda Eskiz 400:
-«Этот смс текст еще не прошёл модерацию» — matnlar O'ZGARMAS qilindi (tutuq belgisisiz) va
-my.eskiz.uz → SMS → «Mening matnlarim» ga aynan shunday qo'shilishi kerak:
-
-    DIQQAT: tizimli24.uz sayti ishlamayapti, server javob bermayapti. Eskiz VPS tekshirilsin.
-    tizimli24.uz sayti qayta ishlayapti. Uzilish tugadi.
+Joylandi (12.10.2026): Cloudflare worker `tizimli24-qorovul`, KV `STATE`,
+`workers_dev = false` (ochiq manzil yo'q; holat `npx wrangler kv key get state
+--binding STATE --remote`, loglar `npx wrangler tail`). Sirlar — `secret_text`
+(panelda «Text» qo'shilsa `secret put` 10053 beradi va keyingi deploy o'chiradi).
+Uchidan-uchiga sinov: `npx wrangler deploy --var
+"TARGET_URL:https://www.tizimli24.uz/api/health/qorovul-sinov"` (401 → ~2 daqiqada
+🔴), keyin oddiy `npx wrangler deploy` (keyingi daqiqada 🟢).

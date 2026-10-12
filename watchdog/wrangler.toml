@@ -3,10 +3,7 @@
 #   cd watchdog
 #   npx wrangler login                         # bir marta (brauzerda «Allow»)
 #   npx wrangler kv namespace create STATE     # chiqqan id ni pastdagi [[kv_namespaces]] ga
-#   npx wrangler secret put ESKIZ_EMAIL        # qiymatni o'zingiz kiritasiz
-#   npx wrangler secret put ESKIZ_PASSWORD
-#   npx wrangler secret put TELEGRAM_BOT_TOKEN # @tizimli_akademiya_bot tokeni
-#   npx wrangler secret put TEST_KEY           # ixtiyoriy: sinov SMS uchun
+#   npx wrangler secret put TELEGRAM_BOT_TOKEN # @tizimli_akademiya_bot tokeni (o'zingiz kiritasiz)
 #   npx wrangler deploy
 name = "tizimli24-qorovul"
 main = "worker.js"
@@ -16,10 +13,9 @@ compatibility_date = "2026-10-01"
 workers_dev = false
 
 [vars]
-ALERT_PHONES = "998336263006"
 FAILS_TO_ALERT = "2"
-# @tizimli_akademiya_bot xabar yuboradigan Telegram foydalanuvchi(lar)i (12.10.2026).
-# Token — SECRET: npx wrangler secret put TELEGRAM_BOT_TOKEN
+# @tizimli_akademiya_bot xabar yuboradigan Telegram foydalanuvchi(lar)i, vergul bilan.
+# Har biri botda Start bosgan bo'lishi shart.
 TELEGRAM_CHAT_IDS = "8133288542"
 
 [triggers]
