@@ -90,15 +90,26 @@ function DegreeSelect({
   );
 }
 
-const TURI_MAP: Record<string, string> = { "O'qituvchi": "teacher", Moderator: "moderator", Administrator: "admin" };
+/**
+ * «O'quv markazidagi vazifasi» tanlovining qiymati (12.10.2026, foydalanuvchi:
+ * «select'da Boshqaruv → Rollar sahifasiga qo'shilgan rollar chiqishi kerak»):
+ * o'rnatilgan lavozim kaliti ("teacher", "moderator", "admin") yoki Rollar'da
+ * qo'lda qo'shilgan rol — "role:<id>". Server ikkinchisini `turi: "staff"` +
+ * `centerRoleId` qiladi (lib/roles.ts → resolveCenterRole) — bunday xodim na
+ * o'qituvchi, na moderator, bo'limlari esa shu roldan.
+ */
+const ROLE_PREFIX = "role:";
+const BUILT_IN_TURI = ["teacher", "moderator", "admin"];
+function vazifaOf(emp?: { turi?: string; centerRoleId?: number | null } | null): string {
+  if (!emp) return "";
+  if (emp.centerRoleId !== null && emp.centerRoleId !== undefined) return `${ROLE_PREFIX}${emp.centerRoleId}`;
+  return BUILT_IN_TURI.includes(String(emp.turi)) ? String(emp.turi) : "";
+}
 const GENDER_MAP: Record<string, string> = { Erkak: "male", Ayol: "female" };
 
-// TESKARI xaritalar — tahrirlash uchun. Modal LAVOZIM YORLIG'ini saqlaydi
-// ("O'qituvchi"), bazada esa kod turadi ("teacher"). Bularsiz mavjud xodim
-// ochilganda tanlov bo'sh qolardi — va bu jimgina zanjir buzardi: `vazifa`
-// bo'sh bo'lsa `isTeacher` false bo'lib, "Oladigan foizi" ro'yxati umuman
-// yuklanmasdi.
-const TURI_LABEL: Record<string, string> = { teacher: "O'qituvchi", moderator: "Moderator", admin: "Administrator" };
+// TESKARI xarita — tahrirlash uchun (bazada kod, modalda yorliq). Vazifa esa
+// `vazifaOf` dan: usiz mavjud xodim ochilganda tanlov bo'sh qolardi va
+// `isTeacher` false bo'lib, "Oladigan foizi" ro'yxati umuman yuklanmasdi.
 const GENDER_LABEL: Record<string, string> = { male: "Erkak", female: "Ayol" };
 
 // lib/invite.ts dagi isValidPhone/normalizePhone bilan bir xil qoida —
@@ -185,7 +196,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   // tanidi. Ilgari bu yerda ko'rinadigan satr turardi va unga istalgan
   // narsa yozib bo'lardi.
   const [phone, setPhone] = useState(employee ? phoneDigits(employee.phone) : "");
-  const [vazifa, setVazifa] = useState(employee ? TURI_LABEL[employee.turi] ?? "" : "");
+  const [vazifa, setVazifa] = useState(() => vazifaOf(employee));
   const [jinsi, setJinsi] = useState(employee ? GENDER_LABEL[employee.gender] ?? "" : "");
   /**
    * Jinsi QO'LDA tanlanganmi.
@@ -294,8 +305,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   //
   // Ikkala "Darajasi" bir xil ko'rinadi, lekin MANBASI boshqa: o'qituvchi
   // darajalarini moderatorga taklif qilish — jimgina noto'g'ri ma'lumot.
-  const isTeacher = vazifa === "O'qituvchi";
-  const isModerator = vazifa === "Moderator";
+  const isTeacher = vazifa === "teacher";
+  const isModerator = vazifa === "moderator";
   const [percent, setPercent] = useState(employee?.percent ?? "");
   const [daraja, setDaraja] = useState(employee?.degree ?? "");
   const [bandlik, setBandlik] = useState(employee?.employmentRate ?? "");
@@ -382,7 +393,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   // Rol / Ish jadvali / Ish haqi tanlanadi, qolganlari o'chiq turadi.
   // Rollar — Boshqaruv → Rollar (/api/roles), ish jadvallari —
   // Boshqaruv → Ish jadvali (/api/work-schedules, faqat faollari).
-  const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
+  // `key` — o'rnatilgan rol (teacher/moderator); qo'lda qo'shilganda yo'q.
+  const [roles, setRoles] = useState<{ id: number; name: string; key?: string }[]>([]);
   const [schedules, setSchedules] = useState<{ id: number; name: string }[]>([]);
   // Ikkalasi bitta Promise.all bilan keladi — shu sabab bitta bayroq.
   // O'qituvchi ro'yxatlariniki ALOHIDA: u effekt kechroq (vazifa tanlangach)
@@ -410,13 +422,25 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
     const get = (u: string) => fetch(u).then((r) => r.json()).catch(() => null);
     Promise.all([get("/api/roles"), get("/api/work-schedules")]).then(([r, s]) => {
       if (cancelled) return;
-      if (r?.ok) setRoles(r.roles as { id: number; name: string }[]);
+      if (r?.ok) setRoles(r.roles as { id: number; name: string; key?: string }[]);
       if (s?.ok) {
         setSchedules((s.schedules as { id: number; name: string; active: boolean }[]).filter((x) => x.active));
       }
     }).finally(() => { if (!cancelled) setBranchListsLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // «O'quv markazidagi vazifasi» variantlari — Boshqaruv → Rollar'dagi HAMMA rol
+  // (o'rnatilganlari kaliti bilan, qo'lda qo'shilganlari "role:<id>") va tizim
+  // administratori (users.role = admin — admin bo'limlari shundan ochiladi).
+  // Saqlangan rol ro'yxatda topilmasa (o'chirilgan) — qiymat yo'qolmasin.
+  const vazifaOptions = [
+    ...roles.map((r) => (r.key ? { value: r.key, label: t(r.name) } : { value: `${ROLE_PREFIX}${r.id}`, label: r.name })),
+    { value: "admin", label: t("Administrator") },
+  ];
+  if (vazifa && !branchListsLoading && !vazifaOptions.some((o) => o.value === vazifa)) {
+    vazifaOptions.push({ value: vazifa, label: t("Rol topilmadi") });
+  }
 
   function rowOf(id: number): BranchRow {
     return branchRows[id] ?? EMPTY_ROW;
@@ -598,7 +622,10 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           // bilan "998941558855" ga keltiradi (lib/eskiz.ts). Kirish
           // oynasi ham aynan shunday yuboradi.
           phone,
-          turi: TURI_MAP[vazifa] || "",
+          // Rollar'dagi qo'lda qo'shilgan rol → `centerRoleId` (server turi'ni
+          // "staff" qiladi), aks holda lavozim kaliti (`vazifaOf` izohi).
+          turi: vazifa.startsWith(ROLE_PREFIX) ? "staff" : vazifa,
+          centerRoleId: vazifa.startsWith(ROLE_PREFIX) ? Number(vazifa.slice(ROLE_PREFIX.length)) : null,
           gender: GENDER_MAP[jinsi] || "",
           email: email.trim(),
           birthDate,
@@ -716,18 +743,18 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               <label className={labelCls}>{t("O'quv markazidagi vazifasi")}<span className="text-rose-500">*</span></label>
               <Select value={vazifa} onChange={(v) => {
                     // Vazifaga tegishli bo'lmay qolgan maydonlar tozalanadi.
-                    if (v !== "O'qituvchi") {
+                    if (v !== "teacher") {
                       setPercent("");
                       setKurs("");
                     }
-                    if (v !== "Moderator") setBandlik("");
+                    if (v !== "moderator") setBandlik("");
                     // Daraja HAR SAFAR tozalanadi: o'qituvchi va moderator
                     // darajalari boshqa-boshqa ro'yxatdan keladi, ya'ni eski
                     // tanlov yangi ro'yxatda umuman yo'q qiymat bo'lardi va
                     // <select> uni jimgina tashlab yuborardi.
                     setDaraja("");
                     setVazifa(v);
-                  }} options={[{ value: "O'qituvchi", label: t("O'qituvchi") }, { value: "Moderator", label: t("Moderator") }, { value: "Administrator", label: t("Administrator") }]} placeholder={t("Tanlang")} clearable />
+                  }} options={vazifaOptions} placeholder={selectPlaceholder(branchListsLoading, roles.length, "Rol qo'shilmagan", "Tanlang")} clearable disabled={branchListsLoading} />
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 {t("Ko'rinadigan bo'limlar ham shu vazifadan olinadi (Boshqaruv → Rollar).")}
               </p>

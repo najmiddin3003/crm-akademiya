@@ -19,6 +19,7 @@ import {
   validateBranchIds,
 } from "@/lib/employeeBranches";
 import { getBranchScope } from "@/lib/branchScope";
+import { resolveCenterRole, STAFF_TURI } from "@/lib/roles";
 import { syncEmployeeRename } from "@/lib/employeeRename";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
@@ -32,6 +33,7 @@ import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 const PAYROLL_FIELDS = [
   "percent", "plastikSalary", "taxIds", "salaryStartDate", "salaryEndDate", "payroll",
   "archReason", "archDate", "permissions", "twoFactor", "turi", "degree", "employmentRate",
+  "centerRoleId",
 ] as const;
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -231,6 +233,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
+  // «O'QUV MARKAZIDAGI VAZIFASI» (12.10.2026, lib/roles.ts → resolveCenterRole).
+  // Rol id'si kelsa — to'liq tekshiruv. Faqat lavozim kelsa (boshqa oyna yoki
+  // eski mijoz): o'qituvchi/moderator/admin'ga o'tganda qo'lda qo'shilgan rol
+  // olib tashlanadi, rolsiz "staff" esa yozilmaydi (bo'limlar ochiq qolardi).
+  const unset: Record<string, ""> = {};
+  if ("centerRoleId" in body) {
+    const choice = await resolveCenterRole(db, {
+      turi: body.turi,
+      centerRoleId: (body as { centerRoleId?: unknown }).centerRoleId,
+    });
+    if (!choice.ok) return NextResponse.json({ ok: false, error: choice.error }, { status: 400 });
+    set.turi = choice.turi;
+    if (choice.centerRoleId !== null) set.centerRoleId = choice.centerRoleId;
+    else if (current.centerRoleId !== null && current.centerRoleId !== undefined) unset.centerRoleId = "";
+  } else if (typeof set.turi === "string") {
+    if (set.turi === STAFF_TURI) delete set.turi;
+    else if (current.centerRoleId !== null && current.centerRoleId !== undefined) unset.centerRoleId = "";
+  }
+
   // ── FILIAL QOIDASI ───────────────────────────────────────────────
   //
   // Uch manba bir-biriga bog'liq va shu bois BIRGA hisoblanadi:
@@ -338,7 +359,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // boshqa filialga ko'chirilsa ham yozuv o'tib ketmasin.
   const res = await db.collection("hr_employees").findOneAndUpdate(
     scopedEmployeeFilter({ id: empId }, scope),
-    { $set: set },
+    { $set: set, ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}) },
     { returnDocument: "after" },
   );
   if (!res) {

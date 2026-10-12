@@ -3129,3 +3129,52 @@ edutizimdagi nusxadan qo'shma».
 Sinov: `_test-salary` (Q bo'limi), Atlas nusxasida apply →
 `_check-august-share` («AVGUST SAHIFASI: «Qolgan» 0 emas: 0 ta», sentabr
 o'zgarmagan) → `_check-salary-ledger` (66 xodim MISMATCH 0) → undo.
+
+## Xodim vazifasi — Boshqaruv → Rollar'dan (2026-10-12)
+
+Foydalanuvchi: «yangi xodim qo'shayotganda o'quv markazidagi roli select'ida
+Boshqaruv/Rollar sahifasiga qo'shilgan rollar chiqishi kerak». Qo'lda
+qo'shilgan rol uchun tanlov — «Faqat ruxsat bersin».
+
+- «O'quv markazidagi vazifasi» (AddEmployeeModal) — Rollar'dagi HAMMA rol:
+  o'rnatilganlari (O'qituvchi, Moderator) kaliti bilan, qo'lda
+  qo'shilganlari `role:<id>`, oxirida tizim «Administrator» (users.role =
+  admin — admin bo'limlari shundan).
+- Server (`lib/roles.ts → resolveCenterRole`): qo'lda rol → `turi: "staff"`
+  + `hr_employees.centerRoleId`; o'rnatilgan rol id'si kelsa — kalitga
+  aylanadi. Rol bazada borligi tekshiriladi.
+- Ruxsat (`lib/rolePermissions.ts`): shaxsiy istisno → `centerRoleId` roli
+  (topilmasa — hech narsa ochilmaydi) → `turi` kaliti → cheklovsiz.
+  Sahifa, API va xodimlar boti — hammasi shu funksiyadan.
+- «Staff» xodim o'qituvchi/moderator ro'yxatlariga tushmaydi (kassa, guruh,
+  lid mas'uli …). Ro'yxat/profil/eksportda rol nomi (`useRoleNames`),
+  filtrda «Boshqa rol», Oylik filtrida «Boshqa xodimlar».
+- Xodimga berilgan rolni o'chirish — 409 (`DELETE /api/roles/:id`).
+
+## AI yordamchi — adminga ogohlantirishlar (2026-10-12)
+
+Foydalanuvchi: lidlar 24 soatdan oshsa, xona bo'shasa, guruh muddati
+tugasa, topshiriqlar bajarilsa/bajarilmasa — AI adminga aytsin («siz # soat
+oldin bergan topshirig'ingizni ### muddatidan avval topshirdi, bir
+ko'rasizmi afandim, mana link»). Tanlovlar: CRM ichida, AI panelida;
+«guruh vaqti» — o'qish muddati (tugash sanasi).
+
+- Hisob: `lib/ai/alerts.ts` (sof funksiyalar + `loadAiAlerts`), API
+  `GET/POST /api/ai/alerts` — FAQAT admin, butun markaz bo'yicha. Model
+  chaqirilmaydi (kunlik limitga tegmaydi), matn mijozda t() (uch til).
+- Turlar: `lead-overdue` (holati «yangi», 24 soatdan oshgan — mas'ul
+  bo'yicha bitta xabar), `group-ended` (arxivlanmagan, tugash sanasi o'tgan),
+  `room-freed` (HODISA: `ai_alert_state` dagi bandlik surati bilan
+  solishtiriladi — arxivlandi/ko'chdi/vaqti o'zgardi/muddati tugadi; birinchi
+  chaqiruv faqat surat), `task-early` (muddatidan avval topshirilgan, 7 kun),
+  `task-overdue`.
+- Kalit holat bilan o'zgaradi (yangi lid kechiksa, sana uzaytirilsa …);
+  «ko'rildi» — `ai_alert_seen` (admin × kalit, 90 kun), hodisalar
+  `ai_alert_events` (30 kun).
+- Mijoz: `useAiAlerts` — faqat admin, sayt ochiq va ko'rinib turganda
+  2 daqiqada bir (15 daqiqa harakatsiz — yo'q; fon taymeri yo'q). Robot
+  tugmasida qizil belgi, AI panelida «Mohira xabarlari» kartasi
+  (`AlertsCard`): ochilganda 1,5 s dan keyin «ko'rildi», har xabarda
+  «Ko'rish →». POST amallar jurnaliga yozilmaydi (proxy LOG_SKIP_EXACT).
+- Sinov: sof funksiyalar (16 holat), Atlas nusxasida to'liq yig'ish (6 lid
+  xabari, 1 guruh), karta brauzerda vaqtinchalik sahifa bilan.

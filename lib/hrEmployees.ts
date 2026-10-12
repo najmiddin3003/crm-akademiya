@@ -20,13 +20,21 @@ export interface HrEmployee {
   aktivOq: number;
   groups: number;
   /**
-   * Lavozim: "teacher" | "moderator" | "admin".
+   * Lavozim: "teacher" | "moderator" | "admin" | "staff".
    *
    * Xodim CRM'ning qaysi bo'limlarini ko'rishi ODATDA shu maydondan kelib
    * chiqadi — `roles` dagi bir xil kalitli yozuv orqali (lib/roles.ts).
-   * Lavozim o'zgarsa, ruxsatlar ham o'zi o'zgaradi.
+   * Lavozim o'zgarsa, ruxsatlar ham o'zi o'zgaradi. "staff" — qo'lda
+   * qo'shilgan rol (`centerRoleId`), na o'qituvchi, na moderator.
    */
   turi: string;
+  /**
+   * «O'quv markazidagi vazifasi» — Boshqaruv → Rollar'da QO'LDA qo'shilgan
+   * rol id'si (12.10.2026). Bo'lsa `turi` = "staff" va bo'limlar shu roldan
+   * (lib/rolePermissions.ts). O'rnatilgan rollarda (o'qituvchi/moderator)
+   * yo'q — ular `turi` orqali. Filial biriktiruvidagi `roleId` boshqa narsa.
+   */
+  centerRoleId?: number | null;
   /**
    * SHU XODIM uchun alohida ruxsatlar — lavozim sozlamasidan USTUN turadi.
    *

@@ -15,6 +15,7 @@ import { useTransactionTypes } from "@/hooks/useTransactionTypes";
 import EmployeeArchiveModal, { type ArchiveMode } from "./EmployeeArchiveModal";
 import { EMPLOYEE_PROFILE_TABS_KEY, type HrEmployeeFull } from "./employeeExtras";
 import { EP_MORE_IDS, EP_TABS, ROLE_LABELS } from "@/constants/employees";
+import { employeeRoleLabel, useRoleNames } from "./useRoleNames";
 import { isSalaryConfigured } from "@/lib/hrEmployees";
 import {
   payrollCashLeg, payrollDue, payrollOwedTotal, payrollPeriod, payrollPlastikLeg, payrollTax,
@@ -326,6 +327,8 @@ export function EmployeeProfileView({
 }) {
   const { t, months } = useT();
   const { showSuccess, showError } = useToast();
+  // Qo'lda qo'shilgan rol nomi — sarlavhadagi vazifa yorlig'i (12.10.2026).
+  const roleNames = useRoleNames();
   // HrEmployeeFull — asosiy maydonlar + modal saqlaydigan qo'shimchalar
   // (tug'ilgan sana, izoh, maxsus maydonlar). Ilgari ular bu yerda ko'rinmasdi.
   const [emp, setEmp] = useState<HrEmployeeFull | null>(null);
@@ -693,7 +696,8 @@ export function EmployeeProfileView({
   // uchraydi. Ilgari bu yerda qo'lda "+998" qo'shilardi va ikkinchisiga u
   // IKKINCHI marta yopishib, "+998998336263006" chiqardi.
   const phone = formatPhoneDisplay(emp.phone);
-  const roleLabel = ROLE_LABELS[emp.turi as keyof typeof ROLE_LABELS] ?? emp.turi;
+  // Qo'lda qo'shilgan rol — Rollar'dagi nomi (useRoleNames).
+  const roleLabel = employeeRoleLabel(emp, roleNames, ROLE_LABELS) ?? "";
 
   // Alohida "holat" maydoni yo'q: `archReason` to'lgan bo'lsa — arxivda.
   // EmployeesListPage dagi "Holat" filtri ham aynan shu belgiga qaraydi.

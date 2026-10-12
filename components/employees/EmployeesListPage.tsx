@@ -11,6 +11,7 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
 import AddEmployeeModal from "./AddEmployeeModal";
+import { employeeRoleLabel, useRoleNames } from "./useRoleNames";
 import EmployeeToggle from "./EmployeeToggle";
 import EmployeeTaxModal from "./EmployeeTaxModal";
 import EmployeePlastikModal from "./EmployeePlastikModal";
@@ -184,6 +185,8 @@ export default function EmployeesListPage() {
   const { t } = useT();
   const router = useRouter();
   const { showSuccess, showError } = useToast();
+  // Qo'lda qo'shilgan rollar nomi — «Vazifasi» ustuni uchun (12.10.2026).
+  const roleNames = useRoleNames();
   // Kurs filtri bazadan (ilgari constants'dagi uchinchi, boshqalariga mos
   // kelmaydigan EMP_COURSES ro'yxati edi).
   const { names: courseNames } = useOfflineCourseList();
@@ -335,7 +338,8 @@ export default function EmployeesListPage() {
         // shuning uchun qiymatsiz qatorlar oxirida emas, BOSHIDA turib
         // qolardi. `|| null` bo'sh satrni ham "qiymat yo'q" deb sanaydi,
         // ya'ni qolgan matnli ustunlar bilan bir xil qoida.
-        case "turi": return ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? (e.turi || null);
+        // Qo'lda qo'shilgan rol — Rollar'dagi nomi (useRoleNames).
+        case "turi": return employeeRoleLabel(e, roleNames, ROLE_LABELS);
         case "filial": return (e.filial || "").toLowerCase() || null;
         case "phone": return e.phone || null;
         case "kurs": return (e.kurs || "").toLowerCase() || null;
@@ -371,7 +375,7 @@ export default function EmployeesListPage() {
       return String(va).localeCompare(String(vb), "uz") * dir;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, sortKey, sortDir, period, payrollById]);
+  }, [filtered, sortKey, sortDir, period, payrollById, roleNames]);
 
   /** Sarlavhaga bosish: o'sish → kamayish → saralashsiz. */
   function toggleSort(colId: string) {
@@ -397,7 +401,7 @@ export default function EmployeesListPage() {
   // Eksport ekrandagi TARTIBDA chiqadi — saralab, keyin yuklab olish
   // kutilgan natijani bersin.
   function exportRows() {
-    return sorted.map((e, i) => [i + 1, e.name, GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS], statsOf(e).students, statsOf(e).groups, ROLE_LABELS[e.turi as keyof typeof ROLE_LABELS] ?? e.turi, e.filial, e.phone, e.kurs, e.created]);
+    return sorted.map((e, i) => [i + 1, e.name, GENDER_LABELS[e.gender as keyof typeof GENDER_LABELS], statsOf(e).students, statsOf(e).groups, employeeRoleLabel(e, roleNames, ROLE_LABELS) ?? "", e.filial, e.phone, e.kurs, e.created]);
   }
 
   // Import — eksport bilan bir xil ustunlar (eksport → tahrir → import).
@@ -563,7 +567,7 @@ export default function EmployeesListPage() {
           : "bg-violet-500/10 text-violet-600 border-violet-500/20";
         return (
           <span className={`inline-flex items-center h-6 px-2 rounded-md border text-[11px] font-medium ${turiBadge} whitespace-nowrap`}>
-            {t(e.turi)}
+            {e.turi === "staff" ? employeeRoleLabel(e, roleNames, ROLE_LABELS) : t(e.turi)}
           </span>
         );
       }
@@ -884,7 +888,7 @@ export default function EmployeesListPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-semibold text-amber-600">{e.name}</div>
                         <span className={`inline-flex items-center h-5 px-2 rounded-md border text-[10.5px] font-medium ${e.turi === "teacher" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : e.turi === "moderator" ? "bg-sky-500/10 text-sky-600 border-sky-500/20" : "bg-violet-500/10 text-violet-600 border-violet-500/20"}`}>
-                          {t(e.turi)}
+                          {e.turi === "staff" ? employeeRoleLabel(e, roleNames, ROLE_LABELS) : t(e.turi)}
                         </span>
                       </div>
                       <div className="text-[12.5px] text-muted-foreground tabular-nums">{e.phone}</div>

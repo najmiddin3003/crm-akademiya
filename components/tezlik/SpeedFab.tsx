@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type AnimationEvent, type Poi
 import { Sparkles } from "lucide-react";
 import AssistantPanel from "@/components/ai/AssistantPanel";
 import MohiraAvatar from "@/components/ai/MohiraAvatar";
+import { useAiAlerts } from "@/components/ai/useAiAlerts";
 import { useT } from "@/components/shared/Language";
 import { ASSISTANT_NAME } from "@/lib/ai/brand";
 
@@ -80,8 +81,11 @@ function helloDue(): boolean {
   }
 }
 
-export default function SpeedFab() {
+export default function SpeedFab({ isAdmin = false }: { isAdmin?: boolean }) {
   const { t } = useT();
+  // Adminga ogohlantirishlar (12.10.2026, lib/ai/alerts.ts) — tugmadagi belgi
+  // va paneldagi «Mohira xabarlari». Admin bo'lmasa so'rov ketmaydi.
+  const alerts = useAiAlerts(isAdmin);
   const [pos, setPos] = useState<Pos | null>(null);
   const [size, setSize] = useState(72);
   const [open, setOpen] = useState(false);
@@ -193,6 +197,14 @@ export default function SpeedFab() {
         >
           <MohiraAvatar mood={dragging || hover || hello ? "happy" : "idle"} gaze />
           <span aria-hidden className="mh-fab-dot" />
+          {alerts.unseen > 0 && (
+            <span
+              aria-label={t("Afandim, {n} ta yangi xabar bor", { n: alerts.unseen })}
+              className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold tabular-nums text-white ring-2 ring-background"
+            >
+              {alerts.unseen > 9 ? "9+" : alerts.unseen}
+            </span>
+          )}
           {!dragging && (
             <span aria-hidden className="mh-say" data-side={side} data-show={hello ? "" : undefined}>
               {t("Qanday yordam beray?")}
@@ -202,7 +214,7 @@ export default function SpeedFab() {
         </button>
       )}
 
-      {open && <AssistantPanel origin={{ x: pos.x, y: pos.y, w: size, h: size }} onClose={onClose} />}
+      {open && <AssistantPanel origin={{ x: pos.x, y: pos.y, w: size, h: size }} onClose={onClose} alerts={isAdmin ? alerts : undefined} />}
     </>
   );
 }

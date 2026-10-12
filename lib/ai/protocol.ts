@@ -216,6 +216,26 @@ export interface AiModelRow {
 }
 
 /** GET /api/ai/status javobi. */
+/**
+ * ADMINGA OGOHLANTIRISH (12.10.2026, lib/ai/alerts.ts) — AI panelida Mohira
+ * aytadigan xabar. Matni mijozda `kind` + `params` dan (t() — uch til).
+ */
+export type AiAlertKind = "lead-overdue" | "group-ended" | "room-freed" | "task-early" | "task-overdue";
+
+export interface AiAlert {
+  /** Barqaror kalit — «ko'rildi» belgisi shunga yoziladi; holat o'zgarsa kalit ham o'zgaradi. */
+  key: string;
+  kind: AiAlertKind;
+  /** Hodisa vaqti (ISO) — tartib va «qachon» uchun. */
+  at: string;
+  /** Matn parametrlari; davomiyliklar — SOAT (mijoz «N soat / N kun» qiladi). */
+  params: Record<string, string | number>;
+  /** Ichki havola («Ko'rish»). */
+  href: string;
+  /** Shu admin ko'rganmi. */
+  seen: boolean;
+}
+
 export interface AiStatus {
   /** Admin yoqqanmi (Sozlamalar). */
   enabled: boolean;

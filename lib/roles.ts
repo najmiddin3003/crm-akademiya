@@ -29,6 +29,52 @@ export function isRoleKey(value: unknown): value is RoleKey {
   return typeof value === "string" && (ROLE_KEYS as readonly string[]).includes(value);
 }
 
+/**
+ * QO'LDA QO'SHILGAN ROLDAGI XODIM (12.10.2026) — `hr_employees.turi`.
+ *
+ * Foydalanuvchi: «yangi xodim qo'shayotganda o'quv markazidagi roli
+ * select'ida Boshqaruv → Rollar sahifasiga qo'shilgan rollar chiqishi
+ * kerak»; tanlovi — «Faqat ruxsat bersin»: bunday xodim na o'qituvchi, na
+ * moderator (o'sha ro'yxatlarga tushmaydi), ochiladigan bo'limlar esa
+ * `hr_employees.centerRoleId` dagi roldan (lib/rolePermissions.ts).
+ */
+export const STAFF_TURI = "staff";
+
+/** Xodim formasi tanlovi → bazaga yoziladigan juftlik (`resolveCenterRole`). */
+export type CenterRoleChoice =
+  | { ok: true; turi: string; centerRoleId: number | null }
+  | { ok: false; error: string };
+
+/**
+ * «O'quv markazidagi vazifasi» tanlovini tekshiradi va `turi` +
+ * `centerRoleId` ga aylantiradi (POST/PATCH /api/hr-employees).
+ *
+ *   centerRoleId — qo'lda qo'shilgan rol → turi "staff", rol id'si saqlanadi;
+ *                  o'rnatilgan rol (teacher/moderator) id'si kelsa — o'sha
+ *                  kalitga aylantiriladi (id saqlanmaydi);
+ *   centerRoleId yo'q — `turi` qanday kelsa shunday (teacher, moderator,
+ *                  admin yoki bo'sh); "staff" esa rolsiz bo'lmaydi.
+ *
+ * Mijozga ishonilmaydi: rol bazada borligi shu yerda tekshiriladi.
+ */
+export async function resolveCenterRole(
+  db: Db,
+  input: { turi?: unknown; centerRoleId?: unknown },
+): Promise<CenterRoleChoice> {
+  const raw = input.centerRoleId;
+  const id = raw === null || raw === undefined || raw === "" ? null : Number(raw);
+  if (id !== null) {
+    if (!Number.isInteger(id) || id <= 0) return { ok: false, error: "Noto'g'ri rol" };
+    const role = await db.collection("roles").findOne({ id }, { projection: { _id: 0, key: 1 } });
+    if (!role) return { ok: false, error: "Rol topilmadi — Boshqaruv → Rollar sahifasini yangilang" };
+    if (isRoleKey(role.key)) return { ok: true, turi: role.key, centerRoleId: null };
+    return { ok: true, turi: STAFF_TURI, centerRoleId: id };
+  }
+  const turi = typeof input.turi === "string" ? input.turi.trim() : "";
+  if (turi === STAFF_TURI) return { ok: false, error: "Rolni tanlang" };
+  return { ok: true, turi, centerRoleId: null };
+}
+
 export interface Role {
   id: number;
   /**

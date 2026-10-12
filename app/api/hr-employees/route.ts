@@ -14,6 +14,7 @@ import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 import { isValidPhone, issueCode, generateToken, activationMessage, sendSms, normalizePhone, INVITE_TTL_MS } from "@/lib/invite";
 import { toUz, uzNow } from "@/lib/uzTime";
 import { getBranchScope } from "@/lib/branchScope";
+import { resolveCenterRole } from "@/lib/roles";
 import {
   branchIdsErrorText,
   branchNameMap,
@@ -111,6 +112,12 @@ export async function POST(req: Request) {
 
   const db = await ensureIndexes();
 
+  // «O'quv markazidagi vazifasi» — Rollar'dagi rol yoki lavozim (lib/roles.ts).
+  const roleChoice = await resolveCenterRole(db, body);
+  if (!roleChoice.ok) {
+    return NextResponse.json({ ok: false, error: roleChoice.error }, { status: 400 });
+  }
+
   const col = db.collection("hr_employees");
 
   // Telefon IKKALA kolleksiyada ham tekshiriladi. Ilgari faqat `users`
@@ -189,7 +196,8 @@ export async function POST(req: Request) {
     gender: body.gender || "",
     aktivOq: 0,
     groups: 0,
-    turi: body.turi || "",
+    turi: roleChoice.turi,
+    ...(roleChoice.centerRoleId !== null ? { centerRoleId: roleChoice.centerRoleId } : {}),
     filial: body.filial || "Akademiya",
     phone,
     kurs: body.kurs || "",

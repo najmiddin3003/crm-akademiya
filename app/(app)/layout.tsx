@@ -61,7 +61,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       {/* AI yozuvni saqlagach sahifa shu o'ram orqali qayta chiziladi (components/ai/AiScreenRefresh.tsx) */}
       <AiScreenRefresh>{children}</AiScreenRefresh>
       {/* Suzuvchi robot — tezlik sinovi (components/tezlik/SpeedFab.tsx) */}
-      <SpeedFab />
+      <SpeedFab isAdmin={user.role === "admin"} />
     </AppShell>
   );
 }
