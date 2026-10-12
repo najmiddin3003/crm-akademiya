@@ -1,0 +1,23 @@
+# TIZIMLI24 QOROVULI — Cloudflare Worker sozlamasi (watchdog/worker.js izohi).
+#
+#   cd watchdog
+#   npx wrangler login                         # bir marta (brauzerda «Allow»)
+#   npx wrangler kv namespace create STATE     # chiqqan id ni pastdagi [[kv_namespaces]] ga
+#   npx wrangler secret put ESKIZ_EMAIL        # qiymatni o'zingiz kiritasiz
+#   npx wrangler secret put ESKIZ_PASSWORD
+#   npx wrangler secret put TEST_KEY           # ixtiyoriy: sinov SMS uchun
+#   npx wrangler deploy
+name = "tizimli24-qorovul"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALERT_PHONES = "998336263006"
+FAILS_TO_ALERT = "2"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "KV_ID_SHU_YERGA"
