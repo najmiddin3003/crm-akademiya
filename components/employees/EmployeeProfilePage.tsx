@@ -41,6 +41,7 @@ import PersonLink from "@/components/shared/PersonDirectory";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import ProfileSideCard, { type ProfileStat } from "@/components/shared/ProfileSideCard";
 import { useT, type TFn } from "@/components/shared/Language";
+import { isFutureIsoDay } from "@/lib/uzTime";
 
 // Xodim profili (crm-akademiya #view-management-xodim-profile, skrinshot 4).
 // Mavjud o'quvchi profili bilan bir xil tuzilma — faqat tab nomlari boshqacha.
@@ -998,7 +999,10 @@ export function EmployeeProfileView({
               )}
               {emp.salaryEndDate && (
                 <div>
-                  <div className="text-[11px] text-muted-foreground">{t("Ishdan ketgan sana")}</div>
+                  {/* Hali kelmagan sana — «ishdan ketadigan» (13.10.2026). */}
+                  <div className="text-[11px] text-muted-foreground">
+                    {isFutureIsoDay(emp.salaryEndDate) ? t("Ishdan ketadigan sana") : t("Ishdan ketgan sana")}
+                  </div>
                   <div className="text-[13px] tabular-nums">{fmtBirthDate(emp.salaryEndDate)}</div>
                 </div>
               )}

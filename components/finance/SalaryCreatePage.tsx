@@ -42,6 +42,7 @@ import {
   type PayrollPeriod,
 } from "@/lib/salary";
 import { invalidateTransactions } from "@/lib/cacheKeys";
+import { isFutureIsoDay, uzDateIso } from "@/lib/uzTime";
 import Modal from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { branchPool, buildingNo } from "@/lib/branchPools";
@@ -255,6 +256,8 @@ export default function SalaryCreatePage() {
   // ko'rsatadigan ekranning o'zi yo'q edi. Yangi oy boshlangan kuni esa
   // o'tgan oyning butun tushumi ko'zdan g'oyib bo'lardi.
   const currentMonthKey = useMemo(() => payrollMonthKey(payrollPeriod()), []);
+  // Bugun (Toshkent) — ishdan ketish sanasi kelganmi, shuni bilish uchun.
+  const todayIso = useMemo(() => uzDateIso(), []);
   const [monthKey, setMonthKey] = useState(currentMonthKey);
   // Oxirgi NOL-YOPISH oyi ("YYYY-MM", hozir 2026-08) — serverdan (04.10.2026).
   // O'sha oy va undan oldingilar uchun oylik CHIQARILMAYDI: server rad etadi
@@ -1195,9 +1198,17 @@ export default function SalaryCreatePage() {
                 const startNote = hasOklad && e.salaryStart && payrollStartsInPeriod(e, period)
                   ? t("ishga kirgan sana: {date}", { date: fmtIsoDay(e.salaryStart) })
                   : "";
-                // Ishdan ketgan sana SHU (yoki oldingi) oyda — oklad shu kungacha.
-                const endNote = hasOklad && e.salaryEnd && payrollEndsInPeriod(e, period)
-                  ? t("ishdan ketgan sana: {date}", { date: fmtIsoDay(e.salaryEnd) })
+                // ISHDAN KETISH SANASI. SHU (yoki oldingi) oyda bo'lsa — oklad
+                // shu kungacha. Sana HALI KELMAGAN bo'lsa «ishdan ketadigan
+                // sana» (13.10.2026, foydalanuvchi: kelajak sana tanlansa shunday
+                // tursin) va u joriy/keyingi oy sahifasida, boshqa oyda bo'lsa
+                // ham ko'rinadi — xodim ketishini admin oldindan bilsin.
+                // Foizli xodimda ham ko'rsatiladi (ilgari faqat okladli).
+                const endFuture = isFutureIsoDay(e.salaryEnd, todayIso);
+                const endNote = e.salaryEnd && (payrollEndsInPeriod(e, period) || (endFuture && !isPastMonth))
+                  ? endFuture
+                    ? t("ishdan ketadigan sana: {date}", { date: fmtIsoDay(e.salaryEnd) })
+                    : t("ishdan ketgan sana: {date}", { date: fmtIsoDay(e.salaryEnd) })
                   : "";
                 // ESLATMA: shu oyda (yoki keyin) CRM'ga qo'shilgan okladli
                 // xodimda ishga kirgan sana kiritilmagan — unga to'liq oy
@@ -1328,7 +1339,7 @@ export default function SalaryCreatePage() {
                             <div className="text-[11px] text-muted-foreground whitespace-nowrap">{startNote}</div>
                           )}
                           {endNote && (
-                            <div className="text-[11px] text-rose-600 whitespace-nowrap">{endNote}</div>
+                            <div className={`text-[11px] whitespace-nowrap ${endFuture ? "text-amber-600" : "text-rose-600"}`}>{endNote}</div>
                           )}
                           {startMissing && (
                             <Link

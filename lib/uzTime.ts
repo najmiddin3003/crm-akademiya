@@ -44,6 +44,15 @@ export function uzDateIso(d: Date = new Date()): string {
   return `${u.getFullYear()}-${p2(u.getMonth() + 1)}-${p2(u.getDate())}`;
 }
 
+/**
+ * "YYYY-MM-DD" sana Toshkent bo'yicha BUGUNDAN KEYINmi (bugunning o'zi —
+ * kelajak emas). Ishdan ketish sanasi kelajakda bo'lsa interfeys «ishdan
+ * ketadigan sana» deydi va tanlanganda tasdiq so'raydi (13.10.2026).
+ */
+export function isFutureIsoDay(iso: string | null | undefined, today: string = uzDateIso()): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso ?? "") && String(iso) > today;
+}
+
 /** "11:42" — Toshkent soati. */
 export function uzTimeHm(d: Date = new Date()): string {
   const u = toUz(d);

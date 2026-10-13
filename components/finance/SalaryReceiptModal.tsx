@@ -111,6 +111,12 @@ export default function SalaryReceiptModal({
     if (!m || !run.month || `${m[1]}-${m[2]}` > run.month) return "";
     return `${m[3]}.${m[2]}.${m[1]}`;
   })();
+  // Chiqarish kunida sana HALI KELMAGAN bo'lsa — «Ishdan ketadigan sana»
+  // (13.10.2026). Chek muzlatilgan hujjat: bugun emas, chiqarish kuni bilan.
+  const endFuture = (() => {
+    const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(run.createdAt ?? "");
+    return !!endLabel && !!m && (r?.salaryEnd ?? "") > `${m[3]}-${m[2]}-${m[1]}`;
+  })();
 
   // Soliq chegaraga urganmi (hisoblangan oylikdan oshib ketgan).
   const taxLines = r?.taxLines ?? [];
@@ -163,7 +169,7 @@ export default function SalaryReceiptModal({
             />
           )}
           {startLabel && <Row label={t("Ishga kirgan sana")} value={startLabel} />}
-          {endLabel && <Row label={t("Ishdan ketgan sana")} value={endLabel} />}
+          {endLabel && <Row label={endFuture ? t("Ishdan ketadigan sana") : t("Ishdan ketgan sana")} value={endLabel} />}
 
           {!r ? (
             // Bu maydon qo'shilishidan OLDINGI chiqarishlarda kesim yo'q —

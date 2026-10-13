@@ -10,6 +10,7 @@ import Select from "@/components/ui/Select";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { branchBuildingLabel } from "@/lib/branchPools";
+import { useFutureEndDateConfirm } from "./useFutureEndDateConfirm";
 
 // Xodim profili → "Ish haqi" oynasi.
 //
@@ -60,6 +61,8 @@ export default function EmployeeSalaryConfigModal({
   const [startDate, setStartDate] = useState<string>(employee.salaryStartDate ?? "");
   // Ishdan ketgan sana (oxirgi ish kuni). Bo'sh — hali ishlayapti.
   const [endDate, setEndDate] = useState<string>(employee.salaryEndDate ?? "");
+  // Kelajakdagi sana tanlansa — tasdiq oynasi (13.10.2026).
+  const endConfirm = useFutureEndDateConfirm(endDate, setEndDate);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -247,7 +250,7 @@ export default function EmployeeSalaryConfigModal({
                     <label className="mb-1 block text-[13px] font-medium">{t("Ishdan ketgan sana")}</label>
                     <DateField
                       value={endDate}
-                      onChange={setEndDate}
+                      onChange={endConfirm.onChange}
                       variant="form"
                       placeholder="kk/oo/yyyy"
                       error={!!startDate && !!endDate && endDate < startDate}
@@ -313,6 +316,7 @@ export default function EmployeeSalaryConfigModal({
             {saving ? t("Saqlanmoqda…") : t("Saqlash")}
           </button>
         </div>
+        {endConfirm.dialog}
       </Modal>
   );
 }

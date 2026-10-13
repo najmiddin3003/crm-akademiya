@@ -22,6 +22,7 @@ import DateField from "@/components/ui/DateField";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
 import { branchBuildingLabel } from "@/lib/branchPools";
+import { useFutureEndDateConfirm } from "./useFutureEndDateConfirm";
 
 // Xodim qo'shish modali (crm-akademiya #emp-add-modal, skrinshot 2 tartibida).
 // Saqlash → POST /api/hr-employees.
@@ -217,6 +218,8 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
   const [salaryStart, setSalaryStart] = useState(editing ? employee?.salaryStartDate ?? "" : uzDateIso());
   // Ishdan ketgan sana (oxirgi ish kuni) — bo'sh: hali ishlayapti.
   const [salaryEnd, setSalaryEnd] = useState(employee?.salaryEndDate ?? "");
+  // Kelajakdagi sana tanlansa — tasdiq oynasi (13.10.2026).
+  const endConfirm = useFutureEndDateConfirm(salaryEnd, setSalaryEnd);
   const [comment, setComment] = useState(employee?.comment ?? "");
   const [payroll, setPayroll] = useState(employee?.payroll ?? false);
   const [twoFactor, setTwoFactor] = useState(employee?.twoFactor ?? false);
@@ -842,7 +845,7 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
               <label className={labelCls}>{t("Ishdan ketgan sana")}</label>
               <DateField
                 value={salaryEnd}
-                onChange={setSalaryEnd}
+                onChange={endConfirm.onChange}
                 variant="form"
                 placeholder="kk/oo/yyyy"
                 error={!!salaryStart && !!salaryEnd && salaryEnd < salaryStart}
@@ -1026,6 +1029,6 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
           onSave={addCustomField}
           saving={savingField}
         />
-      )}</>
+      )}{endConfirm.dialog}</>
   );
 }
