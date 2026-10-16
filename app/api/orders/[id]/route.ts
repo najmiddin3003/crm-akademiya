@@ -6,6 +6,7 @@ import { currentAuthorName } from "@/lib/currentEmployee";
 import { withLeadScope } from "@/lib/leadScope";
 import { HOLAT_CONFLICT, SERVER_MANAGED_ORDER_FIELDS, legacyHolatSync } from "@/lib/leadHolatServer";
 import { refreshLeadMessage } from "@/lib/leadNotify";
+import { notifyLeadApplicant } from "@/lib/studentBot/leadUpdates";
 import type { Order } from "@/lib/ordersData";
 
 // PATCH /api/orders/:id — qisman $set yangilanish (tasks/[id]/route.ts bilan
@@ -84,5 +85,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Guruhdagi xabar ham yangilansin (ism, kurs, holat …) — javobdan keyin.
   if (current.tgMessage) after(() => refreshLeadMessage(db, orderId));
+  // Eski sahifa holatni o'zgartirgan bo'lsa — botdan kelgan arizachiga xabar
+  // (holat o'zgarmasa jim; lib/studentBot/leadUpdates.ts).
+  if (current.tgUser) after(() => notifyLeadApplicant(db, current, res as unknown as Order));
   return NextResponse.json({ ok: true, order: res });
 }

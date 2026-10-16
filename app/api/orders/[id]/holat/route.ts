@@ -5,6 +5,7 @@ import { currentAuthorName } from "@/lib/currentEmployee";
 import { isHolat, type LeadGuruh, type LeadSinov } from "@/lib/leadHolat";
 import { applyHolatChange, undoHolatChange } from "@/lib/leadHolatServer";
 import { refreshLeadMessage } from "@/lib/leadNotify";
+import { notifyLeadApplicant } from "@/lib/studentBot/leadUpdates";
 import { withLeadScope } from "@/lib/leadScope";
 import { ensureIndexes } from "@/lib/mongodb";
 import type { Order } from "@/lib/ordersData";
@@ -96,5 +97,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!out.ok) return bad(out.error, out.status);
   // Guruhdagi xabarning "Status:" qatori ham shu holatni ko'rsatsin.
   after(() => refreshLeadMessage(db, orderId));
+  // Botdan kelgan lid — arizachiga ham botda xabar (lib/studentBot/leadUpdates.ts).
+  const fresh = out.order;
+  after(() => notifyLeadApplicant(db, order, fresh));
   return NextResponse.json({ ok: true, order: out.order });
 }

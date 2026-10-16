@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { Db } from "mongodb";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadSyncConfig, type SyncConfig } from "@/lib/sync/config";
@@ -8,6 +8,7 @@ import { leadKeyboard, leadStatusOption, parseLeadCallback } from "@/lib/leadSta
 import { buildLeadMessage } from "@/lib/leadNotify";
 import { canTransition, holatFromTelegram, holatMeta, holatOf } from "@/lib/leadHolat";
 import { applyHolatChange, recordTelegramPress } from "@/lib/leadHolatServer";
+import { notifyLeadApplicant } from "@/lib/studentBot/leadUpdates";
 import type { Order } from "@/lib/ordersData";
 import { redirectToNewBot } from "@/lib/staffBot/moved";
 import type { TelegramUpdate } from "@/lib/staffBot/router";
@@ -133,6 +134,9 @@ async function handleLeadCallback(
       if (r.ok) {
         fresh = r.order;
         await auditLeadPress(db, cq, by, order.id, { from, to, button: label });
+        // Botdan kelgan lid — arizachiga ham botda xabar (lib/studentBot/leadUpdates.ts).
+        const changed = r.order;
+        after(() => notifyLeadApplicant(db, order, changed));
       } else answer = r.error;
     } else if (to && to === from) {
       // Holat o'sha — faqat tugmaning aniq javobi (keyinroq ↔ to'lov).

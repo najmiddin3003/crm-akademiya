@@ -6,6 +6,7 @@ import { addPupilToGroup, removePupilFromGroup } from "@/lib/groupStudents";
 import { canTransition, holatMeta, holatOf, isHolat, type LeadGuruh, type LeadSinov } from "@/lib/leadHolat";
 import { applyHolatChange } from "@/lib/leadHolatServer";
 import { refreshLeadMessage } from "@/lib/leadNotify";
+import { notifyLeadApplicant } from "@/lib/studentBot/leadUpdates";
 import { withLeadScope } from "@/lib/leadScope";
 import type { Order } from "@/lib/ordersData";
 import type { NewPupilValues } from "@/lib/pupilsData";
@@ -193,6 +194,9 @@ export async function executeStudentAction(ctx: AiContext, doc: ActionDoc, deps:
   }
   // Telegram guruhidagi lid xabarining "Status:" qatori ham yangilansin.
   deps.defer(() => refreshLeadMessage(db, orderId));
+  // Botdan kelgan lid — arizachiga ham botda xabar (lib/studentBot/leadUpdates.ts).
+  const changed = out.order;
+  deps.defer(() => notifyLeadApplicant(db, order, changed));
   return {
     ok: true,
     resultText: `#${order.branchNo ?? order.id} → ${holatMeta(to).nom}`,
