@@ -19,6 +19,17 @@ export const LEAD_SETTINGS_KEY = "sale-marketing.leads";
 /** So'rovnomadan kelgan lidning `source` qiymati (kanal). */
 export const SURVEY_SOURCE = "Sayt so'rovnomasi";
 
+/**
+ * @tizimli_akademiya_bot dagi «📝 Kursga yozilish» orqali kelgan lid (16.10.2026).
+ * Savollar so'rovnoma bilan AYNAN bir xil (lib/studentBot/signup.ts), faqat kanal boshqa.
+ */
+export const BOT_SOURCE = "Telegram bot";
+
+/** Odam o'zi to'ldirgan anketa (so'rovnoma yoki bot) — lid kartasida «javoblar» deb ko'rsatiladi. */
+export function isSelfServeSource(source: string | undefined): boolean {
+  return source === SURVEY_SOURCE || source === BOT_SOURCE;
+}
+
 export type YonalishId = "fan" | "til" | "pm";
 export const YONALISH_IDS: readonly YonalishId[] = ["fan", "til", "pm"];
 

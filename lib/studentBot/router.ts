@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { loadSyncConfig } from "@/lib/sync/config";
 import { sendMessage } from "@/lib/sync/telegram";
@@ -37,7 +38,20 @@ import {
   monthArg,
   notifyArg,
   settingsMenu,
+  SIGNUP_START_CB,
 } from "@/lib/studentBot/keyboards";
+import {
+  closeSignup,
+  getSignup,
+  isSignupCallback,
+  isSignupStartText,
+  rememberSignupPhone,
+  signupCallback,
+  signupContact,
+  signupText,
+  startSignup,
+  type SignupCtx,
+} from "@/lib/studentBot/signup";
 import { clearPhoneAttempts, takePhoneAttempt } from "@/lib/studentBot/attempts";
 import { findPupilsByPhone, phoneKey } from "@/lib/studentBot/phone";
 import {
@@ -279,7 +293,7 @@ async function handleContact(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
     return;
   }
 
-  await linkAndOpen(db, cfg, chatId, key, from);
+  await linkAndOpen(db, cfg, chatId, key, from, String(msg.contact?.phone_number ?? ""));
 }
 
 /**
@@ -305,7 +319,7 @@ async function handlePhoneText(db: Db, cfg: StudentBotConfig, msg: TgMessage, ke
     return;
   }
 
-  await linkAndOpen(db, cfg, chatId, key, from);
+  await linkAndOpen(db, cfg, chatId, key, from, msg.text ?? "");
 }
 
 /**
@@ -320,9 +334,13 @@ async function linkAndOpen(
   chatId: number,
   key: string,
   from: TgUser,
+  raw = "",
 ): Promise<void> {
   const matches = await findPupilsByPhone(db, key);
   if (matches.length === 0) {
+    // Hali o'quvchi emas — «📝 Kursga yozilish» da shu raqam taklif qilinadi
+    // (faqat O'zbekiston raqami; lib/studentBot/signup.ts).
+    await rememberSignupPhone(db, chatId, raw || key);
     await sendToStudent(cfg, chatId, V.phoneNotFound(key), contactKeyboard());
     return;
   }
@@ -423,7 +441,7 @@ async function handleSupportText(
 
 // ── Xabarlar ────────────────────────────────────────────────────────
 
-async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Promise<void> {
+async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage, defer: AdjustDeps["defer"]): Promise<void> {
   const chatId = msg.chat?.id;
   if (chatId === undefined) return;
 
@@ -432,12 +450,39 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
   // o'quvchining ma'lumotini ko'rardi.
   if (msg.chat?.type && msg.chat.type !== "private") return;
 
+  const text = (msg.text || "").trim();
+
+  // 📝 KURSGA YOZILISH (lib/studentBot/signup.ts) — bog'langan ham, hali
+  // o'quvchi bo'lmagan ham. Boshlash: pastki tugma, /yozilish, ?start=royxat.
+  // Anketa ochiq bo'lsa matn/kontakt — uning javobi (kirish urinishi EMAS).
+  const signupCtx = async (): Promise<SignupCtx> => {
+    const u = await getBotUser(db, chatId);
+    return { db, cfg, chatId, from: msg.from, linked: !!u, linkedPhone: u?.phone ?? null, defer };
+  };
+  if (!msg.contact && isSignupStartText(text)) {
+    const ctx = await signupCtx();
+    if (ctx.linked) await setAwaiting(db, chatId, null);
+    await startSignup(ctx);
+    return;
+  }
+  const draft = await getSignup(db, chatId);
+  if (draft?.step) {
+    if (msg.contact) {
+      await signupContact(await signupCtx(), draft, String(msg.contact.phone_number ?? ""));
+      return;
+    }
+    if (!text.startsWith("/")) {
+      await signupText(await signupCtx(), draft, text);
+      return;
+    }
+    // Buyruq (/start, /menu …) — anketa yopiladi, odatdagi oqim davom etadi.
+    await closeSignup(db, chatId);
+  }
+
   if (msg.contact) {
     await handleContact(db, cfg, msg);
     return;
   }
-
-  const text = (msg.text || "").trim();
 
   // GAMIFIKATSIYA: `/start {token}` — shaxsiy havoladagi «Telegramda ochish»
   // (TZ 5.8). Akkaunt o'quvchiga bog'lanadi (ko'pi bilan 3 ta); telefon
@@ -511,13 +556,26 @@ async function handleMessage(db: Db, cfg: StudentBotConfig, msg: TgMessage): Pro
 
 // ── Tugmalar ────────────────────────────────────────────────────────
 
-async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery): Promise<void> {
+async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery, defer: AdjustDeps["defer"]): Promise<void> {
   const chatId = cq.message?.chat?.id;
   const messageId = cq.message?.message_id;
   const data = cq.data || "";
 
   if (chatId === undefined) {
     await answerStudent(cfg, cq.id, "Xabar topilmadi");
+    return;
+  }
+
+  // 📝 Kursga yozilish anketasi — bog'lanmagan odamga ham (lib/studentBot/signup.ts).
+  if (isSignupCallback(data)) {
+    const u = await getBotUser(db, chatId);
+    if (u && data === SIGNUP_START_CB) await setAwaiting(db, chatId, null);
+    await signupCallback(
+      { db, cfg, chatId, from: cq.from, linked: !!u, linkedPhone: u?.phone ?? null, defer },
+      cq.id,
+      messageId,
+      data,
+    );
     return;
   }
 
@@ -585,6 +643,8 @@ async function handleCallback(db: Db, cfg: StudentBotConfig, cq: TgCallbackQuery
       return;
     }
     await setAwaiting(db, chatId, "support");
+    // Ochiq qolgan anketa savol matnini o'ziga olib qo'ymasin.
+    await closeSignup(db, chatId);
     await answerStudent(cfg, cq.id, "Savolingizni yozing");
     await showScreen(db, cfg, chatId, messageId, { html: V.askPrompt(), keyboard: askCancel() });
     return;
@@ -613,17 +673,28 @@ export async function handleStudentUpdate(
   db: Db,
   cfg: StudentBotConfig,
   update: TelegramUpdate,
+  defer?: AdjustDeps["defer"],
 ): Promise<void> {
   if (!isStudentBotReady(cfg)) return;
 
+  // Javobdan KEYIN bajariladigan ish (lid haqida filial topigiga xabar) —
+  // webhook'da `after`, berilmasa (skript) darhol, xatosi jurnalga.
+  const later: AdjustDeps["defer"] =
+    defer ??
+    ((fn) => {
+      void Promise.resolve()
+        .then(fn)
+        .catch((e) => console.error("[student-bot] defer:", e instanceof Error ? e.message : e));
+    });
+
   try {
     if (update.callback_query?.id) {
-      await handleCallback(db, cfg, update.callback_query);
+      await handleCallback(db, cfg, update.callback_query, later);
       return;
     }
     // `edited_message` ATAYLAB E'TIBORSIZ: o'quvchi eski xabarini
     // tahrirlaganda bot uni yangi buyruq deb o'qimasin.
-    if (update.message) await handleMessage(db, cfg, update.message);
+    if (update.message) await handleMessage(db, cfg, update.message, later);
   } catch (e) {
     console.error("[student-bot]", e instanceof Error ? e.message : e);
     const chatId = update.callback_query?.message?.chat?.id ?? update.message?.chat?.id;

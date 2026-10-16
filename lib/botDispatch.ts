@@ -10,6 +10,7 @@ import { getStaffUser } from "@/lib/staffBot/session";
 import { loadStudentBotConfig } from "@/lib/studentBot/config";
 import { phoneKey } from "@/lib/studentBot/phone";
 import { handleStudentUpdate, type TelegramUpdate } from "@/lib/studentBot/router";
+import { hasActiveSignup } from "@/lib/studentBot/signup";
 import { getBotUser } from "@/lib/studentBot/users";
 
 // @tizimli_akademiya_bot — BITTA BOTDA IKKI OQIM (29.09.2026).
@@ -27,6 +28,7 @@ import { getBotUser } from "@/lib/studentBot/users";
 //   2. Havola/buyruq — aniq niyat: `/start k_…|x_…` (QR), `/start xodim`,
 //      `/xodim` → xodim; `/start <shaxsiy havola tokeni>` → o'quvchi.
 //   3. Kirgan (yoki parol kutilayotgan) xodim → xodim.
+//      3b. Ochiq «📝 Kursga yozilish» anketasi (16.10.2026) → o'quvchi.
 //   4. Raqam (tugma yoki qo'lda): yangi odam, yoki xodim kirishini
 //      boshlagan (`/xodim`, QR) odam — raqam xodimniki bo'lsa (faol xodim
 //      yoki CRM paroli bor hisob) xodim, aks holda o'quvchi. O'quvchilarda
@@ -90,6 +92,11 @@ export async function pickSide(db: Db, update: TelegramUpdate): Promise<BotSide 
   if (staff && staff.stage !== "phone") return "staff";
   const staffStarted = staff?.stage === "phone";
 
+  // 3b) «📝 Kursga yozilish» anketasi ochiq (lib/studentBot/signup.ts) — javob
+  // (ism, raqam, izoh, kontakt) o'quvchilar routeriga: raqam xodimniki bo'lsa
+  // ham bu kirish emas, arizadagi aloqa raqami.
+  if (await hasActiveSignup(db, chatId)) return "student";
+
   // 4) Raqam — yangi odam yoki xodim kirishini boshlagan odam.
   const typed = !msg.contact && text && !text.startsWith("/") ? phoneKey(text) : null;
   if (msg.contact || typed) {
@@ -121,7 +128,7 @@ export async function dispatchBotUpdate(db: Db, update: TelegramUpdate, defer: A
       const cfg = loadStaffBotConfig();
       if (isStaffBotReady(cfg)) await handleStaffUpdate(db, cfg, update, defer);
     } else if (side === "student") {
-      await handleStudentUpdate(db, loadStudentBotConfig(), update);
+      await handleStudentUpdate(db, loadStudentBotConfig(), update, defer);
     }
   } catch (e) {
     console.error("[bot-dispatch]", e instanceof Error ? e.stack || e.message : e);

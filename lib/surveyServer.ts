@@ -1,9 +1,19 @@
+import { createHash } from "node:crypto";
 import type { Db } from "mongodb";
 import { SOURCE_OTHER } from "@/constants";
 import { loadLeadSettings } from "@/lib/leadSettings";
 import { listSourceOptions } from "@/lib/studentSources";
 import type { SurveyConfig } from "@/lib/survey";
 import { collapseBranchPools } from "@/lib/branchPools";
+
+/**
+ * `survey_hits` dagi xesh (IP, raqam, suhbat). So'rovnoma route'i va bot
+ * anketasi (lib/studentBot/signup.ts) BITTA usulda xeshlaydi: bir raqamdan
+ * ikki kanal orqali 10 daqiqa ichida kelgan ariza ham takror deb tanilsin.
+ */
+export function surveyHash(s: string): string {
+  return createHash("sha256").update(`sorovnoma:${s}`).digest("hex").slice(0, 32);
+}
 
 /**
  * So'rovnoma sozlamalari — sahifa (server komponent) ham, qabul route'i ham

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useStaffFmt } from "@/components/staff-tasks/format";
 import { guruhOf, holatMeta, holatOf, sinovOf, type LeadHolat } from "@/lib/leadHolat";
-import { SURVEY_SOURCE, darajaInfo, hasDaraja, type LeadDaraja, type LeadSettings } from "@/lib/leadSettings";
+import { BOT_SOURCE, SURVEY_SOURCE, darajaInfo, hasDaraja, isSelfServeSource, type LeadDaraja, type LeadSettings } from "@/lib/leadSettings";
 import { leadStatusOption } from "@/lib/leadStatus";
 import { orderNo, type Order } from "@/lib/ordersData";
 import { DAY_MS, uzDateOf, uzWallToMs } from "@/lib/staffTasks";
@@ -133,10 +133,17 @@ export function timelineOf(row: LeadRow, fmt: LeadFmt): TimelineLine[] {
   const { t } = fmt;
   const o = row.o;
   const out: TimelineLine[] = [];
-  const survey = o.source === SURVEY_SOURCE;
+  const survey = isSelfServeSource(o.source);
   out.push({
     at: row.at,
-    title: survey ? t("Sayt so'rovnomasi orqali keldi") : o.source ? t("Lid qo'shildi — {source}", { source: t(o.source) }) : t("Lid qo'shildi"),
+    title:
+      o.source === SURVEY_SOURCE
+        ? t("Sayt so'rovnomasi orqali keldi")
+        : o.source === BOT_SOURCE
+          ? t("Telegram bot orqali keldi")
+          : o.source
+            ? t("Lid qo'shildi — {source}", { source: t(o.source) })
+            : t("Lid qo'shildi"),
     sub: !survey && o.moderator ? o.moderator : "",
     tone: "info",
   });

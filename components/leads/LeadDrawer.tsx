@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import Link from "@/components/ui/Link";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { HOLAT_STEPS, UNDO_MINUTES, guruhOf, sinovOf, type LeadHolat } from "@/lib/leadHolat";
-import { SURVEY_SOURCE, hasDaraja, type LeadSettings } from "@/lib/leadSettings";
+import { hasDaraja, isSelfServeSource, type LeadSettings } from "@/lib/leadSettings";
 import type { ManagementBranch } from "@/lib/managementBranches";
 import { orderNo } from "@/lib/ordersData";
 import { LeadBranchTag } from "@/components/leads/LeadNo";
@@ -62,7 +62,8 @@ function DrawerBody({ row, settings, branch, isAdmin, nowMs, fmt, busy, comments
   const sinov = sinovOf(o);
   const guruh = guruhOf(o);
   const yon = settings?.yonalishlar.find((y) => y.id === row.yon) ?? null;
-  const survey = o.source === SURVEY_SOURCE;
+  // Odam o'zi to'ldirgan anketa — sayt so'rovnomasi yoki bot (16.10.2026).
+  const survey = isSelfServeSource(o.source);
   const [note, setNote] = useState(o.note || "");
   const [savingNote, setSavingNote] = useState(false);
 
@@ -242,6 +243,21 @@ function DrawerBody({ row, settings, branch, isAdmin, nowMs, fmt, busy, comments
               <>
                 <dt>{t("Qayerdan bildi")}</dt>
                 <dd>{t(o.heardFrom)}</dd>
+              </>
+            )}
+            {/* Botda o'zi yozilgan odam — Telegramda yozish uchun (16.10.2026). */}
+            {o.tgUser && (
+              <>
+                <dt>{t("Telegram")}</dt>
+                <dd>
+                  {o.tgUser.username ? (
+                    <a href={`https://t.me/${encodeURIComponent(o.tgUser.username)}`} target="_blank" rel="noopener noreferrer">
+                      @{o.tgUser.username}
+                    </a>
+                  ) : (
+                    o.tgUser.name || "—"
+                  )}
+                </dd>
               </>
             )}
             <dt>{t("Moderator")}</dt>

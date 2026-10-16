@@ -272,6 +272,7 @@ export const SERVER_MANAGED_ORDER_FIELDS = [
   "radSabab",
   "guruh",
   "tgMessage",
+  "tgUser",
   "leadStatus",
   "leadStatusAt",
   "leadStatusBy",

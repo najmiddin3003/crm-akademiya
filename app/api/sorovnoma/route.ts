@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { createSurveyLead } from "@/lib/ordersCreate";
 import { phone9, validateSurvey, type SurveySubmission } from "@/lib/survey";
-import { loadSurveyConfig } from "@/lib/surveyServer";
+import { loadSurveyConfig, surveyHash as hash } from "@/lib/surveyServer";
 
 // POST /api/sorovnoma — ommaviy so'rovnoma javobi (/sorovnoma) → yangi lid.
 //
@@ -30,8 +29,6 @@ const WINDOW_MS = 10 * 60_000;
 const PER_WINDOW = 5;
 const PER_DAY = 20;
 const MAX_BODY = 8_000;
-
-const hash = (s: string) => createHash("sha256").update(`sorovnoma:${s}`).digest("hex").slice(0, 32);
 
 /** Mijoz IP'si — nginx ortida (deploy/README.md) birinchi `X-Forwarded-For`. */
 function clientIp(req: Request): string {

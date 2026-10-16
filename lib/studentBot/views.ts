@@ -6,7 +6,7 @@ import type { NewsItem } from "@/lib/news";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
 import { esc } from "@/lib/telegramApi";
 import type { ExamsView, NextLesson, PaymentsView } from "@/lib/studentBot/data";
-import { CONTACT_BUTTON } from "@/lib/studentBot/keyboards";
+import { CONTACT_BUTTON, SIGNUP_BUTTON } from "@/lib/studentBot/keyboards";
 import { formatPhone } from "@/lib/studentBot/phone";
 import { pe } from "@/lib/studentBot/premiumEmoji";
 import type { StudentBotUser } from "@/lib/studentBot/users";
@@ -113,6 +113,9 @@ export function startPrompt(nick = ""): string {
     "Yoki raqamingizni shu yerga yozing — qanday yozsangiz ham bo'ladi:",
     "<code>90 123 45 67</code>, <code>90-123-45-67</code>, <code>+998901234567</code>.",
     "",
+    // 16.10.2026 — yangi o'quvchining o'zi ariza qoldiradi (lib/studentBot/signup.ts).
+    `🆕 <b>Hali o'quvchimiz emasmisiz?</b> Pastdagi "${SIGNUP_BUTTON}" tugmasini bosing — bir daqiqada ariza qoldirasiz, filial administratori o'zi bog'lanadi.`,
+    "",
     // 29.09.2026 dan xodimlar ham shu botda (lib/botDispatch.ts) — raqami
     // xodimniki bo'lsa bot o'zi xodimlar bo'limini ochadi.
     "👔 <b>Markaz xodimimisiz?</b> Shu tugma bilan raqamingizni yuboring — bot sizni taniydi va xodimlar bo'limini ochadi.",
@@ -127,9 +130,11 @@ export function phoneNotFound(phone: string): string {
     "",
     `Yuborilgan raqam: <code>${esc(formatPhone(phone))}</code>`,
     "",
-    "Sabablari:",
+    // 16.10.2026: raqami yo'q odam ko'pincha hali o'quvchi emas — ariza yo'li birinchi.
+    `🆕 <b>Hali o'quvchimiz bo'lmasangiz</b> — pastdagi "${SIGNUP_BUTTON}" tugmasini bosing va ariza qoldiring: filial administratori siz bilan bog'lanadi.`,
+    "",
+    "O'quvchi bo'lsangiz, sabablari:",
     "• raqam CRM'da boshqacha yozilgan bo'lishi mumkin;",
-    "• o'quvchi hali ro'yxatga olinmagan bo'lishi mumkin;",
     "• xodim bo'lsangiz — telefoningiz Boshqaruv → Xodimlar bo'limida boshqacha yozilgan.",
     "",
     "Iltimos, o'quv markaziga murojaat qiling — raqamingizni yangilashsin.",

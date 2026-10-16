@@ -18,7 +18,7 @@ import { useBranches } from "@/hooks/useBranches";
 import { useTeachers } from "@/hooks/useTeachers";
 import type { Group } from "@/lib/groups";
 import { HOLATLAR, sinovOf, type LeadHolat } from "@/lib/leadHolat";
-import { SURVEY_SOURCE, type LeadSettings } from "@/lib/leadSettings";
+import { BOT_SOURCE, SURVEY_SOURCE, type LeadSettings } from "@/lib/leadSettings";
 import { orderNo, type Order } from "@/lib/ordersData";
 import { DAY_MS, HOUR_MS, uzDateOf } from "@/lib/staffTasks";
 import LeadDrawer from "./LeadDrawer";
@@ -188,8 +188,10 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
   const yonOptions = useMemo(() => (settings?.yonalishlar ?? []).map((y) => ({ value: y.id, label: t(y.nom) })), [settings, t]);
   const manbaOptions = useMemo(() => {
     const seen = new Set(orders.map((o) => (o.source || "").trim()).filter(Boolean));
+    // O'zi to'ldirgan anketa kanallari (sayt so'rovnomasi, Telegram bot) — doim tepada.
     seen.delete(SURVEY_SOURCE);
-    return [SURVEY_SOURCE, ...[...seen].sort((a, b) => a.localeCompare(b))].map((s) => ({ value: s, label: t(s) }));
+    seen.delete(BOT_SOURCE);
+    return [SURVEY_SOURCE, BOT_SOURCE, ...[...seen].sort((a, b) => a.localeCompare(b))].map((s) => ({ value: s, label: t(s) }));
   }, [orders, t]);
   const sanaOptions = useMemo(() => SANA_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) })), [t]);
 

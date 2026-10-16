@@ -94,6 +94,8 @@ if (arg === "--commands") {
     commands: [
       { command: "start", description: "Boshlash / asosiy menyu" },
       { command: "menu", description: "Asosiy menyu" },
+      // 16.10.2026 — yangi o'quvchining o'zi ariza qoldiradi (lib/studentBot/signup.ts).
+      { command: "yozilish", description: "Kursga yozilish (yangi o'quvchilar)" },
       { command: "xodim", description: "Xodimlar bo'limi (profil, Ishga keldim, kassa)" },
     ],
   });

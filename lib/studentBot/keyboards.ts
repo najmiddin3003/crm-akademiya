@@ -72,16 +72,28 @@ export function notifyArg(data: string): NotifyKind | null {
 export const CONTACT_BUTTON = `${plainEmoji("phone")} Telefon raqamimni yuborish`;
 
 /**
+ * «KURSGA YOZILISH» — yangi o'quvchining o'zi ariza qoldirishi (16.10.2026,
+ * lib/studentBot/signup.ts). Oddiy klaviaturada — MATN tugmasi (bosilsa shu
+ * yozuv xabar bo'lib keladi, router uni taniydi); menyuda — `SIGNUP_START_CB`.
+ * Anketa tugmalari `yz:` prefiksli (signup.ts da hujjatlashtirilgan).
+ */
+export const SIGNUP_BUTTON = "📝 Kursga yozilish";
+export const SIGNUP_START_CB = "yz:go";
+
+/**
  * Telefon so'raydigan ODDIY klaviatura — bog'lanmagan odamga ko'rsatiladi.
  *
  * `request_contact` ATAYLAB: matn maydoniga raqam yozdirilsa, odam
  * boshqa o'quvchining raqamini kiritib uning balansi va davomatini
  * ko'rib olardi. Telegram yuboradigan kontakt esa hisobga bog'langan,
  * SMS bilan tasdiqlangan raqam.
+ *
+ * Ikkinchi qatorda «📝 Kursga yozilish» — hali o'quvchi bo'lmagan odam
+ * uchun (raqami bazada yo'q, kirish o'rniga ariza qoldiradi).
  */
 export function contactKeyboard(): ReplyKeyboard {
   return {
-    keyboard: [[{ text: CONTACT_BUTTON, request_contact: true }]],
+    keyboard: [[{ text: CONTACT_BUTTON, request_contact: true }], [{ text: SIGNUP_BUTTON }]],
     resize_keyboard: true,
     one_time_keyboard: true,
     input_field_placeholder: "Pastdagi tugmani bosing",
@@ -125,6 +137,10 @@ export function mainMenu(opts: { hasSupport: boolean; multiKid: boolean }): Inli
   // Eng tepada, ataylab: qolgan tugmalar bitta bo'limni ko'rsatadi,
   // bu esa hammasini birdan ochadi.
   rows.unshift([{ text: "🌐 Shaxsiy kabinet", web_app: { url: studentWebUrl() } }]);
+
+  // Yangi kursga yozilish — masalan ota-ona ikkinchi farzandini yozdiradi
+  // yoki o'quvchi boshqa fanga ham qatnamoqchi (16.10.2026).
+  rows.push([{ text: "📝 Yangi kursga yozilish", callback_data: SIGNUP_START_CB }]);
 
   const last: InlineButton[] = [];
   if (opts.hasSupport) last.push({ text: "✍️ Ustozga savol", callback_data: CB.ask });

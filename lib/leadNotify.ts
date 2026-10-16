@@ -134,6 +134,12 @@ export function leadMessage(order: Order, branch: string, details: { daraja?: st
   if (order.firstLesson) lines.push(`🎯 Birinchi dars: ${esc(order.firstLesson)}`);
   if (order.source) lines.push(`📣 Manba: ${esc(order.source)}`);
   if (order.heardFrom) lines.push(`🔎 Qayerdan bildi: ${esc(order.heardFrom)}`);
+  // Botda o'zi yozilgan odam — Telegramda yozish uchun (16.10.2026).
+  // `username` faqat [A-Za-z0-9_] (Telegram qoidasi), baribir eskape qilinadi.
+  // `tg://user?id=` havolasi ATAYLAB yo'q: xabarni guruh boti yuboradi, u bu
+  // odamni tanimaydi — Telegram bunday eslatmali xabarni rad etishi mumkin va
+  // lid filial topigiga umuman tushmay qolardi.
+  if (order.tgUser?.username) lines.push(`✈️ Telegram: @${esc(order.tgUser.username)}`);
   if (branch) lines.push(`🏢 ${esc(branch)}`);
   if (order.moderator) lines.push(`✅ Qo'shdi: ${esc(order.moderator)}`);
   if (order.note) lines.push(`📝 ${esc(order.note)}`);

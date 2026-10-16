@@ -202,6 +202,12 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("survey_hits").createIndex({ at: 1 }, { expireAfterSeconds: 86_400 }));
   tasks.push(db.collection("survey_hits").createIndex({ ipHash: 1, at: -1 }));
   tasks.push(db.collection("survey_hits").createIndex({ telHash: 1, at: -1 }));
+  // Botdagi «📝 Kursga yozilish» (lib/studentBot/signup.ts, 16.10.2026): urinishlar
+  // `survey_hits` da suhbat bo'yicha (chatHash); anketa qoralamasi — bitta suhbatga
+  // bitta, `expireAt` dan keyin Mongo o'zi o'chiradi.
+  tasks.push(db.collection("survey_hits").createIndex({ chatHash: 1, at: -1 }));
+  tasks.push(db.collection("student_bot_signups").createIndex({ chatId: 1 }, { unique: true }));
+  tasks.push(db.collection("student_bot_signups").createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 }));
   tasks.push(db.collection("pupils").createIndex({ id: 1 }, { unique: true }));
   // Aktiv/Arxiv o'quvchilar sahifalari `?status=` bilan SERVERDA
   // filtrlaydi (6 732 tadan 4 276 va 2 456). Saralash `id` bo'yicha

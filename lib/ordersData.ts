@@ -151,6 +151,12 @@ export interface Order {
   branchId?: number;
   /** Telegram "Lidlar" topigidagi xabar — holat CRM'da o'zgarsa tahrirlanadi. */
   tgMessage?: { chatId: string; messageId: number };
+  /**
+   * Botda o'zi ro'yxatdan o'tgan odamning Telegram hisobi (16.10.2026,
+   * lib/studentBot/signup.ts) — xodim unga Telegramda ham yoza olsin.
+   * Faqat server yozadi (lib/leadHolatServer.ts → SERVER_MANAGED_ORDER_FIELDS).
+   */
+  tgUser?: { chatId: number; username?: string; name?: string };
 }
 
 const NAMES_F = ["Hilola","Jahongir","Muattar","Saida","Aziza","Shahnoza","Maftuna","Ruxshona","Mushtariy","Bekzod","Aziz","Sevinch","Diyorbek","Karim","Madina","Nilufar","Zuhra","Vasila","Abdusamad","Samandar","Qosimjon","Asal","Tojixon","Gulasal","Nazokat","Davron","Odina","Dildora","Dilshoda","Feruza","Umida","Karomat","Azizbek","Bahodir","Sardor","Akmal","Jamol","Sherzod","Otabek","Jasur","Anvar","Sanjar","Murod","Rustam","Iroda","Zilola","Malika","Gulnoza","Dilfuza","Mohira","Sevara","Shaxnoza","Lola","Komila","Mehribon"];

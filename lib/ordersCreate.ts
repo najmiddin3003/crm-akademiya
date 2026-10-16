@@ -2,7 +2,7 @@ import type { Db } from "mongodb";
 import { branchCondition } from "@/lib/branchScope";
 import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { notifyNewLead } from "@/lib/leadNotify";
-import { SURVEY_SOURCE, type LeadDaraja } from "@/lib/leadSettings";
+import { BOT_SOURCE, SURVEY_SOURCE, type LeadDaraja } from "@/lib/leadSettings";
 import { buildOrderFromValues, type NewOrderValues, type Order } from "@/lib/ordersData";
 
 // YANGI LID (buyurtma) YARATISH — yadro.
@@ -175,13 +175,20 @@ export interface SurveyLeadInput {
 }
 
 /**
- * So'rovnomadan kelgan lid (/sorovnoma). Muallif yo'q — moderator bo'sh
- * qoladi va lidni birinchi bo'lib ishlagan xodimga biriktiriladi
- * (lib/leadHolatServer.ts → assignModerator). Manba — kanal:
- * "Sayt so'rovnomasi"; odamning "bizni qayerdan bildingiz?" javobi
- * alohida (`heardFrom`), `source` lug'ati aralashmasin.
+ * Odam O'ZI to'ldirgan anketadan lid — so'rovnoma (/sorovnoma) yoki bot
+ * («📝 Kursga yozilish»). Muallif yo'q — moderator bo'sh qoladi va lidni
+ * birinchi bo'lib ishlagan xodimga biriktiriladi (lib/leadHolatServer.ts →
+ * assignModerator). Manba — KANAL (`source`); odamning "bizni qayerdan
+ * bildingiz?" javobi alohida (`heardFrom`), `source` lug'ati aralashmasin.
+ * Filial Telegram topigiga xabar — ikkala kanalda bir xil (`notifyNewLead`).
  */
-export async function createSurveyLead(db: Db, input: SurveyLeadInput, deps: AdjustDeps): Promise<InsertedOrder> {
+async function insertSelfServeLead(
+  db: Db,
+  input: SurveyLeadInput,
+  source: string,
+  extra: Partial<Order>,
+  deps: AdjustDeps,
+): Promise<InsertedOrder> {
   const order = await insertLead(db, input.branchId, (id) => ({
     ...buildOrderFromValues(id, {
       studentName: input.name,
@@ -196,14 +203,38 @@ export async function createSurveyLead(db: Db, input: SurveyLeadInput, deps: Adj
       firstLessonTime: "",
       note: input.note,
       moderator: "",
-      source: SURVEY_SOURCE,
+      source,
     }),
     yonalish: input.yonalish,
     ...(input.daraja ? { daraja: input.daraja } : {}),
     ...(input.sinf ? { sinf: input.sinf } : {}),
     qulayVaqt: input.qulayVaqt,
     heardFrom: input.heardFrom,
+    ...extra,
   }));
   deps.defer(() => notifyNewLead(db, order, input.branchId));
   return order;
+}
+
+/** So'rovnomadan kelgan lid (/sorovnoma) — manba "Sayt so'rovnomasi". */
+export function createSurveyLead(db: Db, input: SurveyLeadInput, deps: AdjustDeps): Promise<InsertedOrder> {
+  return insertSelfServeLead(db, input, SURVEY_SOURCE, {}, deps);
+}
+
+/**
+ * Botdagi «📝 Kursga yozilish» dan kelgan lid (16.10.2026) — manba "Telegram bot",
+ * odamning Telegram hisobi lidda (`tgUser`) va filial topigidagi xabarda.
+ */
+export function createBotLead(
+  db: Db,
+  input: SurveyLeadInput,
+  tg: { chatId: number; username?: string; name?: string },
+  deps: AdjustDeps,
+): Promise<InsertedOrder> {
+  const tgUser = {
+    chatId: tg.chatId,
+    ...(tg.username ? { username: tg.username } : {}),
+    ...(tg.name ? { name: tg.name } : {}),
+  };
+  return insertSelfServeLead(db, input, BOT_SOURCE, { tgUser }, deps);
 }

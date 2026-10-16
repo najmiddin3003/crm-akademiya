@@ -124,3 +124,30 @@ export function validateSurvey(cfg: SurveyConfig, b: Partial<SurveySubmission>):
     value: { name, phone: formatPhone9(tel), branchId: branch.id, yonalish: yon.id, course, daraja, sinf, qulayVaqt, heardFrom, note },
   };
 }
+
+// ── Bot anketasi uchun (lib/studentBot/signup.ts, 16.10.2026) ─────────────
+// Qadamma-qadam so'ralgani uchun javob DARHOL tekshiriladi — `validateSurvey`
+// dagi AYNAN o'sha qoidalar bilan (oxirida u baribir to'liq tekshiradi).
+
+/** Ism familiya yaroqli bo'lsa tozalangan qiymat, aks holda `null`. */
+export function cleanSurveyName(raw: unknown): string | null {
+  const name = clean(raw, 80);
+  return name.length >= 3 && /\p{L}/u.test(name) && !LINK_RE.test(name) ? name : null;
+}
+
+/** Izoh (ixtiyoriy) — havolasiz bo'lsa tozalangan qiymat, aks holda `null`. */
+export function cleanSurveyNote(raw: unknown): string | null {
+  const note = clean(raw, 500);
+  return LINK_RE.test(note) ? null : note;
+}
+
+/**
+ * O'zbekiston raqami → 9 raqam ("901234567"), aks holda `null`.
+ * `phone9` dan qat'iyroq: chet el raqami (+7 …) kesilib, soxta o'zbek
+ * raqamiga aylanib qolmasin — kontakt tugmasi istalgan raqamni yuboradi.
+ */
+export function uzPhone9(raw: unknown): string | null {
+  const d = String(raw ?? "").replace(/\D/g, "");
+  const nine = d.length === 12 && d.startsWith("998") ? d.slice(3) : d.length === 9 ? d : "";
+  return nine && !/^(\d)\1+$/.test(nine) ? nine : null;
+}
