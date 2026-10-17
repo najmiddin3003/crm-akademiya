@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, fetchJson } from "@/lib/fetchJson";
-import type { InboxAnswer, InboxPayload, InboxTask } from "@/lib/taskInbox";
+import type { InboxAnswer, InboxPayload, InboxStaffTask, InboxTask } from "@/lib/taskInbox";
+import { ACTIVE_STATUSES } from "@/lib/staffTasks";
 import { useT } from "@/components/shared/Language";
 
 // XODIMNING SHAXSIY TOPSHIRIQ OYNASI — yagona klient manbasi.
@@ -65,6 +66,17 @@ export interface TaskInboxValue {
   pending: InboxTask[];
   /** Men bergan topshiriqlarga kelgan, hali ko'rilmagan hisobotlar. */
   reports: InboxTask[];
+  /** Xodim topshiriqlari (/tasks): menga berilgan, yopilmagan (17.10.2026). */
+  staffMine: InboxStaffTask[];
+  /** Xodim topshiriqlari: men bergan, yopilmagan. */
+  staffGiven: InboxStaffTask[];
+  /**
+   * Ikonkadagi son: MENING harakatimni kutayotganlar — javob kutayotgan eski
+   * topshiriqlar + menga berilgan faol xodim topshiriqlari.
+   */
+  actionPending: number;
+  /** Ko'rib chiqishimni kutayotganlar — hisobotlar + tasdig'imni kutayotgan topshiriqlar. */
+  actionReports: number;
   status: "loading" | "ok" | "error";
   everLoaded: boolean;
   /** Server soati − klient soati (ms) — hisoblagich shu bilan tuzatiladi. */
@@ -82,6 +94,10 @@ export interface TaskInboxValue {
 const EMPTY: TaskInboxValue = {
   pending: [],
   reports: [],
+  staffMine: [],
+  staffGiven: [],
+  actionPending: 0,
+  actionReports: 0,
   status: "loading",
   everLoaded: false,
   skewMs: 0,
@@ -100,6 +116,8 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
   const { showSuccess } = useToast();
   const [pending, setPending] = useState<InboxTask[]>([]);
   const [reports, setReports] = useState<InboxTask[]>([]);
+  const [staffMine, setStaffMine] = useState<InboxStaffTask[]>([]);
+  const [staffGiven, setStaffGiven] = useState<InboxStaffTask[]>([]);
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   const [everLoaded, setEverLoaded] = useState(false);
   const [skewMs, setSkewMs] = useState(0);
@@ -121,6 +139,9 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
       lastOkAt.current = Date.now();
       setPending(d.pending);
       setReports(d.reports);
+      // Eski server (deploy oralig'ida) bu maydonlarni bermasligi mumkin.
+      setStaffMine(d.staffMine ?? []);
+      setStaffGiven(d.staffGiven ?? []);
       setStatus("ok");
       setEverLoaded(true);
 
@@ -214,9 +235,15 @@ export function TaskInboxProvider({ children }: { children: React.ReactNode }) {
   const closeModal = useCallback(() => setOpen(false), []);
   const reload = useCallback(() => { void run(); }, [run]);
 
+  // Xodim topshiriqlari avtomatik ochilish/toast'ga QO'SHILMAYDI (ular
+  // haqida qo'ng'iroq lentasi va sidebar nishoni allaqachon xabar beradi) —
+  // faqat ikonkadagi sonda.
+  const actionPending = pending.length + staffMine.filter((x) => ACTIVE_STATUSES.includes(x.status)).length;
+  const actionReports = reports.length + staffGiven.filter((x) => x.status === "tasdiq_kutilmoqda").length;
+
   const value = useMemo<TaskInboxValue>(
-    () => ({ pending, reports, status, everLoaded, skewMs, open, openModal, closeModal, answer, markReportsSeen, reload }),
-    [pending, reports, status, everLoaded, skewMs, open, openModal, closeModal, answer, markReportsSeen, reload],
+    () => ({ pending, reports, staffMine, staffGiven, actionPending, actionReports, status, everLoaded, skewMs, open, openModal, closeModal, answer, markReportsSeen, reload }),
+    [pending, reports, staffMine, staffGiven, actionPending, actionReports, status, everLoaded, skewMs, open, openModal, closeModal, answer, markReportsSeen, reload],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

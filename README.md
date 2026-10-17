@@ -1855,6 +1855,34 @@ Deploydan keyin (ruxsat bilan): `node scripts/set-telegram-webhook.mjs --command
 (shaxsiy chatlarda /start /kassa /chiqish). Webhook manzillari o'zgarmaydi;
 o'quvchilar botiga TEGILMAYDI (ManyChat).
 
+### Botda topshiriqlar + «Men bergan» (2026-10-17)
+
+Foydalanuvchi: «topshiriqlarni botga ham qo'sh hamda rahbar oynasiga o'zi bergan
+topshiriqlarni ham ko'rinadigan qil». Faqat XODIM TOPSHIRIQLARI (/tasks,
+`staff_tasks`) — eski `tasks` (o'quvchi «Vazifa»si, prod'da 2 ta yozuv) tegilmagan.
+
+- **Yadro bitta** — `lib/staffTaskActions.ts`: done | approve | return | cancel va
+  «Ko'rildi» (17.10 da `app/api/staff-tasks/[id]/route.ts` dan ko'chirildi, xato
+  matnlari va kodlari o'sha). Web route ham, bot ham shuni chaqiradi.
+- **Bot** (`lib/staffBot/tasks.ts`, tugmalar `s:v:…`): menyuda «📌 Topshiriqlar (N)»
+  — N = menga berilgan faollar + tasdig'imni kutayotganlar. «📥 Menga berilgan» →
+  karta → «✅ Bajardim» (izoh ixtiyoriy, matn bilan yoki «Izohsiz yuborish»).
+  «📤 Men bergan» (rahbar/direktor, parol bilan kirgan) → «✅ Tasdiqlash» (ikki
+  bosish) yoki «↩️ Qaytarish» (sabab majburiy + muddat tugmasi:
+  `quickDeadlines`, variantlar qoralamada). Raqam ulashib kirgan — oddiy ijrochi;
+  tasdiqlash uchun parol bilan kirish so'raladi. O'qituvchida ham bor.
+- **Push** (`lib/staffBot/taskNotify.ts`): yangi topshiriq → ijrochiga (✅ Bajardim
+  tugmasi bilan); «Bajardim» → topshiriq berganga (Tasdiqlash/Qaytarish);
+  tasdiqlandi / qaytarildi / bekor qilindi → ijrochiga. Chaqiruvlar: POST
+  /api/staff-tasks, POST /api/staff-tasks/:id (`after`), AI (`deps.defer`), bot.
+  Avtomatik o'tishlar (muddati o'tdi, bajarilmadi/jarima) uchun push YO'Q.
+- **Sayt oynasi** («Mening topshiriqlarim», navbardagi ikonka): `GET /api/tasks/inbox`
+  endi `staffMine` va `staffGiven` ham beradi; oynada «Menga berilgan» va «Men bergan»
+  tablari, qator `/tasks?open=<id>` ni ochadi (amallar o'sha kartada). Eski bo'limlar
+  — «O'quvchi vazifalari» va «Hisobotlar». Ikonkadagi son — `actionPending` /
+  `actionReports` (TaskInboxProvider). Xodim topshiriqlari oynani o'zi OCHMAYDI va
+  toast chiqarmaydi (qo'ng'iroq lentasi bor).
+
 ### 2-bosqich — Chiqim (2026-09-18)
 
 `lib/staffBot/chiqim.ts`. Web'dagi Chiqim oynasi bilan bir xil qoidalar:

@@ -101,6 +101,12 @@ export interface StaffAccess {
   canCash: boolean;
   /** Lid qo'shish ruxsati — `/orders-list` (POST /api/orders shu kalit bilan yopiq). */
   canLead: boolean;
+  /**
+   * Bo'lim ruxsatlari (lib/rolePermissions.ts; `null` — cheklovsiz, admin).
+   * Topshiriqlarda rahbarmi-yo'qmi shundan (lib/staffTasksServer.ts →
+   * loadViewer, `/tasks` bo'limi). Raqam ulashib kirganda — bo'sh ro'yxat.
+   */
+  permissions: string[] | null;
   /** `null` — xodimga kassa biriktirilmagan (yoki admin tanlagan kassa yo'qolgan). */
   cashbox: BotCashbox | null;
 }
@@ -212,6 +218,7 @@ async function resolveProfileAccess(db: Db, user: StaffBotUser): Promise<AccessR
       isTeacher: emp.turi === "teacher",
       canCash: false,
       canLead: false,
+      permissions: [],
       cashbox: null,
     },
   };
@@ -262,6 +269,7 @@ export async function resolveAccess(db: Db, user: StaffBotUser): Promise<AccessR
       isTeacher: turi === "teacher" && !isAdmin,
       canCash: isPathAllowed("/finance-cash", perms),
       canLead: isPathAllowed("/orders-list", perms),
+      permissions: perms,
       cashbox: await findBotCashbox(db, { isAdmin, name, cashboxId: user.cashboxId }),
     },
   };

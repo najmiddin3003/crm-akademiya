@@ -259,8 +259,9 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
   // hisobot kelgan bo'lsa yashil; ikkisi ham yo'q — oddiy ikonka. Qo'ng'iroq
   // kabi: yuklanguncha nishon chizilmaydi.
   const inbox = useTaskInbox();
-  const inboxPending = inbox.everLoaded ? inbox.pending.length : 0;
-  const inboxReports = inbox.everLoaded ? inbox.reports.length : 0;
+  // 17.10.2026 dan /tasks dagi xodim topshiriqlari ham (TaskInboxProvider → action*).
+  const inboxPending = inbox.everLoaded ? inbox.actionPending : 0;
+  const inboxReports = inbox.everLoaded ? inbox.actionReports : 0;
   const inboxCount = inboxPending + inboxReports;
   const inboxTone = inboxPending > 0 ? "nav-btn-task-alert" : inboxReports > 0 ? "nav-btn-task-info" : "";
   const inboxTitle = inboxPending > 0

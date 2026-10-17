@@ -26,6 +26,7 @@ import type { FlowCtx } from "@/lib/staffBot/flow";
 import { kirimCallback, kirimText, startKirim } from "@/lib/staffBot/kirim";
 import { leadCallback, leadText, startLead } from "@/lib/staffBot/lead";
 import { startTransfer, transferCallback, transferText } from "@/lib/staffBot/transfer";
+import { taskMenuCount, tasksCallback, tasksText } from "@/lib/staffBot/tasks";
 import { showScreen, type Screen } from "@/lib/staffBot/screen";
 import {
   completeContactLogin,
@@ -133,23 +134,24 @@ export async function handleStaffUpdate(
 
 async function menuScreen(db: Db, access: StaffAccess): Promise<Screen> {
   // «🏁 Ishdan ketdim» tugmasi faqat admin yoqqanda (QR ekranidagi sozlama).
-  const { checkoutEnabled } = await loadAttendanceSettings(db);
+  // «📌 Topshiriqlar» tugmasidagi son — harakat kutayotganlar (lib/staffBot/tasks.ts).
+  const [{ checkoutEnabled }, tasks] = await Promise.all([loadAttendanceSettings(db), taskMenuCount(db, access)]);
   // O'qituvchi — kassa/lidsiz menyu (qanday kirganidan qat'i nazar).
   if (access.isTeacher) {
     return {
       html: V.profileMenuView(access.identity.name, false),
-      keyboard: mainMenu({ profileOnly: true, webLogin: false, checkoutEnabled, teacher: true }),
+      keyboard: mainMenu({ profileOnly: true, webLogin: false, checkoutEnabled, teacher: true, tasks }),
     };
   }
   if (access.profileOnly) {
     return {
       html: V.profileMenuView(access.identity.name, access.webLogin),
-      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin, checkoutEnabled, teacher: false }),
+      keyboard: mainMenu({ profileOnly: true, webLogin: access.webLogin, checkoutEnabled, teacher: false, tasks }),
     };
   }
   return {
     html: V.menuView(access.identity.name, access.cashbox, access.identity.isAdmin),
-    keyboard: mainMenu({ profileOnly: false, webLogin: true, checkoutEnabled, teacher: false }),
+    keyboard: mainMenu({ profileOnly: false, webLogin: true, checkoutEnabled, teacher: false, tasks }),
   };
 }
 
@@ -401,6 +403,8 @@ async function handleMessage(db: Db, cfg: StaffBotConfig, msg: TgMessage, defer:
   }
 
   // Qoralama matn kutayotgan bo'lsa — unga (har oqim o'z qoralamasini taniydi).
+  // Topshiriq (izoh, qaytarish sababi) — HAMMADA, o'qituvchida ham.
+  if (text && !text.startsWith("/") && (await tasksText(ctx, text))) return;
   // O'qituvchida kassa/lid oqimi yo'q (eski qoralama qolgan bo'lsa ham).
   if (text && !text.startsWith("/") && !access.isTeacher) {
     if (await kirimText(ctx, text)) return;
@@ -487,6 +491,12 @@ async function handleCallback(db: Db, cfg: StaffBotConfig, cq: TgCallbackQuery, 
   }
   if (data.startsWith("s:l:")) {
     const r = await leadCallback(ctx, data);
+    await answerStaff(cfg, cq.id, r.toast ?? "");
+    return;
+  }
+  // Topshiriqlar (17.10.2026) — hammada, o'qituvchida ham.
+  if (data.startsWith("s:v:")) {
+    const r = await tasksCallback(ctx, data);
     await answerStaff(cfg, cq.id, r.toast ?? "");
     return;
   }

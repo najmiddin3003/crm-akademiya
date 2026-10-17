@@ -5,6 +5,7 @@ import { withLeadScope } from "@/lib/leadScope";
 import { createOrder } from "@/lib/ordersCreate";
 import { addPupilComment } from "@/lib/pupilComments";
 import { findBotCashbox } from "@/lib/staffBot/auth";
+import { notifyStaffTasksCreated } from "@/lib/staffBot/taskNotify";
 import { createStaffTasks } from "@/lib/staffTasksServer";
 import { uzDateIso } from "@/lib/uzTime";
 import { authorNameOf, taskViewerOf, type AiContext } from "../context";
@@ -159,6 +160,9 @@ export async function executeAction(ctx: AiContext, doc: ActionDoc, deps: Adjust
       employeeIds: p.employeeIds,
     });
     if (!out.ok) return { ok: false, error: out.error };
+    // Ijrochiga xodimlar botida xabar — web'dagi POST /api/staff-tasks bilan bir xil.
+    const docs = out.docs;
+    deps.defer(() => notifyStaffTasksCreated(db, docs));
     const [first] = out.docs;
     return {
       ok: true,

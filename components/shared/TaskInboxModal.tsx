@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ClipboardList, Eye, X } from "lucide-react";
+import { Check, ChevronRight, ClipboardList, Eye, X } from "lucide-react";
+import Link from "@/components/ui/Link";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import Segmented from "@/components/ui/Segmented";
 import { useTaskInbox } from "@/components/shared/TaskInboxProvider";
 import { ApiError } from "@/lib/fetchJson";
-import { OUTCOME_LABELS, REPORT_COMMENT_MAX, type InboxTask } from "@/lib/taskInbox";
+import { OUTCOME_LABELS, REPORT_COMMENT_MAX, type InboxStaffTask, type InboxTask } from "@/lib/taskInbox";
+import { ACTIVE_STATUSES, STATUS_LABEL, STATUS_TONE, ms, type Tone } from "@/lib/staffTasks";
 import { PRIORITY_META, remainingUz, type TaskOutcome } from "@/lib/tasksData";
 import { uzStamp } from "@/lib/uzTime";
-import { useT } from "@/components/shared/Language";
+import { useT, type TFn } from "@/components/shared/Language";
 
 // XODIMNING SHAXSIY TOPSHIRIQ OYNASI.
 //
@@ -24,8 +26,76 @@ import { useT } from "@/components/shared/Language";
 // QOLGAN VAQT jonli: har 30 soniyada qayta hisoblanadi, server soatiga
 // tekislangan (provider'dagi `skewMs`) — klient soati adashgan bo'lsa ham
 // "kechikdi" yolg'on bo'lmasin.
+//
+// 17.10.2026 dan XODIM TOPSHIRIQLARI (/tasks) ham shu oynada — foydalanuvchi:
+// «rahbar oynasiga o'zi bergan topshiriqlarni ham ko'rinadigan qil»:
+//   "Menga berilgan" — menga berilgan, yopilmagan topshiriqlar;
+//   "Men bergan"     — men bergan, yopilmagan (tasdig'imni kutayotgani tepada).
+// Qator /tasks?open=<id> ni ochadi — Bajardim/tasdiqlash/qaytarish o'sha
+// kartada (fayl, havola, tarix bilan). Yuqoridagi eski ikki bo'lim (`tasks`
+// kolleksiyasi) endi "O'quvchi vazifalari" va "Hisobotlar" nomi bilan.
 
-type Tab = "pending" | "reports";
+type Tab = "staff" | "pending" | "given" | "reports";
+
+/** Holat chipi ranglari — /tasks dagi `stk-tone-*` bilan bir ma'noda. */
+const TONE_CLASS: Record<Tone, string> = {
+  pri: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300",
+  vio: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
+  amber: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+  hot: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300",
+  ok: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
+  bad: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
+  gray: "bg-secondary text-muted-foreground",
+};
+
+/** Xodim topshiriqlari ro'yxati — har qator /tasks dagi kartani ochadi. */
+function StaffTaskRows({ items, given, nowMs, t, onOpen }: {
+  items: InboxStaffTask[];
+  given: boolean;
+  nowMs: number;
+  t: TFn;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="max-h-[65vh] overflow-y-auto p-3">
+      <ul className="space-y-1.5">
+        {items.map((x) => {
+          const due = ms(x.deadline);
+          const active = ACTIVE_STATUSES.includes(x.status);
+          const who = given ? x.employeeName : x.createdByName ? `${t("Bergan")}: ${x.createdByName}` : "";
+          return (
+            <li key={x.id}>
+              <Link
+                href={`/tasks?open=${x.id}`}
+                onClick={onOpen}
+                className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-secondary"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13.5px] font-semibold">{x.title || t("Topshiriq")}</div>
+                  {who && <div className="truncate text-[12px] text-muted-foreground">{who}</div>}
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${TONE_CLASS[STATUS_TONE[x.status]]}`}>
+                    {t(STATUS_LABEL[x.status])}
+                  </span>
+                  {active && Number.isFinite(due) && (
+                    <div className={`mt-1 text-[11px] font-medium tabular-nums ${remainingTone(due, nowMs)}`}>{remainingUz(due, nowMs)}</div>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex justify-end pt-2">
+        <Link href="/tasks" onClick={onOpen} className="text-[12px] font-medium text-primary hover:underline">
+          {t("Barcha topshiriqlar")} →
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 /** Qolgan vaqtning rangi — kartadagi muddat chipi bilan bir mantiq. */
 function remainingTone(dueMs: number, nowMs: number): string {
@@ -51,7 +121,7 @@ function targetOf(task: InboxTask, label = "Guruh"): string {
 export default function TaskInboxModal() {
   const inbox = useTaskInbox();
   const modal = useModalClose(inbox.closeModal);
-  const { pending, reports, skewMs } = inbox;
+  const { pending, reports, staffMine, staffGiven, skewMs } = inbox;
   const { t } = useT();
 
   // Server vaqtiga tekislangan "hozir" — holatda, render'da `Date.now()` emas.
@@ -63,15 +133,29 @@ export default function TaskInboxModal() {
     return () => clearInterval(timer);
   }, [skewMs]);
 
-  const [tabChoice, setTab] = useState<Tab>(pending.length > 0 ? "pending" : "reports");
-  // Bitta bo'lim bo'sh bo'lib qolsa (oxirgi javob berildi) ikkinchisi
-  // ko'rsatiladi — holatni effektda emas, render'da hosil qilamiz.
-  const tab: Tab =
-    tabChoice === "pending" && pending.length === 0 && reports.length > 0
-      ? "reports"
-      : tabChoice === "reports" && reports.length === 0 && pending.length > 0
-        ? "pending"
-        : tabChoice;
+  // Bo'limlar — faqat bo'shlari emas. Sukut: harakatimni kutayotgani
+  // (menga berilgan faol → javob kutayotgan vazifa → tasdig'imni kutayotgan
+  // → hisobot). Tanlangan bo'lim bo'shab qolsa sukutga qaytadi — holat
+  // effektda emas, render'da hosil qilinadi.
+  const staffActive = staffMine.filter((x) => ACTIVE_STATUSES.includes(x.status)).length;
+  const givenWaiting = staffGiven.filter((x) => x.status === "tasdiq_kutilmoqda").length;
+  const available: Tab[] = [
+    ...(staffMine.length > 0 ? (["staff"] as const) : []),
+    ...(pending.length > 0 ? (["pending"] as const) : []),
+    ...(staffGiven.length > 0 ? (["given"] as const) : []),
+    ...(reports.length > 0 ? (["reports"] as const) : []),
+  ];
+  const preferred: Tab = staffActive > 0
+    ? "staff"
+    : pending.length > 0
+      ? "pending"
+      : givenWaiting > 0
+        ? "given"
+        : reports.length > 0
+          ? "reports"
+          : (available[0] ?? "staff");
+  const [tabChoice, setTab] = useState<Tab | null>(null);
+  const tab: Tab = tabChoice !== null && available.includes(tabChoice) ? tabChoice : preferred;
 
   const [selectedId, setSelectedId] = useState<number | null>(pending[0]?.id ?? null);
   const selected = useMemo(
@@ -101,7 +185,7 @@ export default function TaskInboxModal() {
     try {
       await inbox.answer({ id: selected.id, outcome, comment: comment.trim() });
       // Oxirgi topshiriq javoblandi va hisobot ham yo'q — oyna o'zi yopiladi.
-      if (pending.length <= 1 && reports.length === 0) modal.close();
+      if (pending.length <= 1 && reports.length === 0 && staffMine.length === 0 && staffGiven.length === 0) modal.close();
     } catch (e) {
       setError(e instanceof ApiError ? t(e.message) : t("Javobni yuborib bo'lmadi"));
     } finally {
@@ -114,7 +198,7 @@ export default function TaskInboxModal() {
     setSeeing((s) => new Set([...s, ...ids]));
     try {
       await inbox.markReportsSeen(ids);
-      if (reports.length <= ids.length && pending.length === 0) modal.close();
+      if (reports.length <= ids.length && pending.length === 0 && staffMine.length === 0 && staffGiven.length === 0) modal.close();
     } catch {
       // Belgilanmadi — qator joyida qoladi, keyingi urinish mumkin.
     } finally {
@@ -122,16 +206,41 @@ export default function TaskInboxModal() {
     }
   };
 
-  const total = pending.length + reports.length;
-  const title = pending.length > 0 ? t("Topshiriq bajarilishi kutilmoqda") : t("Topshiriq hisobotlari");
-  const subtitle =
-    pending.length > 0
-      ? pending.length === 1
-        ? t("Sizga berilgan topshiriq javobingizni kutmoqda")
-        : t("Sizga berilgan {n} ta topshiriq javobingizni kutmoqda", { n: pending.length })
-      : reports.length === 1
-        ? t("Siz bergan topshiriq bo'yicha hisobot keldi")
-        : t("Siz bergan topshiriqlar bo'yicha {n} ta hisobot keldi", { n: reports.length });
+  const total = pending.length + reports.length + staffMine.length + staffGiven.length;
+  const head =
+    tab === "staff"
+      ? {
+          title: t("Menga berilgan topshiriqlar"),
+          subtitle: staffActive > 0 ? t("Bajarish kerak: {n} ta", { n: staffActive }) : t("Hammasi bajarilgan — rahbar tasdig'ini kutmoqda"),
+          alert: staffActive > 0,
+        }
+      : tab === "given"
+        ? {
+            title: t("Men bergan topshiriqlar"),
+            subtitle: t("Tasdig'ingizni kutmoqda: {n} ta · jami {m} ta", { n: givenWaiting, m: staffGiven.length }),
+            alert: false,
+          }
+        : tab === "pending"
+          ? {
+              title: t("Topshiriq bajarilishi kutilmoqda"),
+              subtitle: pending.length === 1
+                ? t("Sizga berilgan topshiriq javobingizni kutmoqda")
+                : t("Sizga berilgan {n} ta topshiriq javobingizni kutmoqda", { n: pending.length }),
+              alert: true,
+            }
+          : {
+              title: t("Topshiriq hisobotlari"),
+              subtitle: reports.length === 1
+                ? t("Siz bergan topshiriq bo'yicha hisobot keldi")
+                : t("Siz bergan topshiriqlar bo'yicha {n} ta hisobot keldi", { n: reports.length }),
+              alert: false,
+            };
+  const tabLabel: Record<Tab, string> = {
+    staff: t("Menga berilgan ({n})", { n: staffMine.length }),
+    pending: t("O'quvchi vazifalari ({n})", { n: pending.length }),
+    given: t("Men bergan ({n})", { n: staffGiven.length }),
+    reports: t("Hisobotlar ({reports})", { reports: reports.length }),
+  };
 
   return (
     <Modal
@@ -144,12 +253,12 @@ export default function TaskInboxModal() {
       panelClassName="overflow-y-auto"
     >
       <div className="flex items-start gap-3 border-b border-border px-5 py-4">
-        <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${pending.length > 0 ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"}`}>
+        <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${head.alert ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"}`}>
           <ClipboardList className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold leading-tight">{title}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+          <h3 className="text-base font-semibold leading-tight">{head.title}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{head.subtitle}</p>
         </div>
         <button
           type="button"
@@ -162,22 +271,27 @@ export default function TaskInboxModal() {
         </button>
       </div>
 
-      {pending.length > 0 && reports.length > 0 && (
+      {available.length > 1 && (
         <div className="px-5 pt-3">
           <Segmented
             size="sm"
             value={tab}
             onChange={(v) => setTab(v as Tab)}
-            options={[
-              { value: "pending", label: t("Menga berilgan ({pending})", { pending: pending.length }) },
-              { value: "reports", label: t("Hisobotlar ({reports})", { reports: reports.length }) },
-            ]}
+            options={available.map((value) => ({ value, label: tabLabel[value] }))}
           />
         </div>
       )}
 
       {total === 0 && (
         <div className="px-5 py-12 text-center text-sm text-muted-foreground">{t("Kutilayotgan topshiriq yo'q")}</div>
+      )}
+
+      {tab === "staff" && staffMine.length > 0 && (
+        <StaffTaskRows items={staffMine} given={false} nowMs={nowMs} t={t} onOpen={modal.close} />
+      )}
+
+      {tab === "given" && staffGiven.length > 0 && (
+        <StaffTaskRows items={staffGiven} given nowMs={nowMs} t={t} onOpen={modal.close} />
       )}
 
       {tab === "pending" && selected && (

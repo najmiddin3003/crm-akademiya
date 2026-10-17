@@ -8,6 +8,8 @@ import { lessonDaysLabel, parseLessonDays } from "@/lib/ordersData";
 import type { ChiqimDraft, KirimDraft, LeadDraft, TransferDraft } from "@/lib/staffBot/session";
 import { payrollMonthKey, payrollPeriod, prevMonthKey } from "@/lib/salary";
 import type { TransferPendingInfo } from "@/lib/staffBot/notify";
+import { STATUS_LABEL, durParts, ms, uzDateOf, uzTimeOf, type StaffTaskStatus } from "@/lib/staffTasks";
+import type { StaffTaskDoc } from "@/lib/staffTasksServer";
 
 // Xodimlar boti — EKRAN MATNLARI. Faqat matn yig'adi, bazaga tegmaydi.
 //
@@ -819,4 +821,240 @@ export function noteMonthClash(noteMonths: number[], periodMonth: string): strin
   const names = noteMonths.map((m) => MONTHS.uz[m - 1] ?? String(m)).join(", ");
   return `⚠️ Izohda <b>${esc(names)}</b> yozilgan, lekin to'lov <b>${esc(monthLabel(periodMonth))}</b> uchun. `
     + "Izohdagi oyni to'g'rilang yoki izohsiz davom eting.";
+}
+
+// ── Topshiriqlar (17.10.2026, lib/staffBot/tasks.ts) ────────────────
+//
+// Holat nomlari web bilan bir xil (lib/staffTasks.ts → STATUS_LABEL); vaqt
+// Toshkent devor-soatida.
+
+const TASK_ICON: Record<StaffTaskStatus, string> = {
+  yangi: "🆕",
+  tasdiq_kutilmoqda: "⏳",
+  qaytarildi: "↩️",
+  muddati_otdi: "⏰",
+  yakunlandi: "✅",
+  bajarilmadi: "❌",
+  bekor: "🚫",
+};
+
+const UNIT_UZ = { min: "daqiqa", hour: "soat", day: "kun" } as const;
+
+/** Toshkent vaqti: "17.10.2026 18:00". */
+function whenUz(iso: string | null | undefined): string {
+  const t = ms(iso);
+  return Number.isFinite(t) ? `${dmy(uzDateOf(t))} ${uzTimeOf(t)}` : "—";
+}
+
+/** "3 soat qoldi" / "2 kun kechikdi". */
+function leftUz(iso: string | null | undefined, nowMs: number): string {
+  const delta = ms(iso) - nowMs;
+  if (!Number.isFinite(delta)) return "";
+  const { n, unit } = durParts(delta);
+  return delta >= 0 ? `${n} ${UNIT_UZ[unit]} qoldi` : `${n} ${UNIT_UZ[unit]} kechikdi`;
+}
+
+const clipText = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
+const stars = (p: number) => "★".repeat(p) + "☆".repeat(Math.max(0, 5 - p));
+const isActiveTask = (s: StaffTaskStatus) => s === "yangi" || s === "qaytarildi" || s === "muddati_otdi";
+
+/** Oxirgi qaytarish sababi — tarixdan. */
+function lastReturnNote(t: StaffTaskDoc): string {
+  for (let i = (t.history?.length ?? 0) - 1; i >= 0; i--) {
+    const e = t.history[i];
+    if (e.kind === "returned") return e.text ?? "";
+  }
+  return "";
+}
+
+/** Ro'yxat tugmasi: "⏰ Ali: Hisobotni topshirish · 17.10 18:00". */
+export function taskButtonLabel(t: StaffTaskDoc, withName: boolean): string {
+  const due = ms(t.status === "muddati_otdi" && t.redeadline ? t.redeadline : t.deadline);
+  const when = Number.isFinite(due) ? ` · ${dmy(uzDateOf(due)).slice(0, 5)} ${uzTimeOf(due)}` : "";
+  const who = withName ? `${t.employeeName.split(/\s+/)[0]}: ` : "";
+  return `${TASK_ICON[t.status]} ${who}${clipText(t.title, 34)}${when}`;
+}
+
+/** Topshiriq kartasi. `as` — kim ko'rmoqda: ijrochi yoki bergan/rahbar. */
+export function taskCardView(t: StaffTaskDoc, as: "mine" | "given", nowMs: number): string {
+  const lines = [`📌 <b>${esc(t.title)}</b>`];
+  if (t.desc) lines.push("", esc(clipText(t.desc, 700)));
+  lines.push("", `Holat: ${TASK_ICON[t.status]} <b>${STATUS_LABEL[t.status]}</b>`);
+  if (t.status === "muddati_otdi" && t.redeadline) {
+    lines.push(`Muddat: ${whenUz(t.deadline)} (o'tgan)`);
+    lines.push(`Qayta muddat: <b>${whenUz(t.redeadline)}</b> — ${leftUz(t.redeadline, nowMs)}`);
+    if (t.fineAmount > 0) lines.push(`⚠️ Bu muddatda ham bajarilmasa jarima: <b>${fmtMoney(t.fineAmount)}</b>`);
+  } else {
+    lines.push(`Muddat: <b>${whenUz(t.deadline)}</b>${isActiveTask(t.status) ? ` — ${leftUz(t.deadline, nowMs)}` : ""}`);
+    lines.push(`Muhimlik: ${stars(t.priority)}${t.fineAmount > 0 && isActiveTask(t.status) ? ` · bajarilmasa jarima ${fmtMoney(t.fineAmount)}` : ""}`);
+  }
+  lines.push(as === "mine" ? `Bergan: ${esc(t.createdBy?.name || "—")}` : `Ijrochi: <b>${esc(t.employeeName)}</b>`);
+  if (t.link) lines.push(`🔗 ${esc(t.link)}`);
+  if (t.attachments?.length) lines.push(`📎 ${t.attachments.length} ta fayl — saytda`);
+  if (t.status === "qaytarildi") {
+    const note = lastReturnNote(t);
+    if (note) lines.push("", `↩️ Qaytarish sababi: ${esc(clipText(note, 400))}`);
+  }
+  if (t.status === "tasdiq_kutilmoqda") {
+    lines.push("", `✅ <b>Bajarildi</b> — ${whenUz(t.doneAt)}${t.isLate ? " (kechikib)" : ""}`);
+    if (t.doneNote) lines.push(`Izoh: ${esc(clipText(t.doneNote, 500))}`);
+    if (t.resultLink) lines.push(`🔗 ${esc(t.resultLink)}`);
+    if (t.resultFile) lines.push("📎 Natija fayli — saytda");
+    if (as === "mine") lines.push("", "<i>Rahbar tasdiqlashini kutmoqda.</i>");
+  }
+  if (t.status === "bekor" && t.cancelReason) lines.push(`Sabab: ${esc(clipText(t.cancelReason, 400))}`);
+  return lines.join("\n");
+}
+
+export function myTasksView(tasks: StaffTaskDoc[], shown: number): string {
+  const active = tasks.filter((t) => isActiveTask(t.status)).length;
+  const waiting = tasks.filter((t) => t.status === "tasdiq_kutilmoqda").length;
+  const lines = ["📥 <b>Sizga berilgan topshiriqlar</b>", ""];
+  if (tasks.length === 0) {
+    lines.push("Hozircha ochiq topshiriq yo'q ✅");
+  } else {
+    lines.push(`Bajarish kerak: <b>${active}</b>`);
+    if (waiting) lines.push(`Rahbar tasdig'ini kutmoqda: <b>${waiting}</b>`);
+    lines.push("", "Batafsil ko'rish uchun topshiriqni tanlang 👇");
+    if (tasks.length > shown) lines.push(`<i>Eng yaqin ${shown} tasi ko'rsatildi — hammasi saytda.</i>`);
+  }
+  return lines.join("\n");
+}
+
+export function givenTasksView(tasks: StaffTaskDoc[], shown: number): string {
+  const waiting = tasks.filter((t) => t.status === "tasdiq_kutilmoqda").length;
+  const overdue = tasks.filter((t) => t.status === "muddati_otdi").length;
+  const inWork = tasks.length - waiting - overdue;
+  const lines = ["📤 <b>Siz bergan topshiriqlar</b>", ""];
+  if (tasks.length === 0) {
+    lines.push("Siz bergan ochiq topshiriq yo'q.");
+  } else {
+    lines.push(`Tasdig'ingizni kutmoqda: <b>${waiting}</b>`);
+    lines.push(`Jarayonda: <b>${inWork}</b>`);
+    if (overdue) lines.push(`Muddati o'tgan: <b>${overdue}</b>`);
+    lines.push("", "Batafsil ko'rish uchun topshiriqni tanlang 👇");
+    if (tasks.length > shown) lines.push(`<i>Birinchi ${shown} tasi ko'rsatildi — hammasi saytda.</i>`);
+  }
+  return lines.join("\n");
+}
+
+export function taskNotFound(): string {
+  return "🔍 Topshiriq topilmadi yoki uni ko'rish huquqingiz yo'q.";
+}
+
+export function taskActionFailed(error: string): string {
+  return `⚠️ ${esc(error)}`;
+}
+
+export function taskDonePrompt(t: StaffTaskDoc): string {
+  return [
+    `✅ <b>${esc(t.title)}</b>`,
+    "",
+    "Nima qildingiz? Qisqa izoh yozing — rahbarga boradi.",
+    "Izohsiz ham yuborishingiz mumkin.",
+    "",
+    "<i>Fayl yoki havola biriktirish — saytdagi topshiriq oynasida.</i>",
+  ].join("\n");
+}
+
+export function taskDoneSent(t: StaffTaskDoc, late: boolean): string {
+  return [
+    "✅ <b>Yuborildi</b>",
+    "",
+    `«${esc(t.title)}» — rahbar tasdiqlashini kutadi.`,
+    ...(late ? ["", "⏰ Muddat o'tgan edi — «kechikib bajarildi» deb belgilandi."] : []),
+  ].join("\n");
+}
+
+export function taskApproveSure(t: StaffTaskDoc): string {
+  return [
+    "Topshiriqni tasdiqlaysizmi?",
+    "",
+    `<b>${esc(t.title)}</b>`,
+    `Ijrochi: ${esc(t.employeeName)}`,
+    ...(t.isLate ? ["⏰ Kechikib bajarilgan"] : []),
+    ...(t.doneNote ? [`Izoh: ${esc(clipText(t.doneNote, 500))}`] : []),
+  ].join("\n");
+}
+
+export function taskApprovedView(t: StaffTaskDoc): string {
+  return `✅ <b>Tasdiqlandi</b>\n\n«${esc(t.title)}» — ${esc(t.employeeName)}. Topshiriq yakunlandi.`;
+}
+
+export function taskReturnPrompt(t: StaffTaskDoc): string {
+  return [
+    `↩️ <b>${esc(t.title)}</b>`,
+    `Ijrochi: ${esc(t.employeeName)}`,
+    "",
+    "Nimani to'g'rilash kerak? Yozib yuboring — ijrochiga boradi.",
+  ].join("\n");
+}
+
+export function taskReturnDeadlinePrompt(t: StaffTaskDoc, note: string, hasOptions: boolean): string {
+  return [
+    `↩️ <b>${esc(t.title)}</b>`,
+    "",
+    `Sabab: ${esc(clipText(note, 500))}`,
+    "",
+    hasOptions ? "Yangi muddatni tanlang 👇" : "Bugun uchun tayyor muddat qolmadi — topshiriqni saytda qaytaring.",
+  ].join("\n");
+}
+
+export function taskReturnedView(t: StaffTaskDoc, deadline: string): string {
+  return `↩️ <b>Qaytarildi</b>\n\n«${esc(t.title)}» — ${esc(t.employeeName)} ga qaytarildi.\nYangi muddat: <b>${whenUz(deadline)}</b>`;
+}
+
+export function taskNeedsPassword(): string {
+  return "🔑 Tasdiqlash va qaytarish uchun parol bilan kiring — bosh menyudagi «Parol bilan kirish».";
+}
+
+// Push xabarlar (lib/staffBot/taskNotify.ts) — tizim o'zi yozadi.
+
+export function taskNewPush(t: StaffTaskDoc, nowMs: number): string {
+  return `📌 <b>Sizga yangi topshiriq</b>\n\n${taskCardView(t, "mine", nowMs)}`;
+}
+
+export function taskReturnedPush(t: StaffTaskDoc, note: string, nowMs: number): string {
+  return [
+    "↩️ <b>Topshiriq qaytarildi</b>",
+    "",
+    `<b>${esc(t.title)}</b>`,
+    `Sabab: ${esc(clipText(note, 500))}`,
+    `Yangi muddat: <b>${whenUz(t.deadline)}</b> — ${leftUz(t.deadline, nowMs)}`,
+    `Bergan: ${esc(t.createdBy?.name || "—")}`,
+  ].join("\n");
+}
+
+export function taskApprovedPush(t: StaffTaskDoc): string {
+  return [
+    "✅ <b>Topshiriq tasdiqlandi</b>",
+    "",
+    `<b>${esc(t.title)}</b>`,
+    t.completedLate ? "Kechikib bajarilgan deb belgilandi." : "Rahmat — o'z vaqtida bajarildi!",
+  ].join("\n");
+}
+
+export function taskCancelledPush(t: StaffTaskDoc, reason: string): string {
+  return [
+    "🚫 <b>Topshiriq bekor qilindi</b>",
+    "",
+    `<b>${esc(t.title)}</b>`,
+    `Sabab: ${esc(clipText(reason, 500))}`,
+    "",
+    "Endi bajarish shart emas.",
+  ].join("\n");
+}
+
+export function taskDonePush(t: StaffTaskDoc): string {
+  return [
+    `📥 <b>${esc(t.employeeName)} topshiriqni bajardi</b>`,
+    "",
+    `<b>${esc(t.title)}</b>`,
+    ...(t.isLate ? ["⏰ Kechikib bajarildi"] : []),
+    `Izoh: ${t.doneNote ? esc(clipText(t.doneNote, 500)) : "—"}`,
+    ...(t.resultLink ? [`🔗 ${esc(t.resultLink)}`] : []),
+    ...(t.resultFile ? ["📎 Natija fayli — saytda"] : []),
+    "",
+    "Tasdiqlaysizmi yoki qaytarasizmi?",
+  ].join("\n");
 }
