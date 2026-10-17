@@ -234,6 +234,47 @@ Qoidalar (dizayndagi izohdan):
 7. Takror lid — ism yonida «Takroriy» belgisi. Holat — holat belgisi.
 8. Pastda: «1–5 / 29 ta lid» va sahifalash.
 
+## Navigatsiya — yon menyu
+
+Yon menyu sahifa foni ustida (`bg-v2-bg`), eni ~250 px (rasm ~0.75×), band balandligi ~36.
+Ichki menyular hozirgidek yon tomonga ochiladigan panel EMAS — **joyida ochiladi** (akkordeon).
+
+**Tepada:**
+- Logotip (`--v2-logo` kvadratda oq ikonka) + «Tizimli» + menyuni yig'ish tugmasi.
+- **Filial tanlovi** — kartochka (`surface` + `border`, `rounded-v2-lg`): chapda filial raqami
+  (`brand-bg` kvadratda `brand-text`), nomi (qalin) va «Joriy filial» (`caption`, `text-3`),
+  o'ngda ⇅. Hozir u yuqori paneldagi tanlovda — yangi versiyada menyuga ko'chadi.
+
+**Bandlar:** ikonka (16–20 px) + nom (`text-v2-body`, `text-v2-text-2`); o'ngda son
+(`text-v2-text-3`, masalan «Lidlar 29») yoki ochiladigan bo'lsa › (`text-3`).
+**Bo'lim sarlavhalari** — `caption`, `text-3`. **Ochiq guruh** — nomi `text-v2-text` qalin,
+ikonkasi `brand`, ichki bandlar o'ngga surilgan va chapda ingichka `v2-border` chiziq bilan
+bog'langan; **faol ichki band** — oq kartochka (`surface` + `border`, `rounded-v2-md`),
+yozuvi `text-v2-text` qalin; qolganlari `text-2`.
+
+**Tuzilish (rasmdagi tartib) va hozirgi menyu bilan solishtirish:**
+
+| Bo'lim | Band | Hozirgi saytda |
+|---|---|---|
+| — | Rahbar paneli › | **YO'Q — yangi** |
+| — | Bosh sahifa | `/home` |
+| — | Topshiriqlar | `/tasks` |
+| O'quv jarayoni | Lidlar (son) › | Lidlar: `/orders-list`, `/first-lessons` |
+| | Guruh › | Guruh (6 ta ichki band) |
+| | O'quvchilar › | O'quvchilar (7 ta) |
+| | O'quv bo'limi › | O'quv bo'limi (5 ta) |
+| | Imtihon › | Imtihon (Sarhisob, UzBMB) |
+| | Gamifikatsiya › | Gamifikatsiya (5 ta) |
+| | — | **Blok test — yangi menyuda yo'q** |
+| Moliya va sotuv | Moliya ⌄: Kassalar, Kirim-chiqim, Kunlik topshiruv, Shartnomalar | Moliya — 15 ta band 3 ustunda; **«Kunlik topshiruv» — yangi** |
+| | Sotuv va marketing › | Sotuv va marketing (7 ta) |
+| | Hisobotlar › | Hisobotlar (keng panel) |
+| Jamoa va nazorat | Boshqaruv › | Boshqaruv (5 ta) |
+| | Nazorat › | Nazorat (11 ta) |
+| pastda | Sozlamalar · Amallar jurnali · Vaqtinchalik bo'lim · Texnik yordam | bor («Vaqtinchalik tugma» → «Vaqtinchalik bo'lim») |
+
+Ochiq savollar (yangi bandlar, yo'qolgan bandlar, son nimani sanaydi) — `SAVOLLAR.md` 13–17.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

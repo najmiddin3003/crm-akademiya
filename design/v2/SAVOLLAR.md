@@ -63,6 +63,31 @@ Hozirgi saytda hamma jadvallarning sarlavhasi scroll paytida tepada qotib turadi
 Yangi dizaynda ham shundaymi?
 *Taxmin:* ha, qotadi (ishlatuvchilar o'rganib qolgan).
 
+## Navigatsiya (yon menyu rasmidan)
+
+**13. «Rahbar paneli» — nima?** — ochiq
+Yangi menyuda birinchi band, hozirgi saytda bunday bo'lim yo'q.
+*Taxmin:* rahbar uchun umumiy ko'rsatkichlar sahifasi (filiallar, tushum, lidlar, davomat);
+dizayni kelganda quriladi.
+
+**14. «Blok test» yangi menyuda yo'q** — ochiq
+Hozir alohida bo'lim (Blok test turlari, Blok testlar).
+*Taxmin:* «Imtihon» bo'limi ichiga ko'chadi.
+
+**15. Moliya ichida faqat 4 band** — ochiq
+Rasmda: Kassalar, Kirim-chiqim, Kunlik topshiruv, Shartnomalar. Hozir Moliyada 15 band bor
+(Bonus, Jarima, Oylik chiqarish, Tushum rejasi, Moliya analitikasi, P&L, Pul oqimi,
+Tranzaksiyalar, Rejalashtirilgan xarajatlar, Sinxronizatsiya …).
+*Taxmin:* rasm qisqartirilgan — hammasi Moliya ichida qoladi. **«Kunlik topshiruv»** —
+yangi sahifa (nima ekanini tushuntirish kerak).
+
+**16. «Lidlar 29» — son nimani sanaydi?** — ochiq
+*Taxmin:* hali ishlanmagan (yangi) lidlar soni — bildirishnoma kabi.
+
+**17. Filial tanlovi yon menyuga ko'chadi** — ochiq
+Hozir yuqori panelda. Yangi versiyada yuqori paneldan olib tashlanadimi?
+*Taxmin:* ha, faqat menyuda; Chortoq (1+2) bitta qator bo'lib qoladi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
