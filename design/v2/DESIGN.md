@@ -384,6 +384,33 @@ o'quvchilarda — 3 ta asosiy filtr tepada + «Yana filtrlar». Qaysi sahifada q
   `tizimli_ui_notice` — server ham o'qiydi). Rang — «Ma'lumot», ogohlantirish emas.
   To'liq o'tishda ikkalasi olib tashlanadi.
 
+### Sahifalar yangi dizaynga qanday o'tadi (18.10.2026, birinchisi — O'quvchilar ro'yxati)
+
+- **Server sahifa versiyani tanlaydi**: `app/(app)/students-list/page.tsx` —
+  `currentUiVersion()` bo'yicha eski komponent yoki `components/v2/<bo'lim>/…V2.tsx`.
+  Birinchi chizishdayoq to'g'ri ko'rinish, miltillash yo'q.
+- **Ma'lumot va mantiq BITTA**: qatorlar, filtr variantlari, holat o'zgarishi —
+  `components/students/useStudentsList.ts`; filtrlash — `lib/studentsData.ts`; eksport —
+  `lib/studentsExport.ts`. Eski sahifa ham shulardan foydalanadi: versiyani almashtirgan
+  xodim aynan o'sha ro'yxat va o'sha summalarni ko'radi.
+- **Sahifa ildizi** `data-ui="v2"` + `bg-v2-surface` + `font-v2` (shundan keyin `color-scheme`
+  ham yangi tizimdan). Oynalar (o'quvchi qo'shish, guruh, SMS, holat) hozircha eski.
+- **Yangi UI bloklari — `components/v2/ui/`** (eski `ui/Select`, `ui/Pagination` v2 sahifada
+  ishlatilmaydi):
+  - `FloatingPanel` — `<body>` ga portal, o'zi `data-ui="v2"` oladi (aks holda tokenlar
+    yo'q); ichma-ich panel (oyna ichidagi tanlov) uchun ochilish tartibi: o'zidan keyin
+    ochilgan panelga bosish yopmaydi, Esc faqat eng ustdagini yopadi;
+  - `V2Select` — `field` («Hammasi ⌄», `border-field`) va `chip` («Kurs: Ingliz tili ×»,
+    `brand-bg` + `brand`); `ActionMenu` — «⋯», «Export», qator menyusi; `V2Checkbox`
+    (`indeterminate` bilan); `V2Pagination`.
+- **Jadval**: eski `.table-scroll` / `.table-box` klasslari ISHLATILMAYDI — globals.css dagi
+  qotgan sarlavha qoidasi eski rangni (`--secondary`) beradi va qatlamsiz bo'lgani uchun
+  utilitlardan kuchli. O'rniga `th` ga `sticky top-0 bg-v2-surface-2
+  shadow-[inset_0_-1px_0_var(--v2-border)]`; ≥1024 px jadval kartada ichidan aylanadi
+  (sahifa ildizi `lg:h-full`), torroqda — 70vh quti.
+- **Maydon foni**: globals.css dagi `input:focus { background … !important }` — v2 maydonida
+  `bg-v2-surface!` (yoki `bg-transparent!`).
+
 ## Ochiq savollar
 
 Hammasi bir joyda — [`SAVOLLAR.md`](SAVOLLAR.md) (oxirida birga ko'rib chiqiladi).

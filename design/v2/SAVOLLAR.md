@@ -135,6 +135,41 @@ tepada + «Yana filtrlar»; filtri kam sahifalarda — bitta «Filtr» tugmasi.
 «Qarzdorlik» yonida turibdi (rasmda kesilgan).
 *Taxmin:* oldindan to'lagan o'quvchilarning ortiqcha balansi yig'indisi.
 
+*O'quvchilar ro'yxati qurildi (18.10.2026, `components/v2/students/StudentsListV2.tsx`).
+Rasmda «Yana filtrlar» oynasi jadvalning o'rtasini yopib turgani uchun quyidagilar taxmin:*
+
+**29. Jadvalda sukut bo'yicha qaysi ustunlar?** — ochiq
+*Taxmin:* O'quvchi (doim), ID, Guruhlar, Balans, Tanga, Holati, Manba, Qo'shilgan; «Ustunlar»
+orqali yana Kurs, O'qituvchi, Moderator, Kategoriya. 1366 px noutbukda yon menyu ochiq turganda
+gorizontal aylantirishsiz sig'adi (o'lchandi).
+
+**30. Ma'lumoti yo'q ustunlar** — ochiq
+Eski jadvaldagi «To'lov sanasi», «Taklif qilganlari», «Ilovani yuklab olish sanasi»,
+«Shartnoma», «Kelmagan davri» uchun o'quvchi yozuvida maydon yo'q — ular doim «—» turardi.
+*Taxmin:* yangi jadvalda ko'rsatilmaydi; ma'lumoti paydo bo'lsa «Ustunlar» ga qo'shiladi.
+
+**31. «Export» va «⋯» ichida nima?** — ochiq
+*Taxmin:* «Export» — Excel va CSV (belgilangan qator bo'lsa — faqat ular); «⋯» — «Tavsiya
+orqali kelganlar» (CSV). Eski «Import» bandi hech narsa qilmasdi — yangisida yo'q.
+
+**32. Ro'yxatning sukut tartibi** — ochiq
+*Taxmin:* «Qo'shilgan ↓» — yangi o'quvchi tepada; O'quvchi, Balans, Tanga va Qo'shilgan
+sarlavhasi bosilsa saralanadi.
+
+**33. «Yana filtrlar» qachon qo'llanadi?** — ochiq
+*Taxmin:* faqat «Qo'llash» bosilganda (DESIGN → «Filtr paneli»); «Tozalash» faqat oynadagi
+qoralamani bo'shatadi. Qo'llangan qo'shimcha filtrlar filtr qatori ostida chip bo'lib turadi
+(× bilan) va tugmada soni chiqadi. Kurs / Guruh / Holati — darhol qo'llanadi.
+
+**34. «Holati» — alohida ustunmi?** — ochiq
+Eski jadvalda holat faqat ism yonida nishon edi («Aktiv» — nishonsiz).
+*Taxmin:* alohida ustun, holat belgisi bilan: Aktiv — muvaffaqiyat, Muzlatilgan — ma'lumot,
+Arxiv — betaraf; sabab — sichqoncha ostida.
+
+**35. «Guruhlar» ustunida fan rangi** — ochiq
+*Taxmin:* hozircha oddiy matn («36, 104»). Fan chiplari (DESIGN → «Fan ranglari») kurs↔fan
+bog'lanishi aniqlangach (IELTS → ingliz?) qo'yiladi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

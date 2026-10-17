@@ -1,6 +1,5 @@
 "use client";
 
-import { loadBalancesByIdCached } from "@/lib/balancesClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { CirclePlus, Filter, History, ListChecks, MessageSquare, MoreVertical, Plus, Share2, UserCog, Users, X } from "lucide-react";
@@ -11,23 +10,20 @@ import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import SmsModal from "@/components/orders/SmsModal";
 import StudentStatusModal from "@/components/students/StudentStatusModal";
 import { useToast } from "@/components/ui/Toast";
-import { usePupils } from "@/components/orders/PupilsContext";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import {
   applyStudentFilters,
-  enrichStudents,
   EMPTY_STUDENT_FILTERS,
   STUDENT_STATUSES,
-  studentRowFromPupil,
-  uniqueSorted,
   type StudentFilters,
   type StudentRow,
 } from "@/lib/studentsData";
-import type { Group } from "@/lib/groups";
+import { downloadBlob, referralRows, studentsCsvBlob, studentsXlsBlob } from "@/lib/studentsExport";
 import type { Pupil } from "@/lib/pupilsData";
 import PersonLink from "@/components/shared/PersonDirectory";
 import Select from "@/components/ui/Select";
 import { useT } from "@/components/shared/Language";
+import { useStudentsList } from "@/components/students/useStudentsList";
 
 // O'quvchilar → O'quvchilar ro'yxati (sidebar: O'quvchilar > O'quvchilar
 // ro'yxati, href /students-list). Yangi/Aktiv/Arxiv o'quvchilar
@@ -46,9 +42,9 @@ import { useT } from "@/components/shared/Language";
 // yo'q — referensdagidek bo'sh turadi.
 
 // StudentRow / StudentFilters endi lib/studentsData.ts da — filtrlash mantiqi
-// bilan birga, chunki ular bir-biriga bog'liq.
-
-const HEADERS = ["№", "ID", "Ism", "Coin", "Telefon raqam", "Balans", "Yaratilgan sanasi", "Manba", "Moderator"];
+// bilan birga, chunki ular bir-biriga bog'liq. Ma'lumot qatlami (qatorlar,
+// filtr variantlari, holat o'zgarishi) va eksport yangi versiya bilan umumiy:
+// components/students/useStudentsList.ts, lib/studentsExport.ts.
 
 function fmtNum(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -56,20 +52,6 @@ function fmtNum(n: number): string {
 }
 function fmtUZS(n: number): string {
   return `${fmtNum(n)} UZS`;
-}
-function csvCell(v: string | number): string {
-  const s = String(v ?? "");
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 const checkboxCls = "h-4 w-4 rounded border-border accent-primary cursor-pointer";
@@ -117,50 +99,9 @@ function FilterSelect({ label, value, onChange, options }: {
 
 export default function StudentsListPage() {
   const { t } = useT();
-  // O'quvchilar — bazadan (PupilsProvider, app/(app)/students-list/layout.tsx).
-  // Guruhlar ham bazadan: o'quvchining kursi/o'qituvchisi/dars kunlari u a'zo
-  // bo'lgan guruhdan kelib chiqadi (lib/studentsData.ts → enrichStudents).
-  const { pupils, loading } = usePupils();
-  const [groups, setGroups] = useState<Group[]>([]);
-  // Balans /api/students/balances dan (transaction_entries bo'yicha
-  // hisoblangan HAQIQIY to'lovlar). `pupils.balance` maydonini hech bir API
-  // yangilamaydi — u faqat seed skriptidagi qiymatlarni saqlaydi, ya'ni
-  // ustunda ham, Qarzdor/Haqdor jamida ham, eksportda ham soxta son
-  // ko'rinardi (Kassa Kirim oynasi bilan bir xil manba endi).
-  const [balances, setBalances] = useState<Record<number, number>>({});
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/groups")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); });
-    loadBalancesByIdCached()
-      .then((b) => { if (!cancelled) setBalances(b); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-  // Holat o'zgarishlarining mahalliy ustma-usti. PupilsContext faqat
-  // `createPupil` ni biladi — bazadagi o'quvchini YANGILASH usuli unda yo'q,
-  // shuning uchun PATCH .../status dan qaytgan hujjatni shu yerda ustiga
-  // qo'yamiz. Aks holda holat bazada o'zgargani bilan jadval sahifa qayta
-  // yuklanmaguncha eski holatni ko'rsatib turardi.
-  const [statusPatch, setStatusPatch] = useState<
-    Record<number, Pick<Pupil, "status" | "statusReason" | "statusChangedAt">>
-  >({});
-  const rows = useMemo(
-    () =>
-      enrichStudents(
-        pupils.map((p) => {
-          const row = studentRowFromPupil(statusPatch[p.id] ? { ...p, ...statusPatch[p.id] } : p);
-          // Balans ID bo'yicha — ismdoshlarning puli qo'shilib
-          // ketmasin (lib/pupilEntries.ts).
-          return { ...row, balance: balances[row.id] ?? 0 };
-        }),
-        groups,
-      ),
-    // `statusPatch` ham bog'liqlikda: u o'zgarganda qatorlar (va ular ustidan
-    // ishlaydigan "Holati" filtri) qayta hisoblanishi kerak.
-    [pupils, groups, statusPatch, balances],
-  );
+  // O'quvchilar, guruhlar va HAQIQIY balans — yangi versiya bilan umumiy
+  // manbadan (components/students/useStudentsList.ts izohi).
+  const { rows, loading, options, applyStatusSaved } = useStudentsList();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
   // O'quvchi kategoriyalari — O'quv bo'limi → Kategoriya (`edu_categories`).
@@ -221,27 +162,18 @@ export default function StudentsListPage() {
     };
   }, [smsMenu]);
 
-  // Filtr tanlovlari — faqat ma'lumotda HAQIQATDA uchraydigan qiymatlar.
-  const moderatorOptions = useMemo(() => uniqueSorted(rows.map((r) => r.moderator)), [rows]);
-  const sourceOptions = useMemo(() => uniqueSorted(rows.map((r) => r.source)), [rows]);
-  const courseOptions = useMemo(() => uniqueSorted(groups.map((g) => g.course)), [groups]);
-  const teacherOptions = useMemo(() => uniqueSorted(groups.map((g) => g.teacher)), [groups]);
-  const dayOptions = useMemo(() => uniqueSorted(groups.map((g) => g.day)), [groups]);
-  const subcourseOptions = useMemo(() => uniqueSorted(groups.map((g) => g.level)), [groups]);
-  // Guruh filtri: qiymat — guruh ID'si (applyStudentFilters shu bilan
-  // solishtiradi), ko'rinadigan matn esa "(nom, o'qituvchi) raqam". Quruq
-  // raqamdan qaysi guruh ekanini bilib bo'lmasdi. `name` ko'pincha id'ning
-  // o'zi, shuning uchun u takrorlansa qavs ichida faqat o'qituvchi qoladi.
-  const groupIdOptions = useMemo(
-    () =>
-      groups.map((g) => {
-        const nom = (g.name || "").trim();
-        const ustoz = (g.teacher || "").trim() || "o'qituvchisiz";
-        const ichi = nom && nom !== String(g.id) ? `${nom}, ${ustoz}` : ustoz;
-        return { value: String(g.id), label: `(${ichi}) ${g.id}` };
-      }),
-    [groups],
-  );
+  // Filtr tanlovlari — faqat ma'lumotda HAQIQATDA uchraydigan qiymatlar
+  // (useStudentsList). Guruh filtri: qiymat — guruh ID'si (applyStudentFilters
+  // shu bilan solishtiradi), ko'rinadigan matn esa "(nom, o'qituvchi) raqam".
+  const {
+    moderator: moderatorOptions,
+    source: sourceOptions,
+    course: courseOptions,
+    teacher: teacherOptions,
+    day: dayOptions,
+    subcourse: subcourseOptions,
+    group: groupIdOptions,
+  } = options;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -288,29 +220,21 @@ export default function StudentsListPage() {
     });
   }
 
+  /** Belgilangan qatorlar bo'lsa — faqat ular, aks holda butun (filtrlangan) ro'yxat. */
   function rowsToExport(source?: StudentRow[]) {
     const base = source ?? filtered;
     return selected.size > 0 ? base.filter((r) => selected.has(r.id)) : base;
   }
-  function exportRows(source?: StudentRow[]) {
-    return rowsToExport(source).map((r, i) => [i + 1, r.id, r.name, r.coin || "", r.phone, r.balance, r.createdAt, r.source, r.moderator]);
-  }
   function exportCSV() {
-    const csv = [HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
-    downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "oquvchilar-royxati.csv");
+    downloadBlob(studentsCsvBlob(rowsToExport()), "oquvchilar-royxati.csv");
     setMoreOpen(false);
   }
   function exportExcel() {
-    const head = "<tr>" + HEADERS.map((h) => `<th style="background:#dbeafe;color:#1e3a8a;font-weight:bold;border:1px solid #94a3b8;padding:8px 10px;text-align:left;">${h}</th>`).join("") + "</tr>";
-    const bodyRows = exportRows().map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${bodyRows}</tbody></table></body></html>`;
-    downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "oquvchilar-royxati.xls");
+    downloadBlob(studentsXlsBlob(rowsToExport()), "oquvchilar-royxati.xls");
     setMoreOpen(false);
   }
   function exportReferrals() {
-    const referrals = rows.filter((r) => r.source === "Tavsiya");
-    const csv = [HEADERS, ...exportRows(referrals)].map((r) => r.map(csvCell).join(",")).join("\r\n");
-    downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "referrals.csv");
+    downloadBlob(studentsCsvBlob(rowsToExport(referralRows(rows))), "referrals.csv");
     setMoreOpen(false);
   }
 
@@ -322,30 +246,9 @@ export default function StudentsListPage() {
     setPage(1);
   }
 
-  /** PATCH /api/pupils/:id/status muvaffaqiyatli tugagach jadvalni yangilash. */
+  /** PATCH /api/pupils/:id/status muvaffaqiyatli tugagach jadvalni yangilash (useStudentsList). */
   function handleStatusSaved(pupil: Pupil) {
-    setStatusPatch((prev) => ({
-      ...prev,
-      [pupil.id]: {
-        status: pupil.status,
-        statusReason: pupil.statusReason,
-        statusChangedAt: pupil.statusChangedAt,
-      },
-    }));
-    // Arxivlashda API o'quvchini `groups.studentIds` dan ham chiqaradi.
-    // Mahalliy `groups` nusxasi bir marta yuklanadi va o'z-o'zidan
-    // yangilanmaydi, shuning uchun uni ham qo'lda tozalaymiz — aks holda
-    // "Guruhlar" ustuni hamda "Guruh"/"Guruhlar soni"/"Kurs" filtrlari
-    // allaqachon uzilgan a'zolikni ko'rsatib turardi.
-    if (pupil.status === "Arxiv") {
-      setGroups((prev) =>
-        prev.map((g) =>
-          g.studentIds?.includes(pupil.id)
-            ? { ...g, studentIds: g.studentIds.filter((sid) => sid !== pupil.id) }
-            : g,
-        ),
-      );
-    }
+    applyStatusSaved(pupil);
     setStatusFor(null);
   }
 
