@@ -8,6 +8,7 @@ import { NotificationsProvider } from "@/components/shared/NotificationsProvider
 import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 import { NavbarSprite, SidebarSprite } from "@/components/shared/ShellSprites";
 import { TaskInboxProvider } from "@/components/shared/TaskInboxProvider";
+import { DevNoticeBanner } from "./DevNotice";
 import SidebarV2 from "./SidebarV2";
 import TopbarV2, { type ShellUserV2 } from "./TopbarV2";
 
@@ -43,6 +44,7 @@ export default function AppShellV2({
   user = null,
   isAdmin = false,
   features = {},
+  devNotice = true,
 }: {
   children: React.ReactNode;
   /** Rol ruxsatlari — app/(app)/layout.tsx dan. `null` = cheklovsiz. */
@@ -52,6 +54,8 @@ export default function AppShellV2({
   isAdmin?: boolean;
   /** Yoqilgan modullar — menyudagi `feature` bo'limlar uchun. */
   features?: Record<string, boolean>;
+  /** «Yangi versiya ishlab chiqilmoqda» qatori — bugun yopilmagan bo'lsa (./DevNotice.tsx). */
+  devNotice?: boolean;
 }) {
   preconnect("https://fonts.gstatic.com", { crossOrigin: "anonymous" });
   preinit(ONEST_CSS, { as: "style", precedence: "default" });
@@ -60,6 +64,8 @@ export default function AppShellV2({
   // Kompyuterda yon menyuni yig'ish. Saqlanmaydi: sahifa yangilansa menyu
   // yana ochiq (o'tishlarda qobiq qayta yaratilmaydi — holat saqlanadi).
   const [collapsed, setCollapsed] = useState(false);
+  // Yopilsa shu sahifada darhol yo'qoladi; qayta yuklanganda server cookie'ni ko'radi.
+  const [noticeOpen, setNoticeOpen] = useState(devNotice);
 
   // Chekma menyu Esc bilan yopiladi.
   useEffect(() => {
@@ -101,6 +107,7 @@ export default function AppShellV2({
                   onExpandSidebar={() => setCollapsed(false)}
                   onOpenMenu={() => setDrawerOpen(true)}
                 />
+                {noticeOpen && <DevNoticeBanner onHide={() => setNoticeOpen(false)} />}
                 <div className="flex flex-1 overflow-hidden">
                   <main className="flex-1 overflow-y-auto">{children}</main>
                 </div>

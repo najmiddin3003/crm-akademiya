@@ -153,3 +153,13 @@ PROD (17.10.2026): server `.env.local` da `UI_V2_SWITCH=on` — almashtirgich ti
 ham, HAMMA xodimga ko'rinadi; sukut eski versiya, har kim o'zi o'tadi va qaytadi.
 *Ochiq:* faqat adminlarga cheklash kerakmi (7-savoldagi «avval kim ko'radi»).
 *Taxmin:* hammaga — sinov saytidagidek; cheklash kerak bo'lsa rol bo'yicha qo'shiladi.
+
+**28. «Ishlab chiqilmoqda» belgisi — matn va yopilishi** — ochiq (17.10, «yangi versiyaga
+o'tganda qayerdadir "yangi versiya hozir texnik ish davom etmoqda" yoki shunga o'xshash
+professional so'z turishi kerak, xodimlarga bilintirish uchun»)
+Qilingani: logotip yonida DOIM «Beta» (sichqoncha ostida «Yangi versiya ishlab chiqilmoqda»);
+yuqori panel ostida qator — «Yangi versiya ishlab chiqilmoqda. Bo'limlar bosqichma-bosqich
+yangilanmoqda, ma'lumotlar ikkala versiyada bir xil.» + «Eski versiyaga qaytish» + ×.
+*Taxmin:* × qatorni KUN OXIRIGACHA yopadi, ertasi kuni yana chiqadi (har kuni bir marta
+eslatadi, ish paytida xalaqit bermaydi); «Beta» yopilmaydi. Butunlay yopilmaydigan qator
+kerak bo'lsa — × olib tashlanadi.

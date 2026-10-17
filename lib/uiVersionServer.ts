@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import type { Db } from "mongodb";
 import { ROLE_LABELS } from "@/constants/employees";
-import { normalizeUiVersion, UI_COOKIE, type UiVersion } from "@/lib/uiVersion";
+import { normalizeUiVersion, UI_COOKIE, UI_NOTICE_COOKIE, type UiVersion } from "@/lib/uiVersion";
 
 // Versiya almashtirgichining server qismi (lib/uiVersion.ts izohi).
 
@@ -30,6 +30,11 @@ export function uiSwitchEnabled(): boolean {
 export async function currentUiVersion(): Promise<UiVersion> {
   if (!uiSwitchEnabled()) return "v1";
   return normalizeUiVersion((await cookies()).get(UI_COOKIE)?.value);
+}
+
+/** «Ishlab chiqilmoqda» qatori bugun yopilganmi (lib/uiVersion.ts → hideDevNoticeForToday). */
+export async function devNoticeHidden(): Promise<boolean> {
+  return (await cookies()).get(UI_NOTICE_COOKIE)?.value === "1";
 }
 
 /**

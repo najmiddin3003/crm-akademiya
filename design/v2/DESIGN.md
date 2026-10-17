@@ -377,6 +377,12 @@ o'quvchilarda — 3 ta asosiy filtr tepada + «Yana filtrlar». Qaysi sahifada q
   `focus:bg-…!`) bilan yoziladi.
 - Eski sahifalar ikonkalarni eski sprite'lardan oladi (`<use href="#i-search">`) — ikkala
   qobiq ham `components/shared/ShellSprites.tsx` ni ulaydi.
+- **O'tish davri belgilari** (`components/v2/shell/DevNotice.tsx`, 17.10.2026): logotip
+  yonida doim «Beta» (`info-bg` + `info`); yuqori panel ostida ingichka qator — kalit
+  ikonka, «Yangi versiya ishlab chiqilmoqda.» + izoh (faqat `xl` dan — doim bir qatorli),
+  «Eski versiyaga qaytish» (`sm` dan) va × (kun oxirigacha yopiladi, cookie
+  `tizimli_ui_notice` — server ham o'qiydi). Rang — «Ma'lumot», ogohlantirish emas.
+  To'liq o'tishda ikkalasi olib tashlanadi.
 
 ## Ochiq savollar
 

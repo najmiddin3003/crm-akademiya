@@ -28,6 +28,7 @@ import {
 } from "@/components/shared/sidebarModel";
 import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 import { isPathAllowed } from "@/lib/permissions";
+import { BetaBadge } from "./DevNotice";
 import { HOME_KEY, V2_BOTTOM_KEYS, V2_ICONS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
 import { usePopover } from "./usePopover";
 
@@ -209,6 +210,8 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
             <GraduationCap className="size-[18px]" strokeWidth={1.75} aria-hidden />
           </span>
           <span className="truncate text-v2-section text-v2-text">Tizimli</span>
+          {/* O'tish davri: versiya hali ishlab chiqilmoqda (./DevNotice.tsx). */}
+          <BetaBadge />
         </Link>
         <button
           type="button"

@@ -33,3 +33,19 @@ export function switchUiVersion(next: UiVersion): void {
   document.cookie = `${UI_COOKIE}=${next}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
   window.location.reload();
 }
+
+/**
+ * «Yangi versiya ishlab chiqilmoqda» qatori (components/v2/shell/DevNotice.tsx)
+ * yopilganini bildiradi. Cookie — localStorage emas: server ham o'qiydi
+ * (lib/uiVersionServer.ts → devNoticeHidden), ya'ni yopilgan qator keyingi
+ * yuklanishda bir lahza chiqib-yo'qolmaydi.
+ */
+export const UI_NOTICE_COOKIE = "tizimli_ui_notice";
+
+/** Qatorni KUN OXIRIGACHA yopadi — cookie yarim tunda (brauzer vaqti) o'zi o'chadi, ertasi kuni qator yana ko'rinadi. */
+export function hideDevNoticeForToday(): void {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const seconds = Math.max(60, Math.round((midnight.getTime() - now.getTime()) / 1000));
+  document.cookie = `${UI_NOTICE_COOKIE}=1; path=/; max-age=${seconds}; SameSite=Lax`;
+}
