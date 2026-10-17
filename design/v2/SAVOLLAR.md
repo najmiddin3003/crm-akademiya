@@ -17,10 +17,9 @@ Prezident maktablari …).
 *Taxmin:* nomi aniq mos kelgani — o'z rangi; IELTS / CEFR / SAT — «Ingliz tili» rangi;
 qolgani — «Boshqa».
 
-**2. Holatlar uchun och fon** — ochiq
-«To'landi», «Qarz», «Muddat yaqin» kabi belgilarga och fon kerakmi? Hozir och fon faqat
-brend uchun bor («Asosiy fon»).
-*Taxmin:* kerak bo'lsa har holatga `-bg` token qo'shiladi (fan ranglari uslubida).
+**2. Holatlar uchun och fon** — hal qilindi (17.10, «Holat belgilari» rasmidan)
+Kerak ekan: har holatning och foni rasmda bor — 5 ta `-bg` token qo'shildi (yorug' tema aniq).
+Qorong'i temadagisi — 11-savolda.
 
 **3. Soyalarning aniq qiymatlari** — ochiq
 Rasmda soya qiymati yozilmagan — piksellardan o'lchab, taxminiy qiymat yozildi.
@@ -55,6 +54,16 @@ yorliq shrifti). Ranglar esa aniq. Dizayn tizimining manba fayli (HTML yoki Figm
 **10. Qorong'i temadagi grafik ranglari** — ochiq
 Pul grafigi faqat yorug' temada ko'rsatilgan.
 *Taxmin:* qorong'ida och pog'onalar (teal 400 / 300 / 500 / 700).
+
+**11. Qorong'i temada holat belgilari, hover va skelet** — ochiq
+«Holat belgilari», jadval hover qatori va skelet faqat yorug' temada ko'rsatilgan.
+*Taxmin:* holat fonlari — fan ranglarining qorong'i fonlaridan o'sha tusdagilari
+(yozuv o'qiladi: 6.4–8.5); hover — «Boshqa» fanning qorong'i foni; skelet — chiziq rangiga yaqin.
+
+**12. Jadval sarlavhasi qotishi** — ochiq
+Hozirgi saytda hamma jadvallarning sarlavhasi scroll paytida tepada qotib turadi.
+Yangi dizaynda ham shundaymi?
+*Taxmin:* ha, qotadi (ishlatuvchilar o'rganib qolgan).
 
 ## Reja
 

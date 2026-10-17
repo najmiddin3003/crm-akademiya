@@ -64,6 +64,18 @@
      matn. Yorug'da oq — barcha rangli fonlarda AA (4.9–7.3). */
   --v2-on-color: #FFFFFF;
 
+  /* ── Holatlarning och foni (holat belgilari: fon + shu rangdagi yozuv va nuqta) ──
+     «Holat belgilari» rasmidan aniq o'lchangan; yozuv o'z fonida AA (4.65–6.27). */
+  --v2-info-bg: #E9F0FE;
+  --v2-violet-bg: #F0ECFD;
+  --v2-warning-bg: #FDF1DE;
+  --v2-success-bg: #E6F5EE;
+  --v2-danger-bg: #FCEBEA;
+
+  /* ── Yordamchi yuzalar ─────────────────────────────────────────────── */
+  --v2-hover: #F1F3F5;         /* jadval qatori ustida sichqoncha (= «Boshqa» fan foni) */
+  --v2-skeleton: #ECEFF2;      /* yuklanish skeleti (doira, chiziqlar) */
+
   /* ── Lid holatlari (komponentlar rasmidan: ko'rsatkich kartalari nuqtalari) ──
      Kalitlar lib/leadHolat.ts dagi bilan bir xil. Holat ranglariga bog'langan —
      tema bilan o'zi almashadi. */
@@ -72,6 +84,11 @@
   --v2-holat-sinov: var(--v2-warning);
   --v2-holat-guruh: var(--v2-success);
   --v2-holat-rad: var(--v2-danger);
+  --v2-holat-yangi-bg: var(--v2-info-bg);
+  --v2-holat-bog-bg: var(--v2-violet-bg);
+  --v2-holat-sinov-bg: var(--v2-warning-bg);
+  --v2-holat-guruh-bg: var(--v2-success-bg);
+  --v2-holat-rad-bg: var(--v2-danger-bg);
 
   /* ── Grafik qatorlari (pul ko'rsatkichi: Naqd, Terminal, Plastik, Inkassa) ── */
   --v2-chart-1: var(--v2-teal-600);
@@ -135,6 +152,18 @@
   /* Qorong'ida rangli fonlar och — ustidagi matn TO'Q bo'lishi shart:
      oq matn 2.0–2.6 (o'qilmaydi), to'q matn 7.4–10.2 (AAA). */
   --v2-on-color: #0B0D10;
+
+  /* Holatlarning och foni — qorong'ida dizaynda ko'rsatilmagan. MENING TAXMINIM:
+     fan ranglarining qorong'i fonlaridan o'sha tusdagilari (yozuv o'z fonida 6.4–8.5). */
+  --v2-info-bg: #14213A;
+  --v2-violet-bg: #1F1A38;
+  --v2-warning-bg: #291F11;
+  --v2-success-bg: #10261D;
+  --v2-danger-bg: #2E1520;
+
+  /* Yordamchi yuzalar — TAXMIN (hover = «Boshqa» fan foni, skelet — chiziqqa yaqin). */
+  --v2-hover: #1C2127;
+  --v2-skeleton: #1E2329;
 
   /* Grafik — qorong'i fonda och pog'onalar yaxshiroq ko'rinadi. MENING TAXMINIM
      (dizaynda qorong'i grafik ko'rsatilmagan). */
@@ -201,11 +230,24 @@
   --color-v2-logo: var(--v2-logo);
   --color-v2-on-color: var(--v2-on-color);
 
+  --color-v2-info-bg: var(--v2-info-bg);
+  --color-v2-violet-bg: var(--v2-violet-bg);
+  --color-v2-warning-bg: var(--v2-warning-bg);
+  --color-v2-success-bg: var(--v2-success-bg);
+  --color-v2-danger-bg: var(--v2-danger-bg);
+  --color-v2-hover: var(--v2-hover);
+  --color-v2-skeleton: var(--v2-skeleton);
+
   --color-v2-holat-yangi: var(--v2-holat-yangi);
   --color-v2-holat-bog: var(--v2-holat-bog);
   --color-v2-holat-sinov: var(--v2-holat-sinov);
   --color-v2-holat-guruh: var(--v2-holat-guruh);
   --color-v2-holat-rad: var(--v2-holat-rad);
+  --color-v2-holat-yangi-bg: var(--v2-holat-yangi-bg);
+  --color-v2-holat-bog-bg: var(--v2-holat-bog-bg);
+  --color-v2-holat-sinov-bg: var(--v2-holat-sinov-bg);
+  --color-v2-holat-guruh-bg: var(--v2-holat-guruh-bg);
+  --color-v2-holat-rad-bg: var(--v2-holat-rad-bg);
   --color-v2-chart-1: var(--v2-chart-1);
   --color-v2-chart-2: var(--v2-chart-2);
   --color-v2-chart-3: var(--v2-chart-3);

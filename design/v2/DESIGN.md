@@ -167,6 +167,68 @@ aniq o'lchangan va hammasi mavjud tokenlarga tushadi.
   faol `bg-v2-brand text-v2-on-color`, qolganlari fonsiz; strelkalar ikkinchi darajali
   ikonka tugma; «…» oraliq; o'ngda qator soni tanlovi («50 qator»).
 
+### Holat belgilari
+
+Belgi = **och fon + shu rangdagi nuqta va yozuv**, `rounded-v2-full`, `text-v2-caption`.
+Fon tokenlari: `--v2-info-bg`, `--v2-violet-bg`, `--v2-warning-bg`, `--v2-success-bg`,
+`--v2-danger-bg` (brend uchun `--v2-brand-bg`, betaraf uchun `--v2-surface-2`).
+
+| Guruh | Belgi | Rang |
+|---|---|---|
+| Lid holatlari | Yangi · Bog'lanildi · Sinov darsi · Guruhga qo'shildi · Rad etdi | `holat-*` (info · binafsha · ogohlantirish · muvaffaqiyat · xavf) |
+| Guruh, topshiriq, xodim | Faol | muvaffaqiyat |
+| | Yig'ilmoqda | brend (`brand-bg` + `brand-text`) |
+| | Yakunlandi | muvaffaqiyat |
+| | Bekor qilindi | betaraf (`surface-2` + `text-2`) |
+| | Muzlatilgan | info |
+| | Takroriy | nuqtasiz, oq fon + `border-strong` chegara, `text-2` |
+
+**Teglar** (to'lov va ish turi: Naqd, Plastik, Terminal, Inkassa, Oklad, «Foiz 35%»,
+«Oklad + 30%») — nuqtasiz, `bg-v2-surface-2` + `v2-border` chegara + `text-v2-text-2`,
+`rounded-v2-sm`.
+
+### Filtr paneli — 10+ ta dropdown o'rniga
+
+- Bir qatorda: **qidiruv** («Ism yoki telefon...») + **«Filtr»** tugmasi + o'ngda «Jami N ta».
+- «Filtr» tugmasida faol filtr soni (brend doirachada). Faol bo'lsa tugma
+  `bg-v2-brand-bg` + `brand` chegara.
+- Ostida **faol filtr chiplari**: «Filial: Akademiya 3 Uychi ×» — `bg-v2-surface-2` +
+  `v2-border`, nomi `text-2`, qiymati qalin; har biri × bilan o'chadi; oxirida «Tozalash».
+- Tugma bosilganda **ochiladigan panel** (`bg-v2-surface`, `shadow-v2-md`, `rounded-v2-lg`):
+  ikki ustunli tanlovlar (Filial, Yo'nalish, Manba, Davr) va **holat chiplari** — tanlangani
+  `bg-v2-brand-bg` + `brand` chegara + ✓, qolgani oq + `border-strong`. Pastda
+  «Tozalash» (matnli) va «Qo'llash» (asosiy) — filtr «Qo'llash» bosilgandagina qo'llanadi.
+
+### Bo'sh holat va yuklanish
+
+- **Bo'sh holat**: `bg-v2-surface-2` blok ichida ikonka (oq kvadratda), sarlavha
+  («Hozircha kurs yo'q»), bitta jumla izoh va asosiy amal tugmasi («+ Kurs qo'shish»).
+- **Yuklanish — skelet**: «Yuklanmoqda...» matni O'RNIGA sahifaning shakli —
+  `bg-v2-skeleton` doira va chiziqlar (ro'yxat qatorlari ko'rinishida).
+
+### Xabarlar (toast)
+
+- `bg-v2-surface` + `v2-border` + `shadow-v2-md`, `rounded-v2-lg`. Chapda dumaloq ikonka:
+  muvaffaqiyat — `success-bg` fonda ✓, xato — `danger-bg` fonda «!».
+- Sarlavha (qalin) + bir qator tafsilot («Muxlisa Xoshimjanova · 300 000 so'm · Naqd»).
+- Muvaffaqiyatda o'ngda × (yopish); xatoda — **amal tugmasi** («Qayta urinish»,
+  ikkinchi darajali) va nima qilish kerakligi («Internet aloqasini tekshirib, qayta urinib ko'ring»).
+
+### Jadval
+
+Qoidalar (dizayndagi izohdan):
+
+1. **Sarlavhalar oddiy yozuvda** (KATTA HARFLAR EMAS), `bg-v2-surface-2`, `text-v2-text-2`.
+2. **Ism va telefon bitta katakda**: ism qalin, telefon ostida `text-v2-text-3`.
+3. **Bo'sh qiymat — chiziqcha** «—».
+4. **Chek tugmasi** — to'lov va kassa jadvallarida **doim birinchi ustunda**, ism-familiyadan
+   oldin: scroll qilmasdan ko'rinadi.
+5. Qatorlar orasida `v2-border` chiziq. **Sichqoncha ustida**: qator `bg-v2-hover`, ism
+   tagiga chiziladi, o'ng chetda amallar tugmasi («⋯», ikonka tugma) paydo bo'ladi.
+6. Saralanadigan ustun sarlavhasida ko'rsatkich (masalan «Kelgan vaqti ↓»).
+7. Takror lid — ism yonida «Takroriy» belgisi. Holat — holat belgisi.
+8. Pastda: «1–5 / 29 ta lid» va sahifalash.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
@@ -183,7 +245,9 @@ aniq o'lchangan va hammasi mavjud tokenlarga tushadi.
 5. **Holat ranglari matn sifatida ham ishlaydi** — Fon, Sirt, Sirt 2 ustida ikkala temada AA.
 6. **Fan chiplari**: yozuv o'z fonida 13.5–16.4 (AAA); nuqta rangi ham matn sifatida
    ishlaydi (yorug' 4.6–6.8, qorong'i 7.5–10.2).
-7. Logotip ikkala temada ham fondan ajralib turadi (3.4–5.3:1).
+7. **Holat belgilari**: holat rangidagi yozuv o'z och fonida AA — yorug'da 4.65–6.27,
+   qorong'ida (taxminiy fonlar bilan) 6.4–8.5. Jadval hover qatorida matn 16.2, Matn 2 — 6.8.
+8. Logotip ikkala temada ham fondan ajralib turadi (3.4–5.3:1).
 
 ## Ochiq savollar
 
