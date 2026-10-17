@@ -71,3 +71,12 @@ export const V2_ICONS: Record<string, LucideIcon> = {
 export const V2_LABELS: Record<string, string> = {
   temp: "Vaqtinchalik bo'lim",
 };
+
+/**
+ * Ichki menyu bandlari, manzil bo'yicha — yangi nom (dizayndagi yozuv).
+ * «Guruh › Guruhlar» — «Guruhlar · Ustunlar» rasmi, 18.10.2026 (eski menyuda
+ * ichki band ham «Guruh» deb turibdi).
+ */
+export const V2_ITEM_LABELS: Record<string, string> = {
+  "/groups": "Guruhlar",
+};

@@ -5,17 +5,16 @@ import {
   ArrowDown,
   ArrowUp,
   CirclePlus,
-  Columns3,
   Download,
   History,
   ListChecks,
+  ListFilter,
   MessageSquare,
   MessagesSquare,
   MoreHorizontal,
   Plus,
   Search,
   Share2,
-  SlidersHorizontal,
   UserCog,
   UserRound,
   Users,
@@ -24,7 +23,6 @@ import {
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
-import { usePersonHref } from "@/components/shared/PersonDirectory";
 import { useToast } from "@/components/ui/Toast";
 import AddStudentModal from "@/components/orders/AddStudentModal";
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
@@ -32,11 +30,16 @@ import SmsModal from "@/components/orders/SmsModal";
 import StudentStatusModal from "@/components/students/StudentStatusModal";
 import { useStudentsList } from "@/components/students/useStudentsList";
 import ActionMenu, { type ActionMenuEntry } from "@/components/v2/ui/ActionMenu";
+import ColumnsControl from "@/components/v2/ui/ColumnsControl";
 import FloatingPanel from "@/components/v2/ui/FloatingPanel";
+import StaffName from "@/components/v2/ui/StaffName";
 import V2Checkbox from "@/components/v2/ui/V2Checkbox";
 import V2Pagination from "@/components/v2/ui/V2Pagination";
 import V2Select from "@/components/v2/ui/V2Select";
+import { moreFiltersCls, primaryBtn, secondaryBtn, secondaryIcon } from "@/components/v2/ui/buttons";
+import { DENSITY_CELL, DENSITY_ROW } from "@/components/v2/ui/columnPrefs";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
+import { ROW_BAR, ROW_TINT } from "@/components/v2/ui/table";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
 import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
@@ -51,7 +54,7 @@ import {
 import { downloadBlob, referralRows, studentsCsvBlob, studentsXlsBlob } from "@/lib/studentsExport";
 import StudentQuickPanel from "./StudentQuickPanel";
 import StudentsMoreFilters, { countMoreFilters, pickMoreFilters, type MoreFilters } from "./StudentsMoreFilters";
-import { STUDENT_COLUMNS, useStudentColumns, type StudentColumnKey, type StudentSortKey } from "./studentsColumns";
+import { useStudentColumns, type StudentColumnKey, type StudentSortKey } from "./studentsColumns";
 
 // YANGI VERSIYA — O'QUVCHILAR RO'YXATI (design/v2/DESIGN.md → «Sahifa qolipi —
 // ro'yxat (O'quvchilar misolida)»; rasm: «O'quvchilar · Filtr oynasi», 17.10.2026).
@@ -124,24 +127,6 @@ function sortRows(rows: EnrichedStudent[], s: SortState): EnrichedStudent[] {
   });
 }
 
-/** Moderator — xodim profiliga havola (katalogda bo'lsa). Har katak o'z hook'i bilan. */
-function StaffName({ name }: { name: string }) {
-  const href = usePersonHref(name, "staff");
-  if (!name) return <span className="text-v2-text-3">—</span>;
-  if (!href) return <>{name}</>;
-  return (
-    <Link href={href} className="hover:text-v2-brand-text hover:underline underline-offset-2">
-      {name}
-    </Link>
-  );
-}
-
-/** Ikkinchi darajali tugma (DESIGN → «Tugmalar»); ichki chekinish alohida — ikonka tugmada to'qnashmasin. */
-const secondaryBase =
-  "inline-flex h-9 shrink-0 items-center gap-2 rounded-v2-md border bg-v2-surface text-v2-body font-medium text-v2-text transition-colors hover:bg-v2-surface-2 focus-visible:outline-none focus-visible:shadow-v2-focus";
-const secondaryBtn = `${secondaryBase} border-v2-border-strong px-3`;
-const secondaryIcon = `${secondaryBase} border-v2-border-strong w-9 justify-center`;
-
 export default function StudentsListV2() {
   const { t } = useT();
   const branch = useBranch();
@@ -160,8 +145,6 @@ export default function StudentsListV2() {
 
   const [moreOpen, setMoreOpen] = useState(false);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
-  const [colsOpen, setColsOpen] = useState(false);
-  const colsBtnRef = useRef<HTMLButtonElement>(null);
 
   const [addOpen, setAddOpen] = useState(false);
   const [groupFor, setGroupFor] = useState<{ id: number; name: string } | null>(null);
@@ -321,8 +304,11 @@ export default function StudentsListV2() {
     setPage(1);
   };
 
-  const visibleCols = STUDENT_COLUMNS.filter((c) => columns.visible.has(c.key));
+  // «O'quvchi» qulflangan — pastda alohida chiziladi; qolganlari foydalanuvchi tartibida.
+  const visibleCols = columns.shown;
   const colCount = visibleCols.length + 3;
+  const rowH = DENSITY_ROW[columns.density];
+  const cellY = DENSITY_CELL[columns.density];
   const branchName = branch.branches.find((b) => b.id === branch.branchId)?.name ?? "";
 
   function handleStatusSaved(pupil: Pupil) {
@@ -351,6 +337,8 @@ export default function StudentsListV2() {
 
   function cell(r: EnrichedStudent, key: StudentColumnKey) {
     switch (key) {
+      case "name":
+        return null; // qulflangan ustun — qatorda alohida chiziladi
       case "id":
         return <span className="tabular-nums text-v2-text-2">{r.id}</span>;
       case "groups": {
@@ -456,11 +444,7 @@ export default function StudentsListV2() {
               </button>
             )}
           </ActionMenu>
-          <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-v2-md bg-v2-brand px-4 text-v2-body font-semibold text-v2-on-brand transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:shadow-v2-focus"
-          >
+          <button type="button" onClick={() => setAddOpen(true)} className={primaryBtn}>
             <Plus className="size-4" strokeWidth={2} aria-hidden />
             {t("O'quvchi qo'shish")}
           </button>
@@ -492,15 +476,9 @@ export default function StudentsListV2() {
           onClick={() => setMoreOpen((o) => !o)}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
-          className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-v2-md border px-3 text-v2-body font-medium transition-colors focus-visible:outline-none focus-visible:shadow-v2-focus ${
-            moreCount > 0
-              ? "border-v2-brand bg-v2-brand-bg text-v2-brand-text"
-              : moreOpen
-                ? "border-v2-brand bg-v2-brand-bg text-v2-brand-text"
-                : "border-v2-border-strong bg-v2-surface text-v2-text hover:bg-v2-surface-2"
-          }`}
+          className={moreFiltersCls(moreOpen, moreCount > 0)}
         >
-          <SlidersHorizontal className="size-4" strokeWidth={1.75} aria-hidden />
+          <ListFilter className="size-4" strokeWidth={1.75} aria-hidden />
           {t("Yana filtrlar")}
           {moreCount > 0 && (
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-v2-full bg-v2-brand px-1.5 text-[11px] font-semibold tabular-nums text-v2-on-brand">{moreCount}</span>
@@ -522,28 +500,7 @@ export default function StudentsListV2() {
         </FloatingPanel>
 
         <div className="ml-auto">
-          <button ref={colsBtnRef} type="button" onClick={() => setColsOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={colsOpen} className={`${secondaryBase} px-3 ${colsOpen ? "border-v2-brand" : "border-v2-border-strong"}`}>
-            <Columns3 className="size-4" strokeWidth={1.75} aria-hidden />
-            {t("Ustunlar")}
-          </button>
-          <FloatingPanel open={colsOpen} anchorRef={colsBtnRef} onClose={() => setColsOpen(false)} align="end" width={240} maxHeight={460} role="dialog" ariaLabel={t("Ustunlar")}>
-            <div className="border-b border-v2-border px-3 py-2.5 text-v2-caption text-v2-text-3">{t("Jadvalda ko'rinadigan ustunlar")}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-1">
-              {STUDENT_COLUMNS.map((c) => (
-                <label key={c.key} className="flex cursor-pointer items-center gap-2.5 rounded-v2-md px-2.5 py-2 text-v2-body hover:bg-v2-hover">
-                  <V2Checkbox checked={columns.visible.has(c.key)} onChange={() => columns.toggle(c.key)} label={t(c.label)} />
-                  <span className="min-w-0 flex-1 truncate">{t(c.label)}</span>
-                </label>
-              ))}
-            </div>
-            {!columns.isDefault && (
-              <div className="border-t border-v2-border p-1">
-                <button type="button" onClick={columns.reset} className="w-full rounded-v2-md px-2.5 py-2 text-left text-v2-small text-v2-text-2 hover:bg-v2-hover hover:text-v2-text">
-                  {t("Asl holatiga qaytarish")}
-                </button>
-              </div>
-            )}
-          </FloatingPanel>
+          <ColumnsControl prefs={columns} />
         </div>
       </div>
 
@@ -676,12 +633,12 @@ export default function StudentsListV2() {
                       key={r.id}
                       onClick={(e) => onRowClick(e, r.id)}
                       aria-selected={current || undefined}
-                      className={`group cursor-pointer border-b border-v2-border transition-colors last:border-b-0 ${on || current ? "bg-v2-brand-bg" : "hover:bg-v2-hover"}`}
+                      className={`group cursor-pointer border-b border-v2-border transition-colors last:border-b-0 ${rowH} ${on || current ? ROW_TINT.brand : ROW_TINT.hover}`}
                     >
-                      <td className={`py-2.5 pl-4 pr-2 ${current ? "shadow-[inset_3px_0_0_var(--v2-brand)]" : ""}`}>
+                      <td className={`${cellY} pl-4 pr-2 ${current ? ROW_BAR.brand : ""}`}>
                         <V2Checkbox checked={on} onChange={(v) => toggleRow(r.id, v)} label={t("{name} — belgilash", { name: r.name })} />
                       </td>
-                      <td className="px-2.5 py-2.5">
+                      <td className={`${cellY} px-2.5`}>
                         <div className="flex min-w-[200px] items-center gap-3">
                           <span className="flex size-8 shrink-0 items-center justify-center rounded-v2-full bg-v2-surface-2 text-v2-caption font-semibold text-v2-text-2" aria-hidden>
                             {initialsOf(r.name)}
@@ -699,11 +656,11 @@ export default function StudentsListV2() {
                         </div>
                       </td>
                       {visibleCols.map((c) => (
-                        <td key={c.key} className={`px-2.5 py-2.5 ${c.align === "right" ? "text-right" : ""}`}>
+                        <td key={c.key} className={`${cellY} px-2.5 ${c.align === "right" ? "text-right" : ""}`}>
                           {cell(r, c.key)}
                         </td>
                       ))}
-                      <td className="py-2.5 pl-1 pr-3 text-right">
+                      <td className={`${cellY} pl-1 pr-3 text-right`}>
                         <ActionMenu items={rowMenu(r)} label={t("{name} — amallar", { name: r.name })} width={236}>
                           {(trigger, open) => (
                             <button

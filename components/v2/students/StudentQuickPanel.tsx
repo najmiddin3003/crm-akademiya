@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useCanOpen } from "@/components/v2/shell/ShellContext";
 import ActionMenu, { type ActionMenuEntry } from "@/components/v2/ui/ActionMenu";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
+import { GROUP_TONE, roomLabel, timeLabel } from "@/components/v2/ui/groupStatus";
 import type { Group } from "@/lib/groups";
 import type { EnrichedStudent } from "@/lib/studentsData";
 
@@ -70,14 +71,6 @@ const STATUS_TONE = {
   Arxiv: { label: "Arxiv", badge: "bg-v2-surface-2 text-v2-text-2", dot: "bg-v2-text-3" },
 } as const;
 
-/** Guruh holati — DESIGN.md «Holat belgilari» (guruh: Faol, Yig'ilmoqda, Muzlatilgan, Arxiv). */
-const GROUP_TONE: Record<string, { label: string; badge: string; dot: string }> = {
-  gathering: { label: "Yig'ilmoqda", badge: "bg-v2-brand-bg text-v2-brand-text", dot: "bg-v2-brand" },
-  active: { label: "Faol", badge: "bg-v2-success-bg text-v2-success", dot: "bg-v2-success" },
-  frozen: { label: "Muzlatilgan", badge: "bg-v2-info-bg text-v2-info", dot: "bg-v2-info" },
-  archive: { label: "Arxiv", badge: "bg-v2-surface-2 text-v2-text-2", dot: "bg-v2-text-3" },
-};
-
 function fmtNum(n: number): string {
   const s = Math.abs(n).toLocaleString("ru-RU").replace(/,/g, " ");
   return n < 0 ? `−${s}` : s;
@@ -95,17 +88,6 @@ function phoneParts(raw: string): { show: string; tel: string; copy: string } | 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("") || "?";
-}
-
-/** "205" → "205-xona"; nom bo'lsa — o'zi. */
-function roomLabel(room: string | undefined): string {
-  const r = (room || "").trim();
-  return /^\d+$/.test(r) ? `${r}-xona` : r;
-}
-
-/** "14:00 - 16:00" → "14:00–16:00". */
-function timeLabel(time: string | undefined): string {
-  return (time || "").trim().replace(/\s*-\s*/, "–");
 }
 
 /** "YYYY-MM-DD" yoki "DD.MM.YYYY" → [yil, oy, kun]; o'qilmasa null. */

@@ -314,8 +314,9 @@ Dizayndagi birinchi to'liq sahifa: yon menyu + yuqori panel + kontent. Kontent o
    amallar), **asosiy amal** «+ O'quvchi qo'shish».
 2. **Filtr qatori**: qidiruv («Ism, telefon yoki ID») → **asosiy filtrlar doim ko'rinadi**
    (Kurs, Guruh, Holati — tanlov tugmasi ⌄; tanlansa «Guruh: Ingliz tili ×», `brand-bg` +
-   `brand` chegara) → **«Yana filtrlar»** (ochiq paytida `brand` chegara). O'ng chetda
-   **«Ustunlar»** — jadvalda qaysi ustunlar ko'rinishini tanlash.
+   `brand` chegara) → **«Yana filtrlar»** (ikonka — kamayuvchi uch chiziq; yopiq va bo'sh
+   paytida **uzuq** `border-strong` chegara, ochiq paytida `brand` chegara + fokus halqasi,
+   filtr qo'llansa `brand-bg` + soni). O'ng chetda **«Ustunlar»** — pastdagi «Ustunlar oynasi».
 3. **«Yana filtrlar» paneli** («Qo'shimcha filtrlar», o'ngda «10 ta filtr»): bo'limlarga bo'lingan,
    3 ustunli to'r —
    - *O'quv*: O'qituvchi, Subkurs, Kategoriya, Guruhlar soni, Kun, Toq/Juft kunlar;
@@ -355,7 +356,50 @@ Fon bosilsa yoki Esc — yopiladi. Ctrl/Cmd + ism — to'liq profil yangi oynada
 
 Guruh holati belgilari: Yig'ilmoqda — brend, Faol — muvaffaqiyat, Muzlatilgan — ma'lumot,
 Arxiv — betaraf. Kodda: `components/v2/students/StudentQuickPanel.tsx`; fan rangi —
-`components/v2/ui/fan.ts` (kurs nomidan).
+`components/v2/ui/fan.ts` (kurs nomidan); guruh holati — `components/v2/ui/groupStatus.ts`.
+
+## Ustunlar oynasi — har ro'yxatda bir xil (Guruhlar misolida, 18.10.2026)
+
+«Ustunlar» tugmasi bosilganda o'ng chetga tekislangan ~296 px oyna (tugma ochiq paytida
+`brand` chegara + fokus halqasi, fon o'zgarmaydi):
+
+1. **Sarlavha**: «Ustunlar» (qalin) va o'ngda «Standartga qaytarish» (`small`, qalin,
+   `brand-text`) — ustunlar, tartib va zichlik sukutga qaytadi.
+2. **«Ko'rinib turadi · N»** (`caption`, `text-3`; son qulflangan ustunni ham sanaydi):
+   - qulflangan ustun — qulf ikonka + nom (qalin) + o'ngda «doim»; o'chmaydi, surilmaydi,
+     doim birinchi («Guruh nomi», «O'quvchi»);
+   - qolganlari — chapda ⠿ tutqich, nom, o'ngda belgilangan katakcha; sichqoncha ustida
+     `bg-v2-hover`. **⠿ ni tortib tartiblanadi** (sichqoncha va barmoq; band boshqasining
+     o'rtasidan o'tganda joyi almashadi, jadval shu zahoti yangilanadi; ushlangan band —
+     oq fon + `shadow-v2-md`), klaviaturada ⠿ ga fokus + ↑ / ↓.
+3. Ajratgich, **«Yashirilgan · N»** — tutqichsiz (nom tekislangan), nom `text-2`, bo'sh
+   katakcha; yoqilgan ustun ko'rinadiganlarning OXIRIGA qo'shiladi.
+4. Pastda chiziq ustida **«Qator zichligi»** — segment «Ixcham» / «Keng» (faol bo'lak oq +
+   `shadow-v2-sm`). Ixcham — rasmdagi qator (~52 px; ism + telefonli qator o'z chekinishi
+   bilan ~58 px), Keng — 64 px.
+
+Qator bosilsa ham katakcha almashadi. Tanlov har brauzerda saqlanadi (`localStorage`, har
+ro'yxat o'z kaliti). Kodda: `components/v2/ui/ColumnsControl.tsx` (tugma + oyna),
+`components/v2/ui/columnPrefs.ts` (saqlash, tartib, zichlik → `DENSITY_ROW` / `DENSITY_CELL`).
+
+## Guruhlar ro'yxati (rasm «Guruhlar · Ustunlar», 18.10.2026)
+
+O'quvchilar ro'yxati qolipida: «Guruhlar» + «Akademiya 3 Uychi · 5 ta guruh»; «Export» va
+«+ Guruh qo'shish»; qidiruv «Guruh nomi bo'yicha» → Kurs / O'qituvchi / Guruh holati →
+«Yana filtrlar» → «Ustunlar»; xulosa «5 ta guruh • O'quvchilar 12 • Muzlatilgan 0»; jadval;
+«1–5 / 5 ta».
+
+- **Ustunlar** (sukut — rasmdagidek): Guruh nomi (qulflangan; fan rangidagi nuqta + qalin
+  nom), Kurs (`text-2`), O'qituvchi (`text`, o'rtacha qalin), Kun va vaqt («Toq kunlar ·
+  14:00–16:00», `text-2`), Xona, O'quvchilar, Guruh holati (belgi). Yashirilgan: Daraja,
+  Guruh vaqti (muddati o'tgan — `danger-bg` belgi), Telegram havola, Ta'lim turi (teg), Dars
+  davomiyligi («2 soat»), Boshlanish sanasi, Tugash sanasi.
+- **Bugun davomat qilinmagan guruh** (eski sahifadagi sariq qator): `warning-bg` fon + chapda
+  3 px `warning` chiziq; xulosada «• Bugun davomat qilinmagan N» (`warning` rangida).
+- Qator bosilsa — guruh sahifasi; «⋯» — Guruhni ochish, Davomat, Guruh tarixi, Tahrirlash.
+  «Export» ichida Excel, CSV va «CSV fayldan import» (eski sahifa bilan bir xil fayl).
+- Kodda: `components/v2/groups/GroupsListV2.tsx`; ma'lumot eski sahifa bilan umumiy —
+  `components/groups/useGroupsList.ts`, `lib/groupsList.ts`, `lib/groupsExport.ts`.
 
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
@@ -432,6 +476,16 @@ Arxiv — betaraf. Kodda: `components/v2/students/StudentQuickPanel.tsx`; fan ra
   (sahifa ildizi `lg:h-full`), torroqda — 70vh quti.
 - **Maydon foni**: globals.css dagi `input:focus { background … !important }` — v2 maydonida
   `bg-v2-surface!` (yoki `bg-transparent!`).
+- **Ikkinchi ro'yxat — Guruhlar** (`app/(app)/groups/page.tsx`, 18.10.2026): xuddi shu andoza;
+  eski `GroupsListPage` ham umumiy hook'ga o'tkazildi (`useGroupsList`) — ko'rinishi o'zgarmadi.
+  Umumiy bloklar ko'paydi: `ColumnsControl` + `columnPrefs` (Ustunlar oynasi), `buttons.ts`
+  (tugma klasslari, «Yana filtrlar» holatlari), `table.ts` (qator foni), `groupStatus.ts`,
+  `StaffName.tsx`.
+- **Qator foni — tirqish tuzog'i** (`components/v2/ui/table.ts`): Chrome `<tr>` fonini har
+  katakka alohida chizadi, kataklar eni kasr bo'lsa chegarada 1 px och/to'q chiziq qoladi
+  (sariq va tanlangan qatorda ko'rinadi). Rangli qatorga fon + o'sha rangdagi ichki soya
+  (`shadow-[inset_0_0_0_9999px_…]`) — `ROW_TINT`; chap chiziq — birinchi katakdagi soya
+  (`ROW_BAR`).
 
 ## Ochiq savollar
 

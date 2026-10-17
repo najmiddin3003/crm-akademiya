@@ -209,6 +209,59 @@ Rasmda faqat bo'sh holat bor.
 *Taxmin:* oxirgi 5 ta to'lov (sana · to'lov turi · qaysi oy uchun, summa), tasdiq kutayotgani —
 «Kutilmoqda»; ko'p bo'lsa «Hammasi (N)» — profilning tranzaksiyalar tabiga.
 
+*Guruhlar ro'yxati va «Ustunlar» oynasi qurildi (18.10.2026, rasm «Guruhlar · Ustunlar»,
+`components/v2/groups/GroupsListV2.tsx`, `components/v2/ui/ColumnsControl.tsx`):*
+
+**42. Guruhlarda «Yana filtrlar» ichida nima?** — ochiq
+Rasmda oyna ochilmagan.
+*Taxmin:* eski sahifadagi qolgan filtrlar — Kun, Toq/Juft kunlar, Dars vaqti (dan – gacha, 30
+daqiqalik qadam), Xona — va yangi «Ta'lim turi» (Oflayn / Onlayn). Kurs, O'qituvchi, Guruh
+holati — tepada.
+
+**43. Xulosa qatoridagi sonlar nimani sanaydi?** — ochiq
+*Taxmin:* RO'YXATDAGI (filtrdan o'tgan) guruhlar bo'yicha: «N ta guruh», «O'quvchilar» —
+ulardagi takrorlanmas o'quvchilar, «Muzlatilgan» — ulardagi muzlatilgan O'QUVCHILAR (eski
+sahifadagi «Muzlatilgan o'quvchilar soni», guruhlar emas). Eski sahifada birinchi ikkalasi filtrga
+qaramay hamma guruhlar bo'yicha edi — u o'zgarmadi.
+
+**44. Bugun davomat qilinmagan guruh (eski sariq qator)** — ochiq
+Rasmda bunday qator yo'q.
+*Taxmin:* «Ogohlantirish» foni + chapda 3 px chiziq (sichqoncha ostida «Bugun davomat
+qilinmagan»), xulosada «• Bugun davomat qilinmagan N» — faqat bunday guruh bo'lsa.
+
+**45. Import qayerda?** — ochiq
+Rasmda tepada faqat «Export» va «+ Guruh qo'shish» («⋯» yo'q); eski sahifada «Import (CSV)» bor.
+*Taxmin:* «Export» menyusida, ajratgichdan keyin «CSV fayldan import» — fayl shakli eksport bilan
+bir xil.
+
+**46. Qator zichligi: Ixcham va Keng** — ochiq
+Rasmda «Ixcham» tanlangan va qatorlar ~52 px.
+*Taxmin:* Ixcham — rasmdagi (sukut), Keng — 64 px. «Ustunlar» oynasi (tartiblash, «doim»,
+zichlik, «Standartga qaytarish») — hamma ro'yxatda bir xil: O'quvchilar ro'yxati ham shu oynaga
+o'tkazildi («O'quvchi — doim»), saqlangan tanlovlar o'z holicha qoldi.
+
+**47. Menyuda «Guruh» ichidagi bandlar** — ochiq
+Rasmda: Guruhlar (son bilan), Barcha vazifalar, Xonalar, Jihozlar, Guruh o'quvchilari — «Dars
+jadvali» yo'q.
+*Taxmin:* «Dars jadvali» qoladi (haqiqiy sahifa, `/groups-schedule`); ichki band «Guruh» →
+«Guruhlar» deb nomlandi (faqat yangi versiyada).
+
+**48. Qidiruv nima bo'yicha?** — ochiq
+Rasmda «Guruh nomi bo'yicha».
+*Taxmin:* eski sahifadagidek guruh nomi, kurs, o'qituvchi va xona bo'yicha (sichqoncha ostidagi
+izohda shunday yozilgan); yozuv rasmdagidek qoldi.
+
+**49. Saralash** — ochiq
+Rasmda saralash ko'rsatkichi yo'q; eski sahifada saralash umuman yo'q edi.
+*Taxmin:* «Guruh nomi», «O'quvchilar», «Boshlanish / Tugash sanasi» sarlavhasi bosilsa
+saralanadi; uchinchi bosish — sukut tartib (guruh yaratilgan tartibi).
+
+**50. «Yana filtrlar» tugmasining ko'rinishi** — ochiq
+Guruhlar rasmida yopiq tugma UZUQ chegarali, ikonkasi kamayuvchi chiziqlar; O'quvchilar rasmida u
+ochiq holatda edi (brend chegara + halqa).
+*Taxmin:* hamma ro'yxatda shunday: yopiq — uzuq, ochiq — brend + halqa, filtr qo'llangan — brend
+fon + son. O'quvchilar sahifasi ham moslandi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

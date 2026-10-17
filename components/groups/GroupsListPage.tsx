@@ -11,15 +11,13 @@ import { SpinnerBlock } from "@/components/ui/Spinner";
 import GroupFormModal from "./GroupFormModal";
 import type { Group } from "@/lib/groups";
 import { GROUP_STATUS_LABELS } from "@/lib/groupRules";
-import { useOfflineCourseList } from "@/hooks/useOfflineCourseList";
-import { useRooms } from "@/hooks/useRooms";
-import { useStudents } from "@/hooks/useStudents";
-import { useTeachers } from "@/hooks/useTeachers";
-import { pupilStatusOf, type PupilListItem } from "@/lib/pupilsData";
-import { GROUP_DAYS } from "@/constants/groups";
+import { applyGroupFilters, groupStudentCount, memberIdsOf } from "@/lib/groupsList";
+import { groupsCsvBlob, groupsXlsBlob } from "@/lib/groupsExport";
+import { downloadBlob } from "@/lib/studentsExport";
 import PersonLink from "@/components/shared/PersonDirectory";
 import TimeField from "@/components/ui/TimeField";
 import { useT } from "@/components/shared/Language";
+import { useGroupsList, type GroupsListInitial } from "./useGroupsList";
 
 // Guruhlar ro'yxati (crm-akademiya #view-groups). SARIQ qator = bugun davomat
 // qilinmagan guruh (g.highlighted). QIZIL "Guruh vaqti" = muddati o'tgan
@@ -29,82 +27,9 @@ import { useT } from "@/components/shared/Language";
 // Ranglar Tailwind sinflari bilan, har biri `dark:` jufti bilan: ilgari sariq
 // fon qattiq `#fef9c3` (style) edi va tungi rejimda oq matn och sariq ustida
 // o'qilmasdi — foydalanuvchi 14.09.2026 da ko'rsatdi.
-
-function csvCell(v: string | number): string {
-  const s = String(v ?? "");
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-/**
- * CSV matnini qatorlarga ajratadi. Qo'shtirnoq ichidagi vergul va yangi
- * qator ajratuvchi sifatida qaralmaydi (eksport ham shu qoida bilan
- * yozadi), "" esa bitta qo'shtirnoq bo'ladi.
- */
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-  // BOM eksport tomonidan qo'shiladi — bo'lmasa birinchi ustun nomi buziladi.
-  const s = text.replace(/^﻿/, "");
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (s[i + 1] === '"') { cell += '"'; i++; }
-        else inQuotes = false;
-      } else cell += c;
-      continue;
-    }
-    if (c === '"') inQuotes = true;
-    else if (c === ",") { row.push(cell); cell = ""; }
-    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
-    else if (c !== "\r") cell += c;
-  }
-  if (cell || row.length) { row.push(cell); rows.push(row); }
-  return rows.filter((r) => r.some((v) => v.trim() !== ""));
-}
-
-/** Bazadagi ro'yxat + guruhlarda amalda uchraydigan qiymatlar. */
-function unionWithGroups(fromDb: string[], groups: Group[], pick: (g: Group) => string | undefined): string[] {
-  return [...new Set([...fromDb, ...groups.map(pick).filter((v): v is string => Boolean(v))])];
-}
-const HEADERS = ["№", "Guruh nomi", "Kurs", "Darajasi", "Kun", "Dars vaqti", "Guruh vaqti", "O'quvchi", "O'qituvchi", "Xona", "Telegram", "Holati"];
-
-/** "08:30" → 510 (yarim tundan boshlab daqiqalar). */
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(":");
-  return Number(h) * 60 + Number(m || 0);
-}
-
-/** "06:00 - 08:00" → [360, 480]. Format mos kelmasa [null, null]. */
-function parseTimeRange(range: string): [number | null, number | null] {
-  const m = (range || "").match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
-  if (!m) return [null, null];
-  return [toMinutes(m[1]), toMinutes(m[2])];
-}
-
-/**
- * Guruhdagi o'quvchilar soni — HAQIQIY a'zolik ro'yxatidan (`studentIds`).
- *
- * NEGA: `Group.students` — bazada yotgan o'lik hisoblagich. U guruh
- * yaratilganda 0 qilib yoziladi va /api/groups/:id/students (POST/DELETE)
- * uni HECH QACHON yangilamaydi — faqat `studentIds` massivini
- * o'zgartiradi. Ya'ni ustunda va "Jami o'quvchilar soni" da ilgari
- * o'quvchilar qo'shilgan guruhlar uchun ham 0 turardi.
- */
-function groupStudentCount(g: Group): number {
-  return g.studentIds?.length ?? 0;
-}
+//
+// Ma'lumot, filtr, sanash, import va eksport — yangi versiya bilan BITTA
+// manbadan (./useGroupsList.ts, lib/groupsList.ts, lib/groupsExport.ts).
 
 // Bazadagi holat kalitlari va yorliqlari — lib/groupRules.ts (modal va
 // server bilan bitta ro'yxat). Ilgari ustunda XOM qiymat ("active")
@@ -123,33 +48,13 @@ const ODD_EVEN_OPTIONS = [
 ];
 
 /** SERVERDA olingan boshlang'ich ro'yxatlar — app/(app)/groups/page.tsx. */
-export interface GroupsListPageProps {
-  initialGroups?: Group[];
-  /** Muzlatilgan o'quvchilar — guruh qatoridagi "muzlatilgan" soni uchun. */
-  initialFrozenPupils?: PupilListItem[];
-}
+export type GroupsListPageProps = GroupsListInitial;
 
 export default function GroupsListPage({ initialGroups, initialFrozenPupils }: GroupsListPageProps = {}) {
   const { t } = useT();
   const router = useRouter();
-  const { showSuccess, showError } = useToast();
-  // Filtr ro'yxatlari bazadan — ilgari constants'dagi qattiq ro'yxatlar
-  // edi, ya'ni haqiqiy o'qituvchi/kurs/xona bo'yicha filtrlab bo'lmasdi.
-  const { names: dbTeachers } = useTeachers();
-  const { names: dbCourses } = useOfflineCourseList();
-  const { names: dbRooms } = useRooms();
-  // O'quvchilar HOLATI (Aktiv/Muzlatilgan/Arxiv) faqat `pupils` da bor —
-  // guruh hujjatida yo'q. "Muzlatilgan o'quvchilar soni" ni hisoblash uchun
-  // guruhlarning `studentIds` ro'yxati shu ro'yxatga ulanadi.
-  // SERVERDA filtrlanadi: bu yerdan faqat MUZLATILGANLAR soni kerak
-  // (pastdagi `frozenStudents`). Ilgari 6 747 o'quvchi tortilib,
-  // deyarli hammasi tashlab yuborilardi.
-  const { pupils, loading: pupilsLoading } = useStudents({ status: "Muzlatilgan", initial: initialFrozenPupils });
-  // `initialGroups` — SERVERDA olingan ro'yxat (app/(app)/groups/page.tsx).
-  // Berilsa jadval birinchi renderdayoq to'la chiziladi va quyidagi effekt
-  // so'rov yubormaydi.
-  const [groups, setGroups] = useState<Group[]>(initialGroups ?? []);
-  const [loading, setLoading] = useState(!initialGroups);
+  const { showSuccess } = useToast();
+  const { groups, loading, pupilsLoading, options, frozenIds, upsert, importing, importCsv } = useGroupsList({ initialGroups, initialFrozenPupils });
 
   const [search, setSearch] = useState("");
   const [teacher, setTeacher] = useState("");
@@ -169,19 +74,8 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
   // tafsilotiga kirmasdan shu jadvalning o'zida tahrirlash. O'sha
   // GroupFormModal, `group` berilsa tahrirlash rejimida ochiladi.
   const [editFor, setEditFor] = useState<Group | null>(null);
-  const [importing, setImporting] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (initialGroups) return; // ro'yxat sahifa bilan birga keldi
-    let cancelled = false;
-    fetch("/api/groups")
-      .then((r) => r.json())
-      .then((d) => { if (!cancelled && d.ok) setGroups(d.groups); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [initialGroups]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -192,118 +86,34 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
 
-  // Filtr variantlari: bazadagi ro'yxat + guruhlarda AMALDA uchraydigan
-  // qiymatlar. Ikkinchisi kerak, chunki xonalar ro'yxati bo'sh bo'lishi
-  // mumkin (seed yo'q), guruhlarda esa xona yozilgan bo'lishi mumkin —
-  // aks holda filtrda tanlanadigan narsa qolmasdi.
-  const teacherNames = useMemo(() => unionWithGroups(dbTeachers, groups, (g) => g.teacher), [dbTeachers, groups]);
-  const courseNames = useMemo(() => unionWithGroups(dbCourses, groups, (g) => g.course), [dbCourses, groups]);
-  const roomNames = useMemo(() => unionWithGroups(dbRooms, groups, (g) => g.room), [dbRooms, groups]);
-  // Kun ro'yxati ham boshqa uchtasi kabi BAZADAGI qiymatlar bilan
-  // birlashtiriladi. Filtr aniq tenglik bilan solishtiradi, ya'ni import
-  // qilingan yoki qo'lda "Du,Se,Pa" deb yozilgan guruh qattiq ro'yxat
-  // orqali HECH QACHON topilmasdi.
-  const dayNames = useMemo(() => unionWithGroups(GROUP_DAYS, groups, (g) => g.day), [groups]);
+  const { teacher: teacherNames, course: courseNames, room: roomNames, day: dayNames } = options;
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return groups.filter((g) => {
-      if (q && !g.name.toLowerCase().includes(q) && !g.course.toLowerCase().includes(q) && !g.teacher.toLowerCase().includes(q) && !g.room.toLowerCase().includes(q)) return false;
-      if (teacher && g.teacher !== teacher) return false;
-      if (course && g.course !== course) return false;
-      if (room && g.room !== room) return false;
-      if (day && g.day !== day) return false;
-      if (status && g.status !== status) return false;
-      if (oddEven && !g.day.toLowerCase().includes(oddEven.toLowerCase())) return false;
-      // Dars vaqti bo'yicha (referensdagi "Boshlanish vaqti" / "Tugash vaqti").
-      // g.time formati: "06:00 - 08:00".
-      if (startTime || endTime) {
-        const [gs, ge] = parseTimeRange(g.time);
-        if (gs === null || ge === null) return false;
-        if (startTime && gs < toMinutes(startTime)) return false;
-        if (endTime && ge > toMinutes(endTime)) return false;
-      }
-      return true;
-    });
-  }, [groups, search, teacher, course, room, day, status, oddEven, startTime, endTime]);
+  const filtered = useMemo(
+    () => applyGroupFilters(groups, search, { teacher, course, room, day, status, oddEven, startTime, endTime, eduType: "" }),
+    [groups, search, teacher, course, room, day, status, oddEven, startTime, endTime],
+  );
 
   const start = (page - 1) * pageSize;
   const slice = filtered.slice(start, start + pageSize);
 
-  // Guruhlarga qo'shilgan o'quvchilarning TAKRORLANMAS id'lari. Bitta
-  // o'quvchi bir nechta guruhda bo'lishi mumkin — guruhlar bo'yicha oddiy
-  // yig'indi uni bir necha marta sanardi, shuning uchun Set ishlatilgan.
-  const memberIds = useMemo(() => {
-    const set = new Set<number>();
-    for (const g of groups) for (const id of g.studentIds ?? []) set.add(id);
-    return set;
-  }, [groups]);
+  // Guruhlarga qo'shilgan o'quvchilarning TAKRORLANMAS id'lari (lib/groupsList.ts).
+  const memberIds = useMemo(() => memberIdsOf(groups), [groups]);
 
-  // Muzlatilganlar soni — HAQIQIY holat bo'yicha (lib/pupilsData.ts
-  // pupilStatusOf). Ilgari bu yerda qattiq `0` yozilgan edi, ya'ni bir
-  // nechta o'quvchi muzlatilgan bo'lsa ham sahifa "0" deb yolg'on aytardi.
-  const frozenStudents = useMemo(
-    () => pupils.filter((p) => memberIds.has(p.id) && pupilStatusOf(p) === "Muzlatilgan").length,
-    [pupils, memberIds],
-  );
+  // Muzlatilganlar soni — HAQIQIY holat bo'yicha. Ilgari bu yerda qattiq
+  // `0` yozilgan edi, ya'ni bir nechta o'quvchi muzlatilgan bo'lsa ham
+  // sahifa "0" deb yolg'on aytardi.
+  const frozenStudents = useMemo(() => [...memberIds].filter((id) => frozenIds.has(id)).length, [memberIds, frozenIds]);
 
   // "1 234" ko'rinishida (referensdagidek probel bilan).
   const fmtCount = (n: number) => n.toLocaleString("ru-RU").replace(/,/g, " ");
 
-  // Import — eksport bilan bir xil ustunlar (eksport → tahrir → import).
-  // "№" va "O'quvchi" o'qilmaydi: biri qator raqami, ikkinchisi guruhga
-  // qo'shilgan o'quvchilardan hisoblanadi.
-  async function importCsv(file: File) {
-    setImporting(true);
-    try {
-      const rows = parseCsv(await file.text());
-      if (rows.length < 2) {
-        showError(t("Faylda sarlavhadan boshqa qator yo'q"));
-        return;
-      }
-      const body = rows.slice(1).map((r) => ({
-        name: r[1], course: r[2], level: r[3], day: r[4], time: r[5],
-        period: r[6], teacher: r[8], room: r[9], telegram: r[10], status: r[11],
-      }));
-      const res = await fetch("/api/groups/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groups: body }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        showError(t(data.error || "Import qilinmadi"));
-        return;
-      }
-      const fresh = await fetch("/api/groups").then((r) => r.json());
-      if (fresh.ok) setGroups(fresh.groups);
-      const skipped = (data.skipped as { reason: string }[]).length;
-      showSuccess(
-        skipped > 0
-          ? t("{created} ta guruh qo'shildi, {skipped} tasi o'tkazib yuborildi", { created: data.created, skipped })
-          : t("{created} ta guruh qo'shildi", { created: data.created }),
-      );
-    } catch {
-      showError(t("Faylni o'qib bo'lmadi"));
-    } finally {
-      setImporting(false);
-    }
-  }
-
-  function exportRows() {
-    return filtered.map((g, i) => [i + 1, g.name, g.course, g.level || "", g.day, g.time, g.period, groupStudentCount(g), g.teacher, g.room, g.telegram || "", g.status]);
-  }
   function exportCSV() {
-    const csv = [HEADERS, ...exportRows()].map((r) => r.map(csvCell).join(",")).join("\r\n");
-    downloadBlob(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), "guruhlar.csv");
+    downloadBlob(groupsCsvBlob(filtered), "guruhlar.csv");
     showSuccess(t("CSV yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
   function exportExcel() {
-    const head = "<tr>" + HEADERS.map((h) => `<th style="background:#dbeafe;color:#1e3a8a;font-weight:bold;border:1px solid #94a3b8;padding:8px 10px;text-align:left;">${h}</th>`).join("") + "</tr>";
-    const rows = exportRows().map((r) => "<tr>" + r.map((v) => `<td style="border:1px solid #cbd5e1;padding:6px 10px;">${v}</td>`).join("") + "</tr>").join("");
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt;}table{border-collapse:collapse;}</style></head><body><table><thead>${head}</thead><tbody>${rows}</tbody></table></body></html>`;
-    downloadBlob(new Blob(["﻿" + html], { type: "application/vnd.ms-excel;charset=utf-8" }), "guruhlar.xls");
+    downloadBlob(groupsXlsBlob(filtered), "guruhlar.xls");
     showSuccess(t("Excel yuklab olindi — {filtered} ta", { filtered: filtered.length }));
     setMoreOpen(false);
   }
@@ -501,7 +311,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
         <GroupFormModal
           groups={groups}
           onClose={() => setAddOpen(false)}
-          onSaved={(g) => setGroups((prev) => [...prev, g])}
+          onSaved={upsert}
         />
       )}
 
@@ -510,7 +320,7 @@ export default function GroupsListPage({ initialGroups, initialFrozenPupils }: G
           group={editFor}
           groups={groups}
           onClose={() => setEditFor(null)}
-          onSaved={(g) => setGroups((prev) => prev.map((x) => (x.id === g.id ? g : x)))}
+          onSaved={upsert}
         />
       )}
     </div>

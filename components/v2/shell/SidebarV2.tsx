@@ -29,7 +29,7 @@ import {
 import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 import { isPathAllowed } from "@/lib/permissions";
 import { BetaBadge } from "./DevNotice";
-import { HOME_KEY, V2_BOTTOM_KEYS, V2_ICONS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
+import { HOME_KEY, V2_BOTTOM_KEYS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
 import { usePopover } from "./usePopover";
 
 // YANGI VERSIYA YON MENYUSI (design/v2/DESIGN.md → «Navigatsiya — yon menyu»).
@@ -112,7 +112,7 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
     const active = isActive(it.href);
     const count = it.countKey != null ? counts[it.countKey] : undefined;
     const cls = `flex h-8 items-center gap-2 rounded-v2-md border px-2.5 text-v2-body transition-colors ${active ? ROW_ACTIVE : ROW_IDLE}`;
-    const label = noEmoji(t(it.label));
+    const label = noEmoji(t(V2_ITEM_LABELS[it.href] ?? it.label));
     const inner = (
       <>
         {/* Uzun nom («Birinchi darsga yozilganlar») menyu eniga sig'masa — to'liq matni sichqoncha ostida. */}
