@@ -229,6 +229,9 @@ yangi nusxa bilan almashtirib turadi.
   `APP_MOVED_TO=off` qo'yib redeploy qiling (11-banddagi qo'riqchi, aks
   holda Vercel faqat "ko'chdi" sahifasini ko'rsatadi) va u Atlas'ga
   qarashini unutmang — Atlas'da kechagi holat (zaxira ko'zgusi) turadi.
+  `TELEGRAM_SEND=on` ham qo'ying: Vercel'da botlar sukut bo'yicha HECH
+  KIMGA yozmaydi (sinov sayti qorovuli, lib/telegramApi.ts, 17.10.2026) —
+  qo'yilmasa to'lov xabarlari, kassa boti va o'quvchilar boti jim qoladi.
 
 ## Kuzatuv
 

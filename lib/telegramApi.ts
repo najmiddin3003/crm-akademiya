@@ -17,6 +17,39 @@
 
 const API = "https://api.telegram.org";
 
+// ── SINOV SAYTI QOROVULI (17.10.2026) ──────────────────────────────────
+//
+// Prod VPS'da (deploy/README.md), Vercel'da esa faqat SINOV sayti ishlaydi
+// (tizimli-ai-sinov.vercel.app; eski `crm-akademiya` loyihasini proxy.ts
+// umuman ishlatmaydi). Sinov sayti Atlas KO'ZGUSIDA ishlaydi — undagi
+// xodimlar suhbatlari (staff_bot_users), o'quvchilar, guruh sozlamalari
+// HAQIQIY. U yerdan yozilgan xabar haqiqiy odamga borardi: topshiriq
+// eslatmasi (sahifa ochilganda o'zi yuradi — lib/staffTaskReminders.ts),
+// ko'chirma, o'quvchiga xabar, guruhga to'lov... 17.10.2026 holatida sinov
+// loyihasida Telegram kaliti YO'Q, lekin kimdir qo'shib qo'ysa ham xabar
+// ketmasin.
+//
+// Shu bois Vercel'da (`VERCEL=1` — Vercel o'zi qo'yadi, unutib bo'lmaydi;
+// VPS'da yo'q) `get*` dan boshqa HAMMA metod — sendMessage,
+// editMessageText, deleteMessage, answerCallbackQuery, setWebhook (sinov
+// sayti prod webhook'ini ham o'zgartira olmaydi) — tarmoqqa CHIQMAYDI:
+// chaqiruvchi oddiy "yuborilmadi" javobini oladi (bloklash emas — suhbat
+// `blocked` belgilanmaydi).
+//
+//   TELEGRAM_SEND=on  — Vercel'da ham yozadi (Vercel'ga orqaga qaytish,
+//                       deploy/README.md 13-band);
+//   TELEGRAM_SEND=off — istalgan joyda o'chiradi (masalan lokal sinov).
+
+const MUTED = "sinov sayti — Telegram'ga yozish o'chiq (TELEGRAM_SEND)";
+
+/** Telegram'ga YOZISH o'chiqmi (o'qish — `get*` — baribir ishlaydi). */
+export function telegramMuted(): boolean {
+  const flag = (process.env.TELEGRAM_SEND || "").trim().toLowerCase();
+  if (flag === "on") return false;
+  if (flag === "off") return true;
+  return process.env.VERCEL === "1";
+}
+
 /**
  * HTML rejimida yuboriladigan matnda foydalanuvchi kiritgan qism
  * (o'quvchi ismi, izoh) ESKEYP QILINISHI shart. Aks holda ismda "<" yoki
@@ -92,6 +125,11 @@ export async function callTelegram(
   payload: Record<string, unknown>,
   attempt = 0,
 ): Promise<TelegramApiResponse> {
+  if (!method.startsWith("get") && telegramMuted()) {
+    console.info(`[telegram] ${method} yuborilmadi: ${MUTED}`);
+    return { ok: false, description: MUTED };
+  }
+
   // TARMOQ darajasidagi uzilish ("fetch failed" — ulanish tiklanmadi,
   // DNS, TLS) ham qayta uriniladi. VPS'da (189.74.98.20) 15–19.09.2026
   // oralig'ida kuniga 1–5 marta shunday bo'ldi: to'lov xabari guruhga

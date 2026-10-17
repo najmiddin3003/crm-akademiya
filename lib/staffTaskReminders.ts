@@ -1,7 +1,9 @@
 import type { Collection, Db } from "mongodb";
+import { isStaffBotReady, loadStaffBotConfig } from "@/lib/staffBot/config";
 import { notifyStaffTaskReminder } from "@/lib/staffBot/taskNotify";
 import { DAY_MS, HOUR_MS, ms, uzTimeOf } from "@/lib/staffTasks";
 import { TASKS_COL, type StaffTaskDoc } from "@/lib/staffTasksServer";
+import { telegramMuted } from "@/lib/telegramApi";
 
 // TOPSHIRIQ ESLATMALARI — xodimlar botiga (17.10.2026). Foydalanuvchi:
 // «muddat yaqinlashganda ham botda eslatma yuboradigan qil».
@@ -19,6 +21,11 @@ import { TASKS_COL, type StaffTaskDoc } from "@/lib/staffTasksServer";
 //
 // TUNDA JIM: 22:00–08:00 xabar ketmaydi, ertalab — hali dolzarb bo'lsa.
 // Tunda o'tib ketgan muddat haqida ertalab «muddat o'tdi» keladi.
+//
+// BOT YO'Q BO'LSA UMUMAN YURMAYDI: xodimlar boti kaliti sozlanmagan yoki
+// Telegram'ga yozish o'chiq (sinov sayti — lib/telegramApi.ts →
+// telegramMuted) bo'lsa eslatma «yuborildi» deb belgilanmaydi ham —
+// ketmagan xabar ketgan bo'lib qolmasin.
 //
 // Kim chaqiradi: topshiriq avtomatikasi (lib/staffTasksServer.ts →
 // runAutomation — CRM ochiq turganda har ~20 s) va server cron'i har 10
@@ -73,6 +80,7 @@ let running = false;
 /** Yuborilgan eslatmalar soni. */
 export async function runTaskReminders(db: Db, nowMs = Date.now()): Promise<number> {
   if (running || isQuietHour(nowMs)) return 0;
+  if (telegramMuted() || !isStaffBotReady(loadStaffBotConfig())) return 0;
   running = true;
   let sent = 0;
   try {
