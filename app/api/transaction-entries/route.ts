@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { getCurrentEmployee, ownsCashbox } from "@/lib/currentEmployee";
+import { getCurrentEmployee, nameEq, ownsCashbox } from "@/lib/currentEmployee";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import { pupilEntryMatch, pupilNameOfDoc } from "@/lib/pupilEntries";
 
@@ -33,6 +33,8 @@ function nameFilter(value: string) {
 //   ?txType=payIn    — "payIn" | "payOut" | "transfer"
 //   ?month=YYYY-MM   — shu oy ichidagilar
 //   ?excludeCancelled=1 — bekor qilinganlarni tashlab ketadi
+//   ?cashboxIds=1,2  — bir nechta kassa (admin bo'lmasa — HAMMASI o'ziniki)
+//   ?q=…             — ism, kassir, izoh yoki tranzaksiya nomi ichidan
 //
 // Parametrsiz chaqirilsa javob avvalgidek — butun ro'yxat. Shu bois
 // Tranzaksiyalar/Kassalar/Daromad rejasi sahifalari o'zgarishsiz ishlaydi.
@@ -222,6 +224,47 @@ export async function GET(req: Request) {
     filter.teacherName = { $regex: escapeRegex(teacherLike.trim()), $options: "i" };
   }
 
+  // ?q=… — «Ism yoki izoh» (yangi versiyadagi Kassalar sahifasi): o'quvchi/
+  // xodim ismi, qayd etgan kassir, izoh yoki tranzaksiya nomi ICHIDAN.
+  // `$and` ga qo'shiladi — `?person=` ning `$or` i bilan to'qnashmasin.
+  const q = sp.get("q")?.trim();
+  if (q) {
+    const rx = { $regex: escapeRegex(q.slice(0, 100)), $options: "i" };
+    filter.$and = [
+      ...((filter.$and as unknown[]) ?? []),
+      { $or: [{ studentName: rx }, { moderator: rx }, { note: rx }, { txName: rx }] },
+    ];
+  }
+
+  // ?cashboxIds=1,2,3 — BIR NECHTA kassa birdan («Barcha kassalar» jadvali,
+  // yangi versiya). Qoida `?cashboxId=` bilan bir xil: admin bo'lmasa HAR BIR
+  // kassa o'ziniki bo'lishi shart — birortasi begona bo'lsa so'rov butunlay
+  // rad etiladi (jimgina kesib qo'yilmaydi: ro'yxatni sahifa GET /api/cashboxes
+  // dan oladi, begona id bo'lsa — bu xato yoki chetlab o'tish urinishi).
+  const cashboxIdsRaw = sp.get("cashboxIds");
+  if (cashboxIdsRaw !== null) {
+    if (sp.get("cashboxId")) {
+      return NextResponse.json({ ok: false, error: "cashboxId va cashboxIds birga berilmaydi" }, { status: 400 });
+    }
+    const ids = [...new Set(cashboxIdsRaw.split(",").map((s) => s.trim()).filter(Boolean).map(Number))];
+    if (ids.length === 0 || ids.length > 200 || ids.some((n) => !Number.isInteger(n) || n <= 0)) {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri cashboxIds" }, { status: 400 });
+    }
+    const me = await getCurrentEmployee();
+    if (!me) {
+      return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
+    }
+    if (!me.isAdmin) {
+      const owned = me.name
+        ? await db.collection("cashboxes").countDocuments({ id: { $in: ids }, moderator: nameEq(me.name) })
+        : 0;
+      if (owned !== ids.length) {
+        return NextResponse.json({ ok: false, error: "Bu kassa sizga biriktirilmagan" }, { status: 403 });
+      }
+    }
+    filter.cashboxId = { $in: ids };
+  }
+
   const cashboxId = sp.get("cashboxId");
   if (cashboxId) {
     const n = Number(cashboxId);
@@ -319,10 +362,14 @@ export async function GET(req: Request) {
   //
   // Qatorlar soni ham SHU YERDAN olinadi: aks holda aynan bir xil filtr
   // bo'yicha countDocuments() ikkinchi marta to'liq yurishga majbur bo'lardi.
-  let totals: { income: number; expense: number } | undefined;
+  // `incomeCount` / `expenseCount` — o'sha qabul qilingan qatorlar SONI
+  // (yangi versiyadagi «Kirim · 3 ta»); eski sahifa ularni o'qimaydi.
+  let totals: { income: number; expense: number; incomeCount: number; expenseCount: number } | undefined;
   let aggCount: number | undefined;
   if (sp.get("withTotals") === "1") {
     const accepted = { $not: [{ $in: [{ $ifNull: ["$status", ""] }, ["waiting", "cancelled"]] }] };
+    const isIn = { $and: [{ $gt: ["$amount", 0] }, accepted] };
+    const isOut = { $and: [{ $lt: ["$amount", 0] }, accepted] };
     const [agg] = await col
       .aggregate([
         { $match: filter },
@@ -330,13 +377,20 @@ export async function GET(req: Request) {
           $group: {
             _id: null,
             n: { $sum: 1 },
-            income: { $sum: { $cond: [{ $and: [{ $gt: ["$amount", 0] }, accepted] }, "$amount", 0] } },
-            expense: { $sum: { $cond: [{ $and: [{ $lt: ["$amount", 0] }, accepted] }, { $abs: "$amount" }, 0] } },
+            income: { $sum: { $cond: [isIn, "$amount", 0] } },
+            expense: { $sum: { $cond: [isOut, { $abs: "$amount" }, 0] } },
+            incomeCount: { $sum: { $cond: [isIn, 1, 0] } },
+            expenseCount: { $sum: { $cond: [isOut, 1, 0] } },
           },
         },
       ])
       .toArray();
-    totals = { income: agg?.income ?? 0, expense: agg?.expense ?? 0 };
+    totals = {
+      income: agg?.income ?? 0,
+      expense: agg?.expense ?? 0,
+      incomeCount: agg?.incomeCount ?? 0,
+      expenseCount: agg?.expenseCount ?? 0,
+    };
     aggCount = agg?.n ?? 0;
   }
 

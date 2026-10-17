@@ -401,6 +401,40 @@ O'quvchilar ro'yxati qolipida: «Guruhlar» + «Akademiya 3 Uychi · 5 ta guruh�
 - Kodda: `components/v2/groups/GroupsListV2.tsx`; ma'lumot eski sahifa bilan umumiy —
   `components/groups/useGroupsList.ts`, `lib/groupsList.ts`, `lib/groupsExport.ts`.
 
+## Kassalar (rasm «Kassalar», 18.10.2026)
+
+Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida):
+
+- **Sarlavha**: «Kassalar» + «4 ta filial kassasi · bosh kassa»; o'ngda ikkinchi darajali
+  «Umumiy hisobot» (kassalar qoldig'i Excel/CSV + «Moliya hisobotlari») va «+ Yangi kassa» —
+  ikkalasi faqat admin.
+- **Chapda** segment «Aktiv N / Arxiv / Barchasi» (son faqat faol bo'lakda) va **kassa
+  kartochkalari**: chegarali kvadratda hamyon ikonka (bosh kassada toj), nomi (qalin), ostida
+  «mas'ul · oxirgi qabul qilingan topshiruv vaqti» (`caption`, `text-3`; bugun — soat, aks holda
+  kun); o'ngda qoldiq (16 px qalin + «so'm» `text-2`) va «ko'z» — SHU kassa summasini yashirish
+  («•••••• so'm», har kassada alohida, brauzerda saqlanadi). Ostida «Oxirgi topshiruvdan beri
+  tushum: **N so'm**»; bosh kassada o'rniga «Kutilayotgan ko'chirma» va «Kunlik topshiruv»
+  havolasi. Pastki qator `surface-2` fonda: chegarali «↙ Kirim» (ikonka `success`), «↗ Chiqim»
+  (`danger`), «⇄ Ko'chirish», o'ngda hisobot (admin) va «⋯» (to'lov turlari qoldig'i — bosilsa
+  turlar orasida ko'chirish, Dividend, Sarmoya, admin: Tahrirlash, Bosh kassa qilish).
+  Kartochka bosilsa — `brand` chegara + halqa, o'ngdagi jadval shu kassaga toraytiriladi.
+- **O'ngda «Tranzaksiyalar»** (`surface` karta): sarlavha + «Barcha kassalar» (yoki tanlangan
+  kassa nomi), o'ngda sana tanlovi («Bugun, 18-oktyabr ⌄» — `components/v2/ui/V2DateRange.tsx`)
+  va «Hisobot ⌄» (admin); filtrlar: «Ism yoki izoh», Turi, To'lov turi, Kassa, «Yana» (uzuq);
+  uch katakli qator **Kirim · N ta** (`success`) / **Chiqim · N ta** (`danger`) / **Farq**;
+  jadval: Chek (chegarali printer tugma), «Kim / nima» (yo'nalish belgisi och fonli kvadratda +
+  ism qalin + «Kirim · izoh» `caption`; holat belgilari «Tasdiq kutmoqda», «Bekor qilingan»,
+  «Tahrirlangan», kelayotgan ko'chirmada ✓ / ×), Kassa, Sana, «Summa, so'm» (ishorali, rangli,
+  ostida to'lov turi), «⋯». Pastda «N ta amal ko'rsatildi» va izoh.
+- Jadval **qat'iy ustunli** (`table-fixed` + `colgroup`): katakdagi `truncate` ustunni
+  toraytirmaydi, uzun ism butun jadvalni kengaytirardi. Bitta kun tanlangan bo'lsa tor ekranda
+  sana o'rnida faqat soat.
+- Kodda: `components/v2/finance/CashboxesV2.tsx`, `CashboxCardV2.tsx`, `CashTransactionsV2.tsx`;
+  oynalar eski (`components/finance/*`); chek va tahrir tarixi — `cashReceipt.tsx`,
+  `EditHistoryModal.tsx`, eksport — `lib/cashEntriesExport.ts` (eski sahifa ham shulardan).
+  API: `?cashboxIds=` (bir nechta kassa, admin bo'lmasa hammasi o'ziniki), `?q=`, yig'indida
+  `incomeCount` / `expenseCount`.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

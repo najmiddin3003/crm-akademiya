@@ -262,6 +262,61 @@ ochiq holatda edi (brend chegara + halqa).
 *Taxmin:* hamma ro'yxatda shunday: yopiq — uzuq, ochiq — brend + halqa, filtr qo'llangan — brend
 fon + son. O'quvchilar sahifasi ham moslandi.
 
+*Kassalar qurildi (18.10.2026, rasm «Kassalar», `components/v2/finance/CashboxesV2.tsx`):*
+
+**51. Bosh kassa qayerda?** — ochiq
+Rasmda: «4 ta filial kassasi · bosh kassa — Rahbar panelida», ro'yxatda bosh kassa yo'q.
+*Taxmin:* «Rahbar paneli» hali yo'q — shu bois bosh kassa hozircha shu ro'yxatda, eng tepada (toj
+ikonka, «Bosh kassa · mas'ul», kutilayotgan ko'chirma, «Kunlik topshiruv»). Rahbar paneli qurilganda
+u yoqqa ko'chadi; sarlavhadagi «— Rahbar panelida» ham shunda qo'shiladi.
+
+**52. «Ko'chirmalar faqat Rahbar kassasiga»** — ochiq, QAROR KERAK
+Rasm pastida shunday yozilgan, hozirgi tizimda esa ko'chirma ISTALGAN kassaga yuboriladi.
+*Taxmin:* qoida o'zgartirilmadi (bu biznes qarori); pastda haqiqatga mos izoh: «Ko'chirma qabul
+qiluvchi ✓ bosgunicha jo'natuvchi kassada turadi». Faqat rahbar kassasiga cheklash kerak bo'lsa —
+ayting, ko'chirish oynasi va server bilan birga qilinadi.
+
+**53. Tranzaksiyalar — qaysi kassalar?** — ochiq
+*Taxmin:* «Barcha kassalar» = xodimga ko'rinadigan hamma kassa (admin — hammasi, kassir — o'ziniki;
+server har birini tekshiradi). Kartochka yoki «Kassa» chipi bitta kassaga toraytiradi. Sukut sana —
+bugun.
+
+**54. Ism yonidagi vaqt («Dilmurod Komilov · 11:41»)** — ochiq
+*Taxmin:* rahbar oxirgi topshiruvni QABUL QILGAN vaqt (bugun — soat, aks holda kun); topshiruv
+bo'lmagan kassada vaqt yo'q (rasmdagi birinchi kartochkadagidek). To'liq sana — sichqoncha ostida.
+
+**55. «Ko'z» — summani yashirish** — ochiq
+Rasmda bitta kassa ochiq, uchtasi «••••••». Eski sahifada bitta umumiy tugma edi.
+*Taxmin:* har kassada alohida, shu brauzerda eslab qolinadi; sukut — ko'rinadi. Jadvaldagi summalar
+yashirilmaydi.
+
+**56. Kartochkada nima yo'q bo'ldi?** — ochiq
+Eski kartochkada: «Oxirgi topshiruvdan beri chiqim», to'lov turlari bo'yicha qoldiq qatorlari (bosilsa
+turlar orasida ko'chirish), Dividend / Sarmoya plitkalari.
+*Taxmin:* chiqim — tushum qatorining izohida; to'lov turlari — qoldiq izohida va «⋯» menyusida
+(bosilsa — o'sha ko'chirish oynasi); Dividend / Sarmoya — «⋯» da. Turlarni surib tartiblash eski
+sahifada qoladi (tartib ikkala versiyada bir xil o'qiladi).
+
+**57. «Umumiy hisobot» nima?** — ochiq
+*Taxmin:* kassalar qoldig'i (har kassa: qoldiq, to'lov turlari, oxirgi topshiruvdan beri tushum /
+chiqim, kutilayotgan ko'chirma) — Excel/CSV, va «Moliya hisobotlari» sahifasiga havola. «Hisobot ⌄»
+(jadval ustida) — tranzaksiyalar, «Kassa» ustuni bilan. Ikkalasi faqat admin (eski qoida).
+
+**58. Kirim / Chiqim soni va yig'indisi** — ochiq
+*Taxmin:* eski sahifa qoidasi: faqat qabul qilingan yozuvlar (tasdiq kutayotgan va bekor qilingan
+kirmaydi), ko'chirmalar ishorasi bo'yicha (chiquvchi — chiqim, keluvchi — kirim; «Barcha kassalar» da
+bir-birini yopadi, «Farq» ga ta'sir qilmaydi).
+
+**59. Jadvalda «Oyligiga», «Izoh», «Holati» ustunlari** — ochiq
+Rasmdagi jadvalda yo'q.
+*Taxmin:* izoh — «Kim / nima» ostida («Chiqim · xarajat»), holat — belgi bilan (tasdiq kutmoqda,
+bekor qilingan, tahrirlangan; ✓ / × shu yerda), ustoz va qabul qilgan kassir — sichqoncha ostida va
+tranzaksiya oynasida.
+
+**60. Oy nomi imlosi** — ochiq
+Rasmda «12-oktabr», ilovada hamma joyda «Oktyabr» (lib/i18n.ts).
+*Taxmin:* bir xillik uchun ilovadagisi («18-oktyabr»); imlo almashsa — bitta joyda.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

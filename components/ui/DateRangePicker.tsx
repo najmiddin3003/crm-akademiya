@@ -41,6 +41,11 @@ function fmt(d: Date): string {
 }
 
 // Preset oraliqlar (bugungi kundan). Hafta yakshanbadan boshlanadi (kalendar Su bilan).
+// Yangi versiyadagi sana tanlovi ham shundan (components/v2/ui/V2DateRange.tsx) —
+// «Bu hafta» ikki versiyada bir xil kunlarni bersin.
+export function dateRangePresets(): { key: string; label: string; range: () => DateRange }[] {
+  return presets();
+}
 function presets(): { key: string; label: string; range: () => DateRange }[] {
   const today = startOfDay(new Date());
   const weekStart = addDays(today, -today.getDay()); // yakshanba
