@@ -359,8 +359,10 @@ o'quvchilarda — 3 ta asosiy filtr tepada + «Yana filtrlar». Qaysi sahifada q
 ## Kodda: versiya almashtirgichi va yangi qobiq (17.10.2026)
 
 - **Tanlov** — cookie `tizimli_ui` (`v1` / `v2`), manzillar o'zgarmaydi: `lib/uiVersion.ts`
-  (brauzer), `lib/uiVersionServer.ts` (server). Almashtirgich faqat sinov saytida (Vercel,
-  `VERCEL=1`) va lokal dev'da; prod'da `UI_V2_SWITCH=on` bo'lmaguncha hamma eski versiyada.
+  (brauzer), `lib/uiVersionServer.ts` (server). Almashtirgich sinov saytida (Vercel,
+  `VERCEL=1`), lokal dev'da va 17.10.2026 dan prod'da ham — server `.env.local` dagi
+  `UI_V2_SWITCH=on` bilan (o'chirish: `off` yoki qatorni olib tashlash + qayta ishga
+  tushirish). Hammaga ko'rinadi, sukut — eski versiya.
 - **Qobiq** — `app/(app)/layout.tsx` versiyaga qarab eski `AppShell` yoki yangi
   `components/v2/shell/AppShellV2.tsx` ni beradi; sahifalarning o'zi (`children`) bitta.
 - **Yon menyu va yuqori panel** — `components/v2/shell/SidebarV2.tsx`, `TopbarV2.tsx`.

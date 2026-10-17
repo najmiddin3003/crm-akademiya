@@ -16,6 +16,8 @@ import { normalizeUiVersion, UI_COOKIE, type UiVersion } from "@/lib/uiVersion";
  *
  * Qo'lda boshqarish: `UI_V2_SWITCH=on` (masalan prod'da adminlarga ochish
  * vaqti kelganda) yoki `UI_V2_SWITCH=off` (sinov saytida o'chirish).
+ * 17.10.2026 dan prod'da `on` (foydalanuvchi: «tizimli24.uz ga ham qo'sh
+ * bugungi yangi dizayn bo'yicha ishlarni») — deploy/README.md 4-band.
  */
 export function uiSwitchEnabled(): boolean {
   const flag = (process.env.UI_V2_SWITCH || "").trim().toLowerCase();

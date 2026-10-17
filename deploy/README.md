@@ -92,6 +92,8 @@ Tekshiring:
 - `VERCEL_*` qatorlari bo'lsa — o'chiring, kerak emas.
 - `PAYMENT_SMS_ENABLED`, `SYNC_ENABLED`, `STUDENT_BOT_ENABLED` — Vercel'da
   qanday bo'lsa, shunday (lib/paymentSms.ts izohi).
+- `UI_V2_SWITCH=on` — yangi/eski versiya almashtirgichi (lib/uiVersionServer.ts).
+  17.10.2026 dan prod'da yoqilgan; yo'q bo'lsa hamma eski versiyada qoladi.
 
 ## 5. Atlas'ga server IP'sini ruxsat berish
 

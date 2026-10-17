@@ -142,10 +142,14 @@ Dizayn manbasi (Figma / HTML / rasm), qaysi sahifalardan boshlanadi, yangi versi
 avval kim ko'radi (adminlar yoki hamma).
 
 **27. Versiya almashtirgichi — qanday ishlaydi** — qisman hal qilindi (17.10, «verceldagi test
-bazaga yangi versiya/eski versiya o'zgartiradigan joy qo'shib tur»)
+bazaga yangi versiya/eski versiya o'zgartiradigan joy qo'shib tur»; o'sha kuni «tizimli24.uz ga
+ham qo'sh bugungi yangi dizayn bo'yicha ishlarni» — prod'da ochildi, pastda)
 Qilingani: tanlov brauzer cookie'sida (`tizimli_ui`), manzillar o'zgarmaydi; almashtirgich
 eski versiyada yuqori panelda, yangisida yon menyuning pastida va profil menyusida
 («Eski versiyaga qaytish»). FAQAT sinov saytida (Vercel) va lokal dev'da ko'rinadi — prod
 serverda hamma eski versiyada, kod u yerga tushsa ham. Yangi versiyada hozircha qobiq
 (yon menyu + yuqori panel) yangi, sahifalarning ichi eski — bo'limma-bo'lim almashadi.
-*Ochiq:* prod'da kimga va qachon ochiladi (`UI_V2_SWITCH=on` bilan yoqiladi).
+PROD (17.10.2026): server `.env.local` da `UI_V2_SWITCH=on` — almashtirgich tizimli24.uz da
+ham, HAMMA xodimga ko'rinadi; sukut eski versiya, har kim o'zi o'tadi va qaytadi.
+*Ochiq:* faqat adminlarga cheklash kerakmi (7-savoldagi «avval kim ko'radi»).
+*Taxmin:* hammaga — sinov saytidagidek; cheklash kerak bo'lsa rol bo'yicha qo'shiladi.
