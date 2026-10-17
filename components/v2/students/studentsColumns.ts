@@ -18,7 +18,6 @@ import { useMemo, useSyncExternalStore } from "react";
 export type StudentColumnKey =
   | "id"
   | "groups"
-  | "course"
   | "teacher"
   | "balance"
   | "coin"
@@ -40,22 +39,28 @@ export interface StudentColumn {
   align?: "right";
 }
 
-/** Jadvaldagi tartib — «Ustunlar» ro'yxatida ham shu tartib. */
+/**
+ * Jadvaldagi tartib — «Ustunlar» ro'yxatida ham shu tartib. 18.10.2026 dagi
+ * «O'quvchi · Tezkor panel» rasmida jadval boshi ko'rindi: O'quvchi → Guruh
+ * (kurs, fan rangidagi nuqta bilan) → O'qituvchi. Shu sabab «Guruh» kursni
+ * ko'rsatadi (alohida «Kurs» ustuni ortiqcha bo'ldi), ID va Manba esa sukutda
+ * o'chiq — 1366 px noutbukda jadval aylantirishsiz sig'sin.
+ */
 export const STUDENT_COLUMNS: StudentColumn[] = [
-  { key: "id", label: "ID", on: true },
-  { key: "groups", label: "Guruhlar", on: true },
-  { key: "course", label: "Kurs", on: false },
-  { key: "teacher", label: "O'qituvchi", on: false },
+  { key: "groups", label: "Guruh", on: true },
+  { key: "teacher", label: "O'qituvchi", on: true },
   { key: "balance", label: "Balans", on: true, sort: "balance", align: "right" },
   { key: "coin", label: "Tanga", on: true, sort: "coin", align: "right" },
   { key: "status", label: "Holati", on: true },
-  { key: "source", label: "Manba", on: true },
+  { key: "createdAt", label: "Qo'shilgan", on: true, sort: "createdAt" },
+  { key: "id", label: "ID", on: false },
+  { key: "source", label: "Manba", on: false },
   { key: "moderator", label: "Moderator", on: false },
   { key: "category", label: "Kategoriya", on: false },
-  { key: "createdAt", label: "Qo'shilgan", on: true, sort: "createdAt" },
 ];
 
-const KEY = "v2:students-list:columns";
+/** «2» — 18.10.2026 da sukut o'zgardi (Guruh/O'qituvchi): eski tanlov hammada yangi sukutga qaytsin. */
+const KEY = "v2:students-list:columns:2";
 const EVENT = "v2-students-columns";
 const VALID = new Set<string>(STUDENT_COLUMNS.map((c) => c.key));
 const DEFAULT_ON = STUDENT_COLUMNS.filter((c) => c.on).map((c) => c.key);

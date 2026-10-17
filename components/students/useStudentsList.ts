@@ -43,6 +43,8 @@ export interface StudentsListData {
   };
   /** PATCH /api/pupils/:id/status dan qaytgan o'quvchi — jadval darhol yangilanadi. */
   applyStatusSaved: (pupil: Pupil) => void;
+  /** Guruhlarni qayta o'qish — masalan o'quvchi guruhga qo'shilgandan keyin. */
+  reloadGroups: () => void;
 }
 
 export function useStudentsList(): StudentsListData {
@@ -132,5 +134,12 @@ export function useStudentsList(): StudentsListData {
     }
   }
 
-  return { rows, groups, loading, options, applyStatusSaved };
+  function reloadGroups() {
+    fetch("/api/groups")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setGroups(d.groups); })
+      .catch(() => {});
+  }
+
+  return { rows, groups, loading, options, applyStatusSaved, reloadGroups };
 }

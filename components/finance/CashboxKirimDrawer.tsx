@@ -87,6 +87,7 @@ export default function CashboxKirimDrawer({
   studentsRefreshing,
   onClose,
   onSaved,
+  initialStudentKey,
 }: {
   cashbox: Cashbox;
   /**
@@ -106,6 +107,13 @@ export default function CashboxKirimDrawer({
   studentsRefreshing: boolean;
   onClose: () => void;
   onSaved: (c: Cashbox) => void;
+  /**
+   * OLDINDAN TANLANGAN O'QUVCHI (`pupils.id`, satr) — O'quvchilar ro'yxatidagi
+   * tezkor paneldan «To'lov qabul qilish» (18.10.2026, /finance-cash?kirim=<id>).
+   * Faqat boshlang'ich qiymat: summa, tur, oy — kassirning o'zida; tur
+   * almashtirilsa (`pickType`) odatdagidek tozalanadi.
+   */
+  initialStudentKey?: string;
 }) {
   const { t, months } = useT();
   const modal = useModalClose(onClose, "drawer");
@@ -133,7 +141,7 @@ export default function CashboxKirimDrawer({
   // har doim BIRINCHISI olinardi. Ya'ni kassir ikkinchi bolaga to'lov
   // yozsa ham pul birinchisining hisobiga tushardi — foydalanuvchi aynan
   // shundan shikoyat qildi (23.09.2026, lib/pupilEntries.ts).
-  const [studentKey, setStudentKey] = useState("");
+  const [studentKey, setStudentKey] = useState(initialStudentKey ?? "");
   // Bo'sh boshlanadi — ilgari maydonda "0" turar va uni har safar
   // o'chirishga to'g'ri kelardi.
   const [amount, setAmount] = useState("");

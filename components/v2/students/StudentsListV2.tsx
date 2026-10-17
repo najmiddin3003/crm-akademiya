@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -36,7 +36,9 @@ import FloatingPanel from "@/components/v2/ui/FloatingPanel";
 import V2Checkbox from "@/components/v2/ui/V2Checkbox";
 import V2Pagination from "@/components/v2/ui/V2Pagination";
 import V2Select from "@/components/v2/ui/V2Select";
+import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { useEduCategoryNames } from "@/hooks/useEduCategories";
+import type { Group } from "@/lib/groups";
 import type { Pupil } from "@/lib/pupilsData";
 import {
   applyStudentFilters,
@@ -47,6 +49,7 @@ import {
   type StudentStatus,
 } from "@/lib/studentsData";
 import { downloadBlob, referralRows, studentsCsvBlob, studentsXlsBlob } from "@/lib/studentsExport";
+import StudentQuickPanel from "./StudentQuickPanel";
 import StudentsMoreFilters, { countMoreFilters, pickMoreFilters, type MoreFilters } from "./StudentsMoreFilters";
 import { STUDENT_COLUMNS, useStudentColumns, type StudentColumnKey, type StudentSortKey } from "./studentsColumns";
 
@@ -62,7 +65,10 @@ import { STUDENT_COLUMNS, useStudentColumns, type StudentColumnKey, type Student
 //   4. xulosa: «N ta o'quvchi • Qarzdorlik • Haqdorlik»;
 //   5. jadval: belgilash, «O'quvchi» (avatar + ism + telefon), ustunlar,
 //      saralash, o'ngda «⋯» (qator ustiga kelganda);
-//   6. sahifalash.
+//   6. sahifalash;
+//   7. qator (yoki ism) bosilsa — o'ngda TEZKOR PANEL (./StudentQuickPanel.tsx,
+//      rasm «O'quvchi · Tezkor panel»); Ctrl/Cmd + bosish — to'liq profil yangi
+//      oynada (oddiy havola).
 //
 // Ma'lumot, filtr mantig'i, holat o'zgarishi va eksport — eski sahifa bilan
 // BITTA manbadan (useStudentsList, lib/studentsData.ts, lib/studentsExport.ts).
@@ -130,14 +136,18 @@ function StaffName({ name }: { name: string }) {
   );
 }
 
-const secondaryBtn =
-  "inline-flex h-9 shrink-0 items-center gap-2 rounded-v2-md border border-v2-border-strong bg-v2-surface px-3 text-v2-body font-medium text-v2-text transition-colors hover:bg-v2-surface-2 focus-visible:outline-none focus-visible:shadow-v2-focus";
+/** Ikkinchi darajali tugma (DESIGN → «Tugmalar»); ichki chekinish alohida — ikonka tugmada to'qnashmasin. */
+const secondaryBase =
+  "inline-flex h-9 shrink-0 items-center gap-2 rounded-v2-md border bg-v2-surface text-v2-body font-medium text-v2-text transition-colors hover:bg-v2-surface-2 focus-visible:outline-none focus-visible:shadow-v2-focus";
+const secondaryBtn = `${secondaryBase} border-v2-border-strong px-3`;
+const secondaryIcon = `${secondaryBase} border-v2-border-strong w-9 justify-center`;
 
 export default function StudentsListV2() {
   const { t } = useT();
   const branch = useBranch();
   const { showSuccess: toastOk, showError: toastErr } = useToast();
-  const { rows, groups, loading, options, applyStatusSaved } = useStudentsList();
+  const { rows, groups, loading, options, applyStatusSaved, reloadGroups } = useStudentsList();
+  const groupById = useMemo(() => new Map<number, Group>(groups.map((g) => [g.id, g])), [groups]);
 
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<StudentFilters>(EMPTY_STUDENT_FILTERS);
@@ -157,6 +167,32 @@ export default function StudentsListV2() {
   const [groupFor, setGroupFor] = useState<{ id: number; name: string } | null>(null);
   const [smsFor, setSmsFor] = useState<{ id: number; name: string; phone: string } | null>(null);
   const [statusFor, setStatusFor] = useState<{ id: number; name: string; status: string; statusReason?: string } | null>(null);
+  // Tezkor panel — o'quvchi id'si; qator `rows` dan olinadi (holat o'zgarsa panel ham yangilanadi).
+  const [panelId, setPanelId] = useState<number | null>(null);
+  const panelRow = panelId === null ? null : (rows.find((r) => r.id === panelId) ?? null);
+  const modalOpen = addOpen || groupFor !== null || smsFor !== null || statusFor !== null;
+
+  // Esc — panelni yopadi; ustida oyna (SMS, guruh, holat) ochiq bo'lsa avval o'sha yopilsin.
+  useEffect(() => {
+    if (panelId === null || modalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPanelId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [panelId, modalOpen]);
+
+  /** Qator bosilganda panel; belgilash, «⋯» va havolalarning o'z ishi bor. */
+  const onRowClick = (e: MouseEvent<HTMLTableRowElement>, id: number) => {
+    if ((e.target as HTMLElement).closest("button, a, input, label")) return;
+    setPanelId(id);
+  };
+  /** Ism — havola: oddiy bosish panel ochadi, Ctrl/Cmd/Shift yoki o'rta tugma — profil yangi oynada. */
+  const onNameClick = (e: MouseEvent<HTMLAnchorElement>, id: number) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    setPanelId(id);
+  };
 
   const setFilter = <K extends keyof StudentFilters>(k: K, v: StudentFilters[K]) => {
     setFilters((f) => ({ ...f, [k]: v }));
@@ -317,16 +353,27 @@ export default function StudentsListV2() {
     switch (key) {
       case "id":
         return <span className="tabular-nums text-v2-text-2">{r.id}</span>;
-      case "groups":
-        return r.groupNames && r.groupNames !== "-" ? (
-          <span className="block max-w-[220px] truncate" title={r.groupNames}>{r.groupNames}</span>
+      case "groups": {
+        // Rasmdagidek: kurs nomi fan rangidagi nuqta bilan; bir nechta guruh — «+N».
+        const mine = r.groupIds.map((id) => groupById.get(id)).filter((g): g is Group => Boolean(g));
+        if (mine.length === 0) return <span className="text-v2-text-3">—</span>;
+        const g0 = mine[0];
+        return (
+          <span className="inline-flex max-w-[200px] items-center gap-1.5" title={mine.map((g) => [g.course, g.name].filter(Boolean).join(" · ")).join(", ")}>
+            <span className={`size-2 shrink-0 rounded-full ${FAN_DOT[fanOf(g0.course)]}`} aria-hidden />
+            <span className="truncate">{g0.course || g0.name}</span>
+            {mine.length > 1 && <span className="shrink-0 text-v2-caption text-v2-text-3">+{mine.length - 1}</span>}
+          </span>
+        );
+      }
+      case "teacher":
+        return r.teacher ? (
+          <span className="whitespace-nowrap text-v2-text-2">
+            <StaffName name={r.teacher} />
+          </span>
         ) : (
           <span className="text-v2-text-3">—</span>
         );
-      case "course":
-        return r.course || <span className="text-v2-text-3">—</span>;
-      case "teacher":
-        return r.teacher ? <StaffName name={r.teacher} /> : <span className="text-v2-text-3">—</span>;
       case "balance":
         return (
           <span className={`tabular-nums ${r.balance < 0 ? "font-semibold text-v2-danger" : r.balance > 0 ? "font-medium text-v2-success" : "text-v2-text-3"}`}>
@@ -383,7 +430,7 @@ export default function StudentsListV2() {
   return (
     <div
       data-ui="v2"
-      className="flex min-h-full flex-col gap-4 bg-v2-surface p-4 font-v2 text-v2-text sm:p-5 lg:h-full lg:min-h-0"
+      className="relative flex min-h-full flex-col gap-4 bg-v2-surface p-4 font-v2 text-v2-text sm:p-5 lg:h-full lg:min-h-0"
     >
       {/* 1. Sarlavha */}
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -404,7 +451,7 @@ export default function StudentsListV2() {
           </ActionMenu>
           <ActionMenu items={moreItems} label={t("Qo'shimcha amallar")}>
             {(trigger) => (
-              <button type="button" {...trigger} title={t("Qo'shimcha amallar")} aria-label={t("Qo'shimcha amallar")} className={`${secondaryBtn} w-9 justify-center px-0`}>
+              <button type="button" {...trigger} title={t("Qo'shimcha amallar")} aria-label={t("Qo'shimcha amallar")} className={secondaryIcon}>
                 <MoreHorizontal className="size-4" strokeWidth={1.75} />
               </button>
             )}
@@ -475,7 +522,7 @@ export default function StudentsListV2() {
         </FloatingPanel>
 
         <div className="ml-auto">
-          <button ref={colsBtnRef} type="button" onClick={() => setColsOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={colsOpen} className={`${secondaryBtn} ${colsOpen ? "border-v2-brand" : ""}`}>
+          <button ref={colsBtnRef} type="button" onClick={() => setColsOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={colsOpen} className={`${secondaryBase} px-3 ${colsOpen ? "border-v2-brand" : "border-v2-border-strong"}`}>
             <Columns3 className="size-4" strokeWidth={1.75} aria-hidden />
             {t("Ustunlar")}
           </button>
@@ -622,9 +669,16 @@ export default function StudentsListV2() {
               {!loading &&
                 slice.map((r) => {
                   const on = selected.has(r.id);
+                  // Paneli ochiq qator — rasmdagidek brend fon + chapda brend chiziq.
+                  const current = panelId === r.id;
                   return (
-                    <tr key={r.id} className={`group border-b border-v2-border transition-colors last:border-b-0 ${on ? "bg-v2-brand-bg" : "hover:bg-v2-hover"}`}>
-                      <td className="py-2.5 pl-4 pr-2">
+                    <tr
+                      key={r.id}
+                      onClick={(e) => onRowClick(e, r.id)}
+                      aria-selected={current || undefined}
+                      className={`group cursor-pointer border-b border-v2-border transition-colors last:border-b-0 ${on || current ? "bg-v2-brand-bg" : "hover:bg-v2-hover"}`}
+                    >
+                      <td className={`py-2.5 pl-4 pr-2 ${current ? "shadow-[inset_3px_0_0_var(--v2-brand)]" : ""}`}>
                         <V2Checkbox checked={on} onChange={(v) => toggleRow(r.id, v)} label={t("{name} — belgilash", { name: r.name })} />
                       </td>
                       <td className="px-2.5 py-2.5">
@@ -633,7 +687,11 @@ export default function StudentsListV2() {
                             {initialsOf(r.name)}
                           </span>
                           <span className="min-w-0">
-                            <Link href={`/student-edit/${r.id}`} className="block truncate font-semibold text-v2-text underline-offset-2 hover:text-v2-brand-text group-hover:underline">
+                            <Link
+                              href={`/student-edit/${r.id}`}
+                              onClick={(e) => onNameClick(e, r.id)}
+                              className="block truncate font-semibold text-v2-text underline-offset-2 hover:text-v2-brand-text group-hover:underline"
+                            >
                               {r.name}
                             </Link>
                             <span className="block text-v2-small tabular-nums text-v2-text-3">{fmtPhone(r.phone) || "—"}</span>
@@ -707,6 +765,8 @@ export default function StudentsListV2() {
             }
             toastOk(t("{name} — \"{id}\" guruhiga qo'shildi", { name: groupFor.name, id: group.name || group.id }));
             setGroupFor(null);
+            // «Guruh» ustuni va tezkor panel yangi a'zolikni darhol ko'rsatsin.
+            reloadGroups();
           }}
         />
       )}
@@ -724,6 +784,26 @@ export default function StudentsListV2() {
         />
       )}
       {statusFor && <StudentStatusModal student={statusFor} onClose={() => setStatusFor(null)} onSaved={handleStatusSaved} />}
+
+      {/* 7. Tezkor panel. Kompyuterda (≥1024) — kontent hududi ichida (sahifa
+          ildizi `relative`, yon menyu va yuqori panel ochiq qoladi, rasmdagidek);
+          torroqda — butun ekran bo'ylab. Fon bosilsa yoki Esc — yopiladi. */}
+      {panelRow && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30 lg:absolute" onClick={() => setPanelId(null)} aria-hidden />
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] lg:absolute">
+            <StudentQuickPanel
+              key={panelRow.id}
+              row={panelRow}
+              groups={groups}
+              onClose={() => setPanelId(null)}
+              onSms={() => setSmsFor({ id: panelRow.id, name: panelRow.name, phone: panelRow.phone })}
+              onAddToGroup={() => setGroupFor({ id: panelRow.id, name: panelRow.name })}
+              onChangeStatus={() => setStatusFor({ id: panelRow.id, name: panelRow.name, status: panelRow.status, statusReason: panelRow.statusReason })}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

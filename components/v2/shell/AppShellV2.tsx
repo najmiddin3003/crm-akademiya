@@ -9,6 +9,7 @@ import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 import { NavbarSprite, SidebarSprite } from "@/components/shared/ShellSprites";
 import { TaskInboxProvider } from "@/components/shared/TaskInboxProvider";
 import { DevNoticeBanner } from "./DevNotice";
+import { ShellProvider } from "./ShellContext";
 import SidebarV2 from "./SidebarV2";
 import TopbarV2, { type ShellUserV2 } from "./TopbarV2";
 
@@ -109,7 +110,10 @@ export default function AppShellV2({
                 />
                 {noticeOpen && <DevNoticeBanner onHide={() => setNoticeOpen(false)} />}
                 <div className="flex flex-1 overflow-hidden">
-                  <main className="flex-1 overflow-y-auto">{children}</main>
+                  {/* Sahifalar ruxsatni shu yerdan biladi (./ShellContext.tsx). */}
+                  <ShellProvider value={{ permissions, isAdmin }}>
+                    <main className="flex-1 overflow-y-auto">{children}</main>
+                  </ShellProvider>
                 </div>
               </div>
             </div>

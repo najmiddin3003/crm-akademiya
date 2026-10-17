@@ -138,10 +138,11 @@ tepada + «Yana filtrlar»; filtri kam sahifalarda — bitta «Filtr» tugmasi.
 *O'quvchilar ro'yxati qurildi (18.10.2026, `components/v2/students/StudentsListV2.tsx`).
 Rasmda «Yana filtrlar» oynasi jadvalning o'rtasini yopib turgani uchun quyidagilar taxmin:*
 
-**29. Jadvalda sukut bo'yicha qaysi ustunlar?** — ochiq
-*Taxmin:* O'quvchi (doim), ID, Guruhlar, Balans, Tanga, Holati, Manba, Qo'shilgan; «Ustunlar»
-orqali yana Kurs, O'qituvchi, Moderator, Kategoriya. 1366 px noutbukda yon menyu ochiq turganda
-gorizontal aylantirishsiz sig'adi (o'lchandi).
+**29. Jadvalda sukut bo'yicha qaysi ustunlar?** — qisman hal qilindi (18.10, tezkor panel rasmida
+jadval boshi: O'quvchi → Guruh → O'qituvchi)
+*Taxmin:* O'quvchi (doim), Guruh, O'qituvchi, Balans, Tanga, Holati, Qo'shilgan; «Ustunlar» orqali
+yana ID, Manba, Moderator, Kategoriya. 1366 px noutbukda yon menyu ochiq turganda gorizontal
+aylantirishsiz sig'adi (o'lchandi). Sukut o'zgargani uchun saqlangan tanlovlar qayta boshlandi.
 
 **30. Ma'lumoti yo'q ustunlar** — ochiq
 Eski jadvaldagi «To'lov sanasi», «Taklif qilganlari», «Ilovani yuklab olish sanasi»,
@@ -166,9 +167,47 @@ Eski jadvalda holat faqat ism yonida nishon edi («Aktiv» — nishonsiz).
 *Taxmin:* alohida ustun, holat belgisi bilan: Aktiv — muvaffaqiyat, Muzlatilgan — ma'lumot,
 Arxiv — betaraf; sabab — sichqoncha ostida.
 
-**35. «Guruhlar» ustunida fan rangi** — ochiq
-*Taxmin:* hozircha oddiy matn («36, 104»). Fan chiplari (DESIGN → «Fan ranglari») kurs↔fan
-bog'lanishi aniqlangach (IELTS → ingliz?) qo'yiladi.
+**35. «Guruhlar» ustunida fan rangi** — qisman hal qilindi (18.10, «O'quvchi · Tezkor panel» rasmida
+jadval boshi ko'rindi: O'quvchi → Guruh → O'qituvchi)
+Endi «Guruh» ustuni kurs nomini fan rangidagi nuqta bilan ko'rsatadi (bir nechta guruh — «+N»),
+«O'qituvchi» sukutda yoqiq; ID va Manba sukutda o'chiq («Ustunlar» da bor), «Kurs» ustuni olib
+tashlandi (Guruh uni ko'rsatadi).
+*Taxmin:* kurs → fan nomdan aniqlanadi: ingliz/english/IELTS/CEFR → Ingliz, «ona tili»/«adabiyot» →
+Ona tili, matem → Matematika, rus, arab, bio, tarix; qolgani — «Boshqa».
+
+*O'quvchi tezkor paneli qurildi (18.10.2026, `components/v2/students/StudentQuickPanel.tsx`):*
+
+**36. «Yangi o'quvchi» belgisi qachon?** — ochiq
+Bazada o'quvchi holati faqat Aktiv / Muzlatilgan / Arxiv; «Yangi o'quvchilar» bo'limi esa
+o'quvchilar emas — «Yangi» holatidagi lidlar.
+*Taxmin:* faol, lekin hali bir marta ham to'lamagan o'quvchi (balansi 0) — rasmda ham «Hali to'lov
+qilinmagan» bilan birga turibdi. Qolganlari — o'z holati.
+
+**37. «Tarix» qayerdan?** — ochiq
+Profildagi «Harakatlar tarixi» manbasi (`pupil_activity`) hech qachon yozilmaydi — u doim bo'sh.
+*Taxmin:* bor ma'lumotdan yig'iladi: guruhga qo'shilgan kuni (a'zolik tarixi), holat o'zgarishi
+(oxirgisi, sababi bilan), ro'yxatga olingan kun va manba. Rasmdagi «Lid qo'shildi» o'rniga
+«O'quvchi qo'shildi» — o'quvchi yozuvida lidga havola yo'q, lid sahifasi bu bo'limga yopiq.
+To'liq harakatlar jurnali kerak bo'lsa — alohida ish (har o'zgarishni yozish).
+
+**38. «To'lov qabul qilish» qanday ishlaydi?** — ochiq
+*Taxmin:* Kassa sahifasiga o'tadi va «Kirim» oynasida o'quvchi oldindan tanlanadi; kassa bitta
+bo'lsa oyna o'zi ochiladi, bir nechta bo'lsa kassir kassani tanlaydi (pul boshqa kassaga tushib
+ketmasin). Summa, tur va oyni kassir o'zi kiritadi. Tugma faqat Kassaga ruxsati bor xodimga
+ko'rinadi. Panelning ichida to'lov oynasi — keyinroq, kassa tanlovi aniqlangach.
+
+**39. Guruh holati yorliqlari** — ochiq
+Eski interfeysda «Yig'ilayotgan» / «Aktiv»; dizaynda «Yig'ilmoqda» / «Faol».
+*Taxmin:* yangi versiyada dizayndagisi (DESIGN → «Holat belgilari»), eski versiya o'zgarmaydi.
+
+**40. «Ma'lumotlar» bo'limida yana nima?** — ochiq
+Rasmda: Telefon, Filial, Manba, Guruhga qo'shilgan.
+*Taxmin:* shu to'rttasi. Ota-ona, manzil, tug'ilgan kun — to'liq profilda.
+
+**41. To'lovlar ro'yxati** — ochiq
+Rasmda faqat bo'sh holat bor.
+*Taxmin:* oxirgi 5 ta to'lov (sana · to'lov turi · qaysi oy uchun, summa), tasdiq kutayotgani —
+«Kutilmoqda»; ko'p bo'lsa «Hammasi (N)» — profilning tranzaksiyalar tabiga.
 
 ## Reja
 

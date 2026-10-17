@@ -335,6 +335,28 @@ tanlovi, xulosa qatori, qidiruvda ID.
 **Filtrning ikki ko'rinishi**: lidlarda — bitta «Filtr» tugmasi (soni bilan) va hammasi panelda;
 o'quvchilarda — 3 ta asosiy filtr tepada + «Yana filtrlar». Qaysi sahifada qaysi biri — `SAVOLLAR.md` 22.
 
+## Tezkor panel — ro'yxatdan chiqmasdan (O'quvchi misolida, 18.10.2026)
+
+Ro'yxatda qator (yoki ism) bosilganda o'ngdan ~420 px panel chiqadi: kompyuterda kontent
+hududi ichida (yon menyu va yuqori panel ochiq qoladi), ro'yxat yarim shaffof fon bilan
+xiralashadi, tanlangan qator `brand-bg` + chapda 3 px `brand` chiziq. Telefonda — butun ekran.
+Fon bosilsa yoki Esc — yopiladi. Ctrl/Cmd + ism — to'liq profil yangi oynada.
+
+1. **Sarlavha**: avatar, ism (`section`), holat belgisi + «kurs · xona» (`small`, `text-2`);
+   o'ngda «to'liq profil» (chegarali ikonka) va × (chegarasiz).
+2. **Amallar**: asosiy «To'lov qabul qilish» (keng), «SMS», qo'ng'iroq (ikonka), «⋯».
+3. **Ko'rsatkich kartasi** — Balans | Tanga (bitta karta, ikki katak).
+4. **Ma'lumotlar** — yorliq (`text-2`) va qiymat (qalin) ikki ustunda; telefon yonida «nusxa».
+5. **Guruh** — sarlavha o'ngida «Guruhga qo'shish» (havola rangida); har guruh — karta:
+   fan nuqtasi + kurs (qalin) + guruh holati belgisi, ostida «o'qituvchi · xona»,
+   «kunlar · vaqt» (`text-2`).
+6. **To'lovlar** — bo'sh holat: ikonka + «Hali to'lov qilinmagan» + izoh; bo'lsa — oxirgi 5 ta.
+7. **Tarix** — vaqt chizig'i: oxirgisi `brand` nuqta, qolganlari `border-strong`.
+
+Guruh holati belgilari: Yig'ilmoqda — brend, Faol — muvaffaqiyat, Muzlatilgan — ma'lumot,
+Arxiv — betaraf. Kodda: `components/v2/students/StudentQuickPanel.tsx`; fan rangi —
+`components/v2/ui/fan.ts` (kurs nomidan).
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

@@ -26,8 +26,10 @@ import {
   Printer,
   Wallet,
   UserCheck,
+  X,
 } from "lucide-react";
 import Link from "@/components/ui/Link";
+import { useSearchParams } from "next/navigation";
 import Pagination from "@/components/ui/Pagination";
 import DateRangePicker, {
   type DateRange,
@@ -659,6 +661,19 @@ export default function CashboxesPage() {
   const { isAdmin } = useBranch();
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
+  // O'QUVCHIDAN TO'LOV (18.10.2026): yangi versiyadagi O'quvchilar ro'yxati →
+  // tezkor panel → «To'lov qabul qilish» shu sahifani `?kirim=<pupils.id>` bilan
+  // ochadi. Kirim oynasida o'quvchi OLDINDAN TANLANADI — boshqa hech narsa
+  // o'zgarmaydi (summa, tur, oyni kassir o'zi kiritadi). Kassa bitta bo'lsa
+  // oyna o'zi ochiladi; bir nechta bo'lsa kassani kassir tanlaydi (pul boshqa
+  // kassaga tushib ketmasin) — tepada yo'riqnoma turadi. Bir marta ishlatiladi.
+  const kirimParam = useSearchParams().get("kirim");
+  const [presetPupil, setPresetPupil] = useState<number | null>(() => {
+    const n = Number(kirimParam);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  });
+  /** Birinchi chizishdagi qiymat — kassalar yuklangandagi bir martalik qaror uchun. */
+  const presetAtLoad = useRef(presetPupil);
   // Tanlangan karta ochiq holatda ko'rinadi (amal plitkalari + to'lov turlari
   // bo'yicha qoldiq), qolganlari yig'ilgan. "More" esa faqat qo'shimcha
   // Dividend/Sarmoya plitkalarini ochadi.
@@ -1110,6 +1125,15 @@ export default function CashboxesPage() {
         if (cancelled || !d.ok) return;
         setCashboxes(d.cashboxes);
         if (d.cashboxes.length > 0) setSelectedId(d.cashboxes[0].id);
+        if (presetAtLoad.current !== null) {
+          // Manzildan olib tashlanadi — sahifa yangilansa oyna qayta ochilmasin.
+          window.history.replaceState(null, "", window.location.pathname);
+          const usable = (d.cashboxes as Cashbox[]).filter((c) => !c.archived);
+          if (usable.length === 1) {
+            setSelectedId(usable[0].id);
+            setKirimTarget(usable[0]);
+          }
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1332,6 +1356,27 @@ export default function CashboxesPage() {
     <div className="page-frame-row p-4 md:p-5 flex flex-col md:flex-row gap-4 items-start">
       {/* Chap panel — kassa kartalari */}
       <aside className="page-frame-aside fc-aside w-full shrink-0 space-y-3">
+        {/* O'quvchidan to'lov (yuqoridagi `presetPupil` izohi): kassa bir nechta —
+            kassir o'zi tanlaydi, «Kirim» da o'quvchi oldindan tanlangan bo'ladi. */}
+        {presetPupil !== null && !kirimTarget && (
+          <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-[13px]">
+            <Wallet className="mt-0.5 w-4 h-4 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1">
+              {t("{name} uchun to'lov: kassani tanlang va «Kirim» ni bosing — o'quvchi oldindan tanlanadi.", {
+                name: dbStudentRows.find((s) => s.id === presetPupil)?.name ?? `#${presetPupil}`,
+              })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPresetPupil(null)}
+              aria-label={t("Bekor qilish")}
+              title={t("Bekor qilish")}
+              className="shrink-0 rounded-md p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         {/* Yangi kassa yaratish — kassaning O'ZINI boshqarish, ya'ni
             tahrirlash/bosh kassa qilish bilan bir toifada: faqat admin. */}
         {isAdmin && (
@@ -2139,7 +2184,12 @@ export default function CashboxesPage() {
           students={dbStudentRows}
           studentsLoading={studentsLoading}
           studentsRefreshing={studentsRefreshing}
-          onClose={() => setKirimTarget(null)}
+          initialStudentKey={presetPupil !== null ? String(presetPupil) : undefined}
+          onClose={() => {
+            setKirimTarget(null);
+            // O'quvchidan kelgan to'lov bir marta — keyingi «Kirim» odatdagidek bo'sh.
+            setPresetPupil(null);
+          }}
           onSaved={(c) => {
             patchCashbox(c);
             loadEntries();
