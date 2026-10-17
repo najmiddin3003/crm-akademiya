@@ -25,6 +25,7 @@ export default function AppShell({
   user = null,
   isAdmin = false,
   features = {},
+  canSwitchUi = false,
 }: {
   children: React.ReactNode;
   /** Rol ruxsatlari — app/(app)/layout.tsx dan keladi. `null` = cheklovsiz. */
@@ -35,6 +36,8 @@ export default function AppShell({
   isAdmin?: boolean;
   /** Yoqilgan modullar — sidebar'dagi `feature` bo'limlar uchun (layout'dan). */
   features?: Record<string, boolean>;
+  /** Yangi versiyaga o'tish almashtirgichi ko'rinsinmi (lib/uiVersionServer.ts). */
+  canSwitchUi?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -57,9 +60,9 @@ export default function AppShell({
           provider'dan o'qiydi (components/shared/TaskInboxProvider.tsx). */}
       <TaskInboxProvider>
       <div className="flex h-screen flex-col overflow-hidden">
-        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} permissions={permissions} />
+        <Navbar onOpenMobileMenu={() => setMobileOpen(true)} user={user} permissions={permissions} canSwitchUi={canSwitchUi} />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} isAdmin={isAdmin} features={features} />
+          <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} permissions={permissions} isAdmin={isAdmin} features={features} canSwitchUi={canSwitchUi} />
           <main className="flex-1 overflow-y-auto bg-secondary/30">{children}</main>
         </div>
       </div>
@@ -74,9 +77,10 @@ export default function AppShell({
 /**
  * Modal FAQAT ochiq paytda mount bo'ladi (loyihadagi boshqa modallar kabi —
  * `{open && <XModal/>}`): yopiqda uning hisoblagich taymeri ham, holati
- * ham yashamaydi.
+ * ham yashamaydi. Yangi versiya qobig'i (components/v2/shell/AppShellV2.tsx)
+ * ham shuni ishlatadi.
  */
-function TaskInboxGate() {
+export function TaskInboxGate() {
   const { open } = useTaskInbox();
   return open ? <TaskInboxModal /> : null;
 }

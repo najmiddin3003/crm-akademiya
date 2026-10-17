@@ -356,6 +356,26 @@ o'quvchilarda — 3 ta asosiy filtr tepada + «Yana filtrlar». Qaysi sahifada q
    qorong'ida 6.24–8.23. Jadval hover qatorida matn 16.2 / 13.9, Matn 2 — 6.8 / 7.5.
 8. Logotip ikkala temada ham fondan ajralib turadi (3.4–5.3:1).
 
+## Kodda: versiya almashtirgichi va yangi qobiq (17.10.2026)
+
+- **Tanlov** — cookie `tizimli_ui` (`v1` / `v2`), manzillar o'zgarmaydi: `lib/uiVersion.ts`
+  (brauzer), `lib/uiVersionServer.ts` (server). Almashtirgich faqat sinov saytida (Vercel,
+  `VERCEL=1`) va lokal dev'da; prod'da `UI_V2_SWITCH=on` bo'lmaguncha hamma eski versiyada.
+- **Qobiq** — `app/(app)/layout.tsx` versiyaga qarab eski `AppShell` yoki yangi
+  `components/v2/shell/AppShellV2.tsx` ni beradi; sahifalarning o'zi (`children`) bitta.
+- **Yon menyu va yuqori panel** — `components/v2/shell/SidebarV2.tsx`, `TopbarV2.tsx`.
+  Menyu bandlari, ruxsatlar va havolalar eski menyu bilan BITTA manbadan
+  (`components/shared/sidebarModel.ts` ← `constants/sidebar.js`); yangi menyudagi bo'lim,
+  ikonka va nom — `components/v2/shell/sidebarSections.ts`.
+- **`data-ui="v2"` faqat menyu va panelda.** Kontent hududida yo'q — eski sahifalar o'z
+  shrifti va ranglarida chiziladi. Sahifa yangi dizaynga o'tganda uning o'z ildizi
+  `data-ui="v2"` oladi.
+- **Eski CSS tuzog'i:** `app/globals.css` dagi `input:focus { background: … !important }`
+  yangi maydonga ham tushadi — yangi kirish maydonida fon `bg-transparent!` (yoki
+  `focus:bg-…!`) bilan yoziladi.
+- Eski sahifalar ikonkalarni eski sprite'lardan oladi (`<use href="#i-search">`) — ikkala
+  qobiq ham `components/shared/ShellSprites.tsx` ni ulaydi.
+
 ## Ochiq savollar
 
 Hammasi bir joyda — [`SAVOLLAR.md`](SAVOLLAR.md) (oxirida birga ko'rib chiqiladi).

@@ -15,8 +15,9 @@
  * Tungi rejim kaliti eski versiya bilan bir xil: <html class="dark">, ya'ni
  * foydalanuvchi tanlagan rejim ikki versiya o'rtasida almashganda saqlanadi.
  *
- * HOLAT: hali hech qayerga ulanmagan — yangi versiya qobig'i qurilganda uning
- * CSS'iga import qilinadi.
+ * ULANISHI (17.10.2026): app/globals.css → `@import "../design/v2/tokens.css"`.
+ * Ishlatuvchi — yangi versiya qobig'i (components/v2/shell/), versiya
+ * almashtirgichi bilan (lib/uiVersion.ts).
  */
 
 [data-ui="v2"] {

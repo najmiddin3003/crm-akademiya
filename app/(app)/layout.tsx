@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import AiScreenRefresh from "@/components/ai/AiScreenRefresh";
 import AppShell from "@/components/shared/AppShell";
 import SpeedFab from "@/components/tezlik/SpeedFab";
+import AppShellV2 from "@/components/v2/shell/AppShellV2";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
 import { gamificationEnabled } from "@/lib/gamification/settings";
 import { firstAllowedPath, isPathAllowed, PATHNAME_HEADER } from "@/lib/permissions";
+import { currentUiVersion, shellRoleLabel, uiSwitchEnabled } from "@/lib/uiVersionServer";
 
 // Sidebar+Navbar faqat shu guruhdagi (haqiqiy CRM) sahifalarga o'raladi.
 // (auth) sahifalari — login/register — bu qobiqsiz, to'liq ekranli.
@@ -44,7 +46,26 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
 
   // Modulga bog'langan bo'limlar (sidebar `feature`) — hozir faqat
   // Gamifikatsiya: modul o'chiq bo'lsa bo'lim faqat adminga ko'rinadi.
-  const gamOn = await gamificationEnabled(await ensureIndexes());
+  const db = await ensureIndexes();
+  const gamOn = await gamificationEnabled(db);
+
+  // YANGI / ESKI VERSIYA (lib/uiVersion.ts). Almashtirgich faqat sinov
+  // saytida va lokal dev'da yoqiq — prod'da `currentUiVersion()` doim "v1",
+  // ya'ni bu shoxcha u yerda hech qachon ishlamaydi. Sahifalarning ichi
+  // ikkala versiyada bir xil (`children`), faqat qobiq almashadi.
+  if ((await currentUiVersion()) === "v2") {
+    return (
+      <AppShellV2
+        permissions={user.permissions}
+        user={{ fullName: user.fullName, phone: user.phone, roleLabel: await shellRoleLabel(db, user) }}
+        isAdmin={user.role === "admin"}
+        features={{ gamification: gamOn }}
+      >
+        <AiScreenRefresh>{children}</AiScreenRefresh>
+        {/* Suzuvchi robot (SpeedFab) YO'Q: MohirAI yuqori paneldagi tugmadan ochiladi. */}
+      </AppShellV2>
+    );
+  }
 
   // Navbardagi profil menyusi uchun HAQIQIY foydalanuvchi. Serverdan
   // uzatiladi — alohida so'rov ham, "avval noto'g'ri ism ko'rinib, keyin
@@ -57,6 +78,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       // sahifaning o'zi ham qaytadan tekshiradi (lib/adminOnly.ts).
       isAdmin={user.role === "admin"}
       features={{ gamification: gamOn }}
+      canSwitchUi={uiSwitchEnabled()}
     >
       {/* AI yozuvni saqlagach sahifa shu o'ram orqali qayta chiziladi (components/ai/AiScreenRefresh.tsx) */}
       <AiScreenRefresh>{children}</AiScreenRefresh>

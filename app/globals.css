@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Yangi versiya (v2) dizayn tokenlari — faqat [data-ui="v2"] ichida ishlaydi,
+   eski sahifalarga ta'sir yo'q (design/v2/tokens.css izohi). */
+@import "../design/v2/tokens.css";
 
 /* ============================================================
    TAILWIND v4 MAVZUSI (@theme)

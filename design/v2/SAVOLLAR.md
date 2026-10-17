@@ -28,7 +28,8 @@ yozildi (qorong'ida soya qora, menyu/oyna ostida ~40% → ~19 px gacha so'nadi).
 **4. Onest shriftini yuklash** — ochiq
 Google'dan (`next/font/google`) yoki loyiha ichiga joylab (`next/font/local`)?
 Serverda Google shriftlari build'ni bir necha marta yiqitgan.
-*Taxmin:* loyiha ichiga joylanadi.
+*Taxmin:* loyiha ichiga joylanadi. *Hozircha (17.10):* yangi qobiq Onest'ni brauzerda
+Google Fonts'dan yuklaydi — faqat yangi versiyani tanlaganlarda, build'ga ta'sir qilmaydi.
 
 **5. Binafsha rang qayerda ishlatiladi** — qisman hal qilindi (komponentlar rasmidan)
 Ikki joyda chiqdi: lid holati «Bog'lanildi» va «Ona tili» fan rangi (yorug'da). Boshqa
@@ -68,11 +69,12 @@ Yangi dizaynda ham shundaymi?
 **13. «Rahbar paneli» — nima?** — ochiq
 Yangi menyuda birinchi band, hozirgi saytda bunday bo'lim yo'q.
 *Taxmin:* rahbar uchun umumiy ko'rsatkichlar sahifasi (filiallar, tushum, lidlar, davomat);
-dizayni kelganda quriladi.
+dizayni kelganda quriladi. Hozirgi yangi menyuda hali YO'Q (sahifasi yo'q band qo'yilmadi).
 
-**14. «Blok test» yangi menyuda yo'q** — ochiq
-Hozir alohida bo'lim (Blok test turlari, Blok testlar).
-*Taxmin:* «Imtihon» bo'limi ichiga ko'chadi.
+**14. «Blok test» yangi menyuda yo'q** — qisman hal qilindi (17.10)
+Hozirgi saytda ham menyudan olib turilgan — 05.09.2026 dan markaz so'rovi bilan yashirin
+(`constants/sidebar.js` → `hidden: true`). Dizayndagi yo'qligi shundan. Yangi menyu ham shu
+bayroqqa bo'ysunadi: qaytarilsa «O'quv jarayoni» bo'limida, Imtihondan keyin chiqadi.
 
 **15. Moliya ichida faqat 4 band** — ochiq
 Rasmda: Kassalar, Kirim-chiqim, Kunlik topshiruv, Shartnomalar. Hozir Moliyada 15 band bor
@@ -82,7 +84,9 @@ Tranzaksiyalar, Rejalashtirilgan xarajatlar, Sinxronizatsiya …).
 yangi sahifa (nima ekanini tushuntirish kerak).
 
 **16. «Lidlar 29» — son nimani sanaydi?** — ochiq
-*Taxmin:* hali ishlanmagan (yangi) lidlar soni — bildirishnoma kabi.
+*Taxmin:* hali ishlanmagan (yangi) lidlar soni — bildirishnoma kabi. Bunday sanoq hozir
+serverda yo'q (`/api/sidebar-counts` hamma lidlarni sanaydi), shu bois yangi menyuda son
+hozircha ichki bandlarda: «Lidlar ro'yxati 29», «Birinchi darsga… 7» — eski menyudagidek.
 
 **17. Filial tanlovi yon menyuga ko'chadi** — ochiq
 Hozir yuqori panelda. Yangi versiyada yuqori paneldan olib tashlanadimi?
@@ -101,7 +105,20 @@ Hozir yuqori panelda bor, yangisida yo'q.
 
 **21. MohirAI suzuvchi tugmasi** — ochiq
 Hozir pastda robot tugma; yangi versiyada yuqori paneldagi «MohirAI».
-*Taxmin:* suzuvchi tugma olib tashlanadi, AI paneli shu tugmadan ochiladi.
+*Taxmin:* suzuvchi tugma olib tashlanadi, AI paneli shu tugmadan ochiladi. Yangi qobiqda
+shunday qilindi (17.10).
+
+**25. Global qidiruv: guruh va xodim** — ochiq (yuqori panel)
+Dizayndagi yozuv «O'quvchi, guruh yoki xodimni qidiring», hozirgi qidiruv esa faqat
+o'quvchilarni topadi (ism, telefon, ID). Eski qidiruvdagi «Buyurtma» natijalari soxta
+(demo generator) edi — yangi panelda ko'rsatilmaydi.
+*Taxmin:* guruh va xodim qidiruvi qo'shilgach dizayndagi yozuv qo'yiladi; hozircha maydonda
+«O'quvchini qidiring: ism, telefon yoki ID» — topa olmaydigan narsani va'da qilmasin.
+
+**26. «Texnik yordam» qayerga olib boradi?** — ochiq (yon menyu)
+Eski menyudagi «TEXNIK YORDAM» tugmasi hech narsa qilmaydi.
+*Taxmin:* yordam guruhi yoki administrator Telegram'iga havola; manzil kelguncha yangi
+menyuda ko'rsatilmaydi (bosilmaydigan tugma bo'lmasin).
 
 ## Sahifalar
 
@@ -123,3 +140,12 @@ tepada + «Yana filtrlar»; filtri kam sahifalarda — bitta «Filtr» tugmasi.
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
 Dizayn manbasi (Figma / HTML / rasm), qaysi sahifalardan boshlanadi, yangi versiyani
 avval kim ko'radi (adminlar yoki hamma).
+
+**27. Versiya almashtirgichi — qanday ishlaydi** — qisman hal qilindi (17.10, «verceldagi test
+bazaga yangi versiya/eski versiya o'zgartiradigan joy qo'shib tur»)
+Qilingani: tanlov brauzer cookie'sida (`tizimli_ui`), manzillar o'zgarmaydi; almashtirgich
+eski versiyada yuqori panelda, yangisida yon menyuning pastida va profil menyusida
+(«Eski versiyaga qaytish»). FAQAT sinov saytida (Vercel) va lokal dev'da ko'rinadi — prod
+serverda hamma eski versiyada, kod u yerga tushsa ham. Yangi versiyada hozircha qobiq
+(yon menyu + yuqori panel) yangi, sahifalarning ichi eski — bo'limma-bo'lim almashadi.
+*Ochiq:* prod'da kimga va qachon ochiladi (`UI_V2_SWITCH=on` bilan yoqiladi).

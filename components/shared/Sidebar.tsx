@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/ui/Link";
 import { usePathname, useRouter } from "next/navigation";
-import { SIDEBAR_ITEMS } from "@/constants/sidebar";
+import { isLockedRoute, visibleSidebarItems, type SidebarMenu, type SidebarMenuColumn, type SidebarMenuItem } from "@/components/shared/sidebarModel";
 import { useLang, useT } from "@/components/shared/Language";
 import { useTheme } from "@/components/shared/Theme";
 import { LANGS } from "@/lib/navbar";
@@ -11,9 +11,10 @@ import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
 import { useTaskInbox } from "@/components/shared/TaskInboxProvider";
 import { useSidebarCounts } from "@/hooks/useSidebarCounts";
+import { SidebarSprite } from "@/components/shared/ShellSprites";
 import { badgeLabel } from "@/lib/notifications";
-import { isPathAllowed } from "@/lib/permissions";
 import type { Lang } from "@/lib/i18n";
+import { switchUiVersion } from "@/lib/uiVersion";
 
 // Sidebar (chap navigatsiya) — barcha matn/havolalar constants/sidebar.js dagi
 // SIDEBAR_ITEMS massividan keladi (kod ichida qattiq yozilmagan). Hover
@@ -21,174 +22,9 @@ import type { Lang } from "@/lib/i18n";
 // bir vaqtda faqat bittasi ochiladi, biridan ikkinchisiga o'tganda darhol
 // almashadi va .flyout/.flyout-open CSS orqali silliq fade bilan chiqadi.
 
-interface SidebarMenuItem {
-  label: string;
-  href: string;
-  icon?: string;
-  iconClass?: string;
-  bold?: boolean;
-  medium?: boolean;
-  semibold?: boolean;
-  primary?: boolean;
-  /** Sanoq kaliti — son /api/sidebar-counts dan keladi (constants/sidebar.js). */
-  countKey?: string;
-  type?: "highlight" | "action" | "text";
-  truncate?: boolean;
-}
-interface SidebarMenuColumn {
-  title?: string;
-  items: SidebarMenuItem[];
-}
-interface SidebarMenu {
-  variant: "list" | "grid" | "reports";
-  width: number;
-  cols?: number;
-  items?: SidebarMenuItem[];
-  columns?: SidebarMenuColumn[];
-}
-interface SidebarItem {
-  key: string;
-  icon: string;
-  label: string;
-  href?: string;
-  mobileHref: string;
-  /** Qizil belgi uchun sanoq kaliti. Bitta kalit desktop va mobil menyuga ham xizmat qiladi. */
-  badgeKey?: string;
-  mobileActive?: boolean;
-  menu?: SidebarMenu;
-  /** Vaqtincha olib turilgan bo'lim — constants/sidebar.js dagi izohga qarang. */
-  hidden?: boolean;
-  /**
-   * Faqat admin ko'radigan bo'lim (`users.role === "admin"`).
-   *
-   * Ruxsatlar daraxti bilan ifodalab bo'lmaydi: u yerda "cheklov yo'q"
-   * (`permissions === null`) HAMMA narsa ochiq degani, ya'ni ro'yxati
-   * sozlanmagan rol bunday bo'limni ham ko'raverardi. lib/adminOnly.ts.
-   */
-  adminOnly?: boolean;
-  /**
-   * Modulga bog'langan bo'lim (masalan "gamification"): modul yoqilganda
-   * hammaga, o'chiq paytda faqat adminga ko'rinadi — admin uni yoqishdan
-   * oldin ko'rib chiqa olsin. Holat layout'dan keladi (`features`).
-   */
-  feature?: string;
-}
-
-// `hidden` shu YAGONA joyda kesiladi — kompyuter menyusi ham, mobil menyu
-// ham quyidagi bitta `items` dan chiziladi. Ruxsatlar daraxti
-// (lib/permissions.ts) esa SIDEBAR_ITEMS ni to'g'ridan-to'g'ri o'qiydi va
-// bu filtrga tegmaydi: yashirilgan bo'lim ruxsat sifatida saqlanib
-// qoladi, ya'ni qaytarilganda rollarni qaytadan sozlash kerak bo'lmaydi.
-const ITEMS = (SIDEBAR_ITEMS as SidebarItem[]).filter((i) => !i.hidden);
-
-/**
- * Sidebar daraxtini rol ruxsatlariga qarab qirqadi (lib/permissions.ts).
- * `null` — cheklov yo'q, daraxt tegilmaydi.
- *
- * Faqat YASHIRISH emas, yo'nalishlarni TUZATISH ham shu yerda: bo'limning
- * o'z havolasi (`href`) yoki mobil havolasi (`mobileHref`) taqiqlangan
- * sahifaga qaragan bo'lsa, u ochiq qolgan birinchi ichki sahifaga
- * almashtiriladi. Aks holda ko'rinib turgan bo'limni bosgan xodim darhol
- * orqaga qaytarib yuborilardi (layout tekshiruvi).
- */
-function filterByPermissions(items: SidebarItem[], permissions: string[] | null): SidebarItem[] {
-  if (permissions === null) return items;
-  const ok = (href?: string) => !!href && isPathAllowed(href, permissions);
-
-  const out: SidebarItem[] = [];
-  for (const item of items) {
-    let nextMenu: SidebarMenu | undefined;
-    let firstHref: string | undefined;
-
-    if (item.menu) {
-      const menuItems = item.menu.items?.filter((i) => ok(i.href));
-      const columns = item.menu.columns
-        ?.map((c) => ({ ...c, items: c.items.filter((i) => ok(i.href)) }))
-        .filter((c) => c.items.length > 0);
-      const flat = menuItems ?? columns?.flatMap((c) => c.items) ?? [];
-
-      if (flat.length === 0) {
-        // Ichida bitta ham ochiq sahifa qolmadi. Bo'lim faqat o'z havolasi
-        // ochiq bo'lsa qoladi — va bo'sh flyout ochilmasligi uchun menyusiz.
-        if (!ok(item.href)) continue;
-        nextMenu = undefined;
-      } else {
-        firstHref = flat[0].href;
-        nextMenu = { ...item.menu };
-        if (menuItems) nextMenu.items = menuItems;
-        if (columns) nextMenu.columns = columns;
-      }
-    } else if (!ok(item.href)) {
-      continue;
-    }
-
-    out.push({
-      ...item,
-      menu: nextMenu,
-      href: item.href && !ok(item.href) ? firstHref : item.href,
-      mobileHref: ok(item.mobileHref) ? item.mobileHref : (firstHref ?? item.href ?? item.mobileHref),
-    });
-  }
-  return out;
-}
-
-// Faqat shu sahifalar hali kod bilan qurilgan (tegishli app/(app)/<href>/page.tsx
-// mavjud). Qolgan barcha havolalar hozircha "qurilmagan" — qulflanadi: hover
-// bo'lganda flyout menyu baribir chiqaveradi, lekin bosilganda hech qayerga
-// o'tmaydi va xiraroq ko'rinadi.
-//
-// Ro'yxat constants/sidebar.js dagi har bir href'ni app/(app)/ papkasi bilan
-// solishtirib chiqarilgan — shu sabab bo'lim tartibida guruhlangan. Yangi
-// sahifa qo'shilganda shu yerga ham qo'shilishi kerak (aks holda sidebar'da
-// qulflangan ko'rinadi, garchi sahifa ishlasa ham).
-//
-// 2026-08-16: referensda mavjud bo'lmagan 35 ta o'ylab topilgan havola
-// constants/sidebar.js dan olib tashlandi (bo'lim dashboardlari, qo'shimcha
-// analitika sahifalari va h.k.) — ular hech qachon qurilmagan va sidebarda
-// faqat qulf bo'lib turardi. Endi har bir havolaning sahifasi bor.
-const IMPLEMENTED_ROUTES = new Set([
-  // Topshiriqlar
-  "/tasks",
-  // Lidlar
-  "/orders-list", "/first-lessons",
-  // Guruh
-  "/groups", "/groups-tasks", "/groups-schedule", "/groups-rooms", "/groups-equipments", "/groups-students",
-  // O'quvchilar
-  "/new-students", "/active-students", "/archive-students", "/students-list", "/parents", "/expiring-subs", "/student-addresses",
-  // O'quv bo'limi
-  "/offline-courses", "/online-courses", "/edu-category", "/seasonal-assessment", "/contract",
-  // Blok test
-  "/blok-test-turlari", "/blok-testlar",
-  // Imtihon (Oylik imtihon | UzBMB — ikkalasi ham /imtihon, tab `?tab=` da)
-  "/imtihon",
-  // Moliya
-  "/finance-cash", "/finance-bonus", "/finance-penalty", "/finance-payroll",
-  "/finance-cashflow", "/finance-revenue-plan", "/finance-analytics", "/finance-reports", "/finance-pnl", "/finance-flow",
-  "/finance-tx-types", "/finance-transactions", "/finance-planned", "/finance-fin-contract",
-  "/finance-sync",
-  // Nazorat
-  "/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-qr", "/nazorat-feedback", "/nazorat-staff-rating",
-  "/nazorat-missed-groups", "/nazorat-branches", "/nazorat-turnstile", "/nazorat-turnstile-io", "/nazorat-support-analytics",
-  "/nazorat-sms-analytics",
-  // Boshqaruv
-  "/management-xodimlar", "/management-cv", "/management-rollar", "/management-filiallar", "/management-ish-jadvali",
-  // Sotuv va marketing
-  "/sales-marketing", "/sales-sources", "/sales-plan", "/sales-news", "/sales-stories", "/sales-sms", "/sales-messages",
-  // Hisobotlar (finance-*/nazorat-* takrorlari yuqorida bor)
-  "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
-  "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",
-  // Sozlamalar
-  "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
-  "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",
-  "/settings-profile", "/settings-security",
-  // Gamifikatsiya (TZ v1.4, 26.09.2026 dan bosqichma-bosqich)
-  "/gamification-lesson", "/gamification-students", "/gamification-ranking", "/gamification-competition", "/gamification-shop",
-  // Vaqtinchalik tugma (faqat admin)
-  "/vaqtinchalik",
-  // Amallar jurnali (faqat admin, 10.10.2026) — ro'yxatga qo'shilmay qolgani
-  // uchun sidebar'da «Hali tayyor emas» qulfi bilan turardi (12.10.2026).
-  "/amallar-jurnali",
-]);
+// Model (turlar, ruxsat filtri, qurilgan sahifalar ro'yxati) —
+// components/shared/sidebarModel.ts: yangi versiya menyusi (components/v2/shell)
+// ham o'sha qoidadan chiziladi.
 
 export interface SidebarProps {
   mobileOpen: boolean;
@@ -202,23 +38,20 @@ export interface SidebarProps {
   isAdmin?: boolean;
   /** Yoqilgan modullar — `feature` bo'limlar uchun. */
   features?: Record<string, boolean>;
+  /**
+   * Yangi versiyaga o'tish qatori (mobil menyuda) — faqat almashtirgich
+   * yoqilgan serverda (sinov sayti, lokal dev; lib/uiVersionServer.ts).
+   */
+  canSwitchUi?: boolean;
 }
 
-export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null, isAdmin = false, features }: SidebarProps) {
-  // Xodim ko'ra oladigan bo'limlar. Bu FAQAT ko'rinish: haqiqiy to'siq
-  // app/(app)/layout.tsx da (va `adminOnly` bo'limlar uchun sahifaning
-  // o'zida), server tomonda.
-  //
-  // `adminOnly` ruxsat filtridan ALOHIDA kesiladi: u ruxsatlar daraxtida
-  // yo'q (lib/permissions.ts uni ataylab tushirmaydi), ya'ni cheklovsiz
-  // rol uchun `filterByPermissions` uni o'tkazib yuborardi.
+export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = null, isAdmin = false, features, canSwitchUi = false }: SidebarProps) {
+  // Xodim ko'ra oladigan bo'limlar — qoida components/shared/sidebarModel.ts da
+  // (yangi versiya menyusi bilan umumiy). Bu FAQAT ko'rinish: haqiqiy to'siq
+  // app/(app)/layout.tsx da, server tomonda.
   const gamOn = !!features?.gamification;
   const items = useMemo(
-    () =>
-      filterByPermissions(
-        ITEMS.filter((i) => (!i.adminOnly || isAdmin) && (!i.feature || isAdmin || (i.feature === "gamification" && gamOn))),
-        permissions,
-      ),
+    () => visibleSidebarItems(permissions, isAdmin, { gamification: gamOn }),
     [permissions, isAdmin, gamOn],
   );
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -415,7 +248,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // Havolada so'rov qismi bo'lishi mumkin (masalan "/imtihon?tab=uzbmb") —
   // qulf ro'yxati faqat sahifa yo'li bilan solishtiriladi.
   const lockedProps = (href: string) => {
-    const locked = !IMPLEMENTED_ROUTES.has(href.split("?")[0]);
+    const locked = isLockedRoute(href);
     return { locked, title: locked ? t("Hali tayyor emas") : undefined };
   };
   const lockIcon = (
@@ -485,38 +318,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
 
   return (
     <>
-      {/* ============ SVG SPRITE (icons used by navbar) ============ */}
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
-        <defs>
-          <symbol id="i-graduation-cap" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></symbol>
-          <symbol id="i-list-todo" viewBox="0 0 24 24"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4"/><line x1="13" y1="6" x2="21" y2="6"/><line x1="13" y1="12" x2="21" y2="12"/><line x1="13" y1="18" x2="21" y2="18"/></symbol>
-          <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
-          <symbol id="i-users-group" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-          <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
-          <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
-          <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></symbol>
-          <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
-          <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
-          <symbol id="i-trending-up" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
-          <symbol id="i-bar-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
-          <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
-          <symbol id="i-life-buoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/></symbol>
-          <symbol id="i-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
-          <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></symbol>
-          <symbol id="i-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
-          <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
-          <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
-          <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></symbol>
-          <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></symbol>
-          <symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></symbol>
-          <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
-          <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
-          <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></symbol>
-          <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></symbol>
-          <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
-          <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></symbol>
-        </defs>
-      </svg>
+      <SidebarSprite />
 
       {/* Logo endi bu yerda emas — referensdagidek Navbar ichiga ko'chirildi. */}
       <aside id="sidebar" className="shell-sidebar hidden lg:flex flex-col border-r shrink-0" style={{ borderColor: "var(--shell-line)" }}>
@@ -524,7 +326,7 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
           <ul className="space-y-[2px]">
             {items.map((item) => {
               const hasMenu = !!item.menu;
-              const topLocked = !!item.href && !IMPLEMENTED_ROUTES.has(item.href.split("?")[0]);
+              const topLocked = !!item.href && isLockedRoute(item.href);
               const itemActive = isPathActive(item.href) || isMenuActive(item.menu);
               // Referensda o'ngda chevron YO'Q — ochiq/yopiqligi faqat fon
               // rangi bilan bildiriladi.
@@ -699,6 +501,18 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
               <svg className="icon icon-sm text-muted-foreground"><use href={isDark ? "#i-sun" : "#i-moon"} /></svg>
               <span>{isDark ? t("Yorug' rejim") : t("Tungi rejim")}</span>
             </button>
+
+            {/* Yangi versiya (v2) — navbardagi almashtirgich telefonda
+                yashirin, shu bois shu yerda ham (faqat sinov saytida/dev'da). */}
+            {canSwitchUi && (
+              <button
+                onClick={() => switchUiVersion("v2")}
+                className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-primary hover:bg-secondary text-left"
+              >
+                <svg className="icon icon-sm"><use href="#i-zap" /></svg>
+                <span>{t("Yangi versiyani ochish")}</span>
+              </button>
+            )}
           </div>
 
           {/* Profil amallari — desktopda bular Navbar'ning o'ng blokida turadi,

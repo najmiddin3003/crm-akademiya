@@ -22,6 +22,8 @@ import { HELP_TOPICS } from "@/constants/helpTopics";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import Select from "@/components/ui/Select";
 import Modal from "@/components/ui/Modal";
+import { NavbarSprite } from "@/components/shared/ShellSprites";
+import UiVersionSwitch from "@/components/shared/UiVersionSwitch";
 import { Check, ChevronDown, Globe } from "lucide-react";
 
 const FILIAL_ADD_OPTION = "Filial biriktirish ++++";
@@ -74,6 +76,11 @@ export interface NavbarProps {
    * layout uni bosh sahifaga qaytarardi).
    */
   permissions?: string[] | null;
+  /**
+   * «Eski versiya | Yangi versiya» almashtirgichi — faqat u yoqilgan
+   * serverda (sinov sayti, lokal dev; lib/uiVersionServer.ts).
+   */
+  canSwitchUi?: boolean;
 }
 
 /**
@@ -95,13 +102,16 @@ export interface NavbarProps {
  *   Kassa             → /finance-cash (Moliya → Kassalar: to'lov qabul qilish).
  * Ruxsat `isPathAllowed` bilan tekshiriladi — Sidebar'dagi qoida (u
  * `?add=1` ni tashlab, faqat yo'lga qaraydi).
+ *
+ * Yangi versiyaning «+ Yangi» menyusi ham shu ro'yxatdan chiziladi
+ * (components/v2/shell/TopbarV2.tsx).
  */
-const QUICK_LINKS: { href: string; label: string; icon: string; tone: string }[] = [
+export const QUICK_LINKS: { href: string; label: string; icon: string; tone: string }[] = [
   { href: "/orders-list?add=1", label: "Lid qo'shish", icon: "#i-user-plus", tone: "bg-blue-100 text-blue-600" },
   { href: "/finance-cash", label: "Kassa — to'lov qabul qilish", icon: "#i-wallet", tone: "bg-emerald-100 text-emerald-600" },
 ];
 
-export default function Navbar({ onOpenMobileMenu, user = null, permissions = null }: NavbarProps) {
+export default function Navbar({ onOpenMobileMenu, user = null, permissions = null, canSwitchUi = false }: NavbarProps) {
   const quickLinks = QUICK_LINKS.filter((l) => isPathAllowed(l.href, permissions));
   // Bo'sh bo'lsa ham menyu buzilmasin: ism o'rniga chiziqcha, harf "?".
   const displayName = user?.fullName?.trim() || "—";
@@ -268,40 +278,7 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
     : inboxReports > 0 ? t("Topshiriq bo'yicha hisobot keldi") : t("Mening topshiriqlarim");
   return (
     <div ref={rootRef}>
-      {/* ============ SVG SPRITE (icons unique to navbar) ============ */}
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
-        <defs>
-          <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></symbol>
-          <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" /></symbol>
-          {/* Filial tanlagichdagi bino ikonkasi — referensda ham shunday */}
-          <symbol id="i-landmark" viewBox="0 0 24 24"><line x1="3" y1="22" x2="21" y2="22" /><line x1="6" y1="18" x2="6" y2="11" /><line x1="10" y1="18" x2="10" y2="11" /><line x1="14" y1="18" x2="14" y2="11" /><line x1="18" y1="18" x2="18" y2="11" /><polygon points="12 2 20 7 4 7" /></symbol>
-          <symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></symbol>
-          <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></symbol>
-          <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></symbol>
-          <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></symbol>
-          <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></symbol>
-          <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></symbol>
-          <symbol id="i-frown" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M16 16s-1.5-2-4-2-4 2-4 2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></symbol>
-          <symbol id="i-help-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></symbol>
-          {/* Referensdagi "Qanday ishlaydi?" — video kamera */}
-          <symbol id="i-video" viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8z" /><rect x="2" y="6" width="14" height="12" rx="2" /></symbol>
-          {/* Referensdagi "Tezkor bo'limlar" — doira ichida plyus */}
-          <symbol id="i-circle-plus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></symbol>
-          <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></symbol>
-          <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></symbol>
-          {/* Kechikkan topshiriq bildirishnomasi. `i-clock` DEB atalmadi: u
-              components/tasks/TasksPage.tsx dagi sahifa sprite'ida bor va
-              ikkinchi nusxa /tasks ochiq turganda hujjatda takroriy DOM id
-              hosil qilardi. */}
-          <symbol id="i-clock-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></symbol>
-          {/* Xodimning shaxsiy topshiriq oynasi — galochkali planshet.
-              `i-list-todo` (sidebar) EMAS: bu boshqa narsa — sahifa emas,
-              "menga berilgan" pochta. */}
-          <symbol id="i-task-inbox" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></symbol>
-          <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
-          <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></symbol>
-        </defs>
-      </svg>
+      <NavbarSprite />
 
       {/* `sticky` ATAYIN ishlatilmagan: globals.css da `header.sticky` qoidasi
           bor va u `hsl(var(--background))` fonini majburlaydi — spesifikligi
@@ -420,6 +397,12 @@ export default function Navbar({ onOpenMobileMenu, user = null, permissions = nu
             bo'lardi (yuqoridagi `i-clock-alert` izohi). Uslublar
             globals.css → "Til tanlovi" (.nav-lang*). */}
         <div className="hidden md:flex items-center ml-auto">
+          {/* Yangi versiya (v2) almashtirgichi — faqat sinov saytida/dev'da. */}
+          {canSwitchUi && (
+            <span className="mr-2 hidden lg:inline-flex">
+              <UiVersionSwitch current="v1" tone="v1" />
+            </span>
+          )}
           <div className="relative">
             <button
               type="button"
