@@ -103,6 +103,21 @@ Hozir yuqori panelda bor, yangisida yo'q.
 Hozir pastda robot tugma; yangi versiyada yuqori paneldagi «MohirAI».
 *Taxmin:* suzuvchi tugma olib tashlanadi, AI paneli shu tugmadan ochiladi.
 
+## Sahifalar
+
+**22. Filtrning ikki ko'rinishi — qayerda qaysi biri?** — ochiq (O'quvchilar sahifasi rasmidan)
+Lidlar: bitta «Filtr» tugmasi, hammasi panelda. O'quvchilar: 3 ta asosiy filtr tepada +
+«Yana filtrlar».
+*Taxmin:* filtri ko'p sahifalarda (o'quvchilar, to'lovlar, guruhlar, xodimlar) — asosiy filtrlar
+tepada + «Yana filtrlar»; filtri kam sahifalarda — bitta «Filtr» tugmasi.
+
+**23. «Ustunlar» tanlovi saqlanadimi?** — ochiq
+*Taxmin:* ha — har foydalanuvchining brauzerida, keyingi safar o'sha ustunlar ochiladi.
+
+**24. Xulosa qatoridagi «Haqdorlik»** — ochiq
+«Qarzdorlik» yonida turibdi (rasmda kesilgan).
+*Taxmin:* oldindan to'lagan o'quvchilarning ortiqcha balansi yig'indisi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
