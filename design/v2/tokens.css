@@ -60,9 +60,12 @@
   --v2-violet: #5B3CC4;        /* Binafsha */
   --v2-logo: #1192A8;          /* Logotip */
 
-  /* QO'SHIMCHA (palitrada yo'q, kontrast uchun): rangli tugma/belgi ustidagi
-     matn. Yorug'da oq — barcha rangli fonlarda AA (4.9–7.3). */
+  /* Rangli tugma/belgi ustidagi matn. Yorug'da oq — barcha rangli fonlarda AA (4.9–7.3).
+     Qorong'i temada dizayn har tugmaga O'Z to'q rangini beradi (17.10 o'lchandi):
+     `on-brand` — brend tugmada, `on-danger` — xavf tugmasida, `on-color` — qolganlarida. */
   --v2-on-color: #FFFFFF;
+  --v2-on-brand: #FFFFFF;
+  --v2-on-danger: #FFFFFF;
 
   /* ── Holatlarning och foni (holat belgilari: fon + shu rangdagi yozuv va nuqta) ──
      «Holat belgilari» rasmidan aniq o'lchangan; yozuv o'z fonida AA (4.65–6.27). */
@@ -114,7 +117,8 @@
   /* ── Tipografiya ───────────────────────────────────────────────────── */
   --v2-font-sans: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
-  /* ── Soya — rasmdan o'lchangan, TAXMINIY (dizaynerdan aniq qiymat so'raladi) */
+  /* ── Soya — rasmdan o'lchangan, TAXMINIY (dizaynerdan aniq qiymat so'raladi).
+     Kartochkada soyadan tashqari 1px `--v2-border` chegara ham bor (ikkala temada). */
   --v2-shadow-sm: 0 1px 2px rgba(14, 23, 38, 0.05), 0 0 0 1px rgba(14, 23, 38, 0.03); /* kartalar */
   --v2-shadow-md: 0 8px 24px rgba(14, 23, 38, 0.1), 0 2px 6px rgba(14, 23, 38, 0.06); /* menyu, oyna */
 }
@@ -149,31 +153,30 @@
   --v2-violet: #B8A4FF;
   --v2-logo: #1192A8;
 
-  /* Qorong'ida rangli fonlar och — ustidagi matn TO'Q bo'lishi shart:
-     oq matn 2.0–2.6 (o'qilmaydi), to'q matn 7.4–10.2 (AAA). */
+  /* Qorong'ida rangli fonlar och — ustidagi matn TO'Q bo'lishi shart (oq 2.0–2.6 —
+     o'qilmaydi). Dizayn har tugmaga o'z to'q tusini beradi (qorong'i rasmdan o'lchandi):
+     brend tugmada #03181D (7.38), xavf tugmasida #1A0705 (7.39). */
   --v2-on-color: #0B0D10;
+  --v2-on-brand: #03181D;
+  --v2-on-danger: #1A0705;
 
-  /* Holatlarning och foni — qorong'ida dizaynda ko'rsatilmagan. MENING TAXMINIM:
-     fan ranglarining qorong'i fonlaridan o'sha tusdagilari (yozuv o'z fonida 6.4–8.5). */
-  --v2-info-bg: #14213A;
-  --v2-violet-bg: #1F1A38;
-  --v2-warning-bg: #291F11;
-  --v2-success-bg: #10261D;
-  --v2-danger-bg: #2E1520;
+  /* Holatlarning och foni — qorong'i «Holat belgilari» rasmidan aniq o'lchangan
+     (yozuv — holat rangi, o'z fonida AA). */
+  --v2-info-bg: #132241;
+  --v2-violet-bg: #211B3D;
+  --v2-warning-bg: #2C2211;
+  --v2-success-bg: #0F2A1F;
+  --v2-danger-bg: #331715;
 
-  /* Yordamchi yuzalar — TAXMIN (hover = «Boshqa» fan foni, skelet — chiziqqa yaqin). */
+  /* Yordamchi yuzalar — qorong'i rasmdan o'lchangan. */
   --v2-hover: #1C2127;
-  --v2-skeleton: #1E2329;
+  --v2-skeleton: #1F242A;
 
-  /* Grafik — qorong'i fonda och pog'onalar yaxshiroq ko'rinadi. MENING TAXMINIM
-     (dizaynda qorong'i grafik ko'rsatilmagan). */
-  --v2-chart-1: var(--v2-teal-400);
-  --v2-chart-2: var(--v2-teal-300);
-  --v2-chart-3: var(--v2-teal-500);
-  --v2-chart-4: var(--v2-teal-700);
+  /* Grafik — qorong'ida ham AYNI teal 600 / 400 / 300 / 200 (o'lchandi), alohida
+     qiymat yo'q. */
 
-  /* Fokus halqasi qorong'ida kuchliroq (fon to'q). */
-  --v2-focus-ring: 0 0 0 3px color-mix(in srgb, var(--v2-brand) 35%, transparent);
+  /* Fokus halqasi — qorong'ida brend 30% (o'lchandi: 0.30–0.33). */
+  --v2-focus-ring: 0 0 0 3px color-mix(in srgb, var(--v2-brand) 30%, transparent);
 
   /* Fan ranglari. Chegara qorong'ida fondan sal ochroq — juda sezilmas, TAXMINIY. */
   --v2-fan-ingliz: #9CC0FF;  --v2-fan-ingliz-bg: #14213A;  --v2-fan-ingliz-border: #16243F;
@@ -185,16 +188,17 @@
   --v2-fan-tarix: #E9A3F2;   --v2-fan-tarix-bg: #2A1530;   --v2-fan-tarix-border: #2B1631;
   --v2-fan-boshqa: #AAB1BB;  --v2-fan-boshqa-bg: #1C2127;  --v2-fan-boshqa-border: #1D2228;
 
-  /* Soya — qorong'i fonda och-qora soya ko'rinmaydi; qora va kuchliroq. MENING TAXMINIM
-     (dizaynda qorong'i soya ko'rsatilmagan). */
-  --v2-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03);
-  --v2-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  /* Soya — qora. md (menyu, oyna) qorong'i rasmdan o'lchangan: chet ostida ~40%,
+     ~19px gacha so'nadi (TAXMINIY model). sm — sahifa foni eng to'q bo'lgani uchun
+     deyarli ko'rinmaydi, kartani chegara ajratadi. */
+  --v2-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --v2-shadow-md: 0 8px 28px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* ── Tailwind v4 klasslari ────────────────────────────────────────────────
    Faqat Tailwind ishlov beradigan CSS'ga import qilinganda ishlaydi; oddiy
    brauzer `@theme` ni e'tiborsiz qoldiradi. Misollar: `bg-v2-surface`,
-   `text-v2-text-2`, `border-v2-border-field`, `bg-v2-brand text-v2-on-color`,
+   `text-v2-text-2`, `border-v2-border-field`, `bg-v2-brand text-v2-on-brand`,
    `bg-v2-fan-ingliz-bg`, `text-v2-page`, `rounded-v2-md`, `shadow-v2-sm`, `font-v2`.
    ORALIQ alohida token emas: Tailwind'ning o'z shkalasi 4 px qadamli
    (`p-1`=4, `p-2`=8, `p-3`=12, `p-4`=16, `p-5`=20, `p-6`=24, `p-8`=32, `p-12`=48). */
@@ -229,6 +233,8 @@
   --color-v2-violet: var(--v2-violet);
   --color-v2-logo: var(--v2-logo);
   --color-v2-on-color: var(--v2-on-color);
+  --color-v2-on-brand: var(--v2-on-brand);
+  --color-v2-on-danger: var(--v2-on-danger);
 
   --color-v2-info-bg: var(--v2-info-bg);
   --color-v2-violet-bg: var(--v2-violet-bg);

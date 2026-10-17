@@ -55,7 +55,9 @@ pog'onalar — grafik, progress, illyustratsiya uchun.
 | `--v2-info` | Ma'lumot | Ma'lumot xabari, neytral belgi |
 | `--v2-violet` | Binafsha | Qo'shimcha urg'u (yorug'da «Ona tili» fan rangi bilan bir xil) |
 | `--v2-logo` | Logotip | Logotip — ikkala temada bir xil |
-| `--v2-on-color` | *(qo'shimcha)* | Rangli fon (brend, holatlar) ustidagi matn: yorug'da oq, qorong'ida to'q |
+| `--v2-on-brand` | — | Brend tugma ustidagi matn: yorug'da oq, qorong'ida to'q teal |
+| `--v2-on-danger` | — | Xavf tugmasi ustidagi matn: yorug'da oq, qorong'ida to'q qizil |
+| `--v2-on-color` | *(qo'shimcha)* | Boshqa rangli fon (holatlar) ustidagi matn: yorug'da oq, qorong'ida to'q |
 
 ### Fan ranglari — jadval va guruh kartalarida
 
@@ -100,7 +102,10 @@ shrift o'lchamini o'zgartirsa (sozlama) — birga o'zgaradi.
 - **Burchak**: `rounded-v2-sm` 6 px — kichik belgi; `rounded-v2-md` 8 px — tugma, maydon;
   `rounded-v2-lg` 12 px — karta, panel; `rounded-v2-full` — holat belgisi.
 - **Soya**: `shadow-v2-sm` — kartalar; `shadow-v2-md` — menyu, oyna. Qiymatlar rasmdan
-  o'lchangan (taxminiy); qorong'i temadagi soya — mening taxminim (dizaynda ko'rsatilmagan).
+  o'lchangan (taxminiy model). Qorong'ida soya qora (menyu/oyna ostida aniq ko'rinadi),
+  kartochkani esa asosan chegara ajratadi.
+- **Kartochka**: `bg-v2-surface` + 1 px `v2-border` chegara + `rounded-v2-lg` (+ `shadow-v2-sm`) —
+  ikkala temada ham chegara bor.
 
 ## Ikonkalar
 
@@ -118,10 +123,10 @@ aniq o'lchangan va hammasi mavjud tokenlarga tushadi.
 
 | Turi | Tokenlar | Misol |
 |---|---|---|
-| Asosiy | `bg-v2-brand text-v2-on-color` | «+ Lid qo'shish» |
+| Asosiy | `bg-v2-brand text-v2-on-brand` | «+ Lid qo'shish» |
 | Ikkinchi darajali | `bg-v2-surface border border-v2-border-strong text-v2-text` | «Export» |
 | Matnli | fonsiz, `text-v2-text-2`; hover — `bg-v2-surface-2` | «Bekor qilish» |
-| Xavf | `bg-v2-danger text-v2-on-color` | «O'chirish» |
+| Xavf | `bg-v2-danger text-v2-on-danger` | «O'chirish» |
 | Yumshoq | `bg-v2-brand-bg text-v2-brand-text` | «MohirAI» |
 | Ikonka | kvadrat, ikkinchi darajali uslubda; eni = bo'yi | Filtr |
 
@@ -155,7 +160,7 @@ aniq o'lchangan va hammasi mavjud tokenlarga tushadi.
 - **Pul ko'rsatkichi** (Moliya analitikasi): sarlavha, katta raqam
   `text-v2-number tabular-nums` + kichik «so'm», o'ngda ko'z ikonka (summalarni yashirish),
   ostida bo'lingan chiziqli grafik va izoh (kvadrat belgi + nom + summa, o'ngga tekislangan).
-  Grafik ranglari tartib bilan `chart-1…4` (yorug'da teal 600 / 400 / 300 / 200).
+  Grafik ranglari tartib bilan `chart-1…4` — teal 600 / 400 / 300 / 200, ikkala temada bir xil.
 
 ### Tablar va almashtirgichlar
 
@@ -164,7 +169,7 @@ aniq o'lchangan va hammasi mavjud tokenlarga tushadi.
 - **Segment** (ko'rinishni almashtirish, masalan Kalendar / Jurnal / Pul oqimi):
   konteyner `bg-v2-surface-2` + `v2-border`, faol bo'lak `bg-v2-surface` + `shadow-v2-sm`.
 - **Sahifalash**: chapda «1–50 / 580 ta» (`text-v2-text-2`), o'rtada sahifa tugmalari —
-  faol `bg-v2-brand text-v2-on-color`, qolganlari fonsiz; strelkalar ikkinchi darajali
+  faol `bg-v2-brand text-v2-on-brand`, qolganlari fonsiz; strelkalar ikkinchi darajali
   ikonka tugma; «…» oraliq; o'ngda qator soni tanlovi («50 qator»).
 
 ### Holat belgilari
@@ -235,9 +240,10 @@ Qoidalar (dizayndagi izohdan):
 
 1. **Matn uchala darajada ham o'qiladi.** Matn / Matn 2 / Matn 3 — Fon, Sirt va Sirt 2
    ustida ikkala temada AA yoki undan yuqori (eng pasti: yorug'da Matn 3 / Fon — 4.79).
-2. **Rangli tugma ustidagi matn — `--v2-on-color`.** Qorong'i temada rangli fonlar och:
-   oq matn ularda **o'qilmaydi** (2.0–2.6), to'q matn esa AAA (7.4–10.2). Dizayndagi
-   «400 — to'q matn bilan» qoidasi shuni aytadi; tugmada hech qachon qattiq `#FFF` yozilmasin.
+2. **Rangli tugma ustidagi matn — `on-brand` / `on-danger` / `on-color`.** Qorong'i temada
+   rangli fonlar och: oq matn ularda **o'qilmaydi** (2.0–2.6). Dizayn har tugmaga o'z to'q
+   tusini beradi — brend tugmada to'q teal (7.38), xavf tugmasida to'q qizil (7.39), ikkalasi
+   AAA. Tugmada hech qachon qattiq `#FFF` yozilmasin.
 3. **Havola Fon ustida — `--v2-brand-text`.** Yorug'da Asosiy rang Fon ustida 4.45
    (chegaradan biroz past); Sirt ustida 4.87 — u yerda Asosiy ham bo'ladi.
 4. **Kiritish maydoni cheti — faqat Maydon chizig'i** (3.1:1). Chiziq va Kuchli chiziq
@@ -246,7 +252,7 @@ Qoidalar (dizayndagi izohdan):
 6. **Fan chiplari**: yozuv o'z fonida 13.5–16.4 (AAA); nuqta rangi ham matn sifatida
    ishlaydi (yorug' 4.6–6.8, qorong'i 7.5–10.2).
 7. **Holat belgilari**: holat rangidagi yozuv o'z och fonida AA — yorug'da 4.65–6.27,
-   qorong'ida (taxminiy fonlar bilan) 6.4–8.5. Jadval hover qatorida matn 16.2, Matn 2 — 6.8.
+   qorong'ida 6.24–8.23. Jadval hover qatorida matn 16.2 / 13.9, Matn 2 — 6.8 / 7.5.
 8. Logotip ikkala temada ham fondan ajralib turadi (3.4–5.3:1).
 
 ## Ochiq savollar

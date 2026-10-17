@@ -17,14 +17,13 @@ Prezident maktablari …).
 *Taxmin:* nomi aniq mos kelgani — o'z rangi; IELTS / CEFR / SAT — «Ingliz tili» rangi;
 qolgani — «Boshqa».
 
-**2. Holatlar uchun och fon** — hal qilindi (17.10, «Holat belgilari» rasmidan)
-Kerak ekan: har holatning och foni rasmda bor — 5 ta `-bg` token qo'shildi (yorug' tema aniq).
-Qorong'i temadagisi — 11-savolda.
+**2. Holatlar uchun och fon** — hal qilindi (17.10, «Holat belgilari» rasmlaridan)
+Kerak ekan: har holatning och foni rasmda bor — 5 ta `-bg` token, ikkala tema aniq o'lchangan.
 
-**3. Soyalarning aniq qiymatlari** — ochiq
-Rasmda soya qiymati yozilmagan — piksellardan o'lchab, taxminiy qiymat yozildi.
-Qorong'i temadagi soya dizaynda umuman ko'rsatilmagan.
-*Taxmin:* o'lchangan qiymatlar; qorong'ida — qora, kuchliroq soya.
+**3. Soyalarning aniq qiymatlari** — ochiq (qisman)
+Rasmlarda soya qiymati yozilmagan — ikkala temada piksellardan o'lchab, taxminiy model
+yozildi (qorong'ida soya qora, menyu/oyna ostida ~40% → ~19 px gacha so'nadi).
+*Taxmin:* o'lchangan qiymatlar; dizaynerdan aniq qiymat kelsa almashtiriladi.
 
 **4. Onest shriftini yuklash** — ochiq
 Google'dan (`next/font/google`) yoki loyiha ichiga joylab (`next/font/local`)?
@@ -51,14 +50,13 @@ Rasm ~0.6× kichraytirilgan: o'lchamlar ±2 px aniqlikda (maydon balandligi ~40,
 yorliq shrifti). Ranglar esa aniq. Dizayn tizimining manba fayli (HTML yoki Figma) bormi?
 *Taxmin:* 4 px to'riga yaxlitlangan qiymatlar (maydon 40, tugma 32/36/40).
 
-**10. Qorong'i temadagi grafik ranglari** — ochiq
-Pul grafigi faqat yorug' temada ko'rsatilgan.
-*Taxmin:* qorong'ida och pog'onalar (teal 400 / 300 / 500 / 700).
+**10. Qorong'i temadagi grafik ranglari** — hal qilindi (17.10, qorong'i komponentlar rasmidan)
+Ikkala temada bir xil: teal 600 / 400 / 300 / 200. (Mening taxminim — boshqa pog'onalar — noto'g'ri edi.)
 
-**11. Qorong'i temada holat belgilari, hover va skelet** — ochiq
-«Holat belgilari», jadval hover qatori va skelet faqat yorug' temada ko'rsatilgan.
-*Taxmin:* holat fonlari — fan ranglarining qorong'i fonlaridan o'sha tusdagilari
-(yozuv o'qiladi: 6.4–8.5); hover — «Boshqa» fanning qorong'i foni; skelet — chiziq rangiga yaqin.
+**11. Qorong'i temada holat belgilari, hover va skelet** — hal qilindi (17.10, qorong'i rasmlardan)
+Hammasi aniq o'lchandi: holat fonlari (info `#132241` … xavf `#331715`), hover `#1C2127`
+(taxmin to'g'ri chiqdi), skelet `#1F242A`. Qo'shimcha topilma: qorong'ida tugma ustidagi
+matn har tugmada o'z to'q tusida — `on-brand` va `on-danger` tokenlari qo'shildi.
 
 **12. Jadval sarlavhasi qotishi** — ochiq
 Hozirgi saytda hamma jadvallarning sarlavhasi scroll paytida tepada qotib turadi.
