@@ -1014,6 +1014,11 @@ export function taskNewPush(t: StaffTaskDoc, nowMs: number): string {
   return `📌 <b>Sizga yangi topshiriq</b>\n\n${taskCardView(t, "mine", nowMs)}`;
 }
 
+/** Bir martalik yuborish (scripts/send-open-tasks.mjs): bot ulanishidan oldin berilgan ochiq topshiriq. */
+export function taskOpenPush(t: StaffTaskDoc, nowMs: number): string {
+  return `📌 <b>Sizda ochiq topshiriq bor</b>\n\n${taskCardView(t, "mine", nowMs)}`;
+}
+
 export function taskReturnedPush(t: StaffTaskDoc, note: string, nowMs: number): string {
   return [
     "↩️ <b>Topshiriq qaytarildi</b>",
@@ -1042,6 +1047,36 @@ export function taskCancelledPush(t: StaffTaskDoc, reason: string): string {
     `Sabab: ${esc(clipText(reason, 500))}`,
     "",
     "Endi bajarish shart emas.",
+  ].join("\n");
+}
+
+/**
+ * Muddat eslatmasi (lib/staffTaskReminders.ts):
+ *   day — 1 kun qoldi; soon — 2 soat qoldi; overdue — muddat o'tdi (qayta
+ *   muddat va jarima); grace — qayta muddatga 2 soat qoldi.
+ */
+export function taskReminderPush(t: StaffTaskDoc, kind: "day" | "soon" | "overdue" | "grace", nowMs: number): string {
+  const fine = t.fineAmount > 0 ? fmtMoney(t.fineAmount) : "";
+  if (kind === "overdue" || kind === "grace") {
+    const re = t.redeadline ?? t.deadline;
+    const lines = [kind === "overdue" ? "⏰ <b>Topshiriq muddati o'tdi</b>" : "⚠️ <b>Oxirgi muddat yaqin</b>", "", `<b>${esc(t.title)}</b>`];
+    if (kind === "overdue") lines.push(`Muddat edi: ${whenUz(t.deadline)}`);
+    lines.push(
+      `Qayta muddat: <b>${whenUz(re)}</b> — ${leftUz(re, nowMs)}`,
+      fine ? `⚠️ Shu vaqtgacha bajarilmasa jarima: <b>${fine}</b>` : "⚠️ Shu vaqtgacha bajarilmasa topshiriq «Bajarilmadi» bo'ladi.",
+      "",
+      "Bajarib bo'lsangiz «✅ Bajardim» ni bosing.",
+    );
+    return lines.join("\n");
+  }
+  return [
+    kind === "day" ? "🔔 <b>Eslatma: topshiriq muddatiga 1 kun qoldi</b>" : "🔔 <b>Eslatma: topshiriq muddati yaqin</b>",
+    "",
+    `<b>${esc(t.title)}</b>`,
+    `Muddat: <b>${whenUz(t.deadline)}</b> — ${leftUz(t.deadline, nowMs)}`,
+    `Bergan: ${esc(t.createdBy?.name || "—")}`,
+    "",
+    "Bajarib bo'lsangiz «✅ Bajardim» ni bosing.",
   ].join("\n");
 }
 

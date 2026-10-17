@@ -67,6 +67,95 @@ export async function notifyStaffTasksCreated(db: Db, docs: StaffTaskDoc[]): Pro
   }
 }
 
+export interface OpenTasksReport {
+  /** Ochiq topshiriqlar: faol (ijrochiga) va tasdiq kutayotgan (berganga). */
+  active: number;
+  waiting: number;
+  /** Botga kirgan suhbatlar soni (xabar ketadigan yoki ketgan). */
+  targets: number;
+  /** Shulardan nechtasi bitta ham suhbatsiz qoldi (xodim botga kirmagan). */
+  noTarget: number;
+  sent: number;
+  /** Botni ochmagan / bloklagan (403) — `blocked` belgilanadi. */
+  blocked: number;
+  failed: number;
+}
+
+/**
+ * BIR MARTALIK (17.10.2026, foydalanuvchi: «hali ochiq turgan topshiriqlarni
+ * botdan kirgan xodimlarga yuborib qo'y») — bot ulanishidan OLDIN berilgan
+ * ochiq topshiriqlar: faol → ijrochiga «Sizda ochiq topshiriq bor»
+ * (✅ Bajardim), tasdiq kutayotgan → berganga (Tasdiqlash/Qaytarish).
+ * `apply: false` — faqat sanaydi, hech narsa yubormaydi
+ * (scripts/send-open-tasks.mjs). Ikki marta yurgizilsa ikki marta yuboradi.
+ */
+export async function pushOpenTasks(db: Db, opts: { apply: boolean }, nowMs = Date.now()): Promise<OpenTasksReport> {
+  const cfg = loadStaffBotConfig();
+  const rep: OpenTasksReport = { active: 0, waiting: 0, targets: 0, noTarget: 0, sent: 0, blocked: 0, failed: 0 };
+  const rows = (await db
+    .collection<StaffTaskDoc>(TASKS_COL)
+    .find({ status: { $in: ["yangi", "qaytarildi", "muddati_otdi", "tasdiq_kutilmoqda"] } }, { projection: { _id: 0 } })
+    .sort({ deadline: 1 })
+    .toArray()) as StaffTaskDoc[];
+
+  for (const t of rows) {
+    const waiting = t.status === "tasdiq_kutilmoqda";
+    if (waiting) rep.waiting++;
+    else rep.active++;
+
+    let list: Target[];
+    if (waiting) {
+      const or: Filter<Record<string, unknown>>[] = [];
+      if (t.createdBy?.userId) or.push({ userId: t.createdBy.userId });
+      if (t.createdBy?.employeeId !== null && t.createdBy?.employeeId !== undefined) or.push({ employeeId: t.createdBy.employeeId, viaContact: true });
+      list = or.length ? await targets(db, { $or: or }) : [];
+    } else {
+      list = await targets(db, { employeeId: t.employeeId });
+    }
+    if (!list.length) {
+      rep.noTarget++;
+      continue;
+    }
+    rep.targets += list.length;
+    if (!opts.apply || !isStaffBotReady(cfg)) continue;
+
+    for (const x of list) {
+      const sent = await sendToStaff(
+        cfg,
+        x.chatId,
+        waiting ? V.taskDonePush(t) : V.taskOpenPush(t, nowMs),
+        waiting ? taskGiverPushKeyboard(t.id, !x.viaContact) : taskAssigneePushKeyboard(t.id),
+      );
+      if (sent.ok) rep.sent++;
+      else if (sent.blocked) {
+        rep.blocked++;
+        await markBlocked(db, x.chatId);
+      } else rep.failed++;
+    }
+  }
+  return rep;
+}
+
+/**
+ * Muddat eslatmasi — ijrochiga (lib/staffTaskReminders.ts qachon va bir
+ * martaligini hal qiladi; bu yer faqat yuboradi).
+ */
+export async function notifyStaffTaskReminder(
+  db: Db,
+  t: StaffTaskDoc,
+  kind: "day" | "soon" | "overdue" | "grace",
+  nowMs: number,
+): Promise<void> {
+  try {
+    const cfg = loadStaffBotConfig();
+    if (!isStaffBotReady(cfg)) return;
+    const list = await targets(db, { employeeId: t.employeeId });
+    await sendAll(db, cfg, list, V.taskReminderPush(t, kind, nowMs), () => taskAssigneePushKeyboard(t.id));
+  } catch (e) {
+    console.error("[staff-bot] notifyStaffTaskReminder:", e instanceof Error ? e.message : e);
+  }
+}
+
 /**
  * Amaldan keyin. `actorChatId` — amal botda bajarilgan bo'lsa o'sha suhbat:
  * o'z amali haqida xabar olmasin (o'ziga bergan topshiriqda bo'lishi mumkin).

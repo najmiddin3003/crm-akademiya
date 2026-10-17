@@ -12,6 +12,7 @@ uchun to'plam:
 | `ecosystem.config.cjs` | pm2 sozlamasi (`next start -p 3000 -H 127.0.0.1`, TZ=UTC) |
 | `nginx.conf.template` | Teskari proksi; `tizimli24.uz` → `www.tizimli24.uz` |
 | `cron.sh` | Kunlik `/api/sync/cron` (Vercel Cron o'rniga) |
+| `cron-tasks.sh` | Har 10 daqiqa `/api/sync/cron?only=tasks` — topshiriq avtomatikasi va botdagi muddat eslatmalari |
 
 Server: 2 yadro / 4 GB / 80 GB NVMe — `next build` uchun 2 GB swap
 qo'shiladi, ilovaga 1,5 GB chegara. Barcha buyruqlar Toshkentdagi
@@ -176,6 +177,18 @@ qator:
 (Server UTC'da: 22:00 UTC = Toshkent 03:00 — Vercel'dagi bilan bir xil.)
 Qo'lda sinov: `bash /var/www/crm/shared/cron.sh` → natija Moliya →
 Sinxronizatsiya sahifasida (`sync_runs`).
+
+**Topshiriqlar eslatmasi (17.10.2026)** — ikkinchi qator, har 10 daqiqada
+(`deploy/cron-tasks.sh`, deploy.sh uni `shared/` ga o'zi ko'chiradi):
+
+```
+*/10 * * * * /var/www/crm/shared/cron-tasks.sh >> /var/www/crm/shared/logs/cron-tasks.log 2>&1
+```
+
+Topshiriq avtomatikasi (muddati o'tdi, jarima) va xodimlar botidagi muddat
+eslatmalari (lib/staffTaskReminders.ts) CRM'ni hech kim ochmagan paytda ham
+yursin. Muvaffaqiyatda log yozilmaydi. Qo'lda sinov:
+`bash /var/www/crm/shared/cron-tasks.sh && echo ok`.
 
 ## 11. Vercel'ni to'xtatish
 

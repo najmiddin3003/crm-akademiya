@@ -96,6 +96,12 @@ export interface StaffTaskDoc {
   createdAt: string;
   updatedAt: string;
   history: StaffTaskEvent[];
+  /**
+   * Botdagi eslatmalar (17.10.2026, lib/staffTaskReminders.ts): tur → QAYSI
+   * muddat uchun yuborilgani (ISO). Muddat o'zgarsa (tahrir, qaytarish)
+   * qiymat mos kelmay qoladi va eslatma yangi muddat uchun yana yuboriladi.
+   */
+  reminders?: Partial<Record<"day" | "soon" | "overdue" | "grace", string>>;
 }
 
 /** Bazadagi jarima (`staff_task_fines`). Bitta topshiriqqa ko'pi bilan bitta. */
@@ -505,6 +511,11 @@ export function runAutomation(db: Db, opts: { force?: boolean } = {}): Promise<n
   lastAutoRun = now;
   autoRunning = automate(db, now).finally(() => {
     autoRunning = null;
+    // BOTDAGI ESLATMALAR (17.10.2026, lib/staffTaskReminders.ts) — holatlar
+    // yangilangach, o'sha tejam bilan. Kutilmaydi: Telegram sekin javob bersa
+    // ham sahifa/so'rov kutib turmasin (eslatma o'zi hech qachon otmaydi).
+    // Dinamik import — u modul shu fayldan import qiladi (aylana bo'lmasin).
+    void import("@/lib/staffTaskReminders").then((m) => m.runTaskReminders(db)).catch(() => {});
   });
   return autoRunning;
 }
