@@ -60,6 +60,8 @@ ln -sfn "$REL" "$APP_DIR/current"
 install -m 0755 "$REL/deploy/deploy.sh" "$APP_DIR/shared/deploy.sh"
 install -m 0644 "$REL/deploy/ecosystem.config.cjs" "$APP_DIR/shared/ecosystem.config.cjs"
 install -m 0755 "$REL/deploy/cron.sh" "$APP_DIR/shared/cron.sh"
+# Topshiriqlar eslatmasi (har 10 daqiqa, 17.10.2026) — crontab qatori deploy/README.md 10-band.
+install -m 0755 "$REL/deploy/cron-tasks.sh" "$APP_DIR/shared/cron-tasks.sh"
 
 echo "== pm2 reload"
 pm2 startOrReload "$APP_DIR/shared/ecosystem.config.cjs" --update-env >/dev/null

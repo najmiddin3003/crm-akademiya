@@ -6,6 +6,8 @@ import { runSyncCycle } from "@/lib/sync/run";
 import { digestLines, digestMessages, digestPeriodFor, runSalaryDigest } from "@/lib/sync/salaryDigest";
 import { runDueReminders } from "@/lib/studentBot/notify";
 import { runGamificationNightly } from "@/lib/gamification/competition";
+import { runAutomation } from "@/lib/staffTasksServer";
+import { runTaskReminders } from "@/lib/staffTaskReminders";
 
 // GET /api/sync/cron — kunlik tekshiruv (sutkasiga bir marta).
 //
@@ -72,6 +74,18 @@ async function handle(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ ok: false, error: "Ruxsat yo'q" }, { status: 401 });
   }
+  // `?only=tasks` — YENGIL REJIM (17.10.2026): faqat xodim topshiriqlari
+  // avtomatikasi (muddati o'tdi, bajarilmadi/jarima) va botdagi muddat
+  // eslatmalari (lib/staffTaskReminders.ts). Server cron'i har 10 daqiqada
+  // chaqiradi (deploy/cron-tasks.sh) — CRM'ni hech kim ochmagan paytda ham
+  // eslatma o'z vaqtida ketsin. Sinxronizatsiya va xulosalarga tegmaydi.
+  if (new URL(req.url).searchParams.get("only") === "tasks") {
+    const db = await ensureIndexes();
+    const moved = await runAutomation(db, { force: true });
+    const reminders = await runTaskReminders(db);
+    return NextResponse.json({ ok: true, tasks: moved, reminders });
+  }
+
   // `?preview=digest` — oyliklar xulosasini YUBORMASDAN ko'rish.
   // Xulosa oyda atigi ikki marta ketadi, ya'ni matnda xato bo'lsa
   // keyingi imkoniyat ikki hafta keyin. Shu sabab uni oldindan
