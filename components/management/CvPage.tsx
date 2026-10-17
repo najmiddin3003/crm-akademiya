@@ -513,6 +513,14 @@ export default function CvPage() {
     [sheetsUrl],
   );
 
+  /* ---- Rad etilganlar sahifada ko'rinmaydi (17.10.2026) ---- */
+  // Foydalanuvchi: «rad etilganlarni ko'rsatmaslik kerak, uni to'liq o'chirib
+  // tashlamasdan shunchaki ko'rsatmaslik kerak». Ariza bazada (va Sheets'da)
+  // QOLADI — jadval, sonlar va filtrlar faqat `shown` dan. Sheets sinxroni
+  // (`known`) va tafsilot oynasi hamon `items` dan: aks holda rad etilgan
+  // ariza Sheets'dan «yangi» bo'lib qayta ko'chirilardi.
+  const shown = useMemo(() => items.filter((c) => c.status !== "rejected"), [items]);
+
   /* ---- Filtr / qidiruv (lib/cvFilters.ts) ---- */
   const q = search.toLowerCase().trim();
   // Filial filtri: navbardagi filial (ro'yxat shu bo'yicha kesilgan) va
@@ -520,26 +528,26 @@ export default function CvPage() {
   const branchIds = useMemo(() => {
     const ids = new Set<number>();
     if (branch.branchId !== null) ids.add(branch.branchId);
-    for (const c of items) if (typeof c.branchId === "number") ids.add(c.branchId);
+    for (const c of shown) if (typeof c.branchId === "number") ids.add(c.branchId);
     // Hovuz (1+2 «Akademiya Chortoq») — bitta qator (lib/branchPools.ts).
     return collapseBranchPools([...ids].sort((a, b) => a - b).map((id) => ({ id })), branch.branchId).map((x) => x.id);
-  }, [items, branch.branchId]);
-  const visible = useMemo(() => items.filter((c) => cvMatches(c, filters, q)), [items, filters, q]);
+  }, [shown, branch.branchId]);
+  const visible = useMemo(() => shown.filter((c) => cvMatches(c, filters, q)), [shown, filters, q]);
   const activeFilters = activeCvFilters(filters);
 
-  const count = useCallback((k: CvStatus) => items.filter((c) => c.status === k).length, [items]);
+  const count = useCallback((k: CvStatus) => shown.filter((c) => c.status === k).length, [shown]);
 
   // Yo'nalish tanlovlari — eski ro'yxat + ma'lumotda uchraydigan yangi vakansiyalar.
   const positionValues = useMemo(() => {
     const seen = new Set<string>(CV_POSITIONS as string[]);
-    for (const c of items) if (c.position) seen.add(c.position);
+    for (const c of shown) if (c.position) seen.add(c.position);
     return [...seen];
-  }, [items]);
+  }, [shown]);
 
   // Variant yonidagi son — BOSHQA filtrlar (va qidiruv) qo'llanganda shu
   // variantga nechta ariza tushadi: tanlashdan oldin natija ko'rinib tursin.
   const facetOptions = useMemo(() => {
-    const pool = (facet: CvFacet) => items.filter((c) => cvMatches(c, filters, q, facet));
+    const pool = (facet: CvFacet) => shown.filter((c) => cvMatches(c, filters, q, facet));
     const withCounts = (facet: CvFacet, values: string[], test: (c: CvApplication, v: string) => boolean) => {
       const rows = pool(facet);
       return values.map((v) => ({ value: v, label: v, hint: String(rows.filter((c) => test(c, v)).length) }));
@@ -550,7 +558,7 @@ export default function CvPage() {
       g.subjects.map((s) => ({ s, group: t(g.label) })),
     );
     const extra = new Map<string, string>();
-    for (const c of items) {
+    for (const c of shown) {
       const s = (c.subject || "").trim();
       if (!s || s === "-" || standard.some((o) => subjectMatches(s, o.s))) continue;
       if (!extra.has(textKey(s))) extra.set(textKey(s), s);
@@ -570,20 +578,21 @@ export default function CvPage() {
       edu: withCounts("edu", CV_EDU_LEVELS as string[], (c, v) => c.edu === v),
       load: withCounts("load", CV_LOADS as string[], (c, v) => c.load === v),
       source: withCounts("source", CV_SOURCES as string[], (c, v) => c.source === v),
-      status: withCounts("status", CV_STATUS_ORDER as string[], (c, v) => c.status === v).map((o) => ({
+      // «Rad etilgan» tanlovda yo'q — ular sahifada ko'rsatilmaydi (yuqoridagi `shown`).
+      status: withCounts("status", (CV_STATUS_ORDER as string[]).filter((s) => s !== "rejected"), (c, v) => c.status === v).map((o) => ({
         ...o,
         label: CV_STATUS[o.value as CvStatus].label,
       })),
       branch: [
         ...branchIds.map((id) => ({
           value: String(id),
-          label: branch.branches.find((b) => b.id === id)?.name || items.find((c) => c.branchId === id)?.branchName || String(id),
+          label: branch.branches.find((b) => b.id === id)?.name || shown.find((c) => c.branchId === id)?.branchName || String(id),
           hint: String(branchRows.filter((c) => typeof c.branchId === "number" && sameBranchPool(c.branchId, id)).length),
         })),
         { value: CV_BRANCH_ANY, label: "Istalgan", hint: String(branchRows.filter((c) => c.branchId === null).length) },
       ],
     };
-  }, [items, filters, q, positionValues, branchIds, branch.branches, t]);
+  }, [shown, filters, q, positionValues, branchIds, branch.branches, t]);
 
   const detail = detailId === null ? null : items.find((c) => c.id === detailId) || null;
 
@@ -626,7 +635,9 @@ export default function CvPage() {
   async function act(cv: CvApplication, status: CvStatus) {
     setActing(true);
     try {
-      await setStatus(cv, status, true);
+      const updated = await setStatus(cv, status, true);
+      // Rad etilgan ariza ro'yxatda ko'rinmaydi — oynasi ham yopiladi.
+      if (updated && status === "rejected") modal.close();
     } finally {
       setActing(false);
     }
@@ -750,12 +761,12 @@ export default function CvPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatCard label={t("Jami CV")} value={items.length} />
+      {/* «Rad etilgan» kartochkasi yo'q — ular sahifada ko'rsatilmaydi (`shown`). */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label={t("Jami CV")} value={shown.length} />
         <StatCard label={t("Yangi")} value={count("new")} color="text-blue-600" />
         <StatCard label={t("Suhbatga chaqirilgan")} value={count("interview")} color="text-amber-600" />
         <StatCard label={t("Ishga olingan")} value={count("accepted")} color="text-emerald-600" />
-        <StatCard label={t("Rad etilgan")} value={count("rejected")} color="text-rose-500" />
       </div>
 
       {/* Filtrlar (lib/cvFilters.ts). Variant yonidagi son — boshqa filtrlar
