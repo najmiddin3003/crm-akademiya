@@ -1711,10 +1711,10 @@ kutayotganlar" kabi savolga javob berib bo'lmasdi):
 
 ## Xodimlar boti: kassa amallari Telegram'dan (2026-09-18)
 
-> **29.09.2026 dan xodimlar @tizimli_akademiya_bot da** (o'quvchilar bilan
-> bitta bot) — pastdagi «Bitta bot: o'quvchi + xodim» bo'limiga qarang.
-> Quyidagi 18.09 matnidagi "o'sha bot" — @akademiya_crm_bot; u endi faqat
-> guruh boti.
+> **17.10.2026 dan xodimlar YANA @akademiya_crm_bot da** (29.09–17.10 da
+> @tizimli_akademiya_bot da edi) — pastdagi «Xodimlar @akademiya_crm_bot ga
+> qaytdi» bo'limiga qarang. Quyidagi 18.09 matnidagi "o'sha bot" —
+> @akademiya_crm_bot.
 
 @akademiya_crm_bot — o'sha bot (guruhlarga to'lov/oylik/lid xabarlari,
 lid tugmalari) — endi kassir bilan SHAXSIY yozishmada ham ishlaydi.
@@ -1822,6 +1822,38 @@ Deploydan keyin (Telegram'ga yozadi — ruxsat bilan):
 `node scripts/set-student-bot-webhook.mjs --commands` (/start /menu /xodim) va
 `node scripts/set-telegram-webhook.mjs --commands` (eski botning /start /kassa
 /chiqish menyusi o'chadi). Webhook manzillari o'zgarmaydi.
+
+### Xodimlar @akademiya_crm_bot ga qaytdi (2026-10-17)
+
+@tizimli_akademiya_bot ga ManyChat ulandi (yangi o'quvchilarga avtomatik
+javob). Telegram botga BITTA webhook beradi — u ManyChat'ga o'tdi va o'sha
+botning xabarlari CRM'ga kelmay qoldi: xodimlar kira olmadi. Foydalanuvchi:
+«xodimlarni akademiya_crm_bot ga o'tkaz».
+
+| Bot | Kalit | Webhook | Vazifasi |
+| --- | --- | --- | --- |
+| @akademiya_crm_bot | `TELEGRAM_BOT_TOKEN` | `/api/telegram/webhook` | guruh (to'lov/oylik/lid xabarlari, lid tugmalari) VA xodimlar (kirish, profil, «Ishga keldim», kassa) |
+| @tizimli_akademiya_bot | `TELEGRAM_STUDENT_BOT_TOKEN` | **ManyChat** (CRM'niki emas) | o'quvchilar; CRM oqimi (`/api/telegram/student`) hozir hech narsa olmaydi |
+
+- **Yagona joy** — `lib/staffBot/config.ts` → `STAFF_BOT_HOST` ("crm" /
+  "student"): token, @nom, QR havolasi, Mini App imzosi va ikki webhook'dagi
+  yo'naltirish shundan. Kelajakda yana ko'chirish — shu qatorni o'zgartirish
+  (+ deploy, + ikkala skriptning `--commands`).
+- **Sessiyalar ko'chmaydi** — `staff_bot_users.chatId` ikki botda bir xil:
+  kirgan xodim @akademiya_crm_bot da /start bosishi bilan menyusini ko'radi.
+  Bot birinchi yoza olmaydi — xodim botni bir marta ochishi SHART.
+- **Ikkinchi botga kelgan xodim** (`lib/staffBot/moved.ts`): o'quvchilar
+  botida xodim tomoniga tushgan yangilanish (raqami xodimniki, `/xodim`, QR)
+  @akademiya_crm_bot ga havola oladi; o'sha botning eski menyusidagi Mini App
+  tugmasi ochgan sahifa ham imzoni tanib shuni aytadi (`lib/staffBot/webapp.ts`).
+- **QR** — ekrandagi kod har 30 soniyada qayta chiziladi, ya'ni yangi bot
+  havolasi deploydan keyin o'zi chiqadi; chop etilgan QR yo'q.
+- **`set-student-bot-webhook.mjs`** endi webhook begona xizmatda (ManyChat)
+  tursa to'xtaydi — ataylab uzish uchun `--force`.
+
+Deploydan keyin (ruxsat bilan): `node scripts/set-telegram-webhook.mjs --commands`
+(shaxsiy chatlarda /start /kassa /chiqish). Webhook manzillari o'zgarmaydi;
+o'quvchilar botiga TEGILMAYDI (ManyChat).
 
 ### 2-bosqich — Chiqim (2026-09-18)
 

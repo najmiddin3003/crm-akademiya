@@ -42,11 +42,14 @@ import * as V from "@/lib/staffBot/views";
 
 // Xodimlar boti — SHAXSIY yozishmadagi yangilanishni ishlaydigan yagona joy.
 //
-// 29.09.2026 dan @tizimli_akademiya_bot da (o'quvchilar bilan bitta bot):
-// webhook (app/api/telegram/student) yangilanishni lib/botDispatch.ts ga
-// beradi, u `s:` tugmalarni, xodim sessiyasini va xodim raqamini shu yerga,
-// qolganini o'quvchilar routeriga yo'naltiradi. GURUH XABARLARI BU YERDA HAM
-// TASHLANADI — ularga javob berilmaydi va ular o'qilmaydi ham.
+// Qaysi botda — lib/staffBot/config.ts (`STAFF_BOT_HOST`). 17.10.2026 dan
+// @akademiya_crm_bot: webhook (app/api/telegram/webhook) lid tugmalarini
+// (`lead:…`) o'zi ishlaydi, qolgan hammasini — shaxsiy xabar va `s:`
+// tugmalar — shu yerga beradi. (29.09–17.10 da @tizimli_akademiya_bot da edi:
+// u yerda lib/botDispatch.ts o'quvchilardan ajratib berardi.) GURUH
+// XABARLARI BU YERDA TASHLANADI: bot guruhlarda admin va `allowed_updates`
+// da `message` bor — u yerdagi har xabar ham keladi; ularga javob
+// berilmaydi va ular o'qilmaydi ham.
 //
 // XAVFSIZLIK CHEGARASI. Kim ekani `chatId` bo'yicha `staff_bot_users`
 // dan o'qiladi (Telegram beradi, klient to'qib bo'lmaydi); ruxsat va

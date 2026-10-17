@@ -1,17 +1,21 @@
 import { answerCallbackQuery, callTelegram, editHtml, type InlineKeyboard } from "@/lib/telegramApi";
-import { legacyStaffBotToken, STAFF_START_PARAM, staffBotUsername } from "@/lib/staffBot/config";
+import { OTHER_BOT_HOST, otherBotToken, STAFF_START_PARAM, staffBotUsername } from "@/lib/staffBot/config";
 import { isStaffCallback } from "@/lib/staffBot/keyboards";
 import type { TelegramUpdate } from "@/lib/staffBot/router";
 
-// ESKI XODIMLAR BOTI (@akademiya_crm_bot) — 29.09.2026 dan faqat GURUH boti
-// (to'lov/oylik/lid xabarlari, lid tugmalari). Xodimlar @tizimli_akademiya_bot
-// ga ko'chdi (lib/staffBot/config.ts). Bu yerga eski botga SHAXSIY yozgan
-// xodim yoki eski menyu xabaridagi tugma keladi — jim qolinmaydi, yangi botga
-// havola beriladi (aks holda xodim "bot ishlamay qoldi" deb o'ylardi).
+// XODIMLAR ISHLAMAYDIGAN BOT — unga yozgan xodimga to'g'ri botga havola.
+//
+// Xodimlar qaysi botda — lib/staffBot/config.ts (`STAFF_BOT_HOST`; 17.10.2026
+// dan @akademiya_crm_bot). Ikkinchi botga SHAXSIY yozgan xodim yoki eski menyu
+// xabaridagi tugma shu yerga keladi — jim qolinmaydi (aks holda xodim "bot
+// ishlamay qoldi" deb o'ylardi):
+//   • @akademiya_crm_bot xodimlar boti bo'lmagan paytda — app/api/telegram/webhook;
+//   • @tizimli_akademiya_bot (o'quvchilar boti) — lib/botDispatch.ts xodim deb
+//     topgan yangilanish (raqami xodimniki, `/xodim`, QR havolasi …).
 //
 // Eski menyudagi «👤 Profilim»/«📷 Ishga keldim» (Mini App) tugmalari bu
 // yerga kelmaydi — ular sahifani ochadi, u yerda lib/staffBot/webapp.ts
-// eski bot imzosini tanib, xuddi shu gapni aytadi.
+// ikkinchi bot imzosini tanib, xuddi shu gapni aytadi.
 //
 // HECH QACHON OTMAYDI: chaqiruvchi webhook Telegram'ga doim 200 qaytaradi.
 
@@ -22,7 +26,9 @@ function movedView(): string {
     `Profilingiz, «📷 Ishga keldim» va kassa amallari endi <b>@${staffBotUsername()}</b> da.`,
     "Pastdagi tugmani bosing, so'ng botda «Start» ni bosing.",
     "",
-    "<i>Bu bot endi faqat guruhlarga xabar yozadi.</i>",
+    OTHER_BOT_HOST === "crm"
+      ? "<i>Bu bot endi faqat guruhlarga xabar yozadi.</i>"
+      : "<i>Bu bot o'quvchilar va ota-onalar uchun.</i>",
   ].join("\n");
 }
 
@@ -34,9 +40,9 @@ function movedKeyboard(): InlineKeyboard {
   };
 }
 
-/** Eski botga kelgan shaxsiy xabar yoki eski menyu tugmasi — yangi botga yo'naltirish. */
-export async function redirectToNewBot(update: TelegramUpdate): Promise<void> {
-  const token = legacyStaffBotToken();
+/** Xodimlar ishlamaydigan botga kelgan shaxsiy xabar yoki eski menyu tugmasi — xodimlar botiga yo'naltirish. */
+export async function redirectToStaffBot(update: TelegramUpdate): Promise<void> {
+  const token = otherBotToken();
   if (!token) return;
   try {
     const cq = update.callback_query;

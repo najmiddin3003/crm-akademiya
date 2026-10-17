@@ -7,6 +7,13 @@
 //   node scripts/set-student-bot-webhook.mjs --delete   — webhook'ni olib tashlaydi
 //   node scripts/set-student-bot-webhook.mjs --commands — menyudagi buyruqlar ro'yxatini yozadi
 //
+// DIQQAT (17.10.2026): bu botga (@tizimli_akademiya_bot) ManyChat ulangan —
+// webhook ManyChat'da. Webhook'ni o'rnatish, o'chirish yoki buyruqlarni
+// yozish ManyChat'ni UZADI (Telegram botga bitta webhook beradi). Webhook
+// begona manzilda tursa skript to'xtaydi; ataylab qilish uchun oxiriga
+// `--force` qo'shing. Xodimlar shu kundan @akademiya_crm_bot da
+// (lib/staffBot/config.ts) — bu botda faqat o'quvchilar oqimi.
+//
 // KERAKLI SOZLAMALAR (.env.local va Vercel > Environment Variables):
 //   TELEGRAM_STUDENT_BOT_TOKEN       — @BotFather dan olingan YANGI bot kaliti
 //   APP_BASE_URL                     — saytning TASHQI manzili, https://...
@@ -15,8 +22,9 @@
 //                                      aynan shuni tekshiradi
 //                                      (app/api/telegram/student).
 //
-// 29.09.2026 dan bu bot (@tizimli_akademiya_bot) XODIMLAR boti ham —
-// o'quvchi va xodim bitta webhook'da, lib/botDispatch.ts ajratadi.
+// 29.09–17.10.2026 bu bot (@tizimli_akademiya_bot) XODIMLAR boti ham edi —
+// o'quvchi va xodim bitta webhook'da, lib/botDispatch.ts ajratadi (17.10 dan
+// xodim tomoniga @akademiya_crm_bot ga havola beriladi).
 // GURUH boti (@akademiya_crm_bot) alohida skript bilan sozlanadi
 // (scripts/set-telegram-webhook.mjs). Ikkalasini adashtirmang: bu yerdagi
 // token bilan guruh botining webhook'ini yozib yuborsangiz, guruhdagi lid
@@ -72,11 +80,30 @@ if (!token) {
 }
 
 const arg = process.argv[2] || "";
+const force = process.argv.includes("--force");
 
 if (arg === "--info") {
   console.log("O'quvchilar boti — holat:");
   await show();
   process.exit(0);
+}
+
+// Webhook boshqa xizmatda (ManyChat va h.k.) tursa — o'zgartirishdan oldin to'xtash.
+if (!force) {
+  const info = await call("getWebhookInfo");
+  const current = info.ok ? String(info.result?.url || "") : "";
+  let ourHost = "";
+  try {
+    ourHost = new URL(base).host;
+  } catch {
+    // APP_BASE_URL yo'q — pastdagi tekshiruv aytadi.
+  }
+  if (current && ourHost && new URL(current).host !== ourHost) {
+    console.log(`Webhook hozir BOSHQA xizmatda: ${new URL(current).host}`);
+    console.log("Davom etsangiz o'sha xizmat (masalan ManyChat) botdan uziladi.");
+    console.log("Ataylab bo'lsa, buyruq oxiriga --force qo'shing.");
+    process.exit(1);
+  }
 }
 
 if (arg === "--delete") {
@@ -86,9 +113,10 @@ if (arg === "--delete") {
 }
 
 // Telegram menyusidagi buyruqlar ro'yxati ("/" bosilganda chiqadi).
-// Bot bitta buyruq bilan ishlaydi — qolgani tugmalar orqali. 29.09.2026 dan
-// xodimlar ham shu botda (lib/botDispatch.ts): /xodim — xodimlar bo'limi
-// (raqamini o'quvchi sifatida bog'lagan xodim ham shu bilan o'tadi).
+// Bot bitta buyruq bilan ishlaydi — qolgani tugmalar orqali. /xodim
+// 29.09–17.10.2026 da bor edi (xodimlar shu botda edi); endi xodimlar
+// @akademiya_crm_bot da — /xodim yozgan odamga o'sha botga havola beriladi
+// (lib/botDispatch.ts → lib/staffBot/moved.ts), menyuda esa ko'rsatilmaydi.
 if (arg === "--commands") {
   const res = await call("setMyCommands", {
     commands: [
@@ -96,7 +124,6 @@ if (arg === "--commands") {
       { command: "menu", description: "Asosiy menyu" },
       // 16.10.2026 — yangi o'quvchining o'zi ariza qoldiradi (lib/studentBot/signup.ts).
       { command: "yozilish", description: "Kursga yozilish (yangi o'quvchilar)" },
-      { command: "xodim", description: "Xodimlar bo'limi (profil, Ishga keldim, kassa)" },
     ],
   });
   console.log(res.ok ? "Buyruqlar ro'yxati yozildi." : `Xato: ${JSON.stringify(res)}`);

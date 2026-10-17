@@ -199,7 +199,8 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     keywords: ["telegram", "bot", "xodim boti", "kassam", "profilim"],
     pages: [],
     text: [
-      "@tizimli_akademiya_bot → /xodim → telefon raqami va CRM paroli bilan kirish.",
+      // 17.10.2026 dan xodimlar @akademiya_crm_bot da (lib/staffBot/config.ts).
+      "@akademiya_crm_bot → /start → telefon raqami va CRM paroli bilan kirish (yoki raqamni tugma bilan yuborib — parolsiz, faqat profil va «Ishga keldim»).",
       "Menyuda: Kirim, Chiqim, Ko'chirish, Lid qo'shish, Kassam, «Profilim», «Ishga keldim»; o'qituvchi menyusida kassa va lid bo'limlari yo'q.",
       "Yozuvlar web'dagi kassaga tushadi; bekor qilish va o'tgan sana bilan yozish — faqat web'da.",
     ].join("\n"),

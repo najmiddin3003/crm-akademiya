@@ -1,18 +1,17 @@
-// GURUH botining (@akademiya_crm_bot, TELEGRAM_BOT_TOKEN) webhook'ini
-// ro'yxatdan o'tkazadi — lid xabari tagidagi status tugmalari SHUSIZ
-// ishlamaydi (bosilganda hech narsa bo'lmaydi).
+// @akademiya_crm_bot (TELEGRAM_BOT_TOKEN) webhook'ini ro'yxatdan o'tkazadi —
+// lid xabari tagidagi status tugmalari va XODIMLAR BOTI shusiz ishlamaydi.
 //
 // Bir marta ishga tushiriladi:
 //   node scripts/set-telegram-webhook.mjs            — o'rnatadi va holatni ko'rsatadi
 //   node scripts/set-telegram-webhook.mjs --info     — faqat holatni ko'rsatadi
 //   node scripts/set-telegram-webhook.mjs --delete   — webhook'ni olib tashlaydi
-//   node scripts/set-telegram-webhook.mjs --commands — shaxsiy chatlardagi "/" menyuni o'chiradi
+//   node scripts/set-telegram-webhook.mjs --commands — shaxsiy chatlardagi "/" menyuni yozadi
 //
-// 18–29.09.2026 da shu bot xodimlar boti ham edi (kassa, profil, QR).
-// 29.09.2026 dan xodimlar @tizimli_akademiya_bot da (lib/staffBot/config.ts);
-// `message` faqat eski botga yozgan xodimni yangi botga YO'NALTIRISH uchun
-// qoldi (lib/staffBot/moved.ts). Bot guruhlarda admin — guruh xabarlari ham
-// keladi va o'qilmay tashlanadi.
+// Xodimlar boti shu botda: 18–29.09.2026 va 17.10.2026 dan yana (29.09–17.10
+// da @tizimli_akademiya_bot da edi; o'sha botga ManyChat ulangach qaytdi —
+// lib/staffBot/config.ts → `STAFF_BOT_HOST`). `message` — xodim botga shaxsiy
+// yozadi (telefon, parol, summa). Bot guruhlarda admin — guruh xabarlari ham
+// keladi va o'qilmay tashlanadi (lib/staffBot/router.ts).
 //
 // KERAKLI SOZLAMALAR (.env.local va Vercel > Environment Variables):
 //   TELEGRAM_BOT_TOKEN       — bot kaliti (allaqachon bor)
@@ -86,13 +85,19 @@ if (arg === "--delete") {
   process.exit(res.ok ? 0 : 1);
 }
 
-// "/" buyruqlar menyusi — 29.09.2026 dan O'CHIRILADI: xodimlar
-// @tizimli_akademiya_bot ga ko'chdi (lib/staffBot/config.ts), bu bot faqat
-// guruhga yozadi. 18.09 da `all_private_chats` doirasida /start /kassa
-// /chiqish o'rnatilgan edi — aynan o'sha doira tozalanadi.
+// "/" buyruqlar menyusi — faqat SHAXSIY chatlarda (guruhlarda ko'rinmaydi).
+// 17.10.2026 dan xodimlar yana shu botda — 18.09 dagi ro'yxat qaytdi
+// (29.09–17.10 da bu doira bo'sh edi).
 if (arg === "--commands") {
-  const res = await call("deleteMyCommands", { scope: { type: "all_private_chats" } });
-  console.log(res.ok ? "Buyruqlar olib tashlandi (shaxsiy chatlar menyusi bo'sh)" : `Xato: ${JSON.stringify(res)}`);
+  const res = await call("setMyCommands", {
+    commands: [
+      { command: "start", description: "Bosh menyu / kirish" },
+      { command: "kassa", description: "Kassam — qoldiq va bugungi tushum" },
+      { command: "chiqish", description: "Botdan chiqish" },
+    ],
+    scope: { type: "all_private_chats" },
+  });
+  console.log(res.ok ? "Buyruqlar o'rnatildi: /start /kassa /chiqish" : `Xato: ${JSON.stringify(res)}`);
   process.exit(res.ok ? 0 : 1);
 }
 
@@ -111,8 +116,8 @@ if (!base.startsWith("https://")) {
 }
 
 const url = `${base}/api/telegram/webhook`;
-// `callback_query` — lid tugmalari (va eski xodim menyusi tugmalari → yo'naltirish);
-// `message`        — eski botga shaxsiy yozgan xodimni yangi botga yo'naltirish.
+// `callback_query` — lid tugmalari va xodimlar boti tugmalari (`s:`);
+// `message`        — xodim bilan shaxsiy yozishma.
 // Boshqa turlar (a'zolik o'zgarishi, tahrirlangan xabar …) so'ralmaydi —
 // ular bekorga trafik va bekorga funksiya chaqiruvi bo'lardi.
 const res = await call("setWebhook", {

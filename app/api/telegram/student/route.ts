@@ -7,11 +7,15 @@ import type { TelegramUpdate } from "@/lib/studentBot/router";
 
 // POST /api/telegram/student — @tizimli_akademiya_bot webhook'i.
 //
-// 29.09.2026 dan bu bot O'QUVCHILAR va XODIMLAR uchun bitta (foydalanuvchi:
-// "tizimli_akademiya botida xodimlar ishlashi kerak"): yangilanish
-// lib/botDispatch.ts da o'quvchilar (lib/studentBot) yoki xodimlar
-// (lib/staffBot) routeriga beriladi. Guruhlarga yozadigan @akademiya_crm_bot
-// webhook'i alohida (`/api/telegram/webhook`) — u endi faqat guruh boti.
+// 29.09–17.10.2026 bu bot O'QUVCHILAR va XODIMLAR uchun bitta edi:
+// yangilanish lib/botDispatch.ts da o'quvchilar (lib/studentBot) yoki
+// xodimlar (lib/staffBot) tomoniga ajratiladi. 17.10.2026 dan xodimlar
+// @akademiya_crm_bot da (lib/staffBot/config.ts → `STAFF_BOT_HOST`) — xodim
+// tomoniga tushgan yangilanishga o'sha botga havola beriladi.
+//
+// DIQQAT (17.10.2026): bu botga ManyChat ulangan — webhook ManyChat'da, ya'ni
+// bu route hozir hech narsa olmaydi. scripts/set-student-bot-webhook.mjs ni
+// yurgizish webhook'ni CRM'ga qaytarib, ManyChat'ni UZADI.
 //
 // SESSIYASIZ OCHIQ — chaqiruvchi Telegram serveri, uning cookie'si yo'q.
 // Himoya `setWebhook` dagi `secret_token` bilan: Telegram uni HAR BIR
