@@ -128,11 +128,4 @@ bot uslubida qoladi.)
 
 ## Ochiq savollar
 
-- **Fanlarni ranglarga bog'lash**: bazadagi kurslar ko'proq (Fizika, Kimyo, Nemis tili,
-  IELTS, CEFR, Prezident maktablari …). Taklif: nomi aniq mos kelgani — o'z rangi, qolgani —
-  «Boshqa». IELTS/CEFR/SAT «Ingliz tili» rangida bo'lsinmi?
-- Holatlar uchun **och fon** kerakmi (masalan «To'landi» belgisining yashil foni)? Hozir
-  faqat brend uchun bor (Asosiy fon). Kerak bo'lsa har holatga `-bg` token qo'shiladi.
-- Soyaning aniq qiymatlari (dizaynerdan) va qorong'i temada soya qanday bo'lishi.
-- Onest shriftini qanday yuklash: Google'dan (`next/font/google` — VPS build'da avval
-  vaqtinchalik xato bergan) yoki loyiha ichiga joylab (`next/font/local`) — ikkinchisi ishonchliroq.
+Hammasi bir joyda — [`SAVOLLAR.md`](SAVOLLAR.md) (oxirida birga ko'rib chiqiladi).
