@@ -1,0 +1,114 @@
+/*
+ * TIZIMLI v2 — RANG TOKENLARI. YAGONA MANBA (17.10.2026).
+ *
+ * Dizayner palitrasidan: yorug' tema — asosiy rejim, qorong'i tema — kechki ish
+ * uchun. Har rangning ma'nosi va qachon ishlatilishi — design/v2/DESIGN.md
+ * (u yerda hex YO'Q: qiymat faqat shu faylda, ikki joyda yozilsa vaqt o'tib
+ * farq qilib qoladi).
+ *
+ * NEGA `--v2-` PREFIKSI: eski dizayn `--border`, `--background`, `--foreground`
+ * kabi nomlarni HSL bo'laklari bilan ishlatadi (app/globals.css). Yangi versiya
+ * ichida eski komponent chizilsa (o'tish davrida bo'ladi), bir xil nom uni
+ * buzib qo'yardi. Yangi versiya to'liq almashgach prefiksni olib tashlash mumkin.
+ *
+ * QAMROV: faqat `[data-ui="v2"]` ichida — eski sahifalarga hech qanday ta'sir yo'q.
+ * Tungi rejim kaliti eski versiya bilan bir xil: <html class="dark">, ya'ni
+ * foydalanuvchi tanlagan rejim ikki versiya o'rtasida almashganda saqlanadi.
+ *
+ * HOLAT: hali hech qayerga ulanmagan — yangi versiya qobig'i qurilganda uning
+ * CSS'iga import qilinadi.
+ */
+
+[data-ui="v2"] {
+  color-scheme: light;
+
+  /* Yuzalar va chiziqlar */
+  --v2-bg: #F3F5F6;            /* Fon */
+  --v2-surface: #FFFFFF;       /* Sirt */
+  --v2-surface-2: #F8F9FA;     /* Sirt 2 */
+  --v2-border: #E3E7EB;        /* Chiziq */
+  --v2-border-strong: #CDD3DA; /* Kuchli chiziq */
+  --v2-border-field: #8A939F;  /* Maydon chizig'i */
+
+  /* Matn */
+  --v2-text: #0E1726;          /* Matn */
+  --v2-text-2: #4A5565;        /* Matn 2 */
+  --v2-text-3: #636D7C;        /* Matn 3 */
+
+  /* Brend */
+  --v2-brand: #0E7C91;         /* Asosiy */
+  --v2-brand-bg: #E5F5F7;      /* Asosiy fon */
+  --v2-brand-text: #0B6474;    /* Asosiy matn */
+
+  /* Holatlar va logotip */
+  --v2-success: #13795B;       /* Muvaffaqiyat */
+  --v2-warning: #9A5A06;       /* Ogohlantirish */
+  --v2-danger: #C13A2F;        /* Xavf */
+  --v2-info: #1F5FD6;          /* Ma'lumot */
+  --v2-violet: #5B3CC4;        /* Binafsha */
+  --v2-logo: #1192A8;          /* Logotip */
+
+  /* QO'SHIMCHA (palitrada yo'q, kontrast uchun): rangli tugma/belgi ustidagi
+     matn. Yorug'da oq — barcha rangli fonlarda AA (4.9–7.3). */
+  --v2-on-color: #FFFFFF;
+}
+
+.dark [data-ui="v2"],
+.dark[data-ui="v2"] {
+  color-scheme: dark;
+
+  /* Yuzalar va chiziqlar */
+  --v2-bg: #0B0D10;
+  --v2-surface: #121519;
+  --v2-surface-2: #171B20;
+  --v2-border: #232930;
+  --v2-border-strong: #2F363F;
+  --v2-border-field: #5E6672;
+
+  /* Matn */
+  --v2-text: #ECEEF1;
+  --v2-text-2: #AAB1BB;
+  --v2-text-3: #8A929D;
+
+  /* Brend */
+  --v2-brand: #2DB4CB;
+  --v2-brand-bg: #0F2A30;
+  --v2-brand-text: #5CCBDD;
+
+  /* Holatlar va logotip */
+  --v2-success: #3FCB8B;
+  --v2-warning: #F1B04C;
+  --v2-danger: #FF7468;
+  --v2-info: #7AAEFF;
+  --v2-violet: #B8A4FF;
+  --v2-logo: #1192A8;
+
+  /* Qorong'ida rangli fonlar och — ustidagi matn TO'Q bo'lishi shart:
+     oq matn 2.0–2.6 (o'qilmaydi), to'q matn 7.4–10.2 (AAA). */
+  --v2-on-color: #0B0D10;
+}
+
+/* Tailwind v4 klasslari: `bg-v2-surface`, `text-v2-text-2`, `border-v2-border-field`,
+   `bg-v2-brand text-v2-on-color` … Faqat Tailwind ishlov beradigan CSS'ga import
+   qilinganda ishlaydi; oddiy brauzer `@theme` ni e'tiborsiz qoldiradi. */
+@theme inline {
+  --color-v2-bg: var(--v2-bg);
+  --color-v2-surface: var(--v2-surface);
+  --color-v2-surface-2: var(--v2-surface-2);
+  --color-v2-border: var(--v2-border);
+  --color-v2-border-strong: var(--v2-border-strong);
+  --color-v2-border-field: var(--v2-border-field);
+  --color-v2-text: var(--v2-text);
+  --color-v2-text-2: var(--v2-text-2);
+  --color-v2-text-3: var(--v2-text-3);
+  --color-v2-brand: var(--v2-brand);
+  --color-v2-brand-bg: var(--v2-brand-bg);
+  --color-v2-brand-text: var(--v2-brand-text);
+  --color-v2-success: var(--v2-success);
+  --color-v2-warning: var(--v2-warning);
+  --color-v2-danger: var(--v2-danger);
+  --color-v2-info: var(--v2-info);
+  --color-v2-violet: var(--v2-violet);
+  --color-v2-logo: var(--v2-logo);
+  --color-v2-on-color: var(--v2-on-color);
+}
