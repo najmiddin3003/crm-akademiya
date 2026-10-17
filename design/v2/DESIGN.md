@@ -275,6 +275,35 @@ yozuvi `text-v2-text` qalin; qolganlari `text-2`.
 
 Ochiq savollar (yangi bandlar, yo'qolgan bandlar, son nimani sanaydi) — `SAVOLLAR.md` 13–17.
 
+## Navigatsiya — yuqori panel
+
+Yon menyudan o'ngda oq panel (`bg-v2-surface`, chap chetida `v2-border`). Ranglar rasmdan
+o'lchandi — hammasi mavjud tokenlar.
+
+**Chapda — global qidiruv**: «O'quvchi, guruh yoki xodimni qidiring» — `bg-v2-surface-2` +
+`v2-border`, chapda lupa, o'ngda «Ctrl K» belgisi (oq + `border` + `text-3`).
+
+**O'ngda (tartib bilan):**
+1. **«+ Yangi ⌄»** — ikkinchi darajali tugma, tezkor yaratish menyusi (hozirgi «Tezkor amallar»).
+2. **«MohirAI»** — yumshoq brend tugma (AI yordamchi).
+3. Ajratgich (`v2-border`).
+4. Ikonka tugmalar (`text-v2-text-2`): tug'ilgan kunlar (tort), mening topshiriqlarim (ro'yxat ✓),
+   bildirishnomalar (qo'ng'iroq; son — `bg-v2-danger` doirachada oq), yordam («?»).
+5. **Foydalanuvchi**: avatar (`bg-v2-brand` doira, oq bosh harflar), ism (`text-v2-text`, qalin),
+   lavozim (`caption`, `text-v2-text-3`), ⌄ — profil menyusi.
+
+**Hozirgi yuqori paneldan farqi:**
+
+| Hozir | Yangi versiyada |
+|---|---|
+| Filial tanlovi | yon menyu tepasiga ko'chdi |
+| «Qidirish…» | «O'quvchi, guruh yoki xodimni qidiring» |
+| «Tezkor amallar» (+ ikonka) | «+ Yangi ⌄» — yozuvli tugma |
+| MohirAI — pastdagi suzuvchi robot tugma | yuqori paneldagi «MohirAI» tugmasi |
+| Tug'ilgan kunlar, Topshiriq, Bildirishnomalar | o'z joyida |
+| «Qanday ishlaydi?» | «?» yordam |
+| «Orqaga», til tanlash, kun/tun rejimi, «Yangiliklar» | **ko'rinmaydi** — `SAVOLLAR.md` 18–21 |
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

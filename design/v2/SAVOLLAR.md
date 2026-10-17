@@ -88,6 +88,21 @@ yangi sahifa (nima ekanini tushuntirish kerak).
 Hozir yuqori panelda. Yangi versiyada yuqori paneldan olib tashlanadimi?
 *Taxmin:* ha, faqat menyuda; Chortoq (1+2) bitta qator bo'lib qoladi.
 
+**18. Til tanlash va kun/tun rejimi qayerda?** — ochiq (yuqori panel rasmidan)
+Hozir yuqori panelda alohida tugmalar; yangi panelda yo'q.
+*Taxmin:* profil menyusiga (avatar ⌄) ko'chadi.
+
+**19. «Yangiliklar» (karnay) qayerda?** — ochiq
+*Taxmin:* bildirishnomalar ichida alohida bo'lim bo'ladi.
+
+**20. «Orqaga» tugmasi** — ochiq
+Hozir yuqori panelda bor, yangisida yo'q.
+*Taxmin:* olib tashlanadi — brauzerning «orqaga» tugmasi va yon menyu yetadi.
+
+**21. MohirAI suzuvchi tugmasi** — ochiq
+Hozir pastda robot tugma; yangi versiyada yuqori paneldagi «MohirAI».
+*Taxmin:* suzuvchi tugma olib tashlanadi, AI paneli shu tugmadan ochiladi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)
