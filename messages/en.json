@@ -4810,5 +4810,14 @@
   "Yangi versiya": "New version",
   "Yangi versiya hozircha sinovda": "The new version is still in testing",
   "Yangi versiyani ochish": "Open the new version",
-  "Xodimlar bo'limi @akademiya_crm_bot ga ko'chdi. O'sha botni oching va /start bosing.": "The staff section has moved to @akademiya_crm_bot. Open that bot and press /start."
+  "Xodimlar bo'limi @akademiya_crm_bot ga ko'chdi. O'sha botni oching va /start bosing.": "The staff section has moved to @akademiya_crm_bot. Open that bot and press /start.",
+  "Bajarish kerak: {n} ta": "{n, plural, one {# task to do} other {# tasks to do}}",
+  "Barcha topshiriqlar": "All tasks",
+  "Hammasi bajarilgan — rahbar tasdig'ini kutmoqda": "All done — awaiting your manager's approval",
+  "Men bergan ({n})": "Assigned by me ({n})",
+  "Men bergan topshiriqlar": "Tasks I assigned",
+  "Menga berilgan ({n})": "Assigned to me ({n})",
+  "Menga berilgan topshiriqlar": "Tasks assigned to me",
+  "O'quvchi vazifalari ({n})": "Student tasks ({n})",
+  "Tasdig'ingizni kutmoqda: {n} ta · jami {m} ta": "Awaiting your approval: {n} · total {m}"
 }

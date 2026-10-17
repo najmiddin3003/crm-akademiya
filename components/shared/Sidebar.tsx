@@ -96,8 +96,8 @@ export default function Sidebar({ mobileOpen, onMobileOpenChange, permissions = 
   // Xodimning shaxsiy topshiriq oynasi — Navbar'dagi ikonka bilan bir manba.
   // Telefonda navbarning o'ng bloki yashirin, shu bois qator shu yerda.
   const inbox = useTaskInbox();
-  const inboxPending = inbox.everLoaded ? inbox.pending.length : 0;
-  const inboxCount = inboxPending + (inbox.everLoaded ? inbox.reports.length : 0);
+  const inboxPending = inbox.everLoaded ? inbox.actionPending : 0;
+  const inboxCount = inboxPending + (inbox.everLoaded ? inbox.actionReports : 0);
 
   // Navbar'dagi profil menyusi `hidden md:flex` blokida — 768px dan pastda
   // butunlay yashirinadi. Shu sabab telefondan chiqish/qulflash imkoni

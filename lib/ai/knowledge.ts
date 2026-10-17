@@ -201,7 +201,8 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     text: [
       // 17.10.2026 dan xodimlar @akademiya_crm_bot da (lib/staffBot/config.ts).
       "@akademiya_crm_bot → /start → telefon raqami va CRM paroli bilan kirish (yoki raqamni tugma bilan yuborib — parolsiz, faqat profil va «Ishga keldim»).",
-      "Menyuda: Kirim, Chiqim, Ko'chirish, Lid qo'shish, Kassam, «Profilim», «Ishga keldim»; o'qituvchi menyusida kassa va lid bo'limlari yo'q.",
+      "Menyuda: Kirim, Chiqim, Ko'chirish, Lid qo'shish, Kassam, «Profilim», «Ishga keldim», «📌 Topshiriqlar»; o'qituvchi menyusida kassa va lid bo'limlari yo'q.",
+      "«📌 Topshiriqlar» (17.10.2026): xodim o'ziga berilgan topshiriqni ko'radi va «Bajardim» bosadi (izoh ixtiyoriy); rahbar o'zi berganlarini ko'radi, tasdiqlaydi yoki sabab va yangi muddat bilan qaytaradi. Yangi topshiriq, «Bajardim», tasdiq, qaytarish va bekor qilish haqida bot o'zi xabar yuboradi.",
       "Yozuvlar web'dagi kassaga tushadi; bekor qilish va o'tgan sana bilan yozish — faqat web'da.",
     ].join("\n"),
   },

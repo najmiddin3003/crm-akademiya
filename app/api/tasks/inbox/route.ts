@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { employeeNameById } from "@/lib/currentEmployee";
 import { ensureIndexes } from "@/lib/mongodb";
-import { REPORT_COMMENT_MAX, type InboxPayload, type InboxTask } from "@/lib/taskInbox";
+import { REPORT_COMMENT_MAX, type InboxPayload, type InboxStaffTask, type InboxTask } from "@/lib/taskInbox";
+import { OPEN_STATUSES, STATUS_RANK, isStaffTaskStatus, ms } from "@/lib/staffTasks";
+import { TASKS_COL, runAutomation } from "@/lib/staffTasksServer";
 import {
   isTaskOutcome,
   isTaskPriority,
@@ -31,8 +33,14 @@ import { uzParseStamp } from "@/lib/uzTime";
 // TAALLUQLI EMAS: u qo'ng'iroq lentasi haqida edi, shaxsan berilgan
 // topshiriq esa kassirga ham tegishli.
 //
-// HECH NARSA YOZMAYDI (GET). Oyna ochilgani "ko'rdim" degani emas —
-// xodim javob bermaguncha topshiriq ro'yxatda turadi.
+// 17.10.2026 dan XODIM TOPSHIRIQLARI (/tasks, `staff_tasks`) ham shu yerda:
+// `staffMine` — menga berilgan, `staffGiven` — men bergan (yopilmaganlari).
+// Foydalanuvchi: «rahbar oynasiga o'zi bergan topshiriqlarni ham ko'rinadigan
+// qil». Ular uchun amal oynada emas — qator /tasks?open=<id> ni ochadi.
+//
+// GET o'zi hech narsa yozmaydi (umumiy topshiriq avtomatikasidan tashqari —
+// u /tasks va /api/notifications da ham yuradi). Oyna ochilgani "ko'rdim"
+// degani emas — xodim javob bermaguncha topshiriq ro'yxatda turadi.
 
 /** Bir so'rovda ko'pi bilan shuncha qator — oyna ro'yxat, arxiv emas. */
 const LIMIT = 50;
@@ -64,6 +72,37 @@ const PROJECTION = {
   priority: 1, date: 1, staff: 1, createdAt: 1, createdBy: 1, report: 1,
 };
 
+const STAFF_PROJECTION = {
+  _id: 0, id: 1, title: 1, status: 1, deadline: 1, redeadline: 1, priority: 1,
+  employeeName: 1, createdBy: 1, isLate: 1,
+};
+
+/** Xodim topshirig'i (`staff_tasks`) — oynadagi tor ko'rinish. */
+function toStaffInbox(r: Record<string, unknown>): InboxStaffTask | null {
+  if (!isStaffTaskStatus(r.status)) return null;
+  const author = r.createdBy && typeof r.createdBy === "object" ? (r.createdBy as Record<string, unknown>) : null;
+  // Muddati o'tganda amaldagi muddat — qayta muddat (jarimagacha qolgan vaqt).
+  const re = typeof r.redeadline === "string" ? r.redeadline : "";
+  return {
+    id: Number(r.id),
+    title: String(r.title ?? "").trim(),
+    status: r.status,
+    deadline: r.status === "muddati_otdi" && re ? re : String(r.deadline ?? ""),
+    priority: Number(r.priority) || 1,
+    employeeName: String(r.employeeName ?? "").trim(),
+    createdByName: String(author?.name ?? "").trim(),
+    isLate: r.isLate === true,
+  };
+}
+
+/** Avval harakat kutayotgan holatlar, bir darajada — yaqin muddat oldin (/tasks dagi tartib). */
+function staffList(rows: Record<string, unknown>[]): InboxStaffTask[] {
+  return rows
+    .map(toStaffInbox)
+    .filter((x): x is InboxStaffTask => x !== null)
+    .sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || ms(a.deadline) - ms(b.deadline));
+}
+
 // GET /api/tasks/inbox — qobiq mount bo'lganda va har 60 soniyada.
 export async function GET() {
   const me = await getCurrentUser();
@@ -71,8 +110,12 @@ export async function GET() {
 
   const db = await ensureIndexes();
   const col = db.collection("tasks");
+  const staffCol = db.collection(TASKS_COL);
+  // Holatlar yangi bo'lsin (muddati o'tdi …) — /tasks sahifasidagi bilan bir xil
+  // avtomatika; o'zi 20 soniyalik tejam bilan ishlaydi.
+  await runAutomation(db);
 
-  const [pendingRows, reportRows] = await Promise.all([
+  const [pendingRows, reportRows, staffMineRows, staffGivenRows] = await Promise.all([
     // Xodim yozuviga bog'lanmagan hisob (hrEmployeeId yo'q) hech kimning
     // mas'uli bo'la olmaydi — so'ralmaydi ham.
     me.hrEmployeeId === null
@@ -93,6 +136,19 @@ export async function GET() {
       .sort({ "report.at": -1 })
       .limit(LIMIT)
       .toArray(),
+    // Xodim topshiriqlari: menga berilgan / men bergan, yopilmaganlari.
+    me.hrEmployeeId === null
+      ? Promise.resolve([])
+      : staffCol
+          .find({ employeeId: me.hrEmployeeId, status: { $in: [...OPEN_STATUSES] } }, { projection: STAFF_PROJECTION })
+          .sort({ deadline: 1 })
+          .limit(LIMIT)
+          .toArray(),
+    staffCol
+      .find({ "createdBy.userId": me.id, status: { $in: [...OPEN_STATUSES] } }, { projection: STAFF_PROJECTION })
+      .sort({ deadline: 1 })
+      .limit(LIMIT)
+      .toArray(),
   ]);
 
   const payload: InboxPayload = {
@@ -102,6 +158,8 @@ export async function GET() {
     sessionKey: me.sid ?? me.id,
     pending: pendingRows.map((r) => toInbox(r as Record<string, unknown>)),
     reports: reportRows.map((r) => toInbox(r as Record<string, unknown>)),
+    staffMine: staffList(staffMineRows as Record<string, unknown>[]),
+    staffGiven: staffList(staffGivenRows as Record<string, unknown>[]),
   };
   return NextResponse.json({ ok: true, ...payload });
 }

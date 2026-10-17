@@ -1,4 +1,5 @@
 import type { TaskOutcome, TaskPriority, TaskReport, TaskTargetKind } from "./tasksData";
+import type { StaffTaskStatus } from "./staffTasks";
 
 // XODIMNING SHAXSIY TOPSHIRIQ OYNASI — tiplar va sof yordamchilar.
 //
@@ -50,6 +51,30 @@ export interface InboxPayload {
   pending: InboxTask[];
   /** Men bergan topshiriqlarga kelgan, hali ko'rilmagan hisobotlar (yangisi birinchi). */
   reports: InboxTask[];
+  /**
+   * XODIM TOPSHIRIQLARI (/tasks, `staff_tasks`) — 17.10.2026 dan shu oynada ham.
+   * Yuqoridagi ikki ro'yxat ESKI `tasks` (o'quvchi profilidagi «Vazifa») dan.
+   *   staffMine  — menga berilgan, yopilmagan;
+   *   staffGiven — men bergan, yopilmagan (foydalanuvchi: «rahbar oynasiga
+   *                o'zi bergan topshiriqlarni ham ko'rinadigan qil»).
+   * Amallar (Bajardim, tasdiqlash, qaytarish) /tasks sahifasida — qator
+   * o'sha topshiriqni ochadi (`/tasks?open=<id>`).
+   */
+  staffMine: InboxStaffTask[];
+  staffGiven: InboxStaffTask[];
+}
+
+/** Xodim topshirig'ining oynadagi tor ko'rinishi. */
+export interface InboxStaffTask {
+  id: number;
+  title: string;
+  status: StaffTaskStatus;
+  /** ISO — muddati o'tgan bo'lsa qayta muddat (`redeadline`) shu yerda. */
+  deadline: string;
+  priority: number;
+  employeeName: string;
+  createdByName: string;
+  isLate: boolean;
 }
 
 /** POST /api/tasks/inbox tanasi. */

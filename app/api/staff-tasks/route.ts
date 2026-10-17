@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
+import { notifyStaffTasksCreated } from "@/lib/staffBot/taskNotify";
 import {
   FINES_COL,
   TASKS_COL,
@@ -91,6 +92,9 @@ export async function POST(req: Request) {
   const v = await loadViewer(db, me);
   const out = await createStaffTasks(db, v, body);
   if (!out.ok) return bad(out.error, out.status);
+  // Ijrochiga xodimlar botida xabar (✅ Bajardim tugmasi bilan) — javobdan keyin.
+  const docs = out.docs;
+  after(() => notifyStaffTasksCreated(db, docs));
 
   const tasks: StaffTask[] = out.docs.map((d) => toClientTask(d, v, { batchSize: out.docs.length }));
   return NextResponse.json({ ok: true, tasks });

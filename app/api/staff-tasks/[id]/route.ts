@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import type { Db } from "mongodb";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureIndexes } from "@/lib/mongodb";
@@ -12,7 +12,6 @@ import {
   canManage,
   canSee,
   cleanDeadline,
-  cleanFile,
   cleanFiles,
   cleanLink,
   cleanPriority,
@@ -20,7 +19,6 @@ import {
   fineFor,
   fineInfo,
   isActiveStatus,
-  isAssignee,
   loadClosedMonths,
   loadSettings,
   loadViewer,
@@ -30,7 +28,9 @@ import {
   type StaffTaskDoc,
   type StaffTaskViewer,
 } from "@/lib/staffTasksServer";
-import { OPEN_STATUSES, ms, type StaffTaskChange, type StaffTaskEvent, type StaffTaskStatus } from "@/lib/staffTasks";
+import { ms, type StaffTaskChange, type StaffTaskEvent, type StaffTaskStatus } from "@/lib/staffTasks";
+import { applyStaffTaskAction, markStaffTaskSeen, STALE } from "@/lib/staffTaskActions";
+import { notifyStaffTaskAction } from "@/lib/staffBot/taskNotify";
 
 // Bitta topshiriq:
 //   GET   — batafsil (tarix bilan). `?seen=1` va so'rovchi IJROCHI bo'lsa
@@ -47,7 +47,6 @@ import { OPEN_STATUSES, ms, type StaffTaskChange, type StaffTaskEvent, type Staf
 type Ctx = { params: Promise<{ id: string }> };
 
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
-const STALE = "Topshiriq holati o'zgargan — sahifani yangilab qayta urinib ko'ring";
 
 async function respond(db: Db, v: StaffTaskViewer, id: number) {
   const d = await db.collection<StaffTaskDoc>(TASKS_COL).findOne({ id }, { projection: { _id: 0 } });
@@ -87,13 +86,7 @@ export async function GET(req: Request, ctx: Ctx) {
   const { db, v, doc, taskId } = r;
 
   const wantSeen = new URL(req.url).searchParams.get("seen") === "1";
-  if (wantSeen && isAssignee(v, doc) && !doc.seenAt) {
-    const nowIso = new Date().toISOString();
-    const ev: StaffTaskEvent = { at: nowIso, kind: "seen", by: v.name, byUserId: v.userId };
-    await db
-      .collection<StaffTaskDoc>(TASKS_COL)
-      .updateOne({ id: taskId, seenAt: null }, { $set: { seenAt: nowIso }, $push: { history: ev } });
-  }
+  if (wantSeen) await markStaffTaskSeen(db, v, doc);
   return respond(db, v, taskId);
 }
 
@@ -179,7 +172,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
   return respond(db, v, taskId);
 }
 
-// POST — amallar.
+// POST — amallar. Qoidalar lib/staffTaskActions.ts da (xodimlar boti ham
+// o'shani chaqiradi). Muvaffaqiyatli amaldan keyin xodimlar botiga xabar:
+// «Bajardim» — topshiriq berganga, qolganlari — ijrochiga
+// (lib/staffBot/taskNotify.ts; javob ketgandan keyin, `after`).
 export async function POST(req: Request, ctx: Ctx) {
   const r = await load(ctx, true);
   if ("error" in r) return r.error;
@@ -191,98 +187,8 @@ export async function POST(req: Request, ctx: Ctx) {
   } catch {
     return bad("Noto'g'ri so'rov");
   }
-  const action = String(body.action ?? "");
-  const nowMs = Date.now();
-  const nowIso = new Date(nowMs).toISOString();
-  const col = db.collection<StaffTaskDoc>(TASKS_COL);
-  const base = { at: nowIso, by: v.name, byUserId: v.userId };
-
-  if (action === "done") {
-    if (!isAssignee(v, doc)) return bad("«Bajardim» ni faqat topshiriq berilgan xodim bosadi", 403);
-    if (!isActiveStatus(doc.status)) return bad("Bu topshiriq allaqachon yopilgan yoki tasdiq kutmoqda");
-    const note = cleanText(body.note, TEXT_MAX);
-    const link = cleanLink(body.link);
-    if (link === null) return bad("Havola http:// yoki https:// bilan boshlanishi kerak");
-    const file = body.file == null ? null : cleanFile(body.file);
-    if (body.file != null && !file) return bad("Fayl yaroqsiz — qaytadan yuklang");
-    // Deadline o'tgach, lekin qayta muddat ichida — "kechikib bajarildi",
-    // jarima yozilmaydi. Qayta muddat o'tgan bo'lsa avtomatika topshiriqni
-    // allaqachon «Bajarilmadi» ga o'tkazgan (yuqorida majburiy yuritildi).
-    const isLate = nowMs > ms(doc.deadline);
-    const ev: StaffTaskEvent = { ...base, kind: "done", text: note, late: isLate };
-    const res = await col.updateOne(
-      { id: taskId, status: doc.status },
-      {
-        $set: {
-          status: "tasdiq_kutilmoqda",
-          doneAt: nowIso,
-          isLate,
-          doneNote: note,
-          resultLink: link,
-          resultFile: file,
-          updatedAt: nowIso,
-        },
-        $push: { history: ev },
-      },
-    );
-    if (!res.modifiedCount) return bad(STALE, 409);
-    return respond(db, v, taskId);
-  }
-
-  if (!canManage(v, doc)) return bad("Bu amal uchun ruxsatingiz yo'q", 403);
-
-  if (action === "approve") {
-    if (doc.status !== "tasdiq_kutilmoqda") return bad("Faqat tasdiq kutayotgan topshiriq tasdiqlanadi");
-    const ev: StaffTaskEvent = { ...base, kind: "approved", late: !!doc.isLate };
-    const res = await col.updateOne(
-      { id: taskId, status: "tasdiq_kutilmoqda" },
-      { $set: { status: "yakunlandi", completedAt: nowIso, completedLate: !!doc.isLate, updatedAt: nowIso }, $push: { history: ev } },
-    );
-    if (!res.modifiedCount) return bad(STALE, 409);
-    return respond(db, v, taskId);
-  }
-
-  if (action === "return") {
-    if (doc.status !== "tasdiq_kutilmoqda") return bad("Faqat tasdiq kutayotgan topshiriq qaytariladi");
-    const note = cleanText(body.note, TEXT_MAX);
-    if (!note) return bad("Nimani to'g'rilash kerakligini yozing");
-    const deadline = cleanDeadline(body.deadline, nowMs);
-    if (!deadline) return bad("Yangi deadline hozirgi vaqtdan keyin bo'lishi kerak");
-    const ev: StaffTaskEvent = { ...base, kind: "returned", text: note, deadline };
-    const res = await col.updateOne(
-      { id: taskId, status: "tasdiq_kutilmoqda" },
-      {
-        $set: {
-          status: "qaytarildi",
-          deadline,
-          redeadline: null,
-          isLate: false,
-          doneAt: null,
-          doneNote: "",
-          resultLink: "",
-          resultFile: null,
-          updatedAt: nowIso,
-        },
-        $inc: { returnCount: 1 },
-        $push: { history: ev },
-      },
-    );
-    if (!res.modifiedCount) return bad(STALE, 409);
-    return respond(db, v, taskId);
-  }
-
-  if (action === "cancel") {
-    if (!OPEN_STATUSES.includes(doc.status)) return bad("Yopilgan topshiriqni bekor qilib bo'lmaydi");
-    const reason = cleanText(body.reason, TEXT_MAX);
-    if (!reason) return bad("Bekor qilish sababini yozing");
-    const ev: StaffTaskEvent = { ...base, kind: "cancelled", text: reason };
-    const res = await col.updateOne(
-      { id: taskId, status: doc.status },
-      { $set: { status: "bekor", cancelReason: reason, updatedAt: nowIso }, $push: { history: ev } },
-    );
-    if (!res.modifiedCount) return bad(STALE, 409);
-    return respond(db, v, taskId);
-  }
-
-  return bad("Noma'lum amal");
+  const out = await applyStaffTaskAction(db, v, doc, String(body.action ?? ""), body);
+  if (!out.ok) return bad(out.error, out.status);
+  after(() => notifyStaffTaskAction(db, taskId, out.action, out.event));
+  return respond(db, v, taskId);
 }

@@ -110,19 +110,26 @@ function checkinRow(checkoutEnabled: boolean): InlineButton[] {
 }
 
 /**
- * Bosh menyu. Parol bilan kirgan: «Ishga keldim», «Profilim» + 6 tugma
- * (18.09.2026 tartibi). Raqam ulashib kirgan (28.09.2026): «Ishga keldim»,
- * «Profilim», sayt hisobi bo'lsa «Parol bilan kirish» (kassa amallari
- * uchun) va «Chiqish». O'QITUVCHI (29.09.2026, qanday kirganidan qat'i
- * nazar): faqat «Ishga keldim», «Profilim», «Chiqish» — kassa va lid unga
- * kerak emas.
+ * «📌 Topshiriqlar» (17.10.2026, lib/staffBot/tasks.ts) — HAMMADA: o'qituvchiga
+ * ham topshiriq beriladi. Son — harakat kutayotganlar: menga berilgan faol
+ * topshiriqlar + men bergan, tasdig'imni kutayotganlar.
  */
-export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checkoutEnabled: boolean; teacher: boolean }): InlineKeyboard {
+const tasksButton = (count: number): InlineButton => btn(count > 0 ? `📌 Topshiriqlar (${count})` : "📌 Topshiriqlar", TASK_CB.mine);
+
+/**
+ * Bosh menyu. Parol bilan kirgan: «Ishga keldim», «Profilim» + 6 tugma
+ * (18.09.2026 tartibi) + «Topshiriqlar». Raqam ulashib kirgan (28.09.2026):
+ * «Ishga keldim», «Profilim», «Topshiriqlar», sayt hisobi bo'lsa «Parol bilan
+ * kirish» (kassa amallari uchun) va «Chiqish». O'QITUVCHI (29.09.2026, qanday
+ * kirganidan qat'i nazar): «Ishga keldim», «Profilim», «Topshiriqlar»,
+ * «Chiqish» — kassa va lid unga kerak emas.
+ */
+export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checkoutEnabled: boolean; teacher: boolean; tasks: number }): InlineKeyboard {
   if (opts.teacher) {
-    return { inline_keyboard: [checkinRow(opts.checkoutEnabled), [profileButton()], [btn("🚪 Chiqish", CB.logout)]] };
+    return { inline_keyboard: [checkinRow(opts.checkoutEnabled), [profileButton()], [tasksButton(opts.tasks)], [btn("🚪 Chiqish", CB.logout)]] };
   }
   if (opts.profileOnly) {
-    const rows: InlineButton[][] = [checkinRow(opts.checkoutEnabled), [profileButton()]];
+    const rows: InlineButton[][] = [checkinRow(opts.checkoutEnabled), [profileButton()], [tasksButton(opts.tasks)]];
     if (opts.webLogin) rows.push([btn("🔑 Parol bilan kirish (kassa)", CB.passwordLogin)]);
     rows.push([btn("🚪 Chiqish", CB.logout)]);
     return { inline_keyboard: rows };
@@ -130,7 +137,7 @@ export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checko
   return {
     inline_keyboard: [
       checkinRow(opts.checkoutEnabled),
-      [profileButton()],
+      [profileButton(), tasksButton(opts.tasks)],
       [btn("💵 Kirim", CB.kirim), btn("💸 Chiqim", CB.chiqim)],
       [btn("🔁 Ko'chirish", CB.transfer), btn("📋 Lid qo'shish", CB.lead)],
       [btn("📊 Kassam", CB.kassam), btn("🚪 Chiqish", CB.logout)],
@@ -631,6 +638,125 @@ export function afterLeadKeyboard(): InlineKeyboard {
     inline_keyboard: [
       [btn("📋 Yana lid", CB.lead), btn("💵 Kirim", CB.kirim)],
       [btn("🏠 Bosh menyu", CB.menu)],
+    ],
+  };
+}
+
+// ── Topshiriqlar (17.10.2026, lib/staffBot/tasks.ts) ────────────────
+//
+// Prefiks `s:v:` (vazifa). Tugmadagi id — RUXSAT EMAS: router topshiriqni
+// bazadan qayta o'qiydi va web'dagi qoidadan o'tkazadi (canSee/canManage).
+
+export const TASK_CB = {
+  /** Menga berilgan topshiriqlar. */
+  mine: "s:v:l",
+  /** Men bergan topshiriqlar (rahbar). */
+  given: "s:v:g",
+} as const;
+
+export type TaskOp = "open" | "done" | "doneNoNote" | "approve" | "approveSure" | "return" | "returnAt";
+
+const TASK_OP_CODE: Record<TaskOp, string> = {
+  open: "o",
+  done: "d",
+  doneNoNote: "dn",
+  approve: "a",
+  approveSure: "ay",
+  return: "r",
+  returnAt: "rd",
+};
+
+export const taskCb = (op: TaskOp, id: number, arg?: number) =>
+  `s:v:${TASK_OP_CODE[op]}:${id}${arg === undefined ? "" : `:${arg}`}`;
+
+/** "s:v:rd:15:2" → { op: "returnAt", id: 15, arg: 2 }; tanilmasa null. */
+export function taskCbArg(data: string): { op: TaskOp; id: number; arg?: number } | null {
+  const m = /^s:v:(o|d|dn|a|ay|r|rd):(\d{1,9})(?::(\d{1,2}))?$/.exec(data);
+  if (!m) return null;
+  const op = (Object.keys(TASK_OP_CODE) as TaskOp[]).find((k) => TASK_OP_CODE[k] === m[1]);
+  if (!op) return null;
+  return { op, id: Number(m[2]), ...(m[3] === undefined ? {} : { arg: Number(m[3]) }) };
+}
+
+/** Ro'yxat qatorlari — har topshiriq bitta tugma, ko'pi bilan `TASK_LIST_MAX` ta. */
+export const TASK_LIST_MAX = 12;
+
+export function taskListKeyboard(
+  rows: { id: number; label: string }[],
+  opts: { switchTo: "mine" | "given" | null },
+): InlineKeyboard {
+  const kb: InlineButton[][] = rows.slice(0, TASK_LIST_MAX).map((r) => [btn(r.label, taskCb("open", r.id))]);
+  const nav: InlineButton[] = [];
+  if (opts.switchTo === "given") nav.push(btn("📤 Men bergan", TASK_CB.given));
+  if (opts.switchTo === "mine") nav.push(btn("📥 Menga berilgan", TASK_CB.mine));
+  nav.push(btn("🏠 Bosh menyu", CB.menu));
+  kb.push(nav);
+  return { inline_keyboard: kb };
+}
+
+/**
+ * Topshiriq kartasi tugmalari. `site` — saytdagi /tasks?open=… (u yerda
+ * fayl biriktirish, tarix va tahrirlash bor).
+ */
+export function taskCardKeyboard(opts: {
+  id: number;
+  canDone: boolean;
+  canDecide: boolean;
+  back: "mine" | "given";
+  site: string;
+}): InlineKeyboard {
+  const kb: InlineButton[][] = [];
+  if (opts.canDone) kb.push([btn("✅ Bajardim", taskCb("done", opts.id))]);
+  if (opts.canDecide) kb.push([btn("✅ Tasdiqlash", taskCb("approve", opts.id)), btn("↩️ Qaytarish", taskCb("return", opts.id))]);
+  kb.push([{ text: "🌐 Saytda ochish", url: opts.site }]);
+  kb.push([btn("⬅️ Ro'yxat", opts.back === "given" ? TASK_CB.given : TASK_CB.mine), btn("🏠 Bosh menyu", CB.menu)]);
+  return { inline_keyboard: kb };
+}
+
+export function taskDoneNoteKeyboard(id: number): InlineKeyboard {
+  return { inline_keyboard: [[btn("✅ Izohsiz yuborish", taskCb("doneNoNote", id))], [btn("⬅️ Bekor qilish", taskCb("open", id))]] };
+}
+
+export function taskApproveSureKeyboard(id: number): InlineKeyboard {
+  return { inline_keyboard: [[btn("✅ Ha, tasdiqlayman", taskCb("approveSure", id))], [btn("⬅️ Orqaga", taskCb("open", id))]] };
+}
+
+export function taskReturnNoteKeyboard(id: number): InlineKeyboard {
+  return { inline_keyboard: [[btn("⬅️ Bekor qilish", taskCb("open", id))]] };
+}
+
+export function taskReturnDeadlineKeyboard(id: number, options: { label: string }[]): InlineKeyboard {
+  const kb: InlineButton[][] = [];
+  for (let i = 0; i < options.length; i += 2) {
+    kb.push(options.slice(i, i + 2).map((o, j) => btn(o.label, taskCb("returnAt", id, i + j))));
+  }
+  kb.push([btn("⬅️ Bekor qilish", taskCb("open", id))]);
+  return { inline_keyboard: kb };
+}
+
+/** Amaldan keyin — ro'yxatga yoki bosh menyuga. */
+export function afterTaskKeyboard(back: "mine" | "given"): InlineKeyboard {
+  return {
+    inline_keyboard: [[btn(back === "given" ? "📤 Men bergan" : "📌 Topshiriqlarim", back === "given" ? TASK_CB.given : TASK_CB.mine), btn("🏠 Bosh menyu", CB.menu)]],
+  };
+}
+
+/** PUSH: ijrochiga — yangi yoki qaytarilgan topshiriq. */
+export function taskAssigneePushKeyboard(id: number): InlineKeyboard {
+  return { inline_keyboard: [[btn("✅ Bajardim", taskCb("done", id)), btn("📋 Batafsil", taskCb("open", id))]] };
+}
+
+/**
+ * PUSH: topshiriq bergan rahbarga — ijrochi «Bajardim» bosdi. Raqam ulashib
+ * kirgan (parolsiz) rahbar tasdiqlay olmaydi — unga parol bilan kirish taklif
+ * qilinadi.
+ */
+export function taskGiverPushKeyboard(id: number, canDecide: boolean): InlineKeyboard {
+  if (!canDecide) return { inline_keyboard: [[btn("🔑 Parol bilan kirish", CB.passwordLogin)]] };
+  return {
+    inline_keyboard: [
+      [btn("✅ Tasdiqlash", taskCb("approve", id)), btn("↩️ Qaytarish", taskCb("return", id))],
+      [btn("📋 Batafsil", taskCb("open", id))],
     ],
   };
 }

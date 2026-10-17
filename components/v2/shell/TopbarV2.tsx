@@ -127,8 +127,8 @@ export default function TopbarV2({ user, permissions, isAdmin, sidebarCollapsed,
   // yuklanguncha chizilmaydi: noma'lum son nol emas.
   const { unread, unreadIsFloor, everLoaded } = useNotifications();
   const inbox = useTaskInbox();
-  const inboxPending = inbox.everLoaded ? inbox.pending.length : 0;
-  const inboxReports = inbox.everLoaded ? inbox.reports.length : 0;
+  const inboxPending = inbox.everLoaded ? inbox.actionPending : 0;
+  const inboxReports = inbox.everLoaded ? inbox.actionReports : 0;
   const inboxCount = inboxPending + inboxReports;
   const inboxTitle =
     inboxPending > 0

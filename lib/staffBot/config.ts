@@ -81,13 +81,17 @@ export function otherBotToken(): string {
  */
 export const STAFF_START_PARAM = "xodim";
 
+/** Saytning tashqi manzili — botdagi havolalar uchun (oxirida `/` yo'q). */
+export function publicSiteUrl(): string {
+  return (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || "https://www.tizimli24.uz";
+}
+
 /**
  * «👤 Profilim» Mini App manzili (28.09.2026) — xodim o'z profilini saytdagidek
  * ko'radi. Kirish — `initData` imzosi shu bot kaliti bilan (app/api/xodim).
  */
 export function staffProfileUrl(): string {
-  const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || "https://www.tizimli24.uz";
-  return `${base}/xodim`;
+  return `${publicSiteUrl()}/xodim`;
 }
 
 /**

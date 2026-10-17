@@ -187,7 +187,30 @@ export interface LeadDraft {
   updatedAt: number;
 }
 
-export type Draft = KirimDraft | ChiqimDraft | TransferDraft | LeadDraft;
+/**
+ * TOPSHIRIQ (17.10.2026, lib/staffBot/tasks.ts) — matn kutiladigan qadamlar:
+ *   done_note       — ijrochi «Bajardim» bosdi, izoh kutilmoqda (ixtiyoriy);
+ *   return_note     — rahbar «Qaytarish» bosdi, sabab kutilmoqda (majburiy);
+ *   return_deadline — sabab yozildi, yangi muddat tugmasi kutilmoqda.
+ */
+export type TaskStep = "done_note" | "return_note" | "return_deadline";
+
+export interface TaskDraft {
+  kind: "task";
+  step: TaskStep;
+  taskId: number;
+  note?: string;
+  /**
+   * Muddat tugmalari ko'rsatilgan paytdagi variantlar — tugmada faqat
+   * tartib raqami, lahzaning o'zi shu yerda (tugma bosilguncha vaqt o'tadi,
+   * ro'yxatni qayta hisoblash boshqa variantni berib qo'yardi).
+   */
+  deadlines?: { label: string; at: string }[];
+  nonce: string;
+  updatedAt: number;
+}
+
+export type Draft = KirimDraft | ChiqimDraft | TransferDraft | LeadDraft | TaskDraft;
 
 /** Shu muddat tegilmagan qoralama eskirgan sanaladi. */
 export const DRAFT_TTL_MS = 30 * 60 * 1000;
