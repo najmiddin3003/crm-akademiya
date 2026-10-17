@@ -64,6 +64,24 @@
      matn. Yorug'da oq — barcha rangli fonlarda AA (4.9–7.3). */
   --v2-on-color: #FFFFFF;
 
+  /* ── Lid holatlari (komponentlar rasmidan: ko'rsatkich kartalari nuqtalari) ──
+     Kalitlar lib/leadHolat.ts dagi bilan bir xil. Holat ranglariga bog'langan —
+     tema bilan o'zi almashadi. */
+  --v2-holat-yangi: var(--v2-info);
+  --v2-holat-bog: var(--v2-violet);
+  --v2-holat-sinov: var(--v2-warning);
+  --v2-holat-guruh: var(--v2-success);
+  --v2-holat-rad: var(--v2-danger);
+
+  /* ── Grafik qatorlari (pul ko'rsatkichi: Naqd, Terminal, Plastik, Inkassa) ── */
+  --v2-chart-1: var(--v2-teal-600);
+  --v2-chart-2: var(--v2-teal-400);
+  --v2-chart-3: var(--v2-teal-300);
+  --v2-chart-4: var(--v2-teal-200);
+
+  /* ── Fokus halqasi (maydon fokusda: chegara brend + 3px halqa, brend 22%) ── */
+  --v2-focus-ring: 0 0 0 3px color-mix(in srgb, var(--v2-brand) 22%, transparent);
+
   /* ── Fan ranglari (jadval va guruh kartalarida) ────────────────────────
      Chip: fon + 1px chegara + rangli nuqta + yozuv (yozuv — oddiy `--v2-text`).
      Qiymatlar dizayn rasmidan piksel bo'yicha o'lchangan (fon va nuqta aniq). */
@@ -117,6 +135,16 @@
   /* Qorong'ida rangli fonlar och — ustidagi matn TO'Q bo'lishi shart:
      oq matn 2.0–2.6 (o'qilmaydi), to'q matn 7.4–10.2 (AAA). */
   --v2-on-color: #0B0D10;
+
+  /* Grafik — qorong'i fonda och pog'onalar yaxshiroq ko'rinadi. MENING TAXMINIM
+     (dizaynda qorong'i grafik ko'rsatilmagan). */
+  --v2-chart-1: var(--v2-teal-400);
+  --v2-chart-2: var(--v2-teal-300);
+  --v2-chart-3: var(--v2-teal-500);
+  --v2-chart-4: var(--v2-teal-700);
+
+  /* Fokus halqasi qorong'ida kuchliroq (fon to'q). */
+  --v2-focus-ring: 0 0 0 3px color-mix(in srgb, var(--v2-brand) 35%, transparent);
 
   /* Fan ranglari. Chegara qorong'ida fondan sal ochroq — juda sezilmas, TAXMINIY. */
   --v2-fan-ingliz: #9CC0FF;  --v2-fan-ingliz-bg: #14213A;  --v2-fan-ingliz-border: #16243F;
@@ -172,6 +200,16 @@
   --color-v2-violet: var(--v2-violet);
   --color-v2-logo: var(--v2-logo);
   --color-v2-on-color: var(--v2-on-color);
+
+  --color-v2-holat-yangi: var(--v2-holat-yangi);
+  --color-v2-holat-bog: var(--v2-holat-bog);
+  --color-v2-holat-sinov: var(--v2-holat-sinov);
+  --color-v2-holat-guruh: var(--v2-holat-guruh);
+  --color-v2-holat-rad: var(--v2-holat-rad);
+  --color-v2-chart-1: var(--v2-chart-1);
+  --color-v2-chart-2: var(--v2-chart-2);
+  --color-v2-chart-3: var(--v2-chart-3);
+  --color-v2-chart-4: var(--v2-chart-4);
 
   --color-v2-fan-ingliz: var(--v2-fan-ingliz);
   --color-v2-fan-ingliz-bg: var(--v2-fan-ingliz-bg);
@@ -232,4 +270,6 @@
   /* Soya */
   --shadow-v2-sm: var(--v2-shadow-sm);
   --shadow-v2-md: var(--v2-shadow-md);
+  /* Fokus: `focus-visible:shadow-v2-focus` (yoki `focus-within:` maydon o'ramida) */
+  --shadow-v2-focus: var(--v2-focus-ring);
 }

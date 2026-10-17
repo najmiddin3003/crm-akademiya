@@ -32,14 +32,29 @@ Google'dan (`next/font/google`) yoki loyiha ichiga joylab (`next/font/local`)?
 Serverda Google shriftlari build'ni bir necha marta yiqitgan.
 *Taxmin:* loyiha ichiga joylanadi.
 
-**5. Binafsha rang qayerda ishlatiladi** — ochiq
-Yorug' temada u «Ona tili» fan rangi bilan bir xil; boshqa vazifasi bormi?
-*Taxmin:* qo'shimcha urg'u rangi, aniq vazifasi dizaynda chiqqanda belgilanadi.
+**5. Binafsha rang qayerda ishlatiladi** — qisman hal qilindi (komponentlar rasmidan)
+Ikki joyda chiqdi: lid holati «Bog'lanildi» va «Ona tili» fan rangi (yorug'da). Boshqa
+vazifasi bormi?
+*Taxmin:* faqat shu ikki joyda.
 
 **6. Shrift o'lchami sozlamasi** — ochiq
 Hozirgi saytda foydalanuvchi shrift o'lchamini o'zgartira oladi. Yangi versiyada ham
 ishlashi kerakmi?
 *Taxmin:* ha — o'lchamlar `rem`da yozildi, sukut bo'yicha dizayndagi px bilan aynan bir xil.
+
+**8. Lid holati nomi: «Birinchi darsga» yoki «Sinov darsiga yozildi»** — ochiq
+Komponentlar rasmida «Birinchi darsga», hozirgi saytda va Telegram xabarlarida
+«Sinov darsiga yozildi».
+*Taxmin:* hozirgi nom qoladi (rasmdagisi namuna yozuv).
+
+**9. Komponentlarning aniq o'lchamlari** — ochiq
+Rasm ~0.6× kichraytirilgan: o'lchamlar ±2 px aniqlikda (maydon balandligi ~40, padding,
+yorliq shrifti). Ranglar esa aniq. Dizayn tizimining manba fayli (HTML yoki Figma) bormi?
+*Taxmin:* 4 px to'riga yaxlitlangan qiymatlar (maydon 40, tugma 32/36/40).
+
+**10. Qorong'i temadagi grafik ranglari** — ochiq
+Pul grafigi faqat yorug' temada ko'rsatilgan.
+*Taxmin:* qorong'ida och pog'onalar (teal 400 / 300 / 500 / 700).
 
 ## Reja
 
