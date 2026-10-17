@@ -1,10 +1,10 @@
 /*
- * TIZIMLI v2 — RANG TOKENLARI. YAGONA MANBA (17.10.2026).
+ * TIZIMLI v2 — DIZAYN TOKENLARI. YAGONA MANBA (17.10.2026).
  *
- * Dizayner palitrasidan: yorug' tema — asosiy rejim, qorong'i tema — kechki ish
- * uchun. Har rangning ma'nosi va qachon ishlatilishi — design/v2/DESIGN.md
- * (u yerda hex YO'Q: qiymat faqat shu faylda, ikki joyda yozilsa vaqt o'tib
- * farq qilib qoladi).
+ * Dizayner fayllaridan: ranglar (yorug' tema — asosiy rejim, qorong'i — kechki
+ * ish uchun), teal shkalasi, fan ranglari, tipografiya, burchak, soya. Har
+ * tokenning ma'nosi va qachon ishlatilishi — design/v2/DESIGN.md (u yerda hex
+ * YO'Q: qiymat faqat shu faylda, ikki joyda yozilsa vaqt o'tib farq qiladi).
  *
  * NEGA `--v2-` PREFIKSI: eski dizayn `--border`, `--background`, `--foreground`
  * kabi nomlarni HSL bo'laklari bilan ishlatadi (app/globals.css). Yangi versiya
@@ -22,7 +22,19 @@
 [data-ui="v2"] {
   color-scheme: light;
 
-  /* Yuzalar va chiziqlar */
+  /* ── Teal shkalasi (brend, 10 pog'ona) — ikkala temada bir xil ──────── */
+  --v2-teal-50: #ECF8FA;
+  --v2-teal-100: #D0EFF4;
+  --v2-teal-200: #A3DFE9;
+  --v2-teal-300: #67C9DA;
+  --v2-teal-400: #2DB4CB;      /* qorong'i temada tugma (to'q matn bilan) */
+  --v2-teal-500: #1497AE;
+  --v2-teal-600: #0E7C91;      /* yorug' temada tugma (oq matn bilan) */
+  --v2-teal-700: #0B6474;
+  --v2-teal-800: #0A4F5C;
+  --v2-teal-900: #083F49;
+
+  /* ── Yuzalar va chiziqlar ──────────────────────────────────────────── */
   --v2-bg: #F3F5F6;            /* Fon */
   --v2-surface: #FFFFFF;       /* Sirt */
   --v2-surface-2: #F8F9FA;     /* Sirt 2 */
@@ -30,17 +42,17 @@
   --v2-border-strong: #CDD3DA; /* Kuchli chiziq */
   --v2-border-field: #8A939F;  /* Maydon chizig'i */
 
-  /* Matn */
+  /* ── Matn ──────────────────────────────────────────────────────────── */
   --v2-text: #0E1726;          /* Matn */
   --v2-text-2: #4A5565;        /* Matn 2 */
   --v2-text-3: #636D7C;        /* Matn 3 */
 
-  /* Brend */
-  --v2-brand: #0E7C91;         /* Asosiy */
-  --v2-brand-bg: #E5F5F7;      /* Asosiy fon */
-  --v2-brand-text: #0B6474;    /* Asosiy matn */
+  /* ── Brend ─────────────────────────────────────────────────────────── */
+  --v2-brand: var(--v2-teal-600);      /* Asosiy */
+  --v2-brand-bg: #E5F5F7;              /* Asosiy fon */
+  --v2-brand-text: var(--v2-teal-700); /* Asosiy matn */
 
-  /* Holatlar va logotip */
+  /* ── Holatlar va logotip ───────────────────────────────────────────── */
   --v2-success: #13795B;       /* Muvaffaqiyat */
   --v2-warning: #9A5A06;       /* Ogohlantirish */
   --v2-danger: #C13A2F;        /* Xavf */
@@ -51,6 +63,25 @@
   /* QO'SHIMCHA (palitrada yo'q, kontrast uchun): rangli tugma/belgi ustidagi
      matn. Yorug'da oq — barcha rangli fonlarda AA (4.9–7.3). */
   --v2-on-color: #FFFFFF;
+
+  /* ── Fan ranglari (jadval va guruh kartalarida) ────────────────────────
+     Chip: fon + 1px chegara + rangli nuqta + yozuv (yozuv — oddiy `--v2-text`).
+     Qiymatlar dizayn rasmidan piksel bo'yicha o'lchangan (fon va nuqta aniq). */
+  --v2-fan-ingliz: #1D4ED8;  --v2-fan-ingliz-bg: #EAF1FE;  --v2-fan-ingliz-border: #DBE5FC;
+  --v2-fan-ona: #5B3CC4;     --v2-fan-ona-bg: #F1EDFE;     --v2-fan-ona-border: #E6E0FC;
+  --v2-fan-matem: #11724F;   --v2-fan-matem-bg: #E7F5EE;   --v2-fan-matem-border: #D7EDE2;
+  --v2-fan-rus: #94580A;     --v2-fan-rus-bg: #FDF1E1;     --v2-fan-rus-border: #F8E5CA;
+  --v2-fan-arab: #B4235A;    --v2-fan-arab-bg: #FDECF2;    --v2-fan-arab-border: #FADCE7;
+  --v2-fan-bio: #4D7C0F;     --v2-fan-bio-bg: #F1F7E4;     --v2-fan-bio-border: #E6F1CF;
+  --v2-fan-tarix: #9D1AA8;   --v2-fan-tarix-bg: #FAEBFC;   --v2-fan-tarix-border: #F5D9F7;
+  --v2-fan-boshqa: #4A5565;  --v2-fan-boshqa-bg: #F1F3F5;  --v2-fan-boshqa-border: #E7EAEE;
+
+  /* ── Tipografiya ───────────────────────────────────────────────────── */
+  --v2-font-sans: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* ── Soya — rasmdan o'lchangan, TAXMINIY (dizaynerdan aniq qiymat so'raladi) */
+  --v2-shadow-sm: 0 1px 2px rgba(14, 23, 38, 0.05), 0 0 0 1px rgba(14, 23, 38, 0.03); /* kartalar */
+  --v2-shadow-md: 0 8px 24px rgba(14, 23, 38, 0.1), 0 2px 6px rgba(14, 23, 38, 0.06); /* menyu, oyna */
 }
 
 .dark [data-ui="v2"],
@@ -71,7 +102,7 @@
   --v2-text-3: #8A929D;
 
   /* Brend */
-  --v2-brand: #2DB4CB;
+  --v2-brand: var(--v2-teal-400);
   --v2-brand-bg: #0F2A30;
   --v2-brand-text: #5CCBDD;
 
@@ -86,12 +117,42 @@
   /* Qorong'ida rangli fonlar och — ustidagi matn TO'Q bo'lishi shart:
      oq matn 2.0–2.6 (o'qilmaydi), to'q matn 7.4–10.2 (AAA). */
   --v2-on-color: #0B0D10;
+
+  /* Fan ranglari. Chegara qorong'ida fondan sal ochroq — juda sezilmas, TAXMINIY. */
+  --v2-fan-ingliz: #9CC0FF;  --v2-fan-ingliz-bg: #14213A;  --v2-fan-ingliz-border: #16243F;
+  --v2-fan-ona: #C6B6FF;     --v2-fan-ona-bg: #1F1A38;     --v2-fan-ona-border: #221C3D;
+  --v2-fan-matem: #7FDCB0;   --v2-fan-matem-bg: #10261D;   --v2-fan-matem-border: #122A20;
+  --v2-fan-rus: #F4C47C;     --v2-fan-rus-bg: #291F11;     --v2-fan-rus-border: #2D2212;
+  --v2-fan-arab: #FF9CC0;    --v2-fan-arab-bg: #2E1520;    --v2-fan-arab-border: #2F1521;
+  --v2-fan-bio: #B5DD72;     --v2-fan-bio-bg: #1C2610;     --v2-fan-bio-border: #1D2710;
+  --v2-fan-tarix: #E9A3F2;   --v2-fan-tarix-bg: #2A1530;   --v2-fan-tarix-border: #2B1631;
+  --v2-fan-boshqa: #AAB1BB;  --v2-fan-boshqa-bg: #1C2127;  --v2-fan-boshqa-border: #1D2228;
+
+  /* Soya — qorong'i fonda och-qora soya ko'rinmaydi; qora va kuchliroq. MENING TAXMINIM
+     (dizaynda qorong'i soya ko'rsatilmagan). */
+  --v2-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --v2-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
-/* Tailwind v4 klasslari: `bg-v2-surface`, `text-v2-text-2`, `border-v2-border-field`,
-   `bg-v2-brand text-v2-on-color` … Faqat Tailwind ishlov beradigan CSS'ga import
-   qilinganda ishlaydi; oddiy brauzer `@theme` ni e'tiborsiz qoldiradi. */
+/* ── Tailwind v4 klasslari ────────────────────────────────────────────────
+   Faqat Tailwind ishlov beradigan CSS'ga import qilinganda ishlaydi; oddiy
+   brauzer `@theme` ni e'tiborsiz qoldiradi. Misollar: `bg-v2-surface`,
+   `text-v2-text-2`, `border-v2-border-field`, `bg-v2-brand text-v2-on-color`,
+   `bg-v2-fan-ingliz-bg`, `text-v2-page`, `rounded-v2-md`, `shadow-v2-sm`, `font-v2`.
+   ORALIQ alohida token emas: Tailwind'ning o'z shkalasi 4 px qadamli
+   (`p-1`=4, `p-2`=8, `p-3`=12, `p-4`=16, `p-5`=20, `p-6`=24, `p-8`=32, `p-12`=48). */
 @theme inline {
+  --color-v2-teal-50: var(--v2-teal-50);
+  --color-v2-teal-100: var(--v2-teal-100);
+  --color-v2-teal-200: var(--v2-teal-200);
+  --color-v2-teal-300: var(--v2-teal-300);
+  --color-v2-teal-400: var(--v2-teal-400);
+  --color-v2-teal-500: var(--v2-teal-500);
+  --color-v2-teal-600: var(--v2-teal-600);
+  --color-v2-teal-700: var(--v2-teal-700);
+  --color-v2-teal-800: var(--v2-teal-800);
+  --color-v2-teal-900: var(--v2-teal-900);
+
   --color-v2-bg: var(--v2-bg);
   --color-v2-surface: var(--v2-surface);
   --color-v2-surface-2: var(--v2-surface-2);
@@ -111,4 +172,64 @@
   --color-v2-violet: var(--v2-violet);
   --color-v2-logo: var(--v2-logo);
   --color-v2-on-color: var(--v2-on-color);
+
+  --color-v2-fan-ingliz: var(--v2-fan-ingliz);
+  --color-v2-fan-ingliz-bg: var(--v2-fan-ingliz-bg);
+  --color-v2-fan-ingliz-border: var(--v2-fan-ingliz-border);
+  --color-v2-fan-ona: var(--v2-fan-ona);
+  --color-v2-fan-ona-bg: var(--v2-fan-ona-bg);
+  --color-v2-fan-ona-border: var(--v2-fan-ona-border);
+  --color-v2-fan-matem: var(--v2-fan-matem);
+  --color-v2-fan-matem-bg: var(--v2-fan-matem-bg);
+  --color-v2-fan-matem-border: var(--v2-fan-matem-border);
+  --color-v2-fan-rus: var(--v2-fan-rus);
+  --color-v2-fan-rus-bg: var(--v2-fan-rus-bg);
+  --color-v2-fan-rus-border: var(--v2-fan-rus-border);
+  --color-v2-fan-arab: var(--v2-fan-arab);
+  --color-v2-fan-arab-bg: var(--v2-fan-arab-bg);
+  --color-v2-fan-arab-border: var(--v2-fan-arab-border);
+  --color-v2-fan-bio: var(--v2-fan-bio);
+  --color-v2-fan-bio-bg: var(--v2-fan-bio-bg);
+  --color-v2-fan-bio-border: var(--v2-fan-bio-border);
+  --color-v2-fan-tarix: var(--v2-fan-tarix);
+  --color-v2-fan-tarix-bg: var(--v2-fan-tarix-bg);
+  --color-v2-fan-tarix-border: var(--v2-fan-tarix-border);
+  --color-v2-fan-boshqa: var(--v2-fan-boshqa);
+  --color-v2-fan-boshqa-bg: var(--v2-fan-boshqa-bg);
+  --color-v2-fan-boshqa-border: var(--v2-fan-boshqa-border);
+
+  /* Shrift — Onest (lotin + kirill). Yuklash yo'li v2 qobig'ida hal qilinadi. */
+  --font-v2: var(--v2-font-sans);
+
+  /* Matn o'lchamlari: o'lcham / qator balandligi · qalinlik. rem'da — sukut
+     16px da dizayndagi px bilan AYNAN bir xil, foydalanuvchi shrift o'lchamini
+     o'zgartirsa birga o'zgaradi. Raqam uchun qo'shimcha `tabular-nums`. */
+  --text-v2-page: 1.5rem;                 /* 24px — Sahifa sarlavhasi */
+  --text-v2-page--line-height: 2rem;      /* 32px */
+  --text-v2-page--font-weight: 600;
+  --text-v2-section: 1rem;                /* 16px — Bo'lim sarlavhasi */
+  --text-v2-section--line-height: 1.5rem; /* 24px */
+  --text-v2-section--font-weight: 600;
+  --text-v2-body: 0.875rem;               /* 14px — Asosiy matn */
+  --text-v2-body--line-height: 1.25rem;   /* 20px */
+  --text-v2-body--font-weight: 400;
+  --text-v2-small: 0.8125rem;             /* 13px — Kichik matn */
+  --text-v2-small--line-height: 1.125rem; /* 18px */
+  --text-v2-small--font-weight: 400;
+  --text-v2-caption: 0.75rem;             /* 12px — Izoh */
+  --text-v2-caption--line-height: 1rem;   /* 16px */
+  --text-v2-caption--font-weight: 500;
+  --text-v2-number: 1.75rem;              /* 28px — Raqam (+ tabular-nums) */
+  --text-v2-number--line-height: 2.125rem;/* 34px */
+  --text-v2-number--font-weight: 600;
+
+  /* Burchak */
+  --radius-v2-sm: 6px;    /* kichik belgi */
+  --radius-v2-md: 8px;    /* tugma, maydon */
+  --radius-v2-lg: 12px;   /* karta, panel */
+  --radius-v2-full: 9999px; /* holat belgisi */
+
+  /* Soya */
+  --shadow-v2-sm: var(--v2-shadow-sm);
+  --shadow-v2-md: var(--v2-shadow-md);
 }
