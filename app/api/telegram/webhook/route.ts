@@ -10,22 +10,23 @@ import { canTransition, holatFromTelegram, holatMeta, holatOf } from "@/lib/lead
 import { applyHolatChange, recordTelegramPress } from "@/lib/leadHolatServer";
 import { notifyLeadApplicant } from "@/lib/studentBot/leadUpdates";
 import type { Order } from "@/lib/ordersData";
-import { redirectToNewBot } from "@/lib/staffBot/moved";
-import type { TelegramUpdate } from "@/lib/staffBot/router";
+import { isStaffBotReady, loadStaffBotConfig, STAFF_BOT_HOST } from "@/lib/staffBot/config";
+import { redirectToStaffBot } from "@/lib/staffBot/moved";
+import { handleStaffUpdate, type TelegramUpdate } from "@/lib/staffBot/router";
 import { logAction } from "@/lib/actionLog";
 
-// POST /api/telegram/webhook — GURUH botining (@akademiya_crm_bot) webhook'i:
+// POST /api/telegram/webhook — @akademiya_crm_bot webhook'i. IKKI OQIM:
 //
 //   1) "Lidlar" topigidagi status tugmalari (`lead:…`, lib/leadStatus.ts):
 //      bosilganda status bazaga yoziladi va xabarning "Status:" qatori
 //      tahrirlanadi — 07.09.2026 dan beri;
-//   2) SHAXSIY yozishma — 18–29.09.2026 da bu yerda xodimlar boti ishlagan
-//      (lib/staffBot). 29.09.2026 dan xodimlar @tizimli_akademiya_bot da
-//      (foydalanuvchi: "crm_akademiya botimiz faqat to'lovlarni guruhga
-//      yozadi"), bu yerga kelgan shaxsiy xabar va eski menyu tugmasiga
-//      yangi botga havola beriladi (lib/staffBot/moved.ts). `message` shu
-//      yo'naltirish uchun `allowed_updates` da qoldirilgan; guruh xabarlari
-//      o'qilmay tashlanadi.
+//   2) SHAXSIY yozishma — XODIMLAR BOTI (lib/staffBot: kirish, profil,
+//      «Ishga keldim», kassa). 18–29.09.2026 da shu yerda edi, 29.09 da
+//      @tizimli_akademiya_bot ga ko'chgan, 17.10.2026 dan YANA shu yerda:
+//      o'sha botga ManyChat ulandi va uning xabarlari CRM'ga kelmay qoldi
+//      (lib/staffBot/config.ts → `STAFF_BOT_HOST`). Router guruh
+//      xabarlarini o'qimasdan tashlaydi (bot guruhlarda admin, `message`
+//      `allowed_updates` da — guruhdagi har xabar ham keladi).
 //
 // SESSIYASIZ OCHIQ — chaqiruvchi Telegram serveri, uning cookie'si yo'q.
 // Himoya `setWebhook` dagi `secret_token` bilan: Telegram uni HAR BIR
@@ -211,11 +212,17 @@ export async function POST(req: Request) {
     if (cq?.id && parsed) {
       // 1) Lid status tugmasi.
       await handleLeadCallback(await ensureIndexes(), loadSyncConfig(), cq, parsed);
+    } else if (STAFF_BOT_HOST === "crm") {
+      // 2) Qolgan hammasi — xodimlar boti (shaxsiy xabar, `s:` tugmalar).
+      // Router o'zi hech qachon otmaydi va guruh xabarlarini tashlaydi.
+      // `after` — to'lov yozilgach Sheets/Telegram navbati javobdan KEYIN
+      // yuriladi (lib/cashboxAdjust.ts → defer).
+      const cfg = loadStaffBotConfig();
+      if (isStaffBotReady(cfg)) await handleStaffUpdate(await ensureIndexes(), cfg, update, after);
     } else {
-      // 2) Qolgan hammasi — shaxsiy xabar yoki eski xodim menyusi tugmasi:
-      // yangi botga yo'naltirish (bazaga bormaydi, o'zi hech qachon otmaydi,
-      // guruhda jim).
-      await redirectToNewBot(update);
+      // Xodimlar boshqa botda bo'lsa — shaxsiy xabar va eski menyu tugmasiga
+      // o'sha botga havola (bazaga bormaydi, guruhda jim).
+      await redirectToStaffBot(update);
     }
   } catch (e) {
     console.error("[telegram-webhook]", e instanceof Error ? e.message : e);

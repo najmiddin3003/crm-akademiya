@@ -6,8 +6,8 @@ import { staffBotUsername } from "@/lib/staffBot/config";
 //
 // Foydalanuvchi qarori: QR filial qabulxonasidagi EKRANDA turadi va har
 // 30 soniyada yangilanadi (Nazorat → Ishga keldim (QR), /nazorat-qr) —
-// rasmini olib uydan skanerlab bo'lmasin. Xodim uni botdagi (29.09.2026
-// dan @tizimli_akademiya_bot) «📷 Ishga keldim» tugmasi (Telegram ichidagi skaner, /xodim/keldim) yoki
+// rasmini olib uydan skanerlab bo'lmasin. Xodim uni xodimlar botidagi
+// (lib/staffBot/config.ts; 17.10.2026 dan @akademiya_crm_bot) «📷 Ishga keldim» tugmasi (Telegram ichidagi skaner, /xodim/keldim) yoki
 // oddiy telefon kamerasi bilan skanerlaydi: QR ichida bot havolasi
 // `t.me/<bot>?start=k_<token>`, ya'ni kamera ham botni ochib, kodni o'zi
 // yuboradi (lib/staffBot/router.ts).
@@ -92,9 +92,10 @@ export function parseScanned(text: string): { kind: AttendanceKind; token: strin
 }
 
 /**
- * Xodimlar botining @nomi — QR havolasi uchun. 29.09.2026 dan
- * @tizimli_akademiya_bot (lib/staffBot/config.ts). Eski @akademiya_crm_bot
- * havolasi ham tanilaveradi: `parseScanned` bot nomiga qaramaydi.
+ * Xodimlar botining @nomi — QR havolasi uchun (lib/staffBot/config.ts →
+ * `STAFF_BOT_HOST`). Ekran kodni har 30 soniyada yangidan chizadi, ya'ni bot
+ * almashganda QR o'zi yangilanadi; boshqa bot nomli havola ham skanerda
+ * tanilaveradi — `parseScanned` bot nomiga qaramaydi.
  */
 export { staffBotUsername };
 

@@ -4809,5 +4809,6 @@
   "Vaqtinchalik bo'lim": "Temporary section",
   "Yangi versiya": "New version",
   "Yangi versiya hozircha sinovda": "The new version is still in testing",
-  "Yangi versiyani ochish": "Open the new version"
+  "Yangi versiyani ochish": "Open the new version",
+  "Xodimlar bo'limi @akademiya_crm_bot ga ko'chdi. O'sha botni oching va /start bosing.": "The staff section has moved to @akademiya_crm_bot. Open that bot and press /start."
 }

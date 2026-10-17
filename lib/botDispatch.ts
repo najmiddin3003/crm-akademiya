@@ -3,8 +3,9 @@ import type { AdjustDeps } from "@/lib/cashboxAdjust";
 import { parseScanned } from "@/lib/attendanceQr";
 import { isTokenShape } from "@/lib/gamification/access";
 import { hasWebLogin } from "@/lib/staffBot/auth";
-import { isStaffBotReady, loadStaffBotConfig, STAFF_START_PARAM } from "@/lib/staffBot/config";
+import { isStaffBotReady, loadStaffBotConfig, STAFF_BOT_HOST, STAFF_START_PARAM } from "@/lib/staffBot/config";
 import { isStaffCallback } from "@/lib/staffBot/keyboards";
+import { redirectToStaffBot } from "@/lib/staffBot/moved";
 import { handleStaffUpdate } from "@/lib/staffBot/router";
 import { getStaffUser } from "@/lib/staffBot/session";
 import { loadStudentBotConfig } from "@/lib/studentBot/config";
@@ -13,7 +14,8 @@ import { handleStudentUpdate, type TelegramUpdate } from "@/lib/studentBot/route
 import { hasActiveSignup } from "@/lib/studentBot/signup";
 import { getBotUser } from "@/lib/studentBot/users";
 
-// @tizimli_akademiya_bot — BITTA BOTDA IKKI OQIM (29.09.2026).
+// @tizimli_akademiya_bot — BITTA BOTDA IKKI OQIM (29.09.2026; 17.10 dan xodim
+// tomoni — yo'naltirish, pastdagi izoh).
 //
 // Foydalanuvchi: "tizimli_akademiya botida xodimlar ishlashi kerak,
 // crm_akademiya botimiz faqat to'lovlarni guruhga yozadi". Shu kundan
@@ -41,6 +43,12 @@ import { getBotUser } from "@/lib/studentBot/users";
 // Xodim ham, ota-ona ham bo'lgan odam (29.09 da 53 xodim raqamidan 21 tasi
 // o'quvchi yozuvida ham bor) — XODIM ustun: raqamni o'zi tasdiqlagan.
 // O'quvchi sifatida bog'langan xodim `/xodim` bilan xodimlar bo'limiga o'tadi.
+//
+// 17.10.2026 DAN XODIMLAR @akademiya_crm_bot DA (lib/staffBot/config.ts →
+// `STAFF_BOT_HOST`): bu botga ManyChat ulandi va uning xabarlari CRM'ga
+// kelmay qoldi. Ajratish qoidasi o'zgarmagan — xodim tomoniga tushgan
+// yangilanishga endi o'sha botga havola beriladi (lib/staffBot/moved.ts).
+// Webhook qaytarilsa ham xodim adashib o'quvchi oqimiga tushmaydi.
 
 export type BotSide = "staff" | "student";
 
@@ -125,8 +133,12 @@ export async function dispatchBotUpdate(db: Db, update: TelegramUpdate, defer: A
   try {
     const side = await pickSide(db, update);
     if (side === "staff") {
-      const cfg = loadStaffBotConfig();
-      if (isStaffBotReady(cfg)) await handleStaffUpdate(db, cfg, update, defer);
+      if (STAFF_BOT_HOST === "student") {
+        const cfg = loadStaffBotConfig();
+        if (isStaffBotReady(cfg)) await handleStaffUpdate(db, cfg, update, defer);
+      } else {
+        await redirectToStaffBot(update);
+      }
     } else if (side === "student") {
       await handleStudentUpdate(db, loadStudentBotConfig(), update, defer);
     }

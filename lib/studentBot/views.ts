@@ -6,6 +6,7 @@ import type { NewsItem } from "@/lib/news";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
 import { esc } from "@/lib/telegramApi";
 import type { ExamsView, NextLesson, PaymentsView } from "@/lib/studentBot/data";
+import { STAFF_BOT_HOST, staffBotUsername } from "@/lib/staffBot/config";
 import { CONTACT_BUTTON, SIGNUP_BUTTON } from "@/lib/studentBot/keyboards";
 import { formatPhone } from "@/lib/studentBot/phone";
 import { pe } from "@/lib/studentBot/premiumEmoji";
@@ -116,9 +117,12 @@ export function startPrompt(nick = ""): string {
     // 16.10.2026 — yangi o'quvchining o'zi ariza qoldiradi (lib/studentBot/signup.ts).
     `🆕 <b>Hali o'quvchimiz emasmisiz?</b> Pastdagi "${SIGNUP_BUTTON}" tugmasini bosing — bir daqiqada ariza qoldirasiz, filial administratori o'zi bog'lanadi.`,
     "",
-    // 29.09.2026 dan xodimlar ham shu botda (lib/botDispatch.ts) — raqami
-    // xodimniki bo'lsa bot o'zi xodimlar bo'limini ochadi.
-    "👔 <b>Markaz xodimimisiz?</b> Shu tugma bilan raqamingizni yuboring — bot sizni taniydi va xodimlar bo'limini ochadi.",
+    // Xodimlar qaysi botda — lib/staffBot/config.ts (17.10.2026 dan @akademiya_crm_bot).
+    // Shu botda bo'lsa raqami xodimniki odamga bot o'zi xodimlar bo'limini ochadi,
+    // aks holda o'sha botga havola beradi (lib/botDispatch.ts).
+    STAFF_BOT_HOST === "student"
+      ? "👔 <b>Markaz xodimimisiz?</b> Shu tugma bilan raqamingizni yuboring — bot sizni taniydi va xodimlar bo'limini ochadi."
+      : `👔 <b>Markaz xodimimisiz?</b> Xodimlar boti — @${staffBotUsername()}.`,
     "",
     `${pe("lock")} <i>Raqamingiz bazadagi o'quvchi, ota-ona yoki xodim ma'lumotlari bilan tekshiriladi.</i>`,
   ].join("\n");

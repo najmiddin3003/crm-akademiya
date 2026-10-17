@@ -111,7 +111,7 @@ globalThis.fetch = async (url, init) => {
   });
 };
 
-const { loadStaffBotConfig, isStaffBotReady } = await import("@/lib/staffBot/config");
+const { loadStaffBotConfig, isStaffBotReady, STAFF_BOT_HOST, staffBotUsername } = await import("@/lib/staffBot/config");
 const { handleStaffUpdate } = await import("@/lib/staffBot/router");
 const { completeLogin, getStaffUser, logoutStaff, STAFF_BOT_USERS } = await import("@/lib/staffBot/session");
 const { STAFF_BOT_ATTEMPTS } = await import("@/lib/staffBot/attempts");
@@ -120,9 +120,12 @@ const { getDb } = await import("@/lib/mongodb");
 // ── 1. Sozlamalar ───────────────────────────────────────────────────
 rule("SOZLAMALAR");
 const cfg = loadStaffBotConfig();
-// 29.09.2026 dan xodimlar @tizimli_akademiya_bot da (lib/staffBot/config.ts).
-line(`  TELEGRAM_STUDENT_BOT_TOKEN:       ${cfg.token ? "bor" : "YO'Q"}`);
-line(`  TELEGRAM_STUDENT_WEBHOOK_SECRET:  ${(process.env.TELEGRAM_STUDENT_WEBHOOK_SECRET || "").trim() ? "bor" : "YO'Q"}`);
+// Xodimlar qaysi botda — lib/staffBot/config.ts (`STAFF_BOT_HOST`; 17.10.2026 dan "crm").
+const tokenEnv = STAFF_BOT_HOST === "crm" ? "TELEGRAM_BOT_TOKEN" : "TELEGRAM_STUDENT_BOT_TOKEN";
+const secretEnv = STAFF_BOT_HOST === "crm" ? "TELEGRAM_WEBHOOK_SECRET" : "TELEGRAM_STUDENT_WEBHOOK_SECRET";
+line(`  Bot: @${staffBotUsername()} (${STAFF_BOT_HOST})`);
+line(`  ${tokenEnv}: ${cfg.token ? "bor" : "YO'Q"}`);
+line(`  ${secretEnv}: ${(process.env[secretEnv] || "").trim() ? "bor" : "YO'Q"}`);
 line(`  Bot tayyor: ${isStaffBotReady(cfg) ? "HA" : "YO'Q"}`);
 
 // ── 2. Webhook holati (haqiqiy so'rov — faqat o'qiydi) ──────────────

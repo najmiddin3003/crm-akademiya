@@ -1,19 +1,36 @@
-// XODIMLAR BOTI — sozlama.
+// XODIMLAR BOTI — sozlama. Xodimlar QAYSI BOTDA ishlashi — shu fayldagi
+// `STAFF_BOT_HOST` (YAGONA joy: token, @nom, QR havolasi, Mini App imzosi,
+// webhook'lardagi yo'naltirish hammasi shundan).
 //
-// 29.09.2026 dan xodimlar @tizimli_akademiya_bot da ishlaydi (foydalanuvchi:
-// "tizimli_akademiya botida xodimlar ishlashi kerak, crm_akademiya botimiz
-// faqat to'lovlarni guruhga yozadi"). Token — o'quvchilar botiniki
-// (`TELEGRAM_STUDENT_BOT_TOKEN`), webhook — `/api/telegram/student`: bitta
-// botda ikki oqim, yozgan odam xodimmi yoki o'quvchi/ota-onami —
-// lib/botDispatch.ts ajratadi.
+// TARIX:
+//   18.09.2026 — @akademiya_crm_bot (guruh boti bilan bitta: kassa).
+//   29.09.2026 — @tizimli_akademiya_bot (o'quvchilar bilan bitta bot,
+//                lib/botDispatch.ts ajratadi).
+//   17.10.2026 — YANA @akademiya_crm_bot. @tizimli_akademiya_bot ga ManyChat
+//                ulandi (yangi o'quvchilarga avtomatik javob), Telegram esa
+//                botga BITTA webhook beradi — o'sha botning xabarlari endi
+//                CRM'ga kelmaydi, xodimlar kira olmay qoldi. Foydalanuvchi:
+//                «xodimlarni akademiya_crm_bot ga o'tkaz».
 //
-// @akademiya_crm_bot (`TELEGRAM_BOT_TOKEN`) endi faqat GURUH boti: to'lov/
-// oylik/lid xabarlari va lid tugmalari (lib/sync/telegram.ts,
-// app/api/telegram/webhook). Unga shaxsiy yozgan xodim yangi botga
-// yo'naltiriladi (lib/staffBot/moved.ts).
+// Ikkinchi bot (xodimlar ISHLAMAYDIGAN) unga yozgan xodimni to'g'ri botga
+// yo'naltiradi (lib/staffBot/moved.ts), Mini App'da esa uning imzosi tanilib,
+// o'sha gap aytiladi (lib/staffBot/webapp.ts). Sessiyalar ko'chirilmaydi:
+// `staff_bot_users.chatId` — Telegram foydalanuvchi id'si, ikki botda bir xil.
+
+/**
+ * "crm"     — @akademiya_crm_bot (`TELEGRAM_BOT_TOKEN`, webhook /api/telegram/webhook);
+ * "student" — @tizimli_akademiya_bot (`TELEGRAM_STUDENT_BOT_TOKEN`, webhook
+ *             /api/telegram/student, o'quvchilar bilan bitta).
+ */
+export type StaffBotHost = "crm" | "student";
+
+export const STAFF_BOT_HOST: StaffBotHost = "crm";
+
+/** Xodimlar ISHLAMAYDIGAN bot — u yerga kelgan xodim yo'naltiriladi. */
+export const OTHER_BOT_HOST: StaffBotHost = STAFF_BOT_HOST === "crm" ? "student" : "crm";
 
 export interface StaffBotConfig {
-  /** `TELEGRAM_STUDENT_BOT_TOKEN` — @tizimli_akademiya_bot kaliti (o'quvchilar bilan umumiy). */
+  /** Xodimlar ishlaydigan botning kaliti (`STAFF_BOT_HOST`). */
   token: string;
   /**
    * Kassaga oid HAR BIR amal jurnalda shu belgi bilan yoziladi
@@ -22,37 +39,47 @@ export interface StaffBotConfig {
   origin: "telegram";
 }
 
+function tokenOf(host: StaffBotHost): string {
+  return ((host === "crm" ? process.env.TELEGRAM_BOT_TOKEN : process.env.TELEGRAM_STUDENT_BOT_TOKEN) || "").trim();
+}
+
+/**
+ * Botning @nomi. `getMe` so'ralmaydi (QR ekrani har 30 soniyada yangilanadi):
+ * `TELEGRAM_BOT_USERNAME` / `TELEGRAM_STUDENT_BOT_USERNAME`, bo'lmasa
+ * haqiqiy nomlar.
+ */
+function usernameOf(host: StaffBotHost): string {
+  const raw = host === "crm" ? process.env.TELEGRAM_BOT_USERNAME : process.env.TELEGRAM_STUDENT_BOT_USERNAME;
+  return (raw || "").trim().replace(/^@/, "") || (host === "crm" ? "akademiya_crm_bot" : "tizimli_akademiya_bot");
+}
+
 export function loadStaffBotConfig(): StaffBotConfig {
   return {
-    token: (process.env.TELEGRAM_STUDENT_BOT_TOKEN || "").trim(),
+    token: tokenOf(STAFF_BOT_HOST),
     origin: "telegram",
   };
 }
 
-/**
- * Botning @nomi — QR havolasi (lib/attendanceQr.ts) va eski botdagi
- * yo'naltirish tugmasi uchun. `getMe` so'ralmaydi (QR ekrani har 30 soniyada
- * yangilanadi): `TELEGRAM_STUDENT_BOT_USERNAME`, bo'lmasa @tizimli_akademiya_bot.
- */
+/** Xodimlar botining @nomi — QR havolasi (lib/attendanceQr.ts) va yo'naltirish tugmasi uchun. */
 export function staffBotUsername(): string {
-  return (process.env.TELEGRAM_STUDENT_BOT_USERNAME || "").trim().replace(/^@/, "") || "tizimli_akademiya_bot";
+  return usernameOf(STAFF_BOT_HOST);
+}
+
+/**
+ * Xodimlar ISHLAMAYDIGAN botning kaliti — unga yozgan xodimga javob berish
+ * (lib/staffBot/moved.ts) va o'sha bot menyusidan ochilgan Mini App'ni TANISH
+ * uchun (lib/staffBot/webapp.ts).
+ */
+export function otherBotToken(): string {
+  return tokenOf(OTHER_BOT_HOST);
 }
 
 /**
  * `t.me/<bot>?start=xodim` — xodimlar bo'limini ochadigan havola parametri
- * (eski botdagi yo'naltirish tugmasi, lib/staffBot/moved.ts; lib/botDispatch.ts
- * uni xodim oqimiga beradi).
+ * (yo'naltirish tugmasi, lib/staffBot/moved.ts; o'quvchilar bilan umumiy botda
+ * lib/botDispatch.ts uni xodim oqimiga beradi).
  */
 export const STAFF_START_PARAM = "xodim";
-
-/**
- * ESKI xodimlar botining (@akademiya_crm_bot) kaliti — faqat uning menyusida
- * qolgan Mini App tugmasini TANISH uchun (lib/staffBot/webapp.ts): imzo shu
- * kalitga mos kelsa, xodimga "bot ko'chdi" deyiladi.
- */
-export function legacyStaffBotToken(): string {
-  return (process.env.TELEGRAM_BOT_TOKEN || "").trim();
-}
 
 /**
  * «👤 Profilim» Mini App manzili (28.09.2026) — xodim o'z profilini saytdagidek
