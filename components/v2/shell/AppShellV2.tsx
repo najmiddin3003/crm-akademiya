@@ -8,7 +8,9 @@ import { NotificationsProvider } from "@/components/shared/NotificationsProvider
 import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 import { NavbarSprite, SidebarSprite } from "@/components/shared/ShellSprites";
 import { TaskInboxProvider } from "@/components/shared/TaskInboxProvider";
+import ReceiptHost from "@/components/v2/finance/ReceiptHost";
 import { DevNoticeBanner } from "./DevNotice";
+import { CreateProvider } from "./CreateContext";
 import { ShellProvider } from "./ShellContext";
 import SidebarV2 from "./SidebarV2";
 import TopbarV2, { type ShellUserV2 } from "./TopbarV2";
@@ -89,51 +91,56 @@ export default function AppShellV2({
             <SidebarSprite />
             <NavbarSprite />
 
-            <div className="flex h-screen overflow-hidden">
-              {!collapsed && (
-                <aside
-                  data-ui="v2"
-                  className="hidden w-62 shrink-0 flex-col border-r border-v2-border bg-v2-bg font-v2 text-v2-text lg:flex"
-                >
-                  <SidebarV2 {...sidebarProps} variant="desktop" onClose={() => setCollapsed(true)} />
-                </aside>
-              )}
+            {/* Ruxsatlar (./ShellContext) va «+ Yangi» formalari (./CreateContext) — yuqori
+                panel ham, sahifalar ham, qobiqdagi formalar ham ko'radi. */}
+            <ShellProvider value={{ permissions, isAdmin }}>
+              <CreateProvider>
+                <div className="flex h-screen overflow-hidden">
+                  {!collapsed && (
+                    <aside
+                      data-ui="v2"
+                      className="hidden w-62 shrink-0 flex-col border-r border-v2-border bg-v2-bg font-v2 text-v2-text lg:flex"
+                    >
+                      <SidebarV2 {...sidebarProps} variant="desktop" onClose={() => setCollapsed(true)} />
+                    </aside>
+                  )}
 
-              <div className="flex min-w-0 flex-1 flex-col">
-                <TopbarV2
-                  user={user}
-                  permissions={permissions}
-                  isAdmin={isAdmin}
-                  sidebarCollapsed={collapsed}
-                  onExpandSidebar={() => setCollapsed(false)}
-                  onOpenMenu={() => setDrawerOpen(true)}
-                />
-                {noticeOpen && <DevNoticeBanner onHide={() => setNoticeOpen(false)} />}
-                <div className="flex flex-1 overflow-hidden">
-                  {/* Sahifalar ruxsatni shu yerdan biladi (./ShellContext.tsx). */}
-                  <ShellProvider value={{ permissions, isAdmin }}>
-                    <main className="flex-1 overflow-y-auto">{children}</main>
-                  </ShellProvider>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <TopbarV2
+                      user={user}
+                      permissions={permissions}
+                      isAdmin={isAdmin}
+                      sidebarCollapsed={collapsed}
+                      onExpandSidebar={() => setCollapsed(false)}
+                      onOpenMenu={() => setDrawerOpen(true)}
+                    />
+                    {noticeOpen && <DevNoticeBanner onHide={() => setNoticeOpen(false)} />}
+                    <div className="flex flex-1 overflow-hidden">
+                      <main className="flex-1 overflow-y-auto">{children}</main>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Telefon/planshet: yon menyu chekma oynada. */}
-            {drawerOpen && (
-              <div data-ui="v2" className="fixed inset-0 z-50 font-v2 lg:hidden">
-                <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} aria-hidden />
-                <aside className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r border-v2-border bg-v2-bg text-v2-text shadow-v2-md">
-                  <SidebarV2
-                    {...sidebarProps}
-                    variant="drawer"
-                    onClose={() => setDrawerOpen(false)}
-                    onNavigate={() => setDrawerOpen(false)}
-                  />
-                </aside>
-              </div>
-            )}
+                {/* Telefon/planshet: yon menyu chekma oynada. */}
+                {drawerOpen && (
+                  <div data-ui="v2" className="fixed inset-0 z-50 font-v2 lg:hidden">
+                    <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} aria-hidden />
+                    <aside className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r border-v2-border bg-v2-bg text-v2-text shadow-v2-md">
+                      <SidebarV2
+                        {...sidebarProps}
+                        variant="drawer"
+                        onClose={() => setDrawerOpen(false)}
+                        onNavigate={() => setDrawerOpen(false)}
+                      />
+                    </aside>
+                  </div>
+                )}
+              </CreateProvider>
+            </ShellProvider>
 
             <TaskInboxGate />
+            {/* Formalar saqlangach toastdagi «Chekni ko'rish» — chek shu yerda ochiladi. */}
+            <ReceiptHost />
           </TaskInboxProvider>
         </NotificationsProvider>
       </BranchProvider>

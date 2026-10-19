@@ -58,5 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!out.ok) {
     return NextResponse.json({ ok: false, error: out.error }, { status: out.status });
   }
-  return NextResponse.json({ ok: true, cashbox: out.cashbox });
+  // `entryId` — yangi jurnal yozuvi (19.10.2026): yangi versiya oynasi saqlangach
+  // «Chekni ko'rish» tugmasi shu yozuvni ochadi. Eski mijozlar e'tibor bermaydi.
+  return NextResponse.json({ ok: true, cashbox: out.cashbox, entryId: out.entryId });
 }

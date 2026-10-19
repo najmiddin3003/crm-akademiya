@@ -160,6 +160,20 @@ export default function StaffTasksPage() {
     router.replace(hrefFor(tab), { scroll: false });
   }, [openParam, router, hrefFor, tab]);
 
+  // «+ Yangi → Topshiriq» (yangi versiya yuqori paneli) `?new=1` bilan keladi —
+  // shakl faqat rahbar/direktorga va u ma'lum bo'lgach (ma'lumot kelgach) bir
+  // marta ochiladi; manzildan esa ma'lumot kelgach olib tashlanadi.
+  const newParam = searchParams.get("new");
+  const [handledNew, setHandledNew] = useState<string | null>(null);
+  if (newParam !== handledNew && (newParam === null || mgr)) {
+    setHandledNew(newParam);
+    if (newParam === "1") setDrawer({ mode: "form", id: null });
+  }
+  useEffect(() => {
+    if (newParam === null || !data) return;
+    router.replace(hrefFor(tab), { scroll: false });
+  }, [newParam, data, router, hrefFor, tab]);
+
   // Batafsil (tarix bilan) — drawer ochilganda. Ijrochi ochsa server
   // «Ko'rildi» deb yozadi (`seen=1`).
   const detailId = drawer && drawer.id !== null ? drawer.id : null;

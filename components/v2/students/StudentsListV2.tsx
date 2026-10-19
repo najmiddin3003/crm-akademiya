@@ -24,11 +24,13 @@ import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
-import AddStudentModal from "@/components/orders/AddStudentModal";
+import { usePupils } from "@/components/orders/PupilsContext";
 import GroupPickerModal from "@/components/orders/GroupPickerModal";
 import SmsModal from "@/components/orders/SmsModal";
 import StudentStatusModal from "@/components/students/StudentStatusModal";
 import { useStudentsList } from "@/components/students/useStudentsList";
+import StudentPaymentModalV2 from "@/components/v2/finance/StudentPaymentModalV2";
+import { onMoneyChanged, onPupilCreated } from "@/components/v2/shell/v2Events";
 import ActionMenu, { type ActionMenuEntry } from "@/components/v2/ui/ActionMenu";
 import ColumnsControl from "@/components/v2/ui/ColumnsControl";
 import FloatingPanel from "@/components/v2/ui/FloatingPanel";
@@ -52,6 +54,7 @@ import {
   type StudentStatus,
 } from "@/lib/studentsData";
 import { downloadBlob, referralRows, studentsCsvBlob, studentsXlsBlob } from "@/lib/studentsExport";
+import NewStudentDrawerV2 from "./NewStudentDrawerV2";
 import StudentQuickPanel from "./StudentQuickPanel";
 import StudentsMoreFilters, { countMoreFilters, pickMoreFilters, type MoreFilters } from "./StudentsMoreFilters";
 import { useStudentColumns, type StudentColumnKey, type StudentSortKey } from "./studentsColumns";
@@ -131,7 +134,25 @@ export default function StudentsListV2() {
   const { t } = useT();
   const branch = useBranch();
   const { showSuccess: toastOk, showError: toastErr } = useToast();
-  const { rows, groups, loading, options, applyStatusSaved, reloadGroups } = useStudentsList();
+  const { rows, groups, loading, options, applyStatusSaved, reloadGroups, reloadBalances } = useStudentsList();
+  const { insertPupil } = usePupils();
+  // «+ Yangi» (yuqori panel) dan qo'shilgan o'quvchi va qabul qilingan to'lov — ro'yxat
+  // shu yerda ham darhol yangilansin (forma qobiqda — components/v2/shell/CreateContext.tsx).
+  const liveRef = useRef({ insertPupil, reloadGroups, reloadBalances });
+  useEffect(() => {
+    liveRef.current = { insertPupil, reloadGroups, reloadBalances };
+  });
+  useEffect(() => {
+    const offPupil = onPupilCreated((pupil, gid) => {
+      liveRef.current.insertPupil(pupil);
+      if (gid !== null) liveRef.current.reloadGroups();
+    });
+    const offMoney = onMoneyChanged(() => liveRef.current.reloadBalances());
+    return () => {
+      offPupil();
+      offMoney();
+    };
+  }, []);
   const groupById = useMemo(() => new Map<number, Group>(groups.map((g) => [g.id, g])), [groups]);
 
   const [search, setSearch] = useState("");
@@ -147,13 +168,42 @@ export default function StudentsListV2() {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
 
   const [addOpen, setAddOpen] = useState(false);
+  // «Yangi o'quvchi» panelidagi «Kategoriya bo'yicha saralangan» guruhlar: guruh
+  // kategoriyasi bazada yo'q — a'zolarining ko'pchiligi kategoriyasi (SAVOLLAR 83).
+  const groupCategory = useMemo(() => {
+    const out = new Map<number, string>();
+    if (!addOpen) return out;
+    const counts = new Map<number, Map<string, number>>();
+    for (const r of rows) {
+      if (!r.category) continue;
+      for (const gid of r.groupIds) {
+        const m = counts.get(gid) ?? new Map<string, number>();
+        m.set(r.category, (m.get(r.category) ?? 0) + 1);
+        counts.set(gid, m);
+      }
+    }
+    for (const [gid, m] of counts) {
+      let best = "";
+      let n = 0;
+      for (const [c, k] of m) {
+        if (k > n) {
+          best = c;
+          n = k;
+        }
+      }
+      out.set(gid, best);
+    }
+    return out;
+  }, [addOpen, rows]);
   const [groupFor, setGroupFor] = useState<{ id: number; name: string } | null>(null);
   const [smsFor, setSmsFor] = useState<{ id: number; name: string; phone: string } | null>(null);
   const [statusFor, setStatusFor] = useState<{ id: number; name: string; status: string; statusReason?: string } | null>(null);
+  // «To'lov qabul qilish» — tezkor paneldan, o'quvchi tanlangan holda.
+  const [payFor, setPayFor] = useState<EnrichedStudent | null>(null);
   // Tezkor panel — o'quvchi id'si; qator `rows` dan olinadi (holat o'zgarsa panel ham yangilanadi).
   const [panelId, setPanelId] = useState<number | null>(null);
   const panelRow = panelId === null ? null : (rows.find((r) => r.id === panelId) ?? null);
-  const modalOpen = addOpen || groupFor !== null || smsFor !== null || statusFor !== null;
+  const modalOpen = addOpen || groupFor !== null || smsFor !== null || statusFor !== null || payFor !== null;
 
   // Esc — panelni yopadi; ustida oyna (SMS, guruh, holat) ochiq bo'lsa avval o'sha yopilsin.
   useEffect(() => {
@@ -695,13 +745,17 @@ export default function StudentsListV2() {
         />
       </div>
 
-      {/* Oynalar — hozircha eski ko'rinishda (bo'limma-bo'lim almashadi). */}
+      {/* «Yangi o'quvchi» — yangi versiya o'ngdan paneli; qolgan oynalar hozircha eski ko'rinishda. */}
       {addOpen && (
-        <AddStudentModal
+        <NewStudentDrawerV2
+          groups={groups}
+          groupCategory={groupCategory}
           onClose={() => setAddOpen(false)}
-          onSave={() => {
-            setAddOpen(false);
+          onSaved={(pupil, gid) => {
+            // Ro'yxatda darhol (PupilsContext), tepada; guruh tanlangan bo'lsa — «Guruh» ustuni ham.
+            insertPupil(pupil);
             setPage(1);
+            if (gid !== null) reloadGroups();
           }}
         />
       )}
@@ -741,6 +795,15 @@ export default function StudentsListV2() {
         />
       )}
       {statusFor && <StudentStatusModal student={statusFor} onClose={() => setStatusFor(null)} onSaved={handleStatusSaved} />}
+      {payFor && (
+        <StudentPaymentModalV2
+          student={payFor}
+          groups={groups}
+          onClose={() => setPayFor(null)}
+          // Balans ustuni va paneldagi «Balans» yangi to'lovni darhol ko'rsatsin.
+          onSaved={() => reloadBalances()}
+        />
+      )}
 
       {/* 7. Tezkor panel. Kompyuterda (≥1024) — kontent hududi ichida (sahifa
           ildizi `relative`, yon menyu va yuqori panel ochiq qoladi, rasmdagidek);
@@ -755,6 +818,7 @@ export default function StudentsListV2() {
               groups={groups}
               onClose={() => setPanelId(null)}
               onSms={() => setSmsFor({ id: panelRow.id, name: panelRow.name, phone: panelRow.phone })}
+              onPay={() => setPayFor(panelRow)}
               onAddToGroup={() => setGroupFor({ id: panelRow.id, name: panelRow.name })}
               onChangeStatus={() => setStatusFor({ id: panelRow.id, name: panelRow.name, status: panelRow.status, statusReason: panelRow.statusReason })}
             />

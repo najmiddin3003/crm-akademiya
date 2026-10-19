@@ -45,6 +45,7 @@ export interface StudentsListData {
   applyStatusSaved: (pupil: Pupil) => void;
   /** Guruhlarni qayta o'qish — masalan o'quvchi guruhga qo'shilgandan keyin. */
   reloadGroups: () => void;
+  reloadBalances: () => void;
 }
 
 export function useStudentsList(): StudentsListData {
@@ -141,5 +142,12 @@ export function useStudentsList(): StudentsListData {
       .catch(() => {});
   }
 
-  return { rows, groups, loading, options, applyStatusSaved, reloadGroups };
+  /** Balanslarni qayta o'qish — to'lov qabul qilingandan keyin (kesh avval bekor qilingan bo'ladi). */
+  function reloadBalances() {
+    loadBalancesByIdCached()
+      .then((b) => setBalances(b))
+      .catch(() => {});
+  }
+
+  return { rows, groups, loading, options, applyStatusSaved, reloadGroups, reloadBalances };
 }

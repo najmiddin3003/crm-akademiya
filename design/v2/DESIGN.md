@@ -471,6 +471,45 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   `components/finance/usePayroll.ts` (eski `SalaryCreatePage` ham shundan). API: ixtiyoriy `note`.
   Rasmdan farqlar (soliq va karta qoidasi tizimdagidek va h.k.) — `SAVOLLAR.md` 61–70.
 
+## Formalar (rasmlar «To'lov qabul qilish», «Kassa amali», «Yangi o'quvchi», «Formalar — qoidalar», 19.10.2026)
+
+- **Qaysi oyna**: qisqa forma (~7 maydongacha) — **markazda** (To'lov qabul qilish, Kassa amali, Oylik
+  chiqarish), orqa fon xiralashadi; uzun forma — **o'ngdan panel** (Yangi o'quvchi, Yangi lid, Xodim) —
+  chapda ro'yxat ko'rinib turadi. **Telefonda ikkalasi ham pastdan** chiqadi (92 dvh gacha), asosiy tugma
+  pastda, to'liq kenglikda.
+- **Tuzilishi** (`components/v2/form/V2Dialog.tsx`, `ui/Modal` ustida): sarlavha amalni aytadi + izoh
+  qatori («Akademiya 4 Uchqo'rg'on kassasi») + ×; yorliq maydon TEPASIDA (`small`, o'rtacha qalin),
+  majburiy bo'lmagani «(ixtiyoriy)» (`text-3`); ochilganda birinchi maydon fokusda; pastki qator
+  `surface-2` + chegara: chapda «Enter saqlash · Esc yopish» (`kbd`) yoki katakcha («Saqlab, yana
+  qo'shish»), o'ngda «Bekor qilish» + **amal nomli** asosiy tugma («✓ To'lovni qabul qilish», «✓ Chiqimni
+  saqlash»). Enter — saqlash (ko'p qatorli matnda, ochiq ro'yxatda va qidiruvda emas); o'zgarish
+  kiritilgan forma yopilmoqchi bo'lsa — «Saqlanmagan o'zgarishlar bor» (`V2Confirm`, qizil «Yopish» /
+  «Davom etish»).
+- **Maydonlar** (`fields.tsx`): h-10, `border-field`, fokusda brend chegara + halqa; **summa** — h-12,
+  20 px qalin, o'ngda «so'm», 3 xonadan bo'linadi; telefon — chapda «+998» bo'lagi; segment (to'lov
+  turi, tablar) — `surface-2` konteyner, faol bo'lak oq + chegara + soya, turlarda rangli nuqta (naqd
+  yashil, plastik binafsha, terminal ko'k, inkassa sariq); chip (oy, kategoriya) — tanlangani
+  `brand-bg` + brend chegara + ✓. Boy tanlov (`V2Picker`): ikki qatorli variant (qalin nom +
+  «· ustoz · kunlar vaqt»), chapda nuqta/ikonka, o'ngda izoh («6 o'quvchi»), bo'lim sarlavhasi
+  («Chet tillari · 3 ta guruh»), 7 tadan ko'pida qidiruv, pastki qator («Kategoriya bo'yicha saralangan ·
+  Hammasini ko'rsatish»). Sana — «📅 19-oktyabr | 12:20» (vaqt — saqlash payti); tug'ilgan sana —
+  «kk.oo.yyyy» niqobi.
+- **Tekshiruv**: xato — maydondan chiqqanda (yozib turganda emas) yoki saqlashda; qizil chegara + ostida
+  ikonkali xabar («⚠ Raqam to'liq emas — 9 ta raqam kerak»); saqlashda fokus BIRINCHI xatoga o'tadi.
+  Ogohlantirish to'xtatmaydi — sariq blok («Bu raqam O'quvchilarda bor: … Ochish»). Saqlab bo'lmaydigan
+  holat (izohdagi oy farqi, oylik chegarasi) — qizil blok + asosiy tugma o'chiq.
+- **Saqlangach** — toast pastki o'ngda (telefonda yuqoriroq): ✓ `success-bg`, sarlavha («To'lov qabul
+  qilindi»), tafsilot qatorlari (ism; «280 000 so'm · Naqd · Rahbar kassasi»), havola («Chekni ko'rish»),
+  ×; 5 s, sichqoncha ustida kutadi; xato o'zi yopilmaydi (`showToast`, `components/ui/Toast.tsx`).
+- **«+ Yangi»** (yuqori panel): Lid, O'quvchi, To'lov qabul qilish, Kassa amali, Topshiriq; rahbarga
+  qo'shimcha Guruh, Xodim, Bonus / jarima. O'quvchi, To'lov va Kassa amali — SHU JOYDA
+  (`components/v2/shell/CreateContext.tsx`), qolganlari o'z sahifasida (`?add=1`, `?new=1`).
+- Kodda: `components/v2/form/` (V2Dialog, V2Confirm, fields, V2Picker, V2DateField, MonthChips,
+  StudentSearchField, V2SuggestInput, BirthDateField); oynalar — `components/v2/finance/
+  StudentPaymentModalV2.tsx`, `CashOperationModalV2.tsx`, `components/v2/students/NewStudentDrawerV2.tsx`.
+  Mantiq eski oynalar bilan BITTA: `components/finance/useKirimForm.ts`, `useChiqimForm.ts`,
+  `useTransferToForm.ts`, `components/orders/useStudentSources.ts`. Rasmdan farqlar — `SAVOLLAR.md` 71–86.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

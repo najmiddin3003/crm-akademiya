@@ -25,6 +25,7 @@ import { useCanOpen } from "@/components/v2/shell/ShellContext";
 import ActionMenu, { type ActionMenuEntry } from "@/components/v2/ui/ActionMenu";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { GROUP_TONE, roomLabel, timeLabel } from "@/components/v2/ui/groupStatus";
+import { prefetchStudentPayment } from "@/components/v2/finance/StudentPaymentModalV2";
 import type { Group } from "@/lib/groups";
 import type { EnrichedStudent } from "@/lib/studentsData";
 
@@ -33,8 +34,9 @@ import type { EnrichedStudent } from "@/lib/studentsData";
 //
 //   sarlavha: avatar, ism, holat («Yangi o'quvchi» …), kurs · xona; to'liq
 //             profil va yopish;
-//   amallar:  «To'lov qabul qilish» (Kassaga — o'quvchi tanlangan holda; faqat
-//             Kassaga ruxsati borga), SMS, qo'ng'iroq, «⋯»;
+//   amallar:  «To'lov qabul qilish» (shu yerda oyna — components/v2/finance/
+//             StudentPaymentModalV2.tsx; faqat Kassaga ruxsati borga), SMS,
+//             qo'ng'iroq, «⋯»;
 //   Balans | Tanga; Ma'lumotlar; Guruh (kartalar); To'lovlar (oxirgi 5 ta);
 //   Tarix.
 //
@@ -105,6 +107,7 @@ export default function StudentQuickPanel({
   groups,
   onClose,
   onSms,
+  onPay,
   onAddToGroup,
   onChangeStatus,
 }: {
@@ -112,6 +115,8 @@ export default function StudentQuickPanel({
   groups: Group[];
   onClose: () => void;
   onSms: () => void;
+  /** «To'lov qabul qilish» oynasi (o'quvchi tanlangan holda). */
+  onPay: () => void;
   onAddToGroup: () => void;
   onChangeStatus: () => void;
 }) {
@@ -273,13 +278,17 @@ export default function StudentQuickPanel({
 
         <div className="mt-4 flex items-center gap-2">
           {canPay && (
-            <Link
-              href={`/finance-cash?kirim=${row.id}`}
+            <button
+              type="button"
+              onClick={onPay}
+              // Kassalar ro'yxati oldindan — bosilganda oyna kutmasdan ochilsin.
+              onPointerEnter={prefetchStudentPayment}
+              onFocus={prefetchStudentPayment}
               className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-v2-md bg-v2-brand px-3 text-v2-body font-semibold text-v2-on-brand transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:shadow-v2-focus"
             >
               <Wallet className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
               <span className="truncate">{t("To'lov qabul qilish")}</span>
-            </Link>
+            </button>
           )}
           <button
             type="button"

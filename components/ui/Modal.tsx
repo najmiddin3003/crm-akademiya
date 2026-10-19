@@ -142,6 +142,12 @@ export interface ModalProps {
   /** Konteyner z-index'i (standart 100). Boshqa modal ustida ochiladigan
    * drawer/oynalar uchun (masalan kassa oynasi ustidagi tasdiq). */
   zIndex?: number;
+  /** Tashqi (overlay + panel) konteynerga qo'shimcha klasslar — masalan
+   * telefonda oynani pastga joylash (yangi versiya formalari, 19.10.2026). */
+  containerClassName?: string;
+  /** Foydalanuvchi yopishi (Esc, overlay, X) OLDIDAN: `false` qaytarsa yopilmaydi
+   * (masalan «Saqlanmagan o'zgarishlar bor» so'rovi). Dasturiy `close()` ga ta'sir qilmaydi. */
+  beforeDismiss?: () => boolean;
 }
 
 // SSR'da portal chizib bo'lmaydi; gidratatsiya tugaguncha ham hech narsa
@@ -172,6 +178,8 @@ export default function Modal({
   bare = false,
   disableOverlayClose = false,
   zIndex,
+  containerClassName = "",
+  beforeDismiss,
 }: ModalProps) {
   const { t } = useT();
   const mounted = useMounted();
@@ -190,8 +198,9 @@ export default function Modal({
   // Foydalanuvchi yopishi (Esc, overlay, X) — `locked` bo'lsa e'tiborsiz.
   const dismiss = useCallback(() => {
     if (locked) return;
+    if (beforeDismiss && !beforeDismiss()) return;
     close();
-  }, [locked, close]);
+  }, [locked, close, beforeDismiss]);
 
   // Esc — yopish. Ichkaridagi Select/DateField Esc'ni o'zi ushlab
   // (stopPropagation) avval o'z ro'yxatini yopadi, bu yerga yetib kelmaydi.
@@ -233,7 +242,7 @@ export default function Modal({
 
   const node = (
     <ModalContext.Provider value={{ closing, close }}>
-      <div className={`fixed inset-0 z-[100] flex ${isDrawer ? "justify-end" : "items-center justify-center p-4"}`} style={zIndex !== undefined ? { zIndex } : undefined}>
+      <div className={`fixed inset-0 z-[100] flex ${isDrawer ? "justify-end" : "items-center justify-center p-4"} ${containerClassName}`} style={zIndex !== undefined ? { zIndex } : undefined}>
         <div
           className={`absolute inset-0 bg-black/40 backdrop-blur-sm ${closing ? "ui-overlay-out" : "ui-overlay-in"}`}
           onMouseDown={disableOverlayClose ? undefined : dismiss}

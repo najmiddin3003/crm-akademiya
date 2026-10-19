@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, CalendarCheck, Download, History, ListFilter, MoreHorizontal, Pencil, Plus, Search, SquareArrowOutUpRight, Upload, Users, X } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
@@ -95,6 +95,14 @@ export default function GroupsListV2({ initialGroups, initialFrozenPupils }: Gro
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [addOpen, setAddOpen] = useState(false);
+  // «+ Yangi → Guruh» (yuqori panel) `/groups?add=1` bilan keladi. Parametr —
+  // oynaning holati; yopilganda manzildan olinadi (LeadsPage dagi qolip).
+  const pathname = usePathname();
+  const addFromUrl = useSearchParams().get("add") === "1";
+  const closeAdd = () => {
+    setAddOpen(false);
+    if (addFromUrl) router.replace(pathname, { scroll: false });
+  };
   const [editFor, setEditFor] = useState<Group | null>(null);
 
   const setFilter = <K extends keyof GroupFilters>(k: K, v: GroupFilters[K]) => {
@@ -524,7 +532,7 @@ export default function GroupsListV2({ initialGroups, initialFrozenPupils }: Gro
       </div>
 
       {/* Oynalar — hozircha eski ko'rinishda (bo'limma-bo'lim almashadi). */}
-      {addOpen && <GroupFormModal groups={groups} onClose={() => setAddOpen(false)} onSaved={upsert} />}
+      {(addOpen || addFromUrl) && <GroupFormModal groups={groups} onClose={closeAdd} onSaved={upsert} />}
       {editFor && <GroupFormModal group={editFor} groups={groups} onClose={() => setEditFor(null)} onSaved={upsert} />}
     </div>
   );

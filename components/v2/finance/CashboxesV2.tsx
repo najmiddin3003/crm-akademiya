@@ -2,19 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChartColumn, Download, FileText, Plus, Wallet, X } from "lucide-react";
+import { ChartColumn, Download, FileText, Plus, Wallet } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { useBranch } from "@/components/shared/BranchContext";
 import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/ui/Modal";
 import type { DateRange } from "@/components/ui/DateRangePicker";
-import CashboxAdjustDrawer from "@/components/finance/CashboxAdjustDrawer";
 import CashboxDividendDrawer from "@/components/finance/CashboxDividendDrawer";
 import CashboxDrawer from "@/components/finance/CashboxDrawer";
 import CashboxInvestmentDrawer from "@/components/finance/CashboxInvestmentDrawer";
-import CashboxKirimDrawer from "@/components/finance/CashboxKirimDrawer";
 import CashboxTransferDrawer from "@/components/finance/CashboxTransferDrawer";
-import CashboxTransferToDrawer from "@/components/finance/CashboxTransferToDrawer";
 import EditHistoryModal from "@/components/finance/EditHistoryModal";
 import HandoverModal from "@/components/finance/HandoverModal";
 import TransactionDetailDrawer from "@/components/finance/TransactionDetailDrawer";
@@ -32,6 +29,8 @@ import type { Cashbox } from "@/lib/cashboxes";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import type { TransactionEntry } from "@/lib/transactionEntries";
 import CashboxCardV2 from "./CashboxCardV2";
+import CashOperationModalV2, { type CashTab } from "./CashOperationModalV2";
+import { onMoneyChanged } from "@/components/v2/shell/v2Events";
 import CashTransactionsV2 from "./CashTransactionsV2";
 import { useHiddenBalances } from "./hiddenBalances";
 
@@ -44,9 +43,11 @@ import { useHiddenBalances } from "./hiddenBalances";
 //   o'ngda:   «Tranzaksiyalar» — BARCHA kassalar bo'yicha (./CashTransactionsV2),
 //             kartochka bosilsa shu kassaga toraytiriladi.
 //
-// Hamma amal va oyna — ESKI sahifadagi (components/finance/*: Kirim, Chiqim,
-// Ko'chirish, Dividend, Sarmoya, kassa tahriri, kunlik topshiruv, tranzaksiya
-// oynasi, chek). Ma'lumot o'sha API'lardan: GET /api/cashboxes (xodimga faqat
+// Kirim / Chiqim / Ko'chirish — YANGI «Kassa amali» oynasi (./CashOperationModalV2,
+// 19.10.2026; mantiq eski oynalarniki — components/finance/use*Form.ts). Qolgan
+// amal va oynalar — ESKI sahifadagi (components/finance/*: Dividend, Sarmoya,
+// kassa tahriri, to'lov turlari orasida ko'chirish, kunlik topshiruv,
+// tranzaksiya oynasi, chek). Ma'lumot o'sha API'lardan: GET /api/cashboxes (xodimga faqat
 // o'z kassasi), /api/transaction-entries. Rasmda bosh kassa ro'yxatda yo'q
 // («Rahbar panelida») — Rahbar paneli hali yo'q, shu bois u shu yerda, eng
 // tepada (design/v2/SAVOLLAR.md, 51–60).
@@ -106,13 +107,15 @@ export default function CashboxesV2() {
     return Number.isInteger(n) && n > 0 ? n : null;
   });
   const presetAtLoad = useRef(presetPupil);
+  // `?kirim=` bilan kelinganda «Kassa amali → Kirim» O'ZI ochiladi (kassa oynaning
+  // ichida tanlanadi) — kassalar va o'quvchilar ro'yxati kelgach.
+  const [presetOpen, setPresetOpen] = useState(() => presetPupil !== null);
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Cashbox | null>(null);
   const [transferState, setTransferState] = useState<{ cashbox: Cashbox; from: string } | null>(null);
-  const [transferToTarget, setTransferToTarget] = useState<Cashbox | null>(null);
-  const [adjustTarget, setAdjustTarget] = useState<Cashbox | null>(null);
-  const [kirimTarget, setKirimTarget] = useState<Cashbox | null>(null);
+  // «Kassa amali» — kartochkadagi Kirim / Chiqim / Ko'chirish tugmasidan.
+  const [opTarget, setOpTarget] = useState<{ cashboxId: number; tab: CashTab } | null>(null);
   const [dividendTarget, setDividendTarget] = useState<Cashbox | null>(null);
   const [investmentTarget, setInvestmentTarget] = useState<Cashbox | null>(null);
   const [handoverOpen, setHandoverOpen] = useState(false);
@@ -128,7 +131,7 @@ export default function CashboxesV2() {
   const { names: txTypeNames } = useTransactionTypes();
   // O'quvchilar — Kirim/Chiqim oynalariga (id bilan, ismdoshlar ajralsin) va
   // jadvaldagi ismni profilga bog'lash uchun; yengil rejim (eski sahifadagidek).
-  const { students: dbStudentRows, byName: studentByName, loading: studentsLoading, refresh: refreshStudents, refreshing: studentsRefreshing } = useStudents({ light: true });
+  const { students: dbStudentRows, byName: studentByName, loading: studentsLoading } = useStudents({ light: true });
   const studentIdByName = useMemo(() => {
     const map = new Map<string, number>();
     for (const [key, s] of studentByName) map.set(key, s.id);
@@ -176,6 +179,12 @@ export default function CashboxesV2() {
     bump();
     refreshCashboxes();
   }
+  // «+ Yangi» dagi «To'lov qabul qilish» / «Kassa amali» (forma qobiqda) — shu sahifa ham yangilansin.
+  const afterMoneyRef = useRef(afterMoney);
+  useEffect(() => {
+    afterMoneyRef.current = afterMoney;
+  });
+  useEffect(() => onMoneyChanged(() => afterMoneyRef.current()), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,8 +196,6 @@ export default function CashboxesV2() {
         if (presetAtLoad.current !== null) {
           // Manzildan olib tashlanadi — sahifa yangilansa oyna qayta ochilmasin.
           window.history.replaceState(null, "", window.location.pathname);
-          const usable = (d.cashboxes as Cashbox[]).filter((c) => !c.archived);
-          if (usable.length === 1) setKirimTarget(usable[0]);
         }
       })
       .finally(() => {
@@ -330,7 +337,9 @@ export default function CashboxesV2() {
       : []),
   ];
 
-  const presetName = presetPupil !== null ? (dbStudentRows.find((s) => s.id === presetPupil)?.name ?? `#${presetPupil}`) : "";
+  // O'quvchidan to'lov (`?kirim=`) — o'quvchi «Kassa amali → Kirim» da oldindan tanlanadi.
+  const presetRow = presetPupil !== null ? (dbStudentRows.find((s) => s.id === presetPupil) ?? null) : null;
+  const presetReady = presetOpen && presetPupil !== null && !loading && !studentsLoading && cashboxes.some((c) => !c.archived);
   const tabs: { key: Tab; label: string; n: number }[] = [
     { key: "active", label: t("Aktiv"), n: counts.active },
     { key: "archived", label: t("Arxiv"), n: counts.archived },
@@ -394,19 +403,6 @@ export default function CashboxesV2() {
             })}
           </div>
 
-          {/* O'quvchidan to'lov: kassa bir nechta — kassir o'zi tanlaydi. */}
-          {presetPupil !== null && !kirimTarget && (
-            <div className="flex shrink-0 items-start gap-2 rounded-v2-lg border border-v2-brand bg-v2-brand-bg px-3 py-2.5 text-v2-small text-v2-text">
-              <Wallet className="mt-0.5 size-4 shrink-0 text-v2-brand-text" strokeWidth={1.75} aria-hidden />
-              <span className="min-w-0 flex-1">
-                {t("{name} uchun to'lov: kassani tanlang va «Kirim» ni bosing — o'quvchi oldindan tanlanadi.", { name: presetName })}
-              </span>
-              <button type="button" onClick={() => setPresetPupil(null)} aria-label={t("Bekor qilish")} title={t("Bekor qilish")} className="shrink-0 rounded-v2-sm p-0.5 text-v2-text-2 hover:bg-v2-surface/60 hover:text-v2-text">
-                <X className="size-3.5" strokeWidth={2} />
-              </button>
-            </div>
-          )}
-
           {loading &&
             Array.from({ length: 3 }, (_, i) => (
               <div key={`sk${i}`} className="shrink-0 rounded-v2-lg border border-v2-border p-4" aria-hidden>
@@ -456,16 +452,9 @@ export default function CashboxesV2() {
                   rangeText={rangeText}
                   onSelect={() => setCashboxFilter((cur) => (cur === c.id ? null : c.id))}
                   onToggleHidden={() => hiddenStore.toggle(c.id)}
-                  onKirim={() => {
-                    setKirimTarget(c);
-                    // Qabulxona hozirgina qo'shgan o'quvchi ham ko'rinsin — fonda (eski sahifadagidek).
-                    refreshStudents();
-                  }}
-                  onChiqim={() => {
-                    setAdjustTarget(c);
-                    refreshStudents();
-                  }}
-                  onTransferTo={() => setTransferToTarget(c)}
+                  onKirim={() => setOpTarget({ cashboxId: c.id, tab: "kirim" })}
+                  onChiqim={() => setOpTarget({ cashboxId: c.id, tab: "chiqim" })}
+                  onTransferTo={() => setOpTarget({ cashboxId: c.id, tab: "kochirish" })}
                   onTransferMethod={(from) => setTransferState({ cashbox: c, from })}
                   onDividend={() => setDividendTarget(c)}
                   onInvestment={() => setInvestmentTarget(c)}
@@ -527,46 +516,30 @@ export default function CashboxesV2() {
       {transferState && (
         <CashboxTransferDrawer cashbox={transferState.cashbox} initialFrom={transferState.from} onClose={() => setTransferState(null)} onSaved={(c) => afterMoney(c)} />
       )}
-      {adjustTarget && (
-        <CashboxAdjustDrawer
-          cashbox={adjustTarget}
-          mode="chiqim"
-          students={dbStudentRows}
-          studentsLoading={studentsLoading}
-          studentsRefreshing={studentsRefreshing}
-          onClose={() => setAdjustTarget(null)}
-          onSaved={(c) => afterMoney(c)}
-        />
-      )}
-      {kirimTarget && (
-        <CashboxKirimDrawer
-          cashbox={kirimTarget}
-          students={dbStudentRows}
-          studentsLoading={studentsLoading}
-          studentsRefreshing={studentsRefreshing}
-          initialStudentKey={presetPupil !== null ? String(presetPupil) : undefined}
+      {(opTarget || presetReady) && (
+        <CashOperationModalV2
+          cashboxes={cashboxes}
+          initialCashboxId={opTarget?.cashboxId}
+          initialTab={opTarget?.tab ?? "kirim"}
+          presetStudent={!opTarget || opTarget.tab === "kirim" ? presetRow : null}
           onClose={() => {
-            setKirimTarget(null);
             // O'quvchidan kelgan to'lov bir marta — keyingi «Kirim» odatdagidek bo'sh.
-            setPresetPupil(null);
+            if (!opTarget || opTarget.tab === "kirim") setPresetPupil(null);
+            setPresetOpen(false);
+            setOpTarget(null);
           }}
-          onSaved={(c) => afterMoney(c)}
+          onSaved={(r) => {
+            if (r.from && r.to) {
+              patchCashbox(r.from);
+              patchCashbox(r.to);
+              afterMoney();
+            } else afterMoney(r.cashbox);
+          }}
         />
       )}
       {handoverOpen && <HandoverModal onClose={() => setHandoverOpen(false)} />}
       {dividendTarget && <CashboxDividendDrawer cashbox={dividendTarget} onClose={() => setDividendTarget(null)} onSaved={(c) => afterMoney(c)} />}
       {investmentTarget && <CashboxInvestmentDrawer cashbox={investmentTarget} onClose={() => setInvestmentTarget(null)} onSaved={(c) => afterMoney(c)} />}
-      {transferToTarget && (
-        <CashboxTransferToDrawer
-          cashbox={transferToTarget}
-          onClose={() => setTransferToTarget(null)}
-          onSaved={({ from, to }) => {
-            patchCashbox(from);
-            patchCashbox(to);
-            afterMoney();
-          }}
-        />
-      )}
       {detailEntry && (
         <TransactionDetailDrawer
           entry={detailEntry}

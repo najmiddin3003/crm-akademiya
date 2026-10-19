@@ -56,6 +56,18 @@ export async function GET(req: Request) {
   const studentName = sp.get("studentName");
   if (studentName?.trim()) filter.studentName = nameFilter(studentName);
 
+  // ?id=… — BITTA yozuv (19.10.2026): yangi versiya oynasi saqlangach «Chekni
+  // ko'rish» shu yozuvni so'raydi (`cashboxId` bilan birga — kassa egaligi
+  // pastdagi odatiy tekshiruvdan o'tadi). Boshqa filtrlar bilan birga ishlaydi.
+  const idRaw = sp.get("id");
+  if (idRaw !== null) {
+    const id = Number(idRaw);
+    if (!Number.isInteger(id) || id <= 0) {
+      return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
+    }
+    filter.id = id;
+  }
+
   // ?pupilId=… — BITTA O'QUVCHINING yozuvlari, ID bo'yicha.
   //
   // `?studentName=` NING O'RNIGA: ism yagona emas (bazada 545 ta ism

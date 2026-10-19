@@ -375,6 +375,92 @@ Rasmda Oylik chiqarish «Rahbar paneli» guruhida (Umumiy ko'rinish, Rahbar kass
 Tasdiqlar, Oylik chiqarish, Moliyaviy reja…).
 *Taxmin:* menyu o'zgartirilmadi; Rahbar paneli qurilganda (51-savol) birga ko'chadi.
 
+### 4-qism: formalar (To'lov qabul qilish, Kassa amali, Yangi o'quvchi, «+ Yangi»), 19.10.2026
+
+**71. To'lov qabul qilish — «Qaysi oy uchun» chiplari** — ochiq
+Rasmdagidek: joriy oy («· joriy») va keyingi ikki oy; o'tgan oy — «Boshqa oy» panelida (yil + 12 oy).
+Sana o'zgarsa oy ham ergashadi, oy qo'lda tanlangan bo'lsa — yo'q (eski oyna qoidasi).
+*Taxmin:* qarz to'lovi ko'p bo'lsa chiplarga o'tgan oy ham qo'shiladi.
+
+**72. To'lov qabul qilish — tur, o'qituvchi, qayerdan ochiladi** — taxmin
+Oynada «Toifa» yo'q (rasmdagidek): tur — «Mijoz» da O'quvchi + O'qituvchi belgilangan birinchi kirim
+turi («Kurs to'lovi (oylik)»); o'qituvchi — tanlangan guruhdan (guruh almashsa o'zi almashadi).
+Guruhi yo'q o'quvchida — «O'qituvchi (ixtiyoriy)» tanlovi (eski oynada o'qituvchi qo'lda tanlanardi).
+Boshqa turdagi kirim — «Kassa amali → Kirim». Mantiq, tekshiruv va so'rov — eski Kirim oynasi bilan
+BITTA (components/finance/useKirimForm.ts): izohdagi oy qorovuli, tanga chegirmasi o'sha-o'sha.
+O'quvchilar → tezkor panel → «To'lov qabul qilish» endi shu oynani ochadi (Kassalarga o'tmaydi).
+
+**73. To'lov qabul qilish — kassa va to'lov turi sukuti** — taxmin
+Kassa — Bosh kassa (xodim faqat o'z kassasini ko'radi — o'shanisi). To'lov turi sukutsiz: kassir
+ataylab tanlaydi (rasmda «Naqd» tanlangan — u kassir bosgandan keyingi holat deb olindi).
+
+**74. «Sana va vaqt» — vaqt tanlanmaydi** — ochiq
+Server yozuvga SAQLASH paytidagi vaqtni qo'yadi (lib/cashboxAdjust.ts → nowTime), shuning uchun
+maydonda joriy soat ko'rsatiladi va o'zi yangilanadi. Vaqtni qo'lda kiritish kerakmi? (API'ga
+ixtiyoriy `time` qo'shiladi.)
+
+**75. Toast «Chekni ko'rish»** — qilindi
+Saqlangach pastki o'ngda «To'lov qabul qilindi» + ism + «summa · tur · kassa» + «Chekni ko'rish»;
+chek oynasi qobiqda ochiladi (forma allaqachon yopilgan). Kassa amali → Kirim ham; Chiqim va
+Ko'chirmada chek tugmasi yo'q.
+
+**76. Kassa amali — «Chek rasmi (ixtiyoriy)»** — ochiq
+Rasmdagi yuklash maydoni QILINMADI: tranzaksiya yozuvida fayl saqlanadigan joy yo'q (jurnal,
+Sheets, Telegram ham bilmaydi). Qilish uchun: Cloudinary papka, yozuvga fayl manzili, tranzaksiya
+oynasida ko'rsatish. Kerakmi?
+
+**77. Kassa amali — «To'lov turi» izohi** — taxmin
+Rasmda «Shu kassa qabul qiladigan turlar»; bazada kassaga bog'langan turlar ro'yxati yo'q.
+*Taxmin:* Chiqim va Ko'chirishda — shu kassada mablag'i bor turlar (eski oynalar qoidasi), izohi
+«Kassada mablag'i bor turlar»; Kirimda — barcha faol turlar. Kassa ostida tanlangan turning qoldig'i
+(«Plastik qoldig'i: … so'm»), kartochkada yashirilgan kassada «•••••• · summalar yashirilgan».
+
+**78. Kassa amali — Ko'chirish manzili** — ochiq (52-savol bilan)
+Eski oynadagidek — tizimdagi hamma kassa (faqat nomi). Faqat Rahbar kassasiga cheklash — 52-savol.
+
+**79. Kassa amali — tablar** — taxmin
+Tab almashganda kiritilgan narsa YO'QOLMAYDI (tab yashirinadi); «Saqlanmagan o'zgarishlar bor»
+istalgan tabdagi o'zgarishga qaraydi; saqlash — faol tabniki. Kassani oyna ichida almashtirsa
+bo'ladi (rasmdagi «Kassa» maydoni). Mantiq — eski oynalarniki (useKirimForm, useChiqimForm,
+useTransferToForm): oylik chegarasi, kelajak/yopilgan oy, o'quvchiga qaytarish, «tasdiq kutmoqda».
+
+**80. Kassa amali — Chiqim summasi bitta** — taxmin
+Eski Chiqim oynasida bir nechta «Qiymat» qatori (+) bor edi; rasmda bitta «Summa». Bitta qoldi.
+Kirimdagi «uchinchi shaxs» qatorlari (Qiymat + Oy) saqlandi.
+
+**81. Yangi o'quvchi — majburiy maydonlar** — taxmin
+Rasmda «(ixtiyoriy)» faqat Tug'ilgan sana va Guruhda. *Taxmin:* Ism, Familiya, Telefon (9 raqam),
+Kategoriya, Manba — majburiy (eski oynada faqat Ism va Manba). Telefonsiz o'quvchi kerak bo'lsa —
+Telefon ixtiyoriy qilinadi.
+
+**82. Yangi o'quvchi — Filial** — ochiq
+Server o'quvchini NAVBARDAGI filialga yozadi; maydon faqat ko'rsatadi («Navbardagi filial»).
+Boshqa filialni shu yerda tanlash — server o'zgarishi (filial ruxsati tekshiruvi bilan). Kerakmi?
+
+**83. Yangi o'quvchi — guruh kategoriyasi** — taxmin
+Bazada guruh ↔ kategoriya bog'lanishi yo'q. *Taxmin:* guruh kategoriyasi = a'zolarining ko'pchiligi
+kategoriyasi (O'quvchilar sahifasidan ochilganda); «Kategoriya bo'yicha saralangan · Hammasini
+ko'rsatish». «+ Yangi» dan ochilganda saralanmaydi. Aniq bog'lanish kerak bo'lsa — kursga
+«Kategoriya» maydoni.
+
+**84. Yangi o'quvchi — «Saqlab, yana qo'shish», «Boshqa» manba, takroriy telefon** — taxmin
+Keyingisi uchun kategoriya, manba va guruh qoladi, shaxsiy maydonlar tozalanadi. «Boshqa» manba —
+eski ichki oyna o'rniga Manba ostida matn maydoni. Takroriy telefon — sariq ogohlantirish
+(«Bu raqam O'quvchilarda bor: … Ochish» — yangi varaqda), saqlashni to'xtatmaydi.
+
+**85. «+ Yangi» menyusi** — taxmin
+O'quvchi (o'ngdan), To'lov qabul qilish va Kassa amali (markazda) — SHU JOYDA; Lid — Lidlar
+sahifasida (`?add=1`, eski oyna); Topshiriq — Topshiriqlar sahifasida (`?new=1`, faqat rahbar
+rejimida ko'rinadi). Rahbar (admin) bandlari: Guruh (`/groups?add=1` — oyna o'zi ochiladi), Xodim
+va Bonus/jarima — sahifasiga o'tadi (formasi hali yangi versiyada yo'q). Telefonda «+ Yangi»
+avvalgidek yo'q.
+
+**86. Toast va tasdiq oynasi** — qilindi (qisman)
+Yangi versiyada toast pastki o'ngda (telefonda pastki menyu ustida), 5 s, sichqoncha ustida kutadi,
+xato o'zi yopilmaydi («Qayta urinish» — qayerda ma'noli bo'lsa). Xavfli amal tasdig'i (qizil tugma,
+«Kassani arxivlaysizmi?» qolipi) tayyor; hozircha «Saqlanmagan o'zgarishlar bor» da ishlaydi,
+qolgan joylar sahifalari yangilanganda ulanadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

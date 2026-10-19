@@ -23,6 +23,12 @@ interface PupilsContextValue {
   loading: boolean;
   createPupil: (values: NewPupilValues) => Promise<Pupil | null>;
   /**
+   * Boshqa joyda (POST /api/pupils) yaratilgan o'quvchini ro'yxat boshiga qo'shadi —
+   * yangi versiya «Yangi o'quvchi» paneli so'rovni o'zi yuboradi (server xabarini
+   * ko'rsatish uchun), ro'yxat esa shu yerda darhol yangilansin (19.10.2026).
+   */
+  insertPupil: (pupil: Pupil) => void;
+  /**
    * Ism -> "+998 XX XXX XX XX". Topilmasa bo'sh satr.
    *
    * NEGA KONTEKSTDA: `StudentSearchSelect` telefon bo'yicha qidirishni
@@ -97,9 +103,14 @@ export function PupilsProvider({ children }: { children: ReactNode }) {
     [phoneByName],
   );
 
+  const insertPupil = useCallback((pupil: Pupil) => {
+    invalidateStudents();
+    setPupils((prev) => (prev.some((p) => p.id === pupil.id) ? prev : [pupil, ...prev]));
+  }, []);
+
   const value = useMemo(
-    () => ({ pupils, loading, createPupil, phoneOf }),
-    [pupils, loading, createPupil, phoneOf],
+    () => ({ pupils, loading, createPupil, insertPupil, phoneOf }),
+    [pupils, loading, createPupil, insertPupil, phoneOf],
   );
 
   return <PupilsContext.Provider value={value}>{children}</PupilsContext.Provider>;

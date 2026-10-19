@@ -3,11 +3,15 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ArrowLeftRight,
   Bell,
   Cake,
   ChevronDown,
   CircleHelp,
   ClipboardCheck,
+  Gift,
+  GraduationCap,
+  ListChecks,
   LogOut,
   Lock,
   Menu,
@@ -19,7 +23,9 @@ import {
   Search,
   Sparkles,
   Sun,
+  UserCog,
   UserPlus,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -29,7 +35,6 @@ import type { Box } from "@/components/ai/genie";
 import { useAiAlerts } from "@/components/ai/useAiAlerts";
 import { formatPhoneDisplay } from "@/components/auth/PhoneField";
 import { useLang, useT } from "@/components/shared/Language";
-import { QUICK_LINKS } from "@/components/shared/Navbar";
 import NotificationsPanel from "@/components/shared/NotificationsPanel";
 import { useNotifications } from "@/components/shared/NotificationsProvider";
 import { useTaskInbox } from "@/components/shared/TaskInboxProvider";
@@ -39,10 +44,12 @@ import { ASSISTANT_NAME } from "@/lib/ai/brand";
 import { LANGS as LANG_CODES } from "@/lib/i18n";
 import { LANGS as LANGUAGES } from "@/lib/navbar";
 import { badgeLabel } from "@/lib/notifications";
-import { isPathAllowed } from "@/lib/permissions";
+import { hasSectionPermission, isPathAllowed } from "@/lib/permissions";
 import { searchAll } from "@/lib/search";
 import type { StudentRow } from "@/lib/studentsData";
 import { switchUiVersion } from "@/lib/uiVersion";
+import { prefetchCashboxes } from "@/components/v2/finance/cashboxesCache";
+import { useCreate, type CreateKind } from "./CreateContext";
 import { usePopover } from "./usePopover";
 
 // YANGI VERSIYA YUQORI PANELI (design/v2/DESIGN.md → «Navigatsiya — yuqori panel»).
@@ -82,10 +89,38 @@ const PANEL =
 const MENU_ITEM =
   "flex w-full items-center gap-3 rounded-v2-md px-2.5 py-2 text-left text-v2-body text-v2-text transition-colors hover:bg-v2-hover";
 
-const QUICK_ICONS: Record<string, ComponentType<{ className?: string; strokeWidth?: number }>> = {
-  "/orders-list": UserPlus,
-  "/finance-cash": Wallet,
-};
+type IconType = ComponentType<{ className?: string; strokeWidth?: number }>;
+
+/**
+ * «+ YANGI» BANDLARI (rasm «+ Yangi» menyusi, 19.10.2026). `kind` — forma SHU
+ * JOYDA ochiladi (./CreateContext.tsx); `href` — o'z sahifasida (Lid oynasi
+ * `?add=1`, topshiriq `?new=1`, guruh `?add=1` bilan o'zi ochiladi). `path` —
+ * ruxsat (lib/permissions.ts); `manage` — bo'lim ruxsatining o'zi kerak
+ * (topshiriq berish — rahbar rejimi, sahifaga kirish emas).
+ */
+interface CreateItem {
+  key: string;
+  label: string;
+  hint?: string;
+  icon: IconType;
+  path: string;
+  kind?: CreateKind;
+  href?: string;
+  manage?: boolean;
+}
+const CREATE_ITEMS: CreateItem[] = [
+  { key: "lead", label: "Lid", hint: "Yangi so'rov", icon: UserPlus, path: "/orders-list", href: "/orders-list?add=1" },
+  { key: "student", label: "O'quvchi", hint: "Ro'yxatga qo'shish", icon: GraduationCap, path: "/students-list", kind: "student" },
+  { key: "payment", label: "To'lov qabul qilish", hint: "O'quvchidan", icon: Wallet, path: "/finance-cash", kind: "payment" },
+  { key: "cash", label: "Kassa amali", hint: "Kirim, chiqim, ko'chirish", icon: ArrowLeftRight, path: "/finance-cash", kind: "cash" },
+  { key: "task", label: "Topshiriq", hint: "Xodimga", icon: ListChecks, path: "/tasks", href: "/tasks?new=1", manage: true },
+];
+/** Faqat rahbar (admin) — rasmdagi qo'shimcha bandlar; hozircha o'z sahifasida. */
+const ADMIN_ITEMS: CreateItem[] = [
+  { key: "group", label: "Guruh", icon: Users, path: "/groups", href: "/groups?add=1" },
+  { key: "staff", label: "Xodim", icon: UserCog, path: "/management-xodimlar", href: "/management-xodimlar" },
+  { key: "bonus", label: "Bonus / jarima", icon: Gift, path: "/finance-bonus", href: "/finance-bonus" },
+];
 
 /** Ism-familiyaning bosh harflari: «Asadbek Karimov» → «AK». */
 function initialsOf(name: string): string {
@@ -117,7 +152,10 @@ export default function TopbarV2({ user, permissions, isAdmin, sidebarCollapsed,
   const { open: helpOpen, ref: helpWrapRef, toggle: toggleHelp, close: closeHelp } = usePopover();
   const { open: profileOpen, ref: profileWrapRef, toggle: toggleProfile, close: closeProfile } = usePopover();
 
-  const quickLinks = QUICK_LINKS.filter((l) => isPathAllowed(l.href, permissions));
+  const create = useCreate();
+  const allowed = (it: CreateItem) => (it.manage ? hasSectionPermission(it.path, permissions) : isPathAllowed(it.path, permissions));
+  const createItems = CREATE_ITEMS.filter(allowed);
+  const adminItems = isAdmin ? ADMIN_ITEMS.filter(allowed) : [];
 
   const displayName = user?.fullName?.trim() || "—";
   const displayPhone = user?.phone ? formatPhoneDisplay(user.phone) : "";
@@ -190,8 +228,8 @@ export default function TopbarV2({ user, permissions, isAdmin, sidebarCollapsed,
       <GlobalSearch />
 
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-        {/* «+ Yangi» — tezkor yaratish (eski paneldagi «Tezkor amallar»). */}
-        {quickLinks.length > 0 && (
+        {/* «+ Yangi» — tezkor yaratish: forma shu joyda (O'quvchi, To'lov, Kassa amali) yoki o'z sahifasida. */}
+        {createItems.length + adminItems.length > 0 && (
           <div ref={createWrapRef} className="relative hidden sm:block">
             <button
               type="button"
@@ -206,15 +244,39 @@ export default function TopbarV2({ user, permissions, isAdmin, sidebarCollapsed,
               <ChevronDown className="hidden size-4 text-v2-text-3 xl:block" strokeWidth={1.75} aria-hidden />
             </button>
             {createOpen && (
-              <div role="menu" className={`${PANEL} w-64 p-1`}>
-                {quickLinks.map((l) => {
-                  const Icon = QUICK_ICONS[l.href.split("?")[0]] ?? Plus;
-                  return (
-                    <Link key={l.href} href={l.href} role="menuitem" onClick={closeCreate} className={MENU_ITEM}>
+              <div role="menu" className={`${PANEL} w-72 p-1`}>
+                {[...createItems, ...(adminItems.length > 0 ? [null] : []), ...adminItems].map((it, i) => {
+                  if (!it) return <div key={`sep${i}`} role="separator" className="my-1 border-t border-v2-border" />;
+                  const Icon = it.icon;
+                  const body = (
+                    <>
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-v2-md bg-v2-brand-bg text-v2-brand-text">
                         <Icon className="size-4" strokeWidth={1.75} />
                       </span>
-                      <span className="min-w-0 flex-1">{t(l.label)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{t(it.label)}</span>
+                        {it.hint && <span className="block truncate text-v2-caption text-v2-text-3">{t(it.hint)}</span>}
+                      </span>
+                    </>
+                  );
+                  return it.kind ? (
+                    <button
+                      key={it.key}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        closeCreate();
+                        create.open(it.kind!);
+                      }}
+                      // Kassalar ro'yxati oldindan — bosilganda oyna kutmasdan ochilsin.
+                      onPointerEnter={it.kind === "student" ? undefined : prefetchCashboxes}
+                      className={MENU_ITEM}
+                    >
+                      {body}
+                    </button>
+                  ) : (
+                    <Link key={it.key} href={it.href!} role="menuitem" onClick={closeCreate} className={MENU_ITEM}>
+                      {body}
                     </Link>
                   );
                 })}
