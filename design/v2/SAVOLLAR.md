@@ -317,6 +317,64 @@ tranzaksiya oynasida.
 Rasmda «12-oktabr», ilovada hamma joyda «Oktyabr» (lib/i18n.ts).
 *Taxmin:* bir xillik uchun ilovadagisi («18-oktyabr»); imlo almashsa — bitta joyda.
 
+*Oylik chiqarish qurildi (19.10.2026, rasmlar «Oylik chiqarish» va «Oylikni chiqarish oynasi»,
+`components/v2/finance/PayrollV2.tsx`):*
+
+**61. Soliq qaysi summadan olinadi?** — ochiq, QAROR KERAK
+Rasmda: «Soliq · 12% — kartadagi qismdan ushlanadi», qatorda «580 645 × 12%» (rasmiy oylik × kun/oy).
+Tizimda soliq xodimga biriktirilgan qoidalar bo'yicha (bir nechta bo'lishi mumkin: foiz yoki qat'iy
+summa) HISOBLANGAN oylikdan olinadi (lib/salary.ts → payrollTaxLines).
+*Taxmin:* hisob o'zgartirilmadi. Sarlavhada stavka faqat soliqli hamma xodimda bitta foizli qoida
+bo'lsa («Soliq · 12%»), qatorda «hisoblangan × 12%». Kartadagi qismdan olish kerak bo'lsa — ayting
+(pul hisobi: server, eski sahifa, chek va bot birga o'zgaradi).
+
+**62. Karta oy kunlariga bo'linadimi?** — ochiq
+Rasmda kartaga «rasmiy 1 500 000» ning 12/31 qismi. Tizimda 16.09.2026 dan karta davrga BO'LINMAYDI —
+qoldiqdan birinchi, plastik summasigacha (oy o'rtasida karta ulushi naqdga chiqib ketmasin).
+*Taxmin:* tizimdagidek; rasmdagi raqamlar namuna. Qatorda «rasmiy N», yetmagani — sichqoncha ostida.
+
+**63. «Ushlangan soliq Moliyaviy rejadagi «Soliqlar»ga qo'shiladi»** — ochiq
+Hozir soliq hech qayerga qo'shilmaydi — chiqarish hujjatida (`salary_runs.soliq`, Chiqarishlar
+tarixi) qayd etiladi.
+*Taxmin:* oynadagi matn haqiqatga moslandi («… chiqarishlar tarixida qayd etiladi»). Moliyaviy rejaga
+avtomatik qo'shish kerak bo'lsa — alohida ish.
+
+**64. «To'lanmagan qolgan oylik keyingi oyga izoh bilan o'tadi»** — ochiq
+04.10.2026 qoidasi: o'tgan oyning to'lanmagan qoldig'i keyingi oyda TO'LANMAYDI — faqat izoh
+(«Sentyabr: 314 000 →»), o'z oyi sahifasidan chiqariladi.
+*Taxmin:* jadval ostidagi izoh shunga moslandi.
+
+**65. «Qolgan oylik» ustuni nima?** — ochiq
+Rasmda «Qolgan oylik» = kartaga + naqd (jami to'lanadigan). Eski sahifadagi «Qolgan» — faqat kartadan
+keyingi naqd edi.
+*Taxmin:* yangi versiyada rasmdagidek — jami (manfiy bo'lsa «qarzdor»); naqd qismi sichqoncha ostida va
+chiqarish oynasida har xodim qatorida («kartaga · naqd · soliq»).
+
+**66. «Faqat kartani chiqarish» qayerda?** — ochiq
+Rasmda yo'q (30.09.2026 qo'shilgan amal).
+*Taxmin:* «Oylikni chiqarish» yonidagi ⌄ menyusida; tanlanmagan bo'lsa — kartasi bor hammaning karta
+qismi (eskisidek), oyna o'sha dizaynda («Kartaga chiqarish»).
+
+**67. To'lov turini tanlash** — ochiq
+Rasmda «Plastik · kartaga» va «Naqd» qat'iy. Eski oynada ikkala qismning to'lov turi tanlanardi.
+*Taxmin:* qator bosilsa turlar menyusi (har tur yonida kassadagi summa); sukut eskisidek. Kassada
+shu tur yetmasa — qizil qator va «Mablag' yetarli emas — N kam».
+
+**68. Rasmda yo'q ko'rsatkichlar** — ochiq
+Eski kartochkalarda «To'langan oylik» va avansning boshqa filial bilan farqi bor edi.
+*Taxmin:* «Jami avans» ostida «oylik to'langan N»; filiallar farqi — sichqoncha ostida. Jadvalda
+«To'langan» va «O'tgan oydan» — qiymati bo'lsa o'zi chiqadi (rasmdagi izoh); «Kartaga» — kartali
+xodim bo'lsa. Yashirilgan ustunlar: Telefon, Xodim turi.
+
+**69. Izoh (ixtiyoriy)** — ochiq
+Rasmdagi maydon uchun serverga qo'shimcha: izoh har chiqim yozuviga («Oylik chiqarish #7 — …») va
+chiqarish hujjatiga yoziladi (tarix oynasida ko'rinadi), 200 belgigacha.
+
+**70. Yon menyuda «Rahbar paneli → Oylik chiqarish»** — ochiq
+Rasmda Oylik chiqarish «Rahbar paneli» guruhida (Umumiy ko'rinish, Rahbar kassasi, Ko'chirmalar,
+Tasdiqlar, Oylik chiqarish, Moliyaviy reja…).
+*Taxmin:* menyu o'zgartirilmadi; Rahbar paneli qurilganda (51-savol) birga ko'chadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

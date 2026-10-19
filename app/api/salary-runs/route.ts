@@ -134,6 +134,13 @@ export async function POST(req: Request) {
      * quyidagi qorovul izohiga qarang. Eski mijozda yo'q (tekshirilmaydi).
      */
     branchId?: number;
+    /**
+     * Ixtiyoriy IZOH (19.10.2026, yangi versiyadagi «Oylikni chiqarish»
+     * oynasi): «oktabr oyi uchun oylikning birinchi qismi». Hujjatga
+     * (`SalaryRun.note`) va har bir chiqim yozuvining izohiga qo'shiladi.
+     * Eski mijoz yubormaydi — xulq o'zgarmaydi.
+     */
+    note?: string;
   };
   try {
     body = await req.json();
@@ -179,6 +186,10 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  // Izoh — bir qatorga yig'iladi va 200 belgiga qisqartiriladi (jurnal
+  // izohi, Sheets va Telegram qatori cho'zilib ketmasin).
+  const userNote = typeof body.note === "string" ? body.note.replace(/\s+/g, " ").trim().slice(0, 200) : "";
 
   // ---- Kassa va to'lov turi ----------------------------------------
   const kartaOnly = body.only === "karta";
@@ -565,6 +576,7 @@ export async function POST(req: Request) {
     month: payrollMonthKey(period),
     branchId: building,
     ...(kartaOnly ? { kind: "karta" as const } : {}),
+    ...(userNote ? { note: userNote } : {}),
     items,
   };
 
@@ -633,7 +645,7 @@ export async function POST(req: Request) {
         // bu xodimning o'zi (adjust route'idagi bilan bir xil qoida).
         teacherName: p.name,
         reason: "-",
-        note: kartaOnly ? `Oylik chiqarish #${nextId} (faqat karta)` : `Oylik chiqarish #${nextId}`,
+        note: (kartaOnly ? `Oylik chiqarish #${nextId} (faqat karta)` : `Oylik chiqarish #${nextId}`) + (userNote ? ` — ${userNote}` : ""),
         status: "",
         cashboxId,
         salaryRunId: nextId,

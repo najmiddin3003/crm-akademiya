@@ -311,6 +311,12 @@ export default function SalaryRunsPage() {
               {datePart(detail.createdAt)}{detail.month && ` — ${monthKeyLabel(detail.month, months)}`} · {detail.employeeCount} ta xodim
               {detail.cashboxName && ` · ${detail.cashboxName}${detail.methodLabel ? ` (${detail.methodLabel})` : ""}`}
             </div>
+            {/* Chiqaruvchining izohi (19.10.2026, yangi versiya oynasidan) — eski chiqarishlarda yo'q. */}
+            {detail.note && (
+              <div className="-mt-2 mb-4 rounded-lg bg-secondary/40 px-3 py-2 text-[12.5px]">
+                <span className="text-muted-foreground">{t("Izoh")}:</span> {detail.note}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 text-[13px]">
               <div className="col-span-2 rounded-lg border border-border p-3">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("Oylik")}</div>

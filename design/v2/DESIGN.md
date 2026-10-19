@@ -435,6 +435,42 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   API: `?cashboxIds=` (bir nechta kassa, admin bo'lmasa hammasi o'ziniki), `?q=`, yig'indida
   `incomeCount` / `expenseCount`.
 
+## Oylik chiqarish (rasmlar «Oylik chiqarish» va «Oylikni chiqarish oynasi», 19.10.2026)
+
+- **Sarlavha**: «Oylik chiqarish» + «filial · 1–19-oktyabr hisobi (19/31 kun)»; tugagan / yopilgan /
+  kelajak oyda yonida belgi (`warning-bg` / `danger-bg` / `info-bg`). O'ngda **oy tanlagich**
+  «‹ Oktyabr 2026 ›» (`components/v2/ui/V2MonthNav.tsx`: strelkalar, yozuv bosilsa yil va 12 oy to'ri,
+  joriy oy — brend chegara, tanlangani — brend fon), «Chiqarishlar tarixi», «Qayta hisoblash»
+  (ikkinchi darajali). 1+2 binoda — segment «1-bino / 2-bino».
+- **Ko'rsatkichlar** — BITTA kartochkada 6 katak (to'r oralig'i 1 px chiziq bo'lib ko'rinadi):
+  Jami tushum · Sof foyda (manfiy — `danger`) · Jami oylik · N xodim · Jami avans · Soliq (· 12%) ·
+  **Qolgan oylik** (`brand-bg`, yorlig'i `brand-text`, ostida «kartaga · naqd»). Yorliq `small text-2`,
+  raqam 17 px qalin + «so'm» `small text-2`, izoh `caption text-3`.
+- **Filtr**: «Xodim ismi yoki telefoni» → Xodim turi, Hisoblash usuli (chip) → o'ngda «Ustunlar».
+- **Jadval kartasi**: tepada **tanlov qatori** — tanlansa `brand-bg`: «✓ N ta xodim tanlandi»
+  (`brand-text`, qalin) + «Chiqariladigan summa: **N so'm** · kartaga …, naqd …», o'ngda «Bekor
+  qilish» (matnli) va asosiy «Oylikni chiqarish» + ⌄ (ikkinchi usul — «Faqat kartani chiqarish»);
+  tanlanmasa oq fonda izoh; chiqarib bo'lmaydigan oyda — sababi. Ustunlar: Xodim (qalin ism + teg
+  «Oklad» / «Oklad + 30%», ishga kirgan sana), Hisob-kitob («3 500 000 × 19/31 kun», ostida
+  «+ 30% × N tushum» `caption text-3`), Jami oylik, Jami avans, [To'langan], [O'tgan oydan], Bonus,
+  Jarima, Soliq (`danger`, ostida «N × 12%»), [Kartaga] (ostida «rasmiy N» / «faqat naqd»),
+  **Qolgan oylik** (qulflangan, doim oxirida). Qavsdagilar — qiymati bo'lsa o'zi chiqadi. Sarlavhada
+  asosiy pul ustunlari qalin. Pastda qotgan «Jami · N xodim» qatori (`surface-2`, oxirgi summa
+  `brand-text`). Ustun ko'p bo'lsa jadval yonga aylanadi — belgilash va «Xodim» chapda qotadi.
+- **Ostida izoh** — info ikonka + `caption text-2`.
+- **Oyna** (`ui/Modal` qobig'i, ichki blok `data-ui="v2"`, ~576 px): sarlavha + «1-oktyabrdan 19-oktyabr |
+  11:02 gacha hisoblandi»; `brand-bg` blokda «Chiqariladigan summa» va katta raqam (`text-v2-number`),
+  o'ngda «N xodim / oy»; chegarali ro'yxat — avatar (bosh harflar), ism, «kartaga · naqd · soliq»,
+  summa; ikki ustun: «Qaysi kassadan» (maydon, bosh kassada `warning-bg` kvadratda toj, ostida
+  «Qoldiq») va «To'lov turi» (`surface-2` blok: binafsha kvadrat «Plastik · kartaga», yashil «Naqd»;
+  bosilsa tur menyusi; ostida «Kassada Naqd: N so'm», yetmasa qizil); «Izoh (ixtiyoriy)»; ogohlantirishlar
+  (sabablari doim yoziladi); `info-bg` blokda nima bo'lishi; pastki qator `surface-2` + chegara:
+  «Bekor qilish», «✓ Tasdiqlash va chiqarish». Telefonda tugmalar to'liq kenglikda, asosiysi tepada.
+- Kodda: `components/v2/finance/PayrollV2.tsx`, `PayoutModalV2.tsx`, `payrollColumns.ts`
+  (`v2:payroll:columns:1`); ma'lumot, hisob va so'rov eski sahifa bilan BITTA —
+  `components/finance/usePayroll.ts` (eski `SalaryCreatePage` ham shundan). API: ixtiyoriy `note`.
+  Rasmdan farqlar (soliq va karta qoidasi tizimdagidek va h.k.) — `SAVOLLAR.md` 61–70.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).
@@ -520,6 +556,16 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   (sariq va tanlangan qatorda ko'rinadi). Rangli qatorga fon + o'sha rangdagi ichki soya
   (`shadow-[inset_0_0_0_9999px_…]`) — `ROW_TINT`; chap chiziq — birinchi katakdagi soya
   (`ROW_BAR`).
+- **Eski qatlamsiz CSS — ikki tuzoq** (19.10.2026, Oylik chiqarishda o'lchandi):
+  1. `globals.css` dagi eski `.sm\:grid-cols-3` (qatlamsiz) qatlamli `xl:grid-cols-6` dan KUCHLI —
+     1440 px da ham 3 ustun qolardi. Yangi sahifada `sm:` + kattaroq breakpoint juftligi kerak bo'lsa
+     `min-[40rem]:` / `min-[80rem]:` yoziladi (ikkalasi rem — Tailwind tartiblaydi).
+  2. `input:focus { background … !important }` bosilgan katakchani oqartirardi (belgi ko'rinmasdi) —
+     `V2Checkbox` fonlari `!` bilan (qatlamli `!important` qatlamsizdan kuchli). O'quvchilar va Guruhlar
+     ro'yxatlaridagi katakchalar ham shu bilan tuzaldi.
+- **Qotgan chap ustunlar** (Oylik chiqarish): katak `sticky -left-px` va `left-[38px]` + `bg-inherit`
+  (qator foni: oddiy qatorga `bg-v2-surface`); kasr kenglikda 1 px tirqishdan surilgan raqamlar
+  ko'rinardi — kataklar 1 px ustma-ust. Sarlavha/«Jami» burchaklari `z-20`.
 
 ## Ochiq savollar
 

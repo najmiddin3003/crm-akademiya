@@ -219,6 +219,12 @@ export interface SalaryRun {
    * oylik"ka kiradi. Yo'q — oddiy (karta + naqd) chiqarish.
    */
   kind?: "karta";
+  /**
+   * Chiqaruvchining izohi (19.10.2026, ixtiyoriy) — «oktabr oyi uchun
+   * oylikning birinchi qismi». Chiqim yozuvlarining izohiga ham qo'shiladi.
+   * Eski yozuvlarda yo'q.
+   */
+  note?: string;
   /** Xodim kesimidagi qoldiqlar. Eski yozuvlarda yo'q. */
   items?: SalaryRunItem[];
 }
