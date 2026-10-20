@@ -560,6 +560,45 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   `components/leads/useLeadsCore.ts`, `leadsExport.ts`, `LeadHolatModals.tsx → postHolat`,
   `lib/enrollStudent.ts`. Rasmdan farqlar — `SAVOLLAR.md` 87–98.
 
+## Moliya analitikasi (rasmlar «Moliya analitikasi», «Hisobotni yuklab olish», 20.10.2026)
+
+- **Sarlavha**: «Moliya analitikasi» + «Pul qayerdan kelib, qayerga ketyapti va lidlar qanchalik
+  o'quvchiga aylanyapti».
+- **Filtrlar** — BITTA qator, sahifaning hammasini qamraydi: davr («📅 Shu oy · 1–20-oktyabr ⌄» —
+  `V2DateRange`, «Barcha vaqt» yo'q), keyin uchta **qiymatli tanlov** (`V2Select variant="value"`: neytral
+  chegarali tugma «Solishtirish: **o'tgan oy** ⌄», «Filial: **Barchasi** ⌄», «Kassa: **Barchasi** ⌄» —
+  yorliq `text-2`, qiymat qalin, × yo'q); o'ngda «⬇ Hisobot yuklab olish» (ikkinchi darajali). Davr bugungacha.
+- **Ko'rsatkichlar** — bitta kartochkada 4 katak (1 px ajratgich; telefonda 1, planshetda 2 ustun): Tushum,
+  Chiqim, Sof foyda (so'mda, 22 px qalin + «so'm» `text-2`), **Lid → o'quvchi** («25%» + «· 28 / 112»). Ostida
+  o'zgarish: o'q + foiz qalin — **yaxshi tomonga yashil, yomoniga qizil** (chiqim ko'paysa qizil), «0» —
+  kulrang chiziqcha; keyin «1–20-sentyabrga nisbatan» `text-2`. Konversiya o'zgarishi — «p.p.».
+- **«Kirim va chiqim · oyma-oy»** (karta): izoh «Barcha filiallar · mln so'm · oktyabr hali davom etmoqda (20
+  kun)»; o'ngda belgilar (kvadrat 10 px) va «Grafik | Jadval» almashtirgichi. Oxirgi 6 oy, guruhlangan
+  ustunlar: **Kirim — `series-1` ko'k, Chiqim — `series-2` to'q sariq** (dataviz palitrasi, validator o'tdi;
+  qorong'ida o'z qadamlari), ustun ≤ 22 px, tepasi 4 px yumaloq; davom etayotgan oy — shu rangning 55%
+  (och). O'q chapda «60 mln», chiziqlar `border`. Raqam faqat eng katta kirim va oxirgi oy ustida; sichqoncha
+  yoki fokus — ustun ortida `hover` fon + maslahat oynasi (oy, Kirim, Chiqim, Sof foyda). Ostida «Sof foyda»
+  qatori (eng kattasi qalin, manfiysi `danger`, yozuvsiz oy «—»). «Jadval» — xuddi shu raqamlar so'mda + Jami.
+- **«Lid → o'quvchi»** (karta): izoh «Shu oy kelgan 112 ta lid qayerga yetib bordi va qaysi manba yaxshi
+  ishladi». Chapda **Bosqichlar** — Lidlar → Bog'lanildi → Birinchi darsga yozildi → Guruhga qo'shildi, bitta
+  ko'k shkala (`ord-1…4`: yorug'da och → to'q, qorong'ida teskari), «son · foiz»; ostida izoh `caption text-3`.
+  O'ngda **Manba bo'yicha** — chiziq uzunligi = manbadan kelgan lidlar, ichida `series-1` qismi — o'quvchi
+  bo'lganlar, qolgani `track`, oralarida 2 px; o'ngda «**9 / 38** · 24%». 7 tadan ko'p manba — 6 tasi +
+  «Boshqalar». Bu karta ham «Grafik | Jadval».
+- **Hisobotni yuklab olish** (markazda, 560 px): **Davr** — chiplar «Shu oy · 1–20-oktyabr», «O'tgan oy»,
+  «Chorak», «Boshqa davr 📅» (taqvim; tanlansa chipda davr); **Nimalar kirsin** — katakchalar: Kirim va
+  chiqim · oyma-oy, Sof foyda · solishtirish bilan, Lid → o'quvchi · bosqichlar va manbalar, Kassalar bo'yicha
+  tranzaksiyalar (sukut o'chiq); **Format** — «Excel | PDF | CSV»; pastki qator «Enter yuklab olish · Esc
+  yopish», «Bekor qilish», «⬇ Yuklab olish». Sahifadagi filial/kassa va solishtirish hisobotga o'tadi.
+- **Holatlar**: birinchi yuklanish — skelet; filtr o'zgarsa eski rasm xira turadi (sakramaydi); xato —
+  `danger-bg` qator + «Qayta urinish»; ma'lumot yo'q — grafik ustida «Bu davrda kirim yoki chiqim yo'q», voronkada
+  «Bu davrda lid kelmagan».
+- Kodda: `components/v2/finance/` — FinanceAnalyticsV2 (sahifa), AnalyticsCashChart, AnalyticsLeadFunnel,
+  AnalyticsReportModal, analyticsReport (Excel/CSV/PDF), analyticsShared (so'm/mln, o'q qadami). Hisoblar —
+  `lib/financeAnalytics.ts` (bekor qilingan amal o'z tomonidan ayriladi, solishtirish davri, lid bosqichlari);
+  lidlar — `GET /api/analytics/leads`; kassa bo'yicha guruhlash — `/api/transactions/summary?groupBy=…,cashbox`.
+  Ranglar — `tokens.css` `--v2-series-1/2`, `--v2-ord-1…4`, `--v2-track`. Rasmdan farqlar — `SAVOLLAR.md` 99–110.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

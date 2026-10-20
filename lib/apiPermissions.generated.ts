@@ -99,6 +99,7 @@ export const SHARED_API: readonly string[] = [
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */
 export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/action-log": ["/amallar-jurnali"],
+  "/api/analytics/leads": ["/finance-analytics"],
   "/api/attendance": ["/nazorat-davomat", "/nazorat-davomat-analytics", "/nazorat-missed-groups"],
   "/api/attendance-qr": ["/nazorat-qr"],
   "/api/block-test-exams": ["/blok-testlar"],

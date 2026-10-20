@@ -12,7 +12,7 @@ import { sameBranchPool } from "@/lib/branchPools";
 // kassalarni foydalanuvchi o'zi qo'shadi.
 //
 // GET /api/cashboxes          — kassalar (pul bilan), QAMROV cheklangan
-// GET /api/cashboxes?names=1  — faqat [{ id, name }], cheklovsiz
+// GET /api/cashboxes?names=1  — faqat [{ id, name, archived, branchId, isPrimary }], cheklovsiz
 //
 // QAMROV: admin hammasini ko'radi, xodim esa faqat O'ZIGA biriktirilganini
 // (`cashboxes.moderator` — uning `hr_employees.name` i). Kassa — shaxsiy
@@ -30,7 +30,9 @@ export async function GET(req: Request) {
   const col = db.collection("cashboxes");
 
   if (new URL(req.url).searchParams.get("names") === "1") {
-    const rows = await col.find({}, { projection: { id: 1, name: 1, archived: 1, _id: 0 } }).sort({ id: 1 }).toArray();
+    // `branchId`, `isPrimary` (20.10.2026) — Moliya analitikasida filial bo'yicha
+    // kassalar. Pul (balans) va mas'ul bu javobda baribir YO'Q.
+    const rows = await col.find({}, { projection: { id: 1, name: 1, archived: 1, branchId: 1, isPrimary: 1, _id: 0 } }).sort({ id: 1 }).toArray();
     return NextResponse.json({ ok: true, cashboxes: rows });
   }
 

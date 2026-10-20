@@ -13,7 +13,10 @@ import FloatingPanel from "./FloatingPanel";
 //           («Yana filtrlar» oynasidagi tanlovlar);
 //   chip  — filtr qatoridagi tugma: bo'sh bo'lsa «Kurs ⌄», tanlansa
 //           «Kurs: Ingliz tili ×» — `brand-bg` + `brand` chegara, × darhol
-//           tozalaydi (alohida tugma — tugma ichida tugma bo'lmaydi).
+//           tozalaydi (alohida tugma — tugma ichida tugma bo'lmaydi);
+//   value — doim qiymati bilan: «Filial: Barchasi ⌄», «Solishtirish: o'tgan oy ⌄»
+//           (rasm «Moliya analitikasi», 20.10.2026) — betaraf tugma, × yo'q;
+//           bo'sh qiymatda `emptyLabel`.
 //
 // Klaviatura: ↑↓ yurish, Enter tanlash, Esc yopish, Home/End; harf bosilsa
 // qidiruvga tushadi. Qidiruv variant SEARCH_AT dan ko'p bo'lsa chiqadi.
@@ -30,7 +33,7 @@ export interface V2SelectProps {
   value: string;
   options: V2SelectOption[];
   onChange: (value: string) => void;
-  variant?: "field" | "chip";
+  variant?: "field" | "chip" | "value";
   /** chip — tugmadagi nom («Kurs»); field — ekran o'quvchisi uchun nom. */
   label: string;
   /** field — bo'sh holat matni (sukut «Hammasi»). */
@@ -38,6 +41,8 @@ export interface V2SelectProps {
   searchable?: boolean | "auto";
   /** Ro'yxat boshida «Tozalash» qatori (chip'da × doim bor). */
   clearable?: boolean;
+  /** value — bo'sh qiymat yozuvi («Barchasi»). */
+  emptyLabel?: string;
   id?: string;
   className?: string;
 }
@@ -55,6 +60,7 @@ export default function V2Select({
   placeholder = "Hammasi",
   searchable = "auto",
   clearable = true,
+  emptyLabel = "Barchasi",
   id,
   className = "",
 }: V2SelectProps) {
@@ -128,7 +134,11 @@ export default function V2Select({
 
   const chipOn = variant === "chip" && selected !== null;
   const triggerCls =
-    variant === "chip"
+    variant === "value"
+      ? `inline-flex h-9 max-w-[300px] items-center gap-1.5 rounded-v2-md border bg-v2-surface px-3 text-v2-body text-v2-text transition-[background-color,border-color,box-shadow] hover:bg-v2-surface-2 ${
+          open ? "border-v2-brand shadow-v2-focus" : "border-v2-border-strong"
+        }`
+      : variant === "chip"
       ? `inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-v2-md border px-3 text-v2-body font-medium transition-colors ${
           chipOn
             ? `border-v2-brand bg-v2-brand-bg text-v2-brand-text ${value ? "pr-8" : ""}`
@@ -149,10 +159,22 @@ export default function V2Select({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        aria-label={variant === "field" ? `${label}: ${selected ? t(selected.label) : t(placeholder)}` : undefined}
+        aria-label={
+          variant === "field"
+            ? `${label}: ${selected ? t(selected.label) : t(placeholder)}`
+            : variant === "value"
+              ? `${t(label)}: ${selected ? t(selected.label) : t(emptyLabel)}`
+              : undefined
+        }
         className={`${triggerCls} focus-visible:outline-none focus-visible:shadow-v2-focus`}
       >
-        {variant === "chip" ? (
+        {variant === "value" ? (
+          <>
+            <span className="shrink-0 text-v2-text-2">{t(label)}:</span>
+            <span className="truncate font-semibold">{selected ? t(selected.label) : t(emptyLabel)}</span>
+            <ChevronDown className={`size-4 shrink-0 text-v2-text-3 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
+          </>
+        ) : variant === "chip" ? (
           <>
             <span className="truncate">
               {t(label)}
@@ -188,7 +210,7 @@ export default function V2Select({
         open={open}
         anchorRef={triggerRef}
         onClose={() => close(false)}
-        width={variant === "chip" ? 260 : "anchor"}
+        width={variant === "field" ? "anchor" : 260}
         maxHeight={340}
         role="listbox"
         id={listId}

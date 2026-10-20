@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 
 // GET /api/transactions/summary
-//   ?groupBy=month,category,sign   — vergul bilan: day | month | category | method | sign
+//   ?groupBy=month,category,sign   — vergul bilan: day | month | category | method | sign | cashbox
 //   ?from=YYYY-MM-DD &to=YYYY-MM-DD — ikkalasi ham IXTIYORIY va MUSTAQIL
 //   ?cashboxId=  ?method=          — qo'shimcha filtrlar
 //   ?before=YYYY-MM-DD             — shu sanagacha bo'lgan SOF qoldiq (bitta son)
@@ -42,7 +42,9 @@ import { ensureIndexes } from "@/lib/mongodb";
 // to'ldirish va kategoriya oldindan to'ldirilishi KLIENTDA qoladi.
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-const GROUP_KEYS = ["day", "month", "category", "method", "sign"];
+// `cashbox` (20.10.2026) — Moliya analitikasi (yangi versiya) filial/kassa tanlovini
+// mijozda qo'llaydi: bitta so'rovda hamma kassalar, filial — kassaning `branchId` si.
+const GROUP_KEYS = ["day", "month", "category", "method", "sign", "cashbox"];
 
 /** Decimal128 -> son. Yig'indi aniq hisoblangan, bu faqat uzatish uchun. */
 function toNum(v: unknown): number {
@@ -100,6 +102,7 @@ export async function GET(req: Request) {
   if (g.has("category")) id.category = "$category";   // XOM — 2-qoida
   if (g.has("method")) id.method = "$method";         // XOM
   if (g.has("sign")) id.sign = SIGN;
+  if (g.has("cashbox")) id.cashbox = "$cashboxId";
 
   const db = await ensureIndexes();
   const col = db.collection("transactions");
@@ -107,7 +110,7 @@ export async function GET(req: Request) {
   const rowsP = col.aggregate([
     { $match: match },
     { $group: { _id: Object.keys(id).length ? id : null, amount: { $sum: { $toDecimal: "$amount" } } } },
-    { $sort: { "_id.month": 1, "_id.day": 1, "_id.category": 1, "_id.method": 1, "_id.sign": 1 } },
+    { $sort: { "_id.month": 1, "_id.day": 1, "_id.category": 1, "_id.method": 1, "_id.sign": 1, "_id.cashbox": 1 } },
   ]).toArray();
 
   const beforeP = before

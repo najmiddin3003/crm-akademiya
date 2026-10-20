@@ -540,6 +540,71 @@ Rasmda yo'q — hozircha ESKI oynalar (Yangi lid formasi rasmi kelganda almashad
 o'ngdan). Panel «⋯»: Tahrirlash, Izohlar, Chek, Telegramda yozish (botdan kelgan lid), Raqamni
 nusxalash, To'liq karta (eski /orders-list/[id] — boshqa filialga o'tkazish va h.k.).
 
+### 6-qism — Moliya analitikasi, «Hisobotni yuklab olish» (20.10.2026)
+
+**99. Eski tablar — Kalendar, Journal, Pul oqimi** — taxmin
+Rasmda yo'q — yangi versiyada yo'q, eski versiyada qoladi. Har amal — Kassalar sahifasining
+«Tranzaksiyalar» jadvalida va hisobotda («Kassalar bo'yicha tranzaksiyalar»). Kunlik kalendar kerakmi?
+
+**100. Bekor qilingan amal tushum va chiqimda** — ochiq, QAROR KERAK
+`transactions` da bekor qilish teskari yozuv («… (bekor qilindi)») bilan. Eski «Pul oqimi» va P&L uni
+chiqimga qo'shadi — tushum ham, chiqim ham oshib ko'rinadi (sof foyda to'g'ri). Yangi analitikada
+bekor qilingan to'lov TUSHUMDAN ayriladi (bekor qilingan chiqim — chiqimdan): ko'zguda 1–19-oktyabr
+tushumi 164 452 001 — Tranzaksiyalar daftaridagi bekor qilinmagan to'lovlar bilan AYNAN bir xil.
+Eski sahifalar ham shunday hisoblasinmi?
+
+**101. Sof foydada ta'sischiga chiqim, dividend, sarmoya** — ochiq
+Hozir hamma chiqim — oylik, avans, ijara va «Ta'sischiga chiqim (F-INVEST)» (sentyabrda 76,7 mln) —
+chiqim, «Sarmoya» — tushum (eski P&L bilan bir xil). Biznes foydasi uchun ta'sischiga chiqim va
+dividend chiqim emas (foydani olish) — chiqarib tashlansinmi?
+
+**102. «Shu oy» yoki «Bu oy»** — taxmin
+Analitika rasmida «Bu oy · 1–12-oktabr», Lidlar rasmida «Shu oy». Yangi versiyada hamma joyda «Shu
+oy» (sana tanlovi bilan bir xil). Davr BUGUNGACHA — kelajak kunlar sanalmaydi.
+
+**103. Solishtirish** — taxmin
+«o'tgan oy» — o'sha kunlar bir oy oldin (1–20-oktyabr ↔ 1–20-sentyabr; butun oy ↔ butun oldingi oy),
+«o'tgan yil», «oldingi davr» (shuncha kun, darhol oldin), «solishtirmaslik». Rasmda lid konversiyasi
+«sentabrga nisbatan» — to'rttala ko'rsatkich bitta davr bilan solishtiriladi. Oldingi davrda 0 bo'lsa
+foiz yo'q («solishtirish davrida ma'lumot yo'q»). Chiqim ko'paysa — qizil, kamaysa — yashil.
+
+**104. Filial va kassa tanlovi** — taxmin
+Filial — kassaning filiali (`cashboxes.branchId`): Rahbar kassasi 1-filialniki sifatida (ijara,
+ta'sischiga chiqim shundan). Lidlar — lidning filiali (kassa tanlansa — o'sha kassaning filiali).
+«Barchasi»: pul — hamma kassalar (eski sahifadagidek, sahifa ruxsati bo'lsa hammasi ko'rinadi), lidlar —
+foydalanuvchiga ochiq filiallar (admin — hammasi). Navbardagi filial bu sahifaga ta'sir qilmaydi (eski
+sahifadagidek).
+
+**105. Ma'lumot tarixi** — fakt
+Bazada kirim-chiqim yozuvlari 2026-sentyabrdan (yangi mavsum) — «oyma-oy» grafikda may–avgust bo'sh.
+Eski (edutizim) tarixi ham ko'rinishi kerakmi?
+
+**106. Lid → o'quvchi hisobi** — taxmin
+Davrda KELGAN lidlar. «Yetib bordi» — hozirgi holat yoki tarixdagi eng yuqori bosqich: rad etilgan lid —
+rad etilgunicha yetgan bosqichda, bekor qilingan o'zgarish sanalmaydi, tashlab o'tilgan bosqich — o'tilgan.
+«O'quvchi bo'ldi» — guruhga qo'shilgan. Konversiya o'zgarishi — foiz punktida («4 p.p.»). Ko'zguda:
+oktyabr 182 lid, 47%; sentyabr 204 lid, 8% — sentyabr lidlarining ko'pi eski sahifalardan guruhga
+yozilgan bo'lishi mumkin (lid holati yangilanmagan).
+
+**107. Manbalar** — taxmin
+Lidning `source` maydoni (Tavsiya, Flyer, Sayt so'rovnomasi …) — rasmdagi nomlar namuna. 7 tadan ko'p
+bo'lsa — 6 tasi + «Boshqalar»; manbasiz — «Manba ko'rsatilmagan» (oxirida).
+
+**108. Grafik** — qilindi
+Oxirgi 6 oy (davr tugagan oy bilan). Ranglar rasmdan o'lchandi (Kirim ko'k, Chiqim to'q sariq,
+bosqichlar ko'k shkalasi) — dataviz validatori o'tdi. Davom etayotgan oy och; raqam faqat eng katta
+kirim va oxirgi oyda; sichqoncha/fokus — maslahat oynasi; «Jadval» — to'liq so'mda.
+
+**109. Hisobot** — taxmin
+«Chorak» — joriy chorak (1-oktyabr–bugun; chorakning birinchi oyida «Shu oy» bilan bir xil); «Boshqa
+davr» — taqvim. PDF — chop etish oynasi orqali («PDF sifatida saqlash»): loyihada PDF kutubxonasi yo'q.
+Tranzaksiyalar — `transactions` dan (sana, vaqt, kassa, turi, to'lov turi, kirim/chiqim); o'quvchi ismi
+yo'q — u `transaction_entries` da, unga Moliya analitikasi ruxsati ochilmagan.
+
+**110. «Rahbar paneli» menyusi** — ochiq (13, 51, 70 bilan bitta)
+Rasmda Moliya analitikasi «Rahbar paneli» guruhida (Umumiy ko'rinish, Rahbar kassasi, Ko'chirmalar,
+Tasdiqlar, Oylik chiqarish, Moliyaviy reja, Bonus, Jarima, Moliya analitikasi). Menyu o'zgartirilmadi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

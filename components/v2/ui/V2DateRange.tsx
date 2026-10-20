@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import { dateRangePresets, type DateRange } from "@/components/ui/DateRangePicker";
@@ -70,6 +70,14 @@ export function rangePresetKey(value: DateRange): string | null {
   );
 }
 
+/** O'z tugmasi bilan (masalan oynadagi «Boshqa davr 📅» chip) — taqvim oynasi o'sha. */
+export interface RangeTriggerProps {
+  ref: RefObject<HTMLButtonElement | null>;
+  onClick: () => void;
+  "aria-haspopup": "dialog";
+  "aria-expanded": boolean;
+}
+
 export default function V2DateRange({
   value,
   onChange,
@@ -77,6 +85,7 @@ export default function V2DateRange({
   allowAll = true,
   label,
   allLabel = "Barcha sanalar",
+  trigger: renderTrigger,
 }: {
   value: DateRange;
   onChange: (r: DateRange) => void;
@@ -87,6 +96,8 @@ export default function V2DateRange({
   label?: string;
   /** Oraliqsiz band nomi (Lidlarda — «Butun davr»). */
   allLabel?: string;
+  /** Tugma o'rniga o'z tugmasi: `trigger` ni yoying; `open` — ochiq paytdagi ko'rinish. */
+  trigger?: (p: RangeTriggerProps, open: boolean) => ReactNode;
 }) {
   const [lang] = useLang();
   const { t } = useT();
@@ -134,11 +145,15 @@ export default function V2DateRange({
 
   return (
     <>
-      <button ref={btnRef} type="button" onClick={toggle} aria-haspopup="dialog" aria-expanded={open} className={panelTriggerCls(open)}>
-        <Calendar className="size-4 text-v2-text-2" strokeWidth={1.75} aria-hidden />
-        <span className="whitespace-nowrap tabular-nums">{label ?? rangeLabel(value, lang, t)}</span>
-        <ChevronDown className={`size-4 text-v2-text-3 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
-      </button>
+      {renderTrigger ? (
+        <RangeTriggerSlot render={renderTrigger} anchor={btnRef} onToggle={toggle} open={open} />
+      ) : (
+        <button ref={btnRef} type="button" onClick={toggle} aria-haspopup="dialog" aria-expanded={open} className={panelTriggerCls(open)}>
+          <Calendar className="size-4 text-v2-text-2" strokeWidth={1.75} aria-hidden />
+          <span className="whitespace-nowrap tabular-nums">{label ?? rangeLabel(value, lang, t)}</span>
+          <ChevronDown className={`size-4 text-v2-text-3 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
+        </button>
+      )}
       <FloatingPanel open={open} anchorRef={btnRef} onClose={() => setOpen(false)} align={align} width={476} maxHeight={420} role="dialog" ariaLabel={t("Sana oralig'i")}>
         <div className="flex min-h-0">
           <div className="flex w-[148px] shrink-0 flex-col gap-0.5 border-r border-v2-border p-1.5">
@@ -219,4 +234,23 @@ export default function V2DateRange({
       </FloatingPanel>
     </>
   );
+}
+
+/**
+ * O'z tugmasini chizadi. Alohida komponent: ref obyektini render paytida
+ * funksiyaga (render-prop'ga) uzatishni React Compiler taqiqlaydi
+ * (react-hooks/refs) — bu yerda u oddiy prop (V2DateField dagidek).
+ */
+function RangeTriggerSlot({
+  render,
+  anchor,
+  onToggle,
+  open,
+}: {
+  render: (p: RangeTriggerProps, open: boolean) => ReactNode;
+  anchor: RefObject<HTMLButtonElement | null>;
+  onToggle: () => void;
+  open: boolean;
+}) {
+  return <>{render({ ref: anchor, onClick: onToggle, "aria-haspopup": "dialog", "aria-expanded": open }, open)}</>;
 }

@@ -100,6 +100,20 @@
   --v2-chart-3: var(--v2-teal-300);
   --v2-chart-4: var(--v2-teal-200);
 
+  /* ── Moliya analitikasi grafiklari (6-qism rasmlari, 20.10.2026 — PIKSELDAN
+     o'lchandi; dataviz ma'lumotnoma palitrasi bilan aynan bir xil, validator: CVD
+     ΔE 24.7, kontrast >= 3:1). Kirim — 1-slot (ko'k), Chiqim — 2-slot (to'q sariq).
+     Bosqichlar (lid → o'quvchi) — bitta rang, yorug'dan to'qqa (ordinal 250/350/
+     450/550; qorong'ida teskari — 600/500/400/300). Trek — «hali emas» qismi.
+     Davom etayotgan oy ustuni — seriya rangi 55% (color-mix, CSS'da). */
+  --v2-series-1: #2A78D6;
+  --v2-series-2: #EB6834;
+  --v2-ord-1: #86B6EF;
+  --v2-ord-2: #5598E7;
+  --v2-ord-3: #2A78D6;
+  --v2-ord-4: #1C5CAB;
+  --v2-track: #D5DAE0;
+
   /* ── Fokus halqasi (maydon fokusda: chegara brend + 3px halqa, brend 22%) ── */
   --v2-focus-ring: 0 0 0 3px color-mix(in srgb, var(--v2-brand) 22%, transparent);
 
@@ -175,6 +189,15 @@
 
   /* Grafik — qorong'ida ham AYNI teal 600 / 400 / 300 / 200 (o'lchandi), alohida
      qiymat yo'q. */
+
+  /* Moliya analitikasi — qorong'i rasmdan o'lchandi (validator: CVD ΔE 26.8). */
+  --v2-series-1: #3987E5;
+  --v2-series-2: #D95926;
+  --v2-ord-1: #184F95;
+  --v2-ord-2: #256ABF;
+  --v2-ord-3: #3987E5;
+  --v2-ord-4: #6DA7EC;
+  --v2-track: #3B444F;
 
   /* Fokus halqasi — qorong'ida brend 30% (o'lchandi: 0.30–0.33). */
   --v2-focus-ring: 0 0 0 3px color-mix(in srgb, var(--v2-brand) 30%, transparent);
@@ -259,6 +282,13 @@
   --color-v2-chart-2: var(--v2-chart-2);
   --color-v2-chart-3: var(--v2-chart-3);
   --color-v2-chart-4: var(--v2-chart-4);
+  --color-v2-series-1: var(--v2-series-1);
+  --color-v2-series-2: var(--v2-series-2);
+  --color-v2-ord-1: var(--v2-ord-1);
+  --color-v2-ord-2: var(--v2-ord-2);
+  --color-v2-ord-3: var(--v2-ord-3);
+  --color-v2-ord-4: var(--v2-ord-4);
+  --color-v2-track: var(--v2-track);
 
   --color-v2-fan-ingliz: var(--v2-fan-ingliz);
   --color-v2-fan-ingliz-bg: var(--v2-fan-ingliz-bg);

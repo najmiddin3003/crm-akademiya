@@ -81,6 +81,9 @@ export interface CashboxName {
   id: number;
   name: string;
   archived?: boolean;
+  /** Kassa qaysi filialniki (20.10.2026 dan `?names=1` javobida). */
+  branchId?: number;
+  isPrimary?: boolean;
 }
 
 export function zeroMethodTotals(keys: string[]): CashboxMethodTotals {
