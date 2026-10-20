@@ -26,7 +26,11 @@ import type { StaffFmt } from "./format";
 // almashganda panel yopilmaydi — ichidagi mazmun yumshoq almashadi
 // (`.stk-swap`), aks holda panel chiqib-kirib "sakrardi".
 
-export type DrawerMode = { mode: "detail"; id: number } | { mode: "form"; id: number | null };
+/**
+ * `employeeId` — yangi topshiriq shu xodim tanlangan holda ochiladi (yangi versiyadagi
+ * xodim profilidan «Topshiriq berish» → `/tasks?new=1&employee=<id>`, 20.10.2026).
+ */
+export type DrawerMode = { mode: "detail"; id: number } | { mode: "form"; id: number | null; employeeId?: number };
 
 interface Props {
   state: DrawerMode;
@@ -59,6 +63,7 @@ export default function TaskDrawer({ state, listTask, detail, detailError, branc
     content = (
       <TaskForm
         task={state.id === null ? null : task}
+        initialEmployeeIds={state.id === null && state.employeeId ? [state.employeeId] : undefined}
         employees={employees}
         branches={branches}
         settings={settings}

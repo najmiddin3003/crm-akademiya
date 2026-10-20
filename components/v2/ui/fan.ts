@@ -23,6 +23,32 @@ export function fanOf(course: string | undefined): FanKey {
   return "boshqa";
 }
 
+/**
+ * Fan bloki — och fon va chegara rangi ALOHIDA (xodim profilidagi haftalik jadval,
+ * 20.10.2026): to'qnashgan blokda chegara `warning` bo'ladi — bitta klassda ikki
+ * chegara rangi to'qnashmasin.
+ */
+export const FAN_BG: Record<FanKey, string> = {
+  ingliz: "bg-v2-fan-ingliz-bg",
+  ona: "bg-v2-fan-ona-bg",
+  matem: "bg-v2-fan-matem-bg",
+  rus: "bg-v2-fan-rus-bg",
+  arab: "bg-v2-fan-arab-bg",
+  bio: "bg-v2-fan-bio-bg",
+  tarix: "bg-v2-fan-tarix-bg",
+  boshqa: "bg-v2-fan-boshqa-bg",
+};
+export const FAN_BORDER: Record<FanKey, string> = {
+  ingliz: "border-v2-fan-ingliz-border",
+  ona: "border-v2-fan-ona-border",
+  matem: "border-v2-fan-matem-border",
+  rus: "border-v2-fan-rus-border",
+  arab: "border-v2-fan-arab-border",
+  bio: "border-v2-fan-bio-border",
+  tarix: "border-v2-fan-tarix-border",
+  boshqa: "border-v2-fan-boshqa-border",
+};
+
 /** Nuqta rangi (Tailwind klassi to'liq yozilgan — JIT ko'rsin). */
 export const FAN_DOT: Record<FanKey, string> = {
   ingliz: "bg-v2-fan-ingliz",

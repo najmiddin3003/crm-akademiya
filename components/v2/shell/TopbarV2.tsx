@@ -118,7 +118,7 @@ const CREATE_ITEMS: CreateItem[] = [
 /** Faqat rahbar (admin) — rasmdagi qo'shimcha bandlar; hozircha o'z sahifasida. */
 const ADMIN_ITEMS: CreateItem[] = [
   { key: "group", label: "Guruh", icon: Users, path: "/groups", href: "/groups?add=1" },
-  { key: "staff", label: "Xodim", icon: UserCog, path: "/management-xodimlar", href: "/management-xodimlar" },
+  { key: "staff", label: "Xodim", icon: UserCog, path: "/management-xodimlar", href: "/management-xodimlar?add=1" },
   { key: "bonus", label: "Bonus / jarima", icon: Gift, path: "/finance-bonus", href: "/finance-bonus" },
 ];
 

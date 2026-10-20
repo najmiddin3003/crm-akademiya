@@ -167,7 +167,10 @@ export default function StaffTasksPage() {
   const [handledNew, setHandledNew] = useState<string | null>(null);
   if (newParam !== handledNew && (newParam === null || mgr)) {
     setHandledNew(newParam);
-    if (newParam === "1") setDrawer({ mode: "form", id: null });
+    // `&employee=<id>` — xodim profilidagi «Topshiriq berish» (yangi versiya, 20.10.2026):
+    // shakl o'sha xodim tanlangan holda ochiladi.
+    const emp = Number(searchParams.get("employee"));
+    if (newParam === "1") setDrawer({ mode: "form", id: null, employeeId: Number.isInteger(emp) && emp > 0 ? emp : undefined });
   }
   useEffect(() => {
     if (newParam === null || !data) return;

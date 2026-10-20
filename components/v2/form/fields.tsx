@@ -18,15 +18,19 @@ import { useT } from "@/components/shared/Language";
 
 export type FieldState = "default" | "error" | "warning";
 
-/** Maydon klasslari (input, tanlov tugmasi). */
-export function fieldCls(state: FieldState = "default", extra = ""): string {
+/**
+ * Maydon klasslari (input, tanlov tugmasi). `size="sm"` — h-9: jadval qatoridagi
+ * tahrir (Sozlamalar → Kurslar, 20.10.2026); balandlik bitta klassda — ikki `h-*`
+ * to'qnashmasin.
+ */
+export function fieldCls(state: FieldState = "default", extra = "", size: "md" | "sm" = "md"): string {
   const border =
     state === "error"
       ? "border-v2-danger focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--v2-danger)_18%,transparent)]"
       : state === "warning"
         ? "border-v2-warning focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--v2-warning)_18%,transparent)]"
         : "border-v2-border-field focus:border-v2-brand focus:shadow-v2-focus";
-  return `h-10 w-full rounded-v2-md border bg-v2-surface! px-3 text-v2-body text-v2-text placeholder:text-v2-text-3 transition-[border-color,box-shadow] focus:outline-none disabled:cursor-not-allowed disabled:bg-v2-surface-2! disabled:text-v2-text-3 ${border} ${extra}`;
+  return `${size === "sm" ? "h-9" : "h-10"} w-full rounded-v2-md border bg-v2-surface! px-3 text-v2-body text-v2-text placeholder:text-v2-text-3 transition-[border-color,box-shadow] focus:outline-none disabled:cursor-not-allowed disabled:bg-v2-surface-2! disabled:text-v2-text-3 ${border} ${extra}`;
 }
 
 export function FieldLabel({ children, optional, htmlFor, className = "" }: { children: ReactNode; optional?: boolean; htmlFor?: string; className?: string }) {

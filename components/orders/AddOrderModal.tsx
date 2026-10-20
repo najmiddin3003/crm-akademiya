@@ -48,13 +48,20 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
   const { t } = useT();
   // Kurs va guruh ro'yxatlari bazadan — ilgari constants'dagi qattiq
   // ro'yxatlar edi, ya'ni haqiqiy guruhga yozib bo'lmasdi.
-  const { names: courseNames, loading: coursesLoading } = useOfflineCourseList();
+  // Faqat FAOL kurslar (Sozlamalar → Kurslar → Holat, 20.10.2026); tahrirdagi lidning
+  // kursi nofaol bo'lsa ham ro'yxatda qoladi (pastda `courseOptions`).
+  const { activeNames: courseNames, loading: coursesLoading } = useOfflineCourseList();
   const { groups, loading: groupsLoading } = useGroups();
   const groupNames = useMemo(() => groups.map((g) => g.name).filter(Boolean), [groups]);
   const [mounted, setMounted] = useState(false);
   const [studentName, setStudentName] = useState(initialOrder?.name ?? initialStudentName ?? "");
   const [referral, setReferral] = useState(initialOrder?.referral ?? "");
   const [course, setCourse] = useState(initialOrder?.course ?? "");
+  const savedCourse = initialOrder?.course ?? "";
+  const courseOptions = useMemo(
+    () => (savedCourse && !courseNames.includes(savedCourse) ? [savedCourse, ...courseNames] : courseNames),
+    [courseNames, savedCourse],
+  );
   // Kunlar "Du,Ch,Ju" ko'rinishida saqlanadi; eski yozuvdagi naqsh nomi
   // ("Toq kunlar") ham shu ko'rinishga yoyiladi.
   const [lessonDay, setLessonDay] = useState(() => formatLessonDays(parseLessonDays(initialOrder?.lessonDay)));
@@ -232,7 +239,7 @@ export default function AddOrderModal({ initialOrder, initialStudentName, initia
               setCourse(v);
               setError(null);
             }}
-            options={courseNames}
+            options={courseOptions}
             loading={coursesLoading}
             placeholder={t("Kursni tanlang")}
             searchPlaceholder="Kursni qidirish"

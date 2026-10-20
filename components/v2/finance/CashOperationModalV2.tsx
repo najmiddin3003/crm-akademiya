@@ -125,6 +125,11 @@ export interface CashOperationModalProps {
   initialTab?: CashTab;
   /** Kirim — o'quvchi oldindan tanlangan (O'quvchilar → «To'lov», `?kirim=`). */
   presetStudent?: StudentRow | null;
+  /**
+   * Chiqim — «Avans» turi va shu xodim (ismi) oldindan tanlangan (xodim profilidagi
+   * «Avans berish», 20.10.2026). Tur ro'yxati kelgach bir marta qo'yiladi.
+   */
+  presetAvansFor?: string;
   onClose: () => void;
   onSaved?: (r: { tab: CashTab; cashbox?: Cashbox; from?: Cashbox; to?: Cashbox }) => void;
 }
@@ -164,7 +169,7 @@ export default function CashOperationModalV2(props: CashOperationModalProps) {
   return <CashOperationForm {...props} cashboxes={cashboxes} />;
 }
 
-function CashOperationForm({ cashboxes, initialCashboxId, initialTab = "kirim", presetStudent, onClose, onSaved }: CashOperationModalProps & { cashboxes: Cashbox[] }) {
+function CashOperationForm({ cashboxes, initialCashboxId, initialTab = "kirim", presetStudent, presetAvansFor, onClose, onSaved }: CashOperationModalProps & { cashboxes: Cashbox[] }) {
   const { t } = useT();
   const { showToast } = useToast();
   const modal = useModalClose(onClose, "center");
@@ -297,7 +302,7 @@ function CashOperationForm({ cashboxes, initialCashboxId, initialTab = "kirim", 
         )}
         {visited.includes("chiqim") && (
           <div hidden={tab !== "chiqim"}>
-            <ChiqimTab {...tabProps} />
+            <ChiqimTab {...tabProps} presetAvansFor={presetAvansFor} />
           </div>
         )}
         {visited.includes("kochirish") && (
@@ -615,7 +620,7 @@ function StudentCard({ s, balance, balanceLabel, onClear }: { s: StudentRow; bal
 
 /* ================================================================ Chiqim */
 
-function ChiqimTab({ cashbox, register, report, onDone }: TabProps) {
+function ChiqimTab({ cashbox, register, report, onDone, presetAvansFor }: TabProps & { presetAvansFor?: string }) {
   const { t, months } = useT();
   const [chosen, setChosen] = useState<StudentRow | null>(null);
   const studentList = useMemo(() => (chosen ? [chosen] : []), [chosen]);
@@ -633,6 +638,19 @@ function ChiqimTab({ cashbox, register, report, onDone }: TabProps) {
     onSuccess: ({ cashbox: updated }) => onDone({ kind: "chiqim", cashbox: updated, detail: last.current }),
   });
   const money = (n: number) => `${fmtNum(n)} ${t("so'm")}`;
+
+  // XODIM PROFILIDAN «Avans berish» (20.10.2026): turlar kelgach BIR MARTA — xodimga
+  // yoziladigan «…avans…» turi va shu xodim. Render paytida (oldingi holatdan hosil
+  // qilish qolipi) — effekt ichida setState kaskad render berardi.
+  const [presetDone, setPresetDone] = useState(!presetAvansFor);
+  if (!presetDone && presetAvansFor && !c.categoriesLoading) {
+    setPresetDone(true);
+    const avans = c.categories.find((tv) => txTarget(tv) === "employee" && /avans/i.test(tv.name));
+    if (avans) {
+      c.setCategoryId(avans.id);
+      c.setPersonKey(presetAvansFor);
+    }
+  }
 
   /** Tur almashishi — eski oynadagi onChange bilan bir xil. */
   function changeType(v: string) {

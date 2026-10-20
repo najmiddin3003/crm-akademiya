@@ -79,4 +79,7 @@ export const V2_LABELS: Record<string, string> = {
  */
 export const V2_ITEM_LABELS: Record<string, string> = {
   "/groups": "Guruhlar",
+  // 7-qism rasmlari (20.10.2026): «Sozlamalar → O'quv → Kurslar», Boshqaruv → «Rollar va huquqlar».
+  "/offline-courses": "Kurslar",
+  "/management-rollar": "Rollar va huquqlar",
 };

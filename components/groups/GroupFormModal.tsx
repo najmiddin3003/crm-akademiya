@@ -140,7 +140,9 @@ export default function GroupFormModal({
   const { t } = useT();
   const editing = group !== undefined;
   const { showSuccess, showError } = useToast();
-  const { courses, names: courseNames, loading: coursesLoading } = useOfflineCourseList();
+  // Tanlovda faqat FAOL kurslar (Sozlamalar → Kurslar → Holat, 20.10.2026); tahrirda
+  // guruhning joriy kursi nofaol bo'lsa ham `withCurrent` uni qo'shadi.
+  const { courses, activeNames: courseNames, loading: coursesLoading } = useOfflineCourseList();
   const { names: teacherNames, loading: teachersLoading } = useTeachers();
   const { names: roomNames, loading: roomsLoading } = useRooms();
   // `groupsProp` berilsa so'rov yuborilmaydi — u boshlang'ich ro'yxat bo'lib kiradi.

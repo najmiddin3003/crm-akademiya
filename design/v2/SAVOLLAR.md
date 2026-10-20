@@ -607,6 +607,111 @@ yo'q — u `transaction_entries` da, unga Moliya analitikasi ruxsati ochilmagan.
 Rasmda Moliya analitikasi «Rahbar paneli» guruhida (Umumiy ko'rinish, Rahbar kassasi, Ko'chirmalar,
 Tasdiqlar, Oylik chiqarish, Moliyaviy reja, Bonus, Jarima, Moliya analitikasi). Menyu o'zgartirilmadi.
 
+### 7-qism — Sozlamalar → Kurslar, Xodimlar, Xodim profili (20.10.2026)
+
+**111. Kurs kategoriyasi** — taxmin, QAROR KERAK
+Rasmdagi «Kategoriya» (Chet tillari / Fanlar / Arab tili) tizimda yo'q edi — kursga yangi `category` maydoni
+qo'shildi. Ro'yxat: rasmdagi uchtasi + kurslarda ishlatilganlar; tahrirda «+ Yangi kategoriya». Alohida
+«Kategoriyalar» sahifasining dizayni kelmagan (hozirgi O'quv → Kategoriya — o'quvchining NARX toifalari, boshqa
+narsa). Bazadagi 16 kursning hammasi hozir kategoriyasiz. Taklif — bir martalik to'ldirish: Chet tillari — Ingliz,
+Rus, Koreys, Turk, Nemis; Fanlar — Matematika, Ona tili, Biologiya, Kimyo, Fizika, Tarix, Huquq, Geografiya; Arab
+tili — Arab tili; «Sertifikat» va «IT (Web dizayn)» — qaysi? Ruxsat bersangiz prod bazada skript bilan qilaman
+(yoki qatorlarda o'zingiz belgilaysiz — ✎).
+
+**112. Sozlamalar ichki menyusi** — taxmin
+Bandlar mavjud sahifalarga olib boradi: Markaz ma'lumotlari → Umumiy sozlamalar, Filiallar, Xonalar, Kurslar,
+Kategoriyalar (O'quv → Kategoriya), Kassalar (Kassa sahifasi — kassa qo'shish/arxivlash shu yerda), Kirim-chiqim
+toifalari (Tranzaksiya turlari), To'lov turlari (Sozlamalar → Moliya), Manbalar, So'rovnoma sahifasi (Sozlamalar →
+Sotuv → Lidlar), Jarima va muddatlar (Topshiriqlar → Sozlamalar, faqat direktor), Tanga qoidalari (Gamifikatsiya →
+Sabablar). TIZIMDA YO'Q — menyuda o'chiq: Bildirishnomalar, Imtihon fanlari, Bonus sabablari, Referal dasturi,
+Nazorat qoidalari. Ichki menyu hozircha faqat Kurslarda: eski /settings-* sahifalarida o'z tab menyusi bor (ikki
+yonma-yon menyu bo'lardi) — ular dizayni kelganda shu ramkaga o'tadi. Yon menyudagi «Sozlamalar» o'zgarmadi.
+
+**113. Kurs holati «Faol / Nofaol»** — taxmin
+Rasmda hammasi «Faol». Yangi `active` maydoni: «⋯ → Nofaol qilish» — kurs YANGI lid, guruh va xodim
+oynalaridagi «Kursni tanlang» ro'yxatidan chiqadi (xodimlar boti va MohirAI'ning yangi lidi ham); mavjud
+guruh/lidlarda, filtrlar va hisobotlarda qoladi.
+
+**114. Nom o'zgarsa** — qilindi
+Server eski nom yozilgan guruh kursi, lid yo'nalishi, o'qituvchi fani va imtihon yozuvlarini yangi nomga ko'chiradi;
+arxivdagi guruhlar va ishga arizalar tegilmaydi. Eski «Oflayn kurslar» sahifasida ham shunday (ilgari ko'chmasdi —
+guruh tahririda «kurs topilmadi», qarzdorlar hisobotida narx yo'qolardi). Bir xil nomli ikki kurs endi yaratilmaydi.
+
+**115. Kursni o'chirish** — taxmin
+Guruhda ishlatilgan kurs o'chmaydi («N ta guruhda — nofaol qiling»), eski sahifada ham. Faqat lidlarda bo'lsa
+o'chiriladi (lid nomini matn sifatida saqlaydi).
+
+**116. Darajalar va narxlar** — taxmin
+Rasmda yo'q — qator «⋯ → Darajalar va narxlar» (eski kurs sahifasi: darajalar, filial narxlari, kitob, mavzular) va
+«Rang va filial narxlari». Rasmdagi izoh («Kategoriya va narx darajalari — «Kategoriyalar» bo'limida») bizda to'g'ri
+emas — narx darajalari kursning o'zida; izoh shunga moslandi.
+
+**117. Excel / CSV / import** — taxmin
+Rasmda yo'q, eski sahifada bor — sarlavhadagi «⋯» da (fayl ustunlari eski bilan bir xil).
+
+**118. Menyu nomlari** — taxmin
+Yangi versiyada yon menyuda «Oflayn kurslar» → «Kurslar», «Rollar» → «Rollar va huquqlar». Kurslar O'quv bo'limida
+ham qoldi. Rasmdagi Boshqaruv'da Filiallar va Ish jadvali yo'q — ular menyuda qoldirildi.
+
+**119. Xodimlar — filtrlar** — taxmin
+Rasmdagi uchtasi: Lavozim, Hisoblash usuli, Holati. Eski sahifadagi Kurs, Ketish sababi, Faollik va ketish sanasi
+filtrlari yangi versiyada yo'q — kerakmi? «Holati» sukutda «Faol» (eski sahifadagi qaroringiz: arxivdagilar
+aralashmasin), rasmda tanlanmagan ko'rinadi.
+
+**120. «Shu filial oylik ro'yxatida yo'q»** — qilindi
+Xodim shu filialda ishlaydi, oyligi esa boshqa filial ro'yxatida — ikki pul katagi o'rnida shu yozuv (ustida qaysi
+filialda). Eski sahifada bunday xodim «Sozlanmagan» ko'rinardi. Haqiqatan sozlanmagani — «Ish haqi kiritilmagan —
+sozlash».
+
+**121. «Jami oylik» va «Qolgan oylik»** — taxmin
+Oylik chiqarish bilan bitta manba. «Qolgan» — xodimga JAMI qarz (o'tgan oylarda to'lanmagani bilan; ostida «o'tgan
+oylardan: …»), eski ro'yxat va profildagidek. Oylik chiqarishdagi «Qolgan oylik» — faqat shu oy to'lanadigani.
+
+**122. Guruhlar ustuni** — taxmin
+Guruh nomlari, o'qituvchi ismi bo'yicha (eski ro'yxatdagi bog'lanish; yordamchilik sanalmaydi — profilda «yordamchi»
+belgisi bilan ko'rinadi).
+
+**123. Birinchi qator rangi** — taxmin
+Rasmda birinchi qator `brand-bg` — sichqoncha ustidami yoki tanlanganmi? Boshqa ro'yxatlardagidek kulrang hover.
+
+**124. Soliq, plastik, tahrir** — taxmin
+Eski jadvaldagi soliq va plastik tugmachalari — qator «⋯» da (eski oynalar); ustunlarini «Ustunlar»da yoqish mumkin.
+
+**125. «Ishga qabul (CV)» soni** — ochiq
+Rasmda yon menyuda «Ishga qabul (CV) 2» — yangi arizalar soni. Hozircha son yo'q (sanoq so'rovi kerak).
+
+**126. Profilning eski tablari** — taxmin
+Tranzaksiyalar, o'quvchilar to'lovlari, avans/oylik/balans tarixi, to'lanmagan to'lovlar, ish soati, KPI, eslatma —
+rasmda yo'q. «Batafsil» kartasidan va «⋯ → Batafsil» dan eski ko'rinishda ochiladi (kerakli tab bilan).
+
+**127. Guruhlar va jadval** — taxmin
+Xodim o'qituvchi YOKI yordamchi bo'lgan guruhlar; «haftada N soat» — ustma-ust vaqt bir marta sanaladi (rasmdagi «12
+soat» shunday chiqadi); bir vaqtga to'g'ri kelgan guruhlar sariq chegarali, ostida ogohlantirish. Kun nomlari ilova
+tilidan («Cho», «Pay»; rasmda «Chor», «Pa»).
+
+**128. Oylik kartasi** — taxmin
+Rasmdagi qatorlardan tashqari, qiymati bo'lsa: Soliq va «Berilgan oylik»; «O'tgan oydan» — to'lanadigan + o'z oyidan
+chiqariladigan (oylari yoziladi); kartasi bor xodimda «kartaga · naqd». Qatorlar yig'indisi «Qolgan oylik»ka teng.
+
+**129. Topshiriqlar** — taxmin
+Rasmdagi raqam — muhimlik (1–5); holatlar tizimdagi nomlari bilan («Faol» o'rniga «Yangi»); «Namuna» belgisi —
+dizaynerning izohi deb olindi, ko'rsatilmaydi. 5 tasi, «Hammasi» — Topshiriqlar sahifasi.
+
+**130. «Topshiriq berish»** — qilindi
+Topshiriqlar sahifasining shakli shu xodim tanlangan holda ochiladi; tugma faqat topshiriq bera oladiganlarga.
+
+**131. «Avans berish»** — qilindi
+Kassa amali oynasi «Chiqim»da, «Hodimga avans» va shu xodim tanlangan; tugma faqat Kassaga ruxsati borlarga.
+Arxivdagi xodimda ikkala tugma yo'q.
+
+**132. Huquqlar va login** — taxmin
+«Huquqlar: rol bo'yicha» (xodimga alohida berilgan bo'lsa — «alohida — N bo'lim»); «login bor / taklif yuborilgan /
+parol o'rnatilmagan / login yo'q» — tizim hisobidan (parol ko'rsatilmaydi).
+
+**133. Profil amallari** — taxmin
+«⋯»: Tahrirlash, Ish haqini sozlash, Soliq turlari, Plastik oylik, Parol (faqat admin), Qo'ng'iroq qilish, Batafsil,
+Arxivlash — eski profildagi amallar, oynalari hozircha eski.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

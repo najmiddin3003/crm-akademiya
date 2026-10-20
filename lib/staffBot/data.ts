@@ -302,9 +302,12 @@ export async function loadTodayEntries(db: Db, cashboxId: number, dateIso: strin
   }));
 }
 
-/** Kurs nomlari — Sozlamalar → Kurslar (`offline_courses`), web'dagi lid oynasi bilan bir xil manba. */
+/**
+ * Kurs nomlari — Sozlamalar → Kurslar (`offline_courses`), web'dagi lid oynasi bilan bir xil
+ * manba. Faqat FAOL kurslar (20.10.2026, «Holat»): bot va MohirAI yangi lid uchun so'raydi.
+ */
 export async function loadCourseNames(db: Db): Promise<string[]> {
-  const rows = await db.collection("offline_courses").find({}, { projection: { _id: 0, name: 1 } }).sort({ id: 1 }).toArray();
+  const rows = await db.collection("offline_courses").find({ active: { $ne: false } }, { projection: { _id: 0, name: 1 } }).sort({ id: 1 }).toArray();
   return rows.map((r) => String(r.name ?? "").trim()).filter(Boolean);
 }
 

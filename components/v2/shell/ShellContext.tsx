@@ -28,3 +28,8 @@ export function useCanOpen(path: string): boolean {
   const { permissions } = useContext(ShellContext);
   return isPathAllowed(path, permissions);
 }
+
+/** Ruxsatlar va admin belgisi — bir nechta yo'lni birdan tekshirish uchun (Sozlamalar menyusi). */
+export function useShell(): ShellValue {
+  return useContext(ShellContext);
+}

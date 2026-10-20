@@ -17,8 +17,8 @@ import EmployeeTaxModal from "./EmployeeTaxModal";
 import EmployeePlastikModal from "./EmployeePlastikModal";
 import { groupNumber } from "@/components/ui/MoneyInput";
 import type { HrEmployeeFull } from "./employeeExtras";
-import type { Group } from "@/lib/groups";
-import { payrollEarned, payrollOwedTotal, payrollPeriod, type EmployeePayroll, type SalaryType } from "@/lib/salary";
+import { salaryFor, useEmployeesCore } from "./useEmployeesCore";
+import { EXPORT_HEADERS, IMPORT_IDX, csvCell, downloadBlob, parseCsv } from "./employeesExport";
 import {
   EMP_COLUMNS,
   EMP_LEAVE_REASONS,
@@ -58,55 +58,6 @@ function inDateRange(d: Date | null, range: DateRange): boolean {
   return true;
 }
 
-function csvCell(v: string | number): string {
-  const s = String(v ?? "");
-  return `"${s.replace(/"/g, '""')}"`;
-}
-/**
- * CSV matnini qatorlarga ajratadi — eksport yozgan qoidalar bo'yicha
- * (qo'shtirnoq ichidagi vergul/yangi qator ajratmaydi, "" bitta qo'shtirnoq).
- * components/groups/GroupsListPage.tsx dagi bilan bir xil, chunki import
- * ham aynan shu sahifaning eksportini qaytarib o'qishi kerak.
- */
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-  // BOM eksport tomonidan qo'shiladi — olib tashlanmasa birinchi ustun buziladi.
-  const s = text.replace(/^﻿/, "");
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (s[i + 1] === '"') { cell += '"'; i++; }
-        else inQuotes = false;
-      } else cell += c;
-      continue;
-    }
-    if (c === '"') inQuotes = true;
-    else if (c === ",") { row.push(cell); cell = ""; }
-    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
-    else if (c !== "\r") cell += c;
-  }
-  if (cell || row.length) { row.push(cell); rows.push(row); }
-  return rows.filter((r) => r.some((v) => v.trim() !== ""));
-}
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-const EXPORT_HEADERS = ["№", "To'liq nomi", "Jinsi", "Aktiv o'quvchilar", "Guruhlar", "Turi", "Filiallar", "Telefon raqam", "Kurs", "Yaratilgan sana"];
-// Eksportdagi ustun tartibi = importda o'qiladigan indekslar. "№",
-// "Aktiv o'quvchilar" va "Guruhlar" import qilinmaydi (backend izohiga qarang).
-const IMPORT_IDX = { name: 1, gender: 2, turi: 5, filial: 6, phone: 7, kurs: 8, created: 9 };
 
 // Saralanadigan ustunlar. Bu ro'yxat constants/employees.js dagi `sortable`
 // bayrog'idan MUSTAQIL: u yerda faqat bitta ustun belgilangan edi va hech
@@ -122,55 +73,9 @@ function fmtNum(n: number): string {
   return Math.round(n).toLocaleString("ru-RU");
 }
 
-// Oylik-komponentlar backend'dan (/api/salary-runs/employees-payroll)
-// olinadi. Ilgari bu yerda alohida hisob bor edi va u xodim id'sidan
-// hisoblanadigan demo generatorlarni ishlatardi — natijada bu ro'yxat
-// bilan Oylik chiqarish sahifasi bir odam haqida turlicha raqam
-// ko'rsatardi. Endi manba bitta.
-//
-// Oyligi sozlanmagan xodim uchun null qaytadi: bunday xodimda hisoblangan
-// raqam yo'q, "0" esa yolg'on bo'lardi.
-interface SalaryView {
-  salaryType: SalaryType;
-  percent: number;
-  fixedSalary: number;
-  jamiOylik: number;
-  jamiAvans: number;
-  /**
-   * Xodimga JAMI qancha qarzmiz (`payrollOwedTotal`): shu oyda
-   * to'lanadigani + o'tgan oylarda to'lanmagani. Kartochka "xodim
-   * holati"ni ko'rsatadi, chiqarish chegarasini emas.
-   */
-  qolganOylik: number;
-  /**
-   * Shundan o'tgan oylarda to'lanmagan qism (`carryPending`, ≥ 0) — u
-   * joriy oyda TO'LANMAYDI, o'z oyining Oylik sahifasidan chiqariladi
-   * (04.10.2026, "faqat o'z oyidan chiqarilsin"). 0 — yo'q.
-   */
-  otganOylar: number;
-}
-
-function salaryFor(
-  emp: HrEmployeeFull,
-  p: ReturnType<typeof payrollPeriod>,
-  payrollById: Map<number, EmployeePayroll>,
-): SalaryView | null {
-  const row = payrollById.get(emp.id);
-  if (!row || !row.configured) return null;
-  return {
-    salaryType: row.salaryType,
-    percent: row.percent,
-    fixedSalary: row.fixedSalary,
-    jamiOylik: payrollEarned(row, p),
-    jamiAvans: row.paidAvans,
-    // 04.10.2026 gacha `payrollDue` edi — u o'shanda o'tgan oylar qoldig'ini
-    // ham to'liq olardi. Endi `payrollDue` faqat SHU OYDA to'lanadiganini
-    // oladi; kartochka raqami avvalgidek JAMI qolsin (sentabr qoldig'i
-    // ro'yxatdan "yo'qolmasin") — `payrollOwedTotal`, qismi pastda alohida.
-    qolganOylik: payrollOwedTotal(row, p),
-    otganOylar: Math.max(row.carryPending ?? 0, 0),
-  };
-}
+// Oylik-komponentlar (`salaryFor`), xodimlar/oylik/guruhlar yuklanishi va guruh
+// soni — ./useEmployeesCore.ts (20.10.2026 da shu yerdan AYNAN ko'chirildi; yangi
+// versiyadagi Xodimlar sahifasi ham o'sha yadrodan).
 
 /** Arxivdagi xodimda o'chirilgan tugmachalar ustidagi izoh. */
 const ARCHIVED_HINT = "Xodim arxivda — oylik hisoblanmaydi, soliq va plastik ta'sir qilmaydi";
@@ -219,52 +124,12 @@ export default function EmployeesListPage() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [importing, setImporting] = useState(false);
 
-  const [rows, setRows] = useState<HrEmployeeFull[]>([]);
-  // Guruhlar — "Guruhlar" va "Aktiv o'quvchilar soni" ustunlari SHU YERDAN
-  // hisoblanadi. `hr_employees` hujjatidagi `groups`/`aktivOq` maydonlari
-  // xodim yaratilganda 0 qilib yoziladi va HECH QACHON yangilanmaydi
-  // (app/api/hr-employees/route.ts), ya'ni ular guruhga biriktirilgan
-  // o'qituvchida ham 0 bo'lib qolaverardi — jadval "bu o'qituvchining
-  // guruhi yo'q" deb yolg'on da'vo qilardi.
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [payrollById, setPayrollById] = useState<Map<number, EmployeePayroll>>(new Map());
-  const [loadingRows, setLoadingRows] = useState(true);
-
-  const period = useMemo(() => payrollPeriod(), []);
+  // Xodimlar, oylik qatorlari va guruhlar — umumiy yadro (./useEmployeesCore.ts).
+  const { rows, setRows, payrollById, loadingRows, period, statsOf } = useEmployeesCore();
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  // Xodimlar ro'yxati va ularning oylik qatorlari — ikkalasi ham backend'dan.
-  // Oylik hisobi shu sahifada TAKRORLANMAYDI: u /api/salary-runs/
-  // employees-payroll dan keladi, shunda Oylik chiqarish sahifasi bilan
-  // bir xil raqam chiqadi.
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      fetch("/api/hr-employees").then((r) => r.json()).catch(() => null),
-      // `branch=pool` — ro'yxat 1+2 hovuzi bo'yicha (lib/branchPools.ts), oylik
-      // qatorlari ham o'sha hovuzdan bo'lsin, aks holda boshqa filial
-      // oyligidagi xodim «Sozlanmagan» chiqardi.
-      fetch("/api/salary-runs/employees-payroll?branch=pool").then((r) => r.json()).catch(() => null),
-      fetch("/api/groups").then((r) => r.json()).catch(() => null),
-    ])
-      .then(([emps, pay, grps]) => {
-        if (cancelled) return;
-        if (emps?.ok) setRows(emps.employees);
-        if (pay?.ok) {
-          setPayrollById(new Map((pay.employees as EmployeePayroll[]).map((e) => [e.id, e])));
-        }
-        if (grps?.ok) setGroups(grps.groups as Group[]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRows(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!settingsOpen && !moreOpen) return;
@@ -292,32 +157,6 @@ export default function EmployeesListPage() {
       return true;
     });
   }, [rows, search, roleFilter, courseFilter, stateFilter, reasonFilter, activeDateRange, leaveDateRange]);
-
-  // Xodim ISMI bo'yicha guruhlari va ulardagi o'quvchilar soni. Bog'lanish
-  // ismga tayanadi, chunki `groups` hujjatida `teacherId` yo'q — faqat
-  // `teacher` satri (app/api/hr-employees/[id]/students/route.ts da ham
-  // xuddi shu zanjir). O'quvchilar takrorsiz sanaladi: bitta o'quvchi
-  // xodimning bir nechta guruhida bo'lishi mumkin.
-  const groupStatsByName = useMemo(() => {
-    const acc = new Map<string, { groups: number; pupils: Set<number> }>();
-    for (const g of groups) {
-      const key = String(g.teacher ?? "").trim().toLowerCase();
-      if (!key) continue;
-      let entry = acc.get(key);
-      if (!entry) {
-        entry = { groups: 0, pupils: new Set<number>() };
-        acc.set(key, entry);
-      }
-      entry.groups += 1;
-      for (const id of g.studentIds ?? []) entry.pupils.add(id);
-    }
-    return new Map(
-      [...acc].map(([key, v]) => [key, { groups: v.groups, students: v.pupils.size }]),
-    );
-  }, [groups]);
-
-  const statsOf = (e: HrEmployeeFull) =>
-    groupStatsByName.get(e.name.trim().toLowerCase()) ?? { groups: 0, students: 0 };
 
   // Ustun bo'yicha saralash. Ilgari sarlavhalarda strelka chizilardi, lekin
   // na holat, na taqqoslagich, na onClick bor edi — ya'ni bezak edi.

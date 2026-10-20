@@ -33,6 +33,8 @@ import type { StaffFmt } from "./format";
 
 interface Props {
   task: StaffTask | null;
+  /** Yangi topshiriqda oldindan tanlangan xodim(lar) — faqat ro'yxatda bori olinadi. */
+  initialEmployeeIds?: number[];
   employees: StaffTaskEmployee[];
   branches: StaffTaskBranch[];
   settings: StaffTaskSettings;
@@ -54,7 +56,7 @@ function defaultDeadline(nowMs: number): number {
   return uzDayStart(nowMs) + DAY_MS + 18 * HOUR_MS;
 }
 
-export default function TaskForm({ task, employees, branches, settings, nowMs, fmt, onBusy, onCancel, onCreated, onUpdated }: Props) {
+export default function TaskForm({ task, initialEmployeeIds, employees, branches, settings, nowMs, fmt, onBusy, onCancel, onCreated, onUpdated }: Props) {
   const { t, stamp, rel, money, num } = fmt;
   const { showError } = useToast();
   const editing = !!task;
@@ -65,7 +67,7 @@ export default function TaskForm({ task, employees, branches, settings, nowMs, f
   const initialDl = task ? Date.parse(task.deadline) : defaultDeadline(nowMs);
   const [date, setDate] = useState(uzDateOf(initialDl));
   const [time, setTime] = useState(uzTimeOf(initialDl));
-  const [sel, setSel] = useState<number[]>([]);
+  const [sel, setSel] = useState<number[]>(() => (task ? [] : (initialEmployeeIds ?? []).filter((id) => employees.some((e) => e.id === id))));
   const [q, setQ] = useState("");
   const [keep, setKeep] = useState<number[]>(() => (task?.attachments ?? []).map((_, i) => i));
   const [added, setAdded] = useState<StaffTaskFile[]>([]);

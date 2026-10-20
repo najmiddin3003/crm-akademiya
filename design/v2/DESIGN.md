@@ -599,6 +599,61 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   lidlar — `GET /api/analytics/leads`; kassa bo'yicha guruhlash — `/api/transactions/summary?groupBy=…,cashbox`.
   Ranglar — `tokens.css` `--v2-series-1/2`, `--v2-ord-1…4`, `--v2-track`. Rasmdan farqlar — `SAVOLLAR.md` 99–110.
 
+## Sozlamalar ramkasi va Kurslar (rasm «Sozlamalar · Kurslar», 20.10.2026)
+
+- **Ramka**: chapda ichki menyu ~240 px (`surface-2`, o'ng chegara) — «Sozlamalar» (20 px qalin), «Sozlamani
+  qidirish» (h-8), bo'limlar Umumiy · O'quv · Moliya · Lidlar · Topshiriqlar · Gamifikatsiya · Nazorat (`caption
+  text-3`), bandlar h-8; faol band — oq kartochka + chegara + soya (yon menyudagi faol band bilan bir xil);
+  tizimda yo'q band — `text-3`, bosilmaydi. O'ngda sahifa (`surface`). Telefonda menyu tepada yig'iq
+  («Sozlamalar · Kurslar ⌄»).
+- **Kurslar**: «O'quv» (`caption`) → «Kurslar» (20 px) → izoh; o'ngda «⋯» (Excel/CSV/import) va «+ Kurs qo'shish».
+  Qidiruv «Kurs nomi» + kategoriya CHIPLARI (`rounded-full`, h-8): tanlangani `brand-bg` + brend chegara + ✓,
+  «Barchasi · 13», «Chet tillari · 4» …, kategoriyasizlar bo'lsa «Kategoriyasiz · N».
+- **Jadval**: Kurs nomi (qalin) · Kategoriya (belgi: och fon + nuqta + yozuv — Chet tillari `info`, Fanlar
+  `success`, Arab tili `warning`, boshqalari nomidan barqaror rang) · Holat («● Faol» — fonsiz, yashil nuqta;
+  «● Nofaol» — kulrang) · ✎ va ⋯ (doim ko'rinadi, `text-3`). Qator 52 px.
+- **Qatorda tahrir**: qator `brand-bg`; nom maydoni (h-9, fokusda), kategoriya tanlovi (ichida belgi), o'ngda
+  «Bekor» / «Saqlash» (h-9); ostida «ⓘ Nom o'zgarsa, shu kursdagi barcha guruh va o'quvchilarda ham yangilanadi.»
+  Enter — saqlash, Esc — bekor. Jadval oxirida uzuq chegarali «+ Yangi kurs qo'shish» — o'sha tahrir yangi kurs uchun.
+- Kodda: `components/v2/settings/` — SettingsFrameV2 (ramka), settingsNav (bandlar va manzillar), CoursesSettingsV2,
+  courseBits (kategoriya/holat belgilari). Kategoriya va holat — `lib/courseCategories.ts`, nom ko'chishi —
+  `lib/courseRename.ts`; eksport — `components/offline-courses/coursesExport.ts` (eski sahifa bilan bitta).
+  Rasmdan farqlar — `SAVOLLAR.md` 111–118.
+
+## Xodimlar (rasm «Xodimlar», 20.10.2026)
+
+- **Sarlavha**: «Xodimlar» + «Akademiya 3 Uychi · 4 ta xodim · oylik 1–12-oktabr bo'yicha»; o'ngda «⋯»,
+  «Ishga qabul (CV)» (ikkinchi darajali, odam+ ikonkasi) va «+ Xodim qo'shish».
+- **Filtrlar**: «Ism yoki telefon» → chiplar Lavozim, Hisoblash usuli, Holati → o'ngda «Ustunlar».
+- **Jadval**: Xodim (bosh harfli doira `surface-2` + ism qalin) · Lavozim (`text-2`) · Guruhlar («3 ta» qalin +
+  nomlari `caption text-2`) · Hisoblash usuli (belgi `surface-2` + chegara «Oklad + 30%», ostida «01.10.2026 dan») ·
+  Jami oylik · Qolgan oylik (o'ngga, qalin) · ⋯. Oyligi boshqa filial ro'yxatidagi xodimda ikki pul katagi o'rnida
+  «⚠ Shu filial oylik ro'yxatida yo'q» (`warning`). Pastda `surface-2` qator «Jami · oylikdagi 3 xodim» + yig'indilar
+  (qolgani `brand-text` + «so'm»). Kartochka mazmun balandligida (bo'sh joyga cho'zilmaydi).
+- Kodda: `components/v2/employees/` — EmployeesListV2, employeesColumns (`v2:employees-list:columns:1`), employeeBits.
+  Ma'lumot eski sahifa bilan bitta: `components/employees/useEmployeesCore.ts`, `employeesExport.ts`. Rasmdan
+  farqlar — `SAVOLLAR.md` 119–125.
+
+## Xodim profili (rasm «Xodim profili», 20.10.2026)
+
+- **Sarlavha**: «Xodimlar › Ism» (`small`); avatar 48 px (`brand-bg` + `brand-text`), ism 20 px qalin, ostida
+  «O'qituvchi · Akademiya 3 Uychi · [Oklad + 30%] · ⚷ Huquqlar: rol bo'yicha · login bor»; o'ngda «Topshiriq berish»,
+  «Avans berish» (ikkinchi darajali) va «⋯».
+- **Guruhlar va jadval** (chapda, keng): «3 ta guruh · haftada 12 soat»; haftalik jadval — Du…Sha ustunlar (darsi bor
+  kun qalin), soat chiziqlari 44 px, guruh bloklari fan rangida (och fon + chegara, nom va xona raqami); bir vaqtga
+  to'g'ri kelganlari yonma-yon, chegarasi `warning`; ostida `warning-bg` ogohlantirish («Toq kunlar 14:00–16:00 da
+  ikki guruh bir vaqtga to'g'ri kelgan: …»); guruhlar ro'yxati — fan nuqtasi, nom, «Toq kunlar · 14:00–16:00 ·
+  205-xona», «6 o'quvchi», holat belgisi.
+- **Oylik · oktabr 2026** (o'ngda): «1–12-oktabr hisobi (12/31 kun)»; qatorlar (ajratgich bilan) Oklad («1 000 000 ×
+  12/31 kun»), Foiz · 30% («0 so'm tushum × 30%»), Bonus, Jarima, Avans, O'tgan oydan; `brand-bg` blokda «Qolgan oylik
+  387 097 so'm» (22 px); «Oylik chiqarishda ochish →».
+- **Topshiriqlar** (o'ngda): «Hammasi»; qator — muhimlik raqami (kvadrat `surface-2`), nom qalin, muddat («Muddat:
+  15-oktabr | 18:00 · ko'rildi»), o'ngda holat belgisi.
+- **Batafsil** (chapda, rasmda yo'q): eski profil tablari chiplari — eski ko'rinishda ochiladi.
+- Kodda: `components/v2/employees/` — EmployeeProfileV2, EmployeeScheduleCard (+ scheduleUtils — kunlar, to'qnashuv,
+  haftalik soat), EmployeeSalaryCard, EmployeeTasksCard. Fan bloklari — `ui/fan.ts` FAN_BG / FAN_BORDER. Rasmdan
+  farqlar — `SAVOLLAR.md` 126–133.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

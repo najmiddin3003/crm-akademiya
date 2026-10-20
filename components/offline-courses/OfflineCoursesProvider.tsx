@@ -54,10 +54,34 @@ export interface OfflineCourse {
   books?: CourseListItem[];
   /** "Mavzular" tabi. */
   topics?: CourseListItem[];
+  /**
+   * Kategoriya — «Chet tillari», «Fanlar» kabi (lib/courseCategories.ts,
+   * 20.10.2026). Yo'q yoki "" — kategoriyasiz.
+   */
+  category?: string;
+  /**
+   * Holat — `false` bo'lsa yangi lid/guruh/xodim oynalaridagi «Kursni tanlang»
+   * ro'yxatida chiqmaydi. Maydon yo'q eski yozuv — faol (courseIsActive).
+   */
+  active?: boolean;
 }
 
 export type CourseInput = Pick<OfflineCourse, "name" | "color" | "branches">;
 export type LevelInput = Pick<CourseLevel, "name" | "color" | "branches">;
+
+/** Kursning bir qismini yangilash (yangi «Sozlamalar → Kurslar» sahifasi). */
+export type CoursePatch = Partial<Pick<OfflineCourse, "name" | "color" | "branches" | "category" | "active">>;
+
+/** Nom o'zgarganda qayerlarda yangilangani (app/api/offline-courses/[id] → `renamed`). */
+export interface CourseRenameInfo {
+  moved: Record<string, number>;
+  total: number;
+}
+
+/** Yangi sahifa uchun batafsil natija — xato matni va nom ko'chirilgani bilan. */
+export type CourseSaveResult =
+  | { ok: true; course: OfflineCourse; renamed?: CourseRenameInfo }
+  | { ok: false; error: string };
 
 interface OfflineCoursesContextValue {
   courses: OfflineCourse[];
@@ -66,6 +90,12 @@ interface OfflineCoursesContextValue {
   addCourse: (data: CourseInput) => Promise<boolean>;
   updateCourse: (id: number, data: CourseInput) => Promise<boolean>;
   deleteCourse: (id: number) => Promise<boolean>;
+  /** Yangi sahifa: kurs yaratish (kategoriya/holat bilan) — xato matnini qaytaradi. */
+  createCourse: (data: CoursePatch & { name: string }) => Promise<CourseSaveResult>;
+  /** Yangi sahifa: kursning bir qismini yangilash — xato matni va `renamed` bilan. */
+  patchCourse: (id: number, patch: CoursePatch) => Promise<CourseSaveResult>;
+  /** Yangi sahifa: o'chirish — guruhda ishlatilgan kurs 409 bilan qaytadi (xato matni va guruhlar soni bilan). */
+  removeCourse: (id: number) => Promise<{ ok: true } | { ok: false; error: string; groups?: number }>;
   addLevel: (courseId: number, data: LevelInput) => Promise<boolean>;
   updateLevel: (courseId: number, levelId: number, data: LevelInput) => Promise<boolean>;
   deleteLevel: (courseId: number, levelId: number) => Promise<boolean>;
@@ -133,6 +163,27 @@ export function OfflineCoursesProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const createCourse = useCallback(async (data: CoursePatch & { name: string }): Promise<CourseSaveResult> => {
+    const d = await postJson("/api/offline-courses", "POST", { color: "#000000", branches: [], ...data });
+    if (!d.ok) return { ok: false, error: String(d.error || "Saqlanmadi") };
+    setCourses((prev) => [...prev, d.course as OfflineCourse]);
+    return { ok: true, course: d.course as OfflineCourse };
+  }, []);
+
+  const patchCourse = useCallback(async (id: number, patch: CoursePatch): Promise<CourseSaveResult> => {
+    const d = await postJson(`/api/offline-courses/${id}`, "PATCH", patch);
+    if (!d.ok) return { ok: false, error: String(d.error || "Saqlanmadi") };
+    setCourses((prev) => prev.map((c) => (c.id === id ? (d.course as OfflineCourse) : c)));
+    return { ok: true, course: d.course as OfflineCourse, renamed: d.renamed as CourseRenameInfo | undefined };
+  }, []);
+
+  const removeCourse = useCallback(async (id: number): Promise<{ ok: true } | { ok: false; error: string; groups?: number }> => {
+    const d = await postJson(`/api/offline-courses/${id}`, "DELETE");
+    if (!d.ok) return { ok: false, error: String(d.error || "O'chirishda xatolik yuz berdi"), groups: typeof d.groups === "number" ? d.groups : undefined };
+    setCourses((prev) => prev.filter((c) => c.id !== id));
+    return { ok: true };
+  }, []);
+
   const addLevel = useCallback(async (courseId: number, data: LevelInput) => {
     const d = await postJson(`/api/offline-courses/${courseId}/levels`, "POST", data);
     if (!d.ok) return false;
@@ -186,11 +237,11 @@ export function OfflineCoursesProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<OfflineCoursesContextValue>(
     () => ({
-      courses, loading, getCourse, addCourse, updateCourse, deleteCourse,
+      courses, loading, getCourse, addCourse, updateCourse, deleteCourse, createCourse, patchCourse, removeCourse,
       addLevel, updateLevel, deleteLevel, addListItem, deleteListItem, reload,
     }),
     [
-      courses, loading, getCourse, addCourse, updateCourse, deleteCourse,
+      courses, loading, getCourse, addCourse, updateCourse, deleteCourse, createCourse, patchCourse, removeCourse,
       addLevel, updateLevel, deleteLevel, addListItem, deleteListItem, reload,
     ],
   );

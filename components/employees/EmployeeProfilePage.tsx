@@ -303,10 +303,13 @@ const ACTION_CLS = {
   edit: "bg-secondary text-foreground hover:bg-secondary/80",
 };
 
-/** Saytdagi xodim profili (Boshqaruv → Xodimlar → profil). */
-export default function EmployeeProfilePage({ id }: { id: number }) {
+/**
+ * Saytdagi xodim profili (Boshqaruv → Xodimlar → profil). `initialTab` — ochilganda
+ * shu tab (yangi versiyadagi profilning «Batafsil» havolalari: `?classic=1&tab=…`).
+ */
+export default function EmployeeProfilePage({ id, initialTab }: { id: number; initialTab?: string }) {
   const { names } = useTransactionTypes();
-  return <EmployeeProfileView id={id} txTypeNames={names} />;
+  return <EmployeeProfileView id={id} txTypeNames={names} initialTab={initialTab} />;
 }
 
 /**
@@ -319,12 +322,15 @@ export function EmployeeProfileView({
   txTypeNames,
   readOnly = false,
   getJson = siteGetJson,
+  initialTab,
 }: {
   id: number;
   /** Tranzaksiya turlari katalogi (filtr tanlovi); Mini App'da bo'sh — yozuvlardagi nomlar yetadi. */
   txTypeNames: string[];
   readOnly?: boolean;
   getJson?: ProfileGetJson;
+  /** Ochilgandagi tab (EP_TABS id); yo'q yoki yashirilgan bo'lsa — sukut. */
+  initialTab?: string;
 }) {
   const { t, months } = useT();
   const { showSuccess, showError } = useToast();
@@ -336,7 +342,7 @@ export function EmployeeProfileView({
   const [loading, setLoading] = useState(true);
   // `rawActiveTab` — foydalanuvchi bosgan tab. Ko'rinadigan tab esa quyida
   // RENDER paytida hisoblanadi (pastdagi izohga qarang).
-  const [rawActiveTab, setActiveTab] = useState("transactions");
+  const [rawActiveTab, setActiveTab] = useState(initialTab ?? "transactions");
   const [moreOpen, setMoreOpen] = useState(false);
   // null — modal yopiq; aks holda qaysi amal so'ralayotgani.
   const [archiveMode, setArchiveMode] = useState<ArchiveMode | null>(null);

@@ -48,6 +48,7 @@ export default function V2Picker({
   width = "anchor",
   onBlur,
   clearable = false,
+  size = "md",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -69,6 +70,8 @@ export default function V2Picker({
   onBlur?: () => void;
   /** Ro'yxat boshida «Tanlanmagan» qatori. */
   clearable?: boolean;
+  /** "sm" — h-9 (jadval qatoridagi tahrir), sukut h-10. */
+  size?: "md" | "sm";
 }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
@@ -151,7 +154,7 @@ export default function V2Picker({
         aria-label={label}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onKey}
-        className={fieldCls(state, `flex items-center gap-2 text-left ${open ? "border-v2-brand shadow-v2-focus" : ""}`)}
+        className={fieldCls(state, `flex items-center gap-2 text-left ${open ? "border-v2-brand shadow-v2-focus" : ""}`, size)}
       >
         <span className="min-w-0 flex-1 truncate text-v2-body">
           {loading ? (

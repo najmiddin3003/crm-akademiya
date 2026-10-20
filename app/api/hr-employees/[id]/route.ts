@@ -95,11 +95,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
   }
   const { _id, ...employee } = row;
+  // TIZIM HISOBI (20.10.2026, yangi profil sarlavhasi «… · login bor»): faqat bor-yo'qligi
+  // va holati — parol yoki uning nusxasi EMAS (u /password da, faqat adminga). Bog'lanish
+  // password route'idagidek: `users.hrEmployeeId`, bo'lmasa telefon (bu yerda faqat O'QISH).
+  const users = db.collection("users");
+  const phone = typeof row.phone === "string" ? normalizePhone(row.phone) : "";
+  const user =
+    (await users.findOne({ hrEmployeeId: empId }, { projection: { _id: 0, status: 1, passwordHash: 1 } })) ??
+    (phone ? await users.findOne({ phone }, { projection: { _id: 0, status: 1, passwordHash: 1 } }) : null);
+  const account = { exists: Boolean(user), status: user ? String(user.status ?? "") : null, hasPassword: Boolean(user?.passwordHash) };
   // `archDate` keyin qo'shilgan — eski hujjatlarda yo'q. Ro'yxat route'i
   // (app/api/hr-employees/route.ts) uni bo'sh satrga to'ldiradi; profil
   // ham xuddi shunday qilsin, aks holda tip `string` deganda `undefined`
   // qaytadi.
-  return NextResponse.json({ ok: true, employee: { archDate: "", ...employee } as unknown as HrEmployee });
+  return NextResponse.json({ ok: true, employee: { archDate: "", ...employee } as unknown as HrEmployee, account });
 }
 
 // PATCH /api/hr-employees/:id — xodim maydonlarini qisman yangilaydi.

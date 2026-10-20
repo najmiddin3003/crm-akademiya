@@ -4,6 +4,7 @@ import { useSharedList } from "@/hooks/useSharedList";
 
 import { useMemo } from "react";
 import type { OfflineCourse } from "@/components/offline-courses/OfflineCoursesProvider";
+import { courseIsActive } from "@/lib/courseCategories";
 
 // Oflayn kurslarni OfflineCoursesProvider'dan TASHQARIDA o'qish uchun yengil
 // hook (/api/offline-courses). Provider faqat /offline-courses yo'nalishiga
@@ -22,5 +23,11 @@ export function useOfflineCourseList() {
   // EMP_COURSES) o'qir edi.
   const names = useMemo(() => courses.map((c) => c.name).filter(Boolean), [courses]);
 
-  return { courses, names, loading };
+  // FAQAT FAOL kurslar (20.10.2026, «Sozlamalar → Kurslar» → Holat): YANGI yozuvdagi
+  // «Kursni tanlang» ro'yxati shundan. Filtrlar va hisobotlar `names` da qoladi —
+  // nofaol kursning eski guruh/lidlari ham topilsin. Tahrirda joriy qiymat
+  // (nofaol bo'lsa ham) chaqiruvchida qo'shiladi (withCurrent kabi).
+  const activeNames = useMemo(() => courses.filter(courseIsActive).map((c) => c.name).filter(Boolean), [courses]);
+
+  return { courses, names, activeNames, loading };
 }

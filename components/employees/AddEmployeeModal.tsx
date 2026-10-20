@@ -349,10 +349,16 @@ export default function AddEmployeeModal({ employee, onClose, onCreated, onSaved
       if (d?.ok) {
         setDarajaOpts((d.items as DegreeOpt[]).map((i) => ({ name: i.name, halfRate: i.halfRate, fullRate: i.fullRate })));
       }
-      if (c?.ok) setKursOpts((c.courses as { name: string }[]).map((i) => i.name));
+      // Faqat FAOL kurslar (Sozlamalar → Kurslar → Holat, 20.10.2026); tahrirdagi
+      // xodimning joriy kursi nofaol bo'lsa ham qoladi (tanlovda ko'rinmay o'chib ketmasin).
+      if (c?.ok) {
+        const names = (c.courses as { name: string; active?: boolean }[]).filter((i) => i.active !== false).map((i) => i.name);
+        const cur = employee?.kurs ?? "";
+        setKursOpts(cur && !names.includes(cur) ? [cur, ...names] : names);
+      }
     }).finally(() => { if (!cancelled) setListsFor(vazifa); });
     return () => { cancelled = true; };
-  }, [isTeacher, isModerator, vazifa]);
+  }, [isTeacher, isModerator, vazifa, employee?.kurs]);
 
   // ── Jinsni ism-familiyadan taxmin qilish ────────────────────────────
   //
