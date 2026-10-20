@@ -85,13 +85,13 @@ function DirArt({ id, salom, fade }: { id: string; salom: string; fade: boolean 
           <ellipse cx="60" cy="45" rx="36" ry="12" transform="rotate(120 60 45)" />
         </g>
         <circle className="core" cx="60" cy="45" r="6" fill="#291ddb" />
-        <text className="floaty sym-1" x="4" y="20" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
+        <text className="floaty sym-1" x="4" y="20" fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
           x²
         </text>
-        <text className="floaty f2 sym-2" x="100" y="18" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="18" fill="#291ddb">
+        <text className="floaty f2 sym-2" x="100" y="18" fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif" fontWeight="800" fontSize="18" fill="#291ddb">
           π
         </text>
-        <text className="floaty f3 sym-1" x="98" y="86" fontFamily="Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
+        <text className="floaty f3 sym-1" x="98" y="86" fontFamily="'Manrope Variable',Manrope,system-ui,sans-serif" fontWeight="800" fontSize="17" fill="#150e7a">
           ∑
         </text>
       </svg>

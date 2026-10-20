@@ -25,11 +25,13 @@ Rasmlarda soya qiymati yozilmagan — ikkala temada piksellardan o'lchab, taxmin
 yozildi (qorong'ida soya qora, menyu/oyna ostida ~40% → ~19 px gacha so'nadi).
 *Taxmin:* o'lchangan qiymatlar; dizaynerdan aniq qiymat kelsa almashtiriladi.
 
-**4. Onest shriftini yuklash** — ochiq
+**4. Onest shriftini yuklash** — HAL QILINDI (20.10.2026)
 Google'dan (`next/font/google`) yoki loyiha ichiga joylab (`next/font/local`)?
 Serverda Google shriftlari build'ni bir necha marta yiqitgan.
-*Taxmin:* loyiha ichiga joylanadi. *Hozircha (17.10):* yangi qobiq Onest'ni brauzerda
-Google Fonts'dan yuklaydi — faqat yangi versiyani tanlaganlarda, build'ga ta'sir qilmaydi.
+*Qaror (foydalanuvchi, 20.10: «ha, qil»):* HAMMA shriftlar loyiha ichida — npm `@fontsource`
+paketlari (OFL): Onest (yangi qobiq), Nunito (eski versiya), Anton/Inter/Montserrat (/ariza),
+Manrope/IBM Plex Sans (/sorovnoma). Build ham, sahifalar ham Google'ga murojaat qilmaydi; har
+til qismi (lotin, kirill, kirill-qo'shimcha …) faqat kerak bo'lsa yuklanadi.
 
 **5. Binafsha rang qayerda ishlatiladi** — qisman hal qilindi (komponentlar rasmidan)
 Ikki joyda chiqdi: lid holati «Bog'lanildi» va «Ona tili» fan rangi (yorug'da). Boshqa

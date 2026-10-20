@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
 import { cookies } from "next/headers";
+// Referens sayt (akademiya.edutizim.uz) Nunito ishlatadi. Shrift LOYIHA ICHIDA
+// (npm `@fontsource-variable/nunito`, 20.10.2026): `next/font/google` build paytida
+// Google'dan yuklardi va prod build bir necha marta shu yerda yiqilgan
+// («module-not-found … font/google»). Endi build tarmoqqa bog'liq emas; fayllar
+// /_next/static/media dan, har til qismi (lotin, kirill, …) faqat kerak bo'lsa
+// yuklanadi. globals.css dagi `body { font-family: 'Nunito Variable', … }`.
+import "@fontsource-variable/nunito/wght.css";
 import "./globals.css";
 import { LangProvider } from "@/components/shared/Language";
 import NavigationHistoryProvider from "@/components/shared/NavigationHistory";
 import { ToastProvider } from "@/components/ui/Toast";
 import { htmlLang, normalizeLang } from "@/lib/i18n";
-
-// Referens sayt (akademiya.edutizim.uz) Nunito ishlatadi. globals.css dagi
-// `body { font-family: var(--font-nunito), ... }` shu o'zgaruvchini o'qiydi.
-const nunito = Nunito({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-nunito",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Tizimli",
@@ -48,7 +45,7 @@ export default async function RootLayout({
     // `suppressHydrationWarning` — pastdagi skript `dark` klassini gidratatsiyadan
     // OLDIN qo'shadi, server HTML'ida esa u yo'q. React buni nomuvofiqlik deb
     // hisoblaydi; bu atribut aynan shu holat uchun (faqat shu elementga tegishli).
-    <html lang={htmlLang(lang)} data-brand={BRAND} className={nunito.variable} suppressHydrationWarning>
+    <html lang={htmlLang(lang)} data-brand={BRAND} suppressHydrationWarning>
       <head>
         {/* Mavzu `useTheme` da effekt orqali qo'llanadi — ya'ni gidratatsiyadan
             KEYIN. Shu sabab tungi rejimda har sahifa yuklanganda bir lahza

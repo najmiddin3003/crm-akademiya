@@ -1,8 +1,8 @@
 /* OMMAVIY ISH ARIZASI (/ariza) — dizayn foydalanuvchining
    "akademiya-ishga-ariza.html" faylidan (19.09.2026) deyarli aynan ko'chirilgan.
    Farqlar: `body` o'rniga `.ariza` ildizi (sahifa ilova qobig'i ichida
-   emas, lekin globals.css bilan bir hujjatda), shriftlar next/font
-   o'zgaruvchilaridan, rasmlar public/ariza/ dan. Tungi rejim — ilova
+   emas, lekin globals.css bilan bir hujjatda), shriftlar loyiha ichidan
+   (page.tsx → @fontsource, 20.10.2026), rasmlar public/ariza/ dan. Tungi rejim — ilova
    bilan bir xil kalit (html.dark, components/shared/Theme.tsx); sirt
    ranglari o'zgaruvchilarda, tepadagi panelda til va mavzu tugmalari. */
 .ariza {
@@ -22,9 +22,9 @@
   --page-glow: #e3e7ff;
   --mark: url("/ariza/mark.png");
   --logo: url("/ariza/logo.png");
-  --f-body: var(--font-ariza-inter), Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-head: var(--font-ariza-anton), Anton, Impact, sans-serif;
-  --f-strong: var(--font-ariza-montserrat), Montserrat, sans-serif;
+  --f-body: "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-head: Anton, Impact, sans-serif;
+  --f-strong: "Montserrat Variable", Montserrat, sans-serif;
 
   min-height: 100vh;
   font-family: var(--f-body);

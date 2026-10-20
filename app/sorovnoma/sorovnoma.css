@@ -77,9 +77,9 @@
   --tb-on-bg: #ffffff;
   --tb-on-ink: var(--brand);
 
-  /* Shriftlar sahifadagi Google Fonts havolasidan (app/sorovnoma/page.tsx). */
-  --ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --display: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Shriftlar loyiha ichidan (app/sorovnoma/page.tsx → @fontsource-variable). */
+  --ui: "IBM Plex Sans Variable", "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);

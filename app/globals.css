@@ -8003,9 +8003,9 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
   body {
     min-height: 100vh;
     color: hsl(var(--foreground));
-    /* Referens sayt (akademiya.edutizim.uz) Nunito ishlatadi — next/font orqali
-       app/layout.tsx da yuklanadi va --font-nunito o'zgaruvchisiga yoziladi. */
-    font-family: var(--font-nunito), 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    /* Referens sayt (akademiya.edutizim.uz) Nunito ishlatadi — loyiha ichidan
+       (app/layout.tsx → @fontsource-variable/nunito, oila nomi 'Nunito Variable'). */
+    font-family: 'Nunito Variable', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     letter-spacing: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -9647,7 +9647,7 @@ body.ok-dragging-active .ok-card { cursor: grabbing; }
    qatori TO'QQIZ marta takrorlangan holda turardi (tashqi HTML eksportidan
    nusxalanib qolgan). U yuqoridagi dizayn-tizim `body` qoidasidan KEYIN
    turgani uchun butun ilovaning shriftini Calibri 11pt ga majburlab,
-   `--font-nunito` ni ham bosib ketardi. Faqat kerakli `table` qoidasi
+   Nunito'ni ham bosib ketardi. Faqat kerakli `table` qoidasi
    qoldirildi. */
 
 table { border-collapse: collapse; }

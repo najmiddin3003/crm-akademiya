@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { preconnect, preinit } from "react-dom";
+// Onest — dizayn shrifti (tokens.css → `--v2-font-sans: "Onest Variable"`). LOYIHA
+// ICHIDAN (npm @fontsource-variable/onest, 20.10.2026; design/v2/SAVOLLAR.md 4):
+// 17.10 dan beri brauzerda Google Fonts'dan olinardi, `next/font/google` esa build
+// paytida yuklab prod build'ni yiqitardi. Fayl faqat matn shu shriftni so'raganda
+// yuklanadi — eski versiya sahifalari uni olmaydi.
+import "@fontsource-variable/onest/wght.css";
 import { TaskInboxGate } from "@/components/shared/AppShell";
 import { BranchProvider } from "@/components/shared/BranchContext";
 import { NotificationsProvider } from "@/components/shared/NotificationsProvider";
@@ -32,15 +37,6 @@ import TopbarV2, { type ShellUserV2 } from "./TopbarV2";
 // TURADIGAN JADVAL»): main — `.flex.flex-1.overflow-hidden` ichida
 // `flex-1 overflow-y-auto`, aks holda `.page-frame` jadval sarlavhasi qotmaydi.
 
-/**
- * Onest — dizayn shrifti. Hozircha Google Fonts'dan va FAQAT yangi versiyada
- * (eski versiyadagilar yuklamaydi). `next/font/google` ATAYIN emas: u shriftni
- * build paytida yuklaydi va prod serverdagi build shu yo'l bilan bir necha
- * marta yiqilgan; to'liq o'tishda shrift loyiha ichiga joylanadi
- * (design/v2/SAVOLLAR.md, 4-savol).
- */
-const ONEST_CSS = "https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap";
-
 export default function AppShellV2({
   children,
   permissions = null,
@@ -60,9 +56,6 @@ export default function AppShellV2({
   /** «Yangi versiya ishlab chiqilmoqda» qatori — bugun yopilmagan bo'lsa (./DevNotice.tsx). */
   devNotice?: boolean;
 }) {
-  preconnect("https://fonts.gstatic.com", { crossOrigin: "anonymous" });
-  preinit(ONEST_CSS, { as: "style", precedence: "default" });
-
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Kompyuterda yon menyuni yig'ish. Saqlanmaydi: sahifa yangilansa menyu
   // yana ochiq (o'tishlarda qobiq qayta yaratilmaydi — holat saqlanadi).

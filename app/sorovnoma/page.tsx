@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import "@fontsource-variable/manrope/wght.css";
+import "@fontsource-variable/ibm-plex-sans/wght.css";
 import SurveyPage from "@/components/leads/SurveyPage";
 import { ensureIndexes } from "@/lib/mongodb";
 import { loadSurveyConfig } from "@/lib/surveyServer";
@@ -16,15 +18,12 @@ import "./sorovnoma.css";
 // o'zgarsa reklama havolasi darhol yangisini ko'rsatsin (build paytidagi
 // nusxada qotib qolmasin).
 //
-// SHRIFTLAR prototipdagidek (Manrope — sarlavhalar, IBM Plex Sans — matn),
-// lekin `next/font/google` bilan EMAS: 23.09.2026 da VPS'dagi build aynan
-// Manrope'da yiqildi ("next/font/google queries have exactly one entry",
-// lokalda qaytarilmadi) va deploy to'xtadi. Build paytida Google'ga
-// bog'liqlik bo'lmasin — shrift brauzerda yuklanadi (React <link> ni
-// <head> ga o'zi ko'taradi); ulanmasa tizim shrifti chiqadi.
-
-const FONTS_CSS =
-  "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap";
+// SHRIFTLAR prototipdagidek (Manrope — sarlavhalar, IBM Plex Sans — matn) —
+// LOYIHA ICHIDAN (npm @fontsource-variable, 20.10.2026; oila nomlari
+// 'Manrope Variable', 'IBM Plex Sans Variable' — sorovnoma.css). `next/font/google`
+// EMAS: 23.09.2026 da VPS'dagi build aynan Manrope'da yiqilgan ("next/font/google
+// queries have exactly one entry"); 20.10 gacha shrift brauzerda Google'dan
+// olinardi — endi sahifa Google'ga umuman murojaat qilmaydi.
 
 export const metadata: Metadata = {
   title: "Akademiya o'quv markazi — Bepul sinov darsi",
@@ -37,13 +36,8 @@ export default async function Page() {
   const db = await ensureIndexes();
   const config = await loadSurveyConfig(db);
   return (
-    <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link rel="stylesheet" href={FONTS_CSS} precedence="default" />
-      <div className="srv">
-        <SurveyPage config={config} />
-      </div>
-    </>
+    <div className="srv">
+      <SurveyPage config={config} />
+    </div>
   );
 }

@@ -130,7 +130,7 @@
   --v2-fan-boshqa: #4A5565;  --v2-fan-boshqa-bg: #F1F3F5;  --v2-fan-boshqa-border: #E7EAEE;
 
   /* ── Tipografiya ───────────────────────────────────────────────────── */
-  --v2-font-sans: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --v2-font-sans: "Onest Variable", "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
   /* ── Soya — rasmdan o'lchangan, TAXMINIY (dizaynerdan aniq qiymat so'raladi).
      Kartochkada soyadan tashqari 1px `--v2-border` chegara ham bor (ikkala temada). */
@@ -315,7 +315,7 @@
   --color-v2-fan-boshqa-bg: var(--v2-fan-boshqa-bg);
   --color-v2-fan-boshqa-border: var(--v2-fan-boshqa-border);
 
-  /* Shrift — Onest (lotin + kirill). Yuklash yo'li v2 qobig'ida hal qilinadi. */
+  /* Shrift — Onest (lotin + kirill), loyiha ichidan: AppShellV2 → @fontsource-variable/onest. */
   --font-v2: var(--v2-font-sans);
 
   /* Matn o'lchamlari: o'lcham / qator balandligi · qalinlik. rem'da — sukut

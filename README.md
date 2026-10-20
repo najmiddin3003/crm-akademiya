@@ -275,7 +275,8 @@ header esa faqat o'ngdagi joyni egallardi. Referensda **header butun kenglikda t
 O'lchamlar jonli referensdan `getComputedStyle` bilan olingan: sidebar `173px`, element
 `44px`/radius `10px`, ikonka `20px` `#3D68FF` (har doim ko'k), badge ikonka ustida,
 flyout `220px` va sidebar chetidan `+3px`. Primary `#3D68FF`, border `#DBE0E6`,
-shrift **Nunito** (`next/font`).
+shrift **Nunito** (20.10.2026 dan loyiha ichida — `@fontsource-variable/nunito`, pastdagi
+«Shriftlar loyiha ichida» bo'limi).
 
 Navbar ikonkalari referensdagi vazifalarga moslandi: `Yangiliklar`, `Qanday ishlaydi?`
 (video qo'llanmalar ro'yxati — `constants/helpTopics.js`), `Tezkor bo'limlar`.
@@ -2086,7 +2087,7 @@ ko'chirildi: chap panelda jonli ariza kartasi + 3 qadam, o'ngda 4 bo'limli
 forma, tepada to'ldirilish o'lchagichi, mobilda pastki panel.
 
 - **Fayllar**: `app/ariza/page.tsx` (server — filiallarni bazadan beradi,
-  shriftlar `next/font`: Anton, Montserrat, Inter), `app/ariza/ariza.css`
+  shriftlar loyiha ichidan — `@fontsource`: Anton, Montserrat, Inter), `app/ariza/ariza.css`
   (dizayn CSS'i `.ariza` ildizi ostida; tungi rejim `.dark .ariza {…}`
   palitrasi bilan — ilova bilan bir xil `html.dark` kaliti),
   `components/management/CvApplyPage.tsx` (forma), rasmlar `public/ariza/`.
@@ -3269,3 +3270,31 @@ Joylandi (12.10.2026): Cloudflare worker `tizimli24-qorovul`, KV `STATE`,
 Uchidan-uchiga sinov: `npx wrangler deploy --var
 "TARGET_URL:https://www.tizimli24.uz/api/health/qorovul-sinov"` (401 → ~2 daqiqada
 🔴), keyin oddiy `npx wrangler deploy` (keyingi daqiqada 🟢).
+
+## Shriftlar loyiha ichida (2026-10-20)
+
+`next/font/google` shriftni BUILD paytida Google'dan yuklaydi — VPS deploy'i bir necha marta
+shu yerda yiqildi (23.09 da Manrope/Nunito/Montserrat, 20.10 da Nunito:
+`module-not-found … font/google/nunito_….module.css`; qayta urinish o'tardi, lekin har safar
+deploy to'xtardi). Foydalanuvchi (20.10): «ha, qil» — shriftlar loyihaga joylandi.
+
+- **Qanday**: npm `@fontsource` paketlari (OFL-1.1 litsenziya), CSS'i sahifaga import qilinadi;
+  Next fayllarni `/_next/static/media/` ga chiqaradi (o'zgarmas kesh). Build tarmoqqa bog'liq
+  emas, brauzer ham Google'ga murojaat qilmaydi. Har til qismi (lotin, lotin-qo'shimcha, kirill,
+  kirill-qo'shimcha) alohida fayl va FAQAT sahifada shu harflar bo'lsa yuklanadi — kirillcha
+  o'zbekcha қ, ғ, ҳ (kirill-qo'shimcha) endi ham o'z shriftida (ilgari Nunito'da faqat lotin +
+  kirill edi, bu harflar tizim shriftida chiqardi).
+- **Qayerda**: `app/layout.tsx` — `@fontsource-variable/nunito` (eski versiya, `body`);
+  `components/v2/shell/AppShellV2.tsx` — `@fontsource-variable/onest` (yangi versiya,
+  `--v2-font-sans`); `app/ariza/page.tsx` — `@fontsource/anton`, `@fontsource-variable/inter`,
+  `@fontsource-variable/montserrat`; `app/sorovnoma/page.tsx` — `@fontsource-variable/manrope`,
+  `@fontsource-variable/ibm-plex-sans`.
+- **Oila nomlari** paketdagidek: `'Nunito Variable'`, `'Onest Variable'`, `'Inter Variable'`,
+  `'Montserrat Variable'`, `'Manrope Variable'`, `'IBM Plex Sans Variable'`, `'Anton'` (CSS'da
+  shu nomlar; eski nom zaxira sifatida keyin turadi).
+- **Farq**: `next/font` dagi oldindan yuklash (preload) va o'lchami moslangan zaxira shrift
+  yo'q — birinchi kirishda bir lahza tizim shrifti ko'rinishi mumkin (`font-display: swap`),
+  keyin fayl keshdan olinadi. Sinov: kirish sahifasi va yangi qobiq skrinshotlari pikselma-piksel
+  bir xil; /ariza va /sorovnoma da faqat animatsiya va sub-piksel farqi.
+- **Yangi shrift kerak bo'lsa**: `next/font/google` ISHLATILMASIN — `npm i -E @fontsource-variable/<nom>`
+  va `import "@fontsource-variable/<nom>/wght.css"`.

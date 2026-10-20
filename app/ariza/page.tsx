@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Anton, Inter, Montserrat } from "next/font/google";
+// Shriftlar LOYIHA ICHIDA (npm @fontsource, 20.10.2026) — `next/font/google` build
+// paytida Google'dan yuklardi va prod build shu sababli yiqilardi. Oila nomlari:
+// 'Anton', 'Inter Variable', 'Montserrat Variable' (ariza.css → --f-head/body/strong).
+import "@fontsource/anton/400.css";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/montserrat/wght.css";
 import CvApplyPage, { type ApplyBranch } from "@/components/management/CvApplyPage";
 import { ensureIndexes } from "@/lib/mongodb";
 import "./ariza.css";
@@ -16,15 +21,6 @@ import "./ariza.css";
 // FILIALLAR bazadan (Boshqaruv → Filiallar) — nomzod o'zi ishlamoqchi
 // bo'lgan filialni tanlaydi va ariza o'sha filialning ro'yxatiga tushadi.
 // Server komponent bo'lgani uchun so'rovsiz, sahifa bilan birga keladi.
-
-const anton = Anton({ subsets: ["latin"], weight: "400", variable: "--font-ariza-anton", display: "swap" });
-const inter = Inter({ subsets: ["latin", "cyrillic"], weight: ["400", "500", "600"], variable: "--font-ariza-inter", display: "swap" });
-const montserrat = Montserrat({
-  subsets: ["latin", "cyrillic"],
-  weight: ["600", "700", "800"],
-  variable: "--font-ariza-montserrat",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Akademiya o'quv markazi — Ishga ariza",
@@ -48,7 +44,7 @@ export default async function Page() {
   }));
 
   return (
-    <div className={`ariza ${anton.variable} ${inter.variable} ${montserrat.variable}`}>
+    <div className="ariza">
       <CvApplyPage branches={branches} />
     </div>
   );
