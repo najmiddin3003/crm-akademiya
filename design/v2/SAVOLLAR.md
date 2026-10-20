@@ -41,10 +41,14 @@ Hozirgi saytda foydalanuvchi shrift o'lchamini o'zgartira oladi. Yangi versiyada
 ishlashi kerakmi?
 *Taxmin:* ha — o'lchamlar `rem`da yozildi, sukut bo'yicha dizayndagi px bilan aynan bir xil.
 
-**8. Lid holati nomi: «Birinchi darsga» yoki «Sinov darsiga yozildi»** — ochiq
+**8. Lid holati nomi: «Birinchi darsga» yoki «Sinov darsiga yozildi»** — qisman hal qilindi (20.10, Lidlar rasmlari)
 Komponentlar rasmida «Birinchi darsga», hozirgi saytda va Telegram xabarlarida
 «Sinov darsiga yozildi».
-*Taxmin:* hozirgi nom qoladi (rasmdagisi namuna yozuv).
+*Taxmin (17.10):* hozirgi nom qoladi (rasmdagisi namuna yozuv).
+*20.10:* 5-qism rasmlarida (Lidlar, Lid paneli, Guruhga qo'shish) izchil «Birinchi dars» /
+«Birinchi darsga yozildi» — YANGI VERSIYADA shu nom. Eski sayt va Telegram xabarida «Sinov darsiga
+yozildi» qoladi (holat bitta, faqat yozuvi ikki xil). *Ochiq:* Telegram xabari ham «Birinchi dars» ga
+o'tsinmi?
 
 **9. Komponentlarning aniq o'lchamlari** — ochiq
 Rasm ~0.6× kichraytirilgan: o'lchamlar ±2 px aniqlikda (maydon balandligi ~40, padding,
@@ -460,6 +464,81 @@ Yangi versiyada toast pastki o'ngda (telefonda pastki menyu ustida), 5 s, sichqo
 xato o'zi yopilmaydi («Qayta urinish» — qayerda ma'noli bo'lsa). Xavfli amal tasdig'i (qizil tugma,
 «Kassani arxivlaysizmi?» qolipi) tayyor; hozircha «Saqlanmagan o'zgarishlar bor» da ishlaydi,
 qolgan joylar sahifalari yangilanganda ulanadi.
+
+### 5-qism — Lidlar, Lid paneli, Guruhga qo'shish (20.10.2026)
+
+**87. Lidlar — sukut davr «Shu oy»** — taxmin
+Rasmda davr tanlovi «Shu oy», sarlavhada «shu oy 29 ta lid». *Taxmin:* sahifa ochilganda — shu oy
+(lid KELGAN sana bo'yicha), «Butun davr» bitta bosishda. *Xavf:* o'tgan oydan qolgan, hali ishlanmagan
+«Yangi» lid sukutda ko'rinmaydi. Kerak bo'lsa: sukut «Butun davr» yoki ishlanmaganlar davrdan qat'i
+nazar doim ko'rsatiladi. «Bugun birinchi dars · N» filtri davrga qaramaydi.
+
+**88. «Rad etdi» rangi** — taxmin
+Komponentlar rasmida (4-fayl) rad — qizil, Lidlar sahifasi rasmida — BETARAF (kulrang belgi va
+nuqta). *Taxmin:* sahifa rasmi — ro'yxat va panelda kulrang; «Rad etdi» TUGMASI qizil (xavfli amal).
+
+**89. Ko'rsatkich kartalari ostidagi izohlar** — taxmin
+Rasmda: «shu oy», «5 tasi 24 soatdan oshdi», «shu hafta», «shu oy». *Taxmin:* Barchasi va Guruhga
+qo'shildi — tanlangan davr; Yangi — 24 soatdan ko'p kutayotganlar (eski sahifadagi qoida); Birinchi
+darsga yozildi — darsi SHU HAFTADA bo'lganlar (hammasi bo'lsa «shu hafta», bir qismi — «N tasi shu
+hafta»; hafta sana tanlovidagidek yakshanbadan). Guruhga qo'shildi ostida konversiya foizi kerakmi?
+
+**90. «Keyingi qadam» ustuni va sukut saralash** — taxmin
+Rasmda bunday maydon bazada yo'q — holatdan HISOBLANADI: Yangi — «→ Qo'ng'iroq qilish · 2 soatdan
+beri» (24 soatdan oshsa sariq soat; takroriy raqamda «takroriy raqam»), Bog'lanildi — «→ Birinchi darsga
+yozish», Birinchi dars — bugun: «Bugun birinchi dars 14:00 · 205-xona», oldinda: «Chorshanba, 16:00
+birinchi dars», o'tgan: «→ Guruhga qo'shish · dars o'tdi» (kelmagan — «Boshqa kunga yozish · kelmadi»),
+sanasiz — «Sanani belgilash»; Guruhga qo'shildi — «O'quvchilarga o'tdi», Rad — «Sabab: …». Rasmda
+sarlavha qalin — sukut saralash shu ustun bo'yicha, shoshilinchi tepada: bugungi dars → kechikkan yangi
+→ yangi (uzoq kutgani oldin) → bog'lanildi → o'tgan/sanasiz dars → oldindagi dars → guruh → rad.
+
+**91. Birinchi dars qaysi guruhda (xona, «Birinchi dars shu guruhda»)** — taxmin
+Bazada sinov darsining GURUHI yozilmaydi (faqat sana, vaqt, o'qituvchi). *Taxmin:* guruh topiladi —
+o'sha o'qituvchi, o'sha soatda boshlanadigan, o'sha hafta kuni darsi bor guruh (bir nechta bo'lsa —
+lid kursidagisi; aniq bitta chiqmasa xona ko'rsatilmaydi). «Birinchi darsga yozish» oynasida guruh
+tanlansa o'qituvchi/vaqt/sana o'shandan — topish aniq ishlaydi. Aniq bog'lash kerak bo'lsa — lidga
+guruh id'si (server o'zgarishi).
+
+**92. «Birinchi darsga yozish» va «Rad etish» oynalari** — taxmin
+Rasm berilmagan — «Guruhga qo'shish» qolipida yasaldi. Birinchi dars: ixtiyoriy «Guruh darsiga»
+(tanlansa o'qituvchi, vaqt va guruhning keyingi darsi o'zi qo'yiladi), Sana, Vaqt («16:00»), O'qituvchi
+(kurs o'qituvchilari tepada; tanlanmasa — birinchisi, eski oynadagidek). Rad: sabab chiplari (Sozlamalar
+→ Lidlar ro'yxati) + «Boshqa sabab», qizil «Rad etish» bilan tasdiq (eski oynada sabab bosilishi bilan
+saqlanardi). So'rov ikkalasida eski oyna bilan bir xil.
+
+**93. Guruhga qo'shish — guruhlar va boshlash sanasi** — taxmin
+Guruhlar — lid kursidagilar (yo'q bo'lsa — hammasi; «Boshqa kurslar guruhlari (N)»), lid filiali
+(1+2 hovuz), ARXIV guruhlar yo'q (eski oyna «tugagan» holatini tekshirardi — bunday holat endi yo'q).
+Sukut tanlov — sinov darsi bo'lgan guruh. Boshlash sanasi — guruhning KEYINGI darsi (bugungi dars hali
+boshlanmagan bo'lsa — bugun); jadvali o'qilmasa — sinov darsi (o'tmagan bo'lsa) yoki bugun. «Boshqa
+sana» — taqvim. «Saqlagach, to'lov oynasini ochish» — faqat Kassaga ruxsati borga; o'quvchi va guruh
+tanlangan holda ochiladi.
+
+**94. «Xato bo'lsa, 10 daqiqa ichida bekor qilish mumkin»** — ochiq
+Bekor qilish LID HOLATINI qaytaradi, o'quvchi GURUHDA QOLADI (23.09.2026 qarori — guruhdan chiqarish
+to'lov va davomatga tegadi). Oyna matni «lid holatini … bekor qilish mumkin» deb aniqlashtirildi, panelda
+«Bekor qilish» ostida ogohlantirish bor. O'quvchini ham guruhdan chiqarsinmi?
+
+**95. Bekor qilish qayerda** — taxmin
+Rasmda yo'q. *Taxmin:* panelda bosqich kartasi ostida «Oxirgi o'zgarishni bekor qilish · 9 daq qoldi»
+(10 daqiqa — har kim, keyin — faqat direktor; muddati o'tgan oddiy xodimga ko'rsatilmaydi) va holat
+o'zgargandan keyingi toastda «Bekor qilish» (guruhga qo'shishda — «Profilni ochish», o'quvchi guruhda
+qolgani uchun).
+
+**96. Sarlavhadagi «⋯», «So'rovnoma havolasi», belgilash** — taxmin
+Rasmda faqat «So'rovnoma havolasi» va «+ Lid qo'shish». Eski sahifadagi eksport (Excel/CSV) va «Lidlar
+sozlamalari» yo'qolmasin deb «⋯» qo'shildi (+ «Birinchi darsga yozilganlar»). «So'rovnoma havolasi» —
+menyu: nusxalash / sahifani ochish. Jadvaldagi katakchalar — belgilanganlarni eksport qilish (ommaviy
+SMS, rad yoki mas'ul tayinlash kerak bo'lsa — keyin).
+
+**97. Takroriy raqam belgisi** — taxmin
+DESIGN.md jadval qoidasida «ism yonida Takroriy belgisi», Lidlar rasmida — telefon yonida sariq
+ikonka. Sahifa rasmiga ergashildi; sichqoncha ostida «Takroriy raqam — avvalgi lid #N».
+
+**98. Lid qo'shish/tahrirlash, SMS, chek, izohlar** — taxmin
+Rasmda yo'q — hozircha ESKI oynalar (Yangi lid formasi rasmi kelganda almashadi — DESIGN.md: uzun forma
+o'ngdan). Panel «⋯»: Tahrirlash, Izohlar, Chek, Telegramda yozish (botdan kelgan lid), Raqamni
+nusxalash, To'liq karta (eski /orders-list/[id] — boshqa filialga o'tkazish va h.k.).
 
 ## Reja
 

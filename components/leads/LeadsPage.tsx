@@ -12,19 +12,18 @@ import { useToast } from "@/components/ui/Toast";
 import AddOrderModal, { type NewOrderValues } from "@/components/orders/AddOrderModal";
 import OrderMessagePanel from "@/components/orders/OrderMessagePanel";
 import { useOrders } from "@/components/orders/OrdersContext";
-import { api } from "@/components/staff-tasks/api";
 import { useAnimatedRows, useFlipRows } from "@/hooks/useAnimatedRows";
-import { useBranches } from "@/hooks/useBranches";
 import { useTeachers } from "@/hooks/useTeachers";
-import type { Group } from "@/lib/groups";
 import { HOLATLAR, sinovOf, type LeadHolat } from "@/lib/leadHolat";
 import { BOT_SOURCE, SURVEY_SOURCE, type LeadSettings } from "@/lib/leadSettings";
 import { orderNo, type Order } from "@/lib/ordersData";
 import { DAY_MS, HOUR_MS, uzDateOf } from "@/lib/staffTasks";
 import LeadDrawer from "./LeadDrawer";
 import { GuruhModal, RadModal, SinovModal, postHolat } from "./LeadHolatModals";
-import LeadReceiptModal, { type ReceiptRow } from "./LeadReceipt";
-import { SANA_OPTIONS, buildRows, guruhText, inPeriod, levelText, sinovText, useLeadFmt, type LeadFmt, type LeadRow } from "./leadsCommon";
+import LeadReceiptModal from "./LeadReceipt";
+import { SANA_OPTIONS, inPeriod, levelText, useLeadFmt, type LeadFmt, type LeadRow } from "./leadsCommon";
+import { copySurveyLink as copySurveyLinkTo, exportLeadsCsv, exportLeadsExcel, leadReceiptRows } from "./leadsExport";
+import { useLeadsCore } from "./useLeadsCore";
 import { collapseBranchPools, sameBranchPool } from "@/lib/branchPools";
 
 // LIDLAR (/orders-list) — foydalanuvchi prototipi «lidlar-tayyorlangan-ohiri»
@@ -71,36 +70,10 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
   const searchParams = useSearchParams();
   const { showSuccess, showError } = useToast();
   const { orders, loading, createOrder, updateOrder, patchOrder, messagesByOrder, addMessage, replaceOrder, reload } = useOrders();
-  const { branches } = useBranches();
   const { teachers } = useTeachers();
-
-  const [settings, setSettings] = useState<LeadSettings | null>(null);
-  const [groups, setGroups] = useState<Group[] | null>(null);
-  const [clock, setClock] = useState(() => Date.now());
-  const nowMs = clock;
-
-  useEffect(() => {
-    let off = false;
-    api<{ settings: LeadSettings }>("/api/lead-settings").then((r) => {
-      if (!off && r.ok) setSettings(r.settings);
-    });
-    return () => {
-      off = true;
-    };
-  }, []);
-
-  // Soat har 30 soniyada (bekor qilish muddati, "24 soatdan oshdi"), ro'yxat
-  // har daqiqada — faqat sahifa ko'rinib turganda.
-  useEffect(() => {
-    const tick = window.setInterval(() => setClock(Date.now()), 30_000);
-    const refresh = window.setInterval(() => {
-      if (document.visibilityState === "visible") void reload();
-    }, 60_000);
-    return () => {
-      window.clearInterval(tick);
-      window.clearInterval(refresh);
-    };
-  }, [reload]);
+  // Sozlamalar, soat (har 30 s), ro'yxat yangilanishi (har daqiqa), qatorlar va
+  // guruhlar — yangi versiya bilan umumiy (./useLeadsCore.ts).
+  const { settings, groups, loadGroups, nowMs, setClock, rows, branches, branchById } = useLeadsCore();
 
   const [f, setF] = useState<Filters>(EMPTY);
   const [page, setPage] = useState(1);
@@ -137,10 +110,7 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
     return () => document.removeEventListener("mousedown", onDown);
   }, [exportOpen]);
 
-  // ── Qatorlar ──
-  const rows = useMemo(() => buildRows(orders, settings), [orders, settings]);
-  const branchById = useMemo(() => new Map(branches.map((b) => [b.id, b])), [branches]);
-
+  // ── Qatorlar (useLeadsCore) ──
   const base = useMemo(() => {
     const q = f.q.trim().toLowerCase();
     const qDigits = q.replace(/\D/g, "");
@@ -208,13 +178,8 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
       setClock(Date.now());
       showSuccess(message);
     },
-    [replaceOrder, showSuccess],
+    [replaceOrder, setClock, showSuccess],
   );
-
-  const loadGroups = useCallback(() => {
-    if (groups !== null) return;
-    api<{ groups: Group[] }>("/api/groups").then((r) => setGroups(r.ok ? r.groups : []));
-  }, [groups]);
 
   const go = async (row: LeadRow, to: LeadHolat) => {
     if (to === "sinov" || to === "rad") return setHolatModal({ kind: to, id: row.o.id });
@@ -272,64 +237,10 @@ export default function LeadsPage({ isAdmin, canSettings }: Props) {
     closeOrderModal();
   };
 
-  // ── Eksport ──
-  const exportCols = (r: LeadRow): [string, string][] => [
-    ["ID", String(orderNo(r.o))],
-    [t("Ism familiya"), r.o.name || ""],
-    [t("Telefon"), r.o.phone || ""],
-    [t("Kurs"), r.o.course || ""],
-    [t("Daraja / sinf"), levelText(r.o, settings, fmt).text],
-    [t("Filial"), branchName(r)],
-    [t("Manba"), r.o.source || ""],
-    [t("Qayerdan bildi"), r.o.heardFrom || ""],
-    [t("Holat"), fmt.holatNom(r.holat)],
-    [t("Kelgan vaqti"), r.o.created || ""],
-    [t("Moderator"), r.o.moderator || ""],
-    [t("Sinov darsi"), sinovText(r.o, fmt)],
-    [t("Guruh"), guruhText(r.o)],
-    [t("Rad sababi"), r.o.radSabab || ""],
-    [t("Izoh"), r.o.note || ""],
-  ];
-  const fileDate = () => uzDateOf(Date.now());
-  const exportCsv = () => {
-    try {
-      const data = list.map(exportCols);
-      const head = (data[0] ?? exportCols({ o: {} as Order, holat: "yangi", at: NaN, yon: "", dupOf: null, dupCount: 1 })).map((c) => c[0]);
-      const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-      const csv = [head.map(esc).join(","), ...data.map((cols) => cols.map((c) => esc(c[1])).join(","))].join("\n");
-      const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lidlar-${fileDate()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showSuccess(t("CSV fayl yuklab olindi"));
-    } catch {
-      showError(t("CSV faylni yuklab bo'lmadi"));
-    }
-  };
-  const exportExcel = async () => {
-    try {
-      // xlsx (SheetJS) faqat bosilganda yuklanadi — sahifa to'plamiga kirmasin.
-      const XLSX = await import("xlsx");
-      const sheet = XLSX.utils.json_to_sheet(list.map((r) => Object.fromEntries(exportCols(r))));
-      const book = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(book, sheet, "Lidlar");
-      XLSX.writeFile(book, `lidlar-${fileDate()}.xlsx`);
-      showSuccess(t("Excel fayl yuklab olindi"));
-    } catch {
-      showError(t("Excel faylni yuklab bo'lmadi"));
-    }
-  };
-
-  const copySurveyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/sorovnoma`);
-      showSuccess(t("So'rovnoma havolasi nusxalandi"));
-    } catch {
-      showError(t("Havolani nusxalab bo'lmadi"));
-    }
-  };
+  // ── Eksport (ustunlar va fayl — yangi versiya bilan umumiy, ./leadsExport.ts) ──
+  const exportCsv = () => exportLeadsCsv(list, settings, fmt, branchName, { showSuccess, showError });
+  const exportExcel = () => exportLeadsExcel(list, settings, fmt, branchName, { showSuccess, showError });
+  const copySurveyLink = () => copySurveyLinkTo(t, { showSuccess, showError });
 
   const loadingList = loading && orders.length === 0;
 
@@ -659,28 +570,4 @@ function LeadTableRow({ row, num, phase, order, branch, settings, nowMs, fmt, re
       <td className="c-mod ld-nw">{o.moderator || "—"}</td>
     </tr>
   );
-}
-
-/**
- * Lid chekidagi qatorlar. Bo'sh maydon "—" (qator tushib qolmaydi —
- * moderator qo'lda to'ldirishi mumkin), faqat izoh bo'lmasa yozilmaydi.
- * EMOJISIZ: 58mm chek printerlari emoji shriftini bilmaydi.
- */
-function leadReceiptRows(o: Order, row: LeadRow | null, settings: LeadSettings | null, fmt: LeadFmt, branch: string): ReceiptRow[] {
-  const rows: ReceiptRow[] = [
-    ["ID", String(orderNo(o))],
-    ["O'quvchi", o.name || "—"],
-    ["Telefon", o.phone || "—"],
-    ["Yaratilgan", o.created || "—"],
-    ["Kurs", o.course || "—"],
-    ["Daraja / sinf", levelText(o, settings, fmt).text || "—"],
-    ["Filial", branch || "—"],
-    ["Holat", row ? fmt.holatNom(row.holat) : "—"],
-    ["Sinov darsi", sinovText(o, fmt) || "—"],
-    ["Guruh", guruhText(o) || "—"],
-    ["Moderator", o.moderator || "—"],
-    ["Manba", o.source || "—"],
-  ];
-  if (o.note) rows.push(["Izoh", o.note]);
-  return rows;
 }

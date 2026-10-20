@@ -49,17 +49,44 @@ export function rangeLabel(r: DateRange, lang: Lang, t: (s: string) => string): 
   return `${dayMonthLabel(s, lang)} – ${dayMonthLabel(e, lang)}`;
 }
 
+/**
+ * Yangi versiyadagi tez tanlash nomlari — dizayn «Shu oy» deydi (rasm «Lidlar»,
+ * 20.10.2026); eski taqvimdagi «Bu hafta» / «Bu oy» o'zgarmaydi.
+ */
+const V2_PRESET_LABEL: Record<string, string> = { week: "Shu hafta", month: "Shu oy" };
+
+export function v2PresetLabel(p: { key: string; label: string }): string {
+  return V2_PRESET_LABEL[p.key] ?? p.label;
+}
+
+/** Oraliq tez tanlashlardan biriga tengmi — kaliti («today», «month» …), aks holda null. */
+export function rangePresetKey(value: DateRange): string | null {
+  if (!value.start) return null;
+  return (
+    dateRangePresets().find((p) => {
+      const r = p.range();
+      return sameDay(r.start, value.start) && sameDay(r.end, value.end ?? value.start);
+    })?.key ?? null
+  );
+}
+
 export default function V2DateRange({
   value,
   onChange,
   align = "end",
   allowAll = true,
+  label,
+  allLabel = "Barcha sanalar",
 }: {
   value: DateRange;
   onChange: (r: DateRange) => void;
   align?: "start" | "end";
   /** «Barcha sanalar» bandi (oraliqsiz). */
   allowAll?: boolean;
+  /** Tugmadagi yozuv (sukut — oraliqning o'zi: «Bugun, 12-oktyabr»). */
+  label?: string;
+  /** Oraliqsiz band nomi (Lidlarda — «Butun davr»). */
+  allLabel?: string;
 }) {
   const [lang] = useLang();
   const { t } = useT();
@@ -103,16 +130,13 @@ export default function V2DateRange({
   const b = pending ? (hover ?? pending) : (value.end ?? value.start);
   const [lo, hi] = a && b && b < a ? [b, a] : [a, b];
 
-  const presetKey = dateRangePresets().find((p) => {
-    const r = p.range();
-    return sameDay(r.start, value.start) && sameDay(r.end, value.end ?? value.start);
-  })?.key;
+  const presetKey = rangePresetKey(value);
 
   return (
     <>
       <button ref={btnRef} type="button" onClick={toggle} aria-haspopup="dialog" aria-expanded={open} className={panelTriggerCls(open)}>
         <Calendar className="size-4 text-v2-text-2" strokeWidth={1.75} aria-hidden />
-        <span className="whitespace-nowrap tabular-nums">{rangeLabel(value, lang, t)}</span>
+        <span className="whitespace-nowrap tabular-nums">{label ?? rangeLabel(value, lang, t)}</span>
         <ChevronDown className={`size-4 text-v2-text-3 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
       </button>
       <FloatingPanel open={open} anchorRef={btnRef} onClose={() => setOpen(false)} align={align} width={476} maxHeight={420} role="dialog" ariaLabel={t("Sana oralig'i")}>
@@ -125,7 +149,7 @@ export default function V2DateRange({
                 onClick={() => choose(p.range())}
                 className={`rounded-v2-md px-2.5 py-2 text-left text-v2-body transition-colors ${presetKey === p.key ? "bg-v2-brand-bg font-medium text-v2-brand-text" : "text-v2-text hover:bg-v2-hover"}`}
               >
-                {t(p.label)}
+                {t(v2PresetLabel(p))}
               </button>
             ))}
             {allowAll && (
@@ -134,7 +158,7 @@ export default function V2DateRange({
                 onClick={() => choose({ start: null, end: null })}
                 className={`mt-auto rounded-v2-md px-2.5 py-2 text-left text-v2-body transition-colors ${!value.start ? "bg-v2-brand-bg font-medium text-v2-brand-text" : "text-v2-text-2 hover:bg-v2-hover hover:text-v2-text"}`}
               >
-                {t("Barcha sanalar")}
+                {t(allLabel)}
               </button>
             )}
           </div>

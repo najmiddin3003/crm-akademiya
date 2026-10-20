@@ -510,6 +510,56 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   Mantiq eski oynalar bilan BITTA: `components/finance/useKirimForm.ts`, `useChiqimForm.ts`,
   `useTransferToForm.ts`, `components/orders/useStudentSources.ts`. Rasmdan farqlar — `SAVOLLAR.md` 71–86.
 
+## Lidlar (rasmlar «Lidlar», «Lid paneli — bosqichlar chizig'i», «Guruhga qo'shish oynasi», 20.10.2026)
+
+- **Sarlavha**: «Lidlar» + «Akademiya 3 Uychi · shu oy 29 ta lid»; o'ngda «So'rovnoma havolasi» (ikkinchi
+  darajali, menyu: nusxalash / ochish), «⋯» (Excel, CSV, Birinchi darsga yozilganlar, Lidlar sozlamalari)
+  va asosiy «+ Lid qo'shish».
+- **Holat kartalari** — bitta kartochkada 6 katak (1 px ajratgich): rangli nuqta (kvadratroq, 8 px) +
+  yorliq (`small text-2`), raqam 22 px qalin, ostida izoh (`caption text-3`): Barchasi («shu oy»), Yangi
+  («5 tasi 24 soatdan oshdi» — `warning`), Bog'lanildi, Birinchi darsga yozildi («shu hafta»), Guruhga
+  qo'shildi, Rad etdi. Tanlangani `brand-bg` + ostida 2 px `brand` chiziq, yorlig'i `brand-text`; bosilsa
+  jadval shu holatga filtrlanadi. Telefonda yonga suriladi.
+- **Filtrlar**: «Ism yoki telefon» → Yo'nalish (yo'nalish yoki aniq kurs), Manba, Filial (chip) → davr
+  («📅 Shu oy ⌄» — `V2DateRange`, tugmada tez tanlash nomi) → **«Bugun birinchi dars · 2»** (tezkor filtr:
+  uzuq `warning` chegara, `warning` yozuv; yoqilsa `warning-bg` + ✓ ×; davrga qaramaydi) → o'ngda «Ustunlar».
+- **Lid holati belgilari** (sahifa rasmidan): Yangi — info, Bog'lanildi — binafsha, Birinchi dars —
+  ogohlantirish, Guruhga qo'shildi — muvaffaqiyat, **Rad etdi — BETARAF** (`surface-2` + `text-2`,
+  kulrang nuqta; komponentlar rasmidagi qizil emas — `SAVOLLAR.md` 88). Nom «Birinchi dars» (8).
+- **Jadval**: belgilash; **Lid** (qulflangan: avatar `surface-2` + chegara, ism qalin, telefon `text-3`,
+  takroriy raqamda telefon yonida sariq «nusxa» ikonka); **Yo'nalish** (fan nuqtasi + kurs · daraja/sinf
+  `text-2`); **Holat**; **Keyingi qadam** — nima qilish kerak: «→ Qo'ng'iroq qilish · 2 soatdan beri»
+  (o'q `brand`, amal qalin; kechikkanda sariq soat va sariq yozuv), «Bugun birinchi dars» belgisi (to'liq
+  `warning` fon, `on-color` yozuv, `rounded-v2-sm`) + soat qalin + «· 205-xona», kelajakdagi dars va yakun
+  — `text-2` oddiy matn; sukut saralash shu ustun (shoshilinchi tepada); **Manba**, **Qo'shilgan**
+  («11-oktyabr | 09:15»), **Mas'ul**. Yashirilgan: Filial, Qayerdan bildi, Qulay vaqt, ID, Izoh.
+  Belgilansa jadval tepasida `brand-bg` qator: «✓ N ta lid tanlandi» + Excel / CSV + «Bekor qilish».
+- **Lid paneli** (o'ngdan ~440 px, O'quvchi tezkor paneli qolipi): avatar **`brand-bg` + `brand-text`**,
+  ism, ostida holat belgisi, «telefon · manba»; to'liq karta va ×; «📞 Qo'ng'iroq qilish» (keng,
+  ikkinchi darajali), «SMS», «⋯». **Bosqich kartasi** (`surface-2` + chegara): «Bosqich · 3 / 4», chiziq —
+  4 doira 22 px (o'tilgani `brand` + ✓, joriysi oq + 2 px `brand` halqa + nuqta, keyingilari oq +
+  `border-strong`), orasidagi chiziq o'tilgan qismda `brand`; joriy bosqich yozuvi qalin. Ostida asosiy
+  tugma 40 px — keyingi bosqich («Guruhga qo'shish →») va qizil chegarali «⊗ Rad etdi»; izoh «Kerak bo'lsa
+  bosqichni o'tkazib yuborish mumkin — tarixda belgilanadi» (oldindagi doira bosilsa — o'tkazib yuboradi);
+  «Oxirgi o'zgarishni bekor qilish · N daq qoldi». Keyin: **Birinchi dars** (karta, bugun bo'lsa chapda 3 px
+  `warning` chiziq + «Bugun birinchi dars» belgisi; «sana | vaqt» qalin; «kurs · o'qituvchi · xona»;
+  o'ngda «O'zgartirish» `brand-text`), **So'rovnoma javoblari** (yo'nalish · kurs, taxminiy daraja, qulay
+  vaqt, filial), Izoh, **Tarix** (yangisi tepada, oxirgisi `brand` nuqta, nuqtalar orasida chiziq, «sana |
+  vaqt · Abdulloh R.»). Bo'lim sarlavhalari `small text-2`.
+- **Guruhga qo'shish oynasi** (markazda, ~540 px): «Kurs · liddan | Filial · liddan» (`surface-2` blok, ikki
+  katak); **Guruh** — radio kartalar (tanlangani `brand` chegara + `brand-bg`; fan nuqtasi + kurs qalin +
+  «Birinchi dars shu guruhda» `warning-bg` belgi, o'ngda «6 o'quvchi»; ostida «o'qituvchi · kunlar vaqt ·
+  xona»); **Boshlash sanasi** — chiplar «✓ 14-oktyabr, chorshanba · keyingi dars» va «Boshqa sana 📅»
+  (taqvim); katakcha «Saqlagach, to'lov oynasini ochish»; `info-bg` izoh; pastki qator «Enter saqlash · Esc
+  yopish», «Bekor qilish», «✓ Guruhga qo'shish». «Birinchi darsga yozish» va «Rad etish» oynalari — shu
+  qolipda (rasm berilmagan — `SAVOLLAR.md` 92).
+- Kodda: `components/v2/leads/` — LeadsV2 (sahifa), LeadPanelV2, LeadGroupModalV2, LeadSinovModalV2,
+  LeadRadModalV2, leadBits (holat belgisi, «liddan» bloki, guruh radio kartalari), leadUtils (keyingi qadam,
+  sinov guruhini topish, keyingi dars, tarix), leadsColumns (`v2:leads-list:columns:1`); vaqt maydoni —
+  `components/v2/form/V2TimeField.tsx`. Ma'lumot, eksport va so'rovlar eski sahifa bilan BITTA:
+  `components/leads/useLeadsCore.ts`, `leadsExport.ts`, `LeadHolatModals.tsx → postHolat`,
+  `lib/enrollStudent.ts`. Rasmdan farqlar — `SAVOLLAR.md` 87–98.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

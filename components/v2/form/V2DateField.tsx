@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import FloatingPanel from "@/components/v2/ui/FloatingPanel";
@@ -35,6 +35,14 @@ function useClock(on: boolean): string {
   return now;
 }
 
+/** O'z tugmasi bilan (masalan «Boshqa sana 📅» chip) — taqvim oynasi o'sha. */
+export interface DateTriggerProps {
+  ref: RefObject<HTMLButtonElement | null>;
+  onClick: () => void;
+  "aria-haspopup": "dialog";
+  "aria-expanded": boolean;
+}
+
 export default function V2DateField({
   value,
   onChange,
@@ -42,6 +50,7 @@ export default function V2DateField({
   state = "default",
   id,
   disabled = false,
+  trigger: renderTrigger,
 }: {
   value: Date | null;
   onChange: (d: Date) => void;
@@ -50,6 +59,8 @@ export default function V2DateField({
   state?: FieldState;
   id?: string;
   disabled?: boolean;
+  /** Maydon o'rniga o'z tugmasi: `trigger` ni yoying; `open` — ochiq paytdagi ko'rinish. */
+  trigger?: (p: DateTriggerProps, open: boolean) => ReactNode;
 }) {
   const [lang] = useLang();
   const { t } = useT();
@@ -78,23 +89,27 @@ export default function V2DateField({
 
   return (
     <>
-      <button
-        ref={btnRef}
-        id={id}
-        type="button"
-        disabled={disabled}
-        onClick={toggle}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        title={withTime ? t("Vaqt — saqlangan payt") : undefined}
-        className={fieldCls(state, `flex items-center gap-2 text-left ${open ? "border-v2-brand shadow-v2-focus" : ""}`)}
-      >
-        <Calendar className="size-4 shrink-0 text-v2-text-2" strokeWidth={1.75} aria-hidden />
-        <span className="min-w-0 flex-1 truncate tabular-nums">
-          {value ? dayMonthLabel(value, lang) : <span className="text-v2-text-3">{t("Sanani tanlang")}</span>}
-          {withTime && clock && <span> | {clock}</span>}
-        </span>
-      </button>
+      {renderTrigger ? (
+        <TriggerSlot render={renderTrigger} anchor={btnRef} onToggle={toggle} open={open} />
+      ) : (
+        <button
+          ref={btnRef}
+          id={id}
+          type="button"
+          disabled={disabled}
+          onClick={toggle}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          title={withTime ? t("Vaqt — saqlangan payt") : undefined}
+          className={fieldCls(state, `flex items-center gap-2 text-left ${open ? "border-v2-brand shadow-v2-focus" : ""}`)}
+        >
+          <Calendar className="size-4 shrink-0 text-v2-text-2" strokeWidth={1.75} aria-hidden />
+          <span className="min-w-0 flex-1 truncate tabular-nums">
+            {value ? dayMonthLabel(value, lang) : <span className="text-v2-text-3">{t("Sanani tanlang")}</span>}
+            {withTime && clock && <span> | {clock}</span>}
+          </span>
+        </button>
+      )}
       <FloatingPanel open={open} anchorRef={btnRef} onClose={() => setOpen(false)} width={300} maxHeight={380} role="dialog" ariaLabel={t("Sanani tanlang")}>
         <div className="p-3">
           <div className="mb-2 flex items-center justify-between">
@@ -151,4 +166,23 @@ export default function V2DateField({
       </FloatingPanel>
     </>
   );
+}
+
+/**
+ * O'z tugmasini chizadi. Alohida komponent: ref obyektini render paytida
+ * funksiyaga (render-prop'ga) uzatishni React Compiler taqiqlaydi
+ * (react-hooks/refs) — bu yerda u oddiy prop.
+ */
+function TriggerSlot({
+  render,
+  anchor,
+  onToggle,
+  open,
+}: {
+  render: (p: DateTriggerProps, open: boolean) => ReactNode;
+  anchor: RefObject<HTMLButtonElement | null>;
+  onToggle: () => void;
+  open: boolean;
+}) {
+  return <>{render({ ref: anchor, onClick: onToggle, "aria-haspopup": "dialog", "aria-expanded": open }, open)}</>;
 }
