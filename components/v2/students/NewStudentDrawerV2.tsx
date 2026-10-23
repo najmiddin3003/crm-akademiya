@@ -54,11 +54,13 @@ export interface NewStudentDrawerProps {
   groups?: Group[];
   /** guruh id → kategoriya (a'zolarining ko'pchiligi) — «Kategoriya bo'yicha saralangan». */
   groupCategory?: Map<number, string>;
+  /** Oldindan tanlangan guruh (Imtihon → Natija kiritish → «O'quvchi qo'shish», 23.10.2026). */
+  initialGroupId?: number;
 }
 
 type FieldKey = "firstName" | "lastName" | "phone" | "birth" | "extraPhone" | "category" | "branch" | "source";
 
-export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGroups, groupCategory }: NewStudentDrawerProps) {
+export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGroups, groupCategory, initialGroupId }: NewStudentDrawerProps) {
   const { t } = useT();
   const router = useRouter();
   const branch = useBranch();
@@ -96,14 +98,14 @@ export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGrou
   // «Boshqa» — qiymat emas, darvoza (eski oynadagi qoida): tanlansa ostida matn maydoni.
   const [sourcePick, setSourcePick] = useState("");
   const [otherText, setOtherText] = useState("");
-  const [groupId, setGroupId] = useState<number | null>(null);
+  const [groupId, setGroupId] = useState<number | null>(initialGroupId ?? null);
   const [showAllGroups, setShowAllGroups] = useState(false);
   const [again, setAgain] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
   // «Saqlab, yana qo'shish» dan keyin saqlanib qoladigan tanlovlar — o'zgarmagan bo'lsa forma «toza».
-  const [base, setBase] = useState({ category: "", sourcePick: "", otherText: "", groupId: null as number | null });
+  const [base, setBase] = useState({ category: "", sourcePick: "", otherText: "", groupId: (initialGroupId ?? null) as number | null });
   const touch = (k: FieldKey) => setTouched((cur) => (cur[k] ? cur : { ...cur, [k]: true }));
   // Maydon o'ramlari `data-field` bilan — saqlashda birinchi xatoli maydonga fokus.
   const rootRef = useRef<HTMLDivElement>(null);

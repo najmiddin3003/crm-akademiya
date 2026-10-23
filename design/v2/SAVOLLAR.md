@@ -694,8 +694,8 @@ Rasmdagi qatorlardan tashqari, qiymati bo'lsa: Soliq va «Berilgan oylik»; «O'
 chiqariladigan (oylari yoziladi); kartasi bor xodimda «kartaga · naqd». Qatorlar yig'indisi «Qolgan oylik»ka teng.
 
 **129. Topshiriqlar** — taxmin
-Rasmdagi raqam — muhimlik (1–5); holatlar tizimdagi nomlari bilan («Faol» o'rniga «Yangi»); «Namuna» belgisi —
-dizaynerning izohi deb olindi, ko'rsatilmaydi. 5 tasi, «Hammasi» — Topshiriqlar sahifasi.
+Rasmdagi raqam — muhimlik (1–5); «Namuna» belgisi — dizaynerning izohi deb olindi, ko'rsatilmaydi. 5 tasi,
+«Hammasi» — Topshiriqlar sahifasi. Holat nomi 23.10 dan «Faol» (134).
 
 **130. «Topshiriq berish»** — qilindi
 Topshiriqlar sahifasining shakli shu xodim tanlangan holda ochiladi; tugma faqat topshiriq bera oladiganlarga.
@@ -711,6 +711,82 @@ parol o'rnatilmagan / login yo'q» — tizim hisobidan (parol ko'rsatilmaydi).
 **133. Profil amallari** — taxmin
 «⋯»: Tahrirlash, Ish haqini sozlash, Soliq turlari, Plastik oylik, Parol (faqat admin), Qo'ng'iroq qilish, Batafsil,
 Arxivlash — eski profildagi amallar, oynalari hozircha eski.
+
+### 8-qism — Imtihon → Natija kiritish, Topshiriqlar, Yangi topshiriq (23.10.2026)
+
+**134. «Faol» holat nomi** — taxmin
+Ikkala rasmda ham (Xodim profili, Topshiriqlar) yangi topshiriq «Faol» — yangi versiyada «Yangi» → «Faol» (ro'yxat
+va profil kartasi). Yuqoridagi «Faol» kartasi esa eski sahifadagidek hamma bajarilishi kerak bo'lganlar (yangi +
+qaytarilgan + muddati o'tgan): rasmda 7 = 6 + 1, jami 10. Eski sahifa va bot nomlari o'zgarmadi.
+
+**135. Sarlavha ostidagi yozuv** — taxmin
+Rasmda «Akademiya 3 Uychi · siz bergan topshiriqlar». Ro'yxat yon menyudagi filial bilan kesilmaydi (23.09 dagi
+qaror — «Filial» filtri bor) va rahbar o'z filialidagi boshqalar bergan topshiriqlarni ham ko'radi, shuning uchun:
+direktor — «Barcha filiallar · barcha topshiriqlar», rahbar — «‹filial› · siz boshqaradigan topshiriqlar», xodim —
+«Sizga berilgan topshiriqlar».
+
+**136. «Holat» filtri** — taxmin
+Rasmda yo'q (holatni kartalar filtrlaydi), lekin kartalarda Yakunlandi, Bekor qilindi, Qaytarildi yo'q — eski
+sahifadagi holat filtri «Holat» chipi bo'lib qoldi (kartalar bilan bitta filtr).
+
+**137. Tartib** — taxmin
+Rasmdagidek rahbarga o'zi tasdiqlaydigan «Tasdiq kutilmoqda» eng tepada (binafsha qator), keyin muddati o'tgan,
+faol, yopilganlar. Eski sahifada muddati o'tganlar birinchi; xodim ko'rinishida tartib o'zgarmadi.
+
+**138. Yangi topshiriq oynasi** — taxmin
+Eski formadagi tezkor muddat tugmalari («Bugun 18:00», «Ertaga 12:00», «3 kundan keyin») rasmda yo'q — olib
+tashlandi (sukut baribir ertaga 18:00). «Kimga» ro'yxati filial bo'yicha guruhlangan, guruhda «Hammasini tanlash»
+(eskidagidek). Ilova: maydon bosilsa fayl (sudrab tashlash ham), havola — «Havola» tugmasi; ostida «Rasm yoki PDF,
+10 MB gacha» izohi qo'shildi. Sarlavha ostidagi filial — tanlangan xodimlarning filiali (topshiriq shunga yoziladi),
+hali tanlanmagan bo'lsa joriy filial.
+
+**139. Sarhisob ro'yxati** — taxmin
+8-qismda faqat «Natija kiritish» bor; Imtihon sahifasining o'zi (oydagi sarhisoblar ro'yxati) rasmsiz — eski tabdagi
+hamma narsa yangi qoidalar bilan qurildi (oy va fan filtri, to'rt ko'rsatkich, jadval, o'ngdan tafsilot, Eksport,
+«+ Natija kiritish»). UzBMB — eski ko'rinishda. Rasmlari kelsa almashtiriladi.
+
+**140. O'zlashtirish darajalari** — QAROR KERAK
+Rasmda uch daraja: ≥ 80%, 60–79%, < 60% (< 60% — sariq chiziq va «past»). Eski sahifada to'rt rangli shkala (<50
+qizil, 50–69 sariq, 70–84 och yashil, ≥85 yashil). Yangi versiyada rasmdagisi, eski sahifa o'zgarmadi — bir xil
+qilinsinmi va qaysi biri?
+
+**141. Tanlov tartibi** — taxmin
+Eski panelda qat'iy Fan → Ustoz → Guruh edi. Endi erkin: guruh tanlansa fan («avto») va bo'sh bo'lsa ustoz guruhdan
+to'ladi; fan tanlansa guruhlar shu fan bo'yicha; ustoz tanlansa uning guruhlari birinchi. Guruhdagi ustoz xodimlar
+ro'yxatida topilmasa (import qilingan guruhlar) — ismi «guruhdagi ustoz» deb olinadi. Arxivdagi guruhlar
+ko'rinmaydi.
+
+**142. O'quvchi qatori bosilsa** — taxmin
+Rasmdagi izoh bo'yicha o'ng karta o'quvchiga almashadi: guruhdagi o'rni (shu kiritishda, foiz bo'yicha) va oylar
+bo'yicha natijalari (saqlangan sarhisoblardan, joriy filial, oxirgi 12 tasi). Bu ko'rinishning rasmi yo'q.
+
+**143. Excel'dan yuklash va Eksport** — taxmin
+Eksport — joriy jadval CSV (№, O'quvchi, To'g'ri javob, Savollar, %) — to'ldirib qaytarish uchun shablon ham.
+Yuklash — .xlsx/.xls/.csv: ustunlar sarlavhadan («O'quvchi/Ism» va «To'g'ri javob/Ball»; sarlavha bo'lmasa — birinchi
+harfli va undan keyingi raqamli ustun), ism bo'yicha («Ism Familiya» yoki «Familiya Ism»); topilmaganlar aytiladi,
+savollar sonidan kattasi qisqartiriladi.
+
+**144. Takroriy sarhisob** — QAROR KERAK
+Shu guruhning shu oy sarhisobi bor bo'lsa — sariq ogohlantirish, saqlash to'xtamaydi va alohida yozuv bo'ladi (eski
+panel ham shunday, ogohlantirishsiz). Yangisi eskisini almashtirsinmi yoki taqiqlansinmi? (Tahrirlash/o'chirish
+API'si hozir yo'q.)
+
+**145. Savollar soni kamaytirilsa** — qilindi
+Undan katta natija qolsa saqlash to'xtaydi («N ta o'quvchining natijasi savollar sonidan ko'p»). Eski panelda bunday
+natijalar jimgina saqlanmay qolardi (u yerda o'zgartirilmadi).
+
+**146. Topshiriq tafsiloti, Jarimalar, Statistika, Sozlamalar** — taxmin
+Rasmi yo'q: qator bosilsa eski batafsil panel (tarix, muddat chizig'i) ochiladi, undagi «Tahrirlash» — yangi oyna;
+Jarimalar, Statistika, «Jarima va muddatlar» — «⋯» dan eski tablar (`/tasks?tab=…`), ulardagi «Topshiriqlar» tabi
+yangi ro'yxatga qaytaradi. Batafsil panelda holat hali «Yangi» deb yozilgan (eski ko'rinish).
+
+**147. Kartaning brend rangi** — taxmin (123 bilan bitta)
+Rasmda «Faol» kartasi `brand-bg` fonda, jadvalda esa hamma holatlar bor — demak tanlov emas. Karta faqat filtri
+yoqilganda shu rangda.
+
+**148. «O'quvchi qo'shish»** — taxmin
+Yangi versiyaning «Yangi o'quvchi» paneli (4-qism) shu guruh tanlangan holda ochiladi; saqlangan o'quvchi jadvalga
+«Yangi» belgisi bilan qo'shiladi (eski Imtihon oynasi o'rniga).
 
 ## Reja
 

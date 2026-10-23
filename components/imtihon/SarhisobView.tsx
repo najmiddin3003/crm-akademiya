@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FilePlus, Share2 } from "lucide-react";
 import Select from "@/components/ui/Select";
 import { SpinnerBlock } from "@/components/ui/Spinner";
@@ -11,6 +11,7 @@ import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
+import { sarhisobCsvRows, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useT } from "@/components/shared/Language";
 
 // Imtihon → Sarhisob tabi (referens sarhisob.html → renderList).
@@ -36,11 +37,11 @@ function Kpi({ value, label }: { value: string | number; label: string }) {
 }
 
 export default function SarhisobView() {
-  const { t, months: MONTH_NAMES } = useT();
+  const { t } = useT();
   const { showSuccess } = useToast();
 
-  const [exams, setExams] = useState<GroupExam[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Ro'yxat, oy nomi va CSV — umumiy yadro (sarhisobCore.ts; yangi versiya ham shundan).
+  const { exams, setExams, loading } = useGroupExams();
   // `null` — foydalanuvchi hali tanlamagan: eng oxirgi sarhisob oyi
   // (bo'lmasa joriy oy) ko'rsatiladi.
   const [fMonth, setFMonth] = useState<string | null>(null);
@@ -48,29 +49,7 @@ export default function SarhisobView() {
   const [addOpen, setAddOpen] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/imtihon/group")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && d.ok) setExams(d.exams as GroupExam[]);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const monthLabel = useCallback(
-    (m: string) => {
-      const x = /^(\d{4})-(\d{2})$/.exec(m);
-      return x ? `${MONTH_NAMES[Number(x[2]) - 1]} ${x[1]}` : m;
-    },
-    [MONTH_NAMES],
-  );
+  const monthLabel = useMonthLabel();
 
   const monthOptions = useMemo(() => {
     const set = new Set(exams.map(groupExamMonth));
@@ -95,22 +74,18 @@ export default function SarhisobView() {
 
   /** Referensdagi CSV: har bir o'quvchi alohida qator; nomi Sarhisob_YYYY-MM.csv. */
   function exportCsv(list: GroupExam[], month: string) {
-    const head = ["Sana", "Oy", "Fan", "Ustoz", "Guruh", "O'quvchi", "Savollar", "To'g'ri javob", "O'zlashtirish %"];
-    const out: unknown[][] = [head];
-    for (const r of list) {
-      for (const s of r.students) {
-        out.push([fmtExamDate(r.date), monthLabel(groupExamMonth(r)), r.course, r.teacher, r.groupLabel, s.name, r.total, s.correct, s.pct]);
-      }
-    }
-    downloadCsv(out, `Sarhisob_${month || "hammasi"}.csv`);
+    downloadCsv(sarhisobCsvRows(list, monthLabel), `Sarhisob_${month || "hammasi"}.csv`);
     showSuccess(t("📤 Yuklab olindi — {n} ta sarhisob (Excel'da ochiladi)", { n: list.length }));
   }
 
-  const onSaved = useCallback((exam: GroupExam) => {
-    setExams((prev) => [exam, ...prev]);
-    setFMonth(groupExamMonth(exam));
-    setFCourse("");
-  }, []);
+  const onSaved = useCallback(
+    (exam: GroupExam) => {
+      setExams((prev) => [exam, ...prev]);
+      setFMonth(groupExamMonth(exam));
+      setFCourse("");
+    },
+    [setExams],
+  );
 
   const open = openId === null ? null : exams.find((r) => r.id === openId) || null;
 

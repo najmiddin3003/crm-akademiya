@@ -654,6 +654,66 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   haftalik soat), EmployeeSalaryCard, EmployeeTasksCard. Fan bloklari — `ui/fan.ts` FAN_BG / FAN_BORDER. Rasmdan
   farqlar — `SAVOLLAR.md` 126–133.
 
+## Imtihon → Sarhisob → Natija kiritish (rasm «Sarhisob · Natija kiritish», 23.10.2026)
+
+- **Sarlavha**: yo'l «Sarhisob › Natija kiritish» (`small text-2`, «Sarhisob» — ro'yxatga qaytadi), «Imtihon», o'ngda
+  «⤓ Eksport» (ikkinchi darajali). Ostida tablar «Sarhisob | UzBMB» — faol tab qalin yozuv + 2 px `brand` chiziq,
+  qator ostida `border` chiziq.
+- **Tanlovlar paneli** (`surface-2` kartochka, 6 ustun): Fan (yorliq yonida «avto» — `brand-bg` + `brand-text`,
+  guruhdan olinganda), Ustoz, Guruh («Ingliz tili · 205»), Oy («Oktabr 2026»), Sana («12-oktabr ⌄»), Savollar soni
+  («25 ta»). Maydonlar 36 px, qiymat qalin, yorliq `small text-2`.
+- **O'quvchilar kartasi** (chapda): «6 ta o'quvchi» qalin + «guruhdan avtomatik olindi» (`text-2`), o'ngda «+ O'quvchi
+  qo'shish», «⤒ Excel'dan yuklash» (32 px). Jadval: № · O'quvchi (qalin) · To'g'ri javob (maydon «22 / 25», sarlavha
+  qalin) · O'zlashtirish (132 px chiziq `brand` / izi `brand-bg` + foiz qalin; < 60% — `warning` chiziq, izi
+  `warning-bg`, foiz `warning` + «past»; bo'sh — «kiritilmagan» `text-3`) · o'ngda ✓ (`success`) yoki fokusdagi qatorda
+  «[Enter] keyingisi». Fokusdagi qator `brand-bg`. Pastda `surface-2` qator: «5 / 6 kiritildi • Guruh o'rtachasi 80%»,
+  «Bekor qilish», «✓ Natijalarni saqlash».
+- **Taqqoslash** (o'ngda, 300 px): «Taqqoslash · oktabr»; qatorlar nom + foiz, ostida 8 px chiziq (izi `hover`): «Bu
+  guruh» — `series-1` (ko'k), «Ingliz tili · markaz o'rtachasi», «Barcha fanlar · markaz» — `track` (kulrang);
+  ajratgich; «Guruh ichida» — uch katak `surface-2` (≥ 80%, 60–79%, < 60% soni); izoh «O'quvchi qatoriga bosilsa…».
+  O'quvchi bosilsa karta o'sha o'quvchiga almashadi («← Taqqoslash», guruhdagi o'rni, oylar bo'yicha natijalari).
+- Klaviatura: natija maydonida Enter / ↓ — keyingi o'quvchi, ↑ — oldingisi.
+- Sarhisob RO'YXATI (`/imtihon`, rasmi kelmagan): Oy (qiymatli tugma) va Fan (chip) filtri, to'rt ko'rsatkich bitta
+  kartochkada (Topshiriqlar kartalari qolipida), jadval — Sana, Fan (nuqta), Ustoz, Guruh, O'quvchi, Savol, Guruh
+  o'rtachasi (chiziq + foiz); qator bosilsa o'ngdan tafsilot (taqqoslash va o'quvchilar natijasi).
+- Kodda: `components/v2/imtihon/` — ImtihonV2 (manzil: `?kiritish=1&oy=`, `?tab=uzbmb`), ExamEntryV2, ExamSideCard,
+  SarhisobListV2, SarhisobDetailV2, examBits (ImtihonHeader, ScoreBar, CompareRow, examBand). Ro'yxat, oy nomi va CSV
+  eski tab bilan bitta: `components/imtihon/sarhisobCore.ts`. UzBMB — eski ko'rinish. Rasmdan farqlar —
+  `SAVOLLAR.md` 139–145, 148.
+
+## Topshiriqlar (rasm «Topshiriqlar · Rahbar», 23.10.2026)
+
+- **Sarlavha**: «Topshiriqlar» + kimning topshiriqlari (`small text-2`); o'ngda «⋯» (Jarimalar, Statistika, Jarima va
+  muddatlar, O'quvchi vazifalari turlari) va «+ Topshiriq berish».
+- **Kartalar** — to'rttasi BITTA kartochkada, orasi 1 px `border`: rangli nuqta + nom (Faol `info`, Tasdiq kutilmoqda
+  `violet`, Muddati o'tgan `warning`, Bajarilmadi · shu oy `danger`), son 22 px qalin, izoh `caption text-2`.
+  Bosilsa holat filtri; tanlangani `brand-bg` + pastida 2 px `brand` chiziq.
+- **Filtrlar**: «Topshiriq nomi» qidiruvi (240 px) → chiplar Xodim, Muhimlik (variant yonida jarima summasi),
+  Filial, 📅 Muddat (+ Holat).
+- **Jadval**: Topshiriq (nom qalin + ostida holatga qarab izoh: «Bajardim: 12-oktabr | 09:40 · fayl biriktirilgan»,
+  tavsif, «Tasdiqlandi: …») · Xodim (28 px doira `surface-2` + chegara, bosh harflar; ism) · Muhimlik (28 px kvadrat:
+  1–2 `skeleton` foni + `text-2`, 3–4 `warning-bg` + `warning`, 5 `danger-bg` + `danger`) · Muddat («14-oktabr | 12:00»,
+  ostida «2 kun qoldi» `text-2`, «qayta muddat: …» va «bugun · 5 soat 45 daqiqa» — `warning`) · Holat (belgi: nuqta +
+  yozuv, och fon; ostida 👁 «ko'rildi / hali ko'rilmagan» `text-3`) · amal. «Tasdiq kutilmoqda» qatori `violet-bg`,
+  amalda «✓ Tasdiqlash» (32 px, brend) + «↩» (32 px ikkinchi darajali); qolganida «⋯». Pastda «1–6 / 10 ta» va
+  «Holat avtomatik o'zgaradi: …» (`caption text-2`).
+- Kodda: `components/v2/tasks/` — TasksRouteV2 (`?tab=fines|stats|settings` — eski tablar), TasksV2, taskBitsV2
+  (V2_STATUS_LABEL, holat belgisi, muhimlik, muddat katagi), TaskActionDialogV2. Mantiq eski sahifa bilan bitta:
+  `components/staff-tasks/useStaffTasksCore.ts`, `taskListCore.ts`, `useTaskForm.ts`, `useTaskAction.ts`. Batafsil
+  panel — eski (TaskDrawer). Rasmdan farqlar — `SAVOLLAR.md` 134–137, 146–147.
+
+## Yangi topshiriq oynasi (rasm «Yangi topshiriq», 23.10.2026)
+
+- Markazdagi oyna (V2Dialog, 560 px): «Yangi topshiriq» + filial; Sarlavha; Tavsif (ixtiyoriy); Kimga — tanlangan
+  xodimlar chip (`surface-2` + chegara, 20 px `brand-bg` doirada bosh harflar, ×), oxirida «Xodim qo'shish…»
+  qidiruvi; ostida izoh «har biriga alohida nusxa…». Muddat — «📅 15-oktabr, payshanba» + soat (ikonkasiz, 112 px);
+  Muhimlik — beshta 52 px tugma (raqam qalin + jarima `caption`), tanlangani `brand` chegara + `brand-bg` +
+  `brand-text`; ostida «Bajarilmasa: **30 000 so'm** jarima. Summalar Sozlamalar → Jarima va muddatlar'da.»; Ilova
+  (ixtiyoriy) — uzuq chegarali maydon «📎 Rasm, PDF yoki havola biriktiring» (bosilsa fayl, sudrab tashlash ham) +
+  «Havola». Pastda «Enter saqlash · Esc yopish», «Bekor qilish», «✓ Topshiriq berish».
+- Tahrirlash ham shu oyna («Topshiriqni tahrirlash», xodim o'zgarmaydi). Kodda: `components/v2/tasks/TaskFormDialogV2.tsx`
+  (StaffTagPicker — «Kimga»). Rasmdan farqlar — `SAVOLLAR.md` 138.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

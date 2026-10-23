@@ -3,15 +3,16 @@
 import { ListChecks } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useT } from "@/components/shared/Language";
-import { STATUS_LABEL, STATUS_RANK, STATUS_TONE, isOpen, ms, uzDateOf, uzTimeOf, type StaffTask, type Tone } from "@/lib/staffTasks";
+import { STATUS_RANK, STATUS_TONE, isOpen, ms, uzDateOf, uzTimeOf, type StaffTask, type Tone } from "@/lib/staffTasks";
+import { V2_STATUS_LABEL } from "@/components/v2/tasks/taskBitsV2";
 
 // YANGI VERSIYA — XODIM PROFILI → «TOPSHIRIQLAR» (rasm «Xodim profili», 20.10.2026):
 // sarlavha + «Hammasi»; har qator — muhimlik raqami (kvadratda), nomi, ostida muddat
 // («Muddat: 15-oktabr | 18:00 · ko'rildi», «Qayta muddat: …», «10-oktabr | 17:20 da
 // tasdiqlandi») va o'ngda holat belgisi. Manba — /tasks bilan bitta (/api/staff-tasks,
-// qamrov serverda). Holat nomlari tizimdagidek (Yangi, Muddati o'tdi, Yakunlandi …) —
-// rasmdagi «Faol» bu yerda «Yangi» (design/v2/SAVOLLAR.md 129). Rasmdagi «Namuna»
-// belgisi — dizaynerning izohi (namuna ma'lumot), interfeysda yo'q.
+// qamrov serverda). Holat nomlari Topshiriqlar ro'yxati bilan bir xil (taskBitsV2 →
+// V2_STATUS_LABEL): «Yangi» — «Faol» (rasmlar «Xodim profili» va «Topshiriqlar», SAVOLLAR
+// 129, 134). Rasmdagi «Namuna» belgisi — dizaynerning izohi (namuna ma'lumot), interfeysda yo'q.
 
 const MAX = 5;
 
@@ -106,7 +107,7 @@ export default function EmployeeTasksCard({
                   <span className="mt-0.5 block truncate text-v2-caption text-v2-text-2">{sub(k)}</span>
                 </span>
                 <span className={`mt-0.5 inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-v2-sm px-2 text-v2-caption font-medium ${TONE[STATUS_TONE[k.status]]}`}>
-                  {t(STATUS_LABEL[k.status])}
+                  {t(V2_STATUS_LABEL[k.status])}
                 </span>
               </Link>
             </li>

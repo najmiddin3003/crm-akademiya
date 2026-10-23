@@ -39,6 +39,8 @@ export default function V2TimeField({
   state = "default",
   id,
   disabled = false,
+  icon = true,
+  ariaLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -46,10 +48,13 @@ export default function V2TimeField({
   state?: FieldState;
   id?: string;
   disabled?: boolean;
+  /** Chapdagi soat ikonkasi («Yangi topshiriq» oynasida yo'q — sana yonida, 23.10.2026). */
+  icon?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <div className="relative">
-      <Clock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-v2-text-2" strokeWidth={1.75} aria-hidden />
+      {icon && <Clock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-v2-text-2" strokeWidth={1.75} aria-hidden />}
       <input
         id={id}
         type="text"
@@ -58,6 +63,7 @@ export default function V2TimeField({
         placeholder="16:00"
         maxLength={5}
         disabled={disabled}
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(maskTime(e.target.value))}
         onBlur={() => {
@@ -65,7 +71,7 @@ export default function V2TimeField({
           if (done !== value) onChange(done);
           onBlur?.();
         }}
-        className={fieldCls(state, "pl-9 tabular-nums")}
+        className={fieldCls(state, `${icon ? "pl-9" : ""} tabular-nums`)}
       />
     </div>
   );

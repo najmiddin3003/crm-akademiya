@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useId, useMemo, useRef, useState, type ComponentType, type KeyboardEvent } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useT } from "@/components/shared/Language";
 import FloatingPanel from "./FloatingPanel";
@@ -43,6 +43,8 @@ export interface V2SelectProps {
   clearable?: boolean;
   /** value — bo'sh qiymat yozuvi («Barchasi»). */
   emptyLabel?: string;
+  /** chip/value — nom oldidagi ikonka («📅 Muddat», rasm «Topshiriqlar», 23.10.2026). */
+  icon?: ComponentType<{ className?: string; strokeWidth?: number }>;
   id?: string;
   className?: string;
 }
@@ -61,6 +63,7 @@ export default function V2Select({
   searchable = "auto",
   clearable = true,
   emptyLabel = "Barchasi",
+  icon: Icon,
   id,
   className = "",
 }: V2SelectProps) {
@@ -170,12 +173,14 @@ export default function V2Select({
       >
         {variant === "value" ? (
           <>
+            {Icon && <Icon className="size-4 shrink-0 text-v2-text-2" strokeWidth={1.75} />}
             <span className="shrink-0 text-v2-text-2">{t(label)}:</span>
             <span className="truncate font-semibold">{selected ? t(selected.label) : t(emptyLabel)}</span>
             <ChevronDown className={`size-4 shrink-0 text-v2-text-3 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
           </>
         ) : variant === "chip" ? (
           <>
+            {Icon && <Icon className={`size-4 shrink-0 ${chipOn ? "text-v2-brand-text" : "text-v2-text-2"}`} strokeWidth={1.75} />}
             <span className="truncate">
               {t(label)}
               {selected && <>: <span className="font-semibold">{t(selected.label)}</span></>}

@@ -12,6 +12,8 @@ export const ROW_TINT = {
   hover: "hover:bg-v2-hover hover:shadow-[inset_0_0_0_9999px_var(--v2-hover)]",
   brand: "bg-v2-brand-bg shadow-[inset_0_0_0_9999px_var(--v2-brand-bg)]",
   warning: "bg-v2-warning-bg shadow-[inset_0_0_0_9999px_var(--v2-warning-bg)]",
+  /** «Tasdiq kutilmoqda» topshirig'i — rahbarning navbatida (rasm «Topshiriqlar», 23.10.2026). */
+  violet: "bg-v2-violet-bg shadow-[inset_0_0_0_9999px_var(--v2-violet-bg)]",
 } as const;
 
 /** Birinchi katakdagi chap 3 px chiziq (tanlangan / ogohlantirish qatori). */

@@ -4,18 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ListChecks, MoreVertical, Plus, RefreshCw } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { useToast } from "@/components/ui/Toast";
 import TaskTypesDrawer from "@/components/tasks/TaskTypesDrawer";
 import { useTaskTypes } from "@/hooks/useTaskTypes";
-import type { StaffTask, StaffTaskFine, StaffTaskSettings, StaffTasksPayload } from "@/lib/staffTasks";
-import ActionModal, { type ActionTarget } from "./ActionModal";
+import type { StaffTaskSettings } from "@/lib/staffTasks";
+import ActionModal from "./ActionModal";
 import FinesView from "./FinesView";
 import SettingsView from "./SettingsView";
 import StatsView from "./StatsView";
-import TaskDrawer, { type DrawerMode } from "./TaskDrawer";
+import TaskDrawer from "./TaskDrawer";
 import TaskList, { EMPTY_FILTERS, type TaskFilters } from "./TaskList";
-import { api } from "./api";
 import { useStaffFmt } from "./format";
+import { useStaffTasksData, useStaffTasksDrawer } from "./useStaffTasksCore";
 
 // TOPSHIRIQLAR (/tasks) — xodim topshiriqlari. Prototip: foydalanuvchining
 // "topshiriqlar-prototip v2" fayli (23.09.2026). Tablar ko'rinishga qarab:
@@ -31,8 +30,8 @@ import { useStaffFmt } from "./format";
 
 type TabKey = "list" | "fines" | "stats" | "settings";
 
-/** Eski topshiriq turlari paneli — faqat ochilganda yuklanadi. */
-function TaskTypesManager({ onClose }: { onClose: () => void }) {
+/** Eski topshiriq turlari paneli — faqat ochilganda yuklanadi (yangi versiya «⋯» menyusi ham). */
+export function TaskTypesManager({ onClose }: { onClose: () => void }) {
   const taskTypes = useTaskTypes();
   return (
     <TaskTypesDrawer
@@ -52,60 +51,11 @@ export default function StaffTasksPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { showSuccess } = useToast();
 
-  const [data, setData] = useState<StaffTasksPayload | null>(null);
-  const [error, setError] = useState("");
-  // Server soatiga tekislangan "hozir": mijoz soati adashsa ham muddatlar
-  // to'g'ri hisoblansin (TaskInboxProvider dagi usul).
-  const [skew, setSkew] = useState(0);
-  const [clock, setClock] = useState(() => Date.now());
-  const nowMs = clock + skew;
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const load = useCallback(async () => {
-    const r = await api<Omit<StaffTasksPayload, "ok">>("/api/staff-tasks");
-    if (r.ok) {
-      setData(r as StaffTasksPayload);
-      setSkew(Date.parse(r.serverNow) - Date.now());
-      setClock(Date.now());
-      setError("");
-    } else {
-      setError(r.error);
-    }
-  }, []);
-
-  useEffect(() => {
-    let off = false;
-    api<Omit<StaffTasksPayload, "ok">>("/api/staff-tasks").then((r) => {
-      if (off) return;
-      if (r.ok) {
-        setData(r as StaffTasksPayload);
-        setSkew(Date.parse(r.serverNow) - Date.now());
-        setClock(Date.now());
-      } else setError(r.error);
-    });
-    return () => {
-      off = true;
-    };
-  }, []);
-
-  // Soat har 30 soniyada (nisbiy vaqtlar), ro'yxat har daqiqada yangilanadi
-  // — muddat o'tgan topshiriq server avtomatikasi bilan holatini o'zgartiradi.
-  useEffect(() => {
-    const tick = window.setInterval(() => setClock(Date.now()), 30_000);
-    const refresh = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, 60_000);
-    return () => {
-      window.clearInterval(tick);
-      window.clearInterval(refresh);
-    };
-  }, [load]);
-
-  const viewer = data?.viewer ?? null;
-  const role = viewer?.role ?? "xodim";
-  const mgr = role !== "xodim";
+  // Yuklash, soat, rol va drawer holati — umumiy yadro (useStaffTasksCore.ts):
+  // yangi versiyadagi Topshiriqlar ham shundan ishlaydi.
+  const core = useStaffTasksData();
+  const { data, error, nowMs, reloadKey, load, viewer, role, mgr } = core;
   const tabs = useMemo((): { key: TabKey; label: string }[] => {
     if (role === "direktor")
       return [
@@ -136,64 +86,12 @@ export default function StaffTasksPage() {
   const setTab = (next: TabKey) => router.replace(hrefFor(next), { scroll: false });
 
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS);
-  const [drawer, setDrawer] = useState<DrawerMode | null>(null);
-  const [detail, setDetail] = useState<StaffTask | null>(null);
-  const [detailErr, setDetailErr] = useState<{ id: number; error: string } | null>(null);
-  const [detailNonce, setDetailNonce] = useState(0);
-  const [action, setAction] = useState<ActionTarget | null>(null);
   const [typesOpen, setTypesOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Qo'ng'iroqdan kelgan `?open=<id>` — render paytida qabul qilinadi
-  // (oldingi holatdan hosil qilish qolipi), manzildan esa effekt olib
-  // tashlaydi: shunda o'sha qatorni yana bossangiz ham topshiriq ochiladi.
-  const openParam = searchParams.get("open");
-  const [handledOpen, setHandledOpen] = useState<string | null>(null);
-  if (openParam !== handledOpen) {
-    setHandledOpen(openParam);
-    const id = Number(openParam);
-    if (openParam && Number.isFinite(id)) setDrawer({ mode: "detail", id });
-  }
-  useEffect(() => {
-    if (!openParam) return;
-    router.replace(hrefFor(tab), { scroll: false });
-  }, [openParam, router, hrefFor, tab]);
-
-  // «+ Yangi → Topshiriq» (yangi versiya yuqori paneli) `?new=1` bilan keladi —
-  // shakl faqat rahbar/direktorga va u ma'lum bo'lgach (ma'lumot kelgach) bir
-  // marta ochiladi; manzildan esa ma'lumot kelgach olib tashlanadi.
-  const newParam = searchParams.get("new");
-  const [handledNew, setHandledNew] = useState<string | null>(null);
-  if (newParam !== handledNew && (newParam === null || mgr)) {
-    setHandledNew(newParam);
-    // `&employee=<id>` — xodim profilidagi «Topshiriq berish» (yangi versiya, 20.10.2026):
-    // shakl o'sha xodim tanlangan holda ochiladi.
-    const emp = Number(searchParams.get("employee"));
-    if (newParam === "1") setDrawer({ mode: "form", id: null, employeeId: Number.isInteger(emp) && emp > 0 ? emp : undefined });
-  }
-  useEffect(() => {
-    if (newParam === null || !data) return;
-    router.replace(hrefFor(tab), { scroll: false });
-  }, [newParam, data, router, hrefFor, tab]);
-
-  // Batafsil (tarix bilan) — drawer ochilganda. Ijrochi ochsa server
-  // «Ko'rildi» deb yozadi (`seen=1`).
-  const detailId = drawer && drawer.id !== null ? drawer.id : null;
-  useEffect(() => {
-    if (detailId === null) return;
-    let off = false;
-    api<{ task: StaffTask }>(`/api/staff-tasks/${detailId}?seen=1`).then((r) => {
-      if (off) return;
-      if (r.ok) {
-        setDetail(r.task);
-        setData((d) => (d ? { ...d, tasks: d.tasks.map((x) => (x.id === r.task.id ? { ...r.task, history: undefined } : x)) } : d));
-      } else setDetailErr({ id: detailId, error: r.error });
-    });
-    return () => {
-      off = true;
-    };
-  }, [detailId, detailNonce]);
+  const dr = useStaffTasksDrawer({ core, cleanHref: hrefFor(tab), fmt });
+  const { drawer, setDrawer, action, setAction, openTask, closeDrawer, listTask, detailFor, detailError } = dr;
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -203,22 +101,6 @@ export default function StaffTasksPage() {
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [moreOpen]);
-
-  const mergeTask = useCallback((task: StaffTask) => {
-    setData((d) => (d ? { ...d, tasks: d.tasks.map((x) => (x.id === task.id ? { ...task, history: undefined } : x)) } : d));
-    setDetail((cur) => (cur && cur.id === task.id ? task : cur));
-  }, []);
-
-  const openTask = useCallback((id: number) => setDrawer({ mode: "detail", id }), []);
-  const closeDrawer = useCallback(() => {
-    setDrawer(null);
-    setDetail(null);
-    setDetailErr(null);
-  }, []);
-
-  const listTask = drawer && drawer.id !== null ? data?.tasks.find((x) => x.id === drawer.id) ?? null : null;
-  const detailFor = drawer && detail && detail.id === drawer.id ? detail : null;
-  const detailError = drawer && detailErr && detailErr.id === drawer.id ? detailErr.error : "";
 
   const sub = !viewer
     ? ""
@@ -326,7 +208,7 @@ export default function StaffTasksPage() {
         )}
         {tab === "stats" && viewer && <StatsView viewer={viewer} branches={data?.branches ?? []} fmt={fmt} reloadKey={reloadKey} />}
         {tab === "settings" && role === "direktor" && (
-          <SettingsView fmt={fmt} onSaved={(s: StaffTaskSettings) => setData((d) => (d ? { ...d, settings: s } : d))} />
+          <SettingsView fmt={fmt} onSaved={(s: StaffTaskSettings) => core.setData((d) => (d ? { ...d, settings: s } : d))} />
         )}
       </div>
 
@@ -344,15 +226,8 @@ export default function StaffTasksPage() {
           onClose={closeDrawer}
           onMode={setDrawer}
           onAction={(task, kind) => setAction({ kind, task })}
-          onCreated={(tasks) => {
-            setData((d) => (d ? { ...d, tasks: [...tasks, ...d.tasks] } : d));
-            setReloadKey((k) => k + 1);
-            showSuccess(tasks.length === 1 ? t("Topshiriq berildi") : t("{n} ta topshiriq berildi", { n: tasks.length }));
-          }}
-          onUpdated={(task) => {
-            mergeTask(task);
-            showSuccess(t("Saqlandi"));
-          }}
+          onCreated={dr.onCreated}
+          onUpdated={dr.onUpdated}
         />
       )}
 
@@ -362,26 +237,8 @@ export default function StaffTasksPage() {
           nowMs={nowMs}
           fmt={fmt}
           onClose={() => setAction(null)}
-          onTaskDone={(task, msg) => {
-            mergeTask(task);
-            setReloadKey((k) => k + 1);
-            showSuccess(msg);
-          }}
-          onFineDone={(fine: StaffTaskFine, msg) => {
-            setReloadKey((k) => k + 1);
-            setData((d) =>
-              d
-                ? {
-                    ...d,
-                    tasks: d.tasks.map((x) =>
-                      x.id === fine.taskId && x.fine ? { ...x, fine: { ...x.fine, status: fine.status, held: fine.held, cancelReason: fine.cancelReason, cancelledBy: fine.cancelledBy, cancelledAt: fine.cancelledAt } } : x,
-                    ),
-                  }
-                : d,
-            );
-            if (drawer && drawer.id === fine.taskId) setDetailNonce((n) => n + 1);
-            showSuccess(msg);
-          }}
+          onTaskDone={dr.onTaskDone}
+          onFineDone={dr.onFineDone}
         />
       )}
 
