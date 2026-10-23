@@ -32,8 +32,9 @@ import { openReceipt } from "./ReceiptHost";
 // (oylik)»), o'qituvchi — tanlangan guruhdan (guruhi yo'q o'quvchida — qo'lda),
 // izohdagi oy qorovuli va tanga chegirmasi o'sha-o'sha.
 //
-// Ochiladi: o'quvchi tezkor panelidan (o'quvchi tanlangan) va «+ Yangi» dan
-// (o'quvchi qidiriladi). Saqlangach — toast «To'lov qabul qilindi» +
+// Ochiladi: o'quvchi tezkor panelidan (o'quvchi tanlangan), «+ Yangi» dan
+// (o'quvchi qidiriladi) va o'quvchi sahifasidan (23.10.2026: «Shu oyni to'lash →» —
+// guruh, oy va qolgan qarz oldindan qo'yiladi; `initialGroupId/Month/Amount`). Saqlangach — toast «To'lov qabul qilindi» +
 // «Chekni ko'rish» (chek qobiqda ochiladi — ./ReceiptHost.tsx).
 
 /** Tugma ustiga kelganda chaqiriladi — bosilganda oyna kutmasdan ochilsin. */
@@ -61,6 +62,18 @@ export interface StudentPaymentModalProps {
   student?: StudentRow | null;
   /** Guruhlar (sahifada bo'lsa); berilmasa — so'raladi. */
   groups?: Group[];
+  /** Oldindan tanlangan guruh (o'quvchi shu guruhda bo'lsa). */
+  initialGroupId?: number | null;
+  /** Oldindan tanlangan «Qaysi oy uchun» ("YYYY-MM"). */
+  initialMonth?: string;
+  /** Oldindan yozilgan summa (so'm). */
+  initialAmount?: number;
+  /**
+   * Kartadagi balans va holat — o'quvchi sahifasidan (to'langan − to'lanishi kerak,
+   * components/v2/students/profile/profileLedger.ts). Berilmasa — to'lovlar
+   * yig'indisi va «Yangi o'quvchi» qoidasi (ro'yxatdagidek).
+   */
+  summary?: { balance: number; statusLabel: string };
   onClose: () => void;
   /** Saqlangach (yangilangan kassa bilan). */
   onSaved?: (cashbox: Cashbox) => void;
@@ -116,6 +129,10 @@ function PaymentForm({
   student,
   allGroups,
   cashboxes,
+  initialGroupId,
+  initialMonth,
+  initialAmount,
+  summary,
   onClose,
   onSaved,
 }: StudentPaymentModalProps & { cashboxes: Cashbox[]; allGroups: Group[] }) {
@@ -130,7 +147,10 @@ function PaymentForm({
   const studentList = useMemo(() => (chosen ? [chosen] : []), [chosen]);
   const groupsOf = (id: number) => allGroups.filter((g) => (g.studentIds ?? []).includes(id));
   const myGroups = useMemo(() => (chosen ? allGroups.filter((g) => (g.studentIds ?? []).includes(chosen.id)) : []), [allGroups, chosen]);
-  const [groupId, setGroupId] = useState<number | null>(() => (student ? (groupsOf(student.id)[0]?.id ?? null) : null));
+  // Boshlang'ich guruh: so'ralgani (o'quvchi o'sha guruhda bo'lsa), aks holda birinchisi.
+  const startGroup = student ? (groupsOf(student.id).find((g) => g.id === initialGroupId) ?? groupsOf(student.id)[0]) : undefined;
+  const [groupId, setGroupId] = useState<number | null>(() => startGroup?.id ?? null);
+  const initialAmountText = initialAmount && initialAmount > 0 ? String(Math.round(initialAmount)) : "";
 
   const [submitted, setSubmitted] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
@@ -144,7 +164,9 @@ function PaymentForm({
     cashbox,
     students: studentList,
     initialStudentKey: student ? String(student.id) : undefined,
-    initialTeacherName: student ? groupsOf(student.id)[0]?.teacher : undefined,
+    initialTeacherName: startGroup?.teacher,
+    initialPeriodMonth: initialMonth,
+    initialAmount: initialAmountText,
     preferType: preferStudentType,
     onSuccess: ({ cashbox: updated, entryId }) => {
       dropCashboxes();
@@ -232,9 +254,10 @@ function PaymentForm({
   }));
 
   // Balans — kassa yozuvlaridan (eski oynadagi manba); u yerda yo'q bo'lsa — kartadagisi.
-  const balance = chosen ? (k.balances[chosen.id] ?? chosen.balance ?? 0) : 0;
+  const balance = summary && chosen && student && chosen.id === student.id ? summary.balance : chosen ? (k.balances[chosen.id] ?? chosen.balance ?? 0) : 0;
+  const shownStatus = summary && chosen && student && chosen.id === student.id ? summary.statusLabel : chosen ? statusLabel(chosen, balance) : "";
   const disc = k.pendingDisc && k.pendingDisc.key === k.discKey ? k.pendingDisc : null;
-  const dirty = !!k.amount || !!k.note.trim() || !!k.method || (!student && !!chosen);
+  const dirty = (!!k.amount && k.amount !== initialAmountText) || !!k.note.trim() || !!k.method || (!student && !!chosen);
 
   return (
     <V2Dialog
@@ -274,7 +297,7 @@ function PaymentForm({
                   {chosen.name}
                 </div>
                 <div className="truncate text-v2-caption font-normal tabular-nums text-v2-text-3">
-                  {[studentPhoneLabel(chosen.phone), t(statusLabel(chosen, balance))].filter(Boolean).join(" · ")}
+                  {[studentPhoneLabel(chosen.phone), t(shownStatus)].filter(Boolean).join(" · ")}
                 </div>
               </div>
               <div className="shrink-0 text-right">

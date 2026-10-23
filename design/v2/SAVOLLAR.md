@@ -788,6 +788,72 @@ yoqilganda shu rangda.
 Yangi versiyaning «Yangi o'quvchi» paneli (4-qism) shu guruh tanlangan holda ochiladi; saqlangan o'quvchi jadvalga
 «Yangi» belgisi bilan qo'shiladi (eski Imtihon oynasi o'rniga).
 
+### 9-qism — O'quvchi sahifasi (23.10.2026)
+
+**149. Qarz qoidasi (O'quvchi sahifasi)** — QAROR KERAK
+Har oy uchun to'lanadigan summa — guruhning oylik narxi; oy o'rtasida qo'shilgan/chiqqan oyda — darslar ulushi
+(oylik × a'zolik darslari / oyning darslari). Qarz = joriy oygacha (shu oy butunligicha) hisoblangan − shu oylar uchun
+to'langan («Qaysi oy uchun»), SOF: bir oyda ortiqcha to'langani (masalan 5-iyunda qo'shilib iyunni to'liq to'lagan)
+boshqa oy qarzidan ayriladi — Qarzdorlar hisobotidagi (20.09 kelishuvi) kabi. Hisobotdan farqi: u bugungacha o'tgan
+darslarni sanaydi va oyni 13 dars deb oladi, sahifa esa joriy oyni butunligicha va oyning haqiqiy darslari bilan —
+oy o'rtasida raqamlar farq qiladi (ko'zguda: hisobotda 307 687, sahifada 400 000). «Oylar bo'yicha» jadvalida har oy o'z
+to'lovi bilan («+49 231 ortiqcha»), farq izohda («ortiqcha to'langan … qarzdan ayrildi»). Rasmdagi «Balans −470 000» =
+to'langan − to'lanishi kerak; O'quvchilar ro'yxatidagi «Balans» ustuni esa hamon to'lovlar yig'indisi (profildan
+ochilgan to'lov oynasida — profil balansi). Variantlar: (a) shunday qolsin; (b) qisman oy ham to'liq oylik narxda;
+(c) ortiqcha to'lov boshqa oy qarzini kamaytirmasin (faqat oyma-oy).
+
+**150. «Tahrirlash» oynasi** — taxmin
+Rasm yo'q — «Yangi o'quvchi» paneli qolipida: Ism, Familiya, Telefon, Qo'shimcha telefon, Tug'ilgan sana, Kategoriya,
+Ota-ona (otasi va onasi — ism, telefon). Faqat o'zgargan maydonlar yuboriladi (tegilmagan telefon bazadagi shaklida
+qoladi). «Tug'ilgan sana · Qo'shish» va «+ Ota-ona qo'shish» shu oynani o'sha maydonga fokus bilan ochadi. Qolgan
+maydonlar (manzil, o'qish joyi, izoh, sinf, email …) — eski profilning «Tahrirlash» tabida («⋯» → «Eski ko'rinishda
+ochish»).
+
+**151. Tarix tabi** — taxmin
+Rasm yo'q — «So'nggi harakatlar»ning to'liq ro'yxati, oy bo'yicha bo'lingan, segment «Hammasi | To'lovlar | Davomat |
+Guruh va holat», 40 tadan. Manba — mavjud ma'lumot (eski «Harakatlar tarixi» `pupil_activity` hech qachon yozilmaydi):
+to'lovlar (bir kunda bir oy uchun bir turda bir kassaga — bitta qator «2 ta to'lov · 620 000 so'm», rasmdagidek),
+qoldirilgan / kechikkan / birinchi darslar (har «keldi» tarixga chiqmaydi), guruhga qo'shilish va chiqish, holat
+o'zgarishi, ro'yxatga olingan kun.
+
+**152. Guruh yonidagi belgi** — taxmin
+Rasmda guruh yonida «Aktiv»; Guruhlar ro'yxati va DESIGN.md da guruh holati «Faol» (`GROUP_TONE`) — bir xil bo'lsin deb
+«Faol». O'quvchining o'z holati «Aktiv» (o'quvchi holatlari ro'yxati).
+
+**153. To'lov qaysi guruhniki** — taxmin
+Kirim yozuvida guruh yo'q (`group: ""`), faqat ustoz — to'lov o'quvchining guruhlaridan ustozi shu bo'lgan YAGONA
+guruhga; o'quvchining bitta guruhi bo'lsa — o'shanga. Aniqlanmasa tarixda «—», hisobda o'sha oyning qarzlariga guruhlar
+tartibida taqsimlanadi (taqsimlanmay qolgani izohda).
+
+**154. Narxi kiritilmagan guruh** — taxmin
+Ko'zguda 4-filial guruhlarida kurs narxi yo'q. Bunday guruhning oylari hisoblanmaydi va unga yozilgan to'lov qarzga
+qarshi qo'yilmaydi (aks holda «oldindan to'langan» bo'lib ko'rinardi); sahifa «Hisob to'liq emas: … — narx
+belgilanmagan» deydi, narxli guruh umuman bo'lmasa balans va qarz «—». Havola — Sozlamalar → Kurslar.
+
+**155. Davomat «belgilanmagan»** — taxmin
+O'tgan dars kuni belgisiz bo'lsa — kalendarda uzuq chegarali «?» chip, Umumiy'da «?» doiracha; foiz faqat
+belgilanganlardan («7 / 9 dars»). Belgi umuman yo'q oyda «Qoldirilgan darslar» — «Davomat belgilanmagan». Dars kunlari
+guruh jadvalidan (bayram kunlari ham — hisobot qoidasi).
+
+**156. Eski tablar va havolalar** — taxmin
+Parol, SMS tarixi, qo'ng'iroqlar, vazifalar, shartnomalar — «⋯» dan eski ko'rinishda (`?classic=1&tab=…`). Eski
+havolalar: `?tab=tranzaksiya` → To'lovlar, `harakatlar` → Tarix, `guruh` → Umumiy; qolgan eski tablar va buyurtma
+(demo) id'lari — eski sahifa. Eski tizim (edutizim) to'lovlari — To'lovlar tarixi ostida havola.
+
+**157. O'quvchini o'chirish** — taxmin
+«⋯ → O'quvchini o'chirish» faqat to'lovi yo'q o'quvchida (server ham rad etadi — to'lovlar yetim qolardi); to'lovlida
+band o'chiq, izohi «Holatni o'zgartirish orqali arxivlang».
+
+**158. Guruh qatori amallari** — taxmin
+«⇄ Ko'chirish» — guruh sahifasidagi bilan bir xil (yangisiga qo'shib, eskisidan chiqaradi; ikkinchi qadam o'tmasa —
+aytiladi). «⋯» — Guruh sahifasi, Shu guruh uchun to'lov, Guruhdan chiqarish (tasdiq bilan). Chiqib ketgan guruhlar —
+«Oldingi guruhlar (N)» ostida. Yig'ilayotgan guruhda narx o'rniga «qo'shilgan · sana» (rasmdagidek). SMS, holat va
+guruh tanlash oynalari hozircha eski.
+
+**159. «Shu oyni to'lash →» va «To'lash»** — qilindi
+To'lov oynasi guruh, oy va o'sha oyning qolgan qarzi bilan ochiladi (summa o'zgartirilmasa yopishda tasdiq so'ralmaydi);
+Umumiy'dagi «To'lash» — eng eski qarzli oy, guruhlar tartibida birinchisi. Oynadagi «Balans» — profil balansi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

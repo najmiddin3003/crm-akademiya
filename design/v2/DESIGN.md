@@ -714,6 +714,42 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
 - Tahrirlash ham shu oyna («Topshiriqni tahrirlash», xodim o'zgarmaydi). Kodda: `components/v2/tasks/TaskFormDialogV2.tsx`
   (StaffTagPicker — «Kimga»). Rasmdan farqlar — `SAVOLLAR.md` 138.
 
+## O'quvchi sahifasi (rasmlar «O'quvchi sahifasi · Umumiy / To'lovlar / Davomat», «Yangi o'quvchi · Bo'sh holatlar», 23.10.2026)
+
+- **Sarlavha**: «← O'quvchilar ro'yxati › Ism» (`small`). Ikki ustun: chapda kartochka (≈300 px), o'ngda tablar
+  «Umumiy | To'lovlar [qarz] | Davomat | Tarix» (faol — qalin + 2 px `brand` chiziq; «qarz» — `danger-bg` belgi).
+- **Chap kartochka**: avatar 48 px (`brand-bg` + `brand-text`), ism 18 px qalin, holat belgisi («Aktiv» `success`,
+  «Yangi o'quvchi» `info` — to'lovi yo'q faol o'quvchi) + «N guruh»; ikki katak «Balans» (qarz — `danger` + «ⓘ
+  Qarzdorlik») | «Tanga»; «To'lov qabul qilish» (to'liq kenglik, asosiy), «SMS», «Qo'ng'iroq», «⋯»; «Ma'lumotlar» +
+  «✎ Tahrirlash» (Telefon + nusxa, Tug'ilgan sana · yosh yoki «Kiritilmagan · Qo'shish», Kategoriya, Filial, Manba,
+  Qo'shilgan); «Ota-ona» — 32 px doira, ism, «otasi · telefon», qo'ng'iroq tugmasi; bo'sh — chegarali quti izoh bilan va
+  «+ Ota-ona qo'shish».
+- **Ko'rsatkichlar** (bitta kartochka, orasi 1 px): Qarzdorlik («470 000 so'm», «oktyabr · 2 guruh bo'yicha»; bo'sh —
+  «0 so'm · to'lov hali qilinmagan») | Davomat · oy (22 px foiz, chiziq: 85%+ `success`, 60–84% `warning`, pastroq
+  `danger`; «7 / 9 dars · 1 kelmadi, 1 sababli») | Keyingi dars («Bugun, 16:00», «Ingliz tili · 205-xona»; bo'sh — «—
+  guruh yig'ilmoqda»). Davomat tabida to'rtta: foiz | Keldi | Kelmadi | Sababli (oxirgisi «3-oktyabr · Matematika»).
+- **Umumiy**: Guruhlar (fan nuqtasi, «Ingliz tili · 2-bosqich» + holat, ustoz · xona · kunlar soat; o'ngda «320 000 so'm
+  / oyiga · sana dan», 32 px «⇄ Ko'chirish», «⋯»); ikki kartochka yonma-yon — To'lovlar (oxirgi oylar: «Iyun … Noy»,
+  joriy oy chegarali katakda, belgilar ✓ ◐ ⓘ ◷ —; `danger-bg` quti «Oktyabr uchun **470 000 so'm** qarz · To'lash»,
+  chegarasi `danger`) va Davomat (oy darslari 24 px doirachalarda + kun, rejadagi — soat; foiz va chiziq); So'nggi
+  harakatlar (32 px doira ikonka — kelmadi `danger-bg`, sababli `warning-bg`, qolgani chegarali; sarlavha qalin, izoh,
+  o'ngda «7-oktyabr | 16:05»; «Butun tarix →»).
+- **To'lovlar**: «Oylar bo'yicha» — guruh × oy jadvali, joriy oy ustuni `brand-bg/45` + «joriy» belgi; katakda «✓
+  320 000», qisman — `warning-bg` belgi «◐ 150 000» + «qoldi · 300 000 dan», qarz — `danger` chegarali belgi «ⓘ 320 000» +
+  joriy oyda «Shu oyni to'lash →», kelgusi — «◷ 320 000 · kelgusi oy», guruhda emas — «—»; pastda «Oy bo'yicha qarz, so'm»,
+  izoh-legend. «To'lovlar tarixi» — Chek (chop etish tugmasi, birinchi ustun) · Sana («6-oktyabr | 18:07») · Summa (qalin,
+  o'ngga) · To'lov turi (nuqta) · Qaysi oy uchun · Guruh · Kassa; guruh segmenti; «Jami» qatori.
+- **Davomat**: kalendar dushanbadan (Yak ustuni `surface-2`, bugun — 2 px `brand` ichki chegara + «Bugun»); chiplar 24 px
+  `rounded-full`: keldi `success-bg` ✓, kelmadi `danger-bg` ✕, sababli `warning-bg` —, rejada — oq + chegara + fan nuqtasi,
+  bugungi — `brand` chegara «◷ 16:00», belgilanmagan — uzuq «?»; tor ekranda chip faqat belgi. «Qoldirilgan darslar» va
+  «Oylar bo'yicha» (ustunli grafik `series-1`, joriy oy och «*», ustiga kelganda maslahat; jadvalga almashadi).
+- Kodda: `components/v2/students/profile/` — StudentProfileV2 (tablar `?tab=` — window.history.replaceState),
+  StudentSideCardV2, ProfileOverviewTab, ProfilePaymentsTab, ProfileAttendanceTab, ProfileHistoryTab, ActivityList,
+  StudentEditDialogV2; hisoblar — profileLedger.ts (qarz, oylar, darslar), profileActivity.ts (tarix), profileKpis.tsx.
+  Ma'lumot — bitta so'rov `GET /api/pupils/:id/profile` (lib/pupilProfile.ts tiplari). Manzil: bazadagi o'quvchi
+  (`/student-edit/:id?src=list`) — yangi sahifa; `?classic=1`, eski tablar va buyurtma id'lari — eski. Rasmdan farqlar —
+  `SAVOLLAR.md` 149–159.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

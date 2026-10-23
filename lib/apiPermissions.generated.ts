@@ -189,6 +189,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/pupils/[id]/activity": ["/students-list"],
   "/api/pupils/[id]/comments": ["/groups"],
   "/api/pupils/[id]/password": ["/students-list"],
+  "/api/pupils/[id]/profile": ["/students-list"],
   "/api/pupils/[id]/status": ["/students-list"],
   "/api/pupils/last-comments": ["/groups"],
   "/api/reports/balance": ["/reports-balance"],

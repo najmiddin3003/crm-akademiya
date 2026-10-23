@@ -17,6 +17,12 @@ export interface ReceiptRequest {
   entryId: number;
   cashboxId: number;
   cashboxName: string;
+  /**
+   * O'quvchi sahifasidan (23.10.2026): yozuv O'QUVCHI kesimida so'raladi
+   * (`?pupilId=&id=`) — kassa egasi bo'lmagan xodim ham o'quvchining chekini
+   * ko'radi (o'quvchi to'lovlari ro'yxati unga baribir ochiq).
+   */
+  pupilId?: number;
 }
 
 export function openReceipt(req: ReceiptRequest): void {
@@ -31,7 +37,8 @@ export default function ReceiptHost() {
     function onOpen(e: Event) {
       const req = (e as CustomEvent<ReceiptRequest>).detail;
       if (!req) return;
-      fetch(`/api/transaction-entries?cashboxId=${req.cashboxId}&id=${req.entryId}&limit=1`)
+      const scope = req.pupilId ? `pupilId=${req.pupilId}` : `cashboxId=${req.cashboxId}`;
+      fetch(`/api/transaction-entries?${scope}&id=${req.entryId}&limit=1`)
         .then((r) => r.json())
         .then((d) => {
           const entry = d?.ok ? ((d.entries as TransactionEntry[]) ?? [])[0] : undefined;

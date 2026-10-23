@@ -79,6 +79,8 @@ export function useKirimForm({
   students,
   initialStudentKey,
   initialTeacherName,
+  initialPeriodMonth,
+  initialAmount,
   preferType,
   onSuccess,
 }: {
@@ -87,6 +89,10 @@ export function useKirimForm({
   initialStudentKey?: string;
   /** Boshlang'ich o'qituvchi (yangi «To'lov qabul qilish»: tanlangan guruhning ustozi). */
   initialTeacherName?: string;
+  /** Boshlang'ich «Qaysi oy uchun» ("YYYY-MM") — qo'lda tanlangandek (sana o'zgarsa ergashmaydi). O'quvchi sahifasi: «Shu oyni to'lash». */
+  initialPeriodMonth?: string;
+  /** Boshlang'ich summa (o'sha oyning qolgan qarzi). */
+  initialAmount?: string;
   /** Sukut tur (yangi «To'lov qabul qilish»: o'quvchi to'lovi turi). Berilmasa — ro'yxatdagi birinchisi (eskisidek). */
   preferType?: (kirimTypes: TransactionType[]) => TransactionType | undefined;
   onSuccess: (data: { cashbox: Cashbox; entryId?: number }) => void;
@@ -123,7 +129,7 @@ export function useKirimForm({
   const [studentKey, setStudentKey] = useState(initialStudentKey ?? "");
   // Bo'sh boshlanadi — ilgari maydonda "0" turar va uni har safar
   // o'chirishga to'g'ri kelardi.
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(initialAmount ?? "");
   // O'quvchilar balansi (haqiqiy to'lovlar yig'indisi) — tanlash
   // ro'yxatida va tanlangandan keyin ko'rsatiladi.
   const [balances, setBalances] = useState<Record<number, number>>({});
@@ -134,6 +140,7 @@ export function useKirimForm({
   // bolishi mumkin. Sukut — tanlangan sananing oyi, yani odatdagi holatda
   // kassir hech narsa qilmaydi.
   const [periodMonth, setPeriodMonth] = useState<string>(() => {
+    if (initialPeriodMonth && /^\d{4}-\d{2}$/.test(initialPeriodMonth)) return initialPeriodMonth;
     const d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
   });
@@ -141,7 +148,7 @@ export function useKirimForm({
   // sananing oyiga qaytib ketmaydi (02.10.2026 gacha qaytib ketardi:
   // avval «Avgust» tanlab, keyin sanani bosgan kassirning to'lovi jimgina
   // sentabrga yozilardi).
-  const [periodTouched, setPeriodTouched] = useState(false);
+  const [periodTouched, setPeriodTouched] = useState(() => !!initialPeriodMonth && /^\d{4}-\d{2}$/.test(initialPeriodMonth));
   // "Uchinchi shaxs" turidagi kirim qatorlari (Qiymat + Oy). Boshqa
   // turlarda ishlatilmaydi — u yerda yuqoridagi bitta `amount` qoladi.
   const [rows, setRows] = useState<Row[]>(() => [{ id: 1, amount: "", periodMonth: monthOf(null) }]);

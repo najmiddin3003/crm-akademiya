@@ -268,7 +268,7 @@ export default function StudentQuickPanel({
               {sub && <span className="truncate text-v2-small text-v2-text-2">{sub}</span>}
             </div>
           </div>
-          <Link href={profile} title={t("To'liq profil")} aria-label={t("To'liq profil")} className={iconSmall}>
+          <Link href={base} title={t("To'liq profil")} aria-label={t("To'liq profil")} className={iconSmall}>
             <SquareArrowOutUpRight className="size-4" strokeWidth={1.75} />
           </Link>
           <button ref={closeRef} type="button" onClick={onClose} title={t("Yopish")} aria-label={t("Yopish")} className={`${iconBase} size-8`}>
