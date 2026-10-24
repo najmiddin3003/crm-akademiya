@@ -782,6 +782,32 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   dars kunlari, cheklov taqlidi), useGroupDetail.ts, attendanceApi.ts. Manzil `/groups/:id` — yangi sahifa; `?classic=1`
   va eski tablar (`tasks`, `lesson`, `history`) — eski. Rasmdan farqlar — `SAVOLLAR.md` 160–171.
 
+## Gamifikatsiya — Reyting, Do'kon, Tanga qoidalari (rasmlar «Reyting · oylik va umumiy», «Do'kon · So'rovlar», «Do'kon · Sovg'alar», «Sozlamalar · Tanga qoidalari», 24.10.2026)
+
+- **Reyting**: sarlavha «Reyting» + «Filial · N o'quvchi · oktyabr 1–12 bo'yicha»; o'ngda segment «Oktyabr · oylik |
+  Umumiy», «Guruh: Hammasi» (V2Select `value`), proyektor ikonkasi. Uchlik — `surface-2` qutida uch kartochka (2 · 1 · 3):
+  o'rin belgisi (birinchisi `warning-bg` + 👑), 40 px doira, ism, guruh, «+12 tanga» (22 px) va «jami 84»; birinchisi
+  `brand` chegara + `brand-bg`. Jadval: O'rin (1-o'rin — `warning-bg` kvadrat) | O'quvchi | Guruh | «Oktyabr, tanga»
+  (`series-1` chiziq + qiymat) | Jami tanga; o'ngda 17.5rem ustun — «O'tgan oylar g'oliblari», «Qanday hisoblanadi» +
+  «⚙ Tanga qoidalari». Uchlik va «1» belgisi faqat tangasi 0 dan katta bo'lsa.
+- **Do'kon**: «Do'kon» + «Sovg'alar tanga evaziga · o'quvchi kabinetdan so'rov yuboradi, siz tasdiqlaysiz», o'ngda «⋯» va
+  «+ Sovg'a qo'shish»; tablar «So'rovlar [N yangi — `brand` tabletka] | Sovg'alar N». So'rovlar — `info-bg` izoh, ikki
+  kartochka-jadval: «Yangi so'rovlar · N ta · eng eskisi pastda» (o'quvchi + guruh, 32 px `brand-bg` sovg'a belgisi +
+  «qoldiq N ta», 🪙 narx, «45 → 20», «12-oktyabr | 18:12», «Rad etish» + «✓ Tasdiqlash») va «Topshirish kutilmoqda · N
+  ta · tanga ayirilgan» («🎁 Topshirildi», «⋯ → Bekor qilish»), o'ngda «Tarix: topshirilgan va rad etilganlar →» (o'ngdan
+  oyna). Tor ekranda amal ustuni o'ngga yopishgan. Sovg'alar — qidiruv + chiplar «Hammasi · Mavjud · Tugagan», kartochkalar
+  (`brand-bg` tepada chiziqli ikonka, tugagani `surface-2` kulrang + «Tugagan»), «✎ Tahrirlash» + «⋯», oxirida uzuq
+  chegarali «+ Sovg'a qo'shish».
+- **Tanga qoidalari** (Sozlamalar ramkasida): «Gamifikatsiya» + sarlavha + izoh, «+ Qoida qo'shish»; jadval Qoida | Tanga
+  (`success-bg` / `danger-bg` tabletka) | Turi (Berish / Ayirish) | Holat (● Faol) | ✎ ⋯, oxirida uzuq «+ Yangi qoida
+  qo'shish»; ostida yig'iq «Avtomatik tangalar» va «Reyting» izohi.
+- Kodda: `components/v2/gamification/` — RankingV2, ShopV2 (+ ShopRequestsTab, ShopGiftsTab, ShopDialogs, shopTypes,
+  gamBits — sovg'a ikonkasi nom bo'yicha); `components/v2/settings/CoinRulesV2.tsx`. Server: lib/gamification/
+  rankingBoard.ts (GET /api/gamification/ranking/board), shopRequests.ts (GET /api/gamification/shop/requests,
+  …/approve, …/reject, …/history, POST /api/gamification/shop/orders/:id/handover). Eski oynalar (sovg'a formasi,
+  berish, qaytarish, sabab formalari, o'quvchi profili) qayta ishlatilgan. `?classic=1` — eski sahifalar. Rasmdan
+  farqlar — `SAVOLLAR.md` 172–184.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

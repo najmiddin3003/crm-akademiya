@@ -46,7 +46,9 @@ interface PageData {
   discounts?: { month: string; percent: number; amountSom: number; groupLabel: string }[];
   wishlistMax?: number;
   wishes?: { itemId: number; title: string; imageUrl: string | null; emoji: string; price: number; addedAt: string; ready: boolean; noStock: boolean }[];
-  orders?: { id: number; itemName: string; priceCoins: number; givenDate: string; status: "given" | "returned"; returnNote: string | null; returnedAt: string | null }[];
+  orders?: { id: number; itemName: string; priceCoins: number; givenDate: string; status: "given" | "returned"; returnNote: string | null; returnedAt: string | null; awaiting?: boolean }[];
+  /** Rad etilgan so'rovlar (oxirgi 30 kun) — xodim yozgan sabab bilan (Do'kon · So'rovlar, 24.10.2026). */
+  rejections?: { id: number; itemName: string; reason: string; date: string }[];
   spentTotal?: number;
   shop?: { id: number; title: string; kind: "item" | "service" | "discount"; percent: number | null; imageUrl: string | null; emoji: string; price: number; wished: boolean; need: number }[];
   rankings?: { groupId: number; label: string; total: number; top: { rank: number; name: string; points: number; me: boolean }[]; me: { rank: number; points: number } | null; needForTop5: number }[];
@@ -333,7 +335,7 @@ export default function StudentGame({
                             {balance} / {w.price}
                           </span>
                           {w.ready ? (
-                            <span className="gm-pos">✓ {t("Tanga yetadi — filial adminiga murojaat qil")}</span>
+                            <span className="gm-pos">✓ {t("Tanga yetadi — so'rovingiz adminga yuborildi")}</span>
                           ) : (
                             <span className="text-muted-foreground">{t("yana {n} tanga kerak", { n: w.price - balance })}</span>
                           )}
@@ -363,6 +365,17 @@ export default function StudentGame({
             )}
           </Section>
 
+          {(data.rejections ?? []).length > 0 && (
+            <div className="space-y-1.5 rounded-xl border border-rose-400/40 bg-rose-500/5 px-3.5 py-2.5 text-[13px]">
+              {(data.rejections ?? []).map((r) => (
+                <div key={r.id}>
+                  ✕ <b>{t(r.itemName)}</b> — {t("so'rov rad etildi: {reason}", { reason: r.reason })}
+                  <span className="ml-1 text-[12px] text-muted-foreground">· {fmtDate(r.date)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <Section
             title={<>🛍️ {t("Sotib olganlarim")} <span className="ml-1 text-[12.5px] font-semibold text-muted-foreground">{(data.orders ?? []).length}</span></>}
             right={
@@ -382,6 +395,7 @@ export default function StudentGame({
                     <span className="w-20 shrink-0 text-muted-foreground tabular-nums">{fmtDate(o.givenDate)}</span>
                     <div className="min-w-0 flex-1">
                       <span className="font-medium">{t(o.itemName)}</span>
+                      {o.status === "given" && o.awaiting && <div className="text-[12px] text-amber-600 dark:text-amber-300">{t("Tasdiqlandi — markazdan olib ketishingiz mumkin")}</div>}
                       {o.status === "returned" && (
                         <div className="gm-neg text-[12px]">{t("Qaytarildi: {note} · {date}", { note: t(o.returnNote ?? ""), date: o.returnedAt ? fmtDate(o.returnedAt) : "" })}</div>
                       )}

@@ -48,7 +48,7 @@ function FieldError({ text }: { text: string }) {
 }
 
 /** Tizim sababining miqdor ko'rinishi — sozlamalardan. */
-function sysAmount(r: CoinReason, s: GamSettings, t: (k: string, p?: Record<string, string | number>) => string): string {
+export function sysAmount(r: CoinReason, s: GamSettings, t: (k: string, p?: Record<string, string | number>) => string): string {
   switch (r.code) {
     case "attendance":
       return `+${s.attendanceOnTimeCoins} / +${s.attendanceLateCoins}`;
@@ -73,7 +73,7 @@ function sysAmount(r: CoinReason, s: GamSettings, t: (k: string, p?: Record<stri
   }
 }
 
-function customAmount(r: CoinReason): string {
+export function customAmount(r: CoinReason): string {
   const sign = r.direction > 0 ? "+" : "−";
   return r.amountMin === r.amountMax ? `${sign}${r.amountMin}` : `${sign}${r.amountMin}…${sign}${r.amountMax}`;
 }
@@ -311,7 +311,7 @@ export default function GamReasonsTab() {
 
 // ── Tizim sababi oynasi: miqdor maydonlari + yoqilgan ────────────────────
 
-function SystemReasonModal({
+export function SystemReasonModal({
   reason,
   settings,
   onClose,
@@ -432,7 +432,7 @@ function SystemReasonModal({
 
 // ── Qo'shimcha sabab oynasi: qo'shish / tahrirlash ──────────────────────
 
-function ReasonFormModal({
+export function ReasonFormModal({
   reason,
   direction: initialDir,
   dailyLimit,
@@ -642,7 +642,7 @@ function ReasonFormModal({
 
 // ── O'chirish tasdig'i ───────────────────────────────────────────────────
 
-function DeleteReasonModal({ reason, onClose, onDeleted }: { reason: CoinReason; onClose: () => void; onDeleted: () => Promise<void> }) {
+export function DeleteReasonModal({ reason, onClose, onDeleted }: { reason: CoinReason; onClose: () => void; onDeleted: () => Promise<void> }) {
   const { t } = useT();
   const { showError } = useToast();
   const modal = useModalClose(onClose);

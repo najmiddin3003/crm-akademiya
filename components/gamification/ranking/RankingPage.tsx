@@ -66,7 +66,17 @@ function placeMedal(index: number): string | undefined {
  * aylanadi. "Yopish" va yulduzli fon `fixed` — aylantirganda joyida turadi;
  * oyna ochilganda fokus oladi — strelka/PageDown bilan ham aylanadi.
  */
-function Projector({ title, sub, rows, onClose }: { title: string; sub: string; rows: Row[]; onClose: () => void }) {
+export function Projector({
+  title,
+  sub,
+  rows,
+  onClose,
+}: {
+  title: string;
+  sub: string;
+  rows: Pick<Row, "pupilId" | "name" | "points" | "rank">[];
+  onClose: () => void;
+}) {
   const { t } = useT();
   const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {

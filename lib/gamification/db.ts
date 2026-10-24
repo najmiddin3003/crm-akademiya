@@ -32,6 +32,8 @@ export const GAM = {
   shopOrders: "shop_orders",
   budgets: "branch_gift_budgets",
   wishlist: "wishlist_items",
+  /** Rad etilgan so'rovlar (istaklar) — sababi o'quvchi kabinetida ko'rinadi (24.10.2026). */
+  rejections: "shop_request_rejections",
   discounts: "tuition_discounts",
   /** O'quvchi sahifasi (TZ 5.8, 6.14, 6.16): shaxsiy havola va Telegram bog'lanishlari. */
   accessTokens: "student_access_tokens",
@@ -74,6 +76,11 @@ async function createGamIndexes(db: Db): Promise<void> {
     db.collection(GAM.shopOrders).createIndex({ pupilId: 1, givenDate: -1 }),
     db.collection(GAM.budgets).createIndex({ branchId: 1 }, { unique: true }),
     db.collection(GAM.wishlist).createIndex({ pupilId: 1, itemId: 1 }, { unique: true }),
+    db.collection(GAM.rejections).createIndex({ id: 1 }, { unique: true }),
+    db.collection(GAM.rejections).createIndex({ pupilId: 1, rejectedAt: -1 }),
+    db.collection(GAM.rejections).createIndex({ branchId: 1, rejectedAt: -1 }),
+    // «Topshirish kutilmoqda» — tasdiqlangan, hali qo'lga berilmagan sovg'alar.
+    db.collection(GAM.shopOrders).createIndex({ handover: 1, branchId: 1 }),
     db.collection(GAM.discounts).createIndex({ id: 1 }, { unique: true }),
     // O'quvchiga oyiga bitta faol/qo'llangan chegirma (TZ 6.9): `activeKey` faqat shu holatlarda.
     db.collection(GAM.discounts).createIndex({ activeKey: 1 }, { unique: true, partialFilterExpression: { activeKey: text } }),

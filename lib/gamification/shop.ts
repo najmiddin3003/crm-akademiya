@@ -76,6 +76,14 @@ export interface ShopOrder {
   returnNote?: string | null;
   transactionId: number;
   discountId: number | null;
+  /**
+   * Topshirish (24.10.2026, yangi versiyadagi Do'kon · So'rovlar): so'rovdan tasdiqlangan
+   * buyum/xizmat — «pending», «Topshirildi» bosilgach «done». Maydon yo'q — darhol
+   * qo'lga berilgan (eski «Berish» va 24.10 gacha bo'lgan hamma xarid).
+   */
+  handover?: "pending" | "done";
+  handedAt?: string | null;
+  handedByName?: string | null;
 }
 
 export const AUDIENCE_LABELS: Record<Audience, string> = { all: "Hammaga", kids: "Kichiklar", older: "Kattalar" };
@@ -337,7 +345,12 @@ async function pupilCtx(db: Db, pupilId: number) {
   };
 }
 
-export async function giveGift(db: Db, actor: GamActor, input: { pupilId: number; itemId: number; groupId?: number | null }) {
+export async function giveGift(
+  db: Db,
+  actor: GamActor,
+  input: { pupilId: number; itemId: number; groupId?: number | null },
+  opts: { handover?: boolean } = {},
+) {
   const settings = await loadSettings(db);
   if (!settings.enabled) throw new GamError(409, "Gamifikatsiya moduli o'chiq");
   if (actor.role === "teacher") throw new GamError(403, "Sovg'ani filial admini yoki direktor beradi");
@@ -375,6 +388,8 @@ export async function giveGift(db: Db, actor: GamActor, input: { pupilId: number
         priceCoins: fresh.priceCoins, costPriceSom: fresh.kind === "item" ? fresh.costPriceSom : null,
         givenByUserId: actor.userId, givenByName: actor.name, givenAt: new Date().toISOString(), givenDate: today,
         status: "given", transactionId: tx.id, discountId: null,
+        // So'rovdan tasdiqlangan — o'quvchi keyin olib ketadi (Do'kon · «Topshirish kutilmoqda»).
+        ...(opts.handover ? { handover: "pending" as const, handedAt: null, handedByName: null } : {}),
       };
       await db.collection(GAM.shopOrders).insertOne({ ...order });
       const wished = (await db.collection(GAM.wishlist).deleteOne({ pupilId: pupil.id, itemId: fresh.id })).deletedCount > 0;
@@ -804,6 +819,7 @@ export async function pupilShopInfo(db: Db, actor: GamActor, pupilId: number) {
       status: o.status,
       returnNote: o.returnNote ?? null,
       returnedAt: o.returnedAt ? uzDateIso(new Date(o.returnedAt)) : null,
+      awaiting: o.status === "given" && o.handover === "pending",
       canReturn: canReturnOrder(actor, o, today, o.discountId !== null ? discStatus.get(o.discountId) ?? null : null),
     })),
     spentTotal: orders.filter((o) => o.status === "given").reduce((a, o) => a + o.priceCoins, 0),

@@ -113,7 +113,7 @@ export default function GroupStudentsTab({
       </div>
 
       <div className="overflow-hidden rounded-v2-lg border border-v2-border bg-v2-surface shadow-v2-sm">
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto overflow-y-hidden">
           <table className="w-full border-collapse text-v2-body">
             <thead>
               <tr>

@@ -915,6 +915,67 @@ Shu guruhda shu oy yozilgan tangalar yig'indisi (do'kondan tashqari, bekor qilin
 O'zgartirilgan, saqlanmagan belgilar bilan boshqa darsga yoki tabga o'tishda tasdiq so'raladi («Saqlamasdan o'tish»),
 sahifani yopishda brauzer ogohlantiradi. Jurnal kataklari darhol yoziladi (xato bo'lsa qaytadi).
 
+### 11-qism — Gamifikatsiya: Reyting, Do'kon, Tanga qoidalari (24.10.2026)
+
+**172. «So'rov» nima** — taxmin
+Alohida «so'rov yuborish» tugmasi tizimda yo'q edi — so'rov = o'quvchi kabinetida «♡ Istakka» qo'shgan sovg'asi, TANGASI
+YETADIGANI (yetmagani hali maqsad: «Yana N ta istak — tanga yetguncha kutadi» deb sanaladi). Kabinetdagi yozuv «Tanga
+yetadi — filial adminiga murojaat qil» → «Tanga yetadi — so'rovingiz adminga yuborildi». Kabinetga alohida «So'rov
+yuborish» tugmasi kerak bo'lsa — keyin.
+
+**173. Tasdiqlash va topshirish** — taxmin
+«Tasdiqlash» — oddiy berish (tanga darhol ayiriladi, ombor −1, byudjet); buyum va xizmat «Topshirish kutilmoqda» ga
+tushadi, o'quvchi kabinetida «Tasdiqlandi — markazdan olib ketishingiz mumkin»; «Topshirildi» bosilgach tarixga o'tadi.
+To'lovga chegirma — kurs tanlash oynasi, topshirish bosqichisiz (to'lovga qo'llanadi). Eski «Berish» (profil, katalog
+«⋯ → O'quvchiga berish») — o'sha payt qo'lga berilgan hisoblanadi. «⋯ → Bekor qilish» — eski qaytarish (tanga va ombor
+qaytadi; admin — shu kuni, direktor — istalgan payt).
+
+**174. Rad etish** — taxmin
+Sabab majburiy (300 belgigacha); istak olinadi (o'quvchi yana ♡ qilishi mumkin), tanga joyida; sabab o'quvchi kabinetida
+30 kun ko'rinadi («✕ Kepka — so'rov rad etildi: …»). Yozuv — yangi to'plam `shop_request_rejections`.
+
+**175. Tarix** — taxmin
+«Tarix: topshirilgan va rad etilganlar →» — o'ng tomondan oyna, oxirgi 90 kun: topshirilgan (eski berilganlar ham),
+rad etilgan (sababi bilan), qaytarilgan (izohi bilan); huquq bo'lsa «Sovg'ani qaytarish».
+
+**176. Eski do'kondagi qolganlar** — taxmin
+Byudjet kartasi, «Keyingi oy chegirmalari», istaklar statistikasi, filial tanlovi — «⋯ → Eski ko'rinishda ochish».
+Direktor — navbardagi filial (1+2 hovuzi bilan), admin — o'z filiallari; ustozga So'rovlar ko'rinmaydi (faqat katalog).
+
+**177. Sovg'a ikonkasi** — taxmin
+Rasmdagi chiziqli ikonkalar — sovg'a nomidan (bloknot, ruchka, futbolka, krujka, kitob, powerbank, sumka …; topilmasa —
+🎁 ikonkasi, chegirma — %); rasm yuklangan bo'lsa — rasm. Eski emoji belgisi yangi ko'rinishda ishlatilmaydi.
+
+**178. Reyting doirasi va «Umumiy»** — taxmin
+Navbardagi filial bo'yicha (xodimning guruhlari: direktor/admin — filial, ustoz — o'z guruhlari). «Guruh: Hammasi» —
+o'quvchining shu oydagi hamma tangalari; guruh tanlansa — shu guruhdagi tangalar (eski guruh reytingi qoidasi). Oylik —
+olingan − ayirilgan (do'kon xaridi kirmaydi); Umumiy — hozirgi balans (rasmdagi izoh bo'yicha; eski «Jami» — guruhdagi
+umrbod tangalar edi). Teng tangalilar bir xil o'rin.
+
+**179. Uchlik** — qoida
+Uchlik, 👑 va «1» belgisi faqat tangasi 0 dan katta bo'lsa (27.09 qarori — hamma 0 da hammaga «1-o'rin» chiqmasin).
+
+**180. O'tgan oylar g'oliblari** — taxmin
+Oldingi 3 oyning har birida eng ko'p tanga olgan (shu doira va filtr bo'yicha, jonli hisob); 0 bo'lsa — chiqmaydi.
+
+**181. «Ekranga chiqarish»** — taxmin
+Rasmda yo'q, lekin ishlatiladigan imkoniyat — sarlavhada ikonka tugma (eski proyektor oynasi, top-5, kosmik fon).
+
+**182. Tanga qoidalari** — taxmin
+Jadval — ustoz darsda tanlaydigan ro'yxat (guruh sahifasidagi «Tanga berish» bilan bir xil tartib): «Darsda faol
+qatnashdi» (miqdori «+1…+3» — bir bosishdagi chegara; rasmda «+2» — tanga oynasidagi sukut), «Uy vazifasini bajardi»,
+qo'shimcha sabablar, «Uy vazifasi bajarilmadi». Tizim qoidalari 🔒 (o'chirilmaydi); qo'shimcha sababda nom ostida kim
+beradi / kuniga necha marta / izoh majburiyligi. Avtomatik tangalar (davomat, seriya, Sarhisob, do'st) — yig'iq
+bo'limda. Modulni yoqish, darajalar, do'kon va byudjet sozlamalari — eski ko'rinishda (havola). Tahrir oynalari — eski.
+
+**183. Yon menyudagi Gamifikatsiya** — ochiq
+Rasmda faqat «Reyting» va «Do'kon». Hozircha «Tanga berish», «O'quvchilar», «Guruhlar musobaqasi» ham turibdi (eski
+sahifalar; tanga berish endi guruh sahifasida ham bor). *Taxmin:* qoldi — olib tashlash kerak bo'lsa ayting.
+
+**184. Inglizcha tarjima to'qnashuvlari** — qilindi
+Lug'at bitta kalit — bir ma'no: «Oylik» = "Salary" bo'lgani uchun izohda «Oylik reyting» / «Umumiy reyting» yozildi;
+«Umumiy» segmenti inglizchada "General", «Tugagan» — "Finished" bo'lib qoldi (kichik farq).
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

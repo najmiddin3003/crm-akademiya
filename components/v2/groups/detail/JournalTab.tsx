@@ -215,7 +215,7 @@ export default function JournalTab({
         ) : rows.length === 0 ? (
           <EmptyBlock icon={<Users className="size-5" strokeWidth={1.75} />} title={t("Guruhda hali o'quvchi yo'q")} />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto overflow-y-hidden">
             <table className="w-full min-w-max border-separate border-spacing-0 text-v2-small">
               <thead>
                 <tr className="whitespace-nowrap text-v2-caption text-v2-text-2">

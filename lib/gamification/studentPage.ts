@@ -73,7 +73,9 @@ export async function studentPageData(db: Db, pupilId: number) {
     return { enabled: false as const, pupil: { id: pupilId, name: pupilName(p), firstName, center } };
   }
 
-  const [prof, shop, items, groups, discounts] = await Promise.all([
+  // Rad etilgan so'rovlar — oxirgi 30 kun (sababi bilan, Do'kon · So'rovlar).
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const [prof, shop, items, groups, discounts, rejections] = await Promise.all([
     studentProfile(db, SYSTEM, pupilId),
     pupilShopInfo(db, SYSTEM, pupilId),
     listItems(db),
@@ -82,6 +84,12 @@ export async function studentPageData(db: Db, pupilId: number) {
       .find({ studentIds: pupilId, status: "active" }, { projection: { _id: 0, id: 1, name: 1, course: 1, teacher: 1, branchId: 1, studentIds: 1, status: 1 } })
       .toArray(),
     db.collection(GAM.discounts).find({ pupilId, status: "active" }, { projection: { _id: 0 } }).sort({ month: 1 }).toArray() as unknown as Promise<TuitionDiscount[]>,
+    db
+      .collection(GAM.rejections)
+      .find({ pupilId, rejectedAt: { $gte: since } }, { projection: { _id: 0, id: 1, itemName: 1, reason: 1, rejectedAt: 1 } })
+      .sort({ rejectedAt: -1 })
+      .limit(10)
+      .toArray(),
   ]);
   const balance = prof.wallet.balance;
   const wished = new Set(shop.wishes.map((w) => w.itemId));
@@ -120,7 +128,17 @@ export async function studentPageData(db: Db, pupilId: number) {
     discounts: discounts.map((d) => ({ month: d.month, percent: d.percent, amountSom: d.amountSom, groupLabel: d.groupLabel })),
     wishlistMax: shop.wishlistMax,
     wishes: shop.wishes.map((w) => ({ itemId: w.itemId, title: w.title, imageUrl: w.imageUrl, emoji: w.emoji, price: w.price, addedAt: w.addedAt, ready: w.ready, noStock: w.noStock })),
-    orders: shop.orders.map((o) => ({ id: o.id, itemName: o.itemName, priceCoins: o.priceCoins, givenDate: o.givenDate, status: o.status, returnNote: o.returnNote, returnedAt: o.returnedAt })),
+    orders: shop.orders.map((o) => ({
+      id: o.id,
+      itemName: o.itemName,
+      priceCoins: o.priceCoins,
+      givenDate: o.givenDate,
+      status: o.status,
+      returnNote: o.returnNote,
+      returnedAt: o.returnedAt,
+      awaiting: o.awaiting,
+    })),
+    rejections: rejections.map((r) => ({ id: Number(r.id), itemName: String(r.itemName ?? ""), reason: String(r.reason ?? ""), date: uzDateIso(new Date(String(r.rejectedAt))) })),
     spentTotal: shop.spentTotal,
     // Faqat o'z toifasidagi sovg'alar; tannarx va ombor ko'rinmaydi (TZ 5.5).
     shop: items
@@ -196,7 +214,8 @@ export async function setWish(db: Db, pupilId: number, itemId: number, on: boole
       const max = settings.wishlistMax;
       throw new GamError(422, `Istaklar ro'yxatiga ko'pi bilan ${max} ta sovg'a qo'shiladi`);
     }
-    await col.updateOne({ pupilId, itemId }, { $setOnInsert: { pupilId, itemId, addedAt: uzDateIso() } }, { upsert: true });
+    // `addedAtTs` — so'rov vaqti soati bilan (yangi versiyadagi Do'kon · So'rovlar, 24.10.2026).
+    await col.updateOne({ pupilId, itemId }, { $setOnInsert: { pupilId, itemId, addedAt: uzDateIso(), addedAtTs: new Date().toISOString() } }, { upsert: true });
     return { wished: true, count: info.wishes.length + 1, max: settings.wishlistMax };
   });
 }
