@@ -11,9 +11,11 @@ export async function GET(req: Request) {
   try {
     const ctx = await withActor();
     if (ctx instanceof NextResponse) return ctx;
-    const raw = new URL(req.url).searchParams.get("groupId");
+    const sp = new URL(req.url).searchParams;
+    const raw = sp.get("groupId");
     const groupId = raw ? Number(raw) : null;
-    const view = await lessonView(ctx.db, ctx.actor, Number.isFinite(groupId) ? groupId : null);
+    // `month` — oy bo'yicha jami tangalar ham (yangi versiyadagi guruh sahifasi, «Davomat jurnali»).
+    const view = await lessonView(ctx.db, ctx.actor, Number.isFinite(groupId) ? groupId : null, { month: sp.get("month") });
     return NextResponse.json({ ok: true, ...view });
   } catch (e) {
     return handleError(e);

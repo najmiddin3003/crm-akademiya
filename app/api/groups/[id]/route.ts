@@ -6,6 +6,7 @@ import { findRoomClashInDb } from "@/lib/groupRoomClash";
 import { checkGroupCourse } from "@/lib/groupCourseCheck";
 import type { Group } from "@/lib/groups";
 import { uzDateIso } from "@/lib/uzTime";
+import { monthlyPriceFor } from "@/lib/debtors";
 
 // FILIAL QAMROVI har uchala amalda (lib/groupScope.ts). Kesilmasa, boshqa
 // filialning guruhini id bo'yicha ochish ham, tahrirlash ham, O'CHIRISH
@@ -27,7 +28,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: "Guruh topilmadi" }, { status: 404 });
   }
   const { _id, ...group } = row;
-  return NextResponse.json({ ok: true, group: group as unknown as Group });
+  // OYLIK NARX (23.10.2026, yangi versiyadagi guruh sahifasi sarlavhasi): Oflayn kurslar
+  // bo'limidan, Qarzdorlar hisoboti bilan bitta qoida (lib/debtors.ts → monthlyPriceFor).
+  // Narx kiritilmagan — null.
+  const courses = await db
+    .collection<{ name: string; branches?: { id: number; enabled: boolean; price: number }[]; levels?: { name: string; branches?: { id: number; enabled: boolean; summa: number }[] }[] }>("offline_courses")
+    .find({}, { projection: { _id: 0, name: 1, branches: 1, levels: 1 } })
+    .toArray();
+  const monthlyPrice = monthlyPriceFor(group as unknown as Group & { branchId?: number | null }, courses);
+  return NextResponse.json({ ok: true, group: group as unknown as Group, monthlyPrice });
 }
 
 // PATCH /api/groups/:id — guruh maydonlarini qisman yangilaydi.

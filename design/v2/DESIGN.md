@@ -750,6 +750,38 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   (`/student-edit/:id?src=list`) — yangi sahifa; `?classic=1`, eski tablar va buyurtma id'lari — eski. Rasmdan farqlar —
   `SAVOLLAR.md` 149–159.
 
+## Guruh sahifasi (rasmlar «Guruh · Bugungi dars, davomat», «Guruh · Tanga berish», «Guruh · Davomat jurnali», 24.10.2026)
+
+- **Sarlavha**: «← Guruhlar › Ingliz tili · 2-bosqich» (`small`). Kartochka: 44 px kvadratda kitob (fan rangi —
+  `FAN_BG` + `FAN_TEXT`), nom 20 px qalin + holat belgisi («Faol» — `GROUP_TONE`); ostida ikonka bilan ustoz (20 px
+  doira), xona, kunlar · vaqt, «320 000 so'm/oy» (Oflayn kurslar narxi, `GET /api/groups/:id` → `monthlyPrice`),
+  «02.03.2026 dan»; o'ngda «O'quvchi qo'shish» (ikkinchi darajali) va «⋯». Kartochka pastida tablar «Bugungi dars |
+  Davomat jurnali | O'quvchilar N» (faol — qalin + 2 px `brand` chiziq; aylantirish chizig'i yashirin).
+- **Bugungi dars**: «‹ Bugun, 12-oktyabr · dushanba ›» + ostida «16:00–18:00 · 205-xona · ustoz», holat belgisi
+  («Belgilanmoqda» `warning`, «Belgilandi» `success`, «Rejada» betaraf, «Belgilanmagan» `danger`), o'ngda «Dars
+  boshlanganiga 7 daqiqa». `info-bg` qatori: «Hamma «keldi» deb ochildi — faqat kelmaganlarni bosing. Tanga shu
+  yerning o'zida beriladi.» (cheklovda — qulf ikonka, `warning-bg`, sababi). Jadval: № | O'quvchi (24 px doira + ism) |
+  Davomat — uch tugmali segment (tanlangani o'z rangida chegara + fon: Keldi `success`, Kelmadi `danger`, Sababli
+  `warning`) | Izoh (faqat darsda yo'q o'quvchida, 32 px maydon) | Bugungi tanga (chiplar «+1 Uy vazifasi» `success-bg`,
+  «−1 …» `danger-bg`, bosilsa — «Ortga»; «+ Tanga» 24 px tabletka) | Tanga jami (tanga ikonkasi + son). Pastki qator:
+  «✓ 8 keldi ✕ 1 kelmadi – 1 sababli | ◎ +5 tanga berildi», o'ngda «Saqlanmagan o'zgarishlar», «Bekor qilish»,
+  «✓ Saqlash» (32 px). Tor konteynerda (<50rem) qator kartochkaga aylanadi: ism + tanga jami, ostida segment (to'liq
+  kenglik), izoh, tangalar.
+- **Tanga berish** (320 px suzuvchi oyna, «+ Tanga» ostidan): sarlavha + «Ism · hozir 45 tanga», ✕; bandlar — nom +
+  o'ngda miqdor belgisi (`success-bg` / `danger-bg`), tanlangani `brand` chegara + `brand-bg` + ✓; «Yoki boshqa miqdor»
+  — 32 px stepper; izoh maydoni (qo'shimcha sababda); pastda `surface-2` qator: «⚙ Qoidalar Sozlamalarda» va asosiy
+  tugma «◎ +2 tanga berish».
+- **Davomat jurnali**: to'rt ko'rsatkich (bitta kartochka): O'rtacha davomat · oy (foiz + `brand` chiziq, «42 / 50
+  qatnashuv») | O'tgan darslar («13 tadan · 8 tasi oldinda») | Diqqat talab (ⓘ, «1 o'quvchi», «Behruz Olimov · 40%») |
+  Berilgan tanga · oy («+51», «10 o'quvchiga»). Oy tanlagich + o'ngda izoh (✓ Keldi ✕ Kelmadi – Sababli • Rejada).
+  Jadval: o'quvchi (yopishqoq chap ustun) | dars kunlari (raqam + qisqa hafta kuni; bugungisi `brand-bg` ustun + «bugun»)
+  — kataklarda 20 px belgilar, rejada — kulrang nuqta | Davomat (foiz; 70% dan past — `danger` + ⓘ) | Tanga · okt. Pastda
+  «Kelganlar» qatori (`surface-2`: «9/10», foiz, tanga jami) va izoh «Katakni bosib belgini tuzatish mumkin…».
+- Kodda: `components/v2/groups/detail/` — GroupDetailV2 (sarlavha, tablar `?tab=bugun|jurnal|oquvchilar` —
+  window.history.replaceState), TodayLessonTab, CoinPanel, JournalTab, GroupStudentsTab; groupDetailBits.tsx (holatlar,
+  dars kunlari, cheklov taqlidi), useGroupDetail.ts, attendanceApi.ts. Manzil `/groups/:id` — yangi sahifa; `?classic=1`
+  va eski tablar (`tasks`, `lesson`, `history`) — eski. Rasmdan farqlar — `SAVOLLAR.md` 160–171.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

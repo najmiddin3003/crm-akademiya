@@ -854,6 +854,67 @@ guruh tanlash oynalari hozircha eski.
 To'lov oynasi guruh, oy va o'sha oyning qolgan qarzi bilan ochiladi (summa o'zgartirilmasa yopishda tasdiq so'ralmaydi);
 Umumiy'dagi «To'lash» — eng eski qarzli oy, guruhlar tartibida birinchisi. Oynadagi «Balans» — profil balansi.
 
+### 10-qism — Guruh sahifasi (24.10.2026)
+
+**160. Guruh holati yorlig'i** — taxmin
+Rasmda «Aktiv»; Guruhlar ro'yxati va O'quvchi sahifasidagidek «Faol» (`GROUP_TONE`, 152 bilan bir xil).
+
+**161. Belgilanmagan dars — hammasi «Keldi»** — taxmin
+Belgisiz dars (bugungi yoki o'tgan — kim o'zgartira olsa) hamma o'quvchi «Keldi» bo'lib ochiladi, lekin bu QORALAMA:
+«Saqlash»gacha bazaga hech narsa yozilmaydi (holat «Belgilanmoqda», pastda «Davomat hali saqlanmagan»). «Saqlash»
+belgilarni bitta-bitta yozadi (eski jadvaldagi so'rov: tarix, gamifikatsiya, o'quvchilar boti xabari), jarayon
+«Saqlanmoqda… 3/11». O'zgartirish huquqi yo'q darsda (ustoz — dars kunidan keyin) qoralama yo'q: faqat saqlangan
+belgilar, belgisizi — «Belgilanmagan». Kelgusi dars — «Rejada», belgilanmaydi.
+
+**162. Kechikdi va birinchi dars** — taxmin
+Bugungi darsda uchta tugma (rasmdagidek); kechikib kelgan / birinchi darsi bo'lgan o'quvchi «Keldi» bo'lib ko'rinadi,
+ism yonida kichik «kechikdi» belgisi, o'zgartirilmasa holati saqlanadi. Bu holatlarni Davomat jurnalidagi katak
+menyusidan qo'yish mumkin (Keldi, Kechikdi, Kelmadi, Sababli, Birinchi dars, Belgini olib tashlash).
+
+**163. Izoh ustuni** — qilindi
+Izoh — darsda yo'q o'quvchida (kelmadi, sababli). Avval server izohni faqat «sababli»da saqlardi — endi «kelmadi»da ham
+(lib/attendanceWrite.ts); sabab (ro'yxatdan) — faqat sababli. Holatni o'zgartirish cheklangan darsda ham izohni yozish
+mumkin (server ilgari ham ruxsat berardi).
+
+**164. «Tanga berish» bandlari** — taxmin
+«Darsda faol qatnashdi» — faollik (sukut 2, oraliq 1 … bir bosishdagi chegara); «Uy vazifasini bajardi / bajarilmadi» —
+tizim sabablari (miqdori Sozlamalarda, uy vazifasi bitta: ikkinchisi birinchisini almashtiradi); qolganlari —
+Sozlamalar → Tanga sabablari (rolga ruxsatlilari, kunlik chegarasi tugagani o'chiq). «Yoki boshqa miqdor» — tanlangan
+band oralig'ida. Izoh — faqat qo'shimcha sababda (ayiriladiganida majburiy). Darsda yo'q o'quvchiga — faqat beriladigan
+sabablar. Faollik va uy vazifasi — faqat guruh ustozi (va direktor).
+
+**165. O'quvchilar tabi** — taxmin
+Rasm yo'q — yangi jadval qolipida: №, O'quvchi (profilga havola, muzlatilgani belgisi bilan), Telefon (qo'ng'iroq),
+Qo'shilgan, Davomat · joriy oy (70% dan past — qizil), Tanga, «⋯» (Profil, Boshqa guruhga ko'chirish, Guruhdan
+chiqarish). Qidiruv — ism yoki telefon. Eski jadvaldagi Balans, Narxi, «Oxirgi izoh» — eski ko'rinishda.
+
+**166. Eski tablar va havolalar** — taxmin
+Topshiriqlar, Mashg'ulot qo'shish, Guruh tarixi — «⋯» dan eski ko'rinishda (`?classic=1&tab=…`; eski sahifada tab
+almashganda ham `classic=1` qoladi). Eski havolalar: `?tab=attendance` → Davomat jurnali, `students` → O'quvchilar.
+
+**167. Tanga faqat bugungi darsda** — qoida
+Gamifikatsiya qoidasi (server ham shunday): tanga faqat bugungi darsda va davomat saqlangandan keyin — «+ Tanga»
+bosilganda o'quvchining saqlanmagan belgisi avval saqlanadi. Chip bosilsa «Ortga» (tasdiq bilan) — o'zi qo'ygan bugungi
+yozuv, direktor — hammasi; davomat, seriya, sarhisob tangalari avtomatik — qaytarilmaydi (chip bosilmaydi). Guruh faol
+bo'lmasa yoki xodimning gamifikatsiya roli yo'q bo'lsa tanga ustunlari chiqmaydi.
+
+**168. «Dars boshlanganiga 7 daqiqa»** — taxmin
+Guruh vaqti bo'yicha (Toshkent vaqti, daqiqada yangilanadi): «Dars boshlanishiga …», «Dars boshlanganiga …», tugagach
+«Dars tugagan»; boshqa kunlarda «N kun oldin» / «N kundan keyin». Sarlavhada «Bugun / Kecha / Ertaga».
+
+**169. Jurnal hisoblari** — taxmin
+Foiz = kelgan (keldi, kechikdi, birinchi dars) / belgilangan dars (sababli ham maxrajda — rasmdagi 4/5 = 80%); o'tgan
+darslar — bugungacha (bugun ham). «Diqqat talab» — foizi 70% dan pastlar (eng pasti nomi bilan). Qo'shilishidan oldingi
+kunlar va muzlatilgan o'quvchining belgisiz darslari — bo'sh katak.
+
+**170. «Tanga · okt» va «Berilgan tanga»** — taxmin
+Shu guruhda shu oy yozilgan tangalar yig'indisi (do'kondan tashqari, bekor qilinganlarsiz; ayirilgani ham hisobda) —
+`GET /api/gamification/lesson?month=` (yangi maydon `monthCoins`).
+
+**171. Saqlanmagan belgilar** — qilindi
+O'zgartirilgan, saqlanmagan belgilar bilan boshqa darsga yoki tabga o'tishda tasdiq so'raladi («Saqlamasdan o'tish»),
+sahifani yopishda brauzer ogohlantiradi. Jurnal kataklari darhol yoziladi (xato bo'lsa qaytadi).
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

@@ -132,14 +132,15 @@ export async function saveAttendanceMark(
     return { ok: true, mark: null };
   }
 
-  // Sabab/izoh faqat "sababli" holatida saqlanadi — boshqa holatga o'tilganda
-  // eski sabab qolib ketmasligi kerak.
+  // Sabab faqat "sababli" holatida saqlanadi, izoh — darsda yo'q (sababli yoki
+  // sababsiz) o'quvchida: boshqa holatga o'tilganda eskisi qolib ketmasligi kerak.
+  // Sababsiz izohi — 24.10.2026 dan (yangi versiyadagi guruh sahifasi, «Bugungi dars»).
   const mark: AttendanceMark = {
     ...key,
     status,
     grade,
     reason: status === "sababli" ? reason : null,
-    note: status === "sababli" ? note : null,
+    note: status === "sababli" || status === "sababsiz" ? note : null,
   };
   // `before` — o'zgarishdan OLDINGI holat, atomik (gamifikatsiya hodisasi uchun).
   const prev = await col.findOneAndUpdate(key, { $set: mark }, { upsert: true, returnDocument: "before" });

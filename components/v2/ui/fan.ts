@@ -49,6 +49,18 @@ export const FAN_BORDER: Record<FanKey, string> = {
   boshqa: "border-v2-fan-boshqa-border",
 };
 
+/** Ikonka rangi (guruh sahifasi sarlavhasidagi kitob, 24.10.2026). */
+export const FAN_TEXT: Record<FanKey, string> = {
+  ingliz: "text-v2-fan-ingliz",
+  ona: "text-v2-fan-ona",
+  matem: "text-v2-fan-matem",
+  rus: "text-v2-fan-rus",
+  arab: "text-v2-fan-arab",
+  bio: "text-v2-fan-bio",
+  tarix: "text-v2-fan-tarix",
+  boshqa: "text-v2-fan-boshqa",
+};
+
 /** Nuqta rangi (Tailwind klassi to'liq yozilgan — JIT ko'rsin). */
 export const FAN_DOT: Record<FanKey, string> = {
   ingliz: "bg-v2-fan-ingliz",

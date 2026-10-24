@@ -366,7 +366,7 @@ export default function StudentProfileV2({ id, initialTab }: { id: number; initi
         <V2Confirm
           title={t("Guruhdan chiqarish")}
           body={t("{name} «{group}» guruhidan chiqariladi. O'tgan darslari hisobda qoladi, o'quvchining o'zi o'chirilmaydi.", { name, group: removeFrom.label })}
-          confirmLabel={t("Chiqarish")}
+          confirmLabel={t("Guruhdan chiqarish")}
           onCancel={() => setRemoveFrom(null)}
           onConfirm={async () => {
             const g = removeFrom;

@@ -145,11 +145,15 @@ export default function GroupDetailPage({ id }: { id: number }) {
   const searchParams = useSearchParams();
   const qsTab = searchParams.get("tab") ?? "";
   const activeTab = TABS.some((tv) => tv.key === qsTab) ? qsTab : "students";
+  // `?classic=1` — yangi versiyada eski sahifa (24.10.2026): tab almashganda ham qolsin,
+  // aks holda O'quvchilar / Davomat tabi yangi sahifaga o'tib ketadi.
+  const classic = searchParams.get("classic") === "1";
   const setActiveTab = useCallback(
     (tv: string) => {
-      router.replace(tv === "students" ? pathname : `${pathname}?tab=${tv}`, { scroll: false });
+      const q = [classic ? "classic=1" : "", tv === "students" ? "" : `tab=${tv}`].filter(Boolean).join("&");
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
     },
-    [router, pathname],
+    [router, pathname, classic],
   );
   // Chap "Guruh ma'lumotlari" kartasi yig'ilganmi. Yig'ilganda u tor ikonka
   // ustuniga aylanadi va o'ngdagi jadval bo'shagan joyni egallaydi — davomat

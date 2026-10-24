@@ -18,7 +18,7 @@ import { getReason, listReasons, systemReasonMap } from "./reasons";
 import { cancelDenial } from "./rights";
 import { actorGroup, actorGroups, branchNames, isOwnGroup, type GamGroup } from "./scope";
 import { loadSettings } from "./settings";
-import type { CoinReason, CoinTransaction, GamSettings, GamRole } from "./types";
+import { AUTO_TX_TYPES, type CoinReason, type CoinTransaction, type GamSettings, type GamRole } from "./types";
 import { GamError, isFrozenStatus, withWallet, type LevelUp, type NewBadge, type WalletSession } from "./wallet";
 
 // «TANGA BERISH» — DARS JURNALI (TZ 5.1, 4.5.4–4.5.7, 4.7, 4.9, 4.10).
@@ -421,6 +421,17 @@ async function writeAttendanceHistory(
 
 // ── Dars jurnali ko'rinishi (GET) ──────────────────────────────────────
 
+/** Bugungi darsdagi bitta tanga yozuvi (yangi versiyadagi guruh sahifasi — «Bugungi tanga»). */
+export interface LessonTx {
+  id: number;
+  type: string;
+  amount: number;
+  reasonName: string;
+  createdByName: string;
+  /** Hozirgi xodim «Ortga» qila oladimi (o'zi yozgan yoki direktor; bugungi). */
+  canUndo: boolean;
+}
+
 export interface LessonRow {
   pupilId: number;
   name: string;
@@ -435,6 +446,8 @@ export interface LessonRow {
   /** Bugun shu o'quvchida ishlatilgan sabablar: reasonId → marta. */
   reasonUse: Record<number, number>;
   exam: { prev: number | null; cur: number | null };
+  /** Shu guruhdagi bugungi yozuvlar (do'kondan tashqari), yozilish tartibida. */
+  txs: LessonTx[];
 }
 
 function monthOf(iso: string): string {
@@ -445,7 +458,7 @@ function prevMonth(m: string): string {
   return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, "0")}`;
 }
 
-export async function lessonView(db: Db, actor: GamActor, groupIdParam: number | null) {
+export async function lessonView(db: Db, actor: GamActor, groupIdParam: number | null, opts: { month?: string | null } = {}) {
   const settings = await loadSettings(db);
   const today = uzDateIso();
   const [groups, names, allReasons, sys] = await Promise.all([
@@ -476,6 +489,8 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
       absencePenaltyCoins: settings.absencePenaltyCoins,
       dailyDeductionLimit: settings.dailyDeductionLimit,
       objectionDays: settings.objectionDays,
+      // Modul shu kundan qamraydi — undan oldingi darslarga cheklov yo'q (attendance.ts → gamActiveFor).
+      startDate: settings.startDate,
       growthThresholdPp: settings.growthThresholdPp,
       streakLessons: settings.streakLessons,
       streakBonusCoins: settings.streakBonusCoins,
@@ -489,7 +504,17 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
     groups: groups.map((g) => ({ id: g.id, label: g.label, branchName: names.get(g.branchId) ?? "" })),
   };
   if (!groups.length) {
-    return { ...base, group: null, rows: [] as LessonRow[], canTeach: false, canExcuse: false, activityUsed: 0, examMonths: null, examDone: null };
+    return {
+      ...base,
+      group: null,
+      rows: [] as LessonRow[],
+      canTeach: false,
+      canExcuse: false,
+      activityUsed: 0,
+      examMonths: null,
+      examDone: null,
+      monthCoins: {} as Record<number, number>,
+    };
   }
 
   const g = groups.find((x) => x.id === groupIdParam) ?? groups[0];
@@ -593,8 +618,34 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
       today: here.filter((t) => t.type !== "shop").reduce((a, t) => a + t.amount, 0),
       reasonUse,
       exam: { prev: pctOf(prevM, p.id), cur: pctOf(curM, p.id) },
+      txs: here
+        .filter((t) => t.type !== "shop")
+        .sort((a, b) => a.id - b.id)
+        .map((t) => ({
+          id: t.id,
+          type: String(t.type),
+          amount: t.amount,
+          reasonName: t.reasonName ?? "",
+          createdByName: t.createdByName,
+          // Avtomatik yozuv (davomat, seriya, sarhisob) qo'lda qaytarilmaydi — rights.ts → cancelDenial.
+          canUndo: !AUTO_TX_TYPES.includes(t.type) && t.date === today && (t.createdByUserId === actor.userId || actor.role === "director"),
+        })),
     };
   });
+
+  // OY BO'YICHA JAMI (`?month=YYYY-MM`, guruh sahifasining «Davomat jurnali»): shu guruhda
+  // o'quvchi bo'yicha tangalar yig'indisi (do'kondan tashqari, bekor qilinganlarsiz).
+  const monthCoins: Record<number, number> = {};
+  if (opts.month && /^\d{4}-\d{2}$/.test(opts.month)) {
+    const agg = await db
+      .collection(GAM.tx)
+      .aggregate<{ _id: number; s: number }>([
+        { $match: { groupId: g.id, date: { $gte: `${opts.month}-01`, $lte: `${opts.month}-31` }, status: "active", type: { $ne: "shop" } } },
+        { $group: { _id: "$pupilId", s: { $sum: "$amount" } } },
+      ])
+      .toArray();
+    for (const a of agg) monthCoins[Number(a._id)] = a.s;
+  }
 
   return {
     ...base,
@@ -606,5 +657,6 @@ export async function lessonView(db: Db, actor: GamActor, groupIdParam: number |
     // Sarhisob kartasi (TZ 5.1): shu oy uchun yozilgan natija/o'sish soni.
     examDone: await examSummary(db, g.id, curM),
     rows,
+    monthCoins,
   };
 }
