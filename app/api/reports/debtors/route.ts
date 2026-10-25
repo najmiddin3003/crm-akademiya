@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope } from "@/lib/branchScope";
+import { sameBranchPool } from "@/lib/branchPools";
 import { computeDebtors } from "@/lib/debtors";
 import { uzDateIso } from "@/lib/uzTime";
 
@@ -18,6 +19,10 @@ import { uzDateIso } from "@/lib/uzTime";
 // `month` — ixtiyoriy OY: berilsa javobda `month` jamlanmasi ham keladi —
 // shu oyda o'quvchilardan jami qancha kutilyapti (oyning hamma dars
 // kunlari), qanchasi tushdi, qanchasi qoldi.
+//
+// `branch` — ixtiyoriy FILIAL (yangi Hisobotlar → Qarzdorlar, 25.10.2026): xodimga
+// ruxsat etilgan filiallardan biri (1+2 hovuzi birga). Berilmasa — navbar filiali
+// (avvalgidek). Hisob qoidasi o'zgarmaydi, faqat qaysi filial guruhlari olinadi.
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -37,7 +42,17 @@ export async function GET(req: Request) {
   const scope = await getBranchScope();
   if (!scope) return NextResponse.json({ ok: false, error: "Tizimga kirmagansiz" }, { status: 401 });
 
+  const rawBranch = (sp.get("branch") || "").trim();
+  let branchId = scope.branchId;
+  if (rawBranch) {
+    const n = Number(rawBranch);
+    if (!Number.isInteger(n) || n <= 0 || !scope.allowed.some((a) => sameBranchPool(a, n))) {
+      return NextResponse.json({ ok: false, error: "Bu filial sizga biriktirilmagan" }, { status: 403 });
+    }
+    branchId = n;
+  }
+
   const db = await ensureIndexes();
-  const report = await computeDebtors(db, scope, asOf, month || undefined);
-  return NextResponse.json({ ok: true, ...report });
+  const report = await computeDebtors(db, { ...scope, branchId }, asOf, month || undefined);
+  return NextResponse.json({ ok: true, branchId, ...report });
 }

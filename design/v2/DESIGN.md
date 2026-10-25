@@ -899,6 +899,38 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   — ActionLogV2, logBits; server — `lib/actionLogView.ts` (yozuv → odam tili, toifa, farq), `lib/actionLogSnapshot.ts`
   (tahrirdan oldingi holat, proxy.ts), `/api/action-log/feed`, `/api/auth/branches`. Rasmdan farqlar — `SAVOLLAR.md` 212–220.
 
+## Hisobotlar (rasmlar «Hisobotlar katalogi», «Kelgan va ketgan · namuna», «Qarzdorlar · namuna», «Qarzdorlar → PDF · namuna», yorug'/qorong'i, 25.10.2026)
+
+- **Katalog** (`/reports`): «Hisobotlar», izoh «Barcha filiallar · 9 ta hisobot · har biri Excel va PDF'ga yuklanadi»,
+  o'ngda «Hisobot nomi» qidiruvi. Guruh sarlavhasi — 28 px rangli kvadratda ikonka (Moliya `success-bg` hamyon, O'quvchilar
+  oqimi `info-bg` ayri, Davomat `warning-bg` kalendar, Xodimlar va oylik `violet-bg` odamlar) + qalin nom + «3 ta» `text-3`.
+  Kartochkalar 3 ustun (planshetda 2, telefonda 1): nomi qalin, o'ngda → `text-3`, izoh `small text-2`, pastda «Excel»
+  «PDF» belgilari (20 px, `surface-2`, chegara, 11 px qalin).
+- **Hisobot qolipi**: yo'l «Hisobotlar › guruh › nomi» (oxirgisi `text`), sarlavha, izoh «guruh · …»; o'ngda «Excel»
+  (yashil fayl ikonkasi) va «PDF» (qizil) — ikkinchi darajali tugmalar. Filtrlar qatori (oy oralig'i / «… holatiga»,
+  «Filial: …», «Kurs/Guruh: …»), o'ngda segment. Ko'rsatkichlar — BITTA karta, ustunlar 1 px chiziq bilan: yorliq `small
+  text-2`, son 24 px qalin (birlik `body text-2`), izoh `caption`; kichik chiziqli grafik — yuqori o'ngda. Grafik —
+  «Oyma-oy» (6-qism tizimi: ko'k/to'q sariq, davom etayotgan oy och va «*», ustiga kelinsa — kulrang ustun, sonlar va
+  maslahat oynasi + «sof o'sish»). Jadval — `surface-2` sarlavha, raqamlar o'ngda, «Jami» qatori qalin; ostida ⓘ izoh.
+- **Kelgan va ketgan**: oylar oralig'i (sukut — oxirgi 6 oy), Filial: Barchasi, Kurs: Hammasi; Guruhga kelgan · Guruhdan
+  ketgan · Sof o'sish · Faol o'quvchilar (+ grafik, «+24 sentabr oxiriga nisbatan»); jadval Oy · Guruhga kelgan · Guruhdan
+  ketgan · Sof o'sish (manfiy — qizil) · Oy oxirida faol; joriy oy «Oktyabr · 1–25»; tarix boshlanmagan oy — «—».
+- **Qarzdorlar**: «25-oktyabr holatiga» (sana tanlovi), Filial, Guruh, o'ngda Hammasi / 1 oy / 2+ oy; ko'rsatkichlar
+  (!) Jami qarz · Qarzdorlar · 2 oy va undan ko'p («… so'm · birinchi navbatda»); jadval — bosh harflar doirasi + qalin
+  ism, guruh(lar) `small text-2`, oylar + qizil «3 oy» belgisi, qarz qalin, oxirgi to'lov «12-iyul | 16:30», telefon,
+  amallar 💬 💳; «Jami · 7 o'quvchi».
+- **PDF oynasi** (markazda, 820 px): chapda `bg` ustida A4 varaq (chop etiladigan HTML'ning o'zi, kichraytirilgan),
+  o'ngda 288 px: «PDF'ga chiqarish» · «Qarzdorlar · 1 sahifa» · ×; «Sahifa» — A4 · tik / A4 · yotiq; galochkalar
+  (Markaz nomi va filial, Sana va kim tayyorlagani, hisobotniki — Ota-ona telefonlari); «Joriy filtrlar bilan» qutisi
+  (`surface-2`); pastda «PDF yuklab olish» (asosiy) va «Chop etish», ostida izoh. Varaq: logotip + markaz va filial,
+  o'ngda sana va kim; teal chiziq; sarlavha; kulrang ko'rsatkich qutilari; jadval; pastda «Tizimli · tizimli24.uz» va
+  «1 / 1».
+- Kodda: `components/v2/reports/` — ReportsCatalogV2, ReportView, reportUi (qolip, ko'rsatkichlar, jadval), ReportBarChart,
+  V2MonthRange, ReportPdfDialog, reportExport (Excel/chop etish), reportHooks; hisobotlar — KelganKetganReport,
+  QarzdorlarReport, MoliyaReports, FaolOquvchilarReport, DavomatReports, XodimReports. Server — lib/reportsCatalog.ts,
+  lib/reportStudents.ts, lib/reportAttendance.ts, lib/reportScope.ts, lib/debtors.ts (`unpaid`, `lastPayment`,
+  `parentPhone`). Rasmdan farqlar — `SAVOLLAR.md` 221–233.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

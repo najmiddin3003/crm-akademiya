@@ -29,7 +29,7 @@ import {
 import { branchPool, collapseBranchPools } from "@/lib/branchPools";
 import { isPathAllowed } from "@/lib/permissions";
 import { BetaBadge } from "./DevNotice";
-import { HOME_KEY, V2_BOTTOM_KEYS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
+import { HOME_KEY, V2_BOTTOM_KEYS, V2_EXTRA_ITEMS, V2_ICONS, V2_ITEM_LABELS, V2_LABELS, V2_SECTIONS } from "./sidebarSections";
 import { usePopover } from "./usePopover";
 
 // YANGI VERSIYA YON MENYUSI (design/v2/DESIGN.md → «Navigatsiya — yon menyu»).
@@ -46,6 +46,14 @@ const HOME_ITEM: SidebarItem = { key: HOME_KEY, icon: "", label: "Bosh sahifa", 
 const noEmoji = (s: string) => s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").trim();
 
 const subItemsOf = (menu?: SidebarMenu): SidebarMenuItem[] => menu?.items ?? menu?.columns?.flatMap((c) => c.items) ?? [];
+
+/** Ichki menyu + faqat yangi versiyadagi bandlar (`V2_EXTRA_ITEMS`) — boshida, sarlavhasiz. */
+function menuOf(item: SidebarItem): SidebarMenu | undefined {
+  const extra = V2_EXTRA_ITEMS[item.key];
+  if (!item.menu || !extra?.length) return item.menu;
+  if (item.menu.items) return { ...item.menu, items: [...extra, ...item.menu.items] };
+  return { ...item.menu, columns: [{ title: "", items: extra }, ...(item.menu.columns ?? [])] };
+}
 
 // Band ko'rinishi: faol — oq kartochka (sirt + chiziq), qolgani — Matn 2.
 const ROW ="flex h-9 w-full items-center gap-3 rounded-v2-md border px-3 text-v2-body transition-colors";
@@ -97,7 +105,7 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
   }, [items]);
 
   const isActive = (href?: string) => !!href && (pathname === href || pathname.startsWith(`${href}/`));
-  const groupActive = (item: SidebarItem) => isActive(item.href) || subItemsOf(item.menu).some((it) => isActive(it.href));
+  const groupActive = (item: SidebarItem) => isActive(item.href) || subItemsOf(menuOf(item)).some((it) => isActive(it.href));
 
   // Ochiq guruh: sukut bo'yicha joriy sahifa turgan guruh. Foydalanuvchi
   // bosgan tanlov shu sahifada amal qiladi; boshqa sahifaga o'tilganda yana
@@ -173,7 +181,7 @@ export default function SidebarV2({ permissions, isAdmin, features, variant, onC
               <ChevronRight className="size-4 shrink-0 text-v2-text-3" aria-hidden />
             )}
           </button>
-          {open && renderSubMenu(item.menu)}
+          {open && renderSubMenu(menuOf(item) ?? item.menu)}
         </li>
       );
     }

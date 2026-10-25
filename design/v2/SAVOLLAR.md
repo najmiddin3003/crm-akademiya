@@ -1097,7 +1097,7 @@ bor bo'lsa daraja/ball). Ixtiyoriy: Telegram, oldingi ish joyi, ish kunlari va s
 qayerdan bildi. Rasm va rozilik — majburiy (avvalgidek). Qoralama brauzerda saqlanadi (bosqich ham). Sarlavha vakansiyaga
 qarab: «O'qituvchilikka ariza» / «Administrator lavozimiga ariza» / tanlanmagan — «Ishga ariza».
 
-**207. /ariza — kim yangisini ko'radi** — ochiq (qaror kerak)
+**207. /ariza — kim yangisini ko'radi** — hal qilindi (25.10.2026 deploy: hammaga yangi, eskisi `/ariza?classic=1`)
 Nomzodda CRM cookie'si yo'q, shuning uchun almashtirgich yoqilgan serverda (prod'da `UI_V2_SWITCH=on`) deploy qilingach
 HAMMA nomzod yangi anketani ko'radi; eskisi — `/ariza?classic=1`. *Savol:* darhol hammaga ochilsinmi?
 
@@ -1162,6 +1162,77 @@ Dizayner izohi deb hisoblandi — ko'rsatilmaydi.
 Sukut — kecha va bugun (rasmdagidek ikki kun). Sonlar va «Davr bo'yicha» shu oraliqdagi eng yangi 3000 ta amaldan
 hisoblanadi; ko'p bo'lsa sariq ogohlantirish chiqadi. Qidiruv — ism, summa (raqamlar), guruh yoki obyekt nomi, fe'l
 bo'yicha. Ro'yxat 60 tadan, «Yana yuklash». Sahifa avvalgidek faqat admin uchun; eski texnik jadval — `?classic=1`.
+
+### 15-qism — Hisobotlar: katalog, Kelgan va ketgan, Qarzdorlar, PDF (25.10.2026)
+
+**221. Katalog va ruxsat** — qoida
+`/reports` — katalog, `/reports/<nom>` — hisobot. Sidebar daraxtida o'z bandi yo'q (Bosh sahifa kabi doim ochiq), har
+hisobot o'z ESKI sahifasining ruxsati bilan ochiladi: Kirim va chiqim, To'lov turlari — Kirim chiqim; Qarzdorlar —
+Qarzdor o'quvchilar; Kelgan va ketgan — O'quvchilar oqimi; Faol o'quvchilar — Aktiv o'quvchilar yoki Guruhlar;
+Davomat — Davomat analitikasi (o'qituvchilar bo'yicha — Davomat qilinmagan guruhlar ham); Oylik va avans — Oylik
+chiqarish; Bonus va jarimalar — Bonus yoki Jarima. Rollar oynasida yangi galochka yo'q. Yon menyuda (faqat yangi
+versiyada) «Hisobotlar → Barcha hisobotlar»; eski hisobot sahifalari menyuda qoladi.
+
+**222. Batafsil rasm faqat ikkitasiga** — taxmin
+Rasmda faqat «Kelgan va ketgan» va «Qarzdorlar» chizilgan; qolgan yettitasi shu qolipda (yo'l, sarlavha, Excel/PDF,
+filtrlar, ko'rsatkichlar, jadval, izoh) va mavjud hisoblardan: Moliya analitikasi (kirim/chiqim, to'lov turi), Oylik
+chiqarish (oylik va avans), Bonus va Jarima yozuvlari, `attendance` belgilari.
+
+**223. Qarzdorlar — qarz qoidasi** — QAROR KERAK (149 bilan bitta)
+Rasm izohi: «qarz oylar bo'yicha — o'quvchi sahifasidagi «Oylar bo'yicha» bilan bir xil». Hozir hisobot 20.09.2026
+kelishuvida qoldi: o'tgan darslar × dars narxi − to'langan (Bosh sahifadagi «Qarzdorlar» va eski «Qarzdor o'quvchilar»
+bilan bir xil son). «Qaysi oylar uchun» — shu qarz oylarga bo'linadi: to'lovlar eng eski oydan yopiladi, qolgani eng
+yangi oylarda («Avgust – Oktyabr · 3 oy», bitta oyning bir qismi — «(qisman)»). Variantlar: (a) shunday qolsin;
+(b) oylik hisobga o'tilsin — hisobot, Bosh sahifa kartasi va eski sahifa BIRGA (aks holda raqamlar zid).
+
+**224. «Faol o'quvchi»** — taxmin
+Hisobotlarda faol — hozir guruhda o'qiyotgan (guruh a'zoligi bo'yicha; guruh sahifalaridagi ro'yxatlar bilan bir xil,
+ko'zguda 793). Bosh sahifadagi «Aktiv o'quvchilar» boshqa narsani sanaydi — holati «Aktiv» (guruhsiz eski yozuvlar
+ham, ko'zguda 5 050). Yana: 77 ta arxivdagi o'quvchi hali guruh ro'yxatida turibdi — tozalash kerakmi?
+
+**225. Kelgan va ketgan — hisob** — taxmin
+Oy oxiridagi holatlar farqi: guruhga kelgan = oy oxirida o'qiyotgan, oldingi oy oxirida o'qimagan; guruhdan ketgan —
+aksincha; sof o'sish = farq, shu bois «Oy oxirida faol» ustuni bilan doim mos. Boshqa guruhga o'tgan — ketgan emas;
+oy ichida kelib-ketgan — sanalmaydi. Guruh a'zoligi tarixi 20.09.2026 dan yuritiladi — undan oldingi oylar «—»
+(ko'zguda oktabr birinchi to'liq oy: 424 kelgan, 28 ketgan). Arxivlash sanasi bazada yo'q (arxivdagi 2 455
+o'quvchida `statusChangedAt` bo'sh) — shuning uchun «ketgan» arxiv sanasidan emas, guruhdan chiqqanidan olinadi.
+Yorliqlar «Guruhga kelgan / Guruhdan ketgan» (rasmda «Kelgan / Ketgan»): «Kelgan» kaliti davomatda «Present» ma'nosida
+band, aniq nom ta'rifni ham aytadi.
+
+**226. Davomat hisobotlari** — taxmin
+Rejadagi dars — guruh jadvali bo'yicha, guruh faol bo'lgan kundan (boshlanish sanasi, bo'lmasa birinchi o'quvchisi
+qo'shilgan kun) bugungacha; qatnashish = keldi + kechikdi + birinchi dars / hamma belgi. Ko'zguda oktabrda rejadagi
+845 darsdan 2 tasida davomat belgilangan — ustozlar CRM'da davomat qilmayapti; hisobot buni ochiq ko'rsatadi.
+
+**227. Bonus va jarimalar** — taxmin
+Faqat xodimlarga yozilganlari, bekor qilinganlari sanalmaydi; topshiriq jarimasi alohida ustun. Kechikish uchun
+jarima tizimda YOZILMAYDI (QR «Ishga keldim» faqat xabar beradi) — rasmdagi «kechikish jarimalari» ustuni yo'q.
+Bonus va jarima yozuvida filial yo'q — hisobot barcha filiallar bo'yicha.
+
+**228. Oylik va avans** — qoida
+«Oylik chiqarish» sahifasining aynan o'sha ma'lumoti va hisobi: navbar filiali (Chortoqda bino tanlovi), oy tanlovi;
+Jami oylik · Jami avans · Qolgan oylik — o'sha sahifadagi kartalar. «Jami avans» shu filial kassalaridan berilgani
+(boshqa filial xodimiga berilgani ham), shu bois jadvaldagi «Avans» jamidan farq qilishi mumkin.
+
+**229. PDF** — ochiq
+Loyihada PDF kutubxonasi yo'q (109 kabi): «PDF yuklab olish» va «Chop etish» ikkalasi ham brauzerning chop etish
+oynasini ochadi, «PDF sifatida saqlash» — fayl (nomi hisobotdan). Oynadagi ko'rinish — chop etiladigan sahifaning
+o'zi. *Savol:* haqiqiy PDF fayl kerakmi (kutubxona va o'zbek/kirill shrifti, ~300 KB)? *Taxmin:* hozircha yo'q.
+
+**230. Ota-ona telefoni** — taxmin
+Bazada hech bir o'quvchida ota-ona raqami kiritilmagan — ustunda o'quvchining asosiy telefoni (ko'pincha ota-onaniki)
+turadi; ota yoki ona raqami kiritilsa — o'sha. PDF'da galochka bilan yashiriladi.
+
+**231. Qarzdorlar — qatordagi amallar** — taxmin
+💬 — SMS yuborish (o'quvchilar ro'yxatidagi oyna, SMS ruxsati bilan); 💳 — To'lov qabul qilish (Kassa ruxsati bilan):
+balans — qarz, «Qaysi oy uchun» — qarzning eng eski oyi. Ism bosilsa — o'quvchi sahifasi.
+
+**232. Moliya hisobotlari** — qoida
+Moliya analitikasi bilan bir hisob (bekor qilish yozuvi teskari amal). Filial — kassa filiali (bino bo'yicha, Kassalar
+sahifasidagidek), Kassa — tanlov. «To'lov turlari» — faqat tushum; turlar Sozlamalardagi to'lov turlaridan.
+
+**233. «Namuna» belgisi** — qoida
+Dizayner izohi — ko'rsatilmaydi.
 
 ## Reja
 

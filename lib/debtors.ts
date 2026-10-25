@@ -5,7 +5,7 @@ import { branchPool } from "@/lib/branchPools";
 import { studentBalanceMatch } from "@/lib/studentRefund";
 import { groupLabel, type Group } from "@/lib/groups";
 import { pupilFullName, pupilStatusOf, type Pupil } from "@/lib/pupilsData";
-import { lessonsPerMonthFor, type DebtIssue, type DebtorGroupPart, type DebtorRow, type DebtorsReport, type GroupIssue, type MonthlySummary } from "@/lib/debtorsTypes";
+import { lessonsPerMonthFor, unpaidMonths, type DebtIssue, type DebtorGroupPart, type DebtorRow, type DebtorsReport, type GroupIssue, type MonthlySummary } from "@/lib/debtorsTypes";
 import { findCourseByName } from "@/lib/courseLevels";
 import { groupWeekdays } from "@/lib/attendance";
 import {
@@ -213,11 +213,28 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
   const paidBetween = (from: string | null, to: string) =>
     db
       .collection("transaction_entries")
-      .aggregate<{ _id: { pupilId?: unknown; name?: unknown }; total: number }>([
+      .aggregate<{ _id: { pupilId?: unknown; name?: unknown }; total: number; last?: string | null }>([
         { $match: { $and: [studentBalanceMatch(), { date: from ? { $gte: from, $lte: to } : { $lte: to } }] } },
         // Tanga evaziga chegirma ham TO'LANGAN hisoblanadi (lib/transactionEntries.ts →
         // discountSom): markaz kechgan qism qarz bo'lib qolmasin.
-        { $group: { _id: { pupilId: "$pupilId", name: "$studentName" }, total: { $sum: ENTRY_PAID_EXPR } } },
+        //
+        // `last` — oxirgi TO'LOV ("YYYY-MM-DD HH:mm"; yangi Hisobotlar → Qarzdorlar,
+        // 25.10.2026): faqat musbat yozuvlar — qaytarim «to'lov» bo'lib ko'rinmasin.
+        {
+          $group: {
+            _id: { pupilId: "$pupilId", name: "$studentName" },
+            total: { $sum: ENTRY_PAID_EXPR },
+            last: {
+              $max: {
+                $cond: [
+                  { $gt: [ENTRY_PAID_EXPR, 0] },
+                  { $concat: [{ $ifNull: ["$date", ""] }, " ", { $ifNull: ["$time", ""] }] },
+                  null,
+                ],
+              },
+            },
+          },
+        },
       ])
       .toArray();
   const [pupils, courses, payments, monthPayments] = await Promise.all([
@@ -225,7 +242,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
       .collection<Pupil>("pupils")
       .find(
         { id: { $in: pupilIds } },
-        { projection: { _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, status: 1, statusChangedAt: 1 } },
+        { projection: { _id: 0, id: 1, firstName: 1, lastName: 1, phone: 1, status: 1, statusChangedAt: 1, fatherPhone: 1, motherPhone: 1 } },
       )
       .toArray(),
     db
@@ -265,6 +282,32 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
   const paidByPupil = sumByPupil(payments);
   const monthPaidByPupil = sumByPupil(monthPayments);
 
+  // Oxirgi to'lov (o'quvchi → "YYYY-MM-DD HH:mm") — xuddi shu bog'lash qoidasi bilan.
+  const lastByPupil = new Map<number, string>();
+  {
+    const keepMax = (id: number, v: string) => {
+      const prev = lastByPupil.get(id);
+      if (!prev || v > prev) lastByPupil.set(id, v);
+    };
+    const legacyLast = new Map<string, string>();
+    for (const r of payments) {
+      const last = typeof r.last === "string" && r.last.trim() ? r.last : null;
+      if (!last) continue;
+      const pid = Number(r._id?.pupilId);
+      if (Number.isFinite(pid)) keepMax(pid, last);
+      else {
+        const key = norm(String(r._id?.name ?? ""));
+        if (key && (!legacyLast.get(key) || last > (legacyLast.get(key) ?? ""))) legacyLast.set(key, last);
+      }
+    }
+    if (legacyLast.size > 0) {
+      for (const p of pupils) {
+        const v = legacyLast.get(norm(pupilFullName(p)));
+        if (v) keepMax(p.id, v);
+      }
+    }
+  }
+
   // Guruh bo'yicha bir marta hisoblanadigan narsalar.
   const priceByGroup = new Map<number, number | null>();
   const monthlyOf = (g: GroupDoc): number | null => {
@@ -286,6 +329,22 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
   // Oy jamlanmasi: o'quvchi → shu oydagi hisob (kutilayotgan).
   const monthExpectedByPupil = new Map<number, number>();
   let monthLessons = 0;
+  // Oylar bo'yicha hisob (o'quvchi → "YYYY-MM" → summa) — qarz qaysi oylarga
+  // tushishini ko'rsatish uchun (`unpaid`). Jami `charged` bilan aynan bir xil
+  // darslardan: o'sha oraliq oylarga bo'lingan.
+  const chargesByPupil = new Map<number, Map<string, number>>();
+  const addMonthCharges = (pupilId: number, day: string | undefined, start: string, end: string, price: number) => {
+    if (start > end) return;
+    let per = chargesByPupil.get(pupilId);
+    if (!per) chargesByPupil.set(pupilId, (per = new Map()));
+    for (let mk = start.slice(0, 7); mk <= end.slice(0, 7); ) {
+      const b = monthBounds(mk);
+      const n = lessonDaysBetween(day, maxIso(b.from, start), minIso(b.to, end)).count;
+      if (n > 0) per.set(mk, (per.get(mk) ?? 0) + n * price);
+      const [y, m] = mk.split("-").map(Number);
+      mk = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
+    }
+  };
 
   for (const m of memberships) {
     const g = groupById.get(m.groupId);
@@ -320,6 +379,7 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
     const ok = start !== null && issues.length === 0;
     const counted = ok ? lessonDaysBetween(g.day, start, end) : { count: 0, last: null };
     for (const issue of issues) addIssue(g, issue);
+    if (ok && start !== null && lessonPrice !== null && counted.count > 0) addMonthCharges(m.pupilId, g.day, start, end, lessonPrice);
 
     // Oy jamlanmasi — oyning HAMMA dars kunlari (bugundan keyingilari ham),
     // a'zolik/guruh chegaralari ichida.
@@ -376,6 +436,8 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
     const charged = groupParts.reduce((s, x) => s + x.charged, 0);
     const paid = paidByPupil.get(p.id) ?? 0;
     const starts = groupParts.map((x) => x.startDate).filter((d): d is string => d !== null);
+    const last = lastByPupil.get(p.id) ?? null;
+    const parent = String(p.fatherPhone ?? "").trim() || String(p.motherPhone ?? "").trim();
     rows.push({
       id: p.id,
       name,
@@ -388,6 +450,9 @@ export async function computeDebtors(db: Db, scope: BranchScope, asOf: string, m
       paid,
       debt: charged - paid,
       incomplete,
+      unpaid: unpaidMonths(chargesByPupil.get(p.id) ?? new Map(), charged - paid),
+      lastPayment: last ? { date: last.slice(0, 10), time: last.slice(11, 16) } : null,
+      parentPhone: parent,
     });
   }
 

@@ -83,6 +83,53 @@ export interface DebtorRow {
   debt: number;
   /** Bironta guruhda hisob to'liq emas (issues bo'sh emas). */
   incomplete: boolean;
+  /**
+   * Qarz QAYSI OYLAR uchun (yangi Hisobotlar → Qarzdorlar, 25.10.2026): to'lovlar eng
+   * eski oydan yopiladi (FIFO), qolgan qarz — eng yangi oylarda. `partial` — eng eski
+   * oyning bir qismi to'langan. Qarz yo'q — null.
+   */
+  unpaid?: DebtMonths | null;
+  /** Hisob sanasigacha oxirgi to'lov ("YYYY-MM-DD", "HH:mm"); bo'lmagan — null. */
+  lastPayment?: { date: string; time: string } | null;
+  /** Ota yoki ona telefoni (kartada kiritilgan bo'lsa). */
+  parentPhone?: string;
+}
+
+/** Qarzning oylar bo'yicha joyi (`DebtorRow.unpaid`). */
+export interface DebtMonths {
+  /** "YYYY-MM" — eng eski qarzli oy. */
+  from: string;
+  /** "YYYY-MM" — eng yangi qarzli oy. */
+  to: string;
+  /** Necha oy (from..to, kalendar oylari). */
+  count: number;
+  /** Eng eski oyning bir qismi to'langan. */
+  partial: boolean;
+}
+
+/**
+ * Oylik hisob → qarzli oylar (FIFO): yangidan eskiga yig'ib, qarzga yetgan oy — eng eski
+ * qarzli oy. Shu oy hisobidan ortig'i to'langan bo'lsa — `partial`.
+ */
+export function unpaidMonths(charges: ReadonlyMap<string, number>, debt: number): DebtMonths | null {
+  if (!(debt > 0)) return null;
+  const months = [...charges.entries()].filter(([, v]) => v > 0).sort((a, b) => b[0].localeCompare(a[0]));
+  if (months.length === 0) return null;
+  let acc = 0;
+  let oldest = months[months.length - 1][0];
+  let partial = false;
+  for (const [m, v] of months) {
+    acc += v;
+    oldest = m;
+    if (acc >= debt) {
+      partial = acc > debt;
+      break;
+    }
+  }
+  const to = months[0][0];
+  const [fy, fm] = oldest.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+  return { from: oldest, to, count: (ty - fy) * 12 + (tm - fm) + 1, partial };
 }
 
 export interface GroupIssue {

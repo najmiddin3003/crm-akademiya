@@ -184,6 +184,9 @@ export const IMPLEMENTED_ROUTES = new Set([
   // Hisobotlar (finance-*/nazorat-* takrorlari yuqorida bor)
   "/reports-funnel", "/reports-balance", "/reports-unpaid", "/reports-diff-payments", "/reports-cancelled", "/reports-discounts",
   "/reports-teachers-perf", "/reports-admins-perf", "/reports-leave-reasons", "/reports-rooms", "/reports-served", "/reports-cancelled-attend",
+  // Hisobotlar katalogi (yangi versiya, 25.10.2026) — menyuda faqat yangi versiyada
+  // (components/v2/shell/sidebarSections.ts → V2_EXTRA_ITEMS).
+  "/reports",
   // Sozlamalar
   "/settings-general", "/settings-finance", "/settings-academic", "/settings-sales",
   "/settings-management", "/settings-integrations", "/settings-app", "/settings-gamification",

@@ -77,6 +77,13 @@ export const V2_LABELS: Record<string, string> = {
  * «Guruh › Guruhlar» — «Guruhlar · Ustunlar» rasmi, 18.10.2026 (eski menyuda
  * ichki band ham «Guruh» deb turibdi).
  */
+export const V2_EXTRA_ITEMS: Record<string, { label: string; href: string }[]> = {
+  // Hisobotlar katalogi (15-qism, 25.10.2026) — faqat yangi versiyada: ichki menyuning
+  // birinchi bandi. Eski menyu va ruxsatlar daraxti o'zgarmaydi («/reports» doim ochiq,
+  // har hisobot sahifa ichida o'z ruxsati bilan — lib/reportsCatalog.ts).
+  reports: [{ label: "Barcha hisobotlar", href: "/reports" }],
+};
+
 export const V2_ITEM_LABELS: Record<string, string> = {
   "/groups": "Guruhlar",
   // 7-qism rasmlari (20.10.2026): «Sozlamalar → O'quv → Kurslar», Boshqaruv → «Rollar va huquqlar».

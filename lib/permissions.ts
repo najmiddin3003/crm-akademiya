@@ -67,6 +67,10 @@ export const ALWAYS_ALLOWED_PATHS = new Set([
   "/gamification-ranking",
   "/gamification-competition",
   "/gamification-shop",
+  // HISOBOTLAR KATALOGI (yangi versiya, 25.10.2026 — app/(app)/reports). Sidebar
+  // daraxtida o'z bandi yo'q; har hisobot sahifa ICHIDA o'z eski sahifasining
+  // ruxsati bilan kesiladi (lib/reportsCatalog.ts → canOpenReport), "/home" kabi.
+  "/reports",
 ]);
 
 /**

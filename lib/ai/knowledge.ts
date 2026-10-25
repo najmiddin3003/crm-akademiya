@@ -125,6 +125,18 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       "Qarz = guruh jadvali bo'yicha o'tgan darslar × bitta dars narxi − to'langan pul.",
       "Bitta dars narxi = oylik kurs narxi ÷ oydagi darslar (haftasiga 3 kun → 13 dars).",
       "Kurs narxi O'quv bo'limi → Oflayn kurslarda filial bo'yicha kiritiladi («Akademiya Chortoq» da bitta narx ikkala binoga yoziladi); narxi yo'q guruh hisobotda alohida ko'rsatiladi.",
+      "Yangi versiyada: Hisobotlar → Barcha hisobotlar → «Qarzdorlar» — xuddi shu hisob, ustiga qarz qaysi oylar uchunligi (to'lovlar eng eski oydan yopiladi), oxirgi to'lov, Excel va PDF.",
+    ].join("\n"),
+  },
+  {
+    id: "reports",
+    title: "Hisobotlar (yangi versiya)",
+    keywords: ["hisobot", "hisobotlar", "excel", "pdf", "kelgan", "ketgan", "faol o'quvchi", "to'lov turlari", "oylik va avans", "bonus", "jarima", "davomat hisoboti"],
+    pages: ["/reports"],
+    text: [
+      "Yangi versiyada yon menyu → Hisobotlar → «Barcha hisobotlar»: 9 ta hisobot to'rt guruhda — Moliya (Kirim va chiqim, Qarzdorlar, To'lov turlari), O'quvchilar oqimi (Kelgan va ketgan, Faol o'quvchilar), Davomat (Guruhlar bo'yicha, O'qituvchilar bo'yicha), Xodimlar va oylik (Oylik va avans, Bonus va jarimalar).",
+      "Har hisobot xodimga o'sha bo'limning eski sahifasi ruxsati bo'lsa ochiladi; har biri Excel va PDF'ga yuklanadi (PDF — chop etish oynasida «PDF sifatida saqlash»).",
+      "Faol o'quvchi — hozir guruhda o'qiyotgan o'quvchi (Bosh sahifadagi «Aktiv o'quvchilar» esa o'quvchi holati bo'yicha). Kelgan va ketgan — oy oxirlari solishtiriladi; guruh tarixi 2026-yil 20-sentabrdan yoziladi.",
     ].join("\n"),
   },
   {
