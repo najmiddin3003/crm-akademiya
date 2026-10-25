@@ -6,7 +6,9 @@ import "@fontsource/anton/400.css";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/montserrat/wght.css";
 import CvApplyPage, { type ApplyBranch } from "@/components/management/CvApplyPage";
+import CvApplyPageV2 from "@/components/v2/cv/CvApplyPageV2";
 import { ensureIndexes } from "@/lib/mongodb";
+import { uiSwitchEnabled } from "@/lib/uiVersionServer";
 import "./ariza.css";
 
 // Ommaviy ish arizasi — nomzod CRM'ga kirmasdan to'ldiradi. Havolani
@@ -21,6 +23,11 @@ import "./ariza.css";
 // FILIALLAR bazadan (Boshqaruv → Filiallar) — nomzod o'zi ishlamoqchi
 // bo'lgan filialni tanlaydi va ariza o'sha filialning ro'yxatiga tushadi.
 // Server komponent bo'lgani uchun so'rovsiz, sahifa bilan birga keladi.
+//
+// YANGI VERSIYA (25.10.2026, 13-qism — rasm «Ochiq anketa (#ariza)»): bosqichma-bosqich anketa
+// (components/v2/cv/CvApplyPageV2.tsx). Nomzodda CRM cookie'si yo'q, shuning uchun versiya
+// almashtirgich YOQILGAN serverda (lib/uiVersionServer.ts → uiSwitchEnabled) hammaga yangisi;
+// `?classic=1` — eski anketa (zaxira yo'l). Qaror — design/v2/SAVOLLAR.md.
 
 export const metadata: Metadata = {
   title: "Akademiya o'quv markazi — Ishga ariza",
@@ -28,7 +35,8 @@ export const metadata: Metadata = {
   icons: { icon: "/ariza/favicon.png" },
 };
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ classic?: string }> }) {
+  const { classic } = await searchParams;
   const db = await ensureIndexes();
   const rows = await db
     .collection("branches")
@@ -43,6 +51,7 @@ export default async function Page() {
     phone: String(b.phone ?? ""),
   }));
 
+  if (classic !== "1" && uiSwitchEnabled()) return <CvApplyPageV2 branches={branches} />;
   return (
     <div className="ariza">
       <CvApplyPage branches={branches} />

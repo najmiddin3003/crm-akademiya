@@ -170,6 +170,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/management-cv": ["/management-cv"],
   "/api/management-cv/[id]": ["/management-cv"],
   "/api/management-cv/[id]/file": ["/management-cv"],
+  "/api/management-cv/[id]/hire": ["/management-cv"],
   "/api/moderators": ["/finance-cash", "/finance-fin-contract", "/first-lessons", "/orders-list", "/parents", "/students-list"],
   "/api/news": ["/sales-news"],
   "/api/news/[id]": ["/sales-news"],

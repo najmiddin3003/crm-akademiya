@@ -841,6 +841,37 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   ubCore; sozlama — `components/v2/settings/ExamSubjectsV2.tsx`; hisob — `lib/uzbmb.ts`, server — `lib/uzbmbServer.ts`.
   Rasmdan farqlar — `SAVOLLAR.md` 185–197.
 
+## Boshqaruv → Ishga qabul (CV) (rasmlar «Nomzodlar ro'yxati», «Nomzod paneli», «Ishga olish oynasi», «Ochiq anketa (#ariza)», 25.10.2026)
+
+- **Ro'yxat**: sarlavha «Ishga qabul (CV)», izoh «Nomzodlar ochiq anketa orqali keladi · barcha filiallar»; o'ngda «🔗 Anketa
+  havolasini nusxalash» (ikkinchi darajali), «⋯» (anketani ochish, eski ko'rinish), «+ Nomzod qo'shish» (asosiy). Holat
+  kartalari — 6 ta (Hammasi · Yangi `info` · Ko'rildi `text-3` · Suhbat `violet` · Ishga olindi `success` · Rad etildi
+  `danger` nuqtasi), ostida izoh `caption text-3` («javob kutmoqda», «13–14-oktabr»); tanlangani `brand-bg` + brend chegara.
+  Filtrlar: qidiruv «Ism yoki telefon», chiplar Yo'nalish/Filial/Tajriba, o'ngda «Ustunlar».
+- **Jadval**: Nomzod (bosh harflar doirasi `surface-2`, qalin ism, yangisida `info` nuqta, ostida telefon `caption`),
+  Yo'nalish, Tajriba («Tajribasiz» `text-2`), Sertifikat (🎖 + matn), Filial, Kelgan («11-oktabr | 21:14»), Holat (belgi +
+  ostida suhbat vaqti / ishga olingan kun / rad sababi `caption text-3`), ⋯. Ochiq qator — `brand` foni. Pastda «1–8 / 8 ta»
+  va ⓘ «Ishga olinganlar avtomatik «Xodimlar» ro'yxatiga o'tadi».
+- **Nomzod paneli** (o'ngdan, 460 px, kontent hududi ichida): avatar (bosh harflar `brand-bg`), ism, holat belgisi +
+  «Ingliz tili · 4 yil tajriba», ×. Bosqich chizig'i — 22 px doiralar: o'tgani `brand` + ✓, joriysi brend halqa + nuqta,
+  keyingisi `border-strong`; chiziqlar 2 px. Suhbat kartasi — `violet-bg`, oq kvadratda 📅, «Suhbat · 14-oktabr | 15:00»
+  qalin, joy `caption`, o'ngda «O'zgartirish» `violet`. Bo'limlar (Aloqa, Ma'lumot, Tajriba, Ish sharoiti, Rezyume) —
+  sarlavha `caption text-2`, qator: yorliq `text-2` | qiymat o'rtacha qalin; rezyume — fayl kartasi (qizil PDF belgisi, nom
+  qalin, «PDF · 240 KB», ↗). Pastda «8-oktabr | 10:05 da kelgan», «Rad etish» (`danger` chegarali), «💼 Ishga olish».
+- **Ishga olish oynasi** (markazda, 480 px): «Ishga olish», izoh «Maftuna Ismoilova · Ingliz tili · suhbatdan o'tdi»;
+  ikki ustun — Lavozim | Filial, Ish boshlash sanasi | Yo'nalish; «Oylik hisoblash usuli» segment (Oklad + foiz · Oklad ·
+  Foiz); Oklad (so'm) | Foiz (%) izohlari bilan; `info-bg` quti — «Xodimlar» ro'yxatiga qo'shilishi va oklad kunlarga
+  bo'linishi; «Bekor qilish», «✓ Ishga olish».
+- **Ochiq anketa (/ariza)**: oq yuqori chiziq — «A» belgisi (`brand`), «Akademiya o'quv markazi / Ishga qabul anketasi»
+  (o'ngda til va tungi rejim); fon `bg`; 640 px ustun: sarlavha 26 px, izoh; bosqich chizig'i (o'tgani ✓ `brand`, joriysi
+  halqa + raqam, keyingisi `border-strong` + raqam `text-3`; telefonda faqat joriy nomi); oq karta — «2. Ma'lumot va
+  tajriba» + «Ixtiyoriy savollar alohida belgilangan, qolganlari majburiy»; chiplar (✓ bilan `brand-bg`), segment
+  (tajriba), «Daraja yoki ball» yonma-yon; pastda «← Orqaga» · «2 / 4 bo'lim» · «Keyingisi →» (oxirida «Arizani yuborish»).
+- Kodda: `components/v2/cv/` — CvListV2, CvPanelV2, cvDialogs (suhbat, rad etish, ishga olish), CvAddDialogV2, CvApplyFields
+  (anketa bo'limlari va tekshiruvi — ikkala joyda), CvApplyPageV2, cvBits, cvColumns; server — `lib/cvHire.ts`,
+  `lib/cvApplyServer.ts`, `lib/hrEmployeeCreate.ts`, `planCvPatch` (lib/managementCv.ts). Rasmdan farqlar — `SAVOLLAR.md`
+  198–211.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

@@ -1046,6 +1046,78 @@ to'liqlarini ham ko'radi, ism + oy bo'yicha almashtirishi esa faqat testsiz eski
 Sarhisob «Natija kiritish»dagi chiqish tasdig'i — «Chiqish» inglizchada "Log out" chiqardi → «Saqlamasdan chiqish». Sozlamalar
 ramkasida uzun sahifa kartalari siqilib kesilardi (Imtihon fanlarida ko'rindi; Tanga qoidalarida ham shu xavf) — tuzatildi.
 
+### 13-qism — Ishga qabul (CV): nomzodlar ro'yxati, nomzod paneli, ishga olish, ochiq anketa (25.10.2026)
+
+**198. Rad etilganlar «Hammasi»da** — taxmin (17.10 qarori)
+Rasmda «Hammasi 8» rad etilganni ham sanaydi va jadvalda ko'rsatadi. 17.10.2026 qarori bo'yicha (rad etilganlar CV
+sahifasida yashirin) ular «Hammasi»da yo'q — faqat «Rad etildi» kartasi bosilganda, sababi bilan.
+
+**199. Qamrov va yon menyu sanog'i** — taxmin
+Admin — barcha filiallar (rasmdagi «barcha filiallar» va «Filial» filtri); boshqalar — navbar filiali + «istalgan filial» +
+filialsiz eski arizalar (avvalgidek). Yon menyudagi son — javob kutayotgan («Yangi») arizalar, ro'yxat bilan bir qamrovda
+(eski ko'rinishda admin uchun ham navbar filiali).
+
+**200. Holatlar** — taxmin
+Yangi → Ko'rildi (panel ochilganda o'zi, avvalgidek) → Suhbat → Ishga olindi. Rad etish — alohida yo'l (chiziqda yo'q),
+«Qayta ko'rib chiqish» bilan «Ko'rildi»ga qaytadi. Ishga olingan ariza qaytarilmaydi (xodim yaratilgan).
+
+**201. Suhbatga chaqirish — nomzodga xabar** — ochiq
+Oynada sana, vaqt, joy (sukut — nomzod tanlagan filial nomi va manzili; «istalgan filial»da — navbar filiali). Nomzodga
+xabar AVTOMATIK KETMAYDI — oynada «vaqtni telefonda kelishib oling» deb yozilgan. *Savol:* nomzodga SMS yuborilsinmi
+(har biri pullik)? *Taxmin:* hozircha yo'q.
+
+**202. Rad etish sababi** — taxmin
+Tez tanlov (5 ta: tajriba yetarli emas, talablarga mos emas, suhbatga kelmadi, o'zi rad etdi, bo'sh o'rin qolmadi) va/yoki
+o'zi yozadi; sabab majburiy — ro'yxatda holat ostida ko'rinadi (rasmdagi «Tajriba yetarli emas»). Nomzodga xabar ketmaydi.
+
+**203. Ishga olish oynasi** — taxmin
+Lavozim — Boshqaruv → Rollar (sukut: o'qituvchilik vakansiyasi → O'qituvchi; Administrator → Qabul administratori; IT →
+IT mutaxassisi; farrosh/qorovul/haydovchi → Xizmat xodimi; topilmasa tanlash shart). Filial — nomzod tanlagani («istalgan»
+bo'lsa — navbar filiali). Ish boshlash — nomzod yozgan sana (o'tib ketgan bo'lsa bugun). Yo'nalish — faqat o'qituvchida,
+faol kurslardan (nomzod fanlaridan mosi). Oylik: o'qituvchida sukut «Foiz», boshqalarda «Oklad»; foiz — son (Oylik
+foizlari darajalari ham «30»…«75» nomli). Oklad kunlarga bo'linadi, kirgan kuni ham sanaladi — oynadagi «Oktabr oyligi
+15-oktabrdan boshlab: 1 000 000 × 17/31 kun» Oylik hisobi bilan bir xil.
+
+**204. Ishga olish = «Xodim qo'shish»** — taxmin
+Xodim «Xodim qo'shish» bilan BIR yo'ldan yaratiladi: telefon band bo'lsa rad etiladi, kirish taklifi SMS bilan ketadi,
+jins ismdan taxmin (kartada tuzatiladi), rasm va tug'ilgan sana anketadan, izohda ariza raqami. Ruxsat — «Xodimlar»
+bo'limi (faqat CV ruxsati bo'lsa tugma o'chiq, sababi yozilgan). Eski ko'rinishdagi tez «Ishga olish» o'zgarmadi.
+
+**205. Panelda rasmda yo'q qatorlar** — taxmin
+Anketada bor, rasmda ko'rinmagan ma'lumot ham chiqadi: Ta'lim darajasi, Lavozim (o'qituvchilik vakansiyasida), Bandlik,
+Ish boshlash, Kutilayotgan oylik, sertifikat/diplom nusxalari, «Qo'shimcha» (Nega Akademiya, qayerdan bildi, ariza
+raqami, kim kiritgan, eski anketa javoblari) va Admin izohi (faqat admin, avvalgidek). Tajriba anketada oraliq bilan
+(«3–5 yil»), rasmda aniq son («4 yil») — anketa savoli shunday.
+
+**206. Ochiq anketa (/ariza) — maydonlar** — taxmin
+4 bo'lim, bittadan («Keyingisi →» bo'limni tekshiradi). Rasmda 3- va 4-bo'lim ko'rsatilmagan — server talab qiladiganlari
+qo'shildi: Ta'lim darajasi (2-bo'lim boshida), Filial, Bandlik turi, Qachondan boshlay oladi, Kutilayotgan oylik, Nega
+Akademiya. Rasmdagidek majburiy: oliy ta'limda mutaxassislik va bitirgan yil, «Sertifikatingiz bormi?» («Yo'q» ham javob;
+bor bo'lsa daraja/ball). Ixtiyoriy: Telegram, oldingi ish joyi, ish kunlari va soatlari, yosh guruhlari, CV fayli, hujjatlar,
+qayerdan bildi. Rasm va rozilik — majburiy (avvalgidek). Qoralama brauzerda saqlanadi (bosqich ham). Sarlavha vakansiyaga
+qarab: «O'qituvchilikka ariza» / «Administrator lavozimiga ariza» / tanlanmagan — «Ishga ariza».
+
+**207. /ariza — kim yangisini ko'radi** — ochiq (qaror kerak)
+Nomzodda CRM cookie'si yo'q, shuning uchun almashtirgich yoqilgan serverda (prod'da `UI_V2_SWITCH=on`) deploy qilingach
+HAMMA nomzod yangi anketani ko'radi; eskisi — `/ariza?classic=1`. *Savol:* darhol hammaga ochilsinmi?
+
+**208. «Nomzod qo'shish»** — taxmin
+Rasmda alohida oyna yo'q: ochiq anketaning o'sha 4 bo'limi o'ngdan chiqadigan oynada bitta varaqda (qog'oz CV'dan tez
+to'ldirish). Rasm, rozilik, mutaxassislik, bitirgan yil, sertifikat — ixtiyoriy; kim kiritgani saqlanadi. Eski «Ishga
+qabul anketasi» modali eski ko'rinishda qoldi.
+
+**209. Fanlar** — taxmin
+Rasmdagi 11 fan + bazadagi arizalarda uchragan Koreys, Turk, Nemis tillari; bir nechtasi tanlanadi. Eski ko'rinish va
+Google Sheets uchun «fan» maydoni — vergul bilan qo'shilgani.
+
+**210. Google Sheets va eski ko'rinish** — taxmin
+Sheets ulangan bo'lsa (shu brauzerda, eski sahifada sozlangan) holat o'zgarishi va «Nomzod qo'shish» avvalgidek jadvalga ham
+yoziladi, «Anketa havolasini nusxalash» manzilni olib yuradi. Sheets sozlamasi — ⋯ → «Eski ko'rinishda ochish».
+
+**211. «Namuna» va ustunlar** — qoida
+«Namuna» — dizayner izohi, ko'rsatilmaydi. Jadvalda rasmdagi 7 ustun; eski sahifadagi qolganlari (Lavozim, Bandlik,
+Kutilayotgan oylik, Ta'lim, Ish boshlash, Manba, Admin izohi) — «Ustunlar»da yashirin.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

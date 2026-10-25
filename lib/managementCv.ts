@@ -1,3 +1,4 @@
+import { branchPool } from "./branchPools";
 import { toUz } from "./uzTime";
 // Boshqaruv → Ishga qabul (CV) uchun umumiy tip. API route'lari va klient
 // komponentlar (CRM ro'yxati, anketa modali, ommaviy /ariza sahifasi) shuni
@@ -83,6 +84,33 @@ export interface CvApplication {
   submitted: string;
   /** "Ishga olish" bosilganda yaratilgan `hr_employees.id`. */
   hiredEmpId?: number;
+  // ── 25.10.2026 (13-qism, yangi anketa va v2 sahifa) ──
+  /** Mutaxassislik (oliy ta'lim yo'nalishi). */
+  specialty?: string;
+  /** Bitirgan (o'qiyotgan bo'lsa — bitiradigan) yili, "2020". */
+  gradYear?: string;
+  /** «Sertifikatingiz bormi?» — CV_CERT_TYPES. */
+  certType?: string;
+  /** Sertifikat darajasi yoki bali — "C1", "7.0". */
+  certLevel?: string;
+  /** Dars bera oladigan fanlar (bir nechta); `subject` — shularning qo'shilgani. */
+  subjects?: string[];
+  /** Ish kunlari — CV_WORK_DAYS. */
+  workDays?: string;
+  /** Ish vaqti — "14:00–18:00". */
+  workTime?: string;
+  /** Suhbat vaqti — "YYYY-MM-DDTHH:mm" (Toshkent vaqti). */
+  interviewAt?: string;
+  /** Suhbat joyi — filial va manzil. */
+  interviewPlace?: string;
+  /** Rad etish sababi. */
+  rejectReason?: string;
+  /** Holat oxirgi o'zgargan vaqt (ISO) va kim o'zgartirgani. */
+  statusAt?: string;
+  statusBy?: string;
+  /** Ishga olingan kun va ish boshlash sanasi ("YYYY-MM-DD"). */
+  hiredAt?: string;
+  hiredStart?: string;
   /**
    * Admin izohi (27.09.2026) — CV ko'rib chiqilgach nomzod bilan nima
    * gaplashilgani. FAQAT ADMIN (`users.role === "admin"`) yozadi va ko'radi:
@@ -94,6 +122,15 @@ export interface CvApplication {
   adminNoteBy?: string;
   /** Izoh oxirgi o'zgargan vaqt (ISO). */
   adminNoteAt?: string;
+}
+
+/**
+ * FILIAL QAMROVI (19.09.2026): navbardagi filial (1+2 hovuzi bilan) arizalari, «qaysi filial
+ * bo'lsa ham» (`branchId: null`) va filial yozilmagan eski arizalar — ular hech kimniki emas,
+ * yo'qolib qolmasin. Ro'yxat (app/api/management-cv) va yon menyu sanog'i shu bitta shartdan.
+ */
+export function cvBranchFilter(branchId: number): Record<string, unknown> {
+  return { $or: [{ branchId: { $in: [...branchPool(branchId)] } }, { branchId: null }, { branchId: { $exists: false } }] };
 }
 
 /** Admin izohining eng uzun hajmi (belgi). */
@@ -131,6 +168,61 @@ export const CV_TEXT_FIELDS = [
   "results",
   "extra",
 ] as const;
+
+/** «Sertifikat» ustuni: yangi anketada tur + daraja («CEFR C1»), eskisida erkin matn. */
+export function cvCertLabel(cv: Pick<CvApplication, "certType" | "certLevel" | "achievements">): string {
+  if (cv.certType) return cv.certType === "Yo'q" ? "" : `${cv.certType} ${cv.certLevel ?? ""}`.trim();
+  return (cv.achievements || "").trim();
+}
+
+/** Tajriba yorlig'i: «Tajribam yo'q» → «Tajribasiz», «5 yildan ko'p» → «5+ yil». */
+export function cvExpLabel(exp: string): string {
+  const e = (exp || "").trim();
+  if (e === "Tajribam yo'q") return "Tajribasiz";
+  if (e === "5 yildan ko'p") return "5+ yil";
+  return e;
+}
+
+/** Suhbat vaqti formati — "2026-10-14T15:00". */
+export const CV_INTERVIEW_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d$/;
+
+export interface CvPatchBody {
+  status?: unknown;
+  interviewAt?: unknown;
+  interviewPlace?: unknown;
+  rejectReason?: unknown;
+}
+
+export type CvPatchPlan = { ok: false; error: string; status: number } | { ok: true; set: Record<string, unknown>; nextStatus: CvStatus | null };
+
+/**
+ * PATCH /api/management-cv/:id tanasi → `$set` (25.10.2026, 13-qism): holat, suhbat vaqti va joyi,
+ * rad etish sababi. `status` siz `interviewAt` — suhbat vaqtini o'zgartirish (faqat «Suhbat»
+ * holatida). `statusAt`/`statusBy` va eski tez «Ishga olish» (xodim yaratish) — route'da.
+ */
+export function planCvPatch(current: Pick<CvApplication, "status">, body: CvPatchBody): CvPatchPlan {
+  const place = () => String(body.interviewPlace ?? "").trim().slice(0, 160);
+  const at = () => String(body.interviewAt ?? "").trim();
+  if (body.status === undefined && body.interviewAt !== undefined) {
+    if (current.status !== "interview") return { ok: false, error: "Ariza suhbat bosqichida emas", status: 409 };
+    if (!CV_INTERVIEW_RE.test(at())) return { ok: false, error: "Suhbat sanasi va vaqtini tanlang", status: 400 };
+    return { ok: true, set: { interviewAt: at(), interviewPlace: place() }, nextStatus: null };
+  }
+  if (!isCvStatus(body.status)) return { ok: false, error: "Noto'g'ri holat", status: 400 };
+  const status = body.status;
+  const set: Record<string, unknown> = { status };
+  if (status === "interview" && body.interviewAt !== undefined) {
+    if (!CV_INTERVIEW_RE.test(at())) return { ok: false, error: "Suhbat sanasi va vaqtini tanlang", status: 400 };
+    set.interviewAt = at();
+    set.interviewPlace = place();
+  }
+  if (status === "rejected" && body.rejectReason !== undefined) {
+    const reason = String(body.rejectReason ?? "").trim();
+    if (reason.length > 300) return { ok: false, error: "Sabab juda uzun", status: 422 };
+    set.rejectReason = reason;
+  }
+  return { ok: true, set, nextStatus: status };
+}
 
 /** Yangi anketaning ixtiyoriy matn maydonlari (JSON'dan ham, Sheets'dan ham kelishi mumkin). */
 export const CV_EXTRA_TEXT_FIELDS = ["ref", "firstName", "lastName", "telegram", "photoUrl", "branchName", "load", "edu", "source"] as const;

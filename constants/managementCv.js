@@ -42,6 +42,41 @@ export const CV_SUBJECT_GROUPS = [
   },
 ];
 
+// ── YANGI ANKETA (v2, 25.10.2026 — rasm «Ochiq anketa (/ariza)», 13-qism) ──────────────
+// Ma'lumotlar bo'lagi tuzilgan: sertifikat turi va darajasi, bir nechta fan, ish kunlari va
+// vaqti, yosh guruhlari. Eski maydonlar ham to'ldiriladi (achievements, subject, levels) —
+// eski ko'rinish, Sheets va «Ishga olish» ikkala avlodni bitta kod bilan o'qisin.
+
+/** «Sertifikatingiz bormi?» — bitta tanlov. */
+export const CV_CERT_TYPES = ["IELTS", "CEFR", "Milliy sertifikat", "Yo'q"];
+
+/** «Qaysi fandan dars bera olasiz?» — bir nechta tanlov (rasmdagi 11 ta + bazada uchragan tillar). */
+export const CV_TEACH_SUBJECTS = [
+  "Ingliz tili",
+  "Rus tili",
+  "Arab tili",
+  "Matematika",
+  "Ona tili",
+  "Biologiya",
+  "Kimyo",
+  "Fizika",
+  "Tarix",
+  "Huquq",
+  "Geografiya",
+  "Koreys tili",
+  "Turk tili",
+  "Nemis tili",
+];
+
+/** Qaysi kunlari ishlay oladi. */
+export const CV_WORK_DAYS = ["Toq kunlar", "Juft kunlar", "Har kuni", "Farqi yo'q"];
+
+/** Qaysi yoshdagi o'quvchilar bilan ishlay oladi (bir nechta). */
+export const CV_AGE_GROUPS = ["1–4-sinf", "5–11-sinf", "Abituriyentlar", "IELTS / CEFR tayyorlov", "Kattalar"];
+
+/** Rad etish sabablari (tez tanlov; o'zi yozsa ham bo'ladi). */
+export const CV_REJECT_REASONS = ["Tajriba yetarli emas", "Talablarga mos emas", "Suhbatga kelmadi", "Nomzod o'zi rad etdi", "Bo'sh o'rin qolmadi"];
+
 /** Bandlik turi (radio tugmalar). */
 export const CV_LOADS = ["To'liq stavka", "Yarim stavka", "Soatbay", "Farqi yo'q"];
 

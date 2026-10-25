@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
-import { CV_NOTE_MAX, cvFromRow, isCvStatus, type CvApplication } from "@/lib/managementCv";
+import { CV_NOTE_MAX, cvFromRow, planCvPatch, type CvApplication, type CvPatchBody } from "@/lib/managementCv";
+import { currentAuthorName } from "@/lib/currentEmployee";
 import type { HrEmployee } from "@/lib/hrEmployees";
-import { toUz } from "@/lib/uzTime";
+import { toUz, uzDateIso } from "@/lib/uzTime";
 import { getBranchScope } from "@/lib/branchScope";
 import { requireAdmin } from "@/lib/adminOnly";
 
 // PATCH /api/management-cv/:id — arizaning holatini o'zgartiradi.
 // `status: "accepted"` bo'lsa — referensdagi `cvHire()` kabi nomzod
-// Boshqaruv → Xodimlar ro'yxatiga (`hr_employees`) ham qo'shiladi.
+// Boshqaruv → Xodimlar ro'yxatiga (`hr_employees`) ham qo'shiladi (ESKI
+// ko'rinish; yangisi — POST …/:id/hire, oklad/foiz/lavozim bilan).
 // `{ adminNote }` — admin izohi (faqat admin, `saveAdminNote`).
+// 25.10.2026 (13-qism): `status: "interview"` + `interviewAt` ("YYYY-MM-DDTHH:mm") va
+// `interviewPlace`; `status` siz faqat shu ikkisi — suhbat vaqtini o'zgartirish;
+// `status: "rejected"` + `rejectReason` (tekshiruv — lib/managementCv.ts `planCvPatch`).
+// Holat o'zgarsa `statusAt` / `statusBy`.
 
 function fmtNow(raw: Date): string {
   const d = toUz(raw);
@@ -91,17 +97,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Noto'g'ri id" }, { status: 400 });
   }
 
-  let body: { status?: unknown; adminNote?: unknown };
+  let body: CvPatchBody & { adminNote?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   if (body.adminNote !== undefined) return saveAdminNote(cvId, body.adminNote);
-  if (!isCvStatus(body.status)) {
-    return NextResponse.json({ ok: false, error: "Noto'g'ri holat" }, { status: 400 });
-  }
-  const status = body.status;
 
   const db = await ensureIndexes();
   const col = db.collection("cv_applications");
@@ -110,12 +113,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "Ariza topilmadi" }, { status: 404 });
   }
   const current = row as unknown as CvApplication;
+  const plan = planCvPatch(current, body);
+  if (!plan.ok) return NextResponse.json({ ok: false, error: plan.error }, { status: plan.status });
 
-  const set: Record<string, unknown> = { status };
+  const set = plan.set;
+  if (plan.nextStatus && plan.nextStatus !== current.status) {
+    set.statusAt = new Date().toISOString();
+    set.statusBy = await currentAuthorName();
+  }
   let employee: HrEmployee | null = null;
 
   // "Ishga olish" faqat bir marta — takror bosilsa yangi xodim yaratilmaydi.
-  if (status === "accepted" && current.status !== "accepted") {
+  if (plan.nextStatus === "accepted" && current.status !== "accepted") {
     const scope = await getBranchScope();
     if (!scope) {
       return NextResponse.json({ ok: false, error: "Sessiya topilmadi" }, { status: 401 });
@@ -124,6 +133,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // ham" yoki eski ariza — tasdiqlayotgan odamning joriy filiali.
     employee = await hire(db, current, current.branchId ?? scope.branchId);
     set.hiredEmpId = employee.id;
+    set.hiredAt = uzDateIso();
   }
 
   await col.updateOne({ id: cvId }, { $set: set });

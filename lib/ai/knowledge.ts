@@ -140,6 +140,18 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     ].join("\n"),
   },
   {
+    id: "hiring",
+    title: "Ishga qabul (CV)",
+    keywords: ["ishga qabul", "cv", "rezyume", "nomzod", "anketa", "suhbat", "ishga olish", "vakansiya", "ariza"],
+    pages: ["/management-cv"],
+    text: [
+      "Boshqaruv → Ishga qabul (CV): nomzodlar ochiq anketa (/ariza havolasi) orqali keladi — «Anketa havolasini nusxalash» bilan e'lon yoki Telegram kanalga qo'yiladi. Xodimning o'zi kiritishi — «Nomzod qo'shish».",
+      "Holatlar: Yangi → Ko'rildi (nomzod ochilganda o'zi) → Suhbat → Ishga olindi. «Rad etish» — sababi bilan; «Qayta ko'rib chiqish» bilan qaytariladi.",
+      "«Suhbatga chaqirish» — sana, vaqt va joy. Nomzodga xabar avtomatik ketmaydi — vaqt telefonda kelishiladi.",
+      "«Ishga olish» — lavozim, filial, ish boshlash sanasi, yo'nalish (o'qituvchida) va oylik (oklad, foiz yoki ikkalasi). Nomzod «Xodimlar» ro'yxatiga qo'shiladi, oklad ish boshlagan kundan kunlarga bo'lib hisoblanadi, kirish taklifi SMS bilan ketadi. Buning uchun «Xodimlar» bo'limiga ruxsat kerak.",
+    ].join("\n"),
+  },
+  {
     id: "roles",
     title: "Rollar va ruxsatlar",
     keywords: ["rol", "ruxsat", "huquq", "ko'rinadigan bo'limlar", "cheklash", "dostup"],

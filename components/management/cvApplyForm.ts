@@ -43,13 +43,16 @@ export interface ApplyBranch {
 
 export type TextKey =
   | "firstName" | "lastName" | "birth" | "phone" | "telegram" | "city" | "role" | "subject" | "branch"
-  | "load" | "startDate" | "salary" | "edu" | "exp" | "school" | "lastJob" | "certText" | "about" | "source";
+  | "load" | "startDate" | "salary" | "edu" | "exp" | "school" | "lastJob" | "certText" | "about" | "source"
+  // Yangi anketa (v2, 25.10.2026) — eski formalar bularni to'ldirmaydi (bo'sh ketadi, server e'tiborsiz).
+  | "specialty" | "gradYear" | "certType" | "certLevel" | "workDays" | "workFrom" | "workTo";
 
 export type Values = Record<TextKey, string>;
 
 export const EMPTY_VALUES: Values = {
   firstName: "", lastName: "", birth: "", phone: "", telegram: "", city: "", role: "", subject: "", branch: "",
   load: "", startDate: "", salary: "", edu: "", exp: "", school: "", lastJob: "", certText: "", about: "", source: "",
+  specialty: "", gradYear: "", certType: "", certLevel: "", workDays: "", workFrom: "", workTo: "",
 };
 
 /** Majburiy matn/tanlov maydonlari — o'lchagich va tekshiruv shu ro'yxatdan (dizayndagi `required`). */
@@ -140,6 +143,8 @@ export interface CvApplyFormOptions {
   honeypot?: string;
   /** Xato maydoniga o'tish uchun DOM id prefiksi: `${idPrefix}${kalit}`. */
   idPrefix?: string;
+  /** Yangi anketa: fan bir nechta (`subjects`), eski — bitta (`subject`). */
+  multiSubject?: boolean;
 }
 
 export interface CvApplySuccess {
@@ -150,7 +155,7 @@ export interface CvApplySuccess {
 }
 
 export function useCvApplyForm(opts: CvApplyFormOptions) {
-  const { branches, photoRequired, consentRequired, sheetsUrl, honeypot = "", idPrefix = "ar-" } = opts;
+  const { branches, photoRequired, consentRequired, sheetsUrl, honeypot = "", idPrefix = "ar-", multiSubject = false } = opts;
   const { t } = useT();
   const [v, setV] = useState<Values>(() => ({ ...EMPTY_VALUES, ...(opts.initial || {}) }));
   const [consent, setConsent] = useState(false);
@@ -164,6 +169,20 @@ export function useCvApplyForm(opts: CvApplyFormOptions) {
   const [consentBad, setConsentBad] = useState(false);
   const [sendErr, setSendErr] = useState("");
   const [sending, setSending] = useState(false);
+  // Yangi anketa: bir nechta fan va yosh guruhlari (chiplar).
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [ageGroups, setAgeGroups] = useState<string[]>([]);
+  const toggleIn = (list: string[], x: string) => (list.includes(x) ? list.filter((y) => y !== x) : [...list, x]);
+  const toggleSubject = useCallback((x: string) => {
+    setSubjects((l) => toggleIn(l, x));
+    setBad((b) => {
+      if (!b.has("subject")) return b;
+      const next = new Set(b);
+      next.delete("subject");
+      return next;
+    });
+  }, []);
+  const toggleAgeGroup = useCallback((x: string) => setAgeGroups((l) => toggleIn(l, x)), []);
 
   const photoInput = useRef<HTMLInputElement>(null);
   const cvInput = useRef<HTMLInputElement>(null);
@@ -339,7 +358,7 @@ export function useCvApplyForm(opts: CvApplyFormOptions) {
       if (!fieldOk(k)) mark(k);
     }
     if (v.startDate && v.startDate < today) mark("startDate");
-    if (teaching && !v.subject) mark("subject");
+    if (teaching && (multiSubject ? subjects.length === 0 : !v.subject)) mark("subject");
     if (!v.load) mark("load1");
     if (consentRequired) {
       setConsentBad(!consent);
@@ -365,6 +384,10 @@ export function useCvApplyForm(opts: CvApplyFormOptions) {
     try {
       const fd = new FormData();
       for (const k of Object.keys(v) as TextKey[]) fd.append(k, v[k]);
+      // Yangi anketa: fanlar, yosh guruhlari va ish vaqti («14:00–18:00»).
+      if (multiSubject && teaching) for (const x of subjects) fd.append("subjects", x);
+      for (const x of ageGroups) fd.append("levels", x);
+      if (v.workFrom && v.workTo) fd.append("workTime", `${v.workFrom}–${v.workTo}`);
       fd.append("consent", consent ? "on" : "");
       fd.append("website", honeypot);
       fd.append("sid", sid);
@@ -409,6 +432,8 @@ export function useCvApplyForm(opts: CvApplyFormOptions) {
     setBad(new Set());
     setBirthErr("");
     setSendErr("");
+    setSubjects([]);
+    setAgeGroups([]);
     if (cvInput.current) cvInput.current.value = "";
     if (docsInput.current) docsInput.current.value = "";
   }
@@ -419,7 +444,8 @@ export function useCvApplyForm(opts: CvApplyFormOptions) {
     consent, setConsent, consentBad, setConsentBad,
     photo, setPhoto, photoErr, setPhotoErr,
     cvFile, docs, certErr,
-    bad, birthErr, sendErr, setSendErr, sending,
+    bad, setBad, birthErr, sendErr, setSendErr, sending,
+    subjects, setSubjects, toggleSubject, ageGroups, setAgeGroups, toggleAgeGroup,
     teaching, selectedBranch, branchLabel, branchTel, today, pct, fieldOk,
     roleOptions, subjectOptions, branchOptions, eduOptions, expOptions, sourceOptions,
     photoInput, cvInput, docsInput,

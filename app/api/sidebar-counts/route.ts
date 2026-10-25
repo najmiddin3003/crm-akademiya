@@ -6,6 +6,8 @@ import { getBranchScope, withBranch } from "@/lib/branchScope";
 import { currentAuthorName } from "@/lib/currentEmployee";
 import { withLeadScope } from "@/lib/leadScope";
 import { taskBadgeCount } from "@/lib/staffTasksServer";
+import { cvBranchFilter } from "@/lib/managementCv";
+import { currentUiVersion } from "@/lib/uiVersionServer";
 
 // SIDEBAR YONIDAGI SONLAR.
 //
@@ -66,6 +68,14 @@ export async function GET() {
   // berilgan faol topshiriqlar + rahbarda tasdiq kutayotganlar. Sahifadagi
   // qamrov bilan bir xil (lib/staffTasksServer.ts → taskScope).
   jobs.push(taskBadgeCount(db, me).then((n) => { counts.tasks = n; }));
+  // /management-cv — javob kutayotgan («Yangi») arizalar (25.10.2026). Sanoq sahifadagi ro'yxat
+  // bilan BIR qamrovda (filial qamrovi tuzog'i): yangi ko'rinishda admin — barcha filiallar
+  // (GET ?all=1), eski ko'rinish va boshqalar — navbar filiali + «istalgan» + eski arizalar.
+  if (can("/management-cv")) {
+    const allBranches = scope.isAdmin && (await currentUiVersion()) === "v2";
+    const cvFilter = allBranches ? { status: "new" } : { $and: [cvBranchFilter(scope.branchId), { status: "new" }] };
+    jobs.push(db.collection("cv_applications").countDocuments(cvFilter).then((n) => { counts.cvNew = n; }));
+  }
   await Promise.all(jobs);
 
   return NextResponse.json({ ok: true, counts });
