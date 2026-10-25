@@ -678,7 +678,7 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   o'rtachasi (chiziq + foiz); qator bosilsa o'ngdan tafsilot (taqqoslash va o'quvchilar natijasi).
 - Kodda: `components/v2/imtihon/` — ImtihonV2 (manzil: `?kiritish=1&oy=`, `?tab=uzbmb`), ExamEntryV2, ExamSideCard,
   SarhisobListV2, SarhisobDetailV2, examBits (ImtihonHeader, ScoreBar, CompareRow, examBand). Ro'yxat, oy nomi va CSV
-  eski tab bilan bitta: `components/imtihon/sarhisobCore.ts`. UzBMB — eski ko'rinish. Rasmdan farqlar —
+  eski tab bilan bitta: `components/imtihon/sarhisobCore.ts`. UzBMB — «Imtihon → UzBMB» bo'limi (12-qism). Rasmdan farqlar —
   `SAVOLLAR.md` 139–145, 148.
 
 ## Topshiriqlar (rasm «Topshiriqlar · Rahbar», 23.10.2026)
@@ -807,6 +807,39 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   …/approve, …/reject, …/history, POST /api/gamification/shop/orders/:id/handover). Eski oynalar (sovg'a formasi,
   berish, qaytarish, sabab formalari, o'quvchi profili) qayta ishlatilgan. `?classic=1` — eski sahifalar. Rasmdan
   farqlar — `SAVOLLAR.md` 172–184.
+
+## Imtihon → UzBMB (rasmlar «UzBMB · Natija kiritish», «Natijalar va taqqoslash», «Excel eksport», «Sozlamalar · Imtihon fanlari», 25.10.2026)
+
+- **Sarlavha** (ikkala ko'rinishda): yo'l «UzBMB › Natija kiritish» / «UzBMB › Natijalar», «Imtihon», o'ngda «⤒ Excel'dan
+  yuklash» va «⤓ Eksport ⌄» (ikkinchi darajali); tablar «Sarhisob | UzBMB».
+- **Natija kiritish — tanlovlar** (`surface-2` kartochka, 5 ustun): Test, Sana («10-oktabr ⌄»), Guruh, Yo'nalish (yorliq
+  yonida «avto» — `brand-bg`), «Maks. ball» qutisi — «189» qalin + «= 93 + 63 + 33» `caption text-3`. Yo'nalish ro'yxati —
+  ikki ustun (1-blok fani | 2-blok fani), band qilingan fan ikkinchi ustunda `text-3`.
+- **Jadval**: sarlavha uch qatorli — «1-blok» `caption text-3`, fan nomi qalin, «30 × 3,1» `caption text-3`; Jami ball — «189
+  dan». Katak — 28 px maydon (son qalin, o'ngda «/30» `text-3`), ostida «= 74,4 ball» (11 px `text-3`). Sertifikat — maydon
+  `brand-bg` + brend chegara, «93,0 ball», ostida 🎖 «Sertifikat» `brand-text`; belgi maydon ichida faqat fokus/hover'da.
+  Jami — qalin + 72 px `series-1` chiziq; ✓ `success`; fokusdagi qator `brand-bg`, o'ngda «[Tab]», jami o'rnida
+  «kiritilmoqda…»; qisman — «to'liq emas» `warning`; bo'sh — «kiritilmagan». Pastda `surface-2`: «6 / 8 kiritildi • Guruh
+  o'rtachasi 145,5 ball», izoh 🎖 «Sertifikati bor fan…», «Bekor qilish», «✓ Natijalarni saqlash».
+- **Natijalar**: Test («… №3 · 10-oktabr»), Guruh, o'ngda «✎ Natija kiritish». Jadval: O'rin (1 — `warning-bg` doira, qolgani
+  oddiy son), O'quvchi (bosh harflar doirasi `surface-2` + qalin ism), 1-blok /93 (sertifikat belgisi `brand-text`),
+  2-blok /63, Majburiy /33, Jami /189 (qalin + 84 px `series-1` chiziq), «№2 testdan» (↑ `success` / ↓ `danger`, yo'q —
+  «—»); to'liq emaslar pastda — «—» va «natija to'liq kiritilmagan» `text-3`.
+- **Taqqoslash** (o'ngda, 300 px): «o'rtacha ball, 189 dan»; «Bu guruh · №3» — `series-1`, filial va oldingi test — `track`
+  (8 px chiziq, izi `hover`); «Fanlar bo'yicha o'zlashtirish» — 6 px chiziq `brand` (izi `brand-bg`), eng pasti `warning`;
+  ostida `warning-bg` quti «⚠ Kimyo eng past — 69%. Keyingi testgacha shu fanga e'tibor.»; «Ball oralig'i» — uch katak
+  `surface-2`.
+- **Eksport paneli** (tugma ostida, 340 px): «Natijalarni yuklab olish» + ×; ikki radio kartochka (tanlangani brend chegara +
+  `brand-bg`), ikki katakcha, to'liq enli asosiy tugma «Excel (.xlsx) yuklab olish».
+- **Sozlamalar · Imtihon fanlari**: sarlavha «O'quv» / «Imtihon fanlari» / izoh, o'ngda «+ Fan qo'shish». «UzBMB ball
+  tuzilishi» — Bo'lim (nomi qalin + izoh `caption`) | Savollar | Koeffitsiyent (64 px maydonlar) | Maks. ball (o'ngda,
+  «33 · 3 × 11»); «Jami 189»; o'zgarsa kartochka ostida `surface-2` qator «O'zgarish saqlanmagan» + «Bekor qilish» /
+  «Saqlash». «Fanlar» — Fan (majburiylarda 🔒), Qayerda (teg `surface-2` + chegara: «Majburiy», «Majburiy · blokda ham»,
+  «Blok fani»), Holat (nuqta + «Faol»), ✎ ⋯; uzuq chegarali «+ Yangi fan qo'shish»; ostida 🎖 izoh.
+- Kodda: `components/v2/imtihon/uzbmb/` — UzbmbV2 (manzil `?tab=uzbmb&test=&guruh=&rejim=kiritish`, `&eski=1` — eski
+  oyna), UbEntry, UbResults, UbSideCard, ubExport, ubDialogs (test, o'quvchi qo'shish, Excel'dan yuklash), ubPickers,
+  ubCore; sozlama — `components/v2/settings/ExamSubjectsV2.tsx`; hisob — `lib/uzbmb.ts`, server — `lib/uzbmbServer.ts`.
+  Rasmdan farqlar — `SAVOLLAR.md` 185–197.
 
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 

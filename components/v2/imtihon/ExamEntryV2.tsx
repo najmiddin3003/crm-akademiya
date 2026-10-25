@@ -793,7 +793,7 @@ export default function ExamEntryV2({
         <V2Confirm
           title={t("Saqlanmagan natijalar bor")}
           body={t("Kiritilgan natijalar saqlanmaydi. Chiqib ketasizmi?")}
-          confirmLabel={t("Chiqish")}
+          confirmLabel={t("Saqlamasdan chiqish")}
           cancelLabel={t("Davom etish")}
           onCancel={() => setAskLeave(false)}
           onConfirm={() => {

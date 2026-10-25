@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useT } from "@/components/shared/Language";
 import { useStudents } from "@/hooks/useStudents";
 import UzbmbView from "@/components/imtihon/UzbmbView";
 import { useGroupExams } from "@/components/imtihon/sarhisobCore";
@@ -10,22 +11,39 @@ import type { GroupExam } from "@/lib/imtihon";
 import ExamEntryV2 from "./ExamEntryV2";
 import SarhisobListV2 from "./SarhisobListV2";
 import { ImtihonHeader, type ImtihonTab } from "./examBits";
+import UzbmbV2 from "./uzbmb/UzbmbV2";
 
 // YANGI VERSIYA — IMTIHON (/imtihon). Manzil:
 //   /imtihon                — Sarhisob ro'yxati (SarhisobListV2; rasmi kelmagan);
 //   /imtihon?kiritish=1     — «Natija kiritish» (ExamEntryV2; rasm «Sarhisob · Natija
 //                             kiritish», 23.10.2026), `&oy=YYYY-MM` — qaysi oy uchun;
-//   /imtihon?tab=uzbmb      — UzBMB (eski ko'rinish, rasmi kelmagan).
+//   /imtihon?tab=uzbmb      — UzBMB (uzbmb/UzbmbV2: natijalar, `&rejim=kiritish` — natija kiritish;
+//                             12-qism, 25.10.2026); `&eski=1` — testga bog'lanmagan eski natijalar
+//                             (25.10.2026 gacha oyma-oy yozilgan, eski ko'rinishda).
 // Sarhisob qismi UzBMB ga o'tganda ham DOM'da qoladi (yashirin) — kiritilayotgan
 // natijalar yo'qolmaydi; UzBMB birinchi ochilganda yuklanadi va keyin qoladi.
 // Saqlangan sarhisoblar ikkala ko'rinishga bitta manbadan (sarhisobCore.useGroupExams).
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-/** UzBMB — o'quvchi ismlari faqat shu tab ochilganda yuklanadi. */
-function UzbmbTab() {
+/** Eski UzBMB oynasi (testsiz yozuvlar) — o'quvchi ismlari faqat shu ochilganda yuklanadi. */
+function UzbmbLegacy() {
+  const { t } = useT();
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
   const { names } = useStudents({ light: true });
-  return <UzbmbView pupilNames={names} />;
+  const back = () => {
+    const q = new URLSearchParams(sp.toString());
+    q.delete("eski");
+    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
+  };
+  return (
+    <>
+      <ImtihonHeader tab="uzbmb" crumbs={[{ label: "UzBMB", onClick: back }, { label: t("Eski natijalar") }]} />
+      <UzbmbView pupilNames={names} />
+    </>
+  );
 }
 
 export default function ImtihonV2() {
@@ -33,6 +51,7 @@ export default function ImtihonV2() {
   const pathname = usePathname();
   const sp = useSearchParams();
   const tab: ImtihonTab = sp.get("tab") === "uzbmb" ? "uzbmb" : "sarhisob";
+  const legacy = sp.get("eski") === "1";
   const entry = sp.get("kiritish") === "1";
   const oy = sp.get("oy");
   const month = oy && MONTH_RE.test(oy) ? oy : null;
@@ -61,10 +80,7 @@ export default function ImtihonV2() {
         )}
       </div>
       {uzbmbSeen && (
-        <div className={tab === "uzbmb" ? "flex flex-col gap-4" : "hidden"}>
-          <ImtihonHeader tab="uzbmb" />
-          <UzbmbTab />
-        </div>
+        <div className={tab === "uzbmb" ? "flex flex-col gap-4" : "hidden"}>{legacy ? <UzbmbLegacy /> : <UzbmbV2 />}</div>
       )}
     </div>
   );

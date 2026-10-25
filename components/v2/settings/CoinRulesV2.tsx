@@ -213,7 +213,7 @@ export default function CoinRulesV2() {
   );
 
   return (
-    <div className="flex min-h-full flex-col gap-4 p-4 sm:p-6 lg:px-8">
+    <div className="flex min-h-full shrink-0 flex-col gap-4 p-4 sm:p-6 lg:px-8">
       {/* 1. Sarlavha */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 max-w-[44rem]">

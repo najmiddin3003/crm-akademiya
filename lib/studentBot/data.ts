@@ -300,8 +300,12 @@ export async function loadExams(db: Db, pupil: Pupil): Promise<ExamsView> {
   const [monthly, uzbmb] = await Promise.all([
     db.collection("monthly_exams").find({ student: rx }, { projection: { _id: 0 } })
       .sort({ month: -1 }).limit(12).toArray(),
-    db.collection("uzbmb_exams").find({ student: rx }, { projection: { _id: 0 } })
-      .sort({ month: -1 }).limit(12).toArray(),
+    // 25.10.2026 (12-qism): yangi natijalarda `pupilId` bor — ism o'zgarsa ham topiladi, ismdoshniki
+    // esa chiqmaydi; ism bo'yicha faqat testsiz eski yozuvlar. To'liq kiritilmagani ko'rsatilmaydi.
+    db.collection("uzbmb_exams").find(
+      { $or: [{ pupilId: pupil.id }, { pupilId: { $exists: false }, student: rx }], complete: { $ne: false } },
+      { projection: { _id: 0 } },
+    ).sort({ month: -1, date: -1, id: -1 }).limit(12).toArray(),
   ]);
 
   return {

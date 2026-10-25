@@ -286,6 +286,15 @@ async function createAllIndexes(db: Db): Promise<void> {
   tasks.push(db.collection("monthly_exams").createIndex({ month: 1 }));
   tasks.push(db.collection("uzbmb_exams").createIndex({ id: 1 }, { unique: true }));
   tasks.push(db.collection("uzbmb_exams").createIndex({ month: 1 }));
+  // UzBMB (12-qism, 25.10.2026): test × o'quvchi — bitta natija (eski, testsiz yozuvlar kirmaydi);
+  // o'quvchi tarixi va bot pupilId bo'yicha o'qiydi. Testlar va sozlama — lib/uzbmbServer.ts.
+  tasks.push(
+    db.collection("uzbmb_exams").createIndex({ testId: 1, pupilId: 1 }, { unique: true, partialFilterExpression: { testId: { $exists: true } } }),
+  );
+  tasks.push(db.collection("uzbmb_exams").createIndex({ pupilId: 1 }, { sparse: true }));
+  tasks.push(db.collection("uzbmb_tests").createIndex({ id: 1 }, { unique: true }));
+  tasks.push(db.collection("uzbmb_tests").createIndex({ branchId: 1, no: -1 }));
+  tasks.push(db.collection("uzbmb_settings").createIndex({ key: 1 }, { unique: true }));
   // group_exams — "Natija kiritish" paneli (guruh bo'yicha imtihon).
   // Sarhisob sahifasi joriy filialnikini sana bo'yicha teskari o'qiydi.
   tasks.push(db.collection("group_exams").createIndex({ id: 1 }, { unique: true }));

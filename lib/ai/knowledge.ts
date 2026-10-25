@@ -222,7 +222,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     title: "Imtihon natijalari",
     keywords: ["imtihon", "sarhisob", "uzbmb", "test", "natija"],
     pages: ["/imtihon"],
-    text: "Imtihon → Sarhisob: guruh bo'yicha imtihon natijalari kiritiladi va ko'riladi; UzBMB — alohida tab.",
+    text: "Imtihon → Sarhisob: guruh bo'yicha imtihon natijalari kiritiladi va ko'riladi. Imtihon → UzBMB: sinov testi (№1, №2 …) tanlanadi, guruh varag'iga har o'quvchining fanlar bo'yicha to'g'ri javoblari yoziladi (ball 1-blok 3,1 / 2-blok 2,1 / majburiy 1,1 bo'yicha o'zi hisoblanadi, sertifikatli fanda ball qo'lda); natijalar jadvalida o'rin, oldingi testdan o'sish va taqqoslash. Ball tuzilishi va fanlar — Sozlamalar → O'quv → Imtihon fanlari.",
   },
   {
     id: "assistant",

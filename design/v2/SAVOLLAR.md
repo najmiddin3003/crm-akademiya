@@ -976,6 +976,76 @@ sahifalar; tanga berish endi guruh sahifasida ham bor). *Taxmin:* qoldi — olib
 Lug'at bitta kalit — bir ma'no: «Oylik» = "Salary" bo'lgani uchun izohda «Oylik reyting» / «Umumiy reyting» yozildi;
 «Umumiy» segmenti inglizchada "General", «Tugagan» — "Finished" bo'lib qoldi (kichik farq).
 
+### 12-qism — Imtihon → UzBMB: natija kiritish, natijalar va taqqoslash, Excel eksport, Imtihon fanlari (25.10.2026)
+
+**185. UzBMB ma'lumoti: test → guruh → natija** — taxmin
+Eski UzBMB oynasi natijani o'quvchi ISMI va OY bo'yicha saqlardi (bazada 3 ta yozuv, avgust). Rasmda — test («UzBMB sinov
+testi №3»), sana, guruh, yo'nalish. Yangi tuzilish: test (filial bo'yicha №1, №2 …, nomi va sanasi) → guruh varag'i →
+o'quvchi natijasi (bitta testda o'quvchiga bitta natija). Natija eski to'plamga (`uzbmb_exams`) eski maydonlari bilan
+yoziladi — o'quvchilar boti va kabinet ko'rsataveradi (endi o'quvchi ID bo'yicha: ism o'zgarsa ham topiladi, ismdoshniki
+chiqmaydi). Testga bog'lanmagan 3 ta eski natija — jadval ostidagi «Eski natijalar» havolasi orqali eski ko'rinishda.
+
+**186. Test** — taxmin
+«Test» ro'yxati ostida «+ Yangi test» (nomi ixtiyoriy — sukut «UzBMB sinov testi №N», sana) va «Testni tahrirlash» (nomi,
+sanasi; natijasi yo'q testni o'chirish). Raqam navbardagi filial (1+2 hovuzi bilan) bo'yicha ketma-ket. Ball tuzilishi test
+yaratilganda sozlamadan olinadi — sozlama keyin o'zgarsa eski testlar o'zgarmaydi (rasmdagi «o'zgarsa, faqat yangi testlarga
+ta'sir qiladi»). «Sana» — guruh testni topshirgan kun (sukut — test sanasi).
+
+**187. «Yo'nalish · avto»** — taxmin
+Bazada «Abituriyent · Biologiya–Kimyo» kabi guruh yo'q — kurslar fan bo'yicha (Biologiya · 9-11-sinflar …). Avto tartib:
+shu testda shu guruh bilan saqlangan yo'nalish → guruhning oxirgi yo'nalishi (boshqa testda) → guruh nomida ikki blok fani
+bo'lsa → guruh kursi blok fani bo'lsa 1-blok, 2-blok odatiy juftidan (Biologiya↔Kimyo, Matematika↔Fizika,
+Geografiya→Matematika); topilmasa — tanlash so'raladi. Yo'nalish ballga ta'sir qilmaydi, fanlar tahlili shundan.
+
+**188. Guruhda boshqa yo'nalishli o'quvchi** — taxmin
+Varaqda yo'nalish bitta. O'quvchining saqlangan natijasi boshqa yo'nalishda bo'lsa — o'z fanlarida qoladi (ismi ostida
+sariq «Matematika — Fizika yo'nalishi»), tahrirlansa ham. Varaq yo'nalishi o'zgartirilsa, shu yo'nalishdagi saqlangan
+natijalar yangisiga o'tadi. Har o'quvchiga alohida yo'nalish tanlash kerak bo'lsa — keyin.
+
+**189. Sertifikat** — taxmin
+Faqat 1-blok va 2-blok fanida (eski tizimdagidek): katakdagi belgini bosib, ball qo'lda (0–93 / 0–63, bitta kasr),
+koeffitsiyent qo'llanmaydi; fanlar bo'yicha o'zlashtirishga kirmaydi. Majburiy fanlarga sertifikat yo'q — kerak bo'lsa keyin.
+
+**190. To'liq kiritilmagan natija** — taxmin
+Saqlanadi («natija to'liq kiritilmagan»), lekin reytingga, o'rtachaga va o'quvchilar botiga chiqmaydi. Qator butunlay
+bo'shatib saqlansa — natija o'chadi. Saqlashda faqat o'zgargan qatorlar yuboriladi.
+
+**191. «O'quvchi qo'shish»** — taxmin
+Qidiruv bilan mavjud o'quvchini SHU TESTGA qo'shish (guruh tarkibi o'zgarmaydi — boshqa guruhdan yoki tashqaridan kelgan);
+«Yangi o'quvchi» — Sarhisobdagidek yangi o'quvchi oynasi (guruhga ham qo'shiladi). Bitta testda bitta natija: boshqa guruh
+varag'ida tahrirlab saqlansa, natija o'sha guruhga o'tadi (ismi ostida «… bilan saqlangan»).
+
+**192. Taqqoslash hisoblari** — taxmin
+«Bu guruh · №3» — guruhning to'liq natijalari o'rtachasi; «Filial o'rtachasi · №3» — shu testdagi barcha to'liq natijalar;
+«Bu guruh · №2 test» — shu o'quvchilarning oldingi testdagi o'rtachasi; «№2 testdan» — o'quvchining oldingi test jami
+baliga farqi. Fanlar bo'yicha o'zlashtirish — to'g'ri javoblar ulushi; eng pasti 80% dan past bo'lsa sariq va ostida
+ogohlantirish. Ball oralig'i ≥ 150 / 120–149 / < 120 (189 dan; tuzilish boshqa bo'lsa mutanosib). Qator bosilsa — o'quvchining
+UzBMB testlari (o'sish bilan), «← Taqqoslash».
+
+**193. Excel'dan yuklash** — taxmin
+Natijani JADVALGA qo'yadi (saqlamaydi) — tekshirib, «Natijalarni saqlash». Shablon — guruh o'quvchilari bilan (.xlsx); ism
+bo'yicha moslanadi (ism-familiya va teskarisi), sertifikat — alohida ustunda. Natijalar ko'rinishida bosilsa — kiritishga
+o'tib qo'yadi. Topilmagan ismlar va chegaradan oshganlar oynada aytiladi.
+
+**194. Eksport** — taxmin
+.xlsx: «Shu guruh» — varaqdagi o'quvchilar (kiritilmaganlari ham), «Barcha guruhlar» — shu testning filialdagi hamma natijasi
+(Guruh ustuni bilan); «Fanlar bo'yicha to'g'ri javoblar» va «Sertifikat belgilari» — qo'shimcha ustunlar. Faqat saqlangan
+natijalar.
+
+**195. Imtihon fanlari sozlamasi** — taxmin
+Umumiy (barcha filiallar). Majburiy uchtasi qulf — nomi o'zgarmaydi, o'chirilmaydi, faqat «blokda ham» belgisi (Matematika —
+sukut bilan). Blok fanlari — qo'shish, tahrirlash, faolsizlantirish (yo'nalishda chiqmaydi), o'chirish (oldingi natijalarda
+nomi qoladi). Boshlang'ich ro'yxat — eski oynadagi 10 blok fani (rasmdagi «Namuna» kartasida 4 tasi). Kim o'zgartiradi —
+Sozlamalar → O'quv ruxsati bor xodim (`/settings-academic?tab=exam-subjects`). Ball tuzilishi «Saqlash» qatori bilan.
+
+**196. «Namuna» belgisi va eski ko'rinish** — qoida
+«Namuna» — dizayner izohi, ko'rsatilmaydi (8-qismdagidek). Eski versiyadagi UzBMB oynasi o'zgarmadi: u yangi natijalarning
+to'liqlarini ham ko'radi, ism + oy bo'yicha almashtirishi esa faqat testsiz eski yozuvlarga tegadi.
+
+**197. Yo'lakay tuzatishlar** — qilindi
+Sarhisob «Natija kiritish»dagi chiqish tasdig'i — «Chiqish» inglizchada "Log out" chiqardi → «Saqlamasdan chiqish». Sozlamalar
+ramkasida uzun sahifa kartalari siqilib kesilardi (Imtihon fanlarida ko'rindi; Tanga qoidalarida ham shu xavf) — tuzatildi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

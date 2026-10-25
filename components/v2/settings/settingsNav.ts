@@ -4,7 +4,8 @@
 // boradi (tab bo'lsa `?tab=` bilan); tizimda hali yo'q bandlar `href` siz — menyuda
 // o'chiq turadi («Hali yo'q»). Qaysi band qayerga va nega — design/v2/SAVOLLAR.md 112.
 //
-// Hozircha ichki menyu Kurslar va Tanga qoidalari sahifalarida (yangi dizayni borlari, 24.10.2026);
+// Hozircha ichki menyu Kurslar, Tanga qoidalari va Imtihon fanlari sahifalarida (yangi dizayni borlari,
+// 25.10.2026);
 // qolgan sahifalar o'z dizayni kelganda shu ramkaga o'tadi. Eski /settings-* sahifalari
 // o'z tab menyusi bilan — ularni shu ramkaga solsak ikki yonma-yon menyu bo'lardi.
 
@@ -38,7 +39,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
     items: [
       { label: "Kurslar", href: "/offline-courses" },
       { label: "Kategoriyalar", href: "/edu-category" },
-      { label: "Imtihon fanlari", note: "Imtihon fanlari kurslardan olinadi — alohida ro'yxat hali yo'q" },
+      { label: "Imtihon fanlari", href: "/settings-academic?tab=exam-subjects" },
     ],
   },
   {

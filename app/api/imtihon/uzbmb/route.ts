@@ -7,8 +7,12 @@ import { sanitizeUzbmb, type UzbmbExam } from "@/lib/imtihon";
 // Ballar serverda qayta hisoblanadi (`sanitizeUzbmb` → `ubCalc`), shuning
 // uchun mijozdan kelgan `total` ga ishonilmaydi.
 
+// 25.10.2026 (12-qism): yangi ko'rinish natijani TEST × o'quvchi qilib shu kolleksiyaga yozadi
+// (lib/uzbmbServer.ts). Eski oyna to'liq kiritilmagan natijani ko'rmaydi (`complete: false`), ism +
+// oy bo'yicha almashtirish esa faqat testsiz eski yozuvlarga tegadi — test natijasi jimgina
+// ustidan yozilmasin.
 async function readAll(col: Collection): Promise<UzbmbExam[]> {
-  const rows = await col.find({}).sort({ id: 1 }).toArray();
+  const rows = await col.find({ complete: { $ne: false } }).sort({ id: 1 }).toArray();
   return rows.map(({ _id, ...rest }) => rest as unknown as UzbmbExam);
 }
 
@@ -40,13 +44,14 @@ export async function POST(req: Request) {
   const col = db.collection("uzbmb_exams");
 
   const existing = await readAll(col);
-  let nextId = Math.max(0, ...existing.map((r) => r.id)) + 1;
+  const top = await col.find({}, { projection: { id: 1 } }).sort({ id: -1 }).limit(1).toArray();
+  let nextId = (Number(top[0]?.id) || 0) + 1;
   let added = 0;
   let updated = 0;
 
   for (const n of items) {
     const ex = existing.find(
-      (r) => r.student.toLowerCase() === n.student.toLowerCase() && r.month === n.month,
+      (r) => !("testId" in r) && r.student.toLowerCase() === n.student.toLowerCase() && r.month === n.month,
     );
     if (ex) {
       await col.updateOne({ id: ex.id }, { $set: { ...n } });
