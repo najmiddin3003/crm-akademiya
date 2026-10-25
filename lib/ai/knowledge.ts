@@ -165,10 +165,11 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   {
     id: "branch",
     title: "Filial tanlash",
-    keywords: ["filial", "branch", "almashtirish", "boshqa filial", "chortoq", "1 va 2", "ikkala filial", "bino", "1-bino", "2-bino"],
+    keywords: ["filial", "branch", "almashtirish", "boshqa filial", "chortoq", "1 va 2", "ikkala filial", "bino", "1-bino", "2-bino", "qaysi filialda"],
     pages: [],
     text: [
       "Tepadagi filial tanlagichi: o'quvchilar, guruhlar, davomat, lidlar va oylik tanlangan filial bo'yicha ko'rsatiladi; sozlamalar umumiy.",
+      "Yangi versiyada tizimga kirgach, xodimga bir nechta filial biriktirilgan bo'lsa «Qaysi filialda ishlaysiz?» oynasi chiqadi (oxirgi marta tanlangani belgilangan); keyin filial tepadagi tanlagichdan almashtiriladi.",
       "«Akademiya Chortoq» — bitta filial, ikki binoda (1-bino va 2-bino): o'quvchilar, guruhlar, xonalar, dars jadvali, davomat, lidlar va xodimlar umumiy, tanlagichda bitta qator.",
       "Bino bo'yicha alohida faqat kassa (mas'ul xodimga bog'langan), oylik (Moliya → Oylik sahifasida «1-bino / 2-bino» tanlovi) va xodimning «Ishga keldim» QR ekrani (ekranning o'zida bino tanlanadi).",
       "Yangi yozuv (lid, guruh, o'quvchi) tepada tanlangan filialga yoziladi.",
@@ -178,11 +179,13 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   {
     id: "security",
     title: "Parol, qurilmalar va ekranni qulflash",
-    keywords: ["parol", "xavfsizlik", "qurilma", "qulflash", "chiqish", "sessiya"],
+    keywords: ["parol", "xavfsizlik", "qurilma", "qulflash", "chiqish", "sessiya", "meni eslab qol", "parolni unutdim", "parolni tiklash", "kirish"],
     pages: ["/settings-security", "/settings-devices"],
     text: [
       "Sozlamalar → Xavfsizlik: «Parolni o'zgartirish» va «Ekranni qulflash».",
       "Aktiv qurilmalar: qaysi qurilmalardan kirilgani va ularni uzish.",
+      "Kirish sahifasida «Meni eslab qol» belgilanmasa, brauzer yopilganda tizimdan chiqiladi (ko'pi bilan 12 soatda); begona qurilmada uni belgilamaslik kerak.",
+      "«Parolni unutdim?» — telefon raqamiga SMS kod keladi, so'ng yangi parol (kamida 8 belgi) qo'yiladi.",
     ].join("\n"),
   },
   {

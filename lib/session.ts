@@ -4,6 +4,11 @@
 
 export const SESSION_COOKIE = "session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 kun
+/**
+ * «Meni eslab qol» BELGILANMAGAN kirish (25.10.2026, yangi kirish sahifasi): cookie brauzer
+ * yopilguncha (muddatsiz), imzodagi muddat — 12 soat. Begona qurilmada sessiya qolib ketmasin.
+ */
+export const SHORT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 export interface SessionPayload {
   uid: string;
@@ -61,8 +66,8 @@ async function hmacSign(data: string): Promise<string> {
   return bytesToBase64Url(sig);
 }
 
-export async function createSessionToken(payload: Omit<SessionPayload, "exp">): Promise<string> {
-  const full: SessionPayload = { ...payload, exp: Date.now() + SESSION_TTL_MS };
+export async function createSessionToken(payload: Omit<SessionPayload, "exp">, ttlMs: number = SESSION_TTL_MS): Promise<string> {
+  const full: SessionPayload = { ...payload, exp: Date.now() + ttlMs };
   const body = bytesToBase64Url(encoder.encode(JSON.stringify(full)));
   const sig = await hmacSign(body);
   return `${body}.${sig}`;

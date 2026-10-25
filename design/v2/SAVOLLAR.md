@@ -1118,6 +1118,51 @@ yoziladi, «Anketa havolasini nusxalash» manzilni olib yuradi. Sheets sozlamasi
 «Namuna» — dizayner izohi, ko'rsatilmaydi. Jadvalda rasmdagi 7 ustun; eski sahifadagi qolganlari (Lavozim, Bandlik,
 Kutilayotgan oylik, Ta'lim, Ish boshlash, Manba, Admin izohi) — «Ustunlar»da yashirin.
 
+### 14-qism — Kirish sahifasi, Filial tanlash, Amallar jurnali (25.10.2026)
+
+**212. «Meni eslab qol»** — taxmin
+Belgilangan (sukut) — avvalgidek: sessiya 30 kun, brauzer yopilsa ham saqlanadi. Belgilanmasa — cookie brauzer
+yopilganda o'chadi va sessiya baribir 12 soatdan keyin tugaydi. Eski kirish sahifasi o'zgarmadi (doim eslab qoladi).
+
+**213. Filial tanlash — qachon va qanday** — taxmin
+Oyna faqat xodimga ruxsat etilgan filial bittadan ko'p bo'lsa chiqadi (bitta bo'lsa — to'g'ri bosh sahifaga). Admin —
+hamma filial. Rasmda «Akademiya 1 Chortoq» va «Akademiya 2 Chortoq» alohida — tizimda 1+2 bitta hovuz, shuning uchun
+BITTA qator («Akademiya Chortoq»). Lavozim — xodimning shu filialdagi roli (Boshqaruv → Rollar), bo'lmasa umumiy roli.
+«oxirgi marta shu yerda» — brauzerdagi oxirgi tanlangan filial. Tanlov yuqori paneldagi filial almashtirgichi bilan bir
+yo'ldan saqlanadi. Tugma matni «Davom ettirish» (rasmda «Davom etish» — u so'z tarjimada «tahrirlashni davom ettirish»
+ma'nosida band).
+
+**214. Parolni tiklash** — taxmin (rasmda yo'q)
+«Parolni unutdim?» eski sahifadagi SMS-kod yo'lini ochadi: telefon → 6 xonali kod (qayta yuborish 60 soniyadan keyin) →
+yangi parol (kamida 8 belgi) → «Parol yangilandi — yangi parol bilan kiring». SMS pullik — avvalgidek.
+
+**215. Yangi kirish sahifasini kim ko'radi** — qoida
+Tanlov brauzer cookie'sida (`tizimli_ui`, 27-savol): shu brauzerda yangi versiya tanlangan bo'lsa — yangi kirish sahifasi,
+aks holda eskisi; `/?classic=1` — doim eski. Yangi qurilmada birinchi kirish — eski sahifa (sukut eski versiya).
+
+**216. «Oldin → keyin»** — taxmin
+Tahrirda eski qiymat so'rov bajarilishidan OLDIN o'qiladi (eng ko'pi 0,3 soniya kutiladi; baza sekin bo'lsa yozuv eski
+qiymatsiz qoladi). Faqat ma'lum bo'limlarda: o'quvchi, guruh, lid, xodim, kassa, xona, kurs, rol, filial, nomzod (CV),
+oylik, topshiriq, to'lov yozuvi. Parol, kod, token kabi maydonlar hech qachon yozilmaydi. Shu imkoniyatdan oldingi
+yozuvlarda faqat «Yuborilgan qiymat» bor. O'chirilgan obyektning nomi ham shu nusxadan olinadi.
+
+**217. Toifalar** — taxmin
+Rasmda 5 ta chip (Hammasi, Moliya, O'quvchi va guruh, Kirishlar, O'chirilganlar). Qo'shildi: Lidlar, Davomat, Xodimlar,
+Boshqa — faqat shu davrda amali bo'lsa chiqadi. Har amal bitta toifada: har qanday o'chirish → «O'chirilganlar» (qaysi
+bo'limdan ekani yozuv ostida); rad etilgan urinish o'z toifasida, «Rad etildi» belgisi bilan.
+
+**218. Rasmdagi «lidni o'chirdi»** — qoida
+CRM'da lidni o'chirish yo'q (faqat holati o'zgaradi), shuning uchun sinovda o'quvchi o'chirish ko'rsatildi; boshqa bo'limdagi
+o'chirish ham xuddi shunday ko'rinadi.
+
+**219. «real» va «Namuna» belgilari** — qoida
+Dizayner izohi deb hisoblandi — ko'rsatilmaydi.
+
+**220. Sana, hisob va qidiruv** — taxmin
+Sukut — kecha va bugun (rasmdagidek ikki kun). Sonlar va «Davr bo'yicha» shu oraliqdagi eng yangi 3000 ta amaldan
+hisoblanadi; ko'p bo'lsa sariq ogohlantirish chiqadi. Qidiruv — ism, summa (raqamlar), guruh yoki obyekt nomi, fe'l
+bo'yicha. Ro'yxat 60 tadan, «Yana yuklash». Sahifa avvalgidek faqat admin uchun; eski texnik jadval — `?classic=1`.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

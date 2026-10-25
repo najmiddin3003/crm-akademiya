@@ -1,5 +1,6 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { actorForSession, bodyForLog, clientIp, clientUa, logAction, sectionOf, type ActionActor } from "@/lib/actionLog";
+import { snapshotBefore } from "@/lib/actionLogSnapshot";
 import { ensureIndexes } from "@/lib/mongodb";
 import { apiAccessFor } from "@/lib/apiPermissions";
 import { LOCK_COOKIE } from "@/lib/lock";
@@ -169,17 +170,44 @@ function shouldLog(pathname: string, method: string): boolean {
 /** Navbar filiali cookie'si (lib/branchScope.ts → BRANCH_COOKIE; proxy'ga og'ir modulni tortmaslik uchun nomi shu yerda). */
 const BRANCH_COOKIE_NAME = "branch";
 
-async function logApiRequest(req: NextRequest, session: SessionPayload | null, res: Response): Promise<void> {
+/**
+ * Jurnalga yoziladigan tana — faqat kichik JSON (fayl yuklash va multipart — yo'q). Next tanani
+ * proxy va route uchun alohida saqlaydi (proxyClientMaxBodySize.md) — o'qish route'ga xalaqit bermaydi.
+ */
+async function loggableBody(req: NextRequest): Promise<string | null> {
+  const type = req.headers.get("content-type") ?? "";
+  const size = Number(req.headers.get("content-length") ?? "0");
+  return type.includes("application/json") && size <= 64_000 ? await req.text().catch(() => null) : null;
+}
+
+/**
+ * Tahrir/o'chirishdan OLDINGI holat (lib/actionLogSnapshot.ts) — route ishga tushishidan OLDIN
+ * o'qiladi, shuning uchun so'rov uni kutadi: faqat kerakli yo'llarda, 300 ms chegarasi bilan,
+ * xatoda — `undefined` (amal baribir o'tadi, faqat jurnalda «oldin» bo'lmaydi).
+ */
+async function beforeForLog(pathname: string, method: string, text: string | null): Promise<Record<string, unknown> | undefined> {
+  try {
+    return await Promise.race([
+      ensureIndexes().then((db) => snapshotBefore(db, pathname, method, text)),
+      new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 300)),
+    ]);
+  } catch {
+    return undefined;
+  }
+}
+
+async function logApiRequest(
+  req: NextRequest,
+  session: SessionPayload | null,
+  res: Response,
+  text: string | null,
+  before: Record<string, unknown> | undefined,
+): Promise<void> {
   try {
     // `NextResponse.next()` — so'rov route'ga o'tdi, natijasini proxy ko'rmaydi.
     const passed = res.headers.get("x-middleware-next") === "1";
     const { pathname, search } = req.nextUrl;
     const { section, target } = sectionOf(pathname);
-    // Tana faqat kichik JSON bo'lsa (fayl yuklash va multipart — yo'q). Next
-    // tanani proxy va route uchun alohida saqlaydi (proxyClientMaxBodySize.md).
-    const type = req.headers.get("content-type") ?? "";
-    const size = Number(req.headers.get("content-length") ?? "0");
-    const text = type.includes("application/json") && size <= 64_000 ? await req.text().catch(() => null) : null;
     const db = await ensureIndexes();
     const actor: ActionActor = session ? await actorForSession(db, session) : { kind: "public" };
     const branch = Number(req.cookies.get(BRANCH_COOKIE_NAME)?.value);
@@ -198,6 +226,7 @@ async function logApiRequest(req: NextRequest, session: SessionPayload | null, r
       sid: session?.sid ?? null,
       branchId: Number.isFinite(branch) && branch > 0 ? branch : null,
       body: bodyForLog(text),
+      ...(before ? { before } : {}),
     });
   } catch (e) {
     console.error("[action-log] proxy:", (e as Error)?.message ?? e);
@@ -280,7 +309,12 @@ export async function proxy(req: NextRequest, event: NextFetchEvent) {
 
   if (pathname.startsWith("/api/")) {
     const res = await handleApi(pathname, req.method, session, locked);
-    if (shouldLog(pathname, req.method)) event.waitUntil(logApiRequest(req, session, res));
+    if (shouldLog(pathname, req.method)) {
+      // Tana BIR MARTA o'qiladi; «oldin» holati — so'rov route'ga o'tishidan oldin (o'tsagina).
+      const text = await loggableBody(req);
+      const before = res.headers.get("x-middleware-next") === "1" ? await beforeForLog(pathname, req.method, text) : undefined;
+      event.waitUntil(logApiRequest(req, session, res, text, before));
+    }
     return res;
   }
 

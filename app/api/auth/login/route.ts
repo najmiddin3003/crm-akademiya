@@ -4,7 +4,7 @@ import { ensureIndexes } from "@/lib/mongodb";
 import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 import { compareSecret, isValidPhone, normalizePhone } from "@/lib/invite";
 import { approvalBlocks, approvalError } from "@/lib/adminApproval";
-import { createSessionToken, newSessionId, SESSION_COOKIE, SESSION_MAX_AGE_SEC } from "@/lib/session";
+import { createSessionToken, newSessionId, SESSION_COOKIE, SESSION_MAX_AGE_SEC, SHORT_SESSION_TTL_MS } from "@/lib/session";
 import { describeUserAgent, type UserSession } from "@/lib/userSessions";
 import { toUz } from "@/lib/uzTime";
 
@@ -53,14 +53,22 @@ function auditLogin(
       ip: clientIp(req.headers),
       ua: clientUa(req.headers),
       sid,
+      branchId: cookieBranch(req),
       ...(reason ? { details: { reason } } : {}),
     });
   });
 }
 
+/** Qurilmadagi oxirgi tanlangan filial (navbar cookie'si `branch`) — kirish yozuvi uchun. */
+function cookieBranch(req: Request): number | null {
+  const m = /(?:^|;\s*)branch=(\d+)/.exec(req.headers.get("cookie") ?? "");
+  const n = m ? Number(m[1]) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 // POST /api/auth/login — telefon + parol bilan kirish, sessiya cookie o'rnatadi.
 export async function POST(req: Request) {
-  let body: { phone?: string; password?: string };
+  let body: { phone?: string; password?: string; remember?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -125,14 +133,20 @@ export async function POST(req: Request) {
   await db.collection<UserSession>("user_sessions").insertOne(session);
   auditLogin(db, req, phone, user, 200, null, sid);
 
-  const token = await createSessionToken({ uid: user._id.toString(), phone: user.phone, role: user.role || "employee", sid });
+  // «Meni eslab qol» (yangi kirish sahifasi, 25.10.2026): belgilanmagan bo'lsa — brauzer
+  // yopilguncha (cookie muddatsiz) va imzo 12 soat. Eski sahifa yubormaydi — avvalgidek 30 kun.
+  const remember = body.remember !== false;
+  const token = await createSessionToken(
+    { uid: user._id.toString(), phone: user.phone, role: user.role || "employee", sid },
+    remember ? undefined : SHORT_SESSION_TTL_MS,
+  );
 
   const res = NextResponse.json({ ok: true, role: user.role || "employee" });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: SESSION_MAX_AGE_SEC,
+    ...(remember ? { maxAge: SESSION_MAX_AGE_SEC } : {}),
     path: "/",
   });
   return res;

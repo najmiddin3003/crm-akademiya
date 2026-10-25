@@ -872,6 +872,33 @@ Ikki ustun (≥1280 px; torroqda kartochkalar tepada to'r bo'lib, jadval ostida)
   `lib/cvApplyServer.ts`, `lib/hrEmployeeCreate.ts`, `planCvPatch` (lib/managementCv.ts). Rasmdan farqlar — `SAVOLLAR.md`
   198–211.
 
+## Kirish sahifasi, Filial tanlash, Amallar jurnali (rasmlar «Kirish sahifasi», «Filial tanlash», «Amallar jurnali · namuna», yorug'/qorong'i, 25.10.2026)
+
+- **Kirish sahifasi**: chapda brend paneli (45 %, ≥1024 px) — teal gradient (`teal-500` → `teal-700`, o'ng tepada oq yorug'
+  dog'), ikkala temada bir xil; «Tizimli» belgisi (oq shaffof kvadrat), sarlavha 30 px «O'quv markazingiz — bitta tizimda»,
+  uchta imkoniyat (36 px oq/15 % kvadratda ikonka, qalin nom, ostida `white/80`), pastda «© 2026 Tizimli · tizimli24.uz».
+  O'ngda 368 px ustun: «Tizimga kirish» 24 px, izoh `text-2`; «Telefon raqam» (+998 prefiksli maydon), «Parol» (👁),
+  «☑ Meni eslab qol» · o'ngda «Parolni unutdim?» (`brand-text`, qalin), asosiy tugma «→ Kirish» to'liq kenglikda; ostida
+  `surface` quti 🛡 + «Login yoki parol bo'lmasa…». Xato — tugma ustida `danger-bg` qator, bo'sh maydon qizil chegarada. Telefonda panel yo'q — tepada
+  faqat belgi.
+- **Filial tanlash** (kirishdan keyin, filial >1 bo'lsa): markazda 420 px karta — belgi, «Xush kelibsiz, {ism}!» 22 px,
+  «Qaysi filialda ishlaysiz?»; qatorlar (raqam kvadrati `surface-2`, nom qalin, lavozim `caption text-2`, oxirgisida
+  «oxirgi marta shu yerda» `brand-text`), o'ngda radio; tanlangani `brand-bg` + brend chegara. «Davom ettirish →» asosiy,
+  ostida izoh `caption text-2`. Klaviatura: ↑/↓, Enter; ikki marta bosish — darhol kirish.
+- **Amallar jurnali**: sarlavha «Amallar jurnali», izoh «Barcha filiallar · kim, qachon, nima qildi»; o'ngda qidiruv «Ism,
+  summa yoki guruh». Toifa chiplari (soni bilan, tanlangani `brand-bg`; telefonda yon tomonga suriladi), o'ngda «Xodim:
+  Hammasi», «Filial: Barchasi», sana oralig'i. Chapda ro'yxat kartasi: kun sarlavhasi «**Bugun** 25-oktabr, yakshanba · 11
+  ta amal»; qator — vaqt `small text-2` (44 px), 28 px toifa doirasi (kirim `success-bg`, chiqim `danger-bg`, o'quvchi/guruh
+  `info-bg`, lid `violet-bg`, xodim `brand-bg`, o'chirish `danger-bg` 🗑, rad etilgan `warning-bg` 🛡, kirish/boshqa —
+  chegarali `surface-2`) va ular orasida 1 px chiziq; «**Ism** fe'l — obyekt», ostida meta `caption text-2` (toifa · usul
+  · kassa · filial · …); o'ngda summa (+ `success` / − `danger`, «so'm» `caption`), «O'chirilgan» / «Rad etildi» belgisi
+  yoki ochiq qatorda «Yopish ⌃». Tahrir qatori bosilsa — `surface-2` foni, ichida jadval «Maydon | Oldin | Keyin» (oldin —
+  `danger-bg` ustidan chizilgan, keyin — `success-bg` qalin). Telefonda summa/belgi sarlavha ostiga tushadi. O'ngda 280 px:
+  «Davr bo'yicha» (toifa nomi, `series-1` chizig'i, son) va «Nima yoziladi» (toifa: izoh).
+- Kodda: `components/v2/auth/` — LoginV2 (kirish, parolni tiklash), BranchPickV2, AuthBrandPanel; `components/v2/actionLog/`
+  — ActionLogV2, logBits; server — `lib/actionLogView.ts` (yozuv → odam tili, toifa, farq), `lib/actionLogSnapshot.ts`
+  (tahrirdan oldingi holat, proxy.ts), `/api/action-log/feed`, `/api/auth/branches`. Rasmdan farqlar — `SAVOLLAR.md` 212–220.
+
 ## Qoidalar (kontrast tekshiruvidan, WCAG 2.1)
 
 17.10.2026 da hamma juftlik hisoblandi (matn: AA ≥ 4.5; katta matn va UI chegarasi ≥ 3).

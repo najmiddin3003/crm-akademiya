@@ -70,6 +70,11 @@ export interface ActionEvent {
   body?: unknown;
   /** Amal joyidan qo'shimcha (summa, kassa, yozuv id'si …). */
   details?: Record<string, unknown>;
+  /**
+   * Tahrir/o'chirishdan OLDINGI holat — faqat tanadagi maydonlar va nomi (proxy, 25.10.2026;
+   * lib/actionLogSnapshot.ts). «Amallar jurnali» «oldin → keyin» farqini shundan ko'rsatadi.
+   */
+  before?: Record<string, unknown>;
 }
 
 /** Jurnalga yozadi. Hech qachon xato otmaydi. */
