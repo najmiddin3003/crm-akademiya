@@ -34,6 +34,10 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   // `X-Powered-By: Next.js` — versiya/texnologiyani oshkor qilmasin.
   poweredByHeader: false,
+  // KICHIK MARKAZ SERVERI (30.10.2026, 1 GB): u yerda build qilib bo'lmaydi —
+  // to'plam boshqa serverda `NEXT_OUTPUT=standalone` bilan quriladi
+  // (deploy/build-center.sh) va tayyor holda yuboriladi. Asosiy sayt avvalgidek.
+  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const } : {}),
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },

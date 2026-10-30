@@ -33,9 +33,12 @@ if ! command -v mongod >/dev/null 2>&1; then
   apt-get install -y -q mongodb-org >/dev/null
 fi
 
-# WiredTiger keshi: 4 GB serverda ilova (1,5 GB) va build uchun joy qolsin.
+# WiredTiger keshi: ilova va build uchun joy qolsin — 4 GB serverda 1 GB, 1–2 GB
+# serverda (kichik markaz, ~150 o'quvchi) 0.25 GB yetadi. MONGO_CACHE_GB bilan almashtirsa bo'ladi.
+MEM_MB="$(awk '/MemTotal/ { print int($2 / 1024) }' /proc/meminfo)"
+CACHE_GB="${MONGO_CACHE_GB:-$([[ "$MEM_MB" -lt 2500 ]] && echo 0.25 || echo 1)}"
 if ! grep -q "cacheSizeGB" /etc/mongod.conf; then
-  sed -i 's/^#  wiredTiger:$/  wiredTiger:\n    engineConfig:\n      cacheSizeGB: 1/' /etc/mongod.conf
+  sed -i "s/^#  wiredTiger:\$/  wiredTiger:\n    engineConfig:\n      cacheSizeGB: $CACHE_GB/" /etc/mongod.conf
 fi
 
 systemctl enable --now mongod >/dev/null 2>&1
