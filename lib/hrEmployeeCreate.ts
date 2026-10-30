@@ -1,3 +1,4 @@
+import { CENTER_SHORT } from "@/lib/center";
 import type { Db } from "mongodb";
 import type { BranchScope } from "@/lib/branchScope";
 import {
@@ -133,7 +134,7 @@ export async function createHrEmployee(db: Db, scope: BranchScope, body: CreateE
     groups: 0,
     turi: roleChoice.turi,
     ...(roleChoice.centerRoleId !== null ? { centerRoleId: roleChoice.centerRoleId } : {}),
-    filial: body.filial || "Akademiya",
+    filial: body.filial || CENTER_SHORT,
     phone,
     kurs: body.kurs || "",
     created: fmtNow(new Date()),

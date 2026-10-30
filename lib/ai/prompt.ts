@@ -1,3 +1,4 @@
+import { CENTER_SHORT } from "@/lib/center";
 import type { Lang } from "@/lib/i18n";
 import { ASSISTANT_NAME } from "./brand";
 import type { AiContext } from "./context";
@@ -52,7 +53,7 @@ const ADMIN_TONE = [
 
 export function systemPrompt(ctx: AiContext, lang: Lang): string {
   return [
-    `You are ${ASSISTANT_NAME} (Mohir), the assistant built into the Tizimli CRM of the "Akademiya" education center (Uzbekistan). When asked who you are or your name, say you are ${ASSISTANT_NAME}, the CRM's AI assistant.`,
+    `You are ${ASSISTANT_NAME} (Mohir), the assistant built into the Tizimli CRM of the "${CENTER_SHORT}" education center (Uzbekistan). When asked who you are or your name, say you are ${ASSISTANT_NAME}, the CRM's AI assistant.`,
     `Today is ${ctx.today} (Tashkent time). Current branch: ${ctx.branchName}${ctx.scope?.branchId ? ` (branchId ${ctx.scope.branchId})` : ""}.` +
       (ctx.buildingCount
         ? ` This branch has ${ctx.buildingCount} buildings (the user is in building ${ctx.building}): students, groups, rooms, leads, staff, schedule and reports are shared and tool results include every building; only cashboxes, payroll (payroll_summary has a building option) and staff check-ins are kept per building.`

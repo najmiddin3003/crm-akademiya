@@ -1,4 +1,5 @@
 "use client";
+import { CENTER_SHORT, CENTER_SLOGAN } from "@/lib/center";
 
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
@@ -53,12 +54,12 @@ export function printLeadReceipt(r: LeadReceipt) {
     @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
   </style></head><body>
     <div class="wrap">
-      <div class="brand">Akademiya CRM</div>
+      <div class="brand">${escHtml(CENTER_SHORT)} CRM</div>
       <div class="title">${escHtml(r.heading)}</div>
       <div class="divider"></div>
       ${r.rows.map(([k, v]) => `<div class="r"><span>${escHtml(k)}</span><span>${escHtml(v)}</span></div>`).join("")}
       <div class="divider"></div>
-      <div class="thanks">Akademiya - ilm maskani!</div>
+      <div class="thanks">${escHtml(CENTER_SLOGAN)}</div>
     </div>
   </body></html>`;
 
@@ -91,7 +92,7 @@ export default function LeadReceiptModal({ receipt, onClose }: { receipt: LeadRe
     <Modal onClose={onClose} controller={modal} bare zIndex={300} panelClassName="p-5 space-y-4">
       <h3 className="text-lg font-semibold">{t("Chek — ko'rib chiqish")}</h3>
       <div className="rounded-xl border border-border bg-background p-4">
-        <div className="text-center text-[13px] font-bold tracking-[0.15em]">{t("Akademiya CRM")}</div>
+        <div className="text-center text-[13px] font-bold tracking-[0.15em]">{t(`${CENTER_SHORT} CRM`)}</div>
         <div className="mt-1 text-center text-sm font-bold">{t(receipt.heading)}</div>
         <div className="my-3 border-t border-dashed border-border" />
         <div className="max-h-72 overflow-y-auto">
@@ -103,7 +104,7 @@ export default function LeadReceiptModal({ receipt, onClose }: { receipt: LeadRe
           ))}
         </div>
         <div className="my-3 border-t border-dashed border-border" />
-        <div className="text-center text-xs italic text-muted-foreground">{t("Akademiya - ilm maskani!")}</div>
+        <div className="text-center text-xs italic text-muted-foreground">{t(CENTER_SLOGAN)}</div>
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={modal.close} className="h-9 rounded-lg border border-border bg-card px-4 text-sm hover:bg-secondary">

@@ -590,7 +590,7 @@ export default function CvApplySection({
         {certErr && <FieldError>{certErr}</FieldError>}
       </div>
 
-      <Field label={t("Nega aynan Akademiyada ishlamoqchisiz va nimani yaxshi uddalaysiz")} htmlFor={id("about")} error={err("about")}>
+      <Field label={t("Nega aynan bizda ishlamoqchisiz va nimani yaxshi uddalaysiz")} htmlFor={id("about")} error={err("about")}>
         <textarea
           id={id("about")}
           value={v.about}

@@ -1,3 +1,4 @@
+import { CENTER_PHONE, CENTER_SHORT } from "@/lib/center";
 import type { Db } from "mongodb";
 import { normalizePhone, sendSms } from "@/lib/eskiz";
 import { logSms } from "@/lib/smsLog";
@@ -19,7 +20,7 @@ import { logSms } from "@/lib/smsLog";
 // apostrof (U+2019) GSM-7 alifbosida yo'q va butun xabarni UCS-2 ga
 // o'tkazadi — bir xil matn 1 o'rniga 4 ta SMS bo'lib, narxi to'rt
 // barobar oshadi. O'lchangan.
-const CONTACT_PHONE = "+998941118855";
+const CONTACT_PHONE = CENTER_PHONE.replace(/\s/g, "");
 
 /**
  * SMS yuborish YOQILGANMI.
@@ -102,7 +103,7 @@ export function paymentSmsVarSet(): boolean {
 
 /** Eskizdagi tasdiqlangan shablon. */
 export function paymentSmsText(pupilName: string, amount: number): string {
-  return `Assalomu alaykum ${pupilName}. Akademiya markaziga ${groupSom(amount)} so'm to'lovingiz qabul qilindi. Rahmat! Murojaat: ${CONTACT_PHONE}`;
+  return `Assalomu alaykum ${pupilName}. ${CENTER_SHORT} markaziga ${groupSom(amount)} so'm to'lovingiz qabul qilindi. Rahmat! Murojaat: ${CONTACT_PHONE}`;
 }
 
 /** 1500000 -> "1 500 000" */

@@ -1,3 +1,4 @@
+import { CENTER_INSTAGRAM_HANDLE, CENTER_PHONE } from "@/lib/center";
 // Boshqaruv > Ishga qabul (CV) — referens HTML'dagi "ISHGA QABUL (CV) VIEW"
 // va "OMMAVIY ARIZA SAHIFASI (#ariza)" bo'limlaridan ko'chirilgan sobit
 // ma'lumotlar. Sidebar: Boshqaruv > Ishga chaqiruv (CV), href /management-cv.
@@ -101,8 +102,8 @@ export const CV_SOURCES = [
 export const CV_ANY_BRANCH = "Qaysi filial bo'lsa ham ishlayveraman";
 
 /** Filial telefoni ko'rsatilmagan bo'lsa — bosh raqam (dizayndagi). */
-export const CV_MAIN_PHONE = "+998 94 111 88 55";
-export const CV_INSTAGRAM = "@Akademiya.rasmiy";
+export const CV_MAIN_PHONE = CENTER_PHONE;
+export const CV_INSTAGRAM = CENTER_INSTAGRAM_HANDLE;
 
 /** Ishga qabul shu yoshdan boshlanadi (tug'ilgan sana tekshiruvi). */
 export const CV_MIN_AGE = 16;

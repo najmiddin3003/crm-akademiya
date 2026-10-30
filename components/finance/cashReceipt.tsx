@@ -1,4 +1,5 @@
 "use client";
+import { CENTER_SHORT, CENTER_SLOGAN } from "@/lib/center";
 
 import { Printer } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
@@ -42,8 +43,8 @@ function escHtml(s: string): string {
  * bitta manba. Ular ikki joyda yozilgan edi va shu bois vaqt o'tib
  * bir-biridan uzoqlashishi hech gap emasdi.
  */
-const RECEIPT_BRAND = "Akademiya CRM";
-const RECEIPT_FOOTER = "Akademiya - ilm maskani!";
+const RECEIPT_BRAND = `${CENTER_SHORT} CRM`;
+const RECEIPT_FOOTER = CENTER_SLOGAN;
 
 // Yozuv o'qituvchi oyligiga QO'SHILADIMI yoki undan AYRILADIMI — JADVALDA
 // shu farq ko'rinib turishi kerak (ustun ostidagi izoh sifatida).

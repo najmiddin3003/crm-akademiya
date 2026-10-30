@@ -11,7 +11,7 @@ import { uzDateIso } from "@/lib/uzTime";
 // HISOBOTLAR (15-qism) — umumiy hook'lar: ma'lumot yuklash, sana yozuvlari, filiallar.
 
 /** Markaz nomi (PDF/Excel sarlavhasi) — ochiq anketadagi bilan bir xil. */
-export const CENTER_NAME = "Akademiya o'quv markazi";
+export { CENTER_NAME } from "@/lib/center";
 export const DOC_FOOTER = "Tizimli · tizimli24.uz";
 
 export interface ReportData<T> {

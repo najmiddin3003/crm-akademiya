@@ -1,3 +1,4 @@
+import { CENTER_PHONE } from "@/lib/center";
 // Umumiy sozlamalar → Chek (system:check). Referens saytdan o'lchab olingan
 // yorliqlar va boshlang'ich holatlar.
 //
@@ -50,7 +51,7 @@ export const CHECK_MODE_DEFAULTS = {
   titleSize: 20,
   titleBold: true,
 
-  footerText: "Tel: 941118855",
+  footerText: CENTER_PHONE ? `Tel: ${CENTER_PHONE.replace(/\D/g, "").slice(-9)}` : "",
   footerSize: 20,
   footerBold: true,
 

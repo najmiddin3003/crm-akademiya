@@ -358,7 +358,7 @@ export default function CvFormModal({ sheetsUrl, onClose, onSaved }: Props) {
         {/* ---- 4. Qo'shimcha ---- */}
         <Section n={4} title={t("Qo'shimcha")} hint={t("Bu qismni rahbar birinchi bo'lib o'qiydi.")} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label={t("Nega aynan Akademiyada ishlamoqchisiz va nimani yaxshi uddalaysiz")} full htmlFor={`${ID}about`} err={err("about", t("Bir-ikki jumla yozing."))}>
+          <Field label={t("Nega aynan bizda ishlamoqchisiz va nimani yaxshi uddalaysiz")} full htmlFor={`${ID}about`} err={err("about", t("Bir-ikki jumla yozing."))}>
             <textarea
               id={`${ID}about`}
               value={v.about}

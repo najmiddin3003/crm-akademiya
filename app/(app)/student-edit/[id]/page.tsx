@@ -1,14 +1,14 @@
 import StudentEditPage from "@/components/students/StudentEditPage";
 import StudentProfileV2 from "@/components/v2/students/profile/StudentProfileV2";
 import { currentUiVersion } from "@/lib/uiVersionServer";
-import { createInitialOrders, type Order } from "@/lib/ordersData";
+import { type Order } from "@/lib/ordersData";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, withPupilBranch } from "@/lib/branchScope";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { getServerT } from "@/lib/serverT";
 
 // O'quvchi profili ikki xil ro'yxatdan ochilishi mumkin:
-//   • Buyurtmalar (lib/ordersData.ts demo generatori, id 2098-6013)
+//   • Buyurtmalar (lib/ordersData.ts demo generatori, id 2098-6013) — 30.10.2026 OLIB TASHLANDI
 //   • O'quvchilar ro'yxati / Kassalar to'lov qatorlari — BAZADAGI o'quvchilar
 //     (MongoDB `pupils`)
 // Ikki id fazosi KESISHADI, shuning uchun havolaga `?src=list` qo'shiladi —
@@ -83,23 +83,14 @@ export default async function Page({
   searchParams: Promise<{ src?: string; tab?: string; classic?: string }>;
 }) {
   const { id } = await params;
-  const { src, tab, classic } = await searchParams;
+  const { tab, classic } = await searchParams;
   const numId = Number(id);
 
-  const fromOrders = () => createInitialOrders().find((o) => String(o.id) === id) ?? null;
-  // Qaysi biri ochilgani — bazadagi o'quvchimi (yangi sahifa faqat unga).
-  let pupilOrder: Order | null = null;
-  let order: Order | null;
-  if (src === "list") {
-    pupilOrder = await orderFromPupil(numId);
-    order = pupilOrder ?? fromOrders();
-  } else {
-    order = fromOrders();
-    if (!order) {
-      pupilOrder = await orderFromPupil(numId);
-      order = pupilOrder;
-    }
-  }
+  // 30.10.2026: demo buyurtmalar (createInitialOrders — Akademiya'dan olingan ism va
+  // telefonlar) olib tashlandi — ular bazadagi o'quvchini id bo'yicha yashirib qo'yardi
+  // (id 2098–6013) va boshqa markaz saytida ko'rinardi. Endi faqat bazadagi o'quvchi.
+  const pupilOrder: Order | null = await orderFromPupil(numId);
+  const order: Order | null = pupilOrder;
 
   if (!order) {
     const { t } = await getServerT();

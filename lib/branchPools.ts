@@ -1,3 +1,5 @@
+import { IS_AKADEMIYA } from "@/lib/center";
+
 // FILIAL HOVUZLARI — bitta hovuzdagi filiallar KASSA va OYLIKDAN BOSHQA
 // hamma joyda BITTA filialdek ko'rinadi (qaror 09.10.2026, foydalanuvchi:
 // «2 ta filialni kassasidan boshqa hamma yerni bitta qilishimiz kerak»;
@@ -22,8 +24,21 @@
 // Bu fayl SERVERGA BOG'LIQ EMAS (cookie/baza yo'q) — mijoz komponentlari
 // ham shu qoidadan foydalanadi (Xonalar ro'yxati, lid → guruh tanlovi).
 // Yangi filial qo'shilsa yoki hovuz o'zgarsa — faqat shu ro'yxat.
+//
+// BOSHQA MARKAZ (30.10.2026, lib/center.ts): hovuzlar `NEXT_PUBLIC_BRANCH_POOLS`
+// dan — «1+2» yoki «1+2,3+4»; bo'sh qiymat — hovuz yo'q. Berilmasa: Akademiya
+// nusxasida [[1, 2]], boshqa markazda — yo'q (uning 1- va 2-filiali bitta
+// bo'lib qolmasin).
 
-export const BRANCH_POOLS: readonly (readonly number[])[] = [[1, 2]];
+function parsePools(raw: string | undefined): number[][] {
+  if (raw === undefined) return IS_AKADEMIYA ? [[1, 2]] : [];
+  return raw
+    .split(",")
+    .map((part) => part.split("+").map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0))
+    .filter((pool) => pool.length > 1);
+}
+
+export const BRANCH_POOLS: readonly (readonly number[])[] = parsePools(process.env.NEXT_PUBLIC_BRANCH_POOLS);
 
 /** Filial → u qatnashadigan hovuz (yo'q bo'lsa — o'zi yolg'iz). */
 export function branchPool(branchId: number): readonly number[] {

@@ -1,4 +1,5 @@
 "use client";
+import { CENTER_INSTAGRAM, CENTER_NAME } from "@/lib/center";
 
 /* eslint-disable @next/next/no-img-element -- rasmlar data: URL va Cloudinary, next/image kerak emas. */
 
@@ -205,7 +206,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
         {/* ============ CHAP PANEL ============ */}
         <aside className="aside">
           <div className="aside-in">
-            <div className="brand" role="img" aria-label={t("Akademiya o'quv markazi")} />
+            <div className="brand" role="img" aria-label={t(CENTER_NAME)} />
             <h1>
               {t("Jamoaga")} <em>{t("qo'shiling")}</em>
             </h1>
@@ -254,7 +255,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
               {t("Savollar bo'lsa:")} <a href={`tel:${CV_MAIN_PHONE.replace(/\s/g, "")}`}>{CV_MAIN_PHONE}</a>
               <br />
               Instagram:{" "}
-              <a href="https://instagram.com/akademiya.rasmiy" target="_blank" rel="noopener">
+              <a href={CENTER_INSTAGRAM} target="_blank" rel="noopener">
                 {CV_INSTAGRAM}
               </a>
             </p>
@@ -330,7 +331,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                     </div>
                     <div className={fieldCls("lastName")}>
                       <label htmlFor="ar-lastName">{t("Familiya")}</label>
-                      <input id="ar-lastName" value={v.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="family-name" placeholder="Raxmatullayev" />
+                      <input id="ar-lastName" value={v.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="family-name" placeholder="Valiyev" />
                       <p className="err">{t("Familiyangizni yozing.")}</p>
                     </div>
                     <div className={fieldCls("birth")}>
@@ -562,7 +563,7 @@ export default function CvApplyPage({ branches }: { branches: ApplyBranch[] }) {
                   <p className="hint">{t("Bu qismni rahbar birinchi bo'lib o'qiydi.")}</p>
                   <div className="grid">
                     <div className={fieldCls("about", "full")}>
-                      <label htmlFor="ar-about">{t("Nega aynan Akademiyada ishlamoqchisiz va nimani yaxshi uddalaysiz")}</label>
+                      <label htmlFor="ar-about">{t("Nega aynan bizda ishlamoqchisiz va nimani yaxshi uddalaysiz")}</label>
                       <textarea id="ar-about" value={v.about} onChange={(e) => set("about", e.target.value)} placeholder={t("Qisqacha bo'lsa ham bo'ladi: nimalarda kuchlisiz, qanday natijalarga erishgansiz.")} />
                       <p className="err">{t("Bir-ikki jumla yozing.")}</p>
                     </div>

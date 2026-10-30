@@ -1,3 +1,4 @@
+import { IS_AKADEMIYA } from "@/lib/center";
 // XODIMLAR BOTI — sozlama. Xodimlar QAYSI BOTDA ishlashi — shu fayldagi
 // `STAFF_BOT_HOST` (YAGONA joy: token, @nom, QR havolasi, Mini App imzosi,
 // webhook'lardagi yo'naltirish hammasi shundan).
@@ -50,7 +51,7 @@ function tokenOf(host: StaffBotHost): string {
  */
 function usernameOf(host: StaffBotHost): string {
   const raw = host === "crm" ? process.env.TELEGRAM_BOT_USERNAME : process.env.TELEGRAM_STUDENT_BOT_USERNAME;
-  return (raw || "").trim().replace(/^@/, "") || (host === "crm" ? "akademiya_crm_bot" : "tizimli_akademiya_bot");
+  return (raw || "").trim().replace(/^@/, "") || (!IS_AKADEMIYA ? "" : host === "crm" ? "akademiya_crm_bot" : "tizimli_akademiya_bot");
 }
 
 export function loadStaffBotConfig(): StaffBotConfig {

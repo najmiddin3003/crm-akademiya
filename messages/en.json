@@ -6346,5 +6346,11 @@
   "bajarilmagan topshiriqlar": "missed tasks",
   "Bu davrda bonus yoki jarima yo'q": "No bonuses or fines in this period",
   "Bonuslar yuklanmadi — faqat jarimalar ko'rsatilgan": "Bonuses did not load — only fines are shown",
-  "Jarimalar yuklanmadi — faqat bonuslar ko'rsatilgan": "Fines did not load — only bonuses are shown"
+  "Jarimalar yuklanmadi — faqat bonuslar ko'rsatilgan": "Fines did not load — only bonuses are shown",
+  "Nega aynan bizda ishlamoqchi ekaningizni yozing": "Tell us why you want to work with us",
+  "Nega aynan bizda ishlamoqchisiz va nimani yaxshi uddalaysiz": "Why do you want to work with us and what are you good at",
+  "Nega aynan biz?": "Why us?",
+  "Masalan: brendli ruchka": "E.g.: Branded pen",
+  "Masalan: 3-filial": "e.g. Branch 3",
+  "deb yozing — yangi Google Sheets ochiladi. Nomini masalan \"Nomzodlar CV\" qilib qo'ying.": "— a new Google Sheet opens. Name it, for example, \"Candidates CV\"."
 }

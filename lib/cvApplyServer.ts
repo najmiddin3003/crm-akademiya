@@ -136,7 +136,7 @@ export async function createCvFromForm(db: Db, form: FormData, staff: CvFormStaf
   const university = str("school");
   if (!university) return bad("O'quv yurti va yo'nalishni yozing");
   const whyUs = str("about");
-  if (!whyUs) return bad("Nega Akademiyada ishlamoqchi ekaningizni yozing");
+  if (!whyUs) return bad("Nega aynan bizda ishlamoqchi ekaningizni yozing");
   const consented = str("consent") === "on";
   if (!consented && !staff) return bad("Rozilikni belgilang");
 

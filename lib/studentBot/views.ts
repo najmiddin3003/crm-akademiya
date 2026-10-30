@@ -1,3 +1,4 @@
+import { CENTER_NAME } from "@/lib/center";
 import type { AttendanceMark, AttendanceStatus } from "@/lib/attendance";
 import { groupLabel, type Group } from "@/lib/groups";
 import type { GroupTask } from "@/lib/groupTasks";
@@ -98,7 +99,7 @@ export function startPrompt(nick = ""): string {
   return [
     `${pe("wave")} <b>${hello}</b>`,
     "",
-    "Akademiya o'quv markazining rasmiy botiga xush kelibsiz!",
+    `${CENTER_NAME}ning rasmiy botiga xush kelibsiz!`,
     "",
     "Bu yerda o'quv jarayoningizga oid barcha muhim ma'lumotlarni bir joyda ko'rishingiz mumkin:",
     "",

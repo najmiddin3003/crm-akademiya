@@ -303,7 +303,7 @@ export default function BranchesPage() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputCls}
-                placeholder={t("Masalan: Akademiya 3-filial")}
+                placeholder={t("Masalan: 3-filial")}
               />
             </div>
             <div>
@@ -331,7 +331,7 @@ export default function BranchesPage() {
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   className={inputCls}
-                  placeholder="+998 94 111 88 55"
+                  placeholder="+998 90 123 45 67"
                 />
               </div>
               <p className="sm:col-span-2 -mt-1 text-[12px] text-muted-foreground">

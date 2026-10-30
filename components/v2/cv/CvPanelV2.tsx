@@ -314,7 +314,7 @@ export default function CvPanelV2({ cv, isAdmin, canHire, busy, onClose, onInter
           </section>
         )}
         {section(t("Qo'shimcha"), [
-          has(cv.whyUs) ? row(t("Nega Akademiya?"), cv.whyUs) : null,
+          has(cv.whyUs) ? row(t("Nega aynan biz?"), cv.whyUs) : null,
           has(cv.source) ? row(t("Qayerdan bildi"), t(cv.source!)) : null,
           has(cv.ref) ? row(t("Ariza raqami"), <span className="tabular-nums">{cv.ref}</span>) : null,
           has(cv.enteredBy) ? row(t("Kiritgan"), cv.enteredBy) : null,

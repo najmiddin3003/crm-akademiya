@@ -1,3 +1,4 @@
+import { CENTER_SHORT } from "@/lib/center";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { ensureIndexes } from "./mongodb";
@@ -151,11 +152,11 @@ const PUBLIC_SITE_URL = "https://www.tizimli24.uz";
 /** Taklif SMS matni (havola + kod). */
 export function activationMessage(token: string, code: string): string {
   const base = (process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "") || PUBLIC_SITE_URL;
-  return `CRM-Akademiya tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
+  return `CRM-${CENTER_SHORT} tizimida hisobingizni faollashtirish uchun havola: ${base}/activate?t=${token} yoki tasdiqlash kodi: ${code}`;
 }
 
 export function resetMessage(code: string): string {
-  return `CRM-Akademiya tizimida parolni tiklash uchun tasdiqlash kodi: ${code}. Kod 10 daqiqa amal qiladi. Uni hech kimga bermang.`;
+  return `CRM-${CENTER_SHORT} tizimida parolni tiklash uchun tasdiqlash kodi: ${code}. Kod 10 daqiqa amal qiladi. Uni hech kimga bermang.`;
 }
 
 export { sendSms, normalizePhone };

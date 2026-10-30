@@ -1,3 +1,4 @@
+import { CENTER_SHORT } from "@/lib/center";
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { isValidPhone, normalizePhone } from "@/lib/invite";
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
       // ga bog'lanmagan. Undan filial aniqlash taxmin bo'lardi.
       branchIds: [scope.branchId],
       payrollBranchId: scope.branchId,
-      filial: str(r.filial) || "Akademiya",
+      filial: str(r.filial) || CENTER_SHORT,
       phone,
       kurs: str(r.kurs),
       // Faylda yaratilgan sana bo'lsa — saqlaymiz (eksport nusxasi qaytganda

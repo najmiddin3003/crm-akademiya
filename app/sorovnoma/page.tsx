@@ -1,3 +1,4 @@
+import { CENTER_NAME, IS_AKADEMIYA } from "@/lib/center";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import "@fontsource-variable/manrope/wght.css";
@@ -26,9 +27,9 @@ import "./sorovnoma.css";
 // olinardi — endi sahifa Google'ga umuman murojaat qilmaydi.
 
 export const metadata: Metadata = {
-  title: "Akademiya o'quv markazi — Bepul sinov darsi",
+  title: `${CENTER_NAME} — Bepul sinov darsi`,
   description: "Fanlar, chet tillari va Prezident maktabiga tayyorlov — bepul sinov darsiga 1 daqiqada yoziling.",
-  icons: { icon: "/sorovnoma/favicon.png" },
+  ...(IS_AKADEMIYA ? { icons: { icon: "/sorovnoma/favicon.png" } } : {}),
 };
 
 export default async function Page() {

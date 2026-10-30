@@ -1098,7 +1098,7 @@ export default function CvPage() {
                 <div className="rounded-xl border border-border bg-secondary/20 p-3.5">
                   <div className="font-semibold mb-1">{t("1-qadam. Yangi jadval oching")}</div>
                   <div className="text-muted-foreground">
-                    {t("Brauzerda")}{" "}<b>sheets.new</b>{" "}{t("deb yozing — yangi Google Sheets ochiladi. Nomini masalan \"Akademiya CV\" qilib qo'ying.")}
+                    {t("Brauzerda")}{" "}<b>sheets.new</b>{" "}{t("deb yozing — yangi Google Sheets ochiladi. Nomini masalan \"Nomzodlar CV\" qilib qo'ying.")}
                   </div>
                 </div>
                 <div className="rounded-xl border border-border bg-secondary/20 p-3.5">

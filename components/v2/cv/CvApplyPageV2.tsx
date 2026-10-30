@@ -1,4 +1,5 @@
 "use client";
+import { CENTER_INSTAGRAM, CENTER_NAME, CENTER_SHORT } from "@/lib/center";
 
 // Onest — dizayn shrifti (AppShellV2 dagidek; bu sahifa qobiqsiz, shuning uchun o'zi yuklaydi).
 import "@fontsource-variable/onest/wght.css";
@@ -191,10 +192,10 @@ export default function CvApplyPageV2({ branches }: { branches: ApplyBranch[] })
       <header className="border-b border-v2-border bg-v2-surface">
         <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-v2-md bg-v2-brand text-[17px] font-bold text-v2-on-brand" aria-hidden>
-            A
+            {CENTER_SHORT.charAt(0).toUpperCase() || "T"}
           </span>
           <div className="min-w-0">
-            <div className="truncate text-v2-body font-semibold text-v2-text">{t("Akademiya o'quv markazi")}</div>
+            <div className="truncate text-v2-body font-semibold text-v2-text">{t(CENTER_NAME)}</div>
             <div className="truncate text-v2-caption font-normal text-v2-text-2">{t("Ishga qabul anketasi")}</div>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -344,11 +345,15 @@ export default function CvApplyPageV2({ branches }: { branches: ApplyBranch[] })
           {t("Savollar bo'lsa:")}{" "}
           <a href={tel(CV_MAIN_PHONE)} className="text-v2-text-2 hover:underline">
             {CV_MAIN_PHONE}
-          </a>{" "}
-          · Instagram{" "}
-          <a href="https://instagram.com/akademiya.rasmiy" target="_blank" rel="noopener" className="text-v2-text-2 hover:underline">
-            {CV_INSTAGRAM}
           </a>
+          {CENTER_INSTAGRAM && (
+            <>
+              {" "}· Instagram{" "}
+              <a href={CENTER_INSTAGRAM} target="_blank" rel="noopener" className="text-v2-text-2 hover:underline">
+                {CV_INSTAGRAM}
+              </a>
+            </>
+          )}
         </p>
       </main>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { CENTER_LOGO, CENTER_NAME } from "@/lib/center";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Loader2, Moon, Sun } from "lucide-react";
@@ -378,7 +379,7 @@ export default function SurveyPage({ config }: { config: SurveyConfig }) {
         </div>
         <div className="hero">
           {/* eslint-disable-next-line @next/next/no-img-element -- statik logotip, o'lchami CSS'da */}
-          <img className="logo" src="/sorovnoma/logo.png" alt={t("Akademiya o'quv markazi")} width={382} height={95} />
+          {CENTER_LOGO ? <img className="logo" src={CENTER_LOGO} alt={t(CENTER_NAME)} width={382} height={95} /> : <p className="logo" style={{ fontWeight: 700, fontSize: 24, height: "auto" }}>{t(CENTER_NAME)}</p>}
           <h1>
             <em>{t("Bepul")}</em> {t("sinov darsiga yoziling")}
           </h1>

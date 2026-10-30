@@ -5,10 +5,10 @@
 // O'quvchilar HAQIQIY bazadan keladi: chaqiruvchi (Navbar → hooks/useStudents)
 // ro'yxatni uzatadi, chunki bu funksiya klientda sinxron ishlaydi. Ilgari
 // bu yerda constants/STUDENTS statik demo massivi o'qilardi.
-// Buyurtmalar qismi hozircha eski demo generatordan (createInitialOrders) —
-// u alohida ish, buyurtmalar sahifasining o'zi bazadan o'qiydi.
+// Buyurtmalar (demo generator createInitialOrders — Akademiya'dan olingan ism va
+// telefonlar) 30.10.2026 da olib tashlandi: boshqa markaz saytida ko'rinardi, bu
+// yerda esa haqiqiy bo'lmagan lidlarni topardi. Lidlar — /orders-list (bazadan).
 
-import { createInitialOrders } from "@/lib/ordersData";
 import { searchPhoneDigits } from "@/lib/phoneSearch";
 import type { StudentRow } from "@/lib/studentsData";
 
@@ -56,33 +56,6 @@ function studentRecords(students: StudentRow[]): SearchRecord[] {
   }));
 }
 
-let cache: SearchRecord[] | null = null;
-
-/** Buyurtmalar indeksi — o'zgarmaydi, shu bois bir marta quriladi. */
-function buildIndex(): SearchRecord[] {
-  if (cache) return cache;
-  const recs: SearchRecord[] = [];
-
-  for (const o of createInitialOrders()) {
-    recs.push({
-      result: {
-        id: `order-${o.id}`,
-        title: o.name,
-        subtitle: `Buyurtma · ${o.course} · ${o.phone}`,
-        category: "Buyurtma",
-        href: "/orders-list",
-      },
-      haystack: [o.name, o.phone, o.id, o.teacher, o.course, o.level, o.moderator, o.group, o.status, o.source, o.category]
-        .join(" ")
-        .toLowerCase(),
-      phoneDigits: digitsOf(o.phone),
-    });
-  }
-
-  cache = recs;
-  return recs;
-}
-
 export function searchAll(query: string, students: StudentRow[] = [], limit = 12): SearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -95,7 +68,7 @@ export function searchAll(query: string, students: StudentRow[] = [], limit = 12
   const wholePhone = digitsOnly ? searchPhoneDigits(q) : null;
 
   const out: SearchResult[] = [];
-  for (const rec of [...studentRecords(students), ...buildIndex()]) {
+  for (const rec of studentRecords(students)) {
     const hit = wholePhone
       ? rec.phoneDigits.includes(wholePhone)
       : terms.every((t) => {

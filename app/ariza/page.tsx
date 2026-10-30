@@ -1,3 +1,4 @@
+import { CENTER_NAME, IS_AKADEMIYA } from "@/lib/center";
 import type { Metadata } from "next";
 // Shriftlar LOYIHA ICHIDA (npm @fontsource, 20.10.2026) — `next/font/google` build
 // paytida Google'dan yuklardi va prod build shu sababli yiqilardi. Oila nomlari:
@@ -30,9 +31,9 @@ import "./ariza.css";
 // `?classic=1` — eski anketa (zaxira yo'l). Qaror — design/v2/SAVOLLAR.md.
 
 export const metadata: Metadata = {
-  title: "Akademiya o'quv markazi — Ishga ariza",
-  description: "Akademiya o'quv markazida bo'sh ish o'rinlari uchun ariza. To'ldirish 3 daqiqa vaqt oladi.",
-  icons: { icon: "/ariza/favicon.png" },
+  title: `${CENTER_NAME} — Ishga ariza`,
+  description: `${CENTER_NAME}da bo'sh ish o'rinlari uchun ariza. To'ldirish 3 daqiqa vaqt oladi.`,
+  ...(IS_AKADEMIYA ? { icons: { icon: "/ariza/favicon.png" } } : {}),
 };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ classic?: string }> }) {

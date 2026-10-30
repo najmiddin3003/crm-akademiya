@@ -1,3 +1,4 @@
+import { CENTER_SHORT } from "@/lib/center";
 import { NextResponse } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { CV_NOTE_MAX, cvFromRow, planCvPatch, type CvApplication, type CvPatchBody } from "@/lib/managementCv";
@@ -72,7 +73,7 @@ async function hire(
     turi: positionToTuri(cv.position),
     branchIds: [branchId],
     payrollBranchId: branchId,
-    filial: "Akademiya",
+    filial: CENTER_SHORT,
     phone: cv.phone,
     kurs: isTeacher && cv.subject && cv.subject !== "-" ? cv.subject : "",
     created: fmtNow(new Date()),

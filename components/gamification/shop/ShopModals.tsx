@@ -525,7 +525,7 @@ export function ProductModal({
               id="pN"
               value={name}
               maxLength={60}
-              placeholder={t("Masalan: Akademiya ruchkasi")}
+              placeholder={t("Masalan: brendli ruchka")}
               onChange={(e) => {
                 setName(e.target.value);
                 edited("name");

@@ -1,4 +1,5 @@
 "use client";
+import { CENTER_SHORT } from "@/lib/center";
 
 import { useEffect, useMemo, useState } from "react";
 import { Target } from "lucide-react";
@@ -117,7 +118,7 @@ export default function FinancialAnalyticsPage() {
           <div className="text-[13px] font-semibold text-muted-foreground mb-2">{t("Filiallar")}</div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[14px]">{t("Akademiya")}</span>
+              <span className="font-semibold text-[14px]">{t(CENTER_SHORT)}</span>
             </div>
             <div className="font-bold text-[15px] tabular-nums mt-0.5">{fmtOrDash(totalBalance)}</div>
             <div className="mt-3 space-y-2">
