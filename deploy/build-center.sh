@@ -46,6 +46,8 @@ cp -r .next/static .next/standalone/.next/
 # dagi mongodb/bcryptjs ni ishlatadi): scripts/new-center-admin.sh.
 mkdir -p .next/standalone/scripts
 cp scripts/seed-admin.js scripts/seed-branch.mjs scripts/new-center-admin.sh .next/standalone/scripts/
+# Telegram bot: guruh id'sini topish va webhook (faqat node o'zi — TS/loyiha modullari kerak emas).
+cp scripts/sync-get-chat-id.mjs scripts/set-telegram-webhook.mjs .next/standalone/scripts/
 # seed-admin.js bcryptjs ni talab qiladi — ilova uni chunk ichiga qo'shadi, node_modules'ga tushmaydi.
 [[ -d .next/standalone/node_modules/bcryptjs ]] || cp -r node_modules/bcryptjs .next/standalone/node_modules/
 rm -f .next/standalone/.env*
