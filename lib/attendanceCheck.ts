@@ -205,6 +205,9 @@ export interface AttendanceRecord {
   exitLocation?: TurnstileLocation | null;
   enteredAt?: Date;
   exitedAt?: Date;
+  /** Face ID urinishi (`staff_face_shots._id`, lib/staffFace.ts) — yoqilgan bo'lsa. */
+  faceShotId?: string | null;
+  exitFaceShotId?: string | null;
 }
 
 /** Filialning davomatga oid maydonlari (Boshqaruv → Filiallar). */
@@ -359,10 +362,11 @@ export async function markAttendance(
   emp: HrEmployee,
   kind: AttendanceKind,
   token: string,
-  opts: { now?: Date; loc?: ScanLocation | null } = {},
+  opts: { now?: Date; loc?: ScanLocation | null; faceShotId?: string | null } = {},
 ): Promise<AttendanceOutcome> {
   const now = opts.now ?? new Date();
   const loc = opts.loc ?? null;
+  const faceShotId = opts.faceShotId ?? null;
   const v = verifyQrToken(token, now.getTime());
   if (!v.ok) return { ok: false, status: 400, error: v.error };
   if (kind === "out" && !(await loadAttendanceSettings(db)).checkoutEnabled) {
@@ -391,12 +395,13 @@ export async function markAttendance(
     const exit = loc ? await locationRecord(db, loc, place.distance, branch) : null;
     const exitLocation = exit?.location ?? null;
     // Qayta skanerlansa oxirgisi qoladi — chiqib, qaytib kelib, yana ketish mumkin.
-    await col.updateOne(key, { $set: { exitTime: hm, exitedAt: now, exitLocation } });
+    const exitFace = faceShotId ? { exitFaceShotId: faceShotId } : {};
+    await col.updateOne(key, { $set: { exitTime: hm, exitedAt: now, exitLocation, ...exitFace } });
     return {
       ok: true,
       kind,
       fresh: true,
-      record: { ...existing, exitTime: hm, exitLocation },
+      record: { ...existing, exitTime: hm, exitLocation, ...exitFace },
       branch,
       ...(exit?.retry ? { addressPending: "exitLocation" as const } : {}),
     };
@@ -427,6 +432,7 @@ export async function markAttendance(
     expectedWhy: exp?.why ?? null,
     location,
     enteredAt: now,
+    ...(faceShotId ? { faceShotId } : {}),
   };
 
   // `id` — kolleksiyadagi eng kattasidan keyingisi (loyihadagi naqsh). Bir

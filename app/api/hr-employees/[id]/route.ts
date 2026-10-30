@@ -21,6 +21,7 @@ import {
 import { getBranchScope } from "@/lib/branchScope";
 import { resolveCenterRole, STAFF_TURI } from "@/lib/roles";
 import { syncEmployeeRename } from "@/lib/employeeRename";
+import { deleteFaceData } from "@/lib/staffFace";
 import type { HrEmployeeExtra } from "@/components/employees/employeeExtras";
 
 /**
@@ -431,5 +432,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (res.deletedCount === 0) {
     return NextResponse.json({ ok: false, error: "Xodim topilmadi" }, { status: 404 });
   }
+  // Face ID (lib/staffFace.ts): o'chirilgan xodimning yuzi va rasmlari qolmasin.
+  await deleteFaceData(db, empId);
   return NextResponse.json({ ok: true });
 }

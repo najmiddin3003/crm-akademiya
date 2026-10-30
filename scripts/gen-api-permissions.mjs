@@ -71,6 +71,9 @@ const PUBLIC = [
   // «📷 Ishga keldim» Mini App'i — QR kodni yozadi (app/api/xodim/davomat):
   // xodim initData'dan, filial imzolangan QR tokenidan (lib/attendanceQr.ts).
   "/api/xodim/davomat",
+  // Face ID (30.10.2026) — o'sha Mini App'da yuzni ro'yxatga olish/tekshirish
+  // (app/api/xodim/yuz, lib/staffFace.ts); xodim initData'dan.
+  "/api/xodim/yuz",
   // TEZLIK SINOVI (/tezlik, components/tezlik/TapTest.tsx) — faqat vaqt
   // va server nomini qaytaradi, ma'lumot yo'q; dev'dan ham prod o'lchanadi
   // (CORS "*", lib/health.ts). /ping ilova ichida ishlatilmaydi (tiriklik).

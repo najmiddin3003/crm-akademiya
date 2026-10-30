@@ -23,11 +23,11 @@ const SECURITY_HEADERS = [
   { key: "Content-Security-Policy", value: FRAME_SELF },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Ilova kamera/mikrofonni ishlatmaydi (27.09.2026 da tekshirildi). JOYLASHUV
-  // 29.09.2026 dan faqat o'z domenimizga ochiq: «Ishga keldim» Mini App'i
-  // (Telegram LocationManager bo'lmasa brauzer geolokatsiyasi) va Boshqaruv →
-  // Filiallar'dagi «📍 Hozirgi joylashuvim» tugmasi. QR skaner Telegram'ning
-  // o'zida — sahifaga kamera kerak emas.
+  // Ilova kamera/mikrofonni ishlatmaydi (27.09.2026 da tekshirildi) — istisno
+  // pastda: `/xodim` (Face ID, 30.10.2026). JOYLASHUV 29.09.2026 dan faqat o'z
+  // domenimizga ochiq: «Ishga keldim» Mini App'i (Telegram LocationManager
+  // bo'lmasa brauzer geolokatsiyasi) va Boshqaruv → Filiallar'dagi «📍 Hozirgi
+  // joylashuvim» tugmasi. QR skaner Telegram'ning o'zida — unga kamera kerak emas.
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
 ];
 
@@ -45,8 +45,16 @@ const nextConfig: NextConfig = {
       // key will override the first") — Mini App sahifalarida Telegram Web ham.
       { source: "/oquvchi/:path*", headers: [{ key: "Content-Security-Policy", value: FRAME_TELEGRAM }] },
       { source: "/me/:path*", headers: [{ key: "Content-Security-Policy", value: FRAME_TELEGRAM }] },
-      // Xodimlar botining «Profilim» Mini App'i (28.09.2026).
-      { source: "/xodim/:path*", headers: [{ key: "Content-Security-Policy", value: FRAME_TELEGRAM }] },
+      // Xodimlar botining «Profilim» Mini App'i (28.09.2026). KAMERA faqat shu
+      // yerda ochiq (30.10.2026): «Ishga keldim» da Face ID — xodim old kamerada
+      // yuzini tasdiqlaydi (components/employees/FaceCapture.tsx, lib/staffFace.ts).
+      {
+        source: "/xodim/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: FRAME_TELEGRAM },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(self)" },
+        ],
+      },
     ];
   },
   experimental: {

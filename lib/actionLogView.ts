@@ -117,7 +117,7 @@ const LEAD_SECTIONS = new Set(["orders", "lead-settings"]);
 const ATT_SECTIONS = new Set(["attendance", "attendance-qr"]);
 const STAFF_SECTIONS = new Set(["hr-employees", "employees", "roles", "work-schedules", "staff-tasks", "tasks", "temp-staff", "management-cv"]);
 const FIN_ACTIONS = new Set(["kirim", "chiqim", "transfer", "method_transfer", "transfer_confirm", "transfer_reject", "settle_teacher_share", "settle_teacher_share_undo"]);
-const STAFF_ACTIONS = new Set(["qr_in", "qr_out", "task_failed_fine", "staff_task_done", "staff_task_approve", "staff_task_return"]);
+const STAFF_ACTIONS = new Set(["qr_in", "qr_out", "face_enroll", "task_failed_fine", "staff_task_done", "staff_task_approve", "staff_task_return"]);
 const LEAD_ACTIONS = new Set(["lead", "lead_holat"]);
 
 export function logCategory(r: Pick<LogRow, "section" | "action" | "path">): LogCategory {
@@ -184,6 +184,8 @@ const RULES: Rule[] = [
   { m: "PATCH PUT", re: /^\/api\/hr-employees\/\d+$/, verb: "employee_edit", icon: "staff" },
   { m: "DELETE", re: /^\/api\/hr-employees\/\d+$/, verb: "employee_delete", icon: "delete" },
   { m: "POST", re: /^\/api\/hr-employees\/\d+\/password$/, verb: "employee_password", icon: "staff" },
+  { m: "DELETE", re: /^\/api\/hr-employees\/\d+\/face$/, verb: "face_reset", icon: "delete" },
+  { m: "PATCH", re: /^\/api\/hr-employees\/\d+\/face$/, verb: "face_exempt", icon: "staff" },
 ];
 
 /** Bot, kirish va tizim amallari (HTTP usuli emas). */
@@ -200,6 +202,7 @@ const SPECIAL: Record<string, { verb: LogVerbKey; icon: LogIcon }> = {
   lead_holat: { verb: "lead_holat", icon: "lead" },
   qr_in: { verb: "qr_in", icon: "staff" },
   qr_out: { verb: "qr_out", icon: "staff" },
+  face_enroll: { verb: "face_enroll", icon: "staff" },
   task_failed_fine: { verb: "task_fine", icon: "staff" },
   staff_task_done: { verb: "task_done", icon: "staff" },
   staff_task_approve: { verb: "task_approve", icon: "staff" },
@@ -442,6 +445,7 @@ export function buildLogView(r: LogRow, names: LogNames = EMPTY_LOG_NAMES): LogV
     }
     case "qr_in":
     case "qr_out":
+    case "face_enroll":
       object = null;
       break;
     case "task_done":

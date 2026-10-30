@@ -30,6 +30,8 @@ const cases = [
   ["Oʻzbekcha", "Ўзбекча"],
   ["Ishonch telefoni", "Ишонч телефони"],
   ["Ctrl K", "Ctrl K"],
+  // Face ID — brend nomi, lotincha qoladi (30.10.2026).
+  ["Yuz tekshiruvi (Face ID)", "Юз текшируви (Face ID)"],
 ];
 let bad = 0;
 for (const [src, want] of cases) {

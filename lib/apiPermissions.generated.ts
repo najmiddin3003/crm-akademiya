@@ -26,6 +26,7 @@ export const PUBLIC_API: readonly string[] = [
   "/api/xodim/me",
   "/api/xodim/data",
   "/api/xodim/davomat",
+  "/api/xodim/yuz",
   "/api/health/ping",
   "/api/health/db",
 ];
@@ -154,6 +155,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/groups/import": ["/groups"],
   "/api/hr-employees": ["/blok-testlar", "/management-xodimlar"],
   "/api/hr-employees/[id]": ["/management-rollar", "/management-xodimlar"],
+  "/api/hr-employees/[id]/face": ["/management-xodimlar"],
   "/api/hr-employees/[id]/notes": ["/management-xodimlar"],
   "/api/hr-employees/[id]/password": ["/management-xodimlar"],
   "/api/hr-employees/[id]/salary-ledger": ["/management-xodimlar"],

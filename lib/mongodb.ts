@@ -373,6 +373,12 @@ async function createAllIndexes(db: Db): Promise<void> {
       { unique: true, partialFilterExpression: { source: "qr" }, name: "qr_day_employee_branch" },
     ),
   );
+  // FACE ID (lib/staffFace.ts, 30.10.2026): xodimga bitta yuz; urinishlar
+  // (rasm bilan) xodim bo'yicha so'nggisidan, 60 kundan keyin o'zi o'chadi
+  // (staffFace.ts → SHOT_TTL_DAYS bilan bir xil son).
+  tasks.push(db.collection("staff_faces").createIndex({ employeeId: 1 }, { unique: true }));
+  tasks.push(db.collection("staff_face_shots").createIndex({ employeeId: 1, at: -1 }));
+  tasks.push(db.collection("staff_face_shots").createIndex({ at: 1 }, { expireAfterSeconds: 60 * 86_400, name: "staff_face_shots_ttl" }));
   // Joylashuv → manzil keshi (lib/geo.ts, OpenStreetMap Nominatim): ~11 m katak
   // bo'yicha bitta yozuv, 90 kundan keyin o'zi o'chadi (manzil yangilansin).
   tasks.push(db.collection("geo_address_cache").createIndex({ key: 1 }, { unique: true }));

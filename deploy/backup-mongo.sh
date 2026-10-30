@@ -39,10 +39,13 @@ find "$DIR" -name 'crm-*.gz' -mtime +"$KEEP_DAYS" -delete
 if [[ -s /root/.mongo-atlas-uri ]]; then
   echo "   Atlas'ga ko'chirilmoqda…"
   if mongorestore --uri="$(cat /root/.mongo-atlas-uri)" --gzip --archive="$OUT" \
-       --nsInclude="$DB.*" --nsExclude="$DB.action_log" --drop --quiet; then
+       --nsInclude="$DB.*" --nsExclude="$DB.action_log" \
+       --nsExclude="$DB.staff_faces" --nsExclude="$DB.staff_face_shots" --drop --quiet; then
     # `action_log` (Amallar jurnali, lib/actionLog.ts, 10.10.2026) Atlas'ga
     # KO'CHIRILMAYDI: yiliga yuzlab MB bo'ladi, M0 chegarasi esa 512 MB.
     # U yuqoridagi lokal nusxada to'liq turadi.
+    # Face ID (`staff_faces`, `staff_face_shots`, lib/staffFace.ts, 30.10.2026)
+    # ham — biometrik ma'lumot (yuz izlari va rasmlari) faqat o'z serverimizda.
     echo "   Atlas: ok"
   else
     echo "   Atlas: XATO (lokal nusxa saqlangan)"

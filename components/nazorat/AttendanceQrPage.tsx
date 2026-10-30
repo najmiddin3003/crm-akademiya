@@ -47,6 +47,8 @@ interface QrData {
   refreshInMs: number;
   bot: string;
   checkoutEnabled: boolean;
+  /** Face ID — skanerlashdan oldin yuz tekshiruvi (lib/staffFace.ts). */
+  faceRequired: boolean;
   canConfigure: boolean;
   arrivals: Arrival[];
   /** Klient soatida keyingi kod vaqti (so'rov kelgan payt + refreshInMs). */
@@ -154,19 +156,20 @@ export default function AttendanceQrPage() {
     else void frameRef.current?.requestFullscreen?.();
   }
 
-  async function toggleCheckout(next: boolean) {
+  async function toggleSetting(key: "checkoutEnabled" | "faceRequired", next: boolean) {
     setSaving(true);
     try {
       const res = await fetch("/api/attendance-qr", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkoutEnabled: next }),
+        body: JSON.stringify({ [key]: next }),
       }).then((r) => r.json());
       if (!res?.ok) {
         showError(t(res?.error || "Saqlanmadi"));
         return;
       }
-      showSuccess(next ? t("«Ishdan ketdim» yoqildi") : t("«Ishdan ketdim» o'chirildi"));
+      if (key === "faceRequired") showSuccess(next ? t("Face ID yoqildi") : t("Face ID o'chirildi"));
+      else showSuccess(next ? t("«Ishdan ketdim» yoqildi") : t("«Ishdan ketdim» o'chirildi"));
       setVersion((v) => v + 1);
     } catch {
       showError(t("Serverga ulanib bo'lmadi"));
@@ -202,10 +205,25 @@ export default function AttendanceQrPage() {
                   type="checkbox"
                   checked={data.checkoutEnabled}
                   disabled={saving}
-                  onChange={(e) => void toggleCheckout(e.target.checked)}
+                  onChange={(e) => void toggleSetting("checkoutEnabled", e.target.checked)}
                   className="h-4 w-4 accent-primary"
                 />
                 <span>{t("«Ishdan ketdim» ham ishlasin")}</span>
+              </label>
+            )}
+            {data.canConfigure && !full && (
+              <label
+                className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-[13px]"
+                title={t("Xodim skanerlashdan oldin telefonida yuzini tasdiqlaydi. Birinchi marta yuzi ro'yxatga olinadi.")}
+              >
+                <input
+                  type="checkbox"
+                  checked={data.faceRequired}
+                  disabled={saving}
+                  onChange={(e) => void toggleSetting("faceRequired", e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span>{t("Yuz tekshiruvi (Face ID)")}</span>
               </label>
             )}
             {buildings.length > 1 && !full && (

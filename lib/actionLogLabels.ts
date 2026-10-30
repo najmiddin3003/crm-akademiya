@@ -80,6 +80,7 @@ export const ACTION_LABELS: Record<string, string> = {
   lead_holat: "Lid holati (guruh boti)",
   qr_in: "Ishga keldi (QR)",
   qr_out: "Ishdan ketdi (QR)",
+  face_enroll: "Yuzini ro'yxatdan o'tkazdi (Face ID)",
   task_failed_fine: "Topshiriq bajarilmadi — jarima",
   POST: "Qo'shdi",
   PUT: "O'zgartirdi",
@@ -109,6 +110,8 @@ const ROUTE_LABELS: { m: string; re: RegExp; label: string }[] = [
   { m: "POST", re: /^\/api\/auth\/forgot-password$/, label: "Parolni tiklash kodi so'radi" },
   { m: "POST", re: /^\/api\/auth\/reset-password$/, label: "Parolni tikladi" },
   { m: "POST", re: /^\/api\/hr-employees\/\d+\/password$/, label: "Xodim parolini o'rnatdi" },
+  { m: "DELETE", re: /^\/api\/hr-employees\/\d+\/face$/, label: "Xodim yuzini o'chirdi (Face ID)" },
+  { m: "PATCH", re: /^\/api\/hr-employees\/\d+\/face$/, label: "Face ID ozodligini o'zgartirdi" },
   { m: "POST", re: /^\/api\/ai\/actions\/[^/]+$/, label: "AI amalini tasdiqladi" },
   { m: "DELETE", re: /^\/api\/sessions$/, label: "Qurilmani uzdi" },
 ];
@@ -142,7 +145,7 @@ export const ACTION_KINDS = [
   {
     value: "bot",
     label: "Bot va QR",
-    actions: ["kirim", "chiqim", "transfer", "method_transfer", "transfer_confirm", "transfer_reject", "lead", "lead_holat", "qr_in", "qr_out"],
+    actions: ["kirim", "chiqim", "transfer", "method_transfer", "transfer_confirm", "transfer_reject", "lead", "lead_holat", "qr_in", "qr_out", "face_enroll"],
   },
   { value: "system", label: "Tizim", actions: ["task_failed_fine"] },
 ] as const;
@@ -208,6 +211,9 @@ export const LOG_VERBS = {
   employee_password: "xodim parolini o'rnatdi",
   qr_in: "ishga keldi",
   qr_out: "ishdan ketdi",
+  face_enroll: "yuzini ro'yxatdan o'tkazdi (Face ID)",
+  face_reset: "xodim yuzini o'chirdi (Face ID)",
+  face_exempt: "Face ID ozodligini o'zgartirdi",
   task_done: "topshiriqni bajardi",
   task_approve: "topshiriqni tasdiqladi",
   task_return: "topshiriqni qaytardi",

@@ -1,7 +1,8 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { staffFromInitData } from "@/lib/staffBot/webapp";
-import { parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
+import { loadAttendanceSettings, parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
+import { faceState, linkShot, readFacePass } from "@/lib/staffFace";
 import { fillLocationAddress, markAttendance, type ScanLocation } from "@/lib/attendanceCheck";
 import { notifyLate } from "@/lib/attendanceNotify";
 import { isValidPoint } from "@/lib/geo";
@@ -23,6 +24,10 @@ import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 // `kind` — qaysi tugma bilan ochilgani. Skanerlangan kod boshqa turniki
 // bo'lsa (ekranda ikkala kod yonma-yon turganda adashib boshqasini
 // skanerlagan) — yozilmaydi: "keldim" o'rniga "ketdim" belgilanib qolmasin.
+//
+// `facePass` — FACE ID yoqilgan bo'lsa (30.10.2026, lib/staffFace.ts): Mini App
+// avval /api/xodim/yuz da yuzni tasdiqlaydi va shu ruxsatni oladi. Ruxsatsiz
+// yoki eskirgan bo'lsa `code: "face_required"` — Mini App yuz qadamiga qaytadi.
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: NO_STORE });
@@ -38,7 +43,7 @@ function readLocation(raw: unknown): ScanLocation | null {
 }
 
 export async function POST(req: Request) {
-  let body: { code?: unknown; kind?: unknown; loc?: unknown };
+  let body: { code?: unknown; kind?: unknown; loc?: unknown; facePass?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -59,8 +64,23 @@ export async function POST(req: Request) {
     const auth = await staffFromInitData(db, req.headers.get("x-telegram-init-data") || "");
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
-    const res = await markAttendance(db, auth.employee, scanned.kind, scanned.token, { loc: readLocation(body.loc) });
+    // FACE ID: yoqilgan va xodim ozod bo'lmasa — yuz ruxsati shart.
+    let faceShotId: string | null = null;
+    const settings = await loadAttendanceSettings(db);
+    if (settings.faceRequired && !(await faceState(db, auth.employee.id)).exempt) {
+      faceShotId = readFacePass(body.facePass, auth.employee.id);
+      if (!faceShotId) return json({ ok: false, error: "Avval yuzingizni tasdiqlang", code: "face_required" }, 403);
+    }
+
+    const res = await markAttendance(db, auth.employee, scanned.kind, scanned.token, { loc: readLocation(body.loc), faceShotId });
     if (!res.ok) return json({ ok: false, error: res.error, code: res.code ?? null }, res.status);
+
+    // Yuz urinishi qaysi yozuvga ishlatildi — admin profilda ko'radi.
+    if (faceShotId && res.fresh) {
+      const shotId = faceShotId;
+      const link = { recordId: res.record.id, kind: res.kind, date: res.record.date, branchId: res.branch.id };
+      after(() => linkShot(db, shotId, link));
+    }
 
     // AMALLAR JURNALI (lib/actionLog.ts): «Ishga keldim/ketdim» — kim, qaysi
     // bino. Mini App sessiyasiz keladi, proxy uni yozmaydi. Takror skaner — yo'q.

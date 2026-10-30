@@ -21,9 +21,10 @@ import {
 // QR kodi (SVG), keyingisigacha qolgan vaqt va bugun kelganlar ro'yxati.
 // Ekran har 30 soniyada shu yerdan yangi kod oladi (lib/attendanceQr.ts).
 //
-// PATCH — «Ishdan ketdim» ni yoqish/o'chirish. FAQAT ADMIN: bu hamma xodimga
-// ta'sir qiladigan sozlama, sahifa ruxsatining o'zi yetmaydi (qabulxona
-// ekranidagi hisob uni o'zgartira olmasin).
+// PATCH — «Ishdan ketdim» va Face ID (yuz tekshiruvi, lib/staffFace.ts) ni
+// yoqish/o'chirish: `{ checkoutEnabled?, faceRequired? }`, kamida bittasi.
+// FAQAT ADMIN: bu hamma xodimga ta'sir qiladigan sozlama, sahifa ruxsatining
+// o'zi yetmaydi (qabulxona ekranidagi hisob uni o'zgartira olmasin).
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
 
@@ -82,6 +83,7 @@ export async function GET(req: Request) {
       refreshInMs: msToNextSlot(now),
       bot: staffBotUsername(),
       checkoutEnabled: settings.checkoutEnabled,
+      faceRequired: settings.faceRequired,
       canConfigure: me?.role === "admin",
       arrivals: rows,
     },
@@ -95,16 +97,20 @@ export async function PATCH(req: Request) {
   if (me.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Bu sozlamani faqat administrator o'zgartiradi" }, { status: 403 });
   }
-  let body: { checkoutEnabled?: unknown };
+  let body: { checkoutEnabled?: unknown; faceRequired?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
-  if (typeof body.checkoutEnabled !== "boolean") {
-    return NextResponse.json({ ok: false, error: "checkoutEnabled kerak" }, { status: 400 });
+  const patch: { checkoutEnabled?: boolean; faceRequired?: boolean } = {};
+  if (typeof body.checkoutEnabled === "boolean") patch.checkoutEnabled = body.checkoutEnabled;
+  if (typeof body.faceRequired === "boolean") patch.faceRequired = body.faceRequired;
+  if (patch.checkoutEnabled === undefined && patch.faceRequired === undefined) {
+    return NextResponse.json({ ok: false, error: "Noto'g'ri so'rov" }, { status: 400 });
   }
   const db = await ensureIndexes();
-  await saveAttendanceSettings(db, { checkoutEnabled: body.checkoutEnabled });
-  return NextResponse.json({ ok: true, checkoutEnabled: body.checkoutEnabled }, { headers: NO_STORE });
+  await saveAttendanceSettings(db, patch);
+  const s = await loadAttendanceSettings(db);
+  return NextResponse.json({ ok: true, checkoutEnabled: s.checkoutEnabled, faceRequired: s.faceRequired }, { headers: NO_STORE });
 }

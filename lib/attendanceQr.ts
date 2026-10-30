@@ -114,18 +114,39 @@ export interface AttendanceSettings {
    * Admin QR ekranidagi tugma bilan yoqadi — deploy shart emas.
    */
   checkoutEnabled: boolean;
+  /**
+   * FACE ID (30.10.2026, lib/staffFace.ts): «Ishga keldim/ketdim» dan oldin
+   * xodim o'z telefonida yuzini tasdiqlaydi. Sukut O'CHIQ — admin QR ekranidagi
+   * tugma bilan yoqadi.
+   */
+  faceRequired: boolean;
+  /**
+   * Yuz izlari orasidagi masofa chegarasi (kichigi — qattiqroq). Interfeysda
+   * yo'q: kerak bo'lsa bazada `values.faceThreshold` (0.35–0.6), sukut 0.5.
+   */
+  faceThreshold: number;
 }
+
+export const FACE_THRESHOLD_DEFAULT = 0.5;
 
 export async function loadAttendanceSettings(db: Db): Promise<AttendanceSettings> {
   const doc = await db.collection("settings").findOne({ key: ATTENDANCE_SETTINGS_KEY }, { projection: { _id: 0, values: 1 } });
-  const v = (doc?.values ?? {}) as { checkoutEnabled?: unknown };
-  return { checkoutEnabled: v.checkoutEnabled === true };
+  const v = (doc?.values ?? {}) as { checkoutEnabled?: unknown; faceRequired?: unknown; faceThreshold?: unknown };
+  const th = Number(v.faceThreshold);
+  return {
+    checkoutEnabled: v.checkoutEnabled === true,
+    faceRequired: v.faceRequired === true,
+    faceThreshold: Number.isFinite(th) && th >= 0.35 && th <= 0.6 ? th : FACE_THRESHOLD_DEFAULT,
+  };
 }
 
-export async function saveAttendanceSettings(db: Db, s: AttendanceSettings): Promise<void> {
-  await db.collection("settings").updateOne(
-    { key: ATTENDANCE_SETTINGS_KEY },
-    { $set: { key: ATTENDANCE_SETTINGS_KEY, values: { checkoutEnabled: s.checkoutEnabled } } },
-    { upsert: true },
-  );
+/** Faqat berilgan kalitlar yoziladi — biri o'zgarganda boshqasi o'chib ketmasin. */
+export async function saveAttendanceSettings(
+  db: Db,
+  patch: Partial<Pick<AttendanceSettings, "checkoutEnabled" | "faceRequired">>,
+): Promise<void> {
+  const set: Record<string, unknown> = { key: ATTENDANCE_SETTINGS_KEY };
+  if (typeof patch.checkoutEnabled === "boolean") set["values.checkoutEnabled"] = patch.checkoutEnabled;
+  if (typeof patch.faceRequired === "boolean") set["values.faceRequired"] = patch.faceRequired;
+  await db.collection("settings").updateOne({ key: ATTENDANCE_SETTINGS_KEY }, { $set: set }, { upsert: true });
 }
