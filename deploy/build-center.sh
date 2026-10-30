@@ -13,7 +13,8 @@
 # Natija: /tmp/center-<id>-<commit>.tar.gz
 set -euo pipefail
 
-CENTER_ENV="${CENTER_ENV:?CENTER_ENV=/yo'l/center.env bering}"
+# Diqqat: ${…:?…} ichida tutuq belgisi (') bash'ni buzadi — xabarda ishlatilmaydi.
+CENTER_ENV="${CENTER_ENV:?CENTER_ENV ni bering - center.env fayli}"
 REPO="${REPO:-git@github.com:najmiddin3003/crm-akademiya.git}"
 BRANCH="${BRANCH:-main}"
 [[ -s "$CENTER_ENV" ]] || { echo "XATO: $CENTER_ENV yo'q"; exit 1; }
