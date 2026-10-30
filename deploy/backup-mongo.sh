@@ -20,7 +20,8 @@ set -euo pipefail
 
 DIR=/var/backups/crm
 KEEP_DAYS=14
-DB=crm-akademiya-nextjs
+# Yangi markaz serverida baza boshqa nomda (30.10.2026): crontab'da `DB=crm …/backup-mongo.sh`.
+DB="${DB:-crm-akademiya-nextjs}"
 # URI oxiridagi /admin ni --db bilan birga berib bo'lmaydi → authSource sifatida.
 ADMIN_URI="$(sed 's#/admin$#/?authSource=admin#' /root/.mongo-admin-uri)"
 STAMP="$(date -u +%Y%m%d)"

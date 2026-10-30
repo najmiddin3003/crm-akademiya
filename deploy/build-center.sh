@@ -42,6 +42,10 @@ NEXT_OUTPUT=standalone NODE_OPTIONS="--max-old-space-size=2048" nice -n 15 npx n
 echo "== To'plam"
 cp -r public .next/standalone/
 cp -r .next/static .next/standalone/.next/
+# Birinchi admin va filial skriptlari (standalone to'plamga o'zi tushmaydi; node_modules
+# dagi mongodb/bcryptjs ni ishlatadi): scripts/new-center-admin.sh.
+mkdir -p .next/standalone/scripts
+cp scripts/seed-admin.js scripts/seed-branch.mjs scripts/new-center-admin.sh .next/standalone/scripts/
 rm -f .next/standalone/.env*
 OUT="/tmp/center-$ID-$SHA.tar.gz"
 tar -C .next/standalone -czf "$OUT" .
