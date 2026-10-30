@@ -56,8 +56,11 @@ async function main() {
   const dbName = process.env.MONGODB_DB || "crm_akademiya";
   if (!uri) throw new Error("MONGODB_URI .env.local da topilmadi");
 
-  const phone = normalizePhone(process.argv[2] || DEFAULT_PHONE);
-  const password = process.argv[3] || DEFAULT_PASSWORD;
+  // Argument berilgan-u, bo'sh bo'lsa — sukut qiymatiga O'TILMAYDI (yangi markazda bo'sh telefon
+  // Akademiya raqamiga aylanib ketardi): bo'sh qiymat xato bilan to'xtaydi.
+  const args = process.argv.slice(2);
+  const phone = normalizePhone(args.length >= 1 ? args[0] : DEFAULT_PHONE);
+  const password = args.length >= 2 ? args[1] : DEFAULT_PASSWORD;
   if (!/^998\d{9}$/.test(phone)) throw new Error(`Telefon raqami noto'g'ri: ${process.argv[2]}`);
   if (password.length < 8) throw new Error("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
 

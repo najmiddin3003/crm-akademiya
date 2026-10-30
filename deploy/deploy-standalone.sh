@@ -30,7 +30,7 @@ echo "== pm2"
 if pm2 describe crm >/dev/null 2>&1; then
   pm2 reload crm --update-env >/dev/null
 else
-  pm2 start "$APP_DIR/shared/ecosystem.standalone.cjs" >/dev/null
+  pm2 start "$APP_DIR/shared/ecosystem.standalone.config.cjs" >/dev/null
 fi
 pm2 save >/dev/null
 
