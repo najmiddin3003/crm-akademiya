@@ -168,7 +168,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
         const res = await fetch("/api/xodim/yuz", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-telegram-init-data": initData ?? "" },
-          body: JSON.stringify({ descriptors: r.descriptors, photo: r.photo }),
+          body: JSON.stringify({ descriptors: r.descriptors, photo: r.photo, stats: r.stats }),
         });
         const d = await res.json();
         if (d?.ok && d.skipped) {

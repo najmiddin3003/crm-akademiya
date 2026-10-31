@@ -82,6 +82,26 @@ export interface FaceShot {
   photo: Binary;
   /** Qaysi davomat yozuviga ishlatildi (/api/xodim/davomat). */
   attendance?: { recordId: number; kind: "in" | "out"; date: string; branchId: number };
+  /** Telefon o'lchovlari (jonlilik qanday o'tdi) — faqat kuzatuv uchun, tekshiruvda ISHLATILMAYDI. */
+  stats?: FaceClientStats;
+}
+
+/**
+ * Klient (components/employees/FaceCapture.tsx → FaceStats) yuborgan o'lchovlar,
+ * 31.10.2026 dan. Ko'z yumish chegaralarini haqiqiy telefonlar bo'yicha sozlash
+ * uchun yoziladi; soxtalashtirish mumkin — hech qanday qaror ularga tayanmaydi.
+ */
+export interface FaceClientStats {
+  live: "blink" | "turn" | "off";
+  liveMs: number;
+  closeMin: number;
+  closures: number;
+  eyeOpen: number;
+  eyeMin: number;
+  frameMs: number;
+  loadMs: number;
+  warmMs: number;
+  backend: string;
 }
 
 // ── Kirish ma'lumotini tekshirish ───────────────────────────────────
@@ -111,6 +131,31 @@ export function parsePhoto(raw: unknown): Buffer | null {
   // JPEG imzosi: FF D8 FF.
   if (buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) return null;
   return buf;
+}
+
+/** O'lchovlar (FaceClientStats) — noto'g'ri yoki yo'q bo'lsa null; so'rovni rad ETMAYDI. */
+export function parseFaceStats(raw: unknown): FaceClientStats | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const live = r.live === "blink" || r.live === "turn" || r.live === "off" ? r.live : null;
+  if (!live) return null;
+  const num = (v: unknown, max: number, digits: number) => {
+    const n = typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(v, 0), max) : 0;
+    const k = 10 ** digits;
+    return Math.round(n * k) / k;
+  };
+  return {
+    live,
+    liveMs: num(r.liveMs, 600_000, 0),
+    closeMin: num(r.closeMin, 10, 4),
+    closures: num(r.closures, 1_000, 0),
+    eyeOpen: num(r.eyeOpen, 10, 4),
+    eyeMin: num(r.eyeMin, 10, 4),
+    frameMs: num(r.frameMs, 600_000, 0),
+    loadMs: num(r.loadMs, 600_000, 0),
+    warmMs: num(r.warmMs, 600_000, 0),
+    backend: typeof r.backend === "string" && /^[a-z0-9-]{1,16}$/.test(r.backend) ? r.backend : "",
+  };
 }
 
 // ── Hisob ───────────────────────────────────────────────────────────
@@ -191,9 +236,10 @@ export async function faceState(db: Db, employeeId: number): Promise<FaceState> 
 async function saveShot(
   db: Db,
   shot: { employeeId: number; at: Date; purpose: FacePurpose; ok: boolean; distance: number | null; reason: string | null; photo: Buffer },
+  stats: FaceClientStats | null,
 ): Promise<string> {
   const _id = new ObjectId();
-  await db.collection(SHOTS).insertOne({ _id, ...shot, photo: new Binary(shot.photo) });
+  await db.collection(SHOTS).insertOne({ _id, ...shot, photo: new Binary(shot.photo), ...(stats ? { stats } : {}) });
   return _id.toHexString();
 }
 
@@ -218,6 +264,7 @@ export async function checkFace(
   descriptors: number[][],
   photo: Buffer,
   threshold: number,
+  stats: FaceClientStats | null = null,
   now = new Date(),
 ): Promise<FaceCheck> {
   const fails = await db
@@ -230,7 +277,7 @@ export async function checkFace(
   const face = await loadFace(db, employeeId);
   const probe = meanDescriptor(descriptors);
   const shot = (ok: boolean, purpose: FacePurpose, distance: number | null, reason: string | null) =>
-    saveShot(db, { employeeId, at: now, purpose, ok, distance, reason, photo });
+    saveShot(db, { employeeId, at: now, purpose, ok, distance, reason, photo }, stats);
 
   if (isEnrolled(face)) {
     const distance = round3(faceDistance(probe, face!.mean!));

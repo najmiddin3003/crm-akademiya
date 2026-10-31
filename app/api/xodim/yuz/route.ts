@@ -2,15 +2,17 @@ import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { staffFromInitData } from "@/lib/staffBot/webapp";
 import { loadAttendanceSettings } from "@/lib/attendanceQr";
-import { checkFace, faceState, parseDescriptors, parsePhoto } from "@/lib/staffFace";
+import { checkFace, faceState, parseDescriptors, parseFaceStats, parsePhoto } from "@/lib/staffFace";
 import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 
 // FACE ID — «Ishga keldim» Mini App'i (/xodim/keldim, lib/staffFace.ts).
 //
 // GET  — ochilganda: yuz tekshiruvi kerakmi va xodim ro'yxatdan o'tganmi.
 //        { ok, required, enrolled, exempt }
-// POST — { descriptors: number[][], photo: "data:image/jpeg;base64,…" }:
+// POST — { descriptors: number[][], photo: "data:image/jpeg;base64,…", stats? }:
 //        ro'yxatda yo'q bo'lsa — ro'yxatga oladi, bor bo'lsa — solishtiradi.
+//        `stats` — telefon o'lchovlari (jonlilik), urinish bilan birga
+//        yoziladi, faqat kuzatuv uchun (lib/staffFace.ts → parseFaceStats).
 //        Muvaffaqiyatli bo'lsa { ok, enrolled, pass } — `pass` ni
 //        /api/xodim/davomat joylashuv bilan birga oladi (5 daqiqa amal qiladi).
 //
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
   if (Number(req.headers.get("content-length") || 0) > BODY_MAX) {
     return json({ ok: false, error: "So'rov juda katta" }, 413);
   }
-  let body: { descriptors?: unknown; photo?: unknown };
+  let body: { descriptors?: unknown; photo?: unknown; stats?: unknown };
   try {
     const text = await req.text();
     if (text.length > BODY_MAX) return json({ ok: false, error: "So'rov juda katta" }, 413);
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
       return json({ ok: false, error: "Yuz ma'lumoti noto'g'ri keldi — qayta urinib ko'ring" }, 400);
     }
 
-    const res = await checkFace(db, emp.id, descriptors, photo, settings.faceThreshold);
+    const res = await checkFace(db, emp.id, descriptors, photo, settings.faceThreshold, parseFaceStats(body?.stats));
     if (!res.ok) return json({ ok: false, error: res.error, code: res.code }, res.status);
 
     // AMALLAR JURNALI: ro'yxatga olish — kim, qachon (tekshiruvlar davomat bilan birga yoziladi).

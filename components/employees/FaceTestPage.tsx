@@ -91,7 +91,7 @@ export default function FaceTestPage({ liveness }: { liveness: boolean }) {
                 {t("kadrlar ichidagi farq: {d}", { d: fmt(spread(r.descriptors)) })}
               </p>
               <p className="text-muted-foreground">
-                {`${r.stats.backend} · ${r.stats.loadMs} ms · ${r.stats.frameMs} ms · eye ${r.stats.eyeOpen} / ${r.stats.eyeMin}`}
+                {`${r.stats.backend} · ${r.stats.loadMs} ms · ${r.stats.frameMs} ms · warm ${r.stats.warmMs} ms · eye ${r.stats.eyeOpen} / ${r.stats.eyeMin} · close ${r.stats.closeMin} ×${r.stats.closures} · live ${r.stats.liveMs} ms`}
               </p>
             </div>
           </div>

@@ -18,6 +18,16 @@ import { useT } from "@/components/shared/Language";
 // o'zgarmaydi (30.10 sinovi: eski o'lchovlar bilan qog'oz rasmni ±20° tebratib
 // «bosh burish»dan o'tish mumkin edi — tuzatildi, yawOf/eyeOpenness).
 //
+// 31.10.2026, foydalanuvchi telefonida: «ko'zni tekshirgandan keyin boshni
+// qimirlatishni so'rayapti» — ko'z yumish ilg'anmay, 10 soniyadan keyin bosh
+// burishga o'tib ketardi. Ehtimoliy sabab: tanib olish modeli birinchi marta
+// aynan ko'z yumilgan kadrda ishga tushardi (WebGL shader'lari telefonda
+// soniyalab kompilyatsiya qilinadi) va qayta ochilish BLINK_MAX_MS dan kech
+// ko'rilardi. Endi model oldindan isitiladi (loadRecognizer), chegaralar
+// yumshatildi, bosh burish so'ralsa sababi aytiladi, har urinish o'lchovlari
+// (FaceStats) serverga yoziladi — chegaralarni haqiqiy telefonlar bo'yicha
+// sozlash uchun (staff_face_shots.stats).
+//
 // Jonlilik va suratlar BITTA YUZGA bog'langan: jonlilik o'tgan kadrda yuz izi
 // olinadi, keyingi har surat shu izga yaqin bo'lishi shart. Yuz yo'qolsa yoki
 // kadrga ikkinchi yuz kirsa — hammasi boshidan. Aks holda o'z yuzi bilan ko'z
@@ -48,9 +58,17 @@ export interface FaceStats {
   frameMs: number;
   /** Jonlilik qanday o'tdi. */
   live: "blink" | "turn" | "off";
+  /** Jonlilik boshlanganidan o'tguncha (ms). */
+  liveMs: number;
   /** Ko'z ochiqligi (eyeOpenness): ochiq holat bazasi va eng kichigi. */
   eyeOpen: number;
   eyeMin: number;
+  /** Jonlilik paytidagi eng chuqur yumilish: ochiqlik ÷ baza (CLOSE_RATIO dan past — yumildi). */
+  closeMin: number;
+  /** Necha marta yumilish ko'rildi (qayta ochilishi kech ko'rilganlari ham). */
+  closures: number;
+  /** Tanib olish modelining birinchi (isitish) chaqiruvi, ms. */
+  warmMs: number;
 }
 
 export interface FaceCaptureResult {
@@ -70,10 +88,13 @@ const LOOP_GAP_MS = 40;
 const DETECT_INPUT = 224;
 /** Ko'z yumish shuncha vaqtda aniqlanmasa — boshni burishga o'tiladi. */
 const BLINK_TIMEOUT_MS = 10_000;
-/** Ko'z yumilgan deb hisoblanadigan eng uzoq vaqt. */
-const BLINK_MAX_MS = 2_000;
-/** Ko'z yumildi: ochiqlik ochiq holatdagidan shuncha marta past. */
-const CLOSE_RATIO = 0.75;
+/**
+ * Ko'z yumilgan deb hisoblanadigan eng uzoq vaqt. Yumilgandan keyingi kadrlar
+ * iz bilan (sekin) hisoblanadi — sekin telefonda 2 s yetmasdi (31.10: 2 → 3 s).
+ */
+const BLINK_MAX_MS = 3_000;
+/** Ko'z yumildi: ochiqlik ochiq holatdagidan shuncha marta past (31.10: 0.75 → 0.8; FaceStats.closeMin bo'yicha sozlanadi). */
+const CLOSE_RATIO = 0.8;
 /** Qayta ochildi. */
 const REOPEN_RATIO = 0.88;
 /** Boshni burish: burun ko'zlar o'qining shu qismidan chetga chiqsin. */
@@ -130,11 +151,32 @@ function loadDetector(m: FaceApi): Promise<void> {
   return detectorPromise;
 }
 
+/** Isitish chaqiruvi qancha davom etgani (FaceStats.warmMs). */
+let warmMs = 0;
+
 function loadRecognizer(m: FaceApi): Promise<void> {
-  recognizerPromise ??= m.nets.faceRecognitionNet.loadFromUri(MODEL_URL).catch((e) => {
-    recognizerPromise = null;
-    throw e;
-  });
+  recognizerPromise ??= m.nets.faceRecognitionNet
+    .loadFromUri(MODEL_URL)
+    .then(async () => {
+      // ISITISH: WebGL birinchi chaqiruvda shader'larni kompilyatsiya qiladi
+      // (telefonda soniyalab). Oldin bu birinchi ko'z yumish kadriga to'g'ri
+      // kelardi — endi bo'sh kadrda, jonlilik boshlanishidan oldin.
+      const c = document.createElement("canvas");
+      c.width = 150;
+      c.height = 150;
+      const g = c.getContext("2d");
+      if (g) {
+        g.fillStyle = "#808080";
+        g.fillRect(0, 0, c.width, c.height);
+      }
+      const t0 = performance.now();
+      await m.nets.faceRecognitionNet.computeFaceDescriptor(c).catch(() => undefined);
+      warmMs = Math.round(performance.now() - t0);
+    })
+    .catch((e) => {
+      recognizerPromise = null;
+      throw e;
+    });
   return recognizerPromise;
 }
 
@@ -254,7 +296,7 @@ function cueText(t: (k: string) => string, id: CueId): string {
     case "blink":
       return t("Ko'zingizni sekin yumib oching");
     case "turn":
-      return t("Boshingizni sekin chapga, keyin o'ngga buring");
+      return t("Ko'z yumish ilg'anmadi — boshingizni sekin chapga, keyin o'ngga buring");
     case "look":
       return t("Kameraga to'g'ri qarang");
     case "straight":
@@ -312,6 +354,9 @@ interface Debug {
   eye: number;
   eyeOpen: number;
   eyeMin: number;
+  closeMin: number;
+  closures: number;
+  warmMs: number;
   yaw: number;
   restarts: number;
 }
@@ -419,6 +464,9 @@ export default function FaceCapture({
       // Jonlilik holati.
       const opens: { at: number; v: number }[] = [];
       let openMin = 1;
+      let closeMin = 1;
+      let closures = 0;
+      let liveMs = 0;
       let closedAt: number | null = null;
       let live: FaceStats["live"] | null = liveness ? null : "off";
       let yawMin = 0.5;
@@ -514,8 +562,13 @@ export default function FaceCapture({
               let passed: "blink" | "turn" | null = null;
               // Ko'z yumish: ochiq holat bazasi yetarli kadrdan keyin baholanadi.
               if (opens.length >= 5 && openBase > 0) {
-                if (open < openBase * CLOSE_RATIO) closedAt ??= now;
-                else if (closedAt !== null && open > openBase * REOPEN_RATIO) {
+                closeMin = Math.min(closeMin, open / openBase);
+                if (open < openBase * CLOSE_RATIO) {
+                  if (closedAt === null) {
+                    closedAt = now;
+                    closures++;
+                  }
+                } else if (closedAt !== null && open > openBase * REOPEN_RATIO) {
                   if (now - closedAt < BLINK_MAX_MS) passed = "blink";
                   closedAt = null;
                 }
@@ -526,6 +579,7 @@ export default function FaceCapture({
               if (turnMode && yawMin < TURN_LOW && yawMax > TURN_HIGH) passed = "turn";
               if (passed && face.descriptor) {
                 live = passed;
+                liveMs = Math.round(now - liveSince);
                 anchor = Array.from(face.descriptor);
               }
               cue = turnMode ? "turn" : "blink";
@@ -558,7 +612,18 @@ export default function FaceCapture({
               onCapturedRef.current({
                 descriptors: [...shots],
                 photo: photo.data,
-                stats: { backend, loadMs, frameMs: Math.round(frameMs), live: live ?? "off", eyeOpen: round5(openBase), eyeMin: round5(openMin) },
+                stats: {
+                  backend,
+                  loadMs,
+                  frameMs: Math.round(frameMs),
+                  live: live ?? "off",
+                  liveMs,
+                  eyeOpen: round5(openBase),
+                  eyeMin: round5(openMin),
+                  closeMin: round5(closeMin),
+                  closures,
+                  warmMs,
+                },
               });
               return;
             }
@@ -581,6 +646,9 @@ export default function FaceCapture({
             eye: round5(open),
             eyeOpen: round5(openBase),
             eyeMin: round5(openMin),
+            closeMin: round5(closeMin),
+            closures,
+            warmMs,
             yaw: round5(yaw),
             restarts,
           });
@@ -640,7 +708,7 @@ export default function FaceCapture({
 
       {debug && dbg && (
         <pre className="w-full max-w-[320px] whitespace-pre-wrap rounded-lg bg-secondary p-2 text-[11px] leading-snug">
-          {`backend ${dbg.backend} · load ${dbg.loadMs} ms · frame ${dbg.frameMs} ms\nfaces ${dbg.faces} · eye ${dbg.eye} (open ${dbg.eyeOpen}, min ${dbg.eyeMin})\nyaw ${dbg.yaw} · restarts ${dbg.restarts}`}
+          {`backend ${dbg.backend} · load ${dbg.loadMs} ms · warm ${dbg.warmMs} ms · frame ${dbg.frameMs} ms\nfaces ${dbg.faces} · eye ${dbg.eye} (open ${dbg.eyeOpen}, min ${dbg.eyeMin})\nclose ${dbg.closeMin} ×${dbg.closures} · yaw ${dbg.yaw} · restarts ${dbg.restarts}`}
         </pre>
       )}
     </div>

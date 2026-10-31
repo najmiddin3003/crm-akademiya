@@ -6331,7 +6331,6 @@
   "Avval yuzingizni tasdiqlang": "Verify your face first",
   "Bir lahza…": "One moment…",
   "Biroz uzoqlashing": "Move back a little",
-  "Boshingizni sekin chapga, keyin o'ngga buring": "Slowly turn your head left, then right",
   "Boshingizni to'g'ri tuting": "Keep your head straight",
   "Bu bir martalik: hozir yuzingiz saqlanadi, keyingi kunlari «Ishga keldim» da shu bilan tekshiriladi.": "This is a one-time step: your face is saved now, and on later days «At work» will check you against it.",
   "Bu qurilmada kamera ishlamaydi": "The camera doesn't work on this device",
@@ -6434,5 +6433,6 @@
   "CRM'da kim, qachon va nima qilgani: saytdagi har bir o'zgarish, kirish urinishlari, Telegram bot va «Ishga keldim». Yozuvlar 1 yil saqlanadi.": "Who did what in the CRM and when: every change on the site, sign-in attempts, the Telegram bot and «At work». Records are kept for 1 year.",
   "Ularda masofa tekshirilmaydi: xodim qayerda bo'lsa ham o'z filialiga belgilanadi, joylashuvi yozib qo'yiladi.": "Distance is not checked there: staff are checked in to their own branch wherever they are, and their location is recorded.",
   "Koordinatasi kiritilmagan filialda masofa tekshirilmaydi — xodim o'z filialiga belgilanadi, joylashuvi yoziladi.": "At a branch without coordinates, distance is not checked — staff are checked in to their own branch and their location is recorded.",
-  "Kiritilsa, xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi; kiritilmasa masofa tekshirilmaydi — joylashuvi faqat yoziladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).": "When set, staff can check in («At work») only near this place; when not set, distance is not checked — the location is only recorded. The easiest way is to press «📍 My current location» inside the branch building (more accurate on a phone)."
+  "Kiritilsa, xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi; kiritilmasa masofa tekshirilmaydi — joylashuvi faqat yoziladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).": "When set, staff can check in («At work») only near this place; when not set, distance is not checked — the location is only recorded. The easiest way is to press «📍 My current location» inside the branch building (more accurate on a phone).",
+  "Ko'z yumish ilg'anmadi — boshingizni sekin chapga, keyin o'ngga buring": "Blink not detected — slowly turn your head left, then right"
 }
