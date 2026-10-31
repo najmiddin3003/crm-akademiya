@@ -27,7 +27,8 @@ import { branchBuildingLabel } from "@/lib/branchPools";
 // (u ham bo'lmasa) umuman yuborilmaydi; to'lov umumiy "To'lovlar" topigiga.
 //
 // «ISHGA KELDIM» (28.09.2026; 31.10.2026 dan QR'siz — filial joylashuvdan
-// aniqlanadi, koordinata SHART): davomat topigi (kechikish xabari) va
+// aniqlanadi; koordinatasiz filialda masofa tekshirilmaydi): davomat topigi
+// (kechikish xabari) va
 // o'qituvchi bo'lmagan xodimlar uchun ish boshlanish vaqti + ruxsat etilgan
 // kechikish (lib/attendanceCheck.ts).
 
@@ -441,7 +442,7 @@ export default function BranchesPage() {
                 </div>
               )}
               <p className="text-[12px] text-muted-foreground">
-                {t("Xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi — joylashuv kiritilmasa, bu filialda belgilab bo'lmaydi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).")}
+                {t("Kiritilsa, xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi; kiritilmasa masofa tekshirilmaydi — joylashuvi faqat yoziladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).")}
               </p>
             </div>
             </div>

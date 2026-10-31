@@ -14,8 +14,10 @@ import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 //
 // QR'SIZ (31.10.2026): filial QR kodidan emas, JOYLASHUVDAN aniqlanadi —
 // koordinatasi kiritilgan filiallardan radiusi ichidagi eng yaqini
-// (lib/attendanceCheck.ts → locateBranch). Joylashuvsiz, aniqligi past yoki
-// hamma filialdan uzoqda — yozilmaydi; javobdagi `code` Mini App'ga qaysi
+// (lib/attendanceCheck.ts → locateBranch). Radiusga tushmasa — xodimning
+// koordinatasi KIRITILMAGAN filiali (masofa tekshirilmaydi, joylashuv faqat
+// yoziladi). Joylashuvsiz yoki koordinatali filialdan uzoqda (o'z filiali
+// ham koordinatali bo'lsa) — yozilmaydi; javobdagi `code` Mini App'ga qaysi
 // tugmani (sozlama / qayta urinish) ko'rsatishni aytadi.
 //
 // Xodim — Telegram `initData` dan (lib/staffBot/webapp.ts, bot bilan bir xil

@@ -7,7 +7,7 @@ import type { Db } from "mongodb";
 // endi ... lokatsiya va face id bo'lsa bo'ldi"): xodimlar botidagi «📷 Ishga
 // keldim» Mini App'i (/xodim/keldim) yuzni (Face ID, admin yoqqanda) va
 // joylashuvni tekshiradi, filial joylashuvdan aniqlanadi (lib/attendanceCheck.ts
-// → locateBranch).
+// → locateBranch; koordinatasiz filialda — xodimning o'z filiali).
 //
 // Bu yerda qolgani: sozlama (`attendance.qr` — kalit nomi tarixiy) va eski QR
 // havolalarini TANISH (`parseScanned`) — kimdadir eski kod rasmi qolgan

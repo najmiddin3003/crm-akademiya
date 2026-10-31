@@ -10,8 +10,9 @@ import { readLocation, useTelegramWebApp, type LocationResult } from "./useTeleg
 // (28.09.2026). 31.10.2026 dan QR YO'Q (foydalanuvchi: "yuz scaner qilinsa
 // bo'ldi ... lokatsiya va face id bo'lsa bo'ldi"): ochilishi bilan qurilma
 // JOYLASHUVINI oladi va darhol /api/xodim/davomat ga yuboradi — filial
-// joylashuvdan aniqlanadi (lib/attendanceCheck.ts → locateBranch). Filialdan
-// uzoqda yoki joylashuvga ruxsatsiz — belgilanmaydi.
+// joylashuvdan aniqlanadi (lib/attendanceCheck.ts → locateBranch; koordinatasiz
+// filialda — xodimning o'z filiali, joylashuv faqat yoziladi). Koordinatali
+// filialdan uzoqda yoki joylashuvga ruxsatsiz — belgilanmaydi.
 //
 // FACE ID (30.10.2026, lib/staffFace.ts): admin yoqgan bo'lsa ENG AVVAL yuz —
 // old kamerada tasdiqlanadi (FaceCapture), /api/xodim/yuz ruxsat (pass)

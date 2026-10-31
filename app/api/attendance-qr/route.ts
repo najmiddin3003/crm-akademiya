@@ -12,7 +12,8 @@ import { staffBotUsername } from "@/lib/staffBot/config";
 // (components/nazorat/AttendanceQrPage.tsx): tanlangan binoning bugun
 // kelganlari, sozlamalar va koordinatasi kiritilmagan filiallar. 31.10.2026
 // dan QR YO'Q — filial xodim joylashuvidan aniqlanadi (lib/attendanceCheck.ts
-// → locateBranch), shuning uchun koordinatasiz filialda belgilab bo'lmaydi.
+// → locateBranch); koordinatasiz filialda masofa tekshirilmaydi — xodim o'z
+// filialiga yoziladi, joylashuvi saqlanadi.
 // Sahifa ro'yxatni har 30 soniyada yangilaydi. Yo'l nomi tarixiy.
 //
 // PATCH — «Ishdan ketdim» va Face ID (yuz tekshiruvi, lib/staffFace.ts) ni

@@ -217,7 +217,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     pages: ["/nazorat-qr"],
     text: [
       "Xodim Telegram botdagi «📷 Ishga keldim» tugmasini bosadi: Face ID yoqilgan bo'lsa avval yuzi tekshiriladi, keyin joylashuvi — filialdan radius (sukut 200 m) ichida bo'lsa eng yaqin filialga belgilanadi. QR kod 31.10.2026 dan ishlatilmaydi.",
-      "Filial koordinatasi Boshqaruv → Filiallar'da kiritiladi; koordinatasiz filialda belgilab bo'lmaydi. Nazorat → «Ishga keldim» sahifasida bugun kelganlar, Face ID va «Ishdan ketdim» sozlamalari.",
+      "Filial koordinatasi Boshqaruv → Filiallar'da kiritiladi; kiritilmagan filialda masofa tekshirilmaydi — xodim o'z filialiga belgilanadi, joylashuvi yoziladi. Nazorat → «Ishga keldim» sahifasida bugun kelganlar, Face ID va «Ishdan ketdim» sozlamalari.",
       "Kechikish o'qituvchida dars jadvali, boshqalarda filial ish vaqti bo'yicha; kechikish haqida guruhga xabar ketadi.",
     ].join("\n"),
   },

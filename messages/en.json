@@ -6425,13 +6425,14 @@
   "Qanday belgilanadi": "How check-in works",
   "QR kod endi kerak emas.": "A QR code is no longer needed.",
   "Siz «{branch}» filialidan {distance} uzoqdasiz — belgilanmadi": "You are {distance} away from the «{branch}» branch — not recorded",
-  "Ularda «Ishga keldim» ishlamaydi — xodim qaysi filialda ekani joylashuvdan aniqlanadi.": "«At work» does not work there — the employee's branch is determined from their location.",
   "Xodim belgilashdan oldin telefonida yuzini tasdiqlaydi. Birinchi marta yuzi ro'yxatga olinadi.": "Before checking in, the employee verifies their face on their phone. The first time, the face is registered.",
   "Xodim Telegram'da @{bot} botini ochib, «📷 Ishga keldim» tugmasini bosadi.": "The employee opens @{bot} in Telegram and presses «📷 At work».",
   "Yuzini telefon kamerasida tasdiqlaydi (birinchi marta yuzi ro'yxatga olinadi).": "They verify their face with the phone camera (the face is registered the first time).",
   "Bekor qilingan bonus va jarimalar sanalmaydi. Kechikish uchun jarima tizimda yozilmaydi — «Ishga keldim» faqat xabar beradi.": "Cancelled bonuses and fines are not counted. Lateness fines are not recorded in the system — «At work» only sends a notification.",
   "«Ishga keldim» bo'yicha kechikkan xodim haqidagi xabar shu topikka tushadi.": "Notifications about staff arriving late («At work») go to this topic.",
   "metr — xodim shu radius ichida bo'lishi kerak (bo'sh — 200 m)": "meters — staff must be within this radius (empty — 200 m)",
-  "Xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi — joylashuv kiritilmasa, bu filialda belgilab bo'lmaydi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).": "Staff can check in («At work») only near this place — without a location, check-in at this branch is impossible. The easiest way is to press «📍 My current location» inside the branch building (more accurate on a phone).",
-  "CRM'da kim, qachon va nima qilgani: saytdagi har bir o'zgarish, kirish urinishlari, Telegram bot va «Ishga keldim». Yozuvlar 1 yil saqlanadi.": "Who did what in the CRM and when: every change on the site, sign-in attempts, the Telegram bot and «At work». Records are kept for 1 year."
+  "CRM'da kim, qachon va nima qilgani: saytdagi har bir o'zgarish, kirish urinishlari, Telegram bot va «Ishga keldim». Yozuvlar 1 yil saqlanadi.": "Who did what in the CRM and when: every change on the site, sign-in attempts, the Telegram bot and «At work». Records are kept for 1 year.",
+  "Ularda masofa tekshirilmaydi: xodim qayerda bo'lsa ham o'z filialiga belgilanadi, joylashuvi yozib qo'yiladi.": "Distance is not checked there: staff are checked in to their own branch wherever they are, and their location is recorded.",
+  "Koordinatasi kiritilmagan filialda masofa tekshirilmaydi — xodim o'z filialiga belgilanadi, joylashuvi yoziladi.": "At a branch without coordinates, distance is not checked — staff are checked in to their own branch and their location is recorded.",
+  "Kiritilsa, xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi; kiritilmasa masofa tekshirilmaydi — joylashuvi faqat yoziladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).": "When set, staff can check in («At work») only near this place; when not set, distance is not checked — the location is only recorded. The easiest way is to press «📍 My current location» inside the branch building (more accurate on a phone)."
 }

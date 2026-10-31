@@ -43,9 +43,16 @@ import type { TurnstileLocation } from "@/lib/turnstileIo";
 // QR'SIZ (31.10.2026, foydalanuvchi: "qr code kerak emas endi ... lokatsiya va
 // face id bo'lsa bo'ldi"): filial endi QR tokenidan emas, JOYLASHUVDAN
 // aniqlanadi — koordinatasi kiritilgan filiallardan radiusi ichidagi eng
-// yaqini (`locateBranch`). Koordinatasiz filialda belgilab bo'lmaydi: QR yo'q
-// ekan, xodim binoda ekanini faqat joylashuv ko'rsatadi. Odamni Face ID
-// tasdiqlaydi (lib/staffFace.ts, admin yoqqanda).
+// yaqini (`locateBranch`). Odamni Face ID tasdiqlaydi (lib/staffFace.ts,
+// admin yoqqanda).
+//
+// KOORDINATASIZ FILIAL (31.10.2026, foydalanuvchi: "koordinatalarni kiritmasdan
+// ham ... qayerdan face id qilayotgan bo'lsa o'sha yer bazaga yozilaversin,
+// keyinchalik o'quv markaz hududini kiritib qo'yaman"): hech bir radiusga
+// tushmagan xodim O'Z filialiga (`branchIds`, oylik filiali birinchi) yoziladi,
+// agar o'sha filialga koordinata kiritilmagan bo'lsa — masofa tekshirilmaydi,
+// joylashuv faqat yoziladi (QR davridagi qoida bilan bir xil). Koordinata
+// kiritilishi bilan o'sha filialda radius tekshiruvi o'zi yoqiladi.
 
 /** Yozuv manbasi. Nomi tarixiy (28.09.2026 QR bilan boshlangan) — hisobotlar va noyob indeks shu qiymatga tayanadi. */
 export const QR_SOURCE = "qr";
@@ -72,34 +79,60 @@ export function branchRadiusM(branch: Pick<AttendanceBranch, "geoRadiusM">): num
 
 export interface BranchHit<B> {
   branch: B;
-  /** Filial nuqtasigacha masofa, m. */
-  distance: number;
+  /** Filial nuqtasigacha masofa, m; koordinatasiz filialda null. */
+  distance: number | null;
 }
 
 export type BranchLocate<B> =
-  | { ok: true; loc: ScanLocation; hits: BranchHit<B>[] }
+  | {
+      ok: true;
+      loc: ScanLocation;
+      /** Koordinatali, radiusi ichiga tushgan filiallar — yaqinidan uzog'iga. */
+      hits: BranchHit<B>[];
+      /** Xodimning koordinatasi KIRITILMAGAN filiallari (masofa tekshirilmaydi) — oylik filiali birinchi. */
+      unplaced: BranchHit<B>[];
+    }
   | { ok: false; status: number; code: LocationErrorCode; error: string };
 
 /**
  * Xodim qaysi filialda — joylashuv bo'yicha (sof funksiya — sinov shu orqali).
- * `hits` — radiusi ichiga tushgan filiallar, YAQINIDAN UZOG'IGA (yonma-yon
- * binolar bir-birining radiusiga tushishi mumkin — tanlovni chaqiruvchi
- * qiladi). GPS xatoligi hisobga olinadi: masofadan aniqlik radiusi ayriladi
- * (300 m gacha — undan kattasi "GPS'ni yoqing" deb rad etiladi, aks holda
- * aniq joylashuvni o'chirib tekshiruvni chetlab o'tish mumkin bo'lardi).
+ *
+ * `hits` — koordinatasi kiritilgan va radiusi ichiga tushgan filiallar,
+ * YAQINIDAN UZOG'IGA (yonma-yon binolar bir-birining radiusiga tushishi
+ * mumkin — tanlovni chaqiruvchi qiladi). GPS xatoligi hisobga olinadi:
+ * masofadan aniqlik radiusi ayriladi (300 m gacha — undan yomon aniqlik bilan
+ * radius umuman tekshirilmaydi, aks holda aniq joylashuvni o'chirib
+ * tekshiruvni chetlab o'tish mumkin bo'lardi).
+ *
+ * `unplaced` — xodimning (`home`) koordinatasi KIRITILMAGAN filiallari: ularda
+ * masofa tekshirilmaydi, joylashuv faqat yoziladi. `home` bo'sh (eski hujjat)
+ * bo'lsa — 1-filial (lib/branchScope.ts dagi qoida). Ikkalasi ham bo'sh
+ * bo'lsa rad etiladi. Joylashuvning o'zi har holda shart — yozuvga tushadi.
  */
-export function locateBranch<B extends Pick<AttendanceBranch, "name" | "geo" | "geoRadiusM">>(
+export function locateBranch<B extends Pick<AttendanceBranch, "id" | "name" | "geo" | "geoRadiusM">>(
   branches: readonly B[],
   loc: ScanLocation | null,
+  home: readonly number[] = [],
 ): BranchLocate<B> {
-  const placed = branches.filter((b) => isValidPoint(b.geo));
-  if (placed.length === 0) {
-    return { ok: false, status: 409, code: "no_branch_geo", error: "Filial joylashuvi kiritilmagan — administratorga ayting" };
-  }
   if (!loc || !isValidPoint(loc)) {
     return { ok: false, status: 400, code: "location_required", error: "Joylashuv aniqlanmadi — Telegram'da joylashuvga ruxsat bering" };
   }
   const acc = loc.acc !== null && Number.isFinite(loc.acc) && loc.acc > 0 ? loc.acc : 0;
+  const all = branches
+    .filter((b) => isValidPoint(b.geo))
+    .map((branch) => ({ branch, distance: distanceM(branch.geo as GeoPoint, loc) }))
+    .sort((a, b) => a.distance - b.distance);
+  const hits = acc > MAX_ACCURACY_M ? [] : all.filter((h) => h.distance - acc <= branchRadiusM(h.branch));
+  const homeIds = home.length > 0 ? home : branches.length > 0 ? [Math.min(...branches.map((b) => b.id))] : [];
+  const unplaced = [...new Set(homeIds)]
+    .map((id) => branches.find((b) => b.id === id))
+    .filter((b): b is B => b !== undefined && !isValidPoint(b.geo))
+    .map((branch): BranchHit<B> => ({ branch, distance: null }));
+  if (hits.length > 0 || unplaced.length > 0) return { ok: true, loc, hits, unplaced };
+
+  if (all.length === 0) {
+    return { ok: false, status: 409, code: "no_branch_geo", error: "Filial joylashuvi kiritilmagan — administratorga ayting" };
+  }
   if (acc > MAX_ACCURACY_M) {
     return {
       ok: false,
@@ -108,20 +141,20 @@ export function locateBranch<B extends Pick<AttendanceBranch, "name" | "geo" | "
       error: `Joylashuv aniq emas (±${Math.round(acc)} m) — telefonda GPS'ni yoqib, qayta urinib ko'ring`,
     };
   }
-  const all = placed
-    .map((branch) => ({ branch, distance: distanceM(branch.geo as GeoPoint, loc) }))
-    .sort((a, b) => a.distance - b.distance);
-  const hits = all.filter((h) => h.distance - acc <= branchRadiusM(h.branch));
-  if (hits.length === 0) {
-    const near = all[0];
-    return {
-      ok: false,
-      status: 403,
-      code: "too_far",
-      error: `Siz «${near.branch.name}» filialidan ${formatDistance(near.distance)} uzoqdasiz — belgilanmadi`,
-    };
-  }
-  return { ok: true, loc, hits };
+  const near = all[0];
+  return {
+    ok: false,
+    status: 403,
+    code: "too_far",
+    error: `Siz «${near.branch.name}» filialidan ${formatDistance(near.distance)} uzoqdasiz — belgilanmadi`,
+  };
+}
+
+/** Xodimning filiallari — oylik filiali birinchi (lib/hrEmployees.ts: `branchIds`, `payrollBranchId`). */
+export function homeBranchIds(emp: Pick<HrEmployee, "branchIds" | "payrollBranchId">): number[] {
+  const ids = (Array.isArray(emp.branchIds) ? emp.branchIds : []).map(Number).filter(Number.isFinite);
+  const pay = Number(emp.payrollBranchId);
+  return Number.isFinite(pay) && ids.includes(pay) ? [pay, ...ids.filter((x) => x !== pay)] : ids;
 }
 
 /** Inson o'qiydigan satr: "manzil · filialdan 35 m" (manzilsiz — masofa, u ham yo'q bo'lsa koordinata). */
@@ -391,6 +424,35 @@ export type AttendanceOutcome =
 const isDuplicateKey = (e: unknown) => (e as { code?: number } | null)?.code === 11000;
 
 /**
+ * Koordinatasiz filiallardan qaysi biriga yoziladi. Bitta bo'lsa — o'sha.
+ * Bir nechta bo'lsa (ikki filialda ishlaydigan xodim) — bugun kutilgan vaqti
+ * (birinchi dars / ish boshlanishi) hozirga eng yaqini: ertalab bir binoda,
+ * tushdan keyin boshqasida dars beradigan ustoz har birida alohida
+ * belgilanadi va kechikishi o'sha binodagi darsiga qarab o'lchanadi. Hech
+ * birida kutilmasa — birinchisi (oylik filiali). `exp` — tanlanganining
+ * hisoblangan kutilgan vaqti (qayta so'ralmasin), hisoblanmagan bo'lsa undefined.
+ */
+async function pickUnplaced(
+  db: Db,
+  emp: HrEmployee,
+  unplaced: BranchHit<AttendanceBranch>[],
+  iso: string,
+  weekday: number,
+  nowMin: number,
+): Promise<{ target: BranchHit<AttendanceBranch>; exp: Expectation | null | undefined }> {
+  if (unplaced.length === 1) return { target: unplaced[0], exp: undefined };
+  const exps = await Promise.all(unplaced.map((h) => expectationFor(db, emp, h.branch, iso, weekday)));
+  let best = -1;
+  exps.forEach((e, i) => {
+    if (!e) return;
+    const prev = best >= 0 ? exps[best] : null;
+    if (!prev || Math.abs(nowMin - e.at) < Math.abs(nowMin - prev.at)) best = i;
+  });
+  const i = best >= 0 ? best : 0;
+  return { target: unplaced[i], exp: exps[i] };
+}
+
+/**
  * Kelish/ketishni yozadi. Xodim kimligini CHAQIRUVCHI aniqlaydi (Mini App
  * `initData`) — bu yerga faqat tekshirilgan `HrEmployee` keladi; filial —
  * qurilma joylashuvidan (`loc`, `locateBranch`).
@@ -410,9 +472,9 @@ export async function markAttendance(
     .collection("branches")
     .find({}, { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1, geo: 1, geoRadiusM: 1 } })
     .toArray()) as unknown as AttendanceBranch[];
-  const found = locateBranch(branches, opts.loc ?? null);
+  const found = locateBranch(branches, opts.loc ?? null, homeBranchIds(emp));
   if (!found.ok) return { ok: false, status: found.status, error: found.error, code: found.code };
-  const { loc, hits } = found;
+  const { loc, hits, unplaced } = found;
 
   const u = toUz(now);
   const date = `${u.getFullYear()}-${p2(u.getMonth() + 1)}-${p2(u.getDate())}`;
@@ -420,18 +482,27 @@ export async function markAttendance(
   const hm = minToHm(nowMin);
   const col = db.collection<AttendanceRecord>("turnstile_io");
   const keyOf = (branchId: number) => ({ source: QR_SOURCE, date, employeeId: emp.id, branchId }) as const;
-  // Radius ichidagi filiallardagi bugungi yozuvlari — yonma-yon binolarda
-  // GPS tebranishi bir xodimni ikki binoga yozib qo'ymasin.
+  // Bugungi yozuvlari — radius ichidagi va xodimning koordinatasiz filiallarida.
   const today = await col
-    .find({ source: QR_SOURCE, date, employeeId: emp.id, branchId: { $in: hits.map((h) => h.branch.id) } }, { projection: { _id: 0 } })
+    .find(
+      { source: QR_SOURCE, date, employeeId: emp.id, branchId: { $in: [...hits, ...unplaced].map((h) => h.branch.id) } },
+      { projection: { _id: 0 } },
+    )
     .toArray();
-  const arrivedAt = hits
-    .map((h) => ({ ...h, record: today.find((r) => r.branchId === h.branch.id && r.enterTime) ?? null }))
-    .find((h) => h.record !== null);
+  const recordAt = (branchId: number) => today.find((r) => r.branchId === branchId && r.enterTime) ?? null;
+  const withRecord = (list: BranchHit<AttendanceBranch>[]) =>
+    list.flatMap((h) => {
+      const record = recordAt(h.branch.id);
+      return record ? [{ ...h, record }] : [];
+    });
 
   if (kind === "out") {
-    // Ketish — bugun «keldim» belgilangan eng yaqin filialda.
-    if (!arrivedAt?.record) {
+    // Ketish — bugun «keldim» belgilangan filialda: radius ichidagi eng
+    // yaqini, bo'lmasa koordinatasiz filiallardan eng KEYIN kelingani.
+    const arrivedAt =
+      withRecord(hits)[0] ??
+      withRecord(unplaced).sort((a, b) => String(b.record.enterTime).localeCompare(String(a.record.enterTime)))[0];
+    if (!arrivedAt) {
       return { ok: false, status: 409, error: "Bugun bu filialda kelganingiz belgilanmagan — avval «Ishga keldim»" };
     }
     const { branch, distance, record: existing } = arrivedAt;
@@ -450,15 +521,28 @@ export async function markAttendance(
     };
   }
 
-  // Bugun shu yerda allaqachon belgilangan — hech narsa yozilmaydi.
-  if (arrivedAt?.record) return { ok: true, kind, fresh: false, record: arrivedAt.record, branch: arrivedAt.branch };
+  // Kelish — radius ichida bo'lsa o'sha filial; yonma-yon binolarda GPS
+  // tebranishi bir xodimni ikki binoga yozib qo'ymasin (radius ichidagi
+  // istalgan filialdagi bugungi yozuv qaytadi). Radiusga tushmasa — xodimning
+  // koordinatasiz filiali (`pickUnplaced`).
+  let target: BranchHit<AttendanceBranch>;
+  let exp: Expectation | null | undefined;
+  if (hits.length > 0) {
+    const done = withRecord(hits)[0];
+    if (done) return { ok: true, kind, fresh: false, record: done.record, branch: done.branch };
+    target = hits[0];
+  } else {
+    ({ target, exp } = await pickUnplaced(db, emp, unplaced, date, u.getDay(), nowMin));
+    const done = recordAt(target.branch.id);
+    if (done) return { ok: true, kind, fresh: false, record: done, branch: target.branch };
+  }
 
-  const { branch, distance } = hits[0];
+  const { branch, distance } = target;
   const key = keyOf(branch.id);
   const enter = await locationRecord(db, loc, distance, branch);
   const location = enter.location;
 
-  const exp = await expectationFor(db, emp, branch, date, u.getDay());
+  if (exp === undefined) exp = await expectationFor(db, emp, branch, date, u.getDay());
   const late = lateBy(nowMin, exp);
   const base: Omit<AttendanceRecord, "id"> = {
     date,

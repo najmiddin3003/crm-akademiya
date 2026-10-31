@@ -26,7 +26,8 @@ const QR_BUILDING_KEY = "crm:qrBuilding";
 // tekshiriladi, filial joylashuvdan aniqlanadi (lib/attendanceCheck.ts →
 // locateBranch). Bu sahifada: tanlangan binoda bugun kelganlar (har 30
 // soniyada yangilanadi), sozlamalar (faqat admin) va koordinatasi
-// kiritilmagan filiallar — ularda belgilab bo'lmaydi (Boshqaruv → Filiallar).
+// kiritilmagan filiallar — ularda masofa tekshirilmaydi, xodim o'z filialiga
+// yoziladi, joylashuvi saqlanadi (Boshqaruv → Filiallar).
 // Yozuvlar Nazorat → Turniket sahifasida va xodim profilidagi «Ish soati»
 // tabida ham ko'rinadi.
 
@@ -210,7 +211,7 @@ export default function AttendanceQrPage() {
         {data.missingGeo.length > 0 && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-200">
             <strong>{t("Joylashuvi kiritilmagan filiallar: {names}.", { names: data.missingGeo.map((b) => b.name).join(", ") })}</strong>{" "}
-            {t("Ularda «Ishga keldim» ishlamaydi — xodim qaysi filialda ekani joylashuvdan aniqlanadi.")}{" "}
+            {t("Ularda masofa tekshirilmaydi: xodim qayerda bo'lsa ham o'z filialiga belgilanadi, joylashuvi yozib qo'yiladi.")}{" "}
             <Link href="/management-filiallar" className="font-medium underline underline-offset-2">
               {t("Boshqaruv → Filiallar'da koordinatani kiriting")}
             </Link>
@@ -261,6 +262,7 @@ export default function AttendanceQrPage() {
               <li>{t("Xodim Telegram'da @{bot} botini ochib, «📷 Ishga keldim» tugmasini bosadi.", { bot: data.bot })}</li>
               {data.faceRequired && <li>{t("Yuzini telefon kamerasida tasdiqlaydi (birinchi marta yuzi ro'yxatga olinadi).")}</li>}
               <li>{t("Joylashuvi olinadi: filialdan {m} m ichida bo'lsa, eng yaqin filialga belgilanadi.", { m: data.branch.radiusM })}</li>
+              <li>{t("Koordinatasi kiritilmagan filialda masofa tekshirilmaydi — xodim o'z filialiga belgilanadi, joylashuvi yoziladi.")}</li>
               <li>{t("Kechikish dars jadvali yoki filialning ish vaqti bo'yicha o'lchanadi.")}</li>
             </ol>
             <p className="mt-3 text-[12px] text-muted-foreground">{t("QR kod endi kerak emas.")}</p>
