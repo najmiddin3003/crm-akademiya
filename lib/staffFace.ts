@@ -15,8 +15,8 @@ import { Binary, ObjectId, type Db } from "mongodb";
 // keyingi safar qayta ro'yxatdan o'tadi.
 //
 // Natija — qisqa muddatli imzolangan RUXSAT (pass): /api/xodim/davomat uni
-// QR kod bilan birga oladi. Yuz alohida qadamda tekshiriladi, shunda xodim
-// mos kelmasa QR skanerlashdan OLDIN biladi.
+// joylashuv bilan birga oladi. Yuz alohida qadamda tekshiriladi, shunda xodim
+// mos kelmasa joylashuv so'ralishidan OLDIN biladi.
 //
 // CHEKLOV (ochiq): iz klientda hisoblanadi — dasturchi darajasidagi odam
 // soxta iz yubora oladi. Shuning uchun har tekshiruvning RASMI saqlanadi
@@ -43,7 +43,7 @@ const PHOTO_MIN_BYTES = 1_000;
 const PHOTO_MAX_BYTES = 60_000;
 /** Urinishlar rasmi shuncha kun saqlanadi (TTL indeksi lib/mongodb.ts da — bir xil son). */
 export const SHOT_TTL_DAYS = 60;
-/** Ruxsat (pass) shuncha vaqt amal qiladi: joylashuv + QR skanerlashga yetadi. */
+/** Ruxsat (pass) shuncha vaqt amal qiladi: joylashuvni olib belgilashga yetadi. */
 export const FACE_PASS_TTL_MS = 5 * 60_000;
 /** Shuncha muvaffaqiyatsiz urinishdan keyin… */
 const FAIL_LIMIT = 8;

@@ -183,7 +183,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       "Tepadagi filial tanlagichi: o'quvchilar, guruhlar, davomat, lidlar va oylik tanlangan filial bo'yicha ko'rsatiladi; sozlamalar umumiy.",
       "Yangi versiyada tizimga kirgach, xodimga bir nechta filial biriktirilgan bo'lsa «Qaysi filialda ishlaysiz?» oynasi chiqadi (oxirgi marta tanlangani belgilangan); keyin filial tepadagi tanlagichdan almashtiriladi.",
       "«Akademiya Chortoq» — bitta filial, ikki binoda (1-bino va 2-bino): o'quvchilar, guruhlar, xonalar, dars jadvali, davomat, lidlar va xodimlar umumiy, tanlagichda bitta qator.",
-      "Bino bo'yicha alohida faqat kassa (mas'ul xodimga bog'langan), oylik (Moliya → Oylik sahifasida «1-bino / 2-bino» tanlovi) va xodimning «Ishga keldim» QR ekrani (ekranning o'zida bino tanlanadi).",
+      "Bino bo'yicha alohida faqat kassa (mas'ul xodimga bog'langan), oylik (Moliya → Oylik sahifasida «1-bino / 2-bino» tanlovi) va «Ishga keldim» (xodim qaysi binoda ekani joylashuvidan aniqlanadi).",
       "Yangi yozuv (lid, guruh, o'quvchi) tepada tanlangan filialga yoziladi.",
       "Xodim faqat o'ziga biriktirilgan filiallarni tanlay oladi.",
     ].join("\n"),
@@ -212,12 +212,13 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: "checkin",
-    title: "Ishga keldim (QR)",
-    keywords: ["ishga keldim", "qr", "keldi-ketdi", "kechikish", "xodim davomati"],
+    title: "Ishga keldim",
+    keywords: ["ishga keldim", "qr", "face id", "yuz", "joylashuv", "keldi-ketdi", "kechikish", "xodim davomati"],
     pages: ["/nazorat-qr"],
     text: [
-      "Filial ekranidagi QR kod (Nazorat → «Ishga keldim (QR)») Telegram botdagi skaner bilan o'qitiladi.",
-      "Joylashuv tekshiriladi; kechikish haqida guruhga xabar ketadi.",
+      "Xodim Telegram botdagi «📷 Ishga keldim» tugmasini bosadi: Face ID yoqilgan bo'lsa avval yuzi tekshiriladi, keyin joylashuvi — filialdan radius (sukut 200 m) ichida bo'lsa eng yaqin filialga belgilanadi. QR kod 31.10.2026 dan ishlatilmaydi.",
+      "Filial koordinatasi Boshqaruv → Filiallar'da kiritiladi; koordinatasiz filialda belgilab bo'lmaydi. Nazorat → «Ishga keldim» sahifasida bugun kelganlar, Face ID va «Ishdan ketdim» sozlamalari.",
+      "Kechikish o'qituvchida dars jadvali, boshqalarda filial ish vaqti bo'yicha; kechikish haqida guruhga xabar ketadi.",
     ].join("\n"),
   },
   {

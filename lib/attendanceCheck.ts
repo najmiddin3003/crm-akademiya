@@ -3,7 +3,7 @@ import { pooledBranchInCondition } from "@/lib/branchScope";
 import { lessonExpectedOn, parseTimeRange } from "@/lib/groupRules";
 import type { HrEmployee } from "@/lib/hrEmployees";
 import { toUz } from "@/lib/uzTime";
-import { loadAttendanceSettings, verifyQrToken, type AttendanceKind } from "@/lib/attendanceQr";
+import { loadAttendanceSettings, type AttendanceKind } from "@/lib/attendanceQr";
 import { distanceM, formatDistance, isValidPoint, reverseGeocode, type GeoPoint } from "@/lib/geo";
 import type { TurnstileLocation } from "@/lib/turnstileIo";
 
@@ -39,7 +39,15 @@ import type { TurnstileLocation } from "@/lib/turnstileIo";
 // aks holda aniq joylashuvni o'chirib tekshiruvni chetlab o'tish mumkin
 // bo'lardi). Qabul qilingan joylashuv yozuvga inson o'qiydigan matn bilan
 // tushadi (`location.text`, lib/geo.ts).
+//
+// QR'SIZ (31.10.2026, foydalanuvchi: "qr code kerak emas endi ... lokatsiya va
+// face id bo'lsa bo'ldi"): filial endi QR tokenidan emas, JOYLASHUVDAN
+// aniqlanadi — koordinatasi kiritilgan filiallardan radiusi ichidagi eng
+// yaqini (`locateBranch`). Koordinatasiz filialda belgilab bo'lmaydi: QR yo'q
+// ekan, xodim binoda ekanini faqat joylashuv ko'rsatadi. Odamni Face ID
+// tasdiqlaydi (lib/staffFace.ts, admin yoqqanda).
 
+/** Yozuv manbasi. Nomi tarixiy (28.09.2026 QR bilan boshlangan) — hisobotlar va noyob indeks shu qiymatga tayanadi. */
 export const QR_SOURCE = "qr";
 
 /** Filialga koordinata kiritilganda sukut radius, m. */
@@ -54,18 +62,40 @@ export interface ScanLocation extends GeoPoint {
 }
 
 /** Mini App shu kod bo'yicha qayta urinish/sozlama tugmasini ko'rsatadi. */
-export type LocationErrorCode = "location_required" | "location_inaccurate" | "too_far";
+export type LocationErrorCode = "location_required" | "location_inaccurate" | "too_far" | "no_branch_geo";
 
-export type LocationCheck =
-  | { ok: true; distance: number | null }
+/** Filialning qabul radiusi, m (kiritilmagan bo'lsa sukut). */
+export function branchRadiusM(branch: Pick<AttendanceBranch, "geoRadiusM">): number {
+  const r = Number(branch.geoRadiusM);
+  return r > 0 ? r : DEFAULT_RADIUS_M;
+}
+
+export interface BranchHit<B> {
+  branch: B;
+  /** Filial nuqtasigacha masofa, m. */
+  distance: number;
+}
+
+export type BranchLocate<B> =
+  | { ok: true; loc: ScanLocation; hits: BranchHit<B>[] }
   | { ok: false; status: number; code: LocationErrorCode; error: string };
 
 /**
- * Joylashuv qoidasi (sof funksiya — sinov shu orqali). Filialda koordinata
- * yo'q — tekshiruv yo'q (masofa null).
+ * Xodim qaysi filialda — joylashuv bo'yicha (sof funksiya — sinov shu orqali).
+ * `hits` — radiusi ichiga tushgan filiallar, YAQINIDAN UZOG'IGA (yonma-yon
+ * binolar bir-birining radiusiga tushishi mumkin — tanlovni chaqiruvchi
+ * qiladi). GPS xatoligi hisobga olinadi: masofadan aniqlik radiusi ayriladi
+ * (300 m gacha — undan kattasi "GPS'ni yoqing" deb rad etiladi, aks holda
+ * aniq joylashuvni o'chirib tekshiruvni chetlab o'tish mumkin bo'lardi).
  */
-export function checkLocation(branch: Pick<AttendanceBranch, "geo" | "geoRadiusM">, loc: ScanLocation | null): LocationCheck {
-  if (!branch.geo || !isValidPoint(branch.geo)) return { ok: true, distance: null };
+export function locateBranch<B extends Pick<AttendanceBranch, "name" | "geo" | "geoRadiusM">>(
+  branches: readonly B[],
+  loc: ScanLocation | null,
+): BranchLocate<B> {
+  const placed = branches.filter((b) => isValidPoint(b.geo));
+  if (placed.length === 0) {
+    return { ok: false, status: 409, code: "no_branch_geo", error: "Filial joylashuvi kiritilmagan — administratorga ayting" };
+  }
   if (!loc || !isValidPoint(loc)) {
     return { ok: false, status: 400, code: "location_required", error: "Joylashuv aniqlanmadi — Telegram'da joylashuvga ruxsat bering" };
   }
@@ -78,12 +108,20 @@ export function checkLocation(branch: Pick<AttendanceBranch, "geo" | "geoRadiusM
       error: `Joylashuv aniq emas (±${Math.round(acc)} m) — telefonda GPS'ni yoqib, qayta urinib ko'ring`,
     };
   }
-  const d = distanceM(branch.geo, loc);
-  const radius = Number(branch.geoRadiusM) > 0 ? Number(branch.geoRadiusM) : DEFAULT_RADIUS_M;
-  if (d - acc > radius) {
-    return { ok: false, status: 403, code: "too_far", error: `Siz filialdan ${formatDistance(d)} uzoqdasiz — belgilanmadi` };
+  const all = placed
+    .map((branch) => ({ branch, distance: distanceM(branch.geo as GeoPoint, loc) }))
+    .sort((a, b) => a.distance - b.distance);
+  const hits = all.filter((h) => h.distance - acc <= branchRadiusM(h.branch));
+  if (hits.length === 0) {
+    const near = all[0];
+    return {
+      ok: false,
+      status: 403,
+      code: "too_far",
+      error: `Siz «${near.branch.name}» filialidan ${formatDistance(near.distance)} uzoqdasiz — belgilanmadi`,
+    };
   }
-  return { ok: true, distance: d };
+  return { ok: true, loc, hits };
 }
 
 /** Inson o'qiydigan satr: "manzil · filialdan 35 m" (manzilsiz — masofa, u ham yo'q bo'lsa koordinata). */
@@ -144,7 +182,7 @@ export async function fillLocationAddress(db: Db, recordId: number, field: "loca
   }
 }
 
-/** Bir yozuvning manzili shu vaqtdan tez-tez qayta so'ralmaydi (QR ekrani har 30 s so'raydi). */
+/** Bir yozuvning manzili shu vaqtdan tez-tez qayta so'ralmaydi («Ishga keldim» sahifasi har 30 s so'raydi). */
 const HEAL_RETRY_MS = 30 * 60_000;
 const healTried = new Map<string, number>();
 
@@ -353,67 +391,72 @@ export type AttendanceOutcome =
 const isDuplicateKey = (e: unknown) => (e as { code?: number } | null)?.code === 11000;
 
 /**
- * QR bo'yicha kelish/ketishni yozadi. Xodim kimligini CHAQIRUVCHI aniqlaydi
- * (Mini App `initData`) — bu yerga faqat tekshirilgan `HrEmployee` keladi;
- * filial imzolangan tokendan, joylashuv qurilmadan (`loc`).
+ * Kelish/ketishni yozadi. Xodim kimligini CHAQIRUVCHI aniqlaydi (Mini App
+ * `initData`) — bu yerga faqat tekshirilgan `HrEmployee` keladi; filial —
+ * qurilma joylashuvidan (`loc`, `locateBranch`).
  */
 export async function markAttendance(
   db: Db,
   emp: HrEmployee,
   kind: AttendanceKind,
-  token: string,
   opts: { now?: Date; loc?: ScanLocation | null; faceShotId?: string | null } = {},
 ): Promise<AttendanceOutcome> {
   const now = opts.now ?? new Date();
-  const loc = opts.loc ?? null;
   const faceShotId = opts.faceShotId ?? null;
-  const v = verifyQrToken(token, now.getTime());
-  if (!v.ok) return { ok: false, status: 400, error: v.error };
   if (kind === "out" && !(await loadAttendanceSettings(db)).checkoutEnabled) {
     return { ok: false, status: 403, error: "«Ishdan ketdim» hozircha o'chirilgan" };
   }
-  const branch = (await db.collection("branches").findOne(
-    { id: v.branchId },
-    { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1, geo: 1, geoRadiusM: 1 } },
-  )) as AttendanceBranch | null;
-  if (!branch) return { ok: false, status: 404, error: "Filial topilmadi" };
+  const branches = (await db
+    .collection("branches")
+    .find({}, { projection: { _id: 0, id: 1, name: 1, workStart: 1, lateGraceMin: 1, attendanceTopicId: 1, geo: 1, geoRadiusM: 1 } })
+    .toArray()) as unknown as AttendanceBranch[];
+  const found = locateBranch(branches, opts.loc ?? null);
+  if (!found.ok) return { ok: false, status: found.status, error: found.error, code: found.code };
+  const { loc, hits } = found;
 
   const u = toUz(now);
   const date = `${u.getFullYear()}-${p2(u.getMonth() + 1)}-${p2(u.getDate())}`;
   const nowMin = u.getHours() * 60 + u.getMinutes();
   const hm = minToHm(nowMin);
   const col = db.collection<AttendanceRecord>("turnstile_io");
-  const key = { source: QR_SOURCE, date, employeeId: emp.id, branchId: branch.id } as const;
-  const existing = await col.findOne(key, { projection: { _id: 0 } });
+  const keyOf = (branchId: number) => ({ source: QR_SOURCE, date, employeeId: emp.id, branchId }) as const;
+  // Radius ichidagi filiallardagi bugungi yozuvlari — yonma-yon binolarda
+  // GPS tebranishi bir xodimni ikki binoga yozib qo'ymasin.
+  const today = await col
+    .find({ source: QR_SOURCE, date, employeeId: emp.id, branchId: { $in: hits.map((h) => h.branch.id) } }, { projection: { _id: 0 } })
+    .toArray();
+  const arrivedAt = hits
+    .map((h) => ({ ...h, record: today.find((r) => r.branchId === h.branch.id && r.enterTime) ?? null }))
+    .find((h) => h.record !== null);
 
   if (kind === "out") {
-    if (!existing?.enterTime) {
+    // Ketish — bugun «keldim» belgilangan eng yaqin filialda.
+    if (!arrivedAt?.record) {
       return { ok: false, status: 409, error: "Bugun bu filialda kelganingiz belgilanmagan — avval «Ishga keldim»" };
     }
-    const place = checkLocation(branch, loc);
-    if (!place.ok) return { ok: false, status: place.status, error: place.error, code: place.code };
-    const exit = loc ? await locationRecord(db, loc, place.distance, branch) : null;
-    const exitLocation = exit?.location ?? null;
-    // Qayta skanerlansa oxirgisi qoladi — chiqib, qaytib kelib, yana ketish mumkin.
+    const { branch, distance, record: existing } = arrivedAt;
+    const exit = await locationRecord(db, loc, distance, branch);
+    const exitLocation = exit.location;
+    // Qayta bosilsa oxirgisi qoladi — chiqib, qaytib kelib, yana ketish mumkin.
     const exitFace = faceShotId ? { exitFaceShotId: faceShotId } : {};
-    await col.updateOne(key, { $set: { exitTime: hm, exitedAt: now, exitLocation, ...exitFace } });
+    await col.updateOne(keyOf(branch.id), { $set: { exitTime: hm, exitedAt: now, exitLocation, ...exitFace } });
     return {
       ok: true,
       kind,
       fresh: true,
       record: { ...existing, exitTime: hm, exitLocation, ...exitFace },
       branch,
-      ...(exit?.retry ? { addressPending: "exitLocation" as const } : {}),
+      ...(exit.retry ? { addressPending: "exitLocation" as const } : {}),
     };
   }
 
-  // Bugun allaqachon belgilangan — hech narsa yozilmaydi, joylashuv so'ralmaydi.
-  if (existing?.enterTime) return { ok: true, kind, fresh: false, record: existing, branch };
+  // Bugun shu yerda allaqachon belgilangan — hech narsa yozilmaydi.
+  if (arrivedAt?.record) return { ok: true, kind, fresh: false, record: arrivedAt.record, branch: arrivedAt.branch };
 
-  const place = checkLocation(branch, loc);
-  if (!place.ok) return { ok: false, status: place.status, error: place.error, code: place.code };
-  const enter = loc ? await locationRecord(db, loc, place.distance, branch) : null;
-  const location = enter?.location ?? null;
+  const { branch, distance } = hits[0];
+  const key = keyOf(branch.id);
+  const enter = await locationRecord(db, loc, distance, branch);
+  const location = enter.location;
 
   const exp = await expectationFor(db, emp, branch, date, u.getDay());
   const late = lateBy(nowMin, exp);
@@ -436,19 +479,19 @@ export async function markAttendance(
   };
 
   // `id` — kolleksiyadagi eng kattasidan keyingisi (loyihadagi naqsh). Bir
-  // lahzada ikki xodim skanerlasa ikkinchisi to'qnashadi va qayta oladi.
+  // lahzada ikki xodim belgilasa ikkinchisi to'qnashadi va qayta oladi.
   for (let attempt = 0; attempt < 5; attempt++) {
     const [last] = await col.find({}, { projection: { _id: 0, id: 1 } }).sort({ id: -1 }).limit(1).toArray();
     const record: AttendanceRecord = { id: (Number(last?.id) || 0) + 1, ...base };
     try {
       await col.insertOne({ ...record });
-      return { ok: true, kind, fresh: true, record, branch, ...(enter?.retry ? { addressPending: "location" as const } : {}) };
+      return { ok: true, kind, fresh: true, record, branch, ...(enter.retry ? { addressPending: "location" as const } : {}) };
     } catch (e) {
       if (!isDuplicateKey(e)) throw e;
-      // Shu xodim ikki marta ketma-ket skanerlagan — birinchisi yozildi.
+      // Shu xodim ikki marta ketma-ket bosgan — birinchisi yozildi.
       const again = await col.findOne(key, { projection: { _id: 0 } });
       if (again) return { ok: true, kind, fresh: false, record: again, branch };
     }
   }
-  return { ok: false, status: 503, error: "Hozir band — birozdan keyin qayta skanerlang" };
+  return { ok: false, status: 503, error: "Hozir band — birozdan keyin qayta urinib ko'ring" };
 }

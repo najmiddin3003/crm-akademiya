@@ -100,7 +100,7 @@ export function contactKeyboard(): ReplyKeyboard {
 const profileButton = (): InlineButton => ({ text: "👤 Profilim", web_app: { url: staffProfileUrl() } });
 
 /**
- * «📷 Ishga keldim» — QR skaner (Mini App). «🏁 Ishdan ketdim» faqat admin
+ * «📷 Ishga keldim» — yuz + joylashuv (Mini App). «🏁 Ishdan ketdim» faqat admin
  * yoqqanda (lib/attendanceQr.ts → checkoutEnabled; 28.09.2026 da o'chiq).
  */
 function checkinRow(checkoutEnabled: boolean): InlineButton[] {
@@ -145,7 +145,7 @@ export function mainMenu(opts: { profileOnly: boolean; webLogin: boolean; checko
   };
 }
 
-/** QR havolasi kamera bilan ochilganda — Telegram ichidagi skanerga yo'naltirish. */
+/** Eski QR havolasi ochilganda — «Ishga keldim» tugmasiga yo'naltirish. */
 export function checkinKeyboard(checkoutEnabled: boolean): InlineKeyboard {
   return { inline_keyboard: [checkinRow(checkoutEnabled), [btn("🏠 Bosh menyu", CB.menu)]] };
 }

@@ -12,7 +12,7 @@
 export const SECTION_LABELS: Record<string, string> = {
   ai: "AI yordamchi",
   attendance: "Davomat",
-  "attendance-qr": "QR davomat",
+  "attendance-qr": "Ishga keldim",
   auth: "Kirish va hisob",
   "block-test-exams": "Blok testlar",
   "block-test-types": "Blok testlar",
@@ -78,8 +78,8 @@ export const ACTION_LABELS: Record<string, string> = {
   transfer_reject: "O'tkazmani rad etdi (bot)",
   lead: "Lid qo'shdi (bot)",
   lead_holat: "Lid holati (guruh boti)",
-  qr_in: "Ishga keldi (QR)",
-  qr_out: "Ishdan ketdi (QR)",
+  qr_in: "Ishga keldi",
+  qr_out: "Ishdan ketdi",
   face_enroll: "Yuzini ro'yxatdan o'tkazdi (Face ID)",
   task_failed_fine: "Topshiriq bajarilmadi — jarima",
   POST: "Qo'shdi",
@@ -144,7 +144,7 @@ export const ACTION_KINDS = [
   { value: "auth", label: "Kirish", actions: ["login", "login_failed"] },
   {
     value: "bot",
-    label: "Bot va QR",
+    label: "Bot va «Ishga keldim»",
     actions: ["kirim", "chiqim", "transfer", "method_transfer", "transfer_confirm", "transfer_reject", "lead", "lead_holat", "qr_in", "qr_out", "face_enroll"],
   },
   { value: "system", label: "Tizim", actions: ["task_failed_fine"] },

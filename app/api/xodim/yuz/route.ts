@@ -12,7 +12,7 @@ import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 // POST — { descriptors: number[][], photo: "data:image/jpeg;base64,…" }:
 //        ro'yxatda yo'q bo'lsa — ro'yxatga oladi, bor bo'lsa — solishtiradi.
 //        Muvaffaqiyatli bo'lsa { ok, enrolled, pass } — `pass` ni
-//        /api/xodim/davomat QR kod bilan birga oladi (5 daqiqa amal qiladi).
+//        /api/xodim/davomat joylashuv bilan birga oladi (5 daqiqa amal qiladi).
 //
 // Xodim — Telegram `initData` dan (lib/staffBot/webapp.ts), klient id
 // yubormaydi. Sessiyasiz (PUBLIC_API) — himoya imzoning o'zida.

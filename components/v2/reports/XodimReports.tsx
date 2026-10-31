@@ -264,7 +264,7 @@ export function BonusJarimaReport({ report, author }: { report: ReportDef; autho
           rows: entries.map((e) => [f.stamp(e.date, e.time || undefined), e.name, kindLabel(e.kind), e.kind === "bonus" ? e.amount : -e.amount, e.note || null]),
         },
       ],
-      notes: [t("Bekor qilingan bonus va jarimalar sanalmaydi. Kechikish uchun jarima tizimda yozilmaydi — QR «Ishga keldim» faqat xabar beradi.")],
+      notes: [t("Bekor qilingan bonus va jarimalar sanalmaydi. Kechikish uchun jarima tizimda yozilmaydi — «Ishga keldim» faqat xabar beradi.")],
       footer: DOC_FOOTER,
     };
   }
@@ -307,7 +307,7 @@ export function BonusJarimaReport({ report, author }: { report: ReportDef; autho
       ) : (
         <ReportTable cols={entryCols} rows={entries} rowKey={(e) => e.key} loading={loading} empty={t("Bu davrda bonus yoki jarima yo'q")} minWidth={760} />
       )}
-      <NoteLine>{t("Bekor qilingan bonus va jarimalar sanalmaydi. Kechikish uchun jarima tizimda yozilmaydi — QR «Ishga keldim» faqat xabar beradi.")}</NoteLine>
+      <NoteLine>{t("Bekor qilingan bonus va jarimalar sanalmaydi. Kechikish uchun jarima tizimda yozilmaydi — «Ishga keldim» faqat xabar beradi.")}</NoteLine>
     </ReportShell>
   );
 }

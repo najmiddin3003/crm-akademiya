@@ -26,7 +26,8 @@ import { branchBuildingLabel } from "@/lib/branchPools";
 // yo'q filial ATAYLAB ko'zga tashlanadi: lid umumiy topikka tushadi yoki
 // (u ham bo'lmasa) umuman yuborilmaydi; to'lov umumiy "To'lovlar" topigiga.
 //
-// «ISHGA KELDIM» (QR, 28.09.2026): davomat topigi (kechikish xabari) va
+// «ISHGA KELDIM» (28.09.2026; 31.10.2026 dan QR'siz — filial joylashuvdan
+// aniqlanadi, koordinata SHART): davomat topigi (kechikish xabari) va
 // o'qituvchi bo'lmagan xodimlar uchun ish boshlanish vaqti + ruxsat etilgan
 // kechikish (lib/attendanceCheck.ts).
 
@@ -373,7 +374,7 @@ export default function BranchesPage() {
                 placeholder={t("Masalan: 7 yoki https://t.me/c/…/7")}
               />
               <p className="mt-1.5 text-[12px] text-muted-foreground">
-                {t("«Ishga keldim» (QR) bo'yicha kechikkan xodim haqidagi xabar shu topikka tushadi.")}
+                {t("«Ishga keldim» bo'yicha kechikkan xodim haqidagi xabar shu topikka tushadi.")}
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -422,7 +423,7 @@ export default function BranchesPage() {
                   placeholder="200"
                 />
                 <span className="text-[12px] text-muted-foreground">
-                  {t("metr — xodim shu radius ichida skanerlashi kerak (bo'sh — 200 m)")}
+                  {t("metr — xodim shu radius ichida bo'lishi kerak (bo'sh — 200 m)")}
                 </span>
               </div>
               {form.geo.trim() && !geoPreview && (
@@ -440,7 +441,7 @@ export default function BranchesPage() {
                 </div>
               )}
               <p className="text-[12px] text-muted-foreground">
-                {t("Kiritilsa, xodim QR kodni faqat shu joy yaqinida skanerlay oladi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).")}
+                {t("Xodim «Ishga keldim» ni faqat shu joy yaqinida belgilay oladi — joylashuv kiritilmasa, bu filialda belgilab bo'lmaydi. Eng oson yo'li — filial binosida turib «📍 Hozirgi joylashuvim» ni bosish (telefonda aniqroq).")}
               </p>
             </div>
             </div>

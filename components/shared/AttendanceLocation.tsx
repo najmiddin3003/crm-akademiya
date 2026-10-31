@@ -45,7 +45,7 @@ export function LocationChip({
   person?: string;
   /** Oyna sarlavhasi uchun: qachon ("28.09.2026 · 08:52"). */
   when?: string;
-  /** Faqat masofa (tor joylar — QR ekrani ro'yxati). */
+  /** Faqat masofa (tor joylar — «Ishga keldim» sahifasi ro'yxati). */
   compact?: boolean;
 }) {
   const { t } = useT();

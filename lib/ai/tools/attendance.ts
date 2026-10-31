@@ -9,7 +9,7 @@ import { uzTimeHm } from "@/lib/uzTime";
 import { daysInclusive, optDate, optString, ToolInputError, type AiTool, type ToolArgs } from "./types";
 import { groupsInBuilding } from "@/lib/attendanceCheck";
 
-// DAVOMAT — o'quvchilar (guruh davomati) va xodimlar («Ishga keldim» QR).
+// DAVOMAT — o'quvchilar (guruh davomati) va xodimlar («Ishga keldim»).
 //
 // O'QUVCHILAR: `attendance` kolleksiyasi — Nazorat → Davomat, Davomat
 // qilinmagan guruhlar sahifalari va guruh sahifasidagi Davomat tabi bilan
@@ -377,7 +377,8 @@ export function missingCheckIns(input: {
 export const staffAttendance: AiTool = {
   name: "staff_attendance",
   description:
-    "Employee attendance from «Ishga keldim» QR check-ins (and turnstile records): who came and when, who was late and by " +
+    "Employee attendance from «Ishga keldim» check-ins in the staff Telegram bot (Face ID + location; QR codes were used " +
+    "until 31.10.2026) and turnstile records: who came and when, who was late and by " +
     "how many minutes, for a day or a date range (default: today), in the current branch (or all branches). " +
     "For a single day in the current branch it also lists employees who were expected (teachers with a lesson that day, " +
     "other staff when the branch has a work start time) but did not check in.",

@@ -133,7 +133,7 @@ export async function handleStaffUpdate(
 // ── Ekranlar ────────────────────────────────────────────────────────
 
 async function menuScreen(db: Db, access: StaffAccess): Promise<Screen> {
-  // «🏁 Ishdan ketdim» tugmasi faqat admin yoqqanda (QR ekranidagi sozlama).
+  // «🏁 Ishdan ketdim» tugmasi faqat admin yoqqanda («Ishga keldim» sahifasidagi sozlama).
   // «📌 Topshiriqlar» tugmasidagi son — harakat kutayotganlar (lib/staffBot/tasks.ts).
   const [{ checkoutEnabled }, tasks] = await Promise.all([loadAttendanceSettings(db), taskMenuCount(db, access)]);
   // O'qituvchi — kassa/lidsiz menyu (qanday kirganidan qat'i nazar).

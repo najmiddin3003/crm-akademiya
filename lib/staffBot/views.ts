@@ -106,29 +106,29 @@ export function profileMenuView(name: string, webLogin: boolean): string {
   const lines = [
     `👤 <b>${esc(name || "Xodim")}</b>`,
     "",
-    "«📷 Ishga keldim» — filial ekranidagi QR kodni skanerlang.",
+    "«📷 Ishga keldim» — filialga kelganingizda bosing: joylashuvingiz (Face ID yoqilgan bo'lsa yuzingiz ham) tekshiriladi.",
     "«👤 Profilim» — oylik, avans, tranzaksiyalar, o'quvchilar to'lovlari va boshqa ma'lumotlaringiz (saytdagidek).",
   ];
   if (webLogin) lines.push("", "Kassa amallari uchun «🔑 Parol bilan kirish» ni bosing.");
   return lines.join("\n");
 }
 
-// ── Ishga keldim (QR, 28.09.2026; joylashuv — 29.09.2026) ───────────
+// ── Ishga keldim (28.09.2026; joylashuv — 29.09.2026; QR'siz — 31.10.2026) ──
 
 export function checkinNeedsLogin(): string {
-  return "📷 QR kodni skanerlashdan oldin botga kiring: pastdagi tugma bilan raqamingizni yuboring, keyin ekrandagi kodni qayta skanerlang.";
+  return "📷 «Ishga keldim» uchun avval botga kiring: pastdagi tugma bilan raqamingizni yuboring.";
 }
 
 /**
- * QR havolasi telefon kamerasi bilan ochilganda (29.09.2026 dan belgilamaydi —
- * joylashuv faqat Telegram ichidagi skanerda ishonchli olinadi).
+ * Eski QR havolasi ochilganda (31.10.2026 dan QR yo'q; 29.09.2026 dan bu yo'l
+ * baribir belgilamasdi — joylashuv faqat Mini App'da ishonchli olinadi).
  */
 export function checkinUseButton(kind: "in" | "out"): string {
   const button = kind === "out" ? "«🏁 Ishdan ketdim»" : "«📷 Ishga keldim»";
   return [
-    "📍 <b>Joylashuvingiz ham tekshiriladi.</b>",
+    "📍 <b>QR kod endi kerak emas.</b>",
     "",
-    `Pastdagi ${button} tugmasini bosing va ekrandagi QR kodni Telegram ichidagi skaner bilan qayta skanerlang. Birinchi marta Telegram joylashuvga ruxsat so'raydi — «Ruxsat berish» ni bosing.`,
+    `Pastdagi ${button} tugmasini bosing — joylashuvingiz (Face ID yoqilgan bo'lsa yuzingiz ham) tekshiriladi. Birinchi marta Telegram joylashuvga ruxsat so'raydi — «Ruxsat berish» ni bosing.`,
   ].join("\n");
 }
 

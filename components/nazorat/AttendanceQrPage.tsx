@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "@/components/ui/Link";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useT } from "@/components/shared/Language";
@@ -11,23 +11,24 @@ import { useBranch } from "@/components/shared/BranchContext";
 import { branchBuildingLabel, branchPool, buildingNo } from "@/lib/branchPools";
 
 /**
- * Kiosk QAYSI BINODA turgani (10.10.2026): 1+2 «Akademiya Chortoq» navbarda
- * bitta qator, xodim davomati esa bino bo'yicha — har kompyuter o'z binosini
- * eslab qoladi (shu brauzer uchun qulaylik; bo'lmasa navbar filiali).
+ * Ro'yxat QAYSI BINO bo'yicha (10.10.2026): 1+2 «Akademiya Chortoq» navbarda
+ * bitta qator, xodim davomati esa bino bo'yicha — har kompyuter tanlangan
+ * binoni eslab qoladi (shu brauzer uchun qulaylik; bo'lmasa navbar filiali).
  */
 const QR_BUILDING_KEY = "crm:qrBuilding";
 
-// Nazorat → «Ishga keldim (QR)» (sidebar: Nazorat > Amallar, href /nazorat-qr).
+// Nazorat → «Ishga keldim» (sidebar: Nazorat > Amallar, href /nazorat-qr —
+// yo'l nomi tarixiy).
 //
-// Filial qabulxonasidagi ekran (planshet/monitor) shu sahifani ochiq tutadi:
-// navbardagi filialning QR kodi har 30 soniyada yangilanadi (rasmga olib
-// uydan skanerlab bo'lmasin — lib/attendanceQr.ts), yonida bugun kelganlar.
-// Xodim kodni xodimlar botidagi «📷 Ishga keldim» tugmasi yoki telefon
-// kamerasi bilan skanerlaydi. Yozuvlar Nazorat → Turniket sahifasida va
-// xodim profilidagi «Ish soati» tabida ham ko'rinadi.
-//
-// «Ishdan ketdim» (28.09.2026: kodi tayyor, hozircha O'CHIQ) — admin shu
-// yerdagi tugma bilan yoqadi; yoqilganda ekranda ikkinchi kod chiqadi.
+// 31.10.2026 dan QR YO'Q (foydalanuvchi: "qr code kerak emas endi ...
+// lokatsiya va face id bo'lsa bo'ldi"): xodim xodimlar botidagi «📷 Ishga
+// keldim» tugmasini bosadi — yuz (Face ID yoqilgan bo'lsa) va joylashuv
+// tekshiriladi, filial joylashuvdan aniqlanadi (lib/attendanceCheck.ts →
+// locateBranch). Bu sahifada: tanlangan binoda bugun kelganlar (har 30
+// soniyada yangilanadi), sozlamalar (faqat admin) va koordinatasi
+// kiritilmagan filiallar — ularda belgilab bo'lmaydi (Boshqaruv → Filiallar).
+// Yozuvlar Nazorat → Turniket sahifasida va xodim profilidagi «Ish soati»
+// tabida ham ko'rinadi.
 
 interface Arrival {
   id: number;
@@ -40,56 +41,35 @@ interface Arrival {
   location?: TurnstileLocation | null;
 }
 
-interface QrData {
+interface PageData {
   branch: { id: number; name: string; geoSet: boolean; radiusM: number };
+  /** Koordinatasi kiritilmagan filiallar — ularda «Ishga keldim» ishlamaydi. */
+  missingGeo: { id: number; name: string }[];
   date: string;
-  qr: { in: string; out: string | null };
-  refreshInMs: number;
   bot: string;
   checkoutEnabled: boolean;
-  /** Face ID — skanerlashdan oldin yuz tekshiruvi (lib/staffFace.ts). */
+  /** Face ID — belgilashdan oldin yuz tekshiruvi (lib/staffFace.ts). */
   faceRequired: boolean;
   canConfigure: boolean;
   arrivals: Arrival[];
-  /** Klient soatida keyingi kod vaqti (so'rov kelgan payt + refreshInMs). */
-  expiresAt: number;
 }
 
-const SLOT_MS = 30_000;
-
-function QrBox({ svg, label, tone }: { svg: string; label: string; tone: "in" | "out" }) {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      {/* QR doim oq fonda — tungi rejimda ham skaner o'qisin. */}
-      <div
-        className="w-full max-w-[360px] rounded-2xl bg-white p-3 shadow-sm [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
-        // SVG o'z serverimizdan (qrcode kutubxonasi), foydalanuvchi matni yo'q.
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
-      <span className={`rounded-full px-4 py-1.5 text-[15px] font-bold ${tone === "in" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-sky-500/15 text-sky-700 dark:text-sky-300"}`}>
-        {label}
-      </span>
-    </div>
-  );
-}
+const REFRESH_MS = 30_000;
 
 export default function AttendanceQrPage() {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
-  const [data, setData] = useState<QrData | null>(null);
+  const [data, setData] = useState<PageData | null>(null);
   const [error, setError] = useState("");
-  const [now, setNow] = useState(0);
   const [version, setVersion] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [full, setFull] = useState(false);
-  const frameRef = useRef<HTMLDivElement>(null);
   const { branchId: navBranchId, branches: allowedBranches } = useBranch();
   const buildings = useMemo(
     () => (navBranchId === null ? [] : branchPool(navBranchId).filter((id) => allowedBranches.some((b) => b.id === id))),
     [navBranchId, allowedBranches],
   );
   // Boshlang'ich qiymat brauzer xotirasidan (serverda — yo'q). Birinchi
-  // chizish unga bog'liq emas: QR so'rovi effektda ketadi.
+  // chizish unga bog'liq emas: so'rov effektda ketadi.
   const [building, setBuilding] = useState<number | null>(() => {
     if (typeof window === "undefined") return null;
     try {
@@ -106,8 +86,7 @@ export default function AttendanceQrPage() {
     try { localStorage.setItem(QR_BUILDING_KEY, String(id)); } catch { /* faqat shu sessiya */ }
   }
 
-  // Kod aynan yangilangan paytda qayta so'raladi (server keyingi slotgacha
-  // qolgan vaqtni aytadi — kompyuter soati noto'g'ri bo'lsa ham to'g'ri).
+  // Ro'yxat har 30 soniyada yangilanadi (sahifa qabulxona ekranida ochiq turishi mumkin).
   useEffect(() => {
     let cancelled = false;
     let timer: number | undefined;
@@ -117,20 +96,16 @@ export default function AttendanceQrPage() {
         const d = await r.json();
         if (cancelled) return;
         if (d?.ok) {
-          const at = Date.now();
-          setData({ ...(d as Omit<QrData, "expiresAt">), expiresAt: at + Number(d.refreshInMs) });
-          setNow(at);
+          setData(d as PageData);
           setError("");
-          timer = window.setTimeout(load, Math.max(1_000, Number(d.refreshInMs) + 300));
         } else {
-          setError(t(d?.error || "QR kod yuklanmadi"));
-          timer = window.setTimeout(load, 5_000);
+          setError(t(d?.error || "Ma'lumot olinmadi"));
         }
       } catch {
         if (cancelled) return;
         setError(t("Tarmoq xatosi — qayta urinilmoqda…"));
-        timer = window.setTimeout(load, 5_000);
       }
+      if (!cancelled) timer = window.setTimeout(load, REFRESH_MS);
     };
     void load();
     return () => {
@@ -138,23 +113,6 @@ export default function AttendanceQrPage() {
       if (timer) window.clearTimeout(timer);
     };
   }, [t, version, effective]);
-
-  // Sekundomer — yangilanishgacha qolgan vaqt chizig'i uchun.
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const onChange = () => setFull(document.fullscreenElement === frameRef.current);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  function toggleFull() {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void frameRef.current?.requestFullscreen?.();
-  }
 
   async function toggleSetting(key: "checkoutEnabled" | "faceRequired", next: boolean) {
     setSaving(true);
@@ -186,20 +144,18 @@ export default function AttendanceQrPage() {
     );
   }
 
-  const left = Math.max(0, Math.ceil((data.expiresAt - now) / 1000));
-  const pct = Math.min(100, Math.max(0, ((data.expiresAt - now) / SLOT_MS) * 100));
   const late = data.arrivals.filter((a) => a.status === "kechikkan").length;
 
   return (
     <div className="container mx-auto max-w-[1600px] p-4 md:p-5">
-      <div ref={frameRef} className={`space-y-4 ${full ? "h-screen overflow-auto bg-background p-6" : ""}`}>
+      <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-[20px] font-bold tracking-tight">{t("Ishga keldim")}</h2>
             <p className="text-[13px] text-muted-foreground">{branchBuildingLabel(data.branch, (n) => t("{n}-bino", { n }))}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {data.canConfigure && !full && (
+            {data.canConfigure && (
               <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-[13px]">
                 <input
                   type="checkbox"
@@ -211,10 +167,10 @@ export default function AttendanceQrPage() {
                 <span>{t("«Ishdan ketdim» ham ishlasin")}</span>
               </label>
             )}
-            {data.canConfigure && !full && (
+            {data.canConfigure && (
               <label
                 className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-[13px]"
-                title={t("Xodim skanerlashdan oldin telefonida yuzini tasdiqlaydi. Birinchi marta yuzi ro'yxatga olinadi.")}
+                title={t("Xodim belgilashdan oldin telefonida yuzini tasdiqlaydi. Birinchi marta yuzi ro'yxatga olinadi.")}
               >
                 <input
                   type="checkbox"
@@ -226,7 +182,7 @@ export default function AttendanceQrPage() {
                 <span>{t("Yuz tekshiruvi (Face ID)")}</span>
               </label>
             )}
-            {buildings.length > 1 && !full && (
+            {buildings.length > 1 && (
               <div className="inline-flex h-9 items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-[13px]" role="tablist" aria-label={t("Bino")}>
                 {buildings.map((id) => {
                   const on = data.branch.id === id;
@@ -245,47 +201,23 @@ export default function AttendanceQrPage() {
                 })}
               </div>
             )}
-            <button
-              type="button"
-              onClick={toggleFull}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-[13px] font-medium hover:bg-secondary"
-            >
-              {full ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              <span>{full ? t("Chiqish") : t("To'liq ekran")}</span>
-            </button>
           </div>
         </div>
 
         {error && <p className="text-[13px] text-rose-600">{error}</p>}
 
-        {/* Joylashuv tekshiruvi shu filialda ishlamayapti — ekran oldidagilar
-            buni bilsin (koordinata Boshqaruv → Filiallar'da kiritiladi). */}
-        {!data.branch.geoSet && !full && (
+        {/* Filial joylashuvdan aniqlanadi — koordinatasiz filialda xodim belgilana olmaydi. */}
+        {data.missingGeo.length > 0 && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-800 dark:text-amber-200">
-            <strong>{t("Filial joylashuvi kiritilmagan.")}</strong>{" "}
-            {t("Skanerlashda joylashuv yoziladi, lekin filialdan uzoqligi tekshirilmaydi — Boshqaruv → Filiallar'da filial koordinatasini kiriting.")}
+            <strong>{t("Joylashuvi kiritilmagan filiallar: {names}.", { names: data.missingGeo.map((b) => b.name).join(", ") })}</strong>{" "}
+            {t("Ularda «Ishga keldim» ishlamaydi — xodim qaysi filialda ekani joylashuvdan aniqlanadi.")}{" "}
+            <Link href="/management-filiallar" className="font-medium underline underline-offset-2">
+              {t("Boshqaruv → Filiallar'da koordinatani kiriting")}
+            </Link>
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className={`grid gap-6 ${data.qr.out ? "sm:grid-cols-2" : ""} justify-items-center`}>
-              <QrBox svg={data.qr.in} label={t("Ishga keldim")} tone="in" />
-              {data.qr.out && <QrBox svg={data.qr.out} label={t("Ishdan ketdim")} tone="out" />}
-            </div>
-            <div className="mx-auto mt-5 max-w-[420px]">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                <div className="h-full rounded-full bg-primary transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
-              </div>
-              <p className="mt-2 text-center text-[12px] text-muted-foreground tabular-nums">
-                {t("Kod {n} soniyadan keyin yangilanadi", { n: left })}
-              </p>
-            </div>
-            <p className="mx-auto mt-4 max-w-[520px] text-center text-[13px] text-muted-foreground">
-              {t("Telegram'da @{bot} botini oching va «📷 Ishga keldim» tugmasini bosing — yoki telefon kamerasi bilan skanerlang.", { bot: data.bot })}
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="rounded-2xl border border-border bg-card">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <span className="text-[14px] font-semibold">{t("Bugun kelganlar")}</span>
@@ -297,7 +229,7 @@ export default function AttendanceQrPage() {
             {data.arrivals.length === 0 ? (
               <p className="px-4 py-10 text-center text-[13px] text-muted-foreground">{t("Hali hech kim belgilanmagan")}</p>
             ) : (
-              <ul className="max-h-[60vh] divide-y divide-border overflow-auto">
+              <ul className="max-h-[70vh] divide-y divide-border overflow-auto">
                 {data.arrivals.map((a) => (
                   <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
                     <span className="w-12 shrink-0 text-[14px] font-semibold tabular-nums">{a.enterTime ?? "—"}</span>
@@ -321,6 +253,17 @@ export default function AttendanceQrPage() {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="h-fit rounded-2xl border border-border bg-card p-5">
+            <p className="text-[14px] font-semibold">{t("Qanday belgilanadi")}</p>
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-[13px] text-muted-foreground">
+              <li>{t("Xodim Telegram'da @{bot} botini ochib, «📷 Ishga keldim» tugmasini bosadi.", { bot: data.bot })}</li>
+              {data.faceRequired && <li>{t("Yuzini telefon kamerasida tasdiqlaydi (birinchi marta yuzi ro'yxatga olinadi).")}</li>}
+              <li>{t("Joylashuvi olinadi: filialdan {m} m ichida bo'lsa, eng yaqin filialga belgilanadi.", { m: data.branch.radiusM })}</li>
+              <li>{t("Kechikish dars jadvali yoki filialning ish vaqti bo'yicha o'lchanadi.")}</li>
+            </ol>
+            <p className="mt-3 text-[12px] text-muted-foreground">{t("QR kod endi kerak emas.")}</p>
           </div>
         </div>
       </div>

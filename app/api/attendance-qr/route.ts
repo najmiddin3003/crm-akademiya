@@ -1,25 +1,19 @@
 import { NextResponse, after } from "next/server";
-import QRCode from "qrcode";
 import { ensureIndexes } from "@/lib/mongodb";
 import { getBranchScope, payrollBuilding } from "@/lib/branchScope";
 import { getCurrentUser } from "@/lib/auth";
 import { uzDateIso } from "@/lib/uzTime";
-import { DEFAULT_RADIUS_M, QR_SOURCE, healMissingAddresses, type AttendanceRecord } from "@/lib/attendanceCheck";
+import { QR_SOURCE, branchRadiusM, healMissingAddresses, type AttendanceRecord } from "@/lib/attendanceCheck";
 import { isValidPoint } from "@/lib/geo";
-import {
-  loadAttendanceSettings,
-  makeQrToken,
-  msToNextSlot,
-  qrLink,
-  qrSlot,
-  saveAttendanceSettings,
-  staffBotUsername,
-} from "@/lib/attendanceQr";
+import { loadAttendanceSettings, saveAttendanceSettings } from "@/lib/attendanceQr";
+import { staffBotUsername } from "@/lib/staffBot/config";
 
-// GET /api/attendance-qr — Nazorat → «Ishga keldim (QR)» ekrani
-// (components/nazorat/AttendanceQrPage.tsx): navbardagi filialning JORIY
-// QR kodi (SVG), keyingisigacha qolgan vaqt va bugun kelganlar ro'yxati.
-// Ekran har 30 soniyada shu yerdan yangi kod oladi (lib/attendanceQr.ts).
+// GET /api/attendance-qr — Nazorat → «Ishga keldim» sahifasi
+// (components/nazorat/AttendanceQrPage.tsx): tanlangan binoning bugun
+// kelganlari, sozlamalar va koordinatasi kiritilmagan filiallar. 31.10.2026
+// dan QR YO'Q — filial xodim joylashuvidan aniqlanadi (lib/attendanceCheck.ts
+// → locateBranch), shuning uchun koordinatasiz filialda belgilab bo'lmaydi.
+// Sahifa ro'yxatni har 30 soniyada yangilaydi. Yo'l nomi tarixiy.
 //
 // PATCH — «Ishdan ketdim» va Face ID (yuz tekshiruvi, lib/staffFace.ts) ni
 // yoqish/o'chirish: `{ checkoutEnabled?, faceRequired? }`, kamida bittasi.
@@ -27,8 +21,6 @@ import {
 // o'zi yetmaydi (qabulxona ekranidagi hisob uni o'zgartira olmasin).
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
-
-const svgOf = (text: string) => QRCode.toString(text, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
 
 export async function GET(req: Request) {
   const scope = await getBranchScope();
@@ -42,20 +34,18 @@ export async function GET(req: Request) {
   }
 
   const db = await ensureIndexes();
-  const [branch, settings, me] = await Promise.all([
-    db.collection("branches").findOne({ id: branchId }, { projection: { _id: 0, id: 1, name: 1, geo: 1, geoRadiusM: 1 } }),
+  const [branchRows, settings, me] = await Promise.all([
+    db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1, geo: 1, geoRadiusM: 1 } }).sort({ id: 1 }).toArray(),
     loadAttendanceSettings(db),
     getCurrentUser(),
   ]);
+  const branch = branchRows.find((b) => Number(b.id) === branchId);
+  // Koordinatasiz filiallar (foydalanuvchi ko'ra oladiganlari) — ularda «Ishga keldim» ishlamaydi.
+  const missingGeo = branchRows
+    .filter((b) => !isValidPoint(b.geo) && (scope.isAdmin || scope.allowed.includes(Number(b.id))))
+    .map((b) => ({ id: Number(b.id), name: String(b.name ?? "") }));
 
-  const now = Date.now();
-  const token = makeQrToken(branchId, qrSlot(now));
-  const [qrIn, qrOut] = await Promise.all([
-    svgOf(qrLink("in", token)),
-    settings.checkoutEnabled ? svgOf(qrLink("out", token)) : Promise.resolve(null),
-  ]);
-
-  const today = uzDateIso(new Date(now));
+  const today = uzDateIso(new Date());
   const rows = await db
     .collection<AttendanceRecord>("turnstile_io")
     .find(
@@ -74,13 +64,11 @@ export async function GET(req: Request) {
       branch: {
         id: branchId,
         name: String(branch?.name ?? ""),
-        // Filialga koordinata kiritilmagan — joylashuv tekshirilmaydi (ekranda ogohlantirish).
         geoSet: isValidPoint(branch?.geo),
-        radiusM: Number(branch?.geoRadiusM) > 0 ? Number(branch?.geoRadiusM) : DEFAULT_RADIUS_M,
+        radiusM: branchRadiusM({ geoRadiusM: branch?.geoRadiusM }),
       },
+      missingGeo,
       date: today,
-      qr: { in: qrIn, out: qrOut },
-      refreshInMs: msToNextSlot(now),
       bot: staffBotUsername(),
       checkoutEnabled: settings.checkoutEnabled,
       faceRequired: settings.faceRequired,

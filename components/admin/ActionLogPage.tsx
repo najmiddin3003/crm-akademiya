@@ -17,7 +17,7 @@ import { describeUserAgent } from "@/lib/userSessions";
 // sahifa app/(app)/amallar-jurnali/page.tsx da to'siladi.
 //
 // Yozuvlar 1 yil saqlanadi. Saytdagi har bir qo'shish/o'zgartirish/o'chirish
-// (proxy.ts), kirish urinishlari, Telegram bot va QR amallari, tizimning o'zi
+// (proxy.ts), kirish urinishlari, Telegram bot va «Ishga keldim» amallari, tizimning o'zi
 // qo'ygan jarimalar.
 
 interface LogActor {
@@ -187,7 +187,7 @@ export default function ActionLogPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{t("Amallar jurnali")}</h1>
           <div className="text-[12px] text-muted-foreground mt-0.5">
-            {t("CRM'da kim, qachon va nima qilgani: saytdagi har bir o'zgarish, kirish urinishlari, Telegram bot va QR. Yozuvlar 1 yil saqlanadi.")}
+            {t("CRM'da kim, qachon va nima qilgani: saytdagi har bir o'zgarish, kirish urinishlari, Telegram bot va «Ishga keldim». Yozuvlar 1 yil saqlanadi.")}
           </div>
         </div>
         <button

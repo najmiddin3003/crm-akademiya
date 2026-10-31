@@ -7,18 +7,19 @@ import FaceCapture, { type FaceCaptureResult } from "./FaceCapture";
 import { readLocation, useTelegramWebApp, type LocationResult } from "./useTelegramWebApp";
 
 // XODIMLAR BOTI — «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i
-// (28.09.2026). Avval qurilma JOYLASHUVINI oladi (29.09.2026 dan — filialdan
-// uzoqda yoki ruxsatsiz skanerlash qabul qilinmaydi), keyin Telegram'ning
-// o'z QR skanerini ochadi, kod va joylashuvni /api/xodim/davomat ga yuboradi.
+// (28.09.2026). 31.10.2026 dan QR YO'Q (foydalanuvchi: "yuz scaner qilinsa
+// bo'ldi ... lokatsiya va face id bo'lsa bo'ldi"): ochilishi bilan qurilma
+// JOYLASHUVINI oladi va darhol /api/xodim/davomat ga yuboradi — filial
+// joylashuvdan aniqlanadi (lib/attendanceCheck.ts → locateBranch). Filialdan
+// uzoqda yoki joylashuvga ruxsatsiz — belgilanmaydi.
 //
 // FACE ID (30.10.2026, lib/staffFace.ts): admin yoqgan bo'lsa ENG AVVAL yuz —
 // old kamerada tasdiqlanadi (FaceCapture), /api/xodim/yuz ruxsat (pass)
-// beradi, u QR kod bilan birga yuboriladi. Birinchi marta yuz ro'yxatga
-// olinadi (rozilik matni bilan). Tartib: yuz → joylashuv → QR.
+// beradi, u joylashuv bilan birga yuboriladi. Birinchi marta yuz ro'yxatga
+// olinadi (rozilik matni bilan). Tartib: yuz → joylashuv → belgilash.
 //
-// Xodim kimligi — `initData` dan, filial — QR tokenidan, masofa — serverda
-// (lib/attendanceCheck.ts). `kind` faqat qaysi tugma bosilganini aytadi:
-// boshqa turdagi kod skanerlansa server rad etadi.
+// Xodim kimligi — `initData` dan, filial va masofa — serverda. `kind` —
+// qaysi tugma bosilgani.
 
 interface CheckinResult {
   kind: "in" | "out";
@@ -32,10 +33,8 @@ interface CheckinResult {
   locationText: string | null;
 }
 
-type LocationError = "location_required" | "location_inaccurate" | "too_far";
+type LocationError = "location_required" | "location_inaccurate" | "too_far" | "no_branch_geo";
 
-/** Joylashuv shuncha eskirsa skanerlashdan oldin qayta o'qiladi. */
-const LOCATION_FRESH_MS = 60_000;
 /** Yuz ruxsati serverda 5 daqiqa amal qiladi — biroz oldinroq yangilanadi. */
 const FACE_PASS_FRESH_MS = 4 * 60_000;
 
@@ -95,7 +94,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
   }, [initData, t]);
 
   const submit = useCallback(
-    async (code: string, loc: LocationResult) => {
+    async (loc: LocationResult) => {
       setBusy(true);
       setError("");
       setErrorCode(null);
@@ -105,7 +104,6 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-telegram-init-data": initData ?? "" },
           body: JSON.stringify({
-            code,
             kind,
             loc: loc.ok ? { lat: loc.lat, lng: loc.lng, acc: loc.acc } : null,
             facePass: passRef.current?.pass ?? null,
@@ -134,30 +132,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
     [app, initData, kind, t, checkFace],
   );
 
-  const openScanner = useCallback(
-    (loc: LocationResult) => {
-      if (!app?.showScanQrPopup) {
-        setError(t("QR skaner telefondagi Telegram ilovasida ishlaydi"));
-        return;
-      }
-      try {
-        app.showScanQrPopup(
-          { text: kind === "out" ? t("«Ishdan ketdim» QR kodini skanerlang") : t("Filial ekranidagi QR kodni skanerlang") },
-          (text) => {
-            // Skaner uzoq ochiq turgan bo'lsa — joylashuv yangilanadi.
-            const fresh = loc.ok && Date.now() - loc.at < LOCATION_FRESH_MS;
-            void (fresh ? Promise.resolve(loc) : readLocation(app)).then((l) => submit(text, l));
-            return true; // skaner yopilsin
-          },
-        );
-      } catch {
-        setError(t("QR skaner telefondagi Telegram ilovasida ishlaydi"));
-      }
-    },
-    [app, kind, submit, t],
-  );
-
-  /** Joylashuv → skaner. Joylashuv olinmasa skaner ochilmaydi (qoida baribir rad etadi). */
+  /** Joylashuv → belgilash. Joylashuv olinmasa yuborilmaydi (server baribir rad etadi). */
   const start = useCallback(async () => {
     setError("");
     setErrorCode(null);
@@ -172,10 +147,10 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
       setErrorCode("location_required");
       return;
     }
-    openScanner(loc);
-  }, [locate, openScanner, t]);
+    await submit(loc);
+  }, [locate, submit, t]);
 
-  /** Qayta skanerlash: yuz ruxsati eskirgan bo'lsa — avval yuz. */
+  /** Qayta urinish: yuz ruxsati eskirgan bo'lsa — avval yuz. */
   const restart = useCallback(() => {
     if (gate.s === "passed" && (!passRef.current || Date.now() - passRef.current.at > FACE_PASS_FRESH_MS)) {
       passRef.current = null;
@@ -354,7 +329,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
     );
   }
 
-  // ── Joylashuv va QR (yuz o'tgan yoki kerak emas) ──
+  // ── Joylashuv va belgilash (yuz o'tgan yoki kerak emas) ──
   const late = result && result.kind === "in" && result.lateMinutes > 0;
   const locationProblem = errorCode === "location_required";
   const tone = error
@@ -389,7 +364,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
             </p>
             {locationProblem && (
               <p className="text-[13px] text-muted-foreground">
-                {t("Ishga kelganingizni tasdiqlash uchun Telegram'ga joylashuvingizni ko'rishga ruxsat bering — faqat skanerlash paytida olinadi.")}
+                {t("Ishga kelganingizni tasdiqlash uchun Telegram'ga joylashuvingizni ko'rishga ruxsat bering — faqat belgilash paytida olinadi.")}
               </p>
             )}
           </div>
@@ -423,7 +398,7 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
           </div>
         ) : (
           <div className="space-y-1.5">
-            <p className="text-[14px] text-muted-foreground">{t("Filial ekranidagi QR kodni skanerlang")}</p>
+            <p className="text-[14px] text-muted-foreground">{t("Joylashuvingiz tekshiriladi va belgilanadi")}</p>
             {location?.ok && (
               <p className="text-[12px] text-emerald-700 dark:text-emerald-300">
                 {t("📍 Joylashuv aniqlandi (±{m} m)", { m: Math.round(location.acc ?? 0) })}
@@ -447,14 +422,17 @@ export default function StaffCheckinTg({ kind }: { kind: "in" | "out" }) {
           {t("⚙️ Joylashuvga ruxsat berish")}
         </button>
       )}
-      <button
-        type="button"
-        onClick={restart}
-        disabled={busy || locating}
-        className="h-12 w-full rounded-xl bg-primary text-white text-[15px] font-semibold hover:opacity-90 disabled:opacity-60"
-      >
-        {locationProblem ? t("🔄 Qayta urinish") : result || error ? t("📷 Qayta skanerlash") : t("📷 QR kodni skanerlash")}
-      </button>
+      {/* Belgilangandan keyin qayta bosish kerak emas — faqat «Yopish». */}
+      {!result && (
+        <button
+          type="button"
+          onClick={restart}
+          disabled={busy || locating}
+          className="h-12 w-full rounded-xl bg-primary text-white text-[15px] font-semibold hover:opacity-90 disabled:opacity-60"
+        >
+          {error ? t("🔄 Qayta urinish") : t("📍 Belgilash")}
+        </button>
+      )}
       {closeButton}
     </div>
   );

@@ -14,7 +14,7 @@ import type { AttendanceBranch, AttendanceRecord } from "@/lib/attendanceCheck";
 //     tushib, to'lovlar orasida yo'qolib ketgandan ko'ra.
 //   Topiklarni ochish: node scripts/telegram-branch-topics.mjs --attendance --create
 //
-// Faqat KECHIKKANLAR haqida — vaqtida kelganlar QR ekranidagi ro'yxatda va
+// Faqat KECHIKKANLAR haqida — vaqtida kelganlar «Ishga keldim» sahifasidagi ro'yxatda va
 // Nazorat → Turniket sahifasida ko'rinadi, guruhni to'ldirib yubormaydi.
 
 /** "2026-09-28" → "28.09.2026". */

@@ -60,8 +60,8 @@ export const DATA_COLLECTIONS: Record<string, string> = {
     "Staff tasks (Topshiriqlar): id, title, desc, employeeId, employeeName, branchId, deadline (ISO), priority (1–5), status, " +
     "fineAmount (fine if not done), createdAt, doneAt.",
   turnstile_io:
-    "Check-ins (turnstile / 'Ishga keldim' QR): date (YYYY-MM-DD), personType (employee | student), personName, enterTime / exitTime " +
-    "('HH:mm'; null = did not come / did not leave), status (kelgan | kechikkan | kelmagan); QR records also have source 'qr', employeeId, " +
+    "Check-ins (turnstile / 'Ishga keldim' bot check-in): date (YYYY-MM-DD), personType (employee | student), personName, enterTime / exitTime " +
+    "('HH:mm'; null = did not come / did not leave), status (kelgan | kechikkan | kelmagan); 'Ishga keldim' records also have source 'qr' (historical name), employeeId, " +
     "branchId, lateMinutes.",
   branches: "Branches: id, name.",
   rooms: "Rooms: id, name, capacity, branchId.",

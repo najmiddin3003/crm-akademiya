@@ -1,29 +1,25 @@
 import { NextResponse, after } from "next/server";
 import { ensureIndexes } from "@/lib/mongodb";
 import { staffFromInitData } from "@/lib/staffBot/webapp";
-import { loadAttendanceSettings, parseScanned, type AttendanceKind } from "@/lib/attendanceQr";
+import { loadAttendanceSettings, type AttendanceKind } from "@/lib/attendanceQr";
 import { faceState, linkShot, readFacePass } from "@/lib/staffFace";
 import { fillLocationAddress, markAttendance, type ScanLocation } from "@/lib/attendanceCheck";
 import { notifyLate } from "@/lib/attendanceNotify";
 import { isValidPoint } from "@/lib/geo";
 import { clientIp, clientUa, logAction } from "@/lib/actionLog";
 
-// POST /api/xodim/davomat — «📷 Ishga keldim» Mini App'i (/xodim/keldim)
-// skanerlagan QR kodni yozadi.
-// Body: { code: <skanerlangan matn>, kind?: "in"|"out", loc?: { lat, lng, acc } }.
+// POST /api/xodim/davomat — «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i
+// (/xodim/keldim) kelish yoki ketishni yozadi.
+// Body: { kind: "in"|"out", loc: { lat, lng, acc }, facePass?: string }.
 //
-// `loc` — qurilma joylashuvi (Telegram LocationManager, 29.09.2026). Filialga
-// koordinata kiritilgan bo'lsa usiz yoki uzoqdan skanerlash qabul qilinmaydi
-// (lib/attendanceCheck.ts → checkLocation); javobdagi `code` Mini App'ga
-// qaysi tugmani (sozlama / qayta urinish) ko'rsatishni aytadi.
+// QR'SIZ (31.10.2026): filial QR kodidan emas, JOYLASHUVDAN aniqlanadi —
+// koordinatasi kiritilgan filiallardan radiusi ichidagi eng yaqini
+// (lib/attendanceCheck.ts → locateBranch). Joylashuvsiz, aniqligi past yoki
+// hamma filialdan uzoqda — yozilmaydi; javobdagi `code` Mini App'ga qaysi
+// tugmani (sozlama / qayta urinish) ko'rsatishni aytadi.
 //
 // Xodim — Telegram `initData` dan (lib/staffBot/webapp.ts, bot bilan bir xil
-// tekshiruv), filial — imzolangan QR tokenidan (lib/attendanceQr.ts). Klient
-// hech qanday id yubormaydi.
-//
-// `kind` — qaysi tugma bilan ochilgani. Skanerlangan kod boshqa turniki
-// bo'lsa (ekranda ikkala kod yonma-yon turganda adashib boshqasini
-// skanerlagan) — yozilmaydi: "keldim" o'rniga "ketdim" belgilanib qolmasin.
+// tekshiruv). Klient hech qanday id yubormaydi; `kind` — qaysi tugma bosilgani.
 //
 // `facePass` — FACE ID yoqilgan bo'lsa (30.10.2026, lib/staffFace.ts): Mini App
 // avval /api/xodim/yuz da yuzni tasdiqlaydi va shu ruxsatni oladi. Ruxsatsiz
@@ -43,21 +39,14 @@ function readLocation(raw: unknown): ScanLocation | null {
 }
 
 export async function POST(req: Request) {
-  let body: { code?: unknown; kind?: unknown; loc?: unknown; facePass?: unknown };
+  let body: { kind?: unknown; loc?: unknown; facePass?: unknown };
   try {
     body = await req.json();
   } catch {
     return json({ ok: false, error: "Noto'g'ri so'rov" }, 400);
   }
-  const scanned = parseScanned(String(body.code ?? ""));
-  if (!scanned) return json({ ok: false, error: "QR kod tanilmadi — filial ekranidagi kodni skanerlang" }, 400);
-  const wanted: AttendanceKind | null = body.kind === "in" || body.kind === "out" ? body.kind : null;
-  if (wanted && wanted !== scanned.kind) {
-    return json(
-      { ok: false, error: wanted === "in" ? "Bu «Ishdan ketdim» kodi — «Ishga keldim» kodini skanerlang" : "Bu «Ishga keldim» kodi — «Ishdan ketdim» kodini skanerlang" },
-      409,
-    );
-  }
+  const kind: AttendanceKind | null = body.kind === "in" || body.kind === "out" ? body.kind : null;
+  if (!kind) return json({ ok: false, error: "Noto'g'ri so'rov" }, 400);
 
   try {
     const db = await ensureIndexes();
@@ -72,7 +61,7 @@ export async function POST(req: Request) {
       if (!faceShotId) return json({ ok: false, error: "Avval yuzingizni tasdiqlang", code: "face_required" }, 403);
     }
 
-    const res = await markAttendance(db, auth.employee, scanned.kind, scanned.token, { loc: readLocation(body.loc), faceShotId });
+    const res = await markAttendance(db, auth.employee, kind, { loc: readLocation(body.loc), faceShotId });
     if (!res.ok) return json({ ok: false, error: res.error, code: res.code ?? null }, res.status);
 
     // Yuz urinishi qaysi yozuvga ishlatildi — admin profilda ko'radi.
@@ -83,7 +72,7 @@ export async function POST(req: Request) {
     }
 
     // AMALLAR JURNALI (lib/actionLog.ts): «Ishga keldim/ketdim» — kim, qaysi
-    // bino. Mini App sessiyasiz keladi, proxy uni yozmaydi. Takror skaner — yo'q.
+    // bino. Mini App sessiyasiz keladi, proxy uni yozmaydi. Takror bosish — yo'q.
     if (res.fresh) {
       const emp = auth.employee;
       const rec = res.record;
@@ -102,7 +91,7 @@ export async function POST(req: Request) {
         }),
       );
     }
-    // Javob xodimga ketgandan KEYIN — Telegram sekin bo'lsa ham skaner kutmaydi.
+    // Javob xodimga ketgandan KEYIN — Telegram sekin bo'lsa ham xodim kutmaydi.
     if (res.fresh && res.kind === "in" && res.record.lateMinutes > 0) {
       const { record, branch } = res;
       const turi = auth.employee.turi;

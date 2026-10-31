@@ -1,6 +1,6 @@
 import { IS_AKADEMIYA } from "@/lib/center";
 // XODIMLAR BOTI — sozlama. Xodimlar QAYSI BOTDA ishlashi — shu fayldagi
-// `STAFF_BOT_HOST` (YAGONA joy: token, @nom, QR havolasi, Mini App imzosi,
+// `STAFF_BOT_HOST` (YAGONA joy: token, @nom, Mini App imzosi,
 // webhook'lardagi yo'naltirish hammasi shundan).
 //
 // TARIX:
@@ -45,7 +45,7 @@ function tokenOf(host: StaffBotHost): string {
 }
 
 /**
- * Botning @nomi. `getMe` so'ralmaydi (QR ekrani har 30 soniyada yangilanadi):
+ * Botning @nomi. `getMe` so'ralmaydi («Ishga keldim» sahifasi har 30 soniyada yangilanadi):
  * `TELEGRAM_BOT_USERNAME` / `TELEGRAM_STUDENT_BOT_USERNAME`, bo'lmasa
  * haqiqiy nomlar.
  */
@@ -61,7 +61,7 @@ export function loadStaffBotConfig(): StaffBotConfig {
   };
 }
 
-/** Xodimlar botining @nomi — QR havolasi (lib/attendanceQr.ts) va yo'naltirish tugmasi uchun. */
+/** Xodimlar botining @nomi — «Ishga keldim» sahifasidagi ko'rsatma (app/api/attendance-qr) va yo'naltirish tugmasi uchun. */
 export function staffBotUsername(): string {
   return usernameOf(STAFF_BOT_HOST);
 }
@@ -96,8 +96,8 @@ export function staffProfileUrl(): string {
 }
 
 /**
- * «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i — Telegram ichidagi QR
- * skaner (28.09.2026, lib/attendanceQr.ts). Kirish — `initData` (app/api/xodim).
+ * «📷 Ishga keldim» / «🏁 Ishdan ketdim» Mini App'i (28.09.2026; 31.10.2026 dan
+ * QR'siz — yuz + joylashuv, lib/attendanceCheck.ts). Kirish — `initData` (app/api/xodim).
  */
 export function staffCheckinUrl(kind: "in" | "out"): string {
   return `${staffProfileUrl()}/keldim${kind === "out" ? "?k=out" : ""}`;

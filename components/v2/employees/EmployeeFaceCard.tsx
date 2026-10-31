@@ -143,7 +143,7 @@ export default function EmployeeFaceCard({ employeeId }: { employeeId: number })
         <div className="mt-3 space-y-3">
           {!data.faceRequired && (
             <p className="rounded-v2-md bg-v2-surface-2 px-3 py-2 text-v2-caption text-v2-text-2">
-              {t("Face ID hozir o'chiq — Nazorat → «Ishga keldim (QR)» sahifasida yoqiladi.")}
+              {t("Face ID hozir o'chiq — Nazorat → «Ishga keldim» sahifasida yoqiladi.")}
             </p>
           )}
 
