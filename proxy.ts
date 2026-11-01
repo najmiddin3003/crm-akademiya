@@ -162,6 +162,9 @@ const LOG_SKIP_EXACT = new Set([
   "/api/ai/alerts",
   "/api/gender-guess",
   "/api/sync/cron",
+  // «Pul qaytdi» oynasidagi «Tushunarli» — ko'rildi belgisi (bekor qilishning
+  // o'zi transfer-return route'ida yoziladi).
+  "/api/transfer-returns",
 ]);
 const LOG_SKIP_PREFIX = ["/api/telegram/", "/api/xodim/", "/api/notifications", "/api/student-web/", "/api/me/", "/api/upload/"];
 

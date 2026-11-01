@@ -32,6 +32,7 @@ import CashboxCardV2 from "./CashboxCardV2";
 import CashOperationModalV2, { type CashTab } from "./CashOperationModalV2";
 import { onMoneyChanged } from "@/components/v2/shell/v2Events";
 import CashTransactionsV2 from "./CashTransactionsV2";
+import TransferReturnDialogV2 from "./TransferReturnDialogV2";
 import { useHiddenBalances } from "./hiddenBalances";
 
 // YANGI VERSIYA — MOLIYA → KASSALAR (rasm «Kassalar», yorug'/qorong'i, 18.10.2026;
@@ -125,6 +126,8 @@ export default function CashboxesV2() {
   const [historyEntry, setHistoryEntry] = useState<TransactionEntry | null>(null);
   const [receiptEntry, setReceiptEntry] = useState<TransactionEntry | null>(null);
   const [decidingId, setDecidingId] = useState<number | null>(null);
+  // «Ko'chirmani bekor qilish» (sababi bilan) — × va ↩ (./TransferReturnDialogV2).
+  const [returnTarget, setReturnTarget] = useState<TransactionEntry | null>(null);
 
   const { methods: paymentMethods } = usePaymentMethods();
   const { names: dbTeachers } = useTeachers();
@@ -236,17 +239,17 @@ export default function CashboxesV2() {
     return moderatorHref(person);
   }
 
-  async function decideTransfer(entry: TransactionEntry, decision: "confirm" | "reject") {
+  /** ✓ — ko'chirmani qabul qilish. Rad etish endi «Bekor qilish» oynasida (sababi bilan). */
+  async function confirmTransfer(entry: TransactionEntry) {
     setDecidingId(entry.id);
     try {
-      const url = decision === "confirm" ? `/api/transaction-entries/${entry.id}/transfer-confirm` : `/api/transaction-entries/${entry.id}/transfer-reject`;
-      const res = await fetch(url, { method: "POST" });
+      const res = await fetch(`/api/transaction-entries/${entry.id}/transfer-confirm`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) {
         showError(t(data.error || "Amal bajarilmadi"));
         return;
       }
-      showSuccess(decision === "confirm" ? t("Ko'chirma tasdiqlandi") : t("Ko'chirma rad etildi"));
+      showSuccess(t("Ko'chirma tasdiqlandi"));
       afterMoney();
     } catch {
       showError(t("Serverga ulanib bo'lmadi"));
@@ -485,7 +488,8 @@ export default function CashboxesV2() {
           onOpen={setDetailEntry}
           onReceipt={setReceiptEntry}
           onHistory={setHistoryEntry}
-          onDecide={decideTransfer}
+          onDecide={(e) => void confirmTransfer(e)}
+          onReturn={setReturnTarget}
           decidingId={decidingId}
         />
       </div>
@@ -560,6 +564,7 @@ export default function CashboxesV2() {
         />
       )}
       {historyEntry && <EditHistoryModal entry={historyEntry} onClose={() => setHistoryEntry(null)} />}
+      {returnTarget && <TransferReturnDialogV2 entry={returnTarget} onClose={() => setReturnTarget(null)} onDone={() => afterMoney()} />}
       {receiptEntry && (
         <ReceiptPreviewModal
           entry={receiptEntry}

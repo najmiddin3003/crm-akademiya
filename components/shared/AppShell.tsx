@@ -8,6 +8,8 @@ import { BranchProvider } from "@/components/shared/BranchContext";
 import { NotificationsProvider } from "@/components/shared/NotificationsProvider";
 import { TaskInboxProvider, useTaskInbox } from "@/components/shared/TaskInboxProvider";
 import TaskInboxModal from "@/components/shared/TaskInboxModal";
+import TransferReturnNotice from "@/components/shared/TransferReturnNotice";
+import { isPathAllowed } from "@/lib/permissions";
 
 // Umumiy qobiq (Navbar + Sidebar), app/layout.tsx orqali barcha sahifalarga
 // o'raladi. Har bir sahifa endi o'zining nomlangan route papkasida (masalan
@@ -67,6 +69,9 @@ export default function AppShell({
         </div>
       </div>
       <TaskInboxGate />
+      {/* «Pul qaytdi» — rahbar ko'chirmani bekor qilsa jo'natuvchi kassirga
+          (components/shared/TransferReturnNotice.tsx). Kassasiz xodim so'ramaydi. */}
+      <TransferReturnNotice enabled={isPathAllowed("/finance-cash", permissions)} />
       </TaskInboxProvider>
       </NotificationsProvider>
       </BranchProvider>

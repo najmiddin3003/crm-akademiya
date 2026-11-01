@@ -96,6 +96,7 @@ export const SHARED_API: readonly string[] = [
   "/api/staff-tasks/stats",
   "/api/staff-tasks/upload",
   "/api/tasks/inbox",
+  "/api/transfer-returns",
 ];
 
 /** Route → kerakli ruxsatlar. Xodimda ULARDAN BITTASI bo'lsa yetarli. */
@@ -253,6 +254,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/transaction-entries/[id]/pupil": ["/finance-transactions"],
   "/api/transaction-entries/[id]/transfer-confirm": ["/finance-cash"],
   "/api/transaction-entries/[id]/transfer-reject": ["/finance-cash"],
+  "/api/transaction-entries/[id]/transfer-return": ["/finance-cash"],
   "/api/transaction-entries/facets": ["/finance-cash", "/management-xodimlar"],
   "/api/transaction-entries/moderator-summary": ["/management-xodimlar"],
   "/api/transaction-entries/notes": ["/finance-cash"],

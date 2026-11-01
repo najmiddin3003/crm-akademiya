@@ -13,6 +13,8 @@ import { NotificationsProvider } from "@/components/shared/NotificationsProvider
 import { PersonDirectoryProvider } from "@/components/shared/PersonDirectory";
 import { NavbarSprite, SidebarSprite } from "@/components/shared/ShellSprites";
 import { TaskInboxProvider } from "@/components/shared/TaskInboxProvider";
+import TransferReturnNotice from "@/components/shared/TransferReturnNotice";
+import { isPathAllowed } from "@/lib/permissions";
 import ReceiptHost from "@/components/v2/finance/ReceiptHost";
 import { DevNoticeBanner } from "./DevNotice";
 import { CreateProvider } from "./CreateContext";
@@ -132,6 +134,8 @@ export default function AppShellV2({
             </ShellProvider>
 
             <TaskInboxGate />
+            {/* «Pul qaytdi» — rahbar ko'chirmani bekor qilsa jo'natuvchi kassirga (eski qobiq bilan bitta komponent). */}
+            <TransferReturnNotice enabled={isPathAllowed("/finance-cash", permissions)} v2 />
             {/* Formalar saqlangach toastdagi «Chekni ko'rish» — chek shu yerda ochiladi. */}
             <ReceiptHost />
           </TaskInboxProvider>

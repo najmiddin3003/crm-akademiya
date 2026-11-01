@@ -24,6 +24,7 @@ import {
   Pencil,
   Plus,
   Printer,
+  Undo2,
   Wallet,
   UserCheck,
   X,
@@ -47,6 +48,9 @@ import HandoverModal from "./HandoverModal";
 import CashboxInvestmentDrawer from "./CashboxInvestmentDrawer";
 import TransactionDetailDrawer from "./TransactionDetailDrawer";
 import EditHistoryModal from "./EditHistoryModal";
+import TransferReturnDialog from "./TransferReturnDialog";
+import { canReturnTransfer } from "@/lib/transferReturns";
+import { onMoneyChanged } from "@/components/v2/shell/v2Events";
 import { fmtEntryDate, printReceipt, ReceiptPreviewModal, salaryTargetLabel } from "./cashReceipt";
 import { downloadEntriesCsv, downloadEntriesXlsx, entryExportCols, TX_TYPE_LABELS } from "@/lib/cashEntriesExport";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
@@ -280,12 +284,18 @@ function StatusCell({
   entry,
   onShowHistory,
   onDecide,
+  onReturn,
   deciding,
 }: {
   entry: TransactionEntry;
   onShowHistory: () => void;
-  /** ✓ / × bosilganda. Faqat kassalararo ko'chirmaning KELUVCHI qatorida. */
-  onDecide: (decision: "confirm" | "reject") => void;
+  /** ✓ bosilganda. Faqat kassalararo ko'chirmaning KELUVCHI qatorida. */
+  onDecide: (decision: "confirm") => void;
+  /**
+   * × (kutilayotgan) va «Bekor qilish» (qabul qilingan) — sababi so'raladigan
+   * oyna, pul jo'natuvchiga (./TransferReturnDialog, 01.11.2026).
+   */
+  onReturn: () => void;
   /** So'rov ketayotgan payt — ikkala tugma ham o'chiriladi. */
   deciding: boolean;
 }) {
@@ -297,10 +307,16 @@ function StatusCell({
   // chizilmaydi, chunki juftlik bog'lanmagan va pulni qayerga qo'yishni
   // aniqlab bo'lmaydi (server ham bunday so'rovni rad etadi).
   const canDecide = entry.txType === "transfer" && entry.transferRole === "in";
+  // QABUL QILINGAN ko'chirmani ham bekor qilsa bo'ladi — pul jo'natuvchiga qaytadi.
+  const canReturnAccepted = status === "" && canReturnTransfer(entry);
+  const returnTip = [
+    entry.returnedBy ? `${t("Bekor qildi")}: ${entry.returnedBy}` : "",
+    entry.returnComment ? `${t("Sabab")}: ${entry.returnComment}` : "",
+  ].filter(Boolean).join("\n");
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {status === "cancelled" ? (
-        <span className="inline-flex items-center gap-1 text-[13px] text-rose-500 font-medium">
+        <span className="inline-flex items-center gap-1 text-[13px] text-rose-500 font-medium" title={returnTip || undefined}>
           <CircleX className="w-3.5 h-3.5" />{" "}{t("Bekor qilingan")}
         </span>
       ) : status === "waiting" ? (
@@ -320,8 +336,8 @@ function StatusCell({
             <button
               type="button"
               disabled={deciding}
-              title={t("Rad etish — pul jo'natuvchi kassada qoladi")}
-              onClick={(ev) => { ev.stopPropagation(); onDecide("reject"); }}
+              title={t("Bekor qilish — sababini yozasiz, pul jo'natuvchi kassada qoladi")}
+              onClick={(ev) => { ev.stopPropagation(); onReturn(); }}
               className="h-6 w-6 rounded-md bg-rose-100 inline-flex items-center justify-center text-rose-600 font-bold text-[11px] hover:bg-rose-200 disabled:opacity-50"
             >
               ×
@@ -359,6 +375,17 @@ function StatusCell({
           title={t("Tahrirlar tarixini ko'rish")}
         >
           {t("Tahrirlangan")}
+        </button>
+      )}
+      {canReturnAccepted && (
+        <button
+          type="button"
+          onClick={(ev) => { ev.stopPropagation(); onReturn(); }}
+          className="inline-flex items-center gap-1 h-6 px-2 rounded-md border border-border text-[12px] font-medium text-foreground/70 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+          title={t("Bekor qilish — pul shu kassadan jo'natuvchi kassaga qaytariladi")}
+        >
+          <Undo2 className="w-3 h-3" />
+          {t("Bekor qilish")}
         </button>
       )}
     </span>
@@ -436,6 +463,8 @@ export default function CashboxesPage() {
   // yuborilmaydi. Server tomonda ham himoya bor (holat almashtirish
   // sharti), bu esa faqat interfeys darajasidagi qulaylik.
   const [decidingId, setDecidingId] = useState<number | null>(null);
+  // «Ko'chirmani bekor qilish» oynasi (×, «Bekor qilish») — ./TransferReturnDialog.
+  const [returnTarget, setReturnTarget] = useState<TransactionEntry | null>(null);
 
   async function confirmSetPrimary() {
     if (!primaryConfirmTarget) return;
@@ -652,6 +681,18 @@ export default function CashboxesPage() {
       });
   }
 
+  // «Pul qaytdi» oynasi yopilganda (components/shared/TransferReturnNotice.tsx)
+  // jadval va kartochkalar yangi qoldiqni ko'rsatsin — rahbar boshqa
+  // kompyuterda bekor qilgan, bu sahifa buni o'zi bilmaydi.
+  const refreshAllRef = useRef(() => {});
+  useEffect(() => {
+    refreshAllRef.current = () => {
+      loadEntries();
+      refreshCashboxes();
+    };
+  });
+  useEffect(() => onMoneyChanged(() => refreshAllRef.current()), []);
+
   /**
    * Kassa kartochkasini yozuv route'i qaytargan holat bilan yangilaydi.
    *
@@ -674,23 +715,24 @@ export default function CashboxesPage() {
    * o'zgaradi. Rad etishda pul ko'chmaydi (u jo'natuvchida turgan edi),
    * lekin "tasdiq kutmoqda" summasi kamayadi, ya'ni kartochka baribir
    * yangilanishi kerak.
+   *
+   * 01.11.2026 dan × RAD ETISHNI TO'G'RIDAN-TO'G'RI QILMAYDI — u «Ko'chirmani
+   * bekor qilish» oynasini ochadi (sababi majburiy, jo'natuvchiga xabar):
+   * ./TransferReturnDialog. Bu yerda faqat ✓.
    */
-  async function decideTransfer(entry: TransactionEntry, decision: "confirm" | "reject") {
+  async function decideTransfer(entry: TransactionEntry) {
     setDecidingId(entry.id);
     try {
       // Manzil QATTIQ yoziladi (shablon ichida emas): ruxsatlar jadvali
       // route fayllari bo'yicha yig'iladi va u sahifadan chaqiruvgacha
       // bo'lgan import zanjiriga tayanadi — scripts/gen-api-permissions.mjs.
-      const url = decision === "confirm"
-        ? `/api/transaction-entries/${entry.id}/transfer-confirm`
-        : `/api/transaction-entries/${entry.id}/transfer-reject`;
-      const res = await fetch(url, { method: "POST" });
+      const res = await fetch(`/api/transaction-entries/${entry.id}/transfer-confirm`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) {
         showError(t(data.error || "Amal bajarilmadi"));
         return;
       }
-      showSuccess(decision === "confirm" ? t("Ko'chirma tasdiqlandi") : t("Ko'chirma rad etildi"));
+      showSuccess(t("Ko'chirma tasdiqlandi"));
       loadEntries();
       refreshCashboxes();
     } catch {
@@ -1741,7 +1783,8 @@ export default function CashboxesPage() {
                         <StatusCell
                           entry={e}
                           onShowHistory={() => setHistoryEntry(e)}
-                          onDecide={(d) => decideTransfer(e, d)}
+                          onDecide={() => decideTransfer(e)}
+                          onReturn={() => setReturnTarget(e)}
                           deciding={decidingId === e.id}
                         />
                       </td>
@@ -1945,6 +1988,16 @@ export default function CashboxesPage() {
         <EditHistoryModal
           entry={historyEntry}
           onClose={() => setHistoryEntry(null)}
+        />
+      )}
+      {returnTarget && (
+        <TransferReturnDialog
+          entry={returnTarget}
+          onClose={() => setReturnTarget(null)}
+          onDone={() => {
+            loadEntries();
+            refreshCashboxes();
+          }}
         />
       )}
       {receiptEntry && (

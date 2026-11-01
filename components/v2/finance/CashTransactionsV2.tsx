@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Download, FileText, History, ListFilter, MoreHorizontal, Printer, ReceiptText, Search, X } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Download, FileText, History, ListFilter, MoreHorizontal, Printer, ReceiptText, Search, Undo2, X } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { useLang, useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
@@ -17,6 +17,7 @@ import { getPageButtons } from "@/lib/pagination";
 import type { Cashbox } from "@/lib/cashboxes";
 import type { PaymentMethod } from "@/lib/paymentMethods";
 import type { TransactionEntry } from "@/lib/transactionEntries";
+import { canReturnTransfer } from "@/lib/transferReturns";
 import CashMoreFilters, { CASH_STATUS_OPTIONS, countCashMore, EMPTY_CASH_MORE, type CashMore } from "./CashMoreFilters";
 
 // YANGI VERSIYA: KASSALAR → «TRANZAKSIYALAR» PANELI (rasm «Kassalar», 18.10.2026).
@@ -74,7 +75,13 @@ export interface CashTransactionsV2Props {
   onOpen: (e: TransactionEntry) => void;
   onReceipt: (e: TransactionEntry) => void;
   onHistory: (e: TransactionEntry) => void;
-  onDecide: (e: TransactionEntry, decision: "confirm" | "reject") => void;
+  /** ✓ — kutilayotgan ko'chirmani qabul qilish. */
+  onDecide: (e: TransactionEntry, decision: "confirm") => void;
+  /**
+   * × (kutilayotgan) va ↩ (qabul qilingan) — «Ko'chirmani bekor qilish» oynasi
+   * (sababi bilan, pul jo'natuvchiga; ./TransferReturnDialogV2, 01.11.2026).
+   */
+  onReturn: (e: TransactionEntry) => void;
   decidingId: number | null;
 }
 
@@ -221,6 +228,8 @@ export default function CashTransactionsV2(props: CashTransactionsV2Props) {
   function rowMenu(e: TransactionEntry): ActionMenuEntry[] {
     const cancelled = e.status === "cancelled";
     const canDecide = e.status === "waiting" && e.txType === "transfer" && e.transferRole === "in";
+    // Qabul qilingan ko'chirmani ham bekor qilsa bo'ladi (pul jo'natuvchiga qaytadi).
+    const canReturnAccepted = e.status === "" && canReturnTransfer(e);
     const edited = Array.isArray(e.editHistory) && e.editHistory.length > 0;
     return [
       { key: "h", heading: `${t("Chek №")} ${e.id}` },
@@ -231,7 +240,13 @@ export default function CashTransactionsV2(props: CashTransactionsV2Props) {
         ? ([
             { key: "d", divider: true },
             { key: "ok", label: t("Tasdiqlash"), icon: Check, disabled: props.decidingId === e.id, onSelect: () => props.onDecide(e, "confirm") },
-            { key: "no", label: t("Rad etish"), icon: X, danger: true, disabled: props.decidingId === e.id, onSelect: () => props.onDecide(e, "reject") },
+            { key: "no", label: t("Bekor qilish"), icon: X, danger: true, disabled: props.decidingId === e.id, onSelect: () => props.onReturn(e) },
+          ] as ActionMenuEntry[])
+        : []),
+      ...(canReturnAccepted
+        ? ([
+            { key: "d", divider: true },
+            { key: "ret", label: t("Ko'chirmani bekor qilish"), icon: Undo2, danger: true, onSelect: () => props.onReturn(e) },
           ] as ActionMenuEntry[])
         : []),
     ];
@@ -417,6 +432,7 @@ export default function CashTransactionsV2(props: CashTransactionsV2Props) {
               const cancelled = e.status === "cancelled";
               const waiting = e.status === "waiting";
               const canDecide = waiting && e.txType === "transfer" && e.transferRole === "in";
+              const canReturnAccepted = e.status === "" && canReturnTransfer(e);
               const edited = Array.isArray(e.editHistory) && e.editHistory.length > 0;
               const dir = e.txType === "transfer" ? "transfer" : e.amount >= 0 ? "in" : "out";
               const person = (e.studentName || "").trim();
@@ -428,6 +444,9 @@ export default function CashTransactionsV2(props: CashTransactionsV2Props) {
                 e.txName && e.txName !== title ? `${t("Tranzaksiya turi")}: ${e.txName}` : "",
                 e.teacherName ? `${t("Oyligiga")}: ${e.teacherName}` : "",
                 e.moderator ? `${t("Qabul qilgan")}: ${e.moderator}` : "",
+                // Rahbar bekor qilgan ko'chirma — kim va nega (lib/transactionEntries.ts → returnedAt).
+                cancelled && e.returnedBy ? `${t("Bekor qildi")}: ${e.returnedBy}` : "",
+                cancelled && e.returnComment ? `${t("Sabab")}: ${e.returnComment}` : "",
               ].filter(Boolean).join("\n");
               const day = entryDay(e);
               const amountCls = cancelled ? "text-v2-text-3 line-through" : dir === "transfer" ? "text-v2-text" : dir === "in" ? "text-v2-success" : "text-v2-danger";
@@ -489,9 +508,9 @@ export default function CashTransactionsV2(props: CashTransactionsV2Props) {
                               <button
                                 type="button"
                                 disabled={props.decidingId === e.id}
-                                onClick={() => props.onDecide(e, "reject")}
-                                title={t("Rad etish — pul jo'natuvchi kassada qoladi")}
-                                aria-label={t("Rad etish")}
+                                onClick={() => props.onReturn(e)}
+                                title={t("Bekor qilish — sababini yozasiz, pul jo'natuvchi kassada qoladi")}
+                                aria-label={t("Bekor qilish")}
                                 className="inline-flex size-5 items-center justify-center rounded-v2-sm bg-v2-danger-bg text-v2-danger hover:brightness-95 disabled:opacity-50"
                               >
                                 <X className="size-3" strokeWidth={2.5} />
@@ -507,6 +526,18 @@ export default function CashTransactionsV2(props: CashTransactionsV2Props) {
                                 <Check className="size-3" strokeWidth={2.5} />
                               </button>
                             </span>
+                          )}
+                          {canReturnAccepted && (
+                            <button
+                              type="button"
+                              onClick={() => props.onReturn(e)}
+                              title={t("Bekor qilish — pul shu kassadan jo'natuvchi kassaga qaytariladi")}
+                              aria-label={t("Ko'chirmani bekor qilish")}
+                              className="inline-flex h-5 shrink-0 items-center gap-1 rounded-v2-sm border border-v2-border px-1.5 text-[11px] font-medium text-v2-text-2 hover:border-v2-danger hover:bg-v2-danger-bg hover:text-v2-danger"
+                            >
+                              <Undo2 className="size-3" strokeWidth={2.25} aria-hidden />
+                              {t("Bekor qilish")}
+                            </button>
                           )}
                         </div>
                       </div>

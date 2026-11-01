@@ -162,6 +162,7 @@ const RULES: Rule[] = [
   { m: "POST", re: /^\/api\/transaction-entries\/\d+\/cancel$/, verb: "payment_cancel", icon: "out" },
   { m: "POST", re: /^\/api\/transaction-entries\/\d+\/transfer-confirm$/, verb: "transfer_confirm", icon: "move" },
   { m: "POST", re: /^\/api\/transaction-entries\/\d+\/transfer-reject$/, verb: "transfer_reject", icon: "move" },
+  { m: "POST", re: /^\/api\/transaction-entries\/\d+\/transfer-return$/, verb: "transfer_return", icon: "move" },
   { m: "POST", re: /^\/api\/salary-runs$/, verb: "salary_run", icon: "out" },
   { m: "DELETE", re: /^\/api\/salary-runs\/\d+$/, verb: "salary_run_cancel", icon: "delete" },
   { m: "POST", re: /^\/api\/pupils$/, verb: "pupil_add", icon: "pupil" },

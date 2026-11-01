@@ -1273,6 +1273,20 @@ raqami ko'rsatiladi» yozuvi olib tashlandi. Eski umumiy havola (`/natijalar?fil
 oching». *Savol:* havolani bekor qilish (masalan guruh tugagach) kerakmi? *Taxmin:* hozircha yo'q — kerak
 bo'lsa guruhga «havola raqami» qo'shiladi va almashtiriladi.
 
+**237. Ko'chirmani bekor qilish va «pul qaytdi» xabari** — qoida (01.11.2026, «rahbar pulni qabul/cancel
+qiladi, agar qabul qilsa ham yoki qabul qilmasdan cancel qilsa ham bekor qilish tursin … bekor qilishda izoh
+yozadigan bo'lim bo'lsin, pul qaytarilganda moderatorga habar kelishi kerak modal oynasida»)
+Pul KELGAN kassa egasi (yoki admin) ko'chirmani SABABI BILAN bekor qiladi (sabab majburiy, 500 belgigacha):
+kutilayotganini — × endi darhol rad etmaydi, «Ko'chirmani bekor qilish» oynasini ochadi, pul jo'natuvchida
+qoladi; QABUL QILINGANINI — qatordagi yangi «↩ Bekor qilish» tugmasi (⋯ menyuda va yozuv tafsilotida ham):
+pul rahbar kassadan yechilib jo'natuvchi kassaga qaytadi. Rahbar kassada o'sha turdagi pul yetmasa yoki u
+boshqa kutilayotgan ko'chirmaga band bo'lsa — rad etiladi, hech narsa o'zgarmaydi. Ikkala qator «Bekor
+qilingan», tafsilotda «Bekor qildi» (kim, qachon) va «Bekor qilish sababi». Jo'natuvchi kassa egasiga ISTALGAN
+sahifada (ikkala versiyada) oyna: «Siz yuborgan pulni rahbar bekor qildi — Pul kassangizga qaytdi», summa,
+kassalar, kim/qachon, sabab; boshqa oyna ochiq bo'lsa yopilishini kutadi; «Tushunarli»dan keyin qayta
+chiqmaydi. Botdagi ✗ ham shu xabarni beradi, lekin sababsiz («Sabab yozilmagan»). *Savol:* botdagi ✗ ham
+sabab so'rasinmi? Telegram'ga ham xabar ketsinmi? *Taxmin:* hozircha yo'q — xabar faqat CRM oynasida.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

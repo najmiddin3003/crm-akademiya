@@ -11,6 +11,9 @@ import PersonLink from "@/components/shared/PersonDirectory";
 import { invalidateTransactions } from "@/lib/cacheKeys";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { useT } from "@/components/shared/Language";
+import { canReturnTransfer, isReturnedTransfer } from "@/lib/transferReturns";
+import { uzStamp } from "@/lib/uzTime";
+import TransferReturnDialog from "./TransferReturnDialog";
 const TX_TYPE_LABELS: Record<string, string> = { payIn: "Kirim", payOut: "Chiqim", transfer: "Ko'chirish" };
 const STATUS_LABELS: Record<string, string> = { "": "Qabul qilingan", waiting: "Kutilmoqda", cancelled: "Bekor qilingan" };
 
@@ -62,6 +65,11 @@ export default function TransactionDetailDrawer({
   const { showSuccess, showError } = useToast();
   const [cancelling, setCancelling] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Kassalararo ko'chirmaning pul KELGAN qatori — rahbar uni bekor qilishi
+  // mumkin (01.11.2026; ./TransferReturnDialog). Ruxsat serverda.
+  const [returnOpen, setReturnOpen] = useState(false);
+  const canReturn = canReturnTransfer(entry);
+  const returned = isReturnedTransfer(entry);
 
   const canModify = (entry.txType === "payIn" || entry.txType === "payOut") && entry.status !== "cancelled";
 
@@ -155,6 +163,20 @@ export default function TransactionDetailDrawer({
           <Row label={t("To'lov turi")}>{entry.paymentType || "—"}</Row>
           <Row label={t("Tranzaksiya turi")}>{TX_TYPE_LABELS[entry.txType] || entry.txType}</Row>
           <Row label={t("Holati")}>{STATUS_LABELS[entry.status] || entry.status}</Row>
+          {/* Rahbar bekor qilgan ko'chirma — kim, qachon, nega (jo'natuvchi
+              ham shuni «pul qaytdi» oynasida ko'rgan). */}
+          {returned && (
+            <>
+              <Row label={t("Bekor qildi")}>
+                {entry.returnedBy || "—"}
+                {entry.returnedAt && <span className="block text-[11px] font-normal text-muted-foreground">{uzStamp(new Date(entry.returnedAt))}</span>}
+                {entry.returnedAfterConfirm && <span className="block text-[11px] font-normal text-amber-600">{t("Qabul qilingandan keyin bekor qilindi")}</span>}
+              </Row>
+              <Row label={t("Bekor qilish sababi")}>
+                <span className="whitespace-pre-wrap break-words">{entry.returnComment || t("Sabab yozilmagan")}</span>
+              </Row>
+            </>
+          )}
           <Row label={t("Miqdori")}>
             <span className={entry.amount >= 0 ? "text-emerald-600" : "text-rose-600"}>{fmtSignedUZS(entry.amount)}</span>
           </Row>
@@ -170,7 +192,31 @@ export default function TransactionDetailDrawer({
             </button>
           </div>
         )}
-      </Modal>{confirmOpen && (
+        {canReturn && (
+          <div className="px-5 py-4 border-t border-border">
+            <button
+              onClick={() => setReturnOpen(true)}
+              className="w-full h-9 rounded-lg bg-rose-600 text-white text-sm font-medium hover:opacity-90"
+            >
+              {t("Ko'chirmani bekor qilish")}
+            </button>
+            <p className="mt-1.5 text-center text-[11.5px] text-muted-foreground">
+              {entry.status === "" ? t("Pul shu kassadan jo'natuvchi kassaga qaytariladi") : t("Pul jo'natuvchi kassada qoladi")}
+            </p>
+          </div>
+        )}
+      </Modal>{returnOpen && (
+        <TransferReturnDialog
+          entry={entry}
+          onClose={() => setReturnOpen(false)}
+          onDone={(updated) => {
+            invalidateTransactions();
+            invalidateBalances();
+            // Eski server javobida yangilangan qator bo'lmasligi mumkin — holatni o'zimiz qo'yamiz.
+            onChanged(updated ?? { ...entry, status: "cancelled" });
+          }}
+        />
+      )}{confirmOpen && (
         <Modal onClose={() => setConfirmOpen(false)} locked={cancelling} bare size="sm" zIndex={120} panelClassName="p-6">{(modal) => (<>
             <p className="text-center text-[15px] font-semibold">{t("Tranzaksiyani bekor qilmoqchimisiz?")}</p>
             <p className="text-center text-[13px] text-muted-foreground mt-1.5">{t("Kassa balansi ham teskari o'zgaradi.")}</p>

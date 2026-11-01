@@ -422,9 +422,15 @@ async function saveTransfer(ctx: FlowCtx, d: TransferDraft, cashbox: BotCashbox)
 async function decide(ctx: FlowCtx, cashbox: BotCashbox, entryId: number, decision: TransferDecision): Promise<void> {
   // Xabar uchun oldindan o'qiladi — qarordan keyin qator `waiting` bo'lmaydi.
   const it: IncomingTransfer | null = await loadIncomingTransfer(ctx.db, entryId);
+  // ✗ — jo'natuvchiga «pul qaytdi» oynasi chiqadi (lib/transferDecision.ts),
+  // botda sabab so'ralmaydi — oynada «Sabab yozilmagan».
   const out = await decideTransferAs(
     ctx.db,
-    { isAdmin: ctx.access.identity.isAdmin, name: ctx.access.identity.name || null },
+    {
+      isAdmin: ctx.access.identity.isAdmin,
+      name: ctx.access.identity.name || null,
+      displayName: ctx.access.identity.name || null,
+    },
     entryId,
     decision,
   );

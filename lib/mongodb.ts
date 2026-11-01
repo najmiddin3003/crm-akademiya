@@ -345,6 +345,16 @@ async function createAllIndexes(db: Db): Promise<void> {
   // Tenglik (`txType`) → ro'yxat (`cashboxId: $in`) → oraliq va saralash
   // (`createdAt`) — maydonlar tartibi aynan shu bo'lishi kerak.
   tasks.push(db.collection("transaction_entries").createIndex({ txType: 1, cashboxId: 1, createdAt: -1 }));
+  // «Pul qaytdi» oynasi (app/api/transfer-returns) — HAR BIR sahifada,
+  // 60 soniyada so'raladi. QISMAN indeks: faqat ko'rilmagan bekor
+  // qilingan ko'chirmalar (bir nechta qator), ya'ni so'rov kassaning
+  // minglab yozuvini aylanib chiqmaydi.
+  tasks.push(
+    db.collection("transaction_entries").createIndex(
+      { returnUnseen: 1, cashboxId: 1 },
+      { partialFilterExpression: { returnUnseen: true }, name: "transfer_return_unseen" },
+    ),
+  );
   // Moliya > Sinxronizatsiya (lib/sync). `sync_outbox` — Google Sheets va
   // Telegram'ga yetkazib berish navbati. Unikal indeks ENG MUHIMI: u
   // bitta yozuvning bitta hodisasi ikki marta navbatga tushishiga yo'l

@@ -86,11 +86,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   {
     id: "transfer",
     title: "Kassalar orasida pul ko'chirish",
-    keywords: ["ko'chirish", "o'tkazish", "topshirish", "kassa", "transfer"],
+    keywords: ["ko'chirish", "ko'chirma", "o'tkazish", "topshirish", "kassa", "transfer", "pul qaytdi"],
     pages: ["/finance-cash"],
     text: [
       "Kassa kartochkasi → «Ko'chirish»: boshqa kassaga yoki o'sha kassadagi to'lov turlari orasida.",
       "Boshqa kassaga jo'natilgan pul qabul qiluvchi tasdiqlaguncha jo'natuvchi kassada turadi.",
+      "Qabul qiluvchi ko'chirmani SABABI bilan bekor qila oladi — kutilayotganini (×) ham, qabul qilinganini («Bekor qilish») ham: pul jo'natuvchi kassaga qaytadi (qabul qilingan bo'lsa — qabul qiluvchi kassadan), jo'natuvchiga «pul qaytdi» oynasi chiqadi.",
     ].join("\n"),
   },
   {

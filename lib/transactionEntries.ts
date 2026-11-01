@@ -156,6 +156,36 @@ export interface TransactionEntry {
    */
   deductedOnSend?: boolean;
   /**
+   * KO'CHIRMANI QABUL QILUVCHI BEKOR QILDI (01.11.2026) — ikkala qatorda.
+   *
+   * Rahbar (qabul qiluvchi kassa egasi) ko'chirmani tasdiqlamasdan rad
+   * etganda ham, QABUL QILGANIDAN KEYIN bekor qilganda ham yoziladi
+   * (lib/transferDecision.ts → `returnTransferAs`, botdagi ✗ ham). Holat
+   * "cancelled", pul jo'natuvchi kassada (qabul qilingan bo'lsa — rahbar
+   * kassadan QAYTARILGAN).
+   *
+   *   `returnedAt`      — bekor qilingan lahza (ISO);
+   *   `returnedBy`      — kim bekor qildi (xodim ismi, bo'lmasa hisob nomi);
+   *   `returnComment`   — sababi (web'da majburiy, botda bo'sh bo'lishi mumkin);
+   *   `returnedAfterConfirm` — `true`: ko'chirma oldin QABUL QILINGAN edi.
+   *
+   * Bu qo'shilishidan oldin rad etilgan ko'chirmalarda maydonlar yo'q.
+   */
+  returnedAt?: string;
+  returnedBy?: string;
+  returnComment?: string;
+  returnedAfterConfirm?: boolean;
+  /**
+   * Faqat juftlikning "out" qatorida: JO'NATUVCHI hali «pul qaytdi» xabarini
+   * ko'rmagan. Qobiqdagi oyna (components/shared/TransferReturnNotice.tsx)
+   * shu bayroq bo'yicha so'raydi (qisman indeks, lib/mongodb.ts); «Tushunarli»
+   * bosilganda o'chiriladi va o'rniga `returnSeenAt`/`returnSeenBy` yoziladi.
+   * Bekor qilgan odamning O'ZI jo'natuvchi kassa egasi bo'lsa — qo'yilmaydi.
+   */
+  returnUnseen?: true;
+  returnSeenAt?: string;
+  returnSeenBy?: string;
+  /**
    * Yozuv bazaga tushgan aniq vaqt (ISO). `date` va `time` — foydalanuvchi
    * ko'radigan, kassir o'zgartira oladigan maydonlar; bu esa tizim qo'ygan
    * o'zgarmas tamg'a. Sinxronizatsiya navbati va tekshiruvlar shunga
