@@ -1306,18 +1306,26 @@ yo'q — reyting surati tarqatilishi mumkin. *Savol:* o'quvchilarga ham markaz r
 kerakmi (236 kabi)? — HAL QILINDI (01.11, «reytingni ulashish ishlasin»): ha, 239-band.
 
 **239. Markaz reytingini ulashish — ochiq havola** — taxmin (01.11.2026, «reytingni ulashish ishlasin, markaz
-boyicha reytingni ulashish»; rasmi yo'q)
+boyicha reytingni ulashish»; o'sha kuni: «kerakmas bo'limni galochka orqali yoqish va o'chirish imkoni ham kerak,
+ulashilganda galochka qo'yilgan qismlar chiqishi kerak holos. Masalan yo'nalish kerak lekin guruh nomi shartmas,
+ustoz shartmas»; rasmi yo'q)
 «Markaz reytingi» ko'rinishida «Ulashish» tugmasi (yangi versiyada sarlavhada «Eksport» yonida, eskisida
-«Excelga chiqarish» yonida) havolani nusxalaydi va xabarda ko'rsatadi: `/natijalar/markaz/<filial>-<imzo>?oy=…&fan=…`.
-Havolaga faqat oy va fan o'tadi (bosqich, ustoz, guruh va qidiruv — yo'q). Oyda natija bo'lmasa tugma o'chiq.
-Kalit filial bo'yicha imzolanadi (guruh havolasi kabi — raqamni o'zgartirib boshqa filialni ochib bo'lmaydi;
-Chortoq 1+2 — bitta hovuz, bitta reyting). Ochiq sahifa kirishsiz: sarlavha va filial nomi, oy tanlovi
-(natijasi bor oylar), fan tanlovi, ism bo'yicha qidiruv, to'rt ko'rsatkich, 1–3-o'rinlar kartochkasi (bosilmaydi)
-va jadval (o'rin, o'quvchi, fan, guruh · bosqich, to'g'ri javob, natija; 100 tadan «Yana ko'rsatish»). O'rin
-qoidasi CRM bilan bitta (lib/examRanking.ts). Telefon, ustoz va ichki id'lar sahifaga umuman yuborilmaydi;
-arxivdagi sarhisoblar kirmaydi. Fan tanlansa manzil ham yangilanadi (shu holicha ulashsa o'sha fan ochiladi).
-*Savol:* ochiq sahifada ustoz ustuni kerakmi? Barcha filiallar birga reyting kerakmi? *Taxmin:* yo'q — ustoz
-CRM ichida qoladi, filiallar alohida (CRM'dagi reyting ham shunday).
+«Excelga chiqarish» yonida) «Reytingni ulashish» oynasini ochadi. Katakchalar: *Bo'limlar* — Ko'rsatkichlar, Eng
+yaxshi uchlik, Barcha natijalar jadvali; *Ma'lumotlar* — Yo'nalish (fan), Guruh, Bosqich, Ustoz, To'g'ri javoblar
+soni. Sukut — hammasi belgilangan, USTOZDAN TASHQARI; keyingi safar xodimning oxirgi tanlovi (shu brauzerda).
+Uchlik yoki jadvaldan kamida bittasi shart (aks holda ogohlantirish, nusxalash o'chiq). Oynada havola ko'rinadi
+(«Ochib ko'rish» — yangi oynada), «Havolani nusxalash» uni nusxalaydi va oynani yopadi:
+`/natijalar/markaz/<filial>-<qismlar>-<imzo>?oy=…&fan=…`. Belgilangan qismlar kalit ichida, filial bilan birga
+imzolanadi — manzilni o'zgartirib yashirilgan qismni ochib bo'lmaydi. Yashirilgan maydon sahifaga UMUMAN
+yuborilmaydi (sahifa kodida ham yo'q); jadval yashirilsa — faqat 1–3-o'rinlar qatorlari. O'rin, ism va natija doim
+ko'rinadi; telefon, ichki id'lar va guruhning to'liq yorlig'i (unda fan nomi bor) — hech qachon. Havolaga oy va fan
+o'tadi (bosqich, ustoz, guruh filtri va qidiruv — yo'q); fan yashirilsa ham CRM'da tanlangan fan bo'yicha kesiladi,
+faqat ochiq sahifada fan nomi va fan tanlovi chiqmaydi. Oyda natija bo'lmasa tugma o'chiq. Chortoq 1+2 — bitta
+hovuz, bitta reyting. Ochiq sahifa kirishsiz: sarlavha va filial nomi, oy tanlovi (natijasi bor oylar), fan tanlovi
+(fan ko'rinsa), ism bo'yicha qidiruv (jadval bo'lsa) va belgilangan bo'limlar. O'rin qoidasi CRM bilan bitta
+(lib/examRanking.ts, lib/centerShare.ts); arxivdagi sarhisoblar kirmaydi.
+*Savol:* barcha filiallar birga reyting kerakmi? Ustoz sukut bo'yicha yashirin — to'g'rimi? *Taxmin:* filiallar
+alohida (CRM'dagi reyting ham shunday); ustoz kerak bo'lsa — oynada bitta katakcha, tanlov eslab qolinadi.
 
 ## Reja
 

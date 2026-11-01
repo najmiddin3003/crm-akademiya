@@ -13,12 +13,13 @@ import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { downloadCsv } from "@/components/imtihon/importUtils";
 import { pupilAvgPct } from "@/components/imtihon/SarhisobDetailDrawer";
-import { examGroupTitle, sarhisobCsvRows, useCopyCenterLink, useCopyGroupLink, useExamActions, useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { examGroupTitle, sarhisobCsvRows, useCopyGroupLink, useExamActions, useMonthLabel } from "@/components/imtihon/sarhisobCore";
 import { useCenterRanking } from "@/components/imtihon/useCenterRanking";
 import { rankingCsvRows } from "@/lib/examRanking";
 import { uzDateIso } from "@/lib/uzTime";
 import { groupExamMonth, liveExams, type GroupExam } from "@/lib/imtihon";
 import CenterRankingV2 from "./CenterRankingV2";
+import CenterShareDialogV2 from "./CenterShareDialogV2";
 import SarhisobDetailV2 from "./SarhisobDetailV2";
 import { ImtihonHeader, SarhisobViewSwitch, ScoreBar, examBand, examTh as th, type SarhisobView } from "./examBits";
 
@@ -50,7 +51,6 @@ export default function SarhisobListV2({
   exams,
   setExams,
   loading,
-  centerKey,
   initialMonth,
   initialView,
   onAdd,
@@ -59,8 +59,6 @@ export default function SarhisobListV2({
   exams: GroupExam[];
   setExams: Dispatch<SetStateAction<GroupExam[]>>;
   loading: boolean;
-  /** Markaz reytingi ochiq havolasining kaliti (joriy filial) — «Ulashish». */
-  centerKey: string;
   /** Manzildagi `oy=` (natija saqlangach shu oyga qaytiladi). */
   initialMonth: string | null;
   /** Manzildagi `reyting=1` — markaz reytingi. */
@@ -74,7 +72,6 @@ export default function SarhisobListV2({
   const { showSuccess } = useToast();
   const monthLabel = useMonthLabel();
   const copyGroupLink = useCopyGroupLink();
-  const copyCenterLink = useCopyCenterLink();
   const { busyId, setArchived, remove } = useExamActions(setExams);
   const [fMonth, setFMonth] = useState<string | null>(initialMonth);
   const [fCourse, setFCourse] = useState("");
@@ -83,6 +80,8 @@ export default function SarhisobListV2({
   const [archiveView, setArchiveView] = useState(false);
   const [confirmDel, setConfirmDel] = useState<GroupExam | null>(null);
   const [view, setView] = useState<SarhisobView>(initialView);
+  /** «Ulashish» oynasi — markaz reytingining ochiq havolasi, belgilangan qismlar bilan. */
+  const [shareOpen, setShareOpen] = useState(false);
 
   const live = useMemo(() => liveExams(exams), [exams]);
   const archived = useMemo(() => exams.filter((r) => r.archived), [exams]);
@@ -191,14 +190,13 @@ export default function SarhisobListV2({
         tab="sarhisob"
         actions={
           <>
-            {/* Reytingning ochiq havolasi — shu oy va fan bilan (bosqich, ustoz, guruh va qidiruv o'tmaydi;
-                ochgan odam fanni o'zi almashtira oladi). Oyda natija bo'lmasa — o'chiq. */}
+            {/* Reytingning ochiq havolasi — oynada qaysi qismlar chiqishi belgilanadi; havolaga shu oy va
+                fan o'tadi (bosqich, ustoz, guruh filtri va qidiruv — yo'q). Oyda natija bo'lmasa — o'chiq. */}
             {rankOn && (
               <button
                 type="button"
-                onClick={() => void copyCenterLink(centerKey, fm, fCourse)}
+                onClick={() => setShareOpen(true)}
                 disabled={loading || rk.pool.length === 0}
-                title={t("Markaz reytingining ochiq havolasi — oy va fan bilan")}
                 className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 <Link2 className="size-4" strokeWidth={1.75} aria-hidden />
@@ -431,6 +429,7 @@ export default function SarhisobListV2({
         />
       )}
 
+      {shareOpen && <CenterShareDialogV2 month={fm} monthLabel={monthLabel(fm)} course={fCourse} onClose={() => setShareOpen(false)} />}
       {confirmDel && (
         <V2Confirm
           title={t("Sarhisobni o'chirasizmi?")}

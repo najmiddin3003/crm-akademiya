@@ -11,6 +11,8 @@ import { examGroupTitle, type PodiumPlace, type RankRow, type RankStats } from "
 // (CenterRankingV2) va ochiq havola sahifasi (/natijalar/markaz/<kalit>, PublicCenterRanking)
 // bir xil ko'rinsin — to'rt ko'rsatkich, o'rin belgisi va 1–3-o'rinlar kartochkasi shu yerda.
 // Uchlik ochiq sahifada bosilmaydi (`onOpen` berilmaydi) — CRM'da ism bosilsa guruh sarhisobi.
+// Ochiq sahifada fan yoki guruh yashirilgan bo'lishi mumkin (bo'sh satr) — izoh qatori shunga moslashadi;
+// to'g'ri javoblar soni yashirilsa — `showCorrect={false}`.
 
 /**
  * Uchlik kartochkasida ko'rinadigan ism (qolgani jadvalda) — o'rinlar soniga qarab: uch o'rin
@@ -71,7 +73,21 @@ function NameBox({ onClick, className, children }: { onClick?: () => void; class
   );
 }
 
-function PodiumCard({ place, first, limit, wide, onOpen }: { place: PodiumPlace; first: boolean; limit: number; wide: boolean; onOpen?: (r: RankRow) => void }) {
+function PodiumCard({
+  place,
+  first,
+  limit,
+  wide,
+  showCorrect,
+  onOpen,
+}: {
+  place: PodiumPlace;
+  first: boolean;
+  limit: number;
+  wide: boolean;
+  showCorrect: boolean;
+  onOpen?: (r: RankRow) => void;
+}) {
   const { t } = useT();
   const single = place.rows.length === 1 ? place.rows[0] : null;
   const shown = place.rows.slice(0, limit);
@@ -88,7 +104,7 @@ function PodiumCard({ place, first, limit, wide, onOpen }: { place: PodiumPlace;
       {initialsOf(r.name)}
     </span>
   );
-  const meta = (r: RankRow) => `${r.course} · ${examGroupTitle(r, t)}`;
+  const meta = (r: RankRow) => [r.course, examGroupTitle(r, t)].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -106,18 +122,23 @@ function PodiumCard({ place, first, limit, wide, onOpen }: { place: PodiumPlace;
       </span>
       {/* Natija — o'rin belgisidan keyin: kartochkalar bo'yi har xil bo'lsa ham bir qatorda turadi. */}
       <span className="mt-2 text-[1.375rem] font-semibold leading-7 tabular-nums text-v2-text">{place.pct}%</span>
-      <span className="text-v2-caption text-v2-text-2">
-        {single ? t("{correct} / {total} to'g'ri", { correct: single.correct, total: single.total }) : t("{n} o'quvchi", { n: place.rows.length })}
-      </span>
+      {/* To'g'ri javoblar soni ochiq havolada yashirilgan bo'lishi mumkin — unda bitta o'quvchida bu qator yo'q. */}
+      {(!single || showCorrect) && (
+        <span className="text-v2-caption text-v2-text-2">
+          {single ? t("{correct} / {total} to'g'ri", { correct: single.correct, total: single.total }) : t("{n} o'quvchi", { n: place.rows.length })}
+        </span>
+      )}
 
       {single ? (
         <NameBox onClick={onOpen && (() => onOpen(single))} className="mt-2 flex max-w-full flex-col items-center rounded-v2-md px-2 py-1">
           {avatar(single, true)}
           <span className={`mt-2 max-w-full truncate text-v2-body font-semibold text-v2-text ${hoverName}`}>{single.name}</span>
-          <span className="flex max-w-full items-center gap-1.5 text-v2-caption text-v2-text-2">
-            <span className={`size-1.5 shrink-0 rounded-full ${FAN_DOT[fanOf(single.course)]}`} aria-hidden />
-            <span className="truncate">{meta(single)}</span>
-          </span>
+          {meta(single) && (
+            <span className="flex max-w-full items-center gap-1.5 text-v2-caption text-v2-text-2">
+              {single.course && <span className={`size-1.5 shrink-0 rounded-full ${FAN_DOT[fanOf(single.course)]}`} aria-hidden />}
+              <span className="truncate">{meta(single)}</span>
+            </span>
+          )}
         </NameBox>
       ) : (
         <ul className={`mt-2 grid w-full gap-x-3 gap-y-0.5 ${wide ? "min-[40rem]:grid-cols-2 min-[64rem]:grid-cols-3" : ""}`}>
@@ -131,7 +152,7 @@ function PodiumCard({ place, first, limit, wide, onOpen }: { place: PodiumPlace;
                 {avatar(r, false)}
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-v2-small font-semibold text-v2-text ${hoverName}`}>{r.name}</span>
-                  <span className="block truncate text-v2-caption text-v2-text-2">{meta(r)}</span>
+                  {meta(r) && <span className="block truncate text-v2-caption text-v2-text-2">{meta(r)}</span>}
                 </span>
               </NameBox>
             </li>
@@ -156,7 +177,7 @@ function PodiumCard({ place, first, limit, wide, onOpen }: { place: PodiumPlace;
  * birinchisi chapda; bittasi (uch va undan ko'p o'quvchi 1-o'rinda teng) — bitta keng
  * kartochka, ismlar ustun-ustun. Bo'sh joy qoldirilmaydi.
  */
-export function Podium({ places, onOpen }: { places: PodiumPlace[]; onOpen?: (r: RankRow) => void }) {
+export function Podium({ places, showCorrect = true, onOpen }: { places: PodiumPlace[]; showCorrect?: boolean; onOpen?: (r: RankRow) => void }) {
   const { t } = useT();
   const n = Math.min(3, places.length);
   const slots = n === 3 ? [places[1], places[0], places[2]] : places.slice(0, n);
@@ -165,7 +186,7 @@ export function Podium({ places, onOpen }: { places: PodiumPlace[]; onOpen?: (r:
     <section aria-label={t("Eng yaxshi uchlik")} className="rounded-v2-lg border border-v2-border bg-v2-surface-2 p-3 sm:p-4">
       <div className={`grid gap-3 ${n === 3 ? "min-[40rem]:grid-cols-3" : n === 2 ? "min-[40rem]:grid-cols-2" : ""}`}>
         {slots.map((p, i) => (
-          <PodiumCard key={p.rank} place={p} first={i === firstAt} limit={PODIUM_NAMES[n]} wide={n === 1} onOpen={onOpen} />
+          <PodiumCard key={p.rank} place={p} first={i === firstAt} limit={PODIUM_NAMES[n]} wide={n === 1} showCorrect={showCorrect} onOpen={onOpen} />
         ))}
       </div>
     </section>

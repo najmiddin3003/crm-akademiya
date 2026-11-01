@@ -1,7 +1,8 @@
 import type { Db } from "mongodb";
 import { branchInCondition } from "@/lib/branchScope";
 import { branchPool } from "@/lib/branchPools";
-import { publicRankRows, rankPool, type PublicCenterRanking } from "@/lib/examRanking";
+import type { CenterShareShow } from "@/lib/centerShare";
+import { publicCenterView, rankPool, type PublicCenterRanking } from "@/lib/examRanking";
 import { groupLabel, type Group } from "@/lib/groups";
 import { groupExamMonth, publicExamOf, type GroupExam, type PublicGroupResults } from "@/lib/imtihon";
 
@@ -40,11 +41,18 @@ export async function loadGroupResults(db: Db, groupId: number): Promise<PublicG
 // /natijalar/markaz/<kalit> sahifasining ma'lumoti. Qamrov CRM'dagi Sarhisob bilan bir xil:
 // shu filial (hovuzda — butun hovuz, `branchCondition` qoidasi), arxivdagi sarhisoblarsiz.
 // Faqat BITTA OY yuklanadi (filialda oyiga ~100 sarhisob); oylar ro'yxati — sana/oy maydonidan.
-// Reyting qoidalari — lib/examRanking.ts (CRM bilan bitta); telefon va ustoz brauzerga bormaydi.
+// Reyting qoidalari — lib/examRanking.ts (CRM bilan bitta). Fan (`?fan=`) ham shu yerda kesiladi;
+// brauzerga faqat havolada belgilangan qismlar boradi (`show`, lib/centerShare.ts), telefon — hech qachon.
 
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-export async function loadCenterRanking(db: Db, branchId: number, asked: string | null): Promise<PublicCenterRanking | null> {
+export async function loadCenterRanking(
+  db: Db,
+  branchId: number,
+  show: CenterShareShow,
+  asked: string | null,
+  askedCourse: string,
+): Promise<PublicCenterRanking | null> {
   const branch = await db.collection("branches").findOne<{ name?: string }>({ id: branchId }, { projection: { _id: 0, name: 1 } });
   if (!branch) return null;
   const scope = { $and: [{ archived: { $ne: true } }, branchInCondition(branchPool(branchId))] };
@@ -54,7 +62,7 @@ export async function loadCenterRanking(db: Db, branchId: number, asked: string 
   const months = [...new Set(heads.map(groupExamMonth))].filter((m) => MONTH_KEY.test(m)).sort().reverse();
   const month = asked && months.includes(asked) ? asked : (months[0] ?? null);
   const branchName = String(branch.name ?? "");
-  if (!month) return { branchName, months, month: null, rows: [] };
+  if (!month) return { branchName, months, month: null, show, courses: [], course: "", rows: [], stats: null };
 
   // `month` 21.09.2026 gacha yozilmagan — o'shandagilar sanadan (groupExamMonth bilan bir xil).
   const exams = await col
@@ -63,5 +71,5 @@ export async function loadCenterRanking(db: Db, branchId: number, asked: string 
       { projection: { _id: 0, createdBy: 0, createdAt: 0, updatedBy: 0, updatedAt: 0 } },
     )
     .toArray();
-  return { branchName, months, month, rows: publicRankRows(rankPool(exams, month)) };
+  return { branchName, months, month, show, ...publicCenterView(rankPool(exams, month), askedCourse, show) };
 }

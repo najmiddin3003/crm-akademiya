@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
+import { CENTER_SHARE_DEFAULT, decodeShare, encodeShare, isValidShareMask, type CenterShareField, type CenterShareShow } from "@/lib/centerShare";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { fmtExamDate } from "./SarhisobDetailDrawer";
 
@@ -15,8 +16,6 @@ import { fmtExamDate } from "./SarhisobDetailDrawer";
 export function useGroupExams() {
   const [exams, setExams] = useState<GroupExam[]>([]);
   const [loading, setLoading] = useState(true);
-  /** Markaz reytingi havolasining kaliti (joriy filial) — «Ulashish» uchun oldindan. */
-  const [centerKey, setCenterKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +24,6 @@ export function useGroupExams() {
       .then((d) => {
         if (cancelled || !d.ok) return;
         setExams(d.exams as GroupExam[]);
-        setCenterKey(typeof d.centerKey === "string" ? d.centerKey : "");
       })
       .catch(() => {})
       .finally(() => {
@@ -36,7 +34,7 @@ export function useGroupExams() {
     };
   }, []);
 
-  return { exams, setExams, loading, centerKey };
+  return { exams, setExams, loading };
 }
 
 /** Saqlangan yoki tahrirlangan sarhisob ro'yxatga: bori almashadi, yangisi boshiga qo'shiladi. */
@@ -111,8 +109,8 @@ export function groupResultsUrl(linkKey: string, month: string): string {
 
 /**
  * MARKAZ REYTINGI HAVOLASI (01.11.2026, «markaz bo'yicha reytingni ulashish»):
- * /natijalar/markaz/<kalit>?oy=<oy>[&fan=<fan>]. Kalit — joriy filialniki (API javobidagi
- * `centerKey`); sahifada shu filialning oylik reytingi, oy va fan tanlovi bilan.
+ * /natijalar/markaz/<kalit>?oy=<oy>[&fan=<fan>]. Kalit — joriy filial va «Ulashish» oynasida
+ * belgilangan qismlar (GET /api/imtihon/group/center-link); sahifada shu filialning oylik reytingi.
  */
 export function centerResultsUrl(centerKey: string, month: string, course: string): string {
   const q = new URLSearchParams();
@@ -172,25 +170,73 @@ export function useCopyGroupLink() {
   );
 }
 
+/** «Ulashish» oynasining oxirgi tanlovi — shu brauzerda (keyingi safar shu qismlar belgilangan ochiladi). */
+const SHARE_PREFS_KEY = "imtihon.markazReytingi.ulashish";
+
+function loadShareShow(): CenterShareShow {
+  try {
+    const raw = localStorage.getItem(SHARE_PREFS_KEY);
+    const mask = raw && /^\d{1,3}$/.test(raw) ? Number(raw) : NaN;
+    if (isValidShareMask(mask)) return decodeShare(mask);
+  } catch {
+    // yopiq saqlash (shaxsiy oyna) — sukut bo'yicha
+  }
+  return CENTER_SHARE_DEFAULT;
+}
+
 /**
- * «Ulashish» (Sarhisob → «Markaz reytingi»): reyting havolasini — tanlangan oy va fan bilan —
- * nusxalaydi va xabarda ko'rsatadi (guruh havolasi kabi: kalit oldindan, bosishda so'rov yo'q).
+ * «Ulashish» oynasi (Sarhisob → «Markaz reytingi», 01.11.2026: «galochka qo'yilgan qismlar
+ * chiqishi kerak holos»): qaysi qismlar ko'rinadi, shu tanlov uchun imzolangan kalit va havola.
+ * Kalit har tanlov uchun serverdan (GET /api/imtihon/group/center-link) — katakcha bosilganda
+ * so'raladi, nusxalash tugmasi bosilganda emas (Safari bosishdan keyingi so'rovda nusxalashni
+ * rad etadi). Bir marta olingan kalit shu oynada eslab qolinadi. Oy va fan — havola manzilida.
  */
-export function useCopyCenterLink() {
+export function useCenterShare(month: string, course: string) {
   const { t } = useT();
   const { showSuccess, showError } = useToast();
-  return useCallback(
-    async (centerKey: string, month: string, course: string) => {
-      if (!centerKey) {
-        showError(t("Havolani olib bo'lmadi — sahifani yangilang"));
-        return;
-      }
-      const link = centerResultsUrl(centerKey, month, course);
-      if (await copyText(link)) showSuccess(t("Havola nusxalandi: {link}", { link }));
-      else showError(t("Havolani nusxalab bo'lmadi — qo'lda ko'chiring: {link}", { link }));
-    },
-    [t, showSuccess, showError],
-  );
+  const [show, setShow] = useState<CenterShareShow>(loadShareShow);
+  /** Belgilar to'plami → kalit; `null` — olib bo'lmadi. */
+  const [keys, setKeys] = useState<Record<number, string | null>>({});
+  const mask = encodeShare(show);
+  const valid = isValidShareMask(mask);
+  const key = keys[mask];
+
+  useEffect(() => {
+    if (!valid || key !== undefined) return;
+    const ctl = new AbortController();
+    fetch(`/api/imtihon/group/center-link?f=${mask}`, { signal: ctl.signal })
+      .then((r) => r.json())
+      .then((d) => setKeys((k) => ({ ...k, [mask]: d.ok && typeof d.key === "string" ? d.key : null })))
+      .catch((e: unknown) => {
+        if ((e as { name?: string })?.name !== "AbortError") setKeys((k) => ({ ...k, [mask]: null }));
+      });
+    return () => ctl.abort();
+  }, [mask, valid, key]);
+
+  function toggle(field: CenterShareField, on: boolean) {
+    const next = { ...show, [field]: on };
+    setShow(next);
+    try {
+      localStorage.setItem(SHARE_PREFS_KEY, String(encodeShare(next)));
+    } catch {
+      // saqlanmasa ham oyna ishlayveradi
+    }
+  }
+
+  const link = valid && key ? centerResultsUrl(key, month, course) : "";
+
+  /** Nusxalaydi va xabarda ko'rsatadi (nusxalanmasa ham — qo'lda olish uchun). Nusxalansa — `true`. */
+  const copy = useCallback(async (): Promise<boolean> => {
+    if (!link) return false;
+    if (await copyText(link)) {
+      showSuccess(t("Havola nusxalandi: {link}", { link }));
+      return true;
+    }
+    showError(t("Havolani nusxalab bo'lmadi — qo'lda ko'chiring: {link}", { link }));
+    return false;
+  }, [link, t, showSuccess, showError]);
+
+  return { show, toggle, valid, link, loading: valid && key === undefined, failed: valid && key === null, copy };
 }
 
 /** Guruh nomi: «7» → «7-guruh» — qoidasi lib/examRanking.ts da (ochiq reyting sahifasi ham shundan). */

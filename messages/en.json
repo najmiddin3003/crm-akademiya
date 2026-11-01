@@ -6520,6 +6520,17 @@
   "Barcha ustozlar": "All teachers",
   "Ism to'g'ri yozilganini tekshiring.": "Check that the name is spelled correctly.",
   "Havola noto'g'ri yoki eskirgan. Administratordan reyting havolasini qayta so'rang.": "The link is invalid or outdated. Ask the administrator for the ranking link again.",
-  "Markaz reytingining ochiq havolasi — oy va fan bilan": "Public link to the center ranking — with the month and subject",
-  "Oylik imtihon: markaz bo'yicha o'rinlar, eng yaxshi uchlik va har bir o'quvchining natijasi.": "Monthly exam: center-wide places, the top three and every student's result."
+  "Oylik imtihon natijalari: markaz bo'yicha o'rinlar.": "Monthly exam results: center-wide places.",
+  "Reytingni ulashish": "Share the ranking",
+  "Qatnashgan o'quvchi, guruhlar, o'rtacha natija, 80% va yuqori": "Students taking part, groups, average score, 80% and above",
+  "1–3-o'rinlar kartochkasi": "Cards for places 1–3",
+  "Barcha natijalar jadvali": "Table of all results",
+  "Har bir o'quvchining o'rni va natijasi": "Every student's place and result",
+  "Yo'nalish (fan)": "Track (subject)",
+  "To'g'ri javoblar soni": "Number of correct answers",
+  "O'rin, ism va natija doim ko'rinadi, telefon — hech qachon.": "Place, name and result are always shown; phone numbers never are.",
+  "Ochiq sahifada faqat belgilangan qismlar chiqadi.": "Only the checked parts appear on the public page.",
+  "Uchlik yoki jadvaldan kamida bittasini belgilang.": "Check at least one: the top three or the table.",
+  "Yo'nalish yashirilsa, barcha fanlar bitta ro'yxatda chiqadi. Bitta fan kerak bo'lsa — avval «Fan» filtrida tanlang.": "If the track is hidden, all subjects appear in one list. If you need a single subject, pick it in the “Subject” filter first.",
+  "Ochib ko'rish": "Open to preview"
 }

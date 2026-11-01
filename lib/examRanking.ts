@@ -1,5 +1,6 @@
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { searchPhoneDigits } from "@/lib/phoneSearch";
+import type { CenterShareShow } from "@/lib/centerShare";
 
 // IMTIHON → SARHISOB → MARKAZ REYTINGI (01.11.2026). Mijoz: «Butun markazdagi natijani ham
 // ko'ra oladimi? Jami topshirganlarni ichidan top 3 va qolganlar kabi … 100 tacha guruh
@@ -206,27 +207,29 @@ export function rankingCsvRows(rows: RankRow[]): unknown[][] {
 
 /* ============================================================
    OCHIQ MARKAZ REYTINGI — /natijalar/markaz/<kalit> (01.11.2026, foydalanuvchi: «markaz
-   bo'yicha reytingni ulashish»). Hisob serverda shu qoidalar bilan (`rankPool`), brauzerga
-   faqat ko'rinadigan maydonlar boradi: TELEFON, USTOZ va haqiqiy id'lar YO'Q. O'quvchi, guruh
-   va sarhisob — shu javob ichidagi tartib raqamlari (ko'rsatkichlar sanog'i va tenglar
-   tartibi CRM'dagidek chiqsin; sarhisob raqami id tartibida beriladi).
+   bo'yicha reytingni ulashish»; «galochka qo'yilgan qismlar chiqishi kerak holos»). Hisob
+   SERVERDA shu qoidalar bilan: oy (`rankPool`), fan bo'yicha kesish, o'rin (`rankRows`) va
+   ko'rsatkichlar (`rankStats`). Brauzerga faqat havolada belgilangan qismlar boradi
+   (lib/centerShare.ts): yashirilgan maydon bo'sh satr / null, jadval yashirin bo'lsa — faqat
+   1–3-o'rinlar qatorlari. TELEFON va haqiqiy id'lar hech qachon yuborilmaydi.
    ============================================================ */
 
 export interface PublicRankRow {
-  /** O'quvchining shu javobdagi raqami (bir o'quvchi ikki fanda — bitta raqam). */
-  pupil: number;
-  /** Guruhning shu javobdagi raqami. */
-  group: number;
-  /** Sarhisobning shu javobdagi raqami — id o'sish tartibida. */
-  exam: number;
+  /** O'rin — serverda, tanlangan fan ichida (teng natija — teng o'rin). */
+  rank: number;
   name: string;
-  course: string;
-  groupName: string;
-  groupLabel: string;
-  level: string;
-  total: number;
-  correct: number;
   pct: number;
+  /** Yashirilgan maydonlar — bo'sh satr / null (serverdan umuman kelmaydi). */
+  course: string;
+  /**
+   * Faqat guruh nomi. To'liq yorliq (`groupLabel` — «Ingliz tili (7-guruh)» yoki «#12») yuborilmaydi:
+   * unda fan nomi yoki haqiqiy id bor — fan yashirilganda ham ko'rinib qolardi. Nomsiz guruh — bo'sh.
+   */
+  groupName: string;
+  level: string;
+  teacher: string;
+  correct: number | null;
+  total: number | null;
 }
 
 /** Ochiq reyting sahifasining ma'lumoti (lib/publicResults.ts → loadCenterRanking). */
@@ -237,53 +240,63 @@ export interface PublicCenterRanking {
   months: string[];
   /** Ko'rsatilayotgan oy; natija umuman yo'q — `null`. */
   month: string | null;
-  /** Shu oyning natijalari — takrorsiz (`rankPool`), o'rinsiz. */
+  /** Ko'rinadigan qismlar — havoladagi (imzolangan) tanlov. */
+  show: CenterShareShow;
+  /** Fan tanlovi: shu oyning fanlari va natijalar soni (fan yashirin bo'lsa — bo'sh). */
+  courses: { name: string; n: number }[];
+  /** Tanlangan fan; barchasi yoki fan yashirin — bo'sh satr (yashirin bo'lsa ham kesish serverda qilingan). */
+  course: string;
+  /** O'rin tartibida; jadval yashirin bo'lsa — faqat 1–3-o'rinlar. */
   rows: PublicRankRow[];
+  /** Ko'rsatkichlar (tanlangan fanning to'liq to'plamidan); yashirin — `null`. */
+  stats: RankStats | null;
 }
 
-/** `rankPool` natijasi → ochiq qatorlar (telefon, ustoz va id'lar olib tashlanadi). */
-export function publicRankRows(pool: RankRow[]): PublicRankRow[] {
-  const examNo = new Map([...new Set(pool.map((r) => r.examId))].sort((a, b) => a - b).map((id, i) => [id, i + 1] as const));
-  const pupilNo = new Map<string, number>();
-  const groupNo = new Map<number, number>();
-  const numberOf = <K>(map: Map<K, number>, key: K): number => {
-    const known = map.get(key);
-    if (known !== undefined) return known;
-    map.set(key, map.size + 1);
-    return map.size;
+/**
+ * Oy natijalari (`rankPool`) → ochiq sahifa ma'lumoti. `asked` — havoladagi fan (`?fan=`): shu oyda
+ * bo'lsa reyting shu fan ichida (fan ko'rinmasa ham — CRM'da tanlangan fan bilan ulashilgan bo'ladi).
+ */
+export function publicCenterView(pool: RankRow[], asked: string, show: CenterShareShow): Pick<PublicCenterRanking, "courses" | "course" | "rows" | "stats"> {
+  const counts = new Map<string, number>();
+  for (const r of pool) counts.set(r.course, (counts.get(r.course) ?? 0) + 1);
+  const course = asked && counts.has(asked) ? asked : "";
+  const ranked = rankRows(course ? pool.filter((r) => r.course === course) : pool);
+  const listed = show.table ? ranked : show.podium ? podiumOf(ranked).flatMap((p) => p.rows) : [];
+  return {
+    courses: show.course ? [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([name, n]) => ({ name, n })) : [],
+    course: show.course ? course : "",
+    rows: listed.map((r) => ({
+      rank: r.rank,
+      name: r.name,
+      pct: r.pct,
+      course: show.course ? r.course : "",
+      groupName: show.group ? r.groupName : "",
+      level: show.level ? r.level : "",
+      teacher: show.teacher ? r.teacher : "",
+      correct: show.correct ? r.correct : null,
+      total: show.correct ? r.total : null,
+    })),
+    stats: show.kpis ? rankStats(ranked) : null,
   };
-  return pool.map((r) => ({
-    pupil: numberOf(pupilNo, rankPupilKey(r)),
-    group: numberOf(groupNo, r.groupId),
-    exam: examNo.get(r.examId) ?? 0,
-    name: r.name,
-    course: r.course,
-    groupName: r.groupName,
-    groupLabel: r.groupLabel,
-    level: r.level,
-    total: r.total,
-    correct: r.correct,
-    pct: r.pct,
-  }));
 }
 
-/** Ochiq qator → `RankRow` (sahifa shu faylning `rankRows`, `podiumOf`, `rankStats` idan foydalanadi). */
+/** Ochiq qator → `RankRow` (uchlik — `podiumOf`, qidiruv — `matchesQuery`; o'rin serverdan). */
 export function rankRowOfPublic(r: PublicRankRow, i: number): RankRow {
   return {
     key: String(i),
-    examId: r.exam,
-    pupilId: r.pupil,
+    examId: 0,
+    pupilId: 0,
     name: r.name,
     phone: "",
     course: r.course,
-    teacher: "",
-    groupId: r.group,
+    teacher: r.teacher,
+    groupId: 0,
     groupName: r.groupName,
-    groupLabel: r.groupLabel,
+    groupLabel: "",
     level: r.level,
-    total: r.total,
-    correct: r.correct,
+    total: r.total ?? 0,
+    correct: r.correct ?? 0,
     pct: r.pct,
-    rank: 0,
+    rank: r.rank,
   };
 }

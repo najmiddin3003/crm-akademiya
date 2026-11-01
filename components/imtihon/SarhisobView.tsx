@@ -12,9 +12,10 @@ import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
-import { sarhisobCsvRows, upsertExam, useCopyCenterLink, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
+import { sarhisobCsvRows, upsertExam, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useCenterRanking } from "./useCenterRanking";
 import CenterRankingView from "./CenterRankingView";
+import CenterShareDialog from "./CenterShareDialog";
 import { rankingCsvRows } from "@/lib/examRanking";
 import { useT } from "@/components/shared/Language";
 
@@ -60,9 +61,10 @@ export default function SarhisobView() {
   const { showSuccess } = useToast();
 
   // Ro'yxat, oy nomi va CSV — umumiy yadro (sarhisobCore.ts; yangi versiya ham shundan).
-  const { exams, setExams, loading, centerKey } = useGroupExams();
+  const { exams, setExams, loading } = useGroupExams();
   const copyGroupLink = useCopyGroupLink();
-  const copyCenterLink = useCopyCenterLink();
+  /** «Ulashish» oynasi — markaz reytingining ochiq havolasi, belgilangan qismlar bilan. */
+  const [shareOpen, setShareOpen] = useState(false);
   const { busyId, setArchived, remove } = useExamActions(setExams);
   // `null` — foydalanuvchi hali tanlamagan: eng oxirgi sarhisob oyi
   // (bo'lmasa joriy oy) ko'rsatiladi.
@@ -208,13 +210,13 @@ export default function SarhisobView() {
           </button>
         )}
         <div className="flex-1" />
-        {/* Markaz reytingining ochiq havolasi — shu oy va fan bilan (yangi versiyadagi «Ulashish» bilan bir xil). */}
+        {/* Markaz reytingining ochiq havolasi — oynada qaysi qismlar chiqishi belgilanadi (yangi versiyadagi
+            «Ulashish» bilan bir xil). */}
         {rankOn && (
           <button
             type="button"
-            onClick={() => void copyCenterLink(centerKey, fm, fCourse)}
+            onClick={() => setShareOpen(true)}
             disabled={loading || rk.pool.length === 0}
-            title={t("Markaz reytingining ochiq havolasi — oy va fan bilan")}
             className={outlineBtn}
           >
             <Link2 className="w-4 h-4" />
@@ -366,6 +368,7 @@ export default function SarhisobView() {
         />
       )}
 
+      {shareOpen && <CenterShareDialog month={fm} monthLabel={monthLabel(fm)} course={fCourse} onClose={() => setShareOpen(false)} />}
       {confirmDel && (
         <DeleteConfirmModal
           title={t("Sarhisobni o'chirish")}

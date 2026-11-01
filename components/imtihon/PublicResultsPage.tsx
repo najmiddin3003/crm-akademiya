@@ -40,7 +40,7 @@ type LinkKind = "group" | "center";
 
 type Props =
   | { view: "results"; data: PublicGroupResults; month: string | null }
-  | { view: "center"; data: CenterData; course: string }
+  | { view: "center"; data: CenterData }
   | { view: "badlink"; kind?: LinkKind }
   | { view: "nolink" | "error" };
 
@@ -125,7 +125,7 @@ export default function PublicResultsPage(props: Props) {
         {props.view === "results" ? (
           <GroupResults data={props.data} initialMonth={props.month} />
         ) : props.view === "center" ? (
-          <PublicCenterRanking data={props.data} initialCourse={props.course} />
+          <PublicCenterRanking data={props.data} />
         ) : (
           <Notice view={props.view} kind={props.view === "badlink" ? props.kind : undefined} />
         )}

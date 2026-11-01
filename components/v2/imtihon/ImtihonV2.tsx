@@ -69,7 +69,7 @@ export default function ImtihonV2() {
   const rankView = sp.get("reyting") === "1";
   const viewQ = rankView ? "&reyting=1" : "";
 
-  const { exams, setExams, loading, centerKey } = useGroupExams();
+  const { exams, setExams, loading } = useGroupExams();
   const editing = editId === null ? null : (exams.find((r) => r.id === editId) ?? null);
 
   // UzBMB bir marta ochilgach DOM'da qoladi (filtr va kiritish holati saqlansin).
@@ -120,7 +120,6 @@ export default function ImtihonV2() {
             exams={exams}
             setExams={setExams}
             loading={loading}
-            centerKey={centerKey}
             initialMonth={month}
             initialView={rankView ? "rank" : "list"}
             onAdd={goEntry}
