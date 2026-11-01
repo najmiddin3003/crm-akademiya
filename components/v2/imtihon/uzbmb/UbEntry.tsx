@@ -648,8 +648,10 @@ export default function UbEntry({
           onNewPupil={() => setNewOpen(true)}
         />
       )}
+      {/* Imtihonda telefon ixtiyoriy (Sarhisob bilan bir xil, 01.11.2026) — O'quvchilar bo'limida majburiyligicha. */}
       {newOpen && group && (
         <NewStudentDrawerV2
+          phoneOptional
           initialGroupId={group.id}
           groups={groups}
           onClose={() => setNewOpen(false)}

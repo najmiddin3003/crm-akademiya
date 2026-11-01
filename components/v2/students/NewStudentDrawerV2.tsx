@@ -40,7 +40,8 @@ import type { StudentRow } from "@/lib/studentsData";
 // Taxminlar (design/v2/SAVOLLAR.md 81–84):
 //   • majburiy — rasmdagidek: Ism, Familiya, Telefon, Kategoriya, Manba («ixtiyoriy»
 //     yozilmaganlari); eski oynada faqat Ism va Manba edi. ISTISNO (01.11.2026): Imtihon →
-//     Natija kiritish (guruhli va guruhsiz) dan ochilganda telefon ixtiyoriy (`phoneOptional`);
+//     Natija kiritish (Sarhisob — guruhli va guruhsiz, UzBMB) dan ochilganda telefon ixtiyoriy
+//     (`phoneOptional`);
 //   • FILIAL — navbardagi filial (server o'quvchini o'shanga yozadi); maydon faqat
 //     ko'rsatadi, boshqa filial uchun navbarda almashtiriladi;
 //   • guruh kategoriyasi bazada yo'q — a'zolarining ko'pchiligi kategoriyasi
@@ -58,7 +59,7 @@ export interface NewStudentDrawerProps {
   /** Oldindan tanlangan guruh (Imtihon → Natija kiritish → «O'quvchi qo'shish», 23.10.2026). */
   initialGroupId?: number;
   /**
-   * Telefon ixtiyoriy (Imtihon → Natija kiritish, guruhli va guruhsiz, 01.11.2026): imtihon
+   * Telefon ixtiyoriy (Imtihon → Natija kiritish: Sarhisob va UzBMB, 01.11.2026): imtihon
    * topshirayotgan o'quvchining raqami ko'pincha qo'lda bo'lmaydi. Bo'sh qoldirsa bo'ladi;
    * yozilgan bo'lsa — baribir to'liq 9 raqam. Boshqa joylarda (O'quvchilar) — majburiy.
    */
