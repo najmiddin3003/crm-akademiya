@@ -1242,10 +1242,12 @@ export default function ExamEntryV2({
         />
       </div>
 
-      {newOpen && groupless && <NewStudentDrawerV2 groups={groups} onClose={() => setNewOpen(false)} onSaved={(pupil) => addExtra(pupil, true)} />}
+      {/* Imtihonda telefon ixtiyoriy (guruhli va guruhsiz, 01.11.2026) — O'quvchilar bo'limida majburiyligicha. */}
+      {newOpen && groupless && <NewStudentDrawerV2 phoneOptional groups={groups} onClose={() => setNewOpen(false)} onSaved={(pupil) => addExtra(pupil, true)} />}
 
       {newOpen && !groupless && group && (
         <NewStudentDrawerV2
+          phoneOptional
           initialGroupId={group.id}
           groups={groups}
           onClose={() => setNewOpen(false)}

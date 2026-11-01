@@ -39,7 +39,8 @@ import type { StudentRow } from "@/lib/studentsData";
 //
 // Taxminlar (design/v2/SAVOLLAR.md 81–84):
 //   • majburiy — rasmdagidek: Ism, Familiya, Telefon, Kategoriya, Manba («ixtiyoriy»
-//     yozilmaganlari); eski oynada faqat Ism va Manba edi;
+//     yozilmaganlari); eski oynada faqat Ism va Manba edi. ISTISNO (01.11.2026): Imtihon →
+//     Natija kiritish (guruhli va guruhsiz) dan ochilganda telefon ixtiyoriy (`phoneOptional`);
 //   • FILIAL — navbardagi filial (server o'quvchini o'shanga yozadi); maydon faqat
 //     ko'rsatadi, boshqa filial uchun navbarda almashtiriladi;
 //   • guruh kategoriyasi bazada yo'q — a'zolarining ko'pchiligi kategoriyasi
@@ -56,11 +57,17 @@ export interface NewStudentDrawerProps {
   groupCategory?: Map<number, string>;
   /** Oldindan tanlangan guruh (Imtihon → Natija kiritish → «O'quvchi qo'shish», 23.10.2026). */
   initialGroupId?: number;
+  /**
+   * Telefon ixtiyoriy (Imtihon → Natija kiritish, guruhli va guruhsiz, 01.11.2026): imtihon
+   * topshirayotgan o'quvchining raqami ko'pincha qo'lda bo'lmaydi. Bo'sh qoldirsa bo'ladi;
+   * yozilgan bo'lsa — baribir to'liq 9 raqam. Boshqa joylarda (O'quvchilar) — majburiy.
+   */
+  phoneOptional?: boolean;
 }
 
 type FieldKey = "firstName" | "lastName" | "phone" | "birth" | "extraPhone" | "category" | "branch" | "source";
 
-export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGroups, groupCategory, initialGroupId }: NewStudentDrawerProps) {
+export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGroups, groupCategory, initialGroupId, phoneOptional = false }: NewStudentDrawerProps) {
   const { t } = useT();
   const router = useRouter();
   const branch = useBranch();
@@ -119,7 +126,7 @@ export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGrou
   const errors: Record<FieldKey, string> = {
     firstName: !firstName.trim() ? t("Ismni kiriting") : "",
     lastName: !lastName.trim() ? t("Familiyani kiriting") : "",
-    phone: phone.length === 0 ? t("Telefon raqamini kiriting") : phone.length < 9 ? t("Raqam to'liq emas — 9 ta raqam kerak") : "",
+    phone: phone.length === 0 ? (phoneOptional ? "" : t("Telefon raqamini kiriting")) : phone.length < 9 ? t("Raqam to'liq emas — 9 ta raqam kerak") : "",
     birth: birthParsed.state === "partial" || birthParsed.state === "invalid" ? t("Sana noto'g'ri — kk.oo.yyyy") : "",
     extraPhone: showExtra && extraPhone.length > 0 && extraPhone.length < 9 ? t("Raqam to'liq emas — 9 ta raqam kerak") : "",
     category: !category && categoryNames.length > 0 ? t("Kategoriyani tanlang") : "",
@@ -329,6 +336,7 @@ export default function NewStudentDrawerV2({ onClose, onSaved, groups: givenGrou
             <div data-field="phone">
               <Field
                 label={t("Telefon")}
+                optional={phoneOptional}
                 error={shown("phone")}
                 warning={
                   dupList.length > 0 ? (
