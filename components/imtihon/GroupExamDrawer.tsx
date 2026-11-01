@@ -15,7 +15,7 @@ import { groupLabel } from "@/lib/groups";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { selectPlaceholder } from "@/lib/selectPlaceholder";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupAvgPct, imPct, imTier, type GroupExam } from "@/lib/imtihon";
+import { groupAvgPct, groupExamMonth, imPct, imTier, type GroupExam } from "@/lib/imtihon";
 import TierBadge from "./TierBadge";
 import NewStudentModal from "./NewStudentModal";
 import { useT } from "@/components/shared/Language";
@@ -49,6 +49,11 @@ import { useT } from "@/components/shared/Language";
 //
 // Saqlash → POST /api/imtihon/group (`group_exams`), u har bir o'quvchi
 // natijasini `monthly_exams` ga ham ko'chiradi (o'quvchilar boti o'qiydi).
+//
+// TAHRIR (01.11.2026, `editing`): maydonlar sarhisobdan to'ladi, fan va guruh qulf,
+// ro'yxat — guruhning hozirgi o'quvchilari + sarhisobda bo'lib guruhdan chiqqanlar;
+// bo'sh qoldirilgani sarhisobdan chiqadi. Saqlash → PUT /api/imtihon/group/:id
+// (yangi versiyadagi ExamEntryV2 bilan bir xil qoida).
 
 const inputCls =
   "w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -78,43 +83,64 @@ export default function GroupExamDrawer({
   onClose,
   onSaved,
   initialMonth,
+  editing = null,
 }: {
   onClose: () => void;
   onSaved: (exam: GroupExam) => void;
   /** Ro'yxatdagi filtr oyi ("YYYY-MM") — panel shu oy bilan ochiladi. */
   initialMonth?: string;
+  /** Tahrirlanadigan sarhisob (bo'lmasa — yangi natija). */
+  editing?: GroupExam | null;
 }) {
   const { t, months: MONTH_NAMES } = useT();
   const modal = useModalClose(onClose, "drawer");
   const { showSuccess, showError } = useToast();
+  const ed = editing;
 
   const { courses, loading: coursesLoading } = useOfflineCourseList();
   const { teachers, loading: teachersLoading } = useTeachers();
   const { groups, loading: groupsLoading } = useGroups();
 
-  const [date, setDate] = useState(() => uzDateIso());
-  const [month, setMonth] = useState(() => (initialMonth && /^\d{4}-\d{2}$/.test(initialMonth) ? initialMonth : uzDateIso().slice(0, 7)));
-  const [course, setCourse] = useState("");
+  const [date, setDate] = useState(() => ed?.date || uzDateIso());
+  const [month, setMonth] = useState(() =>
+    ed ? groupExamMonth(ed) : initialMonth && /^\d{4}-\d{2}$/.test(initialMonth) ? initialMonth : uzDateIso().slice(0, 7),
+  );
+  const [course, setCourse] = useState(ed?.course ?? "");
   const [teacherId, setTeacherId] = useState("");
-  const [groupId, setGroupId] = useState("");
+  const [groupId, setGroupId] = useState(ed ? String(ed.groupId) : "");
   // Qaysi guruh uchun yuklangani bilan birga saqlanadi — "yuklanmoqda"
   // holati shundan hosil qilinadi va guruh almashganda eski ro'yxat bir
   // zum ham ko'rinmaydi.
   const [loaded, setLoaded] = useState<{ groupId: string; list: Pupil[] } | null>(null);
-  const students = useMemo<Pupil[]>(
-    () => (loaded && loaded.groupId === groupId ? loaded.list : []),
-    [loaded, groupId],
-  );
+  // Tahrirda ro'yxat oxirida — sarhisobda bor, lekin guruhda endi yo'q o'quvchilar.
+  const { students, extraIds } = useMemo(() => {
+    const roster = loaded && loaded.groupId === groupId ? loaded.list : [];
+    if (!ed || !loaded || loaded.groupId !== groupId) return { students: roster, extraIds: new Set<number>() };
+    const have = new Set(roster.map((p) => p.id));
+    const extra = ed.students
+      .filter((s) => !have.has(s.pupilId))
+      .map((s) => ({ id: s.pupilId, firstName: s.name, lastName: "", phone: s.phone }) as unknown as Pupil);
+    return { students: [...roster, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
+  }, [loaded, groupId, ed]);
   const studentsLoading = Boolean(groupId) && loaded?.groupId !== groupId;
   /** Shu paneldan yangi qo'shilgan o'quvchilar — jadvalda "Yangi" yorlig'i. */
   const [addedIds, setAddedIds] = useState<number[]>([]);
-  const [total, setTotal] = useState("");
+  const [total, setTotal] = useState(ed ? String(ed.total) : "");
   /** pupilId → kiritilgan to'g'ri javoblar soni (matn — bo'sh bo'lishi mumkin). */
-  const [correct, setCorrect] = useState<Record<number, string>>({});
+  const [correct, setCorrect] = useState<Record<number, string>>(() =>
+    ed ? Object.fromEntries(ed.students.map((s) => [s.pupilId, String(s.correct)])) : {},
+  );
   const [newStudentOpen, setNewStudentOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Tahrirda sarhisobdagi ustoz shu fan ustozlari ro'yxatidan topildimi (bir marta). */
+  const [teacherResolved, setTeacherResolved] = useState(!ed);
 
-  const courseOptions = useMemo(() => courses.map((c) => ({ value: c.name, label: c.name })), [courses]);
+  const courseOptions = useMemo(() => {
+    const list = courses.map((c) => ({ value: c.name, label: c.name }));
+    // Tahrirda fan qulf — kurs keyin o'chirilgan/qayta nomlangan bo'lsa ham ko'rinsin.
+    if (ed && !list.some((o) => o.value === ed.course)) list.unshift({ value: ed.course, label: ed.course });
+    return list;
+  }, [courses, ed]);
 
   const teacherOptions = useMemo(
     () =>
@@ -124,6 +150,16 @@ export default function GroupExamDrawer({
     [teachers, course],
   );
   const teacher = useMemo(() => teachers.find((tv) => String(tv.id) === teacherId) || null, [teachers, teacherId]);
+  // Tahrir: ro'yxatdan tanlanmagan bo'lsa — sarhisobdagi ustoz ismi o'zi qoladi.
+  const teacherName = teacher?.name ?? (ed && !teacherId ? ed.teacher : "");
+
+  // Tahrir: sarhisobdagi ustoz shu fan ustozlari orasida bo'lsa — ro'yxatdagi tanlov
+  // (render paytida, ro'yxat kelgach bir marta).
+  if (!teacherResolved && (teachers.length > 0 || !teachersLoading)) {
+    setTeacherResolved(true);
+    const found = ed ? teachers.find((tv) => teachesCourse(tv.kurs, ed.course) && norm(tv.name) === norm(ed.teacher)) : undefined;
+    if (found) setTeacherId(String(found.id));
+  }
 
   // Fanning guruhlari; tanlangan ustozniki BIRINCHI, alohida sarlavha ostida.
   const groupOptions = useMemo(() => {
@@ -177,6 +213,7 @@ export default function GroupExamDrawer({
 
   function changeTeacher(v: string) {
     setTeacherId(v);
+    if (ed) return; // tahrirda guruh va natijalar qoladi
     setGroupId("");
     setCorrect({});
     setAddedIds([]);
@@ -226,21 +263,21 @@ export default function GroupExamDrawer({
 
   async function save() {
     if (!course) return showError(t("Fan yo'nalishini tanlang"));
-    if (!teacher) return showError(t("Ustozni tanlang"));
+    if (!teacherName) return showError(t("Ustozni tanlang"));
     if (!groupId) return showError(t("Guruhni tanlang"));
     if (!date) return showError(t("Imtihon sanasini tanlang"));
     if (totalNum <= 0) return showError(t("Savollar sonini kiriting"));
     if (filled.length === 0) return showError(t("Kamida bitta o'quvchining natijasini kiriting"));
     setSaving(true);
     try {
-      const res = await fetch("/api/imtihon/group", {
-        method: "POST",
+      const res = await fetch(ed ? `/api/imtihon/group/${ed.id}` : "/api/imtihon/group", {
+        method: ed ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date,
           month,
           course,
-          teacher: teacher.name,
+          teacher: teacherName,
           groupId: Number(groupId),
           total: totalNum,
           students: filled.map(({ p }) => ({ pupilId: p.id, correct: Math.trunc(Number(correct[p.id])) })),
@@ -254,7 +291,12 @@ export default function GroupExamDrawer({
       }
       const exam = data.exam as GroupExam;
       onSaved(exam);
-      showSuccess(t("Sarhisob saqlandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct }));
+      const p = { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct };
+      showSuccess(
+        ed
+          ? t("Sarhisob yangilandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", p)
+          : t("Sarhisob saqlandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", p),
+      );
       modal.close();
     } catch {
       showError(t("Serverga ulanib bo'lmadi"));
@@ -277,9 +319,9 @@ export default function GroupExamDrawer({
     <Modal onClose={onClose} controller={modal} bare variant="drawer" size="2xl" zIndex={110} locked={saving}>
       <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
         <div className="min-w-0">
-          <h3 className="text-[16px] font-semibold">{t("Natija qo'shish")}</h3>
+          <h3 className="text-[16px] font-semibold">{ed ? t("Natijani tahrirlash") : t("Natija qo'shish")}</h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">
-            {t("Guruh bo'yicha sarhisob — o'zlashtirish avtomatik hisoblanadi")}
+            {ed ? t("Bo'sh qoldirilgan o'quvchi sarhisobdan chiqadi") : t("Guruh bo'yicha sarhisob — o'zlashtirish avtomatik hisoblanadi")}
           </p>
         </div>
         <button
@@ -296,7 +338,7 @@ export default function GroupExamDrawer({
         {/* Qadamlar chizig'i */}
         <div className="flex flex-wrap gap-1.5">
           <Step n={1} label={t("Fan")} done={Boolean(course)} />
-          <Step n={2} label={t("Ustoz")} done={Boolean(teacherId)} />
+          <Step n={2} label={t("Ustoz")} done={Boolean(teacherName)} />
           <Step n={3} label={t("Guruh")} done={Boolean(groupId)} />
           <Step n={4} label={t("Savollar")} done={totalNum > 0} />
           <Step n={5} label={t("Natijalar")} done={filled.length > 0} />
@@ -311,6 +353,7 @@ export default function GroupExamDrawer({
             options={courseOptions}
             placeholder={selectPlaceholder(coursesLoading, courseOptions.length, "Kurs qo'shilmagan")}
             loading={coursesLoading}
+            disabled={Boolean(ed)}
             searchable
             searchPlaceholder={t("Fanni qidirish")}
           />
@@ -320,7 +363,7 @@ export default function GroupExamDrawer({
             value={teacherId}
             onChange={changeTeacher}
             options={teacherOptions}
-            placeholder={teacherPlaceholder}
+            placeholder={ed && !teacherId ? ed.teacher : teacherPlaceholder}
             loading={Boolean(course) && teachersLoading}
             disabled={!course}
             searchable
@@ -335,9 +378,9 @@ export default function GroupExamDrawer({
           value={groupId}
           onChange={changeGroup}
           options={groupOptions}
-          placeholder={groupPlaceholder}
+          placeholder={ed ? ed.groupLabel : groupPlaceholder}
           loading={Boolean(course) && groupsLoading}
-          disabled={!teacherId}
+          disabled={Boolean(ed) || !teacherId}
           searchable
           searchPlaceholder={t("Guruhni qidirish")}
           emptyText={t("Bu fan bo'yicha guruh yo'q")}
@@ -444,6 +487,11 @@ export default function GroupExamDrawer({
                                 {t("Yangi")}
                               </span>
                             )}
+                            {extraIds.has(p.id) && (
+                              <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full bg-secondary text-[11px] font-medium text-muted-foreground">
+                                {t("guruhda emas")}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <input
@@ -504,7 +552,7 @@ export default function GroupExamDrawer({
           disabled={saving || filled.length === 0}
           className="h-9 px-6 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? t("Saqlanmoqda…") : t("Sarhisobni saqlash")}
+          {saving ? t("Saqlanmoqda…") : ed ? t("O'zgarishlarni saqlash") : t("Sarhisobni saqlash")}
         </button>
       </div>
 

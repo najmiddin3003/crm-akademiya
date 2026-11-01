@@ -1,17 +1,18 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { FilePlus, Link2, Share2 } from "lucide-react";
+import { Archive, ArrowLeft, FilePlus, Link2, Share2 } from "lucide-react";
 import Select from "@/components/ui/Select";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import DeleteConfirmModal from "@/components/offline-courses/DeleteConfirmModal";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
+import { groupExamMonth, liveExams, type GroupExam } from "@/lib/imtihon";
 import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
-import { sarhisobCsvRows, useCopyPublicLink, useGroupExams, useMonthLabel } from "./sarhisobCore";
+import { sarhisobCsvRows, upsertExam, useCopyPublicLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useT } from "@/components/shared/Language";
 
 // Imtihon → Sarhisob tabi (referens sarhisob.html → renderList).
@@ -29,6 +30,9 @@ import { useT } from "@/components/shared/Language";
 // «Ochiq havolani nusxalash» (01.11.2026) — o'quvchilar natijani kirishsiz
 // ko'radigan /natijalar sahifasi havolasi (joriy filial + tanlangan oy; oyda natija
 // bo'lmasa — oysiz, sarhisobCore.publicResultsUrl).
+// Tahrirlash / arxivlash / o'chirish (01.11.2026) — tafsilot panelining pastki qatorida
+// (yangi versiyadagi SarhisobListV2 bilan bir xil qoida): arxivdagilar ro'yxat, KPI va
+// solishtirishdan yashiriladi, «Arxiv (n)» — ularni barcha oylar bo'yicha ko'rsatadi.
 
 function Kpi({ value, label }: { value: string | number; label: string }) {
   return (
@@ -39,6 +43,9 @@ function Kpi({ value, label }: { value: string | number; label: string }) {
   );
 }
 
+const outlineBtn =
+  "inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed";
+
 export default function SarhisobView() {
   const { t } = useT();
   const { showSuccess } = useToast();
@@ -46,30 +53,39 @@ export default function SarhisobView() {
   // Ro'yxat, oy nomi va CSV — umumiy yadro (sarhisobCore.ts; yangi versiya ham shundan).
   const { exams, setExams, loading, branchId } = useGroupExams();
   const copyPublicLink = useCopyPublicLink();
+  const { busyId, setArchived, remove } = useExamActions(setExams);
   // `null` — foydalanuvchi hali tanlamagan: eng oxirgi sarhisob oyi
   // (bo'lmasa joriy oy) ko'rsatiladi.
   const [fMonth, setFMonth] = useState<string | null>(null);
   const [fCourse, setFCourse] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [editing, setEditing] = useState<GroupExam | null>(null);
+  const [confirmDel, setConfirmDel] = useState<GroupExam | null>(null);
+  /** Arxiv ko'rinishi — arxivdagi sarhisoblar, barcha oylar. */
+  const [archiveView, setArchiveView] = useState(false);
 
   const monthLabel = useMonthLabel();
 
+  const live = useMemo(() => liveExams(exams), [exams]);
+  const archived = useMemo(() => exams.filter((r) => r.archived), [exams]);
+
   const monthOptions = useMemo(() => {
-    const set = new Set(exams.map(groupExamMonth));
+    const set = new Set(live.map(groupExamMonth));
     set.add(uzDateIso().slice(0, 7));
     return [...set].sort().reverse().map((m) => ({ value: m, label: monthLabel(m) }));
-  }, [exams, monthLabel]);
+  }, [live, monthLabel]);
   const fm = fMonth ?? monthOptions[0]?.value ?? "";
 
+  const base = archiveView ? archived : live;
   const courseOptions = useMemo(
-    () => [...new Set(exams.map((r) => r.course))].sort((a, b) => a.localeCompare(b)).map((c) => ({ value: c, label: c })),
-    [exams],
+    () => [...new Set(base.map((r) => r.course))].sort((a, b) => a.localeCompare(b)).map((c) => ({ value: c, label: c })),
+    [base],
   );
 
   const rows = useMemo(
-    () => exams.filter((r) => (!fm || groupExamMonth(r) === fm) && (!fCourse || r.course === fCourse)),
-    [exams, fm, fCourse],
+    () => base.filter((r) => (archiveView || !fm || groupExamMonth(r) === fm) && (!fCourse || r.course === fCourse)),
+    [base, archiveView, fm, fCourse],
   );
 
   const studentCount = rows.reduce((s, r) => s + r.studentCount, 0);
@@ -82,9 +98,14 @@ export default function SarhisobView() {
     showSuccess(t("📤 Yuklab olindi — {n} ta sarhisob (Excel'da ochiladi)", { n: list.length }));
   }
 
+  function toggleArchive() {
+    setArchiveView((v) => !v);
+    setFCourse("");
+  }
+
   const onSaved = useCallback(
     (exam: GroupExam) => {
-      setExams((prev) => [exam, ...prev]);
+      setExams((prev) => upsertExam(prev, exam));
       setFMonth(groupExamMonth(exam));
       setFCourse("");
     },
@@ -97,7 +118,14 @@ export default function SarhisobView() {
     <div className="space-y-4">
       {/* Filtrlar va amallar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Select value={fm} onChange={(v) => setFMonth(v)} options={monthOptions} size="sm" className="w-44" />
+        {archiveView ? (
+          <button type="button" onClick={toggleArchive} className={outlineBtn}>
+            <ArrowLeft className="w-4 h-4" />
+            <span>{t("Ro'yxatga qaytish")}</span>
+          </button>
+        ) : (
+          <Select value={fm} onChange={(v) => setFMonth(v)} options={monthOptions} size="sm" className="w-44" />
+        )}
         <Select
           value={fCourse}
           onChange={(v) => setFCourse(v)}
@@ -107,22 +135,29 @@ export default function SarhisobView() {
           size="sm"
           className="w-48"
         />
+        {!archiveView && archived.length > 0 && (
+          <button
+            type="button"
+            onClick={toggleArchive}
+            title={t("Arxivdagi sarhisoblar — ro'yxat va ochiq sahifada ko'rinmaydi")}
+            className={outlineBtn}
+          >
+            <Archive className="w-4 h-4" />
+            <span>{t("Arxiv ({n})", { n: archived.length })}</span>
+          </button>
+        )}
         <div className="flex-1" />
         <button
           type="button"
-          onClick={() => void copyPublicLink(branchId, exams.some((r) => groupExamMonth(r) === fm) ? fm : "")}
+          onClick={() => void copyPublicLink(branchId, live.some((r) => groupExamMonth(r) === fm) ? fm : "")}
           disabled={loading}
           title={t("O'quvchilar natijalarni kirishsiz ko'radigan sahifa havolasi")}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          className={outlineBtn}
         >
           <Link2 className="w-4 h-4" />
           <span>{t("Ochiq havolani nusxalash")}</span>
         </button>
-        <button
-          onClick={() => exportCsv(rows, fm)}
-          disabled={rows.length === 0}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-card hover:bg-secondary text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <button onClick={() => exportCsv(rows, archiveView ? "arxiv" : fm)} disabled={rows.length === 0} className={outlineBtn}>
           <Share2 className="w-4 h-4" />
           <span>{t("Excelga chiqarish")}</span>
         </button>
@@ -136,36 +171,55 @@ export default function SarhisobView() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi value={rows.length} label={t("Sarhisob soni")} />
-        <Kpi value={studentCount} label={t("Natija kiritilgan o'quvchi")} />
-        <Kpi value={`${centerAvg}%`} label={t("Markaz o'rtachasi")} />
-        <Kpi value={`${top}%`} label={t("Eng yuqori natija")} />
-      </div>
+      {!archiveView && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Kpi value={rows.length} label={t("Sarhisob soni")} />
+          <Kpi value={studentCount} label={t("Natija kiritilgan o'quvchi")} />
+          <Kpi value={`${centerAvg}%`} label={t("Markaz o'rtachasi")} />
+          <Kpi value={`${top}%`} label={t("Eng yuqori natija")} />
+        </div>
+      )}
 
       {/* Jadval */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="px-4 py-3 border-b border-border text-[15px] font-semibold">
-          {fm ? t("{month} sarhisoblari", { month: monthLabel(fm) }) : t("Barcha sarhisoblar")}
+        <div className="px-4 py-3 border-b border-border">
+          <div className="text-[15px] font-semibold">
+            {archiveView ? t("Arxivdagi sarhisoblar") : fm ? t("{month} sarhisoblari", { month: monthLabel(fm) }) : t("Barcha sarhisoblar")}
+          </div>
+          {archiveView && (
+            <div className="text-[12px] text-muted-foreground mt-0.5">
+              {t("Ro'yxat, ko'rsatkichlar va ochiq sahifada ko'rinmaydi; tangalar va botdagi natija o'zgarmaydi.")}
+            </div>
+          )}
         </div>
         {loading ? (
           <div className="px-4 py-8">
             <SpinnerBlock size={22} />
           </div>
         ) : rows.length === 0 ? (
-          <div className="px-5 py-10 text-center text-[13px] text-muted-foreground">
-            <div className="text-[14px] font-semibold text-foreground mb-0.5">{t("Bu oyda sarhisob yo'q")}</div>
-            {t("Guruh tanlab birinchi natijani kiriting.")}
-            <div className="mt-3.5">
-              <button
-                onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
-              >
-                <FilePlus className="w-4 h-4" />
-                {t("Natija qo'shish")}
+          archiveView ? (
+            <div className="px-5 py-10 text-center text-[13px] text-muted-foreground">
+              <div className="text-[14px] font-semibold text-foreground mb-3">{t("Arxivda sarhisob yo'q")}</div>
+              <button type="button" onClick={toggleArchive} className={outlineBtn}>
+                <ArrowLeft className="w-4 h-4" />
+                {t("Ro'yxatga qaytish")}
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="px-5 py-10 text-center text-[13px] text-muted-foreground">
+              <div className="text-[14px] font-semibold text-foreground mb-0.5">{t("Bu oyda sarhisob yo'q")}</div>
+              {t("Guruh tanlab birinchi natijani kiriting.")}
+              <div className="mt-3.5">
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90"
+                >
+                  <FilePlus className="w-4 h-4" />
+                  {t("Natija qo'shish")}
+                </button>
+              </div>
+            </div>
+          )
         ) : (
           <div className="table-box">
             <table className="w-full text-sm">
@@ -209,12 +263,39 @@ export default function SarhisobView() {
 
       {addOpen && <GroupExamDrawer onClose={() => setAddOpen(false)} onSaved={onSaved} initialMonth={fm} />}
 
+      {editing && <GroupExamDrawer key={editing.id} editing={editing} onClose={() => setEditing(null)} onSaved={onSaved} />}
+
       {open && (
         <SarhisobDetailDrawer
           exam={open}
-          all={exams}
+          all={live}
+          busy={busyId === open.id}
           onClose={() => setOpenId(null)}
           onExport={(r) => exportCsv([r], groupExamMonth(r))}
+          onEdit={() => {
+            setOpenId(null);
+            setEditing(open);
+          }}
+          onArchive={(a) => void setArchived(open, a)}
+          onDelete={() => setConfirmDel(open)}
+        />
+      )}
+
+      {confirmDel && (
+        <DeleteConfirmModal
+          title={t("Sarhisobni o'chirish")}
+          message={t(
+            "Natijalar butunlay o'chadi, shu oyning Sarhisob tangalari va o'quvchilar botidagi natija qayta hisoblanadi (faqat yashirish uchun — «Arxivlash»). O'chirilsinmi:",
+          )}
+          name={`${confirmDel.groupLabel} · ${monthLabel(groupExamMonth(confirmDel))}`}
+          onCancel={() => setConfirmDel(null)}
+          onConfirm={() => {
+            const ex = confirmDel;
+            setConfirmDel(null);
+            void remove(ex).then((ok) => {
+              if (ok) setOpenId((cur) => (cur === ex.id ? null : cur));
+            });
+          }}
         />
       )}
     </div>

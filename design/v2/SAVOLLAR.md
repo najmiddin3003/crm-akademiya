@@ -1245,6 +1245,19 @@ va o'quvchilar o'rni bilan (teng natija — teng o'rin). Qidiruv — ism (kirild
 *Savol:* hamma o'quvchining natijasi ko'rinsinmi yoki faqat o'zini qidirib topsinmi? *Taxmin:* hammasi
 («qolgan ma'lumotlarni ko'rishsin»); faqat o'zi kerak bo'lsa — kartalar yashiriladi, qidiruv qoladi.
 
+**235. Sarhisob: tahrirlash, arxivlash, o'chirish** — taxmin (01.11.2026, «edit/delete/archive ham bo'lishi
+kerak imtihonda»; rasmi yo'q)
+Ro'yxat qatoridagi ⋯ menyusi va tafsilot oynasidagi tugmalar (eski versiyada — tafsilot panelining pastida).
+**Tahrirlash** — «Natija kiritish» ekrani tahrir rejimida (`/imtihon?tahrir=<id>`): fan va guruh qulf
+(boshqa guruh — yangi sarhisob), ustoz, oy, sana, savollar soni va natijalar o'zgaradi; ro'yxatda guruhdan
+chiqib ketgan o'quvchi ham («guruhda emas»); bo'sh qoldirilgani sarhisobdan chiqadi. **Arxivlash** — faqat
+ko'rinish: Sarhisob ro'yxati, to'rt ko'rsatkich, taqqoslash va ochiq /natijalar sahifasida yo'q; tangalar,
+nishonlar va o'quvchilar botidagi natija O'ZGARMAYDI; «Arxiv (n)» tugmasidan ko'rinadi va qaytariladi.
+**O'chirish** — tasdiq bilan; tahrirlash kabi shu oyning Sarhisob tangalari (natija va o'sish) va botdagi
+natija qayta hisoblanadi. *Savol:* arxivdagi sarhisob tangalarni ham bekor qilsinmi? *Taxmin:* yo'q — arxiv
+«ro'yxatdan yashirish» uchun, hisobni o'zgartirish kerak bo'lsa — o'chirish. UzBMB'da test tahrirlash/o'chirish
+bor, arxiv yo'q — kerakmi, so'raladi.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

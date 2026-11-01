@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useT } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
@@ -37,6 +37,64 @@ export function useGroupExams() {
   }, []);
 
   return { exams, setExams, loading, branchId };
+}
+
+/** Saqlangan yoki tahrirlangan sarhisob ro'yxatga: bori almashadi, yangisi boshiga qo'shiladi. */
+export function upsertExam(list: GroupExam[], exam: GroupExam): GroupExam[] {
+  return list.some((r) => r.id === exam.id) ? list.map((r) => (r.id === exam.id ? exam : r)) : [exam, ...list];
+}
+
+/**
+ * ARXIVLASH va O'CHIRISH (01.11.2026) — eski va yangi versiya uchun bitta (PATCH/DELETE
+ * /api/imtihon/group/:id). Arxiv — faqat ko'rinish, so'ramaydi (yangi versiyada xabarda
+ * «Arxivdan chiqarish»); o'chirishni chaqiruvchi avval tasdiqlatadi. `busyId` — so'rov
+ * ketayotgan sarhisob (tugmalar o'chiq turadi).
+ */
+export function useExamActions(setExams: Dispatch<SetStateAction<GroupExam[]>>) {
+  const { t } = useT();
+  const { showError, showToast } = useToast();
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  async function send(exam: GroupExam, init: RequestInit): Promise<{ ok: boolean; exam?: GroupExam }> {
+    setBusyId(exam.id);
+    try {
+      const res = await fetch(`/api/imtihon/group/${exam.id}`, init);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        showError(t(data.error || "Saqlanmadi"));
+        return { ok: false };
+      }
+      return { ok: true, exam: data.exam as GroupExam | undefined };
+    } catch {
+      showError(t("Serverga ulanib bo'lmadi"));
+      return { ok: false };
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function setArchived(exam: GroupExam, archived: boolean): Promise<boolean> {
+    const r = await send(exam, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ archived }) });
+    if (!r.ok || !r.exam) return false;
+    setExams((prev) => upsertExam(prev, r.exam!));
+    showToast({
+      tone: "success",
+      title: archived ? t("Sarhisob arxivlandi") : t("Sarhisob arxivdan chiqarildi"),
+      detail: archived ? [exam.groupLabel, t("Tangalar va botdagi natija o'zgarmaydi.")] : exam.groupLabel,
+      action: archived ? { label: t("Arxivdan chiqarish"), onClick: () => void setArchived(exam, false) } : undefined,
+    });
+    return true;
+  }
+
+  async function remove(exam: GroupExam): Promise<boolean> {
+    const r = await send(exam, { method: "DELETE" });
+    if (!r.ok) return false;
+    setExams((prev) => prev.filter((x) => x.id !== exam.id));
+    showToast({ tone: "success", title: t("Sarhisob o'chirildi"), detail: t("{groupLabel} · {n} o'quvchi", { groupLabel: exam.groupLabel, n: exam.studentCount }) });
+    return true;
+  }
+
+  return { busyId, setArchived, remove };
 }
 
 /**

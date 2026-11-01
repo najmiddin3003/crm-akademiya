@@ -9,7 +9,7 @@ import { useTeachers } from "@/hooks/useTeachers";
 import { useGroups } from "@/hooks/useGroups";
 import { pupilFullName, type Pupil } from "@/lib/pupilsData";
 import { uzDateIso } from "@/lib/uzTime";
-import { groupAvgPct, groupExamMonth, imPct, type GroupExam } from "@/lib/imtihon";
+import { groupAvgPct, groupExamMonth, imPct, liveExams, type GroupExam } from "@/lib/imtihon";
 import V2Picker, { type PickerOption } from "@/components/v2/form/V2Picker";
 import V2DateField from "@/components/v2/form/V2DateField";
 import V2Confirm from "@/components/v2/form/V2Confirm";
@@ -45,8 +45,26 @@ import { ImtihonHeader, ScoreBar, examBand } from "./examBits";
 // saqlanmaydi; server o'quvchi ismini bazadan oladi, natijani `monthly_exams` ga ham
 // ko'chiradi — o'quvchilar boti o'qiydi). Rasmdagi «Namuna» belgisi — dizaynerning
 // izohi, ko'rsatilmaydi.
+//
+// TAHRIR REJIMI (01.11.2026, `editing`; /imtihon?tahrir=<id>): maydonlar sarhisobdan
+// to'ladi, GURUH va FAN qulf (boshqa guruh — boshqa o'quvchilar; server ham ruxsat
+// bermaydi), ro'yxat — guruhning hozirgi o'quvchilari + sarhisobda bo'lib guruhdan
+// chiqib ketganlar («guruhda emas»). Bo'sh qoldirilgan o'quvchi sarhisobdan chiqadi.
+// Saqlash — PUT /api/imtihon/group/:id (tangalar va bot ko'zgusi serverda qayta
+// moslanadi). «Saqlanmagan» — boshlang'ich holatdan farq qilsa.
 
 const norm = (s: string) => (s || "").trim().toLowerCase();
+
+/** Sarhisobdagi natijalar → maydon qiymatlari (tahrir rejimining boshlang'ich holati). */
+const correctOf = (exam: GroupExam): Record<number, string> => Object.fromEntries(exam.students.map((s) => [s.pupilId, String(s.correct)]));
+
+/** Ikki natija to'plami bir xilmi (bo'sh va yo'q — teng). */
+function sameCorrect(a: Record<number, string>, b: Record<number, string>): boolean {
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if ((a[Number(k)] ?? "") !== (b[Number(k)] ?? "")) return false;
+  }
+  return true;
+}
 
 /** "Biologiya, Sertifikat" ichida `course` bormi (eski paneldagi qoida). */
 function teachesCourse(kurs: string, course: string): boolean {
@@ -71,6 +89,7 @@ const smallBtn =
 export default function ExamEntryV2({
   exams,
   initialMonth,
+  editing = null,
   onSaved,
   onLeave,
 }: {
@@ -78,10 +97,13 @@ export default function ExamEntryV2({
   exams: GroupExam[];
   /** "YYYY-MM" — ro'yxatdagi oy (manzil `oy=`), bo'lmasa joriy oy. */
   initialMonth: string;
+  /** Tahrirlanadigan sarhisob (bo'lmasa — yangi natija). Almashsa — `key` bilan qayta o'rnatiladi. */
+  editing?: GroupExam | null;
   onSaved: (exam: GroupExam) => void;
   /** Ro'yxatga qaytish (saqlanmagan natija bo'lsa — avval so'raladi). */
   onLeave: () => void;
 }) {
+  const ed = editing;
   const { t } = useT();
   const [lang] = useLang();
   const { showSuccess, showError } = useToast();
@@ -91,20 +113,24 @@ export default function ExamEntryV2({
   const { teachers, loading: teachersLoading } = useTeachers();
   const { groups, loading: groupsLoading } = useGroups();
 
-  const [course, setCourse] = useState("");
+  const [course, setCourse] = useState(ed?.course ?? "");
   /** Fan guruhdan avtomatik olingan — yorliq yonida «avto». */
   const [courseAuto, setCourseAuto] = useState(false);
-  /** Xodim id; guruhdagi ustoz ro'yxatda bo'lmasa — "g:<ism>". */
-  const [teacherId, setTeacherId] = useState("");
-  const [groupId, setGroupId] = useState("");
-  const [month, setMonth] = useState(initialMonth);
-  const [date, setDate] = useState(() => uzDateIso());
-  const [total, setTotal] = useState("");
+  /** Xodim id; guruhdagi (tahrirda — sarhisobdagi) ustoz ro'yxatda bo'lmasa — "g:<ism>". */
+  const [teacherId, setTeacherId] = useState(ed?.teacher ? `g:${ed.teacher}` : "");
+  const [groupId, setGroupId] = useState(ed ? String(ed.groupId) : "");
+  const [month, setMonth] = useState(ed ? groupExamMonth(ed) : initialMonth);
+  const [date, setDate] = useState(() => ed?.date || uzDateIso());
+  const [total, setTotal] = useState(ed ? String(ed.total) : "");
   // Qaysi guruh uchun yuklangani bilan birga — guruh almashganda eski ro'yxat bir
   // zum ham ko'rinmaydi (eski paneldagi usul).
   const [loaded, setLoaded] = useState<{ groupId: string; list: Pupil[] } | null>(null);
   /** pupilId → kiritilgan to'g'ri javoblar (matn — bo'sh bo'lishi mumkin). */
-  const [correct, setCorrect] = useState<Record<number, string>>({});
+  const [correct, setCorrect] = useState<Record<number, string>>(() => (ed ? correctOf(ed) : {}));
+  /** Tahrir saqlandi — endi «saqlanmagan» emas (ro'yxatga qaytguncha). */
+  const [saved, setSaved] = useState(false);
+  /** Tahrirda sarhisobdagi ustoz xodimlar ro'yxatidan topilganmi (bir marta, ro'yxat kelgach). */
+  const [teacherResolved, setTeacherResolved] = useState(!ed);
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [focusRow, setFocusRow] = useState<number | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
@@ -116,11 +142,29 @@ export default function ExamEntryV2({
   const inputs = useRef(new Map<number, HTMLInputElement>());
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const students = useMemo<Pupil[]>(() => (loaded && loaded.groupId === groupId ? loaded.list : []), [loaded, groupId]);
+  // Tahrirda ro'yxat oxirida — sarhisobda bor, lekin guruhda endi yo'q o'quvchilar
+  // (ism/telefon sarhisobdagidek; server ham ularning eski yozuvini saqlaydi).
+  const { students, extraIds } = useMemo(() => {
+    const roster = loaded && loaded.groupId === groupId ? loaded.list : [];
+    if (!ed || !loaded || loaded.groupId !== groupId) return { students: roster, extraIds: new Set<number>() };
+    const have = new Set(roster.map((p) => p.id));
+    const extra = ed.students
+      .filter((s) => !have.has(s.pupilId))
+      .map((s) => ({ id: s.pupilId, firstName: s.name, lastName: "", phone: s.phone }) as unknown as Pupil);
+    return { students: [...roster, ...extra], extraIds: new Set(extra.map((p) => p.id)) };
+  }, [loaded, groupId, ed]);
   const studentsLoading = Boolean(groupId) && loaded?.groupId !== groupId;
   const group = useMemo(() => groups.find((g) => String(g.id) === groupId) ?? null, [groups, groupId]);
   const teacherName = teacherId.startsWith("g:") ? teacherId.slice(2) : (teachers.find((x) => String(x.id) === teacherId)?.name ?? "");
   const totalNum = Math.min(999, Math.trunc(Number(total) || 0));
+
+  // Tahrir: sarhisobdagi ustoz xodimlar ro'yxatida bo'lsa — ro'yxatdagi tanlov (render
+  // paytida, bir marta; topilmasa ism bilan qoladi).
+  if (!teacherResolved && teachers.length > 0) {
+    setTeacherResolved(true);
+    const found = ed ? teachers.find((x) => norm(x.name) === norm(ed.teacher)) : undefined;
+    if (found && teacherId === `g:${ed?.teacher}`) setTeacherId(String(found.id));
+  }
 
   // Guruh tanlangach uning o'quvchilari yuklanadi — hammasi jadvalga tushadi.
   useEffect(() => {
@@ -164,11 +208,17 @@ export default function ExamEntryV2({
         list = [...mine.map((o) => ({ ...o, group: t("{course} o'qituvchilari", { course }) })), ...rest.map((o) => ({ ...o, group: t("Boshqa o'qituvchilar") }))];
       }
     }
-    if (teacherId.startsWith("g:")) list = [{ value: teacherId, label: teacherId.slice(2), sublabel: t("guruhdagi ustoz") }, ...list];
+    if (teacherId.startsWith("g:")) list = [{ value: teacherId, label: teacherId.slice(2), sublabel: ed ? t("sarhisobdagi ustoz") : t("guruhdagi ustoz") }, ...list];
     return list;
-  }, [teachers, course, teacherId, t]);
+  }, [teachers, course, teacherId, t, ed]);
 
   const groupOptions = useMemo<PickerOption[]>(() => {
+    // Tahrirda guruh qulf — faqat sarhisobning o'z guruhi (arxivga o'tgan yoki o'chgan bo'lsa ham).
+    if (ed) {
+      const g = groups.find((x) => x.id === ed.groupId);
+      const name = (g?.name || ed.groupName || "").trim() || String(ed.groupId);
+      return [{ value: String(ed.groupId), label: `${ed.course || t("Kurssiz")} · ${name}`, lead: <span className={`mt-1 size-2 rounded-full ${FAN_DOT[fanOf(ed.course)]}`} aria-hidden /> }];
+    }
     const live = groups.filter((g) => g.status !== "archive");
     const pool = course ? live.filter((g) => norm(g.course) === norm(course)) : live;
     const tn = norm(teacherName);
@@ -185,7 +235,7 @@ export default function ExamEntryV2({
     const mine = pool.filter((g) => norm(g.teacher) === tn);
     const rest = pool.filter((g) => norm(g.teacher) !== tn);
     return [...mine.map((g) => toOpt(g, t("{teacher} guruhlari", { teacher: teacherName }))), ...rest.map((g) => toOpt(g, mine.length ? t("Boshqa guruhlar") : undefined))];
-  }, [groups, course, teacherName, t]);
+  }, [groups, course, teacherName, t, ed]);
 
   const monthOptions = useMemo<PickerOption[]>(() => {
     const now = uzDateIso().slice(0, 7);
@@ -256,7 +306,17 @@ export default function ExamEntryV2({
   const rows = students.map((p) => ({ p, raw: correct[p.id] ?? "", pct: pctOf(p) }));
   const filled = rows.filter((r): r is { p: Pupil; raw: string; pct: number } => r.pct !== null);
   const avg = filled.length ? groupAvgPct(filled.map((r) => ({ pct: r.pct }))) : null;
-  const dirty = Object.values(correct).some((v) => v !== "") || addedIds.length > 0;
+  const initial = useMemo(() => (ed ? { correct: correctOf(ed), total: String(ed.total), date: ed.date, month: groupExamMonth(ed), teacher: ed.teacher } : null), [ed]);
+  const dirty =
+    !saved &&
+    (initial
+      ? !sameCorrect(correct, initial.correct) ||
+        total !== initial.total ||
+        date !== initial.date ||
+        month !== initial.month ||
+        norm(teacherName) !== norm(initial.teacher) ||
+        addedIds.length > 0
+      : Object.values(correct).some((v) => v !== "") || addedIds.length > 0);
 
   // Saqlanmagan natija bor — sahifani yopish/yangilashdan oldin brauzer so'raydi.
   useEffect(() => {
@@ -268,11 +328,17 @@ export default function ExamEntryV2({
     return () => window.removeEventListener("beforeunload", onBefore);
   }, [dirty]);
 
-  // Shu guruhning shu oy (va fan) sarhisobi allaqachon bormi — to'xtatmaydi, ogohlantiradi.
+  // Shu guruhning shu oy (va fan) sarhisobi allaqachon bormi — to'xtatmaydi, ogohlantiradi
+  // (tahrirlanayotganining o'zi hisob emas; arxivdagisi hisob — tangalarda u ham bor).
   const dup = useMemo(
-    () => (groupId ? exams.find((r) => r.groupId === Number(groupId) && groupExamMonth(r) === month && (!course || norm(r.course) === norm(course))) ?? null : null),
-    [exams, groupId, month, course],
+    () =>
+      groupId
+        ? (exams.find((r) => r.id !== ed?.id && r.groupId === Number(groupId) && groupExamMonth(r) === month && (!course || norm(r.course) === norm(course))) ?? null)
+        : null,
+    [exams, groupId, month, course, ed],
   );
+  // O'ng karta taqqoslashi — arxivdagisiz va tahrirlanayotganining eski natijasisiz.
+  const sideExams = useMemo(() => liveExams(exams).filter((r) => r.id !== ed?.id), [exams, ed]);
 
   function focusRowAt(i: number) {
     const p = students[i];
@@ -312,8 +378,8 @@ export default function ExamEntryV2({
     if (filled.length === 0) return showError(t("Kamida bitta o'quvchining natijasini kiriting"));
     setSaving(true);
     try {
-      const res = await fetch("/api/imtihon/group", {
-        method: "POST",
+      const res = await fetch(ed ? `/api/imtihon/group/${ed.id}` : "/api/imtihon/group", {
+        method: ed ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date,
@@ -332,10 +398,14 @@ export default function ExamEntryV2({
         return;
       }
       const exam = data.exam as GroupExam;
+      const p = { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct };
       showSuccess(
-        t("Sarhisob saqlandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", { groupLabel: exam.groupLabel, studentCount: exam.studentCount, avgPct: exam.avgPct }),
+        ed
+          ? t("Sarhisob yangilandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", p)
+          : t("Sarhisob saqlandi — {groupLabel} · {studentCount} o'quvchi · o'rtacha {avgPct}%", p),
       );
       // Saqlandi — endi «saqlanmagan» emas (beforeunload so'ramasin).
+      setSaved(true);
       setCorrect({});
       setAddedIds([]);
       onSaved(exam);
@@ -471,7 +541,7 @@ export default function ExamEntryV2({
     <div className="flex flex-col gap-4">
       <ImtihonHeader
         tab="sarhisob"
-        crumbs={[{ label: t("Sarhisob"), onClick: requestLeave }, { label: t("Natija kiritish") }]}
+        crumbs={[{ label: t("Sarhisob"), onClick: requestLeave }, { label: ed ? t("Natijani tahrirlash") : t("Natija kiritish") }]}
         actions={
           <button type="button" onClick={exportCsv} disabled={!students.length} className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}>
             <Download className="size-4" strokeWidth={1.75} aria-hidden />
@@ -494,6 +564,7 @@ export default function ExamEntryV2({
             value={course}
             onChange={changeCourse}
             options={courseOptions}
+            disabled={Boolean(ed)}
             loading={coursesLoading && !courseOptions.length}
             placeholder={t("Fanni tanlang")}
             searchPlaceholder={t("Fanni qidirish")}
@@ -527,6 +598,7 @@ export default function ExamEntryV2({
             value={groupId}
             onChange={changeGroup}
             options={groupOptions}
+            disabled={Boolean(ed)}
             loading={groupsLoading && !groupOptions.length}
             placeholder={t("Guruhni tanlang")}
             searchable
@@ -596,7 +668,7 @@ export default function ExamEntryV2({
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <span className="text-v2-body font-semibold text-v2-text">{studentsLoading ? t("O'quvchilar") : t("{n} ta o'quvchi", { n: students.length })}</span>{" "}
-                  <span className="text-v2-small text-v2-text-2">{t("guruhdan avtomatik olindi")}</span>
+                  <span className="text-v2-small text-v2-text-2">{ed ? t("bo'sh qoldirilgani sarhisobdan chiqadi") : t("guruhdan avtomatik olindi")}</span>
                 </div>
                 <button type="button" onClick={() => setNewOpen(true)} disabled={!group} className={smallBtn}>
                   <Plus className="size-4" strokeWidth={1.75} aria-hidden />
@@ -693,6 +765,9 @@ export default function ExamEntryV2({
                               {addedIds.includes(r.p.id) && (
                                 <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("Yangi")}</span>
                               )}
+                              {extraIds.has(r.p.id) && (
+                                <span className="ml-2 rounded-v2-sm bg-v2-surface-2 px-1.5 py-px text-v2-caption text-v2-text-2">{t("guruhda emas")}</span>
+                              )}
                             </td>
                             <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                               <div className="relative w-[104px]">
@@ -765,7 +840,7 @@ export default function ExamEntryV2({
                   </button>
                   <button type="button" onClick={() => void save()} disabled={saving} className={`${primaryBtn} justify-center disabled:opacity-60`}>
                     {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" strokeWidth={2} aria-hidden />}
-                    {t("Natijalarni saqlash")}
+                    {ed ? t("O'zgarishlarni saqlash") : t("Natijalarni saqlash")}
                   </button>
                 </div>
               </div>
@@ -773,7 +848,7 @@ export default function ExamEntryV2({
           )}
         </section>
 
-        <ExamSideCard month={month} course={course} groupAvg={avg} filled={filled.map((r) => r.pct)} exams={exams} pupil={sidePupil} onBack={() => setPicked(null)} />
+        <ExamSideCard month={month} course={course} groupAvg={avg} filled={filled.map((r) => r.pct)} exams={sideExams} pupil={sidePupil} onBack={() => setPicked(null)} />
       </div>
 
       {newOpen && group && (

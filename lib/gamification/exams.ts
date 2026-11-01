@@ -136,12 +136,37 @@ async function syncMonth(
       console.error("[gamification] Sarhisob tangasi", { groupId, month, pupilId }, e);
     }
   }
+  // Natijasi endi YO'Q o'quvchilar (01.11.2026: sarhisob o'chirildi, tahrirda natijasi
+  // olib tashlandi yoki boshqa oyga ko'chirildi) — shu guruh–oydagi faol Sarhisob va
+  // o'sish yozuvlari bekor qilinadi. Yangi natija qo'shilganda bunday o'quvchi bo'lmaydi.
+  if (!onlyGrowth) {
+    const types = { $in: ["exam_result", "growth"] };
+    const gone = (await db
+      .collection(GAM.tx)
+      .distinct("pupilId", { groupId, examMonth: month, status: "active", type: types, pupilId: { $nin: [...cur.keys()] } })) as number[];
+    for (const pupilId of gone) {
+      try {
+        await withWallet(db, pupilId, async (w) => {
+          if (w.pupil.frozen) return; // TZ 4.21 — syncOne bilan bir xil
+          const txs = (await db
+            .collection(GAM.tx)
+            .find({ pupilId, groupId, examMonth: month, status: "active", type: types }, { projection: { _id: 0 } })
+            .toArray()) as unknown as CoinTransaction[];
+          for (const tx of txs) await w.cancel(tx, "Sarhisob natijasi o'chirildi", SYSTEM, true);
+        });
+      } catch (e) {
+        console.error("[gamification] Sarhisob tangasini bekor qilish", { groupId, month, pupilId }, e);
+      }
+    }
+  }
   return { results, growth };
 }
 
 /**
- * Sarhisob natijasi saqlangandan KEYIN (app/api/imtihon/group POST).
- * Modul o'chiq yoki oy boshlanishdan oldin bo'lsa — hech narsa qilmaydi.
+ * Sarhisob natijasi saqlangandan, tahrirlangandan yoki o'chirilgandan KEYIN
+ * (app/api/imtihon/group POST va group/[id] PUT/DELETE): guruh–oyning faol yozuvlari
+ * bazadagi sarhisoblarga moslanadi. Modul o'chiq yoki oy boshlanishdan oldin bo'lsa —
+ * hech narsa qilmaydi.
  */
 export async function onExamSaved(db: Db, groupId: number, month: string): Promise<{ results: number; growth: number } | null> {
   const settings = await loadSettings(db);

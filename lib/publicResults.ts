@@ -18,16 +18,18 @@ import { groupExamMonth, publicExamOf, type GroupExam, type PublicBranch, type P
 // ?oy=YYYY-MM  — yo'q yoki noto'g'ri — natijasi bor eng oxirgi oy. Havolada
 //               berilgan oyda natija hali bo'lmasa ham shu oy qoladi (admin oy
 //               boshida havolani tarqatadi, natija kiritilgach ko'rinadi).
+// ARXIVDAGI sarhisob (GroupExam.archived) ko'rinmaydi — filial va oy ro'yxatida ham.
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const LIVE: Filter<Document> = { archived: { $ne: true } };
 
 export async function loadPublicResults(db: Db, query: { filial?: string | null; oy?: string | null }): Promise<PublicResults> {
   const col = db.collection("group_exams");
 
   const [branchDocs, usedRaw, legacy] = await Promise.all([
     db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).sort({ id: 1 }).toArray(),
-    col.distinct("branchId"),
-    col.findOne({ $or: [{ branchId: { $exists: false } }, { branchId: null }] }, { projection: { _id: 1 } }),
+    col.distinct("branchId", LIVE),
+    col.findOne({ ...LIVE, $or: [{ branchId: { $exists: false } }, { branchId: null }] }, { projection: { _id: 1 } }),
   ]);
   const used = new Set(usedRaw.map(Number).filter((n) => Number.isInteger(n) && n > 0));
   // `branchId` siz eski hujjatlar — 1-filialniki (lib/branchScope.ts → branchInCondition).
@@ -43,7 +45,7 @@ export async function loadPublicResults(db: Db, query: { filial?: string | null;
     all.filter((b) => b.id === branch?.id || branchPool(b.id).some((id) => used.has(id))),
     branch?.id ?? null,
   );
-  const where: Filter<Document> = branch ? branchInCondition(branchPool(branch.id)) : {};
+  const where: Filter<Document> = branch ? { $and: [branchInCondition(branchPool(branch.id)), LIVE] } : LIVE;
 
   // Oylar — faqat sana/oy maydonlari (21.09.2026 gacha yozilganlarda `month` yo'q — sanadan).
   const meta = await col.find<Pick<GroupExam, "date" | "month">>(where, { projection: { _id: 0, date: 1, month: 1 } }).toArray();

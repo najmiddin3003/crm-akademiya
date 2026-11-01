@@ -171,6 +171,22 @@ export interface GroupExam {
   avgPct: number;
   createdAt: string;
   createdBy: string;
+  /** Oxirgi tahrir (01.11.2026 dan, app/api/imtihon/group/[id] PUT) — tahrirlanmagan bo'lsa yo'q. */
+  updatedAt?: string;
+  updatedBy?: string;
+  /**
+   * ARXIVDA (01.11.2026) — faqat KO'RINISH: Sarhisob ro'yxati, ko'rsatkichlar, taqqoslash
+   * va ochiq /natijalar sahifasidan yashiriladi. Tangalar, nishonlar va o'quvchilar
+   * botidagi natija (`monthly_exams`) O'ZGARMAYDI — o'chirish emas, qaytarsa bo'ladi.
+   */
+  archived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+}
+
+/** Arxivlanmagan sarhisoblar — ro'yxat, ko'rsatkich va taqqoslashlar shulardan. */
+export function liveExams<T extends Pick<GroupExam, "archived">>(list: T[]): T[] {
+  return list.filter((r) => !r.archived);
 }
 
 export function groupAvgPct(students: Pick<GroupExamStudent, "pct">[]): number {

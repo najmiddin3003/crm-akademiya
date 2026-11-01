@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Download } from "lucide-react";
+import { Archive, ArchiveRestore, Download, Pencil, Trash2 } from "lucide-react";
 import { useLang, useT } from "@/components/shared/Language";
 import V2Dialog from "@/components/v2/form/V2Dialog";
 import { primaryBtn, secondaryBtn } from "@/components/v2/ui/buttons";
@@ -15,14 +15,43 @@ import { CompareRow, ScoreBar, examBand } from "./examBits";
 // YANGI VERSIYA — SARHISOB TAFSILOTI (o'ngdan panel). Rasmi kelmagan — eski tafsilot
 // panelidagi ma'lumot (fan/ustoz, sana/savollar, solishtirish, o'quvchilar natijasi va
 // guruhga nisbati) yangi ko'rinishda: taqqoslash qatorlari «Natija kiritish» kartasidek.
-// Hisob eski panel bilan bir xil (shu oydagi sarhisoblar, o'quvchi natijalari ustidan).
+// Hisob eski panel bilan bir xil (shu oydagi sarhisoblar, o'quvchi natijalari ustidan;
+// arxivdagilarsiz — `all` ro'yxatdan keladi).
+// Amallar (01.11.2026): «Tahrirlash», «Arxivlash» / «Arxivdan chiqarish», «O'chirish»
+// (tasdiq — ro'yxatda) — tana boshida kichik tugmalar (telefonda pastki qator ustma-ust
+// tushadi, shu bois u yerda faqat «Yopish» va «Eksport»).
+
+const toolBase =
+  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-v2-md border border-v2-border-strong bg-v2-surface px-3 text-v2-small font-medium transition-[background-color,box-shadow] focus-visible:shadow-v2-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+const toolBtn = `${toolBase} text-v2-text hover:bg-v2-surface-2`;
+const toolDanger = `${toolBase} text-v2-danger hover:bg-v2-danger-bg`;
 
 function dateOfIso(iso: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
 }
 
-export default function SarhisobDetailV2({ exam, all, onClose, onExport }: { exam: GroupExam; all: GroupExam[]; onClose: () => void; onExport: (exam: GroupExam) => void }) {
+export default function SarhisobDetailV2({
+  exam,
+  all,
+  busy,
+  onClose,
+  onExport,
+  onEdit,
+  onArchive,
+  onDelete,
+}: {
+  exam: GroupExam;
+  /** Taqqoslash uchun — joriy filialning arxivdagisiz sarhisoblari. */
+  all: GroupExam[];
+  /** Arxiv/o'chirish so'rovi ketmoqda — tugmalar o'chiq. */
+  busy: boolean;
+  onClose: () => void;
+  onExport: (exam: GroupExam) => void;
+  onEdit: () => void;
+  onArchive: (archived: boolean) => void;
+  onDelete: () => void;
+}) {
   const { t } = useT();
   const [lang] = useLang();
   const monthLabel = useMonthLabel();
@@ -45,9 +74,17 @@ export default function SarhisobDetailV2({ exam, all, onClose, onExport }: { exa
       subtitle={[monthLabel(month), d ? dayMonthLabel(d, lang) : exam.date, t("{total} ta savol", { total: exam.total })].join(" · ")}
       onClose={onClose}
       footerStart={
-        <span className="text-v2-caption font-normal text-v2-text-3">
-          {t("Kiritildi: {stamp}", { stamp: exam.createdAt })}
-          {exam.createdBy ? ` · ${exam.createdBy}` : ""}
+        <span className="flex flex-col text-v2-caption font-normal text-v2-text-3">
+          <span>
+            {t("Kiritildi: {stamp}", { stamp: exam.createdAt })}
+            {exam.createdBy ? ` · ${exam.createdBy}` : ""}
+          </span>
+          {exam.updatedAt && (
+            <span>
+              {t("Tahrirlandi: {stamp}", { stamp: exam.updatedAt })}
+              {exam.updatedBy ? ` · ${exam.updatedBy}` : ""}
+            </span>
+          )}
         </span>
       }
       footer={(api) => (
@@ -63,6 +100,36 @@ export default function SarhisobDetailV2({ exam, all, onClose, onExport }: { exa
       )}
     >
       <div className="space-y-5">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={onEdit} disabled={busy} className={toolBtn}>
+            <Pencil className="size-4" strokeWidth={1.75} aria-hidden />
+            {t("Tahrirlash")}
+          </button>
+          <button type="button" onClick={() => onArchive(!exam.archived)} disabled={busy} className={toolBtn}>
+            {exam.archived ? <ArchiveRestore className="size-4" strokeWidth={1.75} aria-hidden /> : <Archive className="size-4" strokeWidth={1.75} aria-hidden />}
+            {exam.archived ? t("Arxivdan chiqarish") : t("Arxivlash")}
+          </button>
+          <button type="button" onClick={onDelete} disabled={busy} className={toolDanger}>
+            <Trash2 className="size-4" strokeWidth={1.75} aria-hidden />
+            {t("O'chirish")}
+          </button>
+        </div>
+
+        {exam.archived && (
+          <div role="note" className="flex items-start gap-2 rounded-v2-md bg-v2-surface-2 px-3 py-2.5 text-v2-small text-v2-text">
+            <Archive className="mt-0.5 size-4 shrink-0 text-v2-text-2" strokeWidth={1.75} aria-hidden />
+            <span className="min-w-0">
+              {t("Arxivda — Sarhisob ro'yxati, ko'rsatkichlar va ochiq sahifada ko'rinmaydi. Tangalar va botdagi natija o'zgarmagan.")}
+              {exam.archivedAt && (
+                <span className="mt-0.5 block text-v2-caption font-normal text-v2-text-3">
+                  {exam.archivedAt}
+                  {exam.archivedBy ? ` · ${exam.archivedBy}` : ""}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
         <dl className="grid grid-cols-2 gap-3 text-v2-small">
           <div className="min-w-0 rounded-v2-md bg-v2-surface-2 px-3 py-2.5">
             <dt className="text-v2-caption font-normal text-v2-text-2">{t("Fan")}</dt>

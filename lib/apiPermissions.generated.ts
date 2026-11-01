@@ -162,6 +162,7 @@ export const API_PERMISSIONS: Record<string, readonly string[]> = {
   "/api/hr-employees/[id]/students": ["/management-xodimlar"],
   "/api/hr-employees/import": ["/management-xodimlar"],
   "/api/imtihon/group": ["/imtihon"],
+  "/api/imtihon/group/[id]": ["/imtihon"],
   "/api/imtihon/uzbmb": ["/imtihon"],
   "/api/imtihon/uzbmb/[id]": ["/imtihon"],
   "/api/imtihon/uzbmb/config": ["/imtihon", "/settings-academic"],
