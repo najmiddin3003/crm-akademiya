@@ -182,6 +182,11 @@ export interface GroupExam {
   archived?: boolean;
   archivedAt?: string;
   archivedBy?: string;
+  /**
+   * GURUH NATIJALARI HAVOLASINING kaliti (01.11.2026) — faqat API JAVOBIDA, bazada YO'Q
+   * (lib/groupResultsLink.ts → withLinkKey): «Havolani nusxalash» → /natijalar/<linkKey>.
+   */
+  linkKey?: string;
 }
 
 /** Arxivlanmagan sarhisoblar — ro'yxat, ko'rsatkich va taqqoslashlar shulardan. */
@@ -251,7 +256,7 @@ export function groupExamMonth(exam: Pick<GroupExam, "date"> & { month?: string 
 }
 
 /* ============================================================
-   OCHIQ NATIJALAR SAHIFASI — /natijalar (01.11.2026)
+   OCHIQ NATIJALAR SAHIFASI — /natijalar/<guruh kaliti> (01.11.2026)
    ============================================================ */
 
 /**
@@ -284,22 +289,17 @@ export interface PublicExam {
   students: PublicExamStudent[];
 }
 
-/** Ochiq sahifadagi filial (hovuz — bitta qator, lib/branchPools.ts). */
-export interface PublicBranch {
-  id: number;
-  name: string;
-}
-
-/** /natijalar sahifasining ma'lumoti — lib/publicResults.ts → loadPublicResults. */
-export interface PublicResults {
-  /** Tanlangan filial; `null` — barcha filiallar. */
-  branch: PublicBranch | null;
-  /** Tanlov ro'yxati: natijasi bor filiallar (+ tanlangani). */
-  branches: PublicBranch[];
-  /** Natijasi bor oylar ("YYYY-MM"), yangisi birinchi; havoladagi oy ham qo'shiladi. */
-  months: string[];
-  /** Ko'rsatilayotgan oy; natija umuman yo'q bo'lsa — `null`. */
-  month: string | null;
+/**
+ * BITTA GURUHNING ochiq natijalari — /natijalar/<kalit> sahifasining ma'lumoti
+ * (lib/publicResults.ts → loadGroupResults). Faqat shu guruh; arxivdagi sarhisoblar yo'q.
+ */
+export interface PublicGroupResults {
+  /** Fan, guruh nomi va bosqichi — eng oxirgi sarhisobdan (sarhisob yo'q bo'lsa — guruhdan). */
+  course: string;
+  groupName: string;
+  groupLabel: string;
+  level: string;
+  /** Sarhisoblar — yangisi birinchi (oy, keyin sana bo'yicha). */
   exams: PublicExam[];
 }
 

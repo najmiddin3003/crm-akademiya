@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Archive, ArchiveRestore, Pencil, Share2, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Link2, Pencil, Share2, Trash2, X } from "lucide-react";
 import Modal, { useModalClose } from "@/components/ui/Modal";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import TierBadge from "./TierBadge";
@@ -17,6 +17,8 @@ import { useT } from "@/components/shared/Language";
 // nisbati (+/− foiz).
 // Pastki qatorda (01.11.2026): «O'chirish» (tasdiq — SarhisobView), «Arxivlash» /
 // «Arxivdan chiqarish», «Tahrirlash» (GroupExamDrawer tahrir rejimi).
+// Sarlavhada (01.11.2026): «Havolani nusxalash» — shu guruhning kirishsiz natijalar sahifasi
+// (sarhisobCore.useCopyGroupLink); arxivdagi sarhisobda yo'q — ochiq sahifa uni ko'rsatmaydi.
 
 /** "2026-09-14" → "14.09.2026". */
 export function fmtExamDate(iso: string): string {
@@ -49,6 +51,7 @@ export default function SarhisobDetailDrawer({
   busy = false,
   onClose,
   onExport,
+  onCopyLink,
   onEdit,
   onArchive,
   onDelete,
@@ -60,6 +63,8 @@ export default function SarhisobDetailDrawer({
   busy?: boolean;
   onClose: () => void;
   onExport: (exam: GroupExam) => void;
+  /** «Havolani nusxalash» — guruh natijalari sahifasi (bosish ichida nusxalanadi). */
+  onCopyLink?: () => void;
   onEdit?: () => void;
   onArchive?: (archived: boolean) => void;
   onDelete?: () => void;
@@ -90,14 +95,28 @@ export default function SarhisobDetailDrawer({
           </h3>
           <p className="text-[12px] text-muted-foreground mt-0.5">{t("Sarhisob tafsiloti")}</p>
         </div>
-        <button
-          type="button"
-          onClick={modal.close}
-          className="h-8 w-8 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
-          title={t("Yopish")}
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onCopyLink && !exam.archived && (
+            <button
+              type="button"
+              onClick={onCopyLink}
+              title={t("Shu guruh o'quvchilari natijani kirishsiz ko'radigan sahifa havolasi")}
+              aria-label={t("Havolani nusxalash")}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-[13px] font-medium hover:bg-secondary"
+            >
+              <Link2 className="w-4 h-4" />
+              <span className="hidden sm:inline">{t("Havolani nusxalash")}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={modal.close}
+            className="h-8 w-8 shrink-0 rounded-md hover:bg-secondary inline-flex items-center justify-center text-muted-foreground"
+            title={t("Yopish")}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">

@@ -1234,7 +1234,8 @@ sahifasidagidek), Kassa — tanlov. «To'lov turlari» — faqat tushum; turlar 
 **233. «Namuna» belgisi** — qoida
 Dizayner izohi — ko'rsatilmaydi.
 
-**234. Ochiq imtihon natijalari (/natijalar)** — taxmin (01.11.2026, rasmi yo'q)
+**234. Ochiq imtihon natijalari (/natijalar)** — ESKIRDI (01.11.2026, o'sha kuni 236 bilan almashdi:
+butun filial havolasi o'rniga har bir guruhga alohida havola; quyidagisi — tarix)
 Kirishsiz sahifa, havola Imtihon → Sarhisob'dagi «Ochiq havolani nusxalash» tugmasidan (eski va yangi
 versiyada): joriy filial (1+2 hovuz — Sarhisob'dagidek) va tanlangan oy; oyda natija bo'lmasa — oysiz,
 sahifa natijasi bor eng oxirgi oyni ochadi. Sahifada: oy, filial (natijasi borlari), fan; Sarhisob'dagi
@@ -1257,6 +1258,20 @@ nishonlar va o'quvchilar botidagi natija O'ZGARMAYDI; «Arxiv (n)» tugmasidan k
 natija qayta hisoblanadi. *Savol:* arxivdagi sarhisob tangalarni ham bekor qilsinmi? *Taxmin:* yo'q — arxiv
 «ro'yxatdan yashirish» uchun, hisobni o'zgartirish kerak bo'lsa — o'chirish. UzBMB'da test tahrirlash/o'chirish
 bor, arxiv yo'q — kerakmi, so'raladi.
+
+**236. Ochiq natijalar — har bir guruhga alohida havola** — qoida (01.11.2026, «har bir guruh uchun alohida
+url link yaratsin … har bir guruh alohida chiqsin va table ko'rinishida tartibli chiqishi kerak»; 234 o'rniga)
+Havola `/natijalar/<guruh id>-<imzo>?oy=<sarhisob oyi>`: imzo SESSION_SECRET'dan (bazaga yozilmaydi), raqamni
+o'zgartirib boshqa guruh ochilmaydi — «Havola topilmadi». Olish joyi: yangi versiyada Sarhisob qatoridagi ⋯
+menyusining birinchi bandi «Havolani nusxalash», eskisida sarhisob tafsiloti oynasining sarlavhasida; arxivdagi
+sarhisobda yo'q. Yuqoridagi umumiy «Ochiq havolani nusxalash» olib tashlandi (ikkala versiyada). Sahifada faqat
+shu guruh: fan · guruh · bosqich, oy (guruhda bir necha oy bo'lsa — tanlov, manzildagi `?oy=` ham almashadi),
+sarhisob ko'rsatkichlari (sana, ustoz, savollar soni, guruh o'rtachasi) va o'quvchilar JADVALI o'rin bo'yicha
+(o'rin, o'quvchi, telefon — oxirgi 4 raqam, to'g'ri javob, natija; teng natija — teng o'rin); oyda ikki
+sarhisob bo'lsa — har biri o'z fani bilan. Qidiruv, filial/fan tanlovi, taqqoslash va pastdagi «faqat oxirgi 4
+raqami ko'rsatiladi» yozuvi olib tashlandi. Eski umumiy havola (`/natijalar?filial=…`) — «Guruh havolasini
+oching». *Savol:* havolani bekor qilish (masalan guruh tugagach) kerakmi? *Taxmin:* hozircha yo'q — kerak
+bo'lsa guruhga «havola raqami» qo'shiladi va almashtiriladi.
 
 ## Reja
 

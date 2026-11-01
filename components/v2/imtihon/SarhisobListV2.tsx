@@ -13,7 +13,7 @@ import { dayMonthLabel } from "@/components/v2/ui/V2DateRange";
 import { FAN_DOT, fanOf } from "@/components/v2/ui/fan";
 import { downloadCsv } from "@/components/imtihon/importUtils";
 import { pupilAvgPct } from "@/components/imtihon/SarhisobDetailDrawer";
-import { sarhisobCsvRows, useCopyPublicLink, useExamActions, useMonthLabel } from "@/components/imtihon/sarhisobCore";
+import { sarhisobCsvRows, useCopyGroupLink, useExamActions, useMonthLabel } from "@/components/imtihon/sarhisobCore";
 import { uzDateIso } from "@/lib/uzTime";
 import { groupExamMonth, liveExams, type GroupExam } from "@/lib/imtihon";
 import SarhisobDetailV2 from "./SarhisobDetailV2";
@@ -24,9 +24,10 @@ import { ImtihonHeader, ScoreBar, examBand } from "./examBits";
 // filtri, to'rt ko'rsatkich, oydagi sarhisoblar jadvali (qator bosilsa — tafsilot),
 // «Eksport» (Sarhisob_YYYY-MM.csv, eski bilan bir xil) va «+ Natija kiritish»
 // (rasmdagi ekranga o'tadi). SAVOLLAR 139.
-// «Ochiq havolani nusxalash» (01.11.2026, SAVOLLAR 234) — o'quvchilar natijani kirishsiz
-// ko'radigan /natijalar sahifasi havolasi: joriy filial va tanlangan oy bilan (oyda natija
-// bo'lmasa — oysiz, sahifa eng oxirgi natijali oyni ochadi; sarhisobCore.publicResultsUrl).
+// «Havolani nusxalash» (01.11.2026, SAVOLLAR 236) — qatordagi «⋯» menyusida: shu GURUHNING
+// natijalar sahifasi (/natijalar/<kalit>?oy=<sarhisob oyi>, kirishsiz; sarhisobCore.groupResultsUrl).
+// Arxivdagi sarhisobda yo'q — ochiq sahifa uni ko'rsatmaydi. Yuqoridagi umumiy (butun filial)
+// «Ochiq havolani nusxalash» tugmasi olib tashlandi.
 // TAHRIRLASH / ARXIVLASH / O'CHIRISH (01.11.2026, SAVOLLAR 235) — qatordagi «⋯» va
 // tafsilot panelida. Arxivdagilar ro'yxat, ko'rsatkich, taqqoslash va ochiq sahifadan
 // yashiriladi (tanga va botdagi natija o'zgarmaydi) — «Arxiv» tugmasi ularni barcha
@@ -43,7 +44,6 @@ export default function SarhisobListV2({
   exams,
   setExams,
   loading,
-  branchId,
   initialMonth,
   onAdd,
   onEdit,
@@ -51,8 +51,6 @@ export default function SarhisobListV2({
   exams: GroupExam[];
   setExams: Dispatch<SetStateAction<GroupExam[]>>;
   loading: boolean;
-  /** Joriy filial (ochiq sahifa havolasi uchun); hali yuklanmagan — null. */
-  branchId: number | null;
   /** Manzildagi `oy=` (natija saqlangach shu oyga qaytiladi). */
   initialMonth: string | null;
   onAdd: (month: string) => void;
@@ -63,7 +61,7 @@ export default function SarhisobListV2({
   const [lang] = useLang();
   const { showSuccess } = useToast();
   const monthLabel = useMonthLabel();
-  const copyPublicLink = useCopyPublicLink();
+  const copyGroupLink = useCopyGroupLink();
   const { busyId, setArchived, remove } = useExamActions(setExams);
   const [fMonth, setFMonth] = useState<string | null>(initialMonth);
   const [fCourse, setFCourse] = useState("");
@@ -118,6 +116,8 @@ export default function SarhisobListV2({
     const busy = busyId === r.id;
     return [
       { key: "h", heading: `${r.course} · ${groupTitle(r)}` },
+      // Arxivdagi sarhisob ochiq sahifada ko'rinmaydi — havolasi berilmaydi.
+      ...(r.archived ? [] : [{ key: "link", label: t("Havolani nusxalash"), icon: Link2, onSelect: () => void copyGroupLink(r) }]),
       { key: "edit", label: t("Tahrirlash"), icon: Pencil, onSelect: () => onEdit(r, fm), disabled: busy },
       r.archived
         ? { key: "unarchive", label: t("Arxivdan chiqarish"), icon: ArchiveRestore, onSelect: () => void setArchived(r, false), disabled: busy }
@@ -149,16 +149,6 @@ export default function SarhisobListV2({
         tab="sarhisob"
         actions={
           <>
-            <button
-              type="button"
-              onClick={() => void copyPublicLink(branchId, live.some((r) => groupExamMonth(r) === fm) ? fm : "")}
-              disabled={loading}
-              title={t("O'quvchilar natijalarni kirishsiz ko'radigan sahifa havolasi")}
-              className={`${secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
-            >
-              <Link2 className="size-4" strokeWidth={1.75} aria-hidden />
-              {t("Ochiq havolani nusxalash")}
-            </button>
             <button
               type="button"
               onClick={() => exportCsv(rows, archiveView ? "arxiv" : fm)}

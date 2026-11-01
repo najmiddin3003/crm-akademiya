@@ -64,7 +64,7 @@ export default function ImtihonV2() {
   const editRaw = sp.get("tahrir");
   const editId = editRaw && /^\d+$/.test(editRaw) ? Number(editRaw) : null;
 
-  const { exams, setExams, loading, branchId } = useGroupExams();
+  const { exams, setExams, loading } = useGroupExams();
   const editing = editId === null ? null : (exams.find((r) => r.id === editId) ?? null);
 
   // UzBMB bir marta ochilgach DOM'da qoladi (filtr va kiritish holati saqlansin).
@@ -110,7 +110,6 @@ export default function ImtihonV2() {
             exams={exams}
             setExams={setExams}
             loading={loading}
-            branchId={branchId}
             initialMonth={month}
             onAdd={goEntry}
             onEdit={goEdit}

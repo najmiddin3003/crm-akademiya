@@ -6,6 +6,7 @@ import { currentAuthorName } from "@/lib/currentEmployee";
 import { uzStamp } from "@/lib/uzTime";
 import { onExamSaved } from "@/lib/gamification/exams";
 import { buildExamStudents, mirrorKeysOf, syncMonthlyMirror, type MirrorKey } from "@/lib/groupExamsServer";
+import { withLinkKey } from "@/lib/groupResultsLink";
 import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "@/lib/imtihon";
 
 // IMTIHON → SARHISOB: BITTA SARHISOBNI TAHRIRLASH, ARXIVLASH, O'CHIRISH (01.11.2026,
@@ -98,7 +99,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const next: GroupExam = { ...exam, ...set };
 
   await afterChange(db, exam.groupId, [exam.month, next.month], [...mirrorKeysOf(exam), ...mirrorKeysOf(next)]);
-  return NextResponse.json({ ok: true, exam: next });
+  return NextResponse.json({ ok: true, exam: withLinkKey(next) });
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
@@ -122,14 +123,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (archived) {
     const mark = { archived: true, archivedAt: uzStamp(), archivedBy: await currentAuthorName() };
     await col.updateOne({ id: exam.id }, { $set: mark });
-    return NextResponse.json({ ok: true, exam: { ...exam, ...mark } });
+    return NextResponse.json({ ok: true, exam: withLinkKey({ ...exam, ...mark }) });
   }
   await col.updateOne({ id: exam.id }, { $unset: { archived: "", archivedAt: "", archivedBy: "" } });
   const next: GroupExam = { ...exam };
   delete next.archived;
   delete next.archivedAt;
   delete next.archivedBy;
-  return NextResponse.json({ ok: true, exam: next });
+  return NextResponse.json({ ok: true, exam: withLinkKey(next) });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {

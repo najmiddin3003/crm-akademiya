@@ -6,6 +6,7 @@ import { groupLabel, type Group } from "@/lib/groups";
 import { uzStamp } from "@/lib/uzTime";
 import { onExamSaved } from "@/lib/gamification/exams";
 import { buildExamStudents, mirrorKeysOf, syncMonthlyMirror } from "@/lib/groupExamsServer";
+import { withLinkKey } from "@/lib/groupResultsLink";
 import { groupAvgPct, groupExamMonth, sanitizeGroupExam, type GroupExam } from "@/lib/imtihon";
 
 // Imtihon → Sarhisob — "Natija qo'shish" paneli backend'i (MongoDB `group_exams`).
@@ -30,10 +31,10 @@ export async function GET() {
     .sort({ date: -1, id: -1 })
     .toArray()) as unknown as GroupExam[];
   // `month` 21.09.2026 da qo'shildi — undan oldingi hujjatlarda yo'q,
-  // mijoz doim to'ldirilgan holda olsin.
-  const exams = rows.map((r) => ({ ...r, month: groupExamMonth(r) }));
-  // `branchId` — «Ochiq havolani nusxalash» tugmasi uchun (/natijalar?filial=…, lib/publicResults.ts).
-  return NextResponse.json({ ok: true, exams, branchId: scope.branchId });
+  // mijoz doim to'ldirilgan holda olsin. `linkKey` — «Havolani nusxalash» (guruh natijalari
+  // sahifasi /natijalar/<kalit>, lib/groupResultsLink.ts) uchun, bazada yo'q.
+  const exams = rows.map((r) => withLinkKey({ ...r, month: groupExamMonth(r) }));
+  return NextResponse.json({ ok: true, exams });
 }
 
 export async function POST(req: Request) {
@@ -107,5 +108,5 @@ export async function POST(req: Request) {
     console.error("[imtihon] monthly_exams ko'zgusi", { examId: exam.id }, e);
   }
 
-  return NextResponse.json({ ok: true, exam });
+  return NextResponse.json({ ok: true, exam: withLinkKey(exam) });
 }

@@ -1,70 +1,34 @@
-import type { Db, Document, Filter } from "mongodb";
-import { branchInCondition } from "@/lib/branchScope";
-import { branchPool, collapseBranchPools } from "@/lib/branchPools";
-import { groupExamMonth, publicExamOf, type GroupExam, type PublicBranch, type PublicResults } from "@/lib/imtihon";
+import type { Db } from "mongodb";
+import { groupLabel, type Group } from "@/lib/groups";
+import { publicExamOf, type GroupExam, type PublicGroupResults } from "@/lib/imtihon";
 
-// OCHIQ NATIJALAR (01.11.2026, foydalanuvchi: «imtihon sarhisob bo'limida
-// o'quvchilar o'z natijalarini ko'ra olishlari uchun ochiq sahifa ... login
-// qilmasdan ham kirish mumkin bo'lsin») — /natijalar sahifasining ma'lumoti.
-// Sahifa (app/natijalar/page.tsx) SERVERDA chaqiradi — alohida ochiq API yo'q.
+// OCHIQ NATIJALAR — BITTA GURUH (01.11.2026, foydalanuvchi: «har bir guruh uchun alohida url
+// link yaratsin ... har bir guruh alohida chiqsin va table ko'rinishida tartibli chiqsin»).
+// /natijalar/<kalit> sahifasining ma'lumoti: sahifa (app/natijalar/[kalit]/page.tsx) kalit
+// imzosini tekshirgach (lib/groupResultsLink.ts) SERVERDA chaqiradi — alohida ochiq API yo'q.
+// Avvalgi «butun filial + oy» sahifasi (/natijalar?filial=…) shu bilan almashdi.
 //
-// Faqat O'QIYDI va faqat Sarhisob (`group_exams`) natijalarini: fan, ustoz,
-// guruh, sana, savollar soni, o'quvchi ismi va natijasi. TELEFON SHU YERDA
-// YASHIRILADI — faqat oxirgi 4 raqam (lib/imtihon.ts → maskPhoneTail);
-// o'quvchi id'si va kim kiritgani brauzerga umuman yetib bormaydi.
-//
-// ?filial=<id> — Sarhisob'dagidek HOVUZ bilan (1 yoki 2 → ikkalasi; admin
-//               ko'rgan ro'yxat bilan bir xil); yo'q yoki noto'g'ri — barcha filiallar.
-// ?oy=YYYY-MM  — yo'q yoki noto'g'ri — natijasi bor eng oxirgi oy. Havolada
-//               berilgan oyda natija hali bo'lmasa ham shu oy qoladi (admin oy
-//               boshida havolani tarqatadi, natija kiritilgach ko'rinadi).
-// ARXIVDAGI sarhisob (GroupExam.archived) ko'rinmaydi — filial va oy ro'yxatida ham.
+// Faqat O'QIYDI va faqat SHU GURUHNING Sarhisob (`group_exams`) natijalarini: fan, ustoz,
+// guruh, sana, savollar soni, o'quvchi ismi va natijasi. TELEFON SHU YERDA YASHIRILADI —
+// faqat oxirgi 4 raqam (lib/imtihon.ts → maskPhoneTail); o'quvchi id'si va kim kiritgani
+// brauzerga umuman yetib bormaydi. ARXIVDAGI sarhisob (GroupExam.archived) ko'rinmaydi.
+// Barcha oylar birdan yuklanadi (guruhda oyiga bitta sarhisob) — oy sahifaning o'zida tanlanadi.
 
-const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
-const LIVE: Filter<Document> = { archived: { $ne: true } };
+export async function loadGroupResults(db: Db, groupId: number): Promise<PublicGroupResults | null> {
+  const rows = await db
+    .collection("group_exams")
+    .find<GroupExam>(
+      { groupId, archived: { $ne: true } },
+      { projection: { _id: 0, createdBy: 0, createdAt: 0, updatedBy: 0, updatedAt: 0 } },
+    )
+    .toArray();
+  // publicExamOf: `month` 21.09.2026 gacha yozilganlarda sanadan; yangisi birinchi.
+  const exams = rows.map(publicExamOf).sort((a, b) => b.month.localeCompare(a.month) || b.date.localeCompare(a.date) || b.id - a.id);
+  const head = exams[0];
+  if (head) return { course: head.course, groupName: head.groupName, groupLabel: head.groupLabel, level: head.level, exams };
 
-export async function loadPublicResults(db: Db, query: { filial?: string | null; oy?: string | null }): Promise<PublicResults> {
-  const col = db.collection("group_exams");
-
-  const [branchDocs, usedRaw, legacy] = await Promise.all([
-    db.collection("branches").find({}, { projection: { _id: 0, id: 1, name: 1 } }).sort({ id: 1 }).toArray(),
-    col.distinct("branchId", LIVE),
-    col.findOne({ ...LIVE, $or: [{ branchId: { $exists: false } }, { branchId: null }] }, { projection: { _id: 1 } }),
-  ]);
-  const used = new Set(usedRaw.map(Number).filter((n) => Number.isInteger(n) && n > 0));
-  // `branchId` siz eski hujjatlar — 1-filialniki (lib/branchScope.ts → branchInCondition).
-  if (legacy) used.add(1);
-
-  const all: PublicBranch[] = branchDocs
-    .map((b) => ({ id: Number(b.id), name: String(b.name ?? "").trim() }))
-    .filter((b) => Number.isInteger(b.id) && b.id > 0 && b.name !== "");
-  const wanted = Number(query.filial);
-  const branch = all.find((b) => b.id === wanted) ?? null;
-  // Tanlovda — natijasi bor filiallar; tanlangani bo'sh bo'lsa ham qoladi (yozuvi to'g'ri chiqsin).
-  const branches = collapseBranchPools(
-    all.filter((b) => b.id === branch?.id || branchPool(b.id).some((id) => used.has(id))),
-    branch?.id ?? null,
-  );
-  const where: Filter<Document> = branch ? { $and: [branchInCondition(branchPool(branch.id)), LIVE] } : LIVE;
-
-  // Oylar — faqat sana/oy maydonlari (21.09.2026 gacha yozilganlarda `month` yo'q — sanadan).
-  const meta = await col.find<Pick<GroupExam, "date" | "month">>(where, { projection: { _id: 0, date: 1, month: 1 } }).toArray();
-  const months = [...new Set(meta.map(groupExamMonth))].filter((m) => MONTH_RE.test(m));
-  const asked = query.oy ?? "";
-  const month = MONTH_RE.test(asked) ? asked : (months.sort().at(-1) ?? null);
-  if (month && !months.includes(month)) months.push(month);
-  months.sort().reverse();
-
-  const rows = month
-    ? await col
-        .find<GroupExam>(
-          // `month` oldin tekshirilgan (MONTH_RE) — regex'ga boshqa belgi tushmaydi.
-          { $and: [where, { $or: [{ month }, { month: { $in: [null, ""] }, date: { $regex: `^${month}-` } }] }] },
-          { projection: { _id: 0, createdBy: 0, createdAt: 0 } },
-        )
-        .sort({ date: -1, id: -1 })
-        .toArray()
-    : [];
-
-  return { branch, branches, months, month, exams: rows.map(publicExamOf) };
+  // Natija hali kiritilmagan (yoki hammasi arxivda) — sarlavha guruhning o'zidan; guruh ham yo'q — null.
+  const group = await db.collection<Group>("groups").findOne({ id: groupId }, { projection: { _id: 0, id: 1, name: 1, course: 1, level: 1 } });
+  if (!group) return null;
+  return { course: group.course ?? "", groupName: group.name ?? "", groupLabel: groupLabel(group), level: group.level ?? "", exams: [] };
 }

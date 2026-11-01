@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Archive, ArrowLeft, FilePlus, Link2, Share2 } from "lucide-react";
+import { Archive, ArrowLeft, FilePlus, Share2 } from "lucide-react";
 import Select from "@/components/ui/Select";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -12,7 +12,7 @@ import { downloadCsv } from "./importUtils";
 import TierBadge from "./TierBadge";
 import GroupExamDrawer from "./GroupExamDrawer";
 import SarhisobDetailDrawer, { fmtExamDate, pupilAvgPct } from "./SarhisobDetailDrawer";
-import { sarhisobCsvRows, upsertExam, useCopyPublicLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
+import { sarhisobCsvRows, upsertExam, useCopyGroupLink, useExamActions, useGroupExams, useMonthLabel } from "./sarhisobCore";
 import { useT } from "@/components/shared/Language";
 
 // Imtihon → Sarhisob tabi (referens sarhisob.html → renderList).
@@ -27,9 +27,9 @@ import { useT } from "@/components/shared/Language";
 // Ilgari bu ro'yxat alohida /imtihon/sarhisob sahifasida, tabda esa
 // o'quvchi-o'quvchi "Oylik imtihon" jadvali (Excel import bilan) turardi;
 // 21.09.2026 da referens bo'yicha "Oylik imtihon" Sarhisobga almashdi.
-// «Ochiq havolani nusxalash» (01.11.2026) — o'quvchilar natijani kirishsiz
-// ko'radigan /natijalar sahifasi havolasi (joriy filial + tanlangan oy; oyda natija
-// bo'lmasa — oysiz, sarhisobCore.publicResultsUrl).
+// «Havolani nusxalash» (01.11.2026) — sarhisob oynasining (SarhisobDetailDrawer)
+// sarlavhasida: shu GURUHNING kirishsiz natijalar sahifasi (/natijalar/<kalit>?oy=…,
+// sarhisobCore.groupResultsUrl). Yuqoridagi umumiy (butun filial) tugma olib tashlandi.
 // Tahrirlash / arxivlash / o'chirish (01.11.2026) — tafsilot panelining pastki qatorida
 // (yangi versiyadagi SarhisobListV2 bilan bir xil qoida): arxivdagilar ro'yxat, KPI va
 // solishtirishdan yashiriladi, «Arxiv (n)» — ularni barcha oylar bo'yicha ko'rsatadi.
@@ -51,8 +51,8 @@ export default function SarhisobView() {
   const { showSuccess } = useToast();
 
   // Ro'yxat, oy nomi va CSV — umumiy yadro (sarhisobCore.ts; yangi versiya ham shundan).
-  const { exams, setExams, loading, branchId } = useGroupExams();
-  const copyPublicLink = useCopyPublicLink();
+  const { exams, setExams, loading } = useGroupExams();
+  const copyGroupLink = useCopyGroupLink();
   const { busyId, setArchived, remove } = useExamActions(setExams);
   // `null` — foydalanuvchi hali tanlamagan: eng oxirgi sarhisob oyi
   // (bo'lmasa joriy oy) ko'rsatiladi.
@@ -147,16 +147,6 @@ export default function SarhisobView() {
           </button>
         )}
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => void copyPublicLink(branchId, live.some((r) => groupExamMonth(r) === fm) ? fm : "")}
-          disabled={loading}
-          title={t("O'quvchilar natijalarni kirishsiz ko'radigan sahifa havolasi")}
-          className={outlineBtn}
-        >
-          <Link2 className="w-4 h-4" />
-          <span>{t("Ochiq havolani nusxalash")}</span>
-        </button>
         <button onClick={() => exportCsv(rows, archiveView ? "arxiv" : fm)} disabled={rows.length === 0} className={outlineBtn}>
           <Share2 className="w-4 h-4" />
           <span>{t("Excelga chiqarish")}</span>
@@ -272,6 +262,7 @@ export default function SarhisobView() {
           busy={busyId === open.id}
           onClose={() => setOpenId(null)}
           onExport={(r) => exportCsv([r], groupExamMonth(r))}
+          onCopyLink={() => void copyGroupLink(open)}
           onEdit={() => {
             setOpenId(null);
             setEditing(open);
