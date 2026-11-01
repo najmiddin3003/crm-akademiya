@@ -1287,6 +1287,24 @@ kassalar, kim/qachon, sabab; boshqa oyna ochiq bo'lsa yopilishini kutadi; «Tush
 chiqmaydi. Botdagi ✗ ham shu xabarni beradi, lekin sababsiz («Sabab yozilmagan»). *Savol:* botdagi ✗ ham
 sabab so'rasinmi? Telegram'ga ham xabar ketsinmi? *Taxmin:* hozircha yo'q — xabar faqat CRM oynasida.
 
+**238. Sarhisob → «Markaz reytingi»** — taxmin (01.11.2026, «Butun markazdagi natijani ham ko'ra oladimi …
+Jami topshirganlarni ichidan top 3 va qolganlar kabi … Ularni ham qo'shib filtirlasa bo'ladimi»; rasmi yo'q)
+Sarhisob filtr qatorining boshida «Guruhlar bo'yicha | Markaz reytingi» almashtirgichi (ikkala versiyada;
+yangisida manzil `/imtihon?reyting=1`, natija kiritish/tahrirdan qaytganda saqlanadi). Reyting — tanlangan
+oyning arxivda bo'lmagan barcha sarhisoblaridagi o'quvchilar bitta ro'yxatda, JORIY FILIAL qamrovida (Sarhisob
+ro'yxati va «Markaz o'rtachasi» bilan bir xil; hamma filiallar birga — yo'q). O'quvchi shu oyda bir fandan
+ikki guruhda bo'lsa — keyingi sarhisobi olinadi (oylik ko'zgu qoidasi); turli fanlardan — alohida qatorlar.
+Tartib foiz bo'yicha, teng natija — teng o'rin (1, 1, 3 — gamifikatsiya va /natijalar kabi); 0% o'rin
+kartochkasiga chiqmaydi. To'rt ko'rsatkich (qatnashgan o'quvchi, guruhlar, o'rtacha natija, 80% va yuqori),
+1–3-o'rinlar kartochkasi (bir o'rinda bir necha o'quvchi bo'lishi mumkin; hamma 1-o'rinda teng bo'lsa — bitta
+keng kartochka, ortig'i «yana n ta — jadvalda») va jadval (o'rin, o'quvchi, fan, guruh · bosqich, ustoz,
+to'g'ri javob, natija; 50/100/200 dan sahifalab). Filtrlar: oy, fan, bosqich, ustoz, guruh (bir-biriga
+moslashadi, yonida soni) — o'rin filtr ichida qayta hisoblanadi (masalan faqat Ingliz tili uchligi); ism yoki
+telefon qidiruvi o'rinni o'zgartirmaydi. Qator yoki ism bosilsa — shu guruh sarhisobi. «Eksport» reyting
+ko'rinishida — reyting CSV (filtr va qidiruv bo'yicha); «Arxiv» tugmasi bu ko'rinishda yo'q. Telefon ustuni
+yo'q — reyting surati tarqatilishi mumkin. Faqat CRM ichida. *Savol:* o'quvchilarga ham markaz reytingining
+ochiq havolasi kerakmi (236 kabi)? *Taxmin:* hozircha yo'q — kerak bo'lsa /natijalar ga «markaz» varianti.
+
 ## Reja
 
 **7. Yangi versiya qanday quriladi** — ochiq (foydalanuvchi tushuntiradi)

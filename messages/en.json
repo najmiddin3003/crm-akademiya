@@ -6502,5 +6502,20 @@
   "Qabul qilingandan keyin bekor qilindi": "Cancelled after being accepted",
   "Sababini yozing": "Enter a reason",
   "Siz yuborgan pulni rahbar bekor qildi": "The manager cancelled the money you sent",
-  "Tushunarli": "Got it"
+  "Tushunarli": "Got it",
+  "Markaz reytingi": "Center ranking",
+  "Markaz reytingi · {month}": "Center ranking · {month}",
+  "Qatnashgan o'quvchi": "Students tested",
+  "O'rtacha natija": "Average score",
+  "80% va yuqori": "80% and above",
+  "{correct} / {total} to'g'ri": "{correct} / {total} correct",
+  "yana {n} ta — jadvalda": "{n} more — see the table",
+  "foiz bo'yicha, teng natija — teng o'rin": "by percentage; equal scores share a place",
+  "Filtrga mos natija yo'q": "No results match the filters",
+  "Bu oyda tanlangan fan, bosqich, ustoz yoki guruh bo'yicha natija kiritilmagan.": "No results were entered this month for the selected subject, stage, teacher or group.",
+  "Ism yoki telefonni tekshiring — qidiruv tanlangan filtrlar ichida.": "Check the name or phone — the search runs within the selected filters.",
+  "Qidiruvni tozalash": "Clear search",
+  "Yuklab olindi — {n} ta natija (Excel'da ochiladi)": "Downloaded — {n} results (opens in Excel)",
+  "Barcha bosqichlar": "All stages",
+  "Barcha ustozlar": "All teachers"
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import type { KeyboardEvent, ReactNode } from "react";
+import { ChevronRight, Trophy } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/components/shared/Language";
 
@@ -44,6 +44,59 @@ export function CompareRow({ label, value, strong = false }: { label: ReactNode;
       <span className="mt-1.5 block h-2 overflow-hidden rounded-v2-full bg-v2-hover" aria-hidden>
         {value !== null && <span className={`block h-full rounded-v2-full ${strong ? "bg-v2-series-1" : "bg-v2-track"}`} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />}
       </span>
+    </div>
+  );
+}
+
+/** Sarhisob jadvallarining qotib turadigan sarlavha katagi (ro'yxat va markaz reytingi). */
+export const examTh =
+  "sticky top-0 z-10 whitespace-nowrap bg-v2-surface-2 py-2.5 text-left text-v2-small font-medium text-v2-text-2 shadow-[inset_0_-1px_0_var(--v2-border)]";
+
+/** Sarhisob ko'rinishi: guruhlar bo'yicha ro'yxat yoki markaz reytingi (01.11.2026). */
+export type SarhisobView = "list" | "rank";
+
+/**
+ * «Guruhlar bo'yicha | 🏆 Markaz reytingi» — segment (DESIGN.md → «Tablar va almashtirgichlar»):
+ * `surface-2` quti, faol bo'lak `surface` + soya; filtr qatoridagi tugmalar bilan bir bo'yda (36 px).
+ * ← → bilan almashadi.
+ */
+export function SarhisobViewSwitch({ value, onChange }: { value: SarhisobView; onChange: (v: SarhisobView) => void }) {
+  const { t } = useT();
+  const options: { value: SarhisobView; label: string; icon?: typeof Trophy }[] = [
+    { value: "list", label: t("Guruhlar bo'yicha") },
+    { value: "rank", label: t("Markaz reytingi"), icon: Trophy },
+  ];
+  function onKey(e: KeyboardEvent<HTMLButtonElement>) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const next = value === "list" ? "rank" : "list";
+    onChange(next);
+    const group = e.currentTarget.parentElement;
+    requestAnimationFrame(() => group?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus());
+  }
+  return (
+    <div role="radiogroup" aria-label={t("Ko'rinish")} className="inline-flex h-9 max-w-full shrink-0 items-center gap-0.5 rounded-v2-md border border-v2-border bg-v2-surface-2 p-0.5">
+      {options.map((o) => {
+        const on = o.value === value;
+        const Icon = o.icon;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={on ? 0 : -1}
+            onClick={() => onChange(o.value)}
+            onKeyDown={onKey}
+            className={`inline-flex h-full items-center gap-1.5 whitespace-nowrap rounded-[6px] px-3 text-v2-small font-medium transition-colors focus-visible:outline-none focus-visible:shadow-v2-focus ${
+              on ? "bg-v2-surface text-v2-text shadow-v2-sm" : "text-v2-text-2 hover:text-v2-text"
+            }`}
+          >
+            {Icon && <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />}
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

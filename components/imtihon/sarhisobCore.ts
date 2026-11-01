@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { useT } from "@/components/shared/Language";
+import { useT, type TFn } from "@/components/shared/Language";
 import { useToast } from "@/components/ui/Toast";
 import { groupExamMonth, type GroupExam } from "@/lib/imtihon";
 import { fmtExamDate } from "./SarhisobDetailDrawer";
@@ -154,6 +154,11 @@ export function useCopyGroupLink() {
     },
     [t, showSuccess, showError],
   );
+}
+
+/** Guruh nomi: «7» → «7-guruh», qolgani o'z nomi bilan (bo'sh bo'lsa — to'liq yorliq). */
+export function examGroupTitle(r: Pick<GroupExam, "groupName" | "groupLabel">, t: TFn): string {
+  return /^\d+$/.test(r.groupName) ? t("{n}-guruh", { n: r.groupName }) : r.groupName || r.groupLabel;
 }
 
 /** "2026-10" → "Oktabr 2026" (tanlangan tilda). */

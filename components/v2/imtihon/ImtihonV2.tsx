@@ -21,6 +21,9 @@ import UzbmbV2 from "./uzbmb/UzbmbV2";
 //   /imtihon?tahrir=<id>    — shu ekran TAHRIR rejimida (01.11.2026; `&oy=` — qaytiladigan
 //                             ro'yxat oyi, bo'lmasa sarhisobning o'z oyi); sarhisob topilmasa —
 //                             xabar va ro'yxat;
+//   /imtihon?reyting=1      — Sarhisob «Markaz reytingi» ko'rinishi (01.11.2026; SarhisobListV2 segmenti
+//                             manzilni o'zi yangilaydi); kiritish va tahrir ekranlariga ham ilashadi —
+//                             saqlangach yoki qaytilganda reytingning o'ziga qaytiladi;
 //   /imtihon?tab=uzbmb      — UzBMB (uzbmb/UzbmbV2: natijalar, `&rejim=kiritish` — natija kiritish;
 //                             12-qism, 25.10.2026); `&eski=1` — testga bog'lanmagan eski natijalar
 //                             (25.10.2026 gacha oyma-oy yozilgan, eski ko'rinishda).
@@ -63,6 +66,8 @@ export default function ImtihonV2() {
   const month = oy && MONTH_RE.test(oy) ? oy : null;
   const editRaw = sp.get("tahrir");
   const editId = editRaw && /^\d+$/.test(editRaw) ? Number(editRaw) : null;
+  const rankView = sp.get("reyting") === "1";
+  const viewQ = rankView ? "&reyting=1" : "";
 
   const { exams, setExams, loading } = useGroupExams();
   const editing = editId === null ? null : (exams.find((r) => r.id === editId) ?? null);
@@ -71,9 +76,13 @@ export default function ImtihonV2() {
   const [uzbmbSeen, setUzbmbSeen] = useState(tab === "uzbmb");
   if (tab === "uzbmb" && !uzbmbSeen) setUzbmbSeen(true);
 
-  const goList = (m?: string | null) => router.replace(m ? `${pathname}?oy=${m}` : pathname, { scroll: false });
-  const goEntry = (m: string) => router.push(`${pathname}?kiritish=1&oy=${m}`, { scroll: false });
-  const goEdit = (exam: GroupExam, m: string) => router.push(`${pathname}?tahrir=${exam.id}${m ? `&oy=${m}` : ""}`, { scroll: false });
+  const listUrl = (m?: string | null) => {
+    const q = `${m ? `&oy=${m}` : ""}${viewQ}`.slice(1);
+    return q ? `${pathname}?${q}` : pathname;
+  };
+  const goList = (m?: string | null) => router.replace(listUrl(m), { scroll: false });
+  const goEntry = (m: string) => router.push(`${pathname}?kiritish=1&oy=${m}${viewQ}`, { scroll: false });
+  const goEdit = (exam: GroupExam, m: string) => router.push(`${pathname}?tahrir=${exam.id}${m ? `&oy=${m}` : ""}${viewQ}`, { scroll: false });
 
   // Qo'shilgani boshiga, tahrirlangani o'z o'rnida (sarhisobCore.upsertExam).
   const onSaved = (exam: GroupExam) => {
@@ -86,8 +95,9 @@ export default function ImtihonV2() {
   useEffect(() => {
     if (!missingEdit) return;
     showError(t("Sarhisob topilmadi"));
-    router.replace(month ? `${pathname}?oy=${month}` : pathname, { scroll: false });
-  }, [missingEdit, month, pathname, router, showError, t]);
+    const q = `${month ? `&oy=${month}` : ""}${viewQ}`.slice(1);
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [missingEdit, month, viewQ, pathname, router, showError, t]);
 
   return (
     <div data-ui="v2" className="relative flex min-h-full flex-col bg-v2-surface p-4 font-v2 text-v2-text sm:p-5">
@@ -111,6 +121,7 @@ export default function ImtihonV2() {
             setExams={setExams}
             loading={loading}
             initialMonth={month}
+            initialView={rankView ? "rank" : "list"}
             onAdd={goEntry}
             onEdit={goEdit}
           />
